@@ -675,8 +675,8 @@ type versionManifestProofHistoryItem struct {
 	ChangedRevisionCount   int                           `json:"changed_revision_count"`
 	// ModulesChanged is true when a module was added or removed between this
 	// version and the previous one. Membership changes are reported separately
-	// and do not count toward ChangedRevisionCount.
-	ModulesChanged bool `json:"modules_changed"`
+	// and do not count toward ChangedRevisionCount. Omitted when false.
+	ModulesChanged bool `json:"modules_changed,omitzero"`
 }
 
 func makeGetVersionManifestProofHistory() gimlet.RouteHandler {
@@ -686,7 +686,7 @@ func makeGetVersionManifestProofHistory() gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Fetch version manifest proof history by version ID
-//	@Description	Checks whether each recent system version changed exactly one project or module commit revision. Module add/remove is reported separately via modules_changed and does not count as a revision change. This is for projects that use modules with project triggers on all modules.
+//	@Description	Checks whether each recent system version changed exactly one project or module commit revision. Module add/remove is reported separately via modules_changed (omitted when false) and does not count as a revision change. This is for projects that use modules with project triggers on all modules.
 //	@Tags			manifests
 //	@Router			/versions/{version_id}/manifest/proof/history [get]
 //	@Security		Api-User || Api-Key
