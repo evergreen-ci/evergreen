@@ -305,7 +305,7 @@ func (s *SubscriptionRouteSuite) TestGetProjectSubscriptionPermissions() {
 	}
 	s.Require().NoError(roleManager.UpdateRole(s.T().Context(), role))
 
-	s.T().Run("AuthorizedUser", func(t *testing.T) {
+	s.T().Run("UserWithProjectViewRoleIsAuthorized", func(t *testing.T) {
 		usr := &user.DBUser{Id: "authorized", SystemRoles: []string{role.ID}}
 		ctx := gimlet.AttachUser(s.T().Context(), usr)
 		r, err := http.NewRequest(http.MethodGet, "/subscriptions?owner="+pRef.Identifier+"&type=project", nil)
@@ -316,7 +316,7 @@ func (s *SubscriptionRouteSuite) TestGetProjectSubscriptionPermissions() {
 		s.Require().NoError(err)
 		s.Equal(pRef.Id, h.owner)
 	})
-	s.T().Run("UnauthorizedUser", func(t *testing.T) {
+	s.T().Run("UserWithoutProjectViewRoleIsUnauthorized", func(t *testing.T) {
 		usr := &user.DBUser{Id: "unauthorized"}
 		ctx := gimlet.AttachUser(s.T().Context(), usr)
 		r, err := http.NewRequest(http.MethodGet, "/subscriptions?owner="+pRef.Identifier+"&type=project", nil)
