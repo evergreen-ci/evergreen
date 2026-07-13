@@ -26,11 +26,6 @@
               "buildBaronSettings": {
                 "ticketCreateProject": "EVG",
                 "ticketSearchProjects": ["EVG"],
-                "bfSuggestionFeaturesURL": "",
-                "bfSuggestionPassword": "",
-                "bfSuggestionServer": "",
-                "bfSuggestionTimeoutSecs": 0,
-                "bfSuggestionUsername": "",
                 "ticketCreateIssueType": ""
               },
               "taskAnnotationSettings": {

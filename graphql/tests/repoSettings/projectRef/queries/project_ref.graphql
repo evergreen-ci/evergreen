@@ -36,11 +36,6 @@
       buildBaronSettings {
         ticketCreateProject
         ticketSearchProjects
-        bfSuggestionFeaturesURL
-        bfSuggestionPassword
-        bfSuggestionServer
-        bfSuggestionTimeoutSecs
-        bfSuggestionUsername
         ticketCreateIssueType
       }
 
