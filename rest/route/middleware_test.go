@@ -303,6 +303,46 @@ func TestSendNotificationMiddleware(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, rw.Code)
 }
 
+func TestSNSAuthMiddlewareCapsBodySize(t *testing.T) {
+	mw := NewSNSAuthMiddleware()
+
+	// A body larger than the cap is rejected before it can be buffered, and the
+	// downstream handler is never reached.
+	oversized := strings.NewReader(strings.Repeat("a", maxWebhookBodySize+1))
+	r, err := http.NewRequest(http.MethodPost, "/hooks/aws", oversized)
+	require.NoError(t, err)
+	rw := httptest.NewRecorder()
+	called := false
+	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+		called = true
+	})
+	assert.False(t, called)
+	assert.NotEqual(t, http.StatusOK, rw.Code)
+}
+
+func TestGithubAuthMiddlewareCapsBodySize(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	testutil.NewEnvironment(ctx, t)
+
+	mw := NewGithubAuthMiddleware()
+
+	// A body larger than the cap is rejected before it can be buffered, and the
+	// downstream handler is never reached.
+	oversized := strings.NewReader(strings.Repeat("a", maxWebhookBodySize+1))
+	r, err := http.NewRequest(http.MethodPost, "/hooks/github", oversized)
+	require.NoError(t, err)
+	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("X-Hub-Signature-256", "sha256=deadbeef")
+	rw := httptest.NewRecorder()
+	called := false
+	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+		called = true
+	})
+	assert.False(t, called)
+	assert.NotEqual(t, http.StatusOK, rw.Code)
+}
+
 func TestTaskAuthMiddleware(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
