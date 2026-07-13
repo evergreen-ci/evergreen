@@ -2245,16 +2245,15 @@ func dependenciesForTaskUnit(taskUnits []BuildVariantTaskUnit, p *Project) []tas
 	for _, dependentTask := range taskUnits {
 		if dependentTask.GroupName != "" {
 			tg := p.FindTaskGroup(dependentTask.GroupName)
-			if tg == nil || tg.MaxHosts > 1 {
-				continue
-			}
-			// Single host task groups are a special case of dependencies because they implicitly form a linear
-			// dependency chain on the prior task group tasks
-			for i, v := range slices.Backward(tg.Tasks) {
-				// Check the task display names since no display name will appear twice
-				// within the same task group
-				if dependentTask.Name == v && i > 0 {
-					dependentTask.DependsOn = append(dependentTask.DependsOn, TaskUnitDependency{Name: tg.Tasks[i-1], Variant: dependentTask.Variant})
+			if tg != nil && tg.MaxHosts <= 1 {
+				// Single host task groups are a special case of dependencies because they implicitly form a linear
+				// dependency chain on the prior task group tasks.
+				for i, v := range slices.Backward(tg.Tasks) {
+					// Check the task display names since no display name will appear twice
+					// within the same task group.
+					if dependentTask.Name == v && i > 0 {
+						dependentTask.DependsOn = append(dependentTask.DependsOn, TaskUnitDependency{Name: tg.Tasks[i-1], Variant: dependentTask.Variant})
+					}
 				}
 			}
 		}
