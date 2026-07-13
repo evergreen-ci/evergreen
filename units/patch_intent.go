@@ -1721,7 +1721,7 @@ func partitionVariantsByPathFilter(patchDoc *patch.Patch, patchedProject *model.
 // 2. variants and tasks that are required dependencies of tasks in vts.
 func (j *patchIntentProcessor) getTasksAndDependencies(ctx context.Context, patchDoc *patch.Patch, patchedProject *model.Project, vts []patch.VariantTasks) map[string]map[string]bool {
 	tvPairs := model.VariantTasksToTVPairs(vts)
-	requiredTasksAndDependencies, err := model.IncludeDependencies(patchedProject, tvPairs.ExecTasks, patchDoc.GetRequester(), nil)
+	requiredTasksAndDependencies, err := model.IncludeDependencies(patchedProject, tvPairs.ExecTasks, patchDoc.GetRequester(), "", nil)
 	grip.Warning(ctx, message.WrapError(err, message.Fields{
 		"message":  "error resolving cross-variant dependencies on path-filtered variants",
 		"job":      j.ID(),

@@ -341,15 +341,17 @@ func (apiPatch *APIPatch) populateCostFromVersion(ctx context.Context, versionID
 	if v == nil {
 		return
 	}
-	if !v.Cost.IsZero() {
-		versionCost := v.Cost
-		versionCost.Total = versionCost.AdjustedTotal()
-		apiPatch.Cost = &versionCost
-	}
-	if !v.PredictedCost.IsZero() {
-		predictedCost := v.PredictedCost
-		predictedCost.Total = predictedCost.AdjustedTotal()
-		apiPatch.PredictedCost = &predictedCost
+	if !shouldHideCostForProject(v.Identifier) {
+		if !v.Cost.IsZero() {
+			versionCost := v.Cost
+			versionCost.Total = versionCost.AdjustedTotal()
+			apiPatch.Cost = &versionCost
+		}
+		if !v.PredictedCost.IsZero() {
+			predictedCost := v.PredictedCost
+			predictedCost.Total = predictedCost.AdjustedTotal()
+			apiPatch.PredictedCost = &predictedCost
+		}
 	}
 	if !v.S3Usage.IsZero() {
 		apiPatch.S3Usage = &APIVersionS3Usage{
@@ -430,7 +432,9 @@ func (apiPatch *APIPatch) buildChildPatches(ctx context.Context, p patch.Patch) 
 	}
 	apiPatch.DownstreamTasks = downstreamTasks
 	apiPatch.ChildPatches = childPatches
-	addChildPatchesCostToParent(apiPatch, childPatches)
+	if !shouldHideCostForProject(p.Project) {
+		addChildPatchesCostToParent(apiPatch, childPatches)
+	}
 	if len(childPatches) == 0 {
 		return childPatchDocs, nil
 	}
