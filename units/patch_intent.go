@@ -1651,7 +1651,7 @@ func (j *patchIntentProcessor) getEvergreenRulesForStatuses(ctx context.Context,
 }
 
 // filterOutIgnoredVariants checks which variants should be ignored based on
-// their path patterns and the changed files in the patch.If a variant is
+// their path patterns and the changed files in the patch. If a variant is
 // ignored by path filtering but has tasks that are required for cross-variant
 // dependencies, those dependencies will not be ignored (in other words,
 // dependencies can override path filtering). It removes ignored variants from
@@ -1715,8 +1715,8 @@ func partitionVariantsByPathFilter(patchDoc *patch.Patch, patchedProject *model.
 
 // getTasksAndDependencies returns a map of variants to the tasks that should
 // run in those variants. This includes:
-// 1. the initial set of tasks in vts and
-// 2. tasks that are required as dependencies of tasks in vts.
+// 1. the initial set of variants and tasks in vts and
+// 2. variants and tasks that are required dependencies of tasks in vts.
 func (j *patchIntentProcessor) getTasksAndDependencies(ctx context.Context, patchDoc *patch.Patch, patchedProject *model.Project, vts []patch.VariantTasks) map[string]map[string]bool {
 	tvPairs := model.VariantTasksToTVPairs(vts)
 	requiredTasksAndDependencies, err := model.IncludeDependencies(patchedProject, tvPairs.ExecTasks, patchDoc.GetRequester(), nil)
