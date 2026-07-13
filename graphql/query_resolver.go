@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -720,74 +719,6 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, ta
 
 			apiSample.MatchingFailedTestNames = append(apiSample.MatchingFailedTestNames, sample.MatchingFailedTestNames...)
 			apiSample.TotalTestCount += sample.TotalFailedNames
-		}
-	}
-
-	return apiSamples, nil
-}
-
-// TaskQuarantinedTestsSample is the resolver for the taskQuarantinedTestsSample field.
-func (r *queryResolver) TaskQuarantinedTestsSample(ctx context.Context, versionID string, taskIds []string, limit *int) ([]*testresult.TaskTestResultsQuarantinedSample, error) {
-	if len(taskIds) == 0 {
-		return nil, nil
-	}
-	sampleLimit := defaultTaskQuarantinedTestsSampleLimit
-	if limit != nil {
-		sampleLimit = *limit
-	}
-	if sampleLimit < 0 {
-		return nil, InputValidationError.Send(ctx, "limit cannot be negative")
-	}
-
-	dbTasks, err := task.FindAll(ctx, db.Query(task.ByIds(taskIds)))
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching tasks '%s': %s", taskIds, err.Error()))
-	}
-	if len(dbTasks) == 0 {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("tasks '%s' not found", taskIds))
-	}
-
-	var allTasks []task.Task
-	apiSamples := make([]*testresult.TaskTestResultsQuarantinedSample, len(dbTasks))
-	apiSamplesByTaskID := map[string]*testresult.TaskTestResultsQuarantinedSample{}
-	for i, dbTask := range dbTasks {
-		if dbTask.Version != versionID && dbTask.ParentPatchID != versionID {
-			return nil, InputValidationError.Send(ctx, fmt.Sprintf("task '%s' does not belong to version '%s'", dbTask.Id, versionID))
-		}
-		tasks, err := dbTask.GetTestResultsTasks(ctx)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating test results task options for task '%s': %s", dbTask.Id, err.Error()))
-		}
-
-		apiSamples[i] = &testresult.TaskTestResultsQuarantinedSample{TaskID: dbTask.Id, Execution: dbTask.Execution}
-		for _, o := range tasks {
-			apiSamplesByTaskID[o.Id] = apiSamples[i]
-		}
-		allTasks = append(allTasks, tasks...)
-	}
-
-	if len(allTasks) > 0 {
-		samples, err := task.GetQuarantinedTestSamples(ctx, evergreen.GetEnvironment(), allTasks, sampleLimit)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting quarantined test results sample: %s", err.Error()))
-		}
-
-		for _, sample := range samples {
-			apiSample, ok := apiSamplesByTaskID[sample.TaskID]
-			if !ok {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("unexpected task '%s' in quarantined test sample result", sample.TaskID))
-			}
-
-			apiSample.QuarantinedTestsSkippedCount += sample.QuarantinedTestsSkippedCount
-			remaining := sampleLimit - len(apiSample.QuarantinedTests)
-			if remaining <= 0 {
-				continue
-			}
-			quarantinedTests := sample.QuarantinedTests
-			if len(quarantinedTests) > remaining {
-				quarantinedTests = quarantinedTests[:remaining]
-			}
-			apiSample.QuarantinedTests = append(apiSample.QuarantinedTests, quarantinedTests...)
 		}
 	}
 

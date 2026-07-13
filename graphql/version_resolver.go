@@ -16,9 +16,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	werrors "github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -292,6 +294,101 @@ func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersi
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task count for version '%s': %s", versionID, err.Error()))
 	}
 	return &taskCount, nil
+}
+
+// TaskQuarantinedTestsSample is the resolver for the taskQuarantinedTestsSample field.
+func (r *versionResolver) TaskQuarantinedTestsSample(ctx context.Context, obj *restModel.APIVersion, taskIds []string, limit *int) ([]*testresult.TaskTestResultsQuarantinedSample, error) {
+	taskIDs := taskIds
+	versionID := utility.FromStringPtr(obj.Id)
+	if err := requireVersionTasksViewPermission(ctx, versionID); err != nil {
+		return nil, err
+	}
+	if len(taskIDs) == 0 {
+		return nil, nil
+	}
+	sampleLimit := defaultTaskQuarantinedTestsSampleLimit
+	if limit != nil {
+		sampleLimit = *limit
+	}
+	if sampleLimit < 0 {
+		return nil, InputValidationError.Send(ctx, "limit cannot be negative")
+	}
+
+	dbTasks, err := task.FindAll(ctx, db.Query(task.ByIds(taskIDs)))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching tasks '%s': %s", taskIDs, err.Error()))
+	}
+	if len(dbTasks) == 0 {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("tasks '%s' not found", taskIDs))
+	}
+
+	var allTasks []task.Task
+	apiSamples := make([]*testresult.TaskTestResultsQuarantinedSample, len(dbTasks))
+	apiSamplesByTaskID := map[string]*testresult.TaskTestResultsQuarantinedSample{}
+	for i, dbTask := range dbTasks {
+		if dbTask.Version != versionID && dbTask.ParentPatchID != versionID {
+			return nil, InputValidationError.Send(ctx, fmt.Sprintf("task '%s' does not belong to version '%s'", dbTask.Id, versionID))
+		}
+		tasks, err := dbTask.GetTestResultsTasks(ctx)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating test results task options for task '%s': %s", dbTask.Id, err.Error()))
+		}
+
+		apiSamples[i] = &testresult.TaskTestResultsQuarantinedSample{TaskID: dbTask.Id, Execution: dbTask.Execution}
+		for _, task := range tasks {
+			apiSamplesByTaskID[task.Id] = apiSamples[i]
+		}
+		allTasks = append(allTasks, tasks...)
+	}
+
+	if len(allTasks) > 0 {
+		samples, err := task.GetQuarantinedTestSamples(ctx, evergreen.GetEnvironment(), allTasks, sampleLimit)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting quarantined test results sample: %s", err.Error()))
+		}
+
+		for _, sample := range samples {
+			apiSample, ok := apiSamplesByTaskID[sample.TaskID]
+			if !ok {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("unexpected task '%s' in quarantined test sample result", sample.TaskID))
+			}
+
+			apiSample.QuarantinedTestsSkippedCount += sample.QuarantinedTestsSkippedCount
+			remaining := sampleLimit - len(apiSample.QuarantinedTests)
+			if remaining <= 0 {
+				continue
+			}
+			quarantinedTests := sample.QuarantinedTests
+			if len(quarantinedTests) > remaining {
+				quarantinedTests = quarantinedTests[:remaining]
+			}
+			apiSample.QuarantinedTests = append(apiSample.QuarantinedTests, quarantinedTests...)
+		}
+	}
+
+	return apiSamples, nil
+}
+
+func requireVersionTasksViewPermission(ctx context.Context, versionID string) error {
+	params, err := data.BuildProjectParameterMapForGraphQL(map[string]any{"versionId": versionID})
+	if err != nil {
+		return InputValidationError.Send(ctx, err.Error())
+	}
+	projectID, statusCode, err := data.GetProjectIdFromParams(ctx, params)
+	if err != nil {
+		return mapHTTPStatusToGqlError(ctx, statusCode, err)
+	}
+
+	usr := mustHaveUser(ctx)
+	if usr.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      projectID,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionTasks,
+		RequiredLevel: evergreen.TasksView.Value,
+	}) {
+		return nil
+	}
+	return Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to 'view tasks' for the project '%s'", usr.Username(), projectID))
 }
 
 // Tasks is the resolver for the tasks field.

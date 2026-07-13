@@ -67,11 +67,6 @@ type Query {
     taskIds: [String!]!
     filters: [TestFilter!]!
   ): [TaskTestResultSample!]
-  taskQuarantinedTestsSample(
-    versionId: String! @requireProjectAccess(permission: TASKS, access: VIEW)
-    taskIds: [String!]!
-    limit: Int
-  ): [TaskQuarantinedTestsSample!]
 
   # test selection
   variantQuarantineStatus(

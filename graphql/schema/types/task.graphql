@@ -324,7 +324,7 @@ type TaskTestResultSample {
 }
 
 """
-TaskQuarantinedTestsSample is the return value for the taskQuarantinedTestsSample query.
+TaskQuarantinedTestsSample is the return value for Version.taskQuarantinedTestsSample.
 It contains the execution-time snapshot of tests skipped because they were quarantined in TSS.
 """
 type TaskQuarantinedTestsSample {
