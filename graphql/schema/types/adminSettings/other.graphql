@@ -217,6 +217,7 @@ input CostConfigInput {
   onDemandDiscount: Float
   s3Cost: S3CostConfigInput
   ebsCost: EBSCostConfigInput
+  hiddenCostProjects: [String!]
 }
 
 type CostConfig {
@@ -225,6 +226,7 @@ type CostConfig {
   onDemandDiscount: Float
   s3Cost: S3CostConfig
   ebsCost: EBSCostConfig
+  hiddenCostProjects: [String!]
 }
 
 input S3UploadCostConfigInput {
