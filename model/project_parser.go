@@ -1667,19 +1667,7 @@ func decodeWithAnchors(parseBytes []byte, unmarshalStrict bool, anchorRegistry *
 		}
 	}
 
-	for _, anchor := range collectAnchors(&node) {
-		replaced := false
-		for i, existing := range *anchorRegistry {
-			if existing.name == anchor.name {
-				(*anchorRegistry)[i] = anchor
-				replaced = true
-				break
-			}
-		}
-		if !replaced {
-			*anchorRegistry = append(*anchorRegistry, anchor)
-		}
-	}
+	anchorRegistry.mergeAnchorsFrom(&node)
 
 	return &p, nil
 }

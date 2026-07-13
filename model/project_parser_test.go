@@ -3698,6 +3698,111 @@ tasks:
 	assert.Equal(t, "git.get_project", tasksByName["third-task"].Commands[0].Command)
 }
 
+// TestMergeAnchorsFromReordersRedefinedAnchor verifies that redefining an anchor
+// moves it to the end of the registry rather than replacing it in place. In-place
+// replacement would leave a redefined anchor ahead of sibling anchors added by the
+// same file, so a redefinition that aliases such a sibling would emit an alias
+// before its definition in the marshaled preamble.
+func TestMergeAnchorsFromReordersRedefinedAnchor(t *testing.T) {
+	first := `
+shared: &shared
+  a: 1
+`
+	// The redefinition of &shared aliases &base, a sibling defined in the same
+	// document. &base is encountered first, so it must precede &shared afterward.
+	second := `
+base: &base
+  b: 2
+shared: &shared
+  <<: *base
+  a: 3
+`
+	registry := &anchorEntries{}
+
+	var firstNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(first), &firstNode))
+	registry.mergeAnchorsFrom(&firstNode)
+	require.Len(t, *registry, 1)
+	assert.Equal(t, "shared", (*registry)[0].name)
+
+	var secondNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(second), &secondNode))
+	registry.mergeAnchorsFrom(&secondNode)
+
+	require.Len(t, *registry, 2)
+	assert.Equal(t, "base", (*registry)[0].name, "sibling dependency must precede the redefined anchor")
+	assert.Equal(t, "shared", (*registry)[1].name, "redefined anchor must move to the end")
+
+	// The resulting preamble must resolve cleanly (no alias-before-definition).
+	preamble, err := buildAnchorPreamble(registry)
+	require.NoError(t, err)
+	var preambleNode yaml.Node
+	require.NoError(t, yaml.Unmarshal(preamble, &preambleNode), "reordered preamble should resolve all aliases")
+}
+
+// TestRedefinedAnchorAliasingSiblingResolvesAcrossFiles reproduces the reported
+// failure where an anchor redefined in a later include file merges in sibling
+// anchors via individual merge keys. In-place registry replacement placed the
+// redefined anchor ahead of those siblings in the preamble, producing an
+// "unknown anchor" error when a subsequent file used the anchor.
+func TestRedefinedAnchorAliasingSiblingResolvesAcrossFiles(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes("", "first.yml", "second.yml", "third.yml")
+
+	// first.yml: defines &shared-step, seeding the registry.
+	firstYAML := `
+tasks:
+- name: first-task
+  commands:
+  - &shared-step
+    command: shell.exec
+`
+	// second.yml: redefines &shared-step so its params come from two sibling
+	// anchors merged in via individual merge keys.
+	secondYAML := `
+tasks:
+- name: second-task
+  commands:
+  - &base-params
+    params:
+      script: ./base.sh
+  - &extra-params
+    params:
+      working_dir: /tmp
+  - &shared-step
+    command: git.get_project
+    <<: *base-params
+    <<: *extra-params
+`
+	// third.yml: no definition of its own, just uses *shared-step. This is the
+	// file whose preamble would break without the ordering fix.
+	thirdYAML := `
+tasks:
+- name: third-task
+  commands:
+  - *shared-step
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		anchorModuleIncludeOpts(
+			moduleInclude("first.yml", firstYAML),
+			moduleInclude("second.yml", secondYAML),
+			moduleInclude("third.yml", thirdYAML),
+		), "proj", proj)
+	require.NoError(t, err)
+
+	tasksByName := map[string]ProjectTask{}
+	for _, task := range proj.Tasks {
+		tasksByName[task.Name] = task
+	}
+
+	require.Contains(t, tasksByName, "third-task")
+	require.Len(t, tasksByName["third-task"].Commands, 1)
+	cmd := tasksByName["third-task"].Commands[0]
+	assert.Equal(t, "git.get_project", cmd.Command)
+	assert.Equal(t, "./base.sh", cmd.Params["script"])
+	assert.Equal(t, "/tmp", cmd.Params["working_dir"])
+}
+
 // TestAnchorWithNestedAlias verifies that a file can use an alias from an
 // earlier file within an anchor it defines, and a subsequent file can use that
 // anchor as an alias. This exercises the preamble-within-preamble ordering.

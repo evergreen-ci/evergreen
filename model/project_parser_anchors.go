@@ -19,6 +19,30 @@ type anchorEntry struct {
 // anchorEntries accumulates YAML anchor definitions across include files for cross-file alias resolution.
 type anchorEntries []anchorEntry
 
+// mergeAnchorsFrom collects all anchor definitions from node and merges them into
+// the registry by name, so that later include files can resolve aliases defined in
+// earlier files. No-op if the receiver is nil.
+//
+// When an anchor name already exists, the old entry is removed and the new one is
+// appended at the end. This ensures that if a redefinition introduces alias
+// dependencies on anchors added by the same file, those dependencies always appear
+// earlier in the slice, and therefore earlier in the marshaled preamble, satisfying
+// YAML's anchor-before-alias rule.
+func (a *anchorEntries) mergeAnchorsFrom(node *yaml.Node) {
+	if a == nil {
+		return
+	}
+	for _, anchor := range collectAnchors(node) {
+		for i, existing := range *a {
+			if existing.name == anchor.name {
+				*a = append((*a)[:i], (*a)[i+1:]...)
+				break
+			}
+		}
+		*a = append(*a, anchor)
+	}
+}
+
 // collectAnchors walks node in pre-order and returns all anchored nodes in
 // encounter order. AliasNodes are not followed, so only anchor definitions
 // (&name) are collected, never alias uses (*name).
