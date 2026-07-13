@@ -504,6 +504,7 @@ const (
 	TaskDescriptionOtelAttribute                = "evergreen.task.description"
 	TaskTagsOtelAttribute                       = "evergreen.task.tags"
 	TaskActivatedTimeOtelAttribute              = "evergreen.task.activated_time"
+	TaskDependenciesMetTimeOtelAttribute        = "evergreen.task.dependencies_met_time"
 	TaskIngestTimeOtelAttribute                 = "evergreen.task.ingest_time"
 	TaskOnDemandCostOtelAttribute               = "evergreen.task.on_demand_cost"
 	TaskAdjustedCostOtelAttribute               = "evergreen.task.adjusted_cost"
@@ -513,6 +514,7 @@ const (
 	TaskVariantOtelAttribute                    = "evergreen.task.variant"
 	TaskTimeWaitingForSchedulingMsOtelAttribute = "evergreen.task.time_waiting_for_scheduling_ms"
 	TaskTimeWaitingForDepsMsOtelAttribute       = "evergreen.task.time_waiting_for_dependencies_ms"
+	TaskTimeWaitingInQueueMsOtelAttribute       = "evergreen.task.time_waiting_in_queue_ms"
 	TaskDurationMsOtelAttribute                 = "evergreen.task.duration_ms"
 
 	// EBS cost otel attributes — task-level (throughput)
