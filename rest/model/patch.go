@@ -77,6 +77,8 @@ type APIPatch struct {
 	ChildPatchAliases     []APIChildPatchAlias `json:"child_patch_aliases,omitempty"`
 	Requester             *string              `json:"requester"`
 	MergedFrom            *string              `json:"merged_from"`
+	// GitInfo contains metadata about the author's local git environment for CLI patches.
+	GitInfo *APIGitMetadata `json:"git_info,omitempty"`
 
 	LocalModuleIncludes []APILocalModuleInclude `json:"local_module_includes,omitempty"`
 	S3Usage             *APIVersionS3Usage      `json:"s3_usage,omitempty"`
@@ -322,6 +324,11 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 	apiPatch.GithubMergeData = APIGithubMergeGroup{}
 	apiPatch.GithubMergeData.BuildFromService(p.GithubMergeData)
 	apiPatch.InvalidatedByUpstream = p.GithubMergeData.InvalidatedByUpstream
+
+	if p.GitInfo != nil {
+		apiPatch.GitInfo = &APIGitMetadata{}
+		apiPatch.GitInfo.BuildFromService(p.GitInfo)
+	}
 }
 
 // populateCostFromVersion loads aggregated cost fields from the version document referenced by the patch.
@@ -568,8 +575,44 @@ func (apiPatch *APIPatch) ToService() (patch.Patch, error) {
 	if apiPatch.InvalidatedByUpstream {
 		res.GithubMergeData.InvalidatedByUpstream = true
 	}
+	if apiPatch.GitInfo != nil {
+		gitInfo := apiPatch.GitInfo.ToService()
+		res.GitInfo = &gitInfo
+	}
 	res.ProjectStorageMethod = evergreen.ParserProjectStorageMethod(utility.FromStringPtr(apiPatch.ProjectStorageMethod))
 	return res, catcher.Resolve()
+}
+
+// APIGitMetadata is the REST API model for patch.GitMetadata.
+type APIGitMetadata struct {
+	Username      *string `json:"username"`
+	Email         *string `json:"email"`
+	GitVersion    *string `json:"git_version,omitempty"`
+	LocalBranch   *string `json:"local_branch,omitempty"`
+	LocalHeadHash *string `json:"local_head_hash,omitempty"`
+}
+
+// BuildFromService converts from service-level GitMetadata to an APIGitMetadata.
+func (g *APIGitMetadata) BuildFromService(m *patch.GitMetadata) {
+	if m == nil {
+		return
+	}
+	g.Username = utility.ToStringPtr(m.Username)
+	g.Email = utility.ToStringPtr(m.Email)
+	g.GitVersion = utility.ToStringPtr(m.GitVersion)
+	g.LocalBranch = utility.ToStringPtr(m.LocalBranch)
+	g.LocalHeadHash = utility.ToStringPtr(m.LocalHeadHash)
+}
+
+// ToService converts an APIGitMetadata to a service-layer GitMetadata.
+func (g *APIGitMetadata) ToService() patch.GitMetadata {
+	return patch.GitMetadata{
+		Username:      utility.FromStringPtr(g.Username),
+		Email:         utility.FromStringPtr(g.Email),
+		GitVersion:    utility.FromStringPtr(g.GitVersion),
+		LocalBranch:   utility.FromStringPtr(g.LocalBranch),
+		LocalHeadHash: utility.FromStringPtr(g.LocalHeadHash),
+	}
 }
 
 type APIGithubPatch struct {

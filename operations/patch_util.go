@@ -671,6 +671,23 @@ func getFeatureBranch(ref, commits string) string {
 	return head
 }
 
+// getDiffTip returns the revision used as the tip of the local diff (as opposed to
+// the merge-base). For a commit range A..B this is B; otherwise it is --ref, a
+// single commit, or HEAD.
+func getDiffTip(ref, commits string) string {
+	if ref != "" {
+		return ref
+	}
+	if commits != "" {
+		if isCommitRange(commits) {
+			parts := strings.SplitN(commits, "..", 2)
+			return parts[1]
+		}
+		return commits
+	}
+	return head
+}
+
 func confirmUncommittedChanges(dir string, preserveCommits, includeUncommitedChanges bool) (bool, error) {
 	uncommittedChanges, err := gitUncommittedChanges(dir)
 	if err != nil {
@@ -748,6 +765,10 @@ func loadGitData(dir, remote, branch, ref, commits string, format bool, extraArg
 	gitMetadata, err := getGitConfigMetadata()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting git metadata")
+	}
+	tipHash, tipErr := gitRevParse(dir, getDiffTip(ref, commits))
+	if tipErr == nil {
+		gitMetadata.LocalHeadHash = tipHash
 	}
 
 	return &localDiff{
@@ -835,6 +856,11 @@ func gitLastCommitMessage() (string, error) {
 func gitBranch() (string, error) {
 	args := []string{"--abbrev-ref", head}
 	return gitCmd("rev-parse", args...)
+}
+
+func gitRevParse(dir, rev string) (string, error) {
+	out, err := gitCmdWithDir("rev-parse", dir, rev)
+	return strings.TrimSpace(out), err
 }
 
 func getDefaultDescription() (string, error) {
