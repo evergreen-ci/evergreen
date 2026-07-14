@@ -371,7 +371,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			}
 		}
 
-		if err = model.UpsertRepositoryRevision(ctx, ref.Id, v.Revision, v.IngestTime); err != nil {
+		if err = model.UpsertRepositoryRevision(ctx, v.Owner, v.Repo, v.Branch, v.Revision, v.IngestTime); err != nil {
 			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":            "error upserting repository revision",
 				"runner":             RunnerName,

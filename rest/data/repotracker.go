@@ -110,7 +110,7 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 			continue
 		}
 
-		err := upsertRepositoryRevisionsFromPushEvent(ctx, refs[i].Id, event, ingestTime)
+		err := upsertRepositoryRevisionsFromPushEvent(ctx, refs[i].Owner, refs[i].Repo, refs[i].Branch, event, ingestTime)
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":     "upserting repository revisions for project",
 			"project":     refs[i].Id,
@@ -119,7 +119,7 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 			"refs":        refs[i],
 		}))
 
-		err = trigger.TriggerDownstreamProjectsForPush(ctx, refs[i].Id, event, trigger.TriggerDownstreamVersion)
+		err = trigger.TriggerDownstreamProjectsForPush(ctx, refs[i].Id, event, ingestTime, trigger.TriggerDownstreamVersion)
 		catcher.Wrapf(err, "triggering downstream projects for push event for project '%s'", refs[i].Id)
 
 		j := units.NewRepotrackerJob(fmt.Sprintf("github-push-%s", msgID), refs[i].Id)
@@ -176,12 +176,12 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 // upsertRepositoryRevisionsFromPushEvent allows Evergreen to track when commits
 // are pushed to a repository. The pushed time (aka ingest time) is the source of truth
 // for the commit on the Evergreen side for decisions like which module commit to use.
-func upsertRepositoryRevisionsFromPushEvent(ctx context.Context, projectID string, event *github.PushEvent, ingestTime time.Time) error {
+func upsertRepositoryRevisionsFromPushEvent(ctx context.Context, owner, repo, branch string, event *github.PushEvent, ingestTime time.Time) error {
 	commitID := event.GetAfter()
 	if commitID == "" {
 		return nil
 	}
-	return errors.Wrapf(model.UpsertRepositoryRevision(ctx, projectID, commitID, ingestTime), "upserting revision '%s'", commitID)
+	return errors.Wrapf(model.UpsertRepositoryRevision(ctx, owner, repo, branch, commitID, ingestTime), "upserting revision '%s'", commitID)
 }
 
 func validatePushEvent(event *github.PushEvent) (string, error) {

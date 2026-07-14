@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -66,20 +65,15 @@ func TestValidatePushEvent(t *testing.T) {
 	assert.Empty(branch)
 }
 
-func TestUpsertRepositoryRevisionsFromPushEvent(t *testing.T) {
+func TestUpsertRepositoryRevisionFromPushEvent(t *testing.T) {
 	require.NoError(t, db.ClearCollections(model.RepositoryRevisionsHistoryCollection))
 	ingestTime := time.Now()
 	event := &github.PushEvent{
-		Commits: []*github.HeadCommit{
-			{ID: utility.ToStringPtr("revision-1")},
-			{ID: utility.ToStringPtr("revision-2")},
-			{},
-		},
-		After: utility.ToStringPtr("revision-2"),
+		After: github.String("revision-2"),
 	}
 
-	require.NoError(t, upsertRepositoryRevisionsFromPushEvent(t.Context(), "project", event, ingestTime))
-	revision, err := model.FindLatestRepositoryRevisionByIngestTime(t.Context(), "project", ingestTime)
+	require.NoError(t, upsertRepositoryRevisionsFromPushEvent(t.Context(), "owner", "repo", "branch", event, ingestTime))
+	revision, err := model.FindLatestRepositoryRevisionByIngestTime(t.Context(), "owner", "repo", "branch", ingestTime)
 	require.NoError(t, err)
 	require.NotNil(t, revision)
 	assert.Equal(t, "revision-2", revision.Revision)

@@ -579,6 +579,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	sampleNewerSHA := "7e05633b9bc529e19eba18b1fc88f78d346855b2"
 	downstreamRevisionOlder := "178959df398ed0767113492cbd90ad9afbc67bfe"
 	downstreamRevisionNewer := "c37179fcad01b12ef752a65af3156fb8dc7e452c"
+	ingestTime := time.Now()
 
 	pushEvent := &github.PushEvent{
 		Commits: []*github.HeadCommit{
@@ -602,7 +603,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 			},
 		},
 	}
-	err = TriggerDownstreamProjectsForPush(ctx, "upstream", pushEvent, TriggerDownstreamVersion)
+	err = TriggerDownstreamProjectsForPush(ctx, "upstream", pushEvent, ingestTime, TriggerDownstreamVersion)
 	assert.NoError(err)
 	dbVersions, err := model.VersionFind(t.Context(), model.VersionByProjectIdAndCreateTime(downstreamProjectRef.Id, time.Now()))
 	assert.NoError(err)
@@ -663,5 +664,5 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	assert.Equal("evergreen-ci", mani.Modules["sample"].Owner)
 
 	// verify that triggering this version again does nothing
-	assert.NoError(TriggerDownstreamProjectsForPush(ctx, uptreamProjectRef.Id, pushEvent, TriggerDownstreamVersion))
+	assert.NoError(TriggerDownstreamProjectsForPush(ctx, uptreamProjectRef.Id, pushEvent, ingestTime, TriggerDownstreamVersion))
 }

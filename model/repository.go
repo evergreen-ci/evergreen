@@ -22,8 +22,11 @@ type Repository struct {
 
 // RepositoryRevision records when Evergreen ingested a project revision.
 type RepositoryRevision struct {
-	Project    string    `bson:"project"`
-	Revision   string    `bson:"revision"`
+	Owner    string `bson:"owner"`
+	Repo     string `bson:"repo"`
+	Branch   string `bson:"branch"`
+	Revision string `bson:"revision"`
+
 	IngestTime time.Time `bson:"ingest_time"`
 }
 
@@ -33,7 +36,9 @@ var (
 	RepoLastRevisionKey      = bsonutil.MustHaveTag(Repository{}, "LastRevision")
 	RepositoryOrderNumberKey = bsonutil.MustHaveTag(Repository{}, "RevisionOrderNumber")
 
-	RepositoryRevisionProjectKey    = bsonutil.MustHaveTag(RepositoryRevision{}, "Project")
+	RepositoryRevisionOwnerKey      = bsonutil.MustHaveTag(RepositoryRevision{}, "Owner")
+	RepositoryRevisionRepoKey       = bsonutil.MustHaveTag(RepositoryRevision{}, "Repo")
+	RepositoryRevisionBranchKey     = bsonutil.MustHaveTag(RepositoryRevision{}, "Branch")
 	RepositoryRevisionRevisionKey   = bsonutil.MustHaveTag(RepositoryRevision{}, "Revision")
 	RepositoryRevisionIngestTimeKey = bsonutil.MustHaveTag(RepositoryRevision{}, "IngestTime")
 )
@@ -96,7 +101,7 @@ func UpdateLastRevision(ctx context.Context, projectId, revision string) error {
 }
 
 // UpsertRepositoryRevision records that Evergreen ingested a project revision.
-func UpsertRepositoryRevision(ctx context.Context, projectID, revision string, ingestTime time.Time) error {
+func UpsertRepositoryRevision(ctx context.Context, owner, repo, branch, revision string, ingestTime time.Time) error {
 	if utility.IsZeroTime(ingestTime) {
 		ingestTime = time.Now()
 	}
@@ -104,12 +109,16 @@ func UpsertRepositoryRevision(ctx context.Context, projectID, revision string, i
 		ctx,
 		RepositoryRevisionsHistoryCollection,
 		bson.M{
-			RepositoryRevisionProjectKey:  projectID,
+			RepositoryRevisionOwnerKey:    owner,
+			RepositoryRevisionRepoKey:     repo,
+			RepositoryRevisionBranchKey:   branch,
 			RepositoryRevisionRevisionKey: revision,
 		},
 		bson.M{
 			"$setOnInsert": bson.M{
-				RepositoryRevisionProjectKey:    projectID,
+				RepositoryRevisionOwnerKey:      owner,
+				RepositoryRevisionRepoKey:       repo,
+				RepositoryRevisionBranchKey:     branch,
 				RepositoryRevisionRevisionKey:   revision,
 				RepositoryRevisionIngestTimeKey: ingestTime,
 			},
@@ -119,10 +128,12 @@ func UpsertRepositoryRevision(ctx context.Context, projectID, revision string, i
 }
 
 // FindLatestRepositoryRevisionByIngestTime finds the latest project revision Evergreen ingested at or before ingestTime.
-func FindLatestRepositoryRevisionByIngestTime(ctx context.Context, projectID string, ingestTime time.Time) (*RepositoryRevision, error) {
+func FindLatestRepositoryRevisionByIngestTime(ctx context.Context, owner, repo, branch string, ingestTime time.Time) (*RepositoryRevision, error) {
 	revision := &RepositoryRevision{}
 	q := db.Query(bson.M{
-		RepositoryRevisionProjectKey: projectID,
+		RepositoryRevisionOwnerKey:  owner,
+		RepositoryRevisionRepoKey:   repo,
+		RepositoryRevisionBranchKey: branch,
 		RepositoryRevisionIngestTimeKey: bson.M{
 			"$lte": ingestTime,
 		},
