@@ -269,12 +269,13 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	assert.NoError(db.ClearCollections(task.Collection, build.Collection, model.VersionCollection, evergreen.ConfigCollection,
-		model.ProjectRefCollection, model.RepositoriesCollection, model.ProjectAliasCollection, model.ParserProjectCollection, manifest.Collection))
+		model.ProjectRefCollection, model.RepositoriesCollection, model.RepositoryRevisionsHistoryCollection, model.ProjectAliasCollection, model.ParserProjectCollection, manifest.Collection))
 	require.NoError(db.CreateCollections(model.ParserProjectCollection))
 
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config)
 	assert.NoError(config.Set(ctx))
+	ingestTime := time.Date(2026, time.July, 14, 12, 0, 0, 0, time.UTC)
 	e := event.EventLogEntry{
 		ID:           "event1",
 		ResourceId:   "upstreamTask",
@@ -296,6 +297,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 		CreateTime: time.Date(2023, 12, 13, 18, 13, 31, 0, time.UTC),
 		Revision:   "abc",
 		Identifier: "upstream",
+		IngestTime: ingestTime,
 	}
 	assert.NoError(upstreamVersion.Insert(t.Context()))
 	downstreamProjectRef := model.ProjectRef{
@@ -332,6 +334,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	assert.NoError(err)
 	downstreamRevision := "c37179fcad01b12ef752a65af3156fb8dc7e452c"
 	assert.NoError(model.UpdateLastRevision(t.Context(), downstreamProjectRef.Id, downstreamRevision))
+	assert.NoError(model.UpsertRepositoryRevision(ctx, downstreamProjectRef.Owner, downstreamProjectRef.Repo, downstreamProjectRef.Branch, downstreamRevision, ingestTime))
 
 	downstreamVersions, err := EvalProjectTriggers(ctx, &e, TriggerDownstreamVersion)
 	assert.NoError(err)
@@ -399,12 +402,13 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	assert.NoError(db.ClearCollections(task.Collection, build.Collection, model.VersionCollection, evergreen.ConfigCollection,
-		model.ProjectRefCollection, model.RepositoriesCollection, model.ProjectAliasCollection, model.ParserProjectCollection, manifest.Collection))
+		model.ProjectRefCollection, model.RepositoriesCollection, model.RepositoryRevisionsHistoryCollection, model.ProjectAliasCollection, model.ParserProjectCollection, manifest.Collection))
 	require.NoError(db.CreateCollections(model.ParserProjectCollection))
 
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config)
 	assert.NoError(config.Set(ctx))
+	ingestTime := time.Date(2026, time.July, 14, 12, 0, 0, 0, time.UTC)
 	e := event.EventLogEntry{
 		ID:           "event1",
 		ResourceId:   "upstreamBuild",
@@ -429,6 +433,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 		CreateTime: time.Date(2023, 12, 13, 18, 13, 31, 0, time.UTC),
 		Revision:   "abc",
 		Identifier: "upstream",
+		IngestTime: ingestTime,
 	}
 	assert.NoError(upstreamVersion.Insert(t.Context()))
 	downstreamProjectRef := model.ProjectRef{
@@ -465,6 +470,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 	assert.NoError(err)
 	downstreamRevision := "c37179fcad01b12ef752a65af3156fb8dc7e452c"
 	assert.NoError(model.UpdateLastRevision(t.Context(), downstreamProjectRef.Id, downstreamRevision))
+	assert.NoError(model.UpsertRepositoryRevision(ctx, downstreamProjectRef.Owner, downstreamProjectRef.Repo, downstreamProjectRef.Branch, downstreamRevision, ingestTime))
 
 	downstreamVersions, err := EvalProjectTriggers(ctx, &e, TriggerDownstreamVersion)
 	assert.NoError(err)
