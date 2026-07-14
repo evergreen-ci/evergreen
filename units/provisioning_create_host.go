@@ -27,6 +27,34 @@ const (
 	maxPollAttempts                       = 100
 	maxHostCreateAttempts                 = 6
 	provisioningCreateHostAttributePrefix = "evergreen.provisioning_create_host"
+	createHostIntentHostIDOtelAttribute   = provisioningCreateHostAttributePrefix + ".intent_host_id"
+	createHostBuildImageOtelAttribute     = provisioningCreateHostAttributePrefix + ".build_image_started"
+	createHostOutcomeOtelAttribute        = provisioningCreateHostAttributePrefix + ".outcome"
+	createHostStageOtelAttribute          = provisioningCreateHostAttributePrefix + ".stage"
+	createHostInitialStatusOtelAttribute  = provisioningCreateHostAttributePrefix + ".initial_host_status"
+	createHostFinalStatusOtelAttribute    = provisioningCreateHostAttributePrefix + ".final_host_status"
+	createHostSingleTaskOtelAttribute     = provisioningCreateHostAttributePrefix + ".single_task_distro"
+	createHostStartedByOtelAttribute      = provisioningCreateHostAttributePrefix + ".started_by"
+	createHostUserHostOtelAttribute       = provisioningCreateHostAttributePrefix + ".user_host"
+	createHostSpawnedByTaskOtelAttribute  = provisioningCreateHostAttributePrefix + ".spawned_by_task"
+	createHostParentIDOtelAttribute       = provisioningCreateHostAttributePrefix + ".parent_host_id"
+	createHostSpawnProjectOtelAttribute   = provisioningCreateHostAttributePrefix + ".spawned_by_project_id"
+	createHostSpawnTaskOtelAttribute      = provisioningCreateHostAttributePrefix + ".spawned_by_task_id"
+	createHostSpawnBuildOtelAttribute     = provisioningCreateHostAttributePrefix + ".spawned_by_build_id"
+	createHostRetryOtelAttribute          = provisioningCreateHostAttributePrefix + ".retry_requested"
+	createHostReplacedOtelAttribute       = provisioningCreateHostAttributePrefix + ".host_replaced"
+	createHostThrottleReasonOtelAttribute = provisioningCreateHostAttributePrefix + ".throttle_reason"
+	createHostDistroActiveOtelAttribute   = provisioningCreateHostAttributePrefix + ".distro_active_hosts"
+	createHostDistroMaxOtelAttribute      = provisioningCreateHostAttributePrefix + ".distro_max_hosts"
+	createHostDistroLimitOtelAttribute    = provisioningCreateHostAttributePrefix + ".distro_host_limit_exceeded"
+	createHostDynamicActiveOtelAttribute  = provisioningCreateHostAttributePrefix + ".total_dynamic_hosts"
+	createHostDynamicMaxOtelAttribute     = provisioningCreateHostAttributePrefix + ".max_total_dynamic_hosts"
+	createHostDynamicLimitOtelAttribute   = provisioningCreateHostAttributePrefix + ".global_host_limit_exceeded"
+	createHostLowHostNumOtelAttribute     = provisioningCreateHostAttributePrefix + ".low_host_num_exception"
+	createHostPendingOtelAttribute        = provisioningCreateHostAttributePrefix + ".pending_task_hosts"
+	createHostThrottleOtelAttribute       = provisioningCreateHostAttributePrefix + ".host_throttle"
+	createHostDistroMinOtelAttribute      = provisioningCreateHostAttributePrefix + ".distro_min_hosts"
+	createHostSpawnedOtelAttribute        = provisioningCreateHostAttributePrefix + ".spawned_host"
 	maxHostCreateJobTime                  = 30 * time.Minute
 )
 
@@ -95,6 +123,27 @@ func (j *createHostJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	j.start = time.Now()
+	span := trace.SpanFromContext(ctx)
+	span.SetAttributes(
+		attribute.String(createHostIntentHostIDOtelAttribute, j.HostID),
+		attribute.Bool(createHostBuildImageOtelAttribute, j.BuildImageStarted),
+		attribute.String(createHostOutcomeOtelAttribute, "failed"),
+		attribute.String(createHostStageOtelAttribute, "load_service_flags"),
+		attribute.Bool(createHostSpawnedOtelAttribute, false),
+	)
+	defer func() {
+		attrs := []attribute.KeyValue{
+			attribute.Bool(createHostBuildImageOtelAttribute, j.BuildImageStarted),
+			attribute.Bool(createHostRetryOtelAttribute, j.RetryInfo().NeedsRetry),
+		}
+		if j.host != nil {
+			attrs = append(attrs,
+				attribute.String(evergreen.HostIDOtelAttribute, j.host.Id),
+				attribute.String(createHostFinalStatusOtelAttribute, j.host.Status),
+			)
+		}
+		span.SetAttributes(attrs...)
+	}()
 
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
@@ -103,6 +152,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 	}
 
 	if flags.HostInitDisabled {
+		span.SetAttributes(attribute.String(createHostOutcomeOtelAttribute, "disabled"))
 		grip.Debug(ctx, message.Fields{
 			"mode":     "degraded",
 			"host_id":  j.HostID,
@@ -115,9 +165,11 @@ func (j *createHostJob) Run(ctx context.Context) {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
+	span.SetAttributes(attribute.String(createHostStageOtelAttribute, "load_host_init"))
 	var hostInit evergreen.HostInitConfig
 	j.AddError(errors.Wrap(hostInit.Get(ctx), "refreshing hostinit settings"))
 
+	span.SetAttributes(attribute.String(createHostStageOtelAttribute, "load_host"))
 	if j.host == nil {
 		j.host, err = host.FindOneId(ctx, j.HostID)
 		if err != nil {
@@ -125,6 +177,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 			return
 		}
 		if j.host == nil {
+			span.SetAttributes(attribute.String(createHostOutcomeOtelAttribute, "host_missing"))
 			//host intent document has been removed by another evergreen process
 			grip.Warning(ctx, message.Fields{
 				"host_id": j.HostID,
@@ -136,7 +189,32 @@ func (j *createHostJob) Run(ctx context.Context) {
 		}
 	}
 
+	hostAttrs := []attribute.KeyValue{
+		attribute.String(evergreen.DistroIDOtelAttribute, j.host.Distro.Id),
+		attribute.String(evergreen.DistroProviderOtelAttribute, j.host.Distro.Provider),
+		attribute.String(createHostInitialStatusOtelAttribute, j.host.Status),
+		attribute.Bool(createHostSingleTaskOtelAttribute, j.host.Distro.SingleTaskDistro),
+		attribute.String(createHostStartedByOtelAttribute, j.host.StartedBy),
+		attribute.Bool(createHostUserHostOtelAttribute, j.host.UserHost),
+		attribute.Bool(createHostSpawnedByTaskOtelAttribute, j.host.SpawnOptions.SpawnedByTask),
+	}
+	if j.host.ParentID != "" {
+		hostAttrs = append(hostAttrs, attribute.String(createHostParentIDOtelAttribute, j.host.ParentID))
+	}
+	if j.host.SpawnOptions.ProjectID != "" {
+		hostAttrs = append(hostAttrs, attribute.String(createHostSpawnProjectOtelAttribute, j.host.SpawnOptions.ProjectID))
+	}
+	if j.host.SpawnOptions.TaskID != "" {
+		hostAttrs = append(hostAttrs, attribute.String(createHostSpawnTaskOtelAttribute, j.host.SpawnOptions.TaskID))
+	}
+	if j.host.SpawnOptions.BuildID != "" {
+		hostAttrs = append(hostAttrs, attribute.String(createHostSpawnBuildOtelAttribute, j.host.SpawnOptions.BuildID))
+	}
+	span.SetAttributes(hostAttrs...)
+
+	span.SetAttributes(attribute.String(createHostStageOtelAttribute, "validate_host"))
 	if j.host.Status != evergreen.HostUninitialized && j.host.Status != evergreen.HostBuilding {
+		span.SetAttributes(attribute.String(createHostOutcomeOtelAttribute, "already_started"))
 		grip.Notice(ctx, message.Fields{
 			"message": "host has already been started",
 			"status":  j.host.Status,
@@ -146,14 +224,27 @@ func (j *createHostJob) Run(ctx context.Context) {
 	}
 
 	if j.host.IsSubjectToHostCreationThrottle() {
+		span.SetAttributes(
+			attribute.String(createHostStageOtelAttribute, "check_throttle"),
+			attribute.Bool(createHostDistroLimitOtelAttribute, false),
+			attribute.Bool(createHostDynamicLimitOtelAttribute, false),
+		)
 		distroActiveHosts, err := host.CountActiveHostsInDistro(ctx, j.host.Distro.Id)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "counting existing host pool size for distro '%s'", j.host.Distro.Id))
 			return
 		}
+		span.SetAttributes(
+			attribute.Int(createHostDistroActiveOtelAttribute, distroActiveHosts),
+			attribute.Int(createHostDistroMaxOtelAttribute, j.host.Distro.HostAllocatorSettings.MaximumHosts),
+		)
 
 		removeHostIntent := false
 		if distroActiveHosts > j.host.Distro.HostAllocatorSettings.MaximumHosts {
+			span.SetAttributes(
+				attribute.Bool(createHostDistroLimitOtelAttribute, true),
+				attribute.String(createHostThrottleReasonOtelAttribute, "distro_host_limit"),
+			)
 			grip.Info(ctx, message.Fields{
 				"host_id":            j.HostID,
 				"attempt":            j.RetryInfo().CurrentAttempt,
@@ -175,8 +266,19 @@ func (j *createHostJob) Run(ctx context.Context) {
 		if distroActiveHosts < 10 {
 			lowHostNumException = true
 		}
+		span.SetAttributes(attribute.Bool(createHostLowHostNumOtelAttribute, lowHostNumException))
+		if err == nil {
+			span.SetAttributes(
+				attribute.Int(createHostDynamicActiveOtelAttribute, allActiveDynamicHosts),
+				attribute.Int(createHostDynamicMaxOtelAttribute, hostInit.MaxTotalDynamicHosts),
+			)
+		}
 
 		if allActiveDynamicHosts > hostInit.MaxTotalDynamicHosts && !lowHostNumException {
+			span.SetAttributes(
+				attribute.Bool(createHostDynamicLimitOtelAttribute, true),
+				attribute.String(createHostThrottleReasonOtelAttribute, "global_host_limit"),
+			)
 			grip.Info(ctx, message.Fields{
 				"host_id":                 j.HostID,
 				"attempt":                 j.RetryInfo().CurrentAttempt,
@@ -191,6 +293,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 		}
 
 		if removeHostIntent {
+			span.SetAttributes(attribute.String(createHostOutcomeOtelAttribute, "throttled"))
 			err = errors.Wrap(j.host.Remove(ctx), "removing host intent to respect max distro hosts")
 
 			j.AddError(err)
@@ -248,6 +351,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 }
 
 func (j *createHostJob) selfThrottle(ctx context.Context, hostInit evergreen.HostInitConfig) bool {
+	span := trace.SpanFromContext(ctx)
 	numProv, err := host.CountIdleStartedTaskHosts(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "counting pending host pool size"))
@@ -265,11 +369,22 @@ func (j *createHostJob) selfThrottle(ctx context.Context, hostInit evergreen.Hos
 		j.AddError(errors.Wrap(err, "counting size of entire host pool"))
 		return true
 	}
+	span.SetAttributes(
+		attribute.Int(createHostPendingOtelAttribute, numProv),
+		attribute.Int(createHostThrottleOtelAttribute, hostInit.HostThrottle),
+		attribute.Int(createHostDistroActiveOtelAttribute, distroActiveHosts),
+		attribute.Int(createHostDistroMinOtelAttribute, j.host.Distro.HostAllocatorSettings.MinimumHosts),
+		attribute.Int(createHostDynamicActiveOtelAttribute, allActiveDynamicHosts),
+	)
 
 	if distroActiveHosts < allActiveDynamicHosts/100 || distroActiveHosts < j.host.Distro.HostAllocatorSettings.MinimumHosts {
 		return false
 	} else if numProv >= hostInit.HostThrottle {
 		reason := "host creation throttle"
+		span.SetAttributes(
+			attribute.String(createHostOutcomeOtelAttribute, "throttled"),
+			attribute.String(createHostThrottleReasonOtelAttribute, "host_creation_throttle"),
+		)
 		j.AddError(errors.Wrapf(j.host.SetStatusAtomically(ctx, evergreen.HostBuildingFailed, evergreen.User, reason), "getting rid of intent host '%s' for host creation throttle", j.host.Id))
 		event.LogHostCreatedError(ctx, j.host.Id, reason)
 		return true
@@ -285,6 +400,8 @@ var (
 func (j *createHostJob) createHost(ctx context.Context) error {
 	var cloudManager cloud.Manager
 	var err error
+	span := trace.SpanFromContext(ctx)
+	span.SetAttributes(attribute.String(createHostStageOtelAttribute, "check_context"))
 	if err = ctx.Err(); err != nil {
 		return errors.Wrap(err, "creating host")
 	}
@@ -297,14 +414,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		"max_attempts":       j.RetryInfo().MaxAttempts,
 	})
 
-	span := trace.SpanFromContext(ctx)
-	span.SetAttributes(
-		attribute.String(evergreen.DistroIDOtelAttribute, j.host.Distro.Id),
-		attribute.String(evergreen.HostIDOtelAttribute, j.host.Id),
-		attribute.String(evergreen.DistroProviderOtelAttribute, j.host.Distro.Provider),
-		attribute.Bool(fmt.Sprintf("%s.spawned_host", provisioningCreateHostAttributePrefix), false),
-	)
-
+	span.SetAttributes(attribute.String(createHostStageOtelAttribute, "get_cloud_manager"))
 	mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
 	if err != nil {
 		return errors.Wrapf(err, "getting cloud manager options for distro '%s'", j.host.Distro.Id)
@@ -319,7 +429,9 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		return errors.Wrapf(errIgnorableCreateHost, "getting cloud provider for host '%s' [%s]", j.host.Id, err.Error())
 	}
 
+	span.SetAttributes(attribute.String(createHostStageOtelAttribute, "transition_host_status"))
 	if j.host.Status != evergreen.HostUninitialized && j.host.Status != evergreen.HostBuilding {
+		span.SetAttributes(attribute.String(createHostOutcomeOtelAttribute, "already_started"))
 		return nil
 	}
 	// Set status temporarily to HostBuilding. Conventional hosts only stay in
@@ -329,6 +441,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	// SpawnHost returns, but NOT as initializing hosts that could still be
 	// spawned by Evergreen.
 	if err = j.host.SetStatusAtomically(ctx, evergreen.HostBuilding, evergreen.User, ""); err != nil {
+		span.SetAttributes(attribute.String(createHostOutcomeOtelAttribute, "status_transition_skipped"))
 		grip.Info(ctx, message.WrapError(err, message.Fields{
 			"message": "host could not be transitioned from initializing to building, so it may already be building",
 			"host_id": j.host.Id,
@@ -342,6 +455,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	// already has the image. If it does not, it should download it and wait
 	// on the job until it is finished downloading.
 	if j.host.ParentID != "" {
+		span.SetAttributes(attribute.String(createHostStageOtelAttribute, "wait_for_image"))
 		var ready bool
 		ready, err = j.isImageBuilt(ctx)
 		if err != nil {
@@ -351,10 +465,12 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 			j.UpdateRetryInfo(amboy.JobRetryOptions{
 				NeedsRetry: utility.TruePtr(),
 			})
+			span.SetAttributes(attribute.String(createHostOutcomeOtelAttribute, "waiting_for_image"))
 			return nil
 		}
 	}
 
+	span.SetAttributes(attribute.String(createHostStageOtelAttribute, "spawn_host"))
 	hostReplaced, err := j.spawnAndReplaceHost(ctx, cloudManager)
 	if err != nil {
 		if j.host.UserHost {
@@ -368,6 +484,10 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		event.LogHostCreatedError(ctx, j.host.Id, err.Error())
 		return errors.Wrapf(err, "spawning and updating host '%s'", j.host.Id)
 	}
+	span.SetAttributes(
+		attribute.Bool(createHostReplacedOtelAttribute, hostReplaced),
+		attribute.String(evergreen.HostIDOtelAttribute, j.host.Id),
+	)
 
 	if hostReplaced {
 		event.LogHostStartSucceeded(ctx, j.host.Id, evergreen.User)
@@ -386,7 +506,11 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		"runtime_secs":       time.Since(j.start).Seconds(),
 		"num_attempts":       j.RetryInfo().CurrentAttempt,
 	})
-	span.SetAttributes(attribute.Bool(fmt.Sprintf("%s.spawned_host", provisioningCreateHostAttributePrefix), true))
+	span.SetAttributes(
+		attribute.String(createHostOutcomeOtelAttribute, "spawned"),
+		attribute.String(createHostStageOtelAttribute, "complete"),
+		attribute.Bool(createHostSpawnedOtelAttribute, true),
+	)
 
 	return nil
 }
