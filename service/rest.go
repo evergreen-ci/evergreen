@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -69,6 +70,7 @@ func GetRESTv1App(evgService restAPIService) *gimlet.APIApp {
 	middleware := &restV1middleware{rest}
 	requireLogin := gimlet.WrapperMiddleware(needsLogin)
 	app.SetPrefix(evergreen.RestRoutePrefix)
+	app.AddWrapper(route.NewRateLimitMiddleware(evergreen.GetEnvironment(), evergreen.RateLimitSurfaceREST))
 
 	// REST routes
 	app.AddRoute("/builds/{build_id}").Version(1).Get().Handler(rest.getBuildInfo).Wrap(middleware)
