@@ -24,6 +24,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/s3lifecycle"
 	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -187,6 +188,173 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			tCase(ctx, t, r)
 		})
 	}
+}
+
+func TestExpansionsAndVarsHostOwnership(t *testing.T) {
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(t.Context()))
+	testutil.ConfigureIntegrationTest(t, env.Settings())
+	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, model.VersionCollection, model.ParserProjectCollection))
+
+	t1 := task.Task{
+		Id:      "t1",
+		Project: "p1",
+		Version: "aaaaaaaaaaff001122334455",
+	}
+	pRef := model.ProjectRef{
+		Id:    "p1",
+		Owner: "evergreen-ci",
+		Repo:  "sample",
+	}
+	vars := &model.ProjectVars{
+		Id:          "p1",
+		Vars:        map[string]string{"a": "1"},
+		PrivateVars: map[string]bool{},
+	}
+	v1 := &model.Version{
+		Id:         "aaaaaaaaaaff001122334455",
+		Revision:   "1234",
+		Requester:  evergreen.GitTagRequester,
+		CreateTime: time.Now(),
+	}
+	pp1 := model.ParserProject{
+		Id: "aaaaaaaaaaff001122334455",
+	}
+	debugHost := host.Host{
+		Id:      "debug_host",
+		IsDebug: true,
+		ProvisionOptions: &host.ProvisionOptions{
+			TaskId: "t1",
+		},
+		ServicePassword: "secret_password",
+	}
+	nonDebugHost := host.Host{
+		Id:              "non_debug_host",
+		RunningTask:     "other_task",
+		ServicePassword: "other_password",
+	}
+	wrongTaskDebugHost := host.Host{
+		Id:      "wrong_task_debug_host",
+		IsDebug: true,
+		ProvisionOptions: &host.ProvisionOptions{
+			TaskId: "other_task",
+		},
+		ServicePassword: "wrong_password",
+	}
+	require.NoError(t, t1.Insert(t.Context()))
+	require.NoError(t, pRef.Insert(t.Context()))
+	require.NoError(t, vars.Insert(t.Context()))
+	require.NoError(t, v1.Insert(t.Context()))
+	require.NoError(t, pp1.Insert(t.Context()))
+	require.NoError(t, debugHost.Insert(t.Context()))
+	require.NoError(t, nonDebugHost.Insert(t.Context()))
+	require.NoError(t, wrongTaskDebugHost.Insert(t.Context()))
+
+	t.Run("UserRequestRejectsNonDebugHost", func(t *testing.T) {
+		userCtx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "test_user"})
+		rh := &getExpansionsAndVarsHandler{settings: env.Settings(), taskID: "t1", hostID: "non_debug_host"}
+		resp := rh.Run(userCtx)
+		require.NotZero(t, resp)
+		assert.Equal(t, http.StatusForbidden, resp.Status())
+	})
+
+	t.Run("UserRequestRejectsHostForDifferentTask", func(t *testing.T) {
+		userCtx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "test_user"})
+		rh := &getExpansionsAndVarsHandler{settings: env.Settings(), taskID: "t1", hostID: "wrong_task_debug_host"}
+		resp := rh.Run(userCtx)
+		require.NotZero(t, resp)
+		assert.Equal(t, http.StatusForbidden, resp.Status())
+	})
+
+	t.Run("UserRequestAllowsOwnDebugHost", func(t *testing.T) {
+		userCtx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "test_user"})
+		rh := &getExpansionsAndVarsHandler{settings: env.Settings(), taskID: "t1", hostID: "debug_host"}
+		resp := rh.Run(userCtx)
+		require.NotZero(t, resp)
+		assert.Equal(t, http.StatusOK, resp.Status())
+	})
+
+	t.Run("UserRequestRedactsServicePassword", func(t *testing.T) {
+		userCtx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "test_user"})
+		rh := &getExpansionsAndVarsHandler{settings: env.Settings(), taskID: "t1", hostID: "debug_host"}
+		resp := rh.Run(userCtx)
+		require.NotZero(t, resp)
+		assert.Equal(t, http.StatusOK, resp.Status())
+		data, ok := resp.Data().(apimodels.ExpansionsAndVars)
+		require.True(t, ok)
+		assert.Empty(t, data.InternalRedactions[hostServicePasswordPlaceholder])
+	})
+
+	t.Run("TaskRequestStillReturnsServicePassword", func(t *testing.T) {
+		rh := &getExpansionsAndVarsHandler{settings: env.Settings(), taskID: "t1", hostID: "debug_host"}
+		resp := rh.Run(t.Context())
+		require.NotZero(t, resp)
+		assert.Equal(t, http.StatusOK, resp.Status())
+		data, ok := resp.Data().(apimodels.ExpansionsAndVars)
+		require.True(t, ok)
+		assert.Equal(t, "secret_password", data.InternalRedactions[hostServicePasswordPlaceholder])
+	})
+}
+
+func TestGetDistroViewHostOwnership(t *testing.T) {
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(t.Context()))
+
+	testutil.ConfigureIntegrationTest(t, env.Settings())
+
+	require.NoError(t, db.ClearCollections(host.Collection))
+
+	debugHost := host.Host{
+		Id:      "debug_host",
+		IsDebug: true,
+		ProvisionOptions: &host.ProvisionOptions{
+			TaskId: "t1",
+		},
+		Distro: distro.Distro{
+			DisableShallowClone: true,
+			ExecUser:            "admin",
+		},
+	}
+	nonDebugHost := host.Host{
+		Id:     "non_debug_host",
+		Distro: distro.Distro{ExecUser: "other"},
+	}
+	wrongTaskDebugHost := host.Host{
+		Id:      "wrong_task_debug_host",
+		IsDebug: true,
+		ProvisionOptions: &host.ProvisionOptions{
+			TaskId: "other_task",
+		},
+		Distro: distro.Distro{ExecUser: "wrong"},
+	}
+	require.NoError(t, debugHost.Insert(t.Context()))
+	require.NoError(t, nonDebugHost.Insert(t.Context()))
+	require.NoError(t, wrongTaskDebugHost.Insert(t.Context()))
+
+	t.Run("UserRequestRejectsNonDebugHost", func(t *testing.T) {
+		rh := &getDistroViewHandler{taskID: "t1", hostID: "non_debug_host"}
+		resp := rh.Run(t.Context())
+		require.NotZero(t, resp)
+		assert.Equal(t, http.StatusForbidden, resp.Status())
+	})
+
+	t.Run("UserRequestRejectsHostForDifferentTask", func(t *testing.T) {
+		rh := &getDistroViewHandler{taskID: "t1", hostID: "wrong_task_debug_host"}
+		resp := rh.Run(t.Context())
+		require.NotZero(t, resp)
+		assert.Equal(t, http.StatusForbidden, resp.Status())
+	})
+
+	t.Run("UserRequestAllowsOwnDebugHost", func(t *testing.T) {
+		rh := &getDistroViewHandler{taskID: "t1", hostID: "debug_host"}
+		resp := rh.Run(t.Context())
+		require.NotZero(t, resp)
+		assert.Equal(t, http.StatusOK, resp.Status())
+		data, ok := resp.Data().(apimodels.DistroView)
+		require.True(t, ok)
+		assert.True(t, data.DisableShallowClone)
+		assert.Equal(t, "admin", data.ExecUser)
+	})
 }
 
 func TestMarkTaskForReset(t *testing.T) {

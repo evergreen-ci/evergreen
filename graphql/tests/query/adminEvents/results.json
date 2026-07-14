@@ -63,6 +63,7 @@
                   "target_time_seconds": 60,
                   "task_finder": "legacy",
                   "translate_project_cache_bytes_limit": 0,
+                  "translate_project_cache_ttl_seconds": 0,
                   "translate_project_concurrency_limit": 0
                 },
                 "before": {
@@ -85,6 +86,7 @@
                   "target_time_seconds": 60,
                   "task_finder": "legacy",
                   "translate_project_cache_bytes_limit": 0,
+                  "translate_project_cache_ttl_seconds": 0,
                   "translate_project_concurrency_limit": 0
                 },
                 "section": "scheduler",

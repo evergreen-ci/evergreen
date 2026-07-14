@@ -103,7 +103,10 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	if v == nil {
 		return errors.Errorf("version '%s' not found", t.Version)
 	}
-	project, parserProject, err := model.FindAndTranslateProjectForVersion(ctx, j.env.Settings(), v, false)
+	// Opt out of read coalescing: this path mutates the parser project in place (via
+	// GeneratedProject.NewVersion -> addGeneratedProjectToConfig), so it must not share the pointer
+	// with concurrent readers. It's low-volume background work, so opting out is cheap.
+	project, parserProject, err := model.FindAndTranslateProjectForVersionWithOpts(ctx, j.env.Settings(), v, false, false)
 	if err != nil {
 		return errors.Wrapf(err, "loading project for version '%s'", t.Version)
 	}

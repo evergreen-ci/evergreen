@@ -83,7 +83,8 @@
               "targetTimeSeconds": 1,
               "taskFinder": "PARALLEL",
               "translateProjectConcurrencyLimit": 1,
-              "translateProjectCacheBytesLimit": 1
+              "translateProjectCacheBytesLimit": 1,
+              "translateProjectCacheTTLSeconds": 1
             }
           }
         }

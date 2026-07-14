@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -277,7 +278,7 @@ func getRedactedSubscriptionsCopy(subscriptions []event.Subscription, modifiedSe
 			redacted.Secret = nil
 		}
 		for j := range redacted.Headers {
-			if redacted.Headers[j].Key == event.WebhookAuthorizationHeader {
+			if strings.EqualFold(redacted.Headers[j].Key, event.WebhookAuthorizationHeader) {
 				if _, authHeaderModified := modifiedAuthHeaderIDs[result[i].ID]; authHeaderModified {
 					redacted.Headers[j].Value = placeholder
 				} else {
