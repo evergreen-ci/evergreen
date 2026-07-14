@@ -1709,13 +1709,14 @@ func TestCreateManifest(t *testing.T) {
 	assert := assert.New(t)
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings)
-	require.NoError(t, db.ClearCollections(model.VersionCollection, model.ProjectRefCollection, model.ProjectVarsCollection), fakeparameter.Collection)
-	// with a revision from 5/31/15
+	require.NoError(t, db.ClearCollections(model.VersionCollection, model.ProjectRefCollection, model.ProjectVarsCollection, model.RepositoryRevisionsHistoryCollection), fakeparameter.Collection)
+	ingestTime := time.Date(2015, time.May, 31, 0, 0, 0, 0, time.UTC)
 	v := model.Version{
 		Id:         "aaaaaaaaaaff001122334455",
 		Revision:   "1bb42195fd415f144abbae509a5d5bef80d829b7",
 		Identifier: "proj",
 		Requester:  evergreen.RepotrackerVersionRequester,
+		IngestTime: ingestTime,
 	}
 
 	patchVersion := model.Version{
@@ -1758,6 +1759,9 @@ func TestCreateManifest(t *testing.T) {
 	}
 	require.NoError(t, projVars.Insert(t.Context()))
 
+	const moduleRevisionAtIngestTime = "b27779f856b211ffaf97cbc124b7082a20ea8bc0"
+	require.NoError(t, model.UpsertRepositoryRevision(t.Context(), "evergreen-ci", "sample", "main", moduleRevisionAtIngestTime, ingestTime))
+
 	manifest, err := model.CreateManifest(t.Context(), &v, proj.Modules, projRef)
 	assert.NoError(err)
 	assert.Equal(v.Id, manifest.Id)
@@ -1767,8 +1771,7 @@ func TestCreateManifest(t *testing.T) {
 	assert.True(ok)
 	assert.Equal("sample", module.Repo)
 	assert.Equal("main", module.Branch)
-	// the most recent module commit as of the version's revision (from 5/30/15)
-	assert.Equal("b27779f856b211ffaf97cbc124b7082a20ea8bc0", module.Revision)
+	assert.Equal(moduleRevisionAtIngestTime, module.Revision)
 
 	proj.Modules[0].AutoUpdate = true
 	manifest, err = model.CreateManifest(t.Context(), &patchVersion, proj.Modules, projRef)
