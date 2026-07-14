@@ -30,6 +30,7 @@ type SchedulerConfig struct {
 	StepbackTaskFactor               int64   `bson:"stepback_task_factor" json:"stepback_task_factor" mapstructure:"stepback_task_factor"`
 	TranslateProjectConcurrencyLimit int     `bson:"translate_project_concurrency_limit" json:"translate_project_concurrency_limit" mapstructure:"translate_project_concurrency_limit"`
 	TranslateProjectCacheBytesLimit  int64   `bson:"translate_project_cache_bytes_limit" json:"translate_project_cache_bytes_limit" mapstructure:"translate_project_cache_bytes_limit"`
+	TranslateProjectCacheTTLSeconds  int64   `bson:"translate_project_cache_ttl_seconds" json:"translate_project_cache_ttl_seconds" mapstructure:"translate_project_cache_ttl_seconds"`
 }
 
 func (c *SchedulerConfig) SectionId() string { return "scheduler" }
@@ -61,6 +62,7 @@ func (c *SchedulerConfig) Set(ctx context.Context) error {
 			"stepback_task_factor":                c.StepbackTaskFactor,
 			"translate_project_concurrency_limit": c.TranslateProjectConcurrencyLimit,
 			"translate_project_cache_bytes_limit": c.TranslateProjectCacheBytesLimit,
+			"translate_project_cache_ttl_seconds": c.TranslateProjectCacheTTLSeconds,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }
@@ -166,6 +168,9 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 	}
 	if c.TranslateProjectCacheBytesLimit < 0 {
 		return errors.New("translate project cache bytes limit cannot be negative")
+	}
+	if c.TranslateProjectCacheTTLSeconds < 0 {
+		return errors.New("translate project cache TTL seconds cannot be negative")
 	}
 
 	return nil

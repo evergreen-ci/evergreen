@@ -2068,6 +2068,7 @@ type APISchedulerConfig struct {
 	StepbackTaskFactor               int64   `json:"stepback_task_factor"`
 	TranslateProjectConcurrencyLimit int     `json:"translate_project_concurrency_limit"`
 	TranslateProjectCacheBytesLimit  int64   `json:"translate_project_cache_bytes_limit"`
+	TranslateProjectCacheTTLSeconds  int64   `json:"translate_project_cache_ttl_seconds"`
 }
 
 func (a *APISchedulerConfig) BuildFromService(h any) error {
@@ -2093,6 +2094,7 @@ func (a *APISchedulerConfig) BuildFromService(h any) error {
 		a.StepbackTaskFactor = v.StepbackTaskFactor
 		a.TranslateProjectConcurrencyLimit = v.TranslateProjectConcurrencyLimit
 		a.TranslateProjectCacheBytesLimit = v.TranslateProjectCacheBytesLimit
+		a.TranslateProjectCacheTTLSeconds = v.TranslateProjectCacheTTLSeconds
 	default:
 		return errors.Errorf("programmatic error: expected host scheduler config but got type %T", h)
 	}
@@ -2121,6 +2123,7 @@ func (a *APISchedulerConfig) ToService() (any, error) {
 		StepbackTaskFactor:               a.StepbackTaskFactor,
 		TranslateProjectConcurrencyLimit: a.TranslateProjectConcurrencyLimit,
 		TranslateProjectCacheBytesLimit:  a.TranslateProjectCacheBytesLimit,
+		TranslateProjectCacheTTLSeconds:  a.TranslateProjectCacheTTLSeconds,
 	}, nil
 }
 
@@ -2130,6 +2133,7 @@ type APIServiceFlags struct {
 	HostInitDisabled                   bool `json:"host_init_disabled"`
 	LargeParserProjectsDisabled        bool `json:"large_parser_projects_disabled"`
 	MonitorDisabled                    bool `json:"monitor_disabled"`
+	MergeQueueRecoveryEnabled          bool `json:"merge_queue_recovery_enabled"`
 	AlertsDisabled                     bool `json:"alerts_disabled"`
 	AgentStartDisabled                 bool `json:"agent_start_disabled"`
 	RepotrackerDisabled                bool `json:"repotracker_disabled"`
@@ -2586,6 +2590,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.HostInitDisabled = v.HostInitDisabled
 		as.LargeParserProjectsDisabled = v.LargeParserProjectsDisabled
 		as.MonitorDisabled = v.MonitorDisabled
+		as.MergeQueueRecoveryEnabled = v.MergeQueueRecoveryEnabled
 		as.AlertsDisabled = v.AlertsDisabled
 		as.AgentStartDisabled = v.AgentStartDisabled
 		as.RepotrackerDisabled = v.RepotrackerDisabled
@@ -2639,6 +2644,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		HostInitDisabled:                   as.HostInitDisabled,
 		LargeParserProjectsDisabled:        as.LargeParserProjectsDisabled,
 		MonitorDisabled:                    as.MonitorDisabled,
+		MergeQueueRecoveryEnabled:          as.MergeQueueRecoveryEnabled,
 		AlertsDisabled:                     as.AlertsDisabled,
 		AgentStartDisabled:                 as.AgentStartDisabled,
 		RepotrackerDisabled:                as.RepotrackerDisabled,
@@ -3167,6 +3173,7 @@ type APICostConfig struct {
 	OnDemandDiscount    *float64          `json:"on_demand_discount"`
 	S3Cost              *APIS3CostConfig  `json:"s3_cost"`
 	EBSCost             *APIEBSCostConfig `json:"ebs_cost"`
+	HiddenCostProjects  []string          `json:"hidden_cost_projects"`
 }
 
 type APIEBSCostConfig struct {
@@ -3205,6 +3212,7 @@ func (a *APICostConfig) BuildFromService(h any) error {
 		if err := a.EBSCost.BuildFromService(&v.EBSCost); err != nil {
 			return errors.Wrap(err, "building EBS cost config")
 		}
+		a.HiddenCostProjects = v.HiddenCostProjects
 	case evergreen.CostConfig:
 		a.FinanceFormula = &v.FinanceFormula
 		a.SavingsPlanDiscount = &v.SavingsPlanDiscount
@@ -3217,6 +3225,7 @@ func (a *APICostConfig) BuildFromService(h any) error {
 		if err := a.EBSCost.BuildFromService(&v.EBSCost); err != nil {
 			return errors.Wrap(err, "building EBS cost config")
 		}
+		a.HiddenCostProjects = v.HiddenCostProjects
 	default:
 		return errors.Errorf("incorrect type %T", v)
 	}
@@ -3246,6 +3255,7 @@ func (a *APICostConfig) ToService() (any, error) {
 		OnDemandDiscount:    utility.FromFloat64Ptr(a.OnDemandDiscount),
 		S3Cost:              s3Cost,
 		EBSCost:             ebsCost,
+		HiddenCostProjects:  a.HiddenCostProjects,
 	}, nil
 }
 

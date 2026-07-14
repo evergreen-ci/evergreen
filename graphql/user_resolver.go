@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -36,7 +37,11 @@ func (r *userResolver) Permissions(ctx context.Context, obj *restModel.APIDBUser
 
 // Subscriptions is the resolver for the subscriptions field.
 func (r *userResolver) Subscriptions(ctx context.Context, obj *restModel.APIDBUser) ([]*restModel.APISubscription, error) {
-	return getAPISubscriptionsForOwner(ctx, utility.FromStringPtr(obj.UserID), event.OwnerTypePerson)
+	ownerID := utility.FromStringPtr(obj.UserID)
+	if !canViewUserSubscriptions(ctx, ownerID) {
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to view subscriptions for user '%s'", ownerID))
+	}
+	return getAPISubscriptionsForOwner(ctx, ownerID, event.OwnerTypePerson)
 }
 
 // HasTokenExchangePending is the resolver for the hasTokenExchangePending field.
@@ -64,6 +69,9 @@ func (r *userLiteResolver) Settings(ctx context.Context, obj *user.DBUser) (*res
 
 // Subscriptions is the resolver for the subscriptions field.
 func (r *userLiteResolver) Subscriptions(ctx context.Context, obj *user.DBUser) ([]*restModel.APISubscription, error) {
+	if !canViewUserSubscriptions(ctx, obj.Id) {
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to view subscriptions for user '%s'", obj.Id))
+	}
 	return getAPISubscriptionsForOwner(ctx, obj.Id, event.OwnerTypePerson)
 }
 

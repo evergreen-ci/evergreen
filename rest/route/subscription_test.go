@@ -8,7 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -32,7 +34,11 @@ func (s *SubscriptionRouteSuite) SetupSuite() {
 }
 
 func (s *SubscriptionRouteSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.SubscriptionsCollection))
+	s.NoError(db.ClearCollections(dbModel.ProjectRefCollection, user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection, event.SubscriptionsCollection))
+}
+
+func (s *SubscriptionRouteSuite) TearDownTest() {
+	s.NoError(db.ClearCollections(dbModel.ProjectRefCollection, user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection, event.SubscriptionsCollection))
 }
 
 func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
@@ -275,6 +281,53 @@ func (s *SubscriptionRouteSuite) TestGetWithoutUser() {
 		ctx := context.Background()
 		h := &subscriptionGetHandler{}
 		_ = h.Parse(ctx, nil)
+	})
+}
+
+func (s *SubscriptionRouteSuite) TestGetProjectSubscriptionPermissions() {
+	pRef := &dbModel.ProjectRef{
+		Id:         "project-id",
+		Identifier: "my-project",
+	}
+	s.Require().NoError(pRef.Insert(s.T().Context()))
+
+	roleManager := evergreen.GetEnvironment().RoleManager()
+	scope := gimlet.Scope{
+		ID:        "project-view-scope",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{pRef.Id},
+	}
+	s.Require().NoError(roleManager.AddScope(s.T().Context(), scope))
+	role := gimlet.Role{
+		ID:          "project-viewer",
+		Scope:       scope.ID,
+		Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsView.Value},
+	}
+	s.Require().NoError(roleManager.UpdateRole(s.T().Context(), role))
+
+	s.T().Run("UserWithProjectViewRoleIsAuthorized", func(t *testing.T) {
+		usr := &user.DBUser{Id: "authorized", SystemRoles: []string{role.ID}}
+		ctx := gimlet.AttachUser(s.T().Context(), usr)
+		r, err := http.NewRequest(http.MethodGet, "/subscriptions?owner="+pRef.Identifier+"&type=project", nil)
+		s.Require().NoError(err)
+
+		h := &subscriptionGetHandler{}
+		s.Require().NoError(h.Parse(ctx, r))
+		s.Require().NoError(err)
+		s.Equal(pRef.Id, h.owner)
+	})
+	s.T().Run("UserWithoutProjectViewRoleIsUnauthorized", func(t *testing.T) {
+		usr := &user.DBUser{Id: "unauthorized"}
+		ctx := gimlet.AttachUser(s.T().Context(), usr)
+		r, err := http.NewRequest(http.MethodGet, "/subscriptions?owner="+pRef.Identifier+"&type=project", nil)
+		s.Require().NoError(err)
+
+		h := &subscriptionGetHandler{}
+		err = h.Parse(ctx, r)
+		s.Error(err)
+		respErr, ok := err.(gimlet.ErrorResponse)
+		s.Require().True(ok)
+		s.Equal(http.StatusUnauthorized, respErr.StatusCode)
 	})
 }
 

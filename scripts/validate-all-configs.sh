@@ -134,10 +134,14 @@ compare_results() {
     local patch=$2
     local report=$3
 
-    print_status "Comparing validation results..."
+    print_status "Comparing baseline vs patch validation results..."
+    print_status "(Timeout-based failures are excluded from regression detection)"
 
     if python3 scripts/compare-validation-results.py "$baseline" "$patch" "$report"; then
         print_status "No regressions found!"
+        if [ -f "$report" ]; then
+            cat "$report"
+        fi
         return 0
     else
         print_error "Regressions detected!"
@@ -255,7 +259,7 @@ main() {
 
         exit 0
     else
-        print_error "Config validation test FAILED - regressions detected"
+        print_error "Config validation test FAILED"
 
         if [ -s "$REGRESSION_REPORT" ]; then
             echo ""

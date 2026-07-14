@@ -839,6 +839,23 @@ func (s *subscriptionsSuite) TestUpsertWebhookDeletesAuthParameterWhenHeaderRemo
 	s.Equal("custom-value", updatedTarget.GetHeader("X-Custom-Header"), "non-sensitive header should remain")
 }
 
+func TestGetHeader(t *testing.T) {
+	ws := &WebhookSubscriber{
+		Headers: []WebhookHeader{
+			{Key: "authorization", Value: "Bearer my-token"},
+			{Key: "X-Custom", Value: "custom"},
+		},
+	}
+
+	// The Authorization header is matched case-insensitively regardless of how
+	// it was originally stored, consistent with how HTTP treats header names.
+	assert.Equal(t, "Bearer my-token", ws.GetHeader("authorization"))
+	assert.Equal(t, "Bearer my-token", ws.GetHeader("Authorization"))
+	assert.Equal(t, "Bearer my-token", ws.GetHeader("AUTHORIZATION"))
+	assert.Equal(t, "custom", ws.GetHeader("x-custom"))
+	assert.Empty(t, ws.GetHeader("X-Missing"))
+}
+
 func TestSetHeader(t *testing.T) {
 	t.Run("UpdatesExistingKey", func(t *testing.T) {
 		ws := &WebhookSubscriber{
@@ -851,6 +868,20 @@ func TestSetHeader(t *testing.T) {
 		require.Len(t, ws.Headers, 2)
 		assert.Equal(t, "Bearer new-token", ws.GetHeader(WebhookAuthorizationHeader))
 		assert.Equal(t, "custom", ws.GetHeader("X-Custom"))
+	})
+
+	t.Run("UpdatesExistingKeyWithDifferentCasing", func(t *testing.T) {
+		ws := &WebhookSubscriber{
+			Headers: []WebhookHeader{
+				{Key: "authorization", Value: "Bearer old-token"},
+			},
+		}
+		ws.setHeader(WebhookAuthorizationHeader, "Bearer new-token")
+		// The existing header is updated in place rather than duplicated, and its
+		// original key casing is preserved.
+		require.Len(t, ws.Headers, 1)
+		assert.Equal(t, "authorization", ws.Headers[0].Key)
+		assert.Equal(t, "Bearer new-token", ws.Headers[0].Value)
 	})
 
 	t.Run("AddsNewKey", func(t *testing.T) {

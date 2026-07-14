@@ -15,6 +15,7 @@ type ServiceFlags struct {
 	HostInitDisabled                   bool `bson:"host_init_disabled" json:"host_init_disabled"`
 	LargeParserProjectsDisabled        bool `bson:"large_parser_projects_disabled" json:"large_parser_projects_disabled"`
 	MonitorDisabled                    bool `bson:"monitor_disabled" json:"monitor_disabled"`
+	MergeQueueRecoveryEnabled          bool `bson:"merge_queue_recovery_enabled" json:"merge_queue_recovery_enabled"`
 	AlertsDisabled                     bool `bson:"alerts_disabled" json:"alerts_disabled"`
 	AgentStartDisabled                 bool `bson:"agent_start_disabled" json:"agent_start_disabled"`
 	RepotrackerDisabled                bool `bson:"repotracker_disabled" json:"repotracker_disabled"`
@@ -75,6 +76,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			hostInitKey:                           c.HostInitDisabled,
 			largeParserProjectsDisabledKey:        c.LargeParserProjectsDisabled,
 			monitorKey:                            c.MonitorDisabled,
+			mergeQueueRecoveryEnabledKey:          c.MergeQueueRecoveryEnabled,
 			alertsKey:                             c.AlertsDisabled,
 			agentStartKey:                         c.AgentStartDisabled,
 			repotrackerKey:                        c.RepotrackerDisabled,
