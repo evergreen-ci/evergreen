@@ -959,13 +959,14 @@ func TestMarkGeneratedTasksError(t *testing.T) {
 // map. This substitutes for the amboy root span that wraps job execution in production,
 // since trace.SpanFromContext reads whatever span is in the context regardless of which
 // provider created it.
-func recordRootSpanAttributes(t *testing.T, ctx context.Context, j amboy.Job) map[string]any {
+func recordRootSpanAttributes(ctx context.Context, t *testing.T, j amboy.Job) map[string]any {
 	spanRecorder := tracetest.NewSpanRecorder()
 	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(spanRecorder))
 	ctx, span := tp.Tracer("test").Start(ctx, "test")
 
 	j.Run(ctx)
 	span.End()
+	require.NoError(t, tp.Shutdown(t.Context()))
 
 	ended := spanRecorder.Ended()
 	require.Len(t, ended, 1)
@@ -983,9 +984,9 @@ func TestGenerateTasksJobSetsWideEventAttributesOnRootSpanForSuccessfulGeneratio
 	require.NoError(t, env.Configure(ctx))
 
 	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection, model.ParserProjectCollection))
-	defer func() {
+	t.Cleanup(func() {
 		require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection, model.ParserProjectCollection))
-	}()
+	})
 
 	v := model.Version{
 		Id:         "sample_version",
@@ -1044,7 +1045,7 @@ func TestGenerateTasksJobSetsWideEventAttributesOnRootSpanForSuccessfulGeneratio
 	require.NoError(t, projectRef.Insert(t.Context()))
 
 	j := NewGenerateTasksJob(env, generateTask.Version, generateTask.Id, "1")
-	attrs := recordRootSpanAttributes(t, ctx, j)
+	attrs := recordRootSpanAttributes(ctx, t, j)
 	require.NoError(t, j.Error())
 
 	assert.Equal(t, generateTask.Id, attrs[evergreen.TaskIDOtelAttribute])
@@ -1057,11 +1058,11 @@ func TestGenerateTasksJobSetsWideEventAttributesOnRootSpanForSuccessfulGeneratio
 	assert.Equal(t, string(outcomeGenerated), attrs[generateTasksOutcomeAttribute])
 	assert.Equal(t, false, attrs[generateTasksIsSaveErrorAttribute])
 
-	require.Contains(t, attrs, generateTasksNumCreatedAttribute)
-	numCreated, ok := attrs[generateTasksNumCreatedAttribute].(int64)
+	require.Contains(t, attrs, model.NumGeneratedTasksOtelAttribute)
+	numCreated, ok := attrs[model.NumGeneratedTasksOtelAttribute].(int64)
 	require.True(t, ok)
 	assert.Positive(t, numCreated)
-	assert.Contains(t, attrs, generateTasksNumActivatedAttribute)
+	assert.Contains(t, attrs, model.NumActivatedGeneratedTasksOtelAttribute)
 }
 
 func TestGenerateTasksJobSetsAlreadyGeneratedOutcomeOnRootSpan(t *testing.T) {
@@ -1071,9 +1072,9 @@ func TestGenerateTasksJobSetsAlreadyGeneratedOutcomeOnRootSpan(t *testing.T) {
 	require.NoError(t, env.Configure(ctx))
 
 	require.NoError(t, db.ClearCollections(task.Collection))
-	defer func() {
+	t.Cleanup(func() {
 		require.NoError(t, db.ClearCollections(task.Collection))
-	}()
+	})
 
 	sampleTask := task.Task{
 		Id:             "sample_task",
@@ -1087,7 +1088,7 @@ func TestGenerateTasksJobSetsAlreadyGeneratedOutcomeOnRootSpan(t *testing.T) {
 	require.NoError(t, sampleTask.Insert(t.Context()))
 
 	j := NewGenerateTasksJob(env, sampleTask.Version, sampleTask.Id, "1")
-	attrs := recordRootSpanAttributes(t, ctx, j)
+	attrs := recordRootSpanAttributes(ctx, t, j)
 	require.NoError(t, j.Error())
 
 	assert.Equal(t, string(outcomeAlreadyGenerated), attrs[generateTasksOutcomeAttribute])
@@ -1097,5 +1098,36 @@ func TestGenerateTasksJobSetsAlreadyGeneratedOutcomeOnRootSpan(t *testing.T) {
 	assert.Equal(t, sampleTask.BuildId, attrs[evergreen.BuildIDOtelAttribute])
 	assert.Equal(t, sampleTask.Project, attrs[evergreen.ProjectIDOtelAttribute])
 
-	assert.NotContains(t, attrs, generateTasksNumCreatedAttribute)
+	assert.NotContains(t, attrs, model.NumGeneratedTasksOtelAttribute)
+}
+
+func TestGenerateTasksJobSetsTaskNotRunningOutcomeWithoutCountsOnRootSpan(t *testing.T) {
+	ctx := t.Context()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	require.NoError(t, db.ClearCollections(task.Collection))
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(task.Collection))
+	})
+
+	sampleTask := task.Task{
+		Id:          "sample_task",
+		Version:     "sample_version",
+		BuildId:     "sample_build_id",
+		Project:     "mci",
+		DisplayName: "sample_task",
+		Status:      evergreen.TaskSucceeded,
+	}
+	require.NoError(t, sampleTask.Insert(t.Context()))
+
+	j := NewGenerateTasksJob(env, sampleTask.Version, sampleTask.Id, "1")
+	attrs := recordRootSpanAttributes(ctx, t, j)
+	require.NoError(t, j.Error())
+
+	assert.Equal(t, string(outcomeTaskNotRunning), attrs[generateTasksOutcomeAttribute])
+	assert.Equal(t, false, attrs[generateTasksIsSaveErrorAttribute])
+	assert.NotContains(t, attrs, model.NumGeneratedTasksOtelAttribute)
+	assert.NotContains(t, attrs, model.NumActivatedGeneratedTasksOtelAttribute)
 }

@@ -15,8 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
 
 func TestProvisioningCreateHostJob(t *testing.T) {
@@ -40,7 +38,7 @@ func TestProvisioningCreateHostJob(t *testing.T) {
 			j := NewHostCreateJob(env, *h, "job-id", true)
 			hostCreateJob, ok := j.(*createHostJob)
 			require.True(t, ok)
-			attrs := runCreateHostJobWithRecordedSpan(ctx, t, hostCreateJob)
+			attrs := recordRootSpanAttributes(ctx, t, hostCreateJob)
 			assert.False(t, hostCreateJob.HasErrors())
 			foundHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
@@ -61,7 +59,7 @@ func TestProvisioningCreateHostJob(t *testing.T) {
 			j := NewHostCreateJob(env, *h, "job-id", true)
 			hostCreateJob, ok := j.(*createHostJob)
 			require.True(t, ok)
-			attrs := runCreateHostJobWithRecordedSpan(ctx, t, hostCreateJob)
+			attrs := recordRootSpanAttributes(ctx, t, hostCreateJob)
 
 			assert.False(t, hostCreateJob.HasErrors())
 			foundHost, err := host.FindOneId(ctx, h.Id)
@@ -79,7 +77,7 @@ func TestProvisioningCreateHostJob(t *testing.T) {
 			j.env = env
 			j.SetID("missing-host-intent")
 
-			attrs := runCreateHostJobWithRecordedSpan(ctx, t, j)
+			attrs := recordRootSpanAttributes(ctx, t, j)
 
 			assert.NoError(t, j.Error())
 			assert.Equal(t, "host_missing", attrs[createHostOutcomeOtelAttribute])
@@ -93,7 +91,7 @@ func TestProvisioningCreateHostJob(t *testing.T) {
 			hostCreateJob, ok := j.(*createHostJob)
 			require.True(t, ok)
 
-			attrs := runCreateHostJobWithRecordedSpan(ctx, t, hostCreateJob)
+			attrs := recordRootSpanAttributes(ctx, t, hostCreateJob)
 
 			assert.Error(t, hostCreateJob.Error())
 			assert.Equal(t, "failed", attrs[createHostOutcomeOtelAttribute])
@@ -108,7 +106,7 @@ func TestProvisioningCreateHostJob(t *testing.T) {
 			j := NewHostCreateJob(env, *h, "job-id", true)
 			hostCreateJob, ok := j.(*createHostJob)
 			require.True(t, ok)
-			attrs := runCreateHostJobWithRecordedSpan(ctx, t, hostCreateJob)
+			attrs := recordRootSpanAttributes(ctx, t, hostCreateJob)
 
 			assert.NoError(t, hostCreateJob.Error())
 			assert.Equal(t, "waiting_for_image", attrs[createHostOutcomeOtelAttribute])
@@ -143,7 +141,7 @@ func TestProvisioningCreateHostJob(t *testing.T) {
 			j := NewHostCreateJob(env, *h, "", true)
 			hostCreateJob, ok := j.(*createHostJob)
 			require.True(t, ok)
-			attrs := runCreateHostJobWithRecordedSpan(ctx, t, hostCreateJob)
+			attrs := recordRootSpanAttributes(ctx, t, hostCreateJob)
 			assert.NoError(t, j.Error())
 
 			foundHost, err := host.FindOneId(ctx, h.Id)
@@ -153,6 +151,12 @@ func TestProvisioningCreateHostJob(t *testing.T) {
 			assert.Equal(t, "check_throttle", attrs[createHostStageOtelAttribute])
 			assert.Equal(t, true, attrs[createHostDistroLimitOtelAttribute])
 			assert.EqualValues(t, maxHosts+1, attrs[createHostDistroActiveOtelAttribute])
+			// Run reads MaxTotalDynamicHosts from the DB admin settings rather than
+			// env.Settings(), so the global limit is not actually exceeded here; the
+			// throttle comes from the distro limit.
+			assert.Equal(t, false, attrs[createHostDynamicLimitOtelAttribute])
+			assert.Equal(t, "distro_host_limit", attrs[createHostThrottleReasonOtelAttribute])
+			assert.Equal(t, "intent_removed", attrs[createHostFinalStatusOtelAttribute])
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
@@ -193,21 +197,4 @@ func TestProvisioningCreateHostJob(t *testing.T) {
 			testCase(tctx, t, env, &h)
 		})
 	}
-}
-
-func runCreateHostJobWithRecordedSpan(ctx context.Context, t *testing.T, j *createHostJob) map[string]any {
-	spanRecorder := tracetest.NewSpanRecorder()
-	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(spanRecorder))
-	spanCtx, span := tp.Tracer("test").Start(ctx, t.Name())
-	j.Run(spanCtx)
-	span.End()
-	require.NoError(t, tp.Shutdown(t.Context()))
-
-	spans := spanRecorder.Ended()
-	require.Len(t, spans, 1)
-	attrs := map[string]any{}
-	for _, attr := range spans[0].Attributes() {
-		attrs[string(attr.Key)] = attr.Value.AsInterface()
-	}
-	return attrs
 }

@@ -34,7 +34,6 @@ const (
 	createHostInitialStatusOtelAttribute  = provisioningCreateHostAttributePrefix + ".initial_host_status"
 	createHostFinalStatusOtelAttribute    = provisioningCreateHostAttributePrefix + ".final_host_status"
 	createHostSingleTaskOtelAttribute     = provisioningCreateHostAttributePrefix + ".single_task_distro"
-	createHostStartedByOtelAttribute      = provisioningCreateHostAttributePrefix + ".started_by"
 	createHostUserHostOtelAttribute       = provisioningCreateHostAttributePrefix + ".user_host"
 	createHostSpawnedByTaskOtelAttribute  = provisioningCreateHostAttributePrefix + ".spawned_by_task"
 	createHostParentIDOtelAttribute       = provisioningCreateHostAttributePrefix + ".parent_host_id"
@@ -131,16 +130,21 @@ func (j *createHostJob) Run(ctx context.Context) {
 		attribute.String(createHostStageOtelAttribute, "load_service_flags"),
 		attribute.Bool(createHostSpawnedOtelAttribute, false),
 	)
+	intentRemoved := false
 	defer func() {
 		attrs := []attribute.KeyValue{
 			attribute.Bool(createHostBuildImageOtelAttribute, j.BuildImageStarted),
 			attribute.Bool(createHostRetryOtelAttribute, j.RetryInfo().NeedsRetry),
 		}
 		if j.host != nil {
-			attrs = append(attrs,
-				attribute.String(evergreen.HostIDOtelAttribute, j.host.Id),
-				attribute.String(createHostFinalStatusOtelAttribute, j.host.Status),
-			)
+			attrs = append(attrs, attribute.String(evergreen.HostIDOtelAttribute, j.host.Id))
+			// Once the intent document is deleted, the in-memory status no longer
+			// corresponds to any stored host, so record an explicit marker instead.
+			if intentRemoved {
+				attrs = append(attrs, attribute.String(createHostFinalStatusOtelAttribute, "intent_removed"))
+			} else {
+				attrs = append(attrs, attribute.String(createHostFinalStatusOtelAttribute, j.host.Status))
+			}
 		}
 		span.SetAttributes(attrs...)
 	}()
@@ -194,7 +198,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 		attribute.String(evergreen.DistroProviderOtelAttribute, j.host.Distro.Provider),
 		attribute.String(createHostInitialStatusOtelAttribute, j.host.Status),
 		attribute.Bool(createHostSingleTaskOtelAttribute, j.host.Distro.SingleTaskDistro),
-		attribute.String(createHostStartedByOtelAttribute, j.host.StartedBy),
+		attribute.String(evergreen.HostStartedByOtelAttribute, j.host.StartedBy),
 		attribute.Bool(createHostUserHostOtelAttribute, j.host.UserHost),
 		attribute.Bool(createHostSpawnedByTaskOtelAttribute, j.host.SpawnOptions.SpawnedByTask),
 	}
@@ -224,27 +228,25 @@ func (j *createHostJob) Run(ctx context.Context) {
 	}
 
 	if j.host.IsSubjectToHostCreationThrottle() {
-		span.SetAttributes(
-			attribute.String(createHostStageOtelAttribute, "check_throttle"),
-			attribute.Bool(createHostDistroLimitOtelAttribute, false),
-			attribute.Bool(createHostDynamicLimitOtelAttribute, false),
-		)
+		span.SetAttributes(attribute.String(createHostStageOtelAttribute, "check_throttle"))
 		distroActiveHosts, err := host.CountActiveHostsInDistro(ctx, j.host.Distro.Id)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "counting existing host pool size for distro '%s'", j.host.Distro.Id))
 			return
 		}
+		distroLimitExceeded := distroActiveHosts > j.host.Distro.HostAllocatorSettings.MaximumHosts
 		span.SetAttributes(
 			attribute.Int(createHostDistroActiveOtelAttribute, distroActiveHosts),
 			attribute.Int(createHostDistroMaxOtelAttribute, j.host.Distro.HostAllocatorSettings.MaximumHosts),
+			attribute.Bool(createHostDistroLimitOtelAttribute, distroLimitExceeded),
 		)
 
 		removeHostIntent := false
-		if distroActiveHosts > j.host.Distro.HostAllocatorSettings.MaximumHosts {
-			span.SetAttributes(
-				attribute.Bool(createHostDistroLimitOtelAttribute, true),
-				attribute.String(createHostThrottleReasonOtelAttribute, "distro_host_limit"),
-			)
+		// When both limits are exceeded, the distro limit takes precedence in
+		// throttle_reason; the *_limit_exceeded attributes record each limit independently.
+		throttleReason := ""
+		if distroLimitExceeded {
+			throttleReason = "distro_host_limit"
 			grip.Info(ctx, message.Fields{
 				"host_id":            j.HostID,
 				"attempt":            j.RetryInfo().CurrentAttempt,
@@ -267,18 +269,21 @@ func (j *createHostJob) Run(ctx context.Context) {
 			lowHostNumException = true
 		}
 		span.SetAttributes(attribute.Bool(createHostLowHostNumOtelAttribute, lowHostNumException))
+		globalLimitExceeded := allActiveDynamicHosts > hostInit.MaxTotalDynamicHosts && !lowHostNumException
+		// Only record the global-limit attributes if the count succeeded; otherwise the
+		// span would assert a verified under-limit state based on an unknown count.
 		if err == nil {
 			span.SetAttributes(
 				attribute.Int(createHostDynamicActiveOtelAttribute, allActiveDynamicHosts),
 				attribute.Int(createHostDynamicMaxOtelAttribute, hostInit.MaxTotalDynamicHosts),
+				attribute.Bool(createHostDynamicLimitOtelAttribute, globalLimitExceeded),
 			)
 		}
 
-		if allActiveDynamicHosts > hostInit.MaxTotalDynamicHosts && !lowHostNumException {
-			span.SetAttributes(
-				attribute.Bool(createHostDynamicLimitOtelAttribute, true),
-				attribute.String(createHostThrottleReasonOtelAttribute, "global_host_limit"),
-			)
+		if globalLimitExceeded {
+			if throttleReason == "" {
+				throttleReason = "global_host_limit"
+			}
 			grip.Info(ctx, message.Fields{
 				"host_id":                 j.HostID,
 				"attempt":                 j.RetryInfo().CurrentAttempt,
@@ -293,8 +298,12 @@ func (j *createHostJob) Run(ctx context.Context) {
 		}
 
 		if removeHostIntent {
-			span.SetAttributes(attribute.String(createHostOutcomeOtelAttribute, "throttled"))
+			span.SetAttributes(
+				attribute.String(createHostOutcomeOtelAttribute, "throttled"),
+				attribute.String(createHostThrottleReasonOtelAttribute, throttleReason),
+			)
 			err = errors.Wrap(j.host.Remove(ctx), "removing host intent to respect max distro hosts")
+			intentRemoved = err == nil
 
 			j.AddError(err)
 			grip.Error(ctx, message.WrapError(err, message.Fields{
@@ -369,12 +378,13 @@ func (j *createHostJob) selfThrottle(ctx context.Context, hostInit evergreen.Hos
 		j.AddError(errors.Wrap(err, "counting size of entire host pool"))
 		return true
 	}
+	// The distro and dynamic host counts are not recorded here because Run's throttle check
+	// already recorded them on this span; overwriting them with these fresh, independent
+	// counts could contradict the limit decisions recorded there.
 	span.SetAttributes(
 		attribute.Int(createHostPendingOtelAttribute, numProv),
 		attribute.Int(createHostThrottleOtelAttribute, hostInit.HostThrottle),
-		attribute.Int(createHostDistroActiveOtelAttribute, distroActiveHosts),
 		attribute.Int(createHostDistroMinOtelAttribute, j.host.Distro.HostAllocatorSettings.MinimumHosts),
-		attribute.Int(createHostDynamicActiveOtelAttribute, allActiveDynamicHosts),
 	)
 
 	if distroActiveHosts < allActiveDynamicHosts/100 || distroActiveHosts < j.host.Distro.HostAllocatorSettings.MinimumHosts {

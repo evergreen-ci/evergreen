@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -30,14 +29,8 @@ const (
 	// existing Honeycomb queries, so new attributes below use the underscore namespace instead.
 	hasGeneratedTasksOtelAttribute = "evergreen.generate-tasks.has_generated_tasks"
 
-	generateTasksOutcomeAttribute     = "evergreen.generate_tasks.outcome"
-	generateTasksIsSaveErrorAttribute = "evergreen.generate_tasks.is_save_error"
-	// generateTasksNumCreatedAttribute and generateTasksNumActivatedAttribute intentionally
-	// match the unexported numGenerateTasksAttribute and numActivatedGenerateTasksAttribute
-	// keys in model/generate.go, so a single Honeycomb column covers both the root job span
-	// and the model's child span.
-	generateTasksNumCreatedAttribute             = "evergreen.generate_tasks.num_created"
-	generateTasksNumActivatedAttribute           = "evergreen.generate_tasks.num_activated"
+	generateTasksOutcomeAttribute                = "evergreen.generate_tasks.outcome"
+	generateTasksIsSaveErrorAttribute            = "evergreen.generate_tasks.is_save_error"
 	generateTasksNumActivatedForVersionAttribute = "evergreen.generate_tasks.num_activated_for_version"
 )
 
@@ -53,6 +46,7 @@ const (
 	outcomeRaceOnReload        generateTasksOutcome = "race_on_reload"
 	outcomeRaceOnSave          generateTasksOutcome = "race_on_save"
 	outcomeRaceOnErrorHandling generateTasksOutcome = "race_on_error_handling"
+	outcomeSaveFailed          generateTasksOutcome = "save_failed"
 	outcomeError               generateTasksOutcome = "error"
 )
 
@@ -218,7 +212,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) (generate
 		return outcomeRaceOnSave, err
 	}
 	if err != nil {
-		return outcomeError, errors.Wrap(err, evergreen.SaveGenerateTasksError)
+		return outcomeSaveFailed, errors.Wrap(err, evergreen.SaveGenerateTasksError)
 	}
 	return outcomeGenerated, nil
 }
@@ -257,6 +251,12 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	start := time.Now()
 
 	span := trace.SpanFromContext(ctx)
+	// Record the attributes that are known before the task document is loaded, so events
+	// from the early error returns below still carry them.
+	span.SetAttributes(
+		attribute.String(evergreen.TaskIDOtelAttribute, j.TaskID),
+		attribute.Bool(generateTasksIsSaveErrorAttribute, false),
+	)
 
 	t, err := task.FindOneId(ctx, j.TaskID)
 	if err != nil {
@@ -285,7 +285,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 
 	span.SetAttributes(
 		attribute.String(generateTasksOutcomeAttribute, string(outcome)),
-		attribute.Bool(generateTasksIsSaveErrorAttribute, err != nil && strings.Contains(err.Error(), evergreen.SaveGenerateTasksError)),
+		attribute.Bool(generateTasksIsSaveErrorAttribute, outcome == outcomeSaveFailed),
 	)
 
 	grip.InfoWhen(ctx, err == nil, message.Fields{
@@ -312,7 +312,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 			"task":          t.Id,
 			"job":           j.ID(),
 			"version":       t.Version,
-			"is_save_error": strings.Contains(err.Error(), evergreen.SaveGenerateTasksError),
+			"is_save_error": outcome == outcomeSaveFailed,
 		}))
 	}
 
@@ -324,20 +324,24 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	if !shouldNoop {
 		j.AddError(task.MarkGeneratedTasks(ctx, j.TaskID))
 
-		// The accurate counts are only computed and persisted inside
-		// model.saveNewBuildsAndTasks, so re-fetch the task to read them back for the span.
-		// This telemetry-only query must not fail the job.
-		if generatedTask, findErr := task.FindOneId(ctx, j.TaskID); findErr != nil {
-			grip.Warning(ctx, message.WrapError(findErr, message.Fields{
-				"message": "finding task to record generate.tasks counts on span",
-				"task":    j.TaskID,
-				"job":     j.ID(),
-			}))
-		} else if generatedTask != nil {
-			span.SetAttributes(
-				attribute.Int(generateTasksNumCreatedAttribute, generatedTask.NumGeneratedTasks),
-				attribute.Int(generateTasksNumActivatedAttribute, generatedTask.NumActivatedGeneratedTasks),
-			)
+		// Only record counts for runs that actually generated tasks; recording zeroes for
+		// other outcomes (e.g. task_not_running) would pollute aggregations of these columns.
+		if outcome == outcomeGenerated {
+			// The accurate counts are only computed and persisted inside
+			// model.saveNewBuildsAndTasks, so re-fetch the task to read them back for the span.
+			// This telemetry-only query must not fail the job.
+			if generatedTask, findErr := task.FindOneId(ctx, j.TaskID); findErr != nil {
+				grip.Warning(ctx, message.WrapError(findErr, message.Fields{
+					"message": "finding task to record generate.tasks counts on span",
+					"task":    j.TaskID,
+					"job":     j.ID(),
+				}))
+			} else if generatedTask != nil {
+				span.SetAttributes(
+					attribute.Int(model.NumGeneratedTasksOtelAttribute, generatedTask.NumGeneratedTasks),
+					attribute.Int(model.NumActivatedGeneratedTasksOtelAttribute, generatedTask.NumActivatedGeneratedTasks),
+				)
+			}
 		}
 
 		if t.IsPatchRequest() {
@@ -346,7 +350,9 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 				j.AddError(err)
 				return
 			}
-			span.SetAttributes(attribute.Int(generateTasksNumActivatedForVersionAttribute, activatedTasks))
+			if outcome == outcomeGenerated {
+				span.SetAttributes(attribute.Int(generateTasksNumActivatedForVersionAttribute, activatedTasks))
+			}
 			if activatedTasks > evergreen.NumTasksForLargePatch {
 				grip.Info(ctx, message.Fields{
 					"message":             "patch has large number of activated tasks",
