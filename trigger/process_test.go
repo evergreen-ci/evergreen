@@ -526,14 +526,13 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 }
 
 func TestProjectTriggerIntegrationForPush(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require := require.New(t)
 
 	assert.NoError(db.ClearCollections(task.Collection, build.Collection, model.VersionCollection, evergreen.ConfigCollection,
-		model.ProjectRefCollection, model.RepositoriesCollection, model.ProjectAliasCollection, model.ParserProjectCollection, manifest.Collection))
+		model.ProjectRefCollection, model.RepositoriesCollection, model.RepositoryRevisionsHistoryCollection, model.ProjectAliasCollection, model.ParserProjectCollection, manifest.Collection))
 	require.NoError(db.CreateCollections(model.ParserProjectCollection))
 
 	config := testutil.TestConfig()
@@ -579,7 +578,9 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	sampleNewerSHA := "7e05633b9bc529e19eba18b1fc88f78d346855b2"
 	downstreamRevisionOlder := "178959df398ed0767113492cbd90ad9afbc67bfe"
 	downstreamRevisionNewer := "c37179fcad01b12ef752a65af3156fb8dc7e452c"
-	ingestTime := time.Now()
+	ingestTime := time.Date(2026, time.July, 14, 12, 0, 0, 0, time.UTC)
+	assert.NoError(model.UpsertRepositoryRevision(ctx, downstreamProjectRef.Owner, downstreamProjectRef.Repo, downstreamProjectRef.Branch, downstreamRevisionOlder, ingestTime))
+	assert.NoError(model.UpsertRepositoryRevision(ctx, downstreamProjectRef.Owner, downstreamProjectRef.Repo, downstreamProjectRef.Branch, downstreamRevisionNewer, ingestTime.Add(time.Minute)))
 
 	pushEvent := &github.PushEvent{
 		Commits: []*github.HeadCommit{
@@ -611,7 +612,8 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 
 	assert.True(utility.FromBoolPtr(dbVersions[0].Activated))
 	assert.Equal("downstream_"+sampleNewerSHA+"_def1", dbVersions[0].Id)
-	assert.Equal(downstreamRevisionNewer, dbVersions[0].Revision)
+	assert.Equal(downstreamRevisionOlder, dbVersions[0].Revision)
+	assert.True(ingestTime.Equal(dbVersions[0].IngestTime))
 	assert.Equal(evergreen.VersionCreated, dbVersions[0].Status)
 	assert.Equal(downstreamProjectRef.Id, dbVersions[0].Identifier)
 	assert.Equal(evergreen.TriggerRequester, dbVersions[0].Requester)
@@ -622,6 +624,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 
 	assert.Equal("downstream_"+sampleOlderSHA+"_def1", dbVersions[1].Id)
 	assert.Equal(downstreamRevisionOlder, dbVersions[1].Revision)
+	assert.True(ingestTime.Equal(dbVersions[1].IngestTime))
 	assert.Equal(evergreen.VersionCreated, dbVersions[1].Status)
 	assert.Equal(downstreamProjectRef.Id, dbVersions[1].Identifier)
 	assert.Equal(evergreen.TriggerRequester, dbVersions[1].Requester)
@@ -665,4 +668,56 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 
 	// verify that triggering this version again does nothing
 	assert.NoError(TriggerDownstreamProjectsForPush(ctx, uptreamProjectRef.Id, pushEvent, ingestTime, TriggerDownstreamVersion))
+}
+
+func TestCreateManifest(t *testing.T) {
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, config)
+	require.NoError(t, config.Set(t.Context()))
+	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.RepositoryRevisionsHistoryCollection, manifest.Collection))
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.RepositoryRevisionsHistoryCollection, manifest.Collection))
+	})
+
+	ingestTime := time.Date(2026, time.July, 14, 12, 0, 0, 0, time.UTC)
+	const (
+		projectRevisionAtIngestTime = "178959df398ed0767113492cbd90ad9afbc67bfe"
+		projectRevisionAfterIngest  = "c37179fcad01b12ef752a65af3156fb8dc7e452c"
+		moduleRevisionAtIngestTime  = "9bdedd0990e83e328e42f7bb8c2771cab6ae0145"
+		moduleRevisionAfterIngest   = "7e05633b9bc529e19eba18b1fc88f78d346855b2"
+	)
+	projectRef := &model.ProjectRef{
+		Id:         "triggered-manifest-project",
+		Identifier: "triggered-manifest-project",
+		Owner:      "evergreen-ci",
+		Repo:       "evergreen",
+		Branch:     "main",
+	}
+	require.NoError(t, projectRef.Insert(t.Context()))
+	require.NoError(t, model.UpsertRepositoryRevision(t.Context(), projectRef.Owner, projectRef.Repo, projectRef.Branch, projectRevisionAtIngestTime, ingestTime))
+	require.NoError(t, model.UpsertRepositoryRevision(t.Context(), projectRef.Owner, projectRef.Repo, projectRef.Branch, projectRevisionAfterIngest, ingestTime.Add(time.Minute)))
+	require.NoError(t, model.UpsertRepositoryRevision(t.Context(), "evergreen-ci", "sample", "main", moduleRevisionAtIngestTime, ingestTime))
+	require.NoError(t, model.UpsertRepositoryRevision(t.Context(), "evergreen-ci", "sample", "main", moduleRevisionAfterIngest, ingestTime.Add(time.Minute)))
+
+	version := &model.Version{
+		Id:         "triggered-manifest-version",
+		Identifier: projectRef.Id,
+		Revision:   projectRevisionAtIngestTime,
+		Requester:  evergreen.TriggerRequester,
+		IngestTime: ingestTime,
+	}
+	createdManifest, err := model.CreateManifest(t.Context(), version, model.ModuleList{
+		{
+			Name:   "unpinned-module",
+			Owner:  "evergreen-ci",
+			Repo:   "sample",
+			Branch: "main",
+		},
+	}, projectRef)
+	require.NoError(t, err)
+	require.NotNil(t, createdManifest)
+	require.Contains(t, createdManifest.Modules, "unpinned-module")
+	module := createdManifest.Modules["unpinned-module"]
+	require.NotNil(t, module)
+	assert.Equal(t, moduleRevisionAtIngestTime, module.Revision)
 }

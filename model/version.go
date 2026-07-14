@@ -642,6 +642,7 @@ type VersionMetadata struct {
 	RemotePath          string
 	GitTag              GitTag
 	ChangedFiles        []string
+	IngestTime          time.Time
 }
 
 var (
@@ -1067,7 +1068,7 @@ func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Modul
 
 		// For mainline versions, use the latest module revision Evergreen ingested at or before the version's ingest time.
 		// Otherwise, use the current module branch head.
-		if !evergreen.IsPatchRequester(requester) && requester != evergreen.AdHocRequester && requester != evergreen.TriggerRequester {
+		if !evergreen.IsPatchRequester(requester) && requester != evergreen.AdHocRequester {
 			repoRevision, err := FindLatestRepositoryRevisionByIngestTime(ctx, owner, repo, module.Branch, ingestTime)
 			if err != nil {
 				return nil, errors.Wrapf(err, "finding latest repository revision by ingest time for project '%s'", projectRef.Id)

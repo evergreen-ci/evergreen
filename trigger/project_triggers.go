@@ -125,6 +125,7 @@ func getMetadataFromArgs(ctx context.Context, args ProcessorArgs) (model.Version
 		metadata.SourceCommit = args.PushRevision.Revision
 		ingestTime = args.PushIngestTime
 	}
+	metadata.IngestTime = ingestTime
 
 	repoRevision, err := model.FindLatestRepositoryRevisionByIngestTime(ctx, args.DownstreamProject.Owner, args.DownstreamProject.Repo, args.DownstreamProject.Branch, ingestTime)
 	if err != nil {

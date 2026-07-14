@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/google/go-github/v70/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -39,6 +41,7 @@ func TestGetMetadataFromArgs(t *testing.T) {
 		})
 		require.NoError(t, err)
 		assert.Equal(t, wantSHA, meta.Revision.Revision)
+		assert.Equal(t, ingestTime, meta.IngestTime)
 		assert.Equal(t, 123, meta.Revision.AuthorGithubUID)
 		assert.Empty(t, meta.SourceCommit)
 	})
@@ -63,6 +66,7 @@ func TestGetMetadataFromArgs(t *testing.T) {
 		})
 		require.NoError(t, err)
 		assert.Equal(t, wantSHA, meta.Revision.Revision)
+		assert.Equal(t, ingestTime, meta.IngestTime)
 		assert.Equal(t, push.Revision, meta.SourceCommit)
 	})
 }
@@ -89,4 +93,59 @@ func TestMakeDownstreamProjectFromFile(t *testing.T) {
 	assert.Equal(t, "task1", projectInfo.Project.Tasks[0].Name)
 	assert.Len(t, projectInfo.Project.BuildVariants, 1)
 	assert.Equal(t, "something", projectInfo.Project.BuildVariants[0].DisplayName)
+}
+
+func TestTriggerDownstreamProjectsForPush(t *testing.T) {
+	testConfig := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, testConfig)
+	require.NoError(t, testConfig.Set(t.Context()))
+	require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
+	})
+
+	const (
+		upstreamProjectID   = "push-trigger-upstream"
+		downstreamProjectID = "push-trigger-downstream"
+	)
+	downstream := model.ProjectRef{
+		Id:      downstreamProjectID,
+		Enabled: true,
+		Triggers: []model.TriggerDefinition{
+			{
+				Project:      upstreamProjectID,
+				Level:        model.ProjectTriggerLevelPush,
+				DefinitionID: "push-trigger-definition",
+				ConfigFile:   "trigger/testdata/downstream_config.yml",
+			},
+		},
+	}
+	require.NoError(t, downstream.Insert(t.Context()))
+
+	ingestTime := time.Date(2026, time.July, 14, 12, 0, 0, 0, time.UTC)
+	pushCommitTime := ingestTime.Add(-time.Minute)
+	pushEvent := &github.PushEvent{
+		Commits: []*github.HeadCommit{
+			{
+				ID:        github.String("upstream-push-sha"),
+				Timestamp: &github.Timestamp{Time: pushCommitTime},
+				Author:    &github.CommitAuthor{},
+			},
+		},
+	}
+	var processorArgs []ProcessorArgs
+	processor := func(_ context.Context, args ProcessorArgs) (*model.Version, error) {
+		processorArgs = append(processorArgs, args)
+		return &model.Version{Id: args.PushRevision.Revision}, nil
+	}
+
+	require.NoError(t, TriggerDownstreamProjectsForPush(t.Context(), upstreamProjectID, pushEvent, ingestTime, processor))
+	require.Len(t, processorArgs, 1)
+	assert.Equal(t, ingestTime, processorArgs[0].PushIngestTime)
+	assert.Equal(t, "upstream-push-sha", processorArgs[0].PushRevision.Revision)
+	assert.Equal(t, pushCommitTime, processorArgs[0].PushRevision.CreateTime)
+	assert.Equal(t, downstreamProjectID, processorArgs[0].DownstreamProject.Id)
+	assert.Equal(t, model.ProjectTriggerLevelPush, processorArgs[0].TriggerType)
+	assert.Equal(t, upstreamProjectID, processorArgs[0].TriggerID)
+	assert.Equal(t, "push-trigger-definition", processorArgs[0].DefinitionID)
 }

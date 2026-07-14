@@ -720,6 +720,7 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		Repo:                 ref.Repo,
 		Requester:            evergreen.RepotrackerVersionRequester,
 		Revision:             metadata.Revision.Revision,
+		IngestTime:           metadata.IngestTime,
 		Status:               evergreen.VersionCreated,
 		RevisionOrderNumber:  number,
 		TriggerID:            metadata.TriggerID,
@@ -1089,7 +1090,9 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			return errors.Wrap(err, "starting transaction")
 		}
 		database := env.DB()
-		v.IngestTime = time.Now()
+		if utility.IsZeroTime(v.IngestTime) {
+			v.IngestTime = time.Now()
+		}
 		_, err = database.Collection(model.VersionCollection).InsertOne(ctx, v)
 		if err != nil {
 			grip.Notice(ctx, message.WrapError(err, message.Fields{
