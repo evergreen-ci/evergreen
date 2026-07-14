@@ -156,6 +156,17 @@ func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConf
 		}
 	}
 
+	// The task tmp directory (WorkDir/tmp) has the same umask problem —
+	// MkdirAll creates it with 0777 but the umask strips group/other write
+	// bits, leaving the container user unable to write temp files (cgo,
+	// gcc, etc.). Chmod it the same way as the workdir.
+	if conf.WorkDir != "" {
+		tmpDir := filepath.Join(conf.WorkDir, "tmp")
+		if err := os.Chmod(tmpDir, 0777); err != nil {
+			grip.Warningf(ctx, "Could not chmod task tmp dir '%s' for container isolation: %s", tmpDir, err)
+		}
+	}
+
 	ci := conf.Distro.ContainerIsolation
 	ctx, span := a.tracer.Start(ctx, "container.create_and_start")
 	defer span.End()
@@ -165,17 +176,39 @@ func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConf
 		attribute.String("container.distro_id", conf.Task.DistroId),
 	)
 
+	// Build the extra mounts. /opt is bind-mounted read-only so toolchains
+	// (mongodbtoolchain, golang, java, ruby) installed at AMI provisioning
+	// are visible inside the container without baking them into the image.
+	// Skip the mount if /opt does not exist on the host — Docker rejects
+	// bind-mount sources that don't exist, which would fail container
+	// creation entirely.
+	//
+	// Security: /opt must contain only toolchains, never secrets. Read-only
+	// mounts still allow reading and exfiltration, so any credential
+	// material placed under /opt would be visible to every containerized
+	// task. AMI provisioning scripts for container-isolated distros must
+	// not write SSH keys, tokens, or other secrets to /opt.
+	var extraMounts []agentcontainer.Mount
+	if _, err := os.Stat("/opt"); err == nil {
+		extraMounts = append(extraMounts, agentcontainer.Mount{
+			Source: "/opt", Target: "/opt", ReadOnly: true,
+		})
+	} else {
+		grip.Warningf(ctx, "Host /opt not found, skipping toolchain bind mount for task '%s'", conf.Task.Id)
+	}
+
 	factory := a.containerFactory
 	if factory == nil {
 		factory = defaultContainerFactory
 	}
 	tc, err := factory(ctx, agentcontainer.Config{
-		Image:    ci.Image,
-		WorkDir:  conf.WorkDir,
-		TaskID:   conf.Task.Id,
-		MemoryMB: ci.MemoryMB,
-		CPUs:     ci.CPUs,
-		Logger:   log,
+		Image:       ci.Image,
+		WorkDir:     conf.WorkDir,
+		TaskID:      conf.Task.Id,
+		MemoryMB:    ci.MemoryMB,
+		CPUs:        ci.CPUs,
+		ExtraMounts: extraMounts,
+		Logger:      log,
 	})
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
@@ -199,6 +232,22 @@ func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConf
 	conf.ContainerID = tc.GetID()
 	conf.EnvFileHostDir = tc.GetEnvFileHostDir()
 	a.currentContainer = tc
+
+	// Write a static host-env file in the env tmpfs containing PATH and
+	// known toolchain env vars from the host. docker exec does not source
+	// /etc/profile.d/*.sh, so toolchain paths set by those scripts (e.g.
+	// /opt/golang/go1.24.13/bin added to PATH) are missing inside the
+	// container. WrapWithContainer passes this as a second --env-file so
+	// these vars reach every docker exec invocation. Per-command env vars
+	// (from the command's own env map) are written to a separate env-file
+	// and override these since Docker applies --env-file args in order.
+	if conf.EnvFileHostDir != "" {
+		hostEnvPath := filepath.Join(conf.EnvFileHostDir, ".evg-host-env")
+		if err := writeHostEnvFile(hostEnvPath); err != nil {
+			grip.Warningf(ctx, "Could not write host env file for container isolation: %s", err)
+		}
+	}
+
 	grip.Infof(ctx, "Started isolation container '%s' (image=%s) for task group starting with task '%s'.", tc.GetName(), ci.Image, conf.Task.Id)
 	return nil
 }
@@ -367,8 +416,17 @@ func (a *Agent) emitContainerFailureSnapshot(ctx context.Context, tc *taskContex
 		}
 	}
 
-	// Task log tail is intentionally omitted: task output goes to the remote
-	// Evergreen log service (not a local file) and is not accessible here.
+	// Task log tail (stdout/stderr) is an accepted deviation from the
+	// design doc's original "last 200 lines of stdout/stderr" requirement.
+	// Task output flows through Jasper senders to the remote Evergreen log
+	// service, not to a local file or container stdout. `docker logs` does
+	// not help because the container's PID 1 is `sleep infinity` — the
+	// actual task commands run via `docker exec` and their output is
+	// captured by Jasper, not by the Docker logging driver. The design doc
+	// (technical-design-agent-container-lifecycle.md and phase-0-plan.md)
+	// has been updated to reflect this deviation. Closing the gap would
+	// require a ring buffer in the logger infrastructure, deferred to
+	// Phase 1 if post-mortem finds the existing log pipeline insufficient.
 }
 
 // containerInspectJSON returns the full JSON from docker inspect for a container.
@@ -469,4 +527,54 @@ func (a *Agent) augmentOOMTrackerWithContainerSignal(ctx context.Context, tc *ta
 		detail.OOMTracker = &apimodels.OOMTrackerInfo{}
 	}
 	detail.OOMTracker.Detected = true
+}
+
+// hostEnvVars are environment variables set by /etc/profile.d/*.sh on the host
+// that configure toolchain access. docker exec does not source profile scripts,
+// so these vars must be explicitly forwarded into the container.
+var hostEnvVars = []string{
+	"PATH",
+	"GOROOT",
+	"JAVA_HOME",
+	"ANT_HOME",
+	"LD_LIBRARY_PATH",
+	"PKG_CONFIG_PATH",
+	"PYTHONPATH",
+	"NODE_PATH",
+	"CPATH",
+	"LIBRARY_PATH",
+}
+
+// writeHostEnvFile captures the host's toolchain-related env vars and writes
+// them to path in KEY=VALUE format. This file is passed as a --env-file to
+// docker exec so containerized processes can find toolchains installed at
+// /opt/golang, /opt/mongodbtoolchain, etc. without sourcing profile scripts.
+//
+// The agent runs as a systemd service whose PATH does not include toolchain
+// directories set by /etc/profile.d/*.sh. To capture the effective PATH and
+// toolchain vars that a login shell would have, we run `bash -l -c` to source
+// the profile scripts and print the env vars.
+func writeHostEnvFile(path string) error {
+	// Build a shell command that sources profile scripts and prints the
+	// vars we care about in KEY=VALUE format.
+	var cmdParts []string
+	for _, key := range hostEnvVars {
+		cmdParts = append(cmdParts, fmt.Sprintf("[ -n \"$%s\" ] && echo '%s='$%s", key, key, key))
+	}
+	shellCmd := strings.Join(cmdParts, "\n")
+
+	out, err := exec.Command("bash", "-l", "-c", shellCmd).Output()
+	if err != nil {
+		// Fall back to the agent process's own env vars if the login shell
+		// fails (e.g. bash not available). This won't have toolchain paths
+		// but preserves the base PATH.
+		var sb strings.Builder
+		for _, key := range hostEnvVars {
+			if val := os.Getenv(key); val != "" {
+				fmt.Fprintf(&sb, "%s=%s\n", key, val)
+			}
+		}
+		return os.WriteFile(path, []byte(sb.String()), 0600)
+	}
+	return os.WriteFile(path, out, 0600)
 }

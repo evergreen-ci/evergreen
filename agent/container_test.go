@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -383,4 +384,79 @@ func TestMaybeStartContainerFailClosedPropagatesFromRunTask(t *testing.T) {
 	require.Error(t, err, "fail-closed path must propagate error to runTask caller")
 	assert.Empty(t, conf.ContainerID, "ContainerID must not be set when container fails to start")
 	assert.Nil(t, a.currentContainer)
+}
+
+func TestMaybeStartContainerOptMountMatchesHostFilesystem(t *testing.T) {
+	ctx := t.Context()
+	a := agentForContainerTest()
+	created := &fakeContainer{id: "newid", name: "evergreen-task-new", envFileHostDir: "/tmp/env-new"}
+	var capturedCfg agentcontainer.Config
+	a.containerFactory = func(_ context.Context, cfg agentcontainer.Config) (ContainerHandle, error) {
+		capturedCfg = cfg
+		return created, nil
+	}
+	conf := &internal.TaskConfig{
+		Distro: makeDistroWithIsolation("ubuntu:22.04"),
+		Task:   task.Task{Id: "task-1"},
+	}
+
+	require.NoError(t, a.maybeStartContainer(ctx, conf, nil))
+
+	// The /opt mount is conditional on os.Stat("/opt") succeeding. On
+	// macOS/Linux test hosts /opt typically exists, but the test must not
+	// assume that — it verifies the mount is present iff /opt exists.
+	_, optExists := os.Stat("/opt")
+	found := false
+	for _, m := range capturedCfg.ExtraMounts {
+		if m.Source == "/opt" && m.Target == "/opt" && m.ReadOnly {
+			found = true
+		}
+	}
+	if optExists == nil {
+		assert.True(t, found, "ExtraMounts must contain /opt:ro when /opt exists on host")
+	} else {
+		assert.False(t, found, "ExtraMounts must not contain /opt when /opt does not exist on host")
+	}
+}
+
+func TestDestroyContainerCallsDestroyEvenWithCancelledContext(t *testing.T) {
+	ctx := t.Context()
+	fc := &fakeContainer{id: "abc", name: "ctr", envFileHostDir: "/tmp/env"}
+	a := makeAgentWithFakeContainer(fc)
+	conf := &internal.TaskConfig{ContainerID: "abc", EnvFileHostDir: "/tmp/env"}
+
+	// Cancel the context before calling destroyContainer to verify that
+	// Destroy is still called. The real TaskContainer.Destroy uses
+	// context.Background() internally so cleanup is not bypassed by caller
+	// cancellation. The fake ignores its context, so this test verifies
+	// the destroyContainer call site does not short-circuit on ctx.Err();
+	// integration testing against a real Docker daemon is needed to verify
+	// the internal context.Background() usage.
+	cancelledCtx, cancel := context.WithCancel(ctx)
+	cancel()
+
+	a.destroyContainer(cancelledCtx, conf)
+
+	assert.Equal(t, 1, fc.destroyCalled, "Destroy must be called even when context is cancelled")
+	assert.Nil(t, a.currentContainer)
+	assert.Empty(t, conf.ContainerID)
+}
+
+func TestDestroyContainerStillClearsReferenceOnDestroyError(t *testing.T) {
+	ctx := t.Context()
+	fc := &fakeContainer{
+		id:         "abc",
+		name:       "ctr",
+		destroyErr: errors.New("docker daemon unreachable"),
+	}
+	a := makeAgentWithFakeContainer(fc)
+	conf := &internal.TaskConfig{ContainerID: "abc"}
+
+	a.destroyContainer(ctx, conf)
+
+	// destroyContainer logs the warning but still clears the reference so
+	// the agent doesn't get stuck on a container it can't remove.
+	assert.Equal(t, 1, fc.destroyCalled, "Destroy must be called once")
+	assert.Nil(t, a.currentContainer, "currentContainer must be cleared even on Destroy error")
+	assert.Empty(t, conf.ContainerID)
 }

@@ -271,15 +271,71 @@ func (tc *TaskContainer) Close() {
 	_ = tc.cli.Close()
 }
 
-// Destroy force-removes the container and cleans up the env tmpfs, then closes
-// the Docker client.
+// containerStopTimeoutSecs is the grace period (in seconds) given to
+// in-container processes during a graceful shutdown before force-removing
+// the container. Docker sends SIGTERM to PID 1 on ContainerStop; if PID 1
+// exits within this window the container stops cleanly. If the grace period
+// elapses, ContainerStop sends SIGKILL and Destroy proceeds to the
+// force-remove fallback so it never hangs indefinitely.
+//
+// Known limitation: CreateAndStart sets hostCfg.Init=true, so Docker's
+// --init wrapper (tini) is PID 1, not `sleep infinity`. tini forwards
+// SIGTERM to its direct child (`sleep infinity`), but processes started
+// via `docker exec` are independent — they are not children of tini and
+// do not receive the signal. Workload processes launched through docker
+// exec are therefore force-killed by the SIGKILL after the timeout, not
+// gracefully terminated. This is an accepted Phase 0 limitation; the
+// graceful stop still ensures the container's init tree exits cleanly,
+// and the force-remove fallback ensures cleanup always completes.
+const containerStopTimeoutSecs = 10
+
+// containerStopClientBufferSecs is extra time added to the client-side
+// context beyond the daemon-side StopOptions.Timeout. The daemon needs
+// the full StopOptions.Timeout to send SIGTERM, wait, and SIGKILL before
+// it can respond. If the client context expires at the same time, the
+// client gets a context-deadline error even though the daemon is still
+// gracefully stopping the container — which would log a spurious "graceful
+// container stop failed" and fall through to force-remove, defeating the
+// purpose of the graceful stop. The buffer covers network round-trip and
+// daemon processing overhead.
+const containerStopClientBufferSecs = 5
+
+// containerRemoveTimeoutSecs bounds the force-remove operation. An
+// unresponsive Docker daemon can block ContainerRemove indefinitely;
+// this timeout ensures Destroy completes even if the daemon is stuck.
+const containerRemoveTimeoutSecs = 30
+
+// Destroy gracefully stops the container (SIGTERM + grace period), then
+// force-removes it and cleans up the env tmpfs. If the graceful stop fails or
+// times out, the force-remove ensures the container is still removed. The
+// Docker client is always closed.
+//
+// Cleanup operations use bounded background contexts detached from the caller
+// so that caller-side cancellation (e.g. task timeout, agent shutdown) does
+// not bypass container removal or tmpfs cleanup — both of which must complete
+// to avoid leaking containers and mounts on the host.
 func (tc *TaskContainer) Destroy(ctx context.Context) error {
 	defer tc.cli.Close()
 
+	// Use detached, bounded contexts for cleanup so caller cancellation
+	// do not bypass container removal or tmpfs cleanup, while still
+	// preventing an unresponsive Docker daemon from hanging Destroy.
+	// The client context gets buffer beyond the daemon-side timeout so
+	// the daemon has time to complete its SIGTERM→wait→SIGKILL cycle
+	// before the client cancels.
+	stopCtx, stopCancel := context.WithTimeout(context.Background(), time.Duration(containerStopTimeoutSecs+containerStopClientBufferSecs)*time.Second)
+	stopTimeout := containerStopTimeoutSecs
+	if err := tc.cli.ContainerStop(stopCtx, tc.ID, container.StopOptions{Timeout: &stopTimeout}); err != nil {
+		grip.Debugf(stopCtx, "graceful container stop failed for '%s', proceeding to force-remove: %s", tc.ID, err)
+	}
+	stopCancel()
+
+	removeCtx, removeCancel := context.WithTimeout(context.Background(), time.Duration(containerRemoveTimeoutSecs)*time.Second)
 	removeErr := errors.Wrap(
-		tc.cli.ContainerRemove(ctx, tc.ID, container.RemoveOptions{Force: true}),
+		tc.cli.ContainerRemove(removeCtx, tc.ID, container.RemoveOptions{Force: true}),
 		"removing container",
 	)
+	removeCancel()
 
 	var envErr error
 	if tc.EnvFileHostDir != "" {
@@ -288,8 +344,6 @@ func (tc *TaskContainer) Destroy(ctx context.Context) error {
 
 	if removeErr != nil {
 		if envErr != nil {
-			// Container removal failed, so log the tmpfs cleanup failure rather
-			// than dropping it; the mount may persist on the host.
 			grip.Error(ctx, message.WrapError(envErr, message.Fields{
 				"message": "env tmpfs cleanup failed after container removal error; mount may persist",
 				"dir":     tc.EnvFileHostDir,

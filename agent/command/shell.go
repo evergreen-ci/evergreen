@@ -18,6 +18,10 @@ import (
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // shellExec is responsible for running the shell code.
@@ -176,12 +180,35 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 				opts.StandardInput = strings.NewReader(c.Script)
 			}
 
+			// Start a container.exec_wrap span only when actually running
+			// inside a container. The span wraps the shared WrapWithContainer
+			// + runJasperProcess path so there is one code path, not two.
+			var span trace.Span
+			if conf.Distro != nil && conf.ContainerID != "" {
+				lctx, span = otel.Tracer("github.com/evergreen-ci/evergreen/agent").Start(lctx, "container.exec_wrap")
+				span.SetAttributes(
+					attribute.String("container.id", conf.ContainerID),
+					attribute.String("container.workdir", c.WorkingDir),
+					attribute.String("container.command_name", c.FullDisplayName()),
+				)
+			}
 			if conf.Distro != nil {
 				if err := agentutil.WrapWithContainer(lctx, opts, conf.ContainerID, c.WorkingDir, conf.EnvFileHostDir); err != nil {
+					if span != nil {
+						span.SetStatus(codes.Error, err.Error())
+						span.End()
+					}
 					return nil, errors.Wrap(err, "wrapping command for container execution")
 				}
 			}
-			return runJasperProcess(lctx, c.JasperManager(), c.Background, opts, conf.Task.Id, logger, conf.BackgroundFailures, c.ContinueOnError, conf.BackgroundCommandFailureEnabled)
+			proc, err := runJasperProcess(lctx, c.JasperManager(), c.Background, opts, conf.Task.Id, logger, conf.BackgroundFailures, c.ContinueOnError, conf.BackgroundCommandFailureEnabled)
+			if span != nil {
+				if err != nil {
+					span.SetStatus(codes.Error, err.Error())
+				}
+				span.End()
+			}
+			return proc, err
 		})
 
 	if !c.IgnoreStandardOutput {

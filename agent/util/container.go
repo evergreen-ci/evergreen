@@ -50,6 +50,16 @@ func WrapWithContainer(ctx context.Context, opts *options.Create, containerID, w
 	}
 
 	if envFileHostDir != "" {
+		// Pass the host-env file first (contains PATH, GOROOT, etc.
+		// captured from the host's profile scripts). The per-command
+		// env-file is passed second so its values override the host-env
+		// for command-specific variables. Docker applies --env-file args
+		// in order; later entries override earlier ones.
+		hostEnvPath := filepath.Join(envFileHostDir, ".evg-host-env")
+		if _, err := os.Stat(hostEnvPath); err == nil {
+			args = append(args, "--env-file="+hostEnvPath)
+		}
+
 		envFilePath := filepath.Join(envFileHostDir, containerEnvFileName)
 		if err := writeEnvFile(ctx, envFilePath, opts.Environment); err != nil {
 			return errors.Wrap(err, "writing container env file")
