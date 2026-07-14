@@ -117,6 +117,7 @@ func TestSelectTestsSetsTimeout(t *testing.T) {
 				Tests:        test.tests,
 			})
 			require.Error(t, err)
+			assert.ErrorIs(t, err, context.DeadlineExceeded)
 			assert.Empty(t, selectedTests)
 			require.Equal(t, 1, sender.Len())
 			fields, ok := sender.GetMessage().Message.Raw().(message.Fields)
