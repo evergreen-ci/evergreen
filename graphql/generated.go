@@ -427,6 +427,7 @@ type ComplexityRoot struct {
 	CostConfig struct {
 		EBSCost             func(childComplexity int) int
 		FinanceFormula      func(childComplexity int) int
+		HiddenCostProjects  func(childComplexity int) int
 		OnDemandDiscount    func(childComplexity int) int
 		S3Cost              func(childComplexity int) int
 		SavingsPlanDiscount func(childComplexity int) int
@@ -4240,6 +4241,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.CostConfig.FinanceFormula(childComplexity), true
+	case "CostConfig.hiddenCostProjects":
+		if e.complexity.CostConfig.HiddenCostProjects == nil {
+			break
+		}
+
+		return e.complexity.CostConfig.HiddenCostProjects(childComplexity), true
 	case "CostConfig.onDemandDiscount":
 		if e.complexity.CostConfig.OnDemandDiscount == nil {
 			break
@@ -18964,6 +18971,8 @@ func (ec *executionContext) fieldContext_AdminSettings_cost(_ context.Context, f
 				return ec.fieldContext_CostConfig_s3Cost(ctx, field)
 			case "ebsCost":
 				return ec.fieldContext_CostConfig_ebsCost(ctx, field)
+			case "hiddenCostProjects":
+				return ec.fieldContext_CostConfig_hiddenCostProjects(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type CostConfig", field.Name)
 		},
@@ -24952,6 +24961,35 @@ func (ec *executionContext) fieldContext_CostConfig_ebsCost(_ context.Context, f
 				return ec.fieldContext_EBSCostConfig_ebsDiscount(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type EBSCostConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CostConfig_hiddenCostProjects(ctx context.Context, field graphql.CollectedField, obj *model.APICostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CostConfig_hiddenCostProjects,
+		func(ctx context.Context) (any, error) {
+			return obj.HiddenCostProjects, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_CostConfig_hiddenCostProjects(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -82354,7 +82392,7 @@ func (ec *executionContext) unmarshalInputCostConfigInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"financeFormula", "savingsPlanDiscount", "onDemandDiscount", "s3Cost", "ebsCost"}
+	fieldsInOrder := [...]string{"financeFormula", "savingsPlanDiscount", "onDemandDiscount", "s3Cost", "ebsCost", "hiddenCostProjects"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -82396,6 +82434,13 @@ func (ec *executionContext) unmarshalInputCostConfigInput(ctx context.Context, o
 				return it, err
 			}
 			it.EBSCost = data
+		case "hiddenCostProjects":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hiddenCostProjects"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HiddenCostProjects = data
 		}
 	}
 
@@ -93732,6 +93777,8 @@ func (ec *executionContext) _CostConfig(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._CostConfig_s3Cost(ctx, field, obj)
 		case "ebsCost":
 			out.Values[i] = ec._CostConfig_ebsCost(ctx, field, obj)
+		case "hiddenCostProjects":
+			out.Values[i] = ec._CostConfig_hiddenCostProjects(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
