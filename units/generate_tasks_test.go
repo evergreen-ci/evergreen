@@ -17,8 +17,11 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
 
 var sampleBaseProject = `
@@ -949,4 +952,150 @@ func TestMarkGeneratedTasksError(t *testing.T) {
 	require.NotZero(t, dbTask)
 	assert.Equal(t, "version 'sample_version' not found", dbTask.GenerateTasksError)
 	assert.False(t, dbTask.GeneratedTasks)
+}
+
+// recordRootSpanAttributes starts a span backed by a local tracer provider, runs the given
+// job against a context carrying that span, ends the span, and returns its attributes as a
+// map. This substitutes for the amboy root span that wraps job execution in production,
+// since trace.SpanFromContext reads whatever span is in the context regardless of which
+// provider created it.
+func recordRootSpanAttributes(t *testing.T, ctx context.Context, j amboy.Job) map[string]any {
+	spanRecorder := tracetest.NewSpanRecorder()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(spanRecorder))
+	ctx, span := tp.Tracer("test").Start(ctx, "test")
+
+	j.Run(ctx)
+	span.End()
+
+	ended := spanRecorder.Ended()
+	require.Len(t, ended, 1)
+	attrs := map[string]any{}
+	for _, kv := range ended[0].Attributes() {
+		attrs[string(kv.Key)] = kv.Value.AsInterface()
+	}
+	return attrs
+}
+
+func TestGenerateTasksJobSetsWideEventAttributesOnRootSpanForSuccessfulGeneration(t *testing.T) {
+	ctx := t.Context()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection, model.ParserProjectCollection))
+	defer func() {
+		require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection, model.ParserProjectCollection))
+	}()
+
+	v := model.Version{
+		Id:         "sample_version",
+		Identifier: "mci",
+		BuildVariants: []model.VersionBuildStatus{{
+			BuildVariant: "generate-tasks-for-version",
+			BuildId:      "b1",
+		}, {
+			BuildVariant: "testBV1",
+			BuildId:      "b2",
+		}, {
+			BuildVariant: "testBV2",
+			BuildId:      "b3",
+		}},
+	}
+	require.NoError(t, v.Insert(t.Context()))
+	b1 := build.Build{
+		Id:           "b1",
+		BuildVariant: "generate-tasks-for-version",
+		Version:      "sample_version",
+		Activated:    true,
+	}
+	b2 := build.Build{
+		Id:           "b2",
+		BuildVariant: "testBV1",
+		Version:      "sample_version",
+		Activated:    true,
+	}
+	b3 := build.Build{
+		Id:           "b3",
+		BuildVariant: "testBV2",
+		Version:      "sample_version",
+		Activated:    true,
+	}
+	require.NoError(t, b1.Insert(t.Context()))
+	require.NoError(t, b2.Insert(t.Context()))
+	require.NoError(t, b3.Insert(t.Context()))
+
+	pp := model.ParserProject{}
+	require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(omitGeneratedTasksConfig), &pp))
+	pp.Id = "sample_version"
+	require.NoError(t, pp.Insert(t.Context()))
+
+	generateTask := task.Task{
+		Id:                    "mci_identifier_generate_tasks_for_version_version_gen__01_01_01_00_00_00",
+		Version:               "sample_version",
+		BuildId:               "b1",
+		Project:               "mci",
+		DisplayName:           "version_gen",
+		BuildVariant:          "generate-tasks-for-version",
+		GeneratedJSONAsString: sampleGeneratedProject2,
+		Status:                evergreen.TaskStarted,
+	}
+	require.NoError(t, generateTask.Insert(t.Context()))
+	projectRef := model.ProjectRef{Id: "mci", Identifier: "mci_identifier"}
+	require.NoError(t, projectRef.Insert(t.Context()))
+
+	j := NewGenerateTasksJob(env, generateTask.Version, generateTask.Id, "1")
+	attrs := recordRootSpanAttributes(t, ctx, j)
+	require.NoError(t, j.Error())
+
+	assert.Equal(t, generateTask.Id, attrs[evergreen.TaskIDOtelAttribute])
+	assert.Equal(t, int64(generateTask.Execution), attrs[evergreen.TaskExecutionOtelAttribute])
+	assert.Equal(t, generateTask.Version, attrs[evergreen.VersionIDOtelAttribute])
+	assert.Equal(t, generateTask.BuildId, attrs[evergreen.BuildIDOtelAttribute])
+	assert.Equal(t, generateTask.Project, attrs[evergreen.ProjectIDOtelAttribute])
+	assert.Equal(t, false, attrs[hasGeneratedTasksOtelAttribute])
+
+	assert.Equal(t, string(outcomeGenerated), attrs[generateTasksOutcomeAttribute])
+	assert.Equal(t, false, attrs[generateTasksIsSaveErrorAttribute])
+
+	require.Contains(t, attrs, generateTasksNumCreatedAttribute)
+	numCreated, ok := attrs[generateTasksNumCreatedAttribute].(int64)
+	require.True(t, ok)
+	assert.Positive(t, numCreated)
+	assert.Contains(t, attrs, generateTasksNumActivatedAttribute)
+}
+
+func TestGenerateTasksJobSetsAlreadyGeneratedOutcomeOnRootSpan(t *testing.T) {
+	ctx := t.Context()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	require.NoError(t, db.ClearCollections(task.Collection))
+	defer func() {
+		require.NoError(t, db.ClearCollections(task.Collection))
+	}()
+
+	sampleTask := task.Task{
+		Id:             "sample_task",
+		Version:        "sample_version",
+		BuildId:        "sample_build_id",
+		Project:        "mci",
+		DisplayName:    "sample_task",
+		Status:         evergreen.TaskStarted,
+		GeneratedTasks: true,
+	}
+	require.NoError(t, sampleTask.Insert(t.Context()))
+
+	j := NewGenerateTasksJob(env, sampleTask.Version, sampleTask.Id, "1")
+	attrs := recordRootSpanAttributes(t, ctx, j)
+	require.NoError(t, j.Error())
+
+	assert.Equal(t, string(outcomeAlreadyGenerated), attrs[generateTasksOutcomeAttribute])
+	assert.Equal(t, true, attrs[hasGeneratedTasksOtelAttribute])
+	assert.Equal(t, sampleTask.Id, attrs[evergreen.TaskIDOtelAttribute])
+	assert.Equal(t, sampleTask.Version, attrs[evergreen.VersionIDOtelAttribute])
+	assert.Equal(t, sampleTask.BuildId, attrs[evergreen.BuildIDOtelAttribute])
+	assert.Equal(t, sampleTask.Project, attrs[evergreen.ProjectIDOtelAttribute])
+
+	assert.NotContains(t, attrs, generateTasksNumCreatedAttribute)
 }
