@@ -744,7 +744,8 @@ func AddCORSHeaders(allowedOrigins []string, next http.HandlerFunc) http.Handler
 				w.Header().Add("Access-Control-Allow-Headers", fmt.Sprintf("%s, %s, %s", evergreen.APIKeyHeader, evergreen.APIUserHeader, gqlHeader))
 				w.Header().Add("Access-Control-Max-Age", "600")
 
-				// Only log the header if it doesn't match the expected URLs. This is to avoid over-logging.
+				// TODO: Delete when resolving DEVPROD-36667.
+				// To avoid over-logging, only log the header if it doesn't match the expected URLs.
 				if !isExpectedCORSOrigin(requester) {
 					grip.Info(r.Context(), message.Fields{
 						"message":    "CORS request from unexpected origin",
@@ -760,6 +761,7 @@ func AddCORSHeaders(allowedOrigins []string, next http.HandlerFunc) http.Handler
 	}
 }
 
+// TODO: Delete when resolving DEVPROD-36667.
 func isExpectedCORSOrigin(origin string) bool {
 	expectedURLs := []string{
 		"https://spruce.corp.mongodb.com",
