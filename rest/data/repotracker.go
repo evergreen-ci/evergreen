@@ -177,14 +177,11 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 // are pushed to a repository. The pushed time (aka ingest time) is the source of truth
 // for the commit on the Evergreen side for decisions like which module commit to use.
 func upsertRepositoryRevisionsFromPushEvent(ctx context.Context, projectID string, event *github.PushEvent, ingestTime time.Time) error {
-	catcher := grip.NewBasicCatcher()
-	for i, commit := range event.Commits {
-		if commit.GetID() == "" {
-			continue
-		}
-		catcher.Wrapf(model.UpsertRepositoryRevision(ctx, projectID, commit.GetID(), ingestTime, i), "upserting revision '%s'", commit.GetID())
+	commitID := event.GetAfter()
+	if commitID == "" {
+		return nil
 	}
-	return catcher.Resolve()
+	return errors.Wrapf(model.UpsertRepositoryRevision(ctx, projectID, commitID, ingestTime), "upserting revision '%s'", commitID)
 }
 
 func validatePushEvent(event *github.PushEvent) (string, error) {

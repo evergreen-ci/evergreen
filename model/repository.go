@@ -25,7 +25,6 @@ type RepositoryRevision struct {
 	Project    string    `bson:"project"`
 	Revision   string    `bson:"revision"`
 	IngestTime time.Time `bson:"ingest_time"`
-	Order      int       `bson:"order"`
 }
 
 var (
@@ -37,7 +36,6 @@ var (
 	RepositoryRevisionProjectKey    = bsonutil.MustHaveTag(RepositoryRevision{}, "Project")
 	RepositoryRevisionRevisionKey   = bsonutil.MustHaveTag(RepositoryRevision{}, "Revision")
 	RepositoryRevisionIngestTimeKey = bsonutil.MustHaveTag(RepositoryRevision{}, "IngestTime")
-	RepositoryRevisionOrderKey      = bsonutil.MustHaveTag(RepositoryRevision{}, "Order")
 )
 
 const (
@@ -98,7 +96,7 @@ func UpdateLastRevision(ctx context.Context, projectId, revision string) error {
 }
 
 // UpsertRepositoryRevision records that Evergreen ingested a project revision.
-func UpsertRepositoryRevision(ctx context.Context, projectID, revision string, ingestTime time.Time, order int) error {
+func UpsertRepositoryRevision(ctx context.Context, projectID, revision string, ingestTime time.Time) error {
 	if utility.IsZeroTime(ingestTime) {
 		ingestTime = time.Now()
 	}
@@ -114,7 +112,6 @@ func UpsertRepositoryRevision(ctx context.Context, projectID, revision string, i
 				RepositoryRevisionProjectKey:    projectID,
 				RepositoryRevisionRevisionKey:   revision,
 				RepositoryRevisionIngestTimeKey: ingestTime,
-				RepositoryRevisionOrderKey:      order,
 			},
 		},
 	)
@@ -129,7 +126,7 @@ func FindLatestRepositoryRevisionByIngestTime(ctx context.Context, projectID str
 		RepositoryRevisionIngestTimeKey: bson.M{
 			"$lte": ingestTime,
 		},
-	}).Sort([]string{"-" + RepositoryRevisionIngestTimeKey, "-" + RepositoryRevisionOrderKey})
+	}).Sort([]string{"-" + RepositoryRevisionIngestTimeKey})
 	err := db.FindOneQ(ctx, RepositoryRevisionsHistoryCollection, q, revision)
 	if adb.ResultsNotFound(err) {
 		return nil, nil

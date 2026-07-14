@@ -371,6 +371,17 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			}
 		}
 
+		if err = model.UpsertRepositoryRevision(ctx, ref.Id, v.Revision, v.IngestTime); err != nil {
+			grip.Error(ctx, message.WrapError(err, message.Fields{
+				"message":            "error upserting repository revision",
+				"runner":             RunnerName,
+				"project":            ref.Id,
+				"project_identifier": ref.Identifier,
+				"revision":           v.Revision,
+				"version":            v.Id,
+			}))
+		}
+
 		_, err = model.CreateManifest(ctx, v, pInfo.Project.Modules, ref)
 		if err != nil {
 			grip.Error(ctx, message.WrapError(err, message.Fields{

@@ -75,6 +75,7 @@ func TestUpsertRepositoryRevisionsFromPushEvent(t *testing.T) {
 			{ID: utility.ToStringPtr("revision-2")},
 			{},
 		},
+		After: utility.ToStringPtr("revision-2"),
 	}
 
 	require.NoError(t, upsertRepositoryRevisionsFromPushEvent(t.Context(), "project", event, ingestTime))
@@ -83,5 +84,4 @@ func TestUpsertRepositoryRevisionsFromPushEvent(t *testing.T) {
 	require.NotNil(t, revision)
 	assert.Equal(t, "revision-2", revision.Revision)
 	assert.WithinDuration(t, ingestTime, revision.IngestTime, time.Millisecond)
-	assert.Equal(t, 1, revision.Order)
 }
