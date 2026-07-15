@@ -49,7 +49,7 @@ func TestSelectTestsFailedDependencyShouldNotRetry(t *testing.T) {
 		Secret: "task_secret",
 	}, restmodel.SelectTestsRequest{})
 	require.Error(t, err)
-	assert.Equal(t, int32(1), calls.Load())
+	assert.EqualValues(t, 1, calls.Load())
 }
 
 func TestSelectTestsInternalServerErrorShouldRetry(t *testing.T) {
@@ -72,7 +72,7 @@ func TestSelectTestsInternalServerErrorShouldRetry(t *testing.T) {
 		Secret: "task_secret",
 	}, restmodel.SelectTestsRequest{})
 	require.NoError(t, err)
-	assert.Equal(t, int32(2), calls.Load())
+	assert.EqualValues(t, 2, calls.Load())
 }
 
 func TestLoggerProducerRedactorOptions(t *testing.T) {
