@@ -9,6 +9,7 @@ import (
 type dependencyIncluder struct {
 	Project                 *Project
 	requester               string
+	branch                  string
 	included                map[TVPair]bool
 	deactivateGeneratedDeps map[TVPair]bool
 }
@@ -18,8 +19,8 @@ type dependencyIncluder struct {
 // for the given set of tasks.
 // If any dependency is cross-variant, it will include the variant and task for that dependency.
 // This function can return an error, but it should be treated as an informational warning.
-func IncludeDependencies(project *Project, tvpairs []TVPair, requester string, activationInfo *specificActivationInfo) ([]TVPair, error) {
-	di := &dependencyIncluder{Project: project, requester: requester}
+func IncludeDependencies(project *Project, tvpairs []TVPair, requester, branch string, activationInfo *specificActivationInfo) ([]TVPair, error) {
+	di := &dependencyIncluder{Project: project, requester: requester, branch: branch}
 	return di.include(tvpairs, activationInfo, nil)
 }
 
@@ -27,8 +28,8 @@ func IncludeDependencies(project *Project, tvpairs []TVPair, requester string, a
 // activationInfo and generatedVariants are required in the case for generate tasks to detect if
 // new generated dependency's task/variant pairs are depended on by inactive tasks. If so,
 // we also set these new dependencies to inactive.
-func IncludeDependenciesWithGenerated(project *Project, tvpairs []TVPair, requester string, activationInfo *specificActivationInfo, generatedVariants []parserBV) ([]TVPair, error) {
-	di := &dependencyIncluder{Project: project, requester: requester}
+func IncludeDependenciesWithGenerated(project *Project, tvpairs []TVPair, requester, branch string, activationInfo *specificActivationInfo, generatedVariants []parserBV) ([]TVPair, error) {
+	di := &dependencyIncluder{Project: project, requester: requester, branch: branch}
 	return di.include(tvpairs, activationInfo, generatedVariants)
 }
 
@@ -134,6 +135,11 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 		// return false and no error here.
 		di.included[pair] = false
 		return false, errors.Errorf("task '%s' in variant '%s' cannot be run for a '%s'", pair.TaskName, pair.Variant, di.requester)
+	}
+
+	if bvt.skipOnBranch(di.branch) {
+		di.included[pair] = false
+		return false, nil
 	}
 
 	if bvt.IsDisabled() {

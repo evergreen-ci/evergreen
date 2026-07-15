@@ -526,7 +526,7 @@ func (g *GeneratedProject) getNewTasksWithDependencies(ctx context.Context, v *V
 	}
 
 	var err error
-	newTVPairs.ExecTasks, err = IncludeDependenciesWithGenerated(p, newTVPairs.ExecTasks, v.Requester, activationInfo, g.BuildVariants)
+	newTVPairs.ExecTasks, err = IncludeDependenciesWithGenerated(p, newTVPairs.ExecTasks, v.Requester, v.Branch, activationInfo, g.BuildVariants)
 	grip.Warning(ctx, message.WrapError(err, message.Fields{
 		"message": "error including dependencies for generator",
 		"task":    g.Task.Id,
@@ -907,6 +907,7 @@ func isNonZeroBV(bv parserBV) bool {
 		bv.Disable != nil || len(bv.Tags) > 0 ||
 		bv.BatchTime != nil || bv.Patchable != nil || bv.PatchOnly != nil ||
 		bv.AllowForGitTag != nil || bv.GitTagOnly != nil || len(bv.AllowedRequesters) > 0 ||
+		len(bv.AllowedBranches) > 0 || len(bv.IgnoredBranches) > 0 ||
 		bv.Stepback != nil || bv.DeactivatePrevious != nil || len(bv.RunOn) > 0 {
 		return true
 	}

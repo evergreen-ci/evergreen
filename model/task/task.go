@@ -120,7 +120,10 @@ type Task struct {
 	ResultsService        string                `bson:"results_service,omitempty" json:"results_service,omitempty"`
 	HasTestResults        bool                  `bson:"has_test_results,omitempty" json:"has_test_results,omitempty"`
 	ResultsFailed         bool                  `bson:"results_failed,omitempty" json:"results_failed,omitempty"`
-	MustHaveResults       bool                  `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
+	// NumQuarantinedTestsSkipped is the number of tests this execution skipped
+	// because they were quarantined in TSS.
+	NumQuarantinedTestsSkipped int  `bson:"num_quarantined_tests_skipped,omitempty" json:"num_quarantined_tests_skipped,omitempty"`
+	MustHaveResults            bool `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
 	// only relevant if the task is running.  the time of the last heartbeat
 	// sent back by the agent
 	LastHeartbeat time.Time `bson:"last_heartbeat" json:"last_heartbeat"`
@@ -2359,6 +2362,7 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 		t.ResultsService = ""
 		t.ResultsFailed = false
 		t.HasTestResults = false
+		t.NumQuarantinedTestsSkipped = 0
 		t.ResetWhenFinished = false
 		t.ResetFailedWhenFinished = false
 		t.AgentVersion = ""
@@ -2402,6 +2406,7 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 				TaskOutputInfoKey,
 				ResultsFailedKey,
 				HasTestResultsKey,
+				NumQuarantinedTestsSkippedKey,
 				ResetWhenFinishedKey,
 				IsAutomaticRestartKey,
 				ResetFailedWhenFinishedKey,

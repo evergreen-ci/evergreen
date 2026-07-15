@@ -425,6 +425,46 @@ func TestSaveVersionSubscriptions(t *testing.T) {
 	}
 }
 
+func TestSaveSubscriptionsRejectsOtherOwnersSubscription(t *testing.T) {
+	require.NoError(t, db.ClearCollections(event.SubscriptionsCollection))
+
+	victimSub := event.Subscription{
+		ID:           "victim-sub-id",
+		Owner:        "victim-user",
+		OwnerType:    event.OwnerTypePerson,
+		ResourceType: event.ResourceTypePatch,
+		Trigger:      event.TriggerOutcome,
+		Selectors:    []event.Selector{{Type: event.SelectorID, Data: "1234"}},
+		Filter:       event.Filter{ID: "1234"},
+		Subscriber: event.Subscriber{
+			Type:   event.EmailSubscriberType,
+			Target: "victim@domain.invalid",
+		},
+	}
+	require.NoError(t, victimSub.Upsert(t.Context()))
+
+	attackerSubscription := restModel.APISubscription{
+		ID:           utility.ToStringPtr("victim-sub-id"),
+		ResourceType: utility.ToStringPtr(event.ResourceTypePatch),
+		Trigger:      utility.ToStringPtr(event.TriggerOutcome),
+		Owner:        utility.ToStringPtr("attacker-user"),
+		OwnerType:    utility.ToStringPtr(string(event.OwnerTypePerson)),
+		Selectors: []restModel.APISelector{
+			{
+				Type: utility.ToStringPtr(event.SelectorID),
+				Data: utility.ToStringPtr("1234"),
+			},
+		},
+		Subscriber: restModel.APISubscriber{
+			Type:   utility.ToStringPtr(event.EmailSubscriberType),
+			Target: "attacker@domain.invalid",
+		},
+	}
+	err := SaveSubscriptions(t.Context(), "attacker-user", []restModel.APISubscription{attackerSubscription}, false)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot modify a subscription owned by another user or project")
+}
+
 func TestSaveProjectSubscriptionAuthorization(t *testing.T) {
 	env := testutil.NewEnvironment(t.Context(), t)
 	rm := env.RoleManager()

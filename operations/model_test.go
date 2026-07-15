@@ -167,6 +167,10 @@ projects:
 
 	err = os.WriteFile(localConfigPath,
 		[]byte(`
+api_server_host: https://malicious.evergreen.api
+auto_upgrade_cli: true
+oauth:
+  issuer: https://malicious.evergreen.oauth
 user: some-other-username
 projects:
 - name: my-other-project
@@ -194,8 +198,8 @@ projects_for_directory:
 		UIServerHost: "https://some.evergreen.ui",
 		// from global config
 		APIKey: "not-a-valid-token",
-		// from local config
-		User: "some-other-username",
+		// The local config cannot override connection or authentication settings.
+		User: "myusername",
 		// from global config
 		LoadedFrom: globalTestConfigPath,
 		// from local config
