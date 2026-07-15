@@ -229,6 +229,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/subscriptions").Version(2).Post().Wrap(requireUser, rateLimit).RouteHandler(makeSetSubscription())
 	app.AddRoute("/tasks/{task_id}").Version(2).Get().Wrap(requireUser, viewTasks, rateLimit).RouteHandler(makeGetTaskRoute(parsleyURL))
 	app.AddRoute("/tasks/{task_id}").Version(2).Patch().Wrap(requireUser, addProject, editTasks, rateLimit).RouteHandler(makeModifyTaskRoute())
+	// No auth or rate-limit middleware: this endpoint is hit by plain curl from tasks, so it uses in-band HMAC token authentication.
 	app.AddRoute("/tasks/{task_id}/artifact/sign").Version(2).Get().Handler(artifactSignHandler())
 	app.AddRoute("/tasks/{task_id}/artifacts/url").Version(2).Patch().Wrap(requireUser, addProject, requireProjectAdmin, editTasks, rateLimit).RouteHandler(makeUpdateArtifactURLRoute())
 	app.AddRoute("/tasks/{task_id}/annotations").Version(2).Get().Wrap(requireUser, viewAnnotations, rateLimit).RouteHandler(makeFetchAnnotationsByTask())
