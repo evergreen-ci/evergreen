@@ -311,7 +311,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.SimpleVersions = true
 
 	// Project lookup and validation routes
-	app.AddRoute("/ref/{projectId}").Wrap(requireUser, requireProject, viewTasks).Handler(as.fetchLimitedProjectRef).Get()
+	app.AddRoute("/ref/{projectId}").Wrap(requireUser, viewTasks).Handler(as.fetchLimitedProjectRef).Get()
 	// Please do not use this route internally, it is deprecated. Use the REST v2 /validate route instead.
 	app.AddRoute("/validate").Wrap(requireUser).Handler(as.validateProjectConfig).Post()
 
