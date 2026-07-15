@@ -1115,37 +1115,19 @@ func (s *Subscription) saveWebhookAuthHeaderIfNeeded(ctx context.Context) error 
 		}
 		webhookSub.AuthorizationHeaderParameter = paramName
 	} else if s.ID != "" {
-		// Authorization header was removed on update. Clean up the old PS entry if
-		// one exists, so we don't leave orphaned parameters in Parameter Store.
+		// Subscription still exists but Authorization header was removed on
+		// update, so clean up the old PS parameter.
 		existing, err := FindSubscriptionByID(ctx, s.ID)
 		if err != nil {
-			grip.Warning(ctx, message.Fields{
-				"message":         "finding subscription to clean up Authorization header from Parameter Store",
-				"subscription_id": s.ID,
-				"error":           err.Error(),
-				"ticket":          "DEVPROD-15500",
-			})
-			return nil
+			return errors.Wrapf(err, "finding subscription '%s' to delete webhook Authorization header parameter", s.ID)
 		}
 		if existing != nil && existing.Owner != s.Owner {
 			return nil
 		}
 		if existing != nil {
 			if existingWebhookSub, ok := existing.Subscriber.Target.(*WebhookSubscriber); ok && existingWebhookSub != nil && existingWebhookSub.AuthorizationHeaderParameter != "" {
-				if delErr := deleteWebhookSecretFromParameterStore(ctx, existingWebhookSub.AuthorizationHeaderParameter); delErr != nil {
-					grip.Warning(ctx, message.WrapError(delErr, message.Fields{
-						"message":         "deleting webhook Authorization header from Parameter Store on header removal",
-						"subscription_id": s.ID,
-						"parameter_name":  existingWebhookSub.AuthorizationHeaderParameter,
-						"ticket":          "DEVPROD-15500",
-					}))
-				} else {
-					grip.Debug(ctx, message.Fields{
-						"message":         "webhook Authorization header removed from Parameter Store",
-						"subscription_id": s.ID,
-						"parameter_name":  existingWebhookSub.AuthorizationHeaderParameter,
-						"ticket":          "DEVPROD-15500",
-					})
+				if err := deleteWebhookSecretFromParameterStore(ctx, existingWebhookSub.AuthorizationHeaderParameter); err != nil {
+					return errors.Wrapf(err, "deleting webhook Authorization header parameter for subscription '%s'", s.ID)
 				}
 			}
 		}

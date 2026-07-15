@@ -721,40 +721,6 @@ func (s *subscriptionsSuite) TestUpsertWebhookSavesAuthHeaderToParameterStore() 
 	s.Equal("custom-value", webhookSub.GetHeader("X-Custom"), "non-sensitive header should be preserved")
 }
 
-// TODO(DEVPROD-15500): remove this test once the migration job has backfilled all legacy subscriptions.
-func (s *subscriptionsSuite) TestFindSubscriptionByIDFallsBackToMongoDBAuthHeader() {
-	// Insert directly (bypassing Upsert) to simulate a legacy subscription that has the
-	// Authorization header in MongoDB but no authorization_header_parameter set.
-	sub := Subscription{
-		ID:           "legacy-webhook-auth",
-		ResourceType: ResourceTypePatch,
-		Trigger:      TriggerOutcome,
-		Filter:       Filter{ID: "test"},
-		Subscriber: Subscriber{
-			Type: EvergreenWebhookSubscriberType,
-			Target: &WebhookSubscriber{
-				URL:    "https://legacy.example.com",
-				Secret: []byte("legacy-secret"),
-				Headers: []WebhookHeader{
-					{Key: WebhookAuthorizationHeader, Value: "Bearer legacy-token"},
-				},
-			},
-		},
-		Owner:     "me",
-		OwnerType: OwnerTypePerson,
-	}
-	s.Require().NoError(db.Insert(s.T().Context(), SubscriptionsCollection, sub))
-
-	found, err := FindSubscriptionByID(s.T().Context(), "legacy-webhook-auth")
-	s.Require().NoError(err)
-	s.Require().NotNil(found)
-	foundWebhook, ok := found.Subscriber.Target.(*WebhookSubscriber)
-	s.Require().True(ok)
-	s.Require().NotNil(foundWebhook)
-	s.Equal("Bearer legacy-token", foundWebhook.GetHeader(WebhookAuthorizationHeader), "should fall back to MongoDB auth header")
-	s.Empty(foundWebhook.AuthorizationHeaderParameter)
-}
-
 func (s *subscriptionsSuite) TestRemoveSubscriptionDeletesAuthHeaderFromParameterStore() {
 	webhookSub := &WebhookSubscriber{
 		URL:    "https://example.com/webhook",
