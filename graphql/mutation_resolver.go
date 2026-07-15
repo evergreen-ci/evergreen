@@ -519,6 +519,12 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 
 // CopyProject is the resolver for the copyProject field.
 func (r *mutationResolver) CopyProject(ctx context.Context, project restModel.CopyProjectOpts) (*restModel.APIProjectRef, error) {
+	sourceProject, err := getProjectWithSettingsEditPermission(ctx, project.ProjectIdToCopy)
+	if err != nil {
+		return nil, err
+	}
+	project.ProjectIdToCopy = sourceProject.Id
+
 	projectRef, err := data.CopyProject(ctx, evergreen.GetEnvironment(), project)
 	if projectRef == nil && err != nil {
 		apiErr, ok := err.(gimlet.ErrorResponse) // make sure bad request errors are handled correctly; all else should be treated as internal server error
@@ -592,7 +598,12 @@ func (r *mutationResolver) DeleteGithubAppCredentials(ctx context.Context, opts 
 
 // DeleteProject is the resolver for the deleteProject field.
 func (r *mutationResolver) DeleteProject(ctx context.Context, projectID string) (bool, error) {
-	if err := data.HideBranch(ctx, projectID); err != nil {
+	project, err := getProjectWithSettingsEditPermission(ctx, projectID)
+	if err != nil {
+		return false, err
+	}
+
+	if err = data.HideBranch(ctx, project.Id); err != nil {
 		gimletErr, ok := err.(gimlet.ErrorResponse)
 		if ok {
 			return false, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
@@ -697,12 +708,9 @@ func (r *mutationResolver) SetLastRevision(ctx context.Context, opts SetLastRevi
 		return nil, InputValidationError.Send(ctx, fmt.Sprintf("insufficient length: must provide %d characters for revision", gitHashLength))
 	}
 
-	project, err := model.FindBranchProjectRef(ctx, opts.ProjectIdentifier)
+	project, err := getProjectWithSettingsEditPermission(ctx, opts.ProjectIdentifier)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", opts.ProjectIdentifier, err.Error()))
-	}
-	if project == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", opts.ProjectIdentifier))
+		return nil, err
 	}
 
 	if err = model.UpdateLastRevision(ctx, project.Id, opts.Revision); err != nil {

@@ -16,8 +16,9 @@ import (
 )
 
 const (
-	projectIdKey  = "projectId"
-	identifierKey = "identifier"
+	projectIdKey       = "projectId"
+	projectIdToCopyKey = "projectIdToCopy"
+	identifierKey      = "identifier"
 
 	// Keys that are used in the paramsMap.
 	projectIdentifierKey = "projectIdentifier"
@@ -150,6 +151,9 @@ func BuildProjectParameterMapForGraphQL(args map[string]any) (map[string]string,
 	}
 	if projectId, hasProjectId := args[projectIdKey].(string); hasProjectId {
 		paramsMap[projectIdentifierKey] = projectId
+	}
+	if projectIdToCopy, hasProjectIdToCopy := args[projectIdToCopyKey].(string); hasProjectIdToCopy {
+		paramsMap[projectIdentifierKey] = projectIdToCopy
 	}
 	if repoId, hasRepoId := args[repoIdKey].(string); hasRepoId {
 		paramsMap[repoIdKey] = repoId

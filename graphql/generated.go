@@ -103,7 +103,7 @@ type DirectiveRoot struct {
 	RequireHostAccess            func(ctx context.Context, obj any, next graphql.Resolver, access HostAccessLevel) (res any, err error)
 	RequirePatchOwner            func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireProjectAccess         func(ctx context.Context, obj any, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (res any, err error)
-	RequireProjectAdmin          func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
+	RequireProjectCreate         func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireProjectSettingsAccess func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireRepoAccess            func(ctx context.Context, obj any, next graphql.Resolver, access AccessLevel) (res any, err error)
 	RequireVolumeAccess          func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
@@ -13954,53 +13954,12 @@ func (ec *executionContext) field_Mutation_copyDistro_argsOpts(
 func (ec *executionContext) field_Mutation_copyProject_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-
-	arg0, err := ec.field_Mutation_copyProject_argsProject(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "project", ec.unmarshalNCopyProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐCopyProjectOpts)
 	if err != nil {
 		return nil, err
 	}
 	args["project"] = arg0
 	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_copyProject_argsProject(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (model.CopyProjectOpts, error) {
-	if _, ok := rawArgs["project"]; !ok {
-		var zeroVal model.CopyProjectOpts
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("project"))
-	directive0 := func(ctx context.Context) (any, error) {
-		tmp, ok := rawArgs["project"]
-		if !ok {
-			var zeroVal model.CopyProjectOpts
-			return zeroVal, nil
-		}
-		return ec.unmarshalNCopyProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐCopyProjectOpts(ctx, tmp)
-	}
-
-	directive1 := func(ctx context.Context) (any, error) {
-		if ec.directives.RequireProjectAdmin == nil {
-			var zeroVal model.CopyProjectOpts
-			return zeroVal, errors.New("directive requireProjectAdmin is not implemented")
-		}
-		return ec.directives.RequireProjectAdmin(ctx, rawArgs, directive0)
-	}
-
-	tmp, err := directive1(ctx)
-	if err != nil {
-		var zeroVal model.CopyProjectOpts
-		return zeroVal, graphql.ErrorOnPath(ctx, err)
-	}
-	if data, ok := tmp.(model.CopyProjectOpts); ok {
-		return data, nil
-	} else {
-		var zeroVal model.CopyProjectOpts
-		return zeroVal, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be github.com/evergreen-ci/evergreen/rest/model.CopyProjectOpts`, tmp))
-	}
 }
 
 func (ec *executionContext) field_Mutation_createDistro_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
@@ -14092,11 +14051,11 @@ func (ec *executionContext) field_Mutation_createProject_argsProject(
 	}
 
 	directive1 := func(ctx context.Context) (any, error) {
-		if ec.directives.RequireProjectAdmin == nil {
+		if ec.directives.RequireProjectCreate == nil {
 			var zeroVal model.APIProjectRef
-			return zeroVal, errors.New("directive requireProjectAdmin is not implemented")
+			return zeroVal, errors.New("directive requireProjectCreate is not implemented")
 		}
-		return ec.directives.RequireProjectAdmin(ctx, rawArgs, directive0)
+		return ec.directives.RequireProjectCreate(ctx, rawArgs, directive0)
 	}
 
 	tmp, err := directive1(ctx)
@@ -14199,11 +14158,21 @@ func (ec *executionContext) field_Mutation_deleteProject_argsProjectID(
 	}
 
 	directive1 := func(ctx context.Context) (any, error) {
-		if ec.directives.RequireProjectAdmin == nil {
+		permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "SETTINGS")
+		if err != nil {
 			var zeroVal string
-			return zeroVal, errors.New("directive requireProjectAdmin is not implemented")
+			return zeroVal, err
 		}
-		return ec.directives.RequireProjectAdmin(ctx, rawArgs, directive0)
+		access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+		if err != nil {
+			var zeroVal string
+			return zeroVal, err
+		}
+		if ec.directives.RequireProjectAccess == nil {
+			var zeroVal string
+			return zeroVal, errors.New("directive requireProjectAccess is not implemented")
+		}
+		return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
 	}
 
 	tmp, err := directive1(ctx)
@@ -15298,53 +15267,12 @@ func (ec *executionContext) field_Mutation_setAnnotationMetadataLinks_args(ctx c
 func (ec *executionContext) field_Mutation_setLastRevision_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-
-	arg0, err := ec.field_Mutation_setLastRevision_argsOpts(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "opts", ec.unmarshalNSetLastRevisionInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSetLastRevisionInput)
 	if err != nil {
 		return nil, err
 	}
 	args["opts"] = arg0
 	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_setLastRevision_argsOpts(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (SetLastRevisionInput, error) {
-	if _, ok := rawArgs["opts"]; !ok {
-		var zeroVal SetLastRevisionInput
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
-	directive0 := func(ctx context.Context) (any, error) {
-		tmp, ok := rawArgs["opts"]
-		if !ok {
-			var zeroVal SetLastRevisionInput
-			return zeroVal, nil
-		}
-		return ec.unmarshalNSetLastRevisionInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSetLastRevisionInput(ctx, tmp)
-	}
-
-	directive1 := func(ctx context.Context) (any, error) {
-		if ec.directives.RequireProjectAdmin == nil {
-			var zeroVal SetLastRevisionInput
-			return zeroVal, errors.New("directive requireProjectAdmin is not implemented")
-		}
-		return ec.directives.RequireProjectAdmin(ctx, rawArgs, directive0)
-	}
-
-	tmp, err := directive1(ctx)
-	if err != nil {
-		var zeroVal SetLastRevisionInput
-		return zeroVal, graphql.ErrorOnPath(ctx, err)
-	}
-	if data, ok := tmp.(SetLastRevisionInput); ok {
-		return data, nil
-	} else {
-		var zeroVal SetLastRevisionInput
-		return zeroVal, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be github.com/evergreen-ci/evergreen/graphql.SetLastRevisionInput`, tmp))
-	}
 }
 
 func (ec *executionContext) field_Mutation_setPatchVisibility_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
@@ -82374,11 +82302,36 @@ func (ec *executionContext) unmarshalInputCopyProjectInput(ctx context.Context, 
 			it.NewProjectIdentifier = data
 		case "projectIdToCopy":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdToCopy"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2string(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "SETTINGS")
+				if err != nil {
+					var zeroVal string
+					return zeroVal, err
+				}
+				access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+				if err != nil {
+					var zeroVal string
+					return zeroVal, err
+				}
+				if ec.directives.RequireProjectAccess == nil {
+					var zeroVal string
+					return zeroVal, errors.New("directive requireProjectAccess is not implemented")
+				}
+				return ec.directives.RequireProjectAccess(ctx, obj, directive0, permission, access)
 			}
-			it.ProjectIdToCopy = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(string); ok {
+				it.ProjectIdToCopy = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		}
 	}
 
@@ -88922,11 +88875,36 @@ func (ec *executionContext) unmarshalInputSetLastRevisionInput(ctx context.Conte
 		switch k {
 		case "projectIdentifier":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2string(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "SETTINGS")
+				if err != nil {
+					var zeroVal string
+					return zeroVal, err
+				}
+				access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+				if err != nil {
+					var zeroVal string
+					return zeroVal, err
+				}
+				if ec.directives.RequireProjectAccess == nil {
+					var zeroVal string
+					return zeroVal, errors.New("directive requireProjectAccess is not implemented")
+				}
+				return ec.directives.RequireProjectAccess(ctx, obj, directive0, permission, access)
 			}
-			it.ProjectIdentifier = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(string); ok {
+				it.ProjectIdentifier = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		case "revision":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("revision"))
 			data, err := ec.unmarshalNString2string(ctx, v)
