@@ -856,6 +856,89 @@ func TestGetHeader(t *testing.T) {
 	assert.Empty(t, ws.GetHeader("X-Missing"))
 }
 
+func (s *subscriptionsSuite) TestUpsertRejectsOwnerMismatch() {
+	webhookSub := &WebhookSubscriber{
+		URL:    "https://example.com/webhook",
+		Secret: []byte("victim-secret"),
+	}
+	sub := Subscription{
+		ID:           "victim-sub",
+		ResourceType: ResourceTypePatch,
+		Trigger:      TriggerOutcome,
+		Selectors:    []Selector{{Type: SelectorID, Data: "test"}},
+		Filter:       Filter{ID: "test"},
+		Subscriber: Subscriber{
+			Type:   EvergreenWebhookSubscriberType,
+			Target: webhookSub,
+		},
+		Owner:     "victim-user",
+		OwnerType: OwnerTypePerson,
+	}
+	s.Require().NoError(sub.Upsert(s.T().Context()))
+	originalSecretParam := webhookSub.SecretParameter
+	s.Require().NotEmpty(originalSecretParam)
+
+	attackerWebhookSub := &WebhookSubscriber{
+		URL:    "https://attacker.com/webhook",
+		Secret: []byte("attacker-secret"),
+	}
+	attackerSub := Subscription{
+		ID:           "victim-sub",
+		ResourceType: ResourceTypePatch,
+		Trigger:      TriggerOutcome,
+		Selectors:    []Selector{{Type: SelectorID, Data: "test"}},
+		Filter:       Filter{ID: "test"},
+		Subscriber: Subscriber{
+			Type:   EvergreenWebhookSubscriberType,
+			Target: attackerWebhookSub,
+		},
+		Owner:     "attacker-user",
+		OwnerType: OwnerTypePerson,
+	}
+	err := attackerSub.Upsert(s.T().Context())
+	s.Error(err)
+	s.Contains(err.Error(), "cannot modify a subscription owned by another user or project")
+
+	fakeParams, err := fakeparameter.FindByIDs(s.T().Context(), originalSecretParam)
+	s.Require().NoError(err)
+	s.Require().Len(fakeParams, 1)
+	s.Equal("victim-secret", fakeParams[0].Value)
+}
+
+func (s *subscriptionsSuite) TestUpsertAllowsSameOwner() {
+	webhookSub := &WebhookSubscriber{
+		URL:    "https://example.com/webhook",
+		Secret: []byte("original-secret"),
+	}
+	sub := Subscription{
+		ID:           "my-sub",
+		ResourceType: ResourceTypePatch,
+		Trigger:      TriggerOutcome,
+		Selectors:    []Selector{{Type: SelectorID, Data: "test"}},
+		Filter:       Filter{ID: "test"},
+		Subscriber: Subscriber{
+			Type:   EvergreenWebhookSubscriberType,
+			Target: webhookSub,
+		},
+		Owner:     "me",
+		OwnerType: OwnerTypePerson,
+	}
+	s.Require().NoError(sub.Upsert(s.T().Context()))
+
+	updatedWebhookSub := &WebhookSubscriber{
+		URL:    "https://example.com/webhook",
+		Secret: []byte("updated-secret"),
+	}
+	sub.Subscriber.Target = updatedWebhookSub
+	s.NoError(sub.Upsert(s.T().Context()))
+
+	s.Require().NotEmpty(updatedWebhookSub.SecretParameter)
+	fakeParams, err := fakeparameter.FindByIDs(s.T().Context(), updatedWebhookSub.SecretParameter)
+	s.Require().NoError(err)
+	s.Require().Len(fakeParams, 1)
+	s.Equal("updated-secret", fakeParams[0].Value)
+}
+
 func TestSetHeader(t *testing.T) {
 	t.Run("UpdatesExistingKey", func(t *testing.T) {
 		ws := &WebhookSubscriber{
