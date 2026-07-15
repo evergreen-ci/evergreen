@@ -483,6 +483,17 @@ func (d *Distro) BinaryName() string {
 	return name
 }
 
+// AgentMonitorBinaryName returns the filename of the agent monitor binary.
+// This is intentionally distinct from BinaryName so the long-lived monitor is
+// not the same file as the unsupported legacy ~/evergreen path.
+func (d *Distro) AgentMonitorBinaryName() string {
+	name := "evergreen_agent_monitor"
+	if d.IsWindows() {
+		return name + ".exe"
+	}
+	return name
+}
+
 // ExecutableSubPath returns the directory containing the compiled agents.
 func (d *Distro) ExecutableSubPath() string {
 	return filepath.Join(d.Arch, d.BinaryName())

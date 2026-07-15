@@ -38,7 +38,7 @@ const OutputBufferSize = 1000
 
 // SetupCommand returns the command to run the host setup script.
 func (h *Host) SetupCommand() string {
-	cmd := fmt.Sprintf("cd %s && ./%s host setup", h.Distro.HomeDir(), h.Distro.BinaryName())
+	cmd := fmt.Sprintf("cd %s && ./%s host setup", h.Distro.HomeDir(), h.Distro.AgentMonitorBinaryName())
 
 	if h.Distro.SetupAsSudo {
 		cmd += " --setup_as_sudo"
@@ -98,25 +98,34 @@ func (h *Host) curlCommands(env evergreen.Environment, curlArgs string) ([]strin
 		return nil, errors.Errorf("S3 downloads are not configured")
 	}
 
+	monitorBinary := h.Distro.AgentMonitorBinaryName()
+	compatBinary := h.Distro.BinaryName()
+
 	cmds := []string{
 		fmt.Sprintf("cd %s", h.Distro.HomeDir()),
 	}
 	if h.Distro.IsMacOS() {
-		// Ensure the Evergreen client file is deleted on MacOS hosts before
-		// downloading it again. This is necessary to fix a MacOS-specific issue
+		// Ensure the Evergreen client files are deleted on MacOS hosts before
+		// downloading again. This is necessary to fix a MacOS-specific issue
 		// where if the host has System Integrity Protection (SIP) enabled and
 		// it runs an Evergreen client that has a problem (e.g. the binary was
 		// not signed by Apple), running that client results in SIGKILL. The
 		// SIGKILL issue will persist even if a valid agent is downloaded to
 		// replace it. Removing the binary before downloading it is the only
 		// known workaround to ensure that MacOS can run the client.
-		cmds = append(cmds, fmt.Sprintf("rm -f %s", h.Distro.BinaryName()))
+		cmds = append(cmds, fmt.Sprintf("rm -f %s %s", monitorBinary, compatBinary))
 	}
 	cmds = append(cmds,
-		// Download the agent from S3. Include -f to return an error code from curl if the HTTP request
-		// fails (e.g. it receives 403 Forbidden or 404 Not Found).
-		fmt.Sprintf("curl -fLO %s%s", h.Distro.S3ClientURL(env), curlArgs),
-		fmt.Sprintf("chmod +x %s", h.Distro.BinaryName()),
+		// Download the agent monitor from S3. Include -f to return an error
+		// code from curl if the HTTP request fails (e.g. it receives 403
+		// Forbidden or 404 Not Found). Use -o so the file is stored under the
+		// agent monitor name rather than the S3 object name (evergreen).
+		fmt.Sprintf("curl -fL -o %s %s%s", monitorBinary, h.Distro.S3ClientURL(env), curlArgs),
+		fmt.Sprintf("chmod +x %s", monitorBinary),
+		// Keep the legacy ~/evergreen path updated because existing workflows
+		// still call it and cannot be migrated yet. This path is unsupported.
+		// Best-effort so a failure to copy does not block provisioning.
+		fmt.Sprintf("(cp %s %s || true)", monitorBinary, compatBinary),
 	)
 
 	return cmds, nil
@@ -998,10 +1007,11 @@ func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) 
 }
 
 // AgentCommand returns the arguments to start the agent. If executablePath is not specified, it
-// will be assumed to be in the regular place (only pass this for container distros)
+// will be assumed to be the agent monitor binary in the home directory (only pass this for
+// container distros).
 func (h *Host) AgentCommand(settings *evergreen.Settings, executablePath string) []string {
 	if executablePath == "" {
-		executablePath = h.Distro.AbsPathCygwinCompatible(h.Distro.HomeDir(), h.Distro.BinaryName())
+		executablePath = h.Distro.AbsPathCygwinCompatible(h.Distro.HomeDir(), h.Distro.AgentMonitorBinaryName())
 	}
 	args := []string{
 		executablePath,
@@ -1044,12 +1054,14 @@ func (h *Host) AgentEnvSlice() []string {
 // agent monitor.
 func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create {
 	clientPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.ClientDir, h.Distro.BinaryName())
+	compatClientPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.HomeDir(), h.Distro.BinaryName())
 	credsPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.JasperCredentialsPath)
 	shellPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.ShellPath)
 
 	args := append(h.AgentCommand(settings, ""), "monitor")
 	args = append(args,
 		fmt.Sprintf("--client_path=%s", clientPath),
+		fmt.Sprintf("--compat_client_path=%s", compatClientPath),
 		fmt.Sprintf("--distro=%s", h.Distro.Id),
 		fmt.Sprintf("--shell_path=%s", shellPath),
 		fmt.Sprintf("--jasper_port=%d", settings.HostJasper.Port),
@@ -1110,16 +1122,24 @@ func (h *Host) spawnHostSetupConfigDirCommands(conf []byte) string {
 		// Note: this will likely fail if the configuration file content
 		// contains quotes.
 		fmt.Sprintf("echo \"%s\" > %s", conf, h.spawnHostConfigFile()),
-		fmt.Sprintf("chmod +x %s", filepath.Join(h.AgentBinary())),
-		fmt.Sprintf("cp %s %s", h.AgentBinary(), h.spawnHostConfigDir()),
+		fmt.Sprintf("chmod +x %s", h.AgentMonitorBinary()),
+		fmt.Sprintf("cp %s %s", h.AgentMonitorBinary(), h.spawnHostConfigDir()),
 		fmt.Sprintf("(echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.profile || true; echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.bash_profile || true)", h.spawnHostConfigDir(), h.Distro.HomeDir(), h.spawnHostConfigDir(), h.Distro.HomeDir()),
 		fmt.Sprintf("(%s || true)", h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), ".profile"), filepath.Join(h.Distro.HomeDir(), ".bash_profile"))),
 	}, " && ")
 }
 
-// AgentBinary returns the path to the evergreen agent binary.
+// AgentBinary returns the path to the legacy evergreen binary in the home
+// directory (typically ~/evergreen). That location is unsupported; Evergreen
+// only keeps refreshing it because existing workflows still call it and cannot
+// be migrated yet. The agent monitor runs from AgentMonitorBinary.
 func (h *Host) AgentBinary() string {
 	return filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())
+}
+
+// AgentMonitorBinary returns the path to the agent monitor binary.
+func (h *Host) AgentMonitorBinary() string {
+	return filepath.Join(h.Distro.HomeDir(), h.Distro.AgentMonitorBinaryName())
 }
 
 // spawnHostConfigDir returns the directory containing the CLI and evergreen
@@ -1205,8 +1225,10 @@ func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings
 func (h *Host) SpawnHostGetTaskDataCommand(ctx context.Context, githubAppToken string, moduleTokens []string) []string {
 	s := []string{
 		// We can't use the absolute path for the binary because we always run
-		// it in a Cygwin context on Windows.
-		h.AgentBinary(),
+		// it in a Cygwin context on Windows. Use the agent monitor binary
+		// because provisioning downloads it first; ~/evergreen is only an
+		// unsupported legacy copy that we refresh best-effort.
+		h.AgentMonitorBinary(),
 		"-c", h.Distro.AbsPathNotCygwinCompatible(h.spawnHostConfigFile()),
 		"fetch",
 		"-t", h.ProvisionOptions.TaskId,
@@ -1299,11 +1321,11 @@ func (h *Host) GenerateFetchProvisioningScriptUserData(ctx context.Context, env 
 	if err != nil {
 		return nil, errors.Wrap(err, "creating curl command for evergreen client")
 	}
-	// User data runs as the privileged user, so ensure that the binary has
-	// permissions that allow it to be modified after user data is finished.
-	fixClientOwner := h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()))
+	// User data runs as the privileged user, so ensure that the binaries have
+	// permissions that allow them to be modified after user data is finished.
+	fixClientOwner := h.changeOwnerCommand(h.AgentMonitorBinary(), h.AgentBinary())
 	fetchScriptCmd := strings.Join([]string{
-		filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()),
+		h.AgentMonitorBinary(),
 		"host",
 		"provision",
 		fmt.Sprintf("--api_server=%s", env.Settings().Api.URL),
