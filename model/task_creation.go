@@ -43,6 +43,17 @@ type TaskCreationInfo struct {
 	// as dependencies.
 	ExplicitlyGeneratedTasks map[TVPair]bool
 	TestSelectionParams      TestSelectionParams // Task creation parameters for test selection
+	// RespectVersionActivation makes build and task creation follow the version's
+	// own activation state instead of unconditionally activating. When true, a
+	// newly-created build (and its tasks) is only activated if the version is
+	// activated (mirroring initial build creation in repotracker), and the
+	// version's activation state is left untouched rather than being forced to
+	// activated. This preserves the authorization gate when injecting tasks into
+	// an unactivated version (e.g. an outside-org PR pending authorization). When
+	// false (the default), builds activate unless they have specific activation
+	// conditions and the version is set activated, matching the generate.tasks
+	// and patch-reconfigure behavior.
+	RespectVersionActivation bool
 }
 
 // TestSelectionParams contains parameters for enabling test selection on tasks

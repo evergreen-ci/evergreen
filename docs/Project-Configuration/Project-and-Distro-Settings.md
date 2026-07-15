@@ -755,7 +755,18 @@ commit_queue_aliases:
 github_pr_aliases:
   - variant: "^lint$"
     task: "^generate-lint$"
+  # Runs only when the PR carries any one of required_labels (OR, exact match).
+  - variant_tags: ["pr-e2e"]
+    task_tags: ["e2e"]
+    required_labels: ["evergreen:e2e"]
 ```
+
+`required_labels` gates a PR alias entry on GitHub PR labels. An entry with no
+`required_labels` always runs. An entry with `required_labels` runs when the PR
+has any one of the listed labels (exact, case-sensitive match). Adding a matching
+label to an open PR injects the newly-implied tasks into the existing PR version;
+removing a label does not cancel already-running tasks. Label gating is currently
+configurable only in the YAML `github_pr_aliases` block.
 
 ### Git Tag Aliases
 

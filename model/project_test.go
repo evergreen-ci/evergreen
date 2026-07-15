@@ -2317,6 +2317,37 @@ func TestVariantTasksForSelectors(t *testing.T) {
 	}
 }
 
+func TestResolvePatchVTsFiltersGithubPRAliasesByLabels(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectAliasCollection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(ProjectAliasCollection))
+	}()
+	ctx := t.Context()
+
+	p := &Project{
+		Identifier: "proj",
+		BuildVariants: []BuildVariant{
+			{Name: "default", Tasks: []BuildVariantTaskUnit{{Name: "t", Variant: "default"}}},
+			{Name: "e2e", Tasks: []BuildVariantTaskUnit{{Name: "t", Variant: "e2e"}}},
+		},
+		Tasks: []ProjectTask{{Name: "t"}},
+	}
+	for _, a := range []ProjectAlias{
+		{ProjectID: "proj", Alias: evergreen.GithubPRAlias, Variant: "^default$", Task: "^t$"},
+		{ProjectID: "proj", Alias: evergreen.GithubPRAlias, Variant: "^e2e$", Task: "^t$", RequiredLabels: []string{"evergreen:e2e"}},
+	} {
+		require.NoError(t, a.Upsert(ctx))
+	}
+
+	withLabel := &patch.Patch{Alias: evergreen.GithubPRAlias, GithubPatchData: thirdparty.GithubPatch{Labels: []string{"evergreen:e2e"}}}
+	bvsWith, _, _ := p.ResolvePatchVTs(ctx, withLabel, evergreen.GithubPRRequester, evergreen.GithubPRAlias, false)
+	assert.ElementsMatch(t, []string{"default", "e2e"}, bvsWith)
+
+	withoutLabel := &patch.Patch{Alias: evergreen.GithubPRAlias, GithubPatchData: thirdparty.GithubPatch{}}
+	bvsWithout, _, _ := p.ResolvePatchVTs(ctx, withoutLabel, evergreen.GithubPRRequester, evergreen.GithubPRAlias, false)
+	assert.ElementsMatch(t, []string{"default"}, bvsWithout)
+}
+
 func TestSkipOnRequester(t *testing.T) {
 	t.Run("PatchRequester", func(t *testing.T) {
 		requester := evergreen.PatchVersionRequester

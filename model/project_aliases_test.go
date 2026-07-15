@@ -780,3 +780,69 @@ func TestValidateGitTagAlias(t *testing.T) {
 	errs = validateGitTagAlias(a, "gitTag", 1)
 	assert.Empty(t, errs)
 }
+
+func TestFilterByLabels(t *testing.T) {
+	noLabels := ProjectAlias{Alias: evergreen.GithubPRAlias, Variant: "^default$"}
+	e2e := ProjectAlias{Alias: evergreen.GithubPRAlias, Variant: "^e2e$", RequiredLabels: []string{"evergreen:e2e"}}
+	upgrade := ProjectAlias{Alias: evergreen.GithubPRAlias, Variant: "^upgrade$", RequiredLabels: []string{"evergreen:upgrade", "evergreen:full"}}
+	all := ProjectAliases{noLabels, e2e, upgrade}
+
+	for _, tc := range []struct {
+		name     string
+		labels   []string
+		expected ProjectAliases
+	}{
+		{name: "NoLabelsIncludesOnlyUngatedEntries", labels: nil, expected: ProjectAliases{noLabels}},
+		{name: "MatchingLabelIncludesGatedEntry", labels: []string{"evergreen:e2e"}, expected: ProjectAliases{noLabels, e2e}},
+		{name: "AnyOfRequiredLabelsMatches", labels: []string{"evergreen:full"}, expected: ProjectAliases{noLabels, upgrade}},
+		{name: "MultipleLabelsIncludeMultipleEntries", labels: []string{"evergreen:e2e", "evergreen:upgrade"}, expected: ProjectAliases{noLabels, e2e, upgrade}},
+		{name: "NonMatchingLabelIncludesOnlyUngated", labels: []string{"unrelated"}, expected: ProjectAliases{noLabels}},
+		{name: "MatchIsCaseSensitive", labels: []string{"Evergreen:E2E"}, expected: ProjectAliases{noLabels}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expected, all.FilterByLabels(tc.labels))
+		})
+	}
+}
+
+func TestValidateProjectAliasesRequiredLabels(t *testing.T) {
+	for _, tc := range []struct {
+		name           string
+		requiredLabels []string
+		expectedErrs   []string
+	}{
+		{
+			name:           "EmptyRequiredLabelErrors",
+			requiredLabels: []string{""},
+			expectedErrs:   []string{"aliasType: required label #1 on line #1 can't be empty string"},
+		},
+		{
+			name:           "WhitespaceOnlyRequiredLabelErrors",
+			requiredLabels: []string{"   "},
+			expectedErrs:   []string{"aliasType: required label #1 on line #1 can't be empty string"},
+		},
+		{
+			name:           "NonEmptyRequiredLabelsAreValid",
+			requiredLabels: []string{"evergreen:e2e", "evergreen:full"},
+			expectedErrs:   []string{},
+		},
+		{
+			name:           "NilRequiredLabelsAreValid",
+			requiredLabels: nil,
+			expectedErrs:   []string{},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			aliases := []ProjectAlias{
+				{
+					Alias:          evergreen.GithubPRAlias,
+					Variant:        "^e2e$",
+					Task:           "^test$",
+					RequiredLabels: tc.requiredLabels,
+				},
+			}
+			errs := ValidateProjectAliases(aliases, "aliasType")
+			assert.Equal(t, tc.expectedErrs, errs)
+		})
+	}
+}

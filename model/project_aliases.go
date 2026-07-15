@@ -19,17 +19,18 @@ import (
 )
 
 var (
-	idKey          = bsonutil.MustHaveTag(ProjectAlias{}, "ID")
-	projectIDKey   = bsonutil.MustHaveTag(ProjectAlias{}, "ProjectID")
-	aliasKey       = bsonutil.MustHaveTag(ProjectAlias{}, "Alias")
-	gitTagKey      = bsonutil.MustHaveTag(ProjectAlias{}, "GitTag")
-	remotePathKey  = bsonutil.MustHaveTag(ProjectAlias{}, "RemotePath")
-	variantKey     = bsonutil.MustHaveTag(ProjectAlias{}, "Variant")
-	descriptionKey = bsonutil.MustHaveTag(ProjectAlias{}, "Description")
-	taskKey        = bsonutil.MustHaveTag(ProjectAlias{}, "Task")
-	parametersKey  = bsonutil.MustHaveTag(ProjectAlias{}, "Parameters")
-	variantTagsKey = bsonutil.MustHaveTag(ProjectAlias{}, "VariantTags")
-	taskTagsKey    = bsonutil.MustHaveTag(ProjectAlias{}, "TaskTags")
+	idKey             = bsonutil.MustHaveTag(ProjectAlias{}, "ID")
+	projectIDKey      = bsonutil.MustHaveTag(ProjectAlias{}, "ProjectID")
+	aliasKey          = bsonutil.MustHaveTag(ProjectAlias{}, "Alias")
+	gitTagKey         = bsonutil.MustHaveTag(ProjectAlias{}, "GitTag")
+	remotePathKey     = bsonutil.MustHaveTag(ProjectAlias{}, "RemotePath")
+	variantKey        = bsonutil.MustHaveTag(ProjectAlias{}, "Variant")
+	descriptionKey    = bsonutil.MustHaveTag(ProjectAlias{}, "Description")
+	taskKey           = bsonutil.MustHaveTag(ProjectAlias{}, "Task")
+	parametersKey     = bsonutil.MustHaveTag(ProjectAlias{}, "Parameters")
+	variantTagsKey    = bsonutil.MustHaveTag(ProjectAlias{}, "VariantTags")
+	taskTagsKey       = bsonutil.MustHaveTag(ProjectAlias{}, "TaskTags")
+	requiredLabelsKey = bsonutil.MustHaveTag(ProjectAlias{}, "RequiredLabels")
 )
 
 const (
@@ -67,17 +68,18 @@ const (
 // variants/tasks, assuming the tag matches the defined git_tag regex.
 // In this way, users can define different behavior for different kind of tags.
 type ProjectAlias struct {
-	ID          mgobson.ObjectId  `bson:"_id,omitempty" json:"_id" yaml:"id"`
-	ProjectID   string            `bson:"project_id" json:"project_id" yaml:"project_id"`
-	Alias       string            `bson:"alias" json:"alias" yaml:"alias"`
-	Variant     string            `bson:"variant,omitempty" json:"variant" yaml:"variant"`
-	Description string            `bson:"description" json:"description" yaml:"description"`
-	GitTag      string            `bson:"git_tag" json:"git_tag" yaml:"git_tag"`
-	RemotePath  string            `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
-	VariantTags []string          `bson:"variant_tags,omitempty" json:"variant_tags" yaml:"variant_tags"`
-	Task        string            `bson:"task,omitempty" json:"task" yaml:"task"`
-	TaskTags    []string          `bson:"tags,omitempty" json:"tags" yaml:"task_tags"`
-	Parameters  []patch.Parameter `bson:"parameters,omitempty" json:"parameters" yaml:"parameters"`
+	ID             mgobson.ObjectId  `bson:"_id,omitempty" json:"_id" yaml:"id"`
+	ProjectID      string            `bson:"project_id" json:"project_id" yaml:"project_id"`
+	Alias          string            `bson:"alias" json:"alias" yaml:"alias"`
+	Variant        string            `bson:"variant,omitempty" json:"variant" yaml:"variant"`
+	Description    string            `bson:"description" json:"description" yaml:"description"`
+	GitTag         string            `bson:"git_tag" json:"git_tag" yaml:"git_tag"`
+	RemotePath     string            `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
+	VariantTags    []string          `bson:"variant_tags,omitempty" json:"variant_tags" yaml:"variant_tags"`
+	Task           string            `bson:"task,omitempty" json:"task" yaml:"task"`
+	TaskTags       []string          `bson:"tags,omitempty" json:"tags" yaml:"task_tags"`
+	RequiredLabels []string          `bson:"required_labels,omitempty" json:"required_labels" yaml:"required_labels"`
+	Parameters     []patch.Parameter `bson:"parameters,omitempty" json:"parameters" yaml:"parameters"`
 
 	// Source is not stored; indicates where the alias is stored for the project.
 	Source string `bson:"-" json:"-" yaml:"-"`
@@ -427,16 +429,17 @@ func (p *ProjectAlias) Upsert(ctx context.Context) error {
 		p.ID = mgobson.NewObjectId()
 	}
 	update := bson.M{
-		aliasKey:       p.Alias,
-		gitTagKey:      p.GitTag,
-		remotePathKey:  p.RemotePath,
-		projectIDKey:   p.ProjectID,
-		variantKey:     p.Variant,
-		descriptionKey: p.Description,
-		variantTagsKey: p.VariantTags,
-		taskTagsKey:    p.TaskTags,
-		taskKey:        p.Task,
-		parametersKey:  p.Parameters,
+		aliasKey:          p.Alias,
+		gitTagKey:         p.GitTag,
+		remotePathKey:     p.RemotePath,
+		projectIDKey:      p.ProjectID,
+		variantKey:        p.Variant,
+		descriptionKey:    p.Description,
+		variantTagsKey:    p.VariantTags,
+		taskTagsKey:       p.TaskTags,
+		taskKey:           p.Task,
+		parametersKey:     p.Parameters,
+		requiredLabelsKey: p.RequiredLabels,
 	}
 
 	_, err := db.Upsert(ctx, ProjectAliasCollection, bson.M{
@@ -503,6 +506,31 @@ func aliasesMatchingGitTag(a ProjectAliases, tag string) (ProjectAliases, error)
 		}
 	}
 	return res, nil
+}
+
+// FilterByLabels returns the aliases that are applicable given the provided set
+// of GitHub PR labels. An alias with no RequiredLabels is always included. An
+// alias with RequiredLabels is included when the PR carries any one of them
+// (OR semantics, exact case-sensitive match).
+func (a ProjectAliases) FilterByLabels(labels []string) ProjectAliases {
+	labelSet := make(map[string]struct{}, len(labels))
+	for _, l := range labels {
+		labelSet[l] = struct{}{}
+	}
+	filtered := ProjectAliases{}
+	for _, alias := range a {
+		if len(alias.RequiredLabels) == 0 {
+			filtered = append(filtered, alias)
+			continue
+		}
+		for _, required := range alias.RequiredLabels {
+			if _, ok := labelSet[required]; ok {
+				filtered = append(filtered, alias)
+				break
+			}
+		}
+	}
+	return filtered
 }
 
 // AliasesMatchingVariant returns the filtered set of project aliases for which
@@ -653,8 +681,19 @@ func ValidateProjectAliases(aliases []ProjectAlias, aliasType string) []string {
 			errs = append(errs, fmt.Sprintf("%s: cannot define git tag or remote path on line #%d", aliasType, i+1))
 		}
 		errs = append(errs, validateAliasPatchDefinition(pd, aliasType, i+1)...)
+		errs = append(errs, validateRequiredLabels(pd, aliasType, i+1)...)
 	}
 
+	return errs
+}
+
+func validateRequiredLabels(pd ProjectAlias, aliasType string, lineNum int) []string {
+	errs := []string{}
+	for i, label := range pd.RequiredLabels {
+		if strings.TrimSpace(label) == "" {
+			errs = append(errs, fmt.Sprintf("%s: required label #%d on line #%d can't be empty string", aliasType, i+1, lineNum))
+		}
+	}
 	return errs
 }
 
