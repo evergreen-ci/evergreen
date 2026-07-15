@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/evergreen-ci/gimlet"
@@ -90,6 +91,21 @@ func SaveSubscriptions(ctx context.Context, owner string, subscriptions []restMo
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
 				Message:    "cannot change subscriptions for anyone other than yourself",
+			}
+		}
+
+		if dbSubscription.OwnerType == event.OwnerTypeProject && !isProjectOwner {
+			u := gimlet.GetUser(ctx).(*user.DBUser)
+			if !u.HasPermission(ctx, gimlet.PermissionOpts{
+				Resource:      dbSubscription.Owner,
+				ResourceType:  evergreen.ProjectResourceType,
+				Permission:    evergreen.PermissionProjectSettings,
+				RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+			}) {
+				return gimlet.ErrorResponse{
+					StatusCode: http.StatusUnauthorized,
+					Message:    fmt.Sprintf("user '%s' does not have permission to manage subscriptions for project '%s'", u.Username(), dbSubscription.Owner),
+				}
 			}
 		}
 
