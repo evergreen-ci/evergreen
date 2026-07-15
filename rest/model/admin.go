@@ -806,11 +806,7 @@ type APIBucketConfig struct {
 	LifecycleSyncError      *string    `json:"lifecycle_sync_error,omitempty"`
 }
 
-// toService converts an APIBucketConfig to its service model. It maps every
-// field the API model carries so that saving admin settings does not clear
-// bucket fields (such as the lifecycle configuration) that are stored in the DB
-// but not exposed by every client.
-func (a APIBucketConfig) toService() evergreen.BucketConfig {
+func (a APIBucketConfig) ToService() evergreen.BucketConfig {
 	c := evergreen.BucketConfig{
 		Name:                    utility.FromStringPtr(a.Name),
 		Type:                    evergreen.BucketType(utility.FromStringPtr(a.Type)),
@@ -916,13 +912,13 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 	}
 
 	return evergreen.BucketsConfig{
-		LogBucket:                       a.LogBucket.toService(),
-		LogBucketLongRetention:          a.LogBucketLongRetention.toService(),
-		LogBucketFailedTasks:            a.LogBucketFailedTasks.toService(),
+		LogBucket:                       a.LogBucket.ToService(),
+		LogBucketLongRetention:          a.LogBucketLongRetention.ToService(),
+		LogBucketFailedTasks:            a.LogBucketFailedTasks.ToService(),
 		LongRetentionProjects:           a.LongRetentionProjects,
 		RetryFailedLogMoveLookbackDays:  utility.FromIntPtr(lookbackDays),
 		RetryFailedLogMoveMaxJobsPerRun: utility.FromIntPtr(a.RetryFailedLogMoveMaxJobsPerRun),
-		TestResultsBucket:               a.TestResultsBucket.toService(),
+		TestResultsBucket:               a.TestResultsBucket.ToService(),
 		Credentials:                     creds,
 	}, nil
 }
