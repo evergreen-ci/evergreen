@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -96,6 +97,11 @@ func attachTestResults(ctx context.Context, conf *internal.TaskConfig, td client
 const maxTestResultsInterval = 24 * time.Hour
 
 const failedTestsSampleSize = 10
+
+// maxDisplayTestNameLength bounds the test name length to something reasonable
+// for display and downstream processing (e.g. Jira ticket generation), since
+// the name comes directly from a task's uploaded results file.
+const maxDisplayTestNameLength = 250
 
 func uploadTestResults(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, results []testresult.TestResult, td client.TaskData, output *task.TaskOutput) (bool, error) {
 	createdAt := conf.TestResultsCreatedAt
@@ -238,6 +244,9 @@ func makeTestResults(t *task.Task, results []testresult.TestResult) []testresult
 	for _, r := range results {
 		if r.DisplayTestName == "" {
 			r.DisplayTestName = r.TestName
+		}
+		if len(r.DisplayTestName) > maxDisplayTestNameLength {
+			r.DisplayTestName = strings.ToValidUTF8(r.DisplayTestName[:maxDisplayTestNameLength], "")
 		}
 		var logInfo *testresult.TestLogInfo
 		if r.LogInfo != nil {

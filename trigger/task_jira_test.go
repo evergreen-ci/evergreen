@@ -641,6 +641,24 @@ func TestMakeSummaryPrefix(t *testing.T) {
 	assert.Equal("Setup Failure: ", makeSummaryPrefix(doc, 0))
 }
 
+func TestCleanTestName(t *testing.T) {
+	assert.Equal(t, "", cleanTestName(""))
+	assert.Equal(t, "TestFoo", cleanTestName("TestFoo"))
+	assert.Equal(t, "c", cleanTestName("a/b/c"))
+	assert.Equal(t, "c", cleanTestName("a/b/c/"))
+	assert.Equal(t, "c", cleanTestName("a/b/c//"))
+	assert.Equal(t, "c", cleanTestName(`a\b\c`))
+	assert.Equal(t, "b", cleanTestName(`a\b\`))
+	assert.Equal(t, "b", cleanTestName(`a\b/`))
+	assert.Equal(t, `b\`, cleanTestName(`a/b\`))
+
+	// A test name consisting of many trailing separators used to blow the
+	// stack via unbounded recursion; the iterative implementation must
+	// handle it without crashing.
+	assert.Equal(t, "", cleanTestName(strings.Repeat("/", 1000000)))
+	assert.Equal(t, "", cleanTestName(strings.Repeat(`\`, 1000000)))
+}
+
 func TestJiraBuilderBuild(t *testing.T) {
 	builder := jiraBuilder{
 		project: "EVG",
