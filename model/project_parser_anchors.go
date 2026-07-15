@@ -1,6 +1,7 @@
 package model
 
 import (
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
 
@@ -30,14 +31,9 @@ func (a *anchorRegistry) Length() int {
 }
 
 // mergeAnchorsFrom collects all anchor definitions from node and merges them
-// into the registry by name, so that later include files can resolve aliases
-// defined in earlier files. No-op if the receiver is nil.
-//
-// When an anchor name already exists in the registry, the old entry is removed
-// and the new one is appended at the end. This ensures that if a redefinition
-// introduces alias dependencies on anchors that were added by the same file,
-// those dependencies always appear earlier in the slice and therefore earlier
-// in the marshaled preamble, satisfying YAML's anchor-before-alias rule.
+// into the registry by name. Move re-defined anchors to later in the list to
+// ensure they're defined after dependencies (i.e. any other new anchors that
+// they themselves reference).
 func (a *anchorRegistry) mergeAnchorsFrom(node *yaml.Node) {
 	if a == nil {
 		return
@@ -105,7 +101,8 @@ func buildAnchorPreamble(registry *anchorRegistry) ([]byte, error) {
 			},
 		},
 	}
-	return yaml.Marshal(preambleDoc)
+	out, err := yaml.Marshal(preambleDoc)
+	return out, errors.Wrap(err, "building anchor preamble")
 }
 
 // stripEvgAnchorsKey removes the _evg_anchors key and its value from the

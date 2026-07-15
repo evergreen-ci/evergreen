@@ -3437,8 +3437,17 @@ tasks:
 }
 
 // moduleIncludeOpts builds GetProjectOpts that serves include files from
-// inline bytes, bypassing GitHub and git.
-func moduleIncludeOpts(includes ...patch.LocalModuleInclude) *GetProjectOpts {
+// inline bytes, bypassing GitHub and git. It also sets up a mock environment
+// with CrossFileYAMLAnchorsEnabled so that LoadProjectInto activates the
+// cross-file anchor registry.
+func moduleIncludeOpts(t testing.TB, includes ...patch.LocalModuleInclude) *GetProjectOpts {
+	t.Helper()
+	flags := evergreen.ServiceFlags{CrossFileYAMLAnchorsEnabled: true}
+	require.NoError(t, flags.Set(t.Context()))
+	t.Cleanup(func() {
+		flags.CrossFileYAMLAnchorsEnabled = false
+		require.NoError(t, flags.Set(t.Context()))
+	})
 	return &GetProjectOpts{LocalModuleIncludes: includes}
 }
 
@@ -3544,7 +3553,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
 	tasksByName := map[string]ProjectTask{}
@@ -3580,7 +3589,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		moduleIncludeOpts(
+		moduleIncludeOpts(t,
 			moduleInclude("first.yml", firstYAML),
 			moduleInclude("second.yml", secondYAML),
 		), "proj", proj)
@@ -3619,7 +3628,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		moduleIncludeOpts(
+		moduleIncludeOpts(t,
 			moduleInclude("first.yml", firstYAML),
 			moduleInclude("second.yml", secondYAML),
 		), "proj", proj)
@@ -3661,7 +3670,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		moduleIncludeOpts(
+		moduleIncludeOpts(t,
 			moduleInclude("first.yml", firstYAML),
 			moduleInclude("second.yml", secondYAML),
 			moduleInclude("third.yml", thirdYAML),
@@ -3754,7 +3763,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		moduleIncludeOpts(
+		moduleIncludeOpts(t,
 			moduleInclude("first.yml", firstYAML),
 			moduleInclude("second.yml", secondYAML),
 			moduleInclude("third.yml", thirdYAML),
@@ -3838,7 +3847,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		moduleIncludeOpts(
+		moduleIncludeOpts(t,
 			moduleInclude("first.yml", firstYAML),
 			moduleInclude("second.yml", secondYAML),
 			moduleInclude("third.yml", thirdYAML),
@@ -3874,7 +3883,7 @@ tasks:
 `
 	proj := &Project{}
 	pp, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
 	// Marshal the parser project back to YAML and confirm _evg_anchors is absent.
@@ -3904,7 +3913,7 @@ tasks:
   - *step
 `
 	proj := &Project{}
-	opts := moduleIncludeOpts(moduleInclude("include.yml", includeYAML))
+	opts := moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML))
 	opts.UnmarshalStrict = true
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML), opts, "proj", proj)
 	require.NoError(t, err)
@@ -3947,7 +3956,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
 	tasksByName := map[string]ProjectTask{}
@@ -3961,11 +3970,11 @@ tasks:
 	assert.Equal(t, "shell.exec", tasksByName["include-task"].Commands[0].Command)
 }
 
-// TestCrossFileAnchorsDisabledMatchesEnabled verifies that for a project whose
-// include files do not use cross-file aliases, disabling the feature produces
-// exactly the same parsed result as leaving it enabled. This is the primary
+// TestIncludeFileWithLocalAnchorOnlyParsesCorrectly verifies that a project whose
+// include file uses anchors only within that file (no cross-file aliases) parses
+// correctly regardless of whether cross-file anchors are enabled. This is the primary
 // backwards-compatibility check for the preamble injection change.
-func TestCrossFileAnchorsDisabledMatchesEnabled(t *testing.T) {
+func TestIncludeFileWithLocalAnchorOnlyParsesCorrectly(t *testing.T) {
 	mainYAML := mainYAMLWithModuleIncludes(`
 tasks:
 - name: main-task
@@ -3994,26 +4003,14 @@ buildvariants:
   tasks:
   - name: include-task
 `
-	parseWith := func(t *testing.T, disable bool) *Project {
-		t.Helper()
-		proj := &Project{}
-		opts := moduleIncludeOpts(moduleInclude("include.yml", includeYAML))
-		opts.DisableCrossFileAnchors = disable
-		_, err := LoadProjectInto(t.Context(), []byte(mainYAML), opts, "proj", proj)
-		require.NoError(t, err)
-		return proj
-	}
-
-	enabled := parseWith(t, false)
-	disabled := parseWith(t, true)
-
-	// Both should produce the same tasks and build variants.
-	require.Equal(t, len(disabled.Tasks), len(enabled.Tasks), "task count should match")
-	require.Equal(t, len(disabled.BuildVariants), len(enabled.BuildVariants), "build variant count should match")
-	for i := range enabled.Tasks {
-		assert.Equal(t, disabled.Tasks[i].Name, enabled.Tasks[i].Name)
-		assert.Equal(t, len(disabled.Tasks[i].Commands), len(enabled.Tasks[i].Commands))
-	}
+	proj := &Project{}
+	opts := moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML))
+	_, err := LoadProjectInto(t.Context(), []byte(mainYAML), opts, "proj", proj)
+	require.NoError(t, err)
+	require.Len(t, proj.Tasks, 2)
+	require.Len(t, proj.BuildVariants, 1)
+	assert.Equal(t, "include-task", proj.Tasks[1].Name)
+	assert.Len(t, proj.Tasks[1].Commands, 2)
 }
 
 // TestNoAnchorsInIncludeFiles verifies that projects without anchors produce
@@ -4034,7 +4031,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
 	tasksByName := map[string]ProjectTask{}
@@ -4070,7 +4067,7 @@ buildvariants:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
 	require.Len(t, proj.BuildVariants, 1)
@@ -4102,7 +4099,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
 	tasksByName := map[string]ProjectTask{}
@@ -4339,7 +4336,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 	require.Len(t, proj.Tasks, 1)
 	assert.Equal(t, "use-setup", proj.Tasks[0].Name)
@@ -4367,7 +4364,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.Error(t, err)
 }
 
@@ -4425,7 +4422,7 @@ tasks:
     params:
       script: ./setup.sh
 `, filenames...)
-	opts := moduleIncludeOpts(includes...)
+	opts := moduleIncludeOpts(b, includes...)
 
 	b.ResetTimer()
 	for range b.N {
