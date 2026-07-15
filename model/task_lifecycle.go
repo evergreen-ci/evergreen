@@ -2022,6 +2022,18 @@ func buildTaskCompletedSpanAttributes(t *task.Task) []attribute.KeyValue {
 		attrs = append(attrs, attribute.Int64(evergreen.TaskTimeWaitingForDepsMsOtelAttribute,
 			t.DependenciesMetTime.Sub(t.ScheduledTime).Milliseconds()))
 	}
+	if !utility.IsZeroTime(t.StartTime) {
+		var readyToRunTime time.Time
+		if len(t.DependsOn) > 0 {
+			readyToRunTime = t.DependenciesMetTime
+		} else {
+			readyToRunTime = t.ScheduledTime
+		}
+		if !utility.IsZeroTime(readyToRunTime) {
+			attrs = append(attrs, attribute.Int64(evergreen.TaskTimeWaitingInQueueMsOtelAttribute,
+				t.StartTime.Sub(readyToRunTime).Milliseconds()))
+		}
+	}
 	if !utility.IsZeroTime(t.StartTime) && !utility.IsZeroTime(t.FinishTime) {
 		attrs = append(attrs, attribute.Int64(evergreen.TaskDurationMsOtelAttribute,
 			t.FinishTime.Sub(t.StartTime).Milliseconds()))
