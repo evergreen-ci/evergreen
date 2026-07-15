@@ -86,6 +86,7 @@ type APIAdminSettings struct {
 	GithubPRCreatorOrg      *string                       `json:"github_pr_creator_org,omitempty"`
 	GithubOrgs              []string                      `json:"github_orgs,omitempty"`
 	GithubWebhookSecret     *string                       `json:"github_webhook_secret,omitempty"`
+	ArtifactSignSecret      *string                       `json:"artifact_sign_secret,omitempty"`
 	DisabledGQLQueries      []string                      `json:"disabled_gql_queries"`
 	HostInit                *APIHostInitConfig            `json:"hostinit,omitempty"`
 	HostJasper              *APIHostJasperConfig          `json:"host_jasper,omitempty"`
@@ -176,6 +177,7 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 		as.Expansions = v.Expansions
 		as.GithubOrgs = v.GithubOrgs
 		as.GithubWebhookSecret = utility.ToStringPtr(v.GithubWebhookSecret)
+		as.ArtifactSignSecret = utility.ToStringPtr(v.ArtifactSignSecret)
 		as.DisabledGQLQueries = v.DisabledGQLQueries
 		uiConfig := APIUIConfig{}
 		err := uiConfig.BuildFromService(v.Ui)
@@ -280,6 +282,7 @@ func (as *APIAdminSettings) ToService() (any, error) {
 		settings.GithubPRCreatorOrg = *as.GithubPRCreatorOrg
 	}
 	settings.GithubWebhookSecret = utility.FromStringPtr(as.GithubWebhookSecret)
+	settings.ArtifactSignSecret = utility.FromStringPtr(as.ArtifactSignSecret)
 	if as.LogPath != nil {
 		settings.LogPath = *as.LogPath
 	}
@@ -3175,6 +3178,7 @@ type APICostConfig struct {
 	OnDemandDiscount    *float64          `json:"on_demand_discount"`
 	S3Cost              *APIS3CostConfig  `json:"s3_cost"`
 	EBSCost             *APIEBSCostConfig `json:"ebs_cost"`
+	HiddenCostProjects  []string          `json:"hidden_cost_projects"`
 }
 
 type APIEBSCostConfig struct {
@@ -3213,6 +3217,7 @@ func (a *APICostConfig) BuildFromService(h any) error {
 		if err := a.EBSCost.BuildFromService(&v.EBSCost); err != nil {
 			return errors.Wrap(err, "building EBS cost config")
 		}
+		a.HiddenCostProjects = v.HiddenCostProjects
 	case evergreen.CostConfig:
 		a.FinanceFormula = &v.FinanceFormula
 		a.SavingsPlanDiscount = &v.SavingsPlanDiscount
@@ -3225,6 +3230,7 @@ func (a *APICostConfig) BuildFromService(h any) error {
 		if err := a.EBSCost.BuildFromService(&v.EBSCost); err != nil {
 			return errors.Wrap(err, "building EBS cost config")
 		}
+		a.HiddenCostProjects = v.HiddenCostProjects
 	default:
 		return errors.Errorf("incorrect type %T", v)
 	}
@@ -3254,6 +3260,7 @@ func (a *APICostConfig) ToService() (any, error) {
 		OnDemandDiscount:    utility.FromFloat64Ptr(a.OnDemandDiscount),
 		S3Cost:              s3Cost,
 		EBSCost:             ebsCost,
+		HiddenCostProjects:  a.HiddenCostProjects,
 	}, nil
 }
 

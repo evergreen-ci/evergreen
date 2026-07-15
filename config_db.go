@@ -51,6 +51,7 @@ var (
 	githubPRCreatorOrgKey      = bsonutil.MustHaveTag(Settings{}, "GithubPRCreatorOrg")
 	githubOrgsKey              = bsonutil.MustHaveTag(Settings{}, "GithubOrgs")
 	githubWebhookSecretKey     = bsonutil.MustHaveTag(Settings{}, "GithubWebhookSecret")
+	artifactSignSecretKey      = bsonutil.MustHaveTag(Settings{}, "ArtifactSignSecret")
 	disabledGQLQueriesKey      = bsonutil.MustHaveTag(Settings{}, "DisabledGQLQueries")
 	spawnhostKey               = bsonutil.MustHaveTag(Settings{}, "Spawnhost")
 	shutdownWaitKey            = bsonutil.MustHaveTag(Settings{}, "ShutdownWaitSeconds")
