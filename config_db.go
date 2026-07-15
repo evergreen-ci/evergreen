@@ -62,6 +62,7 @@ var (
 	hostInitKey                           = bsonutil.MustHaveTag(ServiceFlags{}, "HostInitDisabled")
 	largeParserProjectsDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "LargeParserProjectsDisabled")
 	monitorKey                            = bsonutil.MustHaveTag(ServiceFlags{}, "MonitorDisabled")
+	mergeQueueRecoveryEnabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "MergeQueueRecoveryEnabled")
 	alertsKey                             = bsonutil.MustHaveTag(ServiceFlags{}, "AlertsDisabled")
 	agentStartKey                         = bsonutil.MustHaveTag(ServiceFlags{}, "AgentStartDisabled")
 	repotrackerKey                        = bsonutil.MustHaveTag(ServiceFlags{}, "RepotrackerDisabled")

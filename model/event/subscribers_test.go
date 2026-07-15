@@ -161,6 +161,28 @@ func TestValidate(t *testing.T) {
 			},
 			errorExpected: false,
 		},
+		"WebhookWithDuplicateHeadersIsInvalid": {
+			s: Subscriber{
+				Type: EvergreenWebhookSubscriberType,
+				Target: WebhookSubscriber{
+					URL:     "https://evergreen.mongodb.com",
+					Secret:  []byte("shh"),
+					Headers: []WebhookHeader{{Key: "X-Header", Value: "value1"}, {Key: "x-header", Value: "value2"}},
+				},
+			},
+			errorExpected: true,
+		},
+		"WebhookWithUniqueHeadersIsValid": {
+			s: Subscriber{
+				Type: EvergreenWebhookSubscriberType,
+				Target: WebhookSubscriber{
+					URL:     "https://evergreen.mongodb.com",
+					Secret:  []byte("shh"),
+					Headers: []WebhookHeader{{Key: "X-Header", Value: "value1"}, {Key: "X-Another-Header", Value: "value2"}},
+				},
+			},
+			errorExpected: false,
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			if testCase.errorExpected {
