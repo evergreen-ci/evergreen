@@ -803,6 +803,28 @@ type APIBucketConfig struct {
 	LifecycleSyncError      *string    `json:"lifecycle_sync_error,omitempty"`
 }
 
+// toService converts an APIBucketConfig to its service model. It maps every
+// field the API model carries so that saving admin settings does not clear
+// bucket fields (such as the lifecycle configuration) that are stored in the DB
+// but not exposed by every client.
+func (a APIBucketConfig) toService() evergreen.BucketConfig {
+	c := evergreen.BucketConfig{
+		Name:                    utility.FromStringPtr(a.Name),
+		Type:                    evergreen.BucketType(utility.FromStringPtr(a.Type)),
+		DBName:                  utility.FromStringPtr(a.DBName),
+		TestResultsPrefix:       utility.FromStringPtr(a.TestResultsPrefix),
+		RoleARN:                 utility.FromStringPtr(a.RoleARN),
+		ExpirationDays:          a.ExpirationDays,
+		TransitionToIADays:      a.TransitionToIADays,
+		TransitionToGlacierDays: a.TransitionToGlacierDays,
+		LifecycleSyncError:      utility.FromStringPtr(a.LifecycleSyncError),
+	}
+	if a.LifecycleLastSyncedAt != nil {
+		c.LifecycleLastSyncedAt = *a.LifecycleLastSyncedAt
+	}
+	return c
+}
+
 type APIProjectToPrefixMapping struct {
 	ProjectID *string `json:"project_id"`
 	Prefix    *string `json:"prefix"`
@@ -891,34 +913,14 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 	}
 
 	return evergreen.BucketsConfig{
-		LogBucket: evergreen.BucketConfig{
-			Name:   utility.FromStringPtr(a.LogBucket.Name),
-			Type:   evergreen.BucketType(utility.FromStringPtr(a.LogBucket.Type)),
-			DBName: utility.FromStringPtr(a.LogBucket.DBName),
-		},
-		LogBucketLongRetention: evergreen.BucketConfig{
-			Name:    utility.FromStringPtr(a.LogBucketLongRetention.Name),
-			Type:    evergreen.BucketType(utility.FromStringPtr(a.LogBucketLongRetention.Type)),
-			DBName:  utility.FromStringPtr(a.LogBucketLongRetention.DBName),
-			RoleARN: utility.FromStringPtr(a.LogBucketLongRetention.RoleARN),
-		},
-		LogBucketFailedTasks: evergreen.BucketConfig{
-			Name:    utility.FromStringPtr(a.LogBucketFailedTasks.Name),
-			Type:    evergreen.BucketType(utility.FromStringPtr(a.LogBucketFailedTasks.Type)),
-			DBName:  utility.FromStringPtr(a.LogBucketFailedTasks.DBName),
-			RoleARN: utility.FromStringPtr(a.LogBucketFailedTasks.RoleARN),
-		},
+		LogBucket:                       a.LogBucket.toService(),
+		LogBucketLongRetention:          a.LogBucketLongRetention.toService(),
+		LogBucketFailedTasks:            a.LogBucketFailedTasks.toService(),
 		LongRetentionProjects:           a.LongRetentionProjects,
 		RetryFailedLogMoveLookbackDays:  utility.FromIntPtr(lookbackDays),
 		RetryFailedLogMoveMaxJobsPerRun: utility.FromIntPtr(a.RetryFailedLogMoveMaxJobsPerRun),
-		TestResultsBucket: evergreen.BucketConfig{
-			Name:              utility.FromStringPtr(a.TestResultsBucket.Name),
-			Type:              evergreen.BucketType(utility.FromStringPtr(a.TestResultsBucket.Type)),
-			DBName:            utility.FromStringPtr(a.TestResultsBucket.DBName),
-			RoleARN:           utility.FromStringPtr(a.TestResultsBucket.RoleARN),
-			TestResultsPrefix: utility.FromStringPtr(a.TestResultsBucket.TestResultsPrefix),
-		},
-		Credentials: creds,
+		TestResultsBucket:               a.TestResultsBucket.toService(),
+		Credentials:                     creds,
 	}, nil
 }
 
