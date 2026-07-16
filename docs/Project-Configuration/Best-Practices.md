@@ -64,3 +64,8 @@ resort, best effort mechanism and by nature will never be perfectly reliable.
 If you wish to securely provide access to the plaintext secret value to other people, it's recommended to use an
 external secrets management service such as 1Password rather than relying on setting an Evergreen public variable with a
 secret.
+
+## Test Name Length
+
+Test names within tasks should not exceed 256 characters or else the test name will be truncated to fit into the
+256 character limit.
