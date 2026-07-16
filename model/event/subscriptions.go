@@ -599,7 +599,7 @@ func RemoveSubscription(ctx context.Context, id string) error {
 		return errors.Wrapf(err, "looking up subscription '%s' before removal", id)
 	}
 	if sub != nil {
-		if ws, ok := sub.Subscriber.Target.(*WebhookSubscriber); ok && ws != nil {
+		if ws := sub.Subscriber.webhookSubscriber(); ws != nil {
 			webhookSecretParamToDelete = ws.SecretParameter
 			authHeaderParamToDelete = ws.AuthorizationHeaderParameter
 		}
@@ -1050,11 +1050,8 @@ func NewSpawnHostOutcomeByOwner(owner string, sub Subscriber) Subscription {
 // For webhook subscriptions, the plaintext secret and Authorization header are
 // stripped since those live in Parameter Store.
 func (s *Subscription) redactedSubscriberForDB() Subscriber {
-	if s.Subscriber.Type != EvergreenWebhookSubscriberType {
-		return s.Subscriber
-	}
-	webhookSub, ok := s.Subscriber.Target.(*WebhookSubscriber)
-	if !ok {
+	webhookSub := s.Subscriber.webhookSubscriber()
+	if webhookSub == nil {
 		return s.Subscriber
 	}
 
@@ -1077,12 +1074,8 @@ func (s *Subscription) redactedSubscriberForDB() Subscriber {
 
 // saveWebhookSecretIfNeeded saves the webhook secret to Parameter Store.
 func (s *Subscription) saveWebhookSecretIfNeeded(ctx context.Context) error {
-	if s.Subscriber.Type != EvergreenWebhookSubscriberType {
-		return nil
-	}
-
-	webhookSub, ok := s.Subscriber.Target.(*WebhookSubscriber)
-	if !ok {
+	webhookSub := s.Subscriber.webhookSubscriber()
+	if webhookSub == nil {
 		return nil
 	}
 
@@ -1099,12 +1092,8 @@ func (s *Subscription) saveWebhookSecretIfNeeded(ctx context.Context) error {
 
 // saveWebhookAuthHeaderIfNeeded saves the webhook Authorization header to Parameter Store on every upsert.
 func (s *Subscription) saveWebhookAuthHeaderIfNeeded(ctx context.Context) error {
-	if s.Subscriber.Type != EvergreenWebhookSubscriberType {
-		return nil
-	}
-
-	webhookSub, ok := s.Subscriber.Target.(*WebhookSubscriber)
-	if !ok {
+	webhookSub := s.Subscriber.webhookSubscriber()
+	if webhookSub == nil {
 		return nil
 	}
 
@@ -1116,20 +1105,24 @@ func (s *Subscription) saveWebhookAuthHeaderIfNeeded(ctx context.Context) error 
 		webhookSub.AuthorizationHeaderParameter = paramName
 	} else if s.ID != "" {
 		// Subscription still exists but Authorization header was removed on
-		// update, so clean up the old PS parameter.
-		existing, err := FindSubscriptionByID(ctx, s.ID)
+		// update, so clean up the old PS parameter and clear the stale parameter
+		// reference so it isn't written back to the DB.
+		webhookSub.AuthorizationHeaderParameter = ""
+		sub, err := dbFindSubscriptionByID(ctx, s.ID)
 		if err != nil {
 			return errors.Wrapf(err, "finding subscription '%s' to delete webhook Authorization header parameter", s.ID)
 		}
-		if existing != nil && existing.Owner != s.Owner {
+		if sub == nil {
 			return nil
 		}
-		if existing != nil {
-			if existingWebhookSub, ok := existing.Subscriber.Target.(*WebhookSubscriber); ok && existingWebhookSub != nil && existingWebhookSub.AuthorizationHeaderParameter != "" {
-				if err := deleteWebhookSecretFromParameterStore(ctx, existingWebhookSub.AuthorizationHeaderParameter); err != nil {
-					return errors.Wrapf(err, "deleting webhook Authorization header parameter for subscription '%s'", s.ID)
-				}
-			}
+		if ws := sub.Subscriber.webhookSubscriber(); ws != nil {
+			// Cleanup is best-effort, so still let the caller continue if cleanup fails.
+			grip.Warning(ctx, message.WrapError(deleteWebhookSecretFromParameterStore(ctx, ws.AuthorizationHeaderParameter), message.Fields{
+				"message":                        "could not clean up webhook Authorization header parameter from Parameter Store",
+				"subscription_id":                s.ID,
+				"authorization_header_parameter": ws.AuthorizationHeaderParameter,
+			}))
+			return nil
 		}
 	}
 
@@ -1150,12 +1143,8 @@ func saveWebhookParameter(ctx context.Context, paramPath string, value []byte) (
 // subscriptions that have a parameter path set.
 func populateWebhookSecrets(ctx context.Context, subscriptions []Subscription) error {
 	for i := range subscriptions {
-		if subscriptions[i].Subscriber.Type != EvergreenWebhookSubscriberType {
-			continue
-		}
-
-		webhookSub, ok := subscriptions[i].Subscriber.Target.(*WebhookSubscriber)
-		if !ok {
+		webhookSub := subscriptions[i].Subscriber.webhookSubscriber()
+		if webhookSub == nil {
 			continue
 		}
 
