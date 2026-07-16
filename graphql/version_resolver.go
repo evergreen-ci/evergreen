@@ -25,6 +25,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+const defaultTaskQuarantinedTestsSampleLimit = 50
+
 // BaseVersion is the resolver for the baseVersion field.
 func (r *versionResolver) BaseVersion(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIVersion, error) {
 	versionID := utility.FromStringPtr(obj.Id)
@@ -296,10 +298,9 @@ func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersi
 }
 
 // TaskQuarantinedTestsSample is the resolver for the taskQuarantinedTestsSample field.
-func (r *versionResolver) TaskQuarantinedTestsSample(ctx context.Context, obj *restModel.APIVersion, taskIds []string, limit *int) ([]*testresult.TaskTestResultsQuarantinedSample, error) {
-	taskIDs := taskIds
+func (r *versionResolver) TaskQuarantinedTestsSample(ctx context.Context, obj *restModel.APIVersion, taskIDs []string, limit *int) ([]*testresult.TaskTestResultsQuarantinedSample, error) {
 	versionID := utility.FromStringPtr(obj.Id)
-	if err := requireVersionTasksViewPermission(ctx, versionID); err != nil {
+	if err := checkProjectAccess(ctx, utility.FromStringPtr(obj.Project), ProjectPermissionTasks, AccessLevelView); err != nil {
 		return nil, err
 	}
 	if len(taskIDs) == 0 {

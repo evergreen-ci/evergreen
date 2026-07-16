@@ -1275,6 +1275,39 @@ func collapseCommit(ctx context.Context, mainlineCommits MainlineCommits, mainli
 	}
 }
 
+func checkProjectAccess(ctx context.Context, projectID string, permission ProjectPermission, access AccessLevel) error {
+	requiredPermission, permissionInfo, err := getProjectPermissionLevel(permission, access)
+	if err != nil {
+		return InputValidationError.Send(ctx, fmt.Sprintf("invalid permission and access level configuration: %s", err.Error()))
+	}
+	return checkProjectPermission(ctx, projectID, requiredPermission, permissionInfo)
+}
+
+func checkProjectPermission(ctx context.Context, projectID string, requiredPermission string, permissionInfo evergreen.PermissionLevel) error {
+	usr := mustHaveUser(ctx)
+	if usr.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      projectID,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    requiredPermission,
+		RequiredLevel: permissionInfo.Value,
+	}) {
+		return nil
+	}
+
+	if requiredPermission == evergreen.PermissionProjectSettings && permissionInfo.Value == evergreen.ProjectSettingsView.Value {
+		// If we're trying to view a repo project, check if the user has view permission for any branch project instead.
+		hasPermission, err := model.UserHasRepoViewPermission(ctx, usr, projectID)
+		if err != nil {
+			return InternalServerError.Send(ctx, fmt.Sprintf("problem checking repo view permission: %s", err.Error()))
+		}
+		if hasPermission {
+			return nil
+		}
+	}
+
+	return Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to '%s' for the project '%s'", usr.Username(), strings.ToLower(permissionInfo.Description), projectID))
+}
+
 // getProjectPermissionLevel takes in ProjectPermission and AccessLevel (GraphQL-specific variables) and returns
 // the equivalent Evergreen permission constants defined in globals.go.
 func getProjectPermissionLevel(projectPermission ProjectPermission, access AccessLevel) (requiredPermission string, permissionInfo evergreen.PermissionLevel, err error) {
