@@ -2163,8 +2163,6 @@ type APIServiceFlags struct {
 	UseMergeQueuePathFilteringDisabled bool `json:"use_merge_queue_path_filtering_disabled"`
 	PSLoggingDisabled                  bool `json:"ps_logging_disabled"`
 	PodDiagnosticsDisabled             bool `json:"pod_diagnostics_disabled"`
-	WebhookSecretMigrationEnabled      bool `json:"webhook_secret_migration_enabled"`
-	WebhookSecretCleanupEnabled        bool `json:"webhook_secret_cleanup_enabled"`
 	RetryFailedLogMoveEnabled          bool `json:"retry_failed_log_move_enabled"`
 	ProjectTranslationCacheEnabled     bool `json:"project_translation_cache_enabled"`
 
@@ -2627,8 +2625,6 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.PSLoggingDisabled = v.PSLoggingDisabled
 		as.UseMergeQueuePathFilteringDisabled = v.UseMergeQueuePathFilteringDisabled
 		as.PodDiagnosticsDisabled = v.PodDiagnosticsDisabled
-		as.WebhookSecretMigrationEnabled = v.WebhookSecretMigrationEnabled
-		as.WebhookSecretCleanupEnabled = v.WebhookSecretCleanupEnabled
 		as.RetryFailedLogMoveEnabled = v.RetryFailedLogMoveEnabled
 		as.ProjectTranslationCacheEnabled = v.ProjectTranslationCacheEnabled
 		as.BackgroundCommandFailureEnabled = v.BackgroundCommandFailureEnabled
@@ -2681,8 +2677,6 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		UseMergeQueuePathFilteringDisabled: as.UseMergeQueuePathFilteringDisabled,
 		PSLoggingDisabled:                  as.PSLoggingDisabled,
 		PodDiagnosticsDisabled:             as.PodDiagnosticsDisabled,
-		WebhookSecretMigrationEnabled:      as.WebhookSecretMigrationEnabled,
-		WebhookSecretCleanupEnabled:        as.WebhookSecretCleanupEnabled,
 		RetryFailedLogMoveEnabled:          as.RetryFailedLogMoveEnabled,
 		ProjectTranslationCacheEnabled:     as.ProjectTranslationCacheEnabled,
 		BackgroundCommandFailureEnabled:    as.BackgroundCommandFailureEnabled,
