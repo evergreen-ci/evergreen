@@ -117,6 +117,8 @@ type OAuth struct {
 	// DoNotUseBrowser indicates that the OAuth flow should not attempt to open a browser.
 	// This setting is the final authority on the flow.
 	DoNotUseBrowser bool `json:"do_not_use_browser" yaml:"do_not_use_browser"`
+	// CallbackPort is the local port used by the OAuth authorization-code flow.
+	CallbackPort string `json:"callback_port,omitempty" yaml:"callback_port,omitempty"`
 
 	// SpawnHostAccessToken is an access token for a spawn host. This is used to
 	// initially authenticate a spawn host before the user has SSH'd into it.
@@ -658,6 +660,7 @@ func (s *ClientSettings) getOAuthToken(ctx context.Context) (*oauth2.Token, stri
 	}
 	return client.GetOAuthToken(ctx,
 		s.OAuth.DoNotUseBrowser,
+		s.OAuth.CallbackPort,
 		dex.WithIssuer(s.OAuth.Issuer),
 		dex.WithClientID(s.OAuth.ClientID),
 		dex.WithConnectorID(s.OAuth.ConnectorID),

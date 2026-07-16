@@ -1958,10 +1958,14 @@ func (c *communicatorImpl) SendPanicReport(ctx context.Context, details *model.P
 	return nil
 }
 
-func GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.ClientOption) (*oauth2.Token, string, error) {
+func GetOAuthToken(ctx context.Context, doNotUseBrowser bool, callbackPort string, opts ...dex.ClientOption) (*oauth2.Token, string, error) {
 	httpClient := utility.GetDefaultHTTPRetryableClient()
 	defer utility.PutHTTPClient(httpClient)
 	ctx = oidc.ClientContext(ctx, httpClient)
+
+	if callbackPort == "" {
+		callbackPort = oauthCallbackPort
+	}
 
 	loader := &dex.FileTokenLoader{}
 	baseOpts := append(opts,
@@ -1969,15 +1973,16 @@ func GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.Client
 		dex.WithRefresh(),
 		dex.WithFallbackToStdOut(true),
 		dex.WithTokenExpiryBuffer(time.Minute),
+		dex.WithCallbackPort(callbackPort),
 	)
 
 	flow := oauthFlowAuthCode
 	if doNotUseBrowser {
 		flow = oauthFlowDevice
-	} else if !callbackPortAvailable(oauthCallbackPort) {
+	} else if !callbackPortAvailable(callbackPort) {
 		grip.Notice(ctx, message.Fields{
 			"message": "OAuth callback port unavailable; using device code flow",
-			"port":    oauthCallbackPort,
+			"port":    callbackPort,
 		})
 		flow = oauthFlowDevice
 	}
