@@ -1104,23 +1104,23 @@ func (s *Subscription) saveWebhookAuthHeaderIfNeeded(ctx context.Context) error 
 		}
 		webhookSub.AuthorizationHeaderParameter = paramName
 	} else if s.ID != "" {
-		// Subscription still exists but Authorization header was removed on
-		// update, so clean up the old PS parameter and clear the stale parameter
-		// reference so it isn't written back to the DB.
+		// Subscription still exists but doesn't have an Authorization header.
+		// If the original subscription had that header, it needs to be removed
+		// from Parameter Store.
 		webhookSub.AuthorizationHeaderParameter = ""
-		sub, err := dbFindSubscriptionByID(ctx, s.ID)
+		existingSub, err := dbFindSubscriptionByID(ctx, s.ID)
 		if err != nil {
 			return errors.Wrapf(err, "finding subscription '%s' to delete webhook Authorization header parameter", s.ID)
 		}
-		if sub == nil {
+		if existingSub == nil {
 			return nil
 		}
-		if ws := sub.Subscriber.webhookSubscriber(); ws != nil {
+		if existingWebhookSub := existingSub.Subscriber.webhookSubscriber(); existingWebhookSub != nil {
 			// Cleanup is best-effort, so still let the caller continue if cleanup fails.
-			grip.Warning(ctx, message.WrapError(deleteWebhookSecretFromParameterStore(ctx, ws.AuthorizationHeaderParameter), message.Fields{
+			grip.Warning(ctx, message.WrapError(deleteWebhookSecretFromParameterStore(ctx, existingWebhookSub.AuthorizationHeaderParameter), message.Fields{
 				"message":                        "could not clean up webhook Authorization header parameter from Parameter Store",
 				"subscription_id":                s.ID,
-				"authorization_header_parameter": ws.AuthorizationHeaderParameter,
+				"authorization_header_parameter": existingWebhookSub.AuthorizationHeaderParameter,
 			}))
 			return nil
 		}
