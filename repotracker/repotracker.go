@@ -220,6 +220,13 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 	var newestVersion *model.Version
 	ref := repoTracker.ProjectRef
 
+	if len(revisions) > 0 {
+		err := model.UpsertRepositoryRevision(ctx, ref.Owner, ref.Repo, ref.Branch, revisions[0].Revision, time.Now())
+		if err != nil {
+			return errors.Wrapf(err, "upserting latest repository revision '%s'", revisions[0].Revision)
+		}
+	}
+
 	// Since the revisions are ordered most to least recent, iterate backwards so that they're processed in order of
 	// least to most recent.
 	for i := len(revisions) - 1; i >= 0; i-- {
@@ -369,17 +376,6 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 					"version":            v.Id,
 				}))
 			}
-		}
-
-		if err = model.UpsertRepositoryRevision(ctx, v.Owner, v.Repo, v.Branch, v.Revision, v.IngestTime); err != nil {
-			grip.Error(ctx, message.WrapError(err, message.Fields{
-				"message":            "error upserting repository revision",
-				"runner":             RunnerName,
-				"project":            ref.Id,
-				"project_identifier": ref.Identifier,
-				"revision":           v.Revision,
-				"version":            v.Id,
-			}))
 		}
 
 		_, err = model.CreateManifest(ctx, v, pInfo.Project.Modules, ref)

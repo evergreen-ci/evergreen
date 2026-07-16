@@ -65,17 +65,34 @@ func TestValidatePushEvent(t *testing.T) {
 	assert.Empty(branch)
 }
 
-func TestUpsertRepositoryRevisionFromPushEvent(t *testing.T) {
-	require.NoError(t, db.ClearCollections(model.RepositoryRevisionsHistoryCollection))
+func TestUpsertRepositoryRevisionsFromPushEvent(t *testing.T) {
 	ingestTime := time.Now()
-	event := &github.PushEvent{
-		After: github.String("revision-2"),
-	}
 
-	require.NoError(t, upsertRepositoryRevisionsFromPushEvent(t.Context(), "owner", "repo", "branch", event, ingestTime))
-	revision, err := model.FindLatestRepositoryRevisionByIngestTime(t.Context(), "owner", "repo", "branch", ingestTime)
-	require.NoError(t, err)
-	require.NotNil(t, revision)
-	assert.Equal(t, "revision-2", revision.Revision)
-	assert.WithinDuration(t, ingestTime, revision.IngestTime, time.Millisecond)
+	for name, event := range map[string]*github.PushEvent{
+		"PushStoresAfterRevision": {
+			After: github.String("revision-2"),
+		},
+		"DeletedPushIsIgnored": {
+			After:   github.String("0000000000000000000000000000000000000000"),
+			Deleted: github.Bool(true),
+		},
+		"ZeroRevisionIsIgnored": {
+			After: github.String("0000000000000000000000000000000000000000"),
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(model.RepositoryRevisionsHistoryCollection))
+			require.NoError(t, upsertRepositoryRevisionsFromPushEvent(t.Context(), "owner", "repo", "branch", event, ingestTime))
+
+			revision, err := model.FindLatestRepositoryRevisionByIngestTime(t.Context(), "owner", "repo", "branch", ingestTime)
+			require.NoError(t, err)
+			if event.GetAfter() == "revision-2" {
+				require.NotNil(t, revision)
+				assert.Equal(t, event.GetAfter(), revision.Revision)
+				assert.WithinDuration(t, ingestTime, revision.IngestTime, time.Millisecond)
+			} else {
+				assert.Nil(t, revision)
+			}
+		})
+	}
 }

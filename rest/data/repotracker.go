@@ -71,6 +71,14 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 		return errors.New("owner from push event is invalid")
 	}
 
+	ingestTime := time.Now()
+	err = upsertRepositoryRevisionsFromPushEvent(ctx, *event.Repo.Owner.Name, *event.Repo.Name, branch, event, ingestTime)
+	grip.Error(ctx, message.WrapError(err, message.Fields{
+		"message":     "upserting repository revision",
+		"event":       event,
+		"ingest_time": ingestTime,
+	}))
+
 	refs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(ctx, *event.Repo.Owner.Name, *event.Repo.Name, branch)
 	if err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
@@ -103,21 +111,11 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 	unactionable := []string{}
 	failed := []string{}
 	catcher := grip.NewSimpleCatcher()
-	ingestTime := time.Now()
 	for i := range refs {
 		if !refs[i].Enabled || refs[i].IsRepotrackerDisabled() {
 			unactionable = append(unactionable, refs[i].Id)
 			continue
 		}
-
-		err := upsertRepositoryRevisionsFromPushEvent(ctx, refs[i].Owner, refs[i].Repo, refs[i].Branch, event, ingestTime)
-		grip.Error(ctx, message.WrapError(err, message.Fields{
-			"message":     "upserting repository revisions for project",
-			"project":     refs[i].Id,
-			"event":       event,
-			"ingest_time": ingestTime,
-			"refs":        refs[i],
-		}))
 
 		err = trigger.TriggerDownstreamProjectsForPush(ctx, refs[i].Id, event, ingestTime, trigger.TriggerDownstreamVersion)
 		catcher.Wrapf(err, "triggering downstream projects for push event for project '%s'", refs[i].Id)
@@ -178,7 +176,7 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 // for the commit on the Evergreen side for decisions like which module commit to use.
 func upsertRepositoryRevisionsFromPushEvent(ctx context.Context, owner, repo, branch string, event *github.PushEvent, ingestTime time.Time) error {
 	commitID := event.GetAfter()
-	if commitID == "" {
+	if event.GetDeleted() || commitID == "" || strings.Trim(commitID, "0") == "" {
 		return nil
 	}
 	return errors.Wrapf(model.UpsertRepositoryRevision(ctx, owner, repo, branch, commitID, ingestTime), "upserting revision '%s'", commitID)

@@ -333,6 +333,25 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 	})
 }
 
+func TestStoreRevisionsRecordsNewestRevision(t *testing.T) {
+	require.NoError(t, db.ClearCollections(model.RepositoryRevisionsHistoryCollection, model.VersionCollection))
+
+	revisions := []model.Revision{
+		{Revision: "newest"},
+		{Revision: "older"},
+	}
+	poller := NewMockRepoPoller(createTestProject(nil, nil), revisions)
+	poller.setNextError(errors.New("stop after recording history"))
+	ref := &model.ProjectRef{Id: "project", Owner: "owner", Repo: "repo", Branch: "branch"}
+	repoTracker := RepoTracker{testConfig, ref, poller}
+
+	require.Error(t, repoTracker.StoreRevisions(t.Context(), revisions))
+	revision, err := model.FindLatestRepositoryRevisionByIngestTime(t.Context(), ref.Owner, ref.Repo, ref.Branch, time.Now())
+	require.NoError(t, err)
+	require.NotNil(t, revision)
+	assert.Equal(t, revisions[0].Revision, revision.Revision)
+}
+
 func TestCountNumDependentsAcrossVariants(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -1772,6 +1791,15 @@ func TestCreateManifest(t *testing.T) {
 	assert.Equal("sample", module.Repo)
 	assert.Equal("main", module.Branch)
 	assert.Equal(moduleRevisionAtIngestTime, module.Revision)
+
+	require.NoError(t, db.ClearCollections(model.RepositoryRevisionsHistoryCollection))
+	fallbackVersion := v
+	fallbackVersion.Id = "aaaaaaaaaaff001122334457"
+	fallbackManifest, err := model.CreateManifest(t.Context(), &fallbackVersion, proj.Modules, projRef)
+	require.NoError(t, err)
+	require.NotNil(t, fallbackManifest)
+	require.Contains(t, fallbackManifest.Modules, "module1")
+	assert.Equal(moduleRevisionAtIngestTime, fallbackManifest.Modules["module1"].Revision)
 
 	proj.Modules[0].AutoUpdate = true
 	manifest, err = model.CreateManifest(t.Context(), &patchVersion, proj.Modules, projRef)

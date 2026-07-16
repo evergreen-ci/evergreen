@@ -101,6 +101,7 @@ func UpdateLastRevision(ctx context.Context, projectId, revision string) error {
 }
 
 // UpsertRepositoryRevision records that Evergreen ingested a project revision.
+// This function is idempotent with regard to storing the same revision multiple times. It is safe to call this function multiple times with the same revision.
 func UpsertRepositoryRevision(ctx context.Context, owner, repo, branch, revision string, ingestTime time.Time) error {
 	if utility.IsZeroTime(ingestTime) {
 		ingestTime = time.Now()

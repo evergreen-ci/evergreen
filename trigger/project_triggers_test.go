@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/google/go-github/v70/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -68,6 +69,29 @@ func TestGetMetadataFromArgs(t *testing.T) {
 		assert.Equal(t, wantSHA, meta.Revision.Revision)
 		assert.Equal(t, ingestTime, meta.IngestTime)
 		assert.Equal(t, push.Revision, meta.SourceCommit)
+	})
+
+	t.Run("WithoutRepositoryHistory", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(model.RepositoryRevisionsHistoryCollection))
+		ingestTime := time.Date(2015, time.January, 1, 0, 0, 0, 0, time.UTC)
+		downstream := model.ProjectRef{Id: "project-triggers-md-fallback", Owner: "evergreen-ci", Repo: "sample", Branch: "main"}
+		commits, _, err := thirdparty.GetGithubCommits(t.Context(), downstream.Owner, downstream.Repo, &github.CommitsListOptions{
+			SHA:   downstream.Branch,
+			Until: ingestTime,
+			ListOptions: github.ListOptions{
+				PerPage: 1,
+			},
+		})
+		require.NoError(t, err)
+		require.NotEmpty(t, commits)
+
+		meta, err := getMetadataFromArgs(t.Context(), ProcessorArgs{
+			SourceVersion:     &model.Version{IngestTime: ingestTime},
+			DownstreamProject: downstream,
+			TriggerType:       model.ProjectTriggerLevelTask,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, commits[0].GetSHA(), meta.Revision.Revision)
 	})
 }
 

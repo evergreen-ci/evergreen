@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
 	"github.com/pkg/errors"
 )
@@ -127,18 +128,20 @@ func getMetadataFromArgs(ctx context.Context, args ProcessorArgs) (model.Version
 	}
 	metadata.IngestTime = ingestTime
 
-	repoRevision, err := model.FindLatestRepositoryRevisionByIngestTime(ctx, args.DownstreamProject.Owner, args.DownstreamProject.Repo, args.DownstreamProject.Branch, ingestTime)
+	selectionTime := ingestTime
+	if utility.IsZeroTime(selectionTime) {
+		selectionTime = metadata.Revision.CreateTime
+	}
+	repoRevision, err := model.FindLatestRepositoryRevisionByIngestTime(ctx, args.DownstreamProject.Owner, args.DownstreamProject.Repo, args.DownstreamProject.Branch, selectionTime)
 	if err != nil {
 		return metadata, errors.Wrapf(err, "finding latest repository revision by ingest time for '%s'", args.DownstreamProject.Id)
 	}
 	if repoRevision != nil {
 		metadata.Revision.Revision = repoRevision.Revision
 	} else {
-		// Fallback to the latest commit on the downstream project's branch.
-		// This ensures that the commit used for the downstream version is the
-		// latest commit.
 		opts := &github.CommitsListOptions{
-			SHA: args.DownstreamProject.Branch,
+			SHA:   args.DownstreamProject.Branch,
+			Until: selectionTime,
 			ListOptions: github.ListOptions{
 				Page:    0,
 				PerPage: 1,
