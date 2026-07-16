@@ -35,10 +35,7 @@ func SetEvergreenSettings(ctx context.Context, changes *restModel.APIAdminSettin
 	changesReflect := reflect.ValueOf(*changes)            // incoming changes
 	settingsReflect := reflect.ValueOf(settingsAPI).Elem() // old settings
 
-	// Recursively merge the incoming changes onto the existing settings so that
-	// fields the client omitted (for example, admin settings such as the bucket
-	// lifecycle fields, which are stored in the DB but not part of the GraphQL
-	// input schema) retain their existing values instead of being cleared.
+	// Recursively merge the incoming changes onto the existing settings so that fields are not overwritten
 	mergeAdminSettings(settingsReflect, changesReflect)
 
 	i, err := settingsAPI.ToService()
@@ -80,14 +77,6 @@ func SetEvergreenSettings(ctx context.Context, changes *restModel.APIAdminSettin
 	return &newSettings, nil
 }
 
-// mergeAdminSettings recursively merges the populated fields of src into dst.
-// Both values must be addressable structs of the same type. A field is only
-// copied when the client actually provided it: nil pointers, nil slices, and
-// nil maps in src are treated as omitted and leave the corresponding dst field
-// untouched. Nested structs (whether embedded directly or behind a pointer) are
-// merged field-by-field rather than replaced wholesale, which preserves
-// settings that are stored in the DB but not exposed by every client (such as
-// the bucket lifecycle fields that are absent from the GraphQL input schema).
 func mergeAdminSettings(dst, src reflect.Value) {
 	for i := range src.NumField() {
 		srcField := src.Field(i)
@@ -102,9 +91,7 @@ func mergeAdminSettings(dst, src reflect.Value) {
 				continue
 			}
 			// Recurse into pointers to config structs so that omitted sub-fields
-			// keep their existing values instead of being overwritten with
-			// zeroes. Structs without settable fields (such as time.Time) are
-			// treated as opaque leaf values and copied directly.
+			// keep their existing values instead of being overwritten.
 			if srcField.Elem().Kind() == reflect.Struct && !isOpaqueStruct(srcField.Elem().Type()) {
 				if dstField.IsNil() {
 					dstField.Set(reflect.New(dstField.Type().Elem()))

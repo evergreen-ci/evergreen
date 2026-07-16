@@ -375,6 +375,48 @@ func TestAPIBucketsConfigJSON(t *testing.T) {
 	assert.Equal(t, out.Credentials.Bucket, again.Credentials.Bucket)
 }
 
+func TestAPIBucketsConfigServiceRoundTrip(t *testing.T) {
+	// Every service field must survive a BuildFromService/ToService round trip.
+	// Any asymmetry silently drops the field when admin settings are saved and
+	// produces spurious admin event log entries.
+	syncedAt := time.Date(2026, time.July, 16, 12, 0, 0, 0, time.UTC)
+	bucket := func(prefix string) evergreen.BucketConfig {
+		return evergreen.BucketConfig{
+			Name:                    prefix + "-name",
+			Type:                    evergreen.BucketTypeS3,
+			DBName:                  prefix + "-db",
+			TestResultsPrefix:       prefix + "-prefix",
+			RoleARN:                 prefix + "-arn",
+			ExternalID:              prefix + "-external",
+			ExpirationDays:          utility.ToIntPtr(30),
+			TransitionToIADays:      utility.ToIntPtr(60),
+			TransitionToGlacierDays: utility.ToIntPtr(90),
+			LifecycleLastSyncedAt:   syncedAt,
+			LifecycleSyncError:      prefix + "-err",
+		}
+	}
+	original := evergreen.BucketsConfig{
+		LogBucket:                       bucket("log"),
+		LogBucketLongRetention:          bucket("long"),
+		LogBucketFailedTasks:            bucket("failed"),
+		TestResultsBucket:               bucket("tr"),
+		LongRetentionProjects:           []string{"p1", "p2"},
+		RetryFailedLogMoveLookbackDays:  14,
+		RetryFailedLogMoveMaxJobsPerRun: 25,
+		Credentials:                     evergreen.S3Credentials{Key: "k", Secret: "s", Bucket: "cb"},
+	}
+
+	apiConfig := &APIBucketsConfig{}
+	require.NoError(t, apiConfig.BuildFromService(original))
+
+	out, err := apiConfig.ToService()
+	require.NoError(t, err)
+	roundTripped, ok := out.(evergreen.BucketsConfig)
+	require.True(t, ok)
+
+	assert.Equal(t, original, roundTripped)
+}
+
 func TestRestart(t *testing.T) {
 	assert := assert.New(t)
 	restartResp := &RestartResponse{
