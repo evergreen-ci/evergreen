@@ -381,6 +381,10 @@ type Permissions struct {
 	UserID               string              `json:"userId"`
 }
 
+type PrevTaskOptions struct {
+	SkipOnParentCompleted *bool `json:"skipOnParentCompleted,omitempty"`
+}
+
 type ProjectBuildVariant struct {
 	DisplayName string   `json:"displayName"`
 	Name        string   `json:"name"`
