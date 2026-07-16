@@ -317,6 +317,28 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 		instanceID = aws.ToString(instance.InstanceId)
 	}
 
+	// Any host that has been unexpirable will have been given a DNS name, which we need to clean up.
+	if h.PersistentDNSName != "" {
+		dnsName := h.PersistentDNSName
+		err := deleteHostPersistentDNSName(ctx, m.env, h, m.client)
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message":    "could not delete host's persistent DNS name",
+			"op":         "delete",
+			"dashboard":  "evergreen sleep schedule health",
+			"host_id":    h.Id,
+			"started_by": h.StartedBy,
+			"dns_name":   dnsName,
+		}))
+		grip.InfoWhen(ctx, err == nil, message.Fields{
+			"message":    "deleted host's persistent DNS name",
+			"op":         "delete",
+			"dashboard":  "evergreen sleep schedule health",
+			"host_id":    h.Id,
+			"started_by": h.StartedBy,
+			"dns_name":   dnsName,
+		})
+	}
+
 	resp, err := m.client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
 		InstanceIds: []string{instanceID},
 	})
