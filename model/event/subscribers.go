@@ -143,9 +143,9 @@ type WebhookHeader struct {
 	Value string `bson:"value"`
 }
 
-// webhookSubscriber returns the subscriber's WebhookSubscriber target, or nil
+// toWebhookSubscriber returns the subscriber's WebhookSubscriber target, or nil
 // if the subscriber isn't a webhook subscriber.
-func (s Subscriber) webhookSubscriber() *WebhookSubscriber {
+func (s Subscriber) toWebhookSubscriber() *WebhookSubscriber {
 	if s.Type != EvergreenWebhookSubscriberType {
 		return nil
 	}

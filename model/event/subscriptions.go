@@ -599,7 +599,7 @@ func RemoveSubscription(ctx context.Context, id string) error {
 		return errors.Wrapf(err, "looking up subscription '%s' before removal", id)
 	}
 	if sub != nil {
-		if ws := sub.Subscriber.webhookSubscriber(); ws != nil {
+		if ws := sub.Subscriber.toWebhookSubscriber(); ws != nil {
 			webhookSecretParamToDelete = ws.SecretParameter
 			authHeaderParamToDelete = ws.AuthorizationHeaderParameter
 		}
@@ -1050,7 +1050,7 @@ func NewSpawnHostOutcomeByOwner(owner string, sub Subscriber) Subscription {
 // For webhook subscriptions, the plaintext secret and Authorization header are
 // stripped since those live in Parameter Store.
 func (s *Subscription) redactedSubscriberForDB() Subscriber {
-	webhookSub := s.Subscriber.webhookSubscriber()
+	webhookSub := s.Subscriber.toWebhookSubscriber()
 	if webhookSub == nil {
 		return s.Subscriber
 	}
@@ -1074,7 +1074,7 @@ func (s *Subscription) redactedSubscriberForDB() Subscriber {
 
 // saveWebhookSecretIfNeeded saves the webhook secret to Parameter Store.
 func (s *Subscription) saveWebhookSecretIfNeeded(ctx context.Context) error {
-	webhookSub := s.Subscriber.webhookSubscriber()
+	webhookSub := s.Subscriber.toWebhookSubscriber()
 	if webhookSub == nil {
 		return nil
 	}
@@ -1092,7 +1092,7 @@ func (s *Subscription) saveWebhookSecretIfNeeded(ctx context.Context) error {
 
 // saveWebhookAuthHeaderIfNeeded saves the webhook Authorization header to Parameter Store on every upsert.
 func (s *Subscription) saveWebhookAuthHeaderIfNeeded(ctx context.Context) error {
-	webhookSub := s.Subscriber.webhookSubscriber()
+	webhookSub := s.Subscriber.toWebhookSubscriber()
 	if webhookSub == nil {
 		return nil
 	}
@@ -1115,7 +1115,7 @@ func (s *Subscription) saveWebhookAuthHeaderIfNeeded(ctx context.Context) error 
 		if existingSub == nil {
 			return nil
 		}
-		if existingWebhookSub := existingSub.Subscriber.webhookSubscriber(); existingWebhookSub != nil {
+		if existingWebhookSub := existingSub.Subscriber.toWebhookSubscriber(); existingWebhookSub != nil {
 			// Cleanup is best-effort, so still let the caller continue if cleanup fails.
 			grip.Warning(ctx, message.WrapError(deleteWebhookSecretFromParameterStore(ctx, existingWebhookSub.AuthorizationHeaderParameter), message.Fields{
 				"message":                        "could not clean up webhook Authorization header parameter from Parameter Store",
@@ -1143,7 +1143,7 @@ func saveWebhookParameter(ctx context.Context, paramPath string, value []byte) (
 // subscriptions that have a parameter path set.
 func populateWebhookSecrets(ctx context.Context, subscriptions []Subscription) error {
 	for i := range subscriptions {
-		webhookSub := subscriptions[i].Subscriber.webhookSubscriber()
+		webhookSub := subscriptions[i].Subscriber.toWebhookSubscriber()
 		if webhookSub == nil {
 			continue
 		}
