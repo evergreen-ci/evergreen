@@ -138,9 +138,7 @@ type ClientSettings struct {
 	// APIServerHost is the legacy API server host. This should only be used by service
 	// users who need to use the legacy way of authenticating (static keys).
 	APIServerHost string `json:"api_server_host" yaml:"api_server_host,omitempty"`
-	// CorpAPIServerHost is the modern API server host. This is used by human users
-	// authenticating with OAuth. We need the legacy and this url while we transition
-	// from static keys to OAuth for both human and service users.
+	// CorpAPIServerHost is the modern API server host used for OAuth authentication.
 	CorpAPIServerHost          string                      `json:"corp_api_server_host" yaml:"corp_api_server_host,omitempty"`
 	UIServerHost               string                      `json:"ui_server_host" yaml:"ui_server_host,omitempty"`
 	APIKey                     string                      `json:"api_key" yaml:"api_key,omitempty"`
@@ -162,6 +160,17 @@ type ClientSettings struct {
 
 	// StagingEnvironment configures which staging environment to point to.
 	StagingEnvironment string `json:"staging_environment,omitempty" yaml:"staging_environment,omitempty"`
+}
+
+// localClientSettings contains the settings that may safely be overridden by
+// a configuration file in the current working directory.
+type localClientSettings struct {
+	UncommittedChanges         *bool                       `yaml:"patch_uncommitted_changes,omitempty"`
+	PreserveCommits            *bool                       `yaml:"preserve_commits,omitempty"`
+	Projects                   []ClientProjectConf         `yaml:"projects,omitempty"`
+	DisableAutoDefaulting      *bool                       `yaml:"disable_auto_defaulting"`
+	ProjectsForDirectory       map[string]string           `yaml:"projects_for_directory,omitempty"`
+	LastRevisionCriteriaGroups []lastRevisionCriteriaGroup `yaml:"last_revision_criteria_groups,omitempty"`
 }
 
 func NewClientSettings(fn string) (*ClientSettings, error) {
@@ -188,10 +197,30 @@ func NewClientSettings(fn string) (*ClientSettings, error) {
 		return nil, errors.Wrapf(err, "reading local configuration from file '%s'", localConfigPath)
 	}
 
-	// Unmarshalling into the same struct will only override fields which are set
-	// in the new YAML
-	if err = yaml.Unmarshal(localData, conf); err != nil {
+	// Only merge settings that describe the local project and working tree.
+	// Connection, authentication, and update settings must come from the
+	// explicitly selected configuration file rather than the current directory.
+	localConf := &localClientSettings{}
+	if err = yaml.Unmarshal(localData, localConf); err != nil {
 		return nil, errors.Wrapf(err, "unmarshalling YAML data from local configuration file '%s'", localConfigPath)
+	}
+	if localConf.UncommittedChanges != nil {
+		conf.UncommittedChanges = *localConf.UncommittedChanges
+	}
+	if localConf.PreserveCommits != nil {
+		conf.PreserveCommits = *localConf.PreserveCommits
+	}
+	if localConf.Projects != nil {
+		conf.Projects = localConf.Projects
+	}
+	if localConf.DisableAutoDefaulting != nil {
+		conf.DisableAutoDefaulting = *localConf.DisableAutoDefaulting
+	}
+	if localConf.ProjectsForDirectory != nil {
+		conf.ProjectsForDirectory = localConf.ProjectsForDirectory
+	}
+	if localConf.LastRevisionCriteriaGroups != nil {
+		conf.LastRevisionCriteriaGroups = localConf.LastRevisionCriteriaGroups
 	}
 
 	return conf, nil
@@ -278,18 +307,18 @@ func (s *ClientSettings) shouldUseOAuth(ctx context.Context, c client.Communicat
 		return true, "No API key found in local Evergreen YAML, defaulting to an OAuth token."
 	}
 
-	// always use the non-corp url for getting the service flags
-	// because the corp url needs an OAuth token which we haven't generated yet
+	// Always use the non-corp URL when checking if the user is a service user
+	// because the corp URL needs an OAuth token which we have not generated yet.
 	originalAPIServerHost := s.APIServerHost
 	c.SetAPIServerHost(s.getApiServerHost(false))
+	defer c.SetAPIServerHost(originalAPIServerHost)
 
 	isServiceUser, err := c.IsServiceUser(ctx, s.User)
-
 	if err != nil {
 		errorMsg := "Failed to check if user is a service user"
 		isUnauthorizedErr := strings.Contains(err.Error(), "401")
 		if isUnauthorizedErr {
-			// if we get a 401, the api key is likely invalid, so we should try to generate a token
+			// If we get a 401, the API key is likely invalid, so we should try to generate a token
 			// because otherwise subsequent api requests will likely fail too.
 			return true, fmt.Sprintf("%s, will try to generate a token: %s", errorMsg, err)
 		}
@@ -299,15 +328,7 @@ func (s *ClientSettings) shouldUseOAuth(ctx context.Context, c client.Communicat
 		return false, ""
 	}
 
-	flags, err := c.GetServiceFlags(ctx)
-	// reset the api server host to the original value once we have the flags
-	c.SetAPIServerHost(originalAPIServerHost)
-
-	if err == nil && !flags.JWTTokenForCLIDisabled {
-		return true, ""
-	}
-
-	return false, ""
+	return true, ""
 }
 
 // getApiServerHost returns the API server host based on the APIServerHost and the useCorp parameter.
@@ -350,25 +371,6 @@ func (s *ClientSettings) checkCLIVersion(ctx context.Context, c client.Communica
 		if isCLIVersionTooOld {
 			return errors.Errorf("CLI version '%s' is older than the oldest allowed CLI version '%s'. "+
 				"Run '%s get-update --install' to update.\n", evergreen.ClientVersion, clients.OldestAllowedCLIVersion, os.Args[0])
-		}
-	}
-	if clients.OAuthIssuer != "" && s.OAuth.Issuer == "" {
-		s.OAuth.ClientID = clients.OAuthClientID
-		s.OAuth.ConnectorID = clients.OAuthConnectorID
-		s.OAuth.Issuer = clients.OAuthIssuer
-
-		if err := s.Write(""); err != nil {
-			// This shouldn't prevent users from using the CLI so just log a warning.
-			grip.Warning(ctx, errors.Wrap(err, "saving configuration file"))
-		}
-	}
-	if clients.CorpAPIServerHost != "" && s.CorpAPIServerHost == "" {
-		s.CorpAPIServerHost = clients.CorpAPIServerHost
-		s.UIServerHost = clients.NewUIServerHost
-
-		if err := s.Write(""); err != nil {
-			// This shouldn't prevent users from using the CLI so just log an error.
-			grip.Warning(ctx, errors.Wrap(err, "saving configuration file"))
 		}
 	}
 	return nil

@@ -504,6 +504,7 @@ const (
 	TaskDescriptionOtelAttribute                = "evergreen.task.description"
 	TaskTagsOtelAttribute                       = "evergreen.task.tags"
 	TaskActivatedTimeOtelAttribute              = "evergreen.task.activated_time"
+	TaskDependenciesMetTimeOtelAttribute        = "evergreen.task.dependencies_met_time"
 	TaskIngestTimeOtelAttribute                 = "evergreen.task.ingest_time"
 	TaskOnDemandCostOtelAttribute               = "evergreen.task.on_demand_cost"
 	TaskAdjustedCostOtelAttribute               = "evergreen.task.adjusted_cost"
@@ -513,6 +514,7 @@ const (
 	TaskVariantOtelAttribute                    = "evergreen.task.variant"
 	TaskTimeWaitingForSchedulingMsOtelAttribute = "evergreen.task.time_waiting_for_scheduling_ms"
 	TaskTimeWaitingForDepsMsOtelAttribute       = "evergreen.task.time_waiting_for_dependencies_ms"
+	TaskTimeWaitingInQueueMsOtelAttribute       = "evergreen.task.time_waiting_in_queue_ms"
 	TaskDurationMsOtelAttribute                 = "evergreen.task.duration_ms"
 
 	// EBS cost otel attributes — task-level (throughput)
@@ -679,8 +681,9 @@ const (
 	GraphQLAIAgentHeader = "X-Graphql-Ai-Agent"
 
 	// Rate limiting response headers
-	RateLimitLimitHeader            = "X-RateLimit-Limit"
-	RateLimitRemainingHeader        = "X-RateLimit-Remaining"
+	RateLimitLimitHeader            = "X-RateLimit-Limit"             // Hourly request limit for the user.
+	RateLimitBurstHeader            = "X-RateLimit-Burst"             // Maximum number of requests that can be made in a short burst.
+	RateLimitRemainingHeader        = "X-RateLimit-Remaining"         // Remaining requests in the current window before hitting the limit.
 	RateLimitResetHeader            = "X-RateLimit-Reset"             // Absolute Unix timestamp (seconds) at which the window resets.
 	RateLimitExceededHeader         = "X-RateLimit-Exceeded"          // Set in warn-only mode (request still served) and on a 429.
 	RetryAfterHeader                = "Retry-After"                   // Standard HTTP header (RFC 9110), a delta in seconds, set alongside a 429.

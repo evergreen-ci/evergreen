@@ -258,6 +258,30 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 				"message": "no task to assign to host",
 				"host_id": h.host.Id,
 			})
+
+			distroQueueInfo, queueInfoErr := model.GetDistroQueueInfo(ctx, h.host.Distro.Id)
+			if queueInfoErr != nil {
+				grip.Error(ctx, message.WrapError(queueInfoErr, message.Fields{
+					"op":      "next_task",
+					"message": "getting distro queue info for dispatch alert",
+					"host_id": h.host.Id,
+					"distro":  h.host.Distro.Id,
+				}))
+			}
+
+			if distroQueueInfo.LengthWithDependenciesMet > 0 {
+				grip.WarningWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+					"op":                         "next_task",
+					"message":                    "non-empty queue but no task assigned to host",
+					"host_id":                    h.host.Id,
+					"distro":                     h.host.Distro.Id,
+					"queue_length":               distroQueueInfo.Length,
+					"queue_length_with_deps_met": distroQueueInfo.LengthWithDependenciesMet,
+					"queue_plan_created_at":      distroQueueInfo.PlanCreatedAt,
+					"agent_task_group":           h.details.TaskGroup,
+				})
+
+			}
 		}
 
 		nextTaskResponse.EstimatedMaxIdleDuration = h.host.Distro.HostAllocatorSettings.AcceptableHostIdleTime

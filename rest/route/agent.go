@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -270,6 +271,21 @@ func (h *markTaskForRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
+// validateHostForUserRequest checks that a host is a valid debug spawn host
+// for the given task.
+func validateHostForUserRequest(foundHost *host.Host, taskID string) error {
+	if foundHost == nil {
+		return nil
+	}
+	if !foundHost.IsDebug {
+		return errors.Errorf("host '%s' is not a debug spawn host", foundHost.Id)
+	}
+	if foundHost.ProvisionOptions == nil || foundHost.ProvisionOptions.TaskId != taskID {
+		return errors.Errorf("host '%s' is not associated with task '%s'", foundHost.Id, taskID)
+	}
+	return nil
+}
+
 // GET /task/{task_id}/expansions_and_vars
 type getExpansionsAndVarsHandler struct {
 	settings *evergreen.Settings
@@ -321,6 +337,9 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 			})
 		}
 	}
+	user := gimlet.GetUser(ctx)
+	isUserRequest := user != nil
+
 	var err error
 	var foundHost *host.Host
 	if h.hostID != "" {
@@ -333,6 +352,14 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 				StatusCode: http.StatusNotFound,
 				Message:    fmt.Sprintf("host '%s' not found", h.hostID)},
 			)
+		}
+		if isUserRequest {
+			if err := validateHostForUserRequest(foundHost, h.taskID); err != nil {
+				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+					StatusCode: http.StatusForbidden,
+					Message:    err.Error(),
+				})
+			}
 		}
 	}
 
@@ -361,7 +388,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		InternalRedactions: map[string]string{},
 	}
 
-	if foundHost != nil && foundHost.ServicePassword != "" {
+	if foundHost != nil && foundHost.ServicePassword != "" && !isUserRequest {
 		res.InternalRedactions[hostServicePasswordPlaceholder] = foundHost.ServicePassword
 	}
 
@@ -375,8 +402,6 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 			res.PrivateVars = projectVars.PrivateVars
 		}
 
-		user := gimlet.GetUser(ctx)
-		isUserRequest := user != nil
 		// If from debug session request, filter out admin-only vars if user is not an admin
 		isAdmin := isUserRequest && user.HasPermission(ctx, gimlet.PermissionOpts{
 			Resource:      pRef.Id,
@@ -551,6 +576,7 @@ func (h *getParserProjectHandler) Run(ctx context.Context) gimlet.Responder {
 
 // GET /task/{task_id}/distro_view
 type getDistroViewHandler struct {
+	taskID string
 	hostID string
 }
 
@@ -563,6 +589,9 @@ func (h *getDistroViewHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *getDistroViewHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
 	if h.hostID = r.Header.Get(evergreen.HostHeader); h.hostID == "" {
 		return errors.New("missing host ID")
 	}
@@ -581,6 +610,12 @@ func (h *getDistroViewHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusNotFound,
 				Message:    fmt.Sprintf("host '%s' not found", h.hostID),
+			})
+		}
+		if err := validateHostForUserRequest(foundHost, h.taskID); err != nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusForbidden,
+				Message:    err.Error(),
 			})
 		}
 	}
@@ -985,7 +1020,12 @@ func (h *attachTestResultsHandler) Run(ctx context.Context) gimlet.Responder {
 			CreatedAt: h.body.CreatedAt,
 		}
 		_, err = h.env.CedarDB().Collection(testresult.Collection).InsertOne(ctx, record)
-		if err != nil {
+		if db.IsDuplicateKey(err) {
+			err = h.env.CedarDB().Collection(testresult.Collection).FindOne(ctx, task.ByTaskIDAndExecution(h.body.Info.TaskID, h.body.Info.Execution)).Decode(&record)
+			if err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding test result record"))
+			}
+		} else if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "inserting test result record"))
 		}
 	} else {

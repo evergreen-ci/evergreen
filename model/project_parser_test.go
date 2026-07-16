@@ -8,8 +8,10 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -426,7 +428,7 @@ func TestTranslateTasks(t *testing.T) {
 			Tasks: []string{"tg_task"},
 		}},
 	}
-	out, err := TranslateProject(parserProject)
+	out, err := TranslateProject(t.Context(), parserProject)
 	assert.NoError(t, err)
 	assert.NotNil(t, out)
 	require.Len(t, out.Tasks, 6)
@@ -555,7 +557,7 @@ func TestTranslateDependsOn(t *testing.T) {
 						Name: "t2", Variant: &variantSelector{StringSelector: "v1"}}}},
 				},
 			}
-			out, err := TranslateProject(pp)
+			out, err := TranslateProject(t.Context(), pp)
 			So(out, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			deps := out.Tasks[2].DependsOn
@@ -579,7 +581,7 @@ func TestTranslateDependsOn(t *testing.T) {
 						Name: ".a !.b", Variant: &variantSelector{StringSelector: ".cool"}}}},
 				},
 			}
-			out, err := TranslateProject(pp)
+			out, err := TranslateProject(t.Context(), pp)
 			So(out, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(out.Tasks[1].DependsOn[0].Name, ShouldEqual, "*")
@@ -608,7 +610,7 @@ func TestTranslateDependsOn(t *testing.T) {
 				}},
 			}
 
-			out, err := TranslateProject(pp)
+			out, err := TranslateProject(t.Context(), pp)
 			So(out, ShouldNotBeNil)
 			So(err, ShouldNotBeNil)
 			So(len(strings.Split(err.Error(), "\n")), ShouldEqual, 6)
@@ -634,7 +636,7 @@ func TestTranslateBuildVariants(t *testing.T) {
 				},
 			}}
 
-			out, err := TranslateProject(pp)
+			out, err := TranslateProject(t.Context(), pp)
 			So(out, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(len(out.BuildVariants), ShouldEqual, 1)
@@ -1374,7 +1376,7 @@ tasks:
 	assert.Len(pp.BuildVariants[0].DisplayTasks[1].ExecutionTasks, 1)
 	assert.Equal(".even", pp.BuildVariants[0].DisplayTasks[1].ExecutionTasks[0])
 
-	proj, err := TranslateProject(pp)
+	proj, err := TranslateProject(t.Context(), pp)
 	assert.NotNil(proj)
 	assert.NoError(err)
 	// assert parser project hasn't changed
@@ -3911,4 +3913,207 @@ tasks:
 	assert.Equal(t, "shell.exec", cmd.Command)
 	assert.Equal(t, "./run.sh", cmd.Params["script"])
 	assert.Equal(t, "src", cmd.Params["working_dir"])
+}
+
+const cacheTestYML = `
+buildvariants:
+- name: bv1
+  run_on: d
+  tasks:
+  - name: t1
+tasks:
+- name: t1
+`
+
+const cacheTestYMLChanged = `
+buildvariants:
+- name: bv1
+  run_on: d
+  tasks:
+  - name: t1
+  - name: t2
+tasks:
+- name: t1
+- name: t2
+`
+
+// cacheTestMutationYML has two build variants whose display names sort in reverse of file order and
+// a module, so a test can reproduce the two real file-path mutations of a cached project:
+// NewTaskIdConfigForRepotrackerVersion's sort.Stable(BuildVariants) and the push-trigger Modules[i].Ref write.
+const cacheTestMutationYML = `
+modules:
+- name: m1
+  repo: git@github.com:foo/bar.git
+  branch: main
+buildvariants:
+- name: bvz
+  display_name: z
+  run_on: d
+  tasks:
+  - name: t1
+- name: bva
+  display_name: a
+  run_on: d
+  tasks:
+  - name: t1
+tasks:
+- name: t1
+`
+
+// loadProjectIntoCached mirrors what GetProjectFromFile does: it flips the internal cacheEnabled
+// flag so LoadProjectInto routes the translate step through the content-hash cache.
+func loadProjectIntoCached(t *testing.T, yml, projectID string) *Project {
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(yml), &GetProjectOpts{cacheEnabled: true}, projectID, proj)
+	require.NoError(t, err)
+	return proj
+}
+
+func TestLoadProjectIntoTranslationCache(t *testing.T) {
+	t.Run("FlagOffTranslatesEveryCallAndCachesNothing", func(t *testing.T) {
+		t.Cleanup(resetTranslationCacheForTesting)
+		proj := &Project{}
+		_, err := LoadProjectInto(t.Context(), []byte(cacheTestYML), nil, "id", proj)
+		require.NoError(t, err)
+		_, err = LoadProjectInto(t.Context(), []byte(cacheTestYML), nil, "id", proj)
+		require.NoError(t, err)
+		assert.Equal(t, 0, getTranslationCache().Len(), "cache stays empty when the flag is off")
+	})
+
+	t.Run("FlagOnSecondCallWithUnchangedContentIsCacheHit", func(t *testing.T) {
+		t.Cleanup(resetTranslationCacheForTesting)
+		first := loadProjectIntoCached(t, cacheTestYML, "id")
+		require.Len(t, first.Tasks, 1)
+		assert.Equal(t, 1, getTranslationCache().Len())
+
+		second := loadProjectIntoCached(t, cacheTestYML, "id")
+		assert.Equal(t, 1, getTranslationCache().Len(), "identical content reuses the single entry")
+		assert.Equal(t, first.Tasks, second.Tasks)
+	})
+
+	t.Run("DifferentProjectIDDoesNotCollideOnIdenticalContent", func(t *testing.T) {
+		t.Cleanup(resetTranslationCacheForTesting)
+		loadProjectIntoCached(t, cacheTestYML, "project_a")
+		loadProjectIntoCached(t, cacheTestYML, "project_b")
+		assert.Equal(t, 2, getTranslationCache().Len(), "same content under different projects gets distinct keys")
+	})
+
+	t.Run("ChangedContentIsAMissWithNoInvalidation", func(t *testing.T) {
+		t.Cleanup(resetTranslationCacheForTesting)
+		before := loadProjectIntoCached(t, cacheTestYML, "id")
+		require.Len(t, before.Tasks, 1)
+
+		after := loadProjectIntoCached(t, cacheTestYMLChanged, "id")
+		require.Len(t, after.Tasks, 2, "changed content is recomputed and reflects the new config")
+		assert.Equal(t, 2, getTranslationCache().Len(), "the changed content added a new entry; the old one was never invalidated")
+	})
+
+	t.Run("ConcurrentIdenticalLoadsCoalesce", func(t *testing.T) {
+		t.Cleanup(resetTranslationCacheForTesting)
+		const goroutines = 20
+		var wg sync.WaitGroup
+		wg.Add(goroutines)
+		for i := 0; i < goroutines; i++ {
+			go func() {
+				defer wg.Done()
+				proj := &Project{}
+				_, err := LoadProjectInto(t.Context(), []byte(cacheTestYML), &GetProjectOpts{cacheEnabled: true}, "id", proj)
+				assert.NoError(t, err)
+			}()
+		}
+		wg.Wait()
+		assert.Equal(t, 1, getTranslationCache().Len(), "concurrent identical loads produce a single cached entry")
+	})
+
+	t.Run("MutatingReturnedProjectDoesNotCorruptCachedEntry", func(t *testing.T) {
+		t.Cleanup(resetTranslationCacheForTesting)
+		const multiVariantYML = `
+buildvariants:
+- name: a
+  run_on: d
+  tasks:
+  - name: t1
+- name: b
+  run_on: d
+  tasks:
+  - name: t1
+tasks:
+- name: t1
+`
+		first := loadProjectIntoCached(t, multiVariantYML, "id")
+		require.Len(t, first.BuildVariants, 2)
+
+		// Mimic NewTaskIdConfigForRepotrackerVersion, which reorders BuildVariants in place.
+		first.BuildVariants[0], first.BuildVariants[1] = first.BuildVariants[1], first.BuildVariants[0]
+		first.BuildVariants = first.BuildVariants[:1]
+
+		second := loadProjectIntoCached(t, multiVariantYML, "id")
+		require.Len(t, second.BuildVariants, 2, "cache hit still returns all variants; the earlier truncation did not reach the cached entry")
+		assert.Equal(t, "a", second.BuildVariants[0].Name, "cache hit preserves original order despite the earlier in-place swap")
+	})
+
+	t.Run("HottestKeyTracksTheMostReusedConfig", func(t *testing.T) {
+		t.Cleanup(resetTranslationCacheForTesting)
+		// "hot" is loaded three times (two hits); "cold" is loaded twice (one hit).
+		loadProjectIntoCached(t, cacheTestYML, "hot")
+		loadProjectIntoCached(t, cacheTestYML, "hot")
+		loadProjectIntoCached(t, cacheTestYML, "hot")
+		loadProjectIntoCached(t, cacheTestYML, "cold")
+		loadProjectIntoCached(t, cacheTestYML, "cold")
+
+		key, hits := hottestTranslationKey()
+		sha, err := parserProjectContentSHA(mustLoadIntermediate(t, cacheTestYML))
+		require.NoError(t, err)
+		assert.Equal(t, contentTranslationKey(sha, "hot"), key)
+		assert.Equal(t, int64(2), hits)
+	})
+
+	t.Run("ReturnedCopyIsolatesCallerMutationsFromCache", func(t *testing.T) {
+		t.Cleanup(resetTranslationCacheForTesting)
+		first := loadProjectIntoCached(t, cacheTestMutationYML, "id")
+		require.Len(t, first.BuildVariants, 2)
+		require.Len(t, first.Modules, 1)
+		originalOrder := []string{first.BuildVariants[0].Name, first.BuildVariants[1].Name}
+		originalRef := first.Modules[0].Ref
+
+		// Reproduce the two real file-path mutations on the returned project: the repotracker path
+		// reorders BuildVariants via sort.Stable, and the push-trigger path overwrites Modules[i].Ref.
+		sort.Stable(first.BuildVariants)
+		require.NotEqual(t, originalOrder, []string{first.BuildVariants[0].Name, first.BuildVariants[1].Name}, "sort must actually reorder for this test to be meaningful")
+		first.Modules[0].Ref = "mutated-ref"
+
+		second := loadProjectIntoCached(t, cacheTestMutationYML, "id")
+		assert.Equal(t, originalOrder, []string{second.BuildVariants[0].Name, second.BuildVariants[1].Name}, "cached entry keeps original variant order despite the first caller's sort")
+		assert.Equal(t, originalRef, second.Modules[0].Ref, "cached entry's module ref is not corrupted by the first caller's write")
+	})
+
+	t.Run("ConcurrentCallersMutateReturnedCopiesRaceFree", func(t *testing.T) {
+		t.Cleanup(resetTranslationCacheForTesting)
+		// Warm the cache so every goroutine takes a hit and each gets its own copy.
+		loadProjectIntoCached(t, cacheTestMutationYML, "id")
+
+		const goroutines = 20
+		var wg sync.WaitGroup
+		wg.Add(goroutines)
+		for i := 0; i < goroutines; i++ {
+			go func() {
+				defer wg.Done()
+				proj := &Project{}
+				_, err := LoadProjectInto(t.Context(), []byte(cacheTestMutationYML), &GetProjectOpts{cacheEnabled: true}, "id", proj)
+				assert.NoError(t, err)
+				// If the copies shared backing arrays, concurrent sorts would trip the race detector.
+				sort.Stable(proj.BuildVariants)
+			}()
+		}
+		wg.Wait()
+	})
+}
+
+// mustLoadIntermediate returns the merged intermediate project for yml, matching what LoadProjectInto
+// hashes for the cache key.
+func mustLoadIntermediate(t *testing.T, yml string) *ParserProject {
+	proj := &Project{}
+	pp, err := LoadProjectInto(t.Context(), []byte(yml), nil, "id", proj)
+	require.NoError(t, err)
+	return pp
 }

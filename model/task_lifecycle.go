@@ -2012,6 +2012,7 @@ func buildTaskCompletedSpanAttributes(t *task.Task) []attribute.KeyValue {
 		attribute.String(evergreen.TaskIDOtelAttribute, t.Id),
 		attribute.String(evergreen.TaskNameOtelAttribute, t.DisplayName),
 		attribute.String(evergreen.TaskVariantOtelAttribute, t.BuildVariant),
+		attribute.String(evergreen.VersionRequesterOtelAttribute, t.Requester),
 	}
 	if !utility.IsZeroTime(t.ActivatedTime) && !utility.IsZeroTime(t.ScheduledTime) {
 		attrs = append(attrs, attribute.Int64(evergreen.TaskTimeWaitingForSchedulingMsOtelAttribute,
@@ -2020,6 +2021,18 @@ func buildTaskCompletedSpanAttributes(t *task.Task) []attribute.KeyValue {
 	if len(t.DependsOn) > 0 && !utility.IsZeroTime(t.DependenciesMetTime) && !utility.IsZeroTime(t.ScheduledTime) {
 		attrs = append(attrs, attribute.Int64(evergreen.TaskTimeWaitingForDepsMsOtelAttribute,
 			t.DependenciesMetTime.Sub(t.ScheduledTime).Milliseconds()))
+	}
+	if !utility.IsZeroTime(t.StartTime) {
+		var readyToRunTime time.Time
+		if len(t.DependsOn) > 0 {
+			readyToRunTime = t.DependenciesMetTime
+		} else {
+			readyToRunTime = t.ScheduledTime
+		}
+		if !utility.IsZeroTime(readyToRunTime) {
+			attrs = append(attrs, attribute.Int64(evergreen.TaskTimeWaitingInQueueMsOtelAttribute,
+				t.StartTime.Sub(readyToRunTime).Milliseconds()))
+		}
 	}
 	if !utility.IsZeroTime(t.StartTime) && !utility.IsZeroTime(t.FinishTime) {
 		attrs = append(attrs, attribute.Int64(evergreen.TaskDurationMsOtelAttribute,

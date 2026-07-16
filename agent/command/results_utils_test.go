@@ -103,10 +103,32 @@ func TestSendTestResults(t *testing.T) {
 		for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, comm *client.Mock){
 			"Succeeds": func(ctx context.Context, t *testing.T, comm *client.Mock) {
 				t.Run("PassingResults", func(t *testing.T) {
+					conf.Task.TaskOutputInfo = &task.TaskOutput{
+						TestResults: task.TestResultOutput{
+							Version: task.TestResultServiceEvergreen,
+							BucketConfig: evergreen.BucketConfig{
+								Type:              evergreen.BucketTypeLocal,
+								TestResultsPrefix: "test-results",
+								Name:              t.TempDir(),
+							},
+						},
+					}
+					conf.TestResultsCreatedAt = time.Time{}
 					require.NoError(t, sendTestResults(ctx, comm, logger, conf, results))
 					assert.False(t, comm.ResultsFailed)
 				})
 				t.Run("FailingResults", func(t *testing.T) {
+					conf.Task.TaskOutputInfo = &task.TaskOutput{
+						TestResults: task.TestResultOutput{
+							Version: task.TestResultServiceEvergreen,
+							BucketConfig: evergreen.BucketConfig{
+								Type:              evergreen.BucketTypeLocal,
+								TestResultsPrefix: "test-results",
+								Name:              t.TempDir(),
+							},
+						},
+					}
+					conf.TestResultsCreatedAt = time.Time{}
 					results[0].Status = evergreen.TestFailedStatus
 					require.NoError(t, sendTestResults(ctx, comm, logger, conf, results))
 					assert.True(t, comm.ResultsFailed)
@@ -114,6 +136,17 @@ func TestSendTestResults(t *testing.T) {
 				})
 			},
 			"SucceedsNoDisplayTestName": func(ctx context.Context, t *testing.T, comm *client.Mock) {
+				conf.Task.TaskOutputInfo = &task.TaskOutput{
+					TestResults: task.TestResultOutput{
+						Version: task.TestResultServiceEvergreen,
+						BucketConfig: evergreen.BucketConfig{
+							Type:              evergreen.BucketTypeLocal,
+							TestResultsPrefix: "test-results",
+							Name:              t.TempDir(),
+						},
+					},
+				}
+				conf.TestResultsCreatedAt = time.Time{}
 				displayTestName := results[0].DisplayTestName
 				results[0].DisplayTestName = ""
 				require.NoError(t, sendTestResults(ctx, comm, logger, conf, results))

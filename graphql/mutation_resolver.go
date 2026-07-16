@@ -424,7 +424,7 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, co
 	if err != nil && !adb.ResultsNotFound(err) {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()))
 	}
-	statusCode, err := units.SchedulePatch(ctx, evergreen.GetEnvironment(), patchID, version, patchUpdateReq)
+	statusCode, err := units.SchedulePatch(ctx, evergreen.GetEnvironment(), patchID, version, patchUpdateReq, nil)
 	if err != nil {
 		return nil, mapHTTPStatusToGqlError(ctx, statusCode, werrors.Errorf("scheduling patch '%s': %s", patchID, err.Error()))
 	}
@@ -1335,26 +1335,6 @@ func (r *mutationResolver) RemovePublicKey(ctx context.Context, keyName string) 
 	return myPublicKeys, nil
 }
 
-// ResetAPIKey is the resolver for the resetAPIKey field.
-func (r *mutationResolver) ResetAPIKey(ctx context.Context) (*UserConfig, error) {
-	usr := mustHaveUser(ctx)
-	settings, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
-	}
-	if !usr.OnlyAPI && settings.ServiceFlags.StaticAPIKeysDisabled {
-		return nil, Forbidden.Send(ctx, "static API keys are disabled")
-	}
-	newKey := utility.RandomString()
-	if err := usr.UpdateAPIKey(ctx, newKey); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating user API key: %s", err.Error()))
-	}
-	return &UserConfig{
-		User:   usr.Username(),
-		APIKey: newKey,
-	}, nil
-}
-
 // SaveSubscription is the resolver for the saveSubscription field.
 func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription restModel.APISubscription) (bool, error) {
 	usr := mustHaveUser(ctx)
@@ -1401,6 +1381,10 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 	}
 	err = data.SaveSubscriptions(ctx, username, []restModel.APISubscription{subscription}, false)
 	if err != nil {
+		gimletErr, ok := err.(gimlet.ErrorResponse)
+		if ok {
+			return false, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
+		}
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("saving subscription: %s", err.Error()))
 	}
 	return true, nil

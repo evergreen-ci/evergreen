@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -193,9 +194,13 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 	return c.writeTestList(selectedTests)
 }
 
-// isTestSelectionAllowed checks if test selection is allowed in the project and the running task.
+// isTestSelectionAllowed checks if test selection is allowed in the project and
+// the running task. Test selection is restricted to patches so that it cannot
+// change which tests run on mainline commits and other non-patch requesters.
 func (c *testSelectionGet) isTestSelectionAllowed(conf *internal.TaskConfig) bool {
-	return utility.FromBoolPtr(conf.ProjectRef.TestSelection.Allowed) && conf.Task.TestSelectionEnabled
+	return utility.FromBoolPtr(conf.ProjectRef.TestSelection.Allowed) &&
+		conf.Task.TestSelectionEnabled &&
+		evergreen.IsPatchRequester(conf.Task.Requester)
 }
 
 // writeTestList writes the list of tests to the output file as JSON in the required format.

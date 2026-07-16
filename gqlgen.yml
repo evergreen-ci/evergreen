@@ -468,10 +468,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APILoggerConfig
   LoggerConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APILoggerConfig
-  LogkeeperBuild:
-    model: github.com/evergreen-ci/plank.Build
-  LogkeeperTest:
-    model: github.com/evergreen-ci/plank.Test
   LogMessage:
     model: github.com/evergreen-ci/evergreen/apimodels.LogMessage
   MergeQueue:

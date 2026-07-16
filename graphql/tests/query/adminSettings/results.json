@@ -204,6 +204,9 @@
               "generateTaskFactor": 50,
               "numDependentsFactor": 5,
               "stepbackTaskFactor": 10,
+              "translateProjectConcurrencyLimit": 15,
+              "translateProjectCacheBytesLimit": 1048576,
+              "translateProjectCacheTTLSeconds": 1800,
               "hostAllocator": "UTILIZATION",
               "hostAllocatorRoundingRule": "DOWN",
               "hostAllocatorFeedbackRule": "NO_FEEDBACK",
@@ -409,11 +412,11 @@
             "ssh": {
               "taskHostKey": {
                 "name": "task host key",
-                "secretARN": "\u003csecret_arn\u003e"
+                "secretARN": "<secret_arn>"
               },
               "spawnHostKey": {
                 "name": "spawn host key",
-                "secretARN": "\u003csecret_arn\u003e"
+                "secretARN": "<secret_arn>"
               }
             },
             "hostJasper": {
@@ -443,10 +446,10 @@
             },
             "tracer": {
               "enabled": false,
-              "collectorEndpoint": "\u003ccollector_endpoint\u003e",
-              "collectorInternalEndpoint": "\u003ccollector_internal_endpoint\u003e",
-              "collectorAPIKey": "\u003ccollector_api_key\u003e",
-              "traceUrlTemplate": "\u003ctrace_url_template\u003e"
+              "collectorEndpoint": "<collector_endpoint>",
+              "collectorInternalEndpoint": "<collector_internal_endpoint>",
+              "collectorAPIKey": "<collector_api_key>",
+              "traceUrlTemplate": "<trace_url_template>"
             },
             "projectCreation": {
               "totalProjectLimit": 10,
@@ -585,6 +588,7 @@
               { "name": "host_init_disabled", "enabled": false },
               { "name": "large_parser_projects_disabled", "enabled": false },
               { "name": "monitor_disabled", "enabled": false },
+              { "name": "merge_queue_recovery_enabled", "enabled": false },
               { "name": "alerts_disabled", "enabled": false },
               { "name": "agent_start_disabled", "enabled": false },
               { "name": "repotracker_disabled", "enabled": false },
@@ -601,8 +605,6 @@
               { "name": "background_reauth_disabled", "enabled": false },
               { "name": "cloud_cleanup_disabled", "enabled": false },
               { "name": "sleep_schedule_disabled", "enabled": false },
-              { "name": "static_api_keys_disabled", "enabled": false },
-              { "name": "jwt_token_for_cli_disabled", "enabled": false },
               {
                 "name": "system_failed_task_restart_disabled",
                 "enabled": false
@@ -622,6 +624,7 @@
               { "name": "webhook_secret_migration_enabled", "enabled": false },
               { "name": "webhook_secret_cleanup_enabled", "enabled": false },
               { "name": "retry_failed_log_move_enabled", "enabled": false },
+              { "name": "project_translation_cache_enabled", "enabled": false },
               { "name": "event_processing_disabled", "enabled": false },
               { "name": "jira_notifications_disabled", "enabled": false },
               { "name": "slack_notifications_disabled", "enabled": false },

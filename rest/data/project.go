@@ -285,7 +285,7 @@ func GetProjectAliasResults(ctx context.Context, p *model.Project, alias string,
 	matches := []restModel.APIVariantTasks{}
 	for _, projectAlias := range projectAliases {
 		requester := getRequesterFromAlias(projectAlias.Alias)
-		_, _, variantTasks := p.ResolvePatchVTs(ctx, &patch.Patch{}, requester, projectAlias.Alias, includeDeps)
+		_, _, variantTasks := p.ResolvePatchVTs(ctx, &patch.Patch{}, requester, projectAlias.Alias, includeDeps, "")
 		for _, variantTask := range variantTasks {
 			matches = append(matches, restModel.APIVariantTasksBuildFromService(variantTask))
 		}
@@ -307,14 +307,14 @@ func getRequesterFromAlias(alias string) string {
 	return evergreen.PatchVersionRequester
 }
 
-func (pc *DBProjectConnector) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string) (model.ProjectInfo, error) {
+func (pc *DBProjectConnector) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string, settings *evergreen.Settings) (model.ProjectInfo, error) {
 	opts := model.GetProjectOpts{
 		Ref:          &pRef,
 		Revision:     pRef.Branch,
 		RemotePath:   file,
 		ReadFileFrom: model.ReadFromGithub,
 	}
-	return model.GetProjectFromFile(ctx, opts)
+	return model.GetProjectFromFile(ctx, opts, settings)
 }
 
 // HideBranch is used to "delete" a project via the rest route or the UI. It overwrites the project with a skeleton project.

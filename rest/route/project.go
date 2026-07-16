@@ -401,7 +401,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	newRevision := utility.FromStringPtr(h.apiNewProjectRef.Revision)
 	if newRevision != "" {
-		if err = dbModel.UpdateProjectRevision(ctx, h.project, newRevision); err != nil {
+		if err = dbModel.UpdateLastRevision(ctx, h.project, newRevision); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 		h.newProjectRef.RepotrackerError = &dbModel.RepositoryErrorDetails{
@@ -744,7 +744,12 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 //
 // GET /rest/v2/projects/{project_id}/versions
 
-const defaultVersionLimit = 20
+const defaultVersionLimit = 5
+
+// maxVersionLimit bounds how many versions a single request may fetch. Each returned version carries
+// its embedded build-variant status (and, with include_builds, looked-up build documents), so an
+// unbounded limit lets one request materialize gigabytes server-side and can OOM the process.
+const maxVersionLimit = 100
 
 type getProjectVersionsHandler struct {
 	projectName string
@@ -765,7 +770,7 @@ func makeGetProjectVersionsHandler() gimlet.RouteHandler {
 //	@Security		Api-User || Api-Key
 //	@Param			project_id			path	string		true	"the project ID"
 //	@Param			skip				query	int			false	"Number of versions to skip."
-//	@Param			limit				query	int			false	"The number of versions to be returned per page of pagination. Defaults to 20."
+//	@Param			limit				query	int			false	"The number of versions to be returned per page of pagination. Defaults to 5, and cannot exceed 100."
 //	@Param			start				query	int			false	"The version order number to start at, for pagination. Will return the versions that are less than (and therefore older) the revision number specified."
 //	@Param			revision_end		query	int			false	"Will return the versions that are greater than (and therefore more recent) or equal to revision number specified."
 //	@Param			requester			query	string		false	"Returns versions for this requester only. Defaults to gitter_request (caused by git commit, aka the repotracker requester). Can also be set to patch_request, github_pull_request, trigger_request (Project Trigger versions) , github_merge_request (GitHub merge queue), and ad_hoc (periodic builds). Can be specified multiple times to include multiple requesters."
@@ -821,6 +826,9 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 	}
 	if h.opts.Limit < 1 {
 		return errors.New("limit must be a positive integer")
+	}
+	if h.opts.Limit > maxVersionLimit {
+		return errors.Errorf("limit cannot exceed %d", maxVersionLimit)
 	}
 
 	startStr := params.Get("start")

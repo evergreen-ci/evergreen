@@ -2094,6 +2094,12 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 		expectedTasks           int
 		expectedVariantNames    []string
 		expectedTaskNames       []string
+		// expectedVariantTasks, when set, asserts the exact tasks kept for each
+		// named variant regardless of variant ordering.
+		expectedVariantTasks map[string][]string
+		// expectedVariantDisplayTasks, when set, asserts the exact display tasks
+		// kept for each named variant regardless of variant ordering.
+		expectedVariantDisplayTasks map[string][]string
 	}{
 		{
 			name: "NonGitHubPRPatch",
@@ -2453,12 +2459,301 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 			expectedBuildVariants:   2,
 			expectedTasks:           2,
 		},
+		{
+			name: "CrossVariantDependencyIntoIgnoredVariantIsPreserved",
+			patchDoc: &patch.Patch{
+				Id:      mgobson.NewObjectId(),
+				Project: s.project,
+				Author:  s.user,
+				Githash: s.hash,
+				GithubPatchData: thirdparty.GithubPatch{
+					PRNumber:  123,
+					BaseOwner: "owner",
+					BaseRepo:  "repo",
+					HeadOwner: "contributor",
+					HeadRepo:  "repo",
+				},
+				Patches: []patch.ModulePatch{
+					{
+						PatchSet: patch.PatchSet{
+							Summary: []thirdparty.Summary{
+								{Name: "docs/README.md", Additions: 1, Deletions: 0},
+							},
+						},
+					},
+				},
+				VariantsTasks: []patch.VariantTasks{
+					{Variant: "bvA", Tasks: []string{"taskA", "taskX"}},
+					{Variant: "bvB", Tasks: []string{"taskB"}},
+				},
+				BuildVariants: []string{"bvA", "bvB"},
+				Tasks:         []string{"taskA", "taskX", "taskB"},
+			},
+			project: &model.Project{
+				Identifier: s.project,
+				Tasks: []model.ProjectTask{
+					{Name: "taskA"},
+					{Name: "taskX"},
+					{Name: "taskB"},
+				},
+				BuildVariants: model.BuildVariants{
+					{
+						Name:  "bvA",
+						Paths: []string{"src/**"},
+						Tasks: []model.BuildVariantTaskUnit{
+							{Name: "taskA", Variant: "bvA"},
+							{Name: "taskX", Variant: "bvA"},
+						},
+					},
+					{
+						Name: "bvB",
+						Tasks: []model.BuildVariantTaskUnit{
+							{Name: "taskB", Variant: "bvB", DependsOn: []model.TaskUnitDependency{
+								{Name: "taskA", Variant: "bvA"},
+							}},
+						},
+					},
+				},
+			},
+			// Only taskA is depended on, so taskX in the path-filtered bvA is
+			// still dropped while taskA is reinstated.
+			expectedIgnoredVariants: []string{},
+			expectedVariantsTasks:   2,
+			expectedBuildVariants:   2,
+			expectedTasks:           2,
+			expectedVariantTasks: map[string][]string{
+				"bvA": {"taskA"},
+				"bvB": {"taskB"},
+			},
+		},
+		{
+			name: "TransitiveCrossVariantDependencyIntoIgnoredVariantPreserved",
+			patchDoc: &patch.Patch{
+				Id:      mgobson.NewObjectId(),
+				Project: s.project,
+				Author:  s.user,
+				Githash: s.hash,
+				GithubPatchData: thirdparty.GithubPatch{
+					PRNumber:  123,
+					BaseOwner: "owner",
+					BaseRepo:  "repo",
+					HeadOwner: "contributor",
+					HeadRepo:  "repo",
+				},
+				Patches: []patch.ModulePatch{
+					{
+						PatchSet: patch.PatchSet{
+							Summary: []thirdparty.Summary{
+								{Name: "docs/README.md", Additions: 1, Deletions: 0},
+							},
+						},
+					},
+				},
+				VariantsTasks: []patch.VariantTasks{
+					{Variant: "bvA", Tasks: []string{"taskA"}},
+					{Variant: "bvB", Tasks: []string{"taskB"}},
+					{Variant: "bvC", Tasks: []string{"taskC"}},
+				},
+				BuildVariants: []string{"bvA", "bvB", "bvC"},
+				Tasks:         []string{"taskA", "taskB", "taskC"},
+			},
+			project: &model.Project{
+				Identifier: s.project,
+				Tasks: []model.ProjectTask{
+					{Name: "taskA"},
+					{Name: "taskB"},
+					{Name: "taskC"},
+				},
+				BuildVariants: model.BuildVariants{
+					{
+						Name: "bvA",
+						Tasks: []model.BuildVariantTaskUnit{
+							{Name: "taskA", Variant: "bvA", DependsOn: []model.TaskUnitDependency{
+								{Name: "taskB", Variant: "bvB"},
+							}},
+						},
+					},
+					{
+						Name:  "bvB",
+						Paths: []string{"lib/**"},
+						Tasks: []model.BuildVariantTaskUnit{
+							{Name: "taskB", Variant: "bvB", DependsOn: []model.TaskUnitDependency{
+								{Name: "taskC", Variant: "bvC"},
+							}},
+						},
+					},
+					{
+						Name:  "bvC",
+						Paths: []string{"src/**"},
+						Tasks: []model.BuildVariantTaskUnit{
+							{Name: "taskC", Variant: "bvC"},
+						},
+					},
+				},
+			},
+			// taskA depends on taskB (bvB) which depends on taskC (bvC); both
+			// path-filtered variants must be reinstated transitively.
+			expectedIgnoredVariants: []string{},
+			expectedVariantsTasks:   3,
+			expectedBuildVariants:   3,
+			expectedTasks:           3,
+			expectedVariantTasks: map[string][]string{
+				"bvA": {"taskA"},
+				"bvB": {"taskB"},
+				"bvC": {"taskC"},
+			},
+		},
+		{
+			name: "DisplayTaskPreservedForCrossVariantDependencyIntoIgnoredVariant",
+			patchDoc: &patch.Patch{
+				Id:      mgobson.NewObjectId(),
+				Project: s.project,
+				Author:  s.user,
+				Githash: s.hash,
+				GithubPatchData: thirdparty.GithubPatch{
+					PRNumber:  123,
+					BaseOwner: "owner",
+					BaseRepo:  "repo",
+					HeadOwner: "contributor",
+					HeadRepo:  "repo",
+				},
+				Patches: []patch.ModulePatch{
+					{
+						PatchSet: patch.PatchSet{
+							Summary: []thirdparty.Summary{
+								{Name: "docs/README.md", Additions: 1, Deletions: 0},
+							},
+						},
+					},
+				},
+				VariantsTasks: []patch.VariantTasks{
+					{
+						Variant: "bvA",
+						Tasks:   []string{"unit-test", "integration-test"},
+						DisplayTasks: []patch.DisplayTask{
+							{Name: "suite", ExecTasks: []string{"unit-test", "integration-test"}},
+						},
+					},
+					{Variant: "bvB", Tasks: []string{"taskB"}},
+				},
+				BuildVariants: []string{"bvA", "bvB"},
+				Tasks:         []string{"unit-test", "integration-test", "taskB", "suite"},
+			},
+			project: &model.Project{
+				Identifier: s.project,
+				Tasks: []model.ProjectTask{
+					{Name: "unit-test"},
+					{Name: "integration-test"},
+					{Name: "taskB"},
+				},
+				BuildVariants: model.BuildVariants{
+					{
+						Name:  "bvA",
+						Paths: []string{"src/**"},
+						Tasks: []model.BuildVariantTaskUnit{
+							{Name: "unit-test", Variant: "bvA"},
+							{Name: "integration-test", Variant: "bvA"},
+						},
+						DisplayTasks: []patch.DisplayTask{
+							{Name: "suite", ExecTasks: []string{"unit-test", "integration-test"}},
+						},
+					},
+					{
+						Name: "bvB",
+						Tasks: []model.BuildVariantTaskUnit{
+							{Name: "taskB", Variant: "bvB", DependsOn: []model.TaskUnitDependency{
+								{Name: "unit-test", Variant: "bvA"},
+							}},
+						},
+					},
+				},
+			},
+			// taskB depends on unit-test, which is grouped under the "suite"
+			// display task, so the display task wrapper is preserved even though
+			// integration-test is dropped.
+			expectedIgnoredVariants: []string{},
+			expectedVariantsTasks:   2,
+			expectedBuildVariants:   2,
+			// patchDoc.Tasks keeps unit-test (reinstated), taskB, and the "suite"
+			// display task, dropping the unneeded integration-test.
+			expectedTasks: 3,
+			expectedVariantTasks: map[string][]string{
+				"bvA": {"unit-test"},
+				"bvB": {"taskB"},
+			},
+			expectedVariantDisplayTasks: map[string][]string{
+				"bvA": {"suite"},
+				"bvB": {},
+			},
+		},
+		{
+			name: "IgnoredVariantWithNoDependentsStillIgnored",
+			patchDoc: &patch.Patch{
+				Id:      mgobson.NewObjectId(),
+				Project: s.project,
+				Author:  s.user,
+				Githash: s.hash,
+				GithubPatchData: thirdparty.GithubPatch{
+					PRNumber:  123,
+					BaseOwner: "owner",
+					BaseRepo:  "repo",
+					HeadOwner: "contributor",
+					HeadRepo:  "repo",
+				},
+				Patches: []patch.ModulePatch{
+					{
+						PatchSet: patch.PatchSet{
+							Summary: []thirdparty.Summary{
+								{Name: "src/main.go", Additions: 1, Deletions: 0},
+							},
+						},
+					},
+				},
+				VariantsTasks: []patch.VariantTasks{
+					{Variant: "bvA", Tasks: []string{"taskA"}},
+					{Variant: "bvB", Tasks: []string{"taskB"}},
+				},
+				BuildVariants: []string{"bvA", "bvB"},
+				Tasks:         []string{"taskA", "taskB"},
+			},
+			project: &model.Project{
+				Identifier: s.project,
+				Tasks: []model.ProjectTask{
+					{Name: "taskA"},
+					{Name: "taskB"},
+				},
+				BuildVariants: model.BuildVariants{
+					{
+						Name:  "bvA",
+						Paths: []string{"src/**"},
+						Tasks: []model.BuildVariantTaskUnit{
+							{Name: "taskA", Variant: "bvA"},
+						},
+					},
+					{
+						Name:  "bvB",
+						Paths: []string{"docs/**"},
+						Tasks: []model.BuildVariantTaskUnit{
+							{Name: "taskB", Variant: "bvB"},
+						},
+					},
+				},
+			},
+			// bvB has no changed files matching its paths and nothing depends on
+			// taskB, so it is still ignored.
+			expectedIgnoredVariants: []string{"bvB"},
+			expectedVariantsTasks:   1,
+			expectedBuildVariants:   1,
+			expectedTasks:           1,
+			expectedVariantNames:    []string{"bvA"},
+			expectedTaskNames:       []string{"taskA"},
+		},
 	}
 
 	for _, tc := range testCases {
 		s.T().Run(tc.name, func(t *testing.T) {
 			j := &patchIntentProcessor{}
-			ctx := context.Background()
+			ctx := t.Context()
 			ignoredVariants := j.filterOutIgnoredVariants(ctx, tc.patchDoc, tc.project)
 
 			assert.Equal(t, tc.expectedIgnoredVariants, ignoredVariants)
@@ -2476,6 +2771,29 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 
 			if tc.expectedTaskNames != nil {
 				assert.Equal(t, tc.expectedTaskNames, tc.patchDoc.Tasks)
+			}
+
+			if tc.expectedVariantTasks != nil {
+				actualVariantTasks := map[string][]string{}
+				for _, vt := range tc.patchDoc.VariantsTasks {
+					actualVariantTasks[vt.Variant] = vt.Tasks
+				}
+				assert.Len(t, actualVariantTasks, len(tc.expectedVariantTasks))
+				for variant, expectedTasks := range tc.expectedVariantTasks {
+					assert.ElementsMatch(t, expectedTasks, actualVariantTasks[variant], "variant '%s'", variant)
+				}
+			}
+
+			if tc.expectedVariantDisplayTasks != nil {
+				actualDisplayTasks := map[string][]string{}
+				for _, vt := range tc.patchDoc.VariantsTasks {
+					for _, dt := range vt.DisplayTasks {
+						actualDisplayTasks[vt.Variant] = append(actualDisplayTasks[vt.Variant], dt.Name)
+					}
+				}
+				for variant, expectedDisplayTasks := range tc.expectedVariantDisplayTasks {
+					assert.ElementsMatch(t, expectedDisplayTasks, actualDisplayTasks[variant], "variant '%s'", variant)
+				}
 			}
 		})
 	}
@@ -2517,5 +2835,56 @@ func TestGitHubStatusRuleTarget(t *testing.T) {
 		assert.Equal(t, "pr-owner", owner)
 		assert.Equal(t, "project-repo", repo)
 		assert.Equal(t, "project-branch", branch)
+	})
+}
+
+func TestIsUserAuthorized(t *testing.T) {
+	t.Run("ForkPRExternalCollaboratorPermissionChecksBaseRepository", func(t *testing.T) {
+		originalGitHubUserInOrganization := githubUserInOrganization
+		originalAppAuthorizedForOrg := appAuthorizedForOrg
+		originalGitHubUserHasWritePermission := githubUserHasWritePermission
+		t.Cleanup(func() {
+			githubUserInOrganization = originalGitHubUserInOrganization
+			appAuthorizedForOrg = originalAppAuthorizedForOrg
+			githubUserHasWritePermission = originalGitHubUserHasWritePermission
+		})
+
+		githubUserInOrganization = func(ctx context.Context, org, username string) (bool, error) {
+			assert.Equal(t, "required-org", org)
+			assert.Equal(t, "external-user", username)
+			return false, nil
+		}
+		appAuthorizedForOrg = func(ctx context.Context, org, username string) (bool, error) {
+			assert.Equal(t, "required-org", org)
+			assert.Equal(t, "external-user", username)
+			return false, nil
+		}
+
+		var checkedOwner, checkedRepo string
+		githubUserHasWritePermission = func(ctx context.Context, owner, repo, username string) (bool, error) {
+			checkedOwner = owner
+			checkedRepo = repo
+			assert.Equal(t, "external-user", username)
+			return owner == "base-owner" && repo == "base-repo", nil
+		}
+
+		j := &patchIntentProcessor{}
+		patchDoc := &patch.Patch{
+			GithubPatchData: thirdparty.GithubPatch{
+				BaseOwner: "base-owner",
+				BaseRepo:  "base-repo",
+				HeadOwner: "fork-owner",
+				HeadRepo:  "fork-repo",
+				PRNumber:  123,
+				Author:    "external-user",
+			},
+		}
+
+		authorized, err := j.isUserAuthorized(t.Context(), patchDoc, "required-org", "external-user")
+
+		assert.NoError(t, err)
+		assert.True(t, authorized)
+		assert.Equal(t, "base-owner", checkedOwner)
+		assert.Equal(t, "base-repo", checkedRepo)
 	})
 }

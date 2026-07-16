@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
+	evgmodel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -106,6 +107,9 @@ func startWebService() cli.Command {
 			grip.EmergencyFatal(ctx, errors.Wrap(env.RemoteQueue().Start(remoteQueueCtx), "starting remote queue"))
 
 			settings := env.Settings()
+			evgmodel.SetTranslateConcurrencyLimit(settings.Scheduler.TranslateProjectConcurrencyLimit)
+			evgmodel.SetTranslationCacheBytesLimit(settings.Scheduler.TranslateProjectCacheBytesLimit)
+			evgmodel.SetTranslationCacheTTL(time.Duration(settings.Scheduler.TranslateProjectCacheTTLSeconds) * time.Second)
 			// Remove the span from the senderCtx since the sender caches the ctx.
 			senderCtx := trace.ContextWithSpan(ctx, nil)
 			sender, err := settings.GetSender(senderCtx, env)

@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -304,7 +305,7 @@ func (s *APIWebhookSubscriber) ToService() event.WebhookSubscriber {
 
 func (s *APIWebhookHeader) BuildFromService(h event.WebhookHeader) {
 	s.Key = &h.Key
-	if h.Key == "Authorization" {
+	if strings.EqualFold(h.Key, event.WebhookAuthorizationHeader) {
 		s.Value = utility.ToStringPtr(evergreen.RedactedValue)
 	} else {
 		s.Value = &h.Value

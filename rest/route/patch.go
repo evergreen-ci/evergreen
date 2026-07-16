@@ -655,7 +655,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project for patch '%s'", p.patchId))
 		}
 	} else {
-		project, err = dbModel.FindProjectFromVersionID(ctx, dbVersion.Id)
+		project, _, err = dbModel.FindAndTranslateProjectForVersion(ctx, p.env.Settings(), dbVersion, false)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project for version '%s'", dbVersion.Id))
 		}
@@ -706,7 +706,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 		patchUpdateReq.VariantsTasks = append(patchUpdateReq.VariantsTasks, variantToSchedule)
 	}
-	code, err := units.SchedulePatch(ctx, p.env, p.patchId, dbVersion, patchUpdateReq)
+	code, err := units.SchedulePatch(ctx, p.env, p.patchId, dbVersion, patchUpdateReq, project)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "scheduling patch"))
 	}

@@ -162,6 +162,28 @@ func (as *APIServer) listProjects(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	usr := MustHaveUser(r)
+	viewableIds, err := usr.GetViewableProjects(r.Context())
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
+	if viewableIds != nil {
+		allowed := make(map[string]struct{}, len(viewableIds))
+		for _, id := range viewableIds {
+			allowed[id] = struct{}{}
+		}
+		filtered := make([]model.ProjectRef, 0, len(allProjs))
+		for i := range allProjs {
+			if _, ok := allowed[allProjs[i].Id]; ok {
+				filtered = append(filtered, allProjs[i])
+			}
+		}
+		allProjs = filtered
+	}
+
 	for i := range allProjs {
 		allProjs[i].RedactSecrets()
 	}
@@ -171,14 +193,15 @@ func (as *APIServer) listProjects(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) listTasks(w http.ResponseWriter, r *http.Request) {
 	project := MustHaveProject(r)
 
-	// zero out the depends on and commands fields because they are
-	// unnecessary and may not get marshaled properly
-	for i := range project.Tasks {
-		project.Tasks[i].DependsOn = []model.TaskUnitDependency{}
-		project.Tasks[i].Commands = []model.PluginCommandConf{}
-
+	// Copy the slice before zeroing fields — the project pointer may be shared
+	// with the translation cache and must not be mutated.
+	tasks := make([]model.ProjectTask, len(project.Tasks))
+	copy(tasks, project.Tasks)
+	for i := range tasks {
+		tasks[i].DependsOn = []model.TaskUnitDependency{}
+		tasks[i].Commands = []model.PluginCommandConf{}
 	}
-	gimlet.WriteJSON(r.Context(), w, project.Tasks)
+	gimlet.WriteJSON(r.Context(), w, tasks)
 }
 func (as *APIServer) listVariants(w http.ResponseWriter, r *http.Request) {
 	project := MustHaveProject(r)
@@ -288,7 +311,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.SimpleVersions = true
 
 	// Project lookup and validation routes
-	app.AddRoute("/ref/{projectId}").Wrap(requireUser).Handler(as.fetchLimitedProjectRef).Get()
+	app.AddRoute("/ref/{projectId}").Wrap(requireUser, viewTasks).Handler(as.fetchLimitedProjectRef).Get()
 	// Please do not use this route internally, it is deprecated. Use the REST v2 /validate route instead.
 	app.AddRoute("/validate").Wrap(requireUser).Handler(as.validateProjectConfig).Post()
 

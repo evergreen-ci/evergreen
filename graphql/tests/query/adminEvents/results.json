@@ -61,7 +61,10 @@
                   "patch_zipper_factor": 50,
                   "stepback_task_factor": 10,
                   "target_time_seconds": 60,
-                  "task_finder": "legacy"
+                  "task_finder": "legacy",
+                  "translate_project_cache_bytes_limit": 0,
+                  "translate_project_cache_ttl_seconds": 0,
+                  "translate_project_concurrency_limit": 0
                 },
                 "before": {
                   "acceptable_host_idle_time_seconds": 30,
@@ -81,7 +84,10 @@
                   "patch_zipper_factor": 50,
                   "stepback_task_factor": 10,
                   "target_time_seconds": 60,
-                  "task_finder": "legacy"
+                  "task_finder": "legacy",
+                  "translate_project_cache_bytes_limit": 0,
+                  "translate_project_cache_ttl_seconds": 0,
+                  "translate_project_concurrency_limit": 0
                 },
                 "section": "scheduler",
                 "timestamp": "2025-07-09T13:46:47.303-04:00",

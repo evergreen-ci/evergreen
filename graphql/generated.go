@@ -27,7 +27,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/plank"
 	gqlparser "github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 )
@@ -61,7 +60,6 @@ type ResolverRoot interface {
 	Image() ImageResolver
 	IssueLink() IssueLinkResolver
 	JiraNotificationsConfig() JiraNotificationsConfigResolver
-	LogkeeperBuild() LogkeeperBuildResolver
 	Mutation() MutationResolver
 	Patch() PatchResolver
 	Patches() PatchesResolver
@@ -106,6 +104,7 @@ type DirectiveRoot struct {
 	RequireProjectAccess         func(ctx context.Context, obj any, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (res any, err error)
 	RequireProjectAdmin          func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireProjectSettingsAccess func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
+	RequireRepoAccess            func(ctx context.Context, obj any, next graphql.Resolver, access AccessLevel) (res any, err error)
 	RequireVolumeAccess          func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 }
 
@@ -319,10 +318,15 @@ type ComplexityRoot struct {
 	}
 
 	BucketConfig struct {
-		Name              func(childComplexity int) int
-		RoleARN           func(childComplexity int) int
-		TestResultsPrefix func(childComplexity int) int
-		Type              func(childComplexity int) int
+		ExpirationDays          func(childComplexity int) int
+		LifecycleLastSyncedAt   func(childComplexity int) int
+		LifecycleSyncError      func(childComplexity int) int
+		Name                    func(childComplexity int) int
+		RoleARN                 func(childComplexity int) int
+		TestResultsPrefix       func(childComplexity int) int
+		TransitionToGlacierDays func(childComplexity int) int
+		TransitionToIADays      func(childComplexity int) int
+		Type                    func(childComplexity int) int
 	}
 
 	BucketsConfig struct {
@@ -332,6 +336,7 @@ type ComplexityRoot struct {
 		LogBucketFailedTasks             func(childComplexity int) int
 		LogBucketLongRetention           func(childComplexity int) int
 		LongRetentionProjects            func(childComplexity int) int
+		RetryFailedLogMoveLookbackDays   func(childComplexity int) int
 		RetryFailedLogMoveLookbackMonths func(childComplexity int) int
 		RetryFailedLogMoveMaxJobsPerRun  func(childComplexity int) int
 		TestResultsBucket                func(childComplexity int) int
@@ -352,14 +357,9 @@ type ComplexityRoot struct {
 	}
 
 	BuildBaronSettings struct {
-		BFSuggestionFeaturesURL func(childComplexity int) int
-		BFSuggestionPassword    func(childComplexity int) int
-		BFSuggestionServer      func(childComplexity int) int
-		BFSuggestionTimeoutSecs func(childComplexity int) int
-		BFSuggestionUsername    func(childComplexity int) int
-		TicketCreateIssueType   func(childComplexity int) int
-		TicketCreateProject     func(childComplexity int) int
-		TicketSearchProjects    func(childComplexity int) int
+		TicketCreateIssueType func(childComplexity int) int
+		TicketCreateProject   func(childComplexity int) int
+		TicketSearchProjects  func(childComplexity int) int
 	}
 
 	BuildVariantTuple struct {
@@ -426,6 +426,7 @@ type ComplexityRoot struct {
 	CostConfig struct {
 		EBSCost             func(childComplexity int) int
 		FinanceFormula      func(childComplexity int) int
+		HiddenCostProjects  func(childComplexity int) int
 		OnDemandDiscount    func(childComplexity int) int
 		S3Cost              func(childComplexity int) int
 		SavingsPlanDiscount func(childComplexity int) int
@@ -966,26 +967,6 @@ type ComplexityRoot struct {
 		ThresholdLevel func(childComplexity int) int
 	}
 
-	LogkeeperBuild struct {
-		BuildNum      func(childComplexity int) int
-		Builder       func(childComplexity int) int
-		ID            func(childComplexity int) int
-		Task          func(childComplexity int) int
-		TaskExecution func(childComplexity int) int
-		TaskID        func(childComplexity int) int
-		Tests         func(childComplexity int) int
-	}
-
-	LogkeeperTest struct {
-		BuildID       func(childComplexity int) int
-		Command       func(childComplexity int) int
-		ID            func(childComplexity int) int
-		Name          func(childComplexity int) int
-		Phase         func(childComplexity int) int
-		TaskExecution func(childComplexity int) int
-		TaskID        func(childComplexity int) int
-	}
-
 	MainlineCommitVersion struct {
 		RolledUpVersions func(childComplexity int) int
 		Version          func(childComplexity int) int
@@ -1063,7 +1044,6 @@ type ComplexityRoot struct {
 		RemovePublicKey               func(childComplexity int, keyName string) int
 		RemoveVolume                  func(childComplexity int, volumeID string) int
 		ReprovisionToNew              func(childComplexity int, hostIds []string) int
-		ResetAPIKey                   func(childComplexity int) int
 		RestartAdminTasks             func(childComplexity int, opts model1.RestartOptions) int
 		RestartJasper                 func(childComplexity int, hostIds []string) int
 		RestartTask                   func(childComplexity int, taskID string, failedOnly bool) int
@@ -1516,7 +1496,6 @@ type ComplexityRoot struct {
 		Images                   func(childComplexity int) int
 		InstanceTypes            func(childComplexity int) int
 		IsRepo                   func(childComplexity int, projectOrRepoID string) int
-		LogkeeperBuildMetadata   func(childComplexity int, buildID string) int
 		MainlineCommits          func(childComplexity int, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) int
 		MyHosts                  func(childComplexity int) int
 		MyPublicKeys             func(childComplexity int) int
@@ -1724,31 +1703,33 @@ type ComplexityRoot struct {
 	}
 
 	SchedulerConfig struct {
-		AcceptableHostIdleTimeSeconds func(childComplexity int) int
-		CacheDurationSeconds          func(childComplexity int) int
-		CommitQueueFactor             func(childComplexity int) int
-		ExpectedRuntimeFactor         func(childComplexity int) int
-		FutureHostFraction            func(childComplexity int) int
-		GenerateTaskFactor            func(childComplexity int) int
-		GroupVersions                 func(childComplexity int) int
-		HostAllocator                 func(childComplexity int) int
-		HostAllocatorFeedbackRule     func(childComplexity int) int
-		HostAllocatorRoundingRule     func(childComplexity int) int
-		HostsOverallocatedRule        func(childComplexity int) int
-		MainlineTimeInQueueFactor     func(childComplexity int) int
-		NumDependentsFactor           func(childComplexity int) int
-		PatchFactor                   func(childComplexity int) int
-		PatchTimeInQueueFactor        func(childComplexity int) int
-		StepbackTaskFactor            func(childComplexity int) int
-		TargetTimeSeconds             func(childComplexity int) int
-		TaskFinder                    func(childComplexity int) int
+		AcceptableHostIdleTimeSeconds    func(childComplexity int) int
+		CacheDurationSeconds             func(childComplexity int) int
+		CommitQueueFactor                func(childComplexity int) int
+		ExpectedRuntimeFactor            func(childComplexity int) int
+		FutureHostFraction               func(childComplexity int) int
+		GenerateTaskFactor               func(childComplexity int) int
+		GroupVersions                    func(childComplexity int) int
+		HostAllocator                    func(childComplexity int) int
+		HostAllocatorFeedbackRule        func(childComplexity int) int
+		HostAllocatorRoundingRule        func(childComplexity int) int
+		HostsOverallocatedRule           func(childComplexity int) int
+		MainlineTimeInQueueFactor        func(childComplexity int) int
+		NumDependentsFactor              func(childComplexity int) int
+		PatchFactor                      func(childComplexity int) int
+		PatchTimeInQueueFactor           func(childComplexity int) int
+		StepbackTaskFactor               func(childComplexity int) int
+		TargetTimeSeconds                func(childComplexity int) int
+		TaskFinder                       func(childComplexity int) int
+		TranslateProjectCacheBytesLimit  func(childComplexity int) int
+		TranslateProjectCacheTTLSeconds  func(childComplexity int) int
+		TranslateProjectConcurrencyLimit func(childComplexity int) int
 	}
 
 	SearchReturnInfo struct {
-		FeaturesURL func(childComplexity int) int
-		Issues      func(childComplexity int) int
-		Search      func(childComplexity int) int
-		Source      func(childComplexity int) int
+		Issues func(childComplexity int) int
+		Search func(childComplexity int) int
+		Source func(childComplexity int) int
 	}
 
 	Selector struct {
@@ -2285,8 +2266,6 @@ type ComplexityRoot struct {
 
 	UserServiceFlags struct {
 		DebugSpawnHostDisabled func(childComplexity int) int
-		JWTTokenForCLIDisabled func(childComplexity int) int
-		StaticAPIKeysDisabled  func(childComplexity int) int
 	}
 
 	UserSettings struct {
@@ -2521,9 +2500,6 @@ type IssueLinkResolver interface {
 type JiraNotificationsConfigResolver interface {
 	CustomFields(ctx context.Context, obj *model.APIJIRANotificationsConfig) ([]*JiraNotificationsProjectEntry, error)
 }
-type LogkeeperBuildResolver interface {
-	Task(ctx context.Context, obj *plank.Build) (*model.APITask, error)
-}
 type MutationResolver interface {
 	BbCreateTicket(ctx context.Context, taskID string, execution *int) (bool, error)
 	AddAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
@@ -2585,7 +2561,6 @@ type MutationResolver interface {
 	DeleteSubscriptions(ctx context.Context, subscriptionIds []string) (int, error)
 	RemoveFavoriteProject(ctx context.Context, opts RemoveFavoriteProjectInput) (*model.APIProjectRef, error)
 	RemovePublicKey(ctx context.Context, keyName string) ([]*model.APIPubKey, error)
-	ResetAPIKey(ctx context.Context) (*UserConfig, error)
 	SaveSubscription(ctx context.Context, subscription model.APISubscription) (bool, error)
 	UpdateBetaFeatures(ctx context.Context, opts UpdateBetaFeaturesInput) (*UpdateBetaFeaturesPayload, error)
 	UpdatePublicKey(ctx context.Context, targetKeyName string, updateInfo PublicKeyInput) ([]*model.APIPubKey, error)
@@ -2689,7 +2664,6 @@ type QueryResolver interface {
 	IsRepo(ctx context.Context, projectOrRepoID string) (bool, error)
 	MyHosts(ctx context.Context) ([]*model.APIHost, error)
 	MyVolumes(ctx context.Context) ([]*model.APIVolume, error)
-	LogkeeperBuildMetadata(ctx context.Context, buildID string) (*plank.Build, error)
 	Task(ctx context.Context, taskID string, execution *int) (*model.APITask, error)
 	TaskAllExecutions(ctx context.Context, taskID string) ([]*model.APITask, error)
 	TaskTestSample(ctx context.Context, versionID string, taskIds []string, filters []*TestFilter) ([]*TaskTestResultSample, error)
@@ -3850,6 +3824,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.BootstrapSettings.ShellPath(childComplexity), true
 
+	case "BucketConfig.expirationDays":
+		if e.complexity.BucketConfig.ExpirationDays == nil {
+			break
+		}
+
+		return e.complexity.BucketConfig.ExpirationDays(childComplexity), true
+	case "BucketConfig.lifecycleLastSyncedAt":
+		if e.complexity.BucketConfig.LifecycleLastSyncedAt == nil {
+			break
+		}
+
+		return e.complexity.BucketConfig.LifecycleLastSyncedAt(childComplexity), true
+	case "BucketConfig.lifecycleSyncError":
+		if e.complexity.BucketConfig.LifecycleSyncError == nil {
+			break
+		}
+
+		return e.complexity.BucketConfig.LifecycleSyncError(childComplexity), true
 	case "BucketConfig.name":
 		if e.complexity.BucketConfig.Name == nil {
 			break
@@ -3868,6 +3860,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.BucketConfig.TestResultsPrefix(childComplexity), true
+	case "BucketConfig.transitionToGlacierDays":
+		if e.complexity.BucketConfig.TransitionToGlacierDays == nil {
+			break
+		}
+
+		return e.complexity.BucketConfig.TransitionToGlacierDays(childComplexity), true
+	case "BucketConfig.transitionToIADays":
+		if e.complexity.BucketConfig.TransitionToIADays == nil {
+			break
+		}
+
+		return e.complexity.BucketConfig.TransitionToIADays(childComplexity), true
 	case "BucketConfig.type":
 		if e.complexity.BucketConfig.Type == nil {
 			break
@@ -3911,6 +3915,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.BucketsConfig.LongRetentionProjects(childComplexity), true
+	case "BucketsConfig.retryFailedLogMoveLookbackDays":
+		if e.complexity.BucketsConfig.RetryFailedLogMoveLookbackDays == nil {
+			break
+		}
+
+		return e.complexity.BucketsConfig.RetryFailedLogMoveLookbackDays(childComplexity), true
 	case "BucketsConfig.retryFailedLogMoveLookbackMonths":
 		if e.complexity.BucketsConfig.RetryFailedLogMoveLookbackMonths == nil {
 			break
@@ -3980,36 +3990,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.BuildBaron.SearchReturnInfo(childComplexity), true
 
-	case "BuildBaronSettings.bfSuggestionFeaturesURL":
-		if e.complexity.BuildBaronSettings.BFSuggestionFeaturesURL == nil {
-			break
-		}
-
-		return e.complexity.BuildBaronSettings.BFSuggestionFeaturesURL(childComplexity), true
-	case "BuildBaronSettings.bfSuggestionPassword":
-		if e.complexity.BuildBaronSettings.BFSuggestionPassword == nil {
-			break
-		}
-
-		return e.complexity.BuildBaronSettings.BFSuggestionPassword(childComplexity), true
-	case "BuildBaronSettings.bfSuggestionServer":
-		if e.complexity.BuildBaronSettings.BFSuggestionServer == nil {
-			break
-		}
-
-		return e.complexity.BuildBaronSettings.BFSuggestionServer(childComplexity), true
-	case "BuildBaronSettings.bfSuggestionTimeoutSecs":
-		if e.complexity.BuildBaronSettings.BFSuggestionTimeoutSecs == nil {
-			break
-		}
-
-		return e.complexity.BuildBaronSettings.BFSuggestionTimeoutSecs(childComplexity), true
-	case "BuildBaronSettings.bfSuggestionUsername":
-		if e.complexity.BuildBaronSettings.BFSuggestionUsername == nil {
-			break
-		}
-
-		return e.complexity.BuildBaronSettings.BFSuggestionUsername(childComplexity), true
 	case "BuildBaronSettings.ticketCreateIssueType":
 		if e.complexity.BuildBaronSettings.TicketCreateIssueType == nil {
 			break
@@ -4237,6 +4217,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.CostConfig.FinanceFormula(childComplexity), true
+	case "CostConfig.hiddenCostProjects":
+		if e.complexity.CostConfig.HiddenCostProjects == nil {
+			break
+		}
+
+		return e.complexity.CostConfig.HiddenCostProjects(childComplexity), true
 	case "CostConfig.onDemandDiscount":
 		if e.complexity.CostConfig.OnDemandDiscount == nil {
 			break
@@ -6238,92 +6224,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.LoggerConfig.ThresholdLevel(childComplexity), true
 
-	case "LogkeeperBuild.buildNum":
-		if e.complexity.LogkeeperBuild.BuildNum == nil {
-			break
-		}
-
-		return e.complexity.LogkeeperBuild.BuildNum(childComplexity), true
-	case "LogkeeperBuild.builder":
-		if e.complexity.LogkeeperBuild.Builder == nil {
-			break
-		}
-
-		return e.complexity.LogkeeperBuild.Builder(childComplexity), true
-	case "LogkeeperBuild.id":
-		if e.complexity.LogkeeperBuild.ID == nil {
-			break
-		}
-
-		return e.complexity.LogkeeperBuild.ID(childComplexity), true
-	case "LogkeeperBuild.task":
-		if e.complexity.LogkeeperBuild.Task == nil {
-			break
-		}
-
-		return e.complexity.LogkeeperBuild.Task(childComplexity), true
-	case "LogkeeperBuild.taskExecution":
-		if e.complexity.LogkeeperBuild.TaskExecution == nil {
-			break
-		}
-
-		return e.complexity.LogkeeperBuild.TaskExecution(childComplexity), true
-	case "LogkeeperBuild.taskId":
-		if e.complexity.LogkeeperBuild.TaskID == nil {
-			break
-		}
-
-		return e.complexity.LogkeeperBuild.TaskID(childComplexity), true
-	case "LogkeeperBuild.tests":
-		if e.complexity.LogkeeperBuild.Tests == nil {
-			break
-		}
-
-		return e.complexity.LogkeeperBuild.Tests(childComplexity), true
-
-	case "LogkeeperTest.buildId":
-		if e.complexity.LogkeeperTest.BuildID == nil {
-			break
-		}
-
-		return e.complexity.LogkeeperTest.BuildID(childComplexity), true
-	case "LogkeeperTest.command":
-		if e.complexity.LogkeeperTest.Command == nil {
-			break
-		}
-
-		return e.complexity.LogkeeperTest.Command(childComplexity), true
-	case "LogkeeperTest.id":
-		if e.complexity.LogkeeperTest.ID == nil {
-			break
-		}
-
-		return e.complexity.LogkeeperTest.ID(childComplexity), true
-	case "LogkeeperTest.name":
-		if e.complexity.LogkeeperTest.Name == nil {
-			break
-		}
-
-		return e.complexity.LogkeeperTest.Name(childComplexity), true
-	case "LogkeeperTest.phase":
-		if e.complexity.LogkeeperTest.Phase == nil {
-			break
-		}
-
-		return e.complexity.LogkeeperTest.Phase(childComplexity), true
-	case "LogkeeperTest.taskExecution":
-		if e.complexity.LogkeeperTest.TaskExecution == nil {
-			break
-		}
-
-		return e.complexity.LogkeeperTest.TaskExecution(childComplexity), true
-	case "LogkeeperTest.taskId":
-		if e.complexity.LogkeeperTest.TaskID == nil {
-			break
-		}
-
-		return e.complexity.LogkeeperTest.TaskID(childComplexity), true
-
 	case "MainlineCommitVersion.rolledUpVersions":
 		if e.complexity.MainlineCommitVersion.RolledUpVersions == nil {
 			break
@@ -6858,12 +6758,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.ReprovisionToNew(childComplexity, args["hostIds"].([]string)), true
-	case "Mutation.resetAPIKey":
-		if e.complexity.Mutation.ResetAPIKey == nil {
-			break
-		}
-
-		return e.complexity.Mutation.ResetAPIKey(childComplexity), true
 	case "Mutation.restartAdminTasks":
 		if e.complexity.Mutation.RestartAdminTasks == nil {
 			break
@@ -9117,17 +9011,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.IsRepo(childComplexity, args["projectOrRepoId"].(string)), true
-	case "Query.logkeeperBuildMetadata":
-		if e.complexity.Query.LogkeeperBuildMetadata == nil {
-			break
-		}
-
-		args, err := ec.field_Query_logkeeperBuildMetadata_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.LogkeeperBuildMetadata(childComplexity, args["buildId"].(string)), true
 	case "Query.mainlineCommits":
 		if e.complexity.Query.MainlineCommits == nil {
 			break
@@ -10160,13 +10043,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SchedulerConfig.TaskFinder(childComplexity), true
-
-	case "SearchReturnInfo.featuresURL":
-		if e.complexity.SearchReturnInfo.FeaturesURL == nil {
+	case "SchedulerConfig.translateProjectCacheBytesLimit":
+		if e.complexity.SchedulerConfig.TranslateProjectCacheBytesLimit == nil {
 			break
 		}
 
-		return e.complexity.SearchReturnInfo.FeaturesURL(childComplexity), true
+		return e.complexity.SchedulerConfig.TranslateProjectCacheBytesLimit(childComplexity), true
+	case "SchedulerConfig.translateProjectCacheTTLSeconds":
+		if e.complexity.SchedulerConfig.TranslateProjectCacheTTLSeconds == nil {
+			break
+		}
+
+		return e.complexity.SchedulerConfig.TranslateProjectCacheTTLSeconds(childComplexity), true
+	case "SchedulerConfig.translateProjectConcurrencyLimit":
+		if e.complexity.SchedulerConfig.TranslateProjectConcurrencyLimit == nil {
+			break
+		}
+
+		return e.complexity.SchedulerConfig.TranslateProjectConcurrencyLimit(childComplexity), true
+
 	case "SearchReturnInfo.issues":
 		if e.complexity.SearchReturnInfo.Issues == nil {
 			break
@@ -12408,18 +12303,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UserServiceFlags.DebugSpawnHostDisabled(childComplexity), true
-	case "UserServiceFlags.jwtTokenForCLIDisabled":
-		if e.complexity.UserServiceFlags.JWTTokenForCLIDisabled == nil {
-			break
-		}
-
-		return e.complexity.UserServiceFlags.JWTTokenForCLIDisabled(childComplexity), true
-	case "UserServiceFlags.staticAPIKeysDisabled":
-		if e.complexity.UserServiceFlags.StaticAPIKeysDisabled == nil {
-			break
-		}
-
-		return e.complexity.UserServiceFlags.StaticAPIKeysDisabled(childComplexity), true
 
 	case "UserSettings.dateFormat":
 		if e.complexity.UserSettings.DateFormat == nil {
@@ -13526,7 +13409,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(ec.Schema(), ec.Schema().Types[name]), nil
 }
 
-//go:embed "schema/directives.graphql" "schema/mutation.graphql" "schema/query.graphql" "schema/scalars.graphql" "schema/types/adminSettings/auth.graphql" "schema/types/adminSettings/background_processing.graphql" "schema/types/adminSettings/external_communications.graphql" "schema/types/adminSettings/okta_service.graphql" "schema/types/adminSettings/other.graphql" "schema/types/adminSettings/providers.graphql" "schema/types/adminSettings/runners.graphql" "schema/types/adminSettings/service_flags.graphql" "schema/types/adminSettings/web.graphql" "schema/types/annotation.graphql" "schema/types/config.graphql" "schema/types/distro.graphql" "schema/types/host.graphql" "schema/types/image.graphql" "schema/types/issue_link.graphql" "schema/types/logkeeper.graphql" "schema/types/mainline_commits.graphql" "schema/types/patch.graphql" "schema/types/permissions.graphql" "schema/types/project.graphql" "schema/types/project_settings.graphql" "schema/types/project_vars.graphql" "schema/types/repo_ref.graphql" "schema/types/repo_settings.graphql" "schema/types/spawn.graphql" "schema/types/subscriptions.graphql" "schema/types/task.graphql" "schema/types/task_history.graphql" "schema/types/task_logs.graphql" "schema/types/task_queue_item.graphql" "schema/types/test_selection.graphql" "schema/types/ticket_fields.graphql" "schema/types/user.graphql" "schema/types/version.graphql" "schema/types/volume.graphql" "schema/types/waterfall.graphql"
+//go:embed "schema/directives.graphql" "schema/mutation.graphql" "schema/query.graphql" "schema/scalars.graphql" "schema/types/adminSettings/auth.graphql" "schema/types/adminSettings/background_processing.graphql" "schema/types/adminSettings/external_communications.graphql" "schema/types/adminSettings/okta_service.graphql" "schema/types/adminSettings/other.graphql" "schema/types/adminSettings/providers.graphql" "schema/types/adminSettings/runners.graphql" "schema/types/adminSettings/service_flags.graphql" "schema/types/adminSettings/web.graphql" "schema/types/annotation.graphql" "schema/types/config.graphql" "schema/types/distro.graphql" "schema/types/host.graphql" "schema/types/image.graphql" "schema/types/issue_link.graphql" "schema/types/mainline_commits.graphql" "schema/types/patch.graphql" "schema/types/permissions.graphql" "schema/types/project.graphql" "schema/types/project_settings.graphql" "schema/types/project_vars.graphql" "schema/types/repo_ref.graphql" "schema/types/repo_settings.graphql" "schema/types/spawn.graphql" "schema/types/subscriptions.graphql" "schema/types/task.graphql" "schema/types/task_history.graphql" "schema/types/task_logs.graphql" "schema/types/task_queue_item.graphql" "schema/types/test_selection.graphql" "schema/types/ticket_fields.graphql" "schema/types/user.graphql" "schema/types/version.graphql" "schema/types/volume.graphql" "schema/types/waterfall.graphql"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -13557,7 +13440,6 @@ var sources = []*ast.Source{
 	{Name: "schema/types/host.graphql", Input: sourceData("schema/types/host.graphql"), BuiltIn: false},
 	{Name: "schema/types/image.graphql", Input: sourceData("schema/types/image.graphql"), BuiltIn: false},
 	{Name: "schema/types/issue_link.graphql", Input: sourceData("schema/types/issue_link.graphql"), BuiltIn: false},
-	{Name: "schema/types/logkeeper.graphql", Input: sourceData("schema/types/logkeeper.graphql"), BuiltIn: false},
 	{Name: "schema/types/mainline_commits.graphql", Input: sourceData("schema/types/mainline_commits.graphql"), BuiltIn: false},
 	{Name: "schema/types/patch.graphql", Input: sourceData("schema/types/patch.graphql"), BuiltIn: false},
 	{Name: "schema/types/permissions.graphql", Input: sourceData("schema/types/permissions.graphql"), BuiltIn: false},
@@ -13620,6 +13502,17 @@ func (ec *executionContext) dir_requireProjectAccess_args(ctx context.Context, r
 		return nil, err
 	}
 	args["access"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) dir_requireRepoAccess_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "access", ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel)
+	if err != nil {
+		return nil, err
+	}
+	args["access"] = arg0
 	return args, nil
 }
 
@@ -13836,6 +13729,18 @@ func (ec *executionContext) field_Mutation_attachProjectToRepo_argsProjectID(
 	}
 
 	directive1 := func(ctx context.Context) (any, error) {
+		access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "ADMIN")
+		if err != nil {
+			var zeroVal string
+			return zeroVal, err
+		}
+		if ec.directives.RequireRepoAccess == nil {
+			var zeroVal string
+			return zeroVal, errors.New("directive requireRepoAccess is not implemented")
+		}
+		return ec.directives.RequireRepoAccess(ctx, rawArgs, directive0, access)
+	}
+	directive2 := func(ctx context.Context) (any, error) {
 		permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "SETTINGS")
 		if err != nil {
 			var zeroVal string
@@ -13850,10 +13755,10 @@ func (ec *executionContext) field_Mutation_attachProjectToRepo_argsProjectID(
 			var zeroVal string
 			return zeroVal, errors.New("directive requireProjectAccess is not implemented")
 		}
-		return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
+		return ec.directives.RequireProjectAccess(ctx, rawArgs, directive1, permission, access)
 	}
 
-	tmp, err := directive1(ctx)
+	tmp, err := directive2(ctx)
 	if err != nil {
 		var zeroVal string
 		return zeroVal, graphql.ErrorOnPath(ctx, err)
@@ -16442,17 +16347,6 @@ func (ec *executionContext) field_Query_isRepo_args(ctx context.Context, rawArgs
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_logkeeperBuildMetadata_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "buildId", ec.unmarshalNString2string)
-	if err != nil {
-		return nil, err
-	}
-	args["buildId"] = arg0
-	return args, nil
-}
-
 func (ec *executionContext) field_Query_mainlineCommits_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -18820,6 +18714,8 @@ func (ec *executionContext) fieldContext_AdminSettings_buckets(_ context.Context
 				return ec.fieldContext_BucketsConfig_logBucketFailedTasks(ctx, field)
 			case "longRetentionProjects":
 				return ec.fieldContext_BucketsConfig_longRetentionProjects(ctx, field)
+			case "retryFailedLogMoveLookbackDays":
+				return ec.fieldContext_BucketsConfig_retryFailedLogMoveLookbackDays(ctx, field)
 			case "retryFailedLogMoveLookbackMonths":
 				return ec.fieldContext_BucketsConfig_retryFailedLogMoveLookbackMonths(ctx, field)
 			case "retryFailedLogMoveMaxJobsPerRun":
@@ -18968,6 +18864,8 @@ func (ec *executionContext) fieldContext_AdminSettings_cost(_ context.Context, f
 				return ec.fieldContext_CostConfig_s3Cost(ctx, field)
 			case "ebsCost":
 				return ec.fieldContext_CostConfig_ebsCost(ctx, field)
+			case "hiddenCostProjects":
+				return ec.fieldContext_CostConfig_hiddenCostProjects(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type CostConfig", field.Name)
 		},
@@ -20029,6 +19927,12 @@ func (ec *executionContext) fieldContext_AdminSettings_scheduler(_ context.Conte
 				return ec.fieldContext_SchedulerConfig_numDependentsFactor(ctx, field)
 			case "stepbackTaskFactor":
 				return ec.fieldContext_SchedulerConfig_stepbackTaskFactor(ctx, field)
+			case "translateProjectConcurrencyLimit":
+				return ec.fieldContext_SchedulerConfig_translateProjectConcurrencyLimit(ctx, field)
+			case "translateProjectCacheBytesLimit":
+				return ec.fieldContext_SchedulerConfig_translateProjectCacheBytesLimit(ctx, field)
+			case "translateProjectCacheTTLSeconds":
+				return ec.fieldContext_SchedulerConfig_translateProjectCacheTTLSeconds(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SchedulerConfig", field.Name)
 		},
@@ -22975,6 +22879,151 @@ func (ec *executionContext) fieldContext_BucketConfig_type(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _BucketConfig_expirationDays(ctx context.Context, field graphql.CollectedField, obj *model.APIBucketConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BucketConfig_expirationDays,
+		func(ctx context.Context) (any, error) {
+			return obj.ExpirationDays, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BucketConfig_expirationDays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BucketConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BucketConfig_transitionToIADays(ctx context.Context, field graphql.CollectedField, obj *model.APIBucketConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BucketConfig_transitionToIADays,
+		func(ctx context.Context) (any, error) {
+			return obj.TransitionToIADays, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BucketConfig_transitionToIADays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BucketConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BucketConfig_transitionToGlacierDays(ctx context.Context, field graphql.CollectedField, obj *model.APIBucketConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BucketConfig_transitionToGlacierDays,
+		func(ctx context.Context) (any, error) {
+			return obj.TransitionToGlacierDays, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BucketConfig_transitionToGlacierDays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BucketConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BucketConfig_lifecycleLastSyncedAt(ctx context.Context, field graphql.CollectedField, obj *model.APIBucketConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BucketConfig_lifecycleLastSyncedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.LifecycleLastSyncedAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BucketConfig_lifecycleLastSyncedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BucketConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BucketConfig_lifecycleSyncError(ctx context.Context, field graphql.CollectedField, obj *model.APIBucketConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BucketConfig_lifecycleSyncError,
+		func(ctx context.Context) (any, error) {
+			return obj.LifecycleSyncError, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BucketConfig_lifecycleSyncError(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BucketConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _BucketsConfig_logBucket(ctx context.Context, field graphql.CollectedField, obj *model.APIBucketsConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -23007,6 +23056,16 @@ func (ec *executionContext) fieldContext_BucketsConfig_logBucket(_ context.Conte
 				return ec.fieldContext_BucketConfig_roleARN(ctx, field)
 			case "type":
 				return ec.fieldContext_BucketConfig_type(ctx, field)
+			case "expirationDays":
+				return ec.fieldContext_BucketConfig_expirationDays(ctx, field)
+			case "transitionToIADays":
+				return ec.fieldContext_BucketConfig_transitionToIADays(ctx, field)
+			case "transitionToGlacierDays":
+				return ec.fieldContext_BucketConfig_transitionToGlacierDays(ctx, field)
+			case "lifecycleLastSyncedAt":
+				return ec.fieldContext_BucketConfig_lifecycleLastSyncedAt(ctx, field)
+			case "lifecycleSyncError":
+				return ec.fieldContext_BucketConfig_lifecycleSyncError(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type BucketConfig", field.Name)
 		},
@@ -23046,6 +23105,16 @@ func (ec *executionContext) fieldContext_BucketsConfig_logBucketLongRetention(_ 
 				return ec.fieldContext_BucketConfig_roleARN(ctx, field)
 			case "type":
 				return ec.fieldContext_BucketConfig_type(ctx, field)
+			case "expirationDays":
+				return ec.fieldContext_BucketConfig_expirationDays(ctx, field)
+			case "transitionToIADays":
+				return ec.fieldContext_BucketConfig_transitionToIADays(ctx, field)
+			case "transitionToGlacierDays":
+				return ec.fieldContext_BucketConfig_transitionToGlacierDays(ctx, field)
+			case "lifecycleLastSyncedAt":
+				return ec.fieldContext_BucketConfig_lifecycleLastSyncedAt(ctx, field)
+			case "lifecycleSyncError":
+				return ec.fieldContext_BucketConfig_lifecycleSyncError(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type BucketConfig", field.Name)
 		},
@@ -23085,6 +23154,16 @@ func (ec *executionContext) fieldContext_BucketsConfig_logBucketFailedTasks(_ co
 				return ec.fieldContext_BucketConfig_roleARN(ctx, field)
 			case "type":
 				return ec.fieldContext_BucketConfig_type(ctx, field)
+			case "expirationDays":
+				return ec.fieldContext_BucketConfig_expirationDays(ctx, field)
+			case "transitionToIADays":
+				return ec.fieldContext_BucketConfig_transitionToIADays(ctx, field)
+			case "transitionToGlacierDays":
+				return ec.fieldContext_BucketConfig_transitionToGlacierDays(ctx, field)
+			case "lifecycleLastSyncedAt":
+				return ec.fieldContext_BucketConfig_lifecycleLastSyncedAt(ctx, field)
+			case "lifecycleSyncError":
+				return ec.fieldContext_BucketConfig_lifecycleSyncError(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type BucketConfig", field.Name)
 		},
@@ -23116,6 +23195,35 @@ func (ec *executionContext) fieldContext_BucketsConfig_longRetentionProjects(_ c
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BucketsConfig_retryFailedLogMoveLookbackDays(ctx context.Context, field graphql.CollectedField, obj *model.APIBucketsConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BucketsConfig_retryFailedLogMoveLookbackDays,
+		func(ctx context.Context) (any, error) {
+			return obj.RetryFailedLogMoveLookbackDays, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BucketsConfig_retryFailedLogMoveLookbackDays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BucketsConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -23211,6 +23319,16 @@ func (ec *executionContext) fieldContext_BucketsConfig_testResultsBucket(_ conte
 				return ec.fieldContext_BucketConfig_roleARN(ctx, field)
 			case "type":
 				return ec.fieldContext_BucketConfig_type(ctx, field)
+			case "expirationDays":
+				return ec.fieldContext_BucketConfig_expirationDays(ctx, field)
+			case "transitionToIADays":
+				return ec.fieldContext_BucketConfig_transitionToIADays(ctx, field)
+			case "transitionToGlacierDays":
+				return ec.fieldContext_BucketConfig_transitionToGlacierDays(ctx, field)
+			case "lifecycleLastSyncedAt":
+				return ec.fieldContext_BucketConfig_lifecycleLastSyncedAt(ctx, field)
+			case "lifecycleSyncError":
+				return ec.fieldContext_BucketConfig_lifecycleSyncError(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type BucketConfig", field.Name)
 		},
@@ -23524,8 +23642,6 @@ func (ec *executionContext) fieldContext_BuildBaron_searchReturnInfo(_ context.C
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "featuresURL":
-				return ec.fieldContext_SearchReturnInfo_featuresURL(ctx, field)
 			case "issues":
 				return ec.fieldContext_SearchReturnInfo_issues(ctx, field)
 			case "search":
@@ -23534,151 +23650,6 @@ func (ec *executionContext) fieldContext_BuildBaron_searchReturnInfo(_ context.C
 				return ec.fieldContext_SearchReturnInfo_source(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SearchReturnInfo", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _BuildBaronSettings_bfSuggestionFeaturesURL(ctx context.Context, field graphql.CollectedField, obj *model.APIBuildBaronSettings) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_BuildBaronSettings_bfSuggestionFeaturesURL,
-		func(ctx context.Context) (any, error) {
-			return obj.BFSuggestionFeaturesURL, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_BuildBaronSettings_bfSuggestionFeaturesURL(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BuildBaronSettings",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _BuildBaronSettings_bfSuggestionPassword(ctx context.Context, field graphql.CollectedField, obj *model.APIBuildBaronSettings) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_BuildBaronSettings_bfSuggestionPassword,
-		func(ctx context.Context) (any, error) {
-			return obj.BFSuggestionPassword, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_BuildBaronSettings_bfSuggestionPassword(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BuildBaronSettings",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _BuildBaronSettings_bfSuggestionServer(ctx context.Context, field graphql.CollectedField, obj *model.APIBuildBaronSettings) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_BuildBaronSettings_bfSuggestionServer,
-		func(ctx context.Context) (any, error) {
-			return obj.BFSuggestionServer, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_BuildBaronSettings_bfSuggestionServer(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BuildBaronSettings",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _BuildBaronSettings_bfSuggestionTimeoutSecs(ctx context.Context, field graphql.CollectedField, obj *model.APIBuildBaronSettings) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_BuildBaronSettings_bfSuggestionTimeoutSecs,
-		func(ctx context.Context) (any, error) {
-			return obj.BFSuggestionTimeoutSecs, nil
-		},
-		nil,
-		ec.marshalOInt2ᚖint,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_BuildBaronSettings_bfSuggestionTimeoutSecs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BuildBaronSettings",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _BuildBaronSettings_bfSuggestionUsername(ctx context.Context, field graphql.CollectedField, obj *model.APIBuildBaronSettings) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_BuildBaronSettings_bfSuggestionUsername,
-		func(ctx context.Context) (any, error) {
-			return obj.BFSuggestionUsername, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_BuildBaronSettings_bfSuggestionUsername(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BuildBaronSettings",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -24883,6 +24854,35 @@ func (ec *executionContext) fieldContext_CostConfig_ebsCost(_ context.Context, f
 				return ec.fieldContext_EBSCostConfig_ebsDiscount(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type EBSCostConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CostConfig_hiddenCostProjects(ctx context.Context, field graphql.CollectedField, obj *model.APICostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CostConfig_hiddenCostProjects,
+		func(ctx context.Context) (any, error) {
+			return obj.HiddenCostProjects, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_CostConfig_hiddenCostProjects(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -35353,608 +35353,6 @@ func (ec *executionContext) fieldContext_LoggerConfig_redactKeys(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _LogkeeperBuild_id(ctx context.Context, field graphql.CollectedField, obj *plank.Build) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_LogkeeperBuild_id,
-		func(ctx context.Context) (any, error) {
-			return obj.ID, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_LogkeeperBuild_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "LogkeeperBuild",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _LogkeeperBuild_builder(ctx context.Context, field graphql.CollectedField, obj *plank.Build) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_LogkeeperBuild_builder,
-		func(ctx context.Context) (any, error) {
-			return obj.Builder, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_LogkeeperBuild_builder(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "LogkeeperBuild",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _LogkeeperBuild_buildNum(ctx context.Context, field graphql.CollectedField, obj *plank.Build) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_LogkeeperBuild_buildNum,
-		func(ctx context.Context) (any, error) {
-			return obj.BuildNum, nil
-		},
-		nil,
-		ec.marshalNInt2int,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_LogkeeperBuild_buildNum(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "LogkeeperBuild",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _LogkeeperBuild_taskId(ctx context.Context, field graphql.CollectedField, obj *plank.Build) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_LogkeeperBuild_taskId,
-		func(ctx context.Context) (any, error) {
-			return obj.TaskID, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_LogkeeperBuild_taskId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "LogkeeperBuild",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _LogkeeperBuild_taskExecution(ctx context.Context, field graphql.CollectedField, obj *plank.Build) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_LogkeeperBuild_taskExecution,
-		func(ctx context.Context) (any, error) {
-			return obj.TaskExecution, nil
-		},
-		nil,
-		ec.marshalNInt2int,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_LogkeeperBuild_taskExecution(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "LogkeeperBuild",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _LogkeeperBuild_tests(ctx context.Context, field graphql.CollectedField, obj *plank.Build) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_LogkeeperBuild_tests,
-		func(ctx context.Context) (any, error) {
-			return obj.Tests, nil
-		},
-		nil,
-		ec.marshalNLogkeeperTest2ᚕgithubᚗcomᚋevergreenᚑciᚋplankᚐTestᚄ,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_LogkeeperBuild_tests(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "LogkeeperBuild",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_LogkeeperTest_id(ctx, field)
-			case "name":
-				return ec.fieldContext_LogkeeperTest_name(ctx, field)
-			case "buildId":
-				return ec.fieldContext_LogkeeperTest_buildId(ctx, field)
-			case "taskId":
-				return ec.fieldContext_LogkeeperTest_taskId(ctx, field)
-			case "taskExecution":
-				return ec.fieldContext_LogkeeperTest_taskExecution(ctx, field)
-			case "phase":
-				return ec.fieldContext_LogkeeperTest_phase(ctx, field)
-			case "command":
-				return ec.fieldContext_LogkeeperTest_command(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type LogkeeperTest", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _LogkeeperBuild_task(ctx context.Context, field graphql.CollectedField, obj *plank.Build) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_LogkeeperBuild_task,
-		func(ctx context.Context) (any, error) {
-			return ec.resolvers.LogkeeperBuild().Task(ctx, obj)
-		},
-		nil,
-		ec.marshalNTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_LogkeeperBuild_task(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "LogkeeperBuild",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "aborted":
-				return ec.fieldContext_Task_aborted(ctx, field)
-			case "abortInfo":
-				return ec.fieldContext_Task_abortInfo(ctx, field)
-			case "activated":
-				return ec.fieldContext_Task_activated(ctx, field)
-			case "activatedBy":
-				return ec.fieldContext_Task_activatedBy(ctx, field)
-			case "activatedTime":
-				return ec.fieldContext_Task_activatedTime(ctx, field)
-			case "ami":
-				return ec.fieldContext_Task_ami(ctx, field)
-			case "annotation":
-				return ec.fieldContext_Task_annotation(ctx, field)
-			case "id":
-				return ec.fieldContext_Task_id(ctx, field)
-			case "baseStatus":
-				return ec.fieldContext_Task_baseStatus(ctx, field)
-			case "baseTask":
-				return ec.fieldContext_Task_baseTask(ctx, field)
-			case "blocked":
-				return ec.fieldContext_Task_blocked(ctx, field)
-			case "buildId":
-				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildVariant":
-				return ec.fieldContext_Task_buildVariant(ctx, field)
-			case "buildVariantDisplayName":
-				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
-			case "canAbort":
-				return ec.fieldContext_Task_canAbort(ctx, field)
-			case "canDisable":
-				return ec.fieldContext_Task_canDisable(ctx, field)
-			case "canModifyAnnotation":
-				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
-			case "canOverrideDependencies":
-				return ec.fieldContext_Task_canOverrideDependencies(ctx, field)
-			case "canRestart":
-				return ec.fieldContext_Task_canRestart(ctx, field)
-			case "canSchedule":
-				return ec.fieldContext_Task_canSchedule(ctx, field)
-			case "canSetPriority":
-				return ec.fieldContext_Task_canSetPriority(ctx, field)
-			case "canUnschedule":
-				return ec.fieldContext_Task_canUnschedule(ctx, field)
-			case "createTime":
-				return ec.fieldContext_Task_createTime(ctx, field)
-			case "dependsOn":
-				return ec.fieldContext_Task_dependsOn(ctx, field)
-			case "details":
-				return ec.fieldContext_Task_details(ctx, field)
-			case "dispatchTime":
-				return ec.fieldContext_Task_dispatchTime(ctx, field)
-			case "displayName":
-				return ec.fieldContext_Task_displayName(ctx, field)
-			case "displayOnly":
-				return ec.fieldContext_Task_displayOnly(ctx, field)
-			case "displayStatus":
-				return ec.fieldContext_Task_displayStatus(ctx, field)
-			case "displayTask":
-				return ec.fieldContext_Task_displayTask(ctx, field)
-			case "distroId":
-				return ec.fieldContext_Task_distroId(ctx, field)
-			case "errors":
-				return ec.fieldContext_Task_errors(ctx, field)
-			case "estimatedStart":
-				return ec.fieldContext_Task_estimatedStart(ctx, field)
-			case "execution":
-				return ec.fieldContext_Task_execution(ctx, field)
-			case "executionSteps":
-				return ec.fieldContext_Task_executionSteps(ctx, field)
-			case "executionTasks":
-				return ec.fieldContext_Task_executionTasks(ctx, field)
-			case "executionTasksFull":
-				return ec.fieldContext_Task_executionTasksFull(ctx, field)
-			case "expectedDuration":
-				return ec.fieldContext_Task_expectedDuration(ctx, field)
-			case "failedTestCount":
-				return ec.fieldContext_Task_failedTestCount(ctx, field)
-			case "files":
-				return ec.fieldContext_Task_files(ctx, field)
-			case "finishTime":
-				return ec.fieldContext_Task_finishTime(ctx, field)
-			case "generatedBy":
-				return ec.fieldContext_Task_generatedBy(ctx, field)
-			case "generatedByName":
-				return ec.fieldContext_Task_generatedByName(ctx, field)
-			case "generateTask":
-				return ec.fieldContext_Task_generateTask(ctx, field)
-			case "generator":
-				return ec.fieldContext_Task_generator(ctx, field)
-			case "hasTestResults":
-				return ec.fieldContext_Task_hasTestResults(ctx, field)
-			case "hostId":
-				return ec.fieldContext_Task_hostId(ctx, field)
-			case "imageId":
-				return ec.fieldContext_Task_imageId(ctx, field)
-			case "ingestTime":
-				return ec.fieldContext_Task_ingestTime(ctx, field)
-			case "isAutomaticRestart":
-				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
-			case "isPerfPluginEnabled":
-				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
-			case "latestExecution":
-				return ec.fieldContext_Task_latestExecution(ctx, field)
-			case "logs":
-				return ec.fieldContext_Task_logs(ctx, field)
-			case "minQueuePosition":
-				return ec.fieldContext_Task_minQueuePosition(ctx, field)
-			case "nextTask":
-				return ec.fieldContext_Task_nextTask(ctx, field)
-			case "nextTaskCompleted":
-				return ec.fieldContext_Task_nextTaskCompleted(ctx, field)
-			case "nextTaskFailing":
-				return ec.fieldContext_Task_nextTaskFailing(ctx, field)
-			case "nextTaskPassing":
-				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
-			case "order":
-				return ec.fieldContext_Task_order(ctx, field)
-			case "invalidatedByUpstream":
-				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
-			case "patch":
-				return ec.fieldContext_Task_patch(ctx, field)
-			case "patchNumber":
-				return ec.fieldContext_Task_patchNumber(ctx, field)
-			case "prevTask":
-				return ec.fieldContext_Task_prevTask(ctx, field)
-			case "prevTaskCompleted":
-				return ec.fieldContext_Task_prevTaskCompleted(ctx, field)
-			case "prevTaskFailing":
-				return ec.fieldContext_Task_prevTaskFailing(ctx, field)
-			case "prevTaskPassing":
-				return ec.fieldContext_Task_prevTaskPassing(ctx, field)
-			case "priority":
-				return ec.fieldContext_Task_priority(ctx, field)
-			case "project":
-				return ec.fieldContext_Task_project(ctx, field)
-			case "requester":
-				return ec.fieldContext_Task_requester(ctx, field)
-			case "resetWhenFinished":
-				return ec.fieldContext_Task_resetWhenFinished(ctx, field)
-			case "revision":
-				return ec.fieldContext_Task_revision(ctx, field)
-			case "scheduledTime":
-				return ec.fieldContext_Task_scheduledTime(ctx, field)
-			case "spawnHostLink":
-				return ec.fieldContext_Task_spawnHostLink(ctx, field)
-			case "startTime":
-				return ec.fieldContext_Task_startTime(ctx, field)
-			case "status":
-				return ec.fieldContext_Task_status(ctx, field)
-			case "tags":
-				return ec.fieldContext_Task_tags(ctx, field)
-			case "taskGroup":
-				return ec.fieldContext_Task_taskGroup(ctx, field)
-			case "taskGroupMaxHosts":
-				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
-			case "stepbackInfo":
-				return ec.fieldContext_Task_stepbackInfo(ctx, field)
-			case "taskLogs":
-				return ec.fieldContext_Task_taskLogs(ctx, field)
-			case "taskCost":
-				return ec.fieldContext_Task_taskCost(ctx, field)
-			case "predictedTaskCost":
-				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
-			case "taskOwnerTeam":
-				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
-			case "tests":
-				return ec.fieldContext_Task_tests(ctx, field)
-			case "testSelectionEnabled":
-				return ec.fieldContext_Task_testSelectionEnabled(ctx, field)
-			case "timeTaken":
-				return ec.fieldContext_Task_timeTaken(ctx, field)
-			case "totalTestCount":
-				return ec.fieldContext_Task_totalTestCount(ctx, field)
-			case "version":
-				return ec.fieldContext_Task_version(ctx, field)
-			case "versionMetadata":
-				return ec.fieldContext_Task_versionMetadata(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _LogkeeperTest_id(ctx context.Context, field graphql.CollectedField, obj *plank.Test) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_LogkeeperTest_id,
-		func(ctx context.Context) (any, error) {
-			return obj.ID, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_LogkeeperTest_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "LogkeeperTest",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _LogkeeperTest_name(ctx context.Context, field graphql.CollectedField, obj *plank.Test) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_LogkeeperTest_name,
-		func(ctx context.Context) (any, error) {
-			return obj.Name, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_LogkeeperTest_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "LogkeeperTest",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _LogkeeperTest_buildId(ctx context.Context, field graphql.CollectedField, obj *plank.Test) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_LogkeeperTest_buildId,
-		func(ctx context.Context) (any, error) {
-			return obj.BuildID, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_LogkeeperTest_buildId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "LogkeeperTest",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _LogkeeperTest_taskId(ctx context.Context, field graphql.CollectedField, obj *plank.Test) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_LogkeeperTest_taskId,
-		func(ctx context.Context) (any, error) {
-			return obj.TaskID, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_LogkeeperTest_taskId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "LogkeeperTest",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _LogkeeperTest_taskExecution(ctx context.Context, field graphql.CollectedField, obj *plank.Test) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_LogkeeperTest_taskExecution,
-		func(ctx context.Context) (any, error) {
-			return obj.TaskExecution, nil
-		},
-		nil,
-		ec.marshalNInt2int,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_LogkeeperTest_taskExecution(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "LogkeeperTest",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _LogkeeperTest_phase(ctx context.Context, field graphql.CollectedField, obj *plank.Test) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_LogkeeperTest_phase,
-		func(ctx context.Context) (any, error) {
-			return obj.Phase, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_LogkeeperTest_phase(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "LogkeeperTest",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _LogkeeperTest_command(ctx context.Context, field graphql.CollectedField, obj *plank.Test) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_LogkeeperTest_command,
-		func(ctx context.Context) (any, error) {
-			return obj.Command, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_LogkeeperTest_command(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "LogkeeperTest",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _MainlineCommitVersion_rolledUpVersions(ctx context.Context, field graphql.CollectedField, obj *MainlineCommitVersion) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -42213,53 +41611,6 @@ func (ec *executionContext) fieldContext_Mutation_removePublicKey(ctx context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_resetAPIKey(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Mutation_resetAPIKey,
-		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Mutation().ResetAPIKey(ctx)
-		},
-		nil,
-		ec.marshalOUserConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUserConfig,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_Mutation_resetAPIKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "api_key":
-				return ec.fieldContext_UserConfig_api_key(ctx, field)
-			case "api_server_host":
-				return ec.fieldContext_UserConfig_api_server_host(ctx, field)
-			case "corp_api_server_host":
-				return ec.fieldContext_UserConfig_corp_api_server_host(ctx, field)
-			case "ui_server_host":
-				return ec.fieldContext_UserConfig_ui_server_host(ctx, field)
-			case "user":
-				return ec.fieldContext_UserConfig_user(ctx, field)
-			case "oauth_issuer":
-				return ec.fieldContext_UserConfig_oauth_issuer(ctx, field)
-			case "oauth_client_id":
-				return ec.fieldContext_UserConfig_oauth_client_id(ctx, field)
-			case "oauth_connector_id":
-				return ec.fieldContext_UserConfig_oauth_connector_id(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type UserConfig", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Mutation_saveSubscription(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -47808,16 +47159,6 @@ func (ec *executionContext) fieldContext_Project_buildBaronSettings(_ context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "bfSuggestionFeaturesURL":
-				return ec.fieldContext_BuildBaronSettings_bfSuggestionFeaturesURL(ctx, field)
-			case "bfSuggestionPassword":
-				return ec.fieldContext_BuildBaronSettings_bfSuggestionPassword(ctx, field)
-			case "bfSuggestionServer":
-				return ec.fieldContext_BuildBaronSettings_bfSuggestionServer(ctx, field)
-			case "bfSuggestionTimeoutSecs":
-				return ec.fieldContext_BuildBaronSettings_bfSuggestionTimeoutSecs(ctx, field)
-			case "bfSuggestionUsername":
-				return ec.fieldContext_BuildBaronSettings_bfSuggestionUsername(ctx, field)
 			case "ticketCreateProject":
 				return ec.fieldContext_BuildBaronSettings_ticketCreateProject(ctx, field)
 			case "ticketSearchProjects":
@@ -54094,63 +53435,6 @@ func (ec *executionContext) fieldContext_Query_myVolumes(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_logkeeperBuildMetadata(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Query_logkeeperBuildMetadata,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().LogkeeperBuildMetadata(ctx, fc.Args["buildId"].(string))
-		},
-		nil,
-		ec.marshalNLogkeeperBuild2ᚖgithubᚗcomᚋevergreenᚑciᚋplankᚐBuild,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Query_logkeeperBuildMetadata(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_LogkeeperBuild_id(ctx, field)
-			case "builder":
-				return ec.fieldContext_LogkeeperBuild_builder(ctx, field)
-			case "buildNum":
-				return ec.fieldContext_LogkeeperBuild_buildNum(ctx, field)
-			case "taskId":
-				return ec.fieldContext_LogkeeperBuild_taskId(ctx, field)
-			case "taskExecution":
-				return ec.fieldContext_LogkeeperBuild_taskExecution(ctx, field)
-			case "tests":
-				return ec.fieldContext_LogkeeperBuild_tests(ctx, field)
-			case "task":
-				return ec.fieldContext_LogkeeperBuild_task(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type LogkeeperBuild", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_logkeeperBuildMetadata_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Query_task(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -56242,16 +55526,6 @@ func (ec *executionContext) fieldContext_RepoRef_buildBaronSettings(_ context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "bfSuggestionFeaturesURL":
-				return ec.fieldContext_BuildBaronSettings_bfSuggestionFeaturesURL(ctx, field)
-			case "bfSuggestionPassword":
-				return ec.fieldContext_BuildBaronSettings_bfSuggestionPassword(ctx, field)
-			case "bfSuggestionServer":
-				return ec.fieldContext_BuildBaronSettings_bfSuggestionServer(ctx, field)
-			case "bfSuggestionTimeoutSecs":
-				return ec.fieldContext_BuildBaronSettings_bfSuggestionTimeoutSecs(ctx, field)
-			case "bfSuggestionUsername":
-				return ec.fieldContext_BuildBaronSettings_bfSuggestionUsername(ctx, field)
 			case "ticketCreateProject":
 				return ec.fieldContext_BuildBaronSettings_ticketCreateProject(ctx, field)
 			case "ticketSearchProjects":
@@ -59648,30 +58922,88 @@ func (ec *executionContext) fieldContext_SchedulerConfig_stepbackTaskFactor(_ co
 	return fc, nil
 }
 
-func (ec *executionContext) _SearchReturnInfo_featuresURL(ctx context.Context, field graphql.CollectedField, obj *thirdparty.SearchReturnInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _SchedulerConfig_translateProjectConcurrencyLimit(ctx context.Context, field graphql.CollectedField, obj *model.APISchedulerConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_SearchReturnInfo_featuresURL,
+		ec.fieldContext_SchedulerConfig_translateProjectConcurrencyLimit,
 		func(ctx context.Context) (any, error) {
-			return obj.FeaturesURL, nil
+			return obj.TranslateProjectConcurrencyLimit, nil
 		},
 		nil,
-		ec.marshalNString2string,
+		ec.marshalOInt2int,
 		true,
-		true,
+		false,
 	)
 }
 
-func (ec *executionContext) fieldContext_SearchReturnInfo_featuresURL(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_SchedulerConfig_translateProjectConcurrencyLimit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "SearchReturnInfo",
+		Object:     "SchedulerConfig",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SchedulerConfig_translateProjectCacheBytesLimit(ctx context.Context, field graphql.CollectedField, obj *model.APISchedulerConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SchedulerConfig_translateProjectCacheBytesLimit,
+		func(ctx context.Context) (any, error) {
+			return obj.TranslateProjectCacheBytesLimit, nil
+		},
+		nil,
+		ec.marshalOInt2int64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_SchedulerConfig_translateProjectCacheBytesLimit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SchedulerConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SchedulerConfig_translateProjectCacheTTLSeconds(ctx context.Context, field graphql.CollectedField, obj *model.APISchedulerConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SchedulerConfig_translateProjectCacheTTLSeconds,
+		func(ctx context.Context) (any, error) {
+			return obj.TranslateProjectCacheTTLSeconds, nil
+		},
+		nil,
+		ec.marshalOInt2int64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_SchedulerConfig_translateProjectCacheTTLSeconds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SchedulerConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -61181,10 +60513,6 @@ func (ec *executionContext) fieldContext_SpruceConfig_serviceFlags(_ context.Con
 			switch field.Name {
 			case "debugSpawnHostDisabled":
 				return ec.fieldContext_UserServiceFlags_debugSpawnHostDisabled(ctx, field)
-			case "jwtTokenForCLIDisabled":
-				return ec.fieldContext_UserServiceFlags_jwtTokenForCLIDisabled(ctx, field)
-			case "staticAPIKeysDisabled":
-				return ec.fieldContext_UserServiceFlags_staticAPIKeysDisabled(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type UserServiceFlags", field.Name)
 		},
@@ -73994,64 +73322,6 @@ func (ec *executionContext) fieldContext_UserServiceFlags_debugSpawnHostDisabled
 	return fc, nil
 }
 
-func (ec *executionContext) _UserServiceFlags_jwtTokenForCLIDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_UserServiceFlags_jwtTokenForCLIDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.JWTTokenForCLIDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_UserServiceFlags_jwtTokenForCLIDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UserServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UserServiceFlags_staticAPIKeysDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_UserServiceFlags_staticAPIKeysDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.StaticAPIKeysDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_UserServiceFlags_staticAPIKeysDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UserServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _UserSettings_githubUser(ctx context.Context, field graphql.CollectedField, obj *model.APIUserSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -82129,7 +81399,7 @@ func (ec *executionContext) unmarshalInputBucketsConfigInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"logBucket", "logBucketLongRetention", "logBucketFailedTasks", "longRetentionProjects", "retryFailedLogMoveLookbackMonths", "retryFailedLogMoveMaxJobsPerRun", "testResultsBucket", "internalBuckets", "credentials"}
+	fieldsInOrder := [...]string{"logBucket", "logBucketLongRetention", "logBucketFailedTasks", "longRetentionProjects", "retryFailedLogMoveLookbackDays", "retryFailedLogMoveLookbackMonths", "retryFailedLogMoveMaxJobsPerRun", "testResultsBucket", "internalBuckets", "credentials"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -82164,6 +81434,13 @@ func (ec *executionContext) unmarshalInputBucketsConfigInput(ctx context.Context
 				return it, err
 			}
 			it.LongRetentionProjects = data
+		case "retryFailedLogMoveLookbackDays":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("retryFailedLogMoveLookbackDays"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RetryFailedLogMoveLookbackDays = data
 		case "retryFailedLogMoveLookbackMonths":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("retryFailedLogMoveLookbackMonths"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
@@ -82229,48 +81506,13 @@ func (ec *executionContext) unmarshalInputBuildBaronSettingsInput(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"bfSuggestionFeaturesURL", "bfSuggestionPassword", "bfSuggestionServer", "bfSuggestionTimeoutSecs", "bfSuggestionUsername", "ticketCreateProject", "ticketSearchProjects", "ticketCreateIssueType"}
+	fieldsInOrder := [...]string{"ticketCreateProject", "ticketSearchProjects", "ticketCreateIssueType"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "bfSuggestionFeaturesURL":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bfSuggestionFeaturesURL"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.BFSuggestionFeaturesURL = data
-		case "bfSuggestionPassword":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bfSuggestionPassword"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.BFSuggestionPassword = data
-		case "bfSuggestionServer":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bfSuggestionServer"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.BFSuggestionServer = data
-		case "bfSuggestionTimeoutSecs":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bfSuggestionTimeoutSecs"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.BFSuggestionTimeoutSecs = data
-		case "bfSuggestionUsername":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bfSuggestionUsername"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.BFSuggestionUsername = data
 		case "ticketCreateProject":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ticketCreateProject"))
 			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
@@ -82638,7 +81880,7 @@ func (ec *executionContext) unmarshalInputCostConfigInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"financeFormula", "savingsPlanDiscount", "onDemandDiscount", "s3Cost", "ebsCost"}
+	fieldsInOrder := [...]string{"financeFormula", "savingsPlanDiscount", "onDemandDiscount", "s3Cost", "ebsCost", "hiddenCostProjects"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -82680,6 +81922,13 @@ func (ec *executionContext) unmarshalInputCostConfigInput(ctx context.Context, o
 				return it, err
 			}
 			it.EBSCost = data
+		case "hiddenCostProjects":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hiddenCostProjects"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HiddenCostProjects = data
 		}
 	}
 
@@ -88917,7 +88166,7 @@ func (ec *executionContext) unmarshalInputSchedulerConfigInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"taskFinder", "hostAllocator", "hostAllocatorRoundingRule", "hostAllocatorFeedbackRule", "hostsOverallocatedRule", "futureHostFraction", "cacheDurationSeconds", "targetTimeSeconds", "acceptableHostIdleTimeSeconds", "groupVersions", "patchFactor", "patchTimeInQueueFactor", "commitQueueFactor", "mainlineTimeInQueueFactor", "expectedRuntimeFactor", "generateTaskFactor", "numDependentsFactor", "stepbackTaskFactor"}
+	fieldsInOrder := [...]string{"taskFinder", "hostAllocator", "hostAllocatorRoundingRule", "hostAllocatorFeedbackRule", "hostsOverallocatedRule", "futureHostFraction", "cacheDurationSeconds", "targetTimeSeconds", "acceptableHostIdleTimeSeconds", "groupVersions", "patchFactor", "patchTimeInQueueFactor", "commitQueueFactor", "mainlineTimeInQueueFactor", "expectedRuntimeFactor", "generateTaskFactor", "numDependentsFactor", "stepbackTaskFactor", "translateProjectConcurrencyLimit", "translateProjectCacheBytesLimit", "translateProjectCacheTTLSeconds"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -89050,6 +88299,27 @@ func (ec *executionContext) unmarshalInputSchedulerConfigInput(ctx context.Conte
 				return it, err
 			}
 			it.StepbackTaskFactor = data
+		case "translateProjectConcurrencyLimit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("translateProjectConcurrencyLimit"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TranslateProjectConcurrencyLimit = data
+		case "translateProjectCacheBytesLimit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("translateProjectCacheBytesLimit"))
+			data, err := ec.unmarshalOInt2int64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TranslateProjectCacheBytesLimit = data
+		case "translateProjectCacheTTLSeconds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("translateProjectCacheTTLSeconds"))
+			data, err := ec.unmarshalOInt2int64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TranslateProjectCacheTTLSeconds = data
 		}
 	}
 
@@ -93233,6 +92503,16 @@ func (ec *executionContext) _BucketConfig(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._BucketConfig_roleARN(ctx, field, obj)
 		case "type":
 			out.Values[i] = ec._BucketConfig_type(ctx, field, obj)
+		case "expirationDays":
+			out.Values[i] = ec._BucketConfig_expirationDays(ctx, field, obj)
+		case "transitionToIADays":
+			out.Values[i] = ec._BucketConfig_transitionToIADays(ctx, field, obj)
+		case "transitionToGlacierDays":
+			out.Values[i] = ec._BucketConfig_transitionToGlacierDays(ctx, field, obj)
+		case "lifecycleLastSyncedAt":
+			out.Values[i] = ec._BucketConfig_lifecycleLastSyncedAt(ctx, field, obj)
+		case "lifecycleSyncError":
+			out.Values[i] = ec._BucketConfig_lifecycleSyncError(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -93275,6 +92555,8 @@ func (ec *executionContext) _BucketsConfig(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._BucketsConfig_logBucketFailedTasks(ctx, field, obj)
 		case "longRetentionProjects":
 			out.Values[i] = ec._BucketsConfig_longRetentionProjects(ctx, field, obj)
+		case "retryFailedLogMoveLookbackDays":
+			out.Values[i] = ec._BucketsConfig_retryFailedLogMoveLookbackDays(ctx, field, obj)
 		case "retryFailedLogMoveLookbackMonths":
 			out.Values[i] = ec._BucketsConfig_retryFailedLogMoveLookbackMonths(ctx, field, obj)
 		case "retryFailedLogMoveMaxJobsPerRun":
@@ -93424,16 +92706,6 @@ func (ec *executionContext) _BuildBaronSettings(ctx context.Context, sel ast.Sel
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("BuildBaronSettings")
-		case "bfSuggestionFeaturesURL":
-			out.Values[i] = ec._BuildBaronSettings_bfSuggestionFeaturesURL(ctx, field, obj)
-		case "bfSuggestionPassword":
-			out.Values[i] = ec._BuildBaronSettings_bfSuggestionPassword(ctx, field, obj)
-		case "bfSuggestionServer":
-			out.Values[i] = ec._BuildBaronSettings_bfSuggestionServer(ctx, field, obj)
-		case "bfSuggestionTimeoutSecs":
-			out.Values[i] = ec._BuildBaronSettings_bfSuggestionTimeoutSecs(ctx, field, obj)
-		case "bfSuggestionUsername":
-			out.Values[i] = ec._BuildBaronSettings_bfSuggestionUsername(ctx, field, obj)
 		case "ticketCreateProject":
 			out.Values[i] = ec._BuildBaronSettings_ticketCreateProject(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -93993,6 +93265,8 @@ func (ec *executionContext) _CostConfig(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._CostConfig_s3Cost(ctx, field, obj)
 		case "ebsCost":
 			out.Values[i] = ec._CostConfig_ebsCost(ctx, field, obj)
+		case "hiddenCostProjects":
+			out.Values[i] = ec._CostConfig_hiddenCostProjects(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -98399,175 +97673,6 @@ func (ec *executionContext) _LoggerConfig(ctx context.Context, sel ast.Selection
 	return out
 }
 
-var logkeeperBuildImplementors = []string{"LogkeeperBuild"}
-
-func (ec *executionContext) _LogkeeperBuild(ctx context.Context, sel ast.SelectionSet, obj *plank.Build) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, logkeeperBuildImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("LogkeeperBuild")
-		case "id":
-			out.Values[i] = ec._LogkeeperBuild_id(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "builder":
-			out.Values[i] = ec._LogkeeperBuild_builder(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "buildNum":
-			out.Values[i] = ec._LogkeeperBuild_buildNum(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "taskId":
-			out.Values[i] = ec._LogkeeperBuild_taskId(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "taskExecution":
-			out.Values[i] = ec._LogkeeperBuild_taskExecution(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "tests":
-			out.Values[i] = ec._LogkeeperBuild_tests(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "task":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._LogkeeperBuild_task(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var logkeeperTestImplementors = []string{"LogkeeperTest"}
-
-func (ec *executionContext) _LogkeeperTest(ctx context.Context, sel ast.SelectionSet, obj *plank.Test) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, logkeeperTestImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("LogkeeperTest")
-		case "id":
-			out.Values[i] = ec._LogkeeperTest_id(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "name":
-			out.Values[i] = ec._LogkeeperTest_name(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "buildId":
-			out.Values[i] = ec._LogkeeperTest_buildId(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "taskId":
-			out.Values[i] = ec._LogkeeperTest_taskId(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "taskExecution":
-			out.Values[i] = ec._LogkeeperTest_taskExecution(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "phase":
-			out.Values[i] = ec._LogkeeperTest_phase(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "command":
-			out.Values[i] = ec._LogkeeperTest_command(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
 var mainlineCommitVersionImplementors = []string{"MainlineCommitVersion"}
 
 func (ec *executionContext) _MainlineCommitVersion(ctx context.Context, sel ast.SelectionSet, obj *MainlineCommitVersion) graphql.Marshaler {
@@ -99289,10 +98394,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "resetAPIKey":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_resetAPIKey(ctx, field)
-			})
 		case "saveSubscription":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_saveSubscription(ctx, field)
@@ -103549,28 +102650,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "logkeeperBuildMetadata":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_logkeeperBuildMetadata(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "task":
 			field := field
 
@@ -105379,6 +104458,12 @@ func (ec *executionContext) _SchedulerConfig(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._SchedulerConfig_numDependentsFactor(ctx, field, obj)
 		case "stepbackTaskFactor":
 			out.Values[i] = ec._SchedulerConfig_stepbackTaskFactor(ctx, field, obj)
+		case "translateProjectConcurrencyLimit":
+			out.Values[i] = ec._SchedulerConfig_translateProjectConcurrencyLimit(ctx, field, obj)
+		case "translateProjectCacheBytesLimit":
+			out.Values[i] = ec._SchedulerConfig_translateProjectCacheBytesLimit(ctx, field, obj)
+		case "translateProjectCacheTTLSeconds":
+			out.Values[i] = ec._SchedulerConfig_translateProjectCacheTTLSeconds(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -105413,11 +104498,6 @@ func (ec *executionContext) _SearchReturnInfo(ctx context.Context, sel ast.Selec
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("SearchReturnInfo")
-		case "featuresURL":
-			out.Values[i] = ec._SearchReturnInfo_featuresURL(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "issues":
 			out.Values[i] = ec._SearchReturnInfo_issues(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -110746,10 +109826,6 @@ func (ec *executionContext) _UserServiceFlags(ctx context.Context, sel ast.Selec
 			out.Values[i] = graphql.MarshalString("UserServiceFlags")
 		case "debugSpawnHostDisabled":
 			out.Values[i] = ec._UserServiceFlags_debugSpawnHostDisabled(ctx, field, obj)
-		case "jwtTokenForCLIDisabled":
-			out.Values[i] = ec._UserServiceFlags_jwtTokenForCLIDisabled(ctx, field, obj)
-		case "staticAPIKeysDisabled":
-			out.Values[i] = ec._UserServiceFlags_staticAPIKeysDisabled(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -116070,68 +115146,6 @@ func (ec *executionContext) marshalNLogMessage2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._LogMessage(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNLogkeeperBuild2githubᚗcomᚋevergreenᚑciᚋplankᚐBuild(ctx context.Context, sel ast.SelectionSet, v plank.Build) graphql.Marshaler {
-	return ec._LogkeeperBuild(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNLogkeeperBuild2ᚖgithubᚗcomᚋevergreenᚑciᚋplankᚐBuild(ctx context.Context, sel ast.SelectionSet, v *plank.Build) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._LogkeeperBuild(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNLogkeeperTest2githubᚗcomᚋevergreenᚑciᚋplankᚐTest(ctx context.Context, sel ast.SelectionSet, v plank.Test) graphql.Marshaler {
-	return ec._LogkeeperTest(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNLogkeeperTest2ᚕgithubᚗcomᚋevergreenᚑciᚋplankᚐTestᚄ(ctx context.Context, sel ast.SelectionSet, v []plank.Test) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNLogkeeperTest2githubᚗcomᚋevergreenᚑciᚋplankᚐTest(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
 }
 
 func (ec *executionContext) marshalNMainlineCommitVersion2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMainlineCommitVersionᚄ(ctx context.Context, sel ast.SelectionSet, v []*MainlineCommitVersion) graphql.Marshaler {

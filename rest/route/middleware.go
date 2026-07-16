@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/ratelimit"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -741,10 +743,37 @@ func AddCORSHeaders(allowedOrigins []string, next http.HandlerFunc) http.Handler
 				w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PATCH, PUT")
 				w.Header().Add("Access-Control-Allow-Headers", fmt.Sprintf("%s, %s, %s", evergreen.APIKeyHeader, evergreen.APIUserHeader, gqlHeader))
 				w.Header().Add("Access-Control-Max-Age", "600")
+
+				// TODO: Delete when resolving DEVPROD-36667.
+				// To avoid over-logging, only log the header if it doesn't match the expected URLs.
+				if !isExpectedCORSOrigin(requester) {
+					grip.Info(r.Context(), message.Fields{
+						"message":    "CORS request from unexpected origin",
+						"origin":     requester,
+						"method":     r.Method,
+						"path":       r.URL.Path,
+						"user_agent": r.UserAgent(),
+					})
+				}
 			}
 		}
 		next(w, r)
 	}
+}
+
+// TODO: Delete when resolving DEVPROD-36667.
+func isExpectedCORSOrigin(origin string) bool {
+	expectedURLs := []string{
+		"https://spruce.corp.mongodb.com",
+		"https://spruce-staging.corp.mongodb.com",
+		"https://spruce-beta.corp.mongodb.com",
+		"https://spruce-local.corp.mongodb.com",
+		"https://parsley.corp.mongodb.com",
+		"https://parsley-staging.corp.mongodb.com",
+		"https://parsley-beta.corp.mongodb.com",
+		"https://parsley-local.corp.mongodb.com",
+	}
+	return slices.ContainsFunc(expectedURLs, func(u string) bool { return strings.HasPrefix(origin, u) })
 }
 
 func allowCORS(next http.HandlerFunc) http.HandlerFunc {
@@ -864,4 +893,102 @@ func (m *userOrTaskAuthOnlyMiddleware) ServeHTTP(rw http.ResponseWriter, r *http
 		return
 	}
 	next(rw, r)
+}
+
+func NewRateLimitMiddleware(env evergreen.Environment, surface evergreen.RateLimitSurface) gimlet.Middleware {
+	return &rateLimitMiddleware{
+		env:     env,
+		surface: surface,
+	}
+}
+
+type rateLimitMiddleware struct {
+	env     evergreen.Environment
+	surface evergreen.RateLimitSurface
+}
+
+func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	ctx := r.Context()
+	u := gimlet.GetUser(ctx)
+	if u == nil {
+		next(rw, r)
+		return
+	}
+	dbUser := MustHaveUser(ctx)
+	isService := dbUser.OnlyAPI
+	settings := m.env.Settings()
+	cfg := settings.RateLimit
+	perHour, burst := limitsFor(&cfg, m.surface, isService)
+
+	// Handle elevated users - 2x normal limits.
+	if slices.Contains(cfg.ElevatedUserIDs, u.Username()) {
+		perHour *= 2
+		burst *= 2
+	}
+
+	limiter, err := ratelimit.NewRateLimiter(m.env.RedisClient())
+
+	// If the limiter fails to initialize, log the error and allow the request to proceed.
+	if err != nil {
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message": "error initializing rate limiter",
+			"user":    u.Username(),
+			"surface": m.surface,
+		}))
+		next(rw, r)
+		return
+	}
+	res, err := limiter.Allow(ctx, u.Username(), m.surface, perHour, burst)
+	if err != nil {
+		// Log error, but let the request pass through.
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message": fmt.Sprintf("error checking rate limit: %s", err.Error()),
+			"user":    u.Username(),
+			"surface": m.surface,
+		}))
+		next(rw, r)
+		return
+	}
+
+	if res != nil {
+		rw.Header().Set(evergreen.RateLimitLimitHeader, fmt.Sprintf("%d", perHour))
+		rw.Header().Set(evergreen.RateLimitBurstHeader, fmt.Sprintf("%d", burst))
+		rw.Header().Set(evergreen.RateLimitRemainingHeader, fmt.Sprintf("%d", res.Remaining))
+		resetTimestamp := time.Now().Add(res.ResetAfter).Unix()
+		rw.Header().Set(evergreen.RateLimitResetHeader, fmt.Sprintf("%d", resetTimestamp))
+
+		if res.Allowed == 0 {
+			rw.Header().Set(evergreen.RateLimitExceededHeader, "true")
+			flags, _ := evergreen.GetServiceFlags(ctx)
+			if flags != nil && !flags.APIRateLimiterDisabled {
+				// Retry-After is a standard HTTP header that indicates how long the user should wait before making another request.
+				rw.Header().Set(evergreen.RetryAfterHeader, fmt.Sprintf("%d", int(res.RetryAfter.Seconds())))
+				gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+					StatusCode: http.StatusTooManyRequests,
+					Message:    "rate limit exceeded",
+				}))
+				return
+			}
+		}
+	}
+
+	// Let request flow freely once headers are set or if the Result is nil.
+	next(rw, r)
+
+}
+
+func limitsFor(c *evergreen.RateLimitConfig, surface evergreen.RateLimitSurface, isService bool) (perHour int, burst int) {
+	switch surface {
+	case evergreen.RateLimitSurfaceREST:
+		if isService {
+			return c.RESTServicePerHour, c.RESTServiceBurst
+		}
+		return c.RESTUserPerHour, c.RESTUserBurst
+	case evergreen.RateLimitSurfaceGraphQL:
+		if isService {
+			return c.GraphQLServicePerHour, c.GraphQLServiceBurst
+		}
+		return c.GraphQLUserPerHour, c.GraphQLUserBurst
+	}
+	return 0, 0 // Unknown, default to no rate limit.
 }

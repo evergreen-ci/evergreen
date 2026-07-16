@@ -426,7 +426,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			p.PatchedProjectConfig = patchConfig.PatchedProjectConfig
 		}
 
-		_, err = model.FinalizePatch(ctx, p, evergreen.PatchVersionRequester)
+		_, err = model.FinalizePatch(ctx, p, evergreen.PatchVersionRequester, nil)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

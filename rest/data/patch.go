@@ -126,7 +126,7 @@ func SetPatchActivated(ctx context.Context, patchId string, user string, activat
 	}
 	if activated && p.Version == "" {
 		requester := p.GetRequester()
-		if _, err = model.FinalizePatch(ctx, p, requester); err != nil {
+		if _, err = model.FinalizePatch(ctx, p, requester, nil); err != nil {
 			return errors.Wrapf(err, "finalizing patch '%s'", p.Id.Hex())
 		}
 		if requester == evergreen.PatchVersionRequester {

@@ -623,8 +623,8 @@ func unredactWebhookSubscription(unredactedPreviousSubscriptions []event.Subscri
 	unredactedNewHeaders := []restModel.APIWebhookHeader{}
 	for _, redactedHeader := range redactedNewWebhookSubscription.Headers {
 		// If the header is the Authorization header and set to redacted, replace it with the unredacted value.
-		if utility.FromStringPtr(redactedHeader.Key) == "Authorization" && utility.FromStringPtr(redactedHeader.Value) == evergreen.RedactedValue {
-			redactedHeader.Value = utility.ToStringPtr(unredactedPreviousWebhookSubscription.GetHeader("Authorization"))
+		if strings.EqualFold(utility.FromStringPtr(redactedHeader.Key), event.WebhookAuthorizationHeader) && utility.FromStringPtr(redactedHeader.Value) == evergreen.RedactedValue {
+			redactedHeader.Value = utility.ToStringPtr(unredactedPreviousWebhookSubscription.GetHeader(event.WebhookAuthorizationHeader))
 		}
 		unredactedNewHeaders = append(unredactedNewHeaders, redactedHeader)
 	}

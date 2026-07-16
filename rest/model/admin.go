@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/utility"
@@ -85,6 +86,7 @@ type APIAdminSettings struct {
 	GithubPRCreatorOrg      *string                       `json:"github_pr_creator_org,omitempty"`
 	GithubOrgs              []string                      `json:"github_orgs,omitempty"`
 	GithubWebhookSecret     *string                       `json:"github_webhook_secret,omitempty"`
+	ArtifactSignSecret      *string                       `json:"artifact_sign_secret,omitempty"`
 	DisabledGQLQueries      []string                      `json:"disabled_gql_queries"`
 	HostInit                *APIHostInitConfig            `json:"hostinit,omitempty"`
 	HostJasper              *APIHostJasperConfig          `json:"host_jasper,omitempty"`
@@ -175,6 +177,7 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 		as.Expansions = v.Expansions
 		as.GithubOrgs = v.GithubOrgs
 		as.GithubWebhookSecret = utility.ToStringPtr(v.GithubWebhookSecret)
+		as.ArtifactSignSecret = utility.ToStringPtr(v.ArtifactSignSecret)
 		as.DisabledGQLQueries = v.DisabledGQLQueries
 		uiConfig := APIUIConfig{}
 		err := uiConfig.BuildFromService(v.Ui)
@@ -279,6 +282,7 @@ func (as *APIAdminSettings) ToService() (any, error) {
 		settings.GithubPRCreatorOrg = *as.GithubPRCreatorOrg
 	}
 	settings.GithubWebhookSecret = utility.FromStringPtr(as.GithubWebhookSecret)
+	settings.ArtifactSignSecret = utility.FromStringPtr(as.ArtifactSignSecret)
 	if as.LogPath != nil {
 		settings.LogPath = *as.LogPath
 	}
@@ -776,10 +780,12 @@ func (a *APIOktaServiceConfig) ToService() (any, error) {
 }
 
 type APIBucketsConfig struct {
-	LogBucket                        APIBucketConfig  `json:"log_bucket"`
-	LogBucketLongRetention           APIBucketConfig  `json:"log_bucket_long_retention"`
-	LogBucketFailedTasks             APIBucketConfig  `json:"log_bucket_failed_tasks"`
-	LongRetentionProjects            []string         `json:"long_retention_projects"`
+	LogBucket                      APIBucketConfig `json:"log_bucket"`
+	LogBucketLongRetention         APIBucketConfig `json:"log_bucket_long_retention"`
+	LogBucketFailedTasks           APIBucketConfig `json:"log_bucket_failed_tasks"`
+	LongRetentionProjects          []string        `json:"long_retention_projects"`
+	RetryFailedLogMoveLookbackDays *int            `json:"retry_failed_log_move_lookback_days,omitempty"`
+	// Kept for Spruce backward compatibility.
 	RetryFailedLogMoveLookbackMonths *int             `json:"retry_failed_log_move_lookback_months,omitempty"`
 	RetryFailedLogMoveMaxJobsPerRun  *int             `json:"retry_failed_log_move_max_jobs_per_run,omitempty"`
 	TestResultsBucket                APIBucketConfig  `json:"test_results_bucket"`
@@ -788,11 +794,16 @@ type APIBucketsConfig struct {
 }
 
 type APIBucketConfig struct {
-	Name              *string `json:"name"`
-	Type              *string `json:"type"`
-	DBName            *string `json:"db_name"`
-	TestResultsPrefix *string `json:"test_results_prefix"`
-	RoleARN           *string `json:"role_arn"`
+	Name                    *string    `json:"name"`
+	Type                    *string    `json:"type"`
+	DBName                  *string    `json:"db_name"`
+	TestResultsPrefix       *string    `json:"test_results_prefix"`
+	RoleARN                 *string    `json:"role_arn"`
+	ExpirationDays          *int       `json:"expiration_days,omitempty"`
+	TransitionToIADays      *int       `json:"transition_to_ia_days,omitempty"`
+	TransitionToGlacierDays *int       `json:"transition_to_glacier_days,omitempty"`
+	LifecycleLastSyncedAt   *time.Time `json:"lifecycle_last_synced_at,omitempty"`
+	LifecycleSyncError      *string    `json:"lifecycle_sync_error,omitempty"`
 }
 
 type APIProjectToPrefixMapping struct {
@@ -812,19 +823,41 @@ func (a *APIBucketsConfig) BuildFromService(h any) error {
 		a.LogBucket.Name = utility.ToStringPtr(v.LogBucket.Name)
 		a.LogBucket.Type = utility.ToStringPtr(string(v.LogBucket.Type))
 		a.LogBucket.DBName = utility.ToStringPtr(v.LogBucket.DBName)
+		a.LogBucket.ExpirationDays = v.LogBucket.ExpirationDays
+		a.LogBucket.TransitionToIADays = v.LogBucket.TransitionToIADays
+		a.LogBucket.TransitionToGlacierDays = v.LogBucket.TransitionToGlacierDays
+		if !v.LogBucket.LifecycleLastSyncedAt.IsZero() {
+			a.LogBucket.LifecycleLastSyncedAt = &v.LogBucket.LifecycleLastSyncedAt
+		}
+		a.LogBucket.LifecycleSyncError = utility.ToStringPtr(v.LogBucket.LifecycleSyncError)
 
 		a.LogBucketLongRetention.Name = utility.ToStringPtr(v.LogBucketLongRetention.Name)
 		a.LogBucketLongRetention.Type = utility.ToStringPtr(string(v.LogBucketLongRetention.Type))
 		a.LogBucketLongRetention.DBName = utility.ToStringPtr(v.LogBucketLongRetention.DBName)
 		a.LogBucketLongRetention.RoleARN = utility.ToStringPtr(v.LogBucketLongRetention.RoleARN)
+		a.LogBucketLongRetention.ExpirationDays = v.LogBucketLongRetention.ExpirationDays
+		a.LogBucketLongRetention.TransitionToIADays = v.LogBucketLongRetention.TransitionToIADays
+		a.LogBucketLongRetention.TransitionToGlacierDays = v.LogBucketLongRetention.TransitionToGlacierDays
+		if !v.LogBucketLongRetention.LifecycleLastSyncedAt.IsZero() {
+			a.LogBucketLongRetention.LifecycleLastSyncedAt = &v.LogBucketLongRetention.LifecycleLastSyncedAt
+		}
+		a.LogBucketLongRetention.LifecycleSyncError = utility.ToStringPtr(v.LogBucketLongRetention.LifecycleSyncError)
 
 		a.LogBucketFailedTasks.Name = utility.ToStringPtr(v.LogBucketFailedTasks.Name)
 		a.LogBucketFailedTasks.Type = utility.ToStringPtr(string(v.LogBucketFailedTasks.Type))
 		a.LogBucketFailedTasks.DBName = utility.ToStringPtr(v.LogBucketFailedTasks.DBName)
 		a.LogBucketFailedTasks.RoleARN = utility.ToStringPtr(v.LogBucketFailedTasks.RoleARN)
+		a.LogBucketFailedTasks.ExpirationDays = v.LogBucketFailedTasks.ExpirationDays
+		a.LogBucketFailedTasks.TransitionToIADays = v.LogBucketFailedTasks.TransitionToIADays
+		a.LogBucketFailedTasks.TransitionToGlacierDays = v.LogBucketFailedTasks.TransitionToGlacierDays
+		if !v.LogBucketFailedTasks.LifecycleLastSyncedAt.IsZero() {
+			a.LogBucketFailedTasks.LifecycleLastSyncedAt = &v.LogBucketFailedTasks.LifecycleLastSyncedAt
+		}
+		a.LogBucketFailedTasks.LifecycleSyncError = utility.ToStringPtr(v.LogBucketFailedTasks.LifecycleSyncError)
 
 		a.LongRetentionProjects = v.LongRetentionProjects
-		a.RetryFailedLogMoveLookbackMonths = utility.ToIntPtr(v.RetryFailedLogMoveLookbackMonths)
+		a.RetryFailedLogMoveLookbackDays = utility.ToIntPtr(v.RetryFailedLogMoveLookbackDays)
+		a.RetryFailedLogMoveLookbackMonths = utility.ToIntPtr(v.RetryFailedLogMoveLookbackDays)
 		a.RetryFailedLogMoveMaxJobsPerRun = utility.ToIntPtr(v.RetryFailedLogMoveMaxJobsPerRun)
 
 		a.TestResultsBucket.Name = utility.ToStringPtr(v.TestResultsBucket.Name)
@@ -854,6 +887,12 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 		return nil, errors.Errorf("programmatic error: expected S3 credentials but got type %T", i)
 	}
 
+	// Prefer Days; fall back to Months for Spruce backward compatibility.
+	lookbackDays := a.RetryFailedLogMoveLookbackDays
+	if lookbackDays == nil {
+		lookbackDays = a.RetryFailedLogMoveLookbackMonths
+	}
+
 	return evergreen.BucketsConfig{
 		LogBucket: evergreen.BucketConfig{
 			Name:   utility.FromStringPtr(a.LogBucket.Name),
@@ -872,9 +911,9 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 			DBName:  utility.FromStringPtr(a.LogBucketFailedTasks.DBName),
 			RoleARN: utility.FromStringPtr(a.LogBucketFailedTasks.RoleARN),
 		},
-		LongRetentionProjects:            a.LongRetentionProjects,
-		RetryFailedLogMoveLookbackMonths: utility.FromIntPtr(a.RetryFailedLogMoveLookbackMonths),
-		RetryFailedLogMoveMaxJobsPerRun:  utility.FromIntPtr(a.RetryFailedLogMoveMaxJobsPerRun),
+		LongRetentionProjects:           a.LongRetentionProjects,
+		RetryFailedLogMoveLookbackDays:  utility.FromIntPtr(lookbackDays),
+		RetryFailedLogMoveMaxJobsPerRun: utility.FromIntPtr(a.RetryFailedLogMoveMaxJobsPerRun),
 		TestResultsBucket: evergreen.BucketConfig{
 			Name:              utility.FromStringPtr(a.TestResultsBucket.Name),
 			Type:              evergreen.BucketType(utility.FromStringPtr(a.TestResultsBucket.Type)),
@@ -2012,24 +2051,27 @@ func (a *APIReleaseModeConfig) ToService() (any, error) {
 }
 
 type APISchedulerConfig struct {
-	TaskFinder                    *string `json:"task_finder"`
-	HostAllocator                 *string `json:"host_allocator"`
-	HostAllocatorRoundingRule     *string `json:"host_allocator_rounding_rule"`
-	HostAllocatorFeedbackRule     *string `json:"host_allocator_feedback_rule"`
-	HostsOverallocatedRule        *string `json:"hosts_overallocated_rule"`
-	FutureHostFraction            float64 `json:"free_host_fraction"`
-	CacheDurationSeconds          int     `json:"cache_duration_seconds"`
-	TargetTimeSeconds             int     `json:"target_time_seconds"`
-	AcceptableHostIdleTimeSeconds int     `json:"acceptable_host_idle_time_seconds"`
-	GroupVersions                 bool    `json:"group_versions"`
-	PatchFactor                   int64   `json:"patch_factor"`
-	PatchTimeInQueueFactor        int64   `json:"patch_time_in_queue_factor"`
-	CommitQueueFactor             int64   `json:"commit_queue_factor"`
-	MainlineTimeInQueueFactor     int64   `json:"mainline_time_in_queue_factor"`
-	ExpectedRuntimeFactor         int64   `json:"expected_runtime_factor"`
-	GenerateTaskFactor            int64   `json:"generate_task_factor"`
-	NumDependentsFactor           float64 `json:"num_dependents_factor"`
-	StepbackTaskFactor            int64   `json:"stepback_task_factor"`
+	TaskFinder                       *string `json:"task_finder"`
+	HostAllocator                    *string `json:"host_allocator"`
+	HostAllocatorRoundingRule        *string `json:"host_allocator_rounding_rule"`
+	HostAllocatorFeedbackRule        *string `json:"host_allocator_feedback_rule"`
+	HostsOverallocatedRule           *string `json:"hosts_overallocated_rule"`
+	FutureHostFraction               float64 `json:"free_host_fraction"`
+	CacheDurationSeconds             int     `json:"cache_duration_seconds"`
+	TargetTimeSeconds                int     `json:"target_time_seconds"`
+	AcceptableHostIdleTimeSeconds    int     `json:"acceptable_host_idle_time_seconds"`
+	GroupVersions                    bool    `json:"group_versions"`
+	PatchFactor                      int64   `json:"patch_factor"`
+	PatchTimeInQueueFactor           int64   `json:"patch_time_in_queue_factor"`
+	CommitQueueFactor                int64   `json:"commit_queue_factor"`
+	MainlineTimeInQueueFactor        int64   `json:"mainline_time_in_queue_factor"`
+	ExpectedRuntimeFactor            int64   `json:"expected_runtime_factor"`
+	GenerateTaskFactor               int64   `json:"generate_task_factor"`
+	NumDependentsFactor              float64 `json:"num_dependents_factor"`
+	StepbackTaskFactor               int64   `json:"stepback_task_factor"`
+	TranslateProjectConcurrencyLimit int     `json:"translate_project_concurrency_limit"`
+	TranslateProjectCacheBytesLimit  int64   `json:"translate_project_cache_bytes_limit"`
+	TranslateProjectCacheTTLSeconds  int64   `json:"translate_project_cache_ttl_seconds"`
 }
 
 func (a *APISchedulerConfig) BuildFromService(h any) error {
@@ -2053,6 +2095,9 @@ func (a *APISchedulerConfig) BuildFromService(h any) error {
 		a.GenerateTaskFactor = v.GenerateTaskFactor
 		a.NumDependentsFactor = v.NumDependentsFactor
 		a.StepbackTaskFactor = v.StepbackTaskFactor
+		a.TranslateProjectConcurrencyLimit = v.TranslateProjectConcurrencyLimit
+		a.TranslateProjectCacheBytesLimit = v.TranslateProjectCacheBytesLimit
+		a.TranslateProjectCacheTTLSeconds = v.TranslateProjectCacheTTLSeconds
 	default:
 		return errors.Errorf("programmatic error: expected host scheduler config but got type %T", h)
 	}
@@ -2061,52 +2106,53 @@ func (a *APISchedulerConfig) BuildFromService(h any) error {
 
 func (a *APISchedulerConfig) ToService() (any, error) {
 	return evergreen.SchedulerConfig{
-		TaskFinder:                    utility.FromStringPtr(a.TaskFinder),
-		HostAllocator:                 utility.FromStringPtr(a.HostAllocator),
-		HostAllocatorRoundingRule:     utility.FromStringPtr(a.HostAllocatorRoundingRule),
-		HostAllocatorFeedbackRule:     utility.FromStringPtr(a.HostAllocatorFeedbackRule),
-		HostsOverallocatedRule:        utility.FromStringPtr(a.HostsOverallocatedRule),
-		FutureHostFraction:            a.FutureHostFraction,
-		CacheDurationSeconds:          a.CacheDurationSeconds,
-		TargetTimeSeconds:             a.TargetTimeSeconds,
-		AcceptableHostIdleTimeSeconds: a.AcceptableHostIdleTimeSeconds,
-		GroupVersions:                 a.GroupVersions,
-		PatchFactor:                   a.PatchFactor,
-		ExpectedRuntimeFactor:         a.ExpectedRuntimeFactor,
-		PatchTimeInQueueFactor:        a.PatchTimeInQueueFactor,
-		CommitQueueFactor:             a.CommitQueueFactor,
-		MainlineTimeInQueueFactor:     a.MainlineTimeInQueueFactor,
-		GenerateTaskFactor:            a.GenerateTaskFactor,
-		NumDependentsFactor:           a.NumDependentsFactor,
-		StepbackTaskFactor:            a.StepbackTaskFactor,
+		TaskFinder:                       utility.FromStringPtr(a.TaskFinder),
+		HostAllocator:                    utility.FromStringPtr(a.HostAllocator),
+		HostAllocatorRoundingRule:        utility.FromStringPtr(a.HostAllocatorRoundingRule),
+		HostAllocatorFeedbackRule:        utility.FromStringPtr(a.HostAllocatorFeedbackRule),
+		HostsOverallocatedRule:           utility.FromStringPtr(a.HostsOverallocatedRule),
+		FutureHostFraction:               a.FutureHostFraction,
+		CacheDurationSeconds:             a.CacheDurationSeconds,
+		TargetTimeSeconds:                a.TargetTimeSeconds,
+		AcceptableHostIdleTimeSeconds:    a.AcceptableHostIdleTimeSeconds,
+		GroupVersions:                    a.GroupVersions,
+		PatchFactor:                      a.PatchFactor,
+		ExpectedRuntimeFactor:            a.ExpectedRuntimeFactor,
+		PatchTimeInQueueFactor:           a.PatchTimeInQueueFactor,
+		CommitQueueFactor:                a.CommitQueueFactor,
+		MainlineTimeInQueueFactor:        a.MainlineTimeInQueueFactor,
+		GenerateTaskFactor:               a.GenerateTaskFactor,
+		NumDependentsFactor:              a.NumDependentsFactor,
+		StepbackTaskFactor:               a.StepbackTaskFactor,
+		TranslateProjectConcurrencyLimit: a.TranslateProjectConcurrencyLimit,
+		TranslateProjectCacheBytesLimit:  a.TranslateProjectCacheBytesLimit,
+		TranslateProjectCacheTTLSeconds:  a.TranslateProjectCacheTTLSeconds,
 	}, nil
 }
 
 // APIServiceFlags is a public structure representing the admin service flags
 type APIServiceFlags struct {
-	TaskDispatchDisabled        bool `json:"task_dispatch_disabled"`
-	HostInitDisabled            bool `json:"host_init_disabled"`
-	LargeParserProjectsDisabled bool `json:"large_parser_projects_disabled"`
-	MonitorDisabled             bool `json:"monitor_disabled"`
-	AlertsDisabled              bool `json:"alerts_disabled"`
-	AgentStartDisabled          bool `json:"agent_start_disabled"`
-	RepotrackerDisabled         bool `json:"repotracker_disabled"`
-	SchedulerDisabled           bool `json:"scheduler_disabled"`
-	CheckBlockedTasksDisabled   bool `json:"check_blocked_tasks_disabled"`
-	GithubPRTestingDisabled     bool `json:"github_pr_testing_disabled"`
-	CLIUpdatesDisabled          bool `json:"cli_updates_disabled"`
-	BackgroundStatsDisabled     bool `json:"background_stats_disabled"`
-	TaskLoggingDisabled         bool `json:"task_logging_disabled"`
-	CacheStatsJobDisabled       bool `json:"cache_stats_job_disabled"`
-	CacheStatsEndpointDisabled  bool `json:"cache_stats_endpoint_disabled"`
-	TaskReliabilityDisabled     bool `json:"task_reliability_disabled"`
-	HostAllocatorDisabled       bool `json:"host_allocator_disabled"`
-	BackgroundReauthDisabled    bool `json:"background_reauth_disabled"`
-	CloudCleanupDisabled        bool `json:"cloud_cleanup_disabled"`
-	SleepScheduleDisabled       bool `json:"sleep_schedule_disabled"`
-	StaticAPIKeysDisabled       bool `json:"static_api_keys_disabled"`
-	// JWTTokenForCLIDisabled disables the use of OAuth tokens for the CLI.
-	JWTTokenForCLIDisabled             bool `json:"jwt_token_for_cli_disabled"`
+	TaskDispatchDisabled               bool `json:"task_dispatch_disabled"`
+	HostInitDisabled                   bool `json:"host_init_disabled"`
+	LargeParserProjectsDisabled        bool `json:"large_parser_projects_disabled"`
+	MonitorDisabled                    bool `json:"monitor_disabled"`
+	MergeQueueRecoveryEnabled          bool `json:"merge_queue_recovery_enabled"`
+	AlertsDisabled                     bool `json:"alerts_disabled"`
+	AgentStartDisabled                 bool `json:"agent_start_disabled"`
+	RepotrackerDisabled                bool `json:"repotracker_disabled"`
+	SchedulerDisabled                  bool `json:"scheduler_disabled"`
+	CheckBlockedTasksDisabled          bool `json:"check_blocked_tasks_disabled"`
+	GithubPRTestingDisabled            bool `json:"github_pr_testing_disabled"`
+	CLIUpdatesDisabled                 bool `json:"cli_updates_disabled"`
+	BackgroundStatsDisabled            bool `json:"background_stats_disabled"`
+	TaskLoggingDisabled                bool `json:"task_logging_disabled"`
+	CacheStatsJobDisabled              bool `json:"cache_stats_job_disabled"`
+	CacheStatsEndpointDisabled         bool `json:"cache_stats_endpoint_disabled"`
+	TaskReliabilityDisabled            bool `json:"task_reliability_disabled"`
+	HostAllocatorDisabled              bool `json:"host_allocator_disabled"`
+	BackgroundReauthDisabled           bool `json:"background_reauth_disabled"`
+	CloudCleanupDisabled               bool `json:"cloud_cleanup_disabled"`
+	SleepScheduleDisabled              bool `json:"sleep_schedule_disabled"`
 	SystemFailedTaskRestartDisabled    bool `json:"system_failed_task_restart_disabled"`
 	DegradedModeDisabled               bool `json:"cpu_degraded_mode_disabled"`
 	ElasticIPsDisabled                 bool `json:"elastic_ips_disabled"`
@@ -2120,6 +2166,7 @@ type APIServiceFlags struct {
 	WebhookSecretMigrationEnabled      bool `json:"webhook_secret_migration_enabled"`
 	WebhookSecretCleanupEnabled        bool `json:"webhook_secret_cleanup_enabled"`
 	RetryFailedLogMoveEnabled          bool `json:"retry_failed_log_move_enabled"`
+	ProjectTranslationCacheEnabled     bool `json:"project_translation_cache_enabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2546,6 +2593,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.HostInitDisabled = v.HostInitDisabled
 		as.LargeParserProjectsDisabled = v.LargeParserProjectsDisabled
 		as.MonitorDisabled = v.MonitorDisabled
+		as.MergeQueueRecoveryEnabled = v.MergeQueueRecoveryEnabled
 		as.AlertsDisabled = v.AlertsDisabled
 		as.AgentStartDisabled = v.AgentStartDisabled
 		as.RepotrackerDisabled = v.RepotrackerDisabled
@@ -2569,8 +2617,6 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
 		as.SleepScheduleDisabled = v.SleepScheduleDisabled
-		as.StaticAPIKeysDisabled = v.StaticAPIKeysDisabled
-		as.JWTTokenForCLIDisabled = v.JWTTokenForCLIDisabled
 		as.SystemFailedTaskRestartDisabled = v.SystemFailedTaskRestartDisabled
 		as.DegradedModeDisabled = v.CPUDegradedModeDisabled
 		as.ElasticIPsDisabled = v.ElasticIPsDisabled
@@ -2584,6 +2630,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.WebhookSecretMigrationEnabled = v.WebhookSecretMigrationEnabled
 		as.WebhookSecretCleanupEnabled = v.WebhookSecretCleanupEnabled
 		as.RetryFailedLogMoveEnabled = v.RetryFailedLogMoveEnabled
+		as.ProjectTranslationCacheEnabled = v.ProjectTranslationCacheEnabled
 		as.BackgroundCommandFailureEnabled = v.BackgroundCommandFailureEnabled
 		as.APIRateLimiterDisabled = v.APIRateLimiterDisabled
 		as.GraphQLComplexityLimiterDisabled = v.GraphQLComplexityLimiterDisabled
@@ -2600,6 +2647,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		HostInitDisabled:                   as.HostInitDisabled,
 		LargeParserProjectsDisabled:        as.LargeParserProjectsDisabled,
 		MonitorDisabled:                    as.MonitorDisabled,
+		MergeQueueRecoveryEnabled:          as.MergeQueueRecoveryEnabled,
 		AlertsDisabled:                     as.AlertsDisabled,
 		AgentStartDisabled:                 as.AgentStartDisabled,
 		RepotrackerDisabled:                as.RepotrackerDisabled,
@@ -2623,8 +2671,6 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		BackgroundReauthDisabled:           as.BackgroundReauthDisabled,
 		CloudCleanupDisabled:               as.CloudCleanupDisabled,
 		SleepScheduleDisabled:              as.SleepScheduleDisabled,
-		StaticAPIKeysDisabled:              as.StaticAPIKeysDisabled,
-		JWTTokenForCLIDisabled:             as.JWTTokenForCLIDisabled,
 		SystemFailedTaskRestartDisabled:    as.SystemFailedTaskRestartDisabled,
 		CPUDegradedModeDisabled:            as.DegradedModeDisabled,
 		ElasticIPsDisabled:                 as.ElasticIPsDisabled,
@@ -2638,6 +2684,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		WebhookSecretMigrationEnabled:      as.WebhookSecretMigrationEnabled,
 		WebhookSecretCleanupEnabled:        as.WebhookSecretCleanupEnabled,
 		RetryFailedLogMoveEnabled:          as.RetryFailedLogMoveEnabled,
+		ProjectTranslationCacheEnabled:     as.ProjectTranslationCacheEnabled,
 		BackgroundCommandFailureEnabled:    as.BackgroundCommandFailureEnabled,
 		APIRateLimiterDisabled:             as.APIRateLimiterDisabled,
 		GraphQLComplexityLimiterDisabled:   as.GraphQLComplexityLimiterDisabled,
@@ -3129,6 +3176,7 @@ type APICostConfig struct {
 	OnDemandDiscount    *float64          `json:"on_demand_discount"`
 	S3Cost              *APIS3CostConfig  `json:"s3_cost"`
 	EBSCost             *APIEBSCostConfig `json:"ebs_cost"`
+	HiddenCostProjects  []string          `json:"hidden_cost_projects"`
 }
 
 type APIEBSCostConfig struct {
@@ -3167,6 +3215,7 @@ func (a *APICostConfig) BuildFromService(h any) error {
 		if err := a.EBSCost.BuildFromService(&v.EBSCost); err != nil {
 			return errors.Wrap(err, "building EBS cost config")
 		}
+		a.HiddenCostProjects = v.HiddenCostProjects
 	case evergreen.CostConfig:
 		a.FinanceFormula = &v.FinanceFormula
 		a.SavingsPlanDiscount = &v.SavingsPlanDiscount
@@ -3179,6 +3228,7 @@ func (a *APICostConfig) BuildFromService(h any) error {
 		if err := a.EBSCost.BuildFromService(&v.EBSCost); err != nil {
 			return errors.Wrap(err, "building EBS cost config")
 		}
+		a.HiddenCostProjects = v.HiddenCostProjects
 	default:
 		return errors.Errorf("incorrect type %T", v)
 	}
@@ -3208,6 +3258,7 @@ func (a *APICostConfig) ToService() (any, error) {
 		OnDemandDiscount:    utility.FromFloat64Ptr(a.OnDemandDiscount),
 		S3Cost:              s3Cost,
 		EBSCost:             ebsCost,
+		HiddenCostProjects:  a.HiddenCostProjects,
 	}, nil
 }
 

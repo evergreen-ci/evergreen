@@ -83,6 +83,9 @@ input SchedulerConfigInput {
   generateTaskFactor: Int!
   numDependentsFactor: Float!
   stepbackTaskFactor: Int!
+  translateProjectConcurrencyLimit: Int
+  translateProjectCacheBytesLimit: Int
+  translateProjectCacheTTLSeconds: Int
 }
 
 type SchedulerConfig {
@@ -104,6 +107,9 @@ type SchedulerConfig {
   generateTaskFactor: Int
   numDependentsFactor: Float
   stepbackTaskFactor: Int
+  translateProjectConcurrencyLimit: Int
+  translateProjectCacheBytesLimit: Int
+  translateProjectCacheTTLSeconds: Int
 }
 
 input RepotrackerConfigInput {

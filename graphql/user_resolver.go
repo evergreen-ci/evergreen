@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -34,6 +35,9 @@ func (r *userResolver) Settings(ctx context.Context, obj *user.DBUser) (*restMod
 
 // Subscriptions is the resolver for the subscriptions field.
 func (r *userResolver) Subscriptions(ctx context.Context, obj *user.DBUser) ([]*restModel.APISubscription, error) {
+	if !canViewUserSubscriptions(ctx, obj.Id) {
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to view subscriptions for user '%s'", obj.Id))
+	}
 	return getAPISubscriptionsForOwner(ctx, obj.Id, event.OwnerTypePerson)
 }
 

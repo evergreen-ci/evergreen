@@ -186,7 +186,7 @@ func TestFindTaskGroupForTask(t *testing.T) {
 			{Name: "tg3", Tasks: []string{"tg3t1", "tg3t2"}},
 		},
 	}
-	p, err := TranslateProject(parserProject)
+	p, err := TranslateProject(t.Context(), parserProject)
 	require.NoError(t, err)
 	assert.NotNil(t, p)
 
@@ -893,7 +893,7 @@ func (s *projectSuite) SetupTest() {
 
 func (s *projectSuite) TestAliasResolution() {
 	// test that .* on variants and tasks selects everything
-	pairs, err := s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[0]}, evergreen.PatchVersionRequester)
+	pairs, err := s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[0]}, evergreen.PatchVersionRequester, "")
 	s.NoError(err)
 	s.Len(pairs.ExecTasks, 11)
 	pairStrs := make([]string, len(pairs.ExecTasks))
@@ -915,7 +915,7 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Equal("bv_1/memes", pairs.DisplayTasks[0].String())
 
 	// test that the .*_2 regex on variants selects just bv_2
-	pairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[1]}, evergreen.PatchVersionRequester)
+	pairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[1]}, evergreen.PatchVersionRequester, "")
 	s.NoError(err)
 	s.Len(pairs.ExecTasks, 5)
 	for _, pair := range pairs.ExecTasks {
@@ -924,7 +924,7 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Empty(pairs.DisplayTasks)
 
 	// test that the .*_2 regex on tasks selects just the _2 tasks
-	pairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[2]}, evergreen.PatchVersionRequester)
+	pairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[2]}, evergreen.PatchVersionRequester, "")
 	s.NoError(err)
 	s.Len(pairs.ExecTasks, 4)
 	for _, pair := range pairs.ExecTasks {
@@ -933,7 +933,7 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Empty(pairs.DisplayTasks)
 
 	// test that the 'a' tag only selects 'a' tasks
-	pairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[3]}, evergreen.PatchVersionRequester)
+	pairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[3]}, evergreen.PatchVersionRequester, "")
 	s.NoError(err)
 	s.Len(pairs.ExecTasks, 4)
 	for _, pair := range pairs.ExecTasks {
@@ -942,7 +942,7 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Empty(pairs.DisplayTasks)
 
 	// test that the .*_2 regex selects the union of both
-	pairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[4]}, evergreen.PatchVersionRequester)
+	pairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[4]}, evergreen.PatchVersionRequester, "")
 	s.NoError(err)
 	s.Len(pairs.ExecTasks, 4)
 	for _, pair := range pairs.ExecTasks {
@@ -951,19 +951,19 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Empty(pairs.DisplayTasks)
 
 	// test for display tasks
-	pairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[5]}, evergreen.PatchVersionRequester)
+	pairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[5]}, evergreen.PatchVersionRequester, "")
 	s.NoError(err)
 	s.Empty(pairs.ExecTasks)
 	s.Require().Len(pairs.DisplayTasks, 1)
 	s.Equal("bv_1/memes", pairs.DisplayTasks[0].String())
 
 	// test for alias including a task belong to a disabled variant
-	pairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[6]}, evergreen.PatchVersionRequester)
+	pairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[6]}, evergreen.PatchVersionRequester, "")
 	s.NoError(err)
 	s.Empty(pairs.ExecTasks)
 	s.Empty(pairs.DisplayTasks)
 
-	pairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[8]}, evergreen.PatchVersionRequester)
+	pairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[8]}, evergreen.PatchVersionRequester, "")
 	s.NoError(err)
 	s.Require().Len(pairs.ExecTasks, 2)
 	s.Equal("bv_2/a_task_1", pairs.ExecTasks[0].String())
@@ -1075,7 +1075,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		Tasks:         []string{"all"},
 	}
 
-	bvs, tasks, variantTasks := s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
+	bvs, tasks, variantTasks := s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true, "")
 	s.Len(bvs, 2)
 	s.ElementsMatch([]string{"bv_1", "bv_2"}, bvs)
 	s.Len(tasks, 7)
@@ -1122,7 +1122,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:         []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true, "")
 	s.Len(bvs, 2)
 	s.Len(tasks, 7)
 	s.Len(variantTasks, 2)
@@ -1133,7 +1133,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:         []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true, "")
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1155,7 +1155,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:    []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true, "")
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1177,7 +1177,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:    []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true, "")
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1199,7 +1199,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:         []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "aTags", true)
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "aTags", true, "")
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1223,7 +1223,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		Tasks:         []string{".a", ".1"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true, "")
 	s.Len(bvs, 1)
 	s.Contains(bvs, "bv_2")
 	s.Len(tasks, 3)
@@ -1246,7 +1246,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		Tasks:         []string{".a", ".1", "b_task_2"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true, "")
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1273,7 +1273,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:    []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true, "")
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -2526,6 +2526,58 @@ func TestSkipOnNonGitTagBuild(t *testing.T) {
 	})
 }
 
+func TestSkipOnBranch(t *testing.T) {
+	t.Run("ReturnsFalseWithNoFilters", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{}
+		assert.False(t, bvt.skipOnBranch("master"))
+	})
+	t.Run("ReturnsFalseWithEmptyBranch", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{AllowedBranches: []string{"^master$"}}
+		assert.False(t, bvt.skipOnBranch(""))
+	})
+	t.Run("AllowedBranchesMatchReturnsNotSkipped", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{AllowedBranches: []string{"^master$"}}
+		assert.False(t, bvt.skipOnBranch("master"))
+	})
+	t.Run("AllowedBranchesNoMatchReturnsSkipped", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{AllowedBranches: []string{"^master$"}}
+		assert.True(t, bvt.skipOnBranch("v20260415"))
+	})
+	t.Run("AllowedBranchesPartialMatchWorks", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{AllowedBranches: []string{"master"}}
+		assert.False(t, bvt.skipOnBranch("my-master-branch"))
+	})
+	t.Run("AllowedBranchesMultiplePatternsAnyMatch", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{AllowedBranches: []string{"^master$", "^main$"}}
+		assert.False(t, bvt.skipOnBranch("main"))
+		assert.True(t, bvt.skipOnBranch("release"))
+	})
+	t.Run("IgnoredBranchesMatchReturnsSkipped", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{IgnoredBranches: []string{`^v\d+`}}
+		assert.True(t, bvt.skipOnBranch("v20260415"))
+	})
+	t.Run("IgnoredBranchesNoMatchReturnsNotSkipped", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{IgnoredBranches: []string{`^v\d+`}}
+		assert.False(t, bvt.skipOnBranch("master"))
+	})
+	t.Run("AllowedBranchesTakesPrecedenceOverIgnored", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{
+			AllowedBranches: []string{"^master$"},
+			IgnoredBranches: []string{".*"},
+		}
+		assert.False(t, bvt.skipOnBranch("master"))
+		assert.True(t, bvt.skipOnBranch("release"))
+	})
+	t.Run("InvalidRegexIsSkipped", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{AllowedBranches: []string{"[invalid"}}
+		assert.True(t, bvt.skipOnBranch("master"))
+	})
+	t.Run("InvalidRegexInIgnoredDoesNotSkip", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{IgnoredBranches: []string{"[invalid"}}
+		assert.False(t, bvt.skipOnBranch("master"))
+	})
+}
+
 func TestDependencyGraph(t *testing.T) {
 	p := Project{
 		BuildVariants: []BuildVariant{
@@ -2989,7 +3041,7 @@ patch_aliases:
 	s.NotNil(pc)
 
 	alias := pc.PatchAliases[0]
-	pairs, err := p.BuildProjectTVPairsWithAlias([]ProjectAlias{alias}, evergreen.PatchVersionRequester)
+	pairs, err := p.BuildProjectTVPairsWithAlias([]ProjectAlias{alias}, evergreen.PatchVersionRequester, "")
 	s.NoError(err)
 	s.Len(pairs.ExecTasks, 1)
 	pairStrs := make([]string, len(pairs.ExecTasks))

@@ -163,6 +163,8 @@ type parserTask struct {
 	AllowForGitTag    *bool                     `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
 	GitTagOnly        *bool                     `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
+	AllowedBranches   parserStringSlice         `yaml:"allowed_branches,omitempty" bson:"allowed_branches,omitempty"`
+	IgnoredBranches   parserStringSlice         `yaml:"ignored_branches,omitempty" bson:"ignored_branches,omitempty"`
 	Stepback          *bool                     `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	MustHaveResults   *bool                     `yaml:"must_have_test_results,omitempty" bson:"must_have_test_results,omitempty"`
 	Ps                *string                   `yaml:"ps,omitempty" bson:"ps,omitempty"`
@@ -354,6 +356,8 @@ type parserBV struct {
 	AllowForGitTag    *bool                     `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
 	GitTagOnly        *bool                     `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
+	AllowedBranches   parserStringSlice         `yaml:"allowed_branches,omitempty" bson:"allowed_branches,omitempty"`
+	IgnoredBranches   parserStringSlice         `yaml:"ignored_branches,omitempty" bson:"ignored_branches,omitempty"`
 	Paths             parserStringSlice         `yaml:"paths,omitempty" bson:"paths,omitempty"`
 	ExecTimeoutSecs   int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 
@@ -425,6 +429,8 @@ func (pbv *parserBV) canMerge() bool {
 		pbv.AllowForGitTag == nil &&
 		pbv.GitTagOnly == nil &&
 		len(pbv.AllowedRequesters) == 0 &&
+		len(pbv.AllowedBranches) == 0 &&
+		len(pbv.IgnoredBranches) == 0 &&
 		len(pbv.Paths) == 0 &&
 		pbv.ExecTimeoutSecs == 0 &&
 		pbv.MatrixId == "" &&
@@ -442,6 +448,8 @@ type parserBVTaskUnit struct {
 	AllowForGitTag    *bool                     `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
 	GitTagOnly        *bool                     `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
+	AllowedBranches   parserStringSlice         `yaml:"allowed_branches,omitempty" bson:"allowed_branches,omitempty"`
+	IgnoredBranches   parserStringSlice         `yaml:"ignored_branches,omitempty" bson:"ignored_branches,omitempty"`
 	ExecTimeoutSecs   int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 	Priority          int64                     `yaml:"priority,omitempty" bson:"priority,omitempty"`
 	DependsOn         parserDependencies        `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
@@ -561,7 +569,7 @@ func FindAndTranslateProjectForPatch(ctx context.Context, settings *evergreen.Se
 		if pp == nil {
 			return nil, nil, errors.Errorf("parser project '%s' not found in storage using method '%s'", p.Id.Hex(), p.ProjectStorageMethod)
 		}
-		project, err := TranslateProject(pp)
+		project, err := TranslateProject(ctx, pp)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "translating project '%s'", pp.Id)
 		}
@@ -569,63 +577,222 @@ func FindAndTranslateProjectForPatch(ctx context.Context, settings *evergreen.Se
 	}
 
 	// This fallback handles the case where the patch is already finalized.
-	v, err := VersionFindOneId(ctx, p.Version)
+	project, pp, err := FindAndTranslateProjectForVersionID(ctx, settings, p.Version, false)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "finding version '%s' for patch '%s'", p.Version, p.Id.Hex())
+		return nil, nil, errors.Wrapf(err, "finding project for patch '%s'", p.Id.Hex())
 	}
-	if v == nil {
-		return nil, nil, errors.Errorf("version '%s' not found for patch '%s'", p.Version, p.Id.Hex())
-	}
-	return FindAndTranslateProjectForVersion(ctx, settings, v, false)
+	return project, pp, nil
 }
 
-// parserProjectPreGenerationOtelAttribute records whether a translation used the
-// pre-generation parser project copy.
-const parserProjectPreGenerationOtelAttribute = "evergreen.parser_project.pre_generation"
+const (
+	// ppPreGenerationOtelAttribute records whether a translation used the
+	// pre-generation parser project copy.
+	ppPreGenerationOtelAttribute = "evergreen.parser_project.pre_generation"
+	// ppTranslationCacheHitOtelAttribute records whether this call reused a translation already
+	// stored in the LRU, so it never had to recompute one at all.
+	ppTranslationCacheHitOtelAttribute = "evergreen.parser_project.translation_cache_hit"
+	// ppTranslationDedupedOtelAttribute records whether this call arrived while another request
+	// for the same version was already translating it, and shared that in-flight result instead
+	// of starting a redundant translation of its own.
+	ppTranslationDedupedOtelAttribute = "evergreen.parser_project.translation_deduped"
+	// ppReadDedupedOtelAttribute records whether this call was a follower that shared another
+	// in-flight request's parser-project read + translate for the same version instead of doing its
+	// own read. It counts followers only (reads saved), not the leader, so it reflects raw
+	// same-version request concurrency independent of the LRU state.
+	ppReadDedupedOtelAttribute = "evergreen.parser_project.read_deduped"
+	// ppTranslationCacheSizeOtelAttribute records how many translations the LRU is holding right now.
+	ppTranslationCacheSizeOtelAttribute = "evergreen.parser_project.translation_cache_size"
+	// ppTranslationCacheBytesOtelAttribute records the estimated byte total of the translations the
+	// LRU is holding right now, which the byte budget bounds.
+	ppTranslationCacheBytesOtelAttribute = "evergreen.parser_project.translation_cache_bytes"
+	// ppTranslationCacheEvictionsOtelAttribute records the cumulative count of translations the LRU
+	// has dropped to make room for new ones (or because their TTL expired), before anything reused them.
+	ppTranslationCacheEvictionsOtelAttribute = "evergreen.parser_project.translation_cache_evictions"
+	// ppTranslationCacheHottestKeyOtelAttribute records the cache key with the most hits right now, so
+	// the hottest cached configs are identifiable in Honeycomb for tuning.
+	ppTranslationCacheHottestKeyOtelAttribute = "evergreen.parser_project.translation_cache_hottest_key"
+	// ppTranslationCacheHottestKeyHitsOtelAttribute records how many hits the hottest key has served.
+	ppTranslationCacheHottestKeyHitsOtelAttribute = "evergreen.parser_project.translation_cache_hottest_key_hits"
+)
+
+// projectTranslationCacheEnabled reports whether the project translation cache ServiceFlag is on.
+// Callers thread settings from the entry point rather than reading the global environment.
+func projectTranslationCacheEnabled(settings *evergreen.Settings) bool {
+	return settings != nil && settings.ServiceFlags.ProjectTranslationCacheEnabled
+}
+
+// setTranslationCacheSpanAttributes records the cache hit/dedup outcome on span, plus the LRU's
+// size, evictions, and hottest key when the cache is enabled.
+func setTranslationCacheSpanAttributes(span trace.Span, cacheHit, deduped, cacheEnabled bool) {
+	span.SetAttributes(
+		attribute.Bool(ppTranslationCacheHitOtelAttribute, cacheHit),
+		attribute.Bool(ppTranslationDedupedOtelAttribute, deduped),
+	)
+	if !cacheEnabled {
+		return
+	}
+	size, evictions, bytes := translationCacheStats()
+	hottestKey, hottestHits := hottestTranslationKey()
+	span.SetAttributes(
+		attribute.Int(ppTranslationCacheSizeOtelAttribute, size),
+		attribute.Int64(ppTranslationCacheBytesOtelAttribute, bytes),
+		attribute.Int64(ppTranslationCacheEvictionsOtelAttribute, evictions),
+		attribute.String(ppTranslationCacheHottestKeyOtelAttribute, hottestKey),
+		attribute.Int64(ppTranslationCacheHottestKeyHitsOtelAttribute, hottestHits),
+	)
+}
+
+// FindAndTranslateProjectForVersionID translates a parser project for a version into a Project.
+func FindAndTranslateProjectForVersionID(ctx context.Context, settings *evergreen.Settings, versionID string, preGeneration bool) (*Project, *ParserProject, error) {
+	v, err := VersionFindOne(ctx, VersionById(versionID).WithFields(
+		VersionIdKey,
+		VersionIdentifierKey,
+		VersionProjectStorageMethodKey,
+		VersionPreGenerationProjectStorageMethodKey,
+	))
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "finding version '%s'", versionID)
+	}
+	if v == nil {
+		return nil, nil, errors.Errorf("version '%s' not found", versionID)
+	}
+
+	return FindAndTranslateProjectForVersion(ctx, settings, v, preGeneration)
+}
+
+// parserProjectReadTimeout bounds a single coalesced read + translate, so a hung S3 read can't pin
+// the read singleflight slot indefinitely for the whole burst waiting behind it.
+const parserProjectReadTimeout = 90 * time.Second
 
 // FindAndTranslateProjectForVersion translates a parser project for a version into a Project.
 // Also sets the project ID. If the preGeneration flag is true, this function will attempt to
-// fetch and translate the parser project from before it was modified by generate.tasks
+// fetch and translate the parser project from before it was modified by generate.tasks.
+//
+// The returned *Project is the caller's own value: its top-level slices and maps (BuildVariants,
+// Tasks, Modules, etc.) are safe to reorder, append to, or replace. Structures nested below that
+// level are shared with the cache and must not be mutated.
+//
+// The returned *ParserProject is shared and read-only: concurrent same-version callers may receive
+// the same pointer via read coalescing, so it must not be mutated. Callers that transform the parser
+// project must clone it first or use FindAndTranslateProjectForVersionWithOpts to opt out of the
+// coalesced read.
 func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.Settings, v *Version, preGeneration bool) (*Project, *ParserProject, error) {
+	return findAndTranslateProjectForVersion(ctx, settings, v.Id, v.Identifier, v.ProjectStorageMethod, v.PreGenerationProjectStorageMethod, preGeneration, true)
+}
+
+// FindAndTranslateProjectForVersionWithOpts is like FindAndTranslateProjectForVersion but exposes two flags:
+//   - preGeneration: true for the parser project from before generate.tasks modified it; false (typical) for the current one.
+//   - coalesceRead: true (typical) to share one read across concurrent same-version callers, yielding a shared read-only
+//     *ParserProject. Pass false only if you must mutate the returned *ParserProject, which guarantees an unshared copy.
+func FindAndTranslateProjectForVersionWithOpts(ctx context.Context, settings *evergreen.Settings, v *Version, preGeneration, coalesceRead bool) (*Project, *ParserProject, error) {
+	return findAndTranslateProjectForVersion(ctx, settings, v.Id, v.Identifier, v.ProjectStorageMethod, v.PreGenerationProjectStorageMethod, preGeneration, coalesceRead)
+}
+
+// readTranslationResult packages the shared read + translate result so read-coalesced followers get
+// the same partial result (including any error) as the leader, mirroring the inner translationResult
+// pattern.
+type readTranslationResult struct {
+	project *Project
+	pp      *ParserProject
+	err     error
+}
+
+func findAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.Settings, versionID, versionIdentifier string, projectStorageMethod, preGenerationProjectStorageMethod evergreen.ParserProjectStorageMethod, preGeneration, coalesceRead bool) (*Project, *ParserProject, error) {
 	ctx, span := tracer.Start(ctx, "FindAndTranslateProjectForVersion", trace.WithAttributes(
-		attribute.String(evergreen.VersionIDOtelAttribute, v.Id),
-		attribute.Bool(parserProjectPreGenerationOtelAttribute, preGeneration),
+		attribute.String(evergreen.VersionIDOtelAttribute, versionID),
+		attribute.Bool(ppPreGenerationOtelAttribute, preGeneration),
 	))
 	defer span.End()
 
+	res, readDeduped := readAndTranslateProjectForVersionCoalesced(ctx, span, settings, versionID, versionIdentifier, projectStorageMethod, preGenerationProjectStorageMethod, preGeneration, coalesceRead)
+	span.SetAttributes(attribute.Bool(ppReadDedupedOtelAttribute, readDeduped))
+	return res.project, res.pp, res.err
+}
+
+// readAndTranslateProjectForVersionCoalesced runs the read + translate, optionally coalescing
+// concurrent same-version requests through the read singleflight. readDeduped reports whether this
+// call was a follower that shared another in-flight request's result (leaders and non-coalesced
+// calls report false), so it counts reads saved.
+func readAndTranslateProjectForVersionCoalesced(ctx context.Context, span trace.Span, settings *evergreen.Settings, versionID, versionIdentifier string, projectStorageMethod, preGenerationProjectStorageMethod evergreen.ParserProjectStorageMethod, preGeneration, coalesceRead bool) (readTranslationResult, bool) {
+	if !coalesceRead {
+		return readAndTranslateProjectForVersion(ctx, span, settings, versionID, versionIdentifier, projectStorageMethod, preGenerationProjectStorageMethod, preGeneration), false
+	}
+
+	storageMethod := projectStorageMethod
+	if preGeneration {
+		storageMethod = preGenerationProjectStorageMethod
+	}
+	key := versionReadKey(versionID, preGeneration, storageMethod)
+
+	// leader is set only inside the executed closure, so followers can be counted separately from the
+	// single leader for an accurate "reads saved" metric.
+	leader := false
+	v, sfErr, shared := getReadTranslationGroup().Do(key, func() (any, error) {
+		leader = true
+		// Detach from the leader's cancellation but keep an explicit deadline, so a follower with a
+		// live context isn't failed by the leader cancelling, while a hung read can't pin the slot
+		// forever. Failures are not cached: singleflight forgets the key when the closure returns.
+		readCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), parserProjectReadTimeout)
+		defer cancel()
+		return readAndTranslateProjectForVersion(readCtx, span, settings, versionID, versionIdentifier, projectStorageMethod, preGenerationProjectStorageMethod, preGeneration), nil
+	})
+	if sfErr != nil {
+		return readTranslationResult{err: sfErr}, false
+	}
+	return v.(readTranslationResult), shared && !leader
+}
+
+// readAndTranslateProjectForVersion performs the parser-project read (with a bounded retry) and
+// translate for a version. It is the shared body run under the read singleflight.
+func readAndTranslateProjectForVersion(ctx context.Context, span trace.Span, settings *evergreen.Settings, versionID, versionIdentifier string, projectStorageMethod, preGenerationProjectStorageMethod evergreen.ParserProjectStorageMethod, preGeneration bool) readTranslationResult {
 	var pp *ParserProject
 	var err error
 	if preGeneration {
-		preGeneratedId := preGeneratedParserProjectId(v.Id)
-		pp, err = ParserProjectFindOneByID(ctx, settings, v.PreGenerationProjectStorageMethod, preGeneratedId)
+		preGeneratedId := preGeneratedParserProjectId(versionID)
+		pp, err = findParserProjectWithRetry(ctx, settings, preGenerationProjectStorageMethod, preGeneratedId)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "finding parser project '%s'", preGeneratedId)
+			return readTranslationResult{err: errors.Wrapf(err, "finding parser project '%s'", preGeneratedId)}
 		}
 		// Fall back to the parser project post-generation if the pre-generation parser project was not found
 	}
 	if pp == nil {
-		pp, err = ParserProjectFindOneByID(ctx, settings, v.ProjectStorageMethod, v.Id)
+		pp, err = findParserProjectWithRetry(ctx, settings, projectStorageMethod, versionID)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "finding parser project '%s'", v.Id)
+			return readTranslationResult{err: errors.Wrapf(err, "finding parser project '%s'", versionID)}
 		}
 		if pp == nil {
-			return nil, nil, errors.Errorf("parser project not found for version '%s'", v.Id)
+			return readTranslationResult{err: errors.Errorf("parser project not found for version '%s'", versionID)}
 		}
 	}
-	// Setting the translated project's ID is necessary here because the version
-	// always has an identifier, but some old parser projects used to not be
-	// stored with the ID.
-	pp.Identifier = utility.ToStringPtr(v.Identifier)
-
-	// Coalesce concurrent translations for the same version into one compute.
-	key := versionTranslationKey(v.Id, preGeneration)
-	p, err := getOrComputeTranslation(key, func() (*Project, error) {
-		return TranslateProject(pp)
-	})
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "translating parser project '%s'", v.Id)
+	// Setting the translated project's ID is necessary here because some old
+	// parser projects used to not be stored with the ID.
+	if versionIdentifier != "" {
+		pp.Identifier = utility.ToStringPtr(versionIdentifier)
 	}
-	return p, pp, nil
+
+	cacheEnabled := projectTranslationCacheEnabled(settings)
+	p, err := translateAndCache(ctx, span, pp, versionIdentifier, versionTranslationKey(versionID, preGeneration), cacheEnabled)
+	if err != nil {
+		return readTranslationResult{err: errors.Wrapf(err, "translating parser project '%s'", versionID)}
+	}
+	return readTranslationResult{project: p, pp: pp}
+}
+
+// parserProjectFindOneByID is the parser-project read seam, overridable in tests to count reads and
+// inject failures.
+var parserProjectFindOneByID = ParserProjectFindOneByID
+
+// findParserProjectWithRetry reads a parser project with a bounded retry. Because read coalescing
+// correlates one transient failure across the whole burst and several callers don't retry, one
+// retry absorbs a transient blip for the entire burst without multiplying load.
+func findParserProjectWithRetry(ctx context.Context, settings *evergreen.Settings, method evergreen.ParserProjectStorageMethod, id string) (*ParserProject, error) {
+	var pp *ParserProject
+	err := utility.Retry(ctx, func() (bool, error) {
+		var err error
+		pp, err = parserProjectFindOneByID(ctx, settings, method, id)
+		return true, err
+	}, utility.RetryOptions{MaxAttempts: 2, MinDelay: 100 * time.Millisecond, MaxDelay: time.Second})
+	return pp, err
 }
 
 // LoadProjectInfoForVersion returns the project info for a version from its parser project.
@@ -657,12 +824,14 @@ func LoadProjectInfoForVersion(ctx context.Context, settings *evergreen.Settings
 	}, nil
 }
 
+// GetProjectFromBSON is used by the CLI and agent, neither of which have a request-scoped
+// context available at this leaf call, so it translates with context.Background().
 func GetProjectFromBSON(data []byte) (*Project, error) {
 	pp := &ParserProject{}
 	if err := bson.Unmarshal(data, pp); err != nil {
 		return nil, errors.Wrap(err, "unmarshalling BSON into parser project")
 	}
-	return TranslateProject(pp)
+	return TranslateProject(context.Background(), pp)
 }
 
 func processIntermediateProjectIncludes(ctx context.Context, intermediateProject *ParserProject,
@@ -760,7 +929,12 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	}
 
 	// Return project even with errors.
-	p, err := TranslateProject(intermediateProject)
+	cacheEnabled := opts != nil && opts.cacheEnabled
+	var revision string
+	if opts != nil {
+		revision = opts.Revision
+	}
+	p, err := loadTranslateProject(ctx, span, intermediateProject, projectID, revision, cacheEnabled)
 	if p != nil {
 		*project = *p
 	}
@@ -772,6 +946,12 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	intermediateProject.Include = nil
 
 	return intermediateProject, errors.Wrapf(err, LoadProjectError)
+}
+
+// loadTranslateProject translates the post-merge intermediate project, optionally serving the
+// result from the content-hash translation cache keyed on its content and projectID.
+func loadTranslateProject(ctx context.Context, span trace.Span, intermediateProject *ParserProject, projectID, revision string, cacheEnabled bool) (*Project, error) {
+	return translateAndCache(ctx, span, intermediateProject, projectID, fileTranslationKey(projectID, revision), cacheEnabled)
 }
 
 // mergeIncludes merges all included files into intermediateProject.
@@ -1094,6 +1274,9 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 // for the specific revision. Once the git clone is finished, it creates git
 // worktrees under the clone directory based on numWorktrees.
 func gitCloneAndCreateWorktrees(ctx context.Context, ownerRepo gitOwnerRepo, revision string, numWorktrees int) (cloneDir string, worktreeDirs []string, err error) {
+	ctx, cancel := context.WithTimeout(ctx, thirdparty.GitOperationTimeout)
+	defer cancel()
+
 	dir, err := thirdparty.GitCloneMinimal(ctx, ownerRepo.owner, ownerRepo.repo, revision)
 	if err != nil {
 		return "", []string{}, errors.Wrapf(err, "git cloning repo '%s/%s' at revision '%s'", ownerRepo.owner, ownerRepo.repo, revision)
@@ -1149,6 +1332,9 @@ type GetProjectOpts struct {
 	LocalIncludeDir string
 	// EnableYAMLAnchors opts into cross-file YAML anchor and alias support.
 	EnableYAMLAnchors bool
+	// cacheEnabled routes the translate step through the content-hash translation cache. It is only
+	// set internally by GetProjectFromFile from the ServiceFlag, so external callers stay uncached.
+	cacheEnabled bool
 }
 
 type PatchOpts struct {
@@ -1356,9 +1542,11 @@ const fetchProjectFilesTimeout = time.Minute
 
 // GetProjectFromFile fetches project configuration files from its source (e.g.
 // from a patch diff, GitHub, etc).
-func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (ProjectInfo, error) {
+func GetProjectFromFile(ctx context.Context, opts GetProjectOpts, settings *evergreen.Settings) (ProjectInfo, error) {
 	ctx, cancel := context.WithTimeout(ctx, fetchProjectFilesTimeout)
 	defer cancel()
+
+	opts.cacheEnabled = projectTranslationCacheEnabled(settings)
 
 	fileContents, err := retrieveFile(ctx, opts)
 	if err != nil {
@@ -1515,7 +1703,13 @@ func capParserPriorities(p *ParserProject) {
 
 // TranslateProject converts our intermediate project representation into
 // the Project type that Evergreen actually uses.
-func TranslateProject(pp *ParserProject) (*Project, error) {
+func TranslateProject(ctx context.Context, pp *ParserProject) (*Project, error) {
+	release, err := acquireTranslateSlot(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "waiting for a translate concurrency slot")
+	}
+	defer release()
+
 	// Transfer top level fields
 	proj := &Project{
 
@@ -1642,6 +1836,8 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			evalErrs = append(evalErrs, errors.Errorf("spaces are not allowed in task names ('%s')", pt.Name))
 		}
 		t.AllowedRequesters = pt.AllowedRequesters
+		t.AllowedBranches = pt.AllowedBranches
+		t.IgnoredBranches = pt.IgnoredBranches
 		t.DependsOn, errs = evaluateDependsOn(tse.tagEval, tgse, vse, pt.DependsOn)
 		evalErrs = append(evalErrs, errs...)
 		tasks = append(tasks, t)
@@ -1719,6 +1915,8 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			AllowForGitTag:     pbv.AllowForGitTag,
 			GitTagOnly:         pbv.GitTagOnly,
 			AllowedRequesters:  pbv.AllowedRequesters,
+			AllowedBranches:    pbv.AllowedBranches,
+			IgnoredBranches:    pbv.IgnoredBranches,
 			ExecTimeoutSecs:    pbv.ExecTimeoutSecs,
 			Stepback:           pbv.Stepback,
 			DeactivatePrevious: pbv.DeactivatePrevious,
@@ -1962,6 +2160,8 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 		AllowForGitTag:    bvt.AllowForGitTag,
 		GitTagOnly:        bvt.GitTagOnly,
 		AllowedRequesters: bvt.AllowedRequesters,
+		AllowedBranches:   bvt.AllowedBranches,
+		IgnoredBranches:   bvt.IgnoredBranches,
 		ExecTimeoutSecs:   bvt.ExecTimeoutSecs,
 		Priority:          bvt.Priority,
 		Stepback:          bvt.Stepback,
@@ -1992,6 +2192,12 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	}
 	if len(res.AllowedRequesters) == 0 {
 		res.AllowedRequesters = pt.AllowedRequesters
+	}
+	if len(res.AllowedBranches) == 0 {
+		res.AllowedBranches = pt.AllowedBranches
+	}
+	if len(res.IgnoredBranches) == 0 {
+		res.IgnoredBranches = pt.IgnoredBranches
 	}
 	if res.ExecTimeoutSecs == 0 {
 		res.ExecTimeoutSecs = pt.ExecTimeoutSecs
@@ -2026,6 +2232,12 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	}
 	if len(res.AllowedRequesters) == 0 {
 		res.AllowedRequesters = bv.AllowedRequesters
+	}
+	if len(res.AllowedBranches) == 0 {
+		res.AllowedBranches = bv.AllowedBranches
+	}
+	if len(res.IgnoredBranches) == 0 {
+		res.IgnoredBranches = bv.IgnoredBranches
 	}
 	if res.ExecTimeoutSecs == 0 {
 		res.ExecTimeoutSecs = bv.ExecTimeoutSecs
