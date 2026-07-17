@@ -3446,7 +3446,7 @@ func moduleIncludeOpts(t testing.TB, includes ...patch.LocalModuleInclude) *GetP
 	require.NoError(t, flags.Set(t.Context()))
 	t.Cleanup(func() {
 		flags.CrossFileYAMLAnchorsEnabled = false
-		require.NoError(t, flags.Set(t.Context()))
+		require.NoError(t, flags.Set(context.Background()))
 	})
 	return &GetProjectOpts{LocalModuleIncludes: includes}
 }

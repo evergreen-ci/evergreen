@@ -1598,14 +1598,24 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts, settings *ever
 // createIntermediateProject marshals the supplied YAML into our intermediate project representation
 // (i.e. before selectors or matrix logic has been evaluated).
 // If unmarshalStrict is true, use the strict version of unmarshalling.
-// Existing anchors in anchorRegistry are prepended so the parser can resolve cross-file aliases.
-// Use standard unmarshalling instead of the anchor process if anchorRegistry is nil or if there's an error decoding with anchors.
+// When anchorRegistry is non-nil, always uses decodeWithAnchors to collect anchors from each file
+// into the registry. If the registry already has entries, a preamble is prepended so aliases from
+// prior files resolve. Falls back to standard unmarshalling if decoding with anchors fails.
 func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRegistry *anchorRegistry) (pp *ParserProject, decodeErr error, err error) {
-	if anchorRegistry.Length() > 0 {
-		var preamble []byte
-		preamble, decodeErr = buildAnchorPreamble(anchorRegistry)
+	if anchorRegistry != nil {
+		var combined []byte
+		if anchorRegistry.Length() > 0 {
+			var preamble []byte
+			preamble, decodeErr = buildAnchorPreamble(anchorRegistry)
+			if decodeErr == nil {
+				combined = append(preamble, parseBytes...)
+			}
+		}
 		if decodeErr == nil {
-			pp, decodeErr = decodeWithAnchors(append(preamble, parseBytes...), unmarshalStrict, anchorRegistry)
+			if combined == nil {
+				combined = parseBytes
+			}
+			pp, decodeErr = decodeWithAnchors(combined, unmarshalStrict, anchorRegistry)
 			if decodeErr == nil {
 				return pp, nil, nil
 			}
