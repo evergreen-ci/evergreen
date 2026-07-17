@@ -356,9 +356,8 @@ func StartAppServer(ctx context.Context, t *testing.T, params APIParams) jasper.
 	return appServerCmd
 }
 
-// StartAgent starts the smoke test agent with the given execution mode and
-// ID.
-func StartAgent(ctx context.Context, t *testing.T, params APIParams, mode globals.Mode, execModeID, execModeSecret string) jasper.Process {
+// StartAgent starts the smoke test agent with the given host ID and secret.
+func StartAgent(ctx context.Context, t *testing.T, params APIParams, hostID, hostSecret string) jasper.Process {
 	grip.Info(ctx, "Starting smoke test agent.")
 
 	agentCmd, err := SmokeRunBinary(ctx,
@@ -369,9 +368,8 @@ func StartAgent(ctx context.Context, t *testing.T, params APIParams, mode global
 		"deploy",
 		"start-evergreen",
 		"--agent",
-		fmt.Sprintf("--mode=%s", mode),
-		fmt.Sprintf("--exec_mode_id=%s", execModeID),
-		fmt.Sprintf("--exec_mode_secret=%s", execModeSecret),
+		fmt.Sprintf("--host_id=%s", hostID),
+		fmt.Sprintf("--host_secret=%s", hostSecret),
 		fmt.Sprintf("--api_server=%s", params.AppServerURL),
 		fmt.Sprintf("--binary=%s", params.CLIPath),
 	)
