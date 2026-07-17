@@ -799,11 +799,52 @@ type APIBucketConfig struct {
 	DBName                  *string    `json:"db_name"`
 	TestResultsPrefix       *string    `json:"test_results_prefix"`
 	RoleARN                 *string    `json:"role_arn"`
+	ExternalID              *string    `json:"external_id,omitempty"`
 	ExpirationDays          *int       `json:"expiration_days,omitempty"`
 	TransitionToIADays      *int       `json:"transition_to_ia_days,omitempty"`
 	TransitionToGlacierDays *int       `json:"transition_to_glacier_days,omitempty"`
 	LifecycleLastSyncedAt   *time.Time `json:"lifecycle_last_synced_at,omitempty"`
 	LifecycleSyncError      *string    `json:"lifecycle_sync_error,omitempty"`
+}
+
+// buildFromService populates the API model from every field of the service
+// model. It must stay symmetric with ToService: any field one method handles
+// must be handled by the other, otherwise the field is silently dropped on the
+// admin settings BuildFromService/ToService round trip, which both loses the
+// value and produces spurious "changed" entries in the admin event log.
+func (a *APIBucketConfig) buildFromService(v evergreen.BucketConfig) {
+	a.Name = utility.ToStringPtr(v.Name)
+	a.Type = utility.ToStringPtr(string(v.Type))
+	a.DBName = utility.ToStringPtr(v.DBName)
+	a.TestResultsPrefix = utility.ToStringPtr(v.TestResultsPrefix)
+	a.RoleARN = utility.ToStringPtr(v.RoleARN)
+	a.ExternalID = utility.ToStringPtr(v.ExternalID)
+	a.ExpirationDays = v.ExpirationDays
+	a.TransitionToIADays = v.TransitionToIADays
+	a.TransitionToGlacierDays = v.TransitionToGlacierDays
+	if !v.LifecycleLastSyncedAt.IsZero() {
+		a.LifecycleLastSyncedAt = &v.LifecycleLastSyncedAt
+	}
+	a.LifecycleSyncError = utility.ToStringPtr(v.LifecycleSyncError)
+}
+
+func (a APIBucketConfig) ToService() evergreen.BucketConfig {
+	c := evergreen.BucketConfig{
+		Name:                    utility.FromStringPtr(a.Name),
+		Type:                    evergreen.BucketType(utility.FromStringPtr(a.Type)),
+		DBName:                  utility.FromStringPtr(a.DBName),
+		TestResultsPrefix:       utility.FromStringPtr(a.TestResultsPrefix),
+		RoleARN:                 utility.FromStringPtr(a.RoleARN),
+		ExternalID:              utility.FromStringPtr(a.ExternalID),
+		ExpirationDays:          a.ExpirationDays,
+		TransitionToIADays:      a.TransitionToIADays,
+		TransitionToGlacierDays: a.TransitionToGlacierDays,
+		LifecycleSyncError:      utility.FromStringPtr(a.LifecycleSyncError),
+	}
+	if a.LifecycleLastSyncedAt != nil {
+		c.LifecycleLastSyncedAt = *a.LifecycleLastSyncedAt
+	}
+	return c
 }
 
 type APIProjectToPrefixMapping struct {
@@ -820,51 +861,15 @@ type APIProjectToBucketMapping struct {
 func (a *APIBucketsConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.BucketsConfig:
-		a.LogBucket.Name = utility.ToStringPtr(v.LogBucket.Name)
-		a.LogBucket.Type = utility.ToStringPtr(string(v.LogBucket.Type))
-		a.LogBucket.DBName = utility.ToStringPtr(v.LogBucket.DBName)
-		a.LogBucket.ExpirationDays = v.LogBucket.ExpirationDays
-		a.LogBucket.TransitionToIADays = v.LogBucket.TransitionToIADays
-		a.LogBucket.TransitionToGlacierDays = v.LogBucket.TransitionToGlacierDays
-		if !v.LogBucket.LifecycleLastSyncedAt.IsZero() {
-			a.LogBucket.LifecycleLastSyncedAt = &v.LogBucket.LifecycleLastSyncedAt
-		}
-		a.LogBucket.LifecycleSyncError = utility.ToStringPtr(v.LogBucket.LifecycleSyncError)
-
-		a.LogBucketLongRetention.Name = utility.ToStringPtr(v.LogBucketLongRetention.Name)
-		a.LogBucketLongRetention.Type = utility.ToStringPtr(string(v.LogBucketLongRetention.Type))
-		a.LogBucketLongRetention.DBName = utility.ToStringPtr(v.LogBucketLongRetention.DBName)
-		a.LogBucketLongRetention.RoleARN = utility.ToStringPtr(v.LogBucketLongRetention.RoleARN)
-		a.LogBucketLongRetention.ExpirationDays = v.LogBucketLongRetention.ExpirationDays
-		a.LogBucketLongRetention.TransitionToIADays = v.LogBucketLongRetention.TransitionToIADays
-		a.LogBucketLongRetention.TransitionToGlacierDays = v.LogBucketLongRetention.TransitionToGlacierDays
-		if !v.LogBucketLongRetention.LifecycleLastSyncedAt.IsZero() {
-			a.LogBucketLongRetention.LifecycleLastSyncedAt = &v.LogBucketLongRetention.LifecycleLastSyncedAt
-		}
-		a.LogBucketLongRetention.LifecycleSyncError = utility.ToStringPtr(v.LogBucketLongRetention.LifecycleSyncError)
-
-		a.LogBucketFailedTasks.Name = utility.ToStringPtr(v.LogBucketFailedTasks.Name)
-		a.LogBucketFailedTasks.Type = utility.ToStringPtr(string(v.LogBucketFailedTasks.Type))
-		a.LogBucketFailedTasks.DBName = utility.ToStringPtr(v.LogBucketFailedTasks.DBName)
-		a.LogBucketFailedTasks.RoleARN = utility.ToStringPtr(v.LogBucketFailedTasks.RoleARN)
-		a.LogBucketFailedTasks.ExpirationDays = v.LogBucketFailedTasks.ExpirationDays
-		a.LogBucketFailedTasks.TransitionToIADays = v.LogBucketFailedTasks.TransitionToIADays
-		a.LogBucketFailedTasks.TransitionToGlacierDays = v.LogBucketFailedTasks.TransitionToGlacierDays
-		if !v.LogBucketFailedTasks.LifecycleLastSyncedAt.IsZero() {
-			a.LogBucketFailedTasks.LifecycleLastSyncedAt = &v.LogBucketFailedTasks.LifecycleLastSyncedAt
-		}
-		a.LogBucketFailedTasks.LifecycleSyncError = utility.ToStringPtr(v.LogBucketFailedTasks.LifecycleSyncError)
+		a.LogBucket.buildFromService(v.LogBucket)
+		a.LogBucketLongRetention.buildFromService(v.LogBucketLongRetention)
+		a.LogBucketFailedTasks.buildFromService(v.LogBucketFailedTasks)
+		a.TestResultsBucket.buildFromService(v.TestResultsBucket)
 
 		a.LongRetentionProjects = v.LongRetentionProjects
 		a.RetryFailedLogMoveLookbackDays = utility.ToIntPtr(v.RetryFailedLogMoveLookbackDays)
 		a.RetryFailedLogMoveLookbackMonths = utility.ToIntPtr(v.RetryFailedLogMoveLookbackDays)
 		a.RetryFailedLogMoveMaxJobsPerRun = utility.ToIntPtr(v.RetryFailedLogMoveMaxJobsPerRun)
-
-		a.TestResultsBucket.Name = utility.ToStringPtr(v.TestResultsBucket.Name)
-		a.TestResultsBucket.Type = utility.ToStringPtr(string(v.TestResultsBucket.Type))
-		a.TestResultsBucket.DBName = utility.ToStringPtr(v.TestResultsBucket.DBName)
-		a.TestResultsBucket.TestResultsPrefix = utility.ToStringPtr(v.TestResultsBucket.TestResultsPrefix)
-		a.TestResultsBucket.RoleARN = utility.ToStringPtr(v.TestResultsBucket.RoleARN)
 
 		creds := APIS3Credentials{}
 		if err := creds.BuildFromService(v.Credentials); err != nil {
@@ -894,34 +899,14 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 	}
 
 	return evergreen.BucketsConfig{
-		LogBucket: evergreen.BucketConfig{
-			Name:   utility.FromStringPtr(a.LogBucket.Name),
-			Type:   evergreen.BucketType(utility.FromStringPtr(a.LogBucket.Type)),
-			DBName: utility.FromStringPtr(a.LogBucket.DBName),
-		},
-		LogBucketLongRetention: evergreen.BucketConfig{
-			Name:    utility.FromStringPtr(a.LogBucketLongRetention.Name),
-			Type:    evergreen.BucketType(utility.FromStringPtr(a.LogBucketLongRetention.Type)),
-			DBName:  utility.FromStringPtr(a.LogBucketLongRetention.DBName),
-			RoleARN: utility.FromStringPtr(a.LogBucketLongRetention.RoleARN),
-		},
-		LogBucketFailedTasks: evergreen.BucketConfig{
-			Name:    utility.FromStringPtr(a.LogBucketFailedTasks.Name),
-			Type:    evergreen.BucketType(utility.FromStringPtr(a.LogBucketFailedTasks.Type)),
-			DBName:  utility.FromStringPtr(a.LogBucketFailedTasks.DBName),
-			RoleARN: utility.FromStringPtr(a.LogBucketFailedTasks.RoleARN),
-		},
+		LogBucket:                       a.LogBucket.ToService(),
+		LogBucketLongRetention:          a.LogBucketLongRetention.ToService(),
+		LogBucketFailedTasks:            a.LogBucketFailedTasks.ToService(),
 		LongRetentionProjects:           a.LongRetentionProjects,
 		RetryFailedLogMoveLookbackDays:  utility.FromIntPtr(lookbackDays),
 		RetryFailedLogMoveMaxJobsPerRun: utility.FromIntPtr(a.RetryFailedLogMoveMaxJobsPerRun),
-		TestResultsBucket: evergreen.BucketConfig{
-			Name:              utility.FromStringPtr(a.TestResultsBucket.Name),
-			Type:              evergreen.BucketType(utility.FromStringPtr(a.TestResultsBucket.Type)),
-			DBName:            utility.FromStringPtr(a.TestResultsBucket.DBName),
-			RoleARN:           utility.FromStringPtr(a.TestResultsBucket.RoleARN),
-			TestResultsPrefix: utility.FromStringPtr(a.TestResultsBucket.TestResultsPrefix),
-		},
-		Credentials: creds,
+		TestResultsBucket:               a.TestResultsBucket.ToService(),
+		Credentials:                     creds,
 	}, nil
 }
 

@@ -32,20 +32,11 @@ func SetEvergreenSettings(ctx context.Context, changes *restModel.APIAdminSettin
 	if err != nil {
 		return nil, errors.Wrap(err, "converting existing settings to API model")
 	}
-	changesReflect := reflect.ValueOf(*changes)     // incoming changes
-	settingsReflect := reflect.ValueOf(settingsAPI) // old settings
+	changesReflect := reflect.ValueOf(*changes)            // incoming changes
+	settingsReflect := reflect.ValueOf(settingsAPI).Elem() // old settings
 
-	//iterate over each field in the changes struct and apply any changes to the existing settings
-	for i := range changesReflect.NumField() {
-		// get the property name and find its value within the settings struct
-		propName := changesReflect.Type().Field(i).Name
-		changedVal := changesReflect.FieldByName(propName)
-		if changedVal.IsNil() {
-			continue
-		}
-
-		settingsReflect.Elem().FieldByName(propName).Set(changedVal)
-	}
+	// Recursively merge the incoming changes onto the existing settings so that fields are not overwritten
+	mergeAdminSettings(settingsReflect, changesReflect)
 
 	i, err := settingsAPI.ToService()
 	if err != nil {
@@ -84,6 +75,54 @@ func SetEvergreenSettings(ctx context.Context, changes *restModel.APIAdminSettin
 	}
 
 	return &newSettings, nil
+}
+
+func mergeAdminSettings(dst, src reflect.Value) {
+	for i := range src.NumField() {
+		srcField := src.Field(i)
+		dstField := dst.Field(i)
+		if !dstField.CanSet() {
+			continue
+		}
+
+		switch srcField.Kind() {
+		case reflect.Ptr:
+			if srcField.IsNil() {
+				continue
+			}
+			// Recurse into pointers to config structs so that omitted sub-fields
+			// keep their existing values instead of being overwritten.
+			if srcField.Elem().Kind() == reflect.Struct && !isOpaqueStruct(srcField.Elem().Type()) {
+				if dstField.IsNil() {
+					dstField.Set(reflect.New(dstField.Type().Elem()))
+				}
+				mergeAdminSettings(dstField.Elem(), srcField.Elem())
+				continue
+			}
+			dstField.Set(srcField)
+		case reflect.Struct:
+			if isOpaqueStruct(srcField.Type()) {
+				dstField.Set(srcField)
+				continue
+			}
+			mergeAdminSettings(dstField, srcField)
+		case reflect.Slice, reflect.Map:
+			if srcField.IsNil() {
+				continue
+			}
+			dstField.Set(srcField)
+		default:
+			dstField.Set(srcField)
+		}
+	}
+}
+
+// isOpaqueStruct reports whether a struct type should be treated as a single
+// leaf value during merging rather than recursed into. time.Time is the main
+// example: it stores its state in unexported fields that reflection cannot set,
+// so recursing would produce a zero value instead of the intended time.
+func isOpaqueStruct(t reflect.Type) bool {
+	return t == reflect.TypeOf(time.Time{})
 }
 
 func LogConfigChanges(ctx context.Context, newSettings *evergreen.Settings, oldSettings *evergreen.Settings, u *user.DBUser) error {
