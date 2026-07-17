@@ -48,7 +48,7 @@ func (r *taskResolver) AbortInfo(ctx context.Context, obj *restModel.APITask) (*
 	}
 
 	if len(obj.AbortInfo.TaskID) > 0 {
-		abortedTask, err := task.FindOneId(ctx, obj.AbortInfo.TaskID)
+		abortedTask, err := loaders.GetTask(ctx, obj.AbortInfo.TaskID)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", obj.AbortInfo.TaskID, err.Error()))
 		}
@@ -122,7 +122,7 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 	var baseTask *task.Task
 	// BaseTask is sometimes added via aggregation when Task is resolved via GetTasksByVersion.
 	if t.BaseTask.Id != "" {
-		baseTask, err = task.FindOneId(ctx, t.BaseTask.Id)
+		baseTask, err = loaders.GetTask(ctx, t.BaseTask.Id)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", t.BaseTask.Id, err.Error()))
 		}
@@ -328,7 +328,7 @@ func (r *taskResolver) DependsOn(ctx context.Context, obj *restModel.APITask) ([
 // DisplayTask is the resolver for the displayTask field.
 func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
 	taskID := utility.FromStringPtr(obj.Id)
-	t, err := task.FindOneId(ctx, taskID)
+	t, err := loaders.GetTask(ctx, taskID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
 	}
@@ -423,7 +423,7 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 // FailedTestCount is the resolver for the failedTestCount field.
 func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
 	taskID := utility.FromStringPtr(obj.Id)
-	dbTask, err := task.FindOneId(ctx, taskID)
+	dbTask, err := loaders.GetTask(ctx, taskID)
 	if err != nil {
 		return 0, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
 	}
@@ -880,7 +880,7 @@ func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *
 // TotalTestCount is the resolver for the totalTestCount field.
 func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
 	taskID := utility.FromStringPtr(obj.Id)
-	dbTask, err := task.FindOneId(ctx, taskID)
+	dbTask, err := loaders.GetTask(ctx, taskID)
 	if err != nil {
 		return 0, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
 	}
