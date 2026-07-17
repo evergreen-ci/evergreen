@@ -103,6 +103,7 @@ type ProcessorArgs struct {
 	Alias                        string
 	UnscheduleDownstreamVersions bool
 	PushRevision                 model.Revision
+	PushIngestTime               time.Time
 }
 
 // EvalProjectTriggers takes an event log entry and a processor (either the mock or TriggerDownstreamVersion)
@@ -298,7 +299,7 @@ func triggerDownstreamProjectsForBuild(ctx context.Context, b *build.Build, e *e
 
 // TriggerDownstreamProjectsForPush triggers downstream projects with push-level
 // triggers for a GitHub push event.
-func TriggerDownstreamProjectsForPush(ctx context.Context, projectId string, event *github.PushEvent, processor projectProcessor) error {
+func TriggerDownstreamProjectsForPush(ctx context.Context, projectId string, event *github.PushEvent, ingestTime time.Time, processor projectProcessor) error {
 	downstreamProjects, err := model.FindDownstreamProjects(ctx, projectId)
 	if err != nil {
 		return errors.Wrapf(err, "finding downstream projects of project '%s'", projectId)
@@ -332,6 +333,7 @@ func TriggerDownstreamProjectsForPush(ctx context.Context, projectId string, eve
 						AuthorEmail:     utility.FromStringPtr(commit.Author.Email),
 						RevisionMessage: utility.FromStringPtr(commit.Message),
 					},
+					PushIngestTime: ingestTime,
 				}
 				v, err := processor(ctx, args)
 				if err != nil {

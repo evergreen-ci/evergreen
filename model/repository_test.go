@@ -82,17 +82,36 @@ func TestUpdateLastRevision(t *testing.T) {
 
 func TestFindLatestRepositoryRevisionByIngestTime(t *testing.T) {
 	require.NoError(t, db.ClearCollections(RepositoriesCollection, RepositoryRevisionsHistoryCollection))
-	now := time.Now()
-	require.NoError(t, UpsertRepositoryRevision(t.Context(), "proj", "r1", now, 1))
-	require.NoError(t, UpsertRepositoryRevision(t.Context(), "proj", "r2", now.Add(time.Minute), 2))
-	require.NoError(t, UpsertRepositoryRevision(t.Context(), "proj", "r3", now.Add(3*time.Minute), 3))
-	require.NoError(t, UpsertRepositoryRevision(t.Context(), "other", "other-r1", now.Add(2*time.Minute), 1))
-	require.NoError(t, UpsertRepositoryRevision(t.Context(), "proj", "r2", now.Add(4*time.Minute), 4))
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(RepositoriesCollection, RepositoryRevisionsHistoryCollection))
+	})
 
-	revision, err := FindLatestRepositoryRevisionByIngestTime(t.Context(), "proj", now.Add(2*time.Minute))
-	require.NoError(t, err)
-	require.NotNil(t, revision)
-	assert.Equal(t, "r2", revision.Revision)
-	assert.Equal(t, 2, revision.Order)
-	assert.WithinDuration(t, now.Add(time.Minute), revision.IngestTime, time.Millisecond)
+	ingestTime := time.Date(2026, time.July, 14, 12, 0, 0, 0, time.UTC)
+	require.NoError(t, UpsertRepositoryRevision(t.Context(), "owner", "repo", "branch", "r1", ingestTime))
+	require.NoError(t, UpsertRepositoryRevision(t.Context(), "owner", "repo", "branch", "r2", ingestTime.Add(time.Minute)))
+	require.NoError(t, UpsertRepositoryRevision(t.Context(), "owner", "repo", "branch", "r3", ingestTime.Add(3*time.Minute)))
+	require.NoError(t, UpsertRepositoryRevision(t.Context(), "other", "other-repo", "other-branch", "other-r1", ingestTime.Add(2*time.Minute)))
+	require.NoError(t, UpsertRepositoryRevision(t.Context(), "owner", "repo", "branch", "r2", ingestTime.Add(4*time.Minute)))
+
+	t.Run("ReturnsRevisionIngestedAtVersionTime", func(t *testing.T) {
+		revision, err := FindLatestRepositoryRevisionByIngestTime(t.Context(), "owner", "repo", "branch", ingestTime.Add(2*time.Minute))
+		require.NoError(t, err)
+		require.NotNil(t, revision)
+		assert.Equal(t, "r2", revision.Revision)
+		assert.Equal(t, ingestTime.Add(time.Minute), revision.IngestTime)
+	})
+
+	t.Run("ReturnsLatestRevisionAfterLaterIngest", func(t *testing.T) {
+		revision, err := FindLatestRepositoryRevisionByIngestTime(t.Context(), "owner", "repo", "branch", ingestTime.Add(4*time.Minute))
+		require.NoError(t, err)
+		require.NotNil(t, revision)
+		assert.Equal(t, "r3", revision.Revision)
+		assert.Equal(t, ingestTime.Add(3*time.Minute), revision.IngestTime)
+	})
+
+	t.Run("ReturnsNilBeforeFirstIngest", func(t *testing.T) {
+		revision, err := FindLatestRepositoryRevisionByIngestTime(t.Context(), "owner", "repo", "branch", ingestTime.Add(-time.Minute))
+		require.NoError(t, err)
+		assert.Nil(t, revision)
+	})
 }
