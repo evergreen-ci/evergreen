@@ -181,17 +181,29 @@ func BuildProjectParameterMapForLegacy(query url.Values, vars map[string]string)
 		vars["version_id"], vars[versionIdKey],
 		vars["patch_id"], vars[patchIdKey],
 		vars["log_id"],
+		vars["project_id"], vars[projectIdKey],
 	) != ""
 
-	var projectIDValue string
 	if hasObjectIDInPath {
-		projectIDValue = util.CoalesceString(vars["project_id"], vars[projectIdKey])
-	} else {
-		projectIDValue = util.CoalesceStrings(append(query["project_id"], query[projectIdKey]...), vars["project_id"], vars[projectIdKey])
+		// When an ID is present in the path, derive every ID being accessed
+		// from the path vars only, ignoring IDs from the query string (e.g.
+		// check user permissions against project_id instead of something_else
+		// in /tasks/{project_id}?project_id=something_else). The route handlers
+		// act on the path-bound object, therefore permissions must be checked
+		// against that path object specifically.
+		return map[string]string{
+			projectIdKey: util.CoalesceString(vars["project_id"], vars[projectIdKey]),
+			repoIdKey:    util.CoalesceString(vars["repo_id"], vars[repoIdKey]),
+			versionIdKey: util.CoalesceString(vars["version_id"], vars[versionIdKey]),
+			patchIdKey:   util.CoalesceString(vars["patch_id"], vars[patchIdKey]),
+			buildIdKey:   util.CoalesceString(vars["build_id"], vars[buildIdKey]),
+			logIdKey:     vars["log_id"],
+			taskIdKey:    util.CoalesceString(vars["task_id"], vars[taskIdKey]),
+		}
 	}
 
-	paramsMap := map[string]string{
-		projectIdKey: projectIDValue,
+	return map[string]string{
+		projectIdKey: util.CoalesceStrings(append(query["project_id"], query[projectIdKey]...), vars["project_id"], vars[projectIdKey]),
 		repoIdKey:    util.CoalesceStrings(append(query["repo_id"], query[repoIdKey]...), vars["repo_id"], vars[repoIdKey]),
 		versionIdKey: util.CoalesceStrings(append(query["version_id"], query[versionIdKey]...), vars["version_id"], vars[versionIdKey]),
 		patchIdKey:   util.CoalesceStrings(append(query["patch_id"], query[patchIdKey]...), vars["patch_id"], vars[patchIdKey]),
@@ -199,5 +211,4 @@ func BuildProjectParameterMapForLegacy(query url.Values, vars map[string]string)
 		logIdKey:     util.CoalesceStrings(query["log_id"], vars["log_id"]),
 		taskIdKey:    util.CoalesceStrings(append(query["task_id"], query[taskIdKey]...), vars["task_id"], vars[taskIdKey]),
 	}
-	return paramsMap
 }
