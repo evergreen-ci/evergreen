@@ -912,21 +912,11 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	if opts != nil {
 		unmarshalStrict = opts.UnmarshalStrict
 	}
-	intermediateProject, fallbackErr, err := createIntermediateProject(data, unmarshalStrict, registry)
+	intermediateProject, decodeErr, err := createIntermediateProject(data, unmarshalStrict, registry)
 	if err != nil {
 		return nil, errors.Wrapf(err, LoadProjectError)
 	}
-	if fallbackErr != nil {
-		logFields := message.Fields{
-			"message":    "anchor preamble parsing failed, fallback to standard parsing",
-			"project_id": projectID,
-			"error":      fallbackErr.Error(),
-		}
-		if opts != nil && opts.PatchOpts != nil && opts.PatchOpts.patch != nil {
-			logFields["patch_id"] = opts.PatchOpts.patch.Id.Hex()
-		}
-		grip.Debug(ctx, logFields)
-	}
+	logDecodeErrorWithOpts(ctx, projectID, "", decodeErr, opts)
 
 	if !slices.Contains(priorityBypassProjects, projectID) {
 		capParserPriorities(intermediateProject)
@@ -956,6 +946,30 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	intermediateProject.Include = nil
 
 	return intermediateProject, errors.Wrapf(err, LoadProjectError)
+}
+
+func logDecodeErrorWithOpts(ctx context.Context, projectID, filename string, decodeErr error, opts *GetProjectOpts) {
+	if decodeErr == nil {
+		return
+	}
+	logFields := message.Fields{
+		"message":        "anchor preamble parsing failed",
+		"ticket":         "DEVPROD-33516",
+		"project_id":     projectID,
+		"read_file_from": ReadFromGithub, // this is the default if unspecified
+	}
+	if opts != nil {
+		if opts.ReadFileFrom != "" {
+			logFields["read_file_from"] = opts.ReadFileFrom
+		}
+		if opts.PatchOpts != nil && opts.PatchOpts.patch != nil {
+			logFields["patch_id"] = opts.PatchOpts.patch.Id.Hex()
+		}
+	}
+	if filename != "" {
+		logFields["filename"] = filename
+	}
+	grip.Debug(ctx, message.WrapError(decodeErr, logFields))
 }
 
 // loadTranslateProject translates the post-merge intermediate project, optionally serving the
@@ -1060,23 +1074,12 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 			return errors.WithStack(errors.Errorf("yaml was nil in map for %s, but it never should be", path.FileName))
 		}
 
-		add, fallbackErr, err := createIntermediateProject(yamlMap[path.FileName], opts.UnmarshalStrict, anchorRegistry)
+		add, decodeErr, err := createIntermediateProject(yamlMap[path.FileName], opts.UnmarshalStrict, anchorRegistry)
 		if err != nil {
 			// Return intermediateProject even if we run into issues to show merge progress.
 			return errors.Wrapf(err, "%s: loading file '%s'", LoadProjectError, path.FileName)
 		}
-		if fallbackErr != nil {
-			logFields := message.Fields{
-				"message":    "anchor preamble parsing failed, fallback to standard parsing",
-				"project_id": projectID,
-				"filename":   path.FileName,
-				"error":      fallbackErr.Error(),
-			}
-			if opts.PatchOpts != nil && opts.PatchOpts.patch != nil {
-				logFields["patch_id"] = opts.PatchOpts.patch.Id.Hex()
-			}
-			grip.Debug(ctx, logFields)
-		}
+		logDecodeErrorWithOpts(ctx, projectID, path.FileName, decodeErr, opts)
 
 		if err = intermediateProject.mergeMultipleParserProjects(add); err != nil {
 			// Return intermediateProject even if we run into issues to show merge progress.
@@ -1596,25 +1599,20 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts, settings *ever
 // (i.e. before selectors or matrix logic has been evaluated).
 // If unmarshalStrict is true, use the strict version of unmarshalling.
 // Existing anchors in anchorRegistry are prepended so the parser can resolve cross-file aliases.
-// preambleErr is non-nil when the anchor preamble path was attempted but failed and the standard
-// parser was used as a fallback; err is non-nil when the parse failed entirely.
-func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRegistry *anchorRegistry) (pp *ParserProject, preambleErr error, err error) {
+// Use standard unmarshalling instead of the anchor process if anchorRegistry is nil or if there's an error decoding with anchors.
+func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRegistry *anchorRegistry) (pp *ParserProject, decodeErr error, err error) {
 	if anchorRegistry.Length() > 0 {
 		var preamble []byte
-		preamble, preambleErr = buildAnchorPreamble(anchorRegistry)
-		if preambleErr == nil {
-			pp, preambleErr = decodeWithAnchors(append(preamble, parseBytes...), unmarshalStrict, anchorRegistry)
-			if preambleErr == nil {
+		preamble, decodeErr = buildAnchorPreamble(anchorRegistry)
+		if decodeErr == nil {
+			pp, decodeErr = decodeWithAnchors(append(preamble, parseBytes...), unmarshalStrict, anchorRegistry)
+			if decodeErr == nil {
 				return pp, nil, nil
 			}
 		}
-		// Fallback to standard parsing and signal that we did so, so the caller can log with context.
-		pp, err = standardUnmarshal(parseBytes, unmarshalStrict)
-		return pp, preambleErr, err
 	}
-
 	pp, err = standardUnmarshal(parseBytes, unmarshalStrict)
-	return pp, nil, err
+	return pp, decodeErr, err
 }
 
 func standardUnmarshal(parseBytes []byte, unmarshalStrict bool) (*ParserProject, error) {
