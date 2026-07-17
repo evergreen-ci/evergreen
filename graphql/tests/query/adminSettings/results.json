@@ -394,8 +394,8 @@
             "buckets": {
               "logBucket": {
                 "name": "s3 bucket",
-                "testResultsPrefix": null,
-                "roleARN": null
+                "testResultsPrefix": "all",
+                "roleARN": ""
               },
               "testResultsBucket": {
                 "name": "test bucket",
@@ -405,7 +405,7 @@
               "longRetentionProjects": ["project1", "project2"],
               "logBucketLongRetention": {
                 "name": "mutation-long-retention-bucket",
-                "testResultsPrefix": null,
+                "testResultsPrefix": "",
                 "roleARN": ""
               }
             },
