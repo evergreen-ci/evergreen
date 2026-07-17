@@ -1616,10 +1616,13 @@ func (s *taskDAGDispatchServiceSuite) TestTaskGroupTasksRunningHostsVersusMaxHos
 	spec := TaskSpec{}
 	next := service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 	s.Equal("0", next.Id)
-	next = service.FindNextTask(s.ctx, spec, utility.ZeroTime)
+	statsCtx := NewDispatchSkipStatsContext(s.ctx)
+	next = service.FindNextTask(statsCtx, spec, utility.ZeroTime)
 	// The next task, according to the order of basicCachedDAGDispatcherImpl.sorted is from task group "group_1_variant_1_version_1".
 	// However, runningHosts < maxHosts is false for this task group, so we cannot dispatch this task.
 	s.NotEqual("1", next.Id)
+	s.Equal(1, DispatchSkipStatsFromContext(statsCtx).TaskGroupMaxHosts)
+	s.True(DispatchSkipStatsFromContext(statsCtx).HasOnlyExpectedSkips())
 	// Instead, return the next task, which is from task group "group_2_variant_1_project_1_version_1".
 	s.Equal("2", next.Id)
 	s.Equal("group_2", next.Group)
