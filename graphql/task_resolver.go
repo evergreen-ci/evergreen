@@ -3,6 +3,7 @@ package graphql
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -658,7 +659,11 @@ func (r *taskResolver) PrevTask(ctx context.Context, obj *restModel.APITask) (*r
 }
 
 // PrevTaskCompleted is the resolver for the prevTaskCompleted field.
-func (r *taskResolver) PrevTaskCompleted(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
+func (r *taskResolver) PrevTaskCompleted(ctx context.Context, obj *restModel.APITask, prevTaskOptions *PrevTaskOptions) (*restModel.APITask, error) {
+	if prevTaskOptions != nil && utility.FromBoolPtr(prevTaskOptions.SkipOnParentCompleted) && !slices.Contains(evergreen.TaskUncompletedStatuses, utility.FromStringPtr(obj.Status)) {
+		return nil, nil
+	}
+
 	tsk, err := getPrevTask(ctx, obj, evergreen.TaskCompletedStatuses)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding previous completed task for '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
