@@ -187,10 +187,11 @@ func BuildProjectParameterMapForLegacy(query url.Values, vars map[string]string)
 	if hasObjectIDInPath {
 		// When an ID is present in the path, derive every ID being accessed
 		// from the path vars only, ignoring IDs from the query string (e.g.
-		// check user permissions against project_id instead of something_else
-		// in /tasks/{project_id}?project_id=something_else). The route handlers
-		// act on the path-bound object, therefore permissions must be checked
-		// against that path object specifically.
+		// check project permissions against task_id's project instead of
+		// unrelated_version's project when a request is made to
+		// /tasks/{task_id}?version_id=unrelated_version).
+		// The route handlers act on the path-bound object, therefore
+		// permissions must be checked against that path object specifically.
 		return map[string]string{
 			projectIdKey: util.CoalesceString(vars["project_id"], vars[projectIdKey]),
 			repoIdKey:    util.CoalesceString(vars["repo_id"], vars[repoIdKey]),
