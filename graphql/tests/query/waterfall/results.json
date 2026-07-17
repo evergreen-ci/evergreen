@@ -275,10 +275,10 @@
         "data": null,
         "errors": [
           {
-            "message": "fetching most recent waterfall version: could not find mainline commit for project 'evergreen'",
+            "message": "no versions found for project 'evergreen'",
             "path": ["waterfall"],
             "extensions": {
-              "code": "INTERNAL_SERVER_ERROR"
+              "code": "RESOURCE_NOT_FOUND"
             }
           }
         ]

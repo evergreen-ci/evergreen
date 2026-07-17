@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
@@ -435,7 +436,7 @@ func GetVersionBuilds(ctx context.Context, versionID string, buildIds []string) 
 func GetNewerActiveWaterfallVersion(ctx context.Context, projectId string, version Version) (*Version, error) {
 	ctx = utility.ContextWithAppendedAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetNewerActiveWaterfallVersion")})
 
-	match := bson.M{
+	q := db.Query(bson.M{
 		VersionIdentifierKey: projectId,
 		VersionRequesterKey: bson.M{
 			"$in": evergreen.SystemVersionRequesterTypes,
@@ -444,28 +445,9 @@ func GetNewerActiveWaterfallVersion(ctx context.Context, projectId string, versi
 			"$gt": version.RevisionOrderNumber,
 		},
 		VersionActivatedKey: true,
-	}
-	pipeline := []bson.M{
-		{"$match": match},
-		{"$sort": bson.M{VersionRevisionOrderNumberKey: 1}},
-		{"$limit": 1},
-		{"$project": bson.M{VersionBuildVariantsKey: 0}},
-	}
+	}).Sort([]string{VersionRevisionOrderNumberKey}).WithFields(VersionRevisionOrderNumberKey)
 
-	res := []Version{}
-	env := evergreen.GetEnvironment()
-	cursor, err := env.DB().Collection(VersionCollection).Aggregate(ctx, pipeline)
-	if err != nil {
-		return nil, errors.Wrap(err, "aggregating versions")
-	}
-	err = cursor.All(ctx, &res)
-	if err != nil {
-		return nil, err
-	}
-	if len(res) == 0 {
-		return nil, nil
-	}
-	return &res[0], nil
+	return VersionFindOne(ctx, q)
 }
 
 // GetOlderActiveWaterfallVersion returns the next older active version on the waterfall, i.e. an older
@@ -473,7 +455,7 @@ func GetNewerActiveWaterfallVersion(ctx context.Context, projectId string, versi
 func GetOlderActiveWaterfallVersion(ctx context.Context, projectId string, version Version) (*Version, error) {
 	ctx = utility.ContextWithAppendedAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetOlderActiveWaterfallVersion")})
 
-	match := bson.M{
+	q := db.Query(bson.M{
 		VersionIdentifierKey: projectId,
 		VersionRequesterKey: bson.M{
 			"$in": evergreen.SystemVersionRequesterTypes,
@@ -482,28 +464,9 @@ func GetOlderActiveWaterfallVersion(ctx context.Context, projectId string, versi
 			"$lt": version.RevisionOrderNumber,
 		},
 		VersionActivatedKey: true,
-	}
-	pipeline := []bson.M{
-		{"$match": match},
-		{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}},
-		{"$limit": 1},
-		{"$project": bson.M{VersionBuildVariantsKey: 0}},
-	}
+	}).Sort([]string{"-" + VersionRevisionOrderNumberKey}).WithFields(VersionRevisionOrderNumberKey)
 
-	res := []Version{}
-	env := evergreen.GetEnvironment()
-	cursor, err := env.DB().Collection(VersionCollection).Aggregate(ctx, pipeline)
-	if err != nil {
-		return nil, errors.Wrap(err, "aggregating versions")
-	}
-	err = cursor.All(ctx, &res)
-	if err != nil {
-		return nil, err
-	}
-	if len(res) == 0 {
-		return nil, nil
-	}
-	return &res[0], nil
+	return VersionFindOne(ctx, q)
 }
 
 // GetOffsetVersionOrderByRevision returns the revision order of a system-requested version within close range of the given
