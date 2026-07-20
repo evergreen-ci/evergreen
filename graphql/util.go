@@ -1156,7 +1156,7 @@ func getProjectWithSettingsEditPermission(ctx context.Context, projectIdentifier
 	}
 
 	usr := mustHaveUser(ctx)
-	if !userHasSuperuserProjectPermission(ctx, usr) && !userHasProjectSettingsPermission(ctx, usr, project.Id, evergreen.ProjectSettingsEdit.Value) {
+	if !userHasProjectSettingsPermission(ctx, usr, project.Id, evergreen.ProjectSettingsEdit.Value) {
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to edit settings for project '%s'", usr.Username(), projectIdentifier))
 	}
 

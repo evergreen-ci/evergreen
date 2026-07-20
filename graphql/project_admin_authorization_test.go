@@ -190,12 +190,11 @@ func TestProjectSettingsEditDefenseUsesResolvedTarget(t *testing.T) {
 
 	require.NoError(t, usr.AddRole(t.Context(), "superuser"))
 	project, err = getProjectWithSettingsEditPermission(ctx, victimProject.Identifier)
-	require.NoError(t, err)
-	require.NotNil(t, project)
-	assert.Equal(t, victimProject.Id, project.Id)
+	assert.Error(t, err)
+	assert.Nil(t, project)
 }
 
-func TestRequireProjectAccessAllowsSuperuser(t *testing.T) {
+func TestRequireProjectAccessRejectsProjectCreatePermissionWithoutProjectSettingsPermission(t *testing.T) {
 	setupPermissions(t)
 
 	usr := &user.DBUser{
@@ -225,7 +224,7 @@ func TestRequireProjectAccessAllowsSuperuser(t *testing.T) {
 		ProjectPermissionSettings,
 		AccessLevelEdit,
 	)
-	require.NoError(t, err)
+	assert.EqualError(t, err, "input: user 'test_user' does not have permission to 'edit project settings' for the project 'victim_project_id'")
 	assert.Nil(t, result)
-	assert.Equal(t, 1, callCount)
+	assert.Equal(t, 0, callCount)
 }

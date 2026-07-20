@@ -259,9 +259,6 @@ func New(apiURL string) Config {
 		if err != nil {
 			return nil, mapHTTPStatusToGqlError(ctx, statusCode, err)
 		}
-		if userHasSuperuserProjectPermission(ctx, usr) {
-			return next(ctx)
-		}
 
 		hasPermission := usr.HasPermission(ctx, gimlet.PermissionOpts{
 			Resource:      projectId,
