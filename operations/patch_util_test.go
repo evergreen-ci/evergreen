@@ -674,3 +674,21 @@ func TestGetModulePathUsesOverrideWithoutWritingConfig(t *testing.T) {
 	assert.Equal(t, "/override/path/dsi", path)
 	assert.Empty(t, conf.Projects)
 }
+
+func TestGetDiffTip(t *testing.T) {
+	t.Run("EmptyRefAndCommitsReturnsHEAD", func(t *testing.T) {
+		assert.Equal(t, head, getDiffTip("", ""))
+	})
+
+	t.Run("RefTakesPrecedenceOverCommits", func(t *testing.T) {
+		assert.Equal(t, "feature", getDiffTip("feature", "abc..def"))
+	})
+
+	t.Run("SingleCommitReturnsThatCommit", func(t *testing.T) {
+		assert.Equal(t, "abc123", getDiffTip("", "abc123"))
+	})
+
+	t.Run("CommitRangeReturnsEndOfRange", func(t *testing.T) {
+		assert.Equal(t, "def456", getDiffTip("", "abc123..def456"))
+	})
+}

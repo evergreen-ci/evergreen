@@ -69,6 +69,13 @@ func TestAPIPatch(t *testing.T) {
 			HeadHash:  "hash",
 			Author:    "octocat",
 		},
+		GitInfo: &patch.GitMetadata{
+			Username:      "octocat",
+			Email:         "octocat@example.com",
+			GitVersion:    "2.42.0",
+			LocalBranch:   "feature",
+			LocalHeadHash: "abcdef1234567890",
+		},
 	}
 
 	a := APIPatch{}
@@ -102,6 +109,12 @@ func TestAPIPatch(t *testing.T) {
 	}
 	assert.Equal(evergreen.CommitQueueAlias, utility.FromStringPtr(a.Alias))
 	assert.NotZero(a.GithubPatchData)
+	require.NotNil(t, a.GitInfo)
+	assert.Equal(p.GitInfo.Username, utility.FromStringPtr(a.GitInfo.Username))
+	assert.Equal(p.GitInfo.Email, utility.FromStringPtr(a.GitInfo.Email))
+	assert.Equal(p.GitInfo.GitVersion, utility.FromStringPtr(a.GitInfo.GitVersion))
+	assert.Equal(p.GitInfo.LocalBranch, utility.FromStringPtr(a.GitInfo.LocalBranch))
+	assert.Equal(p.GitInfo.LocalHeadHash, utility.FromStringPtr(a.GitInfo.LocalHeadHash))
 	assert.NotEqual(a.VariantsTasks[0].Tasks, a.VariantsTasks[1].Tasks)
 	assert.Len(a.VariantsTasks[0].Tasks, 1)
 }
@@ -449,4 +462,31 @@ func TestPreselectedDisplayTasks(t *testing.T) {
 	assert.NotContains(t, tasks, "exec1")
 	assert.NotContains(t, tasks, "exec2")
 	assert.Contains(t, tasks, "display_task")
+}
+
+func TestAPIGitMetadata(t *testing.T) {
+	t.Run("BuildFromServiceNilInputLeavesZeroValue", func(t *testing.T) {
+		a := APIGitMetadata{}
+		a.BuildFromService(nil)
+		assert.Zero(t, a)
+	})
+
+	t.Run("BuildFromServiceAndToServiceRoundTrip", func(t *testing.T) {
+		m := &patch.GitMetadata{
+			Username:      "user",
+			Email:         "user@example.com",
+			GitVersion:    "2.42.0",
+			LocalBranch:   "main",
+			LocalHeadHash: "abc123",
+		}
+		a := APIGitMetadata{}
+		a.BuildFromService(m)
+		assert.Equal(t, m.Username, utility.FromStringPtr(a.Username))
+		assert.Equal(t, m.Email, utility.FromStringPtr(a.Email))
+		assert.Equal(t, m.GitVersion, utility.FromStringPtr(a.GitVersion))
+		assert.Equal(t, m.LocalBranch, utility.FromStringPtr(a.LocalBranch))
+		assert.Equal(t, m.LocalHeadHash, utility.FromStringPtr(a.LocalHeadHash))
+
+		assert.Equal(t, *m, a.ToService())
+	})
 }
