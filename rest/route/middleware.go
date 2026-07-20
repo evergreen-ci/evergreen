@@ -644,10 +644,7 @@ func superUserResource(_ *http.Request) ([]string, int, error) {
 	return []string{evergreen.SuperUserPermissionsID}, http.StatusOK, nil
 }
 
-// maxWebhookBodySize caps the request body read by the unauthenticated webhook
-// middlewares (GitHub and AWS SNS). Both payload types are small, so this limit
-// is generous while preventing a malicious caller from forcing unbounded
-// allocation before the payload signature has been verified.
+// maxWebhookBodySize caps the request body read by the webhook middleware.
 const maxWebhookBodySize = 10 * 1024 * 1024
 
 // NewGithubAuthMiddleware returns a middleware that verifies the payload.
@@ -660,8 +657,6 @@ type githubAuthMiddleware struct{}
 func (m *githubAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	githubSecret := []byte(evergreen.GetEnvironment().Settings().GithubWebhookSecret)
 
-	// Cap the body before validating the payload. This route is unauthenticated
-	// until the signature is verified, so an oversized body must not be buffered.
 	r.Body = http.MaxBytesReader(rw, r.Body, maxWebhookBodySize)
 	payload, err := github.ValidatePayload(r, githubSecret)
 	if err != nil {
@@ -701,8 +696,6 @@ func NewSNSAuthMiddleware() gimlet.Middleware {
 }
 
 func (m *snsAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	// Cap the body before reading it. This route is unauthenticated until the
-	// payload signature is verified, so an oversized body must not be buffered.
 	body, err := io.ReadAll(http.MaxBytesReader(rw, r.Body, maxWebhookBodySize))
 	if err != nil {
 		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "reading body")))

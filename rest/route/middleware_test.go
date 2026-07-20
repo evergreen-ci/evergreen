@@ -306,8 +306,6 @@ func TestSendNotificationMiddleware(t *testing.T) {
 func TestSNSAuthMiddlewareCapsBodySize(t *testing.T) {
 	mw := NewSNSAuthMiddleware()
 
-	// A body larger than the cap is rejected before it can be buffered, and the
-	// downstream handler is never reached.
 	oversized := strings.NewReader(strings.Repeat("a", maxWebhookBodySize+1))
 	r, err := http.NewRequest(http.MethodPost, "/hooks/aws", oversized)
 	require.NoError(t, err)
@@ -316,19 +314,13 @@ func TestSNSAuthMiddlewareCapsBodySize(t *testing.T) {
 	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
 		called = true
 	})
-	assert.False(t, called)
+	assert.False(t, called, "route handler should not be called when huge webhook request body is sent")
 	assert.NotEqual(t, http.StatusOK, rw.Code)
 }
 
 func TestGithubAuthMiddlewareCapsBodySize(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	testutil.NewEnvironment(ctx, t)
-
 	mw := NewGithubAuthMiddleware()
 
-	// A body larger than the cap is rejected before it can be buffered, and the
-	// downstream handler is never reached.
 	oversized := strings.NewReader(strings.Repeat("a", maxWebhookBodySize+1))
 	r, err := http.NewRequest(http.MethodPost, "/hooks/github", oversized)
 	require.NoError(t, err)
@@ -339,7 +331,7 @@ func TestGithubAuthMiddlewareCapsBodySize(t *testing.T) {
 	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
 		called = true
 	})
-	assert.False(t, called)
+	assert.False(t, called, "route handler should not be called when huge webhook request body is sent")
 	assert.NotEqual(t, http.StatusOK, rw.Code)
 }
 
