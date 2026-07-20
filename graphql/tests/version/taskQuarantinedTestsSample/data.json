@@ -28,6 +28,19 @@
           "display_test_name": "Display Test Three"
         }
       ]
+    },
+    {
+      "_id": {
+        "task_id": "task_3",
+        "execution": 0
+      },
+      "quarantined_tests_count": 1,
+      "quarantined_tests": [
+        {
+          "test_name": "TestFour",
+          "display_test_name": "Display Test Four"
+        }
+      ]
     }
   ],
   "tasks": [
@@ -66,6 +79,33 @@
       }
     },
     {
+      "_id": "task_3",
+      "version": "version_id",
+      "branch": "spruce",
+      "build_variant": "ubuntu1604",
+      "display_name": "test-model-three",
+      "execution": 0,
+      "r": "github_pull_request",
+      "status": "success",
+      "has_test_results": true,
+      "num_quarantined_tests_skipped": 1,
+      "task_output_info": {
+        "test_results": {
+          "version": 2
+        }
+      }
+    },
+    {
+      "_id": "task_no_results",
+      "version": "version_id",
+      "branch": "spruce",
+      "build_variant": "ubuntu1604",
+      "display_name": "test-no-results",
+      "execution": 0,
+      "r": "github_pull_request",
+      "status": "success"
+    },
+    {
       "_id": "display_task",
       "version": "version_id",
       "branch": "spruce",
@@ -77,6 +117,19 @@
       "r": "github_pull_request",
       "status": "success",
       "num_quarantined_tests_skipped": 3
+    },
+    {
+      "_id": "display_task_2",
+      "version": "version_id",
+      "branch": "spruce",
+      "build_variant": "ubuntu1604",
+      "display_name": "display-task-two",
+      "display_only": true,
+      "execution": 0,
+      "execution_tasks": ["task_3"],
+      "r": "github_pull_request",
+      "status": "success",
+      "num_quarantined_tests_skipped": 1
     }
   ],
   "versions": [{ "_id": "version_id", "identifier": "spruce" }],

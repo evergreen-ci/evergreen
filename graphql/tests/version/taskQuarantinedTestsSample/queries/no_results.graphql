@@ -1,0 +1,13 @@
+query {
+  version(versionId: "version_id") {
+    taskQuarantinedTestsSample(taskIds: ["task_no_results"]) {
+      taskId
+      execution
+      quarantinedTestsSkippedCount
+      quarantinedTests {
+        testName
+        displayTestName
+      }
+    }
+  }
+}

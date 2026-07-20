@@ -322,23 +322,65 @@ func (r *versionResolver) TaskQuarantinedTestsSample(ctx context.Context, obj *r
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("tasks '%s' not found", taskIDs))
 	}
 
-	var allTasks []task.Task
+	var (
+		allTasks    []task.Task
+		execTaskIDs []string
+	)
 	apiSamples := make([]*testresult.TaskTestResultsQuarantinedSample, len(dbTasks))
-	apiSamplesByTaskID := map[string]*testresult.TaskTestResultsQuarantinedSample{}
+	apiSamplesByTaskID := map[string][]*testresult.TaskTestResultsQuarantinedSample{}
+	resultTaskIDs := map[string]struct{}{}
+	execTaskIDSet := map[string]struct{}{}
+	addAPISampleForTask := func(taskID string, apiSample *testresult.TaskTestResultsQuarantinedSample) {
+		for _, existingSample := range apiSamplesByTaskID[taskID] {
+			if existingSample == apiSample {
+				return
+			}
+		}
+		apiSamplesByTaskID[taskID] = append(apiSamplesByTaskID[taskID], apiSample)
+	}
+	addResultTask := func(resultTask task.Task) {
+		if _, ok := resultTaskIDs[resultTask.Id]; ok {
+			return
+		}
+		resultTaskIDs[resultTask.Id] = struct{}{}
+		allTasks = append(allTasks, resultTask)
+	}
 	for i, dbTask := range dbTasks {
 		if dbTask.Version != versionID && dbTask.ParentPatchID != versionID {
 			return nil, InputValidationError.Send(ctx, fmt.Sprintf("task '%s' does not belong to version '%s'", dbTask.Id, versionID))
 		}
-		tasks, err := dbTask.GetTestResultsTasks(ctx)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating test results task options for task '%s': %s", dbTask.Id, err.Error()))
-		}
 
 		apiSamples[i] = &testresult.TaskTestResultsQuarantinedSample{TaskID: dbTask.Id, Execution: dbTask.Execution}
-		for _, task := range tasks {
-			apiSamplesByTaskID[task.Id] = apiSamples[i]
+		if dbTask.DisplayOnly && len(dbTask.ExecutionTasks) > 0 {
+			for _, execTaskID := range dbTask.ExecutionTasks {
+				addAPISampleForTask(execTaskID, apiSamples[i])
+				if _, ok := execTaskIDSet[execTaskID]; !ok {
+					execTaskIDSet[execTaskID] = struct{}{}
+					execTaskIDs = append(execTaskIDs, execTaskID)
+				}
+			}
+			continue
 		}
-		allTasks = append(allTasks, tasks...)
+		if dbTask.HasResults(ctx) {
+			addAPISampleForTask(dbTask.Id, apiSamples[i])
+			addResultTask(dbTask)
+		}
+	}
+
+	if len(execTaskIDs) > 0 {
+		query := task.ByIds(execTaskIDs)
+		query["$or"] = []bson.M{
+			{task.ResultsServiceKey: bson.M{"$exists": true}},
+			{task.HasTestResultsKey: true},
+		}
+		execTasks, err := task.FindWithFields(ctx, query,
+			task.ExecutionKey, task.ResultsServiceKey, task.HasTestResultsKey, task.TaskOutputInfoKey)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting execution tasks for display tasks: %s", err.Error()))
+		}
+		for _, execTask := range execTasks {
+			addResultTask(execTask)
+		}
 	}
 
 	if len(allTasks) > 0 {
@@ -348,21 +390,23 @@ func (r *versionResolver) TaskQuarantinedTestsSample(ctx context.Context, obj *r
 		}
 
 		for _, sample := range samples {
-			apiSample, ok := apiSamplesByTaskID[sample.TaskID]
+			matchingAPISamples, ok := apiSamplesByTaskID[sample.TaskID]
 			if !ok {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("unexpected task '%s' in quarantined test sample result", sample.TaskID))
 			}
 
-			apiSample.QuarantinedTestsSkippedCount += sample.QuarantinedTestsSkippedCount
-			remaining := sampleLimit - len(apiSample.QuarantinedTests)
-			if remaining <= 0 {
-				continue
+			for _, apiSample := range matchingAPISamples {
+				apiSample.QuarantinedTestsSkippedCount += sample.QuarantinedTestsSkippedCount
+				remaining := sampleLimit - len(apiSample.QuarantinedTests)
+				if remaining <= 0 {
+					continue
+				}
+				quarantinedTests := sample.QuarantinedTests
+				if len(quarantinedTests) > remaining {
+					quarantinedTests = quarantinedTests[:remaining]
+				}
+				apiSample.QuarantinedTests = append(apiSample.QuarantinedTests, quarantinedTests...)
 			}
-			quarantinedTests := sample.QuarantinedTests
-			if len(quarantinedTests) > remaining {
-				quarantinedTests = quarantinedTests[:remaining]
-			}
-			apiSample.QuarantinedTests = append(apiSample.QuarantinedTests, quarantinedTests...)
 		}
 	}
 
