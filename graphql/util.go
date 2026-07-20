@@ -1481,13 +1481,11 @@ func buildOptionsFromParentArgs(ctx context.Context, fc *graphql.FieldContext) (
 	}
 
 	// Get the parent object to determine if this is a project or user query.
-	// The parent.Parent should be a Project, User, or User resolver.
+	// The parent.Parent should be a Project or User resolver.
 	if fc.Parent.Parent != nil {
 		switch grandparent := fc.Parent.Parent.Result.(type) {
 		case *restModel.APIProjectRef:
 			opts.Project = grandparent.Id
-		case *restModel.APIDBUser:
-			opts.Author = grandparent.UserID
 		case *user.DBUser:
 			opts.Author = utility.ToStringPtr(grandparent.Id)
 		}
