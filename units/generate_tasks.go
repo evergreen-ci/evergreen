@@ -106,20 +106,13 @@ func generateTasksSpanAttributes(t *task.Task) []attribute.KeyValue {
 	}
 }
 
-// generateTasksCounts holds the task counts computed during a generate.tasks run.
-// They are only meaningful when the outcome is outcomeGenerated.
-type generateTasksCounts struct {
-	numGenerated int
-	numActivated int
-}
-
-func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) (generateTasksOutcome, generateTasksCounts, error) {
+func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) (generateTasksOutcome, model.GenerateTasksCounts, error) {
 	ctx = utility.ContextWithAttributes(ctx, generateTasksSpanAttributes(t))
 	ctx, span := tracer.Start(ctx, "task-generation")
 	defer span.End()
 
 	if t.GeneratedTasks {
-		return outcomeAlreadyGenerated, generateTasksCounts{}, mongo.ErrNoDocuments
+		return outcomeAlreadyGenerated, model.GenerateTasksCounts{}, mongo.ErrNoDocuments
 	}
 	if t.Status != evergreen.TaskStarted {
 		grip.Debug(ctx, message.Fields{
@@ -128,22 +121,22 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) (generate
 			"version": t.Version,
 			"job":     j.ID(),
 		})
-		return outcomeTaskNotRunning, generateTasksCounts{}, nil
+		return outcomeTaskNotRunning, model.GenerateTasksCounts{}, nil
 	}
 
 	v, err := model.VersionFindOneId(ctx, t.Version)
 	if err != nil {
-		return outcomeError, generateTasksCounts{}, errors.Wrapf(err, "finding version '%s'", t.Version)
+		return outcomeError, model.GenerateTasksCounts{}, errors.Wrapf(err, "finding version '%s'", t.Version)
 	}
 	if v == nil {
-		return outcomeError, generateTasksCounts{}, errors.Errorf("version '%s' not found", t.Version)
+		return outcomeError, model.GenerateTasksCounts{}, errors.Errorf("version '%s' not found", t.Version)
 	}
 	// Opt out of read coalescing: this path mutates the parser project in place (via
 	// GeneratedProject.NewVersion -> addGeneratedProjectToConfig), so it must not share the pointer
 	// with concurrent readers. It's low-volume background work, so opting out is cheap.
 	project, parserProject, err := model.FindAndTranslateProjectForVersionWithOpts(ctx, j.env.Settings(), v, false, false)
 	if err != nil {
-		return outcomeError, generateTasksCounts{}, errors.Wrapf(err, "loading project for version '%s'", t.Version)
+		return outcomeError, model.GenerateTasksCounts{}, errors.Wrapf(err, "loading project for version '%s'", t.Version)
 	}
 
 	// Get task again, to exit early if another generator finished while we looked for a
@@ -154,10 +147,10 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) (generate
 	taskId := t.Id
 	t, err = task.FindOneIdWithGeneratedJSON(ctx, taskId)
 	if err != nil {
-		return outcomeError, generateTasksCounts{}, errors.Wrapf(err, "finding task '%s'", taskId)
+		return outcomeError, model.GenerateTasksCounts{}, errors.Wrapf(err, "finding task '%s'", taskId)
 	}
 	if t == nil {
-		return outcomeError, generateTasksCounts{}, errors.Errorf("task '%s' not found", taskId)
+		return outcomeError, model.GenerateTasksCounts{}, errors.Errorf("task '%s' not found", taskId)
 	}
 	if t.GeneratedTasks {
 		grip.Debug(ctx, message.Fields{
@@ -166,23 +159,23 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) (generate
 			"version": t.Version,
 			"job":     j.ID(),
 		})
-		return outcomeRaceOnReload, generateTasksCounts{}, mongo.ErrNoDocuments
+		return outcomeRaceOnReload, model.GenerateTasksCounts{}, mongo.ErrNoDocuments
 	}
 
 	files, err := task.GeneratedJSONFind(ctx, j.env.Settings(), t)
 	if err != nil {
-		return outcomeError, generateTasksCounts{}, errors.Wrapf(err, "finding generated JSON for task '%s'", t.Id)
+		return outcomeError, model.GenerateTasksCounts{}, errors.Wrapf(err, "finding generated JSON for task '%s'", t.Id)
 	}
 
 	var projects []model.GeneratedProject
 	projects, err = parseProjectsAsString(ctx, files)
 	if err != nil {
-		return outcomeError, generateTasksCounts{}, errors.Wrap(err, "parsing JSON from `generate.tasks`")
+		return outcomeError, model.GenerateTasksCounts{}, errors.Wrap(err, "parsing JSON from `generate.tasks`")
 	}
 
 	g, err := model.MergeGeneratedProjects(ctx, projects)
 	if err != nil {
-		return outcomeError, generateTasksCounts{}, errors.Wrap(err, "merging generated projects")
+		return outcomeError, model.GenerateTasksCounts{}, errors.Wrap(err, "merging generated projects")
 	}
 	g.Task = t
 
@@ -204,7 +197,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) (generate
 	}
 
 	if err := g.CheckForCycles(ctx, v, p, pref); err != nil {
-		return outcomeError, generateTasksCounts{}, errors.Wrap(err, "checking new dependency graph for cycles")
+		return outcomeError, model.GenerateTasksCounts{}, errors.Wrap(err, "checking new dependency graph for cycles")
 	}
 
 	// Ignore the cancel signal from the job's context, because it's better
@@ -212,36 +205,33 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) (generate
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Minute)
 	defer cancel()
 
-	err = g.Save(ctx, j.env.Settings(), p, pp, v)
+	counts, err := g.Save(ctx, j.env.Settings(), p, pp, v)
 
 	// If the version or parser project has changed there was a race. Another generator will try again.
 	if adb.ResultsNotFound(err) || db.IsDuplicateKey(err) {
-		return outcomeRaceOnSave, generateTasksCounts{}, err
+		return outcomeRaceOnSave, model.GenerateTasksCounts{}, err
 	}
 	if err != nil {
-		return outcomeSaveFailed, generateTasksCounts{}, errors.Wrap(err, evergreen.SaveGenerateTasksError)
+		return outcomeSaveFailed, model.GenerateTasksCounts{}, errors.Wrap(err, evergreen.SaveGenerateTasksError)
 	}
-	// Save populated these counts on the in-memory task, so return them for
-	// telemetry rather than re-fetching the task.
-	return outcomeGenerated, generateTasksCounts{
-		numGenerated: g.Task.NumGeneratedTasks,
-		numActivated: g.Task.NumActivatedGeneratedTasks,
-	}, nil
+	// Save returns the counts it computed so we can record them on telemetry
+	// without re-fetching the task.
+	return outcomeGenerated, counts, nil
 }
 
 // handleError return mongo.ErrNoDocuments if generate.tasks has already run.
 // Otherwise, it returns the given error.
-func (j *generateTasksJob) handleError(ctx context.Context, handledError error) (generateTasksOutcome, generateTasksCounts, error) {
+func (j *generateTasksJob) handleError(ctx context.Context, handledError error) (generateTasksOutcome, model.GenerateTasksCounts, error) {
 	// Get task again, to exit nil if another generator finished, which caused us to error.
 	// Checking this again here makes it very unlikely that there is a race, because both
 	// `t.GeneratedTasks` checks must have been in between the racing generator's call to
 	// save the config and set the task's boolean.
 	t, err := task.FindOneId(ctx, j.TaskID)
 	if err != nil {
-		return outcomeError, generateTasksCounts{}, errors.Wrapf(err, "finding task '%s'", j.TaskID)
+		return outcomeError, model.GenerateTasksCounts{}, errors.Wrapf(err, "finding task '%s'", j.TaskID)
 	}
 	if t == nil {
-		return outcomeError, generateTasksCounts{}, errors.Errorf("task '%s' not found", j.TaskID)
+		return outcomeError, model.GenerateTasksCounts{}, errors.Errorf("task '%s' not found", j.TaskID)
 	}
 	if t.GeneratedTasks {
 		grip.Debug(ctx, message.Fields{
@@ -250,10 +240,10 @@ func (j *generateTasksJob) handleError(ctx context.Context, handledError error) 
 			"version": t.Version,
 			"job":     j.ID(),
 		})
-		return outcomeRaceOnErrorHandling, generateTasksCounts{}, mongo.ErrNoDocuments
+		return outcomeRaceOnErrorHandling, model.GenerateTasksCounts{}, mongo.ErrNoDocuments
 	}
 
-	return outcomeError, generateTasksCounts{}, handledError
+	return outcomeError, model.GenerateTasksCounts{}, handledError
 }
 
 const maxGenerateTasksErrMsgLength = 1024 * 250 // 250k chars * 4 bytes/char = 1 MB
@@ -340,8 +330,8 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 		// other outcomes (e.g. task_not_running) would pollute aggregations of these columns.
 		if outcome == outcomeGenerated {
 			span.SetAttributes(
-				attribute.Int(model.NumGeneratedTasksOtelAttribute, counts.numGenerated),
-				attribute.Int(model.NumActivatedGeneratedTasksOtelAttribute, counts.numActivated),
+				attribute.Int(model.NumGeneratedTasksOtelAttribute, counts.NumGenerated),
+				attribute.Int(model.NumActivatedGeneratedTasksOtelAttribute, counts.NumActivated),
 			)
 		}
 
