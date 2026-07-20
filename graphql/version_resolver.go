@@ -196,6 +196,18 @@ func (r *versionResolver) GeneratedTaskCounts(ctx context.Context, obj *restMode
 	return res, nil
 }
 
+// GitTags is the resolver for the gitTags field.
+func (r *versionResolver) GitTags(ctx context.Context, obj *restModel.APIVersion) ([]*model.GitTag, error) {
+	gitTags := make([]*model.GitTag, 0, len(obj.GitTags))
+	for _, gt := range obj.GitTags {
+		gitTags = append(gitTags, &model.GitTag{
+			Tag:    utility.FromStringPtr(gt.Tag),
+			Pusher: utility.FromStringPtr(gt.Pusher),
+		})
+	}
+	return gitTags, nil
+}
+
 // IsPatch is the resolver for the isPatch field.
 func (r *versionResolver) IsPatch(ctx context.Context, obj *restModel.APIVersion) (bool, error) {
 	return evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)), nil
@@ -587,12 +599,7 @@ func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *restModel.AP
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variants for version '%s': %s", versionID, err.Error()))
 	}
-	versionBuilds := []*model.WaterfallBuild{}
-	for _, b := range builds {
-		bCopy := b
-		versionBuilds = append(versionBuilds, &bCopy)
-	}
-	return versionBuilds, nil
+	return builds, nil
 }
 
 // BaseVersion is the resolver for the baseVersion field.
@@ -667,6 +674,31 @@ func (r *versionLiteResolver) TaskStatusStats(ctx context.Context, obj *model.Ve
 // User is the resolver for the user field.
 func (r *versionLiteResolver) User(ctx context.Context, obj *model.Version) (*user.DBUser, error) {
 	return getVersionAuthorDBUser(ctx, obj.AuthorID, obj.Author, obj.AuthorEmail)
+}
+
+// WaterfallBuilds is the resolver for the waterfallBuilds field.
+func (r *versionLiteResolver) WaterfallBuilds(ctx context.Context, obj *model.Version) ([]*model.WaterfallBuild, error) {
+	versionID := obj.Id
+
+	// No need to fetch build variants for unactivated versions
+	if !utility.FromBoolPtr(obj.Activated) {
+		return nil, nil
+	}
+
+	parentWaterfall, ok := getWaterfallFromContext(ctx)
+	if ok {
+		// If we can't find the activeVersionIds in the parent query, eagerly continue with this aggregation.
+		activeVersionIds := parentWaterfall.Pagination.ActiveVersionIds
+		if !utility.StringSliceContains(activeVersionIds, versionID) {
+			return nil, nil
+		}
+	}
+
+	builds, err := model.GetVersionBuilds(ctx, versionID, obj.BuildIds)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variants for version '%s': %s", versionID, err.Error()))
+	}
+	return builds, nil
 }
 
 // Version returns VersionResolver implementation.

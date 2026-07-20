@@ -1032,7 +1032,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		VariantCaseSensitive: utility.FromBoolTPtr(options.TaskCaseSensitive), // Default to true for performance reasons.
 	}
 
-	mostRecentWaterfallVersion, err := model.GetMostRecentWaterfallVersion(ctx, projectId)
+	mostRecentWaterfallVersion, err := model.VersionFindOneSecondary(ctx, model.VersionByMostRecentSystemRequester(projectId).WithFields(model.VersionRevisionOrderNumberKey))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching most recent waterfall version: %s", err.Error()))
 	}
@@ -1133,10 +1133,14 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 	}
 
 	flattenedVersions := []*restModel.APIVersion{}
+	versionPtrs := []*model.Version{}
 	for _, v := range allVersions {
 		apiVersion := &restModel.APIVersion{}
 		apiVersion.BuildFromService(ctx, v)
 		flattenedVersions = append(flattenedVersions, apiVersion)
+
+		vCopy := v
+		versionPtrs = append(versionPtrs, &vCopy)
 	}
 
 	results := &Waterfall{
@@ -1149,6 +1153,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 			HasNextPage:            nextPageOrder > 0,
 			HasPrevPage:            prevPageOrder > 0,
 		},
+		Versions: versionPtrs,
 	}
 
 	return results, nil
