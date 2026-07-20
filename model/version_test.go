@@ -948,7 +948,7 @@ func TestGetManifestModuleWiki(t *testing.T) {
 	ctx := t.Context()
 	pRef := &ProjectRef{Owner: "foo", Repo: "bar"}
 	mod := Module{Name: "w", Owner: "myorg", Repo: "service.wiki", Branch: "master"}
-	m, err := getManifestModule(ctx, pRef, mod, evergreen.RepotrackerVersionRequester, "abc123")
+	m, err := getManifestModule(ctx, pRef, mod, evergreen.RepotrackerVersionRequester, time.Time{})
 	require.NoError(t, err)
 	require.NotNil(t, m)
 	assert.Equal(t, "myorg", m.Owner)

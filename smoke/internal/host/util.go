@@ -23,11 +23,11 @@ import (
 // SmokeTestParams contain common parameters used by smoke tests.
 type SmokeTestParams struct {
 	internal.APIParams
-	ExecModeID     string
-	ExecModeSecret string
-	CLIConfigPath  string
-	ProjectID      string
-	BVName         string
+	HostID        string
+	HostSecret    string
+	CLIConfigPath string
+	ProjectID     string
+	BVName        string
 }
 
 // GetSmokeTestParamsFromEnv gets the parameters for the host smoke test from
@@ -37,14 +37,14 @@ func GetSmokeTestParamsFromEnv(t *testing.T) SmokeTestParams {
 	evgHome := evergreen.FindEvergreenHome()
 	require.NotZero(t, evgHome, "EVGHOME must be set for smoke test")
 
-	execModeID := os.Getenv("EXEC_MODE_ID")
-	if execModeID == "" {
-		execModeID = "localhost"
+	hostID := os.Getenv("HOST_ID")
+	if hostID == "" {
+		hostID = "localhost"
 	}
 
-	execModeSecret := os.Getenv("EXEC_MODE_SECRET")
-	if execModeSecret == "" {
-		execModeSecret = "de249183582947721fdfb2ea1796574b"
+	hostSecret := os.Getenv("HOST_SECRET")
+	if hostSecret == "" {
+		hostSecret = "de249183582947721fdfb2ea1796574b"
 	}
 
 	cliConfigPath := os.Getenv("CLI_CONFIG_PATH")
@@ -63,12 +63,12 @@ func GetSmokeTestParamsFromEnv(t *testing.T) SmokeTestParams {
 	}
 
 	return SmokeTestParams{
-		APIParams:      internal.GetAPIParamsFromEnv(t, evgHome),
-		ExecModeID:     execModeID,
-		ExecModeSecret: execModeSecret,
-		ProjectID:      projectID,
-		BVName:         bvName,
-		CLIConfigPath:  cliConfigPath,
+		APIParams:     internal.GetAPIParamsFromEnv(t, evgHome),
+		HostID:        hostID,
+		HostSecret:    hostSecret,
+		ProjectID:     projectID,
+		BVName:        bvName,
+		CLIConfigPath: cliConfigPath,
 	}
 }
 
