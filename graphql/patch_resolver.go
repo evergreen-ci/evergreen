@@ -53,9 +53,9 @@ func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]
 // Duration is the resolver for the duration field.
 func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (*PatchDuration, error) {
 	patchID := utility.FromStringPtr(obj.Id)
-	p, err := patch.FindOneId(ctx, patchID)
+	p, err := loaders.GetPatch(ctx, patchID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()), err)
 	}
 	if p == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", patchID))
@@ -80,9 +80,9 @@ func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (
 // GeneratedTaskCounts is the resolver for the generatedTaskCounts field.
 func (r *patchResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.APIPatch) ([]*GeneratedTaskCountResults, error) {
 	patchID := utility.FromStringPtr(obj.Id)
-	p, err := patch.FindOneId(ctx, patchID)
+	p, err := loaders.GetPatch(ctx, patchID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()), err)
 	}
 	if p == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", patchID))
@@ -425,6 +425,7 @@ func (r *patchesResolver) Patches(ctx context.Context, obj *Patches) ([]*restMod
 
 	apiPatches := []*restModel.APIPatch{}
 	projectIDs := make([]string, 0, len(patches))
+	patchIDs := make([]string, 0, len(patches))
 	for _, p := range patches {
 		apiPatch := restModel.APIPatch{}
 		if err := apiPatch.BuildFromService(ctx, p, &restModel.APIPatchArgs{
@@ -433,11 +434,15 @@ func (r *patchesResolver) Patches(ctx context.Context, obj *Patches) ([]*restMod
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting patch '%s' to APIPatch: %s", p.Id.Hex(), err.Error()))
 		}
 		apiPatches = append(apiPatches, &apiPatch)
+		patchIDs = append(patchIDs, p.Id.Hex())
 		if projectID := utility.FromStringPtr(apiPatch.ProjectId); projectID != "" {
 			projectIDs = append(projectIDs, projectID)
 		}
 	}
 
+	if len(patchIDs) > 0 {
+		loaders.PreloadPatches(ctx, patchIDs)
+	}
 	if len(projectIDs) > 0 {
 		loaders.PreloadProjects(ctx, projectIDs)
 	}
