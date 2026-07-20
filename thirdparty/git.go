@@ -464,9 +464,13 @@ func validateFileIsWithinDirectory(dir, file string) error {
 		return errors.Errorf("file '%s' must be a relative path, not absolute", file)
 	}
 
-	// Reject paths containing ".." (prevent attempts to escape the directory).
-	if strings.Contains(cleanPath, "..") {
-		return errors.Errorf("file '%s' cannot traverse directories using '..'", file)
+	// Reject parent-directory components to prevent attempts to escape the directory.
+	for _, pathComponent := range strings.FieldsFunc(file, func(r rune) bool {
+		return r == '/' || r == '\\'
+	}) {
+		if pathComponent == ".." {
+			return errors.Errorf("file '%s' cannot traverse directories using '..'", file)
+		}
 	}
 
 	fullFilePath := filepath.Join(dir, cleanPath)
@@ -478,9 +482,9 @@ func validateFileIsWithinDirectory(dir, file string) error {
 		return errors.Wrap(err, "verifying that the file is relative to the directory")
 	}
 
-	// If the relative path still contains "..", it may try to escape the
+	// If the relative path points to a parent directory, it may escape the
 	// directory.
-	if strings.Contains(relPath, "..") {
+	if relPath == ".." || strings.HasPrefix(relPath, ".."+string(filepath.Separator)) {
 		return errors.Errorf("file '%s' escapes directory using '..'", file)
 	}
 

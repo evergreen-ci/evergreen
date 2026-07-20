@@ -50,9 +50,9 @@ type Version struct {
 	// revision/commit timestamp from git (or related metadata for patches and triggers).
 	// It is not the wall-clock time Evergreen wrote the version document; use IngestTime for that.
 	CreateTime time.Time `bson:"create_time" json:"create_time,omitempty"`
-	// IngestTime is the wall-clock time the version document was first persisted in Evergreen.
-	// For patch requesters it is copied from the patch's IngestTime; for repotracker and other
-	// paths it is set at insert. Older documents may omit this field (zero in Go / null in APIs).
+	// IngestTime is when Evergreen ingested the version or its triggering event.
+	// Trigger versions inherit this time from their source version or push event.
+	// Older documents may omit this field (zero in Go / null in APIs).
 	IngestTime time.Time `bson:"ingest_time,omitempty" json:"ingest_time,omitempty"`
 	StartTime  time.Time `bson:"start_time" json:"start_time,omitempty"`
 	FinishTime time.Time `bson:"finish_time" json:"finish_time,omitempty"`
@@ -642,6 +642,7 @@ type VersionMetadata struct {
 	RemotePath          string
 	GitTag              GitTag
 	ChangedFiles        []string
+	IngestTime          time.Time
 }
 
 var (
@@ -1013,6 +1014,10 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 	}
 
 	modules := map[string]*manifest.Module{}
+	ingestTime := v.IngestTime
+	if utility.IsZeroTime(ingestTime) {
+		ingestTime = v.CreateTime
+	}
 	for _, module := range moduleList {
 		_, modRepo, err := module.GetOwnerAndRepo()
 		if err != nil {
@@ -1030,7 +1035,7 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 			}
 		}
 
-		mfstModule, err := getManifestModule(ctx, projectRef, module, v.Requester, v.Revision)
+		mfstModule, err := getManifestModule(ctx, projectRef, module, v.Requester, ingestTime)
 		if err != nil {
 			return nil, errors.Wrapf(err, "module '%s'", module.Name)
 		}
@@ -1041,7 +1046,7 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 	return newManifest, nil
 }
 
-func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Module, requester, revision string) (*manifest.Module, error) {
+func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Module, requester string, ingestTime time.Time) (*manifest.Module, error) {
 	owner, repo, err := module.GetOwnerAndRepo()
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
@@ -1063,44 +1068,49 @@ func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Modul
 		ghCtx, cancel := context.WithTimeout(ctx, time.Minute)
 		defer cancel()
 
-		revisionTime := time.Time{}
+		var revision, url string
+		useHistory := !evergreen.IsPatchRequester(requester) && requester != evergreen.AdHocRequester
 
-		// If this is a mainline commit or a trigger version, retrieve the module's commit from the time of the mainline commit.
-		// If this is a periodic build, retrieve the module's commit from the time of the periodic build.
-		// Otherwise, retrieve the module's commit from the time of the patch creation.
-		if !evergreen.IsPatchRequester(requester) && requester != evergreen.AdHocRequester && requester != evergreen.TriggerRequester {
-			commit, err := thirdparty.GetCommitEvent(ghCtx, projectRef.Owner, projectRef.Repo, revision)
+		// For versions aligned by ingest time, use the latest module revision Evergreen had ingested.
+		// Otherwise, use the current module branch head.
+		if useHistory {
+			repoRevision, err := FindLatestRepositoryRevisionByIngestTime(ctx, owner, repo, module.Branch, ingestTime)
 			if err != nil {
-				return nil, errors.Wrapf(err, "can't get commit '%s' on '%s/%s'", revision, projectRef.Owner, projectRef.Repo)
+				return nil, errors.Wrapf(err, "finding latest repository revision by ingest time for module '%s' in '%s/%s'", module.Name, owner, repo)
 			}
-			if commit == nil || commit.Commit == nil || commit.Commit.Committer == nil {
-				return nil, errors.New("malformed GitHub commit response")
+			if repoRevision != nil {
+				revision = repoRevision.Revision
+				githubCommit, err := thirdparty.GetCommitEvent(ghCtx, owner, repo, revision)
+				if err == nil {
+					url = githubCommit.GetURL()
+				}
 			}
-			revisionTime = commit.Commit.Committer.GetDate().Time
 		}
 
-		listOpts := &github.CommitsListOptions{
-			SHA:   module.Branch,
-			Until: revisionTime,
-			ListOptions: github.ListOptions{
-				Page:    0,
-				PerPage: 1,
-			},
-		}
-
-		branchCommits, _, err := thirdparty.GetGithubCommits(ghCtx, owner, repo, listOpts)
-		if err != nil {
-			return nil, errors.Wrapf(err, "retrieving git branch for module '%s'", module.Name)
-		}
-		var sha, url string
-		if len(branchCommits) > 0 {
-			sha = branchCommits[0].GetSHA()
-			url = branchCommits[0].GetURL()
+		if revision == "" {
+			opts := &github.CommitsListOptions{
+				SHA: module.Branch,
+				ListOptions: github.ListOptions{
+					PerPage: 1,
+				},
+			}
+			if useHistory {
+				opts.Until = ingestTime
+			}
+			githubCommits, _, err := thirdparty.GetGithubCommits(ghCtx, owner, repo, opts)
+			if err != nil {
+				return nil, errors.Wrapf(err, "retrieving git commit for module '%s' on branch '%s'", module.Name, module.Branch)
+			}
+			if len(githubCommits) == 0 {
+				return nil, errors.Errorf("no commits found for module '%s' on branch '%s'", module.Name, module.Branch)
+			}
+			revision = githubCommits[0].GetSHA()
+			url = githubCommits[0].GetURL()
 		}
 
 		return &manifest.Module{
 			Branch:   module.Branch,
-			Revision: sha,
+			Revision: revision,
 			Repo:     repo,
 			Owner:    owner,
 			URL:      url,

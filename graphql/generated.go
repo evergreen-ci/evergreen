@@ -1918,7 +1918,7 @@ type ComplexityRoot struct {
 		PatchNumber             func(childComplexity int) int
 		PredictedTaskCost       func(childComplexity int) int
 		PrevTask                func(childComplexity int) int
-		PrevTaskCompleted       func(childComplexity int) int
+		PrevTaskCompleted       func(childComplexity int, prevTaskOptions *PrevTaskOptions) int
 		PrevTaskFailing         func(childComplexity int) int
 		PrevTaskPassing         func(childComplexity int) int
 		Priority                func(childComplexity int) int
@@ -2755,7 +2755,7 @@ type TaskResolver interface {
 	Patch(ctx context.Context, obj *model.APITask) (*model.APIPatch, error)
 	PatchNumber(ctx context.Context, obj *model.APITask) (*int, error)
 	PrevTask(ctx context.Context, obj *model.APITask) (*model.APITask, error)
-	PrevTaskCompleted(ctx context.Context, obj *model.APITask) (*model.APITask, error)
+	PrevTaskCompleted(ctx context.Context, obj *model.APITask, prevTaskOptions *PrevTaskOptions) (*model.APITask, error)
 	PrevTaskFailing(ctx context.Context, obj *model.APITask) (*model.APITask, error)
 	PrevTaskPassing(ctx context.Context, obj *model.APITask) (*model.APITask, error)
 
@@ -10890,7 +10890,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			break
 		}
 
-		return e.complexity.Task.PrevTaskCompleted(childComplexity), true
+		args, err := ec.field_Task_prevTaskCompleted_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Task.PrevTaskCompleted(childComplexity, args["prevTaskOptions"].(*PrevTaskOptions)), true
 	case "Task.prevTaskFailing":
 		if e.complexity.Task.PrevTaskFailing == nil {
 			break
@@ -13226,6 +13231,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputPersistentDNSConfigInput,
 		ec.unmarshalInputPlannerSettingsInput,
 		ec.unmarshalInputPreconditionScriptInput,
+		ec.unmarshalInputPrevTaskOptions,
 		ec.unmarshalInputProjectAliasInput,
 		ec.unmarshalInputProjectBannerInput,
 		ec.unmarshalInputProjectCreationConfigInput,
@@ -17204,6 +17210,17 @@ func (ec *executionContext) field_Query_waterfall_args(ctx context.Context, rawA
 		return nil, err
 	}
 	args["options"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Task_prevTaskCompleted_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "prevTaskOptions", ec.unmarshalOPrevTaskOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPrevTaskOptions)
+	if err != nil {
+		return nil, err
+	}
+	args["prevTaskOptions"] = arg0
 	return args, nil
 }
 
@@ -64865,7 +64882,8 @@ func (ec *executionContext) _Task_prevTaskCompleted(ctx context.Context, field g
 		field,
 		ec.fieldContext_Task_prevTaskCompleted,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Task().PrevTaskCompleted(ctx, obj)
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Task().PrevTaskCompleted(ctx, obj, fc.Args["prevTaskOptions"].(*PrevTaskOptions))
 		},
 		nil,
 		ec.marshalOTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask,
@@ -64874,7 +64892,7 @@ func (ec *executionContext) _Task_prevTaskCompleted(ctx context.Context, field g
 	)
 }
 
-func (ec *executionContext) fieldContext_Task_prevTaskCompleted(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Task_prevTaskCompleted(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Task",
 		Field:      field,
@@ -65063,6 +65081,17 @@ func (ec *executionContext) fieldContext_Task_prevTaskCompleted(_ context.Contex
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Task_prevTaskCompleted_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -85828,6 +85857,33 @@ func (ec *executionContext) unmarshalInputPreconditionScriptInput(ctx context.Co
 				return it, err
 			}
 			it.Script = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputPrevTaskOptions(ctx context.Context, obj any) (PrevTaskOptions, error) {
+	var it PrevTaskOptions
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"skipOnParentCompleted"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "skipOnParentCompleted":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("skipOnParentCompleted"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SkipOnParentCompleted = data
 		}
 	}
 
@@ -120989,6 +121045,14 @@ var (
 		model.KanopyPreferredType: "KANOPY",
 	}
 )
+
+func (ec *executionContext) unmarshalOPrevTaskOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPrevTaskOptions(ctx context.Context, v any) (*PrevTaskOptions, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputPrevTaskOptions(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
 
 func (ec *executionContext) unmarshalOPriorityLevel2ᚖstring(ctx context.Context, v any) (*string, error) {
 	if v == nil {

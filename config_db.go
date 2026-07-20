@@ -95,8 +95,6 @@ var (
 	useMergeQueuePathFilteringDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "UseMergeQueuePathFilteringDisabled")
 	psLoggingDisabledKey                  = bsonutil.MustHaveTag(ServiceFlags{}, "PSLoggingDisabled")
 	podDiagnosticsDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "PodDiagnosticsDisabled")
-	webhookSecretMigrationEnabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "WebhookSecretMigrationEnabled")
-	webhookSecretCleanupEnabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "WebhookSecretCleanupEnabled")
 	retryFailedLogMoveEnabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "RetryFailedLogMoveEnabled")
 	projectTranslationCacheEnabledKey     = bsonutil.MustHaveTag(ServiceFlags{}, "ProjectTranslationCacheEnabled")
 	secondaryReadsDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "SecondaryReadsDisabled")
