@@ -340,11 +340,11 @@ func GetAllWaterfallVersions(ctx context.Context, projectId string, minOrder int
 // GetVersionBuilds returns a list of builds with populated tasks for the given version.
 // Tasks are grouped by display task when applicable - execution tasks are shown under their
 // parent display task, while regular tasks (not part of a display task) are shown individually.
-func GetVersionBuilds(ctx context.Context, versionID string, buildIds []string) ([]WaterfallBuild, error) {
+func GetVersionBuilds(ctx context.Context, versionID string, buildIds []string) ([]*WaterfallBuild, error) {
 	ctx = utility.ContextWithAppendedAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetVersionBuilds")})
 
 	if len(buildIds) == 0 {
-		return []WaterfallBuild{}, nil
+		return []*WaterfallBuild{}, nil
 	}
 
 	// Match tasks that are either:
@@ -418,7 +418,7 @@ func GetVersionBuilds(ctx context.Context, versionID string, buildIds []string) 
 		{"$sort": bson.M{"display_name": 1}},
 	}
 
-	res := []WaterfallBuild{}
+	res := []*WaterfallBuild{}
 	env := evergreen.GetEnvironment()
 	cursor, err := env.DB().Collection(task.Collection).Aggregate(ctx, pipeline)
 	if err != nil {

@@ -642,12 +642,7 @@ func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *restModel.AP
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variants for version '%s': %s", versionID, err.Error()))
 	}
-	versionBuilds := []*model.WaterfallBuild{}
-	for _, b := range builds {
-		bCopy := b
-		versionBuilds = append(versionBuilds, &bCopy)
-	}
-	return versionBuilds, nil
+	return builds, nil
 }
 
 // BaseVersion is the resolver for the baseVersion field.
@@ -746,12 +741,7 @@ func (r *versionLiteResolver) WaterfallBuilds(ctx context.Context, obj *model.Ve
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variants for version '%s': %s", versionID, err.Error()))
 	}
-	versionBuilds := []*model.WaterfallBuild{}
-	for _, b := range builds {
-		bCopy := b
-		versionBuilds = append(versionBuilds, &bCopy)
-	}
-	return versionBuilds, nil
+	return builds, nil
 }
 
 // Version returns VersionResolver implementation.
