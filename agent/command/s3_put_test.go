@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	s3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"
@@ -28,6 +29,8 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
 
 func TestS3PutValidateParams(t *testing.T) {
@@ -1099,4 +1102,61 @@ func TestPutWithRetryAccumulatesPutsAcrossRetries(t *testing.T) {
 	assert.Equal(t, 1, conf.S3Usage.Artifacts.Count)
 	assert.Equal(t, 9, conf.S3Usage.Artifacts.ArtifactWithMaxPutRequests)
 	assert.Equal(t, 9, conf.S3Usage.Artifacts.ArtifactWithMinPutRequests)
+}
+
+func TestS3PutSetsWorkdirBoundaryViolationAttribute(t *testing.T) {
+	spanRecorder := tracetest.NewSpanRecorder()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(spanRecorder))
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		require.NoError(t, tp.Shutdown(ctx))
+	})
+
+	ctx, span := tp.Tracer("test").Start(t.Context(), "s3.put")
+
+	dir := t.TempDir()
+	workdir := filepath.Join(dir, "workdir")
+	outsideFile := filepath.Join(dir, "outside-file.txt")
+	require.NoError(t, os.MkdirAll(workdir, 0755))
+	require.NoError(t, os.WriteFile(outsideFile, []byte("test data"), 0600))
+
+	comm := client.NewMock("http://localhost.com")
+	conf := &internal.TaskConfig{
+		Expansions:   util.Expansions{},
+		Task:         task.Task{Id: "mock_id", Secret: "mock_secret"},
+		Project:      model.Project{},
+		WorkDir:      workdir,
+		BuildVariant: model.BuildVariant{},
+		S3Usage:      &s3usage.S3Usage{},
+	}
+	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+	require.NoError(t, err)
+
+	mock := &putCounterBucket{putsPerCall: 1}
+	s := &s3put{
+		AwsKey:      "key",
+		AwsSecret:   "secret",
+		Bucket:      "test-bucket",
+		LocalFile:   outsideFile,
+		RemoteFile:  "remote/upload.txt",
+		ContentType: "application/octet-stream",
+		Permissions: string(s3Types.ObjectCannedACLPublicRead),
+		bucket:      mock,
+	}
+
+	require.NoError(t, s.Execute(ctx, comm, logger, conf))
+	span.End()
+
+	ended := spanRecorder.Ended()
+	require.Len(t, ended, 1)
+
+	found := false
+	for _, attr := range ended[0].Attributes() {
+		if string(attr.Key) == workdirBoundaryViolationAttribute {
+			assert.True(t, attr.Value.AsBool())
+			found = true
+		}
+	}
+	assert.True(t, found, "workdir boundary violation attribute was not set on the span")
 }

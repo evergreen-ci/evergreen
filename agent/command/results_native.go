@@ -104,6 +104,7 @@ func (c *attachResults) Execute(ctx context.Context, comm client.Communicator, l
 	if !filepath.IsAbs(c.FileLoc) {
 		reportFileLoc = GetWorkingDirectory(conf, c.FileLoc)
 	}
+	SetWorkdirBoundaryAttribute(ctx, conf, c.FileLoc)
 
 	reportFile, err := os.Open(reportFileLoc)
 	if err != nil {

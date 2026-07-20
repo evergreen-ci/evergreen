@@ -416,6 +416,7 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 			"path":            c.WorkingDir,
 			"required_prefix": conf.WorkDir,
 		})
+	SetWorkdirBoundaryAttribute(ctx, conf, c.WorkingDir)
 	c.WorkingDir, err = getWorkingDirectoryLegacy(conf, c.WorkingDir)
 	if err != nil {
 		return errors.Wrap(err, "getting working directory")

@@ -20,6 +20,8 @@ import (
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
 
 type shellExecuteCommandSuite struct {
@@ -256,4 +258,40 @@ func (s *shellExecuteCommandSuite) TestFailingShellCommandErrors() {
 	err := cmd.Execute(s.ctx, s.comm, s.logger, s.conf)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "shell script encountered problem: exit code 1")
+}
+
+func (s *shellExecuteCommandSuite) TestWorkdirBoundaryViolationSetsSpanAttribute() {
+	spanRecorder := tracetest.NewSpanRecorder()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(spanRecorder))
+	s.T().Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		s.Require().NoError(tp.Shutdown(ctx))
+	})
+
+	ctx, span := tp.Tracer("test").Start(s.ctx, "test_shell_exec_workdir_boundary")
+
+	s.conf.WorkDir = "/data/mci/work"
+	cmd := &shellExec{
+		WorkingDir: "/etc",
+		Shell:      "bash",
+		Script:     "exit 0",
+	}
+	cmd.SetJasperManager(s.jasper)
+
+	// Execute errors because getWorkingDirectoryLegacy cannot resolve the
+	// joined path, but the boundary attribute is set before that point.
+	s.Error(cmd.Execute(ctx, s.comm, s.logger, s.conf))
+	span.End()
+
+	ended := spanRecorder.Ended()
+	s.Require().Len(ended, 1)
+	found := false
+	for _, attr := range ended[0].Attributes() {
+		if string(attr.Key) == workdirBoundaryViolationAttribute {
+			s.True(attr.Value.AsBool(), "workdir boundary violation attribute should be true")
+			found = true
+		}
+	}
+	s.True(found, "workdir boundary violation attribute was not set on the span")
 }

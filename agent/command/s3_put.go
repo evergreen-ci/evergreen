@@ -391,6 +391,10 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 		attribute.String(s3PutAssumeRoleARN, s3pc.assumedRoleARN),
 	)
 
+	SetWorkdirBoundaryAttribute(ctx, conf, s3pc.LocalFile)
+	SetWorkdirBoundaryAttribute(ctx, conf, s3pc.AssociatedLinksFile)
+	SetWorkdirBoundaryAttribute(ctx, conf, s3pc.LocalFilesIncludeFilterPrefix)
+
 	// create pail bucket
 	httpClient := utility.GetHTTPClient()
 	httpClient.Timeout = s3HTTPClientTimeout

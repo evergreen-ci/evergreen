@@ -138,6 +138,8 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 		fmt.Sprintf("The working directory is an absolute path [%s], which isn't supported except when prefixed by '%s'.",
 			c.WorkingDir, conf.WorkDir))
 
+	SetWorkdirBoundaryAttribute(ctx, conf, c.WorkingDir)
+
 	c.WorkingDir, err = getWorkingDirectoryLegacy(conf, c.WorkingDir)
 	if err != nil {
 		return errors.Wrap(err, "getting working directory")
