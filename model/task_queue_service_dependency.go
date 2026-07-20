@@ -314,11 +314,11 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 		// If maxHosts is not set, this is not a task group.
 		if item.GroupMaxHosts == 0 {
 			if !item.DependenciesMet {
-				DispatchSkipStatsFromContext(ctx).DependenciesNotMetCached++
+				RecordDispatchSkip(ctx)
 				continue
 			}
 			if itemNotDispatched := d.tryMarkItemDispatched(item); !itemNotDispatched {
-				DispatchSkipStatsFromContext(ctx).AlreadyDispatched++
+				RecordDispatchSkip(ctx)
 				continue
 			}
 			nextTaskFromDB, err := task.FindOneId(ctx, item.Id)
@@ -344,7 +344,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 			}
 
 			if !utility.IsZeroTime(nextTaskFromDB.StartTime) {
-				DispatchSkipStatsFromContext(ctx).TaskAlreadyStarted++
+				RecordDispatchSkip(ctx)
 				continue
 			}
 
@@ -364,7 +364,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 					continue
 				}
 				if pendingGenerateTasks+tasksToGenerate >= generateTasksLimit {
-					DispatchSkipStatsFromContext(ctx).GenerateTaskLimitExceeded++
+					RecordDispatchSkip(ctx)
 					span.SetAttributes(
 						attribute.String(dispatcherSkipReasonAttribute, "exceeds generate task limit"),
 						attribute.String(evergreen.TaskIDOtelAttribute, item.Id),
@@ -398,14 +398,14 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 			}
 
 			if !dependenciesMet {
-				DispatchSkipStatsFromContext(ctx).DependenciesNotMetDB++
+				RecordDispatchSkip(ctx)
 				continue
 			}
 
 			// AMI Updated time is only provided if the host is running with an outdated AMI.
 			// If the task was created after the time that the AMI was updated, then we should wait for an updated host.
 			if !utility.IsZeroTime(amiUpdatedTime) && nextTaskFromDB.IngestTime.After(amiUpdatedTime) {
-				DispatchSkipStatsFromContext(ctx).AMIOutdated++
+				RecordDispatchSkip(ctx)
 				span.SetAttributes(
 					attribute.String(dispatcherSkipReasonAttribute, "AMI is outdated"),
 					attribute.String(evergreen.TaskIDOtelAttribute, nextTaskFromDB.Id),
@@ -421,12 +421,12 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 		taskGroupID := compositeGroupID(item.Group, item.BuildVariant, item.Project, item.Version)
 		taskGroupUnit, _, hasDispatchableTask := d.getTaskGroup(taskGroupID)
 		if !hasDispatchableTask {
-			DispatchSkipStatsFromContext(ctx).TaskGroupNoDispatchable++
+			RecordDispatchSkip(ctx)
 			continue
 		}
 
 		if taskGroupUnit.runningHosts >= taskGroupUnit.maxHosts {
-			DispatchSkipStatsFromContext(ctx).TaskGroupMaxHosts++
+			RecordDispatchSkip(ctx)
 		}
 		if taskGroupUnit.runningHosts < taskGroupUnit.maxHosts {
 			numHosts, err := host.NumHostsByTaskSpec(ctx, item.Group, item.BuildVariant, item.Project, item.Version)
@@ -446,7 +446,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 			taskGroupUnit.runningHosts = numHosts
 			d.setTaskGroup(taskGroupUnit, taskGroupID)
 			if taskGroupUnit.runningHosts >= taskGroupUnit.maxHosts {
-				DispatchSkipStatsFromContext(ctx).TaskGroupMaxHosts++
+				RecordDispatchSkip(ctx)
 			}
 			// This is a best-effort attempt to return the next task in the task group, but is not
 			// a foolproof operation and runs the potential risk of dispatching a task group task
@@ -577,7 +577,7 @@ func checkMaxConcurrentLargeParserProjectTasks(ctx context.Context, settings *ev
 
 	if nextTaskFromDB.CachedProjectStorageMethod == evergreen.ProjectStorageMethodS3 {
 		if numLargeParserProjectTasks >= maxConcurrentLargeParserProjTasks {
-			DispatchSkipStatsFromContext(ctx).LargeParserProjectExceeded++
+			RecordDispatchSkip(ctx)
 			span := trace.SpanFromContext(ctx)
 			span.SetAttributes(
 				attribute.String(dispatcherSkipReasonAttribute, "exceeds the concurrent large parser project task limit"),
@@ -642,13 +642,13 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(ctx context.Context, un
 		}
 
 		if isBlockedSingleHostTaskGroup(unit, nextTaskFromDB) {
-			DispatchSkipStatsFromContext(ctx).BlockedSingleHostTaskGroup++
+			RecordDispatchSkip(ctx)
 			delete(d.taskGroups, unit.id)
 			return nil
 		}
 
 		if nextTaskFromDB.StartTime != utility.ZeroTime {
-			DispatchSkipStatsFromContext(ctx).TaskAlreadyStarted++
+			RecordDispatchSkip(ctx)
 			continue
 		}
 
@@ -667,7 +667,7 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(ctx context.Context, un
 		}
 
 		if !dependenciesMet {
-			DispatchSkipStatsFromContext(ctx).DependenciesNotMetDB++
+			RecordDispatchSkip(ctx)
 			continue
 		}
 
