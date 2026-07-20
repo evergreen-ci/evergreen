@@ -1,5 +1,5 @@
 query {
   user(userId: "jane.smith") {
-    userId
+    id
   }
 }
