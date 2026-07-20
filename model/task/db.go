@@ -2347,9 +2347,12 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	if !opts.IncludeNeverActivatedTasks {
 		match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
 	}
+	// The $match must precede the $project so the version index can drive the
+	// query. A leading exclusion $project can prevent the aggregation optimizer
+	// from using the index on version, forcing a collection scan of every task.
 	pipeline := []bson.M{
-		{"$project": projectOut},
 		{"$match": match},
+		{"$project": projectOut},
 	}
 
 	if !opts.IncludeExecutionTasks {
