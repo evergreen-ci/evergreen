@@ -469,7 +469,7 @@ func TestHasAnnotationPermission(t *testing.T) {
 				Id: "basic_user",
 			}
 			assert.NoError(t, usr.Insert(t.Context()))
-			ctx := gimlet.AttachUser(context.Background(), &usr)
+			ctx := loaders.Inject(gimlet.AttachUser(context.Background(), &usr))
 
 			env := evergreen.GetEnvironment()
 			roleManager := env.RoleManager()
