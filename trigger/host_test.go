@@ -113,13 +113,9 @@ func (s *hostSuite) TestEmailMessageEscapesHostName() {
 
 	email, err := maliciousData.hostEmailPayload(expiringHostEmailSubject, expiringHostEmailBody, s.t.Attributes())
 	s.NoError(err)
-	// The attacker-controlled name must be HTML-escaped so it can't inject live
-	// markup into the email body.
 	s.NotContains(email.Body, `<a href="https://evil.example">click</a>`)
-	s.Contains(email.Body, "&lt;a href=")
-	// The attacker-controlled URL must be escaped for the href attribute context
-	// so the embedded quote can't break out and inject additional attributes.
-	s.NotContains(email.Body, `example" onmouseover=`)
+	s.Contains(email.Body, "&lt;a href=", "HTML should be escaped in the email")
+	s.NotContains(email.Body, `example" onmouseover=`, "URL in email body should be escaped to avoid injecting HTML")
 }
 
 func (s *hostSuite) TestSlackMessageEscapesHostName() {
@@ -128,10 +124,8 @@ func (s *hostSuite) TestSlackMessageEscapesHostName() {
 
 	msg, err := maliciousData.hostSlackPayload(expiringHostSlackBody, "linkTitle")
 	s.NoError(err)
-	// The attacker-controlled name must have its mrkdwn control characters
-	// escaped so it can't inject a Slack link.
 	s.NotContains(msg.Body, "<https://evil.example|click here>")
-	s.Contains(msg.Body, "&lt;https://evil.example|click here&gt;")
+	s.Contains(msg.Body, "&lt;https://evil.example|click here&gt;", "Slack markdown formatting should be replaced with escaped characters")
 }
 
 func (s *hostSuite) TestFetch() {

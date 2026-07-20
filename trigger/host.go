@@ -235,10 +235,10 @@ func (t *hostTemplateData) hostSlackPayload(messageString string, linkTitle stri
 		return nil, errors.Wrap(err, "parsing Slack template")
 	}
 
-	// The host name is attacker-controlled, so escape the Slack mrkdwn control
-	// characters to prevent it from injecting links or breaking out of the message.
 	slackData := *t
-	slackData.Name = escapeSlackMrkdwn(slackData.Name)
+	// Users can set the host display name to anything, so excape it to prevent
+	// injection of links or other Slack formatting.
+	slackData.Name = escapeSlackMarkdown(slackData.Name)
 
 	msgBuf := &bytes.Buffer{}
 	if err = messageTemplate.Execute(msgBuf, &slackData); err != nil {
@@ -255,13 +255,13 @@ func (t *hostTemplateData) hostSlackPayload(messageString string, linkTitle stri
 	}, nil
 }
 
-// slackMrkdwnEscaper escapes the characters Slack reserves for building links
+// slackMarkdownEscaper escapes the characters Slack reserves for building links
 // (<url|text>) so that user-controlled text can't inject a link or break out of
 // the surrounding message. See https://api.slack.com/reference/surfaces/formatting#escaping.
-var slackMrkdwnEscaper = strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;")
+var slackMarkdownEscaper = strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;")
 
-func escapeSlackMrkdwn(s string) string {
-	return slackMrkdwnEscaper.Replace(s)
+func escapeSlackMarkdown(s string) string {
+	return slackMarkdownEscaper.Replace(s)
 }
 
 func (t *hostTriggers) hostExpiration(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
