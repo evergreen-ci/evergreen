@@ -66,7 +66,7 @@ tasks:
     status: "failed"
     patch_optional: true
 `
-			p, err := createIntermediateProject([]byte(simple), false, nil)
+			p, _, err := createIntermediateProject([]byte(simple), false, nil)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(p.Tasks[2].DependsOn[0].TaskSelector.Name, ShouldEqual, "compile")
@@ -83,7 +83,7 @@ tasks:
 - name: task1
   depends_on: task0
 `
-			p, err := createIntermediateProject([]byte(single), false, nil)
+			p, _, err := createIntermediateProject([]byte(single), false, nil)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(p.Tasks[2].DependsOn[0].TaskSelector.Name, ShouldEqual, "task0")
@@ -95,7 +95,7 @@ tasks:
 - name: "compile"
   depends_on: ""
 `
-				p, err := createIntermediateProject([]byte(nameless), false, nil)
+				p, _, err := createIntermediateProject([]byte(nameless), false, nil)
 				So(p, ShouldBeNil)
 				So(err, ShouldNotBeNil)
 			})
@@ -107,7 +107,7 @@ tasks:
   - name: "task1"
   - status: "failed" #this has no task attached
 `
-				p, err := createIntermediateProject([]byte(nameless), false, nil)
+				p, _, err := createIntermediateProject([]byte(nameless), false, nil)
 				So(p, ShouldBeNil)
 				So(err, ShouldNotBeNil)
 			})
@@ -116,7 +116,7 @@ tasks:
 tasks:
 - name: "compile"
 `
-				p, err := createIntermediateProject([]byte(nameless), false, nil)
+				p, _, err := createIntermediateProject([]byte(nameless), false, nil)
 				So(p, ShouldNotBeNil)
 				So(err, ShouldBeNil)
 			})
@@ -145,7 +145,7 @@ buildvariants:
     stepback: false
     priority: 77
 `
-			p, err := createIntermediateProject([]byte(simple), false, nil)
+			p, _, err := createIntermediateProject([]byte(simple), false, nil)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			bv := p.BuildVariants[0]
@@ -169,7 +169,7 @@ buildvariants:
   - name: "t2"
     depends_on: "t3"
 `
-			p, err := createIntermediateProject([]byte(simple), false, nil)
+			p, _, err := createIntermediateProject([]byte(simple), false, nil)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			bv := p.BuildVariants[0]
@@ -187,7 +187,7 @@ buildvariants:
   tasks:
     name: "t1"
 `
-			p, err := createIntermediateProject([]byte(simple), false, nil)
+			p, _, err := createIntermediateProject([]byte(simple), false, nil)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(len(p.BuildVariants), ShouldEqual, 2)
@@ -211,7 +211,7 @@ buildvariants:
   run_on: "distro1"
   tasks: "*"
 `
-			p, err := createIntermediateProject([]byte(single), false, nil)
+			p, _, err := createIntermediateProject([]byte(single), false, nil)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(len(p.Ignore), ShouldEqual, 1)
@@ -232,7 +232,7 @@ buildvariants:
   - name: "t1"
     run_on: "test"
 `
-			p, err := createIntermediateProject([]byte(single), false, nil)
+			p, _, err := createIntermediateProject([]byte(single), false, nil)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(p.BuildVariants[0].Tasks[0].RunOn[0], ShouldEqual, "test")
@@ -247,7 +247,7 @@ buildvariants:
     run_on: "test"
     distros: "asdasdasd"
 `
-			p, err := createIntermediateProject([]byte(single), false, nil)
+			p, _, err := createIntermediateProject([]byte(single), false, nil)
 			So(p, ShouldBeNil)
 			So(err, ShouldNotBeNil)
 		})
@@ -259,7 +259,7 @@ buildvariants:
   - name: "t1"
     commit_queue_merge: true
 `
-			p, err := createIntermediateProject([]byte(single), false, nil)
+			p, _, err := createIntermediateProject([]byte(single), false, nil)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			bv := p.BuildVariants[0]
@@ -282,7 +282,7 @@ buildvariants:
   - name: "t1"
     activate: true
 `
-	p, err := createIntermediateProject([]byte(yml), false, nil)
+	p, _, err := createIntermediateProject([]byte(yml), false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, p)
 	bv := p.BuildVariants[0]
@@ -1029,7 +1029,7 @@ tasks:
 - name: execTask3
 - name: execTask4
 `
-	p, err := createIntermediateProject([]byte(yml), false, nil)
+	p, _, err := createIntermediateProject([]byte(yml), false, nil)
 
 	// check that display tasks in bv1 parsed correctly
 	assert.NoError(err)
@@ -1058,7 +1058,7 @@ parameters:
 - key: buggy
   value: driver
 `
-	p, err := createIntermediateProject([]byte(yml), false, nil)
+	p, _, err := createIntermediateProject([]byte(yml), false, nil)
 	assert.NoError(t, err)
 	require.Len(t, p.Parameters, 2)
 	assert.Equal(t, "iter_count", p.Parameters[0].Key)
@@ -1367,7 +1367,7 @@ tasks:
 - name: execTask4
   tags: [ "even" ]
 `
-	pp, err := createIntermediateProject([]byte(tagYml), false, nil)
+	pp, _, err := createIntermediateProject([]byte(tagYml), false, nil)
 	assert.NotNil(pp)
 	assert.NoError(err)
 	require.Len(pp.BuildVariants[0].DisplayTasks, 2)
@@ -2155,7 +2155,7 @@ buildvariants:
 }
 
 func checkProjectPersists(ctx context.Context, t *testing.T, env evergreen.Environment, yml []byte, ppStorageMethod evergreen.ParserProjectStorageMethod) {
-	pp, err := createIntermediateProject(yml, false, nil)
+	pp, _, err := createIntermediateProject(yml, false, nil)
 	assert.NoError(t, err)
 	pp.Id = "my-project"
 	pp.Identifier = utility.ToStringPtr("old-project-identifier")
@@ -2178,7 +2178,7 @@ func checkProjectPersists(ctx context.Context, t *testing.T, env evergreen.Envir
 	assert.True(t, bytes.Equal(newYaml, yamlToCompare))
 
 	// ensure that updating with the re-parsed project doesn't error
-	pp, err = createIntermediateProject(newYaml, false, nil)
+	pp, _, err = createIntermediateProject(newYaml, false, nil)
 	assert.NoError(t, err)
 	pp.Id = "my-project"
 	pp.Identifier = utility.ToStringPtr("new-project-identifier")
@@ -2205,7 +2205,7 @@ func TestParserProjectRoundtrip(t *testing.T) {
 	yml, err := os.ReadFile(filepath)
 	assert.NoError(t, err)
 
-	original, err := createIntermediateProject(yml, false, nil)
+	original, _, err := createIntermediateProject(yml, false, nil)
 	assert.NoError(t, err)
 
 	// to and from yaml
@@ -2829,10 +2829,10 @@ ignore:
   - ".github/*"
 `
 
-	p1, err := createIntermediateProject([]byte(mainYaml), false, nil)
+	p1, _, err := createIntermediateProject([]byte(mainYaml), false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, p1)
-	p2, err := createIntermediateProject([]byte(smallYaml), false, nil)
+	p2, _, err := createIntermediateProject([]byte(smallYaml), false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, p2)
 	err = p1.mergeMultipleParserProjects(p2)
@@ -2878,13 +2878,13 @@ buildvariants:
       - name: task3
 `
 
-	p1, err := createIntermediateProject([]byte(mainYaml), false, nil)
+	p1, _, err := createIntermediateProject([]byte(mainYaml), false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, p1)
-	p2, err := createIntermediateProject([]byte(succeed), false, nil)
+	p2, _, err := createIntermediateProject([]byte(succeed), false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, p2)
-	p3, err := createIntermediateProject([]byte(fail), false, nil)
+	p3, _, err := createIntermediateProject([]byte(fail), false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, p3)
 	err = p1.mergeMultipleParserProjects(p2)
@@ -3393,7 +3393,7 @@ tasks:
 - name: task2
   commands: *common-commands
 `
-	p, err := createIntermediateProject([]byte(yml), false, nil)
+	p, _, err := createIntermediateProject([]byte(yml), false, nil)
 	require.NoError(t, err)
 	require.NotNil(t, p)
 	require.Len(t, p.Tasks, 2)
@@ -3421,7 +3421,7 @@ tasks:
       os: linux
       arch: amd64
 `
-	p, err := createIntermediateProject([]byte(yml), false, nil)
+	p, _, err := createIntermediateProject([]byte(yml), false, nil)
 	require.NoError(t, err)
 	require.NotNil(t, p)
 	require.Len(t, p.Tasks, 1)
@@ -3437,17 +3437,18 @@ tasks:
 }
 
 // moduleIncludeOpts builds GetProjectOpts that serves include files from
-// inline bytes, bypassing GitHub and git.
-func moduleIncludeOpts(includes ...patch.LocalModuleInclude) *GetProjectOpts {
+// inline bytes, bypassing GitHub and git. It also sets up a mock environment
+// with CrossFileYAMLAnchorsEnabled so that LoadProjectInto activates the
+// cross-file anchor registry.
+func moduleIncludeOpts(t testing.TB, includes ...patch.LocalModuleInclude) *GetProjectOpts {
+	t.Helper()
+	flags := evergreen.ServiceFlags{CrossFileYAMLAnchorsEnabled: true}
+	require.NoError(t, flags.Set(t.Context()))
+	t.Cleanup(func() {
+		flags.CrossFileYAMLAnchorsEnabled = false
+		require.NoError(t, flags.Set(context.Background()))
+	})
 	return &GetProjectOpts{LocalModuleIncludes: includes}
-}
-
-// anchorModuleIncludeOpts is like moduleIncludeOpts but also enables cross-file
-// YAML anchor support, which is required for cross-file alias tests.
-func anchorModuleIncludeOpts(includes ...patch.LocalModuleInclude) *GetProjectOpts {
-	opts := moduleIncludeOpts(includes...)
-	opts.EnableYAMLAnchors = true
-	return opts
 }
 
 // mainYAMLWithModuleIncludes builds a minimal main YAML that declares one
@@ -3509,7 +3510,8 @@ steps:
 	anchors := collectAnchors(&node)
 	require.Len(t, anchors, 2)
 
-	preamble, err := buildAnchorPreamble(&anchors)
+	registry := &anchorRegistry{entries: anchors}
+	preamble, err := buildAnchorPreamble(registry)
 	require.NoError(t, err)
 	require.NotEmpty(t, preamble)
 
@@ -3551,7 +3553,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		anchorModuleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
 	tasksByName := map[string]ProjectTask{}
@@ -3587,7 +3589,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		anchorModuleIncludeOpts(
+		moduleIncludeOpts(t,
 			moduleInclude("first.yml", firstYAML),
 			moduleInclude("second.yml", secondYAML),
 		), "proj", proj)
@@ -3626,7 +3628,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		anchorModuleIncludeOpts(
+		moduleIncludeOpts(t,
 			moduleInclude("first.yml", firstYAML),
 			moduleInclude("second.yml", secondYAML),
 		), "proj", proj)
@@ -3668,7 +3670,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		anchorModuleIncludeOpts(
+		moduleIncludeOpts(t,
 			moduleInclude("first.yml", firstYAML),
 			moduleInclude("second.yml", secondYAML),
 			moduleInclude("third.yml", thirdYAML),
@@ -3696,6 +3698,118 @@ tasks:
 	require.Contains(t, tasksByName, "third-task")
 	require.Len(t, tasksByName["third-task"].Commands, 1)
 	assert.Equal(t, "git.get_project", tasksByName["third-task"].Commands[0].Command)
+}
+
+// TestAnchorRedefinedWithAliasDependencyDoesNotError is a regression test for a
+// production bug where a project failed to load with "unknown anchor" errors.
+//
+// The failure pattern requires three files:
+//  1. first.yml defines &template-expansions with a plain string value (no aliases).
+//  2. second.yml defines &compile-dependency (a mapping) that contains a nested
+//     scalar anchor &compile-variant. It also redefines &template-expansions,
+//     replacing the plain string with an alias: compile_variant: *compile-variant.
+//  3. third.yml need not reference these anchors at all; the bug fires when
+//     building the preamble injected before third.yml is parsed.
+//
+// Before the fix, upsert updated the registry entry for &template-expansions
+// in-place, so it stayed at its original index K. The new entries
+// &compile-dependency and &compile-variant were appended after K. When the
+// preamble was marshaled, &template-expansions appeared before &compile-variant,
+// causing the re-parse to fail with "unknown anchor 'compile-variant' referenced".
+//
+// After the fix, when an anchor is redefined, the old entry is removed and the
+// new one is appended at the end, so all dependencies always precede their users.
+func TestAnchorRedefinedWithAliasDependencyDoesNotError(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes("", "first.yml", "second.yml", "third.yml")
+
+	// first.yml: &task-template has no alias dependencies.
+	firstYAML := `
+tasks:
+- name: first-task
+  commands:
+  - &task-template
+    command: shell.exec
+    params:
+      script: ./first.sh
+`
+	// second.yml: &compile-setup is a mapping anchor with a nested scalar anchor
+	// &compile-script (on the params.script value). It also redefines
+	// &task-template so that its params.script uses *compile-script.
+	secondYAML := `
+tasks:
+- name: second-task
+  commands:
+  - &compile-setup
+    command: shell.exec
+    params:
+      script: &compile-script ./compile.sh
+  - command: shell.exec
+    params:
+      script: *compile-script
+  - &task-template
+    command: shell.exec
+    params:
+      script: *compile-script
+`
+	// third.yml: nothing that references these anchors; the preamble parse still
+	// fails before any content is processed if the ordering is wrong.
+	thirdYAML := `
+tasks:
+- name: third-task
+  commands:
+  - command: shell.exec
+    params:
+      script: ./third.sh
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		moduleIncludeOpts(t,
+			moduleInclude("first.yml", firstYAML),
+			moduleInclude("second.yml", secondYAML),
+			moduleInclude("third.yml", thirdYAML),
+		), "proj", proj)
+	require.NoError(t, err, "preamble ordering bug: anchor redefined with alias dependency should not produce unknown-anchor error")
+}
+
+// TestAnchorPreambleFailureFallsBack verifies that if the anchor preamble itself is
+// invalid (alias-before-definition ordering), createIntermediateProject falls back to
+// parsing without the preamble rather than propagating the error. This guards against
+// any future preamble-construction bugs breaking projects that don't use cross-file anchors.
+func TestAnchorPreambleFailureFallsBack(t *testing.T) {
+	// Build a registry with broken ordering: entry 0 is a mapping that contains
+	// *my-anchor (an AliasNode), but entry 1 is the node that defines &my-anchor.
+	// Marshaling this produces alias-before-definition in the preamble YAML.
+	scalarNode := &yaml.Node{Kind: yaml.ScalarNode, Value: "hello", Anchor: "my-anchor"}
+	aliasNode := &yaml.Node{Kind: yaml.AliasNode, Value: "my-anchor", Alias: scalarNode}
+	mappingNode := &yaml.Node{
+		Kind:   yaml.MappingNode,
+		Anchor: "my-template",
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "key"},
+			aliasNode,
+		},
+	}
+	registry := &anchorRegistry{
+		entries: []anchorEntry{
+			{name: "my-template", node: mappingNode},
+			{name: "my-anchor", node: scalarNode},
+		},
+	}
+
+	// Confirm the preamble is invalid on re-parse (alias appears before its definition).
+	preamble, err := buildAnchorPreamble(registry)
+	require.NoError(t, err)
+	var preambleNode yaml.Node
+	require.Error(t, yaml.NewDecoder(bytes.NewReader(preamble)).Decode(&preambleNode),
+		"preamble should fail to parse due to alias-before-definition")
+
+	// createIntermediateProject should fall back to parsing without the preamble.
+	simpleYAML := []byte("tasks:\n- name: my-task\n  commands:\n  - command: shell.exec\n")
+	result, preambleErr, err := createIntermediateProject(simpleYAML, false, registry)
+	require.NoError(t, err, "should succeed via fallback when preamble is invalid")
+	require.Error(t, preambleErr, "preamble error should be set when fallback occurs")
+	require.Len(t, result.Tasks, 1)
+	assert.Equal(t, "my-task", result.Tasks[0].Name)
 }
 
 // TestAnchorWithNestedAlias verifies that a file can use an alias from an
@@ -3734,7 +3848,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		anchorModuleIncludeOpts(
+		moduleIncludeOpts(t,
 			moduleInclude("first.yml", firstYAML),
 			moduleInclude("second.yml", secondYAML),
 			moduleInclude("third.yml", thirdYAML),
@@ -3770,7 +3884,7 @@ tasks:
 `
 	proj := &Project{}
 	pp, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		anchorModuleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
 	// Marshal the parser project back to YAML and confirm _evg_anchors is absent.
@@ -3800,7 +3914,7 @@ tasks:
   - *step
 `
 	proj := &Project{}
-	opts := anchorModuleIncludeOpts(moduleInclude("include.yml", includeYAML))
+	opts := moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML))
 	opts.UnmarshalStrict = true
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML), opts, "proj", proj)
 	require.NoError(t, err)
@@ -3812,6 +3926,92 @@ tasks:
 	require.Contains(t, tasksByName, "include-task")
 	require.Len(t, tasksByName["include-task"].Commands, 1)
 	assert.Equal(t, "shell.exec", tasksByName["include-task"].Commands[0].Command)
+}
+
+// TestMergeKeyListSyntaxInIncludeFile verifies that the standard YAML list merge
+// key syntax (<<: [*a, *b]) works correctly when the referenced anchors are
+// defined in an earlier include file. Earlier entries in the list take priority
+// over later ones for conflicting keys.
+func TestMergeKeyListSyntaxInIncludeFile(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes(`
+tasks:
+- name: main-task
+  commands:
+  - &base-cmd
+    command: shell.exec
+    params:
+      script: ./base.sh
+      working_dir: src
+  - &override-cmd
+    command: shell.exec
+    params:
+      script: ./override.sh
+`, "include.yml")
+
+	// include.yml uses <<: [*base-cmd, *override-cmd]; earlier entry (*base-cmd) wins on conflicts.
+	includeYAML := `
+tasks:
+- name: include-task
+  commands:
+  - <<: [*base-cmd, *override-cmd]
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
+	require.NoError(t, err)
+
+	tasksByName := map[string]ProjectTask{}
+	for _, task := range proj.Tasks {
+		tasksByName[task.Name] = task
+	}
+	require.Contains(t, tasksByName, "include-task")
+	require.Len(t, tasksByName["include-task"].Commands, 1)
+	// *base-cmd is listed first in the merge list, so it wins on key conflicts.
+	// Both command: shell.exec entries agree, so the command field is shell.exec.
+	assert.Equal(t, "shell.exec", tasksByName["include-task"].Commands[0].Command)
+}
+
+// TestIncludeFileWithLocalAnchorOnlyParsesCorrectly verifies that a project whose
+// include file uses anchors only within that file (no cross-file aliases) parses
+// correctly regardless of whether cross-file anchors are enabled. This is the primary
+// backwards-compatibility check for the preamble injection change.
+func TestIncludeFileWithLocalAnchorOnlyParsesCorrectly(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes(`
+tasks:
+- name: main-task
+  commands:
+  - &shared-cmd
+    command: shell.exec
+    params:
+      script: ./run.sh
+`, "include.yml")
+
+	// include.yml defines its own anchor and does NOT reference any anchor from main.
+	includeYAML := `
+tasks:
+- name: include-task
+  commands:
+  - &local-cmd
+    command: shell.exec
+    params:
+      script: ./include.sh
+  - *local-cmd
+buildvariants:
+- name: linux
+  display_name: Linux
+  run_on:
+  - rhel80-small
+  tasks:
+  - name: include-task
+`
+	proj := &Project{}
+	opts := moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML))
+	_, err := LoadProjectInto(t.Context(), []byte(mainYAML), opts, "proj", proj)
+	require.NoError(t, err)
+	require.Len(t, proj.Tasks, 2)
+	require.Len(t, proj.BuildVariants, 1)
+	assert.Equal(t, "include-task", proj.Tasks[1].Name)
+	assert.Len(t, proj.Tasks[1].Commands, 2)
 }
 
 // TestNoAnchorsInIncludeFiles verifies that projects without anchors produce
@@ -3832,7 +4032,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		anchorModuleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
 	tasksByName := map[string]ProjectTask{}
@@ -3868,7 +4068,7 @@ buildvariants:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		anchorModuleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
 	require.Len(t, proj.BuildVariants, 1)
@@ -3900,7 +4100,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		anchorModuleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
 	tasksByName := map[string]ProjectTask{}
@@ -4116,4 +4316,119 @@ func mustLoadIntermediate(t *testing.T, yml string) *ParserProject {
 	pp, err := LoadProjectInto(t.Context(), []byte(yml), nil, "id", proj)
 	require.NoError(t, err)
 	return pp
+}
+
+// TestAnchorInFunctionsDefinition verifies that anchors defined inside a
+// functions block in the main file can be aliased in an include file.
+func TestAnchorInFunctionsDefinition(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes(`
+functions:
+  setup: &setup-cmds
+    command: shell.exec
+    params:
+      script: ./setup.sh
+`, "include.yml")
+
+	includeYAML := `
+tasks:
+- name: use-setup
+  commands:
+  - *setup-cmds
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
+	require.NoError(t, err)
+	require.Len(t, proj.Tasks, 1)
+	assert.Equal(t, "use-setup", proj.Tasks[0].Name)
+	require.Len(t, proj.Tasks[0].Commands, 1)
+	assert.Equal(t, "shell.exec", proj.Tasks[0].Commands[0].Command)
+}
+
+// TestAliasInMainReferencingIncludeAnchorShouldError documents that anchors
+// defined in an include file cannot be aliased in the main file, because the
+// main file is parsed before any includes are processed.
+func TestAliasInMainReferencingIncludeAnchorShouldError(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes(`
+tasks:
+- name: main-task
+  commands:
+  - *from-include
+`, "include.yml")
+
+	includeYAML := `
+tasks:
+- name: include-task
+  commands:
+  - &from-include
+    command: shell.exec
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
+	require.Error(t, err)
+}
+
+// TestWithinSingleFileNoIncludes confirms that single-file projects with
+// anchors continue to work exactly as before (no regressions from always-on).
+func TestWithinSingleFileNoIncludes(t *testing.T) {
+	yml := `
+tasks:
+- name: base
+  commands:
+  - &cmd
+    command: shell.exec
+    params:
+      script: ./run.sh
+- name: derived
+  commands:
+  - *cmd
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(yml), nil, "proj", proj)
+	require.NoError(t, err)
+
+	byName := map[string]ProjectTask{}
+	for _, task := range proj.Tasks {
+		byName[task.Name] = task
+	}
+	require.Contains(t, byName, "derived")
+	require.Len(t, byName["derived"].Commands, 1)
+	assert.Equal(t, "shell.exec", byName["derived"].Commands[0].Command)
+}
+
+// BenchmarkLoadProjectWithCrossFileAnchors measures end-to-end project loading
+// with cross-file anchors across several include files.
+func BenchmarkLoadProjectWithCrossFileAnchors(b *testing.B) {
+	const numIncludes = 10
+	includes := make([]patch.LocalModuleInclude, 0, numIncludes)
+	filenames := make([]string, 0, numIncludes)
+	for i := 0; i < numIncludes; i++ {
+		fn := fmt.Sprintf("inc%d.yml", i)
+		filenames = append(filenames, fn)
+		content := fmt.Sprintf(`
+tasks:
+- name: task-%d
+  commands:
+  - *common-setup
+`, i)
+		includes = append(includes, moduleInclude(fn, content))
+	}
+	mainYAML := mainYAMLWithModuleIncludes(`
+tasks:
+- name: setup
+  commands:
+  - &common-setup
+    command: shell.exec
+    params:
+      script: ./setup.sh
+`, filenames...)
+	opts := moduleIncludeOpts(b, includes...)
+
+	b.ResetTimer()
+	for range b.N {
+		proj := &Project{}
+		_, err := LoadProjectInto(b.Context(), []byte(mainYAML), opts, "proj", proj)
+		require.NoError(b, err)
+	}
 }

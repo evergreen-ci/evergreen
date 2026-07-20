@@ -14,6 +14,7 @@ type ServiceFlags struct {
 	TaskDispatchDisabled               bool `bson:"task_dispatch_disabled" json:"task_dispatch_disabled"`
 	HostInitDisabled                   bool `bson:"host_init_disabled" json:"host_init_disabled"`
 	LargeParserProjectsDisabled        bool `bson:"large_parser_projects_disabled" json:"large_parser_projects_disabled"`
+	CrossFileYAMLAnchorsEnabled        bool `bson:"cross_file_yaml_anchors_enabled" json:"cross_file_yaml_anchors_enabled"`
 	MonitorDisabled                    bool `bson:"monitor_disabled" json:"monitor_disabled"`
 	MergeQueueRecoveryEnabled          bool `bson:"merge_queue_recovery_enabled" json:"merge_queue_recovery_enabled"`
 	AlertsDisabled                     bool `bson:"alerts_disabled" json:"alerts_disabled"`
@@ -73,6 +74,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			taskDispatchKey:                       c.TaskDispatchDisabled,
 			hostInitKey:                           c.HostInitDisabled,
 			largeParserProjectsDisabledKey:        c.LargeParserProjectsDisabled,
+			crossFileYAMLAnchorsEnabledKey:        c.CrossFileYAMLAnchorsEnabled,
 			monitorKey:                            c.MonitorDisabled,
 			mergeQueueRecoveryEnabledKey:          c.MergeQueueRecoveryEnabled,
 			alertsKey:                             c.AlertsDisabled,
