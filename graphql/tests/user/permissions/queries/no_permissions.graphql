@@ -1,7 +1,7 @@
 query {
   user(userId: "bob.smith") {
     displayName
-    userId
+    id
     permissions {
       canCreateDistro
       distroPermissions(options: { distroId: "rhel71-power8-large" }) {

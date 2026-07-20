@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/graphql/loaders"
@@ -517,50 +516,8 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 }
 
 // User is the resolver for the user field.
-func (r *versionResolver) User(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIDBUser, error) {
-	// userId, displayName, and emailAddress are always returned from the version document.
-	// Other fields require a database call.
-	requestedFields := graphql.CollectAllFields(ctx)
-	needsDBFetch := false
-	for _, field := range requestedFields {
-		if field != "userId" && field != "displayName" && field != "emailAddress" {
-			needsDBFetch = true
-			break
-		}
-	}
-
-	if !needsDBFetch {
-		return &restModel.APIDBUser{
-			UserID:       obj.AuthorID,
-			DisplayName:  obj.Author,
-			EmailAddress: obj.AuthorEmail,
-		}, nil
-	}
-
-	authorId := utility.FromStringPtr(obj.AuthorID)
-	currentUser := mustHaveUser(ctx)
-	if currentUser.Id == authorId {
-		apiUser := &restModel.APIDBUser{}
-		apiUser.BuildFromService(*currentUser)
-		return apiUser, nil
-	}
-
-	dbUser, err := loaders.GetUser(ctx, authorId)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", authorId, err.Error()), err)
-	}
-	// This is most likely a reaped user, so just return their info from version
-	if dbUser == nil {
-		return &restModel.APIDBUser{
-			UserID:       obj.AuthorID,
-			DisplayName:  obj.Author,
-			EmailAddress: obj.AuthorEmail,
-		}, nil
-	}
-
-	apiUser := &restModel.APIDBUser{}
-	apiUser.BuildFromService(*dbUser)
-	return apiUser, nil
+func (r *versionResolver) User(ctx context.Context, obj *restModel.APIVersion) (*user.DBUser, error) {
+	return getVersionAuthorDBUser(ctx, utility.FromStringPtr(obj.AuthorID), utility.FromStringPtr(obj.Author), utility.FromStringPtr(obj.AuthorEmail))
 }
 
 // UserLite is the resolver for the userLite field.
