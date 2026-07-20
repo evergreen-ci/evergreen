@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/manifest"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -93,15 +92,17 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIV
 	if err := data.ValidatePatchID(patchID); err != nil {
 		return nil, werrors.WithStack(err)
 	}
-	foundPatch, err := patch.FindOneId(ctx, patchID)
+	foundPatch, err := loaders.GetPatch(ctx, patchID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()), err)
 	}
 	if foundPatch == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", patchID))
 	}
 	childPatchIds := foundPatch.Triggers.ChildPatches
 	if len(childPatchIds) > 0 {
+		loaders.PreloadPatches(ctx, childPatchIds)
+		loaders.PreloadVersions(ctx, childPatchIds)
 		childVersions := []*restModel.APIVersion{}
 		for _, cp := range childPatchIds {
 			// this calls the graphql Version query resolver
@@ -109,9 +110,9 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIV
 			if err != nil {
 				// before erroring due to the version being nil or not found,
 				// fetch the child patch to see if it's activated
-				p, err := patch.FindOneId(ctx, cp)
+				p, err := loaders.GetPatch(ctx, cp)
 				if err != nil {
-					return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching child patch '%s': %s", cp, err.Error()))
+					return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching child patch '%s': %s", cp, err.Error()), err)
 				}
 				if p == nil {
 					return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("child patch '%s' not found", cp))
@@ -612,15 +613,16 @@ func (r *versionLiteResolver) ChildVersions(ctx context.Context, obj *model.Vers
 	if err := data.ValidatePatchID(obj.Id); err != nil {
 		return nil, werrors.WithStack(err)
 	}
-	foundPatch, err := patch.FindOneId(ctx, obj.Id)
+	foundPatch, err := loaders.GetPatch(ctx, obj.Id)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", obj.Id, err.Error()), err)
 	}
 	if foundPatch == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", obj.Id))
 	}
 	childPatchIds := foundPatch.Triggers.ChildPatches
 	if len(childPatchIds) > 0 {
+		loaders.PreloadVersions(ctx, childPatchIds)
 		childVersions := make([]*model.Version, 0, len(childPatchIds))
 		for _, cp := range childPatchIds {
 			v, err := loaders.GetVersion(ctx, cp)

@@ -1346,9 +1346,9 @@ func (r *queryResolver) HasVersion(ctx context.Context, patchID string) (bool, e
 	}
 
 	if patch.IsValidId(patchID) {
-		p, err := patch.FindOneId(ctx, patchID)
+		p, err := loaders.GetPatch(ctx, patchID)
 		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()))
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()), err)
 		}
 		if p != nil {
 			return false, nil
