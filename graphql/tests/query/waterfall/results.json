@@ -917,6 +917,10 @@
         "data": {
           "version": {
             "id": "evergreen_version1",
+            "gitTags": [
+              { "tag": "v1.0.0", "pusher": "mohamed.khelif" },
+              { "tag": "v1.0.1", "pusher": "sophie.stadler" }
+            ],
             "waterfallBuilds": [
               {
                 "id": "evergreen_version1_build",
@@ -927,6 +931,119 @@
                   { "id": "task_1", "displayName": "Task A" },
                   { "id": "task_2", "displayName": "Task B" }
                 ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "versions.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "pagination": {
+              "activeVersionIds": [
+                "evergreen_version5",
+                "evergreen_version3",
+                "evergreen_version2",
+                "evergreen_version1",
+                "evergreen_version39"
+              ]
+            },
+            "versions": [
+              {
+                "id": "evergreen_version5",
+                "activated": true,
+                "gitTags": null,
+                "waterfallBuilds": [
+                  {
+                    "id": "evergreen_version3_build",
+                    "buildVariant": "lint",
+                    "displayName": "03 Linter",
+                    "version": "evergreen_version5",
+                    "tasks": [{ "id": "task_5", "displayName": "Task C" }]
+                  }
+                ]
+              },
+              {
+                "id": "evergreen_version4",
+                "activated": false,
+                "gitTags": null,
+                "waterfallBuilds": null
+              },
+              {
+                "id": "evergreen_version3",
+                "activated": true,
+                "gitTags": null,
+                "waterfallBuilds": [
+                  {
+                    "id": "evergreen_version1_build_b",
+                    "buildVariant": "enterprise-ubuntu1604-64",
+                    "displayName": "01 Ubuntu 16.04",
+                    "version": "evergreen_version3",
+                    "tasks": [
+                      { "id": "task_6", "displayName": "Task D" },
+                      { "id": "task_7", "displayName": "Task E" }
+                    ]
+                  },
+                  {
+                    "id": "evergreen_version3_build",
+                    "buildVariant": "lint",
+                    "displayName": "03 Linter",
+                    "version": "evergreen_version5",
+                    "tasks": [{ "id": "task_5_v3", "displayName": "Task C" }]
+                  }
+                ]
+              },
+              {
+                "id": "evergreen_version2",
+                "activated": true,
+                "gitTags": null,
+                "waterfallBuilds": [
+                  {
+                    "id": "evergreen_version2_build",
+                    "buildVariant": "enterprise-ubuntu1604-64",
+                    "displayName": "02 Ubuntu 16.04",
+                    "version": "evergreen_version2",
+                    "tasks": [
+                      { "id": "task_3", "displayName": "Task A" },
+                      { "id": "task_4", "displayName": "Task B" }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "evergreen_version1",
+                "activated": true,
+                "gitTags": [
+                  { "tag": "v1.0.0", "pusher": "mohamed.khelif" },
+                  { "tag": "v1.0.1", "pusher": "sophie.stadler" }
+                ],
+                "waterfallBuilds": [
+                  {
+                    "id": "evergreen_version1_build",
+                    "buildVariant": "enterprise-ubuntu1604-64",
+                    "displayName": "01 Ubuntu 16.04",
+                    "version": "evergreen_version1",
+                    "tasks": [
+                      { "id": "task_1", "displayName": "Task A" },
+                      { "id": "task_2", "displayName": "Task B" }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "evergreen_version0",
+                "activated": false,
+                "gitTags": null,
+                "waterfallBuilds": null
+              },
+              {
+                "id": "evergreen_version39",
+                "activated": true,
+                "gitTags": null,
+                "waterfallBuilds": []
               }
             ]
           }
