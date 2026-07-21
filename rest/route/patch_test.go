@@ -511,23 +511,42 @@ func (s *PatchRestartSuite) TestRestart() {
 type PatchesByUserSuite struct {
 	now   time.Time
 	route *patchesByUserHandler
+	env   evergreen.Environment
 
 	suite.Suite
 }
 
 func TestPatchesByUserSuite(t *testing.T) {
 	s := new(PatchesByUserSuite)
+	s.env = testutil.NewEnvironment(t.Context(), t)
+	evergreen.SetEnvironment(s.env)
+	t.Cleanup(func() { evergreen.SetEnvironment(nil) })
 	suite.Run(t, s)
 }
 
 func (s *PatchesByUserSuite) SetupTest() {
-	s.NoError(db.ClearCollections(patch.Collection, serviceModel.ProjectRefCollection))
+	ctx := s.T().Context()
+	s.NoError(db.ClearCollections(patch.Collection, serviceModel.ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
 
 	projectRef := serviceModel.ProjectRef{
 		Id:         "project_id",
 		Identifier: "project_identifier",
 	}
-	s.NoError(projectRef.Insert(s.T().Context()))
+	s.NoError(projectRef.Insert(ctx))
+
+	rm := s.env.RoleManager()
+	s.NoError(rm.AddScope(ctx, gimlet.Scope{
+		ID:        "project_id_scope",
+		Resources: []string{projectRef.Id},
+		Type:      evergreen.ProjectResourceType,
+	}))
+	s.NoError(rm.UpdateRole(ctx, gimlet.Role{
+		ID:    "project_viewer",
+		Scope: "project_id_scope",
+		Permissions: gimlet.Permissions{
+			evergreen.PermissionTasks: evergreen.TasksView.Value,
+		},
+	}))
 
 	s.route = &patchesByUserHandler{
 		url: "http://evergreen.example.net/",
@@ -549,12 +568,12 @@ func (s *PatchesByUserSuite) SetupTest() {
 		{Author: user1, CreateTime: nowPlus10, Project: projectRef.Id},
 	}
 	for _, p := range patches {
-		s.NoError(p.Insert(s.T().Context()))
+		s.NoError(p.Insert(ctx))
 	}
 }
 
 func (s *PatchesByUserSuite) userCtx() context.Context {
-	return gimlet.AttachUser(s.T().Context(), &user.DBUser{Id: "caller"})
+	return gimlet.AttachUser(s.T().Context(), &user.DBUser{Id: "caller", SystemRoles: []string{"project_viewer"}})
 }
 
 func (s *PatchesByUserSuite) TestPaginatorShouldSucceedIfNoResults() {
