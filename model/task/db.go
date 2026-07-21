@@ -166,7 +166,6 @@ var (
 	DependencyTaskIdKey             = bsonutil.MustHaveTag(Dependency{}, "TaskId")
 	DependencyStatusKey             = bsonutil.MustHaveTag(Dependency{}, "Status")
 	DependencyUnattainableKey       = bsonutil.MustHaveTag(Dependency{}, "Unattainable")
-	DependencyFinishedKey           = bsonutil.MustHaveTag(Dependency{}, "Finished")
 	DependencyFinishedAtKey         = bsonutil.MustHaveTag(Dependency{}, "FinishedAt")
 	DependencyOmitGeneratedTasksKey = bsonutil.MustHaveTag(Dependency{}, "OmitGeneratedTasks")
 )
