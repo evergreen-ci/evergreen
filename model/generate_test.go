@@ -669,7 +669,7 @@ func (s *GenerateSuite) TestSaveWithMaxTasksPerVersion() {
 		BuildIds: []string{"sample_build"},
 	}
 	pp := &ParserProject{}
-	err := util.UnmarshalYAMLWithFallback([]byte(sampleProjYmlTaskGroups), &pp)
+	err := util.UnmarshalYAML([]byte(sampleProjYmlTaskGroups), &pp)
 	s.NoError(err)
 	pp.Id = "version_that_called_generate_task"
 	s.NoError(pp.Insert(s.ctx))
@@ -997,7 +997,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasksWithBatchtime() {
 	}
 	s.NoError(v.Insert(s.ctx))
 	pp := &ParserProject{}
-	err := util.UnmarshalYAMLWithFallback([]byte(sampleProjYml), &pp)
+	err := util.UnmarshalYAML([]byte(sampleProjYml), &pp)
 	s.NoError(err)
 	pp.Id = "version_that_called_generate_task"
 	s.NoError(pp.Insert(s.ctx))
@@ -1112,7 +1112,7 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 	}
 	s.NoError(v.Insert(s.ctx))
 	pp := &ParserProject{}
-	err := util.UnmarshalYAMLWithFallback([]byte(sampleProjYmlTaskGroups), &pp)
+	err := util.UnmarshalYAML([]byte(sampleProjYmlTaskGroups), &pp)
 	s.NoError(err)
 	pp.Id = "version_that_called_generate_task"
 	s.NoError(pp.Insert(s.ctx))
@@ -1202,7 +1202,7 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 		BuildIds: []string{"sample_build"},
 	}
 	pp := &ParserProject{}
-	err := util.UnmarshalYAMLWithFallback([]byte(sampleProjYmlTaskGroups), &pp)
+	err := util.UnmarshalYAML([]byte(sampleProjYmlTaskGroups), &pp)
 	s.NoError(err)
 	pp.Id = "version_that_called_generate_task"
 	s.NoError(pp.Insert(s.ctx))
@@ -1274,7 +1274,7 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependenciesInNewBuilds() {
 		BuildVariants: []VersionBuildStatus{},
 	}
 	pp := &ParserProject{}
-	err := util.UnmarshalYAMLWithFallback([]byte(projYmlTwoBVs), &pp)
+	err := util.UnmarshalYAML([]byte(projYmlTwoBVs), &pp)
 	s.NoError(err)
 	pp.Id = "version_that_called_generate_task"
 	s.NoError(pp.Insert(s.ctx))
@@ -1357,7 +1357,7 @@ buildvariants:
   tasks:
   - name: finished_task
 `
-	s.NoError(util.UnmarshalYAMLWithFallback([]byte(initialConfig), &parserProj))
+	s.NoError(util.UnmarshalYAML([]byte(initialConfig), &parserProj))
 	parserProj.Id = "v1"
 	s.NoError(parserProj.Insert(s.ctx))
 
@@ -1441,7 +1441,7 @@ buildvariants:
   tasks:
   - name: generator
 `
-	s.NoError(util.UnmarshalYAMLWithFallback([]byte(initialConfig), &parserProj))
+	s.NoError(util.UnmarshalYAML([]byte(initialConfig), &parserProj))
 	parserProj.Id = "v1"
 	s.NoError(parserProj.Insert(s.ctx))
 
@@ -1523,7 +1523,7 @@ buildvariants:
   tasks:
   - name: generator
 `
-	s.NoError(util.UnmarshalYAMLWithFallback([]byte(initialConfig), &parserProj))
+	s.NoError(util.UnmarshalYAML([]byte(initialConfig), &parserProj))
 	parserProj.Id = "v1"
 	s.NoError(parserProj.Insert(s.ctx))
 
@@ -1632,7 +1632,7 @@ buildvariants:
   - name: existing_task
 
 `
-	s.NoError(util.UnmarshalYAMLWithFallback([]byte(initialConfig), &parserProj))
+	s.NoError(util.UnmarshalYAML([]byte(initialConfig), &parserProj))
 	parserProj.Id = "v1"
 	s.NoError(parserProj.Insert(s.ctx))
 
@@ -1739,7 +1739,7 @@ buildvariants:
   tasks:
   - name: existing_task
 `
-	s.NoError(util.UnmarshalYAMLWithFallback([]byte(initialConfig), &parserProj))
+	s.NoError(util.UnmarshalYAML([]byte(initialConfig), &parserProj))
 	parserProj.Id = "v1"
 	s.NoError(parserProj.Insert(s.ctx))
 
@@ -1814,7 +1814,7 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 		BuildIds: []string{"sample_build"},
 	}
 	pp := &ParserProject{}
-	err := util.UnmarshalYAMLWithFallback([]byte(smallYml), &pp)
+	err := util.UnmarshalYAML([]byte(smallYml), &pp)
 	s.NoError(err)
 	pp.Id = "version_that_called_generate_task"
 	s.NoError(pp.Insert(s.ctx))
@@ -2537,7 +2537,7 @@ buildvariants:
   - name: generator_task
   - name: prerequisite_task
 `
-	require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(initialConfig), &parserProj))
+	require.NoError(t, util.UnmarshalYAML([]byte(initialConfig), &parserProj))
 	parserProj.Id = "v1"
 	require.NoError(t, parserProj.Insert(t.Context()))
 
@@ -2639,7 +2639,7 @@ buildvariants:
 }
 `
 	pp := &ParserProject{}
-	require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(baseYAML), &pp))
+	require.NoError(t, util.UnmarshalYAML([]byte(baseYAML), &pp))
 	p0, err := TranslateProject(t.Context(), pp)
 	require.NoError(t, err)
 
@@ -2718,7 +2718,7 @@ buildvariants:
   - name: generator_task
   - name: prerequisite_task
 `
-	require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(initialConfig), &parserProj))
+	require.NoError(t, util.UnmarshalYAML([]byte(initialConfig), &parserProj))
 	parserProj.Id = "v1"
 	require.NoError(t, parserProj.Insert(t.Context()))
 

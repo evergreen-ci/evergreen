@@ -2121,7 +2121,7 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 				Status: evergreen.VersionStarted,
 			}
 			pp := &ParserProject{}
-			err := util.UnmarshalYAMLWithFallback([]byte(sampleProjYmlTaskGroups), &pp)
+			err := util.UnmarshalYAML([]byte(sampleProjYmlTaskGroups), &pp)
 			assert.NoError(err)
 			pp.Id = b.Version
 			assert.NoError(pp.Insert(t.Context()))
@@ -2322,7 +2322,7 @@ func TestMarkEndIsAutomaticRestart(t *testing.T) {
 				Status: evergreen.VersionStarted,
 			}
 			pp := &ParserProject{}
-			err := util.UnmarshalYAMLWithFallback([]byte(sampleProjYmlTaskGroups), &pp)
+			err := util.UnmarshalYAML([]byte(sampleProjYmlTaskGroups), &pp)
 			assert.NoError(err)
 			pp.Id = b.Version
 			assert.NoError(pp.Insert(t.Context()))
@@ -3015,7 +3015,7 @@ buildvariants:
        stepback: true
 `
 		pp := &ParserProject{}
-		err := util.UnmarshalYAMLWithFallback([]byte(config), &pp)
+		err := util.UnmarshalYAML([]byte(config), &pp)
 		assert.NoError(t, err)
 		pp.Id = "version_id"
 		assert.NoError(t, pp.Insert(t.Context()))
@@ -5355,7 +5355,7 @@ buildvariants:
    deactivate_previous: false
 `
 	pp := &ParserProject{}
-	err := util.UnmarshalYAMLWithFallback([]byte(config), &pp)
+	err := util.UnmarshalYAML([]byte(config), &pp)
 	assert.NoError(t, err)
 
 	project, err := TranslateProject(t.Context(), pp)
@@ -5891,7 +5891,7 @@ tasks:
 	}
 	require.NoError(t, v.Insert(t.Context()))
 	pp := &ParserProject{}
-	err := util.UnmarshalYAMLWithFallback([]byte(yml), &pp)
+	err := util.UnmarshalYAML([]byte(yml), &pp)
 	assert.NoError(err)
 	//pp.Id = v.Id
 	//assert.NoError(pp.Insert(t.Context()))

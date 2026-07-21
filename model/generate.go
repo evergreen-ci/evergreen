@@ -120,7 +120,7 @@ func MergeGeneratedProjects(ctx context.Context, projects []GeneratedProject) (*
 func ParseProjectFromJSONString(data string) (GeneratedProject, error) {
 	g := GeneratedProject{}
 	dataAsJSON := []byte(data)
-	if err := util.UnmarshalYAMLWithFallback(dataAsJSON, &g); err != nil {
+	if err := util.UnmarshalYAML(dataAsJSON, &g); err != nil {
 		return g, errors.Wrap(err, "unmarshalling generated project from YAML data")
 	}
 	return g, nil
