@@ -33,6 +33,7 @@ const largeNumFinalizedTasksThreshold = 1000
 // This is the template used to render a patch's summary in a human-readable output format.
 var patchDisplayTemplate = template.Must(template.New("patch").Parse(`
          ID : {{.Patch.Id.Hex}}
+	 Number : {{.Patch.PatchNumber}}
     Project : {{.ProjectIdentifier}}
     Created : {{.Patch.CreateTime}}
 Description : {{if .Patch.Description}}{{.Patch.Description}}{{else}}<none>{{end}}
