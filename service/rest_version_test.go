@@ -616,8 +616,8 @@ func TestGetVersionStatus(t *testing.T) {
 	t.Cleanup(func() { assert.NoError(t, db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection)) })
 
 	Convey("When finding the status of a particular version", t, func() {
-		require.NoError(t, db.ClearCollections(build.Collection, task.Collection),
-			"Error clearing '%v' collection", build.Collection)
+		require.NoError(t, db.ClearCollections(build.Collection, task.Collection, model.VersionCollection, model.ProjectRefCollection),
+			"Error clearing collections")
 
 		versionId := "my-version"
 
