@@ -61,21 +61,29 @@ func TestBucketsConfigGetRetryFailedLogMoveLookback(t *testing.T) {
 			RetryFailedLogMoveLookback:     30 * time.Minute,
 			RetryFailedLogMoveLookbackDays: 7,
 		}
-		assert.Equal(t, 30*time.Minute, cfg.GetRetryFailedLogMoveLookback())
+		lookback, disabled := cfg.GetRetryFailedLogMoveLookback()
+		assert.Equal(t, 30*time.Minute, lookback)
+		assert.False(t, disabled)
 	})
 
 	t.Run("LegacyDaysShouldConvertToDuration", func(t *testing.T) {
 		cfg := BucketsConfig{RetryFailedLogMoveLookbackDays: 7}
-		assert.Equal(t, 7*24*time.Hour, cfg.GetRetryFailedLogMoveLookback())
+		lookback, disabled := cfg.GetRetryFailedLogMoveLookback()
+		assert.Equal(t, 7*24*time.Hour, lookback)
+		assert.False(t, disabled)
 	})
 
-	t.Run("ZeroShouldRemainZero", func(t *testing.T) {
+	t.Run("ZeroShouldUseDefault", func(t *testing.T) {
 		cfg := BucketsConfig{}
-		assert.Zero(t, cfg.GetRetryFailedLogMoveLookback())
+		lookback, disabled := cfg.GetRetryFailedLogMoveLookback()
+		assert.Equal(t, DefaultRetryFailedLogMoveLookback, lookback)
+		assert.False(t, disabled)
 	})
 
-	t.Run("NegativeDurationShouldRemainNegative", func(t *testing.T) {
+	t.Run("NegativeDurationShouldDisableRetries", func(t *testing.T) {
 		cfg := BucketsConfig{RetryFailedLogMoveLookback: -time.Second}
-		assert.Equal(t, -time.Second, cfg.GetRetryFailedLogMoveLookback())
+		lookback, disabled := cfg.GetRetryFailedLogMoveLookback()
+		assert.Zero(t, lookback)
+		assert.True(t, disabled)
 	})
 }

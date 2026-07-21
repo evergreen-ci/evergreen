@@ -8,6 +8,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestResolveAdminDuration(t *testing.T) {
+	assert.Equal(t, 30*time.Minute, ResolveAdminDuration(30*time.Minute, 7, 24*time.Hour))
+	assert.Equal(t, 7*24*time.Hour, ResolveAdminDuration(0, 7, 24*time.Hour))
+	assert.Zero(t, ResolveAdminDuration(0, 0, 24*time.Hour))
+}
+
 func TestParseAdminDuration(t *testing.T) {
 	for name, test := range map[string]struct {
 		input    string
@@ -34,6 +40,22 @@ func TestParseAdminDuration(t *testing.T) {
 	})
 }
 
+func TestParseAdminDurationWithLegacy(t *testing.T) {
+	value := "30m"
+	duration, err := ParseAdminDurationWithLegacy(&value, 24*time.Hour, nil)
+	require.NoError(t, err)
+	assert.Equal(t, 30*time.Minute, duration)
+
+	legacyValue := 7
+	duration, err = ParseAdminDurationWithLegacy(nil, 24*time.Hour, nil, &legacyValue)
+	require.NoError(t, err)
+	assert.Equal(t, 7*24*time.Hour, duration)
+
+	duration, err = ParseAdminDurationWithLegacy(nil, 24*time.Hour)
+	require.NoError(t, err)
+	assert.Zero(t, duration)
+}
+
 func TestFormatAdminDuration(t *testing.T) {
 	for name, test := range map[string]struct {
 		input    time.Duration
@@ -49,4 +71,11 @@ func TestFormatAdminDuration(t *testing.T) {
 			assert.Equal(t, test.expected, FormatAdminDuration(test.input))
 		})
 	}
+}
+
+func TestFormatOptionalAdminDuration(t *testing.T) {
+	assert.Nil(t, FormatOptionalAdminDuration(0))
+	formatted := FormatOptionalAdminDuration(7 * 24 * time.Hour)
+	require.NotNil(t, formatted)
+	assert.Equal(t, "7d", *formatted)
 }

@@ -786,6 +786,7 @@ type APIBucketsConfig struct {
 	LongRetentionProjects          []string        `json:"long_retention_projects"`
 	RetryFailedLogMoveLookback     *string         `json:"retry_failed_log_move_lookback,omitempty"`
 	RetryFailedLogMoveLookbackDays *int            `json:"retry_failed_log_move_lookback_days,omitempty"`
+	// TODO (DEVPROD-37602): Remove RetryFailedLogMoveLookbackDays after the admin duration migration is complete.
 	// Kept for Spruce backward compatibility.
 	RetryFailedLogMoveLookbackMonths *int             `json:"retry_failed_log_move_lookback_months,omitempty"`
 	RetryFailedLogMoveMaxJobsPerRun  *int             `json:"retry_failed_log_move_max_jobs_per_run,omitempty"`
@@ -868,12 +869,13 @@ func (a *APIBucketsConfig) BuildFromService(h any) error {
 		a.TestResultsBucket.buildFromService(v.TestResultsBucket)
 
 		a.LongRetentionProjects = v.LongRetentionProjects
-		lookback := v.GetRetryFailedLogMoveLookback()
-		if v.RetryFailedLogMoveLookback != 0 {
-			a.RetryFailedLogMoveLookback = utility.ToStringPtr(evergreen.FormatAdminDuration(lookback))
-		}
+		lookback, disabled := v.GetRetryFailedLogMoveLookback()
 		lookbackDays := v.RetryFailedLogMoveLookbackDays
-		if lookbackDays == 0 {
+		if disabled {
+			a.RetryFailedLogMoveLookback = evergreen.FormatOptionalAdminDuration(-time.Second)
+			lookbackDays = 0
+		} else if v.RetryFailedLogMoveLookback != 0 {
+			a.RetryFailedLogMoveLookback = evergreen.FormatOptionalAdminDuration(lookback)
 			lookbackDays = int(lookback / (24 * time.Hour))
 		}
 		a.RetryFailedLogMoveLookbackDays = utility.ToIntPtr(lookbackDays)
@@ -901,19 +903,14 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 		return nil, errors.Errorf("programmatic error: expected S3 credentials but got type %T", i)
 	}
 
-	var lookback time.Duration
-	if a.RetryFailedLogMoveLookback != nil {
-		lookback, err = evergreen.ParseAdminDuration(*a.RetryFailedLogMoveLookback)
-		if err != nil {
-			return nil, errors.Wrap(err, "parsing retry failed log move lookback")
-		}
-	} else {
-		// Prefer Days; fall back to Months for Spruce backward compatibility.
-		lookbackDays := a.RetryFailedLogMoveLookbackDays
-		if lookbackDays == nil {
-			lookbackDays = a.RetryFailedLogMoveLookbackMonths
-		}
-		lookback = time.Duration(utility.FromIntPtr(lookbackDays)) * 24 * time.Hour
+	lookback, err := evergreen.ParseAdminDurationWithLegacy(
+		a.RetryFailedLogMoveLookback,
+		24*time.Hour,
+		a.RetryFailedLogMoveLookbackDays,
+		a.RetryFailedLogMoveLookbackMonths,
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "parsing retry failed log move lookback")
 	}
 
 	return evergreen.BucketsConfig{

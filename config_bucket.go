@@ -49,6 +49,7 @@ type BucketsConfig struct {
 	RetryFailedLogMoveLookback time.Duration `bson:"retry_failed_log_move_lookback" json:"retry_failed_log_move_lookback" yaml:"retry_failed_log_move_lookback"`
 	// RetryFailedLogMoveLookbackDays is retained to read settings written before
 	// RetryFailedLogMoveLookback was introduced.
+	// TODO (DEVPROD-37602): Remove this after the admin duration migration is complete.
 	RetryFailedLogMoveLookbackDays int `bson:"retry_failed_log_move_lookback_days" json:"retry_failed_log_move_lookback_days" yaml:"retry_failed_log_move_lookback_days"`
 	// RetryFailedLogMoveMaxJobsPerRun caps how many move jobs the hourly retry cron enqueues
 	// per run to avoid S3 rate limiting. Newest failures are prioritized. Default 50 when unset or 0.
@@ -115,7 +116,14 @@ func (c *BucketsConfig) Get(ctx context.Context) error {
 }
 
 func (c *BucketsConfig) Set(ctx context.Context) error {
-	retryFailedLogMoveLookback := c.GetRetryFailedLogMoveLookback()
+	// Resolve only the legacy representation here so that zero/default and
+	// negative/disabled values are persisted unchanged.
+	// TODO (DEVPROD-37602): Remove this resolution and write RetryFailedLogMoveLookback directly in the update.
+	retryFailedLogMoveLookback := ResolveAdminDuration(
+		c.RetryFailedLogMoveLookback,
+		c.RetryFailedLogMoveLookbackDays,
+		24*time.Hour,
+	)
 	return errors.Wrapf(
 		setConfigSection(ctx, c.SectionId(), bson.M{
 			"$set": bson.M{
@@ -129,6 +137,7 @@ func (c *BucketsConfig) Set(ctx context.Context) error {
 				BucketsConfigCredentialsKey:                     c.Credentials,
 			},
 			"$unset": bson.M{
+				// TODO (DEVPROD-37602): Remove the legacy field after the admin duration migration is complete.
 				BucketsConfigRetryFailedLogMoveLookbackDaysKey: "",
 			},
 		}),
@@ -150,13 +159,18 @@ func (c *BucketsConfig) ValidateAndDefault() error {
 	return catcher.Resolve()
 }
 
-// GetRetryFailedLogMoveLookback returns the configured retry lookback,
-// converting the legacy day setting when necessary.
-func (c *BucketsConfig) GetRetryFailedLogMoveLookback() time.Duration {
-	if c.RetryFailedLogMoveLookback != 0 || c.RetryFailedLogMoveLookbackDays == 0 {
-		return c.RetryFailedLogMoveLookback
+// GetRetryFailedLogMoveLookback returns the effective retry lookback and
+// whether retries are disabled.
+func (c *BucketsConfig) GetRetryFailedLogMoveLookback() (time.Duration, bool) {
+	// TODO (DEVPROD-37602): Read RetryFailedLogMoveLookback directly after removing the legacy field.
+	lookback := ResolveAdminDuration(c.RetryFailedLogMoveLookback, c.RetryFailedLogMoveLookbackDays, 24*time.Hour)
+	if lookback < 0 {
+		return 0, true
 	}
-	return time.Duration(c.RetryFailedLogMoveLookbackDays) * 24 * time.Hour
+	if lookback == 0 {
+		return DefaultRetryFailedLogMoveLookback, false
+	}
+	return lookback, false
 }
 
 // GetLogBucket returns the appropriate log bucket based on if the project ID

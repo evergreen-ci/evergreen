@@ -1,12 +1,25 @@
 package evergreen
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 )
+
+var adminDurationDayOrWeek = regexp.MustCompile(`(?:\d+(?:\.\d*)?|\.\d+)[dw]`)
+
+// ResolveAdminDuration returns the configured duration, falling back to a
+// legacy integer value when the duration is zero.
+// TODO (DEVPROD-37602): Remove this after the admin duration migration is complete.
+func ResolveAdminDuration(value time.Duration, legacyValue int, legacyUnit time.Duration) time.Duration {
+	if value != 0 || legacyValue == 0 {
+		return value
+	}
+	return time.Duration(legacyValue) * legacyUnit
+}
 
 // ParseAdminDuration parses a duration used by admin settings. In addition to
 // units supported by time.ParseDuration, it supports days and weeks.
@@ -15,85 +28,41 @@ func ParseAdminDuration(value string) (time.Duration, error) {
 	if value == "0" {
 		return 0, nil
 	}
-	if value == "" {
-		return 0, errors.New("duration must not be empty")
-	}
 
-	sign := time.Duration(1)
-	if value[0] == '-' || value[0] == '+' {
-		if value[0] == '-' {
-			sign = -1
-		}
-		value = value[1:]
-	}
-	if value == "" {
-		return 0, errors.New("duration must include a value")
-	}
-
-	adminDurationUnits := [...]string{"ns", "us", "µs", "ms", "s", "m", "h", "d", "w"}
-	var total time.Duration
-	for len(value) > 0 {
-		numberEnd := 0
-		hasDecimal := false
-		for numberEnd < len(value) {
-			switch value[numberEnd] {
-			case '.':
-				if hasDecimal {
-					return 0, errors.Errorf("invalid duration '%s'", value)
-				}
-				hasDecimal = true
-				numberEnd++
-			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-				numberEnd++
-			default:
-				goto numberComplete
-			}
-		}
-
-	numberComplete:
-		if numberEnd == 0 {
-			return 0, errors.Errorf("invalid duration '%s'", value)
-		}
-
-		unit := ""
-		for _, candidate := range adminDurationUnits {
-			if strings.HasPrefix(value[numberEnd:], candidate) {
-				unit = candidate
-				break
-			}
-		}
-		if unit == "" {
-			return 0, errors.Errorf("duration component '%s' has an invalid unit", value)
-		}
-
-		component := value[:numberEnd+len(unit)]
-		var duration time.Duration
-		var err error
-		switch unit {
-		case "d", "w":
-			number, parseErr := strconv.ParseFloat(value[:numberEnd], 64)
-			if parseErr != nil {
-				return 0, errors.Wrap(parseErr, "parsing duration value")
-			}
-			hours := number * 24
-			if unit == "w" {
-				hours *= 7
-			}
-			duration, err = time.ParseDuration(strconv.FormatFloat(hours, 'f', -1, 64) + "h")
-		default:
-			duration, err = time.ParseDuration(component)
-		}
+	var conversionErr error
+	normalized := adminDurationDayOrWeek.ReplaceAllStringFunc(value, func(component string) string {
+		unit := component[len(component)-1]
+		number, err := strconv.ParseFloat(component[:len(component)-1], 64)
 		if err != nil {
-			return 0, errors.Wrapf(err, "parsing duration component '%s'", component)
+			conversionErr = err
+			return component
 		}
-		if duration > 0 && total > time.Duration(1<<63-1)-duration {
-			return 0, errors.New("duration is out of range")
+		hours := number * 24
+		if unit == 'w' {
+			hours *= 7
 		}
-		total += duration
-		value = value[len(component):]
+		return strconv.FormatFloat(hours, 'f', -1, 64) + "h"
+	})
+	if conversionErr != nil {
+		return 0, errors.Wrap(conversionErr, "parsing duration value")
 	}
+	duration, err := time.ParseDuration(normalized)
+	return duration, errors.Wrapf(err, "parsing duration '%s'", value)
+}
 
-	return sign * total, nil
+// ParseAdminDurationWithLegacy parses an admin duration when present, falling
+// back to the first non-nil legacy integer value.
+// TODO (DEVPROD-37602): Remove this after the admin duration migration is complete.
+func ParseAdminDurationWithLegacy(value *string, legacyUnit time.Duration, legacyValues ...*int) (time.Duration, error) {
+	if value != nil {
+		return ParseAdminDuration(*value)
+	}
+	for _, legacyValue := range legacyValues {
+		if legacyValue != nil {
+			return time.Duration(*legacyValue) * legacyUnit, nil
+		}
+	}
+	return 0, nil
 }
 
 // FormatAdminDuration formats a duration for admin settings using days for
@@ -119,6 +88,15 @@ func FormatAdminDuration(duration time.Duration) string {
 		return sign + strconv.FormatInt(int64(days), 10) + "d"
 	}
 	return sign + strconv.FormatInt(int64(days), 10) + "d" + formatSubdayAdminDuration(remainder)
+}
+
+// FormatOptionalAdminDuration formats a nonzero admin duration.
+func FormatOptionalAdminDuration(duration time.Duration) *string {
+	if duration == 0 {
+		return nil
+	}
+	formatted := FormatAdminDuration(duration)
+	return &formatted
 }
 
 func formatSubdayAdminDuration(duration time.Duration) string {

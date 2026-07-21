@@ -977,15 +977,12 @@ func populateRetryFailedLogMoveJobs(env evergreen.Environment, runInOldTaskColle
 			return nil
 		}
 
-		lookback := settings.Buckets.GetRetryFailedLogMoveLookback()
-		if lookback < 0 {
+		lookback, disabled := settings.Buckets.GetRetryFailedLogMoveLookback()
+		if disabled {
 			grip.Info(ctx, message.Fields{
 				"message": "retry failed log move jobs skipped: retry lookback is disabled",
 			})
 			return nil
-		}
-		if lookback == 0 {
-			lookback = evergreen.DefaultRetryFailedLogMoveLookback
 		}
 		cutoff := time.Now().Add(-lookback)
 

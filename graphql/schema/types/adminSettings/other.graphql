@@ -23,6 +23,7 @@ input BucketsConfigInput {
   logBucketFailedTasks: BucketConfigInput
   longRetentionProjects: [String!]
   retryFailedLogMoveLookback: String
+  # TODO (DEVPROD-37602): Remove the legacy fields after the admin duration migration is complete.
   retryFailedLogMoveLookbackDays: Int
   # Kept for Spruce backward compatibility.
   retryFailedLogMoveLookbackMonths: Int
@@ -38,6 +39,7 @@ type BucketsConfig {
   logBucketFailedTasks: BucketConfig
   longRetentionProjects: [String!]
   retryFailedLogMoveLookback: String
+  # TODO (DEVPROD-37602): Remove the legacy fields after the admin duration migration is complete.
   retryFailedLogMoveLookbackDays: Int
   # Kept for Spruce backward compatibility.
   retryFailedLogMoveLookbackMonths: Int
