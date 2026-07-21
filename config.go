@@ -34,11 +34,7 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-<<<<<<< HEAD
-	ClientVersion = "2026-07-13"
-=======
-	ClientVersion = "2026-07-01"
->>>>>>> parent of ed3021fb7 (Revert "DEVPROD-27528: Support for multiple aliases in one patch (#10374)" (#10437))
+	ClientVersion = "2026-07-21a"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
