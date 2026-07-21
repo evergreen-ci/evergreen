@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -226,8 +227,8 @@ func addDisplayTasksToPatchReq(req *PatchUpdate, p Project) {
 		if bv == nil {
 			continue
 		}
-		for i := len(vt.Tasks) - 1; i >= 0; i-- {
-			task := vt.Tasks[i]
+		for i, task := range slices.Backward(vt.Tasks) {
+
 			displayTask := bv.GetDisplayTask(task)
 			if displayTask == nil {
 				continue

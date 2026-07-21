@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -2807,8 +2808,8 @@ func GetContainersOnParents(ctx context.Context, d distro.Distro) ([]ContainersO
 
 	containersOnParents := make([]ContainersOnParents, 0)
 	// parents come in sorted order from soonest to latest expected finish time
-	for i := len(allParents) - 1; i >= 0; i-- {
-		parent := allParents[i]
+	for _, parent := range slices.Backward(allParents) {
+
 		currentContainers, err := parent.GetActiveContainers(ctx)
 		if err != nil && !adb.ResultsNotFound(err) {
 			return nil, errors.Wrapf(err, "finding active containers for container parent '%s'", parent.Id)

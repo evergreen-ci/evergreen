@@ -431,8 +431,8 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 	})
 
 	if !c.KeepEmptyArgs {
-		for i := len(c.Args) - 1; i >= 0; i-- {
-			if c.Args[i] == "" {
+		for i, v := range slices.Backward(c.Args) {
+			if v == "" {
 				c.Args = append(c.Args[:i], c.Args[i+1:]...)
 			}
 		}

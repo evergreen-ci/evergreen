@@ -3,6 +3,7 @@ package repotracker
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -229,12 +230,12 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 
 	// Since the revisions are ordered most to least recent, iterate backwards so that they're processed in order of
 	// least to most recent.
-	for i := len(revisions) - 1; i >= 0; i-- {
-		revision := revisions[i].Revision
+	for _, rev := range slices.Backward(revisions) {
+		revision := rev.Revision
 		grip.Infof(ctx, "Processing revision %s in project %s", revision, ref.Id)
 
 		// We check if the version exists here so we can avoid fetching the github config unnecessarily
-		existingVersion, err := model.VersionFindOne(ctx, model.BaseVersionByProjectIdAndRevision(ref.Id, revisions[i].Revision))
+		existingVersion, err := model.VersionFindOne(ctx, model.BaseVersionByProjectIdAndRevision(ref.Id, revision))
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":            "problem looking up version for project",
 			"runner":             RunnerName,
@@ -268,7 +269,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 					Errors:   projErr.Errors,
 				}
 				if len(versionErrs.Errors) > 0 {
-					stubVersion, dbErr := ShellVersionFromRevision(ctx, ref, model.VersionMetadata{Revision: revisions[i]})
+					stubVersion, dbErr := ShellVersionFromRevision(ctx, ref, model.VersionMetadata{Revision: rev})
 					if dbErr != nil {
 						grip.Error(ctx, message.WrapError(dbErr, message.Fields{
 							"message":            "error creating shell version",
@@ -332,7 +333,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		}
 
 		metadata := model.VersionMetadata{
-			Revision:     revisions[i],
+			Revision:     rev,
 			ChangedFiles: filenames,
 		}
 		projectInfo := &model.ProjectInfo{

@@ -2232,10 +2232,10 @@ func dependenciesForTaskUnit(taskUnits []BuildVariantTaskUnit, p *Project) []tas
 			}
 			// Single host task groups are a special case of dependencies because they implicitly form a linear
 			// dependency chain on the prior task group tasks
-			for i := len(tg.Tasks) - 1; i >= 0; i-- {
+			for i, v := range slices.Backward(tg.Tasks) {
 				// Check the task display names since no display name will appear twice
 				// within the same task group
-				if dependentTask.Name == tg.Tasks[i] && i > 0 {
+				if dependentTask.Name == v && i > 0 {
 					dependentTask.DependsOn = append(dependentTask.DependsOn, TaskUnitDependency{Name: tg.Tasks[i-1], Variant: dependentTask.Variant})
 				}
 			}
