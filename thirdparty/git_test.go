@@ -43,7 +43,7 @@ index 0000000..e69de29
 )
 
 func TestGetPatchSummaries(t *testing.T) {
-	summaries, err := GetPatchSummaries(patchText)
+	summaries, err := GetPatchSummaries(t.Context(), patchText)
 	require.NoError(t, err)
 	require.Len(t, summaries, 3)
 

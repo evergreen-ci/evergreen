@@ -626,7 +626,7 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 	}
 
 	if h.HomeVolume() == nil {
-		mgrOpts, err := cloud.GetManagerOptions(h.Distro)
+		mgrOpts, err := cloud.GetManagerOptions(ctx, h.Distro)
 		if err != nil {
 			return errors.Wrapf(err, "getting cloud manager options for host '%s'", h.Id)
 		}

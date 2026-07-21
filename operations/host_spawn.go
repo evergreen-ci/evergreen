@@ -521,7 +521,7 @@ func hostConfigure() cli.Command {
 				}
 			}
 
-			cmds, err := projectRef.GetProjectSetupCommands(apimodels.WorkstationSetupCommandOptions{
+			cmds, err := projectRef.GetProjectSetupCommands(ctx, apimodels.WorkstationSetupCommandOptions{
 				Directory: directory,
 				Quiet:     quiet,
 				DryRun:    dryRun,

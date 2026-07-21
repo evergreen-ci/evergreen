@@ -306,7 +306,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	moduleName, githash := data.Module, data.Githash
 	var commitMessages []string
 
-	summaries, err := thirdparty.GetPatchSummaries(patchContent)
+	summaries, err := thirdparty.GetPatchSummaries(r.Context(), patchContent)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

@@ -226,7 +226,7 @@ func (s *AgentSuite) SetupTest() {
 
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.True(ok)
-	s.tc.setCurrentCommand(factory())
+	s.tc.setCurrentCommand(ctx, factory())
 	sender, err := s.a.GetSender(ctx, globals.LogOutputStdout, "agent", "task_id", 2)
 	s.Require().NoError(err)
 	s.a.SetDefaultLogger(sender)
@@ -1438,7 +1438,7 @@ tasks:
 func (s *AgentSuite) TestEndTaskResponse() {
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.Require().True(ok)
-	s.tc.setCurrentCommand(factory())
+	s.tc.setCurrentCommand(s.ctx, factory())
 
 	const systemFailureDescription = "failure message"
 	s.T().Run("TaskFailingWithCurrentCommandDoesNotOverrideDescription", func(t *testing.T) {
@@ -2143,7 +2143,7 @@ tasks:
 	userDefinedTaskStatusCmd := factory()
 	userDefinedTaskStatusCmd.SetFullDisplayName("command.mock")
 	userDefinedTaskStatusCmd.SetFailureMetadataTags([]string{"user_defined_end_task_response_tag"})
-	s.tc.setCurrentCommand(userDefinedTaskStatusCmd)
+	s.tc.setCurrentCommand(s.ctx, userDefinedTaskStatusCmd)
 
 	resp := &triggerEndTaskResp{
 		Status:                 evergreen.TaskFailed,
@@ -2208,7 +2208,7 @@ tasks:
 	s.Require().True(ok)
 	userDefinedTaskStatusCmd := factory()
 	userDefinedTaskStatusCmd.SetFullDisplayName("command.mock")
-	s.tc.setCurrentCommand(userDefinedTaskStatusCmd)
+	s.tc.setCurrentCommand(s.ctx, userDefinedTaskStatusCmd)
 
 	addMetadataResp := &triggerAddMetadataTagResp{
 		AddFailureMetadataTags: []string{"failure_tag1", "failure_tag2", "failure_tag2", "failure_tag3"},
@@ -2255,7 +2255,7 @@ tasks:
 	userDefinedTaskStatusCmd := factory()
 	userDefinedTaskStatusCmd.SetFullDisplayName("command.mock")
 	userDefinedTaskStatusCmd.SetFailureMetadataTags([]string{"user_defined_end_task_response_tag"})
-	s.tc.setCurrentCommand(userDefinedTaskStatusCmd)
+	s.tc.setCurrentCommand(s.ctx, userDefinedTaskStatusCmd)
 
 	resp := &triggerEndTaskResp{
 		Status:      evergreen.TaskSucceeded,
@@ -2310,7 +2310,7 @@ tasks:
 	userDefinedTaskStatusCmd := factory()
 	userDefinedTaskStatusCmd.SetFullDisplayName("command.mock")
 	userDefinedTaskStatusCmd.SetFailureMetadataTags([]string{"user_defined_end_task_response_tag"})
-	s.tc.setCurrentCommand(userDefinedTaskStatusCmd)
+	s.tc.setCurrentCommand(s.ctx, userDefinedTaskStatusCmd)
 
 	resp := &triggerEndTaskResp{
 		Status:         evergreen.TaskFailed,

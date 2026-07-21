@@ -397,7 +397,7 @@ func (s *HostSuite) TestBuildFromServiceHost() {
 	s.NoError(err)
 	s.Require().NotZero(host)
 	apiHost := restmodel.APIHost{}
-	apiHost.BuildFromService(host, nil)
+	apiHost.BuildFromService(s.ctx, host, nil)
 	s.Equal(apiHost.Id, utility.ToStringPtr(host.Id))
 	s.Equal(apiHost.HostURL, utility.ToStringPtr(host.Host))
 	s.Equal(apiHost.Provisioned, host.Provisioned)

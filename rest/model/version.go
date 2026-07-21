@@ -177,7 +177,7 @@ func (apiVersion *APIVersion) BuildFromService(ctx context.Context, v model.Vers
 			return
 		}
 		if p.IsParent() && len(p.Triggers.ChildPatches) > 0 {
-			childPatches, err := patch.Find(ctx, patch.ByStringIds(p.Triggers.ChildPatches))
+			childPatches, err := patch.Find(ctx, patch.ByStringIds(ctx, p.Triggers.ChildPatches))
 			if err != nil {
 				return
 			}

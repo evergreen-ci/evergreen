@@ -259,7 +259,7 @@ func applyUserChanges(current user.UserSettings, changes APIUserSettings) APIUse
 
 	reflectOldSettings := reflect.ValueOf(&oldSettings).Elem()
 	reflectNewSettings := reflect.ValueOf(&changes).Elem()
-	util.RecursivelySetUndefinedFields(reflectNewSettings, reflectOldSettings)
+	util.RecursivelySetUndefinedFields(context.Background(), reflectNewSettings, reflectOldSettings)
 
 	return changes
 }

@@ -403,23 +403,23 @@ func TestSetChildPatches(t *testing.T) {
 
 func TestGetCollectiveStatusFromPatchStatuses(t *testing.T) {
 	successful := []string{evergreen.VersionSucceeded}
-	assert.Equal(t, evergreen.VersionSucceeded, GetCollectiveStatusFromPatchStatuses(successful))
+	assert.Equal(t, evergreen.VersionSucceeded, GetCollectiveStatusFromPatchStatuses(t.Context(),successful))
 
-	assert.Equal(t, evergreen.VersionSucceeded, GetCollectiveStatusFromPatchStatuses(successful))
+	assert.Equal(t, evergreen.VersionSucceeded, GetCollectiveStatusFromPatchStatuses(t.Context(),successful))
 	failed := []string{evergreen.VersionSucceeded, evergreen.VersionFailed}
-	assert.Equal(t, evergreen.VersionFailed, GetCollectiveStatusFromPatchStatuses(failed))
+	assert.Equal(t, evergreen.VersionFailed, GetCollectiveStatusFromPatchStatuses(t.Context(),failed))
 
 	started := []string{evergreen.VersionStarted, evergreen.VersionSucceeded, evergreen.VersionFailed}
-	assert.Equal(t, evergreen.VersionStarted, GetCollectiveStatusFromPatchStatuses(started))
+	assert.Equal(t, evergreen.VersionStarted, GetCollectiveStatusFromPatchStatuses(t.Context(),started))
 
 	started = []string{evergreen.VersionCreated, evergreen.VersionSucceeded, evergreen.VersionFailed}
-	assert.Equal(t, evergreen.VersionStarted, GetCollectiveStatusFromPatchStatuses(started))
+	assert.Equal(t, evergreen.VersionStarted, GetCollectiveStatusFromPatchStatuses(t.Context(),started))
 
 	aborted := []string{evergreen.VersionSucceeded, evergreen.VersionAborted}
-	assert.Equal(t, evergreen.VersionAborted, GetCollectiveStatusFromPatchStatuses(aborted))
+	assert.Equal(t, evergreen.VersionAborted, GetCollectiveStatusFromPatchStatuses(t.Context(),aborted))
 
 	created := []string{evergreen.VersionCreated}
-	assert.Equal(t, evergreen.VersionCreated, GetCollectiveStatusFromPatchStatuses(created))
+	assert.Equal(t, evergreen.VersionCreated, GetCollectiveStatusFromPatchStatuses(t.Context(),created))
 }
 
 func TestGetRequester(t *testing.T) {

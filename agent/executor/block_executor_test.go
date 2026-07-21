@@ -189,7 +189,7 @@ func TestRunCommandsInBlock(t *testing.T) {
 			TaskConfig: &internal.TaskConfig{
 				Project: model.Project{},
 			},
-			HandlePanic: func(panicErr error, originalErr error, op string) error {
+			HandlePanic: func(ctx context.Context, panicErr error, originalErr error, op string) error {
 				panicHandlerCalled = true
 				assert.NotNil(t, panicErr)
 				assert.Contains(t, panicErr.Error(), "test panic")

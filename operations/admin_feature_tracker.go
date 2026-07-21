@@ -41,6 +41,9 @@ func adminFeatureTracker() cli.Command {
 			},
 		},
 		Action: func(c *cli.Context) error {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			dir := c.String(dirFlagName)
 			out := c.String(outFlagName)
 
@@ -56,7 +59,7 @@ func adminFeatureTracker() cli.Command {
 
 			results := make([]ftResult, 0, len(files))
 			for _, f := range files {
-				results = append(results, ftAnalyzeFile(f, dets))
+				results = append(results, ftAnalyzeFile(ctx, f, dets))
 			}
 			sort.Slice(results, func(i, j int) bool { return results[i].Project < results[j].Project })
 
@@ -237,7 +240,7 @@ type ftResult struct {
 // ftAnalyzeFile parses one config file and runs every detector against it. A
 // parse failure is recorded on the result rather than aborting the run, since
 // one malformed config should not block analysis of the rest.
-func ftAnalyzeFile(path string, dets []ftDetector) ftResult {
+func ftAnalyzeFile(ctx context.Context, path string, dets []ftDetector) ftResult {
 	projectID := strings.TrimSuffix(filepath.Base(path), ".yml")
 	res := ftResult{Project: projectID, Counts: map[string]int{}}
 
@@ -250,7 +253,7 @@ func ftAnalyzeFile(path string, dets []ftDetector) ftResult {
 	// The dumped config is a merged parser project whose Include field has been
 	// cleared, so LoadProjectInto needs no network or DB access; nil opts is safe.
 	var project model.Project
-	pp, err := model.LoadProjectInto(context.Background(), data, nil, projectID, &project)
+	pp, err := model.LoadProjectInto(ctx, data, nil, projectID, &project)
 	if err != nil {
 		res.Err = fmt.Sprintf("parsing project: %v", err)
 		// LoadProjectInto fills the project even on error, so continue and detect.

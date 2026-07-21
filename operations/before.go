@@ -20,7 +20,9 @@ var (
 	}
 
 	setPlainLogger = func(c *cli.Context) error {
-		grip.Warning(context.Background(), grip.SetSender(send.MakePlainLogger()))
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		grip.Warning(ctx, grip.SetSender(send.MakePlainLogger()))
 		return nil
 	}
 

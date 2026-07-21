@@ -178,7 +178,7 @@ func getDisplayStatus(ctx context.Context, v *model.Version) (string, error) {
 			allStatuses = append(allStatuses, cpVersion.Status)
 		}
 	}
-	return patch.GetCollectiveStatusFromPatchStatuses(allStatuses), nil
+	return patch.GetCollectiveStatusFromPatchStatuses(ctx, allStatuses), nil
 }
 
 // userCanModifyPatch checks if a user can make changes to a given patch. This is mainly to prevent

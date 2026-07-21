@@ -118,7 +118,7 @@ func (j *githubStatusRefreshJob) fetch(ctx context.Context) error {
 	}
 
 	if len(j.patch.Triggers.ChildPatches) > 0 {
-		j.childPatches, err = patch.Find(ctx, patch.ByStringIds(j.patch.Triggers.ChildPatches))
+		j.childPatches, err = patch.Find(ctx, patch.ByStringIds(ctx, j.patch.Triggers.ChildPatches))
 		if err != nil {
 			return errors.Wrap(err, "finding child patches")
 		}
@@ -216,7 +216,7 @@ func (j *githubStatusRefreshJob) sendBuildStatuses(ctx context.Context) {
 			j.AddError(errors.Wrapf(err, "finding tasks in build '%s'", b.Id))
 			continue
 		}
-		status.Description = b.GetPRNotificationDescription(tasks)
+		status.Description = b.GetPRNotificationDescription(ctx, tasks)
 
 		j.sendStatus(ctx, status)
 	}

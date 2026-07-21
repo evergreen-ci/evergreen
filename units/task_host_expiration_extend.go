@@ -71,7 +71,7 @@ func (j *taskHostExpirationExtendJob) Run(ctx context.Context) {
 		}
 	}
 
-	mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
+	mgrOpts, err := cloud.GetManagerOptions(ctx, j.host.Distro)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "getting cloud manager options for host '%s'", j.host.Id))
 		return

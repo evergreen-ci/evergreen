@@ -33,7 +33,7 @@ func TestRepoBuildFromService(t *testing.T) {
 	require.NotNil(t, apiRef)
 	assert.Nil(t, apiRef.GitTagVersionsEnabled)
 
-	apiRef.DefaultUnsetBooleans()
+	apiRef.DefaultUnsetBooleans(t.Context())
 	assert.True(t, *apiRef.GithubChecksEnabled)
 	assert.False(t, *apiRef.PRTestingEnabled)
 	require.NotNil(t, apiRef.GitTagVersionsEnabled) // should default
@@ -58,7 +58,7 @@ func TestDefaultUnsetBooleansDebugSpawnHostsDisabled(t *testing.T) {
 		apiRef := &APIProjectRef{}
 		assert.Nil(t, apiRef.DebugSpawnHostsDisabled)
 
-		apiRef.DefaultUnsetBooleans()
+		apiRef.DefaultUnsetBooleans(t.Context())
 
 		require.NotNil(t, apiRef.DebugSpawnHostsDisabled)
 		assert.True(t, *apiRef.DebugSpawnHostsDisabled)
@@ -69,7 +69,7 @@ func TestDefaultUnsetBooleansDebugSpawnHostsDisabled(t *testing.T) {
 			DebugSpawnHostsDisabled: utility.FalsePtr(),
 		}
 
-		apiRef.DefaultUnsetBooleans()
+		apiRef.DefaultUnsetBooleans(t.Context())
 
 		require.NotNil(t, apiRef.DebugSpawnHostsDisabled)
 		assert.False(t, *apiRef.DebugSpawnHostsDisabled)
@@ -80,7 +80,7 @@ func TestDefaultUnsetBooleansDebugSpawnHostsDisabled(t *testing.T) {
 			DebugSpawnHostsDisabled: utility.TruePtr(),
 		}
 
-		apiRef.DefaultUnsetBooleans()
+		apiRef.DefaultUnsetBooleans(t.Context())
 
 		require.NotNil(t, apiRef.DebugSpawnHostsDisabled)
 		assert.True(t, *apiRef.DebugSpawnHostsDisabled)
@@ -100,7 +100,7 @@ func TestRecursivelyDefaultBooleans(t *testing.T) {
 
 	myStruct := testStruct{TrueBool: utility.TruePtr()}
 	reflected := reflect.ValueOf(&myStruct).Elem()
-	recursivelyDefaultBooleans(reflected)
+	recursivelyDefaultBooleans(t.Context(), reflected)
 
 	require.NotNil(t, myStruct.EmptyBool)
 	assert.False(t, *myStruct.EmptyBool)

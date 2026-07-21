@@ -791,7 +791,7 @@ func (p *ProjectRef) MergeWithProjectConfig(ctx context.Context, version string)
 		}
 		reflectedRef := reflect.ValueOf(p).Elem()
 		reflectedConfig := reflect.ValueOf(pRefToMerge)
-		util.RecursivelySetUndefinedFields(reflectedRef, reflectedConfig)
+		util.RecursivelySetUndefinedFields(ctx, reflectedRef, reflectedConfig)
 	}
 	return err
 }
@@ -1238,7 +1238,7 @@ func mergeProjectRefAfterFetch(ctx context.Context, pRef *ProjectRef, identifier
 		if repoRef == nil {
 			return nil, errors.Errorf("repo ref '%s' does not exist for project '%s'", pRef.RepoRefId, pRef.Identifier)
 		}
-		mergedRef, mergeErr := mergeBranchAndRepoSettings(pRef, repoRef)
+		mergedRef, mergeErr := mergeBranchAndRepoSettings(ctx, pRef, repoRef)
 		if mergeErr != nil {
 			return nil, errors.Wrapf(mergeErr, "merging repo ref '%s' for project '%s'", repoRef.RepoRefId, identifier)
 		}
@@ -1303,11 +1303,11 @@ func GetProjectRefMergedWithRepo(ctx context.Context, pRef ProjectRef) (*Project
 	if repoRef == nil {
 		return nil, errors.Errorf("repo ref '%s' does not exist", pRef.RepoRefId)
 	}
-	return mergeBranchAndRepoSettings(&pRef, repoRef)
+	return mergeBranchAndRepoSettings(ctx, &pRef, repoRef)
 }
 
 // If the setting is not defined in the project, default to the repo settings.
-func mergeBranchAndRepoSettings(pRef *ProjectRef, repoRef *RepoRef) (*ProjectRef, error) {
+func mergeBranchAndRepoSettings(ctx context.Context, pRef *ProjectRef, repoRef *RepoRef) (*ProjectRef, error) {
 	var err error
 	defer func() {
 		err = recovery.HandlePanicWithError(recover(), err, "project and repo structures do not match")
@@ -1318,7 +1318,7 @@ func mergeBranchAndRepoSettings(pRef *ProjectRef, repoRef *RepoRef) (*ProjectRef
 	// Include Parsley filters defined at repo level alongside project filters.
 	mergeParsleyFilters(pRef, repoRef)
 
-	util.RecursivelySetUndefinedFields(reflectedBranch, reflectedRepo)
+	util.RecursivelySetUndefinedFields(ctx, reflectedBranch, reflectedRepo)
 
 	return pRef, err
 }
@@ -1697,7 +1697,7 @@ func addLoggerAndRepoSettingsToProjects(ctx context.Context, pRefs []ProjectRef)
 			if repoRef == nil {
 				return nil, errors.Errorf("repo ref '%s' does not exist for project '%s'", pRef.RepoRefId, pRef.Identifier)
 			}
-			mergedProject, err := mergeBranchAndRepoSettings(&pRefs[i], repoRef)
+			mergedProject, err := mergeBranchAndRepoSettings(ctx, &pRefs[i], repoRef)
 			if err != nil {
 				return nil, errors.Wrap(err, "merging settings")
 			}
@@ -2182,7 +2182,7 @@ func FindMergedProjectRefsForRepo(ctx context.Context, repoRef *RepoRef) ([]Proj
 
 	for i := range projectRefs {
 		if projectRefs[i].UseRepoSettings() {
-			mergedProject, err := mergeBranchAndRepoSettings(&projectRefs[i], repoRef)
+			mergedProject, err := mergeBranchAndRepoSettings(ctx, &projectRefs[i], repoRef)
 			if err != nil {
 				return nil, errors.Wrap(err, "merging settings")
 			}
@@ -3143,7 +3143,7 @@ func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, githubUser, owner,
 // GetProjectSetupCommands returns jasper commands for the project's configuration commands
 // Stderr/Stdin are passed through to the commands as well as Stdout, when opts.Quiet is false
 // The commands' working directories may not exist and need to be created before running the commands
-func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupCommandOptions) ([]*jasper.Command, error) {
+func (p *ProjectRef) GetProjectSetupCommands(ctx context.Context, opts apimodels.WorkstationSetupCommandOptions) ([]*jasper.Command, error) {
 	if len(p.WorkstationConfig.SetupCommands) == 0 && !p.WorkstationConfig.ShouldGitClone() {
 		return nil, errors.Errorf("no setup commands configured for project '%s'", p.Id)
 	}
@@ -3156,7 +3156,7 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 		cmd := jasper.NewCommand().Add(args).
 			SetErrorWriter(utility.NopWriteCloser(os.Stderr)).
 			Prerequisite(func() bool {
-				grip.Info(context.Background(), message.Fields{
+				grip.Info(ctx, message.Fields{
 					"directory": opts.Directory,
 					"command":   strings.Join(args, " "),
 					"op":        "repo clone",
@@ -3187,7 +3187,7 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 		cmd := jasper.NewCommand().Directory(dir).SetErrorWriter(utility.NopWriteCloser(os.Stderr)).SetInput(os.Stdin).
 			Append(obj.Command).
 			Prerequisite(func() bool {
-				grip.Info(context.Background(), message.Fields{
+				grip.Info(ctx, message.Fields{
 					"directory":      dir,
 					"command":        cmdString,
 					"command_number": commandNumber,
