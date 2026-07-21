@@ -740,31 +740,6 @@ func TestPatchesByUserPermissionFiltering(t *testing.T) {
 		assert.Len(t, payload, 6)
 	})
 
-	t.Run("PaginationWithFilteredPatches", func(t *testing.T) {
-		caller := &user.DBUser{Id: "caller", SystemRoles: []string{"viewer_role"}}
-		userCtx := gimlet.AttachUser(t.Context(), caller)
-
-		route := &patchesByUserHandler{
-			user:  "target",
-			key:   now.Add(10 * time.Second),
-			limit: 2,
-			url:   "http://evergreen.example.net/",
-		}
-		resp := route.Run(userCtx)
-		require.Equal(t, http.StatusOK, resp.Status())
-
-		payload := resp.Data().([]any)
-		require.Len(t, payload, 2)
-		for _, item := range payload {
-			ap := item.(restModel.APIPatch)
-			assert.Equal(t, allowedProject.Id, utility.FromStringPtr(ap.ProjectId))
-		}
-
-		pages := resp.Pages()
-		require.NotNil(t, pages)
-		require.NotNil(t, pages.Next)
-		assert.Equal(t, 2, pages.Next.Limit)
-	})
 }
 
 type CountEstimatedGeneratedTasksSuite struct {

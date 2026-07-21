@@ -304,48 +304,29 @@ func (p *patchesByUserHandler) Run(ctx context.Context) gimlet.Responder {
 		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
 	})
 
+	patches, err := data.FindPatchesByUser(ctx, p.user, p.key, p.limit+1)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patches for user '%s'", p.user))
+	}
+
 	projectPermitted := make(map[string]bool)
 	var permitted []model.APIPatch
-	cursor := p.key
-	const maxIterations = 10
-	const minFetchLimit = 50
-
-	for i := 0; i < maxIterations && len(permitted) <= p.limit; i++ {
-		fetchLimit := max(p.limit+1, minFetchLimit)
-		patches, err := data.FindPatchesByUser(ctx, p.user, cursor, fetchLimit)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patches for user '%s'", p.user))
-		}
-
-		for _, ap := range patches {
-			projectID := utility.FromStringPtr(ap.ProjectId)
-			if !isSuperUser && projectID != "" {
-				if _, checked := projectPermitted[projectID]; !checked {
-					projectPermitted[projectID] = usr.HasPermission(ctx, gimlet.PermissionOpts{
-						Resource:      projectID,
-						ResourceType:  evergreen.ProjectResourceType,
-						Permission:    evergreen.PermissionTasks,
-						RequiredLevel: evergreen.TasksView.Value,
-					})
-				}
-				if !projectPermitted[projectID] {
-					continue
-				}
+	for _, ap := range patches {
+		projectID := utility.FromStringPtr(ap.ProjectId)
+		if !isSuperUser && projectID != "" {
+			if _, checked := projectPermitted[projectID]; !checked {
+				projectPermitted[projectID] = usr.HasPermission(ctx, gimlet.PermissionOpts{
+					Resource:      projectID,
+					ResourceType:  evergreen.ProjectResourceType,
+					Permission:    evergreen.PermissionTasks,
+					RequiredLevel: evergreen.TasksView.Value,
+				})
 			}
-			permitted = append(permitted, ap)
-			if len(permitted) > p.limit {
-				break
+			if !projectPermitted[projectID] {
+				continue
 			}
 		}
-
-		if len(patches) < fetchLimit {
-			break
-		}
-		lastCreateTime := patches[len(patches)-1].CreateTime
-		if lastCreateTime == nil {
-			break
-		}
-		cursor = *lastCreateTime
+		permitted = append(permitted, ap)
 	}
 
 	resp := gimlet.NewResponseBuilder()
