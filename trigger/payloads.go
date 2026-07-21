@@ -65,7 +65,6 @@ type commonTemplateData struct {
 
 type emailTemplateData struct {
 	commonTemplateData
-	Description template.HTML
 }
 
 const emailSubjectTemplateString string = `Evergreen: {{ .Object }} {{.DisplayName}} in '{{ .Project }}' has {{ .PastTenseStatus }}!`
@@ -254,7 +253,6 @@ func makeHeaders(headerMap map[string][]string) http.Header {
 func emailPayload(t *commonTemplateData) (*message.Email, error) {
 	emailData := &emailTemplateData{
 		commonTemplateData: *t,
-		Description:        template.HTML(t.Description),
 	}
 	bodyTmpl, err := emailBodyTemplate.Clone()
 	if err != nil {
