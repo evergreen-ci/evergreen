@@ -146,6 +146,11 @@ func TestGetProjectIdFromParams(t *testing.T) {
 	require.Equal(t, http.StatusNotFound, statusCode)
 	require.Equal(t, "", projectId)
 
+	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"projectId": project.Id, "repoId": repo.ProjectRef.Id})
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, statusCode)
+	require.Equal(t, project.Id, projectId, "project ID should take precedence over repo ID")
+
 	// Parameters are empty.
 	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{})
 	require.Error(t, err)
@@ -212,6 +217,16 @@ func TestBuildProjectParameterMapForLegacy(t *testing.T) {
 			query:    url.Values{"project_id": []string{"unrelated_project"}},
 			vars:     map[string]string{"project_id": "target_project"},
 			expected: map[string]string{projectIdKey: "target_project"},
+		},
+		"QueryRepoIDIgnoredWhenTaskIDInPath": {
+			query:    url.Values{"repo_id": []string{"unrelated_repo_id"}},
+			vars:     map[string]string{"task_id": "target_task_id"},
+			expected: map[string]string{repoIdKey: "", taskIdKey: "target_task_id"},
+		},
+		"QueryRepoIDIgnoredWhenRepoIDInPath": {
+			query:    url.Values{"repo_id": []string{"unrelated_repo_id"}},
+			vars:     map[string]string{"repo_id": "target_repo_id"},
+			expected: map[string]string{repoIdKey: "target_repo_id"},
 		},
 		"QueryObjectIDsUsedWhenNoObjectIDInPath": {
 			query:    url.Values{"version_id": []string{"query_version_id"}},

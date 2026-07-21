@@ -88,7 +88,7 @@ func GetProjectIdFromParams(ctx context.Context, paramsMap map[string]string) (s
 		}
 	}
 
-	if repoID != "" {
+	if projectID == "" && repoID != "" {
 		var repoRef *model.RepoRef
 		repoRef, err = model.FindOneRepoRef(ctx, repoID)
 		if err != nil {
@@ -182,6 +182,7 @@ func BuildProjectParameterMapForLegacy(query url.Values, vars map[string]string)
 		vars["patch_id"], vars[patchIdKey],
 		vars["log_id"],
 		vars["project_id"], vars[projectIdKey],
+		vars["repo_id"], vars[repoIdKey],
 	) != ""
 
 	if hasObjectIDInPath {
