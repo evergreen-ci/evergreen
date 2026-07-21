@@ -166,8 +166,8 @@ func GetPatchSummaries(patchContent string) ([]Summary, error) {
 func ParseGitUrl(url string) (string, string, error) {
 	var owner, repo string
 	httpsPrefix := "https://"
-	if strings.HasPrefix(url, httpsPrefix) {
-		url = strings.TrimPrefix(url, httpsPrefix)
+	if after, ok := strings.CutPrefix(url, httpsPrefix); ok {
+		url = after
 		split := strings.Split(url, "/")
 		if len(split) != 3 {
 			// this covers the case of a GitHub API URL of the form
