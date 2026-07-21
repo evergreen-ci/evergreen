@@ -128,6 +128,8 @@ func TestGetAliasesHandler(t *testing.T) {
 				}}
 			require.NoError(t, projectConfig.Insert(t.Context()))
 
+			ctx = context.WithValue(ctx, RequestContext, &dbModel.Context{ProjectRef: projectRef})
+
 			rh, ok := makeFetchAliases().(*aliasGetHandler)
 			require.True(t, ok)
 
