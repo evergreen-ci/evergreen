@@ -2697,7 +2697,7 @@ func AdminDbToRestModel(in evergreen.ConfigSection) (Model, error) {
 		structVal := reflect.ValueOf(*NewConfigModel())
 		for i := 0; i < structVal.NumField(); i++ {
 			// this assumes that the json tag is the same as the section ID
-			tag := strings.Split(structVal.Type().Field(i).Tag.Get("json"), ",")[0]
+			tag, _, _ := strings.Cut(structVal.Type().Field(i).Tag.Get("json"), ",")
 			if tag != id {
 				continue
 			}

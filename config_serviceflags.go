@@ -136,7 +136,7 @@ func (c *ServiceFlags) ToSlice() []ServiceFlagEntry {
 		if field.Type.Kind() != reflect.Bool {
 			continue
 		}
-		jsonTag := strings.Split(field.Tag.Get("json"), ",")[0]
+		jsonTag, _, _ := strings.Cut(field.Tag.Get("json"), ",")
 		if jsonTag == "" || jsonTag == "-" {
 			continue
 		}
@@ -151,7 +151,7 @@ func (c *ServiceFlags) SetByName(name string, value bool) error {
 	v := reflect.ValueOf(c).Elem()
 	t := v.Type()
 	for i := 0; i < t.NumField(); i++ {
-		jsonTag := strings.Split(t.Field(i).Tag.Get("json"), ",")[0]
+		jsonTag, _, _ := strings.Cut(t.Field(i).Tag.Get("json"), ",")
 		if jsonTag == name {
 			v.Field(i).SetBool(value)
 			return nil
