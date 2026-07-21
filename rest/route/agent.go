@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -1325,14 +1326,9 @@ func (h *gitServePatchFileHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	patchFileOwned := false
-	for _, mp := range p.Patches {
-		if mp.PatchSet.PatchFileId == h.patchID {
-			patchFileOwned = true
-			break
-		}
-	}
-	if !patchFileOwned {
+	if !slices.ContainsFunc(p.Patches, func(mp patch.ModulePatch) bool {
+		return mp.PatchSet.PatchFileId == h.patchID
+	}) {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("patch file '%s' not found", h.patchID),
