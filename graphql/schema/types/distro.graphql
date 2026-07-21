@@ -155,6 +155,7 @@ input DistroInput {
 input BootstrapSettingsInput {
   clientDir: String!
   communication: CommunicationMethod!
+  containerIsolation: ContainerIsolationSettingsInput!
   env: [EnvVarInput!]!
   jasperBinaryDir: String!
   jasperCredentialsPath: String!
@@ -164,6 +165,12 @@ input BootstrapSettingsInput {
   rootDir: String!
   serviceUser: String!
   shellPath: String!
+}
+
+input ContainerIsolationSettingsInput {
+  enabled: Boolean!
+  image: String!
+  requireIsolation: Boolean!
 }
 
 input DispatcherSettingsInput {
@@ -323,6 +330,7 @@ type Distro {
 type BootstrapSettings {
   clientDir: String!
   communication: CommunicationMethod!
+  containerIsolation: ContainerIsolationSettings!
   env: [EnvVar!]!
   jasperBinaryDir: String!
   jasperCredentialsPath: String!
@@ -332,6 +340,22 @@ type BootstrapSettings {
   rootDir: String!
   serviceUser: String!
   shellPath: String!
+}
+
+"""
+ContainerIsolationSettings controls per-task Docker container isolation for a
+distro. When enabled, task subprocess calls (shell.exec, subprocess.exec) run
+inside an ephemeral Docker container rather than directly on the host.
+"""
+type ContainerIsolationSettings {
+  enabled: Boolean!
+  image: String!
+  """
+  RequireIsolation opts into fail-closed behavior. When true, container
+  creation or image-pull failure fails the task immediately rather than
+  degrading to host-mode. Default (false) is fail-open.
+  """
+  requireIsolation: Boolean!
 }
 
 type DispatcherSettings {

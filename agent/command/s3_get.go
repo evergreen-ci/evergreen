@@ -217,6 +217,9 @@ func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger cl
 		attribute.String(s3GetAssumeRoleARN, c.assumedRoleARN),
 	)
 
+	SetWorkdirBoundaryAttribute(ctx, conf, c.LocalFile)
+	SetWorkdirBoundaryAttribute(ctx, conf, c.ExtractTo)
+
 	// create pail bucket
 	httpClient := utility.GetHTTPClient()
 	httpClient.Timeout = s3HTTPClientTimeout

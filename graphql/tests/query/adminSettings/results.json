@@ -623,6 +623,7 @@
               { "name": "pod_diagnostics_disabled", "enabled": false },
               { "name": "retry_failed_log_move_enabled", "enabled": false },
               { "name": "project_translation_cache_enabled", "enabled": false },
+              { "name": "container_isolation_disabled", "enabled": false },
               { "name": "event_processing_disabled", "enabled": false },
               { "name": "jira_notifications_disabled", "enabled": false },
               { "name": "slack_notifications_disabled", "enabled": false },

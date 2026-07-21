@@ -80,6 +80,7 @@ type TaskEndDetail struct {
 	TraceID              string                  `bson:"trace_id,omitempty" json:"trace_id,omitempty"`
 	DiskDevices          []string                `bson:"disk_devices,omitempty" json:"disk_devices,omitempty"`
 	ResourceConstraints  *ResourceConstraintInfo `bson:"resource_constraints,omitempty" json:"resource_constraints,omitempty"`
+	ExecutionPlatform    string                  `bson:"execution_platform,omitempty" json:"execution_platform,omitempty"`
 }
 
 // FailingCommand represents a command that failed in a task.
@@ -353,9 +354,18 @@ type GeneratePollResponse struct {
 // DistroView represents the view of data that the agent uses from the distro
 // it is running on.
 type DistroView struct {
-	DisableShallowClone bool     `json:"disable_shallow_clone"`
-	Mountpoints         []string `json:"mountpoints"`
-	ExecUser            string   `json:"exec_user"`
+	DisableShallowClone bool                        `json:"disable_shallow_clone"`
+	Mountpoints         []string                    `json:"mountpoints"`
+	ExecUser            string                      `json:"exec_user"`
+	ContainerIsolation  *ContainerIsolationSettings `json:"container_isolation,omitempty"`
+}
+
+// ContainerIsolationSettings is the agent-facing view of container isolation config.
+type ContainerIsolationSettings struct {
+	Image            string `json:"image"`
+	MemoryMB         int64  `json:"memory_mb,omitempty"`
+	CPUs             int64  `json:"cpus,omitempty"`
+	RequireIsolation bool   `json:"require_isolation,omitempty"`
 }
 
 // HostView includes a relevant subset of information the agent's own host.
