@@ -269,6 +269,39 @@ func TestHostPostHandler(t *testing.T) {
 			require.NotZero(t, resp)
 			assert.NotEqual(t, http.StatusOK, resp.Status(), resp.Data())
 		},
+		"AllowsSpawnWithOwnHomeVolume": func(ctx context.Context, t *testing.T, env *mock.Environment, rh *hostPostHandler, u *user.DBUser, d *distro.Distro) {
+			v := host.Volume{
+				ID:        "my-volume",
+				CreatedBy: u.Id,
+			}
+			require.NoError(t, v.Insert(ctx))
+
+			rh.options.HomeVolumeID = v.ID
+
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status(), resp.Data())
+		},
+		"RejectsSpawnWithAnotherUsersHomeVolume": func(ctx context.Context, t *testing.T, env *mock.Environment, rh *hostPostHandler, u *user.DBUser, d *distro.Distro) {
+			v := host.Volume{
+				ID:        "victim-volume",
+				CreatedBy: "another-user",
+			}
+			require.NoError(t, v.Insert(ctx))
+
+			rh.options.HomeVolumeID = v.ID
+
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusUnauthorized, resp.Status(), resp.Data())
+		},
+		"RejectsSpawnWithNonexistentHomeVolume": func(ctx context.Context, t *testing.T, env *mock.Environment, rh *hostPostHandler, u *user.DBUser, d *distro.Distro) {
+			rh.options.HomeVolumeID = "nonexistent-volume"
+
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusNotFound, resp.Status(), resp.Data())
+		},
 		"RejectsSpawnWithTaskFromUnauthorizedProject": func(ctx context.Context, t *testing.T, env *mock.Environment, rh *hostPostHandler, u *user.DBUser, d *distro.Distro) {
 			tsk := &task.Task{
 				Id:      "secret-task",
@@ -315,7 +348,7 @@ func TestHostPostHandler(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			ctx := t.Context()
 
-			require.NoError(t, db.ClearCollections(distro.Collection, host.Collection, task.Collection, user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
+			require.NoError(t, db.ClearCollections(distro.Collection, host.Collection, host.VolumesCollection, task.Collection, user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
 			env := &mock.Environment{}
 			assert.NoError(t, env.Configure(ctx))
 			env.EvergreenSettings.Spawnhost.SpawnHostsPerUser = 10

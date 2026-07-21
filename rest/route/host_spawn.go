@@ -113,6 +113,26 @@ func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
+	if hph.options.HomeVolumeID != "" {
+		volume, err := host.FindVolumeByID(ctx, hph.options.HomeVolumeID)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding volume '%s'", hph.options.HomeVolumeID))
+		}
+		if volume == nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("volume '%s' not found", hph.options.HomeVolumeID),
+			})
+		}
+		// Only allow users to attach their own volumes.
+		if user.Id != volume.CreatedBy {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusUnauthorized,
+				Message:    fmt.Sprintf("not authorized to attach volume '%s'", volume.ID),
+			})
+		}
+	}
+
 	intentHost, err := data.NewIntentHost(ctx, hph.options, user, hph.env)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "creating intent host"))
