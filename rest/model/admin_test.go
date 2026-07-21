@@ -126,7 +126,7 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.Buckets.LogBucket.Name, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Name))
 	assert.EqualValues(testSettings.Buckets.LogBucket.Type, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Type))
 	assert.Equal(testSettings.Buckets.LogBucket.DBName, utility.FromStringPtr(apiSettings.Buckets.LogBucket.DBName))
-	assert.EqualValues(testSettings.Buckets.RetryFailedLogMoveLookbackDays, utility.FromIntPtr(apiSettings.Buckets.RetryFailedLogMoveLookbackDays))
+	assert.Equal(evergreen.FormatAdminDuration(testSettings.Buckets.RetryFailedLogMoveLookback), utility.FromStringPtr(apiSettings.Buckets.RetryFailedLogMoveLookback))
 	assert.EqualValues(testSettings.Buckets.RetryFailedLogMoveMaxJobsPerRun, utility.FromIntPtr(apiSettings.Buckets.RetryFailedLogMoveMaxJobsPerRun))
 	assert.Equal(testSettings.Buckets.TestResultsBucket.Name, utility.FromStringPtr(apiSettings.Buckets.TestResultsBucket.Name))
 	assert.EqualValues(testSettings.Buckets.TestResultsBucket.Type, utility.FromStringPtr(apiSettings.Buckets.TestResultsBucket.Type))
@@ -256,7 +256,7 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.Buckets.LogBucket.Name, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Name))
 	assert.EqualValues(testSettings.Buckets.LogBucket.Type, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Type))
 	assert.Equal(testSettings.Buckets.LogBucket.DBName, utility.FromStringPtr(apiSettings.Buckets.LogBucket.DBName))
-	assert.EqualValues(testSettings.Buckets.RetryFailedLogMoveLookbackDays, dbSettings.Buckets.RetryFailedLogMoveLookbackDays)
+	assert.EqualValues(testSettings.Buckets.RetryFailedLogMoveLookback, dbSettings.Buckets.RetryFailedLogMoveLookback)
 	assert.EqualValues(testSettings.Buckets.RetryFailedLogMoveMaxJobsPerRun, dbSettings.Buckets.RetryFailedLogMoveMaxJobsPerRun)
 	assert.EqualValues(testSettings.Buckets.TestResultsBucket, dbSettings.Buckets.TestResultsBucket)
 	assert.EqualValues(testSettings.Buckets.Credentials.Key, dbSettings.Buckets.Credentials.Key)
@@ -364,6 +364,11 @@ func TestAPIBucketsConfigJSON(t *testing.T) {
 	assert.Equal(t, "k", utility.FromStringPtr(out.Credentials.Key))
 	assert.Equal(t, "s", utility.FromStringPtr(out.Credentials.Secret))
 	assert.Equal(t, "cb", utility.FromStringPtr(out.Credentials.Bucket))
+	serviceConfig, err := out.ToService()
+	require.NoError(t, err)
+	serviceBuckets, ok := serviceConfig.(evergreen.BucketsConfig)
+	require.True(t, ok)
+	assert.Equal(t, 14*24*time.Hour, serviceBuckets.RetryFailedLogMoveLookback)
 
 	roundTrip, err := json.Marshal(&out)
 	require.NoError(t, err)
@@ -401,13 +406,14 @@ func TestAPIBucketsConfigServiceRoundTrip(t *testing.T) {
 		LogBucketFailedTasks:            bucket("failed"),
 		TestResultsBucket:               bucket("tr"),
 		LongRetentionProjects:           []string{"p1", "p2"},
-		RetryFailedLogMoveLookbackDays:  14,
+		RetryFailedLogMoveLookback:      14 * 24 * time.Hour,
 		RetryFailedLogMoveMaxJobsPerRun: 25,
 		Credentials:                     evergreen.S3Credentials{Key: "k", Secret: "s", Bucket: "cb"},
 	}
 
 	apiConfig := &APIBucketsConfig{}
 	require.NoError(t, apiConfig.BuildFromService(original))
+	assert.Equal(t, "14d", utility.FromStringPtr(apiConfig.RetryFailedLogMoveLookback))
 
 	out, err := apiConfig.ToService()
 	require.NoError(t, err)

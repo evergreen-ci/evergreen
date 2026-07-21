@@ -336,6 +336,7 @@ type ComplexityRoot struct {
 		LogBucketFailedTasks             func(childComplexity int) int
 		LogBucketLongRetention           func(childComplexity int) int
 		LongRetentionProjects            func(childComplexity int) int
+		RetryFailedLogMoveLookback       func(childComplexity int) int
 		RetryFailedLogMoveLookbackDays   func(childComplexity int) int
 		RetryFailedLogMoveLookbackMonths func(childComplexity int) int
 		RetryFailedLogMoveMaxJobsPerRun  func(childComplexity int) int
@@ -3921,6 +3922,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.BucketsConfig.LongRetentionProjects(childComplexity), true
+	case "BucketsConfig.retryFailedLogMoveLookback":
+		if e.complexity.BucketsConfig.RetryFailedLogMoveLookback == nil {
+			break
+		}
+
+		return e.complexity.BucketsConfig.RetryFailedLogMoveLookback(childComplexity), true
 	case "BucketsConfig.retryFailedLogMoveLookbackDays":
 		if e.complexity.BucketsConfig.RetryFailedLogMoveLookbackDays == nil {
 			break
@@ -18755,6 +18762,8 @@ func (ec *executionContext) fieldContext_AdminSettings_buckets(_ context.Context
 				return ec.fieldContext_BucketsConfig_logBucketFailedTasks(ctx, field)
 			case "longRetentionProjects":
 				return ec.fieldContext_BucketsConfig_longRetentionProjects(ctx, field)
+			case "retryFailedLogMoveLookback":
+				return ec.fieldContext_BucketsConfig_retryFailedLogMoveLookback(ctx, field)
 			case "retryFailedLogMoveLookbackDays":
 				return ec.fieldContext_BucketsConfig_retryFailedLogMoveLookbackDays(ctx, field)
 			case "retryFailedLogMoveLookbackMonths":
@@ -23229,6 +23238,35 @@ func (ec *executionContext) _BucketsConfig_longRetentionProjects(ctx context.Con
 }
 
 func (ec *executionContext) fieldContext_BucketsConfig_longRetentionProjects(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BucketsConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BucketsConfig_retryFailedLogMoveLookback(ctx context.Context, field graphql.CollectedField, obj *model.APIBucketsConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BucketsConfig_retryFailedLogMoveLookback,
+		func(ctx context.Context) (any, error) {
+			return obj.RetryFailedLogMoveLookback, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BucketsConfig_retryFailedLogMoveLookback(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "BucketsConfig",
 		Field:      field,
@@ -81629,7 +81667,7 @@ func (ec *executionContext) unmarshalInputBucketsConfigInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"logBucket", "logBucketLongRetention", "logBucketFailedTasks", "longRetentionProjects", "retryFailedLogMoveLookbackDays", "retryFailedLogMoveLookbackMonths", "retryFailedLogMoveMaxJobsPerRun", "testResultsBucket", "internalBuckets", "credentials"}
+	fieldsInOrder := [...]string{"logBucket", "logBucketLongRetention", "logBucketFailedTasks", "longRetentionProjects", "retryFailedLogMoveLookback", "retryFailedLogMoveLookbackDays", "retryFailedLogMoveLookbackMonths", "retryFailedLogMoveMaxJobsPerRun", "testResultsBucket", "internalBuckets", "credentials"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -81664,6 +81702,13 @@ func (ec *executionContext) unmarshalInputBucketsConfigInput(ctx context.Context
 				return it, err
 			}
 			it.LongRetentionProjects = data
+		case "retryFailedLogMoveLookback":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("retryFailedLogMoveLookback"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RetryFailedLogMoveLookback = data
 		case "retryFailedLogMoveLookbackDays":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("retryFailedLogMoveLookbackDays"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
@@ -92812,6 +92857,8 @@ func (ec *executionContext) _BucketsConfig(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._BucketsConfig_logBucketFailedTasks(ctx, field, obj)
 		case "longRetentionProjects":
 			out.Values[i] = ec._BucketsConfig_longRetentionProjects(ctx, field, obj)
+		case "retryFailedLogMoveLookback":
+			out.Values[i] = ec._BucketsConfig_retryFailedLogMoveLookback(ctx, field, obj)
 		case "retryFailedLogMoveLookbackDays":
 			out.Values[i] = ec._BucketsConfig_retryFailedLogMoveLookbackDays(ctx, field, obj)
 		case "retryFailedLogMoveLookbackMonths":

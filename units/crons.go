@@ -930,9 +930,6 @@ func PopulateUnstickVolumesJob() amboy.QueueOperation {
 	}
 }
 
-// defaultRetryFailedLogMoveLookbackDays is used when the admin setting is unset or <= 0.
-const defaultRetryFailedLogMoveLookbackDays = 7
-
 // defaultRetryFailedLogMoveMaxJobsPerRun caps enqueued jobs to avoid S3 rate limiting.
 const defaultRetryFailedLogMoveMaxJobsPerRun = 50
 
@@ -980,11 +977,17 @@ func populateRetryFailedLogMoveJobs(env evergreen.Environment, runInOldTaskColle
 			return nil
 		}
 
-		lookbackDays := settings.Buckets.RetryFailedLogMoveLookbackDays
-		if lookbackDays <= 0 {
-			lookbackDays = defaultRetryFailedLogMoveLookbackDays
+		lookback := settings.Buckets.GetRetryFailedLogMoveLookback()
+		if lookback < 0 {
+			grip.Info(ctx, message.Fields{
+				"message": "retry failed log move jobs skipped: retry lookback is disabled",
+			})
+			return nil
 		}
-		cutoff := time.Now().AddDate(0, 0, -lookbackDays)
+		if lookback == 0 {
+			lookback = evergreen.DefaultRetryFailedLogMoveLookback
+		}
+		cutoff := time.Now().Add(-lookback)
 
 		maxJobs := settings.Buckets.RetryFailedLogMoveMaxJobsPerRun
 		if maxJobs <= 0 {
@@ -1022,7 +1025,7 @@ func populateRetryFailedLogMoveJobs(env evergreen.Environment, runInOldTaskColle
 				"message":          "retry failed log move jobs: finding candidate tasks failed",
 				"max_jobs_per_run": maxJobs,
 				"query_limit":      queryLimit,
-				"lookback_days":    lookbackDays,
+				"lookback":         evergreen.FormatAdminDuration(lookback),
 			}
 			grip.Error(ctx, message.WrapError(err, logFields))
 			return errors.Wrap(err, "finding failed tasks whose logs need moving")
@@ -1051,7 +1054,7 @@ func populateRetryFailedLogMoveJobs(env evergreen.Environment, runInOldTaskColle
 				"task_ids_attempt":           []string{},
 				"max_jobs_per_run":           maxJobs,
 				"query_limit":                queryLimit,
-				"lookback_days":              lookbackDays,
+				"lookback":                   evergreen.FormatAdminDuration(lookback),
 			}
 			grip.Info(ctx, infoFields)
 			return nil
@@ -1112,7 +1115,7 @@ func populateRetryFailedLogMoveJobs(env evergreen.Environment, runInOldTaskColle
 			"task_id_log_truncated":          omittedCandidates > 0 || omittedAttempted > 0,
 			"task_id_log_omitted_candidates": omittedCandidates,
 			"task_id_log_omitted_attempt":    omittedAttempted,
-			"lookback_days":                  lookbackDays,
+			"lookback":                       evergreen.FormatAdminDuration(lookback),
 		}
 		if err != nil {
 			fields["message"] = "retry failed log move jobs: one or more enqueue operations failed"
