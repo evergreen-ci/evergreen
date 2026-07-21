@@ -64,8 +64,7 @@ func TestHostParseAndValidate(t *testing.T) {
 }
 
 func TestHostPaginator(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	numHostsInDB := 300
 	Convey("When paginating with a Connector", t, func() {
@@ -313,8 +312,7 @@ func TestHostPaginator(t *testing.T) {
 }
 
 func TestTasksByProjectAndCommitPaginator(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	numTasks := 300
 	projectId := "project_1"
@@ -565,8 +563,7 @@ func TestTaskByProjectHandlerParse(t *testing.T) {
 }
 
 func TestTaskByBuildPaginator(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	numTasks := 300
 	Convey("When paginating with a Connector", t, func() {
@@ -1225,8 +1222,7 @@ func TestTaskResetExecute(t *testing.T) {
 }
 
 func TestParentTaskInfo(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	assert.NoError(t, db.ClearCollections(task.Collection))
 	buildID := "test"
 	dtID := "displayTask"
@@ -1281,8 +1277,7 @@ func TestParentTaskInfo(t *testing.T) {
 }
 
 func TestOptionsRequest(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	assert.NoError(t, db.ClearCollections(task.Collection))
 
 	route := "/rest/v2/tasks/test/restart"

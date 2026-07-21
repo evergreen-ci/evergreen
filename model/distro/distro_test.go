@@ -1,7 +1,6 @@
 package distro
 
 import (
-	"context"
 	"fmt"
 	"math/rand"
 	"regexp"
@@ -110,8 +109,7 @@ func TestGenerateName(t *testing.T) {
 }
 
 func TestIsParent(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	assert.NoError(db.Clear(Collection))
@@ -170,8 +168,7 @@ func TestGetDefaultAMI(t *testing.T) {
 }
 
 func TestValidateContainerPoolDistros(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	assert.NoError(db.Clear(Collection))
@@ -563,8 +560,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 }
 
 func TestAddPermissions(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert.NoError(t, db.ClearCollections(user.Collection, Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	env := evergreen.GetEnvironment()
@@ -681,8 +677,7 @@ func TestGetAuthorizedKeysFile(t *testing.T) {
 }
 
 func TestGetDistrosForImage(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	assert.NoError(t, db.ClearCollections(Collection))
 	imageID := "distro"
 	otherImageID := "not_distro"
@@ -713,8 +708,7 @@ func TestGetDistrosForImage(t *testing.T) {
 }
 
 func TestGetImageIDFromDistro(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	assert.NoError(t, db.ClearCollections(Collection))
 	d := &Distro{
 		Id:      "ubuntu1804-large",
@@ -728,8 +722,7 @@ func TestGetImageIDFromDistro(t *testing.T) {
 }
 
 func TestCostData(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert.NoError(t, db.Clear(Collection))
 

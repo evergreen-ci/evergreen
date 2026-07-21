@@ -1,7 +1,6 @@
 package route
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -18,8 +17,7 @@ import (
 )
 
 func TestGetTaskOutputLogsBaseHandlerParse(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{
 		Settings: user.UserSettings{
 			Timezone: "UTC",
@@ -208,8 +206,7 @@ func TestGetTaskOutputLogsBaseHandlerParse(t *testing.T) {
 }
 
 func TestGetTaskLogsHandlerParse(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{
 		Settings: user.UserSettings{
 			Timezone: "UTC",
@@ -290,8 +287,7 @@ func TestGetTaskLogsHandlerParse(t *testing.T) {
 }
 
 func TestGetTestLogsHandlerParse(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{
 		Settings: user.UserSettings{
 			Timezone: "UTC",

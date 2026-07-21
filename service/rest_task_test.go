@@ -137,8 +137,7 @@ func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId
 }
 
 func TestGetTaskInfo(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 	router, err := newTestUIRouter(ctx, env)
@@ -332,8 +331,7 @@ func TestGetTaskInfo(t *testing.T) {
 }
 
 func TestGetTaskStatus(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 	router, err := newTestUIRouter(ctx, env)
@@ -464,8 +462,7 @@ func TestGetTaskStatus(t *testing.T) {
 func TestGetDisplayTaskInfo(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := &mock.Environment{}
 	require.NoError(env.Configure(ctx))
 	router, err := newTestUIRouter(ctx, env)

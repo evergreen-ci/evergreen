@@ -1,7 +1,6 @@
 package command
 
 import (
-	"context"
 	"crypto/sha256"
 	"fmt"
 	"io"
@@ -105,8 +104,7 @@ func TestPapertrailTrace(t *testing.T) {
 		},
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	t.Cleanup(func() { require.NoError(t, os.RemoveAll(tempdir)) })
 

@@ -1,7 +1,6 @@
 package model
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -12,8 +11,7 @@ import (
 )
 
 func TestFindUniqueBuildVariantNamesByTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert.NoError(t, db.ClearCollections(task.Collection))
 	t1 := task.Task{

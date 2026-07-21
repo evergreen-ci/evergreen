@@ -353,8 +353,7 @@ func TestGetTaskStatsTwoDocuments(t *testing.T) {
 
 func TestGetTaskReliability(t *testing.T) {
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	withCancelledContext := func(ctx context.Context, fn func(context.Context)) {
 		ctx, cancel := context.WithCancel(ctx)
@@ -501,8 +500,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 		evergreen.GithubPRRequester,
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	withCancelledContext := func(ctx context.Context, fn func(context.Context)) {
 		ctx, cancel := context.WithCancel(ctx)

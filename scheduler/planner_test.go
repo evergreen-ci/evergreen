@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"context"
 	"fmt"
 	"sort"
 	"testing"
@@ -16,8 +15,7 @@ import (
 )
 
 func TestPlanner(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	_, err := evergreen.GetEnvironment().DB().Collection(task.Collection).Indexes().CreateOne(ctx, mongo.IndexModel{Keys: task.TaskHistoricalDataIndex})
 	assert.NoError(t, err)

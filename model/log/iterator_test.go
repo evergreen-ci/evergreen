@@ -23,8 +23,7 @@ const (
 )
 
 func TestLogIterator(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	tmpDir := t.TempDir()
 	bucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: tmpDir})
@@ -116,8 +115,7 @@ func TestLogIterator(t *testing.T) {
 }
 
 func TestChunkIterator(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	bucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: t.TempDir()})
 	require.NoError(t, err)
@@ -313,8 +311,7 @@ func TestChunkIterator(t *testing.T) {
 }
 
 func TestMergingIterator(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	bucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: t.TempDir()})
 	require.NoError(t, err)

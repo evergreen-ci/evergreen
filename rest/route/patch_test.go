@@ -737,8 +737,7 @@ func TestPatchRawModulesHandler(t *testing.T) {
 		patchID: patchId.Hex(),
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	response := route.Run(ctx)
 
 	rawModulesResponse, ok := response.Data().(*restModel.APIRawPatch)
@@ -801,8 +800,7 @@ func TestPatchRawHandler(t *testing.T) {
 }
 
 func TestSchedulePatchRoute(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	env := &mock.Environment{}
@@ -1143,8 +1141,7 @@ buildvariants:
 }
 
 func TestSchedulePatchActivatesInactiveTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	env := &mock.Environment{}

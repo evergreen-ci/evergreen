@@ -34,8 +34,7 @@ var output = TaskOutput{
 }
 
 func TestEvergreenService(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	svc := NewTestResultService(env)
 	require.NoError(t, ClearTestResults(ctx, env))
@@ -220,8 +219,7 @@ func TestEvergreenService(t *testing.T) {
 }
 
 func TestEvergreenFilterAndSortTestResults(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	svc := NewTestResultService(env)
 	require.NoError(t, db.Clear(Collection))

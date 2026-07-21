@@ -1,7 +1,6 @@
 package trigger
 
 import (
-	"context"
 	"regexp"
 	"strings"
 	"testing"
@@ -546,8 +545,7 @@ func TestCustomFields(t *testing.T) {
 			TaskDisplayName: taskName,
 		},
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	issue, err := j.build(ctx)
 	assert.NoError(err)
 	assert.NotNil(issue)
@@ -688,8 +686,7 @@ func TestJiraBuilderBuild(t *testing.T) {
 	var err error
 	assert.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	message, err := builder.build(ctx)
 	assert.NoError(t, err)

@@ -14,8 +14,7 @@ import (
 )
 
 func TestBadHostTaskRelationship(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -45,8 +44,7 @@ func TestBadHostTaskRelationship(t *testing.T) {
 }
 
 func TestValidateHost(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	hostID := "host_id"
 	secret := "secret"

@@ -71,8 +71,7 @@ func TestHostNextTask(t *testing.T) {
 		Version:   versionID,
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
@@ -568,8 +567,7 @@ func TestHostNextTask(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			colls := []string{model.ProjectRefCollection, host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection,
 				evergreen.ConfigCollection, distro.Collection, model.VersionCollection}
@@ -643,8 +641,7 @@ func TestHostNextTask(t *testing.T) {
 }
 
 func TestSingleTaskDistroValidation(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	colls := []string{model.ProjectRefCollection, host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection,
 		evergreen.ConfigCollection, distro.Collection, model.VersionCollection}
@@ -1241,8 +1238,7 @@ func TestHostEndTask(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			colls := []string{host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, model.ParserProjectCollection, model.ProjectRefCollection, model.VersionCollection, alertrecord.Collection, event.EventCollection}
 			require.NoError(t, db.ClearCollections(colls...))
@@ -1747,8 +1743,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))

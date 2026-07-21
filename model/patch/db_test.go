@@ -185,8 +185,7 @@ func TestProjectOrUserPatchesRequestersOption(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 			assert.NoError(t, db.ClearCollections(Collection))
 			ghPRPatch := Patch{
 				Id:          bson.NewObjectId(),

@@ -250,8 +250,7 @@ func TestArchiveAutoPackExecute(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			tcOpts := internal.TaskConfigOptions{
 				WorkDir: t.TempDir(),

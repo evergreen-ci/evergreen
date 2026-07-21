@@ -1,7 +1,6 @@
 package task
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -116,8 +115,7 @@ func TestSortTestResultsByBaseStatus(t *testing.T) {
 }
 
 func TestGetTaskTestResults(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 
 	require.NoError(t, ClearTestResults(ctx, env))
@@ -233,8 +231,7 @@ func TestGetTaskTestResults(t *testing.T) {
 }
 
 func TestGetTaskTestResultsStats(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 
 	require.NoError(t, ClearTestResults(ctx, env))
@@ -343,8 +340,7 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 }
 
 func TestGetFailedTestSamples(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 
 	require.NoError(t, ClearTestResults(ctx, env))
@@ -453,8 +449,7 @@ func TestAppendResults(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(Collection))
 	}()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 
 	require.NoError(t, ClearTestResults(ctx, env))

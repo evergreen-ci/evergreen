@@ -1397,8 +1397,7 @@ tasks:
 }
 
 func TestTaskGroupParsing(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	checkIsTaskGroupTaskUnit := func(t *testing.T, bvtu BuildVariantTaskUnit) {
 		assert.True(t, bvtu.IsGroup)
@@ -2008,8 +2007,7 @@ func TestAddBuildVariant(t *testing.T) {
 }
 
 func TestParserProjectStorage(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
@@ -2938,8 +2936,7 @@ func TestUpdateReadFileFrom(t *testing.T) {
 }
 
 func TestFindAndTranslateProjectForPatch(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))

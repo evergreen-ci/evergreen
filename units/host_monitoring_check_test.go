@@ -149,8 +149,7 @@ func TestHandleUnresponsiveStaticHost(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			require.NoError(t, db.ClearCollections(colls...))
 
@@ -173,8 +172,7 @@ func TestHandleUnresponsiveStaticHost(t *testing.T) {
 }
 
 func TestHandleExternallyTerminatedHost(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	for _, status := range []cloud.CloudStatus{
@@ -388,8 +386,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 }
 
 func TestHandleTerminatedHostSpawnedByTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	defer func() {

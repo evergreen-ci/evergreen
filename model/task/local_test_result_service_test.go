@@ -1,7 +1,6 @@
 package task
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -28,8 +27,7 @@ var localOutput = TaskOutput{
 const MaxSampleSize = 10
 
 func TestLocalService(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	svc := NewLocalService(env)
 	require.NoError(t, ClearTestResults(ctx, env))
@@ -249,8 +247,7 @@ func TestLocalService(t *testing.T) {
 }
 
 func TestLocalFilterAndSortTestResults(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	svc := NewLocalService(env)
 	defer func() {

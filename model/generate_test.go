@@ -2215,8 +2215,7 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 }
 
 func TestFilterInactiveTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(build.Collection))
@@ -2462,8 +2461,7 @@ func TestFilterInactiveTasks(t *testing.T) {
 }
 
 func TestAddDependencies(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(task.Collection))
 

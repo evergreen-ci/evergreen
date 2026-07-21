@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -42,8 +41,7 @@ func TestDistroAliases(t *testing.T) {
 	require.NoError(t, db.Clear(model.VersionCollection))
 	require.NoError(t, (&model.Version{Id: "foo"}).Insert(t.Context()))
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	t.Run("VerifyPrimaryQueue", func(t *testing.T) {
 		distroOne := &distro.Distro{

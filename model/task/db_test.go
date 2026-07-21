@@ -25,8 +25,7 @@ func checkStatuses(t *testing.T, expected string, toCheck Task) {
 }
 
 func TestFindTasksByIds(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("When calling FindTasksByIds...", t, func() {
 		So(db.Clear(Collection), ShouldBeNil)
@@ -57,8 +56,7 @@ func TestFindTasksByIds(t *testing.T) {
 	})
 }
 func TestDisplayTasksByVersion(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("When calling DisplayTasksByVersion...", t, func() {
 		So(db.Clear(Collection), ShouldBeNil)
@@ -127,8 +125,7 @@ func TestDisplayTasksByVersion(t *testing.T) {
 }
 
 func TestNonExecutionTasksByVersion(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert.NoError(t, db.Clear(Collection))
 	displayTask := Task{
@@ -169,8 +166,7 @@ func TestNonExecutionTasksByVersion(t *testing.T) {
 }
 
 func TestFailedTasksByVersion(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("When calling FailedTasksByVersion...", t, func() {
 		So(db.Clear(Collection), ShouldBeNil)
@@ -208,8 +204,7 @@ func TestFailedTasksByVersion(t *testing.T) {
 }
 
 func TestPotentiallyBlockedTasksByIds(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert.NoError(t, db.Clear(Collection))
 	tasks := []Task{
@@ -288,8 +283,7 @@ func TestPotentiallyBlockedTasksByIds(t *testing.T) {
 }
 
 func TestFindTasksByVersionWithChildTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert.NoError(t, db.ClearCollections(Collection))
 	mainVersion := "main_version"
@@ -326,8 +320,7 @@ func TestFindTasksByVersionWithChildTasks(t *testing.T) {
 	}
 }
 func TestFindTasksByBuildIdAndGithubChecks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert.NoError(t, db.ClearCollections(Collection))
 	tasks := []Task{
@@ -367,8 +360,7 @@ func TestFindTasksByBuildIdAndGithubChecks(t *testing.T) {
 }
 
 func TestFindAllFirstExecution(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection, OldCollection))
 	tasks := []Task{
@@ -393,8 +385,7 @@ func TestFindAllFirstExecution(t *testing.T) {
 }
 
 func TestFindOneIdOldOrNew(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -475,8 +466,7 @@ func TestFind(t *testing.T) {
 }
 
 func TestAddHostCreateDetails(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert.NoError(t, db.ClearCollections(Collection))
 	task := Task{Id: "t1", Execution: 0}
@@ -645,8 +635,7 @@ func TestDisplayStatus(t *testing.T) {
 }
 
 func TestFindTaskNamesByBuildVariant(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("Should return unique task names for a given build variant", t, func() {
 		assert.NoError(t, db.ClearCollections(Collection))
@@ -745,8 +734,7 @@ func TestFindTaskNamesByBuildVariant(t *testing.T) {
 }
 
 func TestFindByStaleRunningTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection))
@@ -1823,8 +1811,7 @@ func TestHasMatchingTasks(t *testing.T) {
 }
 
 func TestFindAllUnmarkedDependenciesToBlock(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
@@ -1888,8 +1875,7 @@ func TestFindAllUnmarkedDependenciesToBlock(t *testing.T) {
 }
 
 func TestFindAllUnattainableDependenciesToUnbock(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
@@ -2069,8 +2055,7 @@ func TestCountNumExecutionsForInterval(t *testing.T) {
 }
 
 func TestHasActivatedDependentTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert.NoError(t, db.Clear(Collection))
 	t1 := Task{
@@ -2118,8 +2103,7 @@ func TestHasActivatedDependentTasks(t *testing.T) {
 }
 
 func TestActivateTasksUpdate(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		require.NoError(t, db.Clear(Collection))
@@ -2145,8 +2129,7 @@ func TestActivateTasksUpdate(t *testing.T) {
 		assert.False(t, dbTask.UnattainableDependency)
 	})
 	t.Run("DisabledTask", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 		require.NoError(t, db.ClearCollections(Collection, distro.Collection))
 
 		t0 := Task{
@@ -2178,8 +2161,7 @@ func TestActivateTasksUpdate(t *testing.T) {
 }
 
 func TestFindGeneratedTasksFromID(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection))
@@ -2287,8 +2269,7 @@ func TestGetNoPendingGenerateTasks(t *testing.T) {
 }
 
 func TestGetLatestTaskFromImage(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(Collection, distro.Collection))
 	imageID := "distro"
 	d1 := &distro.Distro{

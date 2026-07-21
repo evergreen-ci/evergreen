@@ -1,7 +1,6 @@
 package task
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -11,8 +10,7 @@ import (
 )
 
 func TestRecentTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	err := db.Clear(Collection)

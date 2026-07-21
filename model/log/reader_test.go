@@ -13,8 +13,7 @@ import (
 )
 
 func TestLogIteratorReader(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	bucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: t.TempDir()})
 	require.NoError(t, err)

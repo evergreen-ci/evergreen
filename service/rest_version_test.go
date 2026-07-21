@@ -2,7 +2,6 @@ package service
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -27,8 +26,7 @@ import (
 )
 
 func TestGetRecentVersions(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 	router, err := newTestUIRouter(ctx, env)
@@ -231,8 +229,7 @@ func TestGetRecentVersions(t *testing.T) {
 }
 
 func TestGetVersionInfo(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 	env.SetUserManager(serviceutil.MockUserManager{})
@@ -324,8 +321,7 @@ func TestGetVersionInfo(t *testing.T) {
 }
 
 func TestGetVersionInfoViaRevision(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 	router, err := newTestUIRouter(ctx, env)
@@ -413,8 +409,7 @@ func TestActivateVersion(t *testing.T) {
 	testutil.DisablePermissionsForTests()
 	defer testutil.EnablePermissionsForTests()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 	env.SetUserManager(serviceutil.MockUserManager{})
@@ -596,8 +591,7 @@ func TestActivateVersionUnauthorized(t *testing.T) {
 }
 
 func TestGetVersionStatus(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 	router, err := newTestUIRouter(ctx, env)

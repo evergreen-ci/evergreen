@@ -41,8 +41,7 @@ type ProjectPatchByIDSuite struct {
 }
 
 func TestProjectPatchSuite(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	s := &ProjectPatchByIDSuite{
 		env: testutil.NewEnvironment(ctx, t),
 	}
@@ -489,8 +488,7 @@ type ProjectPutSuite struct {
 }
 
 func TestProjectPutSuite(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	s := &ProjectPutSuite{
 		env: testutil.NewEnvironment(ctx, t),
@@ -868,8 +866,7 @@ func getTestProjectRef() *serviceModel.ProjectRef {
 
 func TestGetProjectTasks(t *testing.T) {
 	assert := assert.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	assert.NoError(db.ClearCollections(task.Collection, serviceModel.ProjectRefCollection, serviceModel.RepositoriesCollection))
 	const projectId = "proj"
 	project := serviceModel.ProjectRef{
@@ -908,8 +905,7 @@ func TestGetProjectTasks(t *testing.T) {
 
 func TestGetProjectVersions(t *testing.T) {
 	assert := assert.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	assert.NoError(db.ClearCollections(serviceModel.VersionCollection, serviceModel.ProjectRefCollection))
 
 	const projectId = "proj"
@@ -1083,8 +1079,7 @@ func TestGetProjectVersionsParseLimit(t *testing.T) {
 }
 
 func TestDeleteProject(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	assert.NoError(t, db.ClearCollections(
 		serviceModel.ProjectRefCollection,
 		serviceModel.RepoRefCollection,

@@ -101,8 +101,7 @@ func TestPrefetchProject(t *testing.T) {
 func TestNewProjectAdminMiddleware(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection))
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
@@ -147,8 +146,7 @@ func TestNewProjectAdminMiddleware(t *testing.T) {
 func TestNewCanCreateMiddleware(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(evergreen.RoleCollection))
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	adminRole := gimlet.Role{
 		ID:          "r1",
@@ -304,8 +302,7 @@ func TestSendNotificationMiddleware(t *testing.T) {
 }
 
 func TestTaskAuthMiddleware(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 
@@ -379,8 +376,7 @@ func TestTaskAuthMiddleware(t *testing.T) {
 }
 
 func TestHostAuthMiddleware(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	m := NewHostAuthMiddleware()
 	for testName, testCase := range map[string]func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder){
@@ -458,8 +454,7 @@ func TestHostAuthMiddleware(t *testing.T) {
 
 func TestProjectViewPermission(t *testing.T) {
 	assert := assert.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	require := require.New(t)
 	counter := 0

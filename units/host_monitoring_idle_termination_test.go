@@ -66,8 +66,7 @@ func testFlaggingIdleHostsTeardownTest(t *testing.T) {
 // legacy test case
 
 func TestFlaggingIdleHosts(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	env := &mock.Environment{}
@@ -578,8 +577,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 //
 
 func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	env := &mock.Environment{}
@@ -684,8 +682,7 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 //
 
 func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	env := &mock.Environment{}
@@ -785,8 +782,7 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 }
 
 func TestTearingDownIsNotConsideredIdle(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	env := &mock.Environment{}
@@ -854,8 +850,7 @@ func TestTearingDownIsNotConsideredIdle(t *testing.T) {
 	assert.Contains(t, hosts, host3.Id)
 }
 func TestPopulateIdleHostJobsCalculations(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	assert := assert.New(t)
@@ -1056,8 +1051,7 @@ func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 }
 
 func TestGetNumHostsToEvaluate(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	testutil.TestSpan(ctx, t)
 
 	info := host.IdleHostsByDistroID{

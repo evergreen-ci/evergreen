@@ -21,8 +21,7 @@ import (
 )
 
 func TestFleet(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.Clear(host.Collection))
@@ -555,8 +554,7 @@ func TestCleanup(t *testing.T) {
 }
 
 func TestGetManagerForEc2Fleet(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))

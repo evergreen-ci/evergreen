@@ -78,8 +78,7 @@ func getURL(projectID string, parameters map[string]any) string {
 
 func TestReliabilityParseParameters(t *testing.T) {
 
-	groupContext, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	groupContext := t.Context()
 
 	for opName, opTests := range map[string]func(context.Context, *testing.T, evergreen.Environment){
 		"Tasks": func(paginationContext context.Context, t *testing.T, env evergreen.Environment) {
@@ -369,8 +368,7 @@ func TestReliabilityParseParameters(t *testing.T) {
 }
 
 func TestReliabilityParse(t *testing.T) {
-	groupContext, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	groupContext := t.Context()
 
 	for opName, opTests := range map[string]func(context.Context, *testing.T, evergreen.Environment){
 		"Parse": func(paginationContext context.Context, t *testing.T, env evergreen.Environment) {
@@ -476,8 +474,7 @@ func TestReliabilityParse(t *testing.T) {
 }
 
 func TestReliabilityRun(t *testing.T) {
-	groupContext, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	groupContext := t.Context()
 	require.NoError(t, db.ClearCollections(taskstats.DailyTaskStatsCollection, model.ProjectRefCollection))
 	proj := model.ProjectRef{
 		Id: "project",
@@ -758,8 +755,7 @@ func withSetupAndTeardown(t *testing.T, fn func()) {
 
 func TestReliability(t *testing.T) {
 	require.NoError(t, db.ClearCollections(taskstats.DailyTaskStatsCollection, model.ProjectRefCollection))
-	groupContext, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	groupContext := t.Context()
 
 	proj := model.ProjectRef{
 		Id: "project",
