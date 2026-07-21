@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestUnmarshalYAMLStrictWithFallback(t *testing.T) {
+func TestUnmarshalYAMLStrict(t *testing.T) {
 	smallYml := `
 top_level:
     field: first
@@ -24,7 +24,7 @@ top_level:
 	}
 	// duplicate map items should error
 	var myStruct SmallStruct
-	err := UnmarshalYAMLStrictWithFallback([]byte(smallYml), &myStruct)
+	err := UnmarshalYAMLStrict([]byte(smallYml), &myStruct)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "already defined")
 
@@ -35,7 +35,7 @@ top_level:
 top_level:
     field: ohno
 `
-	err = UnmarshalYAMLStrictWithFallback([]byte(smallYml), &myStruct)
+	err = UnmarshalYAMLStrict([]byte(smallYml), &myStruct)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "already defined")
 
@@ -46,7 +46,7 @@ some_list:
 some_list:
   - my other item
 `
-	err = UnmarshalYAMLStrictWithFallback([]byte(smallYml), &myStruct)
+	err = UnmarshalYAMLStrict([]byte(smallYml), &myStruct)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "already defined")
 
@@ -62,7 +62,7 @@ pieces:
   tiny_pieces:
   - something: blue
 `
-	err = UnmarshalYAMLStrictWithFallback([]byte(smallYml), &largeStruct)
+	err = UnmarshalYAMLStrict([]byte(smallYml), &largeStruct)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "already defined")
 
