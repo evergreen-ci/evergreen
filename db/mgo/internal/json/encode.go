@@ -326,8 +326,8 @@ func typeEncoder(t reflect.Type) encoderFunc {
 }
 
 var (
-	marshalerType     = reflect.TypeOf(new(Marshaler)).Elem()
-	textMarshalerType = reflect.TypeOf(new(encoding.TextMarshaler)).Elem()
+	marshalerType     = reflect.TypeFor[Marshaler]()
+	textMarshalerType = reflect.TypeFor[encoding.TextMarshaler]()
 )
 
 // newTypeEncoder constructs an encoderFunc for a type.

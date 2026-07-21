@@ -563,7 +563,7 @@ func (d *decodeState) array(v reflect.Value) {
 }
 
 var nullLiteral = []byte("null")
-var textUnmarshalerType = reflect.TypeOf(new(encoding.TextUnmarshaler)).Elem()
+var textUnmarshalerType = reflect.TypeFor[encoding.TextUnmarshaler]()
 
 // object consumes an object from d.data[d.off-1:], decoding into the value v.
 // the first byte ('{') of the object has been read already.
@@ -1159,12 +1159,12 @@ func (d *decodeState) convertNumber(s string) (any, error) {
 	}
 	f, err := strconv.ParseFloat(s, 64)
 	if err != nil {
-		return nil, &UnmarshalTypeError{"number " + s, reflect.TypeOf(0.0), int64(d.off)}
+		return nil, &UnmarshalTypeError{"number " + s, reflect.TypeFor[float64](), int64(d.off)}
 	}
 	return f, nil
 }
 
-var numberType = reflect.TypeOf(Number(""))
+var numberType = reflect.TypeFor[Number]()
 
 // literalStore decodes a literal stored in item into v.
 //

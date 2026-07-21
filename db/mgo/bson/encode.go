@@ -42,18 +42,18 @@ import (
 // Some internal infrastructure.
 
 var (
-	typeBinary         = reflect.TypeOf(Binary{})
-	typeObjectId       = reflect.TypeOf(ObjectId(""))
-	typeSymbol         = reflect.TypeOf(Symbol(""))
-	typeMongoTimestamp = reflect.TypeOf(MongoTimestamp(0))
+	typeBinary         = reflect.TypeFor[Binary]()
+	typeObjectId       = reflect.TypeFor[ObjectId]()
+	typeSymbol         = reflect.TypeFor[Symbol]()
+	typeMongoTimestamp = reflect.TypeFor[MongoTimestamp]()
 	typeOrderKey       = reflect.TypeOf(MinKey)
-	typeDocElem        = reflect.TypeOf(DocElem{})
-	typeRawDocElem     = reflect.TypeOf(RawDocElem{})
-	typeRaw            = reflect.TypeOf(Raw{})
-	typeURL            = reflect.TypeOf(url.URL{})
-	typeTime           = reflect.TypeOf(time.Time{})
-	typeString         = reflect.TypeOf("")
-	typeJSONNumber     = reflect.TypeOf(json.Number(""))
+	typeDocElem        = reflect.TypeFor[DocElem]()
+	typeRawDocElem     = reflect.TypeFor[RawDocElem]()
+	typeRaw            = reflect.TypeFor[Raw]()
+	typeURL            = reflect.TypeFor[url.URL]()
+	typeTime           = reflect.TypeFor[time.Time]()
+	typeString         = reflect.TypeFor[string]()
+	typeJSONNumber     = reflect.TypeFor[json.Number]()
 )
 
 const itoaCacheSize = 32
