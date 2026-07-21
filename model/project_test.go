@@ -1080,7 +1080,7 @@ func (s *projectSuite) TestResolvePatchVTsMultipleAliases() {
 		return out
 	}
 	resolve := func(aliases ...string) []string {
-		_, _, vts := s.project.ResolvePatchVTs(s.T().Context(), &patch.Patch{}, req, aliases, false)
+		_, _, vts := s.project.ResolvePatchVTs(s.T().Context(), &patch.Patch{}, req, aliases, false, "")
 		return flatten(vts)
 	}
 
