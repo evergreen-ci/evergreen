@@ -38,11 +38,13 @@ func TestProvisioningCreateHostJob(t *testing.T) {
 			j := NewHostCreateJob(env, *h, "job-id", true)
 			hostCreateJob, ok := j.(*createHostJob)
 			require.True(t, ok)
-			hostCreateJob.Run(ctx)
+			attrs := recordRootSpanAttributes(ctx, t, hostCreateJob)
 			assert.False(t, hostCreateJob.HasErrors())
 			foundHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostStarting, foundHost.Status)
+			assert.Equal(t, "spawned", attrs[createHostOutcomeOtelAttribute])
+			assert.Equal(t, "complete", attrs[createHostStageOtelAttribute])
 		},
 		"NoopsForTerminatedHost": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			h.Status = evergreen.HostTerminated
@@ -83,12 +85,16 @@ func TestProvisioningCreateHostJob(t *testing.T) {
 			env.Settings().HostInit.MaxTotalDynamicHosts = maxHosts
 
 			j := NewHostCreateJob(env, *h, "", true)
-			j.Run(ctx)
+			hostCreateJob, ok := j.(*createHostJob)
+			require.True(t, ok)
+			attrs := recordRootSpanAttributes(ctx, t, hostCreateJob)
 			assert.NoError(t, j.Error())
 
 			foundHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Zero(t, foundHost, "host creation should have been throttled due to hitting global dynamic max hosts")
+			assert.Equal(t, "throttled", attrs[createHostOutcomeOtelAttribute])
+			assert.Equal(t, "distro_host_limit", attrs[createHostThrottleReasonOtelAttribute])
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {

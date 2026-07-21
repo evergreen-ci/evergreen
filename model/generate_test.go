@@ -682,7 +682,8 @@ func (s *GenerateSuite) TestSaveWithMaxTasksPerVersion() {
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
-	s.Error(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+	_, err = g.Save(s.ctx, s.env.Settings(), p, pp, v)
+	s.Error(err)
 
 	settings = &evergreen.Settings{
 		TaskLimits: evergreen.TaskLimitsConfig{
@@ -691,7 +692,8 @@ func (s *GenerateSuite) TestSaveWithMaxTasksPerVersion() {
 	}
 	s.NoError(evergreen.UpdateConfig(ctx, settings))
 
-	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+	_, err = g.Save(s.ctx, s.env.Settings(), p, pp, v)
+	s.NoError(err)
 
 	generatorTask, err := task.FindOneId(ctx, tasksThatExist[0].Id)
 	s.NoError(err)
@@ -1009,7 +1011,8 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasksWithBatchtime() {
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.Require().NoError(err)
-	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+	_, err = g.Save(s.ctx, s.env.Settings(), p, pp, v)
+	s.NoError(err)
 
 	// Should have created a pre-generated cached parser project
 	preGeneratedPP, err := ParserProjectFindOneByID(ctx, s.env.Settings(), v.ProjectStorageMethod, preGeneratedParserProjectId(pp.Id))
@@ -1132,7 +1135,8 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 	s.NoError(err)
 	s.Len(pp.UpdatedByGenerators, 1) // Not modified again.
 
-	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+	_, err = g.Save(s.ctx, s.env.Settings(), p, pp, v)
+	s.NoError(err)
 
 	// Should not create a pre-generated cached parser project
 	preGeneratedPP, err := ParserProjectFindOneByID(ctx, s.env.Settings(), v.ProjectStorageMethod, preGeneratedParserProjectId(pp.Id))
@@ -1215,7 +1219,8 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
-	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+	_, err = g.Save(s.ctx, s.env.Settings(), p, pp, v)
+	s.NoError(err)
 
 	v, err = VersionFindOneIdWithBuildVariants(s.ctx, v.Id)
 	s.NoError(err)
@@ -1287,7 +1292,8 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependenciesInNewBuilds() {
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(s.ctx, p, pp, v)
 	s.NoError(err)
-	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+	_, err = g.Save(s.ctx, s.env.Settings(), p, pp, v)
+	s.NoError(err)
 
 	tasks := []task.Task{}
 	s.NoError(db.FindAllQ(s.ctx, task.Collection, db.Query(bson.M{task.VersionKey: v.Id}), &tasks))
@@ -1385,7 +1391,8 @@ buildvariants:
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
-	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+	_, err = g.Save(s.ctx, s.env.Settings(), p, pp, v)
+	s.NoError(err)
 
 	dbExistingGenBuild, err := build.FindOneId(s.ctx, existingGenBuild.Id)
 	s.Require().NoError(err)
@@ -1475,7 +1482,8 @@ buildvariants:
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
-	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+	_, err = g.Save(s.ctx, s.env.Settings(), p, pp, v)
+	s.NoError(err)
 
 	alreadyDefinedTask := task.Task{}
 	s.NoError(db.FindOneQ(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "defined_but_not_scheduled_task"}), &alreadyDefinedTask))
@@ -1565,7 +1573,8 @@ buildvariants:
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
-	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+	_, err = g.Save(s.ctx, s.env.Settings(), p, pp, v)
+	s.NoError(err)
 
 	depTask := task.Task{}
 	s.NoError(db.FindOneQ(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task"}), &depTask))
@@ -1673,7 +1682,8 @@ buildvariants:
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
-	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+	_, err = g.Save(s.ctx, s.env.Settings(), p, pp, v)
+	s.NoError(err)
 
 	depTask := task.Task{}
 	s.NoError(db.FindOneQ(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task"}), &depTask))
@@ -1780,7 +1790,8 @@ buildvariants:
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
-	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+	_, err = g.Save(s.ctx, s.env.Settings(), p, pp, v)
+	s.NoError(err)
 
 	depTask := task.Task{}
 	s.NoError(db.FindOneQ(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task"}), &depTask))
@@ -1829,7 +1840,8 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.Require().NoError(err)
-	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+	_, err = g.Save(s.ctx, s.env.Settings(), p, pp, v)
+	s.NoError(err)
 
 	v, err = VersionFindOneIdWithBuildVariants(s.ctx, v.Id)
 	s.NoError(err)
@@ -2579,7 +2591,8 @@ buildvariants:
 	require.NoError(t, err)
 	p, pp, v, err = g.NewVersion(t.Context(), p, pp, v)
 	require.NoError(t, err)
-	require.NoError(t, g.Save(t.Context(), env.Settings(), p, pp, v))
+	_, err = g.Save(t.Context(), env.Settings(), p, pp, v)
+	require.NoError(t, err)
 
 	prerequisiteTask := task.Task{}
 	require.NoError(t, db.FindOneQ(t.Context(), task.Collection, db.Query(bson.M{task.DisplayNameKey: "prerequisite_task"}), &prerequisiteTask))
@@ -2776,7 +2789,8 @@ buildvariants:
 	require.NoError(t, err)
 	p, pp, v, err = g.NewVersion(t.Context(), p, pp, v)
 	require.NoError(t, err)
-	require.NoError(t, g.Save(t.Context(), env.Settings(), p, pp, v))
+	_, err = g.Save(t.Context(), env.Settings(), p, pp, v)
+	require.NoError(t, err)
 
 	prerequisiteTask := task.Task{}
 	require.NoError(t, db.FindOneQ(t.Context(), task.Collection, db.Query(bson.M{task.DisplayNameKey: "prerequisite_task"}), &prerequisiteTask))
