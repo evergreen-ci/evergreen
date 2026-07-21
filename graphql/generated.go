@@ -1122,12 +1122,13 @@ type ComplexityRoot struct {
 	}
 
 	OktaConfig struct {
-		ClientID           func(childComplexity int) int
-		ClientSecret       func(childComplexity int) int
-		ExpireAfterMinutes func(childComplexity int) int
-		Issuer             func(childComplexity int) int
-		Scopes             func(childComplexity int) int
-		UserGroup          func(childComplexity int) int
+		ClientID             func(childComplexity int) int
+		ClientSecret         func(childComplexity int) int
+		ExpectedEmailDomains func(childComplexity int) int
+		ExpireAfterMinutes   func(childComplexity int) int
+		Issuer               func(childComplexity int) int
+		Scopes               func(childComplexity int) int
+		UserGroup            func(childComplexity int) int
 	}
 
 	OktaServiceConfig struct {
@@ -7268,6 +7269,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.OktaConfig.ClientSecret(childComplexity), true
+	case "OktaConfig.expectedEmailDomains":
+		if e.complexity.OktaConfig.ExpectedEmailDomains == nil {
+			break
+		}
+
+		return e.complexity.OktaConfig.ExpectedEmailDomains(childComplexity), true
 	case "OktaConfig.expireAfterMinutes":
 		if e.complexity.OktaConfig.ExpireAfterMinutes == nil {
 			break
@@ -21944,6 +21951,8 @@ func (ec *executionContext) fieldContext_AuthConfig_okta(_ context.Context, fiel
 				return ec.fieldContext_OktaConfig_userGroup(ctx, field)
 			case "expireAfterMinutes":
 				return ec.fieldContext_OktaConfig_expireAfterMinutes(ctx, field)
+			case "expectedEmailDomains":
+				return ec.fieldContext_OktaConfig_expectedEmailDomains(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type OktaConfig", field.Name)
 		},
@@ -43221,6 +43230,35 @@ func (ec *executionContext) fieldContext_OktaConfig_expireAfterMinutes(_ context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OktaConfig_expectedEmailDomains(ctx context.Context, field graphql.CollectedField, obj *model.APIOktaConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OktaConfig_expectedEmailDomains,
+		func(ctx context.Context) (any, error) {
+			return obj.ExpectedEmailDomains, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OktaConfig_expectedEmailDomains(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OktaConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -85131,7 +85169,7 @@ func (ec *executionContext) unmarshalInputOktaConfigInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"clientId", "clientSecret", "issuer", "scopes", "userGroup", "expireAfterMinutes"}
+	fieldsInOrder := [...]string{"clientId", "clientSecret", "issuer", "scopes", "userGroup", "expireAfterMinutes", "expectedEmailDomains"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -85231,6 +85269,13 @@ func (ec *executionContext) unmarshalInputOktaConfigInput(ctx context.Context, o
 				return it, err
 			}
 			it.ExpireAfterMinutes = data
+		case "expectedEmailDomains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("expectedEmailDomains"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExpectedEmailDomains = data
 		}
 	}
 
@@ -99054,6 +99099,8 @@ func (ec *executionContext) _OktaConfig(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._OktaConfig_userGroup(ctx, field, obj)
 		case "expireAfterMinutes":
 			out.Values[i] = ec._OktaConfig_expireAfterMinutes(ctx, field, obj)
+		case "expectedEmailDomains":
+			out.Values[i] = ec._OktaConfig_expectedEmailDomains(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
