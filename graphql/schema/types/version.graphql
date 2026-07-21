@@ -169,6 +169,7 @@ type VersionLite {
   childVersions: [VersionLite!]
   cost: Cost
   createTime: Time!
+  gitTags: [GitTag!]
   ingestTime: Time
   errors: [String!]!
   finishTime: Time
@@ -185,4 +186,5 @@ type VersionLite {
   taskStatusStats: TaskStats
   user: User!
   warnings: [String!]!
+  waterfallBuilds: [WaterfallBuild!]
 }

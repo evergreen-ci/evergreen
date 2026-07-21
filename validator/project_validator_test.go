@@ -4767,6 +4767,26 @@ buildvariants:
 	assert.Empty(warnings)
 }
 
+func TestDisplayTaskEmptyNameValidation(t *testing.T) {
+	project := &model.Project{
+		BuildVariants: []model.BuildVariant{
+			{
+				Name: "bv",
+				DisplayTasks: []patch.DisplayTask{
+					{
+						Name:      "",
+						ExecTasks: []string{"one"},
+					},
+				},
+			},
+		},
+	}
+	errs := validateDisplayTaskNames(project)
+	require.Len(t, errs, 1)
+	assert.Equal(t, Error, errs[0].Level)
+	assert.Equal(t, "display task in buildvariant 'bv' must have a name", errs[0].Message)
+}
+
 func TestValidateCreateHosts(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)

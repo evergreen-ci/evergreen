@@ -213,6 +213,16 @@ func TestBuildProjectParameterMapForLegacy(t *testing.T) {
 			vars:     map[string]string{"project_id": "target_project"},
 			expected: map[string]string{projectIdKey: "target_project"},
 		},
+		"QueryRepoIDIgnoredWhenTaskIDInPath": {
+			query:    url.Values{"repo_id": []string{"unrelated_repo_id"}},
+			vars:     map[string]string{"task_id": "target_task_id"},
+			expected: map[string]string{repoIdKey: "", taskIdKey: "target_task_id"},
+		},
+		"QueryRepoIDIgnoredWhenRepoIDInPath": {
+			query:    url.Values{"repo_id": []string{"unrelated_repo_id"}},
+			vars:     map[string]string{"repo_id": "target_repo_id"},
+			expected: map[string]string{repoIdKey: "target_repo_id"},
+		},
 		"QueryObjectIDsUsedWhenNoObjectIDInPath": {
 			query:    url.Values{"version_id": []string{"query_version_id"}},
 			vars:     map[string]string{},

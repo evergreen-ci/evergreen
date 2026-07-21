@@ -11,6 +11,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	model1 "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -777,6 +778,7 @@ type VolumeHost struct {
 type Waterfall struct {
 	FlattenedVersions []*model.APIVersion  `json:"flattenedVersions"`
 	Pagination        *WaterfallPagination `json:"pagination"`
+	Versions          []*model1.Version    `json:"versions"`
 }
 
 type WaterfallOptions struct {

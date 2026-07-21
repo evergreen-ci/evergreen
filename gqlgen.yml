@@ -301,7 +301,7 @@ models:
   GithubUserInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubUser
   GitTag:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIGitTag
+    model: github.com/evergreen-ci/evergreen/model.GitTag
   GraphiteConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGraphiteConfig
   GraphiteConfigInput:

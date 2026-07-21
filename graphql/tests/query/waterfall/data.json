@@ -38,6 +38,16 @@
       "create_time": {
         "$date": "2025-03-01T00:00:00Z"
       },
+      "git_tags": [
+        {
+          "tag": "v1.0.0",
+          "pusher": "mohamed.khelif"
+        },
+        {
+          "tag": "v1.0.1",
+          "pusher": "sophie.stadler"
+        }
+      ],
       "build_variants_status": [
         {
           "activated": true,

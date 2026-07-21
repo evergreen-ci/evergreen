@@ -669,7 +669,7 @@ func (s *GenerateSuite) TestSaveWithMaxTasksPerVersion() {
 		BuildIds: []string{"sample_build"},
 	}
 	pp := &ParserProject{}
-	err := util.UnmarshalYAMLWithFallback([]byte(sampleProjYmlTaskGroups), &pp)
+	err := util.UnmarshalYAML([]byte(sampleProjYmlTaskGroups), &pp)
 	s.NoError(err)
 	pp.Id = "version_that_called_generate_task"
 	s.NoError(pp.Insert(s.ctx))
@@ -682,7 +682,8 @@ func (s *GenerateSuite) TestSaveWithMaxTasksPerVersion() {
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
-	s.Error(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+	_, err = g.Save(s.ctx, s.env.Settings(), p, pp, v)
+	s.Error(err)
 
 	settings = &evergreen.Settings{
 		TaskLimits: evergreen.TaskLimitsConfig{
@@ -691,7 +692,8 @@ func (s *GenerateSuite) TestSaveWithMaxTasksPerVersion() {
 	}
 	s.NoError(evergreen.UpdateConfig(ctx, settings))
 
-	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+	_, err = g.Save(s.ctx, s.env.Settings(), p, pp, v)
+	s.NoError(err)
 
 	generatorTask, err := task.FindOneId(ctx, tasksThatExist[0].Id)
 	s.NoError(err)
@@ -997,7 +999,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasksWithBatchtime() {
 	}
 	s.NoError(v.Insert(s.ctx))
 	pp := &ParserProject{}
-	err := util.UnmarshalYAMLWithFallback([]byte(sampleProjYml), &pp)
+	err := util.UnmarshalYAML([]byte(sampleProjYml), &pp)
 	s.NoError(err)
 	pp.Id = "version_that_called_generate_task"
 	s.NoError(pp.Insert(s.ctx))
@@ -1009,7 +1011,8 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasksWithBatchtime() {
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.Require().NoError(err)
-	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+	_, err = g.Save(s.ctx, s.env.Settings(), p, pp, v)
+	s.NoError(err)
 
 	// Should have created a pre-generated cached parser project
 	preGeneratedPP, err := ParserProjectFindOneByID(ctx, s.env.Settings(), v.ProjectStorageMethod, preGeneratedParserProjectId(pp.Id))
@@ -1112,7 +1115,7 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 	}
 	s.NoError(v.Insert(s.ctx))
 	pp := &ParserProject{}
-	err := util.UnmarshalYAMLWithFallback([]byte(sampleProjYmlTaskGroups), &pp)
+	err := util.UnmarshalYAML([]byte(sampleProjYmlTaskGroups), &pp)
 	s.NoError(err)
 	pp.Id = "version_that_called_generate_task"
 	s.NoError(pp.Insert(s.ctx))
@@ -1132,7 +1135,8 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 	s.NoError(err)
 	s.Len(pp.UpdatedByGenerators, 1) // Not modified again.
 
-	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+	_, err = g.Save(s.ctx, s.env.Settings(), p, pp, v)
+	s.NoError(err)
 
 	// Should not create a pre-generated cached parser project
 	preGeneratedPP, err := ParserProjectFindOneByID(ctx, s.env.Settings(), v.ProjectStorageMethod, preGeneratedParserProjectId(pp.Id))
@@ -1202,7 +1206,7 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 		BuildIds: []string{"sample_build"},
 	}
 	pp := &ParserProject{}
-	err := util.UnmarshalYAMLWithFallback([]byte(sampleProjYmlTaskGroups), &pp)
+	err := util.UnmarshalYAML([]byte(sampleProjYmlTaskGroups), &pp)
 	s.NoError(err)
 	pp.Id = "version_that_called_generate_task"
 	s.NoError(pp.Insert(s.ctx))
@@ -1215,7 +1219,8 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
-	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+	_, err = g.Save(s.ctx, s.env.Settings(), p, pp, v)
+	s.NoError(err)
 
 	v, err = VersionFindOneIdWithBuildVariants(s.ctx, v.Id)
 	s.NoError(err)
@@ -1274,7 +1279,7 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependenciesInNewBuilds() {
 		BuildVariants: []VersionBuildStatus{},
 	}
 	pp := &ParserProject{}
-	err := util.UnmarshalYAMLWithFallback([]byte(projYmlTwoBVs), &pp)
+	err := util.UnmarshalYAML([]byte(projYmlTwoBVs), &pp)
 	s.NoError(err)
 	pp.Id = "version_that_called_generate_task"
 	s.NoError(pp.Insert(s.ctx))
@@ -1287,7 +1292,8 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependenciesInNewBuilds() {
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(s.ctx, p, pp, v)
 	s.NoError(err)
-	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+	_, err = g.Save(s.ctx, s.env.Settings(), p, pp, v)
+	s.NoError(err)
 
 	tasks := []task.Task{}
 	s.NoError(db.FindAllQ(s.ctx, task.Collection, db.Query(bson.M{task.VersionKey: v.Id}), &tasks))
@@ -1357,7 +1363,7 @@ buildvariants:
   tasks:
   - name: finished_task
 `
-	s.NoError(util.UnmarshalYAMLWithFallback([]byte(initialConfig), &parserProj))
+	s.NoError(util.UnmarshalYAML([]byte(initialConfig), &parserProj))
 	parserProj.Id = "v1"
 	s.NoError(parserProj.Insert(s.ctx))
 
@@ -1385,7 +1391,8 @@ buildvariants:
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
-	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+	_, err = g.Save(s.ctx, s.env.Settings(), p, pp, v)
+	s.NoError(err)
 
 	dbExistingGenBuild, err := build.FindOneId(s.ctx, existingGenBuild.Id)
 	s.Require().NoError(err)
@@ -1441,7 +1448,7 @@ buildvariants:
   tasks:
   - name: generator
 `
-	s.NoError(util.UnmarshalYAMLWithFallback([]byte(initialConfig), &parserProj))
+	s.NoError(util.UnmarshalYAML([]byte(initialConfig), &parserProj))
 	parserProj.Id = "v1"
 	s.NoError(parserProj.Insert(s.ctx))
 
@@ -1475,7 +1482,8 @@ buildvariants:
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
-	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+	_, err = g.Save(s.ctx, s.env.Settings(), p, pp, v)
+	s.NoError(err)
 
 	alreadyDefinedTask := task.Task{}
 	s.NoError(db.FindOneQ(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "defined_but_not_scheduled_task"}), &alreadyDefinedTask))
@@ -1523,7 +1531,7 @@ buildvariants:
   tasks:
   - name: generator
 `
-	s.NoError(util.UnmarshalYAMLWithFallback([]byte(initialConfig), &parserProj))
+	s.NoError(util.UnmarshalYAML([]byte(initialConfig), &parserProj))
 	parserProj.Id = "v1"
 	s.NoError(parserProj.Insert(s.ctx))
 
@@ -1565,7 +1573,8 @@ buildvariants:
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
-	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+	_, err = g.Save(s.ctx, s.env.Settings(), p, pp, v)
+	s.NoError(err)
 
 	depTask := task.Task{}
 	s.NoError(db.FindOneQ(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task"}), &depTask))
@@ -1632,7 +1641,7 @@ buildvariants:
   - name: existing_task
 
 `
-	s.NoError(util.UnmarshalYAMLWithFallback([]byte(initialConfig), &parserProj))
+	s.NoError(util.UnmarshalYAML([]byte(initialConfig), &parserProj))
 	parserProj.Id = "v1"
 	s.NoError(parserProj.Insert(s.ctx))
 
@@ -1673,7 +1682,8 @@ buildvariants:
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
-	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+	_, err = g.Save(s.ctx, s.env.Settings(), p, pp, v)
+	s.NoError(err)
 
 	depTask := task.Task{}
 	s.NoError(db.FindOneQ(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task"}), &depTask))
@@ -1739,7 +1749,7 @@ buildvariants:
   tasks:
   - name: existing_task
 `
-	s.NoError(util.UnmarshalYAMLWithFallback([]byte(initialConfig), &parserProj))
+	s.NoError(util.UnmarshalYAML([]byte(initialConfig), &parserProj))
 	parserProj.Id = "v1"
 	s.NoError(parserProj.Insert(s.ctx))
 
@@ -1780,7 +1790,8 @@ buildvariants:
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
-	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+	_, err = g.Save(s.ctx, s.env.Settings(), p, pp, v)
+	s.NoError(err)
 
 	depTask := task.Task{}
 	s.NoError(db.FindOneQ(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task"}), &depTask))
@@ -1814,7 +1825,7 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 		BuildIds: []string{"sample_build"},
 	}
 	pp := &ParserProject{}
-	err := util.UnmarshalYAMLWithFallback([]byte(smallYml), &pp)
+	err := util.UnmarshalYAML([]byte(smallYml), &pp)
 	s.NoError(err)
 	pp.Id = "version_that_called_generate_task"
 	s.NoError(pp.Insert(s.ctx))
@@ -1829,7 +1840,8 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.Require().NoError(err)
-	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+	_, err = g.Save(s.ctx, s.env.Settings(), p, pp, v)
+	s.NoError(err)
 
 	v, err = VersionFindOneIdWithBuildVariants(s.ctx, v.Id)
 	s.NoError(err)
@@ -2537,7 +2549,7 @@ buildvariants:
   - name: generator_task
   - name: prerequisite_task
 `
-	require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(initialConfig), &parserProj))
+	require.NoError(t, util.UnmarshalYAML([]byte(initialConfig), &parserProj))
 	parserProj.Id = "v1"
 	require.NoError(t, parserProj.Insert(t.Context()))
 
@@ -2579,7 +2591,8 @@ buildvariants:
 	require.NoError(t, err)
 	p, pp, v, err = g.NewVersion(t.Context(), p, pp, v)
 	require.NoError(t, err)
-	require.NoError(t, g.Save(t.Context(), env.Settings(), p, pp, v))
+	_, err = g.Save(t.Context(), env.Settings(), p, pp, v)
+	require.NoError(t, err)
 
 	prerequisiteTask := task.Task{}
 	require.NoError(t, db.FindOneQ(t.Context(), task.Collection, db.Query(bson.M{task.DisplayNameKey: "prerequisite_task"}), &prerequisiteTask))
@@ -2639,7 +2652,7 @@ buildvariants:
 }
 `
 	pp := &ParserProject{}
-	require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(baseYAML), &pp))
+	require.NoError(t, util.UnmarshalYAML([]byte(baseYAML), &pp))
 	p0, err := TranslateProject(t.Context(), pp)
 	require.NoError(t, err)
 
@@ -2718,7 +2731,7 @@ buildvariants:
   - name: generator_task
   - name: prerequisite_task
 `
-	require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(initialConfig), &parserProj))
+	require.NoError(t, util.UnmarshalYAML([]byte(initialConfig), &parserProj))
 	parserProj.Id = "v1"
 	require.NoError(t, parserProj.Insert(t.Context()))
 
@@ -2776,7 +2789,8 @@ buildvariants:
 	require.NoError(t, err)
 	p, pp, v, err = g.NewVersion(t.Context(), p, pp, v)
 	require.NoError(t, err)
-	require.NoError(t, g.Save(t.Context(), env.Settings(), p, pp, v))
+	_, err = g.Save(t.Context(), env.Settings(), p, pp, v)
+	require.NoError(t, err)
 
 	prerequisiteTask := task.Task{}
 	require.NoError(t, db.FindOneQ(t.Context(), task.Collection, db.Query(bson.M{task.DisplayNameKey: "prerequisite_task"}), &prerequisiteTask))
