@@ -450,6 +450,9 @@ func MakePatchedConfig(ctx context.Context, opts GetProjectOpts, projectConfig s
 		// If this is a renamed include file, retrieve the bytes of the file before it
 		// was renamed and use it as our local config.
 		if renamedFilePath != "" {
+			if err = validatePatchRelativePath(renamedFilePath); err != nil {
+				return nil, errors.Wrapf(err, "invalid rename/copy source path '%s'", renamedFilePath)
+			}
 			opts.RemotePath = renamedFilePath
 			if projectConfig == "" {
 				renamedProjectConfig, err = getFileForPatchDiff(ctx, opts)
@@ -467,6 +470,9 @@ func MakePatchedConfig(ctx context.Context, opts GetProjectOpts, projectConfig s
 				workingDirectory,
 				remoteConfigPath,
 			)
+		}
+		if err = ensurePathWithinDir(workingDirectory, localConfigPath); err != nil {
+			return nil, err
 		}
 		// write project configuration
 		configFilePath, err := util.WriteToTempFile(projectConfig)
@@ -519,6 +525,9 @@ func MakePatchedConfig(ctx context.Context, opts GetProjectOpts, projectConfig s
 				workingDirectory,
 				remoteConfigPath,
 			)
+			if err = ensurePathWithinDir(workingDirectory, patchedConfigPath); err != nil {
+				return nil, err
+			}
 			defer os.Remove(patchedConfigPath)
 		}
 		data, err := os.ReadFile(patchedConfigPath)
@@ -568,6 +577,38 @@ func parseRenamedOrCopiedFile(patchContents, filename string) string {
 		return copyFrom
 	}
 	return ""
+}
+
+// validatePatchRelativePath rejects absolute paths and directory traversal so
+// values from patch diffs cannot escape the temporary working directory.
+func validatePatchRelativePath(path string) error {
+	if filepath.IsAbs(path) {
+		return errors.New("path must be relative")
+	}
+	if strings.Contains(path, "..") {
+		return errors.New("path must not contain directory traversal")
+	}
+	return nil
+}
+
+// ensurePathWithinDir verifies that target resolves within baseDir.
+func ensurePathWithinDir(baseDir, target string) error {
+	absBase, err := filepath.Abs(baseDir)
+	if err != nil {
+		return errors.Wrap(err, "resolving base directory")
+	}
+	absTarget, err := filepath.Abs(target)
+	if err != nil {
+		return errors.Wrap(err, "resolving target path")
+	}
+	rel, err := filepath.Rel(absBase, absTarget)
+	if err != nil {
+		return errors.Wrap(err, "computing path relative to working directory")
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return errors.Errorf("path '%s' escapes working directory '%s'", target, baseDir)
+	}
+	return nil
 }
 
 // FinalizePatch finalizes a patch:
@@ -1047,7 +1088,7 @@ func prefetchAutoUpdateModuleRevisions(ctx context.Context, p *patch.Patch, proj
 	autoUpdateRevisions := make(map[string]string)
 	for _, module := range projectModulesOnly.Modules {
 		if module.AutoUpdate {
-			mfstModule, err := getManifestModule(ctx, projectRef, module, evergreen.PatchVersionRequester, p.Githash)
+			mfstModule, err := getManifestModule(ctx, projectRef, module, evergreen.PatchVersionRequester, p.IngestTime)
 			if err != nil {
 				grip.Warning(ctx, message.WrapError(err, message.Fields{
 					"message":     "failed to get revision for module",

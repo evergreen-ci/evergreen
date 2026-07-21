@@ -55,12 +55,11 @@ func getGroupedFiles(ctx context.Context, name string, taskID string, execution 
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	hasUser := gimlet.GetUser(ctx) != nil
-	strippedFiles, err := artifact.StripHiddenFiles(ctx, taskFiles, hasUser)
-	if err != nil {
-		return nil, err
-	}
-
 	env := evergreen.GetEnvironment()
+	settings := env.Settings()
+	baseURL := settings.Ui.Url
+	strippedFiles := artifact.StripHiddenFilesLazy(taskFiles, hasUser, baseURL, taskID, execution, []byte(settings.ArtifactSignSecret))
+
 	apiFileList := []*restModel.APIFile{}
 	for _, file := range strippedFiles {
 		apiFile := restModel.APIFile{}
@@ -1482,13 +1481,11 @@ func buildOptionsFromParentArgs(ctx context.Context, fc *graphql.FieldContext) (
 	}
 
 	// Get the parent object to determine if this is a project or user query.
-	// The parent.Parent should be a Project, User, or UserLite resolver.
+	// The parent.Parent should be a Project or User resolver.
 	if fc.Parent.Parent != nil {
 		switch grandparent := fc.Parent.Parent.Result.(type) {
 		case *restModel.APIProjectRef:
 			opts.Project = grandparent.Id
-		case *restModel.APIDBUser:
-			opts.Author = grandparent.UserID
 		case *user.DBUser:
 			opts.Author = utility.ToStringPtr(grandparent.Id)
 		}

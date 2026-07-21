@@ -8,7 +8,10 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -179,7 +182,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 					Target: "a@domain.invalid",
 				},
 			}
-			assert.Error(t, SaveSubscriptions(t.Context(), utility.FromStringPtr(subscription.Owner), []restModel.APISubscription{subscription}, false))
+			assert.Error(t, SaveSubscriptions(t.Context(), utility.FromStringPtr(subscription.Owner), []restModel.APISubscription{subscription}, true))
 		},
 		"VersionRequesterSubscription": func(t *testing.T) {
 			subscription := restModel.APISubscription{
@@ -201,7 +204,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 			assert.NoError(t, SaveSubscriptions(t.Context(),
 				utility.FromStringPtr(subscription.Owner),
 				[]restModel.APISubscription{subscription},
-				false))
+				true))
 
 			dbSubs, err := GetSubscriptions(t.Context(), utility.FromStringPtr(subscription.Owner), event.OwnerTypeProject)
 			assert.NoError(t, err)
@@ -228,7 +231,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 			assert.NoError(t, SaveSubscriptions(t.Context(),
 				utility.FromStringPtr(subscription.Owner),
 				[]restModel.APISubscription{subscription},
-				false))
+				true))
 
 			dbSubs, err := GetSubscriptions(t.Context(), utility.FromStringPtr(subscription.Owner), event.OwnerTypeProject)
 			assert.NoError(t, err)
@@ -278,7 +281,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 					Target: "ticket",
 				},
 			}
-			assert.Error(t, SaveSubscriptions(t.Context(), utility.FromStringPtr(subscription.Owner), []restModel.APISubscription{subscription}, false))
+			assert.Error(t, SaveSubscriptions(t.Context(), utility.FromStringPtr(subscription.Owner), []restModel.APISubscription{subscription}, true))
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -420,6 +423,114 @@ func TestSaveVersionSubscriptions(t *testing.T) {
 			test(t)
 		})
 	}
+}
+
+func TestSaveSubscriptionsRejectsOtherOwnersSubscription(t *testing.T) {
+	require.NoError(t, db.ClearCollections(event.SubscriptionsCollection))
+
+	victimSub := event.Subscription{
+		ID:           "victim-sub-id",
+		Owner:        "victim-user",
+		OwnerType:    event.OwnerTypePerson,
+		ResourceType: event.ResourceTypePatch,
+		Trigger:      event.TriggerOutcome,
+		Selectors:    []event.Selector{{Type: event.SelectorID, Data: "1234"}},
+		Filter:       event.Filter{ID: "1234"},
+		Subscriber: event.Subscriber{
+			Type:   event.EmailSubscriberType,
+			Target: "victim@domain.invalid",
+		},
+	}
+	require.NoError(t, victimSub.Upsert(t.Context()))
+
+	attackerSubscription := restModel.APISubscription{
+		ID:           utility.ToStringPtr("victim-sub-id"),
+		ResourceType: utility.ToStringPtr(event.ResourceTypePatch),
+		Trigger:      utility.ToStringPtr(event.TriggerOutcome),
+		Owner:        utility.ToStringPtr("attacker-user"),
+		OwnerType:    utility.ToStringPtr(string(event.OwnerTypePerson)),
+		Selectors: []restModel.APISelector{
+			{
+				Type: utility.ToStringPtr(event.SelectorID),
+				Data: utility.ToStringPtr("1234"),
+			},
+		},
+		Subscriber: restModel.APISubscriber{
+			Type:   utility.ToStringPtr(event.EmailSubscriberType),
+			Target: "attacker@domain.invalid",
+		},
+	}
+	err := SaveSubscriptions(t.Context(), "attacker-user", []restModel.APISubscription{attackerSubscription}, false)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot modify a subscription owned by another user or project")
+}
+
+func TestSaveProjectSubscriptionAuthorization(t *testing.T) {
+	env := testutil.NewEnvironment(t.Context(), t)
+	rm := env.RoleManager()
+
+	require.NoError(t, db.ClearCollections(event.SubscriptionsCollection, user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
+	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
+
+	require.NoError(t, rm.AddScope(t.Context(), gimlet.Scope{
+		ID:        "project_scope",
+		Resources: []string{"my-project"},
+		Type:      evergreen.ProjectResourceType,
+	}))
+	require.NoError(t, rm.UpdateRole(t.Context(), gimlet.Role{
+		ID:    "project_edit_role",
+		Scope: "project_scope",
+		Permissions: gimlet.Permissions{
+			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+		},
+	}))
+
+	authorizedUser := &user.DBUser{
+		Id:          "admin-user",
+		SystemRoles: []string{"project_edit_role"},
+	}
+	require.NoError(t, authorizedUser.Insert(t.Context()))
+
+	unauthorizedUser := &user.DBUser{Id: "basic-user"}
+	require.NoError(t, unauthorizedUser.Insert(t.Context()))
+
+	projectSubscription := restModel.APISubscription{
+		ResourceType: utility.ToStringPtr(event.ResourceTypeTask),
+		Trigger:      utility.ToStringPtr(event.TriggerOutcome),
+		Owner:        utility.ToStringPtr("my-project"),
+		OwnerType:    utility.ToStringPtr(string(event.OwnerTypeProject)),
+		Selectors: []restModel.APISelector{
+			{
+				Type: utility.ToStringPtr(event.SelectorObject),
+				Data: utility.ToStringPtr(event.ObjectTask),
+			},
+			{
+				Type: utility.ToStringPtr(event.SelectorID),
+				Data: utility.ToStringPtr("task-1"),
+			},
+		},
+		Subscriber: restModel.APISubscriber{
+			Type:   utility.ToStringPtr(event.EmailSubscriberType),
+			Target: "a@domain.invalid",
+		},
+	}
+
+	t.Run("UnauthorizedUserCannotSaveProjectSubscription", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(event.SubscriptionsCollection))
+		ctxWithUser := gimlet.AttachUser(t.Context(), unauthorizedUser)
+		err := SaveSubscriptions(ctxWithUser, unauthorizedUser.Id, []restModel.APISubscription{projectSubscription}, false)
+		require.Error(t, err)
+		gimletErr, ok := err.(gimlet.ErrorResponse)
+		require.True(t, ok)
+		assert.Equal(t, 401, gimletErr.StatusCode)
+	})
+
+	t.Run("AuthorizedUserCanSaveProjectSubscription", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(event.SubscriptionsCollection))
+		ctxWithUser := gimlet.AttachUser(t.Context(), authorizedUser)
+		err := SaveSubscriptions(ctxWithUser, authorizedUser.Id, []restModel.APISubscription{projectSubscription}, false)
+		assert.NoError(t, err)
+	})
 }
 
 func TestDeleteProjectSubscriptions(t *testing.T) {

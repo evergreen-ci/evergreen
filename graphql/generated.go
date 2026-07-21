@@ -80,7 +80,6 @@ type ResolverRoot interface {
 	TicketFields() TicketFieldsResolver
 	UIConfig() UIConfigResolver
 	User() UserResolver
-	UserLite() UserLiteResolver
 	Version() VersionResolver
 	VersionLite() VersionLiteResolver
 	Volume() VolumeResolver
@@ -1920,7 +1919,7 @@ type ComplexityRoot struct {
 		PatchNumber             func(childComplexity int) int
 		PredictedTaskCost       func(childComplexity int) int
 		PrevTask                func(childComplexity int) int
-		PrevTaskCompleted       func(childComplexity int) int
+		PrevTaskCompleted       func(childComplexity int, prevTaskOptions *PrevTaskOptions) int
 		PrevTaskFailing         func(childComplexity int) int
 		PrevTaskPassing         func(childComplexity int) int
 		Priority                func(childComplexity int) int
@@ -2243,16 +2242,16 @@ type ComplexityRoot struct {
 
 	User struct {
 		BetaFeatures              func(childComplexity int) int
-		DisplayName               func(childComplexity int) int
+		DispName                  func(childComplexity int) int
 		EmailAddress              func(childComplexity int) int
 		HasTokenExchangePending   func(childComplexity int) int
+		Id                        func(childComplexity int) int
 		ParsleyFilters            func(childComplexity int) int
 		Patches                   func(childComplexity int, patchesInput PatchesInput) int
 		Permissions               func(childComplexity int) int
 		Settings                  func(childComplexity int) int
 		Subscriptions             func(childComplexity int) int
 		TokenAccessTokenExpiresAt func(childComplexity int) int
-		UserID                    func(childComplexity int) int
 	}
 
 	UserConfig struct {
@@ -2264,20 +2263,6 @@ type ComplexityRoot struct {
 		OauthIssuer       func(childComplexity int) int
 		UIServerHost      func(childComplexity int) int
 		User              func(childComplexity int) int
-	}
-
-	UserLite struct {
-		BetaFeatures              func(childComplexity int) int
-		DispName                  func(childComplexity int) int
-		EmailAddress              func(childComplexity int) int
-		HasTokenExchangePending   func(childComplexity int) int
-		Id                        func(childComplexity int) int
-		ParsleyFilters            func(childComplexity int) int
-		Patches                   func(childComplexity int, patchesInput PatchesInput) int
-		Permissions               func(childComplexity int) int
-		Settings                  func(childComplexity int) int
-		Subscriptions             func(childComplexity int) int
-		TokenAccessTokenExpiresAt func(childComplexity int) int
 	}
 
 	UserServiceFlags struct {
@@ -2361,6 +2346,7 @@ type ComplexityRoot struct {
 		CreateTime          func(childComplexity int) int
 		Errors              func(childComplexity int) int
 		FinishTime          func(childComplexity int) int
+		GitTags             func(childComplexity int) int
 		Id                  func(childComplexity int) int
 		Ignored             func(childComplexity int) int
 		IngestTime          func(childComplexity int) int
@@ -2376,6 +2362,7 @@ type ComplexityRoot struct {
 		TaskStatusStats     func(childComplexity int) int
 		User                func(childComplexity int) int
 		Warnings            func(childComplexity int) int
+		WaterfallBuilds     func(childComplexity int) int
 	}
 
 	VersionTasks struct {
@@ -2408,6 +2395,7 @@ type ComplexityRoot struct {
 	Waterfall struct {
 		FlattenedVersions func(childComplexity int) int
 		Pagination        func(childComplexity int) int
+		Versions          func(childComplexity int) int
 	}
 
 	WaterfallBuild struct {
@@ -2606,7 +2594,7 @@ type PatchResolver interface {
 
 	TaskStatuses(ctx context.Context, obj *model.APIPatch) ([]string, error)
 	Time(ctx context.Context, obj *model.APIPatch) (*PatchTime, error)
-	User(ctx context.Context, obj *model.APIPatch) (*model.APIDBUser, error)
+	User(ctx context.Context, obj *model.APIPatch) (*user.DBUser, error)
 	UserLite(ctx context.Context, obj *model.APIPatch) (*user.DBUser, error)
 
 	Version(ctx context.Context, obj *model.APIPatch) (*model1.Version, error)
@@ -2685,7 +2673,7 @@ type QueryResolver interface {
 	TaskTestSample(ctx context.Context, versionID string, taskIds []string, filters []*TestFilter) ([]*TaskTestResultSample, error)
 	VariantQuarantineStatus(ctx context.Context, projectIdentifier string, buildVariant string) (*model.APIVariantQuarantineStatus, error)
 	MyPublicKeys(ctx context.Context) ([]*model.APIPubKey, error)
-	User(ctx context.Context, userID *string) (*model.APIDBUser, error)
+	User(ctx context.Context, userID *string) (*user.DBUser, error)
 	UserLite(ctx context.Context, userID *string) (*user.DBUser, error)
 	UserConfig(ctx context.Context) (*UserConfig, error)
 	BuildVariantsForTaskName(ctx context.Context, projectIdentifier string, taskName string) ([]*task.BuildVariantTuple, error)
@@ -2771,7 +2759,7 @@ type TaskResolver interface {
 	Patch(ctx context.Context, obj *model.APITask) (*model.APIPatch, error)
 	PatchNumber(ctx context.Context, obj *model.APITask) (*int, error)
 	PrevTask(ctx context.Context, obj *model.APITask) (*model.APITask, error)
-	PrevTaskCompleted(ctx context.Context, obj *model.APITask) (*model.APITask, error)
+	PrevTaskCompleted(ctx context.Context, obj *model.APITask, prevTaskOptions *PrevTaskOptions) (*model.APITask, error)
 	PrevTaskFailing(ctx context.Context, obj *model.APITask) (*model.APITask, error)
 	PrevTaskPassing(ctx context.Context, obj *model.APITask) (*model.APITask, error)
 
@@ -2808,15 +2796,6 @@ type UIConfigResolver interface {
 	BetaFeatures(ctx context.Context, obj *model.APIUIConfig) (*evergreen.BetaFeatures, error)
 }
 type UserResolver interface {
-	BetaFeatures(ctx context.Context, obj *model.APIDBUser) (*evergreen.BetaFeatures, error)
-
-	ParsleyFilters(ctx context.Context, obj *model.APIDBUser) ([]*parsley.Filter, error)
-	Patches(ctx context.Context, obj *model.APIDBUser, patchesInput PatchesInput) (*Patches, error)
-	Permissions(ctx context.Context, obj *model.APIDBUser) (*Permissions, error)
-
-	Subscriptions(ctx context.Context, obj *model.APIDBUser) ([]*model.APISubscription, error)
-}
-type UserLiteResolver interface {
 	HasTokenExchangePending(ctx context.Context, obj *user.DBUser) (bool, error)
 
 	Patches(ctx context.Context, obj *user.DBUser, patchesInput PatchesInput) (*Patches, error)
@@ -2836,6 +2815,7 @@ type VersionResolver interface {
 	ExternalLinksForMetadata(ctx context.Context, obj *model.APIVersion) ([]*ExternalLinkForMetadata, error)
 
 	GeneratedTaskCounts(ctx context.Context, obj *model.APIVersion) ([]*GeneratedTaskCountResults, error)
+	GitTags(ctx context.Context, obj *model.APIVersion) ([]*model1.GitTag, error)
 
 	IsPatch(ctx context.Context, obj *model.APIVersion) (bool, error)
 	Manifest(ctx context.Context, obj *model.APIVersion) (*Manifest, error)
@@ -2851,7 +2831,7 @@ type VersionResolver interface {
 	TaskStatuses(ctx context.Context, obj *model.APIVersion) ([]string, error)
 	TaskStatusStats(ctx context.Context, obj *model.APIVersion, options BuildVariantOptions) (*task.TaskStats, error)
 	UpstreamProject(ctx context.Context, obj *model.APIVersion) (*UpstreamProject, error)
-	User(ctx context.Context, obj *model.APIVersion) (*model.APIDBUser, error)
+	User(ctx context.Context, obj *model.APIVersion) (*user.DBUser, error)
 	UserLite(ctx context.Context, obj *model.APIVersion) (*user.DBUser, error)
 	VersionTiming(ctx context.Context, obj *model.APIVersion) (*VersionTiming, error)
 	Warnings(ctx context.Context, obj *model.APIVersion) ([]string, error)
@@ -2869,6 +2849,8 @@ type VersionLiteResolver interface {
 	Status(ctx context.Context, obj *model1.Version) (string, error)
 	TaskStatusStats(ctx context.Context, obj *model1.Version) (*task.TaskStats, error)
 	User(ctx context.Context, obj *model1.Version) (*user.DBUser, error)
+
+	WaterfallBuilds(ctx context.Context, obj *model1.Version) ([]*model1.WaterfallBuild, error)
 }
 type VolumeResolver interface {
 	Host(ctx context.Context, obj *model.APIVolume) (*model.APIHost, error)
@@ -10921,7 +10903,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			break
 		}
 
-		return e.complexity.Task.PrevTaskCompleted(childComplexity), true
+		args, err := ec.field_Task_prevTaskCompleted_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Task.PrevTaskCompleted(childComplexity, args["prevTaskOptions"].(*PrevTaskOptions)), true
 	case "Task.prevTaskFailing":
 		if e.complexity.Task.PrevTaskFailing == nil {
 			break
@@ -12214,11 +12201,11 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.User.BetaFeatures(childComplexity), true
 	case "User.displayName":
-		if e.complexity.User.DisplayName == nil {
+		if e.complexity.User.DispName == nil {
 			break
 		}
 
-		return e.complexity.User.DisplayName(childComplexity), true
+		return e.complexity.User.DispName(childComplexity), true
 	case "User.emailAddress":
 		if e.complexity.User.EmailAddress == nil {
 			break
@@ -12231,6 +12218,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.User.HasTokenExchangePending(childComplexity), true
+	case "User.id":
+		if e.complexity.User.Id == nil {
+			break
+		}
+
+		return e.complexity.User.Id(childComplexity), true
 	case "User.parsleyFilters":
 		if e.complexity.User.ParsleyFilters == nil {
 			break
@@ -12272,12 +12265,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.User.TokenAccessTokenExpiresAt(childComplexity), true
-	case "User.userId":
-		if e.complexity.User.UserID == nil {
-			break
-		}
-
-		return e.complexity.User.UserID(childComplexity), true
 
 	case "UserConfig.api_key":
 		if e.complexity.UserConfig.APIKey == nil {
@@ -12327,78 +12314,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UserConfig.User(childComplexity), true
-
-	case "UserLite.betaFeatures":
-		if e.complexity.UserLite.BetaFeatures == nil {
-			break
-		}
-
-		return e.complexity.UserLite.BetaFeatures(childComplexity), true
-	case "UserLite.displayName":
-		if e.complexity.UserLite.DispName == nil {
-			break
-		}
-
-		return e.complexity.UserLite.DispName(childComplexity), true
-	case "UserLite.emailAddress":
-		if e.complexity.UserLite.EmailAddress == nil {
-			break
-		}
-
-		return e.complexity.UserLite.EmailAddress(childComplexity), true
-	case "UserLite.hasTokenExchangePending":
-		if e.complexity.UserLite.HasTokenExchangePending == nil {
-			break
-		}
-
-		return e.complexity.UserLite.HasTokenExchangePending(childComplexity), true
-	case "UserLite.id":
-		if e.complexity.UserLite.Id == nil {
-			break
-		}
-
-		return e.complexity.UserLite.Id(childComplexity), true
-	case "UserLite.parsleyFilters":
-		if e.complexity.UserLite.ParsleyFilters == nil {
-			break
-		}
-
-		return e.complexity.UserLite.ParsleyFilters(childComplexity), true
-	case "UserLite.patches":
-		if e.complexity.UserLite.Patches == nil {
-			break
-		}
-
-		args, err := ec.field_UserLite_patches_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.UserLite.Patches(childComplexity, args["patchesInput"].(PatchesInput)), true
-	case "UserLite.permissions":
-		if e.complexity.UserLite.Permissions == nil {
-			break
-		}
-
-		return e.complexity.UserLite.Permissions(childComplexity), true
-	case "UserLite.settings":
-		if e.complexity.UserLite.Settings == nil {
-			break
-		}
-
-		return e.complexity.UserLite.Settings(childComplexity), true
-	case "UserLite.subscriptions":
-		if e.complexity.UserLite.Subscriptions == nil {
-			break
-		}
-
-		return e.complexity.UserLite.Subscriptions(childComplexity), true
-	case "UserLite.tokenAccessTokenExpiresAt":
-		if e.complexity.UserLite.TokenAccessTokenExpiresAt == nil {
-			break
-		}
-
-		return e.complexity.UserLite.TokenAccessTokenExpiresAt(childComplexity), true
 
 	case "UserServiceFlags.debugSpawnHostDisabled":
 		if e.complexity.UserServiceFlags.DebugSpawnHostDisabled == nil {
@@ -12820,6 +12735,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.VersionLite.FinishTime(childComplexity), true
+	case "VersionLite.gitTags":
+		if e.complexity.VersionLite.GitTags == nil {
+			break
+		}
+
+		return e.complexity.VersionLite.GitTags(childComplexity), true
 	case "VersionLite.id":
 		if e.complexity.VersionLite.Id == nil {
 			break
@@ -12910,6 +12831,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.VersionLite.Warnings(childComplexity), true
+	case "VersionLite.waterfallBuilds":
+		if e.complexity.VersionLite.WaterfallBuilds == nil {
+			break
+		}
+
+		return e.complexity.VersionLite.WaterfallBuilds(childComplexity), true
 
 	case "VersionTasks.count":
 		if e.complexity.VersionTasks.Count == nil {
@@ -13034,6 +12961,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Waterfall.Pagination(childComplexity), true
+	case "Waterfall.versions":
+		if e.complexity.Waterfall.Versions == nil {
+			break
+		}
+
+		return e.complexity.Waterfall.Versions(childComplexity), true
 
 	case "WaterfallBuild.activated":
 		if e.complexity.WaterfallBuild.Activated == nil {
@@ -13329,6 +13262,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputPersistentDNSConfigInput,
 		ec.unmarshalInputPlannerSettingsInput,
 		ec.unmarshalInputPreconditionScriptInput,
+		ec.unmarshalInputPrevTaskOptions,
 		ec.unmarshalInputProjectAliasInput,
 		ec.unmarshalInputProjectBannerInput,
 		ec.unmarshalInputProjectCreationConfigInput,
@@ -17310,6 +17244,17 @@ func (ec *executionContext) field_Query_waterfall_args(ctx context.Context, rawA
 	return args, nil
 }
 
+func (ec *executionContext) field_Task_prevTaskCompleted_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "prevTaskOptions", ec.unmarshalOPrevTaskOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPrevTaskOptions)
+	if err != nil {
+		return nil, err
+	}
+	args["prevTaskOptions"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Task_tests_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -17318,17 +17263,6 @@ func (ec *executionContext) field_Task_tests_args(ctx context.Context, rawArgs m
 		return nil, err
 	}
 	args["opts"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_UserLite_patches_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "patchesInput", ec.unmarshalNPatchesInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchesInput)
-	if err != nil {
-		return nil, err
-	}
-	args["patchesInput"] = arg0
 	return args, nil
 }
 
@@ -28630,7 +28564,7 @@ func (ec *executionContext) fieldContext_GitHubDynamicTokenPermissionGroup_permi
 	return fc, nil
 }
 
-func (ec *executionContext) _GitTag_tag(ctx context.Context, field graphql.CollectedField, obj *model.APIGitTag) (ret graphql.Marshaler) {
+func (ec *executionContext) _GitTag_tag(ctx context.Context, field graphql.CollectedField, obj *model1.GitTag) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -28640,7 +28574,7 @@ func (ec *executionContext) _GitTag_tag(ctx context.Context, field graphql.Colle
 			return obj.Tag, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalNString2string,
 		true,
 		true,
 	)
@@ -28659,7 +28593,7 @@ func (ec *executionContext) fieldContext_GitTag_tag(_ context.Context, field gra
 	return fc, nil
 }
 
-func (ec *executionContext) _GitTag_pusher(ctx context.Context, field graphql.CollectedField, obj *model.APIGitTag) (ret graphql.Marshaler) {
+func (ec *executionContext) _GitTag_pusher(ctx context.Context, field graphql.CollectedField, obj *model1.GitTag) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -28669,7 +28603,7 @@ func (ec *executionContext) _GitTag_pusher(ctx context.Context, field graphql.Co
 			return obj.Pusher, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalNString2string,
 		true,
 		true,
 	)
@@ -45181,7 +45115,7 @@ func (ec *executionContext) _Patch_user(ctx context.Context, field graphql.Colle
 			return ec.resolvers.Patch().User(ctx, obj)
 		},
 		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDBUser,
+		ec.marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋuserᚐDBUser,
 		true,
 		true,
 	)
@@ -45203,6 +45137,8 @@ func (ec *executionContext) fieldContext_Patch_user(_ context.Context, field gra
 				return ec.fieldContext_User_emailAddress(ctx, field)
 			case "hasTokenExchangePending":
 				return ec.fieldContext_User_hasTokenExchangePending(ctx, field)
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
 			case "parsleyFilters":
 				return ec.fieldContext_User_parsleyFilters(ctx, field)
 			case "patches":
@@ -45211,12 +45147,10 @@ func (ec *executionContext) fieldContext_Patch_user(_ context.Context, field gra
 				return ec.fieldContext_User_permissions(ctx, field)
 			case "settings":
 				return ec.fieldContext_User_settings(ctx, field)
-			case "tokenAccessTokenExpiresAt":
-				return ec.fieldContext_User_tokenAccessTokenExpiresAt(ctx, field)
 			case "subscriptions":
 				return ec.fieldContext_User_subscriptions(ctx, field)
-			case "userId":
-				return ec.fieldContext_User_userId(ctx, field)
+			case "tokenAccessTokenExpiresAt":
+				return ec.fieldContext_User_tokenAccessTokenExpiresAt(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -45234,7 +45168,7 @@ func (ec *executionContext) _Patch_userLite(ctx context.Context, field graphql.C
 			return ec.resolvers.Patch().UserLite(ctx, obj)
 		},
 		nil,
-		ec.marshalNUserLite2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋuserᚐDBUser,
+		ec.marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋuserᚐDBUser,
 		true,
 		true,
 	)
@@ -45249,29 +45183,29 @@ func (ec *executionContext) fieldContext_Patch_userLite(_ context.Context, field
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "betaFeatures":
-				return ec.fieldContext_UserLite_betaFeatures(ctx, field)
+				return ec.fieldContext_User_betaFeatures(ctx, field)
 			case "displayName":
-				return ec.fieldContext_UserLite_displayName(ctx, field)
+				return ec.fieldContext_User_displayName(ctx, field)
 			case "emailAddress":
-				return ec.fieldContext_UserLite_emailAddress(ctx, field)
+				return ec.fieldContext_User_emailAddress(ctx, field)
 			case "hasTokenExchangePending":
-				return ec.fieldContext_UserLite_hasTokenExchangePending(ctx, field)
+				return ec.fieldContext_User_hasTokenExchangePending(ctx, field)
 			case "id":
-				return ec.fieldContext_UserLite_id(ctx, field)
+				return ec.fieldContext_User_id(ctx, field)
 			case "parsleyFilters":
-				return ec.fieldContext_UserLite_parsleyFilters(ctx, field)
+				return ec.fieldContext_User_parsleyFilters(ctx, field)
 			case "patches":
-				return ec.fieldContext_UserLite_patches(ctx, field)
+				return ec.fieldContext_User_patches(ctx, field)
 			case "permissions":
-				return ec.fieldContext_UserLite_permissions(ctx, field)
+				return ec.fieldContext_User_permissions(ctx, field)
 			case "settings":
-				return ec.fieldContext_UserLite_settings(ctx, field)
+				return ec.fieldContext_User_settings(ctx, field)
 			case "subscriptions":
-				return ec.fieldContext_UserLite_subscriptions(ctx, field)
+				return ec.fieldContext_User_subscriptions(ctx, field)
 			case "tokenAccessTokenExpiresAt":
-				return ec.fieldContext_UserLite_tokenAccessTokenExpiresAt(ctx, field)
+				return ec.fieldContext_User_tokenAccessTokenExpiresAt(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type UserLite", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
 	}
 	return fc, nil
@@ -45379,6 +45313,8 @@ func (ec *executionContext) fieldContext_Patch_version(_ context.Context, field 
 				return ec.fieldContext_VersionLite_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_VersionLite_createTime(ctx, field)
+			case "gitTags":
+				return ec.fieldContext_VersionLite_gitTags(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_VersionLite_ingestTime(ctx, field)
 			case "errors":
@@ -45411,6 +45347,8 @@ func (ec *executionContext) fieldContext_Patch_version(_ context.Context, field 
 				return ec.fieldContext_VersionLite_user(ctx, field)
 			case "warnings":
 				return ec.fieldContext_VersionLite_warnings(ctx, field)
+			case "waterfallBuilds":
+				return ec.fieldContext_VersionLite_waterfallBuilds(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type VersionLite", field.Name)
 		},
@@ -54176,7 +54114,7 @@ func (ec *executionContext) _Query_user(ctx context.Context, field graphql.Colle
 			return ec.resolvers.Query().User(ctx, fc.Args["userId"].(*string))
 		},
 		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDBUser,
+		ec.marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋuserᚐDBUser,
 		true,
 		true,
 	)
@@ -54198,6 +54136,8 @@ func (ec *executionContext) fieldContext_Query_user(ctx context.Context, field g
 				return ec.fieldContext_User_emailAddress(ctx, field)
 			case "hasTokenExchangePending":
 				return ec.fieldContext_User_hasTokenExchangePending(ctx, field)
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
 			case "parsleyFilters":
 				return ec.fieldContext_User_parsleyFilters(ctx, field)
 			case "patches":
@@ -54206,12 +54146,10 @@ func (ec *executionContext) fieldContext_Query_user(ctx context.Context, field g
 				return ec.fieldContext_User_permissions(ctx, field)
 			case "settings":
 				return ec.fieldContext_User_settings(ctx, field)
-			case "tokenAccessTokenExpiresAt":
-				return ec.fieldContext_User_tokenAccessTokenExpiresAt(ctx, field)
 			case "subscriptions":
 				return ec.fieldContext_User_subscriptions(ctx, field)
-			case "userId":
-				return ec.fieldContext_User_userId(ctx, field)
+			case "tokenAccessTokenExpiresAt":
+				return ec.fieldContext_User_tokenAccessTokenExpiresAt(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -54241,7 +54179,7 @@ func (ec *executionContext) _Query_userLite(ctx context.Context, field graphql.C
 			return ec.resolvers.Query().UserLite(ctx, fc.Args["userId"].(*string))
 		},
 		nil,
-		ec.marshalNUserLite2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋuserᚐDBUser,
+		ec.marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋuserᚐDBUser,
 		true,
 		true,
 	)
@@ -54256,29 +54194,29 @@ func (ec *executionContext) fieldContext_Query_userLite(ctx context.Context, fie
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "betaFeatures":
-				return ec.fieldContext_UserLite_betaFeatures(ctx, field)
+				return ec.fieldContext_User_betaFeatures(ctx, field)
 			case "displayName":
-				return ec.fieldContext_UserLite_displayName(ctx, field)
+				return ec.fieldContext_User_displayName(ctx, field)
 			case "emailAddress":
-				return ec.fieldContext_UserLite_emailAddress(ctx, field)
+				return ec.fieldContext_User_emailAddress(ctx, field)
 			case "hasTokenExchangePending":
-				return ec.fieldContext_UserLite_hasTokenExchangePending(ctx, field)
+				return ec.fieldContext_User_hasTokenExchangePending(ctx, field)
 			case "id":
-				return ec.fieldContext_UserLite_id(ctx, field)
+				return ec.fieldContext_User_id(ctx, field)
 			case "parsleyFilters":
-				return ec.fieldContext_UserLite_parsleyFilters(ctx, field)
+				return ec.fieldContext_User_parsleyFilters(ctx, field)
 			case "patches":
-				return ec.fieldContext_UserLite_patches(ctx, field)
+				return ec.fieldContext_User_patches(ctx, field)
 			case "permissions":
-				return ec.fieldContext_UserLite_permissions(ctx, field)
+				return ec.fieldContext_User_permissions(ctx, field)
 			case "settings":
-				return ec.fieldContext_UserLite_settings(ctx, field)
+				return ec.fieldContext_User_settings(ctx, field)
 			case "subscriptions":
-				return ec.fieldContext_UserLite_subscriptions(ctx, field)
+				return ec.fieldContext_User_subscriptions(ctx, field)
 			case "tokenAccessTokenExpiresAt":
-				return ec.fieldContext_UserLite_tokenAccessTokenExpiresAt(ctx, field)
+				return ec.fieldContext_User_tokenAccessTokenExpiresAt(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type UserLite", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
 	}
 	defer func() {
@@ -54508,6 +54446,8 @@ func (ec *executionContext) fieldContext_Query_waterfall(ctx context.Context, fi
 				return ec.fieldContext_Waterfall_flattenedVersions(ctx, field)
 			case "pagination":
 				return ec.fieldContext_Waterfall_pagination(ctx, field)
+			case "versions":
+				return ec.fieldContext_Waterfall_versions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Waterfall", field.Name)
 		},
@@ -65020,7 +64960,8 @@ func (ec *executionContext) _Task_prevTaskCompleted(ctx context.Context, field g
 		field,
 		ec.fieldContext_Task_prevTaskCompleted,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Task().PrevTaskCompleted(ctx, obj)
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Task().PrevTaskCompleted(ctx, obj, fc.Args["prevTaskOptions"].(*PrevTaskOptions))
 		},
 		nil,
 		ec.marshalOTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask,
@@ -65029,7 +64970,7 @@ func (ec *executionContext) _Task_prevTaskCompleted(ctx context.Context, field g
 	)
 }
 
-func (ec *executionContext) fieldContext_Task_prevTaskCompleted(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Task_prevTaskCompleted(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Task",
 		Field:      field,
@@ -65218,6 +65159,17 @@ func (ec *executionContext) fieldContext_Task_prevTaskCompleted(_ context.Contex
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Task_prevTaskCompleted_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -66491,6 +66443,8 @@ func (ec *executionContext) fieldContext_Task_version(_ context.Context, field g
 				return ec.fieldContext_VersionLite_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_VersionLite_createTime(ctx, field)
+			case "gitTags":
+				return ec.fieldContext_VersionLite_gitTags(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_VersionLite_ingestTime(ctx, field)
 			case "errors":
@@ -66523,6 +66477,8 @@ func (ec *executionContext) fieldContext_Task_version(_ context.Context, field g
 				return ec.fieldContext_VersionLite_user(ctx, field)
 			case "warnings":
 				return ec.fieldContext_VersionLite_warnings(ctx, field)
+			case "waterfallBuilds":
+				return ec.fieldContext_VersionLite_waterfallBuilds(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type VersionLite", field.Name)
 		},
@@ -72811,17 +72767,17 @@ func (ec *executionContext) fieldContext_UseSpruceOptions_spruceV1(_ context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _User_betaFeatures(ctx context.Context, field graphql.CollectedField, obj *model.APIDBUser) (ret graphql.Marshaler) {
+func (ec *executionContext) _User_betaFeatures(ctx context.Context, field graphql.CollectedField, obj *user.DBUser) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		ec.fieldContext_User_betaFeatures,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.User().BetaFeatures(ctx, obj)
+			return obj.BetaFeatures, nil
 		},
 		nil,
-		ec.marshalOBetaFeatures2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚐBetaFeatures,
+		ec.marshalOBetaFeatures2githubᚗcomᚋevergreenᚑciᚋevergreenᚐBetaFeatures,
 		true,
 		false,
 	)
@@ -72831,8 +72787,8 @@ func (ec *executionContext) fieldContext_User_betaFeatures(_ context.Context, fi
 	fc = &graphql.FieldContext{
 		Object:     "User",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "spruceWaterfallEnabled":
@@ -72844,17 +72800,17 @@ func (ec *executionContext) fieldContext_User_betaFeatures(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _User_displayName(ctx context.Context, field graphql.CollectedField, obj *model.APIDBUser) (ret graphql.Marshaler) {
+func (ec *executionContext) _User_displayName(ctx context.Context, field graphql.CollectedField, obj *user.DBUser) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		ec.fieldContext_User_displayName,
 		func(ctx context.Context) (any, error) {
-			return obj.DisplayName, nil
+			return obj.DispName, nil
 		},
 		nil,
-		ec.marshalOString2ᚖstring,
+		ec.marshalOString2string,
 		true,
 		false,
 	)
@@ -72873,7 +72829,7 @@ func (ec *executionContext) fieldContext_User_displayName(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _User_emailAddress(ctx context.Context, field graphql.CollectedField, obj *model.APIDBUser) (ret graphql.Marshaler) {
+func (ec *executionContext) _User_emailAddress(ctx context.Context, field graphql.CollectedField, obj *user.DBUser) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -72883,7 +72839,7 @@ func (ec *executionContext) _User_emailAddress(ctx context.Context, field graphq
 			return obj.EmailAddress, nil
 		},
 		nil,
-		ec.marshalOString2ᚖstring,
+		ec.marshalOString2string,
 		true,
 		false,
 	)
@@ -72902,14 +72858,14 @@ func (ec *executionContext) fieldContext_User_emailAddress(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _User_hasTokenExchangePending(ctx context.Context, field graphql.CollectedField, obj *model.APIDBUser) (ret graphql.Marshaler) {
+func (ec *executionContext) _User_hasTokenExchangePending(ctx context.Context, field graphql.CollectedField, obj *user.DBUser) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		ec.fieldContext_User_hasTokenExchangePending,
 		func(ctx context.Context) (any, error) {
-			return obj.HasTokenExchangePending, nil
+			return ec.resolvers.User().HasTokenExchangePending(ctx, obj)
 		},
 		nil,
 		ec.marshalNBoolean2bool,
@@ -72922,8 +72878,8 @@ func (ec *executionContext) fieldContext_User_hasTokenExchangePending(_ context.
 	fc = &graphql.FieldContext{
 		Object:     "User",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
 		},
@@ -72931,17 +72887,46 @@ func (ec *executionContext) fieldContext_User_hasTokenExchangePending(_ context.
 	return fc, nil
 }
 
-func (ec *executionContext) _User_parsleyFilters(ctx context.Context, field graphql.CollectedField, obj *model.APIDBUser) (ret graphql.Marshaler) {
+func (ec *executionContext) _User_id(ctx context.Context, field graphql.CollectedField, obj *user.DBUser) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_User_id,
+		func(ctx context.Context) (any, error) {
+			return obj.Id, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_User_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _User_parsleyFilters(ctx context.Context, field graphql.CollectedField, obj *user.DBUser) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		ec.fieldContext_User_parsleyFilters,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.User().ParsleyFilters(ctx, obj)
+			return obj.ParsleyFilters, nil
 		},
 		nil,
-		ec.marshalOParsleyFilter2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋparsleyᚐFilterᚄ,
+		ec.marshalOParsleyFilter2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋparsleyᚐFilterᚄ,
 		true,
 		false,
 	)
@@ -72951,8 +72936,8 @@ func (ec *executionContext) fieldContext_User_parsleyFilters(_ context.Context, 
 	fc = &graphql.FieldContext{
 		Object:     "User",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "caseSensitive":
@@ -72970,7 +72955,7 @@ func (ec *executionContext) fieldContext_User_parsleyFilters(_ context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _User_patches(ctx context.Context, field graphql.CollectedField, obj *model.APIDBUser) (ret graphql.Marshaler) {
+func (ec *executionContext) _User_patches(ctx context.Context, field graphql.CollectedField, obj *user.DBUser) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -73017,7 +73002,7 @@ func (ec *executionContext) fieldContext_User_patches(ctx context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _User_permissions(ctx context.Context, field graphql.CollectedField, obj *model.APIDBUser) (ret graphql.Marshaler) {
+func (ec *executionContext) _User_permissions(ctx context.Context, field graphql.CollectedField, obj *user.DBUser) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -73062,17 +73047,17 @@ func (ec *executionContext) fieldContext_User_permissions(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _User_settings(ctx context.Context, field graphql.CollectedField, obj *model.APIDBUser) (ret graphql.Marshaler) {
+func (ec *executionContext) _User_settings(ctx context.Context, field graphql.CollectedField, obj *user.DBUser) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		ec.fieldContext_User_settings,
 		func(ctx context.Context) (any, error) {
-			return obj.Settings, nil
+			return ec.resolvers.User().Settings(ctx, obj)
 		},
 		nil,
-		ec.marshalOUserSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings,
+		ec.marshalOUserSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings,
 		true,
 		false,
 	)
@@ -73082,8 +73067,8 @@ func (ec *executionContext) fieldContext_User_settings(_ context.Context, field 
 	fc = &graphql.FieldContext{
 		Object:     "User",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "githubUser":
@@ -73111,36 +73096,7 @@ func (ec *executionContext) fieldContext_User_settings(_ context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _User_tokenAccessTokenExpiresAt(ctx context.Context, field graphql.CollectedField, obj *model.APIDBUser) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_User_tokenAccessTokenExpiresAt,
-		func(ctx context.Context) (any, error) {
-			return obj.TokenAccessTokenExpiresAt, nil
-		},
-		nil,
-		ec.marshalOTime2ᚖtimeᚐTime,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_User_tokenAccessTokenExpiresAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "User",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Time does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _User_subscriptions(ctx context.Context, field graphql.CollectedField, obj *model.APIDBUser) (ret graphql.Marshaler) {
+func (ec *executionContext) _User_subscriptions(ctx context.Context, field graphql.CollectedField, obj *user.DBUser) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -73187,30 +73143,30 @@ func (ec *executionContext) fieldContext_User_subscriptions(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _User_userId(ctx context.Context, field graphql.CollectedField, obj *model.APIDBUser) (ret graphql.Marshaler) {
+func (ec *executionContext) _User_tokenAccessTokenExpiresAt(ctx context.Context, field graphql.CollectedField, obj *user.DBUser) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_User_userId,
+		ec.fieldContext_User_tokenAccessTokenExpiresAt,
 		func(ctx context.Context) (any, error) {
-			return obj.UserID, nil
+			return ec.resolvers.User().TokenAccessTokenExpiresAt(ctx, obj)
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalOTime2ᚖtimeᚐTime,
 		true,
-		true,
+		false,
 	)
 }
 
-func (ec *executionContext) fieldContext_User_userId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_User_tokenAccessTokenExpiresAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "User",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -73443,411 +73399,6 @@ func (ec *executionContext) fieldContext_UserConfig_oauth_connector_id(_ context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UserLite_betaFeatures(ctx context.Context, field graphql.CollectedField, obj *user.DBUser) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_UserLite_betaFeatures,
-		func(ctx context.Context) (any, error) {
-			return obj.BetaFeatures, nil
-		},
-		nil,
-		ec.marshalOBetaFeatures2githubᚗcomᚋevergreenᚑciᚋevergreenᚐBetaFeatures,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_UserLite_betaFeatures(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UserLite",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "spruceWaterfallEnabled":
-				return ec.fieldContext_BetaFeatures_spruceWaterfallEnabled(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type BetaFeatures", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UserLite_displayName(ctx context.Context, field graphql.CollectedField, obj *user.DBUser) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_UserLite_displayName,
-		func(ctx context.Context) (any, error) {
-			return obj.DispName, nil
-		},
-		nil,
-		ec.marshalOString2string,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_UserLite_displayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UserLite",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UserLite_emailAddress(ctx context.Context, field graphql.CollectedField, obj *user.DBUser) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_UserLite_emailAddress,
-		func(ctx context.Context) (any, error) {
-			return obj.EmailAddress, nil
-		},
-		nil,
-		ec.marshalOString2string,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_UserLite_emailAddress(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UserLite",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UserLite_hasTokenExchangePending(ctx context.Context, field graphql.CollectedField, obj *user.DBUser) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_UserLite_hasTokenExchangePending,
-		func(ctx context.Context) (any, error) {
-			return ec.resolvers.UserLite().HasTokenExchangePending(ctx, obj)
-		},
-		nil,
-		ec.marshalNBoolean2bool,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_UserLite_hasTokenExchangePending(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UserLite",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UserLite_id(ctx context.Context, field graphql.CollectedField, obj *user.DBUser) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_UserLite_id,
-		func(ctx context.Context) (any, error) {
-			return obj.Id, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_UserLite_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UserLite",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UserLite_parsleyFilters(ctx context.Context, field graphql.CollectedField, obj *user.DBUser) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_UserLite_parsleyFilters,
-		func(ctx context.Context) (any, error) {
-			return obj.ParsleyFilters, nil
-		},
-		nil,
-		ec.marshalOParsleyFilter2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋparsleyᚐFilterᚄ,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_UserLite_parsleyFilters(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UserLite",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "caseSensitive":
-				return ec.fieldContext_ParsleyFilter_caseSensitive(ctx, field)
-			case "description":
-				return ec.fieldContext_ParsleyFilter_description(ctx, field)
-			case "exactMatch":
-				return ec.fieldContext_ParsleyFilter_exactMatch(ctx, field)
-			case "expression":
-				return ec.fieldContext_ParsleyFilter_expression(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ParsleyFilter", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UserLite_patches(ctx context.Context, field graphql.CollectedField, obj *user.DBUser) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_UserLite_patches,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.UserLite().Patches(ctx, obj, fc.Args["patchesInput"].(PatchesInput))
-		},
-		nil,
-		ec.marshalOPatches2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatches,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_UserLite_patches(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UserLite",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "filteredPatchCount":
-				return ec.fieldContext_Patches_filteredPatchCount(ctx, field)
-			case "patches":
-				return ec.fieldContext_Patches_patches(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Patches", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_UserLite_patches_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UserLite_permissions(ctx context.Context, field graphql.CollectedField, obj *user.DBUser) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_UserLite_permissions,
-		func(ctx context.Context) (any, error) {
-			return ec.resolvers.UserLite().Permissions(ctx, obj)
-		},
-		nil,
-		ec.marshalOPermissions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPermissions,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_UserLite_permissions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UserLite",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "canCreateDistro":
-				return ec.fieldContext_Permissions_canCreateDistro(ctx, field)
-			case "canCreateProject":
-				return ec.fieldContext_Permissions_canCreateProject(ctx, field)
-			case "canEditAdminSettings":
-				return ec.fieldContext_Permissions_canEditAdminSettings(ctx, field)
-			case "distroPermissions":
-				return ec.fieldContext_Permissions_distroPermissions(ctx, field)
-			case "projectPermissions":
-				return ec.fieldContext_Permissions_projectPermissions(ctx, field)
-			case "repoPermissions":
-				return ec.fieldContext_Permissions_repoPermissions(ctx, field)
-			case "userId":
-				return ec.fieldContext_Permissions_userId(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Permissions", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UserLite_settings(ctx context.Context, field graphql.CollectedField, obj *user.DBUser) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_UserLite_settings,
-		func(ctx context.Context) (any, error) {
-			return ec.resolvers.UserLite().Settings(ctx, obj)
-		},
-		nil,
-		ec.marshalOUserSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_UserLite_settings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UserLite",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "githubUser":
-				return ec.fieldContext_UserSettings_githubUser(ctx, field)
-			case "notifications":
-				return ec.fieldContext_UserSettings_notifications(ctx, field)
-			case "region":
-				return ec.fieldContext_UserSettings_region(ctx, field)
-			case "slackUsername":
-				return ec.fieldContext_UserSettings_slackUsername(ctx, field)
-			case "slackMemberId":
-				return ec.fieldContext_UserSettings_slackMemberId(ctx, field)
-			case "timezone":
-				return ec.fieldContext_UserSettings_timezone(ctx, field)
-			case "useSpruceOptions":
-				return ec.fieldContext_UserSettings_useSpruceOptions(ctx, field)
-			case "dateFormat":
-				return ec.fieldContext_UserSettings_dateFormat(ctx, field)
-			case "timeFormat":
-				return ec.fieldContext_UserSettings_timeFormat(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type UserSettings", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UserLite_subscriptions(ctx context.Context, field graphql.CollectedField, obj *user.DBUser) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_UserLite_subscriptions,
-		func(ctx context.Context) (any, error) {
-			return ec.resolvers.UserLite().Subscriptions(ctx, obj)
-		},
-		nil,
-		ec.marshalOGeneralSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_UserLite_subscriptions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UserLite",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_GeneralSubscription_id(ctx, field)
-			case "ownerType":
-				return ec.fieldContext_GeneralSubscription_ownerType(ctx, field)
-			case "regexSelectors":
-				return ec.fieldContext_GeneralSubscription_regexSelectors(ctx, field)
-			case "resourceType":
-				return ec.fieldContext_GeneralSubscription_resourceType(ctx, field)
-			case "selectors":
-				return ec.fieldContext_GeneralSubscription_selectors(ctx, field)
-			case "subscriber":
-				return ec.fieldContext_GeneralSubscription_subscriber(ctx, field)
-			case "trigger":
-				return ec.fieldContext_GeneralSubscription_trigger(ctx, field)
-			case "triggerData":
-				return ec.fieldContext_GeneralSubscription_triggerData(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type GeneralSubscription", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UserLite_tokenAccessTokenExpiresAt(ctx context.Context, field graphql.CollectedField, obj *user.DBUser) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_UserLite_tokenAccessTokenExpiresAt,
-		func(ctx context.Context) (any, error) {
-			return ec.resolvers.UserLite().TokenAccessTokenExpiresAt(ctx, obj)
-		},
-		nil,
-		ec.marshalOTime2ᚖtimeᚐTime,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_UserLite_tokenAccessTokenExpiresAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UserLite",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -75045,10 +74596,10 @@ func (ec *executionContext) _Version_gitTags(ctx context.Context, field graphql.
 		field,
 		ec.fieldContext_Version_gitTags,
 		func(ctx context.Context) (any, error) {
-			return obj.GitTags, nil
+			return ec.resolvers.Version().GitTags(ctx, obj)
 		},
 		nil,
-		ec.marshalOGitTag2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitTagᚄ,
+		ec.marshalOGitTag2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐGitTagᚄ,
 		true,
 		false,
 	)
@@ -75058,8 +74609,8 @@ func (ec *executionContext) fieldContext_Version_gitTags(_ context.Context, fiel
 	fc = &graphql.FieldContext{
 		Object:     "Version",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "tag":
@@ -76045,7 +75596,7 @@ func (ec *executionContext) _Version_user(ctx context.Context, field graphql.Col
 			return ec.resolvers.Version().User(ctx, obj)
 		},
 		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDBUser,
+		ec.marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋuserᚐDBUser,
 		true,
 		true,
 	)
@@ -76067,6 +75618,8 @@ func (ec *executionContext) fieldContext_Version_user(_ context.Context, field g
 				return ec.fieldContext_User_emailAddress(ctx, field)
 			case "hasTokenExchangePending":
 				return ec.fieldContext_User_hasTokenExchangePending(ctx, field)
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
 			case "parsleyFilters":
 				return ec.fieldContext_User_parsleyFilters(ctx, field)
 			case "patches":
@@ -76075,12 +75628,10 @@ func (ec *executionContext) fieldContext_Version_user(_ context.Context, field g
 				return ec.fieldContext_User_permissions(ctx, field)
 			case "settings":
 				return ec.fieldContext_User_settings(ctx, field)
-			case "tokenAccessTokenExpiresAt":
-				return ec.fieldContext_User_tokenAccessTokenExpiresAt(ctx, field)
 			case "subscriptions":
 				return ec.fieldContext_User_subscriptions(ctx, field)
-			case "userId":
-				return ec.fieldContext_User_userId(ctx, field)
+			case "tokenAccessTokenExpiresAt":
+				return ec.fieldContext_User_tokenAccessTokenExpiresAt(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -76098,7 +75649,7 @@ func (ec *executionContext) _Version_userLite(ctx context.Context, field graphql
 			return ec.resolvers.Version().UserLite(ctx, obj)
 		},
 		nil,
-		ec.marshalNUserLite2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋuserᚐDBUser,
+		ec.marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋuserᚐDBUser,
 		true,
 		true,
 	)
@@ -76113,29 +75664,29 @@ func (ec *executionContext) fieldContext_Version_userLite(_ context.Context, fie
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "betaFeatures":
-				return ec.fieldContext_UserLite_betaFeatures(ctx, field)
+				return ec.fieldContext_User_betaFeatures(ctx, field)
 			case "displayName":
-				return ec.fieldContext_UserLite_displayName(ctx, field)
+				return ec.fieldContext_User_displayName(ctx, field)
 			case "emailAddress":
-				return ec.fieldContext_UserLite_emailAddress(ctx, field)
+				return ec.fieldContext_User_emailAddress(ctx, field)
 			case "hasTokenExchangePending":
-				return ec.fieldContext_UserLite_hasTokenExchangePending(ctx, field)
+				return ec.fieldContext_User_hasTokenExchangePending(ctx, field)
 			case "id":
-				return ec.fieldContext_UserLite_id(ctx, field)
+				return ec.fieldContext_User_id(ctx, field)
 			case "parsleyFilters":
-				return ec.fieldContext_UserLite_parsleyFilters(ctx, field)
+				return ec.fieldContext_User_parsleyFilters(ctx, field)
 			case "patches":
-				return ec.fieldContext_UserLite_patches(ctx, field)
+				return ec.fieldContext_User_patches(ctx, field)
 			case "permissions":
-				return ec.fieldContext_UserLite_permissions(ctx, field)
+				return ec.fieldContext_User_permissions(ctx, field)
 			case "settings":
-				return ec.fieldContext_UserLite_settings(ctx, field)
+				return ec.fieldContext_User_settings(ctx, field)
 			case "subscriptions":
-				return ec.fieldContext_UserLite_subscriptions(ctx, field)
+				return ec.fieldContext_User_subscriptions(ctx, field)
 			case "tokenAccessTokenExpiresAt":
-				return ec.fieldContext_UserLite_tokenAccessTokenExpiresAt(ctx, field)
+				return ec.fieldContext_User_tokenAccessTokenExpiresAt(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type UserLite", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
 	}
 	return fc, nil
@@ -76344,6 +75895,8 @@ func (ec *executionContext) fieldContext_VersionLite_baseVersion(_ context.Conte
 				return ec.fieldContext_VersionLite_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_VersionLite_createTime(ctx, field)
+			case "gitTags":
+				return ec.fieldContext_VersionLite_gitTags(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_VersionLite_ingestTime(ctx, field)
 			case "errors":
@@ -76376,6 +75929,8 @@ func (ec *executionContext) fieldContext_VersionLite_baseVersion(_ context.Conte
 				return ec.fieldContext_VersionLite_user(ctx, field)
 			case "warnings":
 				return ec.fieldContext_VersionLite_warnings(ctx, field)
+			case "waterfallBuilds":
+				return ec.fieldContext_VersionLite_waterfallBuilds(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type VersionLite", field.Name)
 		},
@@ -76450,6 +76005,8 @@ func (ec *executionContext) fieldContext_VersionLite_childVersions(_ context.Con
 				return ec.fieldContext_VersionLite_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_VersionLite_createTime(ctx, field)
+			case "gitTags":
+				return ec.fieldContext_VersionLite_gitTags(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_VersionLite_ingestTime(ctx, field)
 			case "errors":
@@ -76482,6 +76039,8 @@ func (ec *executionContext) fieldContext_VersionLite_childVersions(_ context.Con
 				return ec.fieldContext_VersionLite_user(ctx, field)
 			case "warnings":
 				return ec.fieldContext_VersionLite_warnings(ctx, field)
+			case "waterfallBuilds":
+				return ec.fieldContext_VersionLite_waterfallBuilds(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type VersionLite", field.Name)
 		},
@@ -76562,6 +76121,41 @@ func (ec *executionContext) fieldContext_VersionLite_createTime(_ context.Contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _VersionLite_gitTags(ctx context.Context, field graphql.CollectedField, obj *model1.Version) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_VersionLite_gitTags,
+		func(ctx context.Context) (any, error) {
+			return obj.GitTags, nil
+		},
+		nil,
+		ec.marshalOGitTag2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐGitTagᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_VersionLite_gitTags(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "VersionLite",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "tag":
+				return ec.fieldContext_GitTag_tag(ctx, field)
+			case "pusher":
+				return ec.fieldContext_GitTag_pusher(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GitTag", field.Name)
 		},
 	}
 	return fc, nil
@@ -77067,7 +76661,7 @@ func (ec *executionContext) _VersionLite_user(ctx context.Context, field graphql
 			return ec.resolvers.VersionLite().User(ctx, obj)
 		},
 		nil,
-		ec.marshalNUserLite2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋuserᚐDBUser,
+		ec.marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋuserᚐDBUser,
 		true,
 		true,
 	)
@@ -77082,29 +76676,29 @@ func (ec *executionContext) fieldContext_VersionLite_user(_ context.Context, fie
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "betaFeatures":
-				return ec.fieldContext_UserLite_betaFeatures(ctx, field)
+				return ec.fieldContext_User_betaFeatures(ctx, field)
 			case "displayName":
-				return ec.fieldContext_UserLite_displayName(ctx, field)
+				return ec.fieldContext_User_displayName(ctx, field)
 			case "emailAddress":
-				return ec.fieldContext_UserLite_emailAddress(ctx, field)
+				return ec.fieldContext_User_emailAddress(ctx, field)
 			case "hasTokenExchangePending":
-				return ec.fieldContext_UserLite_hasTokenExchangePending(ctx, field)
+				return ec.fieldContext_User_hasTokenExchangePending(ctx, field)
 			case "id":
-				return ec.fieldContext_UserLite_id(ctx, field)
+				return ec.fieldContext_User_id(ctx, field)
 			case "parsleyFilters":
-				return ec.fieldContext_UserLite_parsleyFilters(ctx, field)
+				return ec.fieldContext_User_parsleyFilters(ctx, field)
 			case "patches":
-				return ec.fieldContext_UserLite_patches(ctx, field)
+				return ec.fieldContext_User_patches(ctx, field)
 			case "permissions":
-				return ec.fieldContext_UserLite_permissions(ctx, field)
+				return ec.fieldContext_User_permissions(ctx, field)
 			case "settings":
-				return ec.fieldContext_UserLite_settings(ctx, field)
+				return ec.fieldContext_User_settings(ctx, field)
 			case "subscriptions":
-				return ec.fieldContext_UserLite_subscriptions(ctx, field)
+				return ec.fieldContext_User_subscriptions(ctx, field)
 			case "tokenAccessTokenExpiresAt":
-				return ec.fieldContext_UserLite_tokenAccessTokenExpiresAt(ctx, field)
+				return ec.fieldContext_User_tokenAccessTokenExpiresAt(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type UserLite", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
 	}
 	return fc, nil
@@ -77134,6 +76728,49 @@ func (ec *executionContext) fieldContext_VersionLite_warnings(_ context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _VersionLite_waterfallBuilds(ctx context.Context, field graphql.CollectedField, obj *model1.Version) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_VersionLite_waterfallBuilds,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.VersionLite().WaterfallBuilds(ctx, obj)
+		},
+		nil,
+		ec.marshalOWaterfallBuild2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐWaterfallBuildᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_VersionLite_waterfallBuilds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "VersionLite",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_WaterfallBuild_id(ctx, field)
+			case "activated":
+				return ec.fieldContext_WaterfallBuild_activated(ctx, field)
+			case "buildVariant":
+				return ec.fieldContext_WaterfallBuild_buildVariant(ctx, field)
+			case "displayName":
+				return ec.fieldContext_WaterfallBuild_displayName(ctx, field)
+			case "version":
+				return ec.fieldContext_WaterfallBuild_version(ctx, field)
+			case "tasks":
+				return ec.fieldContext_WaterfallBuild_tasks(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WaterfallBuild", field.Name)
 		},
 	}
 	return fc, nil
@@ -78052,6 +77689,87 @@ func (ec *executionContext) fieldContext_Waterfall_pagination(_ context.Context,
 				return ec.fieldContext_WaterfallPagination_prevPageOrder(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type WaterfallPagination", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Waterfall_versions(ctx context.Context, field graphql.CollectedField, obj *Waterfall) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Waterfall_versions,
+		func(ctx context.Context) (any, error) {
+			return obj.Versions, nil
+		},
+		nil,
+		ec.marshalNVersionLite2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐVersionᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Waterfall_versions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Waterfall",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_VersionLite_id(ctx, field)
+			case "activated":
+				return ec.fieldContext_VersionLite_activated(ctx, field)
+			case "baseVersion":
+				return ec.fieldContext_VersionLite_baseVersion(ctx, field)
+			case "branch":
+				return ec.fieldContext_VersionLite_branch(ctx, field)
+			case "childVersions":
+				return ec.fieldContext_VersionLite_childVersions(ctx, field)
+			case "cost":
+				return ec.fieldContext_VersionLite_cost(ctx, field)
+			case "createTime":
+				return ec.fieldContext_VersionLite_createTime(ctx, field)
+			case "gitTags":
+				return ec.fieldContext_VersionLite_gitTags(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_VersionLite_ingestTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_VersionLite_errors(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_VersionLite_finishTime(ctx, field)
+			case "ignored":
+				return ec.fieldContext_VersionLite_ignored(ctx, field)
+			case "isPatch":
+				return ec.fieldContext_VersionLite_isPatch(ctx, field)
+			case "message":
+				return ec.fieldContext_VersionLite_message(ctx, field)
+			case "order":
+				return ec.fieldContext_VersionLite_order(ctx, field)
+			case "project":
+				return ec.fieldContext_VersionLite_project(ctx, field)
+			case "repo":
+				return ec.fieldContext_VersionLite_repo(ctx, field)
+			case "requester":
+				return ec.fieldContext_VersionLite_requester(ctx, field)
+			case "revision":
+				return ec.fieldContext_VersionLite_revision(ctx, field)
+			case "startTime":
+				return ec.fieldContext_VersionLite_startTime(ctx, field)
+			case "status":
+				return ec.fieldContext_VersionLite_status(ctx, field)
+			case "taskStatusStats":
+				return ec.fieldContext_VersionLite_taskStatusStats(ctx, field)
+			case "user":
+				return ec.fieldContext_VersionLite_user(ctx, field)
+			case "warnings":
+				return ec.fieldContext_VersionLite_warnings(ctx, field)
+			case "waterfallBuilds":
+				return ec.fieldContext_VersionLite_waterfallBuilds(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type VersionLite", field.Name)
 		},
 	}
 	return fc, nil
@@ -86390,6 +86108,33 @@ func (ec *executionContext) unmarshalInputPreconditionScriptInput(ctx context.Co
 				return it, err
 			}
 			it.Script = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputPrevTaskOptions(ctx context.Context, obj any) (PrevTaskOptions, error) {
+	var it PrevTaskOptions
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"skipOnParentCompleted"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "skipOnParentCompleted":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("skipOnParentCompleted"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SkipOnParentCompleted = data
 		}
 	}
 
@@ -95394,7 +95139,7 @@ func (ec *executionContext) _GitHubDynamicTokenPermissionGroup(ctx context.Conte
 
 var gitTagImplementors = []string{"GitTag"}
 
-func (ec *executionContext) _GitTag(ctx context.Context, sel ast.SelectionSet, obj *model.APIGitTag) graphql.Marshaler {
+func (ec *executionContext) _GitTag(ctx context.Context, sel ast.SelectionSet, obj *model1.GitTag) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, gitTagImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -110057,7 +109802,7 @@ func (ec *executionContext) _UseSpruceOptions(ctx context.Context, sel ast.Selec
 
 var userImplementors = []string{"User"}
 
-func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj *model.APIDBUser) graphql.Marshaler {
+func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj *user.DBUser) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, userImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -110067,57 +109812,24 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("User")
 		case "betaFeatures":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._User_betaFeatures(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			out.Values[i] = ec._User_betaFeatures(ctx, field, obj)
 		case "displayName":
 			out.Values[i] = ec._User_displayName(ctx, field, obj)
 		case "emailAddress":
 			out.Values[i] = ec._User_emailAddress(ctx, field, obj)
 		case "hasTokenExchangePending":
-			out.Values[i] = ec._User_hasTokenExchangePending(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "parsleyFilters":
 			field := field
 
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
 				defer func() {
 					if r := recover(); r != nil {
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._User_parsleyFilters(ctx, field, obj)
+				res = ec._User_hasTokenExchangePending(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 
@@ -110141,6 +109853,13 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "id":
+			out.Values[i] = ec._User_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "parsleyFilters":
+			out.Values[i] = ec._User_parsleyFilters(ctx, field, obj)
 		case "patches":
 			field := field
 
@@ -110208,9 +109927,38 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "settings":
-			out.Values[i] = ec._User_settings(ctx, field, obj)
-		case "tokenAccessTokenExpiresAt":
-			out.Values[i] = ec._User_tokenAccessTokenExpiresAt(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._User_settings(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "subscriptions":
 			field := field
 
@@ -110244,11 +109992,39 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "userId":
-			out.Values[i] = ec._User_userId(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+		case "tokenAccessTokenExpiresAt":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._User_tokenAccessTokenExpiresAt(ctx, field, obj)
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -110323,254 +110099,6 @@ func (ec *executionContext) _UserConfig(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var userLiteImplementors = []string{"UserLite"}
-
-func (ec *executionContext) _UserLite(ctx context.Context, sel ast.SelectionSet, obj *user.DBUser) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, userLiteImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("UserLite")
-		case "betaFeatures":
-			out.Values[i] = ec._UserLite_betaFeatures(ctx, field, obj)
-		case "displayName":
-			out.Values[i] = ec._UserLite_displayName(ctx, field, obj)
-		case "emailAddress":
-			out.Values[i] = ec._UserLite_emailAddress(ctx, field, obj)
-		case "hasTokenExchangePending":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._UserLite_hasTokenExchangePending(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "id":
-			out.Values[i] = ec._UserLite_id(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "parsleyFilters":
-			out.Values[i] = ec._UserLite_parsleyFilters(ctx, field, obj)
-		case "patches":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._UserLite_patches(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "permissions":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._UserLite_permissions(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "settings":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._UserLite_settings(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "subscriptions":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._UserLite_subscriptions(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "tokenAccessTokenExpiresAt":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._UserLite_tokenAccessTokenExpiresAt(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -111060,7 +110588,38 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "gitTags":
-			out.Values[i] = ec._Version_gitTags(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Version_gitTags(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "ignored":
 			out.Values[i] = ec._Version_ignored(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -111768,6 +111327,8 @@ func (ec *executionContext) _VersionLite(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "gitTags":
+			out.Values[i] = ec._VersionLite_gitTags(ctx, field, obj)
 		case "ingestTime":
 			out.Values[i] = ec._VersionLite_ingestTime(ctx, field, obj)
 		case "errors":
@@ -111988,6 +111549,39 @@ func (ec *executionContext) _VersionLite(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "waterfallBuilds":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._VersionLite_waterfallBuilds(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -112234,6 +111828,11 @@ func (ec *executionContext) _Waterfall(ctx context.Context, sel ast.SelectionSet
 			}
 		case "pagination":
 			out.Values[i] = ec._Waterfall_pagination(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "versions":
+			out.Values[i] = ec._Waterfall_versions(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -114660,8 +114259,18 @@ func (ec *executionContext) unmarshalNGitHubDynamicTokenPermissionGroupInput2git
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNGitTag2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitTag(ctx context.Context, sel ast.SelectionSet, v model.APIGitTag) graphql.Marshaler {
+func (ec *executionContext) marshalNGitTag2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐGitTag(ctx context.Context, sel ast.SelectionSet, v model1.GitTag) graphql.Marshaler {
 	return ec._GitTag(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNGitTag2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐGitTag(ctx context.Context, sel ast.SelectionSet, v *model1.GitTag) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._GitTag(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNGithubProjectConflicts2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐGithubProjectConflicts(ctx context.Context, sel ast.SelectionSet, v model1.GithubProjectConflicts) graphql.Marshaler {
@@ -118716,11 +118325,11 @@ func (ec *executionContext) unmarshalNUpdateVolumeInput2githubᚗcomᚋevergreen
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNUser2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDBUser(ctx context.Context, sel ast.SelectionSet, v model.APIDBUser) graphql.Marshaler {
+func (ec *executionContext) marshalNUser2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋuserᚐDBUser(ctx context.Context, sel ast.SelectionSet, v user.DBUser) graphql.Marshaler {
 	return ec._User(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDBUser(ctx context.Context, sel ast.SelectionSet, v *model.APIDBUser) graphql.Marshaler {
+func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋuserᚐDBUser(ctx context.Context, sel ast.SelectionSet, v *user.DBUser) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
@@ -118728,20 +118337,6 @@ func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 		return graphql.Null
 	}
 	return ec._User(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNUserLite2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋuserᚐDBUser(ctx context.Context, sel ast.SelectionSet, v user.DBUser) graphql.Marshaler {
-	return ec._UserLite(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNUserLite2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋuserᚐDBUser(ctx context.Context, sel ast.SelectionSet, v *user.DBUser) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._UserLite(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNUserServiceFlags2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIServiceFlags(ctx context.Context, sel ast.SelectionSet, v *model.APIServiceFlags) graphql.Marshaler {
@@ -118896,6 +118491,50 @@ func (ec *executionContext) marshalNVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋe
 
 func (ec *executionContext) marshalNVersionLite2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐVersion(ctx context.Context, sel ast.SelectionSet, v model1.Version) graphql.Marshaler {
 	return ec._VersionLite(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNVersionLite2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐVersionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model1.Version) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNVersionLite2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐVersion(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalNVersionLite2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐVersion(ctx context.Context, sel ast.SelectionSet, v *model1.Version) graphql.Marshaler {
@@ -120418,7 +120057,7 @@ func (ec *executionContext) unmarshalOGitHubDynamicTokenPermissionGroupInput2ᚕ
 	return res, nil
 }
 
-func (ec *executionContext) marshalOGitTag2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitTagᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIGitTag) graphql.Marshaler {
+func (ec *executionContext) marshalOGitTag2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐGitTagᚄ(ctx context.Context, sel ast.SelectionSet, v []model1.GitTag) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -120445,7 +120084,54 @@ func (ec *executionContext) marshalOGitTag2ᚕgithubᚗcomᚋevergreenᚑciᚋev
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNGitTag2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitTag(ctx, sel, v[i])
+			ret[i] = ec.marshalNGitTag2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐGitTag(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalOGitTag2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐGitTagᚄ(ctx context.Context, sel ast.SelectionSet, v []*model1.GitTag) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNGitTag2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐGitTag(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -121784,6 +121470,14 @@ var (
 		model.KanopyPreferredType: "KANOPY",
 	}
 )
+
+func (ec *executionContext) unmarshalOPrevTaskOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPrevTaskOptions(ctx context.Context, v any) (*PrevTaskOptions, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputPrevTaskOptions(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
 
 func (ec *executionContext) unmarshalOPriorityLevel2ᚖstring(ctx context.Context, v any) (*string, error) {
 	if v == nil {
@@ -123171,10 +122865,6 @@ func (ec *executionContext) marshalOUserConfig2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._UserConfig(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalOUserSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings(ctx context.Context, sel ast.SelectionSet, v model.APIUserSettings) graphql.Marshaler {
-	return ec._UserSettings(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalOUserSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings(ctx context.Context, sel ast.SelectionSet, v *model.APIUserSettings) graphql.Marshaler {

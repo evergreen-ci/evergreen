@@ -7,7 +7,7 @@
         "data": {
           "user": {
             "displayName": "Regular User",
-            "userId": "regular_user",
+            "id": "regular_user",
             "subscriptions": [
               {
                 "id": "61326406a620e4737f57003e",

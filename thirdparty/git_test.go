@@ -205,6 +205,11 @@ func TestValidateFileIsWithinDirectory(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
+	t.Run("RelativePathWithDoubleDotInFileNameAllowed", func(t *testing.T) {
+		err := validateFileIsWithinDirectory(parentDir, "src/config..backup.yml")
+		assert.NoError(t, err)
+	})
+
 	t.Run("FilePathWithTraversalDisallowed", func(t *testing.T) {
 		err := validateFileIsWithinDirectory(parentDir, "../etc/passwd")
 		assert.Error(t, err)
