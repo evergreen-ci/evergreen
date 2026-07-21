@@ -11,10 +11,10 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/user"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,6 +26,16 @@ func TestProjectRoutes(t *testing.T) {
 	env.SetUserManager(serviceutil.MockUserManager{})
 	router, err := newAuthTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
+
+	pubUsr := addViewTasksPermission(t, "pub")
+	privUsr := addViewTasksPermission(t, "priv")
+	usr := pubUsr
+	usr.SystemRoles = append(usr.SystemRoles, privUsr.SystemRoles...)
+	serviceutil.MockUser.SystemRoles = usr.SystemRoles
+	t.Cleanup(func() {
+		serviceutil.MockUser.SystemRoles = nil
+		assert.NoError(t, db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection))
+	})
 
 	Convey("When loading a public project, it should be found", t, func() {
 		require.NoError(t, db.Clear(model.ProjectRefCollection), "Error clearing '%v' collection", model.ProjectRefCollection)
@@ -43,7 +53,7 @@ func TestProjectRoutes(t *testing.T) {
 
 		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
-		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
+		request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
 
 		response := httptest.NewRecorder()
 
@@ -68,7 +78,7 @@ func TestProjectRoutes(t *testing.T) {
 			So(err, ShouldBeNil)
 			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
-			request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
+			request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
 			router.ServeHTTP(response, request)
 			out := struct {
 				Projects []string `json:"projects"`
@@ -107,7 +117,7 @@ func TestProjectRoutes(t *testing.T) {
 			url := "/rest/v1/projects/" + privateId
 			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
-			request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
+			request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
 			// add auth cookie--this can be anything if we are using a MockUserManager
 			request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
 			router.ServeHTTP(response, request)
@@ -123,7 +133,7 @@ func TestProjectRoutes(t *testing.T) {
 			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
 			Convey("for credentialed users", func() {
-				request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
+				request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
 				request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
 				router.ServeHTTP(response, request)
 				out := struct {
@@ -146,7 +156,7 @@ func TestProjectRoutes(t *testing.T) {
 
 		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
-		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
+		request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
 		response := httptest.NewRecorder()
 
 		Convey("response should contain a sensible error message", func() {

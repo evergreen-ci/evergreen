@@ -44,6 +44,19 @@ func (ra *restV1middleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 		return
 	}
 
+	if pctx.ProjectRef != nil {
+		opts := gimlet.PermissionOpts{
+			Resource:      pctx.ProjectRef.Id,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionTasks,
+			RequiredLevel: evergreen.TasksView.Value,
+		}
+		if !usr.HasPermission(r.Context(), opts) {
+			gimlet.WriteTextResponse(r.Context(), rw, http.StatusUnauthorized, "not authorized for this action")
+			return
+		}
+	}
+
 	r = setRestContext(r, &pctx)
 	next(rw, r)
 }
@@ -69,29 +82,26 @@ func GetRESTv1App(evgService restAPIService) *gimlet.APIApp {
 	rest := &restAPI{evgService}
 	middleware := &restV1middleware{rest}
 	requireLogin := gimlet.WrapperMiddleware(needsLogin)
-	viewTasks := route.RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksView)
-	editTasks := route.RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksBasic)
-	viewProjectSettings := route.RequiresProjectPermission(evergreen.PermissionProjectSettings, evergreen.ProjectSettingsView)
 	app.SetPrefix(evergreen.RestRoutePrefix)
 	app.AddWrapper(route.NewRateLimitMiddleware(evergreen.GetEnvironment(), evergreen.RateLimitSurfaceREST))
 
 	// REST routes
-	app.AddRoute("/builds/{build_id}").Version(1).Get().Handler(rest.getBuildInfo).Wrap(middleware, viewTasks)
-	app.AddRoute("/builds/{build_id}/status").Version(1).Get().Handler(rest.getBuildStatus).Wrap(middleware, viewTasks)
-	app.AddRoute("/patches/{patch_id}").Version(1).Get().Handler(rest.getPatch).Wrap(middleware, viewTasks)
-	app.AddRoute("/patches/{patch_id}/config").Version(1).Get().Handler(rest.getPatchConfig).Wrap(middleware, viewTasks)
+	app.AddRoute("/builds/{build_id}").Version(1).Get().Handler(rest.getBuildInfo).Wrap(middleware)
+	app.AddRoute("/builds/{build_id}/status").Version(1).Get().Handler(rest.getBuildStatus).Wrap(middleware)
+	app.AddRoute("/patches/{patch_id}").Version(1).Get().Handler(rest.getPatch).Wrap(middleware)
+	app.AddRoute("/patches/{patch_id}/config").Version(1).Get().Handler(rest.getPatchConfig).Wrap(middleware)
 	app.AddRoute("/projects").Version(1).Get().Handler(rest.getProjectIds).Wrap(middleware)
-	app.AddRoute("/projects/{project_id}").Version(1).Get().Handler(rest.getProjectRef).Wrap(middleware, viewProjectSettings)
-	app.AddRoute("/projects/{project_id}/last_green").Version(1).Get().Handler(rest.lastGreen).Wrap(middleware, viewTasks)
-	app.AddRoute("/projects/{project_id}/revisions/{revision}").Version(1).Get().Handler(rest.getVersionInfoViaRevision).Wrap(middleware, viewTasks)
-	app.AddRoute("/projects/{project_id}/versions").Version(1).Get().Handler(rest.getRecentVersions).Wrap(middleware, viewTasks)
-	app.AddRoute("/tasks/{task_id}").Version(1).Get().Handler(rest.getTaskInfo).Wrap(middleware, viewTasks)
-	app.AddRoute("/tasks/{task_id}/status").Version(1).Get().Handler(rest.getTaskStatus).Wrap(middleware, viewTasks)
-	app.AddRoute("/versions/{version_id}").Version(1).Get().Handler(rest.getVersionInfo).Wrap(middleware, viewTasks)
-	app.AddRoute("/versions/{version_id}").Version(1).Patch().Handler(rest.modifyVersionInfo).Wrap(middleware, requireLogin, editTasks)
-	app.AddRoute("/versions/{version_id}/config").Version(1).Get().Handler(rest.getVersionConfig).Wrap(middleware, viewTasks)
-	app.AddRoute("/versions/{version_id}/parser_project").Version(1).Get().Handler(rest.getVersionProject).Wrap(middleware, viewTasks)
-	app.AddRoute("/versions/{version_id}/status").Version(1).Get().Handler(rest.getVersionStatus).Wrap(middleware, viewTasks)
+	app.AddRoute("/projects/{project_id}").Version(1).Get().Handler(rest.getProjectRef).Wrap(middleware)
+	app.AddRoute("/projects/{project_id}/last_green").Version(1).Get().Handler(rest.lastGreen).Wrap(middleware)
+	app.AddRoute("/projects/{project_id}/revisions/{revision}").Version(1).Get().Handler(rest.getVersionInfoViaRevision).Wrap(middleware)
+	app.AddRoute("/projects/{project_id}/versions").Version(1).Get().Handler(rest.getRecentVersions).Wrap(middleware)
+	app.AddRoute("/tasks/{task_id}").Version(1).Get().Handler(rest.getTaskInfo).Wrap(middleware)
+	app.AddRoute("/tasks/{task_id}/status").Version(1).Get().Handler(rest.getTaskStatus).Wrap(middleware)
+	app.AddRoute("/versions/{version_id}").Version(1).Get().Handler(rest.getVersionInfo).Wrap(middleware)
+	app.AddRoute("/versions/{version_id}").Version(1).Patch().Handler(rest.modifyVersionInfo).Wrap(requireLogin, middleware)
+	app.AddRoute("/versions/{version_id}/config").Version(1).Get().Handler(rest.getVersionConfig).Wrap(middleware)
+	app.AddRoute("/versions/{version_id}/parser_project").Version(1).Get().Handler(rest.getVersionProject).Wrap(middleware)
+	app.AddRoute("/versions/{version_id}/status").Version(1).Get().Handler(rest.getVersionStatus).Wrap(middleware)
 
 	return app
 }
