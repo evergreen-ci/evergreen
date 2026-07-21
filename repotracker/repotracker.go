@@ -1061,11 +1061,11 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		"buildvariant_data": debuggingData,
 	})
 	if len(buildsToCreate) == 0 {
-		aliasString := ""
+		var aliasString strings.Builder
 		for _, a := range aliases {
-			aliasString += a.Alias + ","
+			aliasString.WriteString(a.Alias + ",")
 		}
-		return errors.Errorf("version '%s' in project '%s' using alias '%s' has no variants", v.Id, projectInfo.Ref.Identifier, aliasString)
+		return errors.Errorf("version '%s' in project '%s' using alias '%s' has no variants", v.Id, projectInfo.Ref.Identifier, aliasString.String())
 	}
 	grip.Error(ctx, message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
 		"message": "unable to get all activation times",
