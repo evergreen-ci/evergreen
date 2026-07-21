@@ -307,10 +307,11 @@ func (p *patchesByUserHandler) Run(ctx context.Context) gimlet.Responder {
 	projectPermitted := make(map[string]bool)
 	var permitted []model.APIPatch
 	cursor := p.key
-	const maxIterations = 5
+	const maxIterations = 10
+	const minFetchLimit = 50
 
 	for i := 0; i < maxIterations && len(permitted) <= p.limit; i++ {
-		fetchLimit := p.limit + 1
+		fetchLimit := max(p.limit+1, minFetchLimit)
 		patches, err := data.FindPatchesByUser(ctx, p.user, cursor, fetchLimit)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patches for user '%s'", p.user))
@@ -340,7 +341,11 @@ func (p *patchesByUserHandler) Run(ctx context.Context) gimlet.Responder {
 		if len(patches) < fetchLimit {
 			break
 		}
-		cursor = *patches[len(patches)-1].CreateTime
+		lastCreateTime := patches[len(patches)-1].CreateTime
+		if lastCreateTime == nil {
+			break
+		}
+		cursor = *lastCreateTime
 	}
 
 	resp := gimlet.NewResponseBuilder()
