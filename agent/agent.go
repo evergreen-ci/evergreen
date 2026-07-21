@@ -1702,7 +1702,7 @@ func pgrepChildren(ctx context.Context, parentPID int, logger client.LoggerProdu
 
 	var pids []int
 	// pgrep outputs one PID per line, each line containing just a numeric PID.
-	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
