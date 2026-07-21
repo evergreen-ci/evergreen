@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -1313,6 +1314,41 @@ func (h *gitServePatchFileHandler) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (h *gitServePatchFileHandler) Run(ctx context.Context) gimlet.Responder {
+	t := GetTask(ctx)
+	if t == nil {
+		var err error
+		t, err = task.FindOneId(ctx, h.taskID)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+		}
+		if t == nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+			})
+		}
+	}
+
+	p, err := patch.FindOne(ctx, patch.ByVersion(t.Version))
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patch for version '%s'", t.Version))
+	}
+	if p == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("patch for version '%s' not found", t.Version),
+		})
+	}
+
+	if !slices.ContainsFunc(p.Patches, func(mp patch.ModulePatch) bool {
+		return mp.PatchSet.PatchFileId == h.patchID
+	}) {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("patch file '%s' not found", h.patchID),
+		})
+	}
+
 	patchContents, err := patch.FetchPatchContents(ctx, h.patchID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "reading patch file from db"))
