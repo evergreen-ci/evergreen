@@ -24,10 +24,14 @@ const (
 	maxGeneratedTasks         = 25000
 
 	numGenerateTaskBVAttribute           = "evergreen.generate_tasks.num_build_variants"
-	numGenerateTasksAttribute            = "evergreen.generate_tasks.num_created"
-	numActivatedGenerateTasksAttribute   = "evergreen.generate_tasks.num_activated"
 	skippingGenerateTasksAttribute       = "evergreen.generate_tasks.skipping"
 	firstGenerateTasksOnVersionAttribute = "evergreen.generate_tasks.first_generate_tasks_on_version"
+
+	// NumGeneratedTasksOtelAttribute and NumActivatedGeneratedTasksOtelAttribute are exported
+	// so the generate.tasks job can record the same Honeycomb columns on its root span as
+	// this package records on its child spans.
+	NumGeneratedTasksOtelAttribute          = "evergreen.generate_tasks.num_created"
+	NumActivatedGeneratedTasksOtelAttribute = "evergreen.generate_tasks.num_activated"
 )
 
 var DependencyCycleError = errors.New("adding dependencies creates a dependency cycle")
@@ -120,7 +124,7 @@ func MergeGeneratedProjects(ctx context.Context, projects []GeneratedProject) (*
 func ParseProjectFromJSONString(data string) (GeneratedProject, error) {
 	g := GeneratedProject{}
 	dataAsJSON := []byte(data)
-	if err := util.UnmarshalYAMLWithFallback(dataAsJSON, &g); err != nil {
+	if err := util.UnmarshalYAML(dataAsJSON, &g); err != nil {
 		return g, errors.Wrap(err, "unmarshalling generated project from YAML data")
 	}
 	return g, nil
@@ -156,16 +160,24 @@ func (g *GeneratedProject) NewVersion(ctx context.Context, p *Project, pp *Parse
 	return p, newPP, v, nil
 }
 
-func (g *GeneratedProject) Save(ctx context.Context, settings *evergreen.Settings, p *Project, pp *ParserProject, v *Version) error {
+// GenerateTasksCounts reports how many tasks a generate.tasks run created and
+// how many of those were activated. The counts are only meaningful when Save
+// returns without error.
+type GenerateTasksCounts struct {
+	NumGenerated int
+	NumActivated int
+}
+
+func (g *GeneratedProject) Save(ctx context.Context, settings *evergreen.Settings, p *Project, pp *ParserProject, v *Version) (GenerateTasksCounts, error) {
 	ctx, span := tracer.Start(ctx, "save-generated-project")
 	defer span.End()
 	// Get task again, to exit early if another generator finished early.
 	t, err := task.FindOneId(ctx, g.Task.Id)
 	if err != nil {
-		return errors.Wrapf(err, "finding task '%s'", g.Task.Id)
+		return GenerateTasksCounts{}, errors.Wrapf(err, "finding task '%s'", g.Task.Id)
 	}
 	if t == nil {
-		return errors.Errorf("task '%s' not found", g.Task.Id)
+		return GenerateTasksCounts{}, errors.Errorf("task '%s' not found", g.Task.Id)
 	}
 	g.Task = t
 
@@ -175,17 +187,18 @@ func (g *GeneratedProject) Save(ctx context.Context, settings *evergreen.Setting
 			"task":    g.Task.Id,
 			"version": g.Task.Version,
 		})
-		return mongo.ErrNoDocuments
+		return GenerateTasksCounts{}, mongo.ErrNoDocuments
 	}
 
 	if err := updateParserProject(ctx, settings, v, pp, t.Id); err != nil {
-		return errors.WithStack(err)
+		return GenerateTasksCounts{}, errors.WithStack(err)
 	}
 
-	if err := g.saveNewBuildsAndTasks(ctx, settings, v, p); err != nil {
-		return errors.Wrap(err, "saving new builds and tasks")
+	counts, err := g.saveNewBuildsAndTasks(ctx, settings, v, p)
+	if err != nil {
+		return GenerateTasksCounts{}, errors.Wrap(err, "saving new builds and tasks")
 	}
-	return nil
+	return counts, nil
 }
 
 // updateParserProject updates the parser project along with generated task ID
@@ -255,7 +268,7 @@ func cacheProjectData(p *Project) projectMaps {
 }
 
 // saveNewBuildsAndTasks saves new builds and tasks to the db.
-func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *evergreen.Settings, v *Version, p *Project) error {
+func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *evergreen.Settings, v *Version, p *Project) (GenerateTasksCounts, error) {
 	ctx, span := tracer.Start(ctx, "save-builds-and-tasks")
 	defer span.End()
 
@@ -276,7 +289,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 
 	existingBuilds, err := build.Find(ctx, build.ByVersion(v.Id))
 	if err != nil {
-		return errors.Wrap(err, "finding builds for version")
+		return GenerateTasksCounts{}, errors.Wrap(err, "finding builds for version")
 	}
 	buildSet := map[string]struct{}{}
 	for _, b := range existingBuilds {
@@ -287,16 +300,16 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 
 	projectRef, err := FindMergedProjectRef(ctx, p.Identifier, v.Id, true)
 	if err != nil {
-		return errors.Wrapf(err, "finding merged project ref '%s' for version '%s'", p.Identifier, v.Id)
+		return GenerateTasksCounts{}, errors.Wrapf(err, "finding merged project ref '%s' for version '%s'", p.Identifier, v.Id)
 	}
 	if projectRef == nil {
-		return errors.Errorf("project '%s' not found", p.Identifier)
+		return GenerateTasksCounts{}, errors.Errorf("project '%s' not found", p.Identifier)
 	}
 
 	if v.Requester == evergreen.GithubPRRequester {
 		numCheckRuns := p.GetNumCheckRunsFromTaskVariantPairs(newTVPairs)
 		if err := VerifyCheckRunLimit(numCheckRuns, settings.GitHubCheckRun.CheckRunLimit, projectRef.HasGitHubAppAuth(ctx)); err != nil {
-			return err
+			return GenerateTasksCounts{}, err
 		}
 	}
 
@@ -324,15 +337,15 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 	// it will depend on.
 	allTasksToBeCreatedIncludingDeps, err := NewTaskIdConfig(p, v, *newTVPairs, projectRef.Identifier)
 	if err != nil {
-		return errors.Wrap(err, "creating task ID table for new variant-tasks to create")
+		return GenerateTasksCounts{}, errors.Wrap(err, "creating task ID table for new variant-tasks to create")
 	}
 	tasksToBeGenerated := allTasksToBeCreatedIncludingDeps.Length()
 	if err = validateGeneratedProjectMaxTasks(ctx, v, g.Task.Id, tasksToBeGenerated); err != nil {
-		return errors.Wrapf(err, "validating the number of tasks to be added by '%s'", g.Task.Id)
+		return GenerateTasksCounts{}, errors.Wrapf(err, "validating the number of tasks to be added by '%s'", g.Task.Id)
 	}
-	span.SetAttributes(attribute.Int(numGenerateTasksAttribute, tasksToBeGenerated))
+	span.SetAttributes(attribute.Int(NumGeneratedTasksOtelAttribute, tasksToBeGenerated))
 	if err = g.Task.SetNumGeneratedTasks(ctx, tasksToBeGenerated); err != nil {
-		return errors.Wrapf(err, "setting number of tasks generated by '%s'", g.Task.Id)
+		return GenerateTasksCounts{}, errors.Wrapf(err, "setting number of tasks generated by '%s'", g.Task.Id)
 	}
 
 	creationInfo := TaskCreationInfo{
@@ -352,12 +365,12 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 	if evergreen.IsPatchRequester(v.Requester) {
 		patchDoc, err := patch.FindOneId(ctx, v.Id)
 		if err != nil {
-			return errors.Wrapf(err, "finding patch '%s'", v.Id)
+			return GenerateTasksCounts{}, errors.Wrapf(err, "finding patch '%s'", v.Id)
 		}
 		if patchDoc != nil {
 			tsParams, err := newTestSelectionParams(patchDoc)
 			if err != nil {
-				return errors.Wrap(err, "making test selection params for task creation")
+				return GenerateTasksCounts{}, errors.Wrap(err, "making test selection params for task creation")
 			}
 			creationInfo.TestSelectionParams = *tsParams
 		}
@@ -365,31 +378,31 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 
 	activatedTasksInExistingBuilds, activatedDependenciesFromTasksInExistingBuilds, err := addNewTasksToExistingBuilds(ctx, creationInfo, existingBuilds, evergreen.GenerateTasksActivator)
 	if err != nil {
-		return errors.Wrap(err, "adding new tasks")
+		return GenerateTasksCounts{}, errors.Wrap(err, "adding new tasks")
 	}
 
 	creationInfo.Pairs = newTVPairsForNewVariants
 	activatedTasksInNewBuilds, activatedDependenciesFromTasksInNewBuilds, err := addNewBuilds(ctx, creationInfo, existingBuilds)
 	if err != nil {
-		return errors.Wrap(err, "adding new builds")
+		return GenerateTasksCounts{}, errors.Wrap(err, "adding new builds")
 	}
 
 	if err := updateBuildStatusesForGeneratedTasks(ctx, v.Id, newTVPairsForExistingVariants); err != nil {
-		return errors.Wrap(err, "updating statuses for builds that have added generated tasks")
+		return GenerateTasksCounts{}, errors.Wrap(err, "updating statuses for builds that have added generated tasks")
 	}
 
 	numActivatedGenerateTasks := len(activatedTasksInExistingBuilds) + len(activatedTasksInNewBuilds) + len(activatedDependenciesFromTasksInExistingBuilds) + len(activatedDependenciesFromTasksInNewBuilds)
-	span.SetAttributes(attribute.Int(numActivatedGenerateTasksAttribute, numActivatedGenerateTasks))
+	span.SetAttributes(attribute.Int(NumActivatedGeneratedTasksOtelAttribute, numActivatedGenerateTasks))
 	if err = g.Task.SetNumActivatedGeneratedTasks(ctx, numActivatedGenerateTasks); err != nil {
-		return errors.Wrapf(err, "setting number of tasks generated and activated by '%s'", g.Task.Id)
+		return GenerateTasksCounts{}, errors.Wrapf(err, "setting number of tasks generated and activated by '%s'", g.Task.Id)
 	}
 
 	// only want to add dependencies to activated tasks
 	if err = g.addDependencies(ctx, append(activatedTasksInExistingBuilds, activatedTasksInNewBuilds...)); err != nil {
-		return errors.Wrap(err, "adding dependencies")
+		return GenerateTasksCounts{}, errors.Wrap(err, "adding dependencies")
 	}
 
-	return nil
+	return GenerateTasksCounts{NumGenerated: tasksToBeGenerated, NumActivated: numActivatedGenerateTasks}, nil
 }
 
 // updateBuildStatusesForGeneratedTasks updates the statuses of existing builds

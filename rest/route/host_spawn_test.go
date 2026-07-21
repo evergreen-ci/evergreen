@@ -774,7 +774,8 @@ func TestAttachVolumeHandler(t *testing.T) {
 	// wrong availability zone
 	v.VolumeID = "my-volume"
 	volume := host.Volume{
-		ID: v.VolumeID,
+		ID:        v.VolumeID,
+		CreatedBy: "user",
 	}
 	assert.NoError(t, volume.Insert(t.Context()))
 
@@ -795,6 +796,28 @@ func TestAttachVolumeHandler(t *testing.T) {
 	resp := h.Run(ctx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusBadRequest, resp.Status())
+
+	// another user's volume
+	otherVolume := host.Volume{
+		ID:        "other-volume",
+		CreatedBy: "another-user",
+	}
+	assert.NoError(t, otherVolume.Insert(t.Context()))
+
+	v.VolumeID = otherVolume.ID
+	jsonBody, err = json.Marshal(v)
+	assert.NoError(t, err)
+	buffer = bytes.NewBuffer(jsonBody)
+
+	r, err = http.NewRequest(http.MethodGet, "/hosts/my-host/attach", buffer)
+	assert.NoError(t, err)
+	r = gimlet.SetURLVars(r, map[string]string{"host_id": "my-host"})
+
+	assert.NoError(t, h.Parse(ctx, r))
+
+	resp = h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusUnauthorized, resp.Status())
 }
 
 func TestDetachVolumeHandler(t *testing.T) {

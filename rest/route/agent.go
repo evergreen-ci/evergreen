@@ -1012,6 +1012,20 @@ func (h *attachTestResultsHandler) Parse(ctx context.Context, r *http.Request) e
 
 func (h *attachTestResultsHandler) Run(ctx context.Context) gimlet.Responder {
 	t := MustHaveTask(ctx)
+
+	if h.body.Info.TaskID != t.Id || h.body.Info.Execution != t.Execution {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusForbidden,
+			Message:    "test results task identity does not match the authenticated task",
+		})
+	}
+	if h.body.Stats.FailedCount < 0 || h.body.Stats.TotalCount < 0 {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "test results stats counts cannot be negative",
+		})
+	}
+
 	var err error
 	var record testresult.DbTaskTestResults
 	if !t.HasTestResults {
