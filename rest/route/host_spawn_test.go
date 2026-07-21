@@ -270,13 +270,19 @@ func TestHostPostHandler(t *testing.T) {
 			assert.NotEqual(t, http.StatusOK, resp.Status(), resp.Data())
 		},
 		"AllowsSpawnWithOwnHomeVolume": func(ctx context.Context, t *testing.T, env *mock.Environment, rh *hostPostHandler, u *user.DBUser, d *distro.Distro) {
+			az := evergreen.DefaultEC2Region + "a"
+			env.EvergreenSettings.Providers.AWS.Subnets = []evergreen.Subnet{
+				{AZ: az, SubnetID: "subnet-123"},
+			}
 			v := host.Volume{
-				ID:        "my-volume",
-				CreatedBy: u.Id,
+				ID:               "my-volume",
+				CreatedBy:        u.Id,
+				AvailabilityZone: az,
 			}
 			require.NoError(t, v.Insert(ctx))
 
 			rh.options.HomeVolumeID = v.ID
+			rh.options.Region = evergreen.DefaultEC2Region
 
 			resp := rh.Run(ctx)
 			require.NotZero(t, resp)
