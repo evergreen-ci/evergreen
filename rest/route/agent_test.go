@@ -24,6 +24,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/s3lifecycle"
 	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
@@ -1645,5 +1646,49 @@ func TestLogLookupClosureUsesAdminBucketsConfig(t *testing.T) {
 	t.Run("UnknownBucketReturnsFalse", func(t *testing.T) {
 		_, ok := logLookup(t.Context(), "artifact-bucket", "")
 		assert.False(t, ok)
+	})
+}
+
+func TestAttachTestResultsHandlerRun(t *testing.T) {
+	const (
+		authedTaskID = "authed_task"
+		victimTaskID = "victim_task"
+	)
+	authedTask := &task.Task{Id: authedTaskID, Execution: 1}
+
+	makeHandler := func(body apimodels.AttachTestResultsRequest) *attachTestResultsHandler {
+		return &attachTestResultsHandler{taskID: authedTaskID, body: body}
+	}
+	matchingInfo := testresult.TestResultsInfo{TaskID: authedTaskID, Execution: 1}
+
+	t.Run("MismatchedTaskIDIsRejected", func(t *testing.T) {
+		h := makeHandler(apimodels.AttachTestResultsRequest{
+			Info: testresult.TestResultsInfo{TaskID: victimTaskID, Execution: 1},
+		})
+		ctx := context.WithValue(t.Context(), model.ApiTaskKey, authedTask)
+		assert.Equal(t, http.StatusForbidden, h.Run(ctx).Status())
+	})
+	t.Run("MismatchedExecutionIsRejected", func(t *testing.T) {
+		h := makeHandler(apimodels.AttachTestResultsRequest{
+			Info: testresult.TestResultsInfo{TaskID: authedTaskID, Execution: 2},
+		})
+		ctx := context.WithValue(t.Context(), model.ApiTaskKey, authedTask)
+		assert.Equal(t, http.StatusForbidden, h.Run(ctx).Status())
+	})
+	t.Run("NegativeFailedCountIsRejected", func(t *testing.T) {
+		h := makeHandler(apimodels.AttachTestResultsRequest{
+			Info:  matchingInfo,
+			Stats: testresult.TaskTestResultsStats{FailedCount: -1, TotalCount: 1},
+		})
+		ctx := context.WithValue(t.Context(), model.ApiTaskKey, authedTask)
+		assert.Equal(t, http.StatusBadRequest, h.Run(ctx).Status())
+	})
+	t.Run("NegativeTotalCountIsRejected", func(t *testing.T) {
+		h := makeHandler(apimodels.AttachTestResultsRequest{
+			Info:  matchingInfo,
+			Stats: testresult.TaskTestResultsStats{FailedCount: 0, TotalCount: -1},
+		})
+		ctx := context.WithValue(t.Context(), model.ApiTaskKey, authedTask)
+		assert.Equal(t, http.StatusBadRequest, h.Run(ctx).Status())
 	})
 }
