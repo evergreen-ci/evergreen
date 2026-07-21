@@ -115,13 +115,21 @@ func (l *sampledRequestLogger) ServeHTTP(rw http.ResponseWriter, r *http.Request
 	// Log as normal if route failed.
 	status := rw.(negroni.ResponseWriter).Status()
 	if status != http.StatusOK {
-		grip.Error(r.Context(), message.Fields{
+		fields := message.Fields{
 			"action": "completed",
 			"method": r.Method,
 			"path":   r.URL.Path,
 			"remote": r.RemoteAddr,
 			"status": status,
-		})
+		}
+		if status == http.StatusConflict {
+			// A task's secret is expected to no longer match after the task
+			// is aborted and restarted to a new execution, so this is not an
+			// error.
+			grip.Info(r.Context(), fields)
+		} else {
+			grip.Error(r.Context(), fields)
+		}
 		return
 	}
 
