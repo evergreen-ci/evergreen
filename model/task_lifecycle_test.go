@@ -1957,7 +1957,6 @@ func TestMarkEnd(t *testing.T) {
 	require.NotZero(dbDependentTask)
 	require.Len(dbDependentTask.DependsOn, 1)
 	assert.Equal(testTask.Id, dbDependentTask.DependsOn[0].TaskId)
-	assert.True(dbDependentTask.DependsOn[0].Finished, "dependency should be marked finished")
 
 	Convey("with a task that is part of a display task", t, func() {
 		p := &Project{
@@ -2121,7 +2120,7 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 				Status: evergreen.VersionStarted,
 			}
 			pp := &ParserProject{}
-			err := util.UnmarshalYAMLWithFallback([]byte(sampleProjYmlTaskGroups), &pp)
+			err := util.UnmarshalYAML([]byte(sampleProjYmlTaskGroups), &pp)
 			assert.NoError(err)
 			pp.Id = b.Version
 			assert.NoError(pp.Insert(t.Context()))
@@ -2322,7 +2321,7 @@ func TestMarkEndIsAutomaticRestart(t *testing.T) {
 				Status: evergreen.VersionStarted,
 			}
 			pp := &ParserProject{}
-			err := util.UnmarshalYAMLWithFallback([]byte(sampleProjYmlTaskGroups), &pp)
+			err := util.UnmarshalYAML([]byte(sampleProjYmlTaskGroups), &pp)
 			assert.NoError(err)
 			pp.Id = b.Version
 			assert.NoError(pp.Insert(t.Context()))
@@ -2460,7 +2459,7 @@ func TestTryResetTask(t *testing.T) {
 				Project:   "sample",
 				Version:   b.Version,
 				DependsOn: []task.Dependency{
-					{TaskId: testTask.Id, Status: evergreen.TaskSucceeded, Finished: true},
+					{TaskId: testTask.Id, Status: evergreen.TaskSucceeded},
 				},
 			}
 			detail := &apimodels.TaskEndDetail{
@@ -2501,7 +2500,6 @@ func TestTryResetTask(t *testing.T) {
 				So(dbDependentTask, ShouldNotBeNil)
 				So(len(dbDependentTask.DependsOn), ShouldEqual, 1)
 				So(dbDependentTask.DependsOn[0].TaskId, ShouldEqual, testTask.Id)
-				So(dbDependentTask.DependsOn[0].Finished, ShouldBeFalse)
 			})
 		})
 		Convey("resetting a task with a max number of executions", func() {
@@ -3015,7 +3013,7 @@ buildvariants:
        stepback: true
 `
 		pp := &ParserProject{}
-		err := util.UnmarshalYAMLWithFallback([]byte(config), &pp)
+		err := util.UnmarshalYAML([]byte(config), &pp)
 		assert.NoError(t, err)
 		pp.Id = "version_id"
 		assert.NoError(t, pp.Insert(t.Context()))
@@ -4260,7 +4258,6 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	require.NotNil(t, dependencyTask)
 	require.NoError(t, err)
 	assert.True(dependencyTask.DependsOn[0].Unattainable)
-	assert.True(dependencyTask.DependsOn[0].Finished)
 
 	dt, err := task.FindOne(ctx, db.Query(task.ById("displayTask")))
 	require.NoError(t, err)
@@ -4545,7 +4542,6 @@ func TestResetStaleTask(t *testing.T) {
 			require.NotNil(t, dependencyTask)
 			require.NoError(t, err)
 			assert.False(t, dependencyTask.DependsOn[0].Unattainable)
-			assert.False(t, dependencyTask.DependsOn[0].Finished)
 		},
 		"SuccessfullySystemFailsAbortedTask": func(t *testing.T, tsk task.Task) {
 			tsk.Aborted = true
@@ -4567,7 +4563,6 @@ func TestResetStaleTask(t *testing.T) {
 			require.NotNil(t, dependencyTask)
 			require.NoError(t, err)
 			assert.True(t, dependencyTask.DependsOn[0].Unattainable)
-			assert.True(t, dependencyTask.DependsOn[0].Finished)
 		},
 		"ResetsParentDisplayTaskForStaleExecutionTask": func(t *testing.T, tsk task.Task) {
 			otherExecTask := task.Task{
@@ -5355,7 +5350,7 @@ buildvariants:
    deactivate_previous: false
 `
 	pp := &ParserProject{}
-	err := util.UnmarshalYAMLWithFallback([]byte(config), &pp)
+	err := util.UnmarshalYAML([]byte(config), &pp)
 	assert.NoError(t, err)
 
 	project, err := TranslateProject(t.Context(), pp)
@@ -5891,7 +5886,7 @@ tasks:
 	}
 	require.NoError(t, v.Insert(t.Context()))
 	pp := &ParserProject{}
-	err := util.UnmarshalYAMLWithFallback([]byte(yml), &pp)
+	err := util.UnmarshalYAML([]byte(yml), &pp)
 	assert.NoError(err)
 	//pp.Id = v.Id
 	//assert.NoError(pp.Insert(t.Context()))

@@ -576,6 +576,14 @@ func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("attachment '%s' does not exist", h.attachment.VolumeID))
 	}
 
+	// Only allow users to attach their own volumes.
+	if user.Id != v.CreatedBy {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    fmt.Sprintf("not authorized to attach volume '%s'", v.ID),
+		})
+	}
+
 	if v.AvailabilityZone != targetHost.Zone {
 		return gimlet.MakeJSONErrorResponder(errors.New("host and volume must have same availability zone"))
 	}

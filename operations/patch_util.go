@@ -35,7 +35,7 @@ var patchDisplayTemplate = template.Must(template.New("patch").Parse(`
          ID : {{.Patch.Id.Hex}}
 	 Number : {{.Patch.PatchNumber}}
     Project : {{.ProjectIdentifier}}
-    Created : {{.Patch.CreateTime}}
+    Created : {{.Patch.CreateTime.Local.String}}
 Description : {{if .Patch.Description}}{{.Patch.Description}}{{else}}<none>{{end}}
       Build : {{.Link}}
      Status : {{.Patch.Status}}

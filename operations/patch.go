@@ -608,7 +608,7 @@ func getLocalModuleIncludes(ctx context.Context, params *patchParams, conf *Clie
 		return nil, errors.Wrapf(err, "reading local project config '%s'", remotePath)
 	}
 	p := model.ParserProject{}
-	if err := util.UnmarshalYAMLWithFallback(yml, &p); err != nil {
+	if err := util.UnmarshalYAML(yml, &p); err != nil {
 		yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
 		return nil, errors.Wrap(yamlErr, "unmarshalling parser project from local project config")
 	}
