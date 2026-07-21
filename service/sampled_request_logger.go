@@ -122,7 +122,7 @@ func (l *sampledRequestLogger) ServeHTTP(rw http.ResponseWriter, r *http.Request
 			"remote": r.RemoteAddr,
 			"status": status,
 		}
-		if status == http.StatusConflict {
+		if status == http.StatusConflict && route.suffix == heartbeatRouteSuffix {
 			// A task's secret is expected to no longer match after the task
 			// is aborted and restarted to a new execution, so this is not an
 			// error.
