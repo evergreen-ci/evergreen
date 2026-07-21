@@ -1471,14 +1471,12 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 			}
 		}
 		if tg, ok := tgMap[bvt.Name]; ok {
-			for _, t := range tg.Tasks {
-				if t == task {
-					// task group tasks need to be repopulated from the task list
-					// Note that the build variant task unit retains the task
-					// group's name.
-					bvt.Populate(*p.FindProjectTask(task), *bv)
-					return &bvt
-				}
+			if slices.Contains(tg.Tasks, task) {
+				// task group tasks need to be repopulated from the task list
+				// Note that the build variant task unit retains the task
+				// group's name.
+				bvt.Populate(*p.FindProjectTask(task), *bv)
+				return &bvt
 			}
 		}
 	}
@@ -2425,10 +2423,5 @@ func (bv BuildVariant) ChangedFilesMatchPaths(changedFiles []string) bool {
 
 	// CompileIgnoreLines has a silly API: it always returns a nil error.
 	pathMatcher := ignore.CompileIgnoreLines(paths...)
-	for _, f := range changedFiles {
-		if pathMatcher.MatchesPath(f) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(changedFiles, pathMatcher.MatchesPath)
 }

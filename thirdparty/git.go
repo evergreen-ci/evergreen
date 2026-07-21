@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -465,12 +466,10 @@ func validateFileIsWithinDirectory(dir, file string) error {
 	}
 
 	// Reject parent-directory components to prevent attempts to escape the directory.
-	for _, pathComponent := range strings.FieldsFunc(file, func(r rune) bool {
+	if slices.Contains(strings.FieldsFunc(file, func(r rune) bool {
 		return r == '/' || r == '\\'
-	}) {
-		if pathComponent == ".." {
-			return errors.Errorf("file '%s' cannot traverse directories using '..'", file)
-		}
+	}), "..") {
+		return errors.Errorf("file '%s' cannot traverse directories using '..'", file)
 	}
 
 	fullFilePath := filepath.Join(dir, cleanPath)

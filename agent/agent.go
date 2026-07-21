@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -1003,11 +1004,8 @@ func (a *Agent) runDefaultTimeoutHandler(ctx context.Context, tc *taskContext, d
 			processDetails = append(processDetails, detail)
 
 			if currentCmdName != "" && info.IsRunning {
-				for _, tag := range proc.GetTags() {
-					if tag == currentCmdName {
-						currentCmdPID = info.PID
-						break
-					}
+				if slices.Contains(proc.GetTags(), currentCmdName) {
+					currentCmdPID = info.PID
 				}
 			}
 		}

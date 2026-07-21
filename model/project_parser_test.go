@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -775,24 +776,12 @@ func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tsge *tagSelectorEva
 		}
 		So(len(unmatchedSelectors), ShouldEqual, len(expectedEmptySelectors))
 		for _, expectedEmptySelector := range expectedEmptySelectors {
-			exists := false
-			for _, emptySelector := range unmatchedSelectors {
-				if emptySelector == expectedEmptySelector {
-					exists = true
-					break
-				}
-			}
+			exists := slices.Contains(unmatchedSelectors, expectedEmptySelector)
 			So(exists, ShouldBeTrue)
 		}
 		So(len(unmatchedCriteria), ShouldEqual, len(expectedUnmatchedCriteria))
 		for _, expectedUnmatchedTag := range expectedUnmatchedCriteria {
-			exists := false
-			for _, unmatchedTag := range unmatchedCriteria {
-				if unmatchedTag == expectedUnmatchedTag {
-					exists = true
-					break
-				}
-			}
+			exists := slices.Contains(unmatchedCriteria, expectedUnmatchedTag)
 			So(exists, ShouldBeTrue)
 		}
 	})
