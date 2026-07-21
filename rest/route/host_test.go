@@ -1146,9 +1146,9 @@ func TestHostIsUpPostHandler(t *testing.T) {
 						VolumeID: "vol1",
 					}},
 				},
-				HostID:        h.Id,
 				EC2InstanceID: instanceID,
 			}
+			rh.hostID = h.Id
 			resp := rh.Run(ctx)
 
 			require.NotZero(t, resp)
@@ -1187,9 +1187,10 @@ func TestHostIsUpPostHandler(t *testing.T) {
 					Volumes: []host.VolumeAttachment{{
 						VolumeID: "vol1",
 					}},
-				}, HostID: h.Id,
+				},
 				EC2InstanceID: instanceID,
 			}
+			rh.hostID = h.Id
 
 			resp := rh.Run(ctx)
 
@@ -1229,9 +1230,10 @@ func TestHostIsUpPostHandler(t *testing.T) {
 					Volumes: []host.VolumeAttachment{{
 						VolumeID: "vol1",
 					}},
-				}, HostID: instanceID,
+				},
 				EC2InstanceID: instanceID,
 			}
+			rh.hostID = instanceID
 
 			resp := rh.Run(ctx)
 
@@ -1258,9 +1260,9 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			require.NoError(t, h.Insert(ctx))
 
 			rh.params = host.HostMetadataOptions{
-				HostID:        instanceID,
 				EC2InstanceID: instanceID,
 			}
+			rh.hostID = instanceID
 
 			resp := rh.Run(ctx)
 
@@ -1287,9 +1289,8 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			h.NeedsNewAgentMonitor = false
 			require.NoError(t, h.Insert(ctx))
 
-			rh.params = host.HostMetadataOptions{
-				HostID: instanceID,
-			}
+			rh.params = host.HostMetadataOptions{}
+			rh.hostID = instanceID
 
 			resp := rh.Run(ctx)
 
@@ -1317,9 +1318,8 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			h.NeedsNewAgentMonitor = false
 			require.NoError(t, h.Insert(ctx))
 
-			rh.params = host.HostMetadataOptions{
-				HostID: instanceID,
-			}
+			rh.params = host.HostMetadataOptions{}
+			rh.hostID = instanceID
 
 			resp := rh.Run(ctx)
 
