@@ -1182,6 +1182,7 @@ type ComplexityRoot struct {
 	Patch struct {
 		Activated             func(childComplexity int) int
 		Alias                 func(childComplexity int) int
+		Aliases               func(childComplexity int) int
 		Author                func(childComplexity int) int
 		AuthorDisplayName     func(childComplexity int) int
 		Builds                func(childComplexity int) int
@@ -7475,6 +7476,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Patch.Alias(childComplexity), true
+	case "Patch.aliases":
+		if e.complexity.Patch.Aliases == nil {
+			break
+		}
+
+		return e.complexity.Patch.Aliases(childComplexity), true
 	case "Patch.author":
 		if e.complexity.Patch.Author == nil {
 			break
@@ -37135,6 +37142,8 @@ func (ec *executionContext) fieldContext_Mutation_setPatchVisibility(ctx context
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
+			case "aliases":
+				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "author":
 				return ec.fieldContext_Patch_author(ctx, field)
 			case "authorDisplayName":
@@ -37252,6 +37261,8 @@ func (ec *executionContext) fieldContext_Mutation_schedulePatch(ctx context.Cont
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
+			case "aliases":
+				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "author":
 				return ec.fieldContext_Patch_author(ctx, field)
 			case "authorDisplayName":
@@ -44114,6 +44125,35 @@ func (ec *executionContext) fieldContext_Patch_alias(_ context.Context, field gr
 	return fc, nil
 }
 
+func (ec *executionContext) _Patch_aliases(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Patch_aliases,
+		func(ctx context.Context) (any, error) {
+			return obj.Aliases, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Patch_aliases(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Patch",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Patch_author(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -44278,6 +44318,8 @@ func (ec *executionContext) fieldContext_Patch_childPatches(_ context.Context, f
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
+			case "aliases":
+				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "author":
 				return ec.fieldContext_Patch_author(ctx, field)
 			case "authorDisplayName":
@@ -46142,6 +46184,8 @@ func (ec *executionContext) fieldContext_Patches_patches(_ context.Context, fiel
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
+			case "aliases":
+				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "author":
 				return ec.fieldContext_Patch_author(ctx, field)
 			case "authorDisplayName":
@@ -52793,6 +52837,8 @@ func (ec *executionContext) fieldContext_Query_patch(ctx context.Context, field 
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
+			case "aliases":
+				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "author":
 				return ec.fieldContext_Patch_author(ctx, field)
 			case "authorDisplayName":
@@ -64652,6 +64698,8 @@ func (ec *executionContext) fieldContext_Task_patch(_ context.Context, field gra
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
+			case "aliases":
+				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "author":
 				return ec.fieldContext_Patch_author(ctx, field)
 			case "authorDisplayName":
@@ -75251,6 +75299,8 @@ func (ec *executionContext) fieldContext_Version_patch(_ context.Context, field 
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
+			case "aliases":
+				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "author":
 				return ec.fieldContext_Patch_author(ctx, field)
 			case "authorDisplayName":
@@ -99714,6 +99764,8 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			}
 		case "alias":
 			out.Values[i] = ec._Patch_alias(ctx, field, obj)
+		case "aliases":
+			out.Values[i] = ec._Patch_aliases(ctx, field, obj)
 		case "author":
 			out.Values[i] = ec._Patch_author(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
