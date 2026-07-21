@@ -300,7 +300,7 @@ func TestPlanner(t *testing.T) {
 						},
 					})
 
-					for i := 0; i < 22; i++ {
+					for i := range 22 {
 						unit.Add(task.Task{
 							Id:            fmt.Sprintf("test-task-%d", i),
 							NumDependents: 0,
@@ -337,7 +337,7 @@ func TestPlanner(t *testing.T) {
 					}
 
 					dependentTasks := []task.Task{}
-					for i := 0; i < 20; i++ {
+					for i := range 20 {
 						dependentTasks = append(dependentTasks, task.Task{
 							Id:            fmt.Sprintf("test-kube-%d", i),
 							Version:       "v1",

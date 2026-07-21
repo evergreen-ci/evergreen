@@ -55,7 +55,7 @@ func TestGetRecentVersions(t *testing.T) {
 		versions := make([]*model.Version, 0, NumRecentVersions)
 
 		// Insert a bunch of versions into the database
-		for i := 0; i < NumRecentVersions; i++ {
+		for i := range NumRecentVersions {
 			v := &model.Version{
 				Id:                  fmt.Sprintf("version%v", i),
 				Identifier:          projectName,
@@ -99,7 +99,7 @@ func TestGetRecentVersions(t *testing.T) {
 		builds := make([]*build.Build, 0, NumRecentVersions)
 		tasks := make([]*task.Task, 0, NumRecentVersions)
 
-		for i := 0; i < NumRecentVersions; i++ {
+		for i := range NumRecentVersions {
 			build := &build.Build{
 				Id:           fmt.Sprintf(buildIdPreface, i),
 				Version:      versions[i].Id,

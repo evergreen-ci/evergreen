@@ -3638,7 +3638,7 @@ func TestLinearStepbackWithGenerators(t *testing.T) {
 			for orderNumber, v := range []string{v0.Id, v1.Id, v2.Id} {
 				// 3 Background tasks that succeeded and should not be restarted
 				// across the two versions.
-				for i := 0; i < 3; i++ {
+				for i := range 3 {
 					backgroundTask := &task.Task{
 						Id:                  fmt.Sprintf("t-success-%d-%d", orderNumber, i),
 						DisplayName:         fmt.Sprintf("background-task-%d", i),
@@ -3658,7 +3658,7 @@ func TestLinearStepbackWithGenerators(t *testing.T) {
 				// Two generators.
 				// t-generator-(orderNumber)-0 is undispatched on v1 and succeeded on v2.
 				// t-generator-(orderNumber)-1 succeeded on v1 and v2.
-				for i := 0; i < 2; i++ {
+				for i := range 2 {
 					status := evergreen.TaskSucceeded
 					if i == 0 && v == v1.Id {
 						// The first generator is undispatched on v1.
@@ -3686,7 +3686,7 @@ func TestLinearStepbackWithGenerators(t *testing.T) {
 				}
 
 				// 3 Generated tasks for generator "t-generator-(orderNumber)-0" that don't exist for version 1 but failed in version 2.
-				for i := 0; i < 3; i++ {
+				for i := range 3 {
 					status := evergreen.TaskFailed
 					if v == v0.Id {
 						// Everything passes on v0.
@@ -3714,7 +3714,7 @@ func TestLinearStepbackWithGenerators(t *testing.T) {
 				}
 
 				// 3 Generated tasks for generator "t-generator-(ordernumber)-1" that are undispatched in version 1 and failed in version 2.
-				for i := 0; i < 3; i++ {
+				for i := range 3 {
 					status := evergreen.TaskUndispatched
 					if v == v2.Id {
 						// Failed on v2.
@@ -3764,9 +3764,9 @@ func TestLinearStepbackWithGenerators(t *testing.T) {
 			tCase(t, ctx, data)
 
 			t.Run("SuccessfulTasksAreUnmodified", func(t *testing.T) {
-				for orderNumber := 0; orderNumber < 3; orderNumber++ {
+				for orderNumber := range 3 {
 					// Background tasks.
-					for i := 0; i < 3; i++ {
+					for i := range 3 {
 						dbTask, err := task.FindOne(ctx, db.Query(task.ById(fmt.Sprintf("t-success-%d-%d", orderNumber, i))))
 						require.NoError(t, err)
 						require.NotNil(t, dbTask)
@@ -5034,7 +5034,7 @@ func TestDisplayTaskUpdatesAreConcurrencySafe(t *testing.T) {
 	const numConcurrentUpdates = 3
 	errs := make(chan error, 1+numConcurrentUpdates)
 	var updatesDone sync.WaitGroup
-	for i := 0; i < numConcurrentUpdates; i++ {
+	for range numConcurrentUpdates {
 		updatesDone.Add(1)
 		go func() {
 			defer updatesDone.Done()

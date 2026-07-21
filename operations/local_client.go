@@ -372,7 +372,7 @@ func waitForDaemon(port int) error {
 	const maxAttempts = 30
 	const pollInterval = 200 * time.Millisecond
 
-	for i := 0; i < maxAttempts; i++ {
+	for range maxAttempts {
 		resp, err := client.Get(healthURL)
 		if err == nil {
 			resp.Body.Close()

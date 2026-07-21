@@ -17,7 +17,7 @@ func TestRecentTasks(t *testing.T) {
 	assert.NoError(err)
 
 	tasks := []Task{}
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		tasks = append(tasks, Task{
 			Id:            fmt.Sprintf("taskid-%d", i),
 			Secret:        fmt.Sprintf("secret-%d", i),

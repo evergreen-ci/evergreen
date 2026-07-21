@@ -3110,7 +3110,7 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 	}))
 
 	// total of 100 tasks eligible to be found
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		myTask := task.Task{
 			Id:                  fmt.Sprintf("t%d", i),
 			RevisionOrderNumber: 100 - (i / 2),

@@ -1815,7 +1815,7 @@ func TestFindProjectsSuite(t *testing.T) {
 			}
 
 		s.Require().NoError(db.ClearCollections(event.EventCollection))
-		for i := 0; i < projEventCount; i++ {
+		for range projEventCount {
 			eventShallowCpy := h
 			s.NoError(eventShallowCpy.Log(t.Context()))
 		}
@@ -3163,7 +3163,7 @@ func TestFindProjectTaskWithCache(t *testing.T) {
 func BenchmarkFindProjectTask(b *testing.B) {
 	// Create project with many tasks
 	project := &Project{}
-	for i := 0; i < 5000; i++ {
+	for i := range 5000 {
 		project.Tasks = append(project.Tasks, ProjectTask{
 			Name: fmt.Sprintf("task%d", i),
 		})

@@ -535,7 +535,7 @@ func (s *execCmdSuite) TestConcurrentBackgroundFailuresSendToChannel() {
 	const numProcs = 5
 	bgFailures := make(chan error, numProcs)
 
-	for i := 0; i < numProcs; i++ {
+	for range numProcs {
 		_, err := runJasperProcess(s.ctx, s.jasper, true, &options.Create{
 			Args: []string{"bash", "-c", "exit 1"},
 		}, "test-task", s.logger, bgFailures, false, true)

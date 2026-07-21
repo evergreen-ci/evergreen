@@ -966,7 +966,7 @@ func TestHostEndTask(t *testing.T) {
 				},
 			}))
 
-			for i := 0; i < 10; i++ {
+			for i := range 10 {
 				event.LogHostTaskFinished(ctx, fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemFailed)
 			}
 
@@ -998,7 +998,7 @@ func TestHostEndTask(t *testing.T) {
 				},
 			}))
 
-			for i := 0; i < 10; i++ {
+			for i := range 10 {
 				event.LogHostTaskFinished(ctx, fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemTimedOut)
 			}
 
@@ -1031,7 +1031,7 @@ func TestHostEndTask(t *testing.T) {
 				},
 			}))
 
-			for i := 0; i < 10; i++ {
+			for i := range 10 {
 				event.LogHostTaskFinished(ctx, fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemUnresponse)
 			}
 
@@ -1201,7 +1201,7 @@ func TestHostEndTask(t *testing.T) {
 			h, err := host.FindOneId(ctx, hostId)
 			require.NoError(t, err)
 			require.NotZero(t, h)
-			for i := 0; i < 8; i++ {
+			for i := range 8 {
 				event.LogHostTaskFinished(ctx, fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemUnresponse)
 			}
 

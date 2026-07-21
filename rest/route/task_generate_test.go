@@ -131,7 +131,7 @@ func TestGenerateExecuteWithLargeFileInS3(t *testing.T) {
 	// Create string that is over the DB's 16 MB document limit to ensure it
 	// gets stored in S3.
 	genJSON := bytes.NewBufferString("{")
-	for i := 0; i < 10e6; i++ {
+	for i := range int(10e6) {
 		_, err := genJSON.WriteString(fmt.Sprintf(`"field-%d": "value-%d"`, i, i))
 		require.NoError(t, err)
 		if i < 10e6-1 {

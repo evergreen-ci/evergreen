@@ -36,7 +36,7 @@ func TestGetS3LogUsageFromS3(t *testing.T) {
 		require.NoError(t, err)
 		svc := log.NewLogServiceV0(bucket)
 		logName := getLogName(*tsk, logType, output.TaskLogs.ID())
-		for i := 0; i < n; i++ {
+		for i := range n {
 			_, _, err = svc.Append(t.Context(), logName, i+1, []log.LogLine{
 				{Priority: level.Info, Timestamp: time.Now().UnixNano(), Data: "line"},
 			})
@@ -51,7 +51,7 @@ func TestGetS3LogUsageFromS3(t *testing.T) {
 		require.NoError(t, err)
 		svc := log.NewLogServiceV0(bucket)
 		logName := getLogNames(*tsk, []string{logPath}, output.TestLogs.ID())[0]
-		for i := 0; i < n; i++ {
+		for i := range n {
 			_, _, err = svc.Append(t.Context(), logName, i+1, []log.LogLine{
 				{Priority: level.Info, Timestamp: time.Now().UnixNano(), Data: "line"},
 			})

@@ -2772,7 +2772,7 @@ func computeCostPredictionsInParallel(ctx context.Context, tasks []Task) (map[st
 
 	var wg sync.WaitGroup
 	wg.Add(numWorkers)
-	for i := 0; i < numWorkers; i++ {
+	for range numWorkers {
 		go func() {
 			defer wg.Done()
 			for work := range workQueue {

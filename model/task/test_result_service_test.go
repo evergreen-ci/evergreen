@@ -160,7 +160,7 @@ func TestEvergreenService(t *testing.T) {
 					Execution: task4.Execution,
 					MatchingFailedTestNames: func() []string {
 						sample := make([]string, len(savedResults4))
-						for i := 0; i < len(savedResults4); i++ {
+						for i := range savedResults4 {
 							sample[i] = savedResults4[i].GetDisplayTestName()
 						}
 
@@ -323,7 +323,7 @@ func TestEvergreenFilterAndSortTestResults(t *testing.T) {
 		Results:   make([]testresult.ParquetTestResult, 4),
 	}
 
-	for i := 0; i < len(baseResults); i++ {
+	for i := range baseResults {
 		savedParquet.Results[i] = testresult.ParquetTestResult{
 			TestName:       baseResults[i].TestName,
 			GroupID:        utility.ToStringPtr(baseResults[i].GroupID),
@@ -737,7 +737,7 @@ func saveTestResults(t *testing.T, ctx context.Context, testBucket pail.Bucket, 
 		Results:   make([]testresult.ParquetTestResult, length),
 	}
 
-	for i := 0; i < len(savedResults); i++ {
+	for i := range savedResults {
 		result := getTestResult()
 		result.TaskID = tr.Info.TaskID
 		result.Execution = tr.Info.Execution

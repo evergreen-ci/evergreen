@@ -174,7 +174,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 		s.NotEmpty(after.Aliases[0].ID)
 
 		s.Require().NoError(db.ClearCollections(event.EventCollection))
-		for i := 0; i < projEventCount; i++ {
+		for range projEventCount {
 			s.NoError(model.LogProjectModified(t.Context(), projectId, username, &before, &after))
 		}
 

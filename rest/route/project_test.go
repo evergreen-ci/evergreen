@@ -1106,7 +1106,7 @@ func TestDeleteProject(t *testing.T) {
 	// Projects expected to be successfully deleted
 	numGoodProjects := 2
 	var projects []serviceModel.ProjectRef
-	for i := 0; i < numGoodProjects; i++ {
+	for i := range numGoodProjects {
 		project := serviceModel.ProjectRef{
 			Id:                   fmt.Sprintf("id_%d", i),
 			Owner:                "mongodb",
@@ -1125,7 +1125,7 @@ func TestDeleteProject(t *testing.T) {
 	}
 
 	numAliases := 2
-	for i := 0; i < numAliases; i++ {
+	for i := range numAliases {
 		projAlias := serviceModel.ProjectAlias{
 			ProjectID: projects[0].Id,
 			Alias:     fmt.Sprintf("alias_%d", i),
@@ -1148,7 +1148,7 @@ func TestDeleteProject(t *testing.T) {
 	// Test cases:
 	// 0) Project with 2 ProjectAliases and a ProjectVars
 	// 1) Project with 0 ProjectAliases and no ProjectVars
-	for i := 0; i < numGoodProjects; i++ {
+	for i := range numGoodProjects {
 		pdh.projectName = projects[i].Id
 		resp := pdh.Run(ctx)
 		assert.Equal(t, http.StatusOK, resp.Status())

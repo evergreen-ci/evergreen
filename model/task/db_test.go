@@ -1149,9 +1149,9 @@ func TestGetTasksByVersionErrorHandling(t *testing.T) {
 		DisplayStatusCache:  evergreen.TaskSucceeded,
 	}
 
-	for i := 0; i < 40; i++ {
+	for i := range 40 {
 		tasksToInsert := []any{}
-		for j := 0; j < 1000; j++ {
+		for j := range 1000 {
 			task.Id = fmt.Sprintf("t_%d_%d", i, j)
 			task.BuildVariant = fmt.Sprintf("bv_%d", j)
 			tasksToInsert = append(tasksToInsert, task)
@@ -2188,7 +2188,7 @@ func TestFindGeneratedTasksFromID(t *testing.T) {
 			res, err := FindGeneratedTasksFromID(ctx, generatorID)
 			require.NoError(t, err)
 			require.Len(t, res, len(generated))
-			for i := 0; i < len(generated); i++ {
+			for i := range generated {
 				checkGeneratedTaskInfo(t, generated[i], res[i])
 			}
 		},

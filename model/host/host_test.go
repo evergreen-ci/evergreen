@@ -1150,7 +1150,7 @@ func TestDecommissionHostsWithDistroId(t *testing.T) {
 
 		// Insert 10 of distro a and 10 of distro b
 
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			hostWithDistroA := &Host{
 				Id:     fmt.Sprintf("hostA%v", i),
 				Host:   "host",
@@ -4930,7 +4930,7 @@ func TestCountVirtualWorkstationsByDistro(t *testing.T) {
 	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection))
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		h := &Host{
 			Id:           fmt.Sprintf("%d", i),
 			Status:       evergreen.HostTerminated,
@@ -5823,7 +5823,7 @@ func TestGeneratePersistentDNSName(t *testing.T) {
 		assert.Zero(t, h.PersistentDNSName, "generated DNS name should not be set")
 		assert.False(t, validDNSNameRegexp.MatchString(originalDNSName), "generated DNS name should only contain periods, dashes, and alphanumeric characters")
 
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			newDNSName, err := h.GeneratePersistentDNSName(ctx, domain)
 			require.NoError(t, err)
 			assert.Equal(t, originalDNSName, newDNSName, "should always produce the same generated DNS name")
@@ -5836,7 +5836,7 @@ func TestGeneratePersistentDNSName(t *testing.T) {
 			assert.NoError(t, db.ClearCollections(Collection))
 		}()
 		dnsNames := make(map[string]struct{})
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			h := Host{
 				Id:        utility.RandomString(),
 				StartedBy: usernameWithSpecialChars,

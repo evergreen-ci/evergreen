@@ -46,7 +46,7 @@ func TestMockGetTaskReliability(t *testing.T) {
 	// Add stats
 	day := time.Now()
 	tasks := []string{}
-	for i := 0; i < 102; i++ {
+	for i := range 102 {
 		taskName := fmt.Sprintf("%v%v", "task_", i)
 		tasks = append(tasks, taskName)
 		err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{

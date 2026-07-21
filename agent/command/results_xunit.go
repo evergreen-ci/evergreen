@@ -210,7 +210,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 	}
 	var numInvalid int
 	catcher := grip.NewBasicCatcher()
-	for i := 0; i < len(reportFilePaths); i++ {
+	for range reportFilePaths {
 		select {
 		case <-ctx.Done():
 			return errors.Wrap(ctx.Err(), "canceled while collecting parse results")

@@ -212,7 +212,7 @@ func (s *githubSuite) TestGetInstallationTokenCached() {
 	s.NoError(err)
 	s.NotZero(token)
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		cachedToken, err := getInstallationToken(s.ctx, "evergreen-ci", "sample", nil)
 		s.NoError(err)
 		s.Equal(token, cachedToken, "should return same exact cached token since it is still valid")

@@ -162,7 +162,7 @@ func TestJiraSummary(t *testing.T) {
 		})
 		Convey("a task with five failed tests should return a subject", func() {
 			reallyLongTestName := ""
-			for i := 0; i < 300; i++ {
+			for range 300 {
 				reallyLongTestName = reallyLongTestName + "a"
 			}
 			j.data.Task.LocalTestResults = []testresult.TestResult{

@@ -3887,7 +3887,7 @@ func TestTaskConnectorFetchByIdSuite(t *testing.T) {
 
 func (s *TaskConnectorFetchByIdSuite) SetupTest() {
 	s.Require().NoError(db.Clear(Collection))
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		testTask := &Task{
 			Id:            fmt.Sprintf("task_%d", i),
 			BuildId:       fmt.Sprintf("build_%d", i),
@@ -3901,7 +3901,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindById() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		found, err := FindOneId(ctx, fmt.Sprintf("task_%d", i))
 		s.NoError(err)
 		s.Equal(found.BuildId, fmt.Sprintf("build_%d", i))
@@ -3920,7 +3920,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByIdAndExecution() {
 		Status:    evergreen.TaskSucceeded,
 	}
 	s.NoError(testTask1.Insert(s.T().Context()))
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		s.NoError(testTask1.Archive(ctx))
 		err := UpdateOne(
 			ctx,
@@ -3930,7 +3930,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByIdAndExecution() {
 		s.NoError(err)
 		testTask1.Execution += 1
 	}
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		task, err := FindOneIdAndExecution(ctx, "task_1", i)
 		s.NoError(err)
 		s.Equal(task.Id, fmt.Sprintf("task_1_%d", i))
@@ -4037,7 +4037,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	s.NoError(testTask2.Insert(s.T().Context()))
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		s.NoError(testTask1.Archive(ctx))
 		testTask1.Execution += 1
 		s.NoError(testTask2.Archive(ctx))

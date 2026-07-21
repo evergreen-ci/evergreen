@@ -76,7 +76,7 @@ func TestFindAllDistros(t *testing.T) {
 	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase())
 
 	numDistros := 10
-	for i := 0; i < numDistros; i++ {
+	for range numDistros {
 		d := &Distro{
 			Id: fmt.Sprintf("distro_%d", rand.Int()),
 		}

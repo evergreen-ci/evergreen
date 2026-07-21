@@ -103,7 +103,7 @@ func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId
 			CreatedAt: tr.CreatedAt.UTC(),
 			Results:   make([]testresult.ParquetTestResult, len(testResults)),
 		}
-		for i := 0; i < len(testResults); i++ {
+		for i := range testResults {
 			savedParquet.Results[i] = testresult.ParquetTestResult{
 				TestName:       testResults[i].TestName,
 				GroupID:        utility.ToStringPtr(testResults[i].GroupID),

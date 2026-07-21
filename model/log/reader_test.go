@@ -95,7 +95,7 @@ func TestLogIteratorReader(t *testing.T) {
 				// overlapping timestamps after hitting the
 				// soft size limit.
 				var mergedLines []LogLine
-				for i := 0; i < 17; i++ {
+				for i := range 17 {
 					mergedLines = append(mergedLines, lines[i], lines[i], lines[i])
 				}
 				return mergedLines

@@ -318,7 +318,7 @@ func TestMergingIterator(t *testing.T) {
 
 	logs := make([][]LogLine, 2)
 	var mergedLines []LogLine
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		_, lines, _, err := generateTestLog(ctx, nil, 100, 10)
 		require.NoError(t, err)
 
@@ -331,7 +331,7 @@ func TestMergingIterator(t *testing.T) {
 
 	generateIterators := func(logs ...[]LogLine) []LogIterator {
 		its := make([]LogIterator, len(logs))
-		for i := 0; i < len(logs); i++ {
+		for i := range logs {
 			its[i] = newBasicIterator(logs[i])
 		}
 

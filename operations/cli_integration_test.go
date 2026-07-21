@@ -395,7 +395,7 @@ func TestCLITestHistory(t *testing.T) {
 			}
 			So(testVersion3.Insert(ctx), ShouldBeNil)
 			// create tasks with three different display names that start and finish at various times
-			for i := 0; i < 10; i++ {
+			for i := range 10 {
 				tsk := task.Task{
 					Id:           fmt.Sprintf("task_%v", i),
 					Project:      project,

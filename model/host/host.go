@@ -3817,7 +3817,7 @@ func (h *Host) GeneratePersistentDNSName(ctx context.Context, domain string) (st
 	// tiny edge case where the DNS name generated above conflicts with an
 	// existing one.
 	const numAttempts = 5
-	for i := 0; i < numAttempts; i++ {
+	for range numAttempts {
 		random := utility.RandomString()[:maxRandLen]
 		candidate := fmt.Sprintf("%s-%s.%s", user, random, strings.TrimPrefix(domain, "."))
 

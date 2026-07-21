@@ -606,7 +606,7 @@ func TestMakePatchedConfig(t *testing.T) {
 
 	// Test that many goroutines can run MakePatchedConfig at the same time
 	wg := sync.WaitGroup{}
-	for w := 0; w < 10; w++ {
+	for range 10 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

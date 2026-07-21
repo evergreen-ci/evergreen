@@ -1399,7 +1399,7 @@ func FindLatestVersionWithValidProject(ctx context.Context, projectId string, pr
 	revisionOrderNum := -1 // only specify in the event of failure
 	var err error
 	var lastGoodVersion *Version
-	for i := 0; i < retryCount; i++ {
+	for range retryCount {
 		lastGoodVersion, err = FindVersionByLastKnownGoodConfig(ctx, projectId, revisionOrderNum)
 		if err != nil {
 			// Database error, don't log critical but try again.

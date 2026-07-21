@@ -211,7 +211,7 @@ func (s *PatchesByProjectSuite) TestInvalidTimesAsKeyShouldError() {
 	}
 
 	for _, i := range inputs {
-		for limit := 0; limit < 3; limit++ {
+		for range 3 {
 			req, err := http.NewRequest(http.MethodGet, "https://example.net/foo/?limit=10&start_at="+i, nil)
 			s.Require().NoError(err)
 			err = s.route.Parse(context.Background(), req)
@@ -607,7 +607,7 @@ func (s *PatchesByUserSuite) TestInvalidTimesAsKeyShouldError() {
 	}
 
 	for _, i := range inputs {
-		for limit := 0; limit < 3; limit++ {
+		for range 3 {
 			req, err := http.NewRequest(http.MethodGet, "https://example.net/foo/?limit=10&start_at="+i, nil)
 			s.Require().NoError(err)
 			err = s.route.Parse(context.Background(), req)

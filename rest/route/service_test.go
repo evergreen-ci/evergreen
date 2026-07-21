@@ -71,7 +71,7 @@ func TestHostPaginator(t *testing.T) {
 		So(db.Clear(host.Collection), ShouldBeNil)
 		Convey("and there are hosts to be found", func() {
 			cachedHosts := []host.Host{}
-			for i := 0; i < numHostsInDB; i++ {
+			for i := range numHostsInDB {
 				prefix := int(math.Log10(float64(i)))
 				if i == 0 {
 					prefix = 0
@@ -327,7 +327,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 		assert.NoError(t, p.Insert(t.Context()))
 		Convey("and there are tasks to be found", func() {
 			cachedTasks := []task.Task{}
-			for i := 0; i < numTasks; i++ {
+			for i := range numTasks {
 				prefix := int(math.Log10(float64(i)))
 				if i == 0 {
 					prefix = 0
@@ -570,7 +570,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
 		Convey("and there are tasks to be found", func() {
 			cachedOldTasks := []task.Task{}
-			for i := 0; i < numTasks; i++ {
+			for i := range numTasks {
 				prefix := int(math.Log10(float64(i)))
 				if i == 0 {
 					prefix = 0
@@ -580,7 +580,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				}
 				So(db.Insert(t.Context(), task.Collection, nextTask), ShouldBeNil)
 			}
-			for i := 0; i < 5; i++ {
+			for i := range 5 {
 				prefix := int(math.Log10(float64(i)))
 				if i == 0 {
 					prefix = 0

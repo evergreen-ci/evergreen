@@ -181,7 +181,7 @@ func handleNoFormat(format string, i int) string {
 func InsertManyDailyTaskStats(ctx context.Context, many int, prototype taskstats.DBTaskStats, projectFmt string, requesterFmt string, taskNameFmt string, variantFmt string, distroFmt string) error {
 
 	items := make([]any, many)
-	for i := 0; i < many; i++ {
+	for i := range many {
 		item := prototype
 		item.Id.Project = handleNoFormat(projectFmt, i)
 		item.Id.Requester = handleNoFormat(requesterFmt, i)

@@ -221,7 +221,7 @@ func TestProjectOrUserPatchesCombined(t *testing.T) {
 	assert.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{Keys: ProjectCreateTimeIndex}))
 
 	now := time.Now()
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		isCommitQueue := i%2 == 0
 		createTime := time.Duration(i) * time.Minute
 
@@ -303,7 +303,7 @@ func TestProjectOrUserPatchesResults(t *testing.T) {
 	assert.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{Keys: ProjectCreateTimeIndex}))
 
 	now := time.Now()
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		isCommitQueue := i%2 == 0
 		createTime := time.Duration(i) * time.Minute
 
@@ -396,7 +396,7 @@ func TestProjectOrUserPatchesCount(t *testing.T) {
 	assert.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{Keys: ProjectCreateTimeIndex}))
 
 	now := time.Now()
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		isCommitQueue := i%2 == 0
 		createTime := time.Duration(i) * time.Minute
 

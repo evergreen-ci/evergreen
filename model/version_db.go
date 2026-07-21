@@ -78,7 +78,7 @@ func FindVersionByLastKnownGoodConfig(ctx context.Context, projectId string, rev
 	if revisionOrderNumber >= 0 {
 		q[VersionRevisionOrderNumberKey] = bson.M{"$lt": revisionOrderNumber}
 	}
-	for i := 0; i < retryLimit; i++ {
+	for range retryLimit {
 		v, err := VersionFindOne(ctx, db.Query(q).Sort([]string{"-" + VersionRevisionOrderNumberKey}))
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding recent valid version for project '%s'", projectId)

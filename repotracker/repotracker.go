@@ -1182,7 +1182,7 @@ func transactionWithRetries(ctx context.Context, versionId string, sessionFunc f
 		Max:    maxBackoffInterval,
 		Factor: 2,
 	}
-	for i := 0; i < retryCount; i++ {
+	for range retryCount {
 		err := client.UseSession(ctx, sessionFunc)
 		if err == nil {
 			return nil

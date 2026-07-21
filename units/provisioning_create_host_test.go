@@ -65,7 +65,7 @@ func TestProvisioningCreateHostJob(t *testing.T) {
 			// Create enough active task hosts to exceed the global max dynamic
 			// hosts limit, meaning any more host creation should be throttled.
 			statuses := []string{evergreen.HostDecommissioned, evergreen.HostStarting, evergreen.HostRunning}
-			for i := 0; i < maxHosts+1; i++ {
+			for i := range maxHosts + 1 {
 				statusIdx := i % len(statuses)
 				taskHost := host.Host{
 					Id:        fmt.Sprintf("task_host_%d", i),
