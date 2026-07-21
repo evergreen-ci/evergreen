@@ -747,37 +747,10 @@ func AddCORSHeaders(allowedOrigins []string, next http.HandlerFunc) http.Handler
 				w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PATCH, PUT")
 				w.Header().Add("Access-Control-Allow-Headers", fmt.Sprintf("%s, %s, %s", evergreen.APIKeyHeader, evergreen.APIUserHeader, gqlHeader))
 				w.Header().Add("Access-Control-Max-Age", "600")
-
-				// TODO: Delete when resolving DEVPROD-36667.
-				// To avoid over-logging, only log the header if it doesn't match the expected URLs.
-				if !isExpectedCORSOrigin(requester) {
-					grip.Info(r.Context(), message.Fields{
-						"message":    "CORS request from unexpected origin",
-						"origin":     requester,
-						"method":     r.Method,
-						"path":       r.URL.Path,
-						"user_agent": r.UserAgent(),
-					})
-				}
 			}
 		}
 		next(w, r)
 	}
-}
-
-// TODO: Delete when resolving DEVPROD-36667.
-func isExpectedCORSOrigin(origin string) bool {
-	expectedURLs := []string{
-		"https://spruce.corp.mongodb.com",
-		"https://spruce-staging.corp.mongodb.com",
-		"https://spruce-beta.corp.mongodb.com",
-		"https://spruce-local.corp.mongodb.com",
-		"https://parsley.corp.mongodb.com",
-		"https://parsley-staging.corp.mongodb.com",
-		"https://parsley-beta.corp.mongodb.com",
-		"https://parsley-local.corp.mongodb.com",
-	}
-	return slices.ContainsFunc(expectedURLs, func(u string) bool { return strings.HasPrefix(origin, u) })
 }
 
 func allowCORS(next http.HandlerFunc) http.HandlerFunc {
