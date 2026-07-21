@@ -114,7 +114,6 @@ func TestPapertrailTrace(t *testing.T) {
 	logger := client.NewSingleChannelLogHarness("test", sender)
 
 	for name, tc := range cases {
-		name, tc := name, tc
 
 		getExpandedValue := func(v string) string {
 			if strings.HasPrefix(v, "$") {
@@ -310,7 +309,6 @@ func TestPapertrailGetFiles(t *testing.T) {
 	}
 
 	for name, tc := range cases {
-		name, tc := name, tc
 		t.Run(name, func(t *testing.T) {
 			tempdir, err := os.MkdirTemp(os.TempDir(), "papertrail-get-files-test-*")
 			require.NoError(t, err)
@@ -444,7 +442,6 @@ func TestPapertrailParseParams(t *testing.T) {
 	}
 
 	for name, tc := range cases {
-		name, tc := name, tc
 		t.Run(name, func(t *testing.T) {
 			params := map[string]any{
 				"key_id":     tc.keyID,
