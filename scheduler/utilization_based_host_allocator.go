@@ -167,13 +167,10 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 	if d.HostAllocatorSettings.FeedbackRule == evergreen.HostAllocatorWaitsOverThreshFeedback {
 		numHostsForOverdueTasks = taskGroupInfo.CountWaitOverThreshold
 	}
-	numNewHosts = calcNewHostsNeeded(totalShortRunningTasksExpectedDuration, maxDurationThreshold,
-		expectedNumFreeHosts, numLongRunningTasks, numHostsForOverdueTasks, taskGroupInfo.CountDepFilledMergeQueueTasks, roundDown)
-
-	// don't start more hosts than new tasks. This can happen if the task queue is mostly long tasks
-	if numNewHosts > taskGroupInfo.Count {
-		numNewHosts = taskGroupInfo.Count
-	}
+	numNewHosts = min(
+		// don't start more hosts than new tasks. This can happen if the task queue is mostly long tasks
+		calcNewHostsNeeded(totalShortRunningTasksExpectedDuration, maxDurationThreshold,
+			expectedNumFreeHosts, numLongRunningTasks, numHostsForOverdueTasks, taskGroupInfo.CountDepFilledMergeQueueTasks, roundDown), taskGroupInfo.Count)
 
 	// enforce the max hosts cap
 	if isMaxHostsCapacity(maxHosts, numNewHosts, len(existingHosts)) {

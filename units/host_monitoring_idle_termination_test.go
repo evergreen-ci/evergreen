@@ -1010,10 +1010,7 @@ func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 	maxHostsToTerminate := info1.RunningHostsCount - minimumHosts
 	assert.Equal(1, maxHostsToTerminate)
 	// Confirm the nHostsToEvaluateForTermination
-	nHostsToEvaluateForTermination := nIdleHosts
-	if nIdleHosts > maxHostsToTerminate {
-		nHostsToEvaluateForTermination = maxHostsToTerminate
-	}
+	nHostsToEvaluateForTermination := min(nIdleHosts, maxHostsToTerminate)
 	assert.Equal(1, nHostsToEvaluateForTermination)
 
 	////////////////////////////////////////////////////////////////////////////////
@@ -1043,10 +1040,7 @@ func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 	maxHostsToTerminate = info2.RunningHostsCount - minimumHosts
 	assert.Equal(2, maxHostsToTerminate)
 	// Confirm the nHostsToEvaluateForTermination
-	nHostsToEvaluateForTermination = nIdleHosts
-	if nIdleHosts > maxHostsToTerminate {
-		nHostsToEvaluateForTermination = maxHostsToTerminate
-	}
+	nHostsToEvaluateForTermination = min(nIdleHosts, maxHostsToTerminate)
 	assert.Equal(2, nHostsToEvaluateForTermination)
 }
 
