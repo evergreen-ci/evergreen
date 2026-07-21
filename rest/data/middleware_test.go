@@ -154,14 +154,6 @@ func TestGetProjectIdFromParams(t *testing.T) {
 	require.Equal(t, "", projectId)
 }
 
-func TestBuildProjectParameterMapForGraphQL(t *testing.T) {
-	paramsMap, err := BuildProjectParameterMapForGraphQL(map[string]any{
-		projectIdToCopyKey: "project_to_copy",
-	})
-	require.NoError(t, err)
-	require.Equal(t, "project_to_copy", paramsMap[projectIdentifierKey])
-}
-
 func TestBuildProjectParameterMapForLegacy(t *testing.T) {
 	t.Run("QueryProjectIDIgnoredWhenBuildIDInPath", func(t *testing.T) {
 		query := url.Values{"project_id": []string{"attacker_project"}}

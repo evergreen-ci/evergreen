@@ -69,7 +69,7 @@ type Mutation {
   deactivateStepbackTask(opts: DeactivateStepbackTaskInput!): Boolean!
   defaultSectionToRepo(opts: DefaultSectionToRepoInput!): String
   deleteGithubAppCredentials(opts: DeleteGithubAppCredentialsInput!): DeleteGithubAppCredentialsPayload
-  deleteProject(projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): Boolean!
+  deleteProject(projectId: String!): Boolean!
   detachProjectFromRepo(projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): Project!
   forceRepotrackerRun(projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): Boolean!
   promoteVarsToRepo(opts: PromoteVarsToRepoInput!): Boolean!

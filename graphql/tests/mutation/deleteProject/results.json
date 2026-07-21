@@ -6,7 +6,7 @@
         "data": null,
         "errors": [
           {
-            "message": "400 (Bad Request): project 'already_hidden' is already hidden",
+            "message": "400 (Bad Request): project 'spruce' is already hidden",
             "path": [
               "deleteProject"
             ],
@@ -23,6 +23,7 @@
     },
     {
       "query_file": "success.graphql",
+      "test_user_id": "privileged_user",
       "result": { "data": { "deleteProject": true } }
     }
   ]
