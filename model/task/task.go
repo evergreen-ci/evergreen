@@ -846,7 +846,6 @@ func (t *Task) MarkDependenciesFinished(ctx context.Context, finished bool) erro
 		},
 		bson.M{
 			"$set": bson.M{
-				bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyFinishedKey):   finished,
 				bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyFinishedAtKey): finishedAt,
 			},
 		},
