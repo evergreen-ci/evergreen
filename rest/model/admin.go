@@ -86,6 +86,7 @@ type APIAdminSettings struct {
 	GithubPRCreatorOrg      *string                       `json:"github_pr_creator_org,omitempty"`
 	GithubOrgs              []string                      `json:"github_orgs,omitempty"`
 	GithubWebhookSecret     *string                       `json:"github_webhook_secret,omitempty"`
+	ArtifactSignSecret      *string                       `json:"artifact_sign_secret,omitempty"`
 	DisabledGQLQueries      []string                      `json:"disabled_gql_queries"`
 	HostInit                *APIHostInitConfig            `json:"hostinit,omitempty"`
 	HostJasper              *APIHostJasperConfig          `json:"host_jasper,omitempty"`
@@ -176,6 +177,7 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 		as.Expansions = v.Expansions
 		as.GithubOrgs = v.GithubOrgs
 		as.GithubWebhookSecret = utility.ToStringPtr(v.GithubWebhookSecret)
+		as.ArtifactSignSecret = utility.ToStringPtr(v.ArtifactSignSecret)
 		as.DisabledGQLQueries = v.DisabledGQLQueries
 		uiConfig := APIUIConfig{}
 		err := uiConfig.BuildFromService(v.Ui)
@@ -280,6 +282,7 @@ func (as *APIAdminSettings) ToService() (any, error) {
 		settings.GithubPRCreatorOrg = *as.GithubPRCreatorOrg
 	}
 	settings.GithubWebhookSecret = utility.FromStringPtr(as.GithubWebhookSecret)
+	settings.ArtifactSignSecret = utility.FromStringPtr(as.ArtifactSignSecret)
 	if as.LogPath != nil {
 		settings.LogPath = *as.LogPath
 	}
@@ -796,11 +799,52 @@ type APIBucketConfig struct {
 	DBName                  *string    `json:"db_name"`
 	TestResultsPrefix       *string    `json:"test_results_prefix"`
 	RoleARN                 *string    `json:"role_arn"`
+	ExternalID              *string    `json:"external_id,omitempty"`
 	ExpirationDays          *int       `json:"expiration_days,omitempty"`
 	TransitionToIADays      *int       `json:"transition_to_ia_days,omitempty"`
 	TransitionToGlacierDays *int       `json:"transition_to_glacier_days,omitempty"`
 	LifecycleLastSyncedAt   *time.Time `json:"lifecycle_last_synced_at,omitempty"`
 	LifecycleSyncError      *string    `json:"lifecycle_sync_error,omitempty"`
+}
+
+// buildFromService populates the API model from every field of the service
+// model. It must stay symmetric with ToService: any field one method handles
+// must be handled by the other, otherwise the field is silently dropped on the
+// admin settings BuildFromService/ToService round trip, which both loses the
+// value and produces spurious "changed" entries in the admin event log.
+func (a *APIBucketConfig) buildFromService(v evergreen.BucketConfig) {
+	a.Name = utility.ToStringPtr(v.Name)
+	a.Type = utility.ToStringPtr(string(v.Type))
+	a.DBName = utility.ToStringPtr(v.DBName)
+	a.TestResultsPrefix = utility.ToStringPtr(v.TestResultsPrefix)
+	a.RoleARN = utility.ToStringPtr(v.RoleARN)
+	a.ExternalID = utility.ToStringPtr(v.ExternalID)
+	a.ExpirationDays = v.ExpirationDays
+	a.TransitionToIADays = v.TransitionToIADays
+	a.TransitionToGlacierDays = v.TransitionToGlacierDays
+	if !v.LifecycleLastSyncedAt.IsZero() {
+		a.LifecycleLastSyncedAt = &v.LifecycleLastSyncedAt
+	}
+	a.LifecycleSyncError = utility.ToStringPtr(v.LifecycleSyncError)
+}
+
+func (a APIBucketConfig) ToService() evergreen.BucketConfig {
+	c := evergreen.BucketConfig{
+		Name:                    utility.FromStringPtr(a.Name),
+		Type:                    evergreen.BucketType(utility.FromStringPtr(a.Type)),
+		DBName:                  utility.FromStringPtr(a.DBName),
+		TestResultsPrefix:       utility.FromStringPtr(a.TestResultsPrefix),
+		RoleARN:                 utility.FromStringPtr(a.RoleARN),
+		ExternalID:              utility.FromStringPtr(a.ExternalID),
+		ExpirationDays:          a.ExpirationDays,
+		TransitionToIADays:      a.TransitionToIADays,
+		TransitionToGlacierDays: a.TransitionToGlacierDays,
+		LifecycleSyncError:      utility.FromStringPtr(a.LifecycleSyncError),
+	}
+	if a.LifecycleLastSyncedAt != nil {
+		c.LifecycleLastSyncedAt = *a.LifecycleLastSyncedAt
+	}
+	return c
 }
 
 type APIProjectToPrefixMapping struct {
@@ -817,51 +861,15 @@ type APIProjectToBucketMapping struct {
 func (a *APIBucketsConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.BucketsConfig:
-		a.LogBucket.Name = utility.ToStringPtr(v.LogBucket.Name)
-		a.LogBucket.Type = utility.ToStringPtr(string(v.LogBucket.Type))
-		a.LogBucket.DBName = utility.ToStringPtr(v.LogBucket.DBName)
-		a.LogBucket.ExpirationDays = v.LogBucket.ExpirationDays
-		a.LogBucket.TransitionToIADays = v.LogBucket.TransitionToIADays
-		a.LogBucket.TransitionToGlacierDays = v.LogBucket.TransitionToGlacierDays
-		if !v.LogBucket.LifecycleLastSyncedAt.IsZero() {
-			a.LogBucket.LifecycleLastSyncedAt = &v.LogBucket.LifecycleLastSyncedAt
-		}
-		a.LogBucket.LifecycleSyncError = utility.ToStringPtr(v.LogBucket.LifecycleSyncError)
-
-		a.LogBucketLongRetention.Name = utility.ToStringPtr(v.LogBucketLongRetention.Name)
-		a.LogBucketLongRetention.Type = utility.ToStringPtr(string(v.LogBucketLongRetention.Type))
-		a.LogBucketLongRetention.DBName = utility.ToStringPtr(v.LogBucketLongRetention.DBName)
-		a.LogBucketLongRetention.RoleARN = utility.ToStringPtr(v.LogBucketLongRetention.RoleARN)
-		a.LogBucketLongRetention.ExpirationDays = v.LogBucketLongRetention.ExpirationDays
-		a.LogBucketLongRetention.TransitionToIADays = v.LogBucketLongRetention.TransitionToIADays
-		a.LogBucketLongRetention.TransitionToGlacierDays = v.LogBucketLongRetention.TransitionToGlacierDays
-		if !v.LogBucketLongRetention.LifecycleLastSyncedAt.IsZero() {
-			a.LogBucketLongRetention.LifecycleLastSyncedAt = &v.LogBucketLongRetention.LifecycleLastSyncedAt
-		}
-		a.LogBucketLongRetention.LifecycleSyncError = utility.ToStringPtr(v.LogBucketLongRetention.LifecycleSyncError)
-
-		a.LogBucketFailedTasks.Name = utility.ToStringPtr(v.LogBucketFailedTasks.Name)
-		a.LogBucketFailedTasks.Type = utility.ToStringPtr(string(v.LogBucketFailedTasks.Type))
-		a.LogBucketFailedTasks.DBName = utility.ToStringPtr(v.LogBucketFailedTasks.DBName)
-		a.LogBucketFailedTasks.RoleARN = utility.ToStringPtr(v.LogBucketFailedTasks.RoleARN)
-		a.LogBucketFailedTasks.ExpirationDays = v.LogBucketFailedTasks.ExpirationDays
-		a.LogBucketFailedTasks.TransitionToIADays = v.LogBucketFailedTasks.TransitionToIADays
-		a.LogBucketFailedTasks.TransitionToGlacierDays = v.LogBucketFailedTasks.TransitionToGlacierDays
-		if !v.LogBucketFailedTasks.LifecycleLastSyncedAt.IsZero() {
-			a.LogBucketFailedTasks.LifecycleLastSyncedAt = &v.LogBucketFailedTasks.LifecycleLastSyncedAt
-		}
-		a.LogBucketFailedTasks.LifecycleSyncError = utility.ToStringPtr(v.LogBucketFailedTasks.LifecycleSyncError)
+		a.LogBucket.buildFromService(v.LogBucket)
+		a.LogBucketLongRetention.buildFromService(v.LogBucketLongRetention)
+		a.LogBucketFailedTasks.buildFromService(v.LogBucketFailedTasks)
+		a.TestResultsBucket.buildFromService(v.TestResultsBucket)
 
 		a.LongRetentionProjects = v.LongRetentionProjects
 		a.RetryFailedLogMoveLookbackDays = utility.ToIntPtr(v.RetryFailedLogMoveLookbackDays)
 		a.RetryFailedLogMoveLookbackMonths = utility.ToIntPtr(v.RetryFailedLogMoveLookbackDays)
 		a.RetryFailedLogMoveMaxJobsPerRun = utility.ToIntPtr(v.RetryFailedLogMoveMaxJobsPerRun)
-
-		a.TestResultsBucket.Name = utility.ToStringPtr(v.TestResultsBucket.Name)
-		a.TestResultsBucket.Type = utility.ToStringPtr(string(v.TestResultsBucket.Type))
-		a.TestResultsBucket.DBName = utility.ToStringPtr(v.TestResultsBucket.DBName)
-		a.TestResultsBucket.TestResultsPrefix = utility.ToStringPtr(v.TestResultsBucket.TestResultsPrefix)
-		a.TestResultsBucket.RoleARN = utility.ToStringPtr(v.TestResultsBucket.RoleARN)
 
 		creds := APIS3Credentials{}
 		if err := creds.BuildFromService(v.Credentials); err != nil {
@@ -891,34 +899,14 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 	}
 
 	return evergreen.BucketsConfig{
-		LogBucket: evergreen.BucketConfig{
-			Name:   utility.FromStringPtr(a.LogBucket.Name),
-			Type:   evergreen.BucketType(utility.FromStringPtr(a.LogBucket.Type)),
-			DBName: utility.FromStringPtr(a.LogBucket.DBName),
-		},
-		LogBucketLongRetention: evergreen.BucketConfig{
-			Name:    utility.FromStringPtr(a.LogBucketLongRetention.Name),
-			Type:    evergreen.BucketType(utility.FromStringPtr(a.LogBucketLongRetention.Type)),
-			DBName:  utility.FromStringPtr(a.LogBucketLongRetention.DBName),
-			RoleARN: utility.FromStringPtr(a.LogBucketLongRetention.RoleARN),
-		},
-		LogBucketFailedTasks: evergreen.BucketConfig{
-			Name:    utility.FromStringPtr(a.LogBucketFailedTasks.Name),
-			Type:    evergreen.BucketType(utility.FromStringPtr(a.LogBucketFailedTasks.Type)),
-			DBName:  utility.FromStringPtr(a.LogBucketFailedTasks.DBName),
-			RoleARN: utility.FromStringPtr(a.LogBucketFailedTasks.RoleARN),
-		},
+		LogBucket:                       a.LogBucket.ToService(),
+		LogBucketLongRetention:          a.LogBucketLongRetention.ToService(),
+		LogBucketFailedTasks:            a.LogBucketFailedTasks.ToService(),
 		LongRetentionProjects:           a.LongRetentionProjects,
 		RetryFailedLogMoveLookbackDays:  utility.FromIntPtr(lookbackDays),
 		RetryFailedLogMoveMaxJobsPerRun: utility.FromIntPtr(a.RetryFailedLogMoveMaxJobsPerRun),
-		TestResultsBucket: evergreen.BucketConfig{
-			Name:              utility.FromStringPtr(a.TestResultsBucket.Name),
-			Type:              evergreen.BucketType(utility.FromStringPtr(a.TestResultsBucket.Type)),
-			DBName:            utility.FromStringPtr(a.TestResultsBucket.DBName),
-			RoleARN:           utility.FromStringPtr(a.TestResultsBucket.RoleARN),
-			TestResultsPrefix: utility.FromStringPtr(a.TestResultsBucket.TestResultsPrefix),
-		},
-		Credentials: creds,
+		TestResultsBucket:               a.TestResultsBucket.ToService(),
+		Credentials:                     creds,
 	}, nil
 }
 
@@ -2160,8 +2148,6 @@ type APIServiceFlags struct {
 	UseMergeQueuePathFilteringDisabled bool `json:"use_merge_queue_path_filtering_disabled"`
 	PSLoggingDisabled                  bool `json:"ps_logging_disabled"`
 	PodDiagnosticsDisabled             bool `json:"pod_diagnostics_disabled"`
-	WebhookSecretMigrationEnabled      bool `json:"webhook_secret_migration_enabled"`
-	WebhookSecretCleanupEnabled        bool `json:"webhook_secret_cleanup_enabled"`
 	RetryFailedLogMoveEnabled          bool `json:"retry_failed_log_move_enabled"`
 	ProjectTranslationCacheEnabled     bool `json:"project_translation_cache_enabled"`
 
@@ -2624,8 +2610,6 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.PSLoggingDisabled = v.PSLoggingDisabled
 		as.UseMergeQueuePathFilteringDisabled = v.UseMergeQueuePathFilteringDisabled
 		as.PodDiagnosticsDisabled = v.PodDiagnosticsDisabled
-		as.WebhookSecretMigrationEnabled = v.WebhookSecretMigrationEnabled
-		as.WebhookSecretCleanupEnabled = v.WebhookSecretCleanupEnabled
 		as.RetryFailedLogMoveEnabled = v.RetryFailedLogMoveEnabled
 		as.ProjectTranslationCacheEnabled = v.ProjectTranslationCacheEnabled
 		as.BackgroundCommandFailureEnabled = v.BackgroundCommandFailureEnabled
@@ -2678,8 +2662,6 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		UseMergeQueuePathFilteringDisabled: as.UseMergeQueuePathFilteringDisabled,
 		PSLoggingDisabled:                  as.PSLoggingDisabled,
 		PodDiagnosticsDisabled:             as.PodDiagnosticsDisabled,
-		WebhookSecretMigrationEnabled:      as.WebhookSecretMigrationEnabled,
-		WebhookSecretCleanupEnabled:        as.WebhookSecretCleanupEnabled,
 		RetryFailedLogMoveEnabled:          as.RetryFailedLogMoveEnabled,
 		ProjectTranslationCacheEnabled:     as.ProjectTranslationCacheEnabled,
 		BackgroundCommandFailureEnabled:    as.BackgroundCommandFailureEnabled,
@@ -3173,6 +3155,7 @@ type APICostConfig struct {
 	OnDemandDiscount    *float64          `json:"on_demand_discount"`
 	S3Cost              *APIS3CostConfig  `json:"s3_cost"`
 	EBSCost             *APIEBSCostConfig `json:"ebs_cost"`
+	HiddenCostProjects  []string          `json:"hidden_cost_projects"`
 }
 
 type APIEBSCostConfig struct {
@@ -3211,6 +3194,7 @@ func (a *APICostConfig) BuildFromService(h any) error {
 		if err := a.EBSCost.BuildFromService(&v.EBSCost); err != nil {
 			return errors.Wrap(err, "building EBS cost config")
 		}
+		a.HiddenCostProjects = v.HiddenCostProjects
 	case evergreen.CostConfig:
 		a.FinanceFormula = &v.FinanceFormula
 		a.SavingsPlanDiscount = &v.SavingsPlanDiscount
@@ -3223,6 +3207,7 @@ func (a *APICostConfig) BuildFromService(h any) error {
 		if err := a.EBSCost.BuildFromService(&v.EBSCost); err != nil {
 			return errors.Wrap(err, "building EBS cost config")
 		}
+		a.HiddenCostProjects = v.HiddenCostProjects
 	default:
 		return errors.Errorf("incorrect type %T", v)
 	}
@@ -3252,6 +3237,7 @@ func (a *APICostConfig) ToService() (any, error) {
 		OnDemandDiscount:    utility.FromFloat64Ptr(a.OnDemandDiscount),
 		S3Cost:              s3Cost,
 		EBSCost:             ebsCost,
+		HiddenCostProjects:  a.HiddenCostProjects,
 	}, nil
 }
 

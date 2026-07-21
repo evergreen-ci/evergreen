@@ -91,8 +91,8 @@ type Version {
   taskStatuses: [String!]!
   taskStatusStats(options: BuildVariantOptions!): TaskStats
   upstreamProject: UpstreamProject
-  user: User! @deprecated(reason: "Use userLite instead.")
-  userLite: UserLite!
+  user: User!
+  userLite: User!
   versionTiming: VersionTiming
   warnings: [String!]!
   waterfallBuilds: [WaterfallBuild!]
@@ -173,6 +173,7 @@ type VersionLite {
   childVersions: [VersionLite!]
   cost: Cost
   createTime: Time!
+  gitTags: [GitTag!]
   ingestTime: Time
   errors: [String!]!
   finishTime: Time
@@ -187,6 +188,7 @@ type VersionLite {
   startTime: Time
   status: String!
   taskStatusStats: TaskStats
-  user: UserLite!
+  user: User!
   warnings: [String!]!
+  waterfallBuilds: [WaterfallBuild!]
 }

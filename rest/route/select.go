@@ -59,10 +59,22 @@ func (t *selectTestsHandler) Parse(ctx context.Context, r *http.Request) error {
 func (t *selectTestsHandler) Run(ctx context.Context) gimlet.Responder {
 	selectedTests, err := data.SelectTests(ctx, t.selectTests)
 	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(err)
+		return makeSelectTestsErrorResponse(err)
 	}
 
 	rhResp := t.selectTests
 	rhResp.Tests = selectedTests
 	return gimlet.NewJSONResponse(rhResp)
+}
+
+func makeSelectTestsErrorResponse(err error) gimlet.Responder {
+	if errors.Is(err, context.DeadlineExceeded) {
+		// The agent retries other server and timeout statuses, which would
+		// reissue the TSS request and amplify an outage.
+		return gimlet.NewJSONErrorResponse(gimlet.ErrorResponse{
+			StatusCode: http.StatusFailedDependency,
+			Message:    err.Error(),
+		})
+	}
+	return gimlet.NewJSONInternalErrorResponse(err)
 }

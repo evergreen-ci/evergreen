@@ -303,7 +303,7 @@ models:
   GithubUserInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubUser
   GitTag:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIGitTag
+    model: github.com/evergreen-ci/evergreen/model.GitTag
   GraphiteConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGraphiteConfig
   GraphiteConfigInput:
@@ -981,13 +981,6 @@ models:
   UIConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIUIConfig
   User:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIDBUser
-    fields:
-      patches:
-        resolver: true
-      subscriptions:
-        resolver: true
-  UserLite:
     model: github.com/evergreen-ci/evergreen/model/user.DBUser
     fields:
       displayName:

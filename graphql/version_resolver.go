@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/graphql/loaders"
@@ -24,8 +23,6 @@ import (
 	werrors "github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
-
-const defaultTaskQuarantinedTestsSampleLimit = 50
 
 // BaseVersion is the resolver for the baseVersion field.
 func (r *versionResolver) BaseVersion(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIVersion, error) {
@@ -200,6 +197,18 @@ func (r *versionResolver) GeneratedTaskCounts(ctx context.Context, obj *restMode
 	return res, nil
 }
 
+// GitTags is the resolver for the gitTags field.
+func (r *versionResolver) GitTags(ctx context.Context, obj *restModel.APIVersion) ([]*model.GitTag, error) {
+	gitTags := make([]*model.GitTag, 0, len(obj.GitTags))
+	for _, gt := range obj.GitTags {
+		gitTags = append(gitTags, &model.GitTag{
+			Tag:    utility.FromStringPtr(gt.Tag),
+			Pusher: utility.FromStringPtr(gt.Pusher),
+		})
+	}
+	return gitTags, nil
+}
+
 // IsPatch is the resolver for the isPatch field.
 func (r *versionResolver) IsPatch(ctx context.Context, obj *restModel.APIVersion) (bool, error) {
 	return evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)), nil
@@ -298,12 +307,12 @@ func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersi
 }
 
 // TaskQuarantinedTestsSample is the resolver for the taskQuarantinedTestsSample field.
-func (r *versionResolver) TaskQuarantinedTestsSample(ctx context.Context, obj *restModel.APIVersion, taskIDs []string, limit *int) ([]*testresult.TaskTestResultsQuarantinedSample, error) {
+func (r *versionResolver) TaskQuarantinedTestsSample(ctx context.Context, obj *restModel.APIVersion, taskIds []string, limit *int) ([]*testresult.TaskTestResultsQuarantinedSample, error) {
 	versionID := utility.FromStringPtr(obj.Id)
 	if err := checkProjectAccess(ctx, utility.FromStringPtr(obj.Project), ProjectPermissionTasks, AccessLevelView); err != nil {
 		return nil, err
 	}
-	if len(taskIDs) == 0 {
+	if len(taskIds) == 0 {
 		return nil, nil
 	}
 	sampleLimit := defaultTaskQuarantinedTestsSampleLimit
@@ -314,12 +323,12 @@ func (r *versionResolver) TaskQuarantinedTestsSample(ctx context.Context, obj *r
 		return nil, InputValidationError.Send(ctx, "limit cannot be negative")
 	}
 
-	dbTasks, err := task.FindAll(ctx, db.Query(task.ByIds(taskIDs)))
+	dbTasks, err := task.FindAll(ctx, db.Query(task.ByIds(taskIds)))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching tasks '%s': %s", taskIDs, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching tasks '%s': %s", taskIds, err.Error()))
 	}
 	if len(dbTasks) == 0 {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("tasks '%s' not found", taskIDs))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("tasks '%s' not found", taskIds))
 	}
 
 	var (
@@ -624,50 +633,8 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 }
 
 // User is the resolver for the user field.
-func (r *versionResolver) User(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIDBUser, error) {
-	// userId, displayName, and emailAddress are always returned from the version document.
-	// Other fields require a database call.
-	requestedFields := graphql.CollectAllFields(ctx)
-	needsDBFetch := false
-	for _, field := range requestedFields {
-		if field != "userId" && field != "displayName" && field != "emailAddress" {
-			needsDBFetch = true
-			break
-		}
-	}
-
-	if !needsDBFetch {
-		return &restModel.APIDBUser{
-			UserID:       obj.AuthorID,
-			DisplayName:  obj.Author,
-			EmailAddress: obj.AuthorEmail,
-		}, nil
-	}
-
-	authorId := utility.FromStringPtr(obj.AuthorID)
-	currentUser := mustHaveUser(ctx)
-	if currentUser.Id == authorId {
-		apiUser := &restModel.APIDBUser{}
-		apiUser.BuildFromService(*currentUser)
-		return apiUser, nil
-	}
-
-	dbUser, err := loaders.GetUser(ctx, authorId)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", authorId, err.Error()), err)
-	}
-	// This is most likely a reaped user, so just return their info from version
-	if dbUser == nil {
-		return &restModel.APIDBUser{
-			UserID:       obj.AuthorID,
-			DisplayName:  obj.Author,
-			EmailAddress: obj.AuthorEmail,
-		}, nil
-	}
-
-	apiUser := &restModel.APIDBUser{}
-	apiUser.BuildFromService(*dbUser)
-	return apiUser, nil
+func (r *versionResolver) User(ctx context.Context, obj *restModel.APIVersion) (*user.DBUser, error) {
+	return getVersionAuthorDBUser(ctx, utility.FromStringPtr(obj.AuthorID), utility.FromStringPtr(obj.Author), utility.FromStringPtr(obj.AuthorEmail))
 }
 
 // UserLite is the resolver for the userLite field.
@@ -749,12 +716,7 @@ func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *restModel.AP
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variants for version '%s': %s", versionID, err.Error()))
 	}
-	versionBuilds := []*model.WaterfallBuild{}
-	for _, b := range builds {
-		bCopy := b
-		versionBuilds = append(versionBuilds, &bCopy)
-	}
-	return versionBuilds, nil
+	return builds, nil
 }
 
 // BaseVersion is the resolver for the baseVersion field.
@@ -829,6 +791,31 @@ func (r *versionLiteResolver) TaskStatusStats(ctx context.Context, obj *model.Ve
 // User is the resolver for the user field.
 func (r *versionLiteResolver) User(ctx context.Context, obj *model.Version) (*user.DBUser, error) {
 	return getVersionAuthorDBUser(ctx, obj.AuthorID, obj.Author, obj.AuthorEmail)
+}
+
+// WaterfallBuilds is the resolver for the waterfallBuilds field.
+func (r *versionLiteResolver) WaterfallBuilds(ctx context.Context, obj *model.Version) ([]*model.WaterfallBuild, error) {
+	versionID := obj.Id
+
+	// No need to fetch build variants for unactivated versions
+	if !utility.FromBoolPtr(obj.Activated) {
+		return nil, nil
+	}
+
+	parentWaterfall, ok := getWaterfallFromContext(ctx)
+	if ok {
+		// If we can't find the activeVersionIds in the parent query, eagerly continue with this aggregation.
+		activeVersionIds := parentWaterfall.Pagination.ActiveVersionIds
+		if !utility.StringSliceContains(activeVersionIds, versionID) {
+			return nil, nil
+		}
+	}
+
+	builds, err := model.GetVersionBuilds(ctx, versionID, obj.BuildIds)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variants for version '%s': %s", versionID, err.Error()))
+	}
+	return builds, nil
 }
 
 // Version returns VersionResolver implementation.

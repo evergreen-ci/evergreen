@@ -394,8 +394,8 @@
             "buckets": {
               "logBucket": {
                 "name": "s3 bucket",
-                "testResultsPrefix": null,
-                "roleARN": null
+                "testResultsPrefix": "all",
+                "roleARN": ""
               },
               "testResultsBucket": {
                 "name": "test bucket",
@@ -405,7 +405,7 @@
               "longRetentionProjects": ["project1", "project2"],
               "logBucketLongRetention": {
                 "name": "mutation-long-retention-bucket",
-                "testResultsPrefix": null,
+                "testResultsPrefix": "",
                 "roleARN": ""
               }
             },
@@ -621,8 +621,6 @@
               },
               { "name": "ps_logging_disabled", "enabled": false },
               { "name": "pod_diagnostics_disabled", "enabled": false },
-              { "name": "webhook_secret_migration_enabled", "enabled": false },
-              { "name": "webhook_secret_cleanup_enabled", "enabled": false },
               { "name": "retry_failed_log_move_enabled", "enabled": false },
               { "name": "project_translation_cache_enabled", "enabled": false },
               { "name": "event_processing_disabled", "enabled": false },

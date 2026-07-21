@@ -5,7 +5,7 @@
       "result": {
         "data": {
           "user": {
-            "userId": "jane.smith"
+            "id": "jane.smith"
 
           }
         }
@@ -16,7 +16,7 @@
       "result": {
         "data": {
           "user": {
-            "userId": "bob.smith"
+            "id": "bob.smith"
           }
         }
       }

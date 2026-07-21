@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/level"
 	"github.com/stretchr/testify/suite"
 )
@@ -386,6 +387,52 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Tracer.CollectorEndpoint, settingsFromConnector.Tracer.CollectorEndpoint)
 	s.EqualValues(testSettings.Tracer.CollectorInternalEndpoint, settingsFromConnector.Tracer.CollectorInternalEndpoint)
 	s.EqualValues(testSettings.Tracer.TraceURLTemplate, settingsFromConnector.Tracer.TraceURLTemplate)
+}
+
+func (s *AdminDataSuite) TestSetEvergreenSettingsPreservesBucketLifecycleFields() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	u := &user.DBUser{Id: "user"}
+
+	// Seed the DB with a bucket that has lifecycle fields (e.g. expiration_days)
+	// that Spruce does not manage.
+	seed := testutil.MockConfig()
+	seed.Buckets.LogBucket.Name = "log-bucket"
+	seed.Buckets.LogBucket.ExpirationDays = utility.ToIntPtr(90)
+	seed.Buckets.LogBucketFailedTasks.Name = "log-bucket-failed"
+	seed.Buckets.LogBucketFailedTasks.TransitionToGlacierDays = utility.ToIntPtr(180)
+	seedAPI := restModel.NewConfigModel()
+	s.Require().NoError(seedAPI.BuildFromService(seed))
+
+	oldSettings, err := evergreen.GetConfig(ctx)
+	s.Require().NoError(err)
+	_, err = SetEvergreenSettings(ctx, seedAPI, oldSettings, u, true)
+	s.Require().NoError(err)
+
+	// Mimic Spruce saving the buckets section: editing one field (here the test
+	// results bucket name) submits the whole section, and the GraphQL input
+	// schema omits the lifecycle fields, so they arrive nil on every sub-bucket.
+	// The lifecycle fields must survive even on buckets the user did not touch.
+	oldSettings, err = evergreen.GetConfig(ctx)
+	s.Require().NoError(err)
+	changes := &restModel.APIAdminSettings{
+		Buckets: &restModel.APIBucketsConfig{
+			TestResultsBucket: restModel.APIBucketConfig{
+				Name: utility.ToStringPtr("updated-test-results-bucket"),
+			},
+		},
+	}
+	_, err = SetEvergreenSettings(ctx, changes, oldSettings, u, true)
+	s.Require().NoError(err)
+
+	updated, err := evergreen.GetConfig(ctx)
+	s.Require().NoError(err)
+	s.Equal("updated-test-results-bucket", updated.Buckets.TestResultsBucket.Name)
+	s.Require().NotNil(updated.Buckets.LogBucket.ExpirationDays)
+	s.Equal(90, *updated.Buckets.LogBucket.ExpirationDays)
+	s.Require().NotNil(updated.Buckets.LogBucketFailedTasks.TransitionToGlacierDays)
+	s.Equal(180, *updated.Buckets.LogBucketFailedTasks.TransitionToGlacierDays)
 }
 
 func (s *AdminDataSuite) TestRestart() {
