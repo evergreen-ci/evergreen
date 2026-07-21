@@ -168,16 +168,16 @@ func Agent() cli.Command {
 				return errors.Wrapf(err, "creating working directory '%s'", opts.WorkingDirectory)
 			}
 
-			grip.Info(context.Background(), message.Fields{
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			grip.Info(ctx, message.Fields{
 				"message":            "starting agent",
 				"commands":           command.RegisteredCommandNames(),
 				"dir":                opts.WorkingDirectory,
 				"host_id":            opts.HostID,
 				"single_task_distro": opts.SingleTaskDistro,
 			})
-
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
 
 			agt, err := agent.New(ctx, opts, c.String(agentAPIServerURLFlagName))
 			if err != nil {

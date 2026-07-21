@@ -1003,7 +1003,7 @@ func getModulePatch(ctx context.Context, modulePatch patch.ModulePatch) (patch.M
 	}
 
 	modulePatch.ModuleName = ""
-	modulePatch.PatchSet.Summary, err = thirdparty.GetPatchSummaries(patchContents)
+	modulePatch.PatchSet.Summary, err = thirdparty.GetPatchSummaries(ctx, patchContents)
 	if err != nil {
 		return modulePatch, errors.Wrap(err, "getting patch summaries")
 	}

@@ -15,7 +15,7 @@ import (
 func (r *distroResolver) AvailableRegions(ctx context.Context, obj *model.APIDistro) ([]string, error) {
 	settings := evergreen.GetEnvironment().Settings()
 	d := obj.ToService()
-	availableRegions := d.GetRegionsList(settings.Providers.AWS.AllowedRegions)
+	availableRegions := d.GetRegionsList(ctx, settings.Providers.AWS.AllowedRegions)
 	return availableRegions, nil
 }
 

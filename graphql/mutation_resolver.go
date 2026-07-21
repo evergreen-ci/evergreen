@@ -388,7 +388,7 @@ func (r *mutationResolver) UpdateHostStatus(ctx context.Context, hostIds []strin
 func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []string, hidden bool) ([]*restModel.APIPatch, error) {
 	user := mustHaveUser(ctx)
 	updatedPatches := []*restModel.APIPatch{}
-	patches, err := patch.Find(ctx, patch.ByStringIds(patchIds))
+	patches, err := patch.Find(ctx, patch.ByStringIds(ctx, patchIds))
 
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patches '%s': %s", patchIds, err.Error()))
@@ -845,7 +845,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 	}
 
 	apiHost := restModel.APIHost{}
-	apiHost.BuildFromService(h, nil)
+	apiHost.BuildFromService(ctx, h, nil)
 	return &apiHost, nil
 }
 
@@ -880,7 +880,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
 	}
-	availableRegions := d.GetRegionsList(settings.Providers.AWS.AllowedRegions)
+	availableRegions := d.GetRegionsList(ctx, settings.Providers.AWS.AllowedRegions)
 	if !utility.StringSliceContains(availableRegions, options.Region) {
 		return nil, InputValidationError.Send(ctx, fmt.Sprintf("distro '%s' only supports spawn hosts in the following regions: %s", options.DistroID, strings.Join(availableRegions, ", ")))
 	}
@@ -901,7 +901,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		return nil, InternalServerError.Send(ctx, "creating intent for spawn host")
 	}
 	apiHost := restModel.APIHost{}
-	apiHost.BuildFromService(spawnHost, nil)
+	apiHost.BuildFromService(ctx, spawnHost, nil)
 	return &apiHost, nil
 }
 
@@ -1018,7 +1018,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, updateSpaw
 		return nil, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
 	apiHost := restModel.APIHost{}
-	apiHost.BuildFromService(h, nil)
+	apiHost.BuildFromService(ctx, h, nil)
 	return &apiHost, nil
 }
 

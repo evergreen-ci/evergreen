@@ -52,7 +52,7 @@ func New(apiURL string) Config {
 			patchIds[i] = v.(string)
 		}
 
-		patches, err := patch.Find(ctx, patch.ByStringIds(patchIds))
+		patches, err := patch.Find(ctx, patch.ByStringIds(ctx, patchIds))
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patches '%s': %s", patchIds, err.Error()))
 		}

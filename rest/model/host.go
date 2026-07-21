@@ -113,8 +113,8 @@ type TaskInfo struct {
 
 // BuildFromService converts from service level structs to an APIHost. If a task is given,
 // we set that to the APIHost's running task.
-func (apiHost *APIHost) BuildFromService(h *host.Host, t *task.Task) {
-	apiHost.buildFromHostStruct(h)
+func (apiHost *APIHost) BuildFromService(ctx context.Context, h *host.Host, t *task.Task) {
+	apiHost.buildFromHostStruct(ctx, h)
 	if t != nil {
 		apiHost.RunningTask = TaskInfo{
 			Id:           utility.ToStringPtr(t.Id),
@@ -127,7 +127,7 @@ func (apiHost *APIHost) BuildFromService(h *host.Host, t *task.Task) {
 	}
 }
 
-func (apiHost *APIHost) buildFromHostStruct(h *host.Host) {
+func (apiHost *APIHost) buildFromHostStruct(ctx context.Context, h *host.Host) {
 	if h == nil {
 		return
 	}
@@ -163,7 +163,7 @@ func (apiHost *APIHost) buildFromHostStruct(h *host.Host) {
 	imageId, err := h.Distro.GetImageID()
 	if err != nil {
 		// report error but do not fail function because of a bad imageId
-		grip.Error(context.Background(), message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "could not get image ID",
 			"host":    h.Id,
 			"distro":  h.Distro.Id,
