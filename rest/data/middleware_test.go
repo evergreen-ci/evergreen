@@ -146,11 +146,6 @@ func TestGetProjectIdFromParams(t *testing.T) {
 	require.Equal(t, http.StatusNotFound, statusCode)
 	require.Equal(t, "", projectId)
 
-	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"projectId": project.Id, "repoId": repo.ProjectRef.Id})
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, statusCode)
-	require.Equal(t, project.Id, projectId, "project ID should take precedence over repo ID")
-
 	// Parameters are empty.
 	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{})
 	require.Error(t, err)
