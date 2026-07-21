@@ -743,7 +743,7 @@ func (h *versionManifestProofHistoryGetHandler) Run(ctx context.Context) gimlet.
 	response := &versionManifestProofHistoryResponse{
 		Versions: []versionManifestProofHistoryItem{},
 	}
-	for i := 0; i < numVersionsToReturn; i++ {
+	for i := range numVersionsToReturn {
 		var comparisonVersion *dbModel.Version
 		var comparisonManifest *manifest.Manifest
 		if i+1 < len(versions) {
