@@ -706,7 +706,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 		patchUpdateReq.VariantsTasks = append(patchUpdateReq.VariantsTasks, variantToSchedule)
 	}
-	code, err := units.SchedulePatch(ctx, p.env, p.patchId, dbVersion, patchUpdateReq)
+	code, err := units.SchedulePatch(ctx, p.env, p.patchId, dbVersion, patchUpdateReq, project)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "scheduling patch"))
 	}

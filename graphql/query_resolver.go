@@ -737,21 +737,19 @@ func (r *queryResolver) MyPublicKeys(ctx context.Context) ([]*restModel.APIPubKe
 }
 
 // User is the resolver for the user field.
-func (r *queryResolver) User(ctx context.Context, userID *string) (*restModel.APIDBUser, error) {
+func (r *queryResolver) User(ctx context.Context, userID *string) (*user.DBUser, error) {
 	usr := mustHaveUser(ctx)
-	var err error
 	if userID != nil {
-		usr, err = user.FindOneById(ctx, utility.FromStringPtr(userID))
+		dbUser, err := user.FindOneById(ctx, utility.FromStringPtr(userID))
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching user '%s': %s", utility.FromStringPtr(userID), err.Error()))
 		}
-		if usr == nil {
+		if dbUser == nil {
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("user '%s' not found", utility.FromStringPtr(userID)))
 		}
+		return dbUser, nil
 	}
-	apiUser := restModel.APIDBUser{}
-	apiUser.BuildFromService(*usr)
-	return &apiUser, nil
+	return usr, nil
 }
 
 // UserLite is the resolver for the userLite field.
@@ -1034,7 +1032,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		VariantCaseSensitive: utility.FromBoolTPtr(options.TaskCaseSensitive), // Default to true for performance reasons.
 	}
 
-	mostRecentWaterfallVersion, err := model.GetMostRecentWaterfallVersion(ctx, projectId)
+	mostRecentWaterfallVersion, err := model.VersionFindOneSecondary(ctx, model.VersionByMostRecentSystemRequester(projectId).WithFields(model.VersionRevisionOrderNumberKey))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching most recent waterfall version: %s", err.Error()))
 	}
@@ -1135,10 +1133,14 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 	}
 
 	flattenedVersions := []*restModel.APIVersion{}
+	versionPtrs := []*model.Version{}
 	for _, v := range allVersions {
 		apiVersion := &restModel.APIVersion{}
 		apiVersion.BuildFromService(ctx, v)
 		flattenedVersions = append(flattenedVersions, apiVersion)
+
+		vCopy := v
+		versionPtrs = append(versionPtrs, &vCopy)
 	}
 
 	results := &Waterfall{
@@ -1151,6 +1153,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 			HasNextPage:            nextPageOrder > 0,
 			HasPrevPage:            prevPageOrder > 0,
 		},
+		Versions: versionPtrs,
 	}
 
 	return results, nil

@@ -1416,6 +1416,13 @@ func validateDisplayTaskNames(project *model.Project) ValidationErrors {
 	// check display tasks
 	for _, bv := range project.BuildVariants {
 		for _, dp := range bv.DisplayTasks {
+			if dp.Name == "" {
+				errs = append(errs,
+					ValidationError{
+						Level:   Error,
+						Message: fmt.Sprintf("display task in buildvariant '%s' must have a name", bv.Name),
+					})
+			}
 			for _, etn := range dp.ExecTasks {
 				if strings.HasPrefix(etn, "display_") {
 					errs = append(errs,
@@ -1667,6 +1674,32 @@ func checkTaskRuns(project *model.Project) ValidationErrors {
 				} else {
 					hasValidAllowedRequester = true
 				}
+			}
+		}
+
+		if len(bvtu.AllowedBranches) > 0 && len(bvtu.IgnoredBranches) > 0 {
+			errs = append(errs, ValidationError{
+				Level: Warning,
+				Message: fmt.Sprintf("task '%s' in build variant '%s' specifies both allowed_branches and ignored_branches; allowed_branches takes precedence",
+					bvtu.Name, bvtu.Variant),
+			})
+		}
+		for _, pattern := range bvtu.AllowedBranches {
+			if _, err := regexp.Compile(pattern); err != nil {
+				errs = append(errs, ValidationError{
+					Level: Warning,
+					Message: fmt.Sprintf("task '%s' in build variant '%s' has invalid allowed_branches regex '%s': %s",
+						bvtu.Name, bvtu.Variant, pattern, err.Error()),
+				})
+			}
+		}
+		for _, pattern := range bvtu.IgnoredBranches {
+			if _, err := regexp.Compile(pattern); err != nil {
+				errs = append(errs, ValidationError{
+					Level: Warning,
+					Message: fmt.Sprintf("task '%s' in build variant '%s' has invalid ignored_branches regex '%s': %s",
+						bvtu.Name, bvtu.Variant, pattern, err.Error()),
+				})
 			}
 		}
 

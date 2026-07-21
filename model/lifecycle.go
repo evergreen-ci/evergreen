@@ -684,10 +684,10 @@ func CreateBuildFromVersionNoInsert(ctx context.Context, creationInfo TaskCreati
 
 // CreateTasksFromGroup expands a task group into its individual tasks and
 // returns a build variant task unit for each task in the task group.
-func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project, requester string) []BuildVariantTaskUnit {
+func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project, requester, branch string) []BuildVariantTaskUnit {
 	var willRun []BuildVariantTaskUnit
 	for _, bvt := range proj.tasksFromGroup(in) {
-		if !bvt.IsDisabled() && !bvt.SkipOnRequester(requester) {
+		if !bvt.IsDisabled() && !bvt.SkipOnRequester(requester) && !bvt.skipOnBranch(branch) {
 			willRun = append(willRun, bvt)
 		}
 	}
@@ -716,19 +716,20 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 		tgMap[tg.Name] = tg
 	}
 
+	branch := creationInfo.Version.Branch
 	for _, task := range creationInfo.BuildVariant.Tasks {
 		// Verify that the config isn't malformed.
 		if task.Name != "" && !task.IsGroup {
-			if task.IsDisabled() || task.SkipOnRequester(creationInfo.Build.Requester) {
+			if task.IsDisabled() || task.SkipOnRequester(creationInfo.Build.Requester) || task.skipOnBranch(branch) {
 				continue
 			}
 			if createAll || utility.StringSliceContains(creationInfo.TaskNames, task.Name) {
 				tasksToCreate = append(tasksToCreate, task)
 			}
 		} else if _, ok := tgMap[task.Name]; ok {
-			tasksFromVariant := CreateTasksFromGroup(task, creationInfo.Project, creationInfo.Build.Requester)
+			tasksFromVariant := CreateTasksFromGroup(task, creationInfo.Project, creationInfo.Build.Requester, branch)
 			for _, taskFromVariant := range tasksFromVariant {
-				if task.IsDisabled() || taskFromVariant.SkipOnRequester(creationInfo.Build.Requester) {
+				if task.IsDisabled() || taskFromVariant.SkipOnRequester(creationInfo.Build.Requester) || taskFromVariant.skipOnBranch(branch) {
 					continue
 				}
 				if createAll || utility.StringSliceContains(creationInfo.TaskNames, taskFromVariant.Name) {
@@ -1592,6 +1593,13 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 	if err = allTasks.InsertUnordered(ctx); err != nil {
 		return nil, nil, errors.Wrap(err, "inserting tasks")
 	}
+	grip.Info(ctx, message.Fields{
+		"message":   "inserted tasks",
+		"num_tasks": len(allTasks),
+		"version":   creationInfo.Version.Id,
+		"project":   creationInfo.Version.Identifier,
+		"runner":    "addNewBuilds",
+	})
 	numTasksModified := numEstimatedActivatedGeneratedTasks + len(newActivatedTaskIds)
 	if err = task.UpdateSchedulingLimit(ctx, creationInfo.Version.AuthorID, creationInfo.Version.Requester, numTasksModified, true); err != nil {
 		return nil, nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.AuthorID)
@@ -1794,6 +1802,13 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 	if err = allTasks.InsertUnordered(ctx); err != nil {
 		return nil, nil, errors.Wrap(err, "inserting tasks")
 	}
+	grip.Info(ctx, message.Fields{
+		"message":   "inserted tasks",
+		"num_tasks": len(allTasks),
+		"version":   creationInfo.Version.Id,
+		"project":   creationInfo.Version.Identifier,
+		"runner":    "addNewTasksToExistingBuilds",
+	})
 
 	if err = RefreshTasksCache(ctx, buildIdsToRefresh); err != nil {
 		return nil, nil, errors.Wrap(err, "refreshing task caches for updated builds")

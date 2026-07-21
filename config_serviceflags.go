@@ -15,6 +15,7 @@ type ServiceFlags struct {
 	HostInitDisabled                   bool `bson:"host_init_disabled" json:"host_init_disabled"`
 	LargeParserProjectsDisabled        bool `bson:"large_parser_projects_disabled" json:"large_parser_projects_disabled"`
 	MonitorDisabled                    bool `bson:"monitor_disabled" json:"monitor_disabled"`
+	MergeQueueRecoveryEnabled          bool `bson:"merge_queue_recovery_enabled" json:"merge_queue_recovery_enabled"`
 	AlertsDisabled                     bool `bson:"alerts_disabled" json:"alerts_disabled"`
 	AgentStartDisabled                 bool `bson:"agent_start_disabled" json:"agent_start_disabled"`
 	RepotrackerDisabled                bool `bson:"repotracker_disabled" json:"repotracker_disabled"`
@@ -41,8 +42,6 @@ type ServiceFlags struct {
 	UseMergeQueuePathFilteringDisabled bool `bson:"use_merge_queue_path_filtering_disabled" json:"use_merge_queue_path_filtering_disabled"`
 	PSLoggingDisabled                  bool `bson:"ps_logging_disabled" json:"ps_logging_disabled"`
 	PodDiagnosticsDisabled             bool `bson:"pod_diagnostics_disabled" json:"pod_diagnostics_disabled"`
-	WebhookSecretMigrationEnabled      bool `bson:"webhook_secret_migration_enabled" json:"webhook_secret_migration_enabled"`
-	WebhookSecretCleanupEnabled        bool `bson:"webhook_secret_cleanup_enabled" json:"webhook_secret_cleanup_enabled"`
 	RetryFailedLogMoveEnabled          bool `bson:"retry_failed_log_move_enabled" json:"retry_failed_log_move_enabled"`
 	ProjectTranslationCacheEnabled     bool `bson:"project_translation_cache_enabled" json:"project_translation_cache_enabled"`
 
@@ -75,6 +74,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			hostInitKey:                           c.HostInitDisabled,
 			largeParserProjectsDisabledKey:        c.LargeParserProjectsDisabled,
 			monitorKey:                            c.MonitorDisabled,
+			mergeQueueRecoveryEnabledKey:          c.MergeQueueRecoveryEnabled,
 			alertsKey:                             c.AlertsDisabled,
 			agentStartKey:                         c.AgentStartDisabled,
 			repotrackerKey:                        c.RepotrackerDisabled,
@@ -107,8 +107,6 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			useMergeQueuePathFilteringDisabledKey: c.UseMergeQueuePathFilteringDisabled,
 			psLoggingDisabledKey:                  c.PSLoggingDisabled,
 			podDiagnosticsDisabledKey:             c.PodDiagnosticsDisabled,
-			webhookSecretMigrationEnabledKey:      c.WebhookSecretMigrationEnabled,
-			webhookSecretCleanupEnabledKey:        c.WebhookSecretCleanupEnabled,
 			retryFailedLogMoveEnabledKey:          c.RetryFailedLogMoveEnabled,
 			projectTranslationCacheEnabledKey:     c.ProjectTranslationCacheEnabled,
 			secondaryReadsDisabledKey:             c.SecondaryReadsDisabled,

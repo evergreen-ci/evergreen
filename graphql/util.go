@@ -55,12 +55,11 @@ func getGroupedFiles(ctx context.Context, name string, taskID string, execution 
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	hasUser := gimlet.GetUser(ctx) != nil
-	strippedFiles, err := artifact.StripHiddenFiles(ctx, taskFiles, hasUser)
-	if err != nil {
-		return nil, err
-	}
-
 	env := evergreen.GetEnvironment()
+	settings := env.Settings()
+	baseURL := settings.Ui.Url
+	strippedFiles := artifact.StripHiddenFilesLazy(taskFiles, hasUser, baseURL, taskID, execution, []byte(settings.ArtifactSignSecret))
+
 	apiFileList := []*restModel.APIFile{}
 	for _, file := range strippedFiles {
 		apiFile := restModel.APIFile{}
@@ -1127,6 +1126,22 @@ func userHasVolumePermission(ctx context.Context, u *user.DBUser, volumeId strin
 	return u.Username() == createdBy || u.HasPermission(ctx, opts)
 }
 
+// canViewUserSubscriptions returns whether the requesting user is allowed to
+// view the personal subscriptions belonging to ownerUserID. A user may view
+// their own subscriptions, and superusers may view anyone's.
+func canViewUserSubscriptions(ctx context.Context, ownerUserID string) bool {
+	u := mustHaveUser(ctx)
+	if u.Username() == ownerUserID {
+		return true
+	}
+	return u.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionAdminSettings,
+		RequiredLevel: evergreen.AdminSettingsEdit.Value,
+	})
+}
+
 func userHasProjectSettingsPermission(ctx context.Context, u *user.DBUser, projectId string, requiredLevel int) bool {
 	opts := gimlet.PermissionOpts{
 		Resource:      projectId,
@@ -1466,13 +1481,11 @@ func buildOptionsFromParentArgs(ctx context.Context, fc *graphql.FieldContext) (
 	}
 
 	// Get the parent object to determine if this is a project or user query.
-	// The parent.Parent should be a Project, User, or UserLite resolver.
+	// The parent.Parent should be a Project or User resolver.
 	if fc.Parent.Parent != nil {
 		switch grandparent := fc.Parent.Parent.Result.(type) {
 		case *restModel.APIProjectRef:
 			opts.Project = grandparent.Id
-		case *restModel.APIDBUser:
-			opts.Author = grandparent.UserID
 		case *user.DBUser:
 			opts.Author = utility.ToStringPtr(grandparent.Id)
 		}

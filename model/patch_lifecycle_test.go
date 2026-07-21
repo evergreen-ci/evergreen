@@ -306,7 +306,7 @@ func TestFinalizePatch(t *testing.T) {
 			p.ProjectStorageMethod = ppStorageMethod
 			require.NoError(t, p.Insert(t.Context()))
 
-			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester)
+			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester, nil)
 			require.NoError(t, err)
 			assert.NotNil(t, version)
 			assert.Len(t, version.Parameters, 1)
@@ -321,6 +321,37 @@ func TestFinalizePatch(t *testing.T) {
 			require.NoError(t, err)
 			assert.Len(t, builds, 1)
 			assert.Len(t, builds[0].Tasks, 2)
+			tasks, err := task.Find(ctx, bson.M{})
+			require.NoError(t, err)
+			assert.Len(t, tasks, 2)
+		},
+		"VersionCreationWithPreTranslatedProject": func(t *testing.T, p *patch.Patch, patchConfig *PatchConfig) {
+			patchConfig.PatchedParserProject.Id = p.Id.Hex()
+			require.NoError(t, patchConfig.PatchedParserProject.Insert(t.Context()))
+			ppStorageMethod := evergreen.ProjectStorageMethodDB
+			p.ProjectStorageMethod = ppStorageMethod
+			require.NoError(t, p.Insert(t.Context()))
+
+			translatedProject, _, err := FindAndTranslateProjectForPatch(ctx, patchTestConfig, p)
+			require.NoError(t, err)
+			require.NotNil(t, translatedProject)
+
+			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester, translatedProject)
+			require.NoError(t, err)
+			require.NotNil(t, version)
+			assert.Len(t, version.Parameters, 1)
+			assert.Equal(t, ppStorageMethod, version.ProjectStorageMethod)
+
+			dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+			require.NoError(t, err)
+			require.NotZero(t, dbPatch)
+			assert.True(t, dbPatch.Activated)
+
+			builds, err := build.Find(t.Context(), build.All)
+			require.NoError(t, err)
+			assert.Len(t, builds, 1)
+			assert.Len(t, builds[0].Tasks, 2)
+
 			tasks, err := task.Find(ctx, bson.M{})
 			require.NoError(t, err)
 			assert.Len(t, tasks, 2)
@@ -366,7 +397,7 @@ func TestFinalizePatch(t *testing.T) {
 			_, err = baseManifest.TryInsert(t.Context())
 			require.NoError(t, err)
 
-			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester)
+			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester, nil)
 			require.NoError(t, err)
 			assert.NotNil(t, version)
 			// Ensure that the manifest was created and that auto_update worked for
@@ -421,7 +452,7 @@ func TestFinalizePatch(t *testing.T) {
 			_, err = baseManifest.TryInsert(t.Context())
 			require.NoError(t, err)
 
-			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester)
+			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester, nil)
 			require.NoError(t, err)
 			assert.NotNil(t, version)
 
@@ -445,13 +476,13 @@ func TestFinalizePatch(t *testing.T) {
 			p.VariantsTasks = []patch.VariantTasks{}
 			require.NoError(t, p.Insert(t.Context()))
 
-			_, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester)
+			_, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester, nil)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "cannot finalize patch with no tasks")
 
 			// commit queue patch should fail with different error
 			p.Alias = evergreen.CommitQueueAlias
-			_, err = FinalizePatch(ctx, p, evergreen.GithubMergeRequester)
+			_, err = FinalizePatch(ctx, p, evergreen.GithubMergeRequester, nil)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "no builds or tasks for merge queue version")
 		},
@@ -461,7 +492,7 @@ func TestFinalizePatch(t *testing.T) {
 			p.ProjectStorageMethod = evergreen.ProjectStorageMethodDB
 			require.NoError(t, p.Insert(t.Context()))
 
-			version, err := FinalizePatch(ctx, p, evergreen.GithubPRRequester)
+			version, err := FinalizePatch(ctx, p, evergreen.GithubPRRequester, nil)
 			require.NoError(t, err)
 			assert.NotNil(t, version)
 			assert.Len(t, version.Parameters, 1)
@@ -728,6 +759,96 @@ func TestMakePatchedConfigShellMetacharactersInPath(t *testing.T) {
 	_, _ = MakePatchedConfig(ctx, opts, string(projectBytes))
 	// no shell execution should have occurred
 	assert.NoFileExists(t, "/tmp/test")
+}
+
+func TestMakePatchedConfigRenameFromPathTraversal(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	env := evergreen.GetEnvironment()
+	cwd := testutil.GetDirectoryOfFile()
+	projectBytes, err := os.ReadFile(filepath.Join(cwd, "testdata", "include1.yml"))
+	require.NoError(t, err)
+
+	victimPath := filepath.Join(t.TempDir(), "victim.txt")
+	require.NoError(t, os.WriteFile(victimPath, []byte("do-not-overwrite"), 0600))
+
+	for testName, testCase := range map[string]struct {
+		fromPath string
+		prefix   string
+	}{
+		"RenameFromTraversalShouldError": {
+			fromPath: "../../../../etc/passwd",
+			prefix:   "rename",
+		},
+		"CopyFromTraversalShouldError": {
+			fromPath: "../../../../etc/passwd",
+			prefix:   "copy",
+		},
+		"RenameFromAbsolutePathShouldError": {
+			fromPath: victimPath,
+			prefix:   "rename",
+		},
+		"CopyFromAbsolutePathShouldError": {
+			fromPath: victimPath,
+			prefix:   "copy",
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			diff := fmt.Sprintf(`diff --git a/%[1]s b/renamed.yml
+similarity index 100%%
+%[2]s from %[1]s
+%[2]s to renamed.yml
+`, testCase.fromPath, testCase.prefix)
+			p := &patch.Patch{
+				Patches: []patch.ModulePatch{{
+					Githash: "revision",
+					PatchSet: patch.PatchSet{
+						Patch: diff,
+						Summary: []thirdparty.Summary{{
+							Name: "renamed.yml",
+						}},
+					},
+				}},
+			}
+			opts := GetProjectOpts{
+				Ref:        &ProjectRef{},
+				RemotePath: "renamed.yml",
+				PatchOpts: &PatchOpts{
+					env:   env,
+					patch: p,
+				},
+			}
+
+			_, err := MakePatchedConfig(ctx, opts, string(projectBytes))
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "invalid rename/copy source path")
+
+			contents, readErr := os.ReadFile(victimPath)
+			require.NoError(t, readErr)
+			assert.Equal(t, "do-not-overwrite", string(contents))
+			assert.FileExists(t, victimPath)
+		})
+	}
+}
+
+func TestValidatePatchRelativePath(t *testing.T) {
+	assert.NoError(t, validatePatchRelativePath("config/evergreen.yml"))
+	assert.NoError(t, validatePatchRelativePath("include1.yml"))
+
+	assert.Error(t, validatePatchRelativePath("/etc/passwd"))
+	assert.Error(t, validatePatchRelativePath("../etc/passwd"))
+	assert.Error(t, validatePatchRelativePath("foo/../../etc/passwd"))
+}
+
+func TestEnsurePathWithinDir(t *testing.T) {
+	baseDir := t.TempDir()
+
+	assert.NoError(t, ensurePathWithinDir(baseDir, filepath.Join(baseDir, "config.yml")))
+	assert.NoError(t, ensurePathWithinDir(baseDir, filepath.Join(baseDir, "subdir", "config.yml")))
+
+	assert.Error(t, ensurePathWithinDir(baseDir, filepath.Join(baseDir, "..", "outside.yml")))
+	assert.Error(t, ensurePathWithinDir(baseDir, filepath.Join(string(filepath.Separator), "etc", "passwd")))
 }
 
 func TestParseRenamedOrCopiedFile(t *testing.T) {
@@ -1228,7 +1349,7 @@ func TestConfigurePatch(t *testing.T) {
 			req := PatchUpdate{
 				Description: "updating the description only!",
 			}
-			_, err := ConfigurePatch(ctx, &evergreen.Settings{}, p, nil, pRef, req)
+			_, _, err := ConfigurePatch(ctx, &evergreen.Settings{}, p, nil, pRef, req, nil)
 			assert.NoError(t, err)
 
 			dbPatch, err := patch.FindOneId(ctx, p.Id.Hex())
@@ -1263,7 +1384,7 @@ func TestConfigurePatch(t *testing.T) {
 			for _, vt := range req.VariantsTasks {
 				expectedVarsTasks[vt.Variant] = vt
 			}
-			_, err := ConfigurePatch(ctx, &evergreen.Settings{}, p, v, pRef, req)
+			_, _, err := ConfigurePatch(ctx, &evergreen.Settings{}, p, v, pRef, req, nil)
 			assert.NoError(t, err)
 
 			dbPatch, err := patch.FindOneId(ctx, p.Id.Hex())

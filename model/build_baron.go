@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -86,25 +85,6 @@ func ValidateBbProject(ctx context.Context, projName string, proj evergreen.Buil
 	if !webhookConfigured && proj.TicketCreateProject == "" {
 		catcher.Errorf("Must provide project to create tickets for")
 	}
-	if proj.BFSuggestionServer != "" {
-		if _, err = url.Parse(proj.BFSuggestionServer); err != nil {
-			catcher.Errorf("Failed to parse bf_suggestion_server for project '%s'", projName)
-		}
-		if proj.BFSuggestionUsername == "" && proj.BFSuggestionPassword != "" {
-			catcher.Errorf("Failed validating configuration for project '%s': "+
-				"bf_suggestion_password must be blank if bf_suggestion_username is blank", projName)
-		}
-		if proj.BFSuggestionTimeoutSecs <= 0 {
-			catcher.Errorf("Failed validating configuration for project '%s': "+
-				"bf_suggestion_timeout_secs must be positive", projName)
-		}
-	} else if proj.BFSuggestionUsername != "" || proj.BFSuggestionPassword != "" {
-		catcher.Errorf("Failed validating configuration for project '%s': "+
-			"bf_suggestion_username and bf_suggestion_password must be blank when alt_endpoint_url is blank", projName)
-	} else if proj.BFSuggestionTimeoutSecs != 0 {
-		catcher.Errorf("Failed validating configuration for project '%s': "+
-			"bf_suggestion_timeout_secs must be zero when bf_suggestion_url is blank", projName)
-	}
 	// the webhook cannot be used if the default build baron creation and search is configured
 	if webhookConfigured {
 		if len(proj.TicketCreateProject) != 0 {
@@ -168,16 +148,8 @@ func GetSearchReturnInfo(ctx context.Context, taskId string, exec string) (*thir
 		return nil, bbConfig, errors.Wrap(err, "searching for tickets")
 	}
 
-	var featuresURL string
-	if bbProj.BFSuggestionFeaturesURL != "" {
-		featuresURL = bbProj.BFSuggestionFeaturesURL
-		featuresURL = strings.Replace(featuresURL, "{task_id}", taskId, -1)
-		featuresURL = strings.Replace(featuresURL, "{execution}", exec, -1)
-	} else {
-		featuresURL = ""
-	}
 	bbConfig.ProjectFound = true
-	return &thirdparty.SearchReturnInfo{Issues: tickets, Search: jql, Source: source, FeaturesURL: featuresURL}, bbConfig, nil
+	return &thirdparty.SearchReturnInfo{Issues: tickets, Search: jql, Source: source}, bbConfig, nil
 }
 
 func BbGetTask(ctx context.Context, taskId string, executionString string) (*task.Task, error) {

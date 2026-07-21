@@ -2512,78 +2512,11 @@ func TestValidatePlugins(t *testing.T) {
 			}}}), ShouldResemble, ValidationErrors{})
 
 			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
-				TicketCreateProject:  "BFG",
-				TicketSearchProjects: []string{"BF", "BFG"},
-			}}}), ShouldResemble, ValidationErrors{})
-
-			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
-				TicketCreateProject:  "BFG",
-				TicketSearchProjects: []string{"BF", "BFG"},
-			}}}), ShouldResemble, ValidationErrors{})
-
-			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject: "BFG",
 			}}}), ShouldNotBeNil)
 
 			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketSearchProjects: []string{"BF", "BFG"},
-			}}}), ShouldNotBeNil)
-
-			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
-				TicketCreateProject:     "BFG",
-				TicketSearchProjects:    []string{"BF", "BFG"},
-				BFSuggestionServer:      "https://evergreen.mongodb.com",
-				BFSuggestionUsername:    "user",
-				BFSuggestionPassword:    "pass",
-				BFSuggestionTimeoutSecs: 10,
-			}}}), ShouldResemble, ValidationErrors{})
-
-			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
-				TicketCreateProject:     "BFG",
-				TicketSearchProjects:    []string{"BF", "BFG"},
-				BFSuggestionServer:      "https://evergreen.mongodb.com",
-				BFSuggestionTimeoutSecs: 10,
-			}}}), ShouldResemble, ValidationErrors{})
-
-			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
-				TicketCreateProject:  "BFG",
-				TicketSearchProjects: []string{"BF", "BFG"},
-				BFSuggestionUsername: "user",
-				BFSuggestionPassword: "pass",
-			}}}), ShouldNotBeNil)
-
-			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
-				TicketCreateProject:     "BFG",
-				TicketSearchProjects:    []string{"BF", "BFG"},
-				BFSuggestionTimeoutSecs: 10,
-			}}}), ShouldNotBeNil)
-
-			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
-				TicketCreateProject:     "BFG",
-				TicketSearchProjects:    []string{"BF", "BFG"},
-				BFSuggestionServer:      "://evergreen.mongodb.com",
-				BFSuggestionTimeoutSecs: 10,
-			}}}), ShouldNotBeNil)
-
-			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
-				TicketCreateProject:     "BFG",
-				TicketSearchProjects:    []string{"BF", "BFG"},
-				BFSuggestionServer:      "https://evergreen.mongodb.com",
-				BFSuggestionPassword:    "pass",
-				BFSuggestionTimeoutSecs: 10,
-			}}}), ShouldNotBeNil)
-			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
-				TicketCreateProject:     "BFG",
-				TicketSearchProjects:    []string{"BF", "BFG"},
-				BFSuggestionServer:      "https://evergreen.mongodb.com",
-				BFSuggestionTimeoutSecs: 0,
-			}}}), ShouldNotBeNil)
-
-			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
-				TicketCreateProject:     "BFG",
-				TicketSearchProjects:    []string{"BF", "BFG"},
-				BFSuggestionServer:      "https://evergreen.mongodb.com",
-				BFSuggestionTimeoutSecs: -1,
 			}}}), ShouldNotBeNil)
 		})
 	})
@@ -4832,6 +4765,26 @@ buildvariants:
 		errors[0].Message)
 	warnings := CheckProjectWarnings(&proj)
 	assert.Empty(warnings)
+}
+
+func TestDisplayTaskEmptyNameValidation(t *testing.T) {
+	project := &model.Project{
+		BuildVariants: []model.BuildVariant{
+			{
+				Name: "bv",
+				DisplayTasks: []patch.DisplayTask{
+					{
+						Name:      "",
+						ExecTasks: []string{"one"},
+					},
+				},
+			},
+		},
+	}
+	errs := validateDisplayTaskNames(project)
+	require.Len(t, errs, 1)
+	assert.Equal(t, Error, errs[0].Level)
+	assert.Equal(t, "display task in buildvariant 'bv' must have a name", errs[0].Message)
 }
 
 func TestValidateCreateHosts(t *testing.T) {

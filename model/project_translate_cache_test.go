@@ -21,9 +21,13 @@ import (
 func resetTranslationCacheForTesting() {
 	translationCacheMu.Lock()
 	translationCache = nil
+	translationCacheTTL = 0
 	translationCacheMu.Unlock()
 	translationGroupPtr.Store(&singleflight.Group{})
+	readTranslationGroupPtr.Store(&singleflight.Group{})
 	translationCacheEvictions.Store(0)
+	translationCacheBytes.Store(0)
+	translationCacheBytesLimit.Store(0)
 	translationKeyHitsMu.Lock()
 	translationKeyHits = map[string]int64{}
 	translationKeyHitsMu.Unlock()
@@ -307,16 +311,110 @@ func TestTranslationCacheStats(t *testing.T) {
 
 	_, _, _, err := getOrComputeTranslation("k1", true, compute)
 	require.NoError(t, err)
-	size, evictions := translationCacheStats()
+	size, evictions, _ := translationCacheStats()
 	assert.Equal(t, 1, size)
 	assert.Equal(t, int64(0), evictions, "no eviction yet, the single entry still fits")
 
 	// Adding a second entry evicts the first because the LRU was resized down to 1.
 	_, _, _, err = getOrComputeTranslation("k2", true, compute)
 	require.NoError(t, err)
-	size, evictions = translationCacheStats()
+	size, evictions, _ = translationCacheStats()
 	assert.Equal(t, 1, size, "capacity is still 1")
 	assert.Equal(t, int64(1), evictions, "adding past capacity evicted the older entry")
+}
+
+func TestTranslationCacheBytesLimitFallsBackToDefault(t *testing.T) {
+	t.Cleanup(resetTranslationCacheForTesting)
+
+	SetTranslationCacheBytesLimit(0)
+	assert.Equal(t, int64(defaultTranslationCacheBytesLimit), currentTranslationCacheBytesLimit(), "non-positive limit falls back to the default")
+
+	SetTranslationCacheBytesLimit(-5)
+	assert.Equal(t, int64(defaultTranslationCacheBytesLimit), currentTranslationCacheBytesLimit(), "negative limit falls back to the default")
+
+	SetTranslationCacheBytesLimit(4096)
+	assert.Equal(t, int64(4096), currentTranslationCacheBytesLimit(), "positive limit is used as-is")
+}
+
+func TestTranslationCacheTTLFallsBackToDefault(t *testing.T) {
+	t.Cleanup(resetTranslationCacheForTesting)
+
+	readTTL := func() time.Duration {
+		translationCacheMu.Lock()
+		defer translationCacheMu.Unlock()
+		return currentTranslationCacheTTL()
+	}
+
+	SetTranslationCacheTTL(0)
+	assert.Equal(t, defaultTranslationCacheTTL, readTTL(), "non-positive TTL falls back to the default")
+
+	SetTranslationCacheTTL(-5 * time.Minute)
+	assert.Equal(t, defaultTranslationCacheTTL, readTTL(), "negative TTL falls back to the default")
+
+	SetTranslationCacheTTL(time.Hour)
+	assert.Equal(t, time.Hour, readTTL(), "positive TTL is used as-is")
+}
+
+func TestSetTranslationCacheTTLRebuildsAndClearsEntries(t *testing.T) {
+	t.Cleanup(resetTranslationCacheForTesting)
+
+	addToTranslationCache("k", &Project{Identifier: "test"})
+	require.Equal(t, 1, getTranslationCache().Len(), "entry is cached before the TTL change")
+	require.Positive(t, translationCacheBytes.Load(), "byte total reflects the cached entry")
+
+	SetTranslationCacheTTL(time.Hour)
+
+	assert.Equal(t, 0, getTranslationCache().Len(), "changing the TTL rebuilds the cache and drops entries")
+	assert.Zero(t, translationCacheBytes.Load(), "byte accounting is reset to match the empty cache")
+}
+
+// TestByteBoundedCacheEvictsLRUToBudget shows the cache stays within the configured byte budget by
+// evicting the least-recently-used entries, keeping the most recent ones regardless of size.
+func TestByteBoundedCacheEvictsLRUToBudget(t *testing.T) {
+	t.Cleanup(resetTranslationCacheForTesting)
+	resetTranslationCacheForTesting()
+
+	makeProject := func(id string) *Project {
+		p := &Project{Identifier: id}
+		for i := 0; i < 50; i++ {
+			p.Tasks = append(p.Tasks, ProjectTask{Name: fmt.Sprintf("%s-task-%d", id, i)})
+		}
+		return p
+	}
+	entrySize, ok := estimateProjectSize(makeProject("sample"))
+	require.True(t, ok)
+	require.Positive(t, entrySize)
+
+	// Budget holds ~3 entries at a time.
+	budget := entrySize*3 + entrySize/2
+	SetTranslationCacheBytesLimit(budget)
+
+	for _, k := range []string{"k1", "k2", "k3", "k4", "k5"} {
+		_, _, _, err := getOrComputeTranslation(k, true, func() (*Project, error) {
+			return makeProject(k), nil
+		})
+		require.NoError(t, err)
+	}
+
+	_, _, bytes := translationCacheStats()
+	assert.LessOrEqual(t, bytes, budget, "running byte total stays within budget")
+	assert.False(t, getTranslationCache().Contains("k1"), "oldest entry evicted to stay within budget")
+	assert.False(t, getTranslationCache().Contains("k2"), "second-oldest entry evicted to stay within budget")
+	assert.True(t, getTranslationCache().Contains("k5"), "most-recently-used entry retained")
+}
+
+// TestByteBoundedCacheKeepsSingleOversizedEntry shows an entry larger than the whole budget is kept
+// rather than evicted immediately, so the budget can be exceeded transiently in that degenerate case.
+func TestByteBoundedCacheKeepsSingleOversizedEntry(t *testing.T) {
+	t.Cleanup(resetTranslationCacheForTesting)
+	resetTranslationCacheForTesting()
+
+	SetTranslationCacheBytesLimit(1)
+	_, _, _, err := getOrComputeTranslation("big", true, func() (*Project, error) {
+		return &Project{Identifier: "big", Tasks: []ProjectTask{{Name: "t"}}}, nil
+	})
+	require.NoError(t, err)
+	assert.True(t, getTranslationCache().Contains("big"), "a single entry larger than the budget is kept")
 }
 
 // TestContentTranslationKeySelfInvalidates shows that changed content yields a new key, so a stale

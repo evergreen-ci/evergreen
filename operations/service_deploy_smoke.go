@@ -52,18 +52,17 @@ func startLocalEvergreen() cli.Command {
 
 func smokeStartEvergreen() cli.Command {
 	const (
-		binaryFlagName         = "binary"
-		agentFlagName          = "agent"
-		webFlagName            = "web"
-		agentMonitorFlagName   = "monitor"
-		distroIDFlagName       = "distro"
-		apiServerURLFlagName   = "api_server"
-		modeFlagName           = "mode"
-		execModeIDFlagName     = "exec_mode_id"
-		execModeSecretFlagName = "exec_mode_secret"
-		statusPort             = "2287"
-		monitorPort            = 2288
-		jasperPort             = 2289
+		binaryFlagName       = "binary"
+		agentFlagName        = "agent"
+		webFlagName          = "web"
+		agentMonitorFlagName = "monitor"
+		distroIDFlagName     = "distro"
+		apiServerURLFlagName = "api_server"
+		hostIDFlagName       = "host_id"
+		hostSecretFlagName   = "host_secret"
+		statusPort           = "2287"
+		monitorPort          = 2288
+		jasperPort           = 2289
 	)
 
 	wd, err := os.Getwd()
@@ -107,15 +106,11 @@ func smokeStartEvergreen() cli.Command {
 				Usage: "the distro ID of the agent monitor",
 			},
 			cli.StringFlag{
-				Name:  modeFlagName,
-				Usage: "run the agent in host mode",
-			},
-			cli.StringFlag{
-				Name:  execModeIDFlagName,
+				Name:  hostIDFlagName,
 				Usage: "the ID of the host running the agent",
 			},
 			cli.StringFlag{
-				Name:  execModeSecretFlagName,
+				Name:  hostSecretFlagName,
 				Usage: "the secret of the host running the agent",
 			},
 		},
@@ -126,10 +121,9 @@ func smokeStartEvergreen() cli.Command {
 			startWeb := c.Bool(webFlagName)
 			startAgent := c.Bool(agentFlagName)
 			startAgentMonitor := c.Bool(agentMonitorFlagName)
-			execModeID := c.String(execModeIDFlagName)
-			execModeSecret := c.String(execModeSecretFlagName)
+			hostID := c.String(hostIDFlagName)
+			hostSecret := c.String(hostSecretFlagName)
 			distroID := c.String(distroIDFlagName)
-			mode := c.String(modeFlagName)
 			apiServerURL := c.String(apiServerURLFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -144,19 +138,12 @@ func smokeStartEvergreen() cli.Command {
 			}
 
 			if startAgent {
-
-				var envVars []string
-				switch mode {
-				case string(globals.HostMode):
-					envVars = makeHostAuthEnvVars(execModeID, execModeSecret)
-				}
-
 				err := smokeRunBinary(exit, "agent",
 					wd,
-					envVars,
+					makeHostAuthEnvVars(hostID, hostSecret),
 					binary,
 					"agent",
-					fmt.Sprintf("--mode=%s", mode),
+					fmt.Sprintf("--mode=%s", globals.HostMode),
 					"--api_server", apiServerURL,
 					"--log_output", string(globals.LogOutputFile),
 					"--log_prefix", "smoke.agent",
@@ -200,7 +187,7 @@ func smokeStartEvergreen() cli.Command {
 					exit,
 					"agent.monitor",
 					wd,
-					makeHostAuthEnvVars(execModeID, execModeSecret),
+					makeHostAuthEnvVars(hostID, hostSecret),
 					binary,
 					"agent",
 					fmt.Sprintf("--mode=%s", globals.HostMode),

@@ -181,6 +181,48 @@
       }
     },
     {
+      "query_file": "prev_completed_skip_on_success_completed_task.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "only_success_next",
+            "status": "success",
+            "prevTaskCompleted": null
+          }
+        }
+      }
+    },
+    {
+      "query_file": "prev_completed_skip_on_success_active_task.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "current_task",
+            "status": "started",
+            "prevTaskCompleted": {
+              "id": "prev_success",
+              "status": "success"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "prev_completed_no_skip_completed_task.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "only_success_next",
+            "status": "success",
+            "prevTaskCompleted": {
+              "id": "only_success_prev",
+              "status": "success"
+            }
+          }
+        }
+      }
+    },
+    {
       "query_file": "patch_task_error.graphql",
       "result": {
         "errors": [

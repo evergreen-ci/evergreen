@@ -1340,7 +1340,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, pRef.AttachToRepo(ctx, dbUser))
 			assert.NotEmpty(t, pRef.RepoRefId)
 			assert.True(t, pRef.UseRepoSettings())
-			assert.NoError(t, RemoveProjectAlias(ctx, projectAlias.ID.Hex()))
+			assert.NoError(t, RemoveProjectAlias(ctx, projectAlias.ProjectID, projectAlias.ID.Hex()))
 
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
 			aliases, err = FindAliasesForProjectFromDb(t.Context(), pRef.Id)
@@ -3539,11 +3539,9 @@ func TestMergeWithProjectConfig(t *testing.T) {
 				},
 			},
 			BuildBaronSettings: &evergreen.BuildBaronSettings{
-				TicketCreateProject:     "BFG",
-				TicketCreateIssueType:   "Bug",
-				TicketSearchProjects:    []string{"BF", "BFG"},
-				BFSuggestionServer:      "https://evergreen.mongodb.com",
-				BFSuggestionTimeoutSecs: 10,
+				TicketCreateProject:   "BFG",
+				TicketCreateIssueType: "Bug",
+				TicketSearchProjects:  []string{"BF", "BFG"},
 			},
 			GithubPRTriggerAliases: []string{"one", "two"},
 			GithubMQTriggerAliases: []string{"three", "four"},
@@ -3561,8 +3559,6 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	assert.True(t, *projectRef.WorkstationConfig.GitClone)
 	assert.Equal(t, "expeliarmus", projectRef.WorkstationConfig.SetupCommands[0].Command)
 
-	assert.Equal(t, "https://evergreen.mongodb.com", projectRef.BuildBaronSettings.BFSuggestionServer)
-	assert.Equal(t, 10, projectRef.BuildBaronSettings.BFSuggestionTimeoutSecs)
 	assert.Equal(t, "EVG", projectRef.BuildBaronSettings.TicketCreateProject)
 	assert.Equal(t, "Bug", projectRef.BuildBaronSettings.TicketCreateIssueType)
 	assert.Equal(t, []string{"BF", "BFG"}, projectRef.BuildBaronSettings.TicketSearchProjects)

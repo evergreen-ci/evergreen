@@ -44,6 +44,10 @@ input TaskPriority {
   priority: Int!
 }
 
+input PrevTaskOptions {
+  skipOnParentCompleted: Boolean
+}
+
 ###### TYPES ######
 """
 Task models a task, the simplest unit of execution for Evergreen.
@@ -124,7 +128,7 @@ type Task {
   prevTask may be in-progress
   """
   prevTask: Task
-  prevTaskCompleted: Task
+  prevTaskCompleted(prevTaskOptions: PrevTaskOptions): Task
   prevTaskFailing: Task
   prevTaskPassing: Task
   priority: Int

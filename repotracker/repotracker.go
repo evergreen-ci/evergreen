@@ -220,6 +220,13 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 	var newestVersion *model.Version
 	ref := repoTracker.ProjectRef
 
+	if len(revisions) > 0 {
+		err := model.UpsertRepositoryRevision(ctx, ref.Owner, ref.Repo, ref.Branch, revisions[0].Revision, time.Now())
+		if err != nil {
+			return errors.Wrapf(err, "upserting latest repository revision '%s'", revisions[0].Revision)
+		}
+	}
+
 	// Since the revisions are ordered most to least recent, iterate backwards so that they're processed in order of
 	// least to most recent.
 	for i := len(revisions) - 1; i >= 0; i-- {
@@ -709,6 +716,7 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		Repo:                 ref.Repo,
 		Requester:            evergreen.RepotrackerVersionRequester,
 		Revision:             metadata.Revision.Revision,
+		IngestTime:           metadata.IngestTime,
 		Status:               evergreen.VersionCreated,
 		RevisionOrderNumber:  number,
 		TriggerID:            metadata.TriggerID,
@@ -920,7 +928,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}
 	}
 
-	pairsToCreate, err = model.IncludeDependencies(projectInfo.Project, pairsToCreate, v.Requester, nil)
+	pairsToCreate, err = model.IncludeDependencies(projectInfo.Project, pairsToCreate, v.Requester, v.Branch, nil)
 	grip.Warning(ctx, message.WrapError(err, message.Fields{
 		"message": "error including dependencies",
 		"project": projectInfo.Project.Identifier,
@@ -1078,7 +1086,9 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			return errors.Wrap(err, "starting transaction")
 		}
 		database := env.DB()
-		v.IngestTime = time.Now()
+		if utility.IsZeroTime(v.IngestTime) {
+			v.IngestTime = time.Now()
+		}
 		_, err = database.Collection(model.VersionCollection).InsertOne(ctx, v)
 		if err != nil {
 			grip.Notice(ctx, message.WrapError(err, message.Fields{
@@ -1150,6 +1160,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			"project":   v.Identifier,
 			"requester": v.Requester,
 			"runner":    RunnerName,
+			"num_tasks": len(tasksToCreate),
 		})
 		return nil
 	}
