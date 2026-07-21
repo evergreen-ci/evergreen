@@ -296,33 +296,74 @@ func (p *patchesByUserHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (p *patchesByUserHandler) Run(ctx context.Context) gimlet.Responder {
-	// sortAsc set to false in order to display patches in desc chronological order
-	patches, err := data.FindPatchesByUser(ctx, p.user, p.key, p.limit+1)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patches for user '%s'", p.user))
+	usr := MustHaveUser(ctx)
+	isSuperUser := usr.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	})
+
+	projectPermitted := make(map[string]bool)
+	var permitted []model.APIPatch
+	cursor := p.key
+	const maxIterations = 5
+
+	for i := 0; i < maxIterations && len(permitted) <= p.limit; i++ {
+		fetchLimit := p.limit + 1
+		patches, err := data.FindPatchesByUser(ctx, p.user, cursor, fetchLimit)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patches for user '%s'", p.user))
+		}
+
+		for _, ap := range patches {
+			projectID := utility.FromStringPtr(ap.ProjectId)
+			if !isSuperUser && projectID != "" {
+				if _, checked := projectPermitted[projectID]; !checked {
+					projectPermitted[projectID] = usr.HasPermission(ctx, gimlet.PermissionOpts{
+						Resource:      projectID,
+						ResourceType:  evergreen.ProjectResourceType,
+						Permission:    evergreen.PermissionTasks,
+						RequiredLevel: evergreen.TasksView.Value,
+					})
+				}
+				if !projectPermitted[projectID] {
+					continue
+				}
+			}
+			permitted = append(permitted, ap)
+			if len(permitted) > p.limit {
+				break
+			}
+		}
+
+		if len(patches) < fetchLimit {
+			break
+		}
+		cursor = *patches[len(patches)-1].CreateTime
 	}
 
 	resp := gimlet.NewResponseBuilder()
-	if len(patches) > p.limit {
-		err = resp.SetPages(&gimlet.ResponsePages{
+	if len(permitted) > p.limit {
+		err := resp.SetPages(&gimlet.ResponsePages{
 			Next: &gimlet.Page{
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
 				BaseURL:         p.url,
-				Key:             patches[p.limit].CreateTime.Format(model.APITimeFormat),
+				Key:             permitted[p.limit].CreateTime.Format(model.APITimeFormat),
 				Limit:           p.limit,
 			},
 		})
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "paginating response"))
 		}
-		patches = patches[:p.limit]
+		permitted = permitted[:p.limit]
 	}
-	for _, model := range patches {
-		err = resp.AddData(model)
+	for _, m := range permitted {
+		err := resp.AddData(m)
 		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding response data for patch '%s'", utility.FromStringPtr(model.Id)))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding response data for patch '%s'", utility.FromStringPtr(m.Id)))
 		}
 	}
 

@@ -553,12 +553,16 @@ func (s *PatchesByUserSuite) SetupTest() {
 	}
 }
 
+func (s *PatchesByUserSuite) userCtx() context.Context {
+	return gimlet.AttachUser(s.T().Context(), &user.DBUser{Id: "caller"})
+}
+
 func (s *PatchesByUserSuite) TestPaginatorShouldSucceedIfNoResults() {
 	s.route.user = "zzz"
 	s.route.key = s.now
 	s.route.limit = 1
 
-	resp := s.route.Run(context.Background())
+	resp := s.route.Run(s.userCtx())
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status(), "%+v", resp.Data())
 }
@@ -568,7 +572,7 @@ func (s *PatchesByUserSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	s.route.key = s.now.Add(time.Second * 7)
 	s.route.limit = 2
 
-	resp := s.route.Run(context.Background())
+	resp := s.route.Run(s.userCtx())
 	s.Equal(http.StatusOK, resp.Status())
 	payload := resp.Data().([]any)
 
@@ -590,7 +594,7 @@ func (s *PatchesByUserSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty(
 	s.route.key = s.now.Add(time.Hour)
 	s.route.limit = 100
 
-	resp := s.route.Run(context.Background())
+	resp := s.route.Run(s.userCtx())
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 
@@ -622,6 +626,97 @@ func (s *PatchesByUserSuite) TestEmptyTimeShouldSetNow() {
 	s.Require().NoError(err)
 	s.NoError(s.route.Parse(context.Background(), req))
 	s.InDelta(time.Now().UnixNano(), s.route.key.UnixNano(), float64(time.Second))
+}
+
+func TestPatchesByUserPermissionFiltering(t *testing.T) {
+	env := testutil.NewEnvironment(t.Context(), t)
+	evergreen.SetEnvironment(env)
+	t.Cleanup(func() { evergreen.SetEnvironment(nil) })
+
+	require.NoError(t, db.ClearCollections(patch.Collection, serviceModel.ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
+
+	allowedProject := serviceModel.ProjectRef{Id: "allowed_project", Identifier: "allowed_identifier"}
+	restrictedProject := serviceModel.ProjectRef{Id: "restricted_project", Identifier: "restricted_identifier"}
+	require.NoError(t, allowedProject.Insert(t.Context()))
+	require.NoError(t, restrictedProject.Insert(t.Context()))
+
+	now := time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC)
+	patches := []patch.Patch{
+		{Author: "target", CreateTime: now, Project: allowedProject.Id},
+		{Author: "target", CreateTime: now.Add(time.Second), Project: restrictedProject.Id},
+		{Author: "target", CreateTime: now.Add(2 * time.Second), Project: allowedProject.Id},
+		{Author: "target", CreateTime: now.Add(3 * time.Second), Project: restrictedProject.Id},
+		{Author: "target", CreateTime: now.Add(4 * time.Second), Project: allowedProject.Id},
+		{Author: "target", CreateTime: now.Add(5 * time.Second), Project: restrictedProject.Id},
+	}
+	for _, p := range patches {
+		require.NoError(t, p.Insert(t.Context()))
+	}
+
+	rm := env.RoleManager()
+	require.NoError(t, rm.AddScope(t.Context(), gimlet.Scope{
+		ID:        "allowed_scope",
+		Resources: []string{allowedProject.Id},
+		Type:      evergreen.ProjectResourceType,
+	}))
+	require.NoError(t, rm.UpdateRole(t.Context(), gimlet.Role{
+		ID:    "viewer_role",
+		Scope: "allowed_scope",
+		Permissions: gimlet.Permissions{
+			evergreen.PermissionTasks: evergreen.TasksView.Value,
+		},
+	}))
+
+	require.NoError(t, rm.AddScope(t.Context(), gimlet.Scope{
+		ID:        "super_scope",
+		Resources: []string{evergreen.SuperUserPermissionsID},
+		Type:      evergreen.SuperUserResourceType,
+	}))
+	require.NoError(t, rm.UpdateRole(t.Context(), gimlet.Role{
+		ID:    "super_role",
+		Scope: "super_scope",
+		Permissions: gimlet.Permissions{
+			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+		},
+	}))
+
+	t.Run("ExcludesUnpermittedProjects", func(t *testing.T) {
+		caller := &user.DBUser{Id: "caller", SystemRoles: []string{"viewer_role"}}
+		userCtx := gimlet.AttachUser(t.Context(), caller)
+
+		route := &patchesByUserHandler{
+			user:  "target",
+			key:   now.Add(10 * time.Second),
+			limit: 10,
+			url:   "http://evergreen.example.net/",
+		}
+		resp := route.Run(userCtx)
+		require.Equal(t, http.StatusOK, resp.Status())
+
+		payload := resp.Data().([]any)
+		assert.Len(t, payload, 3)
+		for _, item := range payload {
+			ap := item.(restModel.APIPatch)
+			assert.Equal(t, allowedProject.Id, utility.FromStringPtr(ap.ProjectId))
+		}
+	})
+
+	t.Run("SuperUserSeesAllPatches", func(t *testing.T) {
+		caller := &user.DBUser{Id: "admin", SystemRoles: []string{"super_role"}}
+		userCtx := gimlet.AttachUser(t.Context(), caller)
+
+		route := &patchesByUserHandler{
+			user:  "target",
+			key:   now.Add(10 * time.Second),
+			limit: 10,
+			url:   "http://evergreen.example.net/",
+		}
+		resp := route.Run(userCtx)
+		require.Equal(t, http.StatusOK, resp.Status())
+
+		payload := resp.Data().([]any)
+		assert.Len(t, payload, 6)
+	})
 }
 
 type CountEstimatedGeneratedTasksSuite struct {
