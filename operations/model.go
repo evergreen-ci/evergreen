@@ -162,6 +162,17 @@ type ClientSettings struct {
 	StagingEnvironment string `json:"staging_environment,omitempty" yaml:"staging_environment,omitempty"`
 }
 
+// localClientSettings contains the settings that may safely be overridden by
+// a configuration file in the current working directory.
+type localClientSettings struct {
+	UncommittedChanges         *bool                       `yaml:"patch_uncommitted_changes,omitempty"`
+	PreserveCommits            *bool                       `yaml:"preserve_commits,omitempty"`
+	Projects                   []ClientProjectConf         `yaml:"projects,omitempty"`
+	DisableAutoDefaulting      *bool                       `yaml:"disable_auto_defaulting"`
+	ProjectsForDirectory       map[string]string           `yaml:"projects_for_directory,omitempty"`
+	LastRevisionCriteriaGroups []lastRevisionCriteriaGroup `yaml:"last_revision_criteria_groups,omitempty"`
+}
+
 func NewClientSettings(fn string) (*ClientSettings, error) {
 	path, err := findConfigFilePath(context.Background(), fn)
 	if err != nil {
@@ -186,10 +197,30 @@ func NewClientSettings(fn string) (*ClientSettings, error) {
 		return nil, errors.Wrapf(err, "reading local configuration from file '%s'", localConfigPath)
 	}
 
-	// Unmarshalling into the same struct will only override fields which are set
-	// in the new YAML
-	if err = yaml.Unmarshal(localData, conf); err != nil {
+	// Only merge settings that describe the local project and working tree.
+	// Connection, authentication, and update settings must come from the
+	// explicitly selected configuration file rather than the current directory.
+	localConf := &localClientSettings{}
+	if err = yaml.Unmarshal(localData, localConf); err != nil {
 		return nil, errors.Wrapf(err, "unmarshalling YAML data from local configuration file '%s'", localConfigPath)
+	}
+	if localConf.UncommittedChanges != nil {
+		conf.UncommittedChanges = *localConf.UncommittedChanges
+	}
+	if localConf.PreserveCommits != nil {
+		conf.PreserveCommits = *localConf.PreserveCommits
+	}
+	if localConf.Projects != nil {
+		conf.Projects = localConf.Projects
+	}
+	if localConf.DisableAutoDefaulting != nil {
+		conf.DisableAutoDefaulting = *localConf.DisableAutoDefaulting
+	}
+	if localConf.ProjectsForDirectory != nil {
+		conf.ProjectsForDirectory = localConf.ProjectsForDirectory
+	}
+	if localConf.LastRevisionCriteriaGroups != nil {
+		conf.LastRevisionCriteriaGroups = localConf.LastRevisionCriteriaGroups
 	}
 
 	return conf, nil

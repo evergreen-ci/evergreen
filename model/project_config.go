@@ -88,7 +88,7 @@ func (pc *ProjectConfig) AllAliases() ProjectAliases {
 // intermediate configs representation.
 func CreateProjectConfig(yml []byte, identifier string) (*ProjectConfig, error) {
 	p := &ProjectConfig{}
-	if err := util.UnmarshalYAMLWithFallback(yml, p); err != nil {
+	if err := util.UnmarshalYAML(yml, p); err != nil {
 		yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
 		return nil, errors.Wrap(yamlErr, TranslateProjectConfigError)
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -102,6 +103,18 @@ func TestSelectTestsHandler(t *testing.T) {
 	req, _ = http.NewRequest(http.MethodPost, "/select/tests", bytes.NewBuffer(j))
 	sth = makeSelectTestsHandler(env)
 	require.Error(t, sth.Parse(ctx, req), "request should fail to parse when task name is missing")
+}
+
+func TestMakeSelectTestsErrorResponse(t *testing.T) {
+	t.Run("DeadlineExceededShouldReturnFailedDependency", func(t *testing.T) {
+		resp := makeSelectTestsErrorResponse(errors.Wrap(context.DeadlineExceeded, "selecting tests"))
+		assert.Equal(t, http.StatusFailedDependency, resp.Status())
+	})
+
+	t.Run("OtherErrorsShouldReturnInternalServerError", func(t *testing.T) {
+		resp := makeSelectTestsErrorResponse(errors.New("selecting tests"))
+		assert.Equal(t, http.StatusInternalServerError, resp.Status())
+	})
 }
 
 // Regression guard: user-authenticated requests must reach the handler.

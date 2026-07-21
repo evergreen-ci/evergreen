@@ -2,6 +2,7 @@ package artifact
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -109,7 +110,7 @@ func StripHiddenFiles(ctx context.Context, files []File, hasUser bool) ([]File, 
 		case (file.Visibility == Private || file.Visibility == Signed) && !hasUser:
 			continue
 		case file.Visibility == Signed && hasUser:
-			link, err := presignFile(ctx, file)
+			link, err := PresignFile(ctx, file)
 			if err != nil {
 				return nil, errors.Wrapf(err, "presigning url for file '%s'", file.Name)
 			}
@@ -122,7 +123,35 @@ func StripHiddenFiles(ctx context.Context, files []File, hasUser bool) ([]File, 
 	return publicFiles, nil
 }
 
-func presignFile(ctx context.Context, file File) (string, error) {
+func lazySignURL(baseURL, taskID string, execution int, fileName string, appSecret []byte) string {
+	token, expiry := GenerateSignToken(appSecret, taskID, execution, fileName)
+	return fmt.Sprintf("%s/rest/v2/tasks/%s/artifact/sign?execution=%d&name=%s&token=%s&exp=%d",
+		baseURL, url.PathEscape(taskID), execution, url.QueryEscape(fileName), url.QueryEscape(token), expiry)
+}
+
+// StripHiddenFilesLazy filters files by visibility and replaces signed file
+// links with lazy redirect URLs that include a token, instead of eagerly
+// presigning them.
+func StripHiddenFilesLazy(files []File, hasUser bool, baseURL string, taskID string, execution int, appSecret []byte) []File {
+	publicFiles := []File{}
+	for _, file := range files {
+		switch {
+		case file.Visibility == None:
+			continue
+		case (file.Visibility == Private || file.Visibility == Signed) && !hasUser:
+			continue
+		case file.Visibility == Signed && hasUser:
+			file.Link = lazySignURL(baseURL, taskID, execution, file.Name, appSecret)
+			publicFiles = append(publicFiles, file)
+		default:
+			publicFiles = append(publicFiles, file)
+		}
+	}
+	return publicFiles
+}
+
+// PresignFile generates a presigned S3 URL for the given artifact file.
+func PresignFile(ctx context.Context, file File) (string, error) {
 	if err := file.validate(); err != nil {
 		return "", errors.Wrap(err, "file validation failed")
 	}

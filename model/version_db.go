@@ -343,6 +343,16 @@ func VersionFindOne(ctx context.Context, query db.Q) (*Version, error) {
 	return version, err
 }
 
+// VersionFindOneSecondary returns a version matching the query, reading from a secondary.
+func VersionFindOneSecondary(ctx context.Context, query db.Q) (*Version, error) {
+	version := &Version{}
+	err := db.FindOneQSecondary(ctx, VersionCollection, query, version)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	return version, err
+}
+
 // VersionFindOneId returns a version by ID, excluding its BuildVariants. If the
 // version needs to load BuildVariants, use VersionFindOneIdWithBuildVariants.
 func VersionFindOneId(ctx context.Context, id string) (*Version, error) {
