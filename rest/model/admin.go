@@ -2526,7 +2526,7 @@ type APIFWSConfig struct {
 	URL *string `json:"url"`
 }
 
-func (a *APIFWSConfig) BuildFromService(h interface{}) error {
+func (a *APIFWSConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.FWSConfig:
 		a.URL = utility.ToStringPtr(v.URL)
@@ -2536,7 +2536,7 @@ func (a *APIFWSConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIFWSConfig) ToService() (interface{}, error) {
+func (a *APIFWSConfig) ToService() (any, error) {
 	return evergreen.FWSConfig{
 		URL: utility.FromStringPtr(a.URL),
 	}, nil
@@ -2558,7 +2558,7 @@ func (a *APIGraphiteConfig) BuildFromService(h any) error {
 	return nil
 }
 
-func (a *APIGraphiteConfig) ToService() (interface{}, error) {
+func (a *APIGraphiteConfig) ToService() (any, error) {
 	return evergreen.GraphiteConfig{
 		CIOptimizationToken: utility.FromStringPtr(a.CIOptimizationToken),
 		ServerURL:           utility.FromStringPtr(a.ServerURL),

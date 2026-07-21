@@ -708,17 +708,17 @@ func listStepsCmd(c *cli.Context) error {
 		return errors.Errorf("request failed with status %d: %s", resp.StatusCode, string(bodyData))
 	}
 
-	var result map[string]interface{}
+	var result map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return err
 	}
 
-	steps := result["steps"].([]interface{})
+	steps := result["steps"].([]any)
 	currentStep := int(result["current_step"].(float64))
 
 	fmt.Println("Steps:")
 	for _, stepRaw := range steps {
-		step := stepRaw.(map[string]interface{})
+		step := stepRaw.(map[string]any)
 		index := int(step["index"].(float64))
 		marker := "  "
 		if index == currentStep {
@@ -741,7 +741,7 @@ func listStepsCmd(c *cli.Context) error {
 }
 
 // postAndStreamResponse sends a POST request and renders the NDJSON streaming response.
-func postAndStreamResponse(url string, body interface{}) error {
+func postAndStreamResponse(url string, body any) error {
 	var reqBody io.Reader
 	if body != nil {
 		jsonData, err := json.Marshal(body)
@@ -809,7 +809,7 @@ func viewLogsCmd(c *cli.Context) error {
 	return nil
 }
 
-func postJSON(url string, body interface{}) (map[string]interface{}, error) {
+func postJSON(url string, body any) (map[string]any, error) {
 	var reqBody io.Reader
 	if body != nil {
 		jsonData, err := json.Marshal(body)
@@ -830,7 +830,7 @@ func postJSON(url string, body interface{}) (map[string]interface{}, error) {
 		return nil, errors.Errorf("request failed with status %d: %s", resp.StatusCode, string(bodyData))
 	}
 
-	var result map[string]interface{}
+	var result map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, errors.Wrap(err, "decoding response")
 	}

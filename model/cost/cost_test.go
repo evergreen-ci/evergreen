@@ -124,7 +124,7 @@ func TestCostJSONIncludesEBSThroughputFieldsWhenZero(t *testing.T) {
 	data, err := json.Marshal(c)
 	require.NoError(t, err)
 
-	var unmarshaled map[string]interface{}
+	var unmarshaled map[string]any
 	require.NoError(t, json.Unmarshal(data, &unmarshaled))
 
 	assert.NotContains(t, unmarshaled, "on_demand_ebs_throughput_cost")
@@ -141,7 +141,7 @@ func TestCostJSONSerializesTotalWhenSet(t *testing.T) {
 	c.Total = c.AdjustedTotal()
 	data, err := json.Marshal(c)
 	require.NoError(t, err)
-	var m map[string]interface{}
+	var m map[string]any
 	require.NoError(t, json.Unmarshal(data, &m))
 	assert.InDelta(t, 0.5, m["total"], 1e-9)
 	assert.InDelta(t, 1.0, m["on_demand_ec2_cost"], 1e-9)
