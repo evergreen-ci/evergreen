@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -191,9 +192,7 @@ func defaultAndApplyExpansionsToEnv(env map[string]string, opts modifyEnvOptions
 
 	expansions := opts.expansions.Map()
 	if opts.addExpansionsToEnv {
-		for k, v := range expansions {
-			env[k] = v
-		}
+		maps.Copy(env, expansions)
 	}
 
 	for _, expName := range opts.includeExpansionsInEnv {

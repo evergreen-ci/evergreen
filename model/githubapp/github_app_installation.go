@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"reflect"
 	"strings"
@@ -156,9 +157,7 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 				"attempt": index,
 				"op":      op,
 			}
-			for k, v := range extraFields {
-				msg[k] = v
-			}
+			maps.Copy(msg, extraFields)
 			return msg
 		}
 

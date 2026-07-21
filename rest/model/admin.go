@@ -1,6 +1,7 @@
 package model
 
 import (
+	"maps"
 	"reflect"
 	"sort"
 	"strings"
@@ -327,14 +328,10 @@ func (as *APIAdminSettings) ToService() (any, error) {
 		valToSet := reflect.ValueOf(i)
 		dbModelReflect.FieldByName(propName).Set(valToSet)
 	}
-	for k, v := range as.Expansions {
-		settings.Expansions[k] = v
-	}
+	maps.Copy(settings.Expansions, as.Expansions)
 	for k, v := range as.Plugins {
 		settings.Plugins[k] = map[string]any{}
-		for k2, v2 := range v {
-			settings.Plugins[k][k2] = v2
-		}
+		maps.Copy(settings.Plugins[k], v)
 	}
 
 	if as.ShutdownWaitSeconds != nil {

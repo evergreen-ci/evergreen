@@ -3,6 +3,7 @@ package route
 import (
 	"context"
 	"fmt"
+	"maps"
 	"net/http"
 	"strings"
 	"time"
@@ -686,9 +687,7 @@ func (h *userPermissionDetailsGetHandler) Run(ctx context.Context) gimlet.Respon
 				return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding baseline role '%s'", evergreen.BasicProjectAccessRole))
 			}
 			if len(baselineRoles) > 0 {
-				for k, v := range baselineRoles[0].Permissions {
-					mergedPerms[k] = v
-				}
+				maps.Copy(mergedPerms, baselineRoles[0].Permissions)
 			}
 		}
 		for k, v := range resourcePermissions[ref.Id] {
