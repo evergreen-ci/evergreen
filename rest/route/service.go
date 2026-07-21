@@ -130,7 +130,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/admin/service_users").Version(2).Get().Wrap(requireUser, adminSettings).RouteHandler(makeGetServiceUsers())
 	app.AddRoute("/admin/service_users").Version(2).Post().Wrap(requireUser, adminSettings).RouteHandler(makeUpdateServiceUser())
 	app.AddRoute("/admin/service_users").Version(2).Delete().Wrap(requireUser, adminSettings).RouteHandler(makeDeleteServiceUser())
-	app.AddRoute("/alias/{project_id}").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeFetchAliases())
+	app.AddRoute("/alias/{project_id}").Version(2).Get().Wrap(requireUser, addProject, viewProjectSettings, rateLimit).RouteHandler(makeFetchAliases())
 	app.AddRoute("/auth").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(&authPermissionGetHandler{})
 	app.AddRoute("/auth/token_exchange/authorize").Version(2).Get().Wrap(requireUser, rateLimit).Handler(tokenExchangeAuthorizeHandler(env))
 	app.AddRoute("/auth/token_exchange/callback").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeTokenExchangeCallback(env))
