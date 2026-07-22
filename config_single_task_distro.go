@@ -2,14 +2,19 @@ package evergreen
 
 import (
 	"context"
+	"regexp"
 	"slices"
 
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
 type ProjectTasksPair struct {
-	ProjectID    string   `bson:"project_id" json:"project_id"`
+	ProjectID string `bson:"project_id" json:"project_id"`
+	// IsRegex indicates that ProjectID is a regular expression matching project
+	// identifiers rather than an exact project ID or identifier.
+	IsRegex      bool     `bson:"is_regex" json:"is_regex"`
 	AllowedTasks []string `bson:"allowed_tasks" json:"allowed_tasks"`
 	AllowedBVs   []string `bson:"allowed_bvs" json:"allowed_bvs"`
 }
@@ -38,5 +43,17 @@ func (c *SingleTaskDistroConfig) Set(ctx context.Context) error {
 }
 
 func (c *SingleTaskDistroConfig) ValidateAndDefault() error {
-	return nil
+	catcher := grip.NewBasicCatcher()
+	for _, pair := range c.ProjectTasksPairs {
+		if pair.ProjectID == "" {
+			catcher.New("project ID cannot be empty")
+			continue
+		}
+		if pair.IsRegex {
+			if _, err := regexp.Compile(pair.ProjectID); err != nil {
+				catcher.Wrapf(err, "project '%s' is not a valid regular expression", pair.ProjectID)
+			}
+		}
+	}
+	return catcher.Resolve()
 }
