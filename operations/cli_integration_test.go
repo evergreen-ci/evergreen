@@ -106,7 +106,7 @@ func setupCLITestHarness(ctx context.Context) cliTestHarness {
 	So(version.Insert(ctx), ShouldBeNil)
 
 	pp := model.ParserProject{}
-	err = util.UnmarshalYAMLWithFallback(localConfBytes, &pp)
+	err = util.UnmarshalYAML(localConfBytes, &pp)
 	So(err, ShouldBeNil)
 	pp.Id = "sample_version"
 	So(pp.Insert(ctx), ShouldBeNil)

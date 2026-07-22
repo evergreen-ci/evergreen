@@ -661,7 +661,6 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbTask2)
 			require.Len(t, dbTask2.DependsOn, 1)
-			assert.False(t, dbTask2.DependsOn[0].Finished, "unconnected dependency edge should not be marked finished")
 			assert.True(t, utility.IsZeroTime(dbTask2.DependsOn[0].FinishedAt), "unconnected dependency edge should not be marked finished")
 		},
 		"UpdatesDependencyWithMatchingStatus": func(t *testing.T) {
@@ -688,7 +687,6 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 1)
-			assert.True(t, dbTask1.DependsOn[0].Finished)
 			assert.False(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt))
 		},
 		"UpdatesDependencyWithUnmatchingStatus": func(t *testing.T) {
@@ -716,7 +714,6 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 1)
-			assert.True(t, dbTask1.DependsOn[0].Finished)
 			assert.False(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt))
 
 			met, err := dbTask1.DependenciesMet(ctx, map[string]Task{})
@@ -749,7 +746,6 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 1)
-			assert.True(t, dbTask1.DependsOn[0].Finished)
 			assert.False(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt))
 
 			met, err := dbTask1.DependenciesMet(ctx, map[string]Task{})
@@ -795,9 +791,7 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbTask2)
 			require.Len(t, dbTask2.DependsOn, 2)
-			assert.True(t, dbTask2.DependsOn[0].Finished)
 			assert.False(t, utility.IsZeroTime(dbTask2.DependsOn[0].FinishedAt))
-			assert.True(t, dbTask2.DependsOn[1].Finished)
 			assert.False(t, utility.IsZeroTime(dbTask2.DependsOn[1].FinishedAt))
 
 			met, err := dbTask2.DependenciesMet(ctx, map[string]Task{})
@@ -833,13 +827,9 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 4)
-			assert.False(t, dbTask1.DependsOn[0].Finished)
 			assert.True(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt))
-			assert.False(t, dbTask1.DependsOn[1].Finished)
 			assert.True(t, utility.IsZeroTime(dbTask1.DependsOn[1].FinishedAt))
-			assert.True(t, dbTask1.DependsOn[2].Finished)
 			assert.False(t, utility.IsZeroTime(dbTask1.DependsOn[2].FinishedAt))
-			assert.False(t, dbTask1.DependsOn[3].Finished)
 			assert.True(t, utility.IsZeroTime(dbTask1.DependsOn[3].FinishedAt))
 		},
 		"UpdatesDirectDependenciesOnly": func(t *testing.T) {
@@ -870,14 +860,12 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 1)
-			assert.True(t, dbTask1.DependsOn[0].Finished, "direct dependency should be marked finished")
 			assert.False(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt), "direct dependency should be marked finished")
 
 			dbTask2, err := FindOneId(ctx, t2.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask2)
 			require.Len(t, dbTask2.DependsOn, 1)
-			assert.False(t, dbTask2.DependsOn[0].Finished, "indirect dependency edge should not be marked finished")
 			assert.True(t, utility.IsZeroTime(dbTask2.DependsOn[0].FinishedAt), "indirect dependency edge should not be marked finished")
 		},
 		"UpdateDependencyToUnfinished": func(t *testing.T) {
@@ -889,8 +877,7 @@ func TestMarkDependenciesFinished(t *testing.T) {
 				Id: "task1",
 				DependsOn: []Dependency{
 					{
-						TaskId:   "task0",
-						Finished: true,
+						TaskId: "task0",
 					},
 				},
 			}
@@ -903,7 +890,6 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 1)
-			assert.False(t, dbTask1.DependsOn[0].Finished, "direct dependency should not be marked finished")
 			assert.True(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt), "direct dependency should not be marked finished")
 		},
 	} {
@@ -4528,7 +4514,7 @@ func TestWillRun(t *testing.T) {
 		tsk := Task{
 			Status:    evergreen.TaskUndispatched,
 			Activated: true,
-			DependsOn: []Dependency{{Finished: false}},
+			DependsOn: []Dependency{{}},
 		}
 		assert.True(t, tsk.WillRun())
 	})
@@ -4537,7 +4523,7 @@ func TestWillRun(t *testing.T) {
 			Status:            evergreen.TaskUndispatched,
 			Activated:         true,
 			ExecutionPlatform: ExecutionPlatformContainer,
-			DependsOn:         []Dependency{{Finished: true, Unattainable: false}},
+			DependsOn:         []Dependency{{Unattainable: false}},
 		}
 		assert.True(t, tsk.WillRun())
 	})
@@ -4546,7 +4532,7 @@ func TestWillRun(t *testing.T) {
 			Status:            evergreen.TaskUndispatched,
 			Activated:         true,
 			ExecutionPlatform: ExecutionPlatformContainer,
-			DependsOn:         []Dependency{{Finished: true, Unattainable: true}},
+			DependsOn:         []Dependency{{Unattainable: true}},
 		}
 		assert.False(t, tsk.WillRun())
 	})

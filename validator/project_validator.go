@@ -1416,6 +1416,13 @@ func validateDisplayTaskNames(project *model.Project) ValidationErrors {
 	// check display tasks
 	for _, bv := range project.BuildVariants {
 		for _, dp := range bv.DisplayTasks {
+			if dp.Name == "" {
+				errs = append(errs,
+					ValidationError{
+						Level:   Error,
+						Message: fmt.Sprintf("display task in buildvariant '%s' must have a name", bv.Name),
+					})
+			}
 			for _, etn := range dp.ExecTasks {
 				if strings.HasPrefix(etn, "display_") {
 					errs = append(errs,

@@ -100,7 +100,7 @@ func TestFindProject(t *testing.T) {
 				RevisionOrderNumber: 8,
 			}
 			pp := &ParserProject{}
-			err := util.UnmarshalYAMLWithFallback([]byte("owner: fakeowner\nrepo: fakerepo\nbranch: fakebranch"), &pp)
+			err := util.UnmarshalYAML([]byte("owner: fakeowner\nrepo: fakerepo\nbranch: fakebranch"), &pp)
 			So(err, ShouldBeNil)
 			pp.Id = "good_version"
 			So(badVersion.Insert(t.Context()), ShouldBeNil)
@@ -125,7 +125,7 @@ func TestFindProject(t *testing.T) {
 				RevisionOrderNumber: 8,
 			}
 			pp := &ParserProject{}
-			err := util.UnmarshalYAMLWithFallback([]byte("owner: fakeowner\nrepo: fakerepo\nbranch: fakebranch"), &pp)
+			err := util.UnmarshalYAML([]byte("owner: fakeowner\nrepo: fakerepo\nbranch: fakebranch"), &pp)
 			So(err, ShouldBeNil)
 			pp.Id = "good_version"
 			So(goodVersion.Insert(t.Context()), ShouldBeNil)

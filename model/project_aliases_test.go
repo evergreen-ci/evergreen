@@ -158,7 +158,7 @@ func (s *ProjectAliasSuite) TestRemove() {
 	s.Len(out, 10)
 
 	for i, a := range s.aliases {
-		s.NoError(RemoveProjectAlias(s.T().Context(), a.ID.Hex()))
+		s.NoError(RemoveProjectAlias(s.T().Context(), a.ProjectID, a.ID.Hex()))
 		s.NoError(db.FindAllQ(s.T().Context(), ProjectAliasCollection, q, &out))
 		s.Len(out, 10-i-1)
 	}
@@ -547,10 +547,9 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectRepoOrConfig() {
 }
 
 func (s *ProjectAliasSuite) TestUpsertAliasesForProject() {
-	for _, a := range s.aliases {
-		a.ProjectID = "old-project"
-
-		s.NoError(a.Upsert(s.T().Context()))
+	for i := range s.aliases {
+		s.aliases[i].ProjectID = "old-project"
+		s.NoError(s.aliases[i].Upsert(s.T().Context()))
 	}
 	s.NoError(UpsertAliasesForProject(s.T().Context(), s.aliases, "new-project"))
 
@@ -558,10 +557,67 @@ func (s *ProjectAliasSuite) TestUpsertAliasesForProject() {
 	s.NoError(err)
 	s.Len(found, 10)
 
-	// verify old aliases not overwritten
 	found, err = FindAliasesForProjectFromDb(s.T().Context(), "old-project")
 	s.NoError(err)
 	s.Len(found, 10)
+}
+
+func (s *ProjectAliasSuite) TestUpsertAliasesForProjectWithMismatchedIDCreatesNewDocument() {
+	existing := ProjectAlias{
+		ProjectID: "project-a",
+		Alias:     "alias-a",
+		Variant:   "v1",
+		Task:      "t1",
+	}
+	s.NoError(existing.Upsert(s.T().Context()))
+	s.True(existing.ID.Valid())
+
+	// Upserting into a different project while reusing an existing alias's ID
+	// must create a fresh document rather than write to the other project's.
+	incoming := ProjectAlias{
+		ID:        existing.ID,
+		ProjectID: "project-b",
+		Alias:     "alias-b",
+		Variant:   "v2",
+		Task:      "t2",
+	}
+	s.NoError(UpsertAliasesForProject(s.T().Context(), []ProjectAlias{incoming}, "project-b"))
+
+	owner, err := findAliasOwnerProject(s.T().Context(), existing.ID.Hex())
+	s.NoError(err)
+	s.Equal("project-a", owner)
+
+	aliasesA, err := FindAliasesForProjectFromDb(s.T().Context(), "project-a")
+	s.NoError(err)
+	s.Require().Len(aliasesA, 1)
+	s.Equal("alias-a", aliasesA[0].Alias)
+
+	aliasesB, err := FindAliasesForProjectFromDb(s.T().Context(), "project-b")
+	s.NoError(err)
+	s.Require().Len(aliasesB, 1)
+	s.NotEqual(existing.ID.Hex(), aliasesB[0].ID.Hex())
+}
+
+func (s *ProjectAliasSuite) TestRemoveProjectAliasScopedToProject() {
+	alias := ProjectAlias{
+		ProjectID: "project-a",
+		Alias:     "alias-a",
+		Variant:   "v1",
+		Task:      "t1",
+	}
+	s.NoError(alias.Upsert(s.T().Context()))
+
+	// A mismatched project ID must not remove the alias.
+	s.NoError(RemoveProjectAlias(s.T().Context(), "project-b", alias.ID.Hex()))
+	owner, err := findAliasOwnerProject(s.T().Context(), alias.ID.Hex())
+	s.NoError(err)
+	s.Equal("project-a", owner)
+
+	// The owning project ID removes it.
+	s.NoError(RemoveProjectAlias(s.T().Context(), "project-a", alias.ID.Hex()))
+	owner, err = findAliasOwnerProject(s.T().Context(), alias.ID.Hex())
+	s.NoError(err)
+	s.Empty(owner)
 }
 
 func TestProjectAliasGitTagMatching(t *testing.T) {
