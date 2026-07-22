@@ -20,6 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -119,7 +120,7 @@ func getGitHubClientForAuth(authFields *GithubAppAuth) (*GitHubClient, error) {
 		return nil, errors.Wrap(err, "parsing private key")
 	}
 
-	itr := ghinstallation.NewAppsTransportFromPrivateKey(utility.DefaultTransport(), authFields.AppID, key)
+	itr := ghinstallation.NewAppsTransportFromPrivateKey(otelhttp.NewTransport(utility.DefaultTransport()), authFields.AppID, key)
 	httpClient := utility.GetCustomHTTPRetryableClientWithTransport(itr, githubClientShouldRetry(), utility.RetryHTTPDelay(utility.RetryOptions{
 		MinDelay:    GitHubRetryMinDelay,
 		MaxDelay:    GitHubRetryMaxDelay,
