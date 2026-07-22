@@ -972,6 +972,8 @@ buildvariants:
 
   - name: windows
     display_name: Windows
+    paths:
+      - "agent/**"
     run_on:
       - windows-vsCurrent-small
       - windows-vsCurrent-large
