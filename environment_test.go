@@ -4,7 +4,9 @@ import (
 	"context"
 	"os"
 	"strconv"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -141,4 +143,34 @@ func (s *EnvironmentSuite) TestInitSenders() {
 	for _, sender := range s.env.senders {
 		s.NotZero(sender.ErrorHandler(), "fallback error handler should be set")
 	}
+}
+
+func TestGetGitHubSenderConcurrentAccessShouldNotRace(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	e := &envState{
+		ctx:           ctx,
+		githubSenders: map[string]cachedGitHubSender{},
+	}
+	// Pre-populate an expired sender for the owner so every concurrent caller
+	// takes the cache-miss path that writes to the map.
+	e.githubSenders["owner"] = cachedGitHubSender{time: time.Now().Add(-2 * githubTokenTimeout)}
+
+	createToken := func(ctx context.Context, owner, repo string) (string, error) {
+		return "token", nil
+	}
+
+	const goroutines = 20
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			defer wg.Done()
+			sender, err := e.GetGitHubSender("owner", "repo", createToken)
+			assert.NoError(t, err)
+			assert.NotNil(t, sender)
+		}()
+	}
+	wg.Wait()
 }
