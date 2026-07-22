@@ -2850,11 +2850,17 @@ func TestDependenciesForTaskUnit(t *testing.T) {
 					Name:      "task1",
 					Variant:   "ubuntu",
 					GroupName: "my_task_group",
+					DependsOn: []TaskUnitDependency{
+						{Name: "task2"},
+					},
 				},
 				{
 					Name:      "task2",
 					Variant:   "ubuntu",
 					GroupName: "my_task_group",
+					DependsOn: []TaskUnitDependency{
+						{Name: "task1"},
+					},
 				},
 			},
 			project: &Project{
@@ -2866,7 +2872,10 @@ func TestDependenciesForTaskUnit(t *testing.T) {
 					},
 				},
 			},
-			expectedDependencies: []task.DependencyEdge{},
+			expectedDependencies: []task.DependencyEdge{
+				{From: task.TaskNode{Name: "task1", Variant: "ubuntu"}, To: task.TaskNode{Name: "task2", Variant: "ubuntu"}},
+				{From: task.TaskNode{Name: "task2", Variant: "ubuntu"}, To: task.TaskNode{Name: "task1", Variant: "ubuntu"}},
+			},
 		},
 		"WithTaskGroupNotFound": {
 			taskUnits: []BuildVariantTaskUnit{

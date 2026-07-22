@@ -446,15 +446,18 @@ func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, ver
 	return nil
 }
 
-func CreateTasksCache(tasks []task.Task) []build.TaskCache {
-	tasks = sortTasks(tasks)
+func CreateTasksCache(tasks []task.Task) ([]build.TaskCache, error) {
+	tasks, err := sortTasks(tasks)
+	if err != nil {
+		return nil, errors.Wrap(err, "sorting tasks for cache")
+	}
 	cache := make([]build.TaskCache, 0, len(tasks))
 	for _, task := range tasks {
 		if task.DisplayTask == nil {
 			cache = append(cache, build.TaskCache{Id: task.Id})
 		}
 	}
-	return cache
+	return cache, nil
 }
 
 // RefreshTasksCache updates the given builds' documents so that their task
@@ -502,7 +505,10 @@ func RefreshTasksCache(ctx context.Context, buildIDs []string) error {
 			}
 		}
 
-		cachesByBuild[buildID] = CreateTasksCache(buildTasks)
+		cachesByBuild[buildID], err = CreateTasksCache(buildTasks)
+		if err != nil {
+			return errors.Wrapf(err, "creating task cache for build '%s'", buildID)
+		}
 	}
 	return errors.Wrap(build.SetTasksCaches(ctx, cachesByBuild), "updating task caches for builds")
 }
@@ -676,7 +682,10 @@ func CreateBuildFromVersionNoInsert(ctx context.Context, creationInfo TaskCreati
 		}
 		tasks = append(tasks, *taskP)
 	}
-	b.Tasks = CreateTasksCache(tasks)
+	b.Tasks, err = CreateTasksCache(tasks)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "creating task cache for build '%s'", b.Id)
+	}
 	b.Activated = containsActivatedTask
 	b.HasUnfinishedEssentialTask = hasUnfinishedEssentialTask
 	return b, tasksForBuild, nil
@@ -1279,7 +1288,7 @@ func createDisplayTask(id string, creationInfo TaskCreationInfo, displayName str
 // sortTasks topologically sorts the tasks by dependency, grouping tasks with common dependencies,
 // and alphabetically sorting within groups.
 // All tasks with cross-variant dependencies are at the far right.
-func sortTasks(tasks []task.Task) []task.Task {
+func sortTasks(tasks []task.Task) ([]task.Task, error) {
 	// Separate out tasks with cross-variant dependencies
 	taskPresent := make(map[string]bool)
 	for _, task := range tasks {
@@ -1318,9 +1327,15 @@ func sortTasks(tasks []task.Task) []task.Task {
 	}
 
 	// All tasks with cross-variant dependencies appear to the right
-	sortedTasks := sortTasksHelper(normalTasks, idToDisplayName)
-	sortedTasks = append(sortedTasks, sortTasksHelper(crossVariantTasks, idToDisplayName)...)
-	return sortedTasks
+	sortedTasks, err := sortTasksHelper(normalTasks, idToDisplayName)
+	if err != nil {
+		return nil, err
+	}
+	crossVariantSortedTasks, err := sortTasksHelper(crossVariantTasks, idToDisplayName)
+	if err != nil {
+		return nil, err
+	}
+	return append(sortedTasks, crossVariantSortedTasks...), nil
 }
 
 // addDepChildren recursively adds task and all tasks depending on it to tasks
@@ -1336,19 +1351,22 @@ func addDepChildren(task task.Task, tasks map[string]task.Task, depMap map[strin
 
 // sortTasksHelper sorts the tasks, assuming they all have cross-variant dependencies, or none have
 // cross-variant dependencies
-func sortTasksHelper(tasks map[string]task.Task, idToDisplayName map[string]string) []task.Task {
-	layers := layerTasks(tasks)
+func sortTasksHelper(tasks map[string]task.Task, idToDisplayName map[string]string) ([]task.Task, error) {
+	layers, err := layerTasks(tasks)
+	if err != nil {
+		return nil, err
+	}
 	sortedTasks := make([]task.Task, 0, len(tasks))
 	for _, layer := range layers {
 		sortedTasks = append(sortedTasks, sortLayer(layer, idToDisplayName)...)
 	}
-	return sortedTasks
+	return sortedTasks, nil
 }
 
 // layerTasks sorts the tasks into layers
 // Layer n contains all tasks whose dependencies are contained in layers 0 through n-1, or are not
 // included in tasks (for tasks with cross-variant dependencies)
-func layerTasks(tasks map[string]task.Task) [][]task.Task {
+func layerTasks(tasks map[string]task.Task) ([][]task.Task, error) {
 	layers := make([][]task.Task, 0)
 	for len(tasks) > 0 {
 		// Create a new layer
@@ -1359,6 +1377,9 @@ func layerTasks(tasks map[string]task.Task) [][]task.Task {
 				layer = append(layer, task)
 			}
 		}
+		if len(layer) == 0 {
+			return nil, errors.Errorf("cannot sort tasks because of cyclic dependencies")
+		}
 		// Add current layer to list of layers
 		layers = append(layers, layer)
 		// Delete all tasks in this layer
@@ -1366,7 +1387,7 @@ func layerTasks(tasks map[string]task.Task) [][]task.Task {
 			delete(tasks, task.Id)
 		}
 	}
-	return layers
+	return layers, nil
 }
 
 // allDepsProcessed checks whether any dependencies of task are in unprocessedTasks
