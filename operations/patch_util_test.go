@@ -188,7 +188,7 @@ func (s *PatchUtilTestSuite) TestVariantsTasksFromCLI() {
 func (s *PatchUtilTestSuite) TestNonRepeatedDefaultsLoadsExplicitAlias() {
 	pp := patchParams{
 		Project: "project",
-		Alias:   "duck",
+		Aliases: []string{"duck"},
 	}
 	conf := &ClientSettings{
 		Projects: []ClientProjectConf{
@@ -210,7 +210,7 @@ func (s *PatchUtilTestSuite) TestNonRepeatedDefaultsLoadsExplicitAlias() {
 func (s *PatchUtilTestSuite) TestNonRepeatedDefaultsWithLocalAliasOverridesOtherDefaults() {
 	pp := patchParams{
 		Project: "project",
-		Alias:   "duck",
+		Aliases: []string{"duck"},
 	}
 	conf := &ClientSettings{
 		Projects: []ClientProjectConf{
@@ -276,6 +276,43 @@ func (s *PatchUtilTestSuite) TestNonRepeatedDefaultsLoadsDefaultVariantsAndTasks
 	s.Empty(pp.Alias, "should not set an alias when there is no default")
 	s.ElementsMatch([]string{"default-bv0", "default-bv1"}, pp.Variants, "variants should be defaulted")
 	s.ElementsMatch([]string{"default-task0", "default-task1"}, pp.Tasks, "tasks should be defaulted")
+}
+
+func (s *PatchUtilTestSuite) TestMultipleLocalAliasesExpandIntoTasksAndVariants() {
+	pp := patchParams{
+		Project:     "project",
+		Aliases:     []string{"duck", "goose"},
+		SkipConfirm: true,
+	}
+	conf := &ClientSettings{
+		Projects: []ClientProjectConf{
+			{
+				Name: "project",
+				LocalAliases: []model.ProjectAlias{
+					{Alias: "duck", Variant: "bv0", Task: "task0"},
+					{Alias: "goose", Variant: "bv1", Task: "task1"},
+				},
+			},
+		},
+	}
+
+	pp.setNonRepeatedDefaults(s.T().Context(), conf)
+
+	s.Empty(pp.Aliases, "local aliases should be consumed during expansion")
+	s.Empty(pp.Alias, "no server-side alias should remain")
+	s.True(pp.isUsingLocalAlias)
+	s.ElementsMatch([]string{"bv0", "bv1"}, pp.RegexVariants)
+	s.ElementsMatch([]string{"task0", "task1"}, pp.RegexTasks)
+}
+
+func (s *PatchUtilTestSuite) TestMultipleServerAliasesSubmitted() {
+	// Multiple server-side aliases are submitted as-is (no longer rejected).
+	pp := patchParams{Aliases: []string{"server-alias-1", "server-alias-2"}}
+	s.Equal([]string{"server-alias-1", "server-alias-2"}, pp.submissionAliases())
+
+	// A single resolved alias still submits as a one-element list.
+	pp = patchParams{Alias: "solo"}
+	s.Equal([]string{"solo"}, pp.submissionAliases())
 }
 
 func (s *PatchUtilTestSuite) TestGetRemoteFromOutput() {
