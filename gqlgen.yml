@@ -220,8 +220,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDuration
   EC2Key:
     model: github.com/evergreen-ci/evergreen/rest/model.APIEC2Key
-  EC2KeyInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIEC2Key
   EnvVar:
     model: github.com/evergreen-ci/evergreen/rest/model.APIEnvVar
   EnvVarInput:

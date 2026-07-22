@@ -375,14 +375,6 @@ func (s *AdminSuite) TestProvidersConfig() {
 	defer cancel()
 
 	config := CloudProviders{
-		AWS: AWSConfig{
-			EC2Keys: []EC2Key{
-				{
-					Secret: "aws_secret",
-					Key:    "aws",
-				},
-			},
-		},
 		Docker: DockerConfig{
 			APIVersion: "docker_version",
 		},

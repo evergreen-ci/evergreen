@@ -126,7 +126,6 @@ type ComplexityRoot struct {
 		AllowedInstanceTypes   func(childComplexity int) int
 		AllowedRegions         func(childComplexity int) int
 		DefaultSecurityGroup   func(childComplexity int) int
-		EC2Keys                func(childComplexity int) int
 		ElasticIPUsageRate     func(childComplexity int) int
 		IPAMPoolID             func(childComplexity int) int
 		MaxVolumeSizePerUser   func(childComplexity int) int
@@ -2967,12 +2966,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AWSConfig.DefaultSecurityGroup(childComplexity), true
-	case "AWSConfig.ec2Keys":
-		if e.complexity.AWSConfig.EC2Keys == nil {
-			break
-		}
-
-		return e.complexity.AWSConfig.EC2Keys(childComplexity), true
 	case "AWSConfig.elasticIPUsageRate":
 		if e.complexity.AWSConfig.ElasticIPUsageRate == nil {
 			break
@@ -13201,7 +13194,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputDistroPermissionsOptions,
 		ec.unmarshalInputDockerConfigInput,
 		ec.unmarshalInputEBSCostConfigInput,
-		ec.unmarshalInputEC2KeyInput,
 		ec.unmarshalInputEditSpawnHostInput,
 		ec.unmarshalInputEnvVarInput,
 		ec.unmarshalInputExpansionInput,
@@ -17543,56 +17535,6 @@ func (ec *executionContext) fieldContext_AWSAccountRoleMapping_role(_ context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AWSConfig_ec2Keys(ctx context.Context, field graphql.CollectedField, obj *model.APIAWSConfig) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AWSConfig_ec2Keys,
-		func(ctx context.Context) (any, error) {
-			return obj.EC2Keys, nil
-		},
-		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
-			directive0 := next
-
-			directive1 := func(ctx context.Context) (any, error) {
-				if ec.directives.RequireAdmin == nil {
-					var zeroVal []model.APIEC2Key
-					return zeroVal, errors.New("directive requireAdmin is not implemented")
-				}
-				return ec.directives.RequireAdmin(ctx, obj, directive0)
-			}
-
-			next = directive1
-			return next
-		},
-		ec.marshalNEC2Key2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIEC2Keyᚄ,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AWSConfig_ec2Keys(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AWSConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "name":
-				return ec.fieldContext_EC2Key_name(ctx, field)
-			case "key":
-				return ec.fieldContext_EC2Key_key(ctx, field)
-			case "secret":
-				return ec.fieldContext_EC2Key_secret(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type EC2Key", field.Name)
 		},
 	}
 	return fc, nil
@@ -24178,8 +24120,6 @@ func (ec *executionContext) fieldContext_CloudProviderConfig_aws(_ context.Conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "ec2Keys":
-				return ec.fieldContext_AWSConfig_ec2Keys(ctx, field)
 			case "subnets":
 				return ec.fieldContext_AWSConfig_subnets(ctx, field)
 			case "parserProject":
@@ -80179,39 +80119,13 @@ func (ec *executionContext) unmarshalInputAWSConfigInput(ctx context.Context, ob
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"ec2Keys", "subnets", "parserProject", "persistentDNS", "defaultSecurityGroup", "allowedInstanceTypes", "alertableInstanceTypes", "allowedRegions", "maxVolumeSizePerUser", "accountRoles", "ipamPoolID", "elasticIPUsageRate"}
+	fieldsInOrder := [...]string{"subnets", "parserProject", "persistentDNS", "defaultSecurityGroup", "allowedInstanceTypes", "alertableInstanceTypes", "allowedRegions", "maxVolumeSizePerUser", "accountRoles", "ipamPoolID", "elasticIPUsageRate"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "ec2Keys":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ec2Keys"))
-			directive0 := func(ctx context.Context) (any, error) {
-				return ec.unmarshalNEC2KeyInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIEC2Keyᚄ(ctx, v)
-			}
-
-			directive1 := func(ctx context.Context) (any, error) {
-				if ec.directives.RedactSecrets == nil {
-					var zeroVal []model.APIEC2Key
-					return zeroVal, errors.New("directive redactSecrets is not implemented")
-				}
-				return ec.directives.RedactSecrets(ctx, obj, directive0)
-			}
-
-			tmp, err := directive1(ctx)
-			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
-			if data, ok := tmp.([]model.APIEC2Key); ok {
-				it.EC2Keys = data
-			} else if tmp == nil {
-				it.EC2Keys = nil
-			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be []github.com/evergreen-ci/evergreen/rest/model.APIEC2Key`, tmp)
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
 		case "subnets":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("subnets"))
 			data, err := ec.unmarshalNSubnetInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubnetᚄ(ctx, v)
@@ -83107,64 +83021,6 @@ func (ec *executionContext) unmarshalInputEBSCostConfigInput(ctx context.Context
 				return it, err
 			}
 			it.EBSDiscount = data
-		}
-	}
-
-	return it, nil
-}
-
-func (ec *executionContext) unmarshalInputEC2KeyInput(ctx context.Context, obj any) (model.APIEC2Key, error) {
-	var it model.APIEC2Key
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"name", "key", "secret"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "name":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Name = data
-		case "key":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("key"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Key = data
-		case "secret":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("secret"))
-			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
-
-			directive1 := func(ctx context.Context) (any, error) {
-				if ec.directives.RedactSecrets == nil {
-					var zeroVal *string
-					return zeroVal, errors.New("directive redactSecrets is not implemented")
-				}
-				return ec.directives.RedactSecrets(ctx, obj, directive0)
-			}
-
-			tmp, err := directive1(ctx)
-			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
-			if data, ok := tmp.(*string); ok {
-				it.Secret = data
-			} else if tmp == nil {
-				it.Secret = nil
-			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
 		}
 	}
 
@@ -91675,11 +91531,6 @@ func (ec *executionContext) _AWSConfig(ctx context.Context, sel ast.SelectionSet
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("AWSConfig")
-		case "ec2Keys":
-			out.Values[i] = ec._AWSConfig_ec2Keys(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "subnets":
 			out.Values[i] = ec._AWSConfig_subnets(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -113612,74 +113463,6 @@ func (ec *executionContext) marshalNDuration2githubᚗcomᚋevergreenᚑciᚋeve
 		}
 	}
 	return res
-}
-
-func (ec *executionContext) marshalNEC2Key2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIEC2Key(ctx context.Context, sel ast.SelectionSet, v model.APIEC2Key) graphql.Marshaler {
-	return ec._EC2Key(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNEC2Key2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIEC2Keyᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIEC2Key) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNEC2Key2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIEC2Key(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) unmarshalNEC2KeyInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIEC2Key(ctx context.Context, v any) (model.APIEC2Key, error) {
-	res, err := ec.unmarshalInputEC2KeyInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) unmarshalNEC2KeyInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIEC2Keyᚄ(ctx context.Context, v any) ([]model.APIEC2Key, error) {
-	var vSlice []any
-	vSlice = graphql.CoerceList(v)
-	var err error
-	res := make([]model.APIEC2Key, len(vSlice))
-	for i := range vSlice {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNEC2KeyInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIEC2Key(ctx, vSlice[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return res, nil
 }
 
 func (ec *executionContext) marshalNEnvVar2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIEnvVar(ctx context.Context, sel ast.SelectionSet, v model.APIEnvVar) graphql.Marshaler {

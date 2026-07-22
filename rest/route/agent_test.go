@@ -612,17 +612,6 @@ func TestAgentSetup(t *testing.T) {
 						Channel:   "channel",
 					},
 				},
-				Providers: evergreen.CloudProviders{
-					AWS: evergreen.AWSConfig{
-						EC2Keys: []evergreen.EC2Key{
-							{
-								Name:   "ec2-key",
-								Key:    "key",
-								Secret: "secret",
-							},
-						},
-					},
-				},
 				TaskLimits: evergreen.TaskLimitsConfig{
 					MaxExecTimeoutSecs: 10,
 				},

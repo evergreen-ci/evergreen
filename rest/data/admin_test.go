@@ -160,7 +160,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Overrides.Overrides[0].Field, settingsFromConnector.Overrides.Overrides[0].Field)
 	s.EqualValues(testSettings.Overrides.Overrides[0].Value, settingsFromConnector.Overrides.Overrides[0].Value)
 	s.Equal(testSettings.ParameterStore.Prefix, settingsFromConnector.ParameterStore.Prefix)
-	s.Equal(len(testSettings.Providers.AWS.EC2Keys), len(settingsFromConnector.Providers.AWS.EC2Keys))
 	s.Equal(testSettings.Providers.AWS.ParserProject.Key, settingsFromConnector.Providers.AWS.ParserProject.Key)
 	s.Equal(testSettings.Providers.AWS.ParserProject.Secret, settingsFromConnector.Providers.AWS.ParserProject.Secret)
 	s.Equal(testSettings.Providers.AWS.ParserProject.Bucket, settingsFromConnector.Providers.AWS.ParserProject.Bucket)
@@ -217,12 +216,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	secret, err = paramMgr.Get(ctx, "Settings/JiraConfig/PersonalAccessToken")
 	s.NoError(err)
 	s.Equal(testSettings.Jira.PersonalAccessToken, secret[0].Value)
-	secret, err = paramMgr.Get(ctx, "Settings/CloudProviders/AWSConfig/0/EC2Key/Key")
-	s.NoError(err)
-	s.Equal(testSettings.Providers.AWS.EC2Keys[0].Key, secret[0].Value)
-	secret, err = paramMgr.Get(ctx, "Settings/CloudProviders/AWSConfig/0/EC2Key/Secret")
-	s.NoError(err)
-	s.Equal(testSettings.Providers.AWS.EC2Keys[0].Secret, secret[0].Value)
 	secret, err = paramMgr.Get(ctx, "Settings/SlackConfig/Token")
 	s.NoError(err)
 	s.Equal(testSettings.Slack.Token, secret[0].Value)
@@ -239,8 +232,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Equal(testSettings.Buckets.Credentials.Secret, paramSettings.Buckets.Credentials.Secret)
 	s.Equal(testSettings.Buckets.Credentials.Bucket, paramSettings.Buckets.Credentials.Bucket)
 	s.Equal(testSettings.Jira.PersonalAccessToken, paramSettings.Jira.PersonalAccessToken)
-	s.Equal(testSettings.Providers.AWS.EC2Keys[0].Key, paramSettings.Providers.AWS.EC2Keys[0].Key)
-	s.Equal(testSettings.Providers.AWS.EC2Keys[0].Secret, paramSettings.Providers.AWS.EC2Keys[0].Secret)
 	s.Equal(testSettings.Slack.Token, paramSettings.Slack.Token)
 	s.Equal(testSettings.Expansions["k2"], paramSettings.Expansions["k2"])
 
@@ -262,13 +253,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 		case *evergreen.ServiceFlags:
 			foundFlagsEvent = true
 			s.Equal(testSettings.ServiceFlags.RepotrackerDisabled, v.RepotrackerDisabled)
-		case *evergreen.CloudProviders:
-			foundProvidersEvent = true
-			s.Require().NotEmpty(v.AWS.EC2Keys)
-			// Verify that the key is a timestamp
-			layout := "2006-01-02 15:04:05 Z0700 MST"
-			_, err := time.Parse(layout, v.AWS.EC2Keys[0].Key)
-			s.NoError(err)
 		case *evergreen.UIConfig:
 			foundUiEvent = true
 			s.Equal(testSettings.Ui.Url, v.Url)
@@ -353,7 +337,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Overrides.Overrides[0].SectionID, settingsFromConnector.Overrides.Overrides[0].SectionID)
 	s.EqualValues(testSettings.Overrides.Overrides[0].Field, settingsFromConnector.Overrides.Overrides[0].Field)
 	s.EqualValues(testSettings.Overrides.Overrides[0].Value, settingsFromConnector.Overrides.Overrides[0].Value)
-	s.Equal(len(testSettings.Providers.AWS.EC2Keys), len(settingsFromConnector.Providers.AWS.EC2Keys))
 	s.Equal(testSettings.Providers.AWS.ParserProject.Key, settingsFromConnector.Providers.AWS.ParserProject.Key)
 	s.Equal(testSettings.Providers.AWS.ParserProject.Secret, settingsFromConnector.Providers.AWS.ParserProject.Secret)
 	s.Equal(testSettings.Providers.AWS.ParserProject.Bucket, settingsFromConnector.Providers.AWS.ParserProject.Bucket)
