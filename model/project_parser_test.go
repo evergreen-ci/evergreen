@@ -1322,9 +1322,9 @@ buildvariants:
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "already defined")
 
-	// yaml.v3 rejects duplicate keys even when not using strict mode.
+	// unless not using strict
 	_, err = LoadProjectInto(ctx, []byte(yamlWithDup), nil, "example_project", &proj)
-	assert.Error(t, err)
+	assert.NoError(t, err)
 }
 
 func TestTranslateProjectDoesNotModifyParserProject(t *testing.T) {
@@ -1409,6 +1409,7 @@ task_groups:
   setup_task_timeout_secs: 10
   teardown_task_can_fail_task: true
   teardown_task_timeout_secs: 10
+  teardown_task_can_fail_task: true
   teardown_group_timeout_secs: 10
   setup_group:
   - command: shell.exec

@@ -4,22 +4,36 @@ import (
 	"bytes"
 
 	"github.com/pkg/errors"
+	yaml2 "gopkg.in/yaml.v2"
 	"gopkg.in/yaml.v3"
 )
 
 const UnmarshalStrictError = "error unmarshalling yaml strict"
 
-// UnmarshalYAML unmarshals the input YAML using yaml.v3.
-func UnmarshalYAML(in []byte, out any) error {
-	return yaml.Unmarshal(in, out)
+// UnmarshalYAMLWithFallback attempts to use yaml v3 to unmarshal, but on failure attempts yaml v2. If this
+// succeeds then we can assume in is outdated yaml and requires v2, otherwise we only return the error relevant to the
+// current yaml version. This should only be used for cases where we expect v3 to fail for legacy cases.
+func UnmarshalYAMLWithFallback(in []byte, out any) error {
+	err := yaml.Unmarshal(in, out)
+	if err != nil {
+		// try the older version of yaml before erroring, in case it's just an outdated yaml
+		if err2 := yaml2.Unmarshal(in, out); err2 != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-// UnmarshalYAMLStrict unmarshals the input YAML using yaml.v3 in strict mode, erroring on unknown fields.
-func UnmarshalYAMLStrict(in []byte, out any) error {
+// UnmarshalYAMLStrictWithFallback attempts to use yaml v3 to unmarshal strict, but on failure attempts yaml v2. If this
+// succeeds then we can assume in is outdated yaml and requires v2, otherwise we only return the error relevant to the
+// current yaml version. This should only be used for cases where we expect v3 to fail for legacy cases.
+func UnmarshalYAMLStrictWithFallback(in []byte, out any) error {
 	d := yaml.NewDecoder(bytes.NewReader(in))
 	d.KnownFields(true)
 	if err := d.Decode(out); err != nil {
-		return errors.Wrap(err, UnmarshalStrictError)
+		if err2 := yaml2.UnmarshalStrict(in, out); err2 != nil {
+			return errors.Wrap(err, UnmarshalStrictError)
+		}
 	}
 	return nil
 }

@@ -1589,12 +1589,12 @@ func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRe
 				// to a non-existent variables field.
 				Variables any `yaml:"variables,omitempty" bson:"-"`
 			}{}
-			if err := util.UnmarshalYAMLStrict(parseBytes, &strictProjectWithVariables); err != nil {
+			if err := util.UnmarshalYAMLStrictWithFallback(parseBytes, &strictProjectWithVariables); err != nil {
 				return nil, errors.Wrap(err, "unmarshalling parser project from YAML")
 			}
 			p = strictProjectWithVariables.ParserProject
 		} else {
-			if err := util.UnmarshalYAML(parseBytes, &p); err != nil {
+			if err := util.UnmarshalYAMLWithFallback(parseBytes, &p); err != nil {
 				return nil, errors.Wrap(err, "unmarshalling parser project from YAML")
 			}
 		}
@@ -1651,7 +1651,7 @@ func decodeWithAnchors(parseBytes []byte, unmarshalStrict bool, anchorRegistry *
 			// EvgAnchors silences the "unknown field" error in strict mode when the anchor preamble is prepended.
 			EvgAnchors any `yaml:"_evg_anchors,omitempty"`
 		}{}
-		if err := util.UnmarshalYAMLStrict(parseBytes, &strictProjectWithVariables); err != nil {
+		if err := util.UnmarshalYAMLStrictWithFallback(parseBytes, &strictProjectWithVariables); err != nil {
 			return nil, errors.Wrap(err, "unmarshalling parser project from YAML")
 		}
 		p = strictProjectWithVariables.ParserProject

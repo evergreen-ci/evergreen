@@ -311,6 +311,51 @@ func TestFleet(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.HostTerminated, hDb.Status)
 		},
+		"TerminateInstanceDeletesPersistentDNSName": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
+			h.Id = "i-12345"
+			h.PersistentDNSName = "my-host.example.com"
+			h.PublicIPv4 = "127.0.0.1"
+			require.NoError(t, db.Clear(host.Collection))
+			require.NoError(t, h.Insert(ctx))
+
+			mockEnv, ok := m.env.(*mock.Environment)
+			require.True(t, ok)
+			mockEnv.EvergreenSettings.Providers.AWS.PersistentDNS.Domain = "example.com"
+			mockEnv.EvergreenSettings.Providers.AWS.PersistentDNS.HostedZoneID = "Z12345"
+
+			assert.NoError(t, m.TerminateInstance(ctx, h, "evergreen", ""))
+
+			require.NotNil(t, client.ChangeResourceRecordSetsInput)
+			assert.Equal(t, "Z12345", aws.ToString(client.ChangeResourceRecordSetsInput.HostedZoneId))
+			require.Len(t, client.ChangeResourceRecordSetsInput.ChangeBatch.Changes, 1)
+			assert.Equal(t, "my-host.example.com", aws.ToString(client.ChangeResourceRecordSetsInput.ChangeBatch.Changes[0].ResourceRecordSet.Name))
+			assert.Empty(t, h.PersistentDNSName, "should unset the host's persistent DNS name in memory")
+
+			hDb, err := host.FindOneId(ctx, "i-12345")
+			require.NoError(t, err)
+			assert.Empty(t, hDb.PersistentDNSName, "should unset the host's persistent DNS name in the DB")
+		},
+		"TerminateInstanceUnsetsVolumeHost": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
+			h.Id = "i-12345"
+			require.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection))
+
+			vol := &host.Volume{
+				ID:         "volume1",
+				Host:       h.Id,
+				Expiration: time.Now().Add(365 * 24 * time.Hour),
+			}
+			require.NoError(t, vol.Insert(ctx))
+
+			h.Volumes = []host.VolumeAttachment{{VolumeID: vol.ID}}
+			require.NoError(t, h.Insert(ctx))
+
+			assert.NoError(t, m.TerminateInstance(ctx, h, "evergreen", ""))
+
+			volDb, err := host.FindVolumeByID(ctx, vol.ID)
+			require.NoError(t, err)
+			require.NotNil(t, volDb)
+			assert.Empty(t, volDb.Host, "should unset the volume's host after terminating the instance")
+		},
 		"GetDNSName": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
 			dnsName, err := m.GetDNSName(ctx, h)
 			assert.NoError(t, err)
