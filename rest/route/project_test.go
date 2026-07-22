@@ -473,7 +473,8 @@ func (s *ProjectPatchByIDSuite) TestRunEveryMainlineCommit() {
 
 	pRef, err := data.FindProjectById(s.T().Context(), "dimoxinil", false, false)
 	s.NoError(err)
-	s.True(pRef.RunEveryMainlineCommit)
+	s.NotNil(pRef.RunEveryMainlineCommit)
+	s.True(*pRef.RunEveryMainlineCommit)
 }
 
 ////////////////////////////////////////////////////////////////////////
