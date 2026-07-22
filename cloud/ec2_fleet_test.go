@@ -335,6 +335,7 @@ func TestFleet(t *testing.T) {
 			hDb, err := host.FindOneId(ctx, "i-12345")
 			require.NoError(t, err)
 			assert.Empty(t, hDb.PersistentDNSName, "should unset the host's persistent DNS name in the DB")
+		},
 		"TerminateInstanceUnsetsVolumeHost": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
 			h.Id = "i-12345"
 			require.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection))
