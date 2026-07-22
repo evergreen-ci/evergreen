@@ -1462,6 +1462,7 @@ type ComplexityRoot struct {
 		AllowedBVs   func(childComplexity int) int
 		AllowedTasks func(childComplexity int) int
 		DisplayName  func(childComplexity int) int
+		IsRegex      func(childComplexity int) int
 		ProjectID    func(childComplexity int) int
 	}
 
@@ -8791,6 +8792,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ProjectTasksPair.DisplayName(childComplexity), true
+	case "ProjectTasksPair.isRegex":
+		if e.complexity.ProjectTasksPair.IsRegex == nil {
+			break
+		}
+
+		return e.complexity.ProjectTasksPair.IsRegex(childComplexity), true
 	case "ProjectTasksPair.projectId":
 		if e.complexity.ProjectTasksPair.ProjectID == nil {
 			break
@@ -51443,6 +51450,35 @@ func (ec *executionContext) fieldContext_ProjectTasksPair_projectId(_ context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _ProjectTasksPair_isRegex(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectTasksPair) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProjectTasksPair_isRegex,
+		func(ctx context.Context) (any, error) {
+			return obj.IsRegex, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProjectTasksPair_isRegex(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectTasksPair",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ProjectTasksPair_displayName(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectTasksPair) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -59404,6 +59440,8 @@ func (ec *executionContext) fieldContext_SingleTaskDistroConfig_projectTasksPair
 			switch field.Name {
 			case "projectId":
 				return ec.fieldContext_ProjectTasksPair_projectId(ctx, field)
+			case "isRegex":
+				return ec.fieldContext_ProjectTasksPair_isRegex(ctx, field)
 			case "displayName":
 				return ec.fieldContext_ProjectTasksPair_displayName(ctx, field)
 			case "allowedTasks":
@@ -86871,7 +86909,7 @@ func (ec *executionContext) unmarshalInputProjectTasksPairInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"projectID", "allowedTasks", "allowedBVs"}
+	fieldsInOrder := [...]string{"projectID", "isRegex", "allowedTasks", "allowedBVs"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -86885,6 +86923,13 @@ func (ec *executionContext) unmarshalInputProjectTasksPairInput(ctx context.Cont
 				return it, err
 			}
 			it.ProjectID = data
+		case "isRegex":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isRegex"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IsRegex = data
 		case "allowedTasks":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("allowedTasks"))
 			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
@@ -102141,6 +102186,11 @@ func (ec *executionContext) _ProjectTasksPair(ctx context.Context, sel ast.Selec
 			out.Values[i] = graphql.MarshalString("ProjectTasksPair")
 		case "projectId":
 			out.Values[i] = ec._ProjectTasksPair_projectId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "isRegex":
+			out.Values[i] = ec._ProjectTasksPair_isRegex(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}

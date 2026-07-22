@@ -74,7 +74,10 @@ func (r *projectTasksPairResolver) DisplayName(ctx context.Context, obj *restMod
 		displayName := fmt.Sprintf("%s (Repo)", util.CoalesceString(repo.DisplayName, fmt.Sprintf("%s/%s", repo.Owner, repo.Repo)))
 		return displayName, nil
 	}
-	return "", InternalServerError.Send(ctx, fmt.Sprintf("no project or repo found with ID '%s'", obj.ProjectID))
+	// The project ID may be a regular expression rather than a single project
+	// or repo ref, in which case there is no unique project to resolve a display
+	// name from. Fall back to the raw value so the UI can still render it.
+	return obj.ProjectID, nil
 }
 
 // CustomFields is the resolver for the customFields field.
