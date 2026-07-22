@@ -37,12 +37,21 @@ categories=(
     -slicescontains
     -stringsbuilder
     -stringscut
+    -stringscutprefix
     -stringsseq
     -testingcontext
 )
 
-# Generated files are intentionally left unmodernized, so drop any findings in them.
-ignore_pattern='graphql/generated\.go|thirdparty/clients/fws/'
+# The analyzer only sees files that build for the current platform, so files behind //go:build tags for other operating
+# systems (e.g. *_linux.go, *_windows.go) are invisible unless we vary GOOS. Scan every OS that Evergreen builds for so a
+# regression in a platform-specific file can't slip through the CI host's own platform. GOARCH is left at the host
+# default; build tags in this codebase gate on OS, not architecture.
+platforms=(linux windows darwin)
+
+# Generated files are intentionally left unmodernized, so drop any findings in them. This list must cover every checked-in
+# generated file, because the modernize suite does not skip generated files on its own; a finding in one would otherwise
+# fail CI on code that developers cannot hand-edit (it is overwritten on regeneration).
+ignore_pattern='graphql/generated\.go|graphql/models_gen\.go|graphql/redacted_fields_gen\.go|rest/model/generated|thirdparty/clients/fws/'
 
 # Install the analyzer into the local bin directory first, so its download/build output does not get mixed into the
 # analyzer's findings that are captured below.
@@ -50,15 +59,33 @@ bin_dir="$(pwd)/bin"
 GOBIN="$bin_dir" go install "$modernize_pkg"
 modernize_bin="$bin_dir/modernize"
 
-# The analyzer exits non-zero when it reports findings, so guard the pipeline against errexit/pipefail.
-findings=$("$modernize_bin" "${categories[@]}" ./... 2>&1 | grep -v -E "$ignore_pattern" || true)
+all_findings=""
+for os in "${platforms[@]}"; do
+    # Capture the analyzer's exit code so a genuine tool/build error (any code other than 0 or the "found diagnostics"
+    # code 3) fails loudly instead of being misreported as a modernization finding. The `&& ... || ...` idiom keeps the
+    # non-zero exit from tripping errexit or the ERR trap.
+    raw=$(GOOS="$os" "$modernize_bin" "${categories[@]}" ./... 2>&1) && status=0 || status=$?
 
-if [ -n "$findings" ]; then
-    echo "$findings"
+    if [ "$status" != "0" ] && [ "$status" != "3" ]; then
+        echo "$raw"
+        echo ""
+        echo "ERROR: modernize failed for GOOS=$os (exit $status); see output above." >&2
+        exit 1
+    fi
+
+    findings=$(echo "$raw" | grep -v -E "$ignore_pattern" || true)
+    if [ -n "$findings" ]; then
+        # Label each finding with the platform so a *_windows.go finding is not confusing when the check runs on Linux.
+        all_findings+=$(echo "$findings" | sed "s/^/[GOOS=$os] /")$'\n'
+    fi
+done
+
+if [ -n "$all_findings" ]; then
+    printf '%s' "$all_findings"
     echo ""
     echo "FAIL: modernize found code that should use modern Go idioms (see above)."
-    echo "To apply the suggested fixes automatically, run:"
-    echo "  $modernize_bin ${categories[*]} -fix ./..."
+    echo "To apply the suggested fixes automatically, run (repeat per GOOS shown above):"
+    echo "  GOOS=<os> $modernize_bin ${categories[*]} -fix ./..."
     exit 1
 fi
 
