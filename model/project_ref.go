@@ -1427,9 +1427,9 @@ func getCommonAliases(ctx context.Context, projectIds []string) (ProjectAliases,
 			commonAliases = aliases
 			continue
 		}
-		for j, commonAliase := range slices.Backward(commonAliases) {
+		for j, commonAlias := range slices.Backward(commonAliases) {
 			// look to see if this alias exists in the each project and if not remove it
-			if !aliasSliceContains(aliases, commonAliase) {
+			if !aliasSliceContains(aliases, commonAlias) {
 				commonAliases = append(commonAliases[:j], commonAliases[j+1:]...)
 			}
 		}
