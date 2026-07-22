@@ -62,11 +62,17 @@ func Evaluate() cli.Command {
 				return errors.Wrap(err, "reading project config")
 			}
 
+			cwd, err := os.Getwd()
+			if err != nil {
+				return errors.Wrap(err, "getting current working directory")
+			}
+
 			p := &model.Project{}
 			ctx := context.Background()
 			opts := &model.GetProjectOpts{
 				LocalModules:      localModuleMap,
 				ReadFileFrom:      model.ReadFromLocal,
+				LocalIncludeDir:   cwd,
 				EnableYAMLAnchors: c.Bool(yamlAnchorsFlagName),
 			}
 			_, err = model.LoadProjectInto(ctx, configBytes, opts, "", p)
