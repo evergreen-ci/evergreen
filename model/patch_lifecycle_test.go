@@ -161,8 +161,7 @@ func resetProjectlessPatchSetup(ctx context.Context, t *testing.T) *patch.Patch 
 }
 
 func TestSetPriority(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(patch.Collection, task.Collection))
 	patches := []*patch.Patch{
@@ -194,8 +193,7 @@ func TestSetPriority(t *testing.T) {
 }
 
 func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	testutil.ConfigureIntegrationTest(t, patchTestConfig)
 	Convey("With calling GetPatchedProject with a config and remote configuration path",
@@ -283,8 +281,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 }
 
 func TestFinalizePatch(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	testutil.ConfigureIntegrationTest(t, patchTestConfig)
 	require.NoError(t, evergreen.UpdateConfig(ctx, patchTestConfig), ShouldBeNil)
@@ -618,8 +615,7 @@ func TestGetFullPatchParamsMultiAlias(t *testing.T) {
 }
 
 func TestMakePatchedConfig(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := evergreen.GetEnvironment()
 	cwd := testutil.GetDirectoryOfFile()
@@ -649,7 +645,7 @@ func TestMakePatchedConfig(t *testing.T) {
 
 	// Test that many goroutines can run MakePatchedConfig at the same time
 	wg := sync.WaitGroup{}
-	for w := 0; w < 10; w++ {
+	for range 10 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -673,8 +669,7 @@ func TestMakePatchedConfig(t *testing.T) {
 }
 
 func TestMakePatchedConfigEmptyBase(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := evergreen.GetEnvironment()
 	cwd := testutil.GetDirectoryOfFile()
@@ -712,8 +707,7 @@ func TestMakePatchedConfigEmptyBase(t *testing.T) {
 }
 
 func TestMakePatchedConfigRenamed(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := evergreen.GetEnvironment()
 	cwd := testutil.GetDirectoryOfFile()
@@ -760,8 +754,7 @@ func TestMakePatchedConfigRenamed(t *testing.T) {
 }
 
 func TestMakePatchedConfigShellMetacharactersInPath(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := evergreen.GetEnvironment()
 	cwd := testutil.GetDirectoryOfFile()
@@ -1311,8 +1304,7 @@ func TestAddDisplayTasksToPatchReq(t *testing.T) {
 }
 
 func TestAbortPatchesWithGithubPatchData(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(patch.Collection, task.Collection, VersionCollection))

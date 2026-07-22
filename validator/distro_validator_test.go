@@ -18,8 +18,7 @@ import (
 )
 
 func TestCheckDistro(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := evergreen.GetEnvironment()
 	conf := env.Settings()
@@ -212,8 +211,7 @@ func TestEnsureNoAliases(t *testing.T) {
 }
 
 func TestEnsureHasRequiredFields(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := testutil.NewEnvironment(ctx, t)
 	conf := env.Settings()
@@ -363,8 +361,7 @@ func TestEnsureHasRequiredFieldsWithProviderList(t *testing.T) {
 }
 
 func TestEnsureValidExpansions(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := evergreen.GetEnvironment()
 	conf := env.Settings()
@@ -389,8 +386,7 @@ func TestEnsureValidExpansions(t *testing.T) {
 }
 
 func TestEnsureValidSSHOptions(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := evergreen.GetEnvironment()
 	conf := env.Settings()
@@ -417,8 +413,7 @@ func TestEnsureValidSSHOptions(t *testing.T) {
 func TestEnsureNonZeroID(t *testing.T) {
 	assert := assert.New(t)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := evergreen.GetEnvironment()
 	conf := env.Settings()
@@ -434,8 +429,7 @@ func TestEnsureNonZeroID(t *testing.T) {
 func TestEnsureNoUnauthorizedCharacters(t *testing.T) {
 	assert := assert.New(t)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := evergreen.GetEnvironment()
 	conf := env.Settings()
@@ -449,8 +443,7 @@ func TestEnsureNoUnauthorizedCharacters(t *testing.T) {
 
 func TestEnsureValidContainerPool(t *testing.T) {
 	assert := assert.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert.NoError(db.Clear(distro.Collection))
 
@@ -675,8 +668,7 @@ func TestEnsureValidStaticBootstrapSettings(t *testing.T) {
 }
 
 func TestEnsureHasValidVirtualWorkstationSettings(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	settings := &evergreen.Settings{}
 	assert.Nil(t, ensureHasValidVirtualWorkstationSettings(ctx, &distro.Distro{

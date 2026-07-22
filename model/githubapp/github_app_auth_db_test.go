@@ -11,8 +11,7 @@ import (
 )
 
 func TestUpsertGitHubAppAuth(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(GitHubAppAuthCollection))
 
 	const projectID = "mongodb"

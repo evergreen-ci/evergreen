@@ -221,7 +221,7 @@ func (tr TestResult) GetLogURL(root, parsleyURL string, viewer evergreen.LogView
 		}
 
 		printTime := true
-		var logsToMerge string
+		var logsToMerge strings.Builder
 		if tr.LogInfo != nil {
 			if utility.FromStringPtr(tr.LogInfo.RenderingType) == evergreen.ResmokeRenderingType || utility.FromStringPtr(tr.LogInfo.RenderingTypeCedar) == evergreen.ResmokeRenderingType {
 				printTime = false
@@ -232,7 +232,7 @@ func (tr TestResult) GetLogURL(root, parsleyURL string, viewer evergreen.LogView
 				logPathsToMerge = tr.LogInfo.LogsToMergeCedar
 			}
 			for _, logPath := range logPathsToMerge {
-				logsToMerge += fmt.Sprintf("&logs_to_merge=%s", url.QueryEscape(*logPath))
+				logsToMerge.WriteString(fmt.Sprintf("&logs_to_merge=%s", url.QueryEscape(*logPath)))
 			}
 		}
 
@@ -242,7 +242,7 @@ func (tr TestResult) GetLogURL(root, parsleyURL string, viewer evergreen.LogView
 			url.QueryEscape(tr.GetLogTestName()),
 			tr.Execution,
 			printTime,
-			logsToMerge,
+			logsToMerge.String(),
 		)
 	}
 }

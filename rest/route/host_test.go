@@ -41,8 +41,7 @@ type HostsChangeStatusesSuite struct {
 }
 
 func TestHostsChangeStatusesSuite(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 	s := &HostsChangeStatusesSuite{
@@ -240,8 +239,7 @@ type HostModifySuite struct {
 }
 
 func TestHostModifySuite(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 	s := &HostModifySuite{
@@ -335,8 +333,7 @@ type HostSuite struct {
 }
 
 func TestHostSuite(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 	s := &HostSuite{
@@ -444,8 +441,7 @@ type hostTerminateHostHandlerSuite struct {
 }
 
 func TestTerminateHostHandler(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 	s := &hostTerminateHostHandlerSuite{
@@ -582,8 +578,7 @@ type hostChangeRDPPasswordHandlerSuite struct {
 func TestHostChangeRDPPasswordHandler(t *testing.T) {
 	s := &hostChangeRDPPasswordHandlerSuite{}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
@@ -709,8 +704,7 @@ type hostExtendExpirationHandlerSuite struct {
 }
 
 func TestHostExtendExpirationHandler(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	s := &hostExtendExpirationHandlerSuite{}
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
@@ -962,8 +956,7 @@ func setupMockHostsConnector(t *testing.T, env evergreen.Environment) {
 
 func TestHostFilterGetHandler(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(host.Collection))
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	newHosts := []host.Host{
 		{
@@ -1073,8 +1066,7 @@ func TestDisableHostHandler(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 			assert.NoError(t, db.ClearCollections(colls...))
 
 			const hostID = "host_id"
@@ -1341,8 +1333,7 @@ func TestHostIsUpPostHandler(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
@@ -1368,8 +1359,7 @@ func TestHostIsUpPostHandler(t *testing.T) {
 }
 
 func TestHostProvisioningOptionsGetHandler(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 	require.NoError(t, db.Clear(host.Collection))

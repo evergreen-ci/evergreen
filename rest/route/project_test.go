@@ -41,8 +41,7 @@ type ProjectPatchByIDSuite struct {
 }
 
 func TestProjectPatchSuite(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	s := &ProjectPatchByIDSuite{
 		env: testutil.NewEnvironment(ctx, t),
 	}
@@ -490,8 +489,7 @@ type ProjectPutSuite struct {
 }
 
 func TestProjectPutSuite(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	s := &ProjectPutSuite{
 		env: testutil.NewEnvironment(ctx, t),
@@ -869,8 +867,7 @@ func getTestProjectRef() *serviceModel.ProjectRef {
 
 func TestGetProjectTasks(t *testing.T) {
 	assert := assert.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	assert.NoError(db.ClearCollections(task.Collection, serviceModel.ProjectRefCollection, serviceModel.RepositoriesCollection))
 	const projectId = "proj"
 	project := serviceModel.ProjectRef{
@@ -909,8 +906,7 @@ func TestGetProjectTasks(t *testing.T) {
 
 func TestGetProjectVersions(t *testing.T) {
 	assert := assert.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	assert.NoError(db.ClearCollections(serviceModel.VersionCollection, serviceModel.ProjectRefCollection))
 
 	const projectId = "proj"
@@ -1084,8 +1080,7 @@ func TestGetProjectVersionsParseLimit(t *testing.T) {
 }
 
 func TestDeleteProject(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	assert.NoError(t, db.ClearCollections(
 		serviceModel.ProjectRefCollection,
 		serviceModel.RepoRefCollection,
@@ -1112,7 +1107,7 @@ func TestDeleteProject(t *testing.T) {
 	// Projects expected to be successfully deleted
 	numGoodProjects := 2
 	var projects []serviceModel.ProjectRef
-	for i := 0; i < numGoodProjects; i++ {
+	for i := range numGoodProjects {
 		project := serviceModel.ProjectRef{
 			Id:                   fmt.Sprintf("id_%d", i),
 			Owner:                "mongodb",
@@ -1131,7 +1126,7 @@ func TestDeleteProject(t *testing.T) {
 	}
 
 	numAliases := 2
-	for i := 0; i < numAliases; i++ {
+	for i := range numAliases {
 		projAlias := serviceModel.ProjectAlias{
 			ProjectID: projects[0].Id,
 			Alias:     fmt.Sprintf("alias_%d", i),
@@ -1154,7 +1149,7 @@ func TestDeleteProject(t *testing.T) {
 	// Test cases:
 	// 0) Project with 2 ProjectAliases and a ProjectVars
 	// 1) Project with 0 ProjectAliases and no ProjectVars
-	for i := 0; i < numGoodProjects; i++ {
+	for i := range numGoodProjects {
 		pdh.projectName = projects[i].Id
 		resp := pdh.Run(ctx)
 		assert.Equal(t, http.StatusOK, resp.Status())

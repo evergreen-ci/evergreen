@@ -1,7 +1,6 @@
 package units
 
 import (
-	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -51,8 +50,7 @@ func TestAttachVolumePassesHostTagToCreateVolume(t *testing.T) {
 }
 
 func TestGetMostRecentlyAddedDevice(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	testutil.TestSpan(ctx, t)
 
 	lsblkOutput := `{

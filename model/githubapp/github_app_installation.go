@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"reflect"
+	"slices"
 	"strings"
 	"time"
 
@@ -157,9 +159,7 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 				"attempt": index,
 				"op":      op,
 			}
-			for k, v := range extraFields {
-				msg[k] = v
-			}
+			maps.Copy(msg, extraFields)
 			return msg
 		}
 
@@ -203,10 +203,8 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 
 		span.SetAttributes(attribute.Int(githubAppStatusCodeAttribute, resp.StatusCode))
 
-		for _, statusCode := range defaultRetryableStatuses {
-			if resp.StatusCode == statusCode {
-				return true
-			}
+		if slices.Contains(defaultRetryableStatuses, resp.StatusCode) {
+			return true
 		}
 
 		grip.ErrorWhen(req.Context(), resp.StatusCode >= http.StatusBadRequest, makeLogMsg(map[string]any{

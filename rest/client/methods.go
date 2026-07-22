@@ -1351,10 +1351,7 @@ func (c *communicatorImpl) StartHostProcesses(ctx context.Context, hostIDs []str
 
 	result := []model.APIHostProcess{}
 	for i := 0; i < len(hostIDs); i += batchSize {
-		end := i + batchSize
-		if end > len(hostIDs) {
-			end = len(hostIDs)
-		}
+		end := min(i+batchSize, len(hostIDs))
 		data := model.APIHostScript{Hosts: hostIDs[i:end], Script: script}
 		output, err := func() ([]model.APIHostProcess, error) {
 			resp, err := c.request(ctx, info, data)
@@ -1399,10 +1396,7 @@ func (c *communicatorImpl) GetHostProcessOutput(ctx context.Context, hostProcess
 	result := []model.APIHostProcess{}
 
 	for i := 0; i < len(hostProcesses); i += batchSize {
-		end := i + batchSize
-		if end > len(hostProcesses) {
-			end = len(hostProcesses)
-		}
+		end := min(i+batchSize, len(hostProcesses))
 		output, err := func() ([]model.APIHostProcess, error) {
 			resp, err := c.request(ctx, info, hostProcesses[i:end])
 			if err != nil {

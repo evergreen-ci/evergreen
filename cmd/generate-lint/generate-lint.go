@@ -98,8 +98,8 @@ func getAllTargets() ([]string, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "getting diff")
 	}
-	split := strings.Split(strings.TrimSpace(string(allPackages)), "\n")
-	for _, p := range split {
+	split := strings.SplitSeq(strings.TrimSpace(string(allPackages)), "\n")
+	for p := range split {
 		if !strings.HasPrefix(p, packagePrefix) {
 			continue
 		}

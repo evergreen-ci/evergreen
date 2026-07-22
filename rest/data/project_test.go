@@ -174,7 +174,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 		s.NotEmpty(after.Aliases[0].ID)
 
 		s.Require().NoError(db.ClearCollections(event.EventCollection))
-		for i := 0; i < projEventCount; i++ {
+		for range projEventCount {
 			s.NoError(model.LogProjectModified(t.Context(), projectId, username, &before, &after))
 		}
 
@@ -408,8 +408,7 @@ func TestGetProjectAliasResults(t *testing.T) {
 }
 
 func TestCreateProject(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, event.EventCollection, user.Collection, evergreen.ScopeCollection))
@@ -489,8 +488,7 @@ func TestCreateProject(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			tctx, tcancel := context.WithCancel(context.Background())
-			defer tcancel()
+			tctx := t.Context()
 
 			require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, event.EventCollection, user.Collection, evergreen.ScopeCollection))
 

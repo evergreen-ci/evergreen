@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -1426,9 +1427,9 @@ func getCommonAliases(ctx context.Context, projectIds []string) (ProjectAliases,
 			commonAliases = aliases
 			continue
 		}
-		for j := len(commonAliases) - 1; j >= 0; j-- {
+		for j, commonAlias := range slices.Backward(commonAliases) {
 			// look to see if this alias exists in the each project and if not remove it
-			if !aliasSliceContains(aliases, commonAliases[j]) {
+			if !aliasSliceContains(aliases, commonAlias) {
 				commonAliases = append(commonAliases[:j], commonAliases[j+1:]...)
 			}
 		}

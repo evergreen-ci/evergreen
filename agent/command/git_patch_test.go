@@ -1,7 +1,6 @@
 package command
 
 import (
-	"context"
 	"path/filepath"
 	"testing"
 
@@ -24,8 +23,7 @@ import (
 func TestPatchPluginAPI(t *testing.T) {
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	comm := client.NewMock("http://localhost.com")
 	comm.CreateInstallationTokenResult = "token"
 	conf := &internal.TaskConfig{Expansions: util.Expansions{}, Task: task.Task{}, Project: model.Project{}}
@@ -94,8 +92,7 @@ func TestPatchPluginAPI(t *testing.T) {
 }
 
 func TestPatchPlugin(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	settings := env.Settings()
 

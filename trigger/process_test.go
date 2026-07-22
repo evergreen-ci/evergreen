@@ -263,8 +263,7 @@ func (s *projectTriggerSuite) TestBuildFinish() {
 }
 
 func TestProjectTriggerIntegration(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -396,8 +395,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 }
 
 func TestProjectTriggerIntegrationForBuild(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require := require.New(t)

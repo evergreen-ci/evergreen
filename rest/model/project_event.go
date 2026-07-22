@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"maps"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -158,12 +159,8 @@ func (p *APIProjectVars) ToService() *model.ProjectVars {
 			adminOnlyVars[key] = val
 		}
 	}
-	for key, val := range p.Vars {
-		vars[key] = val
-	}
-	for key, val := range p.VarsDescriptions {
-		varsDescriptions[key] = val
-	}
+	maps.Copy(vars, p.Vars)
+	maps.Copy(varsDescriptions, p.VarsDescriptions)
 
 	// handle UI list
 	for _, each := range p.PrivateVarsList {

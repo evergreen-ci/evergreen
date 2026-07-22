@@ -483,8 +483,7 @@ func TestSleepSchedulerJob(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 			ctx = testutil.TestSpan(ctx, t)
 
 			require.NoError(t, db.ClearCollections(host.Collection))

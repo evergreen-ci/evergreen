@@ -145,8 +145,7 @@ func TestAttachXUnitWildcardResults(t *testing.T) {
 }
 
 func TestXUnitParseAndUpload(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	comm := client.NewMock("url")
 	conf := &internal.TaskConfig{

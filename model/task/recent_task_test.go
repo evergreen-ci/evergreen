@@ -1,7 +1,6 @@
 package task
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -11,15 +10,14 @@ import (
 )
 
 func TestRecentTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	err := db.Clear(Collection)
 	assert.NoError(err)
 
 	tasks := []Task{}
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		tasks = append(tasks, Task{
 			Id:            fmt.Sprintf("taskid-%d", i),
 			Secret:        fmt.Sprintf("secret-%d", i),
