@@ -56,9 +56,9 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 				Name:  joinFlagNames(tasksFlagName, "t"),
 				Usage: "task names (\"all\" for all tasks)",
 			},
-			cli.StringFlag{
+			cli.StringSliceFlag{
 				Name:  joinFlagNames(patchAliasFlagName, "a"),
-				Usage: "patch alias (set by project admin) or local alias (set individually in evergreen.yml)",
+				Usage: "patch alias (set by project admin) or local alias (set individually in evergreen.yml); repeat the flag to apply multiple aliases",
 			},
 			cli.StringFlag{
 				Name:  joinFlagNames(patchDescriptionFlagName, "d"),
@@ -163,7 +163,7 @@ func Patch() cli.Command {
 				Browse:                             c.Bool(patchBrowseFlagName),
 				ShowSummary:                        c.Bool(patchVerboseFlagName),
 				Large:                              c.Bool(largeFlagName),
-				Alias:                              c.String(patchAliasFlagName),
+				Aliases:                            utility.SplitCommas(c.StringSlice(patchAliasFlagName)),
 				Ref:                                c.String(refFlagName),
 				Uncommitted:                        c.Bool(uncommittedChangesFlag),
 				PreserveCommits:                    c.Bool(preserveCommitsFlag),
@@ -240,7 +240,7 @@ func Patch() cli.Command {
 			hasTasksOrVariants := len(params.Tasks) > 0 || len(params.Variants) > 0
 			hasRegexTasksOrVariants := len(params.RegexTasks) > 0 || len(params.RegexVariants) > 0
 
-			if isReusing && (hasTasksOrVariants || hasRegexTasksOrVariants || len(params.Alias) > 0) {
+			if isReusing && (hasTasksOrVariants || hasRegexTasksOrVariants || len(params.Aliases) > 0) {
 				return errors.Errorf("can't define tasks, variants, regex tasks, regex variants or aliases when reusing previous patch's tasks and variants")
 			}
 
@@ -481,7 +481,7 @@ func PatchFile() cli.Command {
 				Project:          c.String(projectFlagName),
 				Variants:         utility.SplitCommas(c.StringSlice(variantsFlagName)),
 				Tasks:            utility.SplitCommas(c.StringSlice(tasksFlagName)),
-				Alias:            c.String(patchAliasFlagName),
+				Aliases:          utility.SplitCommas(c.StringSlice(patchAliasFlagName)),
 				SkipConfirm:      c.Bool(skipConfirmFlagName) || outputJSON,
 				Description:      c.String(patchDescriptionFlagName),
 				AutoDescription:  c.Bool(autoDescriptionFlag),

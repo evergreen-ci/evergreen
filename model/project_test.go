@@ -1009,7 +1009,7 @@ func (s *projectSuite) TestBuildProjectTVPairs() {
 		Tasks:         []string{"all"},
 	}
 
-	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, evergreen.PatchVersionRequester)
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, []string{evergreen.PatchVersionRequester})
 
 	s.Len(patchDoc.BuildVariants, 2)
 	s.ElementsMatch([]string{"bv_1", "bv_2"}, patchDoc.BuildVariants)
@@ -1053,7 +1053,7 @@ func (s *projectSuite) TestBuildProjectTVPairs() {
 	patchDoc.Tasks = []string{"all"}
 	patchDoc.VariantsTasks = []patch.VariantTasks{}
 
-	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, evergreen.PatchVersionRequester)
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, []string{evergreen.PatchVersionRequester})
 
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Len(patchDoc.Tasks, 6)
@@ -1062,10 +1062,40 @@ func (s *projectSuite) TestBuildProjectTVPairs() {
 	patchDoc.BuildVariants = []string{"all"}
 	patchDoc.VariantsTasks = []patch.VariantTasks{}
 
-	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, evergreen.PatchVersionRequester)
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, []string{evergreen.PatchVersionRequester})
 
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Len(patchDoc.Tasks, 6)
+}
+
+func (s *projectSuite) TestResolvePatchVTsMultipleAliases() {
+	req := (&patch.Patch{}).GetRequester()
+	flatten := func(vts []patch.VariantTasks) []string {
+		var out []string
+		for _, vt := range vts {
+			for _, t := range vt.Tasks {
+				out = append(out, vt.Variant+"/"+t)
+			}
+		}
+		return out
+	}
+	resolve := func(aliases ...string) []string {
+		_, _, vts := s.project.ResolvePatchVTs(s.T().Context(), &patch.Patch{}, req, aliases, false, "")
+		return flatten(vts)
+	}
+
+	// A duplicated alias resolves to the same pairs, with no duplicates.
+	single := resolve("aTags")
+	dup := resolve("aTags", "aTags")
+	s.NotEmpty(single)
+	s.ElementsMatch(single, dup)
+	s.Len(dup, len(utility.UniqueStrings(dup)))
+
+	// Two different (overlapping) aliases union their pairs, deduped.
+	a := resolve("bv2")
+	b := resolve("2tasks")
+	union := resolve("bv2", "2tasks")
+	s.ElementsMatch(utility.UniqueStrings(append(append([]string{}, a...), b...)), union)
 }
 
 func (s *projectSuite) TestResolvePatchVTs() {
@@ -1075,7 +1105,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		Tasks:         []string{"all"},
 	}
 
-	bvs, tasks, variantTasks := s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true, "")
+	bvs, tasks, variantTasks := s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), nil, true, "")
 	s.Len(bvs, 2)
 	s.ElementsMatch([]string{"bv_1", "bv_2"}, bvs)
 	s.Len(tasks, 7)
@@ -1122,7 +1152,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:         []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true, "")
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), nil, true, "")
 	s.Len(bvs, 2)
 	s.Len(tasks, 7)
 	s.Len(variantTasks, 2)
@@ -1133,7 +1163,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:         []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true, "")
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), nil, true, "")
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1155,7 +1185,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:    []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true, "")
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), nil, true, "")
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1177,7 +1207,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:    []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true, "")
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), nil, true, "")
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1199,7 +1229,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:         []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "aTags", true, "")
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), []string{"aTags"}, true, "")
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1223,7 +1253,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		Tasks:         []string{".a", ".1"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true, "")
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), nil, true, "")
 	s.Len(bvs, 1)
 	s.Contains(bvs, "bv_2")
 	s.Len(tasks, 3)
@@ -1246,7 +1276,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		Tasks:         []string{".a", ".1", "b_task_2"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true, "")
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), nil, true, "")
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1273,7 +1303,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:    []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true, "")
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), nil, true, "")
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1296,7 +1326,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 func (s *projectSuite) TestBuildProjectTVPairsWithAlias() {
 	patchDoc := patch.Patch{}
 
-	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, "2tasks(obsolete)")
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, []string{"2tasks(obsolete)"})
 
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Contains(patchDoc.BuildVariants, "bv_1")
@@ -1322,7 +1352,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithBadBuildVariant() {
 		Tasks:         []string{"a_task_1", "b_task_1"},
 	}
 
-	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, "")
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, nil)
 
 	s.Require().Len(patchDoc.Tasks, 2)
 	s.Contains(patchDoc.Tasks, "a_task_1")
@@ -1345,7 +1375,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithBadBuildVariant() {
 func (s *projectSuite) TestBuildProjectTVPairsWithAliasWithTags() {
 	patchDoc := patch.Patch{}
 
-	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, "aTags")
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, []string{"aTags"})
 
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Contains(patchDoc.BuildVariants, "bv_1")
@@ -1368,7 +1398,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithAliasWithTags() {
 func (s *projectSuite) TestBuildProjectTVPairsWithAliasWithDisplayTask() {
 	patchDoc := patch.Patch{}
 
-	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, "memes")
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, []string{"memes"})
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Contains(patchDoc.BuildVariants, "bv_1")
 	s.Contains(patchDoc.BuildVariants, "bv_2")
@@ -1395,7 +1425,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithAliasWithDisplayTask() {
 func (s *projectSuite) TestBuildProjectTVPairsWithDisabledBuildVariant() {
 	patchDoc := patch.Patch{}
 
-	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, "disabled_stuff")
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, []string{"disabled_stuff"})
 	s.Empty(patchDoc.BuildVariants)
 	s.Empty(patchDoc.Tasks)
 	s.Empty(patchDoc.VariantsTasks)
@@ -1405,7 +1435,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithDisabledBuildVariant() {
 		Tasks:         []string{"disabled_task"},
 	}
 
-	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, "")
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, nil)
 	s.Empty(patchDoc.BuildVariants)
 	s.Empty(patchDoc.Tasks)
 	s.Empty(patchDoc.VariantsTasks)
@@ -1417,7 +1447,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithDisplayTaskWithDependencies() 
 		Tasks:         []string{"memes"},
 	}
 
-	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, "")
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, nil)
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Contains(patchDoc.BuildVariants, "bv_1")
 	s.Contains(patchDoc.BuildVariants, "bv_2")
@@ -1449,7 +1479,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithDisplayTaskWithDependencies() 
 
 func (s *projectSuite) TestBuildProjectTVPairsWithExecutionTaskFromTags() {
 	patchDoc := patch.Patch{}
-	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, "part_of_memes")
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, []string{"part_of_memes"})
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Contains(patchDoc.BuildVariants, "bv_1")
 	s.Len(patchDoc.Tasks, 3)
@@ -1476,7 +1506,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithExecutionTask() {
 		BuildVariants: []string{"bv_1"},
 		Tasks:         []string{"9001_task"},
 	}
-	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, "")
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, nil)
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Contains(patchDoc.BuildVariants, "bv_1")
 	s.Contains(patchDoc.BuildVariants, "bv_2")
@@ -3211,5 +3241,27 @@ func TestVerifyCheckRunLimit(t *testing.T) {
 	})
 	t.Run("WithAppAuthIgnoresThreshold", func(t *testing.T) {
 		assert.NoError(t, VerifyCheckRunLimit(CheckRunGitHubAppAuthThreshold+1, CheckRunGitHubAppAuthThreshold+2, true))
+	})
+}
+
+func TestDedupeTVPairs(t *testing.T) {
+	t.Run("PreservesTaskAcrossDifferentVariants", func(t *testing.T) {
+		pairs := TVPairSet{
+			{Variant: "ubuntu2004", TaskName: "taskA"},
+			{Variant: "ubuntu2204", TaskName: "taskA"},
+		}
+		result := dedupeTVPairs(pairs)
+		require.Len(t, result, 2)
+		assert.Contains(t, result, TVPair{Variant: "ubuntu2004", TaskName: "taskA"})
+		assert.Contains(t, result, TVPair{Variant: "ubuntu2204", TaskName: "taskA"})
+	})
+	t.Run("RemovesDuplicatePairOnSameVariant", func(t *testing.T) {
+		pairs := TVPairSet{
+			{Variant: "ubuntu2004", TaskName: "taskA"},
+			{Variant: "ubuntu2004", TaskName: "taskA"},
+		}
+		result := dedupeTVPairs(pairs)
+		require.Len(t, result, 1)
+		assert.Equal(t, TVPair{Variant: "ubuntu2004", TaskName: "taskA"}, result[0])
 	})
 }
