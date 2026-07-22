@@ -157,43 +157,6 @@ func TestProjectAdminOperationNameDoesNotBypassTargetAuthorization(t *testing.T)
 	})
 }
 
-func TestProjectSettingsEditDefenseUsesResolvedTarget(t *testing.T) {
-	setupPermissions(t)
-
-	usr := &user.DBUser{
-		Id:          testUser,
-		SystemRoles: []string{"admin_project"},
-	}
-	require.NoError(t, usr.Insert(t.Context()))
-
-	administeredProject := model.ProjectRef{
-		Id:         "project_id",
-		Identifier: "administered_project",
-	}
-	require.NoError(t, administeredProject.Insert(t.Context()))
-
-	victimProject := model.ProjectRef{
-		Id:         "victim_project_id",
-		Identifier: "victim_project",
-	}
-	require.NoError(t, victimProject.Insert(t.Context()))
-
-	ctx := gimlet.AttachUser(t.Context(), usr)
-	project, err := getProjectWithSettingsEditPermission(ctx, administeredProject.Identifier)
-	require.NoError(t, err)
-	require.NotNil(t, project)
-	assert.Equal(t, administeredProject.Id, project.Id)
-
-	project, err = getProjectWithSettingsEditPermission(ctx, victimProject.Identifier)
-	assert.Error(t, err)
-	assert.Nil(t, project)
-
-	require.NoError(t, usr.AddRole(t.Context(), "superuser"))
-	project, err = getProjectWithSettingsEditPermission(ctx, victimProject.Identifier)
-	assert.Error(t, err)
-	assert.Nil(t, project)
-}
-
 func TestRequireProjectAccessRejectsProjectCreatePermissionWithoutProjectSettingsPermission(t *testing.T) {
 	setupPermissions(t)
 

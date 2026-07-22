@@ -1161,23 +1161,6 @@ func userHasProjectSettingsPermission(ctx context.Context, u *user.DBUser, proje
 	return u.HasPermission(ctx, opts)
 }
 
-func getProjectWithSettingsEditPermission(ctx context.Context, projectIdentifier string) (*model.ProjectRef, error) {
-	project, err := model.FindBranchProjectRef(ctx, projectIdentifier)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectIdentifier, err.Error()))
-	}
-	if project == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", projectIdentifier))
-	}
-
-	usr := mustHaveUser(ctx)
-	if !userHasProjectSettingsPermission(ctx, usr, project.Id, evergreen.ProjectSettingsEdit.Value) {
-		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to edit settings for project '%s'", usr.Username(), projectIdentifier))
-	}
-
-	return project, nil
-}
-
 func makeDistroEvent(ctx context.Context, entry event.EventLogEntry) (*DistroEvent, error) {
 	data, ok := entry.Data.(*event.DistroEventData)
 	if !ok {
