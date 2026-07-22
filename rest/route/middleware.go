@@ -644,6 +644,9 @@ func superUserResource(_ *http.Request) ([]string, int, error) {
 	return []string{evergreen.SuperUserPermissionsID}, http.StatusOK, nil
 }
 
+// maxWebhookBodySize caps the request body read by the webhook middleware.
+const maxWebhookBodySize = 10 * 1024 * 1024
+
 // NewGithubAuthMiddleware returns a middleware that verifies the payload.
 func NewGithubAuthMiddleware() gimlet.Middleware {
 	return &githubAuthMiddleware{}
@@ -654,6 +657,7 @@ type githubAuthMiddleware struct{}
 func (m *githubAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	githubSecret := []byte(evergreen.GetEnvironment().Settings().GithubWebhookSecret)
 
+	r.Body = http.MaxBytesReader(rw, r.Body, maxWebhookBodySize)
 	payload, err := github.ValidatePayload(r, githubSecret)
 	if err != nil {
 		grip.Error(r.Context(), message.WrapError(err, message.Fields{
@@ -692,7 +696,7 @@ func NewSNSAuthMiddleware() gimlet.Middleware {
 }
 
 func (m *snsAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	body, err := io.ReadAll(r.Body)
+	body, err := io.ReadAll(http.MaxBytesReader(rw, r.Body, maxWebhookBodySize))
 	if err != nil {
 		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "reading body")))
 		return
