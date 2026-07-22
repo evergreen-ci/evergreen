@@ -4109,6 +4109,32 @@ tasks:
 	})
 }
 
+func TestReadLocalInclude(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "include.yml"), []byte("tasks: []\n"), 0644))
+
+	t.Run("EmptyIncludeDirShouldError", func(t *testing.T) {
+		_, err := readLocalInclude("include.yml", "")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not supported")
+	})
+	t.Run("AbsolutePathShouldError", func(t *testing.T) {
+		_, err := readLocalInclude("/etc/passwd", dir)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "must be relative")
+	})
+	t.Run("PathOutsideJailShouldError", func(t *testing.T) {
+		_, err := readLocalInclude("../../etc/passwd", dir)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "outside the include directory")
+	})
+	t.Run("RelativePathWithinJailShouldSucceed", func(t *testing.T) {
+		contents, err := readLocalInclude("include.yml", dir)
+		require.NoError(t, err)
+		assert.Equal(t, "tasks: []\n", string(contents))
+	})
+}
+
 // mustLoadIntermediate returns the merged intermediate project for yml, matching what LoadProjectInto
 // hashes for the cache key.
 func mustLoadIntermediate(t *testing.T, yml string) *ParserProject {
