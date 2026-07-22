@@ -33,7 +33,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mongodb/amboy v0.0.0-20260326190628-51c8dde3a7f5
 	github.com/mongodb/anser v0.0.0-20260326191204-f2d0a92e3f0a
-	github.com/mongodb/grip v0.0.0-20260416142205-66006126eeab
+	github.com/mongodb/grip v0.0.0-20260721180657-45243b88445c
 	github.com/pkg/errors v0.9.1
 	github.com/ravilushqa/otelgqlgen v0.19.0
 	github.com/robbiet480/go.sns v0.0.0-20210223081447-c7c9eb6836cb
@@ -96,7 +96,7 @@ require (
 	github.com/evergreen-ci/baobab v1.0.1-0.20220107150152-03b522479f52 // indirect
 	github.com/evergreen-ci/bond v0.0.0-20260326192958-a16b1d604e29 // indirect
 	github.com/evergreen-ci/lru v0.0.0-20260326190734-0d627bf39810 // indirect
-	github.com/evergreen-ci/negroni v1.0.1-0.20211028183800-67b6d7c2c035 // indirect
+	github.com/evergreen-ci/negroni v1.0.1-0.20211028183800-67b6d7c2c035
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect

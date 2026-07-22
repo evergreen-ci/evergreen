@@ -115,6 +115,7 @@ clientsLoop:
 				continue clientsLoop
 			}
 
+			var numStatusErrors int
 			for i := range hosts {
 				hostID := hosts[i].Id
 				status, ok := statuses[hostID]
@@ -126,7 +127,17 @@ clientsLoop:
 					}))
 					statuses[hostID] = cloud.StatusNonExistent
 				}
-				j.AddError(errors.Wrapf(j.setCloudHostStatus(ctx, hosts[i], status), "setting status for host '%s' based on its cloud instance's status", hosts[i].Id))
+				if err := j.setCloudHostStatus(ctx, hosts[i], status); err != nil {
+					grip.Error(ctx, message.WrapError(err, message.Fields{
+						"message": "setting status for host based on its cloud instance's status",
+						"host_id": hostID,
+						"job":     j.ID(),
+					}))
+					numStatusErrors++
+				}
+			}
+			if numStatusErrors > 0 {
+				j.AddError(errors.Errorf("failed to set cloud host status for %d host(s)", numStatusErrors))
 			}
 
 			continue
