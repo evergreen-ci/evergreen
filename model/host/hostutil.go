@@ -739,7 +739,10 @@ func (h *Host) RunJasperProcessWithOutputSize(ctx context.Context, env evergreen
 			break
 		}
 		logs = append(logs, logStream.Logs...)
-		if logStream.Done {
+		// Stop when the stream is exhausted, or defensively if a page made no
+		// progress, to avoid looping forever if the server ever returns an
+		// empty page without signaling that the stream is done.
+		if logStream.Done || len(logStream.Logs) == 0 {
 			break
 		}
 	}
