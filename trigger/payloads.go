@@ -63,11 +63,6 @@ type commonTemplateData struct {
 	emailContent *template.Template
 }
 
-type emailTemplateData struct {
-	commonTemplateData
-	Description template.HTML
-}
-
 const emailSubjectTemplateString string = `Evergreen: {{ .Object }} {{.DisplayName}} in '{{ .Project }}' has {{ .PastTenseStatus }}!`
 
 var subjectTmpl = template.Must(template.New("subject").Parse(emailSubjectTemplateString))
@@ -252,31 +247,27 @@ func makeHeaders(headerMap map[string][]string) http.Header {
 }
 
 func emailPayload(t *commonTemplateData) (*message.Email, error) {
-	emailData := &emailTemplateData{
-		commonTemplateData: *t,
-		Description:        template.HTML(t.Description),
-	}
 	bodyTmpl, err := emailBodyTemplate.Clone()
 	if err != nil {
 		return nil, errors.Wrap(err, "cloning email body template")
 	}
-	if emailData.emailContent == nil {
+	if t.emailContent == nil {
 		_, err = bodyTmpl.AddParseTree("content", emailDefaultContentTemplate.Tree)
 	} else {
-		_, err = bodyTmpl.AddParseTree("content", emailData.emailContent.Tree)
+		_, err = bodyTmpl.AddParseTree("content", t.emailContent.Tree)
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "adding email content")
 	}
 	buf := &bytes.Buffer{}
-	err = bodyTmpl.ExecuteTemplate(buf, "emailbody", emailData)
+	err = bodyTmpl.ExecuteTemplate(buf, "emailbody", t)
 	if err != nil {
 		return nil, errors.Wrap(err, "executing email template")
 	}
 	body := buf.String()
 
 	buf = &bytes.Buffer{}
-	err = subjectTmpl.Execute(buf, emailData)
+	err = subjectTmpl.Execute(buf, t)
 	if err != nil {
 		return nil, errors.Wrap(err, "executing email subject template")
 	}
@@ -286,13 +277,13 @@ func emailPayload(t *commonTemplateData) (*message.Email, error) {
 		Subject:           subject,
 		Body:              body,
 		PlainTextContents: false,
-		Headers:           emailData.Headers,
+		Headers:           t.Headers,
 	}
 
 	// prevent Gmail from threading notifications with similar subjects
-	m.Headers["X-Entity-Ref-Id"] = []string{fmt.Sprintf("%s-%s-%s", emailData.Object, emailData.SubscriptionID, emailData.EventID)}
-	m.Headers["X-Evergreen-Event-Id"] = []string{emailData.EventID}
-	m.Headers["X-Evergreen-Subscription-Id"] = []string{emailData.SubscriptionID}
+	m.Headers["X-Entity-Ref-Id"] = []string{fmt.Sprintf("%s-%s-%s", t.Object, t.SubscriptionID, t.EventID)}
+	m.Headers["X-Evergreen-Event-Id"] = []string{t.EventID}
+	m.Headers["X-Evergreen-Subscription-Id"] = []string{t.SubscriptionID}
 
 	return &m, nil
 }

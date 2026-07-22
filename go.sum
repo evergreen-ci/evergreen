@@ -187,8 +187,8 @@ github.com/fsnotify/fsnotify v1.6.0 h1:n+5WquG0fcWoWp6xPWfHdbskMCQaFnG6PfBrh1Ky4
 github.com/fsnotify/fsnotify v1.6.0/go.mod h1:sl3t1tCWJFWoRz9R8WJCbQihKKwmorjAbSClcnxKAGw=
 github.com/fuyufjh/splunk-hec-go v0.4.0 h1:tU2RhiBEbKOqwl85JA4y77/orhpMOIVAI5YT4s/5Rr0=
 github.com/fuyufjh/splunk-hec-go v0.4.0/go.mod h1:r2fKHCRSkUIiz63Nh9FWGHrUr0N0WH2T4GO0JHuMCCU=
-github.com/go-jose/go-jose/v4 v4.1.3 h1:CVLmWDhDVRa6Mi/IgCgaopNosCaHz7zrMeF9MlZRkrs=
-github.com/go-jose/go-jose/v4 v4.1.3/go.mod h1:x4oUasVrzR7071A4TnHLGSPpNOm2a21K9Kf04k1rs08=
+github.com/go-jose/go-jose/v4 v4.1.4 h1:moDMcTHmvE6Groj34emNPLs/qtYXRVcd6S7NHbHz3kA=
+github.com/go-jose/go-jose/v4 v4.1.4/go.mod h1:x4oUasVrzR7071A4TnHLGSPpNOm2a21K9Kf04k1rs08=
 github.com/go-logr/logr v1.2.2/go.mod h1:jdQByPbusPIv2/zmleS9BjJVeZ6kBagPoEUsqbVz/1A=
 github.com/go-logr/logr v1.4.3 h1:CjnDlHq8ikf6E492q6eKboGOC0T8CDaOvkHCIg8idEI=
 github.com/go-logr/logr v1.4.3/go.mod h1:9T104GzyrTigFIr8wt5mBrctHMim0Nb2HLGrmQ40KvY=
@@ -323,8 +323,8 @@ github.com/mongodb/anser v0.0.0-20260326191204-f2d0a92e3f0a h1:aerBBPXwQOo+s1BR7
 github.com/mongodb/anser v0.0.0-20260326191204-f2d0a92e3f0a/go.mod h1:y5tT5wIiax8QSqifu02lYQcumwsvAwAYb2PmpguRyfE=
 github.com/mongodb/ftdc v0.0.0-20251208183831-018e343a1aac h1:KL3+DC+q8yS+QmdPAvnJiMHNU9VcYD3+4+0U1F+Crzo=
 github.com/mongodb/ftdc v0.0.0-20251208183831-018e343a1aac/go.mod h1:iaQJgZ9mNDQzR9Y8BY6D/Y6i8IzadyjY91a20xE5sOE=
-github.com/mongodb/grip v0.0.0-20260416142205-66006126eeab h1:GRlQC6VgrV3fLFh5oVhOFX3B0f09hcgpGe05+rgHeq8=
-github.com/mongodb/grip v0.0.0-20260416142205-66006126eeab/go.mod h1:nIxXGOFRWYjuwlgZlhj7BvCE6MjPuOFr3xbe9IcbKDo=
+github.com/mongodb/grip v0.0.0-20260721180657-45243b88445c h1:JU7R1E7tJxl30MmO9YwbXCc5KWmO2F3679IxrVtqRIU=
+github.com/mongodb/grip v0.0.0-20260721180657-45243b88445c/go.mod h1:nIxXGOFRWYjuwlgZlhj7BvCE6MjPuOFr3xbe9IcbKDo=
 github.com/mongodb/jasper v0.0.0-20260330133616-5411573646d1 h1:SSUZlMk2YvlnqB8o8BxdQzEBACZ/m0/Biu8uljAYCTc=
 github.com/mongodb/jasper v0.0.0-20260330133616-5411573646d1/go.mod h1:dNPRgqt6EwehE2ADcYPuvtVy+3/RbgY956R+R6Ln58s=
 github.com/montanaflynn/stats v0.7.1 h1:etflOAAHORrCC44V+aR6Ftzort912ZU+YLiSTuV8eaE=
