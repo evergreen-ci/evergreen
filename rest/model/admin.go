@@ -1695,7 +1695,6 @@ func (a *APISubnet) ToService() (any, error) {
 }
 
 type APIAWSConfig struct {
-	EC2Keys                []APIEC2Key                `json:"ec2_keys"`
 	Subnets                []APISubnet                `json:"subnets"`
 	ParserProject          *APIParserProjectS3Config  `json:"parser_project"`
 	PersistentDNS          *APIPersistentDNSConfig    `json:"persistent_dns"`
@@ -1712,14 +1711,6 @@ type APIAWSConfig struct {
 func (a *APIAWSConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.AWSConfig:
-		for _, key := range v.EC2Keys {
-			apiKey := APIEC2Key{}
-			if err := apiKey.BuildFromService(key); err != nil {
-				return err
-			}
-			a.EC2Keys = append(a.EC2Keys, apiKey)
-		}
-
 		for _, subnet := range v.Subnets {
 			apiSubnet := APISubnet{}
 			if err := apiSubnet.BuildFromService(subnet); err != nil {
@@ -1802,18 +1793,6 @@ func (a *APIAWSConfig) ToService() (any, error) {
 
 	if a.MaxVolumeSizePerUser != nil {
 		config.MaxVolumeSizePerUser = *a.MaxVolumeSizePerUser
-	}
-
-	for _, k := range a.EC2Keys {
-		i, err := k.ToService()
-		if err != nil {
-			return nil, err
-		}
-		key, ok := i.(evergreen.EC2Key)
-		if !ok {
-			return nil, errors.Errorf("programmatic error: expected EC2 key but got type %T", i)
-		}
-		config.EC2Keys = append(config.EC2Keys, key)
 	}
 
 	for _, s := range a.Subnets {

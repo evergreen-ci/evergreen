@@ -111,9 +111,6 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	}
 
 	// Save the project variables
-	if len(testConfig.Providers.AWS.EC2Keys) == 0 {
-		return nil, errors.New("no EC2 Keys in test config")
-	}
 	projectVars := &model.ProjectVars{
 		Id: project.DisplayName,
 	}

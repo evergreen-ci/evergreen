@@ -57,8 +57,6 @@ type Subnet struct {
 
 // AWSConfig stores auth info for Amazon Web Services.
 type AWSConfig struct {
-	// EC2Keys stored as a list to allow for possible multiple accounts in the future.
-	EC2Keys []EC2Key `bson:"ec2_keys" json:"ec2_keys" yaml:"ec2_keys"`
 	Subnets []Subnet `bson:"subnets" json:"subnets" yaml:"subnets"`
 
 	// ParserProject is configuration for storing and accessing parser projects
