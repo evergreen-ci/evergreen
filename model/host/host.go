@@ -263,7 +263,6 @@ func (opts *DockerOptions) Validate() error {
 // HostMetadataOptions are options related to the ec2 instance's metadata.
 type HostMetadataOptions struct {
 	CloudProviderData
-	HostID        string `json:"host_id"`
 	EC2InstanceID string `json:"ec2_instance_id"`
 }
 
