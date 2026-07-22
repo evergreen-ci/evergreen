@@ -312,6 +312,27 @@ func TestFleet(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.HostTerminated, hDb.Status)
 		},
+		"TerminateInstanceUnsetsVolumeHost": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
+			h.Id = "i-12345"
+			require.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection))
+
+			vol := &host.Volume{
+				ID:         "volume1",
+				Host:       h.Id,
+				Expiration: time.Now().Add(365 * 24 * time.Hour),
+			}
+			require.NoError(t, vol.Insert(ctx))
+
+			h.Volumes = []host.VolumeAttachment{{VolumeID: vol.ID}}
+			require.NoError(t, h.Insert(ctx))
+
+			assert.NoError(t, m.TerminateInstance(ctx, h, "evergreen", ""))
+
+			volDb, err := host.FindVolumeByID(ctx, vol.ID)
+			require.NoError(t, err)
+			require.NotNil(t, volDb)
+			assert.Empty(t, volDb.Host, "should unset the volume's host after terminating the instance")
+		},
 		"GetDNSName": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
 			dnsName, err := m.GetDNSName(ctx, h)
 			assert.NoError(t, err)
