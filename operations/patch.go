@@ -34,6 +34,7 @@ const (
 	testSelectionIncludeTasksFlagName    = "test-selection-include-tasks"
 	testSelectionExcludeVariantsFlagName = "test-selection-exclude-variants"
 	testSelectionExcludeTasksFlagName    = "test-selection-exclude-tasks"
+	emptyFlagName                        = "empty"
 )
 
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
@@ -55,6 +56,10 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(tasksFlagName, "t"),
 				Usage: "task names (\"all\" for all tasks)",
+			},
+			cli.BoolFlag{
+				Name:  emptyFlagName,
+				Usage: "create a patch with no tasks selected, ignoring the default alias",
 			},
 			cli.StringFlag{
 				Name:  joinFlagNames(patchAliasFlagName, "a"),
@@ -172,6 +177,7 @@ func Patch() cli.Command {
 				RepeatDefinition:                   c.Bool(repeatDefinitionFlag) || c.String(repeatPatchIdFlag) != "",
 				RepeatFailed:                       c.Bool(repeatFailedDefinitionFlag),
 				IncludeModules:                     c.Bool(includeModulesFlag),
+				SelectNone:                         c.Bool(emptyFlagName),
 			}
 
 			var err error

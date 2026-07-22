@@ -74,6 +74,7 @@ type patchParams struct {
 	RegexTestSelectionExcludedVariants []string
 	RegexTestSelectionTasks            []string
 	RegexTestSelectionExcludedTasks    []string
+	SelectNone                         bool
 	Description                        string
 	SkipConfirm                        bool
 	Finalize                           bool
@@ -296,6 +297,10 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 }
 
 func (p *patchParams) setNonRepeatedDefaults(ctx context.Context, conf *ClientSettings) {
+	if p.SelectNone {
+		return
+	}
+
 	if err := p.setLocalAliases(conf); err != nil {
 		grip.Warningf(ctx, "warning - setting local aliases: %s\n", err)
 	}
