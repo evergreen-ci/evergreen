@@ -10,7 +10,14 @@ const (
 	MarkerInEvergreen = "IN_EVERGREEN"
 )
 
-var ErrPSTimeout = errors.New("ps timeout")
+var (
+	ErrPSTimeout = errors.New("ps timeout")
+	// ErrContainerExecUnavailable is returned by KillSpawnedProcsInContainer
+	// when docker exec fails at the daemon level (exit 125): the container is
+	// not running, paused, or unreachable. Callers should warn rather than
+	// treat this as a hard kill failure.
+	ErrContainerExecUnavailable = errors.New("container exec unavailable")
+)
 
 const (
 	// minNice is the minimum nice value (i.e. highest priority).
