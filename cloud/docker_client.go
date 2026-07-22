@@ -23,7 +23,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 // The DockerClient interface wraps the Docker dockerClient interaction.
@@ -145,12 +144,17 @@ func (c *dockerClientImpl) Init(apiVersion string) error {
 	return nil
 }
 
-// getHTTPClient returns an HTTP client for Docker.
+// getHTTPClient returns an HTTP client for Docker. The transport is left as a
+// plain *http.Transport (rather than being wrapped with otelhttp instrumentation
+// like the utility HTTP client pool) because the Docker client inspects the
+// transport to detect that it must communicate over TLS. Wrapping the transport
+// hides it from the Docker client, which then sends plain HTTP requests to the
+// TLS Docker daemon.
 func (c *dockerClientImpl) getHTTPClient(timeout time.Duration) *http.Client {
 	transport := utility.DefaultTransport()
 	transport.TLSClientConfig.InsecureSkipVerify = true
 
-	client := utility.DefaultHttpClient(otelhttp.NewTransport(transport))
+	client := utility.DefaultHttpClient(transport)
 	if timeout > 0 {
 		client.Timeout = timeout
 	}
