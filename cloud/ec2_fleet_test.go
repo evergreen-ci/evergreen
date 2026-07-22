@@ -314,8 +314,7 @@ func TestFleet(t *testing.T) {
 		},
 		"TerminateInstanceUnsetsVolumeHost": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
 			h.Id = "i-12345"
-			require.NoError(t, db.Clear(host.Collection))
-			require.NoError(t, db.Clear(host.VolumesCollection))
+			require.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection))
 
 			vol := &host.Volume{
 				ID:         "volume1",
