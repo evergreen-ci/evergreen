@@ -71,6 +71,7 @@ type Mock struct {
 	CreateGitHubDynamicAccessTokenFail   bool
 	RevokeGitHubDynamicAccessTokenFail   bool
 	AssumeRoleResponse                   *apimodels.AWSCredentials
+	AssumeRoleCount                      int
 	S3Response                           *apimodels.AWSCredentials
 	SendTaskDetailsShouldFail            bool
 
@@ -643,6 +644,7 @@ func (c *Mock) SelectTests(ctx context.Context, taskData TaskData, request restm
 }
 
 func (c *Mock) AssumeRole(ctx context.Context, td TaskData, request apimodels.AssumeRoleRequest) (*apimodels.AWSCredentials, error) {
+	c.AssumeRoleCount++
 	return c.AssumeRoleResponse, nil
 }
 

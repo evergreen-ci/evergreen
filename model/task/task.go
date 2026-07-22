@@ -428,8 +428,6 @@ type Dependency struct {
 	TaskId       string `bson:"_id" json:"id"`
 	Status       string `bson:"status" json:"status"`
 	Unattainable bool   `bson:"unattainable" json:"unattainable"`
-	// Finished indicates if the task's dependency has finished running or not.
-	Finished bool `bson:"finished" json:"finished"`
 	// FinishedAt indicates the time the task's dependency was finished at.
 	FinishedAt time.Time `bson:"finished_at,omitempty" json:"finished_at,omitempty"`
 	// OmitGeneratedTasks causes tasks that depend on a generator task to not depend on
@@ -846,7 +844,6 @@ func (t *Task) MarkDependenciesFinished(ctx context.Context, finished bool) erro
 		},
 		bson.M{
 			"$set": bson.M{
-				bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyFinishedKey):   finished,
 				bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyFinishedAtKey): finishedAt,
 			},
 		},

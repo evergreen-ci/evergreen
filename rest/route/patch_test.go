@@ -1100,7 +1100,7 @@ buildvariants:
 	require.NoError(t, unfinalized.Insert(t.Context()))
 
 	pp := &serviceModel.ParserProject{}
-	require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(config), pp))
+	require.NoError(t, util.UnmarshalYAML([]byte(config), pp))
 	pp.Id = unfinalized.Id.Hex()
 	require.NoError(t, pp.Insert(t.Context()))
 
@@ -1203,7 +1203,7 @@ buildvariants:
 	}
 	assert.NoError(t, patch2.Insert(t.Context()))
 
-	err = util.UnmarshalYAMLWithFallback([]byte(config), &pp)
+	err = util.UnmarshalYAML([]byte(config), &pp)
 	require.NoError(t, err)
 	pp.Id = patch2.Id.Hex()
 	require.NoError(t, pp.Insert(t.Context()))
@@ -1237,7 +1237,7 @@ buildvariants:
 	}
 	assert.NoError(t, patch3.Insert(t.Context()))
 
-	err = util.UnmarshalYAMLWithFallback([]byte(config), &pp)
+	err = util.UnmarshalYAML([]byte(config), &pp)
 	require.NoError(t, err)
 	pp.Id = patch3.Id.Hex()
 	require.NoError(t, pp.Insert(t.Context()))
@@ -1518,7 +1518,7 @@ tasks:
 	require.NoError(t, unfinalized.Insert(t.Context()))
 
 	pp := &serviceModel.ParserProject{}
-	require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(config), pp))
+	require.NoError(t, util.UnmarshalYAML([]byte(config), pp))
 	pp.Id = unfinalized.Id.Hex()
 	require.NoError(t, pp.Insert(t.Context()))
 
