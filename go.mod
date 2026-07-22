@@ -96,7 +96,7 @@ require (
 	github.com/evergreen-ci/baobab v1.0.1-0.20220107150152-03b522479f52 // indirect
 	github.com/evergreen-ci/bond v0.0.0-20260326192958-a16b1d604e29 // indirect
 	github.com/evergreen-ci/lru v0.0.0-20260326190734-0d627bf39810 // indirect
-	github.com/evergreen-ci/negroni v1.0.1-0.20211028183800-67b6d7c2c035 // indirect
+	github.com/evergreen-ci/negroni v1.0.1-0.20211028183800-67b6d7c2c035
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
