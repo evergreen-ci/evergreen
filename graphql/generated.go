@@ -50841,7 +50841,7 @@ func (ec *executionContext) _ProjectLite_runEveryMainlineCommit(ctx context.Cont
 			return obj.RunEveryMainlineCommit, nil
 		},
 		nil,
-		ec.marshalOBoolean2bool,
+		ec.marshalOBoolean2ᚖbool,
 		true,
 		false,
 	)
