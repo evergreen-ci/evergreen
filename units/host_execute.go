@@ -20,6 +20,17 @@ import (
 
 const (
 	hostExecuteJobName = "host-execute"
+
+	// setupScriptOutputBufferSize is the maximum number of log lines captured
+	// from a host execute script. It is much larger than the default
+	// host.OutputBufferSize so that engineers can see the full setup script
+	// output in the host event logs, rather than only the final lines.
+	setupScriptOutputBufferSize = 100 * 1000
+
+	// maxScriptLogsSize bounds the script output stored in the host event log
+	// and sent to Splunk, matching the cap on the SSH execution path
+	// (util.NewMBCappedWriter).
+	maxScriptLogsSize = 1024 * 1024
 )
 
 func init() {
@@ -118,10 +129,10 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 		}
 		args = append(args, j.host.Distro.ShellBinary(), "-l", shellScriptPath)
 
-		output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
+		output, err := j.host.RunJasperProcessWithOutputSize(ctx, j.env, &options.Create{
 			Args: args,
-		})
-		logs = strings.Join(output, "\n")
+		}, setupScriptOutputBufferSize)
+		logs = truncateScriptLogs(strings.Join(output, "\n"))
 		if err != nil {
 			event.LogHostScriptExecuteFailed(ctx, j.host.Id, logs, err)
 			grip.Error(ctx, message.WrapError(err, message.Fields{
@@ -181,4 +192,17 @@ func (j *hostExecuteJob) populateIfUnset(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// truncateScriptLogs bounds the script output stored in the host event log and
+// sent to Splunk. If the output exceeds maxScriptLogsSize, it keeps the
+// beginning and end (where the initial setup steps and any final error
+// typically appear) and elides the middle.
+func truncateScriptLogs(logs string) string {
+	if len(logs) <= maxScriptLogsSize {
+		return logs
+	}
+	const marker = "\n...[log truncated]...\n"
+	keep := (maxScriptLogsSize - len(marker)) / 2
+	return logs[:keep] + marker + logs[len(logs)-keep:]
 }

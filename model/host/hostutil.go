@@ -34,6 +34,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// OutputBufferSize is the default maximum number of log lines captured from a
+// process run via Jasper. Callers that need to capture more (e.g. the full
+// output of a lengthy setup script) can use RunJasperProcessWithOutputSize.
 const OutputBufferSize = 1000
 
 // SetupCommand returns the command to run the host setup script.
@@ -673,6 +676,17 @@ func (h *Host) WriteJasperPreconditionScriptsCommands() string {
 // process with the given options, wait for its completion, and returns the
 // output from it.
 func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, opts *options.Create) ([]string, error) {
+	return h.RunJasperProcessWithOutputSize(ctx, env, opts, OutputBufferSize)
+}
+
+// RunJasperProcessWithOutputSize is the same as RunJasperProcess but captures
+// up to outputBufferSize log lines rather than the default OutputBufferSize.
+// The in-memory logger is a fixed-capacity ring buffer, so a larger size is
+// needed to capture the full output of a process that logs many lines;
+// otherwise the earliest output is overwritten. The output is retrieved in
+// pages so that a single Jasper response never exceeds the gRPC message size
+// limit, regardless of how large outputBufferSize is.
+func (h *Host) RunJasperProcessWithOutputSize(ctx context.Context, env evergreen.Environment, opts *options.Create, outputBufferSize int) ([]string, error) {
 	client, err := h.JasperClient(ctx, env)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting Jasper client")
@@ -693,7 +707,7 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 		}
 	}
 	if !inMemoryLoggerExists {
-		logger, err := jasper.NewInMemoryLogger(OutputBufferSize)
+		logger, err := jasper.NewInMemoryLogger(outputBufferSize)
 		if err != nil {
 			return nil, errors.Wrap(err, "creating new in-memory logger")
 		}
@@ -710,12 +724,27 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 		catcher.Wrap(err, "problem waiting for process completion")
 	}
 
-	logStream, err := client.GetLogStream(ctx, proc.ID(), OutputBufferSize)
-	if err != nil {
-		catcher.Wrap(err, "can't get output of process")
+	// Retrieve the output in pages capped at OutputBufferSize lines per request
+	// so that a single Jasper response stays under the gRPC message size limit
+	// even when outputBufferSize is large.
+	var logs []string
+	for len(logs) < outputBufferSize {
+		pageSize := outputBufferSize - len(logs)
+		if pageSize > OutputBufferSize {
+			pageSize = OutputBufferSize
+		}
+		logStream, err := client.GetLogStream(ctx, proc.ID(), pageSize)
+		if err != nil {
+			catcher.Wrap(err, "getting output of process")
+			break
+		}
+		logs = append(logs, logStream.Logs...)
+		if logStream.Done {
+			break
+		}
 	}
 
-	return logStream.Logs, catcher.Resolve()
+	return logs, catcher.Resolve()
 }
 
 // WriteJasperFile writes a file on the host via the Jasper service's streaming
