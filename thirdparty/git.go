@@ -411,7 +411,9 @@ func GitRestoreFile(ctx context.Context, owner, repo, revision, gitDir string, f
 		return nil, errors.Wrapf(err, "validating file path '%s' is within git repo directory", fileName)
 	}
 
-	cmd := exec.CommandContext(ctx, "git", "restore", "--source=HEAD", fileName)
+	// Pass "--" so git never interprets the user-provided filename as an option,
+	// and use a literal pathspec so leading ':' cannot invoke pathspec magic.
+	cmd := exec.CommandContext(ctx, "git", "restore", "--source=HEAD", "--", ":(literal)"+fileName)
 	cmd.Dir = gitDir
 	cmd.WaitDelay = gitOperationWaitDelay
 	var stdout, stderr strings.Builder
@@ -459,6 +461,15 @@ func GitRestoreFile(ctx context.Context, owner, repo, revision, gitDir string, f
 func validateFileIsWithinDirectory(dir, file string) error {
 	// Normalize the path (e.g. removes redundant separators, resolves ".").
 	cleanPath := filepath.Clean(file)
+
+	// Reject values that git could interpret as an option or a magic pathspec
+	// rather than a literal filename.
+	if strings.HasPrefix(cleanPath, "-") {
+		return errors.Errorf("file '%s' cannot begin with '-'", file)
+	}
+	if strings.HasPrefix(file, ":") {
+		return errors.Errorf("file '%s' cannot begin with ':'", file)
+	}
 
 	if filepath.IsAbs(cleanPath) {
 		return errors.Errorf("file '%s' must be a relative path, not absolute", file)
