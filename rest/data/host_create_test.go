@@ -182,7 +182,7 @@ buildvariants:
 		}
 		assert.NoError(t, h1.Insert(ctx))
 		pp := &model.ParserProject{}
-		err := util.UnmarshalYAML([]byte(versionYaml), &pp)
+		err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
 		assert.NoError(t, err)
 		pp.Id = "v1"
 		assert.NoError(t, pp.Insert(t.Context()))
@@ -250,7 +250,7 @@ buildvariants:
 		}
 		assert.NoError(t, h2.Insert(ctx))
 		pp := &model.ParserProject{}
-		err := util.UnmarshalYAML([]byte(versionYaml), &pp)
+		err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
 		assert.NoError(t, err)
 		pp.Id = "v2"
 		assert.NoError(t, pp.Insert(t.Context()))
@@ -319,7 +319,7 @@ buildvariants:
 		}
 		assert.NoError(t, h3.Insert(ctx))
 		pp := &model.ParserProject{}
-		err := util.UnmarshalYAML([]byte(versionYaml), &pp)
+		err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
 		assert.NoError(t, err)
 		pp.Id = "v3"
 		assert.NoError(t, pp.Insert(t.Context()))
@@ -385,7 +385,7 @@ buildvariants:
 		assert.NoError(t, h4.Insert(ctx))
 
 		pp := &model.ParserProject{}
-		err := util.UnmarshalYAML([]byte(versionYaml), &pp)
+		err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
 		assert.NoError(t, err)
 		pp.Id = "v4"
 		assert.NoError(t, pp.Insert(t.Context()))

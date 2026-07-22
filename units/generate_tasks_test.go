@@ -530,7 +530,7 @@ func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
 			require.NoError(sampleBuild.Insert(t.Context()))
 
 			pp := model.ParserProject{}
-			err := util.UnmarshalYAML([]byte(sampleBaseProject), &pp)
+			err := util.UnmarshalYAMLWithFallback([]byte(sampleBaseProject), &pp)
 			require.NoError(err)
 			pp.Id = "sample_version"
 			require.NoError(pp.Insert(t.Context()))
@@ -668,7 +668,7 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 	require.NoError(b3.Insert(t.Context()))
 
 	pp := model.ParserProject{}
-	err := util.UnmarshalYAML([]byte(omitGeneratedTasksConfig), &pp)
+	err := util.UnmarshalYAMLWithFallback([]byte(omitGeneratedTasksConfig), &pp)
 	require.NoError(err)
 	pp.Id = "sample_version"
 	require.NoError(pp.Insert(t.Context()))
@@ -713,7 +713,7 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 
 	// check that the generated tasks are included as dependencies by default
 	pp = model.ParserProject{}
-	err = util.UnmarshalYAML([]byte(dependOnGeneratedTasksConfig), &pp)
+	err = util.UnmarshalYAMLWithFallback([]byte(dependOnGeneratedTasksConfig), &pp)
 	require.NoError(err)
 	pp.Id = "sample_version"
 	require.NoError(pp.Insert(t.Context()))
@@ -751,7 +751,7 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 
 	// check that the generated tasks are included as dependencies by default
 	pp = model.ParserProject{}
-	err = util.UnmarshalYAML([]byte(shouldGenerateNewBVConfig), &pp)
+	err = util.UnmarshalYAMLWithFallback([]byte(shouldGenerateNewBVConfig), &pp)
 	require.NoError(err)
 	pp.Id = "sample_version"
 	require.NoError(pp.Insert(t.Context()))
@@ -896,7 +896,7 @@ buildvariants:
 		},
 	}
 	sampleParserProject := model.ParserProject{}
-	err := util.UnmarshalYAML([]byte(sampleBaseProject), &sampleParserProject)
+	err := util.UnmarshalYAMLWithFallback([]byte(sampleBaseProject), &sampleParserProject)
 	require.NoError(err)
 	sampleParserProject.Id = "sample_version"
 	require.NoError(sampleParserProject.Insert(t.Context()))
