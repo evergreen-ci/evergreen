@@ -27,6 +27,11 @@ func TestMakeReconciliateID(t *testing.T) {
 			id:                   "alice@b.com",
 			expected:             "alice@b.com",
 		},
+		"StripsDomainWhenAllowListCasingDiffers": {
+			expectedEmailDomains: []string{"A.com"},
+			id:                   "alice@a.com",
+			expected:             "alice",
+		},
 		"ReturnsIDUnchangedWhenNoAtSign": {
 			expectedEmailDomains: []string{"a.com"},
 			id:                   "alice",

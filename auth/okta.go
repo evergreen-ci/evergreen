@@ -64,9 +64,20 @@ func makeReconciliateID(expectedEmailDomains []string) func(string) string {
 		if emailDomainStart == -1 {
 			return id
 		}
-		if len(expectedEmailDomains) > 0 && !utility.StringSliceContains(expectedEmailDomains, id[emailDomainStart+1:]) {
+		if len(expectedEmailDomains) > 0 && !domainInAllowList(expectedEmailDomains, id[emailDomainStart+1:]) {
 			return id
 		}
 		return id[:emailDomainStart]
 	}
+}
+
+// domainInAllowList reports whether domain matches an allow-listed domain,
+// comparing case-insensitively since email domains are case-insensitive.
+func domainInAllowList(domains []string, domain string) bool {
+	for _, d := range domains {
+		if strings.EqualFold(d, domain) {
+			return true
+		}
+	}
+	return false
 }
