@@ -60,8 +60,8 @@ func WrapWithContainer(ctx context.Context, opts *options.Create, containerID, w
 			args = append(args, "--env-file="+hostEnvPath)
 		}
 
-		envFilePath := filepath.Join(envFileHostDir, containerEnvFileName)
-		if err := writeEnvFile(ctx, envFilePath, opts.Environment); err != nil {
+		envFilePath, err := writeEnvFile(ctx, envFileHostDir, opts.Environment)
+		if err != nil {
 			return errors.Wrap(err, "writing container env file")
 		}
 		args = append(args, "--env-file="+envFilePath)
@@ -96,12 +96,13 @@ func WrapWithContainer(ctx context.Context, opts *options.Create, containerID, w
 	return nil
 }
 
-// writeEnvFile serializes env as KEY=VALUE lines to path with mode 0600.
-// The write is atomic (temp file + rename) to prevent concurrent docker exec
-// invocations from observing a partially-written file.
+// writeEnvFile serializes env as KEY=VALUE lines to a unique file in dir with
+// mode 0600. A unique file keeps concurrent command wrappers from replacing
+// each other's environment before docker exec reads it. The file is owned by
+// the container's env tmpfs and is removed when that tmpfs is torn down.
 // Values that contain newlines are skipped because the Docker env-file format
 // does not support multi-line values; a warning is logged for each dropped var.
-func writeEnvFile(ctx context.Context, path string, env map[string]string) error {
+func writeEnvFile(ctx context.Context, dir string, env map[string]string) (string, error) {
 	var sb strings.Builder
 	for k, v := range env {
 		if strings.ContainsAny(v, "\n\r") {
@@ -111,26 +112,21 @@ func writeEnvFile(ctx context.Context, path string, env map[string]string) error
 		fmt.Fprintf(&sb, "%s=%s\n", k, v)
 	}
 
-	dir := filepath.Dir(path)
-	tmp, err := os.CreateTemp(dir, ".evg-env-tmp-")
+	tmp, err := os.CreateTemp(dir, containerEnvFileName+"-")
 	if err != nil {
-		return errors.Wrapf(err, "creating temp env file in '%s'", dir)
+		return "", errors.Wrapf(err, "creating env file in '%s'", dir)
 	}
-	tmpPath := tmp.Name()
+	path := tmp.Name()
 
 	_, writeErr := tmp.WriteString(sb.String())
 	closeErr := tmp.Close()
 	if writeErr != nil || closeErr != nil {
-		_ = os.Remove(tmpPath)
+		_ = os.Remove(path)
 		if writeErr != nil {
-			return errors.Wrap(writeErr, "writing temp env file")
+			return "", errors.Wrap(writeErr, "writing env file")
 		}
-		return errors.Wrap(closeErr, "closing temp env file")
+		return "", errors.Wrap(closeErr, "closing env file")
 	}
 
-	if err := os.Rename(tmpPath, path); err != nil {
-		_ = os.Remove(tmpPath)
-		return errors.Wrapf(err, "installing env file at '%s'", path)
-	}
-	return nil
+	return path, nil
 }

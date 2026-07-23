@@ -3,7 +3,6 @@ package util
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/mongodb/jasper/options"
@@ -141,19 +140,57 @@ func TestWrapWithContainer(t *testing.T) {
 		opts.Environment = map[string]string{"KEY": "value"}
 		require.NoError(t, WrapWithContainer(t.Context(), opts, "cid", "", dir))
 
-		envFilePath := filepath.Join(dir, containerEnvFileName)
+		envFilePath := ""
+		for _, arg := range opts.Args {
+			if len(arg) > 11 && arg[:11] == "--env-file=" {
+				envFilePath = arg[11:]
+			}
+		}
+		require.NotEmpty(t, envFilePath)
 		fi, err := os.Stat(envFilePath)
 		require.NoError(t, err)
 		assert.Equal(t, os.FileMode(0600), fi.Mode().Perm())
+	})
+
+	t.Run("SeparateCommandsRetainTheirEnvironment", func(t *testing.T) {
+		dir := t.TempDir()
+		firstOpts := makeOpts()
+		firstOpts.Environment = map[string]string{"COMMAND": "first"}
+		require.NoError(t, WrapWithContainer(t.Context(), firstOpts, "cid", "", dir))
+
+		firstEnvFile := ""
+		for _, arg := range firstOpts.Args {
+			if len(arg) > 11 && arg[:11] == "--env-file=" {
+				firstEnvFile = arg[11:]
+			}
+		}
+		require.NotEmpty(t, firstEnvFile)
+
+		secondOpts := makeOpts()
+		secondOpts.Environment = map[string]string{"COMMAND": "second"}
+		require.NoError(t, WrapWithContainer(t.Context(), secondOpts, "cid", "", dir))
+		secondEnvFile := ""
+		for _, arg := range secondOpts.Args {
+			if len(arg) > 11 && arg[:11] == "--env-file=" {
+				secondEnvFile = arg[11:]
+			}
+		}
+		require.NotEmpty(t, secondEnvFile)
+		assert.NotEqual(t, firstEnvFile, secondEnvFile)
+
+		data, err := os.ReadFile(firstEnvFile)
+		require.NoError(t, err)
+		assert.Contains(t, string(data), "COMMAND=first\n")
+		assert.NotContains(t, string(data), "COMMAND=second\n")
 	})
 }
 
 func TestWriteEnvFile(t *testing.T) {
 	t.Run("WritesKeyValuePairs", func(t *testing.T) {
 		dir := t.TempDir()
-		path := filepath.Join(dir, ".evg-env")
 		env := map[string]string{"A": "1", "B": "hello world"}
-		require.NoError(t, writeEnvFile(t.Context(), path, env))
+		path, err := writeEnvFile(t.Context(), dir, env)
+		require.NoError(t, err)
 
 		data, err := os.ReadFile(path)
 		require.NoError(t, err)
@@ -164,9 +201,9 @@ func TestWriteEnvFile(t *testing.T) {
 
 	t.Run("SkipsMultilineValues", func(t *testing.T) {
 		dir := t.TempDir()
-		path := filepath.Join(dir, ".evg-env")
 		env := map[string]string{"GOOD": "ok", "BAD": "line1\nline2"}
-		require.NoError(t, writeEnvFile(t.Context(), path, env))
+		path, err := writeEnvFile(t.Context(), dir, env)
+		require.NoError(t, err)
 
 		data, err := os.ReadFile(path)
 		require.NoError(t, err)
@@ -177,8 +214,8 @@ func TestWriteEnvFile(t *testing.T) {
 
 	t.Run("EmptyEnv", func(t *testing.T) {
 		dir := t.TempDir()
-		path := filepath.Join(dir, ".evg-env")
-		require.NoError(t, writeEnvFile(t.Context(), path, nil))
+		path, err := writeEnvFile(t.Context(), dir, nil)
+		require.NoError(t, err)
 
 		data, err := os.ReadFile(path)
 		require.NoError(t, err)
