@@ -240,7 +240,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.NoError(err)
 	foundNotifyEvent := false
 	foundFlagsEvent := false
-	foundProvidersEvent := false
 	foundUiEvent := false
 	for _, evt := range events {
 		s.Equal(event.EventTypeValueChanged, evt.EventType)
@@ -261,7 +260,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	}
 	s.True(foundNotifyEvent)
 	s.True(foundFlagsEvent)
-	s.True(foundProvidersEvent)
 	s.True(foundUiEvent)
 
 	// test that updating the model with nil values does not change them
