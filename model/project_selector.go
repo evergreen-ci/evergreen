@@ -96,8 +96,8 @@ func (sc selectCriterion) Validate() error {
 func ParseSelector(s string) Selector {
 	var criteria []selectCriterion
 	// read the white-space delimited criteria
-	critStrings := strings.Fields(s)
-	for _, c := range critStrings {
+	critStrings := strings.FieldsSeq(s)
+	for c := range critStrings {
 		criteria = append(criteria, stringToCriterion(c))
 	}
 	return criteria

@@ -201,7 +201,7 @@ func TestMatrixDefinitionAllCells(t *testing.T) {
 		Convey("a disgustingly large matrix should expand properly", func() {
 			bigList := func(max int) []string {
 				out := []string{}
-				for i := 0; i < max; i++ {
+				for i := range max {
 					out = append(out, fmt.Sprint(i))
 				}
 				return out

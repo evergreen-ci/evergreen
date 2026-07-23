@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -263,7 +264,6 @@ func (opts *DockerOptions) Validate() error {
 // HostMetadataOptions are options related to the ec2 instance's metadata.
 type HostMetadataOptions struct {
 	CloudProviderData
-	HostID        string `json:"host_id"`
 	EC2InstanceID string `json:"ec2_instance_id"`
 }
 
@@ -2807,8 +2807,8 @@ func GetContainersOnParents(ctx context.Context, d distro.Distro) ([]ContainersO
 
 	containersOnParents := make([]ContainersOnParents, 0)
 	// parents come in sorted order from soonest to latest expected finish time
-	for i := len(allParents) - 1; i >= 0; i-- {
-		parent := allParents[i]
+	for _, parent := range slices.Backward(allParents) {
+
 		currentContainers, err := parent.GetActiveContainers(ctx)
 		if err != nil && !adb.ResultsNotFound(err) {
 			return nil, errors.Wrapf(err, "finding active containers for container parent '%s'", parent.Id)
@@ -3817,7 +3817,7 @@ func (h *Host) GeneratePersistentDNSName(ctx context.Context, domain string) (st
 	// tiny edge case where the DNS name generated above conflicts with an
 	// existing one.
 	const numAttempts = 5
-	for i := 0; i < numAttempts; i++ {
+	for range numAttempts {
 		random := utility.RandomString()[:maxRandLen]
 		candidate := fmt.Sprintf("%s-%s.%s", user, random, strings.TrimPrefix(domain, "."))
 

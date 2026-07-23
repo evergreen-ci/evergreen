@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	stderrors "errors"
+	"slices"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -423,8 +424,8 @@ func (u *DBUser) RemoveFavoriteProject(ctx context.Context, identifier string) e
 		return err
 	}
 
-	for i := len(u.FavoriteProjects) - 1; i >= 0; i-- {
-		if u.FavoriteProjects[i] == identifier {
+	for i, v := range slices.Backward(u.FavoriteProjects) {
+		if v == identifier {
 			u.FavoriteProjects = append(u.FavoriteProjects[:i], u.FavoriteProjects[i+1:]...)
 		}
 	}
@@ -455,8 +456,8 @@ func (u *DBUser) RemoveRole(ctx context.Context, role string) error {
 	if err := UpdateOne(ctx, bson.M{IdKey: u.Id}, update); err != nil {
 		return err
 	}
-	for i := len(u.SystemRoles) - 1; i >= 0; i-- {
-		if u.SystemRoles[i] == role {
+	for i, v := range slices.Backward(u.SystemRoles) {
+		if v == role {
 			u.SystemRoles = append(u.SystemRoles[:i], u.SystemRoles[i+1:]...)
 		}
 	}

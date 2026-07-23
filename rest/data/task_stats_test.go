@@ -83,7 +83,7 @@ func TestGetTaskStats(t *testing.T) {
 func insertTaskStats(ctx context.Context, filter *taskstats.StatsFilter, numTests int, limit int) error {
 	day := time.Now()
 	tasks := []string{}
-	for i := 0; i < numTests; i++ {
+	for i := range numTests {
 		taskName := fmt.Sprintf("%v%v", "task_", i)
 		tasks = append(tasks, taskName)
 		err := db.Insert(ctx, taskstats.DailyTaskStatsCollection, mgobson.M{

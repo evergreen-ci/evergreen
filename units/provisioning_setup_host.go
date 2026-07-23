@@ -754,7 +754,7 @@ func prepareVolume(ctx context.Context, client remote.Manager, h *host.Host, dev
 func waitForDevice(ctx context.Context, env evergreen.Environment, h *host.Host) (blockDevice, error) {
 	var device blockDevice
 	var err error
-	for i := 0; i < mountRetryLimit; i++ {
+	for range mountRetryLimit {
 		device, err = getMostRecentlyAddedDevice(ctx, env, h)
 		if err == nil {
 			break

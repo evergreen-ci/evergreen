@@ -3,6 +3,7 @@ package operations
 import (
 	"context"
 	"fmt"
+	"maps"
 	"os"
 	"strings"
 
@@ -260,9 +261,7 @@ func Patch() cli.Command {
 			// Initialize module path cache in case these have already been set by the user. We use a cache here
 			// to avoid asking the user repeatedly for paths, in the case that they aren't writing them back to their configuration file.
 			modulePathCache := conf.getModulePathsForProject(params.Project)
-			for moduleName, modulePath := range params.IncludeModuleOverrides {
-				modulePathCache[moduleName] = modulePath
-			}
+			maps.Copy(modulePathCache, params.IncludeModuleOverrides)
 			if params.IncludeModules {
 				if !outputJSON {
 					fmt.Fprint(os.Stderr, "Using --include-modules will apply module configuration changes to the patch "+

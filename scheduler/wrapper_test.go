@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -189,8 +188,7 @@ func makeStaticHostProviderSettings(t *testing.T, names ...string) *birch.Docume
 }
 
 func TestDoStaticHostUpdate(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	legacyHost := func() *host.Host {
 		return &host.Host{

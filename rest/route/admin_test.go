@@ -36,8 +36,7 @@ type AdminRouteSuite struct {
 
 func TestAdminRouteSuiteWithDB(t *testing.T) {
 	s := new(AdminRouteSuite)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	s.env = testutil.NewEnvironment(ctx, t)
 	// run the rest of the tests
 	suite.Run(t, s)

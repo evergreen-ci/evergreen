@@ -76,15 +76,15 @@ func (v ValidationErrors) Loggable() bool {
 	return len(v) > 0
 }
 func (v ValidationErrors) String() string {
-	out := ""
+	var out strings.Builder
 	for i, validationErr := range v {
 		if i > 0 {
-			out += "\n"
+			out.WriteString("\n")
 		}
-		out += fmt.Sprintf("%s: %s", validationErr.Level.String(), validationErr.Message)
+		out.WriteString(fmt.Sprintf("%s: %s", validationErr.Level.String(), validationErr.Message))
 	}
 
-	return out
+	return out.String()
 }
 func (v ValidationErrors) Annotate(key string, value any) error {
 	return nil
@@ -183,6 +183,7 @@ var projectSettingsValidators = []projectSettingsValidator{
 	validateTimeoutLimits,
 	validateReferentialIntegrity,
 	validateGitHubAppCheckRuns,
+	validateModulesNotOwnRepo,
 }
 
 func (vr ValidationError) Error() string {
@@ -1068,6 +1069,28 @@ func validateReferentialIntegrity(ctx context.Context, settings *evergreen.Setti
 	}
 	validationErrs = append(validationErrs, ensureReferentialIntegrity(p, distroIDs, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, distroWarnings)...)
 	return validationErrs
+}
+
+// validateModulesNotOwnRepo returns an error if a module points at the same
+// repo as the project.
+func validateModulesNotOwnRepo(_ context.Context, _ *evergreen.Settings, p *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
+	errs := ValidationErrors{}
+	if ref == nil || ref.Owner == "" || ref.Repo == "" {
+		return errs
+	}
+	for _, module := range p.Modules {
+		owner, repo, err := module.GetOwnerAndRepo()
+		if err != nil {
+			continue
+		}
+		if strings.EqualFold(owner, ref.Owner) && strings.EqualFold(repo, ref.Repo) {
+			errs = append(errs, ValidationError{
+				Level:   Error,
+				Message: fmt.Sprintf("module '%s' cannot use the same repo ('%s/%s') as the project it is defined for", module.Name, ref.Owner, ref.Repo),
+			})
+		}
+	}
+	return errs
 }
 
 // validateGitHubAppCheckRuns returns warnings if the project has more check runs configured than allowed (which varies depending on GitHub App setup).

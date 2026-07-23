@@ -24,8 +24,7 @@ import (
 // TestSmokeEndpoints runs the smoke test for the app server REST and UI
 // endpoints.
 func TestSmokeEndpoints(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	params := getSmokeTestParamsFromEnv(t)
 	grip.Info(ctx, message.Fields{

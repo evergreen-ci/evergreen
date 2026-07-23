@@ -16,8 +16,7 @@ import (
 )
 
 func TestNewUnexpirableSpawnHostStatsJob(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	testutil.TestSpan(ctx, t)
 
 	j, ok := NewUnexpirableSpawnHostStatsJob(utility.RoundPartOfMinute(0).Format(TSFormat)).(*unexpirableSpawnHostStatsJob)
@@ -27,8 +26,7 @@ func TestNewUnexpirableSpawnHostStatsJob(t *testing.T) {
 }
 
 func TestUnexpirableSpawnHostStatsJob(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, j *unexpirableSpawnHostStatsJob){
 		"ReturnsZeroStatsForNoHosts": func(ctx context.Context, t *testing.T, j *unexpirableSpawnHostStatsJob) {

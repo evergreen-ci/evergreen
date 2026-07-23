@@ -26,8 +26,7 @@ type SlackNotificationSuite struct {
 
 func TestSlackNotificationSuite(t *testing.T) {
 	s := new(SlackNotificationSuite)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	s.env = testutil.NewEnvironment(ctx, t)
 	suite.Run(t, s)
 }
@@ -124,8 +123,7 @@ type EmailNotificationSuite struct {
 
 func TestEmailNotificationSuite(t *testing.T) {
 	s := new(EmailNotificationSuite)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	s.env = testutil.NewEnvironment(ctx, t)
 	suite.Run(t, s)
 }

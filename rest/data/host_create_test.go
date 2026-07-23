@@ -27,8 +27,7 @@ import (
 )
 
 func TestListHostsForTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -102,8 +101,7 @@ func TestListHostsForTask(t *testing.T) {
 }
 
 func TestCreateHostsFromTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, host.Collection, model.ParserProjectCollection))
 

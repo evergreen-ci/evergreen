@@ -148,7 +148,7 @@ func (s *evergreenSender) Send(ctx context.Context, m message.Composer) {
 		return
 	}
 
-	for _, line := range strings.Split(m.String(), "\n") {
+	for line := range strings.SplitSeq(m.String(), "\n") {
 		if line == "" {
 			continue
 		}

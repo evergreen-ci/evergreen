@@ -1,7 +1,6 @@
 package units
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -16,8 +15,7 @@ import (
 )
 
 func TestDecommissioningParentWithTerminatedContainers(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	assert := assert.New(t)

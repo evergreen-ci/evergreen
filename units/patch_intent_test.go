@@ -1495,7 +1495,7 @@ func (s *PatchIntentUnitsSuite) verifyVersionDoc(patchDoc *patch.Patch, expected
 
 	s.Require().Len(versionDoc.BuildVariants, builds)
 
-	for i := 0; i < builds; i++ {
+	for i := range builds {
 		s.True(versionDoc.BuildVariants[i].Activated)
 		s.Zero(versionDoc.BuildVariants[i].ActivateAt)
 		s.NotEmpty(versionDoc.BuildVariants[i].BuildId)
