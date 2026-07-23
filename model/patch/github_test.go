@@ -203,6 +203,42 @@ func (s *GithubSuite) TestSetProcessed() {
 	s.Equal(GithubIntentType, intents[0].GetType())
 }
 
+func (s *GithubSuite) TestSetIntentProcessingError() {
+	intent, err := NewGithubIntent(s.T().Context(), "1", "", "", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, s.baseHash, s.headRepo, s.hash, s.user, s.title))
+	s.NoError(err)
+	s.NotNil(intent)
+	s.NoError(intent.Insert(s.T().Context()))
+
+	processingError := "building GitHub patch document: GitHub returned a 500"
+	s.NoError(SetIntentProcessingError(s.T().Context(), intent.ID(), intent.GetType(), processingError))
+
+	found, err := FindGitHubIntentProcessingError(s.T().Context(), intent.ID())
+	s.NoError(err)
+	s.Require().NotNil(found)
+	s.Equal(intent.ID(), found.ID)
+	s.Equal(GithubIntentType, found.IntentType)
+	s.Equal(processingError, found.ProcessingError)
+	s.Equal(s.baseRepo, found.BaseRepoName)
+	s.Equal(s.headRepo, found.HeadRepoName)
+	s.Equal(s.hash, found.HeadHash)
+	s.Equal(s.pr, found.PRNumber)
+}
+
+func (s *GithubSuite) TestFindGitHubIntentProcessingErrorReturnsNilForNonGitHubIntent() {
+	intent, err := NewCliIntent(CLIIntentParams{
+		User:        "user",
+		Project:     "project",
+		BaseGitHash: s.baseHash,
+		Description: "CLI patch",
+	})
+	s.NoError(err)
+	s.NoError(intent.Insert(s.T().Context()))
+
+	found, err := FindGitHubIntentProcessingError(s.T().Context(), intent.ID())
+	s.NoError(err)
+	s.Nil(found)
+}
+
 func (s *GithubSuite) TestFindUnprocessedGithubIntents() {
 	intents := []githubIntent{
 		{

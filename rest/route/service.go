@@ -154,6 +154,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 
 	app.AddRoute("/hooks/github").Version(2).Post().Wrap(requireValidGithubPayload, rateLimit).RouteHandler(makeGithubHooksRoute(sc, opts.APIQueue, opts.GithubSecret, settings))
 	app.AddRoute("/hooks/aws").Version(2).Post().Wrap(requireValidSNSPayload, rateLimit).RouteHandler(makeEC2SNS(env, opts.APIQueue))
+	app.AddRoute("/github/patch-intents/{intent_id}").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeGithubPatchIntentProcessingError())
 
 	app.AddRoute("/host/filter").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeFetchHostFilter())
 	app.AddRoute("/host/start_processes").Version(2).Post().Wrap(requireUser, rateLimit).RouteHandler(makeHostStartProcesses(env))
