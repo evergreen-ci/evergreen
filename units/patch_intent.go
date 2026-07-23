@@ -224,6 +224,9 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			if strings.Contains(err.Error(), thirdparty.Github502Error) {
 				j.gitHubError = GitHubInternalError
 			}
+			if strings.Contains(err.Error(), evergreen.SettingsContextCancelledErr) {
+				j.gitHubError = ContextCancelledError
+			}
 		}
 		catcher.Wrap(err, "building GitHub patch document")
 	case patch.GithubMergeIntentType:
@@ -1449,9 +1452,6 @@ func findEvergreenUserForGithubMergeGroup(ctx context.Context) (*user.DBUser, er
 }
 
 func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *patch.Patch, requiredOrganization, githubUser string) (bool, error) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
 	// GitHub Dependabot patches should be automatically authorized.
 	if githubUser == githubDependabotUser || githubUser == githubActionsUser {
 		grip.Info(ctx, message.Fields{
