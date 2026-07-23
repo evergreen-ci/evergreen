@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"reflect"
+	"slices"
 	"strings"
 	"time"
 
@@ -20,6 +22,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -119,7 +122,7 @@ func getGitHubClientForAuth(authFields *GithubAppAuth) (*GitHubClient, error) {
 		return nil, errors.Wrap(err, "parsing private key")
 	}
 
-	itr := ghinstallation.NewAppsTransportFromPrivateKey(utility.DefaultTransport(), authFields.AppID, key)
+	itr := ghinstallation.NewAppsTransportFromPrivateKey(otelhttp.NewTransport(utility.DefaultTransport()), authFields.AppID, key)
 	httpClient := utility.GetCustomHTTPRetryableClientWithTransport(itr, githubClientShouldRetry(), utility.RetryHTTPDelay(utility.RetryOptions{
 		MinDelay:    GitHubRetryMinDelay,
 		MaxDelay:    GitHubRetryMaxDelay,
@@ -156,9 +159,7 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 				"attempt": index,
 				"op":      op,
 			}
-			for k, v := range extraFields {
-				msg[k] = v
-			}
+			maps.Copy(msg, extraFields)
 			return msg
 		}
 
@@ -202,10 +203,8 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 
 		span.SetAttributes(attribute.Int(githubAppStatusCodeAttribute, resp.StatusCode))
 
-		for _, statusCode := range defaultRetryableStatuses {
-			if resp.StatusCode == statusCode {
-				return true
-			}
+		if slices.Contains(defaultRetryableStatuses, resp.StatusCode) {
+			return true
 		}
 
 		grip.ErrorWhen(req.Context(), resp.StatusCode >= http.StatusBadRequest, makeLogMsg(map[string]any{

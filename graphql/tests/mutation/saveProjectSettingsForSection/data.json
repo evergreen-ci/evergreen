@@ -44,6 +44,26 @@
       "repo_name": "commit-queue-sandbox"
     }
   ],
+  "project_aliases": [
+    {
+      "_id": { "$oid": "64c80057d1d6f12b0d4c69d0" },
+      "alias": "test",
+      "description": "alias",
+      "project_id": "sandbox_project_id",
+      "variant_tags": [".*"],
+      "tags": [".*"],
+      "parameters": [{ "key": "test", "value": "thing" }]
+    },
+    {
+      "_id": { "$oid": "65c80057d1d6f12b0d4c69d0" },
+      "alias": "test2",
+      "description": "second alias",
+      "project_id": "sandbox_project_id",
+      "variant_tags": [".*"],
+      "tags": [".*"],
+      "parameters": [{ "key": "test", "value": "thing" }]
+    }
+  ],
   "project_vars": [
     {
       "_id": "sandbox_project_id",

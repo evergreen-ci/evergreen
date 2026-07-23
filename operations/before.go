@@ -3,6 +3,7 @@ package operations
 import (
 	"context"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/mongodb/grip"
@@ -188,10 +189,8 @@ func requireOnlyOneBool(flags ...string) cli.BeforeFunc {
 
 func requireAtLeastOneBool(flags ...string) cli.BeforeFunc {
 	return func(c *cli.Context) error {
-		for idx := range flags {
-			if c.Bool(flags[idx]) {
-				return nil
-			}
+		if slices.ContainsFunc(flags, c.Bool) {
+			return nil
 		}
 
 		return errors.Errorf("must specify at least one of the following options: %s",
@@ -201,10 +200,8 @@ func requireAtLeastOneBool(flags ...string) cli.BeforeFunc {
 
 func requireAtLeastOneFlag(flags ...string) cli.BeforeFunc {
 	return func(c *cli.Context) error {
-		for idx := range flags {
-			if c.IsSet(flags[idx]) {
-				return nil
-			}
+		if slices.ContainsFunc(flags, c.IsSet) {
+			return nil
 		}
 
 		return errors.Errorf("must specify at least one of the following options: %s",

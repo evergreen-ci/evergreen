@@ -1,7 +1,6 @@
 package data
 
 import (
-	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -11,8 +10,7 @@ import (
 )
 
 func TestGeneratePoll(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(task.Collection))
 
 	finished, generateErrs, err := GeneratePoll(ctx, "task-0")

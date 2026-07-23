@@ -1795,7 +1795,7 @@ func TestValidateProjectLimits(t *testing.T) {
 			},
 		}
 
-		for i := 0; i < numTasks; i++ {
+		for i := range numTasks {
 			t := model.ProjectTask{
 				Name: fmt.Sprintf("task-%d", i),
 			}

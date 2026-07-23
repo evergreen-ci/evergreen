@@ -101,8 +101,7 @@ func TestPrefetchProject(t *testing.T) {
 func TestNewProjectAdminMiddleware(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection))
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
@@ -147,8 +146,7 @@ func TestNewProjectAdminMiddleware(t *testing.T) {
 func TestNewCanCreateMiddleware(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(evergreen.RoleCollection))
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	adminRole := gimlet.Role{
 		ID:          "r1",
@@ -303,9 +301,40 @@ func TestSendNotificationMiddleware(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, rw.Code)
 }
 
+func TestSNSAuthMiddlewareCapsBodySize(t *testing.T) {
+	mw := NewSNSAuthMiddleware()
+
+	oversized := strings.NewReader(strings.Repeat("a", maxWebhookBodySize+1))
+	r, err := http.NewRequest(http.MethodPost, "/hooks/aws", oversized)
+	require.NoError(t, err)
+	rw := httptest.NewRecorder()
+	called := false
+	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+		called = true
+	})
+	assert.False(t, called, "route handler should not be called when huge webhook request body is sent")
+	assert.NotEqual(t, http.StatusOK, rw.Code)
+}
+
+func TestGithubAuthMiddlewareCapsBodySize(t *testing.T) {
+	mw := NewGithubAuthMiddleware()
+
+	oversized := strings.NewReader(strings.Repeat("a", maxWebhookBodySize+1))
+	r, err := http.NewRequest(http.MethodPost, "/hooks/github", oversized)
+	require.NoError(t, err)
+	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("X-Hub-Signature-256", "sha256=deadbeef")
+	rw := httptest.NewRecorder()
+	called := false
+	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+		called = true
+	})
+	assert.False(t, called, "route handler should not be called when huge webhook request body is sent")
+	assert.NotEqual(t, http.StatusOK, rw.Code)
+}
+
 func TestTaskAuthMiddleware(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 
@@ -379,8 +408,7 @@ func TestTaskAuthMiddleware(t *testing.T) {
 }
 
 func TestHostAuthMiddleware(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	m := NewHostAuthMiddleware()
 	for testName, testCase := range map[string]func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder){
@@ -458,8 +486,7 @@ func TestHostAuthMiddleware(t *testing.T) {
 
 func TestProjectViewPermission(t *testing.T) {
 	assert := assert.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	require := require.New(t)
 	counter := 0

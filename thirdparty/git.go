@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -165,8 +166,8 @@ func GetPatchSummaries(ctx context.Context, patchContent string) ([]Summary, err
 func ParseGitUrl(url string) (string, string, error) {
 	var owner, repo string
 	httpsPrefix := "https://"
-	if strings.HasPrefix(url, httpsPrefix) {
-		url = strings.TrimPrefix(url, httpsPrefix)
+	if after, ok := strings.CutPrefix(url, httpsPrefix); ok {
+		url = after
 		split := strings.Split(url, "/")
 		if len(split) != 3 {
 			// this covers the case of a GitHub API URL of the form
@@ -465,12 +466,10 @@ func validateFileIsWithinDirectory(dir, file string) error {
 	}
 
 	// Reject parent-directory components to prevent attempts to escape the directory.
-	for _, pathComponent := range strings.FieldsFunc(file, func(r rune) bool {
+	if slices.Contains(strings.FieldsFunc(file, func(r rune) bool {
 		return r == '/' || r == '\\'
-	}) {
-		if pathComponent == ".." {
-			return errors.Errorf("file '%s' cannot traverse directories using '..'", file)
-		}
+	}), "..") {
+		return errors.Errorf("file '%s' cannot traverse directories using '..'", file)
 	}
 
 	fullFilePath := filepath.Join(dir, cleanPath)

@@ -113,7 +113,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 			yml, err := yaml.Marshal(p)
 			require.NoError(t, err)
 			pp := &model.ParserProject{}
-			err = util.UnmarshalYAML(yml, &pp)
+			err = util.UnmarshalYAMLWithFallback(yml, &pp)
 			require.NoError(t, err)
 			pp.Id = v.Id
 			require.NoError(t, pp.Insert(t.Context()))

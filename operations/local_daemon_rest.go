@@ -54,7 +54,7 @@ func (d *localDaemonREST) Start(ctx context.Context) error {
 	}
 
 	grip.Infof(ctx, "Starting REST daemon on port %d", d.port)
-	return http.ListenAndServe(fmt.Sprintf(":%d", d.port), router)
+	return http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", d.port), router)
 }
 
 // handleHealth checks if the daemon is running
@@ -95,7 +95,7 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 		}
 		d.configPath = req.ConfigPath
 
-		grip.Error(r.Context(), json.NewEncoder(w).Encode(map[string]interface{}{
+		grip.Error(r.Context(), json.NewEncoder(w).Encode(map[string]any{
 			"success":       true,
 			"task_count":    len(project.Tasks),
 			"variant_count": len(project.BuildVariants),
@@ -165,7 +165,7 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 		}
 
 		state := executor.GetDebugState()
-		grip.Error(r.Context(), json.NewEncoder(w).Encode(map[string]interface{}{
+		grip.Error(r.Context(), json.NewEncoder(w).Encode(map[string]any{
 			"success":          true,
 			"task_count":       len(executor.GetDebugState().CommandList),
 			"variant_count":    0,
@@ -178,7 +178,7 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 	}
 
 	project := executor.GetProject()
-	grip.Error(r.Context(), json.NewEncoder(w).Encode(map[string]interface{}{
+	grip.Error(r.Context(), json.NewEncoder(w).Encode(map[string]any{
 		"success":       true,
 		"task_count":    len(project.Tasks),
 		"variant_count": len(project.BuildVariants),
@@ -216,7 +216,7 @@ func (d *localDaemonREST) handleSelectTask(w http.ResponseWriter, r *http.Reques
 	}
 
 	state := d.executor.GetDebugState()
-	grip.Error(r.Context(), json.NewEncoder(w).Encode(map[string]interface{}{
+	grip.Error(r.Context(), json.NewEncoder(w).Encode(map[string]any{
 		"success":    true,
 		"step_count": len(state.CommandList),
 	}))
@@ -271,7 +271,7 @@ func (d *localDaemonREST) handleJumpTo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	grip.Error(r.Context(), json.NewEncoder(w).Encode(map[string]interface{}{
+	grip.Error(r.Context(), json.NewEncoder(w).Encode(map[string]any{
 		"success":      true,
 		"current_step": state.CurrentStepIndex,
 	}))
@@ -289,11 +289,11 @@ func (d *localDaemonREST) handleListSteps(w http.ResponseWriter, r *http.Request
 
 	state := d.executor.GetDebugState()
 
-	steps := []map[string]interface{}{}
+	steps := []map[string]any{}
 	for i, cmd := range state.CommandList {
 		executed, success := state.GetStepExecution(i)
 
-		steps = append(steps, map[string]interface{}{
+		steps = append(steps, map[string]any{
 			"index":         i,
 			"step_number":   cmd.FullStepNumber(),
 			"command_type":  cmd.Command.Command,
@@ -305,7 +305,7 @@ func (d *localDaemonREST) handleListSteps(w http.ResponseWriter, r *http.Request
 		})
 	}
 
-	grip.Error(r.Context(), json.NewEncoder(w).Encode(map[string]interface{}{
+	grip.Error(r.Context(), json.NewEncoder(w).Encode(map[string]any{
 		"steps":        steps,
 		"current_step": state.CurrentStepIndex,
 	}))
@@ -451,7 +451,7 @@ func (d *localDaemonREST) handleStatus(w http.ResponseWriter, r *http.Request) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"healthy": true,
 	}
 

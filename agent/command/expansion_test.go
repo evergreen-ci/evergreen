@@ -264,8 +264,7 @@ func TestExpansionUpdate(t *testing.T) {
 }
 
 func TestExpansionUpdateFile(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	comm := client.NewMock("http://localhost.com")
 	conf := &internal.TaskConfig{Expansions: util.Expansions{}, Task: task.Task{}, Project: model.Project{}}
 	conf.NewExpansions = agentutil.NewDynamicExpansions(conf.Expansions)
@@ -290,8 +289,7 @@ func TestExpansionUpdateFile(t *testing.T) {
 }
 
 func TestExpansionWriter(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	comm := client.NewMock("http://localhost.com")
 	logger, err := comm.GetLoggerProducer(ctx, &task.Task{}, nil)
 	require.NoError(t, err)

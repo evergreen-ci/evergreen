@@ -153,15 +153,6 @@ func NewGithubIntent(ctx context.Context, msgDeliveryID, patchOwner, calledBy, a
 	if patchOwner == "" {
 		patchOwner = pr.User.GetLogin()
 	}
-	// mongodb-sage-bot sets the PR assignee as the intended human author, so
-	// use the assignee's identity for attribution instead.
-	ownerUID := int(pr.User.GetID())
-	assigneeLogin := pr.GetAssignee().GetLogin()
-	assigneeUID := int(pr.GetAssignee().GetID())
-	if patchOwner == evergreen.GitHubSageBotLogin && assigneeLogin != "" && assigneeUID != 0 {
-		patchOwner = assigneeLogin
-		ownerUID = assigneeUID
-	}
 	if alias == "" {
 		alias = evergreen.GithubPRAlias
 	}
@@ -181,7 +172,7 @@ func NewGithubIntent(ctx context.Context, msgDeliveryID, patchOwner, calledBy, a
 		HeadBranch:    pr.Head.GetRef(),
 		PRNumber:      pr.GetNumber(),
 		User:          patchOwner,
-		UID:           ownerUID,
+		UID:           int(pr.User.GetID()),
 		HeadHash:      pr.Head.GetSHA(),
 		BaseHash:      pr.Base.GetSHA(),
 		MergeBase:     mergeBase,

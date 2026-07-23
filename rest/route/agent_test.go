@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -99,8 +100,7 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
@@ -502,8 +502,7 @@ func TestMarkTaskForReset(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection))
 			settings := &evergreen.Settings{
@@ -600,8 +599,7 @@ func TestAgentSetup(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			s := &evergreen.Settings{
 				Splunk: evergreen.SplunkConfig{
@@ -636,8 +634,7 @@ func TestAgentSetup(t *testing.T) {
 }
 
 func TestDownstreamParams(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(patch.Collection, task.Collection, host.Collection))
 	parameters := []patch.Parameter{
@@ -708,8 +705,7 @@ func TestDownstreamParams(t *testing.T) {
 }
 
 func TestAgentGetProjectRef(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection))
 	defer func() {
@@ -812,8 +808,7 @@ func TestCreateInstallationToken(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
@@ -827,8 +822,7 @@ func TestCreateInstallationToken(t *testing.T) {
 }
 
 func TestUpsertCheckRunParse(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(task.Collection, patch.Collection))
 
@@ -1219,8 +1213,7 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
@@ -1285,8 +1278,7 @@ func TestRevokeGitHubDynamicAccessToken(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
@@ -1442,8 +1434,7 @@ func TestStartTaskWithOtelMetadata(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			require.NoError(t, db.ClearCollections(task.Collection, host.Collection))
 
@@ -1646,6 +1637,57 @@ func TestLogLookupClosureUsesAdminBucketsConfig(t *testing.T) {
 	t.Run("UnknownBucketReturnsFalse", func(t *testing.T) {
 		_, ok := logLookup(t.Context(), "artifact-bucket", "")
 		assert.False(t, ok)
+	})
+}
+
+func TestGitServePatchFile(t *testing.T) {
+	ctx := t.Context()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+	testutil.ConfigureIntegrationTest(t, env.Settings())
+
+	require.NoError(t, db.ClearCollections(task.Collection, patch.Collection))
+
+	const patchFileID = "patchfile123"
+	const otherPatchFileID = "patchfile456"
+	const taskID = "task1"
+	const versionID = "aaaaaaaaaaff001122334455"
+
+	tsk := task.Task{
+		Id:      taskID,
+		Version: versionID,
+	}
+	require.NoError(t, tsk.Insert(ctx))
+
+	p := patch.Patch{
+		Id:      mgobson.NewObjectId(),
+		Version: versionID,
+		Patches: []patch.ModulePatch{
+			{
+				ModuleName: "",
+				PatchSet: patch.PatchSet{
+					PatchFileId: patchFileID,
+				},
+			},
+		},
+	}
+	require.NoError(t, p.Insert(ctx))
+
+	require.NoError(t, db.WriteGridFile(ctx, patch.GridFSPrefix, patchFileID, strings.NewReader("diff --git a/file")))
+
+	t.Run("ValidPatchFileIDReturnsContents", func(t *testing.T) {
+		h := &gitServePatchFileHandler{taskID: taskID, patchID: patchFileID}
+		resp := h.Run(ctx)
+		require.NotNil(t, resp)
+		assert.Equal(t, http.StatusOK, resp.Status())
+	})
+
+	t.Run("PatchFileIDBelongingToOtherPatchReturnsNotFound", func(t *testing.T) {
+		h := &gitServePatchFileHandler{taskID: taskID, patchID: otherPatchFileID}
+		resp := h.Run(ctx)
+		require.NotNil(t, resp)
+		assert.Equal(t, http.StatusNotFound, resp.Status())
 	})
 }
 

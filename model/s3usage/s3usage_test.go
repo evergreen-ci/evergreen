@@ -262,9 +262,9 @@ func TestS3Usage(t *testing.T) {
 		const callsPerGoroutine = 100
 		var wg sync.WaitGroup
 		wg.Add(goroutines)
-		for i := 0; i < goroutines; i++ {
+		for range goroutines {
 			go func() {
-				for j := 0; j < callsPerGoroutine; j++ {
+				for range callsPerGoroutine {
 					s3Usage.IncrementLogs(1, 10, LogTypeTask, "proj/task/0/task_logs/task")
 				}
 				wg.Done()
@@ -288,9 +288,9 @@ func TestS3Usage(t *testing.T) {
 		const callsPerGoroutine = 50
 		var wg sync.WaitGroup
 		wg.Add(goroutines)
-		for i := 0; i < goroutines; i++ {
+		for i := range goroutines {
 			go func(id int) {
-				for j := 0; j < callsPerGoroutine; j++ {
+				for range callsPerGoroutine {
 					remotePath := "shared/key.bin"
 					if id%2 == 1 {
 						remotePath = "unique/" + string(rune('A'+id)) + ".bin"

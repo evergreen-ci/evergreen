@@ -32,7 +32,7 @@ func TestGetAliasesHandler(t *testing.T) {
 			projectAliases, err := dbModel.FindAliasesForProjectFromDb(ctx, "project_ref")
 			require.NoError(t, err)
 			require.Len(t, projectAliases, 1)
-			require.NoError(t, dbModel.RemoveProjectAlias(ctx, projectAliases[0].ID.Hex()))
+			require.NoError(t, dbModel.RemoveProjectAlias(ctx, projectAliases[0].ProjectID, projectAliases[0].ID.Hex()))
 
 			r, err := http.NewRequest(http.MethodGet, "/alias/project_ref", nil)
 			assert.NoError(t, err)
@@ -76,8 +76,7 @@ func TestGetAliasesHandler(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 			require.NoError(t, db.ClearCollections(
 				dbModel.RepoRefCollection,
 				dbModel.ProjectRefCollection,

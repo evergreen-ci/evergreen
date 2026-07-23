@@ -417,7 +417,7 @@ func (s *taskDAGDispatchServiceSuite) SetupTest() {
 	project := "project_1"
 	distroID := "distro_1"
 
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		dependencies := []string{}
 		if i%5 == 0 { // no group
 			group = ""
@@ -973,7 +973,7 @@ func (s *taskDAGDispatchServiceSuite) TestIsRefreshFindNextTaskThreadSafe() {
 	}
 	s.Require().NoError(d.Insert(s.ctx))
 
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		t := task.Task{
 			Id:                fmt.Sprintf("%d", i),
 			BuildVariant:      "variant_1",
@@ -1004,7 +1004,7 @@ func (s *taskDAGDispatchServiceSuite) TestIsRefreshFindNextTaskThreadSafe() {
 	wait := make(chan struct{})
 	numGoroutines := 50
 	wg.Add(numGoroutines)
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		go func() {
 			defer wg.Done()
 			<-wait
@@ -1021,7 +1021,7 @@ func (s *taskDAGDispatchServiceSuite) TestIsRefreshFindNextTaskThreadSafe() {
 
 func (s *taskDAGDispatchServiceSuite) TestFindNextTaskThreadSafe() {
 	s.Require().NoError(db.ClearCollections(task.Collection))
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		t := task.Task{
 			Id:                fmt.Sprintf("%d", i),
 			BuildVariant:      "variant_1",
@@ -1046,7 +1046,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTaskThreadSafe() {
 	var wg sync.WaitGroup
 	var mu sync.RWMutex
 	wait := make(chan struct{})
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -1079,7 +1079,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTaskThreadSafe() {
 
 func (s *taskDAGDispatchServiceSuite) TestFindNextTaskGroupTaskThreadSafe() {
 	s.Require().NoError(db.ClearCollections(task.Collection))
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		groupNum := i / 5
 		id := fmt.Sprintf("%d", i)
 		t := task.Task{
@@ -1113,7 +1113,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTaskGroupTaskThreadSafe() {
 	wait := make(chan struct{})
 	wg.Add(numGoroutines)
 	dispatchedTasks := map[string]bool{}
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		go func() {
 			defer wg.Done()
 			<-wait
@@ -1143,7 +1143,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTaskGroupTaskThreadSafe() {
 	s.Equal(dispatchedCount, numGoroutines)
 
 	s.Require().NoError(db.ClearCollections(task.Collection))
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		groupNum := i / 5
 		id := fmt.Sprintf("%d", i)
 		t := task.Task{
@@ -1172,7 +1172,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTaskGroupTaskThreadSafe() {
 	}
 	wait = make(chan struct{})
 	wg.Add(numGoroutines)
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		go func() {
 			defer wg.Done()
 			<-wait
@@ -1208,7 +1208,7 @@ func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 	var startTime time.Time
 	var endTime time.Time
 	var status string
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		items = append(items, TaskQueueItem{
 			Id:            fmt.Sprintf("%d", i),
 			Group:         "group_1",
@@ -1363,7 +1363,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 
 	// Dispatch the first 5 tasks for the taskGroupTasks "group_1_variant_1_project_1_version_1", which represents a task group that initially contains 20 tasks.
 	// task ids: ["1", "6", "11", "16", "21"]
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		spec = TaskSpec{
 			Group:        "group_1",
 			BuildVariant: "variant_1",
@@ -1378,7 +1378,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 
 	// Dispatch the first 5 tasks for taskGroupTasks "group_2_variant_1_project_1_version_1", which represents a task group that initially contains 20 tasks.
 	// task ids: ["2", "7", "12", "17", "22"]
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		spec = TaskSpec{
 			Group:        "group_2",
 			BuildVariant: "variant_1",
@@ -1392,7 +1392,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 
 	// Dispatch the first 5 tasks for taskGroupTasks "group_1_variant_2_project_1_version_1", which represents a task group that initially contains 20 tasks.
 	// task ids: ["3", "8", "13", "18", "23"]
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		spec = TaskSpec{
 			Group:        "group_1",
 			BuildVariant: "variant_2",
@@ -1406,7 +1406,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 
 	// Dispatch the first 5 tasks for taskGroupTasks "group_1_variant_1_project_1_version_2", which represents a task group that initially contains 20 tasks.
 	// task ids: ["4", "9", "14", "19", "24"]
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		spec = TaskSpec{
 			Group:        "group_1",
 			BuildVariant: "variant_1",
@@ -1420,7 +1420,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 
 	// The taskGroupTasks "group_1_variant_1_project_1_version_1" now contains 15 tasks; dispatch another 5 of them.
 	// task ids: ["26", "31", "36", "41", "46"]
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		spec = TaskSpec{
 			Group:        "group_1",
 			BuildVariant: "variant_1",
@@ -1456,7 +1456,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 	// Make another 10 requests for a task, passing an "empty" TaskSpec{} - all 10 dispatched tasks should come from the "group_1_variant_1_project_1_version_1" taskGroupTasks.
 	// task ids: ["51", "56", "61", "66", "71", "76", "81", "86", "91", "96"]
 	// All 20 tasks for taskGroupTasks "group_1_variant_1_project_1_version_1" have been dispatched.
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		next = service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 		nextInt, err = strconv.Atoi(next.Id)
 		s.NoError(err)
@@ -1474,7 +1474,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 	// task ids: ["27", "32", "37", "42", "47", "52", "57", "62", "67", "72", "77", "82", "87", "82", "92, "97"]
 	// All 20 tasks for taskGroupTasks "group_2_variant_1_project_1_version_1" have been dispatched.
 	currentID = 0
-	for i := 0; i < 15; i++ {
+	for range 15 {
 		next = service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 		nextInt, err = strconv.Atoi(next.Id)
 		s.NoError(err)
@@ -1492,7 +1492,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 	// task ids: ["28", "33", "38", "43", "48", "53", "58", "63", "68", "73", "78", "83", "88", "93", "98"]
 	// All 20 tasks for taskGroupTasks group_1_variant_2_project_1_version_1" have been dispatched.
 	currentID = 0
-	for i := 0; i < 15; i++ {
+	for range 15 {
 		next = service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 		nextInt, err = strconv.Atoi(next.Id)
 		s.NoError(err)
@@ -1510,7 +1510,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 	// task ids: ["29", "34", "39", "44", "49", "54", "59", "64", "69", "74", "79", "84", "89", "94", "99"]
 	// All 20 tasks for taskGroupTasks "group_1_variant_1_project_1_version_2" have been dispatched.
 	currentID = 0
-	for i := 0; i < 15; i++ {
+	for range 15 {
 		next = service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 		nextInt, err = strconv.Atoi(next.Id)
 		s.NoError(err)
@@ -1527,7 +1527,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 	// Make another 19 requests for a task, passing an "empty" TaskSpec{} - all 19 dispatched tasks should be standalone tasks.
 	// The dispatch order of the 19 standalone tasks is dependent on the Node order of basicCachedDAGDispatcherImpl.sorted (for our particular set of test tasks and dependencies)
 	expectedStandaloneTaskOrder := []string{"5", "10", "15", "20", "25", "30", "50", "45", "40", "35", "55", "60", "80", "75", "70", "65", "85", "90", "95"}
-	for i := 0; i < 19; i++ {
+	for i := range 19 {
 		next = service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 		s.Equal(expectedStandaloneTaskOrder[i], next.Id)
 		s.Equal("", next.Group)
@@ -1616,10 +1616,13 @@ func (s *taskDAGDispatchServiceSuite) TestTaskGroupTasksRunningHostsVersusMaxHos
 	spec := TaskSpec{}
 	next := service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 	s.Equal("0", next.Id)
-	next = service.FindNextTask(s.ctx, spec, utility.ZeroTime)
+	skipsCtx := NewDispatchSkipsContext(s.ctx)
+	next = service.FindNextTask(skipsCtx, spec, utility.ZeroTime)
 	// The next task, according to the order of basicCachedDAGDispatcherImpl.sorted is from task group "group_1_variant_1_version_1".
 	// However, runningHosts < maxHosts is false for this task group, so we cannot dispatch this task.
 	s.NotEqual("1", next.Id)
+	// Skipping the task group at its max hosts should be recorded.
+	s.Positive(DispatchSkipsFromContext(skipsCtx))
 	// Instead, return the next task, which is from task group "group_2_variant_1_project_1_version_1".
 	s.Equal("2", next.Id)
 	s.Equal("group_2", next.Group)
@@ -1729,7 +1732,7 @@ func (s *taskDAGDispatchServiceSuite) TestTaskGroupWithExternalDependency() {
 		"91",
 		"96",
 	}
-	for i := 0; i < 15; i++ {
+	for i := range 15 {
 		next = service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 		s.Require().NotNil(next)
 		s.Equal(expectedOrder[i], next.Id)
@@ -1747,7 +1750,7 @@ func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupOrdering() {
 	items := []TaskQueueItem{}
 	groupIndexes := []int{2, 0, 4, 1, 3}
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		id := fmt.Sprintf("%d", i)
 		items = append(items, TaskQueueItem{
 			Id:            id,
@@ -1779,7 +1782,7 @@ func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupOrdering() {
 	service, err := newDistroTaskDAGDispatchService(context.Background(),s.taskQueue, time.Minute)
 	s.Require().NoError(err)
 	s.taskQueue.Queue = s.refreshTaskQueue(s.ctx, service)
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		s.taskQueue.Queue[i].GroupIndex = groupIndexes[i]
 	}
 	err = service.rebuild(context.Background(),s.taskQueue.Queue)
@@ -1793,7 +1796,7 @@ func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupOrdering() {
 	}
 	expectedOrder := []string{"1", "3", "0", "4", "2"}
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		next := service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 		s.Require().NotNil(next)
 		s.Equal(expectedOrder[i], next.Id)
@@ -1817,7 +1820,7 @@ func (s *taskDAGDispatchServiceSuite) TestInProgressSingleHostTaskGroupLimits() 
 	}
 	s.Require().NoError(sampleS3Task.Insert(s.T().Context()))
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		id := fmt.Sprintf("%d", i)
 		t := task.Task{
 			Id:                         id,
@@ -1846,7 +1849,7 @@ func (s *taskDAGDispatchServiceSuite) TestInProgressSingleHostTaskGroupLimits() 
 		Project:      "project_1",
 	}
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		next := service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 		s.Require().NotNil(next)
 	}
@@ -1873,7 +1876,7 @@ func (s *taskDAGDispatchServiceSuite) TestNewSingleHostTaskGroupLimits() {
 	}
 	s.Require().NoError(sampleS3Task.Insert(s.T().Context()))
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		id := fmt.Sprintf("%d", i)
 		t := task.Task{
 			Id:                         id,
@@ -1896,7 +1899,7 @@ func (s *taskDAGDispatchServiceSuite) TestNewSingleHostTaskGroupLimits() {
 		Queue:  s.refreshTaskQueue(s.ctx, service),
 	}
 	spec := TaskSpec{}
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		next := service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 		s.Require().Nil(next)
 	}

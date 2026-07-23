@@ -691,7 +691,7 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 		sync.Mutex
 	}{nameCounts: map[string]int{}}
 
-	for i := 0; i < workers; i++ {
+	for i := range workers {
 		go func(workerId int) {
 			defer wg.Done()
 			counter := 0

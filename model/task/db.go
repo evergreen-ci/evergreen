@@ -2346,9 +2346,11 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	if !opts.IncludeNeverActivatedTasks {
 		match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
 	}
+	// $match must precede $project so the version index can drive the query;
+	// a leading $project can force a collection scan.
 	pipeline := []bson.M{
-		{"$project": projectOut},
 		{"$match": match},
+		{"$project": projectOut},
 	}
 
 	if !opts.IncludeExecutionTasks {
@@ -2771,7 +2773,7 @@ func computeCostPredictionsInParallel(ctx context.Context, tasks []Task) (map[st
 
 	var wg sync.WaitGroup
 	wg.Add(numWorkers)
-	for i := 0; i < numWorkers; i++ {
+	for range numWorkers {
 		go func() {
 			defer wg.Done()
 			for work := range workQueue {

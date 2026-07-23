@@ -118,8 +118,7 @@ func TestFindUnexpirableRunning(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 			require.NoError(t, db.ClearCollections(Collection))
 			h := Host{
 				Id:           "host_id",
@@ -376,8 +375,7 @@ func TestFindStartingHostsByClient(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 			require.NoError(t, db.ClearCollections(Collection))
 			tCase(ctx, t)
 		})
@@ -566,8 +564,7 @@ func TestFindHostsScheduledToStop(t *testing.T) {
 		},
 	} {
 		t.Run(tCase.name, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 			require.NoError(t, db.ClearCollections(Collection))
 			for _, h := range tCase.hosts {
 				require.NoError(t, h.Insert(ctx))
@@ -788,8 +785,7 @@ func TestFindHostsScheduledToStart(t *testing.T) {
 		},
 	} {
 		t.Run(tCase.name, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 			require.NoError(t, db.ClearCollections(Collection))
 			for _, h := range tCase.hosts {
 				require.NoError(t, h.Insert(ctx))
@@ -861,8 +857,7 @@ func TestFindByTemporaryExemptionsExpiringBetween(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			require.NoError(t, db.ClearCollections(Collection))
 

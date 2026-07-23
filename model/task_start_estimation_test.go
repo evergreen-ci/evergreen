@@ -169,11 +169,11 @@ func (s *estimatorSuite) TestEvenDistribution() {
 		{timeToCompletion: 10 * time.Second},
 		{timeToCompletion: 10 * time.Second},
 	}
-	for i := 0; i < 14; i++ {
+	for range 14 {
 		s.NoError(s.simulator.tasks.Enqueue(estimatedTask{duration: 10 * time.Second}))
 	}
 
-	for i := 0; i < 14; i++ {
+	for i := range 14 {
 		s.Equal(time.Duration((i/5+1)*10)*time.Second, s.simulator.simulate(i), strconv.Itoa(i))
 	}
 }
@@ -229,14 +229,14 @@ func (s *QueueSuite) TestQueueThreadsafe() {
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			s.NoError(s.q.Enqueue(estimatedTask{}))
 		}
 		wg.Done()
 	}()
 	wg.Add(1)
 	go func() {
-		for i := 0; i < 200; i++ {
+		for range 200 {
 			s.NoError(s.q.Enqueue(estimatedTask{}))
 		}
 		wg.Done()
@@ -246,14 +246,14 @@ func (s *QueueSuite) TestQueueThreadsafe() {
 
 	wg.Add(1)
 	go func() {
-		for i := 0; i < 200; i++ {
+		for range 200 {
 			s.q.Dequeue()
 		}
 		wg.Done()
 	}()
 	wg.Add(1)
 	go func() {
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			s.q.Dequeue()
 		}
 		wg.Done()

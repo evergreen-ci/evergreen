@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -107,11 +108,12 @@ func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(ctx context.Context,
 		cmpRuntime += time.Since(startAt)
 
 		if len(comparator.errsDuringSort) > 0 {
-			errString := "The following errors were thrown while sorting:"
+			var errString strings.Builder
+			errString.WriteString("The following errors were thrown while sorting:")
 			for _, e := range comparator.errsDuringSort {
-				errString += fmt.Sprintf("\n    %v", e)
+				errString.WriteString(fmt.Sprintf("\n    %v", e))
 			}
-			return nil, nil, errors.New(errString)
+			return nil, nil, errors.New(errString.String())
 		}
 
 		prioritizedTaskLists = append(prioritizedTaskLists, comparator.tasks)

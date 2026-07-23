@@ -1,7 +1,6 @@
 package annotations
 
 import (
-	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -10,8 +9,7 @@ import (
 )
 
 func TestGetLatestExecutions(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	testutil.NewEnvironment(ctx, t)
 	assert.NoError(t, db.Clear(Collection))
 	taskAnnotations := []TaskAnnotation{
@@ -42,8 +40,7 @@ func TestGetLatestExecutions(t *testing.T) {
 }
 
 func TestSetAnnotationMetadataLinks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	assert.NoError(t, db.Clear(Collection))
 	taskLink := MetadataLink{URL: "https://issuelink.com", Text: "Hello World"}
 	assert.NoError(t, SetAnnotationMetadataLinks(ctx, "t1", 0, "usr", taskLink))

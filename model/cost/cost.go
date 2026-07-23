@@ -85,7 +85,7 @@ func (c Cost) RoundedBase() Cost {
 
 // SumPerChildVersionAdjustedTotals sums actual and predicted adjusted costs across n children.
 func SumPerChildVersionAdjustedTotals(n int, childAt func(int) (actual, predicted *Cost)) (sumActual, sumPred float64) {
-	for i := 0; i < n; i++ {
+	for i := range n {
 		actual, predicted := childAt(i)
 		if actual != nil {
 			sumActual += actual.AdjustedTotal() + actual.ChildPatchesTotalCost

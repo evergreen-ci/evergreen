@@ -1,6 +1,7 @@
 package model
 
 import (
+	"maps"
 	"reflect"
 	"sort"
 	"strings"
@@ -327,14 +328,10 @@ func (as *APIAdminSettings) ToService() (any, error) {
 		valToSet := reflect.ValueOf(i)
 		dbModelReflect.FieldByName(propName).Set(valToSet)
 	}
-	for k, v := range as.Expansions {
-		settings.Expansions[k] = v
-	}
+	maps.Copy(settings.Expansions, as.Expansions)
 	for k, v := range as.Plugins {
 		settings.Plugins[k] = map[string]any{}
-		for k2, v2 := range v {
-			settings.Plugins[k][k2] = v2
-		}
+		maps.Copy(settings.Plugins[k], v)
 	}
 
 	if as.ShutdownWaitSeconds != nil {
@@ -934,12 +931,13 @@ func (a *APICedarConfig) ToService() (any, error) {
 }
 
 type APIOktaConfig struct {
-	ClientID           *string  `json:"client_id"`
-	ClientSecret       *string  `json:"client_secret"`
-	Issuer             *string  `json:"issuer"`
-	Scopes             []string `json:"scopes"`
-	UserGroup          *string  `json:"user_group"`
-	ExpireAfterMinutes int      `json:"expire_after_minutes"`
+	ClientID             *string  `json:"client_id"`
+	ClientSecret         *string  `json:"client_secret"`
+	Issuer               *string  `json:"issuer"`
+	Scopes               []string `json:"scopes"`
+	UserGroup            *string  `json:"user_group"`
+	ExpireAfterMinutes   int      `json:"expire_after_minutes"`
+	ExpectedEmailDomains []string `json:"expected_email_domains"`
 }
 
 func (a *APIOktaConfig) BuildFromService(h any) error {
@@ -954,6 +952,7 @@ func (a *APIOktaConfig) BuildFromService(h any) error {
 		a.Scopes = v.Scopes
 		a.UserGroup = utility.ToStringPtr(v.UserGroup)
 		a.ExpireAfterMinutes = v.ExpireAfterMinutes
+		a.ExpectedEmailDomains = v.ExpectedEmailDomains
 		return nil
 	default:
 		return errors.Errorf("programmatic error: expected Okta config but got type %T", h)
@@ -965,12 +964,13 @@ func (a *APIOktaConfig) ToService() (any, error) {
 		return nil, nil
 	}
 	return &evergreen.OktaConfig{
-		ClientID:           utility.FromStringPtr(a.ClientID),
-		ClientSecret:       utility.FromStringPtr(a.ClientSecret),
-		Issuer:             utility.FromStringPtr(a.Issuer),
-		Scopes:             a.Scopes,
-		UserGroup:          utility.FromStringPtr(a.UserGroup),
-		ExpireAfterMinutes: a.ExpireAfterMinutes,
+		ClientID:             utility.FromStringPtr(a.ClientID),
+		ClientSecret:         utility.FromStringPtr(a.ClientSecret),
+		Issuer:               utility.FromStringPtr(a.Issuer),
+		Scopes:               a.Scopes,
+		UserGroup:            utility.FromStringPtr(a.UserGroup),
+		ExpireAfterMinutes:   a.ExpireAfterMinutes,
+		ExpectedEmailDomains: a.ExpectedEmailDomains,
 	}, nil
 }
 
@@ -2529,7 +2529,7 @@ type APIFWSConfig struct {
 	URL *string `json:"url"`
 }
 
-func (a *APIFWSConfig) BuildFromService(h interface{}) error {
+func (a *APIFWSConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.FWSConfig:
 		a.URL = utility.ToStringPtr(v.URL)
@@ -2539,7 +2539,7 @@ func (a *APIFWSConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIFWSConfig) ToService() (interface{}, error) {
+func (a *APIFWSConfig) ToService() (any, error) {
 	return evergreen.FWSConfig{
 		URL: utility.FromStringPtr(a.URL),
 	}, nil
@@ -2561,7 +2561,7 @@ func (a *APIGraphiteConfig) BuildFromService(h any) error {
 	return nil
 }
 
-func (a *APIGraphiteConfig) ToService() (interface{}, error) {
+func (a *APIGraphiteConfig) ToService() (any, error) {
 	return evergreen.GraphiteConfig{
 		CIOptimizationToken: utility.FromStringPtr(a.CIOptimizationToken),
 		ServerURL:           utility.FromStringPtr(a.ServerURL),
@@ -2700,7 +2700,7 @@ func AdminDbToRestModel(in evergreen.ConfigSection) (Model, error) {
 		structVal := reflect.ValueOf(*NewConfigModel())
 		for i := 0; i < structVal.NumField(); i++ {
 			// this assumes that the json tag is the same as the section ID
-			tag := strings.Split(structVal.Type().Field(i).Tag.Get("json"), ",")[0]
+			tag, _, _ := strings.Cut(structVal.Type().Field(i).Tag.Get("json"), ",")
 			if tag != id {
 				continue
 			}
