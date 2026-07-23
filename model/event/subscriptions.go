@@ -10,7 +10,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
@@ -19,6 +18,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
@@ -124,26 +124,22 @@ type unmarshalSubscription struct {
 }
 
 func (d *Subscription) UnmarshalBSON(in []byte) error {
-	return mgobson.Unmarshal(in, d)
-}
-
-func (s *Subscription) SetBSON(raw mgobson.Raw) error {
 	temp := unmarshalSubscription{}
 
-	if err := raw.Unmarshal(&temp); err != nil {
+	if err := bson.Unmarshal(in, &temp); err != nil {
 		return errors.Wrap(err, "unmarshalling subscriber")
 	}
 
-	s.ID = temp.ID
-	s.ResourceType = temp.ResourceType
-	s.Trigger = temp.Trigger
-	s.Selectors = temp.Selectors
-	s.RegexSelectors = temp.RegexSelectors
-	s.Filter = temp.Filter
-	s.Subscriber = temp.Subscriber
-	s.Owner = temp.Owner
-	s.OwnerType = temp.OwnerType
-	s.TriggerData = temp.TriggerData
+	d.ID = temp.ID
+	d.ResourceType = temp.ResourceType
+	d.Trigger = temp.Trigger
+	d.Selectors = temp.Selectors
+	d.RegexSelectors = temp.RegexSelectors
+	d.Filter = temp.Filter
+	d.Subscriber = temp.Subscriber
+	d.Owner = temp.Owner
+	d.OwnerType = temp.OwnerType
+	d.TriggerData = temp.TriggerData
 
 	return nil
 }
@@ -487,7 +483,7 @@ func CopyProjectSubscriptions(ctx context.Context, oldProject, newProject string
 
 func (s *Subscription) Upsert(ctx context.Context) error {
 	if s.ID == "" {
-		s.ID = mgobson.NewObjectId().Hex()
+		s.ID = primitive.NewObjectID().Hex()
 	}
 
 	if s.Owner != "" {
@@ -566,12 +562,12 @@ func dbFindSubscriptionByID(ctx context.Context, id string) (*Subscription, erro
 	query := bson.M{
 		subscriptionIDKey: id,
 	}
-	if mgobson.IsObjectIdHex(id) {
+	if objectID, err := primitive.ObjectIDFromHex(id); err == nil {
 		query = bson.M{
 			"$or": []bson.M{
 				query,
 				{
-					subscriptionIDKey: mgobson.ObjectIdHex(id),
+					subscriptionIDKey: objectID,
 				},
 			},
 		}
@@ -870,7 +866,7 @@ func NewSubscriptionByID(resourceType, trigger, id string, sub Subscriber) Subsc
 
 func NewSubscriptionByOwner(owner string, sub Subscriber, resourceType, trigger string) Subscription {
 	return Subscription{
-		ID:           mgobson.NewObjectId().Hex(),
+		ID:           primitive.NewObjectID().Hex(),
 		ResourceType: resourceType,
 		Trigger:      trigger,
 		Selectors: []Selector{
@@ -944,7 +940,7 @@ func NewAlertableInstanceTypeWarningSubscription(hostId string, sub Subscriber) 
 
 func NewFirstTaskFailureInVersionSubscriptionByOwner(owner string, sub Subscriber) Subscription {
 	return Subscription{
-		ID:           mgobson.NewObjectId().Hex(),
+		ID:           primitive.NewObjectID().Hex(),
 		ResourceType: ResourceTypeTask,
 		Trigger:      TriggerTaskFirstFailureInVersion,
 		Selectors: []Selector{
@@ -967,7 +963,7 @@ func NewFirstTaskFailureInVersionSubscriptionByOwner(owner string, sub Subscribe
 
 func NewBuildBreakSubscriptionByOwner(owner string, sub Subscriber) Subscription {
 	return Subscription{
-		ID:           mgobson.NewObjectId().Hex(),
+		ID:           primitive.NewObjectID().Hex(),
 		ResourceType: ResourceTypeTask,
 		Trigger:      GeneralSubscriptionBuildBreak,
 		Selectors: []Selector{

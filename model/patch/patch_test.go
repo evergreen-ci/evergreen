@@ -7,12 +7,14 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/bsontype"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestAliasesToResolve(t *testing.T) {
@@ -29,6 +31,31 @@ func TestAliasesToResolve(t *testing.T) {
 			assert.Equal(t, tc.expected, tc.patch.AliasesToResolve())
 		})
 	}
+}
+
+func TestPatchUnmarshalBSON(t *testing.T) {
+	legacyBSON := []byte{
+		0x16, 0x00, 0x00, 0x00,
+		0x07, '_', 'i', 'd', 0x00,
+		0x5a, 0xeb, 0x45, 0x14, 0xf2, 0x7e, 0x4f, 0x99, 0x84, 0x64, 0x6d, 0x97,
+		0x00,
+	}
+
+	var p Patch
+	require.NoError(t, p.UnmarshalBSON(legacyBSON))
+	assert.Equal(t, "5aeb4514f27e4f9984646d97", p.Id.Hex())
+}
+
+func TestPatchMarshalBSON(t *testing.T) {
+	id, err := primitive.ObjectIDFromHex("5aeb4514f27e4f9984646d97")
+	require.NoError(t, err)
+
+	data, err := (&Patch{Id: id}).MarshalBSON()
+	require.NoError(t, err)
+
+	idValue := bson.Raw(data).Lookup("_id")
+	require.Equal(t, bsontype.ObjectID, idValue.Type)
+	assert.Equal(t, id, idValue.ObjectID())
 }
 
 func TestConfigChanged(t *testing.T) {
@@ -306,7 +333,7 @@ func TestPatchSortByCreateTime(t *testing.T) {
 func TestSetParametersFromParent(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
-	parentPatchID := bson.NewObjectId()
+	parentPatchID := primitive.NewObjectID()
 	parentPatch := Patch{
 		Id: parentPatchID,
 		Triggers: TriggerInfo{
@@ -320,7 +347,7 @@ func TestSetParametersFromParent(t *testing.T) {
 	}
 	assert.NoError(parentPatch.Insert(t.Context()))
 	p := Patch{
-		Id: bson.NewObjectId(),
+		Id: primitive.NewObjectID(),
 		Triggers: TriggerInfo{
 			ParentPatch: parentPatchID.Hex(),
 		},
@@ -336,7 +363,7 @@ func TestSetDownstreamParameters(t *testing.T) {
 	assert.NoError(db.ClearCollections(Collection))
 
 	p := Patch{
-		Id: bson.NewObjectId(),
+		Id: primitive.NewObjectID(),
 		Triggers: TriggerInfo{
 			DownstreamParameters: []Parameter{
 				{
@@ -370,7 +397,7 @@ func TestSetTriggerAliases(t *testing.T) {
 	assert.NoError(db.ClearCollections(Collection))
 
 	p := Patch{
-		Id: bson.NewObjectId(),
+		Id: primitive.NewObjectID(),
 		Triggers: TriggerInfo{
 			Aliases: []string{"alias_0"},
 		},
@@ -396,7 +423,7 @@ func TestSetChildPatches(t *testing.T) {
 	assert.NoError(db.ClearCollections(Collection))
 
 	p := Patch{
-		Id: bson.NewObjectId(),
+		Id: primitive.NewObjectID(),
 		Triggers: TriggerInfo{
 			ChildPatches: []string{"id_0"},
 		},
@@ -442,7 +469,7 @@ func TestGetRequester(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 
 	p1 := Patch{
-		Id:    bson.NewObjectId(),
+		Id:    primitive.NewObjectID(),
 		Alias: "",
 		GithubPatchData: thirdparty.GithubPatch{
 			HeadOwner: "me",
@@ -451,7 +478,7 @@ func TestGetRequester(t *testing.T) {
 	require.NoError(t, p1.Insert(t.Context()))
 
 	p2 := Patch{
-		Id:    bson.NewObjectId(),
+		Id:    primitive.NewObjectID(),
 		Alias: evergreen.CommitQueueAlias,
 		GithubMergeData: thirdparty.GithubMergeGroup{
 			HeadSHA: "1234567",
@@ -460,7 +487,7 @@ func TestGetRequester(t *testing.T) {
 	require.NoError(t, p2.Insert(t.Context()))
 
 	p3 := Patch{
-		Id:    bson.NewObjectId(),
+		Id:    primitive.NewObjectID(),
 		Alias: "",
 	}
 	require.NoError(t, p3.Insert(t.Context()))

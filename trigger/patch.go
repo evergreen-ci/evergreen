@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
@@ -18,6 +17,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type patchTriggers struct {
@@ -52,7 +52,10 @@ func (t *patchTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error
 		return errors.Wrap(err, "fetching UI config")
 	}
 
-	oid := mgobson.ObjectIdHex(e.ResourceId)
+	oid, err := primitive.ObjectIDFromHex(e.ResourceId)
+	if err != nil {
+		return errors.Wrap(err, "parsing patch ID")
+	}
 
 	t.patch, err = patch.FindOne(ctx, patch.ById(oid))
 	if err != nil {

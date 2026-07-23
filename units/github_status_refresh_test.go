@@ -8,7 +8,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -19,6 +18,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type githubStatusRefreshSuite struct {
@@ -63,7 +63,7 @@ func (s *githubStatusRefreshSuite) SetupTest() {
 	s.NoError(pRef.Insert(s.ctx))
 
 	startTime := time.Now().Truncate(time.Millisecond)
-	id := mgobson.NewObjectId()
+	id := primitive.NewObjectID()
 	s.patchDoc = &patch.Patch{
 		Id:           id,
 		Version:      id.Hex(),
@@ -108,7 +108,7 @@ func (s *githubStatusRefreshSuite) TestFetch() {
 	}
 	s.NoError(b.Insert(s.ctx))
 	childPatch := patch.Patch{
-		Id: mgobson.NewObjectId(),
+		Id: primitive.NewObjectID(),
 	}
 	s.NoError(childPatch.Insert(s.ctx))
 	s.patchDoc.Triggers.ChildPatches = []string{childPatch.Id.Hex()}
@@ -146,7 +146,7 @@ func (s *githubStatusRefreshSuite) TestStatusPending() {
 	s.NoError(b.Insert(s.ctx))
 
 	childPatch := patch.Patch{
-		Id:        mgobson.NewObjectId(),
+		Id:        primitive.NewObjectID(),
 		Status:    evergreen.VersionStarted,
 		Project:   "myChildProject",
 		Activated: true,
@@ -350,7 +350,7 @@ func (s *githubStatusRefreshSuite) TestStatusSucceeded() {
 	s.NoError(t1.Insert(s.ctx))
 
 	childPatch := patch.Patch{
-		Id:         mgobson.NewObjectId(),
+		Id:         primitive.NewObjectID(),
 		Status:     evergreen.VersionSucceeded,
 		Project:    "myChildProject",
 		Activated:  true,
@@ -416,7 +416,7 @@ func (s *githubStatusRefreshSuite) TestStatusFailed() {
 	s.NoError(t1.Insert(s.ctx))
 
 	childPatch := patch.Patch{
-		Id:         mgobson.NewObjectId(),
+		Id:         primitive.NewObjectID(),
 		Status:     evergreen.VersionFailed,
 		Project:    "myChildProject",
 		Activated:  true,

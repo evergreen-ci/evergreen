@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -27,6 +26,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"gopkg.in/yaml.v3"
 )
 
@@ -611,7 +611,7 @@ func TestPopulateExpansionsChildPatch(t *testing.T) {
 	require.NoError(parentRef.Insert(t.Context()))
 
 	parentPatch := &patch.Patch{
-		Id:      mgobson.NewObjectId(),
+		Id:      primitive.NewObjectID(),
 		Project: "parentProject",
 	}
 	require.NoError(parentPatch.Insert(t.Context()))
@@ -3003,7 +3003,7 @@ tasks:
 			require.NoError(t, err)
 
 			p := &patch.Patch{
-				Id: mgobson.NewObjectId(),
+				Id: primitive.NewObjectID(),
 			}
 			pp.Id = p.Id.Hex()
 

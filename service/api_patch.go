@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -22,6 +21,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const formMimeType = "application/x-www-form-urlencoded"
@@ -178,7 +178,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	patchID := mgobson.NewObjectId()
+	patchID := primitive.NewObjectID()
 	author, statusCode, err := as.getAuthor(r.Context(), data, dbUser, pref.Id, patchID.Hex())
 	if err != nil {
 		as.LoggedError(w, r, statusCode, err)
@@ -315,7 +315,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// write the patch content into a GridFS file under a new ObjectId.
-	patchFileId := mgobson.NewObjectId().Hex()
+	patchFileId := primitive.NewObjectID().Hex()
 	err = db.WriteGridFile(r.Context(), patch.GridFSPrefix, patchFileId, strings.NewReader(patchContent))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "writing patch file to db"))

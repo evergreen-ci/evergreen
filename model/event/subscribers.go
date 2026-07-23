@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (
@@ -50,16 +50,19 @@ type Subscriber struct {
 }
 
 type unmarshalSubscriber struct {
-	Type   string      `bson:"type"`
-	Target mgobson.Raw `bson:"target"`
+	Type   string        `bson:"type"`
+	Target bson.RawValue `bson:"target"`
 }
 
-func (s *Subscriber) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(s) }
-func (s *Subscriber) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, s) }
+type subscriberBSONAlias Subscriber
 
-func (s *Subscriber) SetBSON(raw mgobson.Raw) error {
+func (s *Subscriber) MarshalBSON() ([]byte, error) {
+	return bson.Marshal((*subscriberBSONAlias)(s))
+}
+
+func (s *Subscriber) UnmarshalBSON(in []byte) error {
 	temp := unmarshalSubscriber{}
-	if err := raw.Unmarshal(&temp); err != nil {
+	if err := bson.Unmarshal(in, &temp); err != nil {
 		return errors.Wrap(err, "unmarshalling subscriber data")
 	}
 	if len(temp.Type) == 0 {

@@ -7,12 +7,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 var baseTime = time.Date(2018, 7, 15, 16, 45, 0, 0, time.UTC)
@@ -372,7 +372,7 @@ func (s *statsSuite) insertDisplayTask(project string, requester string, taskId 
 
 func (s *statsSuite) insertFinishedTask(project string, requester string, taskName string, createTime time.Time, finishTime time.Time) {
 	newTask := task.Task{
-		Id:          mgobson.NewObjectId().Hex(),
+		Id:          primitive.NewObjectID().Hex(),
 		DisplayName: taskName,
 		Project:     project,
 		Requester:   requester,

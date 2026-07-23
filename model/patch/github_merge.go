@@ -7,13 +7,13 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -257,7 +257,7 @@ func (g *githubMergeIntent) NewPatch() *Patch {
 	headBranch := strings.Join([]string{ghReadOnlyQueue, baseBranch, lastElement}, "/")
 
 	patchDoc := &Patch{
-		Id:      mgobson.NewObjectId(),
+		Id:      primitive.NewObjectID(),
 		Alias:   g.GetAlias(),
 		Status:  evergreen.VersionCreated,
 		Author:  evergreen.GithubMergeUser,

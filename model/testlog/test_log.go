@@ -4,11 +4,11 @@ import (
 	"context"
 
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
@@ -59,7 +59,7 @@ func FindOneTestLog(ctx context.Context, name, task string, execution int) (*Tes
 
 // Insert inserts the TestLog into the database
 func (tl *TestLog) Insert(ctx context.Context) error {
-	tl.Id = mgobson.NewObjectId().Hex()
+	tl.Id = primitive.NewObjectID().Hex()
 	if err := tl.Validate(); err != nil {
 		return errors.Wrap(err, "invalid test log")
 	}

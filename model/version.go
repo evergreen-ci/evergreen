@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/manifest"
@@ -145,9 +144,6 @@ type Version struct {
 	// S3Usage stores the aggregated S3 usage metrics from all execution tasks in the version.
 	S3Usage s3usage.S3Usage `bson:"s3_usage,omitempty" json:"s3_usage,omitempty"`
 }
-
-func (v *Version) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(v) }
-func (v *Version) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, v) }
 
 const (
 	defaultVersionLimit               = 20

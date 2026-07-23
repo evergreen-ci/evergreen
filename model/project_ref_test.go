@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/parsley"
@@ -26,6 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestFindOneProjectRef(t *testing.T) {
@@ -1787,35 +1787,35 @@ func TestDefaultRepoBySection(t *testing.T) {
 
 			aliases := []ProjectAlias{
 				{
-					ID:        mgobson.NewObjectId(),
+					ID:        primitive.NewObjectID(),
 					ProjectID: pRef.Id,
 					Alias:     evergreen.GithubPRAlias,
 					Variant:   "v",
 					Task:      "t",
 				},
 				{
-					ID:        mgobson.NewObjectId(),
+					ID:        primitive.NewObjectID(),
 					ProjectID: pRef.Id,
 					Alias:     evergreen.GitTagAlias,
 					Variant:   "v",
 					Task:      "t",
 				},
 				{
-					ID:        mgobson.NewObjectId(),
+					ID:        primitive.NewObjectID(),
 					ProjectID: pRef.Id,
 					Alias:     evergreen.CommitQueueAlias,
 					Variant:   "v",
 					Task:      "t",
 				},
 				{
-					ID:        mgobson.NewObjectId(),
+					ID:        primitive.NewObjectID(),
 					ProjectID: pRef.Id,
 					Alias:     evergreen.GithubChecksAlias,
 					Variant:   "v",
 					Task:      "t",
 				},
 				{
-					ID:        mgobson.NewObjectId(),
+					ID:        primitive.NewObjectID(),
 					ProjectID: pRef.Id,
 					Alias:     "i am a patch alias!",
 					Variant:   "v",
@@ -2743,7 +2743,7 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 	assert.Nil(projectRef)
 
 	doc.CommitQueue.Enabled = utility.TruePtr()
-	_, err = db.Replace(t.Context(), ProjectRefCollection, mgobson.M{ProjectRefIdKey: "mci"}, doc)
+	_, err = db.Replace(t.Context(), ProjectRefCollection, bson.M{ProjectRefIdKey: "mci"}, doc)
 	require.NoError(err)
 
 	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t.Context(), "mongodb", "mci", "main")
@@ -2956,7 +2956,7 @@ func TestAddPermissions(t *testing.T) {
 	assert.NoError(p.Add(t.Context(), &u))
 	assert.NotEmpty(p.Id)
 	assert.Equal([]string{u.Id}, p.Admins)
-	assert.True(mgobson.IsObjectIdHex(p.Id))
+	assert.True(primitive.IsValidObjectID(p.Id))
 
 	rm := env.RoleManager()
 	scope, err := rm.FindScopeForResources(t.Context(), evergreen.ProjectResourceType, p.Id)
@@ -2983,7 +2983,7 @@ func TestAddPermissions(t *testing.T) {
 	assert.NoError(p.Add(t.Context(), &u))
 	assert.NotEmpty(p.Id)
 	assert.Contains(p.Admins, u.Id)
-	assert.True(mgobson.IsObjectIdHex(p.Id))
+	assert.True(primitive.IsValidObjectID(p.Id))
 	assert.Equal(projectId, p.Id)
 
 	scope, err = rm.FindScopeForResources(t.Context(), evergreen.ProjectResourceType, p.Id)

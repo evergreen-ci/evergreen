@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -18,6 +17,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
@@ -143,7 +143,7 @@ func (j *mergeQueuePatchRecoveryJob) recoverMergeGroup(ctx context.Context, proj
 	}
 
 	event := newMergeGroupEvent(projectRef.Owner, projectRef.Repo, headRef, headSHA, baseSHA, headCommit)
-	msgID := fmt.Sprintf("%s-%s-%s", mergeQueuePatchRecoveryJobName, headSHA, mgobson.NewObjectId().Hex())
+	msgID := fmt.Sprintf("%s-%s-%s", mergeQueuePatchRecoveryJobName, headSHA, primitive.NewObjectID().Hex())
 	intent, err := patch.NewGithubMergeIntent(ctx, msgID, patch.AutomatedCaller, event)
 	if err != nil {
 		return errors.Wrap(err, "creating merge intent")
@@ -151,7 +151,7 @@ func (j *mergeQueuePatchRecoveryJob) recoverMergeGroup(ctx context.Context, proj
 	if err := intent.Insert(ctx); err != nil {
 		return errors.Wrap(err, "inserting merge intent")
 	}
-	processor := NewPatchIntentProcessor(j.env, mgobson.NewObjectId(), intent)
+	processor := NewPatchIntentProcessor(j.env, primitive.NewObjectID(), intent)
 	if err := j.env.RemoteQueue().Put(ctx, processor); err != nil {
 		return errors.Wrap(err, "enqueueing merge queue patch intent processor")
 	}

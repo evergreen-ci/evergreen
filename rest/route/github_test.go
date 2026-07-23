@@ -11,7 +11,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -28,6 +27,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type GithubWebhookRouteSuite struct {
@@ -415,7 +415,7 @@ func TestPRDef(t *testing.T) {
 	assert.NoError(t, db.Clear(patch.Collection))
 	owner := "owner"
 	repo := "repo"
-	patchId := mgobson.ObjectIdHex("5aeb4514f27e4f9984646d97")
+	patchId := testutil.ObjectIDFromHex(t, "5aeb4514f27e4f9984646d97")
 	p := &patch.Patch{
 		Id:      patchId,
 		Project: "mci",
@@ -526,7 +526,7 @@ func TestHandleMergeGroupDestroyedCancelsPatches(t *testing.T) {
 	}))
 
 	patchDoc := patch.Patch{
-		Id:      mgobson.NewObjectId(),
+		Id:      primitive.NewObjectID(),
 		Project: projectID,
 		GithubMergeData: thirdparty.GithubMergeGroup{
 			Org:     org,

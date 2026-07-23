@@ -8,12 +8,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
@@ -283,7 +283,7 @@ func (g *githubIntent) NewPatch() *Patch {
 	headRepo := strings.Split(g.HeadRepoName, "/")
 	pullURL := fmt.Sprintf("https://github.com/%s/pull/%d", g.BaseRepoName, g.PRNumber)
 	patchDoc := &Patch{
-		Id:          mgobson.NewObjectId(),
+		Id:          primitive.NewObjectID(),
 		Alias:       g.Alias,
 		Description: fmt.Sprintf("'%s' pull request #%d by %s: %s (%s)", g.BaseRepoName, g.PRNumber, g.User, g.Title, pullURL),
 		Author:      evergreen.GithubPatchUser,

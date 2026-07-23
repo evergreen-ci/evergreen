@@ -1,11 +1,15 @@
 package event
 
 import (
+	"reflect"
 	"time"
 
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/bsoncodec"
+	"go.mongodb.org/mongo-driver/bson/bsonrw"
+	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -40,11 +44,11 @@ type UnmarshalEventLogEntry struct {
 	ResourceType string    `bson:"r_type,omitempty" json:"resource_type,omitempty"`
 	ProcessedAt  time.Time `bson:"processed_at" json:"processed_at"`
 
-	Timestamp  time.Time   `bson:"ts" json:"timestamp"`
-	Expirable  bool        `bson:"expirable,omitempty" json:"expirable,omitempty"`
-	ResourceId string      `bson:"r_id" json:"resource_id"`
-	EventType  string      `bson:"e_type" json:"event_type"`
-	Data       mgobson.Raw `bson:"data" json:"data"`
+	Timestamp  time.Time `bson:"ts" json:"timestamp"`
+	Expirable  bool      `bson:"expirable,omitempty" json:"expirable,omitempty"`
+	ResourceId string    `bson:"r_id" json:"resource_id"`
+	EventType  string    `bson:"e_type" json:"event_type"`
+	Data       bson.Raw  `bson:"data" json:"data"`
 }
 
 var (
@@ -61,12 +65,29 @@ var (
 
 const resourceTypeKey = "r_type"
 
-func (e *EventLogEntry) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, e) }
-func (e *EventLogEntry) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(e) }
+type eventLogEntryBSONAlias EventLogEntry
 
-func (e *EventLogEntry) SetBSON(raw mgobson.Raw) error {
+var eventBSONRegistry = func() *bsoncodec.Registry {
+	registry := bson.NewRegistry()
+	registry.RegisterTypeMapEntry(bsontype.EmbeddedDocument, reflect.TypeOf(map[string]any{}))
+	registry.RegisterTypeMapEntry(bsontype.Array, reflect.TypeOf([]any{}))
+	return registry
+}()
+
+func unmarshalEventBSON(in []byte, out any) error {
+	decoder, err := bson.NewDecoder(bsonrw.NewBSONDocumentReader(in))
+	if err != nil {
+		return errors.Wrap(err, "creating BSON decoder")
+	}
+	if err := decoder.SetRegistry(eventBSONRegistry); err != nil {
+		return errors.Wrap(err, "setting BSON registry")
+	}
+	return decoder.Decode(out)
+}
+
+func (e *EventLogEntry) UnmarshalBSON(in []byte) error {
 	temp := UnmarshalEventLogEntry{}
-	if err := raw.Unmarshal(&temp); err != nil {
+	if err := unmarshalEventBSON(in, &temp); err != nil {
 		return errors.Wrap(err, "unmarshalling event into generic event log entry")
 	}
 
@@ -74,7 +95,7 @@ func (e *EventLogEntry) SetBSON(raw mgobson.Raw) error {
 	if e.Data == nil {
 		return errors.Errorf("unknown resource type '%s'", temp.ResourceType)
 	}
-	if err := temp.Data.Unmarshal(e.Data); err != nil {
+	if err := unmarshalEventBSON(temp.Data, e.Data); err != nil {
 		return errors.Wrap(err, "unmarshalling data")
 	}
 
@@ -83,9 +104,7 @@ func (e *EventLogEntry) SetBSON(raw mgobson.Raw) error {
 	switch v := temp.ID.(type) {
 	case string:
 		e.ID = v
-	case mgobson.ObjectId:
-		e.ID = v.Hex()
-	case primitive.ObjectID:
+	case interface{ Hex() string }:
 		e.ID = v.Hex()
 	default:
 		return errors.Errorf("unrecognized ID format for event %v", v)
@@ -100,6 +119,10 @@ func (e *EventLogEntry) SetBSON(raw mgobson.Raw) error {
 	return nil
 }
 
+func (e *EventLogEntry) MarshalBSON() ([]byte, error) {
+	return bson.Marshal((*eventLogEntryBSONAlias)(e))
+}
+
 func (e *EventLogEntry) validateEvent() error {
 	if e.Data == nil {
 		return errors.New("event log entry cannot have nil data")
@@ -108,7 +131,7 @@ func (e *EventLogEntry) validateEvent() error {
 		return errors.New("event log entry has no resource type")
 	}
 	if e.ID == "" {
-		e.ID = mgobson.NewObjectId().Hex()
+		e.ID = primitive.NewObjectID().Hex()
 	}
 	if !registry.IsSubscribable(e.ResourceType, e.EventType) {
 		e.ProcessedAt = notSubscribableTime

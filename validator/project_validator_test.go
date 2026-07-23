@@ -12,7 +12,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
@@ -23,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestProjectErrorValidators(t *testing.T) {
@@ -2526,14 +2526,14 @@ func TestValidateAliasCoverage(t *testing.T) {
 	for testName, testCase := range map[string]func(*testing.T, *model.Project){
 		"MatchesNothing": func(t *testing.T, p *model.Project) {
 			alias1 := model.ProjectAlias{
-				ID:          mgobson.NewObjectId(),
+				ID:          primitive.NewObjectID(),
 				Alias:       evergreen.CommitQueueAlias,
 				VariantTags: []string{"notTheVariantTag"},
 				TaskTags:    []string{"taskTag1", "taskTag2"},
 				Source:      model.AliasSourceConfig,
 			}
 			alias2 := model.ProjectAlias{
-				ID:      mgobson.NewObjectId(),
+				ID:      primitive.NewObjectID(),
 				Alias:   evergreen.CommitQueueAlias,
 				Variant: "nonsense",
 				Task:    ".*",
@@ -2569,13 +2569,13 @@ func TestValidateAliasCoverage(t *testing.T) {
 		},
 		"MatchesAll": func(t *testing.T, p *model.Project) {
 			alias1 := model.ProjectAlias{
-				ID:          mgobson.NewObjectId(),
+				ID:          primitive.NewObjectID(),
 				Alias:       evergreen.CommitQueueAlias,
 				VariantTags: []string{"variantTag"},
 				TaskTags:    []string{"taskTag1"},
 			}
 			alias2 := model.ProjectAlias{
-				ID:      mgobson.NewObjectId(),
+				ID:      primitive.NewObjectID(),
 				Alias:   evergreen.CommitQueueAlias,
 				Variant: "bvWith.*",
 				Task:    ".*",
@@ -2599,13 +2599,13 @@ func TestValidateAliasCoverage(t *testing.T) {
 		},
 		"MatchesVariantTag": func(t *testing.T, p *model.Project) {
 			alias1 := model.ProjectAlias{
-				ID:          mgobson.NewObjectId(),
+				ID:          primitive.NewObjectID(),
 				Alias:       evergreen.CommitQueueAlias,
 				VariantTags: []string{"variantTag"},
 				Source:      model.AliasSourceProject,
 			}
 			alias2 := model.ProjectAlias{
-				ID:      mgobson.NewObjectId(),
+				ID:      primitive.NewObjectID(),
 				Alias:   evergreen.CommitQueueAlias,
 				Variant: "badRegex",
 				Source:  model.AliasSourceProject,
@@ -2640,7 +2640,7 @@ func TestValidateAliasCoverage(t *testing.T) {
 		},
 		"NegatedTag": func(t *testing.T, p *model.Project) {
 			negatedAlias := model.ProjectAlias{
-				ID:          mgobson.NewObjectId(),
+				ID:          primitive.NewObjectID(),
 				Alias:       evergreen.CommitQueueAlias,
 				VariantTags: []string{"!variantTag"},
 				TaskTags:    []string{"!newTaskTag"},
@@ -2676,7 +2676,7 @@ func TestValidateAliasCoverage(t *testing.T) {
 		},
 		"MatchesTaskInTaskGroupWithTaskRegexp": func(t *testing.T, p *model.Project) {
 			a := model.ProjectAlias{
-				ID:      mgobson.NewObjectId(),
+				ID:      primitive.NewObjectID(),
 				Alias:   "alias",
 				Variant: "bvWithTaskGroup",
 				Task:    "taskWithoutTag",
@@ -2697,7 +2697,7 @@ func TestValidateAliasCoverage(t *testing.T) {
 		},
 		"MatchesTaskInTaskGroupWithTaskTag": func(t *testing.T, p *model.Project) {
 			a := model.ProjectAlias{
-				ID:       mgobson.NewObjectId(),
+				ID:       primitive.NewObjectID(),
 				Alias:    "alias",
 				Variant:  "bvWithTaskGroup",
 				TaskTags: []string{"taskTag1"},
@@ -2718,7 +2718,7 @@ func TestValidateAliasCoverage(t *testing.T) {
 		},
 		"MatchesTaskWithTaskTagHavingMultipleCriteria": func(t *testing.T, p *model.Project) {
 			a := model.ProjectAlias{
-				ID:       mgobson.NewObjectId(),
+				ID:       primitive.NewObjectID(),
 				Alias:    "alias",
 				Variant:  "bvWithTag",
 				TaskTags: []string{"taskTag1 taskTag2"},
@@ -2739,7 +2739,7 @@ func TestValidateAliasCoverage(t *testing.T) {
 		},
 		"DoesNotMatchTaskWithTaskTagHavingMultipleCriteria": func(t *testing.T, p *model.Project) {
 			a := model.ProjectAlias{
-				ID:       mgobson.NewObjectId(),
+				ID:       primitive.NewObjectID(),
 				Alias:    "alias",
 				Variant:  "bvWithTag",
 				TaskTags: []string{"taskTag1 taskTag2 nonexistent"},
@@ -2902,33 +2902,33 @@ func TestValidateProjectAliases(t *testing.T) {
 				ProjectConfigFields: model.ProjectConfigFields{
 					PatchAliases: []model.ProjectAlias{
 						{
-							ID:        mgobson.NewObjectId(),
+							ID:        primitive.NewObjectID(),
 							ProjectID: "project-1",
 							Alias:     "",
 							Variant:   "v1",
 							Task:      "^test",
 						},
 						{
-							ID:        mgobson.NewObjectId(),
+							ID:        primitive.NewObjectID(),
 							ProjectID: "project-1",
 							Alias:     "alias-1",
 							Task:      "^test",
 						},
 						{
-							ID:        mgobson.NewObjectId(),
+							ID:        primitive.NewObjectID(),
 							ProjectID: "project-1",
 							Alias:     "alias-1",
 							Variant:   "v1",
 						},
 						{
-							ID:        mgobson.NewObjectId(),
+							ID:        primitive.NewObjectID(),
 							ProjectID: "project-1",
 							Alias:     "alias-1",
 							Variant:   "[0-9]++",
 							Task:      "^test",
 						},
 						{
-							ID:        mgobson.NewObjectId(),
+							ID:        primitive.NewObjectID(),
 							ProjectID: "project-1",
 							Alias:     "alias-1",
 							Variant:   "v1",
@@ -2937,7 +2937,7 @@ func TestValidateProjectAliases(t *testing.T) {
 					},
 					CommitQueueAliases: []model.ProjectAlias{
 						{
-							ID:        mgobson.NewObjectId(),
+							ID:        primitive.NewObjectID(),
 							ProjectID: "project-1",
 							Variant:   "v1",
 							Task:      "^test",
@@ -2945,7 +2945,7 @@ func TestValidateProjectAliases(t *testing.T) {
 					},
 					GitHubChecksAliases: []model.ProjectAlias{
 						{
-							ID:        mgobson.NewObjectId(),
+							ID:        primitive.NewObjectID(),
 							ProjectID: "project-1",
 							Variant:   "v1",
 							Task:      "^test",
@@ -2953,20 +2953,20 @@ func TestValidateProjectAliases(t *testing.T) {
 					},
 					GitTagAliases: []model.ProjectAlias{
 						{
-							ID:        mgobson.NewObjectId(),
+							ID:        primitive.NewObjectID(),
 							ProjectID: "project-1",
 							Variant:   "v1",
 							Task:      "^test",
 						},
 						{
-							ID:        mgobson.NewObjectId(),
+							ID:        primitive.NewObjectID(),
 							ProjectID: "project-1",
 							Variant:   "v1",
 							Task:      "^test",
 							GitTag:    "[0-9]++",
 						},
 						{
-							ID:         mgobson.NewObjectId(),
+							ID:         primitive.NewObjectID(),
 							ProjectID:  "project-1",
 							Variant:    "v1",
 							Task:       "^test",

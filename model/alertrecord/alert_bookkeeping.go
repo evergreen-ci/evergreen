@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
@@ -38,24 +38,31 @@ const (
 const legacyAlertsSubscription = "legacy-alerts"
 
 type AlertRecord struct {
-	Id                  mgobson.ObjectId `bson:"_id"`
-	SubscriptionID      string           `bson:"subscription_id"`
-	Type                string           `bson:"type"`
-	HostId              string           `bson:"host_id,omitempty"`
-	VolumeId            string           `bson:"volume_id,omitempty"`
-	TaskId              string           `bson:"task_id,omitempty"`
-	TaskStatus          string           `bson:"task_status,omitempty"`
-	ProjectId           string           `bson:"project_id,omitempty"`
-	VersionId           string           `bson:"version_id,omitempty"`
-	TaskName            string           `bson:"task_name,omitempty"`
-	Variant             string           `bson:"variant,omitempty"`
-	TestName            string           `bson:"test_name,omitempty"`
-	RevisionOrderNumber int              `bson:"order,omitempty"`
-	AlertTime           time.Time        `bson:"alert_time,omitempty"`
+	Id                  primitive.ObjectID `bson:"_id"`
+	SubscriptionID      string             `bson:"subscription_id"`
+	Type                string             `bson:"type"`
+	HostId              string             `bson:"host_id,omitempty"`
+	VolumeId            string             `bson:"volume_id,omitempty"`
+	TaskId              string             `bson:"task_id,omitempty"`
+	TaskStatus          string             `bson:"task_status,omitempty"`
+	ProjectId           string             `bson:"project_id,omitempty"`
+	VersionId           string             `bson:"version_id,omitempty"`
+	TaskName            string             `bson:"task_name,omitempty"`
+	Variant             string             `bson:"variant,omitempty"`
+	TestName            string             `bson:"test_name,omitempty"`
+	RevisionOrderNumber int                `bson:"order,omitempty"`
+	AlertTime           time.Time          `bson:"alert_time,omitempty"`
 }
 
-func (ar *AlertRecord) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(ar) }
-func (ar *AlertRecord) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, ar) }
+type alertRecordBSONAlias AlertRecord
+
+func (ar *AlertRecord) MarshalBSON() ([]byte, error) {
+	return bson.Marshal((*alertRecordBSONAlias)(ar))
+}
+
+func (ar *AlertRecord) UnmarshalBSON(in []byte) error {
+	return bson.Unmarshal(in, (*alertRecordBSONAlias)(ar))
+}
 
 func (ar *AlertRecord) Insert(ctx context.Context) error {
 	return db.Insert(ctx, Collection, ar)
@@ -215,7 +222,7 @@ func FindByMostRecentAlertableInstanceType(ctx context.Context, hostID string) (
 
 func InsertNewTaskRegressionByTestRecord(ctx context.Context, subscriptionID, taskID, testName, taskDisplayName, variant, projectID string, revision int) error {
 	record := AlertRecord{
-		Id:                  mgobson.NewObjectId(),
+		Id:                  primitive.NewObjectID(),
 		SubscriptionID:      subscriptionID,
 		Type:                taskRegressionByTest,
 		TaskId:              taskID,
@@ -233,7 +240,7 @@ func InsertNewTaskRegressionByTestRecord(ctx context.Context, subscriptionID, ta
 func InsertNewSpawnHostExpirationRecord(ctx context.Context, hostID string, hours int) error {
 	alertType := fmt.Sprintf(spawnHostWarningTemplate, hours)
 	record := AlertRecord{
-		Id:             mgobson.NewObjectId(),
+		Id:             primitive.NewObjectID(),
 		SubscriptionID: legacyAlertsSubscription,
 		Type:           alertType,
 		HostId:         hostID,
@@ -248,7 +255,7 @@ func InsertNewSpawnHostExpirationRecord(ctx context.Context, hostID string, hour
 func InsertNewHostTemporaryExemptionExpirationRecord(ctx context.Context, hostID string, hours int) error {
 	alertType := fmt.Sprintf(hostTemporaryExemptionWarningTemplate, hours)
 	record := AlertRecord{
-		Id:             mgobson.NewObjectId(),
+		Id:             primitive.NewObjectID(),
 		SubscriptionID: legacyAlertsSubscription,
 		Type:           alertType,
 		HostId:         hostID,
@@ -261,7 +268,7 @@ func InsertNewHostTemporaryExemptionExpirationRecord(ctx context.Context, hostID
 func InsertNewVolumeExpirationRecord(ctx context.Context, volumeID string, hours int) error {
 	alertType := fmt.Sprintf(volumeWarningTemplate, hours)
 	record := AlertRecord{
-		Id:             mgobson.NewObjectId(),
+		Id:             primitive.NewObjectID(),
 		SubscriptionID: legacyAlertsSubscription,
 		Type:           alertType,
 		VolumeId:       volumeID,
@@ -274,7 +281,7 @@ func InsertNewVolumeExpirationRecord(ctx context.Context, volumeID string, hours
 // InsertNewAlertableInstanceTypeRecord inserts a new alert record for a host that's using an alertable instance type.
 func InsertNewAlertableInstanceTypeRecord(ctx context.Context, hostID string) error {
 	record := AlertRecord{
-		Id:             mgobson.NewObjectId(),
+		Id:             primitive.NewObjectID(),
 		SubscriptionID: legacyAlertsSubscription,
 		Type:           alertableInstanceTypeWarning,
 		HostId:         hostID,

@@ -15,7 +15,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
@@ -29,6 +28,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-gitignore"
+	"go.mongodb.org/mongo-driver/bson"
 	"gopkg.in/yaml.v3"
 )
 
@@ -697,7 +697,8 @@ func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(any) error) error {
 }
 
 func (c *PluginCommandConf) UnmarshalBSON(in []byte) error {
-	if err := mgobson.Unmarshal(in, c); err != nil {
+	type pluginCommandConfBSONAlias PluginCommandConf
+	if err := bson.Unmarshal(in, (*pluginCommandConfBSONAlias)(c)); err != nil {
 		return err
 	}
 	return c.unmarshalParams()

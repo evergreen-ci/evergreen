@@ -13,7 +13,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -26,6 +25,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type cronsEventSuite struct {
@@ -211,7 +211,7 @@ func (s *cronsEventSuite) TestEndToEnd() {
 	defer ln.Close()
 
 	p := &patch.Patch{
-		Id:      mgobson.NewObjectId(),
+		Id:      primitive.NewObjectID(),
 		Project: "test",
 		Status:  evergreen.VersionFailed,
 		Author:  "somebody",
@@ -236,7 +236,7 @@ func (s *cronsEventSuite) TestEndToEnd() {
 
 	subs := []event.Subscription{
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           primitive.NewObjectID().Hex(),
 			ResourceType: e.ResourceType,
 			Trigger:      "outcome",
 			Selectors: []event.Selector{
@@ -254,7 +254,7 @@ func (s *cronsEventSuite) TestEndToEnd() {
 			},
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           primitive.NewObjectID().Hex(),
 			ResourceType: e.ResourceType,
 			Trigger:      "outcome",
 			Selectors: []event.Selector{

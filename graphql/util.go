@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
@@ -39,6 +38,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"github.com/vektah/gqlparser/v2/gqlerror"
+	"go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/crypto/ssh"
 )
 

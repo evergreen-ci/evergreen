@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -206,8 +205,9 @@ func (s IceCreamSettings) Populated() bool {
 	return s.SchedulerHost != "" && s.ConfigPath != ""
 }
 
-func (d *Distro) SetBSON(raw mgobson.Raw) error {
-	return bson.Unmarshal(raw.Data, d)
+func (d *Distro) UnmarshalBSON(in []byte) error {
+	type distroBSONAlias Distro
+	return bson.Unmarshal(in, (*distroBSONAlias)(d))
 }
 
 // ValidateBootstrapSettings checks if all of the bootstrap settings are valid

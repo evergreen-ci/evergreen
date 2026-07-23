@@ -10,7 +10,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -27,6 +26,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -55,9 +55,9 @@ type patchIntentProcessor struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 	env      evergreen.Environment
 
-	IntentID   string           `bson:"intent_id" json:"intent_id" yaml:"intent_id"`
-	IntentType string           `bson:"intent_type" json:"intent_type" yaml:"intent_type"`
-	PatchID    mgobson.ObjectId `bson:"patch_id,omitempty" json:"patch_id" yaml:"patch_id"`
+	IntentID   string             `bson:"intent_id" json:"intent_id" yaml:"intent_id"`
+	IntentType string             `bson:"intent_type" json:"intent_type" yaml:"intent_type"`
+	PatchID    primitive.ObjectID `bson:"patch_id,omitempty" json:"patch_id" yaml:"patch_id"`
 
 	user   *user.DBUser
 	intent patch.Intent
@@ -68,7 +68,7 @@ type patchIntentProcessor struct {
 // NewPatchIntentProcessor creates an amboy job to create a patch from the
 // given patch intent. The patch ID is the new ID for the patch to be created,
 // not the patch intent.
-func NewPatchIntentProcessor(env evergreen.Environment, patchID mgobson.ObjectId, intent patch.Intent) amboy.Job {
+func NewPatchIntentProcessor(env evergreen.Environment, patchID primitive.ObjectID, intent patch.Intent) amboy.Job {
 	j := makePatchIntentProcessor()
 	j.IntentID = intent.ID()
 	j.IntentType = intent.GetType()
@@ -926,7 +926,11 @@ func processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 			return errors.Errorf("intent '%s' didn't not have expected type '%T'", intent.ID(), intent)
 		}
 
-		job := NewPatchIntentProcessor(env, mgobson.ObjectIdHex(intent.ID()), intent)
+		patchID, err := primitive.ObjectIDFromHex(intent.ID())
+		if err != nil {
+			return errors.Wrap(err, "parsing child patch ID")
+		}
+		job := NewPatchIntentProcessor(env, patchID, intent)
 		if triggerIntent.ParentStatus == "" {
 			// In order to be able to finalize a patch from the CLI,
 			// we need the child patch intents to exist when the parent patch is finalized.

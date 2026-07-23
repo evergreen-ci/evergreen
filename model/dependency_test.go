@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
@@ -22,14 +21,14 @@ type depTask struct {
 func TestDependencyBSON(t *testing.T) {
 	Convey("With BSON bytes", t, func() {
 		Convey("representing legacy dependency format (i.e. just strings)", func() {
-			bytes, err := mgobson.Marshal(map[string]any{
+			bytes, err := bson.Marshal(map[string]any{
 				"depends_on": []string{"t1", "t2", "t3"},
 			})
 			require.NoError(t, err, "failed to marshal test BSON")
 
 			Convey("unmarshalling the BSON into a Dependency slice should succeed", func() {
 				var deps depTask
-				So(mgobson.Unmarshal(bytes, &deps), ShouldBeNil)
+				So(bson.Unmarshal(bytes, &deps), ShouldBeNil)
 				So(len(deps.DependsOn), ShouldEqual, 3)
 
 				Convey("with the proper tasks", func() {

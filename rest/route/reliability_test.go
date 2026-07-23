@@ -12,7 +12,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/reliability"
@@ -23,6 +22,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (
@@ -532,7 +532,7 @@ func TestReliabilityRun(t *testing.T) {
 					for i := range 100 {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
+						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, bson.M{
 							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",
@@ -576,7 +576,7 @@ func TestReliabilityRun(t *testing.T) {
 					for i := range 1001 {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
+						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, bson.M{
 							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",
@@ -626,7 +626,7 @@ func TestReliabilityRun(t *testing.T) {
 					for i := range 99 {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
+						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, bson.M{
 							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",
@@ -675,7 +675,7 @@ func TestReliabilityRun(t *testing.T) {
 					for i := range 101 {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
+						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, bson.M{
 							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",
@@ -784,7 +784,7 @@ func TestReliability(t *testing.T) {
 					for i := range pageSize {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
+						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, bson.M{
 							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",
@@ -835,7 +835,7 @@ func TestReliability(t *testing.T) {
 					for i := range pageSize {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
+						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, bson.M{
 							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",
@@ -889,7 +889,7 @@ func TestReliability(t *testing.T) {
 					for i := 0; i < pageSize*2; i++ {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
+						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, bson.M{
 							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",

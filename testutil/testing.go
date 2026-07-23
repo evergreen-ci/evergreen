@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // path to an mci settings file containing sensitive information
@@ -28,6 +29,13 @@ func GetDirectoryOfFile() string {
 	_, file, _, _ := runtime.Caller(1)
 
 	return filepath.Dir(file)
+}
+
+// ObjectIDFromHex parses an ObjectID or fails the test.
+func ObjectIDFromHex(t testing.TB, id string) primitive.ObjectID {
+	objectID, err := primitive.ObjectIDFromHex(id)
+	require.NoError(t, err)
+	return objectID
 }
 
 // GetIntegrationFile returns an initialized evergreen.Settings struct. It will

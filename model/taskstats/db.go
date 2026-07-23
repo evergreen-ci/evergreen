@@ -38,7 +38,6 @@ import (
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
@@ -110,9 +109,6 @@ type DBTaskStats struct {
 	AvgDurationSuccess float64       `bson:"avg_duration_success"`
 	LastUpdate         time.Time     `bson:"last_update"`
 }
-
-func (d *DBTaskStats) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(d) }
-func (d *DBTaskStats) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, d) }
 
 var (
 	// BSON fields for the task stats ID struct.

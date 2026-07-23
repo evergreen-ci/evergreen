@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -20,6 +19,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
@@ -506,7 +506,7 @@ func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
 			}
 			require.NoError(randomVersion.Insert(t.Context()))
 			randomPatch := patch.Patch{
-				Id:      mgobson.NewObjectId(),
+				Id:      primitive.NewObjectID(),
 				Version: randomVersion.Id,
 			}
 			require.NoError(randomPatch.Insert(t.Context()))
@@ -516,7 +516,7 @@ func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
 				BuildIds:   []string{"sample_build_id"},
 			}
 			samplePatch := patch.Patch{
-				Id:      mgobson.NewObjectId(),
+				Id:      primitive.NewObjectID(),
 				Version: sampleVersion.Id,
 			}
 			require.NoError(samplePatch.Insert(t.Context()))

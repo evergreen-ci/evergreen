@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -75,7 +74,7 @@ func TestGetProjectIdFromParams(t *testing.T) {
 	require.Equal(t, "", projectId)
 
 	// Parameters include patchId.
-	patchId := bson.NewObjectId()
+	patchId := primitive.NewObjectID()
 	patch := &patch.Patch{
 		Id:      patchId,
 		Project: project.Identifier,

@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
@@ -42,10 +41,6 @@ type ProjectConfigFields struct {
 
 func (pc *ProjectConfig) Insert(ctx context.Context) error {
 	return db.Insert(ctx, ProjectConfigCollection, pc)
-}
-
-func (pc *ProjectConfig) MarshalBSON() ([]byte, error) {
-	return mgobson.Marshal(pc)
 }
 
 func (pc *ProjectConfig) isEmpty() bool {

@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/event"
 	_ "github.com/evergreen-ci/evergreen/testutil"
@@ -18,6 +17,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type notificationSuite struct {
@@ -29,6 +30,37 @@ type notificationSuite struct {
 
 func TestNotifications(t *testing.T) {
 	suite.Run(t, &notificationSuite{})
+}
+
+func TestUnmarshalBSON(t *testing.T) {
+	expectedPayload := message.GithubStatus{
+		State:       message.GithubStateFailure,
+		Context:     "evergreen",
+		URL:         "https://example.com",
+		Description: "something failed",
+	}
+	original := Notification{
+		ID: "notification",
+		Subscriber: event.Subscriber{
+			Type: event.GithubPullRequestSubscriberType,
+			Target: &event.GithubPullRequestSubscriber{
+				Owner:    "evergreen-ci",
+				Repo:     "evergreen",
+				PRNumber: 9001,
+			},
+		},
+		Payload: expectedPayload,
+	}
+
+	data, err := bson.Marshal(original)
+	require.NoError(t, err)
+
+	var result Notification
+	require.NoError(t, bson.Unmarshal(data, &result))
+	assert.Equal(t, original.ID, result.ID)
+	assert.Equal(t, original.Subscriber, result.Subscriber)
+	require.IsType(t, &message.GithubStatus{}, result.Payload)
+	assert.Equal(t, expectedPayload, *result.Payload.(*message.GithubStatus))
 }
 
 func (s *notificationSuite) SetupTest() {
@@ -445,13 +477,13 @@ func (s *notificationSuite) TestCollectUnsentNotificationStats() {
 	// add one of every notification, unsent
 	for i, type_ := range types {
 		n = append(n, s.n)
-		n[i].ID = mgobson.NewObjectId().Hex()
+		n[i].ID = primitive.NewObjectID().Hex()
 		n[i].Subscriber.Type = type_
 		s.NoError(db.Insert(s.T().Context(), Collection, n[i]))
 	}
 
 	// add one more, mark it sent
-	s.n.ID = mgobson.NewObjectId().Hex()
+	s.n.ID = primitive.NewObjectID().Hex()
 	s.n.SentAt = time.Now()
 	s.NoError(db.Insert(s.T().Context(), Collection, s.n))
 

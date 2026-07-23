@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestPatchTriggers(t *testing.T) {
@@ -46,7 +47,7 @@ func (s *patchSuite) SetupTest() {
 	s.NoError(db.ClearCollections(event.EventCollection, patch.Collection, event.SubscriptionsCollection, model.ProjectRefCollection, model.VersionCollection))
 	startTime := time.Now().Truncate(time.Millisecond)
 
-	patchID := mgobson.ObjectIdHex("5aeb4514f27e4f9984646d97")
+	patchID := testutil.ObjectIDFromHex(s.T(), "5aeb4514f27e4f9984646d97")
 
 	childPatchId := "5aab4514f27e4f9984646d97"
 
@@ -74,7 +75,7 @@ func (s *patchSuite) SetupTest() {
 	s.NoError(s.patch.Insert(s.ctx))
 
 	childPatch := patch.Patch{
-		Id:         mgobson.ObjectIdHex(childPatchId),
+		Id:         testutil.ObjectIDFromHex(s.T(), childPatchId),
 		Project:    "test",
 		Author:     "someone",
 		Status:     evergreen.VersionCreated,
@@ -297,7 +298,7 @@ func (s *patchSuite) TestRunChildrenOnPatchOutcome() {
 }
 
 func (s *patchSuite) TestPatchFamilyOutcomeWithAbortedPatch() {
-	patchID := mgobson.NewObjectId()
+	patchID := primitive.NewObjectID()
 	eventData := event.PatchEventData{
 		Status: evergreen.VersionFailed,
 		Author: "myself",
@@ -348,7 +349,7 @@ func (s *patchSuite) TestPatchFamilyOutcomeWithAbortedPatch() {
 }
 
 func (s *patchSuite) TestPatchFamilyOutcomeWithAbortedGitHubMergePatch() {
-	patchID := mgobson.NewObjectId()
+	patchID := primitive.NewObjectID()
 	eventData := event.PatchEventData{
 		Status: evergreen.VersionFailed,
 		Author: evergreen.GithubMergeUser,
@@ -429,7 +430,7 @@ func TestPatchAttributesProjectWithNoRepoContainsOnlyProjectID(t *testing.T) {
 }
 
 func TestRepoProjectSubscriptionFiresForBranchPatch(t *testing.T) {
-	patchID := mgobson.ObjectIdHex("5aeb4514f27e4f9984646d97")
+	patchID := testutil.ObjectIDFromHex(t, "5aeb4514f27e4f9984646d97")
 	collections := []string{
 		patch.Collection, model.ProjectRefCollection, model.RepoRefCollection,
 		event.SubscriptionsCollection,
@@ -450,7 +451,7 @@ func TestRepoProjectSubscriptionFiresForBranchPatch(t *testing.T) {
 	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{Id: "repo-project"}}
 	require.NoError(t, repoRef.Replace(ctx))
 	sub := event.Subscription{
-		ID:           mgobson.NewObjectId().Hex(),
+		ID:           primitive.NewObjectID().Hex(),
 		ResourceType: event.ResourceTypePatch,
 		Trigger:      event.TriggerFailure,
 		Selectors:    []event.Selector{{Type: event.SelectorProject, Data: "repo-project"}},
@@ -474,7 +475,7 @@ func TestRepoProjectSubscriptionFiresForBranchPatch(t *testing.T) {
 }
 
 func TestRepoProjectSubscriptionDoesNotFireForBranchPatchWithoutRepo(t *testing.T) {
-	patchID := mgobson.ObjectIdHex("5aeb4514f27e4f9984646d97")
+	patchID := testutil.ObjectIDFromHex(t, "5aeb4514f27e4f9984646d97")
 	collections := []string{
 		patch.Collection, model.ProjectRefCollection, model.RepoRefCollection,
 		event.SubscriptionsCollection,
@@ -494,7 +495,7 @@ func TestRepoProjectSubscriptionDoesNotFireForBranchPatchWithoutRepo(t *testing.
 	pRef := model.ProjectRef{Id: "branch-project", Identifier: "branch-project"}
 	require.NoError(t, pRef.Insert(ctx))
 	sub := event.Subscription{
-		ID:           mgobson.NewObjectId().Hex(),
+		ID:           primitive.NewObjectID().Hex(),
 		ResourceType: event.ResourceTypePatch,
 		Trigger:      event.TriggerFailure,
 		Selectors:    []event.Selector{{Type: event.SelectorProject, Data: "repo-project"}},

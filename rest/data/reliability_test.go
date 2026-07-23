@@ -7,13 +7,13 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/reliability"
 	"github.com/evergreen-ci/evergreen/model/taskstats"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const dayInHours = 24 * time.Hour
@@ -49,7 +49,7 @@ func TestMockGetTaskReliability(t *testing.T) {
 	for i := range 102 {
 		taskName := fmt.Sprintf("%v%v", "task_", i)
 		tasks = append(tasks, taskName)
-		err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
+		err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, bson.M{
 			"_id": taskstats.DBTaskStatsID{
 				Project:      "project",
 				Requester:    "requester",

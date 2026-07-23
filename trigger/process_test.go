@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -19,6 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type projectTriggerSuite struct {
@@ -300,7 +300,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	}
 	assert.NoError(upstreamVersion.Insert(t.Context()))
 	downstreamProjectRef := model.ProjectRef{
-		Id:         mgobson.NewObjectId().Hex(),
+		Id:         primitive.NewObjectID().Hex(),
 		Identifier: "downstream",
 		Enabled:    true,
 		Owner:      "evergreen-ci",
@@ -313,7 +313,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	}
 	assert.NoError(downstreamProjectRef.Insert(t.Context()))
 	uptreamProjectRef := model.ProjectRef{
-		Id:         mgobson.NewObjectId().Hex(),
+		Id:         primitive.NewObjectID().Hex(),
 		Identifier: "upstream",
 		Enabled:    true,
 		Owner:      "evergreen-ci",
@@ -322,7 +322,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	}
 	assert.NoError(uptreamProjectRef.Insert(t.Context()))
 	alias := model.ProjectAlias{
-		ID:        mgobson.NewObjectId(),
+		ID:        primitive.NewObjectID(),
 		ProjectID: downstreamProjectRef.Id,
 		Alias:     "a1",
 		Variant:   "buildvariant",
@@ -435,7 +435,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 	}
 	assert.NoError(upstreamVersion.Insert(t.Context()))
 	downstreamProjectRef := model.ProjectRef{
-		Id:         mgobson.NewObjectId().Hex(),
+		Id:         primitive.NewObjectID().Hex(),
 		Identifier: "downstream",
 		Enabled:    true,
 		Owner:      "evergreen-ci",
@@ -448,7 +448,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 	}
 	assert.NoError(downstreamProjectRef.Insert(t.Context()))
 	uptreamProjectRef := model.ProjectRef{
-		Id:         mgobson.NewObjectId().Hex(),
+		Id:         primitive.NewObjectID().Hex(),
 		Identifier: "upstream",
 		Enabled:    true,
 		Owner:      "evergreen-ci",
@@ -457,7 +457,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 	}
 	assert.NoError(uptreamProjectRef.Insert(t.Context()))
 	alias := model.ProjectAlias{
-		ID:        mgobson.NewObjectId(),
+		ID:        primitive.NewObjectID(),
 		ProjectID: downstreamProjectRef.Id,
 		Alias:     "a1",
 		Variant:   "buildvariant",
@@ -544,7 +544,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	assert.NoError(config.Set(ctx))
 
 	downstreamProjectRef := model.ProjectRef{
-		Id:         mgobson.NewObjectId().Hex(),
+		Id:         primitive.NewObjectID().Hex(),
 		Identifier: "downstream",
 		Enabled:    true,
 		Owner:      "evergreen-ci",
@@ -557,7 +557,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	}
 	assert.NoError(downstreamProjectRef.Insert(t.Context()))
 	uptreamProjectRef := model.ProjectRef{
-		Id:         mgobson.NewObjectId().Hex(),
+		Id:         primitive.NewObjectID().Hex(),
 		Identifier: "upstream",
 		Enabled:    true,
 		Owner:      "evergreen-ci",
@@ -566,7 +566,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	}
 	assert.NoError(uptreamProjectRef.Insert(t.Context()))
 	alias := model.ProjectAlias{
-		ID:        mgobson.NewObjectId(),
+		ID:        primitive.NewObjectID(),
 		ProjectID: downstreamProjectRef.Id,
 		Alias:     "a1",
 		Variant:   "buildvariant",

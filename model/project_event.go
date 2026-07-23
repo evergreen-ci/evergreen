@@ -10,14 +10,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type ProjectSettings struct {
@@ -369,22 +367,13 @@ type ProjectChangeEventEntry struct {
 }
 
 func (e *ProjectChangeEventEntry) UnmarshalBSON(in []byte) error {
-	return mgobson.Unmarshal(in, e)
-}
-
-func (e *ProjectChangeEventEntry) MarshalBSON() ([]byte, error) {
-	return mgobson.Marshal(e)
-}
-
-func (e *ProjectChangeEventEntry) SetBSON(raw mgobson.Raw) error {
 	temp := event.UnmarshalEventLogEntry{}
-	if err := raw.Unmarshal(&temp); err != nil {
+	if err := bson.Unmarshal(in, &temp); err != nil {
 		return errors.Wrap(err, "unmarshalling event log entry")
 	}
 
 	e.Data = &ProjectChangeEvent{}
-
-	if err := temp.Data.Unmarshal(e.Data); err != nil {
+	if err := bson.Unmarshal(temp.Data, e.Data); err != nil {
 		return errors.Wrap(err, "unmarshalling event data")
 	}
 
@@ -393,9 +382,7 @@ func (e *ProjectChangeEventEntry) SetBSON(raw mgobson.Raw) error {
 	switch v := temp.ID.(type) {
 	case string:
 		e.ID = v
-	case mgobson.ObjectId:
-		e.ID = v.Hex()
-	case primitive.ObjectID:
+	case interface{ Hex() string }:
 		e.ID = v.Hex()
 	default:
 		return errors.Errorf("unrecognized ID format for event %T", v)
@@ -407,6 +394,11 @@ func (e *ProjectChangeEventEntry) SetBSON(raw mgobson.Raw) error {
 	e.ResourceType = temp.ResourceType
 
 	return nil
+}
+
+func (e *ProjectChangeEventEntry) MarshalBSON() ([]byte, error) {
+	type projectChangeEventEntryBSONAlias ProjectChangeEventEntry
+	return bson.Marshal((*projectChangeEventEntryBSONAlias)(e))
 }
 
 // MostRecentProjectEvents returns the n most recent project events for the given project ID.

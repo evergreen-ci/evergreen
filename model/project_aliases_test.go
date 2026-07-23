@@ -6,12 +6,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type ProjectAliasSuite struct {
@@ -253,28 +253,28 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectOrConfig() {
 		ProjectConfigFields: ProjectConfigFields{
 			PatchAliases: []ProjectAlias{
 				{
-					ID:    mgobson.NewObjectId(),
+					ID:    primitive.NewObjectID(),
 					Alias: "alias-2",
 				},
 				{
-					ID:    mgobson.NewObjectId(),
+					ID:    primitive.NewObjectID(),
 					Alias: "alias-1",
 				},
 				{
-					ID:          mgobson.NewObjectId(),
+					ID:          primitive.NewObjectID(),
 					Alias:       "duplicate",
 					Description: "from project config",
 				},
 			},
 			CommitQueueAliases: []ProjectAlias{
 				{
-					ID:        mgobson.NewObjectId(),
+					ID:        primitive.NewObjectID(),
 					ProjectID: "project-1",
 				},
 			},
 			GitHubChecksAliases: []ProjectAlias{
 				{
-					ID:        mgobson.NewObjectId(),
+					ID:        primitive.NewObjectID(),
 					ProjectID: "project-1",
 				},
 			},
@@ -570,7 +570,7 @@ func (s *ProjectAliasSuite) TestUpsertAliasesForProjectWithMismatchedIDCreatesNe
 		Task:      "t1",
 	}
 	s.NoError(existing.Upsert(s.T().Context()))
-	s.True(existing.ID.Valid())
+	s.False(existing.ID.IsZero())
 
 	// Upserting into a different project while reusing an existing alias's ID
 	// must create a fresh document rather than write to the other project's.

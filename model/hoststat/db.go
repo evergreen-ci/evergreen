@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/anser/bsonutil"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 var (

@@ -10,13 +10,13 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/notification"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -71,7 +71,7 @@ func makeTaskTriggers() eventHandler {
 // with as much data from the triggerContext as possible
 func newAlertRecord(subID string, t *task.Task, alertType string) *alertrecord.AlertRecord {
 	return &alertrecord.AlertRecord{
-		Id:                  mgobson.NewObjectId(),
+		Id:                  primitive.NewObjectID(),
 		SubscriptionID:      subID,
 		Type:                alertType,
 		ProjectId:           t.Project,

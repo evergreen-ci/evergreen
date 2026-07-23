@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -15,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestBuildTriggers(t *testing.T) {
@@ -75,7 +75,7 @@ func (s *buildSuite) SetupTest() {
 		event.NewSubscriptionByID(event.ResourceTypeBuild, event.TriggerSuccess, s.event.ResourceId, apiSub),
 		event.NewSubscriptionByID(event.ResourceTypeBuild, event.TriggerFailure, s.event.ResourceId, apiSub),
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           primitive.NewObjectID().Hex(),
 			ResourceType: event.ResourceTypeBuild,
 			Trigger:      event.TriggerExceedsDuration,
 			Selectors: []event.Selector{
@@ -94,7 +94,7 @@ func (s *buildSuite) SetupTest() {
 			},
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           primitive.NewObjectID().Hex(),
 			ResourceType: event.ResourceTypeBuild,
 			Trigger:      event.TriggerRuntimeChangeByPercent,
 			Selectors: []event.Selector{
@@ -348,7 +348,7 @@ func TestRepoProjectSubscriptionFiresForBranchBuild(t *testing.T) {
 	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{Id: "repo-project"}}
 	require.NoError(t, repoRef.Replace(ctx))
 	sub := event.Subscription{
-		ID:           mgobson.NewObjectId().Hex(),
+		ID:           primitive.NewObjectID().Hex(),
 		ResourceType: event.ResourceTypeBuild,
 		Trigger:      event.TriggerFailure,
 		Selectors:    []event.Selector{{Type: event.SelectorProject, Data: "repo-project"}},
@@ -390,7 +390,7 @@ func TestRepoProjectSubscriptionDoesNotFireForBranchBuildWithoutRepo(t *testing.
 	pRef := model.ProjectRef{Id: "branch-project", Identifier: "branch-project"}
 	require.NoError(t, pRef.Insert(ctx))
 	sub := event.Subscription{
-		ID:           mgobson.NewObjectId().Hex(),
+		ID:           primitive.NewObjectID().Hex(),
 		ResourceType: event.ResourceTypeBuild,
 		Trigger:      event.TriggerFailure,
 		Selectors:    []event.Selector{{Type: event.SelectorProject, Data: "repo-project"}},

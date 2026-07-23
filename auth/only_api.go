@@ -4,12 +4,12 @@ import (
 	"context"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/cached"
 	"github.com/evergreen-ci/gimlet/usercache"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // NewOnlyAPIUserManager creates a user manager for special users that can only

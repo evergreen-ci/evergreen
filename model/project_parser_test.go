@@ -17,7 +17,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -28,6 +27,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"gopkg.in/yaml.v3"
 )
 
@@ -2891,7 +2891,7 @@ buildvariants:
 
 func TestUpdateReadFileFrom(t *testing.T) {
 	p := &patch.Patch{
-		Id: "p1",
+		Id: primitive.NewObjectID(),
 		Patches: []patch.ModulePatch{
 			{
 				PatchSet: patch.PatchSet{
@@ -2977,7 +2977,7 @@ func TestFindAndTranslateProjectForPatch(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(ParserProjectCollection, VersionCollection, patch.Collection))
 			p := patch.Patch{
-				Id: mgobson.NewObjectId(),
+				Id: primitive.NewObjectID(),
 			}
 			pp := ParserProject{
 				Id:          p.Id.Hex(),

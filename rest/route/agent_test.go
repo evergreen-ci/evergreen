@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -35,6 +34,7 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 var (
@@ -645,7 +645,7 @@ func TestDownstreamParams(t *testing.T) {
 	versionId := "myTestVersion"
 	parentPatchId := "5bedc62ee4055d31f0340b1d"
 	parentPatch := patch.Patch{
-		Id:      mgobson.ObjectIdHex(parentPatchId),
+		Id:      testutil.ObjectIDFromHex(t, parentPatchId),
 		Version: versionId,
 	}
 	require.NoError(t, parentPatch.Insert(t.Context()))
@@ -1661,7 +1661,7 @@ func TestGitServePatchFile(t *testing.T) {
 	require.NoError(t, tsk.Insert(ctx))
 
 	p := patch.Patch{
-		Id:      mgobson.NewObjectId(),
+		Id:      primitive.NewObjectID(),
 		Version: versionID,
 		Patches: []patch.ModulePatch{
 			{

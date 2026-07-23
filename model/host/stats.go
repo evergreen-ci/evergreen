@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/mongodb/anser/bsonutil"
 	"go.mongodb.org/mongo-driver/bson"
@@ -28,9 +27,6 @@ type StatsByDistro struct {
 	// SingleTaskDistro is true if the distro is a single task distro.
 	SingleTaskDistro bool `bson:"single_task_distro" json:"single_task_distro"`
 }
-
-func (d *StatsByDistro) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(d) }
-func (d *StatsByDistro) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, d) }
 
 type ProviderStats []StatsByProvider
 type StatsByProvider struct {

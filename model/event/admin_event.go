@@ -7,11 +7,11 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func init() {
@@ -38,8 +38,8 @@ type ConfigDataChange struct {
 }
 
 type rawConfigDataChange struct {
-	Before mgobson.Raw `bson:"before" json:"before"`
-	After  mgobson.Raw `bson:"after" json:"after"`
+	Before bson.Raw `bson:"before" json:"before"`
+	After  bson.Raw `bson:"after" json:"after"`
 }
 
 type rawAdminEventData struct {
@@ -150,11 +150,11 @@ func convertRaw(in rawAdminEventData) (*AdminEventData, error) {
 	after := reflect.New(reflect.ValueOf(section).Elem().Type()).Interface().(evergreen.ConfigSection)
 
 	// deserialize the before/after values
-	err := in.Changes.Before.Unmarshal(before)
+	err := bson.Unmarshal(in.Changes.Before, before)
 	if err != nil {
 		return nil, errors.Wrapf(err, "decoding before changes for section '%s'", out.Section)
 	}
-	err = in.Changes.After.Unmarshal(after)
+	err = bson.Unmarshal(in.Changes.After, after)
 	if err != nil {
 		return nil, errors.Wrapf(err, "decoding after changes for section '%s'", out.Section)
 	}

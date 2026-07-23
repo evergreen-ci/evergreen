@@ -9,12 +9,13 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -23,7 +24,7 @@ func TestMostRecentByUserAndProject(t *testing.T) {
 
 	now := time.Now()
 	previousPatch := Patch{
-		Id:         bson.NewObjectId(),
+		Id:         primitive.NewObjectID(),
 		Project:    "correct",
 		Author:     "me",
 		CreateTime: now,
@@ -31,7 +32,7 @@ func TestMostRecentByUserAndProject(t *testing.T) {
 	}
 	assert.NoError(t, previousPatch.Insert(t.Context()))
 	yourPatch := Patch{
-		Id:         bson.NewObjectId(),
+		Id:         primitive.NewObjectID(),
 		Project:    "correct",
 		Author:     "you",
 		CreateTime: now,
@@ -39,7 +40,7 @@ func TestMostRecentByUserAndProject(t *testing.T) {
 	}
 	assert.NoError(t, yourPatch.Insert(t.Context()))
 	notActivatedPatch := Patch{
-		Id:         bson.NewObjectId(),
+		Id:         primitive.NewObjectID(),
 		Project:    "correct",
 		Author:     "you",
 		CreateTime: now,
@@ -47,7 +48,7 @@ func TestMostRecentByUserAndProject(t *testing.T) {
 	}
 	assert.NoError(t, notActivatedPatch.Insert(t.Context()))
 	wrongPatch := Patch{
-		Id:         bson.NewObjectId(),
+		Id:         primitive.NewObjectID(),
 		Project:    "wrong",
 		Author:     "me",
 		CreateTime: now,
@@ -55,7 +56,7 @@ func TestMostRecentByUserAndProject(t *testing.T) {
 	}
 	assert.NoError(t, wrongPatch.Insert(t.Context()))
 	prPatch := Patch{
-		Id:         bson.NewObjectId(),
+		Id:         primitive.NewObjectID(),
 		Project:    "correct",
 		Author:     "me",
 		CreateTime: now,
@@ -64,7 +65,7 @@ func TestMostRecentByUserAndProject(t *testing.T) {
 	}
 	assert.NoError(t, prPatch.Insert(t.Context()))
 	oldPatch := Patch{
-		Id:         bson.NewObjectId(),
+		Id:         primitive.NewObjectID(),
 		Project:    "correct",
 		Author:     "me",
 		CreateTime: now.Add(-time.Minute),
@@ -188,7 +189,7 @@ func TestProjectOrUserPatchesRequestersOption(t *testing.T) {
 			ctx := t.Context()
 			assert.NoError(t, db.ClearCollections(Collection))
 			ghPRPatch := Patch{
-				Id:          bson.NewObjectId(),
+				Id:          primitive.NewObjectID(),
 				Project:     "evergreen",
 				Description: "GH PR Patch",
 				GithubPatchData: thirdparty.GithubPatch{
@@ -197,7 +198,7 @@ func TestProjectOrUserPatchesRequestersOption(t *testing.T) {
 			}
 			assert.NoError(t, ghPRPatch.Insert(t.Context()))
 			ghMergePatch := Patch{
-				Id:          bson.NewObjectId(),
+				Id:          primitive.NewObjectID(),
 				Project:     "evergreen",
 				Description: "GH Merge Patch",
 				GithubMergeData: thirdparty.GithubMergeGroup{
@@ -207,7 +208,7 @@ func TestProjectOrUserPatchesRequestersOption(t *testing.T) {
 			assert.NoError(t, ghMergePatch.Insert(t.Context()))
 
 			patchRequestPatch := Patch{
-				Id:          bson.NewObjectId(),
+				Id:          primitive.NewObjectID(),
 				Project:     "evergreen",
 				Description: "Patch Request Patch", // patch_request requester
 			}
@@ -226,7 +227,7 @@ func TestProjectOrUserPatchesCombined(t *testing.T) {
 		createTime := time.Duration(i) * time.Minute
 
 		patch := Patch{
-			Id:          bson.NewObjectId(),
+			Id:          primitive.NewObjectID(),
 			Project:     "evergreen",
 			CreateTime:  now.Add(-createTime),
 			Description: fmt.Sprintf("patch %d", i),
@@ -308,7 +309,7 @@ func TestProjectOrUserPatchesResults(t *testing.T) {
 		createTime := time.Duration(i) * time.Minute
 
 		patch := Patch{
-			Id:          bson.NewObjectId(),
+			Id:          primitive.NewObjectID(),
 			Project:     "evergreen",
 			CreateTime:  now.Add(-createTime),
 			Description: fmt.Sprintf("patch %d", i),
@@ -365,7 +366,7 @@ func TestProjectOrUserPatchesResults(t *testing.T) {
 	t.Run("ExcludesPatchDiff", func(t *testing.T) {
 		// Insert a patch with large diff data
 		patchWithDiff := Patch{
-			Id:          bson.NewObjectId(),
+			Id:          primitive.NewObjectID(),
 			Project:     "evergreen",
 			CreateTime:  now,
 			Description: "patch with diff",
@@ -401,7 +402,7 @@ func TestProjectOrUserPatchesCount(t *testing.T) {
 		createTime := time.Duration(i) * time.Minute
 
 		patch := Patch{
-			Id:          bson.NewObjectId(),
+			Id:          primitive.NewObjectID(),
 			Project:     "evergreen",
 			CreateTime:  now.Add(-createTime),
 			Description: fmt.Sprintf("patch %d", i),
@@ -471,15 +472,15 @@ func TestProjectOrUserPatchesCount(t *testing.T) {
 
 func TestGetFinalizedChildPatchIdsForPatch(t *testing.T) {
 	childPatch := Patch{
-		Id:      bson.NewObjectId(),
+		Id:      primitive.NewObjectID(),
 		Version: "myVersion",
 	}
 	childPatch2 := Patch{
-		Id: bson.NewObjectId(), // not yet finalized
+		Id: primitive.NewObjectID(), // not yet finalized
 	}
 
 	p := Patch{
-		Id: bson.NewObjectId(),
+		Id: primitive.NewObjectID(),
 		Triggers: TriggerInfo{
 			ChildPatches: []string{childPatch.Id.Hex(), childPatch2.Id.Hex()},
 		},
@@ -495,7 +496,7 @@ func TestGetFinalizedChildPatchIdsForPatch(t *testing.T) {
 func TestLatestGithubPRPatch(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	patch1 := Patch{
-		Id:         bson.NewObjectId(),
+		Id:         primitive.NewObjectID(),
 		CreateTime: time.Now().Add(-time.Hour),
 		GithubPatchData: thirdparty.GithubPatch{
 			BaseOwner: "parks",
@@ -504,7 +505,7 @@ func TestLatestGithubPRPatch(t *testing.T) {
 		},
 	}
 	patch2 := Patch{
-		Id:         bson.NewObjectId(),
+		Id:         primitive.NewObjectID(),
 		CreateTime: time.Now(),
 		GithubPatchData: thirdparty.GithubPatch{
 			BaseOwner: "parks",
@@ -513,7 +514,7 @@ func TestLatestGithubPRPatch(t *testing.T) {
 		},
 	}
 	cqPatch := Patch{
-		Id:         bson.NewObjectId(),
+		Id:         primitive.NewObjectID(),
 		CreateTime: time.Now().Add(time.Hour),
 		Alias:      evergreen.CommitQueueAlias,
 		GithubPatchData: thirdparty.GithubPatch{
@@ -523,7 +524,7 @@ func TestLatestGithubPRPatch(t *testing.T) {
 		},
 	}
 	wrongPRPatch := Patch{
-		Id:         bson.NewObjectId(),
+		Id:         primitive.NewObjectID(),
 		CreateTime: time.Now(),
 		GithubPatchData: thirdparty.GithubPatch{
 			BaseOwner: "parks",
@@ -542,22 +543,22 @@ func TestLatestGithubPRPatch(t *testing.T) {
 func TestConsolidatePatchesForUser(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection, user.Collection))
 	p1 := Patch{
-		Id:          bson.NewObjectId(),
+		Id:          primitive.NewObjectID(),
 		Author:      "me",
 		PatchNumber: 6,
 	}
 	p2 := Patch{
-		Id:          bson.NewObjectId(),
+		Id:          primitive.NewObjectID(),
 		Author:      "me",
 		PatchNumber: 7,
 	}
 	pNew := Patch{
-		Id:          bson.NewObjectId(),
+		Id:          primitive.NewObjectID(),
 		Author:      "new_me",
 		PatchNumber: 1,
 	}
 	pNewAlso := Patch{
-		Id:          bson.NewObjectId(),
+		Id:          primitive.NewObjectID(),
 		Author:      "new_me",
 		PatchNumber: 2,
 	}
@@ -606,9 +607,9 @@ func TestMarkMergeQueuePatchesRemovedFromQueue(t *testing.T) {
 	originalTime := time.Now().Add(-time.Hour).UTC().Round(time.Millisecond)
 
 	// Create test versions for version status checks
-	version1 := bson.NewObjectId().Hex() // succeeded version
-	version2 := bson.NewObjectId().Hex() // failed version
-	version3 := bson.NewObjectId().Hex() // running version
+	version1 := primitive.NewObjectID().Hex() // succeeded version
+	version2 := primitive.NewObjectID().Hex() // failed version
+	version3 := primitive.NewObjectID().Hex() // running version
 
 	assert.NoError(t, db.Insert(t.Context(), "versions", bson.M{
 		"_id":         version1,
@@ -631,7 +632,7 @@ func TestMarkMergeQueuePatchesRemovedFromQueue(t *testing.T) {
 	patches := []Patch{
 		{
 			//GitRefNotFound + invalidated
-			Id: bson.NewObjectId(),
+			Id: primitive.NewObjectID(),
 			GithubMergeData: thirdparty.GithubMergeGroup{
 				Org:            "mongodb",
 				Repo:           "mongo",
@@ -644,7 +645,7 @@ func TestMarkMergeQueuePatchesRemovedFromQueue(t *testing.T) {
 		},
 		{
 			// Version succeeded + invalidated
-			Id: bson.NewObjectId(),
+			Id: primitive.NewObjectID(),
 			GithubMergeData: thirdparty.GithubMergeGroup{
 				Org:     "mongodb",
 				Repo:    "mongo",
@@ -656,7 +657,7 @@ func TestMarkMergeQueuePatchesRemovedFromQueue(t *testing.T) {
 		},
 		{
 			// Version failed + invalidated (no git error)
-			Id: bson.NewObjectId(),
+			Id: primitive.NewObjectID(),
 			GithubMergeData: thirdparty.GithubMergeGroup{
 				Org:     "mongodb",
 				Repo:    "mongo",
@@ -668,7 +669,7 @@ func TestMarkMergeQueuePatchesRemovedFromQueue(t *testing.T) {
 		},
 		{
 			// Version failed but removed before finish (invalidated while running)
-			Id: bson.NewObjectId(),
+			Id: primitive.NewObjectID(),
 			GithubMergeData: thirdparty.GithubMergeGroup{
 				Org:     "mongodb",
 				Repo:    "mongo",
@@ -680,7 +681,7 @@ func TestMarkMergeQueuePatchesRemovedFromQueue(t *testing.T) {
 		},
 		{
 			// No version yet + invalidated
-			Id: bson.NewObjectId(),
+			Id: primitive.NewObjectID(),
 			GithubMergeData: thirdparty.GithubMergeGroup{
 				Org:     "mongodb",
 				Repo:    "mongo",
@@ -689,7 +690,7 @@ func TestMarkMergeQueuePatchesRemovedFromQueue(t *testing.T) {
 		},
 		{
 			// Running version + invalidated
-			Id: bson.NewObjectId(),
+			Id: primitive.NewObjectID(),
 			GithubMergeData: thirdparty.GithubMergeGroup{
 				Org:     "mongodb",
 				Repo:    "mongo",
@@ -699,7 +700,7 @@ func TestMarkMergeQueuePatchesRemovedFromQueue(t *testing.T) {
 			Status:  evergreen.VersionStarted,
 		},
 		{
-			Id: bson.NewObjectId(),
+			Id: primitive.NewObjectID(),
 			GithubMergeData: thirdparty.GithubMergeGroup{
 				Org:                "mongodb",
 				Repo:               "mongo",
@@ -709,7 +710,7 @@ func TestMarkMergeQueuePatchesRemovedFromQueue(t *testing.T) {
 			},
 		},
 		{
-			Id: bson.NewObjectId(),
+			Id: primitive.NewObjectID(),
 			GithubMergeData: thirdparty.GithubMergeGroup{
 				Org:     "other-org",
 				Repo:    "mongo",
@@ -790,7 +791,7 @@ func TestMarkMergeQueuePatchesRemovedFromQueue(t *testing.T) {
 func TestSetMergeQueueMetricsEmitStatusPersistsStatus(t *testing.T) {
 	t.Cleanup(func() { require.NoError(t, db.ClearCollections(Collection)) })
 
-	p := Patch{Id: bson.NewObjectId()}
+	p := Patch{Id: primitive.NewObjectID()}
 	require.NoError(t, db.Insert(t.Context(), Collection, p))
 
 	require.NoError(t, SetMergeQueueMetricsEmitStatus(t.Context(), p.Id, MergeQueueMetricsEmitStatusSuccess))
@@ -804,7 +805,7 @@ func TestSetMergeQueueMetricsEmitStatusPersistsStatus(t *testing.T) {
 func TestClaimMergeQueueMetricsEmitSucceedsWhenStatusUnset(t *testing.T) {
 	t.Cleanup(func() { require.NoError(t, db.ClearCollections(Collection)) })
 
-	p := Patch{Id: bson.NewObjectId()}
+	p := Patch{Id: primitive.NewObjectID()}
 	require.NoError(t, db.Insert(t.Context(), Collection, p))
 
 	claimed, err := ClaimMergeQueueMetricsEmit(t.Context(), p.Id)
@@ -821,7 +822,7 @@ func TestClaimMergeQueueMetricsEmitFailsWhenAlreadySuccess(t *testing.T) {
 	t.Cleanup(func() { require.NoError(t, db.ClearCollections(Collection)) })
 
 	p := Patch{
-		Id:                          bson.NewObjectId(),
+		Id:                          primitive.NewObjectID(),
 		MergeQueueMetricsEmitStatus: MergeQueueMetricsEmitStatusSuccess,
 	}
 	require.NoError(t, db.Insert(t.Context(), Collection, p))
@@ -835,7 +836,7 @@ func TestClaimMergeQueueMetricsEmitFailsWhenAlreadyFailed(t *testing.T) {
 	t.Cleanup(func() { require.NoError(t, db.ClearCollections(Collection)) })
 
 	p := Patch{
-		Id:                          bson.NewObjectId(),
+		Id:                          primitive.NewObjectID(),
 		MergeQueueMetricsEmitStatus: MergeQueueMetricsEmitStatusFailed,
 	}
 	require.NoError(t, db.Insert(t.Context(), Collection, p))
@@ -852,7 +853,7 @@ func TestFindFinalizedMergeQueuePatchesMissingCompletionMetricsExcludesNonEligib
 	now := time.Now()
 
 	eligible := Patch{
-		Id:         bson.NewObjectId(),
+		Id:         primitive.NewObjectID(),
 		Project:    projectID,
 		Alias:      evergreen.CommitQueueAlias,
 		Status:     evergreen.VersionSucceeded,
@@ -860,14 +861,14 @@ func TestFindFinalizedMergeQueuePatchesMissingCompletionMetricsExcludesNonEligib
 		FinishTime: now,
 	}
 	stillRunning := Patch{
-		Id:         bson.NewObjectId(),
+		Id:         primitive.NewObjectID(),
 		Project:    projectID,
 		Alias:      evergreen.CommitQueueAlias,
 		Status:     evergreen.VersionStarted,
 		CreateTime: now,
 	}
 	webhookReceived := Patch{
-		Id:         bson.NewObjectId(),
+		Id:         primitive.NewObjectID(),
 		Project:    projectID,
 		Alias:      evergreen.CommitQueueAlias,
 		Status:     evergreen.VersionSucceeded,
@@ -878,7 +879,7 @@ func TestFindFinalizedMergeQueuePatchesMissingCompletionMetricsExcludesNonEligib
 		},
 	}
 	alreadyEmitted := Patch{
-		Id:                          bson.NewObjectId(),
+		Id:                          primitive.NewObjectID(),
 		Project:                     projectID,
 		Alias:                       evergreen.CommitQueueAlias,
 		Status:                      evergreen.VersionSucceeded,
@@ -887,7 +888,7 @@ func TestFindFinalizedMergeQueuePatchesMissingCompletionMetricsExcludesNonEligib
 		MergeQueueMetricsEmitStatus: MergeQueueMetricsEmitStatusSuccess,
 	}
 	failedEmit := Patch{
-		Id:                          bson.NewObjectId(),
+		Id:                          primitive.NewObjectID(),
 		Project:                     projectID,
 		Alias:                       evergreen.CommitQueueAlias,
 		Status:                      evergreen.VersionSucceeded,
@@ -900,7 +901,7 @@ func TestFindFinalizedMergeQueuePatchesMissingCompletionMetricsExcludesNonEligib
 	patches, err := FindFinalizedMergeQueuePatchesMissingCompletionMetrics(t.Context(), projectID)
 	require.NoError(t, err)
 	require.Len(t, patches, 2)
-	patchIDs := []bson.ObjectId{patches[0].Id, patches[1].Id}
+	patchIDs := []primitive.ObjectID{patches[0].Id, patches[1].Id}
 	assert.Contains(t, patchIDs, eligible.Id)
 	assert.Contains(t, patchIDs, failedEmit.Id)
 }

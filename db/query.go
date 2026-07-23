@@ -2,8 +2,6 @@ package db
 
 import (
 	"time"
-
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 // Q holds all information necessary to execute a query
@@ -83,7 +81,5 @@ func (q Q) Hint(hint any) Q {
 // pass a db.Q instead of a bson document, leading to great
 // sadness. The real solution is to get rid of db.Q objects entirely.
 
-func (q Q) SetBSON(_ bson.Raw) error     { panic("should never marshal db.Q objects to bson") }
-func (q Q) GetBSON() (any, error)        { panic("should never marshal db.Q objects to bson") }
 func (q Q) UnmarshalBSON(_ []byte) error { panic("should never marshal db.Q objects to bson") }
 func (q Q) MarshalBSON() ([]byte, error) { panic("should never marshal db.Q objects to bson") }

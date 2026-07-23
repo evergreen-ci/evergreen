@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -26,6 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -265,7 +265,7 @@ func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
 	s.NotNil(h.user)
 
 	repoRef := serviceModel.RepoRef{ProjectRef: serviceModel.ProjectRef{
-		Id:                    mgobson.NewObjectId().Hex(),
+		Id:                    primitive.NewObjectID().Hex(),
 		Owner:                 h.originalProject.Owner,
 		Repo:                  h.originalProject.Repo,
 		GitTagAuthorizedUsers: []string{"special"},
@@ -814,7 +814,7 @@ func getTestProjectConfig() *serviceModel.ProjectConfig {
 		ProjectConfigFields: serviceModel.ProjectConfigFields{
 			CommitQueueAliases: []serviceModel.ProjectAlias{
 				{
-					ID:        mgobson.NewObjectId(),
+					ID:        primitive.NewObjectID(),
 					ProjectID: "dimoxinil",
 					Alias:     evergreen.CommitQueueAlias,
 				},

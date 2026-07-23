@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/cost"
@@ -27,6 +26,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -5134,7 +5134,7 @@ func TestMarkEndPreservesS3StorageCost(t *testing.T) {
 	require.NoError(t, costConfig.Set(ctx))
 
 	tsk := Task{
-		Id:        mgobson.NewObjectId().Hex(),
+		Id:        primitive.NewObjectID().Hex(),
 		StartTime: time.Now().Add(-time.Hour),
 		S3Usage: s3usage.S3Usage{
 			Artifacts: s3usage.ArtifactMetrics{
@@ -5669,7 +5669,7 @@ func TestGetS3ArtifactUsageFromDB(t *testing.T) {
 	})
 
 	t.Run("NoArtifactsReturnsZeroMetrics", func(t *testing.T) {
-		tsk := &Task{Id: mgobson.NewObjectId().Hex(), Execution: 0}
+		tsk := &Task{Id: primitive.NewObjectID().Hex(), Execution: 0}
 		metrics, err := tsk.GetS3ArtifactUsageFromDB(ctx)
 		require.NoError(t, err)
 		assert.Zero(t, metrics)
@@ -5677,7 +5677,7 @@ func TestGetS3ArtifactUsageFromDB(t *testing.T) {
 
 	t.Run("SingleEntryAggregatesMetrics", func(t *testing.T) {
 		entry := artifact.Entry{
-			TaskId:    mgobson.NewObjectId().Hex(),
+			TaskId:    primitive.NewObjectID().Hex(),
 			Execution: 0,
 			Files: []artifact.File{
 				{Name: "a", Bucket: "test-bucket", FileKey: "path/a", PutRequests: 3, FileSize: 100},
@@ -5702,7 +5702,7 @@ func TestGetS3ArtifactUsageFromDB(t *testing.T) {
 
 	t.Run("ZeroPutRequestsFileNotCounted", func(t *testing.T) {
 		entry := artifact.Entry{
-			TaskId:    mgobson.NewObjectId().Hex(),
+			TaskId:    primitive.NewObjectID().Hex(),
 			Execution: 0,
 			Files: []artifact.File{
 				{Name: "a", PutRequests: 4, FileSize: 300},
@@ -5720,7 +5720,7 @@ func TestGetS3ArtifactUsageFromDB(t *testing.T) {
 	})
 
 	t.Run("ExecutionIsolation", func(t *testing.T) {
-		taskID := mgobson.NewObjectId().Hex()
+		taskID := primitive.NewObjectID().Hex()
 		entry0 := artifact.Entry{
 			TaskId:    taskID,
 			Execution: 0,
@@ -5754,7 +5754,7 @@ func TestGetS3ArtifactUsageFromDB(t *testing.T) {
 		require.NoError(t, costConfig.Set(ctx))
 
 		entry := artifact.Entry{
-			TaskId:    mgobson.NewObjectId().Hex(),
+			TaskId:    primitive.NewObjectID().Hex(),
 			Execution: 0,
 			Files: []artifact.File{
 				{Name: "a", Bucket: "b", FileKey: "path/a", PutRequests: 4, FileSize: 300, AWSAccountID: "123456789012"},
@@ -5774,7 +5774,7 @@ func TestGetS3ArtifactUsageFromDB(t *testing.T) {
 	t.Run("ReuploadedKeyDedupedAcrossArtifactRows", func(t *testing.T) {
 		require.NoError(t, db.ClearCollections(artifact.Collection, evergreen.ConfigCollection))
 		entry := artifact.Entry{
-			TaskId:    mgobson.NewObjectId().Hex(),
+			TaskId:    primitive.NewObjectID().Hex(),
 			Execution: 0,
 			Files: []artifact.File{
 				{Name: "a", Bucket: "b", FileKey: "path/a", PutRequests: 2, FileSize: 100},

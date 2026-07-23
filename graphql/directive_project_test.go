@@ -6,13 +6,13 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestRequireProjectAccess(t *testing.T) {
@@ -406,7 +406,7 @@ func TestRequireProjectAccessForPatches(t *testing.T) {
 	require.NoError(t, project.Insert(t.Context()))
 
 	patch := &patch.Patch{
-		Id:      bson.NewObjectId(),
+		Id:      primitive.NewObjectID(),
 		Project: project.Id,
 	}
 	require.NoError(t, patch.Insert(t.Context()))

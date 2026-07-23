@@ -9,10 +9,10 @@ import (
 
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )

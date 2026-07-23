@@ -3,7 +3,6 @@ package db
 import (
 	"strings"
 
-	"github.com/evergreen-ci/evergreen/db/mgo"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -13,7 +12,7 @@ func IsDuplicateKey(err error) bool {
 		return false
 	}
 
-	if mgo.IsDup(errors.Cause(err)) {
+	if mongo.IsDuplicateKeyError(errors.Cause(err)) {
 		return true
 	}
 
