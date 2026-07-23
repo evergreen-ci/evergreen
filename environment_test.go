@@ -146,8 +146,7 @@ func (s *EnvironmentSuite) TestInitSenders() {
 }
 
 func TestGetGitHubSenderConcurrentAccessShouldNotRace(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	e := &envState{
 		ctx:           ctx,
@@ -164,7 +163,7 @@ func TestGetGitHubSenderConcurrentAccessShouldNotRace(t *testing.T) {
 	const goroutines = 20
 	var wg sync.WaitGroup
 	wg.Add(goroutines)
-	for i := 0; i < goroutines; i++ {
+	for range goroutines {
 		go func() {
 			defer wg.Done()
 			sender, err := e.GetGitHubSender("owner", "repo", createToken)
