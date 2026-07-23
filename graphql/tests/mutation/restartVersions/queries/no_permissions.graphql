@@ -1,5 +1,9 @@
 mutation {
-  restartVersions(versionId: "no_permissions", abort: false, versionsToRestart: [{ versionId: "no_permissions", taskIds: ["task_id"] }]) {
+  restartVersions(
+    versionId: "no_permissions"
+    abort: false
+    versionsToRestart: [{ versionId: "no_permissions", taskIds: ["task_id"] }]
+  ) {
     id
   }
 }

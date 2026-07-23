@@ -91198,11 +91198,38 @@ func (ec *executionContext) unmarshalInputVersionToRestart(ctx context.Context, 
 		switch k {
 		case "versionId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("versionId"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "TASKS")
+				if err != nil {
+					var zeroVal *string
+					return zeroVal, err
+				}
+				access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+				if err != nil {
+					var zeroVal *string
+					return zeroVal, err
+				}
+				if ec.directives.RequireProjectAccess == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive requireProjectAccess is not implemented")
+				}
+				return ec.directives.RequireProjectAccess(ctx, obj, directive0, permission, access)
 			}
-			it.VersionId = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.VersionId = data
+			} else if tmp == nil {
+				it.VersionId = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		case "taskIds":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskIds"))
 			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
