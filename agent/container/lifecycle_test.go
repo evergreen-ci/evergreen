@@ -1,10 +1,14 @@
 package container
 
 import (
+	"context"
+	"errors"
 	"path/filepath"
 	"testing"
 
+	dockercontainer "github.com/docker/docker/api/types/container"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConfigValidation(t *testing.T) {
@@ -49,6 +53,26 @@ func TestConfigValidation(t *testing.T) {
 		}
 		assert.Error(t, cfg.Validate())
 	})
+
+	t.Run("NegativeMemoryRejected", func(t *testing.T) {
+		cfg := Config{
+			Image:    "ubuntu:22.04",
+			WorkDir:  "/tmp/work",
+			TaskID:   "task123",
+			MemoryMB: -1,
+		}
+		assert.ErrorContains(t, cfg.Validate(), "memory limit cannot be negative")
+	})
+
+	t.Run("NegativeCPUsRejected", func(t *testing.T) {
+		cfg := Config{
+			Image:   "ubuntu:22.04",
+			WorkDir: "/tmp/work",
+			TaskID:  "task123",
+			CPUs:    -1,
+		}
+		assert.ErrorContains(t, cfg.Validate(), "CPU limit cannot be negative")
+	})
 }
 
 func TestContainerName(t *testing.T) {
@@ -92,4 +116,31 @@ func TestExtraMountsValidation(t *testing.T) {
 		cfg.ExtraMounts = []Mount{{Source: "/opt", Target: "opt"}}
 		assert.ErrorContains(t, cfg.Validate(), "target must be absolute")
 	})
+}
+
+type startRemoveClientMock struct {
+	startErr     error
+	removeCalled bool
+	removeCtxErr error
+}
+
+func (c *startRemoveClientMock) ContainerStart(context.Context, string, dockercontainer.StartOptions) error {
+	return c.startErr
+}
+
+func (c *startRemoveClientMock) ContainerRemove(ctx context.Context, _ string, _ dockercontainer.RemoveOptions) error {
+	c.removeCalled = true
+	c.removeCtxErr = ctx.Err()
+	return nil
+}
+
+func TestStartContainerUsesDetachedContextForCleanup(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	cli := &startRemoveClientMock{startErr: errors.New("start error")}
+
+	err := startContainer(ctx, cli, "container-id")
+	require.Error(t, err)
+	assert.True(t, cli.removeCalled)
+	assert.NoError(t, cli.removeCtxErr)
 }

@@ -108,6 +108,12 @@ func (c Config) Validate() error {
 	if c.TaskID == "" {
 		return errors.New("task ID is required")
 	}
+	if c.MemoryMB < 0 {
+		return errors.New("memory limit cannot be negative")
+	}
+	if c.CPUs < 0 {
+		return errors.New("CPU limit cannot be negative")
+	}
 	for i, m := range c.ExtraMounts {
 		if !filepath.IsAbs(m.Source) {
 			return errors.Errorf("extra mount %d source must be absolute, got %q", i, m.Source)
@@ -249,11 +255,10 @@ func CreateAndStart(ctx context.Context, cfg Config) (*TaskContainer, error) {
 		}
 	}
 
-	if err := cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
-		cli.ContainerRemove(ctx, resp.ID, container.RemoveOptions{Force: true}) //nolint
+	if err := startContainer(ctx, cli, resp.ID); err != nil {
 		_ = removeEnvTmpfs(envDir)
 		cli.Close()
-		return nil, errors.Wrap(err, "starting container")
+		return nil, err
 	}
 
 	return &TaskContainer{
@@ -305,6 +310,23 @@ const containerStopClientBufferSecs = 5
 // this timeout ensures Destroy completes even if the daemon is stuck.
 const containerRemoveTimeoutSecs = 30
 
+type containerStartRemover interface {
+	ContainerStart(context.Context, string, container.StartOptions) error
+	ContainerRemove(context.Context, string, container.RemoveOptions) error
+}
+
+func startContainer(ctx context.Context, cli containerStartRemover, id string) error {
+	if err := cli.ContainerStart(ctx, id, container.StartOptions{}); err != nil {
+		removeCtx, removeCancel := context.WithTimeout(context.WithoutCancel(ctx), time.Duration(containerRemoveTimeoutSecs)*time.Second)
+		defer removeCancel()
+		if removeErr := cli.ContainerRemove(removeCtx, id, container.RemoveOptions{Force: true}); removeErr != nil {
+			grip.Warningf(removeCtx, "Failed to remove container '%s' after start error: %s", id, removeErr)
+		}
+		return errors.Wrap(err, "starting container")
+	}
+	return nil
+}
+
 // Destroy gracefully stops the container (SIGTERM + grace period), then
 // force-removes it and cleans up the env tmpfs. If the graceful stop fails or
 // times out, the force-remove ensures the container is still removed. The
@@ -318,7 +340,7 @@ func (tc *TaskContainer) Destroy(ctx context.Context) error {
 	defer tc.cli.Close()
 
 	// Use detached, bounded contexts for cleanup so caller cancellation
-	// do not bypass container removal or tmpfs cleanup, while still
+	// does not bypass container removal or tmpfs cleanup, while still
 	// preventing an unresponsive Docker daemon from hanging Destroy.
 	// The client context gets buffer beyond the daemon-side timeout so
 	// the daemon has time to complete its SIGTERM→wait→SIGKILL cycle
@@ -441,7 +463,7 @@ func ensureImage(ctx context.Context, cli *client.Client, img string, log grip.J
 	return nil
 }
 
-// isECRImage reports whether img is hosted on Amazon ECR (private or public).
+// isECRImage reports whether img is hosted on a private Amazon ECR registry.
 func isECRImage(img string) bool {
 	host := imageRegistryHost(img)
 	return strings.Contains(host, ".dkr.ecr.") && strings.HasSuffix(host, ".amazonaws.com")
