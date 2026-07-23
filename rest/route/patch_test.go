@@ -511,15 +511,12 @@ func (s *PatchRestartSuite) TestRestart() {
 type PatchesByUserSuite struct {
 	now   time.Time
 	route *patchesByUserHandler
-	env   evergreen.Environment
 
 	suite.Suite
 }
 
 func TestPatchesByUserSuite(t *testing.T) {
 	s := new(PatchesByUserSuite)
-	s.env = testutil.NewEnvironment(t.Context(), t)
-	evergreen.SetEnvironment(s.env)
 	suite.Run(t, s)
 }
 
@@ -533,7 +530,7 @@ func (s *PatchesByUserSuite) SetupTest() {
 	}
 	s.NoError(projectRef.Insert(ctx))
 
-	rm := s.env.RoleManager()
+	rm := evergreen.GetEnvironment().RoleManager()
 	s.NoError(rm.AddScope(ctx, gimlet.Scope{
 		ID:        "project_id_scope",
 		Resources: []string{projectRef.Id},
@@ -647,9 +644,6 @@ func (s *PatchesByUserSuite) TestEmptyTimeShouldSetNow() {
 }
 
 func TestPatchesByUserPermissionFiltering(t *testing.T) {
-	env := testutil.NewEnvironment(t.Context(), t)
-	evergreen.SetEnvironment(env)
-
 	require.NoError(t, db.ClearCollections(patch.Collection, serviceModel.ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	t.Cleanup(func() {
 		assert.NoError(t, db.ClearCollections(patch.Collection, serviceModel.ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
@@ -673,7 +667,7 @@ func TestPatchesByUserPermissionFiltering(t *testing.T) {
 		require.NoError(t, p.Insert(t.Context()))
 	}
 
-	rm := env.RoleManager()
+	rm := evergreen.GetEnvironment().RoleManager()
 	require.NoError(t, rm.AddScope(t.Context(), gimlet.Scope{
 		ID:        "allowed_scope",
 		Resources: []string{allowedProject.Id},
