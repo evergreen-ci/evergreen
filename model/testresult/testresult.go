@@ -16,6 +16,7 @@ import (
 // tasks within a display task.
 type TaskTestResults struct {
 	Stats                 TaskTestResultsStats `json:"stats"`
+	Info                  TestResultsInfo      `json:"info"`
 	Results               []TestResult         `json:"results"`
 	QuarantinedTestsCount int                  `json:"quarantined_tests_count,omitempty"`
 	QuarantinedTests      []QuarantinedTest    `json:"quarantined_tests,omitempty"`
@@ -284,6 +285,15 @@ type TaskTestResultsFailedSample struct {
 	Execution               int      `json:"execution"`
 	MatchingFailedTestNames []string `json:"matching_failed_test_names"`
 	TotalFailedNames        int      `json:"total_failed_names"`
+}
+
+// TaskTestResultsQuarantinedSample represents a snapshot of tests skipped
+// because they were quarantined in TSS for an Evergreen task run.
+type TaskTestResultsQuarantinedSample struct {
+	TaskID                       string            `json:"task_id"`
+	Execution                    int               `json:"execution"`
+	QuarantinedTestsSkippedCount int               `json:"quarantined_tests_skipped_count"`
+	QuarantinedTests             []QuarantinedTest `json:"quarantined_tests"`
 }
 
 // SortBy describes the properties by which to sort a set of test results.
