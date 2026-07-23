@@ -58,6 +58,11 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 		return errors.Wrap(err, "applying expansions")
 	}
 
+	SetWorkdirBoundaryAttribute(ctx, conf, c.Prefix)
+	for _, file := range c.Files {
+		SetWorkdirBoundaryAttribute(ctx, conf, file)
+	}
+
 	if !c.ExactFileNames {
 		workDir := GetWorkingDirectory(conf, c.Prefix)
 		include := utility.NewGitIgnoreFileMatcher(workDir, c.Files...)

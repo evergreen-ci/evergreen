@@ -69,6 +69,7 @@ func (c *listHosts) Execute(ctx context.Context, comm client.Communicator, logge
 		if !filepath.IsAbs(c.Path) {
 			c.Path = GetWorkingDirectory(conf, c.Path)
 		}
+		SetWorkdirBoundaryAttribute(ctx, conf, c.Path)
 	}
 
 	if c.TimeoutSecs > 0 {

@@ -73,6 +73,8 @@ func (c *zipArchiveCreate) Execute(ctx context.Context,
 	if !filepath.IsAbs(c.Target) {
 		c.Target = GetWorkingDirectory(conf, c.Target)
 	}
+	SetWorkdirBoundaryAttribute(ctx, conf, c.Target)
+	SetWorkdirBoundaryAttribute(ctx, conf, c.SourceDir)
 
 	files, _, err := findContentsToArchive(ctx, c.SourceDir, c.Include, c.ExcludeFiles)
 	if err != nil {
