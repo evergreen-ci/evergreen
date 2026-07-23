@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -971,6 +972,9 @@ func (s *GitGetProjectSuite) TestMultipleModules() {
 func (s *GitGetProjectSuite) TestCloningWikiModule() {
 	if testing.Short() {
 		s.T().Skip("skipping network integration test in short mode")
+	}
+	if runtime.GOOS == "windows" {
+		s.T().Skip("the evergreen wiki repo contains a file with a colon in its name, which is illegal on Windows")
 	}
 	const ignoredPatchHash = "7b817a1908f7505cb9c05ac5601d4692793e1c0a"
 	const ignoredYAMLRef = "0000000000000000000000000000000000000001"
