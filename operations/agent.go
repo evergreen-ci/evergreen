@@ -25,11 +25,12 @@ import (
 const defaultAgentStatusPort = 2285
 
 const (
-	agentAPIServerURLFlagName  = "api_server"
-	agentCloudProviderFlagName = "provider"
-	agentHostIDFlagName        = "host_id"
-	agentHostSecretFlagName    = "host_secret"
-	singleTaskDistroFlagName   = "single_task_distro"
+	agentAPIServerURLFlagName            = "api_server"
+	agentCloudProviderFlagName           = "provider"
+	agentHostIDFlagName                  = "host_id"
+	agentHostSecretFlagName              = "host_secret"
+	singleTaskDistroFlagName             = "single_task_distro"
+	containerRetainOnFailureSecsFlagName = "container_retain_on_failure_secs"
 )
 
 func Agent() cli.Command {
@@ -109,6 +110,11 @@ func Agent() cli.Command {
 				Name:  singleTaskDistroFlagName,
 				Usage: "marks the agent as running in single task distro",
 			},
+			cli.IntFlag{
+				Name:  containerRetainOnFailureSecsFlagName,
+				Usage: "seconds to retain the isolation container after a task failure for on-call inspection (0 = destroy immediately, 300 = Phase 0/1 default)",
+				Value: 300,
+			},
 		},
 		Before: mergeBeforeFuncs(
 			func(c *cli.Context) error {
@@ -141,17 +147,18 @@ func Agent() cli.Command {
 			}
 
 			opts := agent.Options{
-				HostID:                     c.String(agentHostIDFlagName),
-				HostSecret:                 c.String(agentHostSecretFlagName),
-				Mode:                       globals.Mode(c.String(modeFlagName)),
-				StatusPort:                 c.Int(statusPortFlagName),
-				LogPrefix:                  c.String(logPrefixFlagName),
-				LogOutput:                  globals.LogOutputType(c.String(logOutputFlagName)),
-				WorkingDirectory:           c.String(workingDirectoryFlagName),
-				Cleanup:                    c.Bool(cleanupFlagName),
-				CloudProvider:              c.String(agentCloudProviderFlagName),
-				SendTaskLogsToGlobalSender: c.Bool(sendTaskLogsToGlobalSenderFlagName),
-				SingleTaskDistro:           c.Bool(singleTaskDistroFlagName),
+				HostID:                       c.String(agentHostIDFlagName),
+				HostSecret:                   c.String(agentHostSecretFlagName),
+				Mode:                         globals.Mode(c.String(modeFlagName)),
+				StatusPort:                   c.Int(statusPortFlagName),
+				LogPrefix:                    c.String(logPrefixFlagName),
+				LogOutput:                    globals.LogOutputType(c.String(logOutputFlagName)),
+				WorkingDirectory:             c.String(workingDirectoryFlagName),
+				Cleanup:                      c.Bool(cleanupFlagName),
+				CloudProvider:                c.String(agentCloudProviderFlagName),
+				SendTaskLogsToGlobalSender:   c.Bool(sendTaskLogsToGlobalSenderFlagName),
+				SingleTaskDistro:             c.Bool(singleTaskDistroFlagName),
+				ContainerRetainOnFailureSecs: c.Int(containerRetainOnFailureSecsFlagName),
 			}
 
 			// Once the agent has retrieved the host ID and secret, unset those
