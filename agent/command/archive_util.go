@@ -447,7 +447,7 @@ func findArchiveContents(ctx context.Context, rootPath string, includes, exclude
 		dir, filematch := filepath.Split(includePattern)
 		dir = filepath.Join(rootPath, dir)
 
-		if !utility.FileExists(dir) {
+		if strings.ContainsAny(dir, "*?[]") || !utility.FileExists(dir) {
 			continue
 		}
 

@@ -4,14 +4,12 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
 type aliasGetHandler struct {
-	projectID            string
 	includeProjectConfig bool
 }
 
@@ -34,22 +32,21 @@ func (a *aliasGetHandler) Factory() gimlet.RouteHandler {
 }
 
 func (a *aliasGetHandler) Parse(ctx context.Context, r *http.Request) error {
-	a.projectID = gimlet.GetVars(r)["project_id"]
 	a.includeProjectConfig = r.URL.Query().Get("includeProjectConfig") == "true"
 	return nil
 }
 
 func (a *aliasGetHandler) Run(ctx context.Context) gimlet.Responder {
-	pRef, err := model.FindBranchProjectRefSecondary(ctx, a.projectID)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding project '%s'", a.projectID))
+	projCtx := MustHaveProjectContext(ctx)
+	if projCtx.ProjectRef == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    "project not found",
+		})
 	}
-	if pRef == nil {
-		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' not found", a.projectID))
-	}
-	aliasModels, err := data.FindMergedProjectAliases(ctx, pRef.Id, pRef.RepoRefId, nil, a.includeProjectConfig)
+	aliasModels, err := data.FindMergedProjectAliases(ctx, projCtx.ProjectRef.Id, projCtx.ProjectRef.RepoRefId, nil, a.includeProjectConfig)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project aliases for project '%s'", pRef.Id))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project aliases for project '%s'", projCtx.ProjectRef.Id))
 	}
 
 	resp := gimlet.NewResponseBuilder()

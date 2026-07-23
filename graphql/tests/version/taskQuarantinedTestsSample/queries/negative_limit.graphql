@@ -1,0 +1,7 @@
+query {
+  version(versionId: "version_id") {
+    taskQuarantinedTestsSample(taskIds: ["task_1"], limit: -1) {
+      taskId
+    }
+  }
+}

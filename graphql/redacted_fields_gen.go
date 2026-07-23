@@ -18,7 +18,6 @@ var redactedFields = map[string]bool{
 	"defaultOwner": true,
 	"defaultRepo": true,
 	"defaultSecurityGroup": true,
-	"ec2Keys": true,
 	"github": true,
 	"githubAppAuth": true,
 	"githubWebhookSecret": true,

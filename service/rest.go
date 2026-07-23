@@ -44,6 +44,19 @@ func (ra *restV1middleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 		return
 	}
 
+	if pctx.ProjectRef != nil {
+		opts := gimlet.PermissionOpts{
+			Resource:      pctx.ProjectRef.Id,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionTasks,
+			RequiredLevel: evergreen.TasksView.Value,
+		}
+		if !usr.HasPermission(r.Context(), opts) {
+			gimlet.WriteTextResponse(r.Context(), rw, http.StatusUnauthorized, "not authorized for this action")
+			return
+		}
+	}
+
 	r = setRestContext(r, &pctx)
 	next(rw, r)
 }
