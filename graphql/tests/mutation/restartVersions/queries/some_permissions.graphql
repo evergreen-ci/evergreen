@@ -1,0 +1,12 @@
+mutation {
+  restartVersions(
+    versionId: "version_id"
+    abort: false
+    versionsToRestart: [
+      { versionId: "version_id", taskIds: ["task_id"] }
+      { versionId: "no_permissions", taskIds: ["task_id"] }
+    ]
+  ) {
+    id
+  }
+}
