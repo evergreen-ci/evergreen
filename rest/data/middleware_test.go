@@ -42,6 +42,17 @@ func TestGetProjectIdFromParams(t *testing.T) {
 	require.Equal(t, http.StatusOK, statusCode)
 	require.Equal(t, projectId, project.Id)
 
+	projectWithMissingRepo := &model.ProjectRef{
+		Id:         "project_with_missing_repo_id",
+		Identifier: "project_with_missing_repo_identifier",
+		RepoRefId:  "missing_repo_id",
+	}
+	require.NoError(t, projectWithMissingRepo.Insert(t.Context()))
+	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"projectIdentifier": projectWithMissingRepo.Identifier})
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, statusCode)
+	require.Equal(t, projectId, projectWithMissingRepo.Id)
+
 	// Parameters include taskId.
 	task := &task.Task{
 		Id:      "task_id",
@@ -151,6 +162,14 @@ func TestGetProjectIdFromParams(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, http.StatusNotFound, statusCode)
 	require.Equal(t, "", projectId)
+}
+
+func TestBuildProjectParameterMapForGraphQLProjectIDToCopyMapsToProjectIdentifier(t *testing.T) {
+	paramsMap, err := BuildProjectParameterMapForGraphQL(map[string]any{
+		projectIdToCopyKey: "source_project",
+	})
+	require.NoError(t, err)
+	require.Equal(t, "source_project", paramsMap[projectIdentifierKey])
 }
 
 func TestBuildProjectParameterMapForLegacy(t *testing.T) {

@@ -1,7 +1,7 @@
 """
-requireProjectAdmin is used to restrict certain actions to admins.
+requireProjectCreate is used to restrict project creation to users who administer a project.
 """
-directive @requireProjectAdmin on ARGUMENT_DEFINITION
+directive @requireProjectCreate on ARGUMENT_DEFINITION
 
 """
 requireProjectAccess is used to restrict admin, view, and edit access for repos.

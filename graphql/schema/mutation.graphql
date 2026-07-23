@@ -64,18 +64,18 @@ type Mutation {
   # project
   attachProjectToNewRepo(project: MoveProjectInput!): Project! # Has directive on MoveProjectInput.
   attachProjectToRepo(projectId: String! @requireRepoAccess(access: ADMIN) @requireProjectAccess(permission: SETTINGS, access: EDIT)): Project!
-  createProject(project: CreateProjectInput! @requireProjectAdmin): Project!
-  copyProject(project: CopyProjectInput! @requireProjectAdmin): Project! 
+  createProject(project: CreateProjectInput! @requireProjectCreate): Project!
+  copyProject(project: CopyProjectInput!): Project! # Has directive on CopyProjectInput.
   deactivateStepbackTask(opts: DeactivateStepbackTaskInput!): Boolean!
   defaultSectionToRepo(opts: DefaultSectionToRepoInput!): String
   deleteGithubAppCredentials(opts: DeleteGithubAppCredentialsInput!): DeleteGithubAppCredentialsPayload
-  deleteProject(projectId: String! @requireProjectAdmin): Boolean!
+  deleteProject(projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): Boolean!
   detachProjectFromRepo(projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): Project!
   forceRepotrackerRun(projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): Boolean!
   promoteVarsToRepo(opts: PromoteVarsToRepoInput!): Boolean!
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings! # Has directive on ProjectSettingsInput.
   saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings! # Has directive on RepoSettingsInput.
-  setLastRevision(opts: SetLastRevisionInput! @requireProjectAdmin): SetLastRevisionPayload!
+  setLastRevision(opts: SetLastRevisionInput!): SetLastRevisionPayload! # Has directive on SetLastRevisionInput.
 
   # spawn
   attachVolumeToHost(volumeAndHost: VolumeHost!): Boolean! # Has directive on VolumeHost.

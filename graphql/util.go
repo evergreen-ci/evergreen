@@ -1126,6 +1126,15 @@ func userHasVolumePermission(ctx context.Context, u *user.DBUser, volumeId strin
 	return u.Username() == createdBy || u.HasPermission(ctx, opts)
 }
 
+func userHasSuperuserProjectPermission(ctx context.Context, u *user.DBUser) bool {
+	return u.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionProjectCreate,
+		RequiredLevel: evergreen.ProjectCreate.Value,
+	})
+}
+
 // canViewUserSubscriptions returns whether the requesting user is allowed to
 // view the personal subscriptions belonging to ownerUserID. A user may view
 // their own subscriptions, and superusers may view anyone's.
