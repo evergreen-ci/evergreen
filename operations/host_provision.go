@@ -19,6 +19,12 @@ import (
 	"github.com/urfave/cli"
 )
 
+// containerImagePullTimeout bounds the docker pull step in host provisioning.
+// Large evergreen-task-images can be several GB; 15 minutes accommodates
+// realistic EC2-to-ECR pull speeds while ensuring a stalled registry connection
+// does not block the host from finishing provisioning.
+const containerImagePullTimeout = 15 * time.Minute
+
 func hostProvision() cli.Command {
 	const (
 		hostIDFlagName        = "host_id"
@@ -111,6 +117,20 @@ func hostProvision() cli.Command {
 				return errors.Wrap(err, "running host provisioning script")
 			}
 
+			if opts.ContainerImage != "" {
+				// Bound the pull so a stalled registry cannot block provisioning
+				// indefinitely. Failure is non-fatal: the first task will pull.
+				pullCtx, pullCancel := context.WithTimeout(ctx, containerImagePullTimeout)
+				defer pullCancel()
+				if err := prePullContainerImage(pullCtx, opts.ContainerImage); err != nil {
+					grip.Warning(ctx, message.Fields{
+						"message": "failed to pre-pull container image during provisioning; the first task will pull it at exec time",
+						"image":   opts.ContainerImage,
+						"error":   err.Error(),
+					})
+				}
+			}
+
 			return nil
 		},
 	}
@@ -172,4 +192,25 @@ func runHostProvisioningScript(ctx context.Context, shellPath, scriptPath, worki
 		return errors.WithStack(err)
 	}
 	return nil
+}
+
+// prePullContainerImage runs `docker pull` for the given image so it is
+// resident in the local Docker image store before the first task runs.
+// This amortizes the pull cost across the host lifetime rather than paying
+// it on the first task's critical path.
+//
+// The docker CLI is used here (rather than the Docker SDK ImagePull used by
+// agent/container/lifecycle.go's ensureImage) so that the host's configured
+// credential helpers are inherited automatically. Private ECR images require
+// the amazon-ecr-credential-helper; the CLI picks this up from ~/.docker/config.json
+// while the SDK would need explicit RegistryAuth constructed separately.
+func prePullContainerImage(ctx context.Context, image string) error {
+	return errors.Wrapf(
+		jasper.NewCommand().
+			Add([]string{"docker", "pull", image}).
+			SetOutputWriter(utility.NopWriteCloser(os.Stdout)).
+			SetErrorWriter(utility.NopWriteCloser(os.Stderr)).
+			Run(ctx),
+		"pulling container image '%s'", image,
+	)
 }

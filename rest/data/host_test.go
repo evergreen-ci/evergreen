@@ -309,7 +309,7 @@ func (s *HostConnectorSuite) TestFindHostByIdWithSuperUser() {
 func (s *HostConnectorSuite) TestGenerateHostProvisioningScriptSucceeds() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	script, err := GenerateHostProvisioningScript(ctx, s.env, "host1")
+	script, _, err := GenerateHostProvisioningScript(ctx, s.env, "host1")
 	s.Require().NoError(err)
 	s.NotZero(script)
 
@@ -318,7 +318,7 @@ func (s *HostConnectorSuite) TestGenerateHostProvisioningScriptSucceeds() {
 func (s *HostConnectorSuite) TestGenerateHostProvisioningScriptFailsWithInvalidHostID() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	script, err := GenerateHostProvisioningScript(ctx, s.env, "foo")
+	script, _, err := GenerateHostProvisioningScript(ctx, s.env, "foo")
 	s.Error(err)
 	s.Zero(script)
 }
