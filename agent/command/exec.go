@@ -247,7 +247,7 @@ func (c *subprocessExec) getProc(ctx context.Context, execPath string, conf *int
 					attribute.String("container.command_name", c.FullDisplayName()),
 				)
 			}
-			if conf.Distro != nil {
+			if conf.ContainerID != "" {
 				if err := agentutil.WrapWithContainer(lctx, opts, conf.ContainerID, c.WorkingDir, conf.EnvFileHostDir); err != nil {
 					if span != nil {
 						span.SetStatus(codes.Error, err.Error())

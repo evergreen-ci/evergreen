@@ -754,8 +754,8 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 		}
 	}()
 
-	if err := a.maybeStartContainer(tskCtx, tc.taskConfig, tc.logger.Execution()); err != nil {
-		// maybeStartContainer returns a non-nil error only on the fail-closed path
+	if err := a.ensureContainer(tskCtx, tc.taskConfig, tc.logger.Execution()); err != nil {
+		// ensureContainer returns a non-nil error only on the fail-closed path
 		// (require_isolation=true). The fail-open path handles its own degradation
 		// internally and returns nil. Route through handleSetupError so the task
 		// is finalized as TaskSystemFailed on the server — returning a bare error
@@ -1230,7 +1230,7 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail
 		a.augmentOOMTrackerWithContainerSignal(ctx, tc, detail)
 		a.emitContainerFailureSnapshot(ctx, tc, detail)
 		if a.currentContainer != nil {
-			a.scheduleContainerRetention(ctx, a.currentContainer.GetName())
+			a.scheduleContainerRetention(ctx, a.currentContainer.GetName(), tc.logger.Execution())
 		}
 	} else {
 		// Task succeeded — clear any retention window set by a prior failed
@@ -1667,11 +1667,8 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 	// Docker-using workloads are tier-split onto non-isolation distros, so
 	// no Docker artifacts accumulate from tasks on isolation hosts.
 	//
-	// Note: tc.taskConfig.Distro.ContainerIsolation is non-nil only when
-	// the server has container isolation enabled for this distro; the
-	// agent-facing ContainerIsolationSettings struct has no Enabled field.
-	if tc.taskConfig != nil && tc.taskConfig.Distro != nil && tc.taskConfig.Distro.ContainerIsolation != nil {
-		logger.Info(ctx, "Skipping Docker artifact cleanup: distro has container isolation enabled; pre-pulled task image is preserved for subsequent tasks.")
+	if tc.taskConfig != nil && tc.taskConfig.ContainerID != "" {
+		logger.Info(ctx, "Skipping Docker artifact cleanup: task is running in an isolation container; pre-pulled task image is preserved for subsequent tasks.")
 		return catcher.Resolve()
 	}
 

@@ -7,6 +7,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,11 +17,109 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel"
 )
+
+// agentForKillTest returns a minimal Agent that passes the shouldKill guard.
+// shouldKill short-circuits to false when a.opts.Cleanup is false (added in
+// the upstream sync), so tests that want to reach the kill/cleanup logic must
+// set Cleanup: true.
+func agentForKillTest() *Agent {
+	return &Agent{opts: Options{Cleanup: true}}
+}
+
+func TestKillProcsContainerIsolationSkipsDockerCleanup(t *testing.T) {
+	ctx := t.Context()
+	a := agentForKillTest()
+
+	tc := &taskContext{
+		task: client.TaskData{ID: "test-task-1"},
+		taskConfig: &internal.TaskConfig{
+			ContainerID: "some-container-id",
+			WorkDir:     t.TempDir(),
+			Distro: &apimodels.DistroView{
+				ContainerIsolation: &apimodels.ContainerIsolationSettings{
+					Image: "ubuntu:22.04",
+				},
+			},
+		},
+	}
+
+	err := a.killProcs(ctx, tc, true, "test")
+	assert.NoError(t, err, "killProcs must preserve Docker artifacts for an active isolation container")
+}
+
+func TestKillProcsFailOpenIsolationRunsDockerCleanup(t *testing.T) {
+	ctx := t.Context()
+	a := agentForKillTest()
+	sender := send.MakeInternalLogger()
+
+	tc := &taskContext{
+		task:   client.TaskData{ID: "test-task-1"},
+		logger: client.NewSingleChannelLogHarness("test", sender),
+		taskConfig: &internal.TaskConfig{
+			WorkDir: t.TempDir(),
+			Distro: &apimodels.DistroView{
+				ContainerIsolation: &apimodels.ContainerIsolationSettings{Image: "ubuntu:22.04"},
+			},
+		},
+	}
+
+	require.NoError(t, a.killProcs(ctx, tc, true, "test"))
+	var messages []string
+	for {
+		msg, ok := sender.GetMessageSafe()
+		if !ok {
+			break
+		}
+		messages = append(messages, msg.Message.String())
+	}
+	assert.Contains(t, strings.Join(messages, "\n"), "Cleaned up Docker artifacts")
+}
+
+// TestKillProcsContainerRouting verifies that killProcs routes to the
+// in-container kill path when ContainerID is set, and the host-side
+// KillSpawnedProcs path when it is not.
+func TestKillProcsContainerRouting(t *testing.T) {
+	ctx := t.Context()
+	a := agentForKillTest()
+
+	t.Run("EmptyContainerIDTakesHostPath", func(t *testing.T) {
+		tc := &taskContext{
+			task: client.TaskData{ID: "test-task-1"},
+			taskConfig: &internal.TaskConfig{
+				WorkDir: t.TempDir(),
+				Distro:  &apimodels.DistroView{
+					// Empty ExecUser: takes the ps-based host path, which is
+					// safe without real sudo in a test environment.
+				},
+			},
+		}
+		err := a.killProcs(ctx, tc, true, "test")
+		assert.NoError(t, err)
+	})
+
+	t.Run("NonEmptyContainerIDEmptyExecUserLogsWarningNoError", func(t *testing.T) {
+		tc := &taskContext{
+			task: client.TaskData{ID: "test-task-1"},
+			taskConfig: &internal.TaskConfig{
+				ContainerID: "some-container-id",
+				WorkDir:     t.TempDir(),
+				Distro: &apimodels.DistroView{
+					ContainerIsolation: &apimodels.ContainerIsolationSettings{
+						Image: "ubuntu:22.04",
+					},
+				},
+			},
+		}
+		err := a.killProcs(ctx, tc, true, "test")
+		require.NoError(t, err)
+	})
+}
 
 func makeSnapshotTC(expansions map[string]string, redacted []string, secrets map[string]string) *taskContext {
 	exp := util.Expansions{}
