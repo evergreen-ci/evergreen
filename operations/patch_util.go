@@ -660,6 +660,8 @@ func formatCommitRange(commits string) string {
 	return fmt.Sprintf("%s^!", commits)
 }
 
+// getFeatureBranch returns the revision used to calculate the local diff's merge-base.
+// For a commit range A..B, it returns A.
 func getFeatureBranch(ref, commits string) string {
 	if ref != "" {
 		return ref
@@ -671,9 +673,8 @@ func getFeatureBranch(ref, commits string) string {
 	return head
 }
 
-// getDiffTip returns the revision used as the tip of the local diff (as opposed to
-// the merge-base). For a commit range A..B this is B; otherwise it is --ref, a
-// single commit, or HEAD.
+// getDiffTip returns the revision used as the local diff's tip.
+// For a commit range A..B, it returns B.
 func getDiffTip(ref, commits string) string {
 	if ref != "" {
 		return ref
