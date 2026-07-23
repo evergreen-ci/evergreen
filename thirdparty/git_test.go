@@ -224,6 +224,26 @@ func TestValidateFileIsWithinDirectory(t *testing.T) {
 		err := validateFileIsWithinDirectory(parentDir, "src/../etc/../../passwd")
 		assert.Error(t, err)
 	})
+
+	t.Run("LeadingDashDisallowed", func(t *testing.T) {
+		err := validateFileIsWithinDirectory(parentDir, "--pathspec-from-file=/etc/hostname")
+		assert.Error(t, err)
+	})
+
+	t.Run("ShortOptionDisallowed", func(t *testing.T) {
+		err := validateFileIsWithinDirectory(parentDir, "-p")
+		assert.Error(t, err)
+	})
+
+	t.Run("LeadingColonDisallowed", func(t *testing.T) {
+		err := validateFileIsWithinDirectory(parentDir, ":/")
+		assert.Error(t, err)
+	})
+
+	t.Run("MagicPathspecDisallowed", func(t *testing.T) {
+		err := validateFileIsWithinDirectory(parentDir, ":(exclude)foo")
+		assert.Error(t, err)
+	})
 }
 
 func TestValidateFileIsNotSymlink(t *testing.T) {
