@@ -60,6 +60,12 @@ func defaultContainerFactory(ctx context.Context, cfg agentcontainer.Config) (Co
 // completes, leaving orphans on the host.
 const reaperTimeout = 30 * time.Second //nolint:unused
 
+const (
+	containerEnvFilePrefix  = ".evg-env-"
+	hostEnvCaptureTimeout   = 30 * time.Second
+	hostEnvCommandWaitDelay = time.Second
+)
+
 func (a *Agent) tryReapOrphanContainers(ctx context.Context) { //nolint:unused
 	defer recovery.LogStackTraceAndContinue("reap orphan containers")
 
@@ -243,7 +249,7 @@ func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConf
 	// and override these since Docker applies --env-file args in order.
 	if conf.EnvFileHostDir != "" {
 		hostEnvPath := filepath.Join(conf.EnvFileHostDir, ".evg-host-env")
-		if err := writeHostEnvFile(hostEnvPath); err != nil {
+		if err := writeHostEnvFile(ctx, hostEnvPath); err != nil {
 			grip.Warningf(ctx, "Could not write host env file for container isolation: %s", err)
 		}
 	}
@@ -259,18 +265,10 @@ func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConf
 // since the container was created for the first task in the group and its name
 // does not change across task-group members.
 //
-// If a.retainContainerUntil is in the future, the container is intentionally
-// left running for on-call post-mortem inspection (retain_on_failure_secs).
-// The agent reference is cleared so subsequent task dispatch is unaffected;
-// the reaper removes the container at next startup.
-//
-// Static-host note: the retention window is checked only when destroyContainer
-// fires (at group teardown). If teardown fires within the window the container
-// is left running until the orphan reaper at next agent restart — there is no
-// background timer that removes it after the window elapses. On dynamic EC2
-// hosts (the Phase 0 target) the host recycles before accumulation becomes a
-// concern. Static hosts running many task groups should set
-// container_retain_on_failure_secs=0 until a deadline-based sweep is added.
+// If a.retainContainerUntil is in the future, container ownership transfers to
+// a bounded background cleanup. The container remains available for inspection
+// until the retention deadline, or until the agent context is canceled during
+// shutdown. The agent reference is cleared so subsequent dispatch is unaffected.
 func (a *Agent) destroyContainer(ctx context.Context, conf *internal.TaskConfig) {
 	if a.currentContainer == nil {
 		a.retainContainerUntil = time.Time{}
@@ -286,20 +284,17 @@ func (a *Agent) destroyContainer(ctx context.Context, conf *internal.TaskConfig)
 	)
 
 	if !a.retainContainerUntil.IsZero() && time.Now().Before(a.retainContainerUntil) {
-		grip.Infof(ctx, "Retaining isolation container '%s' until %s for on-call inspection (retain_on_failure_secs). The orphan reaper will remove it at next agent startup.",
+		grip.Infof(ctx, "Retaining isolation container '%s' until %s for on-call inspection (retain_on_failure_secs).",
 			containerName, a.retainContainerUntil.Format(time.RFC3339))
-		// Close the Docker client connection (it is no longer needed for
-		// lifecycle management) but do NOT remove the container or its tmpfs.
-		// The tmpfs remains mounted inside the container so on-call can read
-		// the env-file; the container itself is left running for docker exec.
-		// The orphan reaper at next agent startup handles the final cleanup.
-		a.currentContainer.Close()
+		retainedContainer := a.currentContainer
+		retainedUntil := a.retainContainerUntil
 		a.currentContainer = nil
 		a.retainContainerUntil = time.Time{}
 		if conf != nil {
 			conf.ContainerID = ""
 			conf.EnvFileHostDir = ""
 		}
+		go destroyRetainedContainer(ctx, retainedContainer, containerName, retainedUntil)
 		return
 	}
 
@@ -311,6 +306,22 @@ func (a *Agent) destroyContainer(ctx context.Context, conf *internal.TaskConfig)
 	if conf != nil {
 		conf.ContainerID = ""
 		conf.EnvFileHostDir = ""
+	}
+}
+
+func destroyRetainedContainer(ctx context.Context, container ContainerHandle, containerName string, retainUntil time.Time) {
+	timer := time.NewTimer(time.Until(retainUntil))
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+	case <-timer.C:
+	}
+
+	destroyCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), reaperTimeout)
+	defer cancel()
+	if err := container.Destroy(destroyCtx); err != nil {
+		grip.Warningf(destroyCtx, "Failed to destroy retained isolation container '%s': %s", containerName, err)
 	}
 }
 
@@ -410,8 +421,7 @@ func (a *Agent) emitContainerFailureSnapshot(ctx context.Context, tc *taskContex
 
 	// Env-file contents (the per-task tmpfs written by WrapWithContainer).
 	if tc.taskConfig != nil && tc.taskConfig.EnvFileHostDir != "" {
-		envFile := filepath.Join(tc.taskConfig.EnvFileHostDir, ".evg-env")
-		if data, err := os.ReadFile(envFile); err == nil {
+		if data, err := readLatestContainerEnvFile(tc.taskConfig.EnvFileHostDir); err == nil {
 			span.SetAttributes(attribute.String("container.env_file", redactForSnapshot(string(data), tc)))
 		}
 	}
@@ -427,6 +437,35 @@ func (a *Agent) emitContainerFailureSnapshot(ctx context.Context, tc *taskContex
 	// has been updated to reflect this deviation. Closing the gap would
 	// require a ring buffer in the logger infrastructure, deferred to
 	// Phase 1 if post-mortem finds the existing log pipeline insufficient.
+}
+
+func readLatestContainerEnvFile(dir string) ([]byte, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, errors.Wrap(err, "reading container env directory")
+	}
+
+	var latestName string
+	var latestModTime time.Time
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasPrefix(entry.Name(), containerEnvFilePrefix) {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return nil, errors.Wrapf(err, "reading container env file info for '%s'", entry.Name())
+		}
+		if latestName == "" || info.ModTime().After(latestModTime) || (info.ModTime().Equal(latestModTime) && entry.Name() > latestName) {
+			latestName = entry.Name()
+			latestModTime = info.ModTime()
+		}
+	}
+	if latestName == "" {
+		return nil, errors.New("container env file not found")
+	}
+
+	data, err := os.ReadFile(filepath.Join(dir, latestName))
+	return data, errors.Wrap(err, "reading latest container env file")
 }
 
 // containerInspectJSON returns the full JSON from docker inspect for a container.
@@ -554,7 +593,7 @@ var hostEnvVars = []string{
 // directories set by /etc/profile.d/*.sh. To capture the effective PATH and
 // toolchain vars that a login shell would have, we run `bash -l -c` to source
 // the profile scripts and print the env vars.
-func writeHostEnvFile(path string) error {
+func writeHostEnvFile(ctx context.Context, path string) error {
 	// Build a shell command that sources profile scripts and prints the
 	// vars we care about in KEY=VALUE format.
 	var cmdParts []string
@@ -563,7 +602,11 @@ func writeHostEnvFile(path string) error {
 	}
 	shellCmd := strings.Join(cmdParts, "\n")
 
-	out, err := exec.Command("bash", "-l", "-c", shellCmd).Output()
+	captureCtx, cancel := context.WithTimeout(ctx, hostEnvCaptureTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(captureCtx, "bash", "-l", "-c", shellCmd)
+	cmd.WaitDelay = hostEnvCommandWaitDelay
+	out, err := cmd.Output()
 	if err != nil {
 		// Fall back to the agent process's own env vars if the login shell
 		// fails (e.g. bash not available). This won't have toolchain paths

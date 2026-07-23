@@ -4,6 +4,7 @@ import (
 	"context"
 	"maps"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -167,14 +168,18 @@ type fakeContainer struct {
 	destroyCalled  int
 	closeCalled    int
 	destroyErr     error
+	destroySignal  chan error
 }
 
 func (f *fakeContainer) GetID() string             { return f.id }
 func (f *fakeContainer) GetName() string           { return f.name }
 func (f *fakeContainer) GetEnvFileHostDir() string { return f.envFileHostDir }
 func (f *fakeContainer) Close()                    { f.closeCalled++ }
-func (f *fakeContainer) Destroy(_ context.Context) error {
+func (f *fakeContainer) Destroy(ctx context.Context) error {
 	f.destroyCalled++
+	if f.destroySignal != nil {
+		f.destroySignal <- ctx.Err()
+	}
 	return f.destroyErr
 }
 
@@ -342,20 +347,49 @@ func TestMaybeStartContainerFailOpenReturnsNil(t *testing.T) {
 	assert.Empty(t, conf.ContainerID, "conf.ContainerID must not be set on fail-open")
 }
 
-func TestDestroyContainerRetentionCallsCloseNotDestroy(t *testing.T) {
+func TestDestroyContainerRetentionExpiresWithinDeadline(t *testing.T) {
 	ctx := t.Context()
-	fc := &fakeContainer{id: "abc", name: "ctr"}
+	fc := &fakeContainer{
+		id:            "abc",
+		name:          "ctr",
+		destroySignal: make(chan error, 1),
+	}
 	a := makeAgentWithFakeContainer(fc)
-	// Set retention window far in the future so destroyContainer takes the retention path.
-	a.retainContainerUntil = time.Now().Add(5 * time.Minute)
+	a.retainContainerUntil = time.Now().Add(25 * time.Millisecond)
 	conf := &internal.TaskConfig{ContainerID: "abc"}
 
 	a.destroyContainer(ctx, conf)
 
-	assert.Equal(t, 1, fc.closeCalled, "retention path must call Close() to release the Docker client")
-	assert.Equal(t, 0, fc.destroyCalled, "retention path must NOT call Destroy() — container must stay running for inspection")
 	assert.Nil(t, a.currentContainer, "currentContainer must be cleared even in retention path")
 	assert.Empty(t, conf.ContainerID, "conf.ContainerID must be cleared in retention path")
+	select {
+	case destroyCtxErr := <-fc.destroySignal:
+		assert.NoError(t, destroyCtxErr, "retained container cleanup must not inherit cancellation")
+	case <-time.After(time.Second):
+		t.Fatal("retained container was not destroyed after its retention deadline")
+	}
+}
+
+func TestDestroyContainerRetentionEndsOnContextCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	fc := &fakeContainer{
+		id:            "abc",
+		name:          "ctr",
+		destroySignal: make(chan error, 1),
+	}
+	a := makeAgentWithFakeContainer(fc)
+	a.retainContainerUntil = time.Now().Add(5 * time.Minute)
+	conf := &internal.TaskConfig{ContainerID: "abc"}
+
+	a.destroyContainer(ctx, conf)
+	cancel()
+
+	select {
+	case destroyCtxErr := <-fc.destroySignal:
+		assert.NoError(t, destroyCtxErr, "shutdown cleanup must use a detached context")
+	case <-time.After(time.Second):
+		t.Fatal("retained container was not destroyed after context cancellation")
+	}
 }
 
 // TestMaybeStartContainerFailClosedErrorPropagatesFromRunTask verifies that
@@ -458,4 +492,31 @@ func TestDestroyContainerStillClearsReferenceOnDestroyError(t *testing.T) {
 	assert.Equal(t, 1, fc.destroyCalled, "Destroy must be called once")
 	assert.Nil(t, a.currentContainer, "currentContainer must be cleared even on Destroy error")
 	assert.Empty(t, conf.ContainerID)
+}
+
+func TestReadLatestContainerEnvFileReadsNewestUniqueFile(t *testing.T) {
+	dir := t.TempDir()
+	olderPath := filepath.Join(dir, ".evg-env-older")
+	newerPath := filepath.Join(dir, ".evg-env-newer")
+	require.NoError(t, os.WriteFile(olderPath, []byte("VALUE=older\n"), 0600))
+	require.NoError(t, os.WriteFile(newerPath, []byte("VALUE=newer\n"), 0600))
+	baseTime := time.Now().Add(-time.Minute)
+	require.NoError(t, os.Chtimes(olderPath, baseTime, baseTime))
+	require.NoError(t, os.Chtimes(newerPath, baseTime.Add(time.Second), baseTime.Add(time.Second)))
+
+	data, err := readLatestContainerEnvFile(dir)
+	require.NoError(t, err)
+	assert.Equal(t, "VALUE=newer\n", string(data))
+}
+
+func TestWriteHostEnvFileStopsLoginShellWhenContextExpires(t *testing.T) {
+	dir := t.TempDir()
+	bashPath := filepath.Join(dir, "bash")
+	require.NoError(t, os.WriteFile(bashPath, []byte("#!/bin/sh\n/bin/sleep 2\n/bin/touch \"$0.finished\"\n"), 0700))
+	t.Setenv("PATH", dir)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+	t.Cleanup(cancel)
+	require.NoError(t, writeHostEnvFile(ctx, filepath.Join(dir, "host-env")))
+	assert.NoFileExists(t, bashPath+".finished", "the timed-out login shell must not resume profile processing")
 }
