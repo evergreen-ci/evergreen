@@ -28,8 +28,7 @@ func TestBaseSNSRoute(t *testing.T) {
 		},
 	} {
 		t.Run(rhName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			t.Run("FailsWithBadMessageType", func(t *testing.T) {
 				rh := makeRoute(baseSNS{messageType: "unknown"})
@@ -77,8 +76,7 @@ func TestBaseSNSRoute(t *testing.T) {
 }
 
 func TestHandleEC2SNSNotification(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	assert.NoError(t, db.Clear(host.Collection))
 	rh := ec2SNS{}
 	env := &mock.Environment{}
@@ -100,8 +98,7 @@ func TestHandleEC2SNSNotification(t *testing.T) {
 }
 
 func TestEC2SNSNotificationHandlers(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	defer func() {
 		assert.NoError(t, db.Clear(host.Collection))
 	}()

@@ -15,8 +15,7 @@ import (
 )
 
 func TestVolumeExpiration(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	testutil.TestSpan(ctx, t)
 
 	require.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, event.EventCollection, alertrecord.Collection))

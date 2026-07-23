@@ -1,7 +1,6 @@
 package trigger
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -21,8 +20,7 @@ func TestVolumeTriggers(t *testing.T) {
 }
 
 func TestVolumeExpiration(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.Implements(t, (*eventHandler)(nil), &volumeTriggers{})
 

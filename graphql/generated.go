@@ -1121,12 +1121,13 @@ type ComplexityRoot struct {
 	}
 
 	OktaConfig struct {
-		ClientID           func(childComplexity int) int
-		ClientSecret       func(childComplexity int) int
-		ExpireAfterMinutes func(childComplexity int) int
-		Issuer             func(childComplexity int) int
-		Scopes             func(childComplexity int) int
-		UserGroup          func(childComplexity int) int
+		ClientID             func(childComplexity int) int
+		ClientSecret         func(childComplexity int) int
+		ExpectedEmailDomains func(childComplexity int) int
+		ExpireAfterMinutes   func(childComplexity int) int
+		Issuer               func(childComplexity int) int
+		Scopes               func(childComplexity int) int
+		UserGroup            func(childComplexity int) int
 	}
 
 	OktaServiceConfig struct {
@@ -1180,6 +1181,7 @@ type ComplexityRoot struct {
 	Patch struct {
 		Activated             func(childComplexity int) int
 		Alias                 func(childComplexity int) int
+		Aliases               func(childComplexity int) int
 		Author                func(childComplexity int) int
 		AuthorDisplayName     func(childComplexity int) int
 		Builds                func(childComplexity int) int
@@ -7261,6 +7263,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.OktaConfig.ClientSecret(childComplexity), true
+	case "OktaConfig.expectedEmailDomains":
+		if e.complexity.OktaConfig.ExpectedEmailDomains == nil {
+			break
+		}
+
+		return e.complexity.OktaConfig.ExpectedEmailDomains(childComplexity), true
 	case "OktaConfig.expireAfterMinutes":
 		if e.complexity.OktaConfig.ExpireAfterMinutes == nil {
 			break
@@ -7450,6 +7458,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Patch.Alias(childComplexity), true
+	case "Patch.aliases":
+		if e.complexity.Patch.Aliases == nil {
+			break
+		}
+
+		return e.complexity.Patch.Aliases(childComplexity), true
 	case "Patch.author":
 		if e.complexity.Patch.Author == nil {
 			break
@@ -21886,6 +21900,8 @@ func (ec *executionContext) fieldContext_AuthConfig_okta(_ context.Context, fiel
 				return ec.fieldContext_OktaConfig_userGroup(ctx, field)
 			case "expireAfterMinutes":
 				return ec.fieldContext_OktaConfig_expireAfterMinutes(ctx, field)
+			case "expectedEmailDomains":
+				return ec.fieldContext_OktaConfig_expectedEmailDomains(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type OktaConfig", field.Name)
 		},
@@ -37009,6 +37025,8 @@ func (ec *executionContext) fieldContext_Mutation_setPatchVisibility(ctx context
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
+			case "aliases":
+				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "author":
 				return ec.fieldContext_Patch_author(ctx, field)
 			case "authorDisplayName":
@@ -37126,6 +37144,8 @@ func (ec *executionContext) fieldContext_Mutation_schedulePatch(ctx context.Cont
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
+			case "aliases":
+				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "author":
 				return ec.fieldContext_Patch_author(ctx, field)
 			case "authorDisplayName":
@@ -43166,6 +43186,35 @@ func (ec *executionContext) fieldContext_OktaConfig_expireAfterMinutes(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _OktaConfig_expectedEmailDomains(ctx context.Context, field graphql.CollectedField, obj *model.APIOktaConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OktaConfig_expectedEmailDomains,
+		func(ctx context.Context) (any, error) {
+			return obj.ExpectedEmailDomains, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OktaConfig_expectedEmailDomains(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OktaConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _OktaServiceConfig_audience(ctx context.Context, field graphql.CollectedField, obj *model.APIOktaServiceConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -43988,6 +44037,35 @@ func (ec *executionContext) fieldContext_Patch_alias(_ context.Context, field gr
 	return fc, nil
 }
 
+func (ec *executionContext) _Patch_aliases(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Patch_aliases,
+		func(ctx context.Context) (any, error) {
+			return obj.Aliases, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Patch_aliases(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Patch",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Patch_author(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -44152,6 +44230,8 @@ func (ec *executionContext) fieldContext_Patch_childPatches(_ context.Context, f
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
+			case "aliases":
+				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "author":
 				return ec.fieldContext_Patch_author(ctx, field)
 			case "authorDisplayName":
@@ -46020,6 +46100,8 @@ func (ec *executionContext) fieldContext_Patches_patches(_ context.Context, fiel
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
+			case "aliases":
+				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "author":
 				return ec.fieldContext_Patch_author(ctx, field)
 			case "authorDisplayName":
@@ -50699,7 +50781,7 @@ func (ec *executionContext) _ProjectLite_runEveryMainlineCommit(ctx context.Cont
 			return obj.RunEveryMainlineCommit, nil
 		},
 		nil,
-		ec.marshalOBoolean2bool,
+		ec.marshalOBoolean2ᚖbool,
 		true,
 		false,
 	)
@@ -52671,6 +52753,8 @@ func (ec *executionContext) fieldContext_Query_patch(ctx context.Context, field 
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
+			case "aliases":
+				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "author":
 				return ec.fieldContext_Patch_author(ctx, field)
 			case "authorDisplayName":
@@ -64532,6 +64616,8 @@ func (ec *executionContext) fieldContext_Task_patch(_ context.Context, field gra
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
+			case "aliases":
+				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "author":
 				return ec.fieldContext_Patch_author(ctx, field)
 			case "authorDisplayName":
@@ -74742,6 +74828,8 @@ func (ec *executionContext) fieldContext_Version_patch(_ context.Context, field 
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
+			case "aliases":
+				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "author":
 				return ec.fieldContext_Patch_author(ctx, field)
 			case "authorDisplayName":
@@ -84987,7 +85075,7 @@ func (ec *executionContext) unmarshalInputOktaConfigInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"clientId", "clientSecret", "issuer", "scopes", "userGroup", "expireAfterMinutes"}
+	fieldsInOrder := [...]string{"clientId", "clientSecret", "issuer", "scopes", "userGroup", "expireAfterMinutes", "expectedEmailDomains"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -85087,6 +85175,13 @@ func (ec *executionContext) unmarshalInputOktaConfigInput(ctx context.Context, o
 				return it, err
 			}
 			it.ExpireAfterMinutes = data
+		case "expectedEmailDomains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("expectedEmailDomains"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExpectedEmailDomains = data
 		}
 	}
 
@@ -98905,6 +99000,8 @@ func (ec *executionContext) _OktaConfig(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._OktaConfig_userGroup(ctx, field, obj)
 		case "expireAfterMinutes":
 			out.Values[i] = ec._OktaConfig_expireAfterMinutes(ctx, field, obj)
+		case "expectedEmailDomains":
+			out.Values[i] = ec._OktaConfig_expectedEmailDomains(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -99310,6 +99407,8 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			}
 		case "alias":
 			out.Values[i] = ec._Patch_alias(ctx, field, obj)
+		case "aliases":
+			out.Values[i] = ec._Patch_aliases(ctx, field, obj)
 		case "author":
 			out.Values[i] = ec._Patch_author(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

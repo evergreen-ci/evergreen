@@ -64,15 +64,14 @@ func TestHostParseAndValidate(t *testing.T) {
 }
 
 func TestHostPaginator(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	numHostsInDB := 300
 	Convey("When paginating with a Connector", t, func() {
 		So(db.Clear(host.Collection), ShouldBeNil)
 		Convey("and there are hosts to be found", func() {
 			cachedHosts := []host.Host{}
-			for i := 0; i < numHostsInDB; i++ {
+			for i := range numHostsInDB {
 				prefix := int(math.Log10(float64(i)))
 				if i == 0 {
 					prefix = 0
@@ -313,8 +312,7 @@ func TestHostPaginator(t *testing.T) {
 }
 
 func TestTasksByProjectAndCommitPaginator(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	numTasks := 300
 	projectId := "project_1"
@@ -329,7 +327,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 		assert.NoError(t, p.Insert(t.Context()))
 		Convey("and there are tasks to be found", func() {
 			cachedTasks := []task.Task{}
-			for i := 0; i < numTasks; i++ {
+			for i := range numTasks {
 				prefix := int(math.Log10(float64(i)))
 				if i == 0 {
 					prefix = 0
@@ -565,15 +563,14 @@ func TestTaskByProjectHandlerParse(t *testing.T) {
 }
 
 func TestTaskByBuildPaginator(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	numTasks := 300
 	Convey("When paginating with a Connector", t, func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
 		Convey("and there are tasks to be found", func() {
 			cachedOldTasks := []task.Task{}
-			for i := 0; i < numTasks; i++ {
+			for i := range numTasks {
 				prefix := int(math.Log10(float64(i)))
 				if i == 0 {
 					prefix = 0
@@ -583,7 +580,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				}
 				So(db.Insert(t.Context(), task.Collection, nextTask), ShouldBeNil)
 			}
-			for i := 0; i < 5; i++ {
+			for i := range 5 {
 				prefix := int(math.Log10(float64(i)))
 				if i == 0 {
 					prefix = 0
@@ -1225,8 +1222,7 @@ func TestTaskResetExecute(t *testing.T) {
 }
 
 func TestParentTaskInfo(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	assert.NoError(t, db.ClearCollections(task.Collection))
 	buildID := "test"
 	dtID := "displayTask"
@@ -1281,8 +1277,7 @@ func TestParentTaskInfo(t *testing.T) {
 }
 
 func TestOptionsRequest(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	assert.NoError(t, db.ClearCollections(task.Collection))
 
 	route := "/rest/v2/tasks/test/restart"

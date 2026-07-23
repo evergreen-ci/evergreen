@@ -15,8 +15,8 @@ type tagOptions string
 // parseTag splits a struct field's json tag into its name and
 // comma-separated options.
 func parseTag(tag string) (string, tagOptions) {
-	if idx := strings.Index(tag, ","); idx != -1 {
-		return tag[:idx], tagOptions(tag[idx+1:])
+	if before, after, ok := strings.Cut(tag, ","); ok {
+		return before, tagOptions(after)
 	}
 	return tag, tagOptions("")
 }

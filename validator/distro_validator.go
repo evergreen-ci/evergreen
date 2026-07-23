@@ -3,6 +3,7 @@ package validator
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -253,10 +254,8 @@ func ensureValidExpansions(ctx context.Context, d *distro.Distro, s *evergreen.S
 
 // ensureValidSSHOptions checks that no SSH option key is blank.
 func ensureValidSSHOptions(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
-	for _, o := range d.SSHOptions {
-		if o == "" {
-			return ValidationErrors{{Error, "distro cannot be blank SSH option"}}
-		}
+	if slices.Contains(d.SSHOptions, "") {
+		return ValidationErrors{{Error, "distro cannot be blank SSH option"}}
 	}
 	return nil
 }

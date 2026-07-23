@@ -1,7 +1,6 @@
 package user
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"testing"
@@ -701,8 +700,7 @@ func (s *UserTestSuite) TestFindNeedsReauthorization() {
 }
 
 func TestServiceUserOperations(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 	u := DBUser{
@@ -870,8 +868,7 @@ func TestGeneralSubscriptionIDs(t *testing.T) {
 }
 
 func TestViewableProject(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	rm := env.RoleManager()
 
@@ -941,8 +938,7 @@ func TestViewableProject(t *testing.T) {
 }
 
 func TestViewableProjectSettings(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	rm := env.RoleManager()
 

@@ -299,7 +299,7 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 		}
 
 	retryLoop:
-		for i := 0; i < maxS3OpAttempts; i++ {
+		for range maxS3OpAttempts {
 			select {
 			case <-ctx.Done():
 				return errors.Errorf("command '%s' canceled", c.Name())

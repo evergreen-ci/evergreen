@@ -19,8 +19,7 @@ import (
 )
 
 func TestSpawnhostStartJob(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 	defer func() {
 		assert.NoError(t, db.ClearCollections(host.Collection, event.EventCollection))

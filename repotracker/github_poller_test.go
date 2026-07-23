@@ -190,8 +190,7 @@ func TestGetRemoteConfig(t *testing.T) {
 	var ghp GithubRepositoryPoller
 
 	testutil.ConfigureIntegrationTest(t, testConfig)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("When fetching a specific github revision configuration...",
 		t, func() {
@@ -276,8 +275,7 @@ func TestGetChangedFiles(t *testing.T) {
 
 	testutil.ConfigureIntegrationTest(t, testConfig)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("When fetching changed files from evergreen-ci/evergreen ", t, func() {
 		grp.ProjectRef = evgProjectRef

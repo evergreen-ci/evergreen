@@ -27,7 +27,7 @@ func TestWindowsProcessRegistry(t *testing.T) {
 		})
 
 		Convey("should store new jobs", func() {
-			for i := 0; i < 10; i++ {
+			for i := range 10 {
 				id := fmt.Sprintf("job-%d", i)
 				j, err := reg.getJob(id)
 				So(j, ShouldNotBeNil)
@@ -44,11 +44,11 @@ func TestWindowsProcessRegistry(t *testing.T) {
 
 			wg := &sync.WaitGroup{}
 
-			for w := 0; w < numWorkers; w++ {
+			for w := range numWorkers {
 				wg.Add(1)
 				go func(num int, c C) {
 					defer wg.Done()
-					for i := 0; i < numJobs; i++ {
+					for i := range numJobs {
 						id := fmt.Sprintf("job-%d.%d", num, i)
 						j, err := reg.getJob(id)
 						c.So(j, ShouldNotBeNil)
@@ -63,7 +63,7 @@ func TestWindowsProcessRegistry(t *testing.T) {
 
 		Convey("should de-duplicate jobs by given id", func() {
 			ids := []string{"one", "two", "three"}
-			for i := 0; i < 10; i++ {
+			for range 10 {
 				for _, id := range ids {
 					j, err := reg.getJob(id)
 					So(j, ShouldNotBeNil)

@@ -22,8 +22,7 @@ import (
 )
 
 func TestFindContentsToArchive(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	thisDir := testutil.GetDirectoryOfFile()
 	t.Run("FindsFiles", func(t *testing.T) {
@@ -209,8 +208,7 @@ func TestBuildArchiveVerbose(t *testing.T) {
 	defer gz.Close()
 	defer tarWriter.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	rootPath := filepath.Join(testDir, "testdata", "archive", "artifacts_in")
 	pathsToAdd, _, err := findContentsToArchive(ctx, rootPath, []string{"dir1/**"}, []string{})
 	require.NoError(t, err)
@@ -343,7 +341,12 @@ func TestValidateRelativePath(t *testing.T) {
 		{name: "TraversalRejected", filePath: filepath.Join("..", "escape"), valid: false},
 		{name: "ParentRejected", filePath: "..", valid: false},
 		{name: "NestedTraversalRejected", filePath: filepath.Join("a", "..", "..", "b"), valid: false},
-		{name: "AbsolutePathRejected", filePath: filepath.Join(root, "file"), valid: false},
+		{name: "AbsolutePathRejected", filePath: func() string {
+			if runtime.GOOS == "windows" {
+				return `C:\absolute\file`
+			}
+			return filepath.Join(root, "file")
+		}(), valid: false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			err := validateRelativePath(tc.filePath, root)

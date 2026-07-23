@@ -100,8 +100,7 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
@@ -503,8 +502,7 @@ func TestMarkTaskForReset(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection))
 			settings := &evergreen.Settings{
@@ -601,8 +599,7 @@ func TestAgentSetup(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			s := &evergreen.Settings{
 				Splunk: evergreen.SplunkConfig{
@@ -626,8 +623,7 @@ func TestAgentSetup(t *testing.T) {
 }
 
 func TestDownstreamParams(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(patch.Collection, task.Collection, host.Collection))
 	parameters := []patch.Parameter{
@@ -698,8 +694,7 @@ func TestDownstreamParams(t *testing.T) {
 }
 
 func TestAgentGetProjectRef(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection))
 	defer func() {
@@ -802,8 +797,7 @@ func TestCreateInstallationToken(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
@@ -817,8 +811,7 @@ func TestCreateInstallationToken(t *testing.T) {
 }
 
 func TestUpsertCheckRunParse(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(task.Collection, patch.Collection))
 
@@ -1209,8 +1202,7 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
@@ -1275,8 +1267,7 @@ func TestRevokeGitHubDynamicAccessToken(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
@@ -1432,8 +1423,7 @@ func TestStartTaskWithOtelMetadata(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			require.NoError(t, db.ClearCollections(task.Collection, host.Collection))
 
@@ -1640,8 +1630,7 @@ func TestLogLookupClosureUsesAdminBucketsConfig(t *testing.T) {
 }
 
 func TestGitServePatchFile(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))

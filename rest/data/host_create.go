@@ -133,7 +133,7 @@ func CreateHostsFromTask(ctx context.Context, env evergreen.Environment, t *task
 			catcher.Add(err)
 			continue
 		}
-		for i := 0; i < numHosts; i++ {
+		for range numHosts {
 			_, err := MakeHost(ctx, env, t.Id, user.Username(), keyVal, createHost, *d)
 			if err != nil {
 				return errors.Wrap(err, "creating intent host")

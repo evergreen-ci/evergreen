@@ -2,6 +2,7 @@ package event
 
 import (
 	"context"
+	"maps"
 	"time"
 
 	"github.com/mongodb/grip"
@@ -44,7 +45,7 @@ func logEventWithRetry(event EventLogEntry, logFields message.Fields) {
 	)
 
 	var err error
-	for attempt := 0; attempt < maxRetries; attempt++ {
+	for attempt := range maxRetries {
 		eventCtx, cancel := context.WithTimeout(context.Background(), contextTimeout)
 		err = event.Log(eventCtx)
 		cancel()
@@ -63,9 +64,7 @@ func logEventWithRetry(event EventLogEntry, logFields message.Fields) {
 		"source":  "event-log-fail",
 		"retries": maxRetries,
 	}
-	for k, v := range logFields {
-		fields[k] = v
-	}
+	maps.Copy(fields, logFields)
 	grip.Error(context.Background(), message.WrapError(err, fields))
 }
 

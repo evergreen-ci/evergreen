@@ -166,12 +166,13 @@ func MockConfig() *evergreen.Settings {
 		},
 		AuthConfig: evergreen.AuthConfig{
 			Okta: &evergreen.OktaConfig{
-				ClientID:           "id",
-				ClientSecret:       "secret",
-				Issuer:             "issuer",
-				Scopes:             []string{"openid", "email", "profile", "offline_access"},
-				UserGroup:          "group",
-				ExpireAfterMinutes: 60,
+				ClientID:             "id",
+				ClientSecret:         "secret",
+				Issuer:               "issuer",
+				Scopes:               []string{"openid", "email", "profile", "offline_access"},
+				UserGroup:            "group",
+				ExpireAfterMinutes:   60,
+				ExpectedEmailDomains: []string{"mongodb.com", "10gen.com"},
 			},
 			Naive: &evergreen.NaiveAuthConfig{
 				Users: []evergreen.AuthUser{{Username: "user", Password: "pw"}},

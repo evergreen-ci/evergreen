@@ -110,7 +110,7 @@ func TestParameterCache(t *testing.T) {
 				},
 			}
 			recs := make([]ParameterRecord, 0, len(cps))
-			for i := 0; i < len(cps); i++ {
+			for i := range cps {
 				recs = append(recs, ParameterRecord{
 					Name:        cps[i].name,
 					LastUpdated: now,
@@ -165,7 +165,7 @@ func TestParameterCache(t *testing.T) {
 			startOps := make(chan struct{})
 			now := time.Now()
 
-			for i := 0; i < 100; i++ {
+			for i := range 100 {
 				workerNum := i + 1
 				wg.Add(1)
 				go func() {

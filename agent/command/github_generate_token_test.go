@@ -137,8 +137,7 @@ func TestGitHubGenerateTokenExecute(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			conf := &internal.TaskConfig{NewExpansions: agentutil.NewDynamicExpansions(util.Expansions{}), ProjectRef: model.ProjectRef{Owner: "new_owner", Repo: "new_repo"}}
 			comm := client.NewMock("url")

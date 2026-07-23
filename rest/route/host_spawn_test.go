@@ -569,8 +569,7 @@ func TestHostModifyHandlers(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, event.SubscriptionsCollection))
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 			ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 
 			env := &mock.Environment{}
@@ -701,8 +700,7 @@ func TestHostModifyHandlers(t *testing.T) {
 
 func TestCreateVolumeHandler(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(host.VolumesCollection))
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	h := &createVolumeHandler{
 		env:      testutil.NewEnvironment(ctx, t),
 		provider: evergreen.ProviderNameMock,
@@ -734,8 +732,7 @@ func TestCreateVolumeHandler(t *testing.T) {
 
 func TestDeleteVolumeHandler(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(host.VolumesCollection, host.Collection))
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	h := &deleteVolumeHandler{
 		env:      testutil.NewEnvironment(ctx, t),
 		provider: evergreen.ProviderNameMock,
@@ -777,8 +774,7 @@ func TestDeleteVolumeHandler(t *testing.T) {
 
 func TestAttachVolumeHandler(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(host.VolumesCollection, host.Collection))
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	h := &attachVolumeHandler{
 		env: testutil.NewEnvironment(ctx, t),
 	}
@@ -861,8 +857,7 @@ func TestAttachVolumeHandler(t *testing.T) {
 
 func TestDetachVolumeHandler(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(host.VolumesCollection, host.Collection))
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	h := &detachVolumeHandler{
 		env: testutil.NewEnvironment(ctx, t),
 	}
@@ -900,8 +895,7 @@ func TestDetachVolumeHandler(t *testing.T) {
 }
 
 func TestModifyVolumeHandler(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	h := &modifyVolumeHandler{
 		env:  testutil.NewEnvironment(ctx, t),
 		opts: &model.VolumeModifyOptions{},
@@ -975,8 +969,7 @@ func TestModifyVolumeHandler(t *testing.T) {
 }
 
 func TestGetVolumesHandler(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	assert.NoError(t, db.ClearCollections(host.VolumesCollection, host.Collection))
 	h := &getVolumesHandler{}
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
@@ -1039,8 +1032,7 @@ func TestGetVolumesHandler(t *testing.T) {
 }
 
 func TestGetVolumeByIDHandler(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	assert.NoError(t, db.ClearCollections(host.VolumesCollection, host.Collection))
 	h := &getVolumeByIDHandler{}
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
