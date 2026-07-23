@@ -211,7 +211,7 @@ func (p *Patch) GetCollectiveTimes(ctx context.Context) (startTime, finishTime t
 		return startTime, finishTime, nil
 	}
 
-	childPatches, err := Find(ctx, ByStringIds(p.Triggers.ChildPatches))
+	childPatches, err := Find(ctx, ByStringIds(ctx, p.Triggers.ChildPatches))
 	if err != nil {
 		return time.Time{}, time.Time{}, errors.Wrap(err, "getting child patches for collective time calculations")
 	}
@@ -709,7 +709,7 @@ func (p *Patch) CollectiveStatus(ctx context.Context) (string, error) {
 		allStatuses = append(allStatuses, cp.Status)
 	}
 
-	return GetCollectiveStatusFromPatchStatuses(allStatuses), nil
+	return GetCollectiveStatusFromPatchStatuses(ctx, allStatuses), nil
 }
 
 func (p *Patch) IsParent() bool {
@@ -898,7 +898,7 @@ func (p PatchesByCreateTime) Swap(i, j int) {
 
 // GetCollectiveStatusFromPatchStatuses answers the question of what the patch status should be
 // when the patch status and the status of its children are different, given a list of statuses.
-func GetCollectiveStatusFromPatchStatuses(statuses []string) string {
+func GetCollectiveStatusFromPatchStatuses(ctx context.Context, statuses []string) string {
 	hasCreated := false
 	hasFailure := false
 	hasSuccess := false
@@ -921,7 +921,7 @@ func GetCollectiveStatusFromPatchStatuses(statuses []string) string {
 	}
 
 	if !(hasCreated || hasFailure || hasSuccess || hasAborted) {
-		grip.Critical(context.Background(), message.Fields{
+		grip.Critical(ctx, message.Fields{
 			"message":  "An unknown patch status was found",
 			"cause":    "Programmer error: new statuses should be added to GetCollectiveStatusFromPatchStatuses().",
 			"statuses": statuses,

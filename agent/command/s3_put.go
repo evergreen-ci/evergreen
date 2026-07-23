@@ -574,7 +574,7 @@ retryLoop:
 					continue retryLoop
 				}
 
-				metrics, fileSize := s3usage.BuildFileMetrics(logger.Task(), fpath, remoteName, filePutRequests[fpath])
+				metrics, fileSize := s3usage.BuildFileMetrics(ctx, logger.Task(), fpath, remoteName, filePutRequests[fpath])
 				totalFileSize += fileSize
 				uploadedFiles = append(uploadedFiles, metrics)
 

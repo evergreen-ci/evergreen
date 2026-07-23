@@ -165,8 +165,8 @@ func (e *LocalExecutor) wrapLoggerWithRedactor() {
 }
 
 // LoadProject loads and parses an Evergreen project configuration from a file
-func (e *LocalExecutor) LoadProject(configPath string) (*model.Project, error) {
-	e.logger.Infof(context.Background(), "Loading project from: %s", configPath)
+func (e *LocalExecutor) LoadProject(ctx context.Context, configPath string) (*model.Project, error) {
+	e.logger.Infof(ctx, "Loading project from: %s", configPath)
 
 	absPath, err := filepath.Abs(configPath)
 	if err != nil {
@@ -185,7 +185,7 @@ func (e *LocalExecutor) LoadProject(configPath string) (*model.Project, error) {
 		LocalModules:    e.opts.LocalModules,
 	}
 
-	pp, err := model.LoadProjectInto(context.Background(), yamlBytes, opts, "", project)
+	pp, err := model.LoadProjectInto(ctx, yamlBytes, opts, "", project)
 	if err != nil {
 		return nil, errors.Wrap(err, "loading project")
 	}
@@ -196,7 +196,7 @@ func (e *LocalExecutor) LoadProject(configPath string) (*model.Project, error) {
 		e.taskConfig.Project = *project
 	}
 
-	e.logger.Infof(context.Background(), "Loaded project with %d tasks and %d build variants",
+	e.logger.Infof(ctx, "Loaded project with %d tasks and %d build variants",
 		len(project.Tasks), len(project.BuildVariants))
 
 	return project, nil
@@ -212,7 +212,7 @@ func (e *LocalExecutor) ReloadProject(ctx context.Context, configPath string) (*
 	savedHistory := make([]executionRecord, len(e.debugState.ExecutionHistory))
 	copy(savedHistory, e.debugState.ExecutionHistory)
 
-	project, err := e.LoadProject(configPath)
+	project, err := e.LoadProject(ctx, configPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "loading project")
 	}
@@ -240,7 +240,7 @@ func (e *LocalExecutor) ReloadProject(ctx context.Context, configPath string) (*
 }
 
 // SetupWorkingDirectory prepares the working directory for task execution
-func (e *LocalExecutor) SetupWorkingDirectory(path string) error {
+func (e *LocalExecutor) SetupWorkingDirectory(ctx context.Context, path string) error {
 	if path == "" {
 		cwd, err := os.Getwd()
 		if err != nil {
@@ -255,13 +255,13 @@ func (e *LocalExecutor) SetupWorkingDirectory(path string) error {
 
 	tmpDir := filepath.Join(path, "tmp")
 	if err := os.MkdirAll(tmpDir, 0777); err != nil {
-		e.logger.Warningf(context.Background(), "creating task temporary directory '%s': %v", tmpDir, err)
+		e.logger.Warningf(ctx, "creating task temporary directory '%s': %v", tmpDir, err)
 	}
 
 	e.workDir = path
 	e.taskConfig.WorkDir = path
 	e.expansions.Put("workdir", path)
-	e.logger.Infof(context.Background(), "Working directory set to: %s", path)
+	e.logger.Infof(ctx, "Working directory set to: %s", path)
 
 	return nil
 }
@@ -290,7 +290,7 @@ func (e *LocalExecutor) RunUntil(ctx context.Context, untilIndex int) error {
 }
 
 // JumpTo moves to the specified step without executing
-func (e *LocalExecutor) JumpTo(index int) error {
+func (e *LocalExecutor) JumpTo(ctx context.Context, index int) error {
 	if len(e.commandBlocks) == 0 {
 		return errors.New("no commands available, please ensure a task has been selected")
 	}
@@ -299,15 +299,15 @@ func (e *LocalExecutor) JumpTo(index int) error {
 		return errors.Errorf("invalid step index %d (valid range: 0-%d)", index, maxIndex)
 	}
 	e.debugState.CurrentStepIndex = index
-	e.logger.Infof(context.Background(), "Jumped to step %s", e.debugState.CommandList[index].FullStepNumber())
+	e.logger.Infof(ctx, "Jumped to step %s", e.debugState.CommandList[index].FullStepNumber())
 	return nil
 }
 
 // SetVariable sets a custom variable.
-func (e *LocalExecutor) SetVariable(key, value string) {
+func (e *LocalExecutor) SetVariable(ctx context.Context, key, value string) {
 	e.debugState.CustomVars[key] = value
 	e.expansions.Put(key, value)
-	e.logger.Infof(context.Background(), "Set variable %s=%s", key, value)
+	e.logger.Infof(ctx, "Set variable %s=%s", key, value)
 }
 
 // StepNext executes the current step and advances to the next
@@ -622,10 +622,10 @@ func (e *LocalExecutor) createBlockDeps() executor.BlockExecutorDeps {
 }
 
 // handleLocalPanic handles panics that occur during command execution
-func (e *LocalExecutor) handleLocalPanic(panicErr error, originalErr error, op string) error {
-	e.logger.Errorf(context.Background(), "Panic in %s: %v", op, panicErr)
+func (e *LocalExecutor) handleLocalPanic(ctx context.Context, panicErr error, originalErr error, op string) error {
+	e.logger.Errorf(ctx, "Panic in %s: %v", op, panicErr)
 	if originalErr != nil {
-		e.logger.Errorf(context.Background(), "Original error: %v", originalErr)
+		e.logger.Errorf(ctx, "Original error: %v", originalErr)
 		return errors.Wrapf(panicErr, "panic during %s (original error: %v)", op, originalErr)
 	}
 	return errors.Wrapf(panicErr, "panic during %s", op)
@@ -774,7 +774,7 @@ func (e *LocalExecutor) PrepareTask(ctx context.Context, taskName, variantName s
 		}
 	}
 	e.commandBlocks = blocks
-	if err := e.rebuildCommandList(); err != nil {
+	if err := e.rebuildCommandList(ctx); err != nil {
 		return errors.Wrap(err, "rebuilding command list")
 	}
 
@@ -803,7 +803,7 @@ func (e *LocalExecutor) PrepareTask(ctx context.Context, taskName, variantName s
 }
 
 // rebuildCommandList rebuilds the flattened command list from command blocks
-func (e *LocalExecutor) rebuildCommandList() error {
+func (e *LocalExecutor) rebuildCommandList(ctx context.Context) error {
 	e.debugState.CommandList = []CommandInfo{}
 	globalIndex := 0
 
@@ -819,7 +819,7 @@ func (e *LocalExecutor) rebuildCommandList() error {
 
 			renderedCmds, err := command.Render(cmd, e.project, blockInfo)
 			if err != nil {
-				e.logger.Warningf(context.Background(), "Failed to render command '%s': %v", cmd.Command, err)
+				e.logger.Warningf(ctx, "Failed to render command '%s': %v", cmd.Command, err)
 				e.debugState.CommandList = append(e.debugState.CommandList, CommandInfo{
 					Index:          globalIndex,
 					Command:        cmd,
@@ -866,7 +866,7 @@ func (e *LocalExecutor) rebuildCommandList() error {
 		}
 	}
 
-	e.logger.Infof(context.Background(), "Rebuilt command list with %d total commands", len(e.debugState.CommandList))
+	e.logger.Infof(ctx, "Rebuilt command list with %d total commands", len(e.debugState.CommandList))
 	return nil
 }
 

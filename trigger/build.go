@@ -230,7 +230,7 @@ func (t *buildTriggers) makeData(ctx context.Context, sub *event.Subscription, p
 	}
 	if t.build.Requester == evergreen.GithubPRRequester || t.build.Requester == evergreen.RepotrackerVersionRequester || t.build.Requester == evergreen.GithubMergeRequester {
 		data.githubContext = fmt.Sprintf("evergreen/%s", t.build.BuildVariant)
-		data.githubDescription = t.build.GetPRNotificationDescription(t.tasks)
+		data.githubDescription = t.build.GetPRNotificationDescription(ctx, t.tasks)
 	}
 	if data.PastTenseStatus == evergreen.BuildFailed {
 		data.githubState = message.GithubStateFailure
@@ -242,18 +242,18 @@ func (t *buildTriggers) makeData(ctx context.Context, sub *event.Subscription, p
 	if pastTenseOverride != "" {
 		data.PastTenseStatus = pastTenseOverride
 	}
-	data.slack = t.buildAttachments(&data)
+	data.slack = t.buildAttachments(ctx, &data)
 
 	return &data, nil
 }
 
-func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.SlackAttachment {
+func (t *buildTriggers) buildAttachments(ctx context.Context, data *commonTemplateData) []message.SlackAttachment {
 	hasPatch := evergreen.IsPatchRequester(t.build.Requester)
 	attachments := []message.SlackAttachment{}
 	attachments = append(attachments, message.SlackAttachment{
 		Title:     fmt.Sprintf("Build: %s", t.build.DisplayName),
 		TitleLink: data.URL,
-		Text:      t.build.GetPRNotificationDescription(t.tasks),
+		Text:      t.build.GetPRNotificationDescription(ctx, t.tasks),
 		Fields: []*message.SlackAttachmentField{
 			{
 				Title: "Version",

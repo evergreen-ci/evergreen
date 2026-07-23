@@ -19,7 +19,7 @@ type CloudHost struct {
 // GetCloudHost returns an instance of CloudHost wrapping the given model.Host,
 // giving access to the provider-specific methods to manipulate on the host.
 func GetCloudHost(ctx context.Context, host *host.Host, env evergreen.Environment) (*CloudHost, error) {
-	mgrOpts, err := GetManagerOptions(host.Distro)
+	mgrOpts, err := GetManagerOptions(ctx, host.Distro)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting cloud manager options for host '%s'", host.Id)
 	}

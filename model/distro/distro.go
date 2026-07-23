@@ -613,12 +613,12 @@ func (d *Distro) GetProviderSettingByRegion(region string) (*birch.Document, err
 	return nil, errors.Errorf("distro '%s' has no settings for region '%s'", d.Id, region)
 }
 
-func (d *Distro) GetRegionsList(allowedRegions []string) []string {
+func (d *Distro) GetRegionsList(ctx context.Context, allowedRegions []string) []string {
 	regions := []string{}
 	for _, doc := range d.ProviderSettingsList {
 		region, ok := doc.Lookup("region").StringValueOK()
 		if !ok {
-			grip.Debug(context.Background(), message.Fields{
+			grip.Debug(ctx, message.Fields{
 				"message":  "provider settings list missing region",
 				"distro":   d.Id,
 				"settings": doc,

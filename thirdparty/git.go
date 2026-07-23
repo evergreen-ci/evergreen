@@ -93,7 +93,7 @@ func GitApplyNumstat(patch string) (*bytes.Buffer, error) {
 
 // ParseGitSummary takes in a buffer of data and parses it into a slice of
 // git summaries. It returns an error if it is unable to parse the data
-func ParseGitSummary(gitOutput fmt.Stringer) (summaries []Summary, err error) {
+func ParseGitSummary(ctx context.Context, gitOutput fmt.Stringer) (summaries []Summary, err error) {
 	// separate stats per file
 	fileStats := strings.Split(gitOutput.String(), "\n")
 
@@ -104,7 +104,7 @@ func ParseGitSummary(gitOutput fmt.Stringer) (summaries []Summary, err error) {
 		// we expect to get the number of additions,
 		// the number of deletions, and the filename
 		if len(details) != 3 {
-			grip.Debug(context.Background(), message.Fields{
+			grip.Debug(ctx, message.Fields{
 				"message": "file stat details has unexpected length",
 				"details": details,
 				"length":  len(details),
@@ -115,7 +115,7 @@ func ParseGitSummary(gitOutput fmt.Stringer) (summaries []Summary, err error) {
 		additions, err = strconv.Atoi(details[0])
 		if err != nil {
 			if details[0] == "-" {
-				grip.Warningf(context.Background(), "Line addition count for %v is '%v' assuming "+
+				grip.Warningf(ctx, "Line addition count for %v is '%v' assuming "+
 					"binary data diff, using 0", details[2], details[0])
 				additions = 0
 			} else {
@@ -126,7 +126,7 @@ func ParseGitSummary(gitOutput fmt.Stringer) (summaries []Summary, err error) {
 		deletions, err = strconv.Atoi(details[1])
 		if err != nil {
 			if details[1] == "-" {
-				grip.Warningf(context.Background(), "Line deletion count for %v is '%v' assuming "+
+				grip.Warningf(ctx, "Line deletion count for %v is '%v' assuming "+
 					"binary data diff, using 0", details[2], details[1])
 				deletions = 0
 			} else {
@@ -144,7 +144,7 @@ func ParseGitSummary(gitOutput fmt.Stringer) (summaries []Summary, err error) {
 	return summaries, nil
 }
 
-func GetPatchSummaries(patchContent string) ([]Summary, error) {
+func GetPatchSummaries(ctx context.Context, patchContent string) ([]Summary, error) {
 	summaries := []Summary{}
 	if patchContent != "" {
 		gitOutput, err := GitApplyNumstat(patchContent)
@@ -155,7 +155,7 @@ func GetPatchSummaries(patchContent string) ([]Summary, error) {
 			return nil, errors.New("validating patch: `git apply --numstat` returned empty")
 		}
 
-		summaries, err = ParseGitSummary(gitOutput)
+		summaries, err = ParseGitSummary(ctx, gitOutput)
 		if err != nil {
 			return nil, errors.Wrap(err, "parsing git summary")
 		}

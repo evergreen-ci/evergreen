@@ -370,7 +370,7 @@ func getChildPatchesData(ctx context.Context, p patch.Patch) ([]DownstreamTasks,
 	if len(p.Triggers.ChildPatches) <= 0 {
 		return nil, nil, nil, nil
 	}
-	childPatches, err := patch.Find(ctx, patch.ByStringIds(p.Triggers.ChildPatches))
+	childPatches, err := patch.Find(ctx, patch.ByStringIds(ctx, p.Triggers.ChildPatches))
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "getting child patches")
 	}
@@ -455,7 +455,7 @@ func (apiPatch *APIPatch) buildChildPatches(ctx context.Context, p patch.Patch) 
 			childPatchAliases = append(childPatchAliases, childPatchAlias)
 		}
 	}
-	apiPatch.Status = utility.ToStringPtr(patch.GetCollectiveStatusFromPatchStatuses(allStatuses))
+	apiPatch.Status = utility.ToStringPtr(patch.GetCollectiveStatusFromPatchStatuses(ctx, allStatuses))
 	apiPatch.ChildPatchAliases = childPatchAliases
 
 	return childPatchDocs, nil

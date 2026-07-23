@@ -54,7 +54,7 @@ func (m *CloudHostModification) modifyHost(ctx context.Context, op func(ctx cont
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(m.hostAttributes()...)
 
-	mgrOpts, err := cloud.GetManagerOptions(m.host.Distro)
+	mgrOpts, err := cloud.GetManagerOptions(ctx, m.host.Distro)
 	if err != nil {
 		return errors.Wrap(err, "getting cloud manager options")
 	}

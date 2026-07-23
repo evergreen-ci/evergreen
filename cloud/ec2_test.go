@@ -1263,7 +1263,7 @@ func (s *EC2Suite) TestGetEC2ManagerOptions() {
 		ProviderAccount: "account",
 	}
 
-	managerOpts, err := GetManagerOptions(d1)
+	managerOpts, err := GetManagerOptions(s.ctx, d1)
 	s.NoError(err)
 	s.Equal(d1.ProviderAccount, managerOpts.Account)
 	s.Equal(evergreen.DefaultEC2Region, managerOpts.Region)

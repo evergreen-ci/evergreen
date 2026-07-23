@@ -14,7 +14,7 @@ func TestRedactFieldsInMap(t *testing.T) {
 			"servicePassword": "servicePassword",
 			"vars":            "vars",
 		}
-		redactedFields := RedactFieldsInMap(fields, map[string]bool{})
+		redactedFields := RedactFieldsInMap(t.Context(), fields, map[string]bool{})
 		for _, value := range redactedFields {
 			require.NotEqual(t, "REDACTED", value, "Expected no fields to be redacted")
 		}
@@ -26,7 +26,7 @@ func TestRedactFieldsInMap(t *testing.T) {
 			"servicePassword": "someServicePassword",
 			"someOtherField":  "someOtherField",
 		}
-		redactedFields := RedactFieldsInMap(fields, map[string]bool{
+		redactedFields := RedactFieldsInMap(t.Context(), fields, map[string]bool{
 			"publicKey":       true,
 			"secret":          true,
 			"servicePassword": true,
@@ -44,7 +44,7 @@ func TestRedactFieldsInMap(t *testing.T) {
 				"service": "someService",
 			},
 		}
-		redactedFields := RedactFieldsInMap(fields, map[string]bool{
+		redactedFields := RedactFieldsInMap(t.Context(), fields, map[string]bool{
 			"secret": true,
 		})
 		require.Equal(t, "somePublicKey", redactedFields["publicKey"], "Expected publicKey to be unchanged")
@@ -65,7 +65,7 @@ func TestRedactFieldsInMap(t *testing.T) {
 				},
 			},
 		}
-		redactedFields := RedactFieldsInMap(fields, map[string]bool{
+		redactedFields := RedactFieldsInMap(t.Context(), fields, map[string]bool{
 			"secret": true,
 		})
 		require.Equal(t, "somePublicKey", redactedFields["publicKey"], "Expected publicKey to be unchanged")

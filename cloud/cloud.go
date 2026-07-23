@@ -178,12 +178,12 @@ func GetManager(ctx context.Context, env evergreen.Environment, mgrOpts ManagerO
 
 // GetManagerOptions gets the manager options from the provider settings object for a given
 // provider name.
-func GetManagerOptions(d distro.Distro) (ManagerOpts, error) {
+func GetManagerOptions(ctx context.Context, d distro.Distro) (ManagerOpts, error) {
 	region := ""
 	if len(d.ProviderSettingsList) > 1 {
 		if evergreen.IsEc2Provider(d.Provider) {
 			// this shouldn't ever happen, but if it does we want to continue so we don't inadvertently block task queues
-			grip.Error(context.Background(), message.Fields{
+			grip.Error(ctx, message.Fields{
 				"message":           "distro should be modified to have only one provider settings",
 				"provider_settings": d.ProviderSettingsList,
 				"distro":            d.Id,
