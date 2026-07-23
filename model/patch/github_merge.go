@@ -42,6 +42,9 @@ type githubMergeIntent struct {
 	// ProcessedAt is the time that this intent was processed
 	ProcessedAt time.Time `bson:"processed_at"`
 
+	// ProcessingError is the full error encountered while processing the intent.
+	ProcessingError string `bson:"processing_error,omitempty"`
+
 	// IntentType indicates the type of the patch intent, i.e., GithubMergeIntentType
 	IntentType string `bson:"intent_type"`
 
