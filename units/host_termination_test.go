@@ -20,8 +20,7 @@ import (
 )
 
 func TestHostTerminationJob(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	checkTerminationEvent := func(t *testing.T, hostID, reason string) {

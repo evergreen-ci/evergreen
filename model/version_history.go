@@ -36,10 +36,7 @@ func FindLastPassingVersionForBuildVariants(ctx context.Context, project *Projec
 	mostRecentRevisionOrderNumber := latestVersion.RevisionOrderNumber
 
 	// Earliest commit order number to consider
-	leastRecentRevisionOrderNumber := mostRecentRevisionOrderNumber - StaleVersionCutoff
-	if leastRecentRevisionOrderNumber < 0 {
-		leastRecentRevisionOrderNumber = 0
-	}
+	leastRecentRevisionOrderNumber := max(mostRecentRevisionOrderNumber-StaleVersionCutoff, 0)
 
 	pipeline := []bson.M{
 		// Limit ourselves to builds for non-stale versions and the given project

@@ -40,8 +40,7 @@ func TestDownstreamExpansions(t *testing.T) {
 			},
 		} {
 			t.Run(testName, func(t *testing.T) {
-				ctx, cancel := context.WithCancel(context.Background())
-				defer cancel()
+				ctx := t.Context()
 				comm := client.NewMock("http://localhost.com")
 				conf := &internal.TaskConfig{Expansions: util.Expansions{}, Task: task.Task{Requester: "patch_request"}, Project: model.Project{}}
 				logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
@@ -53,8 +52,7 @@ func TestDownstreamExpansions(t *testing.T) {
 		}
 
 		t.Run("OnlyOpForPatches", func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 			comm := client.NewMock("http://localhost.com")
 			conf := &internal.TaskConfig{Expansions: util.Expansions{}, Task: task.Task{Requester: "gitter_request"}, Project: model.Project{}}
 			logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)

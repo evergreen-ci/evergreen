@@ -87,7 +87,7 @@ func TestRemoveTaskDirectory(t *testing.T) {
 	// make a long directory name to test working around https://github.com/golang/go/issues/36375
 	a := ""
 	b := ""
-	for i := 0; i < 150; i++ {
+	for range 150 {
 		a += "a"
 		b += "b"
 	}

@@ -1,7 +1,6 @@
 package command
 
 import (
-	"context"
 	"path/filepath"
 	"testing"
 
@@ -16,8 +15,7 @@ import (
 )
 
 func TestIncKey(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With keyval plugin installed", t, func() {
 		err := db.Clear(model.KeyValCollection)

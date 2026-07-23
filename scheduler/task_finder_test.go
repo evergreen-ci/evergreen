@@ -498,7 +498,7 @@ func makeRandomTasks() []task.Task {
 	}
 
 	numTasks := rand.Intn(10) + 10
-	for i := 0; i < numTasks; i++ {
+	for i := range numTasks {
 		// pick a random status
 		statusIndex := rand.Intn(len(statuses))
 		id := "task" + strconv.Itoa(i)
@@ -514,7 +514,7 @@ func makeRandomTasks() []task.Task {
 
 	depth := rand.Intn(6) + 1
 
-	for i := 0; i < depth; i++ {
+	for i := range depth {
 		subTasks = append(subTasks, makeRandomSubTasks(&subTasks[i]))
 	}
 
@@ -566,7 +566,7 @@ func makeRandomSubTasks(parentTasks *[]task.Task) []task.Task {
 		}
 
 		numDeps := rand.Intn(6)
-		for i := 0; i < numDeps; i++ {
+		for i := range numDeps {
 			childId := parentTask.Id + "-child" + strconv.Itoa(i)
 
 			depTasks = append(depTasks, task.Task{
@@ -591,7 +591,7 @@ func getRandomDependsOnStatus() string {
 func hugeString(suffix string) string {
 	var buffer bytes.Buffer
 	// 4 megabytes
-	for i := 0; i < 4*1000*1000; i++ {
+	for range 4 * 1000 * 1000 {
 		buffer.WriteString("a")
 	}
 	buffer.WriteString(suffix)
@@ -615,7 +615,7 @@ func TestCompareTaskRunnersWithHugeTasks(t *testing.T) {
 		// tasks[0] will depend on 5 other tasks, each with a
 		// 4 megabyte string inside of it. After graphLookup, the
 		// intermediate document will have 24 megabytes of data in it.
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			taskName := fmt.Sprintf("task%d", i)
 			tasks[0].DependsOn = append(tasks[0].DependsOn, task.Dependency{
 				TaskId: taskName,

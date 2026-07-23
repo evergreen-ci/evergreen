@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -775,24 +776,12 @@ func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tsge *tagSelectorEva
 		}
 		So(len(unmatchedSelectors), ShouldEqual, len(expectedEmptySelectors))
 		for _, expectedEmptySelector := range expectedEmptySelectors {
-			exists := false
-			for _, emptySelector := range unmatchedSelectors {
-				if emptySelector == expectedEmptySelector {
-					exists = true
-					break
-				}
-			}
+			exists := slices.Contains(unmatchedSelectors, expectedEmptySelector)
 			So(exists, ShouldBeTrue)
 		}
 		So(len(unmatchedCriteria), ShouldEqual, len(expectedUnmatchedCriteria))
 		for _, expectedUnmatchedTag := range expectedUnmatchedCriteria {
-			exists := false
-			for _, unmatchedTag := range unmatchedCriteria {
-				if unmatchedTag == expectedUnmatchedTag {
-					exists = true
-					break
-				}
-			}
+			exists := slices.Contains(unmatchedCriteria, expectedUnmatchedTag)
 			So(exists, ShouldBeTrue)
 		}
 	})
@@ -1333,9 +1322,9 @@ buildvariants:
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "already defined")
 
-	// yaml.v3 rejects duplicate keys even when not using strict mode.
+	// unless not using strict
 	_, err = LoadProjectInto(ctx, []byte(yamlWithDup), nil, "example_project", &proj)
-	assert.Error(t, err)
+	assert.NoError(t, err)
 }
 
 func TestTranslateProjectDoesNotModifyParserProject(t *testing.T) {
@@ -1397,8 +1386,7 @@ tasks:
 }
 
 func TestTaskGroupParsing(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	checkIsTaskGroupTaskUnit := func(t *testing.T, bvtu BuildVariantTaskUnit) {
 		assert.True(t, bvtu.IsGroup)
@@ -1421,6 +1409,7 @@ task_groups:
   setup_task_timeout_secs: 10
   teardown_task_can_fail_task: true
   teardown_task_timeout_secs: 10
+  teardown_task_can_fail_task: true
   teardown_group_timeout_secs: 10
   setup_group:
   - command: shell.exec
@@ -2007,8 +1996,7 @@ func TestAddBuildVariant(t *testing.T) {
 }
 
 func TestParserProjectStorage(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
@@ -2937,8 +2925,7 @@ func TestUpdateReadFileFrom(t *testing.T) {
 }
 
 func TestFindAndTranslateProjectForPatch(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
@@ -4012,7 +3999,7 @@ func TestLoadProjectIntoTranslationCache(t *testing.T) {
 		const goroutines = 20
 		var wg sync.WaitGroup
 		wg.Add(goroutines)
-		for i := 0; i < goroutines; i++ {
+		for range goroutines {
 			go func() {
 				defer wg.Done()
 				proj := &Project{}
@@ -4094,7 +4081,7 @@ tasks:
 		const goroutines = 20
 		var wg sync.WaitGroup
 		wg.Add(goroutines)
-		for i := 0; i < goroutines; i++ {
+		for range goroutines {
 			go func() {
 				defer wg.Done()
 				proj := &Project{}

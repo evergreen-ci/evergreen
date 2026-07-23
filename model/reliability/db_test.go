@@ -41,8 +41,7 @@ func TestPipeline(t *testing.T) {
 		evergreen.GithubPRRequester,
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	task := "lint"
 	variant := "enterprise-rhel-62-64-bit"

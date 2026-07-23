@@ -125,8 +125,7 @@ func withJasperServiceSetupAndTeardown(ctx context.Context, env *mock.Environmen
 }
 
 func TestRestartJasperJob(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host){

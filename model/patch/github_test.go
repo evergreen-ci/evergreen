@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v70/github"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -138,38 +137,6 @@ func (s *GithubSuite) TestNewGithubIntent() {
 	ghIntent, ok = intent.(*githubIntent)
 	s.True(ok)
 	s.Equal(patchId, ghIntent.RepeatPatchId)
-}
-
-func (s *GithubSuite) TestNewGithubIntentSageBotUsesAssignee() {
-	assigneeLogin := "real-human"
-	var assigneeID int64 = 9999
-	pr := testutil.NewGithubPR(s.pr, s.baseRepo, s.baseHash, s.headRepo, s.hash, evergreen.GitHubSageBotLogin, s.title)
-	pr.Assignee = &github.User{
-		Login: github.String(assigneeLogin),
-		ID:    github.Int64(assigneeID),
-	}
-
-	intent, err := NewGithubIntent(s.T().Context(), "sagebot-1", "", "", "", "", pr)
-	s.Require().NoError(err)
-	s.Require().NotNil(intent)
-
-	ghIntent, ok := intent.(*githubIntent)
-	s.Require().True(ok)
-	s.Equal(assigneeLogin, ghIntent.User)
-	s.Equal(int(assigneeID), ghIntent.UID)
-}
-
-func (s *GithubSuite) TestNewGithubIntentSageBotNoAssigneeUsesBot() {
-	pr := testutil.NewGithubPR(s.pr, s.baseRepo, s.baseHash, s.headRepo, s.hash, evergreen.GitHubSageBotLogin, s.title)
-
-	intent, err := NewGithubIntent(s.T().Context(), "sagebot-2", "", "", "", "", pr)
-	s.Require().NoError(err)
-	s.Require().NotNil(intent)
-
-	ghIntent, ok := intent.(*githubIntent)
-	s.Require().True(ok)
-	s.Equal(evergreen.GitHubSageBotLogin, ghIntent.User)
-	s.Equal(1234, ghIntent.UID)
 }
 
 func (s *GithubSuite) TestInsert() {

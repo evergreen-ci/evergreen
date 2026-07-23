@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -761,13 +762,13 @@ func (s *Subscription) String() string {
 	tmpl = append(tmpl, "", "issue the following notification:",
 		fmt.Sprintf("\t%s", s.Subscriber))
 
-	out := ""
+	var out strings.Builder
 	for i := range tmpl {
-		out += tmpl[i]
-		out += "\n"
+		out.WriteString(tmpl[i])
+		out.WriteString("\n")
 	}
 
-	return out
+	return out.String()
 }
 
 func FindSubscriptionsByOwner(ctx context.Context, owner string, ownerType OwnerType) ([]Subscription, error) {

@@ -211,7 +211,7 @@ func (s *PatchesByProjectSuite) TestInvalidTimesAsKeyShouldError() {
 	}
 
 	for _, i := range inputs {
-		for limit := 0; limit < 3; limit++ {
+		for range 3 {
 			req, err := http.NewRequest(http.MethodGet, "https://example.net/foo/?limit=10&start_at="+i, nil)
 			s.Require().NoError(err)
 			err = s.route.Parse(context.Background(), req)
@@ -607,7 +607,7 @@ func (s *PatchesByUserSuite) TestInvalidTimesAsKeyShouldError() {
 	}
 
 	for _, i := range inputs {
-		for limit := 0; limit < 3; limit++ {
+		for range 3 {
 			req, err := http.NewRequest(http.MethodGet, "https://example.net/foo/?limit=10&start_at="+i, nil)
 			s.Require().NoError(err)
 			err = s.route.Parse(context.Background(), req)
@@ -737,8 +737,7 @@ func TestPatchRawModulesHandler(t *testing.T) {
 		patchID: patchId.Hex(),
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	response := route.Run(ctx)
 
 	rawModulesResponse, ok := response.Data().(*restModel.APIRawPatch)
@@ -801,8 +800,7 @@ func TestPatchRawHandler(t *testing.T) {
 }
 
 func TestSchedulePatchRoute(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	env := &mock.Environment{}
@@ -982,7 +980,7 @@ buildvariants:
 	require.NoError(t, unfinalized.Insert(t.Context()))
 
 	pp := &serviceModel.ParserProject{}
-	require.NoError(t, util.UnmarshalYAML([]byte(config), pp))
+	require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(config), pp))
 	pp.Id = unfinalized.Id.Hex()
 	require.NoError(t, pp.Insert(t.Context()))
 
@@ -1085,7 +1083,7 @@ buildvariants:
 	}
 	assert.NoError(t, patch2.Insert(t.Context()))
 
-	err = util.UnmarshalYAML([]byte(config), &pp)
+	err = util.UnmarshalYAMLWithFallback([]byte(config), &pp)
 	require.NoError(t, err)
 	pp.Id = patch2.Id.Hex()
 	require.NoError(t, pp.Insert(t.Context()))
@@ -1119,7 +1117,7 @@ buildvariants:
 	}
 	assert.NoError(t, patch3.Insert(t.Context()))
 
-	err = util.UnmarshalYAML([]byte(config), &pp)
+	err = util.UnmarshalYAMLWithFallback([]byte(config), &pp)
 	require.NoError(t, err)
 	pp.Id = patch3.Id.Hex()
 	require.NoError(t, pp.Insert(t.Context()))
@@ -1143,8 +1141,7 @@ buildvariants:
 }
 
 func TestSchedulePatchActivatesInactiveTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	env := &mock.Environment{}
@@ -1400,7 +1397,7 @@ tasks:
 	require.NoError(t, unfinalized.Insert(t.Context()))
 
 	pp := &serviceModel.ParserProject{}
-	require.NoError(t, util.UnmarshalYAML([]byte(config), pp))
+	require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(config), pp))
 	pp.Id = unfinalized.Id.Hex()
 	require.NoError(t, pp.Insert(t.Context()))
 

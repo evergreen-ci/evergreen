@@ -280,8 +280,8 @@ func (n *Notification) SetTaskMetadata(ID string, execution int, createdBy strin
 
 // FormatSlackTarget uses the slackMemberId instead of the userName when possible.
 func FormatSlackTarget(ctx context.Context, target string) (string, error) {
-	if strings.HasPrefix(target, "@") {
-		trimmedTarget := strings.TrimPrefix(target, "@")
+	if after, ok := strings.CutPrefix(target, "@"); ok {
+		trimmedTarget := after
 		user, err := user.FindBySlackUsername(ctx, trimmedTarget)
 		if err != nil {
 			grip.Error(ctx, message.WrapError(err, message.Fields{

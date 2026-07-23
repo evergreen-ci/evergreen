@@ -42,8 +42,7 @@ var output = task.TaskOutput{
 }
 
 func TestBuildBreakNotificationsFromRepotracker(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, task.Collection, user.Collection, event.SubscriptionsCollection, build.Collection))
@@ -1383,8 +1382,7 @@ func (s *taskSuite) TestBuildBreak() {
 }
 
 func TestTaskRegressionByTestDisplayTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := evergreen.GetEnvironment()
 	require.NoError(t, db.ClearCollections(task.Collection, alertrecord.Collection, build.Collection, model.VersionCollection, model.ProjectRefCollection))
 	require.NoError(t, task.ClearTestResults(ctx, env))
@@ -1542,7 +1540,7 @@ func saveTestResults(t *testing.T, ctx context.Context, testBucket pail.Bucket, 
 		Results:   make([]testresult.ParquetTestResult, length),
 	}
 
-	for i := 0; i < len(savedResults); i++ {
+	for i := range savedResults {
 		savedParquet.Results[i] = testresult.ParquetTestResult{
 			TestName:       savedResults[i].TestName,
 			GroupID:        utility.ToStringPtr(savedResults[i].GroupID),

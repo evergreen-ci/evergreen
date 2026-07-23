@@ -66,8 +66,7 @@ func (*mockReauthUserManager) GetGroupsForUser(string) ([]string, error) {
 }
 
 func TestReauthorizeUserJob(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	needsReauth := func(env *mock.Environment, u *user.DBUser) (bool, error) {

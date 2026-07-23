@@ -320,8 +320,7 @@ func TestRequireHostAccess(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 			setupPermissions(t)
 			usr, err := setupUser(t)
 			assert.NoError(t, err)
@@ -853,8 +852,7 @@ func TestRequirePatchOwner(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 			setupPermissions(t)
 			usr, err := setupUser(t)
 			assert.NoError(t, err)

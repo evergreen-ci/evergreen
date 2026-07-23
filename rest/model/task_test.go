@@ -1,7 +1,6 @@
 package model
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -22,8 +21,7 @@ type taskCompare struct {
 }
 
 func TestTaskBuildFromService(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With a list of models to compare", t, func() {
 		timeNow := time.Now()

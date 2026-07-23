@@ -76,6 +76,17 @@ func (s *payloadSuite) TestEmailWithNilContent() {
 	s.Contains(m.Body, "Event: eventid")
 }
 
+func (s *payloadSuite) TestEmailEscapesDescriptionMarkup() {
+	s.t.Description = "<tag>text</tag>"
+
+	m, err := emailPayload(&s.t)
+	s.NoError(err)
+	s.Require().NotNil(m)
+
+	s.NotContains(m.Body, "<tag>")
+	s.Contains(m.Body, "&lt;tag&gt;text&lt;/tag&gt;")
+}
+
 func (s *payloadSuite) TestEmailWithTaskContent() {
 	s.t.Object = "task"
 	s.t.Task = &task.Task{
