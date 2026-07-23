@@ -350,6 +350,37 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 		"allocation_id":  h.IPAllocationID,
 	}))
 
+	for _, vol := range h.Volumes {
+		volDB, err := host.FindVolumeByID(ctx, vol.VolumeID)
+		if err != nil {
+			return errors.Wrap(err, "finding volumes for host")
+		}
+		if volDB == nil {
+			continue
+		}
+
+		if volDB.Expiration.Before(time.Now().Add(evergreen.UnattachedVolumeExpiration)) {
+			if err = m.ec2Mgr.modifyVolumeExpiration(ctx, volDB, time.Now().Add(evergreen.UnattachedVolumeExpiration)); err != nil {
+				grip.Error(ctx, message.WrapError(err, message.Fields{
+					"message": "error updating volume expiration",
+					"user":    user,
+					"host_id": h.Id,
+					"volume":  volDB.ID,
+				}))
+				return errors.Wrapf(err, "updating expiration for volume '%s'", volDB.ID)
+			}
+		}
+
+		if err = host.UnsetVolumeHost(ctx, volDB.ID); err != nil {
+			grip.Error(ctx, message.WrapError(err, message.Fields{
+				"host_id":   h.Id,
+				"volume_id": volDB.ID,
+				"op":        "terminating host",
+				"message":   "problem un-setting host info on volume records",
+			}))
+		}
+	}
+
 	return errors.Wrap(h.Terminate(ctx, user, reason), "terminating instance in DB")
 }
 

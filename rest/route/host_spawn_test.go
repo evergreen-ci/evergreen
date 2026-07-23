@@ -269,6 +269,45 @@ func TestHostPostHandler(t *testing.T) {
 			require.NotZero(t, resp)
 			assert.NotEqual(t, http.StatusOK, resp.Status(), resp.Data())
 		},
+		"AllowsSpawnWithOwnHomeVolume": func(ctx context.Context, t *testing.T, env *mock.Environment, rh *hostPostHandler, u *user.DBUser, d *distro.Distro) {
+			az := evergreen.DefaultEC2Region + "a"
+			env.EvergreenSettings.Providers.AWS.Subnets = []evergreen.Subnet{
+				{AZ: az, SubnetID: "subnet-123"},
+			}
+			v := host.Volume{
+				ID:               "my-volume",
+				CreatedBy:        u.Id,
+				AvailabilityZone: az,
+			}
+			require.NoError(t, v.Insert(ctx))
+
+			rh.options.HomeVolumeID = v.ID
+			rh.options.Region = evergreen.DefaultEC2Region
+
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status(), resp.Data())
+		},
+		"RejectsSpawnWithAnotherUsersHomeVolume": func(ctx context.Context, t *testing.T, env *mock.Environment, rh *hostPostHandler, u *user.DBUser, d *distro.Distro) {
+			v := host.Volume{
+				ID:        "victim-volume",
+				CreatedBy: "another-user",
+			}
+			require.NoError(t, v.Insert(ctx))
+
+			rh.options.HomeVolumeID = v.ID
+
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusUnauthorized, resp.Status(), resp.Data())
+		},
+		"RejectsSpawnWithNonexistentHomeVolume": func(ctx context.Context, t *testing.T, env *mock.Environment, rh *hostPostHandler, u *user.DBUser, d *distro.Distro) {
+			rh.options.HomeVolumeID = "nonexistent-volume"
+
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusNotFound, resp.Status(), resp.Data())
+		},
 		"RejectsSpawnWithTaskFromUnauthorizedProject": func(ctx context.Context, t *testing.T, env *mock.Environment, rh *hostPostHandler, u *user.DBUser, d *distro.Distro) {
 			tsk := &task.Task{
 				Id:      "secret-task",
@@ -315,7 +354,7 @@ func TestHostPostHandler(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			ctx := t.Context()
 
-			require.NoError(t, db.ClearCollections(distro.Collection, host.Collection, task.Collection, user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
+			require.NoError(t, db.ClearCollections(distro.Collection, host.Collection, host.VolumesCollection, task.Collection, user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
 			env := &mock.Environment{}
 			assert.NoError(t, env.Configure(ctx))
 			env.EvergreenSettings.Spawnhost.SpawnHostsPerUser = 10
@@ -774,7 +813,8 @@ func TestAttachVolumeHandler(t *testing.T) {
 	// wrong availability zone
 	v.VolumeID = "my-volume"
 	volume := host.Volume{
-		ID: v.VolumeID,
+		ID:        v.VolumeID,
+		CreatedBy: "user",
 	}
 	assert.NoError(t, volume.Insert(t.Context()))
 
@@ -795,6 +835,28 @@ func TestAttachVolumeHandler(t *testing.T) {
 	resp := h.Run(ctx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusBadRequest, resp.Status())
+
+	// another user's volume
+	otherVolume := host.Volume{
+		ID:        "other-volume",
+		CreatedBy: "another-user",
+	}
+	assert.NoError(t, otherVolume.Insert(t.Context()))
+
+	v.VolumeID = otherVolume.ID
+	jsonBody, err = json.Marshal(v)
+	assert.NoError(t, err)
+	buffer = bytes.NewBuffer(jsonBody)
+
+	r, err = http.NewRequest(http.MethodGet, "/hosts/my-host/attach", buffer)
+	assert.NoError(t, err)
+	r = gimlet.SetURLVars(r, map[string]string{"host_id": "my-host"})
+
+	assert.NoError(t, h.Parse(ctx, r))
+
+	resp = h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusUnauthorized, resp.Status())
 }
 
 func TestDetachVolumeHandler(t *testing.T) {

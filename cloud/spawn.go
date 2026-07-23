@@ -130,6 +130,11 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 			return nil, errors.Errorf("getting DBUser from User")
 		}
 		so.Region = dbUser.GetRegion()
+		// If the region could not be resolved from the user, use system-wide default.
+		if so.Region == "" {
+			grip.Warningf(ctx, "unable to determine region for spawn host, using default region: '%s'", evergreen.DefaultEC2Region)
+			so.Region = evergreen.DefaultEC2Region
+		}
 	}
 	if so.Userdata != "" {
 		if !evergreen.IsEc2Provider(d.Provider) {
@@ -171,7 +176,6 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		}
 		so.ProvisionOptions.SetupScript = appendSetupScript(so.ProvisionOptions.SetupScript, debugScript)
 	}
-
 	d.ProviderSettingsList, err = modifySpawnHostProviderSettings(ctx, *d, settings, so.Region, so.HomeVolumeID)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting new provider settings")

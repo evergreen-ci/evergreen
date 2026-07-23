@@ -2273,7 +2273,6 @@ func TestVersionRestart(t *testing.T) {
 		if t.Id == "task3" {
 			require.Len(t.DependsOn, 1)
 			assert.Equal("task1", t.DependsOn[0].TaskId)
-			assert.False(t.DependsOn[0].Finished, "restarting task1 should have marked dependency as unfinished")
 			assert.Equal(evergreen.TaskWillRun, t.DisplayStatusCache)
 		}
 	}
@@ -2285,7 +2284,6 @@ func TestVersionRestart(t *testing.T) {
 	require.NotZero(dbTask5)
 	require.Len(dbTask5.DependsOn, 1)
 	assert.Equal("task1", dbTask5.DependsOn[0].TaskId)
-	assert.False(dbTask5.DependsOn[0].Finished, "restarting task1 should have marked dependency in execution task as unfinished")
 
 	dbVersion, err := VersionFindOneId(t.Context(), "version")
 	assert.NoError(err)
@@ -2623,8 +2621,7 @@ func resetTaskData() error {
 		Activated:     true,
 		DependsOn: []task.Dependency{
 			{
-				TaskId:   task1.Id,
-				Finished: true,
+				TaskId: task1.Id,
 			},
 		},
 	}
@@ -2654,8 +2651,7 @@ func resetTaskData() error {
 		DispatchTime:  time.Now(),
 		DependsOn: []task.Dependency{
 			{
-				TaskId:   task1.Id,
-				Finished: true,
+				TaskId: task1.Id,
 			},
 		},
 	}

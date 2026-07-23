@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -451,10 +452,19 @@ func (p *ProjectAlias) Upsert(ctx context.Context) error {
 func UpsertAliasesForProject(ctx context.Context, aliases []ProjectAlias, projectId string) error {
 	catcher := grip.NewBasicCatcher()
 	for i := range aliases {
-		if aliases[i].ProjectID != projectId { // new project, so we need a new document (new ID)
-			aliases[i].ProjectID = projectId
-			aliases[i].ID = ""
+		// If the caller supplied an existing alias ID, verify it belongs to this
+		// project before upserting it.
+		if aliases[i].ID.Valid() {
+			ownerProjectId, err := findAliasOwnerProject(ctx, aliases[i].ID.Hex())
+			if err != nil {
+				catcher.Wrapf(err, "verifying ownership of project alias '%s'", aliases[i].ID.Hex())
+				continue
+			}
+			if ownerProjectId != projectId {
+				aliases[i].ID = ""
+			}
 		}
+		aliases[i].ProjectID = projectId
 		catcher.Add(aliases[i].Upsert(ctx))
 	}
 	grip.Debug(ctx, message.WrapError(catcher.Resolve(), message.Fields{
@@ -464,13 +474,37 @@ func UpsertAliasesForProject(ctx context.Context, aliases []ProjectAlias, projec
 	return catcher.Resolve()
 }
 
+// findAliasOwnerProject returns the project ID that owns the alias with the
+// given document ID. It returns an empty string if no such alias exists.
+func findAliasOwnerProject(ctx context.Context, id string) (string, error) {
+	if !IsValidId(id) {
+		return "", nil
+	}
+	var alias ProjectAlias
+	q := db.Query(bson.M{idKey: mgobson.ObjectIdHex(id)})
+	err := db.FindOneQ(ctx, ProjectAliasCollection, q, &alias)
+	if adb.ResultsNotFound(err) {
+		return "", nil
+	}
+	if err != nil {
+		return "", errors.Wrapf(err, "finding project alias '%s'", id)
+	}
+	return alias.ProjectID, nil
+}
+
 // RemoveProjectAlias removes a project alias with the given document ID from the
 // database.
-func RemoveProjectAlias(ctx context.Context, id string) error {
+func RemoveProjectAlias(ctx context.Context, projectId, id string) error {
 	if id == "" {
 		return errors.New("can't remove project alias with empty id")
 	}
-	err := db.Remove(ctx, ProjectAliasCollection, bson.M{idKey: mgobson.ObjectIdHex(id)})
+	if projectId == "" {
+		return errors.New("can't remove project alias with empty project ID")
+	}
+	err := db.Remove(ctx, ProjectAliasCollection, bson.M{
+		idKey:        mgobson.ObjectIdHex(id),
+		projectIDKey: projectId,
+	})
 	if err != nil {
 		return errors.Wrapf(err, "removing project alias '%s'", id)
 	}
