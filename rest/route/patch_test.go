@@ -520,7 +520,6 @@ func TestPatchesByUserSuite(t *testing.T) {
 	s := new(PatchesByUserSuite)
 	s.env = testutil.NewEnvironment(t.Context(), t)
 	evergreen.SetEnvironment(s.env)
-	t.Cleanup(func() { evergreen.SetEnvironment(nil) })
 	suite.Run(t, s)
 }
 
@@ -650,7 +649,6 @@ func (s *PatchesByUserSuite) TestEmptyTimeShouldSetNow() {
 func TestPatchesByUserPermissionFiltering(t *testing.T) {
 	env := testutil.NewEnvironment(t.Context(), t)
 	evergreen.SetEnvironment(env)
-	t.Cleanup(func() { evergreen.SetEnvironment(nil) })
 
 	require.NoError(t, db.ClearCollections(patch.Collection, serviceModel.ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	t.Cleanup(func() {
