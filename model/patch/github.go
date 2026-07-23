@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/anser/bsonutil"
+	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -89,6 +90,9 @@ type githubIntent struct {
 	// ProcessedAt is the time that this intent was processed
 	ProcessedAt time.Time `bson:"processed_at"`
 
+	// ProcessingError is the full error encountered while processing the intent.
+	ProcessingError string `bson:"processing_error,omitempty"`
+
 	// IntentType indicates the type of the patch intent, e.g. GithubIntentType
 	IntentType string `bson:"intent_type"`
 
@@ -104,12 +108,40 @@ type githubIntent struct {
 
 // BSON fields for the patches
 var (
-	documentIDKey  = bsonutil.MustHaveTag(githubIntent{}, "DocumentID")
-	headHashKey    = bsonutil.MustHaveTag(githubIntent{}, "HeadHash")
-	processedKey   = bsonutil.MustHaveTag(githubIntent{}, "Processed")
-	processedAtKey = bsonutil.MustHaveTag(githubIntent{}, "ProcessedAt")
-	intentTypeKey  = bsonutil.MustHaveTag(githubIntent{}, "IntentType")
+	documentIDKey      = bsonutil.MustHaveTag(githubIntent{}, "DocumentID")
+	headHashKey        = bsonutil.MustHaveTag(githubIntent{}, "HeadHash")
+	processedKey       = bsonutil.MustHaveTag(githubIntent{}, "Processed")
+	processedAtKey     = bsonutil.MustHaveTag(githubIntent{}, "ProcessedAt")
+	processingErrorKey = bsonutil.MustHaveTag(githubIntent{}, "ProcessingError")
+	intentTypeKey      = bsonutil.MustHaveTag(githubIntent{}, "IntentType")
 )
+
+// GitHubIntentProcessingError is the user-facing processing error data for a GitHub patch intent.
+type GitHubIntentProcessingError struct {
+	ID              string
+	IntentType      string
+	ProcessingError string
+	CreatedAt       time.Time
+	Processed       bool
+	ProcessedAt     time.Time
+
+	BaseRepoName string
+	BaseBranch   string
+	HeadRepoName string
+	HeadBranch   string
+	PRNumber     int
+	HeadHash     string
+	BaseHash     string
+	MergeBase    string
+	User         string
+	Title        string
+
+	Org            string
+	Repo           string
+	HeadRef        string
+	HeadCommit     string
+	HeadCommitDate time.Time
+}
 
 // NewGithubIntent creates an Intent from a google/go-github PullRequestEvent,
 // or returns an error if the some part of the struct is invalid
@@ -212,6 +244,17 @@ func (g *githubIntent) SetProcessed(ctx context.Context) error {
 	)
 }
 
+// SetIntentProcessingError stores the full processing error for a GitHub patch intent.
+func SetIntentProcessingError(ctx context.Context, id, intentType, processingError string) error {
+	return updateOneIntent(
+		ctx,
+		bson.M{documentIDKey: id, intentTypeKey: intentType},
+		bson.M{"$set": bson.M{
+			processingErrorKey: processingError,
+		}},
+	)
+}
+
 // updateOne updates one patch intent.
 func updateOneIntent(ctx context.Context, query any, update any) error {
 	return db.Update(
@@ -276,6 +319,68 @@ func FindUnprocessedGithubIntents(ctx context.Context) ([]*githubIntent, error) 
 		return []*githubIntent{}, err
 	}
 	return intents, nil
+}
+
+// FindGitHubIntentProcessingError finds the processing error data for a GitHub patch intent by its document ID.
+func FindGitHubIntentProcessingError(ctx context.Context, id string) (*GitHubIntentProcessingError, error) {
+	githubPRIntent := &githubIntent{}
+	err := db.FindOneQ(ctx, IntentCollection, db.Query(bson.M{documentIDKey: id, intentTypeKey: GithubIntentType}), githubPRIntent)
+	if err == nil {
+		return githubPRIntent.processingErrorInfo(), nil
+	}
+	if !adb.ResultsNotFound(err) {
+		return nil, err
+	}
+
+	githubMergeIntent := &githubMergeIntent{}
+	err = db.FindOneQ(ctx, IntentCollection, db.Query(bson.M{documentIDKey: id, intentTypeKey: GithubMergeIntentType}), githubMergeIntent)
+	if err == nil {
+		return githubMergeIntent.processingErrorInfo(), nil
+	}
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	return nil, err
+}
+
+func (g *githubIntent) processingErrorInfo() *GitHubIntentProcessingError {
+	return &GitHubIntentProcessingError{
+		ID:              g.ID(),
+		IntentType:      g.IntentType,
+		ProcessingError: g.ProcessingError,
+		CreatedAt:       g.CreatedAt,
+		Processed:       g.Processed,
+		ProcessedAt:     g.ProcessedAt,
+		BaseRepoName:    g.BaseRepoName,
+		BaseBranch:      g.BaseBranch,
+		HeadRepoName:    g.HeadRepoName,
+		HeadBranch:      g.HeadBranch,
+		PRNumber:        g.PRNumber,
+		HeadHash:        g.HeadHash,
+		BaseHash:        g.BaseHash,
+		MergeBase:       g.MergeBase,
+		User:            g.User,
+		Title:           g.Title,
+	}
+}
+
+func (g *githubMergeIntent) processingErrorInfo() *GitHubIntentProcessingError {
+	return &GitHubIntentProcessingError{
+		ID:              g.ID(),
+		IntentType:      g.IntentType,
+		ProcessingError: g.ProcessingError,
+		CreatedAt:       g.CreatedAt,
+		Processed:       g.Processed,
+		ProcessedAt:     g.ProcessedAt,
+		BaseBranch:      extractBaseBranchFromHeadRef(g.HeadRef),
+		HeadHash:        g.HeadSHA,
+		BaseHash:        g.BaseSHA,
+		Org:             g.Org,
+		Repo:            g.Repo,
+		HeadRef:         g.HeadRef,
+		HeadCommit:      g.HeadCommit,
+		HeadCommitDate:  g.HeadCommitDate,
+	}
 }
 
 func (g *githubIntent) NewPatch() *Patch {

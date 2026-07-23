@@ -156,6 +156,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 			if j.gitHubError == "" {
 				j.gitHubError = OtherErrors
 			}
+			j.saveGitHubProcessingError(ctx, err)
 			j.sendGitHubErrorStatus(ctx, patchDoc)
 			msg := message.Fields{
 				"job":          j.ID(),
@@ -1526,6 +1527,7 @@ func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchD
 			patchDoc.GithubPatchData.BaseRepo,
 			patchDoc.GithubPatchData.HeadHash,
 			j.gitHubError,
+			j.IntentID,
 		)
 		update.Run(ctx)
 		j.AddError(update.Error())
@@ -1539,6 +1541,7 @@ func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchD
 				patchDoc.GithubMergeData.Repo,
 				patchDoc.GithubMergeData.HeadSHA,
 				j.gitHubError,
+				j.IntentID,
 			)
 			update.Run(ctx)
 			j.AddError(update.Error())
@@ -1546,6 +1549,27 @@ func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchD
 	} else {
 		j.AddError(errors.Errorf("unexpected intent type '%s'", j.IntentType))
 		return
+	}
+}
+
+func (j *patchIntentProcessor) saveGitHubProcessingError(ctx context.Context, err error) {
+	if err == nil {
+		return
+	}
+	if j.IntentType != patch.GithubIntentType && j.IntentType != patch.GithubMergeIntentType {
+		j.AddError(errors.Errorf("unexpected intent type '%s'", j.IntentType))
+		return
+	}
+
+	if saveErr := patch.SetIntentProcessingError(ctx, j.IntentID, j.IntentType, err.Error()); saveErr != nil {
+		j.AddError(saveErr)
+		grip.Error(ctx, message.WrapError(saveErr, message.Fields{
+			"message":     "could not save GitHub patch intent processing error",
+			"job":         j.ID(),
+			"intent_id":   j.IntentID,
+			"intent_type": j.IntentType,
+			"source":      "patch intents",
+		}))
 	}
 }
 

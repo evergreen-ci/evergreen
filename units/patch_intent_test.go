@@ -31,6 +31,7 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -246,6 +247,33 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.NotNil(factory)
 	s.NotNil(factory())
 	s.Equal(patchIntentJobName, factory().Type().Name)
+}
+
+func TestSaveGitHubProcessingError(t *testing.T) {
+	ctx := testutil.TestSpan(t.Context(), t)
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	originalEnv := evergreen.GetEnvironment()
+	evergreen.SetEnvironment(env)
+	t.Cleanup(func() {
+		evergreen.SetEnvironment(originalEnv)
+	})
+
+	require.NoError(t, db.ClearCollections(patch.IntentCollection, patch.Collection))
+	intent, err := patch.NewGithubIntent(ctx, "1", "", "", "", "", testutil.NewGithubPR(1, "evergreen-ci/evergreen", "base-hash", "octocat/evergreen", "head-hash", "octocat", "PR title"))
+	require.NoError(t, err)
+	require.NoError(t, intent.Insert(ctx))
+
+	j, ok := NewPatchIntentProcessor(env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	require.True(t, ok)
+	j.saveGitHubProcessingError(ctx, assert.AnError)
+	require.NoError(t, j.Error())
+
+	found, err := patch.FindGitHubIntentProcessingError(ctx, intent.ID())
+	require.NoError(t, err)
+	require.NotNil(t, found)
+	assert.Equal(t, assert.AnError.Error(), found.ProcessingError)
 }
 
 func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
