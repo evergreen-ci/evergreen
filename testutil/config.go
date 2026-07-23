@@ -5,6 +5,7 @@ import (
 	"flag"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
@@ -214,7 +215,7 @@ func MockConfig() *evergreen.Settings {
 				Name: "logs",
 				Type: evergreen.BucketTypeS3,
 			},
-			RetryFailedLogMoveLookbackDays:  7,
+			RetryFailedLogMoveLookback:      7 * 24 * time.Hour,
 			RetryFailedLogMoveMaxJobsPerRun: 50,
 			TestResultsBucket: evergreen.BucketConfig{
 				Name:              "test_results",

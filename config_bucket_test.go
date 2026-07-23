@@ -2,6 +2,7 @@ package evergreen
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -51,5 +52,38 @@ func TestBucketsConfigLogBucketExpirationDays(t *testing.T) {
 		}
 		_, ok := cfgNoDays.LogBucketExpirationDays("log-bucket")
 		assert.False(t, ok)
+	})
+}
+
+func TestBucketsConfigGetRetryFailedLogMoveLookback(t *testing.T) {
+	t.Run("DurationShouldTakePrecedence", func(t *testing.T) {
+		cfg := BucketsConfig{
+			RetryFailedLogMoveLookback:     30 * time.Minute,
+			RetryFailedLogMoveLookbackDays: 7,
+		}
+		lookback, disabled := cfg.GetRetryFailedLogMoveLookback()
+		assert.Equal(t, 30*time.Minute, lookback)
+		assert.False(t, disabled)
+	})
+
+	t.Run("LegacyDaysShouldConvertToDuration", func(t *testing.T) {
+		cfg := BucketsConfig{RetryFailedLogMoveLookbackDays: 7}
+		lookback, disabled := cfg.GetRetryFailedLogMoveLookback()
+		assert.Equal(t, 7*24*time.Hour, lookback)
+		assert.False(t, disabled)
+	})
+
+	t.Run("ZeroShouldUseDefault", func(t *testing.T) {
+		cfg := BucketsConfig{}
+		lookback, disabled := cfg.GetRetryFailedLogMoveLookback()
+		assert.Equal(t, DefaultRetryFailedLogMoveLookback, lookback)
+		assert.False(t, disabled)
+	})
+
+	t.Run("NegativeDurationShouldDisableRetries", func(t *testing.T) {
+		cfg := BucketsConfig{RetryFailedLogMoveLookback: -time.Second}
+		lookback, disabled := cfg.GetRetryFailedLogMoveLookback()
+		assert.Zero(t, lookback)
+		assert.True(t, disabled)
 	})
 }

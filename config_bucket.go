@@ -19,6 +19,8 @@ const (
 	BucketTypeS3        BucketType = "s3"
 	DefaultS3Region                = "us-east-1"
 	DefaultS3MaxRetries            = 10
+	// DefaultRetryFailedLogMoveLookback is used when the setting is zero.
+	DefaultRetryFailedLogMoveLookback = 7 * 24 * time.Hour
 )
 
 func (b BucketType) validate() error {
@@ -41,8 +43,13 @@ type BucketsConfig struct {
 	LogBucketFailedTasks BucketConfig `bson:"log_bucket_failed_tasks" json:"log_bucket_failed_tasks" yaml:"log_bucket_failed_tasks"`
 	// LongRetentionProjects is the list of project IDs that require long retention.
 	LongRetentionProjects []string `bson:"long_retention_projects" json:"long_retention_projects" yaml:"long_retention_projects"`
-	// RetryFailedLogMoveLookbackDays is how many days back the hourly retry cron searches
-	// for failed tasks whose logs need moving. Defaults to 7 when unset or <= 0.
+	// RetryFailedLogMoveLookback is how far back the hourly retry cron searches
+	// for failed tasks whose logs need moving. Zero uses the default and a negative
+	// duration disables retries.
+	RetryFailedLogMoveLookback time.Duration `bson:"retry_failed_log_move_lookback" json:"retry_failed_log_move_lookback" yaml:"retry_failed_log_move_lookback"`
+	// RetryFailedLogMoveLookbackDays is retained to read settings written before
+	// RetryFailedLogMoveLookback was introduced.
+	// TODO (DEVPROD-37602): Remove this after the admin duration migration is complete.
 	RetryFailedLogMoveLookbackDays int `bson:"retry_failed_log_move_lookback_days" json:"retry_failed_log_move_lookback_days" yaml:"retry_failed_log_move_lookback_days"`
 	// RetryFailedLogMoveMaxJobsPerRun caps how many move jobs the hourly retry cron enqueues
 	// per run to avoid S3 rate limiting. Newest failures are prioritized. Default 50 when unset or 0.
@@ -58,6 +65,7 @@ var (
 	BucketsConfigLogBucketLongRetentionKey          = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucketLongRetention")
 	BucketsConfigLogBucketFailedTasksKey            = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucketFailedTasks")
 	BucketsConfigLongRetentionProjectsKey           = bsonutil.MustHaveTag(BucketsConfig{}, "LongRetentionProjects")
+	BucketsConfigRetryFailedLogMoveLookbackKey      = bsonutil.MustHaveTag(BucketsConfig{}, "RetryFailedLogMoveLookback")
 	BucketsConfigRetryFailedLogMoveLookbackDaysKey  = bsonutil.MustHaveTag(BucketsConfig{}, "RetryFailedLogMoveLookbackDays")
 	BucketsConfigRetryFailedLogMoveMaxJobsPerRunKey = bsonutil.MustHaveTag(BucketsConfig{}, "RetryFailedLogMoveMaxJobsPerRun")
 	BucketsConfigTestResultsBucketKey               = bsonutil.MustHaveTag(BucketsConfig{}, "TestResultsBucket")
@@ -108,6 +116,14 @@ func (c *BucketsConfig) Get(ctx context.Context) error {
 }
 
 func (c *BucketsConfig) Set(ctx context.Context) error {
+	// Resolve only the legacy representation here so that zero/default and
+	// negative/disabled values are persisted unchanged.
+	// TODO (DEVPROD-37602): Remove this resolution and write RetryFailedLogMoveLookback directly in the update.
+	retryFailedLogMoveLookback := ResolveAdminDuration(
+		c.RetryFailedLogMoveLookback,
+		c.RetryFailedLogMoveLookbackDays,
+		24*time.Hour,
+	)
 	return errors.Wrapf(
 		setConfigSection(ctx, c.SectionId(), bson.M{
 			"$set": bson.M{
@@ -115,10 +131,14 @@ func (c *BucketsConfig) Set(ctx context.Context) error {
 				BucketsConfigLogBucketLongRetentionKey:          c.LogBucketLongRetention,
 				BucketsConfigLogBucketFailedTasksKey:            c.LogBucketFailedTasks,
 				BucketsConfigLongRetentionProjectsKey:           c.LongRetentionProjects,
-				BucketsConfigRetryFailedLogMoveLookbackDaysKey:  c.RetryFailedLogMoveLookbackDays,
+				BucketsConfigRetryFailedLogMoveLookbackKey:      retryFailedLogMoveLookback,
 				BucketsConfigRetryFailedLogMoveMaxJobsPerRunKey: c.RetryFailedLogMoveMaxJobsPerRun,
 				BucketsConfigTestResultsBucketKey:               c.TestResultsBucket,
 				BucketsConfigCredentialsKey:                     c.Credentials,
+			},
+			"$unset": bson.M{
+				// TODO (DEVPROD-37602): Remove the legacy field after the admin duration migration is complete.
+				BucketsConfigRetryFailedLogMoveLookbackDaysKey: "",
 			},
 		}),
 		"updating config section '%s'", c.SectionId(),
@@ -130,13 +150,27 @@ func (c *BucketsConfig) ValidateAndDefault() error {
 	catcher.Add(c.LogBucket.validate())
 	catcher.Add(c.LogBucketLongRetention.validate())
 	catcher.Add(c.LogBucketFailedTasks.validate())
-	if c.RetryFailedLogMoveLookbackDays < 0 {
+	if c.RetryFailedLogMoveLookback == 0 && c.RetryFailedLogMoveLookbackDays < 0 {
 		catcher.Add(errors.New("retry_failed_log_move_lookback_days cannot be negative"))
 	}
 	if c.RetryFailedLogMoveMaxJobsPerRun < 0 {
 		catcher.Add(errors.New("retry_failed_log_move_max_jobs_per_run cannot be negative"))
 	}
 	return catcher.Resolve()
+}
+
+// GetRetryFailedLogMoveLookback returns the effective retry lookback and
+// whether retries are disabled.
+func (c *BucketsConfig) GetRetryFailedLogMoveLookback() (time.Duration, bool) {
+	// TODO (DEVPROD-37602): Read RetryFailedLogMoveLookback directly after removing the legacy field.
+	lookback := ResolveAdminDuration(c.RetryFailedLogMoveLookback, c.RetryFailedLogMoveLookbackDays, 24*time.Hour)
+	if lookback < 0 {
+		return 0, true
+	}
+	if lookback == 0 {
+		return DefaultRetryFailedLogMoveLookback, false
+	}
+	return lookback, false
 }
 
 // GetLogBucket returns the appropriate log bucket based on if the project ID
