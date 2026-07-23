@@ -65,7 +65,7 @@ type Mutation {
   attachProjectToNewRepo(project: MoveProjectInput!): Project! # Has directive on MoveProjectInput.
   attachProjectToRepo(projectId: String! @requireRepoAccess(access: ADMIN) @requireProjectAccess(permission: SETTINGS, access: EDIT)): Project!
   createProject(project: CreateProjectInput! @requireProjectCreate): Project!
-  copyProject(project: CopyProjectInput!): Project!
+  copyProject(project: CopyProjectInput!): Project! # Has directive on CopyProjectInput.
   deactivateStepbackTask(opts: DeactivateStepbackTaskInput!): Boolean!
   defaultSectionToRepo(opts: DefaultSectionToRepoInput!): String
   deleteGithubAppCredentials(opts: DeleteGithubAppCredentialsInput!): DeleteGithubAppCredentialsPayload
@@ -75,7 +75,7 @@ type Mutation {
   promoteVarsToRepo(opts: PromoteVarsToRepoInput!): Boolean!
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings! # Has directive on ProjectSettingsInput.
   saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings! # Has directive on RepoSettingsInput.
-  setLastRevision(opts: SetLastRevisionInput!): SetLastRevisionPayload!
+  setLastRevision(opts: SetLastRevisionInput!): SetLastRevisionPayload! # Has directive on SetLastRevisionInput.
 
   # spawn
   attachVolumeToHost(volumeAndHost: VolumeHost!): Boolean! # Has directive on VolumeHost.
