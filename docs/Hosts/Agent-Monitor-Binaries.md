@@ -10,6 +10,6 @@ These paths are internal to Evergreen.
 | `<client_dir>/evergreen`    | Rolling agent binary downloaded by the monitor on each version change        | No — internal Evergreen use only    |
 | `~/evergreen`               | Compatibility copy of the current agent for workflows that still invoke it   | **No** — refreshed best-effort only |
 
-Some existing tasks invoke `~/evergreen` directly. The agent monitor refreshes this compatibility path best-effort whenever it downloads a new agent, but callers should not rely on it being available or current.
+Some existing tasks invoke `~/evergreen` directly. The agent monitor refreshes this compatibility path best-effort whenever it downloads a new agent, but new callers should not rely on it being available or current.
 
-**Do not build new features or task commands against `~/evergreen` or `~/evergreen_agent_monitor`.** Migrate callers to supported interfaces (spawn-host CLI layout, task-local tooling, etc.) instead.
+**Do not build new features or task commands against `~/evergreen_agent_monitor`.** Migrate callers to supported interfaces, like downloading the Evergreen binary inside your task's directory and using that download.
