@@ -196,7 +196,6 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.Overrides.Overrides[0].Field, settings.Overrides.Overrides[0].Field)
 	s.EqualValues(testSettings.Overrides.Overrides[0].Value, settings.Overrides.Overrides[0].Value)
 	s.EqualValues(testSettings.ParameterStore.Prefix, settings.ParameterStore.Prefix)
-	s.Equal(len(testSettings.Providers.AWS.EC2Keys), len(settings.Providers.AWS.EC2Keys))
 	s.EqualValues(testSettings.Providers.AWS.PersistentDNS.HostedZoneID, settings.Providers.AWS.PersistentDNS.HostedZoneID)
 	s.EqualValues(testSettings.Providers.AWS.PersistentDNS.Domain, settings.Providers.AWS.PersistentDNS.Domain)
 	s.Require().Len(testSettings.Providers.AWS.AccountRoles, len(settings.Providers.AWS.AccountRoles))

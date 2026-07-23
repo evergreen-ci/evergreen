@@ -17,11 +17,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
-	"github.com/evergreen-ci/evergreen/model/user"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,6 +31,9 @@ func TestGetRecentVersions(t *testing.T) {
 	require.NoError(t, env.Configure(ctx))
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
+
+	usr := addViewTasksPermission(t, "project_test")
+	t.Cleanup(func() { assert.NoError(t, db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection)) })
 
 	err = modelutil.CreateTestLocalConfig(ctx, buildTestConfig, "mci-test", "")
 	require.NoError(t, err, "Error loading local config mci-test")
@@ -125,7 +128,7 @@ func TestGetRecentVersions(t *testing.T) {
 
 		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
-		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
+		request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
 
 		response := httptest.NewRecorder()
 		// Need match variables to be set so can call mux.Vars(request)
@@ -200,7 +203,7 @@ func TestGetRecentVersions(t *testing.T) {
 
 		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
-		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
+		request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
 
 		response := httptest.NewRecorder()
 		// Need match variables to be set so can call mux.Vars(request)
@@ -235,6 +238,9 @@ func TestGetVersionInfo(t *testing.T) {
 	env.SetUserManager(serviceutil.MockUserManager{})
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
+
+	usr := addViewTasksPermission(t, "project_test")
+	t.Cleanup(func() { assert.NoError(t, db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection)) })
 
 	err = modelutil.CreateTestLocalConfig(ctx, buildTestConfig, "mci-test", "")
 	require.NoError(t, err, "Error loading local config mci-test")
@@ -285,7 +291,7 @@ func TestGetVersionInfo(t *testing.T) {
 
 		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
-		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
+		request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
 
 		response := httptest.NewRecorder()
 		// Need match variables to be set so can call mux.Vars(request)
@@ -302,7 +308,7 @@ func TestGetVersionInfo(t *testing.T) {
 		url := "/rest/v1/versions/" + versionId
 		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
-		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
+		request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
 
 		response := httptest.NewRecorder()
 		// Need match variables to be set so can call mux.Vars(request)
@@ -326,6 +332,9 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 	require.NoError(t, env.Configure(ctx))
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
+
+	usr := addViewTasksPermission(t, "project_test")
+	t.Cleanup(func() { assert.NoError(t, db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection)) })
 
 	projectName := "project_test"
 
@@ -369,7 +378,7 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 
 		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
-		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
+		request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
 
 		response := httptest.NewRecorder()
 		// Need match variables to be set so can call mux.Vars(request)
@@ -387,7 +396,7 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 
 		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
-		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
+		request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
 
 		response := httptest.NewRecorder()
 		// Need match variables to be set so can call mux.Vars(request)
@@ -597,9 +606,12 @@ func TestGetVersionStatus(t *testing.T) {
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
 
+	usr := addViewTasksPermission(t, "test-project")
+	t.Cleanup(func() { assert.NoError(t, db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection)) })
+
 	Convey("When finding the status of a particular version", t, func() {
-		require.NoError(t, db.ClearCollections(build.Collection, task.Collection),
-			"Error clearing '%v' collection", build.Collection)
+		require.NoError(t, db.ClearCollections(build.Collection, task.Collection, model.VersionCollection, model.ProjectRefCollection),
+			"Error clearing collections")
 
 		versionId := "my-version"
 
@@ -628,7 +640,7 @@ func TestGetVersionStatus(t *testing.T) {
 
 			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
-			request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
+			request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
 
 			response := httptest.NewRecorder()
 			// Need match variables to be set so can call mux.Vars(request)
@@ -671,7 +683,7 @@ func TestGetVersionStatus(t *testing.T) {
 
 				request, err := http.NewRequest("GET", url, nil)
 				So(err, ShouldBeNil)
-				request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
+				request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
 
 				_response := httptest.NewRecorder()
 				// Need match variables to be set so can call mux.Vars(request)
@@ -689,7 +701,7 @@ func TestGetVersionStatus(t *testing.T) {
 
 			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
-			request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
+			request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
 
 			response := httptest.NewRecorder()
 			// Need match variables to be set so can call mux.Vars(request)
@@ -734,7 +746,7 @@ func TestGetVersionStatus(t *testing.T) {
 
 			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
-			request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
+			request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
 
 			response := httptest.NewRecorder()
 			// Need match variables to be set so can call mux.Vars(request)
@@ -762,7 +774,7 @@ func TestGetVersionStatus(t *testing.T) {
 
 			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
-			request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
+			request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
 
 			response := httptest.NewRecorder()
 			// Need match variables to be set so can call mux.Vars(request)
@@ -792,7 +804,7 @@ func TestGetVersionStatus(t *testing.T) {
 
 			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
-			request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
+			request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
 
 			response := httptest.NewRecorder()
 			// Need match variables to be set so can call mux.Vars(request)
