@@ -1,7 +1,6 @@
 package distro
 
 import (
-	"context"
 	"sort"
 	"testing"
 
@@ -12,8 +11,7 @@ import (
 )
 
 func TestDistroAliases(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	t.Run("OrderAliases", func(t *testing.T) {
 		t.Run("Containers", func(t *testing.T) {

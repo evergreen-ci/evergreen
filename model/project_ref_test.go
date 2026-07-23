@@ -970,8 +970,7 @@ func TestGetActivationTimeWithCron(t *testing.T) {
 }
 
 func TestAttachToNewRepo(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
 		evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection, githubapp.GitHubAppCollection))
@@ -1094,8 +1093,7 @@ func checkRepoAttachmentEventLog(t *testing.T, project ProjectRef, attachmentTyp
 }
 
 func TestAttachToRepo(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ProjectVarsCollection, evergreen.ScopeCollection,
 		evergreen.RoleCollection, user.Collection, event.EventCollection, evergreen.ConfigCollection))
@@ -1269,8 +1267,7 @@ func checkParametersNamespacedByProject(t *testing.T, vars ProjectVars) {
 }
 
 func TestDetachFromRepo(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	for name, test := range map[string]func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser){
 		"ProjectRefIsUpdatedCorrectly": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
@@ -2122,8 +2119,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 		evergreen.ScopeCollection, ProjectVarsCollection, fakeparameter.Collection, ProjectAliasCollection, githubapp.GitHubAppCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	doc1 := &ProjectRef{
 		Id:                   "id1",
 		Owner:                "mongodb",
@@ -2941,8 +2937,7 @@ func TestAddEmptyBranch(t *testing.T) {
 }
 
 func TestAddPermissions(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(user.Collection, ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
@@ -3008,8 +3003,7 @@ func TestAddPermissions(t *testing.T) {
 }
 
 func TestUpdateAdminRoles(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, user.Collection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	env := testutil.NewEnvironment(ctx, t)
@@ -3052,8 +3046,7 @@ func TestUpdateAdminRoles(t *testing.T) {
 }
 
 func TestUpdateAdminRolesError(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, user.Collection))
 	env := testutil.NewEnvironment(ctx, t)
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
@@ -3117,7 +3110,7 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 	}))
 
 	// total of 100 tasks eligible to be found
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		myTask := task.Task{
 			Id:                  fmt.Sprintf("t%d", i),
 			RevisionOrderNumber: 100 - (i / 2),
@@ -3571,8 +3564,7 @@ func TestMergeWithProjectConfig(t *testing.T) {
 }
 
 func TestSaveProjectPageForSection(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 
@@ -3674,8 +3666,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 }
 
 func TestValidateOwnerAndRepo(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ConfigCollection))
 

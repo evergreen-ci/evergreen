@@ -173,7 +173,7 @@ func (it *chunkIterator) Close() error {
 
 func filterChunksByTimeRange(chunks []chunkInfo, start, end *int64) []chunkInfo {
 	var filteredChunks []chunkInfo
-	for i := 0; i < len(chunks); i++ {
+	for i := range chunks {
 		if (end != nil && utility.FromInt64Ptr(end) < chunks[i].start) || utility.FromInt64Ptr(start) > chunks[i].end {
 			continue
 		}

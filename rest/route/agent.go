@@ -495,7 +495,7 @@ func (h *getProjectRefHandler) Run(ctx context.Context) gimlet.Responder {
 	isUserRequest := user != nil
 	// If from debug session request, return minimal response
 	if isUserRequest {
-		redactedProjectRef := map[string]interface{}{
+		redactedProjectRef := map[string]any{
 			"repo_name":      p.Repo,
 			"branch_name":    p.Branch,
 			"owner_name":     p.Owner,

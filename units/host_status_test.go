@@ -21,8 +21,7 @@ import (
 )
 
 func TestCloudStatusJob(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	assert := assert.New(t)
@@ -124,8 +123,7 @@ func TestCloudStatusJob(t *testing.T) {
 }
 
 func TestTerminateUnknownHosts(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	require.NoError(t, db.ClearCollections(host.Collection))
@@ -145,8 +143,7 @@ func TestTerminateUnknownHosts(t *testing.T) {
 }
 
 func TestSetCloudHostStatus(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager){

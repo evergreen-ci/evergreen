@@ -102,11 +102,11 @@ func parseUserData(userData string) (*userData, error) {
 func extractDirective(userData string) (directive userdata.Directive, userDataWithoutDirective string, err error) {
 	userData = strings.TrimSpace(userData)
 	var firstLine string
-	index := strings.IndexByte(userData, '\n')
-	if index == -1 {
+	before, _, ok := strings.Cut(userData, "\n")
+	if !ok {
 		firstLine = userData
 	} else {
-		firstLine = userData[:index]
+		firstLine = before
 	}
 	firstLine = strings.TrimSpace(firstLine)
 

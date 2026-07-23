@@ -1,10 +1,8 @@
 //go:build !race
-// +build !race
 
 package cloud
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -54,8 +52,7 @@ func TestSpawnEC2InstanceFleet(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	testConfig := env.Settings()
 	testConfig.SSH.TaskHostKey.Name = "evergreen-task-hosts"

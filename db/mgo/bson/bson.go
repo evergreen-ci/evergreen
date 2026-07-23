@@ -666,7 +666,7 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 				if inlineMap >= 0 {
 					return nil, errors.New("Multiple ,inline maps in struct " + st.String())
 				}
-				if field.Type.Key() != reflect.TypeOf("") {
+				if field.Type.Key() != reflect.TypeFor[string]() {
 					return nil, errors.New("Option ,inline needs a map with string keys in struct " + st.String())
 				}
 				inlineMap = info.Num

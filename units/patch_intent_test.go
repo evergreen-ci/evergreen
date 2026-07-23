@@ -1495,7 +1495,7 @@ func (s *PatchIntentUnitsSuite) verifyVersionDoc(patchDoc *patch.Patch, expected
 
 	s.Require().Len(versionDoc.BuildVariants, builds)
 
-	for i := 0; i < builds; i++ {
+	for i := range builds {
 		s.True(versionDoc.BuildVariants[i].Activated)
 		s.Zero(versionDoc.BuildVariants[i].ActivateAt)
 		s.NotEmpty(versionDoc.BuildVariants[i].BuildId)
@@ -1628,7 +1628,7 @@ func (s *PatchIntentUnitsSuite) TestProcessTriggerAliases() {
 	s.Require().NoError(latestVersion.Insert(s.ctx))
 
 	latestVersionParserProject := &model.ParserProject{}
-	s.Require().NoError(util.UnmarshalYAML([]byte(`
+	s.Require().NoError(util.UnmarshalYAMLWithFallback([]byte(`
 buildvariants:
 - name: my-build-variant
   display_name: my-build-variant
@@ -1716,7 +1716,7 @@ func (s *PatchIntentUnitsSuite) TestTriggerAliasWithDownstreamRevision() {
 	s.Require().NoError(specificRevision.Insert(s.ctx))
 
 	specificVersionParserProject := &model.ParserProject{}
-	s.Require().NoError(util.UnmarshalYAML([]byte(`
+	s.Require().NoError(util.UnmarshalYAMLWithFallback([]byte(`
 buildvariants:
 - name: my-build-variant
   display_name: my-build-variant
@@ -1782,7 +1782,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTriggerPatchDocGithubPRParentModule() {
 	s.Require().NoError(latestVersion.Insert(s.ctx))
 
 	latestVersionParserProject := &model.ParserProject{}
-	s.Require().NoError(util.UnmarshalYAML([]byte(`
+	s.Require().NoError(util.UnmarshalYAMLWithFallback([]byte(`
 buildvariants:
 - name: my-build-variant
   display_name: my-build-variant
@@ -1858,7 +1858,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTriggerPatchDocGithubPRParentSameBranch
 	s.Require().NoError(latestVersion.Insert(s.ctx))
 
 	latestVersionParserProject := &model.ParserProject{}
-	s.Require().NoError(util.UnmarshalYAML([]byte(`
+	s.Require().NoError(util.UnmarshalYAMLWithFallback([]byte(`
 buildvariants:
 - name: my-build-variant
   display_name: my-build-variant
@@ -1964,7 +1964,7 @@ func (s *PatchIntentUnitsSuite) TestProcessTriggerAliasesWithAliasThatDoesNotMat
 	s.Require().NoError(latestVersion.Insert(s.ctx))
 
 	latestVersionParserProject := &model.ParserProject{}
-	s.Require().NoError(util.UnmarshalYAML([]byte(`
+	s.Require().NoError(util.UnmarshalYAMLWithFallback([]byte(`
 buildvariants:
 - name: my-build-variant
   display_name: my-build-variant
@@ -2037,7 +2037,7 @@ func (s *PatchIntentUnitsSuite) TestProcessTriggerAliasesWithInadequatePermissio
 	s.Require().NoError(latestVersion.Insert(s.ctx))
 
 	latestVersionParserProject := &model.ParserProject{}
-	s.Require().NoError(util.UnmarshalYAML([]byte(`
+	s.Require().NoError(util.UnmarshalYAMLWithFallback([]byte(`
 buildvariants:
 - name: my-build-variant
   display_name: my-build-variant

@@ -24,8 +24,7 @@ import (
 const monitorTestTimeout = 10 * time.Second
 
 func TestAgentMonitorWithJasper(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	jasperPort := evergreen.DefaultJasperPort
 	port := defaultMonitorPort

@@ -3,6 +3,7 @@ package operations
 import (
 	"context"
 	"fmt"
+	"maps"
 	"os"
 	"strings"
 
@@ -34,6 +35,7 @@ const (
 	testSelectionIncludeTasksFlagName    = "test-selection-include-tasks"
 	testSelectionExcludeVariantsFlagName = "test-selection-exclude-variants"
 	testSelectionExcludeTasksFlagName    = "test-selection-exclude-tasks"
+	emptyFlagName                        = "empty"
 )
 
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
@@ -56,9 +58,13 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 				Name:  joinFlagNames(tasksFlagName, "t"),
 				Usage: "task names (\"all\" for all tasks)",
 			},
-			cli.StringFlag{
+			cli.BoolFlag{
+				Name:  emptyFlagName,
+				Usage: "create a patch with no tasks selected, ignoring the default alias",
+			},
+			cli.StringSliceFlag{
 				Name:  joinFlagNames(patchAliasFlagName, "a"),
-				Usage: "patch alias (set by project admin) or local alias (set individually in evergreen.yml)",
+				Usage: "patch alias (set by project admin) or local alias (set individually in evergreen.yml); repeat the flag to apply multiple aliases",
 			},
 			cli.StringFlag{
 				Name:  joinFlagNames(patchDescriptionFlagName, "d"),
@@ -163,7 +169,7 @@ func Patch() cli.Command {
 				Browse:                             c.Bool(patchBrowseFlagName),
 				ShowSummary:                        c.Bool(patchVerboseFlagName),
 				Large:                              c.Bool(largeFlagName),
-				Alias:                              c.String(patchAliasFlagName),
+				Aliases:                            utility.SplitCommas(c.StringSlice(patchAliasFlagName)),
 				Ref:                                c.String(refFlagName),
 				Uncommitted:                        c.Bool(uncommittedChangesFlag),
 				PreserveCommits:                    c.Bool(preserveCommitsFlag),
@@ -172,6 +178,7 @@ func Patch() cli.Command {
 				RepeatDefinition:                   c.Bool(repeatDefinitionFlag) || c.String(repeatPatchIdFlag) != "",
 				RepeatFailed:                       c.Bool(repeatFailedDefinitionFlag),
 				IncludeModules:                     c.Bool(includeModulesFlag),
+				SelectNone:                         c.Bool(emptyFlagName),
 			}
 
 			var err error
@@ -240,7 +247,7 @@ func Patch() cli.Command {
 			hasTasksOrVariants := len(params.Tasks) > 0 || len(params.Variants) > 0
 			hasRegexTasksOrVariants := len(params.RegexTasks) > 0 || len(params.RegexVariants) > 0
 
-			if isReusing && (hasTasksOrVariants || hasRegexTasksOrVariants || len(params.Alias) > 0) {
+			if isReusing && (hasTasksOrVariants || hasRegexTasksOrVariants || len(params.Aliases) > 0) {
 				return errors.Errorf("can't define tasks, variants, regex tasks, regex variants or aliases when reusing previous patch's tasks and variants")
 			}
 
@@ -260,9 +267,7 @@ func Patch() cli.Command {
 			// Initialize module path cache in case these have already been set by the user. We use a cache here
 			// to avoid asking the user repeatedly for paths, in the case that they aren't writing them back to their configuration file.
 			modulePathCache := conf.getModulePathsForProject(params.Project)
-			for moduleName, modulePath := range params.IncludeModuleOverrides {
-				modulePathCache[moduleName] = modulePath
-			}
+			maps.Copy(modulePathCache, params.IncludeModuleOverrides)
 			if params.IncludeModules {
 				if !outputJSON {
 					fmt.Fprint(os.Stderr, "Using --include-modules will apply module configuration changes to the patch "+
@@ -481,7 +486,7 @@ func PatchFile() cli.Command {
 				Project:          c.String(projectFlagName),
 				Variants:         utility.SplitCommas(c.StringSlice(variantsFlagName)),
 				Tasks:            utility.SplitCommas(c.StringSlice(tasksFlagName)),
-				Alias:            c.String(patchAliasFlagName),
+				Aliases:          utility.SplitCommas(c.StringSlice(patchAliasFlagName)),
 				SkipConfirm:      c.Bool(skipConfirmFlagName) || outputJSON,
 				Description:      c.String(patchDescriptionFlagName),
 				AutoDescription:  c.Bool(autoDescriptionFlag),
@@ -608,7 +613,7 @@ func getLocalModuleIncludes(ctx context.Context, params *patchParams, conf *Clie
 		return nil, errors.Wrapf(err, "reading local project config '%s'", remotePath)
 	}
 	p := model.ParserProject{}
-	if err := util.UnmarshalYAML(yml, &p); err != nil {
+	if err := util.UnmarshalYAMLWithFallback(yml, &p); err != nil {
 		yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
 		return nil, errors.Wrap(yamlErr, "unmarshalling parser project from local project config")
 	}

@@ -19,8 +19,7 @@ func TestS3CopyExecute(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 			conf := &internal.TaskConfig{
 				Task: task.Task{
 					Id:           "id",

@@ -78,8 +78,7 @@ func getURL(projectID string, parameters map[string]any) string {
 
 func TestReliabilityParseParameters(t *testing.T) {
 
-	groupContext, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	groupContext := t.Context()
 
 	for opName, opTests := range map[string]func(context.Context, *testing.T, evergreen.Environment){
 		"Tasks": func(paginationContext context.Context, t *testing.T, env evergreen.Environment) {
@@ -369,8 +368,7 @@ func TestReliabilityParseParameters(t *testing.T) {
 }
 
 func TestReliabilityParse(t *testing.T) {
-	groupContext, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	groupContext := t.Context()
 
 	for opName, opTests := range map[string]func(context.Context, *testing.T, evergreen.Environment){
 		"Parse": func(paginationContext context.Context, t *testing.T, env evergreen.Environment) {
@@ -476,8 +474,7 @@ func TestReliabilityParse(t *testing.T) {
 }
 
 func TestReliabilityRun(t *testing.T) {
-	groupContext, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	groupContext := t.Context()
 	require.NoError(t, db.ClearCollections(taskstats.DailyTaskStatsCollection, model.ProjectRefCollection))
 	proj := model.ProjectRef{
 		Id: "project",
@@ -532,7 +529,7 @@ func TestReliabilityRun(t *testing.T) {
 					// 100 documents are available but only 1 will be returned
 					day := time.Now()
 					tasks := []string{}
-					for i := 0; i < 100; i++ {
+					for i := range 100 {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
 						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
@@ -576,7 +573,7 @@ func TestReliabilityRun(t *testing.T) {
 					// limit + 1 documents are available but only limit will be returned
 					day := time.Now()
 					tasks := []string{}
-					for i := 0; i < 1001; i++ {
+					for i := range 1001 {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
 						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
@@ -626,7 +623,7 @@ func TestReliabilityRun(t *testing.T) {
 					// limit - 1 documents are available.
 					day := time.Now()
 					tasks := []string{}
-					for i := 0; i < 99; i++ {
+					for i := range 99 {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
 						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
@@ -675,7 +672,7 @@ func TestReliabilityRun(t *testing.T) {
 					// limit + 1 documents are available.
 					day := time.Now()
 					tasks := []string{}
-					for i := 0; i < 101; i++ {
+					for i := range 101 {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
 						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
@@ -758,8 +755,7 @@ func withSetupAndTeardown(t *testing.T, fn func()) {
 
 func TestReliability(t *testing.T) {
 	require.NoError(t, db.ClearCollections(taskstats.DailyTaskStatsCollection, model.ProjectRefCollection))
-	groupContext, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	groupContext := t.Context()
 
 	proj := model.ProjectRef{
 		Id: "project",
@@ -785,7 +781,7 @@ func TestReliability(t *testing.T) {
 					// 1 page size of documents are available but 2 page sizes requested.
 					day := time.Now()
 					tasks := []string{}
-					for i := 0; i < pageSize; i++ {
+					for i := range pageSize {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
 						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
@@ -836,7 +832,7 @@ func TestReliability(t *testing.T) {
 					// 1 page size of documents will be returned
 					day := time.Now()
 					tasks := []string{}
-					for i := 0; i < pageSize; i++ {
+					for i := range pageSize {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
 						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
