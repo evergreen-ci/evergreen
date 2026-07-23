@@ -3,6 +3,7 @@ package graphql
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -340,10 +341,8 @@ func (r *versionResolver) TaskQuarantinedTestsSample(ctx context.Context, obj *r
 	resultTaskIDs := map[string]struct{}{}
 	execTaskIDSet := map[string]struct{}{}
 	addAPISampleForTask := func(taskID string, apiSample *testresult.TaskTestResultsQuarantinedSample) {
-		for _, existingSample := range apiSamplesByTaskID[taskID] {
-			if existingSample == apiSample {
-				return
-			}
+		if slices.Contains(apiSamplesByTaskID[taskID], apiSample) {
+			return
 		}
 		apiSamplesByTaskID[taskID] = append(apiSamplesByTaskID[taskID], apiSample)
 	}
