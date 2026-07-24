@@ -215,7 +215,7 @@ func (s *VersionActivationSuite) TestDoProjectActivationMultipleUnactivatedCommi
 
 	projectRef := &ProjectRef{
 		Id:                     projectID,
-		RunEveryMainlineCommit: true,
+		RunEveryMainlineCommit: utility.TruePtr(),
 	}
 	require.NoError(projectRef.Insert(s.ctx))
 
@@ -348,7 +348,7 @@ func (s *VersionActivationSuite) TestDoProjectActivationNewProject() {
 
 	projectRef := &ProjectRef{
 		Id:                     projectID,
-		RunEveryMainlineCommit: true,
+		RunEveryMainlineCommit: utility.TruePtr(),
 	}
 	require.NoError(projectRef.Insert(s.ctx))
 
@@ -450,7 +450,7 @@ func (s *VersionActivationSuite) TestDoProjectActivationSingleCommitBehaviorPres
 
 	projectRef := &ProjectRef{
 		Id:                     projectID,
-		RunEveryMainlineCommit: true,
+		RunEveryMainlineCommit: utility.TruePtr(),
 	}
 	require.NoError(projectRef.Insert(s.ctx))
 
@@ -558,7 +558,7 @@ func (s *VersionActivationSuite) TestDoProjectActivationNoVersionsToActivate() {
 
 	projectRef := &ProjectRef{
 		Id:                     projectID,
-		RunEveryMainlineCommit: true,
+		RunEveryMainlineCommit: utility.TruePtr(),
 	}
 	require.NoError(projectRef.Insert(s.ctx))
 

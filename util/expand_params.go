@@ -91,7 +91,7 @@ func expandStruct(inputVal reflect.Value, expansions *Expansions) error {
 
 	// find any values with an expandable tag
 	numFields := inputVal.NumField()
-	for i := 0; i < numFields; i++ {
+	for i := range numFields {
 		field := inputVal.Type().Field(i)
 		fieldTag := field.Tag.Get(pluginTagPrefix)
 

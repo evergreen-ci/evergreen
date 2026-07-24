@@ -13,8 +13,7 @@ import (
 )
 
 func TestDirectoryRun(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	for _, test := range []struct {
 		name     string

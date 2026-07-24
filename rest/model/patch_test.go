@@ -1,7 +1,6 @@
 package model
 
 import (
-	"context"
 	"strings"
 	"testing"
 	"time"
@@ -170,8 +169,7 @@ func TestAddChildPatchesCostToParent(t *testing.T) {
 }
 
 func TestAPIPatchBuildModuleChanges(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	originalEnv := evergreen.GetEnvironment()
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)

@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -27,8 +26,7 @@ import (
 var buildTestConfig = testutil.TestConfig()
 
 func TestGetBuildInfo(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 	router, err := newTestUIRouter(ctx, env)
@@ -177,8 +175,7 @@ func TestGetBuildInfo(t *testing.T) {
 }
 
 func TestGetBuildStatus(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 	router, err := newTestUIRouter(ctx, env)

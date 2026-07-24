@@ -42,6 +42,11 @@ type OktaConfig struct {
 	Scopes             []string `bson:"scopes" json:"scopes" yaml:"scopes"`
 	UserGroup          string   `bson:"user_group" json:"user_group" yaml:"user_group"`
 	ExpireAfterMinutes int      `bson:"expire_after_minutes" json:"expire_after_minutes" yaml:"expire_after_minutes"`
+	// ExpectedEmailDomains is the allow-list of email domains whose local-part may
+	// be used as the username. Emails from other domains keep their full address,
+	// so accounts sharing a local-part across domains cannot collide. Empty strips
+	// the domain unconditionally (legacy behavior).
+	ExpectedEmailDomains []string `bson:"expected_email_domains" json:"expected_email_domains" yaml:"expected_email_domains"`
 }
 
 // GithubAuthConfig contains settings for interacting with Github Authentication

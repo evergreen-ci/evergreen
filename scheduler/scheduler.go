@@ -185,7 +185,7 @@ func CreateIntentHosts(ctx context.Context, d distro.Distro, newHostsNeeded int)
 		return nil, errors.New("scheduling run canceled")
 	}
 
-	for i := 0; i < newHostsNeeded; i++ {
+	for range newHostsNeeded {
 		intent := generateIntentHost(d)
 		hostsSpawned = append(hostsSpawned, *intent)
 	}

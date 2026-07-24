@@ -1247,7 +1247,7 @@ func concurrentlyBuildVersionsMatchingTasksMap(ctx context.Context, versions []m
 	// Limit number of parallel requests to the DB.
 	const maxParallel = 20
 	workers := util.Min(maxParallel, len(versions))
-	for i := 0; i < workers; i++ {
+	for range workers {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

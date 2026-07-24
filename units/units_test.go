@@ -1,7 +1,6 @@
 package units
 
 import (
-	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -13,8 +12,7 @@ import (
 )
 
 func TestAllRegisteredUnitsAreRemoteSafe(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	testutil.TestSpan(ctx, t)
 
 	assert := assert.New(t)

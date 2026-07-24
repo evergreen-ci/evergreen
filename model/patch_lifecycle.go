@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"time"
 
@@ -227,8 +228,8 @@ func addDisplayTasksToPatchReq(req *PatchUpdate, p Project) {
 		if bv == nil {
 			continue
 		}
-		for i := len(vt.Tasks) - 1; i >= 0; i-- {
-			task := vt.Tasks[i]
+		for i, task := range slices.Backward(vt.Tasks) {
+
 			displayTask := bv.GetDisplayTask(task)
 			if displayTask == nil {
 				continue
@@ -550,20 +551,20 @@ func parseRenamedOrCopiedFile(patchContents, filename string) string {
 	isRenamed := false
 	isCopied := false
 	for _, line := range lines {
-		if strings.HasPrefix(line, "rename from ") {
-			renameFrom = strings.TrimPrefix(line, "rename from ")
-		} else if strings.HasPrefix(line, "rename to ") {
-			renameTo = strings.TrimPrefix(line, "rename to ")
+		if after, ok := strings.CutPrefix(line, "rename from "); ok {
+			renameFrom = after
+		} else if after, ok := strings.CutPrefix(line, "rename to "); ok {
+			renameTo = after
 			if renameTo == filename {
 				isRenamed = true
 				break
 			}
 		}
 
-		if strings.HasPrefix(line, "copy from ") {
-			copyFrom = strings.TrimPrefix(line, "copy from ")
-		} else if strings.HasPrefix(line, "copy to ") {
-			copyTo = strings.TrimPrefix(line, "copy to ")
+		if after, ok := strings.CutPrefix(line, "copy from "); ok {
+			copyFrom = after
+		} else if after, ok := strings.CutPrefix(line, "copy to "); ok {
+			copyTo = after
 			if copyTo == filename {
 				isCopied = true
 				break
@@ -912,7 +913,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, transl
 		const maxRetries = 5
 		const baseBackoffMilliseconds = 100
 
-		for attempt := 0; attempt < maxRetries; attempt++ {
+		for attempt := range maxRetries {
 			if attempt > 0 {
 				backoffMilliseconds := baseBackoffMilliseconds << uint(attempt-1)
 				backoff := time.Duration(backoffMilliseconds) * time.Millisecond

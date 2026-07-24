@@ -20,8 +20,7 @@ import (
 )
 
 func TestSpawnhostExpirationCheckJob(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	config := testutil.TestConfig()

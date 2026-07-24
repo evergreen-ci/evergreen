@@ -71,7 +71,7 @@ func TestFakeSSMClient(t *testing.T) {
 			assert.WithinDuration(t, time.Now(), dbParam.LastUpdated, time.Second, "last updated time should be bumped")
 		},
 		"PutParameterReplacesExistingParameterWithOverwrite": func(ctx context.Context, t *testing.T, c *FakeSSMClient, params []FakeParameter) {
-			for i := 0; i < 3; i++ {
+			for i := range 3 {
 				p := params[0]
 				newValue := fmt.Sprintf("%s-%d", p.Value, i)
 				input := &ssm.PutParameterInput{
@@ -238,13 +238,12 @@ func TestFakeSSMClient(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			require.NoError(t, db.ClearCollections(Collection))
 
 			var params []FakeParameter
-			for i := 0; i < 5; i++ {
+			for i := range 5 {
 				params = append(params, FakeParameter{
 					Name:  fmt.Sprintf("name-%d", i),
 					Value: fmt.Sprintf("value-%d", i),

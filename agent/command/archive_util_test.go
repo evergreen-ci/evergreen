@@ -22,8 +22,7 @@ import (
 )
 
 func TestFindContentsToArchive(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	thisDir := testutil.GetDirectoryOfFile()
 	t.Run("FindsFiles", func(t *testing.T) {
@@ -209,8 +208,7 @@ func TestBuildArchiveVerbose(t *testing.T) {
 	defer gz.Close()
 	defer tarWriter.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	rootPath := filepath.Join(testDir, "testdata", "archive", "artifacts_in")
 	pathsToAdd, _, err := findContentsToArchive(ctx, rootPath, []string{"dir1/**"}, []string{})
 	require.NoError(t, err)

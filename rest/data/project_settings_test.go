@@ -1,7 +1,6 @@
 package data
 
 import (
-	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -21,8 +20,7 @@ import (
 )
 
 func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	rm := env.RoleManager()
 
@@ -262,8 +260,7 @@ func makeInternalAlias(alias string) restModel.APIProjectAlias {
 }
 
 func TestSaveProjectSettingsForSection(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	rm := env.RoleManager()
 
@@ -1422,8 +1419,7 @@ func TestPromoteVarsToRepo(t *testing.T) {
 }
 
 func TestCopyProject(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "oldAdmin"})
 	env := testutil.NewEnvironment(ctx, t)
 	rm := env.RoleManager()

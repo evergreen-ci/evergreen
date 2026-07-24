@@ -2597,7 +2597,7 @@ func UpdateDisplayTaskForTask(ctx context.Context, t *task.Task) error {
 		updatedDisplayTask  *task.Task
 		err                 error
 	)
-	for i := 0; i < maxUpdateAttempts; i++ {
+	for i := range maxUpdateAttempts {
 		// Clear the cached display task, if any (e.g. due to a prior
 		// GetDisplayTask). The display task fetched here must always contain
 		// the latest display task data.

@@ -1,7 +1,6 @@
 package cloud
 
 import (
-	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -11,8 +10,7 @@ import (
 )
 
 func TestGetManager(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 
 	Convey("GetManager() should return non-nil for all valid provider names", t, func() {

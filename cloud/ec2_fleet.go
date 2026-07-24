@@ -317,6 +317,28 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 		instanceID = aws.ToString(instance.InstanceId)
 	}
 
+	// Any host that has been unexpirable will have been given a DNS name, which we need to clean up.
+	if h.PersistentDNSName != "" {
+		dnsName := h.PersistentDNSName
+		err := deleteHostPersistentDNSName(ctx, m.env, h, m.client)
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message":    "could not delete host's persistent DNS name",
+			"op":         "delete",
+			"dashboard":  "evergreen sleep schedule health",
+			"host_id":    h.Id,
+			"started_by": h.StartedBy,
+			"dns_name":   dnsName,
+		}))
+		grip.InfoWhen(ctx, err == nil, message.Fields{
+			"message":    "deleted host's persistent DNS name",
+			"op":         "delete",
+			"dashboard":  "evergreen sleep schedule health",
+			"host_id":    h.Id,
+			"started_by": h.StartedBy,
+			"dns_name":   dnsName,
+		})
+	}
+
 	resp, err := m.client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
 		InstanceIds: []string{instanceID},
 	})
@@ -349,6 +371,37 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 		"association_id": h.IPAssociationID,
 		"allocation_id":  h.IPAllocationID,
 	}))
+
+	for _, vol := range h.Volumes {
+		volDB, err := host.FindVolumeByID(ctx, vol.VolumeID)
+		if err != nil {
+			return errors.Wrap(err, "finding volumes for host")
+		}
+		if volDB == nil {
+			continue
+		}
+
+		if volDB.Expiration.Before(time.Now().Add(evergreen.UnattachedVolumeExpiration)) {
+			if err = m.ec2Mgr.modifyVolumeExpiration(ctx, volDB, time.Now().Add(evergreen.UnattachedVolumeExpiration)); err != nil {
+				grip.Error(ctx, message.WrapError(err, message.Fields{
+					"message": "error updating volume expiration",
+					"user":    user,
+					"host_id": h.Id,
+					"volume":  volDB.ID,
+				}))
+				return errors.Wrapf(err, "updating expiration for volume '%s'", volDB.ID)
+			}
+		}
+
+		if err = host.UnsetVolumeHost(ctx, volDB.ID); err != nil {
+			grip.Error(ctx, message.WrapError(err, message.Fields{
+				"host_id":   h.Id,
+				"volume_id": volDB.ID,
+				"op":        "terminating host",
+				"message":   "problem un-setting host info on volume records",
+			}))
+		}
+	}
 
 	return errors.Wrap(h.Terminate(ctx, user, reason), "terminating instance in DB")
 }

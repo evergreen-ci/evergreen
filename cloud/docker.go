@@ -2,6 +2,7 @@ package cloud
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"time"
 
@@ -280,8 +281,8 @@ func (m *dockerManager) RemoveOldestImage(ctx context.Context, h *host.Host) err
 		return errors.Wrap(err, "listing images")
 	}
 
-	for i := len(images) - 1; i >= 0; i-- {
-		id := images[i].ID
+	for _, image := range slices.Backward(images) {
+		id := image.ID
 		canBeRemoved, err := m.canImageBeRemoved(ctx, h, id)
 		if err != nil {
 			return errors.Wrapf(err, "checking whether containers are running on image '%s'", id)

@@ -340,6 +340,11 @@ gqlgen:
 govul-install:
 	$(gobin) install golang.org/x/vuln/cmd/govulncheck@v1.1.4
 
+# modernize guards against regressions of the Go modernization from DEVPROD-21825. See scripts/check-modernize.sh.
+modernize:
+	@bash scripts/check-modernize.sh
+phony += modernize
+
 swaggo:
 	$(MAKE) swaggo-format swaggo-build swaggo-render
 

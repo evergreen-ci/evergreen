@@ -31,8 +31,7 @@ func taskIdInSlice(tasks []task.Task, id string) bool {
 }
 
 func TestTaskSetPriority(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With a task", t, func() {
 
@@ -180,8 +179,7 @@ func TestTaskSetPriority(t *testing.T) {
 }
 
 func TestBuildSetPriority(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With a build", t, func() {
 
@@ -220,8 +218,7 @@ func TestBuildSetPriority(t *testing.T) {
 }
 
 func TestBuildRestart(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, VersionCollection, build.Collection))
@@ -415,8 +412,7 @@ func TestBuildRestart(t *testing.T) {
 }
 
 func TestBuildMarkAborted(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With a build", t, func() {
 
@@ -672,8 +668,7 @@ func TestModifyVersionScheduling(t *testing.T) {
 }
 
 func TestSetVersionActivation(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
 
@@ -1864,8 +1859,7 @@ func TestCreateTaskGroup(t *testing.T) {
 }
 
 func TestGetTaskIdTable(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(task.Collection))
 
@@ -2249,8 +2243,7 @@ func TestSortTasks(t *testing.T) {
 }
 
 func TestVersionRestart(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -2321,8 +2314,7 @@ func TestVersionRestart(t *testing.T) {
 }
 
 func TestDisplayTaskRestart(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	displayTasks := []string{"displayTask1"}
@@ -2426,8 +2418,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 }
 
 func TestResetTaskOrDisplayTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, settings *evergreen.Settings){
 		"ResettingExecutionTaskResetsDisplayTask": func(ctx context.Context, t *testing.T, settings *evergreen.Settings) {
@@ -2775,8 +2766,7 @@ func TestCreateTasksFromGroup(t *testing.T) {
 }
 
 func TestMarkAsHostDispatched(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	var (
 		taskId       string
@@ -2836,8 +2826,7 @@ func TestMarkAsHostDispatched(t *testing.T) {
 }
 
 func TestSetTaskActivationForBuildsActivated(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
 
@@ -2903,8 +2892,7 @@ func TestSetTaskActivationForBuildsActivated(t *testing.T) {
 }
 
 func TestSetTaskActivationForBuildsWithIgnoreTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
 
@@ -2941,8 +2929,7 @@ func TestSetTaskActivationForBuildsWithIgnoreTasks(t *testing.T) {
 }
 
 func TestSetTaskActivationForBuildsDeactivated(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
 
@@ -2975,8 +2962,7 @@ func TestSetTaskActivationForBuildsDeactivated(t *testing.T) {
 }
 
 func TestAddNewTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection))

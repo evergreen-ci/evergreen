@@ -192,7 +192,7 @@ func TestRateLimitMiddlewareRemainingHeaderDecrements(t *testing.T) {
 	u := &user.DBUser{Id: "u"}
 
 	var prev int
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		rw, ran := runRateLimit(t, mw, "/rest/v2/hosts", u)
 		require.True(t, ran)
 		require.Equal(t, http.StatusOK, rw.Code)

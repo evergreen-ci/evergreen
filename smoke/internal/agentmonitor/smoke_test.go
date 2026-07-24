@@ -20,8 +20,7 @@ import (
 // mostly same set of checks as the host smoke test, but it runs the agent using
 // the agent monitor rather than directly starting the agent.
 func TestSmokeAgentMonitor(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	params := getSmokeTestParamsFromEnv(t)
 	grip.Info(ctx, message.Fields{

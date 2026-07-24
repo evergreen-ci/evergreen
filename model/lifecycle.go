@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -496,8 +497,8 @@ func RefreshTasksCache(ctx context.Context, buildIDs []string) error {
 				}
 			}
 		}
-		for i := len(buildTasks) - 1; i >= 0; i-- {
-			if _, exists := execTaskMap[buildTasks[i].Id]; exists {
+		for i, buildTask := range slices.Backward(buildTasks) {
+			if _, exists := execTaskMap[buildTask.Id]; exists {
 				buildTasks = append(buildTasks[:i], buildTasks[i+1:]...)
 			}
 		}
@@ -916,16 +917,16 @@ func addSingleHostTaskGroupDependencies(taskMap map[string]*task.Task, p *Projec
 		// Iterate backwards until we find a task that exists in the taskMap. This task
 		// will be the parent dependency for the current single host TG task.
 		taskFound := false
-		for i := len(tg.Tasks) - 1; i >= 0; i-- {
+		for _, v := range slices.Backward(tg.Tasks) {
 			// Check the task display names since no display name will appear twice
 			// within the same task group
-			if t.DisplayName == tg.Tasks[i] {
+			if t.DisplayName == v {
 				taskFound = true
 				continue
 			}
-			if _, ok := taskMap[taskIds.GetId(t.BuildVariant, tg.Tasks[i])]; ok && taskFound {
+			if _, ok := taskMap[taskIds.GetId(t.BuildVariant, v)]; ok && taskFound {
 				singleHostTGDeps = append(singleHostTGDeps, TaskUnitDependency{
-					Name:    tg.Tasks[i],
+					Name:    v,
 					Variant: t.BuildVariant,
 				})
 				break

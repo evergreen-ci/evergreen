@@ -1,7 +1,6 @@
 package parameterstore
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -23,8 +22,7 @@ func TestParameterManager(t *testing.T) {
 		"PathPrefixWithLeadingAndTrailingSlash":   "/prefix/",
 	} {
 		t.Run(prefixTestCase, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 			opts := ParameterManagerOptions{
 				PathPrefix: prefix,
 				DB:         &mongo.Database{},

@@ -76,8 +76,7 @@ type AdminSuite struct {
 }
 
 func TestAdminSuite(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	configFile := os.Getenv(SettingsOverride)
 	if configFile == "" {

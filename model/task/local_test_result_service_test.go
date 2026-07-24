@@ -1,7 +1,6 @@
 package task
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -28,8 +27,7 @@ var localOutput = TaskOutput{
 const MaxSampleSize = 10
 
 func TestLocalService(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	svc := NewLocalService(env)
 	require.NoError(t, ClearTestResults(ctx, env))
@@ -39,7 +37,7 @@ func TestLocalService(t *testing.T) {
 
 	task0 := Task{Id: "task0", Execution: 0, TaskOutputInfo: &localOutput}
 	savedResults0 := make([]testresult.TestResult, 10)
-	for i := 0; i < len(savedResults0); i++ {
+	for i := range savedResults0 {
 		result := getTestResult()
 		result.TaskID = task0.Id
 		result.Execution = task0.Execution
@@ -52,7 +50,7 @@ func TestLocalService(t *testing.T) {
 
 	task1 := Task{Id: "task1", Execution: 0, TaskOutputInfo: &localOutput}
 	savedResults1 := make([]testresult.TestResult, 10)
-	for i := 0; i < len(savedResults1); i++ {
+	for i := range savedResults1 {
 		result := getTestResult()
 		result.TaskID = task1.Id
 		result.Execution = task1.Execution
@@ -61,7 +59,7 @@ func TestLocalService(t *testing.T) {
 	require.NoError(t, svc.AppendTestResultMetadata(resultTestutil.MakeAppendTestResultMetadataReq(ctx, savedResults1, "task1")))
 	task2 := Task{Id: "task2", Execution: 1, TaskOutputInfo: &localOutput}
 	savedResults2 := make([]testresult.TestResult, 10)
-	for i := 0; i < len(savedResults2); i++ {
+	for i := range savedResults2 {
 		result := getTestResult()
 		result.TaskID = task2.Id
 		result.Execution = task2.Execution
@@ -70,7 +68,7 @@ func TestLocalService(t *testing.T) {
 	require.NoError(t, svc.AppendTestResultMetadata(resultTestutil.MakeAppendTestResultMetadataReq(ctx, savedResults2, "task2")))
 	task3 := Task{Id: "task3", Execution: 0, TaskOutputInfo: &localOutput}
 	savedResults3 := make([]testresult.TestResult, MaxSampleSize)
-	for i := 0; i < len(savedResults3); i++ {
+	for i := range savedResults3 {
 		result := getTestResult()
 		result.TaskID = task3.Id
 		result.Execution = task3.Execution
@@ -82,7 +80,7 @@ func TestLocalService(t *testing.T) {
 	require.NoError(t, svc.AppendTestResultMetadata(resultTestutil.MakeAppendTestResultMetadataReq(ctx, savedResults3, "task3")))
 	task4 := Task{Id: "task4", Execution: 1, TaskOutputInfo: &localOutput}
 	savedResults4 := make([]testresult.TestResult, MaxSampleSize)
-	for i := 0; i < len(savedResults3); i++ {
+	for i := range savedResults3 {
 		result := getTestResult()
 		result.TaskID = task4.Id
 		result.Execution = task4.Execution
@@ -190,7 +188,7 @@ func TestLocalService(t *testing.T) {
 					Execution: task4.Execution,
 					MatchingFailedTestNames: func() []string {
 						sample := make([]string, len(savedResults4))
-						for i := 0; i < len(savedResults4); i++ {
+						for i := range savedResults4 {
 							sample[i] = savedResults4[i].GetDisplayTestName()
 						}
 
@@ -249,8 +247,7 @@ func TestLocalService(t *testing.T) {
 }
 
 func TestLocalFilterAndSortTestResults(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	svc := NewLocalService(env)
 	defer func() {

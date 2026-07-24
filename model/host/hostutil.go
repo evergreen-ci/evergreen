@@ -560,7 +560,7 @@ func generatePassword(length int) (string, error) {
 func (h *Host) CreateServicePassword(ctx context.Context) error {
 	var password string
 	var valid bool
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		var err error
 		password, err = generatePassword(12)
 		if err != nil {

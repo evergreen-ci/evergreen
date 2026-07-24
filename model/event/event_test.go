@@ -29,8 +29,8 @@ func (s *eventSuite) SetupTest() {
 }
 
 func (s *eventSuite) TestMarshallAndUnarshallingStructsHaveSameTags() {
-	realt := reflect.TypeOf(&EventLogEntry{}).Elem()
-	tempt := reflect.TypeOf(&UnmarshalEventLogEntry{}).Elem()
+	realt := reflect.TypeFor[EventLogEntry]()
+	tempt := reflect.TypeFor[UnmarshalEventLogEntry]()
 
 	s.Require().Equal(realt.NumField(), tempt.NumField())
 	for i := 0; i < realt.NumField(); i++ {

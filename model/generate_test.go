@@ -602,7 +602,7 @@ func (s *GenerateSuite) TestParseProjectFromJSON() {
 func (s *GenerateSuite) TestValidateMaxVariants() {
 	g := GeneratedProject{}
 	s.NoError(g.validateMaxTasksAndVariants())
-	for i := 0; i < maxGeneratedBuildVariants; i++ {
+	for range maxGeneratedBuildVariants {
 		g.BuildVariants = append(g.BuildVariants, parserBV{})
 	}
 	s.NoError(g.validateMaxTasksAndVariants())
@@ -613,7 +613,7 @@ func (s *GenerateSuite) TestValidateMaxVariants() {
 func (s *GenerateSuite) TestValidateMaxTasks() {
 	g := GeneratedProject{}
 	s.NoError(g.validateMaxTasksAndVariants())
-	for i := 0; i < maxGeneratedTasks; i++ {
+	for range maxGeneratedTasks {
 		g.Tasks = append(g.Tasks, parserTask{})
 	}
 	s.NoError(g.validateMaxTasksAndVariants())
@@ -2215,8 +2215,7 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 }
 
 func TestFilterInactiveTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(build.Collection))
@@ -2462,8 +2461,7 @@ func TestFilterInactiveTasks(t *testing.T) {
 }
 
 func TestAddDependencies(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(task.Collection))
 

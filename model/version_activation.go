@@ -20,7 +20,7 @@ func DoProjectActivation(ctx context.Context, projectRef *ProjectRef, ts time.Ti
 	if !projectRef.IsWaterfallEnabled() {
 		return nil, nil
 	}
-	if projectRef.RunEveryMainlineCommit {
+	if projectRef.RunEveryMainlineCommit != nil && *projectRef.RunEveryMainlineCommit {
 		return activateEveryRecentMainlineCommitForProject(ctx, projectRef, ts)
 	}
 	return activateMostRecentNonIgnoredCommitForProject(ctx, projectRef, ts)

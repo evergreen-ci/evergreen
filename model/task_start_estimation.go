@@ -81,7 +81,7 @@ func (s *estimatedTimeSimulator) dispatchNextTask() {
 	newlyDispatched := estimatedHost{timeToCompletion: nextTask.duration}
 
 	// assign it to the host that just completed and move it back into the pool in order
-	for i := 0; i < count; i++ {
+	for i := range count {
 		if i < count-2 {
 			if s.hosts[i].timeToCompletion <= nextTask.duration &&
 				s.hosts[i+1].timeToCompletion >= nextTask.duration {

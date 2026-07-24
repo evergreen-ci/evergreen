@@ -467,8 +467,7 @@ var sampleGeneratedProject3 = []string{`
 `}
 
 func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	env := &mock.Environment{}
@@ -619,8 +618,7 @@ func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
 }
 
 func TestGeneratedTasksAreNotDependencies(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	env := &mock.Environment{}
@@ -786,8 +784,7 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 }
 
 func TestParseProjects(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	assert := assert.New(t)
@@ -806,8 +803,7 @@ func TestParseProjects(t *testing.T) {
 }
 
 func TestGenerateSkipsInvalidDependency(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	env := &mock.Environment{}
@@ -926,8 +922,7 @@ buildvariants:
 }
 
 func TestMarkGeneratedTasksError(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	env := &mock.Environment{}

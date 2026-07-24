@@ -27,7 +27,7 @@ func TestProjectAliasSuite(t *testing.T) {
 func (s *ProjectAliasSuite) SetupTest() {
 	s.Require().NoError(db.Clear(ProjectAliasCollection))
 	s.aliases = []ProjectAlias{}
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		s.aliases = append(s.aliases, ProjectAlias{
 			ProjectID:   fmt.Sprintf("project-%d", i),
 			Alias:       fmt.Sprintf("alias-%d", i),
@@ -483,7 +483,7 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectRepoOrConfig() {
 	s.NoError(pRef2.Replace(s.T().Context()))
 	s.NoError(projectConfig.Insert(s.T().Context()))
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		alias := ProjectAlias{
 			ProjectID: repoRef.Id,
 			Alias:     "alias-1",
@@ -496,7 +496,7 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectRepoOrConfig() {
 		s.NoError(alias.Upsert(s.T().Context()))
 	}
 
-	for i := 0; i < 6; i++ {
+	for i := range 6 {
 		alias := ProjectAlias{
 			ProjectID: pRef1.Id,
 			Alias:     "alias-3",

@@ -73,12 +73,12 @@ func New(apiURL string) Config {
 		return next(ctx)
 	}
 	c.Directives.RequireHostAccess = func(ctx context.Context, obj any, next graphql.Resolver, access HostAccessLevel) (any, error) {
-		args, isStringMap := obj.(map[string]interface{})
+		args, isStringMap := obj.(map[string]any)
 		if !isStringMap {
 			return nil, ResourceNotFound.Send(ctx, "converting args into map")
 		}
 		hostId, hasHostId := args["hostId"].(string)
-		hostIdsInterface, hasHostIds := args["hostIds"].([]interface{})
+		hostIdsInterface, hasHostIds := args["hostIds"].([]any)
 
 		// If no host ID is present, the field is optional and null, so skip the access check.
 		if !hasHostId && !hasHostIds {
@@ -408,7 +408,7 @@ func New(apiURL string) Config {
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("User '%s' lacks required admin permissions", dbUser.Username()))
 	}
 	c.Directives.RequireVolumeAccess = func(ctx context.Context, obj any, next graphql.Resolver) (any, error) {
-		args, isStringMap := obj.(map[string]interface{})
+		args, isStringMap := obj.(map[string]any)
 		if !isStringMap {
 			return nil, ResourceNotFound.Send(ctx, "converting args into map")
 		}

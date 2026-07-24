@@ -171,7 +171,7 @@ func TestTaskGetHandlerComputesPredictedCost(t *testing.T) {
 	require.NoError(t, db.EnsureIndex(task.Collection, mongo.IndexModel{Keys: task.TaskHistoricalDataIndex}))
 
 	// Create historical completed tasks with costs for prediction.
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		historicalTask := task.Task{
 			Id:           fmt.Sprintf("historical_task_%d", i),
 			Project:      "test_project",
@@ -294,7 +294,7 @@ func TestGeneratedTasksGetHandler(t *testing.T) {
 			require.True(t, ok)
 
 			require.Len(t, taskInfos, len(generated))
-			for i := 0; i < len(generated); i++ {
+			for i := range generated {
 				assert.Equal(t, generated[i].Id, taskInfos[i].TaskID)
 				assert.Equal(t, generated[i].DisplayName, taskInfos[i].TaskName)
 				assert.Equal(t, generated[i].BuildId, taskInfos[i].BuildID)

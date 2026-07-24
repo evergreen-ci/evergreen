@@ -1408,7 +1408,7 @@ func FindLatestVersionWithValidProject(ctx context.Context, projectId string, pr
 	revisionOrderNum := -1 // only specify in the event of failure
 	var err error
 	var lastGoodVersion *Version
-	for i := 0; i < retryCount; i++ {
+	for range retryCount {
 		lastGoodVersion, err = FindVersionByLastKnownGoodConfig(ctx, projectId, revisionOrderNum)
 		if err != nil {
 			// Database error, don't log critical but try again.
@@ -1480,14 +1480,12 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 			}
 		}
 		if tg, ok := tgMap[bvt.Name]; ok {
-			for _, t := range tg.Tasks {
-				if t == task {
-					// task group tasks need to be repopulated from the task list
-					// Note that the build variant task unit retains the task
-					// group's name.
-					bvt.Populate(*p.FindProjectTask(task), *bv)
-					return &bvt
-				}
+			if slices.Contains(tg.Tasks, task) {
+				// task group tasks need to be repopulated from the task list
+				// Note that the build variant task unit retains the task
+				// group's name.
+				bvt.Populate(*p.FindProjectTask(task), *bv)
+				return &bvt
 			}
 		}
 	}
@@ -2252,10 +2250,10 @@ func dependenciesForTaskUnit(taskUnits []BuildVariantTaskUnit, p *Project) []tas
 			}
 			// Single host task groups are a special case of dependencies because they implicitly form a linear
 			// dependency chain on the prior task group tasks
-			for i := len(tg.Tasks) - 1; i >= 0; i-- {
+			for i, v := range slices.Backward(tg.Tasks) {
 				// Check the task display names since no display name will appear twice
 				// within the same task group
-				if dependentTask.Name == tg.Tasks[i] && i > 0 {
+				if dependentTask.Name == v && i > 0 {
 					dependentTask.DependsOn = append(dependentTask.DependsOn, TaskUnitDependency{Name: tg.Tasks[i-1], Variant: dependentTask.Variant})
 				}
 			}
@@ -2443,10 +2441,5 @@ func (bv BuildVariant) ChangedFilesMatchPaths(changedFiles []string) bool {
 
 	// CompileIgnoreLines has a silly API: it always returns a nil error.
 	pathMatcher := ignore.CompileIgnoreLines(paths...)
-	for _, f := range changedFiles {
-		if pathMatcher.MatchesPath(f) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(changedFiles, pathMatcher.MatchesPath)
 }
