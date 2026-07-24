@@ -50,8 +50,7 @@ func (e *zipExtract) Execute(ctx context.Context,
 	if !filepath.IsAbs(e.ArchivePath) {
 		e.ArchivePath = GetWorkingDirectory(conf, e.ArchivePath)
 	}
-	SetWorkdirBoundaryAttribute(ctx, conf, e.TargetDirectory)
-	SetWorkdirBoundaryAttribute(ctx, conf, e.ArchivePath)
+	SetWorkdirBoundaryAttribute(ctx, conf, e.TargetDirectory, e.ArchivePath)
 
 	if _, err := os.Stat(e.ArchivePath); os.IsNotExist(err) {
 		return errors.Errorf("archive '%s' does not exist", e.ArchivePath)

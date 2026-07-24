@@ -179,3 +179,57 @@ func TestSetWorkdirBoundaryAttributeSetsTrueOnViolation(t *testing.T) {
 	}
 	assert.True(t, found, "workdir boundary violation attribute was not set on the span")
 }
+
+func TestSetWorkdirBoundaryAttributeSetsFalseWithoutViolation(t *testing.T) {
+	spanRecorder := tracetest.NewSpanRecorder()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(spanRecorder))
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		require.NoError(t, tp.Shutdown(ctx))
+	})
+
+	ctx, span := tp.Tracer("test").Start(t.Context(), "test")
+	conf := &internal.TaskConfig{WorkDir: "/data/mci/work"}
+	SetWorkdirBoundaryAttribute(ctx, conf, "/data/mci/work/src/foo")
+	span.End()
+
+	ended := spanRecorder.Ended()
+	require.Len(t, ended, 1)
+
+	found := false
+	for _, attr := range ended[0].Attributes() {
+		if string(attr.Key) == workdirBoundaryViolationAttribute {
+			assert.False(t, attr.Value.AsBool(), "workdir boundary violation attribute should be false")
+			found = true
+		}
+	}
+	assert.True(t, found, "workdir boundary violation attribute was not set on the span")
+}
+
+func TestSetWorkdirBoundaryAttributePreservesViolationAcrossPaths(t *testing.T) {
+	spanRecorder := tracetest.NewSpanRecorder()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(spanRecorder))
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		require.NoError(t, tp.Shutdown(ctx))
+	})
+
+	ctx, span := tp.Tracer("test").Start(t.Context(), "test")
+	conf := &internal.TaskConfig{WorkDir: "/data/mci/work"}
+	SetWorkdirBoundaryAttribute(ctx, conf, "/data/mci/work-other", "/data/mci/work/src/foo")
+	span.End()
+
+	ended := spanRecorder.Ended()
+	require.Len(t, ended, 1)
+
+	found := false
+	for _, attr := range ended[0].Attributes() {
+		if string(attr.Key) == workdirBoundaryViolationAttribute {
+			assert.True(t, attr.Value.AsBool(), "workdir boundary violation attribute should remain true")
+			found = true
+		}
+	}
+	assert.True(t, found, "workdir boundary violation attribute was not set on the span")
+}

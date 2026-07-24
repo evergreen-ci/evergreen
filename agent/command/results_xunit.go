@@ -79,9 +79,7 @@ func (c *xunitResults) Execute(ctx context.Context,
 		return errors.Wrap(err, "applying expansions")
 	}
 
-	for _, file := range c.Files {
-		SetWorkdirBoundaryAttribute(ctx, conf, file)
-	}
+	SetWorkdirBoundaryAttribute(ctx, conf, c.Files...)
 
 	errChan := make(chan error)
 	go func() {

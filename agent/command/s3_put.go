@@ -348,6 +348,8 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 		return nil
 	}
 
+	SetWorkdirBoundaryAttribute(ctx, conf, s3pc.LocalFile, s3pc.AssociatedLinksFile, s3pc.LocalFilesIncludeFilterPrefix)
+
 	if s3pc.AssociatedLinksFile != "" {
 		associatedLinks, err := readAssociatedLinksFile(s3pc.AssociatedLinksFile, conf)
 		if err != nil {
@@ -397,10 +399,6 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 		attribute.String(s3PutRoleARN, s3pc.RoleARN),
 		attribute.String(s3PutAssumeRoleARN, s3pc.assumedRoleARN),
 	)
-
-	SetWorkdirBoundaryAttribute(ctx, conf, s3pc.LocalFile)
-	SetWorkdirBoundaryAttribute(ctx, conf, s3pc.AssociatedLinksFile)
-	SetWorkdirBoundaryAttribute(ctx, conf, s3pc.LocalFilesIncludeFilterPrefix)
 
 	// create pail bucket
 	httpClient := utility.GetHTTPClient()

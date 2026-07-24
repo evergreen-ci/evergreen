@@ -49,8 +49,7 @@ func (e *tarballExtract) Execute(ctx context.Context,
 
 	destinationPath := GetWorkingDirectory(conf, e.TargetDirectory)
 	archivePath := GetWorkingDirectory(conf, e.ArchivePath)
-	SetWorkdirBoundaryAttribute(ctx, conf, e.TargetDirectory)
-	SetWorkdirBoundaryAttribute(ctx, conf, e.ArchivePath)
+	SetWorkdirBoundaryAttribute(ctx, conf, e.TargetDirectory, e.ArchivePath)
 
 	archive, err := os.Open(archivePath)
 	if err != nil {

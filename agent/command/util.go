@@ -76,8 +76,8 @@ func GetWorkingDirectory(conf *internal.TaskConfig, path string) string {
 	return filepath.Join(conf.WorkDir, path)
 }
 
-// workdirBoundaryViolationAttribute is the OTel span attribute name set when
-// a command's resolved path falls outside the task working directory.
+// workdirBoundaryViolationAttribute records whether a command's resolved path
+// falls outside the task working directory.
 const workdirBoundaryViolationAttribute = "plugin.workdir_boundary_violation"
 
 // IsWorkdirBoundaryViolation returns true when the resolved path falls outside
@@ -110,14 +110,18 @@ func IsWorkdirBoundaryViolation(conf *internal.TaskConfig, path string) bool {
 		filepath.IsAbs(rel)
 }
 
-// SetWorkdirBoundaryAttribute checks if the resolved path falls outside the
-// task workdir and, if so, sets the workdirBoundaryViolationAttribute boolean
-// to true on the span from the context. This is informational only; it does
-// not block or error on violations.
-func SetWorkdirBoundaryAttribute(ctx context.Context, conf *internal.TaskConfig, path string) {
-	if IsWorkdirBoundaryViolation(conf, path) {
-		trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(workdirBoundaryViolationAttribute, true))
+// SetWorkdirBoundaryAttribute records whether any resolved path falls outside
+// the task workdir on the span from the context. This is informational only;
+// it does not block or error on violations.
+func SetWorkdirBoundaryAttribute(ctx context.Context, conf *internal.TaskConfig, paths ...string) {
+	violation := false
+	for _, path := range paths {
+		if IsWorkdirBoundaryViolation(conf, path) {
+			violation = true
+			break
+		}
 	}
+	trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(workdirBoundaryViolationAttribute, violation))
 }
 
 // getWorkingDirectoryLegacy is a legacy function to get the working directory

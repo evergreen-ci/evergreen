@@ -88,8 +88,7 @@ func (c *tarballCreate) Execute(ctx context.Context,
 	if !filepath.IsAbs(c.Target) {
 		c.Target = GetWorkingDirectory(conf, c.Target)
 	}
-	SetWorkdirBoundaryAttribute(ctx, conf, c.Target)
-	SetWorkdirBoundaryAttribute(ctx, conf, c.SourceDir)
+	SetWorkdirBoundaryAttribute(ctx, conf, c.Target, c.SourceDir)
 
 	errChan := make(chan error)
 	filesArchived := -1

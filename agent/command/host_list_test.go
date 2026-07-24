@@ -154,7 +154,7 @@ func TestHostListSetsWorkdirBoundaryAttributeOnViolation(t *testing.T) {
 	assert.True(t, found, "workdir boundary violation attribute was not set on the span")
 }
 
-func TestHostListDoesNotSetWorkdirBoundaryAttributeForRelativePath(t *testing.T) {
+func TestHostListSetsFalseWorkdirBoundaryAttributeForRelativePath(t *testing.T) {
 	spanRecorder := tracetest.NewSpanRecorder()
 	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(spanRecorder))
 	t.Cleanup(func() {
@@ -185,9 +185,12 @@ func TestHostListDoesNotSetWorkdirBoundaryAttributeForRelativePath(t *testing.T)
 	ended := spanRecorder.Ended()
 	require.Len(t, ended, 1)
 
+	found := false
 	for _, attr := range ended[0].Attributes() {
 		if string(attr.Key) == workdirBoundaryViolationAttribute {
-			t.Fatalf("workdir boundary violation attribute should not be set for a relative path, got value %v", attr.Value.AsBool())
+			assert.False(t, attr.Value.AsBool(), "workdir boundary violation attribute should be false")
+			found = true
 		}
 	}
+	assert.True(t, found, "workdir boundary violation attribute was not set on the span")
 }
