@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -221,7 +220,7 @@ func ActivateElapsedBuildsAndTasks(ctx context.Context, v *Version) (bool, error
 		}
 	}
 	if len(allReadyTaskIds) > 0 {
-		if err := task.ActivateTasksByIdsWithDependencies(ctx, allReadyTaskIds, evergreen.ElapsedTaskActivator); err != nil {
+		if err := activateElapsedTasks(ctx, allReadyTaskIds, evergreen.ElapsedTaskActivator); err != nil {
 			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"operation": "project-activation",
 				"message":   "problem activating batchtime tasks",

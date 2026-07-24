@@ -144,7 +144,7 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 				{task.ExecutionTasksKey: bson.M{"$elemMatch": bson.M{"$nin": ignoreTasks}}},
 			}
 		}
-		tasksToActivate, err := task.FindAll(ctx, db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.ActivatedKey))
+		tasksToActivate, err := task.FindAll(ctx, db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.ActivatedKey, task.BuildIdKey, task.TaskGroupKey, task.TaskGroupMaxHostsKey, task.TaskGroupOrderKey))
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to activate")
 		}
@@ -152,6 +152,10 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 			dependOn, err := task.GetRecursiveDependenciesUp(ctx, tasksToActivate, nil)
 			if err != nil {
 				return errors.Wrap(err, "getting recursive dependencies")
+			}
+			dependOn, err = resetEarlierSingleHostTaskGroupTasks(ctx, tasksToActivate, dependOn, caller)
+			if err != nil {
+				return errors.Wrap(err, "restarting finished single-host task group dependencies")
 			}
 			for _, depTask := range dependOn {
 				if depTask.Priority != evergreen.DisabledTaskPriority {

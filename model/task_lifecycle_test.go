@@ -2031,6 +2031,113 @@ func TestMarkEnd(t *testing.T) {
 	})
 }
 
+func TestSetTaskActivationForBuildsSingleHostTaskGroup(t *testing.T) {
+	ctx := t.Context()
+
+	insertGroupTask := func(t *testing.T, id string, order int, status string, activated bool, maxHosts int) {
+		tsk := &task.Task{
+			Id:                id,
+			BuildId:           "build",
+			Version:           "version",
+			DistroId:          "arch",
+			Status:            status,
+			Activated:         activated,
+			TaskGroup:         "tg",
+			TaskGroupMaxHosts: maxHosts,
+			TaskGroupOrder:    order,
+		}
+		require.NoError(t, tsk.Insert(ctx))
+	}
+
+	byOrder := func(t *testing.T) map[int]task.Task {
+		tg, err := task.FindTaskGroupFromBuild(ctx, "build", "tg")
+		require.NoError(t, err)
+		m := map[int]task.Task{}
+		for _, tk := range tg {
+			m[tk.TaskGroupOrder] = tk
+		}
+		return m
+	}
+
+	for name, test := range map[string]func(t *testing.T){
+		// Scheduling a later single-host task group task after earlier members finished must
+		// restart the earlier members so the whole group re-runs in order on one host,
+		// preserving its shared working directory (DEVPROD-37530).
+		"RestartsFinishedEarlierMembersWhenLaterMemberScheduled": func(t *testing.T) {
+			insertGroupTask(t, "task1", 1, evergreen.TaskSucceeded, true, 1)
+			insertGroupTask(t, "task2", 2, evergreen.TaskSucceeded, true, 1)
+			insertGroupTask(t, "task3", 3, evergreen.TaskUndispatched, false, 1)
+
+			require.NoError(t, setTaskActivationForBuilds(ctx, []string{"build"}, true, true, nil, "test"))
+
+			tasks := byOrder(t)
+			require.Len(t, tasks, 3)
+			assert.Equal(t, 1, tasks[1].Execution, "finished earlier member should be restarted")
+			assert.Equal(t, evergreen.TaskUndispatched, tasks[1].Status)
+			assert.True(t, tasks[1].Activated)
+			assert.Equal(t, 1, tasks[2].Execution, "finished earlier member should be restarted")
+			assert.Equal(t, evergreen.TaskUndispatched, tasks[2].Status)
+			assert.True(t, tasks[2].Activated)
+			assert.Equal(t, 0, tasks[3].Execution, "scheduled task should not be restarted")
+			assert.True(t, tasks[3].Activated)
+		},
+		"DoesNotRestartMultiHostTaskGroup": func(t *testing.T) {
+			insertGroupTask(t, "task1", 1, evergreen.TaskSucceeded, true, 2)
+			insertGroupTask(t, "task2", 2, evergreen.TaskSucceeded, true, 2)
+			insertGroupTask(t, "task3", 3, evergreen.TaskUndispatched, false, 2)
+
+			require.NoError(t, setTaskActivationForBuilds(ctx, []string{"build"}, true, true, nil, "test"))
+
+			tasks := byOrder(t)
+			assert.Equal(t, 0, tasks[1].Execution, "multi-host task group members should not be restarted")
+			assert.Equal(t, 0, tasks[2].Execution, "multi-host task group members should not be restarted")
+			assert.True(t, tasks[3].Activated)
+		},
+		"DoesNotRestartUnfinishedEarlierMember": func(t *testing.T) {
+			insertGroupTask(t, "task1", 1, evergreen.TaskDispatched, true, 1)
+			insertGroupTask(t, "task3", 3, evergreen.TaskUndispatched, false, 1)
+
+			require.NoError(t, setTaskActivationForBuilds(ctx, []string{"build"}, true, true, nil, "test"))
+
+			t1, err := task.FindOneId(ctx, "task1")
+			require.NoError(t, err)
+			require.NotNil(t, t1)
+			assert.Equal(t, 0, t1.Execution, "running earlier member should not be restarted")
+			assert.Equal(t, evergreen.TaskDispatched, t1.Status)
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection))
+			require.NoError(t, (&build.Build{Id: "build", Version: "version"}).Insert(ctx))
+			require.NoError(t, (&Version{Id: "version"}).Insert(ctx))
+			test(t)
+		})
+	}
+}
+
+func TestActivateElapsedTasks(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection))
+	require.NoError(t, (&build.Build{Id: "build", Version: "version"}).Insert(ctx))
+	require.NoError(t, (&Version{Id: "version"}).Insert(ctx))
+
+	require.NoError(t, (&task.Task{Id: "task1", BuildId: "build", Version: "version", DistroId: "arch", Status: evergreen.TaskSucceeded, Activated: true, TaskGroup: "tg", TaskGroupMaxHosts: 1, TaskGroupOrder: 1}).Insert(ctx))
+	require.NoError(t, (&task.Task{Id: "task2", BuildId: "build", Version: "version", DistroId: "arch", Status: evergreen.TaskUndispatched, Activated: false, TaskGroup: "tg", TaskGroupMaxHosts: 1, TaskGroupOrder: 2}).Insert(ctx))
+
+	require.NoError(t, activateElapsedTasks(ctx, []string{"task2"}, evergreen.ElapsedTaskActivator))
+
+	t1, err := task.FindOneId(ctx, "task1")
+	require.NoError(t, err)
+	require.NotNil(t, t1)
+	assert.Equal(t, 1, t1.Execution, "finished earlier single-host task group member should be restarted")
+	assert.Equal(t, evergreen.TaskUndispatched, t1.Status)
+
+	t2, err := task.FindOneId(ctx, "task2")
+	require.NoError(t, err)
+	require.NotNil(t, t2)
+	assert.True(t, t2.Activated, "elapsed task should be activated")
+}
+
 func TestMarkEndWithTaskGroup(t *testing.T) {
 	ctx := t.Context()
 
