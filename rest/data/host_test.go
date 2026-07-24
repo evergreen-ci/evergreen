@@ -322,3 +322,35 @@ func (s *HostConnectorSuite) TestGenerateHostProvisioningScriptFailsWithInvalidH
 	s.Error(err)
 	s.Zero(script)
 }
+
+func TestGetContainerImageForPrePull(t *testing.T) {
+	for name, test := range map[string]struct {
+		settings                   distro.ContainerIsolationSettings
+		containerIsolationDisabled bool
+		expected                   string
+	}{
+		"EnabledReturnsImage": {
+			settings: distro.ContainerIsolationSettings{
+				Enabled: true,
+				Image:   "example.com/evergreen/task:latest",
+			},
+			expected: "example.com/evergreen/task:latest",
+		},
+		"KillSwitchReturnsEmpty": {
+			settings: distro.ContainerIsolationSettings{
+				Enabled: true,
+				Image:   "example.com/evergreen/task:latest",
+			},
+			containerIsolationDisabled: true,
+		},
+		"DisabledDistroReturnsEmpty": {
+			settings: distro.ContainerIsolationSettings{
+				Image: "example.com/evergreen/task:latest",
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			require.Equal(t, test.expected, getContainerImageForPrePull(test.settings, test.containerIsolationDisabled))
+		})
+	}
+}

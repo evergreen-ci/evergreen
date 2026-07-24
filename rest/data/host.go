@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -147,16 +148,25 @@ func GenerateHostProvisioningScript(ctx context.Context, env evergreen.Environme
 			Message:    errors.Wrap(err, "saving Jasper credentials").Error(),
 		}
 	}
-	if ci := h.Distro.BootstrapSettings.ContainerIsolation; ci.Enabled {
+	ci := h.Distro.BootstrapSettings.ContainerIsolation
+	containerIsolationDisabled := env.Settings().ServiceFlags.ContainerIsolationDisabled
+	containerImage = getContainerImageForPrePull(ci, containerIsolationDisabled)
+	if ci.Enabled && !containerIsolationDisabled {
 		if ci.Image == "" {
 			grip.Warning(ctx, message.Fields{
 				"message": "container isolation is enabled for this distro but no image is configured; pre-pull will be skipped",
 				"host_id": hostID,
 			})
 		}
-		containerImage = ci.Image
 	}
 	return script, containerImage, nil
+}
+
+func getContainerImageForPrePull(settings distro.ContainerIsolationSettings, containerIsolationDisabled bool) string {
+	if !settings.Enabled || containerIsolationDisabled {
+		return ""
+	}
+	return settings.Image
 }
 
 // FindHostByIdWithOwner finds a host with given host ID that was
