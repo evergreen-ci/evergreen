@@ -613,6 +613,18 @@ const (
 	ppTranslationCacheHottestKeyOtelAttribute = "evergreen.parser_project.translation_cache_hottest_key"
 	// ppTranslationCacheHottestKeyHitsOtelAttribute records how many hits the hottest key has served.
 	ppTranslationCacheHottestKeyHitsOtelAttribute = "evergreen.parser_project.translation_cache_hottest_key_hits"
+	// ppTranslateInFlightOtelAttribute records how many translations held a concurrency slot when
+	// this one started, including itself.
+	ppTranslateInFlightOtelAttribute = "evergreen.parser_project.translate_in_flight"
+	// ppTranslateLimitOtelAttribute records the configured concurrency limit, 0 meaning unlimited.
+	ppTranslateLimitOtelAttribute = "evergreen.parser_project.translate_limit"
+	// ppTranslateWaitingOtelAttribute records how many callers are queued behind the limit.
+	ppTranslateWaitingOtelAttribute = "evergreen.parser_project.translate_waiting"
+	// ppTranslateBlockedTotalOtelAttribute records the cumulative count of acquires that had to wait
+	// for a slot.
+	ppTranslateBlockedTotalOtelAttribute = "evergreen.parser_project.translate_blocked_total"
+	// ppTranslateWaitMSOtelAttribute records how long this call waited for a slot, 0 if it did not wait.
+	ppTranslateWaitMSOtelAttribute = "evergreen.parser_project.translate_wait_ms"
 )
 
 // projectTranslationCacheEnabled reports whether the project translation cache ServiceFlag is on.
@@ -639,6 +651,19 @@ func setTranslationCacheSpanAttributes(span trace.Span, cacheHit, deduped, cache
 		attribute.Int64(ppTranslationCacheEvictionsOtelAttribute, evictions),
 		attribute.String(ppTranslationCacheHottestKeyOtelAttribute, hottestKey),
 		attribute.Int64(ppTranslationCacheHottestKeyHitsOtelAttribute, hottestHits),
+	)
+}
+
+// setTranslateSemaphoreSpanAttributes records the state of the translation concurrency limiter as
+// observed by a caller that just acquired a slot, plus how long that caller waited for it.
+func setTranslateSemaphoreSpanAttributes(span trace.Span, waited time.Duration) {
+	inUse, waiting, limit, blockedTotal := translateSemaphoreStats()
+	span.SetAttributes(
+		attribute.Int64(ppTranslateInFlightOtelAttribute, inUse),
+		attribute.Int64(ppTranslateLimitOtelAttribute, limit),
+		attribute.Int64(ppTranslateWaitingOtelAttribute, waiting),
+		attribute.Int64(ppTranslateBlockedTotalOtelAttribute, blockedTotal),
+		attribute.Int64(ppTranslateWaitMSOtelAttribute, waited.Milliseconds()),
 	)
 }
 
@@ -1704,11 +1729,12 @@ func capParserPriorities(p *ParserProject) {
 // TranslateProject converts our intermediate project representation into
 // the Project type that Evergreen actually uses.
 func TranslateProject(ctx context.Context, pp *ParserProject) (*Project, error) {
-	release, err := acquireTranslateSlot(ctx)
+	release, waited, err := acquireTranslateSlot(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "waiting for a translate concurrency slot")
 	}
 	defer release()
+	setTranslateSemaphoreSpanAttributes(trace.SpanFromContext(ctx), waited)
 
 	// Transfer top level fields
 	proj := &Project{
