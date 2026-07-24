@@ -2099,7 +2099,8 @@ func TestSortTasks(t *testing.T) {
 				},
 			}
 
-			sortedTasks := sortTasks(tasks)
+			sortedTasks, err := sortTasks(tasks)
+			So(err, ShouldBeNil)
 			So(len(sortedTasks), ShouldEqual, 3)
 			So(sortedTasks[0].DisplayName, ShouldEqual, "C")
 			So(sortedTasks[1].DisplayName, ShouldEqual, "B")
@@ -2128,7 +2129,8 @@ func TestSortTasks(t *testing.T) {
 				},
 			}
 
-			sortedTasks := sortTasks(tasks)
+			sortedTasks, err := sortTasks(tasks)
+			So(err, ShouldBeNil)
 			So(len(sortedTasks), ShouldEqual, 3)
 			So(sortedTasks[0].DisplayName, ShouldEqual, "C")
 			So(sortedTasks[1].DisplayName, ShouldEqual, "B")
@@ -2169,7 +2171,8 @@ func TestSortTasks(t *testing.T) {
 			},
 		}
 
-		sortedTasks := sortTasks(tasks)
+		sortedTasks, err := sortTasks(tasks)
+		So(err, ShouldBeNil)
 		So(len(sortedTasks), ShouldEqual, 5)
 		So(sortedTasks[0].DisplayName, ShouldEqual, "D")
 		So(sortedTasks[1].DisplayName, ShouldEqual, "E")
@@ -2208,7 +2211,8 @@ func TestSortTasks(t *testing.T) {
 			},
 		}
 
-		sortedTasks := sortTasks(tasks)
+		sortedTasks, err := sortTasks(tasks)
+		So(err, ShouldBeNil)
 		So(len(sortedTasks), ShouldEqual, 4)
 		So(sortedTasks[0].DisplayName, ShouldEqual, "D")
 		So(sortedTasks[1].DisplayName, ShouldEqual, "C")
@@ -2230,7 +2234,8 @@ func TestSortTasks(t *testing.T) {
 					DependsOn: []task.Dependency{
 						{TaskId: "idE"},
 					}})
-			sortedTasks = sortTasks(tasks)
+			sortedTasks, err = sortTasks(tasks)
+			So(err, ShouldBeNil)
 			So(len(sortedTasks), ShouldEqual, 6)
 			So(sortedTasks[0].DisplayName, ShouldEqual, "D")
 			So(sortedTasks[1].DisplayName, ShouldEqual, "C")
@@ -2240,6 +2245,26 @@ func TestSortTasks(t *testing.T) {
 			So(sortedTasks[5].DisplayName, ShouldEqual, "A")
 		})
 	})
+}
+
+func TestSortTasksCycleShouldReturnError(t *testing.T) {
+	tasks := []task.Task{
+		{
+			Id: "task1",
+			DependsOn: []task.Dependency{
+				{TaskId: "task2"},
+			},
+		},
+		{
+			Id: "task2",
+			DependsOn: []task.Dependency{
+				{TaskId: "task1"},
+			},
+		},
+	}
+
+	_, err := sortTasks(tasks)
+	require.ErrorContains(t, err, "cyclic dependencies")
 }
 
 func TestVersionRestart(t *testing.T) {

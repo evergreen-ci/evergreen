@@ -23,6 +23,20 @@ Human users should comment out or delete the `api_key` field from their `~/.ever
 
 After doing so, the next time you run an evergreen command that requires authentication, you will be prompted to authenticate. If you would like to not use a browser to authenticate, please see the documentation [here](../Hosts/Spawn-Hosts.md#evergreen-cli-on-a-spawn-host).
 
+#### Configure the OAuth callback port
+
+The CLI listens on port `8888` by default for the OAuth authorization callback. To use a different available local port, add `callback_port` to the `oauth` section of `~/.evergreen.yml`. The non-port values below are placeholders; use the OAuth values from your Evergreen settings page.
+
+```yaml
+oauth:
+  issuer: https://oauth.example.com
+  client_id: example-evergreen-cli-client
+  connector_id: example-connector
+  callback_port: "1337"
+```
+
+The OAuth client must allow the localhost callback URL for the configured port as a redirect URL.
+
 ## Basic Patch Usage
 
 `evergreen patch` allows you to submit patches to test your local changes. It will also check your project YAML any for validation errors before submission. If you want to view warnings, look at the [validate](#validating-changes-to-config-files) command.

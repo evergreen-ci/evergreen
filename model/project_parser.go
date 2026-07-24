@@ -1887,11 +1887,6 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			Timeout:                  ptg.Timeout,
 			ShareProcs:               ptg.ShareProcs,
 		}
-		if tg.MaxHosts == -1 {
-			tg.MaxHosts = len(ptg.Tasks)
-		} else if tg.MaxHosts < 1 {
-			tg.MaxHosts = 1
-		}
 		// expand, validate that tasks defined in a group are listed in the project tasks
 		var taskNames []string
 		for _, taskName := range ptg.Tasks {
@@ -1905,6 +1900,14 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			taskNames = append(taskNames, names...)
 		}
 		tg.Tasks = taskNames
+		// Max hosts has to be resolved after the task selectors are expanded so
+		// that -1 counts the actual tasks in the group rather than the number of
+		// selectors that produced them.
+		if tg.MaxHosts == -1 {
+			tg.MaxHosts = len(tg.Tasks)
+		} else if tg.MaxHosts < 1 {
+			tg.MaxHosts = 1
+		}
 		groups = append(groups, tg)
 	}
 	return tasks, groups, evalErrs

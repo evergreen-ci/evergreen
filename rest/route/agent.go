@@ -242,6 +242,13 @@ func (h *markTaskForRestartHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(struct{}{})
 	}
 
+	// Aborted tasks are intentionally not eligible for automatic restart. The agent still
+	// calls this route when a retry-on-failure command fails, even if the task was aborted
+	// mid-run, so treat that as an expected no-op rather than an internal server error.
+	if taskToRestart.Aborted {
+		return gimlet.NewJSONResponse(struct{}{})
+	}
+
 	if taskToRestart.NumAutomaticRestarts >= evergreen.MaxAutomaticRestarts {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
