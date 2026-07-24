@@ -447,6 +447,23 @@ func TestMarkTaskForReset(t *testing.T) {
 			assert.True(t, foundTask.IsAutomaticRestart)
 			assert.Equal(t, 1, foundTask.NumAutomaticRestarts)
 		},
+		"RunNoOpsForAbortedTask": func(ctx context.Context, t *testing.T, rh *markTaskForRestartHandler) {
+			rh.taskID = "t5"
+			abortedTask, err := task.FindOneId(ctx, "t5")
+			require.NoError(t, err)
+			require.NotNil(t, abortedTask)
+			taskCtx := context.WithValue(ctx, model.ApiTaskKey, abortedTask)
+			resp := rh.Run(taskCtx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			foundTask, err := task.FindOneId(ctx, "t5")
+			require.NoError(t, err)
+			require.NotNil(t, foundTask)
+			assert.False(t, foundTask.ResetWhenFinished)
+			assert.False(t, foundTask.IsAutomaticRestart)
+			assert.Zero(t, foundTask.NumAutomaticRestarts)
+		},
 		"SuccessfullyChecksMaxRestartLimit": func(ctx context.Context, t *testing.T, rh *markTaskForRestartHandler) {
 			// Should succeed normally for first task
 			rh.taskID = "t2"
@@ -544,6 +561,12 @@ func TestMarkTaskForReset(t *testing.T) {
 				Project: "p1",
 				Version: "aaaaaaaaaaff001122334456",
 			}
+			t5 := task.Task{
+				Id:      "t5",
+				Project: "p1",
+				Version: "aaaaaaaaaaff001122334456",
+				Aborted: true,
+			}
 			pRef := model.ProjectRef{
 				Id: "p1",
 			}
@@ -554,6 +577,7 @@ func TestMarkTaskForReset(t *testing.T) {
 			require.NoError(t, t2.Insert(t.Context()))
 			require.NoError(t, t3.Insert(t.Context()))
 			require.NoError(t, t4.Insert(t.Context()))
+			require.NoError(t, t5.Insert(t.Context()))
 			r, ok := makeMarkTaskForRestart().(*markTaskForRestartHandler)
 			require.True(t, ok)
 
