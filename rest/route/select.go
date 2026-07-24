@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -12,6 +13,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -60,6 +62,20 @@ func (t *selectTestsHandler) Run(ctx context.Context) gimlet.Responder {
 	selectedTests, err := data.SelectTests(ctx, t.selectTests)
 	if err != nil {
 		return makeSelectTestsErrorResponse(err)
+	}
+
+	// The quarantined-tests snapshot is best effort and shouldn't fail test selection
+	startAt := time.Now()
+	if err := data.RecordQuarantinedTestsSkipped(ctx, t.env, t.selectTests, selectedTests); err != nil {
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message":       "recording quarantined tests skipped by test selection",
+			"project_id":    t.selectTests.Project,
+			"requester":     t.selectTests.Requester,
+			"build_variant": t.selectTests.BuildVariant,
+			"task_id":       t.selectTests.TaskID,
+			"task_name":     t.selectTests.TaskName,
+			"duration_ms":   time.Since(startAt).Milliseconds(),
+		}))
 	}
 
 	rhResp := t.selectTests

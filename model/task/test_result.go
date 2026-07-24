@@ -50,6 +50,57 @@ func AppendTestResultMetadata(ctx context.Context, t *Task, env evergreen.Enviro
 	return svc.AppendTestResultMetadata(ctx, failedTestSample, failedCount, totalResults, record)
 }
 
+// AppendQuarantinedTests records tests skipped by test selection because they
+// were quarantined in TSS on the test results record for the given task run.
+// A record is created if the task has not attached any test results yet.
+func AppendQuarantinedTests(ctx context.Context, t *Task, env evergreen.Environment, quarantinedTests []testresult.QuarantinedTest) error {
+	if len(quarantinedTests) == 0 {
+		return nil
+	}
+	output, ok := t.GetTaskOutputSafe()
+	if !ok {
+		return nil
+	}
+	svc, err := getTestResultService(env, output.TestResults.Version)
+	if err != nil {
+		return errors.Wrap(err, "getting test result service")
+	}
+	info, err := makeTestResultsInfo(ctx, t)
+	if err != nil {
+		return errors.Wrap(err, "making test results info")
+	}
+	record := testresult.DbTaskTestResults{
+		ID:   info.ID(),
+		Info: info,
+	}
+	return svc.AppendQuarantinedTests(ctx, record, quarantinedTests)
+}
+
+// makeTestResultsInfo mirrors how the agent constructs test results info when
+// attaching test results so that both compute the same record ID for a task
+// run.
+func makeTestResultsInfo(ctx context.Context, t *Task) (testresult.TestResultsInfo, error) {
+	dt, err := t.GetDisplayTask(ctx)
+	if err != nil {
+		return testresult.TestResultsInfo{}, errors.Wrap(err, "finding display task")
+	}
+	info := testresult.TestResultsInfo{
+		Project:   t.Project,
+		Version:   t.Version,
+		Variant:   t.BuildVariant,
+		TaskID:    t.Id,
+		TaskName:  t.DisplayName,
+		Execution: t.Execution,
+		Requester: t.Requester,
+		Mainline:  !t.IsPatchRequest(),
+	}
+	if dt != nil {
+		info.DisplayTaskID = dt.Id
+		info.DisplayTaskName = dt.DisplayName
+	}
+	return info, nil
+}
+
 // getMergedTaskTestResults returns test results belonging to the specified task run.
 func getMergedTaskTestResults(ctx context.Context, env evergreen.Environment, tasks []Task, getOpts *FilterOptions) (testresult.TaskTestResults, error) {
 	if len(tasks) == 0 {

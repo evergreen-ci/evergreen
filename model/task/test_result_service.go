@@ -28,15 +28,41 @@ func NewTestResultService(env evergreen.Environment) *testResultService {
 
 // AppendTestResultMetadata sets cumulative test result metadata in the cedar database.
 func (s *testResultService) AppendTestResultMetadata(ctx context.Context, failedTestSample []string, failedCount int, totalResults int, record testresult.DbTaskTestResults) error {
+	set := bson.M{
+		bsonutil.GetDottedKeyName(testresult.StatsKey, testresult.TotalCountKey):  totalResults,
+		bsonutil.GetDottedKeyName(testresult.StatsKey, testresult.FailedCountKey): failedCount,
+		testresult.TestResultsFailedTestsSampleKey:                                failedTestSample,
+	}
+	if !record.CreatedAt.IsZero() {
+		// The created timestamp determines the partition key of the offline
+		// test results, so it must reflect when the results were attached
+		// even if the record was created earlier by the quarantined-tests
+		// snapshot.
+		set[testresult.TestResultsCreatedAtKey] = record.CreatedAt
+	}
+	update := bson.M{"$set": set}
+	_, err := s.env.CedarDB().Collection(testresult.Collection).UpdateOne(ctx, bson.M{IdKey: record.ID}, update, options.Update().SetUpsert(true))
+	return errors.Wrap(err, "appending DB test results")
+}
+
+// AppendQuarantinedTests upserts the task's test results record, appending
+// the tests to its quarantined-tests snapshot and incrementing the
+// snapshot count by the number of tests.
+func (s *testResultService) AppendQuarantinedTests(ctx context.Context, record testresult.DbTaskTestResults, quarantinedTests []testresult.QuarantinedTest) error {
 	update := bson.M{
-		"$set": bson.M{
-			bsonutil.GetDottedKeyName(testresult.StatsKey, testresult.TotalCountKey):  totalResults,
-			bsonutil.GetDottedKeyName(testresult.StatsKey, testresult.FailedCountKey): failedCount,
-			testresult.TestResultsFailedTestsSampleKey:                                failedTestSample,
+		"$setOnInsert": bson.M{
+			testresult.TestResultsInfoKey: record.Info,
+		},
+		"$inc": bson.M{testresult.QuarantinedTestsCountKey: len(quarantinedTests)},
+		"$push": bson.M{
+			testresult.QuarantinedTestsKey: bson.M{
+				"$each":  quarantinedTests,
+				"$slice": maxQuarantinedTestsPerRecord,
+			},
 		},
 	}
 	_, err := s.env.CedarDB().Collection(testresult.Collection).UpdateOne(ctx, bson.M{IdKey: record.ID}, update, options.Update().SetUpsert(true))
-	return errors.Wrap(err, "appending DB test results")
+	return errors.Wrap(err, "appending quarantined tests to DB test results")
 }
 
 func (s *testResultService) GetTaskTestResultsStats(ctx context.Context, taskOpts []Task) (testresult.TaskTestResultsStats, error) {
@@ -105,6 +131,12 @@ func (s *testResultService) Get(ctx context.Context, taskOpts []Task, getOpts Ge
 	if len(getOpts.Fields) == 0 {
 		toDownload := make(chan *testresult.DbTaskTestResults, len(allDBTaskResults))
 		for i := range allDBTaskResults {
+			// Records with no attached results, such as a quarantined-tests
+			// snapshot for a fully quarantined task, have nothing in offline
+			// storage to download.
+			if allDBTaskResults[i].Stats.TotalCount == 0 {
+				continue
+			}
 			toDownload <- &allDBTaskResults[i]
 		}
 		close(toDownload)
