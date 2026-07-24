@@ -466,6 +466,21 @@ func TestUploadLaunchTemplate(t *testing.T) {
 		mockClient := m.client.(*awsClientMock)
 		assert.Equal(t, "ami", *mockClient.CreateLaunchTemplateInput.LaunchTemplateData.ImageId)
 		assert.Equal(t, "ht_0", *mockClient.CreateLaunchTemplateInput.LaunchTemplateName)
+		assert.Nil(t, mockClient.CreateLaunchTemplateInput.LaunchTemplateData.CpuOptions)
+	})
+
+	t.Run("NestedVirtualizationEnabled", func(t *testing.T) {
+		m := &ec2FleetManager{
+			EC2FleetManagerOptions: &EC2FleetManagerOptions{
+				client: &awsClientMock{},
+			},
+			settings: &evergreen.Settings{},
+		}
+		assert.NoError(t, m.uploadLaunchTemplate(context.Background(), &host.Host{Tag: "ht_0"}, &EC2ProviderSettings{AMI: "ami", EnableNestedVirtualization: true}))
+
+		mockClient := m.client.(*awsClientMock)
+		require.NotNil(t, mockClient.CreateLaunchTemplateInput.LaunchTemplateData.CpuOptions)
+		assert.Equal(t, types.NestedVirtualizationSpecificationEnabled, mockClient.CreateLaunchTemplateInput.LaunchTemplateData.CpuOptions.NestedVirtualization)
 	})
 
 	t.Run("DuplicateTemplate", func(t *testing.T) {
