@@ -88,6 +88,5 @@ func (c *DBCache) Delete(ctx context.Context, key string) error {
 			"operation": "Delete",
 			"source":    "DBCache",
 		}))
-	//
 	return nil
 }
