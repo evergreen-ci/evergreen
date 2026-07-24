@@ -8,7 +8,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
@@ -17,6 +16,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 var (
@@ -68,17 +68,17 @@ const (
 // variants/tasks, assuming the tag matches the defined git_tag regex.
 // In this way, users can define different behavior for different kind of tags.
 type ProjectAlias struct {
-	ID          mgobson.ObjectId  `bson:"_id,omitempty" json:"_id" yaml:"id"`
-	ProjectID   string            `bson:"project_id" json:"project_id" yaml:"project_id"`
-	Alias       string            `bson:"alias" json:"alias" yaml:"alias"`
-	Variant     string            `bson:"variant,omitempty" json:"variant" yaml:"variant"`
-	Description string            `bson:"description" json:"description" yaml:"description"`
-	GitTag      string            `bson:"git_tag" json:"git_tag" yaml:"git_tag"`
-	RemotePath  string            `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
-	VariantTags []string          `bson:"variant_tags,omitempty" json:"variant_tags" yaml:"variant_tags"`
-	Task        string            `bson:"task,omitempty" json:"task" yaml:"task"`
-	TaskTags    []string          `bson:"tags,omitempty" json:"tags" yaml:"task_tags"`
-	Parameters  []patch.Parameter `bson:"parameters,omitempty" json:"parameters" yaml:"parameters"`
+	ID          primitive.ObjectID `bson:"_id,omitempty" json:"_id" yaml:"id"`
+	ProjectID   string             `bson:"project_id" json:"project_id" yaml:"project_id"`
+	Alias       string             `bson:"alias" json:"alias" yaml:"alias"`
+	Variant     string             `bson:"variant,omitempty" json:"variant" yaml:"variant"`
+	Description string             `bson:"description" json:"description" yaml:"description"`
+	GitTag      string             `bson:"git_tag" json:"git_tag" yaml:"git_tag"`
+	RemotePath  string             `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
+	VariantTags []string           `bson:"variant_tags,omitempty" json:"variant_tags" yaml:"variant_tags"`
+	Task        string             `bson:"task,omitempty" json:"task" yaml:"task"`
+	TaskTags    []string           `bson:"tags,omitempty" json:"tags" yaml:"task_tags"`
+	Parameters  []patch.Parameter  `bson:"parameters,omitempty" json:"parameters" yaml:"parameters"`
 
 	// Source is not stored; indicates where the alias is stored for the project.
 	Source string `bson:"-" json:"-" yaml:"-"`
@@ -414,18 +414,22 @@ func FindMatchingGitTagAliasesInProject(ctx context.Context, projectID, tag stri
 
 // IsValidId returns whether the supplied Id is a valid patch doc id (BSON ObjectId).
 func IsValidId(id string) bool {
-	return mgobson.IsObjectIdHex(id)
+	_, err := primitive.ObjectIDFromHex(id)
+	return err == nil
 }
 
 // NewId constructs a valid patch Id from the given hex string.
-func NewId(id string) mgobson.ObjectId { return mgobson.ObjectIdHex(id) }
+func NewId(id string) primitive.ObjectID {
+	objectID, _ := primitive.ObjectIDFromHex(id)
+	return objectID
+}
 
 func (p *ProjectAlias) Upsert(ctx context.Context) error {
 	if len(p.ProjectID) == 0 {
 		return errors.New("empty project ID")
 	}
-	if p.ID.Hex() == "" {
-		p.ID = mgobson.NewObjectId()
+	if p.ID.IsZero() {
+		p.ID = primitive.NewObjectID()
 	}
 	update := bson.M{
 		aliasKey:       p.Alias,
@@ -454,14 +458,14 @@ func UpsertAliasesForProject(ctx context.Context, aliases []ProjectAlias, projec
 	for i := range aliases {
 		// If the caller supplied an existing alias ID, verify it belongs to this
 		// project before upserting it.
-		if aliases[i].ID.Valid() {
+		if !aliases[i].ID.IsZero() {
 			ownerProjectId, err := findAliasOwnerProject(ctx, aliases[i].ID.Hex())
 			if err != nil {
 				catcher.Wrapf(err, "verifying ownership of project alias '%s'", aliases[i].ID.Hex())
 				continue
 			}
 			if ownerProjectId != projectId {
-				aliases[i].ID = ""
+				aliases[i].ID = primitive.NilObjectID
 			}
 		}
 		aliases[i].ProjectID = projectId
@@ -481,7 +485,7 @@ func findAliasOwnerProject(ctx context.Context, id string) (string, error) {
 		return "", nil
 	}
 	var alias ProjectAlias
-	q := db.Query(bson.M{idKey: mgobson.ObjectIdHex(id)})
+	q := db.Query(bson.M{idKey: NewId(id)})
 	err := db.FindOneQ(ctx, ProjectAliasCollection, q, &alias)
 	if adb.ResultsNotFound(err) {
 		return "", nil
@@ -501,8 +505,12 @@ func RemoveProjectAlias(ctx context.Context, projectId, id string) error {
 	if projectId == "" {
 		return errors.New("can't remove project alias with empty project ID")
 	}
-	err := db.Remove(ctx, ProjectAliasCollection, bson.M{
-		idKey:        mgobson.ObjectIdHex(id),
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return errors.Wrap(err, "parsing project alias ID")
+	}
+	err = db.Remove(ctx, ProjectAliasCollection, bson.M{
+		idKey:        objectID,
 		projectIDKey: projectId,
 	})
 	if err != nil {

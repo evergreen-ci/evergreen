@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
@@ -18,9 +17,6 @@ type hostStatusDistro struct {
 	Count  int      `bson:"count"`
 	Status []string `bson:"status"`
 }
-
-func (s *hostStatusDistro) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(s) }
-func (s *hostStatusDistro) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, s) }
 
 func getRecentFinishedStatusesForHost(ctx context.Context, hostId string, hostProvisionTime time.Time, n int) (int, []string) {
 	query := ResourceTypeKeyIs(ResourceTypeHost)

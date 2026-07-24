@@ -5,13 +5,13 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // AddPRPatchIntent inserts the intent and adds it to the queue if PR testing is enabled for the branch.
@@ -29,7 +29,7 @@ func AddPRPatchIntent(ctx context.Context, intent patch.Intent, queue amboy.Queu
 		}
 	}
 
-	job := units.NewPatchIntentProcessor(evergreen.GetEnvironment(), mgobson.NewObjectId(), intent)
+	job := units.NewPatchIntentProcessor(evergreen.GetEnvironment(), primitive.NewObjectID(), intent)
 	if err := queue.Put(context.Background(), job); err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"source":    "GitHub hook",
@@ -66,7 +66,7 @@ func AddGithubMergeIntent(ctx context.Context, intent patch.Intent, queue amboy.
 		}
 	}
 
-	job := units.NewPatchIntentProcessor(evergreen.GetEnvironment(), mgobson.NewObjectId(), intent)
+	job := units.NewPatchIntentProcessor(evergreen.GetEnvironment(), primitive.NewObjectID(), intent)
 	if err := queue.Put(context.Background(), job); err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"source":    "GitHub hook",

@@ -8,7 +8,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	adb "github.com/mongodb/anser/db"
@@ -83,9 +82,6 @@ type Build struct {
 	// until all of its essential tasks have finished.
 	HasUnfinishedEssentialTask bool `bson:"has_unfinished_essential_task"`
 }
-
-func (b *Build) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(b) }
-func (b *Build) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, b) }
 
 // Returns whether or not the build has finished, based on its status.
 // In spite of the name, a build with status BuildFailed may still be in

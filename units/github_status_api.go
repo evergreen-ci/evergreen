@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -19,6 +18,7 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
@@ -194,7 +194,11 @@ func (j *githubStatusUpdateJob) fetch(ctx context.Context) (*message.GithubStatu
 	}
 
 	if j.UpdateType == githubUpdateTypeRequestAuth || j.UpdateType == githubUpdateTypeNewPatch {
-		patchDoc, err := patch.FindOne(ctx, patch.ById(mgobson.ObjectIdHex(j.FetchID)))
+		patchID, err := primitive.ObjectIDFromHex(j.FetchID)
+		if err != nil {
+			return nil, errors.Wrap(err, "parsing patch ID")
+		}
+		patchDoc, err := patch.FindOne(ctx, patch.ById(patchID))
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}

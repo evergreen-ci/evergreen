@@ -6,11 +6,11 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type ProjectEventSuite struct {
@@ -35,6 +35,8 @@ const (
 	username  = "me"
 )
 
+var mockProjectAliasID = primitive.NewObjectID()
+
 func getMockProjectSettings() ProjectSettings {
 	return ProjectSettings{
 		ProjectRef: ProjectRef{
@@ -52,7 +54,7 @@ func getMockProjectSettings() ProjectSettings {
 			AdminOnlyVars: map[string]bool{},
 		},
 		Aliases: []ProjectAlias{{
-			ID:          mgobson.ObjectIdHex("5bedc72ee4055d31f0340b1d"),
+			ID:          mockProjectAliasID,
 			ProjectID:   projectId,
 			Alias:       "alias1",
 			Variant:     "ubuntu",

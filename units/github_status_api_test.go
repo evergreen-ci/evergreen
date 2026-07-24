@@ -8,7 +8,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -18,6 +17,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type githubStatusUpdateSuite struct {
@@ -55,7 +55,7 @@ func (s *githubStatusUpdateSuite) SetupTest() {
 	s.Require().NoError(s.env.Configure(s.ctx))
 
 	startTime := time.Now().Truncate(time.Millisecond)
-	id := mgobson.NewObjectId()
+	id := primitive.NewObjectID()
 	s.patchDoc = &patch.Patch{
 		Id:         id,
 		Version:    id.Hex(),
@@ -73,7 +73,7 @@ func (s *githubStatusUpdateSuite) SetupTest() {
 	}
 
 	s.buildDoc = &build.Build{
-		Id:           mgobson.NewObjectId().Hex(),
+		Id:           primitive.NewObjectID().Hex(),
 		BuildVariant: "testvariant",
 		Version:      s.patchDoc.Version,
 		Status:       evergreen.BuildFailed,

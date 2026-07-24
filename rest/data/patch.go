@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -20,10 +19,12 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func ValidatePatchID(patchId string) error {
-	if !mgobson.IsObjectIdHex(patchId) {
+	if _, err := primitive.ObjectIDFromHex(patchId); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    fmt.Sprintf("patch ID '%s' is invalid because it is not an ObjectId", patchId),
@@ -98,7 +99,11 @@ func AbortPatch(ctx context.Context, patchId string, user string) error {
 		return errors.WithStack(err)
 	}
 
-	p, err := patch.FindOne(ctx, patch.ById(mgobson.ObjectIdHex(patchId)))
+	objectID, err := primitive.ObjectIDFromHex(patchId)
+	if err != nil {
+		return errors.Wrap(err, "parsing patch ID")
+	}
+	p, err := patch.FindOne(ctx, patch.ById(objectID))
 	if err != nil {
 		return err
 	}
@@ -113,7 +118,11 @@ func AbortPatch(ctx context.Context, patchId string, user string) error {
 
 // SetPatchActivated attempts to activate the patch and create a new version (if activated is set to true)
 func SetPatchActivated(ctx context.Context, patchId string, user string, activated bool) error {
-	p, err := patch.FindOne(ctx, patch.ById(mgobson.ObjectIdHex(patchId)))
+	objectID, err := primitive.ObjectIDFromHex(patchId)
+	if err != nil {
+		return errors.Wrap(err, "parsing patch ID")
+	}
+	p, err := patch.FindOne(ctx, patch.ById(objectID))
 	if err != nil {
 		return err
 	}
@@ -173,13 +182,13 @@ func SetMergeQueueGitRefNotFound(ctx context.Context, versionId string) error {
 		}
 	}
 
-	update := mgobson.M{
-		"$set": mgobson.M{
+	update := bson.M{
+		"$set": bson.M{
 			bsonutil.GetDottedKeyName(patch.GithubMergeDataKey, patch.GithubMergeGroupGitRefNotFoundKey): true,
 		},
 	}
 
-	return patch.UpdateOne(ctx, mgobson.M{patch.IdKey: p.Id}, update)
+	return patch.UpdateOne(ctx, bson.M{patch.IdKey: p.Id}, update)
 }
 
 // FindPatchesByUser finds patches for the input user as ordered by creation time.

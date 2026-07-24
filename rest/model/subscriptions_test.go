@@ -3,9 +3,9 @@ package model
 import (
 	"testing"
 
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/stretchr/testify/assert"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestSubscriptionModels(t *testing.T) {
@@ -16,7 +16,7 @@ func TestSubscriptionModels(t *testing.T) {
 	project := "mci"
 
 	subscription := event.Subscription{
-		ID:           mgobson.NewObjectId().Hex(),
+		ID:           primitive.NewObjectID().Hex(),
 		ResourceType: "atype",
 		Trigger:      "atrigger",
 		Owner:        owner,

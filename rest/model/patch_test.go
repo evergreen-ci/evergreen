@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -17,6 +16,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestAPIPatch(t *testing.T) {
@@ -30,7 +30,7 @@ func TestAPIPatch(t *testing.T) {
 	}
 	assert.NoError(pRef.Insert(t.Context()))
 	p := patch.Patch{
-		Id:            mgobson.NewObjectId(),
+		Id:            primitive.NewObjectID(),
 		Description:   "test",
 		Project:       pRef.Id,
 		Branch:        pRef.Branch,
@@ -279,7 +279,7 @@ func TestAPIGithubMergeGroup(t *testing.T) {
 
 	t.Run("APIPatchIncludesGithubMergeData", func(t *testing.T) {
 		p := patch.Patch{
-			Id:              mgobson.NewObjectId(),
+			Id:              primitive.NewObjectID(),
 			GithubMergeData: mg,
 		}
 		a := APIPatch{}
@@ -309,7 +309,7 @@ func TestDownstreamTasks(t *testing.T) {
 	}
 	assert.NoError(projectRef.Insert(t.Context()))
 	p := patch.Patch{
-		Id:          mgobson.NewObjectId(),
+		Id:          primitive.NewObjectID(),
 		Description: "test",
 		Project:     "mci",
 		Tasks:       []string{"t1", "t2"},
@@ -321,7 +321,7 @@ func TestDownstreamTasks(t *testing.T) {
 	}
 
 	childPatch := patch.Patch{
-		Id:          mgobson.ObjectIdHex(childPatchId),
+		Id:          testutil.ObjectIDFromHex(t, childPatchId),
 		Description: "test",
 		Project:     "mci",
 		Tasks:       []string{"child_task_1", "child_task_2"},
@@ -373,7 +373,7 @@ func TestPopulateCostFromVersionS3Usage(t *testing.T) {
 		require.NoError(t, v.Insert(t.Context()))
 
 		p := patch.Patch{
-			Id:      mgobson.NewObjectId(),
+			Id:      primitive.NewObjectID(),
 			Version: v.Id,
 		}
 		apiPatch := APIPatch{}
@@ -395,7 +395,7 @@ func TestPopulateCostFromVersionS3Usage(t *testing.T) {
 		require.NoError(t, v.Insert(t.Context()))
 
 		p := patch.Patch{
-			Id:      mgobson.NewObjectId(),
+			Id:      primitive.NewObjectID(),
 			Version: v.Id,
 		}
 		apiPatch := APIPatch{}
@@ -410,7 +410,7 @@ func TestPreselectedDisplayTasks(t *testing.T) {
 	require.NoError(t, db.ClearCollections(patch.Collection, model.ProjectRefCollection))
 
 	p := patch.Patch{
-		Id:          mgobson.NewObjectId(),
+		Id:          primitive.NewObjectID(),
 		Description: "test",
 		Project:     "mci",
 		Tasks:       []string{"variant_task_1", "variant_task_2", "exec1", "exec2"},

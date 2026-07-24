@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -63,7 +62,7 @@ func getMockProjectSettings() model.ProjectSettings {
 			PrivateVars: map[string]bool{"world": true},
 		},
 		Aliases: []model.ProjectAlias{{
-			ID:        mgobson.ObjectIdHex("5bedc72ee4055d31f0340b1d"),
+			ID:        primitive.NewObjectID(),
 			ProjectID: projectId,
 			Alias:     "alias1",
 			Variant:   "ubuntu",

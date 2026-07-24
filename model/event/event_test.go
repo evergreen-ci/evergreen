@@ -8,11 +8,12 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/testutil"
 	amboyRegistry "github.com/mongodb/amboy/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type eventSuite struct {
@@ -62,8 +63,9 @@ func (s *eventSuite) TestWithRealData() {
 	s.Equal("2017-06-20T18:07:24.991Z", date.Format(time.RFC3339Nano))
 
 	// unmarshaller works with r_type in the root document set
+	firstID := testutil.ObjectIDFromHex(s.T(), "5949645c9acd9604fdd202d8")
 	data := bson.M{
-		idKey:           mgobson.ObjectIdHex("5949645c9acd9604fdd202d8"),
+		idKey:           firstID,
 		TimestampKey:    date,
 		ResourceIdKey:   "macos.example.com",
 		TypeKey:         "HOST_TASK_FINISHED",
@@ -75,7 +77,7 @@ func (s *eventSuite) TestWithRealData() {
 		},
 	}
 	s.NoError(db.Insert(s.T().Context(), EventCollection, data))
-	entries, err := Find(s.T().Context(), db.Query(bson.M{idKey: mgobson.ObjectIdHex("5949645c9acd9604fdd202d8")}))
+	entries, err := Find(s.T().Context(), db.Query(bson.M{idKey: firstID}))
 	s.NoError(err)
 	s.Len(entries, 1)
 	s.NotPanics(func() {
@@ -96,8 +98,9 @@ func (s *eventSuite) TestWithRealData() {
 	})
 
 	// unmarshaller works with both r_type fields set
+	secondID := testutil.ObjectIDFromHex(s.T(), "5949645c9acd9604fdd202d9")
 	data = bson.M{
-		idKey:           mgobson.ObjectIdHex("5949645c9acd9604fdd202d9"),
+		idKey:           secondID,
 		TimestampKey:    date,
 		ResourceIdKey:   "macos.example.com",
 		TypeKey:         "HOST_TASK_FINISHED",
@@ -110,7 +113,7 @@ func (s *eventSuite) TestWithRealData() {
 		},
 	}
 	s.NoError(db.Insert(s.T().Context(), EventCollection, data))
-	entries, err = Find(s.T().Context(), db.Query(bson.M{idKey: mgobson.ObjectIdHex("5949645c9acd9604fdd202d9")}))
+	entries, err = Find(s.T().Context(), db.Query(bson.M{idKey: secondID}))
 	s.NoError(err)
 	s.Len(entries, 1)
 	s.NotPanics(func() {
@@ -142,7 +145,7 @@ func (s *eventSuite) TestWithRealData() {
 
 func (s *eventSuite) TestEventWithNilData() {
 	event := EventLogEntry{
-		ID:         mgobson.NewObjectId().Hex(),
+		ID:         primitive.NewObjectID().Hex(),
 		ResourceId: "TEST1",
 		EventType:  "TEST2",
 		Timestamp:  time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
@@ -247,7 +250,7 @@ func (s *eventSuite) TestFindResourceTypeIn() {
 
 func (s *eventSuite) TestFindByID() {
 	e := &EventLogEntry{
-		ID:           mgobson.NewObjectId().Hex(),
+		ID:           primitive.NewObjectID().Hex(),
 		ResourceType: ResourceTypeHost,
 		ResourceId:   "TEST1",
 		EventType:    "TEST2",
@@ -275,7 +278,7 @@ func (s *eventSuite) TestMarkProcessed() {
 	s.Zero(ptime)
 
 	s.EqualError(event.MarkProcessed(s.T().Context()), "event has no ID")
-	event.ID = mgobson.NewObjectId().Hex()
+	event.ID = primitive.NewObjectID().Hex()
 	s.EqualError(event.MarkProcessed(s.T().Context()), "updating 'processed at' time: document not found")
 	s.NoError(event.Log(s.T().Context()))
 
@@ -349,7 +352,7 @@ func (s *eventSuite) TestFindUnprocessedEvents() {
 func (s *eventSuite) TestFindLastProcessedEvent() {
 	events := []EventLogEntry{
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           primitive.NewObjectID().Hex(),
 			Timestamp:    time.Now().Add(-2 * time.Hour),
 			ResourceId:   "macos.example.com",
 			EventType:    "HOST_TASK_FINISHED",
@@ -361,7 +364,7 @@ func (s *eventSuite) TestFindLastProcessedEvent() {
 			},
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           primitive.NewObjectID().Hex(),
 			Timestamp:    time.Now().Add(-1 * time.Hour),
 			ResourceId:   "macos.example.com2",
 			EventType:    "HOST_TASK_FINISHED",
@@ -373,7 +376,7 @@ func (s *eventSuite) TestFindLastProcessedEvent() {
 			},
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           primitive.NewObjectID().Hex(),
 			Timestamp:    time.Now().Add(-1 * time.Hour),
 			ResourceId:   "macos.example.com3",
 			EventType:    "HOST_TASK_FINISHED",
@@ -397,7 +400,7 @@ func (s *eventSuite) TestFindLastProcessedEvent() {
 func (s *eventSuite) TestCountUnprocessedEvents() {
 	events := []EventLogEntry{
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           primitive.NewObjectID().Hex(),
 			Timestamp:    time.Now().Add(-2 * time.Hour),
 			ResourceId:   "macos.example.com",
 			EventType:    "HOST_TASK_FINISHED",
@@ -408,7 +411,7 @@ func (s *eventSuite) TestCountUnprocessedEvents() {
 			},
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           primitive.NewObjectID().Hex(),
 			Timestamp:    time.Now().Add(-1 * time.Hour),
 			ResourceId:   "macos.example.com2",
 			EventType:    "HOST_TASK_FINISHED",
@@ -420,7 +423,7 @@ func (s *eventSuite) TestCountUnprocessedEvents() {
 			},
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           primitive.NewObjectID().Hex(),
 			Timestamp:    time.Now().Add(-1 * time.Hour),
 			ResourceId:   "macos.example.com3",
 			EventType:    "HOST_TASK_FINISHED",
@@ -487,7 +490,7 @@ func findResourceTypeIn(data any) (bool, string) {
 
 func (s *eventSuite) TestLogManyEvents() {
 	event1 := EventLogEntry{
-		ID:           mgobson.NewObjectId().Hex(),
+		ID:           primitive.NewObjectID().Hex(),
 		ResourceId:   "resource_id_1",
 		EventType:    "some_type",
 		Timestamp:    time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
@@ -495,7 +498,7 @@ func (s *eventSuite) TestLogManyEvents() {
 		ResourceType: "TASK",
 	}
 	event2 := EventLogEntry{
-		ID:           mgobson.NewObjectId().Hex(),
+		ID:           primitive.NewObjectID().Hex(),
 		ResourceId:   "resource_id_1",
 		EventType:    "some_type",
 		Timestamp:    time.Now().Round(time.Millisecond).Truncate(time.Millisecond),

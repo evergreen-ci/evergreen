@@ -6,18 +6,18 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/google/go-github/v70/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestMergeQueueCompletionMetricsFallbackJobSkipsPatchFinishedLessThan5MinAgo(t *testing.T) {
 	t.Cleanup(func() { require.NoError(t, db.ClearCollections(patch.Collection)) })
 
 	p := patch.Patch{
-		Id:         mgobson.NewObjectId(),
+		Id:         primitive.NewObjectID(),
 		Project:    "my-project",
 		Alias:      evergreen.CommitQueueAlias,
 		Status:     evergreen.VersionSucceeded,
@@ -39,7 +39,7 @@ func TestMergeQueueCompletionMetricsFallbackJobSkipsWhenGitHubPRFetchFails(t *te
 	t.Cleanup(func() { require.NoError(t, db.ClearCollections(patch.Collection)) })
 
 	p := patch.Patch{
-		Id:         mgobson.NewObjectId(),
+		Id:         primitive.NewObjectID(),
 		Project:    "my-project",
 		Alias:      evergreen.CommitQueueAlias,
 		Status:     evergreen.VersionSucceeded,
@@ -61,7 +61,7 @@ func TestMergeQueueCompletionMetricsFallbackJobPreservesSuccessStatusOnGetPullRe
 	t.Cleanup(func() { require.NoError(t, db.ClearCollections(patch.Collection)) })
 
 	p := patch.Patch{
-		Id:                          mgobson.NewObjectId(),
+		Id:                          primitive.NewObjectID(),
 		Project:                     "my-project",
 		Alias:                       evergreen.CommitQueueAlias,
 		Status:                      evergreen.VersionSucceeded,

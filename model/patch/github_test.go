@@ -8,7 +8,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
@@ -122,7 +121,7 @@ func (s *GithubSuite) TestNewGithubIntent() {
 	s.Equal(s.user, patchDoc.GithubPatchData.Author)
 	patchId := "5aeb4514f27e4f9984646d97"
 	patch := Patch{
-		Id:      mgobson.ObjectIdHex(patchId),
+		Id:      testutil.ObjectIDFromHex(s.T(), patchId),
 		Project: "mci",
 		GithubPatchData: thirdparty.GithubPatch{
 			PRNumber:               5,

@@ -7,17 +7,18 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestVersionTriggers(t *testing.T) {
@@ -83,7 +84,7 @@ func (s *VersionSuite) SetupTest() {
 		event.NewSubscriptionByID(event.ResourceTypeVersion, event.TriggerFailure, s.event.ResourceId, apiSub),
 		event.NewSubscriptionByID(event.ResourceTypeVersion, event.TriggerRegression, s.event.ResourceId, apiSub),
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           primitive.NewObjectID().Hex(),
 			ResourceType: event.ResourceTypeVersion,
 			Trigger:      event.TriggerExceedsDuration,
 			Selectors: []event.Selector{
@@ -102,7 +103,7 @@ func (s *VersionSuite) SetupTest() {
 			},
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           primitive.NewObjectID().Hex(),
 			ResourceType: event.ResourceTypeVersion,
 			Trigger:      event.TriggerRuntimeChangeByPercent,
 			Selectors: []event.Selector{
@@ -364,7 +365,7 @@ func (s *VersionSuite) TestMakeDataForRepotrackerVersion() {
 
 func (s *VersionSuite) TestMakeDataForPatchVersion() {
 	p := patch.Patch{
-		Id:     mgobson.ObjectIdHex(s.version.Id),
+		Id:     testutil.ObjectIDFromHex(s.T(), s.version.Id),
 		Status: evergreen.VersionSucceeded,
 	}
 	s.Require().NoError(p.Insert(s.T().Context()))
@@ -420,7 +421,7 @@ func TestRepoProjectSubscriptionFiresForBranchVersion(t *testing.T) {
 	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{Id: "repo-project"}}
 	require.NoError(t, repoRef.Replace(ctx))
 	sub := event.Subscription{
-		ID:           mgobson.NewObjectId().Hex(),
+		ID:           primitive.NewObjectID().Hex(),
 		ResourceType: event.ResourceTypeVersion,
 		Trigger:      event.TriggerFailure,
 		Selectors:    []event.Selector{{Type: event.SelectorProject, Data: "repo-project"}},
@@ -464,7 +465,7 @@ func TestRepoProjectSubscriptionDoesNotFireForBranchVersionWithoutRepo(t *testin
 	pRef := model.ProjectRef{Id: "branch-project", Identifier: "branch-project"}
 	require.NoError(t, pRef.Insert(ctx))
 	sub := event.Subscription{
-		ID:           mgobson.NewObjectId().Hex(),
+		ID:           primitive.NewObjectID().Hex(),
 		ResourceType: event.ResourceTypeVersion,
 		Trigger:      event.TriggerFailure,
 		Selectors:    []event.Selector{{Type: event.SelectorProject, Data: "repo-project"}},

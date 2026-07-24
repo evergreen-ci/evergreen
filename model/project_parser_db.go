@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (

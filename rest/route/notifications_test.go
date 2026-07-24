@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type notificationSuite struct {
@@ -33,17 +33,17 @@ func (s *notificationSuite) SetupTest() {
 
 	events := []event.EventLogEntry{
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           primitive.NewObjectID().Hex(),
 			ResourceType: event.ResourceTypeHost,
 			Data:         event.HostEventData{},
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           primitive.NewObjectID().Hex(),
 			ResourceType: event.ResourceTypeHost,
 			Data:         event.HostEventData{},
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           primitive.NewObjectID().Hex(),
 			ResourceType: event.ResourceTypeHost,
 			Data:         event.HostEventData{},
 			ProcessedAt:  s.expectedTime,

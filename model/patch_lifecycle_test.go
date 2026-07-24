@@ -13,7 +13,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/manifest"
@@ -92,7 +91,7 @@ func resetPatchSetup(ctx context.Context, t *testing.T, testPath string) *patch.
 
 	// this patch adds a new task to the existing build
 	configPatch := &patch.Patch{
-		Id:            mgobson.NewObjectId(),
+		Id:            primitive.NewObjectID(),
 		Project:       patchedProject,
 		Githash:       patchedRevision,
 		Tasks:         []string{"taskTwo", "taskOne"},
@@ -141,7 +140,7 @@ func resetProjectlessPatchSetup(ctx context.Context, t *testing.T) *patch.Patch 
 
 	// this patch adds a new task to the existing build
 	configPatch := &patch.Patch{
-		Id:            mgobson.NewObjectId(),
+		Id:            primitive.NewObjectID(),
 		Project:       patchedProject,
 		BuildVariants: []string{"linux-64-duroff"},
 		Githash:       patchedRevision,
@@ -1336,7 +1335,7 @@ func TestAbortPatchesWithGithubPatchData(t *testing.T) {
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(patch.Collection, task.Collection, VersionCollection))
-			id := mgobson.NewObjectId()
+			id := primitive.NewObjectID()
 			v := Version{
 				Id:        id.Hex(),
 				Status:    evergreen.VersionStarted,
@@ -1437,7 +1436,7 @@ func TestConfigurePatch(t *testing.T) {
 			require.NoError(t, db.ClearCollections(patch.Collection, ParserProjectCollection, ProjectRefCollection, VersionCollection, build.Collection, task.Collection))
 
 			ctx := t.Context()
-			id := mgobson.NewObjectId()
+			id := primitive.NewObjectID()
 			buildID := "build_id"
 			v := &Version{
 				Id:        id.Hex(),
@@ -1466,7 +1465,7 @@ func TestConfigurePatch(t *testing.T) {
 				},
 			}
 			pRef := &ProjectRef{
-				Id: mgobson.NewObjectId().Hex(),
+				Id: primitive.NewObjectID().Hex(),
 			}
 			require.NoError(t, pRef.Insert(ctx))
 			proj := &Project{}

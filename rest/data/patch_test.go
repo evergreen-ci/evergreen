@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -19,6 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -237,7 +237,7 @@ func (s *PatchConnectorFetchByIdSuite) TestFetchById() {
 }
 
 func (s *PatchConnectorFetchByIdSuite) TestFetchByIdFail() {
-	newId := mgobson.NewObjectId()
+	newId := primitive.NewObjectID()
 	for _, i := range s.objIds {
 		s.NotEqual(newId, i)
 	}
@@ -323,7 +323,7 @@ func (s *PatchConnectorAbortByIdSuite) TestAbort() {
 }
 
 func (s *PatchConnectorAbortByIdSuite) TestAbortFail() {
-	newId := mgobson.NewObjectId()
+	newId := primitive.NewObjectID()
 	for _, i := range s.objIds {
 		s.NotEqual(newId, i)
 	}
@@ -549,7 +549,7 @@ func (s *PatchConnectorFetchByUserSuite) TestFetchKeyOutOfBound() {
 func TestGetRawPatches(t *testing.T) {
 	assert.NoError(t, db.Clear(patch.Collection))
 	p := patch.Patch{
-		Id:      mgobson.NewObjectId(),
+		Id:      primitive.NewObjectID(),
 		Githash: "hashbrown",
 		Patches: []patch.ModulePatch{
 			{ModuleName: "different", Githash: "home fries"},

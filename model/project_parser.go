@@ -15,7 +15,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -175,7 +174,8 @@ func (pp *ParserProject) Insert(ctx context.Context) error {
 }
 
 func (pp *ParserProject) MarshalBSON() ([]byte, error) {
-	return mgobson.Marshal(pp)
+	type parserProjectBSONAlias ParserProject
+	return bson.Marshal((*parserProjectBSONAlias)(pp))
 }
 
 func (pp *ParserProject) MarshalYAML() (any, error) {

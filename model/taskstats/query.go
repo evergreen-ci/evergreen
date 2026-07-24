@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -176,9 +175,6 @@ type TaskStats struct {
 	AvgDurationSuccess float64   `bson:"avg_duration_success"`
 	LastUpdate         time.Time `bson:"last_update"`
 }
-
-func (s *TaskStats) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(s) }
-func (s *TaskStats) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, s) }
 
 // GetTaskStats queries the precomputed task statistics using a filter.
 func GetTaskStats(ctx context.Context, filter StatsFilter) ([]TaskStats, error) {

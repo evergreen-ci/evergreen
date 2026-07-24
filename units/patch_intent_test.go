@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -33,6 +32,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -269,7 +269,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
 	s.NoError(intent.Insert(s.ctx))
 
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings())
-	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j := NewPatchIntentProcessor(s.env, primitive.NewObjectID(), intent).(*patchIntentProcessor)
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
@@ -299,7 +299,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithBadAlias() {
 	s.NoError(intent.Insert(s.ctx))
 
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings())
-	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j := NewPatchIntentProcessor(s.env, primitive.NewObjectID(), intent).(*patchIntentProcessor)
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
@@ -334,7 +334,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinishCommitQueuePatchWithNoTasksAndVari
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert(s.ctx))
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings())
-	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j := NewPatchIntentProcessor(s.env, primitive.NewObjectID(), intent).(*patchIntentProcessor)
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
@@ -385,7 +385,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithDisabledCommitQueue() {
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert(s.ctx))
 
-	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j := NewPatchIntentProcessor(s.env, primitive.NewObjectID(), intent).(*patchIntentProcessor)
 
 	patchDoc := intent.NewPatch()
 	err = j.finishPatch(s.ctx, patchDoc)
@@ -398,7 +398,7 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	patchId := mgobson.NewObjectId().Hex()
+	patchId := primitive.NewObjectID().Hex()
 	previousPatchDoc := &patch.Patch{
 		Id:         patch.NewId(patchId),
 		Activated:  true,
@@ -429,7 +429,7 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 	}
 	s.NoError((previousPatchDoc).Insert(s.ctx))
 
-	reusePatchId := mgobson.NewObjectId().Hex()
+	reusePatchId := primitive.NewObjectID().Hex()
 	reusePatchDoc := &patch.Patch{
 		Id:         patch.NewId(reusePatchId),
 		Activated:  true,
@@ -670,7 +670,7 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 			RepeatDefinition: true,
 		})
 		s.NoError(err)
-		j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+		j := NewPatchIntentProcessor(s.env, primitive.NewObjectID(), intent).(*patchIntentProcessor)
 		j.user = &user.DBUser{Id: "me"}
 
 		currentPatchDoc := intent.NewPatch()
@@ -762,7 +762,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithRepeatFailed() {
 		RepeatFailed: true,
 	})
 	s.NoError(err)
-	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j := NewPatchIntentProcessor(s.env, primitive.NewObjectID(), intent).(*patchIntentProcessor)
 	j.user = &user.DBUser{Id: s.user}
 
 	project := model.Project{
@@ -898,7 +898,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReuse() {
 		RepeatDefinition: true,
 	})
 	s.NoError(err)
-	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j := NewPatchIntentProcessor(s.env, primitive.NewObjectID(), intent).(*patchIntentProcessor)
 	j.user = &user.DBUser{Id: s.user}
 
 	project := model.Project{
@@ -987,7 +987,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	earlierPatchId := mgobson.NewObjectId().Hex()
+	earlierPatchId := primitive.NewObjectID().Hex()
 	tasks := []task.Task{
 		{
 			Id:           "t1",
@@ -1039,7 +1039,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
 
 	// Add a more recent patch to ensure that it uses the passed
 	// in patchId and not just the latest.
-	prevPatchId := mgobson.NewObjectId().Hex()
+	prevPatchId := primitive.NewObjectID().Hex()
 	previousPatchDoc := &patch.Patch{
 		Id:            patch.NewId(prevPatchId),
 		Activated:     true,
@@ -1088,7 +1088,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
 		RepeatPatchId:    earlierPatchId,
 	})
 	s.NoError(err)
-	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j := NewPatchIntentProcessor(s.env, primitive.NewObjectID(), intent).(*patchIntentProcessor)
 	j.user = &user.DBUser{Id: s.user}
 
 	project := model.Project{
@@ -1175,7 +1175,7 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert(s.ctx))
 
-	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j := NewPatchIntentProcessor(s.env, primitive.NewObjectID(), intent).(*patchIntentProcessor)
 
 	patchDoc := intent.NewPatch()
 	s.NoError(j.finishPatch(s.ctx, patchDoc))
@@ -1248,7 +1248,7 @@ func (s *PatchIntentUnitsSuite) TestProcessGitHubIntentWithMergeBase() {
 	s.NoError(err)
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert(s.ctx))
-	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j := NewPatchIntentProcessor(s.env, primitive.NewObjectID(), intent).(*patchIntentProcessor)
 	patchDoc := intent.NewPatch()
 	s.NoError(j.finishPatch(s.ctx, patchDoc))
 	s.Empty(j.gitHubError)
@@ -1261,7 +1261,7 @@ func (s *PatchIntentUnitsSuite) TestProcessGitHubIntentWithMergeBase() {
 	s.NoError(err)
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert(s.ctx))
-	j = NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j = NewPatchIntentProcessor(s.env, primitive.NewObjectID(), intent).(*patchIntentProcessor)
 	patchDoc = intent.NewPatch()
 	s.Error(j.finishPatch(s.ctx, patchDoc))
 	s.NotEmpty(j.gitHubError)
@@ -1303,7 +1303,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert(s.ctx))
 
-	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j := NewPatchIntentProcessor(s.env, primitive.NewObjectID(), intent).(*patchIntentProcessor)
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
@@ -1370,7 +1370,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntentWithoutFinalizing() {
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert(s.ctx))
 
-	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j := NewPatchIntentProcessor(s.env, primitive.NewObjectID(), intent).(*patchIntentProcessor)
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
@@ -1434,7 +1434,7 @@ func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForGithubMergeGroup() {
 	s.Equal(evergreen.GithubMergeUser, u.Id)
 }
 
-func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPatchID mgobson.ObjectId, hash string, verifyModules bool, variants []string, tasks []string) {
+func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPatchID primitive.ObjectID, hash string, verifyModules bool, variants []string, tasks []string) {
 	s.Equal(evergreen.VersionCreated, patchDoc.Status)
 	s.Equal(expectedPatchID, patchDoc.Id)
 	if verifyModules {
@@ -1527,7 +1527,7 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	s.NotNil(intent)
 	s.NoError(intent.Insert(s.ctx))
 
-	patchID := mgobson.NewObjectId()
+	patchID := primitive.NewObjectID()
 	j, ok := NewPatchIntentProcessor(s.env, patchID, intent).(*patchIntentProcessor)
 	j.env = s.env
 	s.True(ok)
@@ -1559,7 +1559,7 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	s.NotNil(intent)
 	s.NoError(intent.Insert(s.ctx))
 
-	patchID := mgobson.NewObjectId()
+	patchID := primitive.NewObjectID()
 	j, ok := NewPatchIntentProcessor(s.env, patchID, intent).(*patchIntentProcessor)
 	j.env = s.env
 	s.True(ok)
@@ -1650,7 +1650,7 @@ tasks:
 	s.Require().NoError(childPatchAlias.Upsert(s.ctx))
 
 	p := &patch.Patch{
-		Id:      mgobson.NewObjectId(),
+		Id:      primitive.NewObjectID(),
 		Project: s.project,
 		Author:  evergreen.GithubPatchUser,
 		Githash: s.hash,
@@ -1738,7 +1738,7 @@ tasks:
 	s.Require().NoError(childPatchAlias.Upsert(s.ctx))
 
 	p := &patch.Patch{
-		Id:      mgobson.NewObjectId(),
+		Id:      primitive.NewObjectID(),
 		Project: s.project,
 		Author:  evergreen.GithubPatchUser,
 		Githash: s.hash,
@@ -1796,7 +1796,7 @@ tasks:
 	s.Require().NoError(latestVersionParserProject.Insert(s.ctx))
 
 	parentPatch := &patch.Patch{
-		Id:              mgobson.NewObjectId(),
+		Id:              primitive.NewObjectID(),
 		Project:         s.project,
 		Author:          evergreen.GithubPatchUser,
 		Githash:         s.hash,
@@ -1832,7 +1832,7 @@ tasks:
 	})
 
 	childPatch := intent.NewPatch()
-	j, ok := NewPatchIntentProcessor(s.env, mgobson.ObjectIdHex(intent.ID()), intent).(*patchIntentProcessor)
+	j, ok := NewPatchIntentProcessor(s.env, testutil.ObjectIDFromHex(s.T(), intent.ID()), intent).(*patchIntentProcessor)
 	s.Require().True(ok)
 	_, _, err := j.buildTriggerPatchDoc(s.ctx, childPatch)
 	s.NoError(err)
@@ -1872,7 +1872,7 @@ tasks:
 	s.Require().NoError(latestVersionParserProject.Insert(s.ctx))
 
 	parentPatch := &patch.Patch{
-		Id:              mgobson.NewObjectId(),
+		Id:              primitive.NewObjectID(),
 		Project:         s.project,
 		Author:          evergreen.GithubPatchUser,
 		Githash:         s.hash,
@@ -1908,7 +1908,7 @@ tasks:
 
 	childPatch := intent.NewPatch()
 	childPatch.Triggers.SameBranchAsParent = true
-	j, ok := NewPatchIntentProcessor(s.env, mgobson.ObjectIdHex(intent.ID()), intent).(*patchIntentProcessor)
+	j, ok := NewPatchIntentProcessor(s.env, testutil.ObjectIDFromHex(s.T(), intent.ID()), intent).(*patchIntentProcessor)
 	s.Require().True(ok)
 	_, _, err := j.buildTriggerPatchDoc(s.ctx, childPatch)
 	s.NoError(err)
@@ -1946,7 +1946,7 @@ func (s *PatchIntentUnitsSuite) TestProcessTriggerAliasesWithAliasThatDoesNotMat
 	s.Require().NoError(githubUser.AddRole(s.ctx, childProjRole.ID))
 
 	p := &patch.Patch{
-		Id:      mgobson.NewObjectId(),
+		Id:      primitive.NewObjectID(),
 		Project: s.project,
 		Author:  evergreen.GithubPatchUser,
 		Githash: s.hash,
@@ -2018,7 +2018,7 @@ func (s *PatchIntentUnitsSuite) TestProcessTriggerAliasesWithInadequatePermissio
 	s.Require().NoError(testUser.AddRole(s.ctx, childProjRole.ID))
 
 	p := &patch.Patch{
-		Id:      mgobson.NewObjectId(),
+		Id:      primitive.NewObjectID(),
 		Project: s.project,
 		Author:  testUser.Id,
 		Githash: s.hash,
@@ -2104,7 +2104,7 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 		{
 			name: "NonGitHubPRPatch",
 			patchDoc: &patch.Patch{
-				Id:      mgobson.NewObjectId(),
+				Id:      primitive.NewObjectID(),
 				Project: s.project,
 				Author:  s.user,
 				Githash: s.hash,
@@ -2130,7 +2130,7 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 		{
 			name: "NoChangedFiles",
 			patchDoc: &patch.Patch{
-				Id:      mgobson.NewObjectId(),
+				Id:      primitive.NewObjectID(),
 				Project: s.project,
 				Author:  s.user,
 				Githash: s.hash,
@@ -2161,7 +2161,7 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 		{
 			name: "VariantsWithoutPaths",
 			patchDoc: &patch.Patch{
-				Id:      mgobson.NewObjectId(),
+				Id:      primitive.NewObjectID(),
 				Project: s.project,
 				Author:  s.user,
 				Githash: s.hash,
@@ -2203,7 +2203,7 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 		{
 			name: "SomeVariantsFiltered",
 			patchDoc: &patch.Patch{
-				Id:      mgobson.NewObjectId(),
+				Id:      primitive.NewObjectID(),
 				Project: s.project,
 				Author:  s.user,
 				Githash: s.hash,
@@ -2250,7 +2250,7 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 		{
 			name: "AllVariantsFiltered",
 			patchDoc: &patch.Patch{
-				Id:      mgobson.NewObjectId(),
+				Id:      primitive.NewObjectID(),
 				Project: s.project,
 				Author:  s.user,
 				Githash: s.hash,
@@ -2292,7 +2292,7 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 		{
 			name: "WithDisplayTasks",
 			patchDoc: &patch.Patch{
-				Id:      mgobson.NewObjectId(),
+				Id:      primitive.NewObjectID(),
 				Project: s.project,
 				Author:  s.user,
 				Githash: s.hash,
@@ -2339,7 +2339,7 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 		{
 			name: "MissingBuildVariant",
 			patchDoc: &patch.Patch{
-				Id:      mgobson.NewObjectId(),
+				Id:      primitive.NewObjectID(),
 				Project: s.project,
 				Author:  s.user,
 				Githash: s.hash,
@@ -2379,7 +2379,7 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 		{
 			name: "VariantWithNegatedPathRunsIfOtherFilesChanged",
 			patchDoc: &patch.Patch{
-				Id:      mgobson.NewObjectId(),
+				Id:      primitive.NewObjectID(),
 				Project: s.project,
 				Author:  s.user,
 				Githash: s.hash,
@@ -2419,7 +2419,7 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 		{
 			name: "MergeQueueWithDisabledMergeQueuePathFiltering",
 			patchDoc: &patch.Patch{
-				Id:      mgobson.NewObjectId(),
+				Id:      primitive.NewObjectID(),
 				Project: s.project,
 				Author:  s.user,
 				Githash: s.hash,
@@ -2462,7 +2462,7 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 		{
 			name: "CrossVariantDependencyIntoIgnoredVariantIsPreserved",
 			patchDoc: &patch.Patch{
-				Id:      mgobson.NewObjectId(),
+				Id:      primitive.NewObjectID(),
 				Project: s.project,
 				Author:  s.user,
 				Githash: s.hash,
@@ -2529,7 +2529,7 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 		{
 			name: "TransitiveCrossVariantDependencyIntoIgnoredVariantPreserved",
 			patchDoc: &patch.Patch{
-				Id:      mgobson.NewObjectId(),
+				Id:      primitive.NewObjectID(),
 				Project: s.project,
 				Author:  s.user,
 				Githash: s.hash,
@@ -2606,7 +2606,7 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 		{
 			name: "DisplayTaskPreservedForCrossVariantDependencyIntoIgnoredVariant",
 			patchDoc: &patch.Patch{
-				Id:      mgobson.NewObjectId(),
+				Id:      primitive.NewObjectID(),
 				Project: s.project,
 				Author:  s.user,
 				Githash: s.hash,
@@ -2689,7 +2689,7 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 		{
 			name: "IgnoredVariantWithNoDependentsStillIgnored",
 			patchDoc: &patch.Patch{
-				Id:      mgobson.NewObjectId(),
+				Id:      primitive.NewObjectID(),
 				Project: s.project,
 				Author:  s.user,
 				Githash: s.hash,

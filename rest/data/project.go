@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -18,6 +17,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const EventLogLimit = 10
@@ -63,7 +63,7 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		}
 	}
 	if projectRef.Id == "" {
-		projectRef.Id = mgobson.NewObjectId().Hex()
+		projectRef.Id = primitive.NewObjectID().Hex()
 	}
 	if err := ValidateProjectName(ctx, projectRef.Id); err != nil {
 		return false, err

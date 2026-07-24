@@ -11,13 +11,13 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/reliability"
 	"github.com/evergreen-ci/evergreen/model/taskstats"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func init() {
@@ -105,7 +105,7 @@ func (s *TaskStatsSuite) insertTaskStats(handler *taskStatsHandler, numTests int
 	for i := range numTests {
 		taskName := fmt.Sprintf("%v%v", "task", i)
 		tasks = append(tasks, taskName)
-		err := db.Insert(s.T().Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
+		err := db.Insert(s.T().Context(), taskstats.DailyTaskStatsCollection, bson.M{
 			"_id": taskstats.DBTaskStatsID{
 				Project:      "project",
 				Requester:    "requester",

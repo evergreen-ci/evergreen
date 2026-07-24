@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
@@ -17,6 +16,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -102,16 +102,20 @@ var (
 
 // IsValidId returns whether the supplied Id is a valid patch doc id (BSON ObjectId).
 func IsValidId(id string) bool {
-	return mgobson.IsObjectIdHex(id)
+	_, err := primitive.ObjectIDFromHex(id)
+	return err == nil
 }
 
 // NewId constructs a valid patch Id from the given hex string.
-func NewId(id string) mgobson.ObjectId { return mgobson.ObjectIdHex(id) }
+func NewId(id string) primitive.ObjectID {
+	objectID, _ := primitive.ObjectIDFromHex(id)
+	return objectID
+}
 
 // Queries
 
 // ById produces a query to return the patch with the given _id.
-func ById(id mgobson.ObjectId) db.Q {
+func ById(id primitive.ObjectID) db.Q {
 	return db.Query(bson.M{IdKey: id})
 }
 
@@ -120,10 +124,13 @@ func ByStringId(id string) db.Q {
 }
 
 func ByStringIds(ids []string) db.Q {
-	objectIds := []mgobson.ObjectId{}
+	objectIds := []primitive.ObjectID{}
 	for _, id := range ids {
 		if IsValidId(id) {
-			objectIds = append(objectIds, NewId(id))
+			objectID, err := primitive.ObjectIDFromHex(id)
+			if err == nil {
+				objectIds = append(objectIds, objectID)
+			}
 		} else {
 			grip.Debug(context.Background(), message.Fields{
 				"message": "patch id is not valid",
@@ -503,7 +510,7 @@ func FindLatestGithubPRPatch(ctx context.Context, owner, repo string, prNumber i
 	return &patches[0], nil
 }
 
-func FindProjectForPatch(ctx context.Context, patchID mgobson.ObjectId) (string, error) {
+func FindProjectForPatch(ctx context.Context, patchID primitive.ObjectID) (string, error) {
 	p, err := FindOne(ctx, ById(patchID).Project(bson.M{ProjectKey: 1}))
 	if err != nil {
 		return "", err
@@ -626,8 +633,8 @@ func determineInvalidatedByUpstream(ctx context.Context, p *Patch, reason string
 // groupPatchesAndBuildUpdates groups patches by whether they were invalidated due to
 // upstream failures or their own failures, and builds the corresponding update documents.
 func groupPatchesAndBuildUpdates(ctx context.Context, patches []Patch, reason string, removalTime time.Time) (
-	patchesInvalidatedByUpstream []mgobson.ObjectId, updateForUpstream bson.M,
-	patchesOwnFailure []mgobson.ObjectId, updateForOwnFailure bson.M) {
+	patchesInvalidatedByUpstream []primitive.ObjectID, updateForUpstream bson.M,
+	patchesOwnFailure []primitive.ObjectID, updateForOwnFailure bson.M) {
 
 	for _, p := range patches {
 		if determineInvalidatedByUpstream(ctx, &p, reason, removalTime) {
@@ -690,7 +697,7 @@ func MarkMergeQueuePatchesRemovedFromQueue(ctx context.Context, org, repo, headS
 		groupPatchesAndBuildUpdates(ctx, patches, reason, removalTime)
 
 	updates := []struct {
-		patches []mgobson.ObjectId
+		patches []primitive.ObjectID
 		update  bson.M
 		errMsg  string
 	}{
@@ -713,7 +720,7 @@ func MarkMergeQueuePatchesRemovedFromQueue(ctx context.Context, org, repo, headS
 // ClaimMergeQueueMetricsEmit atomically claims the right to emit the patch_completed span for a merge queue
 // patch, returning true if claimed and false if another process claimed it first. If emission fails after
 // a successful claim, callers must correct the status via SetMergeQueueMetricsEmitStatus.
-func ClaimMergeQueueMetricsEmit(ctx context.Context, patchID mgobson.ObjectId) (bool, error) {
+func ClaimMergeQueueMetricsEmit(ctx context.Context, patchID primitive.ObjectID) (bool, error) {
 	info, err := UpdateAll(ctx,
 		bson.D{
 			{Key: IdKey, Value: patchID},
@@ -731,7 +738,7 @@ func ClaimMergeQueueMetricsEmit(ctx context.Context, patchID mgobson.ObjectId) (
 }
 
 // SetMergeQueueMetricsEmitStatus records the emit status of the patch_completed span for a merge queue patch.
-func SetMergeQueueMetricsEmitStatus(ctx context.Context, patchID mgobson.ObjectId, status string) error {
+func SetMergeQueueMetricsEmitStatus(ctx context.Context, patchID primitive.ObjectID, status string) error {
 	return UpdateOne(ctx,
 		bson.D{{Key: IdKey, Value: patchID}},
 		bson.D{{Key: "$set", Value: bson.D{{Key: MergeQueueMetricsEmitStatusKey, Value: status}}}},
@@ -740,7 +747,7 @@ func SetMergeQueueMetricsEmitStatus(ctx context.Context, patchID mgobson.ObjectI
 
 // SetRemovedFromQueueAt records the time the patch was removed from the merge queue. This is called
 // by the cron fallback path to store the GitHub-derived merge time when the destroyed webhook was missed.
-func SetRemovedFromQueueAt(ctx context.Context, patchID mgobson.ObjectId, t time.Time) error {
+func SetRemovedFromQueueAt(ctx context.Context, patchID primitive.ObjectID, t time.Time) error {
 	return UpdateOne(ctx,
 		bson.D{{Key: IdKey, Value: patchID}},
 		bson.D{{Key: "$set", Value: bson.D{{Key: bsonutil.GetDottedKeyName(GithubMergeDataKey, githubMergeGroupRemovedFromQueueAtKey), Value: t}}}},

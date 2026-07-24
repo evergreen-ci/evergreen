@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -15,6 +14,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestGetSubscriptions(t *testing.T) {
@@ -23,7 +23,7 @@ func TestGetSubscriptions(t *testing.T) {
 
 	subs := []event.Subscription{
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           primitive.NewObjectID().Hex(),
 			Owner:        "someone",
 			OwnerType:    event.OwnerTypePerson,
 			ResourceType: event.ResourceTypePatch,
@@ -40,7 +40,7 @@ func TestGetSubscriptions(t *testing.T) {
 			},
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           primitive.NewObjectID().Hex(),
 			Owner:        "someoneelse",
 			OwnerType:    event.OwnerTypePerson,
 			ResourceType: event.ResourceTypePatch,
@@ -549,7 +549,7 @@ func TestDeleteProjectSubscriptions(t *testing.T) {
 			assert.NoError(t, db.ClearCollections(event.SubscriptionsCollection))
 			subs := []event.Subscription{
 				{
-					ID:           mgobson.NewObjectId().Hex(),
+					ID:           primitive.NewObjectID().Hex(),
 					Owner:        "my-project",
 					OwnerType:    event.OwnerTypeProject,
 					ResourceType: event.ResourceTypePatch,
@@ -566,7 +566,7 @@ func TestDeleteProjectSubscriptions(t *testing.T) {
 					},
 				},
 				{
-					ID:           mgobson.NewObjectId().Hex(),
+					ID:           primitive.NewObjectID().Hex(),
 					Owner:        "not-my-project",
 					OwnerType:    event.OwnerTypeProject,
 					ResourceType: event.ResourceTypePatch,

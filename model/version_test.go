@@ -10,7 +10,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/s3usage"
@@ -20,6 +19,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestLastKnownGoodConfig(t *testing.T) {
@@ -870,7 +870,7 @@ func TestIncrementVersionS3CostAndUsage(t *testing.T) {
 
 	t.Run("WithS3CostAndUsageShouldIncrementVersionFields", func(t *testing.T) {
 		require.NoError(t, db.ClearCollections(VersionCollection))
-		v := &Version{Id: mgobson.NewObjectId().Hex()}
+		v := &Version{Id: primitive.NewObjectID().Hex()}
 		require.NoError(t, v.Insert(ctx))
 
 		taskCost := cost.Cost{
@@ -904,7 +904,7 @@ func TestIncrementVersionS3CostAndUsage(t *testing.T) {
 
 	t.Run("MultipleCallsShouldAccumulateS3Fields", func(t *testing.T) {
 		require.NoError(t, db.ClearCollections(VersionCollection))
-		v := &Version{Id: mgobson.NewObjectId().Hex()}
+		v := &Version{Id: primitive.NewObjectID().Hex()}
 		require.NoError(t, v.Insert(ctx))
 
 		first := cost.Cost{OnDemandS3ArtifactPutCost: 0.05}
@@ -930,7 +930,7 @@ func TestIncrementVersionS3CostAndUsage(t *testing.T) {
 
 	t.Run("ZeroCostAndUsageShouldSkipDBWrite", func(t *testing.T) {
 		require.NoError(t, db.ClearCollections(VersionCollection))
-		v := &Version{Id: mgobson.NewObjectId().Hex()}
+		v := &Version{Id: primitive.NewObjectID().Hex()}
 		require.NoError(t, v.Insert(ctx))
 
 		require.NoError(t, IncrementVersionS3CostAndUsage(ctx, v.Id, cost.Cost{}, s3usage.S3Usage{}))

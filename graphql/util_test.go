@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/annotations"
@@ -21,6 +20,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func init() {
@@ -164,8 +164,8 @@ func TestCanScheduleTask(t *testing.T) {
 
 func TestGetDisplayStatus(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(model.VersionCollection, patch.Collection))
-	patchId := mgobson.NewObjectId()
-	childPatchId := mgobson.NewObjectId()
+	patchId := primitive.NewObjectID()
+	childPatchId := primitive.NewObjectID()
 	version := &model.Version{
 		Id:        patchId.Hex(),
 		Aborted:   true,
@@ -336,7 +336,7 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 func TestIsPatchAuthorForTask(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
 		"TrueWhenUserIsPatchAuthor": func(ctx context.Context, t *testing.T) {
-			versionAndPatchID := mgobson.NewObjectId()
+			versionAndPatchID := primitive.NewObjectID()
 			patch := patch.Patch{
 				Id:     versionAndPatchID,
 				Author: "basic_user",
@@ -348,7 +348,7 @@ func TestIsPatchAuthorForTask(t *testing.T) {
 			assert.True(t, isPatchAuthor)
 		},
 		"FalseWhenUserIsNotPatchAuthor": func(ctx context.Context, t *testing.T) {
-			versionAndPatchID := mgobson.NewObjectId()
+			versionAndPatchID := primitive.NewObjectID()
 			patch := patch.Patch{
 				Id:     versionAndPatchID,
 				Author: "someone_else",
@@ -360,7 +360,7 @@ func TestIsPatchAuthorForTask(t *testing.T) {
 			assert.False(t, isPatchAuthor)
 		},
 		"FalseWhenTaskRequesterIsNotPatchVersionRequester": func(ctx context.Context, t *testing.T) {
-			versionAndPatchID := mgobson.NewObjectId()
+			versionAndPatchID := primitive.NewObjectID()
 			patch := patch.Patch{
 				Id:     versionAndPatchID,
 				Author: "basic_user",
@@ -449,7 +449,7 @@ func TestHasAnnotationPermission(t *testing.T) {
 			assert.False(t, hasAccess)
 		},
 		"TrueWhenUserIsPatchOwnerButDoesNotHaveRequiredLevel": func(ctx context.Context, t *testing.T) {
-			versionAndPatchID := mgobson.NewObjectId()
+			versionAndPatchID := primitive.NewObjectID()
 			patch := patch.Patch{
 				Id:     versionAndPatchID,
 				Author: "basic_user",

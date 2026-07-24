@@ -11,8 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -31,6 +29,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -56,7 +55,7 @@ func TestSetActiveState(t *testing.T) {
 		displayName := "testName"
 		userName := "testUser"
 		testTime := time.Now()
-		versionId := mgobson.NewObjectId()
+		versionId := primitive.NewObjectID()
 		v := &Version{
 			Id: versionId.Hex(),
 		}
@@ -4282,7 +4281,7 @@ func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
 	}
 	require.NoError(t, parserProject.Insert(t.Context()))
 	patch := patch.Patch{
-		Id:      mgobson.NewObjectId(),
+		Id:      primitive.NewObjectID(),
 		Version: version.Id,
 	}
 	require.NoError(t, patch.Insert(t.Context()))
@@ -4633,7 +4632,7 @@ func TestResetStaleTask(t *testing.T) {
 			}
 			require.NoError(t, parserProject.Insert(t.Context()))
 			patch := patch.Patch{
-				Id:      mgobson.NewObjectId(),
+				Id:      primitive.NewObjectID(),
 				Version: version.Id,
 			}
 			require.NoError(t, patch.Insert(t.Context()))

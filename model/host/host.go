@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -209,8 +208,6 @@ const (
 	ReprovisionRestartJasper ReprovisionType = "restart-jasper"
 )
 
-func (h *Host) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, h) }
-
 // IsFree checks that the host is not running a task and is not in the process of tearing down.
 func (h *Host) IsFree() bool {
 	return h.RunningTask == "" && !h.IsTearingDown()
@@ -226,9 +223,6 @@ type IdleHostsByDistroID struct {
 	IdleHosts         []Host `bson:"idle_hosts"`
 	RunningHostsCount int    `bson:"running_hosts_count"`
 }
-
-func (h *IdleHostsByDistroID) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(h) }
-func (h *IdleHostsByDistroID) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, h) }
 
 type HostGroup []Host
 

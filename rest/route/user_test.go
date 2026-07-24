@@ -10,7 +10,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -28,6 +27,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type UserRouteSuite struct {
@@ -1061,7 +1062,7 @@ func TestRenameUser(t *testing.T) {
 		"UserAlreadyExists": func(t *testing.T) {
 			// Insert additional testing to cover the case of the user already being created.
 			pNew := patch.Patch{
-				Id:          mgobson.NewObjectId(),
+				Id:          primitive.NewObjectID(),
 				Author:      "new_me",
 				PatchNumber: 1,
 			}
@@ -1099,7 +1100,7 @@ func TestRenameUser(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Len(t, volumes, 1)
 
-			patches, err := patch.Find(t.Context(), db.Query(mgobson.M{patch.AuthorKey: "new_me"}))
+			patches, err := patch.Find(t.Context(), db.Query(bson.M{patch.AuthorKey: "new_me"}))
 			assert.NoError(t, err)
 			assert.Len(t, patches, 3)
 			for _, p := range patches {
@@ -1136,7 +1137,7 @@ func TestRenameUser(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Len(t, volumes, 1)
 
-			patches, err := patch.Find(t.Context(), db.Query(mgobson.M{patch.AuthorKey: "new_me"}))
+			patches, err := patch.Find(t.Context(), db.Query(bson.M{patch.AuthorKey: "new_me"}))
 			assert.NoError(t, err)
 			assert.Len(t, patches, 2)
 		},
@@ -1179,12 +1180,12 @@ func TestRenameUser(t *testing.T) {
 			assert.NoError(t, db.InsertMany(t.Context(), host.VolumesCollection, v1, v2))
 
 			p1 := patch.Patch{
-				Id:          mgobson.NewObjectId(),
+				Id:          primitive.NewObjectID(),
 				Author:      "me",
 				PatchNumber: 6,
 			}
 			p2 := patch.Patch{
-				Id:          mgobson.NewObjectId(),
+				Id:          primitive.NewObjectID(),
 				Author:      "me",
 				PatchNumber: 7,
 			}

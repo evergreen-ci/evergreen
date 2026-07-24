@@ -8,12 +8,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/taskstats"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestMockGetTaskStats(t *testing.T) {
@@ -86,7 +86,7 @@ func insertTaskStats(ctx context.Context, filter *taskstats.StatsFilter, numTest
 	for i := range numTests {
 		taskName := fmt.Sprintf("%v%v", "task_", i)
 		tasks = append(tasks, taskName)
-		err := db.Insert(ctx, taskstats.DailyTaskStatsCollection, mgobson.M{
+		err := db.Insert(ctx, taskstats.DailyTaskStatsCollection, bson.M{
 			"_id": taskstats.DBTaskStatsID{
 				Project:      "project",
 				Requester:    "requester",

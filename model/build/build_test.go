@@ -7,13 +7,13 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func init() {
@@ -329,7 +329,7 @@ func TestBulkInsert(t *testing.T) {
 
 func TestGetPRNotificationDescription(t *testing.T) {
 	b := &Build{
-		Id:           mgobson.NewObjectId().Hex(),
+		Id:           primitive.NewObjectID().Hex(),
 		BuildVariant: "testvariant",
 		Version:      "testversion",
 		Status:       evergreen.BuildFailed,

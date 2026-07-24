@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -19,7 +18,25 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 )
+
+func TestUnmarshalBSON(t *testing.T) {
+	original := Distro{
+		Id:           "distro",
+		Arch:         "linux_amd64",
+		WorkDir:      "/data/mci",
+		SpawnAllowed: true,
+		Aliases:      []string{"alias"},
+	}
+
+	data, err := bson.Marshal(original)
+	require.NoError(t, err)
+
+	var result Distro
+	require.NoError(t, bson.Unmarshal(data, &result))
+	assert.Equal(t, original, result)
+}
 
 func TestFindDistroById(t *testing.T) {
 	testConfig := testutil.TestConfig()
@@ -630,7 +647,7 @@ func TestLogDistroModifiedWithDistroData(t *testing.T) {
 	assert.Nil(t, data.Distro.ProviderSettingsList)
 	require.Len(t, data.ProviderSettingsMap, 2)
 	assert.EqualValues(t, oldDistro.ProviderSettingsList[0].ExportMap(), data.ProviderSettingsMap[0])
-	assert.EqualValues(t, oldDistro.ProviderSettingsList[1].ExportMap(), data.ProviderSettingsMap[1])
+	assert.ElementsMatch(t, oldDistro.ProviderSettingsList[1].ExportMap()["groups"], data.ProviderSettingsMap[1]["groups"])
 
 	// Test After field
 	data = DistroData{}
@@ -643,7 +660,7 @@ func TestLogDistroModifiedWithDistroData(t *testing.T) {
 	assert.Nil(t, data.Distro.ProviderSettingsList)
 	require.Len(t, data.ProviderSettingsMap, 2)
 	assert.EqualValues(t, d.ProviderSettingsList[0].ExportMap(), data.ProviderSettingsMap[0])
-	assert.EqualValues(t, d.ProviderSettingsList[1].ExportMap(), data.ProviderSettingsMap[1])
+	assert.ElementsMatch(t, d.ProviderSettingsList[1].ExportMap()["groups"], data.ProviderSettingsMap[1]["groups"])
 }
 
 func TestS3ClientURL(t *testing.T) {

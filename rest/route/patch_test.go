@@ -11,7 +11,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -30,6 +29,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -75,7 +75,7 @@ func (s *PatchByIdSuite) TestFindById() {
 	s.Equal(utility.ToStringPtr(s.objIds[0]), p.Id)
 }
 func (s *PatchByIdSuite) TestFindByIdFail() {
-	newId := mgobson.NewObjectId()
+	newId := primitive.NewObjectID()
 	for _, i := range s.objIds {
 		s.NotEqual(newId, i)
 	}
@@ -360,7 +360,7 @@ func (s *PatchAbortSuite) TestAbortFail() {
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	rm := makeAbortPatch().(*patchAbortHandler)
-	newId := mgobson.NewObjectId()
+	newId := primitive.NewObjectID()
 	for _, i := range s.objIds {
 		s.NotEqual(newId, i)
 	}
@@ -814,7 +814,7 @@ func TestPatchRawModulesHandler(t *testing.T) {
 	require.NoError(t, db.WriteGridFile(t.Context(), patch.GridFSPrefix, "module1Patch", strings.NewReader(patchString)))
 	patchString = `module2 diff`
 	require.NoError(t, db.WriteGridFile(t.Context(), patch.GridFSPrefix, "module2Patch", strings.NewReader(patchString)))
-	patchId := mgobson.NewObjectId()
+	patchId := primitive.NewObjectID()
 	patchToInsert := patch.Patch{
 		Id: patchId,
 		Patches: []patch.ModulePatch{
@@ -1081,7 +1081,7 @@ buildvariants:
 	}
 	require.NoError(t, projectRef.Insert(t.Context()))
 	unfinalized := patch.Patch{
-		Id:                   mgobson.NewObjectId(),
+		Id:                   primitive.NewObjectID(),
 		Project:              projectRef.Id,
 		Githash:              "3c7bfeb82d492dc453e7431be664539c35b5db4b",
 		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
@@ -1098,7 +1098,7 @@ buildvariants:
 
 	// nonexistent patch ID should error
 	req, err := http.NewRequest(http.MethodPost, "", nil)
-	req = gimlet.SetURLVars(req, map[string]string{"patch_id": mgobson.NewObjectId().Hex()})
+	req = gimlet.SetURLVars(req, map[string]string{"patch_id": primitive.NewObjectID().Hex()})
 	assert.NoError(t, err)
 	assert.Error(t, handler.Parse(ctx, req))
 
@@ -1185,7 +1185,7 @@ buildvariants:
 
 	// * should select all tasks
 	patch2 := patch.Patch{
-		Id:                   mgobson.NewObjectId(),
+		Id:                   primitive.NewObjectID(),
 		Project:              projectRef.Id,
 		Githash:              "3c7bfeb82d492dc453e7431be664539c35b5db4b",
 		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
@@ -1219,7 +1219,7 @@ buildvariants:
 	// Scheduling a single host task group task should schedule all tasks before it in
 	// the task group
 	patch3 := patch.Patch{
-		Id:                   mgobson.NewObjectId(),
+		Id:                   primitive.NewObjectID(),
 		Project:              projectRef.Id,
 		Githash:              "3c7bfeb82d492dc453e7431be664539c35b5db4b",
 		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
@@ -1498,7 +1498,7 @@ tasks:
 	}
 	require.NoError(t, projectRef.Insert(t.Context()))
 	unfinalized := patch.Patch{
-		Id:                   mgobson.NewObjectId(),
+		Id:                   primitive.NewObjectID(),
 		Project:              projectRef.Id,
 		Githash:              "3c7bfeb82d492dc453e7431be664539c35b5db4b",
 		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,

@@ -5,12 +5,12 @@ import (
 	"strings"
 	"testing"
 
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	_ "github.com/evergreen-ci/evergreen/testutil"
 	adb "github.com/mongodb/anser/db"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestDBUtils(t *testing.T) {
@@ -81,7 +81,7 @@ func TestDBUtils(t *testing.T) {
 
 			So(Clear("testfiles.chunks"), ShouldBeNil)
 			So(Clear("testfiles.files"), ShouldBeNil)
-			id := mgobson.NewObjectId().Hex()
+			id := primitive.NewObjectID().Hex()
 			So(WriteGridFile(t.Context(), "testfiles", id, strings.NewReader(id)), ShouldBeNil)
 			file, err := GetGridFile(t.Context(), "testfiles", id)
 			So(err, ShouldBeNil)

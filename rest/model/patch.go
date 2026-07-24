@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -16,6 +15,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // APIPatch is the model to be returned by the API whenever patches are fetched.
@@ -507,7 +507,8 @@ func (apiPatch *APIPatch) ToService() (patch.Patch, error) {
 	var err error
 	res := patch.Patch{}
 	catcher := grip.NewBasicCatcher()
-	res.Id = bson.ObjectIdHex(utility.FromStringPtr(apiPatch.Id))
+	res.Id, err = primitive.ObjectIDFromHex(utility.FromStringPtr(apiPatch.Id))
+	catcher.Wrap(err, "parsing patch ID")
 	res.Description = utility.FromStringPtr(apiPatch.Description)
 	res.Project = utility.FromStringPtr(apiPatch.ProjectId)
 	res.Branch = utility.FromStringPtr(apiPatch.Branch)

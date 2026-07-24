@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -29,6 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 var output = task.TaskOutput{
@@ -258,7 +258,7 @@ func (s *taskSuite) SetupTest() {
 		event.NewSubscriptionByID(event.ResourceTypeTask, event.TriggerSuccess, s.event.ResourceId, apiSub),
 		event.NewSubscriptionByID(event.ResourceTypeTask, event.TriggerFailure, s.event.ResourceId, apiSub),
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           primitive.NewObjectID().Hex(),
 			ResourceType: event.ResourceTypeTask,
 			Trigger:      event.TriggerExceedsDuration,
 			Selectors: []event.Selector{
@@ -277,7 +277,7 @@ func (s *taskSuite) SetupTest() {
 			},
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           primitive.NewObjectID().Hex(),
 			ResourceType: event.ResourceTypeTask,
 			Trigger:      event.TriggerRuntimeChangeByPercent,
 			Selectors: []event.Selector{
@@ -296,7 +296,7 @@ func (s *taskSuite) SetupTest() {
 			},
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           primitive.NewObjectID().Hex(),
 			ResourceType: event.ResourceTypeTask,
 			Trigger:      event.TriggerRuntimeChangeByPercent,
 			Selectors: []event.Selector{
@@ -356,7 +356,7 @@ func (s *taskSuite) TearDownTest() {
 func (s *taskSuite) TestTriggerEvent() {
 	s.NoError(db.ClearCollections(task.Collection, event.SubscriptionsCollection))
 	sub := &event.Subscription{
-		ID:           mgobson.NewObjectId().Hex(),
+		ID:           primitive.NewObjectID().Hex(),
 		ResourceType: event.ResourceTypeTask,
 		Trigger:      event.TriggerOutcome,
 		Selectors: []event.Selector{
@@ -1063,7 +1063,7 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 	defer cancel()
 
 	sub := event.Subscription{
-		ID:           mgobson.NewObjectId().Hex(),
+		ID:           primitive.NewObjectID().Hex(),
 		ResourceType: event.ResourceTypeTask,
 		Trigger:      triggerTaskRegressionByTest,
 		Selectors: []event.Selector{
@@ -1610,7 +1610,7 @@ func TestRepoProjectSubscriptionFiresForBranchTask(t *testing.T) {
 	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{Id: "repo-project"}}
 	require.NoError(t, repoRef.Replace(ctx))
 	sub := event.Subscription{
-		ID:           mgobson.NewObjectId().Hex(),
+		ID:           primitive.NewObjectID().Hex(),
 		ResourceType: event.ResourceTypeTask,
 		Trigger:      event.TriggerFailure,
 		Selectors:    []event.Selector{{Type: event.SelectorProject, Data: "repo-project"}},
@@ -1657,7 +1657,7 @@ func TestRepoProjectSubscriptionDoesNotFireForBranchWithoutRepo(t *testing.T) {
 	pRef := model.ProjectRef{Id: "branch-project", Identifier: "branch-project"}
 	require.NoError(t, pRef.Insert(ctx))
 	sub := event.Subscription{
-		ID:           mgobson.NewObjectId().Hex(),
+		ID:           primitive.NewObjectID().Hex(),
 		ResourceType: event.ResourceTypeTask,
 		Trigger:      event.TriggerFailure,
 		Selectors:    []event.Selector{{Type: event.SelectorProject, Data: "repo-project"}},

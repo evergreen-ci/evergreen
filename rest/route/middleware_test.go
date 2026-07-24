@@ -10,7 +10,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -21,6 +20,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 	mongobson "go.mongodb.org/mongo-driver/bson"
 )
 
@@ -53,7 +53,7 @@ func TestPrefetchProject(t *testing.T) {
 	}
 	require.NoError(t, doc.Insert(t.Context()))
 	patchDoc := &patch.Patch{
-		Id: bson.ObjectIdHex("aabbccddeeff112233445566"),
+		Id: testutil.ObjectIDFromHex(t, "aabbccddeeff112233445566"),
 	}
 	require.NoError(t, patchDoc.Insert(t.Context()))
 	testUser := &user.DBUser{Id: "test_user"}

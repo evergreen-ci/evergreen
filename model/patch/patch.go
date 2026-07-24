@@ -8,13 +8,13 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // SizeLimit is a hard limit on patch size.
@@ -55,16 +55,16 @@ type LocalModuleInclude struct {
 
 // Patch stores all details related to a patch request
 type Patch struct {
-	Id          mgobson.ObjectId `bson:"_id,omitempty"`
-	Description string           `bson:"desc"`
-	Path        string           `bson:"path,omitempty"`
-	Githash     string           `bson:"githash"`
-	Hidden      bool             `bson:"hidden"`
-	PatchNumber int              `bson:"patch_number"`
-	Author      string           `bson:"author"`
-	Version     string           `bson:"version"`
-	Status      string           `bson:"status"`
-	CreateTime  time.Time        `bson:"create_time"`
+	Id          primitive.ObjectID `bson:"_id,omitempty"`
+	Description string             `bson:"desc"`
+	Path        string             `bson:"path,omitempty"`
+	Githash     string             `bson:"githash"`
+	Hidden      bool               `bson:"hidden"`
+	PatchNumber int                `bson:"patch_number"`
+	Author      string             `bson:"author"`
+	Version     string             `bson:"version"`
+	Status      string             `bson:"status"`
+	CreateTime  time.Time          `bson:"create_time"`
 	// IngestTime is the wall-clock time when this patch document was first persisted.
 	IngestTime                              time.Time      `bson:"ingest_time,omitempty"`
 	StartTime                               time.Time      `bson:"start_time"`
@@ -133,8 +133,15 @@ type Patch struct {
 	MergeQueueMetricsEmitStatus string `bson:"merge_queue_metrics_emit_status,omitempty"`
 }
 
-func (p *Patch) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(p) }
-func (p *Patch) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, p) }
+type patchBSONAlias Patch
+
+func (p *Patch) MarshalBSON() ([]byte, error) {
+	return bson.Marshal((*patchBSONAlias)(p))
+}
+
+func (p *Patch) UnmarshalBSON(in []byte) error {
+	return bson.Unmarshal(in, (*patchBSONAlias)(p))
+}
 
 // ModulePatch stores request details for a patch
 type ModulePatch struct {

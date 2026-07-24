@@ -5,10 +5,10 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const TriggerIntentType = "trigger"
@@ -65,7 +65,7 @@ func (t *TriggerIntent) GetType() string {
 
 func (t *TriggerIntent) NewPatch() *Patch {
 	return &Patch{
-		Id:     mgobson.ObjectIdHex(t.Id),
+		Id:     NewId(t.Id),
 		Author: evergreen.ParentPatchUser,
 		Triggers: TriggerInfo{
 			ParentPatch:        t.ParentID,
@@ -121,7 +121,7 @@ type TriggerIntentOptions struct {
 
 func NewTriggerIntent(opts TriggerIntentOptions) Intent {
 	return &TriggerIntent{
-		Id:                 mgobson.NewObjectId().Hex(),
+		Id:                 primitive.NewObjectID().Hex(),
 		Requester:          opts.Requester,
 		Author:             opts.Author,
 		ProjectID:          opts.ProjectID,

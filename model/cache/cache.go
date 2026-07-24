@@ -5,11 +5,11 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const collection = "data_cache"

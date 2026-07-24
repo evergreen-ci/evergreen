@@ -7,10 +7,10 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const CliIntentType = "cli"
@@ -20,7 +20,7 @@ type cliIntent struct {
 	DocumentID string `bson:"_id"`
 
 	// PatchFileID is the object id of the patch file created in gridfs.
-	PatchFileID mgobson.ObjectId `bson:"patch_file_id,omitempty"`
+	PatchFileID primitive.ObjectID `bson:"patch_file_id,omitempty"`
 
 	// PatchContent is the patch as supplied by the client. It is saved
 	// separately from the patch intent.
@@ -123,7 +123,7 @@ var (
 
 func (c *cliIntent) Insert(ctx context.Context) error {
 	if len(c.PatchContent) > 0 {
-		patchFileID := mgobson.NewObjectId()
+		patchFileID := primitive.NewObjectID()
 		if err := db.WriteGridFile(ctx, GridFSPrefix, patchFileID.Hex(), strings.NewReader(c.PatchContent)); err != nil {
 			return err
 		}
@@ -213,7 +213,7 @@ func (c *cliIntent) NewPatch() *Patch {
 		GitInfo:                                 c.GitInfo,
 		LocalModuleIncludes:                     c.LocalModuleIncludes,
 	}
-	if len(c.PatchFileID) > 0 {
+	if !c.PatchFileID.IsZero() {
 		p.Patches = append(p.Patches,
 			ModulePatch{
 				ModuleName: c.Module,
@@ -277,7 +277,7 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 	}
 
 	return &cliIntent{
-		DocumentID:                              mgobson.NewObjectId().Hex(),
+		DocumentID:                              primitive.NewObjectID().Hex(),
 		IntentType:                              CliIntentType,
 		PatchContent:                            params.PatchContent,
 		Path:                                    params.Path,

@@ -5,10 +5,10 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -76,7 +76,7 @@ func (s *localTestResultsService) Get(ctx context.Context, taskOpts []Task, getO
 
 	filter := bson.M{testresult.IdKey: bson.M{"$in": ids}}
 	opts := options.Find()
-	opts.SetSort(bson.D{{Name: TestResultTaskIDKey, Value: 1}, {Name: TestResultExecutionKey, Value: 1}})
+	opts.SetSort(bson.D{{Key: TestResultTaskIDKey, Value: 1}, {Key: TestResultExecutionKey, Value: 1}})
 	if len(getOpts.Fields) > 0 {
 		projection := bson.M{}
 		for _, field := range getOpts.Fields {

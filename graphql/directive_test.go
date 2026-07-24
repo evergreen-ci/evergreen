@@ -7,7 +7,6 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -20,6 +19,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vektah/gqlparser/v2/ast"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func init() {
@@ -783,8 +783,8 @@ func TestRequirePatchOwner(t *testing.T) {
 			"unable to clear projectRef, patch, or user collection")
 
 	}()
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId){
-		"SucceedsWhenUserIsPatchAuthor": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id primitive.ObjectID, patch2Id primitive.ObjectID, patch3Id primitive.ObjectID){
+		"SucceedsWhenUserIsPatchAuthor": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id primitive.ObjectID, patch2Id primitive.ObjectID, patch3Id primitive.ObjectID) {
 			nextCalled := false
 			wrappedNext := func(rctx context.Context) (any, error) {
 				nextCalled = true
@@ -796,7 +796,7 @@ func TestRequirePatchOwner(t *testing.T) {
 			assert.Nil(t, res)
 			assert.Equal(t, true, nextCalled)
 		},
-		"SucceeedsWhenUserIsProjectAdmin": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId) {
+		"SucceeedsWhenUserIsProjectAdmin": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id primitive.ObjectID, patch2Id primitive.ObjectID, patch3Id primitive.ObjectID) {
 			assert.NoError(t, usr.AddRole(ctx, "admin_project"))
 			nextCalled := false
 			wrappedNext := func(rctx context.Context) (any, error) {
@@ -810,7 +810,7 @@ func TestRequirePatchOwner(t *testing.T) {
 			assert.Equal(t, true, nextCalled)
 			assert.NoError(t, usr.RemoveRole(ctx, "admin_project"))
 		},
-		"SucceedsWhenUserIsSuperUser": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId) {
+		"SucceedsWhenUserIsSuperUser": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id primitive.ObjectID, patch2Id primitive.ObjectID, patch3Id primitive.ObjectID) {
 			assert.NoError(t, usr.AddRole(ctx, "superuser"))
 			nextCalled := false
 			wrappedNext := func(rctx context.Context) (any, error) {
@@ -824,7 +824,7 @@ func TestRequirePatchOwner(t *testing.T) {
 			assert.Equal(t, true, nextCalled)
 			assert.NoError(t, usr.RemoveRole(ctx, "superuser"))
 		},
-		"SucceedsWhenUserIsPatchAdmin": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId) {
+		"SucceedsWhenUserIsPatchAdmin": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id primitive.ObjectID, patch2Id primitive.ObjectID, patch3Id primitive.ObjectID) {
 			assert.NoError(t, usr.AddRole(ctx, "admin_patch"))
 			nextCalled := false
 			wrappedNext := func(rctx context.Context) (any, error) {
@@ -838,7 +838,7 @@ func TestRequirePatchOwner(t *testing.T) {
 			assert.Equal(t, true, nextCalled)
 			assert.NoError(t, usr.RemoveRole(ctx, "admin_patch"))
 		},
-		"FailsWhenUserIsNotASuperuserOrAdminOrAuthor": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId) {
+		"FailsWhenUserIsNotASuperuserOrAdminOrAuthor": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id primitive.ObjectID, patch2Id primitive.ObjectID, patch3Id primitive.ObjectID) {
 			nextCalled := false
 			wrappedNext := func(rctx context.Context) (any, error) {
 				nextCalled = true
@@ -864,21 +864,21 @@ func TestRequirePatchOwner(t *testing.T) {
 				Identifier: "project_identifier",
 			}
 			require.NoError(t, projectRef.Insert(t.Context()))
-			patch1Id := bson.ObjectIdHex("67e2c29f4ebfe834bb02a482")
+			patch1Id := testutil.ObjectIDFromHex(t, "67e2c29f4ebfe834bb02a482")
 			p1 := patch.Patch{
 				Id:      patch1Id,
 				Project: "project_id",
 				Author:  "test_user",
 			}
 			assert.NoError(t, p1.Insert(t.Context()))
-			patch2Id := bson.ObjectIdHex("67e2c49e4ebfe83f00ee5f65")
+			patch2Id := testutil.ObjectIDFromHex(t, "67e2c49e4ebfe83f00ee5f65")
 			p2 := patch.Patch{
 				Id:      patch2Id,
 				Project: "project_id",
 				Author:  "not_test_user",
 			}
 			assert.NoError(t, p2.Insert(t.Context()))
-			patch3Id := bson.ObjectIdHex("64c13ab08edf48a008793cac")
+			patch3Id := testutil.ObjectIDFromHex(t, "64c13ab08edf48a008793cac")
 			p3 := patch.Patch{
 				Id:      patch3Id,
 				Project: "project_id",

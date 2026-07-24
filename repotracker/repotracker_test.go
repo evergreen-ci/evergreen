@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -27,6 +26,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -1741,7 +1741,7 @@ func TestCreateManifest(t *testing.T) {
 	}
 
 	patch := patch.Patch{
-		Id: bson.ObjectIdHex("aaaaaaaaaaff001122334456"),
+		Id: testutil.ObjectIDFromHex(t, "aaaaaaaaaaff001122334456"),
 	}
 	require.NoError(t, patch.Insert(t.Context()))
 

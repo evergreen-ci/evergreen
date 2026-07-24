@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -35,6 +34,8 @@ import (
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/bsonrw"
+	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"gonum.org/v1/gonum/graph"
@@ -415,8 +416,21 @@ const (
 	ExecutionPlatformContainer ExecutionPlatform = "container"
 )
 
-func (t *Task) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(t) }
-func (t *Task) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, t) }
+type taskBSONAlias Task
+
+func (t *Task) MarshalBSON() ([]byte, error) {
+	return bson.Marshal((*taskBSONAlias)(t))
+}
+
+func (t *Task) UnmarshalBSON(in []byte) error {
+	decoder, err := bson.NewDecoder(bsonrw.NewBSONDocumentReader(in))
+	if err != nil {
+		return errors.Wrap(err, "creating BSON decoder")
+	}
+	decoder.UseLocalTimeZone()
+	*t = Task{}
+	return decoder.Decode((*taskBSONAlias)(t))
+}
 
 func (t *Task) GetTaskGroupString() string {
 	return fmt.Sprintf("%s_%s_%s_%s", t.TaskGroup, t.BuildVariant, t.Project, t.Version)
@@ -448,38 +462,47 @@ type HostCreateDetail struct {
 }
 
 func (d *Dependency) UnmarshalBSON(in []byte) error {
-	return mgobson.Unmarshal(in, d)
+	return d.UnmarshalBSONValue(bsontype.EmbeddedDocument, in)
 }
 
-// SetBSON allows us to use dependency representation of both
-// just task Ids and of true Dependency structs.
-//
-//	TODO eventually drop all of this switching
-func (d *Dependency) SetBSON(raw mgobson.Raw) error {
-	// copy the Dependency type to remove this SetBSON method but preserve bson struct tags
-	type nakedDep Dependency
-	var depCopy nakedDep
-	if err := raw.Unmarshal(&depCopy); err == nil {
-		if depCopy.TaskId != "" {
-			*d = Dependency(depCopy)
+// UnmarshalBSONValue supports both the current dependency document and the
+// historical representation containing only a task ID.
+func (d *Dependency) UnmarshalBSONValue(t bsontype.Type, in []byte) error {
+	raw := bson.RawValue{Type: t, Value: in}
+	switch t {
+	case bsontype.EmbeddedDocument:
+		type dependencyBSONAlias Dependency
+		var dep dependencyBSONAlias
+		if err := raw.Unmarshal(&dep); err != nil {
+			*d = Dependency{}
 			return nil
 		}
-	}
-
-	// hack to support the legacy depends_on, since we can't just unmarshal a string
-	strBytes, _ := mgobson.Marshal(mgobson.RawD{{Name: "str", Value: raw}})
-	var strStruct struct {
-		String string `bson:"str"`
-	}
-	if err := mgobson.Unmarshal(strBytes, &strStruct); err == nil {
-		if strStruct.String != "" {
-			d.TaskId = strStruct.String
-			d.Status = evergreen.TaskSucceeded
+		if dep.TaskId == "" {
+			*d = Dependency{}
 			return nil
 		}
+		*d = Dependency(dep)
+		return nil
+	case bsontype.String:
+		var taskID string
+		if err := raw.Unmarshal(&taskID); err != nil {
+			*d = Dependency{}
+			return nil
+		}
+		if taskID == "" {
+			*d = Dependency{}
+			return nil
+		}
+		d.TaskId = taskID
+		d.Status = evergreen.TaskSucceeded
+		return nil
+	case bsontype.Null, bsontype.Undefined:
+		*d = Dependency{}
+		return nil
+	default:
+		*d = Dependency{}
+		return nil
 	}
-
-	return mgobson.SetZero
 }
 
 type AbortInfo struct {

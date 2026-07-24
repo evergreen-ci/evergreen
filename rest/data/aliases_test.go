@@ -6,13 +6,13 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type AliasSuite struct {
@@ -102,13 +102,13 @@ func (a *AliasSuite) SetupTest() {
 		ProjectConfigFields: model.ProjectConfigFields{
 			PatchAliases: []model.ProjectAlias{
 				{
-					ID:        mgobson.NewObjectId(),
+					ID:        primitive.NewObjectID(),
 					ProjectID: "project-1",
 					Alias:     "alias-2",
 					Task:      "project_config_task",
 				},
 				{
-					ID:        mgobson.NewObjectId(),
+					ID:        primitive.NewObjectID(),
 					ProjectID: "project-1",
 					Alias:     "alias-1",
 					Task:      "project_config_task",
@@ -116,7 +116,7 @@ func (a *AliasSuite) SetupTest() {
 			},
 			CommitQueueAliases: []model.ProjectAlias{
 				{
-					ID:        mgobson.NewObjectId(),
+					ID:        primitive.NewObjectID(),
 					ProjectID: "project-1",
 					Alias:     evergreen.CommitQueueAlias,
 					Task:      "project_config_task",
@@ -124,7 +124,7 @@ func (a *AliasSuite) SetupTest() {
 			},
 			GitHubPRAliases: []model.ProjectAlias{
 				{
-					ID:        mgobson.NewObjectId(),
+					ID:        primitive.NewObjectID(),
 					ProjectID: "project-1",
 					Alias:     evergreen.GithubPRAlias,
 					Task:      "project_config_task",
@@ -132,7 +132,7 @@ func (a *AliasSuite) SetupTest() {
 			},
 			GitHubChecksAliases: []model.ProjectAlias{
 				{
-					ID:        mgobson.NewObjectId(),
+					ID:        primitive.NewObjectID(),
 					ProjectID: "project-1",
 					Alias:     evergreen.GithubChecksAlias,
 					Task:      "project_config_task",
@@ -270,13 +270,13 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 	aliasToModify.Alias = utility.ToStringPtr("this is a new alias")
 
 	newAlias := restModel.APIProjectAlias{
-		ID:      utility.ToStringPtr(mgobson.NewObjectId().Hex()),
+		ID:      utility.ToStringPtr(primitive.NewObjectID().Hex()),
 		Alias:   utility.ToStringPtr("patchAlias"),
 		Variant: utility.ToStringPtr("var"),
 		Task:    utility.ToStringPtr("task"),
 	}
 	newInternalAlias := restModel.APIProjectAlias{
-		ID:      utility.ToStringPtr(mgobson.NewObjectId().Hex()),
+		ID:      utility.ToStringPtr(primitive.NewObjectID().Hex()),
 		Alias:   utility.ToStringPtr(evergreen.GithubChecksAlias), // internal alias
 		Variant: utility.ToStringPtr("var"),
 		Task:    utility.ToStringPtr("task"),
@@ -319,7 +319,7 @@ func (a *AliasSuite) TestUpdateAliasesForGithubSections() {
 		{
 			section: model.ProjectPagePullRequestsSection,
 			internalAlias: restModel.APIProjectAlias{
-				ID:      utility.ToStringPtr(mgobson.NewObjectId().Hex()),
+				ID:      utility.ToStringPtr(primitive.NewObjectID().Hex()),
 				Alias:   utility.ToStringPtr(evergreen.GithubPRAlias),
 				Variant: utility.ToStringPtr("var"),
 				Task:    utility.ToStringPtr("task"),
@@ -328,7 +328,7 @@ func (a *AliasSuite) TestUpdateAliasesForGithubSections() {
 		{
 			section: model.ProjectPageGitTagsSection,
 			internalAlias: restModel.APIProjectAlias{
-				ID:         utility.ToStringPtr(mgobson.NewObjectId().Hex()),
+				ID:         utility.ToStringPtr(primitive.NewObjectID().Hex()),
 				Alias:      utility.ToStringPtr(evergreen.GitTagAlias),
 				GitTag:     utility.ToStringPtr(`^v[0-9]+.[0-9]+.[0-9]+$`),
 				RemotePath: utility.ToStringPtr("evergreen.yml"),
@@ -337,7 +337,7 @@ func (a *AliasSuite) TestUpdateAliasesForGithubSections() {
 		{
 			section: model.ProjectPageMergeQueueSection,
 			internalAlias: restModel.APIProjectAlias{
-				ID:      utility.ToStringPtr(mgobson.NewObjectId().Hex()),
+				ID:      utility.ToStringPtr(primitive.NewObjectID().Hex()),
 				Alias:   utility.ToStringPtr(evergreen.CommitQueueAlias),
 				Variant: utility.ToStringPtr("var"),
 				Task:    utility.ToStringPtr("task"),
@@ -346,7 +346,7 @@ func (a *AliasSuite) TestUpdateAliasesForGithubSections() {
 		{
 			section: model.ProjectPageCommitChecksSection,
 			internalAlias: restModel.APIProjectAlias{
-				ID:      utility.ToStringPtr(mgobson.NewObjectId().Hex()),
+				ID:      utility.ToStringPtr(primitive.NewObjectID().Hex()),
 				Alias:   utility.ToStringPtr(evergreen.GithubChecksAlias),
 				Variant: utility.ToStringPtr("var"),
 				Task:    utility.ToStringPtr("task"),
@@ -364,7 +364,7 @@ func (a *AliasSuite) TestUpdateAliasesForGithubSections() {
 			aliasToModify.Alias = utility.ToStringPtr("this is a new alias")
 
 			newAlias := restModel.APIProjectAlias{
-				ID:      utility.ToStringPtr(mgobson.NewObjectId().Hex()),
+				ID:      utility.ToStringPtr(primitive.NewObjectID().Hex()),
 				Alias:   utility.ToStringPtr("patchAlias"),
 				Variant: utility.ToStringPtr("var"),
 				Task:    utility.ToStringPtr("task"),

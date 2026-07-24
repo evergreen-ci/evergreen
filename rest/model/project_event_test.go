@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 )
@@ -16,7 +16,7 @@ const (
 	username  = "me"
 )
 
-func getMockProjectSettings() model.ProjectSettings {
+func getMockProjectSettings(t testing.TB) model.ProjectSettings {
 	return model.ProjectSettings{
 		ProjectRef: model.ProjectRef{
 			Owner:   "admin",
@@ -31,7 +31,7 @@ func getMockProjectSettings() model.ProjectSettings {
 			PrivateVars: map[string]bool{},
 		},
 		Aliases: []model.ProjectAlias{{
-			ID:        mgobson.ObjectIdHex("5bedc72ee4055d31f0340b1d"),
+			ID:        testutil.ObjectIDFromHex(t, "5bedc72ee4055d31f0340b1d"),
 			ProjectID: projectId,
 			Alias:     "alias1",
 			Variant:   "ubuntu",
@@ -64,8 +64,8 @@ func TestProjectEventSuite(t *testing.T) {
 }
 
 func (s *ProjectEventSuite) SetupTest() {
-	before := getMockProjectSettings()
-	after := getMockProjectSettings()
+	before := getMockProjectSettings(s.T())
+	after := getMockProjectSettings(s.T())
 	after.GithubHooksEnabled = false
 
 	h := model.ProjectChangeEventEntry{

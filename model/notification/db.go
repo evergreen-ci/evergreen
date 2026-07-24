@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
@@ -31,7 +30,7 @@ var (
 type unmarshalNotification struct {
 	ID         string           `bson:"_id"`
 	Subscriber event.Subscriber `bson:"subscriber"`
-	Payload    mgobson.Raw      `bson:"payload"`
+	Payload    bson.RawValue    `bson:"payload"`
 
 	SentAt   time.Time            `bson:"sent_at,omitempty"`
 	Error    string               `bson:"error,omitempty"`
@@ -39,48 +38,44 @@ type unmarshalNotification struct {
 }
 
 func (d *Notification) UnmarshalBSON(in []byte) error {
-	return mgobson.Unmarshal(in, d)
-}
-
-func (n *Notification) SetBSON(raw mgobson.Raw) error {
 	temp := unmarshalNotification{}
-	if err := raw.Unmarshal(&temp); err != nil {
+	if err := bson.Unmarshal(in, &temp); err != nil {
 		return errors.Wrap(err, "can't unmarshal notification")
 	}
 
 	switch temp.Subscriber.Type {
 	case event.EvergreenWebhookSubscriberType:
-		n.Payload = &util.EvergreenWebhook{}
+		d.Payload = &util.EvergreenWebhook{}
 
 	case event.EmailSubscriberType:
-		n.Payload = &message.Email{}
+		d.Payload = &message.Email{}
 
 	case event.JIRAIssueSubscriberType:
-		n.Payload = &message.JiraIssue{}
+		d.Payload = &message.JiraIssue{}
 
 	case event.JIRACommentSubscriberType:
 		str := ""
-		n.Payload = &str
+		d.Payload = &str
 
 	case event.SlackSubscriberType:
-		n.Payload = &SlackPayload{}
+		d.Payload = &SlackPayload{}
 
 	case event.GithubPullRequestSubscriberType, event.GithubCheckSubscriberType, event.GithubMergeSubscriberType:
-		n.Payload = &message.GithubStatus{}
+		d.Payload = &message.GithubStatus{}
 
 	default:
 		return errors.Errorf("unknown payload type '%s'", temp.Subscriber.Type)
 	}
 
-	if err := temp.Payload.Unmarshal(n.Payload); err != nil {
+	if err := temp.Payload.Unmarshal(d.Payload); err != nil {
 		return errors.Wrap(err, "unmarshalling payload")
 	}
 
-	n.ID = temp.ID
-	n.Subscriber = temp.Subscriber
-	n.SentAt = temp.SentAt
-	n.Error = temp.Error
-	n.Metadata = temp.Metadata
+	d.ID = temp.ID
+	d.Subscriber = temp.Subscriber
+	d.SentAt = temp.SentAt
+	d.Error = temp.Error
+	d.Metadata = temp.Metadata
 
 	return nil
 }

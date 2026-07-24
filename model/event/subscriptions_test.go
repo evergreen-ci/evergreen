@@ -7,11 +7,11 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestSubscriptions(t *testing.T) {
@@ -950,7 +950,7 @@ func TestCopyProjectSubscriptions(t *testing.T) {
 	oldProjectId := "my-project"
 	subs := []Subscription{
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           primitive.NewObjectID().Hex(),
 			Owner:        oldProjectId,
 			OwnerType:    OwnerTypeProject,
 			ResourceType: ResourceTypePatch,
@@ -968,7 +968,7 @@ func TestCopyProjectSubscriptions(t *testing.T) {
 			},
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           primitive.NewObjectID().Hex(),
 			Owner:        "not-my-project",
 			OwnerType:    OwnerTypeProject,
 			ResourceType: ResourceTypePatch,

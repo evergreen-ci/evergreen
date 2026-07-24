@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/parsley"
@@ -36,6 +35,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/robfig/cron"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // ProjectRef contains Evergreen project-related settings which can be set
@@ -714,7 +714,7 @@ func (projectRef *ProjectRef) Insert(ctx context.Context) error {
 
 func (p *ProjectRef) Add(ctx context.Context, creator *user.DBUser) error {
 	if p.Id == "" {
-		p.Id = mgobson.NewObjectId().Hex()
+		p.Id = primitive.NewObjectID().Hex()
 	}
 	// Default to adding the creator as the admin; the permissions themselves will be handled in the add function.
 	if creator != nil {
@@ -1376,7 +1376,7 @@ func (p *ProjectRef) createNewRepoRef(ctx context.Context, u *user.DBUser) (repo
 	repoRef.Admins = []string{u.Username()}
 
 	// Some fields shouldn't be set from projects.
-	repoRef.Id = mgobson.NewObjectId().Hex()
+	repoRef.Id = primitive.NewObjectID().Hex()
 	repoRef.RepoRefId = ""
 	repoRef.Identifier = ""
 
@@ -2045,7 +2045,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(ctx context.Context, owner, r
 		})
 		// if no project exists, create and return skeleton project
 		hiddenProject = &ProjectRef{
-			Id:        mgobson.NewObjectId().Hex(),
+			Id:        primitive.NewObjectID().Hex(),
 			Owner:     owner,
 			Repo:      repo,
 			Branch:    branch,

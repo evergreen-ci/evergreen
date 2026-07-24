@@ -8,7 +8,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/gimlet"
@@ -51,9 +50,6 @@ type DBUser struct {
 	// TokenExchangeToken is the token received from the OAuth token exchange flow.
 	TokenExchangeToken *oauth2.Token `bson:"token_exchange_token,omitempty"`
 }
-
-func (u *DBUser) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(u) }
-func (u *DBUser) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, u) }
 
 type TokenExchangeState struct {
 	// CodeVerifier is the verification code used to verify the authorization code.

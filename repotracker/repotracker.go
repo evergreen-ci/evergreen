@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -25,6 +24,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -742,7 +742,7 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		v.Requester = evergreen.TriggerRequester
 		v.CreateTime = createTime
 	} else if metadata.IsAdHoc {
-		v.Id = mgobson.NewObjectId().Hex()
+		v.Id = primitive.NewObjectID().Hex()
 		if metadata.PeriodicBuildID != "" {
 			v.Requester = evergreen.AdHocRequester
 		}
@@ -754,7 +754,7 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		if !ref.IsGitTagVersionsEnabled() {
 			return nil, errors.Errorf("git tag versions are not enabled for project '%s'", ref.Id)
 		}
-		v.Id = makeVersionIdWithTag(ref.Identifier, metadata.GitTag.Tag, mgobson.NewObjectId().Hex())
+		v.Id = makeVersionIdWithTag(ref.Identifier, metadata.GitTag.Tag, primitive.NewObjectID().Hex())
 		v.Requester = evergreen.GitTagRequester
 		v.CreateTime = time.Now()
 		v.TriggeredByGitTag = metadata.GitTag
