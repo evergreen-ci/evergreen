@@ -199,11 +199,9 @@ func runHostProvisioningScript(ctx context.Context, shellPath, scriptPath, worki
 // This amortizes the pull cost across the host lifetime rather than paying
 // it on the first task's critical path.
 //
-// The docker CLI is used here (rather than the Docker SDK ImagePull used by
-// agent/container/lifecycle.go's ensureImage) so that the host's configured
-// credential helpers are inherited automatically. Private ECR images require
-// the amazon-ecr-credential-helper; the CLI picks this up from ~/.docker/config.json
-// while the SDK would need explicit RegistryAuth constructed separately.
+// The docker CLI is used so the host's configured credential helpers are
+// inherited automatically. Private ECR images require the
+// amazon-ecr-credential-helper, which the CLI loads from ~/.docker/config.json.
 func prePullContainerImage(ctx context.Context, image string) error {
 	return errors.Wrapf(
 		jasper.NewCommand().
