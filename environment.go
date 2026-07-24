@@ -69,7 +69,8 @@ const (
 	RoleCollection  = "roles"
 	ScopeCollection = "scopes"
 
-	awsAuthMechanism = "MONGODB-AWS"
+	awsAuthMechanism  = "MONGODB-AWS"
+	oidcAuthMechanism = "MONGODB-OIDC"
 
 	mongoExternalAuthSource = "$external"
 
@@ -253,6 +254,9 @@ func NewEnvironment(ctx context.Context, confPath, versionID, clientS3Bucket str
 	}()
 
 	if db != nil && confPath == "" {
+		if err := db.Validate(); err != nil {
+			return nil, errors.Wrap(err, "validating DB settings")
+		}
 		if err := e.initDB(ctx, *db, tracer); err != nil {
 			return nil, errors.Wrap(err, "initializing DB")
 		}
