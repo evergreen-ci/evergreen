@@ -146,25 +146,27 @@ func (s *EnvironmentSuite) TestInitSenders() {
 }
 
 func TestGetGitHubSenderConcurrentAccessShouldNotRace(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	e := &envState{
-		ctx:           ctx,
+		ctx:           t.Context(),
 		githubSenders: map[string]cachedGitHubSender{},
 	}
 	// Pre-populate an expired sender for the owner so every concurrent caller
 	// takes the cache-miss path that writes to the map.
 	e.githubSenders["owner"] = cachedGitHubSender{time: time.Now().Add(-2 * githubTokenTimeout)}
 
+	// Grab e.mu here to mimic the real token-creation path, which reads from
+	// the environment. This makes the test freeze if GetGitHubSender ever locks
+	// the cache with e.mu instead of its own lock.
 	createToken := func(ctx context.Context, owner, repo string) (string, error) {
+		e.mu.RLock()
+		defer e.mu.RUnlock()
 		return "token", nil
 	}
 
 	const goroutines = 20
 	var wg sync.WaitGroup
 	wg.Add(goroutines)
-	for i := 0; i < goroutines; i++ {
+	for range goroutines {
 		go func() {
 			defer wg.Done()
 			sender, err := e.GetGitHubSender("owner", "repo", createToken)
