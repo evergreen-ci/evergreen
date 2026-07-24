@@ -423,6 +423,8 @@ functions:
         binary: make
         args: ["modernize"]
         include_expansions_in_env: ["GOROOT"]
+        env:
+          MODERNIZE_GOOS: ${goos}
 
   verify-client-version-update:
     - command: subprocess.exec
@@ -688,11 +690,24 @@ tasks:
           include_expansions_in_env:
             - GOROOT
       - func: check-go-vulnerabilities
-  - name: check-modernize
+  - name: check-modernize-linux
     tags: ["linter"]
     commands:
       - func: get-project-and-modules
       - func: check-modernize
+        vars: { goos: "linux" }
+  - name: check-modernize-windows
+    tags: ["linter"]
+    commands:
+      - func: get-project-and-modules
+      - func: check-modernize
+        vars: { goos: "windows" }
+  - name: check-modernize-darwin
+    tags: ["linter"]
+    commands:
+      - func: get-project-and-modules
+      - func: check-modernize
+        vars: { goos: "darwin" }
   - name: verify-agent-version-update
     tags: ["linter"]
     patch_only: true
