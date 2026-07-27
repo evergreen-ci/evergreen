@@ -220,7 +220,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/roles").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(acl.NewGetAllRolesHandler(env.RoleManager()))
 	app.AddRoute("/roles/{role_id}/users").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeGetUsersWithRole())
 	app.AddRoute("/select/tests").Version(2).Post().Wrap(requireUserOrTaskAuthOnly, rateLimit).RouteHandler(makeSelectTestsHandler(env))
-	app.AddRoute("/status/cli_version").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeFetchCLIVersionRoute(env))
+	app.AddRoute("/status/cli_version").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchCLIVersionRoute(env))
 	app.AddRoute("/status/hosts/distros").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeHostStatusByDistroRoute())
 	app.AddRoute("/status/notifications").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeFetchNotifcationStatusRoute())
 	app.AddRoute("/status/recent_tasks").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeRecentTaskStatusHandler())
