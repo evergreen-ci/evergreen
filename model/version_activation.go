@@ -69,9 +69,11 @@ func activateEveryRecentMainlineCommitForProject(ctx context.Context, projectRef
 			return nil, errors.Wrapf(err, "finding all unactivated non-ignored versions")
 		}
 	} else {
-		// If there is a last activated version, only consider versions since that one. The last
-		// activated version itself is included because its batchtime and cron build variants and
-		// tasks may not have elapsed yet when it was first activated.
+		// If there is a last activated version, only consider versions since that one. Versions that
+		// are already activated are still considered, including the last activated version itself,
+		// because a version is marked activated as soon as any of its build variants activates. Its
+		// remaining batchtime and cron build variants and tasks may still be waiting for their
+		// activation time to elapse.
 		activateVersions, err = VersionFind(ctx, VersionsSinceLastActivated(projectRef.Id, ts, lastActivatedVersion.RevisionOrderNumber, runEveryMainlineCommitLimit))
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding versions since last activated version '%s'", lastActivatedVersion.Id)

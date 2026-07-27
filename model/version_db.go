@@ -259,11 +259,9 @@ func VersionBySystemRequesterOrdered(projectId string, startOrder int) db.Q {
 	return db.Query(q).Sort([]string{"-" + VersionRevisionOrderNumberKey})
 }
 
-// VersionsSinceLastActivated finds all non-ignored versions that are at least as new as the most
-// recently activated version for a project. Already-activated versions are included because a
-// version is marked activated as soon as any of its build variants activates, while its remaining
-// batchtime and cron build variants and tasks may still be waiting for their activation time to
-// elapse.
+// VersionsSinceLastActivated finds all non-ignored mainline commit versions within a project that
+// are at least as new as the given revision order number, ordered by most recently created to
+// oldest. Versions are included regardless of whether they're already activated.
 func VersionsSinceLastActivated(projectId string, ts time.Time, lastActivatedOrderNum, limit int) db.Q {
 	return db.Query(
 		bson.M{
