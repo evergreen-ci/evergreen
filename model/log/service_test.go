@@ -14,8 +14,7 @@ import (
 )
 
 func TestLogService(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	for _, impl := range []struct {
 		name        string

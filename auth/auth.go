@@ -171,6 +171,7 @@ func SetLoginToken(token, domain string, w http.ResponseWriter) {
 		Domain:   domain,
 		Expires:  time.Now().Add(evergreen.LoginCookieTTL),
 		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
 	}
 	http.SetCookie(w, authTokenCookie)
 }

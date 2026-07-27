@@ -78,7 +78,7 @@ func FindVersionByLastKnownGoodConfig(ctx context.Context, projectId string, rev
 	if revisionOrderNumber >= 0 {
 		q[VersionRevisionOrderNumberKey] = bson.M{"$lt": revisionOrderNumber}
 	}
-	for i := 0; i < retryLimit; i++ {
+	for range retryLimit {
 		v, err := VersionFindOne(ctx, db.Query(q).Sort([]string{"-" + VersionRevisionOrderNumberKey}))
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding recent valid version for project '%s'", projectId)
@@ -259,18 +259,17 @@ func VersionBySystemRequesterOrdered(projectId string, startOrder int) db.Q {
 	return db.Query(q).Sort([]string{"-" + VersionRevisionOrderNumberKey})
 }
 
-// VersionsUnactivatedSinceLastActivated finds all unactivated, non-ignored versions
-// that are newer than the most recently activated version for a project.
-// This ensures that all commits since the last activation get activated together.
-func VersionsUnactivatedSinceLastActivated(projectId string, ts time.Time, lastActivatedOrderNum, limit int) db.Q {
+// VersionsSinceLastActivated finds all non-ignored mainline commit versions within a project that
+// are at least as new as the given revision order number, ordered by most recently created to
+// oldest. Versions are included regardless of whether they're already activated.
+func VersionsSinceLastActivated(projectId string, ts time.Time, lastActivatedOrderNum, limit int) db.Q {
 	return db.Query(
 		bson.M{
 			VersionRequesterKey:           evergreen.RepotrackerVersionRequester,
 			VersionIdentifierKey:          projectId,
 			VersionIgnoredKey:             bson.M{"$ne": true},
 			VersionCreateTimeKey:          bson.M{"$lte": ts},
-			VersionActivatedKey:           bson.M{"$ne": true},                  // Only unactivated versions
-			VersionRevisionOrderNumberKey: bson.M{"$gt": lastActivatedOrderNum}, // Newer than last activated
+			VersionRevisionOrderNumberKey: bson.M{"$gte": lastActivatedOrderNum},
 		},
 	).Sort([]string{"-" + VersionRevisionOrderNumberKey}).Limit(limit)
 }
@@ -337,6 +336,16 @@ func VersionBySuccessfulBeforeRevision(project string, beforeRevision int) db.Q 
 func VersionFindOne(ctx context.Context, query db.Q) (*Version, error) {
 	version := &Version{}
 	err := db.FindOneQ(ctx, VersionCollection, query, version)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	return version, err
+}
+
+// VersionFindOneSecondary returns a version matching the query, reading from a secondary.
+func VersionFindOneSecondary(ctx context.Context, query db.Q) (*Version, error) {
+	version := &Version{}
+	err := db.FindOneQSecondary(ctx, VersionCollection, query, version)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

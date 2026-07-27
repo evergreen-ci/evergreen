@@ -6,7 +6,7 @@
         "data": {
           "user": {
             "displayName": "Admin User",
-            "userId": "admin_user",
+            "id": "admin_user",
             "permissions": {
               "canCreateDistro": true,
               "canCreateProject": true,
@@ -38,7 +38,7 @@
         "data": {
           "user": {
             "displayName": "Bob Smith",
-            "userId": "bob.smith",
+            "id": "bob.smith",
             "permissions": {
               "canCreateDistro": false,
               "distroPermissions": {

@@ -1,7 +1,6 @@
 package model
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -9,8 +8,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type taskCompare struct {
@@ -19,8 +21,7 @@ type taskCompare struct {
 }
 
 func TestTaskBuildFromService(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With a list of models to compare", t, func() {
 		timeNow := time.Now()
@@ -74,7 +75,8 @@ func TestTaskBuildFromService(t *testing.T) {
 						LastPassingStepbackTaskId: "last_passing",
 						NextStepbackTaskId:        "next",
 					},
-					HasAnnotations: true,
+					HasAnnotations:               true,
+					QuarantinedTestsSkippedCount: 3,
 				},
 				st: task.Task{
 					Id:            "testId",
@@ -112,7 +114,8 @@ func TestTaskBuildFromService(t *testing.T) {
 						LastPassingStepbackTaskId: "last_passing",
 						NextStepbackTaskId:        "next",
 					},
-					HasAnnotations: true,
+					HasAnnotations:             true,
+					NumQuarantinedTestsSkipped: 3,
 				},
 			},
 			{
@@ -236,6 +239,7 @@ func TestTaskBuildFromService(t *testing.T) {
 				}
 
 				So(apiTask.HasAnnotations, ShouldEqual, tc.at.HasAnnotations)
+				So(apiTask.QuarantinedTestsSkippedCount, ShouldEqual, tc.at.QuarantinedTestsSkippedCount)
 
 				if tc.at.S3Usage == nil {
 					So(apiTask.S3Usage, ShouldBeNil)
@@ -247,5 +251,39 @@ func TestTaskBuildFromService(t *testing.T) {
 				}
 			}
 		})
+	})
+}
+
+func TestAPITaskBuildFromServiceHiddenCost(t *testing.T) {
+	env := testutil.NewEnvironment(t.Context(), t)
+	originalEnv := evergreen.GetEnvironment()
+	evergreen.SetEnvironment(env)
+	t.Cleanup(func() { evergreen.SetEnvironment(originalEnv) })
+	env.Settings().Cost.HiddenCostProjects = []string{"hidden-project"}
+
+	t.Run("HiddenProjectSuppressesCost", func(t *testing.T) {
+		st := task.Task{
+			Id:                "t-hidden",
+			Project:           "hidden-project",
+			TaskCost:          cost.Cost{OnDemandEC2Cost: 15.0, AdjustedEC2Cost: 12.0},
+			PredictedTaskCost: cost.Cost{OnDemandEC2Cost: 5.0, AdjustedEC2Cost: 4.0},
+		}
+		at := APITask{}
+		require.NoError(t, at.BuildFromService(t.Context(), &st, nil))
+		assert.Nil(t, at.TaskCost)
+		assert.Nil(t, at.PredictedTaskCost)
+	})
+
+	t.Run("NonHiddenProjectKeepsCost", func(t *testing.T) {
+		st := task.Task{
+			Id:                "t-visible",
+			Project:           "visible-project",
+			TaskCost:          cost.Cost{OnDemandEC2Cost: 15.0, AdjustedEC2Cost: 12.0},
+			PredictedTaskCost: cost.Cost{OnDemandEC2Cost: 5.0, AdjustedEC2Cost: 4.0},
+		}
+		at := APITask{}
+		require.NoError(t, at.BuildFromService(t.Context(), &st, nil))
+		require.NotNil(t, at.TaskCost)
+		require.NotNil(t, at.PredictedTaskCost)
 	})
 }

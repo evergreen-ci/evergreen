@@ -2013,6 +2013,7 @@ func buildTaskCompletedSpanAttributes(t *task.Task) []attribute.KeyValue {
 		attribute.String(evergreen.TaskNameOtelAttribute, t.DisplayName),
 		attribute.String(evergreen.TaskVariantOtelAttribute, t.BuildVariant),
 		attribute.String(evergreen.VersionRequesterOtelAttribute, t.Requester),
+		attribute.String(evergreen.DistroIDOtelAttribute, t.DistroId),
 	}
 	if !utility.IsZeroTime(t.ActivatedTime) && !utility.IsZeroTime(t.ScheduledTime) {
 		attrs = append(attrs, attribute.Int64(evergreen.TaskTimeWaitingForSchedulingMsOtelAttribute,
@@ -2021,6 +2022,18 @@ func buildTaskCompletedSpanAttributes(t *task.Task) []attribute.KeyValue {
 	if len(t.DependsOn) > 0 && !utility.IsZeroTime(t.DependenciesMetTime) && !utility.IsZeroTime(t.ScheduledTime) {
 		attrs = append(attrs, attribute.Int64(evergreen.TaskTimeWaitingForDepsMsOtelAttribute,
 			t.DependenciesMetTime.Sub(t.ScheduledTime).Milliseconds()))
+	}
+	if !utility.IsZeroTime(t.StartTime) {
+		var readyToRunTime time.Time
+		if len(t.DependsOn) > 0 {
+			readyToRunTime = t.DependenciesMetTime
+		} else {
+			readyToRunTime = t.ScheduledTime
+		}
+		if !utility.IsZeroTime(readyToRunTime) {
+			attrs = append(attrs, attribute.Int64(evergreen.TaskTimeWaitingInQueueMsOtelAttribute,
+				t.StartTime.Sub(readyToRunTime).Milliseconds()))
+		}
 	}
 	if !utility.IsZeroTime(t.StartTime) && !utility.IsZeroTime(t.FinishTime) {
 		attrs = append(attrs, attribute.Int64(evergreen.TaskDurationMsOtelAttribute,
@@ -2584,7 +2597,7 @@ func UpdateDisplayTaskForTask(ctx context.Context, t *task.Task) error {
 		updatedDisplayTask  *task.Task
 		err                 error
 	)
-	for i := 0; i < maxUpdateAttempts; i++ {
+	for i := range maxUpdateAttempts {
 		// Clear the cached display task, if any (e.g. due to a prior
 		// GetDisplayTask). The display task fetched here must always contain
 		// the latest display task data.

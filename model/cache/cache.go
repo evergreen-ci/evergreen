@@ -30,7 +30,8 @@ var (
 )
 
 // Get returns the []byte representation of a cached value and a bool
-// set to true if the value isn't empty.
+// set to true if the value isn't empty. The cache is best-effort, so treat
+// any failure as a cache miss rather than surfacing an error that would fail the caller.
 func (c *DBCache) Get(ctx context.Context, key string) ([]byte, bool, error) {
 	item := cacheItem{}
 	err := db.FindOneQ(ctx, collection,
@@ -45,14 +46,14 @@ func (c *DBCache) Get(ctx context.Context, key string) ([]byte, bool, error) {
 				"operation": "Get",
 				"source":    "DBCache",
 			}))
-			return nil, false, err
 		}
 		return nil, false, nil
 	}
 	return item.Contents, true, nil
 }
 
-// Set stores valueBytes for key.
+// Set stores valueBytes for key. The cache is best-effort, so a write failure
+// is logged but not surfaced to the caller.
 func (c *DBCache) Set(ctx context.Context, key string, valueBytes []byte) error {
 	_, err := db.Upsert(
 		ctx,
@@ -73,10 +74,11 @@ func (c *DBCache) Set(ctx context.Context, key string, valueBytes []byte) error 
 		"source":    "DBCache",
 	}))
 
-	return err
+	return nil
 }
 
-// Delete removes the value associated with the key.
+// Delete removes the value associated with the key. The cache is best-effort,
+// so a delete failure is logged but not surfaced to the caller.
 func (c *DBCache) Delete(ctx context.Context, key string) error {
 	err := db.Remove(ctx, collection, bson.M{IDKey: key})
 	grip.Error(ctx, message.WrapError(err,
@@ -86,5 +88,5 @@ func (c *DBCache) Delete(ctx context.Context, key string) error {
 			"operation": "Delete",
 			"source":    "DBCache",
 		}))
-	return err
+	return nil
 }

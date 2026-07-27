@@ -162,6 +162,28 @@ func (as *APIServer) listProjects(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	usr := MustHaveUser(r)
+	viewableIds, err := usr.GetViewableProjects(r.Context())
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
+	if viewableIds != nil {
+		allowed := make(map[string]struct{}, len(viewableIds))
+		for _, id := range viewableIds {
+			allowed[id] = struct{}{}
+		}
+		filtered := make([]model.ProjectRef, 0, len(allProjs))
+		for i := range allProjs {
+			if _, ok := allowed[allProjs[i].Id]; ok {
+				filtered = append(filtered, allProjs[i])
+			}
+		}
+		allProjs = filtered
+	}
+
 	for i := range allProjs {
 		allProjs[i].RedactSecrets()
 	}
@@ -289,7 +311,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.SimpleVersions = true
 
 	// Project lookup and validation routes
-	app.AddRoute("/ref/{projectId}").Wrap(requireUser).Handler(as.fetchLimitedProjectRef).Get()
+	app.AddRoute("/ref/{projectId}").Wrap(requireUser, viewTasks).Handler(as.fetchLimitedProjectRef).Get()
 	// Please do not use this route internally, it is deprecated. Use the REST v2 /validate route instead.
 	app.AddRoute("/validate").Wrap(requireUser).Handler(as.validateProjectConfig).Post()
 

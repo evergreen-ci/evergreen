@@ -18,8 +18,7 @@ import (
 )
 
 func TestSend(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	t.Run("ParseError", func(t *testing.T) {
 		mock := newSenderTestMock(ctx)
@@ -218,8 +217,7 @@ func TestSend(t *testing.T) {
 }
 
 func TestFlush(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	t.Run("WriteError", func(t *testing.T) {
 		mock := newSenderTestMock(ctx)
@@ -304,8 +302,7 @@ func TestFlush(t *testing.T) {
 }
 
 func TestClose(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	t.Run("WriteError", func(t *testing.T) {
 		mock := newSenderTestMock(ctx)

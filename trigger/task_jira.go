@@ -405,18 +405,12 @@ func (j *jiraBuilder) getDescription() (string, error) {
 // cleanTestName returns the last item of a test's path.
 // TODO: stop accommodating this.
 func cleanTestName(path string) string {
+	path = strings.TrimRight(path, "/")
 	if unixIdx := strings.LastIndex(path, "/"); unixIdx != -1 {
-		// if the path ends in a slash, remove it and try again
-		if unixIdx == len(path)-1 {
-			return cleanTestName(path[:len(path)-1])
-		}
 		return path[unixIdx+1:]
 	}
+	path = strings.TrimRight(path, `\`)
 	if windowsIdx := strings.LastIndex(path, `\`); windowsIdx != -1 {
-		// if the path ends in a slash, remove it and try again
-		if windowsIdx == len(path)-1 {
-			return cleanTestName(path[:len(path)-1])
-		}
 		return path[windowsIdx+1:]
 	}
 	return path

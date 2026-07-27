@@ -388,8 +388,7 @@ func TestExpandS3PutParams(t *testing.T) {
 }
 
 func TestSignedUrlVisibility(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	tempDir := t.TempDir()
 	file1 := filepath.Join(tempDir, "file1")
@@ -453,8 +452,7 @@ func TestSignedUrlVisibility(t *testing.T) {
 }
 
 func TestContentTypeSaved(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	tempDir := t.TempDir()
 	file1 := filepath.Join(tempDir, "file1")
@@ -519,8 +517,7 @@ func TestContentTypeSaved(t *testing.T) {
 func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 	for _, prefix := range []string{"emptyPrefix", "subDir"} {
 		t.Run(prefix, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 			var err error
 
 			dir := t.TempDir()
@@ -591,8 +588,7 @@ func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 }
 
 func TestFileUploadNaming(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	dir := t.TempDir()
 	require.NoError(t, os.Mkdir(filepath.Join(dir, "subDir"), 0o755))
@@ -649,8 +645,7 @@ func TestFileUploadNaming(t *testing.T) {
 }
 
 func TestPreservePath(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	dir := t.TempDir()
 
@@ -804,8 +799,7 @@ func TestS3PutSkipExisting(t *testing.T) {
 		S3Usage: &s3usage.S3Usage{},
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	comm := client.NewMock("")
 	baseComm := client.NewHostCommunicator("", "", "")

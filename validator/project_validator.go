@@ -76,15 +76,15 @@ func (v ValidationErrors) Loggable() bool {
 	return len(v) > 0
 }
 func (v ValidationErrors) String() string {
-	out := ""
+	var out strings.Builder
 	for i, validationErr := range v {
 		if i > 0 {
-			out += "\n"
+			out.WriteString("\n")
 		}
-		out += fmt.Sprintf("%s: %s", validationErr.Level.String(), validationErr.Message)
+		out.WriteString(fmt.Sprintf("%s: %s", validationErr.Level.String(), validationErr.Message))
 	}
 
-	return out
+	return out.String()
 }
 func (v ValidationErrors) Annotate(key string, value any) error {
 	return nil
@@ -1416,6 +1416,13 @@ func validateDisplayTaskNames(project *model.Project) ValidationErrors {
 	// check display tasks
 	for _, bv := range project.BuildVariants {
 		for _, dp := range bv.DisplayTasks {
+			if dp.Name == "" {
+				errs = append(errs,
+					ValidationError{
+						Level:   Error,
+						Message: fmt.Sprintf("display task in buildvariant '%s' must have a name", bv.Name),
+					})
+			}
 			for _, etn := range dp.ExecTasks {
 				if strings.HasPrefix(etn, "display_") {
 					errs = append(errs,

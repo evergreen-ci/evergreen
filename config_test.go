@@ -76,8 +76,7 @@ type AdminSuite struct {
 }
 
 func TestAdminSuite(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	configFile := os.Getenv(SettingsOverride)
 	if configFile == "" {
@@ -375,14 +374,6 @@ func (s *AdminSuite) TestProvidersConfig() {
 	defer cancel()
 
 	config := CloudProviders{
-		AWS: AWSConfig{
-			EC2Keys: []EC2Key{
-				{
-					Secret: "aws_secret",
-					Key:    "aws",
-				},
-			},
-		},
 		Docker: DockerConfig{
 			APIVersion: "docker_version",
 		},

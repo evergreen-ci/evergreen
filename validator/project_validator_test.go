@@ -1795,7 +1795,7 @@ func TestValidateProjectLimits(t *testing.T) {
 			},
 		}
 
-		for i := 0; i < numTasks; i++ {
+		for i := range numTasks {
 			t := model.ProjectTask{
 				Name: fmt.Sprintf("task-%d", i),
 			}
@@ -4765,6 +4765,26 @@ buildvariants:
 		errors[0].Message)
 	warnings := CheckProjectWarnings(&proj)
 	assert.Empty(warnings)
+}
+
+func TestDisplayTaskEmptyNameValidation(t *testing.T) {
+	project := &model.Project{
+		BuildVariants: []model.BuildVariant{
+			{
+				Name: "bv",
+				DisplayTasks: []patch.DisplayTask{
+					{
+						Name:      "",
+						ExecTasks: []string{"one"},
+					},
+				},
+			},
+		},
+	}
+	errs := validateDisplayTaskNames(project)
+	require.Len(t, errs, 1)
+	assert.Equal(t, Error, errs[0].Level)
+	assert.Equal(t, "display task in buildvariant 'bv' must have a name", errs[0].Message)
 }
 
 func TestValidateCreateHosts(t *testing.T) {

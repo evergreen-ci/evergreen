@@ -23,11 +23,11 @@ import (
 // SmokeTestParams contain common parameters used by smoke tests.
 type SmokeTestParams struct {
 	internal.APIParams
-	ExecModeID     string
-	ExecModeSecret string
-	CLIConfigPath  string
-	ProjectID      string
-	BVName         string
+	HostID        string
+	HostSecret    string
+	CLIConfigPath string
+	ProjectID     string
+	BVName        string
 }
 
 // GetSmokeTestParamsFromEnv gets the parameters for the host smoke test from
@@ -37,14 +37,14 @@ func GetSmokeTestParamsFromEnv(t *testing.T) SmokeTestParams {
 	evgHome := evergreen.FindEvergreenHome()
 	require.NotZero(t, evgHome, "EVGHOME must be set for smoke test")
 
-	execModeID := os.Getenv("EXEC_MODE_ID")
-	if execModeID == "" {
-		execModeID = "localhost"
+	hostID := os.Getenv("HOST_ID")
+	if hostID == "" {
+		hostID = "localhost"
 	}
 
-	execModeSecret := os.Getenv("EXEC_MODE_SECRET")
-	if execModeSecret == "" {
-		execModeSecret = "de249183582947721fdfb2ea1796574b"
+	hostSecret := os.Getenv("HOST_SECRET")
+	if hostSecret == "" {
+		hostSecret = "de249183582947721fdfb2ea1796574b"
 	}
 
 	cliConfigPath := os.Getenv("CLI_CONFIG_PATH")
@@ -63,12 +63,12 @@ func GetSmokeTestParamsFromEnv(t *testing.T) SmokeTestParams {
 	}
 
 	return SmokeTestParams{
-		APIParams:      internal.GetAPIParamsFromEnv(t, evgHome),
-		ExecModeID:     execModeID,
-		ExecModeSecret: execModeSecret,
-		ProjectID:      projectID,
-		BVName:         bvName,
-		CLIConfigPath:  cliConfigPath,
+		APIParams:     internal.GetAPIParamsFromEnv(t, evgHome),
+		HostID:        hostID,
+		HostSecret:    hostSecret,
+		ProjectID:     projectID,
+		BVName:        bvName,
+		CLIConfigPath: cliConfigPath,
 	}
 }
 
@@ -130,7 +130,7 @@ func triggerRepotracker(ctx context.Context, t *testing.T, params SmokeTestParam
 	grip.Info(ctx, "Attempting to trigger repotracker to run.")
 
 	const repotrackerAttempts = 5
-	for i := 0; i < repotrackerAttempts; i++ {
+	for i := range repotrackerAttempts {
 		time.Sleep(2 * time.Second)
 		grip.Infof(ctx, "Requesting repotracker for evergreen project. (%d/%d)", i+1, repotrackerAttempts)
 		_, err := internal.MakeSmokeRequest(ctx, params.APIParams, http.MethodPost, client, fmt.Sprintf("/rest/v2/projects/%s/repotracker", params.ProjectID))
@@ -154,7 +154,7 @@ func waitForRepotracker(ctx context.Context, t *testing.T, params SmokeTestParam
 	grip.Info(ctx, "Waiting for repotracker to pick up new commits.")
 
 	const repotrackerAttempts = 10
-	for i := 0; i < repotrackerAttempts; i++ {
+	for range repotrackerAttempts {
 		time.Sleep(2 * time.Second)
 		respBody, err := internal.MakeSmokeRequest(ctx, params.APIParams, http.MethodGet, client, fmt.Sprintf("/rest/v2/projects/%s/versions?limit=1", params.ProjectID))
 		if err != nil {
@@ -216,7 +216,7 @@ func getSmokeTestPatch(ctx context.Context, t *testing.T, params SmokeTestParams
 	grip.Infof(ctx, "Waiting for manual patch for user '%s' to exist.", params.Username)
 
 	const patchCheckAttempts = 10
-	for i := 0; i < patchCheckAttempts; i++ {
+	for range patchCheckAttempts {
 		time.Sleep(2 * time.Second)
 		respBody, err := internal.MakeSmokeRequest(ctx, params.APIParams, http.MethodGet, client, fmt.Sprintf("/rest/v2/users/%s/patches?limit=1", params.Username))
 		if err != nil {
@@ -269,7 +269,7 @@ func getAndCheckBuilds(ctx context.Context, params SmokeTestParams, patchID stri
 	grip.Infof(ctx, "Attempting to get builds created by the manual patch '%s'.", patchID)
 
 	const buildCheckAttempts = 10
-	for i := 0; i < buildCheckAttempts; i++ {
+	for i := range buildCheckAttempts {
 		// Poll the app server until the patch's builds and tasks exist.
 		time.Sleep(2 * time.Second)
 

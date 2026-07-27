@@ -738,15 +738,12 @@ func (h *versionManifestProofHistoryGetHandler) Run(ctx context.Context) gimlet.
 		manifests[foundManifests[i].Id] = &foundManifests[i]
 	}
 
-	numVersionsToReturn := len(versions)
-	if numVersionsToReturn > versionManifestProofHistoryLimit {
-		numVersionsToReturn = versionManifestProofHistoryLimit
-	}
+	numVersionsToReturn := min(len(versions), versionManifestProofHistoryLimit)
 
 	response := &versionManifestProofHistoryResponse{
 		Versions: []versionManifestProofHistoryItem{},
 	}
-	for i := 0; i < numVersionsToReturn; i++ {
+	for i := range numVersionsToReturn {
 		var comparisonVersion *dbModel.Version
 		var comparisonManifest *manifest.Manifest
 		if i+1 < len(versions) {

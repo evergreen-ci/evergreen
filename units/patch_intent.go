@@ -356,7 +356,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			}
 		}
 	}
-	if err = j.verifyValidAlias(ctx, pref.Id, patchDoc.PatchedProjectConfig); err != nil {
+	if err = j.verifyValidAliases(ctx, pref.Id, patchDoc.AliasesToResolve(), patchDoc.PatchedProjectConfig); err != nil {
 		j.gitHubError = invalidAlias
 		return err
 	}
@@ -653,7 +653,7 @@ func (j *patchIntentProcessor) buildTasksAndVariants(ctx context.Context, patchD
 	}
 
 	if len(patchDoc.VariantsTasks) == 0 {
-		project.BuildProjectTVPairs(ctx, patchDoc, j.intent.GetAlias())
+		project.BuildProjectTVPairs(ctx, patchDoc, patchDoc.AliasesToResolve())
 	}
 	return nil
 }
@@ -1374,9 +1374,8 @@ func fetchTriggerVersionInfo(ctx context.Context, patchDoc *patch.Patch) (*model
 	return v, project, pp, nil
 }
 
-func (j *patchIntentProcessor) verifyValidAlias(ctx context.Context, projectId string, configStr string) error {
-	alias := j.intent.GetAlias()
-	if alias == "" {
+func (j *patchIntentProcessor) verifyValidAliases(ctx context.Context, projectId string, aliases []string, configStr string) error {
+	if len(aliases) == 0 {
 		return nil
 	}
 	var projectConfig *model.ProjectConfig
@@ -1387,14 +1386,16 @@ func (j *patchIntentProcessor) verifyValidAlias(ctx context.Context, projectId s
 			return errors.Wrap(err, "creating project config")
 		}
 	}
-	aliases, err := model.FindAliasInProjectRepoOrProjectConfig(ctx, projectId, alias, projectConfig)
-	if err != nil {
-		return errors.Wrapf(err, "retrieving aliases for project '%s'", projectId)
+	for _, alias := range aliases {
+		found, err := model.FindAliasInProjectRepoOrProjectConfig(ctx, projectId, alias, projectConfig)
+		if err != nil {
+			return errors.Wrapf(err, "retrieving aliases for project '%s'", projectId)
+		}
+		if len(found) == 0 {
+			return errors.Errorf("alias '%s' could not be found on project '%s'", alias, projectId)
+		}
 	}
-	if len(aliases) > 0 {
-		return nil
-	}
-	return errors.Errorf("alias '%s' could not be found on project '%s'", alias, projectId)
+	return nil
 }
 
 func findEvergreenUserForPR(ctx context.Context, githubUID int) (*user.DBUser, error) {
@@ -1652,48 +1653,135 @@ func (j *patchIntentProcessor) getEvergreenRulesForStatuses(ctx context.Context,
 	return utility.UniqueStrings(allRules)
 }
 
-// filterOutIgnoredVariants checks which variants should be ignored based on their path patterns
-// and the changed files in the patch. It removes ignored variants from all relevant patch fields
-// and returns the list of ignored variant names.
+// filterOutIgnoredVariants checks which variants should be ignored based on
+// their path patterns and the changed files in the patch. If a variant is
+// ignored by path filtering but has tasks that are required for cross-variant
+// dependencies, those dependencies will not be ignored (in other words,
+// dependencies can override path filtering). It removes ignored variants from
+// all relevant patch fields and returns the list of ignored variant names.
 func (j *patchIntentProcessor) filterOutIgnoredVariants(ctx context.Context, patchDoc *patch.Patch, patchedProject *model.Project) []string {
 	ignoredVariants := []string{}
 	if j.skipFilteringIgnoredVariants(ctx, patchDoc, patchedProject) {
 		return ignoredVariants
 	}
 
-	filteredVariantsTasks := []patch.VariantTasks{}
-	filteredBuildVariants := []string{}
+	vtsNotIgnored, candidateVTsToIgnore := partitionVariantsByPathFilter(patchDoc, patchedProject)
 
-	changedFiles := patchDoc.FilesChanged()
-	// Check each variant in VariantsTasks to see if it should be ignored
-	for _, vt := range patchDoc.VariantsTasks {
-		bv := patchedProject.FindBuildVariant(vt.Variant)
-		if bv == nil {
-			// If we can't find the build variant, keep it (don't ignore)
-			filteredVariantsTasks = append(filteredVariantsTasks, vt)
-			filteredBuildVariants = append(filteredBuildVariants, vt.Variant)
-			continue
-		}
+	filteredVTs := vtsNotIgnored
+	if len(candidateVTsToIgnore) > 0 {
+		// A task that's not ignored may have a cross-variant dependency on a
+		// task in a variant that path filtering would otherwise ignore.
+		// Cross-variant dependencies must be preserved regardless of path
+		// filtering, so determine which tasks in the ignored variants need to
+		// be kept for cross-variant dependencies.
+		variantsToNeededTasks := j.getTasksAndDependencies(ctx, patchDoc, patchedProject, vtsNotIgnored)
+		for _, vt := range candidateVTsToIgnore {
+			neededTasks := variantsToNeededTasks[vt.Variant]
+			if len(neededTasks) == 0 {
+				// The variant is path-filtered out and none of its tasks are
+				// depended on by a non-ignored task, so it's safe to ignore the
+				// entire variant.
+				ignoredVariants = append(ignoredVariants, vt.Variant)
+				continue
+			}
 
-		// If the variant has path patterns and none of the changed files match, ignore it
-		if len(bv.Paths) > 0 && !bv.ChangedFilesMatchPaths(changedFiles) {
-			ignoredVariants = append(ignoredVariants, vt.Variant)
-		} else {
-			// Keep this variant
-			filteredVariantsTasks = append(filteredVariantsTasks, vt)
-			filteredBuildVariants = append(filteredBuildVariants, vt.Variant)
+			// The variant is path-filtered but holds tasks that a non-ignored
+			// task in another variant depends on, so reinstate specifically
+			// those tasks (not the entire variant).
+			depVT := reinstateDependenciesForVariant(patchedProject, vt, neededTasks)
+
+			filteredVTs = append(filteredVTs, depVT)
 		}
 	}
 
-	// Update the patch document with the filtered variants
-	patchDoc.VariantsTasks = filteredVariantsTasks
-	patchDoc.BuildVariants = filteredBuildVariants
+	setFilteredVariantsTasks(patchDoc, filteredVTs)
 
-	// Update Tasks to only include tasks that are still used by remaining variants
-	usedTasks := make(map[string]bool)
-	for _, vt := range filteredVariantsTasks {
-		for _, task := range vt.Tasks {
-			usedTasks[task] = true
+	return ignoredVariants
+}
+
+// partitionVariantsByPathFilter splits the patch's variant tasks into those
+// that are kept and those that can potentially be ignored. A variant is a
+// candidate to be ignored when it has path filters and none of the patch's
+// changed files match them.
+func partitionVariantsByPathFilter(patchDoc *patch.Patch, patchedProject *model.Project) (vtsNotIgnored, candidateVTsToIgnore []patch.VariantTasks) {
+	changedFiles := patchDoc.FilesChanged()
+	for _, vt := range patchDoc.VariantsTasks {
+		bv := patchedProject.FindBuildVariant(vt.Variant)
+		if bv != nil && len(bv.Paths) > 0 && !bv.ChangedFilesMatchPaths(changedFiles) {
+			candidateVTsToIgnore = append(candidateVTsToIgnore, vt)
+			continue
+		}
+		vtsNotIgnored = append(vtsNotIgnored, vt)
+	}
+	return vtsNotIgnored, candidateVTsToIgnore
+}
+
+// getTasksAndDependencies returns a map of variants to the set of tasks that
+// should run in those variants. This includes:
+// 1. the initial set of variants and tasks in vts and
+// 2. variants and tasks that are required dependencies of tasks in vts.
+func (j *patchIntentProcessor) getTasksAndDependencies(ctx context.Context, patchDoc *patch.Patch, patchedProject *model.Project, vts []patch.VariantTasks) map[string]map[string]bool {
+	tvPairs := model.VariantTasksToTVPairs(vts)
+	requiredTasksAndDependencies, err := model.IncludeDependencies(patchedProject, tvPairs.ExecTasks, patchDoc.GetRequester(), "", nil)
+	grip.Warning(ctx, message.WrapError(err, message.Fields{
+		"message":  "error resolving cross-variant dependencies on path-filtered variants",
+		"job":      j.ID(),
+		"patch_id": patchDoc.Id.Hex(),
+	}))
+
+	variantsToNeededTasks := map[string]map[string]bool{}
+	for _, pair := range requiredTasksAndDependencies {
+		if variantsToNeededTasks[pair.Variant] == nil {
+			variantsToNeededTasks[pair.Variant] = map[string]bool{}
+		}
+		variantsToNeededTasks[pair.Variant][pair.TaskName] = true
+	}
+	return variantsToNeededTasks
+}
+
+// reinstateDependenciesForVariant builds the subset of neededTasksInVariant
+// (and their parent display tasks) that are needed as a dependency for a task
+// in vt. This includes all regular tasks, execution tasks, and parent display
+// tasks needed for dependencies.
+// A reinstated display task includes only the minimal set of tasks that are
+// needed as dependencies, so not all of display task's execution tasks are
+// guaranteed to be included.
+func reinstateDependenciesForVariant(patchedProject *model.Project, vt patch.VariantTasks, neededTasksInVariant map[string]bool) patch.VariantTasks {
+	depVT := patch.VariantTasks{Variant: vt.Variant}
+	for _, t := range vt.Tasks {
+		if neededTasksInVariant[t] {
+			depVT.Tasks = append(depVT.Tasks, t)
+		}
+	}
+
+	bv := patchedProject.FindBuildVariant(vt.Variant)
+	if bv == nil {
+		return depVT
+	}
+	for _, dt := range vt.DisplayTasks {
+		projectDT := bv.GetDisplayTask(dt.Name)
+		if projectDT == nil {
+			continue
+		}
+		for _, et := range projectDT.ExecTasks {
+			if neededTasksInVariant[et] {
+				depVT.DisplayTasks = append(depVT.DisplayTasks, patch.DisplayTask{Name: dt.Name})
+				break
+			}
+		}
+	}
+	return depVT
+}
+
+// setFilteredVariantsTasks updates the patch document to only include the given
+// variant tasks, pruning the build variants and tasks that are no longer used.
+func setFilteredVariantsTasks(patchDoc *patch.Patch, filteredVTs []patch.VariantTasks) {
+	filteredBuildVariants := make([]string, 0, len(filteredVTs))
+	usedTasks := map[string]bool{}
+	for _, vt := range filteredVTs {
+		filteredBuildVariants = append(filteredBuildVariants, vt.Variant)
+		for _, t := range vt.Tasks {
+			usedTasks[t] = true
 		}
 		for _, dt := range vt.DisplayTasks {
 			usedTasks[dt.Name] = true
@@ -1701,14 +1789,15 @@ func (j *patchIntentProcessor) filterOutIgnoredVariants(ctx context.Context, pat
 	}
 
 	filteredTasks := []string{}
-	for _, task := range patchDoc.Tasks {
-		if usedTasks[task] {
-			filteredTasks = append(filteredTasks, task)
+	for _, t := range patchDoc.Tasks {
+		if usedTasks[t] {
+			filteredTasks = append(filteredTasks, t)
 		}
 	}
-	patchDoc.Tasks = filteredTasks
 
-	return ignoredVariants
+	patchDoc.VariantsTasks = filteredVTs
+	patchDoc.BuildVariants = filteredBuildVariants
+	patchDoc.Tasks = filteredTasks
 }
 
 // skipFilteringIgnoredVariants verifies that the patch should apply filtering, i.e. there are changed files,

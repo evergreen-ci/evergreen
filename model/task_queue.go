@@ -178,6 +178,7 @@ var (
 	taskQueueItemExpDurationKey   = bsonutil.MustHaveTag(TaskQueueItem{}, "ExpectedDuration")
 	taskQueueItemPriorityKey      = bsonutil.MustHaveTag(TaskQueueItem{}, "Priority")
 	taskQueueItemActivatedByKey   = bsonutil.MustHaveTag(TaskQueueItem{}, "ActivatedBy")
+	taskQueueItemDepsMetKey       = bsonutil.MustHaveTag(TaskQueueItem{}, "DependenciesMet")
 )
 
 // TaskSpec is an argument structure to formalize the way that callers
@@ -213,6 +214,24 @@ func (tq *TaskQueue) Length() int {
 		return 0
 	}
 	return len(tq.Queue)
+}
+
+// LengthWithDependenciesMet returns the number of undispatched items in the
+// in-memory queue whose dependencies were met as of queue creation. Unlike
+// DistroQueueInfo.LengthWithDependenciesMet, which is a snapshot taken when
+// the scheduler persisted the plan, this reflects items still remaining in
+// the queue.
+func (tq *TaskQueue) LengthWithDependenciesMet() int {
+	if tq == nil {
+		return 0
+	}
+	count := 0
+	for _, item := range tq.Queue {
+		if item.DependenciesMet {
+			count++
+		}
+	}
+	return count
 }
 
 func (tq *TaskQueue) Save(ctx context.Context) error {
@@ -373,6 +392,7 @@ func findTaskQueueForDistro(ctx context.Context, q taskQueueQuery) (*TaskQueue, 
 						taskQueueItemExpDurationKey:   "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemExpDurationKey),
 						taskQueueItemPriorityKey:      "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemPriorityKey),
 						taskQueueItemActivatedByKey:   "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemActivatedByKey),
+						taskQueueItemDepsMetKey:       "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemDepsMetKey),
 					},
 				},
 			},

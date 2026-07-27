@@ -17,8 +17,11 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
 
 var sampleBaseProject = `
@@ -464,8 +467,7 @@ var sampleGeneratedProject3 = []string{`
 `}
 
 func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	env := &mock.Environment{}
@@ -616,8 +618,7 @@ func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
 }
 
 func TestGeneratedTasksAreNotDependencies(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	env := &mock.Environment{}
@@ -684,8 +685,9 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 	require.NoError(projectRef.Insert(t.Context()))
 
 	j := NewGenerateTasksJob(env, generateTask.Version, generateTask.Id, "1")
-	j.Run(ctx)
+	attrs := recordRootSpanAttributes(ctx, t, j)
 	assert.NoError(j.Error())
+	assert.Equal(string(outcomeGenerated), attrs[generateTasksOutcomeAttribute])
 	tasks, err := task.FindAll(ctx, db.Query(task.ByVersion("sample_version")))
 	assert.NoError(err)
 	assert.Len(tasks, 4)
@@ -782,8 +784,7 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 }
 
 func TestParseProjects(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	assert := assert.New(t)
@@ -802,8 +803,7 @@ func TestParseProjects(t *testing.T) {
 }
 
 func TestGenerateSkipsInvalidDependency(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	env := &mock.Environment{}
@@ -922,8 +922,7 @@ buildvariants:
 }
 
 func TestMarkGeneratedTasksError(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	env := &mock.Environment{}
@@ -942,11 +941,35 @@ func TestMarkGeneratedTasksError(t *testing.T) {
 	require.NoError(t, sampleTask.Insert(t.Context()))
 
 	j := NewGenerateTasksJob(env, sampleTask.Version, sampleTask.Id, "1")
-	j.Run(ctx)
+	attrs := recordRootSpanAttributes(ctx, t, j)
 	assert.Error(t, j.Error())
+	assert.Equal(t, string(outcomeError), attrs[generateTasksOutcomeAttribute])
 	dbTask, err := task.FindOneId(ctx, sampleTask.Id)
 	assert.NoError(t, err)
 	require.NotZero(t, dbTask)
 	assert.Equal(t, "version 'sample_version' not found", dbTask.GenerateTasksError)
 	assert.False(t, dbTask.GeneratedTasks)
+}
+
+// recordRootSpanAttributes starts a span backed by a local tracer provider, runs the given
+// job against a context carrying that span, ends the span, and returns its attributes as a
+// map. This substitutes for the amboy root span that wraps job execution in production,
+// since trace.SpanFromContext reads whatever span is in the context regardless of which
+// provider created it.
+func recordRootSpanAttributes(ctx context.Context, t *testing.T, j amboy.Job) map[string]any {
+	spanRecorder := tracetest.NewSpanRecorder()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(spanRecorder))
+	ctx, span := tp.Tracer("test").Start(ctx, "test")
+
+	j.Run(ctx)
+	span.End()
+	require.NoError(t, tp.Shutdown(t.Context()))
+
+	ended := spanRecorder.Ended()
+	require.Len(t, ended, 1)
+	attrs := map[string]any{}
+	for _, kv := range ended[0].Attributes() {
+		attrs[string(kv.Key)] = kv.Value.AsInterface()
+	}
+	return attrs
 }

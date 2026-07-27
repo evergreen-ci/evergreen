@@ -31,6 +31,14 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	defaultMaxAttempts  = 10
+	defaultTimeoutStart = time.Second * 2
+	defaultTimeoutMax   = time.Minute * 10
+	heartbeatTimeout    = time.Minute * 1
+	restartFailedTimout = time.Minute * 1
+)
+
 // baseCommunicator provides common methods for Communicator functionality but
 // does not implement the entire interface.
 type baseCommunicator struct {
@@ -43,6 +51,15 @@ type baseCommunicator struct {
 	mutex           sync.RWMutex
 }
 
+// hostCommunicator implements Communicator and makes requests to API endpoints
+// for an agent running on a host.
+type hostCommunicator struct {
+	baseCommunicator
+
+	hostID     string
+	hostSecret string
+}
+
 func newBaseCommunicator(serverURL string, reqHeaders map[string]string) baseCommunicator {
 	return baseCommunicator{
 		retry: utility.RetryOptions{
@@ -53,6 +70,25 @@ func newBaseCommunicator(serverURL string, reqHeaders map[string]string) baseCom
 		serverURL:  serverURL,
 		reqHeaders: reqHeaders,
 	}
+}
+
+// NewHostCommunicator returns a Communicator capable of making HTTP REST
+// requests against the API server for an agent running on a host. To change
+// the default retry behavior, use the SetTimeoutStart, SetTimeoutMax, and
+// SetMaxAttempts methods.
+func NewHostCommunicator(serverURL, hostID, hostSecret string) Communicator {
+	c := &hostCommunicator{
+		baseCommunicator: newBaseCommunicator(serverURL, map[string]string{
+			evergreen.HostHeader:       hostID,
+			evergreen.HostSecretHeader: hostSecret,
+		}),
+		hostID:     hostID,
+		hostSecret: hostSecret,
+	}
+
+	c.resetClient()
+
+	return c
 }
 
 // Close cleans up the resources being used by the communicator.

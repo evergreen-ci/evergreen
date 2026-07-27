@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -143,7 +144,7 @@ type ProjectRef struct {
 	// RunEveryMainlineCommit indicates that the project should activate the versions for all mainline commits.
 	// This goes against Evergreen's optimization of only activating the latest commit in a series of mainline commits.
 	// This is used for projects that use tasks on mainline commits to trigger downstream processes, like deployments.
-	RunEveryMainlineCommit bool `bson:"run_every_mainline_commit,omitempty" json:"run_every_mainline_commit,omitempty" yaml:"run_every_mainline_commit,omitempty"`
+	RunEveryMainlineCommit *bool `bson:"run_every_mainline_commit,omitempty" json:"run_every_mainline_commit,omitempty" yaml:"run_every_mainline_commit,omitempty"`
 }
 
 // GitHubDynamicTokenPermissionGroup is a permission group for GitHub dynamic access tokens.
@@ -1426,9 +1427,9 @@ func getCommonAliases(ctx context.Context, projectIds []string) (ProjectAliases,
 			commonAliases = aliases
 			continue
 		}
-		for j := len(commonAliases) - 1; j >= 0; j-- {
+		for j, commonAlias := range slices.Backward(commonAliases) {
 			// look to see if this alias exists in the each project and if not remove it
-			if !aliasSliceContains(aliases, commonAliases[j]) {
+			if !aliasSliceContains(aliases, commonAlias) {
 				commonAliases = append(commonAliases[:j], commonAliases[j+1:]...)
 			}
 		}
@@ -2553,7 +2554,7 @@ func DefaultSectionToRepo(ctx context.Context, projectId string, section Project
 		for _, a := range before.Aliases {
 			// remove only internal aliases; any alias without these labels is a patch alias
 			if utility.StringSliceContains(evergreen.InternalAliases, a.Alias) {
-				err = RemoveProjectAlias(ctx, a.ID.Hex())
+				err = RemoveProjectAlias(ctx, projectId, a.ID.Hex())
 				if err == nil {
 					modified = true // track if any aliases here were correctly modified so we can log the changes
 				}
@@ -2574,7 +2575,7 @@ func DefaultSectionToRepo(ctx context.Context, projectId string, section Project
 		// remove only patch aliases, i.e. aliases without an Evergreen-internal label
 		for _, a := range before.Aliases {
 			if !utility.StringSliceContains(evergreen.InternalAliases, a.Alias) {
-				err = RemoveProjectAlias(ctx, a.ID.Hex())
+				err = RemoveProjectAlias(ctx, projectId, a.ID.Hex())
 				if err == nil {
 					modified = true // track if any aliases were correctly modified so we can log the changes
 				}

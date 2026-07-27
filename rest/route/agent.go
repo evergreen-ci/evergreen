@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -238,6 +239,13 @@ func (h *markTaskForRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	// by another execution task, we don't want to mark it for a restart again nor do we
 	// want to error out since the display task has not been automatically restarted yet.
 	if taskToRestart.IsAutomaticRestart {
+		return gimlet.NewJSONResponse(struct{}{})
+	}
+
+	// Aborted tasks are intentionally not eligible for automatic restart. The agent still
+	// calls this route when a retry-on-failure command fails, even if the task was aborted
+	// mid-run, so treat that as an expected no-op rather than an internal server error.
+	if taskToRestart.Aborted {
 		return gimlet.NewJSONResponse(struct{}{})
 	}
 
@@ -494,7 +502,7 @@ func (h *getProjectRefHandler) Run(ctx context.Context) gimlet.Responder {
 	isUserRequest := user != nil
 	// If from debug session request, return minimal response
 	if isUserRequest {
-		redactedProjectRef := map[string]interface{}{
+		redactedProjectRef := map[string]any{
 			"repo_name":      p.Repo,
 			"branch_name":    p.Branch,
 			"owner_name":     p.Owner,
@@ -1011,6 +1019,20 @@ func (h *attachTestResultsHandler) Parse(ctx context.Context, r *http.Request) e
 
 func (h *attachTestResultsHandler) Run(ctx context.Context) gimlet.Responder {
 	t := MustHaveTask(ctx)
+
+	if h.body.Info.TaskID != t.Id || h.body.Info.Execution != t.Execution {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusForbidden,
+			Message:    "test results task identity does not match the authenticated task",
+		})
+	}
+	if h.body.Stats.FailedCount < 0 || h.body.Stats.TotalCount < 0 {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "test results stats counts cannot be negative",
+		})
+	}
+
 	var err error
 	var record testresult.DbTaskTestResults
 	if !t.HasTestResults {
@@ -1299,6 +1321,41 @@ func (h *gitServePatchFileHandler) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (h *gitServePatchFileHandler) Run(ctx context.Context) gimlet.Responder {
+	t := GetTask(ctx)
+	if t == nil {
+		var err error
+		t, err = task.FindOneId(ctx, h.taskID)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+		}
+		if t == nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+			})
+		}
+	}
+
+	p, err := patch.FindOne(ctx, patch.ByVersion(t.Version))
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patch for version '%s'", t.Version))
+	}
+	if p == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("patch for version '%s' not found", t.Version),
+		})
+	}
+
+	if !slices.ContainsFunc(p.Patches, func(mp patch.ModulePatch) bool {
+		return mp.PatchSet.PatchFileId == h.patchID
+	}) {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("patch file '%s' not found", h.patchID),
+		})
+	}
+
 	patchContents, err := patch.FetchPatchContents(ctx, h.patchID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "reading patch file from db"))

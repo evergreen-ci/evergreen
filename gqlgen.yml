@@ -81,6 +81,8 @@ models:
         value: github.com/evergreen-ci/evergreen/rest/model.MultiPreferredType
       KANOPY:
         value: github.com/evergreen-ci/evergreen/rest/model.KanopyPreferredType
+  QuarantinedTest:
+    model: github.com/evergreen-ci/evergreen/model/testresult.QuarantinedTest
   AuthUser:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAuthUser
   AuthUserInput:
@@ -220,8 +222,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDuration
   EC2Key:
     model: github.com/evergreen-ci/evergreen/rest/model.APIEC2Key
-  EC2KeyInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIEC2Key
   EnvVar:
     model: github.com/evergreen-ci/evergreen/rest/model.APIEnvVar
   EnvVarInput:
@@ -301,7 +301,7 @@ models:
   GithubUserInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubUser
   GitTag:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIGitTag
+    model: github.com/evergreen-ci/evergreen/model.GitTag
   GraphiteConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGraphiteConfig
   GraphiteConfigInput:
@@ -944,6 +944,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskQuarantineEntry
   TaskQueueItem:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskQueueItem
+  TaskQuarantinedTestsSample:
+    model: github.com/evergreen-ci/evergreen/model/testresult.TaskTestResultsQuarantinedSample
   TestLog:
     model: github.com/evergreen-ci/evergreen/rest/model.TestLogs
   TestQuarantineEntry:
@@ -977,13 +979,6 @@ models:
   UIConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIUIConfig
   User:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIDBUser
-    fields:
-      patches:
-        resolver: true
-      subscriptions:
-        resolver: true
-  UserLite:
     model: github.com/evergreen-ci/evergreen/model/user.DBUser
     fields:
       displayName:

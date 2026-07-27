@@ -6,7 +6,7 @@
         "data": {
           "user": {
             "displayName": "Bob Smith",
-            "userId": "bob.smith",
+            "id": "bob.smith",
             "parsleyFilters": [
               {
                 "expression": "abc",
@@ -29,8 +29,8 @@
         "data": {
           "user": {
             "displayName": "Jane Smith",
-            "userId": "jane.smith",
-            "parsleyFilters": []
+            "id": "jane.smith",
+            "parsleyFilters": null
           }
         }
       }

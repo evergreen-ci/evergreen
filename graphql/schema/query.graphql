@@ -77,7 +77,7 @@ type Query {
   # user
   myPublicKeys: [PublicKey!]!
   user(userId: String): User!
-  userLite(userId: String): UserLite!
+  userLite(userId: String): User!
   userConfig: UserConfig
 
   # mainline commits
@@ -90,7 +90,6 @@ type Query {
   
   # task history
   taskHistory(options: TaskHistoryOpts!): TaskHistory!
-  taskHistoryByCreateTime(options: TaskHistoryOpts!): TaskHistoryByCreateTime!
 
   # version
   hasVersion(patchId: String!): Boolean!

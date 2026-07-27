@@ -654,7 +654,7 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		ProjectHealthView:                p.ProjectHealthView,
 		GitHubPermissionGroupByRequester: p.GitHubPermissionGroupByRequester,
 		TestSelection:                    p.TestSelection.ToService(),
-		RunEveryMainlineCommit:           utility.FromBoolPtr(p.RunEveryMainlineCommit),
+		RunEveryMainlineCommit:           p.RunEveryMainlineCommit,
 	}
 
 	if projectRef.ProjectHealthView == "" {
@@ -760,7 +760,7 @@ func (p *APIProjectRef) BuildPublicFields(ctx context.Context, projectRef model.
 	p.GithubMQTriggerAliases = utility.ToStringPtrSlice(projectRef.GithubMQTriggerAliases)
 	p.GitHubPermissionGroupByRequester = projectRef.GitHubPermissionGroupByRequester
 	p.TestSelection.BuildFromService(projectRef.TestSelection)
-	p.RunEveryMainlineCommit = utility.ToBoolPtr(projectRef.RunEveryMainlineCommit)
+	p.RunEveryMainlineCommit = projectRef.RunEveryMainlineCommit
 
 	if projectRef.ProjectHealthView == "" {
 		projectRef.ProjectHealthView = model.ProjectHealthViewFailed

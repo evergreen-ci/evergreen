@@ -367,6 +367,9 @@ func (tc *TaskConfig) TaskAttributeMap() map[string]string {
 	if !utility.IsZeroTime(tc.Task.ActivatedTime) {
 		attributes[evergreen.TaskActivatedTimeOtelAttribute] = tc.Task.ActivatedTime.Format(time.RFC3339)
 	}
+	if !utility.IsZeroTime(tc.Task.DependenciesMetTime) {
+		attributes[evergreen.TaskDependenciesMetTimeOtelAttribute] = tc.Task.DependenciesMetTime.Format(time.RFC3339)
+	}
 	return attributes
 }
 

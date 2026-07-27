@@ -102,7 +102,7 @@ func (s *TaskStatsSuite) TestRunTaskHandler() {
 func (s *TaskStatsSuite) insertTaskStats(handler *taskStatsHandler, numTests int, limit int) {
 	day := time.Now()
 	tasks := []string{}
-	for i := 0; i < numTests; i++ {
+	for i := range numTests {
 		taskName := fmt.Sprintf("%v%v", "task", i)
 		tasks = append(tasks, taskName)
 		err := db.Insert(s.T().Context(), taskstats.DailyTaskStatsCollection, mgobson.M{

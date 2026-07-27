@@ -1,7 +1,6 @@
 package command
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -30,8 +29,7 @@ func resetTasks(t *testing.T) {
 }
 
 func TestAttachResults(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := evergreen.GetEnvironment()
 	testConfig := env.Settings()
 
@@ -91,8 +89,7 @@ func TestAttachRawResults(t *testing.T) {
 	testConfig := testutil.TestConfig()
 	cwd := testutil.GetDirectoryOfFile()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	comm := client.NewMock("http://localhost.com")
 
 	SkipConvey("With attachResults plugin installed into plugin registry", t, func() {

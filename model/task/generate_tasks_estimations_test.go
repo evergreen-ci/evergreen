@@ -1,7 +1,6 @@
 package task
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -18,8 +17,7 @@ func TestGenerateTasksEstimationsOnlyIncludesSucceeded(t *testing.T) {
 	require := require.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).Indexes().CreateOne(ctx, mongo.IndexModel{Keys: TaskHistoricalDataIndex})
 	assert.NoError(err)
@@ -65,8 +63,7 @@ func TestGenerateTasksEstimationsNoPreviousTasks(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).Indexes().CreateOne(ctx, mongo.IndexModel{Keys: TaskHistoricalDataIndex})
 	assert.NoError(err)
@@ -89,8 +86,7 @@ func TestGetBatchedGenerateTasksEstimations(t *testing.T) {
 	require := require.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).Indexes().CreateOne(ctx, mongo.IndexModel{Keys: TaskHistoricalDataIndex})
 	assert.NoError(err)
@@ -164,8 +160,7 @@ func TestGetBatchedGenerateTasksEstimations(t *testing.T) {
 }
 
 func TestGetBatchedGenerateTasksEstimationsEmpty(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	results, err := GetBatchedGenerateTasksEstimations(ctx, "proj", "bv", []string{})
 	assert.NoError(t, err)

@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -27,8 +26,7 @@ import (
 func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := &mock.Environment{}
 	assert.NoError(env.Configure(ctx))
@@ -115,8 +113,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 }
 
 func TestGetHostFromCache(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(host.Collection))
 	uis := UIServer{hostCache: make(map[string]hostCacheItem)}

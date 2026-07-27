@@ -10,13 +10,13 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSelectTestsHandler(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
@@ -104,6 +104,18 @@ func TestSelectTestsHandler(t *testing.T) {
 	require.Error(t, sth.Parse(ctx, req), "request should fail to parse when task name is missing")
 }
 
+func TestMakeSelectTestsErrorResponse(t *testing.T) {
+	t.Run("DeadlineExceededShouldReturnFailedDependency", func(t *testing.T) {
+		resp := makeSelectTestsErrorResponse(errors.Wrap(context.DeadlineExceeded, "selecting tests"))
+		assert.Equal(t, http.StatusFailedDependency, resp.Status())
+	})
+
+	t.Run("OtherErrorsShouldReturnInternalServerError", func(t *testing.T) {
+		resp := makeSelectTestsErrorResponse(errors.New("selecting tests"))
+		assert.Equal(t, http.StatusInternalServerError, resp.Status())
+	})
+}
+
 // Regression guard: user-authenticated requests must reach the handler.
 // Previously NewUserOrTaskAuthMiddleware short-circuited them on a missing
 // {task_id} URL var that /select/tests doesn't have.
@@ -156,8 +168,7 @@ func TestSelectTestsRouteUnauthenticated(t *testing.T) {
 }
 
 func TestSelectTestsHandlerAcceptsLegacyProjectKey(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))

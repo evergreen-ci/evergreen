@@ -1,7 +1,7 @@
 query {
   user(userId: "jane.smith") {
     displayName
-    userId
+    id
     parsleyFilters {
       expression
       exactMatch

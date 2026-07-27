@@ -42,8 +42,6 @@ type ServiceFlags struct {
 	UseMergeQueuePathFilteringDisabled bool `bson:"use_merge_queue_path_filtering_disabled" json:"use_merge_queue_path_filtering_disabled"`
 	PSLoggingDisabled                  bool `bson:"ps_logging_disabled" json:"ps_logging_disabled"`
 	PodDiagnosticsDisabled             bool `bson:"pod_diagnostics_disabled" json:"pod_diagnostics_disabled"`
-	WebhookSecretMigrationEnabled      bool `bson:"webhook_secret_migration_enabled" json:"webhook_secret_migration_enabled"`
-	WebhookSecretCleanupEnabled        bool `bson:"webhook_secret_cleanup_enabled" json:"webhook_secret_cleanup_enabled"`
 	RetryFailedLogMoveEnabled          bool `bson:"retry_failed_log_move_enabled" json:"retry_failed_log_move_enabled"`
 	ProjectTranslationCacheEnabled     bool `bson:"project_translation_cache_enabled" json:"project_translation_cache_enabled"`
 
@@ -109,8 +107,6 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			useMergeQueuePathFilteringDisabledKey: c.UseMergeQueuePathFilteringDisabled,
 			psLoggingDisabledKey:                  c.PSLoggingDisabled,
 			podDiagnosticsDisabledKey:             c.PodDiagnosticsDisabled,
-			webhookSecretMigrationEnabledKey:      c.WebhookSecretMigrationEnabled,
-			webhookSecretCleanupEnabledKey:        c.WebhookSecretCleanupEnabled,
 			retryFailedLogMoveEnabledKey:          c.RetryFailedLogMoveEnabled,
 			projectTranslationCacheEnabledKey:     c.ProjectTranslationCacheEnabled,
 			secondaryReadsDisabledKey:             c.SecondaryReadsDisabled,
@@ -140,7 +136,7 @@ func (c *ServiceFlags) ToSlice() []ServiceFlagEntry {
 		if field.Type.Kind() != reflect.Bool {
 			continue
 		}
-		jsonTag := strings.Split(field.Tag.Get("json"), ",")[0]
+		jsonTag, _, _ := strings.Cut(field.Tag.Get("json"), ",")
 		if jsonTag == "" || jsonTag == "-" {
 			continue
 		}
@@ -155,7 +151,7 @@ func (c *ServiceFlags) SetByName(name string, value bool) error {
 	v := reflect.ValueOf(c).Elem()
 	t := v.Type()
 	for i := 0; i < t.NumField(); i++ {
-		jsonTag := strings.Split(t.Field(i).Tag.Get("json"), ",")[0]
+		jsonTag, _, _ := strings.Cut(t.Field(i).Tag.Get("json"), ",")
 		if jsonTag == name {
 			v.Field(i).SetBool(value)
 			return nil

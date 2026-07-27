@@ -1,7 +1,6 @@
 package units
 
 import (
-	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -16,8 +15,7 @@ func TestHostMonitoringContainerStateJob(t *testing.T) {
 
 	assert.NoError(db.Clear(host.Collection))
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	h1 := &host.Host{
