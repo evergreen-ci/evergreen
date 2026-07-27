@@ -663,7 +663,7 @@ func validateEC2HostModifyOptions(h *host.Host, opts host.HostModifyOptions) err
 	if opts.NewName != "" {
 		catcher.Wrap(host.ValidateDisplayName(opts.NewName), "invalid display name")
 	}
-	return nil
+	return catcher.Resolve()
 }
 
 func ValidVolumeOptions(v *host.Volume, s *evergreen.Settings) error {
