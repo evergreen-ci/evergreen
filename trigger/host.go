@@ -199,8 +199,6 @@ func (t *hostTriggers) generateAlertableInstanceType(sub *event.Subscription) (*
 }
 
 func (t *hostTemplateData) hostEmailPayload(subjectString, bodyString string, attributes event.Attributes) (*message.Email, error) {
-	// The subject is a plain-text email header and none of the host subjects
-	// interpolate attacker-controlled fields, so it's rendered with text/template.
 	subjectBuf := &bytes.Buffer{}
 	subjectTemplate, err := ttemplate.New("subject").Parse(subjectString)
 	if err != nil {
@@ -210,8 +208,6 @@ func (t *hostTemplateData) hostEmailPayload(subjectString, bodyString string, at
 		return nil, errors.Wrap(err, "executing subject template")
 	}
 
-	// The body is live HTML, so it's rendered with html/template to contextually
-	// escape the host name and URL, which are attacker-controlled.
 	bodyBuf := &bytes.Buffer{}
 	bodyTemplate, err := template.New("body").Parse(bodyString)
 	if err != nil {
