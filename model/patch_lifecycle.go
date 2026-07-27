@@ -338,7 +338,7 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 
 	var pc string
 	if projectRef.IsVersionControlEnabled() {
-		pc, err = getProjectConfigYAML(p, projectFileBytes)
+		pc, err = getProjectConfigYAML(pp.MergedProjectConfig(p.Project))
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "getting patched project config")
 		}
@@ -387,16 +387,16 @@ func GetPatchedProjectConfig(ctx context.Context, p *patch.Patch) (string, error
 		return "", errors.Wrap(err, "getting patched project file as YAML")
 	}
 
-	return getProjectConfigYAML(p, projectFileBytes)
-}
-
-// getProjectConfigYAML creates a project config from the project YAML string
-// and returns the project configuration as a string.
-func getProjectConfigYAML(p *patch.Patch, projectFileBytes []byte) (string, error) {
-	pc, err := CreateProjectConfig(projectFileBytes, p.Project)
+	pc, err := loadMergedProjectConfig(ctx, projectFileBytes, opts, p.Project)
 	if err != nil {
 		return "", errors.Wrap(err, "creating project config")
 	}
+	return getProjectConfigYAML(pc)
+}
+
+// getProjectConfigYAML returns the given project configuration marshalled as a
+// YAML string, or the empty string for a nil config.
+func getProjectConfigYAML(pc *ProjectConfig) (string, error) {
 	if pc == nil {
 		return "", nil
 	}

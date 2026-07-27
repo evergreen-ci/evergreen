@@ -50,7 +50,11 @@ func (pc *ProjectConfig) MarshalBSON() ([]byte, error) {
 
 func (pc *ProjectConfig) isEmpty() bool {
 	// ProjectConfig values outside of ProjectConfigFields are metadata, so we don't want to check those.
-	reflectedConfig := reflect.ValueOf(pc.ProjectConfigFields)
+	return pc.ProjectConfigFields.isEmpty()
+}
+
+func (pcf *ProjectConfigFields) isEmpty() bool {
+	reflectedConfig := reflect.ValueOf(*pcf)
 
 	for i := 0; i < reflectedConfig.NumField(); i++ {
 		field := reflectedConfig.Field(i)

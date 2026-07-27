@@ -344,9 +344,11 @@ includes. This will accept a list of filenames and [module names](#modules). If 
 include isn't given, we will only use the main project configuration
 file.
 
-Note: [version-controlled project settings configurations](Project-and-Distro-Settings#version-control)
-will not be recognized if they are put in included files. In order for any of the supported version-controlled
-YAML settings to take effect, they must exist in the main config file.
+[Version-controlled project settings configurations](Project-and-Distro-Settings#version-control) may be defined
+in included files as well as the main config file. Alias lists (e.g. `patch_aliases`, `github_pr_aliases`) are
+combined across all files in include order, with the main config file's entries first. Settings structs
+(`task_annotation_settings`, `build_baron_settings`, `workstation_config`) should only be defined in one file;
+if defined in multiple files, the earliest definition takes precedence.
 
 ```yaml
 include:

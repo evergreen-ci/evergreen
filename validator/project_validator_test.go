@@ -2991,6 +2991,17 @@ func TestValidateProjectAliases(t *testing.T) {
 	})
 }
 
+func TestCheckRedefinedConfigSettings(t *testing.T) {
+	t.Run("RedefinedSettingsReturnWarnings", func(t *testing.T) {
+		validationErrs := checkRedefinedConfigSettings(&model.Project{RedefinedConfigSettings: []string{"workstation_config", "build_baron_settings"}})
+		require.Len(t, validationErrs, 2)
+		assert.Equal(t, Warning, validationErrs[0].Level)
+		assert.Contains(t, validationErrs[0].Message, "workstation_config is defined in more than one YAML file")
+		assert.Equal(t, Warning, validationErrs[1].Level)
+		assert.Contains(t, validationErrs[1].Message, "build_baron_settings is defined in more than one YAML file")
+	})
+}
+
 func TestCheckTaskCommands(t *testing.T) {
 	Convey("When validating a project", t, func() {
 		Convey("ensure tasks that do not have at least one command throw "+

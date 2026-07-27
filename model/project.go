@@ -75,6 +75,10 @@ type Project struct {
 	// Number of includes in the project cached for validation
 	NumIncludes int `yaml:"-" bson:"-"`
 
+	// RedefinedConfigSettings lists version-controlled settings structs defined
+	// in more than one YAML file, cached for validation.
+	RedefinedConfigSettings []string `yaml:"-" bson:"-"`
+
 	// tasksByName is an in-memory cache for O(1) task lookups.
 	tasksByName map[string]*ProjectTask `yaml:"-" bson:"-"`
 }

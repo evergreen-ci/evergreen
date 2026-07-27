@@ -236,16 +236,13 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		ReadFileFrom: model.ReadFromLocal,
 	}
 	validationErr := validator.ValidationError{}
-	if _, err = model.LoadProjectInto(ctx, input.ProjectYaml, opts, input.ProjectID, project); err != nil {
+	pp, err := model.LoadProjectInto(ctx, input.ProjectYaml, opts, input.ProjectID, project)
+	if err != nil {
 		validationErr.Message = err.Error()
 		gimlet.WriteJSONError(r.Context(), w, validator.ValidationErrors{validationErr})
 		return
 	}
-	if projectConfig, err = model.CreateProjectConfig(input.ProjectYaml, ""); err != nil {
-		validationErr.Message = err.Error()
-		gimlet.WriteJSONError(r.Context(), w, validator.ValidationErrors{validationErr})
-		return
-	}
+	projectConfig = pp.MergedProjectConfig("")
 
 	projectRef, err := model.FindMergedProjectRef(r.Context(), input.ProjectID, "", false)
 	errs := validator.CheckProject(ctx, project, projectConfig, projectRef, input.ProjectID, err)
