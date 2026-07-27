@@ -54,7 +54,7 @@ func (d *localDaemonREST) Start() error {
 	}
 
 	grip.Infof(context.Background(), "Starting REST daemon on port %d", d.port)
-	return http.ListenAndServe(fmt.Sprintf(":%d", d.port), router)
+	return http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", d.port), router)
 }
 
 // handleHealth checks if the daemon is running

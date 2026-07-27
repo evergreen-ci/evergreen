@@ -69,6 +69,30 @@ func (s *PatchUtilTestSuite) TestLoadAliasFromFile() {
 	s.Empty(pp.Variants)
 }
 
+func (s *PatchUtilTestSuite) TestSelectNoneSkipsDefaults() {
+	fileContents := `projects:
+- name: mci
+  default: true
+  alias: testing
+  variants:
+   - myvariant1
+  tasks:
+   - mytask1
+`
+
+	err := os.WriteFile(s.testConfigFile, []byte(fileContents), 0644)
+	s.Require().NoError(err)
+	conf, err := NewClientSettings(s.testConfigFile)
+	s.Require().NoError(err)
+
+	pp := patchParams{Project: "mci", SelectNone: true}
+	pp.setNonRepeatedDefaults(s.T().Context(), conf)
+
+	s.Empty(pp.Alias)
+	s.Empty(pp.Tasks)
+	s.Empty(pp.Variants)
+}
+
 func (s *PatchUtilTestSuite) TestLoadVariantsTasksFromFile() {
 	// Set up the user config file
 	fileContents := `projects:
@@ -710,4 +734,22 @@ func TestGetModulePathUsesOverrideWithoutWritingConfig(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "/override/path/dsi", path)
 	assert.Empty(t, conf.Projects)
+}
+
+func TestGetDiffTip(t *testing.T) {
+	t.Run("EmptyRefAndCommitsReturnsHEAD", func(t *testing.T) {
+		assert.Equal(t, head, getDiffTip("", ""))
+	})
+
+	t.Run("RefTakesPrecedenceOverCommits", func(t *testing.T) {
+		assert.Equal(t, "feature", getDiffTip("feature", "abc..def"))
+	})
+
+	t.Run("SingleCommitReturnsThatCommit", func(t *testing.T) {
+		assert.Equal(t, "abc123", getDiffTip("", "abc123"))
+	})
+
+	t.Run("CommitRangeReturnsEndOfRange", func(t *testing.T) {
+		assert.Equal(t, "def456", getDiffTip("", "abc123..def456"))
+	})
 }

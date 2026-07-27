@@ -319,13 +319,6 @@ func MockConfig() *evergreen.Settings {
 		},
 		Providers: evergreen.CloudProviders{
 			AWS: evergreen.AWSConfig{
-				EC2Keys: []evergreen.EC2Key{
-					{
-						Name:   "test",
-						Key:    "aws_key",
-						Secret: "aws_secret",
-					},
-				},
 				DefaultSecurityGroup: "test_security_group",
 				MaxVolumeSizePerUser: 200,
 				ParserProject: evergreen.ParserProjectS3Config{
