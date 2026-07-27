@@ -461,7 +461,7 @@ func TestUploadLaunchTemplate(t *testing.T) {
 			},
 			settings: &evergreen.Settings{},
 		}
-		assert.NoError(t, m.uploadLaunchTemplate(context.Background(), &host.Host{Tag: "ht_0"}, &EC2ProviderSettings{AMI: "ami"}))
+		assert.NoError(t, m.uploadLaunchTemplate(t.Context(), &host.Host{Tag: "ht_0"}, &EC2ProviderSettings{AMI: "ami"}))
 
 		mockClient := m.client.(*awsClientMock)
 		assert.Equal(t, "ami", *mockClient.CreateLaunchTemplateInput.LaunchTemplateData.ImageId)
@@ -476,7 +476,7 @@ func TestUploadLaunchTemplate(t *testing.T) {
 			},
 			settings: &evergreen.Settings{},
 		}
-		assert.NoError(t, m.uploadLaunchTemplate(context.Background(), &host.Host{Tag: "ht_0"}, &EC2ProviderSettings{AMI: "ami", EnableNestedVirtualization: true}))
+		assert.NoError(t, m.uploadLaunchTemplate(t.Context(), &host.Host{Tag: "ht_0"}, &EC2ProviderSettings{AMI: "ami", EnableNestedVirtualization: true}))
 
 		mockClient := m.client.(*awsClientMock)
 		require.NotNil(t, mockClient.CreateLaunchTemplateInput.LaunchTemplateData.CpuOptions)
@@ -490,8 +490,8 @@ func TestUploadLaunchTemplate(t *testing.T) {
 			},
 			settings: &evergreen.Settings{},
 		}
-		assert.NoError(t, m.uploadLaunchTemplate(context.Background(), &host.Host{Tag: "ht_0"}, &EC2ProviderSettings{}))
-		assert.NoError(t, m.uploadLaunchTemplate(context.Background(), &host.Host{Tag: "ht_0"}, &EC2ProviderSettings{}))
+		assert.NoError(t, m.uploadLaunchTemplate(t.Context(), &host.Host{Tag: "ht_0"}, &EC2ProviderSettings{}))
+		assert.NoError(t, m.uploadLaunchTemplate(t.Context(), &host.Host{Tag: "ht_0"}, &EC2ProviderSettings{}))
 	})
 
 	t.Run("InvalidName", func(t *testing.T) {
@@ -501,7 +501,7 @@ func TestUploadLaunchTemplate(t *testing.T) {
 			},
 			settings: &evergreen.Settings{},
 		}
-		assert.NoError(t, m.uploadLaunchTemplate(context.Background(), &host.Host{Tag: "ht*1"}, &EC2ProviderSettings{}))
+		assert.NoError(t, m.uploadLaunchTemplate(t.Context(), &host.Host{Tag: "ht*1"}, &EC2ProviderSettings{}))
 		mockClient := m.client.(*awsClientMock)
 		assert.Equal(t, "ht1", *mockClient.CreateLaunchTemplateInput.LaunchTemplateName)
 	})
@@ -641,7 +641,7 @@ func TestInstanceTypeAZCache(t *testing.T) {
 	settings := &evergreen.Settings{}
 	settings.Providers.AWS.Subnets = []evergreen.Subnet{{SubnetID: "sn0", AZ: evergreen.DefaultEBSAvailabilityZone}}
 
-	azsWithInstanceType, err := cache.subnetsWithInstanceType(context.Background(), settings, defaultRegionClient, instanceRegionPair{instanceType: "instanceType0", region: evergreen.DefaultEC2Region})
+	azsWithInstanceType, err := cache.subnetsWithInstanceType(t.Context(), settings, defaultRegionClient, instanceRegionPair{instanceType: "instanceType0", region: evergreen.DefaultEC2Region})
 	assert.NoError(t, err)
 	assert.Len(t, azsWithInstanceType, 1)
 	assert.Equal(t, "sn0", azsWithInstanceType[0].SubnetID)
@@ -653,7 +653,7 @@ func TestInstanceTypeAZCache(t *testing.T) {
 
 	// unsupported instance type
 	defaultRegionClient.DescribeInstanceTypeOfferingsOutput = &ec2.DescribeInstanceTypeOfferingsOutput{}
-	azsWithInstanceType, err = cache.subnetsWithInstanceType(context.Background(), settings, defaultRegionClient, instanceRegionPair{instanceType: "not_supported", region: evergreen.DefaultEC2Region})
+	azsWithInstanceType, err = cache.subnetsWithInstanceType(t.Context(), settings, defaultRegionClient, instanceRegionPair{instanceType: "not_supported", region: evergreen.DefaultEC2Region})
 	assert.NoError(t, err)
 	assert.Empty(t, azsWithInstanceType)
 }
