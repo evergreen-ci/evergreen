@@ -526,6 +526,34 @@ func TestHostModifyHandlers(t *testing.T) {
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusBadRequest, resp.Status())
 		},
+		"ModifyHandlerFailsWithInvalidCharactersInNewName": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
+			rh := &hostModifyHandler{
+				env: env,
+				options: &host.HostModifyOptions{
+					NewName: "<https://evil.example.com|click here>",
+				},
+				hostID: hosts[3].Id,
+			}
+
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusBadRequest, resp.Status())
+			checkSpawnHostModifyQueueGroup(t, env, 0)
+		},
+		"ModifyHandlerSucceedsWithValidNewName": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
+			rh := &hostModifyHandler{
+				env: env,
+				options: &host.HostModifyOptions{
+					NewName: "My Workstation (ARM)",
+				},
+				hostID: hosts[3].Id,
+			}
+
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+			checkSpawnHostModifyQueueGroup(t, env, 1)
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, event.SubscriptionsCollection))

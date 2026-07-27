@@ -181,6 +181,9 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 		allowedTypes := h.env.Settings().Providers.AWS.AllowedInstanceTypes
 		catcher.Add(cloud.CheckInstanceTypeValid(ctx, foundHost.Distro, h.options.InstanceType, allowedTypes))
 	}
+	if h.options.NewName != "" {
+		catcher.Add(host.ValidateDisplayName(h.options.NewName))
+	}
 	willBeUnexpirable := utility.FromBoolPtr(h.options.NoExpiration)
 	if willBeUnexpirable {
 		catcher.AddWhen(h.options.AddHours != 0, errors.New("can't specify no expiration and new expiration"))
