@@ -1467,6 +1467,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 	}
 
 	newBuildIds := make([]string, 0)
+	newBuilds := build.Builds{}
 	newActivatedTaskIds := make([]string, 0)
 	newActivatedTasks := []task.Task{}
 	newBuildStatuses := make([]VersionBuildStatus, 0)
@@ -1540,9 +1541,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		}
 
 		allTasks = append(allTasks, tasks...)
-		if err = build.Insert(ctx); err != nil {
-			return nil, nil, errors.Wrapf(err, "inserting build '%s'", build.Id)
-		}
+		newBuilds = append(newBuilds, build)
 		newBuildIds = append(newBuildIds, build.Id)
 
 		batchTimeTasksToIds := map[string]string{}
@@ -1588,6 +1587,9 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 				},
 			},
 		)
+	}
+	if err = newBuilds.InsertMany(ctx, false); err != nil {
+		return nil, nil, errors.Wrap(err, "inserting builds")
 	}
 	SetNumDependents(allTasks)
 	if err = allTasks.InsertUnordered(ctx); err != nil {
