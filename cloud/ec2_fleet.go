@@ -619,7 +619,6 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 			NestedVirtualization: types.NestedVirtualizationSpecificationEnabled,
 		}
 	}
-	print("hey")
 
 	if ec2Settings.IAMInstanceProfileARN != "" {
 		launchTemplate.IamInstanceProfile = &types.LaunchTemplateIamInstanceProfileSpecificationRequest{Arn: aws.String(ec2Settings.IAMInstanceProfileARN)}
