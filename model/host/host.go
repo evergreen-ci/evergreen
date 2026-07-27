@@ -467,14 +467,11 @@ const maxDisplayNameLength = 64
 
 // validDisplayNameChars matches the characters allowed in a host's display
 // name.
-var validDisplayNameChars = regexp.MustCompile(`^[a-zA-Z0-9 ._\-()'":@]+$`)
+var validDisplayNameChars = regexp.MustCompile(`^[a-zA-Z0-9 ._\-()'":@]*$`)
 
 // ValidateDisplayName checks that a host display name is within the length
 // limit and contains all valid characters.
 func ValidateDisplayName(name string) error {
-	if name == "" {
-		return errors.New("display name cannot be empty")
-	}
 	if len(name) > maxDisplayNameLength {
 		return errors.Errorf("display name cannot be longer than %d characters", maxDisplayNameLength)
 	}
