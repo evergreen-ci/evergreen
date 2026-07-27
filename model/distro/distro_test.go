@@ -790,7 +790,6 @@ func TestContainerIsolationSettingsValidation(t *testing.T) {
 					Enabled:          true,
 					Image:            "ubuntu:22.04",
 					RequireIsolation: true,
-					// ExecUser deliberately absent
 				},
 			},
 		}

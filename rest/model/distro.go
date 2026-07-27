@@ -187,14 +187,8 @@ type APIBootstrapSettings struct {
 	ContainerIsolation    APIContainerIsolationSettings `json:"container_isolation"`
 }
 
-// APIContainerIsolationSettings is the API model for per-task container isolation
-// configuration on a distro. When Enabled is true, task subprocess calls
-// (shell.exec, subprocess.exec) are wrapped in an ephemeral Docker container.
-//
-// PATCH semantics note: the distro PATCH handler merges the request body over
-// the existing model at the JSON-key level, so a partial container_isolation
-// object (e.g. only {"enabled":true}) keeps old values for any omitted keys.
-// Send the full block to avoid unintentional merging.
+// APIContainerIsolationSettings is the API model for per-task container
+// isolation configuration on a distro.
 type APIContainerIsolationSettings struct {
 	Enabled  bool    `json:"enabled"`
 	Image    *string `json:"image,omitempty"`
