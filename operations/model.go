@@ -405,6 +405,7 @@ func printUserMessages(ctx context.Context, c client.Communicator, checkForUpdat
 
 // printRateLimitWarning check's the user's remaining rate limit tokens and prints a warning if they are approaching the limit.
 func printRateLimitWarning(ctx context.Context, c client.Communicator, userID string) {
+	fmt.Fprintf(os.Stderr, "Checking rate limit for user '%s'...\n", userID)
 	threshold := 100
 	limit, err := c.GetRateLimit(ctx, userID)
 	if err != nil || limit == nil {
