@@ -15,6 +15,7 @@ import (
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/utility"
+	"github.com/go-redis/redis_rate/v10"
 	"github.com/pkg/errors"
 )
 
@@ -395,4 +396,7 @@ func (c *Mock) SetAPIServerHost(serverURL string) {}
 
 func (c *Mock) IsServiceUser(context.Context, string) (bool, error) {
 	return c.MockIsServiceUser, c.MockIsServiceUserErr
+}
+func (c *Mock) GetRateLimit(context.Context, string) (*redis_rate.Result, error) {
+	return nil, nil
 }
