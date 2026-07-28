@@ -8,6 +8,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestCostConfigShouldHideCost(t *testing.T) {
+	c := CostConfig{HiddenCostProjects: []string{"hidden-project-1", "hidden-project-2"}}
+	assert.True(t, c.ShouldHideCost("hidden-project-1"))
+	assert.True(t, c.ShouldHideCost("hidden-project-2"))
+	assert.False(t, c.ShouldHideCost("visible-project"))
+	assert.False(t, c.ShouldHideCost(""))
+
+	empty := CostConfig{}
+	assert.False(t, empty.ShouldHideCost("hidden-project-1"))
+}
+
 func TestCostConfigValidateAndDefault(t *testing.T) {
 	t.Run("ValidFinanceFields", func(t *testing.T) {
 		c := CostConfig{
@@ -260,6 +271,7 @@ func TestCostConfigSetAndGet(t *testing.T) {
 			FinanceFormula:      0.5,
 			SavingsPlanDiscount: 0.3,
 			OnDemandDiscount:    0.2,
+			HiddenCostProjects:  []string{"hidden-project-1", "hidden-project-2"},
 		}
 		require.NoError(t, original.Set(t.Context()))
 
@@ -269,6 +281,7 @@ func TestCostConfigSetAndGet(t *testing.T) {
 		assert.Equal(t, original.FinanceFormula, retrieved.FinanceFormula)
 		assert.Equal(t, original.SavingsPlanDiscount, retrieved.SavingsPlanDiscount)
 		assert.Equal(t, original.OnDemandDiscount, retrieved.OnDemandDiscount)
+		assert.Equal(t, original.HiddenCostProjects, retrieved.HiddenCostProjects)
 	})
 
 	t.Run("SetAndGetS3CostWithZeroValues", func(t *testing.T) {

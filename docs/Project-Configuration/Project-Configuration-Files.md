@@ -309,7 +309,7 @@ Fields:
   one changed file matches one of these patterns. If no paths are specified, the variant
   will always run (default behavior). See [Build Variant Path Filtering](#build-variant-path-filtering) for more details.
 - Build variants support [all options that limit when a task will run](#controlling-when-tasks-and-variants-run)
-  (`allowed_requesters`, `patch_only`, `patchable`, `disable`, etc.). If set for the
+  (`allowed_requesters`, `allowed_branches`, `ignored_branches`, `patch_only`, `patchable`, `disable`, etc.). If set for the
   build variant, it will apply to all tasks under the build variant.
 
 Additionally, an item in the `tasks` list can be of the form
@@ -680,7 +680,7 @@ tasks:
 ### Controlling When Tasks and Variants Run
 
 You can control when tasks and build variants run by setting activate, batchtime, disable, or cron on tasks or build variants, detailed
-[here](Controlling-when-tasks-run). There are also options to limit tasks and build variants to certain requesters or changed files, detailed below.
+[here](Controlling-when-tasks-run). There are also options to limit tasks and build variants to certain requesters, branches, or changed files, detailed below.
 
 #### Limiting by Requester Type
 
@@ -756,6 +756,74 @@ buildvariants:
       - name: only_commit_queue
         allowed_requesters: ["github_pr"]
 ```
+
+### Filtering by Branch
+
+You can limit tasks or build variants to only run on specific branches, or to be
+skipped on specific branches. This is useful when release branches inherit the
+same Evergreen configuration as the main branch but certain tasks (e.g.,
+expensive cache hydration) are only beneficial on the main branch.
+
+#### Allowed Branches
+
+`allowed_branches` specifies a list of regex patterns. The task will only run if
+the version's branch matches at least one pattern. If the branch does not match
+any pattern, the task is not created and any tasks that depend on it will not
+have a dependency on the skipped task (similar to `disable`).
+
+```yaml
+tasks:
+  - name: hydrate_cache
+    allowed_branches:
+      - "^master$"
+    commands:
+      - command: shell.exec
+        params:
+          script: "hydrate.sh"
+```
+
+#### Ignored Branches
+
+`ignored_branches` specifies a list of regex patterns. The task will be skipped
+if the version's branch matches any pattern.
+
+```yaml
+tasks:
+  - name: unit_tests
+    ignored_branches:
+      - "^v\\d+"
+      - "^release/"
+```
+
+If both `allowed_branches` and `ignored_branches` are set, `allowed_branches`
+takes precedence and `ignored_branches` is ignored.
+
+These fields can be set at the task definition level, the build variant level, or
+for a particular task under a build variant:
+
+```yaml
+buildvariants:
+  - name: ubuntu2204
+    # Skip all tasks in this variant on release branches
+    ignored_branches:
+      - "^v\\d+"
+    tasks:
+      - name: unit_tests
+      - name: hydrate_cache
+        # Override: this task only runs on master regardless of BV setting
+        allowed_branches:
+          - "^master$"
+```
+
+The inheritance priority follows the same rules as other task-level settings,
+documented in [Task Fields Override Hierarchy](#task-fields-override-hierarchy).
+
+Patterns are Go regular expressions (not globs). Use anchors like `^` and `$`
+for exact matching. For example, `master` matches any branch containing
+"master", while `^master$` matches only the branch named exactly "master".
+
+If the branch is empty (e.g., ad-hoc builds), branch filters do not apply and
+the task will run normally.
 
 ### Filtering by Changed Files
 

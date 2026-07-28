@@ -134,10 +134,11 @@ type APITask struct {
 	TestSelectionEnabled bool            `json:"test_selection_enabled"`
 	// These fields are used by graphql gen, but do not need to be exposed
 	// via Evergreen's user-facing API.
-	OverrideDependencies bool `json:"-"`
-	Archived             bool `json:"archived"`
-	HasTestResults       bool `json:"-"`
-	ResultsFailed        bool `json:"-"`
+	OverrideDependencies         bool `json:"-"`
+	Archived                     bool `json:"archived"`
+	HasTestResults               bool `json:"-"`
+	ResultsFailed                bool `json:"-"`
+	QuarantinedTestsSkippedCount int  `json:"-"`
 }
 
 type APIStepbackInfo struct {
@@ -390,9 +391,10 @@ func (at *APITask) buildTask(t *task.Task) error {
 			User:       t.AbortInfo.User,
 			PRClosed:   t.AbortInfo.PRClosed,
 		},
-		HasAnnotations:       t.HasAnnotations,
-		IsAutomaticRestart:   t.IsAutomaticRestart,
-		TestSelectionEnabled: t.TestSelectionEnabled,
+		HasAnnotations:               t.HasAnnotations,
+		IsAutomaticRestart:           t.IsAutomaticRestart,
+		TestSelectionEnabled:         t.TestSelectionEnabled,
+		QuarantinedTestsSkippedCount: t.NumQuarantinedTestsSkipped,
 	}
 
 	if t.BaseTask.Id != "" {
@@ -408,17 +410,19 @@ func (at *APITask) buildTask(t *task.Task) error {
 		at.TimeTaken = NewAPIDuration(time.Since(t.StartTime))
 	}
 
-	if !t.TaskCost.IsZero() {
-		taskCost := t.TaskCost
-		taskCost.Total = taskCost.AdjustedTotal()
-		at.TaskCost = &taskCost
-	}
+	if !shouldHideCostForProject(t.Project) {
+		if !t.TaskCost.IsZero() {
+			taskCost := t.TaskCost
+			taskCost.Total = taskCost.AdjustedTotal()
+			at.TaskCost = &taskCost
+		}
 
-	// Populate expected cost fields if they exist (not zero)
-	if !t.PredictedTaskCost.IsZero() {
-		predictedCost := t.PredictedTaskCost
-		predictedCost.Total = predictedCost.AdjustedTotal()
-		at.PredictedTaskCost = &predictedCost
+		// Populate expected cost fields if they exist (not zero)
+		if !t.PredictedTaskCost.IsZero() {
+			predictedCost := t.PredictedTaskCost
+			predictedCost.Total = predictedCost.AdjustedTotal()
+			at.PredictedTaskCost = &predictedCost
+		}
 	}
 
 	if !t.S3Usage.IsZero() {
@@ -593,13 +597,14 @@ func (at *APITask) ToService() (*task.Task, error) {
 			Id:     utility.FromStringPtr(at.BaseTask.Id),
 			Status: utility.FromStringPtr(at.BaseTask.Status),
 		},
-		DisplayTaskId:        utility.ToStringPtr(at.ParentTaskId),
-		Aborted:              at.Aborted,
-		Details:              at.Details.ToService(),
-		Archived:             at.Archived,
-		OverrideDependencies: at.OverrideDependencies,
-		HasAnnotations:       at.HasAnnotations,
-		TestSelectionEnabled: at.TestSelectionEnabled,
+		DisplayTaskId:              utility.ToStringPtr(at.ParentTaskId),
+		Aborted:                    at.Aborted,
+		Details:                    at.Details.ToService(),
+		Archived:                   at.Archived,
+		OverrideDependencies:       at.OverrideDependencies,
+		HasAnnotations:             at.HasAnnotations,
+		TestSelectionEnabled:       at.TestSelectionEnabled,
+		NumQuarantinedTestsSkipped: at.QuarantinedTestsSkippedCount,
 	}
 
 	if at.TaskCost != nil {
@@ -675,11 +680,11 @@ func (at *APITask) getArtifacts(ctx context.Context, baseURL string) error {
 		return errors.Wrap(err, "retrieving artifacts")
 	}
 	env := evergreen.GetEnvironment()
+	artifactSignSecret := []byte(env.Settings().ArtifactSignSecret)
 	for _, entry := range entries {
 		var strippedFiles []artifact.File
-		// The route requires a user, so hasUser is always true.
-		if baseURL != "" {
-			strippedFiles = artifact.StripHiddenFilesLazy(entry.Files, true, baseURL, entry.TaskId, entry.Execution)
+		if baseURL != "" && len(artifactSignSecret) > 0 {
+			strippedFiles = artifact.StripHiddenFilesLazy(entry.Files, true, baseURL, entry.TaskId, entry.Execution, artifactSignSecret)
 		} else {
 			strippedFiles, err = artifact.StripHiddenFiles(ctx, entry.Files, true)
 			if err != nil {

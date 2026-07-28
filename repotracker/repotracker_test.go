@@ -35,8 +35,7 @@ func init() { testutil.Setup() }
 func TestFetchRevisions(t *testing.T) {
 	dropTestDB(t)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	Convey("With a GithubRepositoryPoller", t, func() {
 		err := modelutil.CreateTestLocalConfig(t.Context(), testConfig, "mci-test", "")
 		So(err, ShouldBeNil)
@@ -45,7 +44,7 @@ func TestFetchRevisions(t *testing.T) {
 		repoTracker := RepoTracker{
 			testConfig,
 			evgProjectRef,
-			NewGithubRepositoryPoller(evgProjectRef),
+			NewGithubRepositoryPoller(evgProjectRef, testConfig),
 		}
 
 		Convey("Fetching commits from the repository should not return any errors", func() {
@@ -81,12 +80,11 @@ func TestFetchRevisions(t *testing.T) {
 
 func TestStoreRepositoryRevisions(t *testing.T) {
 	dropTestDB(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	Convey("When storing revisions gotten from a repository...", t, func() {
 		err := modelutil.CreateTestLocalConfig(t.Context(), testConfig, "mci-test", "")
 		So(err, ShouldBeNil)
-		repoTracker := RepoTracker{testConfig, evgProjectRef, NewGithubRepositoryPoller(evgProjectRef)}
+		repoTracker := RepoTracker{testConfig, evgProjectRef, NewGithubRepositoryPoller(evgProjectRef, testConfig)}
 
 		d := distro.Distro{Id: "test-distro-one"}
 		So(d.Insert(ctx), ShouldBeNil)
@@ -333,9 +331,27 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 	})
 }
 
+func TestStoreRevisionsRecordsNewestRevision(t *testing.T) {
+	require.NoError(t, db.ClearCollections(model.RepositoryRevisionsHistoryCollection, model.VersionCollection))
+
+	revisions := []model.Revision{
+		{Revision: "newest"},
+		{Revision: "older"},
+	}
+	poller := NewMockRepoPoller(createTestProject(nil, nil), revisions)
+	poller.setNextError(errors.New("stop after recording history"))
+	ref := &model.ProjectRef{Id: "project", Owner: "owner", Repo: "repo", Branch: "branch"}
+	repoTracker := RepoTracker{testConfig, ref, poller}
+
+	require.Error(t, repoTracker.StoreRevisions(t.Context(), revisions))
+	revision, err := model.FindLatestRepositoryRevisionByIngestTime(t.Context(), ref.Owner, ref.Repo, ref.Branch, time.Now())
+	require.NoError(t, err)
+	require.NotNil(t, revision)
+	assert.Equal(t, revisions[0].Revision, revision.Revision)
+}
+
 func TestCountNumDependentsAcrossVariants(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(model.VersionCollection, distro.Collection, model.ParserProjectCollection,
 		build.Collection, task.Collection, model.ProjectConfigCollection, model.ProjectRefCollection))
 
@@ -441,8 +457,7 @@ tasks:
 }
 
 func TestBatchTimeForTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	assert.NoError(t, db.ClearCollections(model.VersionCollection, distro.Collection, model.ParserProjectCollection,
 		build.Collection, task.Collection, model.ProjectConfigCollection, model.ProjectRefCollection))
 
@@ -613,8 +628,7 @@ tasks:
 }
 
 func TestBatchTimes(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("When deciding whether or not to activate variants for the most recently stored version", t, func() {
 		// We create a version with an activation time of now so that all the bvs have a last activation time of now.
@@ -1709,13 +1723,14 @@ func TestCreateManifest(t *testing.T) {
 	assert := assert.New(t)
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings)
-	require.NoError(t, db.ClearCollections(model.VersionCollection, model.ProjectRefCollection, model.ProjectVarsCollection), fakeparameter.Collection)
-	// with a revision from 5/31/15
+	require.NoError(t, db.ClearCollections(model.VersionCollection, model.ProjectRefCollection, model.ProjectVarsCollection, model.RepositoryRevisionsHistoryCollection), fakeparameter.Collection)
+	ingestTime := time.Date(2015, time.May, 31, 0, 0, 0, 0, time.UTC)
 	v := model.Version{
 		Id:         "aaaaaaaaaaff001122334455",
 		Revision:   "1bb42195fd415f144abbae509a5d5bef80d829b7",
 		Identifier: "proj",
 		Requester:  evergreen.RepotrackerVersionRequester,
+		IngestTime: ingestTime,
 	}
 
 	patchVersion := model.Version{
@@ -1758,6 +1773,9 @@ func TestCreateManifest(t *testing.T) {
 	}
 	require.NoError(t, projVars.Insert(t.Context()))
 
+	const moduleRevisionAtIngestTime = "b27779f856b211ffaf97cbc124b7082a20ea8bc0"
+	require.NoError(t, model.UpsertRepositoryRevision(t.Context(), "evergreen-ci", "sample", "main", moduleRevisionAtIngestTime, ingestTime))
+
 	manifest, err := model.CreateManifest(t.Context(), &v, proj.Modules, projRef)
 	assert.NoError(err)
 	assert.Equal(v.Id, manifest.Id)
@@ -1767,8 +1785,16 @@ func TestCreateManifest(t *testing.T) {
 	assert.True(ok)
 	assert.Equal("sample", module.Repo)
 	assert.Equal("main", module.Branch)
-	// the most recent module commit as of the version's revision (from 5/30/15)
-	assert.Equal("b27779f856b211ffaf97cbc124b7082a20ea8bc0", module.Revision)
+	assert.Equal(moduleRevisionAtIngestTime, module.Revision)
+
+	require.NoError(t, db.ClearCollections(model.RepositoryRevisionsHistoryCollection))
+	fallbackVersion := v
+	fallbackVersion.Id = "aaaaaaaaaaff001122334457"
+	fallbackManifest, err := model.CreateManifest(t.Context(), &fallbackVersion, proj.Modules, projRef)
+	require.NoError(t, err)
+	require.NotNil(t, fallbackManifest)
+	require.Contains(t, fallbackManifest.Modules, "module1")
+	assert.Equal(moduleRevisionAtIngestTime, fallbackManifest.Modules["module1"].Revision)
 
 	proj.Modules[0].AutoUpdate = true
 	manifest, err = model.CreateManifest(t.Context(), &patchVersion, proj.Modules, projRef)
@@ -1869,8 +1895,7 @@ func TestCreateManifest(t *testing.T) {
 
 func TestShellVersionFromRevisionGitTags(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(user.Collection))
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	// triggered from yaml
 	metadata := model.VersionMetadata{
@@ -2131,8 +2156,7 @@ func TestCreateVersionItemsPathFiltering(t *testing.T) {
 
 	for i, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			// Clear collections before running tests
 			require.NoError(t, db.ClearCollections(model.VersionCollection, build.Collection, task.Collection))

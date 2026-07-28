@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/google/go-github/v70/github"
@@ -16,13 +17,16 @@ import (
 // required of a RepoPoller
 type GithubRepositoryPoller struct {
 	ProjectRef *model.ProjectRef
+	// Settings gates the project translation cache when loading remote configs; may be nil.
+	Settings *evergreen.Settings
 }
 
 // NewGithubRepositoryPoller constructs and returns a pointer to a
 // GithubRepositoryPoller struct
-func NewGithubRepositoryPoller(projectRef *model.ProjectRef) *GithubRepositoryPoller {
+func NewGithubRepositoryPoller(projectRef *model.ProjectRef, settings *evergreen.Settings) *GithubRepositoryPoller {
 	return &GithubRepositoryPoller{
 		ProjectRef: projectRef,
+		Settings:   settings,
 	}
 }
 
@@ -64,7 +68,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRemoteConfig(ctx context.Context, 
 		Revision:     projectFileRevision,
 		ReadFileFrom: model.ReadFromGithub,
 	}
-	return model.GetProjectFromFile(ctx, opts)
+	return model.GetProjectFromFile(ctx, opts, gRepoPoller.Settings)
 }
 
 // GetRemoteConfig fetches the contents of a remote github repository's

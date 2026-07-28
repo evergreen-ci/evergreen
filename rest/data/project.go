@@ -283,12 +283,15 @@ func GetProjectAliasResults(ctx context.Context, p *model.Project, alias string,
 		}
 	}
 	matches := []restModel.APIVariantTasks{}
-	for _, projectAlias := range projectAliases {
-		requester := getRequesterFromAlias(projectAlias.Alias)
-		_, _, variantTasks := p.ResolvePatchVTs(ctx, &patch.Patch{}, requester, []string{projectAlias.Alias}, includeDeps)
-		for _, variantTask := range variantTasks {
-			matches = append(matches, restModel.APIVariantTasksBuildFromService(variantTask))
-		}
+	if len(projectAliases) == 0 {
+		return matches, nil
+	}
+
+	requester := getRequesterFromAlias(alias)
+	// ResolvePatchVTs takes alias and not projectAliases.Alias because the function already handles all aliases.
+	_, _, variantTasks := p.ResolvePatchVTs(ctx, &patch.Patch{}, requester, []string{alias}, includeDeps, "")
+	for _, variantTask := range variantTasks {
+		matches = append(matches, restModel.APIVariantTasksBuildFromService(variantTask))
 	}
 
 	return matches, nil
@@ -307,14 +310,14 @@ func getRequesterFromAlias(alias string) string {
 	return evergreen.PatchVersionRequester
 }
 
-func (pc *DBProjectConnector) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string) (model.ProjectInfo, error) {
+func (pc *DBProjectConnector) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string, settings *evergreen.Settings) (model.ProjectInfo, error) {
 	opts := model.GetProjectOpts{
 		Ref:          &pRef,
 		Revision:     pRef.Branch,
 		RemotePath:   file,
 		ReadFileFrom: model.ReadFromGithub,
 	}
-	return model.GetProjectFromFile(ctx, opts)
+	return model.GetProjectFromFile(ctx, opts, settings)
 }
 
 // HideBranch is used to "delete" a project via the rest route or the UI. It overwrites the project with a skeleton project.
@@ -359,7 +362,7 @@ func HideBranch(ctx context.Context, projectID string) error {
 		return errors.Wrapf(err, "finding aliases for project '%s'", pRef.Id)
 	}
 	for _, alias := range projectAliases {
-		if err := model.RemoveProjectAlias(ctx, alias.ID.Hex()); err != nil {
+		if err := model.RemoveProjectAlias(ctx, pRef.Id, alias.ID.Hex()); err != nil {
 			return errors.Wrapf(err, "removing project alias '%s' for project '%s'", alias.ID.Hex(), pRef.Id)
 		}
 	}

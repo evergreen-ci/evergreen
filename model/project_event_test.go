@@ -1,6 +1,7 @@
 package model
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -285,7 +286,7 @@ func (s *ProjectEventSuite) TestRedactSubscriptionSecrets() {
 					require.NotNil(t, webhookSub)
 					assert.Equal(t, expectedSecret, string(webhookSub.Secret))
 					for _, header := range webhookSub.Headers {
-						if header.Key == event.WebhookAuthorizationHeader {
+						if strings.EqualFold(header.Key, event.WebhookAuthorizationHeader) {
 							assert.Equal(t, expectedAuth, header.Value)
 						}
 						if header.Key == "Content-Type" {

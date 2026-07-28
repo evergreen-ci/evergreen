@@ -290,37 +290,28 @@ func (r *patchResolver) Time(ctx context.Context, obj *restModel.APIPatch) (*Pat
 }
 
 // User is the resolver for the user field.
-func (r *patchResolver) User(ctx context.Context, obj *restModel.APIPatch) (*restModel.APIDBUser, error) {
-	// If only userId is requested, we can return it without a database call.
+func (r *patchResolver) User(ctx context.Context, obj *restModel.APIPatch) (*user.DBUser, error) {
+	// If only id is requested, we can return it without a database call.
 	requestedFields := graphql.CollectAllFields(ctx)
-	if len(requestedFields) == 1 && requestedFields[0] == "userId" {
-		return &restModel.APIDBUser{
-			UserID: obj.Author,
-		}, nil
+	if len(requestedFields) == 1 && requestedFields[0] == "id" {
+		return &user.DBUser{Id: utility.FromStringPtr(obj.Author)}, nil
 	}
 
 	authorId := utility.FromStringPtr(obj.Author)
 	currentUser := mustHaveUser(ctx)
 	if currentUser.Id == authorId {
-		apiUser := &restModel.APIDBUser{}
-		apiUser.BuildFromService(*currentUser)
-		return apiUser, nil
+		return currentUser, nil
 	}
 
 	dbUser, err := loaders.GetUser(ctx, authorId)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", authorId, err.Error()), err)
 	}
-	// This is most likely a reaped user, so just return their ID
+	// This is most likely a service user, so just return their ID.
 	if dbUser == nil {
-		return &restModel.APIDBUser{
-			UserID: obj.Author,
-		}, nil
+		return &user.DBUser{Id: authorId}, nil
 	}
-
-	apiUser := &restModel.APIDBUser{}
-	apiUser.BuildFromService(*dbUser)
-	return apiUser, nil
+	return dbUser, nil
 }
 
 // UserLite is the resolver for the userLite field.

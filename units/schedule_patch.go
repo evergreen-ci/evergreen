@@ -13,7 +13,7 @@ import (
 )
 
 // SchedulePatch schedules a patch. It returns an error and an HTTP status code.
-func SchedulePatch(ctx context.Context, env evergreen.Environment, patchId string, version *model.Version, patchUpdateReq model.PatchUpdate) (int, error) {
+func SchedulePatch(ctx context.Context, env evergreen.Environment, patchId string, version *model.Version, patchUpdateReq model.PatchUpdate, translatedProject *model.Project) (int, error) {
 	ctx, span := tracer.Start(ctx, "schedule-patch", trace.WithAttributes(
 		attribute.String(evergreen.PatchIDOtelAttribute, patchId),
 	))
@@ -45,7 +45,7 @@ func SchedulePatch(ctx context.Context, env evergreen.Environment, patchId strin
 		return http.StatusInternalServerError, errors.Errorf("project '%s' for version '%s' not found", p.Project, p.Version)
 	}
 
-	statusCode, err := model.ConfigurePatch(ctx, env.Settings(), p, version, projectRef, patchUpdateReq)
+	project, statusCode, err := model.ConfigurePatch(ctx, env.Settings(), p, version, projectRef, patchUpdateReq, translatedProject)
 	if err != nil {
 		return statusCode, err
 	}
@@ -66,7 +66,7 @@ func SchedulePatch(ctx context.Context, env evergreen.Environment, patchId strin
 			return http.StatusInternalServerError, errors.Wrapf(err, "attaching trigger aliases '%s'", p.Id.Hex())
 		}
 	}
-	_, err = model.FinalizePatch(newCxt, p, p.GetRequester())
+	_, err = model.FinalizePatch(newCxt, p, p.GetRequester(), project)
 	if err != nil {
 		return http.StatusInternalServerError, errors.Wrap(err, "finalizing patch")
 	}

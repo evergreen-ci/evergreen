@@ -31,8 +31,7 @@ func taskIdInSlice(tasks []task.Task, id string) bool {
 }
 
 func TestTaskSetPriority(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With a task", t, func() {
 
@@ -180,8 +179,7 @@ func TestTaskSetPriority(t *testing.T) {
 }
 
 func TestBuildSetPriority(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With a build", t, func() {
 
@@ -220,8 +218,7 @@ func TestBuildSetPriority(t *testing.T) {
 }
 
 func TestBuildRestart(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, VersionCollection, build.Collection))
@@ -415,8 +412,7 @@ func TestBuildRestart(t *testing.T) {
 }
 
 func TestBuildMarkAborted(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With a build", t, func() {
 
@@ -672,8 +668,7 @@ func TestModifyVersionScheduling(t *testing.T) {
 }
 
 func TestSetVersionActivation(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
 
@@ -1864,8 +1859,7 @@ func TestCreateTaskGroup(t *testing.T) {
 }
 
 func TestGetTaskIdTable(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(task.Collection))
 
@@ -2105,7 +2099,8 @@ func TestSortTasks(t *testing.T) {
 				},
 			}
 
-			sortedTasks := sortTasks(tasks)
+			sortedTasks, err := sortTasks(tasks)
+			So(err, ShouldBeNil)
 			So(len(sortedTasks), ShouldEqual, 3)
 			So(sortedTasks[0].DisplayName, ShouldEqual, "C")
 			So(sortedTasks[1].DisplayName, ShouldEqual, "B")
@@ -2134,7 +2129,8 @@ func TestSortTasks(t *testing.T) {
 				},
 			}
 
-			sortedTasks := sortTasks(tasks)
+			sortedTasks, err := sortTasks(tasks)
+			So(err, ShouldBeNil)
 			So(len(sortedTasks), ShouldEqual, 3)
 			So(sortedTasks[0].DisplayName, ShouldEqual, "C")
 			So(sortedTasks[1].DisplayName, ShouldEqual, "B")
@@ -2175,7 +2171,8 @@ func TestSortTasks(t *testing.T) {
 			},
 		}
 
-		sortedTasks := sortTasks(tasks)
+		sortedTasks, err := sortTasks(tasks)
+		So(err, ShouldBeNil)
 		So(len(sortedTasks), ShouldEqual, 5)
 		So(sortedTasks[0].DisplayName, ShouldEqual, "D")
 		So(sortedTasks[1].DisplayName, ShouldEqual, "E")
@@ -2214,7 +2211,8 @@ func TestSortTasks(t *testing.T) {
 			},
 		}
 
-		sortedTasks := sortTasks(tasks)
+		sortedTasks, err := sortTasks(tasks)
+		So(err, ShouldBeNil)
 		So(len(sortedTasks), ShouldEqual, 4)
 		So(sortedTasks[0].DisplayName, ShouldEqual, "D")
 		So(sortedTasks[1].DisplayName, ShouldEqual, "C")
@@ -2236,7 +2234,8 @@ func TestSortTasks(t *testing.T) {
 					DependsOn: []task.Dependency{
 						{TaskId: "idE"},
 					}})
-			sortedTasks = sortTasks(tasks)
+			sortedTasks, err = sortTasks(tasks)
+			So(err, ShouldBeNil)
 			So(len(sortedTasks), ShouldEqual, 6)
 			So(sortedTasks[0].DisplayName, ShouldEqual, "D")
 			So(sortedTasks[1].DisplayName, ShouldEqual, "C")
@@ -2248,9 +2247,28 @@ func TestSortTasks(t *testing.T) {
 	})
 }
 
+func TestSortTasksCycleShouldReturnError(t *testing.T) {
+	tasks := []task.Task{
+		{
+			Id: "task1",
+			DependsOn: []task.Dependency{
+				{TaskId: "task2"},
+			},
+		},
+		{
+			Id: "task2",
+			DependsOn: []task.Dependency{
+				{TaskId: "task1"},
+			},
+		},
+	}
+
+	_, err := sortTasks(tasks)
+	require.ErrorContains(t, err, "cyclic dependencies")
+}
+
 func TestVersionRestart(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -2273,7 +2291,6 @@ func TestVersionRestart(t *testing.T) {
 		if t.Id == "task3" {
 			require.Len(t.DependsOn, 1)
 			assert.Equal("task1", t.DependsOn[0].TaskId)
-			assert.False(t.DependsOn[0].Finished, "restarting task1 should have marked dependency as unfinished")
 			assert.Equal(evergreen.TaskWillRun, t.DisplayStatusCache)
 		}
 	}
@@ -2285,7 +2302,6 @@ func TestVersionRestart(t *testing.T) {
 	require.NotZero(dbTask5)
 	require.Len(dbTask5.DependsOn, 1)
 	assert.Equal("task1", dbTask5.DependsOn[0].TaskId)
-	assert.False(dbTask5.DependsOn[0].Finished, "restarting task1 should have marked dependency in execution task as unfinished")
 
 	dbVersion, err := VersionFindOneId(t.Context(), "version")
 	assert.NoError(err)
@@ -2323,8 +2339,7 @@ func TestVersionRestart(t *testing.T) {
 }
 
 func TestDisplayTaskRestart(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	displayTasks := []string{"displayTask1"}
@@ -2428,8 +2443,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 }
 
 func TestResetTaskOrDisplayTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, settings *evergreen.Settings){
 		"ResettingExecutionTaskResetsDisplayTask": func(ctx context.Context, t *testing.T, settings *evergreen.Settings) {
@@ -2623,8 +2637,7 @@ func resetTaskData() error {
 		Activated:     true,
 		DependsOn: []task.Dependency{
 			{
-				TaskId:   task1.Id,
-				Finished: true,
+				TaskId: task1.Id,
 			},
 		},
 	}
@@ -2654,8 +2667,7 @@ func resetTaskData() error {
 		DispatchTime:  time.Now(),
 		DependsOn: []task.Dependency{
 			{
-				TaskId:   task1.Id,
-				Finished: true,
+				TaskId: task1.Id,
 			},
 		},
 	}
@@ -2767,7 +2779,7 @@ func TestCreateTasksFromGroup(t *testing.T) {
 			},
 		},
 	}
-	bvts := CreateTasksFromGroup(in, p, evergreen.PatchVersionRequester)
+	bvts := CreateTasksFromGroup(in, p, evergreen.PatchVersionRequester, "")
 	require.Len(t, bvts, 2)
 	for _, bvtu := range bvts {
 		require.Len(t, bvtu.DependsOn, 1)
@@ -2779,8 +2791,7 @@ func TestCreateTasksFromGroup(t *testing.T) {
 }
 
 func TestMarkAsHostDispatched(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	var (
 		taskId       string
@@ -2840,8 +2851,7 @@ func TestMarkAsHostDispatched(t *testing.T) {
 }
 
 func TestSetTaskActivationForBuildsActivated(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
 
@@ -2907,8 +2917,7 @@ func TestSetTaskActivationForBuildsActivated(t *testing.T) {
 }
 
 func TestSetTaskActivationForBuildsWithIgnoreTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
 
@@ -2945,8 +2954,7 @@ func TestSetTaskActivationForBuildsWithIgnoreTasks(t *testing.T) {
 }
 
 func TestSetTaskActivationForBuildsDeactivated(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
 
@@ -2979,8 +2987,7 @@ func TestSetTaskActivationForBuildsDeactivated(t *testing.T) {
 }
 
 func TestAddNewTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection))
@@ -3100,6 +3107,62 @@ func TestAddNewTasks(t *testing.T) {
 			}
 			assert.Equal(t, testCase.bvActive, build.Activated)
 		})
+	}
+}
+
+func TestAddNewTasksBatchesBuildFlagUpdates(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection))
+	}()
+
+	buildIDs := []string{"b0", "b1", "b2"}
+	builds := []build.Build{
+		{Id: "b0", BuildVariant: "bv0", Version: "v0", Activated: true},
+		{Id: "b1", BuildVariant: "bv1", Version: "v0", Activated: true},
+		{Id: "b2", BuildVariant: "bv2", Version: "v0", Activated: true},
+	}
+	for _, b := range builds {
+		require.NoError(t, b.Insert(ctx))
+	}
+
+	v := &Version{Id: "v0", BuildIds: buildIDs}
+	require.NoError(t, v.Insert(ctx))
+
+	project := Project{
+		BuildVariants: []BuildVariant{
+			{Name: "bv0", Tasks: []BuildVariantTaskUnit{{Name: "t1", Variant: "bv0", RunOn: []string{"d0"}}}},
+			{Name: "bv1", Tasks: []BuildVariantTaskUnit{{Name: "t1", Variant: "bv1", RunOn: []string{"d0"}}}},
+			{Name: "bv2", Tasks: []BuildVariantTaskUnit{{Name: "t1", Variant: "bv2", RunOn: []string{"d0"}}}},
+		},
+		Tasks: []ProjectTask{{Name: "t1"}},
+	}
+	pairs := TaskVariantPairs{ExecTasks: []TVPair{
+		{Variant: "bv0", TaskName: "t1"},
+		{Variant: "bv1", TaskName: "t1"},
+		{Variant: "bv2", TaskName: "t1"},
+	}}
+	creationInfo := TaskCreationInfo{
+		Project:                             &project,
+		ProjectRef:                          &ProjectRef{},
+		Version:                             v,
+		Pairs:                               pairs,
+		ActivatedTasksAreEssentialToSucceed: true,
+	}
+
+	_, _, err := addNewTasksToExistingBuilds(ctx, creationInfo, builds, "")
+	require.NoError(t, err)
+
+	for _, id := range buildIDs {
+		dbBuild, err := build.FindOneId(ctx, id)
+		require.NoError(t, err)
+		require.NotNil(t, dbBuild)
+		assert.True(t, dbBuild.HasUnfinishedEssentialTask, "build '%s' should be flagged as having an unfinished essential task", id)
+
+		tasksInBuild, err := task.FindAll(ctx, db.Query(bson.M{task.BuildIdKey: id}))
+		require.NoError(t, err)
+		assert.Len(t, tasksInBuild, 1, "build '%s' should have its new task created", id)
 	}
 }
 

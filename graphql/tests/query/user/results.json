@@ -7,7 +7,7 @@
         "data": {
           "user": {
             "displayName": "Regular User",
-            "userId": "regular_user",
+            "id": "regular_user",
             "emailAddress": "regular_user@mongodb.com"
           }
         }
@@ -19,7 +19,7 @@
         "data": {
           "user": {
             "displayName": "Bob Smith",
-            "userId": "bob.smith"
+            "id": "bob.smith"
           }
         }
       }

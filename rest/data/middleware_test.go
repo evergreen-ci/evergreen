@@ -1,7 +1,6 @@
 package data
 
 import (
-	"context"
 	"net/http"
 	"net/url"
 	"testing"
@@ -15,13 +14,13 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestGetProjectIdFromParams(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(task.Collection, model.VersionCollection, model.ProjectRefCollection,
 		model.RepoRefCollection, patch.Collection, build.Collection, testlog.TestLogCollection))
@@ -155,43 +154,86 @@ func TestGetProjectIdFromParams(t *testing.T) {
 }
 
 func TestBuildProjectParameterMapForLegacy(t *testing.T) {
-	t.Run("QueryProjectIDIgnoredWhenBuildIDInPath", func(t *testing.T) {
-		query := url.Values{"project_id": []string{"attacker_project"}}
-		vars := map[string]string{"build_id": "victim_build_id"}
-
-		paramsMap := BuildProjectParameterMapForLegacy(query, vars)
-
-		require.Empty(t, paramsMap[projectIdKey])
-		require.Equal(t, "victim_build_id", paramsMap[buildIdKey])
-	})
-
-	t.Run("QueryProjectIDIgnoredWhenTaskIDInPath", func(t *testing.T) {
-		query := url.Values{"project_id": []string{"attacker_project"}}
-		vars := map[string]string{"task_id": "victim_task_id"}
-
-		paramsMap := BuildProjectParameterMapForLegacy(query, vars)
-
-		require.Empty(t, paramsMap[projectIdKey])
-		require.Equal(t, "victim_task_id", paramsMap[taskIdKey])
-	})
-
-	t.Run("QueryProjectIDIgnoredWhenVersionIDInPath", func(t *testing.T) {
-		query := url.Values{"project_id": []string{"attacker_project"}}
-		vars := map[string]string{"version_id": "victim_version_id"}
-
-		paramsMap := BuildProjectParameterMapForLegacy(query, vars)
-
-		require.Empty(t, paramsMap[projectIdKey])
-		require.Equal(t, "victim_version_id", paramsMap[versionIdKey])
-	})
-
-	t.Run("QueryProjectIDIgnoredWhenPatchIDInPath", func(t *testing.T) {
-		query := url.Values{"project_id": []string{"attacker_project"}}
-		vars := map[string]string{"patch_id": "victim_patch_id"}
-
-		paramsMap := BuildProjectParameterMapForLegacy(query, vars)
-
-		require.Empty(t, paramsMap[projectIdKey])
-		require.Equal(t, "victim_patch_id", paramsMap[patchIdKey])
-	})
+	// When an object ID is in the path, the query string must not be able to
+	// override any of the resolved IDs, since the route handler acts on the
+	// path-bound object. When no object ID is in the path, query-string IDs are
+	// honored. Each expected entry asserts a single resolved param.
+	for name, tc := range map[string]struct {
+		query    url.Values
+		vars     map[string]string
+		expected map[string]string
+	}{
+		"QueryProjectIDIgnoredWhenBuildIDInPath": {
+			query:    url.Values{"project_id": []string{"unrelated_project"}},
+			vars:     map[string]string{"build_id": "target_build_id"},
+			expected: map[string]string{projectIdKey: "", buildIdKey: "target_build_id"},
+		},
+		"QueryProjectIDIgnoredWhenTaskIDInPath": {
+			query:    url.Values{"project_id": []string{"unrelated_project"}},
+			vars:     map[string]string{"task_id": "target_task_id"},
+			expected: map[string]string{projectIdKey: "", taskIdKey: "target_task_id"},
+		},
+		"QueryProjectIDIgnoredWhenVersionIDInPath": {
+			query:    url.Values{"project_id": []string{"unrelated_project"}},
+			vars:     map[string]string{"version_id": "target_version_id"},
+			expected: map[string]string{projectIdKey: "", versionIdKey: "target_version_id"},
+		},
+		"QueryProjectIDIgnoredWhenPatchIDInPath": {
+			query:    url.Values{"project_id": []string{"unrelated_project"}},
+			vars:     map[string]string{"patch_id": "target_patch_id"},
+			expected: map[string]string{projectIdKey: "", patchIdKey: "target_patch_id"},
+		},
+		"QueryVersionIDIgnoredWhenTaskIDInPath": {
+			query:    url.Values{"version_id": []string{"unrelated_version_id"}},
+			vars:     map[string]string{"task_id": "target_task_id"},
+			expected: map[string]string{versionIdKey: "", taskIdKey: "target_task_id"},
+		},
+		"QueryPatchIDIgnoredWhenTaskIDInPath": {
+			query:    url.Values{"patch_id": []string{"unrelated_patch_id"}},
+			vars:     map[string]string{"task_id": "target_task_id"},
+			expected: map[string]string{patchIdKey: "", taskIdKey: "target_task_id"},
+		},
+		"QueryBuildIDIgnoredWhenTaskIDInPath": {
+			query:    url.Values{"build_id": []string{"unrelated_build_id"}},
+			vars:     map[string]string{"task_id": "target_task_id"},
+			expected: map[string]string{buildIdKey: "", taskIdKey: "target_task_id"},
+		},
+		"QueryTaskIDIgnoredWhenPatchIDInPath": {
+			query:    url.Values{"task_id": []string{"unrelated_task_id"}},
+			vars:     map[string]string{"patch_id": "target_patch_id"},
+			expected: map[string]string{taskIdKey: "", patchIdKey: "target_patch_id"},
+		},
+		"QueryLogIDIgnoredWhenTaskIDInPath": {
+			query:    url.Values{"log_id": []string{"unrelated_log_id"}},
+			vars:     map[string]string{"task_id": "target_task_id"},
+			expected: map[string]string{logIdKey: "", taskIdKey: "target_task_id"},
+		},
+		"QueryProjectIDIgnoredWhenProjectIDInPath": {
+			query:    url.Values{"project_id": []string{"unrelated_project"}},
+			vars:     map[string]string{"project_id": "target_project"},
+			expected: map[string]string{projectIdKey: "target_project"},
+		},
+		"QueryRepoIDIgnoredWhenTaskIDInPath": {
+			query:    url.Values{"repo_id": []string{"unrelated_repo_id"}},
+			vars:     map[string]string{"task_id": "target_task_id"},
+			expected: map[string]string{repoIdKey: "", taskIdKey: "target_task_id"},
+		},
+		"QueryRepoIDIgnoredWhenRepoIDInPath": {
+			query:    url.Values{"repo_id": []string{"unrelated_repo_id"}},
+			vars:     map[string]string{"repo_id": "target_repo_id"},
+			expected: map[string]string{repoIdKey: "target_repo_id"},
+		},
+		"QueryObjectIDsUsedWhenNoObjectIDInPath": {
+			query:    url.Values{"version_id": []string{"query_version_id"}},
+			vars:     map[string]string{},
+			expected: map[string]string{versionIdKey: "query_version_id"},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			paramsMap := BuildProjectParameterMapForLegacy(tc.query, tc.vars)
+			for key, expectedValue := range tc.expected {
+				assert.Equal(t, expectedValue, paramsMap[key])
+			}
+		})
+	}
 }

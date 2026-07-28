@@ -268,6 +268,44 @@ func TestBuildSetHasUnfinishedEssentialTask(t *testing.T) {
 	}
 }
 
+func TestSetTasksCaches(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+
+	t.Run("NoopsWithEmptyMap", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(Collection))
+		assert.NoError(t, SetTasksCaches(t.Context(), nil))
+	})
+
+	t.Run("SetsDistinctCachesPerBuild", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(Collection))
+		b0 := Build{Id: "b0"}
+		b1 := Build{Id: "b1"}
+		require.NoError(t, b0.Insert(t.Context()))
+		require.NoError(t, b1.Insert(t.Context()))
+
+		tasksByBuild := map[string][]TaskCache{
+			"b0": {{Id: "t0"}},
+			"b1": {{Id: "t1a"}, {Id: "t1b"}},
+		}
+		require.NoError(t, SetTasksCaches(t.Context(), tasksByBuild))
+
+		dbBuild0, err := FindOneId(t.Context(), "b0")
+		require.NoError(t, err)
+		require.NotNil(t, dbBuild0)
+		require.Len(t, dbBuild0.Tasks, 1)
+		assert.Equal(t, "t0", dbBuild0.Tasks[0].Id)
+
+		dbBuild1, err := FindOneId(t.Context(), "b1")
+		require.NoError(t, err)
+		require.NotNil(t, dbBuild1)
+		require.Len(t, dbBuild1.Tasks, 2)
+		assert.Equal(t, "t1a", dbBuild1.Tasks[0].Id)
+		assert.Equal(t, "t1b", dbBuild1.Tasks[1].Id)
+	})
+}
+
 func TestBulkInsert(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	builds := Builds{

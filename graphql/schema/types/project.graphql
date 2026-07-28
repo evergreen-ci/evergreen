@@ -109,11 +109,6 @@ input WebhookInput {
 }
 
 input BuildBaronSettingsInput {
-  bfSuggestionFeaturesURL: String
-  bfSuggestionPassword: String
-  bfSuggestionServer: String
-  bfSuggestionTimeoutSecs: Int
-  bfSuggestionUsername: String
   ticketCreateProject: String!
   ticketSearchProjects: [String!]
   ticketCreateIssueType: String

@@ -3,14 +3,18 @@ package client
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model/task"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,6 +31,48 @@ func TestEvergreenCommunicatorConstructor(t *testing.T) {
 	assert.Equal(t, defaultMaxAttempts, c.retry.MaxAttempts)
 	assert.Equal(t, defaultTimeoutStart, c.retry.MinDelay)
 	assert.Equal(t, defaultTimeoutMax, c.retry.MaxDelay)
+}
+
+func TestSelectTestsFailedDependencyShouldNotRetry(t *testing.T) {
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		http.Error(w, "test selection timed out", http.StatusFailedDependency)
+	}))
+	t.Cleanup(server.Close)
+
+	communicator := NewHostCommunicator(server.URL, "host", "host_secret")
+	t.Cleanup(communicator.Close)
+
+	_, err := communicator.SelectTests(t.Context(), TaskData{
+		ID:     "task",
+		Secret: "task_secret",
+	}, restmodel.SelectTestsRequest{})
+	require.Error(t, err)
+	assert.EqualValues(t, 1, calls.Load())
+}
+
+func TestSelectTestsInternalServerErrorShouldRetry(t *testing.T) {
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if calls.Add(1) == 1 {
+			http.Error(w, "test selection failed", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", evergreen.ContentTypeValue)
+		_, _ = w.Write([]byte(`{"tests":[]}`))
+	}))
+	t.Cleanup(server.Close)
+
+	communicator := NewHostCommunicator(server.URL, "host", "host_secret")
+	t.Cleanup(communicator.Close)
+
+	_, err := communicator.SelectTests(t.Context(), TaskData{
+		ID:     "task",
+		Secret: "task_secret",
+	}, restmodel.SelectTestsRequest{})
+	require.NoError(t, err)
+	assert.EqualValues(t, 2, calls.Load())
 }
 
 func TestLoggerProducerRedactorOptions(t *testing.T) {
@@ -62,8 +108,7 @@ func TestLoggerProducerRedactorOptions(t *testing.T) {
 	}
 
 	t.Run("LeaksWithoutRedactor", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		task := createTask()
 		comm := newBaseCommunicator("whatever", map[string]string{})
@@ -90,8 +135,7 @@ func TestLoggerProducerRedactorOptions(t *testing.T) {
 	})
 
 	t.Run("RedactsWhenAdded", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		task := createTask()
 		comm := newBaseCommunicator("whatever", map[string]string{})

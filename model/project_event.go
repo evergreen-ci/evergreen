@@ -3,7 +3,9 @@ package model
 import (
 	"bytes"
 	"context"
+	"maps"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -174,9 +176,7 @@ func getRedactedVarsCopy(vars map[string]string, modifiedVarNames map[string]str
 	// Note: this copy logic can be replaced by maps.Clone(vars) once Evergreen
 	// can compile with go 1.21 or higher.
 	redactedVars := make(map[string]string, len(vars))
-	for name, value := range vars {
-		redactedVars[name] = value
-	}
+	maps.Copy(redactedVars, vars)
 
 	for name, value := range redactedVars {
 		if _, ok := modifiedVarNames[name]; ok && value != "" {
@@ -277,7 +277,7 @@ func getRedactedSubscriptionsCopy(subscriptions []event.Subscription, modifiedSe
 			redacted.Secret = nil
 		}
 		for j := range redacted.Headers {
-			if redacted.Headers[j].Key == event.WebhookAuthorizationHeader {
+			if strings.EqualFold(redacted.Headers[j].Key, event.WebhookAuthorizationHeader) {
 				if _, authHeaderModified := modifiedAuthHeaderIDs[result[i].ID]; authHeaderModified {
 					redacted.Headers[j].Value = placeholder
 				} else {

@@ -289,23 +289,13 @@ type APIBuildBaronSettings struct {
 	// Type of ticket to create.
 	TicketCreateIssueType *string `bson:"ticket_create_issue_type" json:"ticket_create_issue_type"`
 	// Jira project to search for tickets.
-	TicketSearchProjects    []*string `bson:"ticket_search_projects" json:"ticket_search_projects"`
-	BFSuggestionServer      *string   `bson:"bf_suggestion_server" json:"bf_suggestion_server"`
-	BFSuggestionUsername    *string   `bson:"bf_suggestion_username" json:"bf_suggestion_username"`
-	BFSuggestionPassword    *string   `bson:"bf_suggestion_password" json:"bf_suggestion_password"`
-	BFSuggestionTimeoutSecs *int      `bson:"bf_suggestion_timeout_secs" json:"bf_suggestion_timeout_secs"`
-	BFSuggestionFeaturesURL *string   `bson:"bf_suggestion_features_url" json:"bf_suggestion_features_url"`
+	TicketSearchProjects []*string `bson:"ticket_search_projects" json:"ticket_search_projects"`
 }
 
 func (bb *APIBuildBaronSettings) BuildFromService(def evergreen.BuildBaronSettings) {
 	bb.TicketCreateProject = utility.ToStringPtr(def.TicketCreateProject)
 	bb.TicketCreateIssueType = utility.ToStringPtr(def.TicketCreateIssueType)
 	bb.TicketSearchProjects = utility.ToStringPtrSlice(def.TicketSearchProjects)
-	bb.BFSuggestionServer = utility.ToStringPtr(def.BFSuggestionServer)
-	bb.BFSuggestionUsername = utility.ToStringPtr(def.BFSuggestionUsername)
-	bb.BFSuggestionPassword = utility.ToStringPtr(def.BFSuggestionPassword)
-	bb.BFSuggestionTimeoutSecs = utility.ToIntPtr(def.BFSuggestionTimeoutSecs)
-	bb.BFSuggestionFeaturesURL = utility.ToStringPtr(def.BFSuggestionFeaturesURL)
 }
 
 func (bb *APIBuildBaronSettings) ToService() evergreen.BuildBaronSettings {
@@ -313,11 +303,6 @@ func (bb *APIBuildBaronSettings) ToService() evergreen.BuildBaronSettings {
 	buildBaron.TicketCreateProject = utility.FromStringPtr(bb.TicketCreateProject)
 	buildBaron.TicketCreateIssueType = utility.FromStringPtr(bb.TicketCreateIssueType)
 	buildBaron.TicketSearchProjects = utility.FromStringPtrSlice(bb.TicketSearchProjects)
-	buildBaron.BFSuggestionServer = utility.FromStringPtr(bb.BFSuggestionServer)
-	buildBaron.BFSuggestionUsername = utility.FromStringPtr(bb.BFSuggestionUsername)
-	buildBaron.BFSuggestionPassword = utility.FromStringPtr(bb.BFSuggestionPassword)
-	buildBaron.BFSuggestionTimeoutSecs = utility.FromIntPtr(bb.BFSuggestionTimeoutSecs)
-	buildBaron.BFSuggestionFeaturesURL = utility.FromStringPtr(bb.BFSuggestionFeaturesURL)
 	return buildBaron
 }
 
@@ -669,7 +654,7 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		ProjectHealthView:                p.ProjectHealthView,
 		GitHubPermissionGroupByRequester: p.GitHubPermissionGroupByRequester,
 		TestSelection:                    p.TestSelection.ToService(),
-		RunEveryMainlineCommit:           utility.FromBoolPtr(p.RunEveryMainlineCommit),
+		RunEveryMainlineCommit:           p.RunEveryMainlineCommit,
 	}
 
 	if projectRef.ProjectHealthView == "" {
@@ -775,7 +760,7 @@ func (p *APIProjectRef) BuildPublicFields(ctx context.Context, projectRef model.
 	p.GithubMQTriggerAliases = utility.ToStringPtrSlice(projectRef.GithubMQTriggerAliases)
 	p.GitHubPermissionGroupByRequester = projectRef.GitHubPermissionGroupByRequester
 	p.TestSelection.BuildFromService(projectRef.TestSelection)
-	p.RunEveryMainlineCommit = utility.ToBoolPtr(projectRef.RunEveryMainlineCommit)
+	p.RunEveryMainlineCommit = projectRef.RunEveryMainlineCommit
 
 	if projectRef.ProjectHealthView == "" {
 		projectRef.ProjectHealthView = model.ProjectHealthViewFailed

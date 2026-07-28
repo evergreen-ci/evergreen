@@ -16,6 +16,7 @@ import (
 // tasks within a display task.
 type TaskTestResults struct {
 	Stats                 TaskTestResultsStats `json:"stats"`
+	Info                  TestResultsInfo      `json:"info"`
 	Results               []TestResult         `json:"results"`
 	QuarantinedTestsCount int                  `json:"quarantined_tests_count,omitempty"`
 	QuarantinedTests      []QuarantinedTest    `json:"quarantined_tests,omitempty"`
@@ -221,7 +222,7 @@ func (tr TestResult) GetLogURL(root, parsleyURL string, viewer evergreen.LogView
 		}
 
 		printTime := true
-		var logsToMerge string
+		var logsToMerge strings.Builder
 		if tr.LogInfo != nil {
 			if utility.FromStringPtr(tr.LogInfo.RenderingType) == evergreen.ResmokeRenderingType || utility.FromStringPtr(tr.LogInfo.RenderingTypeCedar) == evergreen.ResmokeRenderingType {
 				printTime = false
@@ -232,7 +233,7 @@ func (tr TestResult) GetLogURL(root, parsleyURL string, viewer evergreen.LogView
 				logPathsToMerge = tr.LogInfo.LogsToMergeCedar
 			}
 			for _, logPath := range logPathsToMerge {
-				logsToMerge += fmt.Sprintf("&logs_to_merge=%s", url.QueryEscape(*logPath))
+				logsToMerge.WriteString(fmt.Sprintf("&logs_to_merge=%s", url.QueryEscape(*logPath)))
 			}
 		}
 
@@ -242,7 +243,7 @@ func (tr TestResult) GetLogURL(root, parsleyURL string, viewer evergreen.LogView
 			url.QueryEscape(tr.GetLogTestName()),
 			tr.Execution,
 			printTime,
-			logsToMerge,
+			logsToMerge.String(),
 		)
 	}
 }
@@ -284,6 +285,15 @@ type TaskTestResultsFailedSample struct {
 	Execution               int      `json:"execution"`
 	MatchingFailedTestNames []string `json:"matching_failed_test_names"`
 	TotalFailedNames        int      `json:"total_failed_names"`
+}
+
+// TaskTestResultsQuarantinedSample represents a snapshot of tests skipped
+// because they were quarantined in TSS for an Evergreen task run.
+type TaskTestResultsQuarantinedSample struct {
+	TaskID                       string            `json:"task_id"`
+	Execution                    int               `json:"execution"`
+	QuarantinedTestsSkippedCount int               `json:"quarantined_tests_skipped_count"`
+	QuarantinedTests             []QuarantinedTest `json:"quarantined_tests"`
 }
 
 // SortBy describes the properties by which to sort a set of test results.

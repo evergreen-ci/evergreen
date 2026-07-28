@@ -124,7 +124,9 @@
       "hosts_overallocated_rule": "no-terminations-when-overallocated",
       "stepback_task_factor": 10,
       "num_dependents_factor": 5,
-      "translate_project_concurrency_limit": 15
+      "translate_project_concurrency_limit": 15,
+      "translate_project_cache_bytes_limit": 1048576,
+      "translate_project_cache_ttl_seconds": 1800
     },
     {
       "_id": "task_limits",
@@ -411,18 +413,6 @@
     {
       "_id": "providers",
       "aws": {
-        "ec2_keys": [
-          {
-            "name": "test-key-1",
-            "key": "21039487102938470912837",
-            "secret": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-          },
-          {
-            "name": "test-key-2",
-            "key": "120938471209384701298",
-            "secret": "je7MtGbClwBF/2Zp9Utk/h3yCo8nvbEXAMPLEKEY"
-          }
-        ],
         "subnets": [
           {
             "az": "us-east-1a",

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -241,6 +242,13 @@ func (h *markTaskForRestartHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(struct{}{})
 	}
 
+	// Aborted tasks are intentionally not eligible for automatic restart. The agent still
+	// calls this route when a retry-on-failure command fails, even if the task was aborted
+	// mid-run, so treat that as an expected no-op rather than an internal server error.
+	if taskToRestart.Aborted {
+		return gimlet.NewJSONResponse(struct{}{})
+	}
+
 	if taskToRestart.NumAutomaticRestarts >= evergreen.MaxAutomaticRestarts {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -269,6 +277,21 @@ func (h *markTaskForRestartHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting reset when finished for task '%s'", h.taskID))
 	}
 	return gimlet.NewJSONResponse(struct{}{})
+}
+
+// validateHostForUserRequest checks that a host is a valid debug spawn host
+// for the given task.
+func validateHostForUserRequest(foundHost *host.Host, taskID string) error {
+	if foundHost == nil {
+		return nil
+	}
+	if !foundHost.IsDebug {
+		return errors.Errorf("host '%s' is not a debug spawn host", foundHost.Id)
+	}
+	if foundHost.ProvisionOptions == nil || foundHost.ProvisionOptions.TaskId != taskID {
+		return errors.Errorf("host '%s' is not associated with task '%s'", foundHost.Id, taskID)
+	}
+	return nil
 }
 
 // GET /task/{task_id}/expansions_and_vars
@@ -322,6 +345,9 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 			})
 		}
 	}
+	user := gimlet.GetUser(ctx)
+	isUserRequest := user != nil
+
 	var err error
 	var foundHost *host.Host
 	if h.hostID != "" {
@@ -334,6 +360,14 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 				StatusCode: http.StatusNotFound,
 				Message:    fmt.Sprintf("host '%s' not found", h.hostID)},
 			)
+		}
+		if isUserRequest {
+			if err := validateHostForUserRequest(foundHost, h.taskID); err != nil {
+				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+					StatusCode: http.StatusForbidden,
+					Message:    err.Error(),
+				})
+			}
 		}
 	}
 
@@ -362,7 +396,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		InternalRedactions: map[string]string{},
 	}
 
-	if foundHost != nil && foundHost.ServicePassword != "" {
+	if foundHost != nil && foundHost.ServicePassword != "" && !isUserRequest {
 		res.InternalRedactions[hostServicePasswordPlaceholder] = foundHost.ServicePassword
 	}
 
@@ -376,8 +410,6 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 			res.PrivateVars = projectVars.PrivateVars
 		}
 
-		user := gimlet.GetUser(ctx)
-		isUserRequest := user != nil
 		// If from debug session request, filter out admin-only vars if user is not an admin
 		isAdmin := isUserRequest && user.HasPermission(ctx, gimlet.PermissionOpts{
 			Resource:      pRef.Id,
@@ -470,7 +502,7 @@ func (h *getProjectRefHandler) Run(ctx context.Context) gimlet.Responder {
 	isUserRequest := user != nil
 	// If from debug session request, return minimal response
 	if isUserRequest {
-		redactedProjectRef := map[string]interface{}{
+		redactedProjectRef := map[string]any{
 			"repo_name":      p.Repo,
 			"branch_name":    p.Branch,
 			"owner_name":     p.Owner,
@@ -552,6 +584,7 @@ func (h *getParserProjectHandler) Run(ctx context.Context) gimlet.Responder {
 
 // GET /task/{task_id}/distro_view
 type getDistroViewHandler struct {
+	taskID string
 	hostID string
 }
 
@@ -564,6 +597,9 @@ func (h *getDistroViewHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *getDistroViewHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
 	if h.hostID = r.Header.Get(evergreen.HostHeader); h.hostID == "" {
 		return errors.New("missing host ID")
 	}
@@ -582,6 +618,12 @@ func (h *getDistroViewHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusNotFound,
 				Message:    fmt.Sprintf("host '%s' not found", h.hostID),
+			})
+		}
+		if err := validateHostForUserRequest(foundHost, h.taskID); err != nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusForbidden,
+				Message:    err.Error(),
 			})
 		}
 	}
@@ -977,6 +1019,20 @@ func (h *attachTestResultsHandler) Parse(ctx context.Context, r *http.Request) e
 
 func (h *attachTestResultsHandler) Run(ctx context.Context) gimlet.Responder {
 	t := MustHaveTask(ctx)
+
+	if h.body.Info.TaskID != t.Id || h.body.Info.Execution != t.Execution {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusForbidden,
+			Message:    "test results task identity does not match the authenticated task",
+		})
+	}
+	if h.body.Stats.FailedCount < 0 || h.body.Stats.TotalCount < 0 {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "test results stats counts cannot be negative",
+		})
+	}
+
 	var err error
 	var record testresult.DbTaskTestResults
 	if !t.HasTestResults {
@@ -1265,6 +1321,41 @@ func (h *gitServePatchFileHandler) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (h *gitServePatchFileHandler) Run(ctx context.Context) gimlet.Responder {
+	t := GetTask(ctx)
+	if t == nil {
+		var err error
+		t, err = task.FindOneId(ctx, h.taskID)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+		}
+		if t == nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+			})
+		}
+	}
+
+	p, err := patch.FindOne(ctx, patch.ByVersion(t.Version))
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patch for version '%s'", t.Version))
+	}
+	if p == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("patch for version '%s' not found", t.Version),
+		})
+	}
+
+	if !slices.ContainsFunc(p.Patches, func(mp patch.ModulePatch) bool {
+		return mp.PatchSet.PatchFileId == h.patchID
+	}) {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("patch file '%s' not found", h.patchID),
+		})
+	}
+
 	patchContents, err := patch.FetchPatchContents(ctx, h.patchID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "reading patch file from db"))

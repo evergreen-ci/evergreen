@@ -1,6 +1,7 @@
 package model
 
 import (
+	"maps"
 	"reflect"
 	"sort"
 	"strings"
@@ -86,6 +87,7 @@ type APIAdminSettings struct {
 	GithubPRCreatorOrg      *string                       `json:"github_pr_creator_org,omitempty"`
 	GithubOrgs              []string                      `json:"github_orgs,omitempty"`
 	GithubWebhookSecret     *string                       `json:"github_webhook_secret,omitempty"`
+	ArtifactSignSecret      *string                       `json:"artifact_sign_secret,omitempty"`
 	DisabledGQLQueries      []string                      `json:"disabled_gql_queries"`
 	HostInit                *APIHostInitConfig            `json:"hostinit,omitempty"`
 	HostJasper              *APIHostJasperConfig          `json:"host_jasper,omitempty"`
@@ -176,6 +178,7 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 		as.Expansions = v.Expansions
 		as.GithubOrgs = v.GithubOrgs
 		as.GithubWebhookSecret = utility.ToStringPtr(v.GithubWebhookSecret)
+		as.ArtifactSignSecret = utility.ToStringPtr(v.ArtifactSignSecret)
 		as.DisabledGQLQueries = v.DisabledGQLQueries
 		uiConfig := APIUIConfig{}
 		err := uiConfig.BuildFromService(v.Ui)
@@ -280,6 +283,7 @@ func (as *APIAdminSettings) ToService() (any, error) {
 		settings.GithubPRCreatorOrg = *as.GithubPRCreatorOrg
 	}
 	settings.GithubWebhookSecret = utility.FromStringPtr(as.GithubWebhookSecret)
+	settings.ArtifactSignSecret = utility.FromStringPtr(as.ArtifactSignSecret)
 	if as.LogPath != nil {
 		settings.LogPath = *as.LogPath
 	}
@@ -324,14 +328,10 @@ func (as *APIAdminSettings) ToService() (any, error) {
 		valToSet := reflect.ValueOf(i)
 		dbModelReflect.FieldByName(propName).Set(valToSet)
 	}
-	for k, v := range as.Expansions {
-		settings.Expansions[k] = v
-	}
+	maps.Copy(settings.Expansions, as.Expansions)
 	for k, v := range as.Plugins {
 		settings.Plugins[k] = map[string]any{}
-		for k2, v2 := range v {
-			settings.Plugins[k][k2] = v2
-		}
+		maps.Copy(settings.Plugins[k], v)
 	}
 
 	if as.ShutdownWaitSeconds != nil {
@@ -796,11 +796,52 @@ type APIBucketConfig struct {
 	DBName                  *string    `json:"db_name"`
 	TestResultsPrefix       *string    `json:"test_results_prefix"`
 	RoleARN                 *string    `json:"role_arn"`
+	ExternalID              *string    `json:"external_id,omitempty"`
 	ExpirationDays          *int       `json:"expiration_days,omitempty"`
 	TransitionToIADays      *int       `json:"transition_to_ia_days,omitempty"`
 	TransitionToGlacierDays *int       `json:"transition_to_glacier_days,omitempty"`
 	LifecycleLastSyncedAt   *time.Time `json:"lifecycle_last_synced_at,omitempty"`
 	LifecycleSyncError      *string    `json:"lifecycle_sync_error,omitempty"`
+}
+
+// buildFromService populates the API model from every field of the service
+// model. It must stay symmetric with ToService: any field one method handles
+// must be handled by the other, otherwise the field is silently dropped on the
+// admin settings BuildFromService/ToService round trip, which both loses the
+// value and produces spurious "changed" entries in the admin event log.
+func (a *APIBucketConfig) buildFromService(v evergreen.BucketConfig) {
+	a.Name = utility.ToStringPtr(v.Name)
+	a.Type = utility.ToStringPtr(string(v.Type))
+	a.DBName = utility.ToStringPtr(v.DBName)
+	a.TestResultsPrefix = utility.ToStringPtr(v.TestResultsPrefix)
+	a.RoleARN = utility.ToStringPtr(v.RoleARN)
+	a.ExternalID = utility.ToStringPtr(v.ExternalID)
+	a.ExpirationDays = v.ExpirationDays
+	a.TransitionToIADays = v.TransitionToIADays
+	a.TransitionToGlacierDays = v.TransitionToGlacierDays
+	if !v.LifecycleLastSyncedAt.IsZero() {
+		a.LifecycleLastSyncedAt = &v.LifecycleLastSyncedAt
+	}
+	a.LifecycleSyncError = utility.ToStringPtr(v.LifecycleSyncError)
+}
+
+func (a APIBucketConfig) ToService() evergreen.BucketConfig {
+	c := evergreen.BucketConfig{
+		Name:                    utility.FromStringPtr(a.Name),
+		Type:                    evergreen.BucketType(utility.FromStringPtr(a.Type)),
+		DBName:                  utility.FromStringPtr(a.DBName),
+		TestResultsPrefix:       utility.FromStringPtr(a.TestResultsPrefix),
+		RoleARN:                 utility.FromStringPtr(a.RoleARN),
+		ExternalID:              utility.FromStringPtr(a.ExternalID),
+		ExpirationDays:          a.ExpirationDays,
+		TransitionToIADays:      a.TransitionToIADays,
+		TransitionToGlacierDays: a.TransitionToGlacierDays,
+		LifecycleSyncError:      utility.FromStringPtr(a.LifecycleSyncError),
+	}
+	if a.LifecycleLastSyncedAt != nil {
+		c.LifecycleLastSyncedAt = *a.LifecycleLastSyncedAt
+	}
+	return c
 }
 
 type APIProjectToPrefixMapping struct {
@@ -817,51 +858,15 @@ type APIProjectToBucketMapping struct {
 func (a *APIBucketsConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.BucketsConfig:
-		a.LogBucket.Name = utility.ToStringPtr(v.LogBucket.Name)
-		a.LogBucket.Type = utility.ToStringPtr(string(v.LogBucket.Type))
-		a.LogBucket.DBName = utility.ToStringPtr(v.LogBucket.DBName)
-		a.LogBucket.ExpirationDays = v.LogBucket.ExpirationDays
-		a.LogBucket.TransitionToIADays = v.LogBucket.TransitionToIADays
-		a.LogBucket.TransitionToGlacierDays = v.LogBucket.TransitionToGlacierDays
-		if !v.LogBucket.LifecycleLastSyncedAt.IsZero() {
-			a.LogBucket.LifecycleLastSyncedAt = &v.LogBucket.LifecycleLastSyncedAt
-		}
-		a.LogBucket.LifecycleSyncError = utility.ToStringPtr(v.LogBucket.LifecycleSyncError)
-
-		a.LogBucketLongRetention.Name = utility.ToStringPtr(v.LogBucketLongRetention.Name)
-		a.LogBucketLongRetention.Type = utility.ToStringPtr(string(v.LogBucketLongRetention.Type))
-		a.LogBucketLongRetention.DBName = utility.ToStringPtr(v.LogBucketLongRetention.DBName)
-		a.LogBucketLongRetention.RoleARN = utility.ToStringPtr(v.LogBucketLongRetention.RoleARN)
-		a.LogBucketLongRetention.ExpirationDays = v.LogBucketLongRetention.ExpirationDays
-		a.LogBucketLongRetention.TransitionToIADays = v.LogBucketLongRetention.TransitionToIADays
-		a.LogBucketLongRetention.TransitionToGlacierDays = v.LogBucketLongRetention.TransitionToGlacierDays
-		if !v.LogBucketLongRetention.LifecycleLastSyncedAt.IsZero() {
-			a.LogBucketLongRetention.LifecycleLastSyncedAt = &v.LogBucketLongRetention.LifecycleLastSyncedAt
-		}
-		a.LogBucketLongRetention.LifecycleSyncError = utility.ToStringPtr(v.LogBucketLongRetention.LifecycleSyncError)
-
-		a.LogBucketFailedTasks.Name = utility.ToStringPtr(v.LogBucketFailedTasks.Name)
-		a.LogBucketFailedTasks.Type = utility.ToStringPtr(string(v.LogBucketFailedTasks.Type))
-		a.LogBucketFailedTasks.DBName = utility.ToStringPtr(v.LogBucketFailedTasks.DBName)
-		a.LogBucketFailedTasks.RoleARN = utility.ToStringPtr(v.LogBucketFailedTasks.RoleARN)
-		a.LogBucketFailedTasks.ExpirationDays = v.LogBucketFailedTasks.ExpirationDays
-		a.LogBucketFailedTasks.TransitionToIADays = v.LogBucketFailedTasks.TransitionToIADays
-		a.LogBucketFailedTasks.TransitionToGlacierDays = v.LogBucketFailedTasks.TransitionToGlacierDays
-		if !v.LogBucketFailedTasks.LifecycleLastSyncedAt.IsZero() {
-			a.LogBucketFailedTasks.LifecycleLastSyncedAt = &v.LogBucketFailedTasks.LifecycleLastSyncedAt
-		}
-		a.LogBucketFailedTasks.LifecycleSyncError = utility.ToStringPtr(v.LogBucketFailedTasks.LifecycleSyncError)
+		a.LogBucket.buildFromService(v.LogBucket)
+		a.LogBucketLongRetention.buildFromService(v.LogBucketLongRetention)
+		a.LogBucketFailedTasks.buildFromService(v.LogBucketFailedTasks)
+		a.TestResultsBucket.buildFromService(v.TestResultsBucket)
 
 		a.LongRetentionProjects = v.LongRetentionProjects
 		a.RetryFailedLogMoveLookbackDays = utility.ToIntPtr(v.RetryFailedLogMoveLookbackDays)
 		a.RetryFailedLogMoveLookbackMonths = utility.ToIntPtr(v.RetryFailedLogMoveLookbackDays)
 		a.RetryFailedLogMoveMaxJobsPerRun = utility.ToIntPtr(v.RetryFailedLogMoveMaxJobsPerRun)
-
-		a.TestResultsBucket.Name = utility.ToStringPtr(v.TestResultsBucket.Name)
-		a.TestResultsBucket.Type = utility.ToStringPtr(string(v.TestResultsBucket.Type))
-		a.TestResultsBucket.DBName = utility.ToStringPtr(v.TestResultsBucket.DBName)
-		a.TestResultsBucket.TestResultsPrefix = utility.ToStringPtr(v.TestResultsBucket.TestResultsPrefix)
-		a.TestResultsBucket.RoleARN = utility.ToStringPtr(v.TestResultsBucket.RoleARN)
 
 		creds := APIS3Credentials{}
 		if err := creds.BuildFromService(v.Credentials); err != nil {
@@ -891,34 +896,14 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 	}
 
 	return evergreen.BucketsConfig{
-		LogBucket: evergreen.BucketConfig{
-			Name:   utility.FromStringPtr(a.LogBucket.Name),
-			Type:   evergreen.BucketType(utility.FromStringPtr(a.LogBucket.Type)),
-			DBName: utility.FromStringPtr(a.LogBucket.DBName),
-		},
-		LogBucketLongRetention: evergreen.BucketConfig{
-			Name:    utility.FromStringPtr(a.LogBucketLongRetention.Name),
-			Type:    evergreen.BucketType(utility.FromStringPtr(a.LogBucketLongRetention.Type)),
-			DBName:  utility.FromStringPtr(a.LogBucketLongRetention.DBName),
-			RoleARN: utility.FromStringPtr(a.LogBucketLongRetention.RoleARN),
-		},
-		LogBucketFailedTasks: evergreen.BucketConfig{
-			Name:    utility.FromStringPtr(a.LogBucketFailedTasks.Name),
-			Type:    evergreen.BucketType(utility.FromStringPtr(a.LogBucketFailedTasks.Type)),
-			DBName:  utility.FromStringPtr(a.LogBucketFailedTasks.DBName),
-			RoleARN: utility.FromStringPtr(a.LogBucketFailedTasks.RoleARN),
-		},
+		LogBucket:                       a.LogBucket.ToService(),
+		LogBucketLongRetention:          a.LogBucketLongRetention.ToService(),
+		LogBucketFailedTasks:            a.LogBucketFailedTasks.ToService(),
 		LongRetentionProjects:           a.LongRetentionProjects,
 		RetryFailedLogMoveLookbackDays:  utility.FromIntPtr(lookbackDays),
 		RetryFailedLogMoveMaxJobsPerRun: utility.FromIntPtr(a.RetryFailedLogMoveMaxJobsPerRun),
-		TestResultsBucket: evergreen.BucketConfig{
-			Name:              utility.FromStringPtr(a.TestResultsBucket.Name),
-			Type:              evergreen.BucketType(utility.FromStringPtr(a.TestResultsBucket.Type)),
-			DBName:            utility.FromStringPtr(a.TestResultsBucket.DBName),
-			RoleARN:           utility.FromStringPtr(a.TestResultsBucket.RoleARN),
-			TestResultsPrefix: utility.FromStringPtr(a.TestResultsBucket.TestResultsPrefix),
-		},
-		Credentials: creds,
+		TestResultsBucket:               a.TestResultsBucket.ToService(),
+		Credentials:                     creds,
 	}, nil
 }
 
@@ -946,12 +931,13 @@ func (a *APICedarConfig) ToService() (any, error) {
 }
 
 type APIOktaConfig struct {
-	ClientID           *string  `json:"client_id"`
-	ClientSecret       *string  `json:"client_secret"`
-	Issuer             *string  `json:"issuer"`
-	Scopes             []string `json:"scopes"`
-	UserGroup          *string  `json:"user_group"`
-	ExpireAfterMinutes int      `json:"expire_after_minutes"`
+	ClientID             *string  `json:"client_id"`
+	ClientSecret         *string  `json:"client_secret"`
+	Issuer               *string  `json:"issuer"`
+	Scopes               []string `json:"scopes"`
+	UserGroup            *string  `json:"user_group"`
+	ExpireAfterMinutes   int      `json:"expire_after_minutes"`
+	ExpectedEmailDomains []string `json:"expected_email_domains"`
 }
 
 func (a *APIOktaConfig) BuildFromService(h any) error {
@@ -966,6 +952,7 @@ func (a *APIOktaConfig) BuildFromService(h any) error {
 		a.Scopes = v.Scopes
 		a.UserGroup = utility.ToStringPtr(v.UserGroup)
 		a.ExpireAfterMinutes = v.ExpireAfterMinutes
+		a.ExpectedEmailDomains = v.ExpectedEmailDomains
 		return nil
 	default:
 		return errors.Errorf("programmatic error: expected Okta config but got type %T", h)
@@ -977,12 +964,13 @@ func (a *APIOktaConfig) ToService() (any, error) {
 		return nil, nil
 	}
 	return &evergreen.OktaConfig{
-		ClientID:           utility.FromStringPtr(a.ClientID),
-		ClientSecret:       utility.FromStringPtr(a.ClientSecret),
-		Issuer:             utility.FromStringPtr(a.Issuer),
-		Scopes:             a.Scopes,
-		UserGroup:          utility.FromStringPtr(a.UserGroup),
-		ExpireAfterMinutes: a.ExpireAfterMinutes,
+		ClientID:             utility.FromStringPtr(a.ClientID),
+		ClientSecret:         utility.FromStringPtr(a.ClientSecret),
+		Issuer:               utility.FromStringPtr(a.Issuer),
+		Scopes:               a.Scopes,
+		UserGroup:            utility.FromStringPtr(a.UserGroup),
+		ExpireAfterMinutes:   a.ExpireAfterMinutes,
+		ExpectedEmailDomains: a.ExpectedEmailDomains,
 	}, nil
 }
 
@@ -1707,7 +1695,6 @@ func (a *APISubnet) ToService() (any, error) {
 }
 
 type APIAWSConfig struct {
-	EC2Keys                []APIEC2Key                `json:"ec2_keys"`
 	Subnets                []APISubnet                `json:"subnets"`
 	ParserProject          *APIParserProjectS3Config  `json:"parser_project"`
 	PersistentDNS          *APIPersistentDNSConfig    `json:"persistent_dns"`
@@ -1724,14 +1711,6 @@ type APIAWSConfig struct {
 func (a *APIAWSConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.AWSConfig:
-		for _, key := range v.EC2Keys {
-			apiKey := APIEC2Key{}
-			if err := apiKey.BuildFromService(key); err != nil {
-				return err
-			}
-			a.EC2Keys = append(a.EC2Keys, apiKey)
-		}
-
 		for _, subnet := range v.Subnets {
 			apiSubnet := APISubnet{}
 			if err := apiSubnet.BuildFromService(subnet); err != nil {
@@ -1814,18 +1793,6 @@ func (a *APIAWSConfig) ToService() (any, error) {
 
 	if a.MaxVolumeSizePerUser != nil {
 		config.MaxVolumeSizePerUser = *a.MaxVolumeSizePerUser
-	}
-
-	for _, k := range a.EC2Keys {
-		i, err := k.ToService()
-		if err != nil {
-			return nil, err
-		}
-		key, ok := i.(evergreen.EC2Key)
-		if !ok {
-			return nil, errors.Errorf("programmatic error: expected EC2 key but got type %T", i)
-		}
-		config.EC2Keys = append(config.EC2Keys, key)
 	}
 
 	for _, s := range a.Subnets {
@@ -2067,6 +2034,8 @@ type APISchedulerConfig struct {
 	NumDependentsFactor              float64 `json:"num_dependents_factor"`
 	StepbackTaskFactor               int64   `json:"stepback_task_factor"`
 	TranslateProjectConcurrencyLimit int     `json:"translate_project_concurrency_limit"`
+	TranslateProjectCacheBytesLimit  int64   `json:"translate_project_cache_bytes_limit"`
+	TranslateProjectCacheTTLSeconds  int64   `json:"translate_project_cache_ttl_seconds"`
 }
 
 func (a *APISchedulerConfig) BuildFromService(h any) error {
@@ -2091,6 +2060,8 @@ func (a *APISchedulerConfig) BuildFromService(h any) error {
 		a.NumDependentsFactor = v.NumDependentsFactor
 		a.StepbackTaskFactor = v.StepbackTaskFactor
 		a.TranslateProjectConcurrencyLimit = v.TranslateProjectConcurrencyLimit
+		a.TranslateProjectCacheBytesLimit = v.TranslateProjectCacheBytesLimit
+		a.TranslateProjectCacheTTLSeconds = v.TranslateProjectCacheTTLSeconds
 	default:
 		return errors.Errorf("programmatic error: expected host scheduler config but got type %T", h)
 	}
@@ -2118,6 +2089,8 @@ func (a *APISchedulerConfig) ToService() (any, error) {
 		NumDependentsFactor:              a.NumDependentsFactor,
 		StepbackTaskFactor:               a.StepbackTaskFactor,
 		TranslateProjectConcurrencyLimit: a.TranslateProjectConcurrencyLimit,
+		TranslateProjectCacheBytesLimit:  a.TranslateProjectCacheBytesLimit,
+		TranslateProjectCacheTTLSeconds:  a.TranslateProjectCacheTTLSeconds,
 	}, nil
 }
 
@@ -2127,6 +2100,7 @@ type APIServiceFlags struct {
 	HostInitDisabled                   bool `json:"host_init_disabled"`
 	LargeParserProjectsDisabled        bool `json:"large_parser_projects_disabled"`
 	MonitorDisabled                    bool `json:"monitor_disabled"`
+	MergeQueueRecoveryEnabled          bool `json:"merge_queue_recovery_enabled"`
 	AlertsDisabled                     bool `json:"alerts_disabled"`
 	AgentStartDisabled                 bool `json:"agent_start_disabled"`
 	RepotrackerDisabled                bool `json:"repotracker_disabled"`
@@ -2153,8 +2127,6 @@ type APIServiceFlags struct {
 	UseMergeQueuePathFilteringDisabled bool `json:"use_merge_queue_path_filtering_disabled"`
 	PSLoggingDisabled                  bool `json:"ps_logging_disabled"`
 	PodDiagnosticsDisabled             bool `json:"pod_diagnostics_disabled"`
-	WebhookSecretMigrationEnabled      bool `json:"webhook_secret_migration_enabled"`
-	WebhookSecretCleanupEnabled        bool `json:"webhook_secret_cleanup_enabled"`
 	RetryFailedLogMoveEnabled          bool `json:"retry_failed_log_move_enabled"`
 	ProjectTranslationCacheEnabled     bool `json:"project_translation_cache_enabled"`
 
@@ -2536,7 +2508,7 @@ type APIFWSConfig struct {
 	URL *string `json:"url"`
 }
 
-func (a *APIFWSConfig) BuildFromService(h interface{}) error {
+func (a *APIFWSConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.FWSConfig:
 		a.URL = utility.ToStringPtr(v.URL)
@@ -2546,7 +2518,7 @@ func (a *APIFWSConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIFWSConfig) ToService() (interface{}, error) {
+func (a *APIFWSConfig) ToService() (any, error) {
 	return evergreen.FWSConfig{
 		URL: utility.FromStringPtr(a.URL),
 	}, nil
@@ -2568,7 +2540,7 @@ func (a *APIGraphiteConfig) BuildFromService(h any) error {
 	return nil
 }
 
-func (a *APIGraphiteConfig) ToService() (interface{}, error) {
+func (a *APIGraphiteConfig) ToService() (any, error) {
 	return evergreen.GraphiteConfig{
 		CIOptimizationToken: utility.FromStringPtr(a.CIOptimizationToken),
 		ServerURL:           utility.FromStringPtr(a.ServerURL),
@@ -2583,6 +2555,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.HostInitDisabled = v.HostInitDisabled
 		as.LargeParserProjectsDisabled = v.LargeParserProjectsDisabled
 		as.MonitorDisabled = v.MonitorDisabled
+		as.MergeQueueRecoveryEnabled = v.MergeQueueRecoveryEnabled
 		as.AlertsDisabled = v.AlertsDisabled
 		as.AgentStartDisabled = v.AgentStartDisabled
 		as.RepotrackerDisabled = v.RepotrackerDisabled
@@ -2616,8 +2589,6 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.PSLoggingDisabled = v.PSLoggingDisabled
 		as.UseMergeQueuePathFilteringDisabled = v.UseMergeQueuePathFilteringDisabled
 		as.PodDiagnosticsDisabled = v.PodDiagnosticsDisabled
-		as.WebhookSecretMigrationEnabled = v.WebhookSecretMigrationEnabled
-		as.WebhookSecretCleanupEnabled = v.WebhookSecretCleanupEnabled
 		as.RetryFailedLogMoveEnabled = v.RetryFailedLogMoveEnabled
 		as.ProjectTranslationCacheEnabled = v.ProjectTranslationCacheEnabled
 		as.BackgroundCommandFailureEnabled = v.BackgroundCommandFailureEnabled
@@ -2636,6 +2607,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		HostInitDisabled:                   as.HostInitDisabled,
 		LargeParserProjectsDisabled:        as.LargeParserProjectsDisabled,
 		MonitorDisabled:                    as.MonitorDisabled,
+		MergeQueueRecoveryEnabled:          as.MergeQueueRecoveryEnabled,
 		AlertsDisabled:                     as.AlertsDisabled,
 		AgentStartDisabled:                 as.AgentStartDisabled,
 		RepotrackerDisabled:                as.RepotrackerDisabled,
@@ -2669,8 +2641,6 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		UseMergeQueuePathFilteringDisabled: as.UseMergeQueuePathFilteringDisabled,
 		PSLoggingDisabled:                  as.PSLoggingDisabled,
 		PodDiagnosticsDisabled:             as.PodDiagnosticsDisabled,
-		WebhookSecretMigrationEnabled:      as.WebhookSecretMigrationEnabled,
-		WebhookSecretCleanupEnabled:        as.WebhookSecretCleanupEnabled,
 		RetryFailedLogMoveEnabled:          as.RetryFailedLogMoveEnabled,
 		ProjectTranslationCacheEnabled:     as.ProjectTranslationCacheEnabled,
 		BackgroundCommandFailureEnabled:    as.BackgroundCommandFailureEnabled,
@@ -2709,7 +2679,7 @@ func AdminDbToRestModel(in evergreen.ConfigSection) (Model, error) {
 		structVal := reflect.ValueOf(*NewConfigModel())
 		for i := 0; i < structVal.NumField(); i++ {
 			// this assumes that the json tag is the same as the section ID
-			tag := strings.Split(structVal.Type().Field(i).Tag.Get("json"), ",")[0]
+			tag, _, _ := strings.Cut(structVal.Type().Field(i).Tag.Get("json"), ",")
 			if tag != id {
 				continue
 			}
@@ -3164,6 +3134,7 @@ type APICostConfig struct {
 	OnDemandDiscount    *float64          `json:"on_demand_discount"`
 	S3Cost              *APIS3CostConfig  `json:"s3_cost"`
 	EBSCost             *APIEBSCostConfig `json:"ebs_cost"`
+	HiddenCostProjects  []string          `json:"hidden_cost_projects"`
 }
 
 type APIEBSCostConfig struct {
@@ -3202,6 +3173,7 @@ func (a *APICostConfig) BuildFromService(h any) error {
 		if err := a.EBSCost.BuildFromService(&v.EBSCost); err != nil {
 			return errors.Wrap(err, "building EBS cost config")
 		}
+		a.HiddenCostProjects = v.HiddenCostProjects
 	case evergreen.CostConfig:
 		a.FinanceFormula = &v.FinanceFormula
 		a.SavingsPlanDiscount = &v.SavingsPlanDiscount
@@ -3214,6 +3186,7 @@ func (a *APICostConfig) BuildFromService(h any) error {
 		if err := a.EBSCost.BuildFromService(&v.EBSCost); err != nil {
 			return errors.Wrap(err, "building EBS cost config")
 		}
+		a.HiddenCostProjects = v.HiddenCostProjects
 	default:
 		return errors.Errorf("incorrect type %T", v)
 	}
@@ -3243,6 +3216,7 @@ func (a *APICostConfig) ToService() (any, error) {
 		OnDemandDiscount:    utility.FromFloat64Ptr(a.OnDemandDiscount),
 		S3Cost:              s3Cost,
 		EBSCost:             ebsCost,
+		HiddenCostProjects:  a.HiddenCostProjects,
 	}, nil
 }
 

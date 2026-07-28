@@ -34,7 +34,7 @@ func (pc *MockGitHubConnectorImpl) AddCommentToPR(ctx context.Context, owner, re
 	return nil
 }
 
-func (pc *MockGitHubConnectorImpl) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string) (model.ProjectInfo, error) {
+func (pc *MockGitHubConnectorImpl) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string, _ *evergreen.Settings) (model.ProjectInfo, error) {
 	config := `
 buildvariants:
 - name: v1

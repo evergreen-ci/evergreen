@@ -20,8 +20,7 @@ import (
 // mostly same set of checks as the host smoke test, but it runs the agent using
 // the agent monitor rather than directly starting the agent.
 func TestSmokeAgentMonitor(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	params := getSmokeTestParamsFromEnv(t)
 	grip.Info(ctx, message.Fields{
@@ -78,8 +77,8 @@ func startAgentMonitor(ctx context.Context, t *testing.T, params smokeTestParams
 		"deploy",
 		"start-evergreen",
 		"--monitor",
-		fmt.Sprintf("--exec_mode_id=%s", params.ExecModeID),
-		fmt.Sprintf("--exec_mode_secret=%s", params.ExecModeSecret),
+		fmt.Sprintf("--host_id=%s", params.HostID),
+		fmt.Sprintf("--host_secret=%s", params.HostSecret),
 		fmt.Sprintf("--distro=%s", params.distroID),
 		fmt.Sprintf("--api_server=%s", params.AppServerURL),
 		fmt.Sprintf("--binary=%s", params.CLIPath),

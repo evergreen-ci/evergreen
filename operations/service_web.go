@@ -108,6 +108,8 @@ func startWebService() cli.Command {
 
 			settings := env.Settings()
 			evgmodel.SetTranslateConcurrencyLimit(settings.Scheduler.TranslateProjectConcurrencyLimit)
+			evgmodel.SetTranslationCacheBytesLimit(settings.Scheduler.TranslateProjectCacheBytesLimit)
+			evgmodel.SetTranslationCacheTTL(time.Duration(settings.Scheduler.TranslateProjectCacheTTLSeconds) * time.Second)
 			// Remove the span from the senderCtx since the sender caches the ctx.
 			senderCtx := trace.ContextWithSpan(ctx, nil)
 			sender, err := settings.GetSender(senderCtx, env)

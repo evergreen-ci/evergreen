@@ -25,7 +25,7 @@ func getTracker(conf *evergreen.Settings, project model.ProjectRef) (*RepoTracke
 	tracker := &RepoTracker{
 		Settings:   conf,
 		ProjectRef: &project,
-		RepoPoller: NewGithubRepositoryPoller(&project),
+		RepoPoller: NewGithubRepositoryPoller(&project, conf),
 	}
 
 	return tracker, nil

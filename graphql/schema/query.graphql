@@ -59,9 +59,6 @@ type Query {
   myHosts: [Host!]!
   myVolumes: [Volume!]!
 
-  # logkeeper
-  logkeeperBuildMetadata(buildId: String!): LogkeeperBuild!
-
   # task
   task(taskId: String! @requireProjectAccess(permission: TASKS, access: VIEW), execution: Int): Task
   taskAllExecutions(taskId: String! @requireProjectAccess(permission: TASKS, access: VIEW)): [Task!]!
@@ -80,7 +77,7 @@ type Query {
   # user
   myPublicKeys: [PublicKey!]!
   user(userId: String): User!
-  userLite(userId: String): UserLite!
+  userLite(userId: String): User!
   userConfig: UserConfig
 
   # mainline commits
@@ -93,7 +90,6 @@ type Query {
   
   # task history
   taskHistory(options: TaskHistoryOpts!): TaskHistory!
-  taskHistoryByCreateTime(options: TaskHistoryOpts!): TaskHistoryByCreateTime!
 
   # version
   hasVersion(patchId: String!): Boolean!

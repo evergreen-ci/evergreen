@@ -132,11 +132,6 @@ type PeriodicBuild {
 
 # shared by Project and RepoRef
 type BuildBaronSettings {
-  bfSuggestionFeaturesURL: String
-  bfSuggestionPassword: String
-  bfSuggestionServer: String
-  bfSuggestionTimeoutSecs: Int
-  bfSuggestionUsername: String
   ticketCreateProject: String!
   ticketSearchProjects: [String!]
   ticketCreateIssueType: String!

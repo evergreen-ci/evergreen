@@ -21,6 +21,9 @@ type GetTaskTestResultsOptions struct {
 	// IncludeQuarantinedTests includes quarantined test snapshots. The snapshots
 	// are omitted by default because they can be large.
 	IncludeQuarantinedTests bool
+	// QuarantinedTestsLimit limits quarantined test snapshots in the database
+	// projection before they are decoded.
+	QuarantinedTestsLimit *int
 }
 
 // FilterOptions represents the filtering arguments for fetching test results.

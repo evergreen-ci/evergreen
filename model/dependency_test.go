@@ -67,14 +67,14 @@ func TestDependencyBSON(t *testing.T) {
 func TestIncludeDependenciesForTaskGroups(t *testing.T) {
 	testCases := map[string]func(t *testing.T, p *Project){
 		"SingleHostTaskGroup/SchedulesPreviousTasks": func(t *testing.T, p *Project) {
-			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "tg1t2"}}, evergreen.PatchVersionRequester, nil)
+			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "tg1t2"}}, evergreen.PatchVersionRequester, "", nil)
 			require.NoError(t, err)
 			assert.Len(t, pairs, 2)
 			assert.Contains(t, pairs, TVPair{Variant: "v1", TaskName: "tg1t1"})
 			assert.Contains(t, pairs, TVPair{Variant: "v1", TaskName: "tg1t2"})
 		},
 		"SingleHostTaskGroup/SchedulesAllTasks": func(t *testing.T, p *Project) {
-			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "tg1t4"}}, evergreen.PatchVersionRequester, nil)
+			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "tg1t4"}}, evergreen.PatchVersionRequester, "", nil)
 			require.NoError(t, err)
 			assert.Len(t, pairs, 3)
 			assert.Contains(t, pairs, TVPair{Variant: "v1", TaskName: "tg1t1"})
@@ -83,13 +83,13 @@ func TestIncludeDependenciesForTaskGroups(t *testing.T) {
 			assert.Contains(t, pairs, TVPair{Variant: "v1", TaskName: "tg1t4"})
 		},
 		"SingleHostTaskGroup/FirstTaskSchedulesNoOtherTasks": func(t *testing.T, p *Project) {
-			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "tg1t1"}}, evergreen.PatchVersionRequester, nil)
+			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "tg1t1"}}, evergreen.PatchVersionRequester, "", nil)
 			require.NoError(t, err)
 			assert.Len(t, pairs, 1)
 			assert.Contains(t, pairs, TVPair{Variant: "v1", TaskName: "tg1t1"})
 		},
 		"SingleHostTaskGroup/TaskGroupTaskAsDependencyIsIncluded": func(t *testing.T, p *Project) {
-			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "t2"}}, evergreen.PatchVersionRequester, nil)
+			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "t2"}}, evergreen.PatchVersionRequester, "", nil)
 			require.NoError(t, err)
 			assert.Len(t, pairs, 3)
 			assert.Contains(t, pairs, TVPair{Variant: "v1", TaskName: "t2"})
@@ -97,7 +97,7 @@ func TestIncludeDependenciesForTaskGroups(t *testing.T) {
 			assert.Contains(t, pairs, TVPair{Variant: "v1", TaskName: "tg1t2"})
 
 			// The variant selector should not affect the result.
-			pairs, err = IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "t3"}}, evergreen.PatchVersionRequester, nil)
+			pairs, err = IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "t3"}}, evergreen.PatchVersionRequester, "", nil)
 			require.NoError(t, err)
 			assert.Len(t, pairs, 3)
 			assert.Contains(t, pairs, TVPair{Variant: "v1", TaskName: "t3"})
@@ -105,20 +105,20 @@ func TestIncludeDependenciesForTaskGroups(t *testing.T) {
 			assert.Contains(t, pairs, TVPair{Variant: "v1", TaskName: "tg1t2"})
 
 			// The task group being defined by tg4 should not affect the result.
-			pairs, err = IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "tg4"}}, evergreen.PatchVersionRequester, nil)
+			pairs, err = IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "tg4"}}, evergreen.PatchVersionRequester, "", nil)
 			require.NoError(t, err)
 			assert.Len(t, pairs, 2)
 			assert.Contains(t, pairs, TVPair{Variant: "v1", TaskName: "tg4t1"})
 			assert.Contains(t, pairs, TVPair{Variant: "v1", TaskName: "tg4t2"})
 		},
 		"SingleHostTaskGroup/InvalidVariantShouldBeIgnored": func(t *testing.T, p *Project) {
-			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "t4"}}, evergreen.PatchVersionRequester, nil)
+			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "t4"}}, evergreen.PatchVersionRequester, "", nil)
 			require.NoError(t, err)
 			assert.Len(t, pairs, 1)
 			assert.Contains(t, pairs, TVPair{Variant: "v1", TaskName: "t4"})
 		},
 		"SingleHostTaskGroup/WithADependencyOnATaskGroup": func(t *testing.T, p *Project) {
-			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "t7"}}, evergreen.PatchVersionRequester, nil)
+			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "t7"}}, evergreen.PatchVersionRequester, "", nil)
 			require.NoError(t, err)
 			assert.Len(t, pairs, 3)
 			assert.Contains(t, pairs, TVPair{Variant: "v1", TaskName: "t7"})
@@ -126,21 +126,21 @@ func TestIncludeDependenciesForTaskGroups(t *testing.T) {
 			assert.Contains(t, pairs, TVPair{Variant: "v2", TaskName: "tg3t2"})
 		},
 		"SingleHostTaskGroup/ScheduleTaskGroup": func(t *testing.T, p *Project) {
-			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "tg4"}}, evergreen.PatchVersionRequester, nil)
+			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "tg4"}}, evergreen.PatchVersionRequester, "", nil)
 			require.NoError(t, err)
 			assert.Len(t, pairs, 2)
 			assert.Contains(t, pairs, TVPair{Variant: "v1", TaskName: "tg4t1"})
 			assert.Contains(t, pairs, TVPair{Variant: "v1", TaskName: "tg4t2"})
 		},
 		"MultiHostTaskGroup/ShouldNotSchedulePreviousTasks": func(t *testing.T, p *Project) {
-			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "t5"}}, evergreen.PatchVersionRequester, nil)
+			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "t5"}}, evergreen.PatchVersionRequester, "", nil)
 			require.NoError(t, err)
 			assert.Len(t, pairs, 2)
 			assert.Contains(t, pairs, TVPair{Variant: "v1", TaskName: "t5"})
 			assert.Contains(t, pairs, TVPair{Variant: "v1", TaskName: "tg2t2"})
 		},
 		"MultiHostTaskGroup/AllVariantsSelectorWorks": func(t *testing.T, p *Project) {
-			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "t6"}}, evergreen.PatchVersionRequester, nil)
+			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "t6"}}, evergreen.PatchVersionRequester, "", nil)
 			require.NoError(t, err)
 			assert.Len(t, pairs, 2)
 			assert.Contains(t, pairs, TVPair{Variant: "v1", TaskName: "t6"})
@@ -264,14 +264,14 @@ func TestIncludeDependencies(t *testing.T) {
 		So(p, ShouldNotBeNil)
 
 		Convey("a patch against v1/t1 should remain unchanged", func() {
-			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "t1"}}, evergreen.PatchVersionRequester, nil)
+			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "t1"}}, evergreen.PatchVersionRequester, "", nil)
 			So(err, ShouldBeNil)
 			So(len(pairs), ShouldEqual, 1)
 			So(pairs[0], ShouldResemble, TVPair{Variant: "v1", TaskName: "t1"})
 		})
 
 		Convey("a patch against v1/t2 should add t1", func() {
-			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "t2"}}, evergreen.PatchVersionRequester, nil)
+			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "t2"}}, evergreen.PatchVersionRequester, "", nil)
 			So(err, ShouldBeNil)
 			So(len(pairs), ShouldEqual, 2)
 			So(pairs, shouldContainPair, TVPair{Variant: "v1", TaskName: "t2"})
@@ -279,7 +279,7 @@ func TestIncludeDependencies(t *testing.T) {
 		})
 
 		Convey("a patch against v2/t3 should add t1,t2, and v1", func() {
-			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v2", TaskName: "t3"}}, evergreen.PatchVersionRequester, nil)
+			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v2", TaskName: "t3"}}, evergreen.PatchVersionRequester, "", nil)
 			So(err, ShouldBeNil)
 			So(len(pairs), ShouldEqual, 3)
 			So(pairs, shouldContainPair, TVPair{Variant: "v1", TaskName: "t2"})
@@ -288,17 +288,17 @@ func TestIncludeDependencies(t *testing.T) {
 		})
 
 		Convey("a patch against v2/t5 should be pruned, since its dependency is not patchable", func() {
-			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v2", TaskName: "t5"}}, evergreen.PatchVersionRequester, nil)
+			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v2", TaskName: "t5"}}, evergreen.PatchVersionRequester, "", nil)
 			So(err, ShouldNotBeNil)
 			So(len(pairs), ShouldEqual, 0)
 
-			pairs, err = IncludeDependencies(p, []TVPair{{Variant: "v2", TaskName: "t5"}}, evergreen.RepotrackerVersionRequester, nil)
+			pairs, err = IncludeDependencies(p, []TVPair{{Variant: "v2", TaskName: "t5"}}, evergreen.RepotrackerVersionRequester, "", nil)
 			So(err, ShouldBeNil)
 			So(len(pairs), ShouldEqual, 2)
 		})
 
 		Convey("a patch that has a dependency on a task group task with all variants should include that one task", func() {
-			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v2", TaskName: "t6"}}, evergreen.PatchVersionRequester, nil)
+			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v2", TaskName: "t6"}}, evergreen.PatchVersionRequester, "", nil)
 			So(err, ShouldBeNil)
 			So(len(pairs), ShouldEqual, 2)
 			expectedPairs := []TVPair{
@@ -309,7 +309,7 @@ func TestIncludeDependencies(t *testing.T) {
 			So(expectedPairs, ShouldContainResembling, pairs[1])
 		})
 		Convey("a patch that has a dependency on a task group task within the same variant should include that one task", func() {
-			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v2", TaskName: "t7"}}, evergreen.PatchVersionRequester, nil)
+			pairs, err := IncludeDependencies(p, []TVPair{{Variant: "v2", TaskName: "t7"}}, evergreen.PatchVersionRequester, "", nil)
 			So(err, ShouldBeNil)
 			So(len(pairs), ShouldEqual, 2)
 			expectedPairs := []TVPair{
@@ -350,7 +350,7 @@ func TestIncludeDependencies(t *testing.T) {
 		So(p, ShouldNotBeNil)
 
 		Convey("a patch against v1/t3 should include t2 and t1", func() {
-			pairs, _ := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "t3"}}, evergreen.PatchVersionRequester, nil)
+			pairs, _ := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "t3"}}, evergreen.PatchVersionRequester, "", nil)
 			So(len(pairs), ShouldEqual, 3)
 			So(pairs, shouldContainPair, TVPair{Variant: "v1", TaskName: "t2"})
 			So(pairs, shouldContainPair, TVPair{Variant: "v1", TaskName: "t1"})
@@ -358,7 +358,7 @@ func TestIncludeDependencies(t *testing.T) {
 		})
 
 		Convey("a patch against v3/t4 should include v1, v2, t3, t2, and t1", func() {
-			pairs, _ := IncludeDependencies(p, []TVPair{{Variant: "v3", TaskName: "t4"}}, evergreen.PatchVersionRequester, nil)
+			pairs, _ := IncludeDependencies(p, []TVPair{{Variant: "v3", TaskName: "t4"}}, evergreen.PatchVersionRequester, "", nil)
 			So(len(pairs), ShouldEqual, 7)
 
 			So(pairs, shouldContainPair, TVPair{Variant: "v3", TaskName: "t4"})
@@ -374,7 +374,7 @@ func TestIncludeDependencies(t *testing.T) {
 		})
 
 		Convey("a patch against v4/t5 should include v1, v2, v3, t4, t3, t2, and t1", func() {
-			pairs, _ := IncludeDependencies(p, []TVPair{{Variant: "v4", TaskName: "t5"}}, evergreen.PatchVersionRequester, nil)
+			pairs, _ := IncludeDependencies(p, []TVPair{{Variant: "v4", TaskName: "t5"}}, evergreen.PatchVersionRequester, "", nil)
 			So(len(pairs), ShouldEqual, 8)
 			So(pairs, shouldContainPair, TVPair{Variant: "v4", TaskName: "t5"})
 			So(pairs, shouldContainPair, TVPair{Variant: "v1", TaskName: "t1"})
@@ -407,14 +407,14 @@ func TestIncludeDependencies(t *testing.T) {
 
 		Convey("all tasks should be scheduled no matter which is initially added", func() {
 			Convey("for '1'", func() {
-				pairs, _ := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "1"}}, evergreen.PatchVersionRequester, nil)
+				pairs, _ := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "1"}}, evergreen.PatchVersionRequester, "", nil)
 				So(len(pairs), ShouldEqual, 3)
 				So(pairs, shouldContainPair, TVPair{Variant: "v1", TaskName: "1"})
 				So(pairs, shouldContainPair, TVPair{Variant: "v1", TaskName: "2"})
 				So(pairs, shouldContainPair, TVPair{Variant: "v1", TaskName: "3"})
 			})
 			Convey("for '2'", func() {
-				pairs, _ := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "2"}, {"v2", "2"}}, evergreen.PatchVersionRequester, nil)
+				pairs, _ := IncludeDependencies(p, []TVPair{{Variant: "v1", TaskName: "2"}, {"v2", "2"}}, evergreen.PatchVersionRequester, "", nil)
 				So(len(pairs), ShouldEqual, 6)
 				So(pairs, shouldContainPair, TVPair{Variant: "v1", TaskName: "1"})
 				So(pairs, shouldContainPair, TVPair{Variant: "v1", TaskName: "2"})
@@ -424,7 +424,7 @@ func TestIncludeDependencies(t *testing.T) {
 				So(pairs, shouldContainPair, TVPair{Variant: "v2", TaskName: "3"})
 			})
 			Convey("for '3'", func() {
-				pairs, _ := IncludeDependencies(p, []TVPair{{Variant: "v2", TaskName: "3"}}, evergreen.PatchVersionRequester, nil)
+				pairs, _ := IncludeDependencies(p, []TVPair{{Variant: "v2", TaskName: "3"}}, evergreen.PatchVersionRequester, "", nil)
 				So(len(pairs), ShouldEqual, 3)
 				So(pairs, shouldContainPair, TVPair{Variant: "v2", TaskName: "1"})
 				So(pairs, shouldContainPair, TVPair{Variant: "v2", TaskName: "2"})
@@ -451,7 +451,7 @@ func TestIncludeDependencies(t *testing.T) {
 		So(p, ShouldNotBeNil)
 
 		initDep := TVPair{TaskName: "a", Variant: "initial-variant"}
-		pairs, _ := IncludeDependencies(p, []TVPair{initDep}, evergreen.PatchVersionRequester, nil)
+		pairs, _ := IncludeDependencies(p, []TVPair{initDep}, evergreen.PatchVersionRequester, "", nil)
 		So(pairs, ShouldHaveLength, 2)
 		So(initDep, ShouldBeIn, pairs)
 		So(TVPair{TaskName: "b", Variant: "variant-with-group"}, ShouldBeIn, pairs)
@@ -470,7 +470,7 @@ func TestIncludeDependencies(t *testing.T) {
 		So(p, ShouldNotBeNil)
 
 		pair := TVPair{TaskName: "a", Variant: "bv"}
-		pairs, _ := IncludeDependencies(p, []TVPair{pair}, evergreen.PatchVersionRequester, nil)
+		pairs, _ := IncludeDependencies(p, []TVPair{pair}, evergreen.PatchVersionRequester, "", nil)
 		So(pairs, ShouldBeEmpty)
 	})
 	Convey("With a task group that has a subset of its tasks disabled", t, func() {
@@ -492,7 +492,7 @@ func TestIncludeDependencies(t *testing.T) {
 		So(p, ShouldNotBeNil)
 
 		tgTaskPair := TVPair{TaskName: "task-group", Variant: "bv-with-group"}
-		pairs, _ := IncludeDependencies(p, []TVPair{tgTaskPair}, evergreen.PatchVersionRequester, nil)
+		pairs, _ := IncludeDependencies(p, []TVPair{tgTaskPair}, evergreen.PatchVersionRequester, "", nil)
 		So(pairs, ShouldHaveLength, 2)
 		So(pairs, ShouldNotContain, tgTaskPair)
 		So(pairs, ShouldNotContain, TVPair{TaskName: "c", Variant: "bv-with-group"})

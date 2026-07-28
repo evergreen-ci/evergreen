@@ -1,0 +1,10 @@
+{
+  task(taskId: "only_success_next") {
+    id
+    status
+    prevTaskCompleted(prevTaskOptions: { skipOnParentCompleted: true }) {
+      id
+      status
+    }
+  }
+}

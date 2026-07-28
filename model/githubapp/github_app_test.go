@@ -151,8 +151,7 @@ func (s *installationSuite) TestCreateCachedInstallationToken() {
 	s.Equal(restrictedToken, token, "should return cached token since it is still valid for at least %s", lifetime)
 }
 func TestCreateGitHubAppAuth(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))

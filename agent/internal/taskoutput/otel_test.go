@@ -149,7 +149,7 @@ func TestOtelTraceDirectoryHandlerRun(t *testing.T) {
 		require.NoError(t, err)
 
 		numFiles := 5
-		for i := 0; i < numFiles; i++ {
+		for i := range numFiles {
 			err := os.WriteFile(path.Join(tmpDir, "trace"+string(rune('0'+i))+".json"), srcData, 0644)
 			require.NoError(t, err)
 		}

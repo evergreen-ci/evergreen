@@ -123,14 +123,16 @@ func StripHiddenFiles(ctx context.Context, files []File, hasUser bool) ([]File, 
 	return publicFiles, nil
 }
 
-func lazySignURL(baseURL, taskID string, execution int, fileName string) string {
-	return fmt.Sprintf("%s/rest/v2/tasks/%s/artifact/sign?execution=%d&name=%s",
-		baseURL, url.PathEscape(taskID), execution, url.QueryEscape(fileName))
+func lazySignURL(baseURL, taskID string, execution int, fileName string, appSecret []byte) string {
+	token, expiry := GenerateSignToken(appSecret, taskID, execution, fileName)
+	return fmt.Sprintf("%s/rest/v2/tasks/%s/artifact/sign?execution=%d&name=%s&token=%s&exp=%d",
+		baseURL, url.PathEscape(taskID), execution, url.QueryEscape(fileName), url.QueryEscape(token), expiry)
 }
 
 // StripHiddenFilesLazy filters files by visibility and replaces signed file
-// links with lazy redirect URLs instead of eagerly presigning them.
-func StripHiddenFilesLazy(files []File, hasUser bool, baseURL string, taskID string, execution int) []File {
+// links with lazy redirect URLs that include a token, instead of eagerly
+// presigning them.
+func StripHiddenFilesLazy(files []File, hasUser bool, baseURL string, taskID string, execution int, appSecret []byte) []File {
 	publicFiles := []File{}
 	for _, file := range files {
 		switch {
@@ -139,7 +141,7 @@ func StripHiddenFilesLazy(files []File, hasUser bool, baseURL string, taskID str
 		case (file.Visibility == Private || file.Visibility == Signed) && !hasUser:
 			continue
 		case file.Visibility == Signed && hasUser:
-			file.Link = lazySignURL(baseURL, taskID, execution, file.Name)
+			file.Link = lazySignURL(baseURL, taskID, execution, file.Name, appSecret)
 			publicFiles = append(publicFiles, file)
 		default:
 			publicFiles = append(publicFiles, file)

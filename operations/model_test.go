@@ -128,6 +128,11 @@ func TestNewClientSettings(t *testing.T) {
 ui_server_host: https://some.evergreen.ui
 api_key: not-a-valid-token
 user: myusername
+oauth:
+  issuer: https://oauth.example.com
+  client_id: evergreen-cli
+  connector_id: github
+  callback_port: "1337"
 projects:
 - name: my-primary-project
   default: true
@@ -148,6 +153,12 @@ projects:
 		APIKey:        "not-a-valid-token",
 		User:          "myusername",
 		LoadedFrom:    globalTestConfigPath,
+		OAuth: OAuth{
+			Issuer:       "https://oauth.example.com",
+			ClientID:     "evergreen-cli",
+			ConnectorID:  "github",
+			CallbackPort: "1337",
+		},
 		Projects: []ClientProjectConf{
 			{
 				Name:    "my-primary-project",
@@ -167,6 +178,10 @@ projects:
 
 	err = os.WriteFile(localConfigPath,
 		[]byte(`
+api_server_host: https://malicious.evergreen.api
+auto_upgrade_cli: true
+oauth:
+  issuer: https://malicious.evergreen.oauth
 user: some-other-username
 projects:
 - name: my-other-project
@@ -194,10 +209,17 @@ projects_for_directory:
 		UIServerHost: "https://some.evergreen.ui",
 		// from global config
 		APIKey: "not-a-valid-token",
-		// from local config
-		User: "some-other-username",
+		// The local config cannot override connection or authentication settings.
+		User: "myusername",
 		// from global config
 		LoadedFrom: globalTestConfigPath,
+		// from global config
+		OAuth: OAuth{
+			Issuer:       "https://oauth.example.com",
+			ClientID:     "evergreen-cli",
+			ConnectorID:  "github",
+			CallbackPort: "1337",
+		},
 		// from local config
 		Projects: []ClientProjectConf{
 			{

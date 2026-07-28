@@ -3,6 +3,7 @@ package operations
 import (
 	"context"
 	"fmt"
+	"maps"
 	"os"
 	"strings"
 
@@ -34,6 +35,7 @@ const (
 	testSelectionIncludeTasksFlagName    = "test-selection-include-tasks"
 	testSelectionExcludeVariantsFlagName = "test-selection-exclude-variants"
 	testSelectionExcludeTasksFlagName    = "test-selection-exclude-tasks"
+	emptyFlagName                        = "empty"
 )
 
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
@@ -55,6 +57,10 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(tasksFlagName, "t"),
 				Usage: "task names (\"all\" for all tasks)",
+			},
+			cli.BoolFlag{
+				Name:  emptyFlagName,
+				Usage: "create a patch with no tasks selected, ignoring the default alias",
 			},
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(patchAliasFlagName, "a"),
@@ -172,6 +178,7 @@ func Patch() cli.Command {
 				RepeatDefinition:                   c.Bool(repeatDefinitionFlag) || c.String(repeatPatchIdFlag) != "",
 				RepeatFailed:                       c.Bool(repeatFailedDefinitionFlag),
 				IncludeModules:                     c.Bool(includeModulesFlag),
+				SelectNone:                         c.Bool(emptyFlagName),
 			}
 
 			var err error
@@ -260,9 +267,7 @@ func Patch() cli.Command {
 			// Initialize module path cache in case these have already been set by the user. We use a cache here
 			// to avoid asking the user repeatedly for paths, in the case that they aren't writing them back to their configuration file.
 			modulePathCache := conf.getModulePathsForProject(params.Project)
-			for moduleName, modulePath := range params.IncludeModuleOverrides {
-				modulePathCache[moduleName] = modulePath
-			}
+			maps.Copy(modulePathCache, params.IncludeModuleOverrides)
 			if params.IncludeModules {
 				if !outputJSON {
 					fmt.Fprint(os.Stderr, "Using --include-modules will apply module configuration changes to the patch "+

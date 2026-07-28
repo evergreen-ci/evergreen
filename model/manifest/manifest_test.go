@@ -118,3 +118,28 @@ func TestByBaseProjectAndRevision(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "m1", mfest.Id)
 }
+
+func TestFindByIds(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	mfests := []Manifest{
+		{Id: "m1", ProjectName: "evergreen", Revision: "abc"},
+		{Id: "m2", ProjectName: "evergreen", Revision: "def"},
+		{Id: "m3", ProjectName: "evergreen", Revision: "ghi"},
+	}
+	for _, mfest := range mfests {
+		_, err := mfest.TryInsert(t.Context())
+		require.NoError(t, err)
+	}
+
+	found, err := Find(t.Context(), ByIds([]string{"m1", "m3", "missing"}))
+	require.NoError(t, err)
+	require.Len(t, found, 2)
+
+	foundIDs := map[string]bool{}
+	for _, mfest := range found {
+		foundIDs[mfest.Id] = true
+	}
+	assert.True(t, foundIDs["m1"])
+	assert.True(t, foundIDs["m3"])
+	assert.False(t, foundIDs["m2"])
+}

@@ -428,20 +428,19 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			p.PatchedProjectConfig = patchConfig.PatchedProjectConfig
 		}
 
-		_, err = model.FinalizePatch(ctx, p, evergreen.PatchVersionRequester)
+		_, err = model.FinalizePatch(ctx, p, evergreen.PatchVersionRequester, nil)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
 		grip.Info(ctx, message.Fields{
-			"operation":     "patch creation",
-			"message":       "finalized patch",
-			"from":          "CLI",
-			"patch_id":      p.Id,
-			"variants":      p.BuildVariants,
-			"tasks":         p.Tasks,
-			"variant_tasks": p.VariantsTasks,
-			"alias":         p.Alias,
+			"operation":    "patch creation",
+			"message":      "finalized patch",
+			"from":         "CLI",
+			"patch_id":     p.Id,
+			"num_variants": len(p.BuildVariants),
+			"num_tasks":    len(p.Tasks),
+			"alias":        p.Alias,
 		})
 
 		gimlet.WriteJSON(r.Context(), w, "patch finalized")

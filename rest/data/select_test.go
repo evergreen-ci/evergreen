@@ -1,20 +1,133 @@
 package data
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
+func captureGripMessages(t *testing.T) *send.InternalSender {
+	originalSender := grip.GetSender()
+	sender := send.MakeInternalLogger()
+	require.NoError(t, grip.SetSender(sender))
+	t.Cleanup(func() {
+		require.NoError(t, grip.SetSender(originalSender))
+	})
+	return sender
+}
+
+func TestLogTSSError(t *testing.T) {
+	t.Run("CanceledRequestIsNotLogged", func(t *testing.T) {
+		sender := captureGripMessages(t)
+
+		logTSSError(t.Context(), context.Canceled, nil, time.Second, message.Fields{
+			"message":  "test selection request canceled",
+			"endpoint": GetTestsStateEndpoint,
+		})
+
+		assert.Zero(t, sender.Len())
+	})
+
+	t.Run("GetTestsStateTimeoutIsNotLogged", func(t *testing.T) {
+		sender := captureGripMessages(t)
+
+		logTSSError(t.Context(), context.DeadlineExceeded, nil, time.Second, message.Fields{
+			"message":  "test selection request timed out",
+			"endpoint": GetTestsStateEndpoint,
+		})
+
+		assert.Zero(t, sender.Len())
+	})
+
+	t.Run("MutationTimeoutIsError", func(t *testing.T) {
+		sender := captureGripMessages(t)
+
+		logTSSError(t.Context(), context.DeadlineExceeded, nil, time.Second, message.Fields{
+			"message":  "test selection request timed out",
+			"endpoint": TransitionTestsEndpoint,
+		})
+
+		require.Equal(t, 1, sender.Len())
+		assert.Equal(t, level.Error, sender.GetMessage().Priority)
+	})
+}
+
+func TestSelectTestsSetsTimeout(t *testing.T) {
+	for _, test := range []struct {
+		name             string
+		tests            []string
+		expectedEndpoint string
+	}{
+		{
+			name:             "ExplicitTestsShouldSetTimeout",
+			tests:            []string{"test"},
+			expectedEndpoint: SelectTestsEndpoint,
+		},
+		{
+			name:             "AllKnownTestsShouldSetTimeout",
+			expectedEndpoint: SelectKnownTestsEndpoint,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			sender := captureGripMessages(t)
+			setTSSURLForTest(t, "http://tss.example.com")
+			startAt := time.Now()
+			originalClient := testSelectionHTTPClient
+			testSelectionHTTPClient = &http.Client{
+				Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+					deadline, ok := req.Context().Deadline()
+					require.True(t, ok)
+					assert.WithinDuration(t, startAt.Add(testSelectionSelectTimeout), deadline, time.Second)
+					return nil, context.DeadlineExceeded
+				}),
+			}
+			t.Cleanup(func() {
+				testSelectionHTTPClient = originalClient
+			})
+
+			selectedTests, err := SelectTests(t.Context(), model.SelectTestsRequest{
+				Project:      "project",
+				Requester:    evergreen.PatchVersionRequester,
+				BuildVariant: "build_variant",
+				TaskID:       "task_id",
+				TaskName:     "task_name",
+				Tests:        test.tests,
+			})
+			require.Error(t, err)
+			assert.ErrorIs(t, err, context.DeadlineExceeded)
+			assert.Empty(t, selectedTests)
+			require.Equal(t, 1, sender.Len())
+			fields, ok := sender.GetMessage().Message.Raw().(message.Fields)
+			require.True(t, ok)
+			assert.Equal(t, test.expectedEndpoint, fields["endpoint"])
+			assert.Equal(t, true, fields["timeout"])
+			assert.Contains(t, fields, "duration_ms")
+		})
+	}
+}
 
 func TestGetTestsQuarantineStatus(t *testing.T) {
 	const (
@@ -125,17 +238,31 @@ func TestGetTestsQuarantineStatus(t *testing.T) {
 		assert.Equal(t, map[string]bool{"test_a": true, "test_missing": false}, statuses)
 	})
 
-	t.Run("ServiceErrorReturnsWrappedError", func(t *testing.T) {
+	t.Run("ServiceErrorReturnsDefaultStatuses", func(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "boom", http.StatusInternalServerError)
 		}))
 		t.Cleanup(srv.Close)
 		setTSSURL(t, srv.URL)
 
-		_, err := GetTestsQuarantineStatus(t.Context(), projectID, bvName, taskName, []string{"test_a"})
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "forwarding request to test selection service")
-		assert.Contains(t, err.Error(), "boom")
+		statuses, err := GetTestsQuarantineStatus(t.Context(), projectID, bvName, taskName, []string{"test_a"})
+		require.NoError(t, err)
+		assert.Equal(t, map[string]bool{"test_a": false}, statuses)
+	})
+
+	t.Run("CanceledContextReturnsDefaultStatuses", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"test_a":{"state":"manually_quarantined"}}`))
+		}))
+		t.Cleanup(srv.Close)
+		setTSSURL(t, srv.URL)
+
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+		statuses, err := GetTestsQuarantineStatus(ctx, projectID, bvName, taskName, []string{"test_a"})
+		require.NoError(t, err)
+		assert.Equal(t, map[string]bool{"test_a": false}, statuses)
 	})
 
 	t.Run("NotFoundReturnsDefaultStatuses", func(t *testing.T) {
@@ -344,6 +471,25 @@ func TestDecorateQuarantineStatus(t *testing.T) {
 		require.NoError(t, DecorateQuarantineStatus(t.Context(), parent, results))
 		assert.True(t, results[0].IsManuallyQuarantined)
 		assert.False(t, results[1].IsManuallyQuarantined)
+	})
+
+	t.Run("ExecutionTaskTSSFailureDoesNotError", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "boom", http.StatusInternalServerError)
+		}))
+		t.Cleanup(srv.Close)
+		setTSSURL(t, srv.URL)
+
+		parent := &task.Task{
+			Id:                   "exec_task",
+			Project:              "p",
+			BuildVariant:         "bv",
+			DisplayName:          "exec_task",
+			TestSelectionEnabled: true,
+		}
+		results := []testresult.TestResult{{TaskID: "exec_task", TestName: "TestFoo"}}
+		require.NoError(t, DecorateQuarantineStatus(t.Context(), parent, results))
+		assert.False(t, results[0].IsManuallyQuarantined)
 	})
 
 	t.Run("DisplayTaskFansOutAcrossExecutionTasks", func(t *testing.T) {

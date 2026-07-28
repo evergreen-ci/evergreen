@@ -17,8 +17,7 @@ type cliUpdateConnectorSuite struct {
 }
 
 func TestUpdateConnector(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	s := &cliUpdateConnectorSuite{}
 	s.setup = func() {
@@ -47,13 +46,6 @@ func (s *cliUpdateConnectorSuite) Test() {
 			Api: evergreen.APIConfig{
 				CorpURL: "https://evergreen.corp.example.com",
 			},
-			AuthConfig: evergreen.AuthConfig{
-				OAuth: &evergreen.OAuthConfig{
-					Issuer:      "https://example.com",
-					ClientID:    "client_id",
-					ConnectorID: "connector_id",
-				},
-			},
 			Ui: evergreen.UIConfig{
 				UIv2Url: "https://spruce.example.com",
 			},
@@ -66,16 +58,6 @@ func (s *cliUpdateConnectorSuite) Test() {
 	s.Require().NotNil(v)
 	s.Require().NotNil(v.ClientConfig.LatestRevision)
 	s.Equal(latestRevision, *v.ClientConfig.LatestRevision)
-	s.Require().NotNil(v.ClientConfig.OAuthIssuer)
-	s.Equal("https://example.com", *v.ClientConfig.OAuthIssuer)
-	s.Require().NotNil(v.ClientConfig.OAuthClientID)
-	s.Equal("client_id", *v.ClientConfig.OAuthClientID)
-	s.Require().NotNil(v.ClientConfig.OAuthConnectorID)
-	s.Equal("connector_id", *v.ClientConfig.OAuthConnectorID)
-	s.Require().NotNil(v.ClientConfig.CorpAPIServerHost)
-	s.Equal("https://evergreen.corp.example.com/api", *v.ClientConfig.CorpAPIServerHost)
-	s.Require().NotNil(v.ClientConfig.NewUIServerHost)
-	s.Equal("https://spruce.example.com", *v.ClientConfig.NewUIServerHost)
 }
 
 func (s *cliUpdateConnectorSuite) TestDegradedMode() {

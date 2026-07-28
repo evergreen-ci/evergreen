@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"strings"
 	"testing"
 	"time"
 
@@ -25,8 +26,7 @@ import (
 )
 
 func TestSendTestResults(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := testutil.NewEnvironment(ctx, t)
 
@@ -202,7 +202,7 @@ func saveTestResults(t *testing.T, ctx context.Context, testBucket pail.Bucket, 
 		Results:   make([]testresult.ParquetTestResult, length),
 	}
 
-	for i := 0; i < len(savedResults); i++ {
+	for i := range savedResults {
 		savedParquet.Results[i] = testresult.ParquetTestResult{
 			TestName:       savedResults[i].TestName,
 			GroupID:        utility.ToStringPtr(savedResults[i].GroupID),
@@ -230,4 +230,20 @@ func saveTestResults(t *testing.T, ctx context.Context, testBucket pail.Bucket, 
 	require.NoError(t, db.Insert(ctx, testresult.Collection, tr))
 	require.NoError(t, svc.AppendTestResultMetadata(resultTestutil.MakeAppendTestResultMetadataReq(ctx, savedResults, tr.ID)))
 	return savedResults
+}
+
+func TestMakeTestResultsTruncatesOversizedDisplayTestName(t *testing.T) {
+	longName := strings.Repeat("a", maxDisplayTestNameLength+50)
+
+	results := makeTestResults(&task.Task{}, []testresult.TestResult{
+		{TestName: "short", DisplayTestName: "short"},
+		{TestName: "fallback-name"},
+		{TestName: "x", DisplayTestName: longName},
+	})
+
+	require.Len(t, results, 3)
+	assert.Equal(t, "short", results[0].DisplayTestName)
+	assert.Equal(t, "fallback-name", results[1].DisplayTestName)
+	assert.Len(t, results[2].DisplayTestName, maxDisplayTestNameLength)
+	assert.Equal(t, longName[:maxDisplayTestNameLength], results[2].DisplayTestName)
 }

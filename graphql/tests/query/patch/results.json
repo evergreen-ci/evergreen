@@ -9,7 +9,7 @@
             "author": "admin_user",
             "githash": "123",
             "user": {
-              "userId": "admin_user",
+              "id": "admin_user",
               "displayName": "Admin User"
             }
           }

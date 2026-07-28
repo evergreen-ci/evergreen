@@ -1351,10 +1351,7 @@ func (c *communicatorImpl) StartHostProcesses(ctx context.Context, hostIDs []str
 
 	result := []model.APIHostProcess{}
 	for i := 0; i < len(hostIDs); i += batchSize {
-		end := i + batchSize
-		if end > len(hostIDs) {
-			end = len(hostIDs)
-		}
+		end := min(i+batchSize, len(hostIDs))
 		data := model.APIHostScript{Hosts: hostIDs[i:end], Script: script}
 		output, err := func() ([]model.APIHostProcess, error) {
 			resp, err := c.request(ctx, info, data)
@@ -1399,10 +1396,7 @@ func (c *communicatorImpl) GetHostProcessOutput(ctx context.Context, hostProcess
 	result := []model.APIHostProcess{}
 
 	for i := 0; i < len(hostProcesses); i += batchSize {
-		end := i + batchSize
-		if end > len(hostProcesses) {
-			end = len(hostProcesses)
-		}
+		end := min(i+batchSize, len(hostProcesses))
 		output, err := func() ([]model.APIHostProcess, error) {
 			resp, err := c.request(ctx, info, hostProcesses[i:end])
 			if err != nil {
@@ -1608,7 +1602,6 @@ func (c *communicatorImpl) PostHostIsUp(ctx context.Context, opts host.HostMetad
 		method: http.MethodPost,
 		path:   fmt.Sprintf("/hosts/%s/is_up", c.hostID),
 	}
-	opts.HostID = c.hostID
 	r, err := c.createRequest(info, opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating request")
@@ -1958,10 +1951,14 @@ func (c *communicatorImpl) SendPanicReport(ctx context.Context, details *model.P
 	return nil
 }
 
-func GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.ClientOption) (*oauth2.Token, string, error) {
+func GetOAuthToken(ctx context.Context, doNotUseBrowser bool, callbackPort string, opts ...dex.ClientOption) (*oauth2.Token, string, error) {
 	httpClient := utility.GetDefaultHTTPRetryableClient()
 	defer utility.PutHTTPClient(httpClient)
 	ctx = oidc.ClientContext(ctx, httpClient)
+
+	if callbackPort == "" {
+		callbackPort = oauthCallbackPort
+	}
 
 	loader := &dex.FileTokenLoader{}
 	baseOpts := append(opts,
@@ -1969,15 +1966,16 @@ func GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.Client
 		dex.WithRefresh(),
 		dex.WithFallbackToStdOut(true),
 		dex.WithTokenExpiryBuffer(time.Minute),
+		dex.WithCallbackPort(callbackPort),
 	)
 
 	flow := oauthFlowAuthCode
 	if doNotUseBrowser {
 		flow = oauthFlowDevice
-	} else if !callbackPortAvailable(oauthCallbackPort) {
+	} else if !callbackPortAvailable(callbackPort) {
 		grip.Notice(ctx, message.Fields{
 			"message": "OAuth callback port unavailable; using device code flow",
-			"port":    oauthCallbackPort,
+			"port":    callbackPort,
 		})
 		flow = oauthFlowDevice
 	}

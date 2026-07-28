@@ -658,10 +658,12 @@ func getEC2ManagerOptionsFromSettings(d distro.Distro, settings *EC2ProviderSett
 }
 
 func validateEC2HostModifyOptions(h *host.Host, opts host.HostModifyOptions) error {
-	if opts.InstanceType != "" && h.Status != evergreen.HostStopped {
-		return errors.New("host must be stopped to modify instance type")
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(opts.InstanceType != "" && h.Status != evergreen.HostStopped, "host must be stopped to modify instance type")
+	if opts.NewName != "" {
+		catcher.Wrap(host.ValidateDisplayName(opts.NewName), "invalid display name")
 	}
-	return nil
+	return catcher.Resolve()
 }
 
 func ValidVolumeOptions(v *host.Volume, s *evergreen.Settings) error {

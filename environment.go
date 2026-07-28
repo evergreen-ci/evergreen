@@ -335,6 +335,7 @@ type envState struct {
 	closers                 []closerOp
 	senders                 map[SenderKey]send.Sender
 	githubSenders           map[string]cachedGitHubSender
+	githubSendersMu         sync.Mutex
 	roleManager             gimlet.RoleManager
 	userManager             gimlet.UserManager
 	userManagerInfo         UserManagerInfo
@@ -1341,13 +1342,6 @@ type BuildBaronSettings struct {
 	TicketCreateProject   string   `mapstructure:"ticket_create_project" bson:"ticket_create_project" json:"ticket_create_project" yaml:"ticket_create_project"`
 	TicketCreateIssueType string   `mapstructure:"ticket_create_issue_type" bson:"ticket_create_issue_type" json:"ticket_create_issue_type" yaml:"ticket_create_issue_type"`
 	TicketSearchProjects  []string `mapstructure:"ticket_search_projects" bson:"ticket_search_projects" json:"ticket_search_projects" yaml:"ticket_search_projects"`
-
-	// The BF Suggestion server as a source of suggestions is only enabled for projects where BFSuggestionServer isn't the empty string.
-	BFSuggestionServer      string `mapstructure:"bf_suggestion_server" bson:"bf_suggestion_server" json:"bf_suggestion_server" yaml:"bf_suggestion_server"`
-	BFSuggestionUsername    string `mapstructure:"bf_suggestion_username" bson:"bf_suggestion_username" json:"bf_suggestion_username" yaml:"bf_suggestion_username"`
-	BFSuggestionPassword    string `mapstructure:"bf_suggestion_password" bson:"bf_suggestion_password" json:"bf_suggestion_password" yaml:"bf_suggestion_password"`
-	BFSuggestionTimeoutSecs int    `mapstructure:"bf_suggestion_timeout_secs" bson:"bf_suggestion_timeout_secs" json:"bf_suggestion_timeout_secs" yaml:"bf_suggestion_timeout_secs"`
-	BFSuggestionFeaturesURL string `mapstructure:"bf_suggestion_features_url" bson:"bf_suggestion_features_url" json:"bf_suggestion_features_url" yaml:"bf_suggestion_features_url"`
 }
 
 type AnnotationsSettings struct {
@@ -1384,8 +1378,12 @@ type CreateInstallationTokenFunc func(ctx context.Context, owner, repo string) (
 // In case of GitHub app errors, the function returns the legacy GitHub sender with a global token attached.
 // The senders are only unique to orgs, not repos, but the repo name is needed to generate a token if necessary.
 func (e *envState) GetGitHubSender(owner, repo string, createInstallationToken CreateInstallationTokenFunc) (send.Sender, error) {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
+	// Lock the cache with its own lock, held across the whole function so the
+	// cache-miss path can safely write to e.githubSenders. The
+	// createInstallationToken call below reads from the environment and grabs
+	// e.mu, so the cache uses a separate lock to keep that call safe.
+	e.githubSendersMu.Lock()
+	defer e.githubSendersMu.Unlock()
 
 	githubSender, ok := e.githubSenders[owner]
 	// If githubSender exists and has not expired, return it.

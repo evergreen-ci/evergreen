@@ -153,15 +153,6 @@ func NewGithubIntent(ctx context.Context, msgDeliveryID, patchOwner, calledBy, a
 	if patchOwner == "" {
 		patchOwner = pr.User.GetLogin()
 	}
-	// mongodb-sage-bot sets the PR assignee as the intended human author, so
-	// use the assignee's identity for attribution instead.
-	ownerUID := int(pr.User.GetID())
-	assigneeLogin := pr.GetAssignee().GetLogin()
-	assigneeUID := int(pr.GetAssignee().GetID())
-	if patchOwner == evergreen.GitHubSageBotLogin && assigneeLogin != "" && assigneeUID != 0 {
-		patchOwner = assigneeLogin
-		ownerUID = assigneeUID
-	}
 	if alias == "" {
 		alias = evergreen.GithubPRAlias
 	}
@@ -181,7 +172,7 @@ func NewGithubIntent(ctx context.Context, msgDeliveryID, patchOwner, calledBy, a
 		HeadBranch:    pr.Head.GetRef(),
 		PRNumber:      pr.GetNumber(),
 		User:          patchOwner,
-		UID:           ownerUID,
+		UID:           int(pr.User.GetID()),
 		HeadHash:      pr.Head.GetSHA(),
 		BaseHash:      pr.Base.GetSHA(),
 		MergeBase:     mergeBase,
@@ -319,4 +310,21 @@ func (g *githubIntent) NewPatch() *Patch {
 
 func (g *githubIntent) GetAlias() string {
 	return g.Alias
+}
+
+// FindUnprocessedGithubMergeIntentHeadSHAs returns the head SHAs of GitHub merge
+// queue intents that have not yet been processed into a patch. The merge queue
+// patch recovery job uses these to avoid creating a duplicate patch for a merge
+// group whose webhook intent is still in flight.
+func FindUnprocessedGithubMergeIntentHeadSHAs(ctx context.Context) ([]string, error) {
+	var intents []githubMergeIntent
+	err := db.FindAllQ(ctx, IntentCollection, db.Query(bson.M{processedKey: false, intentTypeKey: GithubMergeIntentType}), &intents)
+	if err != nil {
+		return nil, err
+	}
+	headSHAs := make([]string, 0, len(intents))
+	for _, intent := range intents {
+		headSHAs = append(headSHAs, intent.HeadSHA)
+	}
+	return headSHAs, nil
 }

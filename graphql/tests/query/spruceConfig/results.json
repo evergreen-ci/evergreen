@@ -121,7 +121,6 @@
               "defaultOwner",
               "defaultRepo",
               "defaultSecurityGroup",
-              "ec2Keys",
               "github",
               "githubAppAuth",
               "githubWebhookSecret",

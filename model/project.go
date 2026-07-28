@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"fmt"
+	"maps"
 	"reflect"
 	"regexp"
 	"slices"
@@ -87,6 +88,25 @@ func (p *Project) buildTaskCache() {
 	}
 }
 
+// cloneForCacheReturn shallow-clones p's top-level slices and maps, and rebuilds the task cache
+// to point into the clone's Tasks. Nested structures below the top level remain shared and must
+// stay read-only. We do this instead of a deeper clone because that costs orders of magnitude more,
+// up to more than a full TranslateProject, which would defeat the point of caching.
+func (p *Project) cloneForCacheReturn() *Project {
+	cp := *p
+	cp.Ignore = slices.Clone(p.Ignore)
+	cp.Parameters = slices.Clone(p.Parameters)
+	cp.Modules = slices.Clone(p.Modules)
+	cp.BuildVariants = slices.Clone(p.BuildVariants)
+	cp.TaskGroups = slices.Clone(p.TaskGroups)
+	cp.Tasks = slices.Clone(p.Tasks)
+	if p.Functions != nil {
+		cp.Functions = maps.Clone(p.Functions)
+	}
+	cp.buildTaskCache()
+	return &cp
+}
+
 type ProjectInfo struct {
 	Ref                 *ProjectRef
 	Project             *Project
@@ -139,9 +159,15 @@ type BuildVariantTaskUnit struct {
 	AllowForGitTag    *bool                     `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
 	GitTagOnly        *bool                     `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
-	Priority          int64                     `yaml:"priority,omitempty" bson:"priority"`
-	DependsOn         []TaskUnitDependency      `yaml:"depends_on,omitempty" bson:"depends_on"`
-	ExecTimeoutSecs   int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
+	// AllowedBranches lists regex patterns for branches on which this task is
+	// allowed to run.
+	AllowedBranches []string `yaml:"allowed_branches,omitempty" bson:"allowed_branches,omitempty"`
+	// IgnoredBranches lists regex patterns for branches on which this task
+	// should be skipped. If AllowedBranches is also set, it takes precedence.
+	IgnoredBranches []string             `yaml:"ignored_branches,omitempty" bson:"ignored_branches,omitempty"`
+	Priority        int64                `yaml:"priority,omitempty" bson:"priority"`
+	DependsOn       []TaskUnitDependency `yaml:"depends_on,omitempty" bson:"depends_on"`
+	ExecTimeoutSecs int                  `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 
 	// the distros that the task can be run on
 	RunOn    []string `yaml:"run_on,omitempty" bson:"run_on"`
@@ -233,6 +259,12 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask, bv BuildVariant) {
 	if len(bvt.AllowedRequesters) == 0 {
 		bvt.AllowedRequesters = pt.AllowedRequesters
 	}
+	if len(bvt.AllowedBranches) == 0 {
+		bvt.AllowedBranches = pt.AllowedBranches
+	}
+	if len(bvt.IgnoredBranches) == 0 {
+		bvt.IgnoredBranches = pt.IgnoredBranches
+	}
 	if bvt.ExecTimeoutSecs == 0 {
 		bvt.ExecTimeoutSecs = pt.ExecTimeoutSecs
 	}
@@ -259,6 +291,12 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask, bv BuildVariant) {
 	}
 	if len(bvt.AllowedRequesters) == 0 {
 		bvt.AllowedRequesters = bv.AllowedRequesters
+	}
+	if len(bvt.AllowedBranches) == 0 {
+		bvt.AllowedBranches = bv.AllowedBranches
+	}
+	if len(bvt.IgnoredBranches) == 0 {
+		bvt.IgnoredBranches = bv.IgnoredBranches
 	}
 	if bvt.ExecTimeoutSecs == 0 {
 		bvt.ExecTimeoutSecs = bv.ExecTimeoutSecs
@@ -360,6 +398,38 @@ func (bvt *BuildVariantTaskUnit) SkipOnNonGitTagBuild() bool {
 	return utility.FromBoolPtr(bvt.GitTagOnly)
 }
 
+// skipOnBranch returns true if the task should be skipped based on the
+// version's branch.
+func (bvt *BuildVariantTaskUnit) skipOnBranch(branch string) bool {
+	if branch == "" {
+		return false
+	}
+	if len(bvt.AllowedBranches) > 0 {
+		for _, pattern := range bvt.AllowedBranches {
+			re, err := regexp.Compile(pattern)
+			if err != nil {
+				continue
+			}
+			if re.MatchString(branch) {
+				return false
+			}
+		}
+		return true
+	}
+	if len(bvt.IgnoredBranches) > 0 {
+		for _, pattern := range bvt.IgnoredBranches {
+			re, err := regexp.Compile(pattern)
+			if err != nil {
+				continue
+			}
+			if re.MatchString(branch) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // IsDisabled returns whether or not this build variant task is disabled.
 func (bvt *BuildVariantTaskUnit) IsDisabled() bool {
 	return utility.FromBoolPtr(bvt.Disable)
@@ -420,6 +490,12 @@ type BuildVariant struct {
 	// requester-related filters such as Patchable, PatchOnly, AllowForGitTag,
 	// and GitTagOnly. By default, all requesters are allowed to run the task.
 	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
+	// AllowedBranches lists regex patterns for branches on which tasks in this
+	// build variant are allowed to run.
+	AllowedBranches []string `yaml:"allowed_branches,omitempty" bson:"allowed_branches,omitempty"`
+	// IgnoredBranches lists regex patterns for branches on which tasks in this
+	// build variant should be skipped.
+	IgnoredBranches []string `yaml:"ignored_branches,omitempty" bson:"ignored_branches,omitempty"`
 
 	// ExecTimeoutSecs determines how long a task can run before timing out.
 	ExecTimeoutSecs int `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
@@ -760,6 +836,8 @@ type ProjectTask struct {
 	AllowForGitTag    *bool                     `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
 	GitTagOnly        *bool                     `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
+	AllowedBranches   []string                  `yaml:"allowed_branches,omitempty" bson:"allowed_branches,omitempty"`
+	IgnoredBranches   []string                  `yaml:"ignored_branches,omitempty" bson:"ignored_branches,omitempty"`
 	Stepback          *bool                     `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	MustHaveResults   *bool                     `yaml:"must_have_test_results,omitempty" bson:"must_have_test_results,omitempty"`
 	PS                *string                   `yaml:"ps,omitempty" bson:"ps,omitempty"`
@@ -914,7 +992,7 @@ func NewTaskIdConfigForRepotrackerVersion(ctx context.Context, p *Project, v *Ve
 		}
 		for _, t := range bv.Tasks {
 			// omit tasks excluded from the version
-			if t.IsDisabled() || t.SkipOnRequester(v.Requester) {
+			if t.IsDisabled() || t.SkipOnRequester(v.Requester) || t.skipOnBranch(v.Branch) {
 				continue
 			}
 			if tg := p.FindTaskGroup(t.Name); tg != nil {
@@ -1330,7 +1408,7 @@ func FindLatestVersionWithValidProject(ctx context.Context, projectId string, pr
 	revisionOrderNum := -1 // only specify in the event of failure
 	var err error
 	var lastGoodVersion *Version
-	for i := 0; i < retryCount; i++ {
+	for range retryCount {
 		lastGoodVersion, err = FindVersionByLastKnownGoodConfig(ctx, projectId, revisionOrderNum)
 		if err != nil {
 			// Database error, don't log critical but try again.
@@ -1342,7 +1420,9 @@ func FindLatestVersionWithValidProject(ctx context.Context, projectId string, pr
 		}
 
 		env := evergreen.GetEnvironment()
-		project, pp, err = FindAndTranslateProjectForVersion(ctx, env.Settings(), lastGoodVersion, preGeneration)
+		// The preGeneration path returns a pp that the caller (patch intent) mutates and re-upserts,
+		// so it must not share a coalesced read. Other callers discard pp and can coalesce.
+		project, pp, err = FindAndTranslateProjectForVersionWithOpts(ctx, env.Settings(), lastGoodVersion, preGeneration, !preGeneration)
 		if err != nil {
 			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "last known good version has malformed config",
@@ -1400,14 +1480,12 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 			}
 		}
 		if tg, ok := tgMap[bvt.Name]; ok {
-			for _, t := range tg.Tasks {
-				if t == task {
-					// task group tasks need to be repopulated from the task list
-					// Note that the build variant task unit retains the task
-					// group's name.
-					bvt.Populate(*p.FindProjectTask(task), *bv)
-					return &bvt
-				}
+			if slices.Contains(tg.Tasks, task) {
+				// task group tasks need to be repopulated from the task list
+				// Note that the build variant task unit retains the task
+				// group's name.
+				bvt.Populate(*p.FindProjectTask(task), *bv)
+				return &bvt
 			}
 		}
 	}
@@ -1741,7 +1819,7 @@ func (p *Project) IgnoresAllFiles(files []string) bool {
 // filters out tasks that cannot run due to being disabled or having an
 // unmatched requester (e.g. a patch-only task for a mainline commit).
 func (p *Project) BuildProjectTVPairs(ctx context.Context, patchDoc *patch.Patch, aliases []string) {
-	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.ResolvePatchVTs(ctx, patchDoc, patchDoc.GetRequester(), aliases, true)
+	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.ResolvePatchVTs(ctx, patchDoc, patchDoc.GetRequester(), aliases, true, "")
 
 	// Connect the execution tasks to the display tasks.
 	displayTasksToExecTasks := map[string][]string{}
@@ -1772,7 +1850,7 @@ func (p *Project) BuildProjectTVPairs(ctx context.Context, patchDoc *patch.Patch
 // variant. If includeDeps is set, it will also resolve task dependencies. This
 // filters out tasks that cannot run due to being disabled or having an
 // unmatched requester (e.g. a patch-only task for a mainline commit).
-func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, requester string, aliases []string, includeDeps bool) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
+func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, requester string, aliases []string, includeDeps bool, branch string) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
 	var bvs, bvTags, tasks, taskTags []string
 	for _, bv := range patchDoc.BuildVariants {
 		// Tags should start with "."
@@ -1841,7 +1919,7 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 	for _, bvName := range bvs {
 		for _, t := range tasks {
 			if bvt := p.FindTaskForVariant(t, bvName); bvt != nil {
-				if bvt.IsDisabled() || bvt.SkipOnRequester(requester) {
+				if bvt.IsDisabled() || bvt.SkipOnRequester(requester) || bvt.skipOnBranch(branch) {
 					continue
 				}
 				pairs.ExecTasks = append(pairs.ExecTasks, TVPair{Variant: bvName, TaskName: t})
@@ -1861,7 +1939,7 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 
 		aliasPairs := TaskVariantPairs{}
 		if !catcher.HasErrors() {
-			aliasPairs, err = p.BuildProjectTVPairsWithAlias(aliasDefs, requester)
+			aliasPairs, err = p.BuildProjectTVPairsWithAlias(aliasDefs, requester, branch)
 			catcher.Wrap(err, "getting task/variant pairs for alias")
 		}
 		grip.Error(ctx, message.WrapError(catcher.Resolve(), message.Fields{
@@ -1884,7 +1962,7 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 	pairs = p.extractDisplayTasks(pairs)
 	if includeDeps {
 		var err error
-		pairs.ExecTasks, err = IncludeDependencies(p, pairs.ExecTasks, requester, nil)
+		pairs.ExecTasks, err = IncludeDependencies(p, pairs.ExecTasks, requester, branch, nil)
 		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message": "error including dependencies",
 			"project": p.Identifier,
@@ -2050,7 +2128,7 @@ func (p *Project) extractDisplayTasks(pairs TaskVariantPairs) TaskVariantPairs {
 // BuildProjectTVPairsWithAlias returns variants and tasks for a project alias.
 // This filters out tasks that cannot run due to being disabled or having an
 // unmatched requester (e.g. a patch-only task for a mainline commit).
-func (p *Project) BuildProjectTVPairsWithAlias(aliases []ProjectAlias, requester string) (TaskVariantPairs, error) {
+func (p *Project) BuildProjectTVPairsWithAlias(aliases []ProjectAlias, requester, branch string) (TaskVariantPairs, error) {
 	res := TaskVariantPairs{
 		ExecTasks:    []TVPair{},
 		DisplayTasks: []TVPair{},
@@ -2079,7 +2157,7 @@ func (p *Project) BuildProjectTVPairsWithAlias(aliases []ProjectAlias, requester
 				}
 
 				if bvtu := p.FindTaskForVariant(t.Name, variant.Name); bvtu != nil {
-					if bvtu.IsDisabled() || bvtu.SkipOnRequester(requester) {
+					if bvtu.IsDisabled() || bvtu.SkipOnRequester(requester) || bvtu.skipOnBranch(branch) {
 						continue
 					}
 					res.ExecTasks = append(res.ExecTasks, TVPair{variant.Name, t.Name})
@@ -2117,12 +2195,12 @@ func (p *Project) VariantTasksForSelectors(ctx context.Context, definitions []pa
 		}
 	}
 
-	pairs, err := p.BuildProjectTVPairsWithAlias(projectAliases, requester)
+	pairs, err := p.BuildProjectTVPairsWithAlias(projectAliases, requester, "")
 	if err != nil {
 		return nil, errors.Wrap(err, "getting pairs matching patch aliases")
 	}
 	pairs = p.extractDisplayTasks(pairs)
-	pairs.ExecTasks, err = IncludeDependencies(p, pairs.ExecTasks, requester, nil)
+	pairs.ExecTasks, err = IncludeDependencies(p, pairs.ExecTasks, requester, "", nil)
 	grip.Warning(ctx, message.WrapError(err, message.Fields{
 		"message": "error including dependencies",
 		"project": p.Identifier,
@@ -2167,16 +2245,15 @@ func dependenciesForTaskUnit(taskUnits []BuildVariantTaskUnit, p *Project) []tas
 	for _, dependentTask := range taskUnits {
 		if dependentTask.GroupName != "" {
 			tg := p.FindTaskGroup(dependentTask.GroupName)
-			if tg == nil || tg.MaxHosts > 1 {
-				continue
-			}
-			// Single host task groups are a special case of dependencies because they implicitly form a linear
-			// dependency chain on the prior task group tasks
-			for i := len(tg.Tasks) - 1; i >= 0; i-- {
-				// Check the task display names since no display name will appear twice
-				// within the same task group
-				if dependentTask.Name == tg.Tasks[i] && i > 0 {
-					dependentTask.DependsOn = append(dependentTask.DependsOn, TaskUnitDependency{Name: tg.Tasks[i-1], Variant: dependentTask.Variant})
+			if tg != nil && tg.MaxHosts <= 1 {
+				// Single host task groups are a special case of dependencies because they implicitly form a linear
+				// dependency chain on the prior task group tasks.
+				for i, v := range slices.Backward(tg.Tasks) {
+					// Check the task display names since no display name will appear twice
+					// within the same task group.
+					if dependentTask.Name == v && i > 0 {
+						dependentTask.DependsOn = append(dependentTask.DependsOn, TaskUnitDependency{Name: tg.Tasks[i-1], Variant: dependentTask.Variant})
+					}
 				}
 			}
 		}
@@ -2301,9 +2378,9 @@ func GetVariantsAndTasksFromPatchProject(ctx context.Context, settings *evergree
 	for _, variant := range project.BuildVariants {
 		tasksForVariant := []BuildVariantTaskUnit{}
 		for _, taskFromVariant := range variant.Tasks {
-			if !taskFromVariant.IsDisabled() && !taskFromVariant.SkipOnRequester(p.GetRequester()) {
+			if !taskFromVariant.IsDisabled() && !taskFromVariant.SkipOnRequester(p.GetRequester()) && !taskFromVariant.skipOnBranch("") {
 				if taskFromVariant.IsGroup {
-					tasksForVariant = append(tasksForVariant, CreateTasksFromGroup(taskFromVariant, project, evergreen.PatchVersionRequester)...)
+					tasksForVariant = append(tasksForVariant, CreateTasksFromGroup(taskFromVariant, project, evergreen.PatchVersionRequester, "")...)
 				} else {
 					tasksForVariant = append(tasksForVariant, taskFromVariant)
 				}
@@ -2363,10 +2440,5 @@ func (bv BuildVariant) ChangedFilesMatchPaths(changedFiles []string) bool {
 
 	// CompileIgnoreLines has a silly API: it always returns a nil error.
 	pathMatcher := ignore.CompileIgnoreLines(paths...)
-	for _, f := range changedFiles {
-		if pathMatcher.MatchesPath(f) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(changedFiles, pathMatcher.MatchesPath)
 }

@@ -1,7 +1,7 @@
 {
   user {
     displayName
-    userId
+    id
     emailAddress
   }
 }

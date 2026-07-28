@@ -4,13 +4,14 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/gimlet"
 )
 
 // artifactSignHandler generates a presigned S3 URL for a signed artifact and
-// redirects the caller to it. It uses a raw http.HandlerFunc rather than a
-// gimlet.RouteHandler because the response is an HTTP redirect, not JSON.
+// redirects the caller to it. Authentication is handled via a token
+// embedded in the URL rather than session auth, making the URLs curl-friendly.
 func artifactSignHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		taskID := gimlet.GetVars(r)["task_id"]
@@ -33,6 +34,19 @@ func artifactSignHandler() http.HandlerFunc {
 		fileName := r.URL.Query().Get("name")
 		if fileName == "" {
 			http.Error(w, "missing name parameter", http.StatusBadRequest)
+			return
+		}
+
+		token := r.URL.Query().Get("token")
+		expiryStr := r.URL.Query().Get("exp")
+		if token == "" || expiryStr == "" {
+			http.Error(w, "missing token or exp parameter", http.StatusUnauthorized)
+			return
+		}
+
+		appSecret := []byte(evergreen.GetEnvironment().Settings().ArtifactSignSecret)
+		if !artifact.ValidateSignToken(appSecret, taskID, execution, fileName, token, expiryStr) {
+			http.Error(w, "invalid or expired token", http.StatusUnauthorized)
 			return
 		}
 

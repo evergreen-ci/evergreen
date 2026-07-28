@@ -117,6 +117,8 @@ type OAuth struct {
 	// DoNotUseBrowser indicates that the OAuth flow should not attempt to open a browser.
 	// This setting is the final authority on the flow.
 	DoNotUseBrowser bool `json:"do_not_use_browser" yaml:"do_not_use_browser"`
+	// CallbackPort is the local port used by the OAuth authorization-code flow.
+	CallbackPort string `json:"callback_port,omitempty" yaml:"callback_port,omitempty"`
 
 	// SpawnHostAccessToken is an access token for a spawn host. This is used to
 	// initially authenticate a spawn host before the user has SSH'd into it.
@@ -138,9 +140,7 @@ type ClientSettings struct {
 	// APIServerHost is the legacy API server host. This should only be used by service
 	// users who need to use the legacy way of authenticating (static keys).
 	APIServerHost string `json:"api_server_host" yaml:"api_server_host,omitempty"`
-	// CorpAPIServerHost is the modern API server host. This is used by human users
-	// authenticating with OAuth. We need the legacy and this url while we transition
-	// from static keys to OAuth for both human and service users.
+	// CorpAPIServerHost is the modern API server host used for OAuth authentication.
 	CorpAPIServerHost          string                      `json:"corp_api_server_host" yaml:"corp_api_server_host,omitempty"`
 	UIServerHost               string                      `json:"ui_server_host" yaml:"ui_server_host,omitempty"`
 	APIKey                     string                      `json:"api_key" yaml:"api_key,omitempty"`
@@ -162,6 +162,17 @@ type ClientSettings struct {
 
 	// StagingEnvironment configures which staging environment to point to.
 	StagingEnvironment string `json:"staging_environment,omitempty" yaml:"staging_environment,omitempty"`
+}
+
+// localClientSettings contains the settings that may safely be overridden by
+// a configuration file in the current working directory.
+type localClientSettings struct {
+	UncommittedChanges         *bool                       `yaml:"patch_uncommitted_changes,omitempty"`
+	PreserveCommits            *bool                       `yaml:"preserve_commits,omitempty"`
+	Projects                   []ClientProjectConf         `yaml:"projects,omitempty"`
+	DisableAutoDefaulting      *bool                       `yaml:"disable_auto_defaulting"`
+	ProjectsForDirectory       map[string]string           `yaml:"projects_for_directory,omitempty"`
+	LastRevisionCriteriaGroups []lastRevisionCriteriaGroup `yaml:"last_revision_criteria_groups,omitempty"`
 }
 
 func NewClientSettings(fn string) (*ClientSettings, error) {
@@ -188,10 +199,30 @@ func NewClientSettings(fn string) (*ClientSettings, error) {
 		return nil, errors.Wrapf(err, "reading local configuration from file '%s'", localConfigPath)
 	}
 
-	// Unmarshalling into the same struct will only override fields which are set
-	// in the new YAML
-	if err = yaml.Unmarshal(localData, conf); err != nil {
+	// Only merge settings that describe the local project and working tree.
+	// Connection, authentication, and update settings must come from the
+	// explicitly selected configuration file rather than the current directory.
+	localConf := &localClientSettings{}
+	if err = yaml.Unmarshal(localData, localConf); err != nil {
 		return nil, errors.Wrapf(err, "unmarshalling YAML data from local configuration file '%s'", localConfigPath)
+	}
+	if localConf.UncommittedChanges != nil {
+		conf.UncommittedChanges = *localConf.UncommittedChanges
+	}
+	if localConf.PreserveCommits != nil {
+		conf.PreserveCommits = *localConf.PreserveCommits
+	}
+	if localConf.Projects != nil {
+		conf.Projects = localConf.Projects
+	}
+	if localConf.DisableAutoDefaulting != nil {
+		conf.DisableAutoDefaulting = *localConf.DisableAutoDefaulting
+	}
+	if localConf.ProjectsForDirectory != nil {
+		conf.ProjectsForDirectory = localConf.ProjectsForDirectory
+	}
+	if localConf.LastRevisionCriteriaGroups != nil {
+		conf.LastRevisionCriteriaGroups = localConf.LastRevisionCriteriaGroups
 	}
 
 	return conf, nil
@@ -342,25 +373,6 @@ func (s *ClientSettings) checkCLIVersion(ctx context.Context, c client.Communica
 		if isCLIVersionTooOld {
 			return errors.Errorf("CLI version '%s' is older than the oldest allowed CLI version '%s'. "+
 				"Run '%s get-update --install' to update.\n", evergreen.ClientVersion, clients.OldestAllowedCLIVersion, os.Args[0])
-		}
-	}
-	if clients.OAuthIssuer != "" && s.OAuth.Issuer == "" {
-		s.OAuth.ClientID = clients.OAuthClientID
-		s.OAuth.ConnectorID = clients.OAuthConnectorID
-		s.OAuth.Issuer = clients.OAuthIssuer
-
-		if err := s.Write(""); err != nil {
-			// This shouldn't prevent users from using the CLI so just log a warning.
-			grip.Warning(ctx, errors.Wrap(err, "saving configuration file"))
-		}
-	}
-	if clients.CorpAPIServerHost != "" && s.CorpAPIServerHost == "" {
-		s.CorpAPIServerHost = clients.CorpAPIServerHost
-		s.UIServerHost = clients.NewUIServerHost
-
-		if err := s.Write(""); err != nil {
-			// This shouldn't prevent users from using the CLI so just log an error.
-			grip.Warning(ctx, errors.Wrap(err, "saving configuration file"))
 		}
 	}
 	return nil
@@ -679,6 +691,7 @@ func (s *ClientSettings) getOAuthToken(ctx context.Context) (*oauth2.Token, stri
 	}
 	return client.GetOAuthToken(ctx,
 		s.OAuth.DoNotUseBrowser,
+		s.OAuth.CallbackPort,
 		dex.WithIssuer(s.OAuth.Issuer),
 		dex.WithClientID(s.OAuth.ClientID),
 		dex.WithConnectorID(s.OAuth.ConnectorID),

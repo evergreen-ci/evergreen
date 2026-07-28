@@ -166,9 +166,6 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ProjectCreation.RepoProjectLimit, apiSettings.ProjectCreation.RepoProjectLimit)
 	assert.EqualValues(testSettings.ProjectCreation.RepoExceptions[0].Owner, utility.FromStringPtr(apiSettings.ProjectCreation.RepoExceptions[0].Owner))
 	assert.EqualValues(testSettings.ProjectCreation.RepoExceptions[0].Repo, utility.FromStringPtr(apiSettings.ProjectCreation.RepoExceptions[0].Repo))
-	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Name, utility.FromStringPtr(apiSettings.Providers.AWS.EC2Keys[0].Name))
-	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Key, utility.FromStringPtr(apiSettings.Providers.AWS.EC2Keys[0].Key))
-	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Secret, utility.FromStringPtr(apiSettings.Providers.AWS.EC2Keys[0].Secret))
 	assert.EqualValues(testSettings.Providers.AWS.DefaultSecurityGroup, utility.FromStringPtr(apiSettings.Providers.AWS.DefaultSecurityGroup))
 	assert.EqualValues(testSettings.Providers.AWS.MaxVolumeSizePerUser, *apiSettings.Providers.AWS.MaxVolumeSizePerUser)
 	assert.EqualValues(testSettings.Providers.AWS.ParserProject.Key, utility.FromStringPtr(apiSettings.Providers.AWS.ParserProject.Key))
@@ -283,9 +280,6 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ProjectCreation.RepoProjectLimit, dbSettings.ProjectCreation.RepoProjectLimit)
 	assert.EqualValues(testSettings.ProjectCreation.RepoExceptions[0].Owner, dbSettings.ProjectCreation.RepoExceptions[0].Owner)
 	assert.EqualValues(testSettings.ProjectCreation.RepoExceptions[0].Repo, dbSettings.ProjectCreation.RepoExceptions[0].Repo)
-	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Name, dbSettings.Providers.AWS.EC2Keys[0].Name)
-	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Key, dbSettings.Providers.AWS.EC2Keys[0].Key)
-	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Secret, dbSettings.Providers.AWS.EC2Keys[0].Secret)
 	assert.EqualValues(testSettings.Providers.AWS.DefaultSecurityGroup, dbSettings.Providers.AWS.DefaultSecurityGroup)
 	assert.EqualValues(testSettings.Providers.AWS.MaxVolumeSizePerUser, dbSettings.Providers.AWS.MaxVolumeSizePerUser)
 	assert.EqualValues(testSettings.Providers.AWS.ParserProject.Key, dbSettings.Providers.AWS.ParserProject.Key)
@@ -373,6 +367,48 @@ func TestAPIBucketsConfigJSON(t *testing.T) {
 	assert.Equal(t, out.RetryFailedLogMoveMaxJobsPerRun, again.RetryFailedLogMoveMaxJobsPerRun)
 	assert.Equal(t, out.TestResultsBucket.Name, again.TestResultsBucket.Name)
 	assert.Equal(t, out.Credentials.Bucket, again.Credentials.Bucket)
+}
+
+func TestAPIBucketsConfigServiceRoundTrip(t *testing.T) {
+	// Every service field must survive a BuildFromService/ToService round trip.
+	// Any asymmetry silently drops the field when admin settings are saved and
+	// produces spurious admin event log entries.
+	syncedAt := time.Date(2026, time.July, 16, 12, 0, 0, 0, time.UTC)
+	bucket := func(prefix string) evergreen.BucketConfig {
+		return evergreen.BucketConfig{
+			Name:                    prefix + "-name",
+			Type:                    evergreen.BucketTypeS3,
+			DBName:                  prefix + "-db",
+			TestResultsPrefix:       prefix + "-prefix",
+			RoleARN:                 prefix + "-arn",
+			ExternalID:              prefix + "-external",
+			ExpirationDays:          utility.ToIntPtr(30),
+			TransitionToIADays:      utility.ToIntPtr(60),
+			TransitionToGlacierDays: utility.ToIntPtr(90),
+			LifecycleLastSyncedAt:   syncedAt,
+			LifecycleSyncError:      prefix + "-err",
+		}
+	}
+	original := evergreen.BucketsConfig{
+		LogBucket:                       bucket("log"),
+		LogBucketLongRetention:          bucket("long"),
+		LogBucketFailedTasks:            bucket("failed"),
+		TestResultsBucket:               bucket("tr"),
+		LongRetentionProjects:           []string{"p1", "p2"},
+		RetryFailedLogMoveLookbackDays:  14,
+		RetryFailedLogMoveMaxJobsPerRun: 25,
+		Credentials:                     evergreen.S3Credentials{Key: "k", Secret: "s", Bucket: "cb"},
+	}
+
+	apiConfig := &APIBucketsConfig{}
+	require.NoError(t, apiConfig.BuildFromService(original))
+
+	out, err := apiConfig.ToService()
+	require.NoError(t, err)
+	roundTripped, ok := out.(evergreen.BucketsConfig)
+	require.True(t, ok)
+
+	assert.Equal(t, original, roundTripped)
 }
 
 func TestRestart(t *testing.T) {

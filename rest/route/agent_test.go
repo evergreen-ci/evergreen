@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -24,6 +25,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/s3lifecycle"
 	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -97,8 +100,7 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
@@ -187,6 +189,173 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			tCase(ctx, t, r)
 		})
 	}
+}
+
+func TestExpansionsAndVarsHostOwnership(t *testing.T) {
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(t.Context()))
+	testutil.ConfigureIntegrationTest(t, env.Settings())
+	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, model.VersionCollection, model.ParserProjectCollection))
+
+	t1 := task.Task{
+		Id:      "t1",
+		Project: "p1",
+		Version: "aaaaaaaaaaff001122334455",
+	}
+	pRef := model.ProjectRef{
+		Id:    "p1",
+		Owner: "evergreen-ci",
+		Repo:  "sample",
+	}
+	vars := &model.ProjectVars{
+		Id:          "p1",
+		Vars:        map[string]string{"a": "1"},
+		PrivateVars: map[string]bool{},
+	}
+	v1 := &model.Version{
+		Id:         "aaaaaaaaaaff001122334455",
+		Revision:   "1234",
+		Requester:  evergreen.GitTagRequester,
+		CreateTime: time.Now(),
+	}
+	pp1 := model.ParserProject{
+		Id: "aaaaaaaaaaff001122334455",
+	}
+	debugHost := host.Host{
+		Id:      "debug_host",
+		IsDebug: true,
+		ProvisionOptions: &host.ProvisionOptions{
+			TaskId: "t1",
+		},
+		ServicePassword: "secret_password",
+	}
+	nonDebugHost := host.Host{
+		Id:              "non_debug_host",
+		RunningTask:     "other_task",
+		ServicePassword: "other_password",
+	}
+	wrongTaskDebugHost := host.Host{
+		Id:      "wrong_task_debug_host",
+		IsDebug: true,
+		ProvisionOptions: &host.ProvisionOptions{
+			TaskId: "other_task",
+		},
+		ServicePassword: "wrong_password",
+	}
+	require.NoError(t, t1.Insert(t.Context()))
+	require.NoError(t, pRef.Insert(t.Context()))
+	require.NoError(t, vars.Insert(t.Context()))
+	require.NoError(t, v1.Insert(t.Context()))
+	require.NoError(t, pp1.Insert(t.Context()))
+	require.NoError(t, debugHost.Insert(t.Context()))
+	require.NoError(t, nonDebugHost.Insert(t.Context()))
+	require.NoError(t, wrongTaskDebugHost.Insert(t.Context()))
+
+	t.Run("UserRequestRejectsNonDebugHost", func(t *testing.T) {
+		userCtx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "test_user"})
+		rh := &getExpansionsAndVarsHandler{settings: env.Settings(), taskID: "t1", hostID: "non_debug_host"}
+		resp := rh.Run(userCtx)
+		require.NotZero(t, resp)
+		assert.Equal(t, http.StatusForbidden, resp.Status())
+	})
+
+	t.Run("UserRequestRejectsHostForDifferentTask", func(t *testing.T) {
+		userCtx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "test_user"})
+		rh := &getExpansionsAndVarsHandler{settings: env.Settings(), taskID: "t1", hostID: "wrong_task_debug_host"}
+		resp := rh.Run(userCtx)
+		require.NotZero(t, resp)
+		assert.Equal(t, http.StatusForbidden, resp.Status())
+	})
+
+	t.Run("UserRequestAllowsOwnDebugHost", func(t *testing.T) {
+		userCtx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "test_user"})
+		rh := &getExpansionsAndVarsHandler{settings: env.Settings(), taskID: "t1", hostID: "debug_host"}
+		resp := rh.Run(userCtx)
+		require.NotZero(t, resp)
+		assert.Equal(t, http.StatusOK, resp.Status())
+	})
+
+	t.Run("UserRequestRedactsServicePassword", func(t *testing.T) {
+		userCtx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "test_user"})
+		rh := &getExpansionsAndVarsHandler{settings: env.Settings(), taskID: "t1", hostID: "debug_host"}
+		resp := rh.Run(userCtx)
+		require.NotZero(t, resp)
+		assert.Equal(t, http.StatusOK, resp.Status())
+		data, ok := resp.Data().(apimodels.ExpansionsAndVars)
+		require.True(t, ok)
+		assert.Empty(t, data.InternalRedactions[hostServicePasswordPlaceholder])
+	})
+
+	t.Run("TaskRequestStillReturnsServicePassword", func(t *testing.T) {
+		rh := &getExpansionsAndVarsHandler{settings: env.Settings(), taskID: "t1", hostID: "debug_host"}
+		resp := rh.Run(t.Context())
+		require.NotZero(t, resp)
+		assert.Equal(t, http.StatusOK, resp.Status())
+		data, ok := resp.Data().(apimodels.ExpansionsAndVars)
+		require.True(t, ok)
+		assert.Equal(t, "secret_password", data.InternalRedactions[hostServicePasswordPlaceholder])
+	})
+}
+
+func TestGetDistroViewHostOwnership(t *testing.T) {
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(t.Context()))
+
+	testutil.ConfigureIntegrationTest(t, env.Settings())
+
+	require.NoError(t, db.ClearCollections(host.Collection))
+
+	debugHost := host.Host{
+		Id:      "debug_host",
+		IsDebug: true,
+		ProvisionOptions: &host.ProvisionOptions{
+			TaskId: "t1",
+		},
+		Distro: distro.Distro{
+			DisableShallowClone: true,
+			ExecUser:            "admin",
+		},
+	}
+	nonDebugHost := host.Host{
+		Id:     "non_debug_host",
+		Distro: distro.Distro{ExecUser: "other"},
+	}
+	wrongTaskDebugHost := host.Host{
+		Id:      "wrong_task_debug_host",
+		IsDebug: true,
+		ProvisionOptions: &host.ProvisionOptions{
+			TaskId: "other_task",
+		},
+		Distro: distro.Distro{ExecUser: "wrong"},
+	}
+	require.NoError(t, debugHost.Insert(t.Context()))
+	require.NoError(t, nonDebugHost.Insert(t.Context()))
+	require.NoError(t, wrongTaskDebugHost.Insert(t.Context()))
+
+	t.Run("UserRequestRejectsNonDebugHost", func(t *testing.T) {
+		rh := &getDistroViewHandler{taskID: "t1", hostID: "non_debug_host"}
+		resp := rh.Run(t.Context())
+		require.NotZero(t, resp)
+		assert.Equal(t, http.StatusForbidden, resp.Status())
+	})
+
+	t.Run("UserRequestRejectsHostForDifferentTask", func(t *testing.T) {
+		rh := &getDistroViewHandler{taskID: "t1", hostID: "wrong_task_debug_host"}
+		resp := rh.Run(t.Context())
+		require.NotZero(t, resp)
+		assert.Equal(t, http.StatusForbidden, resp.Status())
+	})
+
+	t.Run("UserRequestAllowsOwnDebugHost", func(t *testing.T) {
+		rh := &getDistroViewHandler{taskID: "t1", hostID: "debug_host"}
+		resp := rh.Run(t.Context())
+		require.NotZero(t, resp)
+		assert.Equal(t, http.StatusOK, resp.Status())
+		data, ok := resp.Data().(apimodels.DistroView)
+		require.True(t, ok)
+		assert.True(t, data.DisableShallowClone)
+		assert.Equal(t, "admin", data.ExecUser)
+	})
 }
 
 func TestMarkTaskForReset(t *testing.T) {
@@ -278,6 +447,23 @@ func TestMarkTaskForReset(t *testing.T) {
 			assert.True(t, foundTask.IsAutomaticRestart)
 			assert.Equal(t, 1, foundTask.NumAutomaticRestarts)
 		},
+		"RunNoOpsForAbortedTask": func(ctx context.Context, t *testing.T, rh *markTaskForRestartHandler) {
+			rh.taskID = "t5"
+			abortedTask, err := task.FindOneId(ctx, "t5")
+			require.NoError(t, err)
+			require.NotNil(t, abortedTask)
+			taskCtx := context.WithValue(ctx, model.ApiTaskKey, abortedTask)
+			resp := rh.Run(taskCtx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			foundTask, err := task.FindOneId(ctx, "t5")
+			require.NoError(t, err)
+			require.NotNil(t, foundTask)
+			assert.False(t, foundTask.ResetWhenFinished)
+			assert.False(t, foundTask.IsAutomaticRestart)
+			assert.Zero(t, foundTask.NumAutomaticRestarts)
+		},
 		"SuccessfullyChecksMaxRestartLimit": func(ctx context.Context, t *testing.T, rh *markTaskForRestartHandler) {
 			// Should succeed normally for first task
 			rh.taskID = "t2"
@@ -333,8 +519,7 @@ func TestMarkTaskForReset(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection))
 			settings := &evergreen.Settings{
@@ -376,6 +561,12 @@ func TestMarkTaskForReset(t *testing.T) {
 				Project: "p1",
 				Version: "aaaaaaaaaaff001122334456",
 			}
+			t5 := task.Task{
+				Id:      "t5",
+				Project: "p1",
+				Version: "aaaaaaaaaaff001122334456",
+				Aborted: true,
+			}
 			pRef := model.ProjectRef{
 				Id: "p1",
 			}
@@ -386,6 +577,7 @@ func TestMarkTaskForReset(t *testing.T) {
 			require.NoError(t, t2.Insert(t.Context()))
 			require.NoError(t, t3.Insert(t.Context()))
 			require.NoError(t, t4.Insert(t.Context()))
+			require.NoError(t, t5.Insert(t.Context()))
 			r, ok := makeMarkTaskForRestart().(*markTaskForRestartHandler)
 			require.True(t, ok)
 
@@ -431,8 +623,7 @@ func TestAgentSetup(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			s := &evergreen.Settings{
 				Splunk: evergreen.SplunkConfig{
@@ -440,17 +631,6 @@ func TestAgentSetup(t *testing.T) {
 						ServerURL: "server_url",
 						Token:     "token",
 						Channel:   "channel",
-					},
-				},
-				Providers: evergreen.CloudProviders{
-					AWS: evergreen.AWSConfig{
-						EC2Keys: []evergreen.EC2Key{
-							{
-								Name:   "ec2-key",
-								Key:    "key",
-								Secret: "secret",
-							},
-						},
 					},
 				},
 				TaskLimits: evergreen.TaskLimitsConfig{
@@ -467,8 +647,7 @@ func TestAgentSetup(t *testing.T) {
 }
 
 func TestDownstreamParams(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(patch.Collection, task.Collection, host.Collection))
 	parameters := []patch.Parameter{
@@ -539,8 +718,7 @@ func TestDownstreamParams(t *testing.T) {
 }
 
 func TestAgentGetProjectRef(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection))
 	defer func() {
@@ -643,8 +821,7 @@ func TestCreateInstallationToken(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
@@ -658,8 +835,7 @@ func TestCreateInstallationToken(t *testing.T) {
 }
 
 func TestUpsertCheckRunParse(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(task.Collection, patch.Collection))
 
@@ -1050,8 +1226,7 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
@@ -1116,8 +1291,7 @@ func TestRevokeGitHubDynamicAccessToken(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
@@ -1273,8 +1447,7 @@ func TestStartTaskWithOtelMetadata(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			require.NoError(t, db.ClearCollections(task.Collection, host.Collection))
 
@@ -1477,5 +1650,100 @@ func TestLogLookupClosureUsesAdminBucketsConfig(t *testing.T) {
 	t.Run("UnknownBucketReturnsFalse", func(t *testing.T) {
 		_, ok := logLookup(t.Context(), "artifact-bucket", "")
 		assert.False(t, ok)
+	})
+}
+
+func TestGitServePatchFile(t *testing.T) {
+	ctx := t.Context()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+	testutil.ConfigureIntegrationTest(t, env.Settings())
+
+	require.NoError(t, db.ClearCollections(task.Collection, patch.Collection))
+
+	const patchFileID = "patchfile123"
+	const otherPatchFileID = "patchfile456"
+	const taskID = "task1"
+	const versionID = "aaaaaaaaaaff001122334455"
+
+	tsk := task.Task{
+		Id:      taskID,
+		Version: versionID,
+	}
+	require.NoError(t, tsk.Insert(ctx))
+
+	p := patch.Patch{
+		Id:      mgobson.NewObjectId(),
+		Version: versionID,
+		Patches: []patch.ModulePatch{
+			{
+				ModuleName: "",
+				PatchSet: patch.PatchSet{
+					PatchFileId: patchFileID,
+				},
+			},
+		},
+	}
+	require.NoError(t, p.Insert(ctx))
+
+	require.NoError(t, db.WriteGridFile(ctx, patch.GridFSPrefix, patchFileID, strings.NewReader("diff --git a/file")))
+
+	t.Run("ValidPatchFileIDReturnsContents", func(t *testing.T) {
+		h := &gitServePatchFileHandler{taskID: taskID, patchID: patchFileID}
+		resp := h.Run(ctx)
+		require.NotNil(t, resp)
+		assert.Equal(t, http.StatusOK, resp.Status())
+	})
+
+	t.Run("PatchFileIDBelongingToOtherPatchReturnsNotFound", func(t *testing.T) {
+		h := &gitServePatchFileHandler{taskID: taskID, patchID: otherPatchFileID}
+		resp := h.Run(ctx)
+		require.NotNil(t, resp)
+		assert.Equal(t, http.StatusNotFound, resp.Status())
+	})
+}
+
+func TestAttachTestResultsHandlerRun(t *testing.T) {
+	const (
+		authedTaskID = "authed_task"
+		victimTaskID = "victim_task"
+	)
+	authedTask := &task.Task{Id: authedTaskID, Execution: 1}
+
+	makeHandler := func(body apimodels.AttachTestResultsRequest) *attachTestResultsHandler {
+		return &attachTestResultsHandler{taskID: authedTaskID, body: body}
+	}
+	matchingInfo := testresult.TestResultsInfo{TaskID: authedTaskID, Execution: 1}
+
+	t.Run("MismatchedTaskIDIsRejected", func(t *testing.T) {
+		h := makeHandler(apimodels.AttachTestResultsRequest{
+			Info: testresult.TestResultsInfo{TaskID: victimTaskID, Execution: 1},
+		})
+		ctx := context.WithValue(t.Context(), model.ApiTaskKey, authedTask)
+		assert.Equal(t, http.StatusForbidden, h.Run(ctx).Status())
+	})
+	t.Run("MismatchedExecutionIsRejected", func(t *testing.T) {
+		h := makeHandler(apimodels.AttachTestResultsRequest{
+			Info: testresult.TestResultsInfo{TaskID: authedTaskID, Execution: 2},
+		})
+		ctx := context.WithValue(t.Context(), model.ApiTaskKey, authedTask)
+		assert.Equal(t, http.StatusForbidden, h.Run(ctx).Status())
+	})
+	t.Run("NegativeFailedCountIsRejected", func(t *testing.T) {
+		h := makeHandler(apimodels.AttachTestResultsRequest{
+			Info:  matchingInfo,
+			Stats: testresult.TaskTestResultsStats{FailedCount: -1, TotalCount: 1},
+		})
+		ctx := context.WithValue(t.Context(), model.ApiTaskKey, authedTask)
+		assert.Equal(t, http.StatusBadRequest, h.Run(ctx).Status())
+	})
+	t.Run("NegativeTotalCountIsRejected", func(t *testing.T) {
+		h := makeHandler(apimodels.AttachTestResultsRequest{
+			Info:  matchingInfo,
+			Stats: testresult.TaskTestResultsStats{FailedCount: 0, TotalCount: -1},
+		})
+		ctx := context.WithValue(t.Context(), model.ApiTaskKey, authedTask)
+		assert.Equal(t, http.StatusBadRequest, h.Run(ctx).Status())
 	})
 }

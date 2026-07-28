@@ -96,7 +96,7 @@ func (s *HostAllocatorFuzzerSuite) randomizeData() {
 	// generate a random number of scheduled tasks with random durations
 	numTasks := rand.Intn(s.settings.maxNumTasks) + 1
 	var expectedDuration time.Duration
-	for i := 0; i < numTasks; i++ {
+	for range numTasks {
 		duration := rand.Int63n(int64(s.settings.expectedDurationMax))
 		expectedDuration += time.Duration(duration)
 	}
@@ -109,7 +109,7 @@ func (s *HostAllocatorFuzzerSuite) randomizeData() {
 	// generate a random number of hosts running tasks
 	numHosts := rand.Intn(s.settings.maxRunningHosts) + 1
 	hosts := []host.Host{}
-	for i := 0; i < numHosts; i++ {
+	for i := range numHosts {
 		duration := s.settings.taskDurations[rand.Intn(len(s.settings.taskDurations))]
 		offset := rand.Intn(s.settings.maxStartTimeOffsetMinutes)
 		t := task.Task{

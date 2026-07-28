@@ -24,6 +24,8 @@ type CostConfig struct {
 	S3Cost S3CostConfig `bson:"s3_cost" json:"s3_cost" yaml:"s3_cost"`
 	// EBSCost holds EBS-related cost discount configuration
 	EBSCost EBSCostConfig `bson:"ebs_cost" json:"ebs_cost" yaml:"ebs_cost"`
+	// HiddenCostProjects is the list of project IDs whose cost fields are hidden from the UI and API.
+	HiddenCostProjects []string `bson:"hidden_cost_projects,omitempty" json:"hidden_cost_projects,omitempty" yaml:"hidden_cost_projects,omitempty"`
 }
 
 // S3UploadCostConfig represents S3 upload cost discount configuration.
@@ -62,6 +64,7 @@ var (
 	financeConfigOnDemandDiscountKey    = bsonutil.MustHaveTag(CostConfig{}, "OnDemandDiscount")
 	financeConfigS3CostKey              = bsonutil.MustHaveTag(CostConfig{}, "S3Cost")
 	financeConfigEBSCostKey             = bsonutil.MustHaveTag(CostConfig{}, "EBSCost")
+	financeConfigHiddenCostProjectsKey  = bsonutil.MustHaveTag(CostConfig{}, "HiddenCostProjects")
 
 	s3CostConfigUploadKey  = bsonutil.MustHaveTag(S3CostConfig{}, "Upload")
 	s3CostConfigStorageKey = bsonutil.MustHaveTag(S3CostConfig{}, "Storage")
@@ -95,7 +98,8 @@ func (c *CostConfig) Set(ctx context.Context) error {
 			bsonutil.GetDottedKeyName(financeConfigS3CostKey, s3CostConfigStorageKey, s3StorageCostDefaultMaxArtifactExpirationDaysKey):         c.S3Cost.Storage.DefaultMaxArtifactExpirationDays,
 			bsonutil.GetDottedKeyName(financeConfigS3CostKey, s3CostConfigStorageKey, s3StorageCostDevprodOwnedAWSAccountIDsKey):                c.S3Cost.Storage.DevprodOwnedAWSAccountIDs,
 			bsonutil.GetDottedKeyName(financeConfigS3CostKey, s3CostConfigStorageKey, s3StorageCostArtifactAWSAccountsWithoutLifecycleRulesKey): c.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules,
-			financeConfigEBSCostKey: c.EBSCost,
+			financeConfigEBSCostKey:            c.EBSCost,
+			financeConfigHiddenCostProjectsKey: c.HiddenCostProjects,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }
@@ -185,6 +189,11 @@ func IsDevprodOwnedUpload(awsRoleARN, awsAccountID string, devprodOwnedAWSAccoun
 		return IsInDevProdOwnedAccountList(awsAccountID, devprodOwnedAWSAccountIDs)
 	}
 	return false
+}
+
+// ShouldHideCost reports whether the given project's cost fields should be hidden.
+func (c *CostConfig) ShouldHideCost(projectID string) bool {
+	return slices.Contains(c.HiddenCostProjects, projectID)
 }
 
 // IsConfigured returns true if any finance config field is set.

@@ -185,8 +185,7 @@ func TestProjectOrUserPatchesRequestersOption(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 			assert.NoError(t, db.ClearCollections(Collection))
 			ghPRPatch := Patch{
 				Id:          bson.NewObjectId(),
@@ -222,7 +221,7 @@ func TestProjectOrUserPatchesCombined(t *testing.T) {
 	assert.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{Keys: ProjectCreateTimeIndex}))
 
 	now := time.Now()
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		isCommitQueue := i%2 == 0
 		createTime := time.Duration(i) * time.Minute
 
@@ -304,7 +303,7 @@ func TestProjectOrUserPatchesResults(t *testing.T) {
 	assert.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{Keys: ProjectCreateTimeIndex}))
 
 	now := time.Now()
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		isCommitQueue := i%2 == 0
 		createTime := time.Duration(i) * time.Minute
 
@@ -397,7 +396,7 @@ func TestProjectOrUserPatchesCount(t *testing.T) {
 	assert.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{Keys: ProjectCreateTimeIndex}))
 
 	now := time.Now()
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		isCommitQueue := i%2 == 0
 		createTime := time.Duration(i) * time.Minute
 
