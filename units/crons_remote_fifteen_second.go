@@ -62,12 +62,10 @@ func (j *cronsRemoteFifteenSecondJob) Run(ctx context.Context) {
 		{"agent deploy", agentDeployJobs},
 		{"agent monitor deploy", agentMonitorDeployJobs},
 	}
-	stagger := FifteenSecondCronInterval / time.Duration(len(ops))
-
 	var allJobs []amboy.Job
 	catcher := grip.NewBasicCatcher()
 	ts := utility.RoundPartOfMinute(15)
-	for i, op := range ops {
+	for _, op := range ops {
 		if ctx.Err() != nil {
 			j.AddError(errors.New("operation aborted"))
 			return
@@ -77,11 +75,16 @@ func (j *cronsRemoteFifteenSecondJob) Run(ctx context.Context) {
 			catcher.Wrapf(err, "getting '%s' jobs", op.name)
 			continue
 		}
-		waitUntil := ts.Add(time.Duration(i) * stagger)
-		for _, cronJob := range jobs {
-			cronJob.UpdateTimeInfo(amboy.JobTimeInfo{WaitUntil: waitUntil})
-		}
 		allJobs = append(allJobs, jobs...)
+	}
+
+	// Spread each job's dispatch eligibility evenly across the cron interval so
+	// the queue sees a steady trickle of work instead of one burst per tick.
+	if len(allJobs) > 0 {
+		stagger := FifteenSecondCronInterval / time.Duration(len(allJobs))
+		for i, cronJob := range allJobs {
+			cronJob.UpdateTimeInfo(amboy.JobTimeInfo{WaitUntil: ts.Add(time.Duration(i) * stagger)})
+		}
 	}
 	catcher.Wrap(amboy.EnqueueManyUniqueJobs(ctx, j.env.RemoteQueue(), allJobs), "populating main queue")
 
