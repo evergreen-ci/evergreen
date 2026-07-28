@@ -25,7 +25,9 @@
       "version": "older_version",
       "build_variant": "ubuntu1804",
       "generate_task": true,
-      "estimated_num_activated_generated_tasks": 10
+      "generated_tasks": true,
+      "status": "success",
+      "num_activated_generated_tasks": 10
     },
     {
       "_id": "t2",
@@ -34,14 +36,19 @@
       "version": "older_version",
       "build_variant": "ubuntu1804",
       "generate_task": true,
-      "estimated_num_activated_generated_tasks": 5
+      "generated_tasks": true,
+      "status": "success",
+      "num_activated_generated_tasks": 5
     },
     {
       "_id": "t3",
       "display_name": "t3",
       "branch": "spruce",
       "version": "older_version",
-      "build_variant": "ubuntu1804"
+      "build_variant": "ubuntu1804",
+      "generated_tasks": true,
+      "status": "success",
+      "num_activated_generated_tasks": 99
     }
   ],
   "parser_projects": [
