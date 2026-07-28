@@ -192,7 +192,18 @@ func RecordQuarantinedTestsSkipped(ctx context.Context, env evergreen.Environmen
 	if err = task.AppendQuarantinedTests(ctx, t, env, quarantinedTests); err != nil {
 		return errors.Wrap(err, "recording quarantined tests on the test results record")
 	}
-	return errors.Wrap(t.IncNumQuarantinedTestsSkipped(ctx, len(quarantinedTests)), "incrementing the task's quarantined tests skipped count")
+	if err = t.IncNumQuarantinedTestsSkipped(ctx, len(quarantinedTests)); err != nil {
+		return errors.Wrap(err, "incrementing the task's quarantined tests skipped count")
+	}
+
+	dt, err := t.GetDisplayTask(ctx)
+	if err != nil {
+		return errors.Wrap(err, "finding display task")
+	}
+	if dt == nil {
+		return nil
+	}
+	return errors.Wrap(dt.IncNumQuarantinedTestsSkipped(ctx, len(quarantinedTests)), "incrementing the display task's quarantined tests skipped count")
 }
 
 // findQuarantinedSkippedTests returns the tests that test selection skipped
@@ -242,6 +253,8 @@ func findQuarantinedSkippedTests(ctx context.Context, req model.SelectTestsReque
 		sort.Strings(quarantinedNames)
 	}
 
+	// DisplayTestName is left unset because it isn't known until a test
+	// actually executes.
 	quarantinedTests := make([]testresult.QuarantinedTest, 0, len(quarantinedNames))
 	for _, name := range quarantinedNames {
 		quarantinedTests = append(quarantinedTests, testresult.QuarantinedTest{TestName: name})
