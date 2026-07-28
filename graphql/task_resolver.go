@@ -756,7 +756,7 @@ func (r *taskResolver) TaskOwnerTeam(ctx context.Context, obj *restModel.APITask
 	if fwsBaseURL == "" {
 		return nil, InternalServerError.Send(ctx, "Foliage Web Services URL not set")
 	}
-	httpClient := utility.GetHTTPClient()
+	httpClient := utility.WithOTelTracing(utility.GetHTTPClient())
 	defer utility.PutHTTPClient(httpClient)
 
 	cfg := fws.NewConfiguration()

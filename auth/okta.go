@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"net/http"
 	"strings"
 	"time"
 
@@ -29,7 +30,7 @@ func NewOktaUserManager(conf *evergreen.OktaConfig, evgURL, loginDomain string) 
 		LoginCookieTTL:       evergreen.LoginCookieTTL,
 		AllowReauthorization: true,
 		ReconciliateID:       makeReconciliateID(conf.ExpectedEmailDomains),
-		GetHTTPClient:        utility.GetHTTPClient,
+		GetHTTPClient:        func() *http.Client { return utility.GetHTTPClient() },
 		PutHTTPClient:        utility.PutHTTPClient,
 		ExternalCache: &usercache.ExternalOptions{
 			PutUserGetToken: user.PutLoginCache,
