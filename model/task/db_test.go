@@ -1008,6 +1008,17 @@ func TestGetTasksByVersionFilterDisplayTaskBySubtaskStatus(t *testing.T) {
 		assert.Equal(t, "display", tasks[0].Id)
 	})
 
+	t.Run("IncludesOnlyMatchingSubtaskWhenExecutionTasksAreRequested", func(t *testing.T) {
+		tasks, count, err := GetTasksByVersion(ctx, "v1", GetTasksByVersionOptions{
+			Statuses:              []string{evergreen.TaskAborted},
+			IncludeExecutionTasks: true,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, 1, count)
+		require.Len(t, tasks, 1)
+		assert.Equal(t, "aborted-exec", tasks[0].Id)
+	})
+
 	t.Run("MatchesStandaloneByOwnStatus", func(t *testing.T) {
 		tasks, count, err := GetTasksByVersion(ctx, "v1", GetTasksByVersionOptions{Statuses: []string{evergreen.TaskFailed}})
 		require.NoError(t, err)

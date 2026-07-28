@@ -2498,7 +2498,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		})
 	}
 
-	if len(opts.Statuses) > 0 {
+	if len(opts.Statuses) > 0 && !opts.IncludeExecutionTasks {
 		// A display task should be included when its own display status matches the
 		// filter or when any of its execution tasks matches.
 		const executionTaskStatusesKey = "execution_task_statuses"
@@ -2523,6 +2523,12 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		})
 		pipeline = append(pipeline, bson.M{
 			"$project": bson.M{executionTaskStatusesKey: 0},
+		})
+	} else if len(opts.Statuses) > 0 {
+		pipeline = append(pipeline, bson.M{
+			"$match": bson.M{
+				DisplayStatusKey: bson.M{"$in": opts.Statuses},
+			},
 		})
 	}
 
