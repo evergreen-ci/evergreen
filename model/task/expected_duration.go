@@ -3,14 +3,34 @@ package task
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/util"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+// estimateCacheMaxSize bounds the shared historical-estimate caches. Keys are
+// active (project, build variant, task name) tuples, so this is far above the
+// working set of a busy app server.
+const estimateCacheMaxSize = 10000
+
+// expectedDurationCache shares the historical duration aggregate across sibling
+// tasks. Task.DurationPrediction already caches this value, but it's keyed by
+// task document, so every newly created task re-ran the identical seven-day
+// aggregate; a high-throughput generator recomputed it dozens of times a
+// minute. The TTL matches the per-task one, so this introduces no new
+// staleness, only a coarser cache key.
+var expectedDurationCache = expirable.NewLRU[string, util.DurationStats](estimateCacheMaxSize, nil, predictionTTL)
+
+func estimateCacheKey(project, buildVariant, displayName string) string {
+	return strings.Join([]string{project, buildVariant, displayName}, "\x00")
+}
 
 var TaskHistoricalDataIndex = bson.D{
 	{Key: ProjectKey, Value: 1},

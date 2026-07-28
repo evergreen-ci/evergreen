@@ -3507,7 +3507,12 @@ func (t *Task) FetchExpectedDuration(ctx context.Context) util.DurationStats {
 		return util.DurationStats{Average: t.ExpectedDuration, StdDev: t.ExpectedDurationStdDev}
 	}
 
+	cacheKey := estimateCacheKey(t.Project, t.BuildVariant, t.DisplayName)
 	refresher := func(previous util.DurationStats) (util.DurationStats, bool) {
+		if stats, ok := expectedDurationCache.Get(cacheKey); ok {
+			return stats, true
+		}
+
 		defaultVal := util.DurationStats{Average: defaultTaskDuration, StdDev: 0}
 		vals, err := getExpectedDurationsForWindow(ctx, t.DisplayName, t.Project, t.BuildVariant,
 			time.Now().Add(-taskCompletionEstimateWindow), time.Now())
@@ -3535,7 +3540,9 @@ func (t *Task) FetchExpectedDuration(ctx context.Context) util.DurationStats {
 			return defaultVal, true
 		}
 		stdDev := time.Duration(vals[0].StdDev)
-		return util.DurationStats{Average: avg, StdDev: stdDev}, true
+		stats := util.DurationStats{Average: avg, StdDev: stdDev}
+		expectedDurationCache.Add(cacheKey, stats)
+		return stats, true
 	}
 
 	grip.Error(ctx, message.WrapError(t.DurationPrediction.SetRefresher(refresher), message.Fields{

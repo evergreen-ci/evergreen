@@ -16,6 +16,8 @@ func TestGenerateTasksEstimationsOnlyIncludesSucceeded(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	assert.NoError(db.ClearCollections(Collection))
+	generateTasksEstimationCache.Purge()
+	t.Cleanup(generateTasksEstimationCache.Purge)
 
 	ctx := t.Context()
 
@@ -85,6 +87,8 @@ func TestGetBatchedGenerateTasksEstimations(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	assert.NoError(db.ClearCollections(Collection))
+	generateTasksEstimationCache.Purge()
+	t.Cleanup(generateTasksEstimationCache.Purge)
 
 	ctx := t.Context()
 

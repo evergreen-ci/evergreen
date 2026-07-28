@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExpectedDuration(t *testing.T) {
@@ -67,4 +68,41 @@ func TestExpectedDuration(t *testing.T) {
 	//nolint:testifylint // We expect it to be exactly equal.
 	assert.EqualValues(25*time.Minute, results[0].ExpectedDuration)
 	assert.InDelta(9.35*float64(time.Minute), results[0].StdDev, 0.01*float64(time.Minute))
+}
+
+func TestFetchExpectedDurationSharesEstimateBetweenSiblingTasks(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+	expectedDurationCache.Purge()
+	t.Cleanup(expectedDurationCache.Purge)
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).Indexes().CreateOne(t.Context(), mongo.IndexModel{Keys: TaskHistoricalDataIndex})
+	require.NoError(t, err)
+
+	now := time.Now()
+	history := Task{
+		Id:           "history",
+		DisplayName:  "compile",
+		BuildVariant: "bv",
+		Project:      "proj",
+		Status:       evergreen.TaskSucceeded,
+		StartTime:    now.Add(-20 * time.Minute),
+		FinishTime:   now,
+		TimeTaken:    20 * time.Minute,
+	}
+	require.NoError(t, history.Insert(t.Context()))
+
+	newTask := func(id string) *Task {
+		tsk := &Task{Id: id, DisplayName: "compile", BuildVariant: "bv", Project: "proj"}
+		require.NoError(t, tsk.Insert(t.Context()))
+		return tsk
+	}
+
+	assert.Equal(t, 20*time.Minute, newTask("first").FetchExpectedDuration(t.Context()).Average)
+
+	// Dropping the history proves the sibling reused the cached estimate rather
+	// than re-running the aggregate.
+	require.NoError(t, db.ClearCollections(Collection))
+	assert.Equal(t, 20*time.Minute, newTask("sibling").FetchExpectedDuration(t.Context()).Average)
+
+	expectedDurationCache.Purge()
+	assert.Equal(t, defaultTaskDuration, newTask("afterExpiry").FetchExpectedDuration(t.Context()).Average)
 }

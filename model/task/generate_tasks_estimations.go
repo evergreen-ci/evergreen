@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/utility"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -15,6 +16,12 @@ import (
 const (
 	lookBackTime = 7 * 24 * time.Hour // one week
 )
+
+// generateTasksEstimationCache shares estimations across builds that create the
+// same generator tasks, which otherwise re-ran this aggregate on every build
+// creation. Like the expected-duration cache it's keyed by the (project, build
+// variant, task name) tuple the estimate is derived from.
+var generateTasksEstimationCache = expirable.NewLRU[string, GenerateTasksEstimation](estimateCacheMaxSize, nil, predictionTTL)
 
 // GenerateTasksEstimation holds estimation results for a single generator task.
 type GenerateTasksEstimation struct {
@@ -37,16 +44,30 @@ func GetBatchedGenerateTasksEstimations(ctx context.Context, project, buildVaria
 	))
 	defer span.End()
 
-	results, err := getBatchedGenerateTasksEstimations(ctx, project, buildVariant, displayNames, lookBackTime)
+	uncached := make([]string, 0, len(displayNames))
+	for _, name := range displayNames {
+		if est, ok := generateTasksEstimationCache.Get(estimateCacheKey(project, buildVariant, name)); ok {
+			result[name] = est
+			continue
+		}
+		uncached = append(uncached, name)
+	}
+	if len(uncached) == 0 {
+		return result, nil
+	}
+
+	results, err := getBatchedGenerateTasksEstimations(ctx, project, buildVariant, uncached, lookBackTime)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting generate tasks estimations")
 	}
 
 	for _, r := range results {
-		result[r.DisplayName] = GenerateTasksEstimation{
+		est := GenerateTasksEstimation{
 			EstimatedNumGeneratedTasks:          int(math.Round(r.EstimatedCreated)),
 			EstimatedNumActivatedGeneratedTasks: int(math.Round(r.EstimatedActivated)),
 		}
+		result[r.DisplayName] = est
+		generateTasksEstimationCache.Add(estimateCacheKey(project, buildVariant, r.DisplayName), est)
 	}
 
 	return result, nil
