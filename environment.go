@@ -335,6 +335,7 @@ type envState struct {
 	closers                 []closerOp
 	senders                 map[SenderKey]send.Sender
 	githubSenders           map[string]cachedGitHubSender
+	githubSendersMu         sync.Mutex
 	roleManager             gimlet.RoleManager
 	userManager             gimlet.UserManager
 	userManagerInfo         UserManagerInfo
@@ -1377,8 +1378,12 @@ type CreateInstallationTokenFunc func(ctx context.Context, owner, repo string) (
 // In case of GitHub app errors, the function returns the legacy GitHub sender with a global token attached.
 // The senders are only unique to orgs, not repos, but the repo name is needed to generate a token if necessary.
 func (e *envState) GetGitHubSender(owner, repo string, createInstallationToken CreateInstallationTokenFunc) (send.Sender, error) {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
+	// Lock the cache with its own lock, held across the whole function so the
+	// cache-miss path can safely write to e.githubSenders. The
+	// createInstallationToken call below reads from the environment and grabs
+	// e.mu, so the cache uses a separate lock to keep that call safe.
+	e.githubSendersMu.Lock()
+	defer e.githubSendersMu.Unlock()
 
 	githubSender, ok := e.githubSenders[owner]
 	// If githubSender exists and has not expired, return it.
