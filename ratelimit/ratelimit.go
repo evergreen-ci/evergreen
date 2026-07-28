@@ -46,3 +46,7 @@ func (l *Limiter) AllowN(ctx context.Context, userID string, surface evergreen.R
 	limit.Burst = burst // Override default burst, which is equal to hourly limit
 	return l.limiter.AllowN(ctx, key, limit, n)
 }
+
+func (l *Limiter) Peek(ctx context.Context, userID string, surface evergreen.RateLimitSurface, reqPerHour int, burst int) (*redis_rate.Result, error) {
+	return l.AllowN(ctx, userID, surface, reqPerHour, burst, 0)
+}

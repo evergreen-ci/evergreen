@@ -1,10 +1,14 @@
 package client
 
 import (
+	"context"
 	"net/http"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/ratelimit"
 	"github.com/evergreen-ci/utility"
+	"github.com/go-redis/redis_rate/v10"
 	"github.com/pkg/errors"
 )
 
@@ -109,4 +113,38 @@ func (c *communicatorImpl) SetHostID(hostID string) {
 // instead of API keys.
 func (c *communicatorImpl) SetHostSecret(hostSecret string) {
 	c.hostSecret = hostSecret
+}
+
+func (c *communicatorImpl) GetRateLimit(ctx context.Context, userID string) (*redis_rate.Result, error) {
+	env := evergreen.GetEnvironment()
+	rateLimiter, err := ratelimit.NewRateLimiter(env.RedisClient())
+	if err != nil {
+		return nil, errors.Wrap(err, "creating rate limiter")
+	}
+
+	cfg := env.Settings().RateLimit
+	isService, err := c.IsServiceUser(ctx, userID)
+	if err != nil {
+		return nil, errors.Wrap(err, "checking if user is a service user")
+	}
+	perHour, burst := limitsFor(&cfg, evergreen.RateLimitSurfaceREST, isService)
+	result, err := rateLimiter.Peek(ctx, userID, evergreen.RateLimitSurfaceREST, perHour, burst)
+	return result, nil
+}
+
+// TODO: would be nicer to use the shared method.
+func limitsFor(c *evergreen.RateLimitConfig, surface evergreen.RateLimitSurface, isService bool) (perHour int, burst int) {
+	switch surface {
+	case evergreen.RateLimitSurfaceREST:
+		if isService {
+			return c.RESTServicePerHour, c.RESTServiceBurst
+		}
+		return c.RESTUserPerHour, c.RESTUserBurst
+	case evergreen.RateLimitSurfaceGraphQL:
+		if isService {
+			return c.GraphQLServicePerHour, c.GraphQLServiceBurst
+		}
+		return c.GraphQLUserPerHour, c.GraphQLUserBurst
+	}
+	return 0, 0 // Unknown, default to no rate limit.
 }
