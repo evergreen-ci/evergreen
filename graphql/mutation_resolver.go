@@ -760,10 +760,11 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 
 	opts := host.HostModifyOptions{}
 	if spawnHost.DisplayName != nil {
-		if err := host.ValidateDisplayName(*spawnHost.DisplayName); err != nil {
+		displayName := utility.FromStringPtr(spawnHost.DisplayName)
+		if err := host.ValidateDisplayName(displayName); err != nil {
 			return nil, InputValidationError.Send(ctx, fmt.Sprintf("invalid display name: %s", err.Error()))
 		}
-		opts.NewName = *spawnHost.DisplayName
+		opts.NewName = displayName
 	}
 	if spawnHost.NoExpiration != nil {
 		opts.NoExpiration = spawnHost.NoExpiration
