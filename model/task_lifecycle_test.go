@@ -2040,7 +2040,7 @@ func TestActivateElapsedTasks(t *testing.T) {
 	require.NoError(t, (&task.Task{Id: "task1", BuildId: "build", Version: "version", DistroId: "arch", Status: evergreen.TaskSucceeded, Activated: true, TaskGroup: "tg", TaskGroupMaxHosts: 1, TaskGroupOrder: 1}).Insert(ctx))
 	require.NoError(t, (&task.Task{Id: "task2", BuildId: "build", Version: "version", DistroId: "arch", Status: evergreen.TaskUndispatched, Activated: false, TaskGroup: "tg", TaskGroupMaxHosts: 1, TaskGroupOrder: 2}).Insert(ctx))
 
-	require.NoError(t, activateElapsedTasks(ctx, []string{"task2"}, evergreen.ElapsedTaskActivator))
+	require.NoError(t, activateTasksWithDependencies(ctx, []string{"task2"}, evergreen.ElapsedTaskActivator))
 
 	t1, err := task.FindOneId(ctx, "task1")
 	require.NoError(t, err)

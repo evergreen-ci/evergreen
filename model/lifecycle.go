@@ -155,7 +155,7 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 			}
 			dependOn, err = resetEarlierSingleHostTaskGroupTasks(ctx, tasksToActivate, dependOn, caller)
 			if err != nil {
-				return errors.Wrap(err, "restarting finished single-host task group dependencies")
+				return errors.Wrap(err, "restarting earlier finished single-host task group tasks")
 			}
 			for _, depTask := range dependOn {
 				if depTask.Priority != evergreen.DisabledTaskPriority {

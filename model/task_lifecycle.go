@@ -180,14 +180,10 @@ func resetEarlierSingleHostTaskGroupTasks(ctx context.Context, activatingTasks, 
 	return nonRestartedTasks, catcher.Resolve()
 }
 
-// activateElapsedTasks activates the given tasks and their upstream dependencies, and
-// additionally restarts any finished earlier members of single-host task groups so those
-// groups re-run in order on one host (preserving their shared working directory). It
-// fetches the tasks and resolves their upstream dependencies a single time, reusing that
-// work for both the restart and the activation.
-func activateElapsedTasks(ctx context.Context, taskIDs []string, caller string) error {
-	// The task group fields are needed to detect single-host task group members, both here
-	// and in GetRecursiveDependenciesUp.
+// activateTasksWithDependencies activates the given tasks and their
+// dependencies. Tasks in a single host task group task will be restarted if
+// later task group tasks are activated.
+func activateTasksWithDependencies(ctx context.Context, taskIDs []string, caller string) error {
 	tasks, err := task.FindAll(ctx, db.Query(task.ByIdsAndStatus(taskIDs, []string{evergreen.TaskUndispatched})).
 		WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.ActivatedKey, task.BuildIdKey, task.TaskGroupKey, task.TaskGroupMaxHostsKey, task.TaskGroupOrderKey))
 	if err != nil {
@@ -199,7 +195,7 @@ func activateElapsedTasks(ctx context.Context, taskIDs []string, caller string) 
 	}
 	deps, err = resetEarlierSingleHostTaskGroupTasks(ctx, tasks, deps, caller)
 	if err != nil {
-		return errors.Wrap(err, "restarting earlier single-host task group tasks")
+		return errors.Wrap(err, "restarting earlier finished single-host task group tasks")
 	}
 	if _, err := task.ActivateTasks(ctx, append(tasks, deps...), time.Now(), true, caller); err != nil {
 		return errors.Wrap(err, "activating tasks and their dependencies")
