@@ -146,7 +146,7 @@ func SetActiveState(ctx context.Context, caller string, active bool, tasks ...ta
 // resetEarlierSingleHostTaskGroupTasks restarts already-finished tasks that belong to
 // the same single-host task group as one of the tasks being activated. Returns
 // the remaining deps that were not restarted.
-// For context, if a later task group task is (re)scheduled after earlier tasks
+// For context, if a later task group task is (re)activated after earlier tasks
 // already finished, those earlier tasks have to restart so the whole task group
 // can re-run from the beginning.
 func resetEarlierSingleHostTaskGroupTasks(ctx context.Context, activatingTasks, deps []task.Task, caller string) ([]task.Task, error) {
@@ -170,7 +170,7 @@ func resetEarlierSingleHostTaskGroupTasks(ctx context.Context, activatingTasks, 
 		dep := deps[i]
 		if dep.IsFinished() && shtgs[taskGroupInBuild{buildID: dep.BuildId, taskGroup: dep.TaskGroup}] {
 			catcher.Wrapf(resetTask(ctx, dep.Id, caller),
-				"restarting finished single-host task group task '%s' because a later task in its group was scheduled", dep.Id)
+				"restarting finished single-host task group task '%s' because a later task in its group was activated", dep.Id)
 		} else {
 			nonRestartedTasks = append(nonRestartedTasks, dep)
 		}
