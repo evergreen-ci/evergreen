@@ -26,6 +26,7 @@ import (
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/go-redis/redis_rate/v10"
 	"github.com/kanopy-platform/kanopy-oidc-lib/pkg/dex"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -438,6 +439,31 @@ func (c *communicatorImpl) IsServiceUser(ctx context.Context, userID string) (bo
 	}
 
 	return user.OnlyApi, nil
+}
+
+// GetRateLimit gets the caller's current REST rate limit status from the server.
+func (c *communicatorImpl) GetRateLimit(ctx context.Context, userID string) (*redis_rate.Result, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("users/%s/rate_limit", userID),
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "sending request to get rate limit for user '%s'", userID)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.Errorf("HTTP request returned unexpected status: %d", resp.StatusCode)
+	}
+
+	status := &model.APIRateLimitStatus{}
+	if err = utility.ReadJSON(resp.Body, status); err != nil {
+		return nil, errors.Wrap(err, "reading JSON response body")
+	}
+
+	return status.ToService(), nil
 }
 
 func (c *communicatorImpl) StartSpawnHost(ctx context.Context, hostID string, subscriptionType string, wait bool) error {

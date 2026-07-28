@@ -68,9 +68,9 @@ func TestAllowNCostExceedingBurstShouldDeny(t *testing.T) {
 	assert.Equal(t, 0, res.Allowed)
 }
 
-func TestAllowNCostLessThanOneShouldError(t *testing.T) {
+func TestAllowNCostLessThanZeroShouldError(t *testing.T) {
 	l := newRedisTestLimiter(t)
-	res, err := l.AllowN(t.Context(), "user", evergreen.RateLimitSurfaceComplexity, 100, 10, 0)
+	res, err := l.AllowN(t.Context(), "user", evergreen.RateLimitSurfaceComplexity, 100, 10, -1)
 	assert.ErrorContains(t, err, "cost")
 	assert.Nil(t, res)
 }

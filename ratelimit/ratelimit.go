@@ -33,8 +33,8 @@ func (l *Limiter) AllowN(ctx context.Context, userID string, surface evergreen.R
 	if !slices.Contains(evergreen.ValidRateLimitSurfaces, surface) {
 		return nil, errors.Errorf("invalid rate limit surface '%s'", surface)
 	}
-	if n < 1 {
-		return nil, errors.Errorf("cost %d must be at least 1", n)
+	if n < 0 {
+		return nil, errors.Errorf("cost %d must be at least 0", n)
 	}
 	// Skip limiting if limits are not set by returning a nil Result.
 	if reqPerHour == 0 { // Burst is guaranteed to also be 0 by validation in config.
