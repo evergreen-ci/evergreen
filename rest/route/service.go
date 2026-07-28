@@ -68,6 +68,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	stsManager := cloud.GetSTSManager(false)
 
 	// Agent protocol routes
+	// These routes are wrapped with rateLimit middleware, but will only be rate-limited when the request is authenticated as a user, not as a host.
 	app.AddRoute("/agent/perf_monitoring_url").Version(2).Get().Wrap(requireHost, rateLimit).RouteHandler(makeGetPerfURL(settings.PerfMonitoringURL))
 	app.AddRoute("/agent/setup").Version(2).Get().Wrap(requireHost, rateLimit).RouteHandler(makeAgentSetup(settings))
 	app.AddRoute("/distros/{distro_id}/ami").Version(2).Get().Wrap(requireTask, rateLimit).RouteHandler(makeGetDistroAMI())
