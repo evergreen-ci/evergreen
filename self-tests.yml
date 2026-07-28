@@ -678,6 +678,7 @@ tasks:
       - func: verify-swaggo-fmt
   - name: check-go-vulnerabilities
     tags: ["linter"]
+    allowed_requesters: ["patch", "commit"]
     commands:
       - func: get-project-and-modules
       - command: subprocess.exec
