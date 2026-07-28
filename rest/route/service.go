@@ -251,7 +251,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/tasks/{task_id}/github_dynamic_access_tokens").Version(2).Delete().Wrap(requireUser, viewTasks, rateLimit).RouteHandler(makeDeleteGitHubDynamicAccessTokens())
 	app.AddRoute("/user/settings").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeFetchUserConfig())
 	app.AddRoute("/user/settings").Version(2).Post().Wrap(requireUser, rateLimit).RouteHandler(makeSetUserConfig())
-	app.AddRoute("/users/{user_id}").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeGetUserHandler())
+	app.AddRoute("/users/{user_id}").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetUserHandler())
 	app.AddRoute("/users/{user_id}/hosts").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeFetchHosts())
 	app.AddRoute("/users/{user_id}/patches").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeUserPatchHandler())
 	app.AddRoute("/users/offboard_user").Version(2).Post().Wrap(requireUser, editRoles, rateLimit).RouteHandler(makeOffboardUser(env))
