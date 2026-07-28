@@ -5,7 +5,7 @@
       "result": {
         "data": {
           "patch": {
-            "userLite": {
+            "user": {
               "id": "trey.granderson",
               "displayName": "Trey Granderson",
               "emailAddress": "trey.granderson@mongodb.com"

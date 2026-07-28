@@ -1213,7 +1213,6 @@ type ComplexityRoot struct {
 		Tasks                 func(childComplexity int) int
 		Time                  func(childComplexity int) int
 		User                  func(childComplexity int) int
-		UserLite              func(childComplexity int) int
 		Variants              func(childComplexity int) int
 		VariantsTasks         func(childComplexity int) int
 		Version               func(childComplexity int) int
@@ -1524,7 +1523,6 @@ type ComplexityRoot struct {
 		TaskTestSample           func(childComplexity int, versionID string, taskIds []string, filters []*TestFilter) int
 		User                     func(childComplexity int, userID *string) int
 		UserConfig               func(childComplexity int) int
-		UserLite                 func(childComplexity int, userID *string) int
 		VariantQuarantineStatus  func(childComplexity int, projectIdentifier string, buildVariant string) int
 		Version                  func(childComplexity int, versionID string) int
 		ViewableProjectRefs      func(childComplexity int) int
@@ -2335,7 +2333,6 @@ type ComplexityRoot struct {
 		Tasks                      func(childComplexity int, options TaskFilterOptions) int
 		UpstreamProject            func(childComplexity int) int
 		User                       func(childComplexity int) int
-		UserLite                   func(childComplexity int) int
 		VersionTiming              func(childComplexity int) int
 		Warnings                   func(childComplexity int) int
 		WaterfallBuilds            func(childComplexity int) int
@@ -2599,7 +2596,6 @@ type PatchResolver interface {
 	TaskStatuses(ctx context.Context, obj *model.APIPatch) ([]string, error)
 	Time(ctx context.Context, obj *model.APIPatch) (*PatchTime, error)
 	User(ctx context.Context, obj *model.APIPatch) (*user.DBUser, error)
-	UserLite(ctx context.Context, obj *model.APIPatch) (*user.DBUser, error)
 
 	Version(ctx context.Context, obj *model.APIPatch) (*model1.Version, error)
 	VersionFull(ctx context.Context, obj *model.APIPatch) (*model.APIVersion, error)
@@ -2678,7 +2674,6 @@ type QueryResolver interface {
 	VariantQuarantineStatus(ctx context.Context, projectIdentifier string, buildVariant string) (*model.APIVariantQuarantineStatus, error)
 	MyPublicKeys(ctx context.Context) ([]*model.APIPubKey, error)
 	User(ctx context.Context, userID *string) (*user.DBUser, error)
-	UserLite(ctx context.Context, userID *string) (*user.DBUser, error)
 	UserConfig(ctx context.Context) (*UserConfig, error)
 	BuildVariantsForTaskName(ctx context.Context, projectIdentifier string, taskName string) ([]*task.BuildVariantTuple, error)
 	MainlineCommits(ctx context.Context, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) (*MainlineCommits, error)
@@ -2836,7 +2831,6 @@ type VersionResolver interface {
 	TaskStatusStats(ctx context.Context, obj *model.APIVersion, options BuildVariantOptions) (*task.TaskStats, error)
 	UpstreamProject(ctx context.Context, obj *model.APIVersion) (*UpstreamProject, error)
 	User(ctx context.Context, obj *model.APIVersion) (*user.DBUser, error)
-	UserLite(ctx context.Context, obj *model.APIVersion) (*user.DBUser, error)
 	VersionTiming(ctx context.Context, obj *model.APIVersion) (*VersionTiming, error)
 	Warnings(ctx context.Context, obj *model.APIVersion) ([]string, error)
 	WaterfallBuilds(ctx context.Context, obj *model.APIVersion) ([]*model1.WaterfallBuild, error)
@@ -7648,12 +7642,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Patch.User(childComplexity), true
-	case "Patch.userLite":
-		if e.complexity.Patch.UserLite == nil {
-			break
-		}
-
-		return e.complexity.Patch.UserLite(childComplexity), true
 	case "Patch.variants":
 		if e.complexity.Patch.Variants == nil {
 			break
@@ -9232,17 +9220,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.UserConfig(childComplexity), true
-	case "Query.userLite":
-		if e.complexity.Query.UserLite == nil {
-			break
-		}
-
-		args, err := ec.field_Query_userLite_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.UserLite(childComplexity, args["userId"].(*string)), true
 	case "Query.variantQuarantineStatus":
 		if e.complexity.Query.VariantQuarantineStatus == nil {
 			break
@@ -12684,12 +12661,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Version.User(childComplexity), true
-	case "Version.userLite":
-		if e.complexity.Version.UserLite == nil {
-			break
-		}
-
-		return e.complexity.Version.UserLite(childComplexity), true
 	case "Version.versionTiming":
 		if e.complexity.Version.VersionTiming == nil {
 			break
@@ -17090,17 +17061,6 @@ func (ec *executionContext) field_Query_task_argsTaskID(
 		var zeroVal string
 		return zeroVal, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 	}
-}
-
-func (ec *executionContext) field_Query_userLite_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "userId", ec.unmarshalOString2ᚖstring)
-	if err != nil {
-		return nil, err
-	}
-	args["userId"] = arg0
-	return args, nil
 }
 
 func (ec *executionContext) field_Query_user_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
@@ -35485,8 +35445,6 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_rolledUpVersions(
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "user":
 				return ec.fieldContext_Version_user(ctx, field)
-			case "userLite":
-				return ec.fieldContext_Version_userLite(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "warnings":
@@ -35602,8 +35560,6 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_version(_ context
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "user":
 				return ec.fieldContext_Version_user(ctx, field)
-			case "userLite":
-				return ec.fieldContext_Version_userLite(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "warnings":
@@ -37116,8 +37072,6 @@ func (ec *executionContext) fieldContext_Mutation_setPatchVisibility(ctx context
 				return ec.fieldContext_Patch_time(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
-			case "userLite":
-				return ec.fieldContext_Patch_userLite(ctx, field)
 			case "variants":
 				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
@@ -37235,8 +37189,6 @@ func (ec *executionContext) fieldContext_Mutation_schedulePatch(ctx context.Cont
 				return ec.fieldContext_Patch_time(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
-			case "userLite":
-				return ec.fieldContext_Patch_userLite(ctx, field)
 			case "variants":
 				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
@@ -41989,8 +41941,6 @@ func (ec *executionContext) fieldContext_Mutation_restartVersions(ctx context.Co
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "user":
 				return ec.fieldContext_Version_user(ctx, field)
-			case "userLite":
-				return ec.fieldContext_Version_userLite(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "warnings":
@@ -44343,8 +44293,6 @@ func (ec *executionContext) fieldContext_Patch_childPatches(_ context.Context, f
 				return ec.fieldContext_Patch_time(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
-			case "userLite":
-				return ec.fieldContext_Patch_userLite(ctx, field)
 			case "variants":
 				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
@@ -45195,59 +45143,6 @@ func (ec *executionContext) fieldContext_Patch_user(_ context.Context, field gra
 	return fc, nil
 }
 
-func (ec *executionContext) _Patch_userLite(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Patch_userLite,
-		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Patch().UserLite(ctx, obj)
-		},
-		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋuserᚐDBUser,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Patch_userLite(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Patch",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "betaFeatures":
-				return ec.fieldContext_User_betaFeatures(ctx, field)
-			case "displayName":
-				return ec.fieldContext_User_displayName(ctx, field)
-			case "emailAddress":
-				return ec.fieldContext_User_emailAddress(ctx, field)
-			case "hasTokenExchangePending":
-				return ec.fieldContext_User_hasTokenExchangePending(ctx, field)
-			case "id":
-				return ec.fieldContext_User_id(ctx, field)
-			case "parsleyFilters":
-				return ec.fieldContext_User_parsleyFilters(ctx, field)
-			case "patches":
-				return ec.fieldContext_User_patches(ctx, field)
-			case "permissions":
-				return ec.fieldContext_User_permissions(ctx, field)
-			case "settings":
-				return ec.fieldContext_User_settings(ctx, field)
-			case "subscriptions":
-				return ec.fieldContext_User_subscriptions(ctx, field)
-			case "tokenAccessTokenExpiresAt":
-				return ec.fieldContext_User_tokenAccessTokenExpiresAt(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Patch_variants(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -45495,8 +45390,6 @@ func (ec *executionContext) fieldContext_Patch_versionFull(_ context.Context, fi
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "user":
 				return ec.fieldContext_Version_user(ctx, field)
-			case "userLite":
-				return ec.fieldContext_Version_userLite(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "warnings":
@@ -46215,8 +46108,6 @@ func (ec *executionContext) fieldContext_Patches_patches(_ context.Context, fiel
 				return ec.fieldContext_Patch_time(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
-			case "userLite":
-				return ec.fieldContext_Patch_userLite(ctx, field)
 			case "variants":
 				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
@@ -52926,8 +52817,6 @@ func (ec *executionContext) fieldContext_Query_patch(ctx context.Context, field 
 				return ec.fieldContext_Patch_time(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
-			case "userLite":
-				return ec.fieldContext_Patch_userLite(ctx, field)
 			case "variants":
 				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
@@ -54269,71 +54158,6 @@ func (ec *executionContext) fieldContext_Query_user(ctx context.Context, field g
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_userLite(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Query_userLite,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().UserLite(ctx, fc.Args["userId"].(*string))
-		},
-		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋuserᚐDBUser,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Query_userLite(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "betaFeatures":
-				return ec.fieldContext_User_betaFeatures(ctx, field)
-			case "displayName":
-				return ec.fieldContext_User_displayName(ctx, field)
-			case "emailAddress":
-				return ec.fieldContext_User_emailAddress(ctx, field)
-			case "hasTokenExchangePending":
-				return ec.fieldContext_User_hasTokenExchangePending(ctx, field)
-			case "id":
-				return ec.fieldContext_User_id(ctx, field)
-			case "parsleyFilters":
-				return ec.fieldContext_User_parsleyFilters(ctx, field)
-			case "patches":
-				return ec.fieldContext_User_patches(ctx, field)
-			case "permissions":
-				return ec.fieldContext_User_permissions(ctx, field)
-			case "settings":
-				return ec.fieldContext_User_settings(ctx, field)
-			case "subscriptions":
-				return ec.fieldContext_User_subscriptions(ctx, field)
-			case "tokenAccessTokenExpiresAt":
-				return ec.fieldContext_User_tokenAccessTokenExpiresAt(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_userLite_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Query_userConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -54758,8 +54582,6 @@ func (ec *executionContext) fieldContext_Query_version(ctx context.Context, fiel
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "user":
 				return ec.fieldContext_Version_user(ctx, field)
-			case "userLite":
-				return ec.fieldContext_Version_userLite(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "warnings":
@@ -64764,8 +64586,6 @@ func (ec *executionContext) fieldContext_Task_patch(_ context.Context, field gra
 				return ec.fieldContext_Patch_time(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
-			case "userLite":
-				return ec.fieldContext_Patch_userLite(ctx, field)
 			case "variants":
 				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
@@ -66697,8 +66517,6 @@ func (ec *executionContext) fieldContext_Task_versionMetadata(_ context.Context,
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "user":
 				return ec.fieldContext_Version_user(ctx, field)
-			case "userLite":
-				return ec.fieldContext_Version_userLite(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "warnings":
@@ -72660,8 +72478,6 @@ func (ec *executionContext) fieldContext_UpstreamProject_version(_ context.Conte
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "user":
 				return ec.fieldContext_Version_user(ctx, field)
-			case "userLite":
-				return ec.fieldContext_Version_userLite(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "warnings":
@@ -74032,8 +73848,6 @@ func (ec *executionContext) fieldContext_Version_baseVersion(_ context.Context, 
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "user":
 				return ec.fieldContext_Version_user(ctx, field)
-			case "userLite":
-				return ec.fieldContext_Version_userLite(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "warnings":
@@ -74276,8 +74090,6 @@ func (ec *executionContext) fieldContext_Version_childVersions(_ context.Context
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "user":
 				return ec.fieldContext_Version_user(ctx, field)
-			case "userLite":
-				return ec.fieldContext_Version_userLite(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "warnings":
@@ -74845,8 +74657,6 @@ func (ec *executionContext) fieldContext_Version_patch(_ context.Context, field 
 				return ec.fieldContext_Patch_time(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
-			case "userLite":
-				return ec.fieldContext_Patch_userLite(ctx, field)
 			case "variants":
 				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
@@ -75019,8 +74829,6 @@ func (ec *executionContext) fieldContext_Version_previousVersion(_ context.Conte
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "user":
 				return ec.fieldContext_Version_user(ctx, field)
-			case "userLite":
-				return ec.fieldContext_Version_userLite(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "warnings":
@@ -75597,59 +75405,6 @@ func (ec *executionContext) _Version_user(ctx context.Context, field graphql.Col
 }
 
 func (ec *executionContext) fieldContext_Version_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Version",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "betaFeatures":
-				return ec.fieldContext_User_betaFeatures(ctx, field)
-			case "displayName":
-				return ec.fieldContext_User_displayName(ctx, field)
-			case "emailAddress":
-				return ec.fieldContext_User_emailAddress(ctx, field)
-			case "hasTokenExchangePending":
-				return ec.fieldContext_User_hasTokenExchangePending(ctx, field)
-			case "id":
-				return ec.fieldContext_User_id(ctx, field)
-			case "parsleyFilters":
-				return ec.fieldContext_User_parsleyFilters(ctx, field)
-			case "patches":
-				return ec.fieldContext_User_patches(ctx, field)
-			case "permissions":
-				return ec.fieldContext_User_permissions(ctx, field)
-			case "settings":
-				return ec.fieldContext_User_settings(ctx, field)
-			case "subscriptions":
-				return ec.fieldContext_User_subscriptions(ctx, field)
-			case "tokenAccessTokenExpiresAt":
-				return ec.fieldContext_User_tokenAccessTokenExpiresAt(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Version_userLite(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Version_userLite,
-		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Version().UserLite(ctx, obj)
-		},
-		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋuserᚐDBUser,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Version_userLite(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Version",
 		Field:      field,
@@ -77634,8 +77389,6 @@ func (ec *executionContext) fieldContext_Waterfall_flattenedVersions(_ context.C
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "user":
 				return ec.fieldContext_Version_user(ctx, field)
-			case "userLite":
-				return ec.fieldContext_Version_userLite(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "warnings":
@@ -99932,42 +99685,6 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "userLite":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Patch_userLite(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "variants":
 			out.Values[i] = ec._Patch_variants(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -103032,28 +102749,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_user(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "userLite":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_userLite(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -110985,42 +110680,6 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 					}
 				}()
 				res = ec._Version_user(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "userLite":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Version_userLite(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
