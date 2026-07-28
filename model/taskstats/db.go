@@ -31,6 +31,7 @@ package taskstats
 
 import (
 	"context"
+	"maps"
 	"math/rand"
 	"time"
 
@@ -462,9 +463,7 @@ func BuildPaginationOrBranches(fields []PaginationField) []bson.M {
 
 	for _, field := range fields {
 		branch := bson.M{}
-		for k, v := range baseConstraints {
-			branch[k] = v
-		}
+		maps.Copy(branch, baseConstraints)
 		branch[field.Field] = field.GetNextExpression()
 		branches = append(branches, branch)
 		baseConstraints[field.Field] = field.GetEqExpression()

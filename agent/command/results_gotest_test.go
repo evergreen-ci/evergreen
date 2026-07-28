@@ -1,7 +1,6 @@
 package command
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -23,8 +22,7 @@ func reset(t *testing.T) {
 
 func TestGotestPluginOnFailingTests(t *testing.T) {
 	currentDirectory := testutil.GetDirectoryOfFile()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	testConfig := env.Settings()
 
@@ -84,8 +82,7 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 
 func TestGotestPluginOnPassingTests(t *testing.T) {
 	currentDirectory := testutil.GetDirectoryOfFile()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	SkipConvey("With gotest plugin installed into plugin registry", t, func() {
 		reset(t)

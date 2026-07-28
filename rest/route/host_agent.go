@@ -200,6 +200,10 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	var nextTask *task.Task
 	var shouldRunTeardown bool
 
+	// Count the tasks the dispatcher skips so that, if no task is assigned, we
+	// can tell an expected empty response apart from a dispatch problem.
+	ctx = model.NewDispatchSkipsContext(ctx)
+
 	// retrieve the next task off the task queue and attempt to assign it to the host.
 	// If there is already a host that has the task, it will error
 	taskQueue, err := model.LoadTaskQueue(ctx, h.host.Distro.Id)
@@ -221,10 +225,11 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	// if we didn't find a task in the "primary" queue, then we
 	// try again from the alias queue. (this code runs if the
 	// primary queue doesn't exist or is empty)
+	var secondaryQueue *model.TaskQueue
 	if nextTask == nil && !shouldRunTeardown {
 		// if we couldn't find a task in the task queue,
 		// check the alias queue...
-		secondaryQueue, err := model.LoadDistroSecondaryTaskQueue(ctx, h.host.Distro.Id)
+		secondaryQueue, err = model.LoadDistroSecondaryTaskQueue(ctx, h.host.Distro.Id)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
@@ -252,35 +257,34 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 			}
 			nextTaskResponse.ShouldTeardownGroup = true
 		} else {
+			numDepsMet := taskQueue.LengthWithDependenciesMet() + secondaryQueue.LengthWithDependenciesMet()
+			numSkips := model.DispatchSkipsFromContext(ctx)
+
 			// if the task is empty, still send it with a status ok and check it on the other side
 			grip.Info(ctx, message.Fields{
-				"op":      "next_task",
-				"message": "no task to assign to host",
-				"host_id": h.host.Id,
+				"op":                         "next_task",
+				"message":                    "no task to assign to host",
+				"host_id":                    h.host.Id,
+				"distro":                     h.host.Distro.Id,
+				"queue_length":               taskQueue.Length() + secondaryQueue.Length(),
+				"queue_length_with_deps_met": numDepsMet,
+				"num_skipped_tasks":          numSkips,
 			})
 
-			distroQueueInfo, queueInfoErr := model.GetDistroQueueInfo(ctx, h.host.Distro.Id)
-			if queueInfoErr != nil {
-				grip.Error(ctx, message.WrapError(queueInfoErr, message.Fields{
-					"op":      "next_task",
-					"message": "getting distro queue info for dispatch alert",
-					"host_id": h.host.Id,
-					"distro":  h.host.Distro.Id,
-				}))
-			}
-
-			if distroQueueInfo.LengthWithDependenciesMet > 0 {
+			// Every skip is recorded for a valid reason to return an empty
+			// response, so warn when the in-memory queues still contain
+			// dependency-met tasks and the dispatcher recorded no skips at
+			// all, meaning it didn't consider those tasks.
+			if numDepsMet > 0 && numSkips == 0 {
 				grip.WarningWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 					"op":                         "next_task",
 					"message":                    "non-empty queue but no task assigned to host",
 					"host_id":                    h.host.Id,
 					"distro":                     h.host.Distro.Id,
-					"queue_length":               distroQueueInfo.Length,
-					"queue_length_with_deps_met": distroQueueInfo.LengthWithDependenciesMet,
-					"queue_plan_created_at":      distroQueueInfo.PlanCreatedAt,
+					"queue_length":               taskQueue.Length() + secondaryQueue.Length(),
+					"queue_length_with_deps_met": numDepsMet,
 					"agent_task_group":           h.details.TaskGroup,
 				})
-
 			}
 		}
 
@@ -424,6 +428,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 
 		// validate that the task can be run, if not fetch the next one in the queue.
 		if !nextTask.IsHostDispatchable() {
+			model.RecordDispatchSkip(ctx)
 			grip.Warning(ctx, message.Fields{
 				"message": "task was not dispatchable",
 				"task":    nextTask.Id,
@@ -469,6 +474,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		}
 
 		if isDisabled {
+			model.RecordDispatchSkip(ctx)
 			grip.Warning(ctx, message.WrapError(taskQueue.DequeueTask(ctx, nextTask.Id), message.Fields{
 				"message":              "project has dispatching disabled, but there was an issue dequeuing the task",
 				"distro_id":            nextTask.DistroId,
@@ -484,6 +490,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 
 		// If the top task on the queue is blocked, the scheduler task queue may be out of date.
 		if nextTask.Blocked() {
+			model.RecordDispatchSkip(ctx)
 			grip.Debug(ctx, message.Fields{
 				"message":            "top task queue task is blocked, dequeuing task",
 				"host_id":            currentHost.Id,
@@ -558,6 +565,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 				return nil, false, errors.Wrapf(err, "could not validate single task distro task '%s'", nextTask.Id)
 			}
 			if !matched {
+				model.RecordDispatchSkip(ctx)
 				grip.Error(ctx, message.Fields{
 					"message":            "top task queue task is not allowed on single task distros",
 					"host_id":            currentHost.Id,
@@ -653,6 +661,9 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		}))
 
 		if !dispatchedTask {
+			// Losing the dispatch lock means another host raced us to this
+			// task, whether directly or via task group host limits.
+			model.RecordDispatchSkip(ctx)
 			grip.Warning(ctx, message.Fields{
 				"message": "task was not dispatched",
 				"task":    nextTask.Id,

@@ -7,3 +7,9 @@ import "strings"
 func PowerShellQuotedString(s string) string {
 	return "@'\n" + strings.Replace(strings.Replace(s, `\`, `\\`, -1), `"`, `""`, -1) + "\n'@"
 }
+
+// ShellQuote returns s quoted for safe use as a single literal argument in a
+// POSIX shell command.
+func ShellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}

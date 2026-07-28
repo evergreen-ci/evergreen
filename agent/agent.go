@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -294,10 +295,7 @@ func (a *Agent) loop(ctx context.Context) error {
 				}
 				grip.Debugf(ctx, "Agent found no task to run, sleeping %s.", sleepTime)
 				timer.Reset(sleepTime)
-				agentSleepInterval = agentSleepInterval * 2
-				if agentSleepInterval > globals.MaxAgentSleepInterval {
-					agentSleepInterval = globals.MaxAgentSleepInterval
-				}
+				agentSleepInterval = min(agentSleepInterval*2, globals.MaxAgentSleepInterval)
 				continue
 			}
 			lastIdleAt = time.Now()
@@ -1003,11 +1001,8 @@ func (a *Agent) runDefaultTimeoutHandler(ctx context.Context, tc *taskContext, d
 			processDetails = append(processDetails, detail)
 
 			if currentCmdName != "" && info.IsRunning {
-				for _, tag := range proc.GetTags() {
-					if tag == currentCmdName {
-						currentCmdPID = info.PID
-						break
-					}
+				if slices.Contains(proc.GetTags(), currentCmdName) {
+					currentCmdPID = info.PID
 				}
 			}
 		}
@@ -1707,7 +1702,7 @@ func pgrepChildren(ctx context.Context, parentPID int, logger client.LoggerProdu
 
 	var pids []int
 	// pgrep outputs one PID per line, each line containing just a numeric PID.
-	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue

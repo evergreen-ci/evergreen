@@ -11,6 +11,7 @@ import (
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
@@ -296,15 +297,31 @@ func (p *patchesByUserHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (p *patchesByUserHandler) Run(ctx context.Context) gimlet.Responder {
-	// sortAsc set to false in order to display patches in desc chronological order
-	patches, err := data.FindPatchesByUser(ctx, p.user, p.key, p.limit+1)
+	usr := MustHaveUser(ctx)
+	isSuperUser := usr.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	})
+
+	var projectIDs []string
+	if !isSuperUser {
+		var err error
+		projectIDs, err = permittedProjectIDs(ctx, usr)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "resolving permitted projects"))
+		}
+	}
+
+	patches, err := data.FindPatchesByUser(ctx, p.user, p.key, p.limit+1, projectIDs...)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patches for user '%s'", p.user))
 	}
 
 	resp := gimlet.NewResponseBuilder()
 	if len(patches) > p.limit {
-		err = resp.SetPages(&gimlet.ResponsePages{
+		err := resp.SetPages(&gimlet.ResponsePages{
 			Next: &gimlet.Page{
 				Relation:        "next",
 				LimitQueryParam: "limit",
@@ -319,14 +336,41 @@ func (p *patchesByUserHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 		patches = patches[:p.limit]
 	}
-	for _, model := range patches {
-		err = resp.AddData(model)
+	for _, m := range patches {
+		err := resp.AddData(m)
 		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding response data for patch '%s'", utility.FromStringPtr(model.Id)))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding response data for patch '%s'", utility.FromStringPtr(m.Id)))
 		}
 	}
 
 	return resp
+}
+
+// permittedProjectIDs returns the project IDs the user has viewTasks access to.
+func permittedProjectIDs(ctx context.Context, usr *user.DBUser) ([]string, error) {
+	rm := evergreen.GetEnvironment().RoleManager()
+	roles, err := rm.GetRoles(ctx, usr.Roles())
+	if err != nil {
+		return nil, errors.Wrap(err, "getting user roles")
+	}
+
+	scopeIDs := make([]string, 0, len(roles))
+	for _, r := range roles {
+		if level, ok := r.Permissions[evergreen.PermissionTasks]; ok && level >= evergreen.TasksView.Value {
+			scopeIDs = append(scopeIDs, r.Scope)
+		}
+	}
+
+	scopes, err := rm.FilterScopesByResourceType(ctx, scopeIDs, evergreen.ProjectResourceType)
+	if err != nil {
+		return nil, errors.Wrap(err, "filtering scopes by project resource type")
+	}
+
+	var projectIDs []string
+	for _, s := range scopes {
+		projectIDs = append(projectIDs, s.Resources...)
+	}
+	return projectIDs, nil
 }
 
 ////////////////////////////////////////////////////////////////////////

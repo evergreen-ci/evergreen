@@ -1,7 +1,6 @@
 package model
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -22,8 +21,7 @@ type taskCompare struct {
 }
 
 func TestTaskBuildFromService(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With a list of models to compare", t, func() {
 		timeNow := time.Now()
@@ -77,7 +75,8 @@ func TestTaskBuildFromService(t *testing.T) {
 						LastPassingStepbackTaskId: "last_passing",
 						NextStepbackTaskId:        "next",
 					},
-					HasAnnotations: true,
+					HasAnnotations:               true,
+					QuarantinedTestsSkippedCount: 3,
 				},
 				st: task.Task{
 					Id:            "testId",
@@ -115,7 +114,8 @@ func TestTaskBuildFromService(t *testing.T) {
 						LastPassingStepbackTaskId: "last_passing",
 						NextStepbackTaskId:        "next",
 					},
-					HasAnnotations: true,
+					HasAnnotations:             true,
+					NumQuarantinedTestsSkipped: 3,
 				},
 			},
 			{
@@ -239,6 +239,7 @@ func TestTaskBuildFromService(t *testing.T) {
 				}
 
 				So(apiTask.HasAnnotations, ShouldEqual, tc.at.HasAnnotations)
+				So(apiTask.QuarantinedTestsSkippedCount, ShouldEqual, tc.at.QuarantinedTestsSkippedCount)
 
 				if tc.at.S3Usage == nil {
 					So(apiTask.S3Usage, ShouldBeNil)

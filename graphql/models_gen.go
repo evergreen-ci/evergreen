@@ -11,6 +11,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	model1 "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -584,16 +585,6 @@ type TaskHistory struct {
 	Pagination *TaskHistoryPagination `json:"pagination"`
 }
 
-type TaskHistoryByCreateTime struct {
-	Tasks      []*model.APITask                   `json:"tasks"`
-	Pagination *TaskHistoryByCreateTimePagination `json:"pagination"`
-}
-
-type TaskHistoryByCreateTimePagination struct {
-	MostRecentTaskCreateTime time.Time `json:"mostRecentTaskCreateTime"`
-	OldestTaskCreateTime     time.Time `json:"oldestTaskCreateTime"`
-}
-
 type TaskHistoryOpts struct {
 	ProjectIdentifier string        `json:"projectIdentifier"`
 	TaskName          string        `json:"taskName"`
@@ -777,6 +768,7 @@ type VolumeHost struct {
 type Waterfall struct {
 	FlattenedVersions []*model.APIVersion  `json:"flattenedVersions"`
 	Pagination        *WaterfallPagination `json:"pagination"`
+	Versions          []*model1.Version    `json:"versions"`
 }
 
 type WaterfallOptions struct {

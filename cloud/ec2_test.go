@@ -22,6 +22,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -44,6 +46,26 @@ type EC2Suite struct {
 func TestEC2Suite(t *testing.T) {
 	s := &EC2Suite{}
 	suite.Run(t, s)
+}
+
+func TestEC2ProviderSettingsToDocument(t *testing.T) {
+	settings := &EC2ProviderSettings{
+		Region:                     evergreen.DefaultEC2Region,
+		AMI:                        "ami",
+		InstanceType:               "instance",
+		SecurityGroupIDs:           []string{"sg-123456"},
+		EnableNestedVirtualization: true,
+	}
+
+	doc, err := settings.ToDocument()
+	require.NoError(t, err)
+	enabled, ok := doc.ExportMap()["enable_nested_virtualization"].(bool)
+	require.True(t, ok)
+	assert.True(t, enabled)
+
+	var roundTrippedSettings EC2ProviderSettings
+	require.NoError(t, roundTrippedSettings.FromDocument(doc))
+	assert.True(t, roundTrippedSettings.EnableNestedVirtualization)
 }
 
 func (s *EC2Suite) TearDownTest() {

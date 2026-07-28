@@ -692,7 +692,7 @@ func (s3pc *s3put) createPailBucket(ctx context.Context, comm client.Communicato
 	opts := s3pc.s3PutOptions()
 
 	if s3pc.getRoleARN() != "" {
-		opts.Credentials = createEvergreenCredentials(comm, s3pc.taskData, s3pc.existingCredentials, s3pc.getRoleARN(), func(s string) {
+		opts.Credentials = newCachedEvergreenCredentials(comm, s3pc.taskData, s3pc.existingCredentials, s3pc.getRoleARN(), func(s string) {
 			s3pc.externalID = s
 		})
 	} else if s3pc.AwsKey != "" {

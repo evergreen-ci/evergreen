@@ -63,8 +63,7 @@ func TestFilterGeneralSubscriptions(t *testing.T) {
 }
 
 func TestCanRestartTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	blockedTask := &task.Task{
 		Id: "t1",
@@ -124,8 +123,7 @@ func TestCanRestartTask(t *testing.T) {
 }
 
 func TestCanScheduleTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	abortedTask := &task.Task{
 		Id:            "t1",

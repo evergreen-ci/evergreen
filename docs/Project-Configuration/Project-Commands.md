@@ -607,7 +607,7 @@ An example of a trust policy with an external ID is below:
       },
       "Action": "sts:AssumeRole",
       "Condition": {
-        "StringExact": {
+        "StringEquals": {
           "sts:ExternalId": "[project_id]-[requester]"
         }
       }
@@ -653,7 +653,7 @@ Or just particular requesters
       },
       "Action": "sts:AssumeRole",
       "Condition": {
-        "StringExact": {
+        "StringEquals": {
           "sts:ExternalId": [
             "[project_id]-github_merge_request",
             "[project_id]-trigger_request"
@@ -684,7 +684,7 @@ Or just particular requesters
       },
       "Action": "sts:AssumeRole",
       "Condition": {
-        "StringExact": {
+        "StringEquals": {
           "sts:ExternalId": "untracked-[repo_project_id]-[requester]"
         }
       }

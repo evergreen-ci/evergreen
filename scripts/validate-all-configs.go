@@ -68,7 +68,7 @@ func validateConfigs(configsDir, outputFile string) error {
 	var wg sync.WaitGroup
 
 	numWorkers := runtime.GOMAXPROCS(0)
-	for i := 0; i < numWorkers; i++ {
+	for range numWorkers {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

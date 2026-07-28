@@ -26,8 +26,7 @@ import (
 )
 
 func TestSendTestResults(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := testutil.NewEnvironment(ctx, t)
 
@@ -203,7 +202,7 @@ func saveTestResults(t *testing.T, ctx context.Context, testBucket pail.Bucket, 
 		Results:   make([]testresult.ParquetTestResult, length),
 	}
 
-	for i := 0; i < len(savedResults); i++ {
+	for i := range savedResults {
 		savedParquet.Results[i] = testresult.ParquetTestResult{
 			TestName:       savedResults[i].TestName,
 			GroupID:        utility.ToStringPtr(savedResults[i].GroupID),

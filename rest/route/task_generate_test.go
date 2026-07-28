@@ -2,7 +2,6 @@ package route
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -58,8 +57,7 @@ func TestValidate(t *testing.T) {
 }
 
 func TestGenerateExecuteWithSmallFileInDB(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(task.Collection))
 
 	tsk := task.Task{
@@ -99,8 +97,7 @@ func TestGenerateExecuteWithSmallFileInDB(t *testing.T) {
 }
 
 func TestGenerateExecuteWithLargeFileInS3(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
@@ -134,7 +131,7 @@ func TestGenerateExecuteWithLargeFileInS3(t *testing.T) {
 	// Create string that is over the DB's 16 MB document limit to ensure it
 	// gets stored in S3.
 	genJSON := bytes.NewBufferString("{")
-	for i := 0; i < 10e6; i++ {
+	for i := range int(10e6) {
 		_, err := genJSON.WriteString(fmt.Sprintf(`"field-%d": "value-%d"`, i, i))
 		require.NoError(t, err)
 		if i < 10e6-1 {
@@ -172,8 +169,7 @@ func TestGenerateExecuteWithLargeFileInS3(t *testing.T) {
 }
 
 func TestGeneratePollParse(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(task.Collection, host.Collection))
 	r, err := http.NewRequest(http.MethodGet, "/task/1/generate", nil)
 	require.NoError(t, err)
@@ -184,8 +180,7 @@ func TestGeneratePollParse(t *testing.T) {
 }
 
 func TestGeneratePollRun(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(task.Collection))
 	tasks := []task.Task{
 		{

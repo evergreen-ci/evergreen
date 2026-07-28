@@ -644,6 +644,9 @@ func superUserResource(_ *http.Request) ([]string, int, error) {
 	return []string{evergreen.SuperUserPermissionsID}, http.StatusOK, nil
 }
 
+// maxWebhookBodySize caps the request body read by the webhook middleware.
+const maxWebhookBodySize = 10 * 1024 * 1024
+
 // NewGithubAuthMiddleware returns a middleware that verifies the payload.
 func NewGithubAuthMiddleware() gimlet.Middleware {
 	return &githubAuthMiddleware{}
@@ -654,6 +657,7 @@ type githubAuthMiddleware struct{}
 func (m *githubAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	githubSecret := []byte(evergreen.GetEnvironment().Settings().GithubWebhookSecret)
 
+	r.Body = http.MaxBytesReader(rw, r.Body, maxWebhookBodySize)
 	payload, err := github.ValidatePayload(r, githubSecret)
 	if err != nil {
 		grip.Error(r.Context(), message.WrapError(err, message.Fields{
@@ -692,7 +696,7 @@ func NewSNSAuthMiddleware() gimlet.Middleware {
 }
 
 func (m *snsAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	body, err := io.ReadAll(r.Body)
+	body, err := io.ReadAll(http.MaxBytesReader(rw, r.Body, maxWebhookBodySize))
 	if err != nil {
 		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "reading body")))
 		return
@@ -737,43 +741,16 @@ func AddCORSHeaders(allowedOrigins []string, next http.HandlerFunc) http.Handler
 		if len(allowedOrigins) > 0 {
 			// Requests from a GQL client include this header, which must be added to the response to enable CORS
 			gqlHeader := r.Header.Get("Access-Control-Request-Headers")
-			if utility.StringMatchesAnyRegex(requester, allowedOrigins) {
+			if utility.StringSliceContains(allowedOrigins, requester) {
 				w.Header().Add("Access-Control-Allow-Origin", requester)
 				w.Header().Add("Access-Control-Allow-Credentials", "true")
 				w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PATCH, PUT")
 				w.Header().Add("Access-Control-Allow-Headers", fmt.Sprintf("%s, %s, %s", evergreen.APIKeyHeader, evergreen.APIUserHeader, gqlHeader))
 				w.Header().Add("Access-Control-Max-Age", "600")
-
-				// TODO: Delete when resolving DEVPROD-36667.
-				// To avoid over-logging, only log the header if it doesn't match the expected URLs.
-				if !isExpectedCORSOrigin(requester) {
-					grip.Info(r.Context(), message.Fields{
-						"message":    "CORS request from unexpected origin",
-						"origin":     requester,
-						"method":     r.Method,
-						"path":       r.URL.Path,
-						"user_agent": r.UserAgent(),
-					})
-				}
 			}
 		}
 		next(w, r)
 	}
-}
-
-// TODO: Delete when resolving DEVPROD-36667.
-func isExpectedCORSOrigin(origin string) bool {
-	expectedURLs := []string{
-		"https://spruce.corp.mongodb.com",
-		"https://spruce-staging.corp.mongodb.com",
-		"https://spruce-beta.corp.mongodb.com",
-		"https://spruce-local.corp.mongodb.com",
-		"https://parsley.corp.mongodb.com",
-		"https://parsley-staging.corp.mongodb.com",
-		"https://parsley-beta.corp.mongodb.com",
-		"https://parsley-local.corp.mongodb.com",
-	}
-	return slices.ContainsFunc(expectedURLs, func(u string) bool { return strings.HasPrefix(origin, u) })
 }
 
 func allowCORS(next http.HandlerFunc) http.HandlerFunc {

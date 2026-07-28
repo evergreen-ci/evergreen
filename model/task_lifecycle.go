@@ -2013,6 +2013,7 @@ func buildTaskCompletedSpanAttributes(t *task.Task) []attribute.KeyValue {
 		attribute.String(evergreen.TaskNameOtelAttribute, t.DisplayName),
 		attribute.String(evergreen.TaskVariantOtelAttribute, t.BuildVariant),
 		attribute.String(evergreen.VersionRequesterOtelAttribute, t.Requester),
+		attribute.String(evergreen.DistroIDOtelAttribute, t.DistroId),
 	}
 	if !utility.IsZeroTime(t.ActivatedTime) && !utility.IsZeroTime(t.ScheduledTime) {
 		attrs = append(attrs, attribute.Int64(evergreen.TaskTimeWaitingForSchedulingMsOtelAttribute,
@@ -2596,7 +2597,7 @@ func UpdateDisplayTaskForTask(ctx context.Context, t *task.Task) error {
 		updatedDisplayTask  *task.Task
 		err                 error
 	)
-	for i := 0; i < maxUpdateAttempts; i++ {
+	for i := range maxUpdateAttempts {
 		// Clear the cached display task, if any (e.g. due to a prior
 		// GetDisplayTask). The display task fetched here must always contain
 		// the latest display task data.

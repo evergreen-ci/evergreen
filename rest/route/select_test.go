@@ -16,8 +16,7 @@ import (
 )
 
 func TestSelectTestsHandler(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
@@ -169,8 +168,7 @@ func TestSelectTestsRouteUnauthenticated(t *testing.T) {
 }
 
 func TestSelectTestsHandlerAcceptsLegacyProjectKey(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))

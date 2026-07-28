@@ -20,7 +20,7 @@ func DoProjectActivation(ctx context.Context, projectRef *ProjectRef, ts time.Ti
 	if !projectRef.IsWaterfallEnabled() {
 		return nil, nil
 	}
-	if projectRef.RunEveryMainlineCommit {
+	if projectRef.RunEveryMainlineCommit != nil && *projectRef.RunEveryMainlineCommit {
 		return activateEveryRecentMainlineCommitForProject(ctx, projectRef, ts)
 	}
 	return activateMostRecentNonIgnoredCommitForProject(ctx, projectRef, ts)
@@ -51,9 +51,9 @@ func activateMostRecentNonIgnoredCommitForProject(ctx context.Context, projectRe
 	return nil, nil
 }
 
-// activateEveryRecentMainlineCommitForProject activates all unactivated non-ignored versions
-// up to the limit specified, runEveryMainlineCommitLimit or up to the last activated version,
-// whichever is less.
+// activateEveryRecentMainlineCommitForProject activates all elapsed builds and tasks for
+// non-ignored versions up to the limit specified, runEveryMainlineCommitLimit or back to the last
+// activated version, whichever is less.
 func activateEveryRecentMainlineCommitForProject(ctx context.Context, projectRef *ProjectRef, ts time.Time) ([]string, error) {
 	lastActivatedVersion, err := VersionFindOne(ctx, VersionByMostRecentActivated(projectRef.Id, ts))
 	if err != nil {
@@ -69,10 +69,14 @@ func activateEveryRecentMainlineCommitForProject(ctx context.Context, projectRef
 			return nil, errors.Wrapf(err, "finding all unactivated non-ignored versions")
 		}
 	} else {
-		// If there is a last activated version, activate only versions since that one.
-		activateVersions, err = VersionFind(ctx, VersionsUnactivatedSinceLastActivated(projectRef.Id, ts, lastActivatedVersion.RevisionOrderNumber, runEveryMainlineCommitLimit))
+		// If there is a last activated version, only consider versions since that one. Versions that
+		// are already activated are still considered, including the last activated version itself,
+		// because a version is marked activated as soon as any of its build variants activates. Its
+		// remaining batchtime and cron build variants and tasks may still be waiting for their
+		// activation time to elapse.
+		activateVersions, err = VersionFind(ctx, VersionsSinceLastActivated(projectRef.Id, ts, lastActivatedVersion.RevisionOrderNumber, runEveryMainlineCommitLimit))
 		if err != nil {
-			return nil, errors.Wrapf(err, "finding unactivated versions since last activated version '%s'", lastActivatedVersion.Id)
+			return nil, errors.Wrapf(err, "finding versions since last activated version '%s'", lastActivatedVersion.Id)
 		}
 	}
 

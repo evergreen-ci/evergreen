@@ -3,6 +3,7 @@ package operations
 import (
 	"context"
 	"fmt"
+	"io"
 	"math"
 	"net"
 	"os"
@@ -52,16 +53,17 @@ func getLogID() int {
 // operate.
 type monitor struct {
 	// Monitor args
-	credentialsPath string
-	clientPath      string
-	hostID          string
-	cloudProvider   string
-	distroID        string
-	shellPath       string
-	logOutput       globals.LogOutputType
-	logPrefix       string
-	jasperPort      int
-	port            int
+	credentialsPath  string
+	clientPath       string
+	compatClientPath string
+	hostID           string
+	cloudProvider    string
+	distroID         string
+	shellPath        string
+	logOutput        globals.LogOutputType
+	logPrefix        string
+	jasperPort       int
+	port             int
 
 	// Args to be forwarded to the agent
 	agentArgs []string
@@ -90,12 +92,15 @@ func agentMonitor() cli.Command {
 	const (
 		credentialsPathFlagName = "credentials"
 		clientPathFlagName      = "client_path"
-		distroIDFlagName        = "distro"
-		shellPathFlagName       = "shell_path"
-		logOutputFlagName       = "log_output"
-		logPrefixFlagName       = "log_prefix"
-		jasperPortFlagName      = "jasper_port"
-		portFlagName            = "port"
+		// compactClientPathFlagName is the compatible client path for
+		// legacy tasks that still rely on it.
+		compatClientPathFlagName = "compat_client_path"
+		distroIDFlagName         = "distro"
+		shellPathFlagName        = "shell_path"
+		logOutputFlagName        = "log_output"
+		logPrefixFlagName        = "log_prefix"
+		jasperPortFlagName       = "jasper_port"
+		portFlagName             = "port"
 	)
 
 	const (
@@ -114,6 +119,10 @@ func agentMonitor() cli.Command {
 			cli.StringFlag{
 				Name:  clientPathFlagName,
 				Usage: "the name of the agent's evergreen binary",
+			},
+			cli.StringFlag{
+				Name:  compatClientPathFlagName,
+				Usage: "internal only: legacy ~/evergreen path to refresh after each client download; unsupported and not for callers to rely on",
 			},
 			cli.StringFlag{
 				Name:  distroIDFlagName,
@@ -171,17 +180,18 @@ func agentMonitor() cli.Command {
 			comm.SetHostSecret(hostSecret)
 
 			m := &monitor{
-				comm:            comm,
-				credentialsPath: c.String(credentialsPathFlagName),
-				clientPath:      c.String(clientPathFlagName),
-				hostID:          hostID,
-				distroID:        c.String(distroIDFlagName),
-				cloudProvider:   c.Parent().String(agentCloudProviderFlagName),
-				shellPath:       c.String(shellPathFlagName),
-				jasperPort:      c.Int(jasperPortFlagName),
-				port:            c.Int(portFlagName),
-				logOutput:       globals.LogOutputType(c.String(logOutputFlagName)),
-				logPrefix:       c.String(logPrefixFlagName),
+				comm:             comm,
+				credentialsPath:  c.String(credentialsPathFlagName),
+				clientPath:       c.String(clientPathFlagName),
+				compatClientPath: c.String(compatClientPathFlagName),
+				hostID:           hostID,
+				distroID:         c.String(distroIDFlagName),
+				cloudProvider:    c.Parent().String(agentCloudProviderFlagName),
+				shellPath:        c.String(shellPathFlagName),
+				jasperPort:       c.Int(jasperPortFlagName),
+				port:             c.Int(portFlagName),
+				logOutput:        globals.LogOutputType(c.String(logOutputFlagName)),
+				logPrefix:        c.String(logPrefixFlagName),
 			}
 
 			m.agentArgs, err = getAgentArgs(c, os.Args)
@@ -305,6 +315,17 @@ func (m *monitor) removeMacOSClient() error {
 	return nil
 }
 
+// removeMacOSCompatClient deletes the legacy home evergreen binary on MacOS
+// hosts for the same SIP workaround as removeMacOSClient. Failures are ignored
+// by callers because refreshing that path is best-effort only.
+func (m *monitor) removeMacOSCompatClient() error {
+	if runtime.GOOS != "darwin" || m.compatClientPath == "" {
+		return nil
+	}
+
+	return errors.Wrapf(os.RemoveAll(m.compatClientPath), "removing legacy home client '%s'", m.compatClientPath)
+}
+
 // fetchClient downloads the evergreen client.
 func (m *monitor) fetchClient(ctx context.Context, urls []string, retry utility.RetryOptions) error {
 	var downloaded bool
@@ -336,6 +357,38 @@ func (m *monitor) fetchClient(ctx context.Context, urls []string, retry utility.
 	}
 
 	return errors.Wrap(os.Chmod(m.clientPath, 0755), "changing permissions of downloaded client")
+}
+
+// updateCompatClient copies the freshly downloaded agent client to the legacy
+// home path (typically ~/evergreen). That location is unsupported; we only
+// refresh it because existing tasks still call it and have not be migrated
+// yet. Failures are best-effort and must not fail the monitor loop.
+func (m *monitor) updateCompatClient() error {
+	if m.compatClientPath == "" {
+		return nil
+	}
+
+	src, err := os.Open(m.clientPath)
+	if err != nil {
+		return errors.Wrapf(err, "opening client '%s'", m.clientPath)
+	}
+	defer src.Close()
+
+	if err = os.MkdirAll(filepath.Dir(m.compatClientPath), 0755); err != nil {
+		return errors.Wrapf(err, "creating directory for legacy home client '%s'", m.compatClientPath)
+	}
+
+	dst, err := os.OpenFile(m.compatClientPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+	if err != nil {
+		return errors.Wrapf(err, "creating legacy home client '%s'", m.compatClientPath)
+	}
+	defer dst.Close()
+
+	if _, err = io.Copy(dst, src); err != nil {
+		return errors.Wrapf(err, "copying client to legacy home path '%s'", m.compatClientPath)
+	}
+
+	return errors.Wrapf(os.Chmod(m.compatClientPath, 0755), "changing permissions of legacy home client '%s'", m.compatClientPath)
 }
 
 // setupJasperConnection attempts to connect to the Jasper RPC service running
@@ -499,6 +552,14 @@ func (m *monitor) run(ctx context.Context) {
 				return true, err
 			}
 
+			if err := m.removeMacOSCompatClient(); err != nil {
+				grip.Warning(ctx, message.WrapError(err, message.Fields{
+					"message":            "could not remove MacOS legacy home client",
+					"distro":             m.distroID,
+					"compat_client_path": m.compatClientPath,
+				}))
+			}
+
 			clientURLs, err := m.comm.GetClientURLs(ctx, m.distroID)
 			if err != nil {
 				return true, errors.Wrap(err, "retrieving client URLs")
@@ -518,6 +579,18 @@ func (m *monitor) run(ctx context.Context) {
 			if _, err := os.Stat(m.clientPath); os.IsNotExist(err) {
 				grip.Error(ctx, errors.Wrapf(err, "getting file stat for client '%s'", m.clientPath))
 				return true, err
+			}
+
+			// Best-effort refresh of the unsupported legacy ~/evergreen path so
+			// existing callers that we cannot migrate yet are less likely to
+			// run a stale binary.
+			if err := m.updateCompatClient(); err != nil {
+				grip.Warning(ctx, message.WrapError(err, message.Fields{
+					"message":            "could not update legacy home evergreen binary",
+					"distro":             m.distroID,
+					"client_path":        m.clientPath,
+					"compat_client_path": m.compatClientPath,
+				}))
 			}
 
 			// This is only a warning because it's a best-effort attempt to give

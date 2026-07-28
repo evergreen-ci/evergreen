@@ -53,6 +53,13 @@ func createEvergreenCredentials(comm client.Communicator, taskData client.TaskDa
 	}
 }
 
+// newCachedEvergreenCredentials wraps the Evergreen credential provider in an AWS
+// credentials cache so credentials are reused across request signings instead of
+// assuming a role on every S3 request.
+func newCachedEvergreenCredentials(comm client.Communicator, taskData client.TaskData, existingCredentials *aws.Credentials, roleARN string, updateExternalID func(string)) aws.CredentialsProvider {
+	return aws.NewCredentialsCache(createEvergreenCredentials(comm, taskData, existingCredentials, roleARN, updateExternalID))
+}
+
 func (p *evergreenCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, error) {
 	if p.existingCredentials != nil && p.existingCredentials.HasKeys() && !p.existingCredentials.Expired() {
 		return *p.existingCredentials, nil

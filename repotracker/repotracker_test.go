@@ -35,8 +35,7 @@ func init() { testutil.Setup() }
 func TestFetchRevisions(t *testing.T) {
 	dropTestDB(t)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	Convey("With a GithubRepositoryPoller", t, func() {
 		err := modelutil.CreateTestLocalConfig(t.Context(), testConfig, "mci-test", "")
 		So(err, ShouldBeNil)
@@ -81,8 +80,7 @@ func TestFetchRevisions(t *testing.T) {
 
 func TestStoreRepositoryRevisions(t *testing.T) {
 	dropTestDB(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	Convey("When storing revisions gotten from a repository...", t, func() {
 		err := modelutil.CreateTestLocalConfig(t.Context(), testConfig, "mci-test", "")
 		So(err, ShouldBeNil)
@@ -353,8 +351,7 @@ func TestStoreRevisionsRecordsNewestRevision(t *testing.T) {
 }
 
 func TestCountNumDependentsAcrossVariants(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(model.VersionCollection, distro.Collection, model.ParserProjectCollection,
 		build.Collection, task.Collection, model.ProjectConfigCollection, model.ProjectRefCollection))
 
@@ -460,8 +457,7 @@ tasks:
 }
 
 func TestBatchTimeForTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	assert.NoError(t, db.ClearCollections(model.VersionCollection, distro.Collection, model.ParserProjectCollection,
 		build.Collection, task.Collection, model.ProjectConfigCollection, model.ProjectRefCollection))
 
@@ -632,8 +628,7 @@ tasks:
 }
 
 func TestBatchTimes(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("When deciding whether or not to activate variants for the most recently stored version", t, func() {
 		// We create a version with an activation time of now so that all the bvs have a last activation time of now.
@@ -1900,8 +1895,7 @@ func TestCreateManifest(t *testing.T) {
 
 func TestShellVersionFromRevisionGitTags(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(user.Collection))
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	// triggered from yaml
 	metadata := model.VersionMetadata{
@@ -2162,8 +2156,7 @@ func TestCreateVersionItemsPathFiltering(t *testing.T) {
 
 	for i, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			// Clear collections before running tests
 			require.NoError(t, db.ClearCollections(model.VersionCollection, build.Collection, task.Collection))

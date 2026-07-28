@@ -24,8 +24,7 @@ import (
 const monitorTestTimeout = 10 * time.Second
 
 func TestAgentMonitorWithJasper(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	jasperPort := evergreen.DefaultJasperPort
 	port := defaultMonitorPort
@@ -45,6 +44,21 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 			fileInfo, err := os.Stat(m.clientPath)
 			require.NoError(t, err)
 			assert.NotZero(t, fileInfo.Size())
+		},
+		"UpdateCompatClientCopiesDownloadedClient": func(ctx context.Context, t *testing.T, m *monitor) {
+			require.NoError(t, m.fetchClient(ctx, []string{"https://example.com"}, agentMonitorDefaultRetryOptions()))
+			require.NoError(t, m.updateCompatClient())
+
+			clientInfo, err := os.Stat(m.clientPath)
+			require.NoError(t, err)
+			compatInfo, err := os.Stat(m.compatClientPath)
+			require.NoError(t, err)
+			assert.Equal(t, clientInfo.Size(), compatInfo.Size())
+		},
+		"UpdateCompatClientNoopsWhenCompatPathUnset": func(ctx context.Context, t *testing.T, m *monitor) {
+			m.compatClientPath = ""
+			require.NoError(t, m.fetchClient(ctx, []string{"https://example.com"}, agentMonitorDefaultRetryOptions()))
+			require.NoError(t, m.updateCompatClient())
 		},
 		"WaitUntilCompleteWaitsForProcessTermination": func(ctx context.Context, t *testing.T, m *monitor) {
 			opts := &options.Create{Args: []string{"sleep", "1"}}
@@ -108,12 +122,13 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 			tmpDir := t.TempDir()
 
 			m := &monitor{
-				clientPath: filepath.Join(tmpDir, "evergreen"),
-				distroID:   "distro",
-				logOutput:  globals.LogOutputFile,
-				logPrefix:  filepath.Join(tmpDir, "agent-monitor"),
-				jasperPort: jasperPort,
-				port:       port,
+				clientPath:       filepath.Join(tmpDir, "evergreen"),
+				compatClientPath: filepath.Join(tmpDir, "compat", "evergreen"),
+				distroID:         "distro",
+				logOutput:        globals.LogOutputFile,
+				logPrefix:        filepath.Join(tmpDir, "agent-monitor"),
+				jasperPort:       jasperPort,
+				port:             port,
 			}
 
 			// Monitor should be able to connect without needing credentials when

@@ -1032,7 +1032,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		VariantCaseSensitive: utility.FromBoolTPtr(options.TaskCaseSensitive), // Default to true for performance reasons.
 	}
 
-	mostRecentWaterfallVersion, err := model.GetMostRecentWaterfallVersion(ctx, projectId)
+	mostRecentWaterfallVersion, err := model.VersionFindOneSecondary(ctx, model.VersionByMostRecentSystemRequester(projectId).WithFields(model.VersionRevisionOrderNumberKey))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching most recent waterfall version: %s", err.Error()))
 	}
@@ -1133,10 +1133,14 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 	}
 
 	flattenedVersions := []*restModel.APIVersion{}
+	versionPtrs := []*model.Version{}
 	for _, v := range allVersions {
 		apiVersion := &restModel.APIVersion{}
 		apiVersion.BuildFromService(ctx, v)
 		flattenedVersions = append(flattenedVersions, apiVersion)
+
+		vCopy := v
+		versionPtrs = append(versionPtrs, &vCopy)
 	}
 
 	results := &Waterfall{
@@ -1149,6 +1153,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 			HasNextPage:            nextPageOrder > 0,
 			HasPrevPage:            prevPageOrder > 0,
 		},
+		Versions: versionPtrs,
 	}
 
 	return results, nil
@@ -1246,91 +1251,6 @@ func (r *queryResolver) TaskHistory(ctx context.Context, options TaskHistoryOpts
 		Pagination: &TaskHistoryPagination{
 			MostRecentTaskOrder: latestTask.RevisionOrderNumber,
 			OldestTaskOrder:     oldestTask.RevisionOrderNumber,
-		},
-	}, nil
-}
-
-// TaskHistoryByCreateTime is the resolver for the taskHistoryByCreateTime field.
-func (r *queryResolver) TaskHistoryByCreateTime(ctx context.Context, options TaskHistoryOpts) (*TaskHistoryByCreateTime, error) {
-	if options.CursorParams == nil {
-		return nil, InputValidationError.Send(ctx, "must specify cursor params")
-	}
-
-	projectId, err := model.GetIdForProject(ctx, options.ProjectIdentifier)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", options.ProjectIdentifier, err.Error()))
-	}
-
-	taskID := options.CursorParams.CursorID
-	includeCursor := options.CursorParams.IncludeCursor
-
-	foundTask, err := task.FindOneId(ctx, taskID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
-	}
-	if foundTask == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
-	}
-	taskCreateTime := foundTask.CreateTime
-
-	opts := model.FindTaskHistoryByCreateTimeOptions{
-		TaskName:     options.TaskName,
-		BuildVariant: options.BuildVariant,
-		ProjectId:    projectId,
-		Limit:        options.Limit,
-	}
-
-	switch options.CursorParams.Direction {
-	case TaskHistoryDirectionBefore:
-		opts.UpperBound = utility.ToTimePtr(taskCreateTime)
-		opts.IncludeUpperBound = includeCursor
-	case TaskHistoryDirectionAfter:
-		opts.LowerBound = utility.ToTimePtr(taskCreateTime)
-		opts.IncludeLowerBound = includeCursor
-	default:
-		return nil, InputValidationError.Send(ctx, fmt.Sprintf("invalid cursor direction: %s", options.CursorParams.Direction))
-	}
-
-	if options.Date != nil {
-		opts.UpperBound = options.Date
-		opts.IncludeUpperBound = true
-		opts.LowerBound = nil
-	}
-
-	tasks, err := model.FindTasksForHistoryByCreateTime(ctx, opts)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting history for task '%s' in project '%s' and build variant '%s': %s", options.TaskName, options.ProjectIdentifier, options.BuildVariant, err.Error()))
-	}
-
-	apiTasks := []*restModel.APITask{}
-	versionIDs := make([]string, 0, len(tasks))
-	for _, t := range tasks {
-		apiTask := &restModel.APITask{}
-		if err = apiTask.BuildFromService(ctx, &t, nil); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to APITask: %s", t.Id, err.Error()))
-		}
-		apiTasks = append(apiTasks, apiTask)
-		if t.Version != "" {
-			versionIDs = append(versionIDs, t.Version)
-		}
-	}
-	loaders.PreloadVersions(ctx, versionIDs)
-
-	latestTask, err := model.GetLatestMainlineTaskByCreateTime(ctx, opts)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching latest task for '%s' in project '%s' and build variant '%s': %s", options.TaskName, options.ProjectIdentifier, options.BuildVariant, err.Error()))
-	}
-
-	oldestTask, err := model.GetOldestMainlineTaskByCreateTime(ctx, opts)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching oldest task for '%s' in project '%s' and build variant '%s': %s", options.TaskName, options.ProjectIdentifier, options.BuildVariant, err.Error()))
-	}
-
-	return &TaskHistoryByCreateTime{
-		Tasks: apiTasks,
-		Pagination: &TaskHistoryByCreateTimePagination{
-			MostRecentTaskCreateTime: latestTask.CreateTime,
-			OldestTaskCreateTime:     oldestTask.CreateTime,
 		},
 	}, nil
 }

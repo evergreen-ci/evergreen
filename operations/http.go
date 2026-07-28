@@ -525,6 +525,7 @@ func (ac *legacyClient) PutPatch(ctx context.Context, incomingPatch patchSubmiss
 		PatchBytes                         []byte                     `json:"patch_bytes"`
 		Githash                            string                     `json:"githash"`
 		Alias                              string                     `json:"alias"`
+		Aliases                            []string                   `json:"aliases"`
 		Variants                           []string                   `json:"buildvariants_new"`
 		Tasks                              []string                   `json:"tasks"`
 		RegexVariants                      []string                   `json:"regex_buildvariants"`
@@ -550,6 +551,7 @@ func (ac *legacyClient) PutPatch(ctx context.Context, incomingPatch patchSubmiss
 		PatchBytes:                         []byte(incomingPatch.patchData),
 		Githash:                            incomingPatch.base,
 		Alias:                              incomingPatch.alias,
+		Aliases:                            incomingPatch.aliases,
 		Variants:                           incomingPatch.variants,
 		Tasks:                              incomingPatch.tasks,
 		RegexVariants:                      incomingPatch.regexVariants,

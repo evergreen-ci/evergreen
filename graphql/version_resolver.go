@@ -3,6 +3,7 @@ package graphql
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -197,6 +199,18 @@ func (r *versionResolver) GeneratedTaskCounts(ctx context.Context, obj *restMode
 	return res, nil
 }
 
+// GitTags is the resolver for the gitTags field.
+func (r *versionResolver) GitTags(ctx context.Context, obj *restModel.APIVersion) ([]*model.GitTag, error) {
+	gitTags := make([]*model.GitTag, 0, len(obj.GitTags))
+	for _, gt := range obj.GitTags {
+		gitTags = append(gitTags, &model.GitTag{
+			Tag:    utility.FromStringPtr(gt.Tag),
+			Pusher: utility.FromStringPtr(gt.Pusher),
+		})
+	}
+	return gitTags, nil
+}
+
 // IsPatch is the resolver for the isPatch field.
 func (r *versionResolver) IsPatch(ctx context.Context, obj *restModel.APIVersion) (bool, error) {
 	return evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)), nil
@@ -292,6 +306,120 @@ func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersi
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task count for version '%s': %s", versionID, err.Error()))
 	}
 	return &taskCount, nil
+}
+
+// TaskQuarantinedTestsSample is the resolver for the taskQuarantinedTestsSample field.
+func (r *versionResolver) TaskQuarantinedTestsSample(ctx context.Context, obj *restModel.APIVersion, taskIds []string, limit *int) ([]*testresult.TaskTestResultsQuarantinedSample, error) {
+	versionID := utility.FromStringPtr(obj.Id)
+	if err := checkProjectAccess(ctx, utility.FromStringPtr(obj.Project), ProjectPermissionTasks, AccessLevelView); err != nil {
+		return nil, err
+	}
+	if len(taskIds) == 0 {
+		return nil, nil
+	}
+	sampleLimit := defaultTaskQuarantinedTestsSampleLimit
+	if limit != nil {
+		sampleLimit = *limit
+	}
+	if sampleLimit < 0 {
+		return nil, InputValidationError.Send(ctx, "limit cannot be negative")
+	}
+
+	dbTasks, err := task.FindAll(ctx, db.Query(task.ByIds(taskIds)))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching tasks '%s': %s", taskIds, err.Error()))
+	}
+	if len(dbTasks) == 0 {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("tasks '%s' not found", taskIds))
+	}
+
+	var (
+		allTasks    []task.Task
+		execTaskIDs []string
+	)
+	apiSamples := make([]*testresult.TaskTestResultsQuarantinedSample, len(dbTasks))
+	apiSamplesByTaskID := map[string][]*testresult.TaskTestResultsQuarantinedSample{}
+	resultTaskIDs := map[string]struct{}{}
+	execTaskIDSet := map[string]struct{}{}
+	addAPISampleForTask := func(taskID string, apiSample *testresult.TaskTestResultsQuarantinedSample) {
+		if slices.Contains(apiSamplesByTaskID[taskID], apiSample) {
+			return
+		}
+		apiSamplesByTaskID[taskID] = append(apiSamplesByTaskID[taskID], apiSample)
+	}
+	addResultTask := func(resultTask task.Task) {
+		if _, ok := resultTaskIDs[resultTask.Id]; ok {
+			return
+		}
+		resultTaskIDs[resultTask.Id] = struct{}{}
+		allTasks = append(allTasks, resultTask)
+	}
+	for i, dbTask := range dbTasks {
+		if dbTask.Version != versionID && dbTask.ParentPatchID != versionID {
+			return nil, InputValidationError.Send(ctx, fmt.Sprintf("task '%s' does not belong to version '%s'", dbTask.Id, versionID))
+		}
+
+		apiSamples[i] = &testresult.TaskTestResultsQuarantinedSample{TaskID: dbTask.Id, Execution: dbTask.Execution}
+		if dbTask.DisplayOnly && len(dbTask.ExecutionTasks) > 0 {
+			for _, execTaskID := range dbTask.ExecutionTasks {
+				addAPISampleForTask(execTaskID, apiSamples[i])
+				if _, ok := execTaskIDSet[execTaskID]; !ok {
+					execTaskIDSet[execTaskID] = struct{}{}
+					execTaskIDs = append(execTaskIDs, execTaskID)
+				}
+			}
+			continue
+		}
+		if dbTask.HasResults(ctx) {
+			addAPISampleForTask(dbTask.Id, apiSamples[i])
+			addResultTask(dbTask)
+		}
+	}
+
+	if len(execTaskIDs) > 0 {
+		query := task.ByIds(execTaskIDs)
+		query["$or"] = []bson.M{
+			{task.ResultsServiceKey: bson.M{"$exists": true}},
+			{task.HasTestResultsKey: true},
+		}
+		execTasks, err := task.FindWithFields(ctx, query,
+			task.ExecutionKey, task.ResultsServiceKey, task.HasTestResultsKey, task.TaskOutputInfoKey)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting execution tasks for display tasks: %s", err.Error()))
+		}
+		for _, execTask := range execTasks {
+			addResultTask(execTask)
+		}
+	}
+
+	if len(allTasks) > 0 {
+		samples, err := task.GetQuarantinedTestSamples(ctx, evergreen.GetEnvironment(), allTasks, sampleLimit)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting quarantined test results sample: %s", err.Error()))
+		}
+
+		for _, sample := range samples {
+			matchingAPISamples, ok := apiSamplesByTaskID[sample.TaskID]
+			if !ok {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("unexpected task '%s' in quarantined test sample result", sample.TaskID))
+			}
+
+			for _, apiSample := range matchingAPISamples {
+				apiSample.QuarantinedTestsSkippedCount += sample.QuarantinedTestsSkippedCount
+				remaining := sampleLimit - len(apiSample.QuarantinedTests)
+				if remaining <= 0 {
+					continue
+				}
+				quarantinedTests := sample.QuarantinedTests
+				if len(quarantinedTests) > remaining {
+					quarantinedTests = quarantinedTests[:remaining]
+				}
+				apiSample.QuarantinedTests = append(apiSample.QuarantinedTests, quarantinedTests...)
+			}
+		}
+	}
+
+	return apiSamples, nil
 }
 
 // Tasks is the resolver for the tasks field.
@@ -588,12 +716,7 @@ func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *restModel.AP
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variants for version '%s': %s", versionID, err.Error()))
 	}
-	versionBuilds := []*model.WaterfallBuild{}
-	for _, b := range builds {
-		bCopy := b
-		versionBuilds = append(versionBuilds, &bCopy)
-	}
-	return versionBuilds, nil
+	return builds, nil
 }
 
 // BaseVersion is the resolver for the baseVersion field.
@@ -669,6 +792,31 @@ func (r *versionLiteResolver) TaskStatusStats(ctx context.Context, obj *model.Ve
 // User is the resolver for the user field.
 func (r *versionLiteResolver) User(ctx context.Context, obj *model.Version) (*user.DBUser, error) {
 	return getVersionAuthorDBUser(ctx, obj.AuthorID, obj.Author, obj.AuthorEmail)
+}
+
+// WaterfallBuilds is the resolver for the waterfallBuilds field.
+func (r *versionLiteResolver) WaterfallBuilds(ctx context.Context, obj *model.Version) ([]*model.WaterfallBuild, error) {
+	versionID := obj.Id
+
+	// No need to fetch build variants for unactivated versions
+	if !utility.FromBoolPtr(obj.Activated) {
+		return nil, nil
+	}
+
+	parentWaterfall, ok := getWaterfallFromContext(ctx)
+	if ok {
+		// If we can't find the activeVersionIds in the parent query, eagerly continue with this aggregation.
+		activeVersionIds := parentWaterfall.Pagination.ActiveVersionIds
+		if !utility.StringSliceContains(activeVersionIds, versionID) {
+			return nil, nil
+		}
+	}
+
+	builds, err := model.GetVersionBuilds(ctx, versionID, obj.BuildIds)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variants for version '%s': %s", versionID, err.Error()))
+	}
+	return builds, nil
 }
 
 // Version returns VersionResolver implementation.

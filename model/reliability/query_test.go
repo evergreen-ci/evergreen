@@ -181,7 +181,7 @@ func handleNoFormat(format string, i int) string {
 func InsertManyDailyTaskStats(ctx context.Context, many int, prototype taskstats.DBTaskStats, projectFmt string, requesterFmt string, taskNameFmt string, variantFmt string, distroFmt string) error {
 
 	items := make([]any, many)
-	for i := 0; i < many; i++ {
+	for i := range many {
 		item := prototype
 		item.Id.Project = handleNoFormat(projectFmt, i)
 		item.Id.Requester = handleNoFormat(requesterFmt, i)
@@ -353,8 +353,7 @@ func TestGetTaskStatsTwoDocuments(t *testing.T) {
 
 func TestGetTaskReliability(t *testing.T) {
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	withCancelledContext := func(ctx context.Context, fn func(context.Context)) {
 		ctx, cancel := context.WithCancel(ctx)
@@ -501,8 +500,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 		evergreen.GithubPRRequester,
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	withCancelledContext := func(ctx context.Context, fn func(context.Context)) {
 		ctx, cancel := context.WithCancel(ctx)

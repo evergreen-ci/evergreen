@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -775,24 +776,12 @@ func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tsge *tagSelectorEva
 		}
 		So(len(unmatchedSelectors), ShouldEqual, len(expectedEmptySelectors))
 		for _, expectedEmptySelector := range expectedEmptySelectors {
-			exists := false
-			for _, emptySelector := range unmatchedSelectors {
-				if emptySelector == expectedEmptySelector {
-					exists = true
-					break
-				}
-			}
+			exists := slices.Contains(unmatchedSelectors, expectedEmptySelector)
 			So(exists, ShouldBeTrue)
 		}
 		So(len(unmatchedCriteria), ShouldEqual, len(expectedUnmatchedCriteria))
 		for _, expectedUnmatchedTag := range expectedUnmatchedCriteria {
-			exists := false
-			for _, unmatchedTag := range unmatchedCriteria {
-				if unmatchedTag == expectedUnmatchedTag {
-					exists = true
-					break
-				}
-			}
+			exists := slices.Contains(unmatchedCriteria, expectedUnmatchedTag)
 			So(exists, ShouldBeTrue)
 		}
 	})
@@ -1397,8 +1386,7 @@ tasks:
 }
 
 func TestTaskGroupParsing(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	checkIsTaskGroupTaskUnit := func(t *testing.T, bvtu BuildVariantTaskUnit) {
 		assert.True(t, bvtu.IsGroup)
@@ -1622,6 +1610,40 @@ buildvariants:
 		require.Len(t, proj.TaskGroups, 1)
 		assert.Equal(t, "example_task_group", proj.TaskGroups[0].Name)
 		assert.Len(t, proj.TaskGroups[0].Tasks, proj.TaskGroups[0].MaxHosts)
+	})
+
+	t.Run("UnlimitedMaxHostsForTaskGroupWithTagSelectorsCountsExpandedTasks", func(t *testing.T) {
+		tagMaxHostYml := `
+tasks:
+- name: build_1
+  tags: [ "build" ]
+- name: build_2
+  tags: [ "build" ]
+- name: test_1
+  tags: [ "test" ]
+- name: test_2
+  tags: [ "test" ]
+- name: test_3
+  tags: [ "test" ]
+task_groups:
+- name: example_task_group
+  max_hosts: -1
+  tasks:
+  - .build
+  - .test
+buildvariants:
+- name: bv
+  display_name: "bv_display"
+  tasks:
+  - name: example_task_group
+`
+		proj := &Project{}
+		_, err := LoadProjectInto(ctx, []byte(tagMaxHostYml), nil, "id", proj)
+		require.NotNil(t, proj)
+		assert.NoError(t, err)
+		require.Len(t, proj.TaskGroups, 1)
+		require.Len(t, proj.TaskGroups[0].Tasks, 5)
+		assert.Equal(t, 5, proj.TaskGroups[0].MaxHosts)
 	})
 }
 
@@ -2008,8 +2030,7 @@ func TestAddBuildVariant(t *testing.T) {
 }
 
 func TestParserProjectStorage(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
@@ -2938,8 +2959,7 @@ func TestUpdateReadFileFrom(t *testing.T) {
 }
 
 func TestFindAndTranslateProjectForPatch(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
@@ -4013,7 +4033,7 @@ func TestLoadProjectIntoTranslationCache(t *testing.T) {
 		const goroutines = 20
 		var wg sync.WaitGroup
 		wg.Add(goroutines)
-		for i := 0; i < goroutines; i++ {
+		for range goroutines {
 			go func() {
 				defer wg.Done()
 				proj := &Project{}
@@ -4095,7 +4115,7 @@ tasks:
 		const goroutines = 20
 		var wg sync.WaitGroup
 		wg.Add(goroutines)
-		for i := 0; i < goroutines; i++ {
+		for range goroutines {
 			go func() {
 				defer wg.Done()
 				proj := &Project{}

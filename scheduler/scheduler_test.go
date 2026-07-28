@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -33,8 +32,7 @@ func (s *SchedulerSuite) SetupTest() {
 }
 
 func TestCreateIntentHosts(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("When spawning hosts", t, func() {
 
@@ -78,8 +76,7 @@ func TestCreateIntentHosts(t *testing.T) {
 func TestUnderwaterUnschedule(t *testing.T) {
 	assert := assert.New(t)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(task.Collection, distro.Collection, build.Collection, model.VersionCollection))
 	require.NoError(t, db.EnsureIndex(task.Collection,

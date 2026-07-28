@@ -20,6 +20,23 @@ func TestEvergreenCredentials(t *testing.T) {
 		assert.Implements(t, (*aws.CredentialsProvider)(nil), provider)
 	})
 
+	t.Run("CachedProviderReusesCredentialsAcrossRetrieves", func(t *testing.T) {
+		comm.AssumeRoleCount = 0
+		comm.AssumeRoleResponse = &apimodels.AWSCredentials{
+			AccessKeyID:     "assume_access_key",
+			SecretAccessKey: "secret_access_key",
+			SessionToken:    "session_token",
+			Expiration:      time.Now().Add(time.Hour).Format(time.RFC3339),
+		}
+
+		provider := newCachedEvergreenCredentials(comm, taskData, nil, "role_arn", nil)
+		for range 5 {
+			_, err := provider.Retrieve(t.Context())
+			require.NoError(t, err)
+		}
+		assert.Equal(t, 1, comm.AssumeRoleCount)
+	})
+
 	t.Run("RoleARN", func(t *testing.T) {
 		t.Run("TimeFormat", func(t *testing.T) {
 			t.Run("Valid", func(t *testing.T) {

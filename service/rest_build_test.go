@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -16,9 +15,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	. "github.com/smartystreets/goconvey/convey"
@@ -27,12 +26,13 @@ import (
 var buildTestConfig = testutil.TestConfig()
 
 func TestGetBuildInfo(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
+	usr := addViewTasksPermission(t, "mci-test")
+	t.Cleanup(func() { assert.NoError(t, db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection)) })
 
 	Convey("When finding info on a particular build", t, func() {
 		require.NoError(t, db.ClearCollections(build.Collection, task.Collection),
@@ -82,7 +82,7 @@ func TestGetBuildInfo(t *testing.T) {
 		url := "/rest/v1/builds/" + buildId
 
 		request, err := http.NewRequest("GET", url, nil)
-		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
+		request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
 		So(err, ShouldBeNil)
 		response := httptest.NewRecorder()
 		// Need match variables to be set so can call mux.Vars(request)
@@ -158,7 +158,7 @@ func TestGetBuildInfo(t *testing.T) {
 
 		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
-		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
+		request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
 
 		response := httptest.NewRecorder()
 		// Need match variables to be set so can call mux.Vars(request)
@@ -177,12 +177,13 @@ func TestGetBuildInfo(t *testing.T) {
 }
 
 func TestGetBuildStatus(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
+	usr := addViewTasksPermission(t, "test-project")
+	t.Cleanup(func() { assert.NoError(t, db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection)) })
 
 	Convey("When finding the status of a particular build", t, func() {
 		require.NoError(t, db.ClearCollections(build.Collection, task.Collection), "Error clearing collections")
@@ -213,7 +214,7 @@ func TestGetBuildStatus(t *testing.T) {
 
 		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
-		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
+		request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
 
 		response := httptest.NewRecorder()
 		// Need match variables to be set so can call mux.Vars(request)
@@ -258,7 +259,7 @@ func TestGetBuildStatus(t *testing.T) {
 
 		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
-		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
+		request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
 
 		response := httptest.NewRecorder()
 		// Need match variables to be set so can call mux.Vars(request)

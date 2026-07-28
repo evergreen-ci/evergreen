@@ -42,18 +42,18 @@ import (
 // Some internal infrastructure.
 
 var (
-	typeBinary         = reflect.TypeOf(Binary{})
-	typeObjectId       = reflect.TypeOf(ObjectId(""))
-	typeSymbol         = reflect.TypeOf(Symbol(""))
-	typeMongoTimestamp = reflect.TypeOf(MongoTimestamp(0))
+	typeBinary         = reflect.TypeFor[Binary]()
+	typeObjectId       = reflect.TypeFor[ObjectId]()
+	typeSymbol         = reflect.TypeFor[Symbol]()
+	typeMongoTimestamp = reflect.TypeFor[MongoTimestamp]()
 	typeOrderKey       = reflect.TypeOf(MinKey)
-	typeDocElem        = reflect.TypeOf(DocElem{})
-	typeRawDocElem     = reflect.TypeOf(RawDocElem{})
-	typeRaw            = reflect.TypeOf(Raw{})
-	typeURL            = reflect.TypeOf(url.URL{})
-	typeTime           = reflect.TypeOf(time.Time{})
-	typeString         = reflect.TypeOf("")
-	typeJSONNumber     = reflect.TypeOf(json.Number(""))
+	typeDocElem        = reflect.TypeFor[DocElem]()
+	typeRawDocElem     = reflect.TypeFor[RawDocElem]()
+	typeRaw            = reflect.TypeFor[Raw]()
+	typeURL            = reflect.TypeFor[url.URL]()
+	typeTime           = reflect.TypeFor[time.Time]()
+	typeString         = reflect.TypeFor[string]()
+	typeJSONNumber     = reflect.TypeFor[json.Number]()
 )
 
 const itoaCacheSize = 32
@@ -217,20 +217,20 @@ func (e *encoder) addSlice(v reflect.Value) {
 	l := v.Len()
 	et := v.Type().Elem()
 	if et == typeDocElem {
-		for i := 0; i < l; i++ {
+		for i := range l {
 			elem := v.Index(i).Interface().(DocElem)
 			e.addElem(elem.Name, reflect.ValueOf(elem.Value), false)
 		}
 		return
 	}
 	if et == typeRawDocElem {
-		for i := 0; i < l; i++ {
+		for i := range l {
 			elem := v.Index(i).Interface().(RawDocElem)
 			e.addElem(elem.Name, reflect.ValueOf(elem.Value), false)
 		}
 		return
 	}
-	for i := 0; i < l; i++ {
+	for i := range l {
 		e.addElem(itoa(i), v.Index(i), false)
 	}
 }
@@ -374,7 +374,7 @@ func (e *encoder) addElem(name string, v reflect.Value, minSize bool) {
 				n := v.Len()
 				e.addInt32(int32(n))
 				e.addBytes(0x00)
-				for i := 0; i < n; i++ {
+				for i := range n {
 					el := v.Index(i)
 					e.addBytes(byte(el.Uint()))
 				}

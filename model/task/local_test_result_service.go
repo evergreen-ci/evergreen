@@ -82,6 +82,13 @@ func (s *localTestResultsService) Get(ctx context.Context, taskOpts []Task, getO
 		for _, field := range getOpts.Fields {
 			projection[field] = 1
 		}
+		if getOpts.QuarantinedTestsLimit != nil {
+			if *getOpts.QuarantinedTestsLimit == 0 {
+				delete(projection, testresult.QuarantinedTestsKey)
+			} else if *getOpts.QuarantinedTestsLimit > 0 {
+				projection[testresult.QuarantinedTestsKey] = bson.M{"$slice": *getOpts.QuarantinedTestsLimit}
+			}
+		}
 		opts.SetProjection(projection)
 	} else if !getOpts.IncludeQuarantinedTests {
 		opts.SetProjection(bson.M{testresult.QuarantinedTestsKey: 0})
@@ -99,6 +106,11 @@ func (s *localTestResultsService) Get(ctx context.Context, taskOpts []Task, getO
 	allTaskResults := make([]testresult.TaskTestResults, len(allDBTaskResults))
 	for i, dbTaskResults := range allDBTaskResults {
 		allTaskResults[i].Stats = dbTaskResults.Stats
+		allTaskResults[i].Info = dbTaskResults.Info
+		if allTaskResults[i].Info.TaskID == "" {
+			allTaskResults[i].Info.TaskID = dbTaskResults.ID.TaskID
+			allTaskResults[i].Info.Execution = dbTaskResults.ID.Execution
+		}
 		allTaskResults[i].Results = dbTaskResults.Results
 		allTaskResults[i].QuarantinedTestsCount = dbTaskResults.QuarantinedTestsCount
 		allTaskResults[i].QuarantinedTests = dbTaskResults.QuarantinedTests

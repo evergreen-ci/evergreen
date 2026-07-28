@@ -289,7 +289,7 @@ func GetProjectAliasResults(ctx context.Context, p *model.Project, alias string,
 
 	requester := getRequesterFromAlias(alias)
 	// ResolvePatchVTs takes alias and not projectAliases.Alias because the function already handles all aliases.
-	_, _, variantTasks := p.ResolvePatchVTs(ctx, &patch.Patch{}, requester, alias, includeDeps, "")
+	_, _, variantTasks := p.ResolvePatchVTs(ctx, &patch.Patch{}, requester, []string{alias}, includeDeps, "")
 	for _, variantTask := range variantTasks {
 		matches = append(matches, restModel.APIVariantTasksBuildFromService(variantTask))
 	}
@@ -362,7 +362,7 @@ func HideBranch(ctx context.Context, projectID string) error {
 		return errors.Wrapf(err, "finding aliases for project '%s'", pRef.Id)
 	}
 	for _, alias := range projectAliases {
-		if err := model.RemoveProjectAlias(ctx, alias.ID.Hex()); err != nil {
+		if err := model.RemoveProjectAlias(ctx, pRef.Id, alias.ID.Hex()); err != nil {
 			return errors.Wrapf(err, "removing project alias '%s' for project '%s'", alias.ID.Hex(), pRef.Id)
 		}
 	}
