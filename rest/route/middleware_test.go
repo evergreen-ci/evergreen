@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -587,4 +588,83 @@ func TestProjectViewPermission(t *testing.T) {
 	authHandler.ServeHTTP(rw, req, checkPermission)
 	assert.Equal(http.StatusOK, rw.Code)
 	assert.Equal(1, counter)
+}
+
+func TestURLVarsToDistroScopes(t *testing.T) {
+	require.NoError(t, db.ClearCollections(distro.Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(distro.Collection))
+	})
+
+	authorized := distro.Distro{
+		Id:      "authorized-distro",
+		Aliases: []string{"shared-alias"},
+	}
+	require.NoError(t, authorized.Insert(t.Context()))
+	victim := distro.Distro{
+		Id:      "victim-distro",
+		Aliases: []string{"shared-alias"},
+	}
+	require.NoError(t, victim.Insert(t.Context()))
+
+	for tName, tCase := range map[string]struct {
+		pathVars           map[string]string
+		queryString        string
+		expectedDistroIDs  []string
+		expectedStatusCode int
+	}{
+		"ResolvesDistroFromPath": {
+			pathVars:           map[string]string{"distro_id": "victim-distro"},
+			expectedDistroIDs:  []string{"victim-distro"},
+			expectedStatusCode: http.StatusOK,
+		},
+		"IgnoresQueryStringDistroWhenPathHasDistro": {
+			pathVars:           map[string]string{"distro_id": "victim-distro"},
+			queryString:        "distro_id=authorized-distro&distroId=authorized-distro",
+			expectedDistroIDs:  []string{"victim-distro"},
+			expectedStatusCode: http.StatusOK,
+		},
+		"IgnoresQueryStringHostWhenPathHasDistro": {
+			pathVars:           map[string]string{"distro_id": "victim-distro"},
+			queryString:        "host_id=authorized-host&resource_type=DISTRO&resource_id=authorized-distro",
+			expectedDistroIDs:  []string{"victim-distro"},
+			expectedStatusCode: http.StatusOK,
+		},
+		"DistroAliasInPathIsNotFound": {
+			pathVars:           map[string]string{"distro_id": "shared-alias"},
+			expectedStatusCode: http.StatusNotFound,
+		},
+		"QueryStringOnlyDistroIsNotFound": {
+			queryString:        "distro_id=authorized-distro",
+			expectedStatusCode: http.StatusNotFound,
+		},
+		"NonexistentDistroInPathIsNotFound": {
+			pathVars:           map[string]string{"distro_id": "nonexistent-distro"},
+			expectedStatusCode: http.StatusNotFound,
+		},
+		"NoDistroIsNotFound": {
+			expectedStatusCode: http.StatusNotFound,
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			url := "/rest/v2/distros/some-distro"
+			if tCase.queryString != "" {
+				url += "?" + tCase.queryString
+			}
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, url, nil)
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, tCase.pathVars)
+
+			distroIDs, statusCode, err := urlVarsToDistroScopes(req)
+
+			assert.Equal(t, tCase.expectedStatusCode, statusCode)
+			if tCase.expectedStatusCode != http.StatusOK {
+				assert.Error(t, err)
+				assert.Empty(t, distroIDs)
+				return
+			}
+			assert.NoError(t, err)
+			assert.ElementsMatch(t, tCase.expectedDistroIDs, distroIDs)
+		})
+	}
 }

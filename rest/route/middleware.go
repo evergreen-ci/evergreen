@@ -585,59 +585,25 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 	return res, http.StatusOK, nil
 }
 
-// urlVarsToDistroScopes returns all distros being requested for access and the
-// HTTP status code.
+// urlVarsToDistroScopes returns the distro being requested for access and the
+// HTTP status code. The distro is matched by ID only, not by distro alias,
+// because the routes that check distro permissions all act on a distro looked
+// up by its exact ID.
 func urlVarsToDistroScopes(r *http.Request) ([]string, int, error) {
-	var err error
-	vars := gimlet.GetVars(r)
-	query := r.URL.Query()
-
-	resourceType := strings.ToUpper(util.CoalesceStrings(query["resource_type"], vars["resource_type"]))
-	if resourceType != "" {
-		switch resourceType {
-		case event.ResourceTypeDistro:
-			vars["distro_id"] = vars["resource_id"]
-		case event.ResourceTypeHost:
-			vars["host_id"] = vars["resource_id"]
-		}
-	}
-
-	distroID := util.CoalesceStrings(append(query["distro_id"], query["distroId"]...), vars["distro_id"], vars["distroId"])
-
-	hostID := util.CoalesceStrings(append(query["host_id"], query["hostId"]...), vars["host_id"], vars["hostId"])
-	if distroID == "" && hostID != "" {
-		distroID, err = host.FindDistroForHost(r.Context(), hostID)
-		if err != nil {
-			return nil, http.StatusNotFound, errors.Wrapf(err, "finding distro for host '%s'", hostID)
-		}
-	}
-
-	// no distro found - return a 404
+	distroID := gimlet.GetVars(r)["distro_id"]
 	if distroID == "" {
 		return nil, http.StatusNotFound, errors.New("no distro found")
 	}
 
-	dat, err := distro.NewDistroAliasesLookupTable(r.Context())
+	d, err := distro.FindOneId(r.Context(), distroID)
 	if err != nil {
-		return nil, http.StatusInternalServerError, errors.Wrap(err, "getting distro lookup table")
+		return nil, http.StatusInternalServerError, errors.Wrapf(err, "finding distro '%s'", distroID)
 	}
-	distroIDs := dat.Expand([]string{distroID})
-	if len(distroIDs) == 0 {
-		return nil, http.StatusNotFound, errors.Errorf("distro '%s' did not match any existing distros", distroID)
-	}
-	// Verify that all the concrete distros that this request is accessing
-	// exist.
-	for _, resolvedDistroID := range distroIDs {
-		d, err := distro.FindOneId(r.Context(), resolvedDistroID)
-		if err != nil {
-			return nil, http.StatusInternalServerError, errors.Wrapf(err, "finding distro '%s'", resolvedDistroID)
-		}
-		if d == nil {
-			return nil, http.StatusNotFound, errors.Errorf("distro '%s' does not exist", resolvedDistroID)
-		}
+	if d == nil {
+		return nil, http.StatusNotFound, errors.Errorf("distro '%s' does not exist", distroID)
 	}
 
-	return distroIDs, http.StatusOK, nil
+	return []string{distroID}, http.StatusOK, nil
 }
 
 func superUserResource(_ *http.Request) ([]string, int, error) {
