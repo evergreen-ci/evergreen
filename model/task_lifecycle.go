@@ -146,11 +146,9 @@ func SetActiveState(ctx context.Context, caller string, active bool, tasks ...ta
 // resetEarlierSingleHostTaskGroupTasks restarts already-finished tasks that belong to
 // the same single-host task group as one of the tasks being activated. Returns
 // the remaining deps that were not restarted.
-// For context, a single-host task group must run contiguously and in order on
-// one host and tasks share a working directory throughout the task group's
-// lifetime. If a later task group task is (re)scheduled after earlier tasks
+// For context, if a later task group task is (re)scheduled after earlier tasks
 // already finished, those earlier tasks have to restart so the whole task group
-// can re-run from the beginning on a host.
+// can re-run from the beginning.
 func resetEarlierSingleHostTaskGroupTasks(ctx context.Context, activatingTasks, deps []task.Task, caller string) ([]task.Task, error) {
 	type taskGroupInBuild struct {
 		buildID   string

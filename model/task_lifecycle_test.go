@@ -2031,27 +2031,60 @@ func TestMarkEnd(t *testing.T) {
 	})
 }
 
-func TestActivateElapsedTasks(t *testing.T) {
+func TestActivateTasksWithDependencies(t *testing.T) {
 	ctx := t.Context()
-	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection))
-	require.NoError(t, (&build.Build{Id: "build", Version: "version"}).Insert(ctx))
-	require.NoError(t, (&Version{Id: "version"}).Insert(ctx))
+	colls := []string{task.Collection, task.OldCollection, build.Collection, VersionCollection}
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(colls...))
+	})
+	require.NoError(t, db.ClearCollections(colls...))
+	b := &build.Build{
+		Id:      "build",
+		Version: "version",
+	}
+	require.NoError(t, b.Insert(ctx))
+	v := &Version{
+		Id: "version",
+	}
+	require.NoError(t, v.Insert(ctx))
 
-	require.NoError(t, (&task.Task{Id: "task1", BuildId: "build", Version: "version", DistroId: "arch", Status: evergreen.TaskSucceeded, Activated: true, TaskGroup: "tg", TaskGroupMaxHosts: 1, TaskGroupOrder: 1}).Insert(ctx))
-	require.NoError(t, (&task.Task{Id: "task2", BuildId: "build", Version: "version", DistroId: "arch", Status: evergreen.TaskUndispatched, Activated: false, TaskGroup: "tg", TaskGroupMaxHosts: 1, TaskGroupOrder: 2}).Insert(ctx))
+	t1 := &task.Task{
+		Id:                "task1",
+		BuildId:           "build",
+		Version:           "version",
+		DistroId:          "arch",
+		Status:            evergreen.TaskSucceeded,
+		Activated:         true,
+		TaskGroup:         "tg",
+		TaskGroupMaxHosts: 1,
+		TaskGroupOrder:    1,
+	}
+	require.NoError(t, t1.Insert(ctx))
+	t2 := &task.Task{
+		Id:                "task2",
+		BuildId:           "build",
+		Version:           "version",
+		DistroId:          "arch",
+		Status:            evergreen.TaskUndispatched,
+		Activated:         false,
+		TaskGroup:         "tg",
+		TaskGroupMaxHosts: 1,
+		TaskGroupOrder:    2,
+	}
+	require.NoError(t, t2.Insert(ctx))
 
 	require.NoError(t, activateTasksWithDependencies(ctx, []string{"task2"}, evergreen.ElapsedTaskActivator))
 
-	t1, err := task.FindOneId(ctx, "task1")
+	dbTask1, err := task.FindOneId(ctx, t1.Id)
 	require.NoError(t, err)
-	require.NotNil(t, t1)
-	assert.Equal(t, 1, t1.Execution, "finished earlier single-host task group member should be restarted")
-	assert.Equal(t, evergreen.TaskUndispatched, t1.Status)
+	require.NotNil(t, dbTask1)
+	assert.Equal(t, 1, dbTask1.Execution, "earlier finished single-host task group task should be restarted")
+	assert.Equal(t, evergreen.TaskUndispatched, dbTask1.Status)
 
-	t2, err := task.FindOneId(ctx, "task2")
+	dbTask2, err := task.FindOneId(ctx, t2.Id)
 	require.NoError(t, err)
-	require.NotNil(t, t2)
-	assert.True(t, t2.Activated, "elapsed task should be activated")
+	require.NotNil(t, dbTask2)
+	assert.True(t, dbTask2.Activated, "elapsed task should be activated")
 }
 
 func TestMarkEndWithTaskGroup(t *testing.T) {
