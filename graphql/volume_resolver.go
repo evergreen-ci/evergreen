@@ -23,7 +23,7 @@ func (r *volumeResolver) Host(ctx context.Context, obj *restModel.APIVolume) (*r
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("host '%s' not found", hostID))
 	}
 	apiHost := restModel.APIHost{}
-	apiHost.BuildFromService(h, nil)
+	apiHost.BuildFromService(ctx, h, nil)
 	return &apiHost, nil
 }
 

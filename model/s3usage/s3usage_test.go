@@ -329,7 +329,7 @@ func TestS3Usage(t *testing.T) {
 			assert.NoError(t, grip.SetSender(sender))
 		})
 
-		snap := s3Usage.Snapshot()
+		snap := s3Usage.Snapshot(t.Context())
 		assert.Equal(t, 5, snap.Logs.PutRequests)
 		assert.True(t, mock.HasMessage(), "expected critical message when Snapshot called without Init")
 	})
@@ -344,7 +344,7 @@ func TestBuildFileMetrics(t *testing.T) {
 		require.NoError(t, err)
 		expectedSize := fi.Size()
 
-		metrics, fileSize := BuildFileMetrics(grip.NewJournaler("test"), localPath, "remote/path/test.txt", 3)
+		metrics, fileSize := BuildFileMetrics(t.Context(), grip.NewJournaler("test"), localPath, "remote/path/test.txt", 3)
 		assert.Equal(t, localPath, metrics.LocalPath)
 		assert.Equal(t, "remote/path/test.txt", metrics.RemotePath)
 		assert.Equal(t, expectedSize, metrics.FileSizeBytes)
@@ -352,7 +352,7 @@ func TestBuildFileMetrics(t *testing.T) {
 		assert.Equal(t, expectedSize, fileSize)
 	})
 	t.Run("FileNotExistShouldReturnZeroSize", func(t *testing.T) {
-		metrics, fileSize := BuildFileMetrics(grip.NewJournaler("test"), "/nonexistent/path/file.txt", "remote/path/file.txt", 1)
+		metrics, fileSize := BuildFileMetrics(t.Context(), grip.NewJournaler("test"), "/nonexistent/path/file.txt", "remote/path/file.txt", 1)
 		assert.Equal(t, "/nonexistent/path/file.txt", metrics.LocalPath)
 		assert.Equal(t, "remote/path/file.txt", metrics.RemotePath)
 		assert.Equal(t, int64(0), metrics.FileSizeBytes)
@@ -408,26 +408,26 @@ func TestCalculateS3PutCostWithConfig(t *testing.T) {
 	}
 
 	t.Run("WithValidConfig", func(t *testing.T) {
-		standard, adjusted := CalculateS3PutCostWithConfig(1000, validConfig)
+		standard, adjusted := CalculateS3PutCostWithConfig(t.Context(),1000, validConfig)
 		assert.InDelta(t, 0.005, standard, 0.000001)
 		assert.InDelta(t, 0.0035, adjusted, 0.000001)
 		assert.Greater(t, standard, adjusted)
 	})
 
 	t.Run("WithNilConfig", func(t *testing.T) {
-		standard, adjusted := CalculateS3PutCostWithConfig(1000, nil)
+		standard, adjusted := CalculateS3PutCostWithConfig(t.Context(),1000, nil)
 		assert.InDelta(t, 0.005, standard, 0.000001)
 		assert.Equal(t, 0.0, adjusted)
 	})
 
 	t.Run("WithZeroPutRequests", func(t *testing.T) {
-		standard, adjusted := CalculateS3PutCostWithConfig(0, validConfig)
+		standard, adjusted := CalculateS3PutCostWithConfig(t.Context(),0, validConfig)
 		assert.Equal(t, 0.0, standard)
 		assert.Equal(t, 0.0, adjusted)
 	})
 
 	t.Run("WithNegativePutRequests", func(t *testing.T) {
-		standard, adjusted := CalculateS3PutCostWithConfig(-5, validConfig)
+		standard, adjusted := CalculateS3PutCostWithConfig(t.Context(),-5, validConfig)
 		assert.Equal(t, 0.0, standard)
 		assert.Equal(t, 0.0, adjusted)
 	})
@@ -440,7 +440,7 @@ func TestCalculateS3PutCostWithConfig(t *testing.T) {
 				},
 			},
 		}
-		standard, adjusted := CalculateS3PutCostWithConfig(1000, invalidConfig)
+		standard, adjusted := CalculateS3PutCostWithConfig(t.Context(),1000, invalidConfig)
 		assert.InDelta(t, 0.005, standard, 0.000001)
 		assert.Equal(t, 0.0, adjusted)
 	})

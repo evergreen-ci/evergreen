@@ -65,13 +65,6 @@ func (w *evergreenWebhookMessage) Loggable() bool {
 	}
 
 	_, err := url.Parse(w.raw.URL)
-	if err != nil {
-		grip.Error(context.Background(), message.WrapError(err, message.Fields{
-			"message":         "evergreen-webhook invalid url",
-			"notification_id": w.raw.NotificationID,
-		}))
-	}
-
 	return err == nil
 }
 
@@ -125,16 +118,22 @@ func NewEvergreenWebhookLogger() (send.Sender, error) {
 
 func (w *evergreenWebhookLogger) Send(ctx context.Context, m message.Composer) {
 	if w.Level().ShouldLog(m) {
-		if err := w.send(m); err != nil {
+		if err := w.send(ctx, m); err != nil {
 			w.ErrorHandler()(ctx, err, m)
 		}
 	}
 }
 
-func (w *evergreenWebhookLogger) send(m message.Composer) error {
+func (w *evergreenWebhookLogger) send(ctx context.Context, m message.Composer) error {
 	raw, ok := m.Raw().(*EvergreenWebhook)
 	if !ok {
 		return errors.Errorf("received unexpected composer %T", m.Raw())
+	}
+	if _, err := url.Parse(raw.URL); err != nil {
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message":         "evergreen-webhook invalid url",
+			"notification_id": raw.NotificationID,
+		}))
 	}
 	timeout := defaultWebhookTimeout
 	if raw.TimeoutMS > 0 {

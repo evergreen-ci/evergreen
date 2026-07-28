@@ -94,7 +94,7 @@ func AztoRegion(az string) string {
 
 // ec2StateToEvergreenStatus returns a "universal" status code based on EC2's
 // provider-specific status codes.
-func ec2StateToEvergreenStatus(ec2State *types.InstanceState) CloudStatus {
+func ec2StateToEvergreenStatus(ctx context.Context, ec2State *types.InstanceState) CloudStatus {
 	if ec2State == nil {
 		return StatusUnknown
 	}
@@ -110,7 +110,7 @@ func ec2StateToEvergreenStatus(ec2State *types.InstanceState) CloudStatus {
 	case types.InstanceStateNameTerminated, types.InstanceStateNameShuttingDown:
 		return StatusTerminated
 	default:
-		grip.Error(context.Background(), message.Fields{
+		grip.Error(ctx, message.Fields{
 			"message": "got an unknown EC2 state name",
 			"status":  ec2State.Name,
 		})
@@ -291,12 +291,12 @@ func expandUserData(userData string, expansions map[string]string) (string, erro
 // 16kB
 const userDataSizeLimit = 16 * 1024
 
-func validateUserDataSize(userData, distroID string) error {
+func validateUserDataSize(ctx context.Context, userData, distroID string) error {
 	if len(userData) < userDataSizeLimit {
 		return nil
 	}
 	err := errors.New("user data size limit exceeded")
-	grip.Error(context.Background(), message.WrapError(err, message.Fields{
+	grip.Error(ctx, message.WrapError(err, message.Fields{
 		"size":     len(userData),
 		"max_size": userDataSizeLimit,
 		"distro":   distroID,

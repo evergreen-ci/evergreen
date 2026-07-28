@@ -139,7 +139,7 @@ func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	hostModel := &model.APIHost{}
-	hostModel.BuildFromService(intentHost, nil)
+	hostModel.BuildFromService(ctx, intentHost, nil)
 	return gimlet.NewJSONResponse(hostModel)
 }
 
@@ -608,7 +608,7 @@ func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.New("host and volume must have same availability zone"))
 	}
 
-	mgrOpts, err := cloud.GetManagerOptions(targetHost.Distro)
+	mgrOpts, err := cloud.GetManagerOptions(ctx, targetHost.Distro)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting cloud manager options"))
 	}
@@ -703,7 +703,7 @@ func (h *detachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		"host_id": h.hostID,
 		"volume":  h.attachment.VolumeID,
 	})
-	mgrOpts, err := cloud.GetManagerOptions(targetHost.Distro)
+	mgrOpts, err := cloud.GetManagerOptions(ctx, targetHost.Distro)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting cloud manager options"))
 	}
