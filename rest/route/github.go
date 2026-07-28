@@ -903,7 +903,7 @@ func shouldSkipCIForGraphite(ctx context.Context, owner, repo string, prNumber i
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	client := utility.GetHTTPClient()
+	client := utility.WithOTelTracing(utility.GetHTTPClient())
 	defer utility.PutHTTPClient(client)
 
 	resp, err := client.Do(req)
