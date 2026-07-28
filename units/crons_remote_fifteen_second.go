@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/utility"
@@ -14,7 +15,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-const cronsRemoteFifteenSecondJobName = "crons-remote-fifteen-second"
+const (
+	cronsRemoteFifteenSecondJobName = "crons-remote-fifteen-second"
+
+	FifteenSecondCronInterval = 15 * time.Second
+)
 
 func init() {
 	registry.AddJobType(cronsRemoteFifteenSecondJobName, NewCronRemoteFifteenSecondJob)
@@ -45,27 +50,36 @@ func (j *cronsRemoteFifteenSecondJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	ops := map[string]cronJobFactory{
-		"scheduler":            schedulerJobs,
-		"alias scheduler":      aliasSchedulerJobs,
-		"host allocator":       hostAllocatorJobs,
-		"idle host":            idleHostJobs,
-		"agent deploy":         agentDeployJobs,
-		"agent monitor deploy": agentMonitorDeployJobs,
+	// Use array to not randomize order every time.
+	ops := []struct {
+		name    string
+		factory cronJobFactory
+	}{
+		{"scheduler", schedulerJobs},
+		{"alias scheduler", aliasSchedulerJobs},
+		{"host allocator", hostAllocatorJobs},
+		{"idle host", idleHostJobs},
+		{"agent deploy", agentDeployJobs},
+		{"agent monitor deploy", agentMonitorDeployJobs},
 	}
+	stagger := FifteenSecondCronInterval / time.Duration(len(ops))
 
 	var allJobs []amboy.Job
 	catcher := grip.NewBasicCatcher()
 	ts := utility.RoundPartOfMinute(15)
-	for name, op := range ops {
+	for i, op := range ops {
 		if ctx.Err() != nil {
 			j.AddError(errors.New("operation aborted"))
 			return
 		}
-		jobs, err := op(ctx, j.env, ts)
+		jobs, err := op.factory(ctx, j.env, ts)
 		if err != nil {
-			catcher.Wrapf(err, "getting '%s' jobs", name)
+			catcher.Wrapf(err, "getting '%s' jobs", op.name)
 			continue
+		}
+		waitUntil := ts.Add(time.Duration(i) * stagger)
+		for _, cronJob := range jobs {
+			cronJob.UpdateTimeInfo(amboy.JobTimeInfo{WaitUntil: waitUntil})
 		}
 		allJobs = append(allJobs, jobs...)
 	}
