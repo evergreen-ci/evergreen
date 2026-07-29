@@ -18,7 +18,7 @@ It contains information about a project to be duplicated.
 input CopyProjectInput {
   newProjectId: String
   newProjectIdentifier: String!
-  projectIdToCopy: String!
+  projectIdToCopy: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)
 }
 
 """
@@ -36,7 +36,7 @@ SetLastRevisionInput is the input to the setLastRevision mutation.
 It contains information used to fix the repotracker error of a project.
 """
 input SetLastRevisionInput {
-  projectIdentifier: String!
+  projectIdentifier: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)
   revision: String!
 }
 

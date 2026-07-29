@@ -497,7 +497,7 @@ func TestRequireDistroAccess(t *testing.T) {
 	assert.EqualError(t, err, "input: user 'test_user' does not have permission to access settings for the distro 'distro-id'")
 }
 
-func TestRequireProjectAdmin(t *testing.T) {
+func TestRequireProjectCreate(t *testing.T) {
 	setupPermissions(t)
 	require.NoError(t, db.Clear(user.Collection),
 		"unable to clear user collection")
@@ -516,7 +516,6 @@ func TestRequireProjectAdmin(t *testing.T) {
 	config := New("/graphql")
 	require.NotNil(t, config)
 	ctx := context.Background()
-	obj := any(nil)
 
 	// callCount keeps track of how many times the function is called
 	callCount := 0
@@ -533,18 +532,11 @@ func TestRequireProjectAdmin(t *testing.T) {
 	ctx = gimlet.AttachUser(ctx, usr)
 	require.NotNil(t, ctx)
 
-	projectRef := model.ProjectRef{
-		Id:         "project_id",
-		Identifier: "project_identifier",
-	}
-	err = projectRef.Insert(t.Context())
-	require.NoError(t, err)
-
 	// superuser should always be successful, no matter the resolver
 	err = usr.AddRole(t.Context(), "superuser")
 	require.NoError(t, err)
 
-	res, err := config.Directives.RequireProjectAdmin(ctx, obj, next)
+	res, err := config.Directives.RequireProjectCreate(ctx, nil, next)
 	assert.NoError(t, err)
 	assert.Nil(t, res)
 	assert.Equal(t, 1, callCount)
@@ -552,119 +544,17 @@ func TestRequireProjectAdmin(t *testing.T) {
 	err = usr.RemoveRole(t.Context(), "superuser")
 	require.NoError(t, err)
 
-	// CreateProject - permission denied
-	operationContext := &graphql.OperationContext{
-		OperationName: CreateProjectMutation,
-	}
-	ctx = graphql.WithOperationContext(ctx, operationContext)
-	obj = map[string]any{
-		"project": map[string]any{
-			"identifier": "anything",
-		},
-	}
-	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
-	assert.EqualError(t, err, "input: user test_user does not have permission to access the CreateProject resolver")
+	res, err = config.Directives.RequireProjectCreate(ctx, nil, next)
+	assert.EqualError(t, err, "input: user 'test_user' does not have permission to create projects")
 	assert.Nil(t, res)
 	assert.Equal(t, 1, callCount)
 
-	// CreateProject - successful
 	err = usr.AddRole(t.Context(), "admin_project")
 	require.NoError(t, err)
-	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
+	res, err = config.Directives.RequireProjectCreate(ctx, nil, next)
 	assert.NoError(t, err)
 	assert.Nil(t, res)
 	assert.Equal(t, 2, callCount)
-
-	// CopyProject - permission denied
-	operationContext = &graphql.OperationContext{
-		OperationName: CopyProjectMutation,
-	}
-	ctx = graphql.WithOperationContext(ctx, operationContext)
-	obj = map[string]any{
-		"project": map[string]any{
-			"projectIdToCopy": "anything",
-		},
-	}
-	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
-	assert.EqualError(t, err, "input: user test_user does not have permission to access the CopyProject resolver")
-	assert.Nil(t, res)
-	assert.Equal(t, 2, callCount)
-
-	// CopyProject - successful
-	obj = map[string]any{
-		"project": map[string]any{
-			"projectIdToCopy": "project_id",
-		},
-	}
-	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
-	assert.NoError(t, err)
-	assert.Nil(t, res)
-	assert.Equal(t, 3, callCount)
-
-	// DeleteProject - permission denied
-	operationContext = &graphql.OperationContext{
-		OperationName: DeleteProjectMutation,
-	}
-	ctx = graphql.WithOperationContext(ctx, operationContext)
-	obj = map[string]any{"projectId": "anything"}
-	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
-	assert.EqualError(t, err, "input: user test_user does not have permission to access the DeleteProject resolver")
-	assert.Nil(t, res)
-	assert.Equal(t, 3, callCount)
-
-	// DeleteProject - successful
-	obj = map[string]any{"projectId": "project_id"}
-	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
-	assert.NoError(t, err)
-	assert.Nil(t, res)
-	assert.Equal(t, 4, callCount)
-
-	// SetLastRevision - successful
-	operationContext = &graphql.OperationContext{
-		OperationName: SetLastRevisionMutation,
-	}
-	ctx = graphql.WithOperationContext(ctx, operationContext)
-	obj = map[string]any{
-		"opts": map[string]any{
-			"projectIdentifier": "project_identifier",
-		},
-	}
-	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
-	assert.NoError(t, err)
-	assert.Nil(t, res)
-	assert.Equal(t, 5, callCount)
-
-	// SetLastRevision - project not found
-	operationContext = &graphql.OperationContext{
-		OperationName: SetLastRevisionMutation,
-	}
-	ctx = graphql.WithOperationContext(ctx, operationContext)
-	obj = map[string]any{
-		"opts": map[string]any{
-			"projectIdentifier": "project_whatever",
-		},
-	}
-	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
-	assert.EqualError(t, err, "input: project 'project_whatever' not found")
-	assert.Nil(t, res)
-	assert.Equal(t, 5, callCount)
-
-	// SetLastRevision - permission denied
-	operationContext = &graphql.OperationContext{
-		OperationName: SetLastRevisionMutation,
-	}
-	ctx = graphql.WithOperationContext(ctx, operationContext)
-	obj = map[string]any{
-		"opts": map[string]any{
-			"projectIdentifier": "project_identifier",
-		},
-	}
-	require.NoError(t, usr.RemoveRole(t.Context(), "admin_project"))
-	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
-	assert.EqualError(t, err, "input: user test_user does not have permission to access the SetLastRevision resolver")
-	assert.Nil(t, res)
-	assert.Equal(t, 5, callCount)
-
 }
 
 func setupUser(t *testing.T) (*user.DBUser, error) {
