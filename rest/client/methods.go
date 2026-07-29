@@ -421,7 +421,7 @@ func (c *communicatorImpl) GetRateLimit(ctx context.Context, userID string) (*mo
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, nil
+		return nil, util.RespError(resp, "checking rate limit status")
 	}
 
 	var status *model.APIRateLimitStatus

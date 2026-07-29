@@ -78,7 +78,7 @@ func (h *userRateLimitGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "checking rate limit status"))
 	}
 	if limiter == nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(errors.New("nil rate limiter returned for rate limit status check"), "checking rate limit status"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.New("nil rate limiter returned for rate limit status check"))
 	}
 	// Check the user's REST rate limit without consuming any tokens.
 	result, err := limiter.Peek(ctx, u.Username(), evergreen.RateLimitSurfaceREST, perHour, burst)

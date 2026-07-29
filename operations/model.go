@@ -403,15 +403,18 @@ func printUserMessages(ctx context.Context, c client.Communicator, checkForUpdat
 	}
 }
 
+const rateLimitDisabledSubstring = "currently disabled"
+
 // printRateLimitWarning checks the user's remaining rate limit tokens and prints a warning if they are approaching the limit.
 func printRateLimitWarning(ctx context.Context, c client.Communicator, userID string) {
 	limit, err := c.GetRateLimit(ctx, userID)
 	if err != nil {
-		grip.Debug(ctx, errors.Wrap(err, "getting rate limit info"))
+		// Log any errors unrelated to the limiter being disabled to catch unexpected errors.
+		if !strings.Contains(err.Error(), rateLimitDisabledSubstring) {
+			grip.Warning(ctx, errors.Wrap(err, "getting rate limit info"))
+		}
 		return
 	}
-	// A nil limit means there is no limit to report, either because it could not be
-	// retrieved or because rate limiting is disabled for the user type or globally.
 	if limit == nil {
 		return
 	}
