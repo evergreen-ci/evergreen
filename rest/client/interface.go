@@ -51,6 +51,7 @@ type Communicator interface {
 	GetServiceUsers(ctx context.Context) ([]restmodel.APIDBUser, error)
 	UpdateServiceUser(context.Context, string, string, []string) error
 	DeleteServiceUser(context.Context, string) error
+	GetRateLimit(context.Context, string) (*restmodel.APIRateLimitStatus, error)
 
 	// Spawnhost methods
 	//
