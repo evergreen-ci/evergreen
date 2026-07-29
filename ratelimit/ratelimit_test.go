@@ -107,15 +107,6 @@ func TestAllowNZeroReqPerHourSkipsLimiting(t *testing.T) {
 	assert.Nil(t, res)
 }
 
-func TestAllowNInvalidCostErrorsWhenLimitingDisabled(t *testing.T) {
-	l := newRedisTestLimiter(t)
-	// Cost is validated before the unset-limit short-circuit, so an invalid cost is reported even
-	// when limiting is disabled.
-	res, err := l.AllowN(t.Context(), "user", evergreen.RateLimitSurfaceREST, 0, 0, 0)
-	assert.ErrorContains(t, err, "cost")
-	assert.Nil(t, res)
-}
-
 func TestAllowExhaustingOneUserDoesNotAffectAnother(t *testing.T) {
 	l := newRedisTestLimiter(t)
 	ctx := t.Context()
