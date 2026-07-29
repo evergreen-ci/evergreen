@@ -70,6 +70,9 @@ const (
 	// dependencyResolutionTimeout is the maximum time allowed for recursive
 	// dependency resolution.
 	dependencyResolutionTimeout = 10 * time.Minute
+
+	// estimateCacheMaxSize was calculated to fit an estimated number of values over the set cache TTL.
+	estimateCacheMaxSize = 50000
 )
 
 // maxDependencyDepth is the maximum recursion depth for dependency traversal.

@@ -17,10 +17,6 @@ const (
 	lookBackTime = 7 * 24 * time.Hour // one week
 )
 
-// generateTasksEstimationCache shares estimations across builds that create the
-// same generator tasks, which otherwise re-ran this aggregate on every build
-// creation. Like the expected-duration cache it's keyed by the (project, build
-// variant, task name) tuple the estimate is derived from.
 var generateTasksEstimationCache = expirable.NewLRU[string, GenerateTasksEstimation](estimateCacheMaxSize, nil, predictionTTL)
 
 // GenerateTasksEstimation holds estimation results for a single generator task.
@@ -77,8 +73,7 @@ func GetBatchedGenerateTasksEstimations(ctx context.Context, project, buildVaria
 
 	// Generators with no successful run in the look-back window are absent from
 	// the results. Cache the zero estimate the caller would have defaulted to
-	// anyway, otherwise these are exactly the names that re-run the aggregate on
-	// every build creation.
+	// anyway, otherwise they will re-run the aggregate on every build creation.
 	for _, name := range uncached {
 		if _, ok := result[name]; !ok {
 			generateTasksEstimationCache.Add(estimateCacheKey(project, buildVariant, name), GenerateTasksEstimation{})

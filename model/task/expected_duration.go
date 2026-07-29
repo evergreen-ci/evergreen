@@ -15,30 +15,13 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// estimateCacheMaxSize bounds each shared historical-estimate cache to roughly
-// 12MB, at ~250 bytes per (project, build variant, task name) entry. Peak live
-// entries over a 24-hour slow log were ~700 for durations and ~3.8k for
-// generate estimations, and that undersamples projects fast enough to stay out
-// of the log. Overflowing costs a recompute, not correctness.
-const estimateCacheMaxSize = 50000
-
-// expectedDurationCache shares the historical duration aggregate across sibling
-// tasks, which Task.DurationPrediction cannot do because it is keyed by task
-// document.
-//
-// Adopting a shared entry restarts the task's own predictionTTL clock, so the
-// estimate a task holds can be up to 2*predictionTTL old rather than
-// predictionTTL. That is acceptable because the underlying value is a
-// seven-day trailing average, which barely moves over a day.
 var expectedDurationCache = expirable.NewLRU[string, util.DurationStats](estimateCacheMaxSize, nil, predictionTTL)
 
 func estimateCacheKey(project, buildVariant, displayName string) string {
 	return strings.Join([]string{project, buildVariant, displayName}, "\x00")
 }
 
-// ClearEstimateCaches drops the process-local historical-estimate caches. It's
-// exported for tests in other packages that assert on estimates computed from
-// task history, since a stale shared entry would make them order-dependent.
+// ClearEstimateCaches drops the process-local historical-estimate caches.
 func ClearEstimateCaches() {
 	expectedDurationCache.Purge()
 	generateTasksEstimationCache.Purge()
