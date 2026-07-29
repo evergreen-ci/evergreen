@@ -19,7 +19,7 @@ func NewSageClient(baseURL string) (*SageClient, error) {
 		return nil, errors.New("Sage base URL is not configured")
 	}
 	return &SageClient{
-		httpClient: utility.GetHTTPClient(),
+		httpClient: utility.WithOTelTracing(utility.GetHTTPClient()),
 		baseURL:    baseURL,
 	}, nil
 }

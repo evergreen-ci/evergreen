@@ -24,9 +24,6 @@ type requestInfo struct {
 }
 
 var (
-	// AuthError is a special error when the CLI receives 401 Unauthorized to
-	// suggest logging in again as a possible solution to the error.
-	AuthError = "Possibly user credentials are expired, try logging in again via the Evergreen web UI."
 	// VPNError is a special error when the CLI receives 403 Forbidden to
 	// suggest checking VPN connection as a possible solution to the error.
 	VPNError = "VPN connection required: please make sure you're on the VPN and have access to Evergreen."
@@ -141,9 +138,7 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 		},
 	})
 	// We return the response intentionally so that callers can read the body.
-	if resp != nil && resp.StatusCode == http.StatusUnauthorized {
-		return resp, util.RespError(resp, AuthError)
-	} else if resp != nil && resp.StatusCode == http.StatusForbidden {
+	if resp != nil && resp.StatusCode == http.StatusForbidden {
 		return resp, util.RespError(resp, VPNError)
 	} else if err != nil {
 		return resp, err
