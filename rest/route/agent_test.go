@@ -1772,6 +1772,7 @@ func TestGetDistroView(t *testing.T) {
 			}
 			require.NoError(t, liveDistro.Insert(ctx))
 
+			ctx = context.WithValue(ctx, model.ApiHostKey, &h)
 			resp := rh.Run(ctx)
 			require.Equal(t, http.StatusOK, resp.Status())
 			data, ok := resp.Data().(apimodels.DistroView)
@@ -1802,6 +1803,7 @@ func TestGetDistroView(t *testing.T) {
 			// Live distro has CI disabled.
 			require.NoError(t, (&distro.Distro{Id: "rhel80"}).Insert(ctx))
 
+			ctx = context.WithValue(ctx, model.ApiHostKey, &h)
 			resp := rh.Run(ctx)
 			require.Equal(t, http.StatusOK, resp.Status())
 			data, ok := resp.Data().(apimodels.DistroView)
@@ -1828,6 +1830,7 @@ func TestGetDistroView(t *testing.T) {
 			require.NoError(t, h.Insert(ctx))
 			// Intentionally do not insert a live distro document for "rhel80-missing".
 
+			ctx = context.WithValue(ctx, model.ApiHostKey, &h)
 			resp := rh.Run(ctx)
 			require.Equal(t, http.StatusOK, resp.Status())
 			data, ok := resp.Data().(apimodels.DistroView)
@@ -1857,6 +1860,7 @@ func TestGetDistroView(t *testing.T) {
 			}
 			require.NoError(t, liveDistro.Insert(ctx))
 
+			ctx = context.WithValue(ctx, model.ApiHostKey, &h)
 			resp := rh.Run(ctx)
 			require.Equal(t, http.StatusOK, resp.Status())
 			data, ok := resp.Data().(apimodels.DistroView)
