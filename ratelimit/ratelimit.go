@@ -47,6 +47,7 @@ func (l *Limiter) AllowN(ctx context.Context, userID string, surface evergreen.R
 	return l.limiter.AllowN(ctx, key, limit, n)
 }
 
+// Peek reports the current rate limit status for a give userId, surface, and set of limits without consuming any tokens.
 func (l *Limiter) Peek(ctx context.Context, userID string, surface evergreen.RateLimitSurface, reqPerHour int, burst int) (*redis_rate.Result, error) {
 	return l.AllowN(ctx, userID, surface, reqPerHour, burst, 0)
 }

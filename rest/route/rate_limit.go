@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"slices"
 
@@ -9,7 +10,8 @@ import (
 	"github.com/evergreen-ci/evergreen/ratelimit"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/pkg/errors"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -28,7 +30,7 @@ func makeUserRateLimitGetHandler(env evergreen.Environment) gimlet.RouteHandler 
 // Factory creates an instance of the handler.
 //
 //	@Summary		Get a user's REST rate limit status
-//	@Description	Get the caller's current REST rate limit status. Callers may only check their own rate limit.
+//	@Description	Get the caller's current REST rate limit status. Callers may only check their own rate limit. Returns null if the caller has no limit configured or the rate limiter is disabled.
 //	@Tags			users
 //	@Router			/users/{user_id}/rate_limit [get]
 //	@Security		Api-User || Api-Key
@@ -48,12 +50,27 @@ func (h *userRateLimitGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if u.Username() != h.userID {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusForbidden,
-			Message:    "users may only check their own rate limit",
+			Message:    fmt.Sprintf("users may only check their own rate limit %s", u.Username()),
 		})
+	}
+
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message": "getting service flags for rate limit status check",
+			"user":    u.Username(),
+		}))
+		return gimlet.NewJSONResponse(nil)
+	}
+	if flags.APIRateLimiterDisabled {
+		return gimlet.NewJSONResponse(nil)
 	}
 
 	cfg := h.env.Settings().RateLimit
 	perHour, burst := limitsFor(&cfg, evergreen.RateLimitSurfaceREST, u.OnlyAPI)
+	if perHour == 0 {
+		return gimlet.NewJSONResponse(nil)
+	}
 	if slices.Contains(cfg.ElevatedUserIDs, u.Username()) {
 		perHour *= 2
 		burst *= 2
@@ -61,12 +78,20 @@ func (h *userRateLimitGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	limiter, err := ratelimit.NewRateLimiter(h.env.RedisClient())
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "initializing rate limiter"))
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message": "initializing rate limiter for rate limit status check",
+			"user":    u.Username(),
+		}))
+		return gimlet.NewJSONResponse(nil)
 	}
-	// Use peek method to check the user's rate limit without consuming any tokens.
+	// Check the user's REST rate limit without consuming any tokens.
 	result, err := limiter.Peek(ctx, u.Username(), evergreen.RateLimitSurfaceREST, perHour, burst)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "checking rate limit"))
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message": "checking rate limit status",
+			"user":    u.Username(),
+		}))
+		return gimlet.NewJSONResponse(nil)
 	}
 
 	status := &restmodel.APIRateLimitStatus{}

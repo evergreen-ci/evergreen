@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/validator"
-	"github.com/go-redis/redis_rate/v10"
 )
 
 // Communicator is an interface for communicating with the API server.
@@ -52,7 +51,7 @@ type Communicator interface {
 	GetServiceUsers(ctx context.Context) ([]restmodel.APIDBUser, error)
 	UpdateServiceUser(context.Context, string, string, []string) error
 	DeleteServiceUser(context.Context, string) error
-	GetRateLimit(context.Context, string) (*redis_rate.Result, error)
+	GetRateLimit(context.Context, string) (*restmodel.APIRateLimitStatus, error)
 
 	// Spawnhost methods
 	//

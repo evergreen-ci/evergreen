@@ -403,17 +403,21 @@ func printUserMessages(ctx context.Context, c client.Communicator, checkForUpdat
 	}
 }
 
-// printRateLimitWarning check's the user's remaining rate limit tokens and prints a warning if they are approaching the limit.
+// printRateLimitWarning checks the user's remaining rate limit tokens and prints a warning if they are approaching the limit.
 func printRateLimitWarning(ctx context.Context, c client.Communicator, userID string) {
 	limit, err := c.GetRateLimit(ctx, userID)
-	if err != nil || limit == nil {
-		grip.Warning(ctx, errors.Wrap(err, "getting rate limit info"))
+	if err != nil {
+		grip.Debug(ctx, errors.Wrap(err, "getting rate limit info"))
+		return
+	}
+	// A nil limit means the caller has no rate limit configured or the rate limiter is disabled.
+	if limit == nil {
 		return
 	}
 	// This is a hard-coded low-request threshold that may be adjusted in the future.
 	if limit.Remaining < 20 {
-		fmt.Fprintf(os.Stderr, "Warning: you are approaching the API rate limit; CLI commands may fail. %d/%d requests remain (refills at %d req/hour, %s until full).\n",
-			limit.Remaining, limit.Limit.Burst, limit.Limit.Rate, limit.ResetAfter.Round(time.Second))
+		fmt.Fprintf(os.Stderr, "Warning: you are approaching the API rate limit; CLI commands may fail. %d/%d requests remain (refills at %d req/hour, %d seconds until full).\n",
+			limit.Remaining, limit.Burst, limit.Limit, limit.ResetAfterSeconds)
 	}
 }
 

@@ -1,12 +1,9 @@
 package model
 
 import (
-	"time"
-
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
-	"github.com/go-redis/redis_rate/v10"
 )
 
 // APIRecentTaskStats is the model to be returned by the API whenever recent tasks are fetched.
@@ -89,41 +86,5 @@ func (s *APIHostStatsByDistro) BuildFromService(stats []host.StatsByDistro) {
 		}
 
 		s.Distros = append(s.Distros, d)
-	}
-}
-
-// APIRateLimitStatus is the model returned by the API when a caller checks their
-// current REST rate limit status.
-type APIRateLimitStatus struct {
-	Limit      int   `json:"limit"`
-	Burst      int   `json:"burst"`
-	Allowed    int   `json:"allowed"`
-	Remaining  int   `json:"remaining"`
-	RetryAfter int64 `json:"retry_after_ns"`
-	ResetAfter int64 `json:"reset_after_ns"`
-}
-
-// BuildFromService converts a redis_rate.Result into an APIRateLimitStatus. A nil
-// result indicates that no limit is configured for the surface.
-func (s *APIRateLimitStatus) BuildFromService(result *redis_rate.Result) {
-	if result == nil {
-		return
-	}
-	s.Limit = result.Limit.Rate
-	s.Burst = result.Limit.Burst
-	s.Allowed = result.Allowed
-	s.Remaining = result.Remaining
-	s.RetryAfter = int64(result.RetryAfter)
-	s.ResetAfter = int64(result.ResetAfter)
-}
-
-// ToService converts an APIRateLimitStatus back into a redis_rate.Result.
-func (s *APIRateLimitStatus) ToService() *redis_rate.Result {
-	return &redis_rate.Result{
-		Limit:      redis_rate.Limit{Rate: s.Limit, Burst: s.Burst},
-		Allowed:    s.Allowed,
-		Remaining:  s.Remaining,
-		RetryAfter: time.Duration(s.RetryAfter),
-		ResetAfter: time.Duration(s.ResetAfter),
 	}
 }

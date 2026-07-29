@@ -75,6 +75,29 @@ func TestAllowNCostLessThanZeroShouldError(t *testing.T) {
 	assert.Nil(t, res)
 }
 
+func TestPeekDoesNotConsumeTokens(t *testing.T) {
+	l := newRedisTestLimiter(t)
+	ctx := t.Context()
+
+	// Peek at the user's rate limit without consuming any tokens.
+	res, err := l.Peek(ctx, "user", evergreen.RateLimitSurfaceREST, 100, 1)
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, 1, res.Remaining)
+
+	// After peeking, the user should still be allowed to make a request.
+	res, err = l.Allow(ctx, "user", evergreen.RateLimitSurfaceREST, 100, 1)
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, 1, res.Allowed)
+
+	// The user's remaining tokens should now be 0.
+	res, err = l.Peek(ctx, "user", evergreen.RateLimitSurfaceREST, 100, 1)
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, 0, res.Remaining)
+}
+
 func TestAllowNZeroReqPerHourSkipsLimiting(t *testing.T) {
 	l := newRedisTestLimiter(t)
 	// A zero per-hour rate means the limit is unset (config validation guarantees burst is also
