@@ -677,7 +677,6 @@ tasks:
           include_expansions_in_env: ["GOROOT"]
       - func: verify-swaggo-fmt
   - name: check-go-vulnerabilities
-    tags: ["linter"]
     commands:
       - func: get-project-and-modules
       - command: subprocess.exec
