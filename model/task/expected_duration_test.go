@@ -78,17 +78,19 @@ func TestFetchExpectedDurationSharesEstimateBetweenSiblingTasks(t *testing.T) {
 	require.NoError(t, err)
 
 	now := time.Now()
-	history := Task{
-		Id:           "history",
-		DisplayName:  "compile",
-		BuildVariant: "bv",
-		Project:      "proj",
-		Status:       evergreen.TaskSucceeded,
-		StartTime:    now.Add(-20 * time.Minute),
-		FinishTime:   now,
-		TimeTaken:    20 * time.Minute,
+	insertHistory := func(id string, timeTaken time.Duration) {
+		history := Task{
+			Id:           id,
+			DisplayName:  "compile",
+			BuildVariant: "bv",
+			Project:      "proj",
+			Status:       evergreen.TaskSucceeded,
+			StartTime:    now.Add(-timeTaken),
+			FinishTime:   now,
+			TimeTaken:    timeTaken,
+		}
+		require.NoError(t, history.Insert(t.Context()))
 	}
-	require.NoError(t, history.Insert(t.Context()))
 
 	newTask := func(id string) *Task {
 		tsk := &Task{Id: id, DisplayName: "compile", BuildVariant: "bv", Project: "proj"}
@@ -96,13 +98,16 @@ func TestFetchExpectedDurationSharesEstimateBetweenSiblingTasks(t *testing.T) {
 		return tsk
 	}
 
+	insertHistory("history", 20*time.Minute)
 	assert.Equal(t, 20*time.Minute, newTask("first").FetchExpectedDuration(t.Context()).Average)
 
-	// Dropping the history proves the sibling reused the cached estimate rather
-	// than re-running the aggregate.
+	// Replacing the history with a different duration proves the sibling served
+	// the estimate from the cache rather than re-running the aggregate, and that
+	// the next task after a reset picks up the new value.
 	require.NoError(t, db.ClearCollections(Collection))
+	insertHistory("newHistory", 30*time.Minute)
 	assert.Equal(t, 20*time.Minute, newTask("sibling").FetchExpectedDuration(t.Context()).Average)
 
 	expectedDurationCache.Purge()
-	assert.Equal(t, defaultTaskDuration, newTask("afterExpiry").FetchExpectedDuration(t.Context()).Average)
+	assert.Equal(t, 30*time.Minute, newTask("afterExpiry").FetchExpectedDuration(t.Context()).Average)
 }

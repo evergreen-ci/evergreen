@@ -46,11 +46,16 @@ func GetBatchedGenerateTasksEstimations(ctx context.Context, project, buildVaria
 
 	uncached := make([]string, 0, len(displayNames))
 	for _, name := range displayNames {
-		if est, ok := generateTasksEstimationCache.Get(estimateCacheKey(project, buildVariant, name)); ok {
-			result[name] = est
+		est, ok := generateTasksEstimationCache.Get(estimateCacheKey(project, buildVariant, name))
+		if !ok {
+			uncached = append(uncached, name)
 			continue
 		}
-		uncached = append(uncached, name)
+		// A cached zero records that the generator has no history, which the
+		// uncached path reports by omitting the name entirely.
+		if est != (GenerateTasksEstimation{}) {
+			result[name] = est
+		}
 	}
 	if len(uncached) == 0 {
 		return result, nil
@@ -68,6 +73,16 @@ func GetBatchedGenerateTasksEstimations(ctx context.Context, project, buildVaria
 		}
 		result[r.DisplayName] = est
 		generateTasksEstimationCache.Add(estimateCacheKey(project, buildVariant, r.DisplayName), est)
+	}
+
+	// Generators with no successful run in the look-back window are absent from
+	// the results. Cache the zero estimate the caller would have defaulted to
+	// anyway, otherwise these are exactly the names that re-run the aggregate on
+	// every build creation.
+	for _, name := range uncached {
+		if _, ok := result[name]; !ok {
+			generateTasksEstimationCache.Add(estimateCacheKey(project, buildVariant, name), GenerateTasksEstimation{})
+		}
 	}
 
 	return result, nil
