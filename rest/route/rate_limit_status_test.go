@@ -52,37 +52,42 @@ func TestUserRateLimitGetHandlerSelfOnly(t *testing.T) {
 	}
 }
 
-// TestUserRateLimitGetHandlerReportsNoLimit verifies that cases where the caller
-// has no enforceable limit (zero configured limit, the rate limiter disabled, or
-// an uninitializable limiter) report a nil status with a 200, rather than a 500.
-func TestUserRateLimitGetHandlerReportsNoLimit(t *testing.T) {
+// TestUserRateLimitGetHandlerDisabledReportsServiceUnavailable verifies that
+// there being no limit enforced against the caller -- whether because the
+// limiter is disabled globally or because their user type has no configured
+// limit -- is reported as a 503, so it's visible without being confused with a
+// genuine internal error (a 500, see
+// TestUserRateLimitGetHandlerInternalErrorReturns500).
+func TestUserRateLimitGetHandlerDisabledReportsServiceUnavailable(t *testing.T) {
 	for testName, testCase := range map[string]func(t *testing.T){
-		"UnconfiguredRESTLimitReportsNoLimit": func(t *testing.T) {
-			env := setupRateLimitEnv(t, evergreen.RateLimitConfig{}) // all zero
-
-			resp := runUserRateLimitHandler(t, env, "me")
-			assert.Equal(t, http.StatusOK, resp.Status())
-			assert.Nil(t, resp.Data())
-		},
-		"DisabledRateLimiterReportsNoLimit": func(t *testing.T) {
+		"GlobalFlagDisabled": func(t *testing.T) {
 			env := setupRateLimitEnv(t, evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 5})
 			require.NoError(t, (&evergreen.ServiceFlags{APIRateLimiterDisabled: true}).Set(t.Context()))
 
 			resp := runUserRateLimitHandler(t, env, "me")
-			assert.Equal(t, http.StatusOK, resp.Status())
-			assert.Nil(t, resp.Data())
+			assert.Equal(t, http.StatusServiceUnavailable, resp.Status())
 		},
-		"NilRedisClientReportsNoLimitInsteadOfError": func(t *testing.T) {
-			env := setupRateLimitEnv(t, evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 5})
-			env.SetRedisClient(nil) // NewRateLimiter will fail; the route should still return 200.
+		"UnconfiguredRESTLimit": func(t *testing.T) {
+			env := setupRateLimitEnv(t, evergreen.RateLimitConfig{}) // all zero
 
 			resp := runUserRateLimitHandler(t, env, "me")
-			assert.Equal(t, http.StatusOK, resp.Status())
-			assert.Nil(t, resp.Data())
+			assert.Equal(t, http.StatusServiceUnavailable, resp.Status())
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
 			testCase(t)
 		})
 	}
+}
+
+// TestUserRateLimitGetHandlerInternalErrorReturns500 verifies that a genuine
+// failure to determine the caller's rate limit (as opposed to there being no
+// limit to report) surfaces as a visible 500, rather than being silently
+// swallowed as a 200 with no data.
+func TestUserRateLimitGetHandlerInternalErrorReturns500(t *testing.T) {
+	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 5})
+	env.SetRedisClient(nil) // NewRateLimiter will fail.
+
+	resp := runUserRateLimitHandler(t, env, "me")
+	assert.Equal(t, http.StatusInternalServerError, resp.Status())
 }

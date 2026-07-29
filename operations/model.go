@@ -410,7 +410,8 @@ func printRateLimitWarning(ctx context.Context, c client.Communicator, userID st
 		grip.Debug(ctx, errors.Wrap(err, "getting rate limit info"))
 		return
 	}
-	// A nil limit means the caller has no rate limit configured or the rate limiter is disabled.
+	// A nil limit means there is no limit to report, either because it could not be
+	// retrieved or because rate limiting is disabled for the user type or globally.
 	if limit == nil {
 		return
 	}
