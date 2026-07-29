@@ -586,9 +586,7 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 }
 
 // urlVarsToDistroScopes returns the distro being requested for access and the
-// HTTP status code. The distro is matched by ID only, not by distro alias,
-// because the routes that check distro permissions all act on a distro looked
-// up by its exact ID.
+// HTTP status code.
 func urlVarsToDistroScopes(r *http.Request) ([]string, int, error) {
 	distroID := gimlet.GetVars(r)["distro_id"]
 	if distroID == "" {

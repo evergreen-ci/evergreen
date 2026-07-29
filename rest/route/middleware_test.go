@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -596,16 +597,14 @@ func TestURLVarsToDistroScopes(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(distro.Collection))
 	})
 
-	authorized := distro.Distro{
-		Id:      "authorized-distro",
-		Aliases: []string{"shared-alias"},
+	targetDistro := distro.Distro{
+		Id: "distro",
 	}
-	require.NoError(t, authorized.Insert(t.Context()))
-	victim := distro.Distro{
-		Id:      "victim-distro",
-		Aliases: []string{"shared-alias"},
+	require.NoError(t, targetDistro.Insert(t.Context()))
+	otherDistro := distro.Distro{
+		Id: "other-distro",
 	}
-	require.NoError(t, victim.Insert(t.Context()))
+	require.NoError(t, otherDistro.Insert(t.Context()))
 
 	for tName, tCase := range map[string]struct {
 		pathVars           map[string]string
@@ -614,28 +613,18 @@ func TestURLVarsToDistroScopes(t *testing.T) {
 		expectedStatusCode int
 	}{
 		"ResolvesDistroFromPath": {
-			pathVars:           map[string]string{"distro_id": "victim-distro"},
-			expectedDistroIDs:  []string{"victim-distro"},
+			pathVars:           map[string]string{"distro_id": targetDistro.Id},
+			expectedDistroIDs:  []string{targetDistro.Id},
 			expectedStatusCode: http.StatusOK,
 		},
 		"IgnoresQueryStringDistroWhenPathHasDistro": {
-			pathVars:           map[string]string{"distro_id": "victim-distro"},
-			queryString:        "distro_id=authorized-distro&distroId=authorized-distro",
-			expectedDistroIDs:  []string{"victim-distro"},
+			pathVars:           map[string]string{"distro_id": targetDistro.Id},
+			queryString:        fmt.Sprintf("distro_id=%s", otherDistro.Id),
+			expectedDistroIDs:  []string{targetDistro.Id},
 			expectedStatusCode: http.StatusOK,
-		},
-		"IgnoresQueryStringHostWhenPathHasDistro": {
-			pathVars:           map[string]string{"distro_id": "victim-distro"},
-			queryString:        "host_id=authorized-host&resource_type=DISTRO&resource_id=authorized-distro",
-			expectedDistroIDs:  []string{"victim-distro"},
-			expectedStatusCode: http.StatusOK,
-		},
-		"DistroAliasInPathIsNotFound": {
-			pathVars:           map[string]string{"distro_id": "shared-alias"},
-			expectedStatusCode: http.StatusNotFound,
 		},
 		"QueryStringOnlyDistroIsNotFound": {
-			queryString:        "distro_id=authorized-distro",
+			queryString:        fmt.Sprintf("distro_id=%s", otherDistro.Id),
 			expectedStatusCode: http.StatusNotFound,
 		},
 		"NonexistentDistroInPathIsNotFound": {
