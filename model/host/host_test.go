@@ -7188,3 +7188,33 @@ func TestFindDebugHostsForProject(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, found, 0, "should find no debug hosts for non-existent project")
 }
+
+func TestValidateDisplayName(t *testing.T) {
+	for tName, tCase := range map[string]struct {
+		name        string
+		shouldError bool
+	}{
+		"AlphanumericNameShouldSucceed":          {name: "myhost123", shouldError: false},
+		"NameWithSpacesShouldSucceed":            {name: "user's workstation", shouldError: false},
+		"NameWithParenthesesShouldSucceed":       {name: "workstation (user)", shouldError: false},
+		"NameWithColonShouldSucceed":             {name: "localhost:27017", shouldError: false},
+		"NameWithAtSignShouldSucceed":            {name: "me@mongodb.com", shouldError: false},
+		"NameWithDoubleQuoteShouldSucceed":       {name: `"good" host`, shouldError: false},
+		"NameWithUnderscoreAndDashShouldSucceed": {name: "my_host-1", shouldError: false},
+		"EmptyNameShouldSucceed":                 {name: "", shouldError: false},
+		"TooLongNameShouldError":                 {name: strings.Repeat("a", maxDisplayNameLength+1), shouldError: true},
+		"NameWithHTMLTagShouldError":             {name: "<b>important</b>", shouldError: true},
+		"NameWithSlackLinkShouldError":           {name: "<https://evil.example.com|click here>", shouldError: true},
+		"NameWithAmpersandShouldError":           {name: "foo & bar", shouldError: true},
+		"NameWithNonASCIICharacterShouldError":   {name: "host\x00gnp.exe", shouldError: true},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			err := ValidateDisplayName(tCase.name)
+			if tCase.shouldError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}

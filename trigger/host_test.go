@@ -106,6 +106,28 @@ func (s *hostSuite) TestSlackMessage() {
 	s.Contains(msg.Body, "Your myDistro host 'hostName' will be terminated at")
 }
 
+func (s *hostSuite) TestEmailMessageEscapesHostName() {
+	maliciousData := s.testData
+	maliciousData.Name = `<a href="https://evil.example">click</a>`
+	maliciousData.URL = `https://evil.example" onmouseover="alert(1)`
+
+	email, err := maliciousData.hostEmailPayload(expiringHostEmailSubject, expiringHostEmailBody, s.t.Attributes())
+	s.NoError(err)
+	s.NotContains(email.Body, `<a href="https://evil.example">click</a>`)
+	s.Contains(email.Body, "&lt;a href=", "HTML should be escaped in the email")
+	s.NotContains(email.Body, `example" onmouseover=`, "URL in email body should be escaped to avoid injecting HTML")
+}
+
+func (s *hostSuite) TestSlackMessageEscapesHostName() {
+	maliciousData := s.testData
+	maliciousData.Name = "<https://evil.example|click here>"
+
+	msg, err := maliciousData.hostSlackPayload(expiringHostSlackBody, "linkTitle")
+	s.NoError(err)
+	s.NotContains(msg.Body, "<https://evil.example|click here>")
+	s.Contains(msg.Body, "&lt;https://evil.example|click here&gt;", "Slack markdown formatting should be replaced with escaped characters")
+}
+
 func (s *hostSuite) TestFetch() {
 	triggers := hostTriggers{}
 	s.NoError(triggers.Fetch(s.ctx, s.t.event))

@@ -148,7 +148,7 @@ func discoverOAuthASMetadata(ctx context.Context, issuer string) (*oauthASMetada
 	}
 	req.Header.Set("Accept", "application/json")
 
-	httpClient := utility.GetHTTPClient()
+	httpClient := utility.WithOTelTracing(utility.GetHTTPClient())
 	defer utility.PutHTTPClient(httpClient)
 
 	resp, err := httpClient.Do(req)
@@ -197,7 +197,7 @@ func doTokenExchange(ctx context.Context, tokenURL string, opts OktaTokenExchang
 	req.Header.Set("Accept", "application/json")
 	req.SetBasicAuth(opts.ClientID, opts.ClientSecret)
 
-	httpClient := utility.GetHTTPClient()
+	httpClient := utility.WithOTelTracing(utility.GetHTTPClient())
 	defer utility.PutHTTPClient(httpClient)
 
 	resp, err := httpClient.Do(req)
@@ -356,7 +356,7 @@ func ExchangeAuthCodeForToken(ctx context.Context, opts AuthCodeExchangeOptions)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 
-	httpClient := utility.GetHTTPClient()
+	httpClient := utility.WithOTelTracing(utility.GetHTTPClient())
 	defer utility.PutHTTPClient(httpClient)
 
 	resp, err := httpClient.Do(req)
