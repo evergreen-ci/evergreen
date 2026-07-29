@@ -77,11 +77,15 @@ func (h *userRateLimitGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	limiter, err := ratelimit.NewRateLimiter(h.env.RedisClient())
-	if limiter == nil || err != nil {
+	if err != nil {
 		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message": "initializing rate limiter for rate limit status check",
 			"user":    u.Username(),
 		}))
+		return gimlet.NewJSONResponse(nil)
+	}
+	if limiter == nil {
+		grip.Warning(ctx, "nil rate limiter returned for rate limit status check")
 		return gimlet.NewJSONResponse(nil)
 	}
 	// Check the user's REST rate limit without consuming any tokens.
