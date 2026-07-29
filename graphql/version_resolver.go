@@ -636,11 +636,6 @@ func (r *versionResolver) User(ctx context.Context, obj *restModel.APIVersion) (
 	return getVersionAuthorDBUser(ctx, utility.FromStringPtr(obj.AuthorID), utility.FromStringPtr(obj.Author), utility.FromStringPtr(obj.AuthorEmail))
 }
 
-// UserLite is the resolver for the userLite field.
-func (r *versionResolver) UserLite(ctx context.Context, obj *restModel.APIVersion) (*user.DBUser, error) {
-	return getVersionAuthorDBUser(ctx, utility.FromStringPtr(obj.AuthorID), utility.FromStringPtr(obj.Author), utility.FromStringPtr(obj.AuthorEmail))
-}
-
 // VersionTiming is the resolver for the versionTiming field.
 func (r *versionResolver) VersionTiming(ctx context.Context, obj *restModel.APIVersion) (*VersionTiming, error) {
 	versionID := utility.FromStringPtr(obj.Id)
