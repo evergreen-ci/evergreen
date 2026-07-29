@@ -77,7 +77,7 @@ func (h *userRateLimitGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	limiter, err := ratelimit.NewRateLimiter(h.env.RedisClient())
-	if err != nil {
+	if limiter == nil || err != nil {
 		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message": "initializing rate limiter for rate limit status check",
 			"user":    u.Username(),
