@@ -3018,9 +3018,9 @@ func TestSetTaskActivationForBuildsSingleHostTaskGroup(t *testing.T) {
 		tg, err := task.FindTaskGroupFromBuild(ctx, buildID, tgName)
 		require.NoError(t, err)
 		orderedTG := make([]task.Task, len(tg))
-		for _, t := range tg {
+		for _, tsk := range tg {
 			// Task group order is 1-indexed.
-			orderedTG[t.TaskGroupOrder-1] = t
+			orderedTG[tsk.TaskGroupOrder-1] = tsk
 		}
 		return orderedTG
 	}
