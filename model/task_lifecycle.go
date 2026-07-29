@@ -56,18 +56,9 @@ func SetActiveState(ctx context.Context, caller string, active bool, tasks ...ta
 			if !t.OverrideDependencies {
 				deps, err := task.GetRecursiveDependenciesUp(ctx, originalTasks, nil)
 				catcher.Wrapf(err, "getting dependencies up for task '%s'", t.Id)
-				if t.IsPartOfSingleHostTaskGroup() {
-					for _, dep := range deps {
-						// reset any already finished tasks in the same task group
-						if dep.TaskGroup == t.TaskGroup && t.TaskGroup != "" && dep.IsFinished() {
-							catcher.Wrapf(resetTask(ctx, dep.Id, caller), "resetting dependency '%s'", dep.Id)
-						} else {
-							tasksToActivate = append(tasksToActivate, dep)
-						}
-					}
-				} else {
-					tasksToActivate = append(tasksToActivate, deps...)
-				}
+				remainingDeps, err := resetEarlierSingleHostTaskGroupTasks(ctx, originalTasks, deps, caller)
+				catcher.Wrapf(err, "restarting earlier single-host task group tasks for newly-activated task '%s'", t.Id)
+				tasksToActivate = append(tasksToActivate, remainingDeps...)
 			}
 
 			if t.IsHostTask() && !utility.IsZeroTime(t.DispatchTime) && t.Status == evergreen.TaskUndispatched {
@@ -150,6 +141,64 @@ func SetActiveState(ctx context.Context, caller string, active bool, tasks ...ta
 	}
 
 	return catcher.Resolve()
+}
+
+// resetEarlierSingleHostTaskGroupTasks restarts already-finished tasks that belong to
+// the same single-host task group as one of the tasks being activated. Returns
+// the remaining deps that were not restarted.
+// For context, if a later task group task is (re)activated after earlier tasks
+// already finished, those earlier tasks have to restart so the whole task group
+// can re-run from the beginning.
+func resetEarlierSingleHostTaskGroupTasks(ctx context.Context, activatingTasks, deps []task.Task, caller string) ([]task.Task, error) {
+	type taskGroupInBuild struct {
+		buildID   string
+		taskGroup string
+	}
+	shtgs := make(map[taskGroupInBuild]bool)
+	for _, activatingTask := range activatingTasks {
+		if activatingTask.IsPartOfSingleHostTaskGroup() {
+			shtgs[taskGroupInBuild{buildID: activatingTask.BuildId, taskGroup: activatingTask.TaskGroup}] = true
+		}
+	}
+	if len(shtgs) == 0 {
+		return deps, nil
+	}
+
+	catcher := grip.NewBasicCatcher()
+	nonRestartedTasks := make([]task.Task, 0, len(deps))
+	for i := range deps {
+		dep := deps[i]
+		if dep.IsFinished() && shtgs[taskGroupInBuild{buildID: dep.BuildId, taskGroup: dep.TaskGroup}] {
+			catcher.Wrapf(resetTask(ctx, dep.Id, caller),
+				"restarting finished single-host task group task '%s' because a later task in its group was activated", dep.Id)
+		} else {
+			nonRestartedTasks = append(nonRestartedTasks, dep)
+		}
+	}
+	return nonRestartedTasks, catcher.Resolve()
+}
+
+// activateTasksWithDependencies activates the given tasks and their
+// dependencies. Tasks in a single host task group task will be restarted if
+// later task group tasks are activated.
+func activateTasksWithDependencies(ctx context.Context, taskIDs []string, caller string) error {
+	tasks, err := task.FindAll(ctx, db.Query(task.ByIdsAndStatus(taskIDs, []string{evergreen.TaskUndispatched})).
+		WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.ActivatedKey, task.BuildIdKey, task.TaskGroupKey, task.TaskGroupMaxHostsKey, task.TaskGroupOrderKey))
+	if err != nil {
+		return errors.Wrap(err, "getting tasks for activation")
+	}
+	deps, err := task.GetRecursiveDependenciesUp(ctx, tasks, nil)
+	if err != nil {
+		return errors.Wrap(err, "getting recursive dependencies")
+	}
+	deps, err = resetEarlierSingleHostTaskGroupTasks(ctx, tasks, deps, caller)
+	if err != nil {
+		return errors.Wrap(err, "restarting earlier finished single-host task group tasks")
+	}
+	if _, err := task.ActivateTasks(ctx, append(tasks, deps...), time.Now(), true, caller); err != nil {
+		return errors.Wrap(err, "activating tasks and their dependencies")
+	}
+	return nil
 }
 
 func SetActiveStateById(ctx context.Context, id, user string, active bool) error {

@@ -1354,6 +1354,31 @@ func (opts *GetProjectOpts) UpdateReadFileFrom(path string) {
 	}
 }
 
+// readLocalInclude reads an included file from within localIncludeDir. Local
+// includes are only resolved for the CLI and agent, which operate on a trusted
+// local checkout. Callers with no include directory (the server validation
+// routes) get an error, as do absolute paths or paths outside the directory.
+func readLocalInclude(remotePath, localIncludeDir string) ([]byte, error) {
+	if localIncludeDir == "" {
+		return nil, errors.New("resolving local includes is not supported here")
+	}
+	if filepath.IsAbs(remotePath) {
+		return nil, errors.Errorf("included file path '%s' must be relative", remotePath)
+	}
+
+	baseDir := filepath.Clean(localIncludeDir)
+	resolved := filepath.Join(baseDir, remotePath)
+	if resolved != baseDir && !strings.HasPrefix(resolved, baseDir+string(os.PathSeparator)) {
+		return nil, errors.Errorf("included file path '%s' is outside the include directory", remotePath)
+	}
+
+	fileContents, err := os.ReadFile(resolved)
+	if err != nil {
+		return nil, errors.Wrap(err, "reading included file")
+	}
+	return fileContents, nil
+}
+
 // retrieveFile retrieves a file from its source location. If no
 // opts.ReadFileFrom is specified, it will default to retrieving the file from
 // GitHub.
@@ -1364,15 +1389,7 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 
 	switch opts.ReadFileFrom {
 	case ReadFromLocal:
-		remotePath := opts.RemotePath
-		if !filepath.IsAbs(remotePath) && opts.LocalIncludeDir != "" {
-			remotePath = filepath.Join(opts.LocalIncludeDir, remotePath)
-		}
-		fileContents, err := os.ReadFile(remotePath)
-		if err != nil {
-			return nil, errors.Wrap(err, "reading project config")
-		}
-		return fileContents, nil
+		return readLocalInclude(opts.RemotePath, opts.LocalIncludeDir)
 	case ReadFromPatch:
 		fileContents, err := getFileForPatchDiff(ctx, opts)
 		if err != nil {
