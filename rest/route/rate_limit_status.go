@@ -55,7 +55,7 @@ func (h *userRateLimitGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting service flags for rate limit status check"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "checking rate limit status"))
 	}
 	if flags.APIRateLimiterDisabled {
 		return rateLimitingDisabledResponder()
@@ -75,10 +75,10 @@ func (h *userRateLimitGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	limiter, err := ratelimit.NewRateLimiter(h.env.RedisClient())
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "initializing rate limiter for rate limit status check"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "checking rate limit status"))
 	}
 	if limiter == nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.New("nil rate limiter returned for rate limit status check"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(errors.New("nil rate limiter returned for rate limit status check"), "checking rate limit status"))
 	}
 	// Check the user's REST rate limit without consuming any tokens.
 	result, err := limiter.Peek(ctx, u.Username(), evergreen.RateLimitSurfaceREST, perHour, burst)
