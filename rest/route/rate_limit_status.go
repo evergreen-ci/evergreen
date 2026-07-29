@@ -34,7 +34,7 @@ func makeUserRateLimitGetHandler(env evergreen.Environment) gimlet.RouteHandler 
 //	@Tags			users
 //	@Router			/users/{user_id}/rate_limit [get]
 //	@Security		Api-User || Api-Key
-//	@Param			user_id	path		string						true	"User ID"
+//	@Param			user_id	path		string	true	"User ID"
 //	@Success		200		{object}	model.APIRateLimitStatus
 func (h *userRateLimitGetHandler) Factory() gimlet.RouteHandler {
 	return &userRateLimitGetHandler{env: h.env}
