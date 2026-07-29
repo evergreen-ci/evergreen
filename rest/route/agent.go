@@ -635,26 +635,19 @@ func (h *getDistroViewHandler) Run(ctx context.Context) gimlet.Responder {
 		Mountpoints:         foundHost.Distro.Mountpoints,
 		ExecUser:            foundHost.Distro.ExecUser,
 	}
-	// Prefer live distro settings over the embedded snapshot for fields that
-	// affect task isolation. Hosts provisioned before container isolation was
-	// configured carry a stale snapshot; a live lookup ensures they pick up
-	// the current distro config. ExecUser is also refreshed because the distro
-	// validator couples it to ContainerIsolation.Enabled — they must be
-	// consistent or between-task process cleanup will be skipped.
-	//
-	// The live lookup is skipped when: (a) the host has no distro ID, or
-	// (b) the service-level kill switch is on (no isolation is active anywhere).
-	// This avoids an unconditional per-task-start DB round-trip on fleets where
-	// container isolation has not been enabled.
+	// Return the embedded snapshot without container isolation when the
+	// fleet-wide flag is off.
+	if h.env != nil && !h.env.Settings().ServiceFlags.ContainerIsolationEnabled {
+		return gimlet.NewJSONResponse(dv)
+	}
+	// Refresh container isolation and ExecUser from the live distro config to
+	// pick up changes made after the host was provisioned.
 	ci := foundHost.Distro.BootstrapSettings.ContainerIsolation
-	killSwitchOn := h.env != nil && !h.env.Settings().ServiceFlags.ContainerIsolationEnabled
 	if foundHost.Distro.Id == "" {
 		grip.Warning(ctx, message.Fields{
 			"message": "host has no distro ID; skipping live distro lookup for container isolation",
 			"host_id": h.hostID,
 		})
-	} else if killSwitchOn {
-		// Kill switch is active — no live lookup needed; ci stays as embedded snapshot.
 	} else if liveDistro, err := distro.FindOneForDistroView(ctx, foundHost.Distro.Id); err != nil {
 		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message": "falling back to embedded distro snapshot for container isolation settings",
@@ -673,30 +666,12 @@ func (h *getDistroViewHandler) Run(ctx context.Context) gimlet.Responder {
 			"distro":  foundHost.Distro.Id,
 		})
 	}
-
-	// Populate container isolation only when the distro has it enabled and
-	// the fleet-wide container isolation flag is enabled.
 	if ci.Enabled {
-		if h.env != nil && !h.env.Settings().ServiceFlags.ContainerIsolationEnabled {
-			// Kill switch wins over per-distro settings, including RequireIsolation.
-			// Log a warning when the kill switch suppresses a fail-closed distro so
-			// the override is visible and operators can correlate host-mode tasks
-			// with the kill switch being active.
-			if ci.RequireIsolation {
-				grip.Warning(ctx, message.Fields{
-					"message": "container isolation kill switch is overriding a require_isolation distro; tasks will run in host-mode",
-					"host_id": h.hostID,
-					"distro":  foundHost.Distro.Id,
-					"image":   ci.Image,
-				})
-			}
-		} else {
-			dv.ContainerIsolation = &apimodels.ContainerIsolationSettings{
-				Image:            ci.Image,
-				MemoryMB:         ci.MemoryMB,
-				CPUs:             ci.CPUs,
-				RequireIsolation: ci.RequireIsolation,
-			}
+		dv.ContainerIsolation = &apimodels.ContainerIsolationSettings{
+			Image:            ci.Image,
+			MemoryMB:         ci.MemoryMB,
+			CPUs:             ci.CPUs,
+			RequireIsolation: ci.RequireIsolation,
 		}
 	}
 	return gimlet.NewJSONResponse(dv)
