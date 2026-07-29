@@ -43,6 +43,7 @@ func parseDB(c *cli.Context) *evergreen.DBSettings {
 	}
 	url := c.String(dbUrlFlagName)
 	awsAuthEnabled := c.Bool(dbAWSAuthFlagName)
+	oidcAuthEnabled := c.Bool(dbOIDCAuthFlagName)
 	envUrl := os.Getenv(evergreen.MongodbURL)
 	if url == evergreen.DefaultDatabaseURL && envUrl != "" {
 		url = envUrl
@@ -59,7 +60,9 @@ func parseDB(c *cli.Context) *evergreen.DBSettings {
 		ReadConcernSettings: evergreen.ReadConcern{
 			Level: c.String(dbRmodeFlagName),
 		},
-		AWSAuthEnabled: awsAuthEnabled,
+		AWSAuthEnabled:  awsAuthEnabled,
+		OIDCAuthEnabled: oidcAuthEnabled,
+		OIDCTokenFile:   c.String(dbOIDCTokenFileFlagName),
 	}
 }
 
