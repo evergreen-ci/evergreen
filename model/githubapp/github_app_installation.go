@@ -256,8 +256,14 @@ const MaxInstallationTokenLifetime = time.Hour
 // This allows us to put and get installation tokens from the cache based on the installation ID
 // and the permissions that the token is scoped to.
 // The format of the ID is: "<installationID>_<permissionKey:permissionValue>_<permissionKey:permissionValue>...".
-func createCacheID(installationID int64, permissions *github.InstallationPermissions) (string, error) {
+func createCacheID(installationID int64, permissions *github.InstallationPermissions, repositories []string) (string, error) {
 	id := fmt.Sprint(installationID)
+	if len(repositories) > 0 {
+		sorted := make([]string, len(repositories))
+		copy(sorted, repositories)
+		slices.Sort(sorted)
+		id += "_repos:" + strings.Join(sorted, ",")
+	}
 	if permissions == nil {
 		return id, nil
 	}

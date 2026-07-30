@@ -779,43 +779,43 @@ func TestCreateInstallationToken(t *testing.T) {
 	validRepo := "repo"
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, gh *createInstallationTokenForClone){
-		"ParseErrorsOnEmptyOwnerAndRepo": func(ctx context.Context, t *testing.T, handler *createInstallationTokenForClone) {
-			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", "", "")
-			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
+		"ParseErrorsOnEmptyTaskID": func(ctx context.Context, t *testing.T, handler *createInstallationTokenForClone) {
+			request, err := http.NewRequest(http.MethodGet, "/task//installation_token/owner/repo", bytes.NewReader(nil))
 			assert.NoError(t, err)
 
-			options := map[string]string{"owner": "", "repo": ""}
-			request = gimlet.SetURLVars(request, options)
+			request = gimlet.SetURLVars(request, map[string]string{"task_id": "", "owner": validOwner, "repo": validRepo})
+
+			assert.ErrorContains(t, handler.Parse(ctx, request), "missing task ID")
+		},
+		"ParseErrorsOnEmptyOwnerAndRepo": func(ctx context.Context, t *testing.T, handler *createInstallationTokenForClone) {
+			request, err := http.NewRequest(http.MethodGet, "/task/t1/installation_token//", bytes.NewReader(nil))
+			assert.NoError(t, err)
+
+			request = gimlet.SetURLVars(request, map[string]string{"task_id": "t1", "owner": "", "repo": ""})
 
 			assert.Error(t, handler.Parse(ctx, request))
 		},
 		"ParseErrorsOnEmptyOwner": func(ctx context.Context, t *testing.T, handler *createInstallationTokenForClone) {
-			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", "", validRepo)
-			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
+			request, err := http.NewRequest(http.MethodGet, "/task/t1/installation_token//repo", bytes.NewReader(nil))
 			assert.NoError(t, err)
 
-			options := map[string]string{"owner": "", "repo": validRepo}
-			request = gimlet.SetURLVars(request, options)
+			request = gimlet.SetURLVars(request, map[string]string{"task_id": "t1", "owner": "", "repo": validRepo})
 
 			assert.ErrorContains(t, handler.Parse(ctx, request), "missing owner")
 		},
 		"ParseErrorsOnEmptyRepo": func(ctx context.Context, t *testing.T, handler *createInstallationTokenForClone) {
-			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", validOwner, "")
-			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
+			request, err := http.NewRequest(http.MethodGet, "/task/t1/installation_token/owner/", bytes.NewReader(nil))
 			assert.NoError(t, err)
 
-			options := map[string]string{"owner": validOwner, "repo": ""}
-			request = gimlet.SetURLVars(request, options)
+			request = gimlet.SetURLVars(request, map[string]string{"task_id": "t1", "owner": validOwner, "repo": ""})
 
 			assert.ErrorContains(t, handler.Parse(ctx, request), "missing repo")
 		},
 		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *createInstallationTokenForClone) {
-			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", validOwner, validRepo)
-			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
+			request, err := http.NewRequest(http.MethodGet, "/task/t1/installation_token/owner/repo", bytes.NewReader(nil))
 			assert.NoError(t, err)
 
-			options := map[string]string{"owner": validOwner, "repo": validRepo}
-			request = gimlet.SetURLVars(request, options)
+			request = gimlet.SetURLVars(request, map[string]string{"task_id": "t1", "owner": validOwner, "repo": validRepo})
 
 			assert.NoError(t, handler.Parse(ctx, request))
 		},
@@ -830,6 +830,87 @@ func TestCreateInstallationToken(t *testing.T) {
 			require.True(t, ok)
 
 			tCase(ctx, t, r)
+		})
+	}
+}
+
+func TestIsRepoAllowedForTask(t *testing.T) {
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(t.Context()))
+	testutil.ConfigureIntegrationTest(t, env.Settings())
+	require.NoError(t, db.ClearCollections(
+		task.Collection, model.ProjectRefCollection,
+		model.VersionCollection, model.ParserProjectCollection,
+	))
+
+	pRef := model.ProjectRef{
+		Id:    "p1",
+		Owner: "myorg",
+		Repo:  "myrepo",
+	}
+	v := model.Version{
+		Id:         "v1",
+		Identifier: "p1",
+		Revision:   "abc123",
+		Requester:  evergreen.RepotrackerVersionRequester,
+	}
+	pp := model.ParserProject{
+		Id: "v1",
+		Modules: []model.Module{
+			{Name: "mod1", Owner: "myorg", Repo: "mod-repo"},
+			{Name: "mod2", Owner: "otherorg", Repo: "other-repo"},
+		},
+	}
+	tsk := task.Task{
+		Id:      "t1",
+		Project: "p1",
+		Version: "v1",
+	}
+	require.NoError(t, pRef.Insert(t.Context()))
+	require.NoError(t, v.Insert(t.Context()))
+	require.NoError(t, pp.Insert(t.Context()))
+	require.NoError(t, tsk.Insert(t.Context()))
+
+	for name, tc := range map[string]struct {
+		owner   string
+		repo    string
+		allowed bool
+	}{
+		"ProjectRepoIsAllowed": {
+			owner:   "myorg",
+			repo:    "myrepo",
+			allowed: true,
+		},
+		"ProjectRepoIsCaseInsensitive": {
+			owner:   "MyOrg",
+			repo:    "MyRepo",
+			allowed: true,
+		},
+		"DeclaredModuleIsAllowed": {
+			owner:   "myorg",
+			repo:    "mod-repo",
+			allowed: true,
+		},
+		"DeclaredModuleDifferentOrgIsAllowed": {
+			owner:   "otherorg",
+			repo:    "other-repo",
+			allowed: true,
+		},
+		"UndeclaredRepoIsRejected": {
+			owner:   "myorg",
+			repo:    "secret-repo",
+			allowed: false,
+		},
+		"UndeclaredOwnerIsRejected": {
+			owner:   "attacker",
+			repo:    "myrepo",
+			allowed: false,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			allowed, err := isRepoAllowedForTask(t.Context(), env, &tsk, tc.owner, tc.repo)
+			require.NoError(t, err)
+			assert.Equal(t, tc.allowed, allowed)
 		})
 	}
 }
