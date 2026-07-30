@@ -377,15 +377,14 @@ func ssrfDialControl(_ context.Context, _ string, address string, _ syscall.RawC
 	return nil
 }
 
-const (
-	artifactFetchTimeout = 30 * time.Second
-	maxArtifactRedirects = 10
-)
+const maxArtifactRedirects = 10
 
 var artifactHTTPClient = &http.Client{
 	Transport: &http.Transport{
+		// http.Get uses http.DefaultTransport under the hood, which includes
+		// http.ProxyFromEnvironment, so adding here for parity.
+		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
-			Timeout:        10 * time.Second,
 			ControlContext: ssrfDialControl,
 		}).DialContext,
 	},
@@ -398,5 +397,4 @@ var artifactHTTPClient = &http.Client{
 		}
 		return nil
 	},
-	Timeout: artifactFetchTimeout,
 }
