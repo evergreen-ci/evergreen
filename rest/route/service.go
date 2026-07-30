@@ -82,7 +82,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/hosts/{task_id}/list").Version(2).Get().Wrap(requireTask, rateLimit).RouteHandler(makeHostListRouteManager())
 	app.AddRoute("/task/{task_id}/").Version(2).Get().Wrap(requireUserOrTask, rateLimit).RouteHandler(makeFetchTask())
 	app.AddRoute("/task/{task_id}/display_task").Version(2).Get().Wrap(requireTask, rateLimit).RouteHandler(makeGetDisplayTaskHandler())
-	app.AddRoute("/task/{task_id}/distro_view").Version(2).Get().Wrap(requireUserOrTask, rateLimit).RouteHandler(makeGetDistroView())
+	app.AddRoute("/task/{task_id}/distro_view").Version(2).Get().Wrap(requireUserOrTask, rateLimit).RouteHandler(makeGetDistroView(env))
 	app.AddRoute("/task/{task_id}/host_view").Version(2).Get().Wrap(requireTask, requireHost, rateLimit).RouteHandler(makeGetHostView())
 	app.AddRoute("/task/{task_id}/downstreamParams").Version(2).Post().Wrap(requireTask, rateLimit).RouteHandler(makeSetDownstreamParams())
 	app.AddRoute("/task/{task_id}/expansions_and_vars").Version(2).Get().Wrap(requireUserOrTask, rateLimit).RouteHandler(makeGetExpansionsAndVars(settings))
