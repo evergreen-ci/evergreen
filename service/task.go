@@ -362,7 +362,7 @@ func validateArtifactURL(ctx context.Context, raw string) error {
 // ssrfDialControl blocks outbound connections to blocked IP
 // addresses. It is called after DNS resolution with the
 // resolved IP, preventing DNS rebinding attacks.
-func ssrfDialControl(_ string, address string, _ syscall.RawConn) error {
+func ssrfDialControl(_ context.Context, _ string, address string, _ syscall.RawConn) error {
 	host, _, err := net.SplitHostPort(address)
 	if err != nil {
 		return errors.Wrap(err, "parsing dial address")
@@ -385,8 +385,8 @@ const (
 var artifactHTTPClient = &http.Client{
 	Transport: &http.Transport{
 		DialContext: (&net.Dialer{
-			Timeout: 10 * time.Second,
-			Control: ssrfDialControl,
+			Timeout:        10 * time.Second,
+			ControlContext: ssrfDialControl,
 		}).DialContext,
 	},
 	CheckRedirect: func(req *http.Request, via []*http.Request) error {

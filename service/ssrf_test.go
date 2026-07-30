@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"net"
 	"testing"
 
@@ -9,6 +10,7 @@ import (
 )
 
 func TestValidateArtifactURL(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		url     string
@@ -53,12 +55,11 @@ func TestValidateArtifactURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := validateArtifactURL(t.Context(), tt.url)
 			if tt.wantErr {
-				assert.Error(t, err)
-				if tt.errMsg != "" {
-					assert.Contains(t, err.Error(), tt.errMsg)
-				}
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errMsg)
 			} else {
 				assert.NoError(t, err)
 			}
@@ -67,6 +68,7 @@ func TestValidateArtifactURL(t *testing.T) {
 }
 
 func TestIsBlockedIP(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		ip      string
@@ -84,15 +86,16 @@ func TestIsBlockedIP(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ip := net.ParseIP(tt.ip)
 			require.NotNil(t, ip)
-			result := isBlockedIP(ip)
-			assert.Equal(t, tt.blocked, result)
+			assert.Equal(t, tt.blocked, isBlockedIP(ip))
 		})
 	}
 }
 
 func TestSSRFDialControl(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		address string
@@ -105,9 +108,10 @@ func TestSSRFDialControl(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ssrfDialControl("tcp", tt.address, nil)
+			t.Parallel()
+			err := ssrfDialControl(context.Background(), "tcp", tt.address, nil)
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Contains(t, err.Error(), "blocked address")
 			} else {
 				assert.NoError(t, err)
