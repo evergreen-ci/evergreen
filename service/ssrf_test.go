@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidateArtifactURL(t *testing.T) {
@@ -15,35 +16,35 @@ func TestValidateArtifactURL(t *testing.T) {
 		errMsg  string
 	}{
 		{
-			name:    "valid HTTPS URL",
+			name:    "ValidHTTPSURL",
 			url:     "https://example.com/logs/foo.log",
 			wantErr: false,
 		},
 		{
-			name:    "valid HTTP URL",
+			name:    "ValidHTTPURL",
 			url:     "http://example.com/artifact.txt",
 			wantErr: false,
 		},
 		{
-			name:    "AWS metadata",
+			name:    "AWSMetadata",
 			url:     "http://169.254.169.254/latest/meta-data/iam",
 			wantErr: true,
 			errMsg:  "literal IP hosts are not allowed",
 		},
 		{
-			name:    "localhost by name",
+			name:    "LocalhostByName",
 			url:     "http://localhost:9090/api/status/info",
 			wantErr: true,
 			errMsg:  "resolves to blocked address",
 		},
 		{
-			name:    "IPv6 loopback",
+			name:    "IPv6Loopback",
 			url:     "http://[::1]:8080/internal",
 			wantErr: true,
 			errMsg:  "literal IP hosts are not allowed",
 		},
 		{
-			name:    "file scheme",
+			name:    "FileScheme",
 			url:     "file:///etc/passwd",
 			wantErr: true,
 			errMsg:  "unsupported scheme",
@@ -72,20 +73,45 @@ func TestIsBlockedIP(t *testing.T) {
 		blocked bool
 	}{
 		// Blocked IPs
-		{"AWS metadata", "169.254.169.254", true},
-		{"localhost IPv4", "127.0.0.1", true},
-		{"localhost IPv6", "::1", true},
+		{"AWSMetadata", "169.254.169.254", true},
+		{"LocalhostIPv4", "127.0.0.1", true},
+		{"LocalhostIPv6", "::1", true},
+		{"LinkLocalIPv4", "169.254.1.1", true},
 		// Allowed IPs
-		{"Google DNS", "8.8.8.8", false},
-		{"Cloudflare DNS", "1.1.1.1", false},
+		{"GoogleDNS", "8.8.8.8", false},
+		{"CloudflareDNS", "1.1.1.1", false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ip := net.ParseIP(tt.ip)
-			assert.NotNil(t, ip)
+			require.NotNil(t, ip)
 			result := isBlockedIP(ip)
 			assert.Equal(t, tt.blocked, result)
+		})
+	}
+}
+
+func TestSSRFDialControl(t *testing.T) {
+	tests := []struct {
+		name    string
+		address string
+		wantErr bool
+	}{
+		{"PublicIPAllowed", "8.8.8.8:443", false},
+		{"LoopbackBlocked", "127.0.0.1:80", true},
+		{"AWSMetadataBlocked", "169.254.169.254:80", true},
+		{"IPv6LoopbackBlocked", "[::1]:80", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ssrfDialControl("tcp", tt.address, nil)
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "blocked address")
+			} else {
+				assert.NoError(t, err)
+			}
 		})
 	}
 }

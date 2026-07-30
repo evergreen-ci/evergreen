@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -218,11 +219,16 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := validateArtifactURL(r.Context(), tFile.Link); err != nil {
-		uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "artifact link not allowed"))
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "validating artifact link"))
 		return
 	}
 
-	response, err := http.Get(tFile.Link)
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, tFile.Link, nil)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "creating artifact request"))
+		return
+	}
+	response, err := artifactHTTPClient.Do(req)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "downloading file"))
 		return
@@ -351,4 +357,46 @@ func validateArtifactURL(ctx context.Context, raw string) error {
 		}
 	}
 	return nil
+}
+
+// ssrfDialControl blocks outbound connections to blocked IP
+// addresses. It is called after DNS resolution with the
+// resolved IP, preventing DNS rebinding attacks.
+func ssrfDialControl(_ string, address string, _ syscall.RawConn) error {
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		return errors.Wrap(err, "parsing dial address")
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return errors.Errorf("invalid IP in dial address: %s", host)
+	}
+	if isBlockedIP(ip) {
+		return errors.Errorf("connection to blocked address %s", ip)
+	}
+	return nil
+}
+
+const (
+	artifactFetchTimeout = 30 * time.Second
+	maxArtifactRedirects = 10
+)
+
+var artifactHTTPClient = &http.Client{
+	Transport: &http.Transport{
+		DialContext: (&net.Dialer{
+			Timeout: 10 * time.Second,
+			Control: ssrfDialControl,
+		}).DialContext,
+	},
+	CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		if len(via) >= maxArtifactRedirects {
+			return errors.New("too many redirects")
+		}
+		if req.URL.Scheme != "http" && req.URL.Scheme != "https" {
+			return errors.Errorf("redirect to unsupported scheme %s", req.URL.Scheme)
+		}
+		return nil
+	},
+	Timeout: artifactFetchTimeout,
 }
