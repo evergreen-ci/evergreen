@@ -404,34 +404,6 @@ func (c *communicatorImpl) IsServiceUser(ctx context.Context, userID string) (bo
 	return user.OnlyApi, nil
 }
 
-// GetRateLimit gets the caller's current REST rate limit status from the server.
-// A nil status means there's nothing to report: the caller has no rate limit
-// configured for their user type, or the server returned a non-200 status (e.g.
-// 503 if rate limiting is disabled), which is not treated as an error here.
-func (c *communicatorImpl) GetRateLimit(ctx context.Context, userID string) (*model.APIRateLimitStatus, error) {
-	info := requestInfo{
-		method: http.MethodGet,
-		path:   fmt.Sprintf("users/%s/rate_limit", userID),
-	}
-
-	resp, err := c.request(ctx, info, nil)
-	if err != nil {
-		return nil, errors.Wrapf(err, "sending request to get rate limit for user '%s'", userID)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespError(resp, "checking rate limit status")
-	}
-
-	var status *model.APIRateLimitStatus
-	if err = utility.ReadJSON(resp.Body, &status); err != nil {
-		return nil, errors.Wrap(err, "reading JSON response body")
-	}
-
-	return status, nil
-}
-
 func (c *communicatorImpl) StartSpawnHost(ctx context.Context, hostID string, subscriptionType string, wait bool) error {
 	info := requestInfo{
 		method: http.MethodPost,

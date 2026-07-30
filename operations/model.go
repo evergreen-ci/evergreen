@@ -295,7 +295,6 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 	}
 	if printMessages {
 		printUserMessages(ctx, c, !s.AutoUpgradeCLI)
-		printRateLimitWarning(ctx, c, s.User)
 	}
 
 	return c, nil
@@ -400,28 +399,6 @@ func printUserMessages(ctx context.Context, c client.Communicator, checkForUpdat
 				fmt.Fprintf(os.Stderr, "A new version is available. Run '%s get-update --install' to download and install it.\n", os.Args[0])
 			}
 		}
-	}
-}
-
-const rateLimitDisabledSubstring = "currently disabled"
-
-// printRateLimitWarning checks the user's remaining rate limit tokens and prints a warning if they are approaching the limit.
-func printRateLimitWarning(ctx context.Context, c client.Communicator, userID string) {
-	limit, err := c.GetRateLimit(ctx, userID)
-	if err != nil {
-		// Log any errors unrelated to the limiter being disabled to catch unexpected errors.
-		if !strings.Contains(err.Error(), rateLimitDisabledSubstring) {
-			grip.Warning(ctx, errors.Wrap(err, "getting rate limit info"))
-		}
-		return
-	}
-	if limit == nil {
-		return
-	}
-	// This is a hard-coded low-request threshold that may be adjusted in the future.
-	if limit.Remaining < 20 {
-		fmt.Fprintf(os.Stderr, "Warning: you are approaching the API rate limit; CLI commands may fail. %d/%d requests remain (refills at %d req/hour, %d seconds until full).\n",
-			limit.Remaining, limit.Burst, limit.Limit, limit.ResetAfterSeconds)
 	}
 }
 
