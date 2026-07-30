@@ -64,30 +64,6 @@ are multiple changes on the same day.
 The Evergreen codebase has automated tests defined in `self-tests.yml`, which itself runs in Evergreen. For most tasks in
 `self-tests.yml`, there's a roughly 1:1 relationship between Makefile targets and Evergreen self-test tasks.
 
-## Architecture
-
-### Package Organization
-
-| Package        | Description                                                                                               |
-|----------------|-----------------------------------------------------------------------------------------------------------|
-| `agent/`       | Contains the logic to run the agent. Runs tasks on hosts; receives tasks to run from the app server.      |
-| `apimodels/`   | Shared models used across REST API boundaries for the agent.                                              |
-| `auth/`        | Authentication backends (naive, GitHub, Okta).                                                            |
-| `cloud/`       | Cloud provider integrations (AWS EC2, Docker, etc).                                                       |
-| `db/`          | MongoDB interaction layer.                                                                                |
-| `graphql/`     | GraphQL backend.                                                                                          |
-| `model/`       | Core data models; task, host, build, patch, distro, etc. are in subpackages.                              |
-| `operations/`  | CLI command implementations. Also provides an entry point for the app server/agent.                       |
-| `repotracker/` | Tracks GitHub repos for new commits and PRs.                                                              |
-| `rest/`        | REST API: `route/` (handlers), `data/` (data connectors), `model/` (API models), `client/` (CLI clients). |
-| `scheduler/`   | Orders tasks in distro queues.                                                                            |
-| `service/`     | HTTP server wiring; UI and legacy REST endpoints.                                                         |
-| `thirdparty/`  | Other third-party integrations (GitHub, Jira, etc).                                                       |
-| `trigger/`     | Logic to trigger notifications from CI system events.                                                     |
-| `units/`       | Background job definitions using the Amboy job framework.                                                 |
-| `util/`        | Common utility functions.                                                                                 |
-| `validator/`   | Validates project YAML configs and distro settings.                                                       |
-
 ## Go Coding Conventions
 
 The conventions below are a distilled, agent-readable summary of the team's full style guide,
