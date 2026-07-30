@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -1063,13 +1064,28 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string, p 
 			attribute.Float64(evergreen.VersionAdjustedS3LogPutCostOtelAttribute, v.Cost.AdjustedS3LogPutCost),
 			attribute.Float64(evergreen.VersionOnDemandS3LogStorageCostOtelAttribute, v.Cost.OnDemandS3LogStorageCost),
 			attribute.Float64(evergreen.VersionAdjustedS3LogStorageCostOtelAttribute, v.Cost.AdjustedS3LogStorageCost),
+			attribute.Float64(evergreen.VersionTotalAdjustedCostOtelAttribute, v.Cost.AdjustedTotal()),
 		)
 	}
 	if !v.PredictedCost.IsZero() {
 		attrs = append(attrs,
 			attribute.Float64(evergreen.VersionPredictedOnDemandCostOtelAttribute, v.PredictedCost.OnDemandEC2Cost),
 			attribute.Float64(evergreen.VersionPredictedAdjustedCostOtelAttribute, v.PredictedCost.AdjustedEC2Cost),
+			attribute.Float64(evergreen.VersionPredictedTotalAdjustedCostOtelAttribute, v.PredictedCost.AdjustedTotal()),
 		)
+	}
+	if v.ParentPatchID != "" {
+		attrs = append(attrs, attribute.String(evergreen.VersionParentPatchIDOtelAttribute, v.ParentPatchID))
+	}
+	if p != nil && len(p.Triggers.ChildPatches) > 0 {
+		childVersions, err := VersionFind(ctx, db.Query(bson.M{VersionIdKey: bson.M{"$in": p.Triggers.ChildPatches}}).WithFields(VersionCostKey, VersionPredictedCostKey))
+		if err != nil {
+			return nil, errors.Wrap(err, "finding child versions for cost attributes")
+		}
+		childPatchesCost, _ := cost.SumPerChildVersionAdjustedTotals(len(childVersions), func(i int) (actual, predicted *cost.Cost) {
+			return &childVersions[i].Cost, &childVersions[i].PredictedCost
+		})
+		attrs = append(attrs, attribute.Float64(evergreen.VersionChildPatchesAdjustedCostOtelAttribute, childPatchesCost))
 	}
 	if !v.S3Usage.IsZero() {
 		var avgFilePutCost float64
