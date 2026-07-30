@@ -1815,6 +1815,8 @@ func isRepoAllowedForTask(ctx context.Context, env evergreen.Environment, t *tas
 		if err != nil {
 			continue
 		}
+		// The agent strips ".wiki" from repo names before requesting tokens, so match both the declared
+		// module repo and the stripped name for wiki modules.
 		if strings.EqualFold(moduleOwner, owner) && strings.EqualFold(moduleRepo, repo) {
 			return true, nil
 		}

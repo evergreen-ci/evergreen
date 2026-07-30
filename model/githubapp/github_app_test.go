@@ -180,11 +180,11 @@ func TestCreateCacheID(t *testing.T) {
 	testCases := map[string]struct {
 		installationID int64
 		permissions    *github.InstallationPermissions
+		repositories   []string
 		expected       string
 	}{
-		"NoPermissions": {
+		"NoPermissionsOrRepos": {
 			installationID: 1234,
-			permissions:    nil,
 			expected:       "1234",
 		},
 		"EmptyPermissions": {
@@ -207,11 +207,24 @@ func TestCreateCacheID(t *testing.T) {
 			},
 			expected: "1234_contents:read_issues:write",
 		},
+		"MultipleRepositoriesAreSorted": {
+			installationID: 1234,
+			repositories:   []string{"bravo", "alpha"},
+			expected:       "1234_repos:alpha,bravo",
+		},
+		"RepositoriesWithPermissions": {
+			installationID: 1234,
+			repositories:   []string{"myrepo"},
+			permissions: &github.InstallationPermissions{
+				Contents: github.String("read"),
+			},
+			expected: "1234_repos:myrepo_contents:read",
+		},
 	}
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			result, err := createCacheID(tc.installationID, tc.permissions, nil)
+			result, err := createCacheID(tc.installationID, tc.permissions, tc.repositories)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expected, result)
 		})
