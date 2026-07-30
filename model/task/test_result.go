@@ -53,27 +53,54 @@ func AppendTestResultMetadata(ctx context.Context, t *Task, env evergreen.Enviro
 // AppendQuarantinedTests records tests skipped by test selection because they
 // were quarantined in TSS on the test results record for the given task run.
 // A record is created if the task has not attached any test results yet.
-func AppendQuarantinedTests(ctx context.Context, t *Task, env evergreen.Environment, quarantinedTests []testresult.QuarantinedTest) error {
+// Tests already present in the snapshot are skipped. It returns the
+// number of tests newly added to the snapshot.
+func AppendQuarantinedTests(ctx context.Context, t *Task, env evergreen.Environment, quarantinedTests []testresult.QuarantinedTest) (int, error) {
 	if len(quarantinedTests) == 0 {
-		return nil
+		return 0, nil
 	}
 	output, ok := t.GetTaskOutputSafe()
 	if !ok {
-		return nil
+		return 0, nil
 	}
 	svc, err := getTestResultService(env, output.TestResults.Version)
 	if err != nil {
-		return errors.Wrap(err, "getting test result service")
+		return 0, errors.Wrap(err, "getting test result service")
 	}
+
+	allTaskResults, err := svc.Get(ctx, []Task{*t}, GetTaskTestResultsOptions{Fields: []string{testresult.QuarantinedTestsKey}})
+	if err != nil {
+		return 0, errors.Wrap(err, "getting existing quarantined tests")
+	}
+	recorded := map[string]bool{}
+	for _, taskResults := range allTaskResults {
+		for _, quarantinedTest := range taskResults.QuarantinedTests {
+			recorded[quarantinedTest.TestName] = true
+		}
+	}
+	newTests := make([]testresult.QuarantinedTest, 0, len(quarantinedTests))
+	for _, quarantinedTest := range quarantinedTests {
+		if !recorded[quarantinedTest.TestName] {
+			newTests = append(newTests, quarantinedTest)
+			recorded[quarantinedTest.TestName] = true
+		}
+	}
+	if len(newTests) == 0 {
+		return 0, nil
+	}
+
 	info, err := makeTestResultsInfo(ctx, t)
 	if err != nil {
-		return errors.Wrap(err, "making test results info")
+		return 0, errors.Wrap(err, "making test results info")
 	}
 	record := testresult.DbTaskTestResults{
 		ID:   info.ID(),
 		Info: info,
 	}
-	return svc.AppendQuarantinedTests(ctx, record, quarantinedTests)
+	if err = svc.AppendQuarantinedTests(ctx, record, newTests); err != nil {
+		return 0, err
+	}
+	return len(newTests), nil
 }
 
 // makeTestResultsInfo mirrors how the agent constructs test results info when

@@ -1845,6 +1845,10 @@ project](Project-and-Distro-Settings#test-selection-settings) and the task is ru
 other non-patch versions, the command writes an empty test list to the output file, so no tests are excluded, even if the
 version page shows that test selection is enabled.
 
+When test selection excludes tests because they are quarantined, Evergreen records those tests on the task so the UI can
+show which tests were skipped due to quarantine. The command may be called multiple times in a task, so
+the recorded tests accumulate across calls and are deduplicated by test name within a single task execution.
+
 ```yaml
 - command: test_selection.get
   params:

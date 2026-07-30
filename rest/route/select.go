@@ -68,7 +68,7 @@ func (t *selectTestsHandler) Run(ctx context.Context) gimlet.Responder {
 	startAt := time.Now()
 	if err := data.RecordQuarantinedTestsSkipped(ctx, t.env, t.selectTests, selectedTests); err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
-			"message":       "recording quarantined tests skipped by test selection",
+			"message":       "error recording quarantined tests skipped by test selection",
 			"project_id":    t.selectTests.Project,
 			"requester":     t.selectTests.Requester,
 			"build_variant": t.selectTests.BuildVariant,

@@ -189,10 +189,14 @@ func RecordQuarantinedTestsSkipped(ctx context.Context, env evergreen.Environmen
 	if t == nil {
 		return errors.Errorf("task '%s' not found", req.TaskID)
 	}
-	if err = task.AppendQuarantinedTests(ctx, t, env, quarantinedTests); err != nil {
+	numAppended, err := task.AppendQuarantinedTests(ctx, t, env, quarantinedTests)
+	if err != nil {
 		return errors.Wrap(err, "recording quarantined tests on the test results record")
 	}
-	if err = t.IncNumQuarantinedTestsSkipped(ctx, len(quarantinedTests)); err != nil {
+	if numAppended == 0 {
+		return nil
+	}
+	if err = t.IncNumQuarantinedTestsSkipped(ctx, numAppended); err != nil {
 		return errors.Wrap(err, "incrementing the task's quarantined tests skipped count")
 	}
 
@@ -203,7 +207,7 @@ func RecordQuarantinedTestsSkipped(ctx context.Context, env evergreen.Environmen
 	if dt == nil {
 		return nil
 	}
-	return errors.Wrap(dt.IncNumQuarantinedTestsSkipped(ctx, len(quarantinedTests)), "incrementing the display task's quarantined tests skipped count")
+	return errors.Wrap(dt.IncNumQuarantinedTestsSkipped(ctx, numAppended), "incrementing the display task's quarantined tests skipped count")
 }
 
 // findQuarantinedSkippedTests returns the tests that test selection skipped

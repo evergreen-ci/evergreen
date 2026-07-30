@@ -55,18 +55,7 @@ func (s *localTestResultsService) AppendTestResultMetadata(ctx context.Context, 
 // snapshot count by the full number of tests, even when the stored snapshot is
 // capped.
 func (s *localTestResultsService) AppendQuarantinedTests(ctx context.Context, tr testresult.DbTaskTestResults, quarantinedTests []testresult.QuarantinedTest) error {
-	update := bson.M{
-		"$setOnInsert": bson.M{
-			testresult.TestResultsInfoKey: tr.Info,
-		},
-		"$inc": bson.M{testresult.QuarantinedTestsCountKey: len(quarantinedTests)},
-		"$push": bson.M{
-			testresult.QuarantinedTestsKey: bson.M{
-				"$each":  quarantinedTests,
-				"$slice": maxQuarantinedTestsPerRecord,
-			},
-		},
-	}
+	update := appendQuarantinedTestsUpdate(tr.Info, quarantinedTests)
 	id := dbTaskTestResultsID{
 		TaskID:    tr.Info.TaskID,
 		Execution: tr.Info.Execution,

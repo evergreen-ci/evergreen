@@ -49,18 +49,7 @@ func (s *testResultService) AppendTestResultMetadata(ctx context.Context, failed
 // the tests to its quarantined-tests snapshot and incrementing the
 // snapshot count by the number of tests.
 func (s *testResultService) AppendQuarantinedTests(ctx context.Context, record testresult.DbTaskTestResults, quarantinedTests []testresult.QuarantinedTest) error {
-	update := bson.M{
-		"$setOnInsert": bson.M{
-			testresult.TestResultsInfoKey: record.Info,
-		},
-		"$inc": bson.M{testresult.QuarantinedTestsCountKey: len(quarantinedTests)},
-		"$push": bson.M{
-			testresult.QuarantinedTestsKey: bson.M{
-				"$each":  quarantinedTests,
-				"$slice": maxQuarantinedTestsPerRecord,
-			},
-		},
-	}
+	update := appendQuarantinedTestsUpdate(record.Info, quarantinedTests)
 	_, err := s.env.CedarDB().Collection(testresult.Collection).UpdateOne(ctx, bson.M{IdKey: record.ID}, update, options.Update().SetUpsert(true))
 	return errors.Wrap(err, "appending quarantined tests to DB test results")
 }
