@@ -1,5 +1,7 @@
 # Rate Limiting
 
+## Summary
+
 Evergreen applies per-user API rate limits to protect the service from abusive, high-volume request patterns.
 
 REST and GraphQL requests are rate-limited independently, meaning that making REST requests does not affect how many GraphQL requests a user can make, and vice versa.
@@ -75,6 +77,6 @@ If a request is blocked due to rate limiting, it will be rejected with a 429 HTT
 
 ## CLI Behavior
 
-Some Evergreen CLI commands may fail because the underlying REST API calls are rate limited. When possible, the CLI will print a warning when a user's burst limit is running low so they can avoid starting a command that may fail mid-execution.
+Some Evergreen CLI commands may fail because the underlying REST API calls are rate limited. When the user hits their rate limit via the CLI, it will print the refill rate and time at which the next request can be fulfilled.
 
 Users can monitor their own REST rate limit status using `GET /rest/v2/users/{user_id}/rate_limit`.
