@@ -20,7 +20,7 @@ input AWSConfigInput {
   accountRoles: [AWSAccountRoleMappingInput!]! @redactSecrets
   ipamPoolID: String
   elasticIPUsageRate: Float
-  snsTopicARNs: [String!]!
+  allowedSNSTopicARNs: [String!]!
 }
 
 type AWSConfig {
@@ -35,7 +35,7 @@ type AWSConfig {
   accountRoles: [AWSAccountRoleMapping!]! @requireAdmin
   ipamPoolID: String
   elasticIPUsageRate: Float
-  snsTopicARNs: [String!]!
+  allowedSNSTopicARNs: [String!]!
 }
 
 input AWSVPCConfigInput {

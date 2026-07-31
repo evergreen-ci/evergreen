@@ -101,7 +101,7 @@ func TestBaseSNSParse(t *testing.T) {
 			ctx := t.Context()
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
-			env.EvergreenSettings.Providers.AWS.SNSTopicARNs = tCase.topicARNs
+			env.EvergreenSettings.Providers.AWS.AllowedSNSTopicARNs = tCase.topicARNs
 
 			payload := sns.Payload{
 				TopicArn:  tCase.payloadTopic,

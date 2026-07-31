@@ -56,7 +56,7 @@ func (bsns *baseSNS) Parse(ctx context.Context, r *http.Request) error {
 	}
 
 	// Validate that the SNS message came from one of Evergreen's own topics.
-	if !utility.StringSliceContains(bsns.env.Settings().Providers.AWS.SNSTopicARNs, payload.TopicArn) {
+	if !utility.StringSliceContains(bsns.env.Settings().Providers.AWS.AllowedSNSTopicARNs, payload.TopicArn) {
 		grip.Warning(ctx, message.Fields{
 			"message":      "rejecting SNS message from disallowed topic",
 			"topic_arn":    payload.TopicArn,
