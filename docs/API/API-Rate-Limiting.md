@@ -1,5 +1,7 @@
 # Rate Limiting
 
+## Summary
+
 Evergreen applies per-user API rate limits to protect the service from abusive, high-volume request patterns.
 
 REST and GraphQL requests are rate-limited independently, meaning that making REST requests does not affect how many GraphQL requests a user can make, and vice versa.
