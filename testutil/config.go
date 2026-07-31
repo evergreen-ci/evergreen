@@ -339,6 +339,7 @@ func MockConfig() *evergreen.Settings {
 				},
 				IPAMPoolID:         "pool_id",
 				ElasticIPUsageRate: 0.3,
+				SNSTopicARNs:       []string{"arn:aws:sns:us-east-1:012345678901:topic"},
 			},
 			Docker: evergreen.DockerConfig{
 				APIVersion: "docker_version",

@@ -55,6 +55,22 @@ func (bsns *baseSNS) Parse(ctx context.Context, r *http.Request) error {
 		}
 	}
 
+	// The SNS signature only proves that AWS signed the message, not that it
+	// came from one of Evergreen's own topics, so the topic must be checked
+	// against the allowed topics before acting on the message.
+	if !utility.StringSliceContains(bsns.env.Settings().Providers.AWS.SNSTopicARNs, payload.TopicArn) {
+		grip.Warning(ctx, message.Fields{
+			"message":      "rejecting SNS message from disallowed topic",
+			"topic_arn":    payload.TopicArn,
+			"message_id":   payload.MessageId,
+			"message_type": bsns.messageType,
+		})
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    fmt.Sprintf("SNS topic ARN '%s' is not allowed", payload.TopicArn),
+		}
+	}
+
 	bsns.payload = payload
 
 	return nil

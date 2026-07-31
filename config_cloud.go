@@ -82,6 +82,10 @@ type AWSConfig struct {
 	// ElasticIPUsageRate is the probability (out of 1) of a host that has
 	// elastic IPs enabled being assigned an elastic IP address.
 	ElasticIPUsageRate float64 `bson:"elastic_ip_usage_rate" json:"elastic_ip_usage_rate" yaml:"elastic_ip_usage_rate"`
+
+	// SNSTopicARNs are the ARNs of the AWS SNS topics that Evergreen accepts
+	// incoming SNS notifications from.
+	SNSTopicARNs []string `bson:"sns_topic_arns" json:"sns_topic_arns" yaml:"sns_topic_arns"`
 }
 
 // AccountRoleMapping is a mapping of an AWS account to the role that needs to

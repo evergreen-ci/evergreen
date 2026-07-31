@@ -180,6 +180,7 @@ func TestModelConversion(t *testing.T) {
 		assert.Equal(ar.Account, utility.FromStringPtr(apiSettings.Providers.AWS.AccountRoles[i].Account))
 		assert.Equal(ar.Role, utility.FromStringPtr(apiSettings.Providers.AWS.AccountRoles[i].Role))
 	}
+	assert.EqualValues(testSettings.Providers.AWS.SNSTopicARNs, utility.FromStringPtrSlice(apiSettings.Providers.AWS.SNSTopicARNs))
 	assert.EqualValues(testSettings.Providers.Docker.APIVersion, utility.FromStringPtr(apiSettings.Providers.Docker.APIVersion))
 	assert.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, apiSettings.RepoTracker.MaxConcurrentRequests)
 	assert.EqualValues(testSettings.Scheduler.TaskFinder, utility.FromStringPtr(apiSettings.Scheduler.TaskFinder))
