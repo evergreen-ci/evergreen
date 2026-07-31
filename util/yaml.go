@@ -26,6 +26,7 @@ func UnmarshalYAMLWithFallback(in []byte, out any) error {
 		grip.Debug(context.Background(), message.Fields{
 			"message":   "yaml v3 unmarshal failed, fell back to v2",
 			"operation": "yaml parsing",
+			"ticket":    "DEVPROD-19220",
 			"error":     err.Error(),
 		})
 	}
@@ -45,6 +46,7 @@ func UnmarshalYAMLStrictWithFallback(in []byte, out any) error {
 		grip.Debug(context.Background(), message.Fields{
 			"message":   "yaml v3 strict unmarshal failed, fell back to v2",
 			"operation": "yaml parsing",
+			"ticket":    "DEVPROD-19220",
 			"error":     err.Error(),
 		})
 	}
