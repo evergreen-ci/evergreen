@@ -1,7 +1,5 @@
 # Rate Limiting
 
-## Summary
-
 Evergreen applies per-user API rate limits to protect the service from abusive, high-volume request patterns.
 
 REST and GraphQL requests are rate-limited independently, meaning that making REST requests does not affect how many GraphQL requests a user can make, and vice versa.
@@ -16,7 +14,7 @@ Evergreen uses different limits for different types of users:
 
 Some workflows may legitimately need more headroom than the default limits allow. In those cases, users should open a DEVPROD Jira ticket describing which user should be elevated, the API surface (REST or GraphQL), the workflow being throttled, and why standard limits are insufficient.
 
->*If your workflow requires a high volume of Evergreen API requests, consider requesting a dedicated service user rather than using a human user's credentials.*
+> _If your workflow requires a high volume of Evergreen API requests, consider requesting a dedicated service user rather than using a human user's credentials._
 
 ### Burst vs. Per-Hour Limits
 
@@ -34,14 +32,10 @@ GraphQL requests are additionally subject to a ["complexity"](https://gqlgen.com
 
 ```graphql
 query TaskHistoryExample {
-  taskHistory(
-    options: {
-      limit: 10
-    }
-  ) {
-    tasks {                
-      id                    
-      activated             
+  taskHistory(options: { limit: 10 }) {
+    tasks {
+      id
+      activated
       buildVariant
       displayName
       displayStatus
