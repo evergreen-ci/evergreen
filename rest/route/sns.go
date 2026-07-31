@@ -55,9 +55,7 @@ func (bsns *baseSNS) Parse(ctx context.Context, r *http.Request) error {
 		}
 	}
 
-	// The SNS signature only proves that AWS signed the message, not that it
-	// came from one of Evergreen's own topics, so the topic must be checked
-	// against the allowed topics before acting on the message.
+	// Validate that the SNS message came from one of Evergreen's own topics.
 	if !utility.StringSliceContains(bsns.env.Settings().Providers.AWS.SNSTopicARNs, payload.TopicArn) {
 		grip.Warning(ctx, message.Fields{
 			"message":      "rejecting SNS message from disallowed topic",
