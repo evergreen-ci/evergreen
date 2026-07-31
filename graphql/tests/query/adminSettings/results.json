@@ -553,7 +553,8 @@
                   }
                 ],
                 "ipamPoolID": "ipam-pool-12345678",
-                "elasticIPUsageRate": 0.8
+                "elasticIPUsageRate": 0.8,
+                "allowedSNSTopicARNs": ["arn:aws:sns:us-east-1:012345678901:topic"]
               },
               "docker": {
                 "apiVersion": "1.40"
