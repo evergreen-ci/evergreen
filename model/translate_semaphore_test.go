@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
 
 // resetTranslateSemaphore clears the process-wide limiter counters so a test starts from a known
@@ -114,6 +116,48 @@ func TestAcquireTranslateSlotUnlimitedStillCountsInFlight(t *testing.T) {
 	release()
 	inUse, _, _, _ = translateSemaphoreStats()
 	require.Zero(t, inUse)
+}
+
+func TestTranslateProjectContextDoneWhileQueuedStillRecordsSpanAttributes(t *testing.T) {
+	resetTranslateSemaphore(t)
+	SetTranslateConcurrencyLimit(1)
+
+	release, _, err := acquireTranslateSlot(t.Context())
+	require.NoError(t, err)
+	defer release()
+
+	spanRecorder := tracetest.NewSpanRecorder()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(spanRecorder))
+	ctx, cancel := context.WithCancel(t.Context())
+	ctx, span := tp.Tracer("test").Start(ctx, "test")
+
+	translateDone := make(chan struct{})
+	go func() {
+		defer close(translateDone)
+		_, err := TranslateProject(ctx, &ParserProject{})
+		require.ErrorIs(t, err, context.Canceled)
+	}()
+
+	require.Eventually(t, func() bool {
+		_, waiting, _, _ := translateSemaphoreStats()
+		return waiting == 1
+	}, 10*time.Second, time.Millisecond)
+
+	cancel()
+	<-translateDone
+	span.End()
+	require.NoError(t, tp.Shutdown(t.Context()))
+
+	ended := spanRecorder.Ended()
+	require.Len(t, ended, 1)
+	attrs := map[string]any{}
+	for _, kv := range ended[0].Attributes() {
+		attrs[string(kv.Key)] = kv.Value.AsInterface()
+	}
+	require.Equal(t, int64(1), attrs[ppTranslateLimitOtelAttribute])
+	require.Equal(t, int64(1), attrs[ppTranslateInFlightOtelAttribute])
+	require.Equal(t, int64(1), attrs[ppTranslateBlockedTotalOtelAttribute])
+	require.Contains(t, attrs, ppTranslateWaitMSOtelAttribute)
 }
 
 func TestTranslateConcurrencyLimitCapsConcurrentAcquires(t *testing.T) {

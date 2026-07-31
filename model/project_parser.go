@@ -1731,6 +1731,8 @@ func capParserPriorities(p *ParserProject) {
 func TranslateProject(ctx context.Context, pp *ParserProject) (*Project, error) {
 	release, waited, err := acquireTranslateSlot(ctx)
 	if err != nil {
+		// Record the limiter state for callers that gave up while queued, not just those that got a slot.
+		setTranslateSemaphoreSpanAttributes(trace.SpanFromContext(ctx), waited)
 		return nil, errors.Wrap(err, "waiting for a translate concurrency slot")
 	}
 	defer release()
