@@ -295,6 +295,7 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 	}
 	if printMessages {
 		printUserMessages(ctx, c, !s.AutoUpgradeCLI)
+		printRateLimitWarning(ctx, c, s.User)
 	}
 
 	return c, nil

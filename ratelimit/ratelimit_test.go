@@ -68,11 +68,34 @@ func TestAllowNCostExceedingBurstShouldDeny(t *testing.T) {
 	assert.Equal(t, 0, res.Allowed)
 }
 
-func TestAllowNCostLessThanOneShouldError(t *testing.T) {
+func TestAllowNCostLessThanZeroShouldError(t *testing.T) {
 	l := newRedisTestLimiter(t)
-	res, err := l.AllowN(t.Context(), "user", evergreen.RateLimitSurfaceComplexity, 100, 10, 0)
+	res, err := l.AllowN(t.Context(), "user", evergreen.RateLimitSurfaceComplexity, 100, 10, -1)
 	assert.ErrorContains(t, err, "cost")
 	assert.Nil(t, res)
+}
+
+func TestPeekDoesNotConsumeTokens(t *testing.T) {
+	l := newRedisTestLimiter(t)
+	ctx := t.Context()
+
+	// Peek at the user's rate limit without consuming any tokens.
+	res, err := l.Peek(ctx, "user", evergreen.RateLimitSurfaceREST, 100, 1)
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, 1, res.Remaining)
+
+	// After peeking, the user should still be allowed to make a request.
+	res, err = l.Allow(ctx, "user", evergreen.RateLimitSurfaceREST, 100, 1)
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, 1, res.Allowed)
+
+	// The user's remaining tokens should now be 0.
+	res, err = l.Peek(ctx, "user", evergreen.RateLimitSurfaceREST, 100, 1)
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, 0, res.Remaining)
 }
 
 func TestAllowNZeroReqPerHourSkipsLimiting(t *testing.T) {
@@ -81,15 +104,6 @@ func TestAllowNZeroReqPerHourSkipsLimiting(t *testing.T) {
 	// zero), so the request passes through with a nil Result rather than being rejected.
 	res, err := l.AllowN(t.Context(), "user", evergreen.RateLimitSurfaceREST, 0, 0, 1)
 	assert.NoError(t, err)
-	assert.Nil(t, res)
-}
-
-func TestAllowNInvalidCostErrorsWhenLimitingDisabled(t *testing.T) {
-	l := newRedisTestLimiter(t)
-	// Cost is validated before the unset-limit short-circuit, so an invalid cost is reported even
-	// when limiting is disabled.
-	res, err := l.AllowN(t.Context(), "user", evergreen.RateLimitSurfaceREST, 0, 0, 0)
-	assert.ErrorContains(t, err, "cost")
 	assert.Nil(t, res)
 }
 
