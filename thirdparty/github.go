@@ -962,7 +962,7 @@ func githubRequest(ctx context.Context, method string, url string, oauthToken st
 
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
-	client := utility.GetHTTPClient()
+	client := utility.WithOTelTracing(utility.GetHTTPClient())
 	defer utility.PutHTTPClient(client)
 
 	return client.Do(req)

@@ -147,7 +147,7 @@ func (w *evergreenWebhookLogger) send(m message.Composer) error {
 
 	client := w.client
 	if client == nil {
-		client = utility.GetHTTPClient()
+		client = utility.WithOTelTracing(utility.GetHTTPClient())
 		defer utility.PutHTTPClient(client)
 	}
 	return utility.Retry(context.Background(), func() (bool, error) {

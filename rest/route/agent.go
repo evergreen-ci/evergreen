@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -586,14 +587,15 @@ func (h *getParserProjectHandler) Run(ctx context.Context) gimlet.Responder {
 type getDistroViewHandler struct {
 	taskID string
 	hostID string
+	env    evergreen.Environment
 }
 
-func makeGetDistroView() gimlet.RouteHandler {
-	return &getDistroViewHandler{}
+func makeGetDistroView(env evergreen.Environment) gimlet.RouteHandler {
+	return &getDistroViewHandler{env: env}
 }
 
 func (h *getDistroViewHandler) Factory() gimlet.RouteHandler {
-	return &getDistroViewHandler{}
+	return &getDistroViewHandler{env: h.env}
 }
 
 func (h *getDistroViewHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -632,6 +634,45 @@ func (h *getDistroViewHandler) Run(ctx context.Context) gimlet.Responder {
 		DisableShallowClone: foundHost.Distro.DisableShallowClone,
 		Mountpoints:         foundHost.Distro.Mountpoints,
 		ExecUser:            foundHost.Distro.ExecUser,
+	}
+	// Return the embedded snapshot without container isolation when the
+	// fleet-wide flag is off.
+	if h.env != nil && !h.env.Settings().ServiceFlags.ContainerIsolationEnabled {
+		return gimlet.NewJSONResponse(dv)
+	}
+	// Refresh container isolation and ExecUser from the live distro config to
+	// pick up changes made after the host was provisioned.
+	ci := foundHost.Distro.BootstrapSettings.ContainerIsolation
+	if foundHost.Distro.Id == "" {
+		grip.Warning(ctx, message.Fields{
+			"message": "host has no distro ID; skipping live distro lookup for container isolation",
+			"host_id": h.hostID,
+		})
+	} else if liveDistro, err := distro.FindOneForDistroView(ctx, foundHost.Distro.Id); err != nil {
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message": "falling back to embedded distro snapshot for container isolation settings",
+			"host_id": h.hostID,
+			"distro":  foundHost.Distro.Id,
+		}))
+	} else if liveDistro != nil {
+		ci = liveDistro.BootstrapSettings.ContainerIsolation
+		if liveDistro.ExecUser != "" {
+			dv.ExecUser = liveDistro.ExecUser
+		}
+	} else {
+		grip.Warning(ctx, message.Fields{
+			"message": "distro not found in live collection; using embedded snapshot for container isolation",
+			"host_id": h.hostID,
+			"distro":  foundHost.Distro.Id,
+		})
+	}
+	if ci.Enabled {
+		dv.ContainerIsolation = &apimodels.ContainerIsolationSettings{
+			Image:            ci.Image,
+			MemoryMB:         ci.MemoryMB,
+			CPUs:             ci.CPUs,
+			RequireIsolation: ci.RequireIsolation,
+		}
 	}
 	return gimlet.NewJSONResponse(dv)
 }

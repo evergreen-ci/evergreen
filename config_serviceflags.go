@@ -44,6 +44,11 @@ type ServiceFlags struct {
 	PodDiagnosticsDisabled             bool `bson:"pod_diagnostics_disabled" json:"pod_diagnostics_disabled"`
 	RetryFailedLogMoveEnabled          bool `bson:"retry_failed_log_move_enabled" json:"retry_failed_log_move_enabled"`
 	ProjectTranslationCacheEnabled     bool `bson:"project_translation_cache_enabled" json:"project_translation_cache_enabled"`
+	// ContainerIsolationEnabled is a fleet-wide flag that controls whether
+	// per-distro container isolation settings are honored. When false,
+	// every distro runs in host mode regardless of its container isolation
+	// configuration.
+	ContainerIsolationEnabled bool `bson:"container_isolation_enabled" json:"container_isolation_enabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -113,6 +118,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			backgroundCommandFailureEnabledKey:    c.BackgroundCommandFailureEnabled,
 			apiRateLimiterDisabledKey:             c.APIRateLimiterDisabled,
 			graphqlComplexityLimiterDisabledKey:   c.GraphQLComplexityLimiterDisabled,
+			containerIsolationEnabledKey:          c.ContainerIsolationEnabled,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

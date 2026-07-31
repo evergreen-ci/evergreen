@@ -9,13 +9,13 @@
   ],
   "project_ref": [
     {
-      "_id" : "already_hidden",
+      "_id" : "spruce",
       "enabled" : false,
       "parameter_store_enabled": true,
       "hidden": true
     },
     {
-      "_id" : "evergreen_id",
+      "_id" : "evergreen",
       "identifier" : "evergreen",
       "display_name" : "evergreem",
       "enabled" : true,
