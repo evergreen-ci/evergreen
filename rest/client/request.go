@@ -92,15 +92,15 @@ func (c *communicatorImpl) request(ctx context.Context, info requestInfo, data a
 	}
 	// Return a custom CLI response when a request fails due to rate limiting.
 	if resp.StatusCode == http.StatusTooManyRequests {
-		return resp, util.RespError(resp, rateLimitMessage(resp.Header))
+		return resp, util.RespError(resp, RateLimitMessage(resp.Header))
 	}
 
 	return resp, nil
 }
 
-// rateLimitMessage summarizes the rate limit metadata that the server sets
+// RateLimitMessage summarizes the rate limit metadata that the server sets
 // alongside a 429 response.
-func rateLimitMessage(header http.Header) string {
+func RateLimitMessage(header http.Header) string {
 	msg := "API rate limit exceeded"
 
 	var details []string
@@ -110,10 +110,10 @@ func rateLimitMessage(header http.Header) string {
 	if retryAfter := header.Get(evergreen.RetryAfterHeader); retryAfter != "" {
 		details = append(details, fmt.Sprintf("retry in %s seconds", retryAfter))
 	}
-	details = append(details, "GET /rest/v2/users/{user_id}/rate_limit to check your current rate limit status")
 	if len(details) > 0 {
 		msg += fmt.Sprintf(" (%s)", strings.Join(details, ", "))
 	}
+	msg += "\nGET /rest/v2/users/{user_id}/rate_limit to check your current rate limit status."
 
 	return msg
 }

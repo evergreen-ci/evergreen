@@ -69,7 +69,7 @@ func TestRateLimitMessage(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			msg := rateLimitMessage(testCase.header)
+			msg := RateLimitMessage(testCase.header)
 			assert.Contains(t, msg, "rate limit exceeded")
 			for _, contains := range testCase.expectedContains {
 				assert.Contains(t, msg, contains)
