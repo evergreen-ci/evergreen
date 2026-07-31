@@ -478,7 +478,7 @@ func TestRemoveGitTagFromVersions(t *testing.T) {
 	}
 }
 
-func TestVersionsUnactivatedSinceLastActivated(t *testing.T) {
+func TestVersionsSinceLastActivated(t *testing.T) {
 	require.NoError(t, db.ClearCollections(VersionCollection))
 	ts := time.Now()
 
@@ -534,14 +534,15 @@ func TestVersionsUnactivatedSinceLastActivated(t *testing.T) {
 
 	require.NoError(t, db.InsertMany(t.Context(), VersionCollection, v1, v2, v3, v4, v5, v6))
 
-	// Test finding unactivated versions since last activated (order number 1).
-	versions, err := VersionFind(t.Context(), VersionsUnactivatedSinceLastActivated("proj", ts, 1, 5000))
+	// Test finding versions since last activated (order number 1).
+	versions, err := VersionFind(t.Context(), VersionsSinceLastActivated("proj", ts, 1, 5000))
 	require.NoError(t, err)
-	require.Len(t, versions, 2, "Should find 2 unactivated versions after the activated one (excluding future version)")
+	require.Len(t, versions, 3, "Should find the activated version and the 2 versions after it (excluding future version)")
 
 	// Should be ordered by most recent first (highest order number first).
 	assert.Equal(t, "unactivated-2", versions[0].Id)
 	assert.Equal(t, "unactivated-1", versions[1].Id)
+	assert.Equal(t, "activated", versions[2].Id, "already-activated version should be reconsidered for elapsed batchtime and cron work")
 
 	// Verify that future version (created after ts) is NOT included.
 	foundIds := make(map[string]bool)

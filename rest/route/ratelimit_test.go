@@ -1,6 +1,7 @@
 package route
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/redis/go-redis/v9"
@@ -68,6 +71,8 @@ func setupRateLimitEnv(t *testing.T, cfg evergreen.RateLimitConfig) *mock.Enviro
 
 // runRateLimit sends a single request with the given user attached through the
 // middleware and reports the recorder plus whether the next handler ran.
+// Note that the surfacePath is cosmetic and does not actually test whether the
+// middleware is wrapped around the route correctly.
 func runRateLimit(t *testing.T, mw gimlet.Middleware, surfacePath string, u *user.DBUser) (*httptest.ResponseRecorder, bool) {
 	r, err := http.NewRequest(http.MethodGet, surfacePath, nil)
 	require.NoError(t, err)
@@ -87,6 +92,28 @@ func TestRateLimitMiddlewareNilUserPassesThrough(t *testing.T) {
 	rw, ran := runRateLimit(t, mw, "/rest/v2/hosts", nil)
 	assert.True(t, ran)
 	assert.Equal(t, http.StatusOK, rw.Code)
+	assert.Empty(t, rw.Header().Get(evergreen.RateLimitLimitHeader))
+	assert.Empty(t, rw.Header().Get(evergreen.RateLimitBurstHeader))
+}
+
+// TestRateLimitMiddlewareHostUserPassesThrough verifies that a request authenticated only as a
+// host (via NewHostAuthMiddleware, which stores the host under model.ApiHostKey rather than
+// attaching a gimlet user) skips rate limiting entirely, the same as a request with no user at all.
+func TestRateLimitMiddlewareHostUserPassesThrough(t *testing.T) {
+	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 1})
+	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceREST)
+
+	r, err := http.NewRequest(http.MethodGet, "/rest/v2/hosts", nil)
+	require.NoError(t, err)
+	r = r.WithContext(context.WithValue(t.Context(), model.ApiHostKey, &host.Host{Id: "h1"}))
+
+	rw := httptest.NewRecorder()
+	ran := false
+	mw.ServeHTTP(rw, r, func(http.ResponseWriter, *http.Request) { ran = true })
+
+	assert.True(t, ran)
+	assert.Equal(t, http.StatusOK, rw.Code)
+	// No headers set, did not go through rate limiter.
 	assert.Empty(t, rw.Header().Get(evergreen.RateLimitLimitHeader))
 	assert.Empty(t, rw.Header().Get(evergreen.RateLimitBurstHeader))
 }
@@ -190,7 +217,7 @@ func TestRateLimitMiddlewareRemainingHeaderDecrements(t *testing.T) {
 	u := &user.DBUser{Id: "u"}
 
 	var prev int
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		rw, ran := runRateLimit(t, mw, "/rest/v2/hosts", u)
 		require.True(t, ran)
 		require.Equal(t, http.StatusOK, rw.Code)
@@ -270,6 +297,74 @@ func TestRateLimitMiddlewareZeroLimitUnblocksAfterExhaustion(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rw.Code)
 	assert.Empty(t, rw.Header().Get(evergreen.RateLimitLimitHeader))
 	assert.Empty(t, rw.Header().Get(evergreen.RateLimitBurstHeader))
+}
+
+// Minimal test to verify that the GraphQL surface is rate-limited independently of the REST surface,
+// since both use the same middleware but with different surface identifiers.
+func TestRateLimitMiddlewareGraphQLUnderLimitAllowed(t *testing.T) {
+	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{GraphQLUserPerHour: 100, GraphQLUserBurst: 5})
+	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceGraphQL)
+
+	rw, ran := runRateLimit(t, mw, "/graphql/query", &user.DBUser{Id: "u"})
+	assert.True(t, ran)
+	assert.Equal(t, http.StatusOK, rw.Code)
+	assert.Equal(t, "100", rw.Header().Get(evergreen.RateLimitLimitHeader))
+	assert.Equal(t, "5", rw.Header().Get(evergreen.RateLimitBurstHeader))
+}
+
+func TestRateLimitMiddlewareGraphQLOverLimitReturns429(t *testing.T) {
+	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{GraphQLUserPerHour: 100, GraphQLUserBurst: 1})
+	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceGraphQL)
+	u := &user.DBUser{Id: "u"}
+
+	_, ran := runRateLimit(t, mw, "/graphql/query", u)
+	require.True(t, ran)
+
+	rw, ran := runRateLimit(t, mw, "/graphql/query", u)
+	assert.False(t, ran)
+	assert.Equal(t, http.StatusTooManyRequests, rw.Code)
+	assert.Equal(t, "true", rw.Header().Get(evergreen.RateLimitExceededHeader))
+}
+
+func TestRateLimitMiddlewareGraphQLServiceTierUsesServiceLimits(t *testing.T) {
+	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{
+		GraphQLUserPerHour:    100,
+		GraphQLUserBurst:      1,
+		GraphQLServicePerHour: 200,
+		GraphQLServiceBurst:   5,
+	})
+	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceGraphQL)
+
+	rw, ran := runRateLimit(t, mw, "/graphql/query", &user.DBUser{Id: "svc", OnlyAPI: true})
+	assert.True(t, ran)
+	assert.Equal(t, "200", rw.Header().Get(evergreen.RateLimitLimitHeader))
+	assert.Equal(t, "5", rw.Header().Get(evergreen.RateLimitBurstHeader))
+}
+
+// Verifies that the REST and GraphQL surfaces maintain independent buckets for the
+// same user, so exhausting one surface's limit doesn't block the other.
+func TestRateLimitMiddlewareSurfacesHaveIndependentBuckets(t *testing.T) {
+	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{
+		RESTUserPerHour:    100,
+		RESTUserBurst:      1,
+		GraphQLUserPerHour: 100,
+		GraphQLUserBurst:   1,
+	})
+	restMW := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceREST)
+	gqlMW := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceGraphQL)
+	u := &user.DBUser{Id: "u"}
+
+	// Exhaust the GraphQL bucket.
+	_, ran := runRateLimit(t, gqlMW, "/graphql/query", u)
+	require.True(t, ran)
+	rw, ran := runRateLimit(t, gqlMW, "/graphql/query", u)
+	require.False(t, ran)
+	require.Equal(t, http.StatusTooManyRequests, rw.Code)
+
+	// The same user's REST bucket is untouched.
+	rw, ran = runRateLimit(t, restMW, "/rest/v2/hosts", u)
+	assert.True(t, ran, "REST bucket should be independent from the exhausted GraphQL bucket")
+	assert.Equal(t, http.StatusOK, rw.Code)
 }
 
 // Verifies that if Redis becomes unavailable after the limiter is already initialized,

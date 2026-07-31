@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -323,12 +324,7 @@ type retryConfig struct {
 }
 
 func (c *retryConfig) shouldIgnoreCode(statusCode int) bool {
-	for _, ignoreCode := range c.ignoreCodes {
-		if statusCode == ignoreCode {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(c.ignoreCodes, statusCode)
 }
 
 func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunction {
@@ -966,7 +962,7 @@ func githubRequest(ctx context.Context, method string, url string, oauthToken st
 
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
-	client := utility.GetHTTPClient()
+	client := utility.WithOTelTracing(utility.GetHTTPClient())
 	defer utility.PutHTTPClient(client)
 
 	return client.Do(req)

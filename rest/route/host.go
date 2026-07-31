@@ -446,6 +446,7 @@ func (rh *hostProvisioningOptionsGetHandler) Run(ctx context.Context) gimlet.Res
 // POST /hosts/{host_id}/is_up
 
 type hostIsUpPostHandler struct {
+	hostID string
 	params host.HostMetadataOptions
 	env    evergreen.Environment
 }
@@ -462,11 +463,14 @@ func (rh *hostIsUpPostHandler) Parse(ctx context.Context, r *http.Request) error
 	if err := utility.ReadJSON(r.Body, &rh.params); err != nil {
 		return errors.Wrap(err, "reading host is up parameters from JSON request body")
 	}
+
+	rh.hostID = MustHaveHost(r.Context()).Id
+
 	return nil
 }
 
 func (rh *hostIsUpPostHandler) Run(ctx context.Context) gimlet.Responder {
-	apiHost, err := data.PostHostIsUp(ctx, rh.env, rh.params)
+	apiHost, err := data.PostHostIsUp(ctx, rh.env, rh.hostID, rh.params)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}

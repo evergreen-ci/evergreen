@@ -75,8 +75,7 @@ func updateTestDepTasks(ctx context.Context, t *testing.T) {
 }
 
 func TestGetDisplayStatusAndColorSort(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection, annotations.Collection))
 	t1 := Task{
@@ -267,8 +266,7 @@ func checkPriority(t *testing.T, taskResults []Task) {
 }
 
 func TestDependenciesMet(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	var taskId string
 	var taskDoc *Task
@@ -454,8 +452,7 @@ func TestDependenciesMet(t *testing.T) {
 }
 
 func TestGetFinishedBlockingDependencies(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	taskId := "t1"
 	taskDoc := &Task{
@@ -565,8 +562,7 @@ func TestGetFinishedBlockingDependencies(t *testing.T) {
 }
 
 func TestGetDeactivatedBlockingDependencies(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	taskId := "t1"
 	taskDoc := &Task{
@@ -634,8 +630,7 @@ func TestGetDeactivatedBlockingDependencies(t *testing.T) {
 }
 
 func TestMarkDependenciesFinished(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.Clear(Collection))
@@ -666,7 +661,6 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbTask2)
 			require.Len(t, dbTask2.DependsOn, 1)
-			assert.False(t, dbTask2.DependsOn[0].Finished, "unconnected dependency edge should not be marked finished")
 			assert.True(t, utility.IsZeroTime(dbTask2.DependsOn[0].FinishedAt), "unconnected dependency edge should not be marked finished")
 		},
 		"UpdatesDependencyWithMatchingStatus": func(t *testing.T) {
@@ -693,7 +687,6 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 1)
-			assert.True(t, dbTask1.DependsOn[0].Finished)
 			assert.False(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt))
 		},
 		"UpdatesDependencyWithUnmatchingStatus": func(t *testing.T) {
@@ -721,7 +714,6 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 1)
-			assert.True(t, dbTask1.DependsOn[0].Finished)
 			assert.False(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt))
 
 			met, err := dbTask1.DependenciesMet(ctx, map[string]Task{})
@@ -754,7 +746,6 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 1)
-			assert.True(t, dbTask1.DependsOn[0].Finished)
 			assert.False(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt))
 
 			met, err := dbTask1.DependenciesMet(ctx, map[string]Task{})
@@ -800,9 +791,7 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbTask2)
 			require.Len(t, dbTask2.DependsOn, 2)
-			assert.True(t, dbTask2.DependsOn[0].Finished)
 			assert.False(t, utility.IsZeroTime(dbTask2.DependsOn[0].FinishedAt))
-			assert.True(t, dbTask2.DependsOn[1].Finished)
 			assert.False(t, utility.IsZeroTime(dbTask2.DependsOn[1].FinishedAt))
 
 			met, err := dbTask2.DependenciesMet(ctx, map[string]Task{})
@@ -838,13 +827,9 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 4)
-			assert.False(t, dbTask1.DependsOn[0].Finished)
 			assert.True(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt))
-			assert.False(t, dbTask1.DependsOn[1].Finished)
 			assert.True(t, utility.IsZeroTime(dbTask1.DependsOn[1].FinishedAt))
-			assert.True(t, dbTask1.DependsOn[2].Finished)
 			assert.False(t, utility.IsZeroTime(dbTask1.DependsOn[2].FinishedAt))
-			assert.False(t, dbTask1.DependsOn[3].Finished)
 			assert.True(t, utility.IsZeroTime(dbTask1.DependsOn[3].FinishedAt))
 		},
 		"UpdatesDirectDependenciesOnly": func(t *testing.T) {
@@ -875,14 +860,12 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 1)
-			assert.True(t, dbTask1.DependsOn[0].Finished, "direct dependency should be marked finished")
 			assert.False(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt), "direct dependency should be marked finished")
 
 			dbTask2, err := FindOneId(ctx, t2.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask2)
 			require.Len(t, dbTask2.DependsOn, 1)
-			assert.False(t, dbTask2.DependsOn[0].Finished, "indirect dependency edge should not be marked finished")
 			assert.True(t, utility.IsZeroTime(dbTask2.DependsOn[0].FinishedAt), "indirect dependency edge should not be marked finished")
 		},
 		"UpdateDependencyToUnfinished": func(t *testing.T) {
@@ -894,8 +877,7 @@ func TestMarkDependenciesFinished(t *testing.T) {
 				Id: "task1",
 				DependsOn: []Dependency{
 					{
-						TaskId:   "task0",
-						Finished: true,
+						TaskId: "task0",
 					},
 				},
 			}
@@ -908,7 +890,6 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 1)
-			assert.False(t, dbTask1.DependsOn[0].Finished, "direct dependency should not be marked finished")
 			assert.True(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt), "direct dependency should not be marked finished")
 		},
 	} {
@@ -920,8 +901,7 @@ func TestMarkDependenciesFinished(t *testing.T) {
 }
 
 func TestSetTasksScheduledTime(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With some tasks", t, func() {
 
@@ -1037,8 +1017,7 @@ func TestSetTasksScheduledTime(t *testing.T) {
 }
 
 func TestEndingTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With tasks that are attempting to be marked as finished", t, func() {
 		So(db.Clear(Collection), ShouldBeNil)
@@ -1286,8 +1265,7 @@ func TestSiblingDependency(t *testing.T) {
 }
 
 func TestBulkInsert(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
@@ -1318,8 +1296,7 @@ func TestBulkInsert(t *testing.T) {
 }
 
 func TestByBeforeMidwayTaskFromIds(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
@@ -1477,8 +1454,7 @@ func TestByBeforeMidwayTaskFromIds(t *testing.T) {
 func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 	assert := assert.New(t)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection))
 	require.NoError(t, db.EnsureIndex(Collection,
@@ -1519,8 +1495,7 @@ func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 }
 
 func TestDeactivateStepbackTasksForProject(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 
@@ -1623,8 +1598,7 @@ func TestDeactivateStepbackTasksForProject(t *testing.T) {
 }
 
 func TestUnscheduleStaleUnderwaterHostTasksWithDistro(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection, distro.Collection))
 	require.NoError(t, db.EnsureIndex(Collection,
@@ -1655,8 +1629,7 @@ func TestUnscheduleStaleUnderwaterHostTasksWithDistro(t *testing.T) {
 }
 
 func TestUnscheduleStaleUnderwaterHostTasksWithDistroAlias(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection, distro.Collection))
 	require.NoError(t, db.EnsureIndex(Collection,
@@ -1688,8 +1661,7 @@ func TestUnscheduleStaleUnderwaterHostTasksWithDistroAlias(t *testing.T) {
 }
 
 func TestGetRecentTaskStats(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
@@ -1753,8 +1725,7 @@ func TestGetResultCountList(t *testing.T) {
 }
 
 func TestFindVariantsWithTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require.NoError(t, db.Clear(Collection))
@@ -1774,8 +1745,7 @@ func TestFindVariantsWithTask(t *testing.T) {
 }
 
 func TestAddDependency(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection))
@@ -1841,8 +1811,7 @@ func TestAddDependency(t *testing.T) {
 }
 
 func TestUnattainableSchedulableHostTasksQuery(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
@@ -2032,8 +2001,7 @@ func TestUpdateDependsOn(t *testing.T) {
 }
 
 func TestMarkGeneratedTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 	t1 := &Task{
@@ -2079,8 +2047,7 @@ func TestMarkGeneratedTasks(t *testing.T) {
 }
 
 func TestGetAllDependencies(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 	tasks := []Task{
@@ -2114,8 +2081,7 @@ func TestGetAllDependencies(t *testing.T) {
 }
 
 func TestGetRecursiveDependenciesUp(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 	tasks := []Task{
@@ -2140,8 +2106,7 @@ func TestGetRecursiveDependenciesUp(t *testing.T) {
 }
 
 func TestGetRecursiveDependenciesUpWithTaskGroup(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 	tasks := []Task{
@@ -2165,8 +2130,7 @@ func TestGetRecursiveDependenciesUpWithTaskGroup(t *testing.T) {
 }
 
 func TestGetRecursiveDependenciesDown(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 	tasks := []Task{
@@ -2191,8 +2155,7 @@ func TestGetRecursiveDependenciesDown(t *testing.T) {
 }
 
 func TestGetRecursiveDependenciesUpDepthLimit(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 
@@ -2236,8 +2199,7 @@ func TestGetRecursiveDependenciesUpContextCancellation(t *testing.T) {
 }
 
 func TestGetRecursiveDependenciesDownDepthLimit(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 
@@ -2321,8 +2283,7 @@ func TestDeactivateDependencies(t *testing.T) {
 }
 
 func TestActivateDeactivatedDependencies(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 
@@ -2386,8 +2347,7 @@ func TestTopologicalSort(t *testing.T) {
 }
 
 func TestActivateTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection, user.Collection))
@@ -2478,8 +2438,7 @@ func TestActivateTasks(t *testing.T) {
 }
 
 func TestDeactivateTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 
@@ -2595,8 +2554,7 @@ func TestIsHostDispatchable(t *testing.T) {
 }
 
 func TestMarkAllForUnattainableDependencies(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.Clear(Collection))
@@ -2909,8 +2867,7 @@ func TestMarkAllForUnattainableDependencies(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			require.NoError(t, db.ClearCollections(Collection))
 
@@ -2920,8 +2877,7 @@ func TestMarkAllForUnattainableDependencies(t *testing.T) {
 }
 
 func TestSetGeneratedTasksToActivate(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection))
 	task := Task{Id: "t1"}
@@ -2958,8 +2914,7 @@ func TestSetGeneratedTasksToActivate(t *testing.T) {
 }
 
 func TestSetNextStepbackId(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
@@ -2984,8 +2939,7 @@ func TestSetNextStepbackId(t *testing.T) {
 }
 
 func TestSetLastAndPreviousStepbackIds(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
@@ -3010,8 +2964,7 @@ func TestSetLastAndPreviousStepbackIds(t *testing.T) {
 }
 
 func TestGetLatestExecution(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 	sample := Task{
@@ -3028,8 +2981,7 @@ func TestGetLatestExecution(t *testing.T) {
 }
 
 func TestArchiveMany(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection, OldCollection))
 	t1 := Task{
@@ -3090,8 +3042,7 @@ func TestArchiveMany(t *testing.T) {
 }
 
 func TestArchiveManyAfterFailedOnly(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection, OldCollection))
 	et1 := Task{
@@ -3258,8 +3209,7 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 }
 
 func TestAddParentDisplayTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 	dt1 := Task{
@@ -3296,8 +3246,7 @@ func TestAddParentDisplayTasks(t *testing.T) {
 }
 
 func TestSetCheckRunId(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 	t1 := &Task{
@@ -3317,8 +3266,7 @@ func TestSetCheckRunId(t *testing.T) {
 }
 
 func TestAddDisplayTaskIdToExecTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 	t1 := &Task{
@@ -3354,8 +3302,7 @@ func TestAddDisplayTaskIdToExecTasks(t *testing.T) {
 }
 
 func TestAddExecTasksToDisplayTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 	dt1 := Task{
@@ -3390,8 +3337,7 @@ func TestAddExecTasksToDisplayTask(t *testing.T) {
 }
 
 func TestAbortVersionTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert.NoError(t, db.ClearCollections(Collection))
 	finishedExecTask := &Task{
@@ -3561,8 +3507,7 @@ func TestArchive(t *testing.T) {
 }
 
 func TestArchiveFailedOnly(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection, OldCollection, event.EventCollection))
@@ -3726,8 +3671,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 }
 
 func TestByExecutionTasksAndMaxExecution(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	tasksToFetch := []string{"t1", "t2"}
 	t.Run("Fetching latest execution with same executions", func(t *testing.T) {
@@ -3852,8 +3796,7 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 }
 
 func TestFindTaskOnPreviousCommit(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection))
 	t1 := Task{
@@ -3930,7 +3873,7 @@ func TestTaskConnectorFetchByIdSuite(t *testing.T) {
 
 func (s *TaskConnectorFetchByIdSuite) SetupTest() {
 	s.Require().NoError(db.Clear(Collection))
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		testTask := &Task{
 			Id:            fmt.Sprintf("task_%d", i),
 			BuildId:       fmt.Sprintf("build_%d", i),
@@ -3944,7 +3887,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindById() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		found, err := FindOneId(ctx, fmt.Sprintf("task_%d", i))
 		s.NoError(err)
 		s.Equal(found.BuildId, fmt.Sprintf("build_%d", i))
@@ -3963,7 +3906,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByIdAndExecution() {
 		Status:    evergreen.TaskSucceeded,
 	}
 	s.NoError(testTask1.Insert(s.T().Context()))
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		s.NoError(testTask1.Archive(ctx))
 		err := UpdateOne(
 			ctx,
@@ -3973,7 +3916,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByIdAndExecution() {
 		s.NoError(err)
 		testTask1.Execution += 1
 	}
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		task, err := FindOneIdAndExecution(ctx, "task_1", i)
 		s.NoError(err)
 		s.Equal(task.Id, fmt.Sprintf("task_1_%d", i))
@@ -4080,7 +4023,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	s.NoError(testTask2.Insert(s.T().Context()))
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		s.NoError(testTask1.Archive(ctx))
 		testTask1.Execution += 1
 		s.NoError(testTask2.Archive(ctx))
@@ -4129,8 +4072,7 @@ func assertTasksAreEqual(t *testing.T, expected, actual Task, exectedExecution i
 }
 
 func TestFindAbortingAndResettingDependencies(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.Clear(Collection))
@@ -4323,8 +4265,7 @@ func TestHasResults(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			for _, execTask := range test.executionTasks {
 				_, err := db.Replace(t.Context(), Collection, ById(execTask.Id), &execTask)
@@ -4528,8 +4469,7 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			for _, execTask := range test.executionTasks {
 				_, err := db.Replace(t.Context(), Collection, ById(execTask.Id), &execTask)
@@ -4574,7 +4514,7 @@ func TestWillRun(t *testing.T) {
 		tsk := Task{
 			Status:    evergreen.TaskUndispatched,
 			Activated: true,
-			DependsOn: []Dependency{{Finished: false}},
+			DependsOn: []Dependency{{}},
 		}
 		assert.True(t, tsk.WillRun())
 	})
@@ -4583,7 +4523,7 @@ func TestWillRun(t *testing.T) {
 			Status:            evergreen.TaskUndispatched,
 			Activated:         true,
 			ExecutionPlatform: ExecutionPlatformContainer,
-			DependsOn:         []Dependency{{Finished: true, Unattainable: false}},
+			DependsOn:         []Dependency{{Unattainable: false}},
 		}
 		assert.True(t, tsk.WillRun())
 	})
@@ -4592,7 +4532,7 @@ func TestWillRun(t *testing.T) {
 			Status:            evergreen.TaskUndispatched,
 			Activated:         true,
 			ExecutionPlatform: ExecutionPlatformContainer,
-			DependsOn:         []Dependency{{Finished: true, Unattainable: true}},
+			DependsOn:         []Dependency{{Unattainable: true}},
 		}
 		assert.False(t, tsk.WillRun())
 	})
@@ -4618,8 +4558,7 @@ func TestIsInProgress(t *testing.T) {
 }
 
 func TestReset(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		require.NoError(t, db.Clear(Collection))
@@ -4731,8 +4670,7 @@ func TestReset(t *testing.T) {
 }
 
 func TestResetTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		require.NoError(t, db.Clear(Collection))
@@ -4798,8 +4736,7 @@ func TestResetTasks(t *testing.T) {
 }
 
 func TestGenerateNotRun(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection))
@@ -4862,8 +4799,7 @@ func TestGenerateNotRun(t *testing.T) {
 }
 
 func TestSetGeneratedJSON(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection))
@@ -4939,8 +4875,7 @@ func TestSetGeneratedJSON(t *testing.T) {
 }
 
 func TestSetGeneratedJSONStorageMethod(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection))
@@ -5122,8 +5057,7 @@ func TestCalculateEBSStorageAdjustedCost(t *testing.T) {
 }
 
 func TestUpdateTaskCost(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	t.Run("SkipsUpdateWhenTimeTakenIsZero", func(t *testing.T) {
 		require.NoError(t, db.Clear(Collection))

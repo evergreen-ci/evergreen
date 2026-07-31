@@ -2,6 +2,7 @@ package route
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/google/go-github/v70/github"
@@ -36,19 +37,19 @@ func (g *githubComments) overriddenPR(pr *github.PullRequest) string {
 // getLinksForPRPatches returns a string of links for patches
 // and if a PR number is available, it will also return a link to the PR.
 func (g *githubComments) getLinksForPRPatches(patches []patch.Patch) string {
-	links := ""
+	var links strings.Builder
 	for _, p := range patches {
 		patchLink := fmt.Sprintf("%s/version/%s", g.baseURL, p.Id.Hex())
-		links += fmt.Sprintf(" - Evergreen [patch](%s)", patchLink)
+		links.WriteString(fmt.Sprintf(" - Evergreen [patch](%s)", patchLink))
 		if p.GithubPatchData.PRNumber > 0 {
 			owner := p.GithubPatchData.BaseOwner
 			repo := p.GithubPatchData.BaseRepo
 			prNum := p.GithubPatchData.PRNumber
-			links += fmt.Sprintf(" with [PR](%s)", createGitHubPRLink(owner, repo, prNum))
+			links.WriteString(fmt.Sprintf(" with [PR](%s)", createGitHubPRLink(owner, repo, prNum)))
 		}
-		links += "\n"
+		links.WriteString("\n")
 	}
-	return links
+	return links.String()
 }
 
 func createGitHubPRLink(owner, repo string, prNum int) string {

@@ -863,6 +863,32 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 		assert.InDelta(t, 0.24, v.Cost.AdjustedEBSStorageCost, 0.001)
 	})
 
+	t.Run("PreservesActualS3CostsNotInAggregationPipeline", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(VersionCollection, taskCollection))
+		// Actual S3 costs live only on the version, incremented per task by IncrementVersionS3CostAndUsage.
+		v := &Version{Id: "v6", Cost: cost.Cost{
+			AdjustedS3ArtifactPutCost:     0.42,
+			AdjustedS3ArtifactStorageCost: 4.61,
+			AdjustedS3LogPutCost:          2.07,
+			AdjustedS3LogStorageCost:      0.33,
+			OnDemandS3ArtifactPutCost:     0.50,
+		}}
+		require.NoError(t, v.Insert(ctx))
+
+		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
+			"_id": "t1", "version": "v6", "display_only": false,
+			"cost": bson.M{"adjusted_ec2_cost": 10.0, "adjusted_ebs_storage_cost": 1.0},
+		}))
+
+		require.NoError(t, v.UpdateAggregateTaskCosts(ctx))
+		assert.InDelta(t, 0.42, v.Cost.AdjustedS3ArtifactPutCost, 0.001)
+		assert.InDelta(t, 4.61, v.Cost.AdjustedS3ArtifactStorageCost, 0.001)
+		assert.InDelta(t, 2.07, v.Cost.AdjustedS3LogPutCost, 0.001)
+		assert.InDelta(t, 0.33, v.Cost.AdjustedS3LogStorageCost, 0.001)
+		assert.InDelta(t, 0.50, v.Cost.OnDemandS3ArtifactPutCost, 0.001)
+		// The in-memory total must match what the UI sums: EC2 + EBS + all actual S3 components.
+		assert.InDelta(t, 18.43, v.Cost.AdjustedTotal(), 0.001)
+	})
 }
 
 func TestIncrementVersionS3CostAndUsage(t *testing.T) {
@@ -948,7 +974,7 @@ func TestGetManifestModuleWiki(t *testing.T) {
 	ctx := t.Context()
 	pRef := &ProjectRef{Owner: "foo", Repo: "bar"}
 	mod := Module{Name: "w", Owner: "myorg", Repo: "service.wiki", Branch: "master"}
-	m, err := getManifestModule(ctx, pRef, mod, evergreen.RepotrackerVersionRequester, "abc123")
+	m, err := getManifestModule(ctx, pRef, mod, evergreen.RepotrackerVersionRequester, time.Time{})
 	require.NoError(t, err)
 	require.NotNil(t, m)
 	assert.Equal(t, "myorg", m.Owner)

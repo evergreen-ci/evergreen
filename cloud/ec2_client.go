@@ -3,6 +3,7 @@ package cloud
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -1542,10 +1543,50 @@ func makeAWSLogMessage(name, client string, args any) message.Fields {
 
 	argMap := make(map[string]any)
 	if err := mapstructure.Decode(args, &argMap); err == nil {
+		redactAWSUserData(argMap)
 		msg["args"] = argMap
 	} else {
 		msg["args"] = fmt.Sprintf("%+v", args)
 	}
 
 	return msg
+}
+
+// redactAWSUserData recursively redacts any UserData field in a decoded AWS
+// request. Nested structs are decoded into fresh maps so the caller's original
+// request is never mutated.
+func redactAWSUserData(argMap map[string]any) {
+	for k, v := range argMap {
+		if k == "UserData" {
+			argMap[k] = "{REDACTED}"
+			continue
+		}
+		if nested := decodeAWSStruct(v); nested != nil {
+			redactAWSUserData(nested)
+			argMap[k] = nested
+		}
+	}
+}
+
+// decodeAWSStruct decodes a struct or pointer-to-struct value into a fresh map
+// so it can be recursively redacted. It returns nil for any other kind of value.
+func decodeAWSStruct(v any) map[string]any {
+	if v == nil {
+		return nil
+	}
+	rv := reflect.ValueOf(v)
+	for rv.Kind() == reflect.Ptr {
+		if rv.IsNil() {
+			return nil
+		}
+		rv = rv.Elem()
+	}
+	if rv.Kind() != reflect.Struct {
+		return nil
+	}
+	m := make(map[string]any)
+	if err := mapstructure.Decode(rv.Interface(), &m); err != nil {
+		return nil
+	}
+	return m
 }

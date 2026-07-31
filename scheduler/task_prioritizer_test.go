@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -44,8 +43,7 @@ func (c *idComparator) compare(t1, t2 task.Task, p *CmpBasedTaskComparator) (int
 	return 0, "", nil
 }
 func TestCmpBasedTaskComparator(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	var taskComparator *CmpBasedTaskComparator
 	var taskIds []string

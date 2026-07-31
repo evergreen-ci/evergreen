@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -263,7 +264,6 @@ func (opts *DockerOptions) Validate() error {
 // HostMetadataOptions are options related to the ec2 instance's metadata.
 type HostMetadataOptions struct {
 	CloudProviderData
-	HostID        string `json:"host_id"`
 	EC2InstanceID string `json:"ec2_instance_id"`
 }
 
@@ -459,6 +459,26 @@ type HostModifyOptions struct {
 	SubscriptionType           string        `json:"subscription_type"`
 	NewName                    string        `json:"new_name"`
 	AddKey                     string        `json:"add_key"`
+}
+
+// maxDisplayNameLength is the maximum number of characters allowed in a host's
+// display name.
+const maxDisplayNameLength = 64
+
+// validDisplayNameChars matches the characters allowed in a host's display
+// name.
+var validDisplayNameChars = regexp.MustCompile(`^[a-zA-Z0-9 ._\-()'":@]*$`)
+
+// ValidateDisplayName checks that a host display name is within the length
+// limit and contains all valid characters.
+func ValidateDisplayName(name string) error {
+	if len(name) > maxDisplayNameLength {
+		return errors.Errorf("display name cannot be longer than %d characters", maxDisplayNameLength)
+	}
+	if !validDisplayNameChars.MatchString(name) {
+		return errors.New("display name can only contain letters, numbers, spaces, and the following characters: . _ - ( ) ' \" : @")
+	}
+	return nil
 }
 
 // SleepScheduleOptions represent options that a user can set for creating a
@@ -2807,8 +2827,8 @@ func GetContainersOnParents(ctx context.Context, d distro.Distro) ([]ContainersO
 
 	containersOnParents := make([]ContainersOnParents, 0)
 	// parents come in sorted order from soonest to latest expected finish time
-	for i := len(allParents) - 1; i >= 0; i-- {
-		parent := allParents[i]
+	for _, parent := range slices.Backward(allParents) {
+
 		currentContainers, err := parent.GetActiveContainers(ctx)
 		if err != nil && !adb.ResultsNotFound(err) {
 			return nil, errors.Wrapf(err, "finding active containers for container parent '%s'", parent.Id)
@@ -3817,7 +3837,7 @@ func (h *Host) GeneratePersistentDNSName(ctx context.Context, domain string) (st
 	// tiny edge case where the DNS name generated above conflicts with an
 	// existing one.
 	const numAttempts = 5
-	for i := 0; i < numAttempts; i++ {
+	for range numAttempts {
 		random := utility.RandomString()[:maxRandLen]
 		candidate := fmt.Sprintf("%s-%s.%s", user, random, strings.TrimPrefix(domain, "."))
 

@@ -585,64 +585,31 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 	return res, http.StatusOK, nil
 }
 
-// urlVarsToDistroScopes returns all distros being requested for access and the
+// urlVarsToDistroScopes returns the distro being requested for access and the
 // HTTP status code.
 func urlVarsToDistroScopes(r *http.Request) ([]string, int, error) {
-	var err error
-	vars := gimlet.GetVars(r)
-	query := r.URL.Query()
-
-	resourceType := strings.ToUpper(util.CoalesceStrings(query["resource_type"], vars["resource_type"]))
-	if resourceType != "" {
-		switch resourceType {
-		case event.ResourceTypeDistro:
-			vars["distro_id"] = vars["resource_id"]
-		case event.ResourceTypeHost:
-			vars["host_id"] = vars["resource_id"]
-		}
-	}
-
-	distroID := util.CoalesceStrings(append(query["distro_id"], query["distroId"]...), vars["distro_id"], vars["distroId"])
-
-	hostID := util.CoalesceStrings(append(query["host_id"], query["hostId"]...), vars["host_id"], vars["hostId"])
-	if distroID == "" && hostID != "" {
-		distroID, err = host.FindDistroForHost(r.Context(), hostID)
-		if err != nil {
-			return nil, http.StatusNotFound, errors.Wrapf(err, "finding distro for host '%s'", hostID)
-		}
-	}
-
-	// no distro found - return a 404
+	distroID := gimlet.GetVars(r)["distro_id"]
 	if distroID == "" {
 		return nil, http.StatusNotFound, errors.New("no distro found")
 	}
 
-	dat, err := distro.NewDistroAliasesLookupTable(r.Context())
+	d, err := distro.FindOneId(r.Context(), distroID)
 	if err != nil {
-		return nil, http.StatusInternalServerError, errors.Wrap(err, "getting distro lookup table")
+		return nil, http.StatusInternalServerError, errors.Wrapf(err, "finding distro '%s'", distroID)
 	}
-	distroIDs := dat.Expand([]string{distroID})
-	if len(distroIDs) == 0 {
-		return nil, http.StatusNotFound, errors.Errorf("distro '%s' did not match any existing distros", distroID)
-	}
-	// Verify that all the concrete distros that this request is accessing
-	// exist.
-	for _, resolvedDistroID := range distroIDs {
-		d, err := distro.FindOneId(r.Context(), resolvedDistroID)
-		if err != nil {
-			return nil, http.StatusInternalServerError, errors.Wrapf(err, "finding distro '%s'", resolvedDistroID)
-		}
-		if d == nil {
-			return nil, http.StatusNotFound, errors.Errorf("distro '%s' does not exist", resolvedDistroID)
-		}
+	if d == nil {
+		return nil, http.StatusNotFound, errors.Errorf("distro '%s' does not exist", distroID)
 	}
 
-	return distroIDs, http.StatusOK, nil
+	return []string{distroID}, http.StatusOK, nil
 }
 
 func superUserResource(_ *http.Request) ([]string, int, error) {
 	return []string{evergreen.SuperUserPermissionsID}, http.StatusOK, nil
 }
+
+// maxWebhookBodySize caps the request body read by the webhook middleware.
+const maxWebhookBodySize = 10 * 1024 * 1024
 
 // NewGithubAuthMiddleware returns a middleware that verifies the payload.
 func NewGithubAuthMiddleware() gimlet.Middleware {
@@ -654,6 +621,7 @@ type githubAuthMiddleware struct{}
 func (m *githubAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	githubSecret := []byte(evergreen.GetEnvironment().Settings().GithubWebhookSecret)
 
+	r.Body = http.MaxBytesReader(rw, r.Body, maxWebhookBodySize)
 	payload, err := github.ValidatePayload(r, githubSecret)
 	if err != nil {
 		grip.Error(r.Context(), message.WrapError(err, message.Fields{
@@ -692,7 +660,7 @@ func NewSNSAuthMiddleware() gimlet.Middleware {
 }
 
 func (m *snsAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	body, err := io.ReadAll(r.Body)
+	body, err := io.ReadAll(http.MaxBytesReader(rw, r.Body, maxWebhookBodySize))
 	if err != nil {
 		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "reading body")))
 		return
@@ -737,7 +705,7 @@ func AddCORSHeaders(allowedOrigins []string, next http.HandlerFunc) http.Handler
 		if len(allowedOrigins) > 0 {
 			// Requests from a GQL client include this header, which must be added to the response to enable CORS
 			gqlHeader := r.Header.Get("Access-Control-Request-Headers")
-			if utility.StringMatchesAnyRegex(requester, allowedOrigins) {
+			if utility.StringSliceContains(allowedOrigins, requester) {
 				w.Header().Add("Access-Control-Allow-Origin", requester)
 				w.Header().Add("Access-Control-Allow-Credentials", "true")
 				w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PATCH, PUT")

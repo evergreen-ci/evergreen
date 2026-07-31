@@ -63,8 +63,7 @@ func TestFilterGeneralSubscriptions(t *testing.T) {
 }
 
 func TestCanRestartTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	blockedTask := &task.Task{
 		Id: "t1",
@@ -124,8 +123,7 @@ func TestCanRestartTask(t *testing.T) {
 }
 
 func TestCanScheduleTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	abortedTask := &task.Task{
 		Id:            "t1",
@@ -199,7 +197,7 @@ func TestGetDisplayStatus(t *testing.T) {
 	}
 	assert.NoError(t, cp.Insert(t.Context()))
 
-	status, err := getDisplayStatus(t.Context(), version)
+	status, err := getDisplayStatus(loaders.Inject(t.Context()), version)
 	require.NoError(t, err)
 	assert.Equal(t, evergreen.VersionAborted, status)
 }
@@ -380,7 +378,7 @@ func TestIsPatchAuthorForTask(t *testing.T) {
 				Id: "basic_user",
 			}
 			assert.NoError(t, usr.Insert(t.Context()))
-			ctx := gimlet.AttachUser(context.Background(), &usr)
+			ctx := loaders.Inject(gimlet.AttachUser(context.Background(), &usr))
 			tCase(ctx, t)
 		})
 	}
@@ -469,7 +467,7 @@ func TestHasAnnotationPermission(t *testing.T) {
 				Id: "basic_user",
 			}
 			assert.NoError(t, usr.Insert(t.Context()))
-			ctx := gimlet.AttachUser(context.Background(), &usr)
+			ctx := loaders.Inject(gimlet.AttachUser(context.Background(), &usr))
 
 			env := evergreen.GetEnvironment()
 			roleManager := env.RoleManager()

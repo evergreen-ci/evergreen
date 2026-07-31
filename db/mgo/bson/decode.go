@@ -43,7 +43,7 @@ type decoder struct {
 	docType reflect.Type
 }
 
-var typeM = reflect.TypeOf(M{})
+var typeM = reflect.TypeFor[M]()
 
 func newDecoder(in []byte) *decoder {
 	return &decoder{in, 0, typeM}
@@ -369,7 +369,7 @@ func (d *decoder) readSliceDoc(t reflect.Type) any {
 	return slice.Interface()
 }
 
-var typeSlice = reflect.TypeOf([]any{})
+var typeSlice = reflect.TypeFor[[]any]()
 var typeIface = typeSlice.Elem()
 
 func (d *decoder) readDocElems(typ reflect.Type) reflect.Value {

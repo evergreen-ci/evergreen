@@ -23,8 +23,7 @@ const (
 )
 
 func TestLogIterator(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	tmpDir := t.TempDir()
 	bucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: tmpDir})
@@ -116,8 +115,7 @@ func TestLogIterator(t *testing.T) {
 }
 
 func TestChunkIterator(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	bucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: t.TempDir()})
 	require.NoError(t, err)
@@ -313,15 +311,14 @@ func TestChunkIterator(t *testing.T) {
 }
 
 func TestMergingIterator(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	bucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: t.TempDir()})
 	require.NoError(t, err)
 
 	logs := make([][]LogLine, 2)
 	var mergedLines []LogLine
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		_, lines, _, err := generateTestLog(ctx, nil, 100, 10)
 		require.NoError(t, err)
 
@@ -334,7 +331,7 @@ func TestMergingIterator(t *testing.T) {
 
 	generateIterators := func(logs ...[]LogLine) []LogIterator {
 		its := make([]LogIterator, len(logs))
-		for i := 0; i < len(logs); i++ {
+		for i := range logs {
 			its[i] = newBasicIterator(logs[i])
 		}
 

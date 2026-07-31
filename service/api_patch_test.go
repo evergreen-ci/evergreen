@@ -2,7 +2,6 @@ package service
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -18,8 +17,7 @@ import (
 )
 
 func TestPatchListModulesEndPoints(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	testutil.DisablePermissionsForTests()
 	defer testutil.EnablePermissionsForTests()

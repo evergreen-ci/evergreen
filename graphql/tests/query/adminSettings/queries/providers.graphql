@@ -16,11 +16,6 @@ query Providers {
     }
     providers {
       aws {
-        ec2Keys {
-          name
-          key
-          secret
-        }
         subnets {
           az
           subnetId

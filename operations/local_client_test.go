@@ -225,7 +225,7 @@ buildvariants:
 
 	assert.Equal(t, http.StatusOK, recorder.Code)
 
-	var response map[string]interface{}
+	var response map[string]any
 	err = json.NewDecoder(recorder.Body).Decode(&response)
 	require.NoError(t, err)
 	assert.True(t, response["success"].(bool))
@@ -300,7 +300,7 @@ func TestJumpToCmd(t *testing.T) {
 			case "/health":
 				w.WriteHeader(http.StatusOK)
 			case "/step/jump/3":
-				require.NoError(t, json.NewEncoder(w).Encode(map[string]interface{}{
+				require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 					"success":      true,
 					"current_step": 3,
 				}))
@@ -351,7 +351,7 @@ func TestSelectTaskCmd(t *testing.T) {
 				var reqBody map[string]string
 				require.NoError(t, json.NewDecoder(r.Body).Decode(&reqBody))
 				assert.Equal(t, "test_task", reqBody["task_name"])
-				require.NoError(t, json.NewEncoder(w).Encode(map[string]interface{}{
+				require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 					"success":    true,
 					"step_count": 5,
 				}))

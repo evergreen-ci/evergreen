@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -87,6 +88,17 @@ func (s *subscriptionGetHandler) Parse(ctx context.Context, r *http.Request) err
 			return errors.Wrapf(err, "getting ID for project '%s'", s.owner)
 		}
 		s.owner = id
+		if !u.HasPermission(ctx, gimlet.PermissionOpts{
+			Resource:      s.owner,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionProjectSettings,
+			RequiredLevel: evergreen.ProjectSettingsView.Value,
+		}) {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusUnauthorized,
+				Message:    "not authorized to view subscriptions for this project",
+			}
+		}
 	}
 
 	return nil

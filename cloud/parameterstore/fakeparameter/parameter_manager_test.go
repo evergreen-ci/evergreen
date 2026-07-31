@@ -64,7 +64,7 @@ func TestParameterManager(t *testing.T) {
 					const numParams = 5
 					basenames := make([]string, 0, numParams)
 					expectedParams := make([]parameterstore.Parameter, 0, numParams)
-					for i := 0; i < numParams; i++ {
+					for i := range numParams {
 						expectedParam := parameterstore.Parameter{
 							Name:     fmt.Sprintf("/prefix/basename-%d", i),
 							Basename: fmt.Sprintf("basename-%d", i),
@@ -160,7 +160,7 @@ func TestParameterManager(t *testing.T) {
 					precreatedParams := map[string]parameterstore.Parameter{}
 					var names []string
 					const numParams = 5
-					for i := 0; i < numParams; i++ {
+					for i := range numParams {
 						name := fmt.Sprintf("name-%d", i)
 						value := fmt.Sprintf("value-%d", i)
 						p, err := pm.Put(ctx, name, value)
@@ -270,7 +270,7 @@ func TestParameterManager(t *testing.T) {
 					precreatedParams := map[string]parameterstore.Parameter{}
 					var names []string
 					const numParams = 5
-					for i := 0; i < numParams; i++ {
+					for i := range numParams {
 						name := fmt.Sprintf("name-%d", i)
 						value := fmt.Sprintf("value-%d", i)
 						p, err := pm.Put(ctx, name, value)
@@ -341,8 +341,7 @@ func TestParameterManager(t *testing.T) {
 				},
 			} {
 				t.Run(tName, func(t *testing.T) {
-					ctx, cancel := context.WithCancel(context.Background())
-					defer cancel()
+					ctx := t.Context()
 
 					require.NoError(t, db.ClearCollections(Collection))
 
@@ -356,8 +355,7 @@ func TestParameterManager(t *testing.T) {
 	}
 
 	t.Run("ConcurrentReadsAndWritesAreSafeAndLastWriteWins", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		pm, err := parameterstore.NewParameterManager(ctx, parameterstore.ParameterManagerOptions{
 			PathPrefix:     "prefix",
@@ -372,7 +370,7 @@ func TestParameterManager(t *testing.T) {
 		var wg sync.WaitGroup
 		startOps := make(chan struct{})
 
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
@@ -388,7 +386,7 @@ func TestParameterManager(t *testing.T) {
 			go func() {
 				defer wg.Done()
 				<-startOps
-				for j := 0; j < 10; j++ {
+				for range 10 {
 					// Each reader reads the random strings from the DB and they
 					// get cached. While this is happening, the value will be
 					// fluctuating because there are concurrent writes, so the

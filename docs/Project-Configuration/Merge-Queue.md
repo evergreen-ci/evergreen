@@ -347,6 +347,15 @@ Evergreen emits OpenTelemetry spans at key points in the merge queue lifecycle:
 - `evergreen.merge_queue.msg_id` - The GitHub webhook message ID (available in intent_created spans)
 - `evergreen.merge_queue.github_head_pr_url` - The GitHub PR URL for the HEAD PR of the merge queue entry. When concurrency is enabled (the default), a merge queue entry may contain multiple PRs tested together, but this URL only points to the HEAD PR of that merge group.
 
+#### Task-Level Metrics
+
+Evergreen emits the following attributes on `task_completed` spans for every task, not just merge queue tasks. These are useful for understanding task scheduling and queue performance in the merge queue context.
+
+- `evergreen.task.time_waiting_for_scheduling_ms` - The time from when a task was activated to when it was scheduled.
+- `evergreen.task.time_waiting_for_dependencies_ms` - The time from when a task was scheduled to when all of its dependencies were met. Only emitted for tasks with dependencies.
+- `evergreen.task.time_waiting_in_queue_ms` - The time from when a task became eligible for dispatch to when it actually started running. For tasks with dependencies, this is measured from `dependencies_met_time`; for tasks without dependencies, this is measured from `scheduled_time`.
+- `evergreen.task.duration_ms` - The wall clock duration of the task (start to finish).
+
 ### Example Honeycomb Queries
 
 #### Queue Depth Analysis

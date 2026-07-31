@@ -4,10 +4,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -143,6 +145,30 @@ func TestVersionBuildFromServiceCost(t *testing.T) {
 	t.Run("ZeroCostIsNil", func(t *testing.T) {
 		v := model.Version{
 			Id: "v-no-costs",
+		}
+
+		apiVersion := &APIVersion{}
+		apiVersion.BuildFromService(t.Context(), v)
+
+		assert.Nil(t, apiVersion.Cost)
+		assert.Nil(t, apiVersion.PredictedCost)
+	})
+
+	t.Run("HiddenCostProjectIsSuppressed", func(t *testing.T) {
+		env := testutil.NewEnvironment(t.Context(), t)
+		originalEnv := evergreen.GetEnvironment()
+		evergreen.SetEnvironment(env)
+		t.Cleanup(func() { evergreen.SetEnvironment(originalEnv) })
+		env.Settings().Cost.HiddenCostProjects = []string{"hidden-project"}
+
+		v := model.Version{
+			Id:         "v-hidden-cost",
+			Identifier: "hidden-project",
+			Cost:       cost.Cost{OnDemandEC2Cost: 15.0, AdjustedEC2Cost: 12.0},
+			PredictedCost: cost.Cost{
+				OnDemandEC2Cost: 5.0,
+				AdjustedEC2Cost: 4.0,
+			},
 		}
 
 		apiVersion := &APIVersion{}

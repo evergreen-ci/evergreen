@@ -252,7 +252,7 @@ func TestAdjustForLargeParserProjectLimit(t *testing.T) {
 
 	t.Run("NoAdjustmentWhenLimitNotSaturated", func(t *testing.T) {
 		require.NoError(t, db.ClearCollections(task.Collection))
-		for i := 0; i < 2; i++ {
+		for i := range 2 {
 			require.NoError(t, (&task.Task{
 				Id:                         fmt.Sprintf("running-%d", i),
 				Status:                     evergreen.TaskStarted,
@@ -277,7 +277,7 @@ func TestAdjustForLargeParserProjectLimit(t *testing.T) {
 
 	t.Run("ReducesQueueLengthWhenLimitSaturated", func(t *testing.T) {
 		require.NoError(t, db.ClearCollections(task.Collection))
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			require.NoError(t, (&task.Task{
 				Id:                         fmt.Sprintf("running-%d", i),
 				Status:                     evergreen.TaskStarted,

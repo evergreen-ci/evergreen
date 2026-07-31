@@ -9,7 +9,10 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
@@ -250,13 +253,7 @@ func TestGetVersion(t *testing.T) {
 			go func(versionID string) {
 				defer wg.Done()
 				result, err := GetVersion(ctx, versionID)
-				if err != nil {
-					resultsChan <- getVersionResult{versionID: versionID, found: false, err: err}
-				} else if result == nil {
-					resultsChan <- getVersionResult{versionID: versionID, found: false, err: nil}
-				} else {
-					resultsChan <- getVersionResult{versionID: versionID, found: true, err: nil}
-				}
+				resultsChan <- getVersionResult{versionID: versionID, found: result != nil, err: err}
 			}(id)
 		}
 
@@ -511,6 +508,322 @@ func TestPreloadProjects(t *testing.T) {
 	})
 }
 
+func TestGetTask(t *testing.T) {
+	require.NoError(t, db.Clear(task.Collection))
+
+	testTasks := []task.Task{
+		{Id: "task1", DisplayName: "Task One", BuildId: "build1"},
+		{Id: "task2", DisplayName: "Task Two", BuildId: "build2"},
+		{Id: "task3", DisplayName: "Task Three", BuildId: "build3"},
+	}
+	for _, tk := range testTasks {
+		require.NoError(t, tk.Insert(t.Context()))
+	}
+
+	t.Run("SingleTaskLookup", func(t *testing.T) {
+		ctx := setupLoaderContext(t.Context())
+
+		result, err := GetTask(ctx, "task1")
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Equal(t, "task1", result.Id)
+		assert.Equal(t, "Task One", result.DisplayName)
+		assert.Equal(t, "build1", result.BuildId)
+	})
+
+	t.Run("TaskNotFound", func(t *testing.T) {
+		ctx := setupLoaderContext(t.Context())
+
+		result, err := GetTask(ctx, "nonexistent")
+		require.NoError(t, err)
+		assert.Nil(t, result, "should return nil for non-existent task")
+	})
+
+	t.Run("BatchedLookups", func(t *testing.T) {
+		ctx := setupLoaderContext(t.Context())
+
+		var wg sync.WaitGroup
+		type getTaskResult struct {
+			taskID string
+			found  bool
+			err    error
+		}
+		resultsChan := make(chan getTaskResult, 3)
+
+		taskIDs := []string{"task1", "task2", "task3"}
+		for _, id := range taskIDs {
+			wg.Add(1)
+			go func(taskID string) {
+				defer wg.Done()
+				result, err := GetTask(ctx, taskID)
+				resultsChan <- getTaskResult{taskID: taskID, found: result != nil, err: err}
+			}(id)
+		}
+
+		wg.Wait()
+		close(resultsChan)
+
+		results := make(map[string]bool)
+		for result := range resultsChan {
+			require.NoError(t, result.err, "lookup should not error")
+			results[result.taskID] = result.found
+		}
+		assert.Len(t, results, 3)
+		for _, id := range taskIDs {
+			assert.True(t, results[id], "expected to find task '%s'", id)
+		}
+	})
+
+	t.Run("MixedExistingAndNonExisting", func(t *testing.T) {
+		ctx := setupLoaderContext(t.Context())
+
+		var wg sync.WaitGroup
+		type getTaskResult struct {
+			taskID string
+			found  bool
+			err    error
+		}
+		resultsChan := make(chan getTaskResult, 3)
+
+		taskIDs := []string{"task1", "nonexistent", "task3"}
+		for _, id := range taskIDs {
+			wg.Add(1)
+			go func(taskID string) {
+				defer wg.Done()
+				result, err := GetTask(ctx, taskID)
+				resultsChan <- getTaskResult{taskID: taskID, found: result != nil, err: err}
+			}(id)
+		}
+
+		wg.Wait()
+		close(resultsChan)
+
+		results := make(map[string]bool)
+		for result := range resultsChan {
+			require.NoError(t, result.err, "lookup should not error")
+			results[result.taskID] = result.found
+		}
+		assert.Len(t, results, 3)
+		assert.True(t, results["task1"], "task1 should be found")
+		assert.False(t, results["nonexistent"], "nonexistent should not be found")
+		assert.True(t, results["task3"], "task3 should be found")
+	})
+}
+
+func TestGetPatch(t *testing.T) {
+	require.NoError(t, db.Clear(patch.Collection))
+
+	testPatches := []patch.Patch{
+		{Id: mgobson.NewObjectId(), Author: "author1", Description: "Patch One"},
+		{Id: mgobson.NewObjectId(), Author: "author2", Description: "Patch Two"},
+		{Id: mgobson.NewObjectId(), Author: "author3", Description: "Patch Three"},
+	}
+	patchIDs := make([]string, len(testPatches))
+	for i, p := range testPatches {
+		require.NoError(t, p.Insert(t.Context()))
+		patchIDs[i] = p.Id.Hex()
+	}
+
+	t.Run("SinglePatchLookup", func(t *testing.T) {
+		ctx := setupLoaderContext(t.Context())
+
+		result, err := GetPatch(ctx, patchIDs[0])
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Equal(t, patchIDs[0], result.Id.Hex())
+		assert.Equal(t, "author1", result.Author)
+		assert.Equal(t, "Patch One", result.Description)
+	})
+
+	t.Run("PatchNotFound", func(t *testing.T) {
+		ctx := setupLoaderContext(t.Context())
+
+		result, err := GetPatch(ctx, mgobson.NewObjectId().Hex())
+		require.NoError(t, err)
+		assert.Nil(t, result, "should return nil for non-existent patch")
+	})
+
+	t.Run("BatchedLookups", func(t *testing.T) {
+		ctx := setupLoaderContext(t.Context())
+
+		var wg sync.WaitGroup
+		type getPatchResult struct {
+			patchID string
+			found   bool
+			err     error
+		}
+		resultsChan := make(chan getPatchResult, 3)
+
+		for _, id := range patchIDs {
+			wg.Add(1)
+			go func(patchID string) {
+				defer wg.Done()
+				result, err := GetPatch(ctx, patchID)
+				resultsChan <- getPatchResult{patchID: patchID, found: result != nil, err: err}
+			}(id)
+		}
+
+		wg.Wait()
+		close(resultsChan)
+
+		results := make(map[string]bool)
+		for result := range resultsChan {
+			require.NoError(t, result.err, "lookup should not error")
+			results[result.patchID] = result.found
+		}
+		assert.Len(t, results, 3)
+		for _, id := range patchIDs {
+			assert.True(t, results[id], "expected to find patch '%s'", id)
+		}
+	})
+
+	t.Run("MixedExistingAndNonExisting", func(t *testing.T) {
+		ctx := setupLoaderContext(t.Context())
+
+		var wg sync.WaitGroup
+		type getPatchResult struct {
+			patchID string
+			found   bool
+			err     error
+		}
+		resultsChan := make(chan getPatchResult, 3)
+
+		keys := []string{patchIDs[0], mgobson.NewObjectId().Hex(), patchIDs[2]}
+		for _, id := range keys {
+			wg.Add(1)
+			go func(patchID string) {
+				defer wg.Done()
+				result, err := GetPatch(ctx, patchID)
+				resultsChan <- getPatchResult{patchID: patchID, found: result != nil, err: err}
+			}(id)
+		}
+
+		wg.Wait()
+		close(resultsChan)
+
+		results := make(map[string]bool)
+		for result := range resultsChan {
+			require.NoError(t, result.err, "lookup should not error")
+			results[result.patchID] = result.found
+		}
+		assert.Len(t, results, 3)
+		assert.True(t, results[patchIDs[0]], "first patch should be found")
+		assert.False(t, results[keys[1]], "nonexistent patch should not be found")
+		assert.True(t, results[patchIDs[2]], "third patch should be found")
+	})
+}
+
+func TestPreloadPatches(t *testing.T) {
+	require.NoError(t, db.Clear(patch.Collection))
+
+	testPatches := []patch.Patch{
+		{Id: mgobson.NewObjectId(), Author: "author1"},
+		{Id: mgobson.NewObjectId(), Author: "author2"},
+		{Id: mgobson.NewObjectId(), Author: "author3"},
+	}
+	patchIDs := make([]string, len(testPatches))
+	for i, p := range testPatches {
+		require.NoError(t, p.Insert(t.Context()))
+		patchIDs[i] = p.Id.Hex()
+	}
+
+	t.Run("EmptySliceIsNoOp", func(t *testing.T) {
+		ctx := setupLoaderContext(t.Context())
+		require.NotPanics(t, func() {
+			PreloadPatches(ctx, nil)
+			PreloadPatches(ctx, []string{})
+		})
+	})
+
+	t.Run("PrimesCacheSoLaterLoadsSkipDB", func(t *testing.T) {
+		ctx := setupLoaderContext(t.Context())
+
+		PreloadPatches(ctx, patchIDs)
+
+		require.NoError(t, db.Clear(patch.Collection))
+
+		for _, id := range patchIDs {
+			result, err := GetPatch(ctx, id)
+			require.NoError(t, err)
+			require.NotNil(t, result, "expected cached patch '%s'", id)
+			assert.Equal(t, id, result.Id.Hex())
+		}
+	})
+
+	t.Run("DuplicateIDsAreDeduped", func(t *testing.T) {
+		require.NoError(t, db.Clear(patch.Collection))
+		for _, p := range testPatches {
+			require.NoError(t, p.Insert(t.Context()))
+		}
+
+		ctx := setupLoaderContext(t.Context())
+		require.NotPanics(t, func() {
+			PreloadPatches(ctx, []string{patchIDs[0], patchIDs[0], patchIDs[1]})
+		})
+
+		result, err := GetPatch(ctx, patchIDs[0])
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Equal(t, patchIDs[0], result.Id.Hex())
+	})
+}
+
+func TestPreloadTasks(t *testing.T) {
+	require.NoError(t, db.Clear(task.Collection))
+
+	testTasks := []task.Task{
+		{Id: "preload1", DisplayName: "Preload One"},
+		{Id: "preload2", DisplayName: "Preload Two"},
+		{Id: "preload3", DisplayName: "Preload Three"},
+	}
+	for _, tk := range testTasks {
+		require.NoError(t, tk.Insert(t.Context()))
+	}
+
+	t.Run("EmptySliceIsNoOp", func(t *testing.T) {
+		ctx := setupLoaderContext(t.Context())
+		require.NotPanics(t, func() {
+			PreloadTasks(ctx, nil)
+			PreloadTasks(ctx, []string{})
+		})
+	})
+
+	t.Run("PrimesCacheSoLaterLoadsSkipDB", func(t *testing.T) {
+		ctx := setupLoaderContext(t.Context())
+
+		PreloadTasks(ctx, []string{"preload1", "preload2", "preload3"})
+
+		// Once preloaded the values should live in the dataloader's thunk cache.
+		// Drop the underlying collection to prove subsequent GetTask calls
+		// don't hit MongoDB.
+		require.NoError(t, db.Clear(task.Collection))
+
+		for _, id := range []string{"preload1", "preload2", "preload3"} {
+			result, err := GetTask(ctx, id)
+			require.NoError(t, err)
+			require.NotNil(t, result, "expected cached task '%s'", id)
+			assert.Equal(t, id, result.Id)
+		}
+	})
+
+	t.Run("DuplicateIDsAreDeduped", func(t *testing.T) {
+		require.NoError(t, db.Clear(task.Collection))
+		for _, tk := range testTasks {
+			require.NoError(t, tk.Insert(t.Context()))
+		}
+
+		ctx := setupLoaderContext(t.Context())
+		require.NotPanics(t, func() {
+			PreloadTasks(ctx, []string{"preload1", "preload1", "preload2"})
+		})
+
+		result, err := GetTask(ctx, "preload1")
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Equal(t, "preload1", result.Id)
+	})
+}
+
 func TestMiddleware(t *testing.T) {
 	t.Run("InjectsLoadersIntoContext", func(t *testing.T) {
 		var capturedCtx context.Context
@@ -535,6 +848,8 @@ func TestMiddleware(t *testing.T) {
 		require.NotNil(t, l.UserLoader)
 		require.NotNil(t, l.VersionLoader)
 		require.NotNil(t, l.ProjectLoader)
+		require.NotNil(t, l.TaskLoader)
+		require.NotNil(t, l.PatchLoader)
 	})
 }
 
@@ -544,6 +859,8 @@ func TestNew(t *testing.T) {
 	require.NotNil(t, l.UserLoader)
 	require.NotNil(t, l.VersionLoader)
 	require.NotNil(t, l.ProjectLoader)
+	require.NotNil(t, l.TaskLoader)
+	require.NotNil(t, l.PatchLoader)
 }
 
 func TestIsBatchError(t *testing.T) {

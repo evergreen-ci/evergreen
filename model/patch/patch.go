@@ -39,10 +39,11 @@ type Parameter struct {
 }
 
 type GitMetadata struct {
-	Username    string `bson:"username" json:"username"`
-	Email       string `bson:"email" json:"email"`
-	GitVersion  string `bson:"git_version,omitempty" json:"git_version,omitempty"`
-	LocalBranch string `bson:"local_branch,omitempty" json:"local_branch,omitempty"`
+	Username      string `bson:"username" json:"username"`
+	Email         string `bson:"email" json:"email"`
+	GitVersion    string `bson:"git_version,omitempty" json:"git_version,omitempty"`
+	LocalBranch   string `bson:"local_branch,omitempty" json:"local_branch,omitempty"`
+	LocalHeadHash string `bson:"local_head_hash,omitempty" json:"local_head_hash,omitempty"`
 }
 
 type LocalModuleInclude struct {
@@ -100,9 +101,12 @@ type Patch struct {
 	// unfinalized and is cleared once the patch has been finalized.
 	ProjectStorageMethod evergreen.ParserProjectStorageMethod `bson:"project_storage_method,omitempty"`
 	PatchedProjectConfig string                               `bson:"patched_project_config"`
-	Alias                string                               `bson:"alias"`
-	Triggers             TriggerInfo                          `bson:"triggers"`
-	MergePatch           string                               `bson:"merge_patch"`
+	// Alias is a single selection alias applied to the patch, for single-alias patches or internal
+	// aliases (e.g. __github), while Aliases holds multiple aliases for multi-alias patches.
+	Alias      string      `bson:"alias"`
+	Aliases    []string    `bson:"aliases,omitempty"`
+	Triggers   TriggerInfo `bson:"triggers"`
+	MergePatch string      `bson:"merge_patch"`
 	// GithubPatchData stores GitHub PR patch metadata.
 	GithubPatchData thirdparty.GithubPatch `bson:"github_patch_data,omitempty"`
 	// GithubMergeData stores GitHub merge queue metadata.
@@ -664,6 +668,19 @@ func (p *Patch) IsMergeQueuePatch() bool {
 
 func (p *Patch) IsChild() bool {
 	return p.Triggers.ParentPatch != ""
+}
+
+// AliasesToResolve returns the aliases used to resolve the patch's tasks and
+// parameters, using the multi-alias list when available and falling back to the single
+// Alias (which holds internal aliases and single-alias patches).
+func (p *Patch) AliasesToResolve() []string {
+	if len(p.Aliases) > 0 {
+		return p.Aliases
+	}
+	if p.Alias != "" {
+		return []string{p.Alias}
+	}
+	return nil
 }
 
 // CollectiveStatus returns the aggregate display status of all tasks and child patches.

@@ -7,7 +7,7 @@
         "data": {
           "user": {
             "displayName": "Regular User",
-            "userId": "regular_user",
+            "id": "regular_user",
             "emailAddress": "regular_user@mongodb.com"
           }
         }
@@ -19,7 +19,7 @@
         "data": {
           "user": {
             "displayName": "Bob Smith",
-            "userId": "bob.smith"
+            "id": "bob.smith"
           }
         }
       }
@@ -44,7 +44,7 @@
       "test_user_id": "regular_user",
       "result": {
         "data": {
-          "userLite": {
+          "user": {
             "id": "regular_user",
             "displayName": "Regular User",
             "emailAddress": "regular_user@mongodb.com"
@@ -56,7 +56,7 @@
       "query_file": "user_all_fields.graphql",
       "result": {
         "data": {
-          "userLite": {
+          "user": {
             "id": "bob.smith",
             "displayName": "Bob Smith",
             "emailAddress": "bob.smith@mongodb.com",
@@ -88,7 +88,7 @@
         "errors": [
           {
             "message": "user 'nonexistent-userid' not found",
-            "path": ["userLite"],
+            "path": ["user"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
             }

@@ -1,6 +1,10 @@
 {
   version(versionId: "evergreen_version1") {
     id
+    gitTags {
+      tag
+      pusher
+    }
     waterfallBuilds {
       id
       buildVariant

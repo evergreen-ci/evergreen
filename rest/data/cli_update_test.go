@@ -17,8 +17,7 @@ type cliUpdateConnectorSuite struct {
 }
 
 func TestUpdateConnector(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	s := &cliUpdateConnectorSuite{}
 	s.setup = func() {

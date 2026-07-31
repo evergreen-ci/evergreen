@@ -19,13 +19,6 @@ import (
 	"github.com/evergreen-ci/utility"
 )
 
-const (
-	CreateProjectMutation   = "CreateProject"
-	CopyProjectMutation     = "CopyProject"
-	DeleteProjectMutation   = "DeleteProject"
-	SetLastRevisionMutation = "SetLastRevision"
-)
-
 type Resolver struct {
 	sc data.Connector
 }
@@ -73,12 +66,12 @@ func New(apiURL string) Config {
 		return next(ctx)
 	}
 	c.Directives.RequireHostAccess = func(ctx context.Context, obj any, next graphql.Resolver, access HostAccessLevel) (any, error) {
-		args, isStringMap := obj.(map[string]interface{})
+		args, isStringMap := obj.(map[string]any)
 		if !isStringMap {
 			return nil, ResourceNotFound.Send(ctx, "converting args into map")
 		}
 		hostId, hasHostId := args["hostId"].(string)
-		hostIdsInterface, hasHostIds := args["hostIds"].([]interface{})
+		hostIdsInterface, hasHostIds := args["hostIds"].([]any)
 
 		// If no host ID is present, the field is optional and null, so skip the access check.
 		if !hasHostId && !hasHostIds {
@@ -164,86 +157,22 @@ func New(apiURL string) Config {
 		}
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access settings for the distro '%s'", user.Username(), distroId))
 	}
-	c.Directives.RequireProjectAdmin = func(ctx context.Context, obj any, next graphql.Resolver) (any, error) {
+	c.Directives.RequireProjectCreate = func(ctx context.Context, _ any, next graphql.Resolver) (any, error) {
 		// Allow if user is superuser.
 		user := mustHaveUser(ctx)
-		opts := gimlet.PermissionOpts{
-			Resource:      evergreen.SuperUserPermissionsID,
-			ResourceType:  evergreen.SuperUserResourceType,
-			Permission:    evergreen.PermissionProjectCreate,
-			RequiredLevel: evergreen.ProjectCreate.Value,
-		}
-		if user.HasPermission(ctx, opts) {
+		if userHasSuperuserProjectPermission(ctx, user) {
 			return next(ctx)
 		}
 
-		operationContext := graphql.GetOperationContext(ctx).OperationName
-
-		if operationContext == CreateProjectMutation {
-			canCreate, err := user.HasProjectCreatePermission(ctx)
-			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("checking user permissions: %s", err.Error()))
-			}
-			if canCreate {
-				return next(ctx)
-			}
+		canCreate, err := user.HasProjectCreatePermission(ctx)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("checking user permissions: %s", err.Error()))
+		}
+		if canCreate {
+			return next(ctx)
 		}
 
-		getPermissionOpts := func(projectId string) gimlet.PermissionOpts {
-			return gimlet.PermissionOpts{
-				Resource:      projectId,
-				ResourceType:  evergreen.ProjectResourceType,
-				Permission:    evergreen.PermissionProjectSettings,
-				RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-			}
-		}
-
-		args, isStringMap := obj.(map[string]any)
-		if !isStringMap {
-			return nil, ResourceNotFound.Send(ctx, "Project not specified")
-		}
-
-		if operationContext == CopyProjectMutation {
-			projectIdToCopy, ok := args["project"].(map[string]any)["projectIdToCopy"].(string)
-			if !ok {
-				return nil, InternalServerError.Send(ctx, "finding projectIdToCopy for copy project operation")
-			}
-			opts := getPermissionOpts(projectIdToCopy)
-			if user.HasPermission(ctx, opts) {
-				return next(ctx)
-			}
-		}
-
-		if operationContext == DeleteProjectMutation {
-			projectId, ok := args["projectId"].(string)
-			if !ok {
-				return nil, InternalServerError.Send(ctx, "finding projectId for delete project operation")
-			}
-			opts := getPermissionOpts(projectId)
-			if user.HasPermission(ctx, opts) {
-				return next(ctx)
-			}
-		}
-
-		if operationContext == SetLastRevisionMutation {
-			projectIdentifier, ok := args["opts"].(map[string]any)["projectIdentifier"].(string)
-			if !ok {
-				return nil, InternalServerError.Send(ctx, "finding projectIdentifier for set last revision operation")
-			}
-			project, err := model.FindBranchProjectRef(ctx, projectIdentifier)
-			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project '%s': %s", projectIdentifier, err.Error()))
-			}
-			if project == nil {
-				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", projectIdentifier))
-			}
-			opts := getPermissionOpts(project.Id)
-			if user.HasPermission(ctx, opts) {
-				return next(ctx)
-			}
-		}
-
-		return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access the %s resolver", user.Username(), operationContext))
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to create projects", user.Username()))
 	}
 	c.Directives.RequireRepoAccess = func(ctx context.Context, obj any, next graphql.Resolver, access AccessLevel) (any, error) {
 		usr := mustHaveUser(ctx)
@@ -309,8 +238,6 @@ func New(apiURL string) Config {
 		}
 	}
 	c.Directives.RequireProjectAccess = func(ctx context.Context, obj any, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (any, error) {
-		usr := mustHaveUser(ctx)
-
 		args, isMap := obj.(map[string]any)
 		if !isMap {
 			return nil, InternalServerError.Send(ctx, "converting args into map")
@@ -326,33 +253,15 @@ func New(apiURL string) Config {
 			return nil, InputValidationError.Send(ctx, err.Error())
 		}
 
-		projectId, statusCode, err := data.GetProjectIdFromParams(ctx, paramsMap)
+		projectID, statusCode, err := data.GetProjectIdFromParams(ctx, paramsMap)
 		if err != nil {
 			return nil, mapHTTPStatusToGqlError(ctx, statusCode, err)
 		}
 
-		hasPermission := usr.HasPermission(ctx, gimlet.PermissionOpts{
-			Resource:      projectId,
-			ResourceType:  evergreen.ProjectResourceType,
-			Permission:    requiredPermission,
-			RequiredLevel: permissionInfo.Value,
-		})
-		if hasPermission {
-			return next(ctx)
+		if err = checkProjectPermission(ctx, projectID, requiredPermission, permissionInfo); err != nil {
+			return nil, err
 		}
-
-		if requiredPermission == evergreen.PermissionProjectSettings && permissionInfo.Value == evergreen.ProjectSettingsView.Value {
-			// If we're trying to view a repo project, check if the user has view permission for any branch project instead.
-			hasPermission, err = model.UserHasRepoViewPermission(ctx, usr, projectId)
-			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem checking repo view permission: %s", err.Error()))
-			}
-			if hasPermission {
-				return next(ctx)
-			}
-		}
-
-		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to '%s' for the project '%s'", usr.Username(), strings.ToLower(permissionInfo.Description), projectId))
+		return next(ctx)
 	}
 	c.Directives.RequireProjectSettingsAccess = func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error) {
 		usr := mustHaveUser(ctx)
@@ -408,7 +317,7 @@ func New(apiURL string) Config {
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("User '%s' lacks required admin permissions", dbUser.Username()))
 	}
 	c.Directives.RequireVolumeAccess = func(ctx context.Context, obj any, next graphql.Resolver) (any, error) {
-		args, isStringMap := obj.(map[string]interface{})
+		args, isStringMap := obj.(map[string]any)
 		if !isStringMap {
 			return nil, ResourceNotFound.Send(ctx, "converting args into map")
 		}

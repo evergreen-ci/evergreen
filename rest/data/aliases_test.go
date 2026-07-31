@@ -423,7 +423,6 @@ func TestValidateFeaturesHaveAliasesForGithubSections(t *testing.T) {
 	makeAliases := func(names ...string) []restModel.APIProjectAlias {
 		var out []restModel.APIProjectAlias
 		for _, n := range names {
-			n := n
 			out = append(out, restModel.APIProjectAlias{
 				Alias: utility.ToStringPtr(n),
 			})

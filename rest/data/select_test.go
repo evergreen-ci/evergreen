@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -21,6 +22,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
 
 func captureGripMessages(t *testing.T) *send.InternalSender {
 	originalSender := grip.GetSender()
@@ -66,6 +73,60 @@ func TestLogTSSError(t *testing.T) {
 		require.Equal(t, 1, sender.Len())
 		assert.Equal(t, level.Error, sender.GetMessage().Priority)
 	})
+}
+
+func TestSelectTestsSetsTimeout(t *testing.T) {
+	for _, test := range []struct {
+		name             string
+		tests            []string
+		expectedEndpoint string
+	}{
+		{
+			name:             "ExplicitTestsShouldSetTimeout",
+			tests:            []string{"test"},
+			expectedEndpoint: SelectTestsEndpoint,
+		},
+		{
+			name:             "AllKnownTestsShouldSetTimeout",
+			expectedEndpoint: SelectKnownTestsEndpoint,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			sender := captureGripMessages(t)
+			setTSSURLForTest(t, "http://tss.example.com")
+			startAt := time.Now()
+			originalClient := testSelectionHTTPClient
+			testSelectionHTTPClient = &http.Client{
+				Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+					deadline, ok := req.Context().Deadline()
+					require.True(t, ok)
+					assert.WithinDuration(t, startAt.Add(testSelectionSelectTimeout), deadline, time.Second)
+					return nil, context.DeadlineExceeded
+				}),
+			}
+			t.Cleanup(func() {
+				testSelectionHTTPClient = originalClient
+			})
+
+			selectedTests, err := SelectTests(t.Context(), model.SelectTestsRequest{
+				Project:      "project",
+				Requester:    evergreen.PatchVersionRequester,
+				BuildVariant: "build_variant",
+				TaskID:       "task_id",
+				TaskName:     "task_name",
+				Tests:        test.tests,
+			})
+			require.Error(t, err)
+			assert.ErrorIs(t, err, context.DeadlineExceeded)
+			assert.Empty(t, selectedTests)
+			require.Equal(t, 1, sender.Len())
+			fields, ok := sender.GetMessage().Message.Raw().(message.Fields)
+			require.True(t, ok)
+			assert.Equal(t, test.expectedEndpoint, fields["endpoint"])
+			assert.Equal(t, true, fields["timeout"])
+			assert.Contains(t, fields, "duration_ms")
+		})
+	}
 }
 
 func TestGetTestsQuarantineStatus(t *testing.T) {

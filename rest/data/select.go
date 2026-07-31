@@ -24,6 +24,7 @@ import (
 // Test selection service endpoint identifiers.
 const (
 	SelectTestsEndpoint       = "select_tests"
+	SelectKnownTestsEndpoint  = "select_known_tests"
 	TransitionTestsEndpoint   = "transition_tests"
 	TransitionTaskEndpoint    = "transition_task"
 	TransitionVariantEndpoint = "transition_variant"
@@ -33,6 +34,7 @@ const (
 
 const (
 	testSelectionWriteTimeout      = 10 * time.Second
+	testSelectionSelectTimeout     = 10 * time.Second
 	testSelectionStatusTimeout     = 4 * time.Second
 	testSelectionDecorationTimeout = 5 * time.Second
 )
@@ -115,6 +117,8 @@ func newTestSelectionClient(c *http.Client) *testselection.APIClient {
 // to run based on the provided SelectTestsRequest. It returns the list of
 // selected tests.
 func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, error) {
+	ctx, cancel := context.WithTimeout(ctx, testSelectionSelectTimeout)
+	defer cancel()
 	c := newTestSelectionClient(testSelectionHTTPClient)
 	var strategies []testselection.StrategyEnum
 	for _, s := range req.Strategies {
@@ -127,7 +131,9 @@ func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, e
 		err              error
 	)
 	startAt := time.Now()
+	endpoint := SelectTestsEndpoint
 	if len(req.Tests) == 0 {
+		endpoint = SelectKnownTestsEndpoint
 		selectedTestPtrs, resp, err = c.TestSelectionAPI.SelectAllKnownTestsOfATaskApiTestSelectionSelectKnownTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost(ctx, req.Project, req.Requester, req.BuildVariant, req.TaskID, req.TaskName).StrategyEnum(strategies).Execute()
 	} else {
 		reqBody := testselection.BodySelectTestsApiTestSelectionSelectTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost{
@@ -145,7 +151,7 @@ func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, e
 	if err != nil {
 		logTSSError(ctx, err, resp, time.Since(startAt), message.Fields{
 			"message":       "error selecting tests",
-			"endpoint":      SelectTestsEndpoint,
+			"endpoint":      endpoint,
 			"project_id":    req.Project,
 			"requester":     req.Requester,
 			"build_variant": req.BuildVariant,

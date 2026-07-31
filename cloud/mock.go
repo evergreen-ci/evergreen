@@ -2,6 +2,7 @@ package cloud
 
 import (
 	"context"
+	"slices"
 	"sync"
 	"time"
 
@@ -456,10 +457,8 @@ func (m *mockManager) GetVolumeAttachment(ctx context.Context, volumeID string) 
 	defer l.Unlock()
 
 	for id, instance := range m.Instances {
-		for _, device := range instance.BlockDevices {
-			if device == volumeID {
-				return &VolumeAttachment{HostID: id, VolumeID: volumeID}, nil
-			}
+		if slices.Contains(instance.BlockDevices, volumeID) {
+			return &VolumeAttachment{HostID: id, VolumeID: volumeID}, nil
 		}
 	}
 	return nil, nil

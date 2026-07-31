@@ -2,11 +2,13 @@ package trigger
 
 import (
 	"context"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
 	"github.com/pkg/errors"
 )
@@ -102,6 +104,7 @@ func getMetadataFromArgs(ctx context.Context, args ProcessorArgs) (model.Version
 		TriggerDefinitionID: args.DefinitionID,
 		Alias:               args.Alias,
 	}
+	var ingestTime time.Time
 	if args.SourceVersion != nil {
 		metadata.Revision = model.Revision{
 			Author:          args.SourceVersion.Author,
@@ -109,6 +112,7 @@ func getMetadataFromArgs(ctx context.Context, args ProcessorArgs) (model.Version
 			CreateTime:      args.SourceVersion.CreateTime,
 			RevisionMessage: args.SourceVersion.Message,
 		}
+		ingestTime = args.SourceVersion.IngestTime
 
 		author, err := user.FindOneById(ctx, args.SourceVersion.AuthorID)
 		if err != nil {
@@ -120,29 +124,39 @@ func getMetadataFromArgs(ctx context.Context, args ProcessorArgs) (model.Version
 	} else {
 		metadata.Revision = args.PushRevision
 		metadata.SourceCommit = args.PushRevision.Revision
+		ingestTime = args.PushIngestTime
 	}
+	metadata.IngestTime = ingestTime
 
-	// Fetch the latest commit from the downstream project's branch
-	// until the commit's creation time. This ensures that the commit
-	// used for the downstream version is the latest commit up to the
-	// event's creation time.
-	opts := &github.CommitsListOptions{
-		SHA:   args.DownstreamProject.Branch,
-		Until: metadata.Revision.CreateTime,
-		ListOptions: github.ListOptions{
-			Page:    0,
-			PerPage: 1,
-		},
+	selectionTime := ingestTime
+	if utility.IsZeroTime(selectionTime) {
+		selectionTime = metadata.Revision.CreateTime
 	}
-
-	branchCommits, _, err := thirdparty.GetGithubCommits(ctx, args.DownstreamProject.Owner, args.DownstreamProject.Repo, opts)
+	repoRevision, err := model.FindLatestRepositoryRevisionByIngestTime(ctx, args.DownstreamProject.Owner, args.DownstreamProject.Repo, args.DownstreamProject.Branch, selectionTime)
 	if err != nil {
-		return metadata, errors.Wrapf(err, "fetching most recent revision for '%s'", args.DownstreamProject.Id)
+		return metadata, errors.Wrapf(err, "finding latest repository revision by ingest time for '%s'", args.DownstreamProject.Id)
 	}
-	if len(branchCommits) == 0 {
-		return metadata, errors.Errorf("no commits found for '%s'", args.DownstreamProject.Id)
+	if repoRevision != nil {
+		metadata.Revision.Revision = repoRevision.Revision
+	} else {
+		opts := &github.CommitsListOptions{
+			SHA:   args.DownstreamProject.Branch,
+			Until: selectionTime,
+			ListOptions: github.ListOptions{
+				Page:    0,
+				PerPage: 1,
+			},
+		}
+
+		branchCommits, _, err := thirdparty.GetGithubCommits(ctx, args.DownstreamProject.Owner, args.DownstreamProject.Repo, opts)
+		if err != nil {
+			return metadata, errors.Wrapf(err, "fetching most recent revision for '%s'", args.DownstreamProject.Id)
+		}
+		if len(branchCommits) == 0 {
+			return metadata, errors.Errorf("no commits found for '%s'", args.DownstreamProject.Id)
+		}
+		metadata.Revision.Revision = branchCommits[0].GetSHA()
 	}
-	metadata.Revision.Revision = branchCommits[0].GetSHA()
 
 	return metadata, nil
 }

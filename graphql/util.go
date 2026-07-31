@@ -42,6 +42,8 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+const defaultTaskQuarantinedTestsSampleLimit = 50
+
 // This file should consist only of private utility functions that are specific to graphql resolver use cases.
 
 const (
@@ -55,12 +57,11 @@ func getGroupedFiles(ctx context.Context, name string, taskID string, execution 
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	hasUser := gimlet.GetUser(ctx) != nil
-	strippedFiles, err := artifact.StripHiddenFiles(ctx, taskFiles, hasUser)
-	if err != nil {
-		return nil, err
-	}
-
 	env := evergreen.GetEnvironment()
+	settings := env.Settings()
+	baseURL := settings.Ui.Url
+	strippedFiles := artifact.StripHiddenFilesLazy(taskFiles, hasUser, baseURL, taskID, execution, []byte(settings.ArtifactSignSecret))
+
 	apiFileList := []*restModel.APIFile{}
 	for _, file := range strippedFiles {
 		apiFile := restModel.APIFile{}
@@ -157,18 +158,21 @@ func getDisplayStatus(ctx context.Context, v *model.Version) (string, error) {
 		return status, nil
 	}
 
-	p, err := patch.FindOneId(ctx, v.Id)
+	p, err := loaders.GetPatch(ctx, v.Id)
 	if err != nil {
-		return "", errors.Wrapf(err, "finding patch '%s': %s", v.Id, err.Error())
+		return "", errors.Wrapf(err, "finding patch '%s'", v.Id)
 	}
 	if p == nil {
 		return "", errors.Errorf("patch '%s' not found", v.Id)
 	}
 	allStatuses := []string{status}
+	if len(p.Triggers.ChildPatches) > 0 {
+		loaders.PreloadVersions(ctx, p.Triggers.ChildPatches)
+	}
 	for _, cp := range p.Triggers.ChildPatches {
-		cpVersion, err := model.VersionFindOneId(ctx, cp)
+		cpVersion, err := loaders.GetVersion(ctx, cp)
 		if err != nil {
-			return "", errors.Wrapf(err, "finding version for child patch '%s': %s", cp, err.Error())
+			return "", errors.Wrapf(err, "finding version for child patch '%s'", cp)
 		}
 		if cpVersion == nil {
 			continue
@@ -1127,6 +1131,31 @@ func userHasVolumePermission(ctx context.Context, u *user.DBUser, volumeId strin
 	return u.Username() == createdBy || u.HasPermission(ctx, opts)
 }
 
+func userHasSuperuserProjectPermission(ctx context.Context, u *user.DBUser) bool {
+	return u.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionProjectCreate,
+		RequiredLevel: evergreen.ProjectCreate.Value,
+	})
+}
+
+// canViewUserSubscriptions returns whether the requesting user is allowed to
+// view the personal subscriptions belonging to ownerUserID. A user may view
+// their own subscriptions, and superusers may view anyone's.
+func canViewUserSubscriptions(ctx context.Context, ownerUserID string) bool {
+	u := mustHaveUser(ctx)
+	if u.Username() == ownerUserID {
+		return true
+	}
+	return u.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionAdminSettings,
+		RequiredLevel: evergreen.AdminSettingsEdit.Value,
+	})
+}
+
 func userHasProjectSettingsPermission(ctx context.Context, u *user.DBUser, projectId string, requiredLevel int) bool {
 	opts := gimlet.PermissionOpts{
 		Resource:      projectId,
@@ -1232,7 +1261,7 @@ func concurrentlyBuildVersionsMatchingTasksMap(ctx context.Context, versions []m
 	// Limit number of parallel requests to the DB.
 	const maxParallel = 20
 	workers := util.Min(maxParallel, len(versions))
-	for i := 0; i < workers; i++ {
+	for range workers {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -1273,6 +1302,39 @@ func collapseCommit(ctx context.Context, mainlineCommits MainlineCommits, mainli
 	} else {
 		mainlineCommitVersion.RolledUpVersions = []*restModel.APIVersion{&apiVersion}
 	}
+}
+
+func checkProjectAccess(ctx context.Context, projectID string, permission ProjectPermission, access AccessLevel) error {
+	requiredPermission, permissionInfo, err := getProjectPermissionLevel(permission, access)
+	if err != nil {
+		return InputValidationError.Send(ctx, fmt.Sprintf("invalid permission and access level configuration: %s", err.Error()))
+	}
+	return checkProjectPermission(ctx, projectID, requiredPermission, permissionInfo)
+}
+
+func checkProjectPermission(ctx context.Context, projectID string, requiredPermission string, permissionInfo evergreen.PermissionLevel) error {
+	usr := mustHaveUser(ctx)
+	if usr.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      projectID,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    requiredPermission,
+		RequiredLevel: permissionInfo.Value,
+	}) {
+		return nil
+	}
+
+	if requiredPermission == evergreen.PermissionProjectSettings && permissionInfo.Value == evergreen.ProjectSettingsView.Value {
+		// If we're trying to view a repo project, check if the user has view permission for any branch project instead.
+		hasPermission, err := model.UserHasRepoViewPermission(ctx, usr, projectID)
+		if err != nil {
+			return InternalServerError.Send(ctx, fmt.Sprintf("problem checking repo view permission: %s", err.Error()))
+		}
+		if hasPermission {
+			return nil
+		}
+	}
+
+	return Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to '%s' for the project '%s'", usr.Username(), strings.ToLower(permissionInfo.Description), projectID))
 }
 
 // getProjectPermissionLevel takes in ProjectPermission and AccessLevel (GraphQL-specific variables) and returns
@@ -1338,9 +1400,9 @@ func isPatchAuthorForTask(ctx context.Context, obj *restModel.APITask) (bool, er
 	authUser := gimlet.GetUser(ctx)
 	patchID := utility.FromStringPtr(obj.Version)
 	if utility.StringSliceContains(evergreen.PatchRequesters, utility.FromStringPtr(obj.Requester)) {
-		p, err := patch.FindOneId(ctx, patchID)
+		p, err := loaders.GetPatch(ctx, patchID)
 		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", patchID, err.Error()))
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", patchID, err.Error()), err)
 		}
 		if p == nil {
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", patchID))
@@ -1466,13 +1528,11 @@ func buildOptionsFromParentArgs(ctx context.Context, fc *graphql.FieldContext) (
 	}
 
 	// Get the parent object to determine if this is a project or user query.
-	// The parent.Parent should be a Project, User, or UserLite resolver.
+	// The parent.Parent should be a Project or User resolver.
 	if fc.Parent.Parent != nil {
 		switch grandparent := fc.Parent.Parent.Result.(type) {
 		case *restModel.APIProjectRef:
 			opts.Project = grandparent.Id
-		case *restModel.APIDBUser:
-			opts.Author = grandparent.UserID
 		case *user.DBUser:
 			opts.Author = utility.ToStringPtr(grandparent.Id)
 		}

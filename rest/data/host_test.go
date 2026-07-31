@@ -85,8 +85,7 @@ func (*HostConnectorSuite) hosts() []host.Host {
 }
 
 func TestHostConnectorSuite(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	s := new(HostConnectorSuite)
 	s.env = testutil.NewEnvironment(ctx, t)
 

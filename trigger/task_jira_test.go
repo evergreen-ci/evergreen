@@ -1,7 +1,6 @@
 package trigger
 
 import (
-	"context"
 	"regexp"
 	"strings"
 	"testing"
@@ -163,7 +162,7 @@ func TestJiraSummary(t *testing.T) {
 		})
 		Convey("a task with five failed tests should return a subject", func() {
 			reallyLongTestName := ""
-			for i := 0; i < 300; i++ {
+			for range 300 {
 				reallyLongTestName = reallyLongTestName + "a"
 			}
 			j.data.Task.LocalTestResults = []testresult.TestResult{
@@ -546,8 +545,7 @@ func TestCustomFields(t *testing.T) {
 			TaskDisplayName: taskName,
 		},
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	issue, err := j.build(ctx)
 	assert.NoError(err)
 	assert.NotNil(issue)
@@ -641,6 +639,20 @@ func TestMakeSummaryPrefix(t *testing.T) {
 	assert.Equal("Setup Failure: ", makeSummaryPrefix(doc, 0))
 }
 
+func TestCleanTestName(t *testing.T) {
+	assert.Equal(t, "", cleanTestName(""))
+	assert.Equal(t, "TestFoo", cleanTestName("TestFoo"))
+	assert.Equal(t, "c", cleanTestName("a/b/c"))
+	assert.Equal(t, "c", cleanTestName("a/b/c/"))
+	assert.Equal(t, "c", cleanTestName("a/b/c//"))
+	assert.Equal(t, "c", cleanTestName(`a\b\c`))
+	assert.Equal(t, "b", cleanTestName(`a\b\`))
+	assert.Equal(t, "b", cleanTestName(`a\b/`))
+	assert.Equal(t, `b\`, cleanTestName(`a/b\`))
+	assert.Equal(t, "", cleanTestName(strings.Repeat("/", 1000000)))
+	assert.Equal(t, "", cleanTestName(strings.Repeat(`\`, 1000000)))
+}
+
 func TestJiraBuilderBuild(t *testing.T) {
 	builder := jiraBuilder{
 		project: "EVG",
@@ -674,8 +686,7 @@ func TestJiraBuilderBuild(t *testing.T) {
 	var err error
 	assert.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	message, err := builder.build(ctx)
 	assert.NoError(t, err)

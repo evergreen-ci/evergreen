@@ -428,8 +428,6 @@ type Dependency struct {
 	TaskId       string `bson:"_id" json:"id"`
 	Status       string `bson:"status" json:"status"`
 	Unattainable bool   `bson:"unattainable" json:"unattainable"`
-	// Finished indicates if the task's dependency has finished running or not.
-	Finished bool `bson:"finished" json:"finished"`
 	// FinishedAt indicates the time the task's dependency was finished at.
 	FinishedAt time.Time `bson:"finished_at,omitempty" json:"finished_at,omitempty"`
 	// OmitGeneratedTasks causes tasks that depend on a generator task to not depend on
@@ -846,11 +844,10 @@ func (t *Task) MarkDependenciesFinished(ctx context.Context, finished bool) erro
 		},
 		bson.M{
 			"$set": bson.M{
-				bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyFinishedKey):   finished,
 				bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyFinishedAtKey): finishedAt,
 			},
 		},
-		options.Update().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{
+		options.Update().SetArrayFilters(options.ArrayFilters{Filters: []any{
 			bson.M{bsonutil.GetDottedKeyName("elem", DependencyTaskIdKey): t.Id},
 		}}),
 	)
@@ -1522,7 +1519,7 @@ func SetGeneratedStepbackInfoForGenerator(ctx context.Context, taskId string, s 
 				bsonutil.GetDottedKeyName(StepbackInfoKey, GeneratedStepbackInfoKey, "$[elem]", PreviousStepbackTaskIdKey):    s.PreviousStepbackTaskId,
 			},
 		},
-		options.Update().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{
+		options.Update().SetArrayFilters(options.ArrayFilters{Filters: []any{
 			bson.M{
 				bsonutil.GetDottedKeyName("elem", DisplayNameKey):  s.DisplayName,
 				bsonutil.GetDottedKeyName("elem", BuildVariantKey): s.BuildVariant,
@@ -1735,28 +1732,6 @@ func UpdateSchedulingLimit(ctx context.Context, username, requester string, numT
 	}
 	if u != nil && !u.OnlyAPI {
 		return errors.Wrapf(u.CheckAndUpdateSchedulingLimit(ctx, maxScheduledTasks, numTasksModified, activated), "checking task scheduling limit for user '%s'", u.Id)
-	}
-	return nil
-}
-
-// ActivateTasksByIdsWithDependencies activates the given tasks and their dependencies.
-func ActivateTasksByIdsWithDependencies(ctx context.Context, ids []string, caller string) error {
-	q := db.Query(bson.M{
-		IdKey:     bson.M{"$in": ids},
-		StatusKey: evergreen.TaskUndispatched,
-	})
-
-	tasks, err := FindAll(ctx, q.WithFields(IdKey, DependsOnKey, ExecutionKey, ActivatedKey))
-	if err != nil {
-		return errors.Wrap(err, "getting tasks for activation")
-	}
-	dependOn, err := GetRecursiveDependenciesUp(ctx, tasks, nil)
-	if err != nil {
-		return errors.Wrap(err, "getting recursive dependencies")
-	}
-
-	if _, err = ActivateTasks(ctx, append(tasks, dependOn...), time.Now(), true, caller); err != nil {
-		return errors.Wrap(err, "updating tasks for activation")
 	}
 	return nil
 }

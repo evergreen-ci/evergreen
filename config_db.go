@@ -51,6 +51,7 @@ var (
 	githubPRCreatorOrgKey      = bsonutil.MustHaveTag(Settings{}, "GithubPRCreatorOrg")
 	githubOrgsKey              = bsonutil.MustHaveTag(Settings{}, "GithubOrgs")
 	githubWebhookSecretKey     = bsonutil.MustHaveTag(Settings{}, "GithubWebhookSecret")
+	artifactSignSecretKey      = bsonutil.MustHaveTag(Settings{}, "ArtifactSignSecret")
 	disabledGQLQueriesKey      = bsonutil.MustHaveTag(Settings{}, "DisabledGQLQueries")
 	spawnhostKey               = bsonutil.MustHaveTag(Settings{}, "Spawnhost")
 	shutdownWaitKey            = bsonutil.MustHaveTag(Settings{}, "ShutdownWaitSeconds")
@@ -95,14 +96,13 @@ var (
 	useMergeQueuePathFilteringDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "UseMergeQueuePathFilteringDisabled")
 	psLoggingDisabledKey                  = bsonutil.MustHaveTag(ServiceFlags{}, "PSLoggingDisabled")
 	podDiagnosticsDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "PodDiagnosticsDisabled")
-	webhookSecretMigrationEnabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "WebhookSecretMigrationEnabled")
-	webhookSecretCleanupEnabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "WebhookSecretCleanupEnabled")
 	retryFailedLogMoveEnabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "RetryFailedLogMoveEnabled")
 	projectTranslationCacheEnabledKey     = bsonutil.MustHaveTag(ServiceFlags{}, "ProjectTranslationCacheEnabled")
 	secondaryReadsDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "SecondaryReadsDisabled")
 	backgroundCommandFailureEnabledKey    = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundCommandFailureEnabled")
 	apiRateLimiterDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "APIRateLimiterDisabled")
 	graphqlComplexityLimiterDisabledKey   = bsonutil.MustHaveTag(ServiceFlags{}, "GraphQLComplexityLimiterDisabled")
+	containerIsolationEnabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "ContainerIsolationEnabled")
 
 	// DiagnosticsConfig keys
 	diagnosticsS3BucketNameKey = bsonutil.MustHaveTag(DiagnosticsConfig{}, "S3BucketName")

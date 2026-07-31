@@ -68,6 +68,7 @@ type Patch {
   id: ID!
   activated: Boolean!
   alias: String
+  aliases: [String!]
   author: String!
   authorDisplayName: String!
   builds: [Build!]!
@@ -93,8 +94,7 @@ type Patch {
   tasks: [String!]!
   taskStatuses: [String!]!
   time: PatchTime
-  user: User! @deprecated(reason: "Use userLite instead.")
-  userLite: UserLite!
+  user: User!
   variants: [String!]!
   variantsTasks: [VariantTask!]!
   version: VersionLite
