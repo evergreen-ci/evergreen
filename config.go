@@ -43,9 +43,10 @@ var (
 )
 
 const (
-	mongoTimeout          = 5 * time.Minute
-	mongoConnectTimeout   = 5 * time.Second
-	parameterStoreTimeout = 30 * time.Second
+	mongoTimeout                = 5 * time.Minute
+	mongoConnectTimeout         = 5 * time.Second
+	parameterStoreTimeout       = 30 * time.Second
+	SettingsContextCancelledErr = "context is cancelled, cannot get settings"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -305,7 +306,7 @@ func getSettings(ctx context.Context, includeOverrides, includeParameterStore bo
 		paramCache := map[string]string{}
 		params, err := paramMgr.Get(ctx, collectSecretPaths(settingsValue, settingsType, "")...)
 		if ctx.Err() != nil {
-			return nil, errors.Wrap(ctx.Err(), "context is cancelled, cannot get settings")
+			return nil, errors.Wrap(ctx.Err(), SettingsContextCancelledErr)
 		} else if err != nil {
 			grip.Error(ctx, errors.Wrap(err, "getting all admin secrets from parameter store"))
 		} else {
@@ -324,7 +325,7 @@ func getSettings(ctx context.Context, includeOverrides, includeParameterStore bo
 
 	// The context may be cancelled while getting settings.
 	if ctx.Err() != nil {
-		return nil, errors.Wrap(ctx.Err(), "context is cancelled, cannot get settings")
+		return nil, errors.Wrap(ctx.Err(), SettingsContextCancelledErr)
 	}
 	if catcher.HasErrors() {
 		return nil, errors.WithStack(catcher.Resolve())
