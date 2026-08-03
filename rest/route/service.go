@@ -82,7 +82,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/hosts/{task_id}/list").Version(2).Get().Wrap(requireTask, rateLimit).RouteHandler(makeHostListRouteManager())
 	app.AddRoute("/task/{task_id}/").Version(2).Get().Wrap(requireUserOrTask, rateLimit).RouteHandler(makeFetchTask())
 	app.AddRoute("/task/{task_id}/display_task").Version(2).Get().Wrap(requireTask, rateLimit).RouteHandler(makeGetDisplayTaskHandler())
-	app.AddRoute("/task/{task_id}/distro_view").Version(2).Get().Wrap(requireUserOrTask, rateLimit).RouteHandler(makeGetDistroView())
+	app.AddRoute("/task/{task_id}/distro_view").Version(2).Get().Wrap(requireUserOrTask, rateLimit).RouteHandler(makeGetDistroView(env))
 	app.AddRoute("/task/{task_id}/host_view").Version(2).Get().Wrap(requireTask, requireHost, rateLimit).RouteHandler(makeGetHostView())
 	app.AddRoute("/task/{task_id}/downstreamParams").Version(2).Post().Wrap(requireTask, rateLimit).RouteHandler(makeSetDownstreamParams())
 	app.AddRoute("/task/{task_id}/expansions_and_vars").Version(2).Get().Wrap(requireUserOrTask, rateLimit).RouteHandler(makeGetExpansionsAndVars(settings))
@@ -251,8 +251,11 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/tasks/{task_id}/github_dynamic_access_tokens").Version(2).Delete().Wrap(requireUser, viewTasks, rateLimit).RouteHandler(makeDeleteGitHubDynamicAccessTokens())
 	app.AddRoute("/user/settings").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeFetchUserConfig())
 	app.AddRoute("/user/settings").Version(2).Post().Wrap(requireUser, rateLimit).RouteHandler(makeSetUserConfig())
-	app.AddRoute("/users/{user_id}").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeGetUserHandler())
+	// No rate-limit middleware: called at the beginning of CLI commands to resolve user details.
+	app.AddRoute("/users/{user_id}").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetUserHandler())
 	app.AddRoute("/users/{user_id}/hosts").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeFetchHosts())
+	// No rate-limit middleware: this endpoint reports the caller's rate-limit status and must remain available even once the caller's limit is exhausted.
+	app.AddRoute("/users/{user_id}/rate_limit").Version(2).Get().Wrap(requireUser).RouteHandler(makeUserRateLimitGetHandler(env))
 	app.AddRoute("/users/{user_id}/patches").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeUserPatchHandler())
 	app.AddRoute("/users/offboard_user").Version(2).Post().Wrap(requireUser, editRoles, rateLimit).RouteHandler(makeOffboardUser(env))
 	app.AddRoute("/users/rename_user").Version(2).Post().Wrap(requireUser, editRoles, rateLimit).RouteHandler(makeRenameUser(env))

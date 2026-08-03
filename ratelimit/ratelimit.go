@@ -33,8 +33,8 @@ func (l *Limiter) AllowN(ctx context.Context, userID string, surface evergreen.R
 	if !slices.Contains(evergreen.ValidRateLimitSurfaces, surface) {
 		return nil, errors.Errorf("invalid rate limit surface '%s'", surface)
 	}
-	if n < 1 {
-		return nil, errors.Errorf("cost %d must be at least 1", n)
+	if n < 0 {
+		return nil, errors.Errorf("cost %d must be at least 0", n)
 	}
 	// Skip limiting if limits are not set by returning a nil Result.
 	if reqPerHour == 0 { // Burst is guaranteed to also be 0 by validation in config.
@@ -45,4 +45,9 @@ func (l *Limiter) AllowN(ctx context.Context, userID string, surface evergreen.R
 	limit := redis_rate.PerHour(reqPerHour)
 	limit.Burst = burst // Override default burst, which is equal to hourly limit
 	return l.limiter.AllowN(ctx, key, limit, n)
+}
+
+// Peek reports the current rate limit status for a give userId, surface, and set of limits without consuming any tokens.
+func (l *Limiter) Peek(ctx context.Context, userID string, surface evergreen.RateLimitSurface, reqPerHour int, burst int) (*redis_rate.Result, error) {
+	return l.AllowN(ctx, userID, surface, reqPerHour, burst, 0)
 }

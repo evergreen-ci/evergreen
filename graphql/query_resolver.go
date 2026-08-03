@@ -752,22 +752,6 @@ func (r *queryResolver) User(ctx context.Context, userID *string) (*user.DBUser,
 	return usr, nil
 }
 
-// UserLite is the resolver for the userLite field.
-func (r *queryResolver) UserLite(ctx context.Context, userID *string) (*user.DBUser, error) {
-	usr := mustHaveUser(ctx)
-	if userID != nil {
-		dbUser, err := user.FindOneById(ctx, utility.FromStringPtr(userID))
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching user '%s': %s", utility.FromStringPtr(userID), err.Error()))
-		}
-		if dbUser == nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("user '%s' not found", utility.FromStringPtr(userID)))
-		}
-		return dbUser, nil
-	}
-	return usr, nil
-}
-
 // UserConfig is the resolver for the userConfig field.
 func (r *queryResolver) UserConfig(ctx context.Context) (*UserConfig, error) {
 	usr := mustHaveUser(ctx)
@@ -1266,9 +1250,9 @@ func (r *queryResolver) HasVersion(ctx context.Context, patchID string) (bool, e
 	}
 
 	if patch.IsValidId(patchID) {
-		p, err := patch.FindOneId(ctx, patchID)
+		p, err := loaders.GetPatch(ctx, patchID)
 		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()))
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()), err)
 		}
 		if p != nil {
 			return false, nil
