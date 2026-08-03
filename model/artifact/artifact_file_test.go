@@ -1,11 +1,14 @@
 package artifact
 
 import (
+	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
 	_ "github.com/evergreen-ci/evergreen/testutil"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -317,4 +320,89 @@ func TestStripHiddenFilesLazy(t *testing.T) {
 		assert.Len(t, result, 1)
 		assert.Equal(t, "https://example.com/private", result[0].Link)
 	})
+}
+
+func TestCredentialsForPresign(t *testing.T) {
+	storedFile := File{
+		Name:       "Binaries",
+		Bucket:     "bucket",
+		FileKey:    "key",
+		Visibility: Signed,
+		AWSKey:     "AKIAFAKESTOREDKEY",
+		AWSSecret:  "fake-stored-secret",
+	}
+
+	for name, testCase := range map[string]struct {
+		file     File
+		resolver CredentialResolver
+		expected Credentials
+	}{
+		"ResolvedKeyAndSecretWinOverStored": {
+			file: storedFile,
+			resolver: func(context.Context, File) (*Credentials, error) {
+				return &Credentials{AWSKey: "AKIAFAKELIVEKEY", AWSSecret: "fake-live-secret"}, nil
+			},
+			expected: Credentials{AWSKey: "AKIAFAKELIVEKEY", AWSSecret: "fake-live-secret"},
+		},
+		"NoResolutionFallsBackToStored": {
+			file: storedFile,
+			resolver: func(context.Context, File) (*Credentials, error) {
+				return nil, nil
+			},
+			expected: Credentials{AWSKey: "AKIAFAKESTOREDKEY", AWSSecret: "fake-stored-secret"},
+		},
+		"ResolutionErrorFallsBackToStoredInsteadOfFailing": {
+			file: storedFile,
+			resolver: func(context.Context, File) (*Credentials, error) {
+				return nil, errors.New("parameter store is down")
+			},
+			expected: Credentials{AWSKey: "AKIAFAKESTOREDKEY", AWSSecret: "fake-stored-secret"},
+		},
+		// A role ARN on the artifact must suppress the key pair, including a
+		// resolved one, so that presigning goes through STS.
+		"StoredRoleARNSuppressesEveryKeyPair": {
+			file: File{
+				Bucket:     "bucket",
+				FileKey:    "key",
+				AWSKey:     "AKIAFAKESTOREDKEY",
+				AWSSecret:  "fake-stored-secret",
+				AWSRoleARN: "arn:aws:iam::000000000000:role/fake-stored-role",
+			},
+			resolver: func(context.Context, File) (*Credentials, error) {
+				return &Credentials{AWSKey: "AKIAFAKELIVEKEY", AWSSecret: "fake-live-secret"}, nil
+			},
+			expected: Credentials{},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, testCase.expected, credentialsForPresign(t.Context(), testCase.file, testCase.resolver))
+		})
+	}
+}
+
+func TestPresignFileDoesNotWriteToDB(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+
+	entry := Entry{
+		TaskId: "task", BuildId: "build",
+		Files: []File{{
+			Name: "Binaries", Bucket: "bucket", FileKey: "key", Visibility: Signed,
+			AWSKey: "AKIAFAKESTOREDKEY", AWSSecret: "fake-stored-secret",
+		}},
+	}
+	require.NoError(t, entry.Upsert(t.Context()))
+
+	resolver := func(context.Context, File) (*Credentials, error) {
+		return &Credentials{AWSKey: "AKIAFAKELIVEKEY", AWSSecret: "fake-live-secret"}, nil
+	}
+	url, err := PresignFile(t.Context(), entry.Files[0], resolver)
+	require.NoError(t, err)
+	// Presigning must not persist the resolved credential.
+	assert.Contains(t, url, "AKIAFAKELIVEKEY")
+	assert.NotContains(t, url, "AKIAFAKESTOREDKEY")
+
+	after, err := FindAll(t.Context(), ByTaskIdAndExecution("task", 0))
+	require.NoError(t, err)
+	require.Len(t, after, 1)
+	assert.Equal(t, "AKIAFAKESTOREDKEY", after[0].Files[0].AWSKey)
 }

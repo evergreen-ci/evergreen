@@ -2130,6 +2130,7 @@ type APIServiceFlags struct {
 	RetryFailedLogMoveEnabled          bool `json:"retry_failed_log_move_enabled"`
 	ProjectTranslationCacheEnabled     bool `json:"project_translation_cache_enabled"`
 	ContainerIsolationEnabled          bool `json:"container_isolation_enabled"`
+	LiveArtifactCredentialsDisabled    bool `json:"live_artifact_credentials_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2593,6 +2594,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.RetryFailedLogMoveEnabled = v.RetryFailedLogMoveEnabled
 		as.ProjectTranslationCacheEnabled = v.ProjectTranslationCacheEnabled
 		as.ContainerIsolationEnabled = v.ContainerIsolationEnabled
+		as.LiveArtifactCredentialsDisabled = v.LiveArtifactCredentialsDisabled
 		as.BackgroundCommandFailureEnabled = v.BackgroundCommandFailureEnabled
 		as.APIRateLimiterDisabled = v.APIRateLimiterDisabled
 		as.GraphQLComplexityLimiterDisabled = v.GraphQLComplexityLimiterDisabled
@@ -2647,6 +2649,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		ProjectTranslationCacheEnabled:     as.ProjectTranslationCacheEnabled,
 		BackgroundCommandFailureEnabled:    as.BackgroundCommandFailureEnabled,
 		ContainerIsolationEnabled:          as.ContainerIsolationEnabled,
+		LiveArtifactCredentialsDisabled:    as.LiveArtifactCredentialsDisabled,
 		APIRateLimiterDisabled:             as.APIRateLimiterDisabled,
 		GraphQLComplexityLimiterDisabled:   as.GraphQLComplexityLimiterDisabled,
 	}, nil

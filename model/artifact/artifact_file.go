@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -68,6 +69,10 @@ type File struct {
 	AWSSecret string `json:"aws_secret,omitempty" bson:"aws_secret,omitempty"`
 	// AWSRoleARN is the role ARN with which the file was uploaded to S3.
 	AWSRoleARN string `json:"aws_role_arn,omitempty" bson:"aws_role_arn,omitempty"`
+	// AWSKeyVarName is the name of the project variable that supplied AWSKey.
+	AWSKeyVarName string `json:"aws_key_var_name,omitempty" bson:"aws_key_var_name,omitempty"`
+	// AWSSecretVarName is the name of the project variable that supplied AWSSecret.
+	AWSSecretVarName string `json:"aws_secret_var_name,omitempty" bson:"aws_secret_var_name,omitempty"`
 	// AWSAccountID is the resolved account ID for key+secret uploads (empty when AWSRoleARN is set).
 	AWSAccountID string `json:"aws_account_id,omitempty" bson:"aws_account_id,omitempty"`
 	// ExternalID is the external ID with which the file was uploaded to S3.
@@ -100,8 +105,8 @@ func (f *File) validate() error {
 }
 
 // StripHiddenFiles is a helper for only showing users the files they are
-// allowed to see. It also pre-signs file URLs.
-func StripHiddenFiles(ctx context.Context, files []File, hasUser bool) ([]File, error) {
+// allowed to see. It also pre-signs file URLs. The resolver may be nil.
+func StripHiddenFiles(ctx context.Context, files []File, hasUser bool, resolver CredentialResolver) ([]File, error) {
 	publicFiles := []File{}
 	for _, file := range files {
 		switch {
@@ -110,7 +115,7 @@ func StripHiddenFiles(ctx context.Context, files []File, hasUser bool) ([]File, 
 		case (file.Visibility == Private || file.Visibility == Signed) && !hasUser:
 			continue
 		case file.Visibility == Signed && hasUser:
-			link, err := PresignFile(ctx, file)
+			link, err := PresignFile(ctx, file, resolver)
 			if err != nil {
 				return nil, errors.Wrapf(err, "presigning url for file '%s'", file.Name)
 			}
@@ -150,16 +155,55 @@ func StripHiddenFilesLazy(files []File, hasUser bool, baseURL string, taskID str
 	return publicFiles
 }
 
-// PresignFile generates a presigned S3 URL for the given artifact file.
-func PresignFile(ctx context.Context, file File) (string, error) {
+// Credentials are the static AWS credentials used to presign an artifact URL. A
+// file uploaded with a role ARN needs none, since STS mints credentials per
+// presign.
+type Credentials struct {
+	AWSKey    string
+	AWSSecret string
+}
+
+// CredentialResolver resolves the static credentials to presign a file with from
+// the owning project's current configuration. A nil result or an error means the
+// credentials stored on the artifact should be used. Resolvers cache per task, so
+// they must not be shared across requests.
+type CredentialResolver func(ctx context.Context, file File) (*Credentials, error)
+
+// credentialsForPresign prefers resolved credentials over the ones stored on the
+// artifact, and returns none at all for a file uploaded with a role ARN.
+func credentialsForPresign(ctx context.Context, file File, resolver CredentialResolver) Credentials {
+	if file.AWSRoleARN != "" {
+		return Credentials{}
+	}
+
+	creds := Credentials{
+		AWSKey:    file.AWSKey,
+		AWSSecret: file.AWSSecret,
+	}
+
+	if resolver != nil {
+		resolved, err := resolver(ctx, file)
+		grip.InfoWhen(ctx, err != nil, message.WrapError(err, message.Fields{
+			"message": "resolving current artifact credentials, falling back to the credentials stored on the artifact",
+			"bucket":  file.Bucket,
+			"file":    file.Name,
+		}))
+		if err == nil && resolved != nil {
+			creds = *resolved
+		}
+	}
+
+	return creds
+}
+
+// PresignFile generates a presigned S3 URL for the given artifact file. The
+// resolver may be nil, in which case the stored credentials are used.
+func PresignFile(ctx context.Context, file File, resolver CredentialResolver) (string, error) {
 	if err := file.validate(); err != nil {
 		return "", errors.Wrap(err, "file validation failed")
 	}
 
-	if file.AWSRoleARN != "" {
-		file.AWSKey = ""
-		file.AWSSecret = ""
-	}
+	creds := credentialsForPresign(ctx, file, resolver)
 
 	var externalID *string
 	if file.ExternalID != "" {
@@ -170,8 +214,8 @@ func PresignFile(ctx context.Context, file File) (string, error) {
 		Bucket:                file.Bucket,
 		FileKey:               file.FileKey,
 		SignatureExpiryWindow: evergreen.PresignMinimumValidTime,
-		AWSKey:                file.AWSKey,
-		AWSSecret:             file.AWSSecret,
+		AWSKey:                creds.AWSKey,
+		AWSSecret:             creds.AWSSecret,
 		AWSRoleARN:            file.AWSRoleARN,
 		ExternalID:            externalID,
 	}

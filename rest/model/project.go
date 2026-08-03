@@ -528,6 +528,9 @@ type APIProjectRef struct {
 	BuildBaronSettings APIBuildBaronSettings `json:"build_baron_settings"`
 	// Enable the performance plugin.
 	PerfEnabled *bool `json:"perf_enabled"`
+	// Source of the AWS credentials used to presign signed artifacts. Not editable
+	// from the project settings UI.
+	ArtifactCredentials APIArtifactCredentialSettings `json:"artifact_credentials"`
 	// Whether or not the project can be seen in the UI. Cannot be modified by
 	// users.
 	Hidden *bool `json:"hidden"`
@@ -632,6 +635,7 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		BuildBaronSettings:               p.BuildBaronSettings.ToService(),
 		TaskAnnotationSettings:           p.TaskAnnotationSettings.ToService(),
 		PerfEnabled:                      utility.BoolPtrCopy(p.PerfEnabled),
+		ArtifactCredentials:              p.ArtifactCredentials.ToService(),
 		Hidden:                           utility.BoolPtrCopy(p.Hidden),
 		PatchingDisabled:                 utility.BoolPtrCopy(p.PatchingDisabled),
 		RepotrackerDisabled:              utility.BoolPtrCopy(p.RepotrackerDisabled),
@@ -741,6 +745,7 @@ func (p *APIProjectRef) BuildPublicFields(ctx context.Context, projectRef model.
 	p.UseRepoSettings = utility.ToBoolPtr(projectRef.UseRepoSettings())
 	p.RepoRefId = utility.ToStringPtr(projectRef.RepoRefId)
 	p.PerfEnabled = utility.BoolPtrCopy(projectRef.PerfEnabled)
+	p.ArtifactCredentials.BuildFromService(projectRef.ArtifactCredentials)
 	p.Hidden = utility.BoolPtrCopy(projectRef.Hidden)
 	p.PatchingDisabled = utility.BoolPtrCopy(projectRef.PatchingDisabled)
 	p.RepotrackerDisabled = utility.BoolPtrCopy(projectRef.RepotrackerDisabled)
@@ -922,4 +927,25 @@ type GetProjectTasksOpts struct {
 	BuildVariant string   `json:"build_variant"`
 	StartAt      int      `json:"start_at"`
 	Requesters   []string `json:"requesters"`
+}
+
+// APIArtifactCredentialSettings names the source of a project's artifact AWS
+// credentials. Credentials are variable names, never values.
+type APIArtifactCredentialSettings struct {
+	// Name of the project variable holding the AWS access key ID.
+	AWSKeyVarName *string `json:"aws_key_var_name"`
+	// Name of the project variable holding the AWS secret access key.
+	AWSSecretVarName *string `json:"aws_secret_var_name"`
+}
+
+func (s *APIArtifactCredentialSettings) BuildFromService(settings model.ArtifactCredentialSettings) {
+	s.AWSKeyVarName = utility.ToStringPtr(settings.AWSKeyVarName)
+	s.AWSSecretVarName = utility.ToStringPtr(settings.AWSSecretVarName)
+}
+
+func (s *APIArtifactCredentialSettings) ToService() model.ArtifactCredentialSettings {
+	return model.ArtifactCredentialSettings{
+		AWSKeyVarName:    utility.FromStringPtr(s.AWSKeyVarName),
+		AWSSecretVarName: utility.FromStringPtr(s.AWSSecretVarName),
+	}
 }

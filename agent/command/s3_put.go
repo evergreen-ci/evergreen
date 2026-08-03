@@ -169,6 +169,11 @@ type s3put struct {
 	// the "assumedRoleARN".
 	externalID string
 
+	// awsKeyVarName and awsSecretVarName are the expansion names behind AwsKey and
+	// AwsSecret, captured before expansion overwrites them.
+	awsKeyVarName    string
+	awsSecretVarName string
+
 	bucket pail.Bucket
 
 	taskData client.TaskData
@@ -247,10 +252,31 @@ func (s3pc *s3put) validate() error {
 	return catcher.Resolve()
 }
 
+// expansionVarName returns the expansion name if value is exactly one expansion
+// reference.
+func expansionVarName(value string) string {
+	if !strings.HasPrefix(value, "${") || !strings.HasSuffix(value, "}") {
+		return ""
+	}
+
+	name := value[2 : len(value)-1]
+	// An expansion may supply a fallback as ${var|default}.
+	if idx := strings.Index(name, "|"); idx >= 0 {
+		name = name[:idx]
+	}
+	if name == "" || strings.ContainsAny(name, "${}") {
+		return ""
+	}
+
+	return name
+}
+
 // Apply the expansions from the relevant task config
 // to all appropriate fields of the s3put.
 func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 	s3pc.remoteFile = s3pc.RemoteFile
+	s3pc.awsKeyVarName = expansionVarName(s3pc.AwsKey)
+	s3pc.awsSecretVarName = expansionVarName(s3pc.AwsSecret)
 
 	var err error
 	if err = util.ExpandValues(s3pc, &conf.Expansions); err != nil {
@@ -639,27 +665,31 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, up
 		bucket := s3pc.Bucket
 		fileKey := remoteFileName
 
-		var key, secret string
+		var key, secret, keyVarName, secretVarName string
 		if s3pc.Visibility == artifact.Signed {
 			key = s3pc.AwsKey
 			secret = s3pc.AwsSecret
+			keyVarName = s3pc.awsKeyVarName
+			secretVarName = s3pc.awsSecretVarName
 		}
 
 		files = append(files, &artifact.File{
-			Name:            displayName,
-			Link:            fileLink,
-			Visibility:      s3pc.Visibility,
-			AWSKey:          key,
-			AWSSecret:       secret,
-			AWSRoleARN:      s3pc.getRoleARN(),
-			AWSAccountID:    s3pc.resolvedAWSAccountID,
-			ExternalID:      s3pc.externalID,
-			Bucket:          bucket,
-			FileKey:         fileKey,
-			ContentType:     s3pc.ContentType,
-			FileSize:        uploadInfo.FileSizeBytes,
-			PutRequests:     uploadInfo.PutRequests,
-			AssociatedLinks: s3pc.associatedLinks,
+			Name:             displayName,
+			Link:             fileLink,
+			Visibility:       s3pc.Visibility,
+			AWSKey:           key,
+			AWSSecret:        secret,
+			AWSKeyVarName:    keyVarName,
+			AWSSecretVarName: secretVarName,
+			AWSRoleARN:       s3pc.getRoleARN(),
+			AWSAccountID:     s3pc.resolvedAWSAccountID,
+			ExternalID:       s3pc.externalID,
+			Bucket:           bucket,
+			FileKey:          fileKey,
+			ContentType:      s3pc.ContentType,
+			FileSize:         uploadInfo.FileSizeBytes,
+			PutRequests:      uploadInfo.PutRequests,
+			AssociatedLinks:  s3pc.associatedLinks,
 		})
 	}
 

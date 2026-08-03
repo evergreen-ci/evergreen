@@ -121,6 +121,41 @@ func (s *ProjectPatchByIDSuite) TestParse() {
 	s.NotNil(s.rm.(*projectIDPatchHandler).user)
 }
 
+// Artifact credentials are settable here but not in the project settings UI, and
+// this route replaces the whole document, so a later patch must not drop them.
+func (s *ProjectPatchByIDSuite) TestRunSetsAndPreservesArtifactCredentials() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
+
+	patch := func(body string) gimlet.Responder {
+		req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBufferString(body))
+		req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+		s.Require().NoError(s.rm.Parse(ctx, req))
+		return s.rm.Run(ctx)
+	}
+	credentials := serviceModel.ArtifactCredentialSettings{AWSKeyVarName: "aws_key", AWSSecretVarName: "aws_secret"}
+
+	resp := patch(`{"artifact_credentials": {"aws_key_var_name": "aws_key", "aws_secret_var_name": "aws_secret"}}`)
+	s.Equal(http.StatusOK, resp.Status())
+	pRef, err := serviceModel.FindBranchProjectRef(ctx, "dimoxinil")
+	s.NoError(err)
+	s.Require().NotNil(pRef)
+	s.Equal(credentials, pRef.ArtifactCredentials)
+
+	resp = patch(`{"batch_time": 55}`)
+	s.Equal(http.StatusOK, resp.Status())
+	pRef, err = serviceModel.FindBranchProjectRef(ctx, "dimoxinil")
+	s.NoError(err)
+	s.Require().NotNil(pRef)
+	s.Equal(credentials, pRef.ArtifactCredentials)
+	s.Equal(55, pRef.BatchTime)
+
+	// Half a pair resolves to nothing, leaving artifacts on stale stored credentials.
+	resp = patch(`{"artifact_credentials": {"aws_key_var_name": "only_key", "aws_secret_var_name": ""}}`)
+	s.Equal(http.StatusBadRequest, resp.Status())
+}
+
 func (s *ProjectPatchByIDSuite) TestRunInvalidIdentifierChange() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
