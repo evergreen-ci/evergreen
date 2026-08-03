@@ -2131,8 +2131,17 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 		}
 	}
 
-	// Calculate EC2 runtime costs now that we have the actual runtime.
-	t.UpdateTaskCost(ctx)
+	if t.HostId == "" {
+		t.TaskCost.OnDemandEC2Cost = 0
+		t.TaskCost.AdjustedEC2Cost = 0
+		t.TaskCost.OnDemandEBSThroughputCost = 0
+		t.TaskCost.AdjustedEBSThroughputCost = 0
+		t.TaskCost.OnDemandEBSStorageCost = 0
+		t.TaskCost.AdjustedEBSStorageCost = 0
+	} else {
+		// Calculate EC2 runtime costs now that we have the actual runtime.
+		t.UpdateTaskCost(ctx)
+	}
 
 	// record that the task has finished, in memory and in the db
 	t.Status = detail.Status
@@ -2347,6 +2356,8 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 		t.CanReset = false
 		t.IsAutomaticRestart = false
 		t.HasAnnotations = false
+		t.TaskCost = cost.Cost{}
+		t.S3Usage = s3usage.S3Usage{}
 		if prediction != nil {
 			t.SetPredictedCost(prediction.PredictedCost)
 		}
@@ -2391,6 +2402,8 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 				OverrideDependenciesKey,
 				CanResetKey,
 				HasAnnotationsKey,
+				TaskCostKey,
+				S3UsageKey,
 			},
 		},
 		addDisplayStatusCache,

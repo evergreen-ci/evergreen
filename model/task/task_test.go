@@ -1098,6 +1098,72 @@ func TestEndingTask(t *testing.T) {
 	})
 }
 
+func TestMarkEnd(t *testing.T) {
+	ctx := t.Context()
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(Collection, distro.Collection, evergreen.ConfigCollection))
+	})
+
+	require.NoError(t, (&evergreen.CostConfig{
+		FinanceFormula:      0.6,
+		SavingsPlanDiscount: 0.5,
+		OnDemandDiscount:    0.04,
+	}).Set(ctx))
+	require.NoError(t, (&distro.Distro{
+		Id: "test_distro",
+		CostData: distro.CostData{
+			OnDemandRate:    0.20,
+			SavingsPlanRate: 0.10,
+		},
+	}).Insert(ctx))
+
+	t.Run("HostTaskHasRuntimeCost", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+		now := time.Now()
+		tsk := Task{
+			Id:        "host_task",
+			HostId:    "host",
+			DistroId:  "test_distro",
+			StartTime: now.Add(-time.Hour),
+		}
+		require.NoError(t, tsk.Insert(ctx))
+
+		require.NoError(t, tsk.MarkEnd(ctx, now, &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}))
+
+		dbTask, err := FindOneId(ctx, tsk.Id)
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		assert.Positive(t, dbTask.TaskCost.OnDemandEC2Cost)
+		assert.Positive(t, dbTask.TaskCost.AdjustedEC2Cost)
+	})
+
+	t.Run("TaskWithoutHostHasNoRuntimeCost", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+		now := time.Now()
+		tsk := Task{
+			Id:        "task_without_host",
+			DistroId:  "test_distro",
+			StartTime: now.Add(-time.Hour),
+			TaskCost: cost.Cost{
+				OnDemandEC2Cost:           1,
+				AdjustedEC2Cost:           1,
+				OnDemandEBSThroughputCost: 1,
+				AdjustedEBSThroughputCost: 1,
+				OnDemandEBSStorageCost:    1,
+				AdjustedEBSStorageCost:    1,
+			},
+		}
+		require.NoError(t, tsk.Insert(ctx))
+
+		require.NoError(t, tsk.MarkEnd(ctx, now, &apimodels.TaskEndDetail{Status: evergreen.TaskFailed}))
+
+		dbTask, err := FindOneId(ctx, tsk.Id)
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		assert.True(t, dbTask.TaskCost.IsZero())
+	})
+}
+
 func TestTaskResultOutcome(t *testing.T) {
 	assert := assert.New(t)
 
@@ -4643,6 +4709,8 @@ func TestReset(t *testing.T) {
 			HostCreateDetails:          []HostCreateDetail{{HostId: "h"}},
 			NumNextTaskDispatches:      3,
 			NumQuarantinedTestsSkipped: 2,
+			TaskCost:                   cost.Cost{OnDemandEC2Cost: 1, AdjustedS3ArtifactPutCost: 1},
+			S3Usage:                    s3usage.S3Usage{Artifacts: s3usage.ArtifactMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 1}}},
 		}
 		assert.NoError(t, t0.Insert(t.Context()))
 
@@ -4664,6 +4732,10 @@ func TestReset(t *testing.T) {
 		assert.Empty(t, dbTask.Details)
 		assert.Zero(t, dbTask.NumNextTaskDispatches)
 		assert.Zero(t, dbTask.NumQuarantinedTestsSkipped)
+		assert.True(t, dbTask.TaskCost.IsZero())
+		assert.True(t, dbTask.S3Usage.IsZero())
+		assert.True(t, t0.TaskCost.IsZero())
+		assert.True(t, t0.S3Usage.IsZero())
 
 	})
 
@@ -4732,6 +4804,26 @@ func TestResetTasks(t *testing.T) {
 		dbTask, err := FindOneId(ctx, t0.Id)
 		assert.NoError(t, err)
 		assert.False(t, dbTask.UnattainableDependency)
+	})
+
+	t.Run("ClearsExecutionCostAndUsage", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+
+		t0 := Task{
+			Id:       "t0",
+			Status:   evergreen.TaskSucceeded,
+			CanReset: true,
+			TaskCost: cost.Cost{OnDemandEC2Cost: 1, AdjustedS3ArtifactPutCost: 1},
+			S3Usage:  s3usage.S3Usage{Logs: s3usage.LogMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 1}}},
+		}
+		require.NoError(t, t0.Insert(t.Context()))
+
+		require.NoError(t, ResetTasks(ctx, []Task{t0}, "user"))
+		dbTask, err := FindOneId(ctx, t0.Id)
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		assert.True(t, dbTask.TaskCost.IsZero())
+		assert.True(t, dbTask.S3Usage.IsZero())
 	})
 }
 
