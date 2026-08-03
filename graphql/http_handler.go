@@ -60,12 +60,13 @@ func Handler(apiURL string, allowMutations bool, env evergreen.Environment) func
 		),
 	))
 
-	cfg := env.Settings()
-	complexityLimit := cfg.RateLimit.GraphQLComplexityLimit
-	limitDisabled := cfg.ServiceFlags.GraphQLComplexityLimiterDisabled
+	ctx, cancel := env.Context()
+	defer cancel()
+	flags, _ := evergreen.GetServiceFlags(ctx)
+	complexityLimit := env.Settings().RateLimit.GraphQLComplexityLimit
 
 	// Reject queries that exceed the enabled complexity limit
-	if !limitDisabled && complexityLimit > 0 {
+	if !flags.GraphQLComplexityLimiterDisabled && complexityLimit > 0 {
 		srv.Use(extension.FixedComplexityLimit(complexityLimit))
 	}
 
