@@ -65,11 +65,6 @@ If a request is blocked due to rate limiting, it will be rejected with a 429 HTT
 - `X-RateLimit-Exceeded`: Indicates that the limit has been exceeded. If rate-limiting is disabled, the request may still succeed even when this header is present.
 - `Retry-After`: Present only alongside a 429 response. This is the number of seconds until a single request can succeed (not when the bucket will be full).
 
-#### GraphQL-Specific Headers
-
-- `X-GraphQL-Complexity`: The computed complexity score of the query.
-- `X-GraphQL-Complexity-Exceeded`: Indicates that the query exceeded the complexity limit.
-
 ## CLI Behavior
 
 Some Evergreen CLI commands may fail because the underlying REST API calls are rate limited. When the user hits their rate limit via the CLI, it will print the refill rate and time at which the next request can be fulfilled.
