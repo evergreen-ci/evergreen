@@ -1,24 +1,23 @@
 # Rate Limiting
 
-## Summary
-
 Evergreen applies per-user API rate limits to protect the service from abusive, high-volume request patterns.
 
 REST and GraphQL requests are rate-limited independently, meaning that making REST requests does not affect how many GraphQL requests a user can make, and vice versa.
 
-### User Tiers
+## User Tiers
 
 Evergreen uses different limits for different types of users:
 
 - Human users use the standard per-user limits.
-- Service users use separate service-user limits.
-- "Elevated" users receive higher limits than the baseline for their tier.
+- Service (API-only) users use separate limits per service user.
 
-Some workflows may legitimately need more headroom than the default limits allow. In those cases, users should open a DEVPROD Jira ticket describing which user should be elevated, the API surface (REST or GraphQL), the workflow being throttled, and why standard limits are insufficient.
+### Elevated Users
 
-> _If your workflow requires a high volume of Evergreen API requests, consider requesting a dedicated service user rather than using a human user's credentials._
+A small number of workflows may legitimately need more headroom than the default limits allow. Users may request to be added to the "elevated" users list, which grants double the request volume for their user tier. This list is kept deliberately small, so requests should demonstrate a genuine need for higher limits.
 
-### Burst vs. Per-Hour Limits
+To request elevated user status, open a DEVPROD Jira ticket describing which user should be elevated, the API surface (REST or GraphQL), the workflow being throttled, and why the baseline limits are insufficient.
+
+## Burst vs. Per-Hour Limits
 
 For each API surface and user type, there are two limits: one burst limit, and one per-hour limit. Burst indicates the number of requests that can be made without throttling. Once the burst limit starts to deplete, the user accumulates a new request "token" at the hourly rate.
 
@@ -26,11 +25,11 @@ Note that tokens are refilled continuously, not reset on a fixed schedule (e.g. 
 
 > **Example:** if the burst limit is 20 and the per-hour limit is 600 (for a particular API surface and user type), a user's burst limit will "refill" at a rate of 600 requests/hour: the user is allowed one new request every 6 seconds until the bucket reaches 20 again.
 
-### GraphQL Query Complexity
+## GraphQL Query Complexity
 
 GraphQL requests are additionally subject to a ["complexity"](https://gqlgen.com/reference/complexity) limit, which prevents the execution of queries that could create stressful workloads for the system. Complexity is computed by traversing the query AST and summing a cost of 1 per field, across all levels of nesting, with list limits acting as multipliers on the fields nested beneath them. This is a stateless, per-query ceiling rather than a limit bucket that the user exhausts over time.
 
-#### Example
+### Example
 
 ```graphql
 query TaskHistoryExample {
