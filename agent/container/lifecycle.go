@@ -550,7 +550,7 @@ func ecrRegistryAuth(ctx context.Context, img string) (string, error) {
 // to the global grip sender. This lets callers that have a task-specific
 // logger (whose output is visible in the Evergreen UI) surface container
 // lifecycle events in the task's agent log tab.
-func logInfo(ctx context.Context, log grip.Journaler, msg interface{}) {
+func logInfo(ctx context.Context, log grip.Journaler, msg any) {
 	if log != nil {
 		log.Info(ctx, msg)
 		return

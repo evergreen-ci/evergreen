@@ -52,7 +52,7 @@ func isMountpoint(dir string) bool {
 	if err != nil {
 		return false
 	}
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		fields := strings.Fields(line)
 		// Mount point is the fifth field (index 4) in mountinfo format.
 		if len(fields) >= 5 && fields[4] == dir {
