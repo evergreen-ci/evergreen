@@ -70,10 +70,25 @@ func TestExpectedDuration(t *testing.T) {
 	assert.InDelta(9.35*float64(time.Minute), results[0].StdDev, 0.01*float64(time.Minute))
 }
 
+// clearTasksAndEstimateCaches resets the task collection and the process-local estimate caches, which are
+// package-level and would otherwise leak between tests in this package.
+func clearTasksAndEstimateCaches(t *testing.T) {
+	reset := func() {
+		require.NoError(t, db.ClearCollections(Collection))
+		expectedDurationCache.Purge()
+	}
+	reset()
+	t.Cleanup(reset)
+}
+
 func TestFetchExpectedDurationSharesEstimateBetweenSiblingTasks(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection))
-	expectedDurationCache.Purge()
-	t.Cleanup(expectedDurationCache.Purge)
+	const (
+		project      = "proj"
+		buildVariant = "bv"
+		displayName  = "compile"
+	)
+
+	clearTasksAndEstimateCaches(t)
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).Indexes().CreateOne(t.Context(), mongo.IndexModel{Keys: TaskHistoricalDataIndex})
 	require.NoError(t, err)
 
@@ -81,9 +96,9 @@ func TestFetchExpectedDurationSharesEstimateBetweenSiblingTasks(t *testing.T) {
 	insertHistory := func(id string, timeTaken time.Duration) {
 		history := Task{
 			Id:           id,
-			DisplayName:  "compile",
-			BuildVariant: "bv",
-			Project:      "proj",
+			DisplayName:  displayName,
+			BuildVariant: buildVariant,
+			Project:      project,
 			Status:       evergreen.TaskSucceeded,
 			StartTime:    now.Add(-timeTaken),
 			FinishTime:   now,
@@ -93,7 +108,7 @@ func TestFetchExpectedDurationSharesEstimateBetweenSiblingTasks(t *testing.T) {
 	}
 
 	newTask := func(id string) *Task {
-		tsk := &Task{Id: id, DisplayName: "compile", BuildVariant: "bv", Project: "proj"}
+		tsk := &Task{Id: id, DisplayName: displayName, BuildVariant: buildVariant, Project: project}
 		require.NoError(t, tsk.Insert(t.Context()))
 		return tsk
 	}

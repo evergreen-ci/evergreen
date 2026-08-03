@@ -3,7 +3,6 @@ package task
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -15,16 +14,13 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var expectedDurationCache = expirable.NewLRU[string, util.DurationStats](estimateCacheMaxSize, nil, predictionTTL)
+var expectedDurationCache = expirable.NewLRU[estimateCacheKey, util.DurationStats](estimateCacheMaxSize, nil, estimateCacheTTL)
 
-func estimateCacheKey(project, buildVariant, displayName string) string {
-	return strings.Join([]string{project, buildVariant, displayName}, "\x00")
-}
-
-// ClearEstimateCaches drops the process-local historical-estimate caches.
-func ClearEstimateCaches() {
-	expectedDurationCache.Purge()
-	generateTasksEstimationCache.Purge()
+// estimateCacheKey identifies the family of tasks that share a historical estimate.
+type estimateCacheKey struct {
+	project         string
+	buildVariant    string
+	taskDisplayName string
 }
 
 var TaskHistoricalDataIndex = bson.D{

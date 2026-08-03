@@ -17,7 +17,14 @@ const (
 	lookBackTime = 7 * 24 * time.Hour // one week
 )
 
-var generateTasksEstimationCache = expirable.NewLRU[string, GenerateTasksEstimation](estimateCacheMaxSize, nil, predictionTTL)
+var (
+	generateTasksEstimationCache = expirable.NewLRU[estimateCacheKey, GenerateTasksEstimation](estimateCacheMaxSize, nil, estimateCacheTTL)
+
+	// Generators with no successful run in the look-back window get their own cache so they can expire far
+	// sooner than a real estimate. Without it the batched aggregate re-runs for every generator in the build,
+	// since one generator missing from the results puts the whole batch back on the uncached path.
+	noGenerateTasksHistoryCache = expirable.NewLRU[estimateCacheKey, struct{}](estimateCacheMaxSize, nil, noHistoryCacheTTL)
+)
 
 // GenerateTasksEstimation holds estimation results for a single generator task.
 type GenerateTasksEstimation struct {
@@ -42,17 +49,20 @@ func GetBatchedGenerateTasksEstimations(ctx context.Context, project, buildVaria
 
 	uncached := make([]string, 0, len(displayNames))
 	for _, name := range displayNames {
-		est, ok := generateTasksEstimationCache.Get(estimateCacheKey(project, buildVariant, name))
-		if !ok {
-			uncached = append(uncached, name)
+		key := estimateCacheKey{project: project, buildVariant: buildVariant, taskDisplayName: name}
+		if est, ok := generateTasksEstimationCache.Get(key); ok {
+			result[name] = est
 			continue
 		}
-		// A cached zero records that the generator has no history, which the
-		// uncached path reports by omitting the name entirely.
-		if est != (GenerateTasksEstimation{}) {
-			result[name] = est
+		if _, ok := noGenerateTasksHistoryCache.Get(key); ok {
+			continue
 		}
+		uncached = append(uncached, name)
 	}
+	span.SetAttributes(
+		attribute.Int("evergreen.task.num_cached_generators", len(displayNames)-len(uncached)),
+		attribute.Int("evergreen.task.num_uncached_generators", len(uncached)),
+	)
 	if len(uncached) == 0 {
 		return result, nil
 	}
@@ -68,15 +78,14 @@ func GetBatchedGenerateTasksEstimations(ctx context.Context, project, buildVaria
 			EstimatedNumActivatedGeneratedTasks: int(math.Round(r.EstimatedActivated)),
 		}
 		result[r.DisplayName] = est
-		generateTasksEstimationCache.Add(estimateCacheKey(project, buildVariant, r.DisplayName), est)
+		generateTasksEstimationCache.Add(estimateCacheKey{project: project, buildVariant: buildVariant, taskDisplayName: r.DisplayName}, est)
 	}
 
-	// Generators with no successful run in the look-back window are absent from
-	// the results. Cache the zero estimate the caller would have defaulted to
-	// anyway, otherwise they will re-run the aggregate on every build creation.
+	// Absence from the results is how this function reports that a generator has no history, so record it
+	// separately rather than caching an estimate that would be indistinguishable from a real zero.
 	for _, name := range uncached {
 		if _, ok := result[name]; !ok {
-			generateTasksEstimationCache.Add(estimateCacheKey(project, buildVariant, name), GenerateTasksEstimation{})
+			noGenerateTasksHistoryCache.Add(estimateCacheKey{project: project, buildVariant: buildVariant, taskDisplayName: name}, struct{}{})
 		}
 	}
 

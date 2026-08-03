@@ -71,7 +71,18 @@ const (
 	// dependency resolution.
 	dependencyResolutionTimeout = 10 * time.Minute
 
-	// estimateCacheMaxSize was calculated to fit an estimated number of values over the set cache TTL.
+	// estimateCacheTTL bounds how stale a process-local historical estimate may be. It is much shorter than
+	// predictionTTL because a task document that inherits a cached estimate records it as freshly collected,
+	// so the two lifetimes compound, and the estimate feeds the per-user scheduling limit.
+	estimateCacheTTL = time.Hour
+
+	// noHistoryCacheTTL bounds how long a generator is remembered as having no history. A generator's first
+	// successful run flips its estimate from nothing to its full size, so this must not outlive a build's
+	// turnaround by much.
+	noHistoryCacheTTL = 5 * time.Minute
+
+	// estimateCacheMaxSize caps each estimate cache at roughly the number of distinct
+	// (project, build variant, task display name) triples seen within estimateCacheTTL.
 	estimateCacheMaxSize = 50000
 )
 
@@ -3510,7 +3521,7 @@ func (t *Task) FetchExpectedDuration(ctx context.Context) util.DurationStats {
 		return util.DurationStats{Average: t.ExpectedDuration, StdDev: t.ExpectedDurationStdDev}
 	}
 
-	cacheKey := estimateCacheKey(t.Project, t.BuildVariant, t.DisplayName)
+	cacheKey := estimateCacheKey{project: t.Project, buildVariant: t.BuildVariant, taskDisplayName: t.DisplayName}
 	refresher := func(previous util.DurationStats) (util.DurationStats, bool) {
 		if stats, ok := expectedDurationCache.Get(cacheKey); ok {
 			return stats, true
