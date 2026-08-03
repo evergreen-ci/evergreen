@@ -28,25 +28,20 @@ import (
 )
 
 const (
-	// EnvFileMountTarget is the in-container path where the env tmpfs is bind-mounted (read-only).
-	// Phase 0 consumers read the env-file host-side (docker exec --env-file reads the host path
-	// directly). The in-container mount is reserved for Phase 1, where in-process consumers
-	// inside the container will read expansions from this path directly. Keeping the mount now
-	// avoids a container-spec change at Phase 1 boundary.
+	// EnvFileMountTarget is the in-container path where the env tmpfs is
+	// bind-mounted read-only for env-file forwarding.
 	EnvFileMountTarget = "/var/run/evergreen-env"
 
 	// envFileBaseDir is the host-side root for per-task env tmpfs directories.
-	// Override with SetEnvFileBaseDir for local dev environments (e.g. macOS
-	// with colima where /var/run is not shared into the Docker VM).
+	// Override with SetEnvFileBaseDir for local dev environments where
+	// /var/run is not shared into the Docker VM (e.g. macOS with colima).
 	envFileBaseDir = "/var/run/evergreen-env"
 
-	// containerCreateMaxAttempts is the number of times ContainerCreate is
-	// retried on EOF. Docker responds to Ping before it can fully service
-	// ContainerCreate, so on hosts where the service manager restarts Docker
-	// during provisioning we retry rather than failing open immediately.
+	// containerCreateMaxAttempts retries ContainerCreate on EOF, which can
+	// happen when the service manager restarts Docker during provisioning —
+	// the daemon responds to Ping before it can fully service ContainerCreate.
 	containerCreateMaxAttempts = 6
 
-	// containerCreateRetryDelay is the pause between ContainerCreate retries.
 	containerCreateRetryDelay = 5 * time.Second
 )
 
@@ -54,10 +49,9 @@ const (
 // Override via SetEnvFileBaseDir before any container operations.
 var activeEnvFileBaseDir = envFileBaseDir
 
-// SetEnvFileBaseDir overrides the host-side base directory for env tmpfs dirs.
-// Must be called before CreateAndStart. Intended for local dev environments
-// where /var/run is not accessible inside the Docker daemon's VM (e.g. macOS
-// with colima). Has no effect on production Linux hosts.
+// SetEnvFileBaseDir overrides the host-side base directory for env tmpfs
+// dirs. Intended for local dev environments where /var/run is not
+// accessible inside the Docker daemon's VM (e.g. macOS with colima).
 func SetEnvFileBaseDir(dir string) error {
 	if !filepath.IsAbs(dir) {
 		return errors.Errorf("env base dir must be absolute, got %q", dir)
@@ -67,9 +61,6 @@ func SetEnvFileBaseDir(dir string) error {
 }
 
 // Mount is a host→container bind mount layered on top of the workdir mount.
-// Used by the GOAL-279 design's host-bind toolchain delivery (e.g. host /opt
-// mounted read-only into the container) so toolchains live on the host and
-// are not baked into the image.
 type Mount struct {
 	Source   string // Absolute host path.
 	Target   string // Absolute container path.
@@ -89,9 +80,8 @@ type Config struct {
 	ExtraMounts []Mount
 
 	// Logger receives operational messages (image pull progress, container
-	// lifecycle events). If nil, messages fall back to the global grip sender,
-	// which writes to the host's local log and is not visible in the
-	// Evergreen task UI.
+	// lifecycle events). If nil, messages fall back to the global grip
+	// sender, which is not visible in the Evergreen task UI.
 	Logger grip.Journaler
 }
 
@@ -152,18 +142,16 @@ func envHostDir(taskID string) string {
 }
 
 // CreateAndStart creates a Docker container for task isolation and starts it.
-// The container runs `sleep infinity` to stay alive while the agent `docker exec`s
-// commands into it. The host task working directory is bind-mounted at the same
-// path inside the container (same-path semantics). A per-task tmpfs is provisioned
-// on the host and bind-mounted read-only into the container at EnvFileMountTarget
-// for env-file forwarding.
+// The container runs `sleep infinity` while the agent docker execs commands
+// into it. The host task working directory is bind-mounted at the same path
+// inside the container. A per-task tmpfs is bind-mounted read-only into the
+// container at EnvFileMountTarget for env-file forwarding.
 // The caller must call Destroy when the task is complete.
 //
-// Image requirements: the container image must include the exec_user account
-// (e.g. uid=1000 ubuntu) in its /etc/passwd. Task commands are run via
-// `docker exec --user=<exec_user>`, which requires the user to exist inside
-// the container. Minimal base images (e.g. ubuntu:22.04) only contain root
-// and will produce "unable to find user" errors at exec time.
+// The container image must include the exec_user account (e.g. uid=1000
+// ubuntu) in its /etc/passwd, since task commands run via
+// `docker exec --user=<exec_user>`. Minimal base images like ubuntu:22.04
+// only contain root and will produce "unable to find user" errors at exec time.
 func CreateAndStart(ctx context.Context, cfg Config) (*TaskContainer, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid config")
@@ -180,8 +168,8 @@ func CreateAndStart(ctx context.Context, cfg Config) (*TaskContainer, error) {
 		return nil, errors.Wrap(err, "ensuring container image")
 	}
 
-	// Provision the per-task tmpfs for env-file forwarding before container
-	// create, so the bind mount can be included at create time.
+	// Provision the per-task tmpfs before container create so the bind
+	// mount can be included at create time.
 	envDir := envHostDir(cfg.TaskID)
 	if err := provisionEnvTmpfs(envDir); err != nil {
 		cli.Close()
@@ -229,11 +217,9 @@ func CreateAndStart(ctx context.Context, cfg Config) (*TaskContainer, error) {
 		hostCfg.Resources.NanoCPUs = cfg.CPUs * 1e9
 	}
 
-	// Create the container, retrying on EOF. On some hosts (e.g. AL2023 arm64)
-	// the service manager restarts Docker as part of provisioning. Docker may
-	// respond to Ping before it can fully service ContainerCreate, so Ping-gating
-	// alone isn't sufficient. On EOF we wait briefly and retry; the daemon is
-	// typically ready within a few seconds of starting.
+	// Retry ContainerCreate on EOF. On some hosts the service manager
+	// restarts Docker during provisioning; the daemon may respond to Ping
+	// before it can fully service ContainerCreate.
 	name := cfg.containerName()
 	var resp container.CreateResponse
 	for attempt := range containerCreateMaxAttempts {
@@ -269,45 +255,33 @@ func CreateAndStart(ctx context.Context, cfg Config) (*TaskContainer, error) {
 	}, nil
 }
 
-// Close releases the underlying Docker client connection without removing the
-// container or its tmpfs. Use when the container is intentionally left running
-// (e.g. retain_on_failure_secs) and lifecycle management is complete.
+// Close releases the Docker client without removing the container or its
+// tmpfs. Use when the container is intentionally left running.
 func (tc *TaskContainer) Close() {
 	_ = tc.cli.Close()
 }
 
-// containerStopTimeoutSecs is the grace period (in seconds) given to
-// in-container processes during a graceful shutdown before force-removing
-// the container. Docker sends SIGTERM to PID 1 on ContainerStop; if PID 1
-// exits within this window the container stops cleanly. If the grace period
-// elapses, ContainerStop sends SIGKILL and Destroy proceeds to the
-// force-remove fallback so it never hangs indefinitely.
+// containerStopTimeoutSecs is the grace period before force-removing the
+// container. Docker sends SIGTERM to PID 1 on ContainerStop; if PID 1
+// exits within this window the container stops cleanly, otherwise
+// ContainerStop sends SIGKILL and Destroy force-removes the container.
 //
-// Known limitation: CreateAndStart sets hostCfg.Init=true, so Docker's
-// --init wrapper (tini) is PID 1, not `sleep infinity`. tini forwards
-// SIGTERM to its direct child (`sleep infinity`), but processes started
-// via `docker exec` are independent — they are not children of tini and
-// do not receive the signal. Workload processes launched through docker
-// exec are therefore force-killed by the SIGKILL after the timeout, not
-// gracefully terminated. This is an accepted Phase 0 limitation; the
-// graceful stop still ensures the container's init tree exits cleanly,
-// and the force-remove fallback ensures cleanup always completes.
+// Because CreateAndStart sets Init=true, Docker's --init wrapper (tini)
+// is PID 1. tini forwards SIGTERM to its direct child (`sleep infinity`),
+// but processes started via `docker exec` are independent and do not
+// receive the signal — they are force-killed by the SIGKILL after the
+// timeout, not gracefully terminated.
 const containerStopTimeoutSecs = 10
 
-// containerStopClientBufferSecs is extra time added to the client-side
-// context beyond the daemon-side StopOptions.Timeout. The daemon needs
-// the full StopOptions.Timeout to send SIGTERM, wait, and SIGKILL before
-// it can respond. If the client context expires at the same time, the
-// client gets a context-deadline error even though the daemon is still
-// gracefully stopping the container — which would log a spurious "graceful
-// container stop failed" and fall through to force-remove, defeating the
-// purpose of the graceful stop. The buffer covers network round-trip and
-// daemon processing overhead.
+// containerStopClientBufferSecs is extra client-side context beyond the
+// daemon-side stop timeout. Without this buffer the client gets a
+// context-deadline error even though the daemon is still gracefully
+// stopping the container, which would log a spurious failure and fall
+// through to force-remove.
 const containerStopClientBufferSecs = 5
 
-// containerRemoveTimeoutSecs bounds the force-remove operation. An
-// unresponsive Docker daemon can block ContainerRemove indefinitely;
-// this timeout ensures Destroy completes even if the daemon is stuck.
+// containerRemoveTimeoutSecs bounds the force-remove operation so an
+// unresponsive Docker daemon cannot block Destroy indefinitely.
 const containerRemoveTimeoutSecs = 30
 
 type containerStartRemover interface {
@@ -327,24 +301,17 @@ func startContainer(ctx context.Context, cli containerStartRemover, id string) e
 	return nil
 }
 
-// Destroy gracefully stops the container (SIGTERM + grace period), then
-// force-removes it and cleans up the env tmpfs. If the graceful stop fails or
-// times out, the force-remove ensures the container is still removed. The
-// Docker client is always closed.
-//
-// Cleanup operations use bounded background contexts detached from the caller
-// so that caller-side cancellation (e.g. task timeout, agent shutdown) does
-// not bypass container removal or tmpfs cleanup — both of which must complete
-// to avoid leaking containers and mounts on the host.
+// Destroy gracefully stops the container, force-removes it, and cleans up
+// the env tmpfs. Cleanup uses bounded contexts detached from the caller so
+// that caller-side cancellation does not bypass container removal or tmpfs
+// cleanup, both of which must complete to avoid leaking resources on the host.
 func (tc *TaskContainer) Destroy(ctx context.Context) error {
 	defer tc.cli.Close()
 
-	// Use detached, bounded contexts for cleanup so caller cancellation
-	// does not bypass container removal or tmpfs cleanup, while still
-	// preventing an unresponsive Docker daemon from hanging Destroy.
+	// Detached, bounded contexts so caller cancellation does not bypass
+	// cleanup while still preventing an unresponsive daemon from hanging.
 	// The client context gets buffer beyond the daemon-side timeout so
-	// the daemon has time to complete its SIGTERM→wait→SIGKILL cycle
-	// before the client cancels.
+	// the daemon can complete its SIGTERM→wait→SIGKILL cycle.
 	stopCtx, stopCancel := context.WithTimeout(context.Background(), time.Duration(containerStopTimeoutSecs+containerStopClientBufferSecs)*time.Second)
 	stopTimeout := containerStopTimeoutSecs
 	if err := tc.cli.ContainerStop(stopCtx, tc.ID, container.StopOptions{Timeout: &stopTimeout}); err != nil {
@@ -376,25 +343,19 @@ func (tc *TaskContainer) Destroy(ctx context.Context) error {
 	return envErr
 }
 
-// imagePullTimeout caps the time allowed to pull a container image. Long
-// enough to accommodate large images over a slow link, short enough that a
-// hung or unauthenticated pull doesn't stall the agent silently for the
-// entire task duration.
+// imagePullTimeout caps the time allowed to pull a container image.
 const imagePullTimeout = 5 * time.Minute
 
-// isDockerEOF reports whether err is the specific "connection closed before
-// response" error returned by the Docker SDK when the daemon drops the socket
-// mid-request. This happens when Docker is restarting — the daemon accepts the
-// TCP connection but closes it before writing a response. Retrying after a
-// brief pause allows the new daemon instance to finish starting up.
+// isDockerEOF reports whether err is the "connection closed before response"
+// error returned when the Docker daemon drops the socket mid-request during
+// a restart. Retrying after a brief pause allows the new daemon to start up.
 func isDockerEOF(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "EOF")
 }
 
-// ensureImage pulls the image if it is not already present locally. For ECR
-// registries it fetches a short-lived auth token via the instance's IAM role
-// and passes it directly to the Docker API, avoiding any dependency on
-// external credential helpers or CLI tooling.
+// ensureImage pulls the image if not already present locally. For ECR
+// registries it fetches a short-lived auth token via the instance's IAM
+// role, avoiding any dependency on external credential helpers.
 func ensureImage(ctx context.Context, cli *client.Client, img string, log grip.Journaler) error {
 	_, _, err := cli.ImageInspectWithRaw(ctx, img)
 	if err == nil {
@@ -429,12 +390,11 @@ func ensureImage(ctx context.Context, cli *client.Client, img string, log grip.J
 	defer reader.Close()
 
 	// Docker streams pull progress and errors as newline-delimited JSON.
-	// ImagePull only returns a top-level error for connection failures; auth
-	// errors and "image not found" come through in the stream as JSONMessage
-	// objects with a non-nil Error field. Loop until io.EOF rather than
-	// dec.More() because More() returns false on context expiry without
-	// propagating the error, making a timed-out pull indistinguishable from
-	// a successful one.
+	// Auth errors and "image not found" come through in the stream as
+	// JSONMessage objects with a non-nil Error field, not as top-level
+	// errors from ImagePull. Loop until io.EOF rather than dec.More()
+	// because More() returns false on context expiry without propagating
+	// the error, making a timed-out pull indistinguishable from success.
 	dec := json.NewDecoder(reader)
 	for {
 		var msg jsonmessage.JSONMessage
@@ -469,12 +429,10 @@ func isECRImage(img string) bool {
 	return strings.Contains(host, ".dkr.ecr.") && strings.HasSuffix(host, ".amazonaws.com")
 }
 
-// imageRegistryHost extracts the registry hostname from a Docker image reference.
+// imageRegistryHost extracts the registry hostname from a Docker image
+// reference. A registry prefix is only present when there is a '/' and the
+// component before it contains a '.' or ':', or equals "localhost".
 func imageRegistryHost(img string) string {
-	// Format: [host[:port]/]name[:tag|@digest]
-	// A registry prefix is only present when there is a '/' AND the component
-	// before it contains a '.' or ':', or equals "localhost". Without a '/',
-	// the entire string is a Docker Hub name (possibly with a tag), not a host.
 	first, _, hasSlash := strings.Cut(img, "/")
 	if hasSlash && (strings.ContainsAny(first, ".:") || first == "localhost") {
 		return first
@@ -483,13 +441,12 @@ func imageRegistryHost(img string) string {
 }
 
 // ecrRegistryAuth fetches a short-lived ECR authorization token via the
-// instance's IAM role and returns it base64-encoded in the format the Docker
-// API expects for RegistryAuth.
+// instance's IAM role and returns it base64-encoded in the format the
+// Docker API expects for RegistryAuth.
 func ecrRegistryAuth(ctx context.Context, img string) (string, error) {
 	host := imageRegistryHost(img)
 
 	// ECR private registry format: <account>.dkr.ecr.<region>.amazonaws.com
-	// Extract the region from the hostname.
 	parts := strings.Split(host, ".")
 	var region string
 	for i, p := range parts {
@@ -507,8 +464,8 @@ func ecrRegistryAuth(ctx context.Context, img string) (string, error) {
 		return "", errors.Wrap(err, "loading AWS config")
 	}
 
-	// Use a short dedicated timeout for the token fetch so it doesn't consume
-	// the pull context's budget. 30 seconds is generous for a single API call.
+	// Use a dedicated timeout for the token fetch so it doesn't consume
+	// the pull context's budget.
 	ecrCtx, ecrCancel := context.WithTimeout(ctx, 30*time.Second)
 	defer ecrCancel()
 
@@ -546,10 +503,8 @@ func ecrRegistryAuth(ctx context.Context, img string) (string, error) {
 	return base64.URLEncoding.EncodeToString(authJSON), nil
 }
 
-// logInfo sends an Info-level message to log if non-nil, otherwise falls back
-// to the global grip sender. This lets callers that have a task-specific
-// logger (whose output is visible in the Evergreen UI) surface container
-// lifecycle events in the task's agent log tab.
+// logInfo sends an Info-level message to log if non-nil, otherwise falls
+// back to the global grip sender.
 func logInfo(ctx context.Context, log grip.Journaler, msg any) {
 	if log != nil {
 		log.Info(ctx, msg)
