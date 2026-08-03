@@ -54,6 +54,9 @@ func (pc *ProjectConfig) isEmpty() bool {
 }
 
 func (pcf *ProjectConfigFields) isEmpty() bool {
+	if pcf == nil {
+		return true
+	}
 	reflectedConfig := reflect.ValueOf(*pcf)
 
 	for i := 0; i < reflectedConfig.NumField(); i++ {

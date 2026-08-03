@@ -124,10 +124,12 @@ type ParserProject struct {
 	Axes []matrixAxis `yaml:"axes,omitempty" bson:"axes,omitempty"`
 
 	// projectConfigFields stores version-controlled project
-	// configuration parsed from the main file and all included files.
+	// configuration parsed from the main file and all included files. It is
+	// intentionally unexported so that it's never persisted to the DB and it only exists in memory.
 	projectConfigFields *ProjectConfigFields
 	// redefinedProjectConfigSettings records version-controlled settings
-	// structs that were defined in more than one YAML file.
+	// structs that were defined in more than one YAML file. It is
+	// intentionally unexported so that it's never persisted to the DB and it only exists in memory.
 	redefinedProjectConfigSettings []string
 } // End of ParserProject mergeable fields (this comment is used by the linter).
 
@@ -1652,11 +1654,6 @@ func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRe
 	}
 	if result.Functions == nil {
 		result.Functions = map[string]*YAMLCommandSet{}
-	}
-	// parseBytes includes the anchor preamble, so anchors from
-	// earlier files resolve inside project config fields as well.
-	if err := result.setProjectConfigFields(parseBytes); err != nil {
-		return nil, err
 	}
 	return result, nil
 }
