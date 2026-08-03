@@ -1611,6 +1611,40 @@ buildvariants:
 		assert.Equal(t, "example_task_group", proj.TaskGroups[0].Name)
 		assert.Len(t, proj.TaskGroups[0].Tasks, proj.TaskGroups[0].MaxHosts)
 	})
+
+	t.Run("UnlimitedMaxHostsForTaskGroupWithTagSelectorsCountsExpandedTasks", func(t *testing.T) {
+		tagMaxHostYml := `
+tasks:
+- name: build_1
+  tags: [ "build" ]
+- name: build_2
+  tags: [ "build" ]
+- name: test_1
+  tags: [ "test" ]
+- name: test_2
+  tags: [ "test" ]
+- name: test_3
+  tags: [ "test" ]
+task_groups:
+- name: example_task_group
+  max_hosts: -1
+  tasks:
+  - .build
+  - .test
+buildvariants:
+- name: bv
+  display_name: "bv_display"
+  tasks:
+  - name: example_task_group
+`
+		proj := &Project{}
+		_, err := LoadProjectInto(ctx, []byte(tagMaxHostYml), nil, "id", proj)
+		require.NotNil(t, proj)
+		assert.NoError(t, err)
+		require.Len(t, proj.TaskGroups, 1)
+		require.Len(t, proj.TaskGroups[0].Tasks, 5)
+		assert.Equal(t, 5, proj.TaskGroups[0].MaxHosts)
+	})
 }
 
 func TestTaskGroupWithDisplayTask(t *testing.T) {
@@ -4092,6 +4126,32 @@ tasks:
 			}()
 		}
 		wg.Wait()
+	})
+}
+
+func TestReadLocalInclude(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "include.yml"), []byte("tasks: []\n"), 0644))
+
+	t.Run("EmptyIncludeDirShouldError", func(t *testing.T) {
+		_, err := readLocalInclude("include.yml", "")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not supported")
+	})
+	t.Run("AbsolutePathShouldError", func(t *testing.T) {
+		_, err := readLocalInclude("/etc/passwd", dir)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "must be relative")
+	})
+	t.Run("PathOutsideJailShouldError", func(t *testing.T) {
+		_, err := readLocalInclude("../../etc/passwd", dir)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "outside the include directory")
+	})
+	t.Run("RelativePathWithinJailShouldSucceed", func(t *testing.T) {
+		contents, err := readLocalInclude("include.yml", dir)
+		require.NoError(t, err)
+		assert.Equal(t, "tasks: []\n", string(contents))
 	})
 }
 

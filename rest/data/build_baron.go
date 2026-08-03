@@ -96,7 +96,7 @@ func fileTicketCustomHook(context context.Context, taskId string, execution int,
 		req.Header.Add(evergreen.APIKeyHeader, webHook.Secret)
 	}
 
-	client := utility.GetHTTPClient()
+	client := utility.WithOTelTracing(utility.GetHTTPClient())
 	defer utility.PutHTTPClient(client)
 	resp, err := client.Do(req)
 	if err != nil {

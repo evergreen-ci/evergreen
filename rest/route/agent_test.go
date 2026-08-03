@@ -447,6 +447,23 @@ func TestMarkTaskForReset(t *testing.T) {
 			assert.True(t, foundTask.IsAutomaticRestart)
 			assert.Equal(t, 1, foundTask.NumAutomaticRestarts)
 		},
+		"RunNoOpsForAbortedTask": func(ctx context.Context, t *testing.T, rh *markTaskForRestartHandler) {
+			rh.taskID = "t5"
+			abortedTask, err := task.FindOneId(ctx, "t5")
+			require.NoError(t, err)
+			require.NotNil(t, abortedTask)
+			taskCtx := context.WithValue(ctx, model.ApiTaskKey, abortedTask)
+			resp := rh.Run(taskCtx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			foundTask, err := task.FindOneId(ctx, "t5")
+			require.NoError(t, err)
+			require.NotNil(t, foundTask)
+			assert.False(t, foundTask.ResetWhenFinished)
+			assert.False(t, foundTask.IsAutomaticRestart)
+			assert.Zero(t, foundTask.NumAutomaticRestarts)
+		},
 		"SuccessfullyChecksMaxRestartLimit": func(ctx context.Context, t *testing.T, rh *markTaskForRestartHandler) {
 			// Should succeed normally for first task
 			rh.taskID = "t2"
@@ -544,6 +561,12 @@ func TestMarkTaskForReset(t *testing.T) {
 				Project: "p1",
 				Version: "aaaaaaaaaaff001122334456",
 			}
+			t5 := task.Task{
+				Id:      "t5",
+				Project: "p1",
+				Version: "aaaaaaaaaaff001122334456",
+				Aborted: true,
+			}
 			pRef := model.ProjectRef{
 				Id: "p1",
 			}
@@ -554,6 +577,7 @@ func TestMarkTaskForReset(t *testing.T) {
 			require.NoError(t, t2.Insert(t.Context()))
 			require.NoError(t, t3.Insert(t.Context()))
 			require.NoError(t, t4.Insert(t.Context()))
+			require.NoError(t, t5.Insert(t.Context()))
 			r, ok := makeMarkTaskForRestart().(*markTaskForRestartHandler)
 			require.True(t, ok)
 
@@ -1754,4 +1778,143 @@ func TestAttachTestResultsHandlerRun(t *testing.T) {
 		assert.Equal(t, 1, dbRecord.Stats.FailedCount)
 		assert.Equal(t, []string{"failed_test"}, dbRecord.FailedTestsSample)
 	})
+}
+
+func TestGetDistroView(t *testing.T) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *getDistroViewHandler){
+		"LiveDistroEnablesContainerIsolationForStaleHost": func(ctx context.Context, t *testing.T, rh *getDistroViewHandler) {
+			// The host's embedded distro has no container isolation, but the
+			// live distro in the DB has it enabled. The handler should return CI.
+			h := host.Host{
+				Id:     "host_id",
+				Distro: distro.Distro{Id: "rhel80"},
+			}
+			require.NoError(t, h.Insert(ctx))
+			liveDistro := &distro.Distro{
+				Id:       "rhel80",
+				ExecUser: "taskuser",
+				BootstrapSettings: distro.BootstrapSettings{
+					ContainerIsolation: distro.ContainerIsolationSettings{
+						Enabled:  true,
+						Image:    "my-image:latest",
+						MemoryMB: 1024,
+						CPUs:     2,
+					},
+				},
+			}
+			require.NoError(t, liveDistro.Insert(ctx))
+
+			ctx = context.WithValue(ctx, model.ApiHostKey, &h)
+			resp := rh.Run(ctx)
+			require.Equal(t, http.StatusOK, resp.Status())
+			data, ok := resp.Data().(apimodels.DistroView)
+			require.True(t, ok)
+			require.NotNil(t, data.ContainerIsolation)
+			assert.Equal(t, "my-image:latest", data.ContainerIsolation.Image)
+			assert.Equal(t, int64(1024), data.ContainerIsolation.MemoryMB)
+			assert.Equal(t, int64(2), data.ContainerIsolation.CPUs)
+			assert.Equal(t, "taskuser", data.ExecUser, "ExecUser should be refreshed from live distro")
+		},
+		"LiveDistroDisablesContainerIsolationOverEmbedded": func(ctx context.Context, t *testing.T, rh *getDistroViewHandler) {
+			// The host's embedded distro has CI enabled, but the live distro
+			// does not. The live distro's settings should win.
+			h := host.Host{
+				Id: "host_id",
+				Distro: distro.Distro{
+					Id:       "rhel80",
+					ExecUser: "taskuser",
+					BootstrapSettings: distro.BootstrapSettings{
+						ContainerIsolation: distro.ContainerIsolationSettings{
+							Enabled: true,
+							Image:   "stale-image:v1",
+						},
+					},
+				},
+			}
+			require.NoError(t, h.Insert(ctx))
+			// Live distro has CI disabled.
+			require.NoError(t, (&distro.Distro{Id: "rhel80"}).Insert(ctx))
+
+			ctx = context.WithValue(ctx, model.ApiHostKey, &h)
+			resp := rh.Run(ctx)
+			require.Equal(t, http.StatusOK, resp.Status())
+			data, ok := resp.Data().(apimodels.DistroView)
+			require.True(t, ok)
+			assert.Nil(t, data.ContainerIsolation)
+			assert.Equal(t, "taskuser", data.ExecUser, "snapshot ExecUser preserved when live distro has none")
+		},
+		"MissingLiveDistroFallsBackToEmbeddedSnapshot": func(ctx context.Context, t *testing.T, rh *getDistroViewHandler) {
+			// No live distro document exists; the handler falls back to the
+			// host's embedded distro snapshot which has CI enabled.
+			h := host.Host{
+				Id: "host_id",
+				Distro: distro.Distro{
+					Id:       "rhel80-missing",
+					ExecUser: "snapshotuser",
+					BootstrapSettings: distro.BootstrapSettings{
+						ContainerIsolation: distro.ContainerIsolationSettings{
+							Enabled: true,
+							Image:   "embedded-image:v1",
+						},
+					},
+				},
+			}
+			require.NoError(t, h.Insert(ctx))
+			// Intentionally do not insert a live distro document for "rhel80-missing".
+
+			ctx = context.WithValue(ctx, model.ApiHostKey, &h)
+			resp := rh.Run(ctx)
+			require.Equal(t, http.StatusOK, resp.Status())
+			data, ok := resp.Data().(apimodels.DistroView)
+			require.True(t, ok)
+			require.NotNil(t, data.ContainerIsolation)
+			assert.Equal(t, "embedded-image:v1", data.ContainerIsolation.Image)
+			assert.Equal(t, "snapshotuser", data.ExecUser, "snapshot ExecUser preserved when live distro missing")
+		},
+		"ContainerIsolationKillSwitchSuppressesCI": func(ctx context.Context, t *testing.T, rh *getDistroViewHandler) {
+			rh.env.Settings().ServiceFlags.ContainerIsolationEnabled = false
+
+			h := host.Host{
+				Id:     "host_id",
+				Distro: distro.Distro{Id: "rhel80"},
+			}
+			require.NoError(t, h.Insert(ctx))
+			liveDistro := &distro.Distro{
+				Id:       "rhel80",
+				ExecUser: "taskuser",
+				BootstrapSettings: distro.BootstrapSettings{
+					ContainerIsolation: distro.ContainerIsolationSettings{
+						Enabled:          true,
+						Image:            "my-image:latest",
+						RequireIsolation: true,
+					},
+				},
+			}
+			require.NoError(t, liveDistro.Insert(ctx))
+
+			ctx = context.WithValue(ctx, model.ApiHostKey, &h)
+			resp := rh.Run(ctx)
+			require.Equal(t, http.StatusOK, resp.Status())
+			data, ok := resp.Data().(apimodels.DistroView)
+			require.True(t, ok)
+			assert.Nil(t, data.ContainerIsolation, "kill switch should suppress CI")
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx := t.Context()
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+			testutil.ConfigureIntegrationTest(t, env.Settings())
+
+			require.NoError(t, db.ClearCollections(host.Collection, distro.Collection))
+
+			rh, ok := makeGetDistroView(env).(*getDistroViewHandler)
+			require.True(t, ok)
+			rh.env.Settings().ServiceFlags.ContainerIsolationEnabled = true
+			rh.hostID = "host_id"
+
+			tCase(ctx, t, rh)
+		})
+	}
 }

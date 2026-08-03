@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/vikstrous/dataloadgen"
@@ -21,6 +22,7 @@ type Loaders struct {
 	VersionLoader *dataloadgen.Loader[string, *model.Version]
 	ProjectLoader *dataloadgen.Loader[string, *model.ProjectRef]
 	TaskLoader    *dataloadgen.Loader[string, *task.Task]
+	PatchLoader   *dataloadgen.Loader[string, *patch.Patch]
 }
 
 // loaderWait is how long each dataloader waits for additional keys before
@@ -33,11 +35,13 @@ func New() *Loaders {
 	vr := &versionReader{}
 	pr := &projectReader{}
 	tr := &taskReader{}
+	par := &patchReader{}
 	return &Loaders{
 		UserLoader:    dataloadgen.NewMappedLoader(ur.getUsers, dataloadgen.WithWait(loaderWait)),
 		VersionLoader: dataloadgen.NewMappedLoader(vr.getVersions, dataloadgen.WithWait(loaderWait)),
 		ProjectLoader: dataloadgen.NewMappedLoader(pr.getProjects, dataloadgen.WithWait(loaderWait)),
 		TaskLoader:    dataloadgen.NewMappedLoader(tr.getTasks, dataloadgen.WithWait(loaderWait)),
+		PatchLoader:   dataloadgen.NewMappedLoader(par.getPatches, dataloadgen.WithWait(loaderWait)),
 	}
 }
 

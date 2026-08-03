@@ -109,7 +109,7 @@ func (jiraHandler *JiraHandler) JQLSearch(ctx context.Context, query string, sta
 }
 
 func NewJiraHandler(opts send.JiraOptions) (JiraHandler, error) {
-	httpClient := utility.GetHTTPClient()
+	httpClient := utility.WithOTelTracing(utility.GetHTTPClient())
 	if opts.PersonalAccessTokenOpts.Token != "" {
 		transport := jira.BearerAuthTransport{
 			Token:     opts.PersonalAccessTokenOpts.Token,

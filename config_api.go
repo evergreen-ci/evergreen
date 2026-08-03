@@ -29,7 +29,7 @@ type ClientConfig struct {
 }
 
 func (c *ClientConfig) populateClientBinaries(ctx context.Context, s3URLPrefix string) {
-	client := utility.GetHTTPClient()
+	client := utility.WithOTelTracing(utility.GetHTTPClient())
 	defer utility.PutHTTPClient(client)
 
 	// We assume that all valid OS/arch combinations listed in Evergreen

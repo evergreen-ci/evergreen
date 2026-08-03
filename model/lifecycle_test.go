@@ -2099,7 +2099,8 @@ func TestSortTasks(t *testing.T) {
 				},
 			}
 
-			sortedTasks := sortTasks(tasks)
+			sortedTasks, err := sortTasks(tasks)
+			So(err, ShouldBeNil)
 			So(len(sortedTasks), ShouldEqual, 3)
 			So(sortedTasks[0].DisplayName, ShouldEqual, "C")
 			So(sortedTasks[1].DisplayName, ShouldEqual, "B")
@@ -2128,7 +2129,8 @@ func TestSortTasks(t *testing.T) {
 				},
 			}
 
-			sortedTasks := sortTasks(tasks)
+			sortedTasks, err := sortTasks(tasks)
+			So(err, ShouldBeNil)
 			So(len(sortedTasks), ShouldEqual, 3)
 			So(sortedTasks[0].DisplayName, ShouldEqual, "C")
 			So(sortedTasks[1].DisplayName, ShouldEqual, "B")
@@ -2169,7 +2171,8 @@ func TestSortTasks(t *testing.T) {
 			},
 		}
 
-		sortedTasks := sortTasks(tasks)
+		sortedTasks, err := sortTasks(tasks)
+		So(err, ShouldBeNil)
 		So(len(sortedTasks), ShouldEqual, 5)
 		So(sortedTasks[0].DisplayName, ShouldEqual, "D")
 		So(sortedTasks[1].DisplayName, ShouldEqual, "E")
@@ -2208,7 +2211,8 @@ func TestSortTasks(t *testing.T) {
 			},
 		}
 
-		sortedTasks := sortTasks(tasks)
+		sortedTasks, err := sortTasks(tasks)
+		So(err, ShouldBeNil)
 		So(len(sortedTasks), ShouldEqual, 4)
 		So(sortedTasks[0].DisplayName, ShouldEqual, "D")
 		So(sortedTasks[1].DisplayName, ShouldEqual, "C")
@@ -2230,7 +2234,8 @@ func TestSortTasks(t *testing.T) {
 					DependsOn: []task.Dependency{
 						{TaskId: "idE"},
 					}})
-			sortedTasks = sortTasks(tasks)
+			sortedTasks, err = sortTasks(tasks)
+			So(err, ShouldBeNil)
 			So(len(sortedTasks), ShouldEqual, 6)
 			So(sortedTasks[0].DisplayName, ShouldEqual, "D")
 			So(sortedTasks[1].DisplayName, ShouldEqual, "C")
@@ -2240,6 +2245,26 @@ func TestSortTasks(t *testing.T) {
 			So(sortedTasks[5].DisplayName, ShouldEqual, "A")
 		})
 	})
+}
+
+func TestSortTasksCycleShouldReturnError(t *testing.T) {
+	tasks := []task.Task{
+		{
+			Id: "task1",
+			DependsOn: []task.Dependency{
+				{TaskId: "task2"},
+			},
+		},
+		{
+			Id: "task2",
+			DependsOn: []task.Dependency{
+				{TaskId: "task1"},
+			},
+		},
+	}
+
+	_, err := sortTasks(tasks)
+	require.ErrorContains(t, err, "cyclic dependencies")
 }
 
 func TestVersionRestart(t *testing.T) {
@@ -2958,6 +2983,103 @@ func TestSetTaskActivationForBuildsDeactivated(t *testing.T) {
 	require.Len(t, dbTasks, 3)
 	for _, task := range dbTasks {
 		assert.False(t, task.Activated)
+	}
+}
+
+func TestSetTaskActivationForBuildsSingleHostTaskGroup(t *testing.T) {
+	ctx := t.Context()
+	colls := []string{task.Collection, task.OldCollection, build.Collection, VersionCollection}
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(colls...))
+	})
+
+	const (
+		buildID   = "build"
+		versionID = "version"
+		tgName    = "tg"
+	)
+
+	insertTGTask := func(t *testing.T, id string, order int, status string, activated bool, maxHosts int) {
+		tsk := &task.Task{
+			Id:                id,
+			BuildId:           buildID,
+			Version:           versionID,
+			DistroId:          "distro",
+			Status:            status,
+			Activated:         activated,
+			TaskGroup:         tgName,
+			TaskGroupMaxHosts: maxHosts,
+			TaskGroupOrder:    order,
+		}
+		require.NoError(t, tsk.Insert(ctx))
+	}
+
+	getOrderedTG := func(t *testing.T) []task.Task {
+		tg, err := task.FindTaskGroupFromBuild(ctx, buildID, tgName)
+		require.NoError(t, err)
+		orderedTG := make([]task.Task, len(tg))
+		for _, tsk := range tg {
+			// Task group order is 1-indexed.
+			orderedTG[tsk.TaskGroupOrder-1] = tsk
+		}
+		return orderedTG
+	}
+
+	for name, test := range map[string]func(t *testing.T){
+		"RestartsFinishedEarlierTasksWhenLaterTaskScheduled": func(t *testing.T) {
+			insertTGTask(t, "task1", 1, evergreen.TaskSucceeded, true, 1)
+			insertTGTask(t, "task2", 2, evergreen.TaskSucceeded, true, 1)
+			insertTGTask(t, "task3", 3, evergreen.TaskUndispatched, false, 1)
+
+			require.NoError(t, setTaskActivationForBuilds(ctx, []string{"build"}, true, true, nil, "test"))
+
+			tasks := getOrderedTG(t)
+			require.Len(t, tasks, 3)
+			assert.Equal(t, 1, tasks[0].Execution, "finished earlier single host task group task should be restarted")
+			assert.Equal(t, evergreen.TaskUndispatched, tasks[1].Status)
+			assert.True(t, tasks[0].Activated)
+			assert.Equal(t, 1, tasks[1].Execution, "finished earlier single host task group task should be restarted")
+			assert.Equal(t, evergreen.TaskUndispatched, tasks[2].Status)
+			assert.True(t, tasks[1].Activated)
+			assert.Equal(t, 0, tasks[2].Execution, "newly-scheduled task should not be restarted")
+			assert.True(t, tasks[2].Activated)
+		},
+		"DoesNotRestartMultiHostTaskGroupWhenMoreTasksScheduled": func(t *testing.T) {
+			insertTGTask(t, "task1", 1, evergreen.TaskSucceeded, true, 2)
+			insertTGTask(t, "task2", 2, evergreen.TaskSucceeded, true, 2)
+			insertTGTask(t, "task3", 3, evergreen.TaskUndispatched, false, 2)
+
+			require.NoError(t, setTaskActivationForBuilds(ctx, []string{"build"}, true, true, nil, "test"))
+
+			tasks := getOrderedTG(t)
+			assert.Equal(t, 0, tasks[0].Execution, "multi-host task group members should not be restarted")
+			assert.Equal(t, 0, tasks[1].Execution, "multi-host task group members should not be restarted")
+			assert.True(t, tasks[2].Activated)
+		},
+		"DoesNotRestartUnfinishedEarlierSingleHostTaskGroupTask": func(t *testing.T) {
+			insertTGTask(t, "task1", 1, evergreen.TaskDispatched, true, 1)
+			insertTGTask(t, "task3", 3, evergreen.TaskUndispatched, false, 1)
+
+			require.NoError(t, setTaskActivationForBuilds(ctx, []string{"build"}, true, true, nil, "test"))
+
+			t1, err := task.FindOneId(ctx, "task1")
+			require.NoError(t, err)
+			require.NotNil(t, t1)
+			assert.Equal(t, 0, t1.Execution, "earlier single host task group task should not be restarted")
+			assert.Equal(t, evergreen.TaskDispatched, t1.Status)
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(colls...))
+			b := &build.Build{
+				Id:      buildID,
+				Version: versionID,
+			}
+			require.NoError(t, b.Insert(ctx))
+			v := &Version{Id: versionID}
+			require.NoError(t, v.Insert(ctx))
+			test(t)
+		})
 	}
 }
 

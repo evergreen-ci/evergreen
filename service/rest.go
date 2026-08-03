@@ -82,26 +82,26 @@ func GetRESTv1App(evgService restAPIService) *gimlet.APIApp {
 	rest := &restAPI{evgService}
 	middleware := &restV1middleware{rest}
 	requireLogin := gimlet.WrapperMiddleware(needsLogin)
+	rateLimit := route.NewRateLimitMiddleware(evergreen.GetEnvironment(), evergreen.RateLimitSurfaceREST)
 	app.SetPrefix(evergreen.RestRoutePrefix)
-	app.AddWrapper(route.NewRateLimitMiddleware(evergreen.GetEnvironment(), evergreen.RateLimitSurfaceREST))
 
 	// REST routes
-	app.AddRoute("/builds/{build_id}").Version(1).Get().Handler(rest.getBuildInfo).Wrap(middleware)
-	app.AddRoute("/builds/{build_id}/status").Version(1).Get().Handler(rest.getBuildStatus).Wrap(middleware)
-	app.AddRoute("/patches/{patch_id}").Version(1).Get().Handler(rest.getPatch).Wrap(middleware)
-	app.AddRoute("/patches/{patch_id}/config").Version(1).Get().Handler(rest.getPatchConfig).Wrap(middleware)
-	app.AddRoute("/projects").Version(1).Get().Handler(rest.getProjectIds).Wrap(middleware)
-	app.AddRoute("/projects/{project_id}").Version(1).Get().Handler(rest.getProjectRef).Wrap(middleware)
-	app.AddRoute("/projects/{project_id}/last_green").Version(1).Get().Handler(rest.lastGreen).Wrap(middleware)
-	app.AddRoute("/projects/{project_id}/revisions/{revision}").Version(1).Get().Handler(rest.getVersionInfoViaRevision).Wrap(middleware)
-	app.AddRoute("/projects/{project_id}/versions").Version(1).Get().Handler(rest.getRecentVersions).Wrap(middleware)
-	app.AddRoute("/tasks/{task_id}").Version(1).Get().Handler(rest.getTaskInfo).Wrap(middleware)
-	app.AddRoute("/tasks/{task_id}/status").Version(1).Get().Handler(rest.getTaskStatus).Wrap(middleware)
-	app.AddRoute("/versions/{version_id}").Version(1).Get().Handler(rest.getVersionInfo).Wrap(middleware)
-	app.AddRoute("/versions/{version_id}").Version(1).Patch().Handler(rest.modifyVersionInfo).Wrap(requireLogin, middleware)
-	app.AddRoute("/versions/{version_id}/config").Version(1).Get().Handler(rest.getVersionConfig).Wrap(middleware)
-	app.AddRoute("/versions/{version_id}/parser_project").Version(1).Get().Handler(rest.getVersionProject).Wrap(middleware)
-	app.AddRoute("/versions/{version_id}/status").Version(1).Get().Handler(rest.getVersionStatus).Wrap(middleware)
+	app.AddRoute("/builds/{build_id}").Version(1).Get().Handler(rest.getBuildInfo).Wrap(middleware, rateLimit)
+	app.AddRoute("/builds/{build_id}/status").Version(1).Get().Handler(rest.getBuildStatus).Wrap(middleware, rateLimit)
+	app.AddRoute("/patches/{patch_id}").Version(1).Get().Handler(rest.getPatch).Wrap(middleware, rateLimit)
+	app.AddRoute("/patches/{patch_id}/config").Version(1).Get().Handler(rest.getPatchConfig).Wrap(middleware, rateLimit)
+	app.AddRoute("/projects").Version(1).Get().Handler(rest.getProjectIds).Wrap(middleware, rateLimit)
+	app.AddRoute("/projects/{project_id}").Version(1).Get().Handler(rest.getProjectRef).Wrap(middleware, rateLimit)
+	app.AddRoute("/projects/{project_id}/last_green").Version(1).Get().Handler(rest.lastGreen).Wrap(middleware, rateLimit)
+	app.AddRoute("/projects/{project_id}/revisions/{revision}").Version(1).Get().Handler(rest.getVersionInfoViaRevision).Wrap(middleware, rateLimit)
+	app.AddRoute("/projects/{project_id}/versions").Version(1).Get().Handler(rest.getRecentVersions).Wrap(middleware, rateLimit)
+	app.AddRoute("/tasks/{task_id}").Version(1).Get().Handler(rest.getTaskInfo).Wrap(middleware, rateLimit)
+	app.AddRoute("/tasks/{task_id}/status").Version(1).Get().Handler(rest.getTaskStatus).Wrap(middleware, rateLimit)
+	app.AddRoute("/versions/{version_id}").Version(1).Get().Handler(rest.getVersionInfo).Wrap(middleware, rateLimit)
+	app.AddRoute("/versions/{version_id}").Version(1).Patch().Handler(rest.modifyVersionInfo).Wrap(requireLogin, middleware, rateLimit)
+	app.AddRoute("/versions/{version_id}/config").Version(1).Get().Handler(rest.getVersionConfig).Wrap(middleware, rateLimit)
+	app.AddRoute("/versions/{version_id}/parser_project").Version(1).Get().Handler(rest.getVersionProject).Wrap(middleware, rateLimit)
+	app.AddRoute("/versions/{version_id}/status").Version(1).Get().Handler(rest.getVersionStatus).Wrap(middleware, rateLimit)
 
 	return app
 }

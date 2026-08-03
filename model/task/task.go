@@ -1755,28 +1755,6 @@ func UpdateSchedulingLimit(ctx context.Context, username, requester string, numT
 	return nil
 }
 
-// ActivateTasksByIdsWithDependencies activates the given tasks and their dependencies.
-func ActivateTasksByIdsWithDependencies(ctx context.Context, ids []string, caller string) error {
-	q := db.Query(bson.M{
-		IdKey:     bson.M{"$in": ids},
-		StatusKey: evergreen.TaskUndispatched,
-	})
-
-	tasks, err := FindAll(ctx, q.WithFields(IdKey, DependsOnKey, ExecutionKey, ActivatedKey))
-	if err != nil {
-		return errors.Wrap(err, "getting tasks for activation")
-	}
-	dependOn, err := GetRecursiveDependenciesUp(ctx, tasks, nil)
-	if err != nil {
-		return errors.Wrap(err, "getting recursive dependencies")
-	}
-
-	if _, err = ActivateTasks(ctx, append(tasks, dependOn...), time.Now(), true, caller); err != nil {
-		return errors.Wrap(err, "updating tasks for activation")
-	}
-	return nil
-}
-
 func getDependencyTaskIdsToActivate(ctx context.Context, tasks []string, updateDependencies bool) (map[string]Task, []string, error) {
 	if !updateDependencies {
 		return nil, nil, nil
