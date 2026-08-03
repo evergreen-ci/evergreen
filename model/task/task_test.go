@@ -1295,6 +1295,24 @@ func TestBulkInsert(t *testing.T) {
 	}
 }
 
+func TestInsertUnorderedBatchesLargerThanBatchSizeInsertsAllTasks(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(Collection))
+
+	// Use a count that is not a multiple of insertBatchSize so a dropped final
+	// partial batch would fail the assertion.
+	numTasks := insertBatchSize*2 + 37
+	tasks := make(Tasks, 0, numTasks)
+	for i := range numTasks {
+		tasks = append(tasks, &Task{Id: fmt.Sprintf("t%d", i), Version: "version"})
+	}
+
+	require.NoError(t, tasks.InsertUnordered(ctx))
+	dbTasks, err := Find(ctx, ByVersion("version"))
+	require.NoError(t, err)
+	assert.Len(t, dbTasks, numTasks)
+}
+
 func TestByBeforeMidwayTaskFromIds(t *testing.T) {
 	ctx := t.Context()
 

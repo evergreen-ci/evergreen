@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/cost"
+	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -37,12 +38,31 @@ func (t Tasks) Insert(ctx context.Context) error {
 	return db.InsertMany(ctx, Collection, t.getPayload()...)
 }
 
+// insertBatchSize caps how many tasks go into a single insertMany. 128 is
+// a multiple of the server's internalInsertMaxBatchSize (64), so each batch fills whole
+// server-side WiredTiger transactions rather than leaving a partial one.
+const insertBatchSize = 128
+
+// insertTasksUnordered inserts the payload in batches of insertBatchSize. On
+// error it returns without attempting the remaining batches, so the tasks are
+// left partially inserted (as they already are for a partially-failed unordered
+// insertMany).
+func insertTasksUnordered(ctx context.Context, payload []any) error {
+	coll := evergreen.GetEnvironment().DB().Collection(Collection)
+	for start := 0; start < len(payload); start += insertBatchSize {
+		batch := payload[start:min(start+insertBatchSize, len(payload))]
+		if _, err := coll.InsertMany(ctx, batch, options.InsertMany().SetOrdered(false)); err != nil {
+			return errors.Wrapf(err, "inserting tasks %d-%d of %d", start, start+len(batch), len(payload))
+		}
+	}
+	return nil
+}
+
 func (t Tasks) InsertUnordered(ctx context.Context) error {
 	if t.Len() == 0 {
 		return nil
 	}
-	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertMany(ctx, t.getPayload(), options.InsertMany().SetOrdered(false))
-	return err
+	return insertTasksUnordered(ctx, t.getPayload())
 }
 
 // InsertUnorderedWithPredictions inserts tasks with predicted costs applied without modifying the input tasks.
@@ -67,8 +87,7 @@ func (t Tasks) InsertUnorderedWithPredictions(ctx context.Context, predictions m
 	}
 	payloadSpan.End()
 
-	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertMany(ctx, payload, options.InsertMany().SetOrdered(false))
-	return err
+	return insertTasksUnordered(ctx, payload)
 }
 
 // ByPriority sorts execution tasks within a parent display task according to
