@@ -372,6 +372,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	// If all variants were filtered out, send success messages and don't create the patch.
 	if len(patchDoc.VariantsTasks) == 0 && len(ignoredVariants) > 0 {
 		j.sendGitHubSuccessMessages(ctx, patchDoc, pref)
+		j.sendGitHubSuccessMessageForIgnoredVariants(ctx, patchDoc, ignoredVariants)
 		return nil
 	}
 

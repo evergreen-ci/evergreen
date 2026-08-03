@@ -130,6 +130,11 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 			return nil, errors.Errorf("getting DBUser from User")
 		}
 		so.Region = dbUser.GetRegion()
+		// If the region could not be resolved from the user, use system-wide default.
+		if so.Region == "" {
+			grip.Warningf(ctx, "unable to determine region for spawn host, using default region: '%s'", evergreen.DefaultEC2Region)
+			so.Region = evergreen.DefaultEC2Region
+		}
 	}
 	if so.Userdata != "" {
 		if !evergreen.IsEc2Provider(d.Provider) {
@@ -360,8 +365,8 @@ fi
 
 echo "Debug daemon started successfully."
 
-evergreen debug load "%s"
-evergreen debug select "%s" --variant "%s"
+evergreen debug load %s
+evergreen debug select %s --variant %s
 evergreen debug run-until %s
 
 if [ $? -eq 0 ]; then
@@ -369,7 +374,7 @@ if [ $? -eq 0 ]; then
 else
   echo "ERROR: Debug setup script failed during execution."
 fi
-`, configPath, t.DisplayName, t.BuildVariant, stepNum, stepNum), nil
+`, util.ShellQuote(configPath), util.ShellQuote(t.DisplayName), util.ShellQuote(t.BuildVariant), util.ShellQuote(stepNum), stepNum), nil
 }
 
 func CheckInstanceTypeValid(ctx context.Context, d distro.Distro, requestedType string, allowedTypes []string) error {

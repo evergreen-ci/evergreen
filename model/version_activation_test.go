@@ -339,6 +339,65 @@ func (s *VersionActivationSuite) TestDoProjectActivationMultipleUnactivatedCommi
 	require.True(utility.FromBoolPtr(updatedActivatedVersion.Activated))
 }
 
+func (s *VersionActivationSuite) TestDoProjectActivationActivatesElapsedCronVariantOnAlreadyActivatedVersion() {
+	t := s.T()
+	require := require.New(t)
+
+	projectID := "test-project-cron"
+	now := time.Now()
+
+	projectRef := &ProjectRef{
+		Id:                     projectID,
+		RunEveryMainlineCommit: utility.TruePtr(),
+	}
+	require.NoError(projectRef.Insert(s.ctx))
+
+	// The version is already marked activated because its non-cron variant activated on a previous
+	// run, but its cron variant's activation time has only just elapsed.
+	version := &Version{
+		Id:                  "version-with-cron",
+		Identifier:          projectID,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          now.Add(-10 * time.Minute),
+		Revision:            "cron123",
+		RevisionOrderNumber: 1,
+		Activated:           utility.ToBoolPtr(true),
+		BuildVariants: []VersionBuildStatus{
+			{
+				BuildVariant: "regular-variant",
+				BuildId:      "build-regular",
+				ActivationStatus: ActivationStatus{
+					Activated:  true,
+					ActivateAt: now.Add(-10 * time.Minute),
+				},
+			},
+			{
+				BuildVariant: "cron-variant",
+				BuildId:      "build-cron",
+				ActivationStatus: ActivationStatus{
+					Activated:  false,
+					ActivateAt: now.Add(-1 * time.Minute),
+				},
+			},
+		},
+	}
+	require.NoError(version.Insert(s.ctx))
+
+	activated, err := DoProjectActivation(s.ctx, projectRef, now)
+	require.NoError(err)
+	require.Len(activated, 1)
+	assert.Equal(t, "version-with-cron", activated[0])
+
+	updatedVersion, err := VersionFindOneId(s.ctx, version.Id)
+	require.NoError(err)
+	require.NotNil(updatedVersion)
+	_, err = updatedVersion.GetBuildVariants(s.ctx)
+	require.NoError(err)
+	require.Len(updatedVersion.BuildVariants, 2)
+	assert.True(t, updatedVersion.BuildVariants[0].Activated)
+	assert.True(t, updatedVersion.BuildVariants[1].Activated, "cron variant should activate once its activation time elapses")
+}
+
 func (s *VersionActivationSuite) TestDoProjectActivationNewProject() {
 	t := s.T()
 	require := require.New(t)
@@ -491,7 +550,7 @@ func (s *VersionActivationSuite) TestDoProjectActivationSingleCommitBehaviorPres
 	require.True(updatedVersion.BuildVariants[0].Activated, "Single version should be activated")
 }
 
-func (s *VersionActivationSuite) TestVersionsUnactivatedSinceLastActivated() {
+func (s *VersionActivationSuite) TestVersionsSinceLastActivated() {
 	t := s.T()
 	require := require.New(t)
 
@@ -534,19 +593,19 @@ func (s *VersionActivationSuite) TestVersionsUnactivatedSinceLastActivated() {
 		require.NoError(version.Insert(s.ctx))
 	}
 
-	// Test the query to find unactivated versions since last activated
-	unactivatedVersions, err := VersionFind(s.ctx, VersionsUnactivatedSinceLastActivated(projectID, now, 1, 1000))
+	// Test the query to find versions since last activated
+	versionsSinceLastActivated, err := VersionFind(s.ctx, VersionsSinceLastActivated(projectID, now, 1, 1000))
 	require.NoError(err)
-	require.Len(unactivatedVersions, 2, "Should find 2 unactivated versions after the activated one")
+	require.Len(versionsSinceLastActivated, 3, "Should find the activated version and the 2 versions after it")
 
 	// Verify the correct versions were returned
 	foundIds := make(map[string]bool)
-	for _, v := range unactivatedVersions {
+	for _, v := range versionsSinceLastActivated {
 		foundIds[v.Id] = true
 	}
 	require.True(foundIds["unactivated-1"], "Should include unactivated-1")
 	require.True(foundIds["unactivated-2"], "Should include unactivated-2")
-	require.False(foundIds["activated-version"], "Should not include activated version")
+	require.True(foundIds["activated-version"], "Should include the activated version so its pending batchtime and cron work is reconsidered")
 }
 
 func (s *VersionActivationSuite) TestDoProjectActivationNoVersionsToActivate() {
