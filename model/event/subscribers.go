@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -165,7 +166,7 @@ func (s *WebhookSubscriber) String() string {
 
 func (s *WebhookSubscriber) validate() error {
 	catcher := grip.NewBasicCatcher()
-	catcher.AddWhen(s.URL == "", errors.New("url cannot be empty"))
+	catcher.Add(util.ValidateWebhookURL(s.URL))
 	catcher.AddWhen(len(s.Secret) == 0, errors.New("secret cannot be empty"))
 
 	catcher.AddWhen(s.Retries < 0, errors.New("retries cannot be negative"))
