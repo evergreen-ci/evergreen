@@ -13,6 +13,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/handler/lru"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
@@ -24,7 +25,7 @@ import (
 )
 
 // Handler returns a gimlet http handler func used as the gql route handler
-func Handler(apiURL string, allowMutations bool) func(w http.ResponseWriter, r *http.Request) {
+func Handler(apiURL string, allowMutations bool, env evergreen.Environment) func(w http.ResponseWriter, r *http.Request) {
 	schema := NewExecutableSchema(New(apiURL))
 	srv := handler.New(schema)
 
@@ -58,6 +59,14 @@ func Handler(apiURL string, allowMutations bool) func(w http.ResponseWriter, r *
 			}),
 		),
 	))
+
+	cfg := env.Settings()
+	complexityLimit := cfg.RateLimit.GraphQLComplexityLimit
+	limitDisabled := cfg.ServiceFlags.GraphQLComplexityLimiterDisabled
+
+	if !limitDisabled && complexityLimit > 0 {
+		srv.Use(extension.FixedComplexityLimit(complexityLimit))
+	}
 
 	// Log graphql requests to splunk
 	srv.Use(MakeSplunkTracing(schema))
