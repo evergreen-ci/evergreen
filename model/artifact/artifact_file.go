@@ -105,7 +105,7 @@ func (f *File) validate() error {
 }
 
 // StripHiddenFiles is a helper for only showing users the files they are
-// allowed to see. It also pre-signs file URLs. The resolver may be nil.
+// allowed to see. It also pre-signs file URLs.
 func StripHiddenFiles(ctx context.Context, files []File, hasUser bool, resolver CredentialResolver) ([]File, error) {
 	publicFiles := []File{}
 	for _, file := range files {
@@ -166,7 +166,8 @@ type Credentials struct {
 // CredentialResolver resolves the static credentials to presign a file with from
 // the owning project's current configuration. A nil result or an error means the
 // credentials stored on the artifact should be used. Resolvers cache per task, so
-// they must not be shared across requests.
+// they must not be shared across requests. Use
+// model.NewArtifactCredentialResolver to construct one.
 type CredentialResolver func(ctx context.Context, file File) (*Credentials, error)
 
 // credentialsForPresign prefers resolved credentials over the ones stored on the
@@ -181,23 +182,20 @@ func credentialsForPresign(ctx context.Context, file File, resolver CredentialRe
 		AWSSecret: file.AWSSecret,
 	}
 
-	if resolver != nil {
-		resolved, err := resolver(ctx, file)
-		grip.InfoWhen(ctx, err != nil, message.WrapError(err, message.Fields{
-			"message": "resolving current artifact credentials, falling back to the credentials stored on the artifact",
-			"bucket":  file.Bucket,
-			"file":    file.Name,
-		}))
-		if err == nil && resolved != nil {
-			creds = *resolved
-		}
+	resolved, err := resolver(ctx, file)
+	grip.InfoWhen(ctx, err != nil, message.WrapError(err, message.Fields{
+		"message": "resolving current artifact credentials, falling back to the credentials stored on the artifact",
+		"bucket":  file.Bucket,
+		"file":    file.Name,
+	}))
+	if err == nil && resolved != nil {
+		creds = *resolved
 	}
 
 	return creds
 }
 
-// PresignFile generates a presigned S3 URL for the given artifact file. The
-// resolver may be nil, in which case the stored credentials are used.
+// PresignFile generates a presigned S3 URL for the given artifact file.
 func PresignFile(ctx context.Context, file File, resolver CredentialResolver) (string, error) {
 	if err := file.validate(); err != nil {
 		return "", errors.Wrap(err, "file validation failed")

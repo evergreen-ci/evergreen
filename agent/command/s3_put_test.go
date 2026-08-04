@@ -1095,23 +1095,6 @@ func TestPutWithRetryAccumulatesPutsAcrossRetries(t *testing.T) {
 	assert.Equal(t, 9, conf.S3Usage.Artifacts.ArtifactWithMinPutRequests)
 }
 
-func TestExpansionVarName(t *testing.T) {
-	for name, testCase := range map[string]struct {
-		value    string
-		expected string
-	}{
-		"SingleExpansionReturnsName":              {value: "${aws_key}", expected: "aws_key"},
-		"ExpansionWithDefaultReturnsName":         {value: "${aws_key|fallback}", expected: "aws_key"},
-		"LiteralReturnsEmpty":                     {value: "AKIAFAKEKEY", expected: ""},
-		"ExpansionWithSurroundingTextIsNotSingle": {value: "prefix-${aws_key}", expected: ""},
-		"UnclosedExpansionReturnsEmpty":           {value: "${aws_key", expected: ""},
-	} {
-		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, testCase.expected, expansionVarName(testCase.value))
-		})
-	}
-}
-
 func TestAttachFilesRecordsCredentialVarNames(t *testing.T) {
 	const keyVar = "artifact_aws_key"
 	const secretVar = "artifact_aws_secret"

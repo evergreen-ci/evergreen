@@ -252,31 +252,12 @@ func (s3pc *s3put) validate() error {
 	return catcher.Resolve()
 }
 
-// expansionVarName returns the expansion name if value is exactly one expansion
-// reference.
-func expansionVarName(value string) string {
-	if !strings.HasPrefix(value, "${") || !strings.HasSuffix(value, "}") {
-		return ""
-	}
-
-	name := value[2 : len(value)-1]
-	// An expansion may supply a fallback as ${var|default}.
-	if idx := strings.Index(name, "|"); idx >= 0 {
-		name = name[:idx]
-	}
-	if name == "" || strings.ContainsAny(name, "${}") {
-		return ""
-	}
-
-	return name
-}
-
 // Apply the expansions from the relevant task config
 // to all appropriate fields of the s3put.
 func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 	s3pc.remoteFile = s3pc.RemoteFile
-	s3pc.awsKeyVarName = expansionVarName(s3pc.AwsKey)
-	s3pc.awsSecretVarName = expansionVarName(s3pc.AwsSecret)
+	s3pc.awsKeyVarName = util.ExpansionVarName(s3pc.AwsKey)
+	s3pc.awsSecretVarName = util.ExpansionVarName(s3pc.AwsSecret)
 
 	var err error
 	if err = util.ExpandValues(s3pc, &conf.Expansions); err != nil {
