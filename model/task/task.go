@@ -2189,8 +2189,12 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 		TaskOutputInfoKey:     t.TaskOutputInfo,
 	}
 	ec2EBSSetFields(TaskCostKey, t.TaskCost, setFields)
+	// End-task requests can race with display-task resets, so constrain the update
+	// to the execution and parent generation that issued it.
 	query := ByIdAndExecution(t.Id, t.Execution)
 	if t.DisplayTaskId == nil {
+		// A nil display task ID is ambiguous for legacy tasks, so allow documents
+		// with no parent generation while still guarding those that have one.
 		query["$or"] = []bson.M{
 			{LatestParentExecutionKey: t.LatestParentExecution},
 			{LatestParentExecutionKey: bson.M{"$exists": false}},
@@ -3220,6 +3224,8 @@ func (t *Task) SetResetWhenFinishedAtExecution(ctx context.Context, caller strin
 func (t *Task) setResetWhenFinished(ctx context.Context, caller string, execution *int) error {
 	if t.ResetWhenFinished {
 		if execution != nil {
+			// Validate idempotent requests against the database so a stale display
+			// generation cannot reset the current one.
 			return UpdateOne(ctx, bson.M{IdKey: t.Id, ExecutionKey: *execution}, bson.M{"$set": bson.M{ResetWhenFinishedKey: true}})
 		}
 		return nil
@@ -3299,6 +3305,8 @@ func (t *Task) SetResetFailedWhenFinishedAtExecution(ctx context.Context, caller
 func (t *Task) setResetFailedWhenFinished(ctx context.Context, caller string, execution *int) error {
 	if t.ResetFailedWhenFinished {
 		if execution != nil {
+			// Validate idempotent requests against the database so a stale display
+			// generation cannot reset the current one.
 			return UpdateOne(ctx, bson.M{IdKey: t.Id, ExecutionKey: *execution}, bson.M{"$set": bson.M{ResetFailedWhenFinishedKey: true}})
 		}
 		return nil
