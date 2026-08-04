@@ -969,6 +969,13 @@ Parameters:
   patterns, not plain paths: an unanchored entry like `README.md` matches that
   name in every directory, so anchor a single file with a leading slash, e.g.
   `/scripts/foo.sh`.
+
+  Both `filter` and `sparse_checkout_paths` apply only to the source clone;
+  module and wiki clones are unaffected. Do not enable them on variants that
+  also run patch builds: Evergreen applies patches with `git apply`, which fails
+  on files outside the sparse set. Combining `filter` with `clone_depth` is
+  supported, but the `git fetch --unshallow` fallback for older base commits
+  requires a distro git new enough to unshallow a partial clone.
 - `recurse_submodules`: automatically initialize and update each
   submodule in the repository, including any nested submodules.
 
