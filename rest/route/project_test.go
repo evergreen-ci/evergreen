@@ -435,7 +435,7 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 func (s *ProjectPatchByIDSuite) TestRunWithTestSelection() {
 	ctx := s.T().Context()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
-	jsonBody := []byte(`{"enabled": true, "test_selection": {"allowed": true, "default_enabled": false}}`)
+	jsonBody := []byte(`{"enabled": true, "test_selection": {"allowed": true, "default_enabled": true, "mainline_default_enabled": true}}`)
 	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
 	err := s.rm.Parse(ctx, req)
@@ -452,7 +452,9 @@ func (s *ProjectPatchByIDSuite) TestRunWithTestSelection() {
 	s.Require().NotNil(pRef.TestSelection.Allowed)
 	s.True(*pRef.TestSelection.Allowed)
 	s.Require().NotNil(pRef.TestSelection.DefaultEnabled)
-	s.False(*pRef.TestSelection.DefaultEnabled)
+	s.True(*pRef.TestSelection.DefaultEnabled)
+	s.Require().NotNil(pRef.TestSelection.MainlineDefaultEnabled)
+	s.True(*pRef.TestSelection.MainlineDefaultEnabled)
 }
 
 func (s *ProjectPatchByIDSuite) TestRunEveryMainlineCommit() {

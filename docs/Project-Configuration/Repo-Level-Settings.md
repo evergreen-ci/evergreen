@@ -16,6 +16,9 @@ Changing the owner or repo for a branch project will result in it inheriting val
 
 Branch projects can either have settings defined individually, or they can be set to default to the repo-level setting (repo-level settings can be defined on the repo project page itself). Entire sections of the project settings can be defaulted by clicking Default to Repo on Page at the top corner.
 
+Test selection settings follow the same inheritance rules. An attached project can inherit whether test selection
+features are allowed and whether task-level filtering is enabled for patches or for both patches and mainline commits.
+
 ![default_to_repo.png](../images/default_to_repo.png)
 
 For example, the below setting indicates that is defaulting to the repo-level setting, which we can see here is true.

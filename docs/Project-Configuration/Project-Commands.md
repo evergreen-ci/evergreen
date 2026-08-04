@@ -1840,10 +1840,10 @@ This command allows a task to get a recommended list of tests from the [test sel
 service](https://wiki.corp.mongodb.com/spaces/DBDEVPROD/pages/385846915/Test+Selection+Services). The command will
 populate an output JSON file, which your task can use to decide which tests should run.
 
-This command can only request selected tests if [the test selection feature is enabled by the
-project](Project-and-Distro-Settings#test-selection-settings) and the task is running in a patch. On mainline commits and
-other non-patch versions, the command writes an empty test list to the output file, so no tests are excluded, even if the
-version page shows that test selection is enabled.
+This command only requests selected tests when [test selection filtering is enabled for the running
+task](Project-and-Distro-Settings#test-selection-settings). Projects can enable filtering for patches only or for both
+patches and mainline commits. Git tags, periodic builds, triggered versions, and other unsupported versions write an
+empty test list to the output file so that no tests are excluded.
 
 ```yaml
 - command: test_selection.get

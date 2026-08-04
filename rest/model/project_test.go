@@ -22,8 +22,9 @@ func TestRepoBuildFromService(t *testing.T) {
 			MergeMethod: "Squash", // being partially populated shouldn't prevent enabled from being defaulted
 		},
 		TestSelection: model.TestSelectionSettings{
-			Allowed:        utility.FalsePtr(),
-			DefaultEnabled: utility.TruePtr(),
+			Allowed:                utility.FalsePtr(),
+			DefaultEnabled:         utility.TruePtr(),
+			MainlineDefaultEnabled: utility.TruePtr(),
 		},
 		RunEveryMainlineCommit: utility.TruePtr(),
 	}}
@@ -48,6 +49,7 @@ func TestRepoBuildFromService(t *testing.T) {
 	require.NotNil(t, apiRef.TestSelection.Allowed)
 	assert.False(t, *apiRef.TestSelection.Allowed)
 	assert.True(t, utility.FromBoolPtr(apiRef.TestSelection.DefaultEnabled))
+	assert.True(t, utility.FromBoolPtr(apiRef.TestSelection.MainlineDefaultEnabled))
 
 	require.NotNil(t, apiRef.RunEveryMainlineCommit)
 	assert.True(t, *apiRef.RunEveryMainlineCommit)

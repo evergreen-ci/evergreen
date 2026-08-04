@@ -1048,8 +1048,10 @@ Every task has some expansions available by default:
 - `${is_patch}` is "true" if the running task is in a patch build and
   undefined if it is not.
 - `${is_stepback}` is "true" if the running task was stepped back.
-- `${is_test_selection_enabled}` is "true" if test selection is enabled for the
-  running task and "false" if it is not.
+- `${is_test_selection_enabled}` is "true" if test selection may filter tests
+  for the running task based on its task, project, and requester settings, and
+  "false" if it may not. This does not indicate whether test selection was
+  skipped due to the command's `usage_rate`.
 - `${otel_collector_endpoint}` is the gRPC endpoint for Evergreen's
   OTel collector. Tasks can send traces to this endpoint.
 - `${otel_parent_id}` is the OTel span ID of the current command.

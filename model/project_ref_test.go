@@ -87,6 +87,9 @@ func TestFindMergedProjectRef(t *testing.T) {
 		},
 		CommitQueue:       CommitQueueParams{Enabled: nil, Message: "using repo commit queue"},
 		WorkstationConfig: WorkstationConfig{GitClone: utility.TruePtr()},
+		TestSelection: TestSelectionSettings{
+			Allowed: utility.TruePtr(),
+		},
 		ParsleyFilters: []parsley.Filter{
 			{
 				Expression:    "project-filter",
@@ -112,6 +115,9 @@ func TestFindMergedProjectRef(t *testing.T) {
 		},
 		CommitQueue:       CommitQueueParams{Enabled: utility.TruePtr()},
 		WorkstationConfig: WorkstationConfig{SetupCommands: []WorkstationSetupCommand{{Command: "my-command"}}},
+		TestSelection: TestSelectionSettings{
+			MainlineDefaultEnabled: utility.TruePtr(),
+		},
 		ParsleyFilters: []parsley.Filter{
 			{
 				Expression:    "repo-filter",
@@ -151,6 +157,14 @@ func TestFindMergedProjectRef(t *testing.T) {
 	assert.Len(t, mergedProject.WorkstationConfig.SetupCommands, 1)
 	assert.Equal(t, "random2", mergedProject.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
 	assert.Len(t, mergedProject.ParsleyFilters, 2)
+	assert.True(t, mergedProject.IsTestSelectionMainlineDefaultEnabled())
+
+	projectRef.TestSelection.MainlineDefaultEnabled = utility.FalsePtr()
+	assert.NoError(t, projectRef.Replace(t.Context()))
+	mergedProject, err = FindMergedProjectRef(t.Context(), "ident", "ident", true)
+	assert.NoError(t, err)
+	require.NotNil(t, mergedProject)
+	assert.False(t, mergedProject.IsTestSelectionMainlineDefaultEnabled())
 
 	// Assert that mergeParsleyFilters correctly handles projects with repo filters but not project filters.
 	projectRef.ParsleyFilters = []parsley.Filter{}
@@ -1711,12 +1725,23 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.Nil(t, pRefFromDb.GitHubDynamicTokenPermissionGroups)
 		},
 		ProjectPageTestSelectionSection: func(t *testing.T, id string) {
-			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageTestSelectionSection, "me"))
 			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
-			assert.NoError(t, err)
-			assert.NotNil(t, pRefFromDb)
+			require.NoError(t, err)
+			require.NotNil(t, pRefFromDb)
+			pRefFromDb.TestSelection = TestSelectionSettings{
+				Allowed:                utility.TruePtr(),
+				DefaultEnabled:         utility.TruePtr(),
+				MainlineDefaultEnabled: utility.TruePtr(),
+			}
+			require.NoError(t, pRefFromDb.Replace(t.Context()))
+
+			require.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageTestSelectionSection, "me"))
+			pRefFromDb, err = FindBranchProjectRef(t.Context(), id)
+			require.NoError(t, err)
+			require.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.TestSelection.Allowed)
 			assert.Nil(t, pRefFromDb.TestSelection.DefaultEnabled)
+			assert.Nil(t, pRefFromDb.TestSelection.MainlineDefaultEnabled)
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -4079,6 +4104,64 @@ func TestUserHasRepoViewPermission(t *testing.T) {
 			usr := &user.DBUser{Id: "usr"}
 			assert.NoError(t, usr.Insert(t.Context()))
 			testCase(t, usr, roleManager)
+		})
+	}
+}
+
+func TestIsTestSelectionFilteringEnabled(t *testing.T) {
+	for tName, tCase := range map[string]struct {
+		settings    TestSelectionSettings
+		requester   string
+		taskEnabled bool
+		expected    bool
+	}{
+		"DisallowedProjectIsDisabled": {
+			settings:    TestSelectionSettings{Allowed: utility.FalsePtr(), MainlineDefaultEnabled: utility.TruePtr()},
+			requester:   evergreen.RepotrackerVersionRequester,
+			taskEnabled: true,
+		},
+		"DisabledTaskIsDisabled": {
+			settings:    TestSelectionSettings{Allowed: utility.TruePtr(), MainlineDefaultEnabled: utility.TruePtr()},
+			requester:   evergreen.RepotrackerVersionRequester,
+			taskEnabled: false,
+		},
+		"PatchRequesterIsEnabled": {
+			settings:    TestSelectionSettings{Allowed: utility.TruePtr()},
+			requester:   evergreen.PatchVersionRequester,
+			taskEnabled: true,
+			expected:    true,
+		},
+		"GitHubPatchRequesterIsEnabled": {
+			settings:    TestSelectionSettings{Allowed: utility.TruePtr()},
+			requester:   evergreen.GithubPRRequester,
+			taskEnabled: true,
+			expected:    true,
+		},
+		"MainlineRequesterWithoutMainlineDefaultIsDisabled": {
+			settings:    TestSelectionSettings{Allowed: utility.TruePtr()},
+			requester:   evergreen.RepotrackerVersionRequester,
+			taskEnabled: true,
+		},
+		"MainlineRequesterWithPatchDefaultDisabledIsDisabled": {
+			settings:    TestSelectionSettings{Allowed: utility.TruePtr(), DefaultEnabled: utility.FalsePtr(), MainlineDefaultEnabled: utility.TruePtr()},
+			requester:   evergreen.RepotrackerVersionRequester,
+			taskEnabled: true,
+		},
+		"MainlineRequesterWithMainlineDefaultIsEnabled": {
+			settings:    TestSelectionSettings{Allowed: utility.TruePtr(), DefaultEnabled: utility.TruePtr(), MainlineDefaultEnabled: utility.TruePtr()},
+			requester:   evergreen.RepotrackerVersionRequester,
+			taskEnabled: true,
+			expected:    true,
+		},
+		"OtherNonPatchRequesterIsDisabled": {
+			settings:    TestSelectionSettings{Allowed: utility.TruePtr(), MainlineDefaultEnabled: utility.TruePtr()},
+			requester:   evergreen.AdHocRequester,
+			taskEnabled: true,
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ref := ProjectRef{TestSelection: tCase.settings}
+			assert.Equal(t, tCase.expected, ref.IsTestSelectionFilteringEnabled(tCase.requester, tCase.taskEnabled))
 		})
 	}
 }
