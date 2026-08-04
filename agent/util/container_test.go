@@ -3,6 +3,7 @@ package util
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"testing"
 
 	"github.com/mongodb/jasper/options"
@@ -135,6 +136,11 @@ func TestWrapWithContainer(t *testing.T) {
 	})
 
 	t.Run("EnvFileMode0600", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			// Windows does not support POSIX permission bits and reports writable files with the default 0666 mode.
+			t.Skip("Windows does not support POSIX permission bits")
+		}
+
 		dir := t.TempDir()
 		opts := makeOpts()
 		opts.Environment = map[string]string{"KEY": "value"}
