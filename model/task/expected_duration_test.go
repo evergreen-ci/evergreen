@@ -75,6 +75,8 @@ func clearTasksAndEstimateCaches(t *testing.T) {
 	reset := func() {
 		require.NoError(t, db.ClearCollections(Collection))
 		expectedDurationCache.Purge()
+		generateTasksEstimationCache.Purge()
+		noGenerateTasksHistoryCache.Purge()
 	}
 	reset()
 	t.Cleanup(reset)
