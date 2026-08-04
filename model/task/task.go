@@ -2189,7 +2189,16 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 		TaskOutputInfoKey:     t.TaskOutputInfo,
 	}
 	ec2EBSSetFields(TaskCostKey, t.TaskCost, setFields)
-	return UpdateOne(ctx, bson.M{IdKey: t.Id}, bson.M{"$set": setFields})
+	query := ByIdAndExecution(t.Id, t.Execution)
+	if t.DisplayTaskId == nil {
+		query["$or"] = []bson.M{
+			{LatestParentExecutionKey: t.LatestParentExecution},
+			{LatestParentExecutionKey: bson.M{"$exists": false}},
+		}
+	} else if utility.FromStringPtr(t.DisplayTaskId) != "" {
+		query[LatestParentExecutionKey] = t.LatestParentExecution
+	}
+	return UpdateOne(ctx, query, bson.M{"$set": setFields})
 }
 
 // GetDisplayStatus finds and sets DisplayStatus to the task. It should reflect
@@ -3200,19 +3209,31 @@ func (t *Task) GetTestResultsTasks(ctx context.Context) ([]Task, error) {
 // SetResetWhenFinished requests that a display task or single-host task group
 // reset itself when finished. Will mark itself as system failed.
 func (t *Task) SetResetWhenFinished(ctx context.Context, caller string) error {
+	return t.setResetWhenFinished(ctx, caller, nil)
+}
+
+// SetResetWhenFinishedAtExecution requests a reset only if the task is at the expected execution.
+func (t *Task) SetResetWhenFinishedAtExecution(ctx context.Context, caller string, execution int) error {
+	return t.setResetWhenFinished(ctx, caller, &execution)
+}
+
+func (t *Task) setResetWhenFinished(ctx context.Context, caller string, execution *int) error {
 	if t.ResetWhenFinished {
+		if execution != nil {
+			return UpdateOne(ctx, bson.M{IdKey: t.Id, ExecutionKey: *execution}, bson.M{"$set": bson.M{ResetWhenFinishedKey: true}})
+		}
 		return nil
 	}
 	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller); err != nil {
 		return errors.Wrapf(err, "updating user '%s' patch task scheduling limit", caller)
 	}
-	t.ResetFailedWhenFinished = false
-	t.ResetWhenFinished = true
-	return UpdateOne(
+	query := bson.M{IdKey: t.Id}
+	if execution != nil {
+		query[ExecutionKey] = *execution
+	}
+	err := UpdateOne(
 		ctx,
-		bson.M{
-			IdKey: t.Id,
-		},
+		query,
 		bson.M{
 			"$unset": bson.M{
 				ResetFailedWhenFinishedKey: 1,
@@ -3222,6 +3243,12 @@ func (t *Task) SetResetWhenFinished(ctx context.Context, caller string) error {
 			},
 		},
 	)
+	if err != nil {
+		return err
+	}
+	t.ResetFailedWhenFinished = false
+	t.ResetWhenFinished = true
+	return nil
 }
 
 // SetResetWhenFinishedWithInc requests that a task (that was marked to
@@ -3261,19 +3288,31 @@ func (t *Task) SetResetWhenFinishedWithInc(ctx context.Context) error {
 // SetResetFailedWhenFinished requests that a display task
 // only restarts failed tasks.
 func (t *Task) SetResetFailedWhenFinished(ctx context.Context, caller string) error {
+	return t.setResetFailedWhenFinished(ctx, caller, nil)
+}
+
+// SetResetFailedWhenFinishedAtExecution requests a failed-only reset if the task is at the expected execution.
+func (t *Task) SetResetFailedWhenFinishedAtExecution(ctx context.Context, caller string, execution int) error {
+	return t.setResetFailedWhenFinished(ctx, caller, &execution)
+}
+
+func (t *Task) setResetFailedWhenFinished(ctx context.Context, caller string, execution *int) error {
 	if t.ResetFailedWhenFinished {
+		if execution != nil {
+			return UpdateOne(ctx, bson.M{IdKey: t.Id, ExecutionKey: *execution}, bson.M{"$set": bson.M{ResetFailedWhenFinishedKey: true}})
+		}
 		return nil
 	}
 	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller); err != nil {
 		return errors.Wrapf(err, "updating user '%s' patch task scheduling limit", caller)
 	}
-	t.ResetWhenFinished = false
-	t.ResetFailedWhenFinished = true
-	return UpdateOne(
+	query := bson.M{IdKey: t.Id}
+	if execution != nil {
+		query[ExecutionKey] = *execution
+	}
+	err := UpdateOne(
 		ctx,
-		bson.M{
-			IdKey: t.Id,
-		},
+		query,
 		bson.M{
 			"$unset": bson.M{
 				ResetWhenFinishedKey: 1,
@@ -3283,6 +3322,12 @@ func (t *Task) SetResetFailedWhenFinished(ctx context.Context, caller string) er
 			},
 		},
 	)
+	if err != nil {
+		return err
+	}
+	t.ResetWhenFinished = false
+	t.ResetFailedWhenFinished = true
+	return nil
 }
 
 func updateSchedulingLimitForResetWhenFinished(ctx context.Context, t *Task, caller string) error {
