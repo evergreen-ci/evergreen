@@ -904,6 +904,85 @@ func TestGetProjectTasks(t *testing.T) {
 	assert.Len(resp.Data(), 21)
 }
 
+func TestGetProjectTasksParse(t *testing.T) {
+	ctx := t.Context()
+
+	for testName, testCase := range map[string]func(*testing.T){
+		"DefaultsWhenNoOptionsSpecified": func(t *testing.T) {
+			h := &getProjectTasksHandler{}
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/tasks/task", http.NoBody)
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj", "task_name": "task"})
+			require.NoError(t, h.Parse(ctx, req))
+			assert.Equal(t, defaultVersionLimit, h.opts.Limit)
+		},
+		"AcceptsBodyOptions": func(t *testing.T) {
+			h := &getProjectTasksHandler{}
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/tasks/task", bytes.NewBufferString(`{"num_versions":10,"build_variant":"variant","start_at":20,"requesters":["ad_hoc"]}`))
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj", "task_name": "task"})
+			require.NoError(t, h.Parse(ctx, req))
+			assert.Equal(t, model.GetProjectTasksOpts{
+				Limit:        10,
+				BuildVariant: "variant",
+				StartAt:      20,
+				Requesters:   []string{evergreen.AdHocRequester},
+			}, h.opts)
+		},
+		"AcceptsQueryOptions": func(t *testing.T) {
+			h := &getProjectTasksHandler{}
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/tasks/task?num_versions=10&build_variant=variant&start_at=20&requesters=ad_hoc&requesters=gitter_request", http.NoBody)
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj", "task_name": "task"})
+			require.NoError(t, h.Parse(ctx, req))
+			assert.Equal(t, model.GetProjectTasksOpts{
+				Limit:        10,
+				BuildVariant: "variant",
+				StartAt:      20,
+				Requesters:   []string{evergreen.AdHocRequester, evergreen.RepotrackerVersionRequester},
+			}, h.opts)
+		},
+		"AcceptsCommaSeparatedRequesters": func(t *testing.T) {
+			h := &getProjectTasksHandler{}
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/tasks/task?requesters=ad_hoc,gitter_request", http.NoBody)
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj", "task_name": "task"})
+			require.NoError(t, h.Parse(ctx, req))
+			assert.Equal(t, []string{evergreen.AdHocRequester, evergreen.RepotrackerVersionRequester}, h.opts.Requesters)
+		},
+		"QueryOptionsOverrideBodyOptions": func(t *testing.T) {
+			h := &getProjectTasksHandler{}
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/tasks/task?num_versions=10&build_variant=query_variant&start_at=20&requesters=gitter_request", bytes.NewBufferString(`{"num_versions":5,"build_variant":"body_variant","start_at":10,"requesters":["ad_hoc"]}`))
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj", "task_name": "task"})
+			require.NoError(t, h.Parse(ctx, req))
+			assert.Equal(t, model.GetProjectTasksOpts{
+				Limit:        10,
+				BuildVariant: "query_variant",
+				StartAt:      20,
+				Requesters:   []string{evergreen.RepotrackerVersionRequester},
+			}, h.opts)
+		},
+		"RejectsInvalidQueryOptions": func(t *testing.T) {
+			for _, query := range []string{
+				"num_versions=not_an_int",
+				"num_versions=-1",
+				"start_at=not_an_int",
+				"start_at=-1",
+				"requesters=invalid",
+			} {
+				h := &getProjectTasksHandler{}
+				req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/tasks/task?"+query, http.NoBody)
+				require.NoError(t, err)
+				req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj", "task_name": "task"})
+				assert.Error(t, h.Parse(ctx, req))
+			}
+		},
+	} {
+		t.Run(testName, testCase)
+	}
+}
+
 func TestGetProjectVersions(t *testing.T) {
 	assert := assert.New(t)
 	ctx := t.Context()

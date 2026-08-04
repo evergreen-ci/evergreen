@@ -8,6 +8,7 @@ import (
 	"maps"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -1015,7 +1016,7 @@ func (h *modifyProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder
 
 ////////////////////////////////////////////////////////////////////////
 //
-// GET /rest/v2/projects/{project_id}/tasks/{task_id}
+// GET /rest/v2/projects/{project_id}/tasks/{task_name}
 
 type getProjectTasksHandler struct {
 	projectName string
@@ -1031,14 +1032,18 @@ func makeGetProjectTasksHandler() gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Get tasks for a project
-//	@Description	Returns the last set number of completed tasks that exist for a given project. Parameters should be passed into the JSON body. Ensure that a task name rather than a task ID is passed into the URL.
+//	@Description	Returns the last set number of completed tasks that exist for a given project. Parameters can be passed as query parameters or in the JSON body. Query parameters override body parameters. Ensure that a task name rather than a task ID is passed into the URL.
 //	@Tags			tasks
 //	@Router			/projects/{project_id}/tasks/{task_name} [get]
 //	@Security		Api-User || Api-Key
-//	@Param			project_id	path	string						true	"the project ID"
-//	@Param			task_name	path	string						true	"the task name"
-//	@Param			{object}	body	model.GetProjectTasksOpts	false	"parameters"
-//	@Success		200			{array}	model.APITask
+//	@Param			project_id		path	string						true	"the project ID"
+//	@Param			task_name		path	string						true	"the task name"
+//	@Param			num_versions	query	int							false	"The number of versions to search. Defaults to 5."
+//	@Param			build_variant	query	string						false	"Only return tasks for this build variant."
+//	@Param			start_at		query	int							false	"The revision order number to start at."
+//	@Param			requesters		query	[]string					false	"Only return tasks for these requester types. Can be comma-separated or specified multiple times."	collectionFormat(multi)
+//	@Param			{object}		body	model.GetProjectTasksOpts	false	"parameters"
+//	@Success		200				{array}	model.APITask
 func (h *getProjectTasksHandler) Factory() gimlet.RouteHandler {
 	return &getProjectTasksHandler{}
 }
@@ -1046,11 +1051,35 @@ func (h *getProjectTasksHandler) Factory() gimlet.RouteHandler {
 func (h *getProjectTasksHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.projectName = gimlet.GetVars(r)["project_id"]
 	h.taskName = gimlet.GetVars(r)["task_name"]
+	params := r.URL.Query()
 	// body is optional
 	b, _ := io.ReadAll(r.Body)
 	if len(b) > 0 {
 		if err := json.Unmarshal(b, &h.opts); err != nil {
 			return errors.Wrap(err, "reading project task options from JSON request body")
+		}
+	}
+	if limitStr := params.Get("num_versions"); limitStr != "" {
+		limit, err := strconv.Atoi(limitStr)
+		if err != nil {
+			return errors.Wrap(err, "invalid num_versions query parameter")
+		}
+		h.opts.Limit = limit
+	}
+	if buildVariant, ok := params["build_variant"]; ok {
+		h.opts.BuildVariant = buildVariant[0]
+	}
+	if startAtStr := params.Get("start_at"); startAtStr != "" {
+		startAt, err := strconv.Atoi(startAtStr)
+		if err != nil {
+			return errors.Wrap(err, "invalid start_at query parameter")
+		}
+		h.opts.StartAt = startAt
+	}
+	if requesters, ok := params["requesters"]; ok {
+		h.opts.Requesters = nil
+		for _, requester := range requesters {
+			h.opts.Requesters = append(h.opts.Requesters, strings.Split(requester, ",")...)
 		}
 	}
 	if h.opts.Limit < 0 {
