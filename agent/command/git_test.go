@@ -610,6 +610,13 @@ func (s *GitGetProjectSuite) TestGetCloneCommand() {
 		"cd dir",
 		"git sparse-checkout set --no-cone 'scripts/a.sh' 'scripts/b.sh'",
 	}), cmds)
+
+	// embedded single quotes are escaped so the shell passes them to git
+	// literally
+	opts.sparseCheckoutPaths = []string{"scripts/it's.sh"}
+	cmds, err = opts.getCloneCommand()
+	s.NoError(err)
+	s.Contains(strings.Join(cmds, " "), `git sparse-checkout set --no-cone 'scripts/it'\''s.sh'`)
 }
 
 func (s *GitGetProjectSuite) TestBuildSourceCommand() {

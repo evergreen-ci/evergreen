@@ -182,7 +182,7 @@ func (opts cloneOpts) getCloneCommand() ([]string, error) {
 		clone = fmt.Sprintf("%s --depth %d", clone, opts.cloneDepth)
 	}
 	if opts.filter != "" {
-		clone = fmt.Sprintf("%s --filter='%s'", clone, opts.filter)
+		clone = fmt.Sprintf("%s --filter=%s", clone, shellQuote(opts.filter))
 	}
 	if len(opts.sparseCheckoutPaths) > 0 {
 		// --sparse initializes a sparse-checkout (we widen it below) and
@@ -219,9 +219,15 @@ func (opts cloneOpts) getCloneCommand() ([]string, error) {
 func quoteAll(paths []string) []string {
 	quoted := make([]string, len(paths))
 	for i, p := range paths {
-		quoted[i] = fmt.Sprintf("'%s'", p)
+		quoted[i] = shellQuote(p)
 	}
 	return quoted
+}
+
+// shellQuote single-quotes s so the shell passes it to git literally, escaping
+// any embedded single quotes.
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
 // getCloneCommandForWikiModule runs a plain git clone to opts.dir. GitHub
