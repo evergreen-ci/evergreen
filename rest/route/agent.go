@@ -447,6 +447,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		grip.Error(ctx, errors.Wrap(err, "loading cost config for expansions_and_vars"))
 	} else {
 		res.DevprodOwnedAWSAccountIDs = costCfg.S3Cost.Storage.DevprodOwnedAWSAccountIDs
+		res.ArtifactAWSAccountsWithoutLifecycleRules = costCfg.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules
 	}
 
 	return gimlet.NewJSONResponse(res)

@@ -374,9 +374,9 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 		}
 	}
 
-	// For key+secret uploads with no role ARN, resolve the AWS account ID via STS so that
-	// cost tracking can gate on devprod-owned accounts just like role-ARN uploads.
-	if s3pc.getRoleARN() == "" && s3pc.AwsKey != "" && len(conf.DevprodOwnedAWSAccountIDs) > 0 {
+	// For key+secret uploads with no role ARN, resolve the AWS account ID via STS so cost tracking and lifecycle rule discovery can gate on it.
+	needsAccountID := len(conf.DevprodOwnedAWSAccountIDs) > 0 || len(conf.ArtifactAWSAccountsWithoutLifecycleRules) > 0
+	if s3pc.getRoleARN() == "" && s3pc.AwsKey != "" && needsAccountID {
 		accountID, err := conf.GetOrSetCachedAWSAccountID(s3pc.AwsKey, func() (string, error) {
 			return resolveAWSAccountIDFromStaticCredentials(ctx, s3pc.AwsKey, s3pc.AwsSecret, s3pc.AwsSessionToken, s3pc.Region)
 		})
