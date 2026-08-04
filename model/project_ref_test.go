@@ -4082,3 +4082,31 @@ func TestUserHasRepoViewPermission(t *testing.T) {
 		})
 	}
 }
+
+// The settings UI never sends artifact credentials, so no section write may include them.
+func TestArtifactCredentialsSurviveProjectSettingsWrites(t *testing.T) {
+	credentials := ArtifactCredentialSettings{AWSKeyVarName: "aws_key", AWSSecretVarName: "aws_secret"}
+
+	// A nil update is how defaulting a section to the repo saves it.
+	for name, update := range map[string]*ProjectRef{
+		"SavingTheGeneralSection":           {Id: "project_id", Identifier: "project_identifier", Owner: "owner", Repo: "repo", Enabled: true, BatchTime: 20},
+		"DefaultingTheGeneralSectionToRepo": nil,
+	} {
+		t.Run(name, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ConfigCollection))
+			pRef := ProjectRef{
+				Id: "project_id", Identifier: "project_identifier", Owner: "owner", Repo: "repo",
+				Branch: "main", Enabled: true, BatchTime: 10, ArtifactCredentials: credentials,
+			}
+			require.NoError(t, pRef.Insert(t.Context()))
+
+			_, err := SaveProjectPageForSection(t.Context(), "project_id", update, ProjectPageGeneralSection, false)
+			require.NoError(t, err)
+
+			saved, err := FindBranchProjectRef(t.Context(), "project_identifier")
+			require.NoError(t, err)
+			require.NotNil(t, saved)
+			assert.Equal(t, credentials, saved.ArtifactCredentials)
+		})
+	}
+}

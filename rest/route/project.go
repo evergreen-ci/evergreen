@@ -400,6 +400,10 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating build baron config"))
 	}
 
+	if err = h.newProjectRef.ArtifactCredentials.Validate(); err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "invalid artifact credentials").Error()})
+	}
+
 	newRevision := utility.FromStringPtr(h.apiNewProjectRef.Revision)
 	if newRevision != "" {
 		if err = dbModel.UpdateLastRevision(ctx, h.project, newRevision); err != nil {

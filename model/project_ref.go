@@ -113,6 +113,10 @@ type ProjectRef struct {
 	BuildBaronSettings evergreen.BuildBaronSettings `bson:"build_baron_settings,omitempty" json:"build_baron_settings" yaml:"build_baron_settings,omitempty"`
 	PerfEnabled        *bool                        `bson:"perf_enabled,omitempty" json:"perf_enabled,omitempty" yaml:"perf_enabled,omitempty"`
 
+	// ArtifactCredentials names the source of the AWS credentials used to presign
+	// this project's signed artifacts.
+	ArtifactCredentials ArtifactCredentialSettings `bson:"artifact_credentials,omitempty" json:"artifact_credentials,omitempty" yaml:"artifact_credentials,omitempty"`
+
 	// RepoRefId is the repo ref id that this project ref tracks, if any.
 	RepoRefId string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
 
