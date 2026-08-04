@@ -559,16 +559,6 @@ func getMyPublicKeys(ctx context.Context) []*restModel.APIPubKey {
 	return publicKeys
 }
 
-func getAPIVolumeList(volumes []host.Volume) ([]*restModel.APIVolume, error) {
-	apiVolumes := make([]*restModel.APIVolume, 0, len(volumes))
-	for _, vol := range volumes {
-		apiVolume := restModel.APIVolume{}
-		apiVolume.BuildFromService(vol)
-		apiVolumes = append(apiVolumes, &apiVolume)
-	}
-	return apiVolumes, nil
-}
-
 func mustHaveUser(ctx context.Context) *user.DBUser {
 	u := gimlet.GetUser(ctx)
 	if u == nil {

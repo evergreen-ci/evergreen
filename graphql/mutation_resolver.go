@@ -743,7 +743,7 @@ func (r *mutationResolver) DetachVolumeFromHost(ctx context.Context, volumeID st
 }
 
 // EditSpawnHost is the resolver for the editSpawnHost field.
-func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpawnHostInput) (*restModel.APIHost, error) {
+func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpawnHostInput) (*host.Host, error) {
 	var v *host.Volume
 	usr := mustHaveUser(ctx)
 	h, err := host.FindOneByIdOrTag(ctx, spawnHost.HostID)
@@ -848,9 +848,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 		}
 	}
 
-	apiHost := restModel.APIHost{}
-	apiHost.BuildFromService(h, nil)
-	return &apiHost, nil
+	return h, nil
 }
 
 // MigrateVolume is the resolver for the migrateVolume field.
@@ -864,7 +862,7 @@ func (r *mutationResolver) MigrateVolume(ctx context.Context, volumeID string, s
 }
 
 // SpawnHost is the resolver for the spawnHost field.
-func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*restModel.APIHost, error) {
+func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*host.Host, error) {
 	usr := mustHaveUser(ctx)
 	options, err := getHostRequestOptions(ctx, usr, spawnHostInput)
 	if err != nil {
@@ -904,9 +902,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 	if spawnHost == nil {
 		return nil, InternalServerError.Send(ctx, "creating intent for spawn host")
 	}
-	apiHost := restModel.APIHost{}
-	apiHost.BuildFromService(spawnHost, nil)
-	return &apiHost, nil
+	return spawnHost, nil
 }
 
 // SpawnVolume is the resolver for the spawnVolume field.
@@ -975,7 +971,7 @@ func (r *mutationResolver) RemoveVolume(ctx context.Context, volumeID string) (b
 }
 
 // UpdateSpawnHostStatus is the resolver for the updateSpawnHostStatus field.
-func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, updateSpawnHostStatusInput UpdateSpawnHostStatusInput) (*restModel.APIHost, error) {
+func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, updateSpawnHostStatusInput UpdateSpawnHostStatusInput) (*host.Host, error) {
 	hostID := updateSpawnHostStatusInput.HostID
 	action := updateSpawnHostStatusInput.Action
 	shouldKeepOff := utility.FromBoolPtr(updateSpawnHostStatusInput.ShouldKeepOff)
@@ -1021,9 +1017,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, updateSpaw
 		}
 		return nil, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
-	apiHost := restModel.APIHost{}
-	apiHost.BuildFromService(h, nil)
-	return &apiHost, nil
+	return h, nil
 }
 
 // UpdateVolume is the resolver for the updateVolume field.

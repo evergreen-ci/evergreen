@@ -3,12 +3,10 @@ type Volume {
   availabilityZone: String!
   createdBy: String!
   creationTime: Time
-  deviceName: String
   displayName: String!
   expiration: Time
   homeVolume: Boolean!
   host: Host
-  hostID: String!
   migrating: Boolean!
   noExpiration: Boolean!
   size: Int!

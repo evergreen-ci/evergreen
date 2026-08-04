@@ -313,7 +313,16 @@ models:
   HomeVolumeSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIHomeVolumeSettings
   Host:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIHost
+    model: github.com/evergreen-ci/evergreen/model/host.Host
+    fields:
+      availabilityZone:
+        fieldName: "Zone"
+      expiration:
+        fieldName: "ExpirationTime"
+      hostUrl:
+        fieldName: "Host"
+      uptime:
+        fieldName: "CreationTime"
   HostAllocatorSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIHostAllocatorSettings
   HostAllocatorSettingsInput:
@@ -906,8 +915,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.TaskEventData
   TaskEventLogEntry:
     model: github.com/evergreen-ci/evergreen/rest/model.TaskAPIEventLogEntry
-  TaskInfo:
-    model: github.com/evergreen-ci/evergreen/rest/model.TaskInfo
   TestSelectionConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APITestSelectionConfig
   TestSelectionConfigInput:
@@ -1016,7 +1023,10 @@ models:
   VersionToRestart:
     model: github.com/evergreen-ci/evergreen/model.VersionToRestart
   Volume:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIVolume
+    model: github.com/evergreen-ci/evergreen/model/host.Volume
+    fields:
+      creationTime:
+        fieldName: "CreationDate"
   WaterfallBuild:
     model: github.com/evergreen-ci/evergreen/model.WaterfallBuild
   WaterfallBuildVariant:
