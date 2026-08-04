@@ -1116,19 +1116,13 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		}
 	}
 
-	flattenedVersions := []*restModel.APIVersion{}
 	versionPtrs := []*model.Version{}
 	for _, v := range allVersions {
-		apiVersion := &restModel.APIVersion{}
-		apiVersion.BuildFromService(ctx, v)
-		flattenedVersions = append(flattenedVersions, apiVersion)
-
 		vCopy := v
 		versionPtrs = append(versionPtrs, &vCopy)
 	}
 
 	results := &Waterfall{
-		FlattenedVersions: flattenedVersions,
 		Pagination: &WaterfallPagination{
 			ActiveVersionIds:       activeVersionIds,
 			NextPageOrder:          nextPageOrder,

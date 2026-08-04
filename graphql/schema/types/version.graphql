@@ -94,7 +94,6 @@ type Version {
   user: User!
   versionTiming: VersionTiming
   warnings: [String!]!
-  waterfallBuilds: [WaterfallBuild!]
 }
 
 type VersionTasks {
