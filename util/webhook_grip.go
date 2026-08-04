@@ -42,14 +42,12 @@ type evergreenWebhookMessage struct {
 	message.Base
 }
 
-// NewWebhookMessage keeps webhook payload handling in Grip's notification pipeline.
 func NewWebhookMessage(raw EvergreenWebhook) message.Composer {
 	return &evergreenWebhookMessage{
 		raw: raw,
 	}
 }
 
-// Loggable prevents invalid notifications from reaching the outbound sender.
 func (w *evergreenWebhookMessage) Loggable() bool {
 	if len(w.raw.NotificationID) == 0 {
 		return false
@@ -80,17 +78,14 @@ func (w *evergreenWebhookMessage) Loggable() bool {
 	return err == nil
 }
 
-// Raw preserves webhook settings for the webhook-specific sender.
 func (w *evergreenWebhookMessage) Raw() any {
 	return &w.raw
 }
 
-// String preserves generic sender error reporting behavior.
 func (w *evergreenWebhookMessage) String() string {
 	return string(w.raw.Body)
 }
 
-// request centralizes request signing so recipients can authenticate notifications.
 func (w *EvergreenWebhook) request() (*http.Request, error) {
 	req, err := http.NewRequest(http.MethodPost, w.URL, bytes.NewReader(w.Body))
 	if err != nil {
@@ -123,7 +118,6 @@ type evergreenWebhookLogger struct {
 	*send.Base
 }
 
-// NewEvergreenWebhookLogger isolates user-controlled requests from general HTTP traffic.
 func NewEvergreenWebhookLogger() (send.Sender, error) {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	// A proxy could reach an internal destination without using the guarded direct dialer.
@@ -142,7 +136,6 @@ func NewEvergreenWebhookLogger() (send.Sender, error) {
 	return s, nil
 }
 
-// Send preserves standard sender filtering and error handling for webhooks.
 func (w *evergreenWebhookLogger) Send(ctx context.Context, m message.Composer) {
 	if w.Level().ShouldLog(m) {
 		if err := w.send(m); err != nil {
@@ -151,7 +144,6 @@ func (w *evergreenWebhookLogger) Send(ctx context.Context, m message.Composer) {
 	}
 }
 
-// send retries delivery failures without weakening destination protections.
 func (w *evergreenWebhookLogger) send(m message.Composer) error {
 	raw, ok := m.Raw().(*EvergreenWebhook)
 	if !ok {
@@ -209,7 +201,6 @@ func (w *evergreenWebhookLogger) send(m message.Composer) error {
 	})
 }
 
-// Flush is unnecessary because webhook delivery is synchronous.
 func (w *evergreenWebhookLogger) Flush(_ context.Context) error { return nil }
 
 // ValidateWebhookURL rejects destination forms that could turn Evergreen into a proxy for local services.
@@ -241,6 +232,11 @@ type webhookResolver interface {
 
 // webhookDialContext prevents hostname changes from redirecting requests to local services.
 func webhookDialContext(resolver webhookResolver) func(context.Context, string, string) (net.Conn, error) {
+	dialer := net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}
+
 	return func(ctx context.Context, network, address string) (net.Conn, error) {
 		host, port, err := net.SplitHostPort(address)
 		if err != nil {
@@ -261,7 +257,6 @@ func webhookDialContext(resolver webhookResolver) func(context.Context, string, 
 			}
 		}
 
-		dialer := net.Dialer{}
 		var lastErr error
 		for _, ip := range ips {
 			conn, err := dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), port))
