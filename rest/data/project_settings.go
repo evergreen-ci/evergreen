@@ -233,6 +233,21 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		newProjectRef.RepoRefId = before.ProjectRef.RepoRefId
 	}
 
+	if section == model.ProjectPageTestSelectionSection &&
+		newProjectRef.TestSelection.MainlineDefaultEnabled == nil &&
+		newProjectRef.TestSelection.DefaultEnabled != nil {
+		// Older clients do not send the mainline setting. Preserve its existing
+		// value while patch defaults remain enabled, or disable it along with
+		// patch defaults. A request that defaults the task-level settings to
+		// the repo leaves both task settings nil.
+		if utility.FromBoolPtr(newProjectRef.TestSelection.DefaultEnabled) {
+			newProjectRef.TestSelection.MainlineDefaultEnabled =
+				utility.BoolPtrCopy(before.ProjectRef.TestSelection.MainlineDefaultEnabled)
+		} else {
+			newProjectRef.TestSelection.MainlineDefaultEnabled = utility.FalsePtr()
+		}
+	}
+
 	// If the project ref doesn't use the repo, or we're using a repo ref, then this will just be the same as the passed in ref.
 	// Used to verify that if something is set to nil, we properly validate using the merged project ref.
 	mergedSection, err := model.GetProjectRefMergedWithRepo(ctx, *newProjectRef)
@@ -461,6 +476,10 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 	case model.ProjectPageViewsAndFiltersSection:
 		if err = parsley.ValidateFilters(mergedSection.ParsleyFilters); err != nil {
 			return nil, errors.Wrap(err, "invalid Parsley filters")
+		}
+	case model.ProjectPageTestSelectionSection:
+		if mergedSection.IsTestSelectionMainlineDefaultEnabled() && !mergedSection.IsTestSelectionDefaultEnabled() {
+			return nil, errors.New("test selection cannot be enabled for mainline commits without also being enabled for patches")
 		}
 	// This section does not support repo-level at this time.
 	case model.ProjectPageGithubAppSettingsSection:
