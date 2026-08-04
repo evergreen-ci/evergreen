@@ -658,12 +658,24 @@ func directorySpecificTestSetup(t *testing.T, state AtomicGraphQLState) {
 		"mutation/unquarantineVariant":  {setupQuarantineVariantMutation},
 		"query/variantQuarantineStatus": {setupVariantQuarantineStatusQuery},
 		"distro/availableRegions":       {setupEnvironmentSettings},
+		"patch/generatedTaskCounts":     {setupGeneratedTaskCounts},
 	}
 	if m[state.Directory] != nil {
 		for _, exec := range m[state.Directory] {
 			exec(t)
 		}
 	}
+}
+
+func setupGeneratedTaskCounts(t *testing.T) {
+	now := time.Now()
+	_, err := task.UpdateAll(t.Context(), task.ByIds([]string{"t1", "t2", "t3"}), bson.M{
+		"$set": bson.M{
+			task.StartTimeKey:  now.Add(-2 * time.Hour),
+			task.FinishTimeKey: now.Add(-time.Hour),
+		},
+	})
+	require.NoError(t, err)
 }
 
 func directorySpecificTestCleanup(t *testing.T, directory string) {
