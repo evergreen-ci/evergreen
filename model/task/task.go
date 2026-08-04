@@ -71,18 +71,16 @@ const (
 	// dependency resolution.
 	dependencyResolutionTimeout = 10 * time.Minute
 
-	// estimateCacheTTL bounds how stale a process-local historical estimate may be. It is much shorter than
-	// predictionTTL because a task document that inherits a cached estimate records it as freshly collected,
-	// so the two lifetimes compound, and the estimate feeds the per-user scheduling limit.
+	// estimateCacheTTL bounds how stale a process-local estimate may be. It is far shorter than predictionTTL
+	// because a task document that inherits a cached estimate stamps it as freshly collected, so the two compound.
 	estimateCacheTTL = time.Hour
 
-	// noHistoryCacheTTL bounds how long a generator is remembered as having no history. A generator's first
-	// successful run flips its estimate from nothing to its full size, so this must not outlive a build's
-	// turnaround by much.
+	// noHistoryCacheTTL bounds how long a generator is remembered as having no history. Its first successful run
+	// flips the estimate from nothing to full size, so this must not outlive a build's turnaround by much.
 	noHistoryCacheTTL = 5 * time.Minute
 
-	// estimateCacheMaxSize caps each estimate cache at roughly the number of distinct
-	// (project, build variant, task display name) triples seen within estimateCacheTTL.
+	// estimateCacheMaxSize caps each cache at roughly the distinct
+	// (project, build variant, display name) triples seen within estimateCacheTTL.
 	estimateCacheMaxSize = 50000
 )
 
@@ -3523,7 +3521,18 @@ func (t *Task) FetchExpectedDuration(ctx context.Context) util.DurationStats {
 
 	cacheKey := estimateCacheKey{project: t.Project, buildVariant: t.BuildVariant, taskDisplayName: t.DisplayName}
 	refresher := func(previous util.DurationStats) (util.DurationStats, bool) {
+		// Only cache consultations get a span. A task whose persisted prediction is still valid never runs this.
+		ctx, span := tracer.Start(ctx, "refresh-expected-duration")
+		defer span.End()
+		record := func(outcome string) {
+			span.SetAttributes(
+				attribute.String("evergreen.task.expected_duration_cache_outcome", outcome),
+				attribute.Int("evergreen.task.expected_duration_cache_size", expectedDurationCache.Len()),
+			)
+		}
+
 		if stats, ok := expectedDurationCache.Get(cacheKey); ok {
+			record("hit")
 			return stats, true
 		}
 
@@ -3538,10 +3547,13 @@ func (t *Task) FetchExpectedDuration(ctx context.Context) util.DurationStats {
 			"operation": "fetching expected duration, expect stale scheduling data",
 		}))
 		if err != nil {
+			record("query_error")
 			return defaultVal, false
 		}
 
+		// Nothing gets cached without usable history, so these keys miss on every lookup.
 		if len(vals) != 1 {
+			record("no_history")
 			if previous.Average == 0 {
 				return defaultVal, true
 			}
@@ -3551,11 +3563,13 @@ func (t *Task) FetchExpectedDuration(ctx context.Context) util.DurationStats {
 
 		avg := time.Duration(vals[0].ExpectedDuration)
 		if avg == 0 {
+			record("no_history")
 			return defaultVal, true
 		}
 		stdDev := time.Duration(vals[0].StdDev)
 		stats := util.DurationStats{Average: avg, StdDev: stdDev}
 		expectedDurationCache.Add(cacheKey, stats)
+		record("miss")
 		return stats, true
 	}
 

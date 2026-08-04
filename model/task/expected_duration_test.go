@@ -70,12 +70,13 @@ func TestExpectedDuration(t *testing.T) {
 	assert.InDelta(9.35*float64(time.Minute), results[0].StdDev, 0.01*float64(time.Minute))
 }
 
-// clearTasksAndEstimateCaches resets the task collection and the process-local estimate caches, which are
-// package-level and would otherwise leak between tests in this package.
+// clearTasksAndEstimateCaches resets the task collection and the package-level caches, which otherwise leak between tests.
 func clearTasksAndEstimateCaches(t *testing.T) {
 	reset := func() {
 		require.NoError(t, db.ClearCollections(Collection))
 		expectedDurationCache.Purge()
+		generateTasksEstimationCache.Purge()
+		noGenerateTasksHistoryCache.Purge()
 	}
 	reset()
 	t.Cleanup(reset)
@@ -116,9 +117,7 @@ func TestFetchExpectedDurationSharesEstimateBetweenSiblingTasks(t *testing.T) {
 	insertHistory("history", 20*time.Minute)
 	assert.Equal(t, 20*time.Minute, newTask("first").FetchExpectedDuration(t.Context()).Average)
 
-	// Replacing the history with a different duration proves the sibling served
-	// the estimate from the cache rather than re-running the aggregate, and that
-	// the next task after a reset picks up the new value.
+	// A different history proves the sibling came from the cache, and that the next task after a reset sees the new value.
 	require.NoError(t, db.ClearCollections(Collection))
 	insertHistory("newHistory", 30*time.Minute)
 	assert.Equal(t, 20*time.Minute, newTask("sibling").FetchExpectedDuration(t.Context()).Average)

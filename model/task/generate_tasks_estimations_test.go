@@ -188,8 +188,7 @@ func TestGetBatchedGenerateTasksEstimationsSharesEstimatesAcrossBuilds(t *testin
 	}
 
 	insertHistory("h1", "gen_a", 10, 8)
-	// gen_zero succeeded without generating anything, so its real estimate is zero. It must stay
-	// distinguishable from gen_none, which has no history at all.
+	// gen_zero's real estimate is zero; it must stay distinguishable from gen_none, which has no history.
 	insertHistory("h2", "gen_zero", 0, 0)
 	results, err := GetBatchedGenerateTasksEstimations(ctx, project, buildVariant, []string{"gen_a", "gen_zero", "gen_none"})
 	require.NoError(t, err)
@@ -199,9 +198,8 @@ func TestGetBatchedGenerateTasksEstimationsSharesEstimatesAcrossBuilds(t *testin
 	assert.Equal(t, 0, results["gen_zero"].EstimatedNumGeneratedTasks)
 	assert.NotContains(t, results, "gen_none")
 
-	// Replacing the history proves gen_a and gen_zero are served from the cache while gen_b, which was never
-	// queried, is computed fresh. gen_none stays absent from its no-history entry rather than re-running the
-	// aggregate, and gen_zero stays present, since a real zero is not a no-history marker.
+	// Replacing the history proves gen_a and gen_zero come from the cache while gen_b, never queried, is computed
+	// fresh. gen_none stays absent from its no-history entry, and gen_zero stays present.
 	require.NoError(t, db.ClearCollections(Collection))
 	insertHistory("h3", "gen_b", 20, 16)
 	insertHistory("h4", "gen_none", 99, 99)
