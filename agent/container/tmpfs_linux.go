@@ -3,11 +3,13 @@
 package container
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -34,14 +36,16 @@ func provisionEnvTmpfs(dir string) error {
 	return nil
 }
 
-// removeEnvTmpfs unmounts and removes the env tmpfs directory.
+// removeEnvTmpfs unmounts and removes the env tmpfs directory. If the
+// unmount fails, the directory contents are still removed but the tmpfs
+// mount itself may persist; a warning is logged in that case.
 func removeEnvTmpfs(dir string) error {
 	if dir == "" {
 		return nil
 	}
-	// Ignore unmount errors: if the mount was never established (e.g. test
-	// environment), the remove below still cleans up the directory.
-	_ = exec.Command("sudo", "umount", dir).Run()
+	if err := exec.Command("sudo", "umount", dir).Run(); err != nil {
+		grip.Warningf(context.Background(), "unmounting env tmpfs at '%s' failed; directory contents will be removed but the mount may persist: %s", dir, err)
+	}
 	return errors.Wrapf(os.RemoveAll(dir), "removing env tmpfs dir '%s'", dir)
 }
 

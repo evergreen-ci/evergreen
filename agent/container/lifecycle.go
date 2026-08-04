@@ -19,6 +19,7 @@ import (
 	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -206,7 +207,7 @@ func CreateAndStart(ctx context.Context, cfg Config) (*TaskContainer, error) {
 	}
 
 	hostCfg := &container.HostConfig{
-		Init:   boolPtr(true),
+		Init:   utility.TruePtr(),
 		Mounts: mounts,
 	}
 
@@ -253,12 +254,6 @@ func CreateAndStart(ctx context.Context, cfg Config) (*TaskContainer, error) {
 		EnvFileHostDir: envDir,
 		cli:            cli,
 	}, nil
-}
-
-// Close releases the Docker client without removing the container or its
-// tmpfs. Use when the container is intentionally left running.
-func (tc *TaskContainer) Close() {
-	_ = tc.cli.Close()
 }
 
 // containerStopTimeoutSecs is the grace period before force-removing the
@@ -350,7 +345,7 @@ const imagePullTimeout = 5 * time.Minute
 // error returned when the Docker daemon drops the socket mid-request during
 // a restart. Retrying after a brief pause allows the new daemon to start up.
 func isDockerEOF(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "EOF")
+	return errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF)
 }
 
 // ensureImage pulls the image if not already present locally. For ECR
@@ -512,5 +507,3 @@ func logInfo(ctx context.Context, log grip.Journaler, msg any) {
 	}
 	grip.Info(ctx, msg)
 }
-
-func boolPtr(b bool) *bool { return &b }
