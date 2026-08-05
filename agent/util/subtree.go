@@ -12,10 +12,9 @@ const (
 
 var (
 	ErrPSTimeout = errors.New("ps timeout")
-	// ErrContainerExecUnavailable is returned by KillSpawnedProcsInContainer
-	// when docker exec fails at the daemon level (exit 125): the container is
-	// not running, paused, or unreachable. Callers should warn rather than
-	// treat this as a hard kill failure.
+	// ErrContainerExecUnavailable indicates the container could not be reached
+	// to clean up its processes. Callers should warn rather than treat this as a
+	// hard kill failure, since failing here would mask the task's own failure.
 	ErrContainerExecUnavailable = errors.New("container exec unavailable")
 )
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/mongodb/grip"
@@ -13,27 +14,22 @@ import (
 )
 
 const (
-	// containerEnvFileName is the name of the env-file written to the tmpfs dir.
+	// containerEnvFileName is the prefix for the per-command env-file written to
+	// the tmpfs dir.
 	containerEnvFileName = ".evg-env"
+	// containerHostEnvFileName is the env-file capturing the host's profile
+	// environment (PATH, GOROOT, etc.), written during container setup.
+	containerHostEnvFileName = ".evg-host-env"
 )
 
-// WrapWithContainer prepends `docker exec <containerID>` to opts.Args,
-// routing command execution into the specified Docker container. It also:
-//   - adds `--workdir=<workdir>` if workdir is non-empty
-//   - writes opts.Environment to <envFileHostDir>/.evg-env (mode 0600) and adds
-//     `--env-file=<path>` if envFileHostDir is non-empty
-//   - prepends `nice -n <DefaultNice>` to the in-container argv so workload
-//     processes run at DefaultNice on standard EC2 hosts where the Docker daemon
-//     runs at nice 0. POSIX fork inheritance of nice breaks at the container
-//     boundary (docker exec starts the process via the daemon rather than
-//     inheriting from the agent's pre-fork nice reset); the prefix is the
-//     workaround. See inline comment for the known daemon-nice-offset caveat.
+// WrapWithContainer rewrites opts.Args to run the command inside the given
+// Docker container via `docker exec`, applying workdir, environment, exec user,
+// and nice settings. It is a no-op if containerID is empty.
 //
-// Note: Docker's --env-file parser does not strip surrounding quotes from
-// values, so a value like "-Xmx1g" reaches the container with quotes intact.
-// Expansion values with literal surrounding quotes should be set without them.
-//
-// It is a no-op if containerID is empty.
+// If envFileHostDir is non-empty, opts.Environment is written there as an
+// env-file readable only by the agent's user. Docker's --env-file parser does
+// not strip surrounding quotes from values, so expansions must be set without
+// literal surrounding quotes or they reach the container with the quotes intact.
 func WrapWithContainer(ctx context.Context, opts *options.Create, containerID, workdir, envFileHostDir string) error {
 	if containerID == "" {
 		return nil
@@ -50,58 +46,55 @@ func WrapWithContainer(ctx context.Context, opts *options.Create, containerID, w
 	}
 
 	if envFileHostDir != "" {
-		// Pass the host-env file first (contains PATH, GOROOT, etc.
-		// captured from the host's profile scripts). The per-command
-		// env-file is passed second so its values override the host-env
-		// for command-specific variables. Docker applies --env-file args
-		// in order; later entries override earlier ones.
-		hostEnvPath := filepath.Join(envFileHostDir, ".evg-host-env")
-		if _, err := os.Stat(hostEnvPath); err == nil {
+		// Docker applies --env-file args in order, so the host-env file goes
+		// first and the per-command file second in order to let command-specific
+		// values override the host's.
+		hostEnvPath := filepath.Join(envFileHostDir, containerHostEnvFileName)
+		switch _, err := os.Stat(hostEnvPath); {
+		case err == nil:
 			args = append(args, "--env-file="+hostEnvPath)
+		case !os.IsNotExist(err):
+			// The file exists but is unreadable, so the container would silently
+			// lose PATH and surface it later as a command-not-found failure.
+			grip.Warningf(ctx, "checking container host env file '%s', continuing without it: %s", hostEnvPath, err)
 		}
 
-		envFilePath, err := writeEnvFile(ctx, envFileHostDir, opts.Environment)
-		if err != nil {
-			return errors.Wrap(err, "writing container env file")
+		if len(opts.Environment) > 0 {
+			envFilePath, err := writeEnvFile(ctx, envFileHostDir, opts.Environment)
+			if err != nil {
+				return errors.Wrap(err, "writing container env file")
+			}
+			args = append(args, "--env-file="+envFilePath)
 		}
-		args = append(args, "--env-file="+envFilePath)
 	}
 
-	// If the command was wrapped with `sudo -u <user>` to run as exec_user,
-	// strip that prefix and use `docker exec --user` instead. Docker handles
-	// the user switch natively, removing the need for sudo to be installed
-	// inside the container image. This matches the format emitted by Jasper's
-	// SudoAs: ["sudo", "-u", user, ...rest]. Plain Sudo(true) without a user
-	// (which emits ["sudo", ...rest]) is not handled here and would be forwarded
-	// into the container as-is; in practice Evergreen only uses SudoAs for
-	// container-eligible commands.
-	if len(opts.Args) >= 3 && opts.Args[0] == "sudo" && opts.Args[1] == "-u" {
+	// Translate the `sudo -u <user>` prefix that Jasper's SudoAs emits into
+	// `docker exec --user`, so the container image does not need sudo installed.
+	// Plain Sudo(true) emits ["sudo", ...rest] with no user and is forwarded into
+	// the container as-is; Evergreen only uses SudoAs for container-eligible
+	// commands.
+	if len(opts.Args) > 3 && opts.Args[0] == "sudo" && opts.Args[1] == "-u" {
 		args = append(args, "--user="+opts.Args[2])
 		opts.Args = opts.Args[3:]
 	}
 
 	args = append(args, containerID)
-	// Reset the in-container process nice via `nice -n DefaultNice`. The agent
-	// runs at AgentNice and resets to DefaultNice before forking host
-	// subprocesses, but that reset does not propagate across the container
-	// boundary (Docker daemon starts the in-container process independently).
-	// `nice -n N` is a relative increment: it adjusts the current process's
-	// niceness by N. On standard EC2 hosts the Docker daemon runs at nice 0,
-	// so `nice -n 0` results in nice 0 (DefaultNice). If the daemon runs at a
-	// non-zero nice, the increment preserves that offset; we accept this as a
-	// known limitation for Phase 0 where all target hosts use system-managed
-	// Docker daemons at default nice.
-	args = append(args, "nice", "-n", fmt.Sprintf("%d", DefaultNice))
+	// The agent resets its nice to DefaultNice before forking host subprocesses,
+	// but that does not cross the container boundary because the Docker daemon
+	// starts the in-container process independently. `nice -n N` is a relative
+	// increment, so this only lands on DefaultNice when the daemon itself runs at
+	// nice 0, which holds for the system-managed daemons on all target hosts.
+	args = append(args, "nice", "-n", strconv.Itoa(DefaultNice))
 	opts.Args = append(args, opts.Args...)
 	return nil
 }
 
 // writeEnvFile serializes env as KEY=VALUE lines to a unique file in dir with
-// mode 0600. A unique file keeps concurrent command wrappers from replacing
-// each other's environment before docker exec reads it. The file is owned by
-// the container's env tmpfs and is removed when that tmpfs is torn down.
-// Values that contain newlines are skipped because the Docker env-file format
-// does not support multi-line values; a warning is logged for each dropped var.
+// mode 0600. Each command gets its own file so that concurrent wrappers cannot
+// replace each other's environment before docker exec reads it; the files live
+// on the container's env tmpfs and are removed when it is torn down. Values
+// containing newlines are dropped with a warning because the Docker env-file
+// format cannot represent them.
 func writeEnvFile(ctx context.Context, dir string, env map[string]string) (string, error) {
 	var sb strings.Builder
 	for k, v := range env {

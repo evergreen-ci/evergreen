@@ -3,13 +3,27 @@ package util
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/mongodb/jasper/options"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// envFilePaths returns the values of every --env-file flag in args, in order.
+func envFilePaths(args []string) []string {
+	var paths []string
+	for _, arg := range args {
+		if path, ok := strings.CutPrefix(arg, "--env-file="); ok {
+			paths = append(paths, path)
+		}
+	}
+	return paths
+}
 
 func TestWrapWithContainer(t *testing.T) {
 	baseArgs := []string{"/bin/bash", "-c", "echo hello"}
@@ -52,17 +66,10 @@ func TestWrapWithContainer(t *testing.T) {
 		opts.Environment = map[string]string{"FOO": "bar", "SECRET": "s3cr3t"}
 		require.NoError(t, WrapWithContainer(t.Context(), opts, "abc123", "", dir))
 
-		// docker exec args include --env-file flag
-		var envFileArg string
-		for _, arg := range opts.Args {
-			if len(arg) > 11 && arg[:11] == "--env-file=" {
-				envFileArg = arg[11:]
-			}
-		}
-		require.NotEmpty(t, envFileArg, "expected --env-file argument in docker exec args")
+		paths := envFilePaths(opts.Args)
+		require.Len(t, paths, 1)
 
-		// env file should exist and be readable
-		content, err := os.ReadFile(envFileArg)
+		content, err := os.ReadFile(paths[0])
 		require.NoError(t, err)
 		body := string(content)
 		assert.Contains(t, body, "FOO=bar\n")
@@ -79,13 +86,7 @@ func TestWrapWithContainer(t *testing.T) {
 		assert.Equal(t, "exec", opts.Args[1])
 		assert.Equal(t, "-i", opts.Args[2])
 		assert.Equal(t, "--workdir=/work", opts.Args[3])
-		hasEnvFile := false
-		for _, arg := range opts.Args {
-			if len(arg) > 11 && arg[:11] == "--env-file=" {
-				hasEnvFile = true
-			}
-		}
-		assert.True(t, hasEnvFile, "expected --env-file argument")
+		assert.Len(t, envFilePaths(opts.Args), 1)
 		assert.Equal(t, baseArgs, opts.Args[len(opts.Args)-len(baseArgs):])
 	})
 
@@ -117,15 +118,59 @@ func TestWrapWithContainer(t *testing.T) {
 		assert.Equal(t, "docker", opts.Args[0])
 		assert.Equal(t, "exec", opts.Args[1])
 
-		hasUser := false
-		for _, arg := range opts.Args {
-			assert.NotEqual(t, "sudo", arg, "sudo should not appear in final args")
-			if arg == "--user=ubuntu" {
-				hasUser = true
-			}
-		}
-		assert.True(t, hasUser, "expected --user=ubuntu in docker exec args")
+		assert.NotContains(t, opts.Args, "sudo")
+		userIdx := slices.Index(opts.Args, "--user=ubuntu")
+		require.NotEqual(t, -1, userIdx, "expected --user=ubuntu in docker exec args")
+		// The flag has to precede the container ID or docker parses it as an
+		// argument to the in-container command instead.
+		assert.Less(t, userIdx, slices.Index(opts.Args, "cid"))
 		assert.Equal(t, baseArgs, opts.Args[len(opts.Args)-len(baseArgs):])
+	})
+
+	t.Run("HostEnvFilePrecedesPerCommandEnvFile", func(t *testing.T) {
+		dir := t.TempDir()
+		hostEnvPath := filepath.Join(dir, containerHostEnvFileName)
+		require.NoError(t, os.WriteFile(hostEnvPath, []byte("PATH=/usr/bin\n"), 0600))
+
+		opts := makeOpts()
+		opts.Environment = map[string]string{"K": "v"}
+		require.NoError(t, WrapWithContainer(t.Context(), opts, "cid", "", dir))
+
+		// Docker applies --env-file args in order, so the per-command file must
+		// come second for its values to win.
+		paths := envFilePaths(opts.Args)
+		require.Len(t, paths, 2)
+		assert.Equal(t, hostEnvPath, paths[0])
+		assert.NotEqual(t, hostEnvPath, paths[1])
+	})
+
+	t.Run("MissingHostEnvFileIsOmitted", func(t *testing.T) {
+		dir := t.TempDir()
+		opts := makeOpts()
+		opts.Environment = map[string]string{"K": "v"}
+		require.NoError(t, WrapWithContainer(t.Context(), opts, "cid", "", dir))
+
+		paths := envFilePaths(opts.Args)
+		require.Len(t, paths, 1)
+		assert.NotEqual(t, filepath.Join(dir, containerHostEnvFileName), paths[0])
+	})
+
+	t.Run("EmptyEnvironmentWritesNoEnvFile", func(t *testing.T) {
+		dir := t.TempDir()
+		opts := makeOpts()
+		require.NoError(t, WrapWithContainer(t.Context(), opts, "cid", "", dir))
+
+		assert.Empty(t, envFilePaths(opts.Args))
+		entries, err := os.ReadDir(dir)
+		require.NoError(t, err)
+		assert.Empty(t, entries, "no env file should be created for an empty environment")
+	})
+
+	t.Run("EnvFileFailureLeavesArgsUnmodified", func(t *testing.T) {
+		opts := makeOpts()
+		opts.Environment = map[string]string{"K": "v"}
+		require.Error(t, WrapWithContainer(t.Context(), opts, "cid", "", filepath.Join(t.TempDir(), "missing")))
+		assert.Equal(t, baseArgs, opts.Args)
 	})
 
 	t.Run("PreservesOriginalArgs", func(t *testing.T) {
@@ -146,14 +191,9 @@ func TestWrapWithContainer(t *testing.T) {
 		opts.Environment = map[string]string{"KEY": "value"}
 		require.NoError(t, WrapWithContainer(t.Context(), opts, "cid", "", dir))
 
-		envFilePath := ""
-		for _, arg := range opts.Args {
-			if len(arg) > 11 && arg[:11] == "--env-file=" {
-				envFilePath = arg[11:]
-			}
-		}
-		require.NotEmpty(t, envFilePath)
-		fi, err := os.Stat(envFilePath)
+		paths := envFilePaths(opts.Args)
+		require.Len(t, paths, 1)
+		fi, err := os.Stat(paths[0])
 		require.NoError(t, err)
 		assert.Equal(t, os.FileMode(0600), fi.Mode().Perm())
 	})
@@ -164,27 +204,17 @@ func TestWrapWithContainer(t *testing.T) {
 		firstOpts.Environment = map[string]string{"COMMAND": "first"}
 		require.NoError(t, WrapWithContainer(t.Context(), firstOpts, "cid", "", dir))
 
-		firstEnvFile := ""
-		for _, arg := range firstOpts.Args {
-			if len(arg) > 11 && arg[:11] == "--env-file=" {
-				firstEnvFile = arg[11:]
-			}
-		}
-		require.NotEmpty(t, firstEnvFile)
+		firstPaths := envFilePaths(firstOpts.Args)
+		require.Len(t, firstPaths, 1)
 
 		secondOpts := makeOpts()
 		secondOpts.Environment = map[string]string{"COMMAND": "second"}
 		require.NoError(t, WrapWithContainer(t.Context(), secondOpts, "cid", "", dir))
-		secondEnvFile := ""
-		for _, arg := range secondOpts.Args {
-			if len(arg) > 11 && arg[:11] == "--env-file=" {
-				secondEnvFile = arg[11:]
-			}
-		}
-		require.NotEmpty(t, secondEnvFile)
-		assert.NotEqual(t, firstEnvFile, secondEnvFile)
+		secondPaths := envFilePaths(secondOpts.Args)
+		require.Len(t, secondPaths, 1)
+		assert.NotEqual(t, firstPaths[0], secondPaths[0])
 
-		data, err := os.ReadFile(firstEnvFile)
+		data, err := os.ReadFile(firstPaths[0])
 		require.NoError(t, err)
 		assert.Contains(t, string(data), "COMMAND=first\n")
 		assert.NotContains(t, string(data), "COMMAND=second\n")
@@ -226,5 +256,10 @@ func TestWriteEnvFile(t *testing.T) {
 		data, err := os.ReadFile(path)
 		require.NoError(t, err)
 		assert.Empty(t, string(data))
+	})
+
+	t.Run("NonexistentDirErrors", func(t *testing.T) {
+		_, err := writeEnvFile(t.Context(), filepath.Join(t.TempDir(), "missing"), map[string]string{"A": "1"})
+		assert.Error(t, err)
 	})
 }
