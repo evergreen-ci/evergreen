@@ -75,6 +75,61 @@ func TestBaseSNSRoute(t *testing.T) {
 	}
 }
 
+func TestBaseSNSParse(t *testing.T) {
+	const allowedTopicARN = "arn:aws:sns:us-east-1:1234567890:some-aws-topic"
+
+	for tName, tCase := range map[string]struct {
+		topicARNs      []string
+		payloadTopic   string
+		expectedStatus int
+	}{
+		"SucceedsWithAnyAllowedTopicARN": {
+			topicARNs:    []string{"arn:aws:sns:us-east-1:1234567890:other-topic", allowedTopicARN},
+			payloadTopic: allowedTopicARN,
+		},
+		"FailsWithDisallowedTopicARN": {
+			topicARNs:      []string{allowedTopicARN},
+			payloadTopic:   "arn:aws:sns:us-east-1:9876543210:bad-topic",
+			expectedStatus: http.StatusUnauthorized,
+		},
+		"FailsWithNoExplicitlyAllowedTopicARNs": {
+			payloadTopic:   allowedTopicARN,
+			expectedStatus: http.StatusUnauthorized,
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx := t.Context()
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+			env.EvergreenSettings.Providers.AWS.AllowedSNSTopicARNs = tCase.topicARNs
+
+			payload := sns.Payload{
+				TopicArn:  tCase.payloadTopic,
+				MessageId: "message_id",
+			}
+			req, err := http.NewRequest(http.MethodPost, "https://example.com/rest/v2/hooks/aws", nil)
+			require.NoError(t, err)
+			req.Header.Set("x-amz-sns-message-type", messageTypeNotification)
+			req = setSNSPayload(req, payload)
+
+			bsns := makeBaseSNS(env, env.LocalQueue())
+			err = bsns.Parse(ctx, req)
+
+			if tCase.expectedStatus == 0 {
+				assert.NoError(t, err)
+				assert.Equal(t, payload, bsns.payload)
+				return
+			}
+
+			require.Error(t, err)
+			resp, ok := err.(gimlet.ErrorResponse)
+			require.True(t, ok)
+			assert.Equal(t, tCase.expectedStatus, resp.StatusCode)
+			assert.Zero(t, bsns.payload)
+		})
+	}
+}
+
 func TestHandleEC2SNSNotification(t *testing.T) {
 	ctx := t.Context()
 	assert.NoError(t, db.Clear(host.Collection))

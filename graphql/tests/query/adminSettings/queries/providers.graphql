@@ -41,6 +41,7 @@ query Providers {
         }
         ipamPoolID
         elasticIPUsageRate
+        allowedSNSTopicARNs
       }
       docker {
         apiVersion
