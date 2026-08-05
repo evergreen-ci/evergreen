@@ -2150,6 +2150,7 @@ type APIServiceFlags struct {
 
 type APIProjectTasksPair struct {
 	ProjectID    string   `json:"project_id"`
+	IsRegex      bool     `json:"is_regex"`
 	AllowedTasks []string `json:"allowed_tasks"`
 	AllowedBVs   []string `json:"allowed_bvs"`
 }
@@ -2158,6 +2159,7 @@ func (a *APIProjectTasksPair) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.ProjectTasksPair:
 		a.ProjectID = v.ProjectID
+		a.IsRegex = v.IsRegex
 		a.AllowedTasks = v.AllowedTasks
 		a.AllowedBVs = v.AllowedBVs
 	default:
@@ -2169,6 +2171,7 @@ func (a *APIProjectTasksPair) BuildFromService(h any) error {
 func (a *APIProjectTasksPair) ToService() (any, error) {
 	return evergreen.ProjectTasksPair{
 		ProjectID:    a.ProjectID,
+		IsRegex:      a.IsRegex,
 		AllowedTasks: a.AllowedTasks,
 		AllowedBVs:   a.AllowedBVs,
 	}, nil

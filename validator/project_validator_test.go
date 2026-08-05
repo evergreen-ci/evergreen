@@ -5286,3 +5286,90 @@ func TestValidationErrorsAtLevel(t *testing.T) {
 		assert.Empty(t, errs.AtLevel(Error))
 	})
 }
+
+func TestGetAllowedSingleTaskDistroTasksForProject(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.Clear(model.ProjectRefCollection), "clearing collection")
+
+	// Projects are looked up by ID. Regex entries are matched against the project
+	// identifier; exact entries are matched against the ID or identifier.
+	releaseBranch := &model.ProjectRef{Id: "id_release_v7", Identifier: "mongodb-mongo-v7.0"}
+	mainBranch := &model.ProjectRef{Id: "id_main_branch", Identifier: "mongodb-mongo-master"}
+	require.NoError(t, releaseBranch.Insert(ctx))
+	require.NoError(t, mainBranch.Insert(ctx))
+
+	newSettings := func(pairs ...evergreen.ProjectTasksPair) *evergreen.Settings {
+		return &evergreen.Settings{
+			SingleTaskDistro: evergreen.SingleTaskDistroConfig{ProjectTasksPairs: pairs},
+		}
+	}
+
+	t.Run("RegexMatchesIdentifier", func(t *testing.T) {
+		s := newSettings(evergreen.ProjectTasksPair{
+			ProjectID:    "mongodb-mongo-v.*",
+			IsRegex:      true,
+			AllowedTasks: []string{"compile"},
+			AllowedBVs:   []string{"rhel80"},
+		})
+		allowList, err := GetAllowedSingleTaskDistroTasksForProject(ctx, releaseBranch.Id, s)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"compile"}, allowList.AllowedTasks)
+		assert.Equal(t, []string{"rhel80"}, allowList.AllowedBVs)
+	})
+
+	t.Run("ExactMatchByIdentifier", func(t *testing.T) {
+		s := newSettings(evergreen.ProjectTasksPair{
+			ProjectID:    "mongodb-mongo-master",
+			AllowedTasks: []string{"lint"},
+			AllowedBVs:   []string{"ubuntu2204"},
+		})
+		allowList, err := GetAllowedSingleTaskDistroTasksForProject(ctx, mainBranch.Id, s)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"lint"}, allowList.AllowedTasks)
+		assert.Equal(t, []string{"ubuntu2204"}, allowList.AllowedBVs)
+	})
+
+	t.Run("ExactMatchByProjectID", func(t *testing.T) {
+		s := newSettings(evergreen.ProjectTasksPair{
+			ProjectID:    "id_main_branch",
+			AllowedTasks: []string{"lint"},
+		})
+		allowList, err := GetAllowedSingleTaskDistroTasksForProject(ctx, mainBranch.Id, s)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"lint"}, allowList.AllowedTasks)
+	})
+
+	t.Run("ExactMatchDoesNotTreatValueAsRegex", func(t *testing.T) {
+		// The '.' would match any character if treated as a regex, but an exact
+		// entry must match literally.
+		s := newSettings(evergreen.ProjectTasksPair{
+			ProjectID:    "mongodb-mongo-vX0",
+			AllowedTasks: []string{"compile"},
+		})
+		allowList, err := GetAllowedSingleTaskDistroTasksForProject(ctx, releaseBranch.Id, s)
+		require.NoError(t, err)
+		assert.Empty(t, allowList.AllowedTasks)
+	})
+
+	t.Run("RegexIsAnchoredAndDoesNotMatchSubstrings", func(t *testing.T) {
+		s := newSettings(evergreen.ProjectTasksPair{
+			ProjectID:    "mongo",
+			IsRegex:      true,
+			AllowedTasks: []string{"compile"},
+		})
+		allowList, err := GetAllowedSingleTaskDistroTasksForProject(ctx, releaseBranch.Id, s)
+		require.NoError(t, err)
+		assert.Empty(t, allowList.AllowedTasks)
+	})
+
+	t.Run("RegexMatchingIDButNotIdentifierDoesNotMatch", func(t *testing.T) {
+		s := newSettings(evergreen.ProjectTasksPair{
+			ProjectID:    "id_release_v7",
+			IsRegex:      true,
+			AllowedTasks: []string{"compile"},
+		})
+		allowList, err := GetAllowedSingleTaskDistroTasksForProject(ctx, releaseBranch.Id, s)
+		require.NoError(t, err)
+		assert.Empty(t, allowList.AllowedTasks)
+	})
+}

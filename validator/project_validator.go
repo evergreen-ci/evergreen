@@ -2297,28 +2297,46 @@ func checkBuildVariants(project *model.Project) ValidationErrors {
 func GetAllowedSingleTaskDistroTasksForProject(ctx context.Context, identifier string, settings *evergreen.Settings) (evergreen.ProjectTasksPair, error) {
 	allowList := evergreen.ProjectTasksPair{}
 
-	projectsToLookFor := []string{}
-	for _, pairs := range settings.SingleTaskDistro.ProjectTasksPairs {
-		pRef, err := model.FindBranchProjectRef(ctx, identifier)
-		if err != nil {
-			return allowList, errors.Wrapf(err, "finding project ref '%s'", identifier)
-		}
+	// exactMatchCandidates are matched against non-regex entries. Project and repo
+	// ref IDs are unambiguous, so exact entries may reference them or the project
+	// identifier. Regex entries are only matched against the identifier, since IDs
+	// are opaque and not meaningful to pattern-match.
+	var exactMatchCandidates []string
+	var identifierToMatch string
 
-		// Look for allowed tasks for the project and its repo project.
-		if pRef != nil {
-			projectsToLookFor = append(projectsToLookFor, pRef.Id, pRef.Identifier, pRef.RepoRefId)
-		} else {
-			// If project ref is nil, it means the project is a repo project.
-			repoRef, err := model.FindOneRepoRef(ctx, identifier)
-			if err != nil {
-				return allowList, errors.Wrapf(err, "finding repo ref '%s'", identifier)
-			}
-			if repoRef == nil {
-				return allowList, errors.Errorf("project or repo ref '%s' not found", identifier)
-			}
-			projectsToLookFor = append(projectsToLookFor, repoRef.Id)
+	pRef, err := model.FindBranchProjectRef(ctx, identifier)
+	if err != nil {
+		return allowList, errors.Wrapf(err, "finding project ref '%s'", identifier)
+	}
+	if pRef != nil {
+		exactMatchCandidates = []string{pRef.Id, pRef.Identifier, pRef.RepoRefId}
+		identifierToMatch = pRef.Identifier
+	} else {
+		// If project ref is nil, it means the project is a repo project.
+		repoRef, err := model.FindOneRepoRef(ctx, identifier)
+		if err != nil {
+			return allowList, errors.Wrapf(err, "finding repo ref '%s'", identifier)
 		}
-		if utility.StringSliceContains(projectsToLookFor, pairs.ProjectID) {
+		if repoRef == nil {
+			return allowList, errors.Errorf("project or repo ref '%s' not found", identifier)
+		}
+		exactMatchCandidates = []string{repoRef.Id}
+		identifierToMatch = repoRef.Identifier
+	}
+
+	for _, pairs := range settings.SingleTaskDistro.ProjectTasksPairs {
+		var matches bool
+		if pairs.IsRegex {
+			// Anchor the pattern so it must match the identifier in full.
+			re, err := regexp.Compile("^(?:" + pairs.ProjectID + ")$")
+			if err != nil {
+				return allowList, errors.Wrapf(err, "compiling project pattern '%s'", pairs.ProjectID)
+			}
+			matches = re.MatchString(identifierToMatch)
+		} else {
+			matches = slices.Contains(exactMatchCandidates, pairs.ProjectID)
+		}
+		if matches {
 			allowList.AllowedTasks = append(allowList.AllowedTasks, pairs.AllowedTasks...)
 			allowList.AllowedBVs = append(allowList.AllowedBVs, pairs.AllowedBVs...)
 		}
