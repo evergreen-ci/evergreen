@@ -420,7 +420,8 @@ func (s *AdminSuite) TestAWSConfigSubnetTagValidation() {
 				s.NoError(err)
 				return
 			}
-			s.Contains(err, tCase.expectedErr)
+			s.Require().Error(err)
+			s.Contains(err.Error(), tCase.expectedErr)
 		})
 	}
 }
