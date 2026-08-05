@@ -81,10 +81,15 @@ func WrapWithContainer(ctx context.Context, opts *options.Create, containerID, w
 	args = append(args, containerID)
 	// The agent resets its nice to DefaultNice before forking host subprocesses,
 	// but that does not cross the container boundary because the Docker daemon
-	// starts the in-container process independently. `nice -n N` is a relative
-	// increment, so this only lands on DefaultNice when the daemon itself runs at
-	// nice 0, which holds for the system-managed daemons on all target hosts.
-	args = append(args, "nice", "-n", strconv.Itoa(DefaultNice))
+	// starts the in-container process independently, so re-apply it in the
+	// container. `nice -n N` is a relative increment, so this only lands on
+	// DefaultNice when the daemon itself runs at nice 0, which holds for the
+	// system-managed daemons on all target hosts. The prefix is skipped when it
+	// would be a no-op, since it would otherwise require every task image to
+	// provide nice.
+	if DefaultNice != 0 {
+		args = append(args, "nice", "-n", strconv.Itoa(DefaultNice))
+	}
 	opts.Args = append(args, opts.Args...)
 	return nil
 }

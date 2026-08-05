@@ -1,11 +1,11 @@
 package util
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -90,22 +90,18 @@ func TestWrapWithContainer(t *testing.T) {
 		assert.Equal(t, baseArgs, opts.Args[len(opts.Args)-len(baseArgs):])
 	})
 
-	t.Run("NicePrefixInContainerArgv", func(t *testing.T) {
+	t.Run("NicePrefixAppliedOnlyWhenItChangesPriority", func(t *testing.T) {
 		opts := makeOpts()
 		require.NoError(t, WrapWithContainer(t.Context(), opts, "cid", "", ""))
-		// nice -n 0 must appear between the containerID and the original command.
-		niceIdx := -1
-		for i, arg := range opts.Args {
-			if arg == "nice" {
-				niceIdx = i
-				break
-			}
+
+		// A `nice -n 0` prefix would be a no-op that forces every task image to
+		// provide nice, so it is only emitted when DefaultNice is non-zero.
+		expected := baseArgs
+		if DefaultNice != 0 {
+			expected = append([]string{"nice", "-n", strconv.Itoa(DefaultNice)}, baseArgs...)
 		}
-		require.NotEqual(t, -1, niceIdx, "expected 'nice' in docker exec args")
-		require.Less(t, niceIdx+2, len(opts.Args), "expected '-n' and '0' after 'nice'")
-		assert.Equal(t, "-n", opts.Args[niceIdx+1])
-		assert.Equal(t, fmt.Sprintf("%d", DefaultNice), opts.Args[niceIdx+2])
-		assert.Equal(t, baseArgs, opts.Args[len(opts.Args)-len(baseArgs):])
+		require.Len(t, opts.Args, 4+len(expected))
+		assert.Equal(t, expected, opts.Args[4:])
 	})
 
 	t.Run("SudoPrefixStrippedAndUserFlagAdded", func(t *testing.T) {
