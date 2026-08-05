@@ -338,6 +338,12 @@ func (tc *TaskContainer) Destroy(ctx context.Context) error {
 	return envErr
 }
 
+// Close closes the Docker client connection. This is called by the agent
+// when a retained container's deadline expires or the agent shuts down.
+func (tc *TaskContainer) Close() {
+	_ = tc.cli.Close()
+}
+
 // imagePullTimeout caps the time allowed to pull a container image.
 const imagePullTimeout = 5 * time.Minute
 
