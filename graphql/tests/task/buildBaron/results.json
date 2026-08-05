@@ -1,0 +1,27 @@
+{
+  "tests": [
+    {
+      "query_file": "build_baron.graphql",
+      "name": "unconfigured project returns no suggestions",
+      "result": {
+        "data": {
+          "task": {
+            "buildBaron": null
+          }
+        }
+      }
+    },
+    {
+      "query_file": "ticket_creation_only.graphql",
+      "name": "ticket creation without search returns no suggestions",
+      "test_user_id": "regular_user",
+      "result": {
+        "data": {
+          "task": {
+            "buildBaron": null
+          }
+        }
+      }
+    }
+  ]
+}

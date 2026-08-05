@@ -1,0 +1,11 @@
+query {
+  task(taskId: "ticket_creation_only_task", execution: 0) {
+    buildBaron {
+      issues {
+        key
+      }
+      search
+      source
+    }
+  }
+}
