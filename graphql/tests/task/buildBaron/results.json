@@ -6,7 +6,8 @@
       "result": {
         "data": {
           "task": {
-            "buildBaron": null
+            "buildBaronSuggestions": null,
+            "buildBaronCreatedTickets": []
           }
         }
       }
@@ -18,7 +19,8 @@
       "result": {
         "data": {
           "task": {
-            "buildBaron": null
+            "buildBaronSuggestions": null,
+            "buildBaronCreatedTickets": []
           }
         }
       }

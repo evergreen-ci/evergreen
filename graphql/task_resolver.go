@@ -158,12 +158,22 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 	return apiTask, nil
 }
 
-// BuildBaron is the resolver for the buildBaron field.
-func (r *taskResolver) BuildBaron(ctx context.Context, obj *restModel.APITask) (*thirdparty.SearchReturnInfo, error) {
+// BuildBaronCreatedTickets is the resolver for the buildBaronCreatedTickets field.
+func (r *taskResolver) BuildBaronCreatedTickets(ctx context.Context, obj *restModel.APITask) ([]*thirdparty.JiraTicket, error) {
+	taskID := utility.FromStringPtr(obj.Id)
+	createdTickets, err := bbGetCreatedTicketsPointers(ctx, taskID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Build Baron created tickets for task '%s': %s", taskID, err.Error()))
+	}
+	return createdTickets, nil
+}
+
+// BuildBaronSuggestions is the resolver for the buildBaronSuggestions field.
+func (r *taskResolver) BuildBaronSuggestions(ctx context.Context, obj *restModel.APITask) (*thirdparty.SearchReturnInfo, error) {
 	taskID := utility.FromStringPtr(obj.Id)
 	searchReturnInfo, _, err := model.GetBuildBaron(ctx, taskID, obj.Execution)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Build Baron results for task '%s' with execution %d: %s", taskID, obj.Execution, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Build Baron suggestions for task '%s' with execution %d: %s", taskID, obj.Execution, err.Error()))
 	}
 	return searchReturnInfo, nil
 }

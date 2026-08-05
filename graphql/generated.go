@@ -1868,7 +1868,8 @@ type ComplexityRoot struct {
 		BaseStatus                   func(childComplexity int) int
 		BaseTask                     func(childComplexity int) int
 		Blocked                      func(childComplexity int) int
-		BuildBaron                   func(childComplexity int) int
+		BuildBaronCreatedTickets     func(childComplexity int) int
+		BuildBaronSuggestions        func(childComplexity int) int
 		BuildId                      func(childComplexity int) int
 		BuildVariant                 func(childComplexity int) int
 		BuildVariantDisplayName      func(childComplexity int) int
@@ -2715,7 +2716,8 @@ type TaskResolver interface {
 	BaseStatus(ctx context.Context, obj *model.APITask) (*string, error)
 	BaseTask(ctx context.Context, obj *model.APITask) (*model.APITask, error)
 
-	BuildBaron(ctx context.Context, obj *model.APITask) (*thirdparty.SearchReturnInfo, error)
+	BuildBaronCreatedTickets(ctx context.Context, obj *model.APITask) ([]*thirdparty.JiraTicket, error)
+	BuildBaronSuggestions(ctx context.Context, obj *model.APITask) (*thirdparty.SearchReturnInfo, error)
 
 	BuildVariantDisplayName(ctx context.Context, obj *model.APITask) (*string, error)
 	CanAbort(ctx context.Context, obj *model.APITask) (bool, error)
@@ -10560,12 +10562,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Task.Blocked(childComplexity), true
-	case "Task.buildBaron":
-		if e.complexity.Task.BuildBaron == nil {
+	case "Task.buildBaronCreatedTickets":
+		if e.complexity.Task.BuildBaronCreatedTickets == nil {
 			break
 		}
 
-		return e.complexity.Task.BuildBaron(childComplexity), true
+		return e.complexity.Task.BuildBaronCreatedTickets(childComplexity), true
+	case "Task.buildBaronSuggestions":
+		if e.complexity.Task.BuildBaronSuggestions == nil {
+			break
+		}
+
+		return e.complexity.Task.BuildBaronSuggestions(childComplexity), true
 	case "Task.buildId":
 		if e.complexity.Task.BuildId == nil {
 			break
@@ -20456,8 +20464,10 @@ func (ec *executionContext) fieldContext_AdminTasksToRestartPayload_tasksToResta
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -29302,8 +29312,10 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -32805,8 +32817,10 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -38923,8 +38937,10 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -39148,8 +39164,10 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -39373,8 +39391,10 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -39598,8 +39618,10 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -39823,8 +39845,10 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -40048,8 +40072,10 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriorities(ctx context.
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -40273,8 +40299,10 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -40636,8 +40664,10 @@ func (ec *executionContext) fieldContext_Mutation_quarantineTask(ctx context.Con
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -40861,8 +40891,10 @@ func (ec *executionContext) fieldContext_Mutation_unquarantineTask(ctx context.C
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -41992,8 +42024,10 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -53541,8 +53575,10 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -53766,8 +53802,10 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -61533,8 +61571,10 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -61756,14 +61796,72 @@ func (ec *executionContext) fieldContext_Task_buildId(_ context.Context, field g
 	return fc, nil
 }
 
-func (ec *executionContext) _Task_buildBaron(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+func (ec *executionContext) _Task_buildBaronCreatedTickets(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_Task_buildBaron,
+		ec.fieldContext_Task_buildBaronCreatedTickets,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Task().BuildBaron(ctx, obj)
+			return ec.resolvers.Task().BuildBaronCreatedTickets(ctx, obj)
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "ANNOTATIONS")
+				if err != nil {
+					var zeroVal []*thirdparty.JiraTicket
+					return zeroVal, err
+				}
+				access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "VIEW")
+				if err != nil {
+					var zeroVal []*thirdparty.JiraTicket
+					return zeroVal, err
+				}
+				if ec.directives.RequireProjectAccess == nil {
+					var zeroVal []*thirdparty.JiraTicket
+					return zeroVal, errors.New("directive requireProjectAccess is not implemented")
+				}
+				return ec.directives.RequireProjectAccess(ctx, obj, directive0, permission, access)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNJiraTicket2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraTicketᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Task_buildBaronCreatedTickets(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "fields":
+				return ec.fieldContext_JiraTicket_fields(ctx, field)
+			case "key":
+				return ec.fieldContext_JiraTicket_key(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type JiraTicket", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Task_buildBaronSuggestions(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Task_buildBaronSuggestions,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Task().BuildBaronSuggestions(ctx, obj)
 		},
 		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
 			directive0 := next
@@ -61795,7 +61893,7 @@ func (ec *executionContext) _Task_buildBaron(ctx context.Context, field graphql.
 	)
 }
 
-func (ec *executionContext) fieldContext_Task_buildBaron(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Task_buildBaronSuggestions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Task",
 		Field:      field,
@@ -62393,8 +62491,10 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -62795,8 +62895,10 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(ctx context.Con
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -63228,8 +63330,10 @@ func (ec *executionContext) fieldContext_Task_generator(_ context.Context, field
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -63712,8 +63816,10 @@ func (ec *executionContext) fieldContext_Task_nextTask(_ context.Context, field 
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -63925,8 +64031,10 @@ func (ec *executionContext) fieldContext_Task_nextTaskCompleted(_ context.Contex
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -64138,8 +64246,10 @@ func (ec *executionContext) fieldContext_Task_nextTaskFailing(_ context.Context,
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -64351,8 +64461,10 @@ func (ec *executionContext) fieldContext_Task_nextTaskPassing(_ context.Context,
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -64756,8 +64868,10 @@ func (ec *executionContext) fieldContext_Task_prevTask(_ context.Context, field 
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -64970,8 +65084,10 @@ func (ec *executionContext) fieldContext_Task_prevTaskCompleted(ctx context.Cont
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -65194,8 +65310,10 @@ func (ec *executionContext) fieldContext_Task_prevTaskFailing(_ context.Context,
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -65407,8 +65525,10 @@ func (ec *executionContext) fieldContext_Task_prevTaskPassing(_ context.Context,
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -67719,8 +67839,10 @@ func (ec *executionContext) fieldContext_TaskHistory_tasks(_ context.Context, fi
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -72237,8 +72359,10 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -76686,8 +76810,10 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_blocked(ctx, field)
 			case "buildId":
 				return ec.fieldContext_Task_buildId(ctx, field)
-			case "buildBaron":
-				return ec.fieldContext_Task_buildBaron(ctx, field)
+			case "buildBaronCreatedTickets":
+				return ec.fieldContext_Task_buildBaronCreatedTickets(ctx, field)
+			case "buildBaronSuggestions":
+				return ec.fieldContext_Task_buildBaronSuggestions(ctx, field)
 			case "buildVariant":
 				return ec.fieldContext_Task_buildVariant(ctx, field)
 			case "buildVariantDisplayName":
@@ -105781,7 +105907,43 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "buildBaron":
+		case "buildBaronCreatedTickets":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_buildBaronCreatedTickets(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "buildBaronSuggestions":
 			field := field
 
 			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
@@ -105790,7 +105952,7 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Task_buildBaron(ctx, field, obj)
+				res = ec._Task_buildBaronSuggestions(ctx, field, obj)
 				return res
 			}
 
