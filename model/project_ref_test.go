@@ -23,6 +23,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
@@ -1067,6 +1068,11 @@ func TestAttachToNewRepo(t *testing.T) {
 	assert.NoError(t, pRef.Insert(t.Context()))
 	pRef.Owner = "newOwner"
 	pRef.Repo = "newRepo"
+	// Reload the user so it carries the admin role it gained for the new repo above, as a real
+	// request would.
+	u, err = user.FindOneById(t.Context(), "me")
+	require.NoError(t, err)
+	require.NotNil(t, u)
 	assert.NoError(t, pRef.AttachToNewRepo(t.Context(), u))
 	assert.True(t, pRef.UseRepoSettings())
 	assert.NotEmpty(t, pRef.RepoRefId)
@@ -1081,6 +1087,110 @@ func TestAttachToNewRepo(t *testing.T) {
 	assert.False(t, pRefFromDB.IsPRTestingEnabled())
 	assert.True(t, pRefFromDB.IsGithubChecksEnabled())
 
+}
+
+// TestAttachToNewRepoExistingRepoRefPermissions checks the permissions required to move a project
+// onto an owner/repo that already has a repo ref.
+func TestAttachToNewRepoExistingRepoRefPermissions(t *testing.T) {
+	setup := func(t *testing.T, userRoles ...string) (ProjectRef, RepoRef, *user.DBUser) {
+		ctx := t.Context()
+		require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ProjectVarsCollection, fakeparameter.Collection,
+			evergreen.ScopeCollection, evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection, githubapp.GitHubAppCollection))
+		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
+
+		targetRepoRef := RepoRef{ProjectRef{
+			Id:    "targetRepoRef",
+			Owner: "newOwner",
+			Repo:  "new-repo",
+		}}
+		require.NoError(t, targetRepoRef.Replace(ctx))
+		targetRepoVars := ProjectVars{
+			Id:            targetRepoRef.Id,
+			Vars:          map[string]string{"target_repo_var": "target_repo_value"},
+			PrivateVars:   map[string]bool{"target_repo_var": true},
+			AdminOnlyVars: map[string]bool{"target_repo_var": true},
+		}
+		require.NoError(t, targetRepoVars.Insert(ctx))
+
+		originRepoRef := RepoRef{ProjectRef{
+			Id:    "originRepoRef",
+			Owner: "old-owner",
+			Repo:  "old-repo",
+		}}
+		require.NoError(t, originRepoRef.Replace(ctx))
+
+		pRef := ProjectRef{
+			Id:        "myProject",
+			Owner:     "old-owner",
+			Repo:      "old-repo",
+			Branch:    "main",
+			Admins:    []string{"me"},
+			RepoRefId: originRepoRef.Id,
+			Enabled:   true,
+		}
+		require.NoError(t, pRef.Insert(ctx))
+		pRefVars := ProjectVars{
+			Id:   pRef.Id,
+			Vars: map[string]string{"my_var": "my_value"},
+		}
+		require.NoError(t, pRefVars.Insert(ctx))
+
+		u := &user.DBUser{Id: "me", SystemRoles: userRoles}
+		require.NoError(t, u.Insert(ctx))
+
+		pRef.Owner = targetRepoRef.Owner
+		pRef.Repo = targetRepoRef.Repo
+		return pRef, targetRepoRef, u
+	}
+
+	t.Run("NonRepoAdminShouldError", func(t *testing.T) {
+		ctx := t.Context()
+		pRef, _, u := setup(t)
+
+		err := pRef.AttachToNewRepo(ctx, u)
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, ErrRepoRefUnauthorized), "expected an authorization error, got '%s'", err)
+
+		pRefFromDB, err := FindBranchProjectRef(ctx, pRef.Id)
+		require.NoError(t, err)
+		require.NotNil(t, pRefFromDB)
+		assert.Equal(t, "old-owner", pRefFromDB.Owner)
+		assert.Equal(t, "old-repo", pRefFromDB.Repo)
+		assert.Equal(t, "originRepoRef", pRefFromDB.RepoRefId)
+
+		// A rejected move must leave the project's variables untouched.
+		mergedVars, err := FindMergedProjectVars(ctx, pRef.Id)
+		require.NoError(t, err)
+		require.NotNil(t, mergedVars)
+		assert.NotContains(t, mergedVars.Vars, "target_repo_var")
+		assert.NotContains(t, mergedVars.AdminOnlyVars, "target_repo_var")
+	})
+
+	t.Run("RepoAdminShouldSucceed", func(t *testing.T) {
+		ctx := t.Context()
+		pRef, targetRepoRef, u := setup(t, GetRepoAdminRole("targetRepoRef"))
+
+		rm := testutil.NewEnvironment(ctx, t).RoleManager()
+		require.NoError(t, rm.AddScope(ctx, gimlet.Scope{
+			ID:        GetRepoAdminScope(targetRepoRef.Id),
+			Type:      evergreen.ProjectResourceType,
+			Resources: []string{targetRepoRef.Id},
+		}))
+		require.NoError(t, rm.UpdateRole(ctx, gimlet.Role{
+			ID:          GetRepoAdminRole(targetRepoRef.Id),
+			Scope:       GetRepoAdminScope(targetRepoRef.Id),
+			Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value},
+		}))
+
+		require.NoError(t, pRef.AttachToNewRepo(ctx, u))
+
+		pRefFromDB, err := FindBranchProjectRef(ctx, pRef.Id)
+		require.NoError(t, err)
+		require.NotNil(t, pRefFromDB)
+		assert.Equal(t, targetRepoRef.Owner, pRefFromDB.Owner)
+		assert.Equal(t, targetRepoRef.Repo, pRefFromDB.Repo)
+		assert.Equal(t, targetRepoRef.Id, pRefFromDB.RepoRefId)
+	})
 }
 
 func checkRepoAttachmentEventLog(t *testing.T, project ProjectRef, attachmentType string) {
