@@ -338,9 +338,12 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 
 	var pc string
 	if projectRef.IsVersionControlEnabled() {
-		pc, err = getProjectConfigYAML(pp.MergedProjectConfig(p.Project))
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "getting patched project config")
+		if mergedConfig := pp.MergedProjectConfig(p.Project); mergedConfig != nil {
+			pcOut, err := yaml.Marshal(mergedConfig)
+			if err != nil {
+				return nil, nil, errors.Wrap(err, "marshalling project config into YAML")
+			}
+			pc = string(pcOut)
 		}
 	}
 
@@ -387,20 +390,21 @@ func GetPatchedProjectConfig(ctx context.Context, p *patch.Patch) (string, error
 		return "", errors.Wrap(err, "getting patched project file as YAML")
 	}
 
-	pc, err := loadMergedProjectConfig(ctx, projectFileBytes, opts, p.Project)
+	// Parse the config directly instead of going through LoadProjectInto to
+	// avoid paying for project translation, which isn't needed for the config.
+	intermediateProject, err := createIntermediateProject(projectFileBytes, opts.UnmarshalStrict, nil)
 	if err != nil {
-		return "", errors.Wrap(err, "creating project config")
+		return "", errors.Wrapf(err, LoadProjectError)
 	}
-	return getProjectConfigYAML(pc)
-}
-
-// getProjectConfigYAML returns the given project configuration marshalled as a
-// YAML string, or the empty string for a nil config.
-func getProjectConfigYAML(pc *ProjectConfig) (string, error) {
+	if len(intermediateProject.Include) > 0 {
+		if err := mergeIncludes(ctx, p.Project, intermediateProject, nil, opts); err != nil {
+			return "", errors.Wrap(err, "merging included files")
+		}
+	}
+	pc := intermediateProject.MergedProjectConfig(p.Project)
 	if pc == nil {
 		return "", nil
 	}
-
 	yamlProjectConfig, err := yaml.Marshal(pc)
 	if err != nil {
 		return "", errors.Wrap(err, "marshalling project config into YAML")

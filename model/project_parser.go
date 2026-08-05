@@ -1622,27 +1622,6 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts, settings *ever
 	}, nil
 }
 
-func loadMergedProjectConfig(ctx context.Context, data []byte, opts *GetProjectOpts, identifier string) (*ProjectConfig, error) {
-	unmarshalStrict := false
-	var anchorRegistry *anchorEntries
-	if opts != nil {
-		unmarshalStrict = opts.UnmarshalStrict
-		if opts.EnableYAMLAnchors {
-			anchorRegistry = &anchorEntries{}
-		}
-	}
-	intermediateProject, err := createIntermediateProject(data, unmarshalStrict, anchorRegistry)
-	if err != nil {
-		return nil, errors.Wrapf(err, LoadProjectError)
-	}
-	if len(intermediateProject.Include) > 0 {
-		if err := mergeIncludes(ctx, identifier, intermediateProject, anchorRegistry, opts); err != nil {
-			return nil, errors.Wrap(err, "merging included files")
-		}
-	}
-	return intermediateProject.MergedProjectConfig(identifier), nil
-}
-
 // createIntermediateProject marshals the supplied YAML into our intermediate project representation
 // (i.e. before selectors or matrix logic has been evaluated).
 // If unmarshalStrict is true, use the strict version of unmarshalling.
