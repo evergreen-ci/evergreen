@@ -1628,6 +1628,25 @@ func (t *Task) SetResultsInfo(ctx context.Context, failedResults bool) error {
 	return errors.WithStack(UpdateOne(ctx, ById(t.Id), bson.M{"$set": set}))
 }
 
+// IncNumQuarantinedTestsSkipped increments the number of tests skipped because
+// they were quarantined in TSS for this task execution.
+func (t *Task) IncNumQuarantinedTestsSkipped(ctx context.Context, num int) error {
+	if num <= 0 {
+		return nil
+	}
+	err := UpdateOne(ctx, ByIdAndExecution(t.Id, t.Execution), bson.M{
+		"$inc": bson.M{NumQuarantinedTestsSkippedKey: num},
+	})
+	if adb.ResultsNotFound(err) {
+		return nil
+	}
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	t.NumQuarantinedTestsSkipped += num
+	return nil
+}
+
 // HasResults returns whether the task has test results or not.
 func (t *Task) HasResults(ctx context.Context) bool {
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
