@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
@@ -16,7 +17,8 @@ import (
 )
 
 // TestAttachProjectToNewRepoRequiresTargetRepoAdmin verifies that project admin access alone is not
-// sufficient to move a project onto a repo the user does not administer.
+// sufficient to move a project onto a repo the user does not administer, and that the same request
+// succeeds once the user is an admin of that repo.
 func TestAttachProjectToNewRepoRequiresTargetRepoAdmin(t *testing.T) {
 	setupPermissions(t)
 
@@ -89,4 +91,49 @@ func TestAttachProjectToNewRepoRequiresTargetRepoAdmin(t *testing.T) {
 	assert.Equal(t, originRepoRef.Owner, projectFromDB.Owner)
 	assert.Equal(t, originRepoRef.Repo, projectFromDB.Repo)
 	assert.Equal(t, originRepoRef.Id, projectFromDB.RepoRefId)
+
+	// Making the user an admin of the target repo allows the same request to succeed.
+	rm := evergreen.GetEnvironment().RoleManager()
+	for _, repoRefID := range []string{originRepoRef.Id, targetRepoRef.Id} {
+		require.NoError(t, rm.AddScope(t.Context(), gimlet.Scope{
+			ID:        model.GetRepoAdminScope(repoRefID),
+			Type:      evergreen.ProjectResourceType,
+			Resources: []string{repoRefID},
+		}))
+		require.NoError(t, rm.AddScope(t.Context(), gimlet.Scope{
+			ID:        model.GetUnrestrictedBranchProjectsScope(repoRefID),
+			Type:      evergreen.ProjectResourceType,
+			Resources: []string{repoRefID},
+		}))
+	}
+	require.NoError(t, rm.UpdateRole(t.Context(), gimlet.Role{
+		ID:          model.GetRepoAdminRole(targetRepoRef.Id),
+		Scope:       model.GetRepoAdminScope(targetRepoRef.Id),
+		Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value},
+	}))
+	require.NoError(t, usr.AddRole(t.Context(), model.GetRepoAdminRole(targetRepoRef.Id)))
+
+	// AttachToNewRepo validates the new owner against the cached environment settings.
+	settings := evergreen.GetEnvironment().Settings()
+	originalOrgs := settings.GithubOrgs
+	settings.GithubOrgs = []string{originRepoRef.Owner, targetRepoRef.Owner}
+	t.Cleanup(func() { settings.GithubOrgs = originalOrgs })
+
+	req = httptest.NewRequest(http.MethodPost, "/graphql/query", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	req = req.WithContext(gimlet.AttachUser(req.Context(), usr))
+	recorder = httptest.NewRecorder()
+	handler.NewDefaultServer(NewExecutableSchema(New("/graphql"))).ServeHTTP(recorder, req)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	response.Errors = nil
+	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
+	require.Empty(t, response.Errors, "response body: %s", recorder.Body.String())
+
+	projectFromDB, err = model.FindBranchProjectRef(t.Context(), projectRef.Id)
+	require.NoError(t, err)
+	require.NotNil(t, projectFromDB)
+	assert.Equal(t, targetRepoRef.Owner, projectFromDB.Owner)
+	assert.Equal(t, targetRepoRef.Repo, projectFromDB.Repo)
+	assert.Equal(t, targetRepoRef.Id, projectFromDB.RepoRefId)
 }

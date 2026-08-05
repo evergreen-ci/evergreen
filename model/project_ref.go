@@ -1002,7 +1002,7 @@ func (p *ProjectRef) checkExistingRepoRefAdmin(ctx context.Context, u *user.DBUs
 		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
 	})
 	if !isRepoAdmin {
-		return errors.Wrapf(ErrRepoRefUnauthorized, "user '%s' cannot attach project '%s' to repo '%s/%s'", u.Id, p.Id, p.Owner, p.Repo)
+		return errors.Wrapf(ErrRepoRefUnauthorized, "user '%s' cannot attach project '%s' to repo '%s' ('%s/%s')", u.Id, p.Id, repoRef.Id, p.Owner, p.Repo)
 	}
 	return nil
 }
