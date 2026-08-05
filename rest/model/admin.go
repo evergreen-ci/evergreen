@@ -1696,6 +1696,8 @@ func (a *APISubnet) ToService() (any, error) {
 
 type APIAWSConfig struct {
 	Subnets                []APISubnet                `json:"subnets"`
+	SubnetTagName          *string                    `json:"subnet_tag_name"`
+	SubnetTagValue         *string                    `json:"subnet_tag_value"`
 	ParserProject          *APIParserProjectS3Config  `json:"parser_project"`
 	PersistentDNS          *APIPersistentDNSConfig    `json:"persistent_dns"`
 	DefaultSecurityGroup   *string                    `json:"default_security_group"`
@@ -1719,6 +1721,8 @@ func (a *APIAWSConfig) BuildFromService(h any) error {
 			}
 			a.Subnets = append(a.Subnets, apiSubnet)
 		}
+		a.SubnetTagName = utility.ToStringPtr(v.SubnetTagName)
+		a.SubnetTagValue = utility.ToStringPtr(v.SubnetTagValue)
 
 		parserProject := &APIParserProjectS3Config{}
 		if err := parserProject.BuildFromService(v.ParserProject); err != nil {
@@ -1808,6 +1812,8 @@ func (a *APIAWSConfig) ToService() (any, error) {
 		}
 		config.Subnets = append(config.Subnets, subnet)
 	}
+	config.SubnetTagName = utility.FromStringPtr(a.SubnetTagName)
+	config.SubnetTagValue = utility.FromStringPtr(a.SubnetTagValue)
 
 	config.AllowedInstanceTypes = utility.FromStringPtrSlice(a.AllowedInstanceTypes)
 	config.AlertableInstanceTypes = utility.FromStringPtrSlice(a.AlertableInstanceTypes)

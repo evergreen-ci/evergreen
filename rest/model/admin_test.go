@@ -175,6 +175,8 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Providers.AWS.ParserProject.GeneratedJSONPrefix, utility.FromStringPtr(apiSettings.Providers.AWS.ParserProject.GeneratedJSONPrefix))
 	assert.EqualValues(testSettings.Providers.AWS.PersistentDNS.HostedZoneID, utility.FromStringPtr(apiSettings.Providers.AWS.PersistentDNS.HostedZoneID))
 	assert.EqualValues(testSettings.Providers.AWS.PersistentDNS.Domain, utility.FromStringPtr(apiSettings.Providers.AWS.PersistentDNS.Domain))
+	assert.EqualValues(testSettings.Providers.AWS.SubnetTagName, utility.FromStringPtr(apiSettings.Providers.AWS.SubnetTagName))
+	assert.EqualValues(testSettings.Providers.AWS.SubnetTagValue, utility.FromStringPtr(apiSettings.Providers.AWS.SubnetTagValue))
 	require.Len(apiSettings.Providers.AWS.AccountRoles, len(testSettings.Providers.AWS.AccountRoles))
 	for i, ar := range testSettings.Providers.AWS.AccountRoles {
 		assert.Equal(ar.Account, utility.FromStringPtr(apiSettings.Providers.AWS.AccountRoles[i].Account))

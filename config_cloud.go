@@ -40,6 +40,8 @@ func (c *CloudProviders) ValidateAndDefault() error {
 	for i, m := range c.AWS.AccountRoles {
 		catcher.Wrapf(m.Validate(), "invalid account role mapping at index %d", i)
 	}
+	catcher.NewWhen(c.AWS.SubnetTagName == "" && c.AWS.SubnetTagValue != "", "must specify a subnet tag name if a subnet tag value is set")
+	catcher.NewWhen(c.AWS.SubnetTagName != "" && c.AWS.SubnetTagValue == "", "must specify a subnet tag value if a subnet tag name is set")
 	return catcher.Resolve()
 }
 
@@ -58,6 +60,13 @@ type Subnet struct {
 // AWSConfig stores auth info for Amazon Web Services.
 type AWSConfig struct {
 	Subnets []Subnet `bson:"subnets" json:"subnets" yaml:"subnets"`
+
+	// SubnetTagName is the name of the tag that marks a subnet as usable by
+	// Evergreen.
+	SubnetTagName string `bson:"subnet_tag_name" json:"subnet_tag_name" yaml:"subnet_tag_name"`
+	// SubnetTagValue is the value the tag must have for a subnet that Evergreen
+	// can use.
+	SubnetTagValue string `bson:"subnet_tag_value" json:"subnet_tag_value" yaml:"subnet_tag_value"`
 
 	// ParserProject is configuration for storing and accessing parser projects
 	// in S3.

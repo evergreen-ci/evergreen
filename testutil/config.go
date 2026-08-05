@@ -321,6 +321,8 @@ func MockConfig() *evergreen.Settings {
 			AWS: evergreen.AWSConfig{
 				DefaultSecurityGroup: "test_security_group",
 				MaxVolumeSizePerUser: 200,
+				SubnetTagName:        "subnet_tag_name",
+				SubnetTagValue:       "subnet_tag_value",
 				ParserProject: evergreen.ParserProjectS3Config{
 					S3Credentials: evergreen.S3Credentials{
 						Bucket: "parser_project_bucket",

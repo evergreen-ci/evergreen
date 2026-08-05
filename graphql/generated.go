@@ -133,6 +133,8 @@ type ComplexityRoot struct {
 		MaxVolumeSizePerUser   func(childComplexity int) int
 		ParserProject          func(childComplexity int) int
 		PersistentDNS          func(childComplexity int) int
+		SubnetTagName          func(childComplexity int) int
+		SubnetTagValue         func(childComplexity int) int
 		Subnets                func(childComplexity int) int
 	}
 
@@ -3003,6 +3005,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AWSConfig.PersistentDNS(childComplexity), true
+	case "AWSConfig.subnetTagName":
+		if e.complexity.AWSConfig.SubnetTagName == nil {
+			break
+		}
+
+		return e.complexity.AWSConfig.SubnetTagName(childComplexity), true
+	case "AWSConfig.subnetTagValue":
+		if e.complexity.AWSConfig.SubnetTagValue == nil {
+			break
+		}
+
+		return e.complexity.AWSConfig.SubnetTagValue(childComplexity), true
 	case "AWSConfig.subnets":
 		if e.complexity.AWSConfig.Subnets == nil {
 			break
@@ -17528,6 +17542,64 @@ func (ec *executionContext) fieldContext_AWSConfig_subnets(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _AWSConfig_subnetTagName(ctx context.Context, field graphql.CollectedField, obj *model.APIAWSConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AWSConfig_subnetTagName,
+		func(ctx context.Context) (any, error) {
+			return obj.SubnetTagName, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AWSConfig_subnetTagName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AWSConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AWSConfig_subnetTagValue(ctx context.Context, field graphql.CollectedField, obj *model.APIAWSConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AWSConfig_subnetTagValue,
+		func(ctx context.Context) (any, error) {
+			return obj.SubnetTagValue, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AWSConfig_subnetTagValue(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AWSConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _AWSConfig_parserProject(ctx context.Context, field graphql.CollectedField, obj *model.APIAWSConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -24108,6 +24180,10 @@ func (ec *executionContext) fieldContext_CloudProviderConfig_aws(_ context.Conte
 			switch field.Name {
 			case "subnets":
 				return ec.fieldContext_AWSConfig_subnets(ctx, field)
+			case "subnetTagName":
+				return ec.fieldContext_AWSConfig_subnetTagName(ctx, field)
+			case "subnetTagValue":
+				return ec.fieldContext_AWSConfig_subnetTagValue(ctx, field)
 			case "parserProject":
 				return ec.fieldContext_AWSConfig_parserProject(ctx, field)
 			case "persistentDNS":
@@ -79975,7 +80051,7 @@ func (ec *executionContext) unmarshalInputAWSConfigInput(ctx context.Context, ob
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"subnets", "parserProject", "persistentDNS", "defaultSecurityGroup", "allowedInstanceTypes", "alertableInstanceTypes", "allowedRegions", "maxVolumeSizePerUser", "accountRoles", "ipamPoolID", "elasticIPUsageRate", "allowedSNSTopicARNs"}
+	fieldsInOrder := [...]string{"subnets", "subnetTagName", "subnetTagValue", "parserProject", "persistentDNS", "defaultSecurityGroup", "allowedInstanceTypes", "alertableInstanceTypes", "allowedRegions", "maxVolumeSizePerUser", "accountRoles", "ipamPoolID", "elasticIPUsageRate", "allowedSNSTopicARNs"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -79989,6 +80065,20 @@ func (ec *executionContext) unmarshalInputAWSConfigInput(ctx context.Context, ob
 				return it, err
 			}
 			it.Subnets = data
+		case "subnetTagName":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("subnetTagName"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SubnetTagName = data
+		case "subnetTagValue":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("subnetTagValue"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SubnetTagValue = data
 		case "parserProject":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("parserProject"))
 			directive0 := func(ctx context.Context) (any, error) {
@@ -91487,6 +91577,10 @@ func (ec *executionContext) _AWSConfig(ctx context.Context, sel ast.SelectionSet
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "subnetTagName":
+			out.Values[i] = ec._AWSConfig_subnetTagName(ctx, field, obj)
+		case "subnetTagValue":
+			out.Values[i] = ec._AWSConfig_subnetTagValue(ctx, field, obj)
 		case "parserProject":
 			out.Values[i] = ec._AWSConfig_parserProject(ctx, field, obj)
 		case "persistentDNS":
