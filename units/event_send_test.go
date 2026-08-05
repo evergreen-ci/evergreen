@@ -60,7 +60,7 @@ func (s *eventNotificationSuite) SetupTest() {
 			Subscriber: event.Subscriber{
 				Type: event.EvergreenWebhookSubscriberType,
 				Target: event.WebhookSubscriber{
-					URL:    "http://127.0.0.1:12345",
+					URL:    "https://example.com",
 					Secret: []byte("memes"),
 				},
 			},
