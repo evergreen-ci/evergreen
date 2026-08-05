@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 // AuthorDisplayName is the resolver for the authorDisplayName field.
@@ -100,24 +99,24 @@ func (r *patchResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.
 	}
 	var res []*GeneratedTaskCountResults
 	for _, buildVariant := range patchProjectVariantsAndTasks.Variants {
+		var generatorDisplayNames []string
 		for _, taskUnit := range buildVariant.Tasks {
 			if _, ok := generatorTasks[taskUnit.Name]; ok {
-				dbTask, err := task.FindOne(ctx, db.Query(bson.M{
-					task.ProjectKey:      proj.DisplayName,
-					task.BuildVariantKey: buildVariant.Name,
-					task.DisplayNameKey:  taskUnit.Name,
-					task.GenerateTaskKey: true,
-				}).Sort([]string{"-" + task.FinishTimeKey}))
-				if err != nil {
-					return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task '%s' in build variant '%s': %s", taskUnit.Name, buildVariant.Name, err.Error()))
-				}
-				if dbTask != nil {
-					res = append(res, &GeneratedTaskCountResults{
-						BuildVariantName: utility.ToStringPtr(buildVariant.Name),
-						TaskName:         utility.ToStringPtr(taskUnit.Name),
-						EstimatedTasks:   utility.FromIntPtr(dbTask.EstimatedNumActivatedGeneratedTasks),
-					})
-				}
+				generatorDisplayNames = append(generatorDisplayNames, taskUnit.Name)
+			}
+		}
+
+		estimations, err := task.GetBatchedGenerateTasksEstimations(ctx, p.Project, buildVariant.Name, generatorDisplayNames)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting generated task estimations for build variant '%s': %s", buildVariant.Name, err.Error()))
+		}
+		for _, displayName := range generatorDisplayNames {
+			if estimation, ok := estimations[displayName]; ok {
+				res = append(res, &GeneratedTaskCountResults{
+					BuildVariantName: utility.ToStringPtr(buildVariant.Name),
+					TaskName:         utility.ToStringPtr(displayName),
+					EstimatedTasks:   estimation.EstimatedNumActivatedGeneratedTasks,
+				})
 			}
 		}
 	}

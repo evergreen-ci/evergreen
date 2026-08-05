@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"slices"
+	"sort"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -168,6 +169,101 @@ func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, e
 		}
 	}
 	return selectedTests, nil
+}
+
+// RecordQuarantinedTestsSkipped snapshots the tests that test selection
+// skipped because they are quarantined in TSS, appending them to the task
+// run's test_results record.
+func RecordQuarantinedTestsSkipped(ctx context.Context, env evergreen.Environment, req model.SelectTestsRequest, selectedTests []string) error {
+	quarantinedTests, err := findQuarantinedSkippedTests(ctx, req, selectedTests)
+	if err != nil {
+		return err
+	}
+	if len(quarantinedTests) == 0 {
+		return nil
+	}
+	t, err := task.FindOneId(ctx, req.TaskID)
+	if err != nil {
+		return errors.Wrapf(err, "finding task '%s'", req.TaskID)
+	}
+	if t == nil {
+		return errors.Errorf("task '%s' not found", req.TaskID)
+	}
+	numAppended, err := task.AppendQuarantinedTests(ctx, t, env, quarantinedTests)
+	if err != nil {
+		return errors.Wrap(err, "recording quarantined tests on the test results record")
+	}
+	if numAppended == 0 {
+		return nil
+	}
+	if err = t.IncNumQuarantinedTestsSkipped(ctx, numAppended); err != nil {
+		return errors.Wrap(err, "incrementing the task's quarantined tests skipped count")
+	}
+
+	dt, err := t.GetDisplayTask(ctx)
+	if err != nil {
+		return errors.Wrap(err, "finding display task")
+	}
+	if dt == nil {
+		return nil
+	}
+	return errors.Wrap(dt.IncNumQuarantinedTestsSkipped(ctx, numAppended), "incrementing the display task's quarantined tests skipped count")
+}
+
+// findQuarantinedSkippedTests returns the tests that test selection skipped
+// specifically because they are quarantined in TSS. When the request names
+// its tests, only the skipped subset is checked for quarantine status; when
+// it does not (the select-known-tests path), the full test set is unknown, so
+// the variant's quarantine state determines which known tests were withheld.
+func findQuarantinedSkippedTests(ctx context.Context, req model.SelectTestsRequest, selectedTests []string) ([]testresult.QuarantinedTest, error) {
+	selected := make(map[string]bool, len(selectedTests))
+	for _, name := range selectedTests {
+		selected[name] = true
+	}
+
+	var quarantinedNames []string
+	if len(req.Tests) > 0 {
+		var skipped []string
+		seen := make(map[string]bool, len(req.Tests))
+		for _, name := range req.Tests {
+			if !selected[name] && !seen[name] {
+				skipped = append(skipped, name)
+				seen[name] = true
+			}
+		}
+		if len(skipped) == 0 {
+			return nil, nil
+		}
+		statuses, err := GetTestsQuarantineStatus(ctx, req.Project, req.BuildVariant, req.TaskName, skipped)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting quarantine status for skipped tests")
+		}
+		for _, name := range skipped {
+			if statuses[name] {
+				quarantinedNames = append(quarantinedNames, name)
+			}
+		}
+	} else {
+		variantState, err := GetVariantQuarantineStatus(ctx, req.Project, req.BuildVariant)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting variant quarantine status")
+		}
+		for name, isQuarantined := range variantState[req.TaskName] {
+			if isQuarantined && !selected[name] {
+				quarantinedNames = append(quarantinedNames, name)
+			}
+		}
+		// The variant state is a map, so sort for a deterministic snapshot.
+		sort.Strings(quarantinedNames)
+	}
+
+	// DisplayTestName is left unset because it isn't known until a test
+	// actually executes.
+	quarantinedTests := make([]testresult.QuarantinedTest, 0, len(quarantinedNames))
+	for _, name := range quarantinedNames {
+		quarantinedTests = append(quarantinedTests, testresult.QuarantinedTest{TestName: name})
+	}
+	return quarantinedTests, nil
 }
 
 // SetTestQuarantined marks the test as quarantined or unquarantined in the test
