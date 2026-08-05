@@ -3528,6 +3528,9 @@ func (t *Task) FetchExpectedDuration(ctx context.Context) util.DurationStats {
 			span.SetAttributes(
 				attribute.String("evergreen.task.expected_duration_cache_outcome", outcome),
 				attribute.Int("evergreen.task.expected_duration_cache_size", expectedDurationCache.Len()),
+				attribute.String(evergreen.ProjectIdentifierOtelAttribute, cacheKey.project),
+				attribute.String(evergreen.BuildNameOtelAttribute, cacheKey.buildVariant),
+				attribute.String(evergreen.TaskNameOtelAttribute, cacheKey.taskDisplayName),
 			)
 		}
 

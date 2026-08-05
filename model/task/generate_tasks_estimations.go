@@ -46,25 +46,28 @@ func GetBatchedGenerateTasksEstimations(ctx context.Context, project, buildVaria
 	))
 	defer span.End()
 
-	numHits, numNegativeHits := 0, 0
+	hitNames := make([]string, 0, len(displayNames))
+	negativeHitNames := make([]string, 0, len(displayNames))
 	uncached := make([]string, 0, len(displayNames))
 	for _, name := range displayNames {
 		key := estimateCacheKey{project: project, buildVariant: buildVariant, taskDisplayName: name}
 		if est, ok := generateTasksEstimationCache.Get(key); ok {
 			result[name] = est
-			numHits++
+			hitNames = append(hitNames, name)
 			continue
 		}
 		if _, ok := noGenerateTasksHistoryCache.Get(key); ok {
-			numNegativeHits++
+			negativeHitNames = append(negativeHitNames, name)
 			continue
 		}
 		uncached = append(uncached, name)
 	}
 	span.SetAttributes(
-		attribute.Int("evergreen.task.num_cache_hits", numHits),
-		attribute.Int("evergreen.task.num_negative_cache_hits", numNegativeHits),
+		attribute.Int("evergreen.task.num_cache_hits", len(hitNames)),
+		attribute.Int("evergreen.task.num_negative_cache_hits", len(negativeHitNames)),
 		attribute.Int("evergreen.task.num_cache_misses", len(uncached)),
+		attribute.StringSlice("evergreen.task.cache_hit_names", hitNames),
+		attribute.StringSlice("evergreen.task.negative_cache_hit_names", negativeHitNames),
 		attribute.Int("evergreen.task.generate_tasks_estimation_cache_size", generateTasksEstimationCache.Len()),
 		attribute.Int("evergreen.task.no_generate_tasks_history_cache_size", noGenerateTasksHistoryCache.Len()),
 	)
