@@ -976,6 +976,7 @@ Parameters:
   on files outside the sparse set. Combining `filter` with `clone_depth` is
   supported, but the `git fetch --unshallow` fallback for older base commits
   requires a distro git new enough to unshallow a partial clone.
+
 - `recurse_submodules`: automatically initialize and update each
   submodule in the repository, including any nested submodules.
 
