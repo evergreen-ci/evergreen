@@ -99,9 +99,23 @@ func KillSpawnedProcsInContainer(ctx context.Context, containerID, execUser stri
 	if execUser == "" {
 		return errors.New("execUser cannot be empty")
 	}
+	// Unlike killUserProcesses, this needs no sudo. The agent already reaches the
+	// Docker socket unprivileged, and docker exec runs as the image's default
+	// user (normally root), so the in-container pkill can signal execUser's
+	// processes directly. Sudo is only required host-side, where the agent user
+	// cannot signal another user's processes.
 	cmd := jasper.NewCommand().Add([]string{"docker", "exec", containerID, "pkill", "-SIGKILL", "-U", execUser})
 	if err := cmd.Run(ctx); err != nil {
+		// Wait's error is discarded because Run already wraps it; only the exit
+		// code is new information.
 		exitCode, _ := cmd.Wait(ctx)
+		// A cancelled or timed-out context can terminate docker exec with an exit
+		// code that collides with the benign cases below, which would report a
+		// cleanup that never happened as a success, so the code is only
+		// trustworthy while the context is live.
+		if ctx.Err() != nil {
+			return errors.Wrapf(err, "killing processes for user '%s' in container '%s'", execUser, containerID)
+		}
 		switch exitCode {
 		case pkillNoMatchingProcessesExitCode:
 			// pkill found no matching processes, so there is nothing to kill.

@@ -70,28 +70,41 @@ func WrapWithContainer(ctx context.Context, opts *options.Create, containerID, w
 
 	// Translate the `sudo -u <user>` prefix that Jasper's SudoAs emits into
 	// `docker exec --user`, so the container image does not need sudo installed.
-	// Plain Sudo(true) emits ["sudo", ...rest] with no user and is forwarded into
-	// the container as-is; Evergreen only uses SudoAs for container-eligible
-	// commands.
+	//
+	// This is coupled to how Jasper builds that prefix: Command.sudoCmd()
+	// (jasper/command.go:31) emits ["sudo"] when only Sudo(true) is set and
+	// ["sudo", "-u", <user>] when SudoAs sets a user, then prepends it to
+	// opts.Args in jasper/command.go:711. Re-check both if the Jasper pin moves.
+	// The user-less form is forwarded into the container as-is, since Evergreen
+	// only uses SudoAs for container-eligible commands.
+	//
+	// This must stay below the env-file write above: stripping the prefix mutates
+	// opts.Args, and doing it first would leave opts partially rewritten if the
+	// write failed.
 	if len(opts.Args) > 3 && opts.Args[0] == "sudo" && opts.Args[1] == "-u" {
 		args = append(args, "--user="+opts.Args[2])
 		opts.Args = opts.Args[3:]
 	}
 
 	args = append(args, containerID)
-	// The agent resets its nice to DefaultNice before forking host subprocesses,
-	// but that does not cross the container boundary because the Docker daemon
-	// starts the in-container process independently, so re-apply it in the
-	// container. `nice -n N` is a relative increment, so this only lands on
-	// DefaultNice when the daemon itself runs at nice 0, which holds for the
-	// system-managed daemons on all target hosts. The prefix is skipped when it
-	// would be a no-op, since it would otherwise require every task image to
-	// provide nice.
-	if DefaultNice != 0 {
-		args = append(args, "nice", "-n", strconv.Itoa(DefaultNice))
-	}
+	args = append(args, containerNiceArgs(DefaultNice)...)
 	opts.Args = append(args, opts.Args...)
 	return nil
+}
+
+// containerNiceArgs returns the argv prefix that re-applies nice to the
+// in-container process. The agent resets its nice before forking host
+// subprocesses, but that does not cross the container boundary because the
+// Docker daemon starts the in-container process independently. `nice -n N` is a
+// relative increment, so it only lands on nice when the daemon itself runs at
+// nice 0, which holds for the system-managed daemons on all target hosts. A
+// zero increment yields no prefix, since it would be a no-op that still forced
+// every task image to provide nice.
+func containerNiceArgs(nice int) []string {
+	if nice == 0 {
+		return nil
+	}
+	return []string{"nice", "-n", strconv.Itoa(nice)}
 }
 
 // writeEnvFile serializes env as KEY=VALUE lines to a unique file in dir with

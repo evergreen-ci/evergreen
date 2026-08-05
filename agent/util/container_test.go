@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -90,16 +89,11 @@ func TestWrapWithContainer(t *testing.T) {
 		assert.Equal(t, baseArgs, opts.Args[len(opts.Args)-len(baseArgs):])
 	})
 
-	t.Run("NicePrefixAppliedOnlyWhenItChangesPriority", func(t *testing.T) {
+	t.Run("NicePrefixMatchesDefaultNice", func(t *testing.T) {
 		opts := makeOpts()
 		require.NoError(t, WrapWithContainer(t.Context(), opts, "cid", "", ""))
 
-		// A `nice -n 0` prefix would be a no-op that forces every task image to
-		// provide nice, so it is only emitted when DefaultNice is non-zero.
-		expected := baseArgs
-		if DefaultNice != 0 {
-			expected = append([]string{"nice", "-n", strconv.Itoa(DefaultNice)}, baseArgs...)
-		}
+		expected := append(containerNiceArgs(DefaultNice), baseArgs...)
 		require.Len(t, opts.Args, 4+len(expected))
 		assert.Equal(t, expected, opts.Args[4:])
 	})
@@ -258,4 +252,19 @@ func TestWriteEnvFile(t *testing.T) {
 		_, err := writeEnvFile(t.Context(), filepath.Join(t.TempDir(), "missing"), map[string]string{"A": "1"})
 		assert.Error(t, err)
 	})
+}
+
+func TestContainerNiceArgs(t *testing.T) {
+	for testName, testCase := range map[string]struct {
+		nice     int
+		expected []string
+	}{
+		"ZeroYieldsNoPrefixToAvoidRequiringNiceInTheImage": {nice: 0, expected: nil},
+		"NegativeNiceRaisesPriority":                       {nice: -10, expected: []string{"nice", "-n", "-10"}},
+		"PositiveNiceLowersPriority":                       {nice: 5, expected: []string{"nice", "-n", "5"}},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			assert.Equal(t, testCase.expected, containerNiceArgs(testCase.nice))
+		})
+	}
 }

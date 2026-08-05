@@ -157,4 +157,15 @@ func TestKillSpawnedProcsInContainer(t *testing.T) {
 		err := KillSpawnedProcsInContainer(ctx, "somecontainer", "someuser")
 		assert.NoError(t, err)
 	})
+
+	t.Run("CancelledContextErrorsRatherThanReportingBenignExit", func(t *testing.T) {
+		// With no usable exit code, the benign exit-1 and exit-125 branches must
+		// not be reachable, or a cancelled cleanup would look successful.
+		fakeDocker(t, 1)
+		cancelledCtx, cancel := context.WithCancel(ctx)
+		cancel()
+		err := KillSpawnedProcsInContainer(cancelledCtx, "somecontainer", "someuser")
+		require.Error(t, err)
+		assert.NotErrorIs(t, err, ErrContainerExecUnavailable)
+	})
 }
