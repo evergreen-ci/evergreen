@@ -264,10 +264,15 @@ func TestMaybeStartContainerFailOpenReturnsNil(t *testing.T) {
 }
 
 // TestMaybeStartContainerFailsClosedWhenDirsCannotBeSecured verifies that a
-// distro requiring isolation does not start a container whose task directories
-// could not be handed to the exec user, since the task would otherwise run
-// with the container unable to write its own workdir.
+// distro requiring isolation does not start a container when neither ownership
+// transfer nor the permissive fallback could be applied.
 func TestMaybeStartContainerFailsClosedWhenDirsCannotBeSecured(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Container isolation uses POSIX ownership and is not supported on Windows")
+	}
+	usr, err := user.Current()
+	require.NoError(t, err)
+
 	ctx := t.Context()
 	a := agentForContainerTest()
 	factoryCalled := false
@@ -276,7 +281,42 @@ func TestMaybeStartContainerFailsClosedWhenDirsCannotBeSecured(t *testing.T) {
 		return &fakeContainer{id: "id", name: "ctr"}, nil
 	}
 	conf := &internal.TaskConfig{
-		WorkDir: t.TempDir(),
+		// A workdir that does not exist defeats ownership transfer and the
+		// fallback alike.
+		WorkDir: filepath.Join(t.TempDir(), "absent"),
+		Distro: &apimodels.DistroView{
+			ExecUser: usr.Username,
+			ContainerIsolation: &apimodels.ContainerIsolationSettings{
+				Image:            "ubuntu:22.04",
+				RequireIsolation: true,
+			},
+		},
+		Task: task.Task{Id: "task-1"},
+	}
+
+	err = a.maybeStartContainer(ctx, conf, nil)
+	require.Error(t, err, "require_isolation must fail closed when task directories cannot be secured at all")
+	assert.False(t, factoryCalled, "container must not be created after directory preparation fails")
+	assert.Nil(t, a.currentContainer)
+}
+
+// TestMaybeStartContainerUsesPermissiveFallbackWhenOwnershipFails verifies the
+// task still runs when the exec user cannot be reconciled, which is the
+// behaviour the pre-review implementation had unconditionally.
+func TestMaybeStartContainerUsesPermissiveFallbackWhenOwnershipFails(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Container isolation uses POSIX ownership and is not supported on Windows")
+	}
+	ctx := t.Context()
+	a := agentForContainerTest()
+	created := &fakeContainer{id: "id", name: "ctr"}
+	a.containerFactory = func(_ context.Context, _ agentcontainer.Config) (ContainerHandle, error) {
+		return created, nil
+	}
+	workDir := t.TempDir()
+	require.NoError(t, os.Mkdir(filepath.Join(workDir, "tmp"), 0700))
+	conf := &internal.TaskConfig{
+		WorkDir: workDir,
 		Distro: &apimodels.DistroView{
 			ExecUser: "evergreen-nonexistent-user",
 			ContainerIsolation: &apimodels.ContainerIsolationSettings{
@@ -287,30 +327,13 @@ func TestMaybeStartContainerFailsClosedWhenDirsCannotBeSecured(t *testing.T) {
 		Task: task.Task{Id: "task-1"},
 	}
 
-	err := a.maybeStartContainer(ctx, conf, nil)
-	require.Error(t, err, "require_isolation must fail closed when task directories cannot be secured")
-	assert.False(t, factoryCalled, "container must not be created after directory preparation fails")
-	assert.Nil(t, a.currentContainer)
-}
+	require.NoError(t, a.maybeStartContainer(ctx, conf, nil),
+		"an unreconcilable exec user must degrade rather than fail the task")
+	assert.Equal(t, created, a.currentContainer)
 
-func TestMaybeStartContainerFailsOpenWhenDirsCannotBeSecured(t *testing.T) {
-	ctx := t.Context()
-	a := agentForContainerTest()
-	created := &fakeContainer{id: "id", name: "ctr"}
-	a.containerFactory = func(_ context.Context, _ agentcontainer.Config) (ContainerHandle, error) {
-		return created, nil
-	}
-	conf := &internal.TaskConfig{
-		WorkDir: t.TempDir(),
-		Distro: &apimodels.DistroView{
-			ExecUser:           "evergreen-nonexistent-user",
-			ContainerIsolation: &apimodels.ContainerIsolationSettings{Image: "ubuntu:22.04"},
-		},
-		Task: task.Task{Id: "task-1"},
-	}
-
-	require.NoError(t, a.maybeStartContainer(ctx, conf, nil))
-	assert.Equal(t, created, a.currentContainer, "without require_isolation the task proceeds despite degraded directories")
+	info, err := os.Stat(workDir)
+	require.NoError(t, err)
+	assert.NotZero(t, info.Mode().Perm()&0002, "the fallback must leave the workdir writable by the container")
 }
 
 func TestDestroyContainerRetentionWaitsForDeadline(t *testing.T) {
@@ -409,28 +432,36 @@ func TestDestroyContainerStillClearsReferenceOnDestroyError(t *testing.T) {
 }
 
 func TestIsAgentOwnedContainer(t *testing.T) {
-	t.Run("OwnedLabelMatches", func(t *testing.T) {
-		assert.True(t, isAgentOwnedContainer(map[string]string{
-			agentcontainer.OwnerLabel: agentcontainer.OwnerLabelValue,
-		}))
+	ownedLabels := map[string]string{agentcontainer.OwnerLabel: agentcontainer.OwnerLabelValue}
+
+	t.Run("OwnerLabelMatches", func(t *testing.T) {
+		assert.True(t, isAgentOwnedContainer(ownedLabels, nil))
 	})
 
-	t.Run("NoLabelsIsNotOwned", func(t *testing.T) {
-		assert.False(t, isAgentOwnedContainer(nil),
-			"an unlabelled container may belong to a human and must never be reaped")
+	t.Run("ForeignOwnerLabelIsProtectedEvenWithMatchingName", func(t *testing.T) {
+		// An explicit foreign owner must win over the name prefix, otherwise
+		// the reaper would destroy another system's container.
+		assert.False(t, isAgentOwnedContainer(
+			map[string]string{agentcontainer.OwnerLabel: "someone-else"},
+			[]string{"/" + agentcontainer.ContainerNamePrefix + "abc"},
+		))
 	})
 
-	t.Run("ForeignOwnerIsNotOwned", func(t *testing.T) {
-		assert.False(t, isAgentOwnedContainer(map[string]string{
-			agentcontainer.OwnerLabel: "someone-else",
-		}))
+	t.Run("UnlabelledContainerWithNamePrefixIsReaped", func(t *testing.T) {
+		// Containers created before ownership labels existed must still be
+		// reaped, or an agent rollout strands orphans on the host forever.
+		assert.True(t, isAgentOwnedContainer(nil, []string{"/" + agentcontainer.ContainerNamePrefix + "abc"}))
 	})
 
-	t.Run("EvergreenTaskNameWithoutLabelIsNotOwned", func(t *testing.T) {
-		// The previous implementation matched the name substring
-		// "evergreen-task-", which would have reaped another agent's
-		// container or a human's lookalike.
-		assert.False(t, isAgentOwnedContainer(map[string]string{"name": "evergreen-task-abc"}))
+	t.Run("NamePrefixIsAnchoredNotSubstring", func(t *testing.T) {
+		// Docker's own name filter is an unanchored substring match, which
+		// would have destroyed a container a human named this way.
+		assert.False(t, isAgentOwnedContainer(nil, []string{"/my-" + agentcontainer.ContainerNamePrefix + "debug"}))
+	})
+
+	t.Run("UnrelatedUnlabelledContainerIsNotReaped", func(t *testing.T) {
+		assert.False(t, isAgentOwnedContainer(nil, []string{"/postgres"}))
+		assert.False(t, isAgentOwnedContainer(nil, nil))
 	})
 }
 
@@ -466,17 +497,44 @@ func TestSecureContainerDirs(t *testing.T) {
 	}
 
 	t.Run("EmptyWorkDirIsNoop", func(t *testing.T) {
-		assert.NoError(t, secureContainerDirs("", "someuser"))
+		fellBack, err := secureContainerDirs("", "someuser")
+		assert.NoError(t, err)
+		assert.False(t, fellBack)
 	})
 
 	t.Run("EmptyExecUserIsNoop", func(t *testing.T) {
 		// Without an exec user, docker exec runs as root in the container and
 		// can already write to the agent-owned directories.
-		assert.NoError(t, secureContainerDirs(t.TempDir(), ""))
+		fellBack, err := secureContainerDirs(t.TempDir(), "")
+		assert.NoError(t, err)
+		assert.False(t, fellBack)
 	})
 
-	t.Run("UnknownExecUserErrors", func(t *testing.T) {
-		assert.Error(t, secureContainerDirs(t.TempDir(), "evergreen-nonexistent-user"))
+	t.Run("UnknownExecUserFallsBackToWritableDirs", func(t *testing.T) {
+		// The container must still be able to write its own workdir, so an
+		// unreconcilable exec user degrades rather than breaking the task.
+		workDir := t.TempDir()
+		require.NoError(t, os.Mkdir(filepath.Join(workDir, "tmp"), 0700))
+
+		fellBack, err := secureContainerDirs(workDir, "evergreen-nonexistent-user")
+
+		require.NoError(t, err)
+		assert.True(t, fellBack, "the caller must be told the directories are world-writable")
+		for _, dir := range []string{workDir, filepath.Join(workDir, "tmp")} {
+			info, statErr := os.Stat(dir)
+			require.NoError(t, statErr)
+			assert.NotZero(t, info.Mode().Perm()&0002, "the fallback must leave %s writable by the container", dir)
+		}
+	})
+
+	t.Run("NonexistentWorkDirErrorsRatherThanSilentlyDegrading", func(t *testing.T) {
+		usr, err := user.Current()
+		require.NoError(t, err)
+
+		fellBack, err := secureContainerDirs(filepath.Join(t.TempDir(), "absent"), usr.Username)
+
+		require.Error(t, err, "when neither ownership nor the fallback can be applied the caller must hear about it")
+		assert.False(t, fellBack)
 	})
 
 	t.Run("CurrentUserSetsNonWorldWritableMode", func(t *testing.T) {
@@ -486,13 +544,15 @@ func TestSecureContainerDirs(t *testing.T) {
 		workDir := t.TempDir()
 		require.NoError(t, os.Mkdir(filepath.Join(workDir, "tmp"), 0700))
 
-		require.NoError(t, secureContainerDirs(workDir, usr.Username))
+		fellBack, err := secureContainerDirs(workDir, usr.Username)
+		require.NoError(t, err)
+		assert.False(t, fellBack, "ownership transfer succeeded, so no fallback should be reported")
 
 		for _, dir := range []string{workDir, filepath.Join(workDir, "tmp")} {
-			info, err := os.Stat(dir)
-			require.NoError(t, err)
+			info, statErr := os.Stat(dir)
+			require.NoError(t, statErr)
 			assert.Equal(t, os.FileMode(containerDirMode), info.Mode().Perm(), "mode should be %o for %s", containerDirMode, dir)
-			assert.Zero(t, info.Mode().Perm()&0002, "task directories must never be world-writable")
+			assert.Zero(t, info.Mode().Perm()&0002, "task directories must not be world-writable when ownership succeeds")
 		}
 	})
 }
