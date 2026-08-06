@@ -1532,6 +1532,7 @@ type ComplexityRoot struct {
 
 	RateLimitConfig struct {
 		ElevatedUserIDs        func(childComplexity int) int
+		ExemptUserIDs          func(childComplexity int) int
 		GraphQLComplexityLimit func(childComplexity int) int
 		GraphQLServiceBurst    func(childComplexity int) int
 		GraphQLServicePerHour  func(childComplexity int) int
@@ -9275,6 +9276,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RateLimitConfig.ElevatedUserIDs(childComplexity), true
+	case "RateLimitConfig.exemptUserIds":
+		if e.complexity.RateLimitConfig.ExemptUserIDs == nil {
+			break
+		}
+
+		return e.complexity.RateLimitConfig.ExemptUserIDs(childComplexity), true
 	case "RateLimitConfig.graphqlComplexityLimit":
 		if e.complexity.RateLimitConfig.GraphQLComplexityLimit == nil {
 			break
@@ -19700,6 +19707,8 @@ func (ec *executionContext) fieldContext_AdminSettings_rateLimit(_ context.Conte
 			switch field.Name {
 			case "elevatedUserIds":
 				return ec.fieldContext_RateLimitConfig_elevatedUserIds(ctx, field)
+			case "exemptUserIds":
+				return ec.fieldContext_RateLimitConfig_exemptUserIds(ctx, field)
 			case "graphqlComplexityLimit":
 				return ec.fieldContext_RateLimitConfig_graphqlComplexityLimit(ctx, field)
 			case "graphqlServiceBurst":
@@ -54868,6 +54877,35 @@ func (ec *executionContext) fieldContext_RateLimitConfig_elevatedUserIds(_ conte
 	return fc, nil
 }
 
+func (ec *executionContext) _RateLimitConfig_exemptUserIds(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RateLimitConfig_exemptUserIds,
+		func(ctx context.Context) (any, error) {
+			return obj.ExemptUserIDs, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RateLimitConfig_exemptUserIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RateLimitConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RateLimitConfig_graphqlComplexityLimit(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -86970,7 +87008,7 @@ func (ec *executionContext) unmarshalInputRateLimitConfigInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"elevatedUserIds", "graphqlComplexityLimit", "graphqlServiceBurst", "graphqlServicePerHour", "graphqlUserBurst", "graphqlUserPerHour", "restServiceBurst", "restServicePerHour", "restUserBurst", "restUserPerHour"}
+	fieldsInOrder := [...]string{"elevatedUserIds", "exemptUserIds", "graphqlComplexityLimit", "graphqlServiceBurst", "graphqlServicePerHour", "graphqlUserBurst", "graphqlUserPerHour", "restServiceBurst", "restServicePerHour", "restUserBurst", "restUserPerHour"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -86984,6 +87022,13 @@ func (ec *executionContext) unmarshalInputRateLimitConfigInput(ctx context.Conte
 				return it, err
 			}
 			it.ElevatedUserIDs = data
+		case "exemptUserIds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("exemptUserIds"))
+			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExemptUserIDs = data
 		case "graphqlComplexityLimit":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("graphqlComplexityLimit"))
 			data, err := ec.unmarshalNInt2int(ctx, v)
@@ -103158,6 +103203,8 @@ func (ec *executionContext) _RateLimitConfig(ctx context.Context, sel ast.Select
 			out.Values[i] = graphql.MarshalString("RateLimitConfig")
 		case "elevatedUserIds":
 			out.Values[i] = ec._RateLimitConfig_elevatedUserIds(ctx, field, obj)
+		case "exemptUserIds":
+			out.Values[i] = ec._RateLimitConfig_exemptUserIds(ctx, field, obj)
 		case "graphqlComplexityLimit":
 			out.Values[i] = ec._RateLimitConfig_graphqlComplexityLimit(ctx, field, obj)
 		case "graphqlServiceBurst":

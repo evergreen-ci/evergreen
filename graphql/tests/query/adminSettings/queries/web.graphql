@@ -8,6 +8,7 @@ query Web {
 
     rateLimit {
       elevatedUserIds
+      exemptUserIds
       graphqlComplexityLimit
       graphqlServiceBurst
       graphqlServicePerHour

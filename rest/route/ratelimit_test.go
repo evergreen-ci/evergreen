@@ -196,6 +196,28 @@ func TestRateLimitMiddlewareElevatedUserGetsMoreHeadroom(t *testing.T) {
 	assert.Equal(t, http.StatusTooManyRequests, rw.Code)
 }
 
+func TestRateLimitMiddlewareExemptUserIsNeverLimited(t *testing.T) {
+	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{
+		RESTUserPerHour: 100,
+		RESTUserBurst:   1,
+		ExemptUserIDs:   []string{"exempt"},
+	})
+	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceREST)
+
+	for range 3 {
+		rw, ran := runRateLimit(t, mw, "/rest/v2/hosts", &user.DBUser{Id: "exempt"})
+		assert.True(t, ran)
+		assert.Empty(t, rw.Header().Get(evergreen.RateLimitLimitHeader))
+	}
+
+	// A non-exempt user is still limited by the same config.
+	_, ran := runRateLimit(t, mw, "/rest/v2/hosts", &user.DBUser{Id: "base"})
+	require.True(t, ran)
+	rw, ran := runRateLimit(t, mw, "/rest/v2/hosts", &user.DBUser{Id: "base"})
+	assert.False(t, ran)
+	assert.Equal(t, http.StatusTooManyRequests, rw.Code)
+}
+
 func TestRateLimitMiddlewareWarnOnlyModeServesOverLimit(t *testing.T) {
 	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 1})
 	require.NoError(t, (&evergreen.ServiceFlags{APIRateLimiterDisabled: true}).Set(t.Context()))

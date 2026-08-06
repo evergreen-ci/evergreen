@@ -1,5 +1,6 @@
 input RateLimitConfigInput {
   elevatedUserIds: [String!]!
+  exemptUserIds: [String!]!
   graphqlComplexityLimit: Int!
   graphqlServiceBurst: Int!
   graphqlServicePerHour: Int!
@@ -13,6 +14,7 @@ input RateLimitConfigInput {
 
 type RateLimitConfig {
   elevatedUserIds: [String!]
+  exemptUserIds: [String!]
   graphqlComplexityLimit: Int
   graphqlServiceBurst: Int
   graphqlServicePerHour: Int

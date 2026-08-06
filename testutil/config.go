@@ -163,6 +163,7 @@ func MockConfig() *evergreen.Settings {
 			GraphQLServiceBurst:    40,
 			GraphQLComplexityLimit: 1000,
 			ElevatedUserIDs:        []string{"user1", "user2"},
+			ExemptUserIDs:          []string{"user3"},
 		},
 		AuthConfig: evergreen.AuthConfig{
 			Okta: &evergreen.OktaConfig{
