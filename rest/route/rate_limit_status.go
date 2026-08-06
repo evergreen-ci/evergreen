@@ -69,8 +69,11 @@ func (h *userRateLimitGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return rateLimitingDisabledResponder()
 	}
 	if slices.Contains(cfg.ElevatedUserIDs, u.Username()) {
-		perHour *= 2
-		burst *= 2
+		// Multiply the baseline limits by the configured multiplier for elevated users, if the multiplier is nonzero.
+		if cfg.ElevatedUserMultiplier != 0 {
+			perHour *= cfg.ElevatedUserMultiplier
+			burst *= cfg.ElevatedUserMultiplier
+		}
 	}
 
 	limiter, err := ratelimit.NewRateLimiter(h.env.RedisClient())
