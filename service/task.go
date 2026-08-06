@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/log"
@@ -188,7 +189,7 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "finding artifacts for task '%s'", projCtx.Task.Id))
 		return
 	}
-	taskFiles, err = artifact.StripHiddenFiles(r.Context(), taskFiles, true)
+	taskFiles, err = artifact.StripHiddenFiles(r.Context(), taskFiles, true, model.NewArtifactCredentialResolver(projCtx.Task.Id))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "stripping hidden files for task '%s'", projCtx.Task.Id))
 		return

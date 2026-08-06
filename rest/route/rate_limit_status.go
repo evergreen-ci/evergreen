@@ -96,7 +96,7 @@ func (h *userRateLimitGetHandler) Run(ctx context.Context) gimlet.Responder {
 // because their user type has no configured limit.
 func rateLimitingDisabledResponder() gimlet.Responder {
 	return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-		StatusCode: http.StatusServiceUnavailable,
+		StatusCode: http.StatusConflict,
 		Message:    "rate limiting is currently disabled",
 	})
 }

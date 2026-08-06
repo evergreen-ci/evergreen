@@ -10,7 +10,13 @@ const (
 	MarkerInEvergreen = "IN_EVERGREEN"
 )
 
-var ErrPSTimeout = errors.New("ps timeout")
+var (
+	ErrPSTimeout = errors.New("ps timeout")
+	// ErrContainerExecUnavailable indicates the container could not be reached
+	// to clean up its processes. Callers should warn rather than treat this as a
+	// hard kill failure, since failing here would mask the task's own failure.
+	ErrContainerExecUnavailable = errors.New("container exec unavailable")
+)
 
 const (
 	// minNice is the minimum nice value (i.e. highest priority).

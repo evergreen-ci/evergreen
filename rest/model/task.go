@@ -686,7 +686,7 @@ func (at *APITask) getArtifacts(ctx context.Context, baseURL string) error {
 		if baseURL != "" && len(artifactSignSecret) > 0 {
 			strippedFiles = artifact.StripHiddenFilesLazy(entry.Files, true, baseURL, entry.TaskId, entry.Execution, artifactSignSecret)
 		} else {
-			strippedFiles, err = artifact.StripHiddenFiles(ctx, entry.Files, true)
+			strippedFiles, err = artifact.StripHiddenFiles(ctx, entry.Files, true, model.NewArtifactCredentialResolver(entry.TaskId))
 			if err != nil {
 				return err
 			}

@@ -515,6 +515,15 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 		return errors.Wrap(err, "updating version aggregated task costs")
 	}
 
+	total.OnDemandS3ArtifactPutCost = v.Cost.OnDemandS3ArtifactPutCost
+	total.AdjustedS3ArtifactPutCost = v.Cost.AdjustedS3ArtifactPutCost
+	total.OnDemandS3LogPutCost = v.Cost.OnDemandS3LogPutCost
+	total.AdjustedS3LogPutCost = v.Cost.AdjustedS3LogPutCost
+	total.OnDemandS3ArtifactStorageCost = v.Cost.OnDemandS3ArtifactStorageCost
+	total.AdjustedS3ArtifactStorageCost = v.Cost.AdjustedS3ArtifactStorageCost
+	total.OnDemandS3LogStorageCost = v.Cost.OnDemandS3LogStorageCost
+	total.AdjustedS3LogStorageCost = v.Cost.AdjustedS3LogStorageCost
+
 	v.Cost = total
 	v.PredictedCost = predicted
 	return nil

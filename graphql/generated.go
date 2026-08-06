@@ -126,6 +126,7 @@ type ComplexityRoot struct {
 		AlertableInstanceTypes func(childComplexity int) int
 		AllowedInstanceTypes   func(childComplexity int) int
 		AllowedRegions         func(childComplexity int) int
+		AllowedSNSTopicARNs    func(childComplexity int) int
 		DefaultSecurityGroup   func(childComplexity int) int
 		ElasticIPUsageRate     func(childComplexity int) int
 		IPAMPoolID             func(childComplexity int) int
@@ -1893,7 +1894,7 @@ type ComplexityRoot struct {
 		Execution                    func(childComplexity int) int
 		ExecutionSteps               func(childComplexity int) int
 		ExecutionTasks               func(childComplexity int) int
-		ExecutionTasksFull           func(childComplexity int) int
+		ExecutionTasksFull           func(childComplexity int, options *ExecutionTasksFilterOptions) int
 		ExpectedDuration             func(childComplexity int) int
 		FailedTestCount              func(childComplexity int) int
 		Files                        func(childComplexity int) int
@@ -2733,7 +2734,7 @@ type TaskResolver interface {
 
 	ExecutionSteps(ctx context.Context, obj *model.APITask) ([]*model1.TaskExecutionStep, error)
 
-	ExecutionTasksFull(ctx context.Context, obj *model.APITask) ([]*model.APITask, error)
+	ExecutionTasksFull(ctx context.Context, obj *model.APITask, options *ExecutionTasksFilterOptions) ([]*model.APITask, error)
 
 	FailedTestCount(ctx context.Context, obj *model.APITask) (int, error)
 	Files(ctx context.Context, obj *model.APITask) (*TaskFiles, error)
@@ -2960,6 +2961,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AWSConfig.AllowedRegions(childComplexity), true
+	case "AWSConfig.allowedSNSTopicARNs":
+		if e.complexity.AWSConfig.AllowedSNSTopicARNs == nil {
+			break
+		}
+
+		return e.complexity.AWSConfig.AllowedSNSTopicARNs(childComplexity), true
 	case "AWSConfig.defaultSecurityGroup":
 		if e.complexity.AWSConfig.DefaultSecurityGroup == nil {
 			break
@@ -10712,7 +10719,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			break
 		}
 
-		return e.complexity.Task.ExecutionTasksFull(childComplexity), true
+		args, err := ec.field_Task_executionTasksFull_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Task.ExecutionTasksFull(childComplexity, args["options"].(*ExecutionTasksFilterOptions)), true
 	case "Task.expectedDuration":
 		if e.complexity.Task.ExpectedDuration == nil {
 			break
@@ -13203,6 +13215,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputEBSCostConfigInput,
 		ec.unmarshalInputEditSpawnHostInput,
 		ec.unmarshalInputEnvVarInput,
+		ec.unmarshalInputExecutionTasksFilterOptions,
 		ec.unmarshalInputExpansionInput,
 		ec.unmarshalInputExternalLinkInput,
 		ec.unmarshalInputFWSConfigInput,
@@ -17142,6 +17155,17 @@ func (ec *executionContext) field_Query_waterfall_args(ctx context.Context, rawA
 	return args, nil
 }
 
+func (ec *executionContext) field_Task_executionTasksFull_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "options", ec.unmarshalOExecutionTasksFilterOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐExecutionTasksFilterOptions)
+	if err != nil {
+		return nil, err
+	}
+	args["options"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Task_prevTaskCompleted_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -17852,6 +17876,35 @@ func (ec *executionContext) fieldContext_AWSConfig_elasticIPUsageRate(_ context.
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AWSConfig_allowedSNSTopicARNs(ctx context.Context, field graphql.CollectedField, obj *model.APIAWSConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AWSConfig_allowedSNSTopicARNs,
+		func(ctx context.Context) (any, error) {
+			return obj.AllowedSNSTopicARNs, nil
+		},
+		nil,
+		ec.marshalNString2ᚕᚖstringᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AWSConfig_allowedSNSTopicARNs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AWSConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -24075,6 +24128,8 @@ func (ec *executionContext) fieldContext_CloudProviderConfig_aws(_ context.Conte
 				return ec.fieldContext_AWSConfig_ipamPoolID(ctx, field)
 			case "elasticIPUsageRate":
 				return ec.fieldContext_AWSConfig_elasticIPUsageRate(ctx, field)
+			case "allowedSNSTopicARNs":
+				return ec.fieldContext_AWSConfig_allowedSNSTopicARNs(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AWSConfig", field.Name)
 		},
@@ -62633,7 +62688,8 @@ func (ec *executionContext) _Task_executionTasksFull(ctx context.Context, field 
 		field,
 		ec.fieldContext_Task_executionTasksFull,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Task().ExecutionTasksFull(ctx, obj)
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Task().ExecutionTasksFull(ctx, obj, fc.Args["options"].(*ExecutionTasksFilterOptions))
 		},
 		nil,
 		ec.marshalOTask2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskᚄ,
@@ -62642,7 +62698,7 @@ func (ec *executionContext) _Task_executionTasksFull(ctx context.Context, field 
 	)
 }
 
-func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Task_executionTasksFull(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Task",
 		Field:      field,
@@ -62833,6 +62889,17 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Conte
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Task_executionTasksFull_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -79908,7 +79975,7 @@ func (ec *executionContext) unmarshalInputAWSConfigInput(ctx context.Context, ob
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"subnets", "parserProject", "persistentDNS", "defaultSecurityGroup", "allowedInstanceTypes", "alertableInstanceTypes", "allowedRegions", "maxVolumeSizePerUser", "accountRoles", "ipamPoolID", "elasticIPUsageRate"}
+	fieldsInOrder := [...]string{"subnets", "parserProject", "persistentDNS", "defaultSecurityGroup", "allowedInstanceTypes", "alertableInstanceTypes", "allowedRegions", "maxVolumeSizePerUser", "accountRoles", "ipamPoolID", "elasticIPUsageRate", "allowedSNSTopicARNs"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -80047,6 +80114,13 @@ func (ec *executionContext) unmarshalInputAWSConfigInput(ctx context.Context, ob
 				return it, err
 			}
 			it.ElasticIPUsageRate = data
+		case "allowedSNSTopicARNs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("allowedSNSTopicARNs"))
+			data, err := ec.unmarshalNString2ᚕᚖstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AllowedSNSTopicARNs = data
 		}
 	}
 
@@ -83046,6 +83120,37 @@ func (ec *executionContext) unmarshalInputEnvVarInput(ctx context.Context, obj a
 				return it, err
 			}
 			it.Value = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputExecutionTasksFilterOptions(ctx context.Context, obj any) (ExecutionTasksFilterOptions, error) {
+	var it ExecutionTasksFilterOptions
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	if _, present := asMap["statuses"]; !present {
+		asMap["statuses"] = []any{}
+	}
+
+	fieldsInOrder := [...]string{"statuses"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "statuses":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statuses"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Statuses = data
 		}
 	}
 
@@ -91414,6 +91519,11 @@ func (ec *executionContext) _AWSConfig(ctx context.Context, sel ast.SelectionSet
 			out.Values[i] = ec._AWSConfig_ipamPoolID(ctx, field, obj)
 		case "elasticIPUsageRate":
 			out.Values[i] = ec._AWSConfig_elasticIPUsageRate(ctx, field, obj)
+		case "allowedSNSTopicARNs":
+			out.Values[i] = ec._AWSConfig_allowedSNSTopicARNs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -119235,6 +119345,14 @@ func (ec *executionContext) unmarshalOEditSpawnHostInput2ᚖgithubᚗcomᚋeverg
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputEditSpawnHostInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOExecutionTasksFilterOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐExecutionTasksFilterOptions(ctx context.Context, v any) (*ExecutionTasksFilterOptions, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputExecutionTasksFilterOptions(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 

@@ -65,13 +65,13 @@ func TestUserRateLimitGetHandlerDisabledReportsServiceUnavailable(t *testing.T) 
 			require.NoError(t, (&evergreen.ServiceFlags{APIRateLimiterDisabled: true}).Set(t.Context()))
 
 			resp := runUserRateLimitHandler(t, env, "me")
-			assert.Equal(t, http.StatusServiceUnavailable, resp.Status())
+			assert.Equal(t, http.StatusConflict, resp.Status())
 		},
 		"UnconfiguredRESTLimit": func(t *testing.T) {
 			env := setupRateLimitEnv(t, evergreen.RateLimitConfig{}) // all zero
 
 			resp := runUserRateLimitHandler(t, env, "me")
-			assert.Equal(t, http.StatusServiceUnavailable, resp.Status())
+			assert.Equal(t, http.StatusConflict, resp.Status())
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {

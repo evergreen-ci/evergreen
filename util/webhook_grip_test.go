@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/netip"
 	"testing"
 
 	"github.com/mongodb/grip"
@@ -111,6 +112,24 @@ func TestEvergreenWebhookSender(t *testing.T) {
 			s.Send(t.Context(), m)
 			assert.Equal(t, "", transport.lastUrl)
 		},
+		"ResponseBodyIsNotIncludedInError": func(t *testing.T) {
+			transport.responseStatus = http.StatusInternalServerError
+			transport.responseBody = "webhook response secret"
+			m := NewWebhookMessage(EvergreenWebhook{
+				NotificationID: "evergreen",
+				URL:            "https://example.com",
+				Secret:         []byte("hi"),
+				Body:           []byte("something important"),
+			})
+
+			var capturedErr error
+			require.NoError(t, s.SetErrorHandler(func(_ context.Context, err error, _ message.Composer) {
+				capturedErr = err
+			}))
+			s.Send(t.Context(), m)
+			require.Error(t, capturedErr)
+			assert.NotContains(t, capturedErr.Error(), transport.responseBody)
+		},
 		"InvalidWithRetries": func(t *testing.T) {
 			retryCount := 3
 			m := NewWebhookMessage(EvergreenWebhook{
@@ -169,6 +188,71 @@ func TestEvergreenWebhookSender(t *testing.T) {
 	}
 }
 
+func TestValidateWebhookURL(t *testing.T) {
+	for name, test := range map[string]struct {
+		url     string
+		wantErr bool
+	}{
+		"PublicHTTPSURL":       {url: "https://example.com", wantErr: false},
+		"PublicHTTPSIP":        {url: "https://8.8.8.8", wantErr: false},
+		"PublicHTTPURL":        {url: "http://example.com", wantErr: false},
+		"HostlessURL":          {url: "https:///webhook", wantErr: true},
+		"UserInfoURL":          {url: "https://user:password@example.com", wantErr: true},
+		"LoopbackURL":          {url: "https://127.0.0.1", wantErr: true},
+		"LinkLocalURL":         {url: "https://169.254.169.254", wantErr: true},
+		"PrivateURL":           {url: "https://192.168.0.1", wantErr: true},
+		"IPv6LoopbackURL":      {url: "https://[::1]", wantErr: true},
+		"IPv6PrivateURL":       {url: "https://[fc00::1]", wantErr: true},
+		"UnsupportedSchemeURL": {url: "file:///tmp/webhook", wantErr: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			err := ValidateWebhookURL(test.url)
+			if test.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestWebhookDialContext(t *testing.T) {
+	lookupCalls := 0
+	dial := webhookDialContext(webhookResolverFunc(func(_ context.Context, _, _ string) ([]netip.Addr, error) {
+		lookupCalls++
+		return []netip.Addr{netip.MustParseAddr("127.0.0.1")}, nil
+	}))
+
+	for range 2 {
+		conn, err := dial(t.Context(), "tcp", "webhook.example.com:443")
+		assert.ErrorContains(t, err, "resolves to blocked address")
+		assert.Nil(t, conn)
+	}
+	assert.Equal(t, 2, lookupCalls)
+}
+
+func TestValidateWebhookRedirect(t *testing.T) {
+	for name, test := range map[string]struct {
+		url     string
+		wantErr bool
+	}{
+		"PublicHTTPSURL": {url: "https://example.com", wantErr: false},
+		"PublicHTTPURL":  {url: "http://example.com", wantErr: false},
+		"PrivateURL":     {url: "https://10.0.0.1", wantErr: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodGet, test.url, nil)
+			require.NoError(t, err)
+			err = validateWebhookRedirect(req, nil)
+			if test.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestEvergreenWebhookSenderWithBadSecret(t *testing.T) {
 	assert := assert.New(t)
 
@@ -207,12 +291,14 @@ func TestEvergreenWebhookSenderWithBadSecret(t *testing.T) {
 }
 
 type mockWebhookTransport struct {
-	lastUrl      string
-	lastBody     []byte
-	secret       []byte
-	header       http.Header
-	attemptCount int
-	minAttempts  int
+	lastUrl        string
+	lastBody       []byte
+	secret         []byte
+	header         http.Header
+	attemptCount   int
+	minAttempts    int
+	responseStatus int
+	responseBody   string
 }
 
 func (t *mockWebhookTransport) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -222,6 +308,11 @@ func (t *mockWebhookTransport) RoundTrip(req *http.Request) (*http.Response, err
 	resp := &http.Response{
 		StatusCode: http.StatusNoContent,
 		Body:       http.NoBody,
+	}
+	if t.responseStatus != 0 {
+		resp.StatusCode = t.responseStatus
+		resp.Body = io.NopCloser(bytes.NewBufferString(t.responseBody))
+		return resp, nil
 	}
 
 	if t.attemptCount < t.minAttempts {
@@ -279,4 +370,10 @@ func (t *mockWebhookTransport) RoundTrip(req *http.Request) (*http.Response, err
 	t.header = req.Header
 
 	return resp, nil
+}
+
+type webhookResolverFunc func(context.Context, string, string) ([]netip.Addr, error)
+
+func (f webhookResolverFunc) LookupNetIP(ctx context.Context, network, host string) ([]netip.Addr, error) {
+	return f(ctx, network, host)
 }

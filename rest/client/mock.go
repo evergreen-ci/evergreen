@@ -396,6 +396,3 @@ func (c *Mock) SetAPIServerHost(serverURL string) {}
 func (c *Mock) IsServiceUser(context.Context, string) (bool, error) {
 	return c.MockIsServiceUser, c.MockIsServiceUserErr
 }
-func (c *Mock) GetRateLimit(context.Context, string) (*restmodel.APIRateLimitStatus, error) {
-	return nil, nil
-}
