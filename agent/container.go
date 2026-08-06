@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -282,6 +283,10 @@ func toolchainMounts(ctx context.Context, taskID string) []agentcontainer.Mount 
 // container and can already write to the agent-owned directories, so there is
 // nothing to do.
 func secureContainerDirs(workDir, execUser string) error {
+	if runtime.GOOS == "windows" {
+		// Container isolation is Linux/Docker-only, and Windows ACLs cannot be expressed as POSIX UID/GID ownership.
+		return nil
+	}
 	if workDir == "" || execUser == "" {
 		return nil
 	}

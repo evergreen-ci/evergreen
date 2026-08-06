@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -460,6 +461,10 @@ func TestToolchainMountsOnlyIncludesExistingDirsReadOnly(t *testing.T) {
 }
 
 func TestSecureContainerDirs(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Container isolation uses POSIX ownership and is not supported on Windows")
+	}
+
 	t.Run("EmptyWorkDirIsNoop", func(t *testing.T) {
 		assert.NoError(t, secureContainerDirs("", "someuser"))
 	})
@@ -506,6 +511,10 @@ func TestChownContainerDirRefusesSymlink(t *testing.T) {
 
 	info, err := os.Stat(target)
 	require.NoError(t, err)
+	if runtime.GOOS == "windows" {
+		assert.True(t, info.IsDir(), "the symlink target must remain a directory")
+		return
+	}
 	assert.Equal(t, os.FileMode(0700), info.Mode().Perm(), "the symlink target must be untouched")
 }
 
@@ -626,6 +635,10 @@ func TestWriteHostEnvFileReportsCaptureFailureAndWritesFallback(t *testing.T) {
 }
 
 func TestWriteHostEnvFileParsesLoginShellOutput(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows cannot execute the extensionless shell script used by this integration test")
+	}
+
 	dir := t.TempDir()
 	bashPath := filepath.Join(dir, "bash")
 	// Stand in for a login shell whose profile scripts print a banner before
