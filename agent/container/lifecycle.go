@@ -44,6 +44,18 @@ const (
 	containerCreateMaxAttempts = 6
 
 	containerCreateRetryDelay = 5 * time.Second
+
+	// OwnerLabel marks a container as agent-created for task isolation. The
+	// orphan reaper matches this label rather than the container name so it
+	// cannot remove containers owned by another agent or by a human.
+	OwnerLabel = "evergreen.owner"
+
+	// OwnerLabelValue is the value OwnerLabel carries.
+	OwnerLabelValue = "evergreen-agent-task-isolation"
+
+	// TaskIDLabel records the task a container was created for, so a leaked
+	// container can be attributed to its task.
+	TaskIDLabel = "evergreen.task_id"
 )
 
 // activeEnvFileBaseDir is the runtime base dir, defaulting to envFileBaseDir.
@@ -182,6 +194,10 @@ func CreateAndStart(ctx context.Context, cfg Config) (*TaskContainer, error) {
 		Cmd:        []string{"sleep", "infinity"},
 		WorkingDir: cfg.WorkDir,
 		Tty:        false,
+		Labels: map[string]string{
+			OwnerLabel:  OwnerLabelValue,
+			TaskIDLabel: cfg.TaskID,
+		},
 	}
 
 	mounts := []mount.Mount{
@@ -336,12 +352,6 @@ func (tc *TaskContainer) Destroy(ctx context.Context) error {
 		return removeErr
 	}
 	return envErr
-}
-
-// Close closes the Docker client connection. This is called by the agent
-// when a retained container's deadline expires or the agent shuts down.
-func (tc *TaskContainer) Close() {
-	_ = tc.cli.Close()
 }
 
 // imagePullTimeout caps the time allowed to pull a container image.

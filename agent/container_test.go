@@ -4,13 +4,13 @@ import (
 	"context"
 	"maps"
 	"os"
+	"os/user"
 	"path/filepath"
 	"testing"
 	"time"
 
 	agentcontainer "github.com/evergreen-ci/evergreen/agent/container"
 	"github.com/evergreen-ci/evergreen/agent/internal"
-	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -20,88 +20,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel"
 )
-
-// agentForKillTest returns a minimal Agent that passes the shouldKill guard.
-// shouldKill short-circuits to false when a.opts.Cleanup is false (added in
-// the upstream sync), so tests that want to reach the kill/cleanup logic must
-// set Cleanup: true.
-func agentForKillTest() *Agent {
-	return &Agent{opts: Options{Cleanup: true}}
-}
-
-// TestKillProcsContainerIsolationSkipsDockerCleanup verifies the A5 gate:
-// when ContainerIsolation is set, killProcs logs "Skipping Docker artifact
-// cleanup" and returns early without calling docker.Cleanup. The gate is
-// confirmed by the presence of that log line in the test output.
-func TestKillProcsContainerIsolationSkipsDockerCleanup(t *testing.T) {
-	ctx := t.Context()
-	a := agentForKillTest()
-
-	tc := &taskContext{
-		task: client.TaskData{ID: "test-task-1"},
-		taskConfig: &internal.TaskConfig{
-			// Empty ExecUser → takes the ps-based kill path (no sudo pkill),
-			// safe in a sandboxed test environment.
-			WorkDir: t.TempDir(),
-			Distro: &apimodels.DistroView{
-				ContainerIsolation: &apimodels.ContainerIsolationSettings{
-					Image: "ubuntu:22.04",
-				},
-			},
-		},
-	}
-
-	// shouldKill → true (Cleanup=true, task.ID set, TaskGroup nil).
-	// Process-kill block: ContainerID="" and ExecUser="" → ps path, no-op.
-	// docker.Cleanup gate: ContainerIsolation != nil → early return, nil.
-	err := a.killProcs(ctx, tc, true, "test")
-	assert.NoError(t, err, "killProcs must return nil on a container-isolation distro without invoking docker.Cleanup")
-}
-
-// TestKillProcsContainerRouting verifies that killProcs routes to the
-// in-container kill path when ContainerID is set, and the host-side
-// KillSpawnedProcs path when it is not.
-func TestKillProcsContainerRouting(t *testing.T) {
-	ctx := t.Context()
-	a := agentForKillTest()
-
-	t.Run("EmptyContainerIDTakesHostPath", func(t *testing.T) {
-		tc := &taskContext{
-			task: client.TaskData{ID: "test-task-1"},
-			taskConfig: &internal.TaskConfig{
-				WorkDir: t.TempDir(),
-				Distro:  &apimodels.DistroView{
-					// Empty ExecUser: takes the ps-based host path, which is
-					// safe without real sudo in a test environment.
-				},
-			},
-		}
-		// ContainerID="" → host-side KillSpawnedProcs (ps path, no sudo).
-		// No task-marker processes running → nil.
-		err := a.killProcs(ctx, tc, true, "test")
-		assert.NoError(t, err)
-	})
-
-	t.Run("NonEmptyContainerIDEmptyExecUserLogsWarningNoError", func(t *testing.T) {
-		tc := &taskContext{
-			task: client.TaskData{ID: "test-task-1"},
-			taskConfig: &internal.TaskConfig{
-				ContainerID: "some-container-id",
-				WorkDir:     t.TempDir(),
-				Distro: &apimodels.DistroView{
-					// ExecUser deliberately empty to hit the graceful-degradation
-					// branch (warning logged, no docker exec attempted).
-					ContainerIsolation: &apimodels.ContainerIsolationSettings{
-						Image: "ubuntu:22.04",
-					},
-				},
-			},
-		}
-		// ContainerID != "" but ExecUser == "" → warning logged, nil returned.
-		err := a.killProcs(ctx, tc, true, "test")
-		require.NoError(t, err)
-	})
-}
 
 func makeSnapshotTC(expansions map[string]string, redacted []string, secrets map[string]string) *taskContext {
 	exp := util.Expansions{}
@@ -121,12 +39,13 @@ func makeSnapshotTC(expansions map[string]string, redacted []string, secrets map
 }
 
 func TestRedactForSnapshot(t *testing.T) {
-	t.Run("NilTCReturnsUnchanged", func(t *testing.T) {
-		assert.Equal(t, "hello world", redactForSnapshot("hello world", nil))
+	t.Run("NilTCFailsClosed", func(t *testing.T) {
+		assert.Equal(t, redactionUnavailable, redactForSnapshot("hello world", nil),
+			"without a task config the redactor cannot know the secrets, so it must not emit the raw value")
 	})
 
-	t.Run("NilTaskConfigReturnsUnchanged", func(t *testing.T) {
-		assert.Equal(t, "secret", redactForSnapshot("secret", &taskContext{}))
+	t.Run("NilTaskConfigFailsClosed", func(t *testing.T) {
+		assert.Equal(t, redactionUnavailable, redactForSnapshot("secret", &taskContext{}))
 	})
 
 	t.Run("RedactsNamedExpansion", func(t *testing.T) {
@@ -166,7 +85,6 @@ type fakeContainer struct {
 	name           string
 	envFileHostDir string
 	destroyCalled  int
-	closeCalled    int
 	destroyErr     error
 	destroySignal  chan error
 }
@@ -174,7 +92,6 @@ type fakeContainer struct {
 func (f *fakeContainer) GetID() string             { return f.id }
 func (f *fakeContainer) GetName() string           { return f.name }
 func (f *fakeContainer) GetEnvFileHostDir() string { return f.envFileHostDir }
-func (f *fakeContainer) Close()                    { f.closeCalled++ }
 func (f *fakeContainer) Destroy(ctx context.Context) error {
 	f.destroyCalled++
 	if f.destroySignal != nil {
@@ -264,7 +181,6 @@ func TestDestroyContainerNilCurrentContainerIsNoop(t *testing.T) {
 	a := &Agent{}
 	conf := &internal.TaskConfig{}
 
-	// Should not panic and should leave everything unchanged.
 	a.destroyContainer(ctx, conf)
 	assert.Empty(t, conf.ContainerID)
 	assert.Empty(t, conf.EnvFileHostDir)
@@ -302,7 +218,6 @@ func TestDestroyContainerIdempotent(t *testing.T) {
 	conf := &internal.TaskConfig{ContainerID: "abc"}
 
 	a.destroyContainer(ctx, conf)
-	// Second call: currentContainer is already nil, should be a no-op.
 	a.destroyContainer(ctx, conf)
 
 	assert.Equal(t, 1, fc.destroyCalled, "Destroy should only be called once")
@@ -347,64 +262,22 @@ func TestMaybeStartContainerFailOpenReturnsNil(t *testing.T) {
 	assert.Empty(t, conf.ContainerID, "conf.ContainerID must not be set on fail-open")
 }
 
-func TestDestroyContainerRetentionExpiresWithinDeadline(t *testing.T) {
-	ctx := t.Context()
-	fc := &fakeContainer{
-		id:            "abc",
-		name:          "ctr",
-		destroySignal: make(chan error, 1),
-	}
-	a := makeAgentWithFakeContainer(fc)
-	a.retainContainerUntil = time.Now().Add(25 * time.Millisecond)
-	conf := &internal.TaskConfig{ContainerID: "abc"}
-
-	a.destroyContainer(ctx, conf)
-
-	assert.Nil(t, a.currentContainer, "currentContainer must be cleared even in retention path")
-	assert.Empty(t, conf.ContainerID, "conf.ContainerID must be cleared in retention path")
-	select {
-	case destroyCtxErr := <-fc.destroySignal:
-		assert.NoError(t, destroyCtxErr, "retained container cleanup must not inherit cancellation")
-	case <-time.After(time.Second):
-		t.Fatal("retained container was not destroyed after its retention deadline")
-	}
-}
-
-func TestDestroyContainerRetentionEndsOnContextCancellation(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	fc := &fakeContainer{
-		id:            "abc",
-		name:          "ctr",
-		destroySignal: make(chan error, 1),
-	}
-	a := makeAgentWithFakeContainer(fc)
-	a.retainContainerUntil = time.Now().Add(5 * time.Minute)
-	conf := &internal.TaskConfig{ContainerID: "abc"}
-
-	a.destroyContainer(ctx, conf)
-	cancel()
-
-	select {
-	case destroyCtxErr := <-fc.destroySignal:
-		assert.NoError(t, destroyCtxErr, "shutdown cleanup must use a detached context")
-	case <-time.After(time.Second):
-		t.Fatal("retained container was not destroyed after context cancellation")
-	}
-}
-
-// TestMaybeStartContainerFailClosedErrorPropagatesFromRunTask verifies that
-// a non-nil error from maybeStartContainer causes runTask (via the caller) to
-// fail rather than silently continuing in host mode. The fail-closed contract
-// (require_isolation=true) must not be violated at the runTask call site.
-func TestMaybeStartContainerFailClosedPropagatesFromRunTask(t *testing.T) {
+// TestMaybeStartContainerFailsClosedWhenDirsCannotBeSecured verifies that a
+// distro requiring isolation does not start a container whose task directories
+// could not be handed to the exec user, since the task would otherwise run
+// with the container unable to write its own workdir.
+func TestMaybeStartContainerFailsClosedWhenDirsCannotBeSecured(t *testing.T) {
 	ctx := t.Context()
 	a := agentForContainerTest()
+	factoryCalled := false
 	a.containerFactory = func(_ context.Context, _ agentcontainer.Config) (ContainerHandle, error) {
-		return nil, errors.New("container daemon unreachable")
+		factoryCalled = true
+		return &fakeContainer{id: "id", name: "ctr"}, nil
 	}
-
 	conf := &internal.TaskConfig{
+		WorkDir: t.TempDir(),
 		Distro: &apimodels.DistroView{
+			ExecUser: "evergreen-nonexistent-user",
 			ContainerIsolation: &apimodels.ContainerIsolationSettings{
 				Image:            "ubuntu:22.04",
 				RequireIsolation: true,
@@ -414,41 +287,90 @@ func TestMaybeStartContainerFailClosedPropagatesFromRunTask(t *testing.T) {
 	}
 
 	err := a.maybeStartContainer(ctx, conf, nil)
-	require.Error(t, err, "fail-closed path must propagate error to runTask caller")
-	assert.Empty(t, conf.ContainerID, "ContainerID must not be set when container fails to start")
+	require.Error(t, err, "require_isolation must fail closed when task directories cannot be secured")
+	assert.False(t, factoryCalled, "container must not be created after directory preparation fails")
 	assert.Nil(t, a.currentContainer)
 }
 
-func TestMaybeStartContainerOptMountMatchesHostFilesystem(t *testing.T) {
+func TestMaybeStartContainerFailsOpenWhenDirsCannotBeSecured(t *testing.T) {
 	ctx := t.Context()
 	a := agentForContainerTest()
-	created := &fakeContainer{id: "newid", name: "evergreen-task-new", envFileHostDir: "/tmp/env-new"}
-	var capturedCfg agentcontainer.Config
-	a.containerFactory = func(_ context.Context, cfg agentcontainer.Config) (ContainerHandle, error) {
-		capturedCfg = cfg
+	created := &fakeContainer{id: "id", name: "ctr"}
+	a.containerFactory = func(_ context.Context, _ agentcontainer.Config) (ContainerHandle, error) {
 		return created, nil
 	}
 	conf := &internal.TaskConfig{
-		Distro: makeDistroWithIsolation("ubuntu:22.04"),
-		Task:   task.Task{Id: "task-1"},
+		WorkDir: t.TempDir(),
+		Distro: &apimodels.DistroView{
+			ExecUser:           "evergreen-nonexistent-user",
+			ContainerIsolation: &apimodels.ContainerIsolationSettings{Image: "ubuntu:22.04"},
+		},
+		Task: task.Task{Id: "task-1"},
 	}
 
 	require.NoError(t, a.maybeStartContainer(ctx, conf, nil))
+	assert.Equal(t, created, a.currentContainer, "without require_isolation the task proceeds despite degraded directories")
+}
 
-	// The /opt mount is conditional on os.Stat("/opt") succeeding. On
-	// macOS/Linux test hosts /opt typically exists, but the test must not
-	// assume that — it verifies the mount is present iff /opt exists.
-	_, optExists := os.Stat("/opt")
-	found := false
-	for _, m := range capturedCfg.ExtraMounts {
-		if m.Source == "/opt" && m.Target == "/opt" && m.ReadOnly {
-			found = true
-		}
+func TestDestroyContainerRetentionWaitsForDeadline(t *testing.T) {
+	ctx := t.Context()
+	fc := &fakeContainer{
+		id:            "abc",
+		name:          "ctr",
+		destroySignal: make(chan error, 1),
 	}
-	if optExists == nil {
-		assert.True(t, found, "ExtraMounts must contain /opt:ro when /opt exists on host")
-	} else {
-		assert.False(t, found, "ExtraMounts must not contain /opt when /opt does not exist on host")
+	a := makeAgentWithFakeContainer(fc)
+	a.retainContainerUntil = time.Now().Add(200 * time.Millisecond)
+	conf := &internal.TaskConfig{ContainerID: "abc"}
+
+	a.destroyContainer(ctx, conf)
+
+	assert.Nil(t, a.currentContainer, "currentContainer must be cleared even in retention path")
+	assert.Empty(t, conf.ContainerID, "conf.ContainerID must be cleared in retention path")
+
+	// The point of retention is that the container survives for inspection.
+	// Without this assertion the test would pass even if retention were ignored.
+	select {
+	case <-fc.destroySignal:
+		t.Fatal("container was destroyed before its retention deadline elapsed")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	select {
+	case destroyCtxErr := <-fc.destroySignal:
+		assert.NoError(t, destroyCtxErr, "retained container cleanup must not inherit cancellation")
+	case <-time.After(5 * time.Second):
+		t.Fatal("retained container was not destroyed after its retention deadline")
+	}
+}
+
+func TestDestroyContainerRetentionEndsOnContextCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+	fc := &fakeContainer{
+		id:            "abc",
+		name:          "ctr",
+		destroySignal: make(chan error, 1),
+	}
+	a := makeAgentWithFakeContainer(fc)
+	a.retainContainerUntil = time.Now().Add(time.Hour)
+	conf := &internal.TaskConfig{ContainerID: "abc"}
+
+	a.destroyContainer(ctx, conf)
+
+	select {
+	case <-fc.destroySignal:
+		t.Fatal("container was destroyed before shutdown was signalled")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	cancel()
+
+	select {
+	case destroyCtxErr := <-fc.destroySignal:
+		assert.NoError(t, destroyCtxErr, "shutdown cleanup must use a detached context")
+	case <-time.After(5 * time.Second):
+		t.Fatal("retained container was not destroyed after context cancellation")
 	}
 }
 
@@ -458,19 +380,12 @@ func TestDestroyContainerCallsDestroyEvenWithCancelledContext(t *testing.T) {
 	a := makeAgentWithFakeContainer(fc)
 	conf := &internal.TaskConfig{ContainerID: "abc", EnvFileHostDir: "/tmp/env"}
 
-	// Cancel the context before calling destroyContainer to verify that
-	// Destroy is still called. The real TaskContainer.Destroy uses
-	// context.Background() internally so cleanup is not bypassed by caller
-	// cancellation. The fake ignores its context, so this test verifies
-	// the destroyContainer call site does not short-circuit on ctx.Err();
-	// integration testing against a real Docker daemon is needed to verify
-	// the internal context.Background() usage.
 	cancelledCtx, cancel := context.WithCancel(ctx)
 	cancel()
 
 	a.destroyContainer(cancelledCtx, conf)
 
-	assert.Equal(t, 1, fc.destroyCalled, "Destroy must be called even when context is cancelled")
+	assert.Equal(t, 1, fc.destroyCalled, "the call site must not short-circuit on ctx.Err()")
 	assert.Nil(t, a.currentContainer)
 	assert.Empty(t, conf.ContainerID)
 }
@@ -487,17 +402,124 @@ func TestDestroyContainerStillClearsReferenceOnDestroyError(t *testing.T) {
 
 	a.destroyContainer(ctx, conf)
 
-	// destroyContainer logs the warning but still clears the reference so
-	// the agent doesn't get stuck on a container it can't remove.
 	assert.Equal(t, 1, fc.destroyCalled, "Destroy must be called once")
 	assert.Nil(t, a.currentContainer, "currentContainer must be cleared even on Destroy error")
 	assert.Empty(t, conf.ContainerID)
 }
 
+func TestIsAgentOwnedContainer(t *testing.T) {
+	t.Run("OwnedLabelMatches", func(t *testing.T) {
+		assert.True(t, isAgentOwnedContainer(map[string]string{
+			agentcontainer.OwnerLabel: agentcontainer.OwnerLabelValue,
+		}))
+	})
+
+	t.Run("NoLabelsIsNotOwned", func(t *testing.T) {
+		assert.False(t, isAgentOwnedContainer(nil),
+			"an unlabelled container may belong to a human and must never be reaped")
+	})
+
+	t.Run("ForeignOwnerIsNotOwned", func(t *testing.T) {
+		assert.False(t, isAgentOwnedContainer(map[string]string{
+			agentcontainer.OwnerLabel: "someone-else",
+		}))
+	})
+
+	t.Run("EvergreenTaskNameWithoutLabelIsNotOwned", func(t *testing.T) {
+		// The previous implementation matched the name substring
+		// "evergreen-task-", which would have reaped another agent's
+		// container or a human's lookalike.
+		assert.False(t, isAgentOwnedContainer(map[string]string{"name": "evergreen-task-abc"}))
+	})
+}
+
+func TestContainerNames(t *testing.T) {
+	assert.Equal(t, "a,b", containerNames([]string{"/a", "/b"}))
+	assert.Empty(t, containerNames(nil))
+}
+
+func TestContainerToolchainDirsDoesNotMountAllOfOpt(t *testing.T) {
+	assert.NotContains(t, containerToolchainDirs, "/opt",
+		"mounting all of /opt exposes anything provisioning writes there to every containerized task")
+}
+
+func TestToolchainMountsOnlyIncludesExistingDirsReadOnly(t *testing.T) {
+	existing := t.TempDir()
+	missing := filepath.Join(t.TempDir(), "absent")
+
+	original := containerToolchainDirs
+	t.Cleanup(func() { containerToolchainDirs = original })
+	containerToolchainDirs = []string{existing, missing}
+
+	mounts := toolchainMounts(t.Context(), "task-1")
+
+	require.Len(t, mounts, 1, "a nonexistent source would make Docker reject container creation")
+	assert.Equal(t, existing, mounts[0].Source)
+	assert.Equal(t, existing, mounts[0].Target)
+	assert.True(t, mounts[0].ReadOnly, "toolchain mounts must be read-only")
+}
+
+func TestSecureContainerDirs(t *testing.T) {
+	t.Run("EmptyWorkDirIsNoop", func(t *testing.T) {
+		assert.NoError(t, secureContainerDirs("", "someuser"))
+	})
+
+	t.Run("EmptyExecUserIsNoop", func(t *testing.T) {
+		// Without an exec user, docker exec runs as root in the container and
+		// can already write to the agent-owned directories.
+		assert.NoError(t, secureContainerDirs(t.TempDir(), ""))
+	})
+
+	t.Run("UnknownExecUserErrors", func(t *testing.T) {
+		assert.Error(t, secureContainerDirs(t.TempDir(), "evergreen-nonexistent-user"))
+	})
+
+	t.Run("CurrentUserSetsNonWorldWritableMode", func(t *testing.T) {
+		usr, err := user.Current()
+		require.NoError(t, err)
+
+		workDir := t.TempDir()
+		require.NoError(t, os.Mkdir(filepath.Join(workDir, "tmp"), 0700))
+
+		require.NoError(t, secureContainerDirs(workDir, usr.Username))
+
+		for _, dir := range []string{workDir, filepath.Join(workDir, "tmp")} {
+			info, err := os.Stat(dir)
+			require.NoError(t, err)
+			assert.Equal(t, os.FileMode(containerDirMode), info.Mode().Perm(), "mode should be %o for %s", containerDirMode, dir)
+			assert.Zero(t, info.Mode().Perm()&0002, "task directories must never be world-writable")
+		}
+	})
+}
+
+func TestChownContainerDirRefusesSymlink(t *testing.T) {
+	base := t.TempDir()
+	target := filepath.Join(base, "target")
+	link := filepath.Join(base, "link")
+	require.NoError(t, os.Mkdir(target, 0700))
+	require.NoError(t, os.Symlink(target, link))
+
+	err := chownContainerDir(link, os.Getuid(), os.Getgid())
+
+	require.Error(t, err, "following a symlink would let a local user redirect the chown")
+	assert.Contains(t, err.Error(), "symlink")
+
+	info, err := os.Stat(target)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0700), info.Mode().Perm(), "the symlink target must be untouched")
+}
+
+func TestChownContainerDirRefusesNonDirectory(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "file")
+	require.NoError(t, os.WriteFile(file, []byte("x"), 0600))
+
+	assert.Error(t, chownContainerDir(file, os.Getuid(), os.Getgid()))
+}
+
 func TestReadLatestContainerEnvFileReadsNewestUniqueFile(t *testing.T) {
 	dir := t.TempDir()
-	olderPath := filepath.Join(dir, ".evg-env-older")
-	newerPath := filepath.Join(dir, ".evg-env-newer")
+	olderPath := filepath.Join(dir, containerEnvFilePrefix+"older")
+	newerPath := filepath.Join(dir, containerEnvFilePrefix+"newer")
 	require.NoError(t, os.WriteFile(olderPath, []byte("VALUE=older\n"), 0600))
 	require.NoError(t, os.WriteFile(newerPath, []byte("VALUE=newer\n"), 0600))
 	baseTime := time.Now().Add(-time.Minute)
@@ -509,14 +531,121 @@ func TestReadLatestContainerEnvFileReadsNewestUniqueFile(t *testing.T) {
 	assert.Equal(t, "VALUE=newer\n", string(data))
 }
 
-func TestWriteHostEnvFileStopsLoginShellWhenContextExpires(t *testing.T) {
+func TestContainerEnvFileKeysOmitsValues(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, containerEnvFilePrefix+"1"),
+		[]byte("AWS_SECRET_ACCESS_KEY=supersecret\nPATH=/usr/bin\n"),
+		0600,
+	))
+
+	keys, err := containerEnvFileKeys(dir)
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"AWS_SECRET_ACCESS_KEY", "PATH"}, keys)
+	for _, key := range keys {
+		assert.NotContains(t, key, "supersecret", "env values must never reach telemetry")
+	}
+}
+
+func TestParseHostEnv(t *testing.T) {
+	sentinel := hostEnvSentinel + "\x00"
+
+	t.Run("DiscardsProfileOutputBeforeSentinel", func(t *testing.T) {
+		out := []byte("Welcome to the machine\nMOTD banner\n" + sentinel + "PATH=/usr/bin\x00")
+		assert.Equal(t, []string{"PATH=/usr/bin"}, parseHostEnv(out))
+	})
+
+	t.Run("PreservesSpacesAndGlobCharacters", func(t *testing.T) {
+		// The previous unquoted `echo '%s='$VAR` word-split and glob-expanded
+		// these values before they reached the env file.
+		out := []byte(sentinel + "PATH=/opt/my tools/bin:/usr/*\x00")
+		assert.Equal(t, []string{"PATH=/opt/my tools/bin:/usr/*"}, parseHostEnv(out))
+	})
+
+	t.Run("DropsValuesContainingNewlines", func(t *testing.T) {
+		out := []byte(sentinel + "GOOD=1\x00BAD=line1\nline2\x00")
+		assert.Equal(t, []string{"GOOD=1"}, parseHostEnv(out),
+			"an env file cannot represent a newline, and Docker rejects the whole file")
+	})
+
+	t.Run("NoSentinelYieldsNothing", func(t *testing.T) {
+		assert.Empty(t, parseHostEnv([]byte("PATH=/usr/bin\x00")))
+	})
+
+	t.Run("SkipsRecordsWithoutSeparatorOrKey", func(t *testing.T) {
+		out := []byte(sentinel + "novalue\x00=orphan\x00OK=1\x00")
+		assert.Equal(t, []string{"OK=1"}, parseHostEnv(out))
+	})
+}
+
+func TestHostEnvShellCommandQuotesExpansions(t *testing.T) {
+	cmd := hostEnvShellCommand()
+
+	assert.Contains(t, cmd, hostEnvSentinel, "the sentinel must be emitted so profile output can be discarded")
+	assert.Contains(t, cmd, `"$PATH"`, "expansions must be quoted to prevent word splitting and globbing")
+	assert.NotContains(t, cmd, "echo '", "echo with an unquoted expansion is what corrupted values")
+}
+
+func TestFormatHostEnv(t *testing.T) {
+	assert.Empty(t, formatHostEnv(nil))
+	assert.Equal(t, "A=1\nB=2\n", formatHostEnv([]string{"A=1", "B=2"}))
+}
+
+func TestAgentHostEnvDropsNewlineValues(t *testing.T) {
+	t.Setenv("GOROOT", "/opt/golang/go\nEVIL=1")
+	t.Setenv("JAVA_HOME", "/opt/java")
+
+	entries := agentHostEnv()
+
+	assert.Contains(t, entries, "JAVA_HOME=/opt/java")
+	for _, entry := range entries {
+		assert.NotContains(t, entry, "EVIL", "a newline in a value must not smuggle an extra env entry")
+	}
+}
+
+func TestWriteHostEnvFileReportsCaptureFailureAndWritesFallback(t *testing.T) {
 	dir := t.TempDir()
 	bashPath := filepath.Join(dir, "bash")
 	require.NoError(t, os.WriteFile(bashPath, []byte("#!/bin/sh\n/bin/sleep 2\n/bin/touch \"$0.finished\"\n"), 0700))
 	t.Setenv("PATH", dir)
+	t.Setenv("JAVA_HOME", "/opt/java")
 
+	envPath := filepath.Join(dir, "host-env")
 	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
 	t.Cleanup(cancel)
-	require.NoError(t, writeHostEnvFile(ctx, filepath.Join(dir, "host-env")))
+
+	err := writeHostEnvFile(ctx, envPath)
+
+	require.Error(t, err, "a swallowed capture failure hides a degraded container environment")
 	assert.NoFileExists(t, bashPath+".finished", "the timed-out login shell must not resume profile processing")
+
+	data, readErr := os.ReadFile(envPath)
+	require.NoError(t, readErr, "the fallback env file must still be written")
+	assert.Contains(t, string(data), "JAVA_HOME=/opt/java", "the fallback should carry the agent's own environment")
+}
+
+func TestWriteHostEnvFileParsesLoginShellOutput(t *testing.T) {
+	dir := t.TempDir()
+	bashPath := filepath.Join(dir, "bash")
+	// Stand in for a login shell whose profile scripts print a banner before
+	// the env dump, and whose PATH contains a space.
+	script := "#!/bin/sh\n" +
+		"printf 'MOTD banner\\n'\n" +
+		"printf '%s\\0' '" + hostEnvSentinel + "'\n" +
+		"printf '%s=%s\\0' 'PATH' '/opt/my tools/bin'\n"
+	require.NoError(t, os.WriteFile(bashPath, []byte(script), 0700))
+	t.Setenv("PATH", dir)
+
+	envPath := filepath.Join(dir, "host-env")
+	require.NoError(t, writeHostEnvFile(t.Context(), envPath))
+
+	data, err := os.ReadFile(envPath)
+	require.NoError(t, err)
+	assert.Equal(t, "PATH=/opt/my tools/bin\n", string(data),
+		"the banner must be discarded and the spaced value preserved verbatim")
+
+	info, err := os.Stat(envPath)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0600), info.Mode().Perm())
 }
