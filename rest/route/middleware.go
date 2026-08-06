@@ -859,6 +859,11 @@ func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 	isService := dbUser.OnlyAPI
 	settings := m.env.Settings()
 	cfg := settings.RateLimit
+
+	if slices.Contains(cfg.ExemptUserIDs, u.Username()) {
+		next(rw, r)
+		return
+	}
 	perHour, burst := limitsFor(&cfg, m.surface, isService)
 
 	// Handle elevated users - 2x normal limits.
