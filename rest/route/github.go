@@ -1088,6 +1088,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 			baseOwnerRepo[1],
 			pr.Head.GetSHA(),
 			"Graphite is still rebasing this PR, skipping CI. See Graphite UI for more info.",
+			"",
 		)
 		update.Run(ctx)
 		if err := update.Error(); err != nil {
