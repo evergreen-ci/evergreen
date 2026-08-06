@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strconv"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
@@ -39,16 +38,14 @@ func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) 
 
 // BuildBaron is the resolver for the buildBaron field.
 func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, execution int) (*BuildBaron, error) {
-	execString := strconv.Itoa(execution)
-
-	searchReturnInfo, bbConfig, err := model.GetSearchReturnInfo(ctx, taskID, execString)
+	searchReturnInfo, bbConfig, err := model.GetBuildBaron(ctx, taskID, execution)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 
 	return &BuildBaron{
 		SearchReturnInfo:        searchReturnInfo,
-		BuildBaronConfigured:    bbConfig.ProjectFound && bbConfig.SearchConfigured,
+		BuildBaronConfigured:    bbConfig.SearchConfigured,
 		BbTicketCreationDefined: bbConfig.TicketCreationDefined,
 	}, nil
 }
