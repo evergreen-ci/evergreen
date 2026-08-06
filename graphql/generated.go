@@ -87024,7 +87024,7 @@ func (ec *executionContext) unmarshalInputRateLimitConfigInput(ctx context.Conte
 			it.ElevatedUserIDs = data
 		case "exemptUserIds":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("exemptUserIds"))
-			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
