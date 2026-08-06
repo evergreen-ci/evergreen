@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -379,7 +380,7 @@ func ssrfDialControl(_ context.Context, _ string, address string, _ syscall.RawC
 
 const maxArtifactRedirects = 10
 
-var artifactHTTPClient = &http.Client{
+var artifactHTTPClient = utility.WithOTelTracing(&http.Client{
 	Transport: &http.Transport{
 		// http.Get uses http.DefaultTransport under the hood, which includes
 		// http.ProxyFromEnvironment, so adding here for parity.
@@ -397,4 +398,4 @@ var artifactHTTPClient = &http.Client{
 		}
 		return nil
 	},
-}
+})
