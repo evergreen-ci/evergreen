@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/s3lifecycle"
 	"github.com/evergreen-ci/evergreen/model/s3usage"
@@ -841,6 +842,7 @@ func TestIsRepoAllowedForTask(t *testing.T) {
 	require.NoError(t, db.ClearCollections(
 		task.Collection, model.ProjectRefCollection,
 		model.VersionCollection, model.ParserProjectCollection,
+		manifest.Collection,
 	))
 
 	pRef := model.ProjectRef{
@@ -862,9 +864,10 @@ func TestIsRepoAllowedForTask(t *testing.T) {
 		},
 	}
 	tsk := task.Task{
-		Id:      "t1",
-		Project: "p1",
-		Version: "v1",
+		Id:        "t1",
+		Project:   "p1",
+		Version:   "v1",
+		Requester: evergreen.RepotrackerVersionRequester,
 	}
 	require.NoError(t, pRef.Insert(t.Context()))
 	require.NoError(t, v.Insert(t.Context()))

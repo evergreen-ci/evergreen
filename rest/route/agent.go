@@ -1747,9 +1747,17 @@ func (g *createInstallationTokenForClone) Run(ctx context.Context) gimlet.Respon
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "checking repo authorization"))
 	}
 	if !allowed {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusForbidden,
-			Message:    fmt.Sprintf("repo '%s/%s' is not the project repo or a declared module for task '%s'", g.owner, g.repo, g.taskID),
+		// TODO: DEVPROD-36655 enforce this as a 403 once we've confirmed no
+		// projects rely on cross-repo tokens outside their declared modules.
+		grip.Warning(ctx, message.Fields{
+			"message":   "installation token requested for repo not in project or modules",
+			"task_id":   g.taskID,
+			"project":   t.Project,
+			"owner":     g.owner,
+			"repo":      g.repo,
+			"version":   t.Version,
+			"requester": t.Requester,
+			"ticket":    "DEVPROD-36655",
 		})
 	}
 
@@ -1794,6 +1802,19 @@ func isRepoAllowedForTask(ctx context.Context, env evergreen.Environment, t *tas
 		return true, nil
 	}
 
+	mfest, err := manifest.FindFromVersion(ctx, t.Version, t.Project, "", t.Requester)
+	if err != nil {
+		return false, errors.Wrap(err, "finding manifest for task")
+	}
+	if mfest != nil {
+		for _, m := range mfest.Modules {
+			if matchesModule(m.Owner, m.Repo, owner, repo) {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+
 	v, err := model.VersionFindOne(ctx, model.VersionById(t.Version))
 	if err != nil {
 		return false, errors.Wrap(err, "finding version for task")
@@ -1815,20 +1836,29 @@ func isRepoAllowedForTask(ctx context.Context, env evergreen.Environment, t *tas
 		if err != nil {
 			continue
 		}
-		// The agent strips ".wiki" from repo names before requesting tokens, so match both the declared
-		// module repo and the stripped name for wiki modules.
-		if strings.EqualFold(moduleOwner, owner) && strings.EqualFold(moduleRepo, repo) {
+		if matchesModule(moduleOwner, moduleRepo, owner, repo) {
 			return true, nil
-		}
-		if model.IsWikiRepo(moduleRepo) {
-			parentRepo := strings.TrimSuffix(strings.TrimSuffix(strings.TrimSpace(moduleRepo), ".git"), ".wiki")
-			if strings.EqualFold(moduleOwner, owner) && strings.EqualFold(parentRepo, repo) {
-				return true, nil
-			}
 		}
 	}
 
 	return false, nil
+}
+
+// matchesModule checks whether the requested owner/repo matches a module's
+// owner/repo.
+func matchesModule(moduleOwner, moduleRepo, owner, repo string) bool {
+	if strings.EqualFold(moduleOwner, owner) && strings.EqualFold(moduleRepo, repo) {
+		return true
+	}
+	if model.IsWikiRepo(moduleRepo) {
+		// The agent strips ".wiki" from repo names before requesting
+		// tokens, so this also matches the parent repo name for wiki modules.
+		parentRepo := strings.TrimSuffix(strings.TrimSuffix(strings.TrimSpace(moduleRepo), ".git"), ".wiki")
+		if strings.EqualFold(moduleOwner, owner) && strings.EqualFold(parentRepo, repo) {
+			return true
+		}
+	}
+	return false
 }
 
 // POST /task/{task_id}/check_run
