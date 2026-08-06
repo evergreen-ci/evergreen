@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -25,6 +27,7 @@ import (
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // ContainerHandle is the interface through which the agent manages an active
@@ -34,7 +37,6 @@ type ContainerHandle interface {
 	GetID() string
 	GetName() string
 	GetEnvFileHostDir() string
-	Close()
 	Destroy(ctx context.Context) error
 }
 
@@ -47,17 +49,8 @@ func defaultContainerFactory(ctx context.Context, cfg agentcontainer.Config) (Co
 	return agentcontainer.CreateAndStart(ctx, cfg)
 }
 
-// tryReapOrphanContainers removes any evergreen-task-* containers left behind
-// by a prior agent crash or host reboot. Called once at agent startup when
-// the --cleanup flag is set, before any tasks are dispatched. Best-effort:
-// if Docker is not running (non-container-enabled host) the function returns
-// silently; individual removal failures are warned but do not block startup.
 // reaperTimeout bounds the total time the orphan-container reaper spends
-// connecting to Docker, listing containers, and removing them. Using a
-// background-derived context (not the agent's Start ctx) ensures that a
-// shutdown signal arriving during the --cleanup phase doesn't silently skip
-// the reap entirely: the agent ctx would be cancelled before any Docker call
-// completes, leaving orphans on the host.
+// connecting to Docker, listing containers, and removing them.
 const reaperTimeout = 30 * time.Second //nolint:unused
 
 const (
@@ -66,13 +59,18 @@ const (
 	hostEnvCommandWaitDelay = time.Second
 )
 
+// tryReapOrphanContainers removes isolation containers left behind by a prior
+// agent crash or host reboot. Called once at agent startup when the --cleanup
+// flag is set, before any tasks are dispatched. Best-effort: if Docker is not
+// running the function returns silently, and individual removal failures are
+// warned but do not block startup.
+//
+// The reaper runs on a background-derived context so that a shutdown signal
+// arriving during the --cleanup phase does not cancel every Docker call and
+// silently skip the reap, leaving orphans on the host.
 func (a *Agent) tryReapOrphanContainers(ctx context.Context) { //nolint:unused
 	defer recovery.LogStackTraceAndContinue("reap orphan containers")
 
-	// Use a bounded background context so the reaper completes even if the
-	// parent ctx is cancelled during a shutdown race. The parent ctx is still
-	// used for mid-loop cancellation checks so a clean agent shutdown during
-	// removal doesn't log spurious warnings.
 	reaperCtx, cancel := context.WithTimeout(context.Background(), reaperTimeout)
 	defer cancel()
 
@@ -88,14 +86,13 @@ func (a *Agent) tryReapOrphanContainers(ctx context.Context) { //nolint:unused
 		return
 	}
 
-	// The name filter is a substring match. GOAL-279 containers are named
-	// evergreen-task-<task-id>, a prefix distinctive enough that accidental
-	// collisions with human-created containers are unlikely. A label-based
-	// filter would be more precise but requires labelling containers at
-	// creation time (a larger change deferred to Phase 1).
+	// Select by ownership label, not by name. Removal is destructive and
+	// irreversible, so a container must positively identify itself as owned
+	// by the agent before it is eligible.
+	ownerFilter := fmt.Sprintf("%s=%s", agentcontainer.OwnerLabel, agentcontainer.OwnerLabelValue)
 	containers, err := cli.ContainerList(reaperCtx, dockercontainer.ListOptions{
 		All:     true,
-		Filters: filters.NewArgs(filters.KeyValuePair{Key: "name", Value: "evergreen-task-"}),
+		Filters: filters.NewArgs(filters.KeyValuePair{Key: "label", Value: ownerFilter}),
 	})
 	if err != nil {
 		grip.Warningf(ctx, "Orphan container reaper: could not list containers: %s", err)
@@ -103,6 +100,11 @@ func (a *Agent) tryReapOrphanContainers(ctx context.Context) { //nolint:unused
 	}
 
 	for _, c := range containers {
+		// Re-check ownership on the returned document rather than trusting
+		// the server-side filter alone.
+		if !isAgentOwnedContainer(c.Labels) {
+			continue
+		}
 		shortID := c.ID
 		if len(shortID) > 12 {
 			shortID = shortID[:12]
@@ -110,7 +112,6 @@ func (a *Agent) tryReapOrphanContainers(ctx context.Context) { //nolint:unused
 		names := containerNames(c.Names)
 		if err := cli.ContainerRemove(reaperCtx, c.ID, dockercontainer.RemoveOptions{Force: true}); err != nil {
 			if ctx.Err() != nil {
-				// Context cancelled during shutdown — not a real removal failure.
 				return
 			}
 			grip.Warningf(ctx, "Orphan container reaper: could not remove container '%s' (%s): %s", shortID, names, err)
@@ -120,9 +121,16 @@ func (a *Agent) tryReapOrphanContainers(ctx context.Context) { //nolint:unused
 	}
 }
 
+// isAgentOwnedContainer reports whether a container carries this agent's
+// ownership label. Removal is irreversible, so a container must positively
+// identify itself as agent-owned before the reaper will touch it.
+func isAgentOwnedContainer(labels map[string]string) bool {
+	return labels[agentcontainer.OwnerLabel] == agentcontainer.OwnerLabelValue
+}
+
 // containerNames strips the leading '/' that the Docker API prepends to
 // container names and joins them for display.
-func containerNames(names []string) string { //nolint:unused
+func containerNames(names []string) string {
 	clean := make([]string, len(names))
 	for i, n := range names {
 		clean[i] = strings.TrimPrefix(n, "/")
@@ -151,28 +159,6 @@ func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConf
 		return nil
 	}
 
-	// The task workdir is created by the agent (root) with mode 0755 due to
-	// the process umask. The exec_user inside the container (typically uid=1000)
-	// cannot write to a root-owned 0755 directory. Explicitly chmod to 0777 so
-	// the container process can write task output to the workdir via the
-	// same-path bind mount. This is safe: the workdir is per-task and ephemeral.
-	if conf.WorkDir != "" {
-		if err := os.Chmod(conf.WorkDir, 0777); err != nil {
-			grip.Warningf(ctx, "Could not chmod task workdir '%s' for container isolation: %s", conf.WorkDir, err)
-		}
-	}
-
-	// The task tmp directory (WorkDir/tmp) has the same umask problem —
-	// MkdirAll creates it with 0777 but the umask strips group/other write
-	// bits, leaving the container user unable to write temp files (cgo,
-	// gcc, etc.). Chmod it the same way as the workdir.
-	if conf.WorkDir != "" {
-		tmpDir := filepath.Join(conf.WorkDir, "tmp")
-		if err := os.Chmod(tmpDir, 0777); err != nil {
-			grip.Warningf(ctx, "Could not chmod task tmp dir '%s' for container isolation: %s", tmpDir, err)
-		}
-	}
-
 	ci := conf.Distro.ContainerIsolation
 	ctx, span := a.tracer.Start(ctx, "container.create_and_start")
 	defer span.End()
@@ -182,26 +168,20 @@ func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConf
 		attribute.String("container.distro_id", conf.Task.DistroId),
 	)
 
-	// Build the extra mounts. /opt is bind-mounted read-only so toolchains
-	// (mongodbtoolchain, golang, java, ruby) installed at AMI provisioning
-	// are visible inside the container without baking them into the image.
-	// Skip the mount if /opt does not exist on the host — Docker rejects
-	// bind-mount sources that don't exist, which would fail container
-	// creation entirely.
-	//
-	// Security: /opt must contain only toolchains, never secrets. Read-only
-	// mounts still allow reading and exfiltration, so any credential
-	// material placed under /opt would be visible to every containerized
-	// task. AMI provisioning scripts for container-isolated distros must
-	// not write SSH keys, tokens, or other secrets to /opt.
-	var extraMounts []agentcontainer.Mount
-	if _, err := os.Stat("/opt"); err == nil {
-		extraMounts = append(extraMounts, agentcontainer.Mount{
-			Source: "/opt", Target: "/opt", ReadOnly: true,
-		})
-	} else {
-		grip.Warningf(ctx, "Host /opt not found, skipping toolchain bind mount for task '%s'", conf.Task.Id)
+	// The task workdir and its tmp subdirectory are created by the agent and
+	// are not writable by the container's exec user. Access is granted by
+	// transferring ownership rather than by widening the mode, so the
+	// directories never become world-writable on a host shared with other
+	// local users.
+	if err := secureContainerDirs(conf.WorkDir, conf.Distro.ExecUser); err != nil {
+		if ci.RequireIsolation {
+			span.SetStatus(codes.Error, err.Error())
+			return errors.Wrap(err, "preparing task directories for isolation container (fail-closed: require_isolation is set)")
+		}
+		grip.Warningf(ctx, "Could not prepare task directories for container isolation: %s", err)
 	}
+
+	extraMounts := toolchainMounts(ctx, conf.Task.Id)
 
 	factory := a.containerFactory
 	if factory == nil {
@@ -258,6 +238,94 @@ func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConf
 	return nil
 }
 
+// containerDirMode is the mode applied to task directories shared with the
+// isolation container. The container's exec user is granted write access
+// through ownership, so these directories are never world-writable.
+const containerDirMode = 0755
+
+// containerToolchainDirs are the host toolchain directories bind-mounted
+// read-only into the container. Toolchains are installed at AMI provisioning
+// rather than baked into the image. Only these paths are mounted; the whole
+// of /opt is not, because a read-only mount still lets a task read (and
+// exfiltrate) anything beneath it.
+var containerToolchainDirs = []string{
+	"/opt/mongodbtoolchain",
+	"/opt/golang",
+	"/opt/java",
+	"/opt/ruby",
+	"/opt/node",
+	"/opt/python",
+}
+
+// toolchainMounts returns read-only mounts for the toolchain directories that
+// exist on the host. Nonexistent sources are skipped because Docker rejects
+// bind mounts whose source is missing, which would fail container creation.
+func toolchainMounts(ctx context.Context, taskID string) []agentcontainer.Mount {
+	var mounts []agentcontainer.Mount
+	for _, dir := range containerToolchainDirs {
+		if _, err := os.Stat(dir); err != nil {
+			continue
+		}
+		mounts = append(mounts, agentcontainer.Mount{Source: dir, Target: dir, ReadOnly: true})
+	}
+	if len(mounts) == 0 {
+		grip.Warningf(ctx, "No host toolchain directories found; container for task '%s' will only see image-provided toolchains.", taskID)
+	}
+	return mounts
+}
+
+// secureContainerDirs transfers ownership of the task working directory and
+// its tmp subdirectory to the distro's exec user so containerized processes
+// can write to them through the same-path bind mount.
+//
+// When the distro has no exec user, docker exec runs as root inside the
+// container and can already write to the agent-owned directories, so there is
+// nothing to do.
+func secureContainerDirs(workDir, execUser string) error {
+	if workDir == "" || execUser == "" {
+		return nil
+	}
+
+	usr, err := user.Lookup(execUser)
+	if err != nil {
+		return errors.Wrapf(err, "looking up exec user '%s'", execUser)
+	}
+	uid, err := strconv.Atoi(usr.Uid)
+	if err != nil {
+		return errors.Wrapf(err, "parsing uid for exec user '%s'", execUser)
+	}
+	gid, err := strconv.Atoi(usr.Gid)
+	if err != nil {
+		return errors.Wrapf(err, "parsing gid for exec user '%s'", execUser)
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for _, dir := range []string{workDir, filepath.Join(workDir, "tmp")} {
+		catcher.Wrapf(chownContainerDir(dir, uid, gid), "securing '%s'", dir)
+	}
+	return catcher.Resolve()
+}
+
+// chownContainerDir transfers ownership of dir to uid/gid. It refuses to act
+// on a symlink so that a local user cannot redirect the ownership change at a
+// path they do not own.
+func chownContainerDir(dir string, uid, gid int) error {
+	info, err := os.Lstat(dir)
+	if err != nil {
+		return errors.Wrap(err, "stating directory")
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return errors.New("refusing to modify a symlink")
+	}
+	if !info.IsDir() {
+		return errors.New("path is not a directory")
+	}
+	if err := os.Lchown(dir, uid, gid); err != nil {
+		return errors.Wrap(err, "changing ownership")
+	}
+	return errors.Wrap(os.Chmod(dir, containerDirMode), "setting permissions")
+}
+
 // destroyContainer tears down the isolation container and clears the agent's
 // container reference. conf may be nil (e.g. when called from the loop-exit
 // defer before any task has run), in which case conf fields are not cleared.
@@ -294,7 +362,7 @@ func (a *Agent) destroyContainer(ctx context.Context, conf *internal.TaskConfig)
 			conf.ContainerID = ""
 			conf.EnvFileHostDir = ""
 		}
-		go destroyRetainedContainer(ctx, retainedContainer, containerName, retainedUntil)
+		go destroyRetainedContainer(ctx, a.tracer, retainedContainer, containerName, retainedUntil)
 		return
 	}
 
@@ -309,7 +377,13 @@ func (a *Agent) destroyContainer(ctx context.Context, conf *internal.TaskConfig)
 	}
 }
 
-func destroyRetainedContainer(ctx context.Context, container ContainerHandle, containerName string, retainUntil time.Time) {
+// destroyRetainedContainer waits for the retention deadline to pass or the
+// agent to shut down, then removes the container. It runs detached from its
+// caller, so it must recover from panics: an unrecovered panic in a goroutine
+// terminates the entire agent process.
+func destroyRetainedContainer(ctx context.Context, tracer trace.Tracer, container ContainerHandle, containerName string, retainUntil time.Time) {
+	defer recovery.LogStackTraceAndContinue("destroy retained container")
+
 	timer := time.NewTimer(time.Until(retainUntil))
 	defer timer.Stop()
 
@@ -318,31 +392,48 @@ func destroyRetainedContainer(ctx context.Context, container ContainerHandle, co
 	case <-timer.C:
 	}
 
+	// Detach from the caller so shutdown cancellation cannot bypass removal.
+	// The span starts here so its duration covers the removal itself rather
+	// than the caller's already-completed teardown.
 	destroyCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), reaperTimeout)
 	defer cancel()
+	destroyCtx, span := tracer.Start(destroyCtx, "container.destroy_retained")
+	defer span.End()
+	span.SetAttributes(attribute.String("container.name", containerName))
+
 	if err := container.Destroy(destroyCtx); err != nil {
+		span.SetStatus(codes.Error, err.Error())
 		grip.Warningf(destroyCtx, "Failed to destroy retained isolation container '%s': %s", containerName, err)
 	}
 }
 
-// checkContainerOOM uses docker inspect to read the OOMKilled flag from the
-// container state. Returns (true, nil) when the container was OOM-killed,
-// (false, nil) when it was not, and (false, err) when inspect fails.
-func checkContainerOOM(ctx context.Context, containerID string) (bool, error) { //nolint:unused
+// inspectContainerTimeout bounds a single docker inspect call.
+const inspectContainerTimeout = 10 * time.Second //nolint:unused
+
+// inspectContainer returns the Docker inspect document for a container.
+func inspectContainer(ctx context.Context, containerID string) (dockercontainer.InspectResponse, error) { //nolint:unused
+	inspectCtx, cancel := context.WithTimeout(ctx, inspectContainerTimeout)
+	defer cancel()
+
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		return false, fmt.Errorf("creating Docker client for OOM check: %w", err)
+		return dockercontainer.InspectResponse{}, errors.Wrap(err, "creating Docker client")
 	}
 	defer cli.Close()
 
-	inspectCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
 	info, err := cli.ContainerInspect(inspectCtx, containerID)
+	return info, errors.Wrapf(err, "inspecting container '%s'", containerID)
+}
+
+// checkContainerOOM reads the container-native OOMKilled flag from docker
+// inspect. Returns (true, nil) when the container was OOM-killed, (false, nil)
+// when it was not, and (false, err) when inspect fails.
+func checkContainerOOM(ctx context.Context, containerID string) (bool, error) { //nolint:unused
+	info, err := inspectContainer(ctx, containerID)
 	if err != nil {
-		return false, fmt.Errorf("inspecting container '%s': %w", containerID, err)
+		return false, err
 	}
-	if info.State == nil {
+	if info.ContainerJSONBase == nil || info.State == nil {
 		return false, nil
 	}
 	return info.State.OOMKilled, nil
@@ -369,22 +460,14 @@ func (a *Agent) scheduleContainerRetention(ctx context.Context, containerName st
 		a.opts.ContainerRetainOnFailureSecs, containerName)
 }
 
-// augmentOOMTrackerWithContainerSignal supplements the existing dmesg-based
-// OOM report with the container-native OOMKilled signal from docker inspect.
-// This is more reliable than dmesg under containers because dmesg PIDs are
-// host-side (not matching container-namespaced PIDs) and the dmesg buffer can
-// accumulate messages from prior containers.
-//
-// This check is intentionally independent of tc.oomTrackerEnabled(cloudProvider).
-// That gate controls the dmesg-based report (a project-level setting for host
-// processes). The container OOMKilled signal is a container-specific fact from
-// docker inspect, always worth surfacing when a container is active regardless
-// of project OOM-tracker preferences.
 // emitContainerFailureSnapshot collects post-mortem forensics from the active
 // isolation container and emits them as a container.failure_snapshot OTel span.
-// It is called on non-zero task exit while the container is still running (before
-// destroyContainer fires at group teardown). All string fields are run through
-// the task config's redactor so secrets never appear in Honeycomb.
+// It is called on non-zero task exit while the container is still running
+// (before destroyContainer fires at group teardown).
+//
+// Only allowlisted fields are exported, and every exported string is passed
+// through redactForSnapshot, which fails closed. The raw inspect document and
+// raw env-file values are never exported because both carry credentials.
 func (a *Agent) emitContainerFailureSnapshot(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) { //nolint:unused
 	if a.currentContainer == nil || tc == nil {
 		return
@@ -407,36 +490,85 @@ func (a *Agent) emitContainerFailureSnapshot(ctx context.Context, tc *taskContex
 		span.SetStatus(codes.Error, detail.Status)
 	}
 
-	// docker inspect JSON.
-	if inspectJSON, err := containerInspectJSON(ctx, containerID); err == nil {
-		span.SetAttributes(attribute.String("container.inspect_json", redactForSnapshot(inspectJSON, tc)))
+	if summary, err := containerInspectSummaryJSON(ctx, containerID); err == nil {
+		span.SetAttributes(attribute.String("container.inspect_summary", redactForSnapshot(summary, tc)))
 	}
 
-	// ps -ef inside the container. Capture output even on non-zero exit — a
-	// container whose processes have all died is exactly the case where we
-	// want "no processes found" in Honeycomb rather than a missing attribute.
+	// Capture ps output even on non-zero exit: a container whose processes
+	// have all died is exactly the case where "no processes found" is the
+	// useful signal rather than a missing attribute.
 	if psOut, _ := containerExec(ctx, containerID, "ps", "-ef"); psOut != "" {
 		span.SetAttributes(attribute.String("container.ps_output", redactForSnapshot(psOut, tc)))
 	}
 
-	// Env-file contents (the per-task tmpfs written by WrapWithContainer).
+	// Only the env-file key names are exported. The values are the task's
+	// environment, which routinely holds credentials, and the key list is
+	// enough to diagnose a missing or malformed variable.
 	if tc.taskConfig != nil && tc.taskConfig.EnvFileHostDir != "" {
-		if data, err := readLatestContainerEnvFile(tc.taskConfig.EnvFileHostDir); err == nil {
-			span.SetAttributes(attribute.String("container.env_file", redactForSnapshot(string(data), tc)))
+		if keys, err := containerEnvFileKeys(tc.taskConfig.EnvFileHostDir); err == nil {
+			span.SetAttributes(attribute.StringSlice("container.env_file_keys", keys))
 		}
 	}
 
-	// Task log tail (stdout/stderr) is an accepted deviation from the
-	// design doc's original "last 200 lines of stdout/stderr" requirement.
-	// Task output flows through Jasper senders to the remote Evergreen log
-	// service, not to a local file or container stdout. `docker logs` does
-	// not help because the container's PID 1 is `sleep infinity` — the
-	// actual task commands run via `docker exec` and their output is
-	// captured by Jasper, not by the Docker logging driver. The design doc
-	// (technical-design-agent-container-lifecycle.md and phase-0-plan.md)
-	// has been updated to reflect this deviation. Closing the gap would
-	// require a ring buffer in the logger infrastructure, deferred to
-	// Phase 1 if post-mortem finds the existing log pipeline insufficient.
+	// Task stdout/stderr is not captured here: it flows through Jasper to the
+	// remote log service, and `docker logs` only sees PID 1 (`sleep infinity`).
+}
+
+// containerInspectSummary is the allowlisted subset of docker inspect output
+// that may be exported to telemetry. The full document is deliberately
+// excluded because it embeds the container's environment and image config.
+type containerInspectSummary struct { //nolint:unused
+	Status       string `json:"status"`
+	ExitCode     int    `json:"exit_code"`
+	OOMKilled    bool   `json:"oom_killed"`
+	Error        string `json:"error"`
+	StartedAt    string `json:"started_at"`
+	FinishedAt   string `json:"finished_at"`
+	RestartCount int    `json:"restart_count"`
+}
+
+// containerInspectSummaryJSON returns the allowlisted inspect fields as JSON.
+func containerInspectSummaryJSON(ctx context.Context, containerID string) (string, error) { //nolint:unused
+	info, err := inspectContainer(ctx, containerID)
+	if err != nil {
+		return "", err
+	}
+
+	var summary containerInspectSummary
+	if info.ContainerJSONBase != nil {
+		summary.RestartCount = info.RestartCount
+		if info.State != nil {
+			summary.Status = info.State.Status
+			summary.ExitCode = info.State.ExitCode
+			summary.OOMKilled = info.State.OOMKilled
+			summary.Error = info.State.Error
+			summary.StartedAt = info.State.StartedAt
+			summary.FinishedAt = info.State.FinishedAt
+		}
+	}
+
+	data, err := json.Marshal(summary)
+	return string(data), errors.Wrap(err, "marshalling inspect summary")
+}
+
+// containerEnvFileKeys returns the sorted key names present in the newest
+// container env file. Values are intentionally discarded.
+func containerEnvFileKeys(dir string) ([]string, error) {
+	data, err := readLatestContainerEnvFile(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	var keys []string
+	for _, line := range strings.Split(string(data), "\n") {
+		key, _, found := strings.Cut(line, "=")
+		if !found || key == "" {
+			continue
+		}
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys, nil
 }
 
 func readLatestContainerEnvFile(dir string) ([]byte, error) {
@@ -468,35 +600,10 @@ func readLatestContainerEnvFile(dir string) ([]byte, error) {
 	return data, errors.Wrap(err, "reading latest container env file")
 }
 
-// containerInspectJSON returns the full JSON from docker inspect for a container.
-func containerInspectJSON(ctx context.Context, containerID string) (string, error) { //nolint:unused
-	inspectCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return "", errors.Wrap(err, "creating Docker client for inspect")
-	}
-	defer cli.Close()
-
-	info, err := cli.ContainerInspect(inspectCtx, containerID)
-	if err != nil {
-		return "", errors.Wrapf(err, "inspecting container '%s'", containerID)
-	}
-	data, err := json.Marshal(info)
-	if err != nil {
-		return "", errors.Wrap(err, "marshalling inspect result")
-	}
-	return string(data), nil
-}
-
-// containerExec runs a command inside a container and returns its combined output.
-// This failure-snapshot path uses the docker CLI (not the SDK) because it is
-// called only on task failure and the credential-helper flow for ECR is handled
-// by host_provision.go (which also uses the CLI for the same reason). The SDK
-// path for the main lifecycle (CreateAndStart, Destroy) is intentional and
-// unrelated; the CLI is used here for the forensic path to keep its footprint
-// simple and aligned with other CLI callers.
+// containerExec runs a command inside a container and returns its combined
+// output. This forensic path uses the docker CLI rather than the SDK to keep
+// its footprint small; the main lifecycle (CreateAndStart, Destroy) uses the
+// SDK.
 func containerExec(ctx context.Context, containerID string, args ...string) (string, error) { //nolint:unused
 	execCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
@@ -505,6 +612,11 @@ func containerExec(ctx context.Context, containerID string, args ...string) (str
 	return strings.TrimSpace(string(out)), err
 }
 
+// redactionUnavailable replaces snapshot content when the task config needed
+// to redact secrets is missing. Exporting the raw value instead would risk
+// leaking credentials into telemetry, so redaction fails closed.
+const redactionUnavailable = "<REDACTION_UNAVAILABLE>"
+
 // redactForSnapshot applies the task's expansion redactions to s so that
 // secrets never appear in Honeycomb attributes. Values are applied
 // longest-first (matching the canonical redacting_sender order) to prevent a
@@ -512,7 +624,7 @@ func containerExec(ctx context.Context, containerID string, args ...string) (str
 // substitution that leaks the suffix.
 func redactForSnapshot(s string, tc *taskContext) string {
 	if tc == nil || tc.taskConfig == nil {
-		return s
+		return redactionUnavailable
 	}
 	conf := tc.taskConfig
 
@@ -548,6 +660,14 @@ func redactForSnapshot(s string, tc *taskContext) string {
 	return s
 }
 
+// augmentOOMTrackerWithContainerSignal supplements the dmesg-based OOM report
+// with the container-native OOMKilled signal from docker inspect, which is
+// more reliable under containers because dmesg PIDs are host-side and the
+// buffer can carry messages from prior containers.
+//
+// This is deliberately independent of tc.oomTrackerEnabled(cloudProvider):
+// that gate controls the dmesg report for host processes, whereas OOMKilled is
+// a container-specific fact worth surfacing whenever a container is active.
 func (a *Agent) augmentOOMTrackerWithContainerSignal(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) { //nolint:unused
 	if a.currentContainer == nil {
 		return
@@ -584,40 +704,86 @@ var hostEnvVars = []string{
 	"LIBRARY_PATH",
 }
 
+// hostEnvSentinel marks the start of the env dump in the login shell's stdout.
+// A login shell also runs profile scripts, which may print banners; everything
+// before the sentinel is discarded so it cannot corrupt the env file.
+const hostEnvSentinel = "__EVG_HOST_ENV_BEGIN__"
+
 // writeHostEnvFile captures the host's toolchain-related env vars and writes
 // them to path in KEY=VALUE format. This file is passed as a --env-file to
 // docker exec so containerized processes can find toolchains installed at
 // /opt/golang, /opt/mongodbtoolchain, etc. without sourcing profile scripts.
 //
 // The agent runs as a systemd service whose PATH does not include toolchain
-// directories set by /etc/profile.d/*.sh. To capture the effective PATH and
-// toolchain vars that a login shell would have, we run `bash -l -c` to source
-// the profile scripts and print the env vars.
+// directories set by /etc/profile.d/*.sh, so values are captured from a login
+// shell. If that capture fails the agent's own environment is written instead
+// and the capture error is returned, because the result is degraded.
 func writeHostEnvFile(ctx context.Context, path string) error {
-	// Build a shell command that sources profile scripts and prints the
-	// vars we care about in KEY=VALUE format.
-	var cmdParts []string
-	for _, key := range hostEnvVars {
-		cmdParts = append(cmdParts, fmt.Sprintf("[ -n \"$%s\" ] && echo '%s='$%s", key, key, key))
-	}
-	shellCmd := strings.Join(cmdParts, "\n")
-
 	captureCtx, cancel := context.WithTimeout(ctx, hostEnvCaptureTimeout)
 	defer cancel()
-	cmd := exec.CommandContext(captureCtx, "bash", "-l", "-c", shellCmd)
+
+	cmd := exec.CommandContext(captureCtx, "bash", "-l", "-c", hostEnvShellCommand())
 	cmd.WaitDelay = hostEnvCommandWaitDelay
 	out, err := cmd.Output()
 	if err != nil {
-		// Fall back to the agent process's own env vars if the login shell
-		// fails (e.g. bash not available). This won't have toolchain paths
-		// but preserves the base PATH.
-		var sb strings.Builder
-		for _, key := range hostEnvVars {
-			if val := os.Getenv(key); val != "" {
-				fmt.Fprintf(&sb, "%s=%s\n", key, val)
-			}
+		if writeErr := os.WriteFile(path, []byte(formatHostEnv(agentHostEnv())), 0600); writeErr != nil {
+			return errors.Wrap(writeErr, "writing fallback host env file")
 		}
-		return os.WriteFile(path, []byte(sb.String()), 0600)
+		return errors.Wrap(err, "capturing login shell environment, wrote agent environment instead")
 	}
-	return os.WriteFile(path, out, 0600)
+	return errors.Wrap(os.WriteFile(path, []byte(formatHostEnv(parseHostEnv(out))), 0600), "writing host env file")
+}
+
+// hostEnvShellCommand builds a script printing the wanted variables as
+// NUL-delimited KEY=VALUE records. Expansions are quoted so values containing
+// spaces or glob characters are neither word-split nor pathname-expanded, and
+// NUL delimiting stops a value containing a newline from being mistaken for a
+// record boundary.
+func hostEnvShellCommand() string {
+	parts := []string{fmt.Sprintf("printf '%%s\\0' '%s'", hostEnvSentinel)}
+	for _, key := range hostEnvVars {
+		parts = append(parts, fmt.Sprintf("[ -n \"$%s\" ] && printf '%%s=%%s\\0' '%s' \"$%s\"", key, key, key))
+	}
+	// A trailing true keeps the exit status zero when the final variable is unset.
+	parts = append(parts, "true")
+	return strings.Join(parts, "\n")
+}
+
+// parseHostEnv extracts KEY=VALUE records from the NUL-delimited capture. It
+// discards anything profile scripts printed before the sentinel and drops
+// values containing newlines, which an env file cannot represent.
+func parseHostEnv(out []byte) []string {
+	_, after, found := strings.Cut(string(out), hostEnvSentinel+"\x00")
+	if !found {
+		return nil
+	}
+
+	var entries []string
+	for _, record := range strings.Split(after, "\x00") {
+		key, value, found := strings.Cut(record, "=")
+		if !found || key == "" || strings.ContainsAny(value, "\n\r") {
+			continue
+		}
+		entries = append(entries, key+"="+value)
+	}
+	return entries
+}
+
+// agentHostEnv reads the wanted variables from the agent's own environment.
+// It lacks profile-set toolchain paths but preserves a usable base PATH.
+func agentHostEnv() []string {
+	var entries []string
+	for _, key := range hostEnvVars {
+		if val := os.Getenv(key); val != "" && !strings.ContainsAny(val, "\n\r") {
+			entries = append(entries, key+"="+val)
+		}
+	}
+	return entries
+}
+
+func formatHostEnv(entries []string) string {
+	if len(entries) == 0 {
+		return ""
+	}
+	return strings.Join(entries, "\n") + "\n"
 }

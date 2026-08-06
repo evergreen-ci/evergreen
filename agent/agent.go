@@ -108,11 +108,7 @@ type Options struct {
 	SingleTaskDistro           bool
 	// ContainerRetainOnFailureSecs is how long an isolation container is kept
 	// alive after a task failure so on-call can docker exec into it for
-	// post-mortem inspection. Default is 300s during Phase 0/1; set to 0 to
-	// disable retention once container.failure_snapshot coverage is trusted.
-	// Note: the CLI flag default is 300, but the zero value of this field is 0
-	// (no retention). Code that constructs Options{} directly (e.g. tests)
-	// gets zero — retention disabled — unless explicitly set.
+	// post-mortem inspection. Zero disables retention.
 	ContainerRetainOnFailureSecs int
 }
 
