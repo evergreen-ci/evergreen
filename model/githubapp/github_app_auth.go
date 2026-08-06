@@ -98,6 +98,22 @@ func CreateCachedInstallationTokenWithDefaultOwnerRepo(ctx context.Context, sett
 // token returned from this method - revoking the token will cause other GitHub
 // operations reusing the same token to fail.
 func (g *GithubAppAuth) CreateCachedInstallationToken(ctx context.Context, owner, repo string, lifetime time.Duration, opts *github.InstallationTokenOptions) (string, error) {
+	return g.createCachedInstallationToken(ctx, owner, repo, lifetime, opts, "")
+}
+
+// RecreateCachedInstallationToken is CreateCachedInstallationToken for a caller
+// whose token GitHub already rejected. GitHub can invalidate an outstanding
+// installation token before it expires (e.g. when the app installation's repos
+// or permissions change), and the cache has no other way to learn that a token
+// it's still serving is dead. rejectedToken is only evicted if it's still what's
+// cached, so that many callers holding the same dead token don't each mint a
+// replacement and evict each other's: the first one repopulates the cache and
+// the rest see a different token and reuse it.
+func (g *GithubAppAuth) RecreateCachedInstallationToken(ctx context.Context, owner, repo string, lifetime time.Duration, opts *github.InstallationTokenOptions, rejectedToken string) (string, error) {
+	return g.createCachedInstallationToken(ctx, owner, repo, lifetime, opts, rejectedToken)
+}
+
+func (g *GithubAppAuth) createCachedInstallationToken(ctx context.Context, owner, repo string, lifetime time.Duration, opts *github.InstallationTokenOptions, rejectedToken string) (string, error) {
 	if lifetime >= MaxInstallationTokenLifetime {
 		lifetime = MaxInstallationTokenLifetime
 	}
@@ -119,7 +135,15 @@ func (g *GithubAppAuth) CreateCachedInstallationToken(ctx context.Context, owner
 	if err != nil {
 		return "", errors.Wrap(err, "creating cache ID")
 	}
-	if cachedToken, found := ghInstallationTokenCache.Get(ctx, id, lifetime); found {
+	cachedToken, found := ghInstallationTokenCache.Get(ctx, id, lifetime)
+	if found && rejectedToken != "" && cachedToken == rejectedToken {
+		// ponytail: nothing serializes the re-mint, so callers that race between
+		// the delete and the put each mint their own token. Add singleflight if
+		// GitHub starts rate limiting the app.
+		ghInstallationTokenCache.Delete(ctx, id)
+		found = false
+	}
+	if found {
 		return cachedToken, nil
 	}
 

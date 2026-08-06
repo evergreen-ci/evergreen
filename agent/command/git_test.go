@@ -399,6 +399,29 @@ func (s *GitGetProjectSuite) TestTokenIsRedactedWhenGenerated() {
 	})
 }
 
+func (s *GitGetProjectSuite) TestCloneTokenIsRefreshedOnRetry() {
+	conf := s.taskConfig1
+	conf.ProjectRef.Repo = "invalidRepo"
+	s.comm.CreateInstallationTokenResult = "token"
+	s.comm.CreateInstallationTokenFail = false
+
+	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+	s.Require().NoError(err)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	c := gitFetchProject{Directory: ""}
+	c.SetJasperManager(s.jasper)
+	s.Error(c.Execute(ctx, s.comm, logger, conf))
+
+	rejected := s.comm.GetCreateInstallationTokenRejected()
+	s.Require().Greater(len(rejected), 1, "the failing clone should have been retried")
+	s.Empty(rejected[0], "the initial token request has nothing to reject")
+	for _, token := range rejected[1:] {
+		s.Equal("token", token, "each retry should report the token it was handed as rejected")
+	}
+}
+
 func (s *GitGetProjectSuite) TestStdErrLogged() {
 	if os.Getenv("IS_DOCKER") == "true" {
 		s.T().Skip("TestStdErrLogged will not run on docker since it requires a SSH key")

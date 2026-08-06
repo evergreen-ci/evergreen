@@ -1708,6 +1708,9 @@ type createInstallationTokenForClone struct {
 	taskID string
 	owner  string
 	repo   string
+	// rejectedToken is a previously-issued token that GitHub rejected. When set,
+	// it's evicted from the cache before a replacement is issued.
+	rejectedToken string
 
 	env evergreen.Environment
 }
@@ -1736,6 +1739,8 @@ func (g *createInstallationTokenForClone) Parse(ctx context.Context, r *http.Req
 	if g.repo = gimlet.GetVars(r)["repo"]; g.repo == "" {
 		return errors.New("missing repo")
 	}
+
+	g.rejectedToken = r.Header.Get(evergreen.RejectedGitHubTokenHeader)
 
 	return nil
 }
@@ -1782,7 +1787,7 @@ func (g *createInstallationTokenForClone) Run(ctx context.Context) gimlet.Respon
 			Contents: utility.ToStringPtr(thirdparty.GithubPermissionRead),
 		},
 	}
-	token, err := githubapp.CreateGitHubAppAuth(g.env.Settings()).CreateCachedInstallationToken(ctx, g.owner, g.repo, lifetime, opts)
+	token, err := githubapp.CreateGitHubAppAuth(g.env.Settings()).RecreateCachedInstallationToken(ctx, g.owner, g.repo, lifetime, opts, g.rejectedToken)
 	if err != nil {
 		if errors.Is(err, githubapp.ErrGitHubAppNotInstalled) {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{

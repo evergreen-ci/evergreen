@@ -105,7 +105,7 @@ func getCloneToken(ctx context.Context, comm client.Communicator, conf *internal
 
 	owner := conf.ProjectRef.Owner
 	repo := conf.ProjectRef.Repo
-	appToken, err := comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), owner, repo)
+	appToken, err := comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), owner, repo, "")
 	if err != nil {
 		return "", errors.Wrap(err, "creating app token")
 	}
@@ -394,12 +394,19 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 
 func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerProducer, comm client.Communicator, conf *internal.TaskConfig, opts cloneOpts) error {
 	attempt := 0
+	token := opts.token
 	return c.retryFetch(ctx, logger, comm, conf, true, opts, func(opts cloneOpts) error {
 		attempt++
+		// A user-supplied token is the user's to manage; only app tokens are ours to replace.
+		if attempt > 1 && c.Token == "" {
+			token = refreshCloneToken(ctx, comm, conf, logger, opts.owner, opts.repo, token)
+		}
+		opts.token = token
+
 		// On the second attempt, check if the merge queue ref was deleted before retrying.
 		if attempt == 2 && conf.Task.Requester == evergreen.GithubMergeRequester && conf.GithubMergeData.HeadBranch != "" {
 			ref := "heads/" + conf.GithubMergeData.HeadBranch
-			appToken, tokenErr := comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), opts.owner, opts.repo)
+			appToken, tokenErr := comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), opts.owner, opts.repo, "")
 			if tokenErr == nil && appToken != "" {
 				exists, checkErr := thirdparty.MergeQueueRefExists(ctx, opts.owner, opts.repo, ref, appToken)
 				if checkErr != nil {
@@ -446,6 +453,22 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 
 		return nil
 	})
+}
+
+// refreshCloneToken mints a replacement clone token for a retry, reporting the
+// previous one as rejected so the app server evicts it from its cache instead of
+// handing the same token back. GitHub invalidates outstanding installation
+// tokens when an app installation changes, and a retry that reuses a dead token
+// fails identically to the attempt before it. On failure it falls back to the
+// previous token, which is no worse than not refreshing at all.
+func refreshCloneToken(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, logger client.LoggerProducer, owner, repo, rejectedToken string) string {
+	token, err := comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), owner, repo, rejectedToken)
+	if err != nil {
+		logger.Task().Warningf(ctx, "Refreshing clone token, retrying with the previous one: %s", err)
+		return rejectedToken
+	}
+	conf.NewExpansions.Redact(generatedTokenKey, token)
+	return token
 }
 
 func (c *gitFetchProject) retryFetch(ctx context.Context, logger client.LoggerProducer, comm client.Communicator, conf *internal.TaskConfig, isSource bool, opts cloneOpts, fetch func(cloneOpts) error) error {
@@ -547,7 +570,8 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 			" to https format. Please update your project config.", module.Repo)
 	}
 
-	appToken, err := comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), owner, parentRepoForGitHubAppToken(repo))
+	tokenRepo := parentRepoForGitHubAppToken(repo)
+	appToken, err := comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), owner, tokenRepo, "")
 	if err != nil {
 		return errors.Wrap(err, "creating app token")
 	}
@@ -566,15 +590,20 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		modulePatch = p.FindModule(moduleName)
 	}
 
-	var moduleCmds []string
-	moduleCmds, err = c.buildModuleCloneCommand(conf, opts, revision, modulePatch)
-	if err != nil {
-		return err
-	}
-
 	attempt := 0
+	token := appToken
 	return c.retryFetch(ctx, logger, comm, conf, false, opts, func(opts cloneOpts) error {
 		attempt++
+		if attempt > 1 {
+			token = refreshCloneToken(ctx, comm, conf, logger, owner, tokenRepo, token)
+		}
+		opts.token = token
+
+		moduleCmds, err := c.buildModuleCloneCommand(conf, opts, revision, modulePatch)
+		if err != nil {
+			return err
+		}
+
 		ctx, span := getTracer().Start(ctx, "clone_module", trace.WithAttributes(
 			attribute.String(cloneModuleAttribute, module.Name),
 			attribute.String(cloneOwnerAttribute, opts.owner),

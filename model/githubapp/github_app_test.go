@@ -150,6 +150,39 @@ func (s *installationSuite) TestCreateCachedInstallationToken() {
 	s.Require().NoError(err)
 	s.Equal(restrictedToken, token, "should return cached token since it is still valid for at least %s", lifetime)
 }
+
+func (s *installationSuite) TestRecreateCachedInstallationToken() {
+	installation := GitHubAppInstallation{
+		Owner:          "evergreen-ci",
+		Repo:           "evergreen",
+		AppID:          1234,
+		InstallationID: 5678,
+	}
+	s.NoError(installation.Upsert(s.ctx))
+
+	const (
+		cachedToken = "cached_token"
+		lifetime    = time.Minute
+	)
+
+	id, err := createCacheID(installation.InstallationID, nil)
+	s.Require().NoError(err)
+	authFields := GithubAppAuth{AppID: installation.AppID}
+
+	ghInstallationTokenCache.Put(s.ctx, id, cachedToken, time.Now().Add(lifetime*2))
+
+	token, err := authFields.RecreateCachedInstallationToken(s.ctx, installation.Owner, installation.Repo, lifetime, nil, "a_token_someone_else_already_replaced")
+	s.Require().NoError(err)
+	s.Equal(cachedToken, token, "rejecting a token that is not the cached one should leave the cache alone")
+
+	// Rejecting the cached token evicts it, so a replacement has to be minted,
+	// which fails here because the app has no private key configured.
+	_, err = authFields.RecreateCachedInstallationToken(s.ctx, installation.Owner, installation.Repo, lifetime, nil, cachedToken)
+	s.Error(err)
+	_, found := ghInstallationTokenCache.Get(s.ctx, id, lifetime)
+	s.False(found, "the rejected token should no longer be cached")
+}
+
 func TestCreateGitHubAppAuth(t *testing.T) {
 	ctx := t.Context()
 

@@ -915,11 +915,14 @@ func (c *baseCommunicator) GetAdditionalPatches(ctx context.Context, patchId str
 	return patches, nil
 }
 
-func (c *baseCommunicator) CreateInstallationTokenForClone(ctx context.Context, td TaskData, owner, repo string) (string, error) {
+func (c *baseCommunicator) CreateInstallationTokenForClone(ctx context.Context, td TaskData, owner, repo, rejectedToken string) (string, error) {
 	info := requestInfo{
 		method:   http.MethodGet,
 		path:     fmt.Sprintf("task/%s/installation_token/%s/%s", td.ID, owner, repo),
 		taskData: &td,
+	}
+	if rejectedToken != "" {
+		info.headers = map[string]string{evergreen.RejectedGitHubTokenHeader: rejectedToken}
 	}
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
