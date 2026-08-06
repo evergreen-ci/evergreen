@@ -283,10 +283,6 @@ func toolchainMounts(ctx context.Context, taskID string) []agentcontainer.Mount 
 // container and can already write to the agent-owned directories, so there is
 // nothing to do.
 func secureContainerDirs(workDir, execUser string) error {
-	if runtime.GOOS == "windows" {
-		// Container isolation is Linux/Docker-only, and Windows ACLs cannot be expressed as POSIX UID/GID ownership.
-		return nil
-	}
 	if workDir == "" || execUser == "" {
 		return nil
 	}
@@ -294,6 +290,12 @@ func secureContainerDirs(workDir, execUser string) error {
 	usr, err := user.Lookup(execUser)
 	if err != nil {
 		return errors.Wrapf(err, "looking up exec user '%s'", execUser)
+	}
+	if runtime.GOOS == "windows" {
+		// Container isolation is Linux/Docker-only; Windows cannot express ownership as
+		// a POSIX numeric UID/GID, and ACL-based equivalents are out of scope. The
+		// lookup above still validates the exec user so isolation fails closed consistently.
+		return nil
 	}
 	uid, err := strconv.Atoi(usr.Uid)
 	if err != nil {
