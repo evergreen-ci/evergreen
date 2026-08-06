@@ -15,7 +15,6 @@ import (
 	"time"
 
 	dockercontainer "github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/evergreen-ci/evergreen"
 	agentcontainer "github.com/evergreen-ci/evergreen/agent/container"
@@ -87,23 +86,17 @@ func (a *Agent) tryReapOrphanContainers(ctx context.Context) { //nolint:unused
 		return
 	}
 
-	// Select by ownership label, not by name. Removal is destructive and
-	// irreversible, so a container must positively identify itself as owned
-	// by the agent before it is eligible.
-	ownerFilter := fmt.Sprintf("%s=%s", agentcontainer.OwnerLabel, agentcontainer.OwnerLabelValue)
-	containers, err := cli.ContainerList(reaperCtx, dockercontainer.ListOptions{
-		All:     true,
-		Filters: filters.NewArgs(filters.KeyValuePair{Key: "label", Value: ownerFilter}),
-	})
+	// Ownership is decided client-side by isAgentOwnedContainer, because
+	// Docker's name filter cannot express an anchored prefix and a label
+	// filter alone would strand containers created before labels existed.
+	containers, err := cli.ContainerList(reaperCtx, dockercontainer.ListOptions{All: true})
 	if err != nil {
 		grip.Warningf(ctx, "Orphan container reaper: could not list containers: %s", err)
 		return
 	}
 
 	for _, c := range containers {
-		// Re-check ownership on the returned document rather than trusting
-		// the server-side filter alone.
-		if !isAgentOwnedContainer(c.Labels) {
+		if !isAgentOwnedContainer(c.Labels, c.Names) {
 			continue
 		}
 		shortID := c.ID
@@ -122,11 +115,27 @@ func (a *Agent) tryReapOrphanContainers(ctx context.Context) { //nolint:unused
 	}
 }
 
-// isAgentOwnedContainer reports whether a container carries this agent's
-// ownership label. Removal is irreversible, so a container must positively
-// identify itself as agent-owned before the reaper will touch it.
-func isAgentOwnedContainer(labels map[string]string) bool {
-	return labels[agentcontainer.OwnerLabel] == agentcontainer.OwnerLabelValue
+// isAgentOwnedContainer reports whether the reaper may remove a container.
+//
+// An explicit owner label is authoritative in both directions: it claims
+// containers this agent created and protects containers owned by anything
+// else. Containers with no owner label at all are matched on an anchored name
+// prefix, so containers created before ownership labels existed are still
+// reaped rather than stranded on the host across an agent rollout.
+//
+// The prefix is checked here rather than in the Docker filter because Docker's
+// name filter is an unanchored substring match, which would also match a
+// container a human named something like "my-evergreen-task-debug".
+func isAgentOwnedContainer(labels map[string]string, names []string) bool {
+	if owner, ok := labels[agentcontainer.OwnerLabel]; ok {
+		return owner == agentcontainer.OwnerLabelValue
+	}
+	for _, name := range names {
+		if strings.HasPrefix(strings.TrimPrefix(name, "/"), agentcontainer.ContainerNamePrefix) {
+			return true
+		}
+	}
+	return false
 }
 
 // containerNames strips the leading '/' that the Docker API prepends to
@@ -174,12 +183,18 @@ func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConf
 	// transferring ownership rather than by widening the mode, so the
 	// directories never become world-writable on a host shared with other
 	// local users.
-	if err := secureContainerDirs(conf.WorkDir, conf.Distro.ExecUser); err != nil {
+	fellBack, err := secureContainerDirs(conf.WorkDir, conf.Distro.ExecUser)
+	if err != nil {
 		if ci.RequireIsolation {
 			span.SetStatus(codes.Error, err.Error())
 			return errors.Wrap(err, "preparing task directories for isolation container (fail-closed: require_isolation is set)")
 		}
 		grip.Warningf(ctx, "Could not prepare task directories for container isolation: %s", err)
+	}
+	if fellBack {
+		span.SetAttributes(attribute.Bool("container.workdir_permissive_fallback", true))
+		grip.Warningf(ctx, "Task directories for task '%s' are world-writable because ownership could not be transferred to exec user '%s'; the container can write to them, but so can any other local user on this host.",
+			conf.Task.Id, conf.Distro.ExecUser)
 	}
 
 	extraMounts := toolchainMounts(ctx, conf.Task.Id)
@@ -239,10 +254,17 @@ func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConf
 	return nil
 }
 
-// containerDirMode is the mode applied to task directories shared with the
-// isolation container. The container's exec user is granted write access
-// through ownership, so these directories are never world-writable.
-const containerDirMode = 0755
+const (
+	// containerDirMode is applied to task directories once they are owned by
+	// the container's exec user, so they are not world-writable.
+	containerDirMode = 0755
+
+	// containerDirPermissiveMode is the fallback applied when ownership cannot
+	// be reconciled with the exec user. It is world-writable, which is unsafe
+	// on a host shared with other local users, so it is only used to keep the
+	// task runnable and is always reported to the caller.
+	containerDirPermissiveMode = 0777
+)
 
 // containerToolchainDirs are the host toolchain directories bind-mounted
 // read-only into the container. Toolchains are installed at AMI provisioning
@@ -275,18 +297,49 @@ func toolchainMounts(ctx context.Context, taskID string) []agentcontainer.Mount 
 	return mounts
 }
 
-// secureContainerDirs transfers ownership of the task working directory and
-// its tmp subdirectory to the distro's exec user so containerized processes
-// can write to them through the same-path bind mount.
+// secureContainerDirs prepares the task working directory and its tmp
+// subdirectory for use by the container's exec user, which must be able to
+// write to them through the same-path bind mount.
+//
+// The preferred path transfers ownership to the exec user and applies a mode
+// that is not world-writable. When ownership cannot be reconciled — the user
+// does not resolve on the host, or the agent cannot chown — the directories
+// fall back to a permissive mode so the task still runs, and fellBack reports
+// the weaker posture so the caller can log it.
+//
+// Bind mounts are enforced by numeric uid, while `docker exec --user` resolves
+// the exec user against the image's own passwd database. A host uid that
+// disagrees with the image's uid for the same name is therefore not detectable
+// here and surfaces as a write failure inside the container.
 //
 // When the distro has no exec user, docker exec runs as root inside the
-// container and can already write to the agent-owned directories, so there is
-// nothing to do.
-func secureContainerDirs(workDir, execUser string) error {
+// container and can already write to the agent-owned directories.
+func secureContainerDirs(workDir, execUser string) (fellBack bool, err error) {
 	if workDir == "" || execUser == "" {
-		return nil
+		return false, nil
 	}
 
+	dirs := []string{workDir, filepath.Join(workDir, "tmp")}
+
+	ownershipErr := transferDirOwnership(dirs, execUser)
+	if ownershipErr == nil {
+		return false, nil
+	}
+
+	// Windows has no POSIX ownership to fall back from, so surface the error
+	// rather than implying a permissive mode resolved anything.
+	if runtime.GOOS == "windows" {
+		return false, ownershipErr
+	}
+
+	if fallbackErr := applyPermissiveDirMode(dirs); fallbackErr != nil {
+		return false, errors.Wrapf(fallbackErr, "falling back to permissive mode after ownership transfer failed (%s)", ownershipErr)
+	}
+	return true, nil
+}
+
+// transferDirOwnership hands dirs to the exec user and applies containerDirMode.
+func transferDirOwnership(dirs []string, execUser string) error {
 	usr, err := user.Lookup(execUser)
 	if err != nil {
 		return errors.Wrapf(err, "looking up exec user '%s'", execUser)
@@ -307,16 +360,43 @@ func secureContainerDirs(workDir, execUser string) error {
 	}
 
 	catcher := grip.NewBasicCatcher()
-	for _, dir := range []string{workDir, filepath.Join(workDir, "tmp")} {
+	for _, dir := range dirs {
 		catcher.Wrapf(chownContainerDir(dir, uid, gid), "securing '%s'", dir)
 	}
 	return catcher.Resolve()
 }
 
-// chownContainerDir transfers ownership of dir to uid/gid. It refuses to act
-// on a symlink so that a local user cannot redirect the ownership change at a
-// path they do not own.
+func applyPermissiveDirMode(dirs []string) error {
+	catcher := grip.NewBasicCatcher()
+	for _, dir := range dirs {
+		catcher.Wrapf(setContainerDirMode(dir, containerDirPermissiveMode), "setting fallback mode on '%s'", dir)
+	}
+	return catcher.Resolve()
+}
+
+// chownContainerDir transfers ownership of dir to uid/gid and tightens its mode.
 func chownContainerDir(dir string, uid, gid int) error {
+	if err := verifyRealDir(dir); err != nil {
+		return err
+	}
+	if err := os.Lchown(dir, uid, gid); err != nil {
+		return errors.Wrap(err, "changing ownership")
+	}
+	return errors.Wrap(os.Chmod(dir, containerDirMode), "setting permissions")
+}
+
+func setContainerDirMode(dir string, mode os.FileMode) error {
+	if err := verifyRealDir(dir); err != nil {
+		return err
+	}
+	return errors.Wrap(os.Chmod(dir, mode), "setting permissions")
+}
+
+// verifyRealDir refuses symlinks so a local user cannot redirect a permission
+// or ownership change at a path they do not own. This matters most on the
+// permissive fallback, where following a symlink would grant world-writable
+// access to the target.
+func verifyRealDir(dir string) error {
 	info, err := os.Lstat(dir)
 	if err != nil {
 		return errors.Wrap(err, "stating directory")
@@ -327,10 +407,7 @@ func chownContainerDir(dir string, uid, gid int) error {
 	if !info.IsDir() {
 		return errors.New("path is not a directory")
 	}
-	if err := os.Lchown(dir, uid, gid); err != nil {
-		return errors.Wrap(err, "changing ownership")
-	}
-	return errors.Wrap(os.Chmod(dir, containerDirMode), "setting permissions")
+	return nil
 }
 
 // destroyContainer tears down the isolation container and clears the agent's

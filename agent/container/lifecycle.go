@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"io"
 	"path/filepath"
 	"strings"
@@ -56,6 +55,11 @@ const (
 	// TaskIDLabel records the task a container was created for, so a leaked
 	// container can be attributed to its task.
 	TaskIDLabel = "evergreen.task_id"
+
+	// ContainerNamePrefix is the name prefix for agent-created isolation
+	// containers. The reaper matches it as an anchored prefix to identify
+	// containers created before ownership labels existed.
+	ContainerNamePrefix = "evergreen-task-"
 )
 
 // activeEnvFileBaseDir is the runtime base dir, defaulting to envFileBaseDir.
@@ -129,7 +133,7 @@ func (c Config) Validate() error {
 }
 
 func (c Config) containerName() string {
-	return fmt.Sprintf("evergreen-task-%s", c.TaskID)
+	return ContainerNamePrefix + c.TaskID
 }
 
 // TaskContainer represents a running isolation container for a single task.
