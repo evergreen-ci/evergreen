@@ -3,7 +3,7 @@
     pagination {
       activeVersionIds
     }
-    flattenedVersions {
+    versions {
       id
       waterfallBuilds {
         buildVariant

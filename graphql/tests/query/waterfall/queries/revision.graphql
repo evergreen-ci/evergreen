@@ -1,6 +1,6 @@
 {
   waterfall(options: { projectIdentifier: "spruce", revision: "d7b7a08" }) {
-    flattenedVersions {
+    versions {
       id
       order
       revision
