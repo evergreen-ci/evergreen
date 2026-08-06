@@ -2192,16 +2192,7 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 	// End-task requests can race with display-task resets, so constrain the update
 	// to the execution and parent generation that issued it.
 	query := ByIdAndExecution(t.Id, t.Execution)
-	if t.DisplayTaskId == nil {
-		// A nil display task ID is ambiguous for legacy tasks, so allow documents
-		// with no parent generation while still guarding those that have one.
-		query["$or"] = []bson.M{
-			{LatestParentExecutionKey: t.LatestParentExecution},
-			{LatestParentExecutionKey: bson.M{"$exists": false}},
-		}
-	} else if utility.FromStringPtr(t.DisplayTaskId) != "" {
-		query[LatestParentExecutionKey] = t.LatestParentExecution
-	}
+	query[LatestParentExecutionKey] = t.LatestParentExecution
 	return UpdateOne(ctx, query, bson.M{"$set": setFields})
 }
 
