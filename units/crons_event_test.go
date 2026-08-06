@@ -248,7 +248,7 @@ func (s *cronsEventSuite) TestEndToEnd() {
 			Subscriber: event.Subscriber{
 				Type: event.EvergreenWebhookSubscriberType,
 				Target: &event.WebhookSubscriber{
-					URL:    fmt.Sprintf("http://%s", ln.Addr()),
+					URL:    "https://example.com",
 					Secret: []byte("darkmagic"),
 				},
 			},
@@ -270,7 +270,7 @@ func (s *cronsEventSuite) TestEndToEnd() {
 			Subscriber: event.Subscriber{
 				Type: event.EvergreenWebhookSubscriberType,
 				Target: &event.WebhookSubscriber{
-					URL:    fmt.Sprintf("http://%s", ln.Addr()),
+					URL:    "https://example.com",
 					Secret: []byte("darkermagic"),
 				},
 			},

@@ -797,3 +797,58 @@ func saveTestResults(t *testing.T, ctx context.Context, testBucket pail.Bucket, 
 	require.NoError(t, svc.AppendTestResultMetadata(resultTestutil.MakeAppendTestResultMetadataReq(ctx, savedResults, tr.ID)))
 	return savedResults
 }
+
+func TestAppendQuarantinedTests(t *testing.T) {
+	ctx := t.Context()
+	env := testutil.NewEnvironment(ctx, t)
+
+	svc := NewTestResultService(env)
+	require.NoError(t, ClearTestResults(ctx, env))
+	require.NoError(t, db.Clear(testresult.Collection))
+	defer func() {
+		assert.NoError(t, ClearTestResults(ctx, env))
+		assert.NoError(t, db.Clear(testresult.Collection))
+	}()
+
+	tsk := Task{Id: "quarantined_task", Execution: 0, Status: evergreen.TaskStarted, TaskOutputInfo: &output}
+	record := *getTestResults()
+	record.Info.TaskID = tsk.Id
+	record.Info.Execution = tsk.Execution
+	record.ID = record.Info.ID()
+	record.CreatedAt = time.Time{}
+
+	getRecord := func(t *testing.T) testresult.TaskTestResults {
+		allTaskResults, err := svc.Get(ctx, []Task{tsk}, GetTaskTestResultsOptions{IncludeQuarantinedTests: true})
+		require.NoError(t, err)
+		require.Len(t, allTaskResults, 1)
+		return allTaskResults[0]
+	}
+
+	t.Run("AppendCreatesRecordWithSnapshot", func(t *testing.T) {
+		quarantinedTests := []testresult.QuarantinedTest{
+			{TestName: "q0"},
+			{TestName: "q1", DisplayTestName: "q1_display"},
+		}
+		require.NoError(t, svc.AppendQuarantinedTests(ctx, record, quarantinedTests))
+
+		taskResults := getRecord(t)
+		assert.Equal(t, record.Info, taskResults.Info)
+		assert.Equal(t, 2, taskResults.QuarantinedTestsCount)
+		assert.Equal(t, quarantinedTests, taskResults.QuarantinedTests)
+		assert.Zero(t, taskResults.Stats.TotalCount)
+		assert.Empty(t, taskResults.Results)
+	})
+
+	t.Run("AppendingResultMetadataPreservesSnapshot", func(t *testing.T) {
+		require.NoError(t, svc.AppendTestResultMetadata(ctx, []string{"failed_test"}, 1, 2, record))
+		allTaskResults, err := svc.Get(ctx, []Task{tsk}, GetTaskTestResultsOptions{
+			Fields: []string{testresult.StatsKey, testresult.QuarantinedTestsCountKey, testresult.QuarantinedTestsKey},
+		})
+		require.NoError(t, err)
+		require.Len(t, allTaskResults, 1)
+		assert.Equal(t, 2, allTaskResults[0].QuarantinedTestsCount)
+		assert.Len(t, allTaskResults[0].QuarantinedTests, 2)
+		assert.Equal(t, 2, allTaskResults[0].Stats.TotalCount)
+		assert.Equal(t, 1, allTaskResults[0].Stats.FailedCount)
+	})
+}

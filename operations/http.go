@@ -50,6 +50,11 @@ func NewAPIError(resp *http.Response) APIError {
 	defer resp.Body.Close()
 	bodyBytes, _ := io.ReadAll(resp.Body) // ignore error, request has already failed anyway
 	bodyStr := string(bodyBytes)
+	// If the response is a 429 (rate limit exceeded), replace the response body
+	// with the rate limit metadata from the response headers.
+	if resp.StatusCode == http.StatusTooManyRequests {
+		bodyStr = client.RateLimitMessage(resp.Header)
+	}
 	return APIError{bodyStr, resp.Status, resp.StatusCode}
 }
 
