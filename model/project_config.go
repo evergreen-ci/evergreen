@@ -20,6 +20,10 @@ type ProjectConfig struct {
 	// ProjectConfigFields are the properties on the project config that do not duplicate parser project's fields to allow strict unmarshalling of a full config file.
 	// Since a config file gets split into ParserProject and ProjectConfig, strict unmarshalling does not work when duplicate fields exist (e.g. Id, CreateTime).
 	ProjectConfigFields `yaml:",inline" bson:",inline"`
+	// RedefinedSettings lists version-controlled settings structs that were
+	// defined in more than one YAML file, cached for validation. It is not
+	// persisted.
+	RedefinedSettings []string `yaml:"-" bson:"-"`
 }
 
 type ProjectConfigFields struct {

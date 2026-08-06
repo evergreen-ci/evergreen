@@ -2991,14 +2991,19 @@ func TestValidateProjectAliases(t *testing.T) {
 	})
 }
 
-func TestCheckRedefinedConfigSettings(t *testing.T) {
-	t.Run("RedefinedSettingsReturnWarnings", func(t *testing.T) {
-		validationErrs := checkRedefinedConfigSettings(&model.Project{RedefinedConfigSettings: []string{"workstation_config", "build_baron_settings"}})
+func TestValidateProjectConfigRedefinedSettings(t *testing.T) {
+	t.Run("NoRedefinedSettingsReturnsNoErrors", func(t *testing.T) {
+		assert.Empty(t, validateProjectConfigRedefinedSettings(t.Context(), &model.ProjectConfig{}))
+	})
+
+	t.Run("RedefinedSettingsReturnErrors", func(t *testing.T) {
+		pc := &model.ProjectConfig{RedefinedSettings: []string{"workstation_config", "build_baron_settings"}}
+		validationErrs := validateProjectConfigRedefinedSettings(t.Context(), pc)
 		require.Len(t, validationErrs, 2)
-		assert.Equal(t, Warning, validationErrs[0].Level)
-		assert.Contains(t, validationErrs[0].Message, "workstation_config is defined in more than one YAML file")
-		assert.Equal(t, Warning, validationErrs[1].Level)
-		assert.Contains(t, validationErrs[1].Message, "build_baron_settings is defined in more than one YAML file")
+		assert.Equal(t, Error, validationErrs[0].Level)
+		assert.Contains(t, validationErrs[0].Message, "'workstation_config' can only be defined in one YAML file")
+		assert.Equal(t, Error, validationErrs[1].Level)
+		assert.Contains(t, validationErrs[1].Message, "'build_baron_settings' can only be defined in one YAML file")
 	})
 }
 

@@ -1700,6 +1700,7 @@ func (pp *ParserProject) MergedProjectConfig(identifier string) *ProjectConfig {
 	pc := &ProjectConfig{
 		CreateTime:          time.Now(),
 		ProjectConfigFields: *pp.projectConfigFields,
+		RedefinedSettings:   pp.redefinedProjectConfigSettings,
 	}
 	if identifier != "" {
 		pc.Project = identifier
@@ -1822,7 +1823,6 @@ func TranslateProject(ctx context.Context, pp *ParserProject) (*Project, error) 
 		ExecTimeoutSecs:                utility.FromIntPtr(pp.ExecTimeoutSecs),
 		TimeoutSecs:                    utility.FromIntPtr(pp.TimeoutSecs),
 		NumIncludes:                    len(pp.Include),
-		RedefinedConfigSettings:        pp.redefinedProjectConfigSettings,
 	}
 	catcher := grip.NewBasicCatcher()
 	tse := NewParserTaskSelectorEvaluator(pp.Tasks)

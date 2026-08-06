@@ -700,8 +700,8 @@ Once toggled, the settings specified [below](#available-fields) may be defined i
 
 Version-controlled configuration may be defined in the main YAML file or in [included files](Project-Configuration-Files#include).
 Alias lists defined across multiple files are combined in include order, with the main config file's entries first. Settings
-structs (`task_annotation_settings`, `build_baron_settings`, `workstation_config`) should only be defined in one file; if defined
-in multiple files, the earliest definition takes precedence.
+structs (`task_annotation_settings`, `build_baron_settings`, `workstation_config`) may only be defined in one file; defining
+them in multiple files is a validation error.
 
 ### Hierarchical Inheritance
 

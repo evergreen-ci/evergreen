@@ -3098,7 +3098,7 @@ patch_aliases:
 	assert.Equal(t, "my-project", pc.Project)
 	require.NotNil(t, pc.WorkstationConfig)
 	assert.True(t, utility.FromBoolPtr(pc.WorkstationConfig.GitClone), "the main file's definition should take precedence")
-	assert.Equal(t, []string{"workstation_config"}, project.RedefinedConfigSettings)
+	assert.Equal(t, []string{"workstation_config"}, pc.RedefinedSettings)
 }
 
 func TestUpdateReadFileFrom(t *testing.T) {

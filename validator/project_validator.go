@@ -146,6 +146,7 @@ var projectErrorValidators = []projectValidator{
 var projectConfigErrorValidators = []projectConfigValidator{
 	validateProjectConfigAliases,
 	validateProjectConfigPlugins,
+	validateProjectConfigRedefinedSettings,
 }
 
 // Functions used to validate the project configuration file for warnings.
@@ -160,7 +161,6 @@ var projectWarningValidators = []projectValidator{
 	checkRequestersForTaskDependencies,
 	checkBuildVariants,
 	checkTaskUsage,
-	checkRedefinedConfigSettings,
 }
 
 // Functions used to validate the project configuration file at any level. This
@@ -470,14 +470,14 @@ func validateProjectConfigAliases(ctx context.Context, pc *model.ProjectConfig) 
 	return validationErrs
 }
 
-// checkRedefinedConfigSettings warns about version-controlled settings structs
-// that are defined in more than one YAML file across included files.
-func checkRedefinedConfigSettings(project *model.Project) ValidationErrors {
+// validateProjectConfigRedefinedSettings errors on version-controlled settings
+// structs that are defined in more than one YAML file across included files.
+func validateProjectConfigRedefinedSettings(ctx context.Context, pc *model.ProjectConfig) ValidationErrors {
 	validationErrs := ValidationErrors{}
-	for _, setting := range project.RedefinedConfigSettings {
+	for _, setting := range pc.RedefinedSettings {
 		validationErrs = append(validationErrs, ValidationError{
-			Message: fmt.Sprintf("%s is defined in more than one YAML file; the earliest definition takes precedence, but this will become an error in the future", setting),
-			Level:   Warning,
+			Message: fmt.Sprintf("'%s' can only be defined in one YAML file", setting),
+			Level:   Error,
 		})
 	}
 	return validationErrs

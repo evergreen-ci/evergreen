@@ -347,8 +347,8 @@ file.
 [Version-controlled project settings configurations](Project-and-Distro-Settings#version-control) may be defined
 in included files as well as the main config file. Alias lists (e.g. `patch_aliases`, `github_pr_aliases`) are
 combined across all files in include order, with the main config file's entries first. Settings structs
-(`task_annotation_settings`, `build_baron_settings`, `workstation_config`) should only be defined in one file;
-if defined in multiple files, the earliest definition takes precedence.
+(`task_annotation_settings`, `build_baron_settings`, `workstation_config`) may only be defined in one file;
+defining them in multiple files is a validation error.
 
 ```yaml
 include:
