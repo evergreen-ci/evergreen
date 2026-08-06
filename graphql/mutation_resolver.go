@@ -449,6 +449,9 @@ func (r *mutationResolver) AttachProjectToNewRepo(ctx context.Context, project M
 	pRef.Repo = project.NewRepo
 
 	if err = pRef.AttachToNewRepo(ctx, usr); err != nil {
+		if werrors.Is(err, model.ErrRepoRefUnauthorized) {
+			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' is not an admin of repo '%s/%s'", usr.Username(), project.NewOwner, project.NewRepo))
+		}
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating owner/repo for project '%s': %s", project.ProjectID, err.Error()))
 	}
 

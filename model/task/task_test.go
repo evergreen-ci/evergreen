@@ -5883,3 +5883,40 @@ func TestGetS3ArtifactUsageFromDB(t *testing.T) {
 		assert.Equal(t, 1, metrics.Count, "deduped FileKey produces one logical artifact")
 	})
 }
+
+func TestIncNumQuarantinedTestsSkipped(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	})
+
+	tsk := &Task{Id: "quarantined_task", Execution: 1}
+	require.NoError(t, tsk.Insert(ctx))
+
+	findTask := func(t *testing.T) *Task {
+		dbTask, err := FindOneId(ctx, tsk.Id)
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		return dbTask
+	}
+
+	t.Run("MatchingExecutionIncrements", func(t *testing.T) {
+		require.NoError(t, tsk.IncNumQuarantinedTestsSkipped(ctx, 3))
+		assert.Equal(t, 3, tsk.NumQuarantinedTestsSkipped)
+		assert.Equal(t, 3, findTask(t).NumQuarantinedTestsSkipped)
+	})
+
+	t.Run("RepeatedIncrementsAccumulate", func(t *testing.T) {
+		require.NoError(t, tsk.IncNumQuarantinedTestsSkipped(ctx, 2))
+		assert.Equal(t, 5, tsk.NumQuarantinedTestsSkipped)
+		assert.Equal(t, 5, findTask(t).NumQuarantinedTestsSkipped)
+	})
+
+	t.Run("StaleExecutionIsDropped", func(t *testing.T) {
+		staleTask := &Task{Id: tsk.Id, Execution: 0}
+		require.NoError(t, staleTask.IncNumQuarantinedTestsSkipped(ctx, 7))
+		assert.Zero(t, staleTask.NumQuarantinedTestsSkipped)
+		assert.Equal(t, 5, findTask(t).NumQuarantinedTestsSkipped, "an increment for a previous execution should not apply to the current one")
+	})
+}

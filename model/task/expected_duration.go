@@ -6,11 +6,22 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/util"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+var expectedDurationCache = expirable.NewLRU[estimateCacheKey, util.DurationStats](estimateCacheMaxSize, nil, estimateCacheTTL)
+
+// estimateCacheKey identifies the family of tasks that share a historical estimate.
+type estimateCacheKey struct {
+	project         string
+	buildVariant    string
+	taskDisplayName string
+}
 
 var TaskHistoricalDataIndex = bson.D{
 	{Key: ProjectKey, Value: 1},

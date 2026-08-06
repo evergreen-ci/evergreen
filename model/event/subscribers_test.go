@@ -138,6 +138,48 @@ func TestValidate(t *testing.T) {
 			},
 			errorExpected: true,
 		},
+		"WebhookUnsupportedSchemeURL": {
+			s: Subscriber{
+				Type:   EvergreenWebhookSubscriberType,
+				Target: WebhookSubscriber{URL: "ftp://evergreen.mongodb.com", Secret: []byte("shh")},
+			},
+			errorExpected: true,
+		},
+		"WebhookURLWithUserInfo": {
+			s: Subscriber{
+				Type:   EvergreenWebhookSubscriberType,
+				Target: WebhookSubscriber{URL: "https://user:password@evergreen.mongodb.com", Secret: []byte("shh")},
+			},
+			errorExpected: true,
+		},
+		"WebhookURLWithLoopbackIP": {
+			s: Subscriber{
+				Type:   EvergreenWebhookSubscriberType,
+				Target: WebhookSubscriber{URL: "https://127.0.0.1", Secret: []byte("shh")},
+			},
+			errorExpected: true,
+		},
+		"WebhookURLWithLinkLocalIP": {
+			s: Subscriber{
+				Type:   EvergreenWebhookSubscriberType,
+				Target: WebhookSubscriber{URL: "https://169.254.169.254", Secret: []byte("shh")},
+			},
+			errorExpected: true,
+		},
+		"WebhookURLWithPrivateIP": {
+			s: Subscriber{
+				Type:   EvergreenWebhookSubscriberType,
+				Target: WebhookSubscriber{URL: "https://10.0.0.1", Secret: []byte("shh")},
+			},
+			errorExpected: true,
+		},
+		"WebhookURLWithIPv6Loopback": {
+			s: Subscriber{
+				Type:   EvergreenWebhookSubscriberType,
+				Target: WebhookSubscriber{URL: "https://[::1]", Secret: []byte("shh")},
+			},
+			errorExpected: true,
+		},
 		"WebhookTooManyRetries": {
 			s: Subscriber{
 				Type: EvergreenWebhookSubscriberType,
