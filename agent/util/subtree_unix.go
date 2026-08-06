@@ -81,6 +81,53 @@ func killUserProcesses(ctx context.Context, execUser string) error {
 	return nil
 }
 
+const (
+	// dockerExecDaemonFailureExitCode is returned by `docker exec` when the exec
+	// invocation fails at the daemon level, which covers a stopped or paused
+	// container, an invalid container reference, and transient daemon errors.
+	dockerExecDaemonFailureExitCode = 125
+)
+
+// KillSpawnedProcsInContainer is the container-mode equivalent of
+// killUserProcesses: it kills the processes owned by execUser inside a running
+// isolation container, leaving the container's PID 1 intact. It returns an error
+// matching ErrContainerExecUnavailable if the container could not be reached.
+func KillSpawnedProcsInContainer(ctx context.Context, containerID, execUser string) error {
+	if containerID == "" {
+		return errors.New("containerID cannot be empty")
+	}
+	if execUser == "" {
+		return errors.New("execUser cannot be empty")
+	}
+	// Unlike killUserProcesses, this needs no sudo. The agent already reaches the
+	// Docker socket unprivileged, and docker exec runs as the image's default
+	// user (normally root), so the in-container pkill can signal execUser's
+	// processes directly. Sudo is only required host-side, where the agent user
+	// cannot signal another user's processes.
+	cmd := jasper.NewCommand().Add([]string{"docker", "exec", containerID, "pkill", "-SIGKILL", "-U", execUser})
+	if err := cmd.Run(ctx); err != nil {
+		// Wait's error is discarded because Run already wraps it; only the exit
+		// code is new information.
+		exitCode, _ := cmd.Wait(ctx)
+		// A cancelled or timed-out context can terminate docker exec with an exit
+		// code that collides with the benign cases below, which would report a
+		// cleanup that never happened as a success, so the code is only
+		// trustworthy while the context is live.
+		if ctx.Err() != nil {
+			return errors.Wrapf(err, "killing processes for user '%s' in container '%s'", execUser, containerID)
+		}
+		switch exitCode {
+		case pkillNoMatchingProcessesExitCode:
+			// pkill found no matching processes, so there is nothing to kill.
+		case dockerExecDaemonFailureExitCode:
+			return errors.Wrapf(ErrContainerExecUnavailable, "killing processes for user '%s' in container '%s': %s", execUser, containerID, err)
+		default:
+			return errors.Wrapf(err, "killing processes for user '%s' in container '%s'", execUser, containerID)
+		}
+	}
+	return nil
+}
+
 func getPIDsToKill(ctx context.Context, key, workingDir string, logger grip.Journaler) ([]int, error) {
 	var pidsToKill []int
 

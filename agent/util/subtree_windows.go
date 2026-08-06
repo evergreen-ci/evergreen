@@ -369,6 +369,12 @@ func (we *WindowsError) Error() string {
 	return fmt.Sprintf("gowin32: %s failed: %v", we.functionName, we.innerError)
 }
 
+// KillSpawnedProcsInContainer is a no-op on Windows; container isolation is
+// Linux-only.
+func KillSpawnedProcsInContainer(_ context.Context, _, _ string) error {
+	return nil
+}
+
 // GetNice is a no-op in Windows and returns the default nice.
 func GetNice(int) (int, error) {
 	return DefaultNice, nil

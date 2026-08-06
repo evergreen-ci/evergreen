@@ -3046,6 +3046,8 @@ func getBatchedGenerateTasksEstimations(ctx context.Context, project, buildVaria
 	if len(displayNames) == 0 {
 		return nil, nil
 	}
+	now := time.Now()
+	lookBackStart := now.Add(-lookBackTime)
 	match := bson.M{
 		ProjectKey:      project,
 		BuildVariantKey: buildVariant,
@@ -3055,10 +3057,11 @@ func getBatchedGenerateTasksEstimations(ctx context.Context, project, buildVaria
 		GeneratedTasksKey: true,
 		StatusKey:         evergreen.TaskSucceeded,
 		StartTimeKey: bson.M{
-			"$gt": time.Now().Add(-1 * lookBackTime),
+			"$gt": lookBackStart,
 		},
 		FinishTimeKey: bson.M{
-			"$lte": time.Now(),
+			"$gt":  lookBackStart,
+			"$lte": now,
 		},
 	}
 

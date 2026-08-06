@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -624,5 +625,156 @@ func TestDecorateQuarantineStatus(t *testing.T) {
 		}
 		require.NoError(t, DecorateQuarantineStatus(t.Context(), display, results))
 		assert.True(t, results[0].IsManuallyQuarantined)
+	})
+}
+
+func TestRecordQuarantinedTestsSkipped(t *testing.T) {
+	const (
+		projectID = "my_project"
+		bvName    = "ubuntu"
+		taskName  = "my_task"
+		taskID    = "my_task_id"
+	)
+	ctx := t.Context()
+	env := testutil.NewEnvironment(ctx, t)
+
+	taskOutput := task.TaskOutput{
+		TestResults: task.TestResultOutput{Version: task.TestResultServiceEvergreen},
+	}
+	baseReq := model.SelectTestsRequest{
+		Project:      projectID,
+		Requester:    evergreen.PatchVersionRequester,
+		BuildVariant: bvName,
+		TaskID:       taskID,
+		TaskName:     taskName,
+	}
+
+	setupTask := func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(task.Collection))
+		require.NoError(t, task.ClearTestResults(ctx, env))
+		t.Cleanup(func() {
+			assert.NoError(t, db.ClearCollections(task.Collection))
+			assert.NoError(t, task.ClearTestResults(context.Background(), env))
+		})
+		tsk := &task.Task{
+			Id:             taskID,
+			Execution:      0,
+			Project:        projectID,
+			BuildVariant:   bvName,
+			DisplayName:    taskName,
+			Version:        "version_id",
+			Requester:      evergreen.PatchVersionRequester,
+			Status:         evergreen.TaskStarted,
+			TaskOutputInfo: &taskOutput,
+		}
+		require.NoError(t, tsk.Insert(ctx))
+	}
+
+	newTSSServer := func(t *testing.T, testStates map[string]map[string]any, variantState map[string]map[string]any) *int {
+		hits := 0
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			hits++
+			w.Header().Set("Content-Type", "application/json")
+			var body any = testStates
+			if strings.Contains(r.URL.Path, "get_variant_state") {
+				body = variantState
+			}
+			require.NoError(t, json.NewEncoder(w).Encode(body))
+		}))
+		t.Cleanup(srv.Close)
+		setTSSURLForTest(t, srv.URL)
+		return &hits
+	}
+
+	findRecord := func(t *testing.T) testresult.DbTaskTestResults {
+		var record testresult.DbTaskTestResults
+		require.NoError(t, env.CedarDB().Collection(testresult.Collection).FindOne(ctx, task.ByTaskIDAndExecution(taskID, 0)).Decode(&record))
+		return record
+	}
+	countRecords := func(t *testing.T) int64 {
+		count, err := env.CedarDB().Collection(testresult.Collection).CountDocuments(ctx, task.ByTaskIDAndExecution(taskID, 0))
+		require.NoError(t, err)
+		return count
+	}
+	findTask := func(t *testing.T) *task.Task {
+		dbTask, err := task.FindOneId(ctx, taskID)
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		return dbTask
+	}
+
+	t.Run("NamedTestsPathRecordsQuarantineSkippedTests", func(t *testing.T) {
+		setupTask(t)
+		newTSSServer(t, map[string]map[string]any{
+			"test1": {"state": "manually_quarantined"},
+			"test2": {"state": "stable"},
+		}, nil)
+
+		req := baseReq
+		req.Tests = []string{"test0", "test1", "test2"}
+		require.NoError(t, RecordQuarantinedTestsSkipped(ctx, env, req, []string{"test0"}))
+
+		record := findRecord(t)
+		assert.Equal(t, record.Info.ID(), record.ID)
+		assert.Equal(t, projectID, record.Info.Project)
+		assert.Equal(t, taskName, record.Info.TaskName)
+		assert.Equal(t, 1, record.QuarantinedTestsCount)
+		assert.Equal(t, []testresult.QuarantinedTest{{TestName: "test1"}}, record.QuarantinedTests)
+		assert.Equal(t, 1, findTask(t).NumQuarantinedTestsSkipped)
+	})
+
+	t.Run("AllTestsSelectedSkipsStatusCheckAndRecordsNothing", func(t *testing.T) {
+		setupTask(t)
+		hits := newTSSServer(t, nil, nil)
+
+		req := baseReq
+		req.Tests = []string{"test0", "test1"}
+		require.NoError(t, RecordQuarantinedTestsSkipped(ctx, env, req, []string{"test0", "test1"}))
+
+		assert.Zero(t, *hits, "no status call should be made when no tests were skipped")
+		assert.Zero(t, countRecords(t))
+		assert.Zero(t, findTask(t).NumQuarantinedTestsSkipped)
+	})
+
+	t.Run("KnownTestsPathUsesVariantState", func(t *testing.T) {
+		setupTask(t)
+		newTSSServer(t, nil, map[string]map[string]any{
+			taskName: {
+				"task_name": taskName,
+				"test_stats": map[string]any{
+					"test0": map[string]any{"state": "stable"},
+					"test1": map[string]any{"state": "manually_quarantined"},
+					"test2": map[string]any{"state": "manually_quarantined"},
+					"test3": map[string]any{"state": "manually_quarantined"},
+				},
+			},
+		})
+
+		require.NoError(t, RecordQuarantinedTestsSkipped(ctx, env, baseReq, []string{"test0", "test3"}))
+
+		record := findRecord(t)
+		assert.Equal(t, 2, record.QuarantinedTestsCount)
+		assert.Equal(t, []testresult.QuarantinedTest{{TestName: "test1"}, {TestName: "test2"}}, record.QuarantinedTests, "quarantined tests that were still selected should not be recorded")
+		assert.Equal(t, 2, findTask(t).NumQuarantinedTestsSkipped)
+	})
+
+	t.Run("FullyQuarantinedTaskRecordsAndReturnsSnapshot", func(t *testing.T) {
+		setupTask(t)
+		newTSSServer(t, map[string]map[string]any{
+			"test0": {"state": "manually_quarantined"},
+			"test1": {"state": "manually_quarantined"},
+		}, nil)
+
+		req := baseReq
+		req.Tests = []string{"test0", "test1"}
+		require.NoError(t, RecordQuarantinedTestsSkipped(ctx, env, req, nil))
+
+		dbTask := findTask(t)
+		assert.Equal(t, 2, dbTask.NumQuarantinedTestsSkipped)
+		samples, err := task.GetQuarantinedTestSamples(ctx, env, []task.Task{*dbTask}, 10)
+		require.NoError(t, err)
+		require.Len(t, samples, 1)
+		assert.Equal(t, 2, samples[0].QuarantinedTestsSkippedCount)
+		assert.Len(t, samples[0].QuarantinedTests, 2)
 	})
 }
