@@ -163,6 +163,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.RateLimit.GraphQLServiceBurst, settings.RateLimit.GraphQLServiceBurst)
 	s.EqualValues(testSettings.RateLimit.GraphQLComplexityLimit, settings.RateLimit.GraphQLComplexityLimit)
 	s.EqualValues(testSettings.RateLimit.ElevatedUserIDs, settings.RateLimit.ElevatedUserIDs)
+	s.EqualValues(testSettings.RateLimit.ExemptUserIDs, settings.RateLimit.ExemptUserIDs)
 	s.EqualValues(testSettings.AuthConfig.Okta.ClientID, settings.AuthConfig.Okta.ClientID)
 	s.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, settings.AuthConfig.Naive.Users[0].Username)
 	s.EqualValues(testSettings.AuthConfig.Github.ClientId, settings.AuthConfig.Github.ClientId)

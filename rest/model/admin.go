@@ -561,6 +561,7 @@ type APIRateLimitConfig struct {
 	GraphQLServiceBurst    int      `json:"graphql_service_burst"`
 	GraphQLComplexityLimit int      `json:"graphql_complexity_limit"`
 	ElevatedUserIDs        []string `json:"elevated_user_ids"`
+	ExemptUserIDs          []string `json:"exempt_user_ids"`
 }
 
 func (a *APIRateLimitConfig) BuildFromService(h any) error {
@@ -576,6 +577,7 @@ func (a *APIRateLimitConfig) BuildFromService(h any) error {
 		a.GraphQLServiceBurst = v.GraphQLServiceBurst
 		a.GraphQLComplexityLimit = v.GraphQLComplexityLimit
 		a.ElevatedUserIDs = v.ElevatedUserIDs
+		a.ExemptUserIDs = v.ExemptUserIDs
 	default:
 		return errors.Errorf("programmatic error: expected rate limit config but got type %T", h)
 	}
@@ -594,6 +596,7 @@ func (a *APIRateLimitConfig) ToService() (any, error) {
 		GraphQLServiceBurst:    a.GraphQLServiceBurst,
 		GraphQLComplexityLimit: a.GraphQLComplexityLimit,
 		ElevatedUserIDs:        a.ElevatedUserIDs,
+		ExemptUserIDs:          a.ExemptUserIDs,
 	}, nil
 }
 
