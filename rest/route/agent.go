@@ -382,6 +382,12 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 			Message:    fmt.Sprintf("project ref '%s' not found", t.Project),
 		})
 	}
+	if isUserRequest && !pRef.IsDebugSpawnHostsEnabled() {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusForbidden,
+			Message:    fmt.Sprintf("debug spawn hosts are disabled for project '%s'", pRef.Id),
+		})
+	}
 	knownHosts := h.settings.Expansions[evergreen.GithubKnownHosts]
 	e, err := model.PopulateExpansions(ctx, t, foundHost, knownHosts)
 	if err != nil {
