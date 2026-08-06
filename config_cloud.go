@@ -57,8 +57,6 @@ type Subnet struct {
 
 // AWSConfig stores auth info for Amazon Web Services.
 type AWSConfig struct {
-	// EC2Keys stored as a list to allow for possible multiple accounts in the future.
-	EC2Keys []EC2Key `bson:"ec2_keys" json:"ec2_keys" yaml:"ec2_keys"`
 	Subnets []Subnet `bson:"subnets" json:"subnets" yaml:"subnets"`
 
 	// ParserProject is configuration for storing and accessing parser projects
@@ -84,6 +82,10 @@ type AWSConfig struct {
 	// ElasticIPUsageRate is the probability (out of 1) of a host that has
 	// elastic IPs enabled being assigned an elastic IP address.
 	ElasticIPUsageRate float64 `bson:"elastic_ip_usage_rate" json:"elastic_ip_usage_rate" yaml:"elastic_ip_usage_rate"`
+
+	// AllowedSNSTopicARNs are the ARNs of the AWS SNS topics that Evergreen
+	// accepts incoming SNS notifications from.
+	AllowedSNSTopicARNs []string `bson:"allowed_sns_topic_arns" json:"allowed_sns_topic_arns" yaml:"allowed_sns_topic_arns"`
 }
 
 // AccountRoleMapping is a mapping of an AWS account to the role that needs to

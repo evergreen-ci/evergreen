@@ -182,7 +182,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/graphql/query").
 		Wrap(allowsCORS, needsLoginNoRedirect, rateLimit).
 		Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			handlers.CompressHandler(http.HandlerFunc(graphql.Handler(uis.Settings.Api.URL, true))).ServeHTTP(w, r)
+			handlers.CompressHandler(http.HandlerFunc(graphql.Handler(uis.Settings.Api.URL, true, uis.env))).ServeHTTP(w, r)
 		})).
 		Post().Get()
 
@@ -190,7 +190,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/mcp/graphql/query").
 		Wrap(allowsCORS, requireSage, wrapUserForMCP, rateLimit).
 		Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			handlers.CompressHandler(http.HandlerFunc(graphql.Handler(uis.Settings.Api.URL, false))).ServeHTTP(w, r)
+			handlers.CompressHandler(http.HandlerFunc(graphql.Handler(uis.Settings.Api.URL, false, uis.env))).ServeHTTP(w, r)
 		})).
 		Post().Get()
 

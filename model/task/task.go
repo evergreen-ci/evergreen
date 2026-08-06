@@ -70,6 +70,18 @@ const (
 	// dependencyResolutionTimeout is the maximum time allowed for recursive
 	// dependency resolution.
 	dependencyResolutionTimeout = 10 * time.Minute
+
+	// estimateCacheTTL bounds how stale a process-local estimate may be. It is far shorter than predictionTTL
+	// because a task document that inherits a cached estimate stamps it as freshly collected, so the two compound.
+	estimateCacheTTL = time.Hour
+
+	// noHistoryCacheTTL bounds how long a generator is remembered as having no history. Its first successful run
+	// flips the estimate from nothing to full size, so this must not outlive a build's turnaround by much.
+	noHistoryCacheTTL = 5 * time.Minute
+
+	// estimateCacheMaxSize caps each cache at roughly the distinct
+	// (project, build variant, display name) triples seen within estimateCacheTTL.
+	estimateCacheMaxSize = 50000
 )
 
 // maxDependencyDepth is the maximum recursion depth for dependency traversal.
@@ -1628,6 +1640,25 @@ func (t *Task) SetResultsInfo(ctx context.Context, failedResults bool) error {
 	return errors.WithStack(UpdateOne(ctx, ById(t.Id), bson.M{"$set": set}))
 }
 
+// IncNumQuarantinedTestsSkipped increments the number of tests skipped because
+// they were quarantined in TSS for this task execution.
+func (t *Task) IncNumQuarantinedTestsSkipped(ctx context.Context, num int) error {
+	if num <= 0 {
+		return nil
+	}
+	err := UpdateOne(ctx, ByIdAndExecution(t.Id, t.Execution), bson.M{
+		"$inc": bson.M{NumQuarantinedTestsSkippedKey: num},
+	})
+	if adb.ResultsNotFound(err) {
+		return nil
+	}
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	t.NumQuarantinedTestsSkipped += num
+	return nil
+}
+
 // HasResults returns whether the task has test results or not.
 func (t *Task) HasResults(ctx context.Context) bool {
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
@@ -1732,28 +1763,6 @@ func UpdateSchedulingLimit(ctx context.Context, username, requester string, numT
 	}
 	if u != nil && !u.OnlyAPI {
 		return errors.Wrapf(u.CheckAndUpdateSchedulingLimit(ctx, maxScheduledTasks, numTasksModified, activated), "checking task scheduling limit for user '%s'", u.Id)
-	}
-	return nil
-}
-
-// ActivateTasksByIdsWithDependencies activates the given tasks and their dependencies.
-func ActivateTasksByIdsWithDependencies(ctx context.Context, ids []string, caller string) error {
-	q := db.Query(bson.M{
-		IdKey:     bson.M{"$in": ids},
-		StatusKey: evergreen.TaskUndispatched,
-	})
-
-	tasks, err := FindAll(ctx, q.WithFields(IdKey, DependsOnKey, ExecutionKey, ActivatedKey))
-	if err != nil {
-		return errors.Wrap(err, "getting tasks for activation")
-	}
-	dependOn, err := GetRecursiveDependenciesUp(ctx, tasks, nil)
-	if err != nil {
-		return errors.Wrap(err, "getting recursive dependencies")
-	}
-
-	if _, err = ActivateTasks(ctx, append(tasks, dependOn...), time.Now(), true, caller); err != nil {
-		return errors.Wrap(err, "updating tasks for activation")
 	}
 	return nil
 }
@@ -2153,8 +2162,17 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 		}
 	}
 
-	// Calculate EC2 runtime costs now that we have the actual runtime.
-	t.UpdateTaskCost(ctx)
+	if t.HostId == "" {
+		t.TaskCost.OnDemandEC2Cost = 0
+		t.TaskCost.AdjustedEC2Cost = 0
+		t.TaskCost.OnDemandEBSThroughputCost = 0
+		t.TaskCost.AdjustedEBSThroughputCost = 0
+		t.TaskCost.OnDemandEBSStorageCost = 0
+		t.TaskCost.AdjustedEBSStorageCost = 0
+	} else {
+		// Calculate EC2 runtime costs now that we have the actual runtime.
+		t.UpdateTaskCost(ctx)
+	}
 
 	// record that the task has finished, in memory and in the db
 	t.Status = detail.Status
@@ -2369,6 +2387,8 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 		t.CanReset = false
 		t.IsAutomaticRestart = false
 		t.HasAnnotations = false
+		t.TaskCost = cost.Cost{}
+		t.S3Usage = s3usage.S3Usage{}
 		if prediction != nil {
 			t.SetPredictedCost(prediction.PredictedCost)
 		}
@@ -2413,6 +2433,8 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 				OverrideDependenciesKey,
 				CanResetKey,
 				HasAnnotationsKey,
+				TaskCostKey,
+				S3UsageKey,
 			},
 		},
 		addDisplayStatusCache,
@@ -3529,7 +3551,26 @@ func (t *Task) FetchExpectedDuration(ctx context.Context) util.DurationStats {
 		return util.DurationStats{Average: t.ExpectedDuration, StdDev: t.ExpectedDurationStdDev}
 	}
 
+	cacheKey := estimateCacheKey{project: t.Project, buildVariant: t.BuildVariant, taskDisplayName: t.DisplayName}
 	refresher := func(previous util.DurationStats) (util.DurationStats, bool) {
+		// Only cache consultations get a span. A task whose persisted prediction is still valid never runs this.
+		ctx, span := tracer.Start(ctx, "refresh-expected-duration")
+		defer span.End()
+		record := func(outcome string) {
+			span.SetAttributes(
+				attribute.String("evergreen.task.expected_duration_cache_outcome", outcome),
+				attribute.Int("evergreen.task.expected_duration_cache_size", expectedDurationCache.Len()),
+				attribute.String(evergreen.ProjectIdentifierOtelAttribute, cacheKey.project),
+				attribute.String(evergreen.BuildNameOtelAttribute, cacheKey.buildVariant),
+				attribute.String(evergreen.TaskNameOtelAttribute, cacheKey.taskDisplayName),
+			)
+		}
+
+		if stats, ok := expectedDurationCache.Get(cacheKey); ok {
+			record("hit")
+			return stats, true
+		}
+
 		defaultVal := util.DurationStats{Average: defaultTaskDuration, StdDev: 0}
 		vals, err := getExpectedDurationsForWindow(ctx, t.DisplayName, t.Project, t.BuildVariant,
 			time.Now().Add(-taskCompletionEstimateWindow), time.Now())
@@ -3541,10 +3582,13 @@ func (t *Task) FetchExpectedDuration(ctx context.Context) util.DurationStats {
 			"operation": "fetching expected duration, expect stale scheduling data",
 		}))
 		if err != nil {
+			record("query_error")
 			return defaultVal, false
 		}
 
+		// Nothing gets cached without usable history, so these keys miss on every lookup.
 		if len(vals) != 1 {
+			record("no_history")
 			if previous.Average == 0 {
 				return defaultVal, true
 			}
@@ -3554,10 +3598,14 @@ func (t *Task) FetchExpectedDuration(ctx context.Context) util.DurationStats {
 
 		avg := time.Duration(vals[0].ExpectedDuration)
 		if avg == 0 {
+			record("no_history")
 			return defaultVal, true
 		}
 		stdDev := time.Duration(vals[0].StdDev)
-		return util.DurationStats{Average: avg, StdDev: stdDev}, true
+		stats := util.DurationStats{Average: avg, StdDev: stdDev}
+		expectedDurationCache.Add(cacheKey, stats)
+		record("miss")
+		return stats, true
 	}
 
 	grip.Error(ctx, message.WrapError(t.DurationPrediction.SetRefresher(refresher), message.Fields{

@@ -1298,17 +1298,6 @@ func updateAllVolumes(ctx context.Context, query bson.M, update bson.M) error {
 	return errors.Wrap(err, "updating volumes")
 }
 
-func FindDistroForHost(ctx context.Context, hostID string) (string, error) {
-	h, err := FindOne(ctx, ById(hostID))
-	if err != nil {
-		return "", err
-	}
-	if h == nil {
-		return "", errors.New("host not found")
-	}
-	return h.Distro.Id, nil
-}
-
 func findVolumes(ctx context.Context, q bson.M) ([]Volume, error) {
 	volumes := []Volume{}
 	return volumes, db.FindAllQ(ctx, VolumesCollection, db.Query(q), &volumes)

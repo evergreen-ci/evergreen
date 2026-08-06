@@ -3,6 +3,7 @@ package graphql
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -13,8 +14,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/manifest"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -93,15 +94,17 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIV
 	if err := data.ValidatePatchID(patchID); err != nil {
 		return nil, werrors.WithStack(err)
 	}
-	foundPatch, err := patch.FindOneId(ctx, patchID)
+	foundPatch, err := loaders.GetPatch(ctx, patchID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()), err)
 	}
 	if foundPatch == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", patchID))
 	}
 	childPatchIds := foundPatch.Triggers.ChildPatches
 	if len(childPatchIds) > 0 {
+		loaders.PreloadPatches(ctx, childPatchIds)
+		loaders.PreloadVersions(ctx, childPatchIds)
 		childVersions := []*restModel.APIVersion{}
 		for _, cp := range childPatchIds {
 			// this calls the graphql Version query resolver
@@ -109,9 +112,9 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIV
 			if err != nil {
 				// before erroring due to the version being nil or not found,
 				// fetch the child patch to see if it's activated
-				p, err := patch.FindOneId(ctx, cp)
+				p, err := loaders.GetPatch(ctx, cp)
 				if err != nil {
-					return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching child patch '%s': %s", cp, err.Error()))
+					return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching child patch '%s': %s", cp, err.Error()), err)
 				}
 				if p == nil {
 					return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("child patch '%s' not found", cp))
@@ -303,6 +306,120 @@ func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersi
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task count for version '%s': %s", versionID, err.Error()))
 	}
 	return &taskCount, nil
+}
+
+// TaskQuarantinedTestsSample is the resolver for the taskQuarantinedTestsSample field.
+func (r *versionResolver) TaskQuarantinedTestsSample(ctx context.Context, obj *restModel.APIVersion, taskIds []string, limit *int) ([]*testresult.TaskTestResultsQuarantinedSample, error) {
+	versionID := utility.FromStringPtr(obj.Id)
+	if err := checkProjectAccess(ctx, utility.FromStringPtr(obj.Project), ProjectPermissionTasks, AccessLevelView); err != nil {
+		return nil, err
+	}
+	if len(taskIds) == 0 {
+		return nil, nil
+	}
+	sampleLimit := defaultTaskQuarantinedTestsSampleLimit
+	if limit != nil {
+		sampleLimit = *limit
+	}
+	if sampleLimit < 0 {
+		return nil, InputValidationError.Send(ctx, "limit cannot be negative")
+	}
+
+	dbTasks, err := task.FindAll(ctx, db.Query(task.ByIds(taskIds)))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching tasks '%s': %s", taskIds, err.Error()))
+	}
+	if len(dbTasks) == 0 {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("tasks '%s' not found", taskIds))
+	}
+
+	var (
+		allTasks    []task.Task
+		execTaskIDs []string
+	)
+	apiSamples := make([]*testresult.TaskTestResultsQuarantinedSample, len(dbTasks))
+	apiSamplesByTaskID := map[string][]*testresult.TaskTestResultsQuarantinedSample{}
+	resultTaskIDs := map[string]struct{}{}
+	execTaskIDSet := map[string]struct{}{}
+	addAPISampleForTask := func(taskID string, apiSample *testresult.TaskTestResultsQuarantinedSample) {
+		if slices.Contains(apiSamplesByTaskID[taskID], apiSample) {
+			return
+		}
+		apiSamplesByTaskID[taskID] = append(apiSamplesByTaskID[taskID], apiSample)
+	}
+	addResultTask := func(resultTask task.Task) {
+		if _, ok := resultTaskIDs[resultTask.Id]; ok {
+			return
+		}
+		resultTaskIDs[resultTask.Id] = struct{}{}
+		allTasks = append(allTasks, resultTask)
+	}
+	for i, dbTask := range dbTasks {
+		if dbTask.Version != versionID && dbTask.ParentPatchID != versionID {
+			return nil, InputValidationError.Send(ctx, fmt.Sprintf("task '%s' does not belong to version '%s'", dbTask.Id, versionID))
+		}
+
+		apiSamples[i] = &testresult.TaskTestResultsQuarantinedSample{TaskID: dbTask.Id, Execution: dbTask.Execution}
+		if dbTask.DisplayOnly && len(dbTask.ExecutionTasks) > 0 {
+			for _, execTaskID := range dbTask.ExecutionTasks {
+				addAPISampleForTask(execTaskID, apiSamples[i])
+				if _, ok := execTaskIDSet[execTaskID]; !ok {
+					execTaskIDSet[execTaskID] = struct{}{}
+					execTaskIDs = append(execTaskIDs, execTaskID)
+				}
+			}
+			continue
+		}
+		if dbTask.HasResults(ctx) {
+			addAPISampleForTask(dbTask.Id, apiSamples[i])
+			addResultTask(dbTask)
+		}
+	}
+
+	if len(execTaskIDs) > 0 {
+		query := task.ByIds(execTaskIDs)
+		query["$or"] = []bson.M{
+			{task.ResultsServiceKey: bson.M{"$exists": true}},
+			{task.HasTestResultsKey: true},
+		}
+		execTasks, err := task.FindWithFields(ctx, query,
+			task.ExecutionKey, task.ResultsServiceKey, task.HasTestResultsKey, task.TaskOutputInfoKey)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting execution tasks for display tasks: %s", err.Error()))
+		}
+		for _, execTask := range execTasks {
+			addResultTask(execTask)
+		}
+	}
+
+	if len(allTasks) > 0 {
+		samples, err := task.GetQuarantinedTestSamples(ctx, evergreen.GetEnvironment(), allTasks, sampleLimit)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting quarantined test results sample: %s", err.Error()))
+		}
+
+		for _, sample := range samples {
+			matchingAPISamples, ok := apiSamplesByTaskID[sample.TaskID]
+			if !ok {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("unexpected task '%s' in quarantined test sample result", sample.TaskID))
+			}
+
+			for _, apiSample := range matchingAPISamples {
+				apiSample.QuarantinedTestsSkippedCount += sample.QuarantinedTestsSkippedCount
+				remaining := sampleLimit - len(apiSample.QuarantinedTests)
+				if remaining <= 0 {
+					continue
+				}
+				quarantinedTests := sample.QuarantinedTests
+				if len(quarantinedTests) > remaining {
+					quarantinedTests = quarantinedTests[:remaining]
+				}
+				apiSample.QuarantinedTests = append(apiSample.QuarantinedTests, quarantinedTests...)
+			}
+		}
+	}
+
+	return apiSamples, nil
 }
 
 // Tasks is the resolver for the tasks field.
@@ -520,11 +637,6 @@ func (r *versionResolver) User(ctx context.Context, obj *restModel.APIVersion) (
 	return getVersionAuthorDBUser(ctx, utility.FromStringPtr(obj.AuthorID), utility.FromStringPtr(obj.Author), utility.FromStringPtr(obj.AuthorEmail))
 }
 
-// UserLite is the resolver for the userLite field.
-func (r *versionResolver) UserLite(ctx context.Context, obj *restModel.APIVersion) (*user.DBUser, error) {
-	return getVersionAuthorDBUser(ctx, utility.FromStringPtr(obj.AuthorID), utility.FromStringPtr(obj.Author), utility.FromStringPtr(obj.AuthorEmail))
-}
-
 // VersionTiming is the resolver for the versionTiming field.
 func (r *versionResolver) VersionTiming(ctx context.Context, obj *restModel.APIVersion) (*VersionTiming, error) {
 	versionID := utility.FromStringPtr(obj.Id)
@@ -619,15 +731,16 @@ func (r *versionLiteResolver) ChildVersions(ctx context.Context, obj *model.Vers
 	if err := data.ValidatePatchID(obj.Id); err != nil {
 		return nil, werrors.WithStack(err)
 	}
-	foundPatch, err := patch.FindOneId(ctx, obj.Id)
+	foundPatch, err := loaders.GetPatch(ctx, obj.Id)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", obj.Id, err.Error()), err)
 	}
 	if foundPatch == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", obj.Id))
 	}
 	childPatchIds := foundPatch.Triggers.ChildPatches
 	if len(childPatchIds) > 0 {
+		loaders.PreloadVersions(ctx, childPatchIds)
 		childVersions := make([]*model.Version, 0, len(childPatchIds))
 		for _, cp := range childPatchIds {
 			v, err := loaders.GetVersion(ctx, cp)

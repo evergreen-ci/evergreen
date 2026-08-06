@@ -12,9 +12,7 @@ Evergreen uses `make` for building/testing/linting. Read the makefile as needed 
 ### Building
 
 ```bash
-make build          # Compile binary for local system (→ clients/<goos>_<goarch>/evergreen)
 make gqlgen         # Regenerate GraphQL code after schema changes
-make mod-tidy       # Tidy Go module dependencies
 ```
 
 ### Testing
@@ -42,12 +40,6 @@ RUN_COUNT=5         # Run tests N times.
 ```
 
 ### Linting
-
-```bash
-make lint            # Lint all packages.
-make lint-<package>  # Lint a specific package.
-make lint-evergreen  # Lint the top-level evergreen package (special case).
-```
 
 After making changes, run `make lint-<package>` for each affected package and verify there are no new errors beyond any pre-existing golangci-lint toolchain crashes.
 
@@ -112,11 +104,7 @@ expectations.
 `makeAwsConfig` (should be `makeAWSConfig`)
 `UserId` (should be `UserID`)
 
-### Formatting
-* In Go, when a block of variable declarations or struct fields is vertically aligned (e.g., all the type keywords or `=` signs line up), new entries must maintain that alignment within the same block. A blank line or a comment header (e.g., `// Notification Flags`) starts a new block with its own independent alignment; do not align across block boundaries.
-
 ### Code Readability and Comments
-* Write self-documenting code through clear naming and structure (such as helper functions for modularity).
 * Inline code comments should be full sentences and express complete thoughts. Use proper grammar, punctuation, and
   capitalization.
 * Inline code comments should be used intentionally. Do not write a comment if it just explains exactly what the code is
@@ -124,16 +112,6 @@ expectations.
 * Documentation comments should focus on high-level information relevant to usage, such as intent, expected
   inputs/outputs, behavior. It is also valid to highlight hazardous gotchas to be careful about, if any. It should not
   describe implementation details; those should be left to inline comments.
-
-**Good use of comments:**
-* Documentation for exported structs, functions, fields, and methods.
-* Explaining broader context that can't be understood easily from the immediate implementation.
-* Explaining why the code has to do something non-obvious.
-* Explaining unusual but necessary implementation decisions.
-
-**Avoid:**
-* Comments that simply restate what the code is doing.
-* Redundant comments that add clutter or maintenance burden.
 
 ### Errors
 * When adding context to an error with `errors.Wrap`/`errors.Wrapf`, describe the operation that was being performed.
@@ -181,10 +159,7 @@ return errors.Wrapf(err, "unable to create file '%s'", name)
     * The environment is only needed to obtain a DB handle for a query (no admin-settings mutation is involved).
 
 ### AI-Generated Code
-AI-assisted code is welcome, but the author is responsible for the final result. Treat generated code with the same
-scrutiny as code you wrote yourself.
-* Read and fully understand any generated code before committing it. You should be able to defend its correctness,
-  performance, and security as if you'd written it.
+AI-assisted code is welcome, but the author is responsible for the final result.
 * Be skeptical of new external dependencies the AI introduces — adding a library is often a sign that the AI has
   "lost the plot" on a problem that should be solved with existing code. Read the library's docs before adopting it.
 * Remove the AI's explanatory comments unless the comment genuinely captures a non-obvious "why". Generated code tends

@@ -119,11 +119,16 @@ func loadProjectYAML(path string, quiet, errorOnWarnings, enableAnchors bool, lo
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading file '%s'", path)
 	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting current working directory")
+	}
 	project := &model.Project{}
 	ctx := context.Background()
 	opts := &model.GetProjectOpts{
 		LocalModules:      localModuleMap,
 		ReadFileFrom:      model.ReadFromLocal,
+		LocalIncludeDir:   cwd,
 		EnableYAMLAnchors: enableAnchors,
 	}
 	if !quiet {

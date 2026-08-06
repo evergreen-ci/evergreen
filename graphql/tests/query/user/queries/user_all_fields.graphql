@@ -1,5 +1,5 @@
 {
-  userLite(userId: "bob.smith") {
+  user(userId: "bob.smith") {
     id
     displayName
     emailAddress

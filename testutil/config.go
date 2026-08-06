@@ -319,13 +319,6 @@ func MockConfig() *evergreen.Settings {
 		},
 		Providers: evergreen.CloudProviders{
 			AWS: evergreen.AWSConfig{
-				EC2Keys: []evergreen.EC2Key{
-					{
-						Name:   "test",
-						Key:    "aws_key",
-						Secret: "aws_secret",
-					},
-				},
 				DefaultSecurityGroup: "test_security_group",
 				MaxVolumeSizePerUser: 200,
 				ParserProject: evergreen.ParserProjectS3Config{
@@ -344,8 +337,9 @@ func MockConfig() *evergreen.Settings {
 						Role:    "role",
 					},
 				},
-				IPAMPoolID:         "pool_id",
-				ElasticIPUsageRate: 0.3,
+				IPAMPoolID:          "pool_id",
+				ElasticIPUsageRate:  0.3,
+				AllowedSNSTopicARNs: []string{"arn:aws:sns:us-east-1:012345678901:topic"},
 			},
 			Docker: evergreen.DockerConfig{
 				APIVersion: "docker_version",

@@ -178,6 +178,12 @@ type EditSpawnHostInput struct {
 	VolumeID            *string                 `json:"volumeId,omitempty"`
 }
 
+// ExecutionTasksFilterOptions is an input for the task.executionTasksFull field.
+// It's used to filter a display task's execution tasks.
+type ExecutionTasksFilterOptions struct {
+	Statuses []string `json:"statuses,omitempty"`
+}
+
 type ExternalLinkForMetadata struct {
 	URL         string `json:"url"`
 	DisplayName string `json:"displayName"`
@@ -583,16 +589,6 @@ type TaskFilterOptions struct {
 type TaskHistory struct {
 	Tasks      []*model.APITask       `json:"tasks"`
 	Pagination *TaskHistoryPagination `json:"pagination"`
-}
-
-type TaskHistoryByCreateTime struct {
-	Tasks      []*model.APITask                   `json:"tasks"`
-	Pagination *TaskHistoryByCreateTimePagination `json:"pagination"`
-}
-
-type TaskHistoryByCreateTimePagination struct {
-	MostRecentTaskCreateTime time.Time `json:"mostRecentTaskCreateTime"`
-	OldestTaskCreateTime     time.Time `json:"oldestTaskCreateTime"`
 }
 
 type TaskHistoryOpts struct {

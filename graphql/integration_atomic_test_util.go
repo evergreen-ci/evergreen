@@ -216,6 +216,7 @@ func setupUsers(t *testing.T) {
 			"project_sandbox",
 			"project_evergreen",
 			"repo_sandbox",
+			"repo_different",
 		},
 	}
 	assert.NoError(t, adminUsr.Insert(t.Context()))
@@ -526,6 +527,24 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 	err = roleManager.UpdateRole(t.Context(), repoSandboxRole)
 	require.NoError(t, err)
 
+	repoDifferentScope := gimlet.Scope{
+		ID:        "repo_different_scope",
+		Name:      "repo_different",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"different"},
+	}
+	err = roleManager.AddScope(t.Context(), repoDifferentScope)
+	require.NoError(t, err)
+
+	repoDifferentRole := gimlet.Role{
+		ID:          "repo_different",
+		Name:        "repo_different",
+		Scope:       repoDifferentScope.ID,
+		Permissions: projectPermissions,
+	}
+	err = roleManager.UpdateRole(t.Context(), repoDifferentRole)
+	require.NoError(t, err)
+
 	directorySpecificTestSetup(t, *state)
 }
 
@@ -658,12 +677,24 @@ func directorySpecificTestSetup(t *testing.T, state AtomicGraphQLState) {
 		"mutation/unquarantineVariant":  {setupQuarantineVariantMutation},
 		"query/variantQuarantineStatus": {setupVariantQuarantineStatusQuery},
 		"distro/availableRegions":       {setupEnvironmentSettings},
+		"patch/generatedTaskCounts":     {setupGeneratedTaskCounts},
 	}
 	if m[state.Directory] != nil {
 		for _, exec := range m[state.Directory] {
 			exec(t)
 		}
 	}
+}
+
+func setupGeneratedTaskCounts(t *testing.T) {
+	now := time.Now()
+	_, err := task.UpdateAll(t.Context(), task.ByIds([]string{"t1", "t2", "t3"}), bson.M{
+		"$set": bson.M{
+			task.StartTimeKey:  now.Add(-2 * time.Hour),
+			task.FinishTimeKey: now.Add(-time.Hour),
+		},
+	})
+	require.NoError(t, err)
 }
 
 func directorySpecificTestCleanup(t *testing.T, directory string) {

@@ -9,7 +9,6 @@ type AWSAccountRoleMapping {
 }
 
 input AWSConfigInput {
-  ec2Keys: [EC2KeyInput!]! @redactSecrets
   subnets: [SubnetInput!]!
   parserProject: ParserProjectS3ConfigInput @redactSecrets
   persistentDNS: PersistentDNSConfigInput
@@ -21,10 +20,10 @@ input AWSConfigInput {
   accountRoles: [AWSAccountRoleMappingInput!]! @redactSecrets
   ipamPoolID: String
   elasticIPUsageRate: Float
+  allowedSNSTopicARNs: [String!]!
 }
 
 type AWSConfig {
-  ec2Keys: [EC2Key!]! @requireAdmin
   subnets: [Subnet!]!
   parserProject: ParserProjectS3Config @requireAdmin
   persistentDNS: PersistentDNSConfig
@@ -36,6 +35,7 @@ type AWSConfig {
   accountRoles: [AWSAccountRoleMapping!]! @requireAdmin
   ipamPoolID: String
   elasticIPUsageRate: Float
+  allowedSNSTopicARNs: [String!]!
 }
 
 input AWSVPCConfigInput {
@@ -86,12 +86,6 @@ input DockerConfigInput {
 
 type DockerConfig {
   apiVersion: String
-}
-
-input EC2KeyInput {
-  name: String!
-  key: String! 
-  secret: String! @redactSecrets
 }
 
 type EC2Key {
