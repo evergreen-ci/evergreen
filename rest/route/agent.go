@@ -447,6 +447,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		grip.Error(ctx, errors.Wrap(err, "loading cost config for expansions_and_vars"))
 	} else {
 		res.DevprodOwnedAWSAccountIDs = costCfg.S3Cost.Storage.DevprodOwnedAWSAccountIDs
+		res.ArtifactAWSAccountsWithoutLifecycleRules = costCfg.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules
 	}
 
 	return gimlet.NewJSONResponse(res)
@@ -794,7 +795,7 @@ func discoverAndCacheBucketLifecycleRules(ctx context.Context, t *task.Task, fil
 			externalID = &file.ExternalID
 		}
 
-		wasCached := s3lifecycle.DiscoverAndCacheProjectBucket(ctx, bucketName, region, roleARN, externalID, t.Project, costConfig.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules, cloud.NewS3LifecycleClient())
+		wasCached := s3lifecycle.DiscoverAndCacheProjectBucket(ctx, bucketName, region, roleARN, externalID, file.AWSAccountID, t.Project, costConfig.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules, cloud.NewS3LifecycleClient())
 		if wasCached {
 			cachedBuckets = append(cachedBuckets, bucketName)
 		}
