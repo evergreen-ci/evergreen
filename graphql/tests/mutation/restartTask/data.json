@@ -5,11 +5,13 @@
       "build_id": "build1",
       "status": "success",
       "version": "version1",
+      "latest_parent_execution": 0,
       "branch": "sandbox_project_id"
     },
     {
       "_id": "task2",
       "status": "success",
+      "latest_parent_execution": 0,
       "branch": "sandbox_project_id"
     },
     {
@@ -19,6 +21,7 @@
       "status": "success",
       "display_only": true,
       "execution": 0,
+      "latest_parent_execution": 0,
       "execution_tasks": ["execution_task_1", "execution_task_2"],
       "branch": "sandbox_project_id"
     },
@@ -41,6 +44,7 @@
       "build_id": "build1",
       "status": "success",
       "version": "version1",
+      "latest_parent_execution": 0,
       "branch": "evergreen"
     }
   ],
