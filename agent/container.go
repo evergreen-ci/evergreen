@@ -560,7 +560,7 @@ func containerEnvFileKeys(dir string) ([]string, error) {
 	}
 
 	var keys []string
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		key, _, found := strings.Cut(line, "=")
 		if !found || key == "" {
 			continue
@@ -759,7 +759,7 @@ func parseHostEnv(out []byte) []string {
 	}
 
 	var entries []string
-	for _, record := range strings.Split(after, "\x00") {
+	for record := range strings.SplitSeq(after, "\x00") {
 		key, value, found := strings.Cut(record, "=")
 		if !found || key == "" || strings.ContainsAny(value, "\n\r") {
 			continue
