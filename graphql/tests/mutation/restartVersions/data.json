@@ -11,7 +11,7 @@
   "versions": [
     {
       "_id": "version_id",
-      "identifier": "sandbox_project_id"
+      "identifier": "spruce"
     },
     {
       "_id": "no_permissions",
@@ -20,9 +20,9 @@
   ],
   "project_ref": [
     {
-      "_id": "sandbox_project_id",
-      "identifier": "sandbox",
-      "display_name": "Sandbox"
+      "_id": "spruce",
+      "identifier": "spruce",
+      "display_name": "spruce"
     },
     {
       "_id": "evergreen",
