@@ -203,9 +203,10 @@ func TestExpansionsAndVarsHostOwnership(t *testing.T) {
 		Version: "aaaaaaaaaaff001122334455",
 	}
 	pRef := model.ProjectRef{
-		Id:    "p1",
-		Owner: "evergreen-ci",
-		Repo:  "sample",
+		Id:                      "p1",
+		Owner:                   "evergreen-ci",
+		Repo:                    "sample",
+		DebugSpawnHostsDisabled: utility.FalsePtr(),
 	}
 	vars := &model.ProjectVars{
 		Id:          "p1",
