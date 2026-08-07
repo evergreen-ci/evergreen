@@ -50,6 +50,9 @@ type AWSClient interface {
 	// DescribeInstanceTypeOfferings is a wrapper for ec2.DescribeInstanceTypeOfferings.
 	DescribeInstanceTypeOfferings(context.Context, *ec2.DescribeInstanceTypeOfferingsInput) (*ec2.DescribeInstanceTypeOfferingsOutput, error)
 
+	// DescribeSubnets is a wrapper for ec2.DescribeSubnets.
+	DescribeSubnets(context.Context, *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error)
+
 	// CreateTags is a wrapper for ec2.CreateTags.
 	CreateTags(context.Context, *ec2.CreateTagsInput) (*ec2.CreateTagsOutput, error)
 
@@ -286,6 +289,31 @@ func (c *awsClientImpl) DescribeInstanceTypeOfferings(ctx context.Context, input
 		func() (bool, error) {
 			msg := makeAWSLogMessage("DescribeInstanceTypeOfferings", fmt.Sprintf("%T", c), input)
 			output, err = c.ec2Client.DescribeInstanceTypeOfferings(ctx, input)
+			if err != nil {
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(ctx, message.WrapError(apiErr, msg))
+				}
+				return true, err
+			}
+			grip.Info(ctx, msg)
+			return false, nil
+		}, awsClientDefaultRetryOptions())
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+// DescribeSubnets is a wrapper for ec2.DescribeSubnets.
+func (c *awsClientImpl) DescribeSubnets(ctx context.Context, input *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error) {
+	var output *ec2.DescribeSubnetsOutput
+	var err error
+	err = utility.Retry(
+		ctx,
+		func() (bool, error) {
+			msg := makeAWSLogMessage("DescribeSubnets", fmt.Sprintf("%T", c), input)
+			output, err = c.ec2Client.DescribeSubnets(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
@@ -1146,6 +1174,11 @@ type awsClientMock struct { //nolint
 	DescribeInstancesError      error
 	*ec2.DescribeInstanceTypeOfferingsOutput
 
+	*ec2.DescribeSubnetsInput
+	*ec2.DescribeSubnetsOutput
+	DescribeSubnetsError error
+	DescribeSubnetsCount int
+
 	launchTemplates []types.LaunchTemplate
 
 	*route53.ChangeResourceRecordSetsInput
@@ -1242,6 +1275,15 @@ func (c *awsClientMock) ModifyInstanceAttribute(ctx context.Context, input *ec2.
 func (c *awsClientMock) DescribeInstanceTypeOfferings(ctx context.Context, input *ec2.DescribeInstanceTypeOfferingsInput) (*ec2.DescribeInstanceTypeOfferingsOutput, error) {
 	c.DescribeInstanceTypeOfferingsInput = input
 	return c.DescribeInstanceTypeOfferingsOutput, nil
+}
+
+func (c *awsClientMock) DescribeSubnets(ctx context.Context, input *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error) {
+	c.DescribeSubnetsInput = input
+	c.DescribeSubnetsCount++
+	if c.DescribeSubnetsError != nil {
+		return nil, c.DescribeSubnetsError
+	}
+	return c.DescribeSubnetsOutput, nil
 }
 
 // TerminateInstances is a mock for ec2.TerminateInstances.
