@@ -4,6 +4,7 @@ package model
 // Should only be modified in conjunction with ParserProject struct.
 
 import (
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -244,6 +245,62 @@ func (pp *ParserProject) mergeMatrix(toMerge *ParserProject) error {
 	}
 
 	return catcher.Resolve()
+}
+
+// mergeProjectConfigFields merges the version-controlled project configuration
+// across multiple project YAML files. Alias lists are appended in file order
+// and trigger alias names are de-duplicated. Settings structs keep the first definition
+// encountered.
+func (pp *ParserProject) mergeProjectConfigFields(toMerge *ParserProject) {
+	if toMerge.projectConfigFields == nil {
+		return
+	}
+	if pp.projectConfigFields == nil {
+		pp.projectConfigFields = &ProjectConfigFields{}
+	}
+	pcf := pp.projectConfigFields
+	other := toMerge.projectConfigFields
+
+	pcf.CommitQueueAliases = append(pcf.CommitQueueAliases, other.CommitQueueAliases...)
+	pcf.GitHubPRAliases = append(pcf.GitHubPRAliases, other.GitHubPRAliases...)
+	pcf.GitTagAliases = append(pcf.GitTagAliases, other.GitTagAliases...)
+	pcf.GitHubChecksAliases = append(pcf.GitHubChecksAliases, other.GitHubChecksAliases...)
+	pcf.PatchAliases = append(pcf.PatchAliases, other.PatchAliases...)
+
+	// Trigger aliases are de-duplicated because a duplicate name would
+	// fire the same trigger twice.
+	if len(other.GithubPRTriggerAliases) > 0 {
+		pcf.GithubPRTriggerAliases = utility.UniqueStrings(append(pcf.GithubPRTriggerAliases, other.GithubPRTriggerAliases...))
+	}
+	if len(other.GithubMQTriggerAliases) > 0 {
+		pcf.GithubMQTriggerAliases = utility.UniqueStrings(append(pcf.GithubMQTriggerAliases, other.GithubMQTriggerAliases...))
+	}
+
+	var redefined []string
+	if other.TaskAnnotationSettings != nil {
+		if pcf.TaskAnnotationSettings != nil {
+			redefined = append(redefined, "task_annotation_settings")
+		} else {
+			pcf.TaskAnnotationSettings = other.TaskAnnotationSettings
+		}
+	}
+	if other.BuildBaronSettings != nil {
+		if pcf.BuildBaronSettings != nil {
+			redefined = append(redefined, "build_baron_settings")
+		} else {
+			pcf.BuildBaronSettings = other.BuildBaronSettings
+		}
+	}
+	if other.WorkstationConfig != nil {
+		if pcf.WorkstationConfig != nil {
+			redefined = append(redefined, "workstation_config")
+		} else {
+			pcf.WorkstationConfig = other.WorkstationConfig
+		}
+	}
+	if len(redefined) > 0 {
+		pp.redefinedProjectConfigSettings = utility.UniqueStrings(append(pp.redefinedProjectConfigSettings, redefined...))
+	}
 }
 
 func (pp *ParserProject) mergeMultipleParserProjects(toMerge *ParserProject) error {

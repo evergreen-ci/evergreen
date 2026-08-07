@@ -146,6 +146,7 @@ var projectErrorValidators = []projectValidator{
 var projectConfigErrorValidators = []projectConfigValidator{
 	validateProjectConfigAliases,
 	validateProjectConfigPlugins,
+	validateProjectConfigRedefinedSettings,
 }
 
 // Functions used to validate the project configuration file for warnings.
@@ -463,6 +464,19 @@ func validateProjectConfigAliases(ctx context.Context, pc *model.ProjectConfig) 
 	for _, errorMsg := range errs {
 		validationErrs = append(validationErrs, ValidationError{
 			Message: fmt.Sprintf("error validating aliases: %s", errorMsg),
+			Level:   Error,
+		})
+	}
+	return validationErrs
+}
+
+// validateProjectConfigRedefinedSettings errors on version-controlled settings
+// structs that are defined in more than one YAML file across included files.
+func validateProjectConfigRedefinedSettings(ctx context.Context, pc *model.ProjectConfig) ValidationErrors {
+	validationErrs := ValidationErrors{}
+	for _, setting := range pc.RedefinedSettings {
+		validationErrs = append(validationErrs, ValidationError{
+			Message: fmt.Sprintf("'%s' can only be defined in one YAML file", setting),
 			Level:   Error,
 		})
 	}
