@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"io"
 	"path/filepath"
 	"strings"
@@ -44,6 +43,23 @@ const (
 	containerCreateMaxAttempts = 6
 
 	containerCreateRetryDelay = 5 * time.Second
+
+	// OwnerLabel marks a container as agent-created for task isolation. The
+	// orphan reaper matches this label rather than the container name so it
+	// cannot remove containers owned by another agent or by a human.
+	OwnerLabel = "evergreen.owner"
+
+	// OwnerLabelValue is the value OwnerLabel carries.
+	OwnerLabelValue = "evergreen-agent-task-isolation"
+
+	// TaskIDLabel records the task a container was created for, so a leaked
+	// container can be attributed to its task.
+	TaskIDLabel = "evergreen.task_id"
+
+	// ContainerNamePrefix is the name prefix for agent-created isolation
+	// containers. The reaper matches it as an anchored prefix to identify
+	// containers created before ownership labels existed.
+	ContainerNamePrefix = "evergreen-task-"
 )
 
 // activeEnvFileBaseDir is the runtime base dir, defaulting to envFileBaseDir.
@@ -117,7 +133,7 @@ func (c Config) Validate() error {
 }
 
 func (c Config) containerName() string {
-	return fmt.Sprintf("evergreen-task-%s", c.TaskID)
+	return ContainerNamePrefix + c.TaskID
 }
 
 // TaskContainer represents a running isolation container for a single task.
@@ -182,6 +198,10 @@ func CreateAndStart(ctx context.Context, cfg Config) (*TaskContainer, error) {
 		Cmd:        []string{"sleep", "infinity"},
 		WorkingDir: cfg.WorkDir,
 		Tty:        false,
+		Labels: map[string]string{
+			OwnerLabel:  OwnerLabelValue,
+			TaskIDLabel: cfg.TaskID,
+		},
 	}
 
 	mounts := []mount.Mount{
