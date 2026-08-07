@@ -169,7 +169,7 @@ func TestValidateFile(t *testing.T) {
 				path = filepath.Join(t.TempDir(), "project.yml")
 				require.NoError(t, os.WriteFile(path, sampleYAML, 0644))
 			}
-			err := validateFile(&ClientSettings{}, path, testCase.quiet, testCase.errorOnWarnings, false, nil, "")
+			err := validateFile(&ClientSettings{}, path, testCase.quiet, testCase.errorOnWarnings, nil, "")
 
 			if testCase.expectErr != "" {
 				assert.ErrorContains(t, err, testCase.expectErr)
@@ -212,7 +212,7 @@ func TestLoadProjectYAML(t *testing.T) {
 				path = filepath.Join(t.TempDir(), "project.yml")
 				require.NoError(t, os.WriteFile(path, content, 0644))
 			}
-			projectYaml, err := loadProjectYAML(path, false, false, false, nil, "")
+			projectYaml, err := loadProjectYAML(path, false, false, nil, "")
 
 			if testCase.expectErr != "" {
 				assert.ErrorContains(t, err, testCase.expectErr)
