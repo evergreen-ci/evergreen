@@ -204,9 +204,10 @@ func TestExpansionsAndVarsHostOwnership(t *testing.T) {
 		Version: "aaaaaaaaaaff001122334455",
 	}
 	pRef := model.ProjectRef{
-		Id:    "p1",
-		Owner: "evergreen-ci",
-		Repo:  "sample",
+		Id:                      "p1",
+		Owner:                   "evergreen-ci",
+		Repo:                    "sample",
+		DebugSpawnHostsDisabled: utility.FalsePtr(),
 	}
 	vars := &model.ProjectVars{
 		Id:          "p1",
@@ -251,6 +252,29 @@ func TestExpansionsAndVarsHostOwnership(t *testing.T) {
 	require.NoError(t, debugHost.Insert(t.Context()))
 	require.NoError(t, nonDebugHost.Insert(t.Context()))
 	require.NoError(t, wrongTaskDebugHost.Insert(t.Context()))
+
+	t.Run("UserRequestRejectsDebugSpawnHostsDisabledProject", func(t *testing.T) {
+		disabled := true
+		disabledPRef := model.ProjectRef{
+			Id:                      "disabled_project",
+			Owner:                   "evergreen-ci",
+			Repo:                    "sample",
+			DebugSpawnHostsDisabled: &disabled,
+		}
+		disabledTask := task.Task{
+			Id:      "t_disabled",
+			Project: "disabled_project",
+			Version: "aaaaaaaaaaff001122334455",
+		}
+		require.NoError(t, disabledPRef.Insert(t.Context()))
+		require.NoError(t, disabledTask.Insert(t.Context()))
+
+		userCtx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "test_user"})
+		rh := &getExpansionsAndVarsHandler{settings: env.Settings(), taskID: "t_disabled", hostID: "debug_host"}
+		resp := rh.Run(userCtx)
+		require.NotZero(t, resp)
+		assert.Equal(t, http.StatusForbidden, resp.Status())
+	})
 
 	t.Run("UserRequestRejectsNonDebugHost", func(t *testing.T) {
 		userCtx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "test_user"})
