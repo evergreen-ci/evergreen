@@ -1285,6 +1285,7 @@ type ComplexityRoot struct {
 		GenerateTaskFactor        func(childComplexity int) int
 		GroupVersions             func(childComplexity int) int
 		MainlineTimeInQueueFactor func(childComplexity int) int
+		MergeQueueTargetTime      func(childComplexity int) int
 		NumDependentsFactor       func(childComplexity int) int
 		PatchFactor               func(childComplexity int) int
 		PatchTimeInQueueFactor    func(childComplexity int) int
@@ -1551,9 +1552,10 @@ type ComplexityRoot struct {
 	}
 
 	ReleaseModeConfig struct {
-		DistroMaxHostsFactor      func(childComplexity int) int
-		IdleTimeSecondsOverride   func(childComplexity int) int
-		TargetTimeSecondsOverride func(childComplexity int) int
+		DistroMaxHostsFactor                func(childComplexity int) int
+		IdleTimeSecondsOverride             func(childComplexity int) int
+		MergeQueueTargetTimeSecondsOverride func(childComplexity int) int
+		TargetTimeSecondsOverride           func(childComplexity int) int
 	}
 
 	RepoCommitQueueParams struct {
@@ -1723,6 +1725,7 @@ type ComplexityRoot struct {
 		HostAllocatorRoundingRule        func(childComplexity int) int
 		HostsOverallocatedRule           func(childComplexity int) int
 		MainlineTimeInQueueFactor        func(childComplexity int) int
+		MergeQueueTargetTimeSeconds      func(childComplexity int) int
 		NumDependentsFactor              func(childComplexity int) int
 		PatchFactor                      func(childComplexity int) int
 		PatchTimeInQueueFactor           func(childComplexity int) int
@@ -2876,6 +2879,8 @@ type JiraNotificationsConfigInputResolver interface {
 	CustomFields(ctx context.Context, obj *model.APIJIRANotificationsConfig, data []*JiraNotificationsProjectEntryInput) error
 }
 type PlannerSettingsInputResolver interface {
+	MergeQueueTargetTime(ctx context.Context, obj *model.APIPlannerSettings, data *int) error
+
 	TargetTime(ctx context.Context, obj *model.APIPlannerSettings, data int) error
 }
 type ProjectSettingsInputResolver interface {
@@ -7942,6 +7947,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PlannerSettings.MainlineTimeInQueueFactor(childComplexity), true
+	case "PlannerSettings.mergeQueueTargetTime":
+		if e.complexity.PlannerSettings.MergeQueueTargetTime == nil {
+			break
+		}
+
+		return e.complexity.PlannerSettings.MergeQueueTargetTime(childComplexity), true
 	case "PlannerSettings.numDependentsFactor":
 		if e.complexity.PlannerSettings.NumDependentsFactor == nil {
 			break
@@ -9370,6 +9381,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ReleaseModeConfig.IdleTimeSecondsOverride(childComplexity), true
+	case "ReleaseModeConfig.mergeQueueTargetTimeSecondsOverride":
+		if e.complexity.ReleaseModeConfig.MergeQueueTargetTimeSecondsOverride == nil {
+			break
+		}
+
+		return e.complexity.ReleaseModeConfig.MergeQueueTargetTimeSecondsOverride(childComplexity), true
 	case "ReleaseModeConfig.targetTimeSecondsOverride":
 		if e.complexity.ReleaseModeConfig.TargetTimeSecondsOverride == nil {
 			break
@@ -10033,6 +10050,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SchedulerConfig.MainlineTimeInQueueFactor(childComplexity), true
+	case "SchedulerConfig.mergeQueueTargetTimeSeconds":
+		if e.complexity.SchedulerConfig.MergeQueueTargetTimeSeconds == nil {
+			break
+		}
+
+		return e.complexity.SchedulerConfig.MergeQueueTargetTimeSeconds(childComplexity), true
 	case "SchedulerConfig.numDependentsFactor":
 		if e.complexity.SchedulerConfig.NumDependentsFactor == nil {
 			break
@@ -19836,6 +19859,8 @@ func (ec *executionContext) fieldContext_AdminSettings_releaseMode(_ context.Con
 				return ec.fieldContext_ReleaseModeConfig_targetTimeSecondsOverride(ctx, field)
 			case "idleTimeSecondsOverride":
 				return ec.fieldContext_ReleaseModeConfig_idleTimeSecondsOverride(ctx, field)
+			case "mergeQueueTargetTimeSecondsOverride":
+				return ec.fieldContext_ReleaseModeConfig_mergeQueueTargetTimeSecondsOverride(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ReleaseModeConfig", field.Name)
 		},
@@ -19955,6 +19980,8 @@ func (ec *executionContext) fieldContext_AdminSettings_scheduler(_ context.Conte
 				return ec.fieldContext_SchedulerConfig_cacheDurationSeconds(ctx, field)
 			case "targetTimeSeconds":
 				return ec.fieldContext_SchedulerConfig_targetTimeSeconds(ctx, field)
+			case "mergeQueueTargetTimeSeconds":
+				return ec.fieldContext_SchedulerConfig_mergeQueueTargetTimeSeconds(ctx, field)
 			case "acceptableHostIdleTimeSeconds":
 				return ec.fieldContext_SchedulerConfig_acceptableHostIdleTimeSeconds(ctx, field)
 			case "groupVersions":
@@ -26067,6 +26094,8 @@ func (ec *executionContext) fieldContext_Distro_plannerSettings(_ context.Contex
 				return ec.fieldContext_PlannerSettings_groupVersions(ctx, field)
 			case "mainlineTimeInQueueFactor":
 				return ec.fieldContext_PlannerSettings_mainlineTimeInQueueFactor(ctx, field)
+			case "mergeQueueTargetTime":
+				return ec.fieldContext_PlannerSettings_mergeQueueTargetTime(ctx, field)
 			case "patchFactor":
 				return ec.fieldContext_PlannerSettings_patchFactor(ctx, field)
 			case "patchTimeInQueueFactor":
@@ -46943,6 +46972,35 @@ func (ec *executionContext) fieldContext_PlannerSettings_mainlineTimeInQueueFact
 	return fc, nil
 }
 
+func (ec *executionContext) _PlannerSettings_mergeQueueTargetTime(ctx context.Context, field graphql.CollectedField, obj *model.APIPlannerSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PlannerSettings_mergeQueueTargetTime,
+		func(ctx context.Context) (any, error) {
+			return obj.MergeQueueTargetTime, nil
+		},
+		nil,
+		ec.marshalNDuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PlannerSettings_mergeQueueTargetTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlannerSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Duration does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PlannerSettings_patchFactor(ctx context.Context, field graphql.CollectedField, obj *model.APIPlannerSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -55359,6 +55417,35 @@ func (ec *executionContext) fieldContext_ReleaseModeConfig_idleTimeSecondsOverri
 	return fc, nil
 }
 
+func (ec *executionContext) _ReleaseModeConfig_mergeQueueTargetTimeSecondsOverride(ctx context.Context, field graphql.CollectedField, obj *model.APIReleaseModeConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ReleaseModeConfig_mergeQueueTargetTimeSecondsOverride,
+		func(ctx context.Context) (any, error) {
+			return obj.MergeQueueTargetTimeSecondsOverride, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ReleaseModeConfig_mergeQueueTargetTimeSecondsOverride(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ReleaseModeConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RepoCommitQueueParams_enabled(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueParams) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -58738,6 +58825,35 @@ func (ec *executionContext) _SchedulerConfig_targetTimeSeconds(ctx context.Conte
 }
 
 func (ec *executionContext) fieldContext_SchedulerConfig_targetTimeSeconds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SchedulerConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SchedulerConfig_mergeQueueTargetTimeSeconds(ctx context.Context, field graphql.CollectedField, obj *model.APISchedulerConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SchedulerConfig_mergeQueueTargetTimeSeconds,
+		func(ctx context.Context) (any, error) {
+			return obj.MergeQueueTargetTimeSeconds, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_SchedulerConfig_mergeQueueTargetTimeSeconds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "SchedulerConfig",
 		Field:      field,
@@ -85915,7 +86031,7 @@ func (ec *executionContext) unmarshalInputPlannerSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"commitQueueFactor", "expectedRuntimeFactor", "generateTaskFactor", "groupVersions", "mainlineTimeInQueueFactor", "numDependentsFactor", "patchFactor", "patchTimeInQueueFactor", "targetTime", "version"}
+	fieldsInOrder := [...]string{"commitQueueFactor", "expectedRuntimeFactor", "generateTaskFactor", "groupVersions", "mainlineTimeInQueueFactor", "mergeQueueTargetTime", "numDependentsFactor", "patchFactor", "patchTimeInQueueFactor", "targetTime", "version"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -85957,6 +86073,15 @@ func (ec *executionContext) unmarshalInputPlannerSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.MainlineTimeInQueueFactor = data
+		case "mergeQueueTargetTime":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mergeQueueTargetTime"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			if err = ec.resolvers.PlannerSettingsInput().MergeQueueTargetTime(ctx, &it, data); err != nil {
+				return it, err
+			}
 		case "numDependentsFactor":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("numDependentsFactor"))
 			data, err := ec.unmarshalNFloat2float64(ctx, v)
@@ -87247,7 +87372,7 @@ func (ec *executionContext) unmarshalInputReleaseModeConfigInput(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"distroMaxHostsFactor", "targetTimeSecondsOverride", "idleTimeSecondsOverride"}
+	fieldsInOrder := [...]string{"distroMaxHostsFactor", "targetTimeSecondsOverride", "idleTimeSecondsOverride", "mergeQueueTargetTimeSecondsOverride"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -87275,6 +87400,13 @@ func (ec *executionContext) unmarshalInputReleaseModeConfigInput(ctx context.Con
 				return it, err
 			}
 			it.IdleTimeSecondsOverride = data
+		case "mergeQueueTargetTimeSecondsOverride":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mergeQueueTargetTimeSecondsOverride"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MergeQueueTargetTimeSecondsOverride = data
 		}
 	}
 
@@ -88400,7 +88532,7 @@ func (ec *executionContext) unmarshalInputSchedulerConfigInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"taskFinder", "hostAllocator", "hostAllocatorRoundingRule", "hostAllocatorFeedbackRule", "hostsOverallocatedRule", "futureHostFraction", "cacheDurationSeconds", "targetTimeSeconds", "acceptableHostIdleTimeSeconds", "groupVersions", "patchFactor", "patchTimeInQueueFactor", "commitQueueFactor", "mainlineTimeInQueueFactor", "expectedRuntimeFactor", "generateTaskFactor", "numDependentsFactor", "stepbackTaskFactor", "translateProjectConcurrencyLimit", "translateProjectCacheBytesLimit", "translateProjectCacheTTLSeconds"}
+	fieldsInOrder := [...]string{"taskFinder", "hostAllocator", "hostAllocatorRoundingRule", "hostAllocatorFeedbackRule", "hostsOverallocatedRule", "futureHostFraction", "cacheDurationSeconds", "targetTimeSeconds", "mergeQueueTargetTimeSeconds", "acceptableHostIdleTimeSeconds", "groupVersions", "patchFactor", "patchTimeInQueueFactor", "commitQueueFactor", "mainlineTimeInQueueFactor", "expectedRuntimeFactor", "generateTaskFactor", "numDependentsFactor", "stepbackTaskFactor", "translateProjectConcurrencyLimit", "translateProjectCacheBytesLimit", "translateProjectCacheTTLSeconds"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -88463,6 +88595,13 @@ func (ec *executionContext) unmarshalInputSchedulerConfigInput(ctx context.Conte
 				return it, err
 			}
 			it.TargetTimeSeconds = data
+		case "mergeQueueTargetTimeSeconds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mergeQueueTargetTimeSeconds"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MergeQueueTargetTimeSeconds = data
 		case "acceptableHostIdleTimeSeconds":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("acceptableHostIdleTimeSeconds"))
 			data, err := ec.unmarshalNInt2int(ctx, v)
@@ -100862,6 +101001,11 @@ func (ec *executionContext) _PlannerSettings(ctx context.Context, sel ast.Select
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "mergeQueueTargetTime":
+			out.Values[i] = ec._PlannerSettings_mergeQueueTargetTime(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "patchFactor":
 			out.Values[i] = ec._PlannerSettings_patchFactor(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -103423,6 +103567,8 @@ func (ec *executionContext) _ReleaseModeConfig(ctx context.Context, sel ast.Sele
 			out.Values[i] = ec._ReleaseModeConfig_targetTimeSecondsOverride(ctx, field, obj)
 		case "idleTimeSecondsOverride":
 			out.Values[i] = ec._ReleaseModeConfig_idleTimeSecondsOverride(ctx, field, obj)
+		case "mergeQueueTargetTimeSecondsOverride":
+			out.Values[i] = ec._ReleaseModeConfig_mergeQueueTargetTimeSecondsOverride(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -104692,6 +104838,8 @@ func (ec *executionContext) _SchedulerConfig(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._SchedulerConfig_cacheDurationSeconds(ctx, field, obj)
 		case "targetTimeSeconds":
 			out.Values[i] = ec._SchedulerConfig_targetTimeSeconds(ctx, field, obj)
+		case "mergeQueueTargetTimeSeconds":
+			out.Values[i] = ec._SchedulerConfig_mergeQueueTargetTimeSeconds(ctx, field, obj)
 		case "acceptableHostIdleTimeSeconds":
 			out.Values[i] = ec._SchedulerConfig_acceptableHostIdleTimeSeconds(ctx, field, obj)
 		case "groupVersions":

@@ -73,6 +73,7 @@ input SchedulerConfigInput {
   futureHostFraction: Float!
   cacheDurationSeconds: Int!
   targetTimeSeconds: Int!
+  mergeQueueTargetTimeSeconds: Int
   acceptableHostIdleTimeSeconds: Int!
   groupVersions: Boolean!
   patchFactor: Int!
@@ -97,6 +98,7 @@ type SchedulerConfig {
   futureHostFraction: Float
   cacheDurationSeconds: Int
   targetTimeSeconds: Int
+  mergeQueueTargetTimeSeconds: Int
   acceptableHostIdleTimeSeconds: Int
   groupVersions: Boolean!
   patchFactor: Int

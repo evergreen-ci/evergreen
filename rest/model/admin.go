@@ -2001,9 +2001,10 @@ func (a *APIRepoTrackerConfig) ToService() (any, error) {
 }
 
 type APIReleaseModeConfig struct {
-	DistroMaxHostsFactor      float64 `json:"distro_max_hosts_factor"`
-	TargetTimeSecondsOverride int     `json:"target_time_seconds_override"`
-	IdleTimeSecondsOverride   int     `json:"idle_time_seconds_override"`
+	DistroMaxHostsFactor                float64 `json:"distro_max_hosts_factor"`
+	TargetTimeSecondsOverride           int     `json:"target_time_seconds_override"`
+	IdleTimeSecondsOverride             int     `json:"idle_time_seconds_override"`
+	MergeQueueTargetTimeSecondsOverride int     `json:"merge_queue_target_time_seconds_override"`
 }
 
 func (a *APIReleaseModeConfig) BuildFromService(h any) error {
@@ -2012,6 +2013,7 @@ func (a *APIReleaseModeConfig) BuildFromService(h any) error {
 		a.DistroMaxHostsFactor = v.DistroMaxHostsFactor
 		a.TargetTimeSecondsOverride = v.TargetTimeSecondsOverride
 		a.IdleTimeSecondsOverride = v.IdleTimeSecondsOverride
+		a.MergeQueueTargetTimeSecondsOverride = v.MergeQueueTargetTimeSecondsOverride
 	default:
 		return errors.Errorf("programmatic error: expected ReleaseModeConfig but got type %T", h)
 	}
@@ -2020,9 +2022,10 @@ func (a *APIReleaseModeConfig) BuildFromService(h any) error {
 
 func (a *APIReleaseModeConfig) ToService() (any, error) {
 	return evergreen.ReleaseModeConfig{
-		DistroMaxHostsFactor:      a.DistroMaxHostsFactor,
-		TargetTimeSecondsOverride: a.TargetTimeSecondsOverride,
-		IdleTimeSecondsOverride:   a.IdleTimeSecondsOverride,
+		DistroMaxHostsFactor:                a.DistroMaxHostsFactor,
+		TargetTimeSecondsOverride:           a.TargetTimeSecondsOverride,
+		IdleTimeSecondsOverride:             a.IdleTimeSecondsOverride,
+		MergeQueueTargetTimeSecondsOverride: a.MergeQueueTargetTimeSecondsOverride,
 	}, nil
 }
 
@@ -2035,6 +2038,7 @@ type APISchedulerConfig struct {
 	FutureHostFraction               float64 `json:"free_host_fraction"`
 	CacheDurationSeconds             int     `json:"cache_duration_seconds"`
 	TargetTimeSeconds                int     `json:"target_time_seconds"`
+	MergeQueueTargetTimeSeconds      int     `json:"merge_queue_target_time_seconds"`
 	AcceptableHostIdleTimeSeconds    int     `json:"acceptable_host_idle_time_seconds"`
 	GroupVersions                    bool    `json:"group_versions"`
 	PatchFactor                      int64   `json:"patch_factor"`
@@ -2061,6 +2065,7 @@ func (a *APISchedulerConfig) BuildFromService(h any) error {
 		a.FutureHostFraction = v.FutureHostFraction
 		a.CacheDurationSeconds = v.CacheDurationSeconds
 		a.TargetTimeSeconds = v.TargetTimeSeconds
+		a.MergeQueueTargetTimeSeconds = v.MergeQueueTargetTimeSeconds
 		a.AcceptableHostIdleTimeSeconds = v.AcceptableHostIdleTimeSeconds
 		a.GroupVersions = v.GroupVersions
 		a.PatchFactor = v.PatchFactor
@@ -2090,6 +2095,7 @@ func (a *APISchedulerConfig) ToService() (any, error) {
 		FutureHostFraction:               a.FutureHostFraction,
 		CacheDurationSeconds:             a.CacheDurationSeconds,
 		TargetTimeSeconds:                a.TargetTimeSeconds,
+		MergeQueueTargetTimeSeconds:      a.MergeQueueTargetTimeSeconds,
 		AcceptableHostIdleTimeSeconds:    a.AcceptableHostIdleTimeSeconds,
 		GroupVersions:                    a.GroupVersions,
 		PatchFactor:                      a.PatchFactor,

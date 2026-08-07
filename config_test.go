@@ -449,7 +449,8 @@ func (s *AdminSuite) TestSchedulerConfig() {
 	defer cancel()
 
 	config := SchedulerConfig{
-		TaskFinder: "task_finder",
+		TaskFinder:                  "task_finder",
+		MergeQueueTargetTimeSeconds: 300,
 	}
 
 	err := config.Set(ctx)
@@ -1063,4 +1064,22 @@ func TestReadAdminSecretsUsesParamCache(t *testing.T) {
 	assert.NotEqual(t, settings.Jira.PersonalAccessToken, settings.Slack.Token)
 	assert.NotEqual(t, settings.Jira.PersonalAccessToken, settings.GithubWebhookSecret)
 	assert.NotEqual(t, settings.Slack.Token, settings.GithubWebhookSecret)
+}
+
+func (s *AdminSuite) TestReleaseModeConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	config := ReleaseModeConfig{
+		DistroMaxHostsFactor:                2,
+		TargetTimeSecondsOverride:           600,
+		IdleTimeSecondsOverride:             300,
+		MergeQueueTargetTimeSecondsOverride: 120,
+	}
+
+	s.NoError(config.Set(ctx))
+	settings, err := GetConfig(ctx)
+	s.NoError(err)
+	s.Require().NotNil(settings)
+	s.Equal(config, settings.ReleaseMode)
 }
