@@ -273,6 +273,14 @@ func resetManyTasks(ctx context.Context, tasks []task.Task, caller string) error
 // reset an execution task, the given task ID must be that of its parent display
 // task.
 func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, user, origin string, detail *apimodels.TaskEndDetail) error {
+	return tryResetTask(ctx, settings, taskId, user, origin, detail, nil)
+}
+
+func tryResetDisplayTask(ctx context.Context, settings *evergreen.Settings, taskId, user, origin string, detail *apimodels.TaskEndDetail, expectedExecution int) error {
+	return tryResetTask(ctx, settings, taskId, user, origin, detail, &expectedExecution)
+}
+
+func tryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, user, origin string, detail *apimodels.TaskEndDetail, expectedExecution *int) error {
 	t, err := task.FindOneId(ctx, taskId)
 	if err != nil {
 		return errors.WithStack(err)
@@ -282,6 +290,9 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 	}
 	if t.IsPartOfDisplay(ctx) {
 		return errors.Errorf("cannot restart execution task '%s' because it is part of a display task", t.Id)
+	}
+	if expectedExecution != nil && t.Execution != *expectedExecution {
+		return nil
 	}
 
 	var execTask *task.Task
@@ -305,7 +316,13 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 						if err != nil {
 							return errors.Wrap(err, "finding execution task")
 						}
+						if execTask.Execution != t.Execution || execTask.LatestParentExecution != t.Execution {
+							continue
+						}
 						if err = MarkEnd(ctx, settings, execTask, origin, time.Now(), detail); err != nil {
+							if adb.ResultsNotFound(err) {
+								continue
+							}
 							return errors.Wrap(err, "marking execution task as ended")
 						}
 					}
@@ -2617,7 +2634,9 @@ func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settin
 // Marks display tasks as reset when finished and then check if it can be reset immediately.
 func ResetTaskOrDisplayTask(ctx context.Context, settings *evergreen.Settings, t *task.Task, user, origin string, failedOnly bool, detail *apimodels.TaskEndDetail) error {
 	taskToReset := *t
+	expectedDisplayExecution := taskToReset.Execution
 	if taskToReset.IsPartOfDisplay(ctx) { // if given an execution task, attempt to restart the full display task
+		expectedDisplayExecution = taskToReset.LatestParentExecution
 		dt, err := taskToReset.GetDisplayTask(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting display task")
@@ -2628,11 +2647,17 @@ func ResetTaskOrDisplayTask(ctx context.Context, settings *evergreen.Settings, t
 	}
 	if taskToReset.DisplayOnly {
 		if failedOnly {
-			if err := taskToReset.SetResetFailedWhenFinished(ctx, user); err != nil {
+			if err := taskToReset.SetResetFailedWhenFinishedAtExecution(ctx, user, expectedDisplayExecution); err != nil {
+				if adb.ResultsNotFound(err) {
+					return nil
+				}
 				return errors.Wrap(err, "marking display task for reset")
 			}
 		} else {
-			if err := taskToReset.SetResetWhenFinished(ctx, user); err != nil {
+			if err := taskToReset.SetResetWhenFinishedAtExecution(ctx, user, expectedDisplayExecution); err != nil {
+				if adb.ResultsNotFound(err) {
+					return nil
+				}
 				return errors.Wrap(err, "marking display task for reset")
 			}
 		}
@@ -2900,7 +2925,7 @@ func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, use
 	if t.IsAutomaticRestart {
 		user = evergreen.AutoRestartActivator
 	}
-	return errors.Wrap(TryResetTask(ctx, setting, t.Id, user, origin, details), "resetting display task")
+	return errors.Wrap(tryResetDisplayTask(ctx, setting, t.Id, user, origin, details, t.Execution), "resetting display task")
 }
 
 // HandleEndTaskForGithubMergeQueueTask stops running GitHub merge queue tasks as soon as one task is finished.
