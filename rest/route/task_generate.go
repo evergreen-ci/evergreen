@@ -68,17 +68,11 @@ func validateFileSize(files []json.RawMessage, maxSizeInMB int) error {
 }
 
 func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
-	if err := data.GenerateTasks(ctx, h.env.Settings(), h.taskID, h.files); err != nil {
+	t, err := data.GenerateTasks(ctx, h.env.Settings(), h.taskID, h.files)
+	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "generating tasks for task '%s'", h.taskID))
 	}
 
-	t, err := task.FindOneId(ctx, h.taskID)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting task '%s'", h.taskID))
-	}
-	if t == nil {
-		return gimlet.MakeJSONErrorResponder(errors.Errorf("task '%s' not found", h.taskID))
-	}
 	grip.Warning(ctx, message.WrapError(units.CreateAndEnqueueGenerateTasks(ctx, h.env, []task.Task{*t}, utility.RoundPartOfMinute(1).Format(units.TSFormat)), message.Fields{
 		"message": "could not enqueue generate tasks job",
 		"version": t.Version,

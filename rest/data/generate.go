@@ -11,20 +11,21 @@ import (
 	"github.com/pkg/errors"
 )
 
-// GenerateTasks parses JSON files for `generate.tasks` and creates the new builds and tasks.
-func GenerateTasks(ctx context.Context, settings *evergreen.Settings, taskID string, jsonFiles []json.RawMessage) error {
+// GenerateTasks parses JSON files for `generate.tasks` and stores them for the generate tasks job to
+// process. It returns the task the JSON was stored for so the caller can avoid re-fetching it.
+func GenerateTasks(ctx context.Context, settings *evergreen.Settings, taskID string, jsonFiles []json.RawMessage) (*task.Task, error) {
 	t, err := task.FindOneIdWithGeneratedJSON(ctx, taskID)
 	if err != nil {
-		return errors.Wrapf(err, "finding task '%s'", taskID)
+		return nil, errors.Wrapf(err, "finding task '%s'", taskID)
 	}
 	if t == nil {
-		return errors.Errorf("task '%s' not found", taskID)
+		return nil, errors.Errorf("task '%s' not found", taskID)
 	}
 
 	// Don't continue if the generator has already run
 	// Return status code 400 to prevent retries
 	if t.GeneratedTasks {
-		return gimlet.ErrorResponse{
+		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    evergreen.TasksAlreadyGeneratedError,
 		}
@@ -35,10 +36,10 @@ func GenerateTasks(ctx context.Context, settings *evergreen.Settings, taskID str
 		files = append(files, string(f))
 	}
 	if _, err := task.GeneratedJSONInsertWithS3Fallback(ctx, settings, t, files, evergreen.ProjectStorageMethodDB); err != nil {
-		return errors.Wrapf(err, "inserting generated JSON files for task '%s'", t.Id)
+		return nil, errors.Wrapf(err, "inserting generated JSON files for task '%s'", t.Id)
 	}
 
-	return nil
+	return t, nil
 }
 
 // GeneratePoll checks to see if a `generate.tasks` job has finished.
