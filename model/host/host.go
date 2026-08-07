@@ -1379,12 +1379,19 @@ func buildEC2MetadataUpdate(hostname, zone, publicIPv4, privateIPv4, ipv6 string
 	return setFields
 }
 
-// numMetadataFields is the number of fields required from EC2 in order
-// to have fully-populated a host's EC2 metadata
+// numMetadataFields is the number of metadata fields that can be set
+// from EC2 data (hostname, zone, start time, public IPv4, private
+// IPv4, IPv6, and volumes).
 const numMetadataFields = 7
 
+// numMetadataFieldsWithoutVolumes is the number of metadata fields
+// excluding volume attachments. Task hosts don't need volume tracking
+// because their EBS volumes are auto-deleted on termination.
+const numMetadataFieldsWithoutVolumes = numMetadataFields - 1
+
 // SetEC2Metadata updates the EC2 metadata for a given host. Only non-zero
-// fields will be set.
+// fields will be set. For task hosts, metadata can be set without volume
+// information since task hosts don't require volume tracking.
 func (h *Host) SetEC2Metadata(ctx context.Context, params HostMetadataOptions) error {
 	setFields := buildEC2MetadataUpdate(
 		params.PublicDNS,
@@ -1396,8 +1403,12 @@ func (h *Host) SetEC2Metadata(ctx context.Context, params HostMetadataOptions) e
 		params.Volumes,
 	)
 
-	// If there is any missing data in setFields, no-op.
-	if len(setFields) < numMetadataFields {
+	requiredFields := numMetadataFields
+	if h.StartedBy == evergreen.User {
+		requiredFields = numMetadataFieldsWithoutVolumes
+	}
+
+	if len(setFields) < requiredFields {
 		return nil
 	}
 
