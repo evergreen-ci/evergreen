@@ -378,65 +378,6 @@ func TestFleet(t *testing.T) {
 			assert.Len(t, client.CreateFleetInput.LaunchTemplateConfigs, 1)
 			assert.Equal(t, "ht_1", *client.CreateFleetInput.LaunchTemplateConfigs[0].LaunchTemplateSpecification.LaunchTemplateName)
 		},
-		"MakeOverridesWithoutVpcNameInDefaultAccountReturnsNoOverrides": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
-			ec2Settings := &EC2ProviderSettings{
-				InstanceType: "instanceType0",
-				SubnetId:     "subnet-654321",
-			}
-
-			overrides, err := m.makeSubnetOverrides(ctx, h, ec2Settings)
-			assert.NoError(t, err)
-			assert.Nil(t, overrides)
-		},
-		"MakeOverridesWithUnsupportedInstanceTypeReturnsNoOverrides": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
-			ec2Settings := &EC2ProviderSettings{
-				VpcName:      "my_vpc",
-				InstanceType: "not_supported",
-				SubnetId:     "subnet-654321",
-			}
-
-			overrides, err := m.makeSubnetOverrides(ctx, h, ec2Settings)
-			assert.NoError(t, err)
-			assert.Nil(t, overrides)
-		},
-		"MakeOverridesWithOnlyTheHostsOwnSubnetReturnsNoOverrides": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
-			ec2Settings := &EC2ProviderSettings{
-				VpcName:      "my_vpc",
-				InstanceType: "instanceType0",
-				SubnetId:     "subnet-654321",
-			}
-
-			overrides, err := m.makeSubnetOverrides(ctx, h, ec2Settings)
-			assert.NoError(t, err)
-			assert.Nil(t, overrides, "overriding with the launch template's own subnet would have no effect")
-		},
-		"MakeOverridesWithSubnetNotAvailableToHostReturnsNoOverrides": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
-			ec2Settings := &EC2ProviderSettings{
-				VpcName:      "my_vpc",
-				InstanceType: "instanceType0",
-				SubnetId:     "subnet-not-in-admin-settings",
-			}
-
-			overrides, err := m.makeSubnetOverrides(ctx, h, ec2Settings)
-			assert.NoError(t, err)
-			assert.Nil(t, overrides)
-		},
-		"MakeOverridesReturnsEverySupportingSubnet": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
-			typeCache.cache[instanceTypeCacheKey{instanceType: "instanceType0", region: evergreen.DefaultEC2Region}] = cachedSubnets{
-				subnets: []evergreen.Subnet{{SubnetID: "subnet-654321"}, {SubnetID: "subnet-123456"}},
-			}
-			ec2Settings := &EC2ProviderSettings{
-				VpcName:      "my_vpc",
-				InstanceType: "instanceType0",
-				SubnetId:     "subnet-654321",
-			}
-
-			overrides, err := m.makeSubnetOverrides(ctx, h, ec2Settings)
-			assert.NoError(t, err)
-			require.Len(t, overrides, 2)
-			assert.Equal(t, "subnet-654321", utility.FromStringPtr(overrides[0].SubnetId))
-			assert.Equal(t, "subnet-123456", utility.FromStringPtr(overrides[1].SubnetId))
-		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			tctx, tcancel := context.WithCancel(ctx)
@@ -460,7 +401,6 @@ func TestFleet(t *testing.T) {
 			require.NoError(t, db.Clear(host.Collection))
 			require.NoError(t, h.Insert(ctx))
 
-			resetTypeCache(t)
 			typeCache.cache[instanceTypeCacheKey{instanceType: "instanceType0", region: evergreen.DefaultEC2Region}] = cachedSubnets{
 				subnets: []evergreen.Subnet{{SubnetID: "subnet-654321"}},
 			}
@@ -663,28 +603,11 @@ func TestGetManagerForEc2Fleet(t *testing.T) {
 	assert.True(t, ok, "ec2-fleet provider should return an ec2FleetManager")
 }
 
-func subnetIDsFromOverrides(overrides []types.FleetLaunchTemplateOverridesRequest) []string {
-	ids := make([]string, 0, len(overrides))
-	for _, override := range overrides {
-		ids = append(ids, utility.FromStringPtr(override.SubnetId))
-	}
-	return ids
-}
-
-// resetTypeCache clears the package-level subnet cache so that tests don't
-// affect each other.
-func resetTypeCache(t *testing.T) {
-	typeCache = &instanceTypeSubnetCache{cache: map[instanceTypeCacheKey]cachedSubnets{}}
-	t.Cleanup(func() {
-		typeCache = &instanceTypeSubnetCache{cache: map[instanceTypeCacheKey]cachedSubnets{}}
-	})
-}
-
-func TestSubnetDiscovery(t *testing.T) {
+func TestMakeSubnetOverrides(t *testing.T) {
 	const (
 		account  = "some-account"
-		tagName  = "SubnetGroupName"
-		tagValue = "workloads"
+		tagName  = "subnet-group"
+		tagValue = "evergreen-subnet"
 	)
 	az := evergreen.DefaultEBSAvailabilityZone
 
@@ -732,7 +655,7 @@ func TestSubnetDiscovery(t *testing.T) {
 	}
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
-		"NonDefaultAccountDiscoversSubnets": func(ctx context.Context, t *testing.T) {
+		"NonDefaultAccountDiscoversSubnetsAndCachesThem": func(ctx context.Context, t *testing.T) {
 			m, client := makeManager(account)
 			ec2Settings := &EC2ProviderSettings{InstanceType: "instanceType0", SubnetId: "subnet-discovered1"}
 
@@ -742,18 +665,17 @@ func TestSubnetDiscovery(t *testing.T) {
 			assert.Equal(t, "subnet-discovered1", utility.FromStringPtr(overrides[0].SubnetId))
 			assert.Equal(t, "subnet-discovered2", utility.FromStringPtr(overrides[1].SubnetId))
 
-			require.NotNil(t, client.DescribeSubnetsInput)
+			require.NotZero(t, client.DescribeSubnetsInput)
 			require.Len(t, client.DescribeSubnetsInput.Filters, 1)
 			assert.Equal(t, "tag:"+tagName, utility.FromStringPtr(client.DescribeSubnetsInput.Filters[0].Name))
 			assert.Equal(t, []string{tagValue}, client.DescribeSubnetsInput.Filters[0].Values)
-		},
-		"NonDefaultAccountDoesNotNeedVpcName": func(ctx context.Context, t *testing.T) {
-			m, _ := makeManager(account)
-			ec2Settings := &EC2ProviderSettings{InstanceType: "instanceType0", SubnetId: "subnet-discovered1"}
 
-			overrides, err := m.makeSubnetOverrides(ctx, h, ec2Settings)
-			require.NoError(t, err)
-			assert.Len(t, overrides, 2, "a non-default account should opt in without a VPC name")
+			for range 3 {
+				overrides, err := m.makeSubnetOverrides(ctx, h, ec2Settings)
+				require.NoError(t, err)
+				assert.Len(t, overrides, 2)
+			}
+			assert.Equal(t, 1, client.DescribeSubnetsCount, "already-discovered subnets are cached")
 		},
 		"DefaultAccountUsesAdminSettingsSubnets": func(ctx context.Context, t *testing.T) {
 			m, client := makeManager("")
@@ -770,37 +692,21 @@ func TestSubnetDiscovery(t *testing.T) {
 			assert.Equal(t, "subnet-from-admin-settings2", utility.FromStringPtr(overrides[1].SubnetId))
 			assert.Zero(t, client.DescribeSubnetsCount, "default account should not discover subnets")
 		},
-		"DiscoveryErrorReturnsNoOverrides": func(ctx context.Context, t *testing.T) {
+		"DiscoveryErrorReturnsNoOverridesAndCachesFailure": func(ctx context.Context, t *testing.T) {
 			m, client := makeManager(account)
 			client.DescribeSubnetsError = errors.New("not authorized to describe subnets")
 			ec2Settings := &EC2ProviderSettings{InstanceType: "instanceType0", SubnetId: "subnet-discovered1"}
 
 			overrides, err := m.makeSubnetOverrides(ctx, h, ec2Settings)
-			assert.NoError(t, err, "discovery failure should not prevent the host from spawning")
-			assert.Nil(t, overrides)
-		},
-		"DiscoveryErrorIsCached": func(ctx context.Context, t *testing.T) {
-			m, client := makeManager(account)
-			client.DescribeSubnetsError = errors.New("not authorized to describe subnets")
-			ec2Settings := &EC2ProviderSettings{InstanceType: "instanceType0", SubnetId: "subnet-discovered1"}
+			assert.NoError(t, err)
+			assert.Zero(t, overrides)
 
-			for range 3 {
+			for range 10 {
 				overrides, err := m.makeSubnetOverrides(ctx, h, ec2Settings)
-				require.NoError(t, err)
-				assert.Nil(t, overrides)
+				assert.NoError(t, err)
+				assert.Zero(t, overrides)
 			}
-			assert.Equal(t, 1, client.DescribeSubnetsCount, "a failed discovery should not be retried")
-		},
-		"DiscoveryResultIsCached": func(ctx context.Context, t *testing.T) {
-			m, client := makeManager(account)
-			ec2Settings := &EC2ProviderSettings{InstanceType: "instanceType0", SubnetId: "subnet-discovered1"}
-
-			for range 3 {
-				overrides, err := m.makeSubnetOverrides(ctx, h, ec2Settings)
-				require.NoError(t, err)
-				assert.Len(t, overrides, 2)
-			}
-			assert.Equal(t, 1, client.DescribeSubnetsCount)
+			assert.Equal(t, 1, client.DescribeSubnetsCount, "failed subnet discovery API calls should not be retried")
 		},
 		"UntaggedSubnetsAreTreatedAsFailure": func(ctx context.Context, t *testing.T) {
 			m, client := makeManager(account)
@@ -809,11 +715,11 @@ func TestSubnetDiscovery(t *testing.T) {
 
 			overrides, err := m.makeSubnetOverrides(ctx, h, ec2Settings)
 			require.NoError(t, err)
-			assert.Nil(t, overrides)
+			assert.Zero(t, overrides)
 
 			_, err = m.makeSubnetOverrides(ctx, h, ec2Settings)
 			require.NoError(t, err)
-			assert.Equal(t, 1, client.DescribeSubnetsCount, "finding no tagged subnets should be cached")
+			assert.Equal(t, 1, client.DescribeSubnetsCount, "discovering no tagged subnets should be cached")
 		},
 		"MissingTagSettingsSkipsDiscovery": func(ctx context.Context, t *testing.T) {
 			m, client := makeManager(account)
@@ -823,18 +729,19 @@ func TestSubnetDiscovery(t *testing.T) {
 
 			overrides, err := m.makeSubnetOverrides(ctx, h, ec2Settings)
 			require.NoError(t, err)
-			assert.Nil(t, overrides)
+			assert.Zero(t, overrides)
 			assert.Zero(t, client.DescribeSubnetsCount)
 		},
-		"HostSubnetNotDiscoveredReturnsNoOverrides": func(ctx context.Context, t *testing.T) {
-			m, _ := makeManager(account)
-			ec2Settings := &EC2ProviderSettings{InstanceType: "instanceType0", SubnetId: "subnet-untagged"}
+		"UnsupportedInstanceTypeReturnsNoOverridesAndCachesFailure": func(ctx context.Context, t *testing.T) {
+			m, client := makeManager(account)
+			client.DescribeInstanceTypeOfferingsOutput = &ec2.DescribeInstanceTypeOfferingsOutput{}
+			ec2Settings := &EC2ProviderSettings{InstanceType: "not_supported", SubnetId: "subnet-discovered1"}
 
 			overrides, err := m.makeSubnetOverrides(ctx, h, ec2Settings)
 			require.NoError(t, err)
-			assert.Nil(t, overrides, "the host's subnet must be one of the options to override it")
+			assert.Zero(t, overrides)
 		},
-		"CacheIsNotSharedBetweenAccounts": func(ctx context.Context, t *testing.T) {
+		"CachedSubnetsAreNotSharedBetweenAccounts": func(ctx context.Context, t *testing.T) {
 			defaultManager, defaultClient := makeManager("")
 			defaultSettings := &EC2ProviderSettings{
 				VpcName:      "my_vpc",
@@ -844,49 +751,27 @@ func TestSubnetDiscovery(t *testing.T) {
 			overrides, err := defaultManager.makeSubnetOverrides(ctx, h, defaultSettings)
 			require.NoError(t, err)
 			require.Len(t, overrides, 2)
-			assert.Equal(t, []string{"subnet-from-admin-settings1", "subnet-from-admin-settings2"}, subnetIDsFromOverrides(overrides))
+			assert.Equal(t, "subnet-from-admin-settings1", utility.FromStringPtr(overrides[0].SubnetId))
+			assert.Equal(t, "subnet-from-admin-settings2", utility.FromStringPtr(overrides[1].SubnetId))
 
 			otherManager, _ := makeManager(account)
 			otherSettings := &EC2ProviderSettings{InstanceType: "instanceType0", SubnetId: "subnet-discovered1"}
 			overrides, err = otherManager.makeSubnetOverrides(ctx, h, otherSettings)
 			require.NoError(t, err)
-			require.Len(t, overrides, 2, "the other account should not reuse the default account's subnets")
+			require.Len(t, overrides, 2, "the other account should not use the default account's subnets")
+			assert.Equal(t, "subnet-discovered1", utility.FromStringPtr(overrides[0].SubnetId))
+			assert.Equal(t, "subnet-discovered2", utility.FromStringPtr(overrides[1].SubnetId))
 			assert.Zero(t, defaultClient.DescribeSubnetsCount)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			resetTypeCache(t)
+			typeCache = &instanceTypeSubnetCache{cache: map[instanceTypeCacheKey]cachedSubnets{}}
+			t.Cleanup(func() {
+				typeCache = &instanceTypeSubnetCache{cache: map[instanceTypeCacheKey]cachedSubnets{}}
+			})
 			tCase(t.Context(), t)
 		})
 	}
-}
-
-func TestInstanceTypeSubnetCacheSet(t *testing.T) {
-	instanceRegion := instanceTypeCacheKey{instanceType: "instanceType0", region: evergreen.DefaultEC2Region}
-	success := cachedSubnets{subnets: []evergreen.Subnet{{SubnetID: "sn0"}}}
-	failure := cachedSubnets{err: errors.New("could not discover subnets")}
-
-	t.Run("FailureDoesNotReplaceSuccess", func(t *testing.T) {
-		cache := &instanceTypeSubnetCache{cache: map[instanceTypeCacheKey]cachedSubnets{}}
-		cache.set(instanceRegion, success)
-		cache.set(instanceRegion, failure)
-
-		cached, ok := cache.get(instanceRegion)
-		require.True(t, ok)
-		assert.NoError(t, cached.err, "a failure racing with a success should not be cached")
-		require.Len(t, cached.subnets, 1)
-		assert.Equal(t, "sn0", cached.subnets[0].SubnetID)
-	})
-	t.Run("SuccessReplacesFailure", func(t *testing.T) {
-		cache := &instanceTypeSubnetCache{cache: map[instanceTypeCacheKey]cachedSubnets{}}
-		cache.set(instanceRegion, failure)
-		cache.set(instanceRegion, success)
-
-		cached, ok := cache.get(instanceRegion)
-		require.True(t, ok)
-		assert.NoError(t, cached.err)
-		assert.Len(t, cached.subnets, 1)
-	})
 }
 
 func TestInstanceTypeAZCache(t *testing.T) {

@@ -96,16 +96,10 @@ func (c *instanceTypeSubnetCache) get(instanceRegion instanceTypeCacheKey) (cach
 	return cached, ok
 }
 
-// set stores the result of a subnet lookup. A failed lookup never replaces a
-// successful one because entries never expire, so a failure that raced with a
-// success would otherwise persist until the app servers restart.
 func (c *instanceTypeSubnetCache) set(instanceRegion instanceTypeCacheKey, result cachedSubnets) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if _, alreadyCached := c.cache[instanceRegion]; alreadyCached && result.err != nil {
-		return
-	}
 	c.cache[instanceRegion] = result
 }
 
