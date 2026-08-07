@@ -15,6 +15,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/negroni"
+	"github.com/mongodb/grip/logging"
+	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/send"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -387,6 +391,72 @@ func TestRateLimitMiddlewareSurfacesHaveIndependentBuckets(t *testing.T) {
 	rw, ran = runRateLimit(t, restMW, "/rest/v2/hosts", u)
 	assert.True(t, ran, "REST bucket should be independent from the exhausted GraphQL bucket")
 	assert.Equal(t, http.StatusOK, rw.Code)
+}
+
+// runRateLimitLogged runs the middleware inside gimlet's request logger, which is what
+// emits the "completed" log message that rate limit annotations are attached to, and
+// returns that message's fields.
+func runRateLimitLogged(t *testing.T, mw gimlet.Middleware, surfacePath string, u *user.DBUser) message.Fields {
+	sender := send.MakeInternalLogger()
+	r, err := http.NewRequest(http.MethodGet, surfacePath, nil)
+	require.NoError(t, err)
+	r = r.WithContext(gimlet.AttachUser(t.Context(), u))
+
+	rw := negroni.NewResponseWriter(httptest.NewRecorder())
+	gimlet.NewRecoveryLogger(logging.MakeGrip(sender)).ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+		mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, _ *http.Request) { rw.WriteHeader(http.StatusOK) })
+	})
+
+	require.True(t, sender.HasMessage())
+	fields, ok := sender.GetMessage().Message.Raw().(message.Fields)
+	require.True(t, ok)
+	require.Equal(t, "completed", fields["action"])
+	return fields
+}
+
+func TestRateLimitMiddlewareAnnotatesCompletedLogWhenOverLimit(t *testing.T) {
+	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 1})
+	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceREST)
+	u := &user.DBUser{Id: "u"}
+
+	fields := runRateLimitLogged(t, mw, "/rest/v2/hosts", u)
+	require.Equal(t, message.Fields{
+		"surface": evergreen.RateLimitSurfaceREST, "per_hour": 100, "burst": 1, "remaining": 0,
+		"exceeded": false, "enforced": false, "exempt": false, "elevated": false,
+	}, fields["rate_limit"])
+
+	fields = runRateLimitLogged(t, mw, "/rest/v2/hosts", u)
+	assert.Equal(t, http.StatusTooManyRequests, fields["status"])
+	assert.Equal(t, message.Fields{
+		"surface": evergreen.RateLimitSurfaceREST, "per_hour": 100, "burst": 1, "remaining": 0,
+		"exceeded": true, "enforced": true, "exempt": false, "elevated": false,
+	}, fields["rate_limit"])
+}
+
+// Verifies that an exempt user's usage is still reported even though they are never
+// blocked, so that an exempt user exceeding the limit they would otherwise have is
+// visible in the logs.
+func TestRateLimitMiddlewareAnnotatesCompletedLogForExemptUser(t *testing.T) {
+	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{
+		RESTUserPerHour: 100,
+		RESTUserBurst:   1,
+		ExemptUserIDs:   []string{"exempt"},
+	})
+	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceREST)
+	u := &user.DBUser{Id: "exempt"}
+
+	fields := runRateLimitLogged(t, mw, "/rest/v2/hosts", u)
+	require.Equal(t, message.Fields{
+		"surface": evergreen.RateLimitSurfaceREST, "per_hour": 100, "burst": 1, "remaining": 0,
+		"exceeded": false, "enforced": false, "exempt": true, "elevated": false,
+	}, fields["rate_limit"])
+
+	fields = runRateLimitLogged(t, mw, "/rest/v2/hosts", u)
+	assert.Equal(t, http.StatusOK, fields["status"], "exempt user should not be blocked")
+	assert.Equal(t, message.Fields{
+		"surface": evergreen.RateLimitSurfaceREST, "per_hour": 100, "burst": 1, "remaining": 0,
+		"exceeded": true, "enforced": false, "exempt": true, "elevated": false,
+	}, fields["rate_limit"])
 }
 
 // Verifies that if Redis becomes unavailable after the limiter is already initialized,
