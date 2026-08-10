@@ -122,6 +122,15 @@ type ParserProject struct {
 
 	// Matrix code
 	Axes []matrixAxis `yaml:"axes,omitempty" bson:"axes,omitempty"`
+
+	// projectConfigFields stores version-controlled project
+	// configuration parsed from the main file and all included files. It is
+	// intentionally unexported so that it's never persisted to the DB and it only exists in memory.
+	projectConfigFields *ProjectConfigFields
+	// redefinedProjectConfigSettings records version-controlled settings
+	// structs that were defined in more than one YAML file. It is
+	// intentionally unexported so that it's never persisted to the DB and it only exists in memory.
+	redefinedProjectConfigSettings []string
 } // End of ParserProject mergeable fields (this comment is used by the linter).
 
 type parserTaskGroup struct {
@@ -1085,6 +1094,8 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 			// Return intermediateProject even if we run into issues to show merge progress.
 			return errors.Wrapf(err, "%s: merging file '%s'", LoadProjectError, path.FileName)
 		}
+
+		intermediateProject.mergeProjectConfigFields(add)
 	}
 
 	return nil
@@ -1602,10 +1613,7 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts, settings *ever
 	}
 	var pc *ProjectConfig
 	if opts.Ref.IsVersionControlEnabled() {
-		pc, err = CreateProjectConfig(fileContents, opts.Ref.Id)
-		if err != nil {
-			return ProjectInfo{}, errors.Wrapf(err, "parsing project config for '%s'", opts.Ref.Id)
-		}
+		pc = pp.MergedProjectConfig(opts.Ref.Id)
 	}
 	return ProjectInfo{
 		Project:             &config,
@@ -1635,9 +1643,15 @@ func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRe
 				return nil, errors.Wrap(err, "unmarshalling parser project from YAML")
 			}
 			p = strictProjectWithVariables.ParserProject
+			if !strictProjectWithVariables.ProjectConfigFields.isEmpty() {
+				p.projectConfigFields = &strictProjectWithVariables.ProjectConfigFields
+			}
 		} else {
 			if err := util.UnmarshalYAMLWithFallback(parseBytes, &p); err != nil {
 				return nil, errors.Wrap(err, "unmarshalling parser project from YAML")
+			}
+			if err := p.setProjectConfigFields(parseBytes); err != nil {
+				return nil, err
 			}
 		}
 		if p.Functions == nil {
@@ -1663,6 +1677,35 @@ func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRe
 		result.Functions = map[string]*YAMLCommandSet{}
 	}
 	return result, nil
+}
+
+func (pp *ParserProject) setProjectConfigFields(parseBytes []byte) error {
+	pcf := ProjectConfigFields{}
+	if err := util.UnmarshalYAMLWithFallback(parseBytes, &pcf); err != nil {
+		yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
+		return errors.Wrap(yamlErr, TranslateProjectConfigError)
+	}
+	if !pcf.isEmpty() {
+		pp.projectConfigFields = &pcf
+	}
+	return nil
+}
+
+// MergedProjectConfig returns the version-controlled project config merged
+// across the main project file and all included files.
+func (pp *ParserProject) MergedProjectConfig(identifier string) *ProjectConfig {
+	if pp.projectConfigFields == nil {
+		return nil
+	}
+	pc := &ProjectConfig{
+		CreateTime:          time.Now(),
+		ProjectConfigFields: *pp.projectConfigFields,
+		RedefinedSettings:   pp.redefinedProjectConfigSettings,
+	}
+	if identifier != "" {
+		pc.Project = identifier
+	}
+	return pc
 }
 
 // decodeWithAnchors decodes parseBytes into a ParserProject using a yaml.Node as an intermediate
