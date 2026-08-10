@@ -40,9 +40,8 @@ type ContainerHandle interface {
 	Destroy(ctx context.Context) error
 }
 
-// containerFactory creates and starts a new isolation container. The default
-// implementation calls agentcontainer.CreateAndStart; tests replace it with a
-// stub that returns a fake ContainerHandle without Docker.
+// containerFactoryFunc creates and starts a new isolation container. Tests
+// replace it with a stub that avoids Docker.
 type containerFactoryFunc func(ctx context.Context, cfg agentcontainer.Config) (ContainerHandle, error)
 
 func defaultContainerFactory(ctx context.Context, cfg agentcontainer.Config) (ContainerHandle, error) {
@@ -51,7 +50,7 @@ func defaultContainerFactory(ctx context.Context, cfg agentcontainer.Config) (Co
 
 // reaperTimeout bounds the total time the orphan-container reaper spends
 // connecting to Docker, listing containers, and removing them.
-const reaperTimeout = 30 * time.Second //nolint:unused
+const reaperTimeout = 30 * time.Second
 
 const (
 	containerEnvFilePrefix  = ".evg-env-"
@@ -60,10 +59,11 @@ const (
 )
 
 // tryReapOrphanContainers removes isolation containers left behind by a prior
-// agent crash or host reboot. Called once at agent startup when the --cleanup
-// flag is set, before any tasks are dispatched. Best-effort: if Docker is not
-// running the function returns silently, and individual removal failures are
-// warned but do not block startup.
+// agent exit (crash, OOM kill, systemd restart, host reboot, or Docker daemon
+// restart where the agent loses track but containers survive). Called once at
+// agent startup when the --cleanup flag is set, before any tasks are dispatched.
+// Best-effort: if Docker is not running the function returns silently, and
+// individual removal failures are warned but do not block startup.
 //
 // The reaper runs on a background-derived context so that a shutdown signal
 // arriving during the --cleanup phase does not cancel every Docker call and
@@ -116,16 +116,10 @@ func (a *Agent) tryReapOrphanContainers(ctx context.Context) { //nolint:unused
 }
 
 // isAgentOwnedContainer reports whether the reaper may remove a container.
-//
-// An explicit owner label is authoritative in both directions: it claims
-// containers this agent created and protects containers owned by anything
-// else. Containers with no owner label at all are matched on an anchored name
-// prefix, so containers created before ownership labels existed are still
-// reaped rather than stranded on the host across an agent rollout.
-//
-// The prefix is checked here rather than in the Docker filter because Docker's
-// name filter is an unanchored substring match, which would also match a
-// container a human named something like "my-evergreen-task-debug".
+// An explicit owner label is authoritative in both directions. Containers with
+// no owner label are matched on an anchored name prefix so pre-label containers
+// are still reaped. The prefix is checked client-side because Docker's name
+// filter is an unanchored substring match.
 func isAgentOwnedContainer(labels map[string]string, names []string) bool {
 	if owner, ok := labels[agentcontainer.OwnerLabel]; ok {
 		return owner == agentcontainer.OwnerLabelValue
@@ -148,16 +142,11 @@ func containerNames(names []string) string {
 	return strings.Join(clean, ",")
 }
 
-// maybeStartContainer ensures a Docker container is running for task isolation
-// when the distro has container isolation enabled. It sets conf.ContainerID so
-// commands know to route execution through `docker exec`.
-//
-// Container lifecycle is task-group-scoped, not per-task. If a container is
-// already running for this task group (a.currentContainer != nil), the existing
-// container's identity is wired into conf without creating a new one. A new
-// container is only created at the start of a task group (when a.currentContainer
-// is nil). The container is destroyed in runTeardownGroupCommands.
-func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConfig, log grip.Journaler) error {
+// ensureContainer starts a Docker container for task isolation when the distro
+// has container isolation enabled, or reuses the existing container for the
+// current task group. It sets conf.ContainerID so commands route execution
+// through `docker exec`. The container is destroyed in runTeardownGroupCommands.
+func (a *Agent) ensureContainer(ctx context.Context, conf *internal.TaskConfig, log grip.Journaler) error {
 	if conf.Distro == nil || conf.Distro.ContainerIsolation == nil {
 		return nil
 	}
@@ -189,28 +178,33 @@ func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConf
 			span.SetStatus(codes.Error, err.Error())
 			return errors.Wrap(err, "preparing task directories for isolation container (fail-closed: require_isolation is set)")
 		}
-		grip.Warningf(ctx, "Could not prepare task directories for container isolation: %s", err)
+		if log != nil {
+			log.Warningf(ctx, "Could not prepare task directories for container isolation: %s", err)
+		}
 	}
 	if fellBack {
 		span.SetAttributes(attribute.Bool("container.workdir_permissive_fallback", true))
-		grip.Warningf(ctx, "Task directories for task '%s' are world-writable because ownership could not be transferred to exec user '%s'; the container can write to them, but so can any other local user on this host.",
-			conf.Task.Id, conf.Distro.ExecUser)
+		if log != nil {
+			log.Warningf(ctx, "Task directories for task '%s' are world-writable because ownership could not be transferred to exec user '%s'; the container can write to them, but so can any other local user on this host.",
+				conf.Task.Id, conf.Distro.ExecUser)
+		}
 	}
 
-	extraMounts := toolchainMounts(ctx, conf.Task.Id)
+	extraMounts := toolchainMounts(ctx, conf.Task.Id, log)
 
 	factory := a.containerFactory
 	if factory == nil {
 		factory = defaultContainerFactory
 	}
 	tc, err := factory(ctx, agentcontainer.Config{
-		Image:       ci.Image,
-		WorkDir:     conf.WorkDir,
-		TaskID:      conf.Task.Id,
-		MemoryMB:    ci.MemoryMB,
-		CPUs:        ci.CPUs,
-		ExtraMounts: extraMounts,
-		Logger:      log,
+		Image:         ci.Image,
+		WorkDir:       conf.WorkDir,
+		TaskID:        conf.Task.Id,
+		TaskExecution: conf.Task.Execution,
+		MemoryMB:      ci.MemoryMB,
+		CPUs:          ci.CPUs,
+		ExtraMounts:   extraMounts,
+		Logger:        log,
 	})
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
@@ -246,11 +240,15 @@ func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConf
 	if conf.EnvFileHostDir != "" {
 		hostEnvPath := filepath.Join(conf.EnvFileHostDir, ".evg-host-env")
 		if err := writeHostEnvFile(ctx, hostEnvPath); err != nil {
-			grip.Warningf(ctx, "Could not write host env file for container isolation: %s", err)
+			if log != nil {
+				log.Warningf(ctx, "Could not write host env file for container isolation: %s", err)
+			}
 		}
 	}
 
-	grip.Infof(ctx, "Started isolation container '%s' (image=%s) for task group starting with task '%s'.", tc.GetName(), ci.Image, conf.Task.Id)
+	if log != nil {
+		log.Infof(ctx, "Started isolation container '%s' (image=%s) for task group starting with task '%s'.", tc.GetName(), ci.Image, conf.Task.Id)
+	}
 	return nil
 }
 
@@ -283,7 +281,7 @@ var containerToolchainDirs = []string{
 // toolchainMounts returns read-only mounts for the toolchain directories that
 // exist on the host. Nonexistent sources are skipped because Docker rejects
 // bind mounts whose source is missing, which would fail container creation.
-func toolchainMounts(ctx context.Context, taskID string) []agentcontainer.Mount {
+func toolchainMounts(ctx context.Context, taskID string, log grip.Journaler) []agentcontainer.Mount {
 	var mounts []agentcontainer.Mount
 	for _, dir := range containerToolchainDirs {
 		if _, err := os.Stat(dir); err != nil {
@@ -291,29 +289,19 @@ func toolchainMounts(ctx context.Context, taskID string) []agentcontainer.Mount 
 		}
 		mounts = append(mounts, agentcontainer.Mount{Source: dir, Target: dir, ReadOnly: true})
 	}
-	if len(mounts) == 0 {
-		grip.Warningf(ctx, "No host toolchain directories found; container for task '%s' will only see image-provided toolchains.", taskID)
+	if len(mounts) == 0 && log != nil {
+		log.Warningf(ctx, "No host toolchain directories found; container for task '%s' will only see image-provided toolchains.", taskID)
 	}
 	return mounts
 }
 
 // secureContainerDirs prepares the task working directory and its tmp
-// subdirectory for use by the container's exec user, which must be able to
-// write to them through the same-path bind mount.
-//
-// The preferred path transfers ownership to the exec user and applies a mode
-// that is not world-writable. When ownership cannot be reconciled — the user
-// does not resolve on the host, or the agent cannot chown — the directories
-// fall back to a permissive mode so the task still runs, and fellBack reports
-// the weaker posture so the caller can log it.
-//
-// Bind mounts are enforced by numeric uid, while `docker exec --user` resolves
-// the exec user against the image's own passwd database. A host uid that
-// disagrees with the image's uid for the same name is therefore not detectable
-// here and surfaces as a write failure inside the container.
-//
-// When the distro has no exec user, docker exec runs as root inside the
-// container and can already write to the agent-owned directories.
+// subdirectory for the container's exec user. Ownership transfer is preferred;
+// when that fails, a permissive mode is applied so the task still runs, and
+// fellBack reports the weaker posture. Bind mounts use numeric uid while
+// docker exec resolves the user against the image's passwd database, so a
+// uid mismatch is not detectable here and surfaces as a write failure inside
+// the container.
 func secureContainerDirs(workDir, execUser string) (fellBack bool, err error) {
 	if workDir == "" || execUser == "" {
 		return false, nil
@@ -411,16 +399,10 @@ func verifyRealDir(dir string) error {
 }
 
 // destroyContainer tears down the isolation container and clears the agent's
-// container reference. conf may be nil (e.g. when called from the loop-exit
-// defer before any task has run), in which case conf fields are not cleared.
-// The container is identified by its name in logs rather than the task ID,
-// since the container was created for the first task in the group and its name
-// does not change across task-group members.
+// reference. conf may be nil; in that case conf fields are not cleared.
 //
-// If a.retainContainerUntil is in the future, container ownership transfers to
-// a bounded background cleanup. The container remains available for inspection
-// until the retention deadline, or until the agent context is canceled during
-// shutdown. The agent reference is cleared so subsequent dispatch is unaffected.
+// If retainContainerUntil is in the future, the container is handed off to a
+// background goroutine that destroys it at the deadline or on agent shutdown.
 func (a *Agent) destroyContainer(ctx context.Context, conf *internal.TaskConfig) {
 	if a.currentContainer == nil {
 		a.retainContainerUntil = time.Time{}
@@ -528,32 +510,28 @@ func checkContainerOOM(ctx context.Context, containerID string) (bool, error) { 
 // for ContainerRetainOnFailureSecs seconds after the task ends so on-call can
 // docker exec into it for post-mortem inspection.
 //
-// Timing note: the window is measured from task failure time, not from when
-// destroyContainer actually fires (which is at group teardown, potentially
-// seconds to minutes later). For task groups where teardown fires within the
-// window, the container is left running until the reaper; for teardown after
-// the window, normal destroy runs. Both outcomes are acceptable for Phase 0
-// on-call use: the container is either available or cleanly removed.
-func (a *Agent) scheduleContainerRetention(ctx context.Context, containerName string) { //nolint:unused
+// The window is measured from task failure time, not from when destroyContainer
+// actually fires (which is at group teardown, potentially seconds to minutes
+// later). The retention goroutine destroys the container at the deadline; if
+// the agent exits before the deadline, the reaper cleans it up at next startup.
+func (a *Agent) scheduleContainerRetention(ctx context.Context, containerName string, log grip.Journaler) { //nolint:unused
 	if a.opts.ContainerRetainOnFailureSecs <= 0 || a.currentContainer == nil {
 		return
 	}
 	a.retainContainerUntil = time.Now().Add(time.Duration(a.opts.ContainerRetainOnFailureSecs) * time.Second)
-	grip.Infof(ctx, "Task failed with isolation container '%s' active; scheduling retention until %s (retain_on_failure_secs=%d). Use `docker exec -it %s bash` for inspection.",
-		containerName, a.retainContainerUntil.Format(time.RFC3339),
-		a.opts.ContainerRetainOnFailureSecs, containerName)
+	if log != nil {
+		log.Infof(ctx, "Task failed with isolation container '%s' active; scheduling retention until %s (retain_on_failure_secs=%d). Use `docker exec -it %s bash` for inspection.",
+			containerName, a.retainContainerUntil.Format(time.RFC3339),
+			a.opts.ContainerRetainOnFailureSecs, containerName)
+	}
 }
 
 // emitContainerFailureSnapshot collects post-mortem forensics from the active
 // isolation container and emits them as a container.failure_snapshot OTel span.
-// It is called on non-zero task exit while the container is still running
-// (before destroyContainer fires at group teardown).
-//
-// Only allowlisted fields are exported, and every exported string is passed
-// through redactForSnapshot, which fails closed. The raw inspect document and
-// raw env-file values are never exported because both carry credentials.
+// Only allowlisted fields are exported; every exported string passes through
+// redactForSnapshot. Raw env-file values are never exported.
 func (a *Agent) emitContainerFailureSnapshot(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) { //nolint:unused
-	if a.currentContainer == nil || tc == nil {
+	if a.currentContainer == nil || tc == nil || detail == nil {
 		return
 	}
 	containerID := a.currentContainer.GetID()
@@ -576,13 +554,6 @@ func (a *Agent) emitContainerFailureSnapshot(ctx context.Context, tc *taskContex
 
 	if summary, err := containerInspectSummaryJSON(ctx, containerID); err == nil {
 		span.SetAttributes(attribute.String("container.inspect_summary", redactForSnapshot(summary, tc)))
-	}
-
-	// Capture ps output even on non-zero exit: a container whose processes
-	// have all died is exactly the case where "no processes found" is the
-	// useful signal rather than a missing attribute.
-	if psOut, _ := containerExec(ctx, containerID, "ps", "-ef"); psOut != "" {
-		span.SetAttributes(attribute.String("container.ps_output", redactForSnapshot(psOut, tc)))
 	}
 
 	// Only the env-file key names are exported. The values are the task's
@@ -746,14 +717,9 @@ func redactForSnapshot(s string, tc *taskContext) string {
 
 // augmentOOMTrackerWithContainerSignal supplements the dmesg-based OOM report
 // with the container-native OOMKilled signal from docker inspect, which is
-// more reliable under containers because dmesg PIDs are host-side and the
-// buffer can carry messages from prior containers.
-//
-// This is deliberately independent of tc.oomTrackerEnabled(cloudProvider):
-// that gate controls the dmesg report for host processes, whereas OOMKilled is
-// a container-specific fact worth surfacing whenever a container is active.
+// more reliable under containers where dmesg PIDs are host-side.
 func (a *Agent) augmentOOMTrackerWithContainerSignal(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) { //nolint:unused
-	if a.currentContainer == nil {
+	if a.currentContainer == nil || tc == nil || detail == nil {
 		return
 	}
 	oomKilled, err := checkContainerOOM(ctx, a.currentContainer.GetID())

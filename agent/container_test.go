@@ -122,7 +122,7 @@ func makeDistroWithIsolation(image string) *apimodels.DistroView {
 	}
 }
 
-func TestMaybeStartContainerReusePath(t *testing.T) {
+func TestEnsureContainerReusePath(t *testing.T) {
 	ctx := t.Context()
 	fc := &fakeContainer{id: "abc123", name: "evergreen-task-abc", envFileHostDir: "/tmp/env-abc"}
 	a := makeAgentWithFakeContainer(fc)
@@ -131,7 +131,7 @@ func TestMaybeStartContainerReusePath(t *testing.T) {
 		Task:   task.Task{},
 	}
 
-	err := a.maybeStartContainer(ctx, conf, nil)
+	err := a.ensureContainer(ctx, conf, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, "abc123", conf.ContainerID, "reuse path should wire ContainerID from existing container")
@@ -139,7 +139,7 @@ func TestMaybeStartContainerReusePath(t *testing.T) {
 	assert.Equal(t, fc, a.currentContainer, "existing container should not be replaced")
 }
 
-func TestMaybeStartContainerCreatePath(t *testing.T) {
+func TestEnsureContainerCreatePath(t *testing.T) {
 	ctx := t.Context()
 	a := agentForContainerTest()
 	created := &fakeContainer{id: "newid", name: "evergreen-task-new", envFileHostDir: "/tmp/env-new"}
@@ -151,7 +151,7 @@ func TestMaybeStartContainerCreatePath(t *testing.T) {
 		Task:   task.Task{Id: "task-1"},
 	}
 
-	err := a.maybeStartContainer(ctx, conf, nil)
+	err := a.ensureContainer(ctx, conf, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, "newid", conf.ContainerID)
@@ -159,21 +159,21 @@ func TestMaybeStartContainerCreatePath(t *testing.T) {
 	assert.Equal(t, created, a.currentContainer)
 }
 
-func TestMaybeStartContainerNilDistroIsNoop(t *testing.T) {
+func TestEnsureContainerNilDistroIsNoop(t *testing.T) {
 	ctx := t.Context()
 	a := agentForContainerTest()
 	conf := &internal.TaskConfig{Distro: nil}
 
-	require.NoError(t, a.maybeStartContainer(ctx, conf, nil))
+	require.NoError(t, a.ensureContainer(ctx, conf, nil))
 	assert.Nil(t, a.currentContainer)
 }
 
-func TestMaybeStartContainerNilIsolationIsNoop(t *testing.T) {
+func TestEnsureContainerNilIsolationIsNoop(t *testing.T) {
 	ctx := t.Context()
 	a := agentForContainerTest()
 	conf := &internal.TaskConfig{Distro: &apimodels.DistroView{ContainerIsolation: nil}}
 
-	require.NoError(t, a.maybeStartContainer(ctx, conf, nil))
+	require.NoError(t, a.ensureContainer(ctx, conf, nil))
 	assert.Nil(t, a.currentContainer)
 }
 
@@ -224,7 +224,7 @@ func TestDestroyContainerIdempotent(t *testing.T) {
 	assert.Equal(t, 1, fc.destroyCalled, "Destroy should only be called once")
 }
 
-func TestMaybeStartContainerFailClosedPropagatesError(t *testing.T) {
+func TestEnsureContainerFailClosedPropagatesError(t *testing.T) {
 	ctx := t.Context()
 	a := agentForContainerTest()
 	a.containerFactory = func(_ context.Context, _ agentcontainer.Config) (ContainerHandle, error) {
@@ -240,13 +240,13 @@ func TestMaybeStartContainerFailClosedPropagatesError(t *testing.T) {
 		Task: task.Task{Id: "task-1"},
 	}
 
-	err := a.maybeStartContainer(ctx, conf, nil)
+	err := a.ensureContainer(ctx, conf, nil)
 	require.Error(t, err, "fail-closed: error should be returned when factory fails")
 	assert.Nil(t, a.currentContainer)
 	assert.Empty(t, conf.ContainerID)
 }
 
-func TestMaybeStartContainerFailOpenReturnsNil(t *testing.T) {
+func TestEnsureContainerFailOpenReturnsNil(t *testing.T) {
 	ctx := t.Context()
 	a := agentForContainerTest()
 	a.containerFactory = func(_ context.Context, _ agentcontainer.Config) (ContainerHandle, error) {
@@ -257,16 +257,16 @@ func TestMaybeStartContainerFailOpenReturnsNil(t *testing.T) {
 		Task:   task.Task{Id: "task-1"},
 	}
 
-	err := a.maybeStartContainer(ctx, conf, nil)
+	err := a.ensureContainer(ctx, conf, nil)
 	require.NoError(t, err, "fail-open: error should be swallowed when RequireIsolation is false")
 	assert.Nil(t, a.currentContainer, "currentContainer must remain nil on fail-open")
 	assert.Empty(t, conf.ContainerID, "conf.ContainerID must not be set on fail-open")
 }
 
-// TestMaybeStartContainerFailsClosedWhenDirsCannotBeSecured verifies that a
+// TestEnsureContainerFailsClosedWhenDirsCannotBeSecured verifies that a
 // distro requiring isolation does not start a container when neither ownership
 // transfer nor the permissive fallback could be applied.
-func TestMaybeStartContainerFailsClosedWhenDirsCannotBeSecured(t *testing.T) {
+func TestEnsureContainerFailsClosedWhenDirsCannotBeSecured(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Container isolation uses POSIX ownership and is not supported on Windows")
 	}
@@ -294,16 +294,16 @@ func TestMaybeStartContainerFailsClosedWhenDirsCannotBeSecured(t *testing.T) {
 		Task: task.Task{Id: "task-1"},
 	}
 
-	err = a.maybeStartContainer(ctx, conf, nil)
+	err = a.ensureContainer(ctx, conf, nil)
 	require.Error(t, err, "require_isolation must fail closed when task directories cannot be secured at all")
 	assert.False(t, factoryCalled, "container must not be created after directory preparation fails")
 	assert.Nil(t, a.currentContainer)
 }
 
-// TestMaybeStartContainerUsesPermissiveFallbackWhenOwnershipFails verifies the
+// TestEnsureContainerUsesPermissiveFallbackWhenOwnershipFails verifies the
 // task still runs when the exec user cannot be reconciled, which is the
 // behaviour the pre-review implementation had unconditionally.
-func TestMaybeStartContainerUsesPermissiveFallbackWhenOwnershipFails(t *testing.T) {
+func TestEnsureContainerUsesPermissiveFallbackWhenOwnershipFails(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Container isolation uses POSIX ownership and is not supported on Windows")
 	}
@@ -327,7 +327,7 @@ func TestMaybeStartContainerUsesPermissiveFallbackWhenOwnershipFails(t *testing.
 		Task: task.Task{Id: "task-1"},
 	}
 
-	require.NoError(t, a.maybeStartContainer(ctx, conf, nil),
+	require.NoError(t, a.ensureContainer(ctx, conf, nil),
 		"an unreconcilable exec user must degrade rather than fail the task")
 	assert.Equal(t, created, a.currentContainer)
 
@@ -483,7 +483,7 @@ func TestToolchainMountsOnlyIncludesExistingDirsReadOnly(t *testing.T) {
 	t.Cleanup(func() { containerToolchainDirs = original })
 	containerToolchainDirs = []string{existing, missing}
 
-	mounts := toolchainMounts(t.Context(), "task-1")
+	mounts := toolchainMounts(t.Context(), "task-1", nil)
 
 	require.Len(t, mounts, 1, "a nonexistent source would make Docker reject container creation")
 	assert.Equal(t, existing, mounts[0].Source)

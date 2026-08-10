@@ -72,16 +72,13 @@ type Agent struct {
 	otelGrpcConn        *grpc.ClientConn
 	closers             []closerOp
 	// currentContainer holds the active task-group isolation container, if any.
-	// Created at task-group setup, reused across tasks in the group, and
-	// destroyed in runTeardownGroupCommands. Set/cleared by
-	// maybeStartContainer/destroyContainer.
+	// Set/cleared by ensureContainer/destroyContainer.
 	currentContainer ContainerHandle
 	// containerFactory creates new isolation containers. Defaults to
 	// defaultContainerFactory; replaced in tests with a stub that avoids Docker.
 	containerFactory containerFactoryFunc
 	// retainContainerUntil, when non-zero, causes destroyContainer to skip
-	// actual removal and leave the container running for on-call inspection.
-	// Set by the task failure handler when ContainerRetainOnFailureSecs > 0.
+	// removal and leave the container running for on-call inspection.
 	retainContainerUntil time.Time
 }
 
