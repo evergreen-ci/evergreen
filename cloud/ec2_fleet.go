@@ -112,12 +112,6 @@ func (c *instanceTypeSubnetCache) discoverSubnets(ctx context.Context, settings 
 		return nil, errors.New("subnet tag name and value must both be set to discover subnets")
 	}
 
-	grip.Info(ctx, message.Fields{
-		"message":   "kim: calling DescribeSubnets to discover subnets",
-		"tag_name":  tagName,
-		"tag_value": tagValue,
-	})
-
 	output, err := client.DescribeSubnets(ctx, &ec2.DescribeSubnetsInput{
 		Filters: []types.Filter{
 			{
@@ -142,13 +136,6 @@ func (c *instanceTypeSubnetCache) discoverSubnets(ctx context.Context, settings 
 		}
 		subnets = append(subnets, evergreen.Subnet{AZ: az, SubnetID: subnetID})
 	}
-	grip.Info(ctx, message.Fields{
-		"message":   "kim: successfully called DescribeSubnets to discover subnets",
-		"tag_name":  tagName,
-		"tag_value": tagValue,
-		"subnets":   subnets,
-	})
-
 	if len(subnets) == 0 {
 		return nil, errors.Errorf("no subnets are tagged with '%s: %s'", tagName, tagValue)
 	}
@@ -832,17 +819,6 @@ func (m *ec2FleetManager) requestFleet(ctx context.Context, h *host.Host, ec2Set
 // availability zones. Multiple subnets have a better chance of successfully
 // spawning the host in case one AZ is out of capacity for the instance type.
 func (m *ec2FleetManager) makeSubnetOverrides(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings) ([]types.FleetLaunchTemplateOverridesRequest, error) {
-	grip.Info(ctx, message.Fields{
-		"message":       "kim: making subnet overrides",
-		"aws_account":   m.account,
-		"aws_role":      m.role,
-		"aws_region":    ec2Settings.getRegion(),
-		"instance_type": ec2Settings.InstanceType,
-		"host_id":       h.Id,
-		"distro_id":     h.Distro.Id,
-		"vpc_name":      ec2Settings.VpcName,
-	})
-
 	if m.account == "" && ec2Settings.VpcName == "" {
 		// An EC2 fleet request can only use different subnets if:
 		// 1. Hosts are being started in a non-default account (i.e. account is
@@ -865,8 +841,9 @@ func (m *ec2FleetManager) makeSubnetOverrides(ctx context.Context, h *host.Host,
 		// Ideally this should not consistently error since it likely indicates
 		// a configuration problem (e.g. AWS permissions issues).
 		grip.Warning(ctx, message.WrapError(err, message.Fields{
-			"message":          "kim: could not determine which subnets are available to the host, so it can only use the default distro subnet (and AZ)",
+			"message":          "could not determine which subnets are available to the host, so it can only use the default distro subnet (and AZ)",
 			"host_id":          h.Id,
+			"host_provider":    h.Distro.Provider,
 			"distro":           h.Distro.Id,
 			"provider_account": m.account,
 			"instance_type":    ec2Settings.InstanceType,
