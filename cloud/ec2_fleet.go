@@ -35,7 +35,7 @@ type instanceTypeCacheKey struct {
 }
 
 // cachedSubnets is the result of looking up the subnets for a single
-// instanceRegionPair.
+// instance type in a particular account.
 type cachedSubnets struct {
 	subnets []evergreen.Subnet
 	// err is cached if subnets cannot be looked up for the instance type (to
@@ -43,6 +43,8 @@ type cachedSubnets struct {
 	err error
 }
 
+// typeCache caches the subnets that can run a particular instance type within a
+// particular region and AWS account.
 var typeCache *instanceTypeSubnetCache
 
 func init() {
@@ -83,24 +85,25 @@ func (c *instanceTypeSubnetCache) subnetsWithInstanceType(ctx context.Context, s
 			subnets = append(subnets, subnet)
 		}
 	}
+
 	c.set(cacheKey, cachedSubnets{subnets: subnets})
 
 	return subnets, nil
 }
 
-func (c *instanceTypeSubnetCache) get(instanceRegion instanceTypeCacheKey) (cachedSubnets, bool) {
+func (c *instanceTypeSubnetCache) get(key instanceTypeCacheKey) (cachedSubnets, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	cached, ok := c.cache[instanceRegion]
+	cached, ok := c.cache[key]
 	return cached, ok
 }
 
-func (c *instanceTypeSubnetCache) set(instanceRegion instanceTypeCacheKey, result cachedSubnets) {
+func (c *instanceTypeSubnetCache) set(key instanceTypeCacheKey, result cachedSubnets) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.cache[instanceRegion] = result
+	c.cache[key] = result
 }
 
 // discoverSubnets returns the subnets in the client's AWS account and region
@@ -143,19 +146,21 @@ func (c *instanceTypeSubnetCache) discoverSubnets(ctx context.Context, settings 
 	return subnets, nil
 }
 
-func (c *instanceTypeSubnetCache) getAZs(ctx context.Context, client AWSClient, instanceRegion instanceTypeCacheKey) ([]string, error) {
+// getAZsf returns the availability zones that support a particular instance
+// type.
+func (c *instanceTypeSubnetCache) getAZs(ctx context.Context, client AWSClient, cacheKey instanceTypeCacheKey) ([]string, error) {
 	// DescribeInstanceTypeOfferings only returns AZs in the client's region
 	output, err := client.DescribeInstanceTypeOfferings(ctx, &ec2.DescribeInstanceTypeOfferingsInput{
 		LocationType: types.LocationTypeAvailabilityZone,
 		Filters: []types.Filter{
-			{Name: aws.String("instance-type"), Values: []string{instanceRegion.instanceType}},
+			{Name: aws.String("instance-type"), Values: []string{cacheKey.instanceType}},
 		},
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "getting instance types for filter '%s' in region '%s'", instanceRegion.instanceType, instanceRegion.region)
+		return nil, errors.Wrapf(err, "getting instance types for filter '%s' in region '%s'", cacheKey.instanceType, cacheKey.region)
 	}
 	if output == nil {
-		return nil, errors.Errorf("DescribeInstanceTypeOfferings returned nil output for instance type filter '%s' in '%s'", instanceRegion.instanceType, instanceRegion.region)
+		return nil, errors.Errorf("DescribeInstanceTypeOfferings returned nil output for instance type filter '%s' in '%s'", cacheKey.instanceType, cacheKey.region)
 	}
 	supportingAZs := make([]string, 0, len(output.InstanceTypeOfferings))
 	for _, offering := range output.InstanceTypeOfferings {
@@ -819,13 +824,13 @@ func (m *ec2FleetManager) requestFleet(ctx context.Context, h *host.Host, ec2Set
 // availability zones. Multiple subnets have a better chance of successfully
 // spawning the host in case one AZ is out of capacity for the instance type.
 func (m *ec2FleetManager) makeSubnetOverrides(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings) ([]types.FleetLaunchTemplateOverridesRequest, error) {
+	// An EC2 fleet request can only use different subnets if:
+	// 1. Hosts are being started in a non-default account (i.e. account is
+	//    non-empty) or
+	// 2. In the legacy case, hosts in the default AWS account use VPC name
+	//    as a feature flag to indicate they have multiple subnets
+	//    available.
 	if m.account == "" && ec2Settings.VpcName == "" {
-		// An EC2 fleet request can only use different subnets if:
-		// 1. Hosts are being started in a non-default account (i.e. account is
-		//    non-empty) or
-		// 2. In the legacy case, hosts in the default AWS account use VPC name
-		//    as a feature flag to indicate they have multiple subnets
-		//    available.
 		return nil, nil
 	}
 
