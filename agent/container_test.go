@@ -13,6 +13,7 @@ import (
 
 	agentcontainer "github.com/evergreen-ci/evergreen/agent/container"
 	"github.com/evergreen-ci/evergreen/agent/internal"
+	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/task"
