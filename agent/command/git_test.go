@@ -97,6 +97,8 @@ func (s *GitGetProjectSuite) SetupSuite() {
 func (s *GitGetProjectSuite) SetupTest() {
 	s.NoError(db.ClearCollections(patch.Collection, build.Collection, task.Collection,
 		model.VersionCollection, host.Collection))
+	// s.comm outlives the test, so its recorded calls have to be reset here.
+	s.comm.CreateInstallationTokenRejected = nil
 	var err error
 
 	configPath1 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "plugin_clone.yml")

@@ -109,6 +109,11 @@ func (g *GithubAppAuth) CreateCachedInstallationToken(ctx context.Context, owner
 // cached, so that many callers holding the same dead token don't each mint a
 // replacement and evict each other's: the first one repopulates the cache and
 // the rest see a different token and reuse it.
+//
+// The cache is per-process, so this is best-effort: a caller routed to a
+// different app server than the one that issued rejectedToken sees that
+// process's own token instead, which is a different string and so evicts
+// nothing - and is equally dead if GitHub invalidated the whole installation.
 func (g *GithubAppAuth) RecreateCachedInstallationToken(ctx context.Context, owner, repo string, lifetime time.Duration, opts *github.InstallationTokenOptions, rejectedToken string) (string, error) {
 	return g.createCachedInstallationToken(ctx, owner, repo, lifetime, opts, rejectedToken)
 }
@@ -137,9 +142,8 @@ func (g *GithubAppAuth) createCachedInstallationToken(ctx context.Context, owner
 	}
 	cachedToken, found := ghInstallationTokenCache.Get(ctx, id, lifetime)
 	if found && rejectedToken != "" && cachedToken == rejectedToken {
-		// ponytail: nothing serializes the re-mint, so callers that race between
-		// the delete and the put each mint their own token. Add singleflight if
-		// GitHub starts rate limiting the app.
+		// Nothing serializes the re-mint, so callers that race between the delete
+		// and the put each mint their own token.
 		ghInstallationTokenCache.Delete(ctx, id)
 		found = false
 	}

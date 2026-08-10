@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sync"
 	"time"
 
@@ -585,7 +586,7 @@ func (c *Mock) CreateInstallationTokenForClone(ctx context.Context, td TaskData,
 func (c *Mock) GetCreateInstallationTokenRejected() []string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return append([]string{}, c.CreateInstallationTokenRejected...)
+	return slices.Clone(c.CreateInstallationTokenRejected)
 }
 
 func (c *Mock) CreateGitHubDynamicAccessToken(ctx context.Context, td TaskData, owner, repo string, permissions *github.InstallationPermissions) (string, *github.InstallationPermissions, error) {

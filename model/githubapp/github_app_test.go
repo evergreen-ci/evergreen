@@ -40,6 +40,15 @@ func (s *installationSuite) TearDownTest() {
 	s.cancel()
 }
 
+// evictCachedTokenAtCleanup drops a cache ID once the test ends.
+// ghInstallationTokenCache is process-global, so entries otherwise leak into
+// whichever test runs next.
+func (s *installationSuite) evictCachedTokenAtCleanup(id string) {
+	s.T().Cleanup(func() {
+		ghInstallationTokenCache.Delete(s.ctx, id)
+	})
+}
+
 func (s *installationSuite) TestUpsert() {
 	installation := GitHubAppInstallation{
 		Owner:          "evergreen-ci",
@@ -123,6 +132,7 @@ func (s *installationSuite) TestCreateCachedInstallationToken() {
 	id, err := createCacheID(installation.InstallationID, nil, nil)
 	s.NoError(err)
 	s.Equal("5678", id)
+	s.evictCachedTokenAtCleanup(id)
 	ghInstallationTokenCache.Put(s.ctx, id, unrestrictedToken, time.Now().Add(lifetime*2))
 
 	authFields := GithubAppAuth{
@@ -165,10 +175,11 @@ func (s *installationSuite) TestRecreateCachedInstallationToken() {
 		lifetime    = time.Minute
 	)
 
-	id, err := createCacheID(installation.InstallationID, nil)
+	id, err := createCacheID(installation.InstallationID, nil, nil)
 	s.Require().NoError(err)
 	authFields := GithubAppAuth{AppID: installation.AppID}
 
+	s.evictCachedTokenAtCleanup(id)
 	ghInstallationTokenCache.Put(s.ctx, id, cachedToken, time.Now().Add(lifetime*2))
 
 	token, err := authFields.RecreateCachedInstallationToken(s.ctx, installation.Owner, installation.Repo, lifetime, nil, "a_token_someone_else_already_replaced")

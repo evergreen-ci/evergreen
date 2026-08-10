@@ -846,13 +846,11 @@ func TestCreateInstallationToken(t *testing.T) {
 			assert.Empty(t, handler.rejectedToken)
 		},
 		"ParseReadsRejectedToken": func(ctx context.Context, t *testing.T, handler *createInstallationTokenForClone) {
-			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", validOwner, validRepo)
-			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
+			request, err := http.NewRequest(http.MethodGet, "/task/t1/installation_token/owner/repo", bytes.NewReader(nil))
 			assert.NoError(t, err)
 			request.Header.Set(evergreen.RejectedGitHubTokenHeader, "dead_token")
 
-			options := map[string]string{"owner": validOwner, "repo": validRepo}
-			request = gimlet.SetURLVars(request, options)
+			request = gimlet.SetURLVars(request, map[string]string{"task_id": "t1", "owner": validOwner, "repo": validRepo})
 
 			assert.NoError(t, handler.Parse(ctx, request))
 			assert.Equal(t, "dead_token", handler.rejectedToken)
