@@ -905,25 +905,22 @@ func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 			flags, _ := evergreen.GetServiceFlags(ctx)
 			enforced = flags != nil && !flags.APIRateLimiterDisabled
 		}
+		resetTimestamp := time.Now().Add(res.ResetAfter).Unix()
 
 		// Annotate the request's "completed" log message so limit usage is attributable
 		// per request, including for requests that were never blocked.
 		gimlet.AddLoggingAnnotation(r, "rate_limit", message.Fields{
-			"surface":   m.surface,
-			"per_hour":  perHour,
-			"burst":     burst,
-			"remaining": res.Remaining,
-			"exceeded":  exceeded,
-			"enforced":  enforced,
-			"exempt":    exempt,
-			"elevated":  elevated,
+			"surface":    m.surface,
+			"remaining":  res.Remaining,
+			"reset_time": resetTimestamp,
+			"per_hour":   perHour,
+			"burst":      burst,
 		})
 
 		if !exempt {
 			rw.Header().Set(evergreen.RateLimitLimitHeader, fmt.Sprintf("%d", perHour))
 			rw.Header().Set(evergreen.RateLimitBurstHeader, fmt.Sprintf("%d", burst))
 			rw.Header().Set(evergreen.RateLimitRemainingHeader, fmt.Sprintf("%d", res.Remaining))
-			resetTimestamp := time.Now().Add(res.ResetAfter).Unix()
 			rw.Header().Set(evergreen.RateLimitResetHeader, fmt.Sprintf("%d", resetTimestamp))
 
 			if exceeded {
