@@ -178,9 +178,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 				opts.StandardInput = strings.NewReader(c.Script)
 			}
 
-			// Start a container.exec_wrap span only when actually running
-			// inside a container. The span wraps the shared WrapWithContainer
-			// + runJasperProcess path so there is one code path, not two.
+			// Start a container.exec_wrap span when running inside a container.
 			var span trace.Span
 			if conf.Distro != nil && conf.ContainerID != "" {
 				lctx, span = otel.Tracer("github.com/evergreen-ci/evergreen/agent").Start(lctx, "container.exec_wrap")

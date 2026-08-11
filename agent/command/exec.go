@@ -235,9 +235,7 @@ func (c *subprocessExec) getProc(ctx context.Context, execPath string, conf *int
 		AppendTags(c.FullDisplayName()).
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
 		ProcConstructor(func(lctx context.Context, opts *options.Create) (jasper.Process, error) {
-			// Start a container.exec_wrap span only when actually running
-			// inside a container. The span wraps the shared WrapWithContainer
-			// + runJasperProcess path so there is one code path, not two.
+			// Start a container.exec_wrap span when running inside a container.
 			var span trace.Span
 			if conf.Distro != nil && conf.ContainerID != "" {
 				lctx, span = otel.Tracer("github.com/evergreen-ci/evergreen/agent").Start(lctx, "container.exec_wrap")

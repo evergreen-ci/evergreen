@@ -261,14 +261,8 @@ func (a *Agent) loop(ctx context.Context) error {
 			grip.Error(ctx, errors.Wrap(tc.logger.Close(), "closing logger"))
 		}
 	}()
-	// Destroy any active isolation container when the loop exits (ctx
-	// cancellation, agent shutdown, or unrecoverable error), so we don't
-	// leak containers that would otherwise only be cleaned up by teardown
-	// group commands which may never run on an abnormal exit path.
-	// Use a detached background context with a bounded timeout: the loop
-	// ctx is already cancelled on the shutdown path, which would cause
-	// ContainerRemove to fail immediately and leave the container running
-	// until the next --cleanup reaper.
+	// Destroy any active isolation container on loop exit. A detached context
+	// is needed because the loop ctx is already cancelled on shutdown.
 	defer func() {
 		destroyCtx, destroyCancel := context.WithTimeout(context.Background(), reaperTimeout)
 		defer destroyCancel()
@@ -430,14 +424,7 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 		}))
 		return processNextResponse{
 			tc: tc,
-			// Trigger teardown on the next iteration so the task-group isolation
-			// container is destroyed rather than leaked. Note: this causes
-			// runTeardownGroupCommands to execute real teardown-group scripts in
-			// addition to destroying the container. On a broken host that is
-			// acceptable: teardown scripts failing is logged and non-fatal, and
-			// the container cleanup is the primary goal. The loop-exit defer also
-			// calls destroyContainer as a fallback if the agent exits before the
-			// next iteration runs.
+			// Trigger teardown so the isolation container is destroyed.
 			needTeardownGroup: true,
 		}, nil
 	}
@@ -755,11 +742,6 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 	}()
 
 	if err := a.ensureContainer(tskCtx, tc.taskConfig, tc.logger.Execution()); err != nil {
-		// ensureContainer returns a non-nil error only on the fail-closed path
-		// (require_isolation=true). The fail-open path handles its own degradation
-		// internally and returns nil. Route through handleSetupError so the task
-		// is finalized as TaskSystemFailed on the server — returning a bare error
-		// here would leave the task unfinalized (stuck in "started" state).
 		return a.handleSetupError(tskCtx, tc, errors.Wrap(err, "starting required isolation container"))
 	}
 
@@ -1136,9 +1118,7 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 	if tc.taskConfig == nil {
 		return
 	}
-	// Destroy the task-group isolation container after teardown commands
-	// complete but before the task directory is removed, so that the bind
-	// mount is released before we attempt to delete its source path.
+	// Destroy the isolation container after teardown, before the task directory is removed.
 	defer a.destroyContainer(ctx, tc.taskConfig)
 	// Only killProcs if tc.taskConfig is not nil. This avoids passing an
 	// empty working directory to killProcs, and is okay because this
@@ -1224,8 +1204,7 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail
 			tc.logger.Execution().Debugf(ctx, "Found no OOM kill (in %.3f seconds).", time.Since(startTime).Seconds())
 		}
 	}
-	// Supplement the dmesg-based OOM report with the container-native signal,
-	// emit the failure snapshot, and schedule retention on task failure.
+	// Container-specific failure handling: OOM signal, failure snapshot, retention.
 	if detail.Status == evergreen.TaskFailed || detail.TimedOut {
 		a.augmentOOMTrackerWithContainerSignal(ctx, tc, detail)
 		a.emitContainerFailureSnapshot(ctx, tc, detail)
@@ -1233,9 +1212,7 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail
 			a.scheduleContainerRetention(ctx, a.currentContainer.GetName(), tc.logger.Execution())
 		}
 	} else {
-		// Task succeeded — clear any retention window set by a prior failed
-		// task in this group so the container is cleanly destroyed at teardown
-		// rather than leaked until the orphan reaper.
+		// Clear any retention window from a prior failed task in this group.
 		a.retainContainerUntil = time.Time{}
 	}
 
@@ -1621,10 +1598,7 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 	catcher := grip.NewBasicCatcher()
 	if tc.task.ID != "" && tc.taskConfig != nil && tc.taskConfig.Distro != nil {
 		if tc.taskConfig.ContainerID != "" {
-			// Kill user-owned processes inside the container's PID namespace.
-			// Host-side pkill cannot reach container-namespaced processes, so
-			// we use docker exec. PID 1 (sleep infinity, running as root) is
-			// preserved by the -U scoping.
+			// Host-side pkill cannot reach container-namespaced processes.
 			if tc.taskConfig.Distro.ExecUser == "" {
 				// ExecUser is required for container isolation (enforced at distro
 				// validation), but degrade gracefully for pre-validation distros.
@@ -1659,14 +1633,8 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 		}
 	}
 
-	// On container-enabled distros, skip the Docker artifact sweep regardless
-	// of whether this specific task's container started successfully. The
-	// pre-pulled evergreen-task-image is a host-level resource that must
-	// persist across all tasks; sweeping it forces a full re-pull on every
-	// subsequent task. Container.Destroy handles the task's own container.
-	// Docker-using workloads are tier-split onto non-isolation distros, so
-	// no Docker artifacts accumulate from tasks on isolation hosts.
-	//
+	// Skip Docker artifact cleanup for container-enabled tasks: the pre-pulled
+	// task image is a host-level resource that must persist across tasks.
 	if tc.taskConfig != nil && tc.taskConfig.ContainerID != "" {
 		logger.Info(ctx, "Skipping Docker artifact cleanup: task is running in an isolation container; pre-pulled task image is preserved for subsequent tasks.")
 		return catcher.Resolve()
