@@ -687,10 +687,10 @@ const (
 	EnvironmentHeader    = "X-Evergreen-Environment"
 	GraphQLAIAgentHeader = "X-Graphql-Ai-Agent"
 
-	// RejectedGitHubTokenHeader carries an installation token that GitHub
-	// rejected, so that the token can be evicted from Evergreen's cache before a
-	// replacement is handed out.
-	RejectedGitHubTokenHeader = "X-Evergreen-Rejected-GitHub-Token"
+	// RefreshGitHubTokenHeader is set to "true" by callers whose installation
+	// token GitHub rejected, to mint a new one in place of whatever Evergreen has
+	// cached.
+	RefreshGitHubTokenHeader = "X-Evergreen-Refresh-GitHub-Token"
 
 	// Rate limiting response headers
 	RateLimitLimitHeader            = "X-RateLimit-Limit"             // Hourly request limit for the user.

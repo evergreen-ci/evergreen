@@ -97,8 +97,7 @@ func (s *GitGetProjectSuite) SetupSuite() {
 func (s *GitGetProjectSuite) SetupTest() {
 	s.NoError(db.ClearCollections(patch.Collection, build.Collection, task.Collection,
 		model.VersionCollection, host.Collection))
-	// s.comm outlives the test, so its recorded calls have to be reset here.
-	s.comm.CreateInstallationTokenRejected = nil
+	s.comm.CreateInstallationTokenRefresh = nil
 	var err error
 
 	configPath1 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "plugin_clone.yml")
@@ -416,11 +415,11 @@ func (s *GitGetProjectSuite) TestCloneTokenIsRefreshedOnRetry() {
 	c.SetJasperManager(s.jasper)
 	s.Error(c.Execute(ctx, s.comm, logger, conf))
 
-	rejected := s.comm.GetCreateInstallationTokenRejected()
-	s.Require().Greater(len(rejected), 1, "the failing clone should have been retried")
-	s.Empty(rejected[0], "the initial token request has nothing to reject")
-	for _, token := range rejected[1:] {
-		s.Equal("token", token, "each retry should report the token it was handed as rejected")
+	refresh := s.comm.GetCreateInstallationTokenRefresh()
+	s.Require().Greater(len(refresh), 1, "the failing clone should have been retried")
+	s.False(refresh[0], "the initial token request has nothing to refresh")
+	for _, r := range refresh[1:] {
+		s.True(r, "each retry should ask for a refreshed token")
 	}
 }
 

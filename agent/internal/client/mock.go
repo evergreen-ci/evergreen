@@ -68,7 +68,7 @@ type Mock struct {
 	GetLoggerProducerShouldFail          bool
 	CreateInstallationTokenFail          bool
 	CreateInstallationTokenResult        string
-	CreateInstallationTokenRejected      []string
+	CreateInstallationTokenRefresh       []bool
 	CreateGitHubDynamicAccessTokenResult string
 	CreateGitHubDynamicAccessTokenFail   bool
 	RevokeGitHubDynamicAccessTokenFail   bool
@@ -570,9 +570,9 @@ func (c *Mock) GetAdditionalPatches(ctx context.Context, patchId string, td Task
 	return []string{"555555555555555555555555"}, nil
 }
 
-func (c *Mock) CreateInstallationTokenForClone(ctx context.Context, td TaskData, owner, repo, rejectedToken string) (string, error) {
+func (c *Mock) CreateInstallationTokenForClone(ctx context.Context, td TaskData, owner, repo string, refresh bool) (string, error) {
 	c.mu.Lock()
-	c.CreateInstallationTokenRejected = append(c.CreateInstallationTokenRejected, rejectedToken)
+	c.CreateInstallationTokenRefresh = append(c.CreateInstallationTokenRefresh, refresh)
 	c.mu.Unlock()
 
 	if c.CreateInstallationTokenFail {
@@ -581,12 +581,12 @@ func (c *Mock) CreateInstallationTokenForClone(ctx context.Context, td TaskData,
 	return c.CreateInstallationTokenResult, nil
 }
 
-// GetCreateInstallationTokenRejected returns the rejected tokens that have been
+// GetCreateInstallationTokenRefresh returns the refresh flags that have been
 // passed to CreateInstallationTokenForClone, in call order.
-func (c *Mock) GetCreateInstallationTokenRejected() []string {
+func (c *Mock) GetCreateInstallationTokenRefresh() []bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return slices.Clone(c.CreateInstallationTokenRejected)
+	return slices.Clone(c.CreateInstallationTokenRefresh)
 }
 
 func (c *Mock) CreateGitHubDynamicAccessToken(ctx context.Context, td TaskData, owner, repo string, permissions *github.InstallationPermissions) (string, *github.InstallationPermissions, error) {

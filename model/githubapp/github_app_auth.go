@@ -84,7 +84,7 @@ func CreateCachedInstallationTokenWithDefaultOwnerRepo(ctx context.Context, sett
 	if settings.AuthConfig.Github == nil || settings.AuthConfig.Github.DefaultOwner == "" || settings.AuthConfig.Github.DefaultRepo == "" {
 		return "", errors.Errorf("missing GitHub app configuration needed to create installation tokens")
 	}
-	return CreateGitHubAppAuth(settings).CreateCachedInstallationToken(ctx, settings.AuthConfig.Github.DefaultOwner, settings.AuthConfig.Github.DefaultRepo, lifetime, opts)
+	return CreateGitHubAppAuth(settings).CreateCachedInstallationToken(ctx, settings.AuthConfig.Github.DefaultOwner, settings.AuthConfig.Github.DefaultRepo, lifetime, opts, false)
 }
 
 // CreateCachedInstallationToken uses the owner/repo information to request an github app installation id
@@ -96,29 +96,10 @@ func CreateCachedInstallationTokenWithDefaultOwnerRepo(ctx context.Context, sett
 // for 45 minutes. However, if the cached token will expire in 5 minutes, it
 // will provide a freshly-generated token. Also take special care if revoking a
 // token returned from this method - revoking the token will cause other GitHub
-// operations reusing the same token to fail.
-func (g *GithubAppAuth) CreateCachedInstallationToken(ctx context.Context, owner, repo string, lifetime time.Duration, opts *github.InstallationTokenOptions) (string, error) {
-	return g.createCachedInstallationToken(ctx, owner, repo, lifetime, opts, "")
-}
-
-// RecreateCachedInstallationToken is CreateCachedInstallationToken for a caller
-// whose token GitHub already rejected. GitHub can invalidate an outstanding
-// installation token before it expires (e.g. when the app installation's repos
-// or permissions change), and the cache has no other way to learn that a token
-// it's still serving is dead. rejectedToken is only evicted if it's still what's
-// cached, so that many callers holding the same dead token don't each mint a
-// replacement and evict each other's: the first one repopulates the cache and
-// the rest see a different token and reuse it.
-//
-// The cache is per-process, so this is best-effort: a caller routed to a
-// different app server than the one that issued rejectedToken sees that
-// process's own token instead, which is a different string and so evicts
-// nothing - and is equally dead if GitHub invalidated the whole installation.
-func (g *GithubAppAuth) RecreateCachedInstallationToken(ctx context.Context, owner, repo string, lifetime time.Duration, opts *github.InstallationTokenOptions, rejectedToken string) (string, error) {
-	return g.createCachedInstallationToken(ctx, owner, repo, lifetime, opts, rejectedToken)
-}
-
-func (g *GithubAppAuth) createCachedInstallationToken(ctx context.Context, owner, repo string, lifetime time.Duration, opts *github.InstallationTokenOptions, rejectedToken string) (string, error) {
+// operations reusing the same token to fail. Set refresh to skip the cache and
+// replace the cached token with a newly minted one, for callers whose token
+// GitHub already rejected.
+func (g *GithubAppAuth) CreateCachedInstallationToken(ctx context.Context, owner, repo string, lifetime time.Duration, opts *github.InstallationTokenOptions, refresh bool) (string, error) {
 	if lifetime >= MaxInstallationTokenLifetime {
 		lifetime = MaxInstallationTokenLifetime
 	}
@@ -140,15 +121,10 @@ func (g *GithubAppAuth) createCachedInstallationToken(ctx context.Context, owner
 	if err != nil {
 		return "", errors.Wrap(err, "creating cache ID")
 	}
-	cachedToken, found := ghInstallationTokenCache.Get(ctx, id, lifetime)
-	if found && rejectedToken != "" && cachedToken == rejectedToken {
-		// Nothing serializes the re-mint, so callers that race between the delete
-		// and the put each mint their own token.
-		ghInstallationTokenCache.Delete(ctx, id)
-		found = false
-	}
-	if found {
-		return cachedToken, nil
+	if !refresh {
+		if cachedToken, found := ghInstallationTokenCache.Get(ctx, id, lifetime); found {
+			return cachedToken, nil
+		}
 	}
 
 	installToken, err := g.createInstallationTokenForID(ctx, installationID, opts)
@@ -164,7 +140,7 @@ func (g *GithubAppAuth) createCachedInstallationToken(ctx context.Context, owner
 // CreateCachedInstallationTokenForGitHubSender is a helper that creates a
 // cached installation token for the given owner/repo for the GitHub sender.
 func (g *GithubAppAuth) CreateGitHubSenderInstallationToken(ctx context.Context, owner, repo string) (string, error) {
-	return g.CreateCachedInstallationToken(ctx, owner, repo, MaxInstallationTokenLifetime, nil)
+	return g.CreateCachedInstallationToken(ctx, owner, repo, MaxInstallationTokenLifetime, nil, false)
 }
 
 // CreateInstallationToken creates an installation token for the given
