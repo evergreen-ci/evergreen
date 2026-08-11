@@ -860,19 +860,19 @@ func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 	settings := m.env.Settings()
 	cfg := settings.RateLimit
 
-	// Exempt users bypass rate limiting entirely.
-	if slices.Contains(cfg.ExemptUserIDs, u.Username()) {
-		next(rw, r)
-		return
-	}
-
 	perHour, burst := limitsFor(&cfg, m.surface, isService)
 
 	// Handle elevated users - 2x normal limits.
-	if slices.Contains(cfg.ElevatedUserIDs, u.Username()) {
+	elevated := slices.Contains(cfg.ElevatedUserIDs, u.Username())
+	if elevated {
 		perHour *= 2
 		burst *= 2
 	}
+
+	// Exempt users are never limited and get no rate limit headers, but they still
+	// consume from their bucket so their usage against the limit they would
+	// otherwise have is reported.
+	exempt := slices.Contains(cfg.ExemptUserIDs, u.Username())
 
 	limiter, err := ratelimit.NewRateLimiter(m.env.RedisClient())
 
@@ -899,23 +899,41 @@ func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 	}
 
 	if res != nil {
-		rw.Header().Set(evergreen.RateLimitLimitHeader, fmt.Sprintf("%d", perHour))
-		rw.Header().Set(evergreen.RateLimitBurstHeader, fmt.Sprintf("%d", burst))
-		rw.Header().Set(evergreen.RateLimitRemainingHeader, fmt.Sprintf("%d", res.Remaining))
-		resetTimestamp := time.Now().Add(res.ResetAfter).Unix()
-		rw.Header().Set(evergreen.RateLimitResetHeader, fmt.Sprintf("%d", resetTimestamp))
-
-		if res.Allowed == 0 {
-			rw.Header().Set(evergreen.RateLimitExceededHeader, "true")
+		exceeded := res.Allowed == 0
+		enforced := false
+		if exceeded && !exempt {
 			flags, _ := evergreen.GetServiceFlags(ctx)
-			if flags != nil && !flags.APIRateLimiterDisabled {
-				// Retry-After is a standard HTTP header that indicates how long the user should wait before making another request.
-				rw.Header().Set(evergreen.RetryAfterHeader, fmt.Sprintf("%d", int(res.RetryAfter.Seconds())))
-				gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-					StatusCode: http.StatusTooManyRequests,
-					Message:    "rate limit exceeded",
-				}))
-				return
+			enforced = flags != nil && !flags.APIRateLimiterDisabled
+		}
+		resetTimestamp := time.Now().Add(res.ResetAfter).Unix()
+
+		// Annotate the request's "completed" log message so limit usage is attributable
+		// per request, including for requests that were never blocked.
+		gimlet.AddLoggingAnnotation(r, "rate_limit", message.Fields{
+			"surface":    m.surface,
+			"remaining":  res.Remaining,
+			"reset_time": resetTimestamp,
+			"per_hour":   perHour,
+			"burst":      burst,
+		})
+
+		if !exempt {
+			rw.Header().Set(evergreen.RateLimitLimitHeader, fmt.Sprintf("%d", perHour))
+			rw.Header().Set(evergreen.RateLimitBurstHeader, fmt.Sprintf("%d", burst))
+			rw.Header().Set(evergreen.RateLimitRemainingHeader, fmt.Sprintf("%d", res.Remaining))
+			rw.Header().Set(evergreen.RateLimitResetHeader, fmt.Sprintf("%d", resetTimestamp))
+
+			if exceeded {
+				rw.Header().Set(evergreen.RateLimitExceededHeader, "true")
+				if enforced {
+					// Retry-After is a standard HTTP header that indicates how long the user should wait before making another request.
+					rw.Header().Set(evergreen.RetryAfterHeader, fmt.Sprintf("%d", int(res.RetryAfter.Seconds())))
+					gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+						StatusCode: http.StatusTooManyRequests,
+						Message:    "rate limit exceeded",
+					}))
+					return
+				}
 			}
 		}
 	}
