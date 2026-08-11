@@ -44,7 +44,7 @@ func TestModifyVersionRestart(t *testing.T) {
 		})
 		assert.Error(t, err)
 		assert.Equal(t, http.StatusBadRequest, statusCode)
-		assert.Contains(t, err.Error(), "merge queue patches cannot be manually restarted")
+		assert.Contains(t, err.Error(), "merge queue patch 'merge-queue-version' cannot be manually restarted")
 	})
 
 	t.Run("RestartRejectsMergeQueueVersionInList", func(t *testing.T) {
@@ -57,7 +57,7 @@ func TestModifyVersionRestart(t *testing.T) {
 		})
 		assert.Error(t, err)
 		assert.Equal(t, http.StatusBadRequest, statusCode)
-		assert.Contains(t, err.Error(), "merge queue patches cannot be manually restarted")
+		assert.Contains(t, err.Error(), "merge queue patch 'merge-queue-version' cannot be manually restarted")
 	})
 
 	t.Run("RestartAllowsNonMergeQueueVersions", func(t *testing.T) {
