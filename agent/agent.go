@@ -424,7 +424,7 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 		}))
 		return processNextResponse{
 			tc: tc,
-			// Trigger teardown so the isolation container is destroyed.
+			// Teardown is safe even when setup failed before a container was created.
 			needTeardownGroup: true,
 		}, nil
 	}

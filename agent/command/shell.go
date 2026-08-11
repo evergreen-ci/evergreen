@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
@@ -18,10 +17,6 @@ import (
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // shellExec is responsible for running the shell code.
@@ -178,33 +173,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 				opts.StandardInput = strings.NewReader(c.Script)
 			}
 
-			// Start a container.exec_wrap span when running inside a container.
-			var span trace.Span
-			if conf.Distro != nil && conf.ContainerID != "" {
-				lctx, span = otel.Tracer("github.com/evergreen-ci/evergreen/agent").Start(lctx, "container.exec_wrap")
-				span.SetAttributes(
-					attribute.String("container.id", conf.ContainerID),
-					attribute.String("container.workdir", c.WorkingDir),
-					attribute.String("container.command_name", c.FullDisplayName()),
-				)
-			}
-			if conf.ContainerID != "" {
-				if err := agentutil.WrapWithContainer(lctx, opts, conf.ContainerID, c.WorkingDir, conf.EnvFileHostDir); err != nil {
-					if span != nil {
-						span.SetStatus(codes.Error, err.Error())
-						span.End()
-					}
-					return nil, errors.Wrap(err, "wrapping command for container execution")
-				}
-			}
-			proc, err := runJasperProcess(lctx, c.JasperManager(), c.Background, opts, conf.Task.Id, logger, conf.BackgroundFailures, c.ContinueOnError, conf.BackgroundCommandFailureEnabled)
-			if span != nil {
-				if err != nil {
-					span.SetStatus(codes.Error, err.Error())
-				}
-				span.End()
-			}
-			return proc, err
+			return runJasperProcessWithContainer(lctx, opts, c.FullDisplayName(), c.WorkingDir, conf, c.JasperManager(), c.Background, logger, conf.Task.Id, conf.BackgroundFailures, c.ContinueOnError, conf.BackgroundCommandFailureEnabled)
 		})
 
 	if !c.IgnoreStandardOutput {

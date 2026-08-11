@@ -112,7 +112,7 @@ func Agent() cli.Command {
 			},
 			cli.IntFlag{
 				Name:  containerRetainOnFailureSecsFlagName,
-				Usage: "seconds to retain the isolation container after a task failure for on-call inspection (0 = destroy immediately, 300 = Phase 0/1 default)",
+				Usage: "seconds to retain the isolation container after a task failure for on-call inspection (0 = destroy immediately, default = 300)",
 				Value: 300,
 			},
 		},
