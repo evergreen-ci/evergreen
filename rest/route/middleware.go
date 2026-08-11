@@ -910,11 +910,12 @@ func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 		// Annotate the request's "completed" log message so limit usage is attributable
 		// per request, including for requests that were never blocked.
 		gimlet.AddLoggingAnnotation(r, "rate_limit", message.Fields{
-			"surface":    m.surface,
-			"remaining":  res.Remaining,
-			"reset_time": resetTimestamp,
-			"per_hour":   perHour,
-			"burst":      burst,
+			"surface":      m.surface,
+			"remaining":    res.Remaining,
+			"reset_time":   resetTimestamp,
+			"per_hour":     perHour,
+			"burst":        burst,
+			"service_user": isService,
 		})
 
 		if !exempt {
