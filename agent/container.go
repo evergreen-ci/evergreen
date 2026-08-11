@@ -68,7 +68,7 @@ const (
 // The reaper runs on a background-derived context so that a shutdown signal
 // arriving during the --cleanup phase does not cancel every Docker call and
 // silently skip the reap, leaving orphans on the host.
-func (a *Agent) tryReapOrphanContainers(ctx context.Context) { //nolint:unused
+func (a *Agent) tryReapOrphanContainers(ctx context.Context) {
 	defer recovery.LogStackTraceAndContinue("reap orphan containers")
 
 	reaperCtx, cancel := context.WithTimeout(context.Background(), reaperTimeout)
@@ -474,10 +474,10 @@ func destroyRetainedContainer(ctx context.Context, tracer trace.Tracer, containe
 }
 
 // inspectContainerTimeout bounds a single docker inspect call.
-const inspectContainerTimeout = 10 * time.Second //nolint:unused
+const inspectContainerTimeout = 10 * time.Second
 
 // inspectContainer returns the Docker inspect document for a container.
-func inspectContainer(ctx context.Context, containerID string) (dockercontainer.InspectResponse, error) { //nolint:unused
+func inspectContainer(ctx context.Context, containerID string) (dockercontainer.InspectResponse, error) {
 	inspectCtx, cancel := context.WithTimeout(ctx, inspectContainerTimeout)
 	defer cancel()
 
@@ -494,7 +494,7 @@ func inspectContainer(ctx context.Context, containerID string) (dockercontainer.
 // checkContainerOOM reads the container-native OOMKilled flag from docker
 // inspect. Returns (true, nil) when the container was OOM-killed, (false, nil)
 // when it was not, and (false, err) when inspect fails.
-func checkContainerOOM(ctx context.Context, containerID string) (bool, error) { //nolint:unused
+func checkContainerOOM(ctx context.Context, containerID string) (bool, error) {
 	info, err := inspectContainer(ctx, containerID)
 	if err != nil {
 		return false, err
@@ -514,7 +514,7 @@ func checkContainerOOM(ctx context.Context, containerID string) (bool, error) { 
 // actually fires (which is at group teardown, potentially seconds to minutes
 // later). The retention goroutine destroys the container at the deadline; if
 // the agent exits before the deadline, the reaper cleans it up at next startup.
-func (a *Agent) scheduleContainerRetention(ctx context.Context, containerName string, log grip.Journaler) { //nolint:unused
+func (a *Agent) scheduleContainerRetention(ctx context.Context, containerName string, log grip.Journaler) {
 	if a.opts.ContainerRetainOnFailureSecs <= 0 || a.currentContainer == nil {
 		return
 	}
@@ -530,7 +530,7 @@ func (a *Agent) scheduleContainerRetention(ctx context.Context, containerName st
 // isolation container and emits them as a container.failure_snapshot OTel span.
 // Only allowlisted fields are exported; every exported string passes through
 // redactForSnapshot. Raw env-file values are never exported.
-func (a *Agent) emitContainerFailureSnapshot(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) { //nolint:unused
+func (a *Agent) emitContainerFailureSnapshot(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) {
 	if a.currentContainer == nil || tc == nil || detail == nil {
 		return
 	}
@@ -572,7 +572,7 @@ func (a *Agent) emitContainerFailureSnapshot(ctx context.Context, tc *taskContex
 // containerInspectSummary is the allowlisted subset of docker inspect output
 // that may be exported to telemetry. The full document is deliberately
 // excluded because it embeds the container's environment and image config.
-type containerInspectSummary struct { //nolint:unused
+type containerInspectSummary struct {
 	Status       string `json:"status"`
 	ExitCode     int    `json:"exit_code"`
 	OOMKilled    bool   `json:"oom_killed"`
@@ -583,7 +583,7 @@ type containerInspectSummary struct { //nolint:unused
 }
 
 // containerInspectSummaryJSON returns the allowlisted inspect fields as JSON.
-func containerInspectSummaryJSON(ctx context.Context, containerID string) (string, error) { //nolint:unused
+func containerInspectSummaryJSON(ctx context.Context, containerID string) (string, error) {
 	info, err := inspectContainer(ctx, containerID)
 	if err != nil {
 		return "", err
@@ -655,18 +655,6 @@ func readLatestContainerEnvFile(dir string) ([]byte, error) {
 	return data, errors.Wrap(err, "reading latest container env file")
 }
 
-// containerExec runs a command inside a container and returns its combined
-// output. This forensic path uses the docker CLI rather than the SDK to keep
-// its footprint small; the main lifecycle (CreateAndStart, Destroy) uses the
-// SDK.
-func containerExec(ctx context.Context, containerID string, args ...string) (string, error) { //nolint:unused
-	execCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
-	defer cancel()
-	cmdArgs := append([]string{"exec", containerID}, args...)
-	out, err := exec.CommandContext(execCtx, "docker", cmdArgs...).CombinedOutput()
-	return strings.TrimSpace(string(out)), err
-}
-
 // redactionUnavailable replaces snapshot content when the task config needed
 // to redact secrets is missing. Exporting the raw value instead would risk
 // leaking credentials into telemetry, so redaction fails closed.
@@ -718,7 +706,7 @@ func redactForSnapshot(s string, tc *taskContext) string {
 // augmentOOMTrackerWithContainerSignal supplements the dmesg-based OOM report
 // with the container-native OOMKilled signal from docker inspect, which is
 // more reliable under containers where dmesg PIDs are host-side.
-func (a *Agent) augmentOOMTrackerWithContainerSignal(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) { //nolint:unused
+func (a *Agent) augmentOOMTrackerWithContainerSignal(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) {
 	if a.currentContainer == nil || tc == nil || detail == nil {
 		return
 	}

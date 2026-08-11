@@ -297,7 +297,7 @@ func (a *Agent) loop(ctx context.Context) error {
 			// Single task distros should exit after running a single task.
 			// However, if the task group needs tearing down, we should continue
 			// the loop so the teardown group can run in the next iteration.
-			if !needTeardownGroup && a.opts.SingleTaskDistro {
+			if a.opts.SingleTaskDistro && (ntr.taskErrored || !needTeardownGroup) {
 				return a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{Reason: "Single task distro ran a task"})
 			}
 			if ntr.shouldExit {
@@ -330,6 +330,7 @@ type processNextResponse struct {
 	shouldExit        bool
 	noTaskToRun       bool
 	needTeardownGroup bool
+	taskErrored       bool
 	tc                *taskContext
 }
 
@@ -426,6 +427,7 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 			tc: tc,
 			// Teardown is safe even when setup failed before a container was created.
 			needTeardownGroup: true,
+			taskErrored:       true,
 		}, nil
 	}
 	if shouldExit {
