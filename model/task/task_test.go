@@ -21,6 +21,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -5918,5 +5922,82 @@ func TestIncNumQuarantinedTestsSkipped(t *testing.T) {
 		require.NoError(t, staleTask.IncNumQuarantinedTestsSkipped(ctx, 7))
 		assert.Zero(t, staleTask.NumQuarantinedTestsSkipped)
 		assert.Equal(t, 5, findTask(t).NumQuarantinedTestsSkipped, "an increment for a previous execution should not apply to the current one")
+	})
+}
+
+func TestSetS3ArtifactStorageCostsLifecycleMissLogging(t *testing.T) {
+	ctx := t.Context()
+
+	// Capture grip output to assert on the log the cost path emits on a lifecycle lookup miss.
+	sender, err := send.NewInternalLogger("test", send.LevelInfo{Threshold: level.Debug, Default: level.Debug})
+	require.NoError(t, err)
+	original := grip.GetSender()
+	require.NoError(t, grip.SetSender(sender))
+	t.Cleanup(func() {
+		require.NoError(t, grip.SetSender(original))
+	})
+
+	const skippedAccount = "999999999999"
+	costConfig := &evergreen.CostConfig{
+		S3Cost: evergreen.S3CostConfig{
+			Storage: evergreen.S3StorageCostConfig{
+				DefaultMaxArtifactExpirationDays:         365,
+				ArtifactAWSAccountsWithoutLifecycleRules: []string{skippedAccount},
+			},
+		},
+	}
+	// Always miss, so the only thing under test is whether the miss is logged.
+	missingLookup := func(context.Context, string, string) (int, bool) { return 0, false }
+
+	loggedBuckets := func() []string {
+		var buckets []string
+		for sender.HasMessage() {
+			fields, ok := sender.GetMessage().Message.Raw().(message.Fields)
+			if !ok {
+				continue
+			}
+			if fields["message"] == "no S3 lifecycle rule found for artifact bucket, using default expiration days" {
+				buckets = append(buckets, fields["bucket"].(string))
+			}
+		}
+		return buckets
+	}
+
+	usage := func(bucket, roleARN, accountID string) s3usage.S3Usage {
+		return s3usage.S3Usage{
+			Artifacts: s3usage.ArtifactMetrics{
+				BytesByBucketAndKey: []s3usage.BucketFileMetrics{{
+					Bucket:       bucket,
+					AWSRoleARN:   roleARN,
+					AWSAccountID: accountID,
+					Files:        []s3usage.FileBytes{{FileKey: "f", Bytes: 5 * 1024 * 1024}},
+				}},
+			},
+		}
+	}
+
+	t.Run("SuppressesMissForKeySecretUploadInAccountWithoutLifecycleRules", func(t *testing.T) {
+		tk := Task{Id: "t1", S3Usage: usage("cdn-origin-compass-dev", "", skippedAccount)}
+		tk.setS3ArtifactStorageCosts(ctx, missingLookup, costConfig)
+		assert.Empty(t, loggedBuckets())
+		assert.True(t, tk.TaskCost.OnDemandS3ArtifactStorageCost > 0, "cost must still be computed from the default expiration days")
+	})
+
+	t.Run("SuppressesMissForRoleARNUploadInAccountWithoutLifecycleRules", func(t *testing.T) {
+		tk := Task{Id: "t2", S3Usage: usage("b", "arn:aws:iam::"+skippedAccount+":role/r", "")}
+		tk.setS3ArtifactStorageCosts(ctx, missingLookup, costConfig)
+		assert.Empty(t, loggedBuckets())
+	})
+
+	t.Run("LogsMissForAccountThatShouldHaveLifecycleRules", func(t *testing.T) {
+		tk := Task{Id: "t3", S3Usage: usage("mciuploads", "arn:aws:iam::123456789012:role/r", "")}
+		tk.setS3ArtifactStorageCosts(ctx, missingLookup, costConfig)
+		assert.Equal(t, []string{"mciuploads"}, loggedBuckets())
+	})
+
+	t.Run("LogsMissWhenBucketAccountIsUnknown", func(t *testing.T) {
+		tk := Task{Id: "t4", S3Usage: usage("mciuploads", "", "")}
+		tk.setS3ArtifactStorageCosts(ctx, missingLookup, costConfig)
+		assert.Equal(t, []string{"mciuploads"}, loggedBuckets())
 	})
 }
