@@ -114,7 +114,7 @@ type TaskQueueLengths struct {
 // in the given collection, without loading the queue itself, which can be many
 // MB long. It returns nil if the distro has no task queue there.
 func GetTaskQueueLengths(ctx context.Context, distroID, collection string) (*TaskQueueLengths, error) {
-	// The counting is done entirely server-side so that the queue items never
+	// The counting is done entirely DB-side so that the queue items never
 	// cross the wire.
 	undispatched := bson.M{
 		"$filter": bson.M{
