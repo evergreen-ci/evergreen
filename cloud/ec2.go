@@ -73,6 +73,14 @@ type EC2ProviderSettings struct {
 	// IsVpc is set to true if the security group is part of a VPC.
 	IsVpc bool `mapstructure:"is_vpc" json:"is_vpc,omitempty" bson:"is_vpc,omitempty"`
 
+	// SubnetTagName is the name of the tag that can be used to look up the
+	// subnets available to this distro.
+	SubnetTagName string `mapstructure:"subnet_tag_name" json:"subnet_tag_name,omitempty" bson:"subnet_tag_name,omitempty"`
+
+	// SubnetTagValue is the value of the tag that can be used to look up the
+	// subnets available to this distro.
+	SubnetTagValue string `mapstructure:"subnet_tag_value" json:"subnet_tag_value,omitempty" bson:"subnet_tag_value,omitempty"`
+
 	// UserData specifies configuration that runs after the instance starts.
 	UserData string `mapstructure:"user_data" json:"user_data,omitempty" bson:"user_data,omitempty"`
 
@@ -107,6 +115,9 @@ func (s *EC2ProviderSettings) Validate() error {
 	if s.IsVpc && s.SubnetId == "" {
 		catcher.New("must set a default subnet for a VPC")
 	}
+
+	catcher.NewWhen(s.SubnetTagName == "" && s.SubnetTagValue != "", "must specify a subnet tag name if a subnet tag value is set")
+	catcher.NewWhen(s.SubnetTagName != "" && s.SubnetTagValue == "", "must specify a subnet tag value if a subnet tag name is set")
 
 	if s.Tenancy != "" {
 		catcher.ErrorfWhen(!evergreen.IsValidEC2Tenancy(s.Tenancy), "invalid tenancy '%s', allowed values are: %s", s.Tenancy, evergreen.ValidEC2Tenancies)
