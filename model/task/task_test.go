@@ -1166,6 +1166,73 @@ func TestMarkEnd(t *testing.T) {
 		require.NotNil(t, dbTask)
 		assert.True(t, dbTask.TaskCost.IsZero())
 	})
+
+	t.Run("EstimatedStartTimeForTaskThatNeverStarted", func(t *testing.T) {
+		finishTime := time.Now()
+		for tName, tCase := range map[string]struct {
+			dispatchTime      time.Time
+			ingestTime        time.Time
+			expectedStartTime time.Time
+		}{
+			"IsDispatchTimeIfSet": {
+				dispatchTime:      finishTime.Add(-time.Minute),
+				ingestTime:        finishTime.Add(-3 * time.Hour),
+				expectedStartTime: finishTime.Add(-time.Minute),
+			},
+			"IsIngestTimeIfDispatchTimeIsUnset": {
+				ingestTime:        finishTime.Add(-time.Minute),
+				expectedStartTime: finishTime.Add(-time.Minute),
+			},
+			"IsDispatchTimeEvenWhenItIsOlderThanTheOtherEstimates": {
+				dispatchTime:      finishTime.Add(-10 * time.Hour),
+				ingestTime:        finishTime.Add(-3 * time.Hour),
+				expectedStartTime: finishTime.Add(-10 * time.Hour),
+			},
+		} {
+			t.Run(tName, func(t *testing.T) {
+				require.NoError(t, db.Clear(Collection))
+				tsk := Task{
+					Id:           "task_that_never_started",
+					HostId:       "host",
+					DistroId:     "test_distro",
+					DispatchTime: tCase.dispatchTime,
+					IngestTime:   tCase.ingestTime,
+				}
+				require.NoError(t, tsk.Insert(ctx))
+
+				require.NoError(t, tsk.MarkEnd(ctx, finishTime, &apimodels.TaskEndDetail{Status: evergreen.TaskFailed}))
+
+				dbTask, err := FindOneId(ctx, tsk.Id)
+				require.NoError(t, err)
+				require.NotNil(t, dbTask)
+				assert.WithinDuration(t, tCase.expectedStartTime, dbTask.StartTime, time.Millisecond)
+				assert.Equal(t, finishTime.Sub(tCase.expectedStartTime), dbTask.TimeTaken)
+			})
+		}
+	})
+
+	t.Run("StartTimeIsKeptIfTaskStarted", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+		finishTime := time.Now()
+		startTime := finishTime.Add(-10 * time.Minute)
+		tsk := Task{
+			Id:           "started_task",
+			HostId:       "host",
+			DistroId:     "test_distro",
+			DispatchTime: finishTime.Add(-11 * time.Minute),
+			IngestTime:   finishTime.Add(-30 * time.Minute),
+			StartTime:    startTime,
+		}
+		require.NoError(t, tsk.Insert(ctx))
+
+		require.NoError(t, tsk.MarkEnd(ctx, finishTime, &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}))
+
+		dbTask, err := FindOneId(ctx, tsk.Id)
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		assert.WithinDuration(t, startTime, dbTask.StartTime, time.Millisecond)
+		assert.Equal(t, 10*time.Minute, dbTask.TimeTaken)
+	})
 }
 
 func TestTaskResultOutcome(t *testing.T) {
