@@ -135,6 +135,11 @@ func (s *GithubWebhookRouteSuite) TestAddIntentAndFailsWithDuplicate() {
 	s.NoError(err)
 	s.Equal(1, count)
 
+	// The intent must be authorized against the PR author, not the webhook sender.
+	var intent bson.M
+	s.NoError(db.FindOneQ(s.T().Context(), patch.IntentCollection, db.Query(bson.M{}), &intent))
+	s.Equal("ZackarySantana", intent["user"])
+
 	resp = s.h.Run(s.T().Context())
 	s.NotEqual(http.StatusOK, resp.Status())
 	count, err = db.CountQ(s.T().Context(), patch.IntentCollection, db.Query(bson.M{}))
