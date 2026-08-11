@@ -1455,8 +1455,8 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 
 	// Dependabot and GitHub Actions patches are automatically authorized, but
 	// only for same-repo PRs to ensure we never auto-authorize code originating from an external fork.
-	isSameRepoPR := patchDoc.GithubPatchData.HeadOwner == patchDoc.GithubPatchData.BaseOwner &&
-		patchDoc.GithubPatchData.HeadRepo == patchDoc.GithubPatchData.BaseRepo
+	isSameRepoPR := strings.EqualFold(patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.BaseOwner) &&
+		strings.EqualFold(patchDoc.GithubPatchData.HeadRepo, patchDoc.GithubPatchData.BaseRepo)
 	if isSameRepoPR && (githubUser == githubDependabotUser || githubUser == githubActionsUser) {
 		grip.Info(ctx, message.Fields{
 			"job":       j.ID(),
