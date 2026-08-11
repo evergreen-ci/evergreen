@@ -22,7 +22,8 @@ import (
 const launchTemplateExpiration = 24 * time.Hour
 
 // instanceTypeSubnetCache caches the subnets that can run a particular instance
-// type.
+// type. Successful lookups are cached until the app servers restart, while
+// failed ones are cached and retried on a TTL.
 type instanceTypeSubnetCache struct {
 	mu    sync.Mutex
 	cache map[instanceTypeCacheKey]cachedSubnets
@@ -41,6 +42,8 @@ type cachedSubnets struct {
 	// err is cached if subnets cannot be looked up for the instance type (to
 	// avoid repeating failing lookups).
 	err error
+	// errExpiresAt marks when a cached err can be retried.
+	errExpiresAt time.Time
 }
 
 // typeCache caches the subnets that can run a particular instance type within a
@@ -96,13 +99,24 @@ func (c *instanceTypeSubnetCache) get(key instanceTypeCacheKey) (cachedSubnets, 
 	defer c.mu.Unlock()
 
 	cached, ok := c.cache[key]
-	return cached, ok
+	if !ok {
+		return cachedSubnets{}, false
+	}
+	if cached.err != nil && time.Now().After(cached.errExpiresAt) {
+		return cachedSubnets{}, false
+	}
+
+	return cached, true
 }
 
 func (c *instanceTypeSubnetCache) set(key instanceTypeCacheKey, result cachedSubnets) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	if result.err != nil {
+		const cacheErrTTL = 15 * time.Minute
+		result.errExpiresAt = time.Now().Add(cacheErrTTL)
+	}
 	c.cache[key] = result
 }
 

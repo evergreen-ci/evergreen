@@ -611,6 +611,20 @@ func TestMakeSubnetOverrides(t *testing.T) {
 	)
 	az := evergreen.DefaultEBSAvailabilityZone
 
+	expireCachedFailures := func() {
+		typeCache.mu.Lock()
+		defer typeCache.mu.Unlock()
+
+		for key, cached := range typeCache.cache {
+			if cached.err == nil {
+				continue
+			}
+			// Update the error TTL so the cache considers the error stale.
+			cached.errExpiresAt = time.Now().Add(-time.Minute)
+			typeCache.cache[key] = cached
+		}
+	}
+
 	makeManager := func(account string) (*ec2FleetManager, *awsClientMock) {
 		client := &awsClientMock{
 			DescribeInstanceTypeOfferingsOutput: &ec2.DescribeInstanceTypeOfferingsOutput{
@@ -708,6 +722,24 @@ func TestMakeSubnetOverrides(t *testing.T) {
 			}
 			assert.Equal(t, 1, client.DescribeSubnetsCount, "failed subnet discovery API calls should not be retried")
 		},
+		"DiscoveryIsRetriedOnceTheCachedFailureExpires": func(ctx context.Context, t *testing.T) {
+			m, client := makeManager(account)
+			client.DescribeSubnetsError = errors.New("not authorized to describe subnets")
+			ec2Settings := &EC2ProviderSettings{InstanceType: "instanceType0", SubnetId: "subnet-discovered1"}
+
+			overrides, err := m.makeSubnetOverrides(ctx, h, ec2Settings)
+			require.NoError(t, err)
+			assert.Zero(t, overrides)
+			require.Equal(t, 1, client.DescribeSubnetsCount)
+
+			expireCachedFailures()
+			client.DescribeSubnetsError = nil
+
+			overrides, err = m.makeSubnetOverrides(ctx, h, ec2Settings)
+			require.NoError(t, err)
+			assert.Len(t, overrides, 2, "discovery should recover once the cached failure expires")
+			assert.Equal(t, 2, client.DescribeSubnetsCount)
+		},
 		"UntaggedSubnetsAreTreatedAsFailure": func(ctx context.Context, t *testing.T) {
 			m, client := makeManager(account)
 			client.DescribeSubnetsOutput = &ec2.DescribeSubnetsOutput{}
@@ -740,6 +772,27 @@ func TestMakeSubnetOverrides(t *testing.T) {
 			overrides, err := m.makeSubnetOverrides(ctx, h, ec2Settings)
 			require.NoError(t, err)
 			assert.Zero(t, overrides)
+		},
+		"AvailabilityZoneLookupIsRetriedOnceTheCachedFailureExpires": func(ctx context.Context, t *testing.T) {
+			m, client := makeManager(account)
+			client.DescribeInstanceTypeOfferingsError = errors.New("rate exceeded")
+			ec2Settings := &EC2ProviderSettings{InstanceType: "instanceType0", SubnetId: "subnet-discovered1"}
+
+			overrides, err := m.makeSubnetOverrides(ctx, h, ec2Settings)
+			require.NoError(t, err)
+			assert.Zero(t, overrides)
+
+			_, err = m.makeSubnetOverrides(ctx, h, ec2Settings)
+			require.NoError(t, err)
+			require.Equal(t, 1, client.DescribeInstanceTypeOfferingsCount, "failed AZ lookups should not be retried until the cached failure expires")
+
+			expireCachedFailures()
+			client.DescribeInstanceTypeOfferingsError = nil
+
+			overrides, err = m.makeSubnetOverrides(ctx, h, ec2Settings)
+			require.NoError(t, err)
+			assert.Len(t, overrides, 2, "the AZ lookup should recover once the cached failure expires")
+			assert.Equal(t, 2, client.DescribeInstanceTypeOfferingsCount)
 		},
 		"CachedSubnetsAreNotSharedBetweenAccounts": func(ctx context.Context, t *testing.T) {
 			defaultManager, defaultClient := makeManager("")

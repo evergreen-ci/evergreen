@@ -1173,6 +1173,8 @@ type awsClientMock struct { //nolint
 	RequestGetInstanceInfoError error
 	DescribeInstancesError      error
 	*ec2.DescribeInstanceTypeOfferingsOutput
+	DescribeInstanceTypeOfferingsError error
+	DescribeInstanceTypeOfferingsCount int
 
 	*ec2.DescribeSubnetsInput
 	*ec2.DescribeSubnetsOutput
@@ -1274,6 +1276,10 @@ func (c *awsClientMock) ModifyInstanceAttribute(ctx context.Context, input *ec2.
 
 func (c *awsClientMock) DescribeInstanceTypeOfferings(ctx context.Context, input *ec2.DescribeInstanceTypeOfferingsInput) (*ec2.DescribeInstanceTypeOfferingsOutput, error) {
 	c.DescribeInstanceTypeOfferingsInput = input
+	c.DescribeInstanceTypeOfferingsCount++
+	if c.DescribeInstanceTypeOfferingsError != nil {
+		return nil, c.DescribeInstanceTypeOfferingsError
+	}
 	return c.DescribeInstanceTypeOfferingsOutput, nil
 }
 
