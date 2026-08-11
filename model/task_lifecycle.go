@@ -350,7 +350,10 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 	}
 
 	if detail != nil {
-		if err = t.MarkEnd(ctx, time.Now(), detail); err != nil {
+		// Only the cleanup paths and automatic restarts pass end details here; a user-triggered
+		// restart passes none. In both cases the task has already stopped running, so its finish
+		// time is estimated rather than taken from the current time.
+		if err = t.MarkEnd(ctx, t.EstimatedFinishTime(time.Now()), detail); err != nil {
 			return errors.Wrap(err, "marking task as ended")
 		}
 	}
@@ -2561,7 +2564,7 @@ func finishStaleAbortedTask(ctx context.Context, settings *evergreen.Settings, t
 		Type:        evergreen.CommandTypeSystem,
 		Description: evergreen.TaskDescriptionAborted,
 	}
-	if err := MarkEnd(ctx, settings, t, evergreen.APIServerTaskActivator, time.Now(), failureDetails); err != nil {
+	if err := MarkEnd(ctx, settings, t, evergreen.APIServerTaskActivator, t.EstimatedFinishTime(time.Now()), failureDetails); err != nil {
 		return errors.Wrapf(err, "calling mark finish on task '%s'", t.Id)
 	}
 	return nil
@@ -2592,13 +2595,13 @@ func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settin
 			}
 			for _, execTask := range execTasks {
 				if !evergreen.IsFinishedTaskStatus(execTask.Status) {
-					if err = MarkEnd(ctx, settings, &execTask, evergreen.MonitorPackage, time.Now(), &failureDetails); err != nil {
+					if err = MarkEnd(ctx, settings, &execTask, evergreen.MonitorPackage, execTask.EstimatedFinishTime(time.Now()), &failureDetails); err != nil {
 						return errors.Wrap(err, "marking execution task as ended")
 					}
 				}
 			}
 		}
-		return errors.WithStack(MarkEnd(ctx, settings, t, evergreen.MonitorPackage, time.Now(), &failureDetails))
+		return errors.WithStack(MarkEnd(ctx, settings, t, evergreen.MonitorPackage, t.EstimatedFinishTime(time.Now()), &failureDetails))
 	}
 
 	if err := t.MarkSystemFailed(ctx, description); err != nil {

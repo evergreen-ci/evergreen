@@ -42,6 +42,8 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 		assert.True(t, archivedTask.Archived)
 		assert.Equal(t, evergreen.TaskFailed, archivedTask.Status)
 		assert.Equal(t, description, archivedTask.Details.Description)
+		assert.WithinDuration(t, archivedTask.LastHeartbeat, archivedTask.FinishTime, time.Millisecond,
+			"task should finish when it stopped reporting, not when this job cleaned it up")
 
 		restartedTask, err := task.FindOneIdAndExecution(ctx, taskID, oldExecution+1)
 		require.NoError(t, err)
@@ -269,6 +271,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 				ActivatedTime:     time.Now().Add(-10 * time.Minute),
 				Status:            evergreen.TaskStarted,
 				HostId:            h.Id,
+				StartTime:         time.Now().Add(-90 * time.Minute),
 				LastHeartbeat:     time.Now().Add(-time.Hour),
 			}
 

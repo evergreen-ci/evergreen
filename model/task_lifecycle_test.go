@@ -4163,6 +4163,8 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 
 	settings := testutil.TestConfig()
 
+	strandedTaskLastHeartbeat := time.Now().Add(-time.Hour)
+
 	tasks := []task.Task{
 		{
 			Id:            "t",
@@ -4172,6 +4174,8 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 			BuildId:       "b",
 			Version:       "version",
 			HostId:        "h1",
+			StartTime:     time.Now().Add(-90 * time.Minute),
+			LastHeartbeat: strandedTaskLastHeartbeat,
 		},
 		{
 			Id:            "t2",
@@ -4267,6 +4271,11 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	runningTask, err := task.FindOne(ctx, db.Query(task.ById("t")))
 	require.NoError(t, err)
 	assert.Equal(evergreen.TaskUndispatched, runningTask.Status)
+
+	archivedTask, err := task.FindOneIdAndExecution(ctx, "t", 0)
+	require.NoError(t, err)
+	require.NotZero(t, archivedTask)
+	assert.WithinDuration(strandedTaskLastHeartbeat, archivedTask.FinishTime, time.Millisecond)
 
 	foundBuild, err := build.FindOneId(t.Context(), "b")
 	require.NoError(t, err)
