@@ -33,10 +33,9 @@ type instanceTypeCacheKey struct {
 	account      string
 	region       string
 	instanceType string
-	// subnetTagName and subnetTagValue are part of the key because they
-	// determine which subnets are discovered. Keying on them rather than on the
-	// distro means that changing a distro's tag takes effect without having to
-	// restart the app servers, and that distros sharing a tag share an entry.
+	// subnetTagName and subnetTagValue are part of the key because different
+	// distros could use the same account/region/instance type but use different
+	// sets of subnets.
 	subnetTagName  string
 	subnetTagValue string
 }

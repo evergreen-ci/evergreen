@@ -2,6 +2,7 @@ package cloud
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -610,6 +611,14 @@ func TestMakeSubnetOverrides(t *testing.T) {
 		tagValue = "evergreen-subnet"
 	)
 	az := evergreen.DefaultEBSAvailabilityZone
+	adminSettingsSubnetIDs := []string{
+		"default-account-subnet-from-admin-settings1",
+		"default-account-subnet-from-admin-settings2",
+	}
+	discoveredSubnetIDs := []string{
+		"subnet-discovered1",
+		"subnet-discovered2",
+	}
 
 	expireCachedFailures := func() {
 		typeCache.mu.Lock()
@@ -634,8 +643,8 @@ func TestMakeSubnetOverrides(t *testing.T) {
 			},
 			DescribeSubnetsOutput: &ec2.DescribeSubnetsOutput{
 				Subnets: []types.Subnet{
-					{SubnetId: aws.String("subnet-discovered1"), AvailabilityZone: aws.String(az)},
-					{SubnetId: aws.String("subnet-discovered2"), AvailabilityZone: aws.String(az)},
+					{SubnetId: aws.String(discoveredSubnetIDs[0]), AvailabilityZone: aws.String(az)},
+					{SubnetId: aws.String(discoveredSubnetIDs[1]), AvailabilityZone: aws.String(az)},
 				},
 			},
 		}
@@ -649,8 +658,8 @@ func TestMakeSubnetOverrides(t *testing.T) {
 				Providers: evergreen.CloudProviders{
 					AWS: evergreen.AWSConfig{
 						Subnets: []evergreen.Subnet{
-							{AZ: az, SubnetID: "subnet-from-admin-settings1"},
-							{AZ: az, SubnetID: "subnet-from-admin-settings2"},
+							{AZ: az, SubnetID: adminSettingsSubnetIDs[0]},
+							{AZ: az, SubnetID: adminSettingsSubnetIDs[1]},
 						},
 						SubnetTagName:  tagName,
 						SubnetTagValue: tagValue,
@@ -658,6 +667,15 @@ func TestMakeSubnetOverrides(t *testing.T) {
 				},
 			},
 		}, client
+	}
+
+	subnetsMatch := func(t *testing.T, expected []string, actual []types.FleetLaunchTemplateOverridesRequest) {
+		require.Len(t, actual, len(expected))
+		var actualSubnetIDs []string
+		for _, s := range actual {
+			actualSubnetIDs = append(actualSubnetIDs, utility.FromStringPtr(s.SubnetId))
+		}
+		assert.ElementsMatch(t, expected, actualSubnetIDs)
 	}
 
 	h := &host.Host{
@@ -676,8 +694,7 @@ func TestMakeSubnetOverrides(t *testing.T) {
 			overrides, err := m.makeSubnetOverrides(ctx, h, ec2Settings)
 			require.NoError(t, err)
 			require.Len(t, overrides, 2)
-			assert.Equal(t, "subnet-discovered1", utility.FromStringPtr(overrides[0].SubnetId))
-			assert.Equal(t, "subnet-discovered2", utility.FromStringPtr(overrides[1].SubnetId))
+			subnetsMatch(t, discoveredSubnetIDs, overrides)
 
 			require.NotZero(t, client.DescribeSubnetsInput)
 			require.Len(t, client.DescribeSubnetsInput.Filters, 1)
@@ -700,18 +717,20 @@ func TestMakeSubnetOverrides(t *testing.T) {
 				SubnetTagValue: "distro-subnet",
 			}
 
-			overrides, err := m.makeSubnetOverrides(ctx, h, ec2Settings)
+			_, err := m.makeSubnetOverrides(ctx, h, ec2Settings)
 			require.NoError(t, err)
-			require.Len(t, overrides, 2)
 
 			require.NotZero(t, client.DescribeSubnetsInput)
 			require.Len(t, client.DescribeSubnetsInput.Filters, 1)
-			assert.Equal(t, "tag:distro-subnet-group", utility.FromStringPtr(client.DescribeSubnetsInput.Filters[0].Name))
-			assert.Equal(t, []string{"distro-subnet"}, client.DescribeSubnetsInput.Filters[0].Values)
+			assert.Equal(t, fmt.Sprintf("tag:%s", ec2Settings.SubnetTagName), utility.FromStringPtr(client.DescribeSubnetsInput.Filters[0].Name))
+			assert.Equal(t, []string{ec2Settings.SubnetTagValue}, client.DescribeSubnetsInput.Filters[0].Values)
 		},
 		"AdminSettingsSubnetTagIsUsedWhenTheDistroHasNone": func(ctx context.Context, t *testing.T) {
 			m, client := makeManager(account)
-			ec2Settings := &EC2ProviderSettings{InstanceType: "instanceType0", SubnetId: "subnet-discovered1"}
+			ec2Settings := &EC2ProviderSettings{
+				InstanceType: "instanceType0",
+				SubnetId:     "subnet-discovered1",
+			}
 
 			_, err := m.makeSubnetOverrides(ctx, h, ec2Settings)
 			require.NoError(t, err)
@@ -749,8 +768,7 @@ func TestMakeSubnetOverrides(t *testing.T) {
 			overrides, err := m.makeSubnetOverrides(ctx, h, ec2Settings)
 			require.NoError(t, err)
 			require.Len(t, overrides, 2)
-			assert.Equal(t, "subnet-from-admin-settings1", utility.FromStringPtr(overrides[0].SubnetId))
-			assert.Equal(t, "subnet-from-admin-settings2", utility.FromStringPtr(overrides[1].SubnetId))
+			subnetsMatch(t, adminSettingsSubnetIDs, overrides)
 			assert.Zero(t, client.DescribeSubnetsCount, "default account should not discover subnets")
 		},
 		"DiscoveryErrorReturnsNoOverridesAndCachesFailure": func(ctx context.Context, t *testing.T) {
@@ -851,16 +869,14 @@ func TestMakeSubnetOverrides(t *testing.T) {
 			overrides, err := defaultManager.makeSubnetOverrides(ctx, h, defaultSettings)
 			require.NoError(t, err)
 			require.Len(t, overrides, 2)
-			assert.Equal(t, "subnet-from-admin-settings1", utility.FromStringPtr(overrides[0].SubnetId))
-			assert.Equal(t, "subnet-from-admin-settings2", utility.FromStringPtr(overrides[1].SubnetId))
+			subnetsMatch(t, adminSettingsSubnetIDs, overrides)
 
 			otherManager, _ := makeManager(account)
 			otherSettings := &EC2ProviderSettings{InstanceType: "instanceType0", SubnetId: "subnet-discovered1"}
 			overrides, err = otherManager.makeSubnetOverrides(ctx, h, otherSettings)
 			require.NoError(t, err)
 			require.Len(t, overrides, 2, "the other account should not use the default account's subnets")
-			assert.Equal(t, "subnet-discovered1", utility.FromStringPtr(overrides[0].SubnetId))
-			assert.Equal(t, "subnet-discovered2", utility.FromStringPtr(overrides[1].SubnetId))
+			subnetsMatch(t, discoveredSubnetIDs, overrides)
 			assert.Zero(t, defaultClient.DescribeSubnetsCount)
 		},
 	} {

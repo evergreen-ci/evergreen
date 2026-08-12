@@ -135,8 +135,7 @@ func (s *EC2ProviderSettings) Validate() error {
 }
 
 // subnetTagFilter returns the tag name and value that identify the subnets
-// available to the distro. Distro subnet tags take precedence over those
-// defined in the admin settings.
+// available to the host.
 func (s *EC2ProviderSettings) subnetTagFilter(settings *evergreen.Settings) (tagName string, tagValue string) {
 	if s.SubnetTagName != "" && s.SubnetTagValue != "" {
 		return s.SubnetTagName, s.SubnetTagValue
