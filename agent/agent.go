@@ -71,6 +71,15 @@ type Agent struct {
 	tracer              trace.Tracer
 	otelGrpcConn        *grpc.ClientConn
 	closers             []closerOp
+	// currentContainer holds the active task-group isolation container, if any.
+	// Set/cleared by ensureContainer/destroyContainer.
+	currentContainer ContainerHandle
+	// containerFactory creates new isolation containers. Defaults to
+	// defaultContainerFactory; replaced in tests with a stub that avoids Docker.
+	containerFactory containerFactoryFunc
+	// retainContainerUntil, when non-zero, causes destroyContainer to skip
+	// removal and leave the container running for on-call inspection.
+	retainContainerUntil time.Time
 }
 
 // Options contains startup options for an Agent.
@@ -94,6 +103,10 @@ type Options struct {
 	SendTaskLogsToGlobalSender bool
 	HomeDirectory              string
 	SingleTaskDistro           bool
+	// ContainerRetainOnFailureSecs is how long an isolation container is kept
+	// alive after a task failure so on-call can docker exec into it for
+	// post-mortem inspection. Zero disables retention.
+	ContainerRetainOnFailureSecs int
 }
 
 // AddLoggableInfo is a helper to add relevant information about the agent

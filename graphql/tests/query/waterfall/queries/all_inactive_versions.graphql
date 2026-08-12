@@ -1,8 +1,7 @@
 {
   waterfall(options: { projectIdentifier: "mci" }) {
-    flattenedVersions {
+    versions {
       activated
-      author
       id
       order
     }

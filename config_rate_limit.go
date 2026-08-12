@@ -24,6 +24,7 @@ type RateLimitConfig struct {
 
 	GraphQLComplexityLimit int      `bson:"graphql_complexity_limit" json:"graphql_complexity_limit" yaml:"graphql_complexity_limit"`
 	ElevatedUserIDs        []string `bson:"elevated_user_ids" json:"elevated_user_ids" yaml:"elevated_user_ids"`
+	ExemptUserIDs          []string `bson:"exempt_user_ids" json:"exempt_user_ids" yaml:"exempt_user_ids"`
 }
 
 func (c *RateLimitConfig) SectionId() string { return "rate_limit" }
@@ -43,6 +44,7 @@ var (
 	rateLimitGraphQLServiceBurstKey   = bsonutil.MustHaveTag(RateLimitConfig{}, "GraphQLServiceBurst")
 	rateLimitComplexityLimitKey       = bsonutil.MustHaveTag(RateLimitConfig{}, "GraphQLComplexityLimit")
 	rateLimitElevatedUserIDsKey       = bsonutil.MustHaveTag(RateLimitConfig{}, "ElevatedUserIDs")
+	rateLimitExemptUserIDsKey         = bsonutil.MustHaveTag(RateLimitConfig{}, "ExemptUserIDs")
 )
 
 func (c *RateLimitConfig) Set(ctx context.Context) error {
@@ -58,6 +60,7 @@ func (c *RateLimitConfig) Set(ctx context.Context) error {
 			rateLimitGraphQLServiceBurstKey:   c.GraphQLServiceBurst,
 			rateLimitComplexityLimitKey:       c.GraphQLComplexityLimit,
 			rateLimitElevatedUserIDsKey:       c.ElevatedUserIDs,
+			rateLimitExemptUserIDsKey:         c.ExemptUserIDs,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

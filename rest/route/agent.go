@@ -382,6 +382,12 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 			Message:    fmt.Sprintf("project ref '%s' not found", t.Project),
 		})
 	}
+	if isUserRequest && !pRef.IsDebugSpawnHostsEnabled() {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusForbidden,
+			Message:    fmt.Sprintf("debug spawn hosts are disabled for project '%s'", pRef.Id),
+		})
+	}
 	knownHosts := h.settings.Expansions[evergreen.GithubKnownHosts]
 	e, err := model.PopulateExpansions(ctx, t, foundHost, knownHosts)
 	if err != nil {
@@ -447,6 +453,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		grip.Error(ctx, errors.Wrap(err, "loading cost config for expansions_and_vars"))
 	} else {
 		res.DevprodOwnedAWSAccountIDs = costCfg.S3Cost.Storage.DevprodOwnedAWSAccountIDs
+		res.ArtifactAWSAccountsWithoutLifecycleRules = costCfg.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules
 	}
 
 	return gimlet.NewJSONResponse(res)
@@ -794,7 +801,7 @@ func discoverAndCacheBucketLifecycleRules(ctx context.Context, t *task.Task, fil
 			externalID = &file.ExternalID
 		}
 
-		wasCached := s3lifecycle.DiscoverAndCacheProjectBucket(ctx, bucketName, region, roleARN, externalID, t.Project, costConfig.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules, cloud.NewS3LifecycleClient())
+		wasCached := s3lifecycle.DiscoverAndCacheProjectBucket(ctx, bucketName, region, roleARN, externalID, file.AWSAccountID, t.Project, costConfig.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules, cloud.NewS3LifecycleClient())
 		if wasCached {
 			cachedBuckets = append(cachedBuckets, bucketName)
 		}
@@ -1698,8 +1705,9 @@ func (h *setDownstreamParamsHandler) Run(ctx context.Context) gimlet.Responder {
 // It returns an installation token that's attached to Evergreen's GitHub app.
 // See createGitHubDynamicAccessToken or tokens created for users using their GitHub app.
 type createInstallationTokenForClone struct {
-	owner string
-	repo  string
+	taskID string
+	owner  string
+	repo   string
 
 	env evergreen.Environment
 }
@@ -1717,6 +1725,10 @@ func (g *createInstallationTokenForClone) Factory() gimlet.RouteHandler {
 }
 
 func (g *createInstallationTokenForClone) Parse(ctx context.Context, r *http.Request) error {
+	if g.taskID = gimlet.GetVars(r)["task_id"]; g.taskID == "" {
+		return errors.New("missing task ID")
+	}
+
 	if g.owner = gimlet.GetVars(r)["owner"]; g.owner == "" {
 		return errors.New("missing owner")
 	}
@@ -1729,9 +1741,43 @@ func (g *createInstallationTokenForClone) Parse(ctx context.Context, r *http.Req
 }
 
 func (g *createInstallationTokenForClone) Run(ctx context.Context) gimlet.Responder {
+	t := GetTask(ctx)
+	if t == nil {
+		var err error
+		t, err = task.FindOneId(ctx, g.taskID)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", g.taskID))
+		}
+		if t == nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("task '%s' not found", g.taskID),
+			})
+		}
+	}
+
+	allowed, err := isRepoAllowedForTask(ctx, g.env, t, g.owner, g.repo)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "checking repo authorization"))
+	}
+	if !allowed {
+		// TODO: DEVPROD-36655 enforce this as a 403 once we've confirmed no
+		// projects rely on cross-repo tokens outside their declared modules.
+		grip.Warning(ctx, message.Fields{
+			"message":   "installation token requested for repo not in project or modules",
+			"task_id":   g.taskID,
+			"project":   t.Project,
+			"owner":     g.owner,
+			"repo":      g.repo,
+			"version":   t.Version,
+			"requester": t.Requester,
+			"ticket":    "DEVPROD-36655",
+		})
+	}
+
 	const lifetime = 50 * time.Minute
-	// because this token will be used for cloning, restrict the token to read only
 	opts := &github.InstallationTokenOptions{
+		Repositories: []string{g.repo},
 		Permissions: &github.InstallationPermissions{
 			Contents: utility.ToStringPtr(thirdparty.GithubPermissionRead),
 		},
@@ -1753,6 +1799,80 @@ func (g *createInstallationTokenForClone) Run(ctx context.Context) gimlet.Respon
 	return gimlet.NewJSONResponse(&apimodels.Token{
 		Token: token,
 	})
+}
+
+// isRepoAllowedForTask checks whether the given owner/repo is the task's project
+// repo or one of its declared modules.
+func isRepoAllowedForTask(ctx context.Context, env evergreen.Environment, t *task.Task, owner, repo string) (bool, error) {
+	projectRef, err := model.FindMergedProjectRef(ctx, t.Project, t.Version, true)
+	if err != nil {
+		return false, errors.Wrapf(err, "finding project '%s'", t.Project)
+	}
+	if projectRef == nil {
+		return false, errors.Errorf("project ref '%s' doesn't exist", t.Project)
+	}
+
+	if strings.EqualFold(projectRef.Owner, owner) && strings.EqualFold(projectRef.Repo, repo) {
+		return true, nil
+	}
+
+	mfest, err := manifest.FindFromVersion(ctx, t.Version, t.Project, "", t.Requester)
+	if err != nil {
+		return false, errors.Wrap(err, "finding manifest for task")
+	}
+	if mfest != nil {
+		for _, m := range mfest.Modules {
+			if matchesModule(m.Owner, m.Repo, owner, repo) {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+
+	v, err := model.VersionFindOne(ctx, model.VersionById(t.Version))
+	if err != nil {
+		return false, errors.Wrap(err, "finding version for task")
+	}
+	if v == nil {
+		return false, errors.Errorf("version '%s' not found", t.Version)
+	}
+
+	project, _, err := model.FindAndTranslateProjectForVersion(ctx, env.Settings(), v, false)
+	if err != nil {
+		return false, errors.Wrap(err, "loading project for version")
+	}
+	if project == nil {
+		return false, errors.Errorf("project for version '%s' not found", t.Version)
+	}
+
+	for _, m := range project.Modules {
+		moduleOwner, moduleRepo, err := m.GetOwnerAndRepo()
+		if err != nil {
+			continue
+		}
+		if matchesModule(moduleOwner, moduleRepo, owner, repo) {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+// matchesModule checks whether the requested owner/repo matches a module's
+// owner/repo.
+func matchesModule(moduleOwner, moduleRepo, owner, repo string) bool {
+	if strings.EqualFold(moduleOwner, owner) && strings.EqualFold(moduleRepo, repo) {
+		return true
+	}
+	if model.IsWikiRepo(moduleRepo) {
+		// The agent strips ".wiki" from repo names before requesting
+		// tokens, so this also matches the parent repo name for wiki modules.
+		parentRepo := strings.TrimSuffix(strings.TrimSuffix(strings.TrimSpace(moduleRepo), ".git"), ".wiki")
+		if strings.EqualFold(moduleOwner, owner) && strings.EqualFold(parentRepo, repo) {
+			return true
+		}
+	}
+	return false
 }
 
 // POST /task/{task_id}/check_run

@@ -561,6 +561,7 @@ type APIRateLimitConfig struct {
 	GraphQLServiceBurst    int      `json:"graphql_service_burst"`
 	GraphQLComplexityLimit int      `json:"graphql_complexity_limit"`
 	ElevatedUserIDs        []string `json:"elevated_user_ids"`
+	ExemptUserIDs          []string `json:"exempt_user_ids"`
 }
 
 func (a *APIRateLimitConfig) BuildFromService(h any) error {
@@ -576,6 +577,7 @@ func (a *APIRateLimitConfig) BuildFromService(h any) error {
 		a.GraphQLServiceBurst = v.GraphQLServiceBurst
 		a.GraphQLComplexityLimit = v.GraphQLComplexityLimit
 		a.ElevatedUserIDs = v.ElevatedUserIDs
+		a.ExemptUserIDs = v.ExemptUserIDs
 	default:
 		return errors.Errorf("programmatic error: expected rate limit config but got type %T", h)
 	}
@@ -594,6 +596,7 @@ func (a *APIRateLimitConfig) ToService() (any, error) {
 		GraphQLServiceBurst:    a.GraphQLServiceBurst,
 		GraphQLComplexityLimit: a.GraphQLComplexityLimit,
 		ElevatedUserIDs:        a.ElevatedUserIDs,
+		ExemptUserIDs:          a.ExemptUserIDs,
 	}, nil
 }
 
@@ -1696,6 +1699,8 @@ func (a *APISubnet) ToService() (any, error) {
 
 type APIAWSConfig struct {
 	Subnets                []APISubnet                `json:"subnets"`
+	SubnetTagName          *string                    `json:"subnet_tag_name"`
+	SubnetTagValue         *string                    `json:"subnet_tag_value"`
 	ParserProject          *APIParserProjectS3Config  `json:"parser_project"`
 	PersistentDNS          *APIPersistentDNSConfig    `json:"persistent_dns"`
 	DefaultSecurityGroup   *string                    `json:"default_security_group"`
@@ -1719,6 +1724,8 @@ func (a *APIAWSConfig) BuildFromService(h any) error {
 			}
 			a.Subnets = append(a.Subnets, apiSubnet)
 		}
+		a.SubnetTagName = utility.ToStringPtr(v.SubnetTagName)
+		a.SubnetTagValue = utility.ToStringPtr(v.SubnetTagValue)
 
 		parserProject := &APIParserProjectS3Config{}
 		if err := parserProject.BuildFromService(v.ParserProject); err != nil {
@@ -1808,6 +1815,8 @@ func (a *APIAWSConfig) ToService() (any, error) {
 		}
 		config.Subnets = append(config.Subnets, subnet)
 	}
+	config.SubnetTagName = utility.FromStringPtr(a.SubnetTagName)
+	config.SubnetTagValue = utility.FromStringPtr(a.SubnetTagValue)
 
 	config.AllowedInstanceTypes = utility.FromStringPtrSlice(a.AllowedInstanceTypes)
 	config.AlertableInstanceTypes = utility.FromStringPtrSlice(a.AlertableInstanceTypes)
