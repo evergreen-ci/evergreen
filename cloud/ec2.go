@@ -134,6 +134,16 @@ func (s *EC2ProviderSettings) Validate() error {
 	return catcher.Resolve()
 }
 
+// subnetTagFilter returns the tag name and value that identify the subnets
+// available to the distro. Distro subnet tags take precedence over those
+// defined in the admin settings.
+func (s *EC2ProviderSettings) subnetTagFilter(settings *evergreen.Settings) (tagName string, tagValue string) {
+	if s.SubnetTagName != "" && s.SubnetTagValue != "" {
+		return s.SubnetTagName, s.SubnetTagValue
+	}
+	return settings.Providers.AWS.SubnetTagName, settings.Providers.AWS.SubnetTagValue
+}
+
 // region is only provided if we want to filter by region
 func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string) error {
 	if len(d.ProviderSettingsList) != 0 {

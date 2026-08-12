@@ -33,6 +33,12 @@ type instanceTypeCacheKey struct {
 	account      string
 	region       string
 	instanceType string
+	// subnetTagName and subnetTagValue are part of the key because they
+	// determine which subnets are discovered. Keying on them rather than on the
+	// distro means that changing a distro's tag takes effect without having to
+	// restart the app servers, and that distros sharing a tag share an entry.
+	subnetTagName  string
+	subnetTagValue string
 }
 
 // cachedSubnets is the result of looking up the subnets for a single
@@ -65,7 +71,7 @@ func (c *instanceTypeSubnetCache) subnetsWithInstanceType(ctx context.Context, s
 
 	var candidateSubnets []evergreen.Subnet
 	if cacheKey.account != "" {
-		discovered, err := c.discoverSubnets(ctx, settings, client)
+		discovered, err := c.discoverSubnets(ctx, client, cacheKey)
 		if err != nil {
 			c.set(cacheKey, cachedSubnets{err: err})
 			return nil, errors.Wrapf(err, "discovering subnets for account '%s'", cacheKey.account)
@@ -122,9 +128,9 @@ func (c *instanceTypeSubnetCache) set(key instanceTypeCacheKey, result cachedSub
 
 // discoverSubnets returns the subnets in the client's AWS account and region
 // that are tagged as usable by Evergreen.
-func (c *instanceTypeSubnetCache) discoverSubnets(ctx context.Context, settings *evergreen.Settings, client AWSClient) ([]evergreen.Subnet, error) {
-	tagName := settings.Providers.AWS.SubnetTagName
-	tagValue := settings.Providers.AWS.SubnetTagValue
+func (c *instanceTypeSubnetCache) discoverSubnets(ctx context.Context, client AWSClient, cacheKey instanceTypeCacheKey) ([]evergreen.Subnet, error) {
+	tagName := cacheKey.subnetTagName
+	tagValue := cacheKey.subnetTagValue
 	if tagName == "" || tagValue == "" {
 		return nil, errors.New("subnet tag name and value must both be set to discover subnets")
 	}
@@ -848,10 +854,13 @@ func (m *ec2FleetManager) makeSubnetOverrides(ctx context.Context, h *host.Host,
 		return nil, nil
 	}
 
+	subnetTagName, subnetTagValue := ec2Settings.subnetTagFilter(m.settings)
 	supportingSubnets, err := typeCache.subnetsWithInstanceType(ctx, m.settings, m.client, instanceTypeCacheKey{
-		instanceType: ec2Settings.InstanceType,
-		region:       ec2Settings.getRegion(),
-		account:      m.account,
+		instanceType:   ec2Settings.InstanceType,
+		region:         ec2Settings.getRegion(),
+		account:        m.account,
+		subnetTagName:  subnetTagName,
+		subnetTagValue: subnetTagValue,
 	})
 	if err != nil {
 		// Not being able to determine the subnets shouldn't stop the host from

@@ -691,6 +691,53 @@ func TestMakeSubnetOverrides(t *testing.T) {
 			}
 			assert.Equal(t, 1, client.DescribeSubnetsCount, "already-discovered subnets are cached")
 		},
+		"DistroSubnetTagTakesPrecedenceOverAdminSettings": func(ctx context.Context, t *testing.T) {
+			m, client := makeManager(account)
+			ec2Settings := &EC2ProviderSettings{
+				InstanceType:   "instanceType0",
+				SubnetId:       "subnet-discovered1",
+				SubnetTagName:  "distro-subnet-group",
+				SubnetTagValue: "distro-subnet",
+			}
+
+			overrides, err := m.makeSubnetOverrides(ctx, h, ec2Settings)
+			require.NoError(t, err)
+			require.Len(t, overrides, 2)
+
+			require.NotZero(t, client.DescribeSubnetsInput)
+			require.Len(t, client.DescribeSubnetsInput.Filters, 1)
+			assert.Equal(t, "tag:distro-subnet-group", utility.FromStringPtr(client.DescribeSubnetsInput.Filters[0].Name))
+			assert.Equal(t, []string{"distro-subnet"}, client.DescribeSubnetsInput.Filters[0].Values)
+		},
+		"AdminSettingsSubnetTagIsUsedWhenTheDistroHasNone": func(ctx context.Context, t *testing.T) {
+			m, client := makeManager(account)
+			ec2Settings := &EC2ProviderSettings{InstanceType: "instanceType0", SubnetId: "subnet-discovered1"}
+
+			_, err := m.makeSubnetOverrides(ctx, h, ec2Settings)
+			require.NoError(t, err)
+
+			require.NotZero(t, client.DescribeSubnetsInput)
+			require.Len(t, client.DescribeSubnetsInput.Filters, 1)
+			assert.Equal(t, "tag:"+tagName, utility.FromStringPtr(client.DescribeSubnetsInput.Filters[0].Name))
+			assert.Equal(t, []string{tagValue}, client.DescribeSubnetsInput.Filters[0].Values)
+		},
+		"CachedSubnetsAreNotSharedBetweenDifferentSubnetTags": func(ctx context.Context, t *testing.T) {
+			m, client := makeManager(account)
+			adminTagSettings := &EC2ProviderSettings{InstanceType: "instanceType0", SubnetId: "subnet-discovered1"}
+			distroTagSettings := &EC2ProviderSettings{
+				InstanceType:   "instanceType0",
+				SubnetId:       "subnet-discovered1",
+				SubnetTagName:  "distro-subnet-group",
+				SubnetTagValue: "distro-subnet",
+			}
+
+			_, err := m.makeSubnetOverrides(ctx, h, adminTagSettings)
+			require.NoError(t, err)
+			_, err = m.makeSubnetOverrides(ctx, h, distroTagSettings)
+			require.NoError(t, err)
+
+			assert.Equal(t, 2, client.DescribeSubnetsCount, "distros with different subnet tags should not share cached subnets")
+		},
 		"DefaultAccountUsesAdminSettingsSubnets": func(ctx context.Context, t *testing.T) {
 			m, client := makeManager("")
 			ec2Settings := &EC2ProviderSettings{
