@@ -235,6 +235,7 @@ func (a *Agent) Start(ctx context.Context) error {
 	}
 	if a.opts.Cleanup {
 		a.tryCleanupDirectory(ctx, a.opts.WorkingDirectory)
+		a.tryReapOrphanContainers(ctx)
 	}
 
 	return errors.Wrap(a.loop(ctx), "executing main agent loop")
@@ -259,6 +260,13 @@ func (a *Agent) loop(ctx context.Context) error {
 			// shutting down, close the logger to flush the remaining logs.
 			grip.Error(ctx, errors.Wrap(tc.logger.Close(), "closing logger"))
 		}
+	}()
+	// Destroy any active isolation container on loop exit. A detached context
+	// is needed because the loop ctx is already cancelled on shutdown.
+	defer func() {
+		destroyCtx, destroyCancel := context.WithTimeout(context.Background(), reaperTimeout)
+		defer destroyCancel()
+		a.destroyContainer(destroyCtx, tc.taskConfig)
 	}()
 
 	for {
@@ -289,7 +297,7 @@ func (a *Agent) loop(ctx context.Context) error {
 			// Single task distros should exit after running a single task.
 			// However, if the task group needs tearing down, we should continue
 			// the loop so the teardown group can run in the next iteration.
-			if !needTeardownGroup && a.opts.SingleTaskDistro {
+			if a.opts.SingleTaskDistro && (ntr.taskErrored || !needTeardownGroup) {
 				return a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{Reason: "Single task distro ran a task"})
 			}
 			if ntr.shouldExit {
@@ -322,6 +330,7 @@ type processNextResponse struct {
 	shouldExit        bool
 	noTaskToRun       bool
 	needTeardownGroup bool
+	taskErrored       bool
 	tc                *taskContext
 }
 
@@ -405,13 +414,20 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 	tc, shouldExit, err := a.runTask(ctx, nil, nt, shouldSetupGroup, taskDirectory)
 	if err != nil {
 		span.SetStatus(codes.Error, "error running task")
-		span.RecordError(err, trace.WithAttributes(attribute.String("task.id", tc.task.ID)), trace.WithStackTrace(true))
+		taskID := ""
+		if tc != nil {
+			taskID = tc.task.ID
+		}
+		span.RecordError(err, trace.WithAttributes(attribute.String("task.id", taskID)), trace.WithStackTrace(true))
 		grip.Critical(ctx, message.WrapError(err, message.Fields{
 			"message": "error running task",
-			"task":    tc.task.ID,
+			"task":    taskID,
 		}))
 		return processNextResponse{
 			tc: tc,
+			// Teardown is safe even when setup failed before a container was created.
+			needTeardownGroup: true,
+			taskErrored:       true,
 		}, nil
 	}
 	if shouldExit {
@@ -726,6 +742,10 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 			}
 		}
 	}()
+
+	if err := a.ensureContainer(tskCtx, tc.taskConfig, tc.logger.Execution()); err != nil {
+		return a.handleSetupError(tskCtx, tc, errors.Wrap(err, "starting required isolation container"))
+	}
 
 	grip.Info(ctx, message.Fields{
 		"message": "running task",
@@ -1100,6 +1120,8 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 	if tc.taskConfig == nil {
 		return
 	}
+	// Destroy the isolation container after teardown, before the task directory is removed.
+	defer a.destroyContainer(ctx, tc.taskConfig)
 	// Only killProcs if tc.taskConfig is not nil. This avoids passing an
 	// empty working directory to killProcs, and is okay because this
 	// killProcs is only for the processes run in runTeardownGroupCommands.
@@ -1183,6 +1205,17 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail
 		} else {
 			tc.logger.Execution().Debugf(ctx, "Found no OOM kill (in %.3f seconds).", time.Since(startTime).Seconds())
 		}
+	}
+	// Container-specific failure handling: OOM signal, failure snapshot, retention.
+	if detail.Status == evergreen.TaskFailed || detail.TimedOut {
+		a.augmentOOMTrackerWithContainerSignal(ctx, tc, detail)
+		a.emitContainerFailureSnapshot(ctx, tc, detail)
+		if a.currentContainer != nil {
+			a.scheduleContainerRetention(ctx, a.currentContainer.GetName(), tc.logger.Execution())
+		}
+	} else {
+		// Clear any retention window from a prior failed task in this group.
+		a.retainContainerUntil = time.Time{}
 	}
 
 	if rcInfo := tc.resourceMonitor.report(); rcInfo != nil {
@@ -1566,17 +1599,47 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 
 	catcher := grip.NewBasicCatcher()
 	if tc.task.ID != "" && tc.taskConfig != nil && tc.taskConfig.Distro != nil {
-		logger.Infof(ctx, "Cleaning up processes for task: '%s'.", tc.task.ID)
-		if err := agentutil.KillSpawnedProcs(ctx, tc.task.ID, tc.taskConfig.WorkDir, tc.taskConfig.Distro.ExecUser, logger); err != nil {
-			catcher.Wrap(err, "cleaning up spawned processes")
-			// If the host is in a state where ps is timing out we need human intervention.
-			if psErr := errors.Cause(err); psErr == agentutil.ErrPSTimeout {
-				disableErr := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{Reason: psErr.Error()})
-				logger.CriticalWhen(ctx, disableErr != nil, errors.Wrap(err, "disabling host due to ps timeout"))
+		if tc.taskConfig.ContainerID != "" {
+			// Host-side pkill cannot reach container-namespaced processes.
+			if tc.taskConfig.Distro.ExecUser == "" {
+				// ExecUser is required for container isolation (enforced at distro
+				// validation), but degrade gracefully for pre-validation distros.
+				logger.Warningf(ctx, "Skipping in-container process cleanup for task '%s': distro has container isolation enabled but ExecUser is not set.", tc.task.ID)
+			} else {
+				logger.Infof(ctx, "Killing in-container processes for task '%s' (container '%s').", tc.task.ID, tc.taskConfig.ContainerID)
+				if err := agentutil.KillSpawnedProcsInContainer(ctx, tc.taskConfig.ContainerID, tc.taskConfig.Distro.ExecUser); err != nil {
+					if errors.Is(err, agentutil.ErrContainerExecUnavailable) {
+						// Container is unreachable (not running, paused, etc.) —
+						// warn but do not fail; no processes can be leaking.
+						logger.Warningf(ctx, "Could not reach container '%s' for process cleanup for task '%s': %s", tc.taskConfig.ContainerID, tc.task.ID, err)
+					} else {
+						catcher.Wrap(err, "killing in-container spawned processes")
+						logger.Critical(ctx, errors.Wrap(err, "killing in-container spawned processes"))
+					}
+				} else {
+					logger.Infof(ctx, "Completed in-container process cleanup for task '%s'.", tc.task.ID)
+				}
 			}
-			logger.Critical(ctx, errors.Wrap(err, "cleaning up spawned processes"))
+		} else {
+			logger.Infof(ctx, "Cleaning up processes for task: '%s'.", tc.task.ID)
+			if err := agentutil.KillSpawnedProcs(ctx, tc.task.ID, tc.taskConfig.WorkDir, tc.taskConfig.Distro.ExecUser, logger); err != nil {
+				catcher.Wrap(err, "cleaning up spawned processes")
+				// If the host is in a state where ps is timing out we need human intervention.
+				if psErr := errors.Cause(err); psErr == agentutil.ErrPSTimeout {
+					disableErr := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{Reason: psErr.Error()})
+					logger.CriticalWhen(ctx, disableErr != nil, errors.Wrap(err, "disabling host due to ps timeout"))
+				}
+				logger.Critical(ctx, errors.Wrap(err, "cleaning up spawned processes"))
+			}
+			logger.Infof(ctx, "Cleaned up processes for task: '%s'.", tc.task.ID)
 		}
-		logger.Infof(ctx, "Cleaned up processes for task: '%s'.", tc.task.ID)
+	}
+
+	// Skip Docker artifact cleanup for container-enabled tasks: the pre-pulled
+	// task image is a host-level resource that must persist across tasks.
+	if tc.taskConfig != nil && tc.taskConfig.ContainerID != "" {
+		logger.Info(ctx, "Skipping Docker artifact cleanup: task is running in an isolation container; pre-pulled task image is preserved for subsequent tasks.")
+		return catcher.Resolve()
 	}
 
 	logger.Info(ctx, "Cleaning up Docker artifacts.")
