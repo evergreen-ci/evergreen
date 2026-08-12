@@ -400,7 +400,7 @@ func (s *GitGetProjectSuite) TestTokenIsRedactedWhenGenerated() {
 	})
 }
 
-func (s *GitGetProjectSuite) TestCloneTokenIsRefreshedOnRetry() {
+func (s *GitGetProjectSuite) TestCloneTokenIsRefreshedOnFinalAttempt() {
 	conf := s.taskConfig1
 	conf.ProjectRef.Repo = "invalidRepo"
 	s.comm.CreateInstallationTokenResult = "token"
@@ -417,9 +417,9 @@ func (s *GitGetProjectSuite) TestCloneTokenIsRefreshedOnRetry() {
 
 	refresh := s.comm.GetCreateInstallationTokenRefresh()
 	s.Require().Greater(len(refresh), 1, "the failing clone should have been retried")
-	s.False(refresh[0], "the initial token request has nothing to refresh")
-	for _, r := range refresh[1:] {
-		s.True(r, "each retry should ask for a refreshed token")
+	s.True(refresh[len(refresh)-1], "the final attempt should ask for a refreshed token")
+	for _, r := range refresh[:len(refresh)-1] {
+		s.False(r, "only the final attempt should refresh the token")
 	}
 }
 

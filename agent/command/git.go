@@ -398,7 +398,7 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 	return c.retryFetch(ctx, logger, comm, conf, true, opts, func(opts cloneOpts) error {
 		attempt++
 		// Don't refresh c.Token because it is user supplied.
-		if attempt > 1 && c.Token == "" {
+		if attempt == gitFetchProjectRetries && c.Token == "" {
 			refreshed, err := refreshCloneToken(ctx, comm, conf, opts.owner, opts.repo)
 			if err != nil {
 				logger.Task().Warningf(ctx, "Refreshing clone token, retrying with the previous one: %s", err)
@@ -597,7 +597,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	token := appToken
 	return c.retryFetch(ctx, logger, comm, conf, false, opts, func(opts cloneOpts) error {
 		attempt++
-		if attempt > 1 {
+		if attempt == gitFetchProjectRetries {
 			refreshed, err := refreshCloneToken(ctx, comm, conf, owner, tokenRepo)
 			if err != nil {
 				logger.Task().Warningf(ctx, "Refreshing clone token, retrying with the previous one: %s", err)
