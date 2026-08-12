@@ -515,7 +515,9 @@ func modifySpawnHostProviderSettings(ctx context.Context, d distro.Distro, setti
 			return nil, errors.Wrapf(err, "getting volume '%s'", volumeID)
 		}
 
-		ec2Settings.SubnetId, err = getSubnetForZone(settings.Providers.AWS.Subnets, volume.AvailabilityZone)
+		// Spawn hosts/volumes are only supported in the default AWS account
+		// currently, so only look for subnets in the default account.
+		ec2Settings.SubnetId, err = getSubnetForZoneInDefaultAccount(settings.Providers.AWS.Subnets, volume.AvailabilityZone)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting subnet for AZ '%s'", volume.AvailabilityZone)
 		}

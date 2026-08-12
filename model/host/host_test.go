@@ -560,6 +560,87 @@ func TestHostSetDNSName(t *testing.T) {
 	assert.Equal(t, newHostname, dbHost.Host, "existing hostname should be retained even if an empty string is passed")
 }
 
+func TestSetEC2Metadata(t *testing.T) {
+	metadataWithoutVolumes := CloudProviderData{
+		PublicDNS:   "hostname",
+		Zone:        "us-east-1a",
+		PublicIPv4:  "1.2.3.4",
+		PrivateIPv4: "10.0.0.1",
+		IPv6:        "::1",
+		StartedAt:   time.Now(),
+	}
+	metadataWithVolumes := metadataWithoutVolumes
+	metadataWithVolumes.Volumes = []VolumeAttachment{{VolumeID: "vol-123", DeviceName: "/dev/sda1"}}
+
+	for tName, tCase := range map[string]func(t *testing.T){
+		"TaskHostSetsMetadataWithoutVolumes": func(t *testing.T) {
+			ctx := t.Context()
+			h := &Host{
+				Id:        "task-host",
+				StartedBy: evergreen.User,
+			}
+			require.NoError(t, h.Insert(ctx))
+
+			require.NoError(t, h.SetEC2Metadata(ctx, HostMetadataOptions{CloudProviderData: metadataWithoutVolumes}))
+
+			assert.Equal(t, "hostname", h.Host)
+			assert.Equal(t, "us-east-1a", h.Zone)
+			assert.Equal(t, "1.2.3.4", h.PublicIPv4)
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, "hostname", dbHost.Host)
+			assert.True(t, dbHost.Provisioned)
+		},
+		"SpawnHostNoOpsWithoutVolumes": func(t *testing.T) {
+			ctx := t.Context()
+			h := &Host{
+				Id:        "spawn-host",
+				StartedBy: "user",
+			}
+			require.NoError(t, h.Insert(ctx))
+
+			require.NoError(t, h.SetEC2Metadata(ctx, HostMetadataOptions{CloudProviderData: metadataWithoutVolumes}))
+
+			assert.Empty(t, h.Host, "spawn host should not set metadata without volumes")
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Empty(t, dbHost.Host)
+			assert.False(t, dbHost.Provisioned)
+		},
+		"SpawnHostSetsMetadataWithVolumes": func(t *testing.T) {
+			ctx := t.Context()
+			h := &Host{
+				Id:        "spawn-host",
+				StartedBy: "user",
+			}
+			require.NoError(t, h.Insert(ctx))
+
+			require.NoError(t, h.SetEC2Metadata(ctx, HostMetadataOptions{CloudProviderData: metadataWithVolumes}))
+
+			assert.Equal(t, "hostname", h.Host)
+			assert.Len(t, h.Volumes, 1)
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, "hostname", dbHost.Host)
+			assert.True(t, dbHost.Provisioned)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection))
+			t.Cleanup(func() {
+				assert.NoError(t, db.ClearCollections(Collection))
+			})
+			tCase(t)
+		})
+	}
+}
+
 func TestMarkReachable(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection))

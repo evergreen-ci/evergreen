@@ -389,3 +389,21 @@ func TestCostConfigSetAndGet(t *testing.T) {
 		assert.Equal(t, []string{"210987654321"}, retrieved.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules)
 	})
 }
+
+func TestResolveUploadAccountID(t *testing.T) {
+	t.Run("RoleARNResolvesToItsAccount", func(t *testing.T) {
+		assert.Equal(t, "123456789012", ResolveUploadAccountID("arn:aws:iam::123456789012:role/r", ""))
+	})
+	t.Run("RoleARNTakesPrecedenceOverAccountID", func(t *testing.T) {
+		assert.Equal(t, "123456789012", ResolveUploadAccountID("arn:aws:iam::123456789012:role/r", "999999999999"))
+	})
+	t.Run("UnparseableRoleARNResolvesToNoAccount", func(t *testing.T) {
+		assert.Empty(t, ResolveUploadAccountID("not-an-arn", "999999999999"))
+	})
+	t.Run("EmptyRoleARNFallsBackToAccountID", func(t *testing.T) {
+		assert.Equal(t, "999999999999", ResolveUploadAccountID("", "999999999999"))
+	})
+	t.Run("BothEmptyResolvesToNoAccount", func(t *testing.T) {
+		assert.Empty(t, ResolveUploadAccountID("", ""))
+	})
+}
