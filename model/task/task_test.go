@@ -1123,7 +1123,7 @@ func TestMarkEnd(t *testing.T) {
 
 	t.Run("HostTaskHasRuntimeCost", func(t *testing.T) {
 		require.NoError(t, db.Clear(Collection))
-		now := time.Now()
+		now := utility.BSONTime(time.Now())
 		tsk := Task{
 			Id:        "host_task",
 			HostId:    "host",
@@ -1168,7 +1168,7 @@ func TestMarkEnd(t *testing.T) {
 	})
 
 	t.Run("EstimatedStartTimeForTaskThatNeverStarted", func(t *testing.T) {
-		finishTime := time.Now()
+		finishTime := utility.BSONTime(time.Now())
 		for tName, tCase := range map[string]struct {
 			dispatchTime      time.Time
 			ingestTime        time.Time
@@ -1205,7 +1205,7 @@ func TestMarkEnd(t *testing.T) {
 				dbTask, err := FindOneId(ctx, tsk.Id)
 				require.NoError(t, err)
 				require.NotNil(t, dbTask)
-				assert.WithinDuration(t, tCase.expectedStartTime, dbTask.StartTime, time.Millisecond)
+				assert.WithinDuration(t, tCase.expectedStartTime, dbTask.StartTime, 0)
 				assert.Equal(t, finishTime.Sub(tCase.expectedStartTime), dbTask.TimeTaken)
 			})
 		}
@@ -1213,7 +1213,7 @@ func TestMarkEnd(t *testing.T) {
 
 	t.Run("StartTimeIsKeptIfTaskStarted", func(t *testing.T) {
 		require.NoError(t, db.Clear(Collection))
-		finishTime := time.Now()
+		finishTime := utility.BSONTime(time.Now())
 		startTime := finishTime.Add(-10 * time.Minute)
 		tsk := Task{
 			Id:           "started_task",
@@ -1230,7 +1230,7 @@ func TestMarkEnd(t *testing.T) {
 		dbTask, err := FindOneId(ctx, tsk.Id)
 		require.NoError(t, err)
 		require.NotNil(t, dbTask)
-		assert.WithinDuration(t, startTime, dbTask.StartTime, time.Millisecond)
+		assert.WithinDuration(t, startTime, dbTask.StartTime, 0)
 		assert.Equal(t, 10*time.Minute, dbTask.TimeTaken)
 	})
 }
