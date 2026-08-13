@@ -318,6 +318,9 @@ type Task struct {
 	// project YAML for generate.tasks. This is only used to store the
 	// configuration if GeneratedJSONStorageMethod is unset or is explicitly set
 	// to "db".
+	//
+	// TODO (DEVPROD-41456): delete this field. Only tasks written before the
+	// switch to S3 still store their generated JSON here.
 	GeneratedJSONAsString GeneratedJSONFiles `bson:"generated_json,omitempty" json:"generated_json,omitempty"`
 	// GeneratedJSONStorageMethod describes how the generated JSON for
 	// generate.tasks is stored for this task before it's merged with the
@@ -1091,41 +1094,11 @@ func MarkGeneratedTasksErr(ctx context.Context, taskID string, errorToSet error)
 func GenerateNotRun(ctx context.Context) ([]Task, error) {
 	const maxGenerateTimeAgo = 24 * time.Hour
 	return FindAll(ctx, db.Query(bson.M{
-		StatusKey:                evergreen.TaskStarted,                              // task is running
-		StartTimeKey:             bson.M{"$gt": time.Now().Add(-maxGenerateTimeAgo)}, // ignore older tasks, just in case
-		GeneratedTasksKey:        bson.M{"$ne": true},                                // generate.tasks has not yet run
-		GeneratedJSONAsStringKey: bson.M{"$exists": true},                            // config has been posted by generate.tasks command
+		StatusKey:                     evergreen.TaskStarted,                              // task is running
+		StartTimeKey:                  bson.M{"$gt": time.Now().Add(-maxGenerateTimeAgo)}, // ignore older tasks, just in case
+		GeneratedTasksKey:             bson.M{"$ne": true},                                // generate.tasks has not yet run
+		GeneratedJSONStorageMethodKey: bson.M{"$exists": true},                            // config has been posted by generate.tasks command
 	}))
-}
-
-// SetGeneratedJSON sets JSON data to generate tasks from. If the generated JSON
-// files have already been stored, this is a no-op.
-func (t *Task) SetGeneratedJSON(ctx context.Context, files GeneratedJSONFiles) error {
-	if len(t.GeneratedJSONAsString) > 0 || t.GeneratedJSONStorageMethod != "" {
-		return nil
-	}
-
-	if err := UpdateOne(
-		ctx,
-		bson.M{
-			IdKey:                         t.Id,
-			GeneratedJSONAsStringKey:      bson.M{"$exists": false},
-			GeneratedJSONStorageMethodKey: nil,
-		},
-		bson.M{
-			"$set": bson.M{
-				GeneratedJSONAsStringKey:      files,
-				GeneratedJSONStorageMethodKey: evergreen.ProjectStorageMethodDB,
-			},
-		},
-	); err != nil {
-		return err
-	}
-
-	t.GeneratedJSONAsString = files
-	t.GeneratedJSONStorageMethod = evergreen.ProjectStorageMethodDB
-
-	return nil
 }
 
 // SetGeneratedJSONStorageMethod sets the task's generated JSON file storage

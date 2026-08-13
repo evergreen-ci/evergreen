@@ -56,18 +56,37 @@ func TestValidate(t *testing.T) {
 	assert.NoError(validateFileSize(files, 1))
 }
 
-func TestGenerateExecuteWithSmallFileInDB(t *testing.T) {
+func TestGenerateExecuteWithSmallFileInS3(t *testing.T) {
 	ctx := t.Context()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	testutil.ConfigureIntegrationTest(t, env.Settings())
+
+	c := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(c)
+
+	ppConf := env.Settings().Providers.AWS.ParserProject
+	bucket, err := pail.NewS3BucketWithHTTPClient(ctx, c, pail.S3Options{
+		Name:   ppConf.Bucket,
+		Region: evergreen.DefaultEC2Region,
+	})
+	require.NoError(t, err)
+	defer func() {
+		assert.NoError(t, bucket.RemovePrefix(ctx, ppConf.GeneratedJSONPrefix))
+	}()
+
 	require.NoError(t, db.ClearCollections(task.Collection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(task.Collection))
+	}()
 
 	tsk := task.Task{
 		Id:      "task_id",
 		Version: "version_id",
 	}
 	require.NoError(t, tsk.Insert(t.Context()))
-
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
 
 	genJSON := `{"key": "value"}`
 	h := &generateHandler{
@@ -80,15 +99,15 @@ func TestGenerateExecuteWithSmallFileInDB(t *testing.T) {
 	assert.Equal(t, struct{}{}, r.Data())
 	assert.Equal(t, http.StatusOK, r.Status())
 
-	dbTask, err := task.FindOneIdWithGeneratedJSON(ctx, tsk.Id)
+	dbTask, err := task.FindOneId(ctx, tsk.Id)
 	require.NoError(t, err)
 	require.NotZero(t, dbTask)
-	assert.Equal(t, evergreen.ProjectStorageMethodDB, dbTask.GeneratedJSONStorageMethod)
+	assert.Equal(t, evergreen.ProjectStorageMethodS3, dbTask.GeneratedJSONStorageMethod, "files under the DB document limit should still be stored in S3")
 
-	genJSONInDB, err := task.GeneratedJSONFind(ctx, env.Settings(), dbTask)
+	genJSONInS3, err := task.GeneratedJSONFind(ctx, env.Settings(), dbTask)
 	require.NoError(t, err)
-	require.Len(t, genJSONInDB, len(h.files), "generated JSON in DB should be non-empty")
-	assert.JSONEq(t, genJSON, genJSONInDB[0])
+	require.Len(t, genJSONInS3, len(h.files), "generated JSON in S3 should be non-empty")
+	assert.JSONEq(t, genJSON, genJSONInS3[0])
 
 	queue, err := env.RemoteQueueGroup().Get(ctx, fmt.Sprintf("service.generate.tasks.version.%s", tsk.Version))
 	require.NoError(t, err)

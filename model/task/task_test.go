@@ -4864,7 +4864,7 @@ func TestGenerateNotRun(t *testing.T) {
 			assert.Empty(t, tasks)
 		},
 		"IgnoresTasksThatHaveNothingToGenerate": func(t *testing.T, tsk *Task) {
-			tsk.GeneratedJSONAsString = nil
+			tsk.GeneratedJSONStorageMethod = ""
 			require.NoError(t, tsk.Insert(t.Context()))
 
 			tasks, err := GenerateNotRun(ctx)
@@ -4884,87 +4884,11 @@ func TestGenerateNotRun(t *testing.T) {
 			require.NoError(t, db.ClearCollections(Collection))
 
 			tCase(t, &Task{
-				Id:                    "task_id",
-				Status:                evergreen.TaskStarted,
-				StartTime:             time.Now(),
-				GeneratedTasks:        false,
-				GeneratedJSONAsString: []string{"some_generated_json"},
-			})
-		})
-	}
-}
-
-func TestSetGeneratedJSON(t *testing.T) {
-	ctx := t.Context()
-
-	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection))
-	}()
-
-	for tName, tCase := range map[string]func(t *testing.T, tsk *Task){
-		"Succeeds": func(t *testing.T, tsk *Task) {
-			files := GeneratedJSONFiles{"generated_json"}
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			require.NoError(t, tsk.SetGeneratedJSON(ctx, files))
-
-			dbTask, err := FindOneIdWithGeneratedJSON(ctx, tsk.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbTask)
-			assert.Equal(t, files, dbTask.GeneratedJSONAsString)
-		},
-		"NoopsForAlreadySetGeneratedJSON": func(t *testing.T, tsk *Task) {
-			originalFiles := GeneratedJSONFiles{"generated_files"}
-			tsk.GeneratedJSONAsString = originalFiles
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			require.NoError(t, tsk.SetGeneratedJSON(ctx, []string{"new_generated_json"}))
-
-			dbTask, err := FindOneIdWithGeneratedJSON(ctx, tsk.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbTask)
-			assert.EqualValues(t, originalFiles, dbTask.GeneratedJSONAsString)
-			assert.Empty(t, dbTask.GeneratedJSONStorageMethod)
-		},
-		"NoopsForAlreadySetGeneratedJSONDBStorage": func(t *testing.T, tsk *Task) {
-			originalFiles := GeneratedJSONFiles{"generated_json"}
-			tsk.GeneratedJSONAsString = originalFiles
-			tsk.GeneratedJSONStorageMethod = evergreen.ProjectStorageMethodDB
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			require.NoError(t, tsk.SetGeneratedJSON(ctx, GeneratedJSONFiles{"new_generated_json"}))
-
-			dbTask, err := FindOneIdWithGeneratedJSON(ctx, tsk.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbTask)
-			assert.Equal(t, originalFiles, dbTask.GeneratedJSONAsString)
-			assert.Equal(t, evergreen.ProjectStorageMethodDB, dbTask.GeneratedJSONStorageMethod)
-		},
-		"NoopsForAlreadySetGeneratedJSONS3Storage": func(t *testing.T, tsk *Task) {
-			tsk.GeneratedJSONStorageMethod = evergreen.ProjectStorageMethodS3
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			require.NoError(t, tsk.SetGeneratedJSON(ctx, GeneratedJSONFiles{"new_generated_json"}))
-
-			dbTask, err := FindOneId(ctx, tsk.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbTask)
-			assert.Equal(t, evergreen.ProjectStorageMethodS3, dbTask.GeneratedJSONStorageMethod)
-			assert.Empty(t, dbTask.GeneratedJSONAsString)
-		},
-		"FailsForNonexistentTask": func(t *testing.T, tsk *Task) {
-			assert.Error(t, tsk.SetGeneratedJSON(ctx, GeneratedJSONFiles{"generated_json"}))
-			assert.Empty(t, tsk.GeneratedJSONAsString)
-			assert.Empty(t, tsk.GeneratedJSONStorageMethod)
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(Collection))
-
-			tCase(t, &Task{
-				Id:        "task_id",
-				Status:    evergreen.TaskStarted,
-				StartTime: time.Now(),
+				Id:                         "task_id",
+				Status:                     evergreen.TaskStarted,
+				StartTime:                  time.Now(),
+				GeneratedTasks:             false,
+				GeneratedJSONStorageMethod: evergreen.ProjectStorageMethodS3,
 			})
 		})
 	}
