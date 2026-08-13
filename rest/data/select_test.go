@@ -402,11 +402,6 @@ func TestSetTaskQuarantined(t *testing.T) {
 }
 
 func TestSetVariantQuarantined(t *testing.T) {
-	const (
-		projectID = "my_project"
-		bvName    = "ubuntu"
-	)
-
 	t.Run("SuccessfulCallReturnsNoError", func(t *testing.T) {
 		var capturedPath string
 		var capturedBody struct {
