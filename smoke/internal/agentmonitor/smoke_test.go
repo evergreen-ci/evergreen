@@ -72,6 +72,7 @@ func startAgentMonitor(ctx context.Context, t *testing.T, params smokeTestParams
 	agentCmd, err := internal.SmokeRunBinary(ctx,
 		"smoke-agent-monitor",
 		params.EVGHome,
+		nil,
 		params.CLIPath,
 		"service",
 		"deploy",
