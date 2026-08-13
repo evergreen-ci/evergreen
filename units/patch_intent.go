@@ -224,6 +224,9 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			if strings.Contains(err.Error(), thirdparty.Github502Error) {
 				j.gitHubError = GitHubInternalError
 			}
+			if strings.Contains(err.Error(), evergreen.SettingsContextCancelledErr) {
+				j.gitHubError = ContextCancelledError
+			}
 		}
 		catcher.Wrap(err, "building GitHub patch document")
 	case patch.GithubMergeIntentType:
