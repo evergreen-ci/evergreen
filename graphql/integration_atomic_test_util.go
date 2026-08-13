@@ -859,7 +859,11 @@ func setupQuarantineTaskMutation(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		if strings.Contains(r.URL.Path, data.TransitionTaskEndpoint) {
-			quarantined.Store(r.URL.Query().Get("is_manually_quarantined") == "true")
+			var body struct {
+				IsManuallyQuarantined bool `json:"is_manually_quarantined"`
+			}
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			quarantined.Store(body.IsManuallyQuarantined)
 			_, _ = w.Write([]byte("{}"))
 			return
 		}
@@ -892,7 +896,11 @@ func setupQuarantineVariantMutation(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		if strings.Contains(r.URL.Path, data.TransitionVariantEndpoint) {
-			quarantined.Store(r.URL.Query().Get("is_manually_quarantined") == "true")
+			var body struct {
+				IsManuallyQuarantined bool `json:"is_manually_quarantined"`
+			}
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			quarantined.Store(body.IsManuallyQuarantined)
 			_, _ = w.Write([]byte("{}"))
 			return
 		}
