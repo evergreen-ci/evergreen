@@ -160,10 +160,10 @@ func TestCostConfigValidateAndDefault(t *testing.T) {
 }
 
 func TestAWSAccountIDMatchesConfiguredList(t *testing.T) {
-	assert.True(t, IsInDevProdOwnedAccountList("123456789012", []string{"123456789012"}))
-	assert.True(t, IsInDevProdOwnedAccountList("123456789012", []string{" 123456789012 "}))
-	assert.False(t, IsInDevProdOwnedAccountList("123456789012", []string{"999999999999"}))
-	assert.False(t, IsInDevProdOwnedAccountList("123456789012", nil))
+	assert.True(t, isInAccountList("123456789012", []string{"123456789012"}))
+	assert.True(t, isInAccountList("123456789012", []string{" 123456789012 "}))
+	assert.False(t, isInAccountList("123456789012", []string{"999999999999"}))
+	assert.False(t, isInAccountList("123456789012", nil))
 }
 
 func TestIsDevprodOwnedArtifactIAMRole(t *testing.T) {
