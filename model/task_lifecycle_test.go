@@ -2204,6 +2204,8 @@ func TestMarkEndIsAutomaticRestart(t *testing.T) {
 		Version:            "abc",
 		BuildVariant:       "a_variant",
 		HostId:             "h1",
+		StartTime:          time.Now().Add(-time.Hour),
+		LastHeartbeat:      time.Now().Add(-30 * time.Second),
 	}
 	displayTask := &task.Task{
 		ResetWhenFinished:  true,
@@ -2292,12 +2294,19 @@ func TestMarkEndIsAutomaticRestart(t *testing.T) {
 	}
 	for name, test := range map[string]func(*testing.T){
 		"ResetsSingleTask": func(t *testing.T) {
-			assert.NoError(t, MarkEnd(ctx, &evergreen.Settings{}, runningTask, "test", time.Now(), detail))
+			finishTime := time.Now()
+			assert.NoError(t, MarkEnd(ctx, &evergreen.Settings{}, runningTask, "test", finishTime, detail))
 			runningTaskDB, err := task.FindOneId(ctx, runningTask.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, runningTaskDB)
 			assert.Equal(t, 1, runningTaskDB.Execution)
 			assert.Equal(t, evergreen.TaskUndispatched, runningTaskDB.Status)
+
+			archivedTask, err := task.FindOneIdAndExecution(ctx, runningTask.Id, 0)
+			require.NoError(t, err)
+			require.NotZero(t, archivedTask)
+			assert.WithinDuration(t, finishTime, archivedTask.FinishTime, time.Millisecond,
+				"restarting a task that reported its own end should keep the reported finish time")
 
 			// Check that trying to automatically reset again does not reset the task again.
 			runningTaskDB.HostId = "h1"

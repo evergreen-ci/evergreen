@@ -1381,14 +1381,18 @@ func (t *Task) MarkFailed(ctx context.Context) error {
 	)
 }
 
-// EstimatedFinishTime returns the best available estimate of when a task that is no longer
-// reporting stopped running, given the current time. The cleanup jobs that end these tasks can run
-// several minutes after a task goes silent, so recording the time they ran makes the task look like
-// it was still running long after it stopped, overlapping the next task to run on the same host.
+// EstimatedFinishTime returns the best available estimate of when a task that
+// is no longer reporting stopped running, given the current time.
 func (t *Task) EstimatedFinishTime(now time.Time) time.Time {
 	if utility.IsZeroTime(t.LastHeartbeat) || t.LastHeartbeat.After(now) {
 		return now
 	}
+
+	// If the task is finishing due to certain system failures (e.g.
+	// stranded/stale task that's been unassigned from a host but wasn't marked
+	// finished), there's no definitive time when the task finished. The best
+	// guess for when the task stopped running is the last time it had a
+	// heartbeat.
 	return t.LastHeartbeat
 }
 

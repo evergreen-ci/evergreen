@@ -350,10 +350,13 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 	}
 
 	if detail != nil {
-		// Only the cleanup paths and automatic restarts pass end details here; a user-triggered
-		// restart passes none. In both cases the task has already stopped running, so its finish
-		// time is estimated rather than taken from the current time.
-		if err = t.MarkEnd(ctx, t.EstimatedFinishTime(time.Now()), detail); err != nil {
+		finishTime := t.FinishTime
+		if utility.IsZeroTime(finishTime) {
+			// The task could already be finished, so only use a new finish time
+			// estimate if it's not already finished.
+			finishTime = t.EstimatedFinishTime(time.Now())
+		}
+		if err = t.MarkEnd(ctx, finishTime, detail); err != nil {
 			return errors.Wrap(err, "marking task as ended")
 		}
 	}
