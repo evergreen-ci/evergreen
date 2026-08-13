@@ -402,6 +402,25 @@ func ensureHasValidHostAllocatorSettings(ctx context.Context, d *distro.Distro, 
 	return errs
 }
 
+// validateWholeSecondDuration checks that a distro duration setting is non-negative and expressible
+// in whole seconds.
+func validateWholeSecondDuration(name string, value time.Duration, distroID string) ValidationErrors {
+	if value < 0 {
+		return ValidationErrors{{
+			Message: fmt.Sprintf("invalid %s value of %dms for distro '%s' - its value must be a non-negative integer", name, value/time.Millisecond, distroID),
+			Level:   Error,
+		}}
+	}
+	if value%time.Second != 0 {
+		return ValidationErrors{{
+			Message: fmt.Sprintf("invalid %s value of %dms for distro '%s' - its value must convert directly to units of seconds", name, value/time.Millisecond, distroID),
+			Level:   Error,
+		}}
+	}
+
+	return nil
+}
+
 // ensureHasValidPlannerSettings checks that the distro's PlannerSettings are valid
 func ensureHasValidPlannerSettings(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
 	errs := ValidationErrors{}
@@ -413,25 +432,8 @@ func ensureHasValidPlannerSettings(ctx context.Context, d *distro.Distro, s *eve
 			Level:   Error,
 		})
 	}
-	if settings.TargetTime < 0 {
-		ms := settings.TargetTime / time.Millisecond
-		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("invalid planner_settings.target_time value of %dms for distro '%s' - its value must be a non-negative integer", ms, d.Id),
-			Level:   Error,
-		})
-	} else if settings.TargetTime != 0 && (settings.TargetTime < time.Second) {
-		ms := settings.TargetTime / time.Millisecond
-		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("invalid planner_settings.target_time value of %dms for distro '%s' - its millisecond value must convert directly to units of seconds", ms, d.Id),
-			Level:   Error,
-		})
-	} else if settings.TargetTime%time.Second != 0 {
-		ms := settings.TargetTime / time.Millisecond
-		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("invalid planner_settings.target_time value of %dms for distro '%s' - its value must convert directly to units of seconds", ms, d.Id),
-			Level:   Error,
-		})
-	}
+	errs = append(errs, validateWholeSecondDuration("planner_settings.target_time", settings.TargetTime, d.Id)...)
+	errs = append(errs, validateWholeSecondDuration("planner_settings.merge_queue_target_time", settings.MergeQueueTargetTime, d.Id)...)
 	if settings.PatchFactor < 0 || settings.PatchFactor > 100 {
 		errs = append(errs, ValidationError{
 			Message: fmt.Sprintf("invalid planner_settings.patch_factor value of %d for distro '%s' - its value must be a non-negative integer between 0 and 100, inclusive", settings.PatchFactor, d.Id),

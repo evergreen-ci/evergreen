@@ -3,6 +3,7 @@ package validator
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
@@ -758,4 +759,38 @@ func TestValidateImageID(t *testing.T) {
 	})
 	assert.Nil(t, validationErrs)
 	assert.Nil(t, err)
+}
+
+func TestEnsureHasValidPlannerSettingsMergeQueueTargetTime(t *testing.T) {
+	ctx := t.Context()
+	settings := &evergreen.Settings{}
+
+	for _, tCase := range []struct {
+		name                 string
+		mergeQueueTargetTime time.Duration
+		expectErr            bool
+	}{
+		{name: "UnsetShouldBeValid", mergeQueueTargetTime: 0, expectErr: false},
+		{name: "WholeSecondsShouldBeValid", mergeQueueTargetTime: 5 * time.Minute, expectErr: false},
+		{name: "NegativeShouldError", mergeQueueTargetTime: -time.Second, expectErr: true},
+		{name: "SubSecondShouldError", mergeQueueTargetTime: 500 * time.Millisecond, expectErr: true},
+		{name: "NonWholeSecondsShouldError", mergeQueueTargetTime: 1500 * time.Millisecond, expectErr: true},
+	} {
+		t.Run(tCase.name, func(t *testing.T) {
+			d := &distro.Distro{
+				Id: "distro",
+				PlannerSettings: distro.PlannerSettings{
+					Version:              evergreen.PlannerVersionTunable,
+					MergeQueueTargetTime: tCase.mergeQueueTargetTime,
+				},
+			}
+			errs := ensureHasValidPlannerSettings(ctx, d, settings)
+			if !tCase.expectErr {
+				assert.Empty(t, errs)
+				return
+			}
+			require.Len(t, errs, 1)
+			assert.Contains(t, errs[0].Message, "planner_settings.merge_queue_target_time")
+		})
+	}
 }
