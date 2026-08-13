@@ -2085,15 +2085,17 @@ func buildTaskCompletedSpanAttributes(t *task.Task) []attribute.KeyValue {
 			t.ScheduledTime.Sub(t.ActivatedTime).Milliseconds()))
 	}
 	if len(t.DependsOn) > 0 && !utility.IsZeroTime(t.DependenciesMetTime) && !utility.IsZeroTime(t.ScheduledTime) {
+		depWait := t.DependenciesMetTime.Sub(t.ScheduledTime)
+		if depWait < 0 {
+			depWait = 0
+		}
 		attrs = append(attrs, attribute.Int64(evergreen.TaskTimeWaitingForDepsMsOtelAttribute,
-			t.DependenciesMetTime.Sub(t.ScheduledTime).Milliseconds()))
+			depWait.Milliseconds()))
 	}
 	if !utility.IsZeroTime(t.StartTime) {
-		var readyToRunTime time.Time
-		if len(t.DependsOn) > 0 {
+		readyToRunTime := t.ScheduledTime
+		if t.DependenciesMetTime.After(readyToRunTime) {
 			readyToRunTime = t.DependenciesMetTime
-		} else {
-			readyToRunTime = t.ScheduledTime
 		}
 		if !utility.IsZeroTime(readyToRunTime) {
 			attrs = append(attrs, attribute.Int64(evergreen.TaskTimeWaitingInQueueMsOtelAttribute,
