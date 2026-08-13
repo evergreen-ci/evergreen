@@ -40,6 +40,15 @@ func (s *installationSuite) TearDownTest() {
 	s.cancel()
 }
 
+// evictCachedTokenAtCleanup drops a cache ID once the test ends.
+// ghInstallationTokenCache is process-global, so entries otherwise leak into
+// whichever test runs next.
+func (s *installationSuite) evictCachedTokenAtCleanup(id string) {
+	s.T().Cleanup(func() {
+		ghInstallationTokenCache.Delete(s.ctx, id)
+	})
+}
+
 func (s *installationSuite) TestUpsert() {
 	installation := GitHubAppInstallation{
 		Owner:          "evergreen-ci",
@@ -123,12 +132,13 @@ func (s *installationSuite) TestCreateCachedInstallationToken() {
 	id, err := createCacheID(installation.InstallationID, nil, nil)
 	s.NoError(err)
 	s.Equal("5678", id)
+	s.evictCachedTokenAtCleanup(id)
 	ghInstallationTokenCache.Put(s.ctx, id, unrestrictedToken, time.Now().Add(lifetime*2))
 
 	authFields := GithubAppAuth{
 		AppID: installation.AppID,
 	}
-	token, err := authFields.CreateCachedInstallationToken(s.ctx, installation.Owner, installation.Repo, lifetime, nil)
+	token, err := authFields.CreateCachedInstallationToken(s.ctx, installation.Owner, installation.Repo, lifetime, nil, false)
 	s.Require().NoError(err)
 	s.Equal(unrestrictedToken, token, "should return cached token since it is still valid for at least %s", lifetime)
 
@@ -146,10 +156,41 @@ func (s *installationSuite) TestCreateCachedInstallationToken() {
 	s.Equal("5678_contents:read_issues:write", id)
 	ghInstallationTokenCache.Put(s.ctx, id, restrictedToken, time.Now().Add(lifetime*2))
 
-	token, err = authFields.CreateCachedInstallationToken(s.ctx, installation.Owner, installation.Repo, lifetime, opts)
+	token, err = authFields.CreateCachedInstallationToken(s.ctx, installation.Owner, installation.Repo, lifetime, opts, false)
 	s.Require().NoError(err)
 	s.Equal(restrictedToken, token, "should return cached token since it is still valid for at least %s", lifetime)
 }
+
+func (s *installationSuite) TestRefreshCachedInstallationToken() {
+	installation := GitHubAppInstallation{
+		Owner:          "evergreen-ci",
+		Repo:           "evergreen",
+		AppID:          1234,
+		InstallationID: 5678,
+	}
+	s.NoError(installation.Upsert(s.ctx))
+
+	const (
+		cachedToken = "cached_token"
+		lifetime    = time.Minute
+	)
+
+	id, err := createCacheID(installation.InstallationID, nil, nil)
+	s.Require().NoError(err)
+	s.evictCachedTokenAtCleanup(id)
+	ghInstallationTokenCache.Put(s.ctx, id, cachedToken, time.Now().Add(lifetime*2))
+
+	// Refreshing skips the cache and mints a new token, which fails here because
+	// the app has no private key configured.
+	authFields := GithubAppAuth{AppID: installation.AppID}
+	_, err = authFields.CreateCachedInstallationToken(s.ctx, installation.Owner, installation.Repo, lifetime, nil, true)
+	s.Error(err, "refreshing should not return the still-valid cached token")
+
+	cached, found := ghInstallationTokenCache.Get(s.ctx, id, lifetime)
+	s.True(found, "a failed refresh should leave the cached token alone")
+	s.Equal(cachedToken, cached)
+}
+
 func TestCreateGitHubAppAuth(t *testing.T) {
 	ctx := t.Context()
 
