@@ -2294,7 +2294,7 @@ func TestMarkEndIsAutomaticRestart(t *testing.T) {
 	}
 	for name, test := range map[string]func(*testing.T){
 		"ResetsSingleTask": func(t *testing.T) {
-			finishTime := time.Now()
+			finishTime := utility.BSONTime(time.Now())
 			assert.NoError(t, MarkEnd(ctx, &evergreen.Settings{}, runningTask, "test", finishTime, detail))
 			runningTaskDB, err := task.FindOneId(ctx, runningTask.Id)
 			assert.NoError(t, err)
@@ -2305,8 +2305,7 @@ func TestMarkEndIsAutomaticRestart(t *testing.T) {
 			archivedTask, err := task.FindOneIdAndExecution(ctx, runningTask.Id, 0)
 			require.NoError(t, err)
 			require.NotZero(t, archivedTask)
-			assert.WithinDuration(t, finishTime, archivedTask.FinishTime, time.Millisecond,
-				"restarting a task that reported its own end should keep the reported finish time")
+			assert.WithinDuration(t, finishTime, archivedTask.FinishTime, 0, "archived execution should keep its self-reported finish time")
 
 			// Check that trying to automatically reset again does not reset the task again.
 			runningTaskDB.HostId = "h1"
@@ -4172,7 +4171,7 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 
 	settings := testutil.TestConfig()
 
-	strandedTaskLastHeartbeat := time.Now().Add(-time.Hour)
+	strandedTaskLastHeartbeat := utility.BSONTime(time.Now().Add(-time.Hour))
 
 	tasks := []task.Task{
 		{
@@ -4284,7 +4283,7 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	archivedTask, err := task.FindOneIdAndExecution(ctx, "t", 0)
 	require.NoError(t, err)
 	require.NotZero(t, archivedTask)
-	assert.WithinDuration(strandedTaskLastHeartbeat, archivedTask.FinishTime, time.Millisecond)
+	assert.WithinDuration(strandedTaskLastHeartbeat, archivedTask.FinishTime, 0)
 
 	foundBuild, err := build.FindOneId(t.Context(), "b")
 	require.NoError(t, err)

@@ -42,8 +42,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 		assert.True(t, archivedTask.Archived)
 		assert.Equal(t, evergreen.TaskFailed, archivedTask.Status)
 		assert.Equal(t, description, archivedTask.Details.Description)
-		assert.WithinDuration(t, archivedTask.LastHeartbeat, archivedTask.FinishTime, time.Millisecond,
-			"task should finish when it stopped reporting, not when this job cleaned it up")
+		assert.WithinDuration(t, archivedTask.LastHeartbeat, archivedTask.FinishTime, 0, "task finish time should be when it stopped heartbeating")
 
 		restartedTask, err := task.FindOneIdAndExecution(ctx, taskID, oldExecution+1)
 		require.NoError(t, err)

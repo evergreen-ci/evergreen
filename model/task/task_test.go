@@ -1115,7 +1115,7 @@ func TestEstimatedFinishTime(t *testing.T) {
 		"IsNowWithoutAHeartbeat": {
 			expectedFinishTime: now,
 		},
-		"IsNowWhenHeartbeatIsAheadOfNow": {
+		"IsNowWhenHeartbeatMoreRecent": {
 			lastHeartbeat:      now.Add(time.Minute),
 			expectedFinishTime: now,
 		},
