@@ -21,6 +21,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -75,8 +79,7 @@ func updateTestDepTasks(ctx context.Context, t *testing.T) {
 }
 
 func TestGetDisplayStatusAndColorSort(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection, annotations.Collection))
 	t1 := Task{
@@ -267,8 +270,7 @@ func checkPriority(t *testing.T, taskResults []Task) {
 }
 
 func TestDependenciesMet(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	var taskId string
 	var taskDoc *Task
@@ -454,8 +456,7 @@ func TestDependenciesMet(t *testing.T) {
 }
 
 func TestGetFinishedBlockingDependencies(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	taskId := "t1"
 	taskDoc := &Task{
@@ -565,8 +566,7 @@ func TestGetFinishedBlockingDependencies(t *testing.T) {
 }
 
 func TestGetDeactivatedBlockingDependencies(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	taskId := "t1"
 	taskDoc := &Task{
@@ -634,8 +634,7 @@ func TestGetDeactivatedBlockingDependencies(t *testing.T) {
 }
 
 func TestMarkDependenciesFinished(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.Clear(Collection))
@@ -666,7 +665,6 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbTask2)
 			require.Len(t, dbTask2.DependsOn, 1)
-			assert.False(t, dbTask2.DependsOn[0].Finished, "unconnected dependency edge should not be marked finished")
 			assert.True(t, utility.IsZeroTime(dbTask2.DependsOn[0].FinishedAt), "unconnected dependency edge should not be marked finished")
 		},
 		"UpdatesDependencyWithMatchingStatus": func(t *testing.T) {
@@ -693,7 +691,6 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 1)
-			assert.True(t, dbTask1.DependsOn[0].Finished)
 			assert.False(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt))
 		},
 		"UpdatesDependencyWithUnmatchingStatus": func(t *testing.T) {
@@ -721,7 +718,6 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 1)
-			assert.True(t, dbTask1.DependsOn[0].Finished)
 			assert.False(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt))
 
 			met, err := dbTask1.DependenciesMet(ctx, map[string]Task{})
@@ -754,7 +750,6 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 1)
-			assert.True(t, dbTask1.DependsOn[0].Finished)
 			assert.False(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt))
 
 			met, err := dbTask1.DependenciesMet(ctx, map[string]Task{})
@@ -800,9 +795,7 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbTask2)
 			require.Len(t, dbTask2.DependsOn, 2)
-			assert.True(t, dbTask2.DependsOn[0].Finished)
 			assert.False(t, utility.IsZeroTime(dbTask2.DependsOn[0].FinishedAt))
-			assert.True(t, dbTask2.DependsOn[1].Finished)
 			assert.False(t, utility.IsZeroTime(dbTask2.DependsOn[1].FinishedAt))
 
 			met, err := dbTask2.DependenciesMet(ctx, map[string]Task{})
@@ -838,13 +831,9 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 4)
-			assert.False(t, dbTask1.DependsOn[0].Finished)
 			assert.True(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt))
-			assert.False(t, dbTask1.DependsOn[1].Finished)
 			assert.True(t, utility.IsZeroTime(dbTask1.DependsOn[1].FinishedAt))
-			assert.True(t, dbTask1.DependsOn[2].Finished)
 			assert.False(t, utility.IsZeroTime(dbTask1.DependsOn[2].FinishedAt))
-			assert.False(t, dbTask1.DependsOn[3].Finished)
 			assert.True(t, utility.IsZeroTime(dbTask1.DependsOn[3].FinishedAt))
 		},
 		"UpdatesDirectDependenciesOnly": func(t *testing.T) {
@@ -875,14 +864,12 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 1)
-			assert.True(t, dbTask1.DependsOn[0].Finished, "direct dependency should be marked finished")
 			assert.False(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt), "direct dependency should be marked finished")
 
 			dbTask2, err := FindOneId(ctx, t2.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask2)
 			require.Len(t, dbTask2.DependsOn, 1)
-			assert.False(t, dbTask2.DependsOn[0].Finished, "indirect dependency edge should not be marked finished")
 			assert.True(t, utility.IsZeroTime(dbTask2.DependsOn[0].FinishedAt), "indirect dependency edge should not be marked finished")
 		},
 		"UpdateDependencyToUnfinished": func(t *testing.T) {
@@ -894,8 +881,7 @@ func TestMarkDependenciesFinished(t *testing.T) {
 				Id: "task1",
 				DependsOn: []Dependency{
 					{
-						TaskId:   "task0",
-						Finished: true,
+						TaskId: "task0",
 					},
 				},
 			}
@@ -908,7 +894,6 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 1)
-			assert.False(t, dbTask1.DependsOn[0].Finished, "direct dependency should not be marked finished")
 			assert.True(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt), "direct dependency should not be marked finished")
 		},
 	} {
@@ -920,8 +905,7 @@ func TestMarkDependenciesFinished(t *testing.T) {
 }
 
 func TestSetTasksScheduledTime(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With some tasks", t, func() {
 
@@ -1037,8 +1021,7 @@ func TestSetTasksScheduledTime(t *testing.T) {
 }
 
 func TestEndingTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With tasks that are attempting to be marked as finished", t, func() {
 		So(db.Clear(Collection), ShouldBeNil)
@@ -1116,6 +1099,72 @@ func TestEndingTask(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(task.Status, ShouldEqual, evergreen.TaskFailed)
 		})
+	})
+}
+
+func TestMarkEnd(t *testing.T) {
+	ctx := t.Context()
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(Collection, distro.Collection, evergreen.ConfigCollection))
+	})
+
+	require.NoError(t, (&evergreen.CostConfig{
+		FinanceFormula:      0.6,
+		SavingsPlanDiscount: 0.5,
+		OnDemandDiscount:    0.04,
+	}).Set(ctx))
+	require.NoError(t, (&distro.Distro{
+		Id: "test_distro",
+		CostData: distro.CostData{
+			OnDemandRate:    0.20,
+			SavingsPlanRate: 0.10,
+		},
+	}).Insert(ctx))
+
+	t.Run("HostTaskHasRuntimeCost", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+		now := time.Now()
+		tsk := Task{
+			Id:        "host_task",
+			HostId:    "host",
+			DistroId:  "test_distro",
+			StartTime: now.Add(-time.Hour),
+		}
+		require.NoError(t, tsk.Insert(ctx))
+
+		require.NoError(t, tsk.MarkEnd(ctx, now, &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}))
+
+		dbTask, err := FindOneId(ctx, tsk.Id)
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		assert.Positive(t, dbTask.TaskCost.OnDemandEC2Cost)
+		assert.Positive(t, dbTask.TaskCost.AdjustedEC2Cost)
+	})
+
+	t.Run("TaskWithoutHostHasNoRuntimeCost", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+		now := time.Now()
+		tsk := Task{
+			Id:        "task_without_host",
+			DistroId:  "test_distro",
+			StartTime: now.Add(-time.Hour),
+			TaskCost: cost.Cost{
+				OnDemandEC2Cost:           1,
+				AdjustedEC2Cost:           1,
+				OnDemandEBSThroughputCost: 1,
+				AdjustedEBSThroughputCost: 1,
+				OnDemandEBSStorageCost:    1,
+				AdjustedEBSStorageCost:    1,
+			},
+		}
+		require.NoError(t, tsk.Insert(ctx))
+
+		require.NoError(t, tsk.MarkEnd(ctx, now, &apimodels.TaskEndDetail{Status: evergreen.TaskFailed}))
+
+		dbTask, err := FindOneId(ctx, tsk.Id)
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		assert.True(t, dbTask.TaskCost.IsZero())
 	})
 }
 
@@ -1286,8 +1335,7 @@ func TestSiblingDependency(t *testing.T) {
 }
 
 func TestBulkInsert(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
@@ -1318,8 +1366,7 @@ func TestBulkInsert(t *testing.T) {
 }
 
 func TestByBeforeMidwayTaskFromIds(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
@@ -1477,8 +1524,7 @@ func TestByBeforeMidwayTaskFromIds(t *testing.T) {
 func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 	assert := assert.New(t)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection))
 	require.NoError(t, db.EnsureIndex(Collection,
@@ -1519,8 +1565,7 @@ func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 }
 
 func TestDeactivateStepbackTasksForProject(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 
@@ -1623,8 +1668,7 @@ func TestDeactivateStepbackTasksForProject(t *testing.T) {
 }
 
 func TestUnscheduleStaleUnderwaterHostTasksWithDistro(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection, distro.Collection))
 	require.NoError(t, db.EnsureIndex(Collection,
@@ -1655,8 +1699,7 @@ func TestUnscheduleStaleUnderwaterHostTasksWithDistro(t *testing.T) {
 }
 
 func TestUnscheduleStaleUnderwaterHostTasksWithDistroAlias(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection, distro.Collection))
 	require.NoError(t, db.EnsureIndex(Collection,
@@ -1688,8 +1731,7 @@ func TestUnscheduleStaleUnderwaterHostTasksWithDistroAlias(t *testing.T) {
 }
 
 func TestGetRecentTaskStats(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
@@ -1753,8 +1795,7 @@ func TestGetResultCountList(t *testing.T) {
 }
 
 func TestFindVariantsWithTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require.NoError(t, db.Clear(Collection))
@@ -1774,8 +1815,7 @@ func TestFindVariantsWithTask(t *testing.T) {
 }
 
 func TestAddDependency(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection))
@@ -1841,8 +1881,7 @@ func TestAddDependency(t *testing.T) {
 }
 
 func TestUnattainableSchedulableHostTasksQuery(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
@@ -2032,8 +2071,7 @@ func TestUpdateDependsOn(t *testing.T) {
 }
 
 func TestMarkGeneratedTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 	t1 := &Task{
@@ -2079,8 +2117,7 @@ func TestMarkGeneratedTasks(t *testing.T) {
 }
 
 func TestGetAllDependencies(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 	tasks := []Task{
@@ -2114,8 +2151,7 @@ func TestGetAllDependencies(t *testing.T) {
 }
 
 func TestGetRecursiveDependenciesUp(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 	tasks := []Task{
@@ -2140,8 +2176,7 @@ func TestGetRecursiveDependenciesUp(t *testing.T) {
 }
 
 func TestGetRecursiveDependenciesUpWithTaskGroup(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 	tasks := []Task{
@@ -2165,8 +2200,7 @@ func TestGetRecursiveDependenciesUpWithTaskGroup(t *testing.T) {
 }
 
 func TestGetRecursiveDependenciesDown(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 	tasks := []Task{
@@ -2191,8 +2225,7 @@ func TestGetRecursiveDependenciesDown(t *testing.T) {
 }
 
 func TestGetRecursiveDependenciesUpDepthLimit(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 
@@ -2236,8 +2269,7 @@ func TestGetRecursiveDependenciesUpContextCancellation(t *testing.T) {
 }
 
 func TestGetRecursiveDependenciesDownDepthLimit(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 
@@ -2321,8 +2353,7 @@ func TestDeactivateDependencies(t *testing.T) {
 }
 
 func TestActivateDeactivatedDependencies(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 
@@ -2386,8 +2417,7 @@ func TestTopologicalSort(t *testing.T) {
 }
 
 func TestActivateTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection, user.Collection))
@@ -2478,8 +2508,7 @@ func TestActivateTasks(t *testing.T) {
 }
 
 func TestDeactivateTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 
@@ -2595,8 +2624,7 @@ func TestIsHostDispatchable(t *testing.T) {
 }
 
 func TestMarkAllForUnattainableDependencies(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.Clear(Collection))
@@ -2909,8 +2937,7 @@ func TestMarkAllForUnattainableDependencies(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			require.NoError(t, db.ClearCollections(Collection))
 
@@ -2920,8 +2947,7 @@ func TestMarkAllForUnattainableDependencies(t *testing.T) {
 }
 
 func TestSetGeneratedTasksToActivate(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection))
 	task := Task{Id: "t1"}
@@ -2958,8 +2984,7 @@ func TestSetGeneratedTasksToActivate(t *testing.T) {
 }
 
 func TestSetNextStepbackId(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
@@ -2984,8 +3009,7 @@ func TestSetNextStepbackId(t *testing.T) {
 }
 
 func TestSetLastAndPreviousStepbackIds(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
@@ -3010,8 +3034,7 @@ func TestSetLastAndPreviousStepbackIds(t *testing.T) {
 }
 
 func TestGetLatestExecution(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 	sample := Task{
@@ -3028,8 +3051,7 @@ func TestGetLatestExecution(t *testing.T) {
 }
 
 func TestArchiveMany(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection, OldCollection))
 	t1 := Task{
@@ -3090,8 +3112,7 @@ func TestArchiveMany(t *testing.T) {
 }
 
 func TestArchiveManyAfterFailedOnly(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection, OldCollection))
 	et1 := Task{
@@ -3258,8 +3279,7 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 }
 
 func TestAddParentDisplayTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 	dt1 := Task{
@@ -3296,8 +3316,7 @@ func TestAddParentDisplayTasks(t *testing.T) {
 }
 
 func TestSetCheckRunId(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 	t1 := &Task{
@@ -3317,8 +3336,7 @@ func TestSetCheckRunId(t *testing.T) {
 }
 
 func TestAddDisplayTaskIdToExecTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 	t1 := &Task{
@@ -3354,8 +3372,7 @@ func TestAddDisplayTaskIdToExecTasks(t *testing.T) {
 }
 
 func TestAddExecTasksToDisplayTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 	dt1 := Task{
@@ -3390,8 +3407,7 @@ func TestAddExecTasksToDisplayTask(t *testing.T) {
 }
 
 func TestAbortVersionTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert.NoError(t, db.ClearCollections(Collection))
 	finishedExecTask := &Task{
@@ -3561,8 +3577,7 @@ func TestArchive(t *testing.T) {
 }
 
 func TestArchiveFailedOnly(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection, OldCollection, event.EventCollection))
@@ -3726,8 +3741,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 }
 
 func TestByExecutionTasksAndMaxExecution(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	tasksToFetch := []string{"t1", "t2"}
 	t.Run("Fetching latest execution with same executions", func(t *testing.T) {
@@ -3852,8 +3866,7 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 }
 
 func TestFindTaskOnPreviousCommit(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection))
 	t1 := Task{
@@ -3930,7 +3943,7 @@ func TestTaskConnectorFetchByIdSuite(t *testing.T) {
 
 func (s *TaskConnectorFetchByIdSuite) SetupTest() {
 	s.Require().NoError(db.Clear(Collection))
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		testTask := &Task{
 			Id:            fmt.Sprintf("task_%d", i),
 			BuildId:       fmt.Sprintf("build_%d", i),
@@ -3944,7 +3957,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindById() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		found, err := FindOneId(ctx, fmt.Sprintf("task_%d", i))
 		s.NoError(err)
 		s.Equal(found.BuildId, fmt.Sprintf("build_%d", i))
@@ -3963,7 +3976,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByIdAndExecution() {
 		Status:    evergreen.TaskSucceeded,
 	}
 	s.NoError(testTask1.Insert(s.T().Context()))
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		s.NoError(testTask1.Archive(ctx))
 		err := UpdateOne(
 			ctx,
@@ -3973,7 +3986,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByIdAndExecution() {
 		s.NoError(err)
 		testTask1.Execution += 1
 	}
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		task, err := FindOneIdAndExecution(ctx, "task_1", i)
 		s.NoError(err)
 		s.Equal(task.Id, fmt.Sprintf("task_1_%d", i))
@@ -4080,7 +4093,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	s.NoError(testTask2.Insert(s.T().Context()))
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		s.NoError(testTask1.Archive(ctx))
 		testTask1.Execution += 1
 		s.NoError(testTask2.Archive(ctx))
@@ -4129,8 +4142,7 @@ func assertTasksAreEqual(t *testing.T, expected, actual Task, exectedExecution i
 }
 
 func TestFindAbortingAndResettingDependencies(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.Clear(Collection))
@@ -4323,8 +4335,7 @@ func TestHasResults(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			for _, execTask := range test.executionTasks {
 				_, err := db.Replace(t.Context(), Collection, ById(execTask.Id), &execTask)
@@ -4528,8 +4539,7 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			for _, execTask := range test.executionTasks {
 				_, err := db.Replace(t.Context(), Collection, ById(execTask.Id), &execTask)
@@ -4574,7 +4584,7 @@ func TestWillRun(t *testing.T) {
 		tsk := Task{
 			Status:    evergreen.TaskUndispatched,
 			Activated: true,
-			DependsOn: []Dependency{{Finished: false}},
+			DependsOn: []Dependency{{}},
 		}
 		assert.True(t, tsk.WillRun())
 	})
@@ -4583,7 +4593,7 @@ func TestWillRun(t *testing.T) {
 			Status:            evergreen.TaskUndispatched,
 			Activated:         true,
 			ExecutionPlatform: ExecutionPlatformContainer,
-			DependsOn:         []Dependency{{Finished: true, Unattainable: false}},
+			DependsOn:         []Dependency{{Unattainable: false}},
 		}
 		assert.True(t, tsk.WillRun())
 	})
@@ -4592,7 +4602,7 @@ func TestWillRun(t *testing.T) {
 			Status:            evergreen.TaskUndispatched,
 			Activated:         true,
 			ExecutionPlatform: ExecutionPlatformContainer,
-			DependsOn:         []Dependency{{Finished: true, Unattainable: true}},
+			DependsOn:         []Dependency{{Unattainable: true}},
 		}
 		assert.False(t, tsk.WillRun())
 	})
@@ -4618,8 +4628,7 @@ func TestIsInProgress(t *testing.T) {
 }
 
 func TestReset(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		require.NoError(t, db.Clear(Collection))
@@ -4704,6 +4713,8 @@ func TestReset(t *testing.T) {
 			HostCreateDetails:          []HostCreateDetail{{HostId: "h"}},
 			NumNextTaskDispatches:      3,
 			NumQuarantinedTestsSkipped: 2,
+			TaskCost:                   cost.Cost{OnDemandEC2Cost: 1, AdjustedS3ArtifactPutCost: 1},
+			S3Usage:                    s3usage.S3Usage{Artifacts: s3usage.ArtifactMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 1}}},
 		}
 		assert.NoError(t, t0.Insert(t.Context()))
 
@@ -4725,14 +4736,17 @@ func TestReset(t *testing.T) {
 		assert.Empty(t, dbTask.Details)
 		assert.Zero(t, dbTask.NumNextTaskDispatches)
 		assert.Zero(t, dbTask.NumQuarantinedTestsSkipped)
+		assert.True(t, dbTask.TaskCost.IsZero())
+		assert.True(t, dbTask.S3Usage.IsZero())
+		assert.True(t, t0.TaskCost.IsZero())
+		assert.True(t, t0.S3Usage.IsZero())
 
 	})
 
 }
 
 func TestResetTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		require.NoError(t, db.Clear(Collection))
@@ -4795,11 +4809,30 @@ func TestResetTasks(t *testing.T) {
 		assert.NoError(t, err)
 		assert.False(t, dbTask.UnattainableDependency)
 	})
+
+	t.Run("ClearsExecutionCostAndUsage", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+
+		t0 := Task{
+			Id:       "t0",
+			Status:   evergreen.TaskSucceeded,
+			CanReset: true,
+			TaskCost: cost.Cost{OnDemandEC2Cost: 1, AdjustedS3ArtifactPutCost: 1},
+			S3Usage:  s3usage.S3Usage{Logs: s3usage.LogMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 1}}},
+		}
+		require.NoError(t, t0.Insert(t.Context()))
+
+		require.NoError(t, ResetTasks(ctx, []Task{t0}, "user"))
+		dbTask, err := FindOneId(ctx, t0.Id)
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		assert.True(t, dbTask.TaskCost.IsZero())
+		assert.True(t, dbTask.S3Usage.IsZero())
+	})
 }
 
 func TestGenerateNotRun(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection))
@@ -4862,8 +4895,7 @@ func TestGenerateNotRun(t *testing.T) {
 }
 
 func TestSetGeneratedJSON(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection))
@@ -4939,8 +4971,7 @@ func TestSetGeneratedJSON(t *testing.T) {
 }
 
 func TestSetGeneratedJSONStorageMethod(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection))
@@ -5122,8 +5153,7 @@ func TestCalculateEBSStorageAdjustedCost(t *testing.T) {
 }
 
 func TestUpdateTaskCost(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	t.Run("SkipsUpdateWhenTimeTakenIsZero", func(t *testing.T) {
 		require.NoError(t, db.Clear(Collection))
@@ -5855,5 +5885,119 @@ func TestGetS3ArtifactUsageFromDB(t *testing.T) {
 		assert.Equal(t, 5, metrics.PutRequests, "PUT counts should sum across re-upload rows")
 		assert.Equal(t, int64(150), metrics.UploadBytes, "bytes should reflect S3 overwrite semantics, not the sum")
 		assert.Equal(t, 1, metrics.Count, "deduped FileKey produces one logical artifact")
+	})
+}
+
+func TestIncNumQuarantinedTestsSkipped(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	})
+
+	tsk := &Task{Id: "quarantined_task", Execution: 1}
+	require.NoError(t, tsk.Insert(ctx))
+
+	findTask := func(t *testing.T) *Task {
+		dbTask, err := FindOneId(ctx, tsk.Id)
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		return dbTask
+	}
+
+	t.Run("MatchingExecutionIncrements", func(t *testing.T) {
+		require.NoError(t, tsk.IncNumQuarantinedTestsSkipped(ctx, 3))
+		assert.Equal(t, 3, tsk.NumQuarantinedTestsSkipped)
+		assert.Equal(t, 3, findTask(t).NumQuarantinedTestsSkipped)
+	})
+
+	t.Run("RepeatedIncrementsAccumulate", func(t *testing.T) {
+		require.NoError(t, tsk.IncNumQuarantinedTestsSkipped(ctx, 2))
+		assert.Equal(t, 5, tsk.NumQuarantinedTestsSkipped)
+		assert.Equal(t, 5, findTask(t).NumQuarantinedTestsSkipped)
+	})
+
+	t.Run("StaleExecutionIsDropped", func(t *testing.T) {
+		staleTask := &Task{Id: tsk.Id, Execution: 0}
+		require.NoError(t, staleTask.IncNumQuarantinedTestsSkipped(ctx, 7))
+		assert.Zero(t, staleTask.NumQuarantinedTestsSkipped)
+		assert.Equal(t, 5, findTask(t).NumQuarantinedTestsSkipped, "an increment for a previous execution should not apply to the current one")
+	})
+}
+
+func TestSetS3ArtifactStorageCostsLifecycleMissLogging(t *testing.T) {
+	ctx := t.Context()
+
+	// Capture grip output to assert on the log the cost path emits on a lifecycle lookup miss.
+	sender, err := send.NewInternalLogger("test", send.LevelInfo{Threshold: level.Debug, Default: level.Debug})
+	require.NoError(t, err)
+	original := grip.GetSender()
+	require.NoError(t, grip.SetSender(sender))
+	t.Cleanup(func() {
+		require.NoError(t, grip.SetSender(original))
+	})
+
+	const skippedAccount = "999999999999"
+	costConfig := &evergreen.CostConfig{
+		S3Cost: evergreen.S3CostConfig{
+			Storage: evergreen.S3StorageCostConfig{
+				DefaultMaxArtifactExpirationDays:         365,
+				ArtifactAWSAccountsWithoutLifecycleRules: []string{skippedAccount},
+			},
+		},
+	}
+	// Always miss, so the only thing under test is whether the miss is logged.
+	missingLookup := func(context.Context, string, string) (int, bool) { return 0, false }
+
+	loggedBuckets := func() []string {
+		var buckets []string
+		for sender.HasMessage() {
+			fields, ok := sender.GetMessage().Message.Raw().(message.Fields)
+			if !ok {
+				continue
+			}
+			if fields["message"] == "no S3 lifecycle rule found for artifact bucket, using default expiration days" {
+				buckets = append(buckets, fields["bucket"].(string))
+			}
+		}
+		return buckets
+	}
+
+	usage := func(bucket, roleARN, accountID string) s3usage.S3Usage {
+		return s3usage.S3Usage{
+			Artifacts: s3usage.ArtifactMetrics{
+				BytesByBucketAndKey: []s3usage.BucketFileMetrics{{
+					Bucket:       bucket,
+					AWSRoleARN:   roleARN,
+					AWSAccountID: accountID,
+					Files:        []s3usage.FileBytes{{FileKey: "f", Bytes: 5 * 1024 * 1024}},
+				}},
+			},
+		}
+	}
+
+	t.Run("SuppressesMissForKeySecretUploadInAccountWithoutLifecycleRules", func(t *testing.T) {
+		tk := Task{Id: "t1", S3Usage: usage("cdn-origin-compass-dev", "", skippedAccount)}
+		tk.setS3ArtifactStorageCosts(ctx, missingLookup, costConfig)
+		assert.Empty(t, loggedBuckets())
+		assert.True(t, tk.TaskCost.OnDemandS3ArtifactStorageCost > 0, "cost must still be computed from the default expiration days")
+	})
+
+	t.Run("SuppressesMissForRoleARNUploadInAccountWithoutLifecycleRules", func(t *testing.T) {
+		tk := Task{Id: "t2", S3Usage: usage("b", "arn:aws:iam::"+skippedAccount+":role/r", "")}
+		tk.setS3ArtifactStorageCosts(ctx, missingLookup, costConfig)
+		assert.Empty(t, loggedBuckets())
+	})
+
+	t.Run("LogsMissForAccountThatShouldHaveLifecycleRules", func(t *testing.T) {
+		tk := Task{Id: "t3", S3Usage: usage("mciuploads", "arn:aws:iam::123456789012:role/r", "")}
+		tk.setS3ArtifactStorageCosts(ctx, missingLookup, costConfig)
+		assert.Equal(t, []string{"mciuploads"}, loggedBuckets())
+	})
+
+	t.Run("LogsMissWhenBucketAccountIsUnknown", func(t *testing.T) {
+		tk := Task{Id: "t4", S3Usage: usage("mciuploads", "", "")}
+		tk.setS3ArtifactStorageCosts(ctx, missingLookup, costConfig)
+		assert.Equal(t, []string{"mciuploads"}, loggedBuckets())
 	})
 }

@@ -1795,7 +1795,7 @@ func TestValidateProjectLimits(t *testing.T) {
 			},
 		}
 
-		for i := 0; i < numTasks; i++ {
+		for i := range numTasks {
 			t := model.ProjectTask{
 				Name: fmt.Sprintf("task-%d", i),
 			}
@@ -2988,6 +2988,22 @@ func TestValidateProjectAliases(t *testing.T) {
 			So(validationErrs[6].Message, ShouldContainSubstring, "git tag regex #2 is invalid")
 			So(validationErrs[7].Message, ShouldContainSubstring, "cannot define remote path")
 		})
+	})
+}
+
+func TestValidateProjectConfigRedefinedSettings(t *testing.T) {
+	t.Run("NoRedefinedSettingsReturnsNoErrors", func(t *testing.T) {
+		assert.Empty(t, validateProjectConfigRedefinedSettings(t.Context(), &model.ProjectConfig{}))
+	})
+
+	t.Run("RedefinedSettingsReturnErrors", func(t *testing.T) {
+		pc := &model.ProjectConfig{RedefinedSettings: []string{"workstation_config", "build_baron_settings"}}
+		validationErrs := validateProjectConfigRedefinedSettings(t.Context(), pc)
+		require.Len(t, validationErrs, 2)
+		assert.Equal(t, Error, validationErrs[0].Level)
+		assert.Contains(t, validationErrs[0].Message, "'workstation_config' can only be defined in one YAML file")
+		assert.Equal(t, Error, validationErrs[1].Level)
+		assert.Contains(t, validationErrs[1].Message, "'build_baron_settings' can only be defined in one YAML file")
 	})
 }
 
@@ -4765,6 +4781,26 @@ buildvariants:
 		errors[0].Message)
 	warnings := CheckProjectWarnings(&proj)
 	assert.Empty(warnings)
+}
+
+func TestDisplayTaskEmptyNameValidation(t *testing.T) {
+	project := &model.Project{
+		BuildVariants: []model.BuildVariant{
+			{
+				Name: "bv",
+				DisplayTasks: []patch.DisplayTask{
+					{
+						Name:      "",
+						ExecTasks: []string{"one"},
+					},
+				},
+			},
+		},
+	}
+	errs := validateDisplayTaskNames(project)
+	require.Len(t, errs, 1)
+	assert.Equal(t, Error, errs[0].Level)
+	assert.Equal(t, "display task in buildvariant 'bv' must have a name", errs[0].Message)
 }
 
 func TestValidateCreateHosts(t *testing.T) {

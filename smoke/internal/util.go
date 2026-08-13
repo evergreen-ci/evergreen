@@ -87,7 +87,7 @@ func GetAPIParamsFromEnv(t *testing.T, evgHome string) APIParams {
 // requests.
 func WaitForEvergreen(t *testing.T, appServerURL string, client *http.Client) {
 	const attempts = 10
-	for i := 0; i < attempts; i++ {
+	for i := range attempts {
 		grip.Infof(t.Context(), "Checking if Evergreen is up. (%d/%d)", i, attempts)
 		resp, err := client.Get(appServerURL)
 		if err != nil {
@@ -201,7 +201,7 @@ func getTaskInfo(ctx context.Context, params APIParams, client *http.Client, tas
 func getAndCheckTaskLog(ctx context.Context, t *testing.T, params APIParams, client *http.Client, mode globals.Mode, task smokeAPITask) {
 	// retry for *slightly* delayed logger closing
 	const taskLogCheckAttempts = 3
-	for i := 0; i < taskLogCheckAttempts; i++ {
+	for i := range taskLogCheckAttempts {
 		grip.Infof(ctx, "Checking for task log from URL %s. (%d/%d)", task.Logs["task_log"], i+1, taskLogCheckAttempts)
 		body, err := MakeSmokeRequest(ctx, params, http.MethodGet, client, task.Logs["task_log"]+"&text=true")
 		if err != nil {

@@ -76,9 +76,9 @@ func (d Decimal128) String() string {
 	var dot = len(repr) + e
 	var rem uint32
 Loop:
-	for d9 := 0; d9 < 5; d9++ {
+	for range 5 {
 		h, l, rem = divmod(h, l, 1e9)
-		for d1 := 0; d1 < 9; d1++ {
+		for range 9 {
 			// Handle "-0.0", "0.00123400", "-1.00E-6", "1.050E+3", etc.
 			if i < len(repr) && (dot == i || l == 0 && h == 0 && rem > 0 && rem < 10 && (dot < i-6 || e > 0)) {
 				e += len(repr) - i

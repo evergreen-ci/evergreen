@@ -63,6 +63,10 @@ type EC2ProviderSettings struct {
 	// physical hardware.
 	Tenancy evergreen.EC2Tenancy `mapstructure:"tenancy" json:"tenancy,omitempty" bson:"tenancy,omitempty"`
 
+	// EnableNestedVirtualization enables AWS nested virtualization for the
+	// instance.
+	EnableNestedVirtualization bool `mapstructure:"enable_nested_virtualization" json:"enable_nested_virtualization,omitempty" bson:"enable_nested_virtualization,omitempty"`
+
 	// VpcName is used to get the subnet ID automatically. Either subnet id or vpc name must set.
 	VpcName string `mapstructure:"vpc_name" json:"vpc_name,omitempty" bson:"vpc_name,omitempty"`
 

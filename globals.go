@@ -20,9 +20,6 @@ const (
 	GithubMergeUser   = "github_merge_queue"
 	PeriodicBuildUser = "periodic_build_user"
 	ParentPatchUser   = "parent_patch"
-	// GitHubSageBotLogin is the GitHub login for mongodb-sage-bot, which sets
-	// the PR assignee as the intended human author of the PR.
-	GitHubSageBotLogin = "mongodb-sage-bot[bot]"
 
 	HostRunning       = "running"
 	HostTerminated    = "terminated"
@@ -199,6 +196,8 @@ const (
 	MongodbURL              = "MONGO_URL"
 	SharedMongoURL          = "SHARED_MONGO_URL"
 	MongoAWSAuthEnabled     = "MONGO_AWS_AUTH"
+	MongoOIDCAuthEnabled    = "MONGO_OIDC_AUTH"
+	MongoOIDCTokenFile      = "MONGO_OIDC_TOKEN_FILE"
 	EvergreenVersionID      = "EVG_VERSION_ID"
 	EvergreenClientS3Bucket = "EVG_CLIENT_S3_BUCKET"
 	TraceEndpoint           = "TRACE_ENDPOINT"
@@ -584,6 +583,14 @@ const (
 	VersionAdjustedCostOtelAttribute          = "evergreen.version.adjusted_cost"
 	VersionPredictedOnDemandCostOtelAttribute = "evergreen.version.predicted_on_demand_cost"
 	VersionPredictedAdjustedCostOtelAttribute = "evergreen.version.predicted_adjusted_cost"
+	// VersionTotalAdjustedCostOtelAttribute and VersionPredictedTotalAdjustedCostOtelAttribute are pre-summed
+	// totals of all adjusted cost components, matching the total the UI displays for the version.
+	VersionTotalAdjustedCostOtelAttribute          = "evergreen.version.total_adjusted_cost"
+	VersionPredictedTotalAdjustedCostOtelAttribute = "evergreen.version.predicted_total_adjusted_cost"
+	// VersionChildPatchesAdjustedCostOtelAttribute is the summed adjusted cost of the version's child patches,
+	// kept separate from the version's own total.
+	VersionChildPatchesAdjustedCostOtelAttribute = "evergreen.version.child_patches_adjusted_cost"
+	VersionParentPatchIDOtelAttribute            = "evergreen.version.parent_patch_id"
 
 	// EBS cost otel attributes — version-level (throughput)
 	VersionEBSOnDemandThroughputCostOtelAttribute = "evergreen.version.cost.ebs.on_demand_throughput_cost"

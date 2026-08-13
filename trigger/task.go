@@ -900,15 +900,15 @@ func (t *taskTriggers) taskRegressionByTest(ctx context.Context, sub *event.Subs
 	if len(testsToAlert) == 0 {
 		return nil, nil
 	}
-	testNames := ""
+	var testNames strings.Builder
 	for i, test := range testsToAlert {
-		testNames += test.GetDisplayTestName()
+		testNames.WriteString(test.GetDisplayTestName())
 		if i != len(testsToAlert)-1 {
-			testNames += ", "
+			testNames.WriteString(", ")
 		}
 	}
 
-	n, err := t.generate(ctx, sub, "", testNames)
+	n, err := t.generate(ctx, sub, "", testNames.String())
 	if err != nil {
 		return nil, err
 	}

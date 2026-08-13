@@ -204,6 +204,23 @@ func TestS3Usage(t *testing.T) {
 		assert.True(t, s3Usage.IsZero())
 	})
 
+	t.Run("IncrementArtifactsRecordsResolvedAccountIDOnBucketEntry", func(t *testing.T) {
+		s3Usage := S3Usage{}
+		opts := ArtifactIncrementOptions{
+			PutRequests:  1,
+			UploadBytes:  50,
+			FileCount:    1,
+			MaxPuts:      1,
+			MinPuts:      1,
+			Bucket:       "b",
+			AWSAccountID: "999999999999",
+			Files:        []FileMetrics{{RemotePath: "z", FileSizeBytes: 50}},
+		}
+		s3Usage.IncrementArtifacts(opts)
+		require.Len(t, s3Usage.Artifacts.BytesByBucketAndKey, 1)
+		assert.Equal(t, "999999999999", s3Usage.Artifacts.BytesByBucketAndKey[0].AWSAccountID, "key+secret uploads must persist the resolved account ID for cost-time lifecycle checks")
+	})
+
 	t.Run("IncrementLogs", func(t *testing.T) {
 		s3Usage := S3Usage{}
 		assert.Equal(t, 0, s3Usage.Logs.PutRequests)
@@ -262,9 +279,9 @@ func TestS3Usage(t *testing.T) {
 		const callsPerGoroutine = 100
 		var wg sync.WaitGroup
 		wg.Add(goroutines)
-		for i := 0; i < goroutines; i++ {
+		for range goroutines {
 			go func() {
-				for j := 0; j < callsPerGoroutine; j++ {
+				for range callsPerGoroutine {
 					s3Usage.IncrementLogs(1, 10, LogTypeTask, "proj/task/0/task_logs/task")
 				}
 				wg.Done()
@@ -288,9 +305,9 @@ func TestS3Usage(t *testing.T) {
 		const callsPerGoroutine = 50
 		var wg sync.WaitGroup
 		wg.Add(goroutines)
-		for i := 0; i < goroutines; i++ {
+		for i := range goroutines {
 			go func(id int) {
-				for j := 0; j < callsPerGoroutine; j++ {
+				for range callsPerGoroutine {
 					remotePath := "shared/key.bin"
 					if id%2 == 1 {
 						remotePath = "unique/" + string(rune('A'+id)) + ".bin"

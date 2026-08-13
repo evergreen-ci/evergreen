@@ -36,8 +36,7 @@ type AdminRouteSuite struct {
 
 func TestAdminRouteSuiteWithDB(t *testing.T) {
 	s := new(AdminRouteSuite)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	s.env = testutil.NewEnvironment(ctx, t)
 	// run the rest of the tests
 	suite.Run(t, s)
@@ -164,6 +163,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.RateLimit.GraphQLServiceBurst, settings.RateLimit.GraphQLServiceBurst)
 	s.EqualValues(testSettings.RateLimit.GraphQLComplexityLimit, settings.RateLimit.GraphQLComplexityLimit)
 	s.EqualValues(testSettings.RateLimit.ElevatedUserIDs, settings.RateLimit.ElevatedUserIDs)
+	s.EqualValues(testSettings.RateLimit.ExemptUserIDs, settings.RateLimit.ExemptUserIDs)
 	s.EqualValues(testSettings.AuthConfig.Okta.ClientID, settings.AuthConfig.Okta.ClientID)
 	s.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, settings.AuthConfig.Naive.Users[0].Username)
 	s.EqualValues(testSettings.AuthConfig.Github.ClientId, settings.AuthConfig.Github.ClientId)
@@ -197,15 +197,17 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.Overrides.Overrides[0].Field, settings.Overrides.Overrides[0].Field)
 	s.EqualValues(testSettings.Overrides.Overrides[0].Value, settings.Overrides.Overrides[0].Value)
 	s.EqualValues(testSettings.ParameterStore.Prefix, settings.ParameterStore.Prefix)
-	s.Equal(len(testSettings.Providers.AWS.EC2Keys), len(settings.Providers.AWS.EC2Keys))
 	s.EqualValues(testSettings.Providers.AWS.PersistentDNS.HostedZoneID, settings.Providers.AWS.PersistentDNS.HostedZoneID)
 	s.EqualValues(testSettings.Providers.AWS.PersistentDNS.Domain, settings.Providers.AWS.PersistentDNS.Domain)
+	s.EqualValues(testSettings.Providers.AWS.SubnetTagName, settings.Providers.AWS.SubnetTagName)
+	s.EqualValues(testSettings.Providers.AWS.SubnetTagValue, settings.Providers.AWS.SubnetTagValue)
 	s.Require().Len(testSettings.Providers.AWS.AccountRoles, len(settings.Providers.AWS.AccountRoles))
 	for i := range testSettings.Providers.AWS.AccountRoles {
 		s.Equal(testSettings.Providers.AWS.AccountRoles[i], settings.Providers.AWS.AccountRoles[i])
 	}
 	s.EqualValues(testSettings.Providers.AWS.IPAMPoolID, settings.Providers.AWS.IPAMPoolID)
 	s.EqualValues(testSettings.Providers.AWS.ElasticIPUsageRate, settings.Providers.AWS.ElasticIPUsageRate)
+	s.EqualValues(testSettings.Providers.AWS.AllowedSNSTopicARNs, settings.Providers.AWS.AllowedSNSTopicARNs)
 	s.EqualValues(testSettings.Providers.Docker.APIVersion, settings.Providers.Docker.APIVersion)
 	s.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, settings.RepoTracker.MaxConcurrentRequests)
 	s.EqualValues(testSettings.Scheduler.TaskFinder, settings.Scheduler.TaskFinder)

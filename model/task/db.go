@@ -166,7 +166,6 @@ var (
 	DependencyTaskIdKey             = bsonutil.MustHaveTag(Dependency{}, "TaskId")
 	DependencyStatusKey             = bsonutil.MustHaveTag(Dependency{}, "Status")
 	DependencyUnattainableKey       = bsonutil.MustHaveTag(Dependency{}, "Unattainable")
-	DependencyFinishedKey           = bsonutil.MustHaveTag(Dependency{}, "Finished")
 	DependencyFinishedAtKey         = bsonutil.MustHaveTag(Dependency{}, "FinishedAt")
 	DependencyOmitGeneratedTasksKey = bsonutil.MustHaveTag(Dependency{}, "OmitGeneratedTasks")
 )
@@ -2347,9 +2346,11 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	if !opts.IncludeNeverActivatedTasks {
 		match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
 	}
+	// $match must precede $project so the version index can drive the query;
+	// a leading $project can force a collection scan.
 	pipeline := []bson.M{
-		{"$project": projectOut},
 		{"$match": match},
+		{"$project": projectOut},
 	}
 
 	if !opts.IncludeExecutionTasks {
@@ -2497,7 +2498,33 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		})
 	}
 
-	if len(opts.Statuses) > 0 {
+	if len(opts.Statuses) > 0 && !opts.IncludeExecutionTasks {
+		// A display task should be included when its own display status matches the
+		// filter or when any of its execution tasks matches.
+		const executionTaskStatusesKey = "execution_task_statuses"
+		pipeline = append(pipeline, bson.M{
+			"$lookup": bson.M{
+				"from":         Collection,
+				"localField":   ExecutionTasksKey,
+				"foreignField": IdKey,
+				"pipeline": []bson.M{
+					{"$project": bson.M{DisplayStatusCacheKey: 1, "_id": 0}},
+				},
+				"as": executionTaskStatusesKey,
+			},
+		})
+		pipeline = append(pipeline, bson.M{
+			"$match": bson.M{
+				"$or": []bson.M{
+					{DisplayStatusKey: bson.M{"$in": opts.Statuses}},
+					{bsonutil.GetDottedKeyName(executionTaskStatusesKey, DisplayStatusCacheKey): bson.M{"$in": opts.Statuses}},
+				},
+			},
+		})
+		pipeline = append(pipeline, bson.M{
+			"$project": bson.M{executionTaskStatusesKey: 0},
+		})
+	} else if len(opts.Statuses) > 0 {
 		pipeline = append(pipeline, bson.M{
 			"$match": bson.M{
 				DisplayStatusKey: bson.M{"$in": opts.Statuses},
@@ -2772,7 +2799,7 @@ func computeCostPredictionsInParallel(ctx context.Context, tasks []Task) (map[st
 
 	var wg sync.WaitGroup
 	wg.Add(numWorkers)
-	for i := 0; i < numWorkers; i++ {
+	for range numWorkers {
 		go func() {
 			defer wg.Done()
 			for work := range workQueue {
@@ -3019,6 +3046,8 @@ func getBatchedGenerateTasksEstimations(ctx context.Context, project, buildVaria
 	if len(displayNames) == 0 {
 		return nil, nil
 	}
+	now := time.Now()
+	lookBackStart := now.Add(-lookBackTime)
 	match := bson.M{
 		ProjectKey:      project,
 		BuildVariantKey: buildVariant,
@@ -3028,10 +3057,11 @@ func getBatchedGenerateTasksEstimations(ctx context.Context, project, buildVaria
 		GeneratedTasksKey: true,
 		StatusKey:         evergreen.TaskSucceeded,
 		StartTimeKey: bson.M{
-			"$gt": time.Now().Add(-1 * lookBackTime),
+			"$gt": lookBackStart,
 		},
 		FinishTimeKey: bson.M{
-			"$lte": time.Now(),
+			"$gt":  lookBackStart,
+			"$lte": now,
 		},
 	}
 

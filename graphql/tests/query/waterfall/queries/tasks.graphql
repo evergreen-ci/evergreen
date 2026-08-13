@@ -1,6 +1,6 @@
 {
   waterfall(options: { projectIdentifier: "spruce-identifier", tasks: ["Task C"] }) {
-    flattenedVersions {
+    versions {
       id
       activated
       requester

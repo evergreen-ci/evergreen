@@ -1,6 +1,7 @@
 package model
 
 import (
+	"maps"
 	"reflect"
 	"sort"
 	"strings"
@@ -327,14 +328,10 @@ func (as *APIAdminSettings) ToService() (any, error) {
 		valToSet := reflect.ValueOf(i)
 		dbModelReflect.FieldByName(propName).Set(valToSet)
 	}
-	for k, v := range as.Expansions {
-		settings.Expansions[k] = v
-	}
+	maps.Copy(settings.Expansions, as.Expansions)
 	for k, v := range as.Plugins {
 		settings.Plugins[k] = map[string]any{}
-		for k2, v2 := range v {
-			settings.Plugins[k][k2] = v2
-		}
+		maps.Copy(settings.Plugins[k], v)
 	}
 
 	if as.ShutdownWaitSeconds != nil {
@@ -564,6 +561,7 @@ type APIRateLimitConfig struct {
 	GraphQLServiceBurst    int      `json:"graphql_service_burst"`
 	GraphQLComplexityLimit int      `json:"graphql_complexity_limit"`
 	ElevatedUserIDs        []string `json:"elevated_user_ids"`
+	ExemptUserIDs          []string `json:"exempt_user_ids"`
 }
 
 func (a *APIRateLimitConfig) BuildFromService(h any) error {
@@ -579,6 +577,7 @@ func (a *APIRateLimitConfig) BuildFromService(h any) error {
 		a.GraphQLServiceBurst = v.GraphQLServiceBurst
 		a.GraphQLComplexityLimit = v.GraphQLComplexityLimit
 		a.ElevatedUserIDs = v.ElevatedUserIDs
+		a.ExemptUserIDs = v.ExemptUserIDs
 	default:
 		return errors.Errorf("programmatic error: expected rate limit config but got type %T", h)
 	}
@@ -597,6 +596,7 @@ func (a *APIRateLimitConfig) ToService() (any, error) {
 		GraphQLServiceBurst:    a.GraphQLServiceBurst,
 		GraphQLComplexityLimit: a.GraphQLComplexityLimit,
 		ElevatedUserIDs:        a.ElevatedUserIDs,
+		ExemptUserIDs:          a.ExemptUserIDs,
 	}, nil
 }
 
@@ -934,12 +934,13 @@ func (a *APICedarConfig) ToService() (any, error) {
 }
 
 type APIOktaConfig struct {
-	ClientID           *string  `json:"client_id"`
-	ClientSecret       *string  `json:"client_secret"`
-	Issuer             *string  `json:"issuer"`
-	Scopes             []string `json:"scopes"`
-	UserGroup          *string  `json:"user_group"`
-	ExpireAfterMinutes int      `json:"expire_after_minutes"`
+	ClientID             *string  `json:"client_id"`
+	ClientSecret         *string  `json:"client_secret"`
+	Issuer               *string  `json:"issuer"`
+	Scopes               []string `json:"scopes"`
+	UserGroup            *string  `json:"user_group"`
+	ExpireAfterMinutes   int      `json:"expire_after_minutes"`
+	ExpectedEmailDomains []string `json:"expected_email_domains"`
 }
 
 func (a *APIOktaConfig) BuildFromService(h any) error {
@@ -954,6 +955,7 @@ func (a *APIOktaConfig) BuildFromService(h any) error {
 		a.Scopes = v.Scopes
 		a.UserGroup = utility.ToStringPtr(v.UserGroup)
 		a.ExpireAfterMinutes = v.ExpireAfterMinutes
+		a.ExpectedEmailDomains = v.ExpectedEmailDomains
 		return nil
 	default:
 		return errors.Errorf("programmatic error: expected Okta config but got type %T", h)
@@ -965,12 +967,13 @@ func (a *APIOktaConfig) ToService() (any, error) {
 		return nil, nil
 	}
 	return &evergreen.OktaConfig{
-		ClientID:           utility.FromStringPtr(a.ClientID),
-		ClientSecret:       utility.FromStringPtr(a.ClientSecret),
-		Issuer:             utility.FromStringPtr(a.Issuer),
-		Scopes:             a.Scopes,
-		UserGroup:          utility.FromStringPtr(a.UserGroup),
-		ExpireAfterMinutes: a.ExpireAfterMinutes,
+		ClientID:             utility.FromStringPtr(a.ClientID),
+		ClientSecret:         utility.FromStringPtr(a.ClientSecret),
+		Issuer:               utility.FromStringPtr(a.Issuer),
+		Scopes:               a.Scopes,
+		UserGroup:            utility.FromStringPtr(a.UserGroup),
+		ExpireAfterMinutes:   a.ExpireAfterMinutes,
+		ExpectedEmailDomains: a.ExpectedEmailDomains,
 	}, nil
 }
 
@@ -1695,8 +1698,9 @@ func (a *APISubnet) ToService() (any, error) {
 }
 
 type APIAWSConfig struct {
-	EC2Keys                []APIEC2Key                `json:"ec2_keys"`
 	Subnets                []APISubnet                `json:"subnets"`
+	SubnetTagName          *string                    `json:"subnet_tag_name"`
+	SubnetTagValue         *string                    `json:"subnet_tag_value"`
 	ParserProject          *APIParserProjectS3Config  `json:"parser_project"`
 	PersistentDNS          *APIPersistentDNSConfig    `json:"persistent_dns"`
 	DefaultSecurityGroup   *string                    `json:"default_security_group"`
@@ -1707,19 +1711,12 @@ type APIAWSConfig struct {
 	AccountRoles           []APIAWSAccountRoleMapping `json:"account_roles"`
 	IPAMPoolID             *string                    `json:"ipam_pool_id"`
 	ElasticIPUsageRate     *float64                   `json:"elastic_ip_usage_rate"`
+	AllowedSNSTopicARNs    []*string                  `json:"allowed_sns_topic_arns"`
 }
 
 func (a *APIAWSConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.AWSConfig:
-		for _, key := range v.EC2Keys {
-			apiKey := APIEC2Key{}
-			if err := apiKey.BuildFromService(key); err != nil {
-				return err
-			}
-			a.EC2Keys = append(a.EC2Keys, apiKey)
-		}
-
 		for _, subnet := range v.Subnets {
 			apiSubnet := APISubnet{}
 			if err := apiSubnet.BuildFromService(subnet); err != nil {
@@ -1727,6 +1724,8 @@ func (a *APIAWSConfig) BuildFromService(h any) error {
 			}
 			a.Subnets = append(a.Subnets, apiSubnet)
 		}
+		a.SubnetTagName = utility.ToStringPtr(v.SubnetTagName)
+		a.SubnetTagValue = utility.ToStringPtr(v.SubnetTagValue)
 
 		parserProject := &APIParserProjectS3Config{}
 		if err := parserProject.BuildFromService(v.ParserProject); err != nil {
@@ -1755,6 +1754,7 @@ func (a *APIAWSConfig) BuildFromService(h any) error {
 		a.AccountRoles = roleMappings
 		a.IPAMPoolID = utility.ToStringPtr(v.IPAMPoolID)
 		a.ElasticIPUsageRate = utility.ToFloat64Ptr(v.ElasticIPUsageRate)
+		a.AllowedSNSTopicARNs = utility.ToStringPtrSlice(v.AllowedSNSTopicARNs)
 	default:
 		return errors.Errorf("programmatic error: expected AWS config but got type %T", h)
 	}
@@ -1804,18 +1804,6 @@ func (a *APIAWSConfig) ToService() (any, error) {
 		config.MaxVolumeSizePerUser = *a.MaxVolumeSizePerUser
 	}
 
-	for _, k := range a.EC2Keys {
-		i, err := k.ToService()
-		if err != nil {
-			return nil, err
-		}
-		key, ok := i.(evergreen.EC2Key)
-		if !ok {
-			return nil, errors.Errorf("programmatic error: expected EC2 key but got type %T", i)
-		}
-		config.EC2Keys = append(config.EC2Keys, key)
-	}
-
 	for _, s := range a.Subnets {
 		i, err := s.ToService()
 		if err != nil {
@@ -1827,6 +1815,8 @@ func (a *APIAWSConfig) ToService() (any, error) {
 		}
 		config.Subnets = append(config.Subnets, subnet)
 	}
+	config.SubnetTagName = utility.FromStringPtr(a.SubnetTagName)
+	config.SubnetTagValue = utility.FromStringPtr(a.SubnetTagValue)
 
 	config.AllowedInstanceTypes = utility.FromStringPtrSlice(a.AllowedInstanceTypes)
 	config.AlertableInstanceTypes = utility.FromStringPtrSlice(a.AlertableInstanceTypes)
@@ -1840,6 +1830,7 @@ func (a *APIAWSConfig) ToService() (any, error) {
 
 	config.IPAMPoolID = utility.FromStringPtr(a.IPAMPoolID)
 	config.ElasticIPUsageRate = utility.FromFloat64Ptr(a.ElasticIPUsageRate)
+	config.AllowedSNSTopicARNs = utility.FromStringPtrSlice(a.AllowedSNSTopicARNs)
 
 	return config, nil
 }
@@ -2150,6 +2141,8 @@ type APIServiceFlags struct {
 	PodDiagnosticsDisabled             bool `json:"pod_diagnostics_disabled"`
 	RetryFailedLogMoveEnabled          bool `json:"retry_failed_log_move_enabled"`
 	ProjectTranslationCacheEnabled     bool `json:"project_translation_cache_enabled"`
+	ContainerIsolationEnabled          bool `json:"container_isolation_enabled"`
+	LiveArtifactCredentialsDisabled    bool `json:"live_artifact_credentials_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2529,7 +2522,7 @@ type APIFWSConfig struct {
 	URL *string `json:"url"`
 }
 
-func (a *APIFWSConfig) BuildFromService(h interface{}) error {
+func (a *APIFWSConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.FWSConfig:
 		a.URL = utility.ToStringPtr(v.URL)
@@ -2539,7 +2532,7 @@ func (a *APIFWSConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIFWSConfig) ToService() (interface{}, error) {
+func (a *APIFWSConfig) ToService() (any, error) {
 	return evergreen.FWSConfig{
 		URL: utility.FromStringPtr(a.URL),
 	}, nil
@@ -2561,7 +2554,7 @@ func (a *APIGraphiteConfig) BuildFromService(h any) error {
 	return nil
 }
 
-func (a *APIGraphiteConfig) ToService() (interface{}, error) {
+func (a *APIGraphiteConfig) ToService() (any, error) {
 	return evergreen.GraphiteConfig{
 		CIOptimizationToken: utility.FromStringPtr(a.CIOptimizationToken),
 		ServerURL:           utility.FromStringPtr(a.ServerURL),
@@ -2612,6 +2605,8 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.PodDiagnosticsDisabled = v.PodDiagnosticsDisabled
 		as.RetryFailedLogMoveEnabled = v.RetryFailedLogMoveEnabled
 		as.ProjectTranslationCacheEnabled = v.ProjectTranslationCacheEnabled
+		as.ContainerIsolationEnabled = v.ContainerIsolationEnabled
+		as.LiveArtifactCredentialsDisabled = v.LiveArtifactCredentialsDisabled
 		as.BackgroundCommandFailureEnabled = v.BackgroundCommandFailureEnabled
 		as.APIRateLimiterDisabled = v.APIRateLimiterDisabled
 		as.GraphQLComplexityLimiterDisabled = v.GraphQLComplexityLimiterDisabled
@@ -2665,6 +2660,8 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		RetryFailedLogMoveEnabled:          as.RetryFailedLogMoveEnabled,
 		ProjectTranslationCacheEnabled:     as.ProjectTranslationCacheEnabled,
 		BackgroundCommandFailureEnabled:    as.BackgroundCommandFailureEnabled,
+		ContainerIsolationEnabled:          as.ContainerIsolationEnabled,
+		LiveArtifactCredentialsDisabled:    as.LiveArtifactCredentialsDisabled,
 		APIRateLimiterDisabled:             as.APIRateLimiterDisabled,
 		GraphQLComplexityLimiterDisabled:   as.GraphQLComplexityLimiterDisabled,
 	}, nil
@@ -2700,7 +2697,7 @@ func AdminDbToRestModel(in evergreen.ConfigSection) (Model, error) {
 		structVal := reflect.ValueOf(*NewConfigModel())
 		for i := 0; i < structVal.NumField(); i++ {
 			// this assumes that the json tag is the same as the section ID
-			tag := strings.Split(structVal.Type().Field(i).Tag.Get("json"), ",")[0]
+			tag, _, _ := strings.Cut(structVal.Type().Field(i).Tag.Get("json"), ",")
 			if tag != id {
 				continue
 			}

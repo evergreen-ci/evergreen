@@ -57,8 +57,7 @@ func hostIdInSlice(hosts []Host, id string) bool {
 }
 
 func TestGenericHostFinding(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("When finding hosts", t, func() {
 		require.NoError(t, db.Clear(Collection))
@@ -168,8 +167,7 @@ func TestGenericHostFinding(t *testing.T) {
 }
 
 func TestFindingHostsWithRunningTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With a host with no running task that is not terminated", t, func() {
 		require.NoError(t, db.Clear(Collection))
@@ -197,8 +195,7 @@ func TestFindingHostsWithRunningTasks(t *testing.T) {
 }
 
 func TestMonitorHosts(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With a host with no reachability check", t, func() {
 		require.NoError(t, db.Clear(Collection))
@@ -259,8 +256,7 @@ func TestMonitorHosts(t *testing.T) {
 }
 
 func TestUpdatingHostStatus(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With a host", t, func() {
 		require.NoError(t, db.Clear(Collection))
@@ -299,8 +295,7 @@ func TestUpdatingHostStatus(t *testing.T) {
 }
 
 func TestSetStatusAndFields(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection))
@@ -401,8 +396,7 @@ func TestSetStatusAndFields(t *testing.T) {
 }
 
 func TestDecommissionHost(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert.NoError(t, db.ClearCollections(Collection))
 	h := Host{
@@ -474,8 +468,7 @@ func TestSetStopped(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			require.NoError(t, db.Clear(Collection))
 			h := &Host{
@@ -494,8 +487,7 @@ func TestSetStopped(t *testing.T) {
 }
 
 func TestSetHostTerminated(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With a host", t, func() {
 
@@ -568,6 +560,87 @@ func TestHostSetDNSName(t *testing.T) {
 	assert.Equal(t, newHostname, dbHost.Host, "existing hostname should be retained even if an empty string is passed")
 }
 
+func TestSetEC2Metadata(t *testing.T) {
+	metadataWithoutVolumes := CloudProviderData{
+		PublicDNS:   "hostname",
+		Zone:        "us-east-1a",
+		PublicIPv4:  "1.2.3.4",
+		PrivateIPv4: "10.0.0.1",
+		IPv6:        "::1",
+		StartedAt:   time.Now(),
+	}
+	metadataWithVolumes := metadataWithoutVolumes
+	metadataWithVolumes.Volumes = []VolumeAttachment{{VolumeID: "vol-123", DeviceName: "/dev/sda1"}}
+
+	for tName, tCase := range map[string]func(t *testing.T){
+		"TaskHostSetsMetadataWithoutVolumes": func(t *testing.T) {
+			ctx := t.Context()
+			h := &Host{
+				Id:        "task-host",
+				StartedBy: evergreen.User,
+			}
+			require.NoError(t, h.Insert(ctx))
+
+			require.NoError(t, h.SetEC2Metadata(ctx, HostMetadataOptions{CloudProviderData: metadataWithoutVolumes}))
+
+			assert.Equal(t, "hostname", h.Host)
+			assert.Equal(t, "us-east-1a", h.Zone)
+			assert.Equal(t, "1.2.3.4", h.PublicIPv4)
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, "hostname", dbHost.Host)
+			assert.True(t, dbHost.Provisioned)
+		},
+		"SpawnHostNoOpsWithoutVolumes": func(t *testing.T) {
+			ctx := t.Context()
+			h := &Host{
+				Id:        "spawn-host",
+				StartedBy: "user",
+			}
+			require.NoError(t, h.Insert(ctx))
+
+			require.NoError(t, h.SetEC2Metadata(ctx, HostMetadataOptions{CloudProviderData: metadataWithoutVolumes}))
+
+			assert.Empty(t, h.Host, "spawn host should not set metadata without volumes")
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Empty(t, dbHost.Host)
+			assert.False(t, dbHost.Provisioned)
+		},
+		"SpawnHostSetsMetadataWithVolumes": func(t *testing.T) {
+			ctx := t.Context()
+			h := &Host{
+				Id:        "spawn-host",
+				StartedBy: "user",
+			}
+			require.NoError(t, h.Insert(ctx))
+
+			require.NoError(t, h.SetEC2Metadata(ctx, HostMetadataOptions{CloudProviderData: metadataWithVolumes}))
+
+			assert.Equal(t, "hostname", h.Host)
+			assert.Len(t, h.Volumes, 1)
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, "hostname", dbHost.Host)
+			assert.True(t, dbHost.Provisioned)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection))
+			t.Cleanup(func() {
+				assert.NoError(t, db.ClearCollections(Collection))
+			})
+			tCase(t)
+		})
+	}
+}
+
 func TestMarkReachable(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection))
@@ -621,8 +694,7 @@ func TestMarkReachable(t *testing.T) {
 }
 
 func TestMarkAsProvisioned(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With a host", t, func() {
 
@@ -669,8 +741,7 @@ func TestMarkAsProvisioned(t *testing.T) {
 }
 
 func TestMarkAsReprovisioning(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"ConvertToLegacyNeedsAgent": func(t *testing.T, h *Host) {
@@ -752,8 +823,7 @@ func TestMarkAsReprovisioning(t *testing.T) {
 }
 
 func TestHostCreateSecret(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With a host with no secret", t, func() {
 
@@ -780,8 +850,7 @@ func TestHostCreateSecret(t *testing.T) {
 }
 
 func TestHostSetBillingStartTime(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 	defer func() {
@@ -803,8 +872,7 @@ func TestHostSetBillingStartTime(t *testing.T) {
 }
 
 func TestHostSetAgentStartTime(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 	defer func() {
@@ -826,8 +894,7 @@ func TestHostSetAgentStartTime(t *testing.T) {
 }
 
 func TestSetTaskGroupTeardownStartTime(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 	defer func() {
@@ -850,8 +917,7 @@ func TestSetTaskGroupTeardownStartTime(t *testing.T) {
 }
 
 func TestHostSetExpirationTime(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With a host", t, func() {
 
@@ -899,8 +965,7 @@ func TestHostSetExpirationTime(t *testing.T) {
 }
 
 func TestHostClearRunningAndSetLastTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With a host", t, func() {
 
@@ -960,8 +1025,7 @@ func TestHostClearRunningAndSetLastTask(t *testing.T) {
 }
 
 func TestUpdateHostRunningTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 	Convey("With a host", t, func() {
@@ -1079,8 +1143,7 @@ func TestNumHostsByTaskSpec(t *testing.T) {
 }
 
 func TestUpsert(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With a host", t, func() {
 
@@ -1157,8 +1220,7 @@ func TestUpsert(t *testing.T) {
 }
 
 func TestDecommissionHostsWithDistroId(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With a multiple hosts of different distros", t, func() {
 
@@ -1169,7 +1231,7 @@ func TestDecommissionHostsWithDistroId(t *testing.T) {
 
 		// Insert 10 of distro a and 10 of distro b
 
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			hostWithDistroA := &Host{
 				Id:     fmt.Sprintf("hostA%v", i),
 				Host:   "host",
@@ -1218,8 +1280,7 @@ func TestDecommissionHostsWithDistroId(t *testing.T) {
 }
 
 func TestFindNeedsNewAgent(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("with the a given time for checking and an empty hosts collection", t, func() {
 		require.NoError(t, db.Clear(Collection))
@@ -1376,8 +1437,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 }
 
 func TestSetNeedsToRestartJasper(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"SetsProvisioningFields": func(t *testing.T, h *Host) {
@@ -1444,8 +1504,7 @@ func TestSetNeedsToRestartJasper(t *testing.T) {
 }
 
 func TestSetNeedsReprovisionToNew(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"SetsProvisioningFields": func(t *testing.T, h *Host) {
@@ -1514,8 +1573,7 @@ func TestSetNeedsReprovisionToNew(t *testing.T) {
 }
 
 func TestNeedsAgentMonitorDeploy(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"FindsNotRecentlyCommunicatedHosts": func(t *testing.T, h *Host) {
@@ -1599,8 +1657,7 @@ func TestNeedsAgentMonitorDeploy(t *testing.T) {
 }
 
 func TestShouldDeployAgentMonitor(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"NotRunningHost": func(t *testing.T, h *Host) {
@@ -1663,8 +1720,7 @@ func TestShouldDeployAgentMonitor(t *testing.T) {
 }
 
 func TestFindUserDataSpawnHostsProvisioning(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"ReturnsHostsStartedButNotRunning": func(t *testing.T, h *Host) {
@@ -1741,8 +1797,7 @@ func TestFindUserDataSpawnHostsProvisioning(t *testing.T) {
 }
 
 func TestGenerateAndSaveJasperCredentials(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	checkCredentialsAreSet := func(t *testing.T, h *Host, creds *certdepot.Credentials) {
 		assert.NotZero(t, creds.CACert)
 		assert.NotZero(t, creds.Cert)
@@ -1839,8 +1894,7 @@ func TestGenerateAndSaveJasperCredentials(t *testing.T) {
 }
 
 func TestFindByShouldConvertProvisioning(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"IgnoresHostWithoutMatchingStatus": func(t *testing.T, h *Host) {
@@ -1924,8 +1978,7 @@ func TestHostElapsedCommTime(t *testing.T) {
 }
 
 func TestHostUpsert(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	const hostID = "upsertTest"
@@ -1978,8 +2031,7 @@ func TestHostUpsert(t *testing.T) {
 }
 
 func TestHostStats(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 
@@ -2064,8 +2116,7 @@ func TestHostStats(t *testing.T) {
 }
 
 func TestInactiveHostCountPipeline(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection))
 	assert := assert.New(t)
@@ -2125,8 +2176,7 @@ func TestIdleEphemeralGroupedByDistroID(t *testing.T) {
 	require := require.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := mock.Environment{}
 	assert.NoError(env.Configure(ctx))
 
@@ -2301,8 +2351,7 @@ func TestIdleEphemeralGroupedByDistroID(t *testing.T) {
 }
 
 func TestFindAllRunningParents(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
@@ -2371,8 +2420,7 @@ func TestFindAllRunningParents(t *testing.T) {
 }
 
 func TestFindAllRunningParentsEmpty(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
@@ -2399,8 +2447,7 @@ func TestFindAllRunningParentsEmpty(t *testing.T) {
 }
 
 func TestGetContainers(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
@@ -2474,8 +2521,7 @@ func TestGetContainers(t *testing.T) {
 }
 
 func TestGetContainersNotParent(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
@@ -2548,8 +2594,7 @@ func TestGetContainersNotParent(t *testing.T) {
 }
 
 func TestIsIdleParent(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
@@ -2625,8 +2670,7 @@ func TestIsIdleParent(t *testing.T) {
 }
 
 func TestUpdateParentIDs(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	assert.NoError(db.Clear(Collection))
@@ -2657,8 +2701,7 @@ func TestUpdateParentIDs(t *testing.T) {
 }
 
 func TestFindParentOfContainer(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
@@ -2687,8 +2730,7 @@ func TestFindParentOfContainer(t *testing.T) {
 }
 
 func TestFindParentOfContainerNoParent(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
@@ -2709,8 +2751,7 @@ func TestFindParentOfContainerNoParent(t *testing.T) {
 }
 
 func TestFindParentOfContainerCannotFindParent(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
@@ -2733,8 +2774,7 @@ func TestFindParentOfContainerCannotFindParent(t *testing.T) {
 }
 
 func TestFindParentOfContainerNotParent(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
@@ -2763,8 +2803,7 @@ func TestFindParentOfContainerNotParent(t *testing.T) {
 }
 
 func TestLastContainerFinishTimePipeline(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection, task.Collection))
 	assert := assert.New(t)
@@ -2884,8 +2923,7 @@ func TestLastContainerFinishTimePipeline(t *testing.T) {
 }
 
 func TestFindHostsSpawnedByTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -2976,8 +3014,7 @@ func TestFindHostsSpawnedByTasks(t *testing.T) {
 }
 
 func TestFindUphostContainersOnParents(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
@@ -3053,8 +3090,7 @@ func TestGetHostIds(t *testing.T) {
 }
 
 func TestFindAllRunningParentsByDistroID(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
@@ -3122,8 +3158,7 @@ func TestFindAllRunningParentsByDistroID(t *testing.T) {
 }
 
 func TestFindUphostParentsByContainerPool(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
@@ -3166,8 +3201,7 @@ func TestFindUphostParentsByContainerPool(t *testing.T) {
 }
 
 func TestHostsSpawnedByTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := require.New(t)
 	require := require.New(t)
@@ -3341,8 +3375,7 @@ func TestHostsSpawnedByTasks(t *testing.T) {
 }
 
 func TestFindByFirstProvisioningAttempt(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -3378,8 +3411,7 @@ func TestFindByFirstProvisioningAttempt(t *testing.T) {
 }
 
 func TestCountContainersRunningAtTime(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
@@ -3438,8 +3470,7 @@ func TestCountContainersRunningAtTime(t *testing.T) {
 }
 
 func TestFindTerminatedHostsRunningTasksQuery(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	t.Run("QueryExecutesProperly", func(t *testing.T) {
 		hosts, err := FindTerminatedHostsRunningTasks(ctx)
@@ -3463,8 +3494,7 @@ func TestFindTerminatedHostsRunningTasksQuery(t *testing.T) {
 }
 
 func TestFindUphostParents(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
@@ -3517,8 +3547,7 @@ func TestFindUphostParents(t *testing.T) {
 }
 
 func TestRemoveStaleInitializing(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -3642,8 +3671,7 @@ func TestRemoveStaleInitializing(t *testing.T) {
 }
 
 func TestMarkStaleBuildingAsFailed(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 	defer func() {
@@ -3763,8 +3791,7 @@ func TestMarkStaleBuildingAsFailed(t *testing.T) {
 }
 
 func TestNumNewParentsNeeded(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection, distro.Collection, task.Collection))
@@ -3830,8 +3857,7 @@ func TestNumNewParentsNeeded(t *testing.T) {
 }
 
 func TestNumNewParentsNeeded2(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection, distro.Collection, task.Collection))
@@ -3888,8 +3914,7 @@ func TestNumNewParentsNeeded2(t *testing.T) {
 }
 
 func TestFindAvailableParent(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection, distro.Collection, task.Collection))
@@ -3968,8 +3993,7 @@ func TestFindAvailableParent(t *testing.T) {
 }
 
 func TestFindNoAvailableParent(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection, distro.Collection, task.Collection))
@@ -4045,8 +4069,7 @@ func TestFindNoAvailableParent(t *testing.T) {
 }
 
 func TestGetNumNewParentsAndHostsToSpawn(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection, distro.Collection, task.Collection))
@@ -4100,8 +4123,7 @@ func TestGetNumNewParentsAndHostsToSpawn(t *testing.T) {
 }
 
 func TestGetNumNewParentsWithInitializingParentAndHost(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection, distro.Collection, task.Collection))
@@ -4187,8 +4209,7 @@ func TestDeleteTags(t *testing.T) {
 }
 
 func TestSetTags(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection))
 	h := Host{
@@ -4257,8 +4278,7 @@ func TestMakeHostTags(t *testing.T) {
 }
 
 func TestSetInstanceType(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection))
 	h := &Host{
@@ -4274,8 +4294,7 @@ func TestSetInstanceType(t *testing.T) {
 }
 
 func TestAggregateSpawnhostData(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection, VolumesCollection))
 	hosts := []Host{
@@ -4368,8 +4387,7 @@ func TestAggregateSpawnhostData(t *testing.T) {
 }
 
 func TestCountSpawnhostsWithNoExpirationByUser(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection))
 	hosts := []Host{
@@ -4457,8 +4475,7 @@ func TestCountIntentHosts(t *testing.T) {
 }
 
 func TestFindSpawnhostsWithNoExpirationToExtend(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection))
 	hosts := []Host{
@@ -4664,8 +4681,7 @@ func TestBumpExpireOnTag(t *testing.T) {
 }
 
 func TestAddVolumeToHost(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection))
 	h := &Host{
@@ -4709,8 +4725,7 @@ func TestAddVolumeToHost(t *testing.T) {
 }
 
 func TestUnsetHomeVolume(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection))
 	h := &Host{
@@ -4744,8 +4759,7 @@ func TestUnsetHomeVolume(t *testing.T) {
 }
 
 func TestRemoveVolumeFromHost(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection))
 	h := &Host{
@@ -4780,8 +4794,7 @@ func TestRemoveVolumeFromHost(t *testing.T) {
 }
 
 func TestFindHostWithVolume(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection))
 	h := Host{
@@ -4805,8 +4818,7 @@ func TestFindHostWithVolume(t *testing.T) {
 }
 
 func TestFindHostsInRange(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 	distroEast := birch.NewDocument(birch.EC.String("region", "us-east-1"))
@@ -4865,8 +4877,7 @@ func TestFindHostsInRange(t *testing.T) {
 }
 
 func TestRemoveAndReplace(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
@@ -4902,8 +4913,7 @@ func TestRemoveAndReplace(t *testing.T) {
 }
 
 func TestSetNewSSHKeys(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 	defer func() {
@@ -4934,8 +4944,7 @@ func TestSetNewSSHKeys(t *testing.T) {
 }
 
 func TestUpdateCachedDistroProviderSettings(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
 
@@ -4999,11 +5008,10 @@ func TestPartitionParents(t *testing.T) {
 }
 
 func TestCountVirtualWorkstationsByDistro(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection))
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		h := &Host{
 			Id:           fmt.Sprintf("%d", i),
 			Status:       evergreen.HostTerminated,
@@ -5077,8 +5085,7 @@ func TestGetSubnetID(t *testing.T) {
 }
 
 func TestUnsafeReplace(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 
@@ -5647,8 +5654,7 @@ func TestFindHostsToTerminate(t *testing.T) {
 }
 
 func TestGetPaginatedRunningHosts(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.DropCollections(Collection))
@@ -5858,8 +5864,7 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 }
 
 func TestGeneratePersistentDNSName(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	const domain = "example.com"
 	const usernameWithSpecialChars = "it's-a.me,mario!!!🌲"
 	validDNSNameRegexp := regexp.MustCompile("[^a-zA-Z0-9.-]")
@@ -5899,7 +5904,7 @@ func TestGeneratePersistentDNSName(t *testing.T) {
 		assert.Zero(t, h.PersistentDNSName, "generated DNS name should not be set")
 		assert.False(t, validDNSNameRegexp.MatchString(originalDNSName), "generated DNS name should only contain periods, dashes, and alphanumeric characters")
 
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			newDNSName, err := h.GeneratePersistentDNSName(ctx, domain)
 			require.NoError(t, err)
 			assert.Equal(t, originalDNSName, newDNSName, "should always produce the same generated DNS name")
@@ -5912,7 +5917,7 @@ func TestGeneratePersistentDNSName(t *testing.T) {
 			assert.NoError(t, db.ClearCollections(Collection))
 		}()
 		dnsNames := make(map[string]struct{})
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			h := Host{
 				Id:        utility.RandomString(),
 				StartedBy: usernameWithSpecialChars,
@@ -6002,8 +6007,7 @@ func TestSetPersistentDNSInfo(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			require.NoError(t, db.ClearCollections(Collection))
 			h := &Host{
@@ -6047,8 +6051,7 @@ func TestUnsetPersistentDNSInfo(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			require.NoError(t, db.ClearCollections(Collection))
 			h := &Host{
@@ -6390,8 +6393,7 @@ func TestUpdateSleepSchedule(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			require.NoError(t, db.ClearCollections(Collection))
 
@@ -6449,8 +6451,7 @@ func TestSetTemporaryExemption(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 			require.NoError(t, db.ClearCollections(Collection))
 			h := &Host{
 				Id:           "host_id",
@@ -7093,8 +7094,7 @@ func TestMarkShouldNotExpire(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			require.NoError(t, db.ClearCollections(Collection))
 
@@ -7268,4 +7268,34 @@ func TestFindDebugHostsForProject(t *testing.T) {
 	found, err = FindTerminatableDebugHostsForProject(ctx, "nonexistent_project")
 	require.NoError(t, err)
 	assert.Len(t, found, 0, "should find no debug hosts for non-existent project")
+}
+
+func TestValidateDisplayName(t *testing.T) {
+	for tName, tCase := range map[string]struct {
+		name        string
+		shouldError bool
+	}{
+		"AlphanumericNameShouldSucceed":          {name: "myhost123", shouldError: false},
+		"NameWithSpacesShouldSucceed":            {name: "user's workstation", shouldError: false},
+		"NameWithParenthesesShouldSucceed":       {name: "workstation (user)", shouldError: false},
+		"NameWithColonShouldSucceed":             {name: "localhost:27017", shouldError: false},
+		"NameWithAtSignShouldSucceed":            {name: "me@mongodb.com", shouldError: false},
+		"NameWithDoubleQuoteShouldSucceed":       {name: `"good" host`, shouldError: false},
+		"NameWithUnderscoreAndDashShouldSucceed": {name: "my_host-1", shouldError: false},
+		"EmptyNameShouldSucceed":                 {name: "", shouldError: false},
+		"TooLongNameShouldError":                 {name: strings.Repeat("a", maxDisplayNameLength+1), shouldError: true},
+		"NameWithHTMLTagShouldError":             {name: "<b>important</b>", shouldError: true},
+		"NameWithSlackLinkShouldError":           {name: "<https://evil.example.com|click here>", shouldError: true},
+		"NameWithAmpersandShouldError":           {name: "foo & bar", shouldError: true},
+		"NameWithNonASCIICharacterShouldError":   {name: "host\x00gnp.exe", shouldError: true},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			err := ValidateDisplayName(tCase.name)
+			if tCase.shouldError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }

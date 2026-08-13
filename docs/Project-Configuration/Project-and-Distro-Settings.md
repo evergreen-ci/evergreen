@@ -233,6 +233,10 @@ For example:
 
 Aliases can also be defined locally as shown [here](../CLI#local-aliases).
 
+#### Multiple Aliases
+
+A patch can be run with multiple aliases specified via the CLI. A deduplicated set of tasks from all specified patches will be scheduled, as long as parameters on all aliases match after user-supplied parameter overrides are applied.
+
 ### GitHub Pull Request Testing
 
 Definitions for this section exist under the GitHub "Pull Request Testing" tab.
@@ -694,8 +698,10 @@ To enable this feature, the "version control" flag must be enabled on the projec
 
 Once toggled, the settings specified [below](#available-fields) may be defined in YAML, rather than in the project or repo settings page.
 
-**Note**: [included files](Project-Configuration-Files#include) do not currently support version-controlled configurations. Version-controlled configuration must
-be defined in the main YAML file for it to take effect.
+Version-controlled configuration may be defined in the main YAML file or in [included files](Project-Configuration-Files#include).
+Alias lists defined across multiple files are combined in include order, with the main config file's entries first. Settings
+structs (`task_annotation_settings`, `build_baron_settings`, `workstation_config`) may only be defined in one file; defining
+them in multiple files is a validation error.
 
 ### Hierarchical Inheritance
 

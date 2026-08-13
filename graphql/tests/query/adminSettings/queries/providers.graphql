@@ -16,11 +16,6 @@ query Providers {
     }
     providers {
       aws {
-        ec2Keys {
-          name
-          key
-          secret
-        }
         subnets {
           az
           subnetId
@@ -46,6 +41,7 @@ query Providers {
         }
         ipamPoolID
         elasticIPUsageRate
+        allowedSNSTopicARNs
       }
       docker {
         apiVersion

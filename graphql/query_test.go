@@ -49,7 +49,7 @@ func getContext(t *testing.T) context.Context {
 
 func populateMainlineCommits(t *testing.T) {
 	require.NoError(t, db.ClearCollections(model.VersionCollection, task.Collection))
-	for i := 0; i < 12; i++ {
+	for i := range 12 {
 		versionId := fmt.Sprintf("v%d", i)
 		// Every other version is activated
 		isActivated := i%2 == 0
@@ -69,7 +69,7 @@ func populateMainlineCommits(t *testing.T) {
 		if isActivated {
 			// Every third version should have a task with a failure. This emulates filtering by task status
 			hasFailure := i%3 == 0
-			for j := 0; j < 10; j++ {
+			for j := range 10 {
 				aTask := &task.Task{
 					Id:            fmt.Sprintf("t%d_%s", j, versionId),
 					Version:       versionId,

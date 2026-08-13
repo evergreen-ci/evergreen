@@ -111,7 +111,11 @@ func (g *GithubAppAuth) CreateCachedInstallationToken(ctx context.Context, owner
 		return "", errors.Wrapf(err, "getting installation id for '%s/%s'", owner, repo)
 	}
 
-	id, err := createCacheID(installationID, opts.GetPermissions())
+	var repositories []string
+	if opts != nil {
+		repositories = opts.Repositories
+	}
+	id, err := createCacheID(installationID, opts.GetPermissions(), repositories)
 	if err != nil {
 		return "", errors.Wrap(err, "creating cache ID")
 	}

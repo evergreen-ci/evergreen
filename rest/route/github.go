@@ -216,7 +216,6 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"pr_number": event.GetPullRequest().GetNumber(),
 				"hash":      event.GetPullRequest().GetHead().GetSHA(),
 				"user":      event.GetSender().GetLogin(),
-				"assignee":  event.GetPullRequest().GetAssignee().GetLogin(),
 				"message":   "PR accepted, attempting to queue",
 			})
 
@@ -257,7 +256,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				break
 			}
 
-			if err := gh.AddIntentForPR(ctx, event.PullRequest, event.Sender.GetLogin(), patch.AutomatedCaller, "", false); err != nil {
+			if err := gh.AddIntentForPR(ctx, event.PullRequest, event.PullRequest.GetUser().GetLogin(), patch.AutomatedCaller, "", false); err != nil {
 				grip.Error(ctx, message.WrapError(err, message.Fields{
 					"source":    "GitHub hook",
 					"msg_id":    gh.msgID,
@@ -301,12 +300,14 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			break
 		}
 		grip.Debug(ctx, message.Fields{
-			"source":     "GitHub hook",
-			"msg_id":     gh.msgID,
-			"event":      gh.eventType,
-			"event_data": event,
-			"ref":        event.GetRef(),
-			"is_tag":     isTag(event.GetRef()),
+			"source": "GitHub hook",
+			"msg_id": gh.msgID,
+			"event":  gh.eventType,
+			"ref":    event.GetRef(),
+			"is_tag": isTag(event.GetRef()),
+			"repo":   event.Repo.GetName(),
+			"owner":  event.Repo.Owner.GetLogin(),
+			"action": event.GetAction(),
 		})
 		// Regardless of whether a tag or commit is being pushed, we want to trigger the repotracker
 		// to ensure we're up-to-date on the commit the tag is being pushed to.
@@ -902,7 +903,7 @@ func shouldSkipCIForGraphite(ctx context.Context, owner, repo string, prNumber i
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	client := utility.GetHTTPClient()
+	client := utility.WithOTelTracing(utility.GetHTTPClient())
 	defer utility.PutHTTPClient(client)
 
 	resp, err := client.Do(req)

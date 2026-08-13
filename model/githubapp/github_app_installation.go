@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"reflect"
+	"slices"
 	"strings"
 	"time"
 
@@ -20,6 +22,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -119,7 +122,7 @@ func getGitHubClientForAuth(authFields *GithubAppAuth) (*GitHubClient, error) {
 		return nil, errors.Wrap(err, "parsing private key")
 	}
 
-	itr := ghinstallation.NewAppsTransportFromPrivateKey(utility.DefaultTransport(), authFields.AppID, key)
+	itr := ghinstallation.NewAppsTransportFromPrivateKey(otelhttp.NewTransport(utility.DefaultTransport()), authFields.AppID, key)
 	httpClient := utility.GetCustomHTTPRetryableClientWithTransport(itr, githubClientShouldRetry(), utility.RetryHTTPDelay(utility.RetryOptions{
 		MinDelay:    GitHubRetryMinDelay,
 		MaxDelay:    GitHubRetryMaxDelay,
@@ -156,9 +159,7 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 				"attempt": index,
 				"op":      op,
 			}
-			for k, v := range extraFields {
-				msg[k] = v
-			}
+			maps.Copy(msg, extraFields)
 			return msg
 		}
 
@@ -202,10 +203,8 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 
 		span.SetAttributes(attribute.Int(githubAppStatusCodeAttribute, resp.StatusCode))
 
-		for _, statusCode := range defaultRetryableStatuses {
-			if resp.StatusCode == statusCode {
-				return true
-			}
+		if slices.Contains(defaultRetryableStatuses, resp.StatusCode) {
+			return true
 		}
 
 		grip.ErrorWhen(req.Context(), resp.StatusCode >= http.StatusBadRequest, makeLogMsg(map[string]any{
@@ -253,12 +252,16 @@ var ghInstallationTokenCache = ttlcache.WithOtel(ttlcache.NewInMemory[string](),
 // installation token can be used before it expires.
 const MaxInstallationTokenLifetime = time.Hour
 
-// createCacheID creates an ID based on the installation ID and the token's permissions.
-// This allows us to put and get installation tokens from the cache based on the installation ID
-// and the permissions that the token is scoped to.
-// The format of the ID is: "<installationID>_<permissionKey:permissionValue>_<permissionKey:permissionValue>...".
-func createCacheID(installationID int64, permissions *github.InstallationPermissions) (string, error) {
+// createCacheID creates an ID based on the installation ID, repository scope, and permissions.
+// Format: "<installationID>[_repos:<repo1>,<repo2>][_<permKey:permValue>_...]".
+func createCacheID(installationID int64, permissions *github.InstallationPermissions, repositories []string) (string, error) {
 	id := fmt.Sprint(installationID)
+	if len(repositories) > 0 {
+		sorted := make([]string, len(repositories))
+		copy(sorted, repositories)
+		slices.Sort(sorted)
+		id += "_repos:" + strings.Join(sorted, ",")
+	}
 	if permissions == nil {
 		return id, nil
 	}

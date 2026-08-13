@@ -1,5 +1,5 @@
 mutation {
   deleteProject(
-    projectId: "evergreen_id"
+    projectId: "evergreen"
   )
 }

@@ -76,8 +76,7 @@ type AdminSuite struct {
 }
 
 func TestAdminSuite(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	configFile := os.Getenv(SettingsOverride)
 	if configFile == "" {
@@ -375,14 +374,6 @@ func (s *AdminSuite) TestProvidersConfig() {
 	defer cancel()
 
 	config := CloudProviders{
-		AWS: AWSConfig{
-			EC2Keys: []EC2Key{
-				{
-					Secret: "aws_secret",
-					Key:    "aws",
-				},
-			},
-		},
 		Docker: DockerConfig{
 			APIVersion: "docker_version",
 		},
@@ -394,6 +385,45 @@ func (s *AdminSuite) TestProvidersConfig() {
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Providers)
+}
+
+func (s *AdminSuite) TestAWSConfigSubnetTagValidation() {
+	for tName, tCase := range map[string]struct {
+		tagName     string
+		tagValue    string
+		expectedErr string
+	}{
+		"BothSetShouldPass": {
+			tagName:  "name",
+			tagValue: "value",
+		},
+		"NeitherSetShouldPass": {},
+		"TagNameWithoutTagValueShouldError": {
+			tagName:     "name",
+			expectedErr: "must specify a subnet tag value if a subnet tag name is set",
+		},
+		"TagValueWithoutTagNameShouldError": {
+			tagValue:    "value",
+			expectedErr: "must specify a subnet tag name if a subnet tag value is set",
+		},
+	} {
+		s.Run(tName, func() {
+			config := CloudProviders{
+				AWS: AWSConfig{
+					SubnetTagName:  tCase.tagName,
+					SubnetTagValue: tCase.tagValue,
+				},
+			}
+
+			err := config.ValidateAndDefault()
+			if tCase.expectedErr == "" {
+				s.NoError(err)
+				return
+			}
+			s.Require().Error(err)
+			s.Contains(err.Error(), tCase.expectedErr)
+		})
+	}
 }
 
 func (s *AdminSuite) TestRepotrackerConfig() {

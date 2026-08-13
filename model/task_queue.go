@@ -98,6 +98,56 @@ func getDistroQueueInfoCollection(ctx context.Context, distroID, collection stri
 	return taskQueue.DistroQueueInfo, nil
 }
 
+// TaskQueueLengths counts the undispatched items remaining in a distro's task
+// queue. Unlike DistroQueueInfo, whose counts are a snapshot taken when the
+// scheduler persisted the plan, these reflect the items still waiting in the
+// queue.
+type TaskQueueLengths struct {
+	// Undispatched is the number of items in the queue that have not been dispatched yet.
+	Undispatched int `bson:"undispatched"`
+	// UndispatchedWithDependenciesMet is the number of undispatched items whose
+	// dependencies were met as of queue creation.
+	UndispatchedWithDependenciesMet int `bson:"undispatched_with_deps_met"`
+}
+
+// GetTaskQueueLengths counts the undispatched items in the distro's task queue
+// in the given collection, without loading the queue itself, which can be many
+// MB long. It returns nil if the distro has no task queue there.
+func GetTaskQueueLengths(ctx context.Context, distroID, collection string) (*TaskQueueLengths, error) {
+	// The counting is done entirely DB-side so that the queue items never
+	// cross the wire.
+	undispatched := bson.M{
+		"$filter": bson.M{
+			"input": bson.M{"$ifNull": []any{"$" + taskQueueQueueKey, []any{}}},
+			"cond":  bson.M{"$ne": []any{bsonutil.GetDottedKeyName("$$this", taskQueueItemIsDispatchedKey), true}},
+		},
+	}
+	pipeline := []bson.M{
+		{"$match": bson.M{taskQueueDistroKey: distroID}},
+		{"$limit": 1},
+		{"$project": bson.M{
+			"_id":                           0,
+			taskQueueLengthsUndispatchedKey: bson.M{"$size": undispatched},
+			taskQueueLengthsDepsMetKey: bson.M{"$size": bson.M{
+				"$filter": bson.M{
+					"input": undispatched,
+					"cond":  bson.M{"$eq": []any{bsonutil.GetDottedKeyName("$$this", taskQueueItemDepsMetKey), true}},
+				},
+			}},
+		}},
+	}
+
+	out := []TaskQueueLengths{}
+	if err := db.Aggregate(ctx, collection, pipeline, &out); err != nil {
+		return nil, errors.Wrapf(err, "counting task queue items for distro '%s'", distroID)
+	}
+	if len(out) == 0 {
+		return nil, nil
+	}
+
+	return &out[0], nil
+}
+
 func RemoveTaskQueues(ctx context.Context, distroID string) error {
 	query := db.Query(bson.M{taskQueueDistroKey: distroID})
 	catcher := grip.NewBasicCatcher()
@@ -178,6 +228,11 @@ var (
 	taskQueueItemExpDurationKey   = bsonutil.MustHaveTag(TaskQueueItem{}, "ExpectedDuration")
 	taskQueueItemPriorityKey      = bsonutil.MustHaveTag(TaskQueueItem{}, "Priority")
 	taskQueueItemActivatedByKey   = bsonutil.MustHaveTag(TaskQueueItem{}, "ActivatedBy")
+	taskQueueItemDepsMetKey       = bsonutil.MustHaveTag(TaskQueueItem{}, "DependenciesMet")
+
+	// bson fields for the task queue lengths struct
+	taskQueueLengthsUndispatchedKey = bsonutil.MustHaveTag(TaskQueueLengths{}, "Undispatched")
+	taskQueueLengthsDepsMetKey      = bsonutil.MustHaveTag(TaskQueueLengths{}, "UndispatchedWithDependenciesMet")
 )
 
 // TaskSpec is an argument structure to formalize the way that callers
@@ -202,10 +257,6 @@ func NewTaskQueue(distroID string, queue []TaskQueueItem, distroQueueInfo Distro
 
 func LoadTaskQueue(ctx context.Context, distro string) (*TaskQueue, error) {
 	return findTaskQueueForDistro(ctx, taskQueueQuery{DistroID: distro, Collection: TaskQueuesCollection})
-}
-
-func LoadDistroSecondaryTaskQueue(ctx context.Context, distroID string) (*TaskQueue, error) {
-	return findTaskQueueForDistro(ctx, taskQueueQuery{DistroID: distroID, Collection: TaskSecondaryQueuesCollection})
 }
 
 func (tq *TaskQueue) Length() int {
@@ -373,6 +424,7 @@ func findTaskQueueForDistro(ctx context.Context, q taskQueueQuery) (*TaskQueue, 
 						taskQueueItemExpDurationKey:   "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemExpDurationKey),
 						taskQueueItemPriorityKey:      "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemPriorityKey),
 						taskQueueItemActivatedByKey:   "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemActivatedByKey),
+						taskQueueItemDepsMetKey:       "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemDepsMetKey),
 					},
 				},
 			},
@@ -458,38 +510,13 @@ func FindDistroSecondaryTaskQueue(ctx context.Context, distroID string) (TaskQue
 	return queue, errors.WithStack(err)
 }
 
-// pull out the task with the specified id from both the in-memory and db
-// versions of the task queue
-func (tq *TaskQueue) DequeueTask(ctx context.Context, taskId string) error {
-	// first, remove it from the in-memory queue if it is present
-outer:
-	for {
-		for idx, queueItem := range tq.Queue {
-			if queueItem.Id == taskId {
-				tq.Queue = append(tq.Queue[:idx], tq.Queue[idx+1:]...)
-				continue outer
-			}
-		}
-		break
-	}
-
-	// When something is dequeued from the in-memory queue on one app server, it
-	// will still be present in every other app server's in-memory queue. It will
-	// only no longer be present after the TTL has passed, and each app server
-	// has re-created its in-memory queue.
-
-	err := dequeue(ctx, taskId, tq.Distro)
-	if adb.ResultsNotFound(err) {
-		return nil
-	}
-
-	return errors.WithStack(err)
-}
-
-func dequeue(ctx context.Context, taskId, distroId string) error {
+// DequeueTask marks the task dispatched in the distro's DB task queue so it's no
+// longer handed out. It's not an error if the task isn't in the queue. App
+// servers' in-memory queues still contain it until their TTL passes.
+func DequeueTask(ctx context.Context, taskId, distroId string) error {
 	itemKey := bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemIdKey)
 
-	return errors.WithStack(db.Update(
+	err := db.Update(
 		ctx,
 		TaskQueuesCollection,
 		bson.M{
@@ -501,7 +528,12 @@ func dequeue(ctx context.Context, taskId, distroId string) error {
 				taskQueueQueueKey + ".$." + taskQueueItemIsDispatchedKey: true,
 			},
 		},
-	))
+	)
+	if adb.ResultsNotFound(err) {
+		return nil
+	}
+
+	return errors.WithStack(err)
 }
 
 type DuplicateEnqueuedTasksResult struct {

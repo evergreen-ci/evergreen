@@ -135,8 +135,7 @@ func setupCLITestHarness(ctx context.Context) cliTestHarness {
 }
 
 func TestCLIFetchSource(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	testutil.ConfigureIntegrationTest(t, testConfig)
 	testutil.DisablePermissionsForTests()
@@ -355,8 +354,7 @@ func TestCLIFetchArtifacts(t *testing.T) {
 }
 
 func TestCLITestHistory(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := evergreen.GetEnvironment()
 	defer func() {
 		assert.NoError(t, db.ClearCollections(task.Collection))
@@ -397,7 +395,7 @@ func TestCLITestHistory(t *testing.T) {
 			}
 			So(testVersion3.Insert(ctx), ShouldBeNil)
 			// create tasks with three different display names that start and finish at various times
-			for i := 0; i < 10; i++ {
+			for i := range 10 {
 				tsk := task.Task{
 					Id:           fmt.Sprintf("task_%v", i),
 					Project:      project,
@@ -432,8 +430,7 @@ func TestCLITestHistory(t *testing.T) {
 }
 
 func TestCLIFunctions(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	testutil.ConfigureIntegrationTest(t, testConfig)
 	testutil.DisablePermissionsForTests()

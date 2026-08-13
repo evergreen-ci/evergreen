@@ -134,10 +134,11 @@ type APITask struct {
 	TestSelectionEnabled bool            `json:"test_selection_enabled"`
 	// These fields are used by graphql gen, but do not need to be exposed
 	// via Evergreen's user-facing API.
-	OverrideDependencies bool `json:"-"`
-	Archived             bool `json:"archived"`
-	HasTestResults       bool `json:"-"`
-	ResultsFailed        bool `json:"-"`
+	OverrideDependencies         bool `json:"-"`
+	Archived                     bool `json:"archived"`
+	HasTestResults               bool `json:"-"`
+	ResultsFailed                bool `json:"-"`
+	QuarantinedTestsSkippedCount int  `json:"-"`
 }
 
 type APIStepbackInfo struct {
@@ -390,9 +391,10 @@ func (at *APITask) buildTask(t *task.Task) error {
 			User:       t.AbortInfo.User,
 			PRClosed:   t.AbortInfo.PRClosed,
 		},
-		HasAnnotations:       t.HasAnnotations,
-		IsAutomaticRestart:   t.IsAutomaticRestart,
-		TestSelectionEnabled: t.TestSelectionEnabled,
+		HasAnnotations:               t.HasAnnotations,
+		IsAutomaticRestart:           t.IsAutomaticRestart,
+		TestSelectionEnabled:         t.TestSelectionEnabled,
+		QuarantinedTestsSkippedCount: t.NumQuarantinedTestsSkipped,
 	}
 
 	if t.BaseTask.Id != "" {
@@ -595,13 +597,14 @@ func (at *APITask) ToService() (*task.Task, error) {
 			Id:     utility.FromStringPtr(at.BaseTask.Id),
 			Status: utility.FromStringPtr(at.BaseTask.Status),
 		},
-		DisplayTaskId:        utility.ToStringPtr(at.ParentTaskId),
-		Aborted:              at.Aborted,
-		Details:              at.Details.ToService(),
-		Archived:             at.Archived,
-		OverrideDependencies: at.OverrideDependencies,
-		HasAnnotations:       at.HasAnnotations,
-		TestSelectionEnabled: at.TestSelectionEnabled,
+		DisplayTaskId:              utility.ToStringPtr(at.ParentTaskId),
+		Aborted:                    at.Aborted,
+		Details:                    at.Details.ToService(),
+		Archived:                   at.Archived,
+		OverrideDependencies:       at.OverrideDependencies,
+		HasAnnotations:             at.HasAnnotations,
+		TestSelectionEnabled:       at.TestSelectionEnabled,
+		NumQuarantinedTestsSkipped: at.QuarantinedTestsSkippedCount,
 	}
 
 	if at.TaskCost != nil {
@@ -668,10 +671,10 @@ func (at *APITask) getArtifacts(ctx context.Context, baseURL string) error {
 			ets = append(ets, artifact.TaskIDAndExecution{TaskID: *t, Execution: at.Execution})
 		}
 		if len(ets) > 0 {
-			entries, err = artifact.FindAllSecondary(ctx, artifact.ByTaskIdsAndExecutions(ets))
+			entries, err = artifact.FindAll(ctx, artifact.ByTaskIdsAndExecutions(ets))
 		}
 	} else {
-		entries, err = artifact.FindAllSecondary(ctx, artifact.ByTaskIdAndExecution(utility.FromStringPtr(at.Id), at.Execution))
+		entries, err = artifact.FindAll(ctx, artifact.ByTaskIdAndExecution(utility.FromStringPtr(at.Id), at.Execution))
 	}
 	if err != nil {
 		return errors.Wrap(err, "retrieving artifacts")
@@ -683,7 +686,7 @@ func (at *APITask) getArtifacts(ctx context.Context, baseURL string) error {
 		if baseURL != "" && len(artifactSignSecret) > 0 {
 			strippedFiles = artifact.StripHiddenFilesLazy(entry.Files, true, baseURL, entry.TaskId, entry.Execution, artifactSignSecret)
 		} else {
-			strippedFiles, err = artifact.StripHiddenFiles(ctx, entry.Files, true)
+			strippedFiles, err = artifact.StripHiddenFiles(ctx, entry.Files, true, model.NewArtifactCredentialResolver(entry.TaskId))
 			if err != nil {
 				return err
 			}

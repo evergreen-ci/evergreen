@@ -515,6 +515,15 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 		return errors.Wrap(err, "updating version aggregated task costs")
 	}
 
+	total.OnDemandS3ArtifactPutCost = v.Cost.OnDemandS3ArtifactPutCost
+	total.AdjustedS3ArtifactPutCost = v.Cost.AdjustedS3ArtifactPutCost
+	total.OnDemandS3LogPutCost = v.Cost.OnDemandS3LogPutCost
+	total.AdjustedS3LogPutCost = v.Cost.AdjustedS3LogPutCost
+	total.OnDemandS3ArtifactStorageCost = v.Cost.OnDemandS3ArtifactStorageCost
+	total.AdjustedS3ArtifactStorageCost = v.Cost.AdjustedS3ArtifactStorageCost
+	total.OnDemandS3LogStorageCost = v.Cost.OnDemandS3LogStorageCost
+	total.AdjustedS3LogStorageCost = v.Cost.AdjustedS3LogStorageCost
+
 	v.Cost = total
 	v.PredictedCost = predicted
 	return nil
@@ -666,38 +675,6 @@ type DuplicateVersions struct {
 	Versions []Version           `bson:"versions"`
 }
 
-// GetMostRecentWaterfallVersion returns the most recent version, activated or unactivated, on the waterfall.
-func GetMostRecentWaterfallVersion(ctx context.Context, projectId string) (*Version, error) {
-	match := bson.M{
-		VersionIdentifierKey: projectId,
-		VersionRequesterKey: bson.M{
-			"$in": evergreen.SystemVersionRequesterTypes,
-		},
-	}
-	pipeline := []bson.M{
-		{"$match": match},
-		{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}},
-		{"$limit": 1},
-		{"$project": bson.M{VersionBuildVariantsKey: 0}},
-	}
-
-	res := []Version{}
-	env := evergreen.GetEnvironment()
-	cursor, err := env.SecondaryReadClient().Database(env.DB().Name()).Collection(VersionCollection).Aggregate(ctx, pipeline)
-	if err != nil {
-		return nil, errors.Wrap(err, "aggregating versions")
-	}
-	err = cursor.All(ctx, &res)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(res) == 0 {
-		return nil, errors.Errorf("could not find mainline commit for project '%s'", projectId)
-	}
-	return &res[0], nil
-}
-
 // GetPreviousPageCommitOrderNumber returns the first mainline commit that is LIMIT activated versions more recent than the specified commit
 func GetPreviousPageCommitOrderNumber(ctx context.Context, projectId string, order int, limit int, requesters []string) (*int, error) {
 	invalidRequesters, _ := utility.StringSliceSymmetricDifference(requesters, evergreen.SystemVersionRequesterTypes)
@@ -705,9 +682,12 @@ func GetPreviousPageCommitOrderNumber(ctx context.Context, projectId string, ord
 		return nil, errors.Errorf("invalid requesters %s", invalidRequesters)
 	}
 	// First check if we are already looking at the most recent commit.
-	mostRecentCommit, err := GetMostRecentWaterfallVersion(ctx, projectId)
+	mostRecentCommit, err := VersionFindOneSecondary(ctx, VersionByMostRecentSystemRequester(projectId).WithFields(VersionRevisionOrderNumberKey))
 	if err != nil {
 		return nil, errors.WithStack(err)
+	}
+	if mostRecentCommit == nil {
+		return nil, nil
 	}
 	// Check that the ORDER number we want to check is less the the ORDER number of the most recent commit.
 	// So we don't need to check for newer commits than the most recent commit.

@@ -44,6 +44,14 @@ input TaskPriority {
   priority: Int!
 }
 
+"""
+ExecutionTasksFilterOptions is an input for the task.executionTasksFull field.
+It's used to filter a display task's execution tasks.
+"""
+input ExecutionTasksFilterOptions {
+  statuses: [String!] = []
+}
+
 input PrevTaskOptions {
   skipOnParentCompleted: Boolean
 }
@@ -68,6 +76,8 @@ type Task {
   baseTask: Task
   blocked: Boolean!
   buildId: String!
+  buildBaronCreatedTickets: [JiraTicket!]! @requireProjectAccess(permission: ANNOTATIONS, access: VIEW)
+  buildBaronSuggestions: SearchReturnInfo @requireProjectAccess(permission: ANNOTATIONS, access: VIEW)
   buildVariant: String!
   buildVariantDisplayName: String
   canAbort: Boolean!
@@ -95,7 +105,7 @@ type Task {
   execution: Int!
   executionSteps: [TaskExecutionStep!]
   executionTasks: [String!]
-  executionTasksFull: [Task!]
+  executionTasksFull(options: ExecutionTasksFilterOptions): [Task!]
   expectedDuration: Duration
   failedTestCount: Int!
   files: TaskFiles!
@@ -133,6 +143,10 @@ type Task {
   prevTaskPassing: Task
   priority: Int
   project: Project
+  """
+  quarantinedTestsSkippedCount is the number of tests this execution skipped because they were quarantined in TSS at execution time.
+  """
+  quarantinedTestsSkippedCount: Int!
   requester: String!
   resetWhenFinished: Boolean!
   revision: String
@@ -321,6 +335,25 @@ type TaskTestResultSample {
   matchingFailedTestNames: [String!]!
   taskId: String!
   totalTestCount: Int!
+}
+
+"""
+TaskQuarantinedTestsSample is the return value for Version.taskQuarantinedTestsSample.
+It contains the execution-time snapshot of tests skipped because they were quarantined in TSS.
+"""
+type TaskQuarantinedTestsSample {
+  execution: Int!
+  quarantinedTests: [QuarantinedTest!]!
+  quarantinedTestsSkippedCount: Int!
+  taskId: String!
+}
+
+"""
+QuarantinedTest represents a test skipped because it was quarantined in TSS at execution time.
+"""
+type QuarantinedTest {
+  displayTestName: String
+  testName: String!
 }
 
 """

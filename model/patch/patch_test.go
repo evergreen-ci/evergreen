@@ -15,6 +15,22 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func TestAliasesToResolve(t *testing.T) {
+	for name, tc := range map[string]struct {
+		patch    Patch
+		expected []string
+	}{
+		"MultipleAliases":     {patch: Patch{Aliases: []string{"x", "y"}}, expected: []string{"x", "y"}},
+		"SingleAliasMirrored": {patch: Patch{Alias: "a", Aliases: []string{"a"}}, expected: []string{"a"}},
+		"OnlyAliasSet":        {patch: Patch{Alias: "a"}, expected: []string{"a"}},
+		"EmptyWhenNeitherSet": {patch: Patch{}, expected: nil},
+	} {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, tc.expected, tc.patch.AliasesToResolve())
+		})
+	}
+}
+
 func TestConfigChanged(t *testing.T) {
 	assert := assert.New(t)
 	remoteConfigPath := "config/evergreen.yml"

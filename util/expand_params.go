@@ -91,7 +91,7 @@ func expandStruct(inputVal reflect.Value, expansions *Expansions) error {
 
 	// find any values with an expandable tag
 	numFields := inputVal.NumField()
-	for i := 0; i < numFields; i++ {
+	for i := range numFields {
 		field := inputVal.Type().Field(i)
 		fieldTag := field.Tag.Get(pluginTagPrefix)
 
@@ -180,4 +180,25 @@ func IsExpandable(param string) bool {
 	startIndex := strings.Index(param, pluginExpandStartTag)
 	endIndex := strings.Index(param, pluginExpandEndTag)
 	return startIndex >= 0 && endIndex >= 0 && endIndex > startIndex
+}
+
+// ExpansionVarName returns the expansion name if the value is exactly one
+// expansion reference, such as "${aws_key}", and the empty string otherwise.
+func ExpansionVarName(value string) string {
+	if !strings.HasPrefix(value, pluginExpandStartTag) || !strings.HasSuffix(value, pluginExpandEndTag) {
+		return ""
+	}
+
+	name := value[len(pluginExpandStartTag) : len(value)-len(pluginExpandEndTag)]
+	// An expansion may supply a fallback as ${var|default}.
+	if idx := strings.Index(name, "|"); idx >= 0 {
+		name = name[:idx]
+	}
+	// The outer tags are already stripped, so any remaining tag character means
+	// the value was not a single reference (e.g. "${a}${b}" or "${a${b}").
+	if name == "" || strings.ContainsAny(name, pluginExpandStartTag+pluginExpandEndTag) {
+		return ""
+	}
+
+	return name
 }

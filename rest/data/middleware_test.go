@@ -42,6 +42,17 @@ func TestGetProjectIdFromParams(t *testing.T) {
 	require.Equal(t, http.StatusOK, statusCode)
 	require.Equal(t, projectId, project.Id)
 
+	projectWithMissingRepo := &model.ProjectRef{
+		Id:         "project_with_missing_repo_id",
+		Identifier: "project_with_missing_repo_identifier",
+		RepoRefId:  "missing_repo_id",
+	}
+	require.NoError(t, projectWithMissingRepo.Insert(t.Context()))
+	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"projectIdentifier": projectWithMissingRepo.Identifier})
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, statusCode)
+	require.Equal(t, projectId, projectWithMissingRepo.Id)
+
 	// Parameters include taskId.
 	task := &task.Task{
 		Id:      "task_id",
@@ -153,6 +164,16 @@ func TestGetProjectIdFromParams(t *testing.T) {
 	require.Equal(t, "", projectId)
 }
 
+func TestBuildProjectParameterMapForGraphQL(t *testing.T) {
+	t.Run("ProjectIDToCopyMapsToProjectIdentifier", func(t *testing.T) {
+		paramsMap, err := BuildProjectParameterMapForGraphQL(map[string]any{
+			projectIdToCopyKey: "source_project",
+		})
+		require.NoError(t, err)
+		require.Equal(t, "source_project", paramsMap[projectIdentifierKey])
+	})
+}
+
 func TestBuildProjectParameterMapForLegacy(t *testing.T) {
 	// When an object ID is in the path, the query string must not be able to
 	// override any of the resolved IDs, since the route handler acts on the
@@ -212,6 +233,16 @@ func TestBuildProjectParameterMapForLegacy(t *testing.T) {
 			query:    url.Values{"project_id": []string{"unrelated_project"}},
 			vars:     map[string]string{"project_id": "target_project"},
 			expected: map[string]string{projectIdKey: "target_project"},
+		},
+		"QueryRepoIDIgnoredWhenTaskIDInPath": {
+			query:    url.Values{"repo_id": []string{"unrelated_repo_id"}},
+			vars:     map[string]string{"task_id": "target_task_id"},
+			expected: map[string]string{repoIdKey: "", taskIdKey: "target_task_id"},
+		},
+		"QueryRepoIDIgnoredWhenRepoIDInPath": {
+			query:    url.Values{"repo_id": []string{"unrelated_repo_id"}},
+			vars:     map[string]string{"repo_id": "target_repo_id"},
+			expected: map[string]string{repoIdKey: "target_repo_id"},
 		},
 		"QueryObjectIDsUsedWhenNoObjectIDInPath": {
 			query:    url.Values{"version_id": []string{"query_version_id"}},

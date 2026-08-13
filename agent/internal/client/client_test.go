@@ -108,8 +108,7 @@ func TestLoggerProducerRedactorOptions(t *testing.T) {
 	}
 
 	t.Run("LeaksWithoutRedactor", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		task := createTask()
 		comm := newBaseCommunicator("whatever", map[string]string{})
@@ -136,8 +135,7 @@ func TestLoggerProducerRedactorOptions(t *testing.T) {
 	})
 
 	t.Run("RedactsWhenAdded", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		task := createTask()
 		comm := newBaseCommunicator("whatever", map[string]string{})

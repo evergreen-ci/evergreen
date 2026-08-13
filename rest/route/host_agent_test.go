@@ -71,8 +71,7 @@ func TestHostNextTask(t *testing.T) {
 		Version:   versionID,
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
@@ -568,8 +567,7 @@ func TestHostNextTask(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			colls := []string{model.ProjectRefCollection, host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection,
 				evergreen.ConfigCollection, distro.Collection, model.VersionCollection}
@@ -643,8 +641,7 @@ func TestHostNextTask(t *testing.T) {
 }
 
 func TestSingleTaskDistroValidation(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	colls := []string{model.ProjectRefCollection, host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection,
 		evergreen.ConfigCollection, distro.Collection, model.VersionCollection}
@@ -969,7 +966,7 @@ func TestHostEndTask(t *testing.T) {
 				},
 			}))
 
-			for i := 0; i < 10; i++ {
+			for i := range 10 {
 				event.LogHostTaskFinished(ctx, fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemFailed)
 			}
 
@@ -1001,7 +998,7 @@ func TestHostEndTask(t *testing.T) {
 				},
 			}))
 
-			for i := 0; i < 10; i++ {
+			for i := range 10 {
 				event.LogHostTaskFinished(ctx, fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemTimedOut)
 			}
 
@@ -1034,7 +1031,7 @@ func TestHostEndTask(t *testing.T) {
 				},
 			}))
 
-			for i := 0; i < 10; i++ {
+			for i := range 10 {
 				event.LogHostTaskFinished(ctx, fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemUnresponse)
 			}
 
@@ -1204,7 +1201,7 @@ func TestHostEndTask(t *testing.T) {
 			h, err := host.FindOneId(ctx, hostId)
 			require.NoError(t, err)
 			require.NotZero(t, h)
-			for i := 0; i < 8; i++ {
+			for i := range 8 {
 				event.LogHostTaskFinished(ctx, fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemUnresponse)
 			}
 
@@ -1241,8 +1238,7 @@ func TestHostEndTask(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			colls := []string{host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, model.ParserProjectCollection, model.ProjectRefCollection, model.VersionCollection, alertrecord.Collection, event.EventCollection}
 			require.NoError(t, db.ClearCollections(colls...))
@@ -1319,6 +1315,15 @@ func TestHostEndTask(t *testing.T) {
 	}
 }
 
+// numUndispatchedTasks counts the distro's waiting tasks the way the next_task
+// route does before calling assignNextAvailableTask.
+func numUndispatchedTasks(ctx context.Context, t *testing.T, distroID string) int {
+	lengths, err := model.GetTaskQueueLengths(ctx, distroID, model.TaskQueuesCollection)
+	require.NoError(t, err)
+	require.NotNil(t, lengths)
+	return lengths.Undispatched
+}
+
 func TestAssignNextAvailableTask(t *testing.T) {
 	// Each section is a different unit of data (Distro -> Tq)
 	type data struct {
@@ -1360,7 +1365,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			d.Tq1.Queue = []model.TaskQueueItem{}
 			require.NoError(t, d.Tq1.Save(t.Context()))
 			details := &apimodels.GetNextTaskDetails{}
-			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq1, model.NewTaskDispatchService(time.Minute), d.Host1, details)
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, numUndispatchedTasks(ctx, t, d.Distro1.Id), model.NewTaskDispatchService(time.Minute), d.Host1, details)
 			require.NoError(t, err)
 			assert.Nil(t, task)
 			assert.False(t, shouldTeardown)
@@ -1377,7 +1382,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			d.Tq3.Queue = append([]model.TaskQueueItem{{Id: "invalid", DependenciesMet: true}}, d.Tq3.Queue...)
 			require.NoError(t, d.Tq3.Save(t.Context()))
 			details := &apimodels.GetNextTaskDetails{}
-			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq3, model.NewTaskDispatchService(time.Minute), d.Host5, details)
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, numUndispatchedTasks(ctx, t, d.Distro3.Id), model.NewTaskDispatchService(time.Minute), d.Host5, details)
 			// The legacy dispatcher does not automatically handle invalid tasks.
 			require.NoError(t, err)
 			assert.Nil(t, task)
@@ -1394,7 +1399,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 		"a host should get the task at the top of a queue for a regular task": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
 			details := &apimodels.GetNextTaskDetails{}
 			nextTaskId := d.Tq3.Queue[0].Id
-			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq3, model.NewTaskDispatchService(time.Minute), d.Host5, details)
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, numUndispatchedTasks(ctx, t, d.Distro3.Id), model.NewTaskDispatchService(time.Minute), d.Host5, details)
 			require.NoError(t, err)
 			require.NotNil(t, task)
 			assert.False(t, shouldTeardown)
@@ -1411,7 +1416,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 		"a host should get the task at the top of a queue for a task group": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
 			details := &apimodels.GetNextTaskDetails{}
 			nextTaskId := d.Tq1.Queue[0].Id
-			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq1, model.NewTaskDispatchService(time.Minute), d.Host1, details)
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, numUndispatchedTasks(ctx, t, d.Distro1.Id), model.NewTaskDispatchService(time.Minute), d.Host1, details)
 			require.NoError(t, err)
 			require.NotNil(t, task)
 			assert.False(t, shouldTeardown)
@@ -1431,7 +1436,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			require.NoError(t, d.Project2.Replace(t.Context()))
 			nextTaskId := "task4"
 			details := &apimodels.GetNextTaskDetails{}
-			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq3, model.NewTaskDispatchService(time.Minute), d.Host5, details)
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, numUndispatchedTasks(ctx, t, d.Distro3.Id), model.NewTaskDispatchService(time.Minute), d.Host5, details)
 			require.NoError(t, err)
 			require.NotNil(t, task)
 			assert.False(t, shouldTeardown)
@@ -1451,7 +1456,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			require.NoError(t, d.Project2.Replace(t.Context()))
 			nextTaskId := d.Tq3.Queue[1].Id
 			details := &apimodels.GetNextTaskDetails{}
-			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq3, model.NewTaskDispatchService(time.Minute), d.Host5, details)
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, numUndispatchedTasks(ctx, t, d.Distro3.Id), model.NewTaskDispatchService(time.Minute), d.Host5, details)
 			require.NoError(t, err)
 			require.NotNil(t, task)
 			assert.False(t, shouldTeardown)
@@ -1465,11 +1470,34 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, nextTaskId, h.RunningTask)
 		},
+		"draining the queue of undispatchable tasks should tear down a running task group": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
+			// The queue has task3 then task4. Both are finished, so the route
+			// dequeues each one and reaches the end of the queue.
+			for _, id := range []string{d.Task3.Id, d.Task4.Id} {
+				require.NoError(t, task.UpdateOne(ctx, bson.M{"_id": id},
+					bson.M{"$set": bson.M{"status": evergreen.TaskSucceeded}}))
+			}
+			details := &apimodels.GetNextTaskDetails{
+				TaskGroup: "task-group-1",
+			}
+			nextTask, shouldTeardown, err := assignNextAvailableTask(ctx, env, numUndispatchedTasks(ctx, t, d.Distro3.Id), model.NewTaskDispatchService(time.Minute), d.Host5, details)
+			require.NoError(t, err)
+			assert.Nil(t, nextTask)
+			assert.True(t, shouldTeardown)
+
+			tq, err := model.LoadTaskQueue(t.Context(), d.Distro3.Id)
+			require.NoError(t, err)
+			assert.Equal(t, 0, tq.Length())
+
+			h, err := host.FindOneId(ctx, d.Host5.Id)
+			require.NoError(t, err)
+			assert.Equal(t, "", h.RunningTask)
+		},
 		"a completed task group should return a nil task if no task is available ": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
 			details := &apimodels.GetNextTaskDetails{
 				TaskGroup: "completed-task-group",
 			}
-			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq1, model.NewTaskDispatchService(time.Minute), d.Host1, details)
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, numUndispatchedTasks(ctx, t, d.Distro1.Id), model.NewTaskDispatchService(time.Minute), d.Host1, details)
 			require.NoError(t, err)
 			assert.Nil(t, task)
 			assert.True(t, shouldTeardown)
@@ -1486,7 +1514,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			details := &apimodels.GetNextTaskDetails{
 				TaskGroup: "completed-task-group",
 			}
-			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq2, model.NewTaskDispatchService(time.Minute), d.Host3, details)
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, numUndispatchedTasks(ctx, t, d.Distro2.Id), model.NewTaskDispatchService(time.Minute), d.Host3, details)
 			require.NoError(t, err)
 			assert.Nil(t, task)
 			assert.True(t, shouldTeardown)
@@ -1508,7 +1536,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			details := &apimodels.GetNextTaskDetails{
 				TaskGroup: d.Tg1Task1.TaskGroup,
 			}
-			t1, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq1, model.NewTaskDispatchService(time.Minute), d.Host1, details)
+			t1, shouldTeardown, err := assignNextAvailableTask(ctx, env, numUndispatchedTasks(ctx, t, d.Distro1.Id), model.NewTaskDispatchService(time.Minute), d.Host1, details)
 			require.NoError(t, err)
 			assert.Nil(t, t1)
 			assert.True(t, shouldTeardown)
@@ -1526,7 +1554,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 				bson.M{"$set": bson.M{"status": evergreen.TaskStarted}}))
 			nextTaskId := d.Tq3.Queue[1].Id
 			details := &apimodels.GetNextTaskDetails{}
-			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq3, model.NewTaskDispatchService(time.Minute), d.Host5, details)
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, numUndispatchedTasks(ctx, t, d.Distro3.Id), model.NewTaskDispatchService(time.Minute), d.Host5, details)
 			require.NoError(t, err)
 			require.NotNil(t, task)
 			assert.False(t, shouldTeardown)
@@ -1543,7 +1571,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 		"subsequentially assigning tasks to two hosts should remove them from the queue": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
 			details := &apimodels.GetNextTaskDetails{}
 			nextTaskId := d.Tq3.Queue[0].Id
-			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq3, model.NewTaskDispatchService(time.Minute), d.Host5, details)
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, numUndispatchedTasks(ctx, t, d.Distro3.Id), model.NewTaskDispatchService(time.Minute), d.Host5, details)
 			require.NoError(t, err)
 			require.NotNil(t, task)
 			assert.False(t, shouldTeardown)
@@ -1557,8 +1585,8 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, nextTaskId, h.RunningTask)
 
-			nextTaskId = d.Tq3.Queue[0].Id
-			task, shouldTeardown, err = assignNextAvailableTask(ctx, env, d.Tq3, model.NewTaskDispatchService(time.Minute), d.Host6, details)
+			nextTaskId = d.Tq3.Queue[1].Id
+			task, shouldTeardown, err = assignNextAvailableTask(ctx, env, numUndispatchedTasks(ctx, t, d.Distro3.Id), model.NewTaskDispatchService(time.Minute), d.Host6, details)
 			require.NoError(t, err)
 			require.NotNil(t, task)
 			assert.False(t, shouldTeardown)
@@ -1575,7 +1603,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 		"a task that is already running on another host should not be assigned again": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
 			details := &apimodels.GetNextTaskDetails{}
 			nextTaskId := d.Tq3.Queue[0].Id
-			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq3, model.NewTaskDispatchService(time.Minute), d.Host5, details)
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, numUndispatchedTasks(ctx, t, d.Distro3.Id), model.NewTaskDispatchService(time.Minute), d.Host5, details)
 			require.NoError(t, err)
 			require.NotNil(t, task)
 			assert.False(t, shouldTeardown)
@@ -1589,9 +1617,8 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, nextTaskId, h.RunningTask)
 
-			d.Tq3.Queue = append(d.Tq3.Queue, model.TaskQueueItem{Id: nextTaskId})
-			nextTaskId = d.Tq3.Queue[0].Id
-			task, shouldTeardown, err = assignNextAvailableTask(ctx, env, d.Tq3, model.NewTaskDispatchService(time.Minute), d.Host6, details)
+			nextTaskId = d.Tq3.Queue[1].Id
+			task, shouldTeardown, err = assignNextAvailableTask(ctx, env, numUndispatchedTasks(ctx, t, d.Distro3.Id), model.NewTaskDispatchService(time.Minute), d.Host6, details)
 			require.NoError(t, err)
 			require.NotNil(t, task)
 			assert.False(t, shouldTeardown)
@@ -1608,7 +1635,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 		"a host with a running task cannot be assigned again": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
 			details := &apimodels.GetNextTaskDetails{}
 			nextTaskId := d.Tq3.Queue[0].Id
-			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq3, model.NewTaskDispatchService(time.Minute), d.Host5, details)
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, numUndispatchedTasks(ctx, t, d.Distro3.Id), model.NewTaskDispatchService(time.Minute), d.Host5, details)
 			require.NoError(t, err)
 			require.NotNil(t, task)
 			assert.False(t, shouldTeardown)
@@ -1622,7 +1649,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, nextTaskId, h.RunningTask)
 
-			task, shouldTeardown, err = assignNextAvailableTask(ctx, env, d.Tq3, model.NewTaskDispatchService(time.Minute), d.Host5, details)
+			task, shouldTeardown, err = assignNextAvailableTask(ctx, env, numUndispatchedTasks(ctx, t, d.Distro3.Id), model.NewTaskDispatchService(time.Minute), d.Host5, details)
 			require.Error(t, err)
 			assert.Nil(t, task)
 			assert.False(t, shouldTeardown)
@@ -1638,7 +1665,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 		"a host running a single host task group should be the only host assigned those tasks": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
 			details := &apimodels.GetNextTaskDetails{}
 			nextTaskId := d.Tq1.Queue[0].Id
-			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq1, model.NewTaskDispatchService(time.Minute), d.Host1, details)
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, numUndispatchedTasks(ctx, t, d.Distro1.Id), model.NewTaskDispatchService(time.Minute), d.Host1, details)
 			require.NoError(t, err)
 			require.NotNil(t, task)
 			assert.False(t, shouldTeardown)
@@ -1652,7 +1679,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, nextTaskId, h.RunningTask)
 
-			task, shouldTeardown, err = assignNextAvailableTask(ctx, env, d.Tq1, model.NewTaskDispatchService(time.Minute), d.Host2, details)
+			task, shouldTeardown, err = assignNextAvailableTask(ctx, env, numUndispatchedTasks(ctx, t, d.Distro1.Id), model.NewTaskDispatchService(time.Minute), d.Host2, details)
 			fmt.Println(task, shouldTeardown, err)
 			require.NoError(t, err)
 			assert.Nil(t, task)
@@ -1700,7 +1727,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			details := &apimodels.GetNextTaskDetails{}
 			// The first host should get the top of the task group.
 			nextTaskId := d.Tq1.Queue[0].Id
-			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq1, model.NewTaskDispatchService(time.Minute), d.Host1, details)
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, numUndispatchedTasks(ctx, t, d.Distro1.Id), model.NewTaskDispatchService(time.Minute), d.Host1, details)
 			require.NoError(t, err)
 			require.NotNil(t, task)
 			assert.False(t, shouldTeardown)
@@ -1715,8 +1742,8 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			assert.Equal(t, nextTaskId, h.RunningTask)
 
 			// The second host should get the next task of the task group.
-			nextTaskId = d.Tq1.Queue[0].Id
-			task, shouldTeardown, err = assignNextAvailableTask(ctx, env, d.Tq1, model.NewTaskDispatchService(time.Minute), d.Host2, details)
+			nextTaskId = d.Tq1.Queue[1].Id
+			task, shouldTeardown, err = assignNextAvailableTask(ctx, env, numUndispatchedTasks(ctx, t, d.Distro1.Id), model.NewTaskDispatchService(time.Minute), d.Host2, details)
 			require.NoError(t, err)
 			require.NotNil(t, task)
 			assert.False(t, shouldTeardown)
@@ -1731,7 +1758,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			assert.Equal(t, nextTaskId, h.RunningTask)
 
 			// The third host should not get a task, since the limit is 2.
-			task, shouldTeardown, err = assignNextAvailableTask(ctx, env, d.Tq1, model.NewTaskDispatchService(time.Minute), extraHost, details)
+			task, shouldTeardown, err = assignNextAvailableTask(ctx, env, numUndispatchedTasks(ctx, t, d.Distro1.Id), model.NewTaskDispatchService(time.Minute), extraHost, details)
 			fmt.Print(task, shouldTeardown, err)
 			require.NoError(t, err)
 			assert.Nil(t, task)
@@ -1747,8 +1774,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))

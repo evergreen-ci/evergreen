@@ -91,7 +91,7 @@ func (a *Agent) generateTaskDirectoryName(tc *taskContext) (string, error) {
 	// generate a colliding hash 10 times, this just puts a reasonable bound on
 	// the maximum number of attempts.
 	const maxAttempts = 10
-	for i := 0; i < maxAttempts; i++ {
+	for i := range maxAttempts {
 		dirName, err = a.generateTaskDirectoryHash(dirName)
 		if err != nil {
 			return "", errors.Wrapf(err, "writing hash for randomized task directory (attempt %d/%d)", i+1, maxAttempts)

@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -25,8 +24,7 @@ var (
 )
 
 func TestTaskImportanceComparators(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	var taskComparator *CmpBasedTaskComparator
 	var taskIds []string
@@ -274,8 +272,7 @@ func TestByTaskGroupOrder(t *testing.T) {
 }
 
 func TestPrioritizeTasksWithSameTaskGroupsAndDifferentBuilds(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -344,8 +341,7 @@ func TestPrioritizeTasksWithSameTaskGroupsAndDifferentBuilds(t *testing.T) {
 }
 
 func TestTaskGroupsNotOutOfOrderFromOtherComparators(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require := require.New(t)

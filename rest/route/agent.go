@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -241,6 +243,13 @@ func (h *markTaskForRestartHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(struct{}{})
 	}
 
+	// Aborted tasks are intentionally not eligible for automatic restart. The agent still
+	// calls this route when a retry-on-failure command fails, even if the task was aborted
+	// mid-run, so treat that as an expected no-op rather than an internal server error.
+	if taskToRestart.Aborted {
+		return gimlet.NewJSONResponse(struct{}{})
+	}
+
 	if taskToRestart.NumAutomaticRestarts >= evergreen.MaxAutomaticRestarts {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -373,6 +382,12 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 			Message:    fmt.Sprintf("project ref '%s' not found", t.Project),
 		})
 	}
+	if isUserRequest && !pRef.IsDebugSpawnHostsEnabled() {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusForbidden,
+			Message:    fmt.Sprintf("debug spawn hosts are disabled for project '%s'", pRef.Id),
+		})
+	}
 	knownHosts := h.settings.Expansions[evergreen.GithubKnownHosts]
 	e, err := model.PopulateExpansions(ctx, t, foundHost, knownHosts)
 	if err != nil {
@@ -438,6 +453,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		grip.Error(ctx, errors.Wrap(err, "loading cost config for expansions_and_vars"))
 	} else {
 		res.DevprodOwnedAWSAccountIDs = costCfg.S3Cost.Storage.DevprodOwnedAWSAccountIDs
+		res.ArtifactAWSAccountsWithoutLifecycleRules = costCfg.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules
 	}
 
 	return gimlet.NewJSONResponse(res)
@@ -494,7 +510,7 @@ func (h *getProjectRefHandler) Run(ctx context.Context) gimlet.Responder {
 	isUserRequest := user != nil
 	// If from debug session request, return minimal response
 	if isUserRequest {
-		redactedProjectRef := map[string]interface{}{
+		redactedProjectRef := map[string]any{
 			"repo_name":      p.Repo,
 			"branch_name":    p.Branch,
 			"owner_name":     p.Owner,
@@ -578,14 +594,15 @@ func (h *getParserProjectHandler) Run(ctx context.Context) gimlet.Responder {
 type getDistroViewHandler struct {
 	taskID string
 	hostID string
+	env    evergreen.Environment
 }
 
-func makeGetDistroView() gimlet.RouteHandler {
-	return &getDistroViewHandler{}
+func makeGetDistroView(env evergreen.Environment) gimlet.RouteHandler {
+	return &getDistroViewHandler{env: env}
 }
 
 func (h *getDistroViewHandler) Factory() gimlet.RouteHandler {
-	return &getDistroViewHandler{}
+	return &getDistroViewHandler{env: h.env}
 }
 
 func (h *getDistroViewHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -624,6 +641,45 @@ func (h *getDistroViewHandler) Run(ctx context.Context) gimlet.Responder {
 		DisableShallowClone: foundHost.Distro.DisableShallowClone,
 		Mountpoints:         foundHost.Distro.Mountpoints,
 		ExecUser:            foundHost.Distro.ExecUser,
+	}
+	// Return the embedded snapshot without container isolation when the
+	// fleet-wide flag is off.
+	if h.env != nil && !h.env.Settings().ServiceFlags.ContainerIsolationEnabled {
+		return gimlet.NewJSONResponse(dv)
+	}
+	// Refresh container isolation and ExecUser from the live distro config to
+	// pick up changes made after the host was provisioned.
+	ci := foundHost.Distro.BootstrapSettings.ContainerIsolation
+	if foundHost.Distro.Id == "" {
+		grip.Warning(ctx, message.Fields{
+			"message": "host has no distro ID; skipping live distro lookup for container isolation",
+			"host_id": h.hostID,
+		})
+	} else if liveDistro, err := distro.FindOneForDistroView(ctx, foundHost.Distro.Id); err != nil {
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message": "falling back to embedded distro snapshot for container isolation settings",
+			"host_id": h.hostID,
+			"distro":  foundHost.Distro.Id,
+		}))
+	} else if liveDistro != nil {
+		ci = liveDistro.BootstrapSettings.ContainerIsolation
+		if liveDistro.ExecUser != "" {
+			dv.ExecUser = liveDistro.ExecUser
+		}
+	} else {
+		grip.Warning(ctx, message.Fields{
+			"message": "distro not found in live collection; using embedded snapshot for container isolation",
+			"host_id": h.hostID,
+			"distro":  foundHost.Distro.Id,
+		})
+	}
+	if ci.Enabled {
+		dv.ContainerIsolation = &apimodels.ContainerIsolationSettings{
+			Image:            ci.Image,
+			MemoryMB:         ci.MemoryMB,
+			CPUs:             ci.CPUs,
+			RequireIsolation: ci.RequireIsolation,
+		}
 	}
 	return gimlet.NewJSONResponse(dv)
 }
@@ -745,7 +801,7 @@ func discoverAndCacheBucketLifecycleRules(ctx context.Context, t *task.Task, fil
 			externalID = &file.ExternalID
 		}
 
-		wasCached := s3lifecycle.DiscoverAndCacheProjectBucket(ctx, bucketName, region, roleARN, externalID, t.Project, costConfig.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules, cloud.NewS3LifecycleClient())
+		wasCached := s3lifecycle.DiscoverAndCacheProjectBucket(ctx, bucketName, region, roleARN, externalID, file.AWSAccountID, t.Project, costConfig.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules, cloud.NewS3LifecycleClient())
 		if wasCached {
 			cachedBuckets = append(cachedBuckets, bucketName)
 		}
@@ -1011,6 +1067,20 @@ func (h *attachTestResultsHandler) Parse(ctx context.Context, r *http.Request) e
 
 func (h *attachTestResultsHandler) Run(ctx context.Context) gimlet.Responder {
 	t := MustHaveTask(ctx)
+
+	if h.body.Info.TaskID != t.Id || h.body.Info.Execution != t.Execution {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusForbidden,
+			Message:    "test results task identity does not match the authenticated task",
+		})
+	}
+	if h.body.Stats.FailedCount < 0 || h.body.Stats.TotalCount < 0 {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "test results stats counts cannot be negative",
+		})
+	}
+
 	var err error
 	var record testresult.DbTaskTestResults
 	if !t.HasTestResults {
@@ -1033,6 +1103,13 @@ func (h *attachTestResultsHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding test result record"))
 		}
+	}
+	if record.CreatedAt.IsZero() {
+		// The record may have been created at test selection time by the
+		// quarantined-tests snapshot, which does not know when results are
+		// created. Take the created timestamp from the attach request because
+		// it determines the partition key of the offline test results.
+		record.CreatedAt = h.body.CreatedAt
 	}
 	err = task.AppendTestResultMetadata(ctx, t, h.env, h.body.FailedSample, h.body.Stats.FailedCount, h.body.Stats.TotalCount, record)
 	if err != nil {
@@ -1299,6 +1376,41 @@ func (h *gitServePatchFileHandler) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (h *gitServePatchFileHandler) Run(ctx context.Context) gimlet.Responder {
+	t := GetTask(ctx)
+	if t == nil {
+		var err error
+		t, err = task.FindOneId(ctx, h.taskID)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+		}
+		if t == nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+			})
+		}
+	}
+
+	p, err := patch.FindOne(ctx, patch.ByVersion(t.Version))
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patch for version '%s'", t.Version))
+	}
+	if p == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("patch for version '%s' not found", t.Version),
+		})
+	}
+
+	if !slices.ContainsFunc(p.Patches, func(mp patch.ModulePatch) bool {
+		return mp.PatchSet.PatchFileId == h.patchID
+	}) {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("patch file '%s' not found", h.patchID),
+		})
+	}
+
 	patchContents, err := patch.FetchPatchContents(ctx, h.patchID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "reading patch file from db"))
@@ -1593,8 +1705,9 @@ func (h *setDownstreamParamsHandler) Run(ctx context.Context) gimlet.Responder {
 // It returns an installation token that's attached to Evergreen's GitHub app.
 // See createGitHubDynamicAccessToken or tokens created for users using their GitHub app.
 type createInstallationTokenForClone struct {
-	owner string
-	repo  string
+	taskID string
+	owner  string
+	repo   string
 
 	env evergreen.Environment
 }
@@ -1612,6 +1725,10 @@ func (g *createInstallationTokenForClone) Factory() gimlet.RouteHandler {
 }
 
 func (g *createInstallationTokenForClone) Parse(ctx context.Context, r *http.Request) error {
+	if g.taskID = gimlet.GetVars(r)["task_id"]; g.taskID == "" {
+		return errors.New("missing task ID")
+	}
+
 	if g.owner = gimlet.GetVars(r)["owner"]; g.owner == "" {
 		return errors.New("missing owner")
 	}
@@ -1624,9 +1741,43 @@ func (g *createInstallationTokenForClone) Parse(ctx context.Context, r *http.Req
 }
 
 func (g *createInstallationTokenForClone) Run(ctx context.Context) gimlet.Responder {
+	t := GetTask(ctx)
+	if t == nil {
+		var err error
+		t, err = task.FindOneId(ctx, g.taskID)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", g.taskID))
+		}
+		if t == nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("task '%s' not found", g.taskID),
+			})
+		}
+	}
+
+	allowed, err := isRepoAllowedForTask(ctx, g.env, t, g.owner, g.repo)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "checking repo authorization"))
+	}
+	if !allowed {
+		// TODO: DEVPROD-36655 enforce this as a 403 once we've confirmed no
+		// projects rely on cross-repo tokens outside their declared modules.
+		grip.Warning(ctx, message.Fields{
+			"message":   "installation token requested for repo not in project or modules",
+			"task_id":   g.taskID,
+			"project":   t.Project,
+			"owner":     g.owner,
+			"repo":      g.repo,
+			"version":   t.Version,
+			"requester": t.Requester,
+			"ticket":    "DEVPROD-36655",
+		})
+	}
+
 	const lifetime = 50 * time.Minute
-	// because this token will be used for cloning, restrict the token to read only
 	opts := &github.InstallationTokenOptions{
+		Repositories: []string{g.repo},
 		Permissions: &github.InstallationPermissions{
 			Contents: utility.ToStringPtr(thirdparty.GithubPermissionRead),
 		},
@@ -1648,6 +1799,80 @@ func (g *createInstallationTokenForClone) Run(ctx context.Context) gimlet.Respon
 	return gimlet.NewJSONResponse(&apimodels.Token{
 		Token: token,
 	})
+}
+
+// isRepoAllowedForTask checks whether the given owner/repo is the task's project
+// repo or one of its declared modules.
+func isRepoAllowedForTask(ctx context.Context, env evergreen.Environment, t *task.Task, owner, repo string) (bool, error) {
+	projectRef, err := model.FindMergedProjectRef(ctx, t.Project, t.Version, true)
+	if err != nil {
+		return false, errors.Wrapf(err, "finding project '%s'", t.Project)
+	}
+	if projectRef == nil {
+		return false, errors.Errorf("project ref '%s' doesn't exist", t.Project)
+	}
+
+	if strings.EqualFold(projectRef.Owner, owner) && strings.EqualFold(projectRef.Repo, repo) {
+		return true, nil
+	}
+
+	mfest, err := manifest.FindFromVersion(ctx, t.Version, t.Project, "", t.Requester)
+	if err != nil {
+		return false, errors.Wrap(err, "finding manifest for task")
+	}
+	if mfest != nil {
+		for _, m := range mfest.Modules {
+			if matchesModule(m.Owner, m.Repo, owner, repo) {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+
+	v, err := model.VersionFindOne(ctx, model.VersionById(t.Version))
+	if err != nil {
+		return false, errors.Wrap(err, "finding version for task")
+	}
+	if v == nil {
+		return false, errors.Errorf("version '%s' not found", t.Version)
+	}
+
+	project, _, err := model.FindAndTranslateProjectForVersion(ctx, env.Settings(), v, false)
+	if err != nil {
+		return false, errors.Wrap(err, "loading project for version")
+	}
+	if project == nil {
+		return false, errors.Errorf("project for version '%s' not found", t.Version)
+	}
+
+	for _, m := range project.Modules {
+		moduleOwner, moduleRepo, err := m.GetOwnerAndRepo()
+		if err != nil {
+			continue
+		}
+		if matchesModule(moduleOwner, moduleRepo, owner, repo) {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+// matchesModule checks whether the requested owner/repo matches a module's
+// owner/repo.
+func matchesModule(moduleOwner, moduleRepo, owner, repo string) bool {
+	if strings.EqualFold(moduleOwner, owner) && strings.EqualFold(moduleRepo, repo) {
+		return true
+	}
+	if model.IsWikiRepo(moduleRepo) {
+		// The agent strips ".wiki" from repo names before requesting
+		// tokens, so this also matches the parent repo name for wiki modules.
+		parentRepo := strings.TrimSuffix(strings.TrimSuffix(strings.TrimSpace(moduleRepo), ".git"), ".wiki")
+		if strings.EqualFold(moduleOwner, owner) && strings.EqualFold(parentRepo, repo) {
+			return true
+		}
+	}
+	return false
 }
 
 // POST /task/{task_id}/check_run

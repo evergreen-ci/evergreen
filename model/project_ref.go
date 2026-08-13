@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -112,6 +113,10 @@ type ProjectRef struct {
 	BuildBaronSettings evergreen.BuildBaronSettings `bson:"build_baron_settings,omitempty" json:"build_baron_settings" yaml:"build_baron_settings,omitempty"`
 	PerfEnabled        *bool                        `bson:"perf_enabled,omitempty" json:"perf_enabled,omitempty" yaml:"perf_enabled,omitempty"`
 
+	// ArtifactCredentials names the source of the AWS credentials used to presign
+	// this project's signed artifacts.
+	ArtifactCredentials ArtifactCredentialSettings `bson:"artifact_credentials,omitempty" json:"artifact_credentials,omitempty" yaml:"artifact_credentials,omitempty"`
+
 	// RepoRefId is the repo ref id that this project ref tracks, if any.
 	RepoRefId string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
 
@@ -143,7 +148,7 @@ type ProjectRef struct {
 	// RunEveryMainlineCommit indicates that the project should activate the versions for all mainline commits.
 	// This goes against Evergreen's optimization of only activating the latest commit in a series of mainline commits.
 	// This is used for projects that use tasks on mainline commits to trigger downstream processes, like deployments.
-	RunEveryMainlineCommit bool `bson:"run_every_mainline_commit,omitempty" json:"run_every_mainline_commit,omitempty" yaml:"run_every_mainline_commit,omitempty"`
+	RunEveryMainlineCommit *bool `bson:"run_every_mainline_commit,omitempty" json:"run_every_mainline_commit,omitempty" yaml:"run_every_mainline_commit,omitempty"`
 }
 
 // GitHubDynamicTokenPermissionGroup is a permission group for GitHub dynamic access tokens.
@@ -979,26 +984,39 @@ func (p *ProjectRef) DetachFromRepo(ctx context.Context, u *user.DBUser) error {
 	return catcher.Resolve()
 }
 
+// ErrRepoRefUnauthorized indicates that the user is not an admin of the repo ref they're
+// trying to attach a project to.
+var ErrRepoRefUnauthorized = errors.New("user is not an admin of the repo")
+
+// checkExistingRepoRefAdmin verifies that the user is allowed to attach the project to the repo ref
+// matching the project's current owner/repo. If no such repo ref exists yet, there is nothing to
+// authorize against, since the user will become its admin.
+func (p *ProjectRef) checkExistingRepoRefAdmin(ctx context.Context, u *user.DBUser) error {
+	repoRef, err := FindRepoRefByOwnerAndRepo(ctx, p.Owner, p.Repo)
+	if err != nil {
+		return errors.Wrapf(err, "finding repo ref for '%s/%s'", p.Owner, p.Repo)
+	}
+	if repoRef == nil {
+		return nil
+	}
+	isRepoAdmin := u.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      repoRef.Id,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	})
+	if !isRepoAdmin {
+		return errors.Wrapf(ErrRepoRefUnauthorized, "user '%s' cannot attach project '%s' to repo '%s' ('%s/%s')", u.Id, p.Id, repoRef.Id, p.Owner, p.Repo)
+	}
+	return nil
+}
+
 // AttachToRepo adds the branch to the relevant repo scopes, and updates the project to point to the repo.
 // Any values that previously were unset will now use the repo value, unless this would introduce
 // a GitHub project conflict. If no repo ref currently exists, the user attaching it will be added as the repo ref admin.
 func (p *ProjectRef) AttachToRepo(ctx context.Context, u *user.DBUser) error {
-	// If repo project exists, only allow repo admins to attach to a project.
-	repoRef, err := FindRepoRefByOwnerAndRepo(ctx, p.Owner, p.Repo)
-	if err != nil {
-		return errors.Wrapf(err, "finding repo ref '%s'", p.RepoRefId)
-	}
-	if repoRef != nil {
-		isRepoAdmin := u.HasPermission(ctx, gimlet.PermissionOpts{
-			Resource:      repoRef.Id,
-			ResourceType:  evergreen.ProjectResourceType,
-			Permission:    evergreen.PermissionProjectSettings,
-			RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-		})
-
-		if !isRepoAdmin {
-			return errors.Errorf("user '%s' does not have permission to attach project '%s' to repo '%s'", u.Id, p.Id, p.Repo)
-		}
+	if err := p.checkExistingRepoRefAdmin(ctx, u); err != nil {
+		return err
 	}
 
 	// Before allowing a project to attach to a repo, verify that this is a valid GitHub organization.
@@ -1034,6 +1052,13 @@ func (p *ProjectRef) AttachToRepo(ctx context.Context, u *user.DBUser) error {
 // updates the project to point to the new repo. Any Github project conflicts are disabled.
 // If no repo ref currently exists for the new repo, the user attaching it will be added as the repo ref admin.
 func (p *ProjectRef) AttachToNewRepo(ctx context.Context, u *user.DBUser) error {
+	// Moving to a repo that already has a repo ref requires the same authorization as AttachToRepo.
+	if p.UseRepoSettings() {
+		if err := p.checkExistingRepoRefAdmin(ctx, u); err != nil {
+			return err
+		}
+	}
+
 	before, err := GetProjectSettingsById(ctx, p.Id, false)
 	if err != nil {
 		return errors.Wrap(err, "getting before project settings event")
@@ -1426,9 +1451,9 @@ func getCommonAliases(ctx context.Context, projectIds []string) (ProjectAliases,
 			commonAliases = aliases
 			continue
 		}
-		for j := len(commonAliases) - 1; j >= 0; j-- {
+		for j, commonAlias := range slices.Backward(commonAliases) {
 			// look to see if this alias exists in the each project and if not remove it
-			if !aliasSliceContains(aliases, commonAliases[j]) {
+			if !aliasSliceContains(aliases, commonAlias) {
 				commonAliases = append(commonAliases[:j], commonAliases[j+1:]...)
 			}
 		}
@@ -2553,7 +2578,7 @@ func DefaultSectionToRepo(ctx context.Context, projectId string, section Project
 		for _, a := range before.Aliases {
 			// remove only internal aliases; any alias without these labels is a patch alias
 			if utility.StringSliceContains(evergreen.InternalAliases, a.Alias) {
-				err = RemoveProjectAlias(ctx, a.ID.Hex())
+				err = RemoveProjectAlias(ctx, projectId, a.ID.Hex())
 				if err == nil {
 					modified = true // track if any aliases here were correctly modified so we can log the changes
 				}
@@ -2574,7 +2599,7 @@ func DefaultSectionToRepo(ctx context.Context, projectId string, section Project
 		// remove only patch aliases, i.e. aliases without an Evergreen-internal label
 		for _, a := range before.Aliases {
 			if !utility.StringSliceContains(evergreen.InternalAliases, a.Alias) {
-				err = RemoveProjectAlias(ctx, a.ID.Hex())
+				err = RemoveProjectAlias(ctx, projectId, a.ID.Hex())
 				if err == nil {
 					modified = true // track if any aliases were correctly modified so we can log the changes
 				}

@@ -120,7 +120,7 @@ func (s *installationSuite) TestCreateCachedInstallationToken() {
 	)
 
 	// Test without permissions
-	id, err := createCacheID(installation.InstallationID, nil)
+	id, err := createCacheID(installation.InstallationID, nil, nil)
 	s.NoError(err)
 	s.Equal("5678", id)
 	ghInstallationTokenCache.Put(s.ctx, id, unrestrictedToken, time.Now().Add(lifetime*2))
@@ -141,7 +141,7 @@ func (s *installationSuite) TestCreateCachedInstallationToken() {
 		Permissions: p,
 	}
 
-	id, err = createCacheID(installation.InstallationID, p)
+	id, err = createCacheID(installation.InstallationID, p, nil)
 	s.NoError(err)
 	s.Equal("5678_contents:read_issues:write", id)
 	ghInstallationTokenCache.Put(s.ctx, id, restrictedToken, time.Now().Add(lifetime*2))
@@ -151,8 +151,7 @@ func (s *installationSuite) TestCreateCachedInstallationToken() {
 	s.Equal(restrictedToken, token, "should return cached token since it is still valid for at least %s", lifetime)
 }
 func TestCreateGitHubAppAuth(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
@@ -181,11 +180,11 @@ func TestCreateCacheID(t *testing.T) {
 	testCases := map[string]struct {
 		installationID int64
 		permissions    *github.InstallationPermissions
+		repositories   []string
 		expected       string
 	}{
-		"NoPermissions": {
+		"NoPermissionsOrRepos": {
 			installationID: 1234,
-			permissions:    nil,
 			expected:       "1234",
 		},
 		"EmptyPermissions": {
@@ -208,11 +207,24 @@ func TestCreateCacheID(t *testing.T) {
 			},
 			expected: "1234_contents:read_issues:write",
 		},
+		"MultipleRepositoriesAreSorted": {
+			installationID: 1234,
+			repositories:   []string{"bravo", "alpha"},
+			expected:       "1234_repos:alpha,bravo",
+		},
+		"RepositoriesWithPermissions": {
+			installationID: 1234,
+			repositories:   []string{"myrepo"},
+			permissions: &github.InstallationPermissions{
+				Contents: github.String("read"),
+			},
+			expected: "1234_repos:myrepo_contents:read",
+		},
 	}
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			result, err := createCacheID(tc.installationID, tc.permissions)
+			result, err := createCacheID(tc.installationID, tc.permissions, tc.repositories)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expected, result)
 		})

@@ -76,15 +76,15 @@ func (v ValidationErrors) Loggable() bool {
 	return len(v) > 0
 }
 func (v ValidationErrors) String() string {
-	out := ""
+	var out strings.Builder
 	for i, validationErr := range v {
 		if i > 0 {
-			out += "\n"
+			out.WriteString("\n")
 		}
-		out += fmt.Sprintf("%s: %s", validationErr.Level.String(), validationErr.Message)
+		out.WriteString(fmt.Sprintf("%s: %s", validationErr.Level.String(), validationErr.Message))
 	}
 
-	return out
+	return out.String()
 }
 func (v ValidationErrors) Annotate(key string, value any) error {
 	return nil
@@ -146,6 +146,7 @@ var projectErrorValidators = []projectValidator{
 var projectConfigErrorValidators = []projectConfigValidator{
 	validateProjectConfigAliases,
 	validateProjectConfigPlugins,
+	validateProjectConfigRedefinedSettings,
 }
 
 // Functions used to validate the project configuration file for warnings.
@@ -463,6 +464,19 @@ func validateProjectConfigAliases(ctx context.Context, pc *model.ProjectConfig) 
 	for _, errorMsg := range errs {
 		validationErrs = append(validationErrs, ValidationError{
 			Message: fmt.Sprintf("error validating aliases: %s", errorMsg),
+			Level:   Error,
+		})
+	}
+	return validationErrs
+}
+
+// validateProjectConfigRedefinedSettings errors on version-controlled settings
+// structs that are defined in more than one YAML file across included files.
+func validateProjectConfigRedefinedSettings(ctx context.Context, pc *model.ProjectConfig) ValidationErrors {
+	validationErrs := ValidationErrors{}
+	for _, setting := range pc.RedefinedSettings {
+		validationErrs = append(validationErrs, ValidationError{
+			Message: fmt.Sprintf("'%s' can only be defined in one YAML file", setting),
 			Level:   Error,
 		})
 	}
@@ -1416,6 +1430,13 @@ func validateDisplayTaskNames(project *model.Project) ValidationErrors {
 	// check display tasks
 	for _, bv := range project.BuildVariants {
 		for _, dp := range bv.DisplayTasks {
+			if dp.Name == "" {
+				errs = append(errs,
+					ValidationError{
+						Level:   Error,
+						Message: fmt.Sprintf("display task in buildvariant '%s' must have a name", bv.Name),
+					})
+			}
 			for _, etn := range dp.ExecTasks {
 				if strings.HasPrefix(etn, "display_") {
 					errs = append(errs,

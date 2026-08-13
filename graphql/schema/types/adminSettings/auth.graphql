@@ -26,6 +26,7 @@ type OktaConfig {
   scopes: [String!]!
   userGroup: String
   expireAfterMinutes: Int
+  expectedEmailDomains: [String!]
 }
 
 type NaiveAuthConfig {
@@ -85,6 +86,7 @@ input OktaConfigInput {
   scopes: [String!]
   userGroup: String
   expireAfterMinutes: Int
+  expectedEmailDomains: [String!]
 }
 
 input NaiveAuthConfigInput {

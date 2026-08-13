@@ -47,8 +47,7 @@ func requireTaskFromDB(ctx context.Context, t *testing.T, id string) *task.Task 
 }
 
 func TestSetActiveState(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With one task with no dependencies", t, func() {
 		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, task.OldCollection, VersionCollection))
@@ -533,8 +532,7 @@ func TestSetActiveState(t *testing.T) {
 }
 
 func TestActivatePreviousTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With two tasks and a build", t, func() {
 		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
@@ -584,8 +582,7 @@ func TestActivatePreviousTask(t *testing.T) {
 }
 
 func TestDeactivatePreviousTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With two tasks and a build", t, func() {
 		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
@@ -844,8 +841,7 @@ func TestDeactivatePreviousTask(t *testing.T) {
 }
 
 func TestUpdateBuildStatusForTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	type testCase struct {
 		tasks []task.Task
@@ -1064,8 +1060,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 }
 
 func TestUpdateVersionAndPatchStatusForBuilds(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(build.Collection, patch.Collection, task.Collection, VersionCollection))
 	uiConfig := evergreen.UIConfig{Url: "http://localhost"}
@@ -1142,8 +1137,7 @@ func TestUpdateVersionAndPatchStatusForBuilds(t *testing.T) {
 }
 
 func TestUpdateBuildStatusForTaskReset(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.EventCollection))
 	displayName := "testName"
@@ -1597,8 +1591,7 @@ func TestUpdatePatchStatus(t *testing.T) {
 }
 
 func TestUpdateBuildAndVersionStatusForTaskAbort(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection, event.EventCollection))
 	displayName := "testName"
@@ -1881,8 +1874,7 @@ func TestUpdateBuildGithubStatus(t *testing.T) {
 }
 
 func TestMarkEnd(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -1957,7 +1949,6 @@ func TestMarkEnd(t *testing.T) {
 	require.NotZero(dbDependentTask)
 	require.Len(dbDependentTask.DependsOn, 1)
 	assert.Equal(testTask.Id, dbDependentTask.DependsOn[0].TaskId)
-	assert.True(dbDependentTask.DependsOn[0].Finished, "dependency should be marked finished")
 
 	Convey("with a task that is part of a display task", t, func() {
 		p := &Project{
@@ -2040,9 +2031,64 @@ func TestMarkEnd(t *testing.T) {
 	})
 }
 
+func TestActivateTasksWithDependencies(t *testing.T) {
+	ctx := t.Context()
+	colls := []string{task.Collection, task.OldCollection, build.Collection, VersionCollection}
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(colls...))
+	})
+	require.NoError(t, db.ClearCollections(colls...))
+	b := &build.Build{
+		Id:      "build",
+		Version: "version",
+	}
+	require.NoError(t, b.Insert(ctx))
+	v := &Version{
+		Id: "version",
+	}
+	require.NoError(t, v.Insert(ctx))
+
+	t1 := &task.Task{
+		Id:                "task1",
+		BuildId:           "build",
+		Version:           "version",
+		DistroId:          "arch",
+		Status:            evergreen.TaskSucceeded,
+		Activated:         true,
+		TaskGroup:         "tg",
+		TaskGroupMaxHosts: 1,
+		TaskGroupOrder:    1,
+	}
+	require.NoError(t, t1.Insert(ctx))
+	t2 := &task.Task{
+		Id:                "task2",
+		BuildId:           "build",
+		Version:           "version",
+		DistroId:          "arch",
+		Status:            evergreen.TaskUndispatched,
+		Activated:         false,
+		TaskGroup:         "tg",
+		TaskGroupMaxHosts: 1,
+		TaskGroupOrder:    2,
+	}
+	require.NoError(t, t2.Insert(ctx))
+
+	require.NoError(t, activateTasksWithDependencies(ctx, []string{"task2"}, evergreen.ElapsedTaskActivator))
+
+	dbTask1, err := task.FindOneId(ctx, t1.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbTask1)
+	assert.Equal(t, 1, dbTask1.Execution, "earlier finished single-host task group task should be restarted")
+	assert.Equal(t, evergreen.TaskUndispatched, dbTask1.Status)
+
+	dbTask2, err := task.FindOneId(ctx, t2.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbTask2)
+	assert.True(t, dbTask2.Activated, "elapsed task should be activated")
+}
+
 func TestMarkEndWithTaskGroup(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	runningTask := &task.Task{
 		Id:                "say-hi-123",
@@ -2142,8 +2188,7 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 }
 
 func TestMarkEndIsAutomaticRestart(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	runningTask := &task.Task{
 		ResetWhenFinished:  true,
@@ -2335,8 +2380,7 @@ func TestMarkEndIsAutomaticRestart(t *testing.T) {
 }
 
 func TestMarkEndWithDisplayTaskResetWhenFinished(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection, host.Collection))
 
@@ -2409,8 +2453,7 @@ func TestMarkEndWithDisplayTaskResetWhenFinished(t *testing.T) {
 }
 
 func TestTryResetTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	settings := testutil.TestConfig()
 	Convey("With a task that does not exist", t, func() {
@@ -2460,7 +2503,7 @@ func TestTryResetTask(t *testing.T) {
 				Project:   "sample",
 				Version:   b.Version,
 				DependsOn: []task.Dependency{
-					{TaskId: testTask.Id, Status: evergreen.TaskSucceeded, Finished: true},
+					{TaskId: testTask.Id, Status: evergreen.TaskSucceeded},
 				},
 			}
 			detail := &apimodels.TaskEndDetail{
@@ -2501,7 +2544,6 @@ func TestTryResetTask(t *testing.T) {
 				So(dbDependentTask, ShouldNotBeNil)
 				So(len(dbDependentTask.DependsOn), ShouldEqual, 1)
 				So(dbDependentTask.DependsOn[0].TaskId, ShouldEqual, testTask.Id)
-				So(dbDependentTask.DependsOn[0].Finished, ShouldBeFalse)
 			})
 		})
 		Convey("resetting a task with a max number of executions", func() {
@@ -2678,8 +2720,7 @@ func TestTryResetTask(t *testing.T) {
 }
 
 func TestTryResetTaskWithTaskGroup(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(host.Collection, build.Collection, VersionCollection, distro.Collection))
 	assert := assert.New(t)
@@ -2772,8 +2813,7 @@ func TestTryResetTaskWithTaskGroup(t *testing.T) {
 }
 
 func TestAbortTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With a task and a build", t, func() {
 		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
@@ -2856,8 +2896,7 @@ func TestAbortTask(t *testing.T) {
 }
 
 func TestMarkStart(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With a task, build and version", t, func() {
 		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
@@ -2945,8 +2984,7 @@ func TestMarkStart(t *testing.T) {
 }
 
 func TestMarkDispatched(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("With a task, build and version", t, func() {
 		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
@@ -2989,8 +3027,7 @@ func TestMarkDispatched(t *testing.T) {
 }
 
 func TestGetStepback(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("When the project has a stepback policy set to true", t, func() {
 		require.NoError(t, db.ClearCollections(ProjectRefCollection, ParserProjectCollection, task.Collection, build.Collection, VersionCollection))
@@ -3116,8 +3153,7 @@ buildvariants:
 }
 
 func TestFailedTaskRestart(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection))
@@ -3274,8 +3310,7 @@ func TestFailedTaskRestart(t *testing.T) {
 }
 
 func TestFailedTaskRestartWithDisplayTasksAndTaskGroup(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection))
@@ -3391,8 +3426,7 @@ func TestFailedTaskRestartWithDisplayTasksAndTaskGroup(t *testing.T) {
 }
 
 func TestStepback(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection))
@@ -3628,8 +3662,7 @@ func TestLinearStepbackWithGenerators(t *testing.T) {
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection))
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			// The test data is across three mainline versions.
 			// All have some background successful tasks. All have two generator tasks.
@@ -3659,7 +3692,7 @@ func TestLinearStepbackWithGenerators(t *testing.T) {
 			for orderNumber, v := range []string{v0.Id, v1.Id, v2.Id} {
 				// 3 Background tasks that succeeded and should not be restarted
 				// across the two versions.
-				for i := 0; i < 3; i++ {
+				for i := range 3 {
 					backgroundTask := &task.Task{
 						Id:                  fmt.Sprintf("t-success-%d-%d", orderNumber, i),
 						DisplayName:         fmt.Sprintf("background-task-%d", i),
@@ -3679,7 +3712,7 @@ func TestLinearStepbackWithGenerators(t *testing.T) {
 				// Two generators.
 				// t-generator-(orderNumber)-0 is undispatched on v1 and succeeded on v2.
 				// t-generator-(orderNumber)-1 succeeded on v1 and v2.
-				for i := 0; i < 2; i++ {
+				for i := range 2 {
 					status := evergreen.TaskSucceeded
 					if i == 0 && v == v1.Id {
 						// The first generator is undispatched on v1.
@@ -3707,7 +3740,7 @@ func TestLinearStepbackWithGenerators(t *testing.T) {
 				}
 
 				// 3 Generated tasks for generator "t-generator-(orderNumber)-0" that don't exist for version 1 but failed in version 2.
-				for i := 0; i < 3; i++ {
+				for i := range 3 {
 					status := evergreen.TaskFailed
 					if v == v0.Id {
 						// Everything passes on v0.
@@ -3735,7 +3768,7 @@ func TestLinearStepbackWithGenerators(t *testing.T) {
 				}
 
 				// 3 Generated tasks for generator "t-generator-(ordernumber)-1" that are undispatched in version 1 and failed in version 2.
-				for i := 0; i < 3; i++ {
+				for i := range 3 {
 					status := evergreen.TaskUndispatched
 					if v == v2.Id {
 						// Failed on v2.
@@ -3785,9 +3818,9 @@ func TestLinearStepbackWithGenerators(t *testing.T) {
 			tCase(t, ctx, data)
 
 			t.Run("SuccessfulTasksAreUnmodified", func(t *testing.T) {
-				for orderNumber := 0; orderNumber < 3; orderNumber++ {
+				for orderNumber := range 3 {
 					// Background tasks.
-					for i := 0; i < 3; i++ {
+					for i := range 3 {
 						dbTask, err := task.FindOne(ctx, db.Query(task.ById(fmt.Sprintf("t-success-%d-%d", orderNumber, i))))
 						require.NoError(t, err)
 						require.NotNil(t, dbTask)
@@ -3808,8 +3841,7 @@ func TestLinearStepbackWithGenerators(t *testing.T) {
 }
 
 func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -3964,8 +3996,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 }
 
 func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -4045,8 +4076,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 }
 
 func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -4126,8 +4156,7 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 }
 
 func TestClearAndResetStrandedHostTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection, VersionCollection))
 	assert := assert.New(t)
@@ -4260,7 +4289,6 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	require.NotNil(t, dependencyTask)
 	require.NoError(t, err)
 	assert.True(dependencyTask.DependsOn[0].Unattainable)
-	assert.True(dependencyTask.DependsOn[0].Finished)
 
 	dt, err := task.FindOne(ctx, db.Query(task.ById("displayTask")))
 	require.NoError(t, err)
@@ -4287,8 +4315,7 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 }
 
 func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(host.Collection, VersionCollection, patch.Collection, ParserProjectCollection, ProjectRefCollection, task.Collection, task.OldCollection, build.Collection))
 	assert := assert.New(t)
@@ -4341,8 +4368,7 @@ func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
 }
 
 func TestClearAndResetStrandedHostTaskFailedOnly(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection, VersionCollection, event.EventCollection))
 
@@ -4447,8 +4473,7 @@ func TestClearAndResetStrandedHostTaskFailedOnly(t *testing.T) {
 }
 
 func TestClearAndResetExecTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection, VersionCollection))
 
@@ -4502,8 +4527,7 @@ func TestClearAndResetExecTask(t *testing.T) {
 }
 
 func TestResetStaleTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	settings := testutil.TestConfig()
 	defer func() {
@@ -4545,7 +4569,6 @@ func TestResetStaleTask(t *testing.T) {
 			require.NotNil(t, dependencyTask)
 			require.NoError(t, err)
 			assert.False(t, dependencyTask.DependsOn[0].Unattainable)
-			assert.False(t, dependencyTask.DependsOn[0].Finished)
 		},
 		"SuccessfullySystemFailsAbortedTask": func(t *testing.T, tsk task.Task) {
 			tsk.Aborted = true
@@ -4567,7 +4590,6 @@ func TestResetStaleTask(t *testing.T) {
 			require.NotNil(t, dependencyTask)
 			require.NoError(t, err)
 			assert.True(t, dependencyTask.DependsOn[0].Unattainable)
-			assert.True(t, dependencyTask.DependsOn[0].Finished)
 		},
 		"ResetsParentDisplayTaskForStaleExecutionTask": func(t *testing.T, tsk task.Task) {
 			otherExecTask := task.Task{
@@ -4711,8 +4733,7 @@ func TestResetStaleTask(t *testing.T) {
 }
 
 func TestDisplayTaskUpdates(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(task.Collection, event.EventCollection))
 	assert := assert.New(t)
@@ -4909,8 +4930,7 @@ func TestDisplayTaskUpdates(t *testing.T) {
 }
 
 func TestDisplayTaskUpdateNoUndispatched(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(task.Collection, event.EventCollection))
 	assert := assert.New(t)
@@ -4957,8 +4977,7 @@ func TestDisplayTaskUpdateNoUndispatched(t *testing.T) {
 }
 
 func TestDisplayTaskDelayedRestart(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection))
 	assert := assert.New(t)
@@ -5027,8 +5046,7 @@ func TestDisplayTaskUpdatesAreConcurrencySafe(t *testing.T) {
 	// same display task. If UpdateDisplayTaskForTask is working properly, this
 	// test should never be flaky. If it is, that's a sign that it's not
 	// concurrency safe.
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(task.Collection, event.EventCollection))
 	defer func() {
@@ -5067,7 +5085,7 @@ func TestDisplayTaskUpdatesAreConcurrencySafe(t *testing.T) {
 	const numConcurrentUpdates = 3
 	errs := make(chan error, 1+numConcurrentUpdates)
 	var updatesDone sync.WaitGroup
-	for i := 0; i < numConcurrentUpdates; i++ {
+	for range numConcurrentUpdates {
 		updatesDone.Add(1)
 		go func() {
 			defer updatesDone.Done()
@@ -5132,8 +5150,7 @@ func TestDisplayTaskUpdatesAreConcurrencySafe(t *testing.T) {
 }
 
 func TestAbortedTaskDelayedRestart(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(ParserProjectCollection, task.Collection, task.OldCollection, host.Collection, build.Collection, VersionCollection))
 	task1 := task.Task{
@@ -5179,8 +5196,7 @@ func TestAbortedTaskDelayedRestart(t *testing.T) {
 }
 
 func TestDisplayTaskFailedExecTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(task.Collection))
@@ -5213,8 +5229,7 @@ func TestDisplayTaskFailedExecTasks(t *testing.T) {
 }
 
 func TestDisplayTaskFailedAndSucceededExecTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(task.Collection))
@@ -5248,8 +5263,7 @@ func TestDisplayTaskFailedAndSucceededExecTasks(t *testing.T) {
 }
 
 func TestMarkEndDeactivatesPrevious(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(task.Collection, ProjectRefCollection, distro.Collection, build.Collection, VersionCollection, ParserProjectCollection, host.Collection))
@@ -5418,8 +5432,7 @@ buildvariants:
 }
 
 func TestEvalBisectStepback(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -5860,8 +5873,7 @@ func TestEvalBisectStepback(t *testing.T) {
 }
 
 func TestEvalLinearStepback(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(task.Collection, ProjectRefCollection, ParserProjectCollection, distro.Collection, build.Collection, VersionCollection))
@@ -6047,8 +6059,7 @@ tasks:
 }
 
 func TestEvalStepbackTaskGroup(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert.NoError(t, db.ClearCollections(task.Collection, ParserProjectCollection, VersionCollection, build.Collection, event.EventCollection, ProjectRefCollection))
 	v1 := Version{
@@ -6223,8 +6234,7 @@ func TestEvalStepbackTaskGroup(t *testing.T) {
 }
 
 func TestUpdateBlockedDependencies(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -6388,8 +6398,7 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 }
 
 func TestUpdateUnblockedDependencies(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection))
@@ -6560,8 +6569,7 @@ func TestHandleEndTaskForGithubMergeQueueTask(t *testing.T) {
 		require.NoError(t, db.ClearCollections(task.Collection, VersionCollection))
 	}()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	v1 := Version{
 		Id:        "version1",

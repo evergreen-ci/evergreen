@@ -2,10 +2,15 @@ package operations
 
 import (
 	"context"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -20,6 +25,35 @@ const testApiServer = "http://example.invalid"
 
 func TestCliHttpTestSuite(t *testing.T) {
 	suite.Run(t, new(CliHttpTestSuite))
+}
+
+func TestNewAPIErrorTooManyRequestsShouldReportRateLimitInfo(t *testing.T) {
+	header := http.Header{}
+	header.Set(evergreen.RateLimitLimitHeader, "5000")
+	header.Set(evergreen.RetryAfterHeader, "7")
+	resp := &http.Response{
+		StatusCode: http.StatusTooManyRequests,
+		Status:     "429 Too Many Requests",
+		Header:     header,
+		Body:       io.NopCloser(strings.NewReader(`{"status":429,"message":"rate limit exceeded"}`)),
+	}
+
+	err := NewAPIError(resp)
+	assert.Contains(t, err.Error(), "rate limit exceeded")
+	assert.Contains(t, err.Error(), "5000")
+	assert.Contains(t, err.Error(), "7")
+}
+
+func TestNewAPIErrorNonRateLimitStatusShouldReportResponseBody(t *testing.T) {
+	resp := &http.Response{
+		StatusCode: http.StatusNotFound,
+		Status:     "404 Not Found",
+		Header:     http.Header{},
+		Body:       io.NopCloser(strings.NewReader("no such project")),
+	}
+
+	err := NewAPIError(resp)
+	assert.Contains(t, err.Error(), "no such project")
 }
 
 // sets up the global settings file

@@ -79,7 +79,7 @@ func UpdateProjectAliases(ctx context.Context, projectId string, aliases []restM
 		return errors.Wrap(err, "upserting project aliases")
 	}
 	for _, aliasId := range aliasesToDelete {
-		catcher.Wrapf(model.RemoveProjectAlias(ctx, aliasId), "deleting project alias '%s'", aliasId)
+		catcher.Wrapf(model.RemoveProjectAlias(ctx, projectId, aliasId), "deleting project alias '%s'", aliasId)
 	}
 	return catcher.Resolve()
 }
@@ -112,7 +112,7 @@ func updateAliasesForSection(ctx context.Context, projectId string, updatedAlias
 		}
 		id := originalAlias.ID.Hex()
 		if _, ok := aliasesIdMap[id]; !ok {
-			catcher.Add(model.RemoveProjectAlias(ctx, id))
+			catcher.Add(model.RemoveProjectAlias(ctx, projectId, id))
 			modified = true
 		}
 	}

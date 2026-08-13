@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -18,8 +17,7 @@ import (
 )
 
 func TestDBTaskQueuePersister(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	var distroIds []string
 	var displayNames []string

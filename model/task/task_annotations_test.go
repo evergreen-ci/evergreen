@@ -1,7 +1,6 @@
 package task
 
 import (
-	"context"
 	"testing"
 
 	"github.com/evergreen-ci/birch"
@@ -13,8 +12,7 @@ import (
 )
 
 func TestAddIssueToAnnotation(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert.NoError(t, db.ClearCollections(annotations.Collection, Collection))
 	task := Task{Id: "t1"}
@@ -50,8 +48,7 @@ func TestAddIssueToAnnotation(t *testing.T) {
 }
 
 func TestRemoveIssueFromAnnotation(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	issue1 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &annotations.Source{Author: "annie.black"}}
 	issue2 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &annotations.Source{Author: "not.annie.black"}}
@@ -88,8 +85,7 @@ func TestRemoveIssueFromAnnotation(t *testing.T) {
 }
 
 func TestMoveIssueToSuspectedIssue(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	issue1 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &annotations.Source{Author: "this will be overridden"}}
 	issue2 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-2345", Source: &annotations.Source{Author: "evergreen user"}}
@@ -132,8 +128,7 @@ func TestMoveIssueToSuspectedIssue(t *testing.T) {
 }
 
 func TestMoveSuspectedIssueToIssue(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	issue1 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &annotations.Source{Author: "this will be overridden"}}
 	issue2 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-2345", Source: &annotations.Source{Author: "evergreen user"}}
@@ -162,8 +157,7 @@ func TestMoveSuspectedIssueToIssue(t *testing.T) {
 }
 
 func TestPatchIssue(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert.NoError(t, db.ClearCollections(annotations.Collection, Collection))
 	t1 := Task{Id: "t1"}

@@ -359,7 +359,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			}
 		}
 	}
-	if err = j.verifyValidAlias(ctx, pref.Id, patchDoc.PatchedProjectConfig); err != nil {
+	if err = j.verifyValidAliases(ctx, pref.Id, patchDoc.AliasesToResolve(), patchDoc.PatchedProjectConfig); err != nil {
 		j.gitHubError = invalidAlias
 		return err
 	}
@@ -375,6 +375,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	// If all variants were filtered out, send success messages and don't create the patch.
 	if len(patchDoc.VariantsTasks) == 0 && len(ignoredVariants) > 0 {
 		j.sendGitHubSuccessMessages(ctx, patchDoc, pref)
+		j.sendGitHubSuccessMessageForIgnoredVariants(ctx, patchDoc, ignoredVariants)
 		return nil
 	}
 
@@ -656,7 +657,7 @@ func (j *patchIntentProcessor) buildTasksAndVariants(ctx context.Context, patchD
 	}
 
 	if len(patchDoc.VariantsTasks) == 0 {
-		project.BuildProjectTVPairs(ctx, patchDoc, j.intent.GetAlias())
+		project.BuildProjectTVPairs(ctx, patchDoc, patchDoc.AliasesToResolve())
 	}
 	return nil
 }
@@ -1377,9 +1378,8 @@ func fetchTriggerVersionInfo(ctx context.Context, patchDoc *patch.Patch) (*model
 	return v, project, pp, nil
 }
 
-func (j *patchIntentProcessor) verifyValidAlias(ctx context.Context, projectId string, configStr string) error {
-	alias := j.intent.GetAlias()
-	if alias == "" {
+func (j *patchIntentProcessor) verifyValidAliases(ctx context.Context, projectId string, aliases []string, configStr string) error {
+	if len(aliases) == 0 {
 		return nil
 	}
 	var projectConfig *model.ProjectConfig
@@ -1390,14 +1390,16 @@ func (j *patchIntentProcessor) verifyValidAlias(ctx context.Context, projectId s
 			return errors.Wrap(err, "creating project config")
 		}
 	}
-	aliases, err := model.FindAliasInProjectRepoOrProjectConfig(ctx, projectId, alias, projectConfig)
-	if err != nil {
-		return errors.Wrapf(err, "retrieving aliases for project '%s'", projectId)
+	for _, alias := range aliases {
+		found, err := model.FindAliasInProjectRepoOrProjectConfig(ctx, projectId, alias, projectConfig)
+		if err != nil {
+			return errors.Wrapf(err, "retrieving aliases for project '%s'", projectId)
+		}
+		if len(found) == 0 {
+			return errors.Errorf("alias '%s' could not be found on project '%s'", alias, projectId)
+		}
 	}
-	if len(aliases) > 0 {
-		return nil
-	}
-	return errors.Errorf("alias '%s' could not be found on project '%s'", alias, projectId)
+	return nil
 }
 
 func findEvergreenUserForPR(ctx context.Context, githubUID int) (*user.DBUser, error) {
@@ -1451,11 +1453,17 @@ func findEvergreenUserForGithubMergeGroup(ctx context.Context) (*user.DBUser, er
 }
 
 func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *patch.Patch, requiredOrganization, githubUser string) (bool, error) {
-	// GitHub Dependabot patches should be automatically authorized.
-	if githubUser == githubDependabotUser || githubUser == githubActionsUser {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	// Dependabot and GitHub Actions patches are automatically authorized, but
+	// only for same-repo PRs to ensure we never auto-authorize code originating from an external fork.
+	isSameRepoPR := strings.EqualFold(patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.BaseOwner) &&
+		strings.EqualFold(patchDoc.GithubPatchData.HeadRepo, patchDoc.GithubPatchData.BaseRepo)
+	if isSameRepoPR && (githubUser == githubDependabotUser || githubUser == githubActionsUser) {
 		grip.Info(ctx, message.Fields{
 			"job":       j.ID(),
-			"message":   fmt.Sprintf("authorizing patch from special user '%s'", githubDependabotUser),
+			"message":   fmt.Sprintf("authorizing patch from special user '%s'", githubUser),
 			"source":    "patch intents",
 			"base_repo": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
 			"head_repo": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
