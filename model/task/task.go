@@ -2100,16 +2100,21 @@ func DeactivateDependencies(ctx context.Context, tasks []string, caller string) 
 	return errors.Wrap(deactivateDependencies(ctx, tasksToUpdate, taskIDsToUpdate, caller), "marking dependencies deactivated")
 }
 
-// MarkEnd handles the Task updates associated with ending a task. If the task's start time is zero
-// at this time, it will set it to the finish time minus the timeout time.
+// MarkEnd handles the Task updates associated with ending a task. If the task
+// never reported that it started, its start time is estimated.
 func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimodels.TaskEndDetail) error {
-	// if there is no start time set, either set it to the create time
-	// or set 2 hours previous to the finish time.
 	if utility.IsZeroTime(t.StartTime) {
 		timedOutStart := finishTime.Add(-2 * time.Hour)
-		t.StartTime = timedOutStart
-		if timedOutStart.Before(t.IngestTime) {
+		if !utility.IsZeroTime(t.DispatchTime) {
+			t.StartTime = t.DispatchTime
+		} else if timedOutStart.Before(t.IngestTime) {
 			t.StartTime = t.IngestTime
+		} else {
+			// If the task was never dispatched and the ingest time is a long
+			// time ago (e.g. restarting a really old task), set the start time
+			// to 2 hours ago. This is an arbitrary guess, but that's preferable
+			// to having a really long task duration.
+			t.StartTime = timedOutStart
 		}
 	}
 
