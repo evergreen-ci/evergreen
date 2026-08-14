@@ -634,6 +634,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	projectInfo.IntermediateProject.Init(v.Id, v.CreateTime)
 	if projectInfo.Config != nil {
 		projectInfo.Config.Id = v.Id
+		projectInfo.Config.Requester = v.Requester
 	}
 	v.Ignored = ignore
 
@@ -743,9 +744,7 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		v.CreateTime = createTime
 	} else if metadata.IsAdHoc {
 		v.Id = mgobson.NewObjectId().Hex()
-		if metadata.PeriodicBuildID != "" {
-			v.Requester = evergreen.AdHocRequester
-		}
+		v.Requester = evergreen.AdHocRequester
 		v.CreateTime = time.Now()
 		if metadata.Message != "" {
 			v.Message = metadata.Message

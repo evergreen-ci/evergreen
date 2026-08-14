@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/anser/bsonutil"
@@ -18,6 +19,7 @@ var (
 	ProjectConfigIdKey         = bsonutil.MustHaveTag(ProjectConfig{}, "Id")
 	ProjectConfigProjectKey    = bsonutil.MustHaveTag(ProjectConfig{}, "Project")
 	ProjectConfigCreateTimeKey = bsonutil.MustHaveTag(ProjectConfig{}, "CreateTime")
+	ProjectConfigRequesterKey  = bsonutil.MustHaveTag(ProjectConfig{}, "Requester")
 )
 
 // FindProjectConfigForProjectOrVersion returns a project config by id, or the most recent project config if id is empty
@@ -29,9 +31,12 @@ func FindProjectConfigForProjectOrVersion(ctx context.Context, projectId, id str
 }
 
 // FindLastKnownGoodProjectConfig retrieves the most recent project config for the given project.
+// Patch-derived configs are excluded so that an unreviewed patch's YAML cannot become the project-wide
+// config. Configs predating the requester field remain eligible and are superseded by the next mainline commit.
 func FindLastKnownGoodProjectConfig(ctx context.Context, projectId string) (*ProjectConfig, error) {
 	q := bson.M{
-		ProjectConfigProjectKey: projectId,
+		ProjectConfigProjectKey:   projectId,
+		ProjectConfigRequesterKey: bson.M{"$nin": evergreen.PatchRequesters},
 	}
 	pc, err := ProjectConfigFindOne(ctx, db.Query(q).Sort([]string{"-" + ProjectConfigCreateTimeKey}))
 	if err != nil {
