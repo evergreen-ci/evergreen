@@ -964,7 +964,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 		model.ProjectPageTaskOwnershipAndFoliageSection: func(t *testing.T, ref model.ProjectRef) {
 			apiProjectRef := restModel.APIProjectRef{
 				TaskOwnership: restModel.APITaskOwnershipSettings{
-					DefaultMothraTeam:                 utility.ToStringPtr("my-team"),
+					DefaultMothraTeam:                  utility.ToStringPtr("my-team"),
 					DefaultMothraTeamForBreakingCommit: utility.ToStringPtr("breaking-team"),
 				},
 			}
