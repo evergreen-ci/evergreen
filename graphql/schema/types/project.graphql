@@ -157,6 +157,11 @@ input TestSelectionSettingsInput {
   defaultEnabled: Boolean
 }
 
+input TaskOwnershipSettingsInput {
+  defaultMothraTeam: String
+  defaultMothraTeamForBreakingCommit: String
+}
+
 input WorkstationSetupCommandInput {
   command: String!
   directory: String
@@ -284,6 +289,7 @@ type Project {
   stepbackDisabled: Boolean
   stepbackBisect: Boolean
   taskAnnotationSettings: TaskAnnotationSettings!
+  taskOwnership: TaskOwnershipSettings
   testSelection: TestSelectionSettings
   triggers: [TriggerAlias!]
   versionControlEnabled: Boolean
@@ -338,6 +344,11 @@ type GithubAppAuth {
 type TestSelectionSettings {
   allowed: Boolean
   defaultEnabled: Boolean
+}
+
+type TaskOwnershipSettings {
+  defaultMothraTeam: String
+  defaultMothraTeamForBreakingCommit: String
 }
 
 """

@@ -145,6 +145,9 @@ type ProjectRef struct {
 	// Test selection settings
 	TestSelection TestSelectionSettings `bson:"test_selection,omitempty" json:"test_selection,omitzero" yaml:"test_selection,omitempty"`
 
+	// TaskOwnership contains default team ownership settings for tasks. This is related to Foliage Web Services (FWS).
+	TaskOwnership TaskOwnershipSettings `bson:"task_ownership,omitempty" json:"task_ownership,omitzero" yaml:"task_ownership,omitempty"`
+
 	// RunEveryMainlineCommit indicates that the project should activate the versions for all mainline commits.
 	// This goes against Evergreen's optimization of only activating the latest commit in a series of mainline commits.
 	// This is used for projects that use tasks on mainline commits to trigger downstream processes, like deployments.
@@ -493,6 +496,16 @@ type TestSelectionSettings struct {
 	DefaultEnabled *bool `bson:"default_enabled,omitempty" json:"default_enabled,omitzero" yaml:"default_enabled,omitempty"`
 }
 
+// TaskOwnershipSettings contains default team ownership settings for tasks in
+// this project.
+type TaskOwnershipSettings struct {
+	// DefaultMothraTeam is the default Mothra team for tasks in this project.
+	DefaultMothraTeam string `bson:"default_mothra_team,omitempty" json:"default_mothra_team,omitempty" yaml:"default_mothra_team,omitempty"`
+	// DefaultMothraTeamForBreakingCommit is the default Mothra team for
+	// breaking commit tasks in this project.
+	DefaultMothraTeamForBreakingCommit string `bson:"default_mothra_team_for_breaking_commit,omitempty" json:"default_mothra_team_for_breaking_commit,omitempty" yaml:"default_mothra_team_for_breaking_commit,omitempty"`
+}
+
 var (
 	// bson fields for the ProjectRef struct
 	ProjectRefIdKey                                 = bsonutil.MustHaveTag(ProjectRef{}, "Id")
@@ -548,6 +561,7 @@ var (
 	projectRefLastAutoRestartedTaskAtKey            = bsonutil.MustHaveTag(ProjectRef{}, "LastAutoRestartedTaskAt")
 	projectRefNumAutoRestartedTasksKey              = bsonutil.MustHaveTag(ProjectRef{}, "NumAutoRestartedTasks")
 	projectRefTestSelectionKey                      = bsonutil.MustHaveTag(ProjectRef{}, "TestSelection")
+	projectRefTaskOwnershipKey                      = bsonutil.MustHaveTag(ProjectRef{}, "TaskOwnership")
 
 	commitQueueEnabledKey       = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	triggerDefinitionProjectKey = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
@@ -682,23 +696,24 @@ type ProjectPageSection string
 
 // These values must remain consistent with the GraphQL enum ProjectSettingsSection.
 const (
-	ProjectPageGeneralSection           = "GENERAL"
-	ProjectPageAccessSection            = "ACCESS"
-	ProjectPageVariablesSection         = "VARIABLES"
-	ProjectPageNotificationsSection     = "NOTIFICATIONS"
-	ProjectPagePatchAliasSection        = "PATCH_ALIASES"
-	ProjectPageWorkstationsSection      = "WORKSTATION"
-	ProjectPageTriggersSection          = "TRIGGERS"
-	ProjectPagePeriodicBuildsSection    = "PERIODIC_BUILDS"
-	ProjectPagePluginSection            = "PLUGINS"
-	ProjectPageViewsAndFiltersSection   = "VIEWS_AND_FILTERS"
-	ProjectPageTestSelectionSection     = "TEST_SELECTION"
-	ProjectPageGithubAppSettingsSection = "GITHUB_APP_SETTINGS"
-	ProjectPageGithubPermissionsSection = "GITHUB_PERMISSIONS"
-	ProjectPagePullRequestsSection      = "PULL_REQUESTS"
-	ProjectPageGitTagsSection           = "GIT_TAGS"
-	ProjectPageMergeQueueSection        = "MERGE_QUEUE"
-	ProjectPageCommitChecksSection      = "COMMIT_CHECKS"
+	ProjectPageGeneralSection                 = "GENERAL"
+	ProjectPageAccessSection                  = "ACCESS"
+	ProjectPageVariablesSection               = "VARIABLES"
+	ProjectPageNotificationsSection           = "NOTIFICATIONS"
+	ProjectPagePatchAliasSection              = "PATCH_ALIASES"
+	ProjectPageWorkstationsSection            = "WORKSTATION"
+	ProjectPageTriggersSection                = "TRIGGERS"
+	ProjectPagePeriodicBuildsSection          = "PERIODIC_BUILDS"
+	ProjectPagePluginSection                  = "PLUGINS"
+	ProjectPageViewsAndFiltersSection         = "VIEWS_AND_FILTERS"
+	ProjectPageTestSelectionSection           = "TEST_SELECTION"
+	ProjectPageTaskOwnershipAndFoliageSection = "TASK_OWNERSHIP_AND_FOLIAGE"
+	ProjectPageGithubAppSettingsSection       = "GITHUB_APP_SETTINGS"
+	ProjectPageGithubPermissionsSection       = "GITHUB_PERMISSIONS"
+	ProjectPagePullRequestsSection            = "PULL_REQUESTS"
+	ProjectPageGitTagsSection                 = "GIT_TAGS"
+	ProjectPageMergeQueueSection              = "MERGE_QUEUE"
+	ProjectPageCommitChecksSection            = "COMMIT_CHECKS"
 )
 
 const (
@@ -2474,6 +2489,14 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 			bson.M{
 				"$set": bson.M{
 					projectRefTestSelectionKey: p.TestSelection,
+				},
+			})
+	case ProjectPageTaskOwnershipAndFoliageSection:
+		err = db.Update(ctx, coll,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{
+					projectRefTaskOwnershipKey: p.TaskOwnership,
 				},
 			})
 	case ProjectPageGithubAppSettingsSection:

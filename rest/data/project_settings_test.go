@@ -961,6 +961,26 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.Equal(t, true, utility.FromBoolPtr(projectFromDB.TestSelection.Allowed))
 			assert.Equal(t, false, utility.FromBoolPtr(projectFromDB.TestSelection.DefaultEnabled))
 		},
+		model.ProjectPageTaskOwnershipAndFoliageSection: func(t *testing.T, ref model.ProjectRef) {
+			apiProjectRef := restModel.APIProjectRef{
+				TaskOwnership: restModel.APITaskOwnershipSettings{
+					DefaultMothraTeam:                 utility.ToStringPtr("my-team"),
+					DefaultMothraTeamForBreakingCommit: utility.ToStringPtr("breaking-team"),
+				},
+			}
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageTaskOwnershipAndFoliageSection, false, "me")
+			assert.NoError(t, err)
+			assert.NotNil(t, settings)
+
+			projectFromDB, err := model.FindBranchProjectRef(ctx, ref.Id)
+			assert.NoError(t, err)
+			assert.NotNil(t, projectFromDB)
+			assert.Equal(t, "my-team", projectFromDB.TaskOwnership.DefaultMothraTeam)
+			assert.Equal(t, "breaking-team", projectFromDB.TaskOwnership.DefaultMothraTeamForBreakingCommit)
+		},
 		model.ProjectPagePullRequestsSection: func(t *testing.T, ref model.ProjectRef) {
 			// Start from a clean state for the PR flags.
 			ref.PRTestingEnabled = nil

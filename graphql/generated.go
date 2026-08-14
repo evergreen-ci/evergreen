@@ -1347,6 +1347,7 @@ type ComplexityRoot struct {
 		StepbackBisect                     func(childComplexity int) int
 		StepbackDisabled                   func(childComplexity int) int
 		TaskAnnotationSettings             func(childComplexity int) int
+		TaskOwnership                      func(childComplexity int) int
 		TestSelection                      func(childComplexity int) int
 		Triggers                           func(childComplexity int) int
 		VersionControlEnabled              func(childComplexity int) int
@@ -1610,6 +1611,7 @@ type ComplexityRoot struct {
 		StepbackBisect                     func(childComplexity int) int
 		StepbackDisabled                   func(childComplexity int) int
 		TaskAnnotationSettings             func(childComplexity int) int
+		TaskOwnership                      func(childComplexity int) int
 		TestSelection                      func(childComplexity int) int
 		Triggers                           func(childComplexity int) int
 		VersionControlEnabled              func(childComplexity int) int
@@ -1624,6 +1626,11 @@ type ComplexityRoot struct {
 		ProjectRef            func(childComplexity int) int
 		Subscriptions         func(childComplexity int) int
 		Vars                  func(childComplexity int) int
+	}
+
+	RepoTaskOwnershipSettings struct {
+		DefaultMothraTeam                  func(childComplexity int) int
+		DefaultMothraTeamForBreakingCommit func(childComplexity int) int
 	}
 
 	RepoTestSelectionSettings struct {
@@ -2073,6 +2080,11 @@ type ComplexityRoot struct {
 		JiraProject    func(childComplexity int) int
 		Messages       func(childComplexity int) int
 		TeamName       func(childComplexity int) int
+	}
+
+	TaskOwnershipSettings struct {
+		DefaultMothraTeam                  func(childComplexity int) int
+		DefaultMothraTeamForBreakingCommit func(childComplexity int) int
 	}
 
 	TaskQuarantineEntry struct {
@@ -8290,6 +8302,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Project.TaskAnnotationSettings(childComplexity), true
+	case "Project.taskOwnership":
+		if e.complexity.Project.TaskOwnership == nil {
+			break
+		}
+
+		return e.complexity.Project.TaskOwnership(childComplexity), true
 	case "Project.testSelection":
 		if e.complexity.Project.TestSelection == nil {
 			break
@@ -9666,6 +9684,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RepoRef.TaskAnnotationSettings(childComplexity), true
+	case "RepoRef.taskOwnership":
+		if e.complexity.RepoRef.TaskOwnership == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.TaskOwnership(childComplexity), true
 	case "RepoRef.testSelection":
 		if e.complexity.RepoRef.TestSelection == nil {
 			break
@@ -9733,6 +9757,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RepoSettings.Vars(childComplexity), true
+
+	case "RepoTaskOwnershipSettings.defaultMothraTeam":
+		if e.complexity.RepoTaskOwnershipSettings.DefaultMothraTeam == nil {
+			break
+		}
+
+		return e.complexity.RepoTaskOwnershipSettings.DefaultMothraTeam(childComplexity), true
+	case "RepoTaskOwnershipSettings.defaultMothraTeamForBreakingCommit":
+		if e.complexity.RepoTaskOwnershipSettings.DefaultMothraTeamForBreakingCommit == nil {
+			break
+		}
+
+		return e.complexity.RepoTaskOwnershipSettings.DefaultMothraTeamForBreakingCommit(childComplexity), true
 
 	case "RepoTestSelectionSettings.allowed":
 		if e.complexity.RepoTestSelectionSettings.Allowed == nil {
@@ -11576,6 +11613,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.TaskOwnerTeam.TeamName(childComplexity), true
 
+	case "TaskOwnershipSettings.defaultMothraTeam":
+		if e.complexity.TaskOwnershipSettings.DefaultMothraTeam == nil {
+			break
+		}
+
+		return e.complexity.TaskOwnershipSettings.DefaultMothraTeam(childComplexity), true
+	case "TaskOwnershipSettings.defaultMothraTeamForBreakingCommit":
+		if e.complexity.TaskOwnershipSettings.DefaultMothraTeamForBreakingCommit == nil {
+			break
+		}
+
+		return e.complexity.TaskOwnershipSettings.DefaultMothraTeamForBreakingCommit(childComplexity), true
+
 	case "TaskQuarantineEntry.taskName":
 		if e.complexity.TaskQuarantineEntry.TaskName == nil {
 			break
@@ -13372,6 +13422,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputTaskHistoryOpts,
 		ec.unmarshalInputTaskHostOverridesInput,
 		ec.unmarshalInputTaskLimitsConfigInput,
+		ec.unmarshalInputTaskOwnershipSettingsInput,
 		ec.unmarshalInputTaskPriority,
 		ec.unmarshalInputTaskSpecifierInput,
 		ec.unmarshalInputTestFilter,
@@ -29924,6 +29975,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(_ context.Cont
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "taskOwnership":
+				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "triggers":
@@ -30041,6 +30094,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_repo(_ context.Context,
 				return ec.fieldContext_RepoRef_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_RepoRef_taskAnnotationSettings(ctx, field)
+			case "taskOwnership":
+				return ec.fieldContext_RepoRef_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_RepoRef_testSelection(ctx, field)
 			case "triggers":
@@ -37451,6 +37506,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "taskOwnership":
+				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "triggers":
@@ -37600,6 +37657,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "taskOwnership":
+				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "triggers":
@@ -37749,6 +37808,8 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "taskOwnership":
+				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "triggers":
@@ -37898,6 +37959,8 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "taskOwnership":
+				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "triggers":
@@ -38215,6 +38278,8 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "taskOwnership":
+				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "triggers":
@@ -41423,6 +41488,8 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "taskOwnership":
+				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "triggers":
@@ -41689,6 +41756,8 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "taskOwnership":
+				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "triggers":
@@ -45067,6 +45136,8 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(_ context.Context
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "taskOwnership":
+				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "triggers":
@@ -48706,6 +48777,41 @@ func (ec *executionContext) fieldContext_Project_taskAnnotationSettings(_ contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_taskOwnership(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Project_taskOwnership,
+		func(ctx context.Context) (any, error) {
+			return obj.TaskOwnership, nil
+		},
+		nil,
+		ec.marshalOTaskOwnershipSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskOwnershipSettings,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Project_taskOwnership(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "defaultMothraTeam":
+				return ec.fieldContext_TaskOwnershipSettings_defaultMothraTeam(ctx, field)
+			case "defaultMothraTeamForBreakingCommit":
+				return ec.fieldContext_TaskOwnershipSettings_defaultMothraTeamForBreakingCommit(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TaskOwnershipSettings", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Project_testSelection(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -49769,6 +49875,8 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(_ conte
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "taskOwnership":
+				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "triggers":
@@ -51377,6 +51485,8 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(_ context.Co
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "taskOwnership":
+				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "triggers":
@@ -53193,6 +53303,8 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "taskOwnership":
+				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "triggers":
@@ -56821,6 +56933,41 @@ func (ec *executionContext) fieldContext_RepoRef_taskAnnotationSettings(_ contex
 	return fc, nil
 }
 
+func (ec *executionContext) _RepoRef_taskOwnership(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RepoRef_taskOwnership,
+		func(ctx context.Context) (any, error) {
+			return obj.TaskOwnership, nil
+		},
+		nil,
+		ec.marshalORepoTaskOwnershipSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskOwnershipSettings,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RepoRef_taskOwnership(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "defaultMothraTeam":
+				return ec.fieldContext_RepoTaskOwnershipSettings_defaultMothraTeam(ctx, field)
+			case "defaultMothraTeamForBreakingCommit":
+				return ec.fieldContext_RepoTaskOwnershipSettings_defaultMothraTeamForBreakingCommit(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RepoTaskOwnershipSettings", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RepoRef_testSelection(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -57236,6 +57383,8 @@ func (ec *executionContext) fieldContext_RepoSettings_projectRef(_ context.Conte
 				return ec.fieldContext_RepoRef_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_RepoRef_taskAnnotationSettings(ctx, field)
+			case "taskOwnership":
+				return ec.fieldContext_RepoRef_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_RepoRef_testSelection(ctx, field)
 			case "triggers":
@@ -57334,6 +57483,64 @@ func (ec *executionContext) fieldContext_RepoSettings_vars(_ context.Context, fi
 				return ec.fieldContext_ProjectVars_varsDescriptions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProjectVars", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RepoTaskOwnershipSettings_defaultMothraTeam(ctx context.Context, field graphql.CollectedField, obj *model.APITaskOwnershipSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RepoTaskOwnershipSettings_defaultMothraTeam,
+		func(ctx context.Context) (any, error) {
+			return obj.DefaultMothraTeam, nil
+		},
+		nil,
+		ec.marshalNString2ᚖstring,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RepoTaskOwnershipSettings_defaultMothraTeam(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoTaskOwnershipSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RepoTaskOwnershipSettings_defaultMothraTeamForBreakingCommit(ctx context.Context, field graphql.CollectedField, obj *model.APITaskOwnershipSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RepoTaskOwnershipSettings_defaultMothraTeamForBreakingCommit,
+		func(ctx context.Context) (any, error) {
+			return obj.DefaultMothraTeamForBreakingCommit, nil
+		},
+		nil,
+		ec.marshalNString2ᚖstring,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RepoTaskOwnershipSettings_defaultMothraTeamForBreakingCommit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoTaskOwnershipSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -66084,6 +66291,8 @@ func (ec *executionContext) fieldContext_Task_project(_ context.Context, field g
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "taskOwnership":
+				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "triggers":
@@ -69407,6 +69616,64 @@ func (ec *executionContext) _TaskOwnerTeam_jiraProject(ctx context.Context, fiel
 func (ec *executionContext) fieldContext_TaskOwnerTeam_jiraProject(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TaskOwnerTeam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskOwnershipSettings_defaultMothraTeam(ctx context.Context, field graphql.CollectedField, obj *model.APITaskOwnershipSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TaskOwnershipSettings_defaultMothraTeam,
+		func(ctx context.Context) (any, error) {
+			return obj.DefaultMothraTeam, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TaskOwnershipSettings_defaultMothraTeam(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskOwnershipSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskOwnershipSettings_defaultMothraTeamForBreakingCommit(ctx context.Context, field graphql.CollectedField, obj *model.APITaskOwnershipSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TaskOwnershipSettings_defaultMothraTeamForBreakingCommit,
+		func(ctx context.Context) (any, error) {
+			return obj.DefaultMothraTeamForBreakingCommit, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TaskOwnershipSettings_defaultMothraTeamForBreakingCommit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskOwnershipSettings",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -75403,6 +75670,8 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(_ context.Conte
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "taskOwnership":
+				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "triggers":
@@ -86358,7 +86627,7 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "debugSpawnHostsDisabled", "disabledStatsCache", "dispatchingDisabled", "waterfallDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "runEveryMainlineCommit", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "testSelection", "triggers", "versionControlEnabled", "workstationConfig"}
+	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "debugSpawnHostsDisabled", "disabledStatsCache", "dispatchingDisabled", "waterfallDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "runEveryMainlineCommit", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "taskOwnership", "testSelection", "triggers", "versionControlEnabled", "workstationConfig"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -86673,6 +86942,13 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.TaskAnnotationSettings = data
+		case "taskOwnership":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskOwnership"))
+			data, err := ec.unmarshalOTaskOwnershipSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskOwnershipSettings(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TaskOwnership = data
 		case "testSelection":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("testSelection"))
 			data, err := ec.unmarshalOTestSelectionSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestSelectionSettings(ctx, v)
@@ -87474,7 +87750,7 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "waterfallDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "runEveryMainlineCommit", "spawnHostScriptPath", "debugSpawnHostsDisabled", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "testSelection", "triggers", "versionControlEnabled", "workstationConfig"}
+	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "waterfallDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "runEveryMainlineCommit", "spawnHostScriptPath", "debugSpawnHostsDisabled", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "taskOwnership", "testSelection", "triggers", "versionControlEnabled", "workstationConfig"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -87761,6 +88037,13 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.TaskAnnotationSettings = data
+		case "taskOwnership":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskOwnership"))
+			data, err := ec.unmarshalOTaskOwnershipSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskOwnershipSettings(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TaskOwnership = data
 		case "testSelection":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("testSelection"))
 			data, err := ec.unmarshalOTestSelectionSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestSelectionSettings(ctx, v)
@@ -90070,6 +90353,40 @@ func (ec *executionContext) unmarshalInputTaskLimitsConfigInput(ctx context.Cont
 				return it, err
 			}
 			it.MaxScheduledTasksPerDistro = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputTaskOwnershipSettingsInput(ctx context.Context, obj any) (model.APITaskOwnershipSettings, error) {
+	var it model.APITaskOwnershipSettings
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"defaultMothraTeam", "defaultMothraTeamForBreakingCommit"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "defaultMothraTeam":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("defaultMothraTeam"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DefaultMothraTeam = data
+		case "defaultMothraTeamForBreakingCommit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("defaultMothraTeamForBreakingCommit"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DefaultMothraTeamForBreakingCommit = data
 		}
 	}
 
@@ -101349,6 +101666,8 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "taskOwnership":
+			out.Values[i] = ec._Project_taskOwnership(ctx, field, obj)
 		case "testSelection":
 			out.Values[i] = ec._Project_testSelection(ctx, field, obj)
 		case "triggers":
@@ -103900,6 +104219,8 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "taskOwnership":
+			out.Values[i] = ec._RepoRef_taskOwnership(ctx, field, obj)
 		case "testSelection":
 			out.Values[i] = ec._RepoRef_testSelection(ctx, field, obj)
 		case "triggers":
@@ -104123,6 +104444,50 @@ func (ec *executionContext) _RepoSettings(ctx context.Context, sel ast.Selection
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var repoTaskOwnershipSettingsImplementors = []string{"RepoTaskOwnershipSettings"}
+
+func (ec *executionContext) _RepoTaskOwnershipSettings(ctx context.Context, sel ast.SelectionSet, obj *model.APITaskOwnershipSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, repoTaskOwnershipSettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RepoTaskOwnershipSettings")
+		case "defaultMothraTeam":
+			out.Values[i] = ec._RepoTaskOwnershipSettings_defaultMothraTeam(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "defaultMothraTeamForBreakingCommit":
+			out.Values[i] = ec._RepoTaskOwnershipSettings_defaultMothraTeamForBreakingCommit(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -108634,6 +108999,44 @@ func (ec *executionContext) _TaskOwnerTeam(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var taskOwnershipSettingsImplementors = []string{"TaskOwnershipSettings"}
+
+func (ec *executionContext) _TaskOwnershipSettings(ctx context.Context, sel ast.SelectionSet, obj *model.APITaskOwnershipSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, taskOwnershipSettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TaskOwnershipSettings")
+		case "defaultMothraTeam":
+			out.Values[i] = ec._TaskOwnershipSettings_defaultMothraTeam(ctx, field, obj)
+		case "defaultMothraTeamForBreakingCommit":
+			out.Values[i] = ec._TaskOwnershipSettings_defaultMothraTeamForBreakingCommit(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -121817,6 +122220,10 @@ func (ec *executionContext) unmarshalORepoSettingsInput2ᚖgithubᚗcomᚋevergr
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalORepoTaskOwnershipSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskOwnershipSettings(ctx context.Context, sel ast.SelectionSet, v model.APITaskOwnershipSettings) graphql.Marshaler {
+	return ec._RepoTaskOwnershipSettings(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalORepoTestSelectionSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestSelectionSettings(ctx context.Context, sel ast.SelectionSet, v model.APITestSelectionSettings) graphql.Marshaler {
 	return ec._RepoTestSelectionSettings(ctx, sel, &v)
 }
@@ -122563,6 +122970,15 @@ func (ec *executionContext) marshalOTaskOwnerTeam2ᚖgithubᚗcomᚋevergreenᚑ
 		return graphql.Null
 	}
 	return ec._TaskOwnerTeam(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOTaskOwnershipSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskOwnershipSettings(ctx context.Context, sel ast.SelectionSet, v model.APITaskOwnershipSettings) graphql.Marshaler {
+	return ec._TaskOwnershipSettings(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalOTaskOwnershipSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskOwnershipSettings(ctx context.Context, v any) (model.APITaskOwnershipSettings, error) {
+	res, err := ec.unmarshalInputTaskOwnershipSettingsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOTaskQuarantinedTestsSample2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtestresultᚐTaskTestResultsQuarantinedSampleᚄ(ctx context.Context, sel ast.SelectionSet, v []*testresult.TaskTestResultsQuarantinedSample) graphql.Marshaler {
