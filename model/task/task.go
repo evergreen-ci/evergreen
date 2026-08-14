@@ -2137,6 +2137,10 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 		} else if timedOutStart.Before(t.IngestTime) {
 			t.StartTime = t.IngestTime
 		} else {
+			// If the task was never dispatched and the ingest time is a long
+			// time ago (e.g. restarting a really old task), set the start time
+			// to 2 hours ago. This is an arbitrary guess, but that's preferable
+			// to having a really long task duration.
 			t.StartTime = timedOutStart
 		}
 	}
