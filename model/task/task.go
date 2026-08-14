@@ -1381,8 +1381,11 @@ func (t *Task) MarkFailed(ctx context.Context) error {
 	)
 }
 
-// EstimatedFinishTime returns the best available estimate of when a task that
-// is no longer reporting stopped running, given the current time.
+// EstimatedFinishTime returns the best available estimate of when a
+// task stopped running for an unhealthy/unresponsive task. Typically should
+// only be used for system failures where the task itself is not finishing
+// normally. For example, when a task monitoring job determines the task is
+// stuck well after the task already stopped running.
 func (t *Task) EstimatedFinishTime(now time.Time) time.Time {
 	if utility.IsZeroTime(t.LastHeartbeat) || t.LastHeartbeat.After(now) {
 		return now
