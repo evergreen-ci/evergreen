@@ -1969,6 +1969,38 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 	return results, count, nil
 }
 
+// GetQuarantinedTestsSkippedCountByVersion returns the total number of tests
+// skipped by TSS across the version's display tasks.
+func GetQuarantinedTestsSkippedCountByVersion(ctx context.Context, versionID string) (int, error) {
+	pipeline := []bson.M{
+		{"$match": bson.M{
+			"$and": []bson.M{
+				ByVersion(versionID),
+				{"$or": []bson.M{
+					{DisplayTaskIdKey: ""},
+					{DisplayOnlyKey: true},
+				}},
+			},
+		}},
+		{"$group": bson.M{
+			"_id":   nil,
+			"count": bson.M{"$sum": "$" + NumQuarantinedTestsSkippedKey},
+		}},
+	}
+
+	var result []struct {
+		Count int `bson:"count"`
+	}
+	if err := Aggregate(ctx, pipeline, &result); err != nil {
+		return 0, errors.Wrap(err, "aggregating TSS-skipped test count by version")
+	}
+	if len(result) == 0 {
+		return 0, nil
+	}
+
+	return result[0].Count, nil
+}
+
 // GetTaskStatusesByVersion gets all unique task display statuses for a specific version
 func GetTaskStatusesByVersion(ctx context.Context, versionID string) ([]string, error) {
 	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetTaskStatusesByVersion")})
