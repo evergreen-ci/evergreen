@@ -440,8 +440,9 @@ func PatchFile() cli.Command {
 				Usage: "path to a file for diff of the patch",
 			},
 			cli.StringFlag{
-				Name:  diffPatchIdFlagName,
-				Usage: "patch id to fetch the full diff (including modules) from",
+				Name: diffPatchIdFlagName,
+				Usage: "patch id to fetch the full diff (including modules) from; a mainline version ID " +
+					"may also be given, in which case the patch is created empty at that version's revision",
 			},
 			cli.BoolFlag{
 				Name:  allowEmptyFlagName,
@@ -543,15 +544,10 @@ func PatchFile() cli.Command {
 				diffData.fullPatch = string(fullPatch)
 				diffData.base = base
 			} else {
-				rp, err = comm.GetRawPatchWithModules(ctx, diffPatchId)
+				rp, err = resolveDiffSource(ctx, comm, diffPatchId, &diffData)
 				if err != nil {
-					return errors.Wrap(err, "getting raw patch with modules")
+					return err
 				}
-				if rp == nil {
-					return errors.Wrap(err, "patch not found")
-				}
-				diffData.fullPatch = rp.Patch.Diff
-				diffData.base = rp.Patch.Githash
 			}
 
 			if err = params.validateSubmission(ctx, &diffData); err != nil {
@@ -601,6 +597,37 @@ func PatchFile() cli.Command {
 			return params.displayPatch(ctx, ac, outputParams)
 		},
 	}
+}
+
+// resolveDiffSource populates diffData from the --diff-patchId: a patch ID contributes its raw
+// and module diffs, while a mainline version ID has no patch document, yielding an empty diff
+// based at that version's revision and a nil raw patch.
+func resolveDiffSource(ctx context.Context, comm client.Communicator, diffPatchId string, diffData *localDiff) (*restmodel.APIRawPatch, error) {
+	if !patch.IsValidId(diffPatchId) {
+		v, err := comm.GetVersion(ctx, diffPatchId)
+		if err != nil {
+			return nil, errors.Wrapf(err, "'%s' is not a patch ID, and getting it as a version failed", diffPatchId)
+		}
+		if v == nil {
+			return nil, errors.Errorf("'%s' is neither a patch ID nor an existing version ID", diffPatchId)
+		}
+		diffData.base = utility.FromStringPtr(v.Revision)
+		if diffData.base == "" {
+			return nil, errors.Errorf("version '%s' has no revision to use as a patch base", diffPatchId)
+		}
+		return nil, nil
+	}
+
+	rp, err := comm.GetRawPatchWithModules(ctx, diffPatchId)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting raw patch with modules")
+	}
+	if rp == nil {
+		return nil, errors.Errorf("patch '%s' not found", diffPatchId)
+	}
+	diffData.fullPatch = rp.Patch.Diff
+	diffData.base = rp.Patch.Githash
+	return rp, nil
 }
 
 // getLocalModuleIncludes reads and saves files module includes from the local project config.
