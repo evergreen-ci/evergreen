@@ -1627,7 +1627,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		"runner":    "addNewBuilds",
 	})
 	numTasksModified := numEstimatedActivatedGeneratedTasks + len(newActivatedTaskIds)
-	if err = task.UpdateSchedulingLimit(ctx, creationInfo.Version.AuthorID, creationInfo.Version.Requester, numTasksModified, true); err != nil {
+	if err = task.UpdateSchedulingLimit(ctx, creationInfo.Version.AuthorID, creationInfo.Version.Requester, creationInfo.Version.Identifier, numTasksModified, true); err != nil {
 		return nil, nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.AuthorID)
 	}
 	grip.Error(ctx, message.WrapError(batchTimeCatcher.Resolve(), message.Fields{

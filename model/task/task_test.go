@@ -6017,3 +6017,193 @@ func TestSetS3ArtifactStorageCostsLifecycleMissLogging(t *testing.T) {
 		assert.Equal(t, []string{"mciuploads"}, loggedBuckets())
 	})
 }
+
+func TestUpdateSchedulingLimit(t *testing.T) {
+	ctx := t.Context()
+
+	const (
+		username         = "user"
+		serviceUsername  = "service_user"
+		generalLimit     = 100
+		boostedLimit     = 10000
+		boostedProject   = "boosted_project"
+		normalProject    = "normal_project"
+		boostedRepo      = "boosted_repo"
+		boostedRepoChild = "boosted_repo_child"
+		otherRepoChild   = "other_repo_child"
+	)
+
+	settings := evergreen.GetEnvironment().Settings()
+	originalTaskLimits := settings.TaskLimits
+	t.Cleanup(func() {
+		settings.TaskLimits = originalTaskLimits
+		assert.NoError(t, db.ClearCollections(user.Collection, projectRefCollectionName))
+	})
+
+	for tName, tCase := range map[string]struct {
+		caller                   string
+		onlyAPI                  bool
+		requester                string
+		projectID                string
+		numTasksModified         int
+		expectedErr              string
+		expectedGeneralCount     int
+		expectedPerProjectCounts map[string]int
+	}{
+		"BoostedProjectAllowsSchedulingAboveGeneralLimit": {
+			projectID:                boostedProject,
+			numTasksModified:         500,
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{boostedProject: 500},
+		},
+		"NormalProjectStillEnforcesGeneralLimit": {
+			projectID:                normalProject,
+			numTasksModified:         500,
+			expectedErr:              "cannot schedule 500 tasks, maximum hourly per-user limit is 100",
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{},
+		},
+		"NormalProjectUnderGeneralLimitUsesGeneralCounter": {
+			projectID:                normalProject,
+			numTasksModified:         50,
+			expectedGeneralCount:     50,
+			expectedPerProjectCounts: map[string]int{},
+		},
+		"ProjectTrackingBoostedRepoUsesRepoLimitAndRepoCounter": {
+			projectID:                boostedRepoChild,
+			numTasksModified:         500,
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{boostedRepo: 500},
+		},
+		"ProjectTrackingUnboostedRepoUsesGeneralLimit": {
+			projectID:                otherRepoChild,
+			numTasksModified:         500,
+			expectedErr:              "cannot schedule 500 tasks, maximum hourly per-user limit is 100",
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{},
+		},
+		"NonPatchRequesterIsExemptFromBoostedProjectTracking": {
+			requester:                evergreen.RepotrackerVersionRequester,
+			projectID:                boostedProject,
+			numTasksModified:         500,
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{},
+		},
+		"SystemActivatorIsExemptFromBoostedProjectTracking": {
+			caller:                   evergreen.BuildActivator,
+			projectID:                boostedProject,
+			numTasksModified:         500,
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{},
+		},
+		"ServiceUserIsExemptFromBoostedProjectTracking": {
+			caller:                   serviceUsername,
+			onlyAPI:                  true,
+			projectID:                boostedProject,
+			numTasksModified:         500,
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{},
+		},
+		"NoTasksModifiedIsANoop": {
+			projectID:                boostedProject,
+			numTasksModified:         0,
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{},
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(user.Collection, projectRefCollectionName))
+
+			settings.TaskLimits = evergreen.TaskLimitsConfig{
+				MaxHourlyPatchTasks: generalLimit,
+				HourlyPatchTaskOverrides: []evergreen.HourlyPatchTaskOverride{
+					{
+						ProjectOrRepoID:     boostedProject,
+						MaxHourlyPatchTasks: boostedLimit,
+					},
+					{
+						ProjectOrRepoID:     boostedRepo,
+						MaxHourlyPatchTasks: boostedLimit,
+					},
+				},
+			}
+
+			caller := tCase.caller
+			if caller == "" {
+				caller = username
+			}
+			u := &user.DBUser{
+				Id:      caller,
+				OnlyAPI: tCase.onlyAPI,
+			}
+			require.NoError(t, u.Insert(ctx))
+
+			_, err := evergreen.GetEnvironment().DB().Collection(projectRefCollectionName).InsertMany(ctx, []any{
+				bson.M{"_id": boostedProject},
+				bson.M{"_id": normalProject},
+				bson.M{"_id": boostedRepoChild, "repo_ref_id": boostedRepo},
+				bson.M{"_id": otherRepoChild, "repo_ref_id": "other_repo"},
+			})
+			require.NoError(t, err)
+
+			requester := tCase.requester
+			if requester == "" {
+				requester = evergreen.PatchVersionRequester
+			}
+
+			err = UpdateSchedulingLimit(ctx, caller, requester, tCase.projectID, tCase.numTasksModified, true)
+			if tCase.expectedErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tCase.expectedErr)
+			} else {
+				require.NoError(t, err)
+			}
+
+			dbUser, err := user.FindOneById(ctx, caller)
+			require.NoError(t, err)
+			require.NotNil(t, dbUser)
+			assert.Equal(t, tCase.expectedGeneralCount, dbUser.NumScheduledPatchTasks)
+			perProjectCounts := map[string]int{}
+			for _, usage := range dbUser.PerProjectSchedulingUsage {
+				perProjectCounts[usage.ProjectOrRepoID] = usage.NumScheduledPatchTasks
+			}
+			assert.Equal(t, tCase.expectedPerProjectCounts, perProjectCounts)
+		})
+	}
+}
+
+func TestGetRepoRefIDForProject(t *testing.T) {
+	ctx := t.Context()
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(projectRefCollectionName))
+	})
+	require.NoError(t, db.ClearCollections(projectRefCollectionName))
+
+	_, err := evergreen.GetEnvironment().DB().Collection(projectRefCollectionName).InsertMany(ctx, []any{
+		bson.M{"_id": "project_with_repo", "repo_ref_id": "repo"},
+		bson.M{"_id": "project_without_repo"},
+	})
+	require.NoError(t, err)
+
+	for tName, tCase := range map[string]struct {
+		projectID string
+		expected  string
+	}{
+		"ProjectTrackingARepoReturnsTheRepoRefID": {
+			projectID: "project_with_repo",
+			expected:  "repo",
+		},
+		"ProjectTrackingNoRepoReturnsEmpty": {
+			projectID: "project_without_repo",
+			expected:  "",
+		},
+		"NonexistentProjectReturnsEmpty": {
+			projectID: "nonexistent",
+			expected:  "",
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			assert.Equal(t, tCase.expected, getRepoRefIDForProject(ctx, tCase.projectID))
+		})
+	}
+}

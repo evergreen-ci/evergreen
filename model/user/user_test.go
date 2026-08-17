@@ -323,6 +323,150 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	s.Equal(110, u.NumScheduledPatchTasks)
 }
 
+func (s *UserTestSuite) TestCheckAndUpdatePerProjectSchedulingLimit() {
+	u := s.users[0]
+	const projectOrRepoID = "boosted_project"
+	maxScheduledTasks := 100
+
+	s.Require().NoError(u.CheckAndUpdatePerProjectSchedulingLimit(s.T().Context(), projectOrRepoID, maxScheduledTasks, 99, true))
+	u, err := FindOne(s.T().Context(), ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
+	s.Require().Len(u.PerProjectSchedulingUsage, 1)
+	s.Equal(projectOrRepoID, u.PerProjectSchedulingUsage[0].ProjectOrRepoID)
+	s.Equal(99, u.PerProjectSchedulingUsage[0].NumScheduledPatchTasks)
+	s.False(utility.IsZeroTime(u.PerProjectSchedulingUsage[0].LastScheduledTasksAt), "first activation in a project should start its hourly window")
+
+	err = u.CheckAndUpdatePerProjectSchedulingLimit(s.T().Context(), projectOrRepoID, maxScheduledTasks, 1, true)
+	s.Require().Error(err)
+	s.Contains(err.Error(), fmt.Sprintf("user '%s' has scheduled %d out of %d allowed tasks in the past hour", u.Id, 99, maxScheduledTasks))
+	u, err = FindOne(s.T().Context(), ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
+	s.Require().Len(u.PerProjectSchedulingUsage, 1)
+	s.Equal(99, u.PerProjectSchedulingUsage[0].NumScheduledPatchTasks)
+
+	s.Require().NoError(u.CheckAndUpdatePerProjectSchedulingLimit(s.T().Context(), projectOrRepoID, maxScheduledTasks, 1, false))
+	u, err = FindOne(s.T().Context(), ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
+	s.Require().Len(u.PerProjectSchedulingUsage, 1, "updating an existing project should not add another entry")
+	s.Equal(98, u.PerProjectSchedulingUsage[0].NumScheduledPatchTasks)
+
+	s.Require().NoError(u.CheckAndUpdatePerProjectSchedulingLimit(s.T().Context(), projectOrRepoID, maxScheduledTasks, 200, false))
+	u, err = FindOne(s.T().Context(), ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
+	s.Require().Len(u.PerProjectSchedulingUsage, 1)
+	s.Equal(0, u.PerProjectSchedulingUsage[0].NumScheduledPatchTasks, "per-project counter should not go negative")
+
+	err = u.CheckAndUpdatePerProjectSchedulingLimit(s.T().Context(), projectOrRepoID, maxScheduledTasks, 101, true)
+	s.Require().Error(err)
+	s.Contains(err.Error(), fmt.Sprintf("cannot schedule %d tasks, maximum hourly per-user limit is %d", 101, maxScheduledTasks))
+}
+
+func (s *UserTestSuite) TestPerProjectSchedulingLimitLeavesGeneralLimitUntouched() {
+	u := s.users[0]
+	perProjectMax := 30000
+	generalMax := 100
+
+	s.Require().NoError(u.CheckAndUpdatePerProjectSchedulingLimit(s.T().Context(), "boosted_project", perProjectMax, 20000, true))
+	u, err := FindOne(s.T().Context(), ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
+	s.Require().Len(u.PerProjectSchedulingUsage, 1)
+	s.Equal(20000, u.PerProjectSchedulingUsage[0].NumScheduledPatchTasks)
+	s.Equal(0, u.NumScheduledPatchTasks)
+
+	s.Require().NoError(u.CheckAndUpdateSchedulingLimit(s.T().Context(), generalMax, 99, true), "scheduling in a project with its own limit should not consume the general budget")
+	u, err = FindOne(s.T().Context(), ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
+	s.Equal(99, u.NumScheduledPatchTasks)
+	s.Require().Len(u.PerProjectSchedulingUsage, 1)
+	s.Equal(20000, u.PerProjectSchedulingUsage[0].NumScheduledPatchTasks, "scheduling against the general limit should not consume a project's budget")
+}
+
+func (s *UserTestSuite) TestPerProjectSchedulingLimitsAreIndependent() {
+	u := s.users[0]
+	maxScheduledTasks := 100
+
+	s.Require().NoError(u.CheckAndUpdatePerProjectSchedulingLimit(s.T().Context(), "project1", maxScheduledTasks, 99, true))
+	u, err := FindOne(s.T().Context(), ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
+
+	s.Require().NoError(u.CheckAndUpdatePerProjectSchedulingLimit(s.T().Context(), "project2", maxScheduledTasks, 99, true))
+	u, err = FindOne(s.T().Context(), ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
+	s.Require().Len(u.PerProjectSchedulingUsage, 2)
+	s.Equal(99, u.projectSchedulingUsage("project1").NumScheduledPatchTasks)
+	s.Equal(99, u.projectSchedulingUsage("project2").NumScheduledPatchTasks)
+
+	s.Require().Error(u.CheckAndUpdatePerProjectSchedulingLimit(s.T().Context(), "project1", maxScheduledTasks, 1, true))
+	u, err = FindOne(s.T().Context(), ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
+	s.Equal(99, u.projectSchedulingUsage("project2").NumScheduledPatchTasks, "breaching one project's limit should not affect another project")
+}
+
+func (s *UserTestSuite) TestPerProjectSchedulingLimitRestartsWindowIndependently() {
+	u := s.users[0]
+	maxScheduledTasks := 100
+	u.PerProjectSchedulingUsage = []ProjectSchedulingUsage{
+		{
+			ProjectOrRepoID:        "project1",
+			NumScheduledPatchTasks: 99,
+			LastScheduledTasksAt:   time.Now().Add(-time.Hour),
+		},
+		{
+			ProjectOrRepoID:        "project2",
+			NumScheduledPatchTasks: 99,
+			LastScheduledTasksAt:   time.Now().Add(-time.Minute),
+		},
+	}
+	update := bson.M{"$set": bson.M{PerProjectSchedulingUsageKey: u.PerProjectSchedulingUsage}}
+	s.Require().NoError(UpdateOne(s.T().Context(), bson.M{IdKey: u.Id}, update))
+
+	s.Require().NoError(u.CheckAndUpdatePerProjectSchedulingLimit(s.T().Context(), "project1", maxScheduledTasks, 5, true))
+	u, err := FindOne(s.T().Context(), ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
+	s.Equal(5, u.projectSchedulingUsage("project1").NumScheduledPatchTasks)
+	s.Equal(99, u.projectSchedulingUsage("project2").NumScheduledPatchTasks, "an expired window in one project should not restart another project's window")
+
+	s.Require().Error(u.CheckAndUpdatePerProjectSchedulingLimit(s.T().Context(), "project2", maxScheduledTasks, 5, true))
+}
+
+func (s *UserTestSuite) TestPerProjectSchedulingUsageIsOrderedByProjectOrRepoID() {
+	u := s.users[0]
+	maxScheduledTasks := 100
+
+	for _, projectOrRepoID := range []string{"project_c", "project_a", "project_b"} {
+		s.Require().NoError(u.CheckAndUpdatePerProjectSchedulingLimit(s.T().Context(), projectOrRepoID, maxScheduledTasks, 1, true))
+		dbUser, err := FindOne(s.T().Context(), ById(u.Id))
+		s.Require().NoError(err)
+		s.Require().NotNil(dbUser)
+		u = dbUser
+	}
+	s.Equal([]string{"project_a", "project_b", "project_c"}, projectOrRepoIDs(u))
+
+	s.Require().NoError(u.CheckAndUpdatePerProjectSchedulingLimit(s.T().Context(), "project_a", maxScheduledTasks, 1, true))
+	dbUser, err := FindOne(s.T().Context(), ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(dbUser)
+	s.Equal([]string{"project_a", "project_b", "project_c"}, projectOrRepoIDs(dbUser), "updating an existing project should not move it")
+}
+
+func projectOrRepoIDs(u *DBUser) []string {
+	ids := make([]string, 0, len(u.PerProjectSchedulingUsage))
+	for _, usage := range u.PerProjectSchedulingUsage {
+		ids = append(ids, usage.ProjectOrRepoID)
+	}
+	return ids
+}
+
 func (s *UserTestSuite) TestAddDuplicateKeyFails() {
 	err := s.users[1].AddPublicKey(s.T().Context(), "key1", "ssh-mock 67890")
 	s.Error(err)

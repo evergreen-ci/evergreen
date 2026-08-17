@@ -1,6 +1,7 @@
 package user
 
 import (
+	"cmp"
 	"context"
 	stderrors "errors"
 	"slices"
@@ -26,24 +27,32 @@ import (
 )
 
 type DBUser struct {
-	Id                     string                 `bson:"_id"`
-	FirstName              string                 `bson:"first_name"`
-	LastName               string                 `bson:"last_name"`
-	DispName               string                 `bson:"display_name"`
-	EmailAddress           string                 `bson:"email"`
-	PatchNumber            int                    `bson:"patch_number"`
-	PubKeys                []PubKey               `bson:"public_keys" json:"public_keys"`
-	CreatedAt              time.Time              `bson:"created_at"`
-	Settings               UserSettings           `bson:"settings"`
-	APIKey                 string                 `bson:"apikey"`
-	SystemRoles            []string               `bson:"roles"`
-	LoginCache             LoginCache             `bson:"login_cache,omitempty"`
-	FavoriteProjects       []string               `bson:"favorite_projects"`
-	OnlyAPI                bool                   `bson:"only_api,omitempty"`
-	ParsleyFilters         []parsley.Filter       `bson:"parsley_filters"`
+	Id               string           `bson:"_id"`
+	FirstName        string           `bson:"first_name"`
+	LastName         string           `bson:"last_name"`
+	DispName         string           `bson:"display_name"`
+	EmailAddress     string           `bson:"email"`
+	PatchNumber      int              `bson:"patch_number"`
+	PubKeys          []PubKey         `bson:"public_keys" json:"public_keys"`
+	CreatedAt        time.Time        `bson:"created_at"`
+	Settings         UserSettings     `bson:"settings"`
+	APIKey           string           `bson:"apikey"`
+	SystemRoles      []string         `bson:"roles"`
+	LoginCache       LoginCache       `bson:"login_cache,omitempty"`
+	FavoriteProjects []string         `bson:"favorite_projects"`
+	OnlyAPI          bool             `bson:"only_api,omitempty"`
+	ParsleyFilters   []parsley.Filter `bson:"parsley_filters"`
+	// NumScheduledPatchTasks tracks the number of patch tasks the user has
+	// scheduled within the last hour that count against the general patch
+	// scheduling limit. Some projects may have custom scheduling limits
+	// (see PerProjectSchedulingUsage).
 	NumScheduledPatchTasks int                    `bson:"num_scheduled_patch_tasks"`
 	LastScheduledTasksAt   time.Time              `bson:"last_scheduled_tasks_at"`
 	BetaFeatures           evergreen.BetaFeatures `bson:"beta_features"`
+
+	// PerProjectSchedulingUsage tracks hourly patch task scheduling usage for projects and repos
+	// that have their own scheduling limit, separately from NumScheduledPatchTasks.
+	PerProjectSchedulingUsage []ProjectSchedulingUsage `bson:"per_project_scheduling_usage,omitempty"`
 
 	// TokenExchangeState holds the information needed to complete an OAuth token exchange flow.
 	TokenExchangeState *TokenExchangeState `bson:"token_exchange_state,omitempty"`
@@ -54,6 +63,15 @@ type DBUser struct {
 
 func (u *DBUser) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(u) }
 func (u *DBUser) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, u) }
+
+// ProjectSchedulingUsage is a user's hourly patch task scheduling usage within a single project
+// or repo that has a custom scheduling limit.
+type ProjectSchedulingUsage struct {
+	// ProjectOrRepoID is the ID of the project or repo whose limit this usage counts against.
+	ProjectOrRepoID        string    `bson:"project_or_repo_id"`
+	NumScheduledPatchTasks int       `bson:"num_scheduled_patch_tasks"`
+	LastScheduledTasksAt   time.Time `bson:"last_scheduled_tasks_at"`
+}
 
 type TokenExchangeState struct {
 	// CodeVerifier is the verification code used to verify the authorization code.
@@ -229,38 +247,90 @@ func (u *DBUser) UpdateBetaFeatures(ctx context.Context, betaFeatures evergreen.
 }
 
 // CheckAndUpdateSchedulingLimit checks if the number of tasks to be activated by the user is allowed given
-// the global per-user hourly task scheduling limit, and updates relevant timestamp and counter info used
+// the general per-user hourly task scheduling limit, and updates relevant timestamp and counter info used
 // to track the user's hourly scheduling usage. The activated parameter being false signifies
 // the user is deactivating tasks, which frees up space in their scheduling limit.
 func (u *DBUser) CheckAndUpdateSchedulingLimit(ctx context.Context, maxScheduledTasks, numTasksModified int, activated bool) error {
-	var update bson.M
+	newCount, restartWindow, err := u.checkSchedulingLimit(u.LastScheduledTasksAt, u.NumScheduledPatchTasks, maxScheduledTasks, numTasksModified, activated)
+	if err != nil {
+		return err
+	}
+	update := bson.M{NumScheduledPatchTasksKey: newCount}
+	if restartWindow {
+		update[LastScheduledTasksAtKey] = time.Now()
+	}
+	return UpdateOne(ctx, bson.M{IdKey: u.Id}, bson.M{"$set": update})
+}
+
+// CheckAndUpdatePerProjectSchedulingLimit checks if the number of tasks to be
+// activated by the user in the given project or repo is allowed by that
+// project's own hourly task scheduling limit, and updates the user's scheduling
+// usage for it.
+func (u *DBUser) CheckAndUpdatePerProjectSchedulingLimit(ctx context.Context, projectOrRepoID string, maxScheduledTasks, numTasksModified int, activated bool) error {
+	usage := u.projectSchedulingUsage(projectOrRepoID)
+	newCount, restartWindow, err := u.checkSchedulingLimit(usage.LastScheduledTasksAt, usage.NumScheduledPatchTasks, maxScheduledTasks, numTasksModified, activated)
+	if err != nil {
+		return err
+	}
+	usage.NumScheduledPatchTasks = newCount
+	if restartWindow {
+		usage.LastScheduledTasksAt = time.Now()
+	}
+	return UpdateOne(ctx, bson.M{IdKey: u.Id}, bson.M{
+		"$set": bson.M{PerProjectSchedulingUsageKey: u.getUpdatedProjectSchedulingUsage(usage)},
+	})
+}
+
+// checkSchedulingLimit computes the new value of one of the user's hourly scheduling counters, given
+// their current usage within that counter's window, along with whether the hour-long window should
+// restart. It errors if activating the tasks would breach the limit.
+func (u *DBUser) checkSchedulingLimit(lastScheduledTasksAt time.Time, currentCount, maxScheduledTasks, numTasksModified int, activated bool) (newCount int, restartWindow bool, err error) {
 	if activated && numTasksModified > maxScheduledTasks {
-		return errors.Errorf("cannot schedule %d tasks, maximum hourly per-user limit is %d", numTasksModified, maxScheduledTasks)
+		return 0, false, errors.Errorf("cannot schedule %d tasks, maximum hourly per-user limit is %d", numTasksModified, maxScheduledTasks)
 	}
 	now := time.Now()
 	oneHourAgo := now.Add(-1 * time.Hour)
 	// If the last time the user scheduled patch tasks was within the hour, increment the number
-	// of activated tasks to the user's counter, erroring if the global limit is breached. If numTasksModified
+	// of activated tasks to the user's counter, erroring if the limit is breached. If numTasksModified
 	// is negative, the counter is decremented.
-	if u.LastScheduledTasksAt.After(oneHourAgo) {
-		update = bson.M{
-			"$set": bson.M{NumScheduledPatchTasksKey: getNewNumScheduledTasksCounter(u.NumScheduledPatchTasks, numTasksModified, activated)},
+	if lastScheduledTasksAt.After(oneHourAgo) {
+		if activated && (numTasksModified+currentCount) >= maxScheduledTasks {
+			minutesRemaining := 60 - int(now.Sub(lastScheduledTasksAt).Minutes())
+			return 0, false, errors.Errorf("user '%s' has scheduled %d out of %d allowed tasks in the past hour, limit refreshes in %d minutes", u.Id, currentCount, maxScheduledTasks, minutesRemaining)
 		}
-		if activated && (numTasksModified+u.NumScheduledPatchTasks) >= maxScheduledTasks {
-			minutesRemaining := 60 - int(now.Sub(u.LastScheduledTasksAt).Minutes())
-			return errors.Errorf("user '%s' has scheduled %d out of %d allowed tasks in the past hour, limit refreshes in %d minutes", u.Id, u.NumScheduledPatchTasks, maxScheduledTasks, minutesRemaining)
-		}
-	} else {
-		// Otherwise, if the user has not scheduled any patch tasks within the past hour, reset the last scheduled tasks
-		// timestamp to now, and reset the number of schedule tasks to the number of activated tasks passed in here.
-		update = bson.M{
-			"$set": bson.M{
-				NumScheduledPatchTasksKey: getNewNumScheduledTasksCounter(0, numTasksModified, activated),
-				LastScheduledTasksAtKey:   time.Now(),
-			},
+		return getNewNumScheduledTasksCounter(currentCount, numTasksModified, activated), false, nil
+	}
+	// Otherwise, if the user has not scheduled any patch tasks within the past hour, restart the
+	// window, counting only the tasks being modified now.
+	return getNewNumScheduledTasksCounter(0, numTasksModified, activated), true, nil
+}
+
+// projectSchedulingUsage returns the user's hourly scheduling usage for the given project or repo,
+// or a zero-valued usage if they have not scheduled anything in it within the current window.
+func (u *DBUser) projectSchedulingUsage(projectOrRepoID string) ProjectSchedulingUsage {
+	for _, usage := range u.PerProjectSchedulingUsage {
+		if usage.ProjectOrRepoID == projectOrRepoID {
+			return usage
 		}
 	}
-	return UpdateOne(ctx, bson.M{IdKey: u.Id}, update)
+	return ProjectSchedulingUsage{ProjectOrRepoID: projectOrRepoID}
+}
+
+// getUpdatedProjectSchedulingUsage returns the user's per-project scheduling
+// usage with the given project's new usage. It's sorted by project/repo ID so
+// that the stored order stays stable as usage is updated.
+func (u *DBUser) getUpdatedProjectSchedulingUsage(updatedProjectUsage ProjectSchedulingUsage) []ProjectSchedulingUsage {
+	updated := make([]ProjectSchedulingUsage, 0, len(u.PerProjectSchedulingUsage)+1)
+	for _, existing := range u.PerProjectSchedulingUsage {
+		if existing.ProjectOrRepoID != updatedProjectUsage.ProjectOrRepoID {
+			updated = append(updated, existing)
+		}
+	}
+	updated = append(updated, updatedProjectUsage)
+	slices.SortFunc(updated, func(a, b ProjectSchedulingUsage) int {
+		return cmp.Compare(a.ProjectOrRepoID, b.ProjectOrRepoID)
+	})
+	return updated
 }
 
 // getNewNumScheduledTasksCounter takes in the current number of tasks a user has scheduled within the

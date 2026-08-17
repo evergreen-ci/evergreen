@@ -147,9 +147,9 @@ func TestHourlyPatchTaskLimitForProject(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			limit, scopeID := tCase.config.HourlyPatchTaskLimitForProject(tCase.projectID, tCase.repoRefID)
+			limit, projectOrRepoID := tCase.config.HourlyPatchTaskLimitForProject(tCase.projectID, tCase.repoRefID)
 			assert.Equal(t, tCase.expectedLimit, limit)
-			assert.Equal(t, tCase.expectedProjectOrRepoID, scopeID)
+			assert.Equal(t, tCase.expectedProjectOrRepoID, projectOrRepoID)
 		})
 	}
 }
