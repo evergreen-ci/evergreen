@@ -1355,16 +1355,17 @@ type ComplexityRoot struct {
 	}
 
 	ProjectAlias struct {
-		Alias       func(childComplexity int) int
-		Description func(childComplexity int) int
-		GitTag      func(childComplexity int) int
-		ID          func(childComplexity int) int
-		Parameters  func(childComplexity int) int
-		RemotePath  func(childComplexity int) int
-		Task        func(childComplexity int) int
-		TaskTags    func(childComplexity int) int
-		Variant     func(childComplexity int) int
-		VariantTags func(childComplexity int) int
+		Alias          func(childComplexity int) int
+		Description    func(childComplexity int) int
+		GitTag         func(childComplexity int) int
+		ID             func(childComplexity int) int
+		Parameters     func(childComplexity int) int
+		RemotePath     func(childComplexity int) int
+		RequiredLabels func(childComplexity int) int
+		Task           func(childComplexity int) int
+		TaskTags       func(childComplexity int) int
+		Variant        func(childComplexity int) int
+		VariantTags    func(childComplexity int) int
 	}
 
 	ProjectBanner struct {
@@ -8357,6 +8358,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ProjectAlias.RemotePath(childComplexity), true
+	case "ProjectAlias.requiredLabels":
+		if e.complexity.ProjectAlias.RequiredLabels == nil {
+			break
+		}
+
+		return e.complexity.ProjectAlias.RequiredLabels(childComplexity), true
 	case "ProjectAlias.task":
 		if e.complexity.ProjectAlias.Task == nil {
 			break
@@ -49150,6 +49157,35 @@ func (ec *executionContext) fieldContext_ProjectAlias_parameters(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _ProjectAlias_requiredLabels(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectAlias) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProjectAlias_requiredLabels,
+		func(ctx context.Context) (any, error) {
+			return obj.RequiredLabels, nil
+		},
+		nil,
+		ec.marshalNString2ᚕᚖstringᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProjectAlias_requiredLabels(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectAlias",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ProjectBanner_text(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectBanner) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -49576,6 +49612,8 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_aliases(_ context.
 				return ec.fieldContext_ProjectAlias_variantTags(ctx, field)
 			case "parameters":
 				return ec.fieldContext_ProjectAlias_parameters(ctx, field)
+			case "requiredLabels":
+				return ec.fieldContext_ProjectAlias_requiredLabels(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProjectAlias", field.Name)
 		},
@@ -51171,6 +51209,8 @@ func (ec *executionContext) fieldContext_ProjectSettings_aliases(_ context.Conte
 				return ec.fieldContext_ProjectAlias_variantTags(ctx, field)
 			case "parameters":
 				return ec.fieldContext_ProjectAlias_parameters(ctx, field)
+			case "requiredLabels":
+				return ec.fieldContext_ProjectAlias_requiredLabels(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProjectAlias", field.Name)
 		},
@@ -57050,6 +57090,8 @@ func (ec *executionContext) fieldContext_RepoSettings_aliases(_ context.Context,
 				return ec.fieldContext_ProjectAlias_variantTags(ctx, field)
 			case "parameters":
 				return ec.fieldContext_ProjectAlias_parameters(ctx, field)
+			case "requiredLabels":
+				return ec.fieldContext_ProjectAlias_requiredLabels(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProjectAlias", field.Name)
 		},
@@ -86193,7 +86235,7 @@ func (ec *executionContext) unmarshalInputProjectAliasInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "alias", "description", "gitTag", "remotePath", "task", "taskTags", "variant", "variantTags", "parameters"}
+	fieldsInOrder := [...]string{"id", "alias", "description", "gitTag", "remotePath", "task", "taskTags", "variant", "variantTags", "parameters", "requiredLabels"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -86270,6 +86312,13 @@ func (ec *executionContext) unmarshalInputProjectAliasInput(ctx context.Context,
 				return it, err
 			}
 			it.Parameters = data
+		case "requiredLabels":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requiredLabels"))
+			data, err := ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RequiredLabels = data
 		}
 	}
 
@@ -101438,6 +101487,11 @@ func (ec *executionContext) _ProjectAlias(ctx context.Context, sel ast.Selection
 			}
 		case "parameters":
 			out.Values[i] = ec._ProjectAlias_parameters(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "requiredLabels":
+			out.Values[i] = ec._ProjectAlias_requiredLabels(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

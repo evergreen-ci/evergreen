@@ -185,4 +185,5 @@ type ProjectAlias {
   variant: String!
   variantTags: [String!]!
   parameters: [Parameter!]!
+  requiredLabels: [String!]!
 }

@@ -68,17 +68,18 @@ const (
 // variants/tasks, assuming the tag matches the defined git_tag regex.
 // In this way, users can define different behavior for different kind of tags.
 type ProjectAlias struct {
-	ID          mgobson.ObjectId  `bson:"_id,omitempty" json:"_id" yaml:"id"`
-	ProjectID   string            `bson:"project_id" json:"project_id" yaml:"project_id"`
-	Alias       string            `bson:"alias" json:"alias" yaml:"alias"`
-	Variant     string            `bson:"variant,omitempty" json:"variant" yaml:"variant"`
-	Description string            `bson:"description" json:"description" yaml:"description"`
-	GitTag      string            `bson:"git_tag" json:"git_tag" yaml:"git_tag"`
-	RemotePath  string            `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
-	VariantTags []string          `bson:"variant_tags,omitempty" json:"variant_tags" yaml:"variant_tags"`
-	Task        string            `bson:"task,omitempty" json:"task" yaml:"task"`
-	TaskTags    []string          `bson:"tags,omitempty" json:"tags" yaml:"task_tags"`
-	Parameters  []patch.Parameter `bson:"parameters,omitempty" json:"parameters" yaml:"parameters"`
+	ID             mgobson.ObjectId  `bson:"_id,omitempty" json:"_id" yaml:"id"`
+	ProjectID      string            `bson:"project_id" json:"project_id" yaml:"project_id"`
+	Alias          string            `bson:"alias" json:"alias" yaml:"alias"`
+	Variant        string            `bson:"variant,omitempty" json:"variant" yaml:"variant"`
+	Description    string            `bson:"description" json:"description" yaml:"description"`
+	GitTag         string            `bson:"git_tag" json:"git_tag" yaml:"git_tag"`
+	RemotePath     string            `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
+	VariantTags    []string          `bson:"variant_tags,omitempty" json:"variant_tags" yaml:"variant_tags"`
+	Task           string            `bson:"task,omitempty" json:"task" yaml:"task"`
+	TaskTags       []string          `bson:"tags,omitempty" json:"tags" yaml:"task_tags"`
+	Parameters     []patch.Parameter `bson:"parameters,omitempty" json:"parameters" yaml:"parameters"`
+	RequiredLabels []string          `bson:"required_labels,omitempty" json:"required_labels,omitempty" yaml:"required_labels"`
 
 	// Source is not stored; indicates where the alias is stored for the project.
 	Source string `bson:"-" json:"-" yaml:"-"`
@@ -673,6 +674,31 @@ func isValidRegexOrTag(curItem string, curTags, aliasTags []string, aliasRegex *
 	return false
 }
 
+// filterAliasesByLabels returns only aliases whose required labels are
+// satisfied by the given PR labels. An alias with no required labels
+// always passes. An alias with required labels passes if the PR has
+// at least one of the required labels (OR semantics, case-sensitive).
+func filterAliasesByLabels(aliases []ProjectAlias, prLabels []string) []ProjectAlias {
+	prLabelSet := make(map[string]struct{}, len(prLabels))
+	for _, l := range prLabels {
+		prLabelSet[l] = struct{}{}
+	}
+	filtered := make([]ProjectAlias, 0, len(aliases))
+	for _, a := range aliases {
+		if len(a.RequiredLabels) == 0 {
+			filtered = append(filtered, a)
+			continue
+		}
+		for _, rl := range a.RequiredLabels {
+			if _, ok := prLabelSet[rl]; ok {
+				filtered = append(filtered, a)
+				break
+			}
+		}
+	}
+	return filtered
+}
+
 func ValidateProjectAliases(aliases []ProjectAlias, aliasType string) []string {
 	errs := []string{}
 	for i, pd := range aliases {
@@ -685,6 +711,9 @@ func ValidateProjectAliases(aliases []ProjectAlias, aliasType string) []string {
 		}
 		if strings.TrimSpace(pd.GitTag) != "" || strings.TrimSpace(pd.RemotePath) != "" {
 			errs = append(errs, fmt.Sprintf("%s: cannot define git tag or remote path on line #%d", aliasType, i+1))
+		}
+		if len(pd.RequiredLabels) > 0 && pd.Alias != evergreen.GithubPRAlias {
+			errs = append(errs, fmt.Sprintf("%s: required_labels can only be used on github_pr_aliases on line #%d", aliasType, i+1))
 		}
 		errs = append(errs, validateAliasPatchDefinition(pd, aliasType, i+1)...)
 	}

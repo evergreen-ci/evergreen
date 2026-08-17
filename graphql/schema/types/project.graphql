@@ -69,6 +69,7 @@ input ProjectAliasInput {
   variant: String!
   variantTags: [String!]!
   parameters: [ParameterInput!]
+  requiredLabels: [String!]
 }
 
 input PeriodicBuildInput {
