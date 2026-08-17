@@ -135,15 +135,29 @@ func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, e
 	endpoint := SelectTestsEndpoint
 	if len(req.Tests) == 0 {
 		endpoint = SelectKnownTestsEndpoint
-		selectedTestPtrs, resp, err = c.TestSelectionAPI.SelectAllKnownTestsOfATaskApiTestSelectionSelectKnownTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost(ctx, req.Project, req.Requester, req.BuildVariant, req.TaskID, req.TaskName).StrategyEnum(strategies).Execute()
+		reqBody := testselection.NewBodySelectAllKnownTestsOfATaskWithDataInBodyApiTestSelectionSelectKnownTestsPost(
+			req.Project,
+			req.Requester,
+			req.BuildVariant,
+			req.TaskID,
+			req.TaskName,
+		)
+		reqBody.SetStrategies(strategies)
+		selectedTestPtrs, resp, err = c.TestSelectionAPI.SelectAllKnownTestsOfATaskWithDataInBodyApiTestSelectionSelectKnownTestsPost(ctx).
+			BodySelectAllKnownTestsOfATaskWithDataInBodyApiTestSelectionSelectKnownTestsPost(*reqBody).
+			Execute()
 	} else {
-		reqBody := testselection.BodySelectTestsApiTestSelectionSelectTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost{
-			TestNames:  req.Tests,
-			Strategies: strategies,
-		}
-
-		selectedTestPtrs, resp, err = c.TestSelectionAPI.SelectTestsApiTestSelectionSelectTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost(ctx, req.Project, req.Requester, req.BuildVariant, req.TaskID, req.TaskName).
-			BodySelectTestsApiTestSelectionSelectTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost(reqBody).
+		reqBody := testselection.NewBodySelectTestsWithDataInBodyApiTestSelectionSelectTestsPost(
+			req.Project,
+			req.Requester,
+			req.BuildVariant,
+			req.TaskID,
+			req.TaskName,
+			req.Tests,
+		)
+		reqBody.SetStrategies(strategies)
+		selectedTestPtrs, resp, err = c.TestSelectionAPI.SelectTestsWithDataInBodyApiTestSelectionSelectTestsPost(ctx).
+			BodySelectTestsWithDataInBodyApiTestSelectionSelectTestsPost(*reqBody).
 			Execute()
 	}
 	if resp != nil {
@@ -274,9 +288,15 @@ func SetTestQuarantined(ctx context.Context, projectID, bvName, taskName, testNa
 	c := newTestSelectionClient(testSelectionHTTPClient)
 
 	startAt := time.Now()
-	_, resp, err := c.StateTransitionAPI.MarkTestsAsManuallyQuarantinedApiTestSelectionTransitionTestsProjectIdBuildVariantNameTaskNamePost(ctx, projectID, bvName, taskName).
-		IsManuallyQuarantined(isManuallyQuarantined).
-		RequestBody([]*string{&testName}).
+	reqBody := testselection.NewBodyMarkTestsAsManuallyQuarantinedDataInBodyApiTestSelectionTransitionTestsPost(
+		projectID,
+		bvName,
+		taskName,
+		[]string{testName},
+		isManuallyQuarantined,
+	)
+	_, resp, err := c.StateTransitionAPI.MarkTestsAsManuallyQuarantinedDataInBodyApiTestSelectionTransitionTestsPost(ctx).
+		BodyMarkTestsAsManuallyQuarantinedDataInBodyApiTestSelectionTransitionTestsPost(*reqBody).
 		Execute()
 	if resp != nil {
 		defer resp.Body.Close()
@@ -310,8 +330,9 @@ func GetTestsQuarantineStatus(ctx context.Context, projectID, bvName, taskName s
 	c := newTestSelectionClient(testSelectionHTTPClient)
 
 	startAt := time.Now()
-	result, resp, err := c.StateTransitionAPI.GetTestsStateApiTestSelectionGetTestsStateProjectIdBuildVariantNameTaskNamePost(ctx, projectID, bvName, taskName).
-		RequestBody(testNames).
+	reqBody := testselection.NewBodyGetTestsStateDataInBodyApiTestSelectionGetTestsStatePost(projectID, bvName, taskName, testNames)
+	result, resp, err := c.StateTransitionAPI.GetTestsStateDataInBodyApiTestSelectionGetTestsStatePost(ctx).
+		BodyGetTestsStateDataInBodyApiTestSelectionGetTestsStatePost(*reqBody).
 		Execute()
 	if resp != nil {
 		defer resp.Body.Close()
@@ -361,8 +382,14 @@ func SetTaskQuarantined(ctx context.Context, projectID, bvName, taskName string,
 	c := newTestSelectionClient(testSelectionHTTPClient)
 
 	startAt := time.Now()
-	_, resp, err := c.StateTransitionAPI.MarkTaskAsManuallyQuarantinedApiTestSelectionTransitionTaskProjectIdBuildVariantNameTaskNamePost(ctx, projectID, bvName, taskName).
-		IsManuallyQuarantined(isManuallyQuarantined).
+	reqBody := testselection.NewBodyMarkTaskAsManuallyQuarantinedDataInBodyApiTestSelectionTransitionTaskPost(
+		projectID,
+		bvName,
+		taskName,
+		isManuallyQuarantined,
+	)
+	_, resp, err := c.StateTransitionAPI.MarkTaskAsManuallyQuarantinedDataInBodyApiTestSelectionTransitionTaskPost(ctx).
+		BodyMarkTaskAsManuallyQuarantinedDataInBodyApiTestSelectionTransitionTaskPost(*reqBody).
 		Execute()
 	if resp != nil {
 		defer resp.Body.Close()
@@ -387,8 +414,13 @@ func SetVariantQuarantined(ctx context.Context, projectID, bvName string, isManu
 	c := newTestSelectionClient(testSelectionHTTPClient)
 
 	startAt := time.Now()
-	_, resp, err := c.StateTransitionAPI.MarkVariantAsManuallyQuarantinedApiTestSelectionTransitionVariantProjectIdBuildVariantNamePost(ctx, projectID, bvName).
-		IsManuallyQuarantined(isManuallyQuarantined).
+	reqBody := testselection.NewBodyMarkVariantAsManuallyQuarantinedDataInBodyApiTestSelectionTransitionVariantPost(
+		projectID,
+		bvName,
+		isManuallyQuarantined,
+	)
+	_, resp, err := c.StateTransitionAPI.MarkVariantAsManuallyQuarantinedDataInBodyApiTestSelectionTransitionVariantPost(ctx).
+		BodyMarkVariantAsManuallyQuarantinedDataInBodyApiTestSelectionTransitionVariantPost(*reqBody).
 		Execute()
 	if resp != nil {
 		defer resp.Body.Close()
@@ -414,7 +446,10 @@ func GetVariantQuarantineStatus(ctx context.Context, projectID, bvName string) (
 	c := newTestSelectionClient(testSelectionHTTPClient)
 
 	startAt := time.Now()
-	result, resp, err := c.StateTransitionAPI.GetVariantStateApiTestSelectionGetVariantStateProjectIdBuildVariantNamePost(ctx, projectID, bvName).Execute()
+	reqBody := testselection.NewBodyGetVariantStateDataInBodyApiTestSelectionGetVariantStatePost(projectID, bvName)
+	result, resp, err := c.StateTransitionAPI.GetVariantStateDataInBodyApiTestSelectionGetVariantStatePost(ctx).
+		BodyGetVariantStateDataInBodyApiTestSelectionGetVariantStatePost(*reqBody).
+		Execute()
 	if resp != nil {
 		defer resp.Body.Close()
 	}

@@ -179,8 +179,8 @@ github.com/evergreen-ci/poplar v0.0.0-20260330180450-c8cf511d1bd6 h1:leuRlgINHoR
 github.com/evergreen-ci/poplar v0.0.0-20260330180450-c8cf511d1bd6/go.mod h1:y7hhmPo+0k+kI8PTEyX9EziG2Um5727LFTu3Pln5gAQ=
 github.com/evergreen-ci/shrub v0.0.0-20251017154811-4d3ed1599154 h1:YO1VY9Qj68KjjRfd6TF8sHEss2kIfnpkUqZyxWAoEI8=
 github.com/evergreen-ci/shrub v0.0.0-20251017154811-4d3ed1599154/go.mod h1:nDQB46oIkI/BmvuNKkHdJekvXuGm8lvfUBcbbjekMZM=
-github.com/evergreen-ci/test-selection-client v0.0.0-20260409173604-004964bcf728 h1:7dFa0fx1u5BwUg3Kbf71iaglBsyQJfkYLFd3CfVHxUA=
-github.com/evergreen-ci/test-selection-client v0.0.0-20260409173604-004964bcf728/go.mod h1:0iD20pmczefJcyBCIuYuwfq9J3cqWOM5v61znyqcAwY=
+github.com/evergreen-ci/test-selection-client v0.0.0-20260812193714-c140c9414f6f h1:TeFLYJ4fbgDthiF3fESdnwhWPqqEfjKG9PsmkXvJArI=
+github.com/evergreen-ci/test-selection-client v0.0.0-20260812193714-c140c9414f6f/go.mod h1:0iD20pmczefJcyBCIuYuwfq9J3cqWOM5v61znyqcAwY=
 github.com/evergreen-ci/utility v0.0.0-20260727185913-06cd8a26cd5e h1:9Ad/RzvKJLRjI4epzBTCx3+nEZS1dyNwDAmMQ01mtyU=
 github.com/evergreen-ci/utility v0.0.0-20260727185913-06cd8a26cd5e/go.mod h1:A03U7o6F4PDMNz+lD9mktDgy53wWJHgfR6Bk1fndBJc=
 github.com/fatih/structs v1.1.0 h1:Q7juDM0QtcnhCpeyLGQKyg4TOIghuNXrkL32pHAUMxo=
