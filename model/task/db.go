@@ -1274,6 +1274,9 @@ func FindOneId(ctx context.Context, id string) (*Task, error) {
 
 // FindOneIdWithGeneratedJSON returns a single task with the given ID,
 // including the GeneratedJSONAsString field.
+//
+// TODO (DEVPROD-41456): delete this function. Once no task stores its generated
+// JSON in the DB, FindOneId is equivalent.
 func FindOneIdWithGeneratedJSON(ctx context.Context, id string) (*Task, error) {
 	task, err := FindOne(ctx, db.Query(bson.M{IdKey: id}))
 	return task, errors.Wrap(err, "finding task by ID with generated JSON")

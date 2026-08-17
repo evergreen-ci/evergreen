@@ -1102,6 +1102,31 @@ func TestEndingTask(t *testing.T) {
 	})
 }
 
+func TestEstimatedFinishTime(t *testing.T) {
+	now := time.Now()
+	for tName, tCase := range map[string]struct {
+		lastHeartbeat      time.Time
+		expectedFinishTime time.Time
+	}{
+		"IsLastHeartbeatWhenTaskStoppedReporting": {
+			lastHeartbeat:      now.Add(-10 * time.Minute),
+			expectedFinishTime: now.Add(-10 * time.Minute),
+		},
+		"IsNowWithoutAHeartbeat": {
+			expectedFinishTime: now,
+		},
+		"IsNowWhenHeartbeatMoreRecent": {
+			lastHeartbeat:      now.Add(time.Minute),
+			expectedFinishTime: now,
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			tsk := Task{LastHeartbeat: tCase.lastHeartbeat}
+			assert.Equal(t, tCase.expectedFinishTime, tsk.EstimatedFinishTime(now))
+		})
+	}
+}
+
 func TestMarkEnd(t *testing.T) {
 	ctx := t.Context()
 	t.Cleanup(func() {
@@ -1123,7 +1148,7 @@ func TestMarkEnd(t *testing.T) {
 
 	t.Run("HostTaskHasRuntimeCost", func(t *testing.T) {
 		require.NoError(t, db.Clear(Collection))
-		now := time.Now()
+		now := utility.BSONTime(time.Now())
 		tsk := Task{
 			Id:        "host_task",
 			HostId:    "host",
@@ -1165,6 +1190,73 @@ func TestMarkEnd(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, dbTask)
 		assert.True(t, dbTask.TaskCost.IsZero())
+	})
+
+	t.Run("EstimatedStartTimeForTaskThatNeverStarted", func(t *testing.T) {
+		finishTime := utility.BSONTime(time.Now())
+		for tName, tCase := range map[string]struct {
+			dispatchTime      time.Time
+			ingestTime        time.Time
+			expectedStartTime time.Time
+		}{
+			"IsDispatchTimeIfSet": {
+				dispatchTime:      finishTime.Add(-time.Minute),
+				ingestTime:        finishTime.Add(-3 * time.Hour),
+				expectedStartTime: finishTime.Add(-time.Minute),
+			},
+			"IsIngestTimeIfDispatchTimeIsUnset": {
+				ingestTime:        finishTime.Add(-time.Minute),
+				expectedStartTime: finishTime.Add(-time.Minute),
+			},
+			"IsDispatchTimeEvenWhenItIsOlderThanTheOtherEstimates": {
+				dispatchTime:      finishTime.Add(-10 * time.Hour),
+				ingestTime:        finishTime.Add(-3 * time.Hour),
+				expectedStartTime: finishTime.Add(-10 * time.Hour),
+			},
+		} {
+			t.Run(tName, func(t *testing.T) {
+				require.NoError(t, db.Clear(Collection))
+				tsk := Task{
+					Id:           "task_that_never_started",
+					HostId:       "host",
+					DistroId:     "test_distro",
+					DispatchTime: tCase.dispatchTime,
+					IngestTime:   tCase.ingestTime,
+				}
+				require.NoError(t, tsk.Insert(ctx))
+
+				require.NoError(t, tsk.MarkEnd(ctx, finishTime, &apimodels.TaskEndDetail{Status: evergreen.TaskFailed}))
+
+				dbTask, err := FindOneId(ctx, tsk.Id)
+				require.NoError(t, err)
+				require.NotNil(t, dbTask)
+				assert.WithinDuration(t, tCase.expectedStartTime, dbTask.StartTime, 0)
+				assert.Equal(t, finishTime.Sub(tCase.expectedStartTime), dbTask.TimeTaken)
+			})
+		}
+	})
+
+	t.Run("StartTimeIsKeptIfTaskStarted", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+		finishTime := utility.BSONTime(time.Now())
+		startTime := finishTime.Add(-10 * time.Minute)
+		tsk := Task{
+			Id:           "started_task",
+			HostId:       "host",
+			DistroId:     "test_distro",
+			DispatchTime: finishTime.Add(-11 * time.Minute),
+			IngestTime:   finishTime.Add(-30 * time.Minute),
+			StartTime:    startTime,
+		}
+		require.NoError(t, tsk.Insert(ctx))
+
+		require.NoError(t, tsk.MarkEnd(ctx, finishTime, &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}))
+
+		dbTask, err := FindOneId(ctx, tsk.Id)
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		assert.WithinDuration(t, startTime, dbTask.StartTime, 0)
+		assert.Equal(t, 10*time.Minute, dbTask.TimeTaken)
 	})
 }
 
@@ -4864,7 +4956,7 @@ func TestGenerateNotRun(t *testing.T) {
 			assert.Empty(t, tasks)
 		},
 		"IgnoresTasksThatHaveNothingToGenerate": func(t *testing.T, tsk *Task) {
-			tsk.GeneratedJSONAsString = nil
+			tsk.GeneratedJSONStorageMethod = ""
 			require.NoError(t, tsk.Insert(t.Context()))
 
 			tasks, err := GenerateNotRun(ctx)
@@ -4884,87 +4976,11 @@ func TestGenerateNotRun(t *testing.T) {
 			require.NoError(t, db.ClearCollections(Collection))
 
 			tCase(t, &Task{
-				Id:                    "task_id",
-				Status:                evergreen.TaskStarted,
-				StartTime:             time.Now(),
-				GeneratedTasks:        false,
-				GeneratedJSONAsString: []string{"some_generated_json"},
-			})
-		})
-	}
-}
-
-func TestSetGeneratedJSON(t *testing.T) {
-	ctx := t.Context()
-
-	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection))
-	}()
-
-	for tName, tCase := range map[string]func(t *testing.T, tsk *Task){
-		"Succeeds": func(t *testing.T, tsk *Task) {
-			files := GeneratedJSONFiles{"generated_json"}
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			require.NoError(t, tsk.SetGeneratedJSON(ctx, files))
-
-			dbTask, err := FindOneIdWithGeneratedJSON(ctx, tsk.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbTask)
-			assert.Equal(t, files, dbTask.GeneratedJSONAsString)
-		},
-		"NoopsForAlreadySetGeneratedJSON": func(t *testing.T, tsk *Task) {
-			originalFiles := GeneratedJSONFiles{"generated_files"}
-			tsk.GeneratedJSONAsString = originalFiles
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			require.NoError(t, tsk.SetGeneratedJSON(ctx, []string{"new_generated_json"}))
-
-			dbTask, err := FindOneIdWithGeneratedJSON(ctx, tsk.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbTask)
-			assert.EqualValues(t, originalFiles, dbTask.GeneratedJSONAsString)
-			assert.Empty(t, dbTask.GeneratedJSONStorageMethod)
-		},
-		"NoopsForAlreadySetGeneratedJSONDBStorage": func(t *testing.T, tsk *Task) {
-			originalFiles := GeneratedJSONFiles{"generated_json"}
-			tsk.GeneratedJSONAsString = originalFiles
-			tsk.GeneratedJSONStorageMethod = evergreen.ProjectStorageMethodDB
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			require.NoError(t, tsk.SetGeneratedJSON(ctx, GeneratedJSONFiles{"new_generated_json"}))
-
-			dbTask, err := FindOneIdWithGeneratedJSON(ctx, tsk.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbTask)
-			assert.Equal(t, originalFiles, dbTask.GeneratedJSONAsString)
-			assert.Equal(t, evergreen.ProjectStorageMethodDB, dbTask.GeneratedJSONStorageMethod)
-		},
-		"NoopsForAlreadySetGeneratedJSONS3Storage": func(t *testing.T, tsk *Task) {
-			tsk.GeneratedJSONStorageMethod = evergreen.ProjectStorageMethodS3
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			require.NoError(t, tsk.SetGeneratedJSON(ctx, GeneratedJSONFiles{"new_generated_json"}))
-
-			dbTask, err := FindOneId(ctx, tsk.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbTask)
-			assert.Equal(t, evergreen.ProjectStorageMethodS3, dbTask.GeneratedJSONStorageMethod)
-			assert.Empty(t, dbTask.GeneratedJSONAsString)
-		},
-		"FailsForNonexistentTask": func(t *testing.T, tsk *Task) {
-			assert.Error(t, tsk.SetGeneratedJSON(ctx, GeneratedJSONFiles{"generated_json"}))
-			assert.Empty(t, tsk.GeneratedJSONAsString)
-			assert.Empty(t, tsk.GeneratedJSONStorageMethod)
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(Collection))
-
-			tCase(t, &Task{
-				Id:        "task_id",
-				Status:    evergreen.TaskStarted,
-				StartTime: time.Now(),
+				Id:                         "task_id",
+				Status:                     evergreen.TaskStarted,
+				StartTime:                  time.Now(),
+				GeneratedTasks:             false,
+				GeneratedJSONStorageMethod: evergreen.ProjectStorageMethodS3,
 			})
 		})
 	}

@@ -141,9 +141,9 @@ func getWaitTimeMessages(tasks []task.Task) []message.Fields {
 			continue
 		}
 
-		submitTime := t.DependenciesMetTime
-		if utility.IsZeroTime(submitTime) {
-			submitTime = t.ScheduledTime
+		submitTime := t.ScheduledTime
+		if t.DependenciesMetTime.After(submitTime) {
+			submitTime = t.DependenciesMetTime
 		}
 		if utility.IsZeroTime(submitTime) {
 			continue
