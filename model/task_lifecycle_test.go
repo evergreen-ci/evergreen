@@ -2204,6 +2204,8 @@ func TestMarkEndIsAutomaticRestart(t *testing.T) {
 		Version:            "abc",
 		BuildVariant:       "a_variant",
 		HostId:             "h1",
+		StartTime:          time.Now().Add(-time.Hour),
+		LastHeartbeat:      time.Now().Add(-30 * time.Second),
 	}
 	displayTask := &task.Task{
 		ResetWhenFinished:  true,
@@ -2292,12 +2294,18 @@ func TestMarkEndIsAutomaticRestart(t *testing.T) {
 	}
 	for name, test := range map[string]func(*testing.T){
 		"ResetsSingleTask": func(t *testing.T) {
-			assert.NoError(t, MarkEnd(ctx, &evergreen.Settings{}, runningTask, "test", time.Now(), detail))
+			finishTime := utility.BSONTime(time.Now())
+			assert.NoError(t, MarkEnd(ctx, &evergreen.Settings{}, runningTask, "test", finishTime, detail))
 			runningTaskDB, err := task.FindOneId(ctx, runningTask.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, runningTaskDB)
 			assert.Equal(t, 1, runningTaskDB.Execution)
 			assert.Equal(t, evergreen.TaskUndispatched, runningTaskDB.Status)
+
+			archivedTask, err := task.FindOneIdAndExecution(ctx, runningTask.Id, 0)
+			require.NoError(t, err)
+			require.NotZero(t, archivedTask)
+			assert.WithinDuration(t, finishTime, archivedTask.FinishTime, 0, "archived execution should keep its self-reported finish time")
 
 			// Check that trying to automatically reset again does not reset the task again.
 			runningTaskDB.HostId = "h1"
@@ -4163,6 +4171,8 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 
 	settings := testutil.TestConfig()
 
+	strandedTaskLastHeartbeat := utility.BSONTime(time.Now().Add(-time.Hour))
+
 	tasks := []task.Task{
 		{
 			Id:            "t",
@@ -4172,6 +4182,8 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 			BuildId:       "b",
 			Version:       "version",
 			HostId:        "h1",
+			StartTime:     time.Now().Add(-90 * time.Minute),
+			LastHeartbeat: strandedTaskLastHeartbeat,
 		},
 		{
 			Id:            "t2",
@@ -4267,6 +4279,11 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	runningTask, err := task.FindOne(ctx, db.Query(task.ById("t")))
 	require.NoError(t, err)
 	assert.Equal(evergreen.TaskUndispatched, runningTask.Status)
+
+	archivedTask, err := task.FindOneIdAndExecution(ctx, "t", 0)
+	require.NoError(t, err)
+	require.NotZero(t, archivedTask)
+	assert.WithinDuration(strandedTaskLastHeartbeat, archivedTask.FinishTime, 0)
 
 	foundBuild, err := build.FindOneId(t.Context(), "b")
 	require.NoError(t, err)

@@ -1381,8 +1381,26 @@ func (t *Task) MarkFailed(ctx context.Context) error {
 	)
 }
 
+// EstimatedFinishTime returns the best available estimate of when a
+// task stopped running for an unhealthy/unresponsive task. Typically should
+// only be used for system failures where the task itself is not finishing
+// normally. For example, when a task monitoring job determines the task is
+// stuck well after the task already stopped running.
+func (t *Task) EstimatedFinishTime(now time.Time) time.Time {
+	if utility.IsZeroTime(t.LastHeartbeat) || t.LastHeartbeat.After(now) {
+		return now
+	}
+
+	// If the task is finishing due to certain system failures (e.g.
+	// stranded/stale task that's been unassigned from a host but wasn't marked
+	// finished), there's no definitive time when the task finished. The best
+	// guess for when the task stopped running is the last time it had a
+	// heartbeat.
+	return t.LastHeartbeat
+}
+
 func (t *Task) MarkSystemFailed(ctx context.Context, description string) error {
-	t.FinishTime = time.Now()
+	t.FinishTime = t.EstimatedFinishTime(time.Now())
 	t.Details = GetSystemFailureDetails(description)
 
 	switch t.ExecutionPlatform {

@@ -1102,6 +1102,31 @@ func TestEndingTask(t *testing.T) {
 	})
 }
 
+func TestEstimatedFinishTime(t *testing.T) {
+	now := time.Now()
+	for tName, tCase := range map[string]struct {
+		lastHeartbeat      time.Time
+		expectedFinishTime time.Time
+	}{
+		"IsLastHeartbeatWhenTaskStoppedReporting": {
+			lastHeartbeat:      now.Add(-10 * time.Minute),
+			expectedFinishTime: now.Add(-10 * time.Minute),
+		},
+		"IsNowWithoutAHeartbeat": {
+			expectedFinishTime: now,
+		},
+		"IsNowWhenHeartbeatMoreRecent": {
+			lastHeartbeat:      now.Add(time.Minute),
+			expectedFinishTime: now,
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			tsk := Task{LastHeartbeat: tCase.lastHeartbeat}
+			assert.Equal(t, tCase.expectedFinishTime, tsk.EstimatedFinishTime(now))
+		})
+	}
+}
+
 func TestMarkEnd(t *testing.T) {
 	ctx := t.Context()
 	t.Cleanup(func() {
