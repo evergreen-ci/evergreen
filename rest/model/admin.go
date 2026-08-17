@@ -2164,6 +2164,8 @@ type APIServiceFlags struct {
 	// Rate Limiting Flags
 	APIRateLimiterDisabled           bool `json:"api_rate_limiter_disabled"`
 	GraphQLComplexityLimiterDisabled bool `json:"graphql_complexity_limiter_disabled"`
+
+	TaskQueueFlushDisabled bool `json:"task_queue_flush_disabled"`
 }
 
 type APIProjectTasksPair struct {
@@ -2616,6 +2618,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.BackgroundCommandFailureEnabled = v.BackgroundCommandFailureEnabled
 		as.APIRateLimiterDisabled = v.APIRateLimiterDisabled
 		as.GraphQLComplexityLimiterDisabled = v.GraphQLComplexityLimiterDisabled
+		as.TaskQueueFlushDisabled = v.TaskQueueFlushDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2670,6 +2673,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		LiveArtifactCredentialsDisabled:    as.LiveArtifactCredentialsDisabled,
 		APIRateLimiterDisabled:             as.APIRateLimiterDisabled,
 		GraphQLComplexityLimiterDisabled:   as.GraphQLComplexityLimiterDisabled,
+		TaskQueueFlushDisabled:             as.TaskQueueFlushDisabled,
 	}, nil
 }
 
@@ -3050,6 +3054,8 @@ type APITaskLimitsConfig struct {
 	MaxDailyAutomaticRestarts *int `json:"max_daily_automatic_restarts"`
 	// MaxScheduledTasksPerDistro is the cap for the number of max tasks materialized into a distro's queue doc per pass.
 	MaxScheduledTasksPerDistro *int `json:"max_scheduled_tasks_per_distro"`
+	// TaskQueueFlushThreshold is the planned distro queue length above which the scheduler unschedules the patch tasks overflowing past it.
+	TaskQueueFlushThreshold *int `json:"task_queue_flush_threshold"`
 }
 
 func (c *APITaskLimitsConfig) BuildFromService(h any) error {
@@ -3068,6 +3074,7 @@ func (c *APITaskLimitsConfig) BuildFromService(h any) error {
 		c.MaxTaskExecution = utility.ToIntPtr(v.MaxTaskExecution)
 		c.MaxDailyAutomaticRestarts = utility.ToIntPtr(v.MaxDailyAutomaticRestarts)
 		c.MaxScheduledTasksPerDistro = utility.ToIntPtr(v.MaxScheduledTasksPerDistro)
+		c.TaskQueueFlushThreshold = utility.ToIntPtr(v.TaskQueueFlushThreshold)
 		return nil
 	default:
 		return errors.Errorf("programmatic error: expected task limits config but got type %T", h)
@@ -3089,6 +3096,7 @@ func (c *APITaskLimitsConfig) ToService() (any, error) {
 		MaxTaskExecution:                                 utility.FromIntPtr(c.MaxTaskExecution),
 		MaxDailyAutomaticRestarts:                        utility.FromIntPtr(c.MaxDailyAutomaticRestarts),
 		MaxScheduledTasksPerDistro:                       utility.FromIntPtr(c.MaxScheduledTasksPerDistro),
+		TaskQueueFlushThreshold:                          utility.FromIntPtr(c.TaskQueueFlushThreshold),
 	}, nil
 }
 

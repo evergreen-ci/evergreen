@@ -22,6 +22,7 @@ mutation Runners {
         maxScheduledTasksPerDistro: 1
         maxTaskExecution: 1
         maxTasksPerVersion: 1
+        taskQueueFlushThreshold: 1
       }
       repotracker: {
         maxConcurrentRequests: 1
@@ -78,6 +79,7 @@ mutation Runners {
       maxScheduledTasksPerDistro
       maxTaskExecution
       maxTasksPerVersion
+      taskQueueFlushThreshold
     }
     repotracker {
       maxConcurrentRequests

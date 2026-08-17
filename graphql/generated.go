@@ -2050,6 +2050,7 @@ type ComplexityRoot struct {
 		MaxScheduledTasksPerDistro                       func(childComplexity int) int
 		MaxTaskExecution                                 func(childComplexity int) int
 		MaxTasksPerVersion                               func(childComplexity int) int
+		TaskQueueFlushThreshold                          func(childComplexity int) int
 	}
 
 	TaskLogLinks struct {
@@ -11490,6 +11491,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TaskLimitsConfig.MaxTasksPerVersion(childComplexity), true
+	case "TaskLimitsConfig.taskQueueFlushThreshold":
+		if e.complexity.TaskLimitsConfig.TaskQueueFlushThreshold == nil {
+			break
+		}
+
+		return e.complexity.TaskLimitsConfig.TaskQueueFlushThreshold(childComplexity), true
 
 	case "TaskLogLinks.agentLogLink":
 		if e.complexity.TaskLogLinks.AgentLogLink == nil {
@@ -20353,6 +20360,8 @@ func (ec *executionContext) fieldContext_AdminSettings_taskLimits(_ context.Cont
 				return ec.fieldContext_TaskLimitsConfig_maxDailyAutomaticRestarts(ctx, field)
 			case "maxScheduledTasksPerDistro":
 				return ec.fieldContext_TaskLimitsConfig_maxScheduledTasksPerDistro(ctx, field)
+			case "taskQueueFlushThreshold":
+				return ec.fieldContext_TaskLimitsConfig_taskQueueFlushThreshold(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TaskLimitsConfig", field.Name)
 		},
@@ -68965,6 +68974,35 @@ func (ec *executionContext) fieldContext_TaskLimitsConfig_maxScheduledTasksPerDi
 	return fc, nil
 }
 
+func (ec *executionContext) _TaskLimitsConfig_taskQueueFlushThreshold(ctx context.Context, field graphql.CollectedField, obj *model.APITaskLimitsConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TaskLimitsConfig_taskQueueFlushThreshold,
+		func(ctx context.Context) (any, error) {
+			return obj.TaskQueueFlushThreshold, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TaskLimitsConfig_taskQueueFlushThreshold(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskLimitsConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TaskLogLinks_agentLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -90048,7 +90086,7 @@ func (ec *executionContext) unmarshalInputTaskLimitsConfigInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"maxTasksPerVersion", "maxIncludesPerVersion", "maxHourlyPatchTasks", "maxPendingGeneratedTasks", "maxGenerateTaskJSONSize", "maxConcurrentLargeParserProjectTasks", "maxDegradedModeConcurrentLargeParserProjectTasks", "maxDegradedModeParserProjectSize", "maxParserProjectSize", "maxExecTimeoutSecs", "maxTaskExecution", "maxDailyAutomaticRestarts", "maxScheduledTasksPerDistro"}
+	fieldsInOrder := [...]string{"maxTasksPerVersion", "maxIncludesPerVersion", "maxHourlyPatchTasks", "maxPendingGeneratedTasks", "maxGenerateTaskJSONSize", "maxConcurrentLargeParserProjectTasks", "maxDegradedModeConcurrentLargeParserProjectTasks", "maxDegradedModeParserProjectSize", "maxParserProjectSize", "maxExecTimeoutSecs", "maxTaskExecution", "maxDailyAutomaticRestarts", "maxScheduledTasksPerDistro", "taskQueueFlushThreshold"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -90146,6 +90184,13 @@ func (ec *executionContext) unmarshalInputTaskLimitsConfigInput(ctx context.Cont
 				return it, err
 			}
 			it.MaxScheduledTasksPerDistro = data
+		case "taskQueueFlushThreshold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskQueueFlushThreshold"))
+			data, err := ec.unmarshalNInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TaskQueueFlushThreshold = data
 		}
 	}
 
@@ -108402,6 +108447,8 @@ func (ec *executionContext) _TaskLimitsConfig(ctx context.Context, sel ast.Selec
 			out.Values[i] = ec._TaskLimitsConfig_maxDailyAutomaticRestarts(ctx, field, obj)
 		case "maxScheduledTasksPerDistro":
 			out.Values[i] = ec._TaskLimitsConfig_maxScheduledTasksPerDistro(ctx, field, obj)
+		case "taskQueueFlushThreshold":
+			out.Values[i] = ec._TaskLimitsConfig_taskQueueFlushThreshold(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
