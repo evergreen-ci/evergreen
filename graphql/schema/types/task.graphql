@@ -76,6 +76,8 @@ type Task {
   baseTask: Task
   blocked: Boolean!
   buildId: String!
+  buildBaronCreatedTickets: [JiraTicket!]! @requireProjectAccess(permission: ANNOTATIONS, access: VIEW)
+  buildBaronSuggestions: SearchReturnInfo @requireProjectAccess(permission: ANNOTATIONS, access: VIEW)
   buildVariant: String!
   buildVariantDisplayName: String
   canAbort: Boolean!

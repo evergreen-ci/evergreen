@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -20,53 +21,165 @@ import (
 
 const launchTemplateExpiration = 24 * time.Hour
 
-type instanceTypeSubnetCache map[instanceRegionPair][]evergreen.Subnet
-
-type instanceRegionPair struct {
-	instanceType string
-	region       string
+// instanceTypeSubnetCache caches the subnets that can run a particular instance
+// type. Successful lookups are cached until the app servers restart, while
+// failed ones are cached and retried on a TTL.
+type instanceTypeSubnetCache struct {
+	mu    sync.Mutex
+	cache map[instanceTypeCacheKey]cachedSubnets
 }
 
-var typeCache instanceTypeSubnetCache
+type instanceTypeCacheKey struct {
+	account      string
+	region       string
+	instanceType string
+	// subnetTagName and subnetTagValue are part of the key because different
+	// distros could use the same account/region/instance type but use different
+	// sets of subnets.
+	subnetTagName  string
+	subnetTagValue string
+}
+
+// cachedSubnets is the result of looking up the subnets for a single
+// instance type in a particular account.
+type cachedSubnets struct {
+	subnets []evergreen.Subnet
+	// err is cached if subnets cannot be looked up for the instance type (to
+	// avoid repeating failing lookups).
+	err error
+	// errExpiresAt marks when a cached err can be retried.
+	errExpiresAt time.Time
+}
+
+// typeCache caches the subnets that can run a particular instance type within a
+// particular region and AWS account.
+var typeCache *instanceTypeSubnetCache
 
 func init() {
-	typeCache = make(map[instanceRegionPair][]evergreen.Subnet)
+	typeCache = &instanceTypeSubnetCache{cache: map[instanceTypeCacheKey]cachedSubnets{}}
 }
 
-func (c instanceTypeSubnetCache) subnetsWithInstanceType(ctx context.Context, settings *evergreen.Settings, client AWSClient, instanceRegion instanceRegionPair) ([]evergreen.Subnet, error) {
-	if subnets, ok := c[instanceRegion]; ok {
-		return subnets, nil
+// subnetsWithInstanceType returns the subnets that Evergreen can use for the
+// given instance type, region, and AWS account. Subnets for the default account
+// come from the admin settings, while subnets for any other account are
+// discovered from AWS by their tag.
+func (c *instanceTypeSubnetCache) subnetsWithInstanceType(ctx context.Context, settings *evergreen.Settings, client AWSClient, cacheKey instanceTypeCacheKey) ([]evergreen.Subnet, error) {
+	if cached, ok := c.get(cacheKey); ok {
+		return cached.subnets, cached.err
 	}
 
-	supportingAZs, err := c.getAZs(ctx, client, instanceRegion)
+	var candidateSubnets []evergreen.Subnet
+	if cacheKey.account != "" {
+		discovered, err := c.discoverSubnets(ctx, client, cacheKey)
+		if err != nil {
+			c.set(cacheKey, cachedSubnets{err: err})
+			return nil, errors.Wrapf(err, "discovering subnets for account '%s'", cacheKey.account)
+		}
+		candidateSubnets = discovered
+	} else {
+		candidateSubnets = settings.Providers.AWS.Subnets
+	}
+
+	supportingAZs, err := c.getAZs(ctx, client, cacheKey)
 	if err != nil {
+		c.set(cacheKey, cachedSubnets{err: err})
 		return nil, errors.Wrap(err, "getting supported AZs")
 	}
 
-	subnets := make([]evergreen.Subnet, 0, len(supportingAZs))
-	for _, subnet := range settings.Providers.AWS.Subnets {
+	// Filter subnets to those that are in AZs that support the instance type.
+	subnets := make([]evergreen.Subnet, 0, len(candidateSubnets))
+	for _, subnet := range candidateSubnets {
 		if utility.StringSliceContains(supportingAZs, subnet.AZ) {
 			subnets = append(subnets, subnet)
 		}
 	}
-	c[instanceRegion] = subnets
+
+	c.set(cacheKey, cachedSubnets{subnets: subnets})
 
 	return subnets, nil
 }
 
-func (c instanceTypeSubnetCache) getAZs(ctx context.Context, client AWSClient, instanceRegion instanceRegionPair) ([]string, error) {
+func (c *instanceTypeSubnetCache) get(key instanceTypeCacheKey) (cachedSubnets, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	cached, ok := c.cache[key]
+	if !ok {
+		return cachedSubnets{}, false
+	}
+	if cached.err != nil && time.Now().After(cached.errExpiresAt) {
+		return cachedSubnets{}, false
+	}
+
+	return cached, true
+}
+
+func (c *instanceTypeSubnetCache) set(key instanceTypeCacheKey, result cachedSubnets) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if result.err != nil {
+		const cacheErrTTL = 15 * time.Minute
+		result.errExpiresAt = time.Now().Add(cacheErrTTL)
+	}
+	c.cache[key] = result
+}
+
+// discoverSubnets returns the subnets in the client's AWS account and region
+// that are tagged as usable by Evergreen.
+func (c *instanceTypeSubnetCache) discoverSubnets(ctx context.Context, client AWSClient, cacheKey instanceTypeCacheKey) ([]evergreen.Subnet, error) {
+	tagName := cacheKey.subnetTagName
+	tagValue := cacheKey.subnetTagValue
+	if tagName == "" || tagValue == "" {
+		return nil, errors.New("subnet tag name and value must both be set to discover subnets")
+	}
+
+	output, err := client.DescribeSubnets(ctx, &ec2.DescribeSubnetsInput{
+		Filters: []types.Filter{
+			{
+				Name:   aws.String(fmt.Sprintf("tag:%s", tagName)),
+				Values: []string{tagValue},
+			},
+		},
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "describing subnets")
+	}
+	if output == nil {
+		return nil, errors.New("DescribeSubnets returned nil output")
+	}
+
+	subnets := make([]evergreen.Subnet, 0, len(output.Subnets))
+	for _, subnet := range output.Subnets {
+		az := utility.FromStringPtr(subnet.AvailabilityZone)
+		subnetID := utility.FromStringPtr(subnet.SubnetId)
+		if az == "" || subnetID == "" {
+			continue
+		}
+		subnets = append(subnets, evergreen.Subnet{AZ: az, SubnetID: subnetID})
+	}
+	if len(subnets) == 0 {
+		return nil, errors.Errorf("no subnets are tagged with '%s: %s'", tagName, tagValue)
+	}
+
+	return subnets, nil
+}
+
+// getAZsf returns the availability zones that support a particular instance
+// type.
+func (c *instanceTypeSubnetCache) getAZs(ctx context.Context, client AWSClient, cacheKey instanceTypeCacheKey) ([]string, error) {
 	// DescribeInstanceTypeOfferings only returns AZs in the client's region
 	output, err := client.DescribeInstanceTypeOfferings(ctx, &ec2.DescribeInstanceTypeOfferingsInput{
 		LocationType: types.LocationTypeAvailabilityZone,
 		Filters: []types.Filter{
-			{Name: aws.String("instance-type"), Values: []string{instanceRegion.instanceType}},
+			{Name: aws.String("instance-type"), Values: []string{cacheKey.instanceType}},
 		},
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "getting instance types for filter '%s' in region '%s'", instanceRegion.instanceType, instanceRegion.region)
+		return nil, errors.Wrapf(err, "getting instance types for filter '%s' in region '%s'", cacheKey.instanceType, cacheKey.region)
 	}
 	if output == nil {
-		return nil, errors.Errorf("DescribeInstanceTypeOfferings returned nil output for instance type filter '%s' in '%s'", instanceRegion.instanceType, instanceRegion.region)
+		return nil, errors.Errorf("DescribeInstanceTypeOfferings returned nil output for instance type filter '%s' in '%s'", cacheKey.instanceType, cacheKey.region)
 	}
 	supportingAZs := make([]string, 0, len(output.InstanceTypeOfferings))
 	for _, offering := range output.InstanceTypeOfferings {
@@ -693,13 +806,9 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 }
 
 func (m *ec2FleetManager) requestFleet(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings) (string, error) {
-	var overrides []types.FleetLaunchTemplateOverridesRequest
-	var err error
-	if ec2Settings.VpcName != "" {
-		overrides, err = m.makeOverrides(ctx, ec2Settings)
-		if err != nil {
-			return "", errors.Wrapf(err, "making overrides for VPC '%s'", ec2Settings.VpcName)
-		}
+	overrides, err := m.makeSubnetOverrides(ctx, h, ec2Settings)
+	if err != nil {
+		return "", errors.Wrap(err, "making launch template overrides")
 	}
 
 	// Create a fleet with a single instance from the launch template
@@ -727,20 +836,56 @@ func (m *ec2FleetManager) requestFleet(ctx context.Context, h *host.Host, ec2Set
 	return createFleetResponse.Instances[0].InstanceIds[0], nil
 }
 
-func (m *ec2FleetManager) makeOverrides(ctx context.Context, ec2Settings *EC2ProviderSettings) ([]types.FleetLaunchTemplateOverridesRequest, error) {
-	subnets := m.settings.Providers.AWS.Subnets
-	if len(subnets) == 0 {
-		return nil, errors.New("no AWS subnets were configured")
-	}
-
-	supportingSubnets, err := typeCache.subnetsWithInstanceType(ctx, m.settings, m.client, instanceRegionPair{instanceType: ec2Settings.InstanceType, region: ec2Settings.getRegion()})
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting AZs supporting instance type '%s'", ec2Settings.InstanceType)
-	}
-	if len(supportingSubnets) == 0 || (len(supportingSubnets) == 1 && supportingSubnets[0].SubnetID == ec2Settings.SubnetId) {
+// makeSubnetOverrides returns the subnets that the fleet request can choose
+// between to launch the host. Returning no subnet overrides means the fleet
+// request is limited to the distro's default subnet.
+// Allowing multiple subnets allows an instance to spawn in different
+// availability zones. Multiple subnets have a better chance of successfully
+// spawning the host in case one AZ is out of capacity for the instance type.
+func (m *ec2FleetManager) makeSubnetOverrides(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings) ([]types.FleetLaunchTemplateOverridesRequest, error) {
+	// An EC2 fleet request can only use different subnets if:
+	// 1. Hosts are being started in a non-default account (i.e. account is
+	//    non-empty) or
+	// 2. In the legacy case, hosts in the default AWS account use VPC name
+	//    as a feature flag to indicate they have multiple subnets
+	//    available.
+	if m.account == "" && ec2Settings.VpcName == "" {
 		return nil, nil
 	}
-	overrides := make([]types.FleetLaunchTemplateOverridesRequest, 0, len(subnets))
+
+	subnetTagName, subnetTagValue := ec2Settings.subnetTagFilter(m.settings)
+	supportingSubnets, err := typeCache.subnetsWithInstanceType(ctx, m.settings, m.client, instanceTypeCacheKey{
+		instanceType:   ec2Settings.InstanceType,
+		region:         ec2Settings.getRegion(),
+		account:        m.account,
+		subnetTagName:  subnetTagName,
+		subnetTagValue: subnetTagValue,
+	})
+	if err != nil {
+		// Not being able to determine the subnets shouldn't stop the host from
+		// spawning, but it does mean that this distro can't fall back to other
+		// AZs, which reduces resilience during times of low instance capacity.
+		// Ideally this should not consistently error since it likely indicates
+		// a configuration problem (e.g. AWS permissions issues).
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message":          "could not determine which subnets are available to the host, so it can only use the default distro subnet (and AZ)",
+			"host_id":          h.Id,
+			"host_provider":    h.Distro.Provider,
+			"distro":           h.Distro.Id,
+			"provider_account": m.account,
+			"instance_type":    ec2Settings.InstanceType,
+			"region":           ec2Settings.getRegion(),
+		}))
+		return nil, nil
+	}
+
+	if len(supportingSubnets) == 0 || (len(supportingSubnets) == 1 && supportingSubnets[0].SubnetID == ec2Settings.SubnetId) {
+		// No other subnets are available, so don't bother with making explicit
+		// overrides.
+		return nil, nil
+	}
+
+	overrides := make([]types.FleetLaunchTemplateOverridesRequest, 0, len(supportingSubnets))
 	for _, subnet := range supportingSubnets {
 		overrides = append(overrides, types.FleetLaunchTemplateOverridesRequest{SubnetId: aws.String(subnet.SubnetID)})
 	}

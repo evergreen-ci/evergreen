@@ -10,14 +10,16 @@ import (
 
 // SchedulerConfig holds relevant settings for the scheduler process.
 type SchedulerConfig struct {
-	TaskFinder                       string  `bson:"task_finder" json:"task_finder" yaml:"task_finder"`
-	HostAllocator                    string  `bson:"host_allocator" json:"host_allocator" yaml:"host_allocator"`
-	HostAllocatorRoundingRule        string  `bson:"host_allocator_rounding_rule" json:"host_allocator_rounding_rule" mapstructure:"host_allocator_rounding_rule"`
-	HostAllocatorFeedbackRule        string  `bson:"host_allocator_feedback_rule" json:"host_allocator_feedback_rule" mapstructure:"host_allocator_feedback_rule"`
-	HostsOverallocatedRule           string  `bson:"hosts_overallocated_rule" json:"hosts_overallocated_rule" mapstructure:"hosts_overallocated_rule"`
-	FutureHostFraction               float64 `bson:"free_host_fraction" json:"free_host_fraction" yaml:"free_host_fraction"`
-	CacheDurationSeconds             int     `bson:"cache_duration_seconds" json:"cache_duration_seconds" yaml:"cache_duration_seconds"`
-	TargetTimeSeconds                int     `bson:"target_time_seconds" json:"target_time_seconds" mapstructure:"target_time_seconds"`
+	TaskFinder                string  `bson:"task_finder" json:"task_finder" yaml:"task_finder"`
+	HostAllocator             string  `bson:"host_allocator" json:"host_allocator" yaml:"host_allocator"`
+	HostAllocatorRoundingRule string  `bson:"host_allocator_rounding_rule" json:"host_allocator_rounding_rule" mapstructure:"host_allocator_rounding_rule"`
+	HostAllocatorFeedbackRule string  `bson:"host_allocator_feedback_rule" json:"host_allocator_feedback_rule" mapstructure:"host_allocator_feedback_rule"`
+	HostsOverallocatedRule    string  `bson:"hosts_overallocated_rule" json:"hosts_overallocated_rule" mapstructure:"hosts_overallocated_rule"`
+	FutureHostFraction        float64 `bson:"free_host_fraction" json:"free_host_fraction" yaml:"free_host_fraction"`
+	CacheDurationSeconds      int     `bson:"cache_duration_seconds" json:"cache_duration_seconds" yaml:"cache_duration_seconds"`
+	TargetTimeSeconds         int     `bson:"target_time_seconds" json:"target_time_seconds" mapstructure:"target_time_seconds"`
+	// MergeQueueTargetTimeSeconds is the default target time to use while a distro's queue holds merge queue tasks. Zero disables it.
+	MergeQueueTargetTimeSeconds      int     `bson:"merge_queue_target_time_seconds" json:"merge_queue_target_time_seconds" mapstructure:"merge_queue_target_time_seconds"`
 	AcceptableHostIdleTimeSeconds    int     `bson:"acceptable_host_idle_time_seconds" json:"acceptable_host_idle_time_seconds" mapstructure:"acceptable_host_idle_time_seconds"`
 	GroupVersions                    bool    `bson:"group_versions" json:"group_versions" mapstructure:"group_versions"`
 	PatchFactor                      int64   `bson:"patch_zipper_factor" json:"patch_factor" mapstructure:"patch_zipper"`
@@ -50,6 +52,7 @@ func (c *SchedulerConfig) Set(ctx context.Context) error {
 			"free_host_fraction":                  c.FutureHostFraction,
 			"cache_duration_seconds":              c.CacheDurationSeconds,
 			"target_time_seconds":                 c.TargetTimeSeconds,
+			"merge_queue_target_time_seconds":     c.MergeQueueTargetTimeSeconds,
 			"acceptable_host_idle_time_seconds":   c.AcceptableHostIdleTimeSeconds,
 			"group_versions":                      c.GroupVersions,
 			"patch_zipper_factor":                 c.PatchFactor,
@@ -129,6 +132,10 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 
 	if c.TargetTimeSeconds < 0 {
 		return errors.New("target time seconds cannot be a negative value")
+	}
+
+	if c.MergeQueueTargetTimeSeconds < 0 {
+		return errors.New("merge queue target time seconds cannot be a negative value")
 	}
 
 	if c.AcceptableHostIdleTimeSeconds < 0 {

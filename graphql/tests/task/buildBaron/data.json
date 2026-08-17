@@ -1,0 +1,41 @@
+{
+  "tasks": [
+    {
+      "_id": "build_baron_task",
+      "version": "build_baron_version",
+      "revision": "abcdef",
+      "build_variant": "ubuntu",
+      "display_name": "build-baron-task",
+      "status": "failed",
+      "gitspec": "abcdef",
+      "r": "github_pull_request",
+      "branch": "evergreen",
+      "execution": 0
+    },
+    {
+      "_id": "ticket_creation_only_task",
+      "version": "ticket_creation_only_version",
+      "revision": "123456",
+      "build_variant": "ubuntu",
+      "display_name": "ticket-creation-only-task",
+      "status": "failed",
+      "gitspec": "123456",
+      "r": "github_pull_request",
+      "branch": "spruce",
+      "execution": 0
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen"
+    },
+    {
+      "_id": "spruce",
+      "identifier": "spruce",
+      "build_baron_settings": {
+        "ticket_create_project": "EVG"
+      }
+    }
+  ]
+}

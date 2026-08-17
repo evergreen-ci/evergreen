@@ -256,7 +256,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				break
 			}
 
-			if err := gh.AddIntentForPR(ctx, event.PullRequest, event.Sender.GetLogin(), patch.AutomatedCaller, "", false); err != nil {
+			if err := gh.AddIntentForPR(ctx, event.PullRequest, event.PullRequest.GetUser().GetLogin(), patch.AutomatedCaller, "", false); err != nil {
 				grip.Error(ctx, message.WrapError(err, message.Fields{
 					"source":    "GitHub hook",
 					"msg_id":    gh.msgID,

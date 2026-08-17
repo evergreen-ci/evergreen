@@ -201,7 +201,7 @@ func waitForRepotracker(ctx context.Context, t *testing.T, params SmokeTestParam
 func submitSmokeTestPatch(ctx context.Context, t *testing.T, params SmokeTestParams) {
 	grip.Info(ctx, "Submitting patch to smoke test app server.")
 
-	cmd, err := internal.SmokeRunBinary(ctx, "smoke-patch-submission", params.EVGHome, params.CLIPath, "-c", params.CLIConfigPath, "patch", "-p", params.ProjectID, "-v", params.BVName, "-t", "all", "-f", "-y", "-d", "Smoke test patch")
+	cmd, err := internal.SmokeRunBinary(ctx, "smoke-patch-submission", params.EVGHome, nil, params.CLIPath, "-c", params.CLIConfigPath, "patch", "-p", params.ProjectID, "-v", params.BVName, "-t", "all", "-f", "-y", "-d", "Smoke test patch")
 	require.NoError(t, err, "should have submitted patch")
 	exitCode, err := cmd.Wait(ctx)
 	require.NoError(t, err, "expected to finish successful CLI patch")

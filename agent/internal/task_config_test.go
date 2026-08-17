@@ -63,14 +63,16 @@ func TestNewTaskConfig(t *testing.T) {
 			PrivateVars: map[string]bool{
 				"aws_token": true,
 			},
-			RedactKeys:                []string{"pass", "secret", "token"},
-			DevprodOwnedAWSAccountIDs: []string{"123456789012"},
+			RedactKeys:                               []string{"pass", "secret", "token"},
+			DevprodOwnedAWSAccountIDs:                []string{"123456789012"},
+			ArtifactAWSAccountsWithoutLifecycleRules: []string{"210987654321"},
 		},
 	}
 	taskConfig, err := NewTaskConfig(tcOpts)
 	assert.NoError(t, err)
 
 	assert.Equal(t, []string{"123456789012"}, taskConfig.DevprodOwnedAWSAccountIDs)
+	assert.Equal(t, []string{"210987654321"}, taskConfig.ArtifactAWSAccountsWithoutLifecycleRules)
 	assert.Empty(t, taskConfig.DynamicExpansions)
 	assert.Empty(t, taskConfig.Expansions)
 	assert.ElementsMatch(t, []string{"aws_token", "my_pass_secret", "myPASSWORD", "mySecret", "git_token"}, taskConfig.Redacted)

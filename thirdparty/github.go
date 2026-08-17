@@ -460,7 +460,7 @@ func getInstallationToken(ctx context.Context, owner, repo string, opts *github.
 		return "", errors.Wrap(err, "getting config")
 	}
 
-	return githubapp.CreateGitHubAppAuth(settings).CreateCachedInstallationToken(ctx, owner, repo, defaultGitHubAPIRequestLifetime, opts)
+	return githubapp.CreateGitHubAppAuth(settings).CreateCachedInstallationToken(ctx, owner, repo, defaultGitHubAPIRequestLifetime, opts, false)
 }
 
 // RevokeInstallationToken revokes an installation token. Take care to make sure
@@ -705,7 +705,7 @@ func runGitHubOp(ctx context.Context, owner, repo, caller string, ghAppAuth *git
 // a 401 indicates the app lacks the necessary credentials and retrying would
 // be futile.
 func runGitHubOpWithExternalGitHubApp(ctx context.Context, owner, repo, caller string, ghAppAuth *githubapp.GithubAppAuth, op func(ctx context.Context, ghClient *githubapp.GitHubClient) error) error {
-	token, err := ghAppAuth.CreateCachedInstallationToken(ctx, owner, repo, defaultGitHubAPIRequestLifetime, nil)
+	token, err := ghAppAuth.CreateCachedInstallationToken(ctx, owner, repo, defaultGitHubAPIRequestLifetime, nil, false)
 	if err != nil {
 		return errors.Wrapf(err, "getting installation token with external GitHub app '%d'", ghAppAuth.AppID)
 	}
@@ -1302,7 +1302,7 @@ func CheckGithubAPILimit(ctx context.Context, owner, repo string, ghAppAuth *git
 			attribute.String(githubOwnerAttribute, owner),
 			attribute.String(githubRepoAttribute, repo),
 		)
-		token, err = ghAppAuth.CreateCachedInstallationToken(ctx, owner, repo, defaultGitHubAPIRequestLifetime, nil)
+		token, err = ghAppAuth.CreateCachedInstallationToken(ctx, owner, repo, defaultGitHubAPIRequestLifetime, nil, false)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting installation token with external GitHub app ID %d for owner/repo '%s/%s'", ghAppAuth.AppID, owner, repo)
 		}

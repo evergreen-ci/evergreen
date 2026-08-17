@@ -160,10 +160,10 @@ func TestCostConfigValidateAndDefault(t *testing.T) {
 }
 
 func TestAWSAccountIDMatchesConfiguredList(t *testing.T) {
-	assert.True(t, IsInDevProdOwnedAccountList("123456789012", []string{"123456789012"}))
-	assert.True(t, IsInDevProdOwnedAccountList("123456789012", []string{" 123456789012 "}))
-	assert.False(t, IsInDevProdOwnedAccountList("123456789012", []string{"999999999999"}))
-	assert.False(t, IsInDevProdOwnedAccountList("123456789012", nil))
+	assert.True(t, isInAccountList("123456789012", []string{"123456789012"}))
+	assert.True(t, isInAccountList("123456789012", []string{" 123456789012 "}))
+	assert.False(t, isInAccountList("123456789012", []string{"999999999999"}))
+	assert.False(t, isInAccountList("123456789012", nil))
 }
 
 func TestIsDevprodOwnedArtifactIAMRole(t *testing.T) {
@@ -387,5 +387,23 @@ func TestCostConfigSetAndGet(t *testing.T) {
 
 		assert.Equal(t, []string{"123456789012"}, retrieved.S3Cost.Storage.DevprodOwnedAWSAccountIDs)
 		assert.Equal(t, []string{"210987654321"}, retrieved.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules)
+	})
+}
+
+func TestResolveUploadAccountID(t *testing.T) {
+	t.Run("RoleARNResolvesToItsAccount", func(t *testing.T) {
+		assert.Equal(t, "123456789012", ResolveUploadAccountID("arn:aws:iam::123456789012:role/r", ""))
+	})
+	t.Run("RoleARNTakesPrecedenceOverAccountID", func(t *testing.T) {
+		assert.Equal(t, "123456789012", ResolveUploadAccountID("arn:aws:iam::123456789012:role/r", "999999999999"))
+	})
+	t.Run("UnparseableRoleARNResolvesToNoAccount", func(t *testing.T) {
+		assert.Empty(t, ResolveUploadAccountID("not-an-arn", "999999999999"))
+	})
+	t.Run("EmptyRoleARNFallsBackToAccountID", func(t *testing.T) {
+		assert.Equal(t, "999999999999", ResolveUploadAccountID("", "999999999999"))
+	})
+	t.Run("BothEmptyResolvesToNoAccount", func(t *testing.T) {
+		assert.Empty(t, ResolveUploadAccountID("", ""))
 	})
 }

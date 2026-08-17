@@ -683,37 +683,6 @@ func (r *versionResolver) Warnings(ctx context.Context, obj *restModel.APIVersio
 	return v.Warnings, nil
 }
 
-// WaterfallBuilds is the resolver for the waterfallBuilds field.
-func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *restModel.APIVersion) ([]*model.WaterfallBuild, error) {
-	versionID := utility.FromStringPtr(obj.Id)
-
-	// No need to fetch build variants for unactivated versions
-	if !utility.FromBoolPtr(obj.Activated) {
-		return nil, nil
-	}
-
-	parentWaterfall, ok := getWaterfallFromContext(ctx)
-	if ok {
-		// If we can't find the activeVersionIds in the parent query, eagerly continue with this aggregation.
-		activeVersionIds := parentWaterfall.Pagination.ActiveVersionIds
-		if !utility.StringSliceContains(activeVersionIds, versionID) {
-			return nil, nil
-		}
-	}
-
-	// TODO DEVPROD-29422: this is only necessary because APIVersion doesn't include BuildIds, and GetAllWaterfallVersions projects out Version.BuildVariants for performance
-	v, err := model.VersionFindOneId(ctx, versionID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionID, err.Error()))
-	}
-
-	builds, err := model.GetVersionBuilds(ctx, versionID, v.BuildIds)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variants for version '%s': %s", versionID, err.Error()))
-	}
-	return builds, nil
-}
-
 // BaseVersion is the resolver for the baseVersion field.
 func (r *versionLiteResolver) BaseVersion(ctx context.Context, obj *model.Version) (*model.Version, error) {
 	baseVersion, err := model.FindBaseVersionForVersion(ctx, obj.Id)

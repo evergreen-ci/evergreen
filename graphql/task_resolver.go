@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/thirdparty/clients/fws"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -155,6 +156,26 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting base task '%s' to APITask: %s", baseTask.Id, err.Error()))
 	}
 	return apiTask, nil
+}
+
+// BuildBaronCreatedTickets is the resolver for the buildBaronCreatedTickets field.
+func (r *taskResolver) BuildBaronCreatedTickets(ctx context.Context, obj *restModel.APITask) ([]*thirdparty.JiraTicket, error) {
+	taskID := utility.FromStringPtr(obj.Id)
+	createdTickets, err := bbGetCreatedTicketsPointers(ctx, taskID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Build Baron created tickets for task '%s': %s", taskID, err.Error()))
+	}
+	return createdTickets, nil
+}
+
+// BuildBaronSuggestions is the resolver for the buildBaronSuggestions field.
+func (r *taskResolver) BuildBaronSuggestions(ctx context.Context, obj *restModel.APITask) (*thirdparty.SearchReturnInfo, error) {
+	taskID := utility.FromStringPtr(obj.Id)
+	searchReturnInfo, _, err := model.GetBuildBaron(ctx, taskID, obj.Execution)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Build Baron suggestions for task '%s' with execution %d: %s", taskID, obj.Execution, err.Error()))
+	}
+	return searchReturnInfo, nil
 }
 
 // BuildVariantDisplayName is the resolver for the buildVariantDisplayName field.

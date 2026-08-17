@@ -1,8 +1,7 @@
 {
   waterfall(options: { projectIdentifier: "spruce-identifier", maxOrder: 45 }) {
-    flattenedVersions {
+    versions {
       activated
-      author
       id
       order
     }

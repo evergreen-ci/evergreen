@@ -1,8 +1,7 @@
 {
   waterfall(options: { projectIdentifier: "evergreen" }) {
-    flattenedVersions {
+    versions {
       activated
-      author
       id
       order
     }
