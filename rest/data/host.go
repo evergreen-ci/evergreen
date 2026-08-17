@@ -149,9 +149,9 @@ func GenerateHostProvisioningScript(ctx context.Context, env evergreen.Environme
 		}
 	}
 	ci := h.Distro.BootstrapSettings.ContainerIsolation
-	containerIsolationDisabled := env.Settings().ServiceFlags.ContainerIsolationDisabled
-	containerImage = getContainerImageForPrePull(ci, containerIsolationDisabled)
-	if ci.Enabled && !containerIsolationDisabled {
+	containerIsolationEnabled := env.Settings().ServiceFlags.ContainerIsolationEnabled
+	containerImage = getContainerImageForPrePull(ci, containerIsolationEnabled)
+	if ci.Enabled && containerIsolationEnabled {
 		if ci.Image == "" {
 			grip.Warning(ctx, message.Fields{
 				"message": "container isolation is enabled for this distro but no image is configured; pre-pull will be skipped",
@@ -162,8 +162,8 @@ func GenerateHostProvisioningScript(ctx context.Context, env evergreen.Environme
 	return script, containerImage, nil
 }
 
-func getContainerImageForPrePull(settings distro.ContainerIsolationSettings, containerIsolationDisabled bool) string {
-	if !settings.Enabled || containerIsolationDisabled {
+func getContainerImageForPrePull(settings distro.ContainerIsolationSettings, containerIsolationEnabled bool) string {
+	if !settings.Enabled || !containerIsolationEnabled {
 		return ""
 	}
 	return settings.Image
