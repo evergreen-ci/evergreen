@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -123,6 +124,7 @@ func (j *eventNotifierJob) processEvent(ctx context.Context, e *event.EventLogEn
 	// Continue on error even if some jobs couldn't be marked disabled.
 	catcher.Add(errors.Wrap(err, "getting notification jobs"))
 	catcher.Add(errors.Wrap(j.q.PutMany(ctx, jobs), "enqueueing notification jobs"))
+	catcher.Add(j.enqueueGitHubStatusReconcile(ctx, e))
 
 	endTime := time.Now()
 	totalDuration := endTime.Sub(startTime)
@@ -222,6 +224,27 @@ func (j *eventNotifierJob) processEventTriggers(ctx context.Context, e *event.Ev
 	})
 
 	return n, err
+}
+
+func (j *eventNotifierJob) enqueueGitHubStatusReconcile(ctx context.Context, e *event.EventLogEntry) error {
+	if e.ResourceType != event.ResourceTypePatch || e.EventType != event.PatchStateChange {
+		return nil
+	}
+	data, ok := e.Data.(*event.PatchEventData)
+	if !ok || data == nil || !evergreen.IsFinishedVersionStatus(data.Status) {
+		return nil
+	}
+	if !patch.IsValidId(e.ResourceId) {
+		return nil
+	}
+	p, err := patch.FindOneId(ctx, e.ResourceId)
+	if err != nil {
+		return errors.Wrapf(err, "finding patch '%s' to reconcile GitHub statuses", e.ResourceId)
+	}
+	if p == nil || (!p.IsGithubPRPatch() && !p.IsMergeQueuePatch()) {
+		return nil
+	}
+	return errors.Wrap(amboy.EnqueueUniqueJob(ctx, j.q, NewGithubStatusReconcileJob(p, githubStatusReconcileDelay)), "enqueueing GitHub status reconcile job")
 }
 
 func notificationJobs(ctx context.Context, notifications []notification.Notification, flags *evergreen.ServiceFlags, ts time.Time) ([]amboy.Job, error) {

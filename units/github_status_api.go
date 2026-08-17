@@ -37,6 +37,7 @@ const (
 	mergeQueueDisabled                = "merge queue disabled for project"
 	ignoredFiles                      = "all patched files are ignored"
 	ignoredFilesForVariant            = "variant ignored due to path filtering"
+	unscheduledGitHubVariant          = "variant was not scheduled"
 	insufficientChildPatchPermissions = "insufficient permissions to submit patches on child project"
 	checkRunLimitExceeded             = "patch exceeds check run limit"
 	invalidRegexPattern               = "invalid regex in variant or task selector"

@@ -45,6 +45,7 @@ const (
 	GithubInvestigation        = "Github API Limit Investigation"
 	PRDiffTooLargeErrorMessage = "the diff exceeded the maximum"
 	GithubStatusDefaultContext = "evergreen"
+	githubCommitStatusPending  = "pending"
 )
 
 const (
@@ -1747,6 +1748,89 @@ func getRulesWithEvergreenPrefix(rules []string) []string {
 		}
 	}
 	return rulesWithEvergreenPrefix
+}
+
+// GetEvergreenRequiredStatusContexts returns GitHub required status contexts
+// that Evergreen is responsible for: the default "evergreen" context plus any
+// branch protection or ruleset checks prefixed with "evergreen". Errors fetching
+// rules are logged and omitted so callers can still send the default context.
+func GetEvergreenRequiredStatusContexts(ctx context.Context, owner, repo, branch string) []string {
+	branchProtectionRules, err := GetEvergreenBranchProtectionRules(ctx, owner, repo, branch)
+	grip.Error(ctx, message.WrapError(err, message.Fields{
+		"message": "failed to get branch protection rules",
+		"org":     owner,
+		"repo":    repo,
+		"branch":  branch,
+	}))
+
+	rulesetRules, err := GetEvergreenRulesetRules(ctx, owner, repo, branch)
+	grip.Error(ctx, message.WrapError(err, message.Fields{
+		"message": "failed to get ruleset rules",
+		"org":     owner,
+		"repo":    repo,
+		"branch":  branch,
+	}))
+
+	allRules := append([]string{GithubStatusDefaultContext}, branchProtectionRules...)
+	allRules = append(allRules, rulesetRules...)
+	return utility.UniqueStrings(allRules)
+}
+
+// GetPendingEvergreenCommitStatusContexts returns Evergreen commit status
+// contexts that GitHub still reports as pending for the given ref.
+func GetPendingEvergreenCommitStatusContexts(ctx context.Context, owner, repo, ref string) ([]string, error) {
+	caller := "GetPendingEvergreenCommitStatusContexts"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+		attribute.String(githubRefAttribute, ref),
+	))
+	defer span.End()
+
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting installation token")
+	}
+
+	githubClient := getGithubClient(token, caller, retryConfig{})
+	defer githubClient.Close()
+
+	opts := &github.ListOptions{PerPage: 100}
+	var statuses []*github.RepoStatus
+	for {
+		combined, resp, err := githubClient.Repositories.GetCombinedStatus(ctx, owner, repo, ref, opts)
+		if resp != nil {
+			defer resp.Body.Close()
+			span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+		}
+		if err != nil {
+			return nil, errors.Wrap(err, "getting combined commit status")
+		}
+		if combined != nil {
+			statuses = append(statuses, combined.Statuses...)
+		}
+		if resp == nil || resp.NextPage == 0 {
+			break
+		}
+		opts.Page = resp.NextPage
+	}
+
+	return evergreenPendingStatusContexts(statuses), nil
+}
+
+func evergreenPendingStatusContexts(statuses []*github.RepoStatus) []string {
+	pending := []string{}
+	for _, st := range statuses {
+		if st == nil {
+			continue
+		}
+		context := st.GetContext()
+		if st.GetState() == githubCommitStatusPending && strings.HasPrefix(context, GithubStatusDefaultContext) {
+			pending = append(pending, context)
+		}
+	}
+	return pending
 }
 
 // GetBranchProtectionRules gets all branch protection checks as a list of strings.

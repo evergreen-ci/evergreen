@@ -666,6 +666,25 @@ func (p *Patch) IsMergeQueuePatch() bool {
 	return p.Alias == evergreen.CommitQueueAlias || p.GithubMergeData.HeadSHA != ""
 }
 
+// GitHubStatusTarget returns the owner, repo, and commit SHA Evergreen should
+// post GitHub commit statuses to for this patch. Merge-queue patches must use
+// the merge group head SHA; PR patches use the PR head.
+func (p *Patch) GitHubStatusTarget() (owner, repo, ref string) {
+	if p.GithubMergeData.HeadSHA != "" {
+		return p.GithubMergeData.Org, p.GithubMergeData.Repo, p.GithubMergeData.HeadSHA
+	}
+	return p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.HeadHash
+}
+
+// GitHubStatusBranch returns the base branch used to look up GitHub required
+// status checks for this patch.
+func (p *Patch) GitHubStatusBranch() string {
+	if p.GithubMergeData.HeadSHA != "" {
+		return p.GithubMergeData.BaseBranch
+	}
+	return p.GithubPatchData.BaseBranch
+}
+
 func (p *Patch) IsChild() bool {
 	return p.Triggers.ParentPatch != ""
 }

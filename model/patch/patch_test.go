@@ -15,6 +15,42 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func TestGitHubStatusTarget(t *testing.T) {
+	prPatch := Patch{
+		GithubPatchData: thirdparty.GithubPatch{
+			BaseOwner:  "evergreen-ci",
+			BaseRepo:   "evergreen",
+			HeadHash:   "pr-head",
+			BaseBranch: "main",
+		},
+	}
+	owner, repo, ref := prPatch.GitHubStatusTarget()
+	assert.Equal(t, "evergreen-ci", owner)
+	assert.Equal(t, "evergreen", repo)
+	assert.Equal(t, "pr-head", ref)
+	assert.Equal(t, "main", prPatch.GitHubStatusBranch())
+
+	mqPatch := Patch{
+		GithubPatchData: thirdparty.GithubPatch{
+			BaseOwner:  "should-not-use",
+			BaseRepo:   "should-not-use",
+			HeadHash:   "pr-head",
+			BaseBranch: "pr-base",
+		},
+		GithubMergeData: thirdparty.GithubMergeGroup{
+			Org:        "10gen",
+			Repo:       "mms",
+			HeadSHA:    "merge-group-sha",
+			BaseBranch: "master",
+		},
+	}
+	owner, repo, ref = mqPatch.GitHubStatusTarget()
+	assert.Equal(t, "10gen", owner)
+	assert.Equal(t, "mms", repo)
+	assert.Equal(t, "merge-group-sha", ref)
+	assert.Equal(t, "master", mqPatch.GitHubStatusBranch())
+}
+
 func TestAliasesToResolve(t *testing.T) {
 	for name, tc := range map[string]struct {
 		patch    Patch

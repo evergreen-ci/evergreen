@@ -693,3 +693,16 @@ func TestBuildGithubHeadPRURL(t *testing.T) {
 		})
 	}
 }
+
+func TestEvergreenPendingStatusContexts(t *testing.T) {
+	pending := "pending"
+	success := "success"
+	statuses := []*github.RepoStatus{
+		{Context: github.Ptr("evergreen"), State: github.Ptr(pending)},
+		{Context: github.Ptr("evergreen/int"), State: github.Ptr(pending)},
+		{Context: github.Ptr("evergreen/js"), State: github.Ptr(success)},
+		{Context: github.Ptr("mms-global-pr"), State: github.Ptr(pending)},
+		nil,
+	}
+	assert.Equal(t, []string{"evergreen", "evergreen/int"}, evergreenPendingStatusContexts(statuses))
+}

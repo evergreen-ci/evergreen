@@ -1460,7 +1460,7 @@ func (r *mutationResolver) RefreshGitHubStatuses(ctx context.Context, opts Refre
 		return nil, InputValidationError.Send(ctx, fmt.Sprintf("version '%s' is not associated with a GitHub pull request or merge queue patch", versionID))
 	}
 
-	j := units.NewGithubStatusRefreshJob(p)
+	j := units.NewGithubStatusReconcileJob(p, 0)
 	if err := amboy.EnqueueUniqueJob(ctx, evergreen.GetEnvironment().RemoteQueue(), j); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating GitHub status refresh job: %s", err.Error()))
 	}

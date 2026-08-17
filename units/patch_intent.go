@@ -1625,32 +1625,7 @@ func (j *patchIntentProcessor) gitHubStatusRuleTarget(patchDoc *patch.Patch, pro
 // If we don't find rules, we'll send the status default context. We log the error but don't
 // return it, because we might have permission to send statuses but not to get the rules.
 func (j *patchIntentProcessor) getEvergreenRulesForStatuses(ctx context.Context, owner, repo, branch string) []string {
-	branchProtectionRules, err := thirdparty.GetEvergreenBranchProtectionRules(ctx, owner, repo, branch)
-	grip.Error(ctx, message.WrapError(err, message.Fields{
-		"job":      j.ID(),
-		"job_type": j.Type,
-		"message":  "failed to get branch protection rules",
-		"org":      owner,
-		"repo":     repo,
-		"branch":   branch,
-		"patch":    j.PatchID.Hex(),
-	}))
-
-	rulesetRules, err := thirdparty.GetEvergreenRulesetRules(ctx, owner, repo, branch)
-	grip.Error(ctx, message.WrapError(err, message.Fields{
-		"job":      j.ID(),
-		"job_type": j.Type,
-		"message":  "failed to get ruleset rules",
-		"org":      owner,
-		"repo":     repo,
-		"branch":   branch,
-		"patch":    j.PatchID.Hex(),
-	}))
-
-	allRules := append([]string{thirdparty.GithubStatusDefaultContext}, branchProtectionRules...)
-	allRules = append(allRules, rulesetRules...)
-
-	return utility.UniqueStrings(allRules)
+	return thirdparty.GetEvergreenRequiredStatusContexts(ctx, owner, repo, branch)
 }
 
 // filterOutIgnoredVariants checks which variants should be ignored based on

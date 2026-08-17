@@ -472,8 +472,143 @@ func (s *githubStatusRefreshSuite) getAndValidateStatus(sender *send.InternalSen
 	status, ok := raw.Raw().(*message.GithubStatus)
 	s.Require().True(ok)
 
-	s.Equal("evergreen-ci", status.Owner)
-	s.Equal("evergreen", status.Repo)
-	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", status.Ref)
+	owner, repo, ref := s.patchDoc.GitHubStatusTarget()
+	s.Equal(owner, status.Owner)
+	s.Equal(repo, status.Repo)
+	s.Equal(ref, status.Ref)
 	return status
+}
+
+func (s *githubStatusRefreshSuite) TestMergeQueueUsesHeadSHA() {
+	s.patchDoc.GithubMergeData = thirdparty.GithubMergeGroup{
+		Org:        "10gen",
+		Repo:       "mms",
+		HeadSHA:    "merge-group-sha",
+		BaseBranch: "master",
+	}
+	s.patchDoc.Status = evergreen.VersionSucceeded
+
+	b := build.Build{
+		Id:           "b1",
+		BuildVariant: "js",
+		Version:      s.patchDoc.Version,
+		Status:       evergreen.BuildSucceeded,
+		StartTime:    time.Now(),
+		FinishTime:   time.Now().Add(time.Minute),
+	}
+	s.NoError(b.Insert(s.ctx))
+	s.NoError(task.Task{
+		Id:      "t1",
+		Version: s.patchDoc.Version,
+		BuildId: b.Id,
+		Status:  evergreen.TaskSucceeded,
+	}.Insert(s.ctx))
+
+	job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
+	s.Require().True(ok)
+	job.env = s.env
+	job.Run(s.ctx)
+	s.False(job.HasErrors())
+
+	status := s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal("evergreen", status.Context)
+	s.Equal(message.GithubStateSuccess, status.State)
+
+	status = s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal("evergreen/js", status.Context)
+	s.Equal(message.GithubStateSuccess, status.State)
+}
+
+func (s *githubStatusRefreshSuite) TestReconcileConcludesUnscheduledRequiredContext() {
+	s.patchDoc.Status = evergreen.VersionSucceeded
+	s.patchDoc.GithubPatchData.BaseBranch = "main"
+
+	b := build.Build{
+		Id:           "b1",
+		BuildVariant: "js",
+		Version:      s.patchDoc.Version,
+		Status:       evergreen.BuildSucceeded,
+		StartTime:    time.Now(),
+		FinishTime:   time.Now().Add(time.Minute),
+	}
+	s.NoError(b.Insert(s.ctx))
+	s.NoError(task.Task{
+		Id:      "t1",
+		Version: s.patchDoc.Version,
+		BuildId: b.Id,
+		Status:  evergreen.TaskSucceeded,
+	}.Insert(s.ctx))
+
+	job, ok := NewGithubStatusReconcileJob(s.patchDoc, 0).(*githubStatusRefreshJob)
+	s.Require().True(ok)
+	job.env = s.env
+	job.requiredEvergreenContexts = func(context.Context, string, string, string) []string {
+		return []string{thirdparty.GithubStatusDefaultContext, "evergreen/int"}
+	}
+	job.listPendingEvergreenStatuses = func(context.Context, string, string, string) ([]string, error) {
+		return nil, nil
+	}
+	job.Run(s.ctx)
+	s.False(job.HasErrors())
+	s.False(job.RetryInfo().NeedsRetry)
+
+	status := s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal("evergreen", status.Context)
+	s.Equal(message.GithubStateSuccess, status.State)
+
+	status = s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal("evergreen/js", status.Context)
+	s.Equal(message.GithubStateSuccess, status.State)
+
+	status = s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal("evergreen/int", status.Context)
+	s.Equal(message.GithubStateSuccess, status.State)
+	s.Equal(unscheduledGitHubVariant, status.Description)
+}
+
+func (s *githubStatusRefreshSuite) TestReconcileRetriesWhenGitHubStillPending() {
+	s.patchDoc.Status = evergreen.VersionSucceeded
+
+	b := build.Build{
+		Id:           "b1",
+		BuildVariant: "js",
+		Version:      s.patchDoc.Version,
+		Status:       evergreen.BuildSucceeded,
+		StartTime:    time.Now(),
+		FinishTime:   time.Now().Add(time.Minute),
+	}
+	s.NoError(b.Insert(s.ctx))
+	s.NoError(task.Task{
+		Id:      "t1",
+		Version: s.patchDoc.Version,
+		BuildId: b.Id,
+		Status:  evergreen.TaskSucceeded,
+	}.Insert(s.ctx))
+
+	job, ok := NewGithubStatusReconcileJob(s.patchDoc, githubStatusReconcileDelay).(*githubStatusRefreshJob)
+	s.Require().True(ok)
+	s.NotZero(job.RetryInfo().GetMaxAttempts())
+	s.Contains(job.ID(), "reconcile")
+
+	job.env = s.env
+	job.requiredEvergreenContexts = func(context.Context, string, string, string) []string {
+		return []string{thirdparty.GithubStatusDefaultContext}
+	}
+	job.listPendingEvergreenStatuses = func(context.Context, string, string, string) ([]string, error) {
+		return []string{"evergreen/int"}, nil
+	}
+	job.Run(s.ctx)
+	s.True(job.HasErrors())
+	s.True(job.RetryInfo().NeedsRetry)
+
+	status := s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal("evergreen", status.Context)
+
+	status = s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal("evergreen/js", status.Context)
+
+	status = s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal("evergreen/int", status.Context)
+	s.Equal(message.GithubStateSuccess, status.State)
+	s.Equal(unscheduledGitHubVariant, status.Description)
 }
