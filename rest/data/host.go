@@ -92,10 +92,8 @@ func NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, u
 	return intentHost, nil
 }
 
-// GenerateHostProvisioningScript generates and returns the provisioning script
-// for the host and, if the distro has container isolation enabled, the
-// fully-qualified container image to pre-pull. Both values are derived from the
-// same host lookup so callers receive them without a second DB round-trip.
+// GenerateHostProvisioningScript returns the provisioning script and optional
+// container image for a host.
 func GenerateHostProvisioningScript(ctx context.Context, env evergreen.Environment, hostID string) (script, containerImage string, err error) {
 	if hostID == "" {
 		return "", "", gimlet.ErrorResponse{

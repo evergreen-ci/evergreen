@@ -19,10 +19,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-// containerImagePullTimeout bounds the docker pull step in host provisioning.
-// Large evergreen-task-images can be several GB; 15 minutes accommodates
-// realistic EC2-to-ECR pull speeds while ensuring a stalled registry connection
-// does not block the host from finishing provisioning.
+// containerImagePullTimeout bounds image pulls during provisioning.
 const containerImagePullTimeout = 15 * time.Minute
 
 func hostProvision() cli.Command {
@@ -118,8 +115,7 @@ func hostProvision() cli.Command {
 			}
 
 			if opts.ContainerImage != "" {
-				// Bound the pull so a stalled registry cannot block provisioning
-				// indefinitely. Failure is non-fatal: the first task will pull.
+				// Pull failures are non-fatal because the first task can retry.
 				pullCtx, pullCancel := context.WithTimeout(ctx, containerImagePullTimeout)
 				defer pullCancel()
 				if err := prePullContainerImage(pullCtx, opts.ContainerImage); err != nil {
@@ -194,14 +190,7 @@ func runHostProvisioningScript(ctx context.Context, shellPath, scriptPath, worki
 	return nil
 }
 
-// prePullContainerImage runs `docker pull` for the given image so it is
-// resident in the local Docker image store before the first task runs.
-// This amortizes the pull cost across the host lifetime rather than paying
-// it on the first task's critical path.
-//
-// The docker CLI is used so the host's configured credential helpers are
-// inherited automatically. Private ECR images require the
-// amazon-ecr-credential-helper, which the CLI loads from ~/.docker/config.json.
+// prePullContainerImage uses the host's Docker credential helpers.
 func prePullContainerImage(ctx context.Context, image string) error {
 	return errors.Wrapf(
 		jasper.NewCommand().

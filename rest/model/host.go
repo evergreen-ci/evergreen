@@ -297,8 +297,6 @@ type APIOffboardUserResults struct {
 // APIHostProvisioningOptions represents the script to provision a host.
 type APIHostProvisioningOptions struct {
 	Content string `json:"content"`
-	// ContainerImage is the fully-qualified image reference to pre-pull after
-	// provisioning, populated when the distro has container isolation enabled.
-	// Empty string means no pre-pull is required.
+	// ContainerImage is the image to pre-pull after provisioning, if configured.
 	ContainerImage string `json:"container_image,omitempty"`
 }
