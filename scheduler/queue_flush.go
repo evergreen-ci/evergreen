@@ -2,7 +2,6 @@ package scheduler
 
 import (
 	"context"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -12,37 +11,19 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	// oversizedQueueGracePeriod is how long a task must have been activated before an
-	// oversized queue will unschedule it, so that a burst of freshly scheduled work is
-	// never flushed on the spike that created it.
-	oversizedQueueGracePeriod = time.Hour
-
-	// maxTasksFlushedPerPass bounds how many tasks one pass may unschedule, since each
-	// one costs a build and version status update. A queue needing more converges over
-	// subsequent passes.
-	// ponytail: a fixed ceiling, make it a setting if a real flush can't keep up.
-	maxTasksFlushedPerPass = 1000
-)
-
-// flushOversizedQueue unschedules the patch tasks overflowing a distro's queue once the
-// plan grows past threshold, to stop them accumulating in a queue that cannot dispatch
-// them. Only tasks past the threshold are eligible, so the tasks that are actually
-// dispatching are never touched. plan must be in scheduler-sorted order.
+// flushOversizedQueue unschedules every patch task in a distro's plan once the plan
+// reaches threshold, to stop them accumulating in a queue that cannot dispatch them.
 //
-// Mainline and merge queue tasks are never unscheduled, so a distro whose mainline demand
-// alone exceeds the threshold stays over it; that case is logged for on-call instead.
+// Mainline tasks are never unscheduled, so a distro whose mainline demand alone reaches
+// the threshold stays over it; that case is logged for on-call instead.
 func flushOversizedQueue(ctx context.Context, distroID string, plan []task.Task, threshold int) error {
-	if threshold <= 0 || len(plan) <= threshold {
+	if threshold <= 0 || len(plan) < threshold {
 		return nil
 	}
 
-	staleBefore := time.Now().Add(-oversizedQueueGracePeriod)
-	overflow := plan[threshold:]
-	victims := make([]task.Task, 0, len(overflow))
-	// Walk back to front so the lowest-ranked tasks are flushed first.
-	for i := len(overflow) - 1; i >= 0 && len(victims) < maxTasksFlushedPerPass; i-- {
-		if t := overflow[i]; isFlushable(t) && t.ActivatedTime.Before(staleBefore) {
+	victims := make([]task.Task, 0, len(plan))
+	for _, t := range plan {
+		if evergreen.IsPatchRequester(t.Requester) {
 			victims = append(victims, t)
 		}
 	}
@@ -60,7 +41,7 @@ func flushOversizedQueue(ctx context.Context, distroID string, plan []task.Task,
 	}
 
 	if err := task.DeactivateTasks(ctx, victims, true, evergreen.OversizedQueueUnscheduler); err != nil {
-		return errors.Wrap(err, "unscheduling overflowing tasks")
+		return errors.Wrap(err, "unscheduling patch tasks")
 	}
 
 	taskIDs := make([]string, 0, len(victims))
@@ -76,18 +57,11 @@ func flushOversizedQueue(ctx context.Context, distroID string, plan []task.Task,
 		}
 	}
 	grip.Info(ctx, message.Fields{
-		"message":  "unscheduled tasks overflowing an oversized queue",
+		"message":  "flushed patch tasks from an oversized queue",
 		"distro":   distroID,
 		"runner":   RunnerName,
 		"task_ids": taskIDs,
 	})
 
 	return nil
-}
-
-// isFlushable reports whether an overflowing task may be unscheduled to shrink a queue.
-// Merge queue tasks are excluded even though they are patches, because unscheduling one
-// stalls the merge it belongs to.
-func isFlushable(t task.Task) bool {
-	return evergreen.IsPatchRequester(t.Requester) && t.Requester != evergreen.GithubMergeRequester
 }

@@ -243,8 +243,8 @@ const (
 	// their distro queue.
 	UnderwaterTaskUnscheduler = "underwater-task-unscheduler"
 
-	// OversizedQueueUnscheduler is the caller associated with unscheduling
-	// patch tasks that overflow a distro queue longer than
+	// OversizedQueueUnscheduler is the caller associated with unscheduling the
+	// patch tasks in a distro queue that has reached
 	// TaskLimits.TaskQueueFlushThreshold.
 	OversizedQueueUnscheduler = "oversized-queue-unscheduler"
 

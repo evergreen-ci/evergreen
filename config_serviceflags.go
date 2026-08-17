@@ -44,8 +44,8 @@ type ServiceFlags struct {
 	PodDiagnosticsDisabled             bool `bson:"pod_diagnostics_disabled" json:"pod_diagnostics_disabled"`
 	RetryFailedLogMoveEnabled          bool `bson:"retry_failed_log_move_enabled" json:"retry_failed_log_move_enabled"`
 	ProjectTranslationCacheEnabled     bool `bson:"project_translation_cache_enabled" json:"project_translation_cache_enabled"`
-	// TaskQueueFlushDisabled stops the scheduler from unscheduling the patch tasks that
-	// overflow a distro queue longer than TaskLimits.TaskQueueFlushThreshold.
+	// TaskQueueFlushDisabled stops the scheduler from unscheduling the patch tasks in a
+	// distro queue that has reached TaskLimits.TaskQueueFlushThreshold.
 	TaskQueueFlushDisabled bool `bson:"task_queue_flush_disabled" json:"task_queue_flush_disabled"`
 	// LiveArtifactCredentialsDisabled makes presigning use only the credentials
 	// stored on each artifact.

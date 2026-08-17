@@ -2,7 +2,6 @@ package scheduler
 
 import (
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -13,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFlushOversizedQueueOnlyUnschedulesStaleOverflowingPatchTasks(t *testing.T) {
+func TestFlushOversizedQueueUnschedulesEveryPatchTask(t *testing.T) {
 	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, model.VersionCollection))
@@ -21,28 +20,22 @@ func TestFlushOversizedQueueOnlyUnschedulesStaleOverflowingPatchTasks(t *testing
 		assert.NoError(t, db.ClearCollections(task.Collection, build.Collection, model.VersionCollection))
 	})
 
-	stale := time.Now().Add(-2 * oversizedQueueGracePeriod)
-	newTask := func(id, requester string, activatedTime time.Time) task.Task {
+	newTask := func(id, requester string) task.Task {
 		return task.Task{
-			Id:            id,
-			Status:        evergreen.TaskUndispatched,
-			Activated:     true,
-			ActivatedTime: activatedTime,
-			Requester:     requester,
-			DistroId:      "d",
-			BuildId:       "b",
-			Version:       "v",
+			Id:        id,
+			Status:    evergreen.TaskUndispatched,
+			Activated: true,
+			Requester: requester,
+			DistroId:  "d",
+			BuildId:   "b",
+			Version:   "v",
 		}
 	}
-	// The plan is in scheduler-sorted order; with a threshold of 2, everything from
-	// "stale-patch" on is overflow.
 	plan := []task.Task{
-		newTask("under-threshold-mainline", evergreen.RepotrackerVersionRequester, stale),
-		newTask("under-threshold-patch", evergreen.PatchVersionRequester, stale),
-		newTask("stale-patch", evergreen.PatchVersionRequester, stale),
-		newTask("fresh-patch", evergreen.PatchVersionRequester, time.Now()),
-		newTask("stale-mainline", evergreen.RepotrackerVersionRequester, stale),
-		newTask("stale-merge-queue", evergreen.GithubMergeRequester, stale),
+		newTask("mainline", evergreen.RepotrackerVersionRequester),
+		newTask("patch", evergreen.PatchVersionRequester),
+		newTask("github-pr", evergreen.GithubPRRequester),
+		newTask("merge-queue", evergreen.GithubMergeRequester),
 	}
 	for _, tsk := range plan {
 		require.NoError(t, tsk.Insert(ctx))
@@ -50,14 +43,19 @@ func TestFlushOversizedQueueOnlyUnschedulesStaleOverflowingPatchTasks(t *testing
 	require.NoError(t, (&build.Build{Id: "b", Activated: true, Status: evergreen.BuildStarted, Version: "v"}).Insert(ctx))
 	require.NoError(t, (&model.Version{Id: "v", Status: evergreen.VersionStarted}).Insert(ctx))
 
-	require.NoError(t, flushOversizedQueue(ctx, "d", plan, len(plan)))
-	require.NoError(t, flushOversizedQueue(ctx, "d", plan, 0))
-	require.NoError(t, flushOversizedQueue(ctx, "d", plan, 2))
-
-	for _, tsk := range plan {
-		found, err := task.FindOneId(ctx, tsk.Id)
-		require.NoError(t, err)
-		require.NotNil(t, found)
-		assert.Equal(t, tsk.Id != "stale-patch", found.Activated, "task '%s'", tsk.Id)
+	assertActivated := func(expected func(task.Task) bool) {
+		for _, tsk := range plan {
+			found, err := task.FindOneId(ctx, tsk.Id)
+			require.NoError(t, err)
+			require.NotNil(t, found)
+			assert.Equal(t, expected(tsk), found.Activated, "task '%s'", tsk.Id)
+		}
 	}
+
+	require.NoError(t, flushOversizedQueue(ctx, "d", plan, len(plan)+1))
+	require.NoError(t, flushOversizedQueue(ctx, "d", plan, 0))
+	assertActivated(func(task.Task) bool { return true })
+
+	require.NoError(t, flushOversizedQueue(ctx, "d", plan, len(plan)))
+	assertActivated(func(tsk task.Task) bool { return tsk.Id == "mainline" })
 }
