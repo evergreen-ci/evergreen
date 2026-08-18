@@ -44,8 +44,8 @@ type OktaConfig struct {
 	ExpireAfterMinutes int      `bson:"expire_after_minutes" json:"expire_after_minutes" yaml:"expire_after_minutes"`
 	// ExpectedEmailDomains is the allow-list of email domains whose local-part may
 	// be used as the username. Emails from other domains keep their full address,
-	// so accounts sharing a local-part across domains cannot collide. Empty strips
-	// the domain unconditionally (legacy behavior).
+	// so accounts sharing a local-part across domains cannot collide. If it's
+	// empty, every email keeps its full address as the username.
 	ExpectedEmailDomains []string `bson:"expected_email_domains" json:"expected_email_domains" yaml:"expected_email_domains"`
 }
 

@@ -26,6 +26,7 @@ func TestRateLimitConfigValidate(t *testing.T) {
 			GraphQLServiceBurst:    100,
 			GraphQLComplexityLimit: 1000,
 			ElevatedUserIDs:        []string{"alice", "bob"},
+			ExemptUserIDs:          []string{"carol"},
 		}
 		assert.NoError(t, c.ValidateAndDefault())
 	})
@@ -101,6 +102,7 @@ func TestRateLimitConfigBSONRoundTrip(t *testing.T) {
 			GraphQLServiceBurst:    100,
 			GraphQLComplexityLimit: 1000,
 			ElevatedUserIDs:        []string{"alice", "bob"},
+			ExemptUserIDs:          []string{"carol"},
 		}
 		require.NoError(t, original.Set(t.Context()))
 

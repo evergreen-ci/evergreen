@@ -1570,6 +1570,9 @@ Parameters:
   the presigned url.
   Note: This parameter does \_not* affect the underlying permissions of the file
   on S3, only the visibility in the Evergreen UI. To change the permissions of the file on S3, use the `permissions` parameter.
+  See [Rotating AWS credentials for signed artifacts](#rotating-aws-credentials-for-signed-artifacts)
+  for how presigning picks up rotated credentials, and how to repair links for artifacts
+  uploaded before that.
 - `patchable`: defaults to true. If set to false, the command will
   no-op for patches (i.e. continue without performing the s3 put).
 - `patch_only`: defaults to false. If set to true, the command will
@@ -1594,6 +1597,41 @@ Parameters:
     }
   ]
   ```
+
+### Rotating AWS credentials for signed artifacts
+
+A presigned URL for a `visibility: signed` artifact is generated when someone opens
+the file, not when the file is uploaded, so it has to be signed with credentials that
+are still valid. When `aws_key` and `aws_secret` are given as single expansions, as in
+`aws_key: ${aws_key}`, Evergreen records the expansion names alongside the artifact and
+re-reads those project variables each time it presigns. Rotating the credentials is
+therefore enough to fix links for artifacts uploaded that way, with no need to keep the
+retired key pair around.
+
+Artifacts uploaded before Evergreen started recording those names have no names to
+re-read. For those, name the project variables once at the project level and Evergreen
+will use them for any signed artifact in the project that has none of its own:
+
+```bash
+curl -X PATCH \
+  -H "Authorization: Bearer $(evergreen client get-oauth-token)" \
+  -H "Content-Type: application/json" \
+  https://evergreen.mongodb.com/rest/v2/projects/<project> \
+  -d '{"artifact_credentials": {"aws_key_var_name": "name_of_your_aws_key_variable", "aws_secret_var_name": "name_of_your_aws_secret_variable"}}'
+```
+
+`aws_key_var_name` and `aws_secret_var_name` are the **names** of the project variables
+holding the credentials, not the credentials themselves. They must be set together, and
+the variables must exist in the project's variables. This setting is not editable from
+the project settings UI.
+
+`artifact_credentials` is unset by default and is only needed as a one-time backfill for
+those older artifacts.
+
+Artifacts uploaded with `role_arn` are unaffected by any of this. They are presigned by
+assuming that role each time, so rotating the role's credentials needs no action.
+Changing or deleting the role itself, however, breaks those links permanently, and
+`artifact_credentials` cannot repair them.
 
 ## s3.put with multiple files
 
@@ -1844,6 +1882,10 @@ This command only requests selected tests when [test selection filtering is enab
 task](Project-and-Distro-Settings#test-selection-settings). Projects can enable filtering for patches only or for both
 patches and mainline commits. Git tags, periodic builds, triggered versions, and other unsupported versions write an
 empty test list to the output file so that no tests are excluded.
+
+When test selection excludes tests because they are quarantined, Evergreen records those tests on the task so the UI can
+show which tests were skipped due to quarantine. The command may be called multiple times in a task, so
+the recorded tests accumulate across calls and are deduplicated by test name within a single task execution.
 
 ```yaml
 - command: test_selection.get

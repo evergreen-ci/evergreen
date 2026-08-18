@@ -238,6 +238,7 @@
             },
             "rateLimit": {
               "elevatedUserIds": ["user1", "user2"],
+              "exemptUserIds": ["user3"],
               "graphqlComplexityLimit": 1000,
               "graphqlServiceBurst": 40,
               "graphqlServicePerHour": 400,
@@ -553,7 +554,8 @@
                   }
                 ],
                 "ipamPoolID": "ipam-pool-12345678",
-                "elasticIPUsageRate": 0.8
+                "elasticIPUsageRate": 0.8,
+                "allowedSNSTopicARNs": ["arn:aws:sns:us-east-1:012345678901:topic"]
               },
               "docker": {
                 "apiVersion": "1.40"
@@ -611,6 +613,7 @@
               { "name": "pod_diagnostics_disabled", "enabled": false },
               { "name": "retry_failed_log_move_enabled", "enabled": false },
               { "name": "project_translation_cache_enabled", "enabled": false },
+              { "name": "live_artifact_credentials_disabled", "enabled": false },
               { "name": "container_isolation_enabled", "enabled": false },
               { "name": "event_processing_disabled", "enabled": false },
               { "name": "jira_notifications_disabled", "enabled": false },

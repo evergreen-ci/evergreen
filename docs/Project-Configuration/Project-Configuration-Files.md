@@ -344,9 +344,11 @@ includes. This will accept a list of filenames and [module names](#modules). If 
 include isn't given, we will only use the main project configuration
 file.
 
-Note: [version-controlled project settings configurations](Project-and-Distro-Settings#version-control)
-will not be recognized if they are put in included files. In order for any of the supported version-controlled
-YAML settings to take effect, they must exist in the main config file.
+[Version-controlled project settings configurations](Project-and-Distro-Settings#version-control) may be defined
+in included files as well as the main config file. Alias lists (e.g. `patch_aliases`, `github_pr_aliases`) are
+combined across all files in include order, with the main config file's entries first. Settings structs
+(`task_annotation_settings`, `build_baron_settings`, `workstation_config`) may only be defined in one file;
+defining them in multiple files is a validation error.
 
 ```yaml
 include:
@@ -360,6 +362,8 @@ include:
 YAML anchors (`&name`) and aliases (`*name`) are supported within a single file and across include files. Cross-file anchor support is in beta and requires passing `--yaml-anchors` to `evergreen validate` or `evergreen evaluate`.
 
 An anchor defined in the main config file or in an earlier include file can be referenced as an alias in any later include file. Files are processed in the order they are listed in `include`, so an alias can only refer to an anchor that was defined in a file that appears earlier in the list (or in the main config file).
+
+Note: [version-controlled project settings configurations](Project-and-Distro-Settings#version-control) are not yet supported in combination with YAML anchors; they are not processed when `--yaml-anchors` is enabled.
 
 ```yaml
 # main evergreen.yml — defines an anchor for reuse

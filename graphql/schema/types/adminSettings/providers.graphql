@@ -10,6 +10,8 @@ type AWSAccountRoleMapping {
 
 input AWSConfigInput {
   subnets: [SubnetInput!]!
+  subnetTagName: String
+  subnetTagValue: String
   parserProject: ParserProjectS3ConfigInput @redactSecrets
   persistentDNS: PersistentDNSConfigInput
   defaultSecurityGroup: String @redactSecrets
@@ -20,10 +22,13 @@ input AWSConfigInput {
   accountRoles: [AWSAccountRoleMappingInput!]! @redactSecrets
   ipamPoolID: String
   elasticIPUsageRate: Float
+  allowedSNSTopicARNs: [String!]!
 }
 
 type AWSConfig {
   subnets: [Subnet!]!
+  subnetTagName: String
+  subnetTagValue: String
   parserProject: ParserProjectS3Config @requireAdmin
   persistentDNS: PersistentDNSConfig
   defaultSecurityGroup: String @requireAdmin
@@ -34,6 +39,7 @@ type AWSConfig {
   accountRoles: [AWSAccountRoleMapping!]! @requireAdmin
   ipamPoolID: String
   elasticIPUsageRate: Float
+  allowedSNSTopicARNs: [String!]!
 }
 
 input AWSVPCConfigInput {

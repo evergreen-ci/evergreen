@@ -772,9 +772,8 @@ type VolumeHost struct {
 }
 
 type Waterfall struct {
-	FlattenedVersions []*model.APIVersion  `json:"flattenedVersions"`
-	Pagination        *WaterfallPagination `json:"pagination"`
-	Versions          []*model1.Version    `json:"versions"`
+	Pagination *WaterfallPagination `json:"pagination"`
+	Versions   []*model1.Version    `json:"versions"`
 }
 
 type WaterfallOptions struct {

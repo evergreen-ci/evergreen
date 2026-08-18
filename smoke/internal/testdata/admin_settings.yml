@@ -66,6 +66,9 @@ providers:
   aws:
     aws_id: "foo"
     aws_secret: "bar"
+    parser_project:
+      bucket: "mciuploads"
+      generated_json_prefix: "evergreen/smoke/generated-json"
 
 keys:
   test: "/dev/null"

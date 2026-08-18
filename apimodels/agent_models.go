@@ -392,6 +392,9 @@ type ExpansionsAndVars struct {
 	// DevprodOwnedAWSAccountIDs contains the AWS account IDs of the accounts that are
 	// owned by Devprod that we want to calculate s3 costs for.
 	DevprodOwnedAWSAccountIDs []string `json:"devprod_owned_aws_account_ids,omitempty"`
+	// ArtifactAWSAccountsWithoutLifecycleRules contains the AWS account IDs of the accounts that we
+	// calculate s3 costs for but cannot read lifecycle rules from.
+	ArtifactAWSAccountsWithoutLifecycleRules []string `json:"artifact_aws_accounts_without_lifecycle_rules,omitempty"`
 }
 
 // CheckRunOutput represents the output for a CheckRun.

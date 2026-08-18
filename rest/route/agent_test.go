@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/s3lifecycle"
 	"github.com/evergreen-ci/evergreen/model/s3usage"
@@ -203,9 +204,10 @@ func TestExpansionsAndVarsHostOwnership(t *testing.T) {
 		Version: "aaaaaaaaaaff001122334455",
 	}
 	pRef := model.ProjectRef{
-		Id:    "p1",
-		Owner: "evergreen-ci",
-		Repo:  "sample",
+		Id:                      "p1",
+		Owner:                   "evergreen-ci",
+		Repo:                    "sample",
+		DebugSpawnHostsDisabled: utility.FalsePtr(),
 	}
 	vars := &model.ProjectVars{
 		Id:          "p1",
@@ -250,6 +252,29 @@ func TestExpansionsAndVarsHostOwnership(t *testing.T) {
 	require.NoError(t, debugHost.Insert(t.Context()))
 	require.NoError(t, nonDebugHost.Insert(t.Context()))
 	require.NoError(t, wrongTaskDebugHost.Insert(t.Context()))
+
+	t.Run("UserRequestRejectsDebugSpawnHostsDisabledProject", func(t *testing.T) {
+		disabled := true
+		disabledPRef := model.ProjectRef{
+			Id:                      "disabled_project",
+			Owner:                   "evergreen-ci",
+			Repo:                    "sample",
+			DebugSpawnHostsDisabled: &disabled,
+		}
+		disabledTask := task.Task{
+			Id:      "t_disabled",
+			Project: "disabled_project",
+			Version: "aaaaaaaaaaff001122334455",
+		}
+		require.NoError(t, disabledPRef.Insert(t.Context()))
+		require.NoError(t, disabledTask.Insert(t.Context()))
+
+		userCtx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "test_user"})
+		rh := &getExpansionsAndVarsHandler{settings: env.Settings(), taskID: "t_disabled", hostID: "debug_host"}
+		resp := rh.Run(userCtx)
+		require.NotZero(t, resp)
+		assert.Equal(t, http.StatusForbidden, resp.Status())
+	})
 
 	t.Run("UserRequestRejectsNonDebugHost", func(t *testing.T) {
 		userCtx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "test_user"})
@@ -779,45 +804,56 @@ func TestCreateInstallationToken(t *testing.T) {
 	validRepo := "repo"
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, gh *createInstallationTokenForClone){
-		"ParseErrorsOnEmptyOwnerAndRepo": func(ctx context.Context, t *testing.T, handler *createInstallationTokenForClone) {
-			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", "", "")
-			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
+		"ParseErrorsOnEmptyTaskID": func(ctx context.Context, t *testing.T, handler *createInstallationTokenForClone) {
+			request, err := http.NewRequest(http.MethodGet, "/task//installation_token/owner/repo", bytes.NewReader(nil))
 			assert.NoError(t, err)
 
-			options := map[string]string{"owner": "", "repo": ""}
-			request = gimlet.SetURLVars(request, options)
+			request = gimlet.SetURLVars(request, map[string]string{"task_id": "", "owner": validOwner, "repo": validRepo})
+
+			assert.ErrorContains(t, handler.Parse(ctx, request), "missing task ID")
+		},
+		"ParseErrorsOnEmptyOwnerAndRepo": func(ctx context.Context, t *testing.T, handler *createInstallationTokenForClone) {
+			request, err := http.NewRequest(http.MethodGet, "/task/t1/installation_token//", bytes.NewReader(nil))
+			assert.NoError(t, err)
+
+			request = gimlet.SetURLVars(request, map[string]string{"task_id": "t1", "owner": "", "repo": ""})
 
 			assert.Error(t, handler.Parse(ctx, request))
 		},
 		"ParseErrorsOnEmptyOwner": func(ctx context.Context, t *testing.T, handler *createInstallationTokenForClone) {
-			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", "", validRepo)
-			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
+			request, err := http.NewRequest(http.MethodGet, "/task/t1/installation_token//repo", bytes.NewReader(nil))
 			assert.NoError(t, err)
 
-			options := map[string]string{"owner": "", "repo": validRepo}
-			request = gimlet.SetURLVars(request, options)
+			request = gimlet.SetURLVars(request, map[string]string{"task_id": "t1", "owner": "", "repo": validRepo})
 
 			assert.ErrorContains(t, handler.Parse(ctx, request), "missing owner")
 		},
 		"ParseErrorsOnEmptyRepo": func(ctx context.Context, t *testing.T, handler *createInstallationTokenForClone) {
-			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", validOwner, "")
-			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
+			request, err := http.NewRequest(http.MethodGet, "/task/t1/installation_token/owner/", bytes.NewReader(nil))
 			assert.NoError(t, err)
 
-			options := map[string]string{"owner": validOwner, "repo": ""}
-			request = gimlet.SetURLVars(request, options)
+			request = gimlet.SetURLVars(request, map[string]string{"task_id": "t1", "owner": validOwner, "repo": ""})
 
 			assert.ErrorContains(t, handler.Parse(ctx, request), "missing repo")
 		},
 		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *createInstallationTokenForClone) {
-			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", validOwner, validRepo)
-			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
+			request, err := http.NewRequest(http.MethodGet, "/task/t1/installation_token/owner/repo", bytes.NewReader(nil))
 			assert.NoError(t, err)
 
-			options := map[string]string{"owner": validOwner, "repo": validRepo}
-			request = gimlet.SetURLVars(request, options)
+			request = gimlet.SetURLVars(request, map[string]string{"task_id": "t1", "owner": validOwner, "repo": validRepo})
 
 			assert.NoError(t, handler.Parse(ctx, request))
+			assert.False(t, handler.refresh)
+		},
+		"ParseReadsRefreshHeader": func(ctx context.Context, t *testing.T, handler *createInstallationTokenForClone) {
+			request, err := http.NewRequest(http.MethodGet, "/task/t1/installation_token/owner/repo", bytes.NewReader(nil))
+			assert.NoError(t, err)
+			request.Header.Set(evergreen.RefreshGitHubTokenHeader, "true")
+
+			request = gimlet.SetURLVars(request, map[string]string{"task_id": "t1", "owner": validOwner, "repo": validRepo})
+
+			assert.NoError(t, handler.Parse(ctx, request))
+			assert.True(t, handler.refresh)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -830,6 +866,89 @@ func TestCreateInstallationToken(t *testing.T) {
 			require.True(t, ok)
 
 			tCase(ctx, t, r)
+		})
+	}
+}
+
+func TestIsRepoAllowedForTask(t *testing.T) {
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(t.Context()))
+	testutil.ConfigureIntegrationTest(t, env.Settings())
+	require.NoError(t, db.ClearCollections(
+		task.Collection, model.ProjectRefCollection,
+		model.VersionCollection, model.ParserProjectCollection,
+		manifest.Collection,
+	))
+
+	pRef := model.ProjectRef{
+		Id:    "p1",
+		Owner: "myorg",
+		Repo:  "myrepo",
+	}
+	v := model.Version{
+		Id:         "v1",
+		Identifier: "p1",
+		Revision:   "abc123",
+		Requester:  evergreen.RepotrackerVersionRequester,
+	}
+	pp := model.ParserProject{
+		Id: "v1",
+		Modules: []model.Module{
+			{Name: "mod1", Owner: "myorg", Repo: "mod-repo"},
+			{Name: "mod2", Owner: "otherorg", Repo: "other-repo"},
+		},
+	}
+	tsk := task.Task{
+		Id:        "t1",
+		Project:   "p1",
+		Version:   "v1",
+		Requester: evergreen.RepotrackerVersionRequester,
+	}
+	require.NoError(t, pRef.Insert(t.Context()))
+	require.NoError(t, v.Insert(t.Context()))
+	require.NoError(t, pp.Insert(t.Context()))
+	require.NoError(t, tsk.Insert(t.Context()))
+
+	for name, tc := range map[string]struct {
+		owner   string
+		repo    string
+		allowed bool
+	}{
+		"ProjectRepoIsAllowed": {
+			owner:   "myorg",
+			repo:    "myrepo",
+			allowed: true,
+		},
+		"ProjectRepoIsCaseInsensitive": {
+			owner:   "MyOrg",
+			repo:    "MyRepo",
+			allowed: true,
+		},
+		"DeclaredModuleIsAllowed": {
+			owner:   "myorg",
+			repo:    "mod-repo",
+			allowed: true,
+		},
+		"DeclaredModuleDifferentOrgIsAllowed": {
+			owner:   "otherorg",
+			repo:    "other-repo",
+			allowed: true,
+		},
+		"UndeclaredRepoIsRejected": {
+			owner:   "myorg",
+			repo:    "secret-repo",
+			allowed: false,
+		},
+		"UndeclaredOwnerIsRejected": {
+			owner:   "attacker",
+			repo:    "myrepo",
+			allowed: false,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			allowed, err := isRepoAllowedForTask(t.Context(), env, &tsk, tc.owner, tc.repo)
+			require.NoError(t, err)
+			assert.Equal(t, tc.allowed, allowed)
 		})
 	}
 }
@@ -1745,6 +1864,38 @@ func TestAttachTestResultsHandlerRun(t *testing.T) {
 		})
 		ctx := context.WithValue(t.Context(), model.ApiTaskKey, authedTask)
 		assert.Equal(t, http.StatusBadRequest, h.Run(ctx).Status())
+	})
+	t.Run("ExistingQuarantineSnapshotIsPreservedAndCreatedAtIsSet", func(t *testing.T) {
+		ctx := t.Context()
+		env := testutil.NewEnvironment(ctx, t)
+		require.NoError(t, task.ClearTestResults(ctx, env))
+		defer func() {
+			assert.NoError(t, task.ClearTestResults(ctx, env))
+		}()
+
+		svc := task.NewTestResultService(env)
+		record := testresult.DbTaskTestResults{ID: matchingInfo.ID(), Info: matchingInfo}
+		require.NoError(t, svc.AppendQuarantinedTests(ctx, record, []testresult.QuarantinedTest{{TestName: "quarantined_test"}}))
+
+		createdAt := time.Now().UTC().Round(time.Millisecond)
+		h := makeHandler(apimodels.AttachTestResultsRequest{
+			Info:         matchingInfo,
+			CreatedAt:    createdAt,
+			Stats:        testresult.TaskTestResultsStats{FailedCount: 1, TotalCount: 2},
+			FailedSample: []string{"failed_test"},
+		})
+		h.env = env
+		ctx = context.WithValue(ctx, model.ApiTaskKey, authedTask)
+		require.Equal(t, http.StatusOK, h.Run(ctx).Status())
+
+		var dbRecord testresult.DbTaskTestResults
+		require.NoError(t, env.CedarDB().Collection(testresult.Collection).FindOne(ctx, task.ByTaskIDAndExecution(authedTaskID, 1)).Decode(&dbRecord))
+		assert.True(t, createdAt.Equal(dbRecord.CreatedAt), "the created timestamp should come from the attach request because it determines the offline results partition key")
+		assert.Equal(t, 1, dbRecord.QuarantinedTestsCount)
+		assert.Equal(t, []testresult.QuarantinedTest{{TestName: "quarantined_test"}}, dbRecord.QuarantinedTests)
+		assert.Equal(t, 2, dbRecord.Stats.TotalCount)
+		assert.Equal(t, 1, dbRecord.Stats.FailedCount)
+		assert.Equal(t, []string{"failed_test"}, dbRecord.FailedTestsSample)
 	})
 }
 

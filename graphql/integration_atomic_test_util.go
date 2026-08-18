@@ -216,6 +216,7 @@ func setupUsers(t *testing.T) {
 			"project_sandbox",
 			"project_evergreen",
 			"repo_sandbox",
+			"repo_different",
 		},
 	}
 	assert.NoError(t, adminUsr.Insert(t.Context()))
@@ -524,6 +525,24 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 		Permissions: projectPermissions,
 	}
 	err = roleManager.UpdateRole(t.Context(), repoSandboxRole)
+	require.NoError(t, err)
+
+	repoDifferentScope := gimlet.Scope{
+		ID:        "repo_different_scope",
+		Name:      "repo_different",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"different"},
+	}
+	err = roleManager.AddScope(t.Context(), repoDifferentScope)
+	require.NoError(t, err)
+
+	repoDifferentRole := gimlet.Role{
+		ID:          "repo_different",
+		Name:        "repo_different",
+		Scope:       repoDifferentScope.ID,
+		Permissions: projectPermissions,
+	}
+	err = roleManager.UpdateRole(t.Context(), repoDifferentRole)
 	require.NoError(t, err)
 
 	directorySpecificTestSetup(t, *state)
@@ -840,7 +859,11 @@ func setupQuarantineTaskMutation(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		if strings.Contains(r.URL.Path, data.TransitionTaskEndpoint) {
-			quarantined.Store(r.URL.Query().Get("is_manually_quarantined") == "true")
+			var body struct {
+				IsManuallyQuarantined bool `json:"is_manually_quarantined"`
+			}
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			quarantined.Store(body.IsManuallyQuarantined)
 			_, _ = w.Write([]byte("{}"))
 			return
 		}
@@ -873,7 +896,11 @@ func setupQuarantineVariantMutation(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		if strings.Contains(r.URL.Path, data.TransitionVariantEndpoint) {
-			quarantined.Store(r.URL.Query().Get("is_manually_quarantined") == "true")
+			var body struct {
+				IsManuallyQuarantined bool `json:"is_manually_quarantined"`
+			}
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			quarantined.Store(body.IsManuallyQuarantined)
 			_, _ = w.Write([]byte("{}"))
 			return
 		}

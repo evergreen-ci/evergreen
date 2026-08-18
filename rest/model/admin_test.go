@@ -108,6 +108,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.RateLimit.GraphQLServiceBurst, apiSettings.RateLimit.GraphQLServiceBurst)
 	assert.EqualValues(testSettings.RateLimit.GraphQLComplexityLimit, apiSettings.RateLimit.GraphQLComplexityLimit)
 	assert.EqualValues(testSettings.RateLimit.ElevatedUserIDs, apiSettings.RateLimit.ElevatedUserIDs)
+	assert.EqualValues(testSettings.RateLimit.ExemptUserIDs, apiSettings.RateLimit.ExemptUserIDs)
 	assert.EqualValues(testSettings.AuthConfig.PreferredType, utility.FromStringPtr(apiSettings.AuthConfig.PreferredType))
 	assert.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, utility.FromStringPtr(apiSettings.AuthConfig.Naive.Users[0].Username))
 	assert.EqualValues(testSettings.AuthConfig.Okta.ClientID, utility.FromStringPtr(apiSettings.AuthConfig.Okta.ClientID))
@@ -175,11 +176,14 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Providers.AWS.ParserProject.GeneratedJSONPrefix, utility.FromStringPtr(apiSettings.Providers.AWS.ParserProject.GeneratedJSONPrefix))
 	assert.EqualValues(testSettings.Providers.AWS.PersistentDNS.HostedZoneID, utility.FromStringPtr(apiSettings.Providers.AWS.PersistentDNS.HostedZoneID))
 	assert.EqualValues(testSettings.Providers.AWS.PersistentDNS.Domain, utility.FromStringPtr(apiSettings.Providers.AWS.PersistentDNS.Domain))
+	assert.EqualValues(testSettings.Providers.AWS.SubnetTagName, utility.FromStringPtr(apiSettings.Providers.AWS.SubnetTagName))
+	assert.EqualValues(testSettings.Providers.AWS.SubnetTagValue, utility.FromStringPtr(apiSettings.Providers.AWS.SubnetTagValue))
 	require.Len(apiSettings.Providers.AWS.AccountRoles, len(testSettings.Providers.AWS.AccountRoles))
 	for i, ar := range testSettings.Providers.AWS.AccountRoles {
 		assert.Equal(ar.Account, utility.FromStringPtr(apiSettings.Providers.AWS.AccountRoles[i].Account))
 		assert.Equal(ar.Role, utility.FromStringPtr(apiSettings.Providers.AWS.AccountRoles[i].Role))
 	}
+	assert.EqualValues(testSettings.Providers.AWS.AllowedSNSTopicARNs, utility.FromStringPtrSlice(apiSettings.Providers.AWS.AllowedSNSTopicARNs))
 	assert.EqualValues(testSettings.Providers.Docker.APIVersion, utility.FromStringPtr(apiSettings.Providers.Docker.APIVersion))
 	assert.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, apiSettings.RepoTracker.MaxConcurrentRequests)
 	assert.EqualValues(testSettings.Scheduler.TaskFinder, utility.FromStringPtr(apiSettings.Scheduler.TaskFinder))
