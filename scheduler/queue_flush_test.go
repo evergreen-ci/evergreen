@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFlushOversizedQueueUnschedulesEveryPatchTask(t *testing.T) {
+func TestFlushOversizedQueueOnlyUnschedulesCLIPatchTasks(t *testing.T) {
 	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, model.VersionCollection))
@@ -57,5 +57,5 @@ func TestFlushOversizedQueueUnschedulesEveryPatchTask(t *testing.T) {
 	assertActivated(func(task.Task) bool { return true })
 
 	require.NoError(t, flushOversizedQueue(ctx, "d", plan, len(plan)))
-	assertActivated(func(tsk task.Task) bool { return tsk.Id == "mainline" })
+	assertActivated(func(tsk task.Task) bool { return tsk.Id != "patch" })
 }

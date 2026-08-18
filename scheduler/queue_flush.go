@@ -11,11 +11,12 @@ import (
 	"github.com/pkg/errors"
 )
 
-// flushOversizedQueue unschedules every patch task in a distro's plan once the plan
+// flushOversizedQueue unschedules every CLI patch task in a distro's plan once the plan
 // reaches threshold, to stop them accumulating in a queue that cannot dispatch them.
 //
-// Mainline tasks are never unscheduled, so a distro whose mainline demand alone reaches
-// the threshold stays over it; that case is logged for on-call instead.
+// Only PatchVersionRequester tasks are eligible. Everything else, including GitHub PR and
+// merge queue tasks, is left alone, so a distro whose other demand alone reaches the
+// threshold stays over it; that case is logged for on-call instead.
 func flushOversizedQueue(ctx context.Context, distroID string, plan []task.Task, threshold int) error {
 	if threshold <= 0 || len(plan) < threshold {
 		return nil
@@ -23,7 +24,7 @@ func flushOversizedQueue(ctx context.Context, distroID string, plan []task.Task,
 
 	victims := make([]task.Task, 0, len(plan))
 	for _, t := range plan {
-		if evergreen.IsPatchRequester(t.Requester) {
+		if t.Requester == evergreen.PatchVersionRequester {
 			victims = append(victims, t)
 		}
 	}

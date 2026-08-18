@@ -3054,7 +3054,7 @@ type APITaskLimitsConfig struct {
 	MaxDailyAutomaticRestarts *int `json:"max_daily_automatic_restarts"`
 	// MaxScheduledTasksPerDistro is the cap for the number of max tasks materialized into a distro's queue doc per pass.
 	MaxScheduledTasksPerDistro *int `json:"max_scheduled_tasks_per_distro"`
-	// TaskQueueFlushThreshold is the planned distro queue length at which the scheduler unschedules every patch task in the queue.
+	// TaskQueueFlushThreshold is the planned distro queue length at which the scheduler unschedules every CLI patch task in the queue.
 	TaskQueueFlushThreshold *int `json:"task_queue_flush_threshold"`
 }
 
