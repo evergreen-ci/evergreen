@@ -486,6 +486,62 @@ func TestHostAuthMiddleware(t *testing.T) {
 	}
 }
 
+func TestReadOnlyHostAuthMiddleware(t *testing.T) {
+	m := NewReadOnlyHostAuthMiddleware()
+	for testName, testCase := range map[string]func(t *testing.T, ctx context.Context, h *host.Host, rw *httptest.ResponseRecorder){
+		"SucceedsWithoutWritingCommunicationTime": func(t *testing.T, ctx context.Context, h *host.Host, rw *httptest.ResponseRecorder) {
+			stale := time.Now().Add(-time.Hour)
+			require.NoError(t, host.UpdateOne(ctx, mongobson.M{host.IdKey: h.Id}, mongobson.M{"$set": mongobson.M{host.LastCommunicationTimeKey: stale}}))
+
+			r := &http.Request{
+				Header: http.Header{
+					evergreen.HostHeader:       []string{h.Id},
+					evergreen.HostSecretHeader: []string{h.Secret},
+				},
+			}
+			called := false
+			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+				called = true
+				foundHost := GetHost(r.Context())
+				require.NotNil(t, foundHost)
+				assert.Equal(t, h.Id, foundHost.Id)
+			})
+			assert.Equal(t, http.StatusOK, rw.Code)
+			assert.True(t, called)
+
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotNil(t, dbHost)
+			assert.WithinDuration(t, stale, dbHost.LastCommunicationTime, time.Millisecond)
+		},
+		"FailsWithInvalidSecret": func(t *testing.T, ctx context.Context, h *host.Host, rw *httptest.ResponseRecorder) {
+			r := &http.Request{
+				Header: http.Header{
+					evergreen.HostHeader:       []string{h.Id},
+					evergreen.HostSecretHeader: []string{"foo"},
+				},
+			}
+			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+			assert.NotEqual(t, http.StatusOK, rw.Code)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			ctx := t.Context()
+			require.NoError(t, db.Clear(host.Collection))
+			t.Cleanup(func() {
+				assert.NoError(t, db.Clear(host.Collection))
+			})
+			h := &host.Host{
+				Id:     "id",
+				Secret: "secret",
+			}
+			require.NoError(t, h.Insert(ctx))
+
+			testCase(t, ctx, h, httptest.NewRecorder())
+		})
+	}
+}
+
 func TestUpdateHostAccessTime(t *testing.T) {
 	for testName, testCase := range map[string]func(t *testing.T, ctx context.Context, h *host.Host){
 		"StaleCommunicationTimeWritesUpdate": func(t *testing.T, ctx context.Context, h *host.Host) {

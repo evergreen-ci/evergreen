@@ -250,12 +250,21 @@ func (m *canCreateMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 	next(rw, r)
 }
 
-type hostAuthMiddleware struct{}
+type hostAuthMiddleware struct {
+	// updateAccessTime records that the host communicated; read-only routes leave it unset.
+	updateAccessTime bool
+}
+
+// NewReadOnlyHostAuthMiddleware is NewHostAuthMiddleware without the communication-time
+// write, for routes that only read host state.
+func NewReadOnlyHostAuthMiddleware() gimlet.Middleware {
+	return &hostAuthMiddleware{}
+}
 
 // NewHostAuthMiddleware returns a route middleware that verifies the request's
 // host ID and secret.
 func NewHostAuthMiddleware() gimlet.Middleware {
-	return &hostAuthMiddleware{}
+	return &hostAuthMiddleware{updateAccessTime: true}
 }
 
 func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
@@ -280,7 +289,9 @@ func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 	}
 	r = r.WithContext(context.WithValue(r.Context(), model.ApiHostKey, h))
 
-	updateHostAccessTime(r.Context(), h)
+	if m.updateAccessTime {
+		updateHostAccessTime(r.Context(), h)
+	}
 	next(rw, r)
 }
 
