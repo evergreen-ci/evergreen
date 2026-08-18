@@ -6,6 +6,13 @@
         "data": {
           "saveDistro": {
             "distro": {
+              "bootstrapSettings": {
+                "containerIsolation": {
+                  "enabled": true,
+                  "image": "ubuntu:22.04",
+                  "requireIsolation": false
+                }
+              },
               "adminOnly": true,
               "aliases": ["new-alias"],
               "disableShallowClone": true,

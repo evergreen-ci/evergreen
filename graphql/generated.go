@@ -54,6 +54,7 @@ type Config struct {
 type ResolverRoot interface {
 	AdminSettings() AdminSettingsResolver
 	Annotation() AnnotationResolver
+	ContainerIsolationSettings() ContainerIsolationSettingsResolver
 	ContainerPool() ContainerPoolResolver
 	Cost() CostResolver
 	Distro() DistroResolver
@@ -309,6 +310,7 @@ type ComplexityRoot struct {
 	BootstrapSettings struct {
 		ClientDir             func(childComplexity int) int
 		Communication         func(childComplexity int) int
+		ContainerIsolation    func(childComplexity int) int
 		Env                   func(childComplexity int) int
 		JasperBinaryDir       func(childComplexity int) int
 		JasperCredentialsPath func(childComplexity int) int
@@ -401,6 +403,12 @@ type ComplexityRoot struct {
 		Enabled     func(childComplexity int) int
 		MergeMethod func(childComplexity int) int
 		Message     func(childComplexity int) int
+	}
+
+	ContainerIsolationSettings struct {
+		Enabled          func(childComplexity int) int
+		Image            func(childComplexity int) int
+		RequireIsolation func(childComplexity int) int
 	}
 
 	ContainerPool struct {
@@ -1914,6 +1922,7 @@ type ComplexityRoot struct {
 		Errors                       func(childComplexity int) int
 		EstimatedStart               func(childComplexity int) int
 		Execution                    func(childComplexity int) int
+		ExecutionPlatform            func(childComplexity int) int
 		ExecutionSteps               func(childComplexity int) int
 		ExecutionTasks               func(childComplexity int) int
 		ExecutionTasksFull           func(childComplexity int, options *ExecutionTasksFilterOptions) int
@@ -2490,6 +2499,9 @@ type AdminSettingsResolver interface {
 }
 type AnnotationResolver interface {
 	WebhookConfigured(ctx context.Context, obj *model.APITaskAnnotation) (bool, error)
+}
+type ContainerIsolationSettingsResolver interface {
+	Image(ctx context.Context, obj *model.APIContainerIsolationSettings) (string, error)
 }
 type ContainerPoolResolver interface {
 	Port(ctx context.Context, obj *model.APIContainerPool) (int, error)
@@ -3819,6 +3831,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.BootstrapSettings.Communication(childComplexity), true
+	case "BootstrapSettings.containerIsolation":
+		if e.complexity.BootstrapSettings.ContainerIsolation == nil {
+			break
+		}
+
+		return e.complexity.BootstrapSettings.ContainerIsolation(childComplexity), true
 	case "BootstrapSettings.env":
 		if e.complexity.BootstrapSettings.Env == nil {
 			break
@@ -4167,6 +4185,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.CommitQueueParams.Message(childComplexity), true
+
+	case "ContainerIsolationSettings.enabled":
+		if e.complexity.ContainerIsolationSettings.Enabled == nil {
+			break
+		}
+
+		return e.complexity.ContainerIsolationSettings.Enabled(childComplexity), true
+	case "ContainerIsolationSettings.image":
+		if e.complexity.ContainerIsolationSettings.Image == nil {
+			break
+		}
+
+		return e.complexity.ContainerIsolationSettings.Image(childComplexity), true
+	case "ContainerIsolationSettings.requireIsolation":
+		if e.complexity.ContainerIsolationSettings.RequireIsolation == nil {
+			break
+		}
+
+		return e.complexity.ContainerIsolationSettings.RequireIsolation(childComplexity), true
 
 	case "ContainerPool.distro":
 		if e.complexity.ContainerPool.Distro == nil {
@@ -10832,6 +10869,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Task.Execution(childComplexity), true
+	case "Task.executionPlatform":
+		if e.complexity.Task.ExecutionPlatform == nil {
+			break
+		}
+
+		return e.complexity.Task.ExecutionPlatform(childComplexity), true
 	case "Task.executionSteps":
 		if e.complexity.Task.ExecutionSteps == nil {
 			break
@@ -13340,6 +13383,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCedarConfigInput,
 		ec.unmarshalInputCloudProviderConfigInput,
 		ec.unmarshalInputCommitQueueParamsInput,
+		ec.unmarshalInputContainerIsolationSettingsInput,
 		ec.unmarshalInputContainerPoolInput,
 		ec.unmarshalInputContainerPoolsConfigInput,
 		ec.unmarshalInputCopyDistroInput,
@@ -20750,6 +20794,8 @@ func (ec *executionContext) fieldContext_AdminTasksToRestartPayload_tasksToResta
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -22657,6 +22703,43 @@ func (ec *executionContext) fieldContext_BootstrapSettings_communication(_ conte
 	return fc, nil
 }
 
+func (ec *executionContext) _BootstrapSettings_containerIsolation(ctx context.Context, field graphql.CollectedField, obj *model.APIBootstrapSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BootstrapSettings_containerIsolation,
+		func(ctx context.Context) (any, error) {
+			return obj.ContainerIsolation, nil
+		},
+		nil,
+		ec.marshalNContainerIsolationSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerIsolationSettings,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BootstrapSettings_containerIsolation(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BootstrapSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "enabled":
+				return ec.fieldContext_ContainerIsolationSettings_enabled(ctx, field)
+			case "image":
+				return ec.fieldContext_ContainerIsolationSettings_image(ctx, field)
+			case "requireIsolation":
+				return ec.fieldContext_ContainerIsolationSettings_requireIsolation(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ContainerIsolationSettings", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _BootstrapSettings_env(ctx context.Context, field graphql.CollectedField, obj *model.APIBootstrapSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -24484,6 +24567,93 @@ func (ec *executionContext) fieldContext_CommitQueueParams_message(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _ContainerIsolationSettings_enabled(ctx context.Context, field graphql.CollectedField, obj *model.APIContainerIsolationSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ContainerIsolationSettings_enabled,
+		func(ctx context.Context) (any, error) {
+			return obj.Enabled, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ContainerIsolationSettings_enabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ContainerIsolationSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ContainerIsolationSettings_image(ctx context.Context, field graphql.CollectedField, obj *model.APIContainerIsolationSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ContainerIsolationSettings_image,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.ContainerIsolationSettings().Image(ctx, obj)
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ContainerIsolationSettings_image(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ContainerIsolationSettings",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ContainerIsolationSettings_requireIsolation(ctx context.Context, field graphql.CollectedField, obj *model.APIContainerIsolationSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ContainerIsolationSettings_requireIsolation,
+		func(ctx context.Context) (any, error) {
+			return obj.RequireIsolation, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ContainerIsolationSettings_requireIsolation(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ContainerIsolationSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ContainerPool_id(ctx context.Context, field graphql.CollectedField, obj *model.APIContainerPool) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -25634,6 +25804,8 @@ func (ec *executionContext) fieldContext_Distro_bootstrapSettings(_ context.Cont
 				return ec.fieldContext_BootstrapSettings_clientDir(ctx, field)
 			case "communication":
 				return ec.fieldContext_BootstrapSettings_communication(ctx, field)
+			case "containerIsolation":
+				return ec.fieldContext_BootstrapSettings_containerIsolation(ctx, field)
 			case "env":
 				return ec.fieldContext_BootstrapSettings_env(ctx, field)
 			case "jasperBinaryDir":
@@ -29606,6 +29778,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -33173,6 +33347,8 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -39299,6 +39475,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -39526,6 +39704,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -39753,6 +39933,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -39980,6 +40162,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -40207,6 +40391,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -40434,6 +40620,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriorities(ctx context.
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -40661,6 +40849,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -41026,6 +41216,8 @@ func (ec *executionContext) fieldContext_Mutation_quarantineTask(ctx context.Con
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -41253,6 +41445,8 @@ func (ec *executionContext) fieldContext_Mutation_unquarantineTask(ctx context.C
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -42388,6 +42582,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -54044,6 +54240,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -54271,6 +54469,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -62251,6 +62451,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -63171,6 +63373,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -63406,6 +63610,35 @@ func (ec *executionContext) fieldContext_Task_execution(_ context.Context, field
 	return fc, nil
 }
 
+func (ec *executionContext) _Task_executionPlatform(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Task_executionPlatform,
+		func(ctx context.Context) (any, error) {
+			return obj.ExecutionPlatform, nil
+		},
+		nil,
+		ec.marshalNString2ᚖstring,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Task_executionPlatform(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Task_executionSteps(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -63575,6 +63808,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(ctx context.Con
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -64010,6 +64245,8 @@ func (ec *executionContext) fieldContext_Task_generator(_ context.Context, field
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -64496,6 +64733,8 @@ func (ec *executionContext) fieldContext_Task_nextTask(_ context.Context, field 
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -64711,6 +64950,8 @@ func (ec *executionContext) fieldContext_Task_nextTaskCompleted(_ context.Contex
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -64926,6 +65167,8 @@ func (ec *executionContext) fieldContext_Task_nextTaskFailing(_ context.Context,
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -65141,6 +65384,8 @@ func (ec *executionContext) fieldContext_Task_nextTaskPassing(_ context.Context,
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -65548,6 +65793,8 @@ func (ec *executionContext) fieldContext_Task_prevTask(_ context.Context, field 
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -65764,6 +66011,8 @@ func (ec *executionContext) fieldContext_Task_prevTaskCompleted(ctx context.Cont
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -65990,6 +66239,8 @@ func (ec *executionContext) fieldContext_Task_prevTaskFailing(_ context.Context,
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -66205,6 +66456,8 @@ func (ec *executionContext) fieldContext_Task_prevTaskPassing(_ context.Context,
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -68519,6 +68772,8 @@ func (ec *executionContext) fieldContext_TaskHistory_tasks(_ context.Context, fi
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -73190,6 +73445,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -77592,6 +77849,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionPlatform":
+				return ec.fieldContext_Task_executionPlatform(ctx, field)
 			case "executionSteps":
 				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
@@ -82094,7 +82353,7 @@ func (ec *executionContext) unmarshalInputBootstrapSettingsInput(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"clientDir", "communication", "env", "jasperBinaryDir", "jasperCredentialsPath", "method", "preconditionScripts", "resourceLimits", "rootDir", "serviceUser", "shellPath"}
+	fieldsInOrder := [...]string{"clientDir", "communication", "containerIsolation", "env", "jasperBinaryDir", "jasperCredentialsPath", "method", "preconditionScripts", "resourceLimits", "rootDir", "serviceUser", "shellPath"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -82115,6 +82374,13 @@ func (ec *executionContext) unmarshalInputBootstrapSettingsInput(ctx context.Con
 				return it, err
 			}
 			it.Communication = data
+		case "containerIsolation":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("containerIsolation"))
+			data, err := ec.unmarshalOContainerIsolationSettingsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerIsolationSettings(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ContainerIsolation = data
 		case "env":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("env"))
 			data, err := ec.unmarshalNEnvVarInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIEnvVarᚄ(ctx, v)
@@ -82572,6 +82838,47 @@ func (ec *executionContext) unmarshalInputCommitQueueParamsInput(ctx context.Con
 				return it, err
 			}
 			it.Message = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputContainerIsolationSettingsInput(ctx context.Context, obj any) (model.APIContainerIsolationSettings, error) {
+	var it model.APIContainerIsolationSettings
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"enabled", "image", "requireIsolation"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "enabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Enabled = data
+		case "image":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("image"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Image = data
+		case "requireIsolation":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requireIsolation"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RequireIsolation = data
 		}
 	}
 
@@ -93501,6 +93808,11 @@ func (ec *executionContext) _BootstrapSettings(ctx context.Context, sel ast.Sele
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "containerIsolation":
+			out.Values[i] = ec._BootstrapSettings_containerIsolation(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "env":
 			out.Values[i] = ec._BootstrapSettings_env(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -94098,6 +94410,86 @@ func (ec *executionContext) _CommitQueueParams(ctx context.Context, sel ast.Sele
 			out.Values[i] = ec._CommitQueueParams_message(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var containerIsolationSettingsImplementors = []string{"ContainerIsolationSettings"}
+
+func (ec *executionContext) _ContainerIsolationSettings(ctx context.Context, sel ast.SelectionSet, obj *model.APIContainerIsolationSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, containerIsolationSettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ContainerIsolationSettings")
+		case "enabled":
+			out.Values[i] = ec._ContainerIsolationSettings_enabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "image":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ContainerIsolationSettings_image(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "requireIsolation":
+			out.Values[i] = ec._ContainerIsolationSettings_requireIsolation(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -107385,6 +107777,11 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "executionPlatform":
+			out.Values[i] = ec._Task_executionPlatform(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "executionSteps":
 			field := field
 
@@ -114175,6 +114572,16 @@ var (
 	}
 )
 
+func (ec *executionContext) marshalNContainerIsolationSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerIsolationSettings(ctx context.Context, sel ast.SelectionSet, v *model.APIContainerIsolationSettings) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ContainerIsolationSettings(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNContainerPool2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerPool(ctx context.Context, sel ast.SelectionSet, v model.APIContainerPool) graphql.Marshaler {
 	return ec._ContainerPool(ctx, sel, &v)
 }
@@ -120348,6 +120755,14 @@ func (ec *executionContext) unmarshalOCloudProviderConfigInput2ᚖgithubᚗcom�
 func (ec *executionContext) unmarshalOCommitQueueParamsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx context.Context, v any) (model.APICommitQueueParams, error) {
 	res, err := ec.unmarshalInputCommitQueueParamsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOContainerIsolationSettingsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerIsolationSettings(ctx context.Context, v any) (*model.APIContainerIsolationSettings, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputContainerIsolationSettingsInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOContainerPoolsConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerPoolsConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIContainerPoolsConfig) graphql.Marshaler {
