@@ -79,12 +79,11 @@ type HourlyPatchTaskOverride struct {
 
 // HourlyPatchTaskLimitForProject returns the hourly per-user patch task limit
 // for the given project, along with the ID of the project or repo whose
-// override supplied it. An empty ID means the default limit applies and
-// usage is tracked against the user's general counter. A limit of 0 means no
-// limit is enforced. A branch project-level override takes precedence over a
-// repo-level one.
+// override supplied it.
 func (c *TaskLimitsConfig) HourlyPatchTaskLimitForProject(projectID, repoRefID string) (hourlyLimit int, projectOrRepoID string) {
 	if projectID != "" {
+		// A limit specific to one branch project takes precedence over a
+		// repo-wide limit, so check that first.
 		for _, o := range c.HourlyPatchTaskOverrides {
 			if o.ProjectOrRepoID == projectID {
 				return o.MaxHourlyPatchTasks, o.ProjectOrRepoID
