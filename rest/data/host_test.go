@@ -309,7 +309,7 @@ func (s *HostConnectorSuite) TestFindHostByIdWithSuperUser() {
 func (s *HostConnectorSuite) TestGenerateHostProvisioningScriptSucceeds() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	script, err := GenerateHostProvisioningScript(ctx, s.env, "host1")
+	script, _, err := GenerateHostProvisioningScript(ctx, s.env, "host1")
 	s.Require().NoError(err)
 	s.NotZero(script)
 
@@ -318,7 +318,51 @@ func (s *HostConnectorSuite) TestGenerateHostProvisioningScriptSucceeds() {
 func (s *HostConnectorSuite) TestGenerateHostProvisioningScriptFailsWithInvalidHostID() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	script, err := GenerateHostProvisioningScript(ctx, s.env, "foo")
+	script, _, err := GenerateHostProvisioningScript(ctx, s.env, "foo")
 	s.Error(err)
 	s.Zero(script)
+}
+
+func TestGetContainerImageForPrePull(t *testing.T) {
+	for name, test := range map[string]struct {
+		settings                  distro.ContainerIsolationSettings
+		containerIsolationEnabled bool
+		expected                  string
+		effective                 bool
+	}{
+		"EnabledReturnsImage": {
+			settings: distro.ContainerIsolationSettings{
+				Enabled: true,
+				Image:   "example.com/evergreen/task:latest",
+			},
+			containerIsolationEnabled: true,
+			expected:                  "example.com/evergreen/task:latest",
+			effective:                 true,
+		},
+		"KillSwitchReturnsEmpty": {
+			settings: distro.ContainerIsolationSettings{
+				Enabled: true,
+				Image:   "example.com/evergreen/task:latest",
+			},
+			containerIsolationEnabled: false,
+		},
+		"DisabledDistroReturnsEmpty": {
+			settings: distro.ContainerIsolationSettings{
+				Image: "example.com/evergreen/task:latest",
+			},
+		},
+		"EnabledDistroWithEmptyImageReturnsEmpty": {
+			settings: distro.ContainerIsolationSettings{
+				Enabled: true,
+			},
+			containerIsolationEnabled: true,
+			effective:                 true,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			image, effective := getContainerImageForPrePull(test.settings, test.containerIsolationEnabled)
+			require.Equal(t, test.expected, image)
+			require.Equal(t, test.effective, effective)
+		})
+	}
 }
