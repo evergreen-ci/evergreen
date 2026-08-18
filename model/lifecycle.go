@@ -521,6 +521,7 @@ func RefreshTasksCache(ctx context.Context, buildIDs []string) error {
 	return errors.Wrap(build.SetTasksCaches(ctx, cachesByBuild), "updating task caches for builds")
 }
 
+// Small cache struct that allows us to reference properties of the build without performing duplicate lookups.
 type createTasksForBuildOptions struct {
 	generatorIsGithubCheck *bool
 	dependencyTasks        map[string]*task.Task
@@ -884,7 +885,6 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo, opt
 				execTasksThatNeedParentId = append(execTasksThatNeedParentId, execTaskId)
 			}
 		}
-
 		if opts.displayTaskUpdates != nil {
 			update := opts.displayTaskUpdates[id]
 			update.execTaskIDsNeedingParentID = append(update.execTaskIDsNeedingParentID, execTasksThatNeedParentId...)
@@ -1859,28 +1859,14 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 	displayTaskWrites := make([]mongo.WriteModel, 0, 3*len(displayTaskUpdates))
 	for displayTaskID, update := range displayTaskUpdates {
 		if len(update.execTaskIDsNeedingParentID) > 0 {
-			displayTaskWrites = append(displayTaskWrites, mongo.NewUpdateManyModel().
-				SetFilter(bson.M{task.IdKey: bson.M{"$in": update.execTaskIDsNeedingParentID}}).
-				SetUpdate(bson.M{"$set": bson.M{task.DisplayTaskIdKey: displayTaskID}}))
+			displayTaskWrites = append(displayTaskWrites, task.NewAddDisplayTaskIDToExecTasksModel(displayTaskID, update.execTaskIDsNeedingParentID))
 		}
 		if len(update.execTaskIDs) == 0 {
 			continue
 		}
-		displayTaskWrites = append(displayTaskWrites, mongo.NewUpdateOneModel().
-			SetFilter(bson.M{task.IdKey: displayTaskID}).
-			SetUpdate(bson.M{"$addToSet": bson.M{
-				task.ExecutionTasksKey: bson.M{"$each": update.execTaskIDs},
-			}}))
+		displayTaskWrites = append(displayTaskWrites, task.NewAddExecTasksToDisplayTaskModel(displayTaskID, update.execTaskIDs))
 		if update.activate {
-			displayTaskWrites = append(displayTaskWrites, mongo.NewUpdateOneModel().
-				SetFilter(bson.M{
-					task.IdKey:        displayTaskID,
-					task.ActivatedKey: false,
-				}).
-				SetUpdate(bson.M{"$set": bson.M{
-					task.ActivatedKey:     true,
-					task.ActivatedTimeKey: time.Now(),
-				}}))
+			displayTaskWrites = append(displayTaskWrites, task.NewActivateDisplayTaskModel(displayTaskID))
 		}
 	}
 	if len(displayTaskWrites) > 0 {

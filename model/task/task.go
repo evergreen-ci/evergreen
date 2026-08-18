@@ -3947,17 +3947,57 @@ func (t *Task) SetNumDependents(ctx context.Context) error {
 	}, update)
 }
 
+func addDisplayTaskIDToExecTasksUpdate(displayTaskID string, execTaskIDs []string) (bson.M, bson.M) {
+	return bson.M{
+			IdKey: bson.M{"$in": execTaskIDs},
+		},
+		bson.M{"$set": bson.M{
+			DisplayTaskIdKey: displayTaskID,
+		}}
+}
+
+func addExecTasksToDisplayTaskUpdate(displayTaskID string, execTaskIDs []string) (bson.M, bson.M) {
+	return bson.M{IdKey: displayTaskID},
+		bson.M{"$addToSet": bson.M{
+			ExecutionTasksKey: bson.M{"$each": execTaskIDs},
+		}}
+}
+
+func displayTaskActivationFields() bson.M {
+	return bson.M{
+		ActivatedKey:     true,
+		ActivatedTimeKey: time.Now(),
+	}
+}
+
+// NewAddDisplayTaskIDToExecTasksModel creates a bulk write model that assigns a display task parent ID.
+func NewAddDisplayTaskIDToExecTasksModel(displayTaskID string, execTaskIDs []string) mongo.WriteModel {
+	filter, update := addDisplayTaskIDToExecTasksUpdate(displayTaskID, execTaskIDs)
+	return mongo.NewUpdateManyModel().SetFilter(filter).SetUpdate(update)
+}
+
+// NewAddExecTasksToDisplayTaskModel creates a bulk write model that adds execution tasks to a display task.
+func NewAddExecTasksToDisplayTaskModel(displayTaskID string, execTaskIDs []string) mongo.WriteModel {
+	filter, update := addExecTasksToDisplayTaskUpdate(displayTaskID, execTaskIDs)
+	return mongo.NewUpdateOneModel().SetFilter(filter).SetUpdate(update)
+}
+
+// NewActivateDisplayTaskModel creates a bulk write model that activates an inactive display task.
+func NewActivateDisplayTaskModel(displayTaskID string) mongo.WriteModel {
+	return mongo.NewUpdateOneModel().
+		SetFilter(bson.M{
+			IdKey:        displayTaskID,
+			ActivatedKey: false,
+		}).
+		SetUpdate(bson.M{"$set": displayTaskActivationFields()})
+}
+
 func AddDisplayTaskIdToExecTasks(ctx context.Context, displayTaskId string, execTasksToUpdate []string) error {
 	if len(execTasksToUpdate) == 0 {
 		return nil
 	}
-	_, err := UpdateAll(ctx, bson.M{
-		IdKey: bson.M{"$in": execTasksToUpdate},
-	},
-		bson.M{"$set": bson.M{
-			DisplayTaskIdKey: displayTaskId,
-		}},
-	)
+	filter, update := addDisplayTaskIDToExecTasksUpdate(displayTaskId, execTasksToUpdate)
+	_, err := UpdateAll(ctx, filter, update)
 	return err
 }
 
@@ -3965,9 +4005,7 @@ func AddExecTasksToDisplayTask(ctx context.Context, displayTaskId string, execTa
 	if len(execTasks) == 0 {
 		return nil
 	}
-	update := bson.M{"$addToSet": bson.M{
-		ExecutionTasksKey: bson.M{"$each": execTasks},
-	}}
+	filter, update := addExecTasksToDisplayTaskUpdate(displayTaskId, execTasks)
 
 	if displayTaskActivated {
 		// verify that the display task isn't already activated
@@ -3979,18 +4017,11 @@ func AddExecTasksToDisplayTask(ctx context.Context, displayTaskId string, execTa
 			return errors.Errorf("display task not found")
 		}
 		if !dt.Activated {
-			update["$set"] = bson.M{
-				ActivatedKey:     true,
-				ActivatedTimeKey: time.Now(),
-			}
+			update["$set"] = displayTaskActivationFields()
 		}
 	}
 
-	return UpdateOne(
-		ctx,
-		bson.M{IdKey: displayTaskId},
-		update,
-	)
+	return UpdateOne(ctx, filter, update)
 }
 
 // in the process of aborting and will eventually reset themselves.
