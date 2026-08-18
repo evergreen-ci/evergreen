@@ -55,9 +55,9 @@ type TaskLimitsConfig struct {
 	// MaxScheduledTasksPerDistro is the cap for the number of max tasks materialized into a distro's queue doc per pass.
 	MaxScheduledTasksPerDistro int `bson:"max_scheduled_tasks_per_distro" json:"max_scheduled_tasks_per_distro" yaml:"max_scheduled_tasks_per_distro"`
 
-	// TaskQueueFlushThreshold is the planned distro queue length at which the scheduler
+	// TaskQueueAutoUnscheduleThreshold is the planned distro queue length at which the scheduler
 	// unschedules every CLI patch task in the queue. Zero disables the flush.
-	TaskQueueFlushThreshold int `bson:"task_queue_flush_threshold" json:"task_queue_flush_threshold" yaml:"task_queue_flush_threshold"`
+	TaskQueueAutoUnscheduleThreshold int `bson:"task_queue_auto_unschedule_threshold" json:"task_queue_auto_unschedule_threshold" yaml:"task_queue_auto_unschedule_threshold"`
 }
 
 var (
@@ -74,7 +74,7 @@ var (
 	maxTaskExecutionKey                              = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxTaskExecution")
 	maxDailyAutomaticRestartsKey                     = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxDailyAutomaticRestarts")
 	maxScheduledTasksPerDistroKey                    = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxScheduledTasksPerDistro")
-	taskQueueFlushThresholdKey                       = bsonutil.MustHaveTag(TaskLimitsConfig{}, "TaskQueueFlushThreshold")
+	taskQueueAutoUnscheduleThresholdKey              = bsonutil.MustHaveTag(TaskLimitsConfig{}, "TaskQueueAutoUnscheduleThreshold")
 )
 
 func (c *TaskLimitsConfig) SectionId() string { return "task_limits" }
@@ -99,7 +99,7 @@ func (c *TaskLimitsConfig) Set(ctx context.Context) error {
 			maxTaskExecutionKey:                              c.MaxTaskExecution,
 			maxDailyAutomaticRestartsKey:                     c.MaxDailyAutomaticRestarts,
 			maxScheduledTasksPerDistroKey:                    c.MaxScheduledTasksPerDistro,
-			taskQueueFlushThresholdKey:                       c.TaskQueueFlushThreshold,
+			taskQueueAutoUnscheduleThresholdKey:              c.TaskQueueAutoUnscheduleThreshold,
 		},
 	}), "updating config section '%s'", c.SectionId())
 }

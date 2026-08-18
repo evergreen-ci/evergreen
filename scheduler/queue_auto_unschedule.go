@@ -11,29 +11,29 @@ import (
 	"github.com/pkg/errors"
 )
 
-// flushOversizedQueue unschedules every patch tasks in a distro's queue once the plan
+// autoUnscheduleLargeQueue unschedules every patch tasks in a distro's queue once the plan
 // reaches the threshold.
-func flushOversizedQueue(ctx context.Context, distroID string, plan []task.Task, threshold int) error {
+func autoUnscheduleLargeQueue(ctx context.Context, distroID string, plan []task.Task, threshold int) error {
 	if threshold <= 0 || len(plan) < threshold {
 		return nil
 	}
 
-	victims := make([]task.Task, 0, len(plan))
+	tasksToUnschedule := make([]task.Task, 0, len(plan))
 	for _, t := range plan {
 		if t.Requester == evergreen.PatchVersionRequester {
-			victims = append(victims, t)
+			tasksToUnschedule = append(tasksToUnschedule, t)
 		}
 	}
-	if len(victims) == 0 {
+	if len(tasksToUnschedule) == 0 {
 		return nil
 	}
 
-	if err := task.DeactivateTasks(ctx, victims, true, evergreen.OversizedQueueUnscheduler); err != nil {
+	if err := task.DeactivateTasks(ctx, tasksToUnschedule, true, evergreen.OversizedQueueUnscheduler); err != nil {
 		return errors.Wrap(err, "unscheduling patch tasks")
 	}
 
-	taskIDs := make([]string, 0, len(victims))
-	for _, victim := range victims {
+	taskIDs := make([]string, 0, len(tasksToUnschedule))
+	for _, victim := range tasksToUnschedule {
 		taskIDs = append(taskIDs, victim.Id)
 		if err := model.UpdateBuildAndVersionStatusForTask(ctx, &victim); err != nil {
 			return errors.Wrapf(err, "updating build and version status for task '%s'", victim.Id)
@@ -45,11 +45,11 @@ func flushOversizedQueue(ctx context.Context, distroID string, plan []task.Task,
 		}
 	}
 	grip.Error(ctx, message.Fields{
-		"message":      "task queue is too long and has been flushed",
+		"message":      "task queue is too long and CLI patch tasks have been auto-unscheduled",
 		"distro":       distroID,
 		"threshold":    threshold,
 		"queue_length": len(plan),
-		"unscheduling": len(victims),
+		"unscheduling": len(tasksToUnschedule),
 	})
 
 	return nil

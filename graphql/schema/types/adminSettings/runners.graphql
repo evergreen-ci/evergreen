@@ -32,7 +32,7 @@ input TaskLimitsConfigInput {
   maxTaskExecution: Int!
   maxDailyAutomaticRestarts: Int!
   maxScheduledTasksPerDistro: Int!
-  taskQueueFlushThreshold: Int!
+  taskQueueFlushThreshold: Int
 }
 
 type TaskLimitsConfig {

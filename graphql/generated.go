@@ -90186,7 +90186,7 @@ func (ec *executionContext) unmarshalInputTaskLimitsConfigInput(ctx context.Cont
 			it.MaxScheduledTasksPerDistro = data
 		case "taskQueueFlushThreshold":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskQueueFlushThreshold"))
-			data, err := ec.unmarshalNInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}

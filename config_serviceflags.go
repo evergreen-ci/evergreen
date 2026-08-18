@@ -44,9 +44,9 @@ type ServiceFlags struct {
 	PodDiagnosticsDisabled             bool `bson:"pod_diagnostics_disabled" json:"pod_diagnostics_disabled"`
 	RetryFailedLogMoveEnabled          bool `bson:"retry_failed_log_move_enabled" json:"retry_failed_log_move_enabled"`
 	ProjectTranslationCacheEnabled     bool `bson:"project_translation_cache_enabled" json:"project_translation_cache_enabled"`
-	// TaskQueueFlushDisabled stops the scheduler from unscheduling the patch tasks in a
+	// TaskQueueAutoUnscheduleDisabled stops the scheduler from unscheduling the patch tasks in a
 	// distro queue that has reached set threshold.
-	TaskQueueFlushDisabled bool `bson:"task_queue_flush_disabled" json:"task_queue_flush_disabled"`
+	TaskQueueAutoUnscheduleDisabled bool `bson:"task_queue_auto_unschedule_disabled" json:"task_queue_auto_unschedule_disabled"`
 	// LiveArtifactCredentialsDisabled makes presigning use only the credentials
 	// stored on each artifact.
 	LiveArtifactCredentialsDisabled bool `bson:"live_artifact_credentials_disabled" json:"live_artifact_credentials_disabled"`
@@ -126,7 +126,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			graphqlComplexityLimiterDisabledKey:   c.GraphQLComplexityLimiterDisabled,
 			containerIsolationEnabledKey:          c.ContainerIsolationEnabled,
 			liveArtifactCredentialsDisabledKey:    c.LiveArtifactCredentialsDisabled,
-			taskQueueFlushDisabledKey:             c.TaskQueueFlushDisabled,
+			taskQueueAutoUnscheduleDisabledKey:    c.TaskQueueAutoUnscheduleDisabled,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

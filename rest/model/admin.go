@@ -2165,7 +2165,7 @@ type APIServiceFlags struct {
 	APIRateLimiterDisabled           bool `json:"api_rate_limiter_disabled"`
 	GraphQLComplexityLimiterDisabled bool `json:"graphql_complexity_limiter_disabled"`
 
-	TaskQueueFlushDisabled bool `json:"task_queue_flush_disabled"`
+	TaskQueueAutoUnscheduleDisabled bool `json:"task_queue_auto_unschedule_disabled"`
 }
 
 type APIProjectTasksPair struct {
@@ -2618,7 +2618,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.BackgroundCommandFailureEnabled = v.BackgroundCommandFailureEnabled
 		as.APIRateLimiterDisabled = v.APIRateLimiterDisabled
 		as.GraphQLComplexityLimiterDisabled = v.GraphQLComplexityLimiterDisabled
-		as.TaskQueueFlushDisabled = v.TaskQueueFlushDisabled
+		as.TaskQueueAutoUnscheduleDisabled = v.TaskQueueAutoUnscheduleDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2673,7 +2673,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		LiveArtifactCredentialsDisabled:    as.LiveArtifactCredentialsDisabled,
 		APIRateLimiterDisabled:             as.APIRateLimiterDisabled,
 		GraphQLComplexityLimiterDisabled:   as.GraphQLComplexityLimiterDisabled,
-		TaskQueueFlushDisabled:             as.TaskQueueFlushDisabled,
+		TaskQueueAutoUnscheduleDisabled:    as.TaskQueueAutoUnscheduleDisabled,
 	}, nil
 }
 
@@ -3074,7 +3074,7 @@ func (c *APITaskLimitsConfig) BuildFromService(h any) error {
 		c.MaxTaskExecution = utility.ToIntPtr(v.MaxTaskExecution)
 		c.MaxDailyAutomaticRestarts = utility.ToIntPtr(v.MaxDailyAutomaticRestarts)
 		c.MaxScheduledTasksPerDistro = utility.ToIntPtr(v.MaxScheduledTasksPerDistro)
-		c.TaskQueueFlushThreshold = utility.ToIntPtr(v.TaskQueueFlushThreshold)
+		c.TaskQueueFlushThreshold = utility.ToIntPtr(v.TaskQueueAutoUnscheduleThreshold)
 		return nil
 	default:
 		return errors.Errorf("programmatic error: expected task limits config but got type %T", h)
@@ -3096,7 +3096,7 @@ func (c *APITaskLimitsConfig) ToService() (any, error) {
 		MaxTaskExecution:                                 utility.FromIntPtr(c.MaxTaskExecution),
 		MaxDailyAutomaticRestarts:                        utility.FromIntPtr(c.MaxDailyAutomaticRestarts),
 		MaxScheduledTasksPerDistro:                       utility.FromIntPtr(c.MaxScheduledTasksPerDistro),
-		TaskQueueFlushThreshold:                          utility.FromIntPtr(c.TaskQueueFlushThreshold),
+		TaskQueueAutoUnscheduleThreshold:                 utility.FromIntPtr(c.TaskQueueFlushThreshold),
 	}, nil
 }
 

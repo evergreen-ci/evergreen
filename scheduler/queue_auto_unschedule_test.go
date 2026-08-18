@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFlushOversizedQueueOnlyUnschedulesCLIPatchTasks(t *testing.T) {
+func TestAutoUnscheduleLargeQueueOnlyUnschedulesCLIPatchTasks(t *testing.T) {
 	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, model.VersionCollection))
@@ -40,7 +40,13 @@ func TestFlushOversizedQueueOnlyUnschedulesCLIPatchTasks(t *testing.T) {
 	for _, tsk := range plan {
 		require.NoError(t, tsk.Insert(ctx))
 	}
-	require.NoError(t, (&build.Build{Id: "b", Activated: true, Status: evergreen.BuildStarted, Version: "v"}).Insert(ctx))
+	b := build.Build{
+		Id:        "b",
+		Activated: true,
+		Status:    evergreen.BuildStarted,
+		Version:   "v",
+	}
+	require.NoError(t, b.Insert(ctx))
 	require.NoError(t, (&model.Version{Id: "v", Status: evergreen.VersionStarted}).Insert(ctx))
 
 	assertActivated := func(expected func(task.Task) bool) {
@@ -52,9 +58,9 @@ func TestFlushOversizedQueueOnlyUnschedulesCLIPatchTasks(t *testing.T) {
 		}
 	}
 
-	require.NoError(t, flushOversizedQueue(ctx, "d", plan, len(plan)+1))
+	require.NoError(t, autoUnscheduleLargeQueue(ctx, "d", plan, len(plan)+1))
 	assertActivated(func(task.Task) bool { return true })
 
-	require.NoError(t, flushOversizedQueue(ctx, "d", plan, len(plan)))
+	require.NoError(t, autoUnscheduleLargeQueue(ctx, "d", plan, len(plan)))
 	assertActivated(func(tsk task.Task) bool { return tsk.Id != "patch" })
 }
