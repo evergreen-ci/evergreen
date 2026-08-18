@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"fmt"
+	"maps"
 	"regexp"
 	"slices"
 	"sort"
@@ -838,9 +839,7 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo, opt
 			dependencyTaskMap[creationInfo.TasksInBuild[i].Id] = &creationInfo.TasksInBuild[i]
 		}
 	}
-	for id, t := range taskMap {
-		dependencyTaskMap[id] = t
-	}
+	maps.Copy(dependencyTaskMap, taskMap)
 
 	// Create and update display tasks
 	tasks := task.Tasks{}
