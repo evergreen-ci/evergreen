@@ -148,23 +148,21 @@ func GenerateHostProvisioningScript(ctx context.Context, env evergreen.Environme
 	}
 	ci := h.Distro.BootstrapSettings.ContainerIsolation
 	containerIsolationEnabled := env.Settings().ServiceFlags.ContainerIsolationEnabled
-	containerImage = getContainerImageForPrePull(ci, containerIsolationEnabled)
-	if ci.Enabled && containerIsolationEnabled {
-		if ci.Image == "" {
-			grip.Warning(ctx, message.Fields{
-				"message": "container isolation is enabled for this distro but no image is configured; pre-pull will be skipped",
-				"host_id": hostID,
-			})
-		}
+	containerImage, effectiveIsolationEnabled := getContainerImageForPrePull(ci, containerIsolationEnabled)
+	if effectiveIsolationEnabled && containerImage == "" {
+		grip.Warning(ctx, message.Fields{
+			"message": "container isolation is enabled for this distro but no image is configured; pre-pull will be skipped",
+			"host_id": hostID,
+		})
 	}
 	return script, containerImage, nil
 }
 
-func getContainerImageForPrePull(settings distro.ContainerIsolationSettings, containerIsolationEnabled bool) string {
+func getContainerImageForPrePull(settings distro.ContainerIsolationSettings, containerIsolationEnabled bool) (string, bool) {
 	if !settings.Enabled || !containerIsolationEnabled {
-		return ""
+		return "", false
 	}
-	return settings.Image
+	return settings.Image, true
 }
 
 // FindHostByIdWithOwner finds a host with given host ID that was

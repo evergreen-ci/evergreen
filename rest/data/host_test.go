@@ -328,6 +328,7 @@ func TestGetContainerImageForPrePull(t *testing.T) {
 		settings                  distro.ContainerIsolationSettings
 		containerIsolationEnabled bool
 		expected                  string
+		effective                 bool
 	}{
 		"EnabledReturnsImage": {
 			settings: distro.ContainerIsolationSettings{
@@ -336,6 +337,7 @@ func TestGetContainerImageForPrePull(t *testing.T) {
 			},
 			containerIsolationEnabled: true,
 			expected:                  "example.com/evergreen/task:latest",
+			effective:                 true,
 		},
 		"KillSwitchReturnsEmpty": {
 			settings: distro.ContainerIsolationSettings{
@@ -349,9 +351,18 @@ func TestGetContainerImageForPrePull(t *testing.T) {
 				Image: "example.com/evergreen/task:latest",
 			},
 		},
+		"EnabledDistroWithEmptyImageReturnsEmpty": {
+			settings: distro.ContainerIsolationSettings{
+				Enabled: true,
+			},
+			containerIsolationEnabled: true,
+			effective:                 true,
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			require.Equal(t, test.expected, getContainerImageForPrePull(test.settings, test.containerIsolationEnabled))
+			image, effective := getContainerImageForPrePull(test.settings, test.containerIsolationEnabled)
+			require.Equal(t, test.expected, image)
+			require.Equal(t, test.effective, effective)
 		})
 	}
 }
