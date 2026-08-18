@@ -949,6 +949,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	}
 
 	taskIds := model.NewTaskIdConfigForRepotrackerVersion(ctx, projectInfo.Project, v, pairsToCreate, sourceRev, metadata.TriggerDefinitionID)
+	testSelectionEnabled := projectInfo.Ref.IsTestSelectionFilteringEnabled(v.Requester, true)
 
 	for _, buildvariant := range projectInfo.Project.BuildVariants {
 		taskNames := pairsToCreate.TaskNames(buildvariant.Name)
@@ -976,6 +977,9 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			DistroAliases:       distroAliases,
 			TaskCreateTime:      v.CreateTime,
 			GithubChecksAliases: aliasesMatchingVariant,
+			TestSelectionParams: model.TestSelectionParams{
+				CanBuildVariantEnableTestSelection: testSelectionEnabled,
+			},
 		}
 
 		b, tasks, err := model.CreateBuildFromVersionNoInsert(ctx, creationInfo)

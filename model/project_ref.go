@@ -488,12 +488,15 @@ type EmailAlertData struct {
 }
 
 type TestSelectionSettings struct {
-	// Allowed determines if test selection featuers can be used in this project
+	// Allowed determines if test selection features can be used in this project
 	// at all.
 	Allowed *bool `bson:"allowed,omitempty" json:"allowed,omitzero" yaml:"allowed,omitempty"`
 	// DefaultEnabled indicates whether test selection is enabled or disabled by
 	// default for patch tasks in this project.
 	DefaultEnabled *bool `bson:"default_enabled,omitempty" json:"default_enabled,omitzero" yaml:"default_enabled,omitempty"`
+	// MainlineDefaultEnabled indicates whether test selection is enabled for
+	// mainline commit tasks that are otherwise eligible for test selection.
+	MainlineDefaultEnabled *bool `bson:"mainline_default_enabled,omitempty" json:"mainline_default_enabled,omitzero" yaml:"mainline_default_enabled,omitempty"`
 }
 
 // TaskOwnershipSettings contains default team ownership settings for tasks in
@@ -681,6 +684,26 @@ func (p *ProjectRef) IsTestSelectionAllowed() bool {
 
 func (p *ProjectRef) IsTestSelectionDefaultEnabled() bool {
 	return utility.FromBoolPtr(p.TestSelection.DefaultEnabled)
+}
+
+func (p *ProjectRef) IsTestSelectionMainlineDefaultEnabled() bool {
+	return utility.FromBoolPtr(p.TestSelection.MainlineDefaultEnabled)
+}
+
+// IsTestSelectionFilteringEnabled returns whether test selection may filter
+// tests for a task. Patch requesters may use test selection whenever the task
+// is enabled. Mainline commits additionally require the mainline project
+// setting. Other non-patch requesters are not supported.
+func (p *ProjectRef) IsTestSelectionFilteringEnabled(requester string, taskEnabled bool) bool {
+	if !p.IsTestSelectionAllowed() || !taskEnabled {
+		return false
+	}
+	if evergreen.IsPatchRequester(requester) {
+		return true
+	}
+	return requester == evergreen.RepotrackerVersionRequester &&
+		p.IsTestSelectionDefaultEnabled() &&
+		p.IsTestSelectionMainlineDefaultEnabled()
 }
 
 const (

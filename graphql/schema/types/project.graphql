@@ -157,6 +157,7 @@ input WorkstationConfigInput {
 input TestSelectionSettingsInput {
   allowed: Boolean
   defaultEnabled: Boolean
+  mainlineDefaultEnabled: Boolean
 }
 
 input TaskOwnershipSettingsInput {
@@ -346,6 +347,7 @@ type GithubAppAuth {
 type TestSelectionSettings {
   allowed: Boolean
   defaultEnabled: Boolean
+  mainlineDefaultEnabled: Boolean
 }
 
 type TaskOwnershipSettings {
