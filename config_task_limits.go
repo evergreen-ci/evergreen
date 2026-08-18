@@ -56,8 +56,7 @@ type TaskLimitsConfig struct {
 	MaxScheduledTasksPerDistro int `bson:"max_scheduled_tasks_per_distro" json:"max_scheduled_tasks_per_distro" yaml:"max_scheduled_tasks_per_distro"`
 
 	// TaskQueueFlushThreshold is the planned distro queue length at which the scheduler
-	// unschedules every CLI patch task in the queue. It should be set well above
-	// MaxScheduledTasksPerDistro, since it unschedules real work. Zero disables the flush.
+	// unschedules every CLI patch task in the queue. Zero disables the flush.
 	TaskQueueFlushThreshold int `bson:"task_queue_flush_threshold" json:"task_queue_flush_threshold" yaml:"task_queue_flush_threshold"`
 }
 

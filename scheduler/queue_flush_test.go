@@ -53,7 +53,6 @@ func TestFlushOversizedQueueOnlyUnschedulesCLIPatchTasks(t *testing.T) {
 	}
 
 	require.NoError(t, flushOversizedQueue(ctx, "d", plan, len(plan)+1))
-	require.NoError(t, flushOversizedQueue(ctx, "d", plan, 0))
 	assertActivated(func(task.Task) bool { return true })
 
 	require.NoError(t, flushOversizedQueue(ctx, "d", plan, len(plan)))

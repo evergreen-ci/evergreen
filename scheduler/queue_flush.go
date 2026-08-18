@@ -11,12 +11,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// flushOversizedQueue unschedules every CLI patch task in a distro's plan once the plan
-// reaches threshold, to stop them accumulating in a queue that cannot dispatch them.
-//
-// Only PatchVersionRequester tasks are eligible. Everything else, including GitHub PR and
-// merge queue tasks, is left alone, so a distro whose other demand alone reaches the
-// threshold stays over it; that case is logged for on-call instead.
+// flushOversizedQueue unschedules every patch tasks in a distro's queue once the plan
+// reaches the threshold.
 func flushOversizedQueue(ctx context.Context, distroID string, plan []task.Task, threshold int) error {
 	if threshold <= 0 || len(plan) < threshold {
 		return nil
@@ -28,15 +24,6 @@ func flushOversizedQueue(ctx context.Context, distroID string, plan []task.Task,
 			victims = append(victims, t)
 		}
 	}
-
-	grip.Warning(ctx, message.Fields{
-		"message":      "task queue is oversized",
-		"distro":       distroID,
-		"runner":       RunnerName,
-		"planned":      len(plan),
-		"threshold":    threshold,
-		"unscheduling": len(victims),
-	})
 	if len(victims) == 0 {
 		return nil
 	}
@@ -57,11 +44,12 @@ func flushOversizedQueue(ctx context.Context, distroID string, plan []task.Task,
 			}
 		}
 	}
-	grip.Info(ctx, message.Fields{
-		"message":  "flushed patch tasks from an oversized queue",
-		"distro":   distroID,
-		"runner":   RunnerName,
-		"task_ids": taskIDs,
+	grip.Error(ctx, message.Fields{
+		"message":      "task queue is too long and has been flushed",
+		"distro":       distroID,
+		"threshold":    threshold,
+		"queue_length": len(plan),
+		"unscheduling": len(victims),
 	})
 
 	return nil
