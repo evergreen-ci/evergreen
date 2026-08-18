@@ -8,19 +8,19 @@ import (
 
 func TestHourlyPatchTaskLimitForProject(t *testing.T) {
 	for tName, tCase := range map[string]struct {
-		config          TaskLimitsConfig
-		projectID       string
-		repoRefID       string
-		expectedLimit   int
-		expectedScopeID string
+		config                  TaskLimitsConfig
+		projectID               string
+		repoRefID               string
+		expectedLimit           int
+		expectedProjectOrRepoID string
 	}{
 		"NoOverridesUsesGeneralLimit": {
 			config: TaskLimitsConfig{
 				MaxHourlyPatchTasks: 15000,
 			},
-			projectID:       "project",
-			expectedLimit:   15000,
-			expectedScopeID: "",
+			projectID:               "project",
+			expectedLimit:           15000,
+			expectedProjectOrRepoID: "",
 		},
 		"ProjectOverrideAppliesToItsOwnProject": {
 			config: TaskLimitsConfig{
@@ -36,9 +36,9 @@ func TestHourlyPatchTaskLimitForProject(t *testing.T) {
 					},
 				},
 			},
-			projectID:       "project",
-			expectedLimit:   40000,
-			expectedScopeID: "project",
+			projectID:               "project",
+			expectedLimit:           40000,
+			expectedProjectOrRepoID: "project",
 		},
 		"ProjectOverrideDoesNotApplyToOtherProjects": {
 			config: TaskLimitsConfig{
@@ -50,9 +50,9 @@ func TestHourlyPatchTaskLimitForProject(t *testing.T) {
 					},
 				},
 			},
-			projectID:       "project",
-			expectedLimit:   15000,
-			expectedScopeID: "",
+			projectID:               "project",
+			expectedLimit:           15000,
+			expectedProjectOrRepoID: "",
 		},
 		"RepoOverrideAppliesToProjectTrackingTheRepo": {
 			config: TaskLimitsConfig{
@@ -64,10 +64,10 @@ func TestHourlyPatchTaskLimitForProject(t *testing.T) {
 					},
 				},
 			},
-			projectID:       "project",
-			repoRefID:       "repo",
-			expectedLimit:   40000,
-			expectedScopeID: "repo",
+			projectID:               "project",
+			repoRefID:               "repo",
+			expectedLimit:           40000,
+			expectedProjectOrRepoID: "repo",
 		},
 		"RepoOverrideDoesNotApplyToProjectTrackingAnotherRepo": {
 			config: TaskLimitsConfig{
@@ -79,27 +79,12 @@ func TestHourlyPatchTaskLimitForProject(t *testing.T) {
 					},
 				},
 			},
-			projectID:       "project",
-			repoRefID:       "other_repo",
-			expectedLimit:   15000,
-			expectedScopeID: "",
+			projectID:               "project",
+			repoRefID:               "other_repo",
+			expectedLimit:           15000,
+			expectedProjectOrRepoID: "",
 		},
-		"RepoOverrideIsIgnoredWhenProjectTracksNoRepo": {
-			config: TaskLimitsConfig{
-				MaxHourlyPatchTasks: 15000,
-				HourlyPatchTaskOverrides: []HourlyPatchTaskOverride{
-					{
-						ProjectOrRepoID:     "repo",
-						MaxHourlyPatchTasks: 40000,
-					},
-				},
-			},
-			projectID:       "project",
-			repoRefID:       "",
-			expectedLimit:   15000,
-			expectedScopeID: "",
-		},
-		"ProjectOverrideTakesPrecedenceOverRepoOverrideWhenBothCouldApply": {
+		"BranchProjectOverrideTakesPrecedenceOverRepoOverrideWhenBothCouldApply": {
 			config: TaskLimitsConfig{
 				MaxHourlyPatchTasks: 15000,
 				HourlyPatchTaskOverrides: []HourlyPatchTaskOverride{
@@ -113,10 +98,10 @@ func TestHourlyPatchTaskLimitForProject(t *testing.T) {
 					},
 				},
 			},
-			projectID:       "project",
-			repoRefID:       "repo",
-			expectedLimit:   20000,
-			expectedScopeID: "project",
+			projectID:               "project",
+			repoRefID:               "repo",
+			expectedLimit:           20000,
+			expectedProjectOrRepoID: "project",
 		},
 		"OverrideStillAppliesWhenDefaultLimitIsDisabled": {
 			config: TaskLimitsConfig{
@@ -128,9 +113,9 @@ func TestHourlyPatchTaskLimitForProject(t *testing.T) {
 					},
 				},
 			},
-			projectID:       "project",
-			expectedLimit:   40000,
-			expectedScopeID: "project",
+			projectID:               "project",
+			expectedLimit:           40000,
+			expectedProjectOrRepoID: "project",
 		},
 		"DisabledDefaultLimitEnforcesNoLimitOnProjectWithoutAnOverride": {
 			config: TaskLimitsConfig{
@@ -142,9 +127,9 @@ func TestHourlyPatchTaskLimitForProject(t *testing.T) {
 					},
 				},
 			},
-			projectID:       "project",
-			expectedLimit:   0,
-			expectedScopeID: "",
+			projectID:               "project",
+			expectedLimit:           0,
+			expectedProjectOrRepoID: "",
 		},
 		"OverrideCanLowerTheLimitForItsProject": {
 			config: TaskLimitsConfig{
@@ -156,15 +141,15 @@ func TestHourlyPatchTaskLimitForProject(t *testing.T) {
 					},
 				},
 			},
-			projectID:       "project",
-			expectedLimit:   100,
-			expectedScopeID: "project",
+			projectID:               "project",
+			expectedLimit:           100,
+			expectedProjectOrRepoID: "project",
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			limit, scopeID := tCase.config.HourlyPatchTaskLimitForProject(tCase.projectID, tCase.repoRefID)
 			assert.Equal(t, tCase.expectedLimit, limit)
-			assert.Equal(t, tCase.expectedScopeID, scopeID)
+			assert.Equal(t, tCase.expectedProjectOrRepoID, scopeID)
 		})
 	}
 }
@@ -177,7 +162,15 @@ func TestTaskLimitsConfigValidateAndDefault(t *testing.T) {
 		"NoOverridesShouldSucceed": {
 			overrides: nil,
 		},
-		"ProjectAndRepoOverridesShouldSucceed": {
+		"OverrideWithoutAProjectOrRepoIDShouldError": {
+			overrides: []HourlyPatchTaskOverride{
+				{
+					MaxHourlyPatchTasks: 40000,
+				},
+			},
+			expectedErr: "must set a project/repo ID",
+		},
+		"MultipleUniqueOverridesShouldSucceed": {
 			overrides: []HourlyPatchTaskOverride{
 				{
 					ProjectOrRepoID:     "project",
@@ -188,14 +181,6 @@ func TestTaskLimitsConfigValidateAndDefault(t *testing.T) {
 					MaxHourlyPatchTasks: 30000,
 				},
 			},
-		},
-		"OverrideWithoutAProjectOrRepoIDShouldError": {
-			overrides: []HourlyPatchTaskOverride{
-				{
-					MaxHourlyPatchTasks: 40000,
-				},
-			},
-			expectedErr: "must set a project/repo ID",
 		},
 		"DuplicateOverridesShouldError": {
 			overrides: []HourlyPatchTaskOverride{
