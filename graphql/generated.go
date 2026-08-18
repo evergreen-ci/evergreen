@@ -90,7 +90,9 @@ type ResolverRoot interface {
 	HostAllocatorSettingsInput() HostAllocatorSettingsInputResolver
 	JiraNotificationsConfigInput() JiraNotificationsConfigInputResolver
 	PlannerSettingsInput() PlannerSettingsInputResolver
+	ProjectInput() ProjectInputResolver
 	ProjectSettingsInput() ProjectSettingsInputResolver
+	RepoRefInput() RepoRefInputResolver
 	RepoSettingsInput() RepoSettingsInputResolver
 	SleepScheduleInput() SleepScheduleInputResolver
 	SubscriberInput() SubscriberInputResolver
@@ -1443,6 +1445,7 @@ type ComplexityRoot struct {
 		SpawnHostScriptPath     func(childComplexity int) int
 		StepbackBisect          func(childComplexity int) int
 		StepbackDisabled        func(childComplexity int) int
+		TaskOwnership           func(childComplexity int) int
 		VersionControlEnabled   func(childComplexity int) int
 		WaterfallDisabled       func(childComplexity int) int
 	}
@@ -2638,6 +2641,8 @@ type ProjectResolver interface {
 
 	ParsleyFilters(ctx context.Context, obj *model.APIProjectRef) ([]*parsley.Filter, error)
 	Patches(ctx context.Context, obj *model.APIProjectRef, patchesInput PatchesInput) (*Patches, error)
+
+	TaskOwnership(ctx context.Context, obj *model.APIProjectRef) (*model1.TaskOwnershipSettings, error)
 }
 type ProjectLiteResolver interface {
 	IsFavorite(ctx context.Context, obj *model1.ProjectRef) (bool, error)
@@ -2706,6 +2711,8 @@ type QueryResolver interface {
 }
 type RepoRefResolver interface {
 	ParsleyFilters(ctx context.Context, obj *model.APIProjectRef) ([]*parsley.Filter, error)
+
+	TaskOwnership(ctx context.Context, obj *model.APIProjectRef) (*model1.TaskOwnershipSettings, error)
 }
 type RepoSettingsResolver interface {
 	Aliases(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APIProjectAlias, error)
@@ -2895,8 +2902,14 @@ type PlannerSettingsInputResolver interface {
 
 	TargetTime(ctx context.Context, obj *model.APIPlannerSettings, data int) error
 }
+type ProjectInputResolver interface {
+	TaskOwnership(ctx context.Context, obj *model.APIProjectRef, data *model1.TaskOwnershipSettings) error
+}
 type ProjectSettingsInputResolver interface {
 	ProjectID(ctx context.Context, obj *model.APIProjectSettings, data string) error
+}
+type RepoRefInputResolver interface {
+	TaskOwnership(ctx context.Context, obj *model.APIProjectRef, data *model1.TaskOwnershipSettings) error
 }
 type RepoSettingsInputResolver interface {
 	RepoID(ctx context.Context, obj *model.APIProjectSettings, data string) error
@@ -8742,6 +8755,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ProjectLite.StepbackDisabled(childComplexity), true
+	case "ProjectLite.taskOwnership":
+		if e.complexity.ProjectLite.TaskOwnership == nil {
+			break
+		}
+
+		return e.complexity.ProjectLite.TaskOwnership(childComplexity), true
 	case "ProjectLite.versionControlEnabled":
 		if e.complexity.ProjectLite.VersionControlEnabled == nil {
 			break
@@ -48784,10 +48803,10 @@ func (ec *executionContext) _Project_taskOwnership(ctx context.Context, field gr
 		field,
 		ec.fieldContext_Project_taskOwnership,
 		func(ctx context.Context) (any, error) {
-			return obj.TaskOwnership, nil
+			return ec.resolvers.Project().TaskOwnership(ctx, obj)
 		},
 		nil,
-		ec.marshalOTaskOwnershipSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskOwnershipSettings,
+		ec.marshalOTaskOwnershipSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐTaskOwnershipSettings,
 		true,
 		false,
 	)
@@ -48797,8 +48816,8 @@ func (ec *executionContext) fieldContext_Project_taskOwnership(_ context.Context
 	fc = &graphql.FieldContext{
 		Object:     "Project",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "defaultMothraTeam":
@@ -51114,6 +51133,41 @@ func (ec *executionContext) fieldContext_ProjectLite_stepbackBisect(_ context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProjectLite_taskOwnership(ctx context.Context, field graphql.CollectedField, obj *model1.ProjectRef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProjectLite_taskOwnership,
+		func(ctx context.Context) (any, error) {
+			return obj.TaskOwnership, nil
+		},
+		nil,
+		ec.marshalOTaskOwnershipSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐTaskOwnershipSettings,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProjectLite_taskOwnership(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectLite",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "defaultMothraTeam":
+				return ec.fieldContext_TaskOwnershipSettings_defaultMothraTeam(ctx, field)
+			case "defaultMothraTeamForBreakingCommit":
+				return ec.fieldContext_TaskOwnershipSettings_defaultMothraTeamForBreakingCommit(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TaskOwnershipSettings", field.Name)
 		},
 	}
 	return fc, nil
@@ -56940,10 +56994,10 @@ func (ec *executionContext) _RepoRef_taskOwnership(ctx context.Context, field gr
 		field,
 		ec.fieldContext_RepoRef_taskOwnership,
 		func(ctx context.Context) (any, error) {
-			return obj.TaskOwnership, nil
+			return ec.resolvers.RepoRef().TaskOwnership(ctx, obj)
 		},
 		nil,
-		ec.marshalORepoTaskOwnershipSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskOwnershipSettings,
+		ec.marshalORepoTaskOwnershipSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐTaskOwnershipSettings,
 		true,
 		false,
 	)
@@ -56953,8 +57007,8 @@ func (ec *executionContext) fieldContext_RepoRef_taskOwnership(_ context.Context
 	fc = &graphql.FieldContext{
 		Object:     "RepoRef",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "defaultMothraTeam":
@@ -57488,7 +57542,7 @@ func (ec *executionContext) fieldContext_RepoSettings_vars(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _RepoTaskOwnershipSettings_defaultMothraTeam(ctx context.Context, field graphql.CollectedField, obj *model.APITaskOwnershipSettings) (ret graphql.Marshaler) {
+func (ec *executionContext) _RepoTaskOwnershipSettings_defaultMothraTeam(ctx context.Context, field graphql.CollectedField, obj *model1.TaskOwnershipSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -57498,7 +57552,7 @@ func (ec *executionContext) _RepoTaskOwnershipSettings_defaultMothraTeam(ctx con
 			return obj.DefaultMothraTeam, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalNString2string,
 		true,
 		true,
 	)
@@ -57517,7 +57571,7 @@ func (ec *executionContext) fieldContext_RepoTaskOwnershipSettings_defaultMothra
 	return fc, nil
 }
 
-func (ec *executionContext) _RepoTaskOwnershipSettings_defaultMothraTeamForBreakingCommit(ctx context.Context, field graphql.CollectedField, obj *model.APITaskOwnershipSettings) (ret graphql.Marshaler) {
+func (ec *executionContext) _RepoTaskOwnershipSettings_defaultMothraTeamForBreakingCommit(ctx context.Context, field graphql.CollectedField, obj *model1.TaskOwnershipSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -57527,7 +57581,7 @@ func (ec *executionContext) _RepoTaskOwnershipSettings_defaultMothraTeamForBreak
 			return obj.DefaultMothraTeamForBreakingCommit, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalNString2string,
 		true,
 		true,
 	)
@@ -69626,7 +69680,7 @@ func (ec *executionContext) fieldContext_TaskOwnerTeam_jiraProject(_ context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _TaskOwnershipSettings_defaultMothraTeam(ctx context.Context, field graphql.CollectedField, obj *model.APITaskOwnershipSettings) (ret graphql.Marshaler) {
+func (ec *executionContext) _TaskOwnershipSettings_defaultMothraTeam(ctx context.Context, field graphql.CollectedField, obj *model1.TaskOwnershipSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -69636,7 +69690,7 @@ func (ec *executionContext) _TaskOwnershipSettings_defaultMothraTeam(ctx context
 			return obj.DefaultMothraTeam, nil
 		},
 		nil,
-		ec.marshalOString2ᚖstring,
+		ec.marshalOString2string,
 		true,
 		false,
 	)
@@ -69655,7 +69709,7 @@ func (ec *executionContext) fieldContext_TaskOwnershipSettings_defaultMothraTeam
 	return fc, nil
 }
 
-func (ec *executionContext) _TaskOwnershipSettings_defaultMothraTeamForBreakingCommit(ctx context.Context, field graphql.CollectedField, obj *model.APITaskOwnershipSettings) (ret graphql.Marshaler) {
+func (ec *executionContext) _TaskOwnershipSettings_defaultMothraTeamForBreakingCommit(ctx context.Context, field graphql.CollectedField, obj *model1.TaskOwnershipSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -69665,7 +69719,7 @@ func (ec *executionContext) _TaskOwnershipSettings_defaultMothraTeamForBreakingC
 			return obj.DefaultMothraTeamForBreakingCommit, nil
 		},
 		nil,
-		ec.marshalOString2ᚖstring,
+		ec.marshalOString2string,
 		true,
 		false,
 	)
@@ -76876,6 +76930,8 @@ func (ec *executionContext) fieldContext_VersionLite_project(_ context.Context, 
 				return ec.fieldContext_ProjectLite_stepbackDisabled(ctx, field)
 			case "stepbackBisect":
 				return ec.fieldContext_ProjectLite_stepbackBisect(ctx, field)
+			case "taskOwnership":
+				return ec.fieldContext_ProjectLite_taskOwnership(ctx, field)
 			case "versionControlEnabled":
 				return ec.fieldContext_ProjectLite_versionControlEnabled(ctx, field)
 			}
@@ -86944,11 +87000,13 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 			it.TaskAnnotationSettings = data
 		case "taskOwnership":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskOwnership"))
-			data, err := ec.unmarshalOTaskOwnershipSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskOwnershipSettings(ctx, v)
+			data, err := ec.unmarshalOTaskOwnershipSettingsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐTaskOwnershipSettings(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TaskOwnership = data
+			if err = ec.resolvers.ProjectInput().TaskOwnership(ctx, &it, data); err != nil {
+				return it, err
+			}
 		case "testSelection":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("testSelection"))
 			data, err := ec.unmarshalOTestSelectionSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestSelectionSettings(ctx, v)
@@ -88039,11 +88097,13 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 			it.TaskAnnotationSettings = data
 		case "taskOwnership":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskOwnership"))
-			data, err := ec.unmarshalOTaskOwnershipSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskOwnershipSettings(ctx, v)
+			data, err := ec.unmarshalOTaskOwnershipSettingsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐTaskOwnershipSettings(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TaskOwnership = data
+			if err = ec.resolvers.RepoRefInput().TaskOwnership(ctx, &it, data); err != nil {
+				return it, err
+			}
 		case "testSelection":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("testSelection"))
 			data, err := ec.unmarshalOTestSelectionSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestSelectionSettings(ctx, v)
@@ -90359,8 +90419,8 @@ func (ec *executionContext) unmarshalInputTaskLimitsConfigInput(ctx context.Cont
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputTaskOwnershipSettingsInput(ctx context.Context, obj any) (model.APITaskOwnershipSettings, error) {
-	var it model.APITaskOwnershipSettings
+func (ec *executionContext) unmarshalInputTaskOwnershipSettingsInput(ctx context.Context, obj any) (model1.TaskOwnershipSettings, error) {
+	var it model1.TaskOwnershipSettings
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -90375,14 +90435,14 @@ func (ec *executionContext) unmarshalInputTaskOwnershipSettingsInput(ctx context
 		switch k {
 		case "defaultMothraTeam":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("defaultMothraTeam"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalOString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.DefaultMothraTeam = data
 		case "defaultMothraTeamForBreakingCommit":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("defaultMothraTeamForBreakingCommit"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalOString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -101667,7 +101727,38 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "taskOwnership":
-			out.Values[i] = ec._Project_taskOwnership(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Project_taskOwnership(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "testSelection":
 			out.Values[i] = ec._Project_testSelection(ctx, field, obj)
 		case "triggers":
@@ -102215,6 +102306,8 @@ func (ec *executionContext) _ProjectLite(ctx context.Context, sel ast.SelectionS
 			out.Values[i] = ec._ProjectLite_stepbackDisabled(ctx, field, obj)
 		case "stepbackBisect":
 			out.Values[i] = ec._ProjectLite_stepbackBisect(ctx, field, obj)
+		case "taskOwnership":
+			out.Values[i] = ec._ProjectLite_taskOwnership(ctx, field, obj)
 		case "versionControlEnabled":
 			out.Values[i] = ec._ProjectLite_versionControlEnabled(ctx, field, obj)
 		default:
@@ -104220,7 +104313,38 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "taskOwnership":
-			out.Values[i] = ec._RepoRef_taskOwnership(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._RepoRef_taskOwnership(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "testSelection":
 			out.Values[i] = ec._RepoRef_testSelection(ctx, field, obj)
 		case "triggers":
@@ -104469,7 +104593,7 @@ func (ec *executionContext) _RepoSettings(ctx context.Context, sel ast.Selection
 
 var repoTaskOwnershipSettingsImplementors = []string{"RepoTaskOwnershipSettings"}
 
-func (ec *executionContext) _RepoTaskOwnershipSettings(ctx context.Context, sel ast.SelectionSet, obj *model.APITaskOwnershipSettings) graphql.Marshaler {
+func (ec *executionContext) _RepoTaskOwnershipSettings(ctx context.Context, sel ast.SelectionSet, obj *model1.TaskOwnershipSettings) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, repoTaskOwnershipSettingsImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -109024,7 +109148,7 @@ func (ec *executionContext) _TaskOwnerTeam(ctx context.Context, sel ast.Selectio
 
 var taskOwnershipSettingsImplementors = []string{"TaskOwnershipSettings"}
 
-func (ec *executionContext) _TaskOwnershipSettings(ctx context.Context, sel ast.SelectionSet, obj *model.APITaskOwnershipSettings) graphql.Marshaler {
+func (ec *executionContext) _TaskOwnershipSettings(ctx context.Context, sel ast.SelectionSet, obj *model1.TaskOwnershipSettings) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, taskOwnershipSettingsImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -122220,8 +122344,11 @@ func (ec *executionContext) unmarshalORepoSettingsInput2ᚖgithubᚗcomᚋevergr
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalORepoTaskOwnershipSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskOwnershipSettings(ctx context.Context, sel ast.SelectionSet, v model.APITaskOwnershipSettings) graphql.Marshaler {
-	return ec._RepoTaskOwnershipSettings(ctx, sel, &v)
+func (ec *executionContext) marshalORepoTaskOwnershipSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐTaskOwnershipSettings(ctx context.Context, sel ast.SelectionSet, v *model1.TaskOwnershipSettings) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._RepoTaskOwnershipSettings(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalORepoTestSelectionSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestSelectionSettings(ctx context.Context, sel ast.SelectionSet, v model.APITestSelectionSettings) graphql.Marshaler {
@@ -122972,13 +123099,23 @@ func (ec *executionContext) marshalOTaskOwnerTeam2ᚖgithubᚗcomᚋevergreenᚑ
 	return ec._TaskOwnerTeam(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOTaskOwnershipSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskOwnershipSettings(ctx context.Context, sel ast.SelectionSet, v model.APITaskOwnershipSettings) graphql.Marshaler {
+func (ec *executionContext) marshalOTaskOwnershipSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐTaskOwnershipSettings(ctx context.Context, sel ast.SelectionSet, v model1.TaskOwnershipSettings) graphql.Marshaler {
 	return ec._TaskOwnershipSettings(ctx, sel, &v)
 }
 
-func (ec *executionContext) unmarshalOTaskOwnershipSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskOwnershipSettings(ctx context.Context, v any) (model.APITaskOwnershipSettings, error) {
+func (ec *executionContext) marshalOTaskOwnershipSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐTaskOwnershipSettings(ctx context.Context, sel ast.SelectionSet, v *model1.TaskOwnershipSettings) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._TaskOwnershipSettings(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOTaskOwnershipSettingsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐTaskOwnershipSettings(ctx context.Context, v any) (*model1.TaskOwnershipSettings, error) {
+	if v == nil {
+		return nil, nil
+	}
 	res, err := ec.unmarshalInputTaskOwnershipSettingsInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOTaskQuarantinedTestsSample2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtestresultᚐTaskTestResultsQuarantinedSampleᚄ(ctx context.Context, sel ast.SelectionSet, v []*testresult.TaskTestResultsQuarantinedSample) graphql.Marshaler {

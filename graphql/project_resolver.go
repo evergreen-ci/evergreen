@@ -29,6 +29,12 @@ func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProject
 	return &Patches{}, nil
 }
 
+// TaskOwnership is the resolver for the taskOwnership field.
+func (r *projectResolver) TaskOwnership(ctx context.Context, obj *restModel.APIProjectRef) (*model.TaskOwnershipSettings, error) {
+	settings := obj.TaskOwnership.ToService()
+	return &settings, nil
+}
+
 // IsFavorite is the resolver for the isFavorite field.
 func (r *projectLiteResolver) IsFavorite(ctx context.Context, obj *model.ProjectRef) (bool, error) {
 	usr := mustHaveUser(ctx)

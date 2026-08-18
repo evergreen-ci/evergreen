@@ -720,7 +720,7 @@ models:
   RepoSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
   RepoTaskOwnershipSettings:
-    model: github.com/evergreen-ci/evergreen/rest/model.APITaskOwnershipSettings
+    model: github.com/evergreen-ci/evergreen/model.TaskOwnershipSettings
   RepoTestSelectionSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APITestSelectionSettings
   RepotrackerConfig:
@@ -955,9 +955,9 @@ models:
   TestResult:
     model: github.com/evergreen-ci/evergreen/rest/model.APITest
   TaskOwnershipSettings:
-    model: github.com/evergreen-ci/evergreen/rest/model.APITaskOwnershipSettings
+    model: github.com/evergreen-ci/evergreen/model.TaskOwnershipSettings
   TaskOwnershipSettingsInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APITaskOwnershipSettings
+    model: github.com/evergreen-ci/evergreen/model.TaskOwnershipSettings
   TestSelectionSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APITestSelectionSettings
   TestSelectionSettingsInput:
