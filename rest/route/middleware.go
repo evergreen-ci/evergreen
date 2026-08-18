@@ -48,6 +48,10 @@ const (
 	backstageUser    = "backstage"
 )
 
+// hostCommunicationWriteInterval is the minimum time between writes to a host's last
+// communication time.
+const hostCommunicationWriteInterval = time.Minute
+
 type projCtxMiddleware struct{}
 
 func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
@@ -402,8 +406,10 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 // updateHostAccessTime updates the host access time and disables the host's flags to deploy new a new agent
 // or agent monitor if they are set.
 func updateHostAccessTime(ctx context.Context, h *host.Host) {
-	if err := h.UpdateLastCommunicated(ctx); err != nil {
-		grip.Warningf(ctx, "Could not update host last communication time for %s: %+v", h.Id, err)
+	if time.Since(h.LastCommunicationTime) >= hostCommunicationWriteInterval {
+		if err := h.UpdateLastCommunicated(ctx); err != nil {
+			grip.Warningf(ctx, "Could not update host last communication time for %s: %+v", h.Id, err)
+		}
 	}
 	// Since the host has contacted the app server, we should prevent the
 	// app server from attempting to deploy agents or agent monitors.

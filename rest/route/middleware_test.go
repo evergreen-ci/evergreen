@@ -486,6 +486,83 @@ func TestHostAuthMiddleware(t *testing.T) {
 	}
 }
 
+func TestUpdateHostAccessTime(t *testing.T) {
+	for testName, testCase := range map[string]func(t *testing.T, ctx context.Context, h *host.Host){
+		"StaleCommunicationTimeWritesUpdate": func(t *testing.T, ctx context.Context, h *host.Host) {
+			stale := time.Now().Add(-time.Hour)
+			require.NoError(t, host.UpdateOne(ctx, mongobson.M{host.IdKey: h.Id}, mongobson.M{"$set": mongobson.M{host.LastCommunicationTimeKey: stale}}))
+			h.LastCommunicationTime = stale
+
+			updateHostAccessTime(ctx, h)
+
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotNil(t, dbHost)
+			assert.True(t, dbHost.LastCommunicationTime.After(stale))
+		},
+		"RecentCommunicationTimeSkipsWrite": func(t *testing.T, ctx context.Context, h *host.Host) {
+			recent := time.Now().Add(-time.Second)
+			require.NoError(t, host.UpdateOne(ctx, mongobson.M{host.IdKey: h.Id}, mongobson.M{"$set": mongobson.M{host.LastCommunicationTimeKey: recent}}))
+			h.LastCommunicationTime = recent
+
+			updateHostAccessTime(ctx, h)
+
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotNil(t, dbHost)
+			assert.WithinDuration(t, recent, dbHost.LastCommunicationTime, time.Millisecond)
+		},
+		"CommunicationTimeWithinIntervalButOverThirtySecondsSkipsWrite": func(t *testing.T, ctx context.Context, h *host.Host) {
+			// Pins the interval above the agent's 30s heartbeat.
+			require.Greater(t, hostCommunicationWriteInterval, 45*time.Second)
+			recent := time.Now().Add(-45 * time.Second)
+			require.NoError(t, host.UpdateOne(ctx, mongobson.M{host.IdKey: h.Id}, mongobson.M{"$set": mongobson.M{host.LastCommunicationTimeKey: recent}}))
+			h.LastCommunicationTime = recent
+
+			updateHostAccessTime(ctx, h)
+
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotNil(t, dbHost)
+			assert.WithinDuration(t, recent, dbHost.LastCommunicationTime, time.Millisecond)
+		},
+		"RecentCommunicationTimeStillClearsAgentFlags": func(t *testing.T, ctx context.Context, h *host.Host) {
+			recent := time.Now().Add(-time.Second)
+			require.NoError(t, host.UpdateOne(ctx, mongobson.M{host.IdKey: h.Id}, mongobson.M{"$set": mongobson.M{
+				host.LastCommunicationTimeKey: recent,
+				host.NeedsNewAgentKey:         true,
+				host.NeedsNewAgentMonitorKey:  true,
+			}}))
+			h.LastCommunicationTime = recent
+			h.NeedsNewAgent = true
+			h.NeedsNewAgentMonitor = true
+
+			updateHostAccessTime(ctx, h)
+
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotNil(t, dbHost)
+			assert.False(t, dbHost.NeedsNewAgent)
+			assert.False(t, dbHost.NeedsNewAgentMonitor)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			ctx := t.Context()
+			require.NoError(t, db.Clear(host.Collection))
+			t.Cleanup(func() {
+				assert.NoError(t, db.Clear(host.Collection))
+			})
+			h := &host.Host{
+				Id:     "id",
+				Secret: "secret",
+			}
+			require.NoError(t, h.Insert(ctx))
+
+			testCase(t, ctx, h)
+		})
+	}
+}
+
 func TestProjectViewPermission(t *testing.T) {
 	assert := assert.New(t)
 	ctx := t.Context()
