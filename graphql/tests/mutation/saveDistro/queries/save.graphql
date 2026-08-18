@@ -102,6 +102,13 @@ mutation {
     }
   ) {
     distro {
+      bootstrapSettings {
+        containerIsolation {
+          enabled
+          image
+          requireIsolation
+        }
+      }
       adminOnly
       aliases
       disableShallowClone

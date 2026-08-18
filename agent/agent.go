@@ -1514,12 +1514,16 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 	}
 
 	detail := &apimodels.TaskEndDetail{
-		TraceID:     tc.traceID,
-		DiskDevices: tc.diskDevices,
+		TraceID:           tc.traceID,
+		DiskDevices:       tc.diskDevices,
+		ExecutionPlatform: string(task.ExecutionPlatformHost),
 	}
 	setEndTaskFailureDetails(tc, detail, status, highestPriorityDescription, userDefinedFailureType, userDefinedFailureMetadataTags)
 	if tc.taskConfig != nil {
 		detail.Modules.Prefixes = tc.taskConfig.ModulePaths
+		if tc.taskConfig.ContainerID != "" {
+			detail.ExecutionPlatform = string(task.ExecutionPlatformContainer)
+		}
 	}
 	return detail
 }

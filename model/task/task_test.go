@@ -4790,6 +4790,7 @@ func TestReset(t *testing.T) {
 		t0 := Task{
 			Id:                         "t0",
 			Status:                     evergreen.TaskSucceeded,
+			ExecutionPlatform:          ExecutionPlatformContainer,
 			Details:                    apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded},
 			TaskOutputInfo:             &TaskOutput{TaskLogs: TaskLogOutput{Version: 1}},
 			ResultsFailed:              true,
@@ -4826,6 +4827,7 @@ func TestReset(t *testing.T) {
 		assert.Empty(t, dbTask.HostCreateDetails)
 		assert.Empty(t, dbTask.TaskOutputInfo)
 		assert.Empty(t, dbTask.Details)
+		assert.Zero(t, dbTask.ExecutionPlatform)
 		assert.Zero(t, dbTask.NumNextTaskDispatches)
 		assert.Zero(t, dbTask.NumQuarantinedTestsSkipped)
 		assert.True(t, dbTask.TaskCost.IsZero())
@@ -4848,9 +4850,10 @@ func TestResetTasks(t *testing.T) {
 		require.NoError(t, db.Clear(Collection))
 
 		t0 := Task{
-			Id:       "t0",
-			Status:   evergreen.TaskSucceeded,
-			CanReset: true,
+			Id:                "t0",
+			Status:            evergreen.TaskSucceeded,
+			ExecutionPlatform: ExecutionPlatformContainer,
+			CanReset:          true,
 		}
 		assert.NoError(t, t0.Insert(t.Context()))
 
@@ -4859,6 +4862,7 @@ func TestResetTasks(t *testing.T) {
 		assert.NoError(t, err)
 		assert.False(t, dbTask.UnattainableDependency)
 		assert.Equal(t, "user", dbTask.ActivatedBy)
+		assert.Zero(t, dbTask.ExecutionPlatform)
 	})
 
 	t.Run("UnattainableDependency", func(t *testing.T) {
