@@ -4,7 +4,11 @@ mutation {
       projectId: "sandbox_project_id"
       projectRef: {
         id: "sandbox_project_id"
-        testSelection: { allowed: true, defaultEnabled: false }
+        testSelection: {
+          allowed: true
+          defaultEnabled: true
+          mainlineDefaultEnabled: true
+        }
       }
     }
     section: TEST_SELECTION
@@ -14,6 +18,7 @@ mutation {
       testSelection {
         allowed
         defaultEnabled
+        mainlineDefaultEnabled
       }
     }
   }

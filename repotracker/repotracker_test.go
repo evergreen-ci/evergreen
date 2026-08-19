@@ -1106,6 +1106,45 @@ tasks:
 	s.Len(dbTasks, 2)
 }
 
+func (s *CreateVersionFromConfigSuite) TestCreateVersionItemsEnablesTestSelectionForMainlineTasks() {
+	configYml := `
+buildvariants:
+- name: bv
+  run_on: d
+  tasks:
+  - name: task
+tasks:
+- name: task
+`
+	p := &model.Project{}
+	pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
+	s.Require().NoError(err)
+
+	s.ref.TestSelection = model.TestSelectionSettings{
+		Allowed:                utility.TruePtr(),
+		DefaultEnabled:         utility.TruePtr(),
+		MainlineDefaultEnabled: utility.TruePtr(),
+	}
+	projectInfo := &model.ProjectInfo{
+		Ref:                 s.ref,
+		IntermediateProject: pp,
+		Project:             p,
+	}
+	v := &model.Version{
+		Id:                  "mainline_test_selection",
+		CreateTime:          time.Now(),
+		Revision:            s.rev.Revision,
+		RevisionOrderNumber: 1,
+		Requester:           evergreen.RepotrackerVersionRequester,
+	}
+
+	s.Require().NoError(createVersionItems(s.ctx, v, model.VersionMetadata{Revision: *s.rev}, projectInfo, nil))
+	dbTasks, err := task.Find(s.ctx, task.ByVersion(v.Id))
+	s.Require().NoError(err)
+	s.Require().Len(dbTasks, 1)
+	s.True(dbTasks[0].TestSelectionEnabled)
+}
+
 func (s *CreateVersionFromConfigSuite) TestInvalidConfigErrors() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

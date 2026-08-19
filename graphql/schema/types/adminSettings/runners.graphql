@@ -32,6 +32,7 @@ input TaskLimitsConfigInput {
   maxTaskExecution: Int!
   maxDailyAutomaticRestarts: Int!
   maxScheduledTasksPerDistro: Int!
+  taskQueueAutoUnscheduleThreshold: Int
   hourlyPatchTaskOverrides: [HourlyPatchTaskOverrideInput!]
 }
 
@@ -59,6 +60,7 @@ type TaskLimitsConfig {
   maxTaskExecution: Int
   maxDailyAutomaticRestarts: Int
   maxScheduledTasksPerDistro: Int
+  taskQueueAutoUnscheduleThreshold: Int
   hourlyPatchTaskOverrides: [HourlyPatchTaskOverride!]!
 }
 

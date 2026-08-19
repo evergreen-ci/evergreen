@@ -57,6 +57,10 @@ type TaskLimitsConfig struct {
 	// MaxScheduledTasksPerDistro is the cap for the number of max tasks materialized into a distro's queue doc per pass.
 	MaxScheduledTasksPerDistro int `bson:"max_scheduled_tasks_per_distro" json:"max_scheduled_tasks_per_distro" yaml:"max_scheduled_tasks_per_distro"`
 
+	// TaskQueueAutoUnscheduleThreshold is the planned distro queue length at which the scheduler
+	// unschedules every CLI patch task in the queue. Zero disables the flush.
+	TaskQueueAutoUnscheduleThreshold int `bson:"task_queue_auto_unschedule_threshold" json:"task_queue_auto_unschedule_threshold" yaml:"task_queue_auto_unschedule_threshold"`
+
 	// HourlyPatchTaskOverrides sets a separate hourly patch task
 	// scheduling limit for individual branch projects or repos. If a project or
 	// repo has an override, users scheduling patch tasks in that project or
@@ -116,6 +120,7 @@ var (
 	maxDailyAutomaticRestartsKey                     = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxDailyAutomaticRestarts")
 	maxScheduledTasksPerDistroKey                    = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxScheduledTasksPerDistro")
 	hourlyPatchTaskOverridesKey                      = bsonutil.MustHaveTag(TaskLimitsConfig{}, "HourlyPatchTaskOverrides")
+	taskQueueAutoUnscheduleThresholdKey              = bsonutil.MustHaveTag(TaskLimitsConfig{}, "TaskQueueAutoUnscheduleThreshold")
 )
 
 func (c *TaskLimitsConfig) SectionId() string { return "task_limits" }
@@ -141,6 +146,7 @@ func (c *TaskLimitsConfig) Set(ctx context.Context) error {
 			maxDailyAutomaticRestartsKey:                     c.MaxDailyAutomaticRestarts,
 			maxScheduledTasksPerDistroKey:                    c.MaxScheduledTasksPerDistro,
 			hourlyPatchTaskOverridesKey:                      c.HourlyPatchTaskOverrides,
+			taskQueueAutoUnscheduleThresholdKey:              c.TaskQueueAutoUnscheduleThreshold,
 		},
 	}), "updating config section '%s'", c.SectionId())
 }
