@@ -215,6 +215,10 @@ func TestLatestTask(t *testing.T) {
 	testConfig := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, testConfig)
 	require.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
+	usr, err := user.GetOrCreateUser(t.Context(), testUser, "User Name", "testuser@mongodb.com", "access_token", "refresh_token", []string{})
+	require.NoError(t, err)
+	require.NoError(t, usr.AddRole(t.Context(), "view_task"))
+	ctx = gimlet.AttachUser(ctx, usr)
 	d1 := &distro.Distro{
 		Id:      "ubuntu1604-large",
 		ImageID: "ubuntu1604",
@@ -230,24 +234,39 @@ func TestLatestTask(t *testing.T) {
 		ImageID: "ubuntu1804",
 	}
 	require.NoError(t, d3.Insert(ctx))
+	d4 := &distro.Distro{
+		Id:      "unauthorized-large",
+		ImageID: "unauthorized",
+	}
+	require.NoError(t, d4.Insert(ctx))
 	taskA := &task.Task{
 		Id:         "task_a",
 		DistroId:   "ubuntu1604-small",
+		Project:    "project_id",
 		FinishTime: time.Date(2023, time.February, 1, 10, 30, 15, 0, time.UTC),
 	}
 	require.NoError(t, taskA.Insert(t.Context()))
 	taskB := &task.Task{
 		Id:         "task_b",
 		DistroId:   "ubuntu1604-large",
+		Project:    "project_id",
 		FinishTime: time.Date(2023, time.March, 1, 10, 30, 15, 0, time.UTC),
 	}
 	require.NoError(t, taskB.Insert(t.Context()))
 	taskC := &task.Task{
 		Id:         "task_c",
 		DistroId:   "ubuntu2204-large",
+		Project:    "project_id",
 		FinishTime: time.Date(2023, time.April, 1, 10, 30, 15, 0, time.UTC),
 	}
 	require.NoError(t, taskC.Insert(t.Context()))
+	unauthorizedTask := &task.Task{
+		Id:         "unauthorized_task",
+		DistroId:   "unauthorized-large",
+		Project:    "unauthorized_project",
+		FinishTime: time.Date(2023, time.May, 1, 10, 30, 15, 0, time.UTC),
+	}
+	require.NoError(t, unauthorizedTask.Insert(t.Context()))
 	image := model.APIImage{
 		ID: utility.ToStringPtr("ubuntu1604"),
 	}
@@ -264,4 +283,12 @@ func TestLatestTask(t *testing.T) {
 	res, err = config.Resolvers.Image().LatestTask(ctx, &image)
 	require.NoError(t, err)
 	assert.Nil(t, res)
+
+	// Does not expose a task from a project the caller cannot view.
+	image = model.APIImage{
+		ID: utility.ToStringPtr("unauthorized"),
+	}
+	res, err = config.Resolvers.Image().LatestTask(ctx, &image)
+	assert.Nil(t, res)
+	require.EqualError(t, err, "input: user 'test_user' does not have permission to 'view tasks' for the project 'unauthorized_project'")
 }

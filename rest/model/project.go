@@ -467,20 +467,25 @@ func (p *APIGitHubDynamicTokenPermissionGroup) BuildFromService(h model.GitHubDy
 type APITestSelectionSettings struct {
 	// Whether or not test selection features can be used.
 	Allowed *bool `json:"allowed,omitzero"`
-	// Whether or not test selection is enabled by default for tasks.
+	// Whether or not test selection is enabled by default for patch tasks.
 	DefaultEnabled *bool `json:"default_enabled,omitzero"`
+	// Whether or not test selection is enabled by default for mainline commit
+	// tasks.
+	MainlineDefaultEnabled *bool `json:"mainline_default_enabled,omitzero"`
 }
 
 func (ts *APITestSelectionSettings) ToService() model.TestSelectionSettings {
 	return model.TestSelectionSettings{
-		Allowed:        utility.BoolPtrCopy(ts.Allowed),
-		DefaultEnabled: utility.BoolPtrCopy(ts.DefaultEnabled),
+		Allowed:                utility.BoolPtrCopy(ts.Allowed),
+		DefaultEnabled:         utility.BoolPtrCopy(ts.DefaultEnabled),
+		MainlineDefaultEnabled: utility.BoolPtrCopy(ts.MainlineDefaultEnabled),
 	}
 }
 
 func (ts *APITestSelectionSettings) BuildFromService(settings model.TestSelectionSettings) {
 	ts.Allowed = utility.BoolPtrCopy(settings.Allowed)
 	ts.DefaultEnabled = utility.BoolPtrCopy(settings.DefaultEnabled)
+	ts.MainlineDefaultEnabled = utility.BoolPtrCopy(settings.MainlineDefaultEnabled)
 }
 
 type APIProjectRef struct {

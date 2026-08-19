@@ -118,4 +118,5 @@ type WorkstationSetupCommand {
 type RepoTestSelectionSettings {
   allowed: Boolean!
   defaultEnabled: Boolean!
+  mainlineDefaultEnabled: Boolean!
 }
