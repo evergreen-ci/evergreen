@@ -616,9 +616,6 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 			Revision: v.TriggerSHA,
 		}
 	}
-	if err := checkProjectAccess(ctx, projectID, ProjectPermissionTasks, AccessLevelView); err != nil {
-		return nil, err
-	}
 	upstreamProjectRef, err := model.FindBranchProjectRefSecondary(ctx, projectID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching upstream project '%s': %s", projectID, err.Error()))
