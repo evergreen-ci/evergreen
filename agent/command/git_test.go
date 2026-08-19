@@ -97,6 +97,7 @@ func (s *GitGetProjectSuite) SetupSuite() {
 func (s *GitGetProjectSuite) SetupTest() {
 	s.NoError(db.ClearCollections(patch.Collection, build.Collection, task.Collection,
 		model.VersionCollection, host.Collection))
+	s.comm.CreateInstallationTokenRefresh = nil
 	var err error
 
 	configPath1 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "plugin_clone.yml")
@@ -397,6 +398,29 @@ func (s *GitGetProjectSuite) TestTokenIsRedactedWhenGenerated() {
 		// Token should be in redacted list.
 		s.True(findTokenInRedacted())
 	})
+}
+
+func (s *GitGetProjectSuite) TestCloneTokenIsRefreshedOnFinalAttempt() {
+	conf := s.taskConfig1
+	conf.ProjectRef.Repo = "invalidRepo"
+	s.comm.CreateInstallationTokenResult = "token"
+	s.comm.CreateInstallationTokenFail = false
+
+	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+	s.Require().NoError(err)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	c := gitFetchProject{Directory: ""}
+	c.SetJasperManager(s.jasper)
+	s.Error(c.Execute(ctx, s.comm, logger, conf))
+
+	refresh := s.comm.GetCreateInstallationTokenRefresh()
+	s.Require().Greater(len(refresh), 1, "the failing clone should have been retried")
+	s.True(refresh[len(refresh)-1], "the final attempt should ask for a refreshed token")
+	for _, r := range refresh[:len(refresh)-1] {
+		s.False(r, "only the final attempt should refresh the token")
+	}
 }
 
 func (s *GitGetProjectSuite) TestStdErrLogged() {

@@ -2923,6 +2923,184 @@ buildvariants:
 	assert.Error(t, err)
 }
 
+func TestMergeProjectConfigFields(t *testing.T) {
+	t.Run("AliasListsAppendInFileOrder", func(t *testing.T) {
+		mainYaml := `
+patch_aliases:
+  - alias: "main-alias"
+    variant: "^ubuntu$"
+    task: ".*"
+github_pr_aliases:
+  - variant: "^lint$"
+    task: ".*"
+`
+		includedYaml := `
+patch_aliases:
+  - alias: "included-alias"
+    variant: ".*"
+    task: ".*"
+commit_queue_aliases:
+  - variant: ".*"
+    task: ".*"
+`
+		p1, err := createIntermediateProject([]byte(mainYaml), false, nil)
+		require.NoError(t, err)
+		p2, err := createIntermediateProject([]byte(includedYaml), false, nil)
+		require.NoError(t, err)
+
+		p1.mergeProjectConfigFields(p2)
+		assert.Empty(t, p1.redefinedProjectConfigSettings)
+		require.NotNil(t, p1.projectConfigFields)
+		require.Len(t, p1.projectConfigFields.PatchAliases, 2)
+		assert.Equal(t, "main-alias", p1.projectConfigFields.PatchAliases[0].Alias)
+		assert.Equal(t, "included-alias", p1.projectConfigFields.PatchAliases[1].Alias)
+		assert.Len(t, p1.projectConfigFields.GitHubPRAliases, 1)
+		assert.Len(t, p1.projectConfigFields.CommitQueueAliases, 1)
+	})
+
+	t.Run("RedefinedSettingsKeepFirstDefinition", func(t *testing.T) {
+		mainYaml := `
+workstation_config:
+  git_clone: true
+build_baron_settings:
+  ticket_create_project: EVG
+  ticket_search_projects: [EVG]
+`
+		includedYaml := `
+workstation_config:
+  git_clone: false
+task_annotation_settings:
+  file_ticket_webhook:
+    endpoint: "https://example.com"
+`
+		p1, err := createIntermediateProject([]byte(mainYaml), false, nil)
+		require.NoError(t, err)
+		p2, err := createIntermediateProject([]byte(includedYaml), false, nil)
+		require.NoError(t, err)
+
+		p1.mergeProjectConfigFields(p2)
+		assert.Equal(t, []string{"workstation_config"}, p1.redefinedProjectConfigSettings)
+		require.NotNil(t, p1.projectConfigFields)
+		require.NotNil(t, p1.projectConfigFields.WorkstationConfig)
+		assert.True(t, utility.FromBoolPtr(p1.projectConfigFields.WorkstationConfig.GitClone))
+		assert.NotNil(t, p1.projectConfigFields.BuildBaronSettings)
+		assert.NotNil(t, p1.projectConfigFields.TaskAnnotationSettings)
+		assert.Equal(t, []string{"workstation_config"}, p1.redefinedProjectConfigSettings)
+	})
+}
+
+func TestMergedProjectConfig(t *testing.T) {
+	t.Run("MatchesCreateProjectConfigForSingleFile", func(t *testing.T) {
+		singleFileYaml := `
+stepback: true
+patch_aliases:
+  - alias: "my-alias"
+    variant: ".*"
+    task: ".*"
+github_checks_aliases:
+  - variant: "^lint$"
+    task: ".*"
+workstation_config:
+  git_clone: true
+`
+		for name, unmarshalStrict := range map[string]bool{"Strict": true, "NonStrict": false} {
+			t.Run(name, func(t *testing.T) {
+				pp, err := createIntermediateProject([]byte(singleFileYaml), unmarshalStrict, nil)
+				require.NoError(t, err)
+				merged := pp.MergedProjectConfig("my-project")
+				require.NotNil(t, merged)
+
+				legacy, err := CreateProjectConfig([]byte(singleFileYaml), "my-project")
+				require.NoError(t, err)
+				require.NotNil(t, legacy)
+
+				assert.Equal(t, "my-project", merged.Project)
+				assert.False(t, merged.CreateTime.IsZero())
+				assert.Equal(t, legacy.ProjectConfigFields, merged.ProjectConfigFields)
+			})
+		}
+	})
+
+	t.Run("ConfigFieldsAreNotMarshalled", func(t *testing.T) {
+		pp, err := createIntermediateProject([]byte(`
+stepback: true
+patch_aliases:
+  - alias: "my-alias"
+    variant: ".*"
+    task: ".*"
+`), false, nil)
+		require.NoError(t, err)
+		require.NotNil(t, pp.projectConfigFields)
+
+		yamlOut, err := yaml.Marshal(pp)
+		require.NoError(t, err)
+		assert.NotContains(t, string(yamlOut), "patch_aliases")
+
+		bsonOut, err := bson.Marshal(pp)
+		require.NoError(t, err)
+		assert.NotContains(t, string(bsonOut), "patch_aliases")
+	})
+}
+
+func TestLoadProjectIntoMergesIncludedProjectConfig(t *testing.T) {
+	dir := t.TempDir()
+	mainYaml := `
+include:
+  - filename: include1.yml
+  - filename: include2.yml
+patch_aliases:
+  - alias: "main-alias"
+    variant: ".*"
+    task: ".*"
+workstation_config:
+  git_clone: true
+tasks:
+  - name: main_task
+    commands:
+      - command: shell.exec
+`
+	include1Yaml := `
+patch_aliases:
+  - alias: "include1-alias"
+    variant: ".*"
+    task: ".*"
+github_pr_aliases:
+  - variant: "^lint$"
+    task: ".*"
+workstation_config:
+  git_clone: false
+`
+	include2Yaml := `
+patch_aliases:
+  - alias: "include2-alias"
+    variant: ".*"
+    task: ".*"
+`
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "include1.yml"), []byte(include1Yaml), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "include2.yml"), []byte(include2Yaml), 0o600))
+
+	opts := &GetProjectOpts{
+		Ref:             &ProjectRef{Id: "my-project"},
+		ReadFileFrom:    ReadFromLocal,
+		LocalIncludeDir: dir,
+	}
+	project := &Project{}
+	pp, err := LoadProjectInto(t.Context(), []byte(mainYaml), opts, "my-project", project)
+	require.NoError(t, err)
+
+	pc := pp.MergedProjectConfig("my-project")
+	require.NotNil(t, pc)
+	require.Len(t, pc.PatchAliases, 3)
+	assert.Equal(t, "main-alias", pc.PatchAliases[0].Alias)
+	assert.Equal(t, "include1-alias", pc.PatchAliases[1].Alias)
+	assert.Equal(t, "include2-alias", pc.PatchAliases[2].Alias)
+	assert.Len(t, pc.GitHubPRAliases, 1)
+	assert.Equal(t, "my-project", pc.Project)
+	require.NotNil(t, pc.WorkstationConfig)
+	assert.True(t, utility.FromBoolPtr(pc.WorkstationConfig.GitClone), "the main file's definition should take precedence")
+	assert.Equal(t, []string{"workstation_config"}, pc.RedefinedSettings)
+}
+
 func TestUpdateReadFileFrom(t *testing.T) {
 	p := &patch.Patch{
 		Id: "p1",

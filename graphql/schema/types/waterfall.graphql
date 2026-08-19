@@ -45,7 +45,6 @@ type WaterfallPagination {
 }
 
 type Waterfall {
-  flattenedVersions: [Version!]!
   pagination: WaterfallPagination!
   versions: [VersionLite!]!
 }

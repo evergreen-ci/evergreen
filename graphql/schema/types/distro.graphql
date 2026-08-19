@@ -211,6 +211,7 @@ input PlannerSettingsInput {
   generateTaskFactor: Int!
   groupVersions: Boolean!
   mainlineTimeInQueueFactor: Int!
+  mergeQueueTargetTime: Int
   numDependentsFactor: Float!
   patchFactor: Int!
   patchTimeInQueueFactor: Int!
@@ -380,6 +381,7 @@ type PlannerSettings {
   numDependentsFactor: Float!
   groupVersions: Boolean!
   mainlineTimeInQueueFactor: Int!
+  mergeQueueTargetTime: Duration!
   patchFactor: Int!
   patchTimeInQueueFactor: Int!
   targetTime: Duration!

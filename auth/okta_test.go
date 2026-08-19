@@ -12,10 +12,10 @@ func TestMakeReconciliateID(t *testing.T) {
 		id                   string
 		expected             string
 	}{
-		"StripsDomainWhenNoAllowListConfigured": {
+		"KeepsFullEmailWhenNoAllowListConfigured": {
 			expectedEmailDomains: nil,
 			id:                   "alice@a.com",
-			expected:             "alice",
+			expected:             "alice@a.com",
 		},
 		"StripsDomainWhenInAllowList": {
 			expectedEmailDomains: []string{"a.com"},

@@ -561,6 +561,7 @@ type APIRateLimitConfig struct {
 	GraphQLServiceBurst    int      `json:"graphql_service_burst"`
 	GraphQLComplexityLimit int      `json:"graphql_complexity_limit"`
 	ElevatedUserIDs        []string `json:"elevated_user_ids"`
+	ExemptUserIDs          []string `json:"exempt_user_ids"`
 }
 
 func (a *APIRateLimitConfig) BuildFromService(h any) error {
@@ -576,6 +577,7 @@ func (a *APIRateLimitConfig) BuildFromService(h any) error {
 		a.GraphQLServiceBurst = v.GraphQLServiceBurst
 		a.GraphQLComplexityLimit = v.GraphQLComplexityLimit
 		a.ElevatedUserIDs = v.ElevatedUserIDs
+		a.ExemptUserIDs = v.ExemptUserIDs
 	default:
 		return errors.Errorf("programmatic error: expected rate limit config but got type %T", h)
 	}
@@ -594,6 +596,7 @@ func (a *APIRateLimitConfig) ToService() (any, error) {
 		GraphQLServiceBurst:    a.GraphQLServiceBurst,
 		GraphQLComplexityLimit: a.GraphQLComplexityLimit,
 		ElevatedUserIDs:        a.ElevatedUserIDs,
+		ExemptUserIDs:          a.ExemptUserIDs,
 	}, nil
 }
 
@@ -1696,6 +1699,8 @@ func (a *APISubnet) ToService() (any, error) {
 
 type APIAWSConfig struct {
 	Subnets                []APISubnet                `json:"subnets"`
+	SubnetTagName          *string                    `json:"subnet_tag_name"`
+	SubnetTagValue         *string                    `json:"subnet_tag_value"`
 	ParserProject          *APIParserProjectS3Config  `json:"parser_project"`
 	PersistentDNS          *APIPersistentDNSConfig    `json:"persistent_dns"`
 	DefaultSecurityGroup   *string                    `json:"default_security_group"`
@@ -1719,6 +1724,8 @@ func (a *APIAWSConfig) BuildFromService(h any) error {
 			}
 			a.Subnets = append(a.Subnets, apiSubnet)
 		}
+		a.SubnetTagName = utility.ToStringPtr(v.SubnetTagName)
+		a.SubnetTagValue = utility.ToStringPtr(v.SubnetTagValue)
 
 		parserProject := &APIParserProjectS3Config{}
 		if err := parserProject.BuildFromService(v.ParserProject); err != nil {
@@ -1808,6 +1815,8 @@ func (a *APIAWSConfig) ToService() (any, error) {
 		}
 		config.Subnets = append(config.Subnets, subnet)
 	}
+	config.SubnetTagName = utility.FromStringPtr(a.SubnetTagName)
+	config.SubnetTagValue = utility.FromStringPtr(a.SubnetTagValue)
 
 	config.AllowedInstanceTypes = utility.FromStringPtrSlice(a.AllowedInstanceTypes)
 	config.AlertableInstanceTypes = utility.FromStringPtrSlice(a.AlertableInstanceTypes)
@@ -1992,9 +2001,10 @@ func (a *APIRepoTrackerConfig) ToService() (any, error) {
 }
 
 type APIReleaseModeConfig struct {
-	DistroMaxHostsFactor      float64 `json:"distro_max_hosts_factor"`
-	TargetTimeSecondsOverride int     `json:"target_time_seconds_override"`
-	IdleTimeSecondsOverride   int     `json:"idle_time_seconds_override"`
+	DistroMaxHostsFactor                float64 `json:"distro_max_hosts_factor"`
+	TargetTimeSecondsOverride           int     `json:"target_time_seconds_override"`
+	IdleTimeSecondsOverride             int     `json:"idle_time_seconds_override"`
+	MergeQueueTargetTimeSecondsOverride int     `json:"merge_queue_target_time_seconds_override"`
 }
 
 func (a *APIReleaseModeConfig) BuildFromService(h any) error {
@@ -2003,6 +2013,7 @@ func (a *APIReleaseModeConfig) BuildFromService(h any) error {
 		a.DistroMaxHostsFactor = v.DistroMaxHostsFactor
 		a.TargetTimeSecondsOverride = v.TargetTimeSecondsOverride
 		a.IdleTimeSecondsOverride = v.IdleTimeSecondsOverride
+		a.MergeQueueTargetTimeSecondsOverride = v.MergeQueueTargetTimeSecondsOverride
 	default:
 		return errors.Errorf("programmatic error: expected ReleaseModeConfig but got type %T", h)
 	}
@@ -2011,9 +2022,10 @@ func (a *APIReleaseModeConfig) BuildFromService(h any) error {
 
 func (a *APIReleaseModeConfig) ToService() (any, error) {
 	return evergreen.ReleaseModeConfig{
-		DistroMaxHostsFactor:      a.DistroMaxHostsFactor,
-		TargetTimeSecondsOverride: a.TargetTimeSecondsOverride,
-		IdleTimeSecondsOverride:   a.IdleTimeSecondsOverride,
+		DistroMaxHostsFactor:                a.DistroMaxHostsFactor,
+		TargetTimeSecondsOverride:           a.TargetTimeSecondsOverride,
+		IdleTimeSecondsOverride:             a.IdleTimeSecondsOverride,
+		MergeQueueTargetTimeSecondsOverride: a.MergeQueueTargetTimeSecondsOverride,
 	}, nil
 }
 
@@ -2026,6 +2038,7 @@ type APISchedulerConfig struct {
 	FutureHostFraction               float64 `json:"free_host_fraction"`
 	CacheDurationSeconds             int     `json:"cache_duration_seconds"`
 	TargetTimeSeconds                int     `json:"target_time_seconds"`
+	MergeQueueTargetTimeSeconds      int     `json:"merge_queue_target_time_seconds"`
 	AcceptableHostIdleTimeSeconds    int     `json:"acceptable_host_idle_time_seconds"`
 	GroupVersions                    bool    `json:"group_versions"`
 	PatchFactor                      int64   `json:"patch_factor"`
@@ -2052,6 +2065,7 @@ func (a *APISchedulerConfig) BuildFromService(h any) error {
 		a.FutureHostFraction = v.FutureHostFraction
 		a.CacheDurationSeconds = v.CacheDurationSeconds
 		a.TargetTimeSeconds = v.TargetTimeSeconds
+		a.MergeQueueTargetTimeSeconds = v.MergeQueueTargetTimeSeconds
 		a.AcceptableHostIdleTimeSeconds = v.AcceptableHostIdleTimeSeconds
 		a.GroupVersions = v.GroupVersions
 		a.PatchFactor = v.PatchFactor
@@ -2081,6 +2095,7 @@ func (a *APISchedulerConfig) ToService() (any, error) {
 		FutureHostFraction:               a.FutureHostFraction,
 		CacheDurationSeconds:             a.CacheDurationSeconds,
 		TargetTimeSeconds:                a.TargetTimeSeconds,
+		MergeQueueTargetTimeSeconds:      a.MergeQueueTargetTimeSeconds,
 		AcceptableHostIdleTimeSeconds:    a.AcceptableHostIdleTimeSeconds,
 		GroupVersions:                    a.GroupVersions,
 		PatchFactor:                      a.PatchFactor,
@@ -2150,6 +2165,8 @@ type APIServiceFlags struct {
 	// Rate Limiting Flags
 	APIRateLimiterDisabled           bool `json:"api_rate_limiter_disabled"`
 	GraphQLComplexityLimiterDisabled bool `json:"graphql_complexity_limiter_disabled"`
+
+	TaskQueueAutoUnscheduleDisabled bool `json:"task_queue_auto_unschedule_disabled"`
 }
 
 type APIProjectTasksPair struct {
@@ -2603,6 +2620,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.BackgroundCommandFailureEnabled = v.BackgroundCommandFailureEnabled
 		as.APIRateLimiterDisabled = v.APIRateLimiterDisabled
 		as.GraphQLComplexityLimiterDisabled = v.GraphQLComplexityLimiterDisabled
+		as.TaskQueueAutoUnscheduleDisabled = v.TaskQueueAutoUnscheduleDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2658,6 +2676,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		LiveArtifactCredentialsDisabled:    as.LiveArtifactCredentialsDisabled,
 		APIRateLimiterDisabled:             as.APIRateLimiterDisabled,
 		GraphQLComplexityLimiterDisabled:   as.GraphQLComplexityLimiterDisabled,
+		TaskQueueAutoUnscheduleDisabled:    as.TaskQueueAutoUnscheduleDisabled,
 	}, nil
 }
 
@@ -3038,6 +3057,31 @@ type APITaskLimitsConfig struct {
 	MaxDailyAutomaticRestarts *int `json:"max_daily_automatic_restarts"`
 	// MaxScheduledTasksPerDistro is the cap for the number of max tasks materialized into a distro's queue doc per pass.
 	MaxScheduledTasksPerDistro *int `json:"max_scheduled_tasks_per_distro"`
+	// TaskQueueAutoUnscheduleThreshold is the planned distro queue length at which the scheduler unschedules every patch task in the queue.
+	TaskQueueAutoUnscheduleThreshold *int `json:"task_queue_auto_unschedule_threshold"`
+	// HourlyPatchTaskOverrides sets a separate hourly patch task scheduling limit for individual projects or repos.
+	HourlyPatchTaskOverrides []APIHourlyPatchTaskOverride `json:"hourly_patch_task_overrides"`
+}
+
+// APIHourlyPatchTaskOverride is a per-project or per-repo override to the
+// hourly per-user patch task scheduling limit.
+type APIHourlyPatchTaskOverride struct {
+	// ProjectOrRepoID is the ID of the branch project or repo the override applies to.
+	ProjectOrRepoID *string `json:"project_or_repo_id"`
+	// MaxHourlyPatchTasks is the maximum number of patch tasks a single user can schedule per hour in the target project or repo.
+	MaxHourlyPatchTasks *int `json:"max_hourly_patch_tasks"`
+}
+
+func (o *APIHourlyPatchTaskOverride) BuildFromService(h evergreen.HourlyPatchTaskOverride) {
+	o.ProjectOrRepoID = utility.ToStringPtr(h.ProjectOrRepoID)
+	o.MaxHourlyPatchTasks = utility.ToIntPtr(h.MaxHourlyPatchTasks)
+}
+
+func (o *APIHourlyPatchTaskOverride) ToService() evergreen.HourlyPatchTaskOverride {
+	return evergreen.HourlyPatchTaskOverride{
+		ProjectOrRepoID:     utility.FromStringPtr(o.ProjectOrRepoID),
+		MaxHourlyPatchTasks: utility.FromIntPtr(o.MaxHourlyPatchTasks),
+	}
 }
 
 func (c *APITaskLimitsConfig) BuildFromService(h any) error {
@@ -3056,6 +3100,11 @@ func (c *APITaskLimitsConfig) BuildFromService(h any) error {
 		c.MaxTaskExecution = utility.ToIntPtr(v.MaxTaskExecution)
 		c.MaxDailyAutomaticRestarts = utility.ToIntPtr(v.MaxDailyAutomaticRestarts)
 		c.MaxScheduledTasksPerDistro = utility.ToIntPtr(v.MaxScheduledTasksPerDistro)
+		c.TaskQueueAutoUnscheduleThreshold = utility.ToIntPtr(v.TaskQueueAutoUnscheduleThreshold)
+		c.HourlyPatchTaskOverrides = make([]APIHourlyPatchTaskOverride, len(v.HourlyPatchTaskOverrides))
+		for i, o := range v.HourlyPatchTaskOverrides {
+			c.HourlyPatchTaskOverrides[i].BuildFromService(o)
+		}
 		return nil
 	default:
 		return errors.Errorf("programmatic error: expected task limits config but got type %T", h)
@@ -3063,6 +3112,10 @@ func (c *APITaskLimitsConfig) BuildFromService(h any) error {
 }
 
 func (c *APITaskLimitsConfig) ToService() (any, error) {
+	overrides := make([]evergreen.HourlyPatchTaskOverride, len(c.HourlyPatchTaskOverrides))
+	for i, o := range c.HourlyPatchTaskOverrides {
+		overrides[i] = o.ToService()
+	}
 	return evergreen.TaskLimitsConfig{
 		MaxTasksPerVersion:                               utility.FromIntPtr(c.MaxTasksPerVersion),
 		MaxIncludesPerVersion:                            utility.FromIntPtr(c.MaxIncludesPerVersion),
@@ -3077,6 +3130,8 @@ func (c *APITaskLimitsConfig) ToService() (any, error) {
 		MaxTaskExecution:                                 utility.FromIntPtr(c.MaxTaskExecution),
 		MaxDailyAutomaticRestarts:                        utility.FromIntPtr(c.MaxDailyAutomaticRestarts),
 		MaxScheduledTasksPerDistro:                       utility.FromIntPtr(c.MaxScheduledTasksPerDistro),
+		TaskQueueAutoUnscheduleThreshold:                 utility.FromIntPtr(c.TaskQueueAutoUnscheduleThreshold),
+		HourlyPatchTaskOverrides:                         overrides,
 	}, nil
 }
 

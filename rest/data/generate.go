@@ -34,7 +34,7 @@ func GenerateTasks(ctx context.Context, settings *evergreen.Settings, taskID str
 	for _, f := range jsonFiles {
 		files = append(files, string(f))
 	}
-	if _, err := task.GeneratedJSONInsertWithS3Fallback(ctx, settings, t, files, evergreen.ProjectStorageMethodDB); err != nil {
+	if err := task.GeneratedJSONInsert(ctx, settings, t, files); err != nil {
 		return errors.Wrapf(err, "inserting generated JSON files for task '%s'", t.Id)
 	}
 

@@ -75,6 +75,9 @@ type TaskConfig struct {
 	// DevprodOwnedAWSAccountIDs contains the AWS account IDs of the accounts that are
 	// owned by Devprod that we want to calculate s3 costs for.
 	DevprodOwnedAWSAccountIDs []string
+	// ArtifactAWSAccountsWithoutLifecycleRules contains the AWS account IDs of the accounts that we
+	// calculate s3 costs for but cannot read lifecycle rules from.
+	ArtifactAWSAccountsWithoutLifecycleRules []string
 	// awsAccountIDByKey caches resolved AWS account IDs keyed by AWS access key ID,
 	// so repeated s3.put commands using the same key avoid redundant STS calls.
 	awsAccountIDByKey map[string]string
@@ -94,6 +97,15 @@ type TaskConfig struct {
 	BackgroundCommandFailureEnabled bool
 	// BackgroundFailures is the send-only end of a channel for background command failures; the agent reads from the bidirectional end on taskContext.
 	BackgroundFailures chan<- error
+
+	// ContainerID is the Docker container ID for this task's isolation container.
+	// Empty if container isolation is not enabled for this task.
+	// Set by the agent before task commands run; read by exec.go and shell.go.
+	ContainerID string
+
+	// EnvFileHostDir is the host-side tmpfs directory for env-file forwarding.
+	// Set alongside ContainerID when container isolation is enabled.
+	EnvFileHostDir string
 
 	// PatchOrVersionDescription holds the description of a patch or
 	// message of a version to be used in the otel attributes.
@@ -288,6 +300,7 @@ func NewTaskConfig(opts TaskConfigOptions) (*TaskConfig, error) {
 
 	if opts.ExpansionsAndVars != nil {
 		taskConfig.DevprodOwnedAWSAccountIDs = opts.ExpansionsAndVars.DevprodOwnedAWSAccountIDs
+		taskConfig.ArtifactAWSAccountsWithoutLifecycleRules = opts.ExpansionsAndVars.ArtifactAWSAccountsWithoutLifecycleRules
 	}
 
 	if opts.ExpansionsAndVars != nil && opts.ExpansionsAndVars.Expansions != nil {

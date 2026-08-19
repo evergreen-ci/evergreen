@@ -56,7 +56,8 @@
               "maxPendingGeneratedTasks": 1,
               "maxScheduledTasksPerDistro": 1,
               "maxTaskExecution": 1,
-              "maxTasksPerVersion": 1
+              "maxTasksPerVersion": 1,
+              "taskQueueAutoUnscheduleThreshold": 1
             },
             "repotracker": {
               "maxConcurrentRequests": 1,
@@ -102,6 +103,7 @@
             },
             "rateLimit": {
               "elevatedUserIds": ["user1", "user2"],
+              "exemptUserIds": ["user3"],
               "graphqlComplexityLimit": 1000,
               "graphqlServiceBurst": 40,
               "graphqlServicePerHour": 400,

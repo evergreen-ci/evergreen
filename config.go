@@ -35,17 +35,18 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2026-07-31"
+	ClientVersion = "2026-08-12"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2026-08-03"
+	AgentVersion = "2026-08-18"
 )
 
 const (
-	mongoTimeout          = 5 * time.Minute
-	mongoConnectTimeout   = 5 * time.Second
-	parameterStoreTimeout = 30 * time.Second
+	mongoTimeout                = 5 * time.Minute
+	mongoConnectTimeout         = 5 * time.Second
+	parameterStoreTimeout       = 30 * time.Second
+	SettingsContextCancelledErr = "context is cancelled, cannot get settings"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -305,7 +306,7 @@ func getSettings(ctx context.Context, includeOverrides, includeParameterStore bo
 		paramCache := map[string]string{}
 		params, err := paramMgr.Get(ctx, collectSecretPaths(settingsValue, settingsType, "")...)
 		if ctx.Err() != nil {
-			return nil, errors.Wrap(ctx.Err(), "context is cancelled, cannot get settings")
+			return nil, errors.Wrap(ctx.Err(), SettingsContextCancelledErr)
 		} else if err != nil {
 			grip.Error(ctx, errors.Wrap(err, "getting all admin secrets from parameter store"))
 		} else {
@@ -324,7 +325,7 @@ func getSettings(ctx context.Context, includeOverrides, includeParameterStore bo
 
 	// The context may be cancelled while getting settings.
 	if ctx.Err() != nil {
-		return nil, errors.Wrap(ctx.Err(), "context is cancelled, cannot get settings")
+		return nil, errors.Wrap(ctx.Err(), SettingsContextCancelledErr)
 	}
 	if catcher.HasErrors() {
 		return nil, errors.WithStack(catcher.Resolve())

@@ -110,10 +110,12 @@ type S3LifecycleClient interface {
 // DiscoverAndCacheProjectBucket checks if we have lifecycle rules cached for a bucket and fetches them if not.
 // It returns true if rules were successfully cached (discovery succeeded), false if already cached, if the
 // bucket's account is in accountsWithoutLifecycleRules, or if discovery failed.
+// fallbackAccountID is used when the account cannot be derived from roleARN, which is the case for key+secret
+// uploads. Without it those buckets bypass the skip list entirely.
 // This is best-effort - errors are logged but not returned to avoid failing file uploads.
-func DiscoverAndCacheProjectBucket(ctx context.Context, bucketName, region string, roleARN *string, externalID *string, projectID string, accountsWithoutLifecycleRules []string, client S3LifecycleClient) bool {
+func DiscoverAndCacheProjectBucket(ctx context.Context, bucketName, region string, roleARN *string, externalID *string, fallbackAccountID, projectID string, accountsWithoutLifecycleRules []string, client S3LifecycleClient) bool {
 	// Derive the AWS account ID from the role ARN so we can check it against the skip list.
-	var awsAccountID string
+	awsAccountID := fallbackAccountID
 	if roleARN != nil {
 		if id, ok := util.AWSAccountIDFromIAMARN(*roleARN); ok {
 			awsAccountID = id

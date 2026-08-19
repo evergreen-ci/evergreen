@@ -479,6 +479,17 @@ func GetVersionAuthorID(ctx context.Context, versionID string) (string, error) {
 	return v.AuthorID, nil
 }
 
+func GetVersionRequester(ctx context.Context, versionID string) (string, error) {
+	v, err := VersionFindOne(ctx, VersionById(versionID).WithFields(VersionRequesterKey))
+	if err != nil {
+		return "", errors.Wrapf(err, "getting version '%s'", versionID)
+	}
+	if v == nil {
+		return "", errors.Errorf("no version found for ID '%s'", versionID)
+	}
+	return v.Requester, nil
+}
+
 func FindLastPeriodicBuild(ctx context.Context, projectID, definitionID string) (*Version, error) {
 	versions, err := VersionFind(ctx, db.Query(bson.M{
 		VersionPeriodicBuildIDKey: definitionID,

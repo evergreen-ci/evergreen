@@ -318,6 +318,9 @@ type Task struct {
 	// project YAML for generate.tasks. This is only used to store the
 	// configuration if GeneratedJSONStorageMethod is unset or is explicitly set
 	// to "db".
+	//
+	// TODO (DEVPROD-41456): delete this field. Only tasks written before the
+	// switch to S3 still store their generated JSON here.
 	GeneratedJSONAsString GeneratedJSONFiles `bson:"generated_json,omitempty" json:"generated_json,omitempty"`
 	// GeneratedJSONStorageMethod describes how the generated JSON for
 	// generate.tasks is stored for this task before it's merged with the
@@ -1091,41 +1094,11 @@ func MarkGeneratedTasksErr(ctx context.Context, taskID string, errorToSet error)
 func GenerateNotRun(ctx context.Context) ([]Task, error) {
 	const maxGenerateTimeAgo = 24 * time.Hour
 	return FindAll(ctx, db.Query(bson.M{
-		StatusKey:                evergreen.TaskStarted,                              // task is running
-		StartTimeKey:             bson.M{"$gt": time.Now().Add(-maxGenerateTimeAgo)}, // ignore older tasks, just in case
-		GeneratedTasksKey:        bson.M{"$ne": true},                                // generate.tasks has not yet run
-		GeneratedJSONAsStringKey: bson.M{"$exists": true},                            // config has been posted by generate.tasks command
+		StatusKey:                     evergreen.TaskStarted,                              // task is running
+		StartTimeKey:                  bson.M{"$gt": time.Now().Add(-maxGenerateTimeAgo)}, // ignore older tasks, just in case
+		GeneratedTasksKey:             bson.M{"$ne": true},                                // generate.tasks has not yet run
+		GeneratedJSONStorageMethodKey: bson.M{"$exists": true},                            // config has been posted by generate.tasks command
 	}))
-}
-
-// SetGeneratedJSON sets JSON data to generate tasks from. If the generated JSON
-// files have already been stored, this is a no-op.
-func (t *Task) SetGeneratedJSON(ctx context.Context, files GeneratedJSONFiles) error {
-	if len(t.GeneratedJSONAsString) > 0 || t.GeneratedJSONStorageMethod != "" {
-		return nil
-	}
-
-	if err := UpdateOne(
-		ctx,
-		bson.M{
-			IdKey:                         t.Id,
-			GeneratedJSONAsStringKey:      bson.M{"$exists": false},
-			GeneratedJSONStorageMethodKey: nil,
-		},
-		bson.M{
-			"$set": bson.M{
-				GeneratedJSONAsStringKey:      files,
-				GeneratedJSONStorageMethodKey: evergreen.ProjectStorageMethodDB,
-			},
-		},
-	); err != nil {
-		return err
-	}
-
-	t.GeneratedJSONAsString = files
-	t.GeneratedJSONStorageMethod = evergreen.ProjectStorageMethodDB
-
-	return nil
 }
 
 // SetGeneratedJSONStorageMethod sets the task's generated JSON file storage
@@ -1408,8 +1381,26 @@ func (t *Task) MarkFailed(ctx context.Context) error {
 	)
 }
 
+// EstimatedFinishTime returns the best available estimate of when a
+// task stopped running for an unhealthy/unresponsive task. Typically should
+// only be used for system failures where the task itself is not finishing
+// normally. For example, when a task monitoring job determines the task is
+// stuck well after the task already stopped running.
+func (t *Task) EstimatedFinishTime(now time.Time) time.Time {
+	if utility.IsZeroTime(t.LastHeartbeat) || t.LastHeartbeat.After(now) {
+		return now
+	}
+
+	// If the task is finishing due to certain system failures (e.g.
+	// stranded/stale task that's been unassigned from a host but wasn't marked
+	// finished), there's no definitive time when the task finished. The best
+	// guess for when the task stopped running is the last time it had a
+	// heartbeat.
+	return t.LastHeartbeat
+}
+
 func (t *Task) MarkSystemFailed(ctx context.Context, description string) error {
-	t.FinishTime = time.Now()
+	t.FinishTime = t.EstimatedFinishTime(time.Now())
 	t.Details = GetSystemFailureDetails(description)
 
 	switch t.ExecutionPlatform {
@@ -2127,16 +2118,21 @@ func DeactivateDependencies(ctx context.Context, tasks []string, caller string) 
 	return errors.Wrap(deactivateDependencies(ctx, tasksToUpdate, taskIDsToUpdate, caller), "marking dependencies deactivated")
 }
 
-// MarkEnd handles the Task updates associated with ending a task. If the task's start time is zero
-// at this time, it will set it to the finish time minus the timeout time.
+// MarkEnd handles the Task updates associated with ending a task. If the task
+// never reported that it started, its start time is estimated.
 func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimodels.TaskEndDetail) error {
-	// if there is no start time set, either set it to the create time
-	// or set 2 hours previous to the finish time.
 	if utility.IsZeroTime(t.StartTime) {
 		timedOutStart := finishTime.Add(-2 * time.Hour)
-		t.StartTime = timedOutStart
-		if timedOutStart.Before(t.IngestTime) {
+		if !utility.IsZeroTime(t.DispatchTime) {
+			t.StartTime = t.DispatchTime
+		} else if timedOutStart.Before(t.IngestTime) {
 			t.StartTime = t.IngestTime
+		} else {
+			// If the task was never dispatched and the ingest time is a long
+			// time ago (e.g. restarting a really old task), set the start time
+			// to 2 hours ago. This is an arbitrary guess, but that's preferable
+			// to having a really long task duration.
+			t.StartTime = timedOutStart
 		}
 	}
 
@@ -4457,9 +4453,13 @@ func (t *Task) setS3ArtifactStorageCosts(ctx context.Context, lookup bucketExpir
 	t.TaskCost.OnDemandS3ArtifactStorageCost = 0
 	t.TaskCost.AdjustedS3ArtifactStorageCost = 0
 	for _, bucketEntry := range t.S3Usage.Artifacts.BytesByBucketAndKey {
+		// A lookup miss is expected for these accounts, so don't log one. The lookup still runs because
+		// rules cached before the account was listed are still valid.
+		accountID := evergreen.ResolveUploadAccountID(bucketEntry.AWSRoleARN, bucketEntry.AWSAccountID)
+		expectedMiss := evergreen.IsAccountWithoutLifecycleRules(accountID, costConfig.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules)
 		for _, fileEntry := range bucketEntry.Files {
 			days, usedLookup := lookupExpirationDays(ctx, bucketEntry.Bucket, fileEntry.FileKey, lookup, costConfig)
-			if !usedLookup {
+			if !usedLookup && !expectedMiss {
 				grip.Info(ctx, message.Fields{
 					"message": "no S3 lifecycle rule found for artifact bucket, using default expiration days",
 					"bucket":  bucketEntry.Bucket,

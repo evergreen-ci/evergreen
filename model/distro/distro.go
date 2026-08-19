@@ -308,8 +308,10 @@ type FinderSettings struct {
 }
 
 type PlannerSettings struct {
-	Version                   string        `bson:"version" json:"version" mapstructure:"version"`
-	TargetTime                time.Duration `bson:"target_time" json:"target_time" mapstructure:"target_time,omitempty"`
+	Version    string        `bson:"version" json:"version" mapstructure:"version"`
+	TargetTime time.Duration `bson:"target_time" json:"target_time" mapstructure:"target_time,omitempty"`
+	// MergeQueueTargetTime is the target time to use while the queue holds merge queue tasks. Zero means always use TargetTime.
+	MergeQueueTargetTime      time.Duration `bson:"merge_queue_target_time" json:"merge_queue_target_time" mapstructure:"merge_queue_target_time,omitempty"`
 	GroupVersions             *bool         `bson:"group_versions" json:"group_versions" mapstructure:"group_versions,omitempty"`
 	PatchFactor               int64         `bson:"patch_zipper_factor" json:"patch_factor" mapstructure:"patch_factor"`
 	PatchTimeInQueueFactor    int64         `bson:"patch_time_in_queue_factor" json:"patch_time_in_queue_factor" mapstructure:"patch_time_in_queue_factor"`
@@ -457,6 +459,19 @@ func (d *Distro) GetTargetTime() time.Duration {
 	}
 
 	return d.PlannerSettings.TargetTime
+}
+
+// GetTargetTimeForQueue returns the target time host allocation should aim for across the whole
+// distro queue. Hosts aren't allocated per task, so any runnable merge queue task lowers the target
+// time for every task in the queue. The merge queue target time only applies when it's lower than
+// the regular target time.
+func (d *Distro) GetTargetTimeForQueue(hasMergeQueueTasks bool) time.Duration {
+	targetTime := d.GetTargetTime()
+	if !hasMergeQueueTasks || d.PlannerSettings.MergeQueueTargetTime <= 0 {
+		return targetTime
+	}
+
+	return min(targetTime, d.PlannerSettings.MergeQueueTargetTime)
 }
 
 // IsPowerShellSetup returns whether or not the setup script is a powershell
@@ -754,6 +769,7 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	resolved := PlannerSettings{
 		Version:                   ps.Version,
 		TargetTime:                ps.TargetTime,
+		MergeQueueTargetTime:      ps.MergeQueueTargetTime,
 		GroupVersions:             ps.GroupVersions,
 		PatchFactor:               ps.PatchFactor,
 		PatchTimeInQueueFactor:    ps.PatchTimeInQueueFactor,
@@ -780,6 +796,13 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 		resolved.TargetTime = time.Duration(s.ReleaseMode.TargetTimeSecondsOverride) * time.Second
 	} else if resolved.TargetTime == 0 { // Fallback to the admin value if not set at the distro level.
 		resolved.TargetTime = time.Duration(config.TargetTimeSeconds) * time.Second
+	}
+
+	// If enabled, release mode takes precedent over both distro and admin value.
+	if !s.ServiceFlags.ReleaseModeDisabled && s.ReleaseMode.MergeQueueTargetTimeSecondsOverride > 0 {
+		resolved.MergeQueueTargetTime = time.Duration(s.ReleaseMode.MergeQueueTargetTimeSecondsOverride) * time.Second
+	} else if resolved.MergeQueueTargetTime == 0 { // Fallback to the admin value if not set at the distro level.
+		resolved.MergeQueueTargetTime = time.Duration(config.MergeQueueTargetTimeSeconds) * time.Second
 	}
 
 	if resolved.GroupVersions == nil {

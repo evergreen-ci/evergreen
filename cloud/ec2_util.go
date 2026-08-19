@@ -672,12 +672,16 @@ func ValidVolumeOptions(v *host.Volume, s *evergreen.Settings) error {
 		catcher.Errorf("invalid volume type '%s', valid EBS volume types are: %s", v.Type, ValidVolumeTypes)
 	}
 
-	_, err := getSubnetForZone(s.Providers.AWS.Subnets, v.AvailabilityZone)
+	// Spawn hosts/volumes are only supported in the default AWS account
+	// currently, so only look for subnets in the default account.
+	_, err := getSubnetForZoneInDefaultAccount(s.Providers.AWS.Subnets, v.AvailabilityZone)
 	catcher.Add(err)
 	return catcher.Resolve()
 }
 
-func getSubnetForZone(subnets []evergreen.Subnet, zone string) (string, error) {
+// getSubnetForZoneInDefaultAccount gets a subnet that is in the given
+// availability zone. This only supports subnets in the default AWS account.
+func getSubnetForZoneInDefaultAccount(subnets []evergreen.Subnet, zone string) (string, error) {
 	zones := []string{}
 	for _, subnet := range subnets {
 		if subnet.AZ == zone {

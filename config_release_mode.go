@@ -12,6 +12,8 @@ type ReleaseModeConfig struct {
 	DistroMaxHostsFactor      float64 `bson:"distro_max_hosts_factor" json:"distro_max_hosts_factor" yaml:"distro_max_hosts_factor"`
 	TargetTimeSecondsOverride int     `bson:"target_time_seconds_override" json:"target_time_seconds_override" yaml:"target_time_seconds_override"`
 	IdleTimeSecondsOverride   int     `bson:"idle_time_seconds_override" json:"idle_time_seconds_override" yaml:"idle_time_seconds_override"`
+	// MergeQueueTargetTimeSecondsOverride overrides both the distro and admin merge queue target time.
+	MergeQueueTargetTimeSecondsOverride int `bson:"merge_queue_target_time_seconds_override" json:"merge_queue_target_time_seconds_override" yaml:"merge_queue_target_time_seconds_override"`
 }
 
 func (c *ReleaseModeConfig) SectionId() string { return "release_mode" }
@@ -23,9 +25,10 @@ func (c *ReleaseModeConfig) Get(ctx context.Context) error {
 func (c *ReleaseModeConfig) Set(ctx context.Context) error {
 	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
 		"$set": bson.M{
-			"distro_max_hosts_factor":      c.DistroMaxHostsFactor,
-			"target_time_seconds_override": c.TargetTimeSecondsOverride,
-			"idle_time_seconds_override":   c.IdleTimeSecondsOverride,
+			"distro_max_hosts_factor":                  c.DistroMaxHostsFactor,
+			"target_time_seconds_override":             c.TargetTimeSecondsOverride,
+			"idle_time_seconds_override":               c.IdleTimeSecondsOverride,
+			"merge_queue_target_time_seconds_override": c.MergeQueueTargetTimeSecondsOverride,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }
@@ -36,6 +39,9 @@ func (c *ReleaseModeConfig) ValidateAndDefault() error {
 	}
 	if c.IdleTimeSecondsOverride < 0 {
 		return errors.Errorf("idle time seconds override cannot be negative")
+	}
+	if c.MergeQueueTargetTimeSecondsOverride < 0 {
+		return errors.Errorf("merge queue target time seconds override cannot be negative")
 	}
 	if c.DistroMaxHostsFactor < 0 {
 		return errors.Errorf("distro max hosts factor cannot be negative")

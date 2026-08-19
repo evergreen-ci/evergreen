@@ -104,6 +104,7 @@ var (
 	graphqlComplexityLimiterDisabledKey   = bsonutil.MustHaveTag(ServiceFlags{}, "GraphQLComplexityLimiterDisabled")
 	liveArtifactCredentialsDisabledKey    = bsonutil.MustHaveTag(ServiceFlags{}, "LiveArtifactCredentialsDisabled")
 	containerIsolationEnabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "ContainerIsolationEnabled")
+	taskQueueAutoUnscheduleDisabledKey    = bsonutil.MustHaveTag(ServiceFlags{}, "TaskQueueAutoUnscheduleDisabled")
 
 	// DiagnosticsConfig keys
 	diagnosticsS3BucketNameKey = bsonutil.MustHaveTag(DiagnosticsConfig{}, "S3BucketName")

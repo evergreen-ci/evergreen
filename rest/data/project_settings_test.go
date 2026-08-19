@@ -944,8 +944,9 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 		model.ProjectPageTestSelectionSection: func(t *testing.T, ref model.ProjectRef) {
 			apiProjectRef := restModel.APIProjectRef{
 				TestSelection: restModel.APITestSelectionSettings{
-					Allowed:        utility.ToBoolPtr(true),
-					DefaultEnabled: utility.ToBoolPtr(false),
+					Allowed:                utility.TruePtr(),
+					DefaultEnabled:         utility.TruePtr(),
+					MainlineDefaultEnabled: utility.TruePtr(),
 				},
 			}
 			apiChanges := &restModel.APIProjectSettings{
@@ -958,8 +959,80 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			projectFromDB, err := model.FindBranchProjectRef(ctx, ref.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, projectFromDB)
-			assert.Equal(t, true, utility.FromBoolPtr(projectFromDB.TestSelection.Allowed))
-			assert.Equal(t, false, utility.FromBoolPtr(projectFromDB.TestSelection.DefaultEnabled))
+			assert.True(t, utility.FromBoolPtr(projectFromDB.TestSelection.Allowed))
+			assert.True(t, utility.FromBoolPtr(projectFromDB.TestSelection.DefaultEnabled))
+			assert.True(t, utility.FromBoolPtr(projectFromDB.TestSelection.MainlineDefaultEnabled))
+
+			apiChanges.ProjectRef.TestSelection = restModel.APITestSelectionSettings{
+				Allowed:                utility.TruePtr(),
+				DefaultEnabled:         utility.FalsePtr(),
+				MainlineDefaultEnabled: utility.TruePtr(),
+			}
+			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageTestSelectionSection, false, "me")
+			require.Error(t, err)
+			assert.Nil(t, settings)
+
+			apiChanges.ProjectRef.TestSelection = restModel.APITestSelectionSettings{
+				Allowed:        utility.FalsePtr(),
+				DefaultEnabled: utility.TruePtr(),
+			}
+			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageTestSelectionSection, false, "me")
+			require.NoError(t, err)
+			require.NotNil(t, settings)
+
+			projectFromDB, err = model.FindBranchProjectRef(ctx, ref.Id)
+			require.NoError(t, err)
+			require.NotNil(t, projectFromDB)
+			assert.True(t, utility.FromBoolPtr(projectFromDB.TestSelection.MainlineDefaultEnabled))
+
+			apiChanges.ProjectRef.TestSelection = restModel.APITestSelectionSettings{
+				Allowed:        utility.TruePtr(),
+				DefaultEnabled: utility.FalsePtr(),
+			}
+			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageTestSelectionSection, false, "me")
+			require.NoError(t, err)
+			require.NotNil(t, settings)
+
+			projectFromDB, err = model.FindBranchProjectRef(ctx, ref.Id)
+			require.NoError(t, err)
+			require.NotNil(t, projectFromDB)
+			assert.False(t, utility.FromBoolPtr(projectFromDB.TestSelection.DefaultEnabled))
+			assert.False(t, utility.FromBoolPtr(projectFromDB.TestSelection.MainlineDefaultEnabled))
+
+			apiChanges.ProjectRef.TestSelection = restModel.APITestSelectionSettings{
+				Allowed:                utility.TruePtr(),
+				DefaultEnabled:         utility.TruePtr(),
+				MainlineDefaultEnabled: utility.TruePtr(),
+			}
+			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageTestSelectionSection, false, "me")
+			require.NoError(t, err)
+			require.NotNil(t, settings)
+
+			apiChanges.ProjectRef.TestSelection = restModel.APITestSelectionSettings{
+				Allowed: utility.TruePtr(),
+			}
+			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageTestSelectionSection, false, "me")
+			require.NoError(t, err)
+			require.NotNil(t, settings)
+
+			projectFromDB, err = model.FindBranchProjectRef(ctx, ref.Id)
+			require.NoError(t, err)
+			require.NotNil(t, projectFromDB)
+			assert.True(t, utility.FromBoolPtr(projectFromDB.TestSelection.Allowed))
+			assert.Nil(t, projectFromDB.TestSelection.DefaultEnabled)
+			assert.Nil(t, projectFromDB.TestSelection.MainlineDefaultEnabled)
+
+			apiChanges.ProjectRef.TestSelection = restModel.APITestSelectionSettings{}
+			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageTestSelectionSection, false, "me")
+			require.NoError(t, err)
+			require.NotNil(t, settings)
+
+			projectFromDB, err = model.FindBranchProjectRef(ctx, ref.Id)
+			require.NoError(t, err)
+			require.NotNil(t, projectFromDB)
+			assert.Nil(t, projectFromDB.TestSelection.Allowed)
+			assert.Nil(t, projectFromDB.TestSelection.DefaultEnabled)
+			assert.Nil(t, projectFromDB.TestSelection.MainlineDefaultEnabled)
 		},
 		model.ProjectPagePullRequestsSection: func(t *testing.T, ref model.ProjectRef) {
 			// Start from a clean state for the PR flags.
