@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -93,6 +94,26 @@ type File struct {
 	AssociatedLinks []AssociatedLink `json:"associated_links,omitempty" bson:"associated_links,omitempty"`
 	// DoNotEncodeLink indicates that the file link should not be escaped.
 	DoNotEncodeLink bool `json:"do_not_encode_link,omitempty" bson:"do_not_encode_link,omitempty"`
+}
+
+// ValidateFiles verifies that artifact links are safe to render as anchor hrefs.
+func ValidateFiles(files []File) error {
+	for _, file := range files {
+		if file.Link != "" {
+			if err := util.CheckURL(file.Link); err != nil {
+				return errors.Wrapf(err, "validating URL for artifact file '%s'", file.Name)
+			}
+		}
+		for _, link := range file.AssociatedLinks {
+			if link.Link != "" {
+				if err := util.CheckURL(link.Link); err != nil {
+					return errors.Wrapf(err, "validating URL for associated artifact link '%s'", link.Name)
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 func (f *File) validate() error {

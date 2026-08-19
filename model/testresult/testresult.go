@@ -176,18 +176,19 @@ func (tr TestResult) GetLogURL(root, parsleyURL string, viewer evergreen.LogView
 	case evergreen.LogViewerHTML:
 		// Return an empty string for logkeeper URLS.
 		if tr.LogURL != "" {
-			for _, url := range deprecatedLogkeeperURLs {
-				if strings.Contains(tr.LogURL, url) {
-					return ""
+			if err := util.CheckURL(tr.LogURL); err == nil {
+				for _, url := range deprecatedLogkeeperURLs {
+					if strings.Contains(tr.LogURL, url) {
+						return ""
+					}
 				}
-			}
-			// Some test results may have internal URLs that are
-			// missing the root.
-			if err := util.CheckURL(tr.LogURL); err != nil {
-				return root + tr.LogURL
+
+				return tr.LogURL
 			}
 
-			return tr.LogURL
+			// Some test results may have internal URLs that are
+			// missing the root.
+			return root + tr.LogURL
 		}
 
 		return fmt.Sprintf("%s/test_log/%s/%d?test_name=%s#L%d",
@@ -202,10 +203,12 @@ func (tr TestResult) GetLogURL(root, parsleyURL string, viewer evergreen.LogView
 			return ""
 		}
 
-		for _, url := range deprecatedLogkeeperURLs {
-			if strings.Contains(tr.LogURL, url) {
-				updatedResmokeParsleyURL := strings.Replace(tr.LogURL, fmt.Sprintf("%s/build", url), parsleyURL+"/resmoke", 1)
-				return fmt.Sprintf("%s?shareLine=%d", updatedResmokeParsleyURL, tr.getLineNum())
+		if err := util.CheckURL(tr.LogURL); err == nil {
+			for _, url := range deprecatedLogkeeperURLs {
+				if strings.Contains(tr.LogURL, url) {
+					updatedResmokeParsleyURL := strings.Replace(tr.LogURL, fmt.Sprintf("%s/build", url), parsleyURL+"/resmoke", 1)
+					return fmt.Sprintf("%s?shareLine=%d", updatedResmokeParsleyURL, tr.getLineNum())
+				}
 			}
 		}
 

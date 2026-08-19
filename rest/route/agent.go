@@ -737,6 +737,9 @@ func (h *attachFilesHandler) Parse(ctx context.Context, r *http.Request) error {
 		grip.Error(ctx, message)
 		return errors.Wrap(err, message)
 	}
+	if err := artifact.ValidateFiles(h.files); err != nil {
+		return errors.Wrap(err, "validating artifact file links")
+	}
 	return nil
 }
 

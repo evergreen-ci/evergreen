@@ -68,3 +68,29 @@ func TestGetLogURL(t *testing.T) {
 	url = test3.GetLogURL(evergreenBaseURL, parsleyURL, evergreen.LogViewerParsley)
 	assert.Equal(t, "https://parsley.mongodb.org/test/task1/0/test3?shareLine=0", url)
 }
+
+func TestGetLogURLDoesNotReturnUnsafeSchemes(t *testing.T) {
+	const (
+		evergreenBaseURL = "https://request.evergreen.example.com"
+		parsleyURL       = "https://parsley.mongodb.org"
+	)
+	result := TestResult{
+		TaskID:    "task1",
+		TestName:  "test1",
+		LogURL:    "javascript:https://logkeeper.mongodb.org/build/task1",
+		RawLogURL: "data:text/html,<script>alert(1)</script>",
+	}
+
+	assert.Equal(t,
+		evergreenBaseURL+"javascript:https://logkeeper.mongodb.org/build/task1",
+		result.GetLogURL(evergreenBaseURL, parsleyURL, evergreen.LogViewerHTML),
+	)
+	assert.Equal(t,
+		parsleyURL+"/test/task1/0/test1?shareLine=0",
+		result.GetLogURL(evergreenBaseURL, parsleyURL, evergreen.LogViewerParsley),
+	)
+	assert.Equal(t,
+		evergreenBaseURL+"data:text/html,<script>alert(1)</script>",
+		result.GetLogURL(evergreenBaseURL, parsleyURL, evergreen.LogViewerRaw),
+	)
+}

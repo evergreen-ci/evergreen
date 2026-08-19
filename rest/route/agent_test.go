@@ -18,6 +18,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -41,6 +42,43 @@ import (
 var (
 	taskSecret = "tasksecret"
 )
+
+func TestAttachFilesHandlerParse(t *testing.T) {
+	for testName, testCase := range map[string]struct {
+		files []artifact.File
+		want  bool
+	}{
+		"AllowsHTTPSArtifactLinks": {
+			files: []artifact.File{{Link: "https://example.com/artifact.txt"}},
+			want:  true,
+		},
+		"RejectsJavaScriptArtifactLinks": {
+			files: []artifact.File{{Link: "javascript:alert(document.domain)"}},
+		},
+		"RejectsDataAssociatedArtifactLinks": {
+			files: []artifact.File{{
+				Link:            "https://example.com/artifact.txt",
+				AssociatedLinks: []artifact.AssociatedLink{{Link: "data:text/html,<script>alert(1)</script>"}},
+			}},
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			body, err := json.Marshal(testCase.files)
+			require.NoError(t, err)
+
+			req, err := http.NewRequest(http.MethodPost, "https://example.com/rest/v2/task/task1/files", bytes.NewReader(body))
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"task_id": "task1"})
+
+			err = (&attachFilesHandler{}).Parse(t.Context(), req)
+			if testCase.want {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+			}
+		})
+	}
+}
 
 func TestAgentGetExpansionsAndVars(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler){
