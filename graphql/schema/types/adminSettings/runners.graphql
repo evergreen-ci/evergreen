@@ -59,7 +59,7 @@ type TaskLimitsConfig {
   maxTaskExecution: Int
   maxDailyAutomaticRestarts: Int
   maxScheduledTasksPerDistro: Int
-  hourlyPatchTaskOverrides: [HourlyPatchTaskOverride!]
+  hourlyPatchTaskOverrides: [HourlyPatchTaskOverride!]!
 }
 
 input HostInitConfigInput {
