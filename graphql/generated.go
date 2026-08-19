@@ -816,6 +816,11 @@ type ComplexityRoot struct {
 		TotalHostsCount    func(childComplexity int) int
 	}
 
+	HourlyPatchTaskOverride struct {
+		MaxHourlyPatchTasks func(childComplexity int) int
+		ProjectOrRepoID     func(childComplexity int) int
+	}
+
 	IceCreamSettings struct {
 		ConfigPath    func(childComplexity int) int
 		SchedulerHost func(childComplexity int) int
@@ -2037,6 +2042,7 @@ type ComplexityRoot struct {
 	}
 
 	TaskLimitsConfig struct {
+		HourlyPatchTaskOverrides                         func(childComplexity int) int
 		MaxConcurrentLargeParserProjectTasks             func(childComplexity int) int
 		MaxDailyAutomaticRestarts                        func(childComplexity int) int
 		MaxDegradedModeConcurrentLargeParserProjectTasks func(childComplexity int) int
@@ -5713,6 +5719,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.HostsResponse.TotalHostsCount(childComplexity), true
+
+	case "HourlyPatchTaskOverride.maxHourlyPatchTasks":
+		if e.complexity.HourlyPatchTaskOverride.MaxHourlyPatchTasks == nil {
+			break
+		}
+
+		return e.complexity.HourlyPatchTaskOverride.MaxHourlyPatchTasks(childComplexity), true
+	case "HourlyPatchTaskOverride.projectOrRepoId":
+		if e.complexity.HourlyPatchTaskOverride.ProjectOrRepoID == nil {
+			break
+		}
+
+		return e.complexity.HourlyPatchTaskOverride.ProjectOrRepoID(childComplexity), true
 
 	case "IceCreamSettings.configPath":
 		if e.complexity.IceCreamSettings.ConfigPath == nil {
@@ -11413,6 +11432,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.TaskInfo.Name(childComplexity), true
 
+	case "TaskLimitsConfig.hourlyPatchTaskOverrides":
+		if e.complexity.TaskLimitsConfig.HourlyPatchTaskOverrides == nil {
+			break
+		}
+
+		return e.complexity.TaskLimitsConfig.HourlyPatchTaskOverrides(childComplexity), true
 	case "TaskLimitsConfig.maxConcurrentLargeParserProjectTasks":
 		if e.complexity.TaskLimitsConfig.MaxConcurrentLargeParserProjectTasks == nil {
 			break
@@ -13298,6 +13323,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputHostEventsInput,
 		ec.unmarshalInputHostInitConfigInput,
 		ec.unmarshalInputHostJasperConfigInput,
+		ec.unmarshalInputHourlyPatchTaskOverrideInput,
 		ec.unmarshalInputIceCreamSettingsInput,
 		ec.unmarshalInputImageFileOpts,
 		ec.unmarshalInputInstanceTagInput,
@@ -20362,6 +20388,8 @@ func (ec *executionContext) fieldContext_AdminSettings_taskLimits(_ context.Cont
 				return ec.fieldContext_TaskLimitsConfig_maxScheduledTasksPerDistro(ctx, field)
 			case "taskQueueAutoUnscheduleThreshold":
 				return ec.fieldContext_TaskLimitsConfig_taskQueueAutoUnscheduleThreshold(ctx, field)
+			case "hourlyPatchTaskOverrides":
+				return ec.fieldContext_TaskLimitsConfig_hourlyPatchTaskOverrides(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TaskLimitsConfig", field.Name)
 		},
@@ -32573,6 +32601,64 @@ func (ec *executionContext) _HostsResponse_totalHostsCount(ctx context.Context, 
 func (ec *executionContext) fieldContext_HostsResponse_totalHostsCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "HostsResponse",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HourlyPatchTaskOverride_projectOrRepoId(ctx context.Context, field graphql.CollectedField, obj *model.APIHourlyPatchTaskOverride) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_HourlyPatchTaskOverride_projectOrRepoId,
+		func(ctx context.Context) (any, error) {
+			return obj.ProjectOrRepoID, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_HourlyPatchTaskOverride_projectOrRepoId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HourlyPatchTaskOverride",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HourlyPatchTaskOverride_maxHourlyPatchTasks(ctx context.Context, field graphql.CollectedField, obj *model.APIHourlyPatchTaskOverride) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_HourlyPatchTaskOverride_maxHourlyPatchTasks,
+		func(ctx context.Context) (any, error) {
+			return obj.MaxHourlyPatchTasks, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_HourlyPatchTaskOverride_maxHourlyPatchTasks(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HourlyPatchTaskOverride",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -69003,6 +69089,41 @@ func (ec *executionContext) fieldContext_TaskLimitsConfig_taskQueueAutoUnschedul
 	return fc, nil
 }
 
+func (ec *executionContext) _TaskLimitsConfig_hourlyPatchTaskOverrides(ctx context.Context, field graphql.CollectedField, obj *model.APITaskLimitsConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TaskLimitsConfig_hourlyPatchTaskOverrides,
+		func(ctx context.Context) (any, error) {
+			return obj.HourlyPatchTaskOverrides, nil
+		},
+		nil,
+		ec.marshalNHourlyPatchTaskOverride2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHourlyPatchTaskOverrideᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TaskLimitsConfig_hourlyPatchTaskOverrides(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskLimitsConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "projectOrRepoId":
+				return ec.fieldContext_HourlyPatchTaskOverride_projectOrRepoId(ctx, field)
+			case "maxHourlyPatchTasks":
+				return ec.fieldContext_HourlyPatchTaskOverride_maxHourlyPatchTasks(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HourlyPatchTaskOverride", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TaskLogLinks_agentLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -84319,6 +84440,40 @@ func (ec *executionContext) unmarshalInputHostJasperConfigInput(ctx context.Cont
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputHourlyPatchTaskOverrideInput(ctx context.Context, obj any) (model.APIHourlyPatchTaskOverride, error) {
+	var it model.APIHourlyPatchTaskOverride
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"projectOrRepoId", "maxHourlyPatchTasks"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "projectOrRepoId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectOrRepoId"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProjectOrRepoID = data
+		case "maxHourlyPatchTasks":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxHourlyPatchTasks"))
+			data, err := ec.unmarshalNInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MaxHourlyPatchTasks = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputIceCreamSettingsInput(ctx context.Context, obj any) (model.APIIceCreamSettings, error) {
 	var it model.APIIceCreamSettings
 	asMap := map[string]any{}
@@ -90086,7 +90241,7 @@ func (ec *executionContext) unmarshalInputTaskLimitsConfigInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"maxTasksPerVersion", "maxIncludesPerVersion", "maxHourlyPatchTasks", "maxPendingGeneratedTasks", "maxGenerateTaskJSONSize", "maxConcurrentLargeParserProjectTasks", "maxDegradedModeConcurrentLargeParserProjectTasks", "maxDegradedModeParserProjectSize", "maxParserProjectSize", "maxExecTimeoutSecs", "maxTaskExecution", "maxDailyAutomaticRestarts", "maxScheduledTasksPerDistro", "taskQueueAutoUnscheduleThreshold"}
+	fieldsInOrder := [...]string{"maxTasksPerVersion", "maxIncludesPerVersion", "maxHourlyPatchTasks", "maxPendingGeneratedTasks", "maxGenerateTaskJSONSize", "maxConcurrentLargeParserProjectTasks", "maxDegradedModeConcurrentLargeParserProjectTasks", "maxDegradedModeParserProjectSize", "maxParserProjectSize", "maxExecTimeoutSecs", "maxTaskExecution", "maxDailyAutomaticRestarts", "maxScheduledTasksPerDistro", "taskQueueAutoUnscheduleThreshold", "hourlyPatchTaskOverrides"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -90191,6 +90346,13 @@ func (ec *executionContext) unmarshalInputTaskLimitsConfigInput(ctx context.Cont
 				return it, err
 			}
 			it.TaskQueueAutoUnscheduleThreshold = data
+		case "hourlyPatchTaskOverrides":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hourlyPatchTaskOverrides"))
+			data, err := ec.unmarshalOHourlyPatchTaskOverrideInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHourlyPatchTaskOverrideᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HourlyPatchTaskOverrides = data
 		}
 	}
 
@@ -96774,6 +96936,44 @@ func (ec *executionContext) _HostsResponse(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var hourlyPatchTaskOverrideImplementors = []string{"HourlyPatchTaskOverride"}
+
+func (ec *executionContext) _HourlyPatchTaskOverride(ctx context.Context, sel ast.SelectionSet, obj *model.APIHourlyPatchTaskOverride) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, hourlyPatchTaskOverrideImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("HourlyPatchTaskOverride")
+		case "projectOrRepoId":
+			out.Values[i] = ec._HourlyPatchTaskOverride_projectOrRepoId(ctx, field, obj)
+		case "maxHourlyPatchTasks":
+			out.Values[i] = ec._HourlyPatchTaskOverride_maxHourlyPatchTasks(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -108449,6 +108649,11 @@ func (ec *executionContext) _TaskLimitsConfig(ctx context.Context, sel ast.Selec
 			out.Values[i] = ec._TaskLimitsConfig_maxScheduledTasksPerDistro(ctx, field, obj)
 		case "taskQueueAutoUnscheduleThreshold":
 			out.Values[i] = ec._TaskLimitsConfig_taskQueueAutoUnscheduleThreshold(ctx, field, obj)
+		case "hourlyPatchTaskOverrides":
+			out.Values[i] = ec._TaskLimitsConfig_hourlyPatchTaskOverrides(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -114945,6 +115150,59 @@ func (ec *executionContext) marshalNHostsResponse2ᚖgithubᚗcomᚋevergreenᚑ
 	return ec._HostsResponse(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNHourlyPatchTaskOverride2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHourlyPatchTaskOverride(ctx context.Context, sel ast.SelectionSet, v model.APIHourlyPatchTaskOverride) graphql.Marshaler {
+	return ec._HourlyPatchTaskOverride(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNHourlyPatchTaskOverride2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHourlyPatchTaskOverrideᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIHourlyPatchTaskOverride) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNHourlyPatchTaskOverride2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHourlyPatchTaskOverride(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalNHourlyPatchTaskOverrideInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHourlyPatchTaskOverride(ctx context.Context, v any) (model.APIHourlyPatchTaskOverride, error) {
+	res, err := ec.unmarshalInputHourlyPatchTaskOverrideInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNID2string(ctx context.Context, v any) (string, error) {
 	res, err := graphql.UnmarshalID(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -120709,6 +120967,24 @@ func (ec *executionContext) marshalOHostSortBy2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return v
+}
+
+func (ec *executionContext) unmarshalOHourlyPatchTaskOverrideInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHourlyPatchTaskOverrideᚄ(ctx context.Context, v any) ([]model.APIHourlyPatchTaskOverride, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]model.APIHourlyPatchTaskOverride, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNHourlyPatchTaskOverrideInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHourlyPatchTaskOverride(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) unmarshalOID2ᚖstring(ctx context.Context, v any) (*string, error) {

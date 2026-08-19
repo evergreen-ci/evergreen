@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -21,7 +22,8 @@ type TaskLimitsConfig struct {
 	MaxIncludesPerVersion int `bson:"max_includes_per_version" json:"max_includes_per_version" yaml:"max_includes_per_version"`
 
 	// MaxHourlyPatchTasks is the maximum number of patch tasks a single user can
-	// schedule per hour.
+	// schedule per hour. This can be overridden for individual projects or
+	// repos (see HourlyPatchTaskOverrides).
 	MaxHourlyPatchTasks int `bson:"max_hourly_patch_tasks" json:"max_hourly_patch_tasks" yaml:"max_hourly_patch_tasks"`
 
 	// MaxPendingGeneratedTasks is the maximum number of tasks that can be created
@@ -58,6 +60,49 @@ type TaskLimitsConfig struct {
 	// TaskQueueAutoUnscheduleThreshold is the planned distro queue length at which the scheduler
 	// unschedules every CLI patch task in the queue. Zero disables the flush.
 	TaskQueueAutoUnscheduleThreshold int `bson:"task_queue_auto_unschedule_threshold" json:"task_queue_auto_unschedule_threshold" yaml:"task_queue_auto_unschedule_threshold"`
+
+	// HourlyPatchTaskOverrides sets a separate hourly patch task
+	// scheduling limit for individual branch projects or repos. If a project or
+	// repo has an override, users scheduling patch tasks in that project or
+	// repo will have their usage count against the override's limit instead of
+	// MaxHourlyPatchTasks.
+	HourlyPatchTaskOverrides []HourlyPatchTaskOverride `bson:"hourly_patch_task_overrides" json:"hourly_patch_task_overrides" yaml:"hourly_patch_task_overrides"`
+}
+
+// HourlyPatchTaskOverride is a per-project or per-repo override to the default
+// hourly per-user patch task scheduling limit.
+type HourlyPatchTaskOverride struct {
+	// ProjectOrRepoID is the ID of the branch project or repo that the override
+	// applies to. If it's a repo, all branch projects tracking the repo that
+	// have no override of their own share the repo's limit.
+	ProjectOrRepoID string `bson:"project_or_repo_id" json:"project_or_repo_id" yaml:"project_or_repo_id"`
+	// MaxHourlyPatchTasks is the maximum number of patch tasks a single user
+	// can schedule per hour in the project or repo.
+	MaxHourlyPatchTasks int `bson:"max_hourly_patch_tasks" json:"max_hourly_patch_tasks" yaml:"max_hourly_patch_tasks"`
+}
+
+// HourlyPatchTaskLimitForProject returns the hourly per-user patch task limit
+// for the given project, along with the ID of the project or repo whose
+// override supplied it.
+func (c *TaskLimitsConfig) HourlyPatchTaskLimitForProject(projectID, repoRefID string) (hourlyLimit int, projectOrRepoID string) {
+	if projectID != "" {
+		// A limit specific to one branch project takes precedence over a
+		// repo-wide limit, so check that first.
+		for _, o := range c.HourlyPatchTaskOverrides {
+			if o.ProjectOrRepoID == projectID {
+				return o.MaxHourlyPatchTasks, o.ProjectOrRepoID
+			}
+		}
+	}
+
+	if repoRefID != "" {
+		for _, o := range c.HourlyPatchTaskOverrides {
+			if o.ProjectOrRepoID == repoRefID {
+				return o.MaxHourlyPatchTasks, o.ProjectOrRepoID
+			}
+		}
+	}
+	return c.MaxHourlyPatchTasks, ""
 }
 
 var (
@@ -74,6 +119,7 @@ var (
 	maxTaskExecutionKey                              = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxTaskExecution")
 	maxDailyAutomaticRestartsKey                     = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxDailyAutomaticRestarts")
 	maxScheduledTasksPerDistroKey                    = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxScheduledTasksPerDistro")
+	hourlyPatchTaskOverridesKey                      = bsonutil.MustHaveTag(TaskLimitsConfig{}, "HourlyPatchTaskOverrides")
 	taskQueueAutoUnscheduleThresholdKey              = bsonutil.MustHaveTag(TaskLimitsConfig{}, "TaskQueueAutoUnscheduleThreshold")
 )
 
@@ -99,11 +145,29 @@ func (c *TaskLimitsConfig) Set(ctx context.Context) error {
 			maxTaskExecutionKey:                              c.MaxTaskExecution,
 			maxDailyAutomaticRestartsKey:                     c.MaxDailyAutomaticRestarts,
 			maxScheduledTasksPerDistroKey:                    c.MaxScheduledTasksPerDistro,
+			hourlyPatchTaskOverridesKey:                      c.HourlyPatchTaskOverrides,
 			taskQueueAutoUnscheduleThresholdKey:              c.TaskQueueAutoUnscheduleThreshold,
 		},
 	}), "updating config section '%s'", c.SectionId())
 }
 
 func (c *TaskLimitsConfig) ValidateAndDefault() error {
-	return nil
+	catcher := grip.NewBasicCatcher()
+	projectOrRepoIDs := make(map[string]bool, len(c.HourlyPatchTaskOverrides))
+	for idx, o := range c.HourlyPatchTaskOverrides {
+		catcher.ErrorfWhen(o.MaxHourlyPatchTasks <= 0, "hourly patch task limit override for project/repo '%s' at index %d must be positive", o.ProjectOrRepoID, idx)
+
+		if o.ProjectOrRepoID == "" {
+			catcher.Errorf("hourly patch task limit override at index %d must set a project/repo ID", idx)
+			continue
+		}
+
+		if projectOrRepoIDs[o.ProjectOrRepoID] {
+			catcher.Errorf("duplicate hourly patch task limit override for project/repo '%s'", o.ProjectOrRepoID)
+			continue
+		}
+		projectOrRepoIDs[o.ProjectOrRepoID] = true
+
+	}
+	return catcher.Resolve()
 }
