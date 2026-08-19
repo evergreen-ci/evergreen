@@ -2164,6 +2164,8 @@ type APIServiceFlags struct {
 	// Rate Limiting Flags
 	APIRateLimiterDisabled           bool `json:"api_rate_limiter_disabled"`
 	GraphQLComplexityLimiterDisabled bool `json:"graphql_complexity_limiter_disabled"`
+
+	TaskQueueAutoUnscheduleDisabled bool `json:"task_queue_auto_unschedule_disabled"`
 }
 
 type APIProjectTasksPair struct {
@@ -2616,6 +2618,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.BackgroundCommandFailureEnabled = v.BackgroundCommandFailureEnabled
 		as.APIRateLimiterDisabled = v.APIRateLimiterDisabled
 		as.GraphQLComplexityLimiterDisabled = v.GraphQLComplexityLimiterDisabled
+		as.TaskQueueAutoUnscheduleDisabled = v.TaskQueueAutoUnscheduleDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2670,6 +2673,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		LiveArtifactCredentialsDisabled:    as.LiveArtifactCredentialsDisabled,
 		APIRateLimiterDisabled:             as.APIRateLimiterDisabled,
 		GraphQLComplexityLimiterDisabled:   as.GraphQLComplexityLimiterDisabled,
+		TaskQueueAutoUnscheduleDisabled:    as.TaskQueueAutoUnscheduleDisabled,
 	}, nil
 }
 
@@ -3050,6 +3054,31 @@ type APITaskLimitsConfig struct {
 	MaxDailyAutomaticRestarts *int `json:"max_daily_automatic_restarts"`
 	// MaxScheduledTasksPerDistro is the cap for the number of max tasks materialized into a distro's queue doc per pass.
 	MaxScheduledTasksPerDistro *int `json:"max_scheduled_tasks_per_distro"`
+	// TaskQueueAutoUnscheduleThreshold is the planned distro queue length at which the scheduler unschedules every patch task in the queue.
+	TaskQueueAutoUnscheduleThreshold *int `json:"task_queue_auto_unschedule_threshold"`
+	// HourlyPatchTaskOverrides sets a separate hourly patch task scheduling limit for individual projects or repos.
+	HourlyPatchTaskOverrides []APIHourlyPatchTaskOverride `json:"hourly_patch_task_overrides"`
+}
+
+// APIHourlyPatchTaskOverride is a per-project or per-repo override to the
+// hourly per-user patch task scheduling limit.
+type APIHourlyPatchTaskOverride struct {
+	// ProjectOrRepoID is the ID of the branch project or repo the override applies to.
+	ProjectOrRepoID *string `json:"project_or_repo_id"`
+	// MaxHourlyPatchTasks is the maximum number of patch tasks a single user can schedule per hour in the target project or repo.
+	MaxHourlyPatchTasks *int `json:"max_hourly_patch_tasks"`
+}
+
+func (o *APIHourlyPatchTaskOverride) BuildFromService(h evergreen.HourlyPatchTaskOverride) {
+	o.ProjectOrRepoID = utility.ToStringPtr(h.ProjectOrRepoID)
+	o.MaxHourlyPatchTasks = utility.ToIntPtr(h.MaxHourlyPatchTasks)
+}
+
+func (o *APIHourlyPatchTaskOverride) ToService() evergreen.HourlyPatchTaskOverride {
+	return evergreen.HourlyPatchTaskOverride{
+		ProjectOrRepoID:     utility.FromStringPtr(o.ProjectOrRepoID),
+		MaxHourlyPatchTasks: utility.FromIntPtr(o.MaxHourlyPatchTasks),
+	}
 }
 
 func (c *APITaskLimitsConfig) BuildFromService(h any) error {
@@ -3068,6 +3097,11 @@ func (c *APITaskLimitsConfig) BuildFromService(h any) error {
 		c.MaxTaskExecution = utility.ToIntPtr(v.MaxTaskExecution)
 		c.MaxDailyAutomaticRestarts = utility.ToIntPtr(v.MaxDailyAutomaticRestarts)
 		c.MaxScheduledTasksPerDistro = utility.ToIntPtr(v.MaxScheduledTasksPerDistro)
+		c.TaskQueueAutoUnscheduleThreshold = utility.ToIntPtr(v.TaskQueueAutoUnscheduleThreshold)
+		c.HourlyPatchTaskOverrides = make([]APIHourlyPatchTaskOverride, len(v.HourlyPatchTaskOverrides))
+		for i, o := range v.HourlyPatchTaskOverrides {
+			c.HourlyPatchTaskOverrides[i].BuildFromService(o)
+		}
 		return nil
 	default:
 		return errors.Errorf("programmatic error: expected task limits config but got type %T", h)
@@ -3075,6 +3109,10 @@ func (c *APITaskLimitsConfig) BuildFromService(h any) error {
 }
 
 func (c *APITaskLimitsConfig) ToService() (any, error) {
+	overrides := make([]evergreen.HourlyPatchTaskOverride, len(c.HourlyPatchTaskOverrides))
+	for i, o := range c.HourlyPatchTaskOverrides {
+		overrides[i] = o.ToService()
+	}
 	return evergreen.TaskLimitsConfig{
 		MaxTasksPerVersion:                               utility.FromIntPtr(c.MaxTasksPerVersion),
 		MaxIncludesPerVersion:                            utility.FromIntPtr(c.MaxIncludesPerVersion),
@@ -3089,6 +3127,8 @@ func (c *APITaskLimitsConfig) ToService() (any, error) {
 		MaxTaskExecution:                                 utility.FromIntPtr(c.MaxTaskExecution),
 		MaxDailyAutomaticRestarts:                        utility.FromIntPtr(c.MaxDailyAutomaticRestarts),
 		MaxScheduledTasksPerDistro:                       utility.FromIntPtr(c.MaxScheduledTasksPerDistro),
+		TaskQueueAutoUnscheduleThreshold:                 utility.FromIntPtr(c.TaskQueueAutoUnscheduleThreshold),
+		HourlyPatchTaskOverrides:                         overrides,
 	}, nil
 }
 

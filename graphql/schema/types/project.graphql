@@ -155,6 +155,7 @@ input WorkstationConfigInput {
 input TestSelectionSettingsInput {
   allowed: Boolean
   defaultEnabled: Boolean
+  mainlineDefaultEnabled: Boolean
 }
 
 input WorkstationSetupCommandInput {
@@ -338,6 +339,7 @@ type GithubAppAuth {
 type TestSelectionSettings {
   allowed: Boolean
   defaultEnabled: Boolean
+  mainlineDefaultEnabled: Boolean
 }
 
 """

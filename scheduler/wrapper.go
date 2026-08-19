@@ -127,6 +127,12 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 		"input_size":    len(tasks),
 	})
 
+	if !s.ServiceFlags.TaskQueueAutoUnscheduleDisabled {
+		if err = autoUnscheduleLargeQueue(ctx, distro.Id, prioritizedTasks, s.TaskLimits.TaskQueueAutoUnscheduleThreshold); err != nil {
+			return errors.Wrap(err, "auto unscheduling oversized task queue")
+		}
+	}
+
 	return nil
 }
 
