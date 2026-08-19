@@ -144,6 +144,14 @@ func AddLabelTriggeredTasksForPatch(ctx context.Context, settings *evergreen.Set
 		return nil
 	}
 
+	changedFiles := p.FilesChanged()
+	if len(changedFiles) > 0 {
+		tvPairs = filterTVPairsByPaths(tvPairs, project, changedFiles)
+		if len(tvPairs.ExecTasks) == 0 && len(tvPairs.DisplayTasks) == 0 {
+			return nil
+		}
+	}
+
 	tvPairs.ExecTasks, err = IncludeDependencies(project, tvPairs.ExecTasks, p.GetRequester(), "", nil)
 	if err != nil {
 		grip.Warning(ctx, message.WrapError(err, message.Fields{
@@ -190,6 +198,27 @@ func AddLabelTriggeredTasksForPatch(ctx context.Context, settings *evergreen.Set
 		}
 	}
 	return errors.Wrap(p.SetVariantsTasks(ctx, mergedVTs), "updating patch variant tasks")
+}
+
+// filterTVPairsByPaths removes task/variant pairs whose build variant has
+// path filters that don't match the changed files.
+func filterTVPairsByPaths(pairs TaskVariantPairs, project *Project, changedFiles []string) TaskVariantPairs {
+	filtered := TaskVariantPairs{}
+	for _, pair := range pairs.ExecTasks {
+		bv := project.FindBuildVariant(pair.Variant)
+		if bv != nil && len(bv.Paths) > 0 && !bv.ChangedFilesMatchPaths(changedFiles) {
+			continue
+		}
+		filtered.ExecTasks = append(filtered.ExecTasks, pair)
+	}
+	for _, pair := range pairs.DisplayTasks {
+		bv := project.FindBuildVariant(pair.Variant)
+		if bv != nil && len(bv.Paths) > 0 && !bv.ChangedFilesMatchPaths(changedFiles) {
+			continue
+		}
+		filtered.DisplayTasks = append(filtered.DisplayTasks, pair)
+	}
+	return filtered
 }
 
 type PatchUpdate struct {
