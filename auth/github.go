@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"slices"
 	"strings"
 	"time"
 
@@ -75,8 +74,12 @@ func (gum *GithubUserManager) GetUserByToken(ctx context.Context, token string) 
 	}
 	if user != nil {
 		if !isMember {
-			if slices.Contains(gum.AuthorizedUsers, user.Username()) {
-				return user, nil
+			if gum.AuthorizedUsers != nil {
+				for _, u := range gum.AuthorizedUsers {
+					if u == user.Username() {
+						return user, nil
+					}
+				}
 			}
 
 		} else {

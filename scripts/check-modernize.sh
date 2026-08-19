@@ -22,26 +22,25 @@ fi
 # evergreen's main module. Install it as a pinned versioned tool, matching how check-go-vulnerabilities.sh runs
 # govulncheck. Bumping this version is a deliberate decision: a newer analyzer may report additional instances within
 # these categories, which must be fixed in the same change that bumps the pin.
-modernize_pkg="golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize@v0.20.0"
+modernize_pkg="golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize@v0.23.0"
 
 # Analyzer categories adopted in DEVPROD-21825. Do not add a category here without first modernizing the codebase for it.
 categories=(
-    any
-    forvar
-    mapsloop
-    minmax
-    plusbuild
-    rangeint
-    reflecttypefor
-    slicesbackward
-    slicescontains
-    stringsbuilder
-    stringscut
-    stringscutprefix
-    stringsseq
-    testingcontext
+    -any
+    -forvar
+    -mapsloop
+    -minmax
+    -plusbuild
+    -rangeint
+    -reflecttypefor
+    -slicesbackward
+    -slicescontains
+    -stringsbuilder
+    -stringscut
+    -stringscutprefix
+    -stringsseq
+    -testingcontext
 )
-category_filter="$(IFS=,; echo "${categories[*]}")"
 
 # The analyzer only sees files that build for the current platform, so files behind //go:build tags for other operating
 # systems (e.g. *_linux.go, *_windows.go) are invisible unless we vary GOOS. CI achieves full coverage by running one
@@ -72,7 +71,7 @@ for os in "${platforms[@]}"; do
     # Capture the analyzer's exit code so a genuine tool/build error (any code other than 0 or the "found diagnostics"
     # code 3) fails loudly instead of being misreported as a modernization finding. The `&& ... || ...` idiom keeps the
     # non-zero exit from tripping errexit or the ERR trap.
-    raw=$(GOOS="$os" "$modernize_bin" -category="$category_filter" ./... 2>&1) && status=0 || status=$?
+    raw=$(GOOS="$os" "$modernize_bin" "${categories[@]}" ./... 2>&1) && status=0 || status=$?
 
     if [ "$status" != "0" ] && [ "$status" != "3" ]; then
         echo "$raw"
@@ -93,7 +92,7 @@ if [ -n "$all_findings" ]; then
     echo ""
     echo "FAIL: modernize found code that should use modern Go idioms (see above)."
     echo "To apply the suggested fixes automatically, run (repeat per GOOS shown above):"
-    echo "  GOOS=<os> $modernize_bin -category=$category_filter -fix ./..."
+    echo "  GOOS=<os> $modernize_bin ${categories[*]} -fix ./..."
     exit 1
 fi
 
