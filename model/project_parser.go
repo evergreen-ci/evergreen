@@ -950,7 +950,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	if err != nil {
 		return nil, errors.Wrapf(err, LoadProjectError)
 	}
-	logDecodeErrorWithOpts(ctx, projectID, "", decodeErr, opts)
+	logDecodeErrorWithOpts(ctx, projectID, "", "LoadProjectInto", decodeErr, opts)
 
 	if !slices.Contains(priorityBypassProjects, projectID) {
 		capParserPriorities(intermediateProject)
@@ -982,7 +982,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	return intermediateProject, errors.Wrapf(err, LoadProjectError)
 }
 
-func logDecodeErrorWithOpts(ctx context.Context, projectID, filename string, decodeErr error, opts *GetProjectOpts) {
+func logDecodeErrorWithOpts(ctx context.Context, projectID, filename, caller string, decodeErr error, opts *GetProjectOpts) {
 	if decodeErr == nil {
 		return
 	}
@@ -1113,7 +1113,7 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 			// Return intermediateProject even if we run into issues to show merge progress.
 			return errors.Wrapf(err, "%s: loading file '%s'", LoadProjectError, path.FileName)
 		}
-		logDecodeErrorWithOpts(ctx, projectID, path.FileName, decodeErr, opts)
+		logDecodeErrorWithOpts(ctx, projectID, path.FileName, "mergeIncludes", decodeErr, opts)
 
 		if err = intermediateProject.mergeMultipleParserProjects(add); err != nil {
 			// Return intermediateProject even if we run into issues to show merge progress.
