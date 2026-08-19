@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"slices"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -291,14 +292,7 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 	for i, vt := range variantTasks {
 		tasks := []*string{}
 		for j, t := range vt.Tasks {
-			keepTask := true
-			for _, task := range execTasksToRemove {
-				if utility.FromStringPtr(t) == task {
-					keepTask = false
-					break
-				}
-			}
-			if keepTask {
+			if !slices.Contains(execTasksToRemove, utility.FromStringPtr(t)) {
 				tasks = append(tasks, vt.Tasks[j])
 			}
 		}
