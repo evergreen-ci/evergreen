@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -59,14 +58,6 @@ func (r *projectSettingsResolver) Vars(ctx context.Context, obj *restModel.APIPr
 	return getRedactedAPIVarsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
 }
 
-// TaskOwnership is the resolver for the taskOwnership field.
-func (r *projectInputResolver) TaskOwnership(ctx context.Context, obj *restModel.APIProjectRef, data *model.TaskOwnershipSettings) error {
-	if data != nil {
-		obj.TaskOwnership.BuildFromService(*data)
-	}
-	return nil
-}
-
 // ProjectID is the resolver for the projectId field.
 func (r *projectSettingsInputResolver) ProjectID(ctx context.Context, obj *restModel.APIProjectSettings, data string) error {
 	obj.Id = utility.ToStringPtr(data)
@@ -76,14 +67,10 @@ func (r *projectSettingsInputResolver) ProjectID(ctx context.Context, obj *restM
 // ProjectSettings returns ProjectSettingsResolver implementation.
 func (r *Resolver) ProjectSettings() ProjectSettingsResolver { return &projectSettingsResolver{r} }
 
-// ProjectInput returns ProjectInputResolver implementation.
-func (r *Resolver) ProjectInput() ProjectInputResolver { return &projectInputResolver{r} }
-
 // ProjectSettingsInput returns ProjectSettingsInputResolver implementation.
 func (r *Resolver) ProjectSettingsInput() ProjectSettingsInputResolver {
 	return &projectSettingsInputResolver{r}
 }
 
 type projectSettingsResolver struct{ *Resolver }
-type projectInputResolver struct{ *Resolver }
 type projectSettingsInputResolver struct{ *Resolver }
