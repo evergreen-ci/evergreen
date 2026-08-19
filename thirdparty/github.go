@@ -431,7 +431,7 @@ func getGithubClient(token, caller string, config retryConfig) *githubapp.GitHub
 
 	initializeTransportCache()
 
-	httpClient := utility.GetHTTPClient()
+	httpClient := utility.WithOTelTracing(utility.GetHTTPClient())
 	httpClient.Transport = githubTransport
 
 	client := utility.SetupOauth2CustomHTTPRetryableClient(
