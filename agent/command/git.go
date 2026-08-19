@@ -64,22 +64,13 @@ type gitFetchProject struct {
 	ShallowClone bool `mapstructure:"shallow_clone"`
 	CloneDepth   int  `mapstructure:"clone_depth"`
 
-	// Filter passes git clone's --filter (partial clone). The most common value is
-	// "blob:none", which omits all file content from the initial clone and lazily
-	// fetches blobs on demand. Combined with SparseCheckoutPaths it lets a task
-	// check out only the files it needs instead of the whole working tree.
+	// Filter passes git clone's --filter (partial clone), e.g. "blob:none" to
+	// omit file content from the initial clone and fetch blobs lazily on demand.
 	Filter string `plugin:"expand" mapstructure:"filter"`
 
 	// SparseCheckoutPaths restricts the working tree to the listed paths via
-	// git sparse-checkout (no-cone mode). The clone is done with --no-checkout,
-	// the sparse set is applied, and only then is the revision checked out, so
-	// only the matching paths land on disk.
-	//
-	// Only takes effect when Filter is also set (a sparse checkout without a
-	// partial-clone filter still downloads every blob, so it would save nothing);
-	// with an empty Filter these paths are ignored and a normal full clone runs.
-	// This lets a shared command leave these set and toggle the behavior with the
-	// (expandable) Filter alone.
+	// git sparse-checkout (no-cone mode). Only takes effect when Filter is set;
+	// otherwise the paths are ignored and a normal full clone runs.
 	//
 	// Entries are gitignore-style patterns, NOT plain paths: an unanchored entry
 	// like "README.md" matches that name in every directory. To select one
@@ -159,11 +150,8 @@ func (opts cloneOpts) getCloneCommand() ([]string, error) {
 		return nil, errors.Wrap(err, "invalid clone command options")
 	}
 
-	// The filter is the master switch for the sparse partial clone. A sparse
-	// checkout without a partial-clone filter still downloads every blob, so it
-	// would save nothing; treat an empty filter as "feature off" and ignore the
-	// sparse paths. This lets callers leave sparse_checkout_paths set on a shared
-	// command and toggle the whole behavior with the (expandable) filter alone.
+	// A sparse checkout without a partial-clone filter still downloads every
+	// blob, so an empty filter means the sparse paths are ignored.
 	if opts.filter == "" {
 		opts.sparseCheckoutPaths = nil
 	}
@@ -182,12 +170,11 @@ func (opts cloneOpts) getCloneCommand() ([]string, error) {
 		clone = fmt.Sprintf("%s --depth %d", clone, opts.cloneDepth)
 	}
 	if opts.filter != "" {
-		clone = fmt.Sprintf("%s --filter=%s", clone, shellQuote(opts.filter))
+		clone = fmt.Sprintf("%s --filter=%s", clone, util.ShellQuote(opts.filter))
 	}
 	if len(opts.sparseCheckoutPaths) > 0 {
-		// --sparse initializes a sparse-checkout (we widen it below) and
 		// --no-checkout defers populating the tree until after the sparse set is
-		// narrowed, so the default sparse contents are never materialized.
+		// applied below, so the default sparse contents are never materialized.
 		clone = fmt.Sprintf("%s --sparse --no-checkout", clone)
 	}
 	if opts.branch != "" {
@@ -204,30 +191,17 @@ func (opts cloneOpts) getCloneCommand() ([]string, error) {
 
 	if len(opts.sparseCheckoutPaths) > 0 {
 		// no-cone mode treats the entries as gitignore-style patterns (see the
-		// SparseCheckoutPaths field doc on anchoring). The subsequent
-		// checkout/reset (added by the caller) populates only the matching paths.
+		// SparseCheckoutPaths field doc on anchoring).
+		quotedPaths := make([]string, len(opts.sparseCheckoutPaths))
+		for i, p := range opts.sparseCheckoutPaths {
+			quotedPaths[i] = util.ShellQuote(p)
+		}
 		sparse := fmt.Sprintf("git sparse-checkout set --no-cone %s",
-			strings.Join(quoteAll(opts.sparseCheckoutPaths), " "))
+			strings.Join(quotedPaths, " "))
 		cmds = append(cmds, sparse)
 	}
 
 	return cmds, nil
-}
-
-// quoteAll single-quotes each path so paths containing shell metacharacters are
-// passed to git literally.
-func quoteAll(paths []string) []string {
-	quoted := make([]string, len(paths))
-	for i, p := range paths {
-		quoted[i] = shellQuote(p)
-	}
-	return quoted
-}
-
-// shellQuote single-quotes s so the shell passes it to git literally, escaping
-// any embedded single quotes.
-func shellQuote(s string) string {
-	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
 // getCloneCommandForWikiModule runs a plain git clone to opts.dir. GitHub
