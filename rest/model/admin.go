@@ -3054,8 +3054,8 @@ type APITaskLimitsConfig struct {
 	MaxDailyAutomaticRestarts *int `json:"max_daily_automatic_restarts"`
 	// MaxScheduledTasksPerDistro is the cap for the number of max tasks materialized into a distro's queue doc per pass.
 	MaxScheduledTasksPerDistro *int `json:"max_scheduled_tasks_per_distro"`
-	// TaskQueueFlushThreshold is the planned distro queue length at which the scheduler unschedules every patch task in the queue.
-	TaskQueueFlushThreshold *int `json:"task_queue_flush_threshold"`
+	// TaskQueueAutoUnscheduleThreshold is the planned distro queue length at which the scheduler unschedules every patch task in the queue.
+	TaskQueueAutoUnscheduleThreshold *int `json:"task_queue_auto_unschedule_threshold"`
 }
 
 func (c *APITaskLimitsConfig) BuildFromService(h any) error {
@@ -3074,7 +3074,7 @@ func (c *APITaskLimitsConfig) BuildFromService(h any) error {
 		c.MaxTaskExecution = utility.ToIntPtr(v.MaxTaskExecution)
 		c.MaxDailyAutomaticRestarts = utility.ToIntPtr(v.MaxDailyAutomaticRestarts)
 		c.MaxScheduledTasksPerDistro = utility.ToIntPtr(v.MaxScheduledTasksPerDistro)
-		c.TaskQueueFlushThreshold = utility.ToIntPtr(v.TaskQueueAutoUnscheduleThreshold)
+		c.TaskQueueAutoUnscheduleThreshold = utility.ToIntPtr(v.TaskQueueAutoUnscheduleThreshold)
 		return nil
 	default:
 		return errors.Errorf("programmatic error: expected task limits config but got type %T", h)
@@ -3096,7 +3096,7 @@ func (c *APITaskLimitsConfig) ToService() (any, error) {
 		MaxTaskExecution:                                 utility.FromIntPtr(c.MaxTaskExecution),
 		MaxDailyAutomaticRestarts:                        utility.FromIntPtr(c.MaxDailyAutomaticRestarts),
 		MaxScheduledTasksPerDistro:                       utility.FromIntPtr(c.MaxScheduledTasksPerDistro),
-		TaskQueueAutoUnscheduleThreshold:                 utility.FromIntPtr(c.TaskQueueFlushThreshold),
+		TaskQueueAutoUnscheduleThreshold:                 utility.FromIntPtr(c.TaskQueueAutoUnscheduleThreshold),
 	}, nil
 }
 
