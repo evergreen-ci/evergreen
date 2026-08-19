@@ -316,6 +316,11 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 		return nil, nil, errors.Wrap(err, "fetching project options for patch")
 	}
 	opts.cacheEnabled = projectTranslationCacheEnabled(settings)
+	svcFlags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "getting service flags")
+	}
+	opts.CrossFileYAMLAnchorsEnabled = svcFlags.CrossFileYAMLAnchorsEnabled
 
 	projectFileBytes, err := getPatchedProjectYAML(ctx, projectRef, opts, p)
 	if err != nil {

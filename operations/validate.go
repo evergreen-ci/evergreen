@@ -54,7 +54,6 @@ func Validate() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-
 			if projectID == "" {
 				cwd, err := os.Getwd()
 				grip.Error(ctx, errors.Wrap(err, "getting current working directory"))
@@ -84,6 +83,23 @@ func Validate() cli.Command {
 		},
 	}
 }
+
+// getCrossFileYAMLAnchorsEnabled fetches the CrossFileYAMLAnchorsEnabled service flag from the
+// server via REST.
+func getCrossFileYAMLAnchorsEnabled(conf *ClientSettings) (bool, error) {
+	ctx := context.Background()
+	client, err := conf.setupRestCommunicator(ctx, false)
+	if err != nil {
+		return false, errors.Wrap(err, "setting up REST communicator")
+	}
+	defer client.Close()
+	flags, err := client.GetServiceFlags(ctx)
+	if err != nil {
+		return false, errors.Wrap(err, "getting service flags")
+	}
+	return flags.CrossFileYAMLAnchorsEnabled, nil
+}
+
 func getLocalModulesFromInput(localModulePaths []string) (map[string]string, error) {
 	moduleMap := make(map[string]string)
 	catcher := grip.NewBasicCatcher()
@@ -99,7 +115,7 @@ func getLocalModulesFromInput(localModulePaths []string) (map[string]string, err
 }
 
 func validateFile(conf *ClientSettings, path string, quiet, errorOnWarnings bool, localModuleMap map[string]string, projectID string) error {
-	projectYaml, err := loadProjectYAML(path, quiet, errorOnWarnings, localModuleMap, projectID)
+	projectYaml, err := loadProjectYAML(conf, path, quiet, errorOnWarnings, localModuleMap, projectID)
 	if err != nil {
 		return err
 	}
@@ -108,7 +124,7 @@ func validateFile(conf *ClientSettings, path string, quiet, errorOnWarnings bool
 
 // loadProjectYAML reads and parses the project config file, performs local validation,
 // and returns the marshalled YAML bytes for remote validation.
-func loadProjectYAML(path string, quiet, errorOnWarnings bool, localModuleMap map[string]string, projectID string) ([]byte, error) {
+func loadProjectYAML(conf *ClientSettings, path string, quiet, errorOnWarnings bool, localModuleMap map[string]string, projectID string) ([]byte, error) {
 	confFile, err := os.ReadFile(path)
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading file '%s'", path)
@@ -119,10 +135,15 @@ func loadProjectYAML(path string, quiet, errorOnWarnings bool, localModuleMap ma
 	}
 	project := &model.Project{}
 	ctx := context.Background()
+	anchorsEnabled, err := getCrossFileYAMLAnchorsEnabled(conf)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting cross-file YAML anchors setting")
+	}
 	opts := &model.GetProjectOpts{
-		LocalModules:    localModuleMap,
-		ReadFileFrom:    model.ReadFromLocal,
-		LocalIncludeDir: cwd,
+		LocalModules:                localModuleMap,
+		ReadFileFrom:                model.ReadFromLocal,
+		LocalIncludeDir:             cwd,
+		CrossFileYAMLAnchorsEnabled: anchorsEnabled,
 	}
 	if !quiet {
 		opts.UnmarshalStrict = true

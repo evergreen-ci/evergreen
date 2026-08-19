@@ -940,11 +940,11 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 
 	unmarshalStrict := false
 	var registry *anchorRegistry
-	if flags, err := evergreen.GetServiceFlags(ctx); err == nil && flags.CrossFileYAMLAnchorsEnabled {
-		registry = &anchorRegistry{}
-	}
 	if opts != nil {
 		unmarshalStrict = opts.UnmarshalStrict
+		if opts.CrossFileYAMLAnchorsEnabled {
+			registry = &anchorRegistry{}
+		}
 	}
 	intermediateProject, decodeErr, err := createIntermediateProject(data, unmarshalStrict, registry)
 	if err != nil {
@@ -1391,6 +1391,9 @@ type GetProjectOpts struct {
 	// LocalIncludeDir is the base directory for resolving relative include
 	// file paths when ReadFileFrom is ReadFromLocal.
 	LocalIncludeDir string
+	// CrossFileYAMLAnchorsEnabled enables cross-file YAML anchor and alias support.
+	// Must be set from the CrossFileYAMLAnchorsEnabled service flag; do not default to true.
+	CrossFileYAMLAnchorsEnabled bool
 	// cacheEnabled routes the translate step through the content-hash translation cache. It is only
 	// set internally by GetProjectFromFile from the ServiceFlag, so external callers stay uncached.
 	cacheEnabled bool
@@ -1623,6 +1626,11 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts, settings *ever
 	defer cancel()
 
 	opts.cacheEnabled = projectTranslationCacheEnabled(settings)
+	svcFlags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return ProjectInfo{}, errors.Wrap(err, "getting service flags")
+	}
+	opts.CrossFileYAMLAnchorsEnabled = svcFlags.CrossFileYAMLAnchorsEnabled
 
 	fileContents, err := retrieveFile(ctx, opts)
 	if err != nil {
