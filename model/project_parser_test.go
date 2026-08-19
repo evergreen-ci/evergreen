@@ -2943,9 +2943,9 @@ commit_queue_aliases:
   - variant: ".*"
     task: ".*"
 `
-		p1, err := createIntermediateProject([]byte(mainYaml), false, nil)
+		p1, _, err := createIntermediateProject([]byte(mainYaml), false, nil)
 		require.NoError(t, err)
-		p2, err := createIntermediateProject([]byte(includedYaml), false, nil)
+		p2, _, err := createIntermediateProject([]byte(includedYaml), false, nil)
 		require.NoError(t, err)
 
 		p1.mergeProjectConfigFields(p2)
@@ -2973,9 +2973,9 @@ task_annotation_settings:
   file_ticket_webhook:
     endpoint: "https://example.com"
 `
-		p1, err := createIntermediateProject([]byte(mainYaml), false, nil)
+		p1, _, err := createIntermediateProject([]byte(mainYaml), false, nil)
 		require.NoError(t, err)
-		p2, err := createIntermediateProject([]byte(includedYaml), false, nil)
+		p2, _, err := createIntermediateProject([]byte(includedYaml), false, nil)
 		require.NoError(t, err)
 
 		p1.mergeProjectConfigFields(p2)
@@ -3005,7 +3005,7 @@ workstation_config:
 `
 		for name, unmarshalStrict := range map[string]bool{"Strict": true, "NonStrict": false} {
 			t.Run(name, func(t *testing.T) {
-				pp, err := createIntermediateProject([]byte(singleFileYaml), unmarshalStrict, nil)
+				pp, _, err := createIntermediateProject([]byte(singleFileYaml), unmarshalStrict, nil)
 				require.NoError(t, err)
 				merged := pp.MergedProjectConfig("my-project")
 				require.NotNil(t, merged)
@@ -3022,7 +3022,7 @@ workstation_config:
 	})
 
 	t.Run("ConfigFieldsAreNotMarshalled", func(t *testing.T) {
-		pp, err := createIntermediateProject([]byte(`
+		pp, _, err := createIntermediateProject([]byte(`
 stepback: true
 patch_aliases:
   - alias: "my-alias"
