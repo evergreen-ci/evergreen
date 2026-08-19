@@ -1454,8 +1454,20 @@ func (s *AgentSuite) TestEndTaskResponse() {
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.Require().True(ok)
 	s.tc.setCurrentCommand(factory())
+	s.Require().NotNil(s.tc.taskConfig)
 
 	const systemFailureDescription = "failure message"
+	s.T().Run("HostExecutionReportsHostPlatform", func(t *testing.T) {
+		s.tc.taskConfig.ContainerID = ""
+		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskSucceeded, "")
+		s.Equal(string(task.ExecutionPlatformHost), detail.ExecutionPlatform)
+	})
+	s.T().Run("ContainerExecutionReportsContainerPlatform", func(t *testing.T) {
+		s.tc.taskConfig.ContainerID = "container-id"
+		defer func() { s.tc.taskConfig.ContainerID = "" }()
+		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskSucceeded, "")
+		s.Equal(string(task.ExecutionPlatformContainer), detail.ExecutionPlatform)
+	})
 	s.T().Run("TaskFailingWithCurrentCommandDoesNotOverrideDescription", func(t *testing.T) {
 		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskFailed, "")
 		s.Equal(evergreen.TaskFailed, detail.Status)

@@ -34,6 +34,11 @@
         "jasper_binary_dir": "/home/mci-exec/evergreen_provisioning",
         "jasper_credentials_path": "/home/mci-exec/evergreen_provisioning/jasper_credentials.json",
         "shell_path": "/bin/bash",
+        "container_isolation": {
+          "enabled": true,
+          "image": "ubuntu:22.04",
+          "require_isolation": false
+        },
         "resource_limits": {
           "num_files": 64000,
           "num_processes": -1,
