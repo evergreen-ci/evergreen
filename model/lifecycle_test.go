@@ -2400,7 +2400,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	assert.NoError(resetTaskData())
 	dt, err := task.FindOneId(ctx, "displayTask1")
 	assert.NoError(err)
-	assert.NoError(dt.SetResetFailedWhenFinished(ctx, "caller"))
+	assert.NoError(dt.SetResetFailedWhenFinished(ctx, "caller", ""))
 
 	// Confirm that marking a display task to reset when finished increments the user's scheduling limit
 	dbUser, err := user.FindOneById(t.Context(), "caller")

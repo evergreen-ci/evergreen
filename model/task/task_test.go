@@ -2534,7 +2534,7 @@ func TestActivateTasks(t *testing.T) {
 		}
 
 		updatedIDs := []string{"t0", "t3", "t4"}
-		activatedDependencyIDs, err := ActivateTasks(ctx, []Task{tasks[0]}, time.Time{}, true, u.Id)
+		activatedDependencyIDs, err := ActivateTasks(ctx, []Task{tasks[0]}, time.Time{}, true, u.Id, "")
 		assert.NoError(t, err)
 		assert.ElementsMatch(t, updatedIDs, activatedDependencyIDs)
 
@@ -2566,7 +2566,7 @@ func TestActivateTasks(t *testing.T) {
 			}
 		}
 
-		activatedDependencyIDs, err = ActivateTasks(ctx, []Task{tasks[1]}, time.Time{}, true, u.Id)
+		activatedDependencyIDs, err = ActivateTasks(ctx, []Task{tasks[1]}, time.Time{}, true, u.Id, "")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), fmt.Sprintf("cannot schedule %d tasks, maximum hourly per-user limit is %d", 102, 100))
 		assert.Empty(t, activatedDependencyIDs)
@@ -2582,7 +2582,7 @@ func TestActivateTasks(t *testing.T) {
 		}
 		require.NoError(t, task.Insert(t.Context()))
 
-		activatedDependencyIDs, err := ActivateTasks(ctx, []Task{task}, time.Now(), true, "abyssinian")
+		activatedDependencyIDs, err := ActivateTasks(ctx, []Task{task}, time.Now(), true, "abyssinian", "")
 		assert.NoError(t, err)
 		assert.Empty(t, activatedDependencyIDs)
 
@@ -2619,7 +2619,7 @@ func TestDeactivateTasks(t *testing.T) {
 	}
 
 	updatedIDs := []string{"t0", "t4", "t5", "t6", "t7"}
-	err := DeactivateTasks(ctx, []Task{tasks[0]}, true, "")
+	err := DeactivateTasks(ctx, []Task{tasks[0]}, true, "", "")
 	assert.NoError(t, err)
 
 	dbTasks, err := FindAll(ctx, All)
@@ -6037,7 +6037,7 @@ func TestUpdateSchedulingLimit(t *testing.T) {
 	originalTaskLimits := settings.TaskLimits
 	t.Cleanup(func() {
 		settings.TaskLimits = originalTaskLimits
-		assert.NoError(t, db.ClearCollections(user.Collection, projectRefCollectionName))
+		assert.NoError(t, db.ClearCollections(user.Collection))
 	})
 
 	for tName, tCase := range map[string]struct {
@@ -6045,6 +6045,7 @@ func TestUpdateSchedulingLimit(t *testing.T) {
 		onlyAPI                  bool
 		requester                string
 		projectID                string
+		repoRefID                string
 		numTasksModified         int
 		expectedErr              string
 		expectedGeneralCount     int
@@ -6071,12 +6072,14 @@ func TestUpdateSchedulingLimit(t *testing.T) {
 		},
 		"ProjectTrackingBoostedRepoUsesRepoLimitAndRepoCounter": {
 			projectID:                boostedRepoChild,
+			repoRefID:                boostedRepo,
 			numTasksModified:         500,
 			expectedGeneralCount:     0,
 			expectedPerProjectCounts: map[string]int{boostedRepo: 500},
 		},
 		"ProjectTrackingUnboostedRepoUsesGeneralLimit": {
 			projectID:                otherRepoChild,
+			repoRefID:                "other_repo",
 			numTasksModified:         500,
 			expectedErr:              "cannot schedule 500 tasks, maximum hourly per-user limit is 100",
 			expectedGeneralCount:     0,
@@ -6112,7 +6115,7 @@ func TestUpdateSchedulingLimit(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(user.Collection, projectRefCollectionName))
+			require.NoError(t, db.ClearCollections(user.Collection))
 
 			settings.TaskLimits = evergreen.TaskLimitsConfig{
 				MaxHourlyPatchTasks: generalLimit,
@@ -6138,20 +6141,12 @@ func TestUpdateSchedulingLimit(t *testing.T) {
 			}
 			require.NoError(t, u.Insert(ctx))
 
-			_, err := evergreen.GetEnvironment().DB().Collection(projectRefCollectionName).InsertMany(ctx, []any{
-				bson.M{"_id": boostedProject},
-				bson.M{"_id": normalProject},
-				bson.M{"_id": boostedRepoChild, "repo_ref_id": boostedRepo},
-				bson.M{"_id": otherRepoChild, "repo_ref_id": "other_repo"},
-			})
-			require.NoError(t, err)
-
 			requester := tCase.requester
 			if requester == "" {
 				requester = evergreen.PatchVersionRequester
 			}
 
-			err = UpdateSchedulingLimit(ctx, caller, requester, tCase.projectID, tCase.numTasksModified, true)
+			err := UpdateSchedulingLimit(ctx, caller, requester, tCase.projectID, tCase.repoRefID, tCase.numTasksModified, true)
 			if tCase.expectedErr != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tCase.expectedErr)
@@ -6168,42 +6163,6 @@ func TestUpdateSchedulingLimit(t *testing.T) {
 				perProjectCounts[usage.ProjectOrRepoID] = usage.NumScheduledPatchTasks
 			}
 			assert.Equal(t, tCase.expectedPerProjectCounts, perProjectCounts)
-		})
-	}
-}
-
-func TestGetRepoRefIDForProject(t *testing.T) {
-	ctx := t.Context()
-	t.Cleanup(func() {
-		assert.NoError(t, db.ClearCollections(projectRefCollectionName))
-	})
-	require.NoError(t, db.ClearCollections(projectRefCollectionName))
-
-	_, err := evergreen.GetEnvironment().DB().Collection(projectRefCollectionName).InsertMany(ctx, []any{
-		bson.M{"_id": "project_with_repo", "repo_ref_id": "repo"},
-		bson.M{"_id": "project_without_repo"},
-	})
-	require.NoError(t, err)
-
-	for tName, tCase := range map[string]struct {
-		projectID string
-		expected  string
-	}{
-		"ProjectTrackingARepoReturnsTheRepoRefID": {
-			projectID: "project_with_repo",
-			expected:  "repo",
-		},
-		"ProjectTrackingNoRepoReturnsEmpty": {
-			projectID: "project_without_repo",
-			expected:  "",
-		},
-		"NonexistentProjectReturnsEmpty": {
-			projectID: "nonexistent",
-			expected:  "",
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			assert.Equal(t, tCase.expected, getRepoRefIDForProject(ctx, tCase.projectID))
 		})
 	}
 }

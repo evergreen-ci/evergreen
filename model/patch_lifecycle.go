@@ -849,7 +849,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, transl
 			numActivatedTasks += utility.FromIntPtr(t.EstimatedNumActivatedGeneratedTasks)
 		}
 	}
-	if err = task.UpdateSchedulingLimit(ctx, creationInfo.Version.AuthorID, creationInfo.Version.Requester, creationInfo.Version.Identifier, numActivatedTasks, true); err != nil {
+	if err = task.UpdateSchedulingLimit(ctx, creationInfo.Version.AuthorID, creationInfo.Version.Requester, creationInfo.Version.Identifier, creationInfo.repoRefID(), numActivatedTasks, true); err != nil {
 		return nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.Author)
 	}
 

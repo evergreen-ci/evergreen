@@ -28,7 +28,7 @@ func autoUnscheduleLargeQueue(ctx context.Context, distroID string, plan []task.
 		return nil
 	}
 
-	if err := task.DeactivateTasks(ctx, tasksToUnschedule, true, evergreen.OversizedQueueUnscheduler); err != nil {
+	if err := task.DeactivateTasks(ctx, tasksToUnschedule, true, evergreen.OversizedQueueUnscheduler, ""); err != nil {
 		return errors.Wrap(err, "unscheduling patch tasks")
 	}
 

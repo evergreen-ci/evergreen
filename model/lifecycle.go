@@ -71,7 +71,11 @@ func SetVersionActivation(ctx context.Context, versionId string, active bool, ca
 			return errors.Wrap(err, "getting tasks to activate")
 		}
 		if len(tasksToModify) > 0 {
-			if _, err = task.ActivateTasks(ctx, tasksToModify, time.Now(), false, caller); err != nil {
+			repoRefID, err := getRepoRefIDForTasks(ctx, tasksToModify)
+			if err != nil {
+				return errors.Wrap(err, "getting repo for tasks to activate")
+			}
+			if _, err = task.ActivateTasks(ctx, tasksToModify, time.Now(), false, caller, repoRefID); err != nil {
 				return errors.Wrap(err, "updating tasks for activation")
 			}
 		}
@@ -86,7 +90,11 @@ func SetVersionActivation(ctx context.Context, versionId string, active bool, ca
 			return errors.Wrap(err, "getting tasks to deactivate")
 		}
 		if len(tasksToModify) > 0 {
-			if err = task.DeactivateTasks(ctx, tasksToModify, false, caller); err != nil {
+			repoRefID, err := getRepoRefIDForTasks(ctx, tasksToModify)
+			if err != nil {
+				return errors.Wrap(err, "getting repo for tasks to deactivate")
+			}
+			if err = task.DeactivateTasks(ctx, tasksToModify, false, caller, repoRefID); err != nil {
 				return errors.Wrap(err, "deactivating tasks")
 			}
 		}
@@ -163,7 +171,11 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 				}
 			}
 		}
-		if _, err = task.ActivateTasks(ctx, tasksToActivate, time.Now(), withDependencies, caller); err != nil {
+		repoRefID, err := getRepoRefIDForTasks(ctx, tasksToActivate)
+		if err != nil {
+			return errors.Wrap(err, "getting repo for tasks to activate")
+		}
+		if _, err = task.ActivateTasks(ctx, tasksToActivate, time.Now(), withDependencies, caller, repoRefID); err != nil {
 			return errors.Wrap(err, "updating tasks for activation")
 		}
 
@@ -181,7 +193,11 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to deactivate")
 		}
-		if err = task.DeactivateTasks(ctx, tasks, withDependencies, caller); err != nil {
+		repoRefID, err := getRepoRefIDForTasks(ctx, tasks)
+		if err != nil {
+			return errors.Wrap(err, "getting repo for tasks to deactivate")
+		}
+		if err = task.DeactivateTasks(ctx, tasks, withDependencies, caller, repoRefID); err != nil {
 			return errors.Wrap(err, "deactivating tasks")
 		}
 	}
@@ -376,7 +392,11 @@ func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, ver
 			toArchive = append(toArchive, t)
 		}
 	}
-	if err := task.CheckUsersPatchTaskLimit(ctx, allFinishedTasks[0].Requester, caller, false, toArchive...); err != nil {
+	repoRefID, err := getRepoRefIDForTasks(ctx, allFinishedTasks)
+	if err != nil {
+		return errors.Wrap(err, "getting repo for tasks to restart")
+	}
+	if err := task.CheckUsersPatchTaskLimit(ctx, allFinishedTasks[0].Requester, caller, repoRefID, false, toArchive...); err != nil {
 		return errors.Wrap(err, "updating patch task limit for user")
 	}
 	if err := task.ArchiveMany(ctx, toArchive); err != nil {
@@ -393,7 +413,7 @@ func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, ver
 	restartIds := []string{}
 	for _, t := range allFinishedTasks {
 		if t.IsPartOfSingleHostTaskGroup() {
-			if err := t.SetResetWhenFinished(ctx, caller); err != nil {
+			if err := t.SetResetWhenFinished(ctx, caller, repoRefID); err != nil {
 				return errors.Wrapf(err, "marking '%s' for restart when finished", t.Id)
 			}
 			taskGroupsToCheck[taskGroupAndBuild{
@@ -1627,7 +1647,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		"runner":    "addNewBuilds",
 	})
 	numTasksModified := numEstimatedActivatedGeneratedTasks + len(newActivatedTaskIds)
-	if err = task.UpdateSchedulingLimit(ctx, creationInfo.Version.AuthorID, creationInfo.Version.Requester, creationInfo.Version.Identifier, numTasksModified, true); err != nil {
+	if err = task.UpdateSchedulingLimit(ctx, creationInfo.Version.AuthorID, creationInfo.Version.Requester, creationInfo.Version.Identifier, creationInfo.repoRefID(), numTasksModified, true); err != nil {
 		return nil, nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.AuthorID)
 	}
 	grip.Error(ctx, message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
@@ -1655,7 +1675,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		return nil, nil, errors.Wrap(err, "getting dependencies for activated tasks")
 	}
 
-	activatedDependencyIDs, err := task.ActivateTasks(ctx, activatedTaskDependencies, time.Now(), true, evergreen.User)
+	activatedDependencyIDs, err := task.ActivateTasks(ctx, activatedTaskDependencies, time.Now(), true, evergreen.User, creationInfo.repoRefID())
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "activating dependencies for new tasks")
 	}
@@ -1839,7 +1859,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 	if err = RefreshTasksCache(ctx, buildIdsToRefresh); err != nil {
 		return nil, nil, errors.Wrap(err, "refreshing task caches for updated builds")
 	}
-	if err = task.CheckUsersPatchTaskLimit(ctx, creationInfo.Version.Requester, creationInfo.Version.AuthorID, false, activatedTasks...); err != nil {
+	if err = task.CheckUsersPatchTaskLimit(ctx, creationInfo.Version.Requester, creationInfo.Version.AuthorID, creationInfo.repoRefID(), false, activatedTasks...); err != nil {
 		return nil, nil, errors.Wrap(err, "updating patch task limit for user")
 	}
 	if len(buildIdsToActivate) > 0 {
@@ -1861,7 +1881,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "getting dependencies for activated tasks")
 	}
-	activatedDependencyIDs, err := task.ActivateTasks(ctx, activatedTaskDependencies, time.Now(), true, evergreen.User)
+	activatedDependencyIDs, err := task.ActivateTasks(ctx, activatedTaskDependencies, time.Now(), true, evergreen.User, creationInfo.repoRefID())
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "activating existing dependencies for new tasks")
 	}

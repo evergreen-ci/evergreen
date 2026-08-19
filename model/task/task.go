@@ -46,11 +46,6 @@ import (
 // We use a local constant instead of host.Collection to avoid an import cycle: model/host imports model/task.
 const hostCollectionName = "hosts"
 
-// projectRefCollectionName is the MongoDB project refs collection name (must match
-// model.ProjectRefCollection). We use a local constant instead of model.ProjectRefCollection to
-// avoid an import cycle: model imports model/task.
-const projectRefCollectionName = "project_ref"
-
 const (
 	dependencyKey = "dependencies"
 
@@ -1356,7 +1351,7 @@ func DeactivateStepbackTask(ctx context.Context, projectId, buildVariantName, ta
 		return errors.Errorf("no stepback task '%s' for variant '%s' found", taskName, buildVariantName)
 	}
 
-	if err = DeactivateTasks(ctx, []Task{*t}, true, caller); err != nil {
+	if err = DeactivateTasks(ctx, []Task{*t}, true, caller, ""); err != nil {
 		return errors.Wrap(err, "deactivating stepback task")
 	}
 	if t.IsAbortable() {
@@ -1688,7 +1683,7 @@ func (t *Task) HasResults(ctx context.Context) bool {
 // ActivateTasks sets all given tasks to active, logs them as activated, and
 // proceeds to activate any dependencies that were deactivated. This returns the
 // task IDs that were activated.
-func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, updateDependencies bool, caller string) ([]string, error) {
+func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, updateDependencies bool, caller, repoRefID string) ([]string, error) {
 	if len(tasks) == 0 {
 		return nil, nil
 	}
@@ -1714,7 +1709,7 @@ func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, 
 	// Tasks passed into this function will all be from the same version or build, so we can assume
 	// all tasks also share the same requester field.
 	numTasksModified := len(taskIDs) + len(depTaskIDsToUpdate) + numEstimatedActivatedGeneratedTasks
-	if err = UpdateSchedulingLimit(ctx, caller, tasks[0].Requester, tasks[0].Project, numTasksModified, true); err != nil {
+	if err = UpdateSchedulingLimit(ctx, caller, tasks[0].Requester, tasks[0].Project, repoRefID, numTasksModified, true); err != nil {
 		return nil, err
 	}
 	err = activateTasks(ctx, taskIDs, caller, activationTime)
@@ -1743,20 +1738,12 @@ func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, 
 }
 
 // UpdateSchedulingLimit retrieves a user from the DB and updates their hourly scheduling limit info
-// if they are not a service user. The project the tasks belong to determines which limit applies:
-// projects and repos with their own configured limit are tracked separately from the user's general
-// hourly budget.
-func UpdateSchedulingLimit(ctx context.Context, username, requester, projectID string, numTasksModified int, activated bool) error {
+// if they are not a service user.
+func UpdateSchedulingLimit(ctx context.Context, username, requester, projectID, repoRefID string, numTasksModified int, activated bool) error {
 	if evergreen.IsSystemActivator(username) || !evergreen.IsPatchRequester(requester) || numTasksModified == 0 {
 		return nil
 	}
 	s := evergreen.GetEnvironment().Settings()
-	// Overrides are keyed by either a branch project or its repo, so the project's repo is only
-	// needed once an override exists at all.
-	var repoRefID string
-	if len(s.TaskLimits.HourlyPatchTaskOverrides) > 0 {
-		repoRefID = getRepoRefIDForProject(ctx, projectID)
-	}
 	maxScheduledTasks, projectOrRepoID := s.TaskLimits.HourlyPatchTaskLimitForProject(projectID, repoRefID)
 	if maxScheduledTasks == 0 {
 		return nil
@@ -1772,22 +1759,6 @@ func UpdateSchedulingLimit(ctx context.Context, username, requester, projectID s
 		return errors.Wrapf(u.CheckAndUpdatePerProjectSchedulingLimit(ctx, projectOrRepoID, maxScheduledTasks, numTasksModified, activated), "checking task scheduling limit for user '%s' in project '%s'", u.Id, projectID)
 	}
 	return errors.Wrapf(u.CheckAndUpdateSchedulingLimit(ctx, maxScheduledTasks, numTasksModified, activated), "checking task scheduling limit for user '%s'", u.Id)
-}
-
-// getRepoRefIDForProject returns the ID of the repo that the given project tracks. It returns an
-// empty string if the project tracks no repo or cannot be found.
-func getRepoRefIDForProject(ctx context.Context, projectID string) string {
-	var result struct {
-		RepoRefID string `bson:"repo_ref_id"`
-	}
-	err := evergreen.GetEnvironment().DB().Collection(projectRefCollectionName).FindOne(ctx,
-		bson.M{"_id": projectID},
-		options.FindOne().SetProjection(bson.M{"repo_ref_id": 1}),
-	).Decode(&result)
-	if err != nil {
-		return ""
-	}
-	return result.RepoRefID
 }
 
 func getDependencyTaskIdsToActivate(ctx context.Context, tasks []string, updateDependencies bool) (map[string]Task, []string, error) {
@@ -2014,7 +1985,7 @@ func topologicalSort(tasks []Task) ([]Task, error) {
 	return sortedTasks, nil
 }
 
-func DeactivateTasks(ctx context.Context, tasks []Task, updateDependencies bool, caller string) error {
+func DeactivateTasks(ctx context.Context, tasks []Task, updateDependencies bool, caller, repoRefID string) error {
 	if len(tasks) == 0 {
 		return nil
 	}
@@ -2043,7 +2014,7 @@ func DeactivateTasks(ctx context.Context, tasks []Task, updateDependencies bool,
 	// Tasks passed into this function will all be from the same version or build, so we can assume
 	// all tasks also share the same requester field.
 	numTasksModified := len(taskIDs) + len(depTaskIDsToUpdate) + numEstimatedActivatedGeneratedTasks
-	if err = UpdateSchedulingLimit(ctx, caller, tasks[0].Requester, tasks[0].Project, numTasksModified, false); err != nil {
+	if err = UpdateSchedulingLimit(ctx, caller, tasks[0].Requester, tasks[0].Project, repoRefID, numTasksModified, false); err != nil {
 		return err
 	}
 
@@ -3227,11 +3198,11 @@ func (t *Task) GetTestResultsTasks(ctx context.Context) ([]Task, error) {
 
 // SetResetWhenFinished requests that a display task or single-host task group
 // reset itself when finished. Will mark itself as system failed.
-func (t *Task) SetResetWhenFinished(ctx context.Context, caller string) error {
+func (t *Task) SetResetWhenFinished(ctx context.Context, caller, repoRefID string) error {
 	if t.ResetWhenFinished {
 		return nil
 	}
-	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller); err != nil {
+	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller, repoRefID); err != nil {
 		return errors.Wrapf(err, "updating user '%s' patch task scheduling limit", caller)
 	}
 	t.ResetFailedWhenFinished = false
@@ -3288,11 +3259,11 @@ func (t *Task) SetResetWhenFinishedWithInc(ctx context.Context) error {
 
 // SetResetFailedWhenFinished requests that a display task
 // only restarts failed tasks.
-func (t *Task) SetResetFailedWhenFinished(ctx context.Context, caller string) error {
+func (t *Task) SetResetFailedWhenFinished(ctx context.Context, caller, repoRefID string) error {
 	if t.ResetFailedWhenFinished {
 		return nil
 	}
-	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller); err != nil {
+	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller, repoRefID); err != nil {
 		return errors.Wrapf(err, "updating user '%s' patch task scheduling limit", caller)
 	}
 	t.ResetWhenFinished = false
@@ -3313,7 +3284,10 @@ func (t *Task) SetResetFailedWhenFinished(ctx context.Context, caller string) er
 	)
 }
 
-func updateSchedulingLimitForResetWhenFinished(ctx context.Context, t *Task, caller string) error {
+// updateSchedulingLimitForResetWhenFinished is the same as
+// UpdateSchedulingLimit but only applies if the task is being reset when
+// finished.
+func updateSchedulingLimitForResetWhenFinished(ctx context.Context, t *Task, caller, repoRefID string) error {
 	if !(t.Requester == evergreen.PatchVersionRequester || t.Requester == evergreen.GithubPRRequester) || evergreen.IsSystemActivator(caller) {
 		return nil
 	}
@@ -3333,14 +3307,14 @@ func updateSchedulingLimitForResetWhenFinished(ctx context.Context, t *Task, cal
 	if len(tasks) == 0 {
 		return nil
 	}
-	return errors.Wrap(CheckUsersPatchTaskLimit(ctx, t.Requester, caller, true, tasks...), "updating patch task limit for user")
+	return errors.Wrap(CheckUsersPatchTaskLimit(ctx, t.Requester, caller, repoRefID, true, tasks...), "updating patch task limit for user")
 }
 
 // CheckUsersPatchTaskLimit takes in an input list of tasks that is set to get activated, and checks if they're
 // non commit-queue patch tasks, and that the request has been submitted by a user. If so, the maximum hourly patch tasks counter
 // will be incremented accordingly. The includeDisplayAndTaskGroups parameter indicates that execution tasks and single host task
 // group tasks are to be counted as part of the limit update, otherwise they will be ignored.
-func CheckUsersPatchTaskLimit(ctx context.Context, requester, username string, includeDisplayAndTaskGroups bool, tasks ...Task) error {
+func CheckUsersPatchTaskLimit(ctx context.Context, requester, username, repoRefID string, includeDisplayAndTaskGroups bool, tasks ...Task) error {
 	if len(tasks) == 0 {
 		return nil
 	}
@@ -3362,7 +3336,7 @@ func CheckUsersPatchTaskLimit(ctx context.Context, requester, username string, i
 			numTasksToActivate += utility.FromIntPtr(t.EstimatedNumActivatedGeneratedTasks)
 		}
 	}
-	return UpdateSchedulingLimit(ctx, username, requester, tasks[0].Project, numTasksToActivate, true)
+	return UpdateSchedulingLimit(ctx, username, requester, tasks[0].Project, repoRefID, numTasksToActivate, true)
 }
 
 func FindExecTasksToReset(ctx context.Context, t *Task) ([]string, error) {
