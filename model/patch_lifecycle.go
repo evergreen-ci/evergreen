@@ -66,7 +66,14 @@ func UserCanModifyPatch(ctx context.Context, u *user.DBUser, p patch.Patch) bool
 		return true
 	}
 
-	return u.IsAPIOnly()
+	// Having PatchSubmit on the project, which is the minimum grant for the route only
+	// for api only users.
+	return u.IsAPIOnly() && u.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      p.Project,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionPatches,
+		RequiredLevel: evergreen.PatchSubmit.Value,
+	})
 }
 
 type TaskVariantPairs struct {

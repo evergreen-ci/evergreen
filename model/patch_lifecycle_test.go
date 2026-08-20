@@ -1527,8 +1527,8 @@ func TestUserCanModifyPatch(t *testing.T) {
 		assert.False(t, UserCanModifyPatch(t.Context(), u, p))
 	})
 
-	t.Run("APIOnlyUserShouldReturnTrue", func(t *testing.T) {
+	t.Run("APIOnlyUserWithoutProjectPermissionShouldReturnFalse", func(t *testing.T) {
 		u := &user.DBUser{Id: "service_user", OnlyAPI: true}
-		assert.True(t, UserCanModifyPatch(t.Context(), u, p))
+		assert.False(t, UserCanModifyPatch(t.Context(), u, p))
 	})
 }
