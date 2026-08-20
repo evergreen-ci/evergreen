@@ -299,7 +299,7 @@ github_pr_aliases:
       - "evergreen:full"
 ```
 
-For [build Variant Path Filtering](Project-Configuration-Files#build-variant-path-filtering), 
+For [build Variant Path Filtering](Project-Configuration-Files#build-variant-path-filtering),
 label-triggered tasks still respect `paths` on their build variants. If a variant's path
 patterns don't match the PR's changed files, it will not run even if the label condition is
 satisfied.

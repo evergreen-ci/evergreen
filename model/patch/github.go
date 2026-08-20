@@ -166,7 +166,7 @@ func NewGithubIntent(ctx context.Context, msgDeliveryID, patchOwner, calledBy, a
 		return nil, errors.Wrap(err, "getting patch to repeat definitions from")
 	}
 
-	labels := make([]string, 0, len(pr.Labels))
+	var labels []string
 	for _, l := range pr.Labels {
 		if l.GetName() != "" {
 			labels = append(labels, l.GetName())
