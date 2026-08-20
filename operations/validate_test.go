@@ -201,6 +201,7 @@ func TestLoadProjectYAML(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
+			mockClient = &client.Mock{}
 			var path string
 			if testCase.useNonexistentPath {
 				path = filepath.Join("nonexistent", "file.yml")
@@ -212,7 +213,7 @@ func TestLoadProjectYAML(t *testing.T) {
 				path = filepath.Join(t.TempDir(), "project.yml")
 				require.NoError(t, os.WriteFile(path, content, 0644))
 			}
-			projectYaml, err := loadProjectYAML(path, false, false, nil, "")
+			projectYaml, err := loadProjectYAML(&ClientSettings{}, path, false, false, nil, "")
 
 			if testCase.expectErr != "" {
 				assert.ErrorContains(t, err, testCase.expectErr)

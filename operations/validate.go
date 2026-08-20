@@ -93,11 +93,14 @@ func getCrossFileYAMLAnchorsEnabled(conf *ClientSettings) (bool, error) {
 		return false, errors.Wrap(err, "setting up REST communicator")
 	}
 	defer client.Close()
-	flags, err := client.GetServiceFlags(ctx)
+	settings, err := client.GetSettings(ctx)
 	if err != nil {
-		return false, errors.Wrap(err, "getting service flags")
+		return false, errors.Wrap(err, "getting admin settings")
 	}
-	return flags.CrossFileYAMLAnchorsEnabled, nil
+	if settings == nil {
+		return false, nil
+	}
+	return settings.ServiceFlags.CrossFileYAMLAnchorsEnabled, nil
 }
 
 func getLocalModulesFromInput(localModulePaths []string) (map[string]string, error) {

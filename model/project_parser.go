@@ -1700,7 +1700,6 @@ func standardUnmarshal(parseBytes []byte, unmarshalStrict bool) (*ParserProject,
 		if !strictProjectWithVariables.ProjectConfigFields.isEmpty() {
 			p.projectConfigFields = &strictProjectWithVariables.ProjectConfigFields
 		}
-		p = strictProjectWithVariables.ParserProject
 	} else {
 		if err := util.UnmarshalYAMLWithFallback(parseBytes, &p); err != nil {
 			return nil, errors.Wrap(err, "unmarshalling parser project from YAML")

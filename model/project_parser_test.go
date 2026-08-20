@@ -3635,18 +3635,13 @@ tasks:
 }
 
 // moduleIncludeOpts builds GetProjectOpts that serves include files from
-// inline bytes, bypassing GitHub and git. It also sets up a mock environment
-// with CrossFileYAMLAnchorsEnabled so that LoadProjectInto activates the
-// cross-file anchor registry.
+// inline bytes, bypassing GitHub and git, with cross-file YAML anchors enabled.
 func moduleIncludeOpts(t testing.TB, includes ...patch.LocalModuleInclude) *GetProjectOpts {
 	t.Helper()
-	flags := evergreen.ServiceFlags{CrossFileYAMLAnchorsEnabled: true}
-	require.NoError(t, flags.Set(t.Context()))
-	t.Cleanup(func() {
-		flags.CrossFileYAMLAnchorsEnabled = false
-		require.NoError(t, flags.Set(context.Background()))
-	})
-	return &GetProjectOpts{LocalModuleIncludes: includes}
+	return &GetProjectOpts{
+		LocalModuleIncludes:         includes,
+		CrossFileYAMLAnchorsEnabled: true,
+	}
 }
 
 // mainYAMLWithModuleIncludes builds a minimal main YAML that declares one
