@@ -2,6 +2,7 @@ enum HostSortBy {
   ID
   CURRENT_TASK
   DISTRO
+  ELAPSED
   IDLE_TIME
   OWNER
   STATUS
@@ -82,6 +83,7 @@ type Host {
   ami: String
   displayName: String
   distro: Distro
+  elapsed: Time # running task start time
   """
   events returns the event log entries for a given host.
   """

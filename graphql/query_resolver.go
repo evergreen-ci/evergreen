@@ -382,6 +382,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 		hCopy := h
 		hostsPtrs = append(hostsPtrs, &hCopy)
 	}
+	// TODO: Upon adding a hosts dataloader, could probably preload RunningTasks to yield elapsed time
 	return &HostsResponse{
 		Hosts:              hostsPtrs,
 		FilteredHostsCount: filteredHostsCount,

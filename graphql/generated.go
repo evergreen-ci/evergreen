@@ -725,6 +725,7 @@ type ComplexityRoot struct {
 		CreationTime          func(childComplexity int) int
 		DisplayName           func(childComplexity int) int
 		Distro                func(childComplexity int) int
+		Elapsed               func(childComplexity int) int
 		EventTypes            func(childComplexity int) int
 		Events                func(childComplexity int, opts HostEventsInput) int
 		ExpirationTime        func(childComplexity int) int
@@ -2494,6 +2495,7 @@ type HostResolver interface {
 	Ami(ctx context.Context, obj *host.Host) (*string, error)
 
 	Distro(ctx context.Context, obj *host.Host) (*model.APIDistro, error)
+	Elapsed(ctx context.Context, obj *host.Host) (*time.Time, error)
 	Events(ctx context.Context, obj *host.Host, opts HostEventsInput) (*HostEvents, error)
 	EventTypes(ctx context.Context, obj *host.Host) ([]string, error)
 
@@ -5299,6 +5301,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Host.Distro(childComplexity), true
+	case "Host.elapsed":
+		if e.complexity.Host.Elapsed == nil {
+			break
+		}
+
+		return e.complexity.Host.Elapsed(childComplexity), true
 	case "Host.eventTypes":
 		if e.complexity.Host.EventTypes == nil {
 			break
@@ -30533,6 +30541,35 @@ func (ec *executionContext) fieldContext_Host_distro(_ context.Context, field gr
 	return fc, nil
 }
 
+func (ec *executionContext) _Host_elapsed(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Host_elapsed,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Host().Elapsed(ctx, obj)
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Host_elapsed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Host",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Host_events(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -32606,6 +32643,8 @@ func (ec *executionContext) fieldContext_HostsResponse_hosts(_ context.Context, 
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
 				return ec.fieldContext_Host_distro(ctx, field)
+			case "elapsed":
+				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
 				return ec.fieldContext_Host_events(ctx, field)
 			case "eventTypes":
@@ -38783,6 +38822,8 @@ func (ec *executionContext) fieldContext_Mutation_editSpawnHost(ctx context.Cont
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
 				return ec.fieldContext_Host_distro(ctx, field)
+			case "elapsed":
+				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
 				return ec.fieldContext_Host_events(ctx, field)
 			case "eventTypes":
@@ -38919,6 +38960,8 @@ func (ec *executionContext) fieldContext_Mutation_spawnHost(ctx context.Context,
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
 				return ec.fieldContext_Host_distro(ctx, field)
+			case "elapsed":
+				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
 				return ec.fieldContext_Host_events(ctx, field)
 			case "eventTypes":
@@ -39096,6 +39139,8 @@ func (ec *executionContext) fieldContext_Mutation_updateSpawnHostStatus(ctx cont
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
 				return ec.fieldContext_Host_distro(ctx, field)
+			case "elapsed":
+				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
 				return ec.fieldContext_Host_events(ctx, field)
 			case "eventTypes":
@@ -52944,6 +52989,8 @@ func (ec *executionContext) fieldContext_Query_host(ctx context.Context, field g
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
 				return ec.fieldContext_Host_distro(ctx, field)
+			case "elapsed":
+				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
 				return ec.fieldContext_Host_events(ctx, field)
 			case "eventTypes":
@@ -53758,6 +53805,8 @@ func (ec *executionContext) fieldContext_Query_myHosts(_ context.Context, field 
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
 				return ec.fieldContext_Host_distro(ctx, field)
+			case "elapsed":
+				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
 				return ec.fieldContext_Host_events(ctx, field)
 			case "eventTypes":
@@ -77768,6 +77817,8 @@ func (ec *executionContext) fieldContext_Volume_host(_ context.Context, field gr
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
 				return ec.fieldContext_Host_distro(ctx, field)
+			case "elapsed":
+				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
 				return ec.fieldContext_Host_events(ctx, field)
 			case "eventTypes":
@@ -96276,6 +96327,39 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Host_distro(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "elapsed":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Host_elapsed(ctx, field, obj)
 				return res
 			}
 

@@ -3,6 +3,7 @@ package graphql
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -23,6 +24,21 @@ func (r *hostResolver) Distro(ctx context.Context, obj *host.Host) (*restModel.A
 	apiDistro := &restModel.APIDistro{}
 	apiDistro.BuildFromService(obj.Distro)
 	return apiDistro, nil
+}
+
+// Elapsed is the resolver for the elapsed field.
+func (r *hostResolver) Elapsed(ctx context.Context, obj *host.Host) (*time.Time, error) {
+	taskId := obj.RunningTask
+	if taskId == "" {
+		return nil, nil
+	}
+
+	runningTask, err := loaders.GetTask(ctx, taskId)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", taskId, err.Error()))
+	}
+
+	return utility.ToTimePtr(runningTask.StartTime), nil
 }
 
 // Events is the resolver for the events field.
@@ -99,6 +115,8 @@ func (r *hostResolver) RunningTask(ctx context.Context, obj *host.Host) (*TaskIn
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", taskId, err.Error()))
 	}
+
+	// TODO DEVPROD-38056: Ideally can return Task type here once off REST
 	return &TaskInfo{
 		ID:   runningTask.Id,
 		Name: runningTask.DisplayName,
