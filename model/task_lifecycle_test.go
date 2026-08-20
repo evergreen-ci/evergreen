@@ -5166,6 +5166,104 @@ func TestDisplayTaskUpdatesAreConcurrencySafe(t *testing.T) {
 	assert.Equal(t, event.TaskFinished, latestEvents[0].EventType, "should have logged event for display task finished")
 }
 
+func TestTryResetDisplayTask(t *testing.T) {
+	ctx := t.Context()
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection, ProjectRefCollection, ParserProjectCollection))
+	})
+
+	const displayTaskID = "display_task"
+	execTask := task.Task{
+		Id:                    "execution_task",
+		DisplayTaskId:         utility.ToStringPtr(displayTaskID),
+		Execution:             2,
+		LatestParentExecution: 2,
+		Activated:             true,
+		Status:                evergreen.TaskUndispatched,
+	}
+	displayTask := task.Task{
+		Id:             displayTaskID,
+		DisplayTaskId:  utility.ToStringPtr(""),
+		DisplayOnly:    true,
+		ExecutionTasks: []string{execTask.Id},
+		Execution:      2,
+		Activated:      true,
+		Status:         evergreen.TaskStarted,
+	}
+	require.NoError(t, execTask.Insert(ctx))
+	require.NoError(t, displayTask.Insert(ctx))
+
+	detail := &apimodels.TaskEndDetail{Status: evergreen.TaskFailed, Type: evergreen.CommandTypeSystem}
+	staleExecTask := execTask
+	staleExecTask.LatestParentExecution = 1
+	require.NoError(t, ResetTaskOrDisplayTask(ctx, testutil.TestConfig(), &staleExecTask, evergreen.User, evergreen.MonitorPackage, true, detail))
+
+	dbDisplayTask, err := task.FindOneId(ctx, displayTask.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbDisplayTask)
+	assert.False(t, dbDisplayTask.ResetWhenFinished)
+	assert.False(t, dbDisplayTask.ResetFailedWhenFinished)
+	require.NoError(t, task.UpdateOne(ctx, bson.M{task.IdKey: displayTask.Id}, bson.M{"$set": bson.M{task.ResetFailedWhenFinishedKey: true}}))
+	require.NoError(t, ResetTaskOrDisplayTask(ctx, testutil.TestConfig(), &staleExecTask, evergreen.User, evergreen.MonitorPackage, true, detail))
+	dbExecTask, err := task.FindOneId(ctx, execTask.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbExecTask)
+	assert.Equal(t, evergreen.TaskUndispatched, dbExecTask.Status)
+	assert.True(t, utility.IsZeroTime(dbExecTask.FinishTime))
+
+	require.NoError(t, tryResetDisplayTask(ctx, testutil.TestConfig(), displayTask.Id, evergreen.User, evergreen.MonitorPackage, detail, 1))
+
+	dbExecTask, err = task.FindOneId(ctx, execTask.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbExecTask)
+	assert.Equal(t, evergreen.TaskUndispatched, dbExecTask.Status)
+	assert.True(t, utility.IsZeroTime(dbExecTask.FinishTime))
+
+	dbDisplayTask, err = task.FindOneId(ctx, displayTask.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbDisplayTask)
+	assert.Equal(t, 2, dbDisplayTask.Execution)
+	assert.Equal(t, evergreen.TaskStarted, dbDisplayTask.Status)
+
+	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection, ProjectRefCollection, ParserProjectCollection))
+	const (
+		buildID   = "build"
+		versionID = "version"
+		projectID = "project"
+	)
+	sparseExecTask := task.Task{
+		Id:                    "sparse_execution_task",
+		DisplayTaskId:         utility.ToStringPtr(displayTaskID),
+		BuildId:               buildID,
+		Version:               versionID,
+		Project:               projectID,
+		Execution:             0,
+		LatestParentExecution: 1,
+		Activated:             true,
+		Status:                evergreen.TaskSucceeded,
+	}
+	displayTask.Execution = 1
+	displayTask.Status = evergreen.TaskStarted
+	displayTask.ExecutionTasks = []string{sparseExecTask.Id}
+	displayTask.BuildId = buildID
+	displayTask.Version = versionID
+	displayTask.Project = projectID
+	require.NoError(t, (&ProjectRef{Id: projectID}).Insert(ctx))
+	require.NoError(t, (&ParserProject{Id: versionID, Identifier: utility.ToStringPtr(projectID)}).Insert(ctx))
+	require.NoError(t, (&build.Build{Id: buildID, Version: versionID, Status: evergreen.BuildStarted}).Insert(ctx))
+	require.NoError(t, (&Version{Id: versionID, Identifier: projectID, Status: evergreen.VersionStarted}).Insert(ctx))
+	require.NoError(t, sparseExecTask.Insert(ctx))
+	require.NoError(t, displayTask.Insert(ctx))
+
+	require.NoError(t, TryResetTask(ctx, testutil.TestConfig(), displayTask.Id, evergreen.User, evergreen.MonitorPackage, detail))
+
+	dbSparseExecTask, err := task.FindOneId(ctx, sparseExecTask.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbSparseExecTask)
+	assert.Equal(t, evergreen.TaskSucceeded, dbSparseExecTask.Status)
+	assert.Equal(t, 0, dbSparseExecTask.Execution)
+}
+
 func TestAbortedTaskDelayedRestart(t *testing.T) {
 	ctx := t.Context()
 

@@ -1260,6 +1260,32 @@ func TestMarkEnd(t *testing.T) {
 	})
 }
 
+func TestMarkEndStaleDisplayGenerationDoesNotEndCurrentTask(t *testing.T) {
+	ctx := t.Context()
+	t.Cleanup(func() {
+		require.NoError(t, db.Clear(Collection))
+	})
+
+	current := Task{
+		Id:                    "execution_task",
+		Execution:             0,
+		LatestParentExecution: 2,
+		Status:                evergreen.TaskUndispatched,
+	}
+	require.NoError(t, current.Insert(ctx))
+
+	stale := current
+	stale.LatestParentExecution = 1
+	err := stale.MarkEnd(ctx, time.Now(), &apimodels.TaskEndDetail{Status: evergreen.TaskFailed})
+	require.Error(t, err)
+
+	dbTask, err := FindOneId(ctx, current.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbTask)
+	assert.Equal(t, evergreen.TaskUndispatched, dbTask.Status)
+	assert.True(t, utility.IsZeroTime(dbTask.FinishTime))
+}
+
 func TestTaskResultOutcome(t *testing.T) {
 	assert := assert.New(t)
 
