@@ -679,6 +679,7 @@ func TestAddIntentForPRCommenterAuthorization(t *testing.T) {
 		assert.Error(t, err)
 	})
 	t.Run("EmptyCommenterSkipsCheck", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
 		isCommenterAuthorized = func(ctx context.Context, requiredOrg, owner, repo, commenter string) (bool, error) {
 			t.Error("should not be called for empty commenter")
 			return false, nil
