@@ -628,7 +628,8 @@ func (r *queryResolver) MyVolumes(ctx context.Context) ([]*restModel.APIVolume, 
 
 // Task is the resolver for the task field.
 func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int) (*restModel.APITask, error) {
-	return getTask(ctx, taskID, execution, r.sc.GetURL())
+	settings := evergreen.GetEnvironment().Settings()
+	return getTask(ctx, taskID, execution, settings.Ui.Url)
 }
 
 // TaskAllExecutions is the resolver for the taskAllExecutions field.

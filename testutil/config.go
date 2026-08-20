@@ -283,6 +283,12 @@ func MockConfig() *evergreen.Settings {
 		},
 		TaskLimits: evergreen.TaskLimitsConfig{
 			MaxTasksPerVersion: 1000,
+			HourlyPatchTaskOverrides: []evergreen.HourlyPatchTaskOverride{
+				{
+					ProjectOrRepoID:     "project_id",
+					MaxHourlyPatchTasks: 2000,
+				},
+			},
 		},
 		LoggerConfig: evergreen.LoggerConfig{
 			Buffer: evergreen.LogBuffering{

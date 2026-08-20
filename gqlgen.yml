@@ -314,6 +314,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIHomeVolumeSettings
   Host:
     model: github.com/evergreen-ci/evergreen/rest/model.APIHost
+  HourlyPatchTaskOverride:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIHourlyPatchTaskOverride
+  HourlyPatchTaskOverrideInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIHourlyPatchTaskOverride
   HostAllocatorSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIHostAllocatorSettings
   HostAllocatorSettingsInput:

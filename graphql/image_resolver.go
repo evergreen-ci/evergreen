@@ -100,6 +100,9 @@ func (r *imageResolver) LatestTask(ctx context.Context, obj *model.APIImage) (*m
 	if latestTask == nil {
 		return nil, nil
 	}
+	if err := checkProjectAccess(ctx, latestTask.Project, ProjectPermissionTasks, AccessLevelView); err != nil {
+		return nil, err
+	}
 	apiLatestTask := &model.APITask{}
 	err = apiLatestTask.BuildFromService(ctx, latestTask, &model.APITaskArgs{
 		IncludeAMI: true,
