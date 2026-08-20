@@ -51378,9 +51378,9 @@ func (ec *executionContext) _ProjectTasksPair_isRegex(ctx context.Context, field
 			return obj.IsRegex, nil
 		},
 		nil,
-		ec.marshalNBoolean2bool,
+		ec.marshalOBoolean2ᚖbool,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -86830,7 +86830,7 @@ func (ec *executionContext) unmarshalInputProjectTasksPairInput(ctx context.Cont
 			it.ProjectID = data
 		case "isRegex":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isRegex"))
-			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -102092,9 +102092,6 @@ func (ec *executionContext) _ProjectTasksPair(ctx context.Context, sel ast.Selec
 			}
 		case "isRegex":
 			out.Values[i] = ec._ProjectTasksPair_isRegex(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "displayName":
 			field := field
 

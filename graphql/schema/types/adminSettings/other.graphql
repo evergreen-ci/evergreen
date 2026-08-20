@@ -165,14 +165,14 @@ type SpawnHostConfig {
 
 input ProjectTasksPairInput {
   projectID: String!
-  isRegex: Boolean!
+  isRegex: Boolean
   allowedTasks: [String!]!
   allowedBVs: [String!]!
 }
 
 type ProjectTasksPair {
   projectId: String!
-  isRegex: Boolean!
+  isRegex: Boolean
   displayName: String!
   allowedTasks: [String!]!
   allowedBVs: [String!]!
