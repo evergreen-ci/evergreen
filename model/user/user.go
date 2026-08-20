@@ -294,7 +294,7 @@ func (u *DBUser) checkSchedulingLimit(lastScheduledTasksAt time.Time, currentCou
 	// of activated tasks to the user's counter, erroring if the limit is breached. If numTasksModified
 	// is negative, the counter is decremented.
 	if lastScheduledTasksAt.After(oneHourAgo) {
-		if activated && (numTasksModified+currentCount) >= maxScheduledTasks {
+		if activated && (numTasksModified+currentCount) > maxScheduledTasks {
 			minutesRemaining := 60 - int(now.Sub(lastScheduledTasksAt).Minutes())
 			return 0, false, errors.Errorf("user '%s' has scheduled %d out of %d allowed tasks in the past hour, limit refreshes in %d minutes", u.Id, currentCount, maxScheduledTasks, minutesRemaining)
 		}
