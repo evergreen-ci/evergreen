@@ -117,6 +117,110 @@ func addNewTasksAndBuildsForPatch(ctx context.Context, p *patch.Patch, creationI
 	return errors.Wrap(err, "activating existing inactive tasks")
 }
 
+// AddLabelTriggeredTasksForPatch resolves GitHub PR aliases that are now
+// applicable due to the given labels, and injects the resulting tasks into the
+// existing patch version. Tasks that already exist in the version are skipped.
+func AddLabelTriggeredTasksForPatch(ctx context.Context, settings *evergreen.Settings, p *patch.Patch, v *Version, projectRef *ProjectRef, currentLabels []string) error {
+	project, _, err := FindAndTranslateProjectForPatch(ctx, settings, p)
+	if err != nil {
+		return errors.Wrap(err, "translating project for patch")
+	}
+
+	aliasDefs, err := findAliasesForPatch(ctx, project.Identifier, evergreen.GithubPRAlias, p)
+	if err != nil {
+		return errors.Wrap(err, "finding GitHub PR aliases")
+	}
+
+	filteredAliases := filterAliasesByLabels(aliasDefs, currentLabels)
+	if len(filteredAliases) == 0 {
+		return nil
+	}
+
+	tvPairs, err := project.BuildProjectTVPairsWithAlias(filteredAliases, p.GetRequester(), "")
+	if err != nil {
+		return errors.Wrap(err, "building task/variant pairs from aliases")
+	}
+	if len(tvPairs.ExecTasks) == 0 && len(tvPairs.DisplayTasks) == 0 {
+		return nil
+	}
+
+	changedFiles := p.FilesChanged()
+	if len(changedFiles) > 0 {
+		tvPairs = filterTVPairsByPaths(tvPairs, project, changedFiles)
+		if len(tvPairs.ExecTasks) == 0 && len(tvPairs.DisplayTasks) == 0 {
+			return nil
+		}
+	}
+
+	tvPairs.ExecTasks, err = IncludeDependencies(project, tvPairs.ExecTasks, p.GetRequester(), "", nil)
+	if err != nil {
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message": "error including dependencies for label-triggered tasks",
+			"patch":   p.Id.Hex(),
+		}))
+	}
+
+	if err := p.SetGithubLabels(ctx, currentLabels); err != nil {
+		return errors.Wrap(err, "updating patch labels")
+	}
+
+	creationInfo := TaskCreationInfo{
+		Project:        project,
+		ProjectRef:     projectRef,
+		Version:        v,
+		Pairs:          tvPairs,
+		ActivationInfo: specificActivationInfo{},
+	}
+	if err := addNewTasksAndBuildsForPatch(ctx, p, creationInfo, patch.AutomatedCaller); err != nil {
+		return errors.Wrap(err, "adding label-triggered tasks to version")
+	}
+
+	mergedVTs := tvPairs.TVPairsToVariantTasks()
+	for _, existing := range p.VariantsTasks {
+		found := false
+		for i, vt := range mergedVTs {
+			if vt.Variant == existing.Variant {
+				taskSet := map[string]struct{}{}
+				for _, t := range mergedVTs[i].Tasks {
+					taskSet[t] = struct{}{}
+				}
+				for _, t := range existing.Tasks {
+					if _, ok := taskSet[t]; !ok {
+						mergedVTs[i].Tasks = append(mergedVTs[i].Tasks, t)
+					}
+				}
+				found = true
+				break
+			}
+		}
+		if !found {
+			mergedVTs = append(mergedVTs, existing)
+		}
+	}
+	return errors.Wrap(p.SetVariantsTasks(ctx, mergedVTs), "updating patch variant tasks")
+}
+
+// filterTVPairsByPaths removes task/variant pairs whose build variant has
+// path filters that don't match the changed files.
+func filterTVPairsByPaths(pairs TaskVariantPairs, project *Project, changedFiles []string) TaskVariantPairs {
+	filtered := TaskVariantPairs{}
+	for _, pair := range pairs.ExecTasks {
+		bv := project.FindBuildVariant(pair.Variant)
+		if bv != nil && len(bv.Paths) > 0 && !bv.ChangedFilesMatchPaths(changedFiles) {
+			continue
+		}
+		filtered.ExecTasks = append(filtered.ExecTasks, pair)
+	}
+	for _, pair := range pairs.DisplayTasks {
+		bv := project.FindBuildVariant(pair.Variant)
+		if bv != nil && len(bv.Paths) > 0 && !bv.ChangedFilesMatchPaths(changedFiles) {
+			continue
+		}
+		filtered.DisplayTasks = append(filtered.DisplayTasks, pair)
+	}
+	return filtered
+}
+
 type PatchUpdate struct {
 	Description         string               `json:"description"`
 	Caller              string               `json:"caller"`

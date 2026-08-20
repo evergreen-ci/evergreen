@@ -1939,6 +1939,10 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 		aliasDefs, err := findAliasesForPatch(ctx, p.Identifier, alias, patchDoc)
 		catcher.Wrapf(err, "retrieving alias '%s' for patched project config '%s'", alias, patchDoc.Id.Hex())
 
+		if !catcher.HasErrors() && patchDoc.IsGithubPRPatch() {
+			aliasDefs = filterAliasesByLabels(aliasDefs, patchDoc.GithubPatchData.Labels)
+		}
+
 		aliasPairs := TaskVariantPairs{}
 		if !catcher.HasErrors() {
 			aliasPairs, err = p.BuildProjectTVPairsWithAlias(aliasDefs, requester, branch)
