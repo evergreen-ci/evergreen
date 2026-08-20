@@ -190,8 +190,8 @@ func (opts cloneOpts) getCloneCommand() ([]string, error) {
 	}
 
 	if len(opts.sparseCheckoutPaths) > 0 {
-		// no-cone mode treats the entries as gitignore-style patterns (see the
-		// SparseCheckoutPaths field doc on anchoring).
+		// no-cone mode (git 2.35+) treats the entries as gitignore-style
+		// patterns (see the SparseCheckoutPaths field doc on anchoring).
 		quotedPaths := make([]string, len(opts.sparseCheckoutPaths))
 		for i, p := range opts.sparseCheckoutPaths {
 			quotedPaths[i] = util.ShellQuote(p)
@@ -977,6 +977,9 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
 
 		if err = cmd.Run(ctx); err != nil {
+			if patchPart.ModuleName == "" && c.Filter != "" && len(c.SparseCheckoutPaths) > 0 {
+				return errors.Wrap(err, "applying patch in a sparse checkout (a patch that touches files outside sparse_checkout_paths cannot be applied)")
+			}
 			return errors.WithStack(err)
 		}
 	}

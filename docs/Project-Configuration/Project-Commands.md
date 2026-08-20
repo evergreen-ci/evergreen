@@ -971,9 +971,12 @@ Parameters:
   `/scripts/foo.sh`.
 
   Both `filter` and `sparse_checkout_paths` apply only to the source clone;
-  module and wiki clones are unaffected. Do not enable them on variants that
-  also run patch builds: Evergreen applies patches with `git apply`, which fails
-  on files outside the sparse set. Combining `filter` with `clone_depth` is
+  module and wiki clones are unaffected. `sparse_checkout_paths` requires a
+  distro git of 2.35 or newer (for `git sparse-checkout set --no-cone`). Patch
+  builds whose diffs only touch files inside `sparse_checkout_paths` work
+  normally, but a patch that touches anything outside the sparse set fails to
+  apply: Evergreen applies patches with `git apply`, which errors on files
+  missing from the working tree. Combining `filter` with `clone_depth` is
   supported, but the `git fetch --unshallow` fallback for older base commits
   requires a distro git new enough to unshallow a partial clone.
 
