@@ -3318,7 +3318,6 @@ func CheckUsersPatchTaskLimit(ctx context.Context, requester, username, repoRefI
 	if len(tasks) == 0 {
 		return nil
 	}
-	// we only care about patch tasks that are to be activated by an actual user
 	if !(requester == evergreen.PatchVersionRequester || requester == evergreen.GithubPRRequester) || evergreen.IsSystemActivator(username) {
 		return nil
 	}

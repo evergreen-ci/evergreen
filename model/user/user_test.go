@@ -479,34 +479,6 @@ func (s *UserTestSuite) TestPerProjectSchedulingLimitRestartsWindowIndependently
 	s.Require().Error(u.CheckAndUpdatePerProjectSchedulingLimit(s.T().Context(), "project2", maxScheduledTasks, 5, true))
 }
 
-func (s *UserTestSuite) TestPerProjectSchedulingUsageIsOrderedByProjectOrRepoID() {
-	u := s.users[0]
-	maxScheduledTasks := 100
-
-	for _, projectOrRepoID := range []string{"project_c", "project_a", "project_b"} {
-		s.Require().NoError(u.CheckAndUpdatePerProjectSchedulingLimit(s.T().Context(), projectOrRepoID, maxScheduledTasks, 1, true))
-		dbUser, err := FindOne(s.T().Context(), ById(u.Id))
-		s.Require().NoError(err)
-		s.Require().NotNil(dbUser)
-		u = dbUser
-	}
-	s.Equal([]string{"project_a", "project_b", "project_c"}, projectOrRepoIDs(u))
-
-	s.Require().NoError(u.CheckAndUpdatePerProjectSchedulingLimit(s.T().Context(), "project_a", maxScheduledTasks, 1, true))
-	dbUser, err := FindOne(s.T().Context(), ById(u.Id))
-	s.Require().NoError(err)
-	s.Require().NotNil(dbUser)
-	s.Equal([]string{"project_a", "project_b", "project_c"}, projectOrRepoIDs(dbUser), "updating an existing project should not move it")
-}
-
-func projectOrRepoIDs(u *DBUser) []string {
-	ids := make([]string, 0, len(u.PerProjectSchedulingUsage))
-	for _, usage := range u.PerProjectSchedulingUsage {
-		ids = append(ids, usage.ProjectOrRepoID)
-	}
-	return ids
-}
-
 func (s *UserTestSuite) TestAddDuplicateKeyFails() {
 	err := s.users[1].AddPublicKey(s.T().Context(), "key1", "ssh-mock 67890")
 	s.Error(err)

@@ -327,6 +327,8 @@ func (u *DBUser) getUpdatedProjectSchedulingUsage(updatedProjectUsage ProjectSch
 		}
 	}
 	updated = append(updated, updatedProjectUsage)
+	// Keep the per-project usage sorted by project/repo ID. Not necessary but
+	// makes the array order predictable.
 	slices.SortFunc(updated, func(a, b ProjectSchedulingUsage) int {
 		return cmp.Compare(a.ProjectOrRepoID, b.ProjectOrRepoID)
 	})

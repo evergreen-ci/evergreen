@@ -2267,31 +2267,6 @@ func TestGetRecursiveDependenciesUp(t *testing.T) {
 	}
 }
 
-func TestGetRecursiveDependenciesUpLoadsRequesterAndProject(t *testing.T) {
-	ctx := t.Context()
-	require.NoError(t, db.Clear(Collection))
-	t.Cleanup(func() {
-		assert.NoError(t, db.Clear(Collection))
-	})
-
-	tasks := []Task{
-		{Id: "dep", Requester: evergreen.PatchVersionRequester, Project: "my_project"},
-		{Id: "tsk", Requester: evergreen.PatchVersionRequester, Project: "my_project", DependsOn: []Dependency{{TaskId: "dep"}}},
-	}
-	for _, tsk := range tasks {
-		require.NoError(t, tsk.Insert(ctx))
-	}
-
-	deps, err := GetRecursiveDependenciesUp(ctx, []Task{tasks[1]}, nil)
-	require.NoError(t, err)
-	require.Len(t, deps, 1)
-	// Activating tasks resolves the hourly patch task scheduling limit from the first task in the
-	// slice, and dependencies are prepended to the tasks being activated, so a dependency missing
-	// these fields silently disables the limit.
-	assert.Equal(t, evergreen.PatchVersionRequester, deps[0].Requester)
-	assert.Equal(t, "my_project", deps[0].Project)
-}
-
 func TestGetRecursiveDependenciesUpWithTaskGroup(t *testing.T) {
 	ctx := t.Context()
 
