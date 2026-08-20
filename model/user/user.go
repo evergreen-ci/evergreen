@@ -498,6 +498,10 @@ func (u *DBUser) HasPermission(ctx context.Context, opts gimlet.PermissionOpts) 
 	return hasPermission
 }
 
+// Gimlet's permission middleware calls HasPermissionErr only if DBUser
+// satisfies this interface; without it, a failed check silently returns 401.
+var _ gimlet.PermissionChecker = &DBUser{}
+
 // HasPermissionErr is HasPermission, but it returns any error that prevented the
 // check from completing so callers can tell a denial apart from a failed lookup.
 func (u *DBUser) HasPermissionErr(ctx context.Context, opts gimlet.PermissionOpts) (bool, error) {
