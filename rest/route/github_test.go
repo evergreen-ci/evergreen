@@ -599,3 +599,199 @@ func TestShouldSkipWebhookPersonalStaging(t *testing.T) {
 		})
 	}
 }
+
+func TestGetOtherPatchesWithHash(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.Clear(patch.Collection))
+
+	sha := "abc123def456"
+	owner := "evergreen-ci"
+	repo := "evergreen"
+
+	sameRepoPatch := patch.Patch{
+		Id: mgobson.NewObjectId(),
+		GithubPatchData: thirdparty.GithubPatch{
+			BaseOwner: owner,
+			BaseRepo:  repo,
+			HeadHash:  sha,
+			PRNumber:  10,
+		},
+	}
+	differentRepoPatch := patch.Patch{
+		Id: mgobson.NewObjectId(),
+		GithubPatchData: thirdparty.GithubPatch{
+			BaseOwner: "other-org",
+			BaseRepo:  "other-repo",
+			HeadHash:  sha,
+			PRNumber:  20,
+		},
+	}
+	differentOwnerPatch := patch.Patch{
+		Id: mgobson.NewObjectId(),
+		GithubPatchData: thirdparty.GithubPatch{
+			BaseOwner: "other-org",
+			BaseRepo:  repo,
+			HeadHash:  sha,
+			PRNumber:  30,
+		},
+	}
+	samePRPatch := patch.Patch{
+		Id: mgobson.NewObjectId(),
+		GithubPatchData: thirdparty.GithubPatch{
+			BaseOwner: owner,
+			BaseRepo:  repo,
+			HeadHash:  sha,
+			PRNumber:  5,
+		},
+	}
+	require.NoError(t, db.InsertMany(ctx, patch.Collection, sameRepoPatch, differentRepoPatch, differentOwnerPatch, samePRPatch))
+
+	for testName, testCase := range map[string]func(*testing.T){
+		"SameRepoReturnsOnlyMatchingOwnerAndRepo": func(t *testing.T) {
+			patches, err := getOtherPatchesWithHash(ctx, sha, owner, repo, 999)
+			require.NoError(t, err)
+			assert.Len(t, patches, 2)
+			prNumbers := []int{}
+			for _, p := range patches {
+				prNumbers = append(prNumbers, p.GithubPatchData.PRNumber)
+			}
+			assert.Contains(t, prNumbers, 10)
+			assert.Contains(t, prNumbers, 5)
+		},
+		"DifferentRepoNotReturned": func(t *testing.T) {
+			patches, err := getOtherPatchesWithHash(ctx, sha, "other-org", "other-repo", 999)
+			require.NoError(t, err)
+			assert.Len(t, patches, 1)
+			assert.Equal(t, 20, patches[0].GithubPatchData.PRNumber)
+		},
+		"SamePRNumberFilteredOut": func(t *testing.T) {
+			patches, err := getOtherPatchesWithHash(ctx, sha, owner, repo, 10)
+			require.NoError(t, err)
+			assert.Len(t, patches, 1)
+			assert.Equal(t, 5, patches[0].GithubPatchData.PRNumber)
+		},
+		"NoMatchingHashReturnsEmpty": func(t *testing.T) {
+			patches, err := getOtherPatchesWithHash(ctx, "nonexistent-sha", owner, repo, 999)
+			require.NoError(t, err)
+			assert.Empty(t, patches)
+		},
+	} {
+		t.Run(testName, testCase)
+	}
+}
+
+func TestAddIntentForPRCommenterAuthorization(t *testing.T) {
+	originalIsCommenterAuthorized := isCommenterAuthorized
+	t.Cleanup(func() {
+		isCommenterAuthorized = originalIsCommenterAuthorized
+	})
+
+	repoOwner := "evergreen-ci"
+	repoName := "evergreen"
+	fullName := repoOwner + "/" + repoName
+	branchName := "main"
+	prNum := 42
+	headSHA := "abc123"
+	prUser := "pr-author"
+	makePR := func() *github.PullRequest {
+		return &github.PullRequest{
+			Number: &prNum,
+			User:   &github.User{Login: &prUser},
+			Base: &github.PullRequestBranch{
+				Ref:  &branchName,
+				Repo: &github.Repository{FullName: &fullName, Name: &repoName},
+				User: &github.User{Login: &repoOwner},
+			},
+			Head: &github.PullRequestBranch{
+				SHA: &headSHA,
+				Ref: &branchName,
+			},
+		}
+	}
+
+	for testName, testCase := range map[string]func(*testing.T){
+		"UnauthorizedCommenterIsRejected": func(t *testing.T) {
+			authCheckCalled := false
+			isCommenterAuthorized = func(ctx context.Context, requiredOrg, owner, repo, commenter string) (bool, error) {
+				authCheckCalled = true
+				assert.Equal(t, "mongodb", requiredOrg)
+				assert.Equal(t, repoOwner, owner)
+				assert.Equal(t, repoName, repo)
+				assert.Equal(t, "attacker", commenter)
+				return false, nil
+			}
+			gh := &githubHookApi{
+				sc: &data.MockGitHubConnector{
+					MockGitHubConnectorImpl: data.MockGitHubConnectorImpl{},
+				},
+				settings: &evergreen.Settings{
+					GithubPRCreatorOrg: "mongodb",
+				},
+			}
+
+			// Insert a project ref so we reach the authorization check.
+			trueBool := true
+			pRef := model.ProjectRef{
+				Id:               "test-project",
+				Owner:            repoOwner,
+				Repo:             repoName,
+				Branch:           branchName,
+				Enabled:          true,
+				PRTestingEnabled: &trueBool,
+			}
+			require.NoError(t, pRef.Insert(t.Context()))
+
+			err := gh.AddIntentForPR(t.Context(), makePR(), prUser, patch.AllCallers, "", "attacker", true)
+			assert.NoError(t, err)
+			assert.True(t, authCheckCalled, "authorization check should have been called")
+		},
+		"AuthorizedCommenterProceeds": func(t *testing.T) {
+			authCheckCalled := false
+			isCommenterAuthorized = func(ctx context.Context, requiredOrg, owner, repo, commenter string) (bool, error) {
+				authCheckCalled = true
+				return true, nil
+			}
+			gh := &githubHookApi{
+				settings: &evergreen.Settings{
+					GithubPRCreatorOrg: "mongodb",
+				},
+			}
+
+			// Insert a project ref so we reach the authorization check.
+			trueBool := true
+			pRef := model.ProjectRef{
+				Id:               "test-project",
+				Owner:            repoOwner,
+				Repo:             repoName,
+				Branch:           branchName,
+				Enabled:          true,
+				PRTestingEnabled: &trueBool,
+			}
+			require.NoError(t, pRef.Insert(t.Context()))
+
+			// Authorized commenter proceeds past auth and fails later
+			// (e.g., getting merge base), proving auth was not the blocker.
+			err := gh.AddIntentForPR(t.Context(), makePR(), prUser, patch.AllCallers, "", "authorized-user", true)
+			assert.Error(t, err)
+			assert.True(t, authCheckCalled, "authorization check should have been called")
+		},
+		"EmptyCommenterSkipsAuthorizationCheck": func(t *testing.T) {
+			isCommenterAuthorized = func(ctx context.Context, requiredOrg, owner, repo, commenter string) (bool, error) {
+				t.Error("isCommenterAuthorized should not be called for empty commenter")
+				return false, nil
+			}
+			gh := &githubHookApi{
+				settings: &evergreen.Settings{
+					GithubPRCreatorOrg: "mongodb",
+				},
+			}
+
+			// No project ref → returns nil early, never reaching the auth check.
+			err := gh.AddIntentForPR(t.Context(), makePR(), prUser, patch.AutomatedCaller, "", "", false)
+			assert.NoError(t, err)
+		},
+	} {
+		require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
+		t.Run(testName, testCase)
+	}
+}

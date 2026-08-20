@@ -146,8 +146,12 @@ func ByUserAndCommitQueue(user string, filterCommitQueue bool) db.Q {
 	return db.Query(q)
 }
 
-func ByGithash(githash string) db.Q {
-	return db.Query(bson.M{bsonutil.GetDottedKeyName(githubPatchDataKey, headHashKey): githash})
+func ByGithash(githash, owner, repo string) db.Q {
+	return db.Query(bson.M{
+		bsonutil.GetDottedKeyName(githubPatchDataKey, headHashKey):                        githash,
+		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchBaseOwnerKey): owner,
+		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchBaseRepoKey):  repo,
+	})
 }
 
 type ProjectOrUserPatchesOptions struct {
