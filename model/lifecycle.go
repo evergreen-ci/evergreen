@@ -522,7 +522,7 @@ func RefreshTasksCache(ctx context.Context, buildIDs []string) error {
 }
 
 // Small cache struct that allows us to reference properties of the build without performing duplicate lookups.
-type createTasksForBuildOptions struct {
+type createTasksForBuildCache struct {
 	generatorIsGithubCheck *bool
 	dependencyTasks        map[string]*task.Task
 	displayTaskUpdates     map[string]struct {
@@ -533,7 +533,7 @@ type createTasksForBuildOptions struct {
 }
 
 // addTasksToBuild creates/activates the tasks for the given existing build.
-func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo, opts createTasksForBuildOptions) (*build.Build, task.Tasks, bool, bool, error) {
+func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo, opts createTasksForBuildCache) (*build.Build, task.Tasks, bool, bool, error) {
 	// Find the build variant for this project/build
 	creationInfo.BuildVariant = creationInfo.Project.FindBuildVariant(creationInfo.Build.BuildVariant)
 	if creationInfo.BuildVariant == nil {
@@ -677,7 +677,7 @@ func CreateBuildFromVersionNoInsert(ctx context.Context, creationInfo TaskCreati
 	// create all the necessary tasks for the build
 	creationInfo.BuildVariant = buildVariant
 	creationInfo.Build = b
-	tasksForBuild, err := createTasksForBuild(ctx, creationInfo, createTasksForBuildOptions{})
+	tasksForBuild, err := createTasksForBuild(ctx, creationInfo, createTasksForBuildCache{})
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "creating tasks for build '%s'", b.Id)
 	}
@@ -726,7 +726,7 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project, requester, bra
 // slice of all of the tasks created, as well as an error if any occurs.
 // The slice of tasks will be in the same order as the project's specified tasks
 // appear in the specified build variant.
-func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo, opts createTasksForBuildOptions) (task.Tasks, error) {
+func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo, opts createTasksForBuildCache) (task.Tasks, error) {
 	// The list of tasks we should create.
 	// If tasks are passed in, then use those, otherwise use the default set.
 	tasksToCreate := []BuildVariantTaskUnit{}
@@ -1818,7 +1818,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 		creationInfo.DisplayNames = displayTasksToAdd
 		creationInfo.DistroAliases = distroAliases
 		creationInfo.TestSelectionParams.CanBuildVariantEnableTestSelection = canBuildVariantEnableTestSelection(b.BuildVariant, creationInfo)
-		_, tasks, hasGitHubCheck, hasUnfinishedEssentialTask, err := addTasksToBuild(ctx, creationInfo, createTasksForBuildOptions{
+		_, tasks, hasGitHubCheck, hasUnfinishedEssentialTask, err := addTasksToBuild(ctx, creationInfo, createTasksForBuildCache{
 			generatorIsGithubCheck: generatorIsGithubCheck,
 			dependencyTasks:        dependencyTasks,
 			displayTaskUpdates:     displayTaskUpdates,
