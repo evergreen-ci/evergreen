@@ -277,7 +277,9 @@ manually authorized to run by a logged-in user.
 You can conditionally include PR alias entries based on GitHub PR labels by adding a
 `required_labels` field to your `github_pr_aliases` in the project YAML. This lets teams
 gate specific test suites behind labels like `myproject:e2e`, reducing work on PRs that don't need those tests.
-Removing labels is a no-op. Tasks that were already created are not removed.
+
+Removing labels is a no-op. Tasks that were already created are not removed. Labels added
+before the PR patch finishes creating won't take effect until the next push or `evergreen retry`.
 
 ##### Configuration
 
