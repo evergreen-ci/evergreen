@@ -1510,3 +1510,25 @@ buildvariants:
 		})
 	}
 }
+
+func TestUserCanModifyPatch(t *testing.T) {
+	p := patch.Patch{
+		Project: "my_project",
+		Author:  "patch_owner",
+	}
+
+	t.Run("AuthorShouldReturnTrue", func(t *testing.T) {
+		u := &user.DBUser{Id: "patch_owner"}
+		assert.True(t, UserCanModifyPatch(t.Context(), u, p))
+	})
+
+	t.Run("NonOwnerWithoutRolesShouldReturnFalse", func(t *testing.T) {
+		u := &user.DBUser{Id: "other_user"}
+		assert.False(t, UserCanModifyPatch(t.Context(), u, p))
+	})
+
+	t.Run("APIOnlyUserShouldReturnTrue", func(t *testing.T) {
+		u := &user.DBUser{Id: "service_user", OnlyAPI: true}
+		assert.True(t, UserCanModifyPatch(t.Context(), u, p))
+	})
+}
