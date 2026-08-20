@@ -210,6 +210,9 @@ models:
         value: github.com/evergreen-ci/evergreen.DispatcherVersionRevisedWithDependencies
   Distro:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDistro
+    fields:
+      id:
+        fieldName: "Name"
   DistroInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDistro
   DistroInfo:

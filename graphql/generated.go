@@ -475,6 +475,7 @@ type ComplexityRoot struct {
 		Arch                  func(childComplexity int) int
 		AuthorizedKeysFile    func(childComplexity int) int
 		AvailableRegions      func(childComplexity int) int
+		BootstrapMethod       func(childComplexity int) int
 		BootstrapSettings     func(childComplexity int) int
 		ContainerPool         func(childComplexity int) int
 		CostData              func(childComplexity int) int
@@ -490,6 +491,7 @@ type ComplexityRoot struct {
 		ImageID               func(childComplexity int) int
 		IsCluster             func(childComplexity int) int
 		IsVirtualWorkstation  func(childComplexity int) int
+		IsWindows             func(childComplexity int) int
 		Mountpoints           func(childComplexity int) int
 		Name                  func(childComplexity int) int
 		Note                  func(childComplexity int) int
@@ -2482,6 +2484,9 @@ type CostResolver interface {
 }
 type DistroResolver interface {
 	AvailableRegions(ctx context.Context, obj *model.APIDistro) ([]string, error)
+	BootstrapMethod(ctx context.Context, obj *model.APIDistro) (string, error)
+
+	IsWindows(ctx context.Context, obj *model.APIDistro) (bool, error)
 
 	ProviderSettingsList(ctx context.Context, obj *model.APIDistro) ([]map[string]any, error)
 }
@@ -4389,6 +4394,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Distro.AvailableRegions(childComplexity), true
+	case "Distro.bootstrapMethod":
+		if e.complexity.Distro.BootstrapMethod == nil {
+			break
+		}
+
+		return e.complexity.Distro.BootstrapMethod(childComplexity), true
 	case "Distro.bootstrapSettings":
 		if e.complexity.Distro.BootstrapSettings == nil {
 			break
@@ -4479,13 +4490,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Distro.IsVirtualWorkstation(childComplexity), true
+	case "Distro.isWindows":
+		if e.complexity.Distro.IsWindows == nil {
+			break
+		}
+
+		return e.complexity.Distro.IsWindows(childComplexity), true
 	case "Distro.mountpoints":
 		if e.complexity.Distro.Mountpoints == nil {
 			break
 		}
 
 		return e.complexity.Distro.Mountpoints(childComplexity), true
-	case "Distro.name":
+	case "Distro.id", "Distro.name":
 		if e.complexity.Distro.Name == nil {
 			break
 		}
@@ -25374,6 +25391,35 @@ func (ec *executionContext) fieldContext_DispatcherSettings_version(_ context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _Distro_id(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Distro_id,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalNString2ᚖstring,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Distro_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Distro",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Distro_adminOnly(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -25507,6 +25553,35 @@ func (ec *executionContext) _Distro_availableRegions(ctx context.Context, field 
 }
 
 func (ec *executionContext) fieldContext_Distro_availableRegions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Distro",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Distro_bootstrapMethod(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Distro_bootstrapMethod,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Distro().BootstrapMethod(ctx, obj)
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Distro_bootstrapMethod(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Distro",
 		Field:      field,
@@ -25957,6 +26032,35 @@ func (ec *executionContext) fieldContext_Distro_isCluster(_ context.Context, fie
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Distro_isWindows(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Distro_isWindows,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Distro().IsWindows(ctx, obj)
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Distro_isWindows(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Distro",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
 		},
@@ -30342,6 +30446,8 @@ func (ec *executionContext) fieldContext_Host_distro(_ context.Context, field gr
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "id":
+				return ec.fieldContext_Distro_id(ctx, field)
 			case "adminOnly":
 				return ec.fieldContext_Distro_adminOnly(ctx, field)
 			case "aliases":
@@ -30352,6 +30458,8 @@ func (ec *executionContext) fieldContext_Host_distro(_ context.Context, field gr
 				return ec.fieldContext_Distro_authorizedKeysFile(ctx, field)
 			case "availableRegions":
 				return ec.fieldContext_Distro_availableRegions(ctx, field)
+			case "bootstrapMethod":
+				return ec.fieldContext_Distro_bootstrapMethod(ctx, field)
 			case "bootstrapSettings":
 				return ec.fieldContext_Distro_bootstrapSettings(ctx, field)
 			case "containerPool":
@@ -30378,6 +30486,8 @@ func (ec *executionContext) fieldContext_Host_distro(_ context.Context, field gr
 				return ec.fieldContext_Distro_imageId(ctx, field)
 			case "isCluster":
 				return ec.fieldContext_Distro_isCluster(ctx, field)
+			case "isWindows":
+				return ec.fieldContext_Distro_isWindows(ctx, field)
 			case "isVirtualWorkStation":
 				return ec.fieldContext_Distro_isVirtualWorkStation(ctx, field)
 			case "mountpoints":
@@ -32772,6 +32882,8 @@ func (ec *executionContext) fieldContext_Image_distros(_ context.Context, field 
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "id":
+				return ec.fieldContext_Distro_id(ctx, field)
 			case "adminOnly":
 				return ec.fieldContext_Distro_adminOnly(ctx, field)
 			case "aliases":
@@ -32782,6 +32894,8 @@ func (ec *executionContext) fieldContext_Image_distros(_ context.Context, field 
 				return ec.fieldContext_Distro_authorizedKeysFile(ctx, field)
 			case "availableRegions":
 				return ec.fieldContext_Distro_availableRegions(ctx, field)
+			case "bootstrapMethod":
+				return ec.fieldContext_Distro_bootstrapMethod(ctx, field)
 			case "bootstrapSettings":
 				return ec.fieldContext_Distro_bootstrapSettings(ctx, field)
 			case "containerPool":
@@ -32808,6 +32922,8 @@ func (ec *executionContext) fieldContext_Image_distros(_ context.Context, field 
 				return ec.fieldContext_Distro_imageId(ctx, field)
 			case "isCluster":
 				return ec.fieldContext_Distro_isCluster(ctx, field)
+			case "isWindows":
+				return ec.fieldContext_Distro_isWindows(ctx, field)
 			case "isVirtualWorkStation":
 				return ec.fieldContext_Distro_isVirtualWorkStation(ctx, field)
 			case "mountpoints":
@@ -52460,6 +52576,8 @@ func (ec *executionContext) fieldContext_Query_distro(ctx context.Context, field
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "id":
+				return ec.fieldContext_Distro_id(ctx, field)
 			case "adminOnly":
 				return ec.fieldContext_Distro_adminOnly(ctx, field)
 			case "aliases":
@@ -52470,6 +52588,8 @@ func (ec *executionContext) fieldContext_Query_distro(ctx context.Context, field
 				return ec.fieldContext_Distro_authorizedKeysFile(ctx, field)
 			case "availableRegions":
 				return ec.fieldContext_Distro_availableRegions(ctx, field)
+			case "bootstrapMethod":
+				return ec.fieldContext_Distro_bootstrapMethod(ctx, field)
 			case "bootstrapSettings":
 				return ec.fieldContext_Distro_bootstrapSettings(ctx, field)
 			case "containerPool":
@@ -52496,6 +52616,8 @@ func (ec *executionContext) fieldContext_Query_distro(ctx context.Context, field
 				return ec.fieldContext_Distro_imageId(ctx, field)
 			case "isCluster":
 				return ec.fieldContext_Distro_isCluster(ctx, field)
+			case "isWindows":
+				return ec.fieldContext_Distro_isWindows(ctx, field)
 			case "isVirtualWorkStation":
 				return ec.fieldContext_Distro_isVirtualWorkStation(ctx, field)
 			case "mountpoints":
@@ -52624,6 +52746,8 @@ func (ec *executionContext) fieldContext_Query_distros(ctx context.Context, fiel
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "id":
+				return ec.fieldContext_Distro_id(ctx, field)
 			case "adminOnly":
 				return ec.fieldContext_Distro_adminOnly(ctx, field)
 			case "aliases":
@@ -52634,6 +52758,8 @@ func (ec *executionContext) fieldContext_Query_distros(ctx context.Context, fiel
 				return ec.fieldContext_Distro_authorizedKeysFile(ctx, field)
 			case "availableRegions":
 				return ec.fieldContext_Distro_availableRegions(ctx, field)
+			case "bootstrapMethod":
+				return ec.fieldContext_Distro_bootstrapMethod(ctx, field)
 			case "bootstrapSettings":
 				return ec.fieldContext_Distro_bootstrapSettings(ctx, field)
 			case "containerPool":
@@ -52660,6 +52786,8 @@ func (ec *executionContext) fieldContext_Query_distros(ctx context.Context, fiel
 				return ec.fieldContext_Distro_imageId(ctx, field)
 			case "isCluster":
 				return ec.fieldContext_Distro_isCluster(ctx, field)
+			case "isWindows":
+				return ec.fieldContext_Distro_isWindows(ctx, field)
 			case "isVirtualWorkStation":
 				return ec.fieldContext_Distro_isVirtualWorkStation(ctx, field)
 			case "mountpoints":
@@ -58576,6 +58704,8 @@ func (ec *executionContext) fieldContext_SaveDistroPayload_distro(_ context.Cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "id":
+				return ec.fieldContext_Distro_id(ctx, field)
 			case "adminOnly":
 				return ec.fieldContext_Distro_adminOnly(ctx, field)
 			case "aliases":
@@ -58586,6 +58716,8 @@ func (ec *executionContext) fieldContext_SaveDistroPayload_distro(_ context.Cont
 				return ec.fieldContext_Distro_authorizedKeysFile(ctx, field)
 			case "availableRegions":
 				return ec.fieldContext_Distro_availableRegions(ctx, field)
+			case "bootstrapMethod":
+				return ec.fieldContext_Distro_bootstrapMethod(ctx, field)
 			case "bootstrapSettings":
 				return ec.fieldContext_Distro_bootstrapSettings(ctx, field)
 			case "containerPool":
@@ -58612,6 +58744,8 @@ func (ec *executionContext) fieldContext_SaveDistroPayload_distro(_ context.Cont
 				return ec.fieldContext_Distro_imageId(ctx, field)
 			case "isCluster":
 				return ec.fieldContext_Distro_isCluster(ctx, field)
+			case "isWindows":
+				return ec.fieldContext_Distro_isWindows(ctx, field)
 			case "isVirtualWorkStation":
 				return ec.fieldContext_Distro_isVirtualWorkStation(ctx, field)
 			case "mountpoints":
@@ -94185,6 +94319,11 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Distro")
+		case "id":
+			out.Values[i] = ec._Distro_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "adminOnly":
 			out.Values[i] = ec._Distro_adminOnly(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -94215,6 +94354,42 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 					}
 				}()
 				res = ec._Distro_availableRegions(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "bootstrapMethod":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Distro_bootstrapMethod(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -94306,6 +94481,42 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "isWindows":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Distro_isWindows(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "isVirtualWorkStation":
 			out.Values[i] = ec._Distro_isVirtualWorkStation(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
