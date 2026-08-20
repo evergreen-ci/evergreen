@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strconv"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
@@ -39,16 +38,14 @@ func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) 
 
 // BuildBaron is the resolver for the buildBaron field.
 func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, execution int) (*BuildBaron, error) {
-	execString := strconv.Itoa(execution)
-
-	searchReturnInfo, bbConfig, err := model.GetSearchReturnInfo(ctx, taskID, execString)
+	searchReturnInfo, bbConfig, err := model.GetBuildBaron(ctx, taskID, execution)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 
 	return &BuildBaron{
 		SearchReturnInfo:        searchReturnInfo,
-		BuildBaronConfigured:    bbConfig.ProjectFound && bbConfig.SearchConfigured,
+		BuildBaronConfigured:    bbConfig.SearchConfigured,
 		BbTicketCreationDefined: bbConfig.TicketCreationDefined,
 	}, nil
 }
@@ -630,7 +627,8 @@ func (r *queryResolver) MyVolumes(ctx context.Context) ([]*host.Volume, error) {
 
 // Task is the resolver for the task field.
 func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int) (*restModel.APITask, error) {
-	return getTask(ctx, taskID, execution, r.sc.GetURL())
+	settings := evergreen.GetEnvironment().Settings()
+	return getTask(ctx, taskID, execution, settings.Ui.Url)
 }
 
 // TaskAllExecutions is the resolver for the taskAllExecutions field.
@@ -1115,19 +1113,13 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		}
 	}
 
-	flattenedVersions := []*restModel.APIVersion{}
 	versionPtrs := []*model.Version{}
 	for _, v := range allVersions {
-		apiVersion := &restModel.APIVersion{}
-		apiVersion.BuildFromService(ctx, v)
-		flattenedVersions = append(flattenedVersions, apiVersion)
-
 		vCopy := v
 		versionPtrs = append(versionPtrs, &vCopy)
 	}
 
 	results := &Waterfall{
-		FlattenedVersions: flattenedVersions,
 		Pagination: &WaterfallPagination{
 			ActiveVersionIds:       activeVersionIds,
 			NextPageOrder:          nextPageOrder,

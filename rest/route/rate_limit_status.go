@@ -62,6 +62,10 @@ func (h *userRateLimitGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	cfg := h.env.Settings().RateLimit
+	if slices.Contains(cfg.ExemptUserIDs, u.Username()) {
+		return rateLimitingDisabledResponder()
+	}
+
 	perHour, burst := limitsFor(&cfg, evergreen.RateLimitSurfaceREST, u.OnlyAPI)
 	if perHour == 0 {
 		// No limit configured for this user's tier is functionally the same as the

@@ -41,7 +41,7 @@ func runTunablePlanner(ctx context.Context, d *distro.Distro, tasks []task.Task,
 	}
 
 	plan := PrepareTasksForPlanning(ctx, d, tasks).Export(ctx)
-	info := GetDistroQueueInfo(ctx, d.Id, plan, d.GetTargetTime(), opts)
+	info := GetDistroQueueInfo(ctx, d, plan, opts)
 	info.SecondaryQueue = opts.IsSecondaryQueue
 	info.PlanCreatedAt = opts.StartedAt
 	if err = PersistTaskQueue(ctx, d.Id, plan, info, opts.MaxScheduledTasksPerDistro); err != nil {
@@ -54,7 +54,7 @@ func runTunablePlanner(ctx context.Context, d *distro.Distro, tasks []task.Task,
 const RunnerName = "scheduler"
 
 // GetDistroQueueInfo returns the distroQueueInfo for the given set of tasks having set the task.ExpectedDuration for each task.
-func GetDistroQueueInfo(ctx context.Context, distroID string, tasks []task.Task, maxDurationThreshold time.Duration, opts TaskPlannerOptions) model.DistroQueueInfo {
+func GetDistroQueueInfo(ctx context.Context, d *distro.Distro, tasks []task.Task, opts TaskPlannerOptions) model.DistroQueueInfo {
 	var distroExpectedDuration, distroDurationOverThreshold time.Duration
 	var distroCountDurationOverThreshold, distroCountWaitOverThreshold, numTasksDepsMet, numMergeQueueTasks, numLargeParserProjectTasks int
 	var isSecondaryQueue bool
@@ -63,6 +63,19 @@ func GetDistroQueueInfo(ctx context.Context, distroID string, tasks []task.Task,
 	for _, t := range tasks {
 		depCache[t.Id] = t
 	}
+
+	// Resolve dependency state up front because the target time below depends on it.
+	depsMet := make(map[string]bool, len(tasks))
+	var hasMergeQueueTasks bool
+	for i := range tasks {
+		met := checkDependenciesMet(ctx, &tasks[i], depCache)
+		depsMet[tasks[i].Id] = met
+		if met && evergreen.IsGithubMergeQueueRequester(tasks[i].Requester) {
+			hasMergeQueueTasks = true
+		}
+	}
+
+	maxDurationThreshold := d.GetTargetTimeForQueue(hasMergeQueueTasks)
 
 	for i, task := range tasks {
 		group := task.TaskGroup
@@ -73,14 +86,16 @@ func GetDistroQueueInfo(ctx context.Context, distroID string, tasks []task.Task,
 
 		duration := task.FetchExpectedDuration(ctx).Average
 
-		if task.DistroId != distroID {
+		if task.DistroId != d.Id {
 			isSecondaryQueue = true
 		}
+
+		dependenciesMet := depsMet[task.Id]
 
 		var exists bool
 		var info *model.TaskGroupInfo
 		if info, exists = taskGroupInfosMap[name]; exists {
-			if !opts.IncludesDependencies || checkDependenciesMet(ctx, &task, depCache) {
+			if !opts.IncludesDependencies || dependenciesMet {
 				info.Count++
 				info.ExpectedDuration += duration
 			}
@@ -90,13 +105,12 @@ func GetDistroQueueInfo(ctx context.Context, distroID string, tasks []task.Task,
 				MaxHosts: task.TaskGroupMaxHosts,
 			}
 
-			if !opts.IncludesDependencies || checkDependenciesMet(ctx, &task, depCache) {
+			if !opts.IncludesDependencies || dependenciesMet {
 				info.Count++
 				info.ExpectedDuration += duration
 			}
 		}
 
-		dependenciesMet := checkDependenciesMet(ctx, &task, depCache)
 		if dependenciesMet {
 			numTasksDepsMet++
 			if evergreen.IsGithubMergeQueueRequester(task.Requester) {

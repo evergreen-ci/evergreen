@@ -15,7 +15,7 @@ import (
 func TestGenerateTasksEstimationsOnlyIncludesSucceeded(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	assert.NoError(db.ClearCollections(Collection))
+	clearTasksAndEstimateCaches(t)
 
 	ctx := t.Context()
 
@@ -84,7 +84,7 @@ func TestGenerateTasksEstimationsNoPreviousTasks(t *testing.T) {
 func TestGetBatchedGenerateTasksEstimations(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	assert.NoError(db.ClearCollections(Collection))
+	clearTasksAndEstimateCaches(t)
 
 	ctx := t.Context()
 
@@ -157,6 +157,64 @@ func TestGetBatchedGenerateTasksEstimations(t *testing.T) {
 	assert.Equal(4, results["gen_b"].EstimatedNumActivatedGeneratedTasks)
 
 	assert.NotContains(results, "gen_c")
+}
+
+func TestGetBatchedGenerateTasksEstimationsSharesEstimatesAcrossBuilds(t *testing.T) {
+	const (
+		project      = "proj"
+		buildVariant = "bv"
+	)
+
+	clearTasksAndEstimateCaches(t)
+
+	ctx := t.Context()
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).Indexes().CreateOne(ctx, mongo.IndexModel{Keys: TaskHistoricalDataIndex})
+	require.NoError(t, err)
+
+	insertHistory := func(id, displayName string, generated, activated int) {
+		history := &Task{
+			Id:                         id,
+			DisplayName:                displayName,
+			BuildVariant:               buildVariant,
+			Project:                    project,
+			Status:                     evergreen.TaskSucceeded,
+			NumGeneratedTasks:          generated,
+			NumActivatedGeneratedTasks: activated,
+			StartTime:                  time.Now().Add(-2 * time.Hour),
+			FinishTime:                 time.Now().Add(-1 * time.Hour),
+			GeneratedTasks:             true,
+		}
+		require.NoError(t, history.Insert(ctx))
+	}
+
+	insertHistory("h1", "gen_a", 10, 8)
+	// gen_zero's real estimate is zero; it must stay distinguishable from gen_none, which has no history.
+	insertHistory("h2", "gen_zero", 0, 0)
+	results, err := GetBatchedGenerateTasksEstimations(ctx, project, buildVariant, []string{"gen_a", "gen_zero", "gen_none"})
+	require.NoError(t, err)
+	require.Contains(t, results, "gen_a")
+	assert.Equal(t, 10, results["gen_a"].EstimatedNumGeneratedTasks)
+	require.Contains(t, results, "gen_zero")
+	assert.Equal(t, 0, results["gen_zero"].EstimatedNumGeneratedTasks)
+	assert.NotContains(t, results, "gen_none")
+
+	// Replacing the history proves gen_a and gen_zero come from the cache while gen_b, never queried, is computed
+	// fresh. gen_none stays absent from its no-history entry, and gen_zero stays present.
+	require.NoError(t, db.ClearCollections(Collection))
+	insertHistory("h3", "gen_b", 20, 16)
+	insertHistory("h4", "gen_none", 99, 99)
+	insertHistory("h5", "gen_zero", 99, 99)
+
+	results, err = GetBatchedGenerateTasksEstimations(ctx, project, buildVariant, []string{"gen_a", "gen_b", "gen_zero", "gen_none"})
+	require.NoError(t, err)
+	require.Contains(t, results, "gen_a")
+	assert.Equal(t, 10, results["gen_a"].EstimatedNumGeneratedTasks)
+	assert.Equal(t, 8, results["gen_a"].EstimatedNumActivatedGeneratedTasks)
+	require.Contains(t, results, "gen_b")
+	assert.Equal(t, 20, results["gen_b"].EstimatedNumGeneratedTasks)
+	require.Contains(t, results, "gen_zero")
+	assert.Equal(t, 0, results["gen_zero"].EstimatedNumGeneratedTasks)
+	assert.NotContains(t, results, "gen_none")
 }
 
 func TestGetBatchedGenerateTasksEstimationsEmpty(t *testing.T) {

@@ -3,7 +3,6 @@ package model
 import (
 	"context"
 	"net/url"
-	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -97,41 +96,38 @@ func ValidateBbProject(ctx context.Context, projName string, proj evergreen.Buil
 	return catcher.Resolve()
 }
 
-type buildBaronConfig struct {
-	ProjectFound bool
-	// if search project is configured, then that's an
-	// indication that the build baron is configured
+// BuildBaronConfig describes the Build Baron features configured for a project.
+type BuildBaronConfig struct {
 	SearchConfigured      bool
 	TicketCreationDefined bool
 }
 
-func GetSearchReturnInfo(ctx context.Context, taskId string, exec string) (*thirdparty.SearchReturnInfo, buildBaronConfig, error) {
-	bbConfig := buildBaronConfig{}
-	t, err := BbGetTask(ctx, taskId, exec)
+// GetBuildBaron returns Build Baron configuration and Jira suggestions for a task execution.
+func GetBuildBaron(ctx context.Context, taskID string, execution int) (*thirdparty.SearchReturnInfo, BuildBaronConfig, error) {
+	bbConfig := BuildBaronConfig{}
+	t, err := task.FindOneIdAndExecution(ctx, taskID, execution)
 	if err != nil {
-		return nil, bbConfig, err
+		return nil, bbConfig, errors.Wrap(err, "finding task")
 	}
-	settings := evergreen.GetEnvironment().Settings()
+	if t == nil {
+		return nil, bbConfig, errors.Errorf("no task found for task '%s' and execution %d", taskID, execution)
+	}
+
 	bbProj, ok := GetBuildBaronSettings(ctx, t.Project, t.Version)
 	if !ok {
-		// build baron project not found, meaning it's not configured for
-		// either regular build baron or for a custom ticket filing webhook
+		return nil, bbConfig, nil
+	}
+	bbConfig.SearchConfigured = len(bbProj.TicketSearchProjects) > 0
+	bbConfig.TicketCreationDefined = bbProj.TicketCreateProject != ""
+	if !bbConfig.SearchConfigured {
 		return nil, bbConfig, nil
 	}
 
-	createProject := bbProj.TicketCreateProject
-	if createProject != "" {
-		bbConfig.TicketCreationDefined = true
+	if err = t.PopulateTestResults(ctx); err != nil {
+		return nil, bbConfig, errors.Wrap(err, "populating test results")
 	}
-	bbConfig.TicketCreationDefined = false
 
-	// the build baron is configured if the jira search is configured
-	if len(bbProj.TicketSearchProjects) <= 0 {
-		bbConfig.SearchConfigured = false
-		return nil, bbConfig, nil
-	}
-	bbConfig.SearchConfigured = true
-
+	settings := evergreen.GetEnvironment().Settings()
 	jiraHandler, err := thirdparty.NewJiraHandler(*settings.Jira.Export())
 	if err != nil {
 		return nil, bbConfig, errors.Wrap(err, "creating jira handler")
@@ -139,36 +135,15 @@ func GetSearchReturnInfo(ctx context.Context, taskId string, exec string) (*thir
 	jira := &JiraSuggest{bbProj, jiraHandler}
 	multiSource := &MultiSourceSuggest{jira}
 
-	var tickets []thirdparty.JiraTicket
-	var source string
-
 	jql := t.GetJQL(bbProj.TicketSearchProjects)
-	tickets, source, err = multiSource.Suggest(ctx, t)
+	tickets, source, err := multiSource.Suggest(ctx, t)
 	if err != nil {
 		return nil, bbConfig, errors.Wrap(err, "searching for tickets")
 	}
 
-	bbConfig.ProjectFound = true
-	return &thirdparty.SearchReturnInfo{Issues: tickets, Search: jql, Source: source}, bbConfig, nil
-}
-
-func BbGetTask(ctx context.Context, taskId string, executionString string) (*task.Task, error) {
-	execution, err := strconv.Atoi(executionString)
-	if err != nil {
-		return nil, errors.Wrap(err, "invalid execution number")
-	}
-
-	t, err := task.FindOneIdOldOrNew(ctx, taskId, execution)
-	if err != nil {
-		return nil, errors.Wrap(err, "finding task")
-	}
-	if t == nil {
-		return nil, errors.Errorf("no task found for task '%s' and execution %d", taskId, execution)
-	}
-
-	if err = t.PopulateTestResults(ctx); err != nil {
-		return nil, errors.Wrap(err, "populating test results")
-	}
-
-	return t, nil
+	return &thirdparty.SearchReturnInfo{
+		Issues: tickets,
+		Search: jql,
+		Source: source,
+	}, bbConfig, nil
 }

@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"io"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,6 +19,7 @@ import (
 	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -44,6 +45,19 @@ const (
 	containerCreateMaxAttempts = 6
 
 	containerCreateRetryDelay = 5 * time.Second
+
+	// OwnerLabel marks a container as agent-created for task isolation. The
+	// orphan reaper matches this label rather than the container name so it
+	// cannot remove containers owned by another agent or by a human.
+	OwnerLabel = "evergreen.owner"
+
+	// OwnerLabelValue is the value OwnerLabel carries.
+	OwnerLabelValue = "evergreen-agent-task-isolation"
+
+	// ContainerNamePrefix is the name prefix for agent-created isolation
+	// containers. The reaper matches it as an anchored prefix to identify
+	// containers created before ownership labels existed.
+	ContainerNamePrefix = "evergreen-task-"
 )
 
 // activeEnvFileBaseDir is the runtime base dir, defaulting to envFileBaseDir.
@@ -70,11 +84,12 @@ type Mount struct {
 
 // Config holds the parameters for creating a task isolation container.
 type Config struct {
-	Image    string
-	WorkDir  string // Host path to task working directory.
-	TaskID   string
-	MemoryMB int64 // 0 means no limit.
-	CPUs     int64 // 0 means no limit. In units of whole CPUs.
+	Image         string
+	WorkDir       string // Host path to task working directory.
+	TaskID        string
+	TaskExecution int
+	MemoryMB      int64 // 0 means no limit.
+	CPUs          int64 // 0 means no limit. In units of whole CPUs.
 
 	// ExtraMounts are additional host→container bind mounts layered on top
 	// of the workdir mount. Sources and targets must be absolute paths.
@@ -117,7 +132,7 @@ func (c Config) Validate() error {
 }
 
 func (c Config) containerName() string {
-	return fmt.Sprintf("evergreen-task-%s", c.TaskID)
+	return ContainerNamePrefix + c.TaskID + "-" + strconv.Itoa(c.TaskExecution)
 }
 
 // TaskContainer represents a running isolation container for a single task.
@@ -182,6 +197,11 @@ func CreateAndStart(ctx context.Context, cfg Config) (*TaskContainer, error) {
 		Cmd:        []string{"sleep", "infinity"},
 		WorkingDir: cfg.WorkDir,
 		Tty:        false,
+		Labels: map[string]string{
+			OwnerLabel:                 OwnerLabelValue,
+			evergreen.TagTaskID:        cfg.TaskID,
+			evergreen.TagTaskExecution: strconv.Itoa(cfg.TaskExecution),
+		},
 	}
 
 	mounts := []mount.Mount{

@@ -243,6 +243,10 @@ const (
 	// their distro queue.
 	UnderwaterTaskUnscheduler = "underwater-task-unscheduler"
 
+	// OversizedQueueUnscheduler is the caller associated with unscheduling
+	// patch tasks in long task queues.
+	OversizedQueueUnscheduler = "oversized-queue-unscheduler"
+
 	RestRoutePrefix = "rest"
 	APIRoutePrefix  = "api"
 
@@ -686,6 +690,11 @@ const (
 	AuthorizationHeader  = "Authorization"
 	EnvironmentHeader    = "X-Evergreen-Environment"
 	GraphQLAIAgentHeader = "X-Graphql-Ai-Agent"
+
+	// RefreshGitHubTokenHeader is set to "true" by callers whose installation
+	// token GitHub rejected, to mint a new one in place of whatever Evergreen has
+	// cached.
+	RefreshGitHubTokenHeader = "X-Evergreen-Refresh-GitHub-Token"
 
 	// Rate limiting response headers
 	RateLimitLimitHeader            = "X-RateLimit-Limit"             // Hourly request limit for the user.

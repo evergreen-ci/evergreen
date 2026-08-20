@@ -113,6 +113,10 @@ type ProjectRef struct {
 	BuildBaronSettings evergreen.BuildBaronSettings `bson:"build_baron_settings,omitempty" json:"build_baron_settings" yaml:"build_baron_settings,omitempty"`
 	PerfEnabled        *bool                        `bson:"perf_enabled,omitempty" json:"perf_enabled,omitempty" yaml:"perf_enabled,omitempty"`
 
+	// ArtifactCredentials names the source of the AWS credentials used to presign
+	// this project's signed artifacts.
+	ArtifactCredentials ArtifactCredentialSettings `bson:"artifact_credentials,omitempty" json:"artifact_credentials,omitempty" yaml:"artifact_credentials,omitempty"`
+
 	// RepoRefId is the repo ref id that this project ref tracks, if any.
 	RepoRefId string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
 
@@ -481,12 +485,15 @@ type EmailAlertData struct {
 }
 
 type TestSelectionSettings struct {
-	// Allowed determines if test selection featuers can be used in this project
+	// Allowed determines if test selection features can be used in this project
 	// at all.
 	Allowed *bool `bson:"allowed,omitempty" json:"allowed,omitzero" yaml:"allowed,omitempty"`
 	// DefaultEnabled indicates whether test selection is enabled or disabled by
 	// default for patch tasks in this project.
 	DefaultEnabled *bool `bson:"default_enabled,omitempty" json:"default_enabled,omitzero" yaml:"default_enabled,omitempty"`
+	// MainlineDefaultEnabled indicates whether test selection is enabled for
+	// mainline commit tasks that are otherwise eligible for test selection.
+	MainlineDefaultEnabled *bool `bson:"mainline_default_enabled,omitempty" json:"mainline_default_enabled,omitzero" yaml:"mainline_default_enabled,omitempty"`
 }
 
 var (
@@ -663,6 +670,26 @@ func (p *ProjectRef) IsTestSelectionAllowed() bool {
 
 func (p *ProjectRef) IsTestSelectionDefaultEnabled() bool {
 	return utility.FromBoolPtr(p.TestSelection.DefaultEnabled)
+}
+
+func (p *ProjectRef) IsTestSelectionMainlineDefaultEnabled() bool {
+	return utility.FromBoolPtr(p.TestSelection.MainlineDefaultEnabled)
+}
+
+// IsTestSelectionFilteringEnabled returns whether test selection may filter
+// tests for a task. Patch requesters may use test selection whenever the task
+// is enabled. Mainline commits additionally require the mainline project
+// setting. Other non-patch requesters are not supported.
+func (p *ProjectRef) IsTestSelectionFilteringEnabled(requester string, taskEnabled bool) bool {
+	if !p.IsTestSelectionAllowed() || !taskEnabled {
+		return false
+	}
+	if evergreen.IsPatchRequester(requester) {
+		return true
+	}
+	return requester == evergreen.RepotrackerVersionRequester &&
+		p.IsTestSelectionDefaultEnabled() &&
+		p.IsTestSelectionMainlineDefaultEnabled()
 }
 
 const (
@@ -980,26 +1007,39 @@ func (p *ProjectRef) DetachFromRepo(ctx context.Context, u *user.DBUser) error {
 	return catcher.Resolve()
 }
 
+// ErrRepoRefUnauthorized indicates that the user is not an admin of the repo ref they're
+// trying to attach a project to.
+var ErrRepoRefUnauthorized = errors.New("user is not an admin of the repo")
+
+// checkExistingRepoRefAdmin verifies that the user is allowed to attach the project to the repo ref
+// matching the project's current owner/repo. If no such repo ref exists yet, there is nothing to
+// authorize against, since the user will become its admin.
+func (p *ProjectRef) checkExistingRepoRefAdmin(ctx context.Context, u *user.DBUser) error {
+	repoRef, err := FindRepoRefByOwnerAndRepo(ctx, p.Owner, p.Repo)
+	if err != nil {
+		return errors.Wrapf(err, "finding repo ref for '%s/%s'", p.Owner, p.Repo)
+	}
+	if repoRef == nil {
+		return nil
+	}
+	isRepoAdmin := u.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      repoRef.Id,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	})
+	if !isRepoAdmin {
+		return errors.Wrapf(ErrRepoRefUnauthorized, "user '%s' cannot attach project '%s' to repo '%s' ('%s/%s')", u.Id, p.Id, repoRef.Id, p.Owner, p.Repo)
+	}
+	return nil
+}
+
 // AttachToRepo adds the branch to the relevant repo scopes, and updates the project to point to the repo.
 // Any values that previously were unset will now use the repo value, unless this would introduce
 // a GitHub project conflict. If no repo ref currently exists, the user attaching it will be added as the repo ref admin.
 func (p *ProjectRef) AttachToRepo(ctx context.Context, u *user.DBUser) error {
-	// If repo project exists, only allow repo admins to attach to a project.
-	repoRef, err := FindRepoRefByOwnerAndRepo(ctx, p.Owner, p.Repo)
-	if err != nil {
-		return errors.Wrapf(err, "finding repo ref '%s'", p.RepoRefId)
-	}
-	if repoRef != nil {
-		isRepoAdmin := u.HasPermission(ctx, gimlet.PermissionOpts{
-			Resource:      repoRef.Id,
-			ResourceType:  evergreen.ProjectResourceType,
-			Permission:    evergreen.PermissionProjectSettings,
-			RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-		})
-
-		if !isRepoAdmin {
-			return errors.Errorf("user '%s' does not have permission to attach project '%s' to repo '%s'", u.Id, p.Id, p.Repo)
-		}
+	if err := p.checkExistingRepoRefAdmin(ctx, u); err != nil {
+		return err
 	}
 
 	// Before allowing a project to attach to a repo, verify that this is a valid GitHub organization.
@@ -1035,6 +1075,13 @@ func (p *ProjectRef) AttachToRepo(ctx context.Context, u *user.DBUser) error {
 // updates the project to point to the new repo. Any Github project conflicts are disabled.
 // If no repo ref currently exists for the new repo, the user attaching it will be added as the repo ref admin.
 func (p *ProjectRef) AttachToNewRepo(ctx context.Context, u *user.DBUser) error {
+	// Moving to a repo that already has a repo ref requires the same authorization as AttachToRepo.
+	if p.UseRepoSettings() {
+		if err := p.checkExistingRepoRefAdmin(ctx, u); err != nil {
+			return err
+		}
+	}
+
 	before, err := GetProjectSettingsById(ctx, p.Id, false)
 	if err != nil {
 		return errors.Wrap(err, "getting before project settings event")

@@ -323,6 +323,10 @@ models:
         fieldName: "Host"
       uptime:
         fieldName: "CreationTime"
+  HourlyPatchTaskOverride:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIHourlyPatchTaskOverride
+  HourlyPatchTaskOverrideInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIHourlyPatchTaskOverride
   HostAllocatorSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIHostAllocatorSettings
   HostAllocatorSettingsInput:

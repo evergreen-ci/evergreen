@@ -387,6 +387,45 @@ func (s *AdminSuite) TestProvidersConfig() {
 	s.Equal(config, settings.Providers)
 }
 
+func (s *AdminSuite) TestAWSConfigSubnetTagValidation() {
+	for tName, tCase := range map[string]struct {
+		tagName     string
+		tagValue    string
+		expectedErr string
+	}{
+		"BothSetShouldPass": {
+			tagName:  "name",
+			tagValue: "value",
+		},
+		"NeitherSetShouldPass": {},
+		"TagNameWithoutTagValueShouldError": {
+			tagName:     "name",
+			expectedErr: "must specify a subnet tag value if a subnet tag name is set",
+		},
+		"TagValueWithoutTagNameShouldError": {
+			tagValue:    "value",
+			expectedErr: "must specify a subnet tag name if a subnet tag value is set",
+		},
+	} {
+		s.Run(tName, func() {
+			config := CloudProviders{
+				AWS: AWSConfig{
+					SubnetTagName:  tCase.tagName,
+					SubnetTagValue: tCase.tagValue,
+				},
+			}
+
+			err := config.ValidateAndDefault()
+			if tCase.expectedErr == "" {
+				s.NoError(err)
+				return
+			}
+			s.Require().Error(err)
+			s.Contains(err.Error(), tCase.expectedErr)
+		})
+	}
+}
+
 func (s *AdminSuite) TestRepotrackerConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -410,7 +449,8 @@ func (s *AdminSuite) TestSchedulerConfig() {
 	defer cancel()
 
 	config := SchedulerConfig{
-		TaskFinder: "task_finder",
+		TaskFinder:                  "task_finder",
+		MergeQueueTargetTimeSeconds: 300,
 	}
 
 	err := config.Set(ctx)
@@ -1024,4 +1064,22 @@ func TestReadAdminSecretsUsesParamCache(t *testing.T) {
 	assert.NotEqual(t, settings.Jira.PersonalAccessToken, settings.Slack.Token)
 	assert.NotEqual(t, settings.Jira.PersonalAccessToken, settings.GithubWebhookSecret)
 	assert.NotEqual(t, settings.Slack.Token, settings.GithubWebhookSecret)
+}
+
+func (s *AdminSuite) TestReleaseModeConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	config := ReleaseModeConfig{
+		DistroMaxHostsFactor:                2,
+		TargetTimeSecondsOverride:           600,
+		IdleTimeSecondsOverride:             300,
+		MergeQueueTargetTimeSecondsOverride: 120,
+	}
+
+	s.NoError(config.Set(ctx))
+	settings, err := GetConfig(ctx)
+	s.NoError(err)
+	s.Require().NotNil(settings)
+	s.Equal(config, settings.ReleaseMode)
 }

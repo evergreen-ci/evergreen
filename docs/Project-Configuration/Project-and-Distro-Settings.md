@@ -698,8 +698,10 @@ To enable this feature, the "version control" flag must be enabled on the projec
 
 Once toggled, the settings specified [below](#available-fields) may be defined in YAML, rather than in the project or repo settings page.
 
-**Note**: [included files](Project-Configuration-Files#include) do not currently support version-controlled configurations. Version-controlled configuration must
-be defined in the main YAML file for it to take effect.
+Version-controlled configuration may be defined in the main YAML file or in [included files](Project-Configuration-Files#include).
+Alias lists defined across multiple files are combined in include order, with the main config file's entries first. Settings
+structs (`task_annotation_settings`, `build_baron_settings`, `workstation_config`) may only be defined in one file; defining
+them in multiple files is a validation error.
 
 ### Hierarchical Inheritance
 
@@ -833,17 +835,20 @@ need to run because it's giving a false negative signal about your patch's merge
 a project's tests, reduce time for versions to finish, and save on the cost of running low-signal tasks.
 
 To allow any test selection features to be used in your project, first go to "Test Selection" -> "Project-Level Test
-Selection" and enable it. Doing this is necessary to allow any test selection features to be used. Patch tasks in the
-project may use the [test selection command](Project-Commands#test_selectionget).
+Selection" and enable it. This setting controls whether the project can use test selection features, including test
+quarantine.
 
-To enable test selection by default for all patch tasks, go to "Test Selection" -> "Task-Level Test Selection" and
-enable it. Doing this will enable the usage of the [test selection command](Project-Commands#test_selectionget) in all
-patch tasks by default. This default can still be overridden by choosing specific variants/tasks in which to enable test
-selection when submitting a manual patch from [the CLI](../CLI.md#test-selection).
+The "Task-Level Test Selection" setting controls which tasks run test selection by default:
 
-Test selection can appear enabled on mainline commit versions when these project and task settings are enabled. However,
-the [test selection command](Project-Commands#test_selectionget) only requests selected tests for patch tasks. On
-mainline commits and other non-patch versions, the command writes an empty test list, so no tests are excluded.
+- "Disabled" leaves test selection disabled by default. Manual patches can still enable it for selected variants or
+  tasks from [the CLI](../CLI.md#test-selection).
+- "Enabled for patches" enables test selection by default for manual patches, GitHub pull requests, and merge queue
+  patches.
+- "Enabled for patches and mainline commits" additionally enables test selection for commits created by repotracker.
+
+The task-level setting only has an effect when project-level test selection is enabled. Git tags, periodic builds,
+triggered versions, and other non-patch versions do not run the
+[test selection command](Project-Commands#test_selectionget).
 
 ## GitHub App Settings
 
