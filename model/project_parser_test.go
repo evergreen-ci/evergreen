@@ -4622,7 +4622,7 @@ func BenchmarkLoadProjectWithCrossFileAnchors(b *testing.B) {
 	const numIncludes = 10
 	includes := make([]patch.LocalModuleInclude, 0, numIncludes)
 	filenames := make([]string, 0, numIncludes)
-	for i := 0; i < numIncludes; i++ {
+	for i := range numIncludes {
 		fn := fmt.Sprintf("inc%d.yml", i)
 		filenames = append(filenames, fn)
 		content := fmt.Sprintf(`
