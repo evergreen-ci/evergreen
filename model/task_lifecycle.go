@@ -201,7 +201,7 @@ func resetEarlierSingleHostTaskGroupTasks(ctx context.Context, activatingTasks, 
 // later task group tasks are activated.
 func activateTasksWithDependencies(ctx context.Context, taskIDs []string, caller string) error {
 	tasks, err := task.FindAll(ctx, db.Query(task.ByIdsAndStatus(taskIDs, []string{evergreen.TaskUndispatched})).
-		WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.ActivatedKey, task.BuildIdKey, task.TaskGroupKey, task.TaskGroupMaxHostsKey, task.TaskGroupOrderKey))
+		WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.ActivatedKey, task.BuildIdKey, task.TaskGroupKey, task.TaskGroupMaxHostsKey, task.TaskGroupOrderKey, task.RequesterKey, task.ProjectKey))
 	if err != nil {
 		return errors.Wrap(err, "getting tasks for activation")
 	}

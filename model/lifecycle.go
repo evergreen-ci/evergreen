@@ -66,7 +66,7 @@ func SetVersionActivation(ctx context.Context, versionId string, active bool, ca
 		if err := SetVersionActivated(ctx, versionId, active); err != nil {
 			return errors.Wrapf(err, "setting activated for version '%s'", versionId)
 		}
-		tasksToModify, err = task.FindAll(ctx, db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.BuildIdKey, task.ActivatedKey))
+		tasksToModify, err = task.FindAll(ctx, db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.BuildIdKey, task.ActivatedKey, task.RequesterKey, task.ProjectKey))
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to activate")
 		}
@@ -85,7 +85,7 @@ func SetVersionActivation(ctx context.Context, versionId string, active bool, ca
 			q[task.ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
 		}
 
-		tasksToModify, err = task.FindAll(ctx, db.Query(q).WithFields(task.IdKey, task.ExecutionKey, task.BuildIdKey, task.ActivatedKey))
+		tasksToModify, err = task.FindAll(ctx, db.Query(q).WithFields(task.IdKey, task.ExecutionKey, task.BuildIdKey, task.ActivatedKey, task.RequesterKey, task.ProjectKey))
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to deactivate")
 		}
@@ -152,7 +152,7 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 				{task.ExecutionTasksKey: bson.M{"$elemMatch": bson.M{"$nin": ignoreTasks}}},
 			}
 		}
-		tasksToActivate, err := task.FindAll(ctx, db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.ActivatedKey, task.BuildIdKey, task.TaskGroupKey, task.TaskGroupMaxHostsKey, task.TaskGroupOrderKey))
+		tasksToActivate, err := task.FindAll(ctx, db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.ActivatedKey, task.BuildIdKey, task.TaskGroupKey, task.TaskGroupMaxHostsKey, task.TaskGroupOrderKey, task.RequesterKey, task.ProjectKey))
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to activate")
 		}
@@ -189,7 +189,7 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 			query[task.ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
 		}
 
-		tasks, err := task.FindAll(ctx, db.Query(query).WithFields(task.IdKey, task.ExecutionKey, task.ActivatedKey))
+		tasks, err := task.FindAll(ctx, db.Query(query).WithFields(task.IdKey, task.ExecutionKey, task.ActivatedKey, task.RequesterKey, task.ProjectKey))
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to deactivate")
 		}
@@ -1894,7 +1894,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 func activateExistingInactiveTasks(ctx context.Context, creationInfo TaskCreationInfo, existingBuilds []build.Build, caller string) error {
 	existingTasksToActivate := []task.Task{}
 	for _, b := range existingBuilds {
-		tasksInBuild, err := task.FindAll(ctx, db.Query(task.ByBuildId(b.Id)).WithFields(task.DisplayNameKey, task.ActivatedKey, task.BuildIdKey, task.VersionKey))
+		tasksInBuild, err := task.FindAll(ctx, db.Query(task.ByBuildId(b.Id)).WithFields(task.DisplayNameKey, task.ActivatedKey, task.BuildIdKey, task.VersionKey, task.RequesterKey, task.ProjectKey))
 		if err != nil {
 			return err
 		}

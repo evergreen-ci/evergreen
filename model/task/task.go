@@ -2540,7 +2540,7 @@ func getRecursiveDependenciesUpHelper(ctx context.Context, tasks []Task, depCach
 		return nil, nil
 	}
 
-	deps, err := FindWithFields(ctx, ByIds(tasksToFind), IdKey, DependsOnKey, ExecutionKey, BuildIdKey, StatusKey, TaskGroupKey, ActivatedKey, DisplayNameKey, PriorityKey)
+	deps, err := FindWithFields(ctx, ByIds(tasksToFind), IdKey, DependsOnKey, ExecutionKey, BuildIdKey, StatusKey, TaskGroupKey, ActivatedKey, DisplayNameKey, PriorityKey, RequesterKey, ProjectKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting dependencies")
 	}
@@ -3320,10 +3320,6 @@ func CheckUsersPatchTaskLimit(ctx context.Context, requester, username, repoRefI
 	}
 	// we only care about patch tasks that are to be activated by an actual user
 	if !(requester == evergreen.PatchVersionRequester || requester == evergreen.GithubPRRequester) || evergreen.IsSystemActivator(username) {
-		return nil
-	}
-	s := evergreen.GetEnvironment().Settings()
-	if s.TaskLimits.MaxHourlyPatchTasks == 0 {
 		return nil
 	}
 	numTasksToActivate := 0
