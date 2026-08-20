@@ -305,8 +305,9 @@ func (u *DBUser) checkSchedulingLimit(lastScheduledTasksAt time.Time, currentCou
 	return getNewNumScheduledTasksCounter(0, numTasksModified, activated), true, nil
 }
 
-// projectSchedulingUsage returns the user's hourly scheduling usage for the given project or repo,
-// or a zero-valued usage if they have not scheduled anything in it within the current window.
+// projectSchedulingUsage returns the user's hourly scheduling usage for the
+// given project or repo. If the user has no usage for that project/repo, it
+// returns a new usage for the proejct.
 func (u *DBUser) projectSchedulingUsage(projectOrRepoID string) ProjectSchedulingUsage {
 	for _, usage := range u.PerProjectSchedulingUsage {
 		if usage.ProjectOrRepoID == projectOrRepoID {
