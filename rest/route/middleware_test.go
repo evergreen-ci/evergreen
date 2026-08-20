@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -101,8 +103,7 @@ func TestPrefetchProject(t *testing.T) {
 func TestNewProjectAdminMiddleware(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection))
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
@@ -147,8 +148,7 @@ func TestNewProjectAdminMiddleware(t *testing.T) {
 func TestNewCanCreateMiddleware(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(evergreen.RoleCollection))
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	adminRole := gimlet.Role{
 		ID:          "r1",
@@ -336,8 +336,7 @@ func TestGithubAuthMiddlewareCapsBodySize(t *testing.T) {
 }
 
 func TestTaskAuthMiddleware(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 
@@ -411,8 +410,7 @@ func TestTaskAuthMiddleware(t *testing.T) {
 }
 
 func TestHostAuthMiddleware(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	m := NewHostAuthMiddleware()
 	for testName, testCase := range map[string]func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder){
@@ -490,8 +488,7 @@ func TestHostAuthMiddleware(t *testing.T) {
 
 func TestProjectViewPermission(t *testing.T) {
 	assert := assert.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	require := require.New(t)
 	counter := 0
@@ -592,4 +589,71 @@ func TestProjectViewPermission(t *testing.T) {
 	authHandler.ServeHTTP(rw, req, checkPermission)
 	assert.Equal(http.StatusOK, rw.Code)
 	assert.Equal(1, counter)
+}
+
+func TestURLVarsToDistroScopes(t *testing.T) {
+	require.NoError(t, db.ClearCollections(distro.Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(distro.Collection))
+	})
+
+	targetDistro := distro.Distro{
+		Id: "distro",
+	}
+	require.NoError(t, targetDistro.Insert(t.Context()))
+	otherDistro := distro.Distro{
+		Id: "other-distro",
+	}
+	require.NoError(t, otherDistro.Insert(t.Context()))
+
+	for tName, tCase := range map[string]struct {
+		pathVars           map[string]string
+		queryString        string
+		expectedDistroIDs  []string
+		expectedStatusCode int
+	}{
+		"ResolvesDistroFromPath": {
+			pathVars:           map[string]string{"distro_id": targetDistro.Id},
+			expectedDistroIDs:  []string{targetDistro.Id},
+			expectedStatusCode: http.StatusOK,
+		},
+		"IgnoresQueryStringDistroWhenPathHasDistro": {
+			pathVars:           map[string]string{"distro_id": targetDistro.Id},
+			queryString:        fmt.Sprintf("distro_id=%s", otherDistro.Id),
+			expectedDistroIDs:  []string{targetDistro.Id},
+			expectedStatusCode: http.StatusOK,
+		},
+		"QueryStringOnlyDistroIsNotFound": {
+			queryString:        fmt.Sprintf("distro_id=%s", otherDistro.Id),
+			expectedStatusCode: http.StatusNotFound,
+		},
+		"NonexistentDistroInPathIsNotFound": {
+			pathVars:           map[string]string{"distro_id": "nonexistent-distro"},
+			expectedStatusCode: http.StatusNotFound,
+		},
+		"NoDistroIsNotFound": {
+			expectedStatusCode: http.StatusNotFound,
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			url := "/rest/v2/distros/some-distro"
+			if tCase.queryString != "" {
+				url += "?" + tCase.queryString
+			}
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, url, nil)
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, tCase.pathVars)
+
+			distroIDs, statusCode, err := urlVarsToDistroScopes(req)
+
+			assert.Equal(t, tCase.expectedStatusCode, statusCode)
+			if tCase.expectedStatusCode != http.StatusOK {
+				assert.Error(t, err)
+				assert.Empty(t, distroIDs)
+				return
+			}
+			assert.NoError(t, err)
+			assert.ElementsMatch(t, tCase.expectedDistroIDs, distroIDs)
+		})
+	}
 }

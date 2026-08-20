@@ -1,6 +1,7 @@
 package route
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/redis/go-redis/v9"
@@ -93,6 +96,28 @@ func TestRateLimitMiddlewareNilUserPassesThrough(t *testing.T) {
 	assert.Empty(t, rw.Header().Get(evergreen.RateLimitBurstHeader))
 }
 
+// TestRateLimitMiddlewareHostUserPassesThrough verifies that a request authenticated only as a
+// host (via NewHostAuthMiddleware, which stores the host under model.ApiHostKey rather than
+// attaching a gimlet user) skips rate limiting entirely, the same as a request with no user at all.
+func TestRateLimitMiddlewareHostUserPassesThrough(t *testing.T) {
+	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 1})
+	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceREST)
+
+	r, err := http.NewRequest(http.MethodGet, "/rest/v2/hosts", nil)
+	require.NoError(t, err)
+	r = r.WithContext(context.WithValue(t.Context(), model.ApiHostKey, &host.Host{Id: "h1"}))
+
+	rw := httptest.NewRecorder()
+	ran := false
+	mw.ServeHTTP(rw, r, func(http.ResponseWriter, *http.Request) { ran = true })
+
+	assert.True(t, ran)
+	assert.Equal(t, http.StatusOK, rw.Code)
+	// No headers set, did not go through rate limiter.
+	assert.Empty(t, rw.Header().Get(evergreen.RateLimitLimitHeader))
+	assert.Empty(t, rw.Header().Get(evergreen.RateLimitBurstHeader))
+}
+
 func TestRateLimitMiddlewareZeroLimitPassesThrough(t *testing.T) {
 	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{}) // all zero
 	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceREST)
@@ -171,6 +196,28 @@ func TestRateLimitMiddlewareElevatedUserGetsMoreHeadroom(t *testing.T) {
 	assert.Equal(t, http.StatusTooManyRequests, rw.Code)
 }
 
+func TestRateLimitMiddlewareExemptUserIsNeverLimited(t *testing.T) {
+	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{
+		RESTUserPerHour: 100,
+		RESTUserBurst:   1,
+		ExemptUserIDs:   []string{"exempt"},
+	})
+	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceREST)
+
+	for range 3 {
+		rw, ran := runRateLimit(t, mw, "/rest/v2/hosts", &user.DBUser{Id: "exempt"})
+		assert.True(t, ran)
+		assert.Empty(t, rw.Header().Get(evergreen.RateLimitLimitHeader))
+	}
+
+	// A non-exempt user is still limited by the same config.
+	_, ran := runRateLimit(t, mw, "/rest/v2/hosts", &user.DBUser{Id: "base"})
+	require.True(t, ran)
+	rw, ran := runRateLimit(t, mw, "/rest/v2/hosts", &user.DBUser{Id: "base"})
+	assert.False(t, ran)
+	assert.Equal(t, http.StatusTooManyRequests, rw.Code)
+}
+
 func TestRateLimitMiddlewareWarnOnlyModeServesOverLimit(t *testing.T) {
 	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 1})
 	require.NoError(t, (&evergreen.ServiceFlags{APIRateLimiterDisabled: true}).Set(t.Context()))
@@ -192,7 +239,7 @@ func TestRateLimitMiddlewareRemainingHeaderDecrements(t *testing.T) {
 	u := &user.DBUser{Id: "u"}
 
 	var prev int
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		rw, ran := runRateLimit(t, mw, "/rest/v2/hosts", u)
 		require.True(t, ran)
 		require.Equal(t, http.StatusOK, rw.Code)

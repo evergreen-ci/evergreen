@@ -289,7 +289,7 @@ func GetProjectAliasResults(ctx context.Context, p *model.Project, alias string,
 
 	requester := getRequesterFromAlias(alias)
 	// ResolvePatchVTs takes alias and not projectAliases.Alias because the function already handles all aliases.
-	_, _, variantTasks := p.ResolvePatchVTs(ctx, &patch.Patch{}, requester, alias, includeDeps, "")
+	_, _, variantTasks := p.ResolvePatchVTs(ctx, &patch.Patch{}, requester, []string{alias}, includeDeps, "")
 	for _, variantTask := range variantTasks {
 		matches = append(matches, restModel.APIVariantTasksBuildFromService(variantTask))
 	}

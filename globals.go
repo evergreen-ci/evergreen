@@ -196,6 +196,8 @@ const (
 	MongodbURL              = "MONGO_URL"
 	SharedMongoURL          = "SHARED_MONGO_URL"
 	MongoAWSAuthEnabled     = "MONGO_AWS_AUTH"
+	MongoOIDCAuthEnabled    = "MONGO_OIDC_AUTH"
+	MongoOIDCTokenFile      = "MONGO_OIDC_TOKEN_FILE"
 	EvergreenVersionID      = "EVG_VERSION_ID"
 	EvergreenClientS3Bucket = "EVG_CLIENT_S3_BUCKET"
 	TraceEndpoint           = "TRACE_ENDPOINT"
@@ -240,6 +242,10 @@ const (
 	// and disabling tasks older than the task.UnschedulableThreshold from
 	// their distro queue.
 	UnderwaterTaskUnscheduler = "underwater-task-unscheduler"
+
+	// OversizedQueueUnscheduler is the caller associated with unscheduling
+	// patch tasks in long task queues.
+	OversizedQueueUnscheduler = "oversized-queue-unscheduler"
 
 	RestRoutePrefix = "rest"
 	APIRoutePrefix  = "api"
@@ -581,6 +587,14 @@ const (
 	VersionAdjustedCostOtelAttribute          = "evergreen.version.adjusted_cost"
 	VersionPredictedOnDemandCostOtelAttribute = "evergreen.version.predicted_on_demand_cost"
 	VersionPredictedAdjustedCostOtelAttribute = "evergreen.version.predicted_adjusted_cost"
+	// VersionTotalAdjustedCostOtelAttribute and VersionPredictedTotalAdjustedCostOtelAttribute are pre-summed
+	// totals of all adjusted cost components, matching the total the UI displays for the version.
+	VersionTotalAdjustedCostOtelAttribute          = "evergreen.version.total_adjusted_cost"
+	VersionPredictedTotalAdjustedCostOtelAttribute = "evergreen.version.predicted_total_adjusted_cost"
+	// VersionChildPatchesAdjustedCostOtelAttribute is the summed adjusted cost of the version's child patches,
+	// kept separate from the version's own total.
+	VersionChildPatchesAdjustedCostOtelAttribute = "evergreen.version.child_patches_adjusted_cost"
+	VersionParentPatchIDOtelAttribute            = "evergreen.version.parent_patch_id"
 
 	// EBS cost otel attributes — version-level (throughput)
 	VersionEBSOnDemandThroughputCostOtelAttribute = "evergreen.version.cost.ebs.on_demand_throughput_cost"
@@ -676,6 +690,11 @@ const (
 	AuthorizationHeader  = "Authorization"
 	EnvironmentHeader    = "X-Evergreen-Environment"
 	GraphQLAIAgentHeader = "X-Graphql-Ai-Agent"
+
+	// RefreshGitHubTokenHeader is set to "true" by callers whose installation
+	// token GitHub rejected, to mint a new one in place of whatever Evergreen has
+	// cached.
+	RefreshGitHubTokenHeader = "X-Evergreen-Refresh-GitHub-Token"
 
 	// Rate limiting response headers
 	RateLimitLimitHeader            = "X-RateLimit-Limit"             // Hourly request limit for the user.

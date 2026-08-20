@@ -1495,7 +1495,7 @@ func (s *PatchIntentUnitsSuite) verifyVersionDoc(patchDoc *patch.Patch, expected
 
 	s.Require().Len(versionDoc.BuildVariants, builds)
 
-	for i := 0; i < builds; i++ {
+	for i := range builds {
 		s.True(versionDoc.BuildVariants[i].Activated)
 		s.Zero(versionDoc.BuildVariants[i].ActivateAt)
 		s.NotEmpty(versionDoc.BuildVariants[i].BuildId)
@@ -1628,7 +1628,7 @@ func (s *PatchIntentUnitsSuite) TestProcessTriggerAliases() {
 	s.Require().NoError(latestVersion.Insert(s.ctx))
 
 	latestVersionParserProject := &model.ParserProject{}
-	s.Require().NoError(util.UnmarshalYAML([]byte(`
+	s.Require().NoError(util.UnmarshalYAMLWithFallback([]byte(`
 buildvariants:
 - name: my-build-variant
   display_name: my-build-variant
@@ -1716,7 +1716,7 @@ func (s *PatchIntentUnitsSuite) TestTriggerAliasWithDownstreamRevision() {
 	s.Require().NoError(specificRevision.Insert(s.ctx))
 
 	specificVersionParserProject := &model.ParserProject{}
-	s.Require().NoError(util.UnmarshalYAML([]byte(`
+	s.Require().NoError(util.UnmarshalYAMLWithFallback([]byte(`
 buildvariants:
 - name: my-build-variant
   display_name: my-build-variant
@@ -1782,7 +1782,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTriggerPatchDocGithubPRParentModule() {
 	s.Require().NoError(latestVersion.Insert(s.ctx))
 
 	latestVersionParserProject := &model.ParserProject{}
-	s.Require().NoError(util.UnmarshalYAML([]byte(`
+	s.Require().NoError(util.UnmarshalYAMLWithFallback([]byte(`
 buildvariants:
 - name: my-build-variant
   display_name: my-build-variant
@@ -1858,7 +1858,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTriggerPatchDocGithubPRParentSameBranch
 	s.Require().NoError(latestVersion.Insert(s.ctx))
 
 	latestVersionParserProject := &model.ParserProject{}
-	s.Require().NoError(util.UnmarshalYAML([]byte(`
+	s.Require().NoError(util.UnmarshalYAMLWithFallback([]byte(`
 buildvariants:
 - name: my-build-variant
   display_name: my-build-variant
@@ -1964,7 +1964,7 @@ func (s *PatchIntentUnitsSuite) TestProcessTriggerAliasesWithAliasThatDoesNotMat
 	s.Require().NoError(latestVersion.Insert(s.ctx))
 
 	latestVersionParserProject := &model.ParserProject{}
-	s.Require().NoError(util.UnmarshalYAML([]byte(`
+	s.Require().NoError(util.UnmarshalYAMLWithFallback([]byte(`
 buildvariants:
 - name: my-build-variant
   display_name: my-build-variant
@@ -2037,7 +2037,7 @@ func (s *PatchIntentUnitsSuite) TestProcessTriggerAliasesWithInadequatePermissio
 	s.Require().NoError(latestVersion.Insert(s.ctx))
 
 	latestVersionParserProject := &model.ParserProject{}
-	s.Require().NoError(util.UnmarshalYAML([]byte(`
+	s.Require().NoError(util.UnmarshalYAMLWithFallback([]byte(`
 buildvariants:
 - name: my-build-variant
   display_name: my-build-variant
@@ -2886,5 +2886,130 @@ func TestIsUserAuthorized(t *testing.T) {
 		assert.True(t, authorized)
 		assert.Equal(t, "base-owner", checkedOwner)
 		assert.Equal(t, "base-repo", checkedRepo)
+	})
+
+	t.Run("ExternalForkAuthorWithoutAccessIsUnauthorized", func(t *testing.T) {
+		originalGitHubUserInOrganization := githubUserInOrganization
+		originalAppAuthorizedForOrg := appAuthorizedForOrg
+		originalGitHubUserHasWritePermission := githubUserHasWritePermission
+		t.Cleanup(func() {
+			githubUserInOrganization = originalGitHubUserInOrganization
+			appAuthorizedForOrg = originalAppAuthorizedForOrg
+			githubUserHasWritePermission = originalGitHubUserHasWritePermission
+		})
+
+		githubUserInOrganization = func(ctx context.Context, org, username string) (bool, error) {
+			return false, nil
+		}
+		appAuthorizedForOrg = func(ctx context.Context, org, username string) (bool, error) {
+			return false, nil
+		}
+		var checkedOwner, checkedRepo string
+		githubUserHasWritePermission = func(ctx context.Context, owner, repo, username string) (bool, error) {
+			checkedOwner = owner
+			checkedRepo = repo
+			return false, nil
+		}
+
+		j := &patchIntentProcessor{}
+		patchDoc := &patch.Patch{
+			GithubPatchData: thirdparty.GithubPatch{
+				BaseOwner: "base-owner",
+				BaseRepo:  "base-repo",
+				HeadOwner: "fork-owner",
+				HeadRepo:  "fork-repo",
+				PRNumber:  123,
+				Author:    "external-user",
+			},
+		}
+
+		authorized, err := j.isUserAuthorized(t.Context(), patchDoc, "required-org", "external-user")
+
+		assert.NoError(t, err)
+		assert.False(t, authorized)
+		assert.Equal(t, "base-owner", checkedOwner)
+		assert.Equal(t, "base-repo", checkedRepo)
+	})
+
+	t.Run("AutoAuthorizesDependabot", func(t *testing.T) {
+		originalGitHubUserInOrganization := githubUserInOrganization
+		originalAppAuthorizedForOrg := appAuthorizedForOrg
+		originalGitHubUserHasWritePermission := githubUserHasWritePermission
+		t.Cleanup(func() {
+			githubUserInOrganization = originalGitHubUserInOrganization
+			appAuthorizedForOrg = originalAppAuthorizedForOrg
+			githubUserHasWritePermission = originalGitHubUserHasWritePermission
+		})
+		var consultedFallback bool
+		githubUserInOrganization = func(ctx context.Context, org, username string) (bool, error) {
+			consultedFallback = true
+			return false, nil
+		}
+		appAuthorizedForOrg = func(ctx context.Context, org, username string) (bool, error) {
+			consultedFallback = true
+			return false, nil
+		}
+		githubUserHasWritePermission = func(ctx context.Context, owner, repo, username string) (bool, error) {
+			consultedFallback = true
+			return false, nil
+		}
+
+		j := &patchIntentProcessor{}
+		patchDoc := &patch.Patch{
+			GithubPatchData: thirdparty.GithubPatch{
+				BaseOwner: "base-owner",
+				BaseRepo:  "base-repo",
+				HeadOwner: "base-owner",
+				HeadRepo:  "base-repo",
+				PRNumber:  123,
+				Author:    githubDependabotUser,
+			},
+		}
+
+		authorized, err := j.isUserAuthorized(t.Context(), patchDoc, "required-org", githubDependabotUser)
+
+		assert.NoError(t, err)
+		assert.True(t, authorized)
+		assert.False(t, consultedFallback)
+	})
+
+	t.Run("DoesNotAutoAuthorizeForkDependabot", func(t *testing.T) {
+		originalGitHubUserInOrganization := githubUserInOrganization
+		originalAppAuthorizedForOrg := appAuthorizedForOrg
+		originalGitHubUserHasWritePermission := githubUserHasWritePermission
+		t.Cleanup(func() {
+			githubUserInOrganization = originalGitHubUserInOrganization
+			appAuthorizedForOrg = originalAppAuthorizedForOrg
+			githubUserHasWritePermission = originalGitHubUserHasWritePermission
+		})
+		githubUserInOrganization = func(ctx context.Context, org, username string) (bool, error) {
+			return false, nil
+		}
+		appAuthorizedForOrg = func(ctx context.Context, org, username string) (bool, error) {
+			return false, nil
+		}
+		var consultedWritePermission bool
+		githubUserHasWritePermission = func(ctx context.Context, owner, repo, username string) (bool, error) {
+			consultedWritePermission = true
+			return false, nil
+		}
+
+		j := &patchIntentProcessor{}
+		patchDoc := &patch.Patch{
+			GithubPatchData: thirdparty.GithubPatch{
+				BaseOwner: "base-owner",
+				BaseRepo:  "base-repo",
+				HeadOwner: "fork-owner",
+				HeadRepo:  "fork-repo",
+				PRNumber:  123,
+				Author:    githubDependabotUser,
+			},
+		}
+
+		authorized, err := j.isUserAuthorized(t.Context(), patchDoc, "required-org", githubDependabotUser)
+
+		assert.NoError(t, err)
+		assert.False(t, authorized)
+		assert.True(t, consultedWritePermission)
 	})
 }

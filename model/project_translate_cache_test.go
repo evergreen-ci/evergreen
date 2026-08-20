@@ -376,7 +376,7 @@ func TestByteBoundedCacheEvictsLRUToBudget(t *testing.T) {
 
 	makeProject := func(id string) *Project {
 		p := &Project{Identifier: id}
-		for i := 0; i < 50; i++ {
+		for i := range 50 {
 			p.Tasks = append(p.Tasks, ProjectTask{Name: fmt.Sprintf("%s-task-%d", id, i)})
 		}
 		return p

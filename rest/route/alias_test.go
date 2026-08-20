@@ -76,8 +76,7 @@ func TestGetAliasesHandler(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 			require.NoError(t, db.ClearCollections(
 				dbModel.RepoRefCollection,
 				dbModel.ProjectRefCollection,
@@ -127,6 +126,8 @@ func TestGetAliasesHandler(t *testing.T) {
 					},
 				}}
 			require.NoError(t, projectConfig.Insert(t.Context()))
+
+			ctx = context.WithValue(ctx, RequestContext, &dbModel.Context{ProjectRef: projectRef})
 
 			rh, ok := makeFetchAliases().(*aliasGetHandler)
 			require.True(t, ok)

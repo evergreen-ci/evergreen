@@ -22,7 +22,7 @@ func activeMountsUnder(ctx context.Context, dir string) []string {
 	}
 
 	var mounts []string
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		fields := strings.Fields(line)
 		// The mount point is the fifth field.
 		if len(fields) < 5 {

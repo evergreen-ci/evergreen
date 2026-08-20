@@ -2,7 +2,7 @@
   waterfall(
     options: { projectIdentifier: "spruce", date: "2019-11-07T00:00:00Z" }
   ) {
-    flattenedVersions {
+    versions {
       createTime
       id
       order

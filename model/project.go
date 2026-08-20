@@ -1,6 +1,7 @@
 package model
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"maps"
@@ -863,6 +864,14 @@ type TVPair struct {
 
 type TVPairSet []TVPair
 
+// dedupeTVPairs removes duplicate task/variant pairs
+func dedupeTVPairs(pairs TVPairSet) TVPairSet {
+	slices.SortFunc(pairs, func(a, b TVPair) int {
+		return cmp.Or(cmp.Compare(a.Variant, b.Variant), cmp.Compare(a.TaskName, b.TaskName))
+	})
+	return slices.Compact(pairs)
+}
+
 // ByVariant returns a list of TVPairs filtered to include only those
 // for the given variant
 func (tvps TVPairSet) ByVariant(variant string) TVPairSet {
@@ -1125,7 +1134,7 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, knownHo
 		return nil, errors.New("task cannot be nil")
 	}
 
-	projectRef, err := FindBranchProjectRef(ctx, t.Project)
+	projectRef, err := FindMergedProjectRef(ctx, t.Project, t.Version, false)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project ref")
 	}
@@ -1137,7 +1146,9 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, knownHo
 	expansions.Put("task_name", t.DisplayName)
 	expansions.Put("build_id", t.BuildId)
 	expansions.Put("build_variant", t.BuildVariant)
-	expansions.Put("is_test_selection_enabled", strconv.FormatBool(t.TestSelectionEnabled))
+	expansions.Put("is_test_selection_enabled", strconv.FormatBool(
+		projectRef.IsTestSelectionFilteringEnabled(t.Requester, t.TestSelectionEnabled),
+	))
 	expansions.Put("revision", t.Revision)
 	expansions.Put("github_commit", t.Revision)
 	expansions.Put("activated_by", t.ActivatedBy)
@@ -1399,7 +1410,7 @@ func FindLatestVersionWithValidProject(ctx context.Context, projectId string, pr
 	revisionOrderNum := -1 // only specify in the event of failure
 	var err error
 	var lastGoodVersion *Version
-	for i := 0; i < retryCount; i++ {
+	for range retryCount {
 		lastGoodVersion, err = FindVersionByLastKnownGoodConfig(ctx, projectId, revisionOrderNum)
 		if err != nil {
 			// Database error, don't log critical but try again.
@@ -1471,14 +1482,12 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 			}
 		}
 		if tg, ok := tgMap[bvt.Name]; ok {
-			for _, t := range tg.Tasks {
-				if t == task {
-					// task group tasks need to be repopulated from the task list
-					// Note that the build variant task unit retains the task
-					// group's name.
-					bvt.Populate(*p.FindProjectTask(task), *bv)
-					return &bvt
-				}
+			if slices.Contains(tg.Tasks, task) {
+				// task group tasks need to be repopulated from the task list
+				// Note that the build variant task unit retains the task
+				// group's name.
+				bvt.Populate(*p.FindProjectTask(task), *bv)
+				return &bvt
 			}
 		}
 	}
@@ -1811,8 +1820,8 @@ func (p *Project) IgnoresAllFiles(files []string) bool {
 // variants will run and which tasks will run on each build variant. This
 // filters out tasks that cannot run due to being disabled or having an
 // unmatched requester (e.g. a patch-only task for a mainline commit).
-func (p *Project) BuildProjectTVPairs(ctx context.Context, patchDoc *patch.Patch, alias string) {
-	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.ResolvePatchVTs(ctx, patchDoc, patchDoc.GetRequester(), alias, true, "")
+func (p *Project) BuildProjectTVPairs(ctx context.Context, patchDoc *patch.Patch, aliases []string) {
+	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.ResolvePatchVTs(ctx, patchDoc, patchDoc.GetRequester(), aliases, true, "")
 
 	// Connect the execution tasks to the display tasks.
 	displayTasksToExecTasks := map[string][]string{}
@@ -1843,7 +1852,7 @@ func (p *Project) BuildProjectTVPairs(ctx context.Context, patchDoc *patch.Patch
 // variant. If includeDeps is set, it will also resolve task dependencies. This
 // filters out tasks that cannot run due to being disabled or having an
 // unmatched requester (e.g. a patch-only task for a mainline commit).
-func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, requester, alias string, includeDeps bool, branch string) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
+func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, requester string, aliases []string, includeDeps bool, branch string) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
 	var bvs, bvTags, tasks, taskTags []string
 	for _, bv := range patchDoc.BuildVariants {
 		// Tags should start with "."
@@ -1922,14 +1931,21 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 		}
 	}
 
-	if alias != "" {
+	for _, alias := range aliases {
+		if alias == "" {
+			continue
+		}
 		catcher := grip.NewBasicCatcher()
-		aliases, err := findAliasesForPatch(ctx, p.Identifier, alias, patchDoc)
+		aliasDefs, err := findAliasesForPatch(ctx, p.Identifier, alias, patchDoc)
 		catcher.Wrapf(err, "retrieving alias '%s' for patched project config '%s'", alias, patchDoc.Id.Hex())
+
+		if !catcher.HasErrors() && patchDoc.IsGithubPRPatch() {
+			aliasDefs = filterAliasesByLabels(aliasDefs, patchDoc.GithubPatchData.Labels)
+		}
 
 		aliasPairs := TaskVariantPairs{}
 		if !catcher.HasErrors() {
-			aliasPairs, err = p.BuildProjectTVPairsWithAlias(aliases, requester, branch)
+			aliasPairs, err = p.BuildProjectTVPairsWithAlias(aliasDefs, requester, branch)
 			catcher.Wrap(err, "getting task/variant pairs for alias")
 		}
 		grip.Error(ctx, message.WrapError(catcher.Resolve(), message.Fields{
@@ -1944,6 +1960,11 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 		}
 	}
 
+	// Aliases can select overlapping task/variant pairs, so deduplicate them.
+	if len(aliases) > 1 {
+		pairs.ExecTasks = dedupeTVPairs(pairs.ExecTasks)
+		pairs.DisplayTasks = dedupeTVPairs(pairs.DisplayTasks)
+	}
 	pairs = p.extractDisplayTasks(pairs)
 	if includeDeps {
 		var err error
@@ -2019,6 +2040,7 @@ func (p *Project) IsGenerateTask(taskName string) bool {
 	return ok
 }
 
+// findAliasesForPatch finds all DB entries matching the given alias on the project.
 func findAliasesForPatch(ctx context.Context, projectId, alias string, patchDoc *patch.Patch) ([]ProjectAlias, error) {
 	aliases, err := findAliasInProjectOrRepoFromDb(ctx, projectId, alias)
 	if err != nil {
@@ -2229,16 +2251,15 @@ func dependenciesForTaskUnit(taskUnits []BuildVariantTaskUnit, p *Project) []tas
 	for _, dependentTask := range taskUnits {
 		if dependentTask.GroupName != "" {
 			tg := p.FindTaskGroup(dependentTask.GroupName)
-			if tg == nil || tg.MaxHosts > 1 {
-				continue
-			}
-			// Single host task groups are a special case of dependencies because they implicitly form a linear
-			// dependency chain on the prior task group tasks
-			for i := len(tg.Tasks) - 1; i >= 0; i-- {
-				// Check the task display names since no display name will appear twice
-				// within the same task group
-				if dependentTask.Name == tg.Tasks[i] && i > 0 {
-					dependentTask.DependsOn = append(dependentTask.DependsOn, TaskUnitDependency{Name: tg.Tasks[i-1], Variant: dependentTask.Variant})
+			if tg != nil && tg.MaxHosts <= 1 {
+				// Single host task groups are a special case of dependencies because they implicitly form a linear
+				// dependency chain on the prior task group tasks.
+				for i, v := range slices.Backward(tg.Tasks) {
+					// Check the task display names since no display name will appear twice
+					// within the same task group.
+					if dependentTask.Name == v && i > 0 {
+						dependentTask.DependsOn = append(dependentTask.DependsOn, TaskUnitDependency{Name: tg.Tasks[i-1], Variant: dependentTask.Variant})
+					}
 				}
 			}
 		}
@@ -2425,10 +2446,5 @@ func (bv BuildVariant) ChangedFilesMatchPaths(changedFiles []string) bool {
 
 	// CompileIgnoreLines has a silly API: it always returns a nil error.
 	pathMatcher := ignore.CompileIgnoreLines(paths...)
-	for _, f := range changedFiles {
-		if pathMatcher.MatchesPath(f) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(changedFiles, pathMatcher.MatchesPath)
 }

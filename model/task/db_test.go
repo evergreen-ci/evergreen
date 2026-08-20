@@ -25,8 +25,7 @@ func checkStatuses(t *testing.T, expected string, toCheck Task) {
 }
 
 func TestFindTasksByIds(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("When calling FindTasksByIds...", t, func() {
 		So(db.Clear(Collection), ShouldBeNil)
@@ -57,8 +56,7 @@ func TestFindTasksByIds(t *testing.T) {
 	})
 }
 func TestDisplayTasksByVersion(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("When calling DisplayTasksByVersion...", t, func() {
 		So(db.Clear(Collection), ShouldBeNil)
@@ -127,8 +125,7 @@ func TestDisplayTasksByVersion(t *testing.T) {
 }
 
 func TestNonExecutionTasksByVersion(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert.NoError(t, db.Clear(Collection))
 	displayTask := Task{
@@ -169,8 +166,7 @@ func TestNonExecutionTasksByVersion(t *testing.T) {
 }
 
 func TestFailedTasksByVersion(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("When calling FailedTasksByVersion...", t, func() {
 		So(db.Clear(Collection), ShouldBeNil)
@@ -208,8 +204,7 @@ func TestFailedTasksByVersion(t *testing.T) {
 }
 
 func TestPotentiallyBlockedTasksByIds(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert.NoError(t, db.Clear(Collection))
 	tasks := []Task{
@@ -288,8 +283,7 @@ func TestPotentiallyBlockedTasksByIds(t *testing.T) {
 }
 
 func TestFindTasksByVersionWithChildTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert.NoError(t, db.ClearCollections(Collection))
 	mainVersion := "main_version"
@@ -326,8 +320,7 @@ func TestFindTasksByVersionWithChildTasks(t *testing.T) {
 	}
 }
 func TestFindTasksByBuildIdAndGithubChecks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert.NoError(t, db.ClearCollections(Collection))
 	tasks := []Task{
@@ -367,8 +360,7 @@ func TestFindTasksByBuildIdAndGithubChecks(t *testing.T) {
 }
 
 func TestFindAllFirstExecution(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection, OldCollection))
 	tasks := []Task{
@@ -393,8 +385,7 @@ func TestFindAllFirstExecution(t *testing.T) {
 }
 
 func TestFindOneIdOldOrNew(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -475,8 +466,7 @@ func TestFind(t *testing.T) {
 }
 
 func TestAddHostCreateDetails(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert.NoError(t, db.ClearCollections(Collection))
 	task := Task{Id: "t1", Execution: 0}
@@ -645,8 +635,7 @@ func TestDisplayStatus(t *testing.T) {
 }
 
 func TestFindTaskNamesByBuildVariant(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("Should return unique task names for a given build variant", t, func() {
 		assert.NoError(t, db.ClearCollections(Collection))
@@ -745,8 +734,7 @@ func TestFindTaskNamesByBuildVariant(t *testing.T) {
 }
 
 func TestFindByStaleRunningTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection))
@@ -968,6 +956,85 @@ func TestGetTasksByVersionFilterDisplayTaskMembers(t *testing.T) {
 	assert.Equal(t, "grouped", tasks[1].DisplayName)
 }
 
+func TestGetTasksByVersionFilterDisplayTaskBySubtaskStatus(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+
+	// The display task's aggregate status is success, but it contains an aborted
+	// execution task. Filtering by a subtask status should still surface the
+	// display task even though its own status does not match.
+	abortedExec := Task{
+		Id:                 "aborted-exec",
+		Version:            "v1",
+		DisplayTaskId:      utility.ToStringPtr("display"),
+		Status:             evergreen.TaskFailed,
+		Aborted:            true,
+		DisplayStatusCache: evergreen.TaskAborted,
+		ActivatedTime:      time.Now(),
+	}
+	successExec := Task{
+		Id:                 "success-exec",
+		Version:            "v1",
+		DisplayTaskId:      utility.ToStringPtr("display"),
+		Status:             evergreen.TaskSucceeded,
+		DisplayStatusCache: evergreen.TaskSucceeded,
+		ActivatedTime:      time.Now(),
+	}
+	display := Task{
+		Id:                 "display",
+		Version:            "v1",
+		DisplayOnly:        true,
+		ExecutionTasks:     []string{"aborted-exec", "success-exec"},
+		Status:             evergreen.TaskSucceeded,
+		DisplayStatusCache: evergreen.TaskSucceeded,
+		ActivatedTime:      time.Now(),
+	}
+	standalone := Task{
+		Id:                 "standalone",
+		Version:            "v1",
+		DisplayTaskId:      utility.ToStringPtr(""),
+		Status:             evergreen.TaskFailed,
+		DisplayStatusCache: evergreen.TaskFailed,
+		ActivatedTime:      time.Now(),
+	}
+	require.NoError(t, db.InsertMany(t.Context(), Collection, abortedExec, successExec, display, standalone))
+
+	ctx := context.TODO()
+
+	t.Run("IncludesDisplayTaskWhenOnlyASubtaskMatches", func(t *testing.T) {
+		tasks, count, err := GetTasksByVersion(ctx, "v1", GetTasksByVersionOptions{Statuses: []string{evergreen.TaskAborted}})
+		require.NoError(t, err)
+		assert.Equal(t, 1, count)
+		require.Len(t, tasks, 1)
+		assert.Equal(t, "display", tasks[0].Id)
+	})
+
+	t.Run("IncludesOnlyMatchingSubtaskWhenExecutionTasksAreRequested", func(t *testing.T) {
+		tasks, count, err := GetTasksByVersion(ctx, "v1", GetTasksByVersionOptions{
+			Statuses:              []string{evergreen.TaskAborted},
+			IncludeExecutionTasks: true,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, 1, count)
+		require.Len(t, tasks, 1)
+		assert.Equal(t, "aborted-exec", tasks[0].Id)
+	})
+
+	t.Run("MatchesStandaloneByOwnStatus", func(t *testing.T) {
+		tasks, count, err := GetTasksByVersion(ctx, "v1", GetTasksByVersionOptions{Statuses: []string{evergreen.TaskFailed}})
+		require.NoError(t, err)
+		assert.Equal(t, 1, count)
+		require.Len(t, tasks, 1)
+		assert.Equal(t, "standalone", tasks[0].Id)
+	})
+
+	t.Run("ExcludesDisplayTaskWhenNeitherItNorASubtaskMatches", func(t *testing.T) {
+		tasks, count, err := GetTasksByVersion(ctx, "v1", GetTasksByVersionOptions{Statuses: []string{evergreen.TaskSystemFailed}})
+		require.NoError(t, err)
+		assert.Equal(t, 0, count)
+		assert.Empty(t, tasks)
+	})
+}
+
 func TestGetTasksByVersionIncludeNeverActivatedTasks(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 
@@ -1161,9 +1228,9 @@ func TestGetTasksByVersionErrorHandling(t *testing.T) {
 		DisplayStatusCache:  evergreen.TaskSucceeded,
 	}
 
-	for i := 0; i < 40; i++ {
+	for i := range 40 {
 		tasksToInsert := []any{}
-		for j := 0; j < 1000; j++ {
+		for j := range 1000 {
 			task.Id = fmt.Sprintf("t_%d_%d", i, j)
 			task.BuildVariant = fmt.Sprintf("bv_%d", j)
 			tasksToInsert = append(tasksToInsert, task)
@@ -1823,8 +1890,7 @@ func TestHasMatchingTasks(t *testing.T) {
 }
 
 func TestFindAllUnmarkedDependenciesToBlock(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
@@ -1888,8 +1954,7 @@ func TestFindAllUnmarkedDependenciesToBlock(t *testing.T) {
 }
 
 func TestFindAllUnattainableDependenciesToUnbock(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
@@ -2069,8 +2134,7 @@ func TestCountNumExecutionsForInterval(t *testing.T) {
 }
 
 func TestHasActivatedDependentTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert.NoError(t, db.Clear(Collection))
 	t1 := Task{
@@ -2118,8 +2182,7 @@ func TestHasActivatedDependentTasks(t *testing.T) {
 }
 
 func TestActivateTasksUpdate(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		require.NoError(t, db.Clear(Collection))
@@ -2145,8 +2208,7 @@ func TestActivateTasksUpdate(t *testing.T) {
 		assert.False(t, dbTask.UnattainableDependency)
 	})
 	t.Run("DisabledTask", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 		require.NoError(t, db.ClearCollections(Collection, distro.Collection))
 
 		t0 := Task{
@@ -2178,8 +2240,7 @@ func TestActivateTasksUpdate(t *testing.T) {
 }
 
 func TestFindGeneratedTasksFromID(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection))
@@ -2206,7 +2267,7 @@ func TestFindGeneratedTasksFromID(t *testing.T) {
 			res, err := FindGeneratedTasksFromID(ctx, generatorID)
 			require.NoError(t, err)
 			require.Len(t, res, len(generated))
-			for i := 0; i < len(generated); i++ {
+			for i := range generated {
 				checkGeneratedTaskInfo(t, generated[i], res[i])
 			}
 		},
@@ -2287,8 +2348,7 @@ func TestGetNoPendingGenerateTasks(t *testing.T) {
 }
 
 func TestGetLatestTaskFromImage(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(Collection, distro.Collection))
 	imageID := "distro"
 	d1 := &distro.Distro{

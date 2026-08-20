@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -191,9 +192,7 @@ func defaultAndApplyExpansionsToEnv(env map[string]string, opts modifyEnvOptions
 
 	expansions := opts.expansions.Map()
 	if opts.addExpansionsToEnv {
-		for k, v := range expansions {
-			env[k] = v
-		}
+		maps.Copy(env, expansions)
 	}
 
 	for _, expName := range opts.includeExpansionsInEnv {
@@ -232,7 +231,7 @@ func (c *subprocessExec) getProc(ctx context.Context, execPath string, conf *int
 		AppendTags(c.FullDisplayName()).
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
 		ProcConstructor(func(lctx context.Context, opts *options.Create) (jasper.Process, error) {
-			return runJasperProcess(lctx, c.JasperManager(), c.Background, opts, conf.Task.Id, logger, conf.BackgroundFailures, c.ContinueOnError, conf.BackgroundCommandFailureEnabled)
+			return runJasperProcessWithContainer(lctx, opts, c.FullDisplayName(), c.WorkingDir, conf, c.JasperManager(), c.Background, logger, conf.Task.Id, conf.BackgroundFailures, c.ContinueOnError, conf.BackgroundCommandFailureEnabled)
 		})
 
 	if !c.IgnoreStandardOutput {
@@ -432,8 +431,8 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 	})
 
 	if !c.KeepEmptyArgs {
-		for i := len(c.Args) - 1; i >= 0; i-- {
-			if c.Args[i] == "" {
+		for i, v := range slices.Backward(c.Args) {
+			if v == "" {
 				c.Args = append(c.Args[:i], c.Args[i+1:]...)
 			}
 		}

@@ -585,59 +585,23 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 	return res, http.StatusOK, nil
 }
 
-// urlVarsToDistroScopes returns all distros being requested for access and the
+// urlVarsToDistroScopes returns the distro being requested for access and the
 // HTTP status code.
 func urlVarsToDistroScopes(r *http.Request) ([]string, int, error) {
-	var err error
-	vars := gimlet.GetVars(r)
-	query := r.URL.Query()
-
-	resourceType := strings.ToUpper(util.CoalesceStrings(query["resource_type"], vars["resource_type"]))
-	if resourceType != "" {
-		switch resourceType {
-		case event.ResourceTypeDistro:
-			vars["distro_id"] = vars["resource_id"]
-		case event.ResourceTypeHost:
-			vars["host_id"] = vars["resource_id"]
-		}
-	}
-
-	distroID := util.CoalesceStrings(append(query["distro_id"], query["distroId"]...), vars["distro_id"], vars["distroId"])
-
-	hostID := util.CoalesceStrings(append(query["host_id"], query["hostId"]...), vars["host_id"], vars["hostId"])
-	if distroID == "" && hostID != "" {
-		distroID, err = host.FindDistroForHost(r.Context(), hostID)
-		if err != nil {
-			return nil, http.StatusNotFound, errors.Wrapf(err, "finding distro for host '%s'", hostID)
-		}
-	}
-
-	// no distro found - return a 404
+	distroID := gimlet.GetVars(r)["distro_id"]
 	if distroID == "" {
 		return nil, http.StatusNotFound, errors.New("no distro found")
 	}
 
-	dat, err := distro.NewDistroAliasesLookupTable(r.Context())
+	d, err := distro.FindOneId(r.Context(), distroID)
 	if err != nil {
-		return nil, http.StatusInternalServerError, errors.Wrap(err, "getting distro lookup table")
+		return nil, http.StatusInternalServerError, errors.Wrapf(err, "finding distro '%s'", distroID)
 	}
-	distroIDs := dat.Expand([]string{distroID})
-	if len(distroIDs) == 0 {
-		return nil, http.StatusNotFound, errors.Errorf("distro '%s' did not match any existing distros", distroID)
-	}
-	// Verify that all the concrete distros that this request is accessing
-	// exist.
-	for _, resolvedDistroID := range distroIDs {
-		d, err := distro.FindOneId(r.Context(), resolvedDistroID)
-		if err != nil {
-			return nil, http.StatusInternalServerError, errors.Wrapf(err, "finding distro '%s'", resolvedDistroID)
-		}
-		if d == nil {
-			return nil, http.StatusNotFound, errors.Errorf("distro '%s' does not exist", resolvedDistroID)
-		}
+	if d == nil {
+		return nil, http.StatusNotFound, errors.Errorf("distro '%s' does not exist", distroID)
 	}
 
-	return distroIDs, http.StatusOK, nil
+	return []string{distroID}, http.StatusOK, nil
 }
 
 func superUserResource(_ *http.Request) ([]string, int, error) {
@@ -741,43 +705,16 @@ func AddCORSHeaders(allowedOrigins []string, next http.HandlerFunc) http.Handler
 		if len(allowedOrigins) > 0 {
 			// Requests from a GQL client include this header, which must be added to the response to enable CORS
 			gqlHeader := r.Header.Get("Access-Control-Request-Headers")
-			if utility.StringMatchesAnyRegex(requester, allowedOrigins) {
+			if utility.StringSliceContains(allowedOrigins, requester) {
 				w.Header().Add("Access-Control-Allow-Origin", requester)
 				w.Header().Add("Access-Control-Allow-Credentials", "true")
 				w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PATCH, PUT")
 				w.Header().Add("Access-Control-Allow-Headers", fmt.Sprintf("%s, %s, %s", evergreen.APIKeyHeader, evergreen.APIUserHeader, gqlHeader))
 				w.Header().Add("Access-Control-Max-Age", "600")
-
-				// TODO: Delete when resolving DEVPROD-36667.
-				// To avoid over-logging, only log the header if it doesn't match the expected URLs.
-				if !isExpectedCORSOrigin(requester) {
-					grip.Info(r.Context(), message.Fields{
-						"message":    "CORS request from unexpected origin",
-						"origin":     requester,
-						"method":     r.Method,
-						"path":       r.URL.Path,
-						"user_agent": r.UserAgent(),
-					})
-				}
 			}
 		}
 		next(w, r)
 	}
-}
-
-// TODO: Delete when resolving DEVPROD-36667.
-func isExpectedCORSOrigin(origin string) bool {
-	expectedURLs := []string{
-		"https://spruce.corp.mongodb.com",
-		"https://spruce-staging.corp.mongodb.com",
-		"https://spruce-beta.corp.mongodb.com",
-		"https://spruce-local.corp.mongodb.com",
-		"https://parsley.corp.mongodb.com",
-		"https://parsley-staging.corp.mongodb.com",
-		"https://parsley-beta.corp.mongodb.com",
-		"https://parsley-local.corp.mongodb.com",
-	}
-	return slices.ContainsFunc(expectedURLs, func(u string) bool { return strings.HasPrefix(origin, u) })
 }
 
 func allowCORS(next http.HandlerFunc) http.HandlerFunc {
@@ -922,13 +859,20 @@ func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 	isService := dbUser.OnlyAPI
 	settings := m.env.Settings()
 	cfg := settings.RateLimit
+
 	perHour, burst := limitsFor(&cfg, m.surface, isService)
 
 	// Handle elevated users - 2x normal limits.
-	if slices.Contains(cfg.ElevatedUserIDs, u.Username()) {
+	elevated := slices.Contains(cfg.ElevatedUserIDs, u.Username())
+	if elevated {
 		perHour *= 2
 		burst *= 2
 	}
+
+	// Exempt users are never limited and get no rate limit headers, but they still
+	// consume from their bucket so their usage against the limit they would
+	// otherwise have is reported.
+	exempt := slices.Contains(cfg.ExemptUserIDs, u.Username())
 
 	limiter, err := ratelimit.NewRateLimiter(m.env.RedisClient())
 
@@ -955,23 +899,42 @@ func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 	}
 
 	if res != nil {
-		rw.Header().Set(evergreen.RateLimitLimitHeader, fmt.Sprintf("%d", perHour))
-		rw.Header().Set(evergreen.RateLimitBurstHeader, fmt.Sprintf("%d", burst))
-		rw.Header().Set(evergreen.RateLimitRemainingHeader, fmt.Sprintf("%d", res.Remaining))
-		resetTimestamp := time.Now().Add(res.ResetAfter).Unix()
-		rw.Header().Set(evergreen.RateLimitResetHeader, fmt.Sprintf("%d", resetTimestamp))
-
-		if res.Allowed == 0 {
-			rw.Header().Set(evergreen.RateLimitExceededHeader, "true")
+		exceeded := res.Allowed == 0
+		enforced := false
+		if exceeded && !exempt {
 			flags, _ := evergreen.GetServiceFlags(ctx)
-			if flags != nil && !flags.APIRateLimiterDisabled {
-				// Retry-After is a standard HTTP header that indicates how long the user should wait before making another request.
-				rw.Header().Set(evergreen.RetryAfterHeader, fmt.Sprintf("%d", int(res.RetryAfter.Seconds())))
-				gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-					StatusCode: http.StatusTooManyRequests,
-					Message:    "rate limit exceeded",
-				}))
-				return
+			enforced = flags != nil && !flags.APIRateLimiterDisabled
+		}
+		resetTimestamp := time.Now().Add(res.ResetAfter).Unix()
+
+		// Annotate the request's "completed" log message so limit usage is attributable
+		// per request, including for requests that were never blocked.
+		gimlet.AddLoggingAnnotation(r, "rate_limit", message.Fields{
+			"surface":      m.surface,
+			"remaining":    res.Remaining,
+			"reset_time":   resetTimestamp,
+			"per_hour":     perHour,
+			"burst":        burst,
+			"service_user": isService,
+		})
+
+		if !exempt {
+			rw.Header().Set(evergreen.RateLimitLimitHeader, fmt.Sprintf("%d", perHour))
+			rw.Header().Set(evergreen.RateLimitBurstHeader, fmt.Sprintf("%d", burst))
+			rw.Header().Set(evergreen.RateLimitRemainingHeader, fmt.Sprintf("%d", res.Remaining))
+			rw.Header().Set(evergreen.RateLimitResetHeader, fmt.Sprintf("%d", resetTimestamp))
+
+			if exceeded {
+				rw.Header().Set(evergreen.RateLimitExceededHeader, "true")
+				if enforced {
+					// Retry-After is a standard HTTP header that indicates how long the user should wait before making another request.
+					rw.Header().Set(evergreen.RetryAfterHeader, fmt.Sprintf("%d", int(res.RetryAfter.Seconds())))
+					gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+						StatusCode: http.StatusTooManyRequests,
+						Message:    "rate limit exceeded",
+					}))
+					return
+				}
 			}
 		}
 	}

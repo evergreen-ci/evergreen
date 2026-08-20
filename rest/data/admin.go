@@ -122,7 +122,7 @@ func mergeAdminSettings(dst, src reflect.Value) {
 // example: it stores its state in unexported fields that reflection cannot set,
 // so recursing would produce a zero value instead of the intended time.
 func isOpaqueStruct(t reflect.Type) bool {
-	return t == reflect.TypeOf(time.Time{})
+	return t == reflect.TypeFor[time.Time]()
 }
 
 func LogConfigChanges(ctx context.Context, newSettings *evergreen.Settings, oldSettings *evergreen.Settings, u *user.DBUser) error {

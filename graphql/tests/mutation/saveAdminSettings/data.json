@@ -113,6 +113,7 @@
       "task_dispatch_disabled": false,
       "s3_binary_downloads_disabled": false,
       "large_parser_projects_disabled": false,
+      "cross_file_yaml_anchors_enabled": false,
       "monitor_disabled": false,
       "notifications_disabled": false,
       "taskrunner_disabled": false,
@@ -389,18 +390,6 @@
     {
       "_id": "providers",
       "aws": {
-        "ec2_keys": [
-          {
-            "name": "test-key-1",
-            "key": "21039487102938470912837",
-            "secret": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-          },
-          {
-            "name": "test-key-2",
-            "key": "120938471209384701298",
-            "secret": "je7MtGbClwBF/2Zp9Utk/h3yCo8nvbEXAMPLEKEY"
-          }
-        ],
         "subnets": [
           {
             "az": "us-east-1a",

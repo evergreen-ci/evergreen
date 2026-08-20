@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
+	"slices"
 	"strings"
 	"time"
 
@@ -113,6 +115,110 @@ func addNewTasksAndBuildsForPatch(ctx context.Context, p *patch.Patch, creationI
 		}
 	}
 	return errors.Wrap(err, "activating existing inactive tasks")
+}
+
+// AddLabelTriggeredTasksForPatch resolves GitHub PR aliases that are now
+// applicable due to the given labels, and injects the resulting tasks into the
+// existing patch version. Tasks that already exist in the version are skipped.
+func AddLabelTriggeredTasksForPatch(ctx context.Context, settings *evergreen.Settings, p *patch.Patch, v *Version, projectRef *ProjectRef, currentLabels []string) error {
+	project, _, err := FindAndTranslateProjectForPatch(ctx, settings, p)
+	if err != nil {
+		return errors.Wrap(err, "translating project for patch")
+	}
+
+	aliasDefs, err := findAliasesForPatch(ctx, project.Identifier, evergreen.GithubPRAlias, p)
+	if err != nil {
+		return errors.Wrap(err, "finding GitHub PR aliases")
+	}
+
+	filteredAliases := filterAliasesByLabels(aliasDefs, currentLabels)
+	if len(filteredAliases) == 0 {
+		return nil
+	}
+
+	tvPairs, err := project.BuildProjectTVPairsWithAlias(filteredAliases, p.GetRequester(), "")
+	if err != nil {
+		return errors.Wrap(err, "building task/variant pairs from aliases")
+	}
+	if len(tvPairs.ExecTasks) == 0 && len(tvPairs.DisplayTasks) == 0 {
+		return nil
+	}
+
+	changedFiles := p.FilesChanged()
+	if len(changedFiles) > 0 {
+		tvPairs = filterTVPairsByPaths(tvPairs, project, changedFiles)
+		if len(tvPairs.ExecTasks) == 0 && len(tvPairs.DisplayTasks) == 0 {
+			return nil
+		}
+	}
+
+	tvPairs.ExecTasks, err = IncludeDependencies(project, tvPairs.ExecTasks, p.GetRequester(), "", nil)
+	if err != nil {
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message": "error including dependencies for label-triggered tasks",
+			"patch":   p.Id.Hex(),
+		}))
+	}
+
+	if err := p.SetGithubLabels(ctx, currentLabels); err != nil {
+		return errors.Wrap(err, "updating patch labels")
+	}
+
+	creationInfo := TaskCreationInfo{
+		Project:        project,
+		ProjectRef:     projectRef,
+		Version:        v,
+		Pairs:          tvPairs,
+		ActivationInfo: specificActivationInfo{},
+	}
+	if err := addNewTasksAndBuildsForPatch(ctx, p, creationInfo, patch.AutomatedCaller); err != nil {
+		return errors.Wrap(err, "adding label-triggered tasks to version")
+	}
+
+	mergedVTs := tvPairs.TVPairsToVariantTasks()
+	for _, existing := range p.VariantsTasks {
+		found := false
+		for i, vt := range mergedVTs {
+			if vt.Variant == existing.Variant {
+				taskSet := map[string]struct{}{}
+				for _, t := range mergedVTs[i].Tasks {
+					taskSet[t] = struct{}{}
+				}
+				for _, t := range existing.Tasks {
+					if _, ok := taskSet[t]; !ok {
+						mergedVTs[i].Tasks = append(mergedVTs[i].Tasks, t)
+					}
+				}
+				found = true
+				break
+			}
+		}
+		if !found {
+			mergedVTs = append(mergedVTs, existing)
+		}
+	}
+	return errors.Wrap(p.SetVariantsTasks(ctx, mergedVTs), "updating patch variant tasks")
+}
+
+// filterTVPairsByPaths removes task/variant pairs whose build variant has
+// path filters that don't match the changed files.
+func filterTVPairsByPaths(pairs TaskVariantPairs, project *Project, changedFiles []string) TaskVariantPairs {
+	filtered := TaskVariantPairs{}
+	for _, pair := range pairs.ExecTasks {
+		bv := project.FindBuildVariant(pair.Variant)
+		if bv != nil && len(bv.Paths) > 0 && !bv.ChangedFilesMatchPaths(changedFiles) {
+			continue
+		}
+		filtered.ExecTasks = append(filtered.ExecTasks, pair)
+	}
+	for _, pair := range pairs.DisplayTasks {
+		bv := project.FindBuildVariant(pair.Variant)
+		if bv != nil && len(bv.Paths) > 0 && !bv.ChangedFilesMatchPaths(changedFiles) {
+			continue
+		}
+		filtered.DisplayTasks = append(filtered.DisplayTasks, pair)
+	}
+	return filtered
 }
 
 type PatchUpdate struct {
@@ -226,8 +332,8 @@ func addDisplayTasksToPatchReq(req *PatchUpdate, p Project) {
 		if bv == nil {
 			continue
 		}
-		for i := len(vt.Tasks) - 1; i >= 0; i-- {
-			task := vt.Tasks[i]
+		for i, task := range slices.Backward(vt.Tasks) {
+
 			displayTask := bv.GetDisplayTask(task)
 			if displayTask == nil {
 				continue
@@ -314,6 +420,11 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 		return nil, nil, errors.Wrap(err, "fetching project options for patch")
 	}
 	opts.cacheEnabled = projectTranslationCacheEnabled(settings)
+	svcFlags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "getting service flags")
+	}
+	opts.CrossFileYAMLAnchorsEnabled = svcFlags.CrossFileYAMLAnchorsEnabled
 
 	projectFileBytes, err := getPatchedProjectYAML(ctx, projectRef, opts, p)
 	if err != nil {
@@ -336,9 +447,12 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 
 	var pc string
 	if projectRef.IsVersionControlEnabled() {
-		pc, err = getProjectConfigYAML(p, projectFileBytes)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "getting patched project config")
+		if mergedConfig := pp.MergedProjectConfig(p.Project); mergedConfig != nil {
+			pcOut, err := yaml.Marshal(mergedConfig)
+			if err != nil {
+				return nil, nil, errors.Wrap(err, "marshalling project config into YAML")
+			}
+			pc = string(pcOut)
 		}
 	}
 
@@ -385,20 +499,22 @@ func GetPatchedProjectConfig(ctx context.Context, p *patch.Patch) (string, error
 		return "", errors.Wrap(err, "getting patched project file as YAML")
 	}
 
-	return getProjectConfigYAML(p, projectFileBytes)
-}
-
-// getProjectConfigYAML creates a project config from the project YAML string
-// and returns the project configuration as a string.
-func getProjectConfigYAML(p *patch.Patch, projectFileBytes []byte) (string, error) {
-	pc, err := CreateProjectConfig(projectFileBytes, p.Project)
+	// Parse the config directly instead of going through LoadProjectInto to
+	// avoid paying for project translation, which isn't needed for the config.
+	intermediateProject, decodeErr, err := createIntermediateProject(projectFileBytes, opts.UnmarshalStrict, nil)
 	if err != nil {
-		return "", errors.Wrap(err, "creating project config")
+		return "", errors.Wrapf(err, LoadProjectError)
 	}
+	logDecodeErrorWithOpts(ctx, projectRef.Id, "", "GetPatchedProjectConfig", decodeErr, opts)
+	if len(intermediateProject.Include) > 0 {
+		if err := mergeIncludes(ctx, p.Project, intermediateProject, nil, opts); err != nil {
+			return "", errors.Wrap(err, "merging included files")
+		}
+	}
+	pc := intermediateProject.MergedProjectConfig(p.Project)
 	if pc == nil {
 		return "", nil
 	}
-
 	yamlProjectConfig, err := yaml.Marshal(pc)
 	if err != nil {
 		return "", errors.Wrap(err, "marshalling project config into YAML")
@@ -549,20 +665,20 @@ func parseRenamedOrCopiedFile(patchContents, filename string) string {
 	isRenamed := false
 	isCopied := false
 	for _, line := range lines {
-		if strings.HasPrefix(line, "rename from ") {
-			renameFrom = strings.TrimPrefix(line, "rename from ")
-		} else if strings.HasPrefix(line, "rename to ") {
-			renameTo = strings.TrimPrefix(line, "rename to ")
+		if after, ok := strings.CutPrefix(line, "rename from "); ok {
+			renameFrom = after
+		} else if after, ok := strings.CutPrefix(line, "rename to "); ok {
+			renameTo = after
 			if renameTo == filename {
 				isRenamed = true
 				break
 			}
 		}
 
-		if strings.HasPrefix(line, "copy from ") {
-			copyFrom = strings.TrimPrefix(line, "copy from ")
-		} else if strings.HasPrefix(line, "copy to ") {
-			copyTo = strings.TrimPrefix(line, "copy to ")
+		if after, ok := strings.CutPrefix(line, "copy from "); ok {
+			copyFrom = after
+		} else if after, ok := strings.CutPrefix(line, "copy to "); ok {
+			copyTo = after
 			if copyTo == filename {
 				isCopied = true
 				break
@@ -911,7 +1027,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, transl
 		const maxRetries = 5
 		const baseBackoffMilliseconds = 100
 
-		for attempt := 0; attempt < maxRetries; attempt++ {
+		for attempt := range maxRetries {
 			if attempt > 0 {
 				backoffMilliseconds := baseBackoffMilliseconds << uint(attempt-1)
 				backoff := time.Duration(backoffMilliseconds) * time.Millisecond
@@ -962,29 +1078,47 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, transl
 	return patchVersion, nil
 }
 
-// getFullPatchParams will retrieve a merged list of parameters defined on the patch alias (if any)
-// with the parameters that were explicitly user-specified, with the latter taking precedence.
+// getFullPatchParams retrieves the parameters defined on the patch's alias(es)
+// merged with the user-specified parameters, with the latter taking precedence.
+// A version has a single global set of parameters, so when multiple aliases are
+// specified their fully-resolved parameter sets must be identical, otherwise the
+// patch cannot be finalized.
 func getFullPatchParams(ctx context.Context, p *patch.Patch) ([]patch.Parameter, error) {
-	paramsMap := map[string]string{}
-	if p.Alias == "" || !IsPatchAlias(p.Alias) {
+	aliasNames := p.AliasesToResolve()
+	// Internal aliases (commit queue, GitHub, etc.) don't carry user parameters.
+	if len(aliasNames) == 0 || (len(aliasNames) == 1 && !IsPatchAlias(aliasNames[0])) {
 		return p.Parameters, nil
 	}
-	aliases, err := findAliasesForPatch(ctx, p.Project, p.Alias, p)
-	if err != nil {
-		return nil, errors.Wrapf(err, "retrieving alias '%s' for patch '%s'", p.Alias, p.Id.Hex())
-	}
-	for _, alias := range aliases {
-		if len(alias.Parameters) > 0 {
+
+	var commonParams map[string]string
+	for i, aliasName := range aliasNames {
+		aliases, err := findAliasesForPatch(ctx, p.Project, aliasName, p) // Get all records for the alias.
+		if err != nil {
+			return nil, errors.Wrapf(err, "retrieving alias '%s' for patch '%s'", aliasName, p.Id.Hex())
+		}
+
+		// Overwrite configured parameters with user-specified ones, which take precedence.
+		paramsMap := map[string]string{}
+		for _, alias := range aliases {
 			for _, aliasParam := range alias.Parameters {
 				paramsMap[aliasParam.Key] = aliasParam.Value
 			}
 		}
+		for _, param := range p.Parameters {
+			paramsMap[param.Key] = param.Value
+		}
+		// Set the parameters from the first alias as the common set to compare against.
+		if i == 0 {
+			commonParams = paramsMap
+			continue
+		}
+		if !reflect.DeepEqual(paramsMap, commonParams) {
+			return nil, errors.Errorf("aliases %v resolve to conflicting parameter sets; a patch version has a single set of parameters, so specify a single alias or aliases whose parameters match", aliasNames)
+		}
 	}
-	for _, param := range p.Parameters {
-		paramsMap[param.Key] = param.Value
-	}
+
 	var fullParams []patch.Parameter
-	for k, v := range paramsMap {
+	for k, v := range commonParams {
 		fullParams = append(fullParams, patch.Parameter{
 			Key:   k,
 			Value: v,

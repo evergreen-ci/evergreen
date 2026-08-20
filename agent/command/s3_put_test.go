@@ -388,8 +388,7 @@ func TestExpandS3PutParams(t *testing.T) {
 }
 
 func TestSignedUrlVisibility(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	tempDir := t.TempDir()
 	file1 := filepath.Join(tempDir, "file1")
@@ -453,8 +452,7 @@ func TestSignedUrlVisibility(t *testing.T) {
 }
 
 func TestContentTypeSaved(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	tempDir := t.TempDir()
 	file1 := filepath.Join(tempDir, "file1")
@@ -519,8 +517,7 @@ func TestContentTypeSaved(t *testing.T) {
 func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 	for _, prefix := range []string{"emptyPrefix", "subDir"} {
 		t.Run(prefix, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 			var err error
 
 			dir := t.TempDir()
@@ -591,8 +588,7 @@ func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 }
 
 func TestFileUploadNaming(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	dir := t.TempDir()
 	require.NoError(t, os.Mkdir(filepath.Join(dir, "subDir"), 0o755))
@@ -649,8 +645,7 @@ func TestFileUploadNaming(t *testing.T) {
 }
 
 func TestPreservePath(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	dir := t.TempDir()
 
@@ -804,8 +799,7 @@ func TestS3PutSkipExisting(t *testing.T) {
 		S3Usage: &s3usage.S3Usage{},
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	comm := client.NewMock("")
 	baseComm := client.NewHostCommunicator("", "", "")
@@ -1099,4 +1093,63 @@ func TestPutWithRetryAccumulatesPutsAcrossRetries(t *testing.T) {
 	assert.Equal(t, 1, conf.S3Usage.Artifacts.Count)
 	assert.Equal(t, 9, conf.S3Usage.Artifacts.ArtifactWithMaxPutRequests)
 	assert.Equal(t, 9, conf.S3Usage.Artifacts.ArtifactWithMinPutRequests)
+}
+
+func TestAttachFilesRecordsCredentialVarNames(t *testing.T) {
+	const keyVar = "artifact_aws_key"
+	const secretVar = "artifact_aws_secret"
+
+	newCmd := func() *s3put {
+		return &s3put{
+			AwsKey:      fmt.Sprintf("${%s}", keyVar),
+			AwsSecret:   fmt.Sprintf("${%s}", secretVar),
+			Bucket:      "bucket",
+			RemoteFile:  "remote/file",
+			LocalFile:   "local_file",
+			Visibility:  artifact.Signed,
+			ContentType: "application/octet-stream",
+			Permissions: "private",
+		}
+	}
+	conf := &internal.TaskConfig{
+		Expansions: *util.NewExpansions(map[string]string{
+			keyVar:    "resolved-key",
+			secretVar: "resolved-secret",
+		}),
+		WorkDir: "/tmp",
+	}
+
+	attach := func(t *testing.T, cmd *s3put) *artifact.File {
+		require.NoError(t, cmd.expandParams(conf))
+		comm := client.NewMock("http://localhost.com")
+		cmd.taskData = client.TaskData{ID: "task", Secret: "secret"}
+		require.NoError(t, cmd.attachFiles(t.Context(), comm, []s3usage.FileMetrics{{
+			LocalPath:  "local_file",
+			RemotePath: "remote/file",
+		}}))
+		attached := comm.AttachedFiles[cmd.taskData.ID]
+		require.Len(t, attached, 1)
+		return attached[0]
+	}
+
+	t.Run("SignedFileStoresVarNamesAlongsideResolvedValues", func(t *testing.T) {
+		file := attach(t, newCmd())
+		assert.Equal(t, keyVar, file.AWSKeyVarName)
+		assert.Equal(t, secretVar, file.AWSSecretVarName)
+		// The resolved values stay as the fallback for presigning.
+		assert.Equal(t, "resolved-key", file.AWSKey)
+		assert.Equal(t, "resolved-secret", file.AWSSecret)
+	})
+
+	t.Run("RoleARNKeepsKeyAndSecretEmptyPerValidate", func(t *testing.T) {
+		cmd := newCmd()
+		cmd.AwsKey = ""
+		cmd.AwsSecret = ""
+		cmd.RoleARN = "arn:aws:iam::000000000000:role/fake-role"
+		require.NoError(t, cmd.validate())
+		file := attach(t, cmd)
+		assert.Empty(t, file.AWSKeyVarName)
+		assert.Empty(t, file.AWSSecretVarName)
+		assert.Equal(t, "arn:aws:iam::000000000000:role/fake-role", file.AWSRoleARN)
+	})
 }

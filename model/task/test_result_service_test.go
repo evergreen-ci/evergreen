@@ -34,8 +34,7 @@ var output = TaskOutput{
 }
 
 func TestEvergreenService(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	svc := NewTestResultService(env)
 	require.NoError(t, ClearTestResults(ctx, env))
@@ -125,6 +124,26 @@ func TestEvergreenService(t *testing.T) {
 		assert.Equal(t, len(quarantinedTests), taskResults[0].QuarantinedTestsCount)
 		assert.Equal(t, quarantinedTests, taskResults[0].QuarantinedTests)
 
+		one := 1
+		taskResults, err = svc.Get(ctx, []Task{task0}, GetTaskTestResultsOptions{
+			Fields:                []string{testresult.QuarantinedTestsCountKey, testresult.QuarantinedTestsKey},
+			QuarantinedTestsLimit: &one,
+		})
+		require.NoError(t, err)
+		require.Len(t, taskResults, 1)
+		assert.Equal(t, len(quarantinedTests), taskResults[0].QuarantinedTestsCount)
+		assert.Equal(t, quarantinedTests[:one], taskResults[0].QuarantinedTests)
+
+		zero := 0
+		taskResults, err = svc.Get(ctx, []Task{task0}, GetTaskTestResultsOptions{
+			Fields:                []string{testresult.QuarantinedTestsCountKey, testresult.QuarantinedTestsKey},
+			QuarantinedTestsLimit: &zero,
+		})
+		require.NoError(t, err)
+		require.Len(t, taskResults, 1)
+		assert.Equal(t, len(quarantinedTests), taskResults[0].QuarantinedTestsCount)
+		assert.Empty(t, taskResults[0].QuarantinedTests)
+
 		taskResults, err = svc.Get(ctx, []Task{task0}, GetTaskTestResultsOptions{IncludeQuarantinedTests: true})
 		require.NoError(t, err)
 		require.Len(t, taskResults, 1)
@@ -161,7 +180,7 @@ func TestEvergreenService(t *testing.T) {
 					Execution: task4.Execution,
 					MatchingFailedTestNames: func() []string {
 						sample := make([]string, len(savedResults4))
-						for i := 0; i < len(savedResults4); i++ {
+						for i := range savedResults4 {
 							sample[i] = savedResults4[i].GetDisplayTestName()
 						}
 
@@ -220,8 +239,7 @@ func TestEvergreenService(t *testing.T) {
 }
 
 func TestEvergreenFilterAndSortTestResults(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	svc := NewTestResultService(env)
 	require.NoError(t, db.Clear(Collection))
@@ -325,7 +343,7 @@ func TestEvergreenFilterAndSortTestResults(t *testing.T) {
 		Results:   make([]testresult.ParquetTestResult, 4),
 	}
 
-	for i := 0; i < len(baseResults); i++ {
+	for i := range baseResults {
 		savedParquet.Results[i] = testresult.ParquetTestResult{
 			TestName:       baseResults[i].TestName,
 			GroupID:        utility.ToStringPtr(baseResults[i].GroupID),
@@ -739,7 +757,7 @@ func saveTestResults(t *testing.T, ctx context.Context, testBucket pail.Bucket, 
 		Results:   make([]testresult.ParquetTestResult, length),
 	}
 
-	for i := 0; i < len(savedResults); i++ {
+	for i := range savedResults {
 		result := getTestResult()
 		result.TaskID = tr.Info.TaskID
 		result.Execution = tr.Info.Execution
@@ -778,4 +796,59 @@ func saveTestResults(t *testing.T, ctx context.Context, testBucket pail.Bucket, 
 	require.NoError(t, db.Insert(ctx, testresult.Collection, tr))
 	require.NoError(t, svc.AppendTestResultMetadata(resultTestutil.MakeAppendTestResultMetadataReq(ctx, savedResults, tr.ID)))
 	return savedResults
+}
+
+func TestAppendQuarantinedTests(t *testing.T) {
+	ctx := t.Context()
+	env := testutil.NewEnvironment(ctx, t)
+
+	svc := NewTestResultService(env)
+	require.NoError(t, ClearTestResults(ctx, env))
+	require.NoError(t, db.Clear(testresult.Collection))
+	defer func() {
+		assert.NoError(t, ClearTestResults(ctx, env))
+		assert.NoError(t, db.Clear(testresult.Collection))
+	}()
+
+	tsk := Task{Id: "quarantined_task", Execution: 0, Status: evergreen.TaskStarted, TaskOutputInfo: &output}
+	record := *getTestResults()
+	record.Info.TaskID = tsk.Id
+	record.Info.Execution = tsk.Execution
+	record.ID = record.Info.ID()
+	record.CreatedAt = time.Time{}
+
+	getRecord := func(t *testing.T) testresult.TaskTestResults {
+		allTaskResults, err := svc.Get(ctx, []Task{tsk}, GetTaskTestResultsOptions{IncludeQuarantinedTests: true})
+		require.NoError(t, err)
+		require.Len(t, allTaskResults, 1)
+		return allTaskResults[0]
+	}
+
+	t.Run("AppendCreatesRecordWithSnapshot", func(t *testing.T) {
+		quarantinedTests := []testresult.QuarantinedTest{
+			{TestName: "q0"},
+			{TestName: "q1", DisplayTestName: "q1_display"},
+		}
+		require.NoError(t, svc.AppendQuarantinedTests(ctx, record, quarantinedTests))
+
+		taskResults := getRecord(t)
+		assert.Equal(t, record.Info, taskResults.Info)
+		assert.Equal(t, 2, taskResults.QuarantinedTestsCount)
+		assert.Equal(t, quarantinedTests, taskResults.QuarantinedTests)
+		assert.Zero(t, taskResults.Stats.TotalCount)
+		assert.Empty(t, taskResults.Results)
+	})
+
+	t.Run("AppendingResultMetadataPreservesSnapshot", func(t *testing.T) {
+		require.NoError(t, svc.AppendTestResultMetadata(ctx, []string{"failed_test"}, 1, 2, record))
+		allTaskResults, err := svc.Get(ctx, []Task{tsk}, GetTaskTestResultsOptions{
+			Fields: []string{testresult.StatsKey, testresult.QuarantinedTestsCountKey, testresult.QuarantinedTestsKey},
+		})
+		require.NoError(t, err)
+		require.Len(t, allTaskResults, 1)
+		assert.Equal(t, 2, allTaskResults[0].QuarantinedTestsCount)
+		assert.Len(t, allTaskResults[0].QuarantinedTests, 2)
+		assert.Equal(t, 2, allTaskResults[0].Stats.TotalCount)
+		assert.Equal(t, 1, allTaskResults[0].Stats.FailedCount)
+	})
 }

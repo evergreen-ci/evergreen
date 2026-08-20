@@ -2,7 +2,6 @@ package route
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -57,19 +56,37 @@ func TestValidate(t *testing.T) {
 	assert.NoError(validateFileSize(files, 1))
 }
 
-func TestGenerateExecuteWithSmallFileInDB(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func TestGenerateExecuteWithSmallFileInS3(t *testing.T) {
+	ctx := t.Context()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	testutil.ConfigureIntegrationTest(t, env.Settings())
+
+	c := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(c)
+
+	ppConf := env.Settings().Providers.AWS.ParserProject
+	bucket, err := pail.NewS3BucketWithHTTPClient(ctx, c, pail.S3Options{
+		Name:   ppConf.Bucket,
+		Region: evergreen.DefaultEC2Region,
+	})
+	require.NoError(t, err)
+	defer func() {
+		assert.NoError(t, bucket.RemovePrefix(ctx, ppConf.GeneratedJSONPrefix))
+	}()
+
 	require.NoError(t, db.ClearCollections(task.Collection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(task.Collection))
+	}()
 
 	tsk := task.Task{
 		Id:      "task_id",
 		Version: "version_id",
 	}
 	require.NoError(t, tsk.Insert(t.Context()))
-
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
 
 	genJSON := `{"key": "value"}`
 	h := &generateHandler{
@@ -82,15 +99,15 @@ func TestGenerateExecuteWithSmallFileInDB(t *testing.T) {
 	assert.Equal(t, struct{}{}, r.Data())
 	assert.Equal(t, http.StatusOK, r.Status())
 
-	dbTask, err := task.FindOneIdWithGeneratedJSON(ctx, tsk.Id)
+	dbTask, err := task.FindOneId(ctx, tsk.Id)
 	require.NoError(t, err)
 	require.NotZero(t, dbTask)
-	assert.Equal(t, evergreen.ProjectStorageMethodDB, dbTask.GeneratedJSONStorageMethod)
+	assert.Equal(t, evergreen.ProjectStorageMethodS3, dbTask.GeneratedJSONStorageMethod, "files under the DB document limit should still be stored in S3")
 
-	genJSONInDB, err := task.GeneratedJSONFind(ctx, env.Settings(), dbTask)
+	genJSONInS3, err := task.GeneratedJSONFind(ctx, env.Settings(), dbTask)
 	require.NoError(t, err)
-	require.Len(t, genJSONInDB, len(h.files), "generated JSON in DB should be non-empty")
-	assert.JSONEq(t, genJSON, genJSONInDB[0])
+	require.Len(t, genJSONInS3, len(h.files), "generated JSON in S3 should be non-empty")
+	assert.JSONEq(t, genJSON, genJSONInS3[0])
 
 	queue, err := env.RemoteQueueGroup().Get(ctx, fmt.Sprintf("service.generate.tasks.version.%s", tsk.Version))
 	require.NoError(t, err)
@@ -99,8 +116,7 @@ func TestGenerateExecuteWithSmallFileInDB(t *testing.T) {
 }
 
 func TestGenerateExecuteWithLargeFileInS3(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
@@ -134,7 +150,7 @@ func TestGenerateExecuteWithLargeFileInS3(t *testing.T) {
 	// Create string that is over the DB's 16 MB document limit to ensure it
 	// gets stored in S3.
 	genJSON := bytes.NewBufferString("{")
-	for i := 0; i < 10e6; i++ {
+	for i := range int(10e6) {
 		_, err := genJSON.WriteString(fmt.Sprintf(`"field-%d": "value-%d"`, i, i))
 		require.NoError(t, err)
 		if i < 10e6-1 {
@@ -172,8 +188,7 @@ func TestGenerateExecuteWithLargeFileInS3(t *testing.T) {
 }
 
 func TestGeneratePollParse(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(task.Collection, host.Collection))
 	r, err := http.NewRequest(http.MethodGet, "/task/1/generate", nil)
 	require.NoError(t, err)
@@ -184,8 +199,7 @@ func TestGeneratePollParse(t *testing.T) {
 }
 
 func TestGeneratePollRun(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(task.Collection))
 	tasks := []task.Task{
 		{

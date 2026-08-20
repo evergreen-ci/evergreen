@@ -1,6 +1,6 @@
 {
   waterfall(options: { projectIdentifier: "spruce-identifier", statuses: ["system-failed"] }) {
-    flattenedVersions {
+    versions {
       id
       activated
       requester

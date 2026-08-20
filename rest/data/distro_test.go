@@ -18,8 +18,7 @@ import (
 )
 
 func TestDeleteDistroById(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(distro.Collection, event.EventCollection, user.Collection, model.TaskQueuesCollection, host.Collection))
@@ -103,8 +102,7 @@ func TestDeleteDistroById(t *testing.T) {
 }
 
 func TestCopyDistro(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context, u user.DBUser){
 		"Successfully copies distro": func(t *testing.T, ctx context.Context, u user.DBUser) {
@@ -210,8 +208,7 @@ func TestCopyDistro(t *testing.T) {
 }
 
 func TestUpdateDistro(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context, old, new *distro.Distro){
 		"Successfully updates distro": func(t *testing.T, ctx context.Context, old, new *distro.Distro) {

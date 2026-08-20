@@ -75,7 +75,7 @@ jobs:
           git add apps/spruce/src/gql/generated/types.ts
           git add apps/parsley/src/gql/generated/types.ts
           git add packages/lib/src/gql/generated/types.ts
-          git commit --allow-empty -m "Update generated GraphQL types from evergreen@${SHORT_SHA}"
+          git commit --no-verify --allow-empty -m "Update generated GraphQL types from evergreen@${SHORT_SHA}"
           git push --force-with-lease origin "$BRANCH"
 
       - name: Create pull request

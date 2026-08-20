@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/s3lifecycle"
 	"github.com/evergreen-ci/evergreen/model/s3usage"
@@ -100,8 +101,7 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
@@ -204,9 +204,10 @@ func TestExpansionsAndVarsHostOwnership(t *testing.T) {
 		Version: "aaaaaaaaaaff001122334455",
 	}
 	pRef := model.ProjectRef{
-		Id:    "p1",
-		Owner: "evergreen-ci",
-		Repo:  "sample",
+		Id:                      "p1",
+		Owner:                   "evergreen-ci",
+		Repo:                    "sample",
+		DebugSpawnHostsDisabled: utility.FalsePtr(),
 	}
 	vars := &model.ProjectVars{
 		Id:          "p1",
@@ -251,6 +252,29 @@ func TestExpansionsAndVarsHostOwnership(t *testing.T) {
 	require.NoError(t, debugHost.Insert(t.Context()))
 	require.NoError(t, nonDebugHost.Insert(t.Context()))
 	require.NoError(t, wrongTaskDebugHost.Insert(t.Context()))
+
+	t.Run("UserRequestRejectsDebugSpawnHostsDisabledProject", func(t *testing.T) {
+		disabled := true
+		disabledPRef := model.ProjectRef{
+			Id:                      "disabled_project",
+			Owner:                   "evergreen-ci",
+			Repo:                    "sample",
+			DebugSpawnHostsDisabled: &disabled,
+		}
+		disabledTask := task.Task{
+			Id:      "t_disabled",
+			Project: "disabled_project",
+			Version: "aaaaaaaaaaff001122334455",
+		}
+		require.NoError(t, disabledPRef.Insert(t.Context()))
+		require.NoError(t, disabledTask.Insert(t.Context()))
+
+		userCtx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "test_user"})
+		rh := &getExpansionsAndVarsHandler{settings: env.Settings(), taskID: "t_disabled", hostID: "debug_host"}
+		resp := rh.Run(userCtx)
+		require.NotZero(t, resp)
+		assert.Equal(t, http.StatusForbidden, resp.Status())
+	})
 
 	t.Run("UserRequestRejectsNonDebugHost", func(t *testing.T) {
 		userCtx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "test_user"})
@@ -448,6 +472,23 @@ func TestMarkTaskForReset(t *testing.T) {
 			assert.True(t, foundTask.IsAutomaticRestart)
 			assert.Equal(t, 1, foundTask.NumAutomaticRestarts)
 		},
+		"RunNoOpsForAbortedTask": func(ctx context.Context, t *testing.T, rh *markTaskForRestartHandler) {
+			rh.taskID = "t5"
+			abortedTask, err := task.FindOneId(ctx, "t5")
+			require.NoError(t, err)
+			require.NotNil(t, abortedTask)
+			taskCtx := context.WithValue(ctx, model.ApiTaskKey, abortedTask)
+			resp := rh.Run(taskCtx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			foundTask, err := task.FindOneId(ctx, "t5")
+			require.NoError(t, err)
+			require.NotNil(t, foundTask)
+			assert.False(t, foundTask.ResetWhenFinished)
+			assert.False(t, foundTask.IsAutomaticRestart)
+			assert.Zero(t, foundTask.NumAutomaticRestarts)
+		},
 		"SuccessfullyChecksMaxRestartLimit": func(ctx context.Context, t *testing.T, rh *markTaskForRestartHandler) {
 			// Should succeed normally for first task
 			rh.taskID = "t2"
@@ -503,8 +544,7 @@ func TestMarkTaskForReset(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection))
 			settings := &evergreen.Settings{
@@ -546,6 +586,12 @@ func TestMarkTaskForReset(t *testing.T) {
 				Project: "p1",
 				Version: "aaaaaaaaaaff001122334456",
 			}
+			t5 := task.Task{
+				Id:      "t5",
+				Project: "p1",
+				Version: "aaaaaaaaaaff001122334456",
+				Aborted: true,
+			}
 			pRef := model.ProjectRef{
 				Id: "p1",
 			}
@@ -556,6 +602,7 @@ func TestMarkTaskForReset(t *testing.T) {
 			require.NoError(t, t2.Insert(t.Context()))
 			require.NoError(t, t3.Insert(t.Context()))
 			require.NoError(t, t4.Insert(t.Context()))
+			require.NoError(t, t5.Insert(t.Context()))
 			r, ok := makeMarkTaskForRestart().(*markTaskForRestartHandler)
 			require.True(t, ok)
 
@@ -601,8 +648,7 @@ func TestAgentSetup(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			s := &evergreen.Settings{
 				Splunk: evergreen.SplunkConfig{
@@ -610,17 +656,6 @@ func TestAgentSetup(t *testing.T) {
 						ServerURL: "server_url",
 						Token:     "token",
 						Channel:   "channel",
-					},
-				},
-				Providers: evergreen.CloudProviders{
-					AWS: evergreen.AWSConfig{
-						EC2Keys: []evergreen.EC2Key{
-							{
-								Name:   "ec2-key",
-								Key:    "key",
-								Secret: "secret",
-							},
-						},
 					},
 				},
 				TaskLimits: evergreen.TaskLimitsConfig{
@@ -637,8 +672,7 @@ func TestAgentSetup(t *testing.T) {
 }
 
 func TestDownstreamParams(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(patch.Collection, task.Collection, host.Collection))
 	parameters := []patch.Parameter{
@@ -709,8 +743,7 @@ func TestDownstreamParams(t *testing.T) {
 }
 
 func TestAgentGetProjectRef(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection))
 	defer func() {
@@ -771,50 +804,60 @@ func TestCreateInstallationToken(t *testing.T) {
 	validRepo := "repo"
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, gh *createInstallationTokenForClone){
-		"ParseErrorsOnEmptyOwnerAndRepo": func(ctx context.Context, t *testing.T, handler *createInstallationTokenForClone) {
-			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", "", "")
-			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
+		"ParseErrorsOnEmptyTaskID": func(ctx context.Context, t *testing.T, handler *createInstallationTokenForClone) {
+			request, err := http.NewRequest(http.MethodGet, "/task//installation_token/owner/repo", bytes.NewReader(nil))
 			assert.NoError(t, err)
 
-			options := map[string]string{"owner": "", "repo": ""}
-			request = gimlet.SetURLVars(request, options)
+			request = gimlet.SetURLVars(request, map[string]string{"task_id": "", "owner": validOwner, "repo": validRepo})
+
+			assert.ErrorContains(t, handler.Parse(ctx, request), "missing task ID")
+		},
+		"ParseErrorsOnEmptyOwnerAndRepo": func(ctx context.Context, t *testing.T, handler *createInstallationTokenForClone) {
+			request, err := http.NewRequest(http.MethodGet, "/task/t1/installation_token//", bytes.NewReader(nil))
+			assert.NoError(t, err)
+
+			request = gimlet.SetURLVars(request, map[string]string{"task_id": "t1", "owner": "", "repo": ""})
 
 			assert.Error(t, handler.Parse(ctx, request))
 		},
 		"ParseErrorsOnEmptyOwner": func(ctx context.Context, t *testing.T, handler *createInstallationTokenForClone) {
-			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", "", validRepo)
-			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
+			request, err := http.NewRequest(http.MethodGet, "/task/t1/installation_token//repo", bytes.NewReader(nil))
 			assert.NoError(t, err)
 
-			options := map[string]string{"owner": "", "repo": validRepo}
-			request = gimlet.SetURLVars(request, options)
+			request = gimlet.SetURLVars(request, map[string]string{"task_id": "t1", "owner": "", "repo": validRepo})
 
 			assert.ErrorContains(t, handler.Parse(ctx, request), "missing owner")
 		},
 		"ParseErrorsOnEmptyRepo": func(ctx context.Context, t *testing.T, handler *createInstallationTokenForClone) {
-			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", validOwner, "")
-			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
+			request, err := http.NewRequest(http.MethodGet, "/task/t1/installation_token/owner/", bytes.NewReader(nil))
 			assert.NoError(t, err)
 
-			options := map[string]string{"owner": validOwner, "repo": ""}
-			request = gimlet.SetURLVars(request, options)
+			request = gimlet.SetURLVars(request, map[string]string{"task_id": "t1", "owner": validOwner, "repo": ""})
 
 			assert.ErrorContains(t, handler.Parse(ctx, request), "missing repo")
 		},
 		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *createInstallationTokenForClone) {
-			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", validOwner, validRepo)
-			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
+			request, err := http.NewRequest(http.MethodGet, "/task/t1/installation_token/owner/repo", bytes.NewReader(nil))
 			assert.NoError(t, err)
 
-			options := map[string]string{"owner": validOwner, "repo": validRepo}
-			request = gimlet.SetURLVars(request, options)
+			request = gimlet.SetURLVars(request, map[string]string{"task_id": "t1", "owner": validOwner, "repo": validRepo})
 
 			assert.NoError(t, handler.Parse(ctx, request))
+			assert.False(t, handler.refresh)
+		},
+		"ParseReadsRefreshHeader": func(ctx context.Context, t *testing.T, handler *createInstallationTokenForClone) {
+			request, err := http.NewRequest(http.MethodGet, "/task/t1/installation_token/owner/repo", bytes.NewReader(nil))
+			assert.NoError(t, err)
+			request.Header.Set(evergreen.RefreshGitHubTokenHeader, "true")
+
+			request = gimlet.SetURLVars(request, map[string]string{"task_id": "t1", "owner": validOwner, "repo": validRepo})
+
+			assert.NoError(t, handler.Parse(ctx, request))
+			assert.True(t, handler.refresh)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
@@ -827,9 +870,91 @@ func TestCreateInstallationToken(t *testing.T) {
 	}
 }
 
+func TestIsRepoAllowedForTask(t *testing.T) {
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(t.Context()))
+	testutil.ConfigureIntegrationTest(t, env.Settings())
+	require.NoError(t, db.ClearCollections(
+		task.Collection, model.ProjectRefCollection,
+		model.VersionCollection, model.ParserProjectCollection,
+		manifest.Collection,
+	))
+
+	pRef := model.ProjectRef{
+		Id:    "p1",
+		Owner: "myorg",
+		Repo:  "myrepo",
+	}
+	v := model.Version{
+		Id:         "v1",
+		Identifier: "p1",
+		Revision:   "abc123",
+		Requester:  evergreen.RepotrackerVersionRequester,
+	}
+	pp := model.ParserProject{
+		Id: "v1",
+		Modules: []model.Module{
+			{Name: "mod1", Owner: "myorg", Repo: "mod-repo"},
+			{Name: "mod2", Owner: "otherorg", Repo: "other-repo"},
+		},
+	}
+	tsk := task.Task{
+		Id:        "t1",
+		Project:   "p1",
+		Version:   "v1",
+		Requester: evergreen.RepotrackerVersionRequester,
+	}
+	require.NoError(t, pRef.Insert(t.Context()))
+	require.NoError(t, v.Insert(t.Context()))
+	require.NoError(t, pp.Insert(t.Context()))
+	require.NoError(t, tsk.Insert(t.Context()))
+
+	for name, tc := range map[string]struct {
+		owner   string
+		repo    string
+		allowed bool
+	}{
+		"ProjectRepoIsAllowed": {
+			owner:   "myorg",
+			repo:    "myrepo",
+			allowed: true,
+		},
+		"ProjectRepoIsCaseInsensitive": {
+			owner:   "MyOrg",
+			repo:    "MyRepo",
+			allowed: true,
+		},
+		"DeclaredModuleIsAllowed": {
+			owner:   "myorg",
+			repo:    "mod-repo",
+			allowed: true,
+		},
+		"DeclaredModuleDifferentOrgIsAllowed": {
+			owner:   "otherorg",
+			repo:    "other-repo",
+			allowed: true,
+		},
+		"UndeclaredRepoIsRejected": {
+			owner:   "myorg",
+			repo:    "secret-repo",
+			allowed: false,
+		},
+		"UndeclaredOwnerIsRejected": {
+			owner:   "attacker",
+			repo:    "myrepo",
+			allowed: false,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			allowed, err := isRepoAllowedForTask(t.Context(), env, &tsk, tc.owner, tc.repo)
+			require.NoError(t, err)
+			assert.Equal(t, tc.allowed, allowed)
+		})
+	}
+}
+
 func TestUpsertCheckRunParse(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(task.Collection, patch.Collection))
 
@@ -1220,8 +1345,7 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
@@ -1286,8 +1410,7 @@ func TestRevokeGitHubDynamicAccessToken(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
@@ -1443,8 +1566,7 @@ func TestStartTaskWithOtelMetadata(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			require.NoError(t, db.ClearCollections(task.Collection, host.Collection))
 
@@ -1651,8 +1773,7 @@ func TestLogLookupClosureUsesAdminBucketsConfig(t *testing.T) {
 }
 
 func TestGitServePatchFile(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
@@ -1744,4 +1865,175 @@ func TestAttachTestResultsHandlerRun(t *testing.T) {
 		ctx := context.WithValue(t.Context(), model.ApiTaskKey, authedTask)
 		assert.Equal(t, http.StatusBadRequest, h.Run(ctx).Status())
 	})
+	t.Run("ExistingQuarantineSnapshotIsPreservedAndCreatedAtIsSet", func(t *testing.T) {
+		ctx := t.Context()
+		env := testutil.NewEnvironment(ctx, t)
+		require.NoError(t, task.ClearTestResults(ctx, env))
+		defer func() {
+			assert.NoError(t, task.ClearTestResults(ctx, env))
+		}()
+
+		svc := task.NewTestResultService(env)
+		record := testresult.DbTaskTestResults{ID: matchingInfo.ID(), Info: matchingInfo}
+		require.NoError(t, svc.AppendQuarantinedTests(ctx, record, []testresult.QuarantinedTest{{TestName: "quarantined_test"}}))
+
+		createdAt := time.Now().UTC().Round(time.Millisecond)
+		h := makeHandler(apimodels.AttachTestResultsRequest{
+			Info:         matchingInfo,
+			CreatedAt:    createdAt,
+			Stats:        testresult.TaskTestResultsStats{FailedCount: 1, TotalCount: 2},
+			FailedSample: []string{"failed_test"},
+		})
+		h.env = env
+		ctx = context.WithValue(ctx, model.ApiTaskKey, authedTask)
+		require.Equal(t, http.StatusOK, h.Run(ctx).Status())
+
+		var dbRecord testresult.DbTaskTestResults
+		require.NoError(t, env.CedarDB().Collection(testresult.Collection).FindOne(ctx, task.ByTaskIDAndExecution(authedTaskID, 1)).Decode(&dbRecord))
+		assert.True(t, createdAt.Equal(dbRecord.CreatedAt), "the created timestamp should come from the attach request because it determines the offline results partition key")
+		assert.Equal(t, 1, dbRecord.QuarantinedTestsCount)
+		assert.Equal(t, []testresult.QuarantinedTest{{TestName: "quarantined_test"}}, dbRecord.QuarantinedTests)
+		assert.Equal(t, 2, dbRecord.Stats.TotalCount)
+		assert.Equal(t, 1, dbRecord.Stats.FailedCount)
+		assert.Equal(t, []string{"failed_test"}, dbRecord.FailedTestsSample)
+	})
+}
+
+func TestGetDistroView(t *testing.T) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *getDistroViewHandler){
+		"LiveDistroEnablesContainerIsolationForStaleHost": func(ctx context.Context, t *testing.T, rh *getDistroViewHandler) {
+			// The host's embedded distro has no container isolation, but the
+			// live distro in the DB has it enabled. The handler should return CI.
+			h := host.Host{
+				Id:     "host_id",
+				Distro: distro.Distro{Id: "rhel80"},
+			}
+			require.NoError(t, h.Insert(ctx))
+			liveDistro := &distro.Distro{
+				Id:       "rhel80",
+				ExecUser: "taskuser",
+				BootstrapSettings: distro.BootstrapSettings{
+					ContainerIsolation: distro.ContainerIsolationSettings{
+						Enabled:  true,
+						Image:    "my-image:latest",
+						MemoryMB: 1024,
+						CPUs:     2,
+					},
+				},
+			}
+			require.NoError(t, liveDistro.Insert(ctx))
+
+			ctx = context.WithValue(ctx, model.ApiHostKey, &h)
+			resp := rh.Run(ctx)
+			require.Equal(t, http.StatusOK, resp.Status())
+			data, ok := resp.Data().(apimodels.DistroView)
+			require.True(t, ok)
+			require.NotNil(t, data.ContainerIsolation)
+			assert.Equal(t, "my-image:latest", data.ContainerIsolation.Image)
+			assert.Equal(t, int64(1024), data.ContainerIsolation.MemoryMB)
+			assert.Equal(t, int64(2), data.ContainerIsolation.CPUs)
+			assert.Equal(t, "taskuser", data.ExecUser, "ExecUser should be refreshed from live distro")
+		},
+		"LiveDistroDisablesContainerIsolationOverEmbedded": func(ctx context.Context, t *testing.T, rh *getDistroViewHandler) {
+			// The host's embedded distro has CI enabled, but the live distro
+			// does not. The live distro's settings should win.
+			h := host.Host{
+				Id: "host_id",
+				Distro: distro.Distro{
+					Id:       "rhel80",
+					ExecUser: "taskuser",
+					BootstrapSettings: distro.BootstrapSettings{
+						ContainerIsolation: distro.ContainerIsolationSettings{
+							Enabled: true,
+							Image:   "stale-image:v1",
+						},
+					},
+				},
+			}
+			require.NoError(t, h.Insert(ctx))
+			// Live distro has CI disabled.
+			require.NoError(t, (&distro.Distro{Id: "rhel80"}).Insert(ctx))
+
+			ctx = context.WithValue(ctx, model.ApiHostKey, &h)
+			resp := rh.Run(ctx)
+			require.Equal(t, http.StatusOK, resp.Status())
+			data, ok := resp.Data().(apimodels.DistroView)
+			require.True(t, ok)
+			assert.Nil(t, data.ContainerIsolation)
+			assert.Equal(t, "taskuser", data.ExecUser, "snapshot ExecUser preserved when live distro has none")
+		},
+		"MissingLiveDistroFallsBackToEmbeddedSnapshot": func(ctx context.Context, t *testing.T, rh *getDistroViewHandler) {
+			// No live distro document exists; the handler falls back to the
+			// host's embedded distro snapshot which has CI enabled.
+			h := host.Host{
+				Id: "host_id",
+				Distro: distro.Distro{
+					Id:       "rhel80-missing",
+					ExecUser: "snapshotuser",
+					BootstrapSettings: distro.BootstrapSettings{
+						ContainerIsolation: distro.ContainerIsolationSettings{
+							Enabled: true,
+							Image:   "embedded-image:v1",
+						},
+					},
+				},
+			}
+			require.NoError(t, h.Insert(ctx))
+			// Intentionally do not insert a live distro document for "rhel80-missing".
+
+			ctx = context.WithValue(ctx, model.ApiHostKey, &h)
+			resp := rh.Run(ctx)
+			require.Equal(t, http.StatusOK, resp.Status())
+			data, ok := resp.Data().(apimodels.DistroView)
+			require.True(t, ok)
+			require.NotNil(t, data.ContainerIsolation)
+			assert.Equal(t, "embedded-image:v1", data.ContainerIsolation.Image)
+			assert.Equal(t, "snapshotuser", data.ExecUser, "snapshot ExecUser preserved when live distro missing")
+		},
+		"ContainerIsolationKillSwitchSuppressesCI": func(ctx context.Context, t *testing.T, rh *getDistroViewHandler) {
+			rh.env.Settings().ServiceFlags.ContainerIsolationEnabled = false
+
+			h := host.Host{
+				Id:     "host_id",
+				Distro: distro.Distro{Id: "rhel80"},
+			}
+			require.NoError(t, h.Insert(ctx))
+			liveDistro := &distro.Distro{
+				Id:       "rhel80",
+				ExecUser: "taskuser",
+				BootstrapSettings: distro.BootstrapSettings{
+					ContainerIsolation: distro.ContainerIsolationSettings{
+						Enabled:          true,
+						Image:            "my-image:latest",
+						RequireIsolation: true,
+					},
+				},
+			}
+			require.NoError(t, liveDistro.Insert(ctx))
+
+			ctx = context.WithValue(ctx, model.ApiHostKey, &h)
+			resp := rh.Run(ctx)
+			require.Equal(t, http.StatusOK, resp.Status())
+			data, ok := resp.Data().(apimodels.DistroView)
+			require.True(t, ok)
+			assert.Nil(t, data.ContainerIsolation, "kill switch should suppress CI")
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx := t.Context()
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+			testutil.ConfigureIntegrationTest(t, env.Settings())
+
+			require.NoError(t, db.ClearCollections(host.Collection, distro.Collection))
+
+			rh, ok := makeGetDistroView(env).(*getDistroViewHandler)
+			require.True(t, ok)
+			rh.env.Settings().ServiceFlags.ContainerIsolationEnabled = true
+			rh.hostID = "host_id"
+
+			tCase(ctx, t, rh)
+		})
+	}
 }

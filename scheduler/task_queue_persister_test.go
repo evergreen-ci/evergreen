@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -9,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -18,8 +18,7 @@ import (
 )
 
 func TestDBTaskQueuePersister(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	var distroIds []string
 	var displayNames []string
@@ -117,8 +116,8 @@ func TestDBTaskQueuePersister(t *testing.T) {
 			},
 		}
 
-		distroQueueInfo1 := GetDistroQueueInfo(ctx, "", tasks[0:3], evergreen.MaxDurationPerDistroHost, TaskPlannerOptions{})
-		distroQueueInfo2 := GetDistroQueueInfo(ctx, "", tasks[3:], evergreen.MaxDurationPerDistroHost, TaskPlannerOptions{})
+		distroQueueInfo1 := GetDistroQueueInfo(ctx, &distro.Distro{}, tasks[0:3], TaskPlannerOptions{})
+		distroQueueInfo2 := GetDistroQueueInfo(ctx, &distro.Distro{}, tasks[3:], TaskPlannerOptions{})
 		So(distroQueueInfo1.Length, ShouldEqual, 3)
 		So(distroQueueInfo1.LengthWithDependenciesMet, ShouldEqual, 3)
 		So(distroQueueInfo2.Length, ShouldEqual, 2)

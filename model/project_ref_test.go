@@ -23,6 +23,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
@@ -87,6 +88,9 @@ func TestFindMergedProjectRef(t *testing.T) {
 		},
 		CommitQueue:       CommitQueueParams{Enabled: nil, Message: "using repo commit queue"},
 		WorkstationConfig: WorkstationConfig{GitClone: utility.TruePtr()},
+		TestSelection: TestSelectionSettings{
+			Allowed: utility.TruePtr(),
+		},
 		ParsleyFilters: []parsley.Filter{
 			{
 				Expression:    "project-filter",
@@ -112,6 +116,9 @@ func TestFindMergedProjectRef(t *testing.T) {
 		},
 		CommitQueue:       CommitQueueParams{Enabled: utility.TruePtr()},
 		WorkstationConfig: WorkstationConfig{SetupCommands: []WorkstationSetupCommand{{Command: "my-command"}}},
+		TestSelection: TestSelectionSettings{
+			MainlineDefaultEnabled: utility.TruePtr(),
+		},
 		ParsleyFilters: []parsley.Filter{
 			{
 				Expression:    "repo-filter",
@@ -151,6 +158,14 @@ func TestFindMergedProjectRef(t *testing.T) {
 	assert.Len(t, mergedProject.WorkstationConfig.SetupCommands, 1)
 	assert.Equal(t, "random2", mergedProject.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
 	assert.Len(t, mergedProject.ParsleyFilters, 2)
+	assert.True(t, mergedProject.IsTestSelectionMainlineDefaultEnabled())
+
+	projectRef.TestSelection.MainlineDefaultEnabled = utility.FalsePtr()
+	assert.NoError(t, projectRef.Replace(t.Context()))
+	mergedProject, err = FindMergedProjectRef(t.Context(), "ident", "ident", true)
+	assert.NoError(t, err)
+	require.NotNil(t, mergedProject)
+	assert.False(t, mergedProject.IsTestSelectionMainlineDefaultEnabled())
 
 	// Assert that mergeParsleyFilters correctly handles projects with repo filters but not project filters.
 	projectRef.ParsleyFilters = []parsley.Filter{}
@@ -970,8 +985,7 @@ func TestGetActivationTimeWithCron(t *testing.T) {
 }
 
 func TestAttachToNewRepo(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
 		evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection, githubapp.GitHubAppCollection))
@@ -1068,6 +1082,11 @@ func TestAttachToNewRepo(t *testing.T) {
 	assert.NoError(t, pRef.Insert(t.Context()))
 	pRef.Owner = "newOwner"
 	pRef.Repo = "newRepo"
+	// Reload the user so it carries the admin role it gained for the new repo above, as a real
+	// request would.
+	u, err = user.FindOneById(t.Context(), "me")
+	require.NoError(t, err)
+	require.NotNil(t, u)
 	assert.NoError(t, pRef.AttachToNewRepo(t.Context(), u))
 	assert.True(t, pRef.UseRepoSettings())
 	assert.NotEmpty(t, pRef.RepoRefId)
@@ -1084,6 +1103,110 @@ func TestAttachToNewRepo(t *testing.T) {
 
 }
 
+// TestAttachToNewRepoExistingRepoRefPermissions checks the permissions required to move a project
+// onto an owner/repo that already has a repo ref.
+func TestAttachToNewRepoExistingRepoRefPermissions(t *testing.T) {
+	setup := func(t *testing.T, userRoles ...string) (ProjectRef, RepoRef, *user.DBUser) {
+		ctx := t.Context()
+		require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ProjectVarsCollection, fakeparameter.Collection,
+			evergreen.ScopeCollection, evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection, githubapp.GitHubAppCollection))
+		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
+
+		targetRepoRef := RepoRef{ProjectRef{
+			Id:    "targetRepoRef",
+			Owner: "newOwner",
+			Repo:  "new-repo",
+		}}
+		require.NoError(t, targetRepoRef.Replace(ctx))
+		targetRepoVars := ProjectVars{
+			Id:            targetRepoRef.Id,
+			Vars:          map[string]string{"target_repo_var": "target_repo_value"},
+			PrivateVars:   map[string]bool{"target_repo_var": true},
+			AdminOnlyVars: map[string]bool{"target_repo_var": true},
+		}
+		require.NoError(t, targetRepoVars.Insert(ctx))
+
+		originRepoRef := RepoRef{ProjectRef{
+			Id:    "originRepoRef",
+			Owner: "old-owner",
+			Repo:  "old-repo",
+		}}
+		require.NoError(t, originRepoRef.Replace(ctx))
+
+		pRef := ProjectRef{
+			Id:        "myProject",
+			Owner:     "old-owner",
+			Repo:      "old-repo",
+			Branch:    "main",
+			Admins:    []string{"me"},
+			RepoRefId: originRepoRef.Id,
+			Enabled:   true,
+		}
+		require.NoError(t, pRef.Insert(ctx))
+		pRefVars := ProjectVars{
+			Id:   pRef.Id,
+			Vars: map[string]string{"my_var": "my_value"},
+		}
+		require.NoError(t, pRefVars.Insert(ctx))
+
+		u := &user.DBUser{Id: "me", SystemRoles: userRoles}
+		require.NoError(t, u.Insert(ctx))
+
+		pRef.Owner = targetRepoRef.Owner
+		pRef.Repo = targetRepoRef.Repo
+		return pRef, targetRepoRef, u
+	}
+
+	t.Run("NonRepoAdminShouldError", func(t *testing.T) {
+		ctx := t.Context()
+		pRef, _, u := setup(t)
+
+		err := pRef.AttachToNewRepo(ctx, u)
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, ErrRepoRefUnauthorized), "expected an authorization error, got '%s'", err)
+
+		pRefFromDB, err := FindBranchProjectRef(ctx, pRef.Id)
+		require.NoError(t, err)
+		require.NotNil(t, pRefFromDB)
+		assert.Equal(t, "old-owner", pRefFromDB.Owner)
+		assert.Equal(t, "old-repo", pRefFromDB.Repo)
+		assert.Equal(t, "originRepoRef", pRefFromDB.RepoRefId)
+
+		// A rejected move must leave the project's variables untouched.
+		mergedVars, err := FindMergedProjectVars(ctx, pRef.Id)
+		require.NoError(t, err)
+		require.NotNil(t, mergedVars)
+		assert.NotContains(t, mergedVars.Vars, "target_repo_var")
+		assert.NotContains(t, mergedVars.AdminOnlyVars, "target_repo_var")
+	})
+
+	t.Run("RepoAdminShouldSucceed", func(t *testing.T) {
+		ctx := t.Context()
+		pRef, targetRepoRef, u := setup(t, GetRepoAdminRole("targetRepoRef"))
+
+		rm := testutil.NewEnvironment(ctx, t).RoleManager()
+		require.NoError(t, rm.AddScope(ctx, gimlet.Scope{
+			ID:        GetRepoAdminScope(targetRepoRef.Id),
+			Type:      evergreen.ProjectResourceType,
+			Resources: []string{targetRepoRef.Id},
+		}))
+		require.NoError(t, rm.UpdateRole(ctx, gimlet.Role{
+			ID:          GetRepoAdminRole(targetRepoRef.Id),
+			Scope:       GetRepoAdminScope(targetRepoRef.Id),
+			Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value},
+		}))
+
+		require.NoError(t, pRef.AttachToNewRepo(ctx, u))
+
+		pRefFromDB, err := FindBranchProjectRef(ctx, pRef.Id)
+		require.NoError(t, err)
+		require.NotNil(t, pRefFromDB)
+		assert.Equal(t, targetRepoRef.Owner, pRefFromDB.Owner)
+		assert.Equal(t, targetRepoRef.Repo, pRefFromDB.Repo)
+		assert.Equal(t, targetRepoRef.Id, pRefFromDB.RepoRefId)
+	})
+}
+
 func checkRepoAttachmentEventLog(t *testing.T, project ProjectRef, attachmentType string) {
 	events, err := MostRecentProjectEvents(t.Context(), project.Id, 10)
 	require.NoError(t, err)
@@ -1094,8 +1217,7 @@ func checkRepoAttachmentEventLog(t *testing.T, project ProjectRef, attachmentTyp
 }
 
 func TestAttachToRepo(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ProjectVarsCollection, evergreen.ScopeCollection,
 		evergreen.RoleCollection, user.Collection, event.EventCollection, evergreen.ConfigCollection))
@@ -1269,8 +1391,7 @@ func checkParametersNamespacedByProject(t *testing.T, vars ProjectVars) {
 }
 
 func TestDetachFromRepo(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	for name, test := range map[string]func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser){
 		"ProjectRefIsUpdatedCorrectly": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
@@ -1714,12 +1835,23 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.Nil(t, pRefFromDb.GitHubDynamicTokenPermissionGroups)
 		},
 		ProjectPageTestSelectionSection: func(t *testing.T, id string) {
-			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageTestSelectionSection, "me"))
 			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
-			assert.NoError(t, err)
-			assert.NotNil(t, pRefFromDb)
+			require.NoError(t, err)
+			require.NotNil(t, pRefFromDb)
+			pRefFromDb.TestSelection = TestSelectionSettings{
+				Allowed:                utility.TruePtr(),
+				DefaultEnabled:         utility.TruePtr(),
+				MainlineDefaultEnabled: utility.TruePtr(),
+			}
+			require.NoError(t, pRefFromDb.Replace(t.Context()))
+
+			require.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageTestSelectionSection, "me"))
+			pRefFromDb, err = FindBranchProjectRef(t.Context(), id)
+			require.NoError(t, err)
+			require.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.TestSelection.Allowed)
 			assert.Nil(t, pRefFromDb.TestSelection.DefaultEnabled)
+			assert.Nil(t, pRefFromDb.TestSelection.MainlineDefaultEnabled)
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -2122,8 +2254,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 		evergreen.ScopeCollection, ProjectVarsCollection, fakeparameter.Collection, ProjectAliasCollection, githubapp.GitHubAppCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	doc1 := &ProjectRef{
 		Id:                   "id1",
 		Owner:                "mongodb",
@@ -2941,8 +3072,7 @@ func TestAddEmptyBranch(t *testing.T) {
 }
 
 func TestAddPermissions(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(user.Collection, ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
@@ -3008,8 +3138,7 @@ func TestAddPermissions(t *testing.T) {
 }
 
 func TestUpdateAdminRoles(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, user.Collection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	env := testutil.NewEnvironment(ctx, t)
@@ -3052,8 +3181,7 @@ func TestUpdateAdminRoles(t *testing.T) {
 }
 
 func TestUpdateAdminRolesError(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, user.Collection))
 	env := testutil.NewEnvironment(ctx, t)
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
@@ -3117,7 +3245,7 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 	}))
 
 	// total of 100 tasks eligible to be found
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		myTask := task.Task{
 			Id:                  fmt.Sprintf("t%d", i),
 			RevisionOrderNumber: 100 - (i / 2),
@@ -3571,8 +3699,7 @@ func TestMergeWithProjectConfig(t *testing.T) {
 }
 
 func TestSaveProjectPageForSection(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 
@@ -3674,8 +3801,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 }
 
 func TestValidateOwnerAndRepo(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ConfigCollection))
 
@@ -4088,6 +4214,92 @@ func TestUserHasRepoViewPermission(t *testing.T) {
 			usr := &user.DBUser{Id: "usr"}
 			assert.NoError(t, usr.Insert(t.Context()))
 			testCase(t, usr, roleManager)
+		})
+	}
+}
+
+func TestIsTestSelectionFilteringEnabled(t *testing.T) {
+	for tName, tCase := range map[string]struct {
+		settings    TestSelectionSettings
+		requester   string
+		taskEnabled bool
+		expected    bool
+	}{
+		"DisallowedProjectIsDisabled": {
+			settings:    TestSelectionSettings{Allowed: utility.FalsePtr(), MainlineDefaultEnabled: utility.TruePtr()},
+			requester:   evergreen.RepotrackerVersionRequester,
+			taskEnabled: true,
+		},
+		"DisabledTaskIsDisabled": {
+			settings:    TestSelectionSettings{Allowed: utility.TruePtr(), MainlineDefaultEnabled: utility.TruePtr()},
+			requester:   evergreen.RepotrackerVersionRequester,
+			taskEnabled: false,
+		},
+		"PatchRequesterIsEnabled": {
+			settings:    TestSelectionSettings{Allowed: utility.TruePtr()},
+			requester:   evergreen.PatchVersionRequester,
+			taskEnabled: true,
+			expected:    true,
+		},
+		"GitHubPatchRequesterIsEnabled": {
+			settings:    TestSelectionSettings{Allowed: utility.TruePtr()},
+			requester:   evergreen.GithubPRRequester,
+			taskEnabled: true,
+			expected:    true,
+		},
+		"MainlineRequesterWithoutMainlineDefaultIsDisabled": {
+			settings:    TestSelectionSettings{Allowed: utility.TruePtr()},
+			requester:   evergreen.RepotrackerVersionRequester,
+			taskEnabled: true,
+		},
+		"MainlineRequesterWithPatchDefaultDisabledIsDisabled": {
+			settings:    TestSelectionSettings{Allowed: utility.TruePtr(), DefaultEnabled: utility.FalsePtr(), MainlineDefaultEnabled: utility.TruePtr()},
+			requester:   evergreen.RepotrackerVersionRequester,
+			taskEnabled: true,
+		},
+		"MainlineRequesterWithMainlineDefaultIsEnabled": {
+			settings:    TestSelectionSettings{Allowed: utility.TruePtr(), DefaultEnabled: utility.TruePtr(), MainlineDefaultEnabled: utility.TruePtr()},
+			requester:   evergreen.RepotrackerVersionRequester,
+			taskEnabled: true,
+			expected:    true,
+		},
+		"OtherNonPatchRequesterIsDisabled": {
+			settings:    TestSelectionSettings{Allowed: utility.TruePtr(), MainlineDefaultEnabled: utility.TruePtr()},
+			requester:   evergreen.AdHocRequester,
+			taskEnabled: true,
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ref := ProjectRef{TestSelection: tCase.settings}
+			assert.Equal(t, tCase.expected, ref.IsTestSelectionFilteringEnabled(tCase.requester, tCase.taskEnabled))
+		})
+	}
+}
+
+// The settings UI never sends artifact credentials, so no section write may include them.
+func TestArtifactCredentialsSurviveProjectSettingsWrites(t *testing.T) {
+	credentials := ArtifactCredentialSettings{AWSKeyVarName: "aws_key", AWSSecretVarName: "aws_secret"}
+
+	// A nil update is how defaulting a section to the repo saves it.
+	for name, update := range map[string]*ProjectRef{
+		"SavingTheGeneralSection":           {Id: "project_id", Identifier: "project_identifier", Owner: "owner", Repo: "repo", Enabled: true, BatchTime: 20},
+		"DefaultingTheGeneralSectionToRepo": nil,
+	} {
+		t.Run(name, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ConfigCollection))
+			pRef := ProjectRef{
+				Id: "project_id", Identifier: "project_identifier", Owner: "owner", Repo: "repo",
+				Branch: "main", Enabled: true, BatchTime: 10, ArtifactCredentials: credentials,
+			}
+			require.NoError(t, pRef.Insert(t.Context()))
+
+			_, err := SaveProjectPageForSection(t.Context(), "project_id", update, ProjectPageGeneralSection, false)
+			require.NoError(t, err)
+
+			saved, err := FindBranchProjectRef(t.Context(), "project_identifier")
+			require.NoError(t, err)
+			require.NotNil(t, saved)
+			assert.Equal(t, credentials, saved.ArtifactCredentials)
 		})
 	}
 }

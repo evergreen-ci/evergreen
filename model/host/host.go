@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -263,7 +264,6 @@ func (opts *DockerOptions) Validate() error {
 // HostMetadataOptions are options related to the ec2 instance's metadata.
 type HostMetadataOptions struct {
 	CloudProviderData
-	HostID        string `json:"host_id"`
 	EC2InstanceID string `json:"ec2_instance_id"`
 }
 
@@ -459,6 +459,26 @@ type HostModifyOptions struct {
 	SubscriptionType           string        `json:"subscription_type"`
 	NewName                    string        `json:"new_name"`
 	AddKey                     string        `json:"add_key"`
+}
+
+// maxDisplayNameLength is the maximum number of characters allowed in a host's
+// display name.
+const maxDisplayNameLength = 64
+
+// validDisplayNameChars matches the characters allowed in a host's display
+// name.
+var validDisplayNameChars = regexp.MustCompile(`^[a-zA-Z0-9 ._\-()'":@]*$`)
+
+// ValidateDisplayName checks that a host display name is within the length
+// limit and contains all valid characters.
+func ValidateDisplayName(name string) error {
+	if len(name) > maxDisplayNameLength {
+		return errors.Errorf("display name cannot be longer than %d characters", maxDisplayNameLength)
+	}
+	if !validDisplayNameChars.MatchString(name) {
+		return errors.New("display name can only contain letters, numbers, spaces, and the following characters: . _ - ( ) ' \" : @")
+	}
+	return nil
 }
 
 // SleepScheduleOptions represent options that a user can set for creating a
@@ -1359,12 +1379,19 @@ func buildEC2MetadataUpdate(hostname, zone, publicIPv4, privateIPv4, ipv6 string
 	return setFields
 }
 
-// numMetadataFields is the number of fields required from EC2 in order
-// to have fully-populated a host's EC2 metadata
+// numMetadataFields is the number of metadata fields that can be set
+// from EC2 data (hostname, zone, start time, public IPv4, private
+// IPv4, IPv6, and volumes).
 const numMetadataFields = 7
 
+// numMetadataFieldsWithoutVolumes is the number of metadata fields
+// excluding volume attachments. Task hosts don't need volume tracking
+// because their EBS volumes are auto-deleted on termination.
+const numMetadataFieldsWithoutVolumes = numMetadataFields - 1
+
 // SetEC2Metadata updates the EC2 metadata for a given host. Only non-zero
-// fields will be set.
+// fields will be set. For task hosts, metadata can be set without volume
+// information since task hosts don't require volume tracking.
 func (h *Host) SetEC2Metadata(ctx context.Context, params HostMetadataOptions) error {
 	setFields := buildEC2MetadataUpdate(
 		params.PublicDNS,
@@ -1376,8 +1403,12 @@ func (h *Host) SetEC2Metadata(ctx context.Context, params HostMetadataOptions) e
 		params.Volumes,
 	)
 
-	// If there is any missing data in setFields, no-op.
-	if len(setFields) < numMetadataFields {
+	requiredFields := numMetadataFields
+	if h.StartedBy == evergreen.User {
+		requiredFields = numMetadataFieldsWithoutVolumes
+	}
+
+	if len(setFields) < requiredFields {
 		return nil
 	}
 
@@ -2807,8 +2838,8 @@ func GetContainersOnParents(ctx context.Context, d distro.Distro) ([]ContainersO
 
 	containersOnParents := make([]ContainersOnParents, 0)
 	// parents come in sorted order from soonest to latest expected finish time
-	for i := len(allParents) - 1; i >= 0; i-- {
-		parent := allParents[i]
+	for _, parent := range slices.Backward(allParents) {
+
 		currentContainers, err := parent.GetActiveContainers(ctx)
 		if err != nil && !adb.ResultsNotFound(err) {
 			return nil, errors.Wrapf(err, "finding active containers for container parent '%s'", parent.Id)
@@ -3817,7 +3848,7 @@ func (h *Host) GeneratePersistentDNSName(ctx context.Context, domain string) (st
 	// tiny edge case where the DNS name generated above conflicts with an
 	// existing one.
 	const numAttempts = 5
-	for i := 0; i < numAttempts; i++ {
+	for range numAttempts {
 		random := utility.RandomString()[:maxRandLen]
 		candidate := fmt.Sprintf("%s-%s.%s", user, random, strings.TrimPrefix(domain, "."))
 

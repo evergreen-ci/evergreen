@@ -9,15 +9,18 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -188,7 +191,7 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "finding artifacts for task '%s'", projCtx.Task.Id))
 		return
 	}
-	taskFiles, err = artifact.StripHiddenFiles(r.Context(), taskFiles, true)
+	taskFiles, err = artifact.StripHiddenFiles(r.Context(), taskFiles, true, model.NewArtifactCredentialResolver(projCtx.Task.Id))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "stripping hidden files for task '%s'", projCtx.Task.Id))
 		return
@@ -218,11 +221,16 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := validateArtifactURL(r.Context(), tFile.Link); err != nil {
-		uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "artifact link not allowed"))
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "validating artifact link"))
 		return
 	}
 
-	response, err := http.Get(tFile.Link)
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, tFile.Link, nil)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "creating artifact request"))
+		return
+	}
+	response, err := artifactHTTPClient.Do(req)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "downloading file"))
 		return
@@ -352,3 +360,43 @@ func validateArtifactURL(ctx context.Context, raw string) error {
 	}
 	return nil
 }
+
+// ssrfDialControl blocks outbound connections to blocked IP
+// addresses. It is called after DNS resolution with the
+// resolved IP, preventing DNS rebinding attacks.
+func ssrfDialControl(_ context.Context, _ string, address string, _ syscall.RawConn) error {
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		return errors.Wrap(err, "parsing dial address")
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return errors.Errorf("invalid IP in dial address: %s", host)
+	}
+	if isBlockedIP(ip) {
+		return errors.Errorf("connection to blocked address %s", ip)
+	}
+	return nil
+}
+
+const maxArtifactRedirects = 10
+
+var artifactHTTPClient = utility.WithOTelTracing(&http.Client{
+	Transport: &http.Transport{
+		// http.Get uses http.DefaultTransport under the hood, which includes
+		// http.ProxyFromEnvironment, so adding here for parity.
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			ControlContext: ssrfDialControl,
+		}).DialContext,
+	},
+	CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		if len(via) >= maxArtifactRedirects {
+			return errors.New("too many redirects")
+		}
+		if req.URL.Scheme != "http" && req.URL.Scheme != "https" {
+			return errors.Errorf("redirect to unsupported scheme %s", req.URL.Scheme)
+		}
+		return nil
+	},
+})

@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 // AuthorDisplayName is the resolver for the authorDisplayName field.
@@ -53,9 +52,9 @@ func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]
 // Duration is the resolver for the duration field.
 func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (*PatchDuration, error) {
 	patchID := utility.FromStringPtr(obj.Id)
-	p, err := patch.FindOneId(ctx, patchID)
+	p, err := loaders.GetPatch(ctx, patchID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()), err)
 	}
 	if p == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", patchID))
@@ -80,9 +79,9 @@ func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (
 // GeneratedTaskCounts is the resolver for the generatedTaskCounts field.
 func (r *patchResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.APIPatch) ([]*GeneratedTaskCountResults, error) {
 	patchID := utility.FromStringPtr(obj.Id)
-	p, err := patch.FindOneId(ctx, patchID)
+	p, err := loaders.GetPatch(ctx, patchID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()), err)
 	}
 	if p == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", patchID))
@@ -100,24 +99,24 @@ func (r *patchResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.
 	}
 	var res []*GeneratedTaskCountResults
 	for _, buildVariant := range patchProjectVariantsAndTasks.Variants {
+		var generatorDisplayNames []string
 		for _, taskUnit := range buildVariant.Tasks {
 			if _, ok := generatorTasks[taskUnit.Name]; ok {
-				dbTask, err := task.FindOne(ctx, db.Query(bson.M{
-					task.ProjectKey:      proj.DisplayName,
-					task.BuildVariantKey: buildVariant.Name,
-					task.DisplayNameKey:  taskUnit.Name,
-					task.GenerateTaskKey: true,
-				}).Sort([]string{"-" + task.FinishTimeKey}))
-				if err != nil {
-					return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task '%s' in build variant '%s': %s", taskUnit.Name, buildVariant.Name, err.Error()))
-				}
-				if dbTask != nil {
-					res = append(res, &GeneratedTaskCountResults{
-						BuildVariantName: utility.ToStringPtr(buildVariant.Name),
-						TaskName:         utility.ToStringPtr(taskUnit.Name),
-						EstimatedTasks:   utility.FromIntPtr(dbTask.EstimatedNumActivatedGeneratedTasks),
-					})
-				}
+				generatorDisplayNames = append(generatorDisplayNames, taskUnit.Name)
+			}
+		}
+
+		estimations, err := task.GetBatchedGenerateTasksEstimations(ctx, p.Project, buildVariant.Name, generatorDisplayNames)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting generated task estimations for build variant '%s': %s", buildVariant.Name, err.Error()))
+		}
+		for _, displayName := range generatorDisplayNames {
+			if estimation, ok := estimations[displayName]; ok {
+				res = append(res, &GeneratedTaskCountResults{
+					BuildVariantName: utility.ToStringPtr(buildVariant.Name),
+					TaskName:         utility.ToStringPtr(displayName),
+					EstimatedTasks:   estimation.EstimatedNumActivatedGeneratedTasks,
+				})
 			}
 		}
 	}
@@ -314,31 +313,6 @@ func (r *patchResolver) User(ctx context.Context, obj *restModel.APIPatch) (*use
 	return dbUser, nil
 }
 
-// UserLite is the resolver for the userLite field.
-func (r *patchResolver) UserLite(ctx context.Context, obj *restModel.APIPatch) (*user.DBUser, error) {
-	// If only id is requested, we can return it without a database call.
-	requestedFields := graphql.CollectAllFields(ctx)
-	if len(requestedFields) == 1 && requestedFields[0] == "id" {
-		return &user.DBUser{Id: utility.FromStringPtr(obj.Author)}, nil
-	}
-
-	authorId := utility.FromStringPtr(obj.Author)
-	currentUser := mustHaveUser(ctx)
-	if currentUser.Id == authorId {
-		return currentUser, nil
-	}
-
-	dbUser, err := loaders.GetUser(ctx, authorId)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", authorId, err.Error()), err)
-	}
-	// This is most likely a service user, so just return their ID.
-	if dbUser == nil {
-		return &user.DBUser{Id: authorId}, nil
-	}
-	return dbUser, nil
-}
-
 // Version is the resolver for the version field.
 func (r *patchResolver) Version(ctx context.Context, obj *restModel.APIPatch) (*model.Version, error) {
 	versionID := utility.FromStringPtr(obj.Version)
@@ -425,6 +399,7 @@ func (r *patchesResolver) Patches(ctx context.Context, obj *Patches) ([]*restMod
 
 	apiPatches := []*restModel.APIPatch{}
 	projectIDs := make([]string, 0, len(patches))
+	patchIDs := make([]string, 0, len(patches))
 	for _, p := range patches {
 		apiPatch := restModel.APIPatch{}
 		if err := apiPatch.BuildFromService(ctx, p, &restModel.APIPatchArgs{
@@ -433,11 +408,15 @@ func (r *patchesResolver) Patches(ctx context.Context, obj *Patches) ([]*restMod
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting patch '%s' to APIPatch: %s", p.Id.Hex(), err.Error()))
 		}
 		apiPatches = append(apiPatches, &apiPatch)
+		patchIDs = append(patchIDs, p.Id.Hex())
 		if projectID := utility.FromStringPtr(apiPatch.ProjectId); projectID != "" {
 			projectIDs = append(projectIDs, projectID)
 		}
 	}
 
+	if len(patchIDs) > 0 {
+		loaders.PreloadPatches(ctx, patchIDs)
+	}
 	if len(projectIDs) > 0 {
 		loaders.PreloadProjects(ctx, projectIDs)
 	}

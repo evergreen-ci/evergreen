@@ -27,8 +27,7 @@ import (
 )
 
 func TestListHostsForTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -102,8 +101,7 @@ func TestListHostsForTask(t *testing.T) {
 }
 
 func TestCreateHostsFromTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, host.Collection, model.ParserProjectCollection))
 
@@ -182,7 +180,7 @@ buildvariants:
 		}
 		assert.NoError(t, h1.Insert(ctx))
 		pp := &model.ParserProject{}
-		err := util.UnmarshalYAML([]byte(versionYaml), &pp)
+		err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
 		assert.NoError(t, err)
 		pp.Id = "v1"
 		assert.NoError(t, pp.Insert(t.Context()))
@@ -250,7 +248,7 @@ buildvariants:
 		}
 		assert.NoError(t, h2.Insert(ctx))
 		pp := &model.ParserProject{}
-		err := util.UnmarshalYAML([]byte(versionYaml), &pp)
+		err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
 		assert.NoError(t, err)
 		pp.Id = "v2"
 		assert.NoError(t, pp.Insert(t.Context()))
@@ -319,7 +317,7 @@ buildvariants:
 		}
 		assert.NoError(t, h3.Insert(ctx))
 		pp := &model.ParserProject{}
-		err := util.UnmarshalYAML([]byte(versionYaml), &pp)
+		err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
 		assert.NoError(t, err)
 		pp.Id = "v3"
 		assert.NoError(t, pp.Insert(t.Context()))
@@ -385,7 +383,7 @@ buildvariants:
 		assert.NoError(t, h4.Insert(ctx))
 
 		pp := &model.ParserProject{}
-		err := util.UnmarshalYAML([]byte(versionYaml), &pp)
+		err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
 		assert.NoError(t, err)
 		pp.Id = "v4"
 		assert.NoError(t, pp.Insert(t.Context()))

@@ -1,7 +1,6 @@
 package task
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -116,8 +115,7 @@ func TestSortTestResultsByBaseStatus(t *testing.T) {
 }
 
 func TestGetTaskTestResults(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 
 	require.NoError(t, ClearTestResults(ctx, env))
@@ -233,8 +231,7 @@ func TestGetTaskTestResults(t *testing.T) {
 }
 
 func TestGetTaskTestResultsStats(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 
 	require.NoError(t, ClearTestResults(ctx, env))
@@ -251,7 +248,7 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 		TaskOutputInfo: &output,
 	}
 	savedResults0 := make([]testresult.TestResult, 10)
-	for i := 0; i < len(savedResults0); i++ {
+	for i := range savedResults0 {
 		result := getTestResult()
 		result.TaskID = task0.Id
 		result.Execution = task0.Execution
@@ -280,7 +277,7 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 		TaskOutputInfo: &output,
 	}
 	savedResults1 := make([]testresult.TestResult, 10)
-	for i := 0; i < len(savedResults1); i++ {
+	for i := range savedResults1 {
 		result := getTestResult()
 		result.TaskID = task1.Id
 		result.Execution = task1.Execution
@@ -343,8 +340,7 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 }
 
 func TestGetFailedTestSamples(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 
 	require.NoError(t, ClearTestResults(ctx, env))
@@ -377,11 +373,11 @@ func TestGetFailedTestSamples(t *testing.T) {
 	sample1 := make([]string, 2)
 
 	savedResults0 := saveTestResults(t, ctx, testBucket, svc, &task5, 2)
-	for i := 0; i < len(savedResults0); i++ {
+	for i := range savedResults0 {
 		sample0[i] = savedResults0[i].GetDisplayTestName()
 	}
 	savedResults1 := saveTestResults(t, ctx, testBucket, svc, &task4, 2)
-	for i := 0; i < len(savedResults1); i++ {
+	for i := range savedResults1 {
 		sample1[i] = savedResults1[i].GetDisplayTestName()
 	}
 	for _, test := range []struct {
@@ -453,8 +449,7 @@ func TestAppendResults(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(Collection))
 	}()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 
 	require.NoError(t, ClearTestResults(ctx, env))

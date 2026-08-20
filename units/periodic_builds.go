@@ -171,16 +171,18 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, metadata model.Versio
 		Revision:     metadata.Revision.Revision,
 		ReadFileFrom: model.ReadFromGithub,
 	}
+	svcFlags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting service flags")
+	}
+	opts.CrossFileYAMLAnchorsEnabled = svcFlags.CrossFileYAMLAnchorsEnabled
 	intermediateProject, err := model.LoadProjectInto(ctx, configBytes, opts, j.project.Id, proj)
 	if err != nil {
 		return errors.Wrap(err, "parsing config file")
 	}
 	var config *model.ProjectConfig
 	if j.project.IsVersionControlEnabled() {
-		config, err = model.CreateProjectConfig(configBytes, j.project.Id)
-		if err != nil {
-			return errors.Wrap(err, "parsing project config")
-		}
+		config = intermediateProject.MergedProjectConfig(j.project.Id)
 	}
 
 	projectInfo := &model.ProjectInfo{

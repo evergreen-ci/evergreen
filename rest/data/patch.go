@@ -182,9 +182,10 @@ func SetMergeQueueGitRefNotFound(ctx context.Context, versionId string) error {
 	return patch.UpdateOne(ctx, mgobson.M{patch.IdKey: p.Id}, update)
 }
 
-// FindPatchesByUser finds patches for the input user as ordered by creation time
-func FindPatchesByUser(ctx context.Context, user string, ts time.Time, limit int) ([]restModel.APIPatch, error) {
-	patches, err := patch.Find(ctx, patch.ByUserPaginated(user, ts, limit))
+// FindPatchesByUser finds patches for the input user as ordered by creation time.
+// If projectIDs is non-empty, only patches belonging to those projects are returned.
+func FindPatchesByUser(ctx context.Context, user string, ts time.Time, limit int, projectIDs ...string) ([]restModel.APIPatch, error) {
+	patches, err := patch.Find(ctx, patch.ByUserPaginated(user, ts, limit, projectIDs...))
 	if err != nil {
 		return nil, errors.Wrapf(err, "fetching patches for user '%s'", user)
 	}

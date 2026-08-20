@@ -178,6 +178,12 @@ type EditSpawnHostInput struct {
 	VolumeID            *string                 `json:"volumeId,omitempty"`
 }
 
+// ExecutionTasksFilterOptions is an input for the task.executionTasksFull field.
+// It's used to filter a display task's execution tasks.
+type ExecutionTasksFilterOptions struct {
+	Statuses []string `json:"statuses,omitempty"`
+}
+
 type ExternalLinkForMetadata struct {
 	URL         string `json:"url"`
 	DisplayName string `json:"displayName"`
@@ -585,16 +591,6 @@ type TaskHistory struct {
 	Pagination *TaskHistoryPagination `json:"pagination"`
 }
 
-type TaskHistoryByCreateTime struct {
-	Tasks      []*model.APITask                   `json:"tasks"`
-	Pagination *TaskHistoryByCreateTimePagination `json:"pagination"`
-}
-
-type TaskHistoryByCreateTimePagination struct {
-	MostRecentTaskCreateTime time.Time `json:"mostRecentTaskCreateTime"`
-	OldestTaskCreateTime     time.Time `json:"oldestTaskCreateTime"`
-}
-
 type TaskHistoryOpts struct {
 	ProjectIdentifier string        `json:"projectIdentifier"`
 	TaskName          string        `json:"taskName"`
@@ -776,9 +772,8 @@ type VolumeHost struct {
 }
 
 type Waterfall struct {
-	FlattenedVersions []*model.APIVersion  `json:"flattenedVersions"`
-	Pagination        *WaterfallPagination `json:"pagination"`
-	Versions          []*model1.Version    `json:"versions"`
+	Pagination *WaterfallPagination `json:"pagination"`
+	Versions   []*model1.Version    `json:"versions"`
 }
 
 type WaterfallOptions struct {
@@ -1230,23 +1225,24 @@ func (e ProjectPermission) MarshalJSON() ([]byte, error) {
 type ProjectSettingsSection string
 
 const (
-	ProjectSettingsSectionGeneral           ProjectSettingsSection = "GENERAL"
-	ProjectSettingsSectionAccess            ProjectSettingsSection = "ACCESS"
-	ProjectSettingsSectionVariables         ProjectSettingsSection = "VARIABLES"
-	ProjectSettingsSectionNotifications     ProjectSettingsSection = "NOTIFICATIONS"
-	ProjectSettingsSectionPatchAliases      ProjectSettingsSection = "PATCH_ALIASES"
-	ProjectSettingsSectionWorkstation       ProjectSettingsSection = "WORKSTATION"
-	ProjectSettingsSectionTriggers          ProjectSettingsSection = "TRIGGERS"
-	ProjectSettingsSectionPeriodicBuilds    ProjectSettingsSection = "PERIODIC_BUILDS"
-	ProjectSettingsSectionPlugins           ProjectSettingsSection = "PLUGINS"
-	ProjectSettingsSectionViewsAndFilters   ProjectSettingsSection = "VIEWS_AND_FILTERS"
-	ProjectSettingsSectionTestSelection     ProjectSettingsSection = "TEST_SELECTION"
-	ProjectSettingsSectionGithubAppSettings ProjectSettingsSection = "GITHUB_APP_SETTINGS"
-	ProjectSettingsSectionGithubPermissions ProjectSettingsSection = "GITHUB_PERMISSIONS"
-	ProjectSettingsSectionPullRequests      ProjectSettingsSection = "PULL_REQUESTS"
-	ProjectSettingsSectionGitTags           ProjectSettingsSection = "GIT_TAGS"
-	ProjectSettingsSectionMergeQueue        ProjectSettingsSection = "MERGE_QUEUE"
-	ProjectSettingsSectionCommitChecks      ProjectSettingsSection = "COMMIT_CHECKS"
+	ProjectSettingsSectionGeneral                 ProjectSettingsSection = "GENERAL"
+	ProjectSettingsSectionAccess                  ProjectSettingsSection = "ACCESS"
+	ProjectSettingsSectionVariables               ProjectSettingsSection = "VARIABLES"
+	ProjectSettingsSectionNotifications           ProjectSettingsSection = "NOTIFICATIONS"
+	ProjectSettingsSectionPatchAliases            ProjectSettingsSection = "PATCH_ALIASES"
+	ProjectSettingsSectionWorkstation             ProjectSettingsSection = "WORKSTATION"
+	ProjectSettingsSectionTriggers                ProjectSettingsSection = "TRIGGERS"
+	ProjectSettingsSectionPeriodicBuilds          ProjectSettingsSection = "PERIODIC_BUILDS"
+	ProjectSettingsSectionPlugins                 ProjectSettingsSection = "PLUGINS"
+	ProjectSettingsSectionViewsAndFilters         ProjectSettingsSection = "VIEWS_AND_FILTERS"
+	ProjectSettingsSectionTestSelection           ProjectSettingsSection = "TEST_SELECTION"
+	ProjectSettingsSectionTaskOwnershipAndFoliage ProjectSettingsSection = "TASK_OWNERSHIP_AND_FOLIAGE"
+	ProjectSettingsSectionGithubAppSettings       ProjectSettingsSection = "GITHUB_APP_SETTINGS"
+	ProjectSettingsSectionGithubPermissions       ProjectSettingsSection = "GITHUB_PERMISSIONS"
+	ProjectSettingsSectionPullRequests            ProjectSettingsSection = "PULL_REQUESTS"
+	ProjectSettingsSectionGitTags                 ProjectSettingsSection = "GIT_TAGS"
+	ProjectSettingsSectionMergeQueue              ProjectSettingsSection = "MERGE_QUEUE"
+	ProjectSettingsSectionCommitChecks            ProjectSettingsSection = "COMMIT_CHECKS"
 )
 
 var AllProjectSettingsSection = []ProjectSettingsSection{
@@ -1261,6 +1257,7 @@ var AllProjectSettingsSection = []ProjectSettingsSection{
 	ProjectSettingsSectionPlugins,
 	ProjectSettingsSectionViewsAndFilters,
 	ProjectSettingsSectionTestSelection,
+	ProjectSettingsSectionTaskOwnershipAndFoliage,
 	ProjectSettingsSectionGithubAppSettings,
 	ProjectSettingsSectionGithubPermissions,
 	ProjectSettingsSectionPullRequests,
@@ -1271,7 +1268,7 @@ var AllProjectSettingsSection = []ProjectSettingsSection{
 
 func (e ProjectSettingsSection) IsValid() bool {
 	switch e {
-	case ProjectSettingsSectionGeneral, ProjectSettingsSectionAccess, ProjectSettingsSectionVariables, ProjectSettingsSectionNotifications, ProjectSettingsSectionPatchAliases, ProjectSettingsSectionWorkstation, ProjectSettingsSectionTriggers, ProjectSettingsSectionPeriodicBuilds, ProjectSettingsSectionPlugins, ProjectSettingsSectionViewsAndFilters, ProjectSettingsSectionTestSelection, ProjectSettingsSectionGithubAppSettings, ProjectSettingsSectionGithubPermissions, ProjectSettingsSectionPullRequests, ProjectSettingsSectionGitTags, ProjectSettingsSectionMergeQueue, ProjectSettingsSectionCommitChecks:
+	case ProjectSettingsSectionGeneral, ProjectSettingsSectionAccess, ProjectSettingsSectionVariables, ProjectSettingsSectionNotifications, ProjectSettingsSectionPatchAliases, ProjectSettingsSectionWorkstation, ProjectSettingsSectionTriggers, ProjectSettingsSectionPeriodicBuilds, ProjectSettingsSectionPlugins, ProjectSettingsSectionViewsAndFilters, ProjectSettingsSectionTestSelection, ProjectSettingsSectionTaskOwnershipAndFoliage, ProjectSettingsSectionGithubAppSettings, ProjectSettingsSectionGithubPermissions, ProjectSettingsSectionPullRequests, ProjectSettingsSectionGitTags, ProjectSettingsSectionMergeQueue, ProjectSettingsSectionCommitChecks:
 		return true
 	}
 	return false

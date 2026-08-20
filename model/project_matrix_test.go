@@ -41,7 +41,7 @@ buildvariants:
       set:
         tags: "gotcha_boy"
 `
-			p, err := createIntermediateProject([]byte(axes), true, nil)
+			p, _, err := createIntermediateProject([]byte(axes), true, nil)
 			So(err, ShouldBeNil)
 			axis := p.Axes[0]
 			So(axis.Id, ShouldEqual, "os")
@@ -77,7 +77,7 @@ buildvariants:
     - blue
     - green
 `
-			p, err := createIntermediateProject([]byte(simple), false, nil)
+			p, _, err := createIntermediateProject([]byte(simple), false, nil)
 			So(err, ShouldBeNil)
 			So(len(p.BuildVariants), ShouldEqual, 2)
 			m1 := *p.BuildVariants[0].Matrix
@@ -108,7 +108,7 @@ buildvariants:
 - name: "single_variant"
   tasks: "*"
 `
-			p, err := createIntermediateProject([]byte(simple), false, nil)
+			p, _, err := createIntermediateProject([]byte(simple), false, nil)
 			So(err, ShouldBeNil)
 			So(len(p.BuildVariants), ShouldEqual, 2)
 			m1 := *p.BuildVariants[0].Matrix
@@ -201,7 +201,7 @@ func TestMatrixDefinitionAllCells(t *testing.T) {
 		Convey("a disgustingly large matrix should expand properly", func() {
 			bigList := func(max int) []string {
 				out := []string{}
-				for i := 0; i < max; i++ {
+				for i := range max {
 					out = append(out, fmt.Sprint(i))
 				}
 				return out

@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"maps"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -86,6 +87,8 @@ type APIProjectAlias struct {
 	ID *string `json:"_id,omitempty"`
 	// List of allowed parameters to the alias.
 	Parameters []*APIParameter `json:"parameters,omitempty"`
+	// GitHub PR labels required for this alias to contribute tasks.
+	RequiredLabels []*string `json:"required_labels,omitempty"`
 }
 
 func (e *APIProjectEvent) BuildFromService(ctx context.Context, entry model.ProjectChangeEventEntry) error {
@@ -158,12 +161,8 @@ func (p *APIProjectVars) ToService() *model.ProjectVars {
 			adminOnlyVars[key] = val
 		}
 	}
-	for key, val := range p.Vars {
-		vars[key] = val
-	}
-	for key, val := range p.VarsDescriptions {
-		varsDescriptions[key] = val
-	}
+	maps.Copy(vars, p.Vars)
+	maps.Copy(varsDescriptions, p.VarsDescriptions)
 
 	// handle UI list
 	for _, each := range p.PrivateVarsList {
@@ -195,14 +194,15 @@ func (p *APIProjectVars) BuildFromService(v model.ProjectVars) {
 
 func (a *APIProjectAlias) ToService() model.ProjectAlias {
 	res := model.ProjectAlias{
-		Alias:       utility.FromStringPtr(a.Alias),
-		Task:        utility.FromStringPtr(a.Task),
-		Variant:     utility.FromStringPtr(a.Variant),
-		Description: utility.FromStringPtr(a.Description),
-		GitTag:      utility.FromStringPtr(a.GitTag),
-		RemotePath:  utility.FromStringPtr(a.RemotePath),
-		TaskTags:    utility.FromStringPtrSlice(a.TaskTags),
-		VariantTags: utility.FromStringPtrSlice(a.VariantTags),
+		Alias:          utility.FromStringPtr(a.Alias),
+		Task:           utility.FromStringPtr(a.Task),
+		Variant:        utility.FromStringPtr(a.Variant),
+		Description:    utility.FromStringPtr(a.Description),
+		GitTag:         utility.FromStringPtr(a.GitTag),
+		RemotePath:     utility.FromStringPtr(a.RemotePath),
+		TaskTags:       utility.FromStringPtrSlice(a.TaskTags),
+		VariantTags:    utility.FromStringPtrSlice(a.VariantTags),
+		RequiredLabels: utility.FromStringPtrSlice(a.RequiredLabels),
 	}
 	res.Parameters = []patch.Parameter{}
 	for _, param := range a.Parameters {
@@ -228,6 +228,7 @@ func (a *APIProjectAlias) BuildFromService(in model.ProjectAlias) {
 	a.VariantTags = APIVariantTags
 	a.TaskTags = APITaskTags
 	a.ID = utility.ToStringPtr(in.ID.Hex())
+	a.RequiredLabels = utility.ToStringPtrSlice(in.RequiredLabels)
 	APIParameters := []*APIParameter{}
 	for _, param := range in.Parameters {
 		APIParam := &APIParameter{}
@@ -241,15 +242,16 @@ func dbProjectAliasesToRestModel(aliases []model.ProjectAlias) []APIProjectAlias
 	result := []APIProjectAlias{}
 	for _, alias := range aliases {
 		apiAlias := APIProjectAlias{
-			ID:          utility.ToStringPtr(alias.ID.String()),
-			Alias:       utility.ToStringPtr(alias.Alias),
-			Variant:     utility.ToStringPtr(alias.Variant),
-			Description: utility.ToStringPtr(alias.Description),
-			Task:        utility.ToStringPtr(alias.Task),
-			RemotePath:  utility.ToStringPtr(alias.RemotePath),
-			GitTag:      utility.ToStringPtr(alias.GitTag),
-			TaskTags:    utility.ToStringPtrSlice(alias.TaskTags),
-			VariantTags: utility.ToStringPtrSlice(alias.VariantTags),
+			ID:             utility.ToStringPtr(alias.ID.String()),
+			Alias:          utility.ToStringPtr(alias.Alias),
+			Variant:        utility.ToStringPtr(alias.Variant),
+			Description:    utility.ToStringPtr(alias.Description),
+			Task:           utility.ToStringPtr(alias.Task),
+			RemotePath:     utility.ToStringPtr(alias.RemotePath),
+			GitTag:         utility.ToStringPtr(alias.GitTag),
+			TaskTags:       utility.ToStringPtrSlice(alias.TaskTags),
+			VariantTags:    utility.ToStringPtrSlice(alias.VariantTags),
+			RequiredLabels: utility.ToStringPtrSlice(alias.RequiredLabels),
 		}
 		result = append(result, apiAlias)
 	}

@@ -3,6 +3,7 @@ package validator
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
@@ -18,12 +19,10 @@ import (
 )
 
 func TestCheckDistro(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := evergreen.GetEnvironment()
 	conf := env.Settings()
-	conf.Providers.AWS.EC2Keys = []evergreen.EC2Key{{Key: "key", Secret: "secret"}}
 
 	Convey("When validating a distro", t, func() {
 
@@ -212,8 +211,7 @@ func TestEnsureNoAliases(t *testing.T) {
 }
 
 func TestEnsureHasRequiredFields(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := testutil.NewEnvironment(ctx, t)
 	conf := env.Settings()
@@ -363,8 +361,7 @@ func TestEnsureHasRequiredFieldsWithProviderList(t *testing.T) {
 }
 
 func TestEnsureValidExpansions(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := evergreen.GetEnvironment()
 	conf := env.Settings()
@@ -389,8 +386,7 @@ func TestEnsureValidExpansions(t *testing.T) {
 }
 
 func TestEnsureValidSSHOptions(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := evergreen.GetEnvironment()
 	conf := env.Settings()
@@ -417,8 +413,7 @@ func TestEnsureValidSSHOptions(t *testing.T) {
 func TestEnsureNonZeroID(t *testing.T) {
 	assert := assert.New(t)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := evergreen.GetEnvironment()
 	conf := env.Settings()
@@ -434,8 +429,7 @@ func TestEnsureNonZeroID(t *testing.T) {
 func TestEnsureNoUnauthorizedCharacters(t *testing.T) {
 	assert := assert.New(t)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	env := evergreen.GetEnvironment()
 	conf := env.Settings()
@@ -449,8 +443,7 @@ func TestEnsureNoUnauthorizedCharacters(t *testing.T) {
 
 func TestEnsureValidContainerPool(t *testing.T) {
 	assert := assert.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert.NoError(db.Clear(distro.Collection))
 
@@ -675,8 +668,7 @@ func TestEnsureValidStaticBootstrapSettings(t *testing.T) {
 }
 
 func TestEnsureHasValidVirtualWorkstationSettings(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	settings := &evergreen.Settings{}
 	assert.Nil(t, ensureHasValidVirtualWorkstationSettings(ctx, &distro.Distro{
@@ -767,4 +759,38 @@ func TestValidateImageID(t *testing.T) {
 	})
 	assert.Nil(t, validationErrs)
 	assert.Nil(t, err)
+}
+
+func TestEnsureHasValidPlannerSettingsMergeQueueTargetTime(t *testing.T) {
+	ctx := t.Context()
+	settings := &evergreen.Settings{}
+
+	for _, tCase := range []struct {
+		name                 string
+		mergeQueueTargetTime time.Duration
+		expectErr            bool
+	}{
+		{name: "UnsetShouldBeValid", mergeQueueTargetTime: 0, expectErr: false},
+		{name: "WholeSecondsShouldBeValid", mergeQueueTargetTime: 5 * time.Minute, expectErr: false},
+		{name: "NegativeShouldError", mergeQueueTargetTime: -time.Second, expectErr: true},
+		{name: "SubSecondShouldError", mergeQueueTargetTime: 500 * time.Millisecond, expectErr: true},
+		{name: "NonWholeSecondsShouldError", mergeQueueTargetTime: 1500 * time.Millisecond, expectErr: true},
+	} {
+		t.Run(tCase.name, func(t *testing.T) {
+			d := &distro.Distro{
+				Id: "distro",
+				PlannerSettings: distro.PlannerSettings{
+					Version:              evergreen.PlannerVersionTunable,
+					MergeQueueTargetTime: tCase.mergeQueueTargetTime,
+				},
+			}
+			errs := ensureHasValidPlannerSettings(ctx, d, settings)
+			if !tCase.expectErr {
+				assert.Empty(t, errs)
+				return
+			}
+			require.Len(t, errs, 1)
+			assert.Contains(t, errs[0].Message, "planner_settings.merge_queue_target_time")
+		})
+	}
 }

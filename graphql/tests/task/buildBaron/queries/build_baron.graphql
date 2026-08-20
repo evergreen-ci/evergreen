@@ -1,0 +1,14 @@
+query {
+  task(taskId: "build_baron_task", execution: 0) {
+    buildBaronSuggestions {
+      issues {
+        key
+      }
+      search
+      source
+    }
+    buildBaronCreatedTickets {
+      key
+    }
+  }
+}

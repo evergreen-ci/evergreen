@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -33,8 +32,7 @@ func (s *SchedulerSuite) SetupTest() {
 }
 
 func TestCreateIntentHosts(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	Convey("When spawning hosts", t, func() {
 
@@ -78,8 +76,7 @@ func TestCreateIntentHosts(t *testing.T) {
 func TestUnderwaterUnschedule(t *testing.T) {
 	assert := assert.New(t)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(task.Collection, distro.Collection, build.Collection, model.VersionCollection))
 	require.NoError(t, db.EnsureIndex(task.Collection,
@@ -208,4 +205,70 @@ func TestUnderwaterUnschedule(t *testing.T) {
 	assert.NoError(err)
 	require.NotNil(t, foundDisplayTask)
 	assert.Equal(evergreen.TaskSucceeded, foundDisplayTask.Status)
+}
+
+func TestGetDistroQueueInfoMergeQueueTargetTime(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(task.Collection))
+
+	d := &distro.Distro{
+		Id: "d",
+		PlannerSettings: distro.PlannerSettings{
+			TargetTime:           30 * time.Minute,
+			MergeQueueTargetTime: 5 * time.Minute,
+		},
+	}
+	newTask := func(id, requester string) task.Task {
+		return task.Task{
+			Id:               id,
+			DistroId:         d.Id,
+			Requester:        requester,
+			ExpectedDuration: 10 * time.Minute,
+		}
+	}
+
+	t.Run("QueueWithoutMergeQueueTasksShouldUseRegularTargetTime", func(t *testing.T) {
+		tasks := []task.Task{newTask("t1", evergreen.PatchVersionRequester), newTask("t2", evergreen.RepotrackerVersionRequester)}
+		info := GetDistroQueueInfo(ctx, d, tasks, TaskPlannerOptions{IncludesDependencies: true})
+		assert.Equal(t, 30*time.Minute, info.MaxDurationThreshold)
+		assert.Zero(t, info.CountDepFilledMergeQueueTasks)
+	})
+
+	t.Run("QueueWithMergeQueueTasksShouldUseMergeQueueTargetTime", func(t *testing.T) {
+		tasks := []task.Task{newTask("t1", evergreen.PatchVersionRequester), newTask("t2", evergreen.GithubMergeRequester)}
+		info := GetDistroQueueInfo(ctx, d, tasks, TaskPlannerOptions{IncludesDependencies: true})
+		assert.Equal(t, 5*time.Minute, info.MaxDurationThreshold)
+		assert.Equal(t, 1, info.CountDepFilledMergeQueueTasks)
+	})
+
+	t.Run("MergeQueueTaskWithUnmetDependenciesShouldNotLowerTargetTime", func(t *testing.T) {
+		blocker := newTask("blocker", evergreen.PatchVersionRequester)
+		blocker.Status = evergreen.TaskUndispatched
+		blocked := newTask("blocked", evergreen.GithubMergeRequester)
+		blocked.DependsOn = []task.Dependency{{TaskId: blocker.Id, Status: evergreen.TaskSucceeded}}
+
+		info := GetDistroQueueInfo(ctx, d, []task.Task{blocker, blocked}, TaskPlannerOptions{IncludesDependencies: true})
+		assert.Equal(t, 30*time.Minute, info.MaxDurationThreshold)
+		assert.Zero(t, info.CountDepFilledMergeQueueTasks)
+	})
+
+	t.Run("LoweredThresholdShouldCountTasksAsOverDuration", func(t *testing.T) {
+		// Each task runs 10 minutes, which is under the 30 minute regular target
+		// time but over the 5 minute merge queue target time.
+		tasks := []task.Task{newTask("t1", evergreen.GithubMergeRequester)}
+		info := GetDistroQueueInfo(ctx, d, tasks, TaskPlannerOptions{IncludesDependencies: true})
+		assert.Equal(t, 1, info.CountDurationOverThreshold)
+		assert.Equal(t, 10*time.Minute, info.DurationOverThreshold)
+	})
+
+	t.Run("DistroWithoutMergeQueueTargetTimeShouldUseRegularTargetTime", func(t *testing.T) {
+		noMergeTarget := &distro.Distro{
+			Id:              d.Id,
+			PlannerSettings: distro.PlannerSettings{TargetTime: 30 * time.Minute},
+		}
+		tasks := []task.Task{newTask("t1", evergreen.GithubMergeRequester)}
+		info := GetDistroQueueInfo(ctx, noMergeTarget, tasks, TaskPlannerOptions{IncludesDependencies: true})
+		assert.Equal(t, 30*time.Minute, info.MaxDurationThreshold)
+		assert.Equal(t, 1, info.CountDepFilledMergeQueueTasks)
+	})
 }

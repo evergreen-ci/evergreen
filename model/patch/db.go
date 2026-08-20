@@ -53,6 +53,7 @@ var (
 	ProjectStorageMethodKey        = bsonutil.MustHaveTag(Patch{}, "ProjectStorageMethod")
 	PatchedProjectConfigKey        = bsonutil.MustHaveTag(Patch{}, "PatchedProjectConfig")
 	AliasKey                       = bsonutil.MustHaveTag(Patch{}, "Alias")
+	AliasesKey                     = bsonutil.MustHaveTag(Patch{}, "Aliases")
 	GithubMergeDataKey             = bsonutil.MustHaveTag(Patch{}, "GithubMergeData")
 	githubPatchDataKey             = bsonutil.MustHaveTag(Patch{}, "GithubPatchData")
 	MergePatchKey                  = bsonutil.MustHaveTag(Patch{}, "MergePatch")
@@ -354,12 +355,17 @@ func ProjectOrUserPatchesCount(ctx context.Context, opts ProjectOrUserPatchesOpt
 }
 
 // ByUserPaginated produces a query that returns patches by the given user
-// before/after the input time, sorted by creation time and limited
-func ByUserPaginated(user string, ts time.Time, limit int) db.Q {
-	return db.Query(bson.M{
+// before/after the input time, sorted by creation time and limited.
+// If projectIDs is non-empty, only patches belonging to those projects are returned.
+func ByUserPaginated(user string, ts time.Time, limit int, projectIDs ...string) db.Q {
+	filter := bson.M{
 		AuthorKey:     user,
 		CreateTimeKey: bson.M{"$lte": ts},
-	}).Sort([]string{"-" + CreateTimeKey}).Limit(limit)
+	}
+	if len(projectIDs) > 0 {
+		filter[ProjectKey] = bson.M{"$in": projectIDs}
+	}
+	return db.Query(filter).Sort([]string{"-" + CreateTimeKey}).Limit(limit)
 }
 
 func byUser(user string) bson.M {
@@ -487,6 +493,26 @@ func FindLatestGithubPRPatch(ctx context.Context, owner, repo string, prNumber i
 		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchBaseOwnerKey): owner,
 		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchBaseRepoKey):  repo,
 		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchPRNumberKey):  prNumber,
+	}).Sort([]string{"-" + CreateTimeKey}).Limit(1))
+	if err != nil {
+		return nil, err
+	}
+	if len(patches) == 0 {
+		return nil, nil
+	}
+	return &patches[0], nil
+}
+
+// FindFinalizedGithubPRPatchForHeadSHA returns a finalized patch for the given
+// PR and head SHA, if one exists.
+func FindFinalizedGithubPRPatchForHeadSHA(ctx context.Context, owner, repo string, prNumber int, headSHA string) (*Patch, error) {
+	patches, err := Find(ctx, db.Query(bson.M{
+		AliasKey:   bson.M{"$ne": evergreen.CommitQueueAlias},
+		VersionKey: bson.M{"$ne": ""},
+		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchBaseOwnerKey): owner,
+		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchBaseRepoKey):  repo,
+		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchPRNumberKey):  prNumber,
+		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchHeadHashKey):  headSHA,
 	}).Sort([]string{"-" + CreateTimeKey}).Limit(1))
 	if err != nil {
 		return nil, err

@@ -2,7 +2,7 @@
 name := evergreen
 buildDir := bin
 nodeDir := public
-packages := $(name) agent agent-command agent-executor agent-globals agent-util agent-taskexec agent-internal agent-internal-client agent-internal-redactor agent-internal-taskoutput agent-internal-testutil operations cloud cloud-userdata
+packages := $(name) agent agent-command agent-container agent-executor agent-globals agent-util agent-taskexec agent-internal agent-internal-client agent-internal-redactor agent-internal-taskoutput agent-internal-testutil operations cloud cloud-userdata
 packages += db util units graphql graphql-loaders thirdparty thirdparty-docker auth scheduler model validator service repotracker mock
 packages += model-annotations model-patch model-artifact model-host model-build model-event model-task model-user model-distro model-manifest model-testresult model-log model-testlog model-parsley
 packages += model-commitqueue model-cache model-githubapp model-hoststat model-cost model-s3lifecycle model-s3usage model-ec2mount model-ec2settings model-ec2instancereferenceprice
@@ -339,6 +339,11 @@ gqlgen:
 
 govul-install:
 	$(gobin) install golang.org/x/vuln/cmd/govulncheck@v1.1.4
+
+# modernize guards against regressions of the Go modernization from DEVPROD-21825. See scripts/check-modernize.sh.
+modernize:
+	@bash scripts/check-modernize.sh
+phony += modernize
 
 swaggo:
 	$(MAKE) swaggo-format swaggo-build swaggo-render

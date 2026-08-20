@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/testresult/testutil"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
@@ -103,7 +102,7 @@ func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId
 			CreatedAt: tr.CreatedAt.UTC(),
 			Results:   make([]testresult.ParquetTestResult, len(testResults)),
 		}
-		for i := 0; i < len(testResults); i++ {
+		for i := range testResults {
 			savedParquet.Results[i] = testresult.ParquetTestResult{
 				TestName:       testResults[i].TestName,
 				GroupID:        utility.ToStringPtr(testResults[i].GroupID),
@@ -137,15 +136,15 @@ func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId
 }
 
 func TestGetTaskInfo(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
+	usr := addViewTasksPermission(t, "project_test")
 
 	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection))
+		assert.NoError(t, db.ClearCollections(task.Collection, evergreen.RoleCollection, evergreen.ScopeCollection))
 		assert.NoError(t, task.ClearTestResults(ctx, env))
 	}()
 
@@ -187,7 +186,7 @@ func TestGetTaskInfo(t *testing.T) {
 		url := "/rest/v1/tasks/" + taskId
 
 		request, err := http.NewRequest("GET", url, nil)
-		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
+		request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
 		So(err, ShouldBeNil)
 
 		response := httptest.NewRecorder()
@@ -312,7 +311,7 @@ func TestGetTaskInfo(t *testing.T) {
 		url := "/rest/v1/tasks/" + taskId
 
 		request, err := http.NewRequest("GET", url, nil)
-		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
+		request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
 		So(err, ShouldBeNil)
 
 		response := httptest.NewRecorder()
@@ -332,12 +331,15 @@ func TestGetTaskInfo(t *testing.T) {
 }
 
 func TestGetTaskStatus(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
+	usr := addViewTasksPermission(t, "my-project")
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection))
+	})
 	Convey("When finding the status of a particular task", t, func() {
 		require.NoError(t, db.ClearCollections(task.Collection),
 			"Error clearing '%v' collection", task.Collection)
@@ -382,7 +384,7 @@ func TestGetTaskStatus(t *testing.T) {
 		url := "/rest/v1/tasks/" + taskId + "/status"
 
 		request, err := http.NewRequest("GET", url, nil)
-		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
+		request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
 		So(err, ShouldBeNil)
 
 		response := httptest.NewRecorder()
@@ -443,7 +445,7 @@ func TestGetTaskStatus(t *testing.T) {
 
 		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
-		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
+		request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
 
 		response := httptest.NewRecorder()
 		// Need match variables to be set so can call mux.Vars(request)
@@ -464,14 +466,14 @@ func TestGetTaskStatus(t *testing.T) {
 func TestGetDisplayTaskInfo(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := &mock.Environment{}
 	require.NoError(env.Configure(ctx))
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(err, "error setting up router")
+	usr := addViewTasksPermission(t, "project_test")
 	defer func() {
-		assert.NoError(db.ClearCollections(task.Collection))
+		assert.NoError(db.ClearCollections(task.Collection, evergreen.RoleCollection, evergreen.ScopeCollection))
 		assert.NoError(task.ClearTestResults(ctx, env))
 	}()
 
@@ -506,7 +508,7 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 
 	request, err := http.NewRequest("GET", url, nil)
 	require.NoError(err)
-	request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
+	request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
 
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, request)

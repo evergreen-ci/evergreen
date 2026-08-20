@@ -28,15 +28,9 @@ func NewOktaUserManager(conf *evergreen.OktaConfig, evgURL, loginDomain string) 
 		LoginCookieName:      evergreen.AuthTokenCookie,
 		LoginCookieTTL:       evergreen.LoginCookieTTL,
 		AllowReauthorization: true,
-		ReconciliateID: func(id string) string {
-			emailDomainStart := strings.LastIndex(id, "@")
-			if emailDomainStart == -1 {
-				return id
-			}
-			return id[:emailDomainStart]
-		},
-		GetHTTPClient: utility.GetHTTPClient,
-		PutHTTPClient: utility.PutHTTPClient,
+		ReconciliateID:       makeReconciliateID(conf.ExpectedEmailDomains),
+		GetHTTPClient:        utility.GetHTTPClient,
+		PutHTTPClient:        utility.PutHTTPClient,
 		ExternalCache: &usercache.ExternalOptions{
 			PutUserGetToken: user.PutLoginCache,
 			GetUserByToken: func(ctx context.Context, token string) (gimlet.User, bool, error) {
@@ -59,4 +53,32 @@ func NewOktaUserManager(conf *evergreen.OktaConfig, evgURL, loginDomain string) 
 		return nil, errors.Wrap(err, "could not construct Okta user manager")
 	}
 	return um, nil
+}
+
+// makeReconciliateID maps a validated email to a username, stripping the domain
+// only for allow-listed domains so accounts sharing a local-part across domains
+// cannot collide. Emails from any other domain, including when the allow-list is
+// empty, keep their full address as the username.
+func makeReconciliateID(expectedEmailDomains []string) func(string) string {
+	return func(id string) string {
+		emailDomainStart := strings.LastIndex(id, "@")
+		if emailDomainStart == -1 {
+			return id
+		}
+		if !domainInAllowList(expectedEmailDomains, id[emailDomainStart+1:]) {
+			return id
+		}
+		return id[:emailDomainStart]
+	}
+}
+
+// domainInAllowList reports whether domain matches an allow-listed domain,
+// comparing case-insensitively since email domains are case-insensitive.
+func domainInAllowList(domains []string, domain string) bool {
+	for _, d := range domains {
+		if strings.EqualFold(d, domain) {
+			return true
+		}
+	}
+	return false
 }

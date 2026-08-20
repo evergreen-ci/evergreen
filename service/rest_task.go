@@ -159,7 +159,7 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Copy over artifacts and binaries.
-	entries, err := artifact.FindAllSecondary(r.Context(), artifact.ByTaskId(srcTask.Id))
+	entries, err := artifact.FindAll(r.Context(), artifact.ByTaskId(srcTask.Id))
 	if err != nil {
 		msg := fmt.Sprintf("Error finding task '%s'", srcTask.Id)
 		grip.Errorf(r.Context(), "%v: %+v", msg, err)
@@ -168,7 +168,7 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 
 	}
 	for _, entry := range entries {
-		strippedFiles, err := artifact.StripHiddenFiles(r.Context(), entry.Files, true)
+		strippedFiles, err := artifact.StripHiddenFiles(r.Context(), entry.Files, true, model.NewArtifactCredentialResolver(entry.TaskId))
 		if err != nil {
 			msg := fmt.Sprintf("Error getting artifact files for task '%s'", srcTask.Id)
 			grip.Error(r.Context(), message.WrapError(err, message.Fields{

@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"maps"
 	"slices"
 
 	"github.com/evergreen-ci/evergreen"
@@ -124,7 +125,7 @@ func MergeGeneratedProjects(ctx context.Context, projects []GeneratedProject) (*
 func ParseProjectFromJSONString(data string) (GeneratedProject, error) {
 	g := GeneratedProject{}
 	dataAsJSON := []byte(data)
-	if err := util.UnmarshalYAML(dataAsJSON, &g); err != nil {
+	if err := util.UnmarshalYAMLWithFallback(dataAsJSON, &g); err != nil {
 		return g, errors.Wrap(err, "unmarshalling generated project from YAML data")
 	}
 	return g, nil
@@ -823,9 +824,7 @@ func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *Pars
 	// Append buildvariants, tasks, and functions to the config.
 	intermediateProject.TaskGroups = append(intermediateProject.TaskGroups, g.TaskGroups...)
 	intermediateProject.Tasks = append(intermediateProject.Tasks, g.Tasks...)
-	for key, val := range g.Functions {
-		intermediateProject.Functions[key] = val
-	}
+	maps.Copy(intermediateProject.Functions, g.Functions)
 	for _, bv := range g.BuildVariants {
 		// If the buildvariant already exists, append tasks to it.
 		if _, ok := cachedProject.buildVariants[bv.Name]; ok {

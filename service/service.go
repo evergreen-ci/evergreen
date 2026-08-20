@@ -36,7 +36,7 @@ func GetServer(ctx context.Context, addr string, n http.Handler) *http.Server {
 
 func GetRouter(ctx context.Context, as *APIServer, uis *UIServer) (http.Handler, error) {
 	app := gimlet.NewApp()
-	app.AddMiddleware(gimlet.MakeRecoveryLogger())
+	app.AddMiddleware(newSampledRequestLogger(ctx))
 	app.AddMiddleware(gimlet.UserMiddleware(ctx, uis.env.UserManager(), uis.umconf))
 	app.AddMiddleware(evergreen.NewHTTPRequestOtelMiddleware())
 	app.AddMiddleware(gimlet.NewAuthenticationHandler(gimlet.NewBasicAuthenticator(nil, nil), uis.env.UserManager()))

@@ -261,8 +261,7 @@ func (s *DistroByIDSuite) TestFindByIdFail() {
 // Tests for GET /rest/v2/distros/{distro_id}/ami
 
 func TestDistroAMIHandler(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert.NoError(t, db.ClearCollections(distro.Collection))
 	d := distro.Distro{

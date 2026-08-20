@@ -182,11 +182,13 @@ input ReleaseModeConfigInput {
   distroMaxHostsFactor: Float
   targetTimeSecondsOverride: Int
   idleTimeSecondsOverride: Int
+  mergeQueueTargetTimeSecondsOverride: Int
 }
 type ReleaseModeConfig {
   distroMaxHostsFactor: Float
   targetTimeSecondsOverride: Int
   idleTimeSecondsOverride: Int
+  mergeQueueTargetTimeSecondsOverride: Int
 }
 
 input SingleTaskDistroConfigInput {

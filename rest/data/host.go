@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -91,24 +92,24 @@ func NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, u
 	return intentHost, nil
 }
 
-// GenerateHostProvisioningScript generates and returns the script to
-// provision the host given by host ID.
-func GenerateHostProvisioningScript(ctx context.Context, env evergreen.Environment, hostID string) (string, error) {
+// GenerateHostProvisioningScript returns the provisioning script and optional
+// container image for a host.
+func GenerateHostProvisioningScript(ctx context.Context, env evergreen.Environment, hostID string) (script, containerImage string, err error) {
 	if hostID == "" {
-		return "", gimlet.ErrorResponse{
+		return "", "", gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "cannot generate host provisioning script without a host ID",
 		}
 	}
 	h, err := host.FindOneByIdOrTag(ctx, hostID)
 	if err != nil {
-		return "", gimlet.ErrorResponse{
+		return "", "", gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "finding host '%s'", hostID).Error(),
 		}
 	}
 	if h == nil {
-		return "", gimlet.ErrorResponse{
+		return "", "", gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("host with id '%s' not found", hostID),
 		}
@@ -116,7 +117,7 @@ func GenerateHostProvisioningScript(ctx context.Context, env evergreen.Environme
 
 	creds, err := h.GenerateJasperCredentials(ctx, env)
 	if err != nil {
-		return "", gimlet.ErrorResponse{
+		return "", "", gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "generating Jasper credentials").Error(),
 		}
@@ -132,20 +133,36 @@ func GenerateHostProvisioningScript(ctx context.Context, env evergreen.Environme
 			"task":    h.ProvisionOptions.TaskId,
 		}))
 	}
-	script, err := h.GenerateUserDataProvisioningScript(ctx, env.Settings(), creds, githubAppToken, moduleTokens)
+	script, err = h.GenerateUserDataProvisioningScript(ctx, env.Settings(), creds, githubAppToken, moduleTokens)
 	if err != nil {
-		return "", gimlet.ErrorResponse{
+		return "", "", gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "generating host provisioning script").Error(),
 		}
 	}
 	if err := h.SaveJasperCredentials(ctx, env, creds); err != nil {
-		return "", gimlet.ErrorResponse{
+		return "", "", gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "saving Jasper credentials").Error(),
 		}
 	}
-	return script, nil
+	ci := h.Distro.BootstrapSettings.ContainerIsolation
+	containerIsolationEnabled := env.Settings().ServiceFlags.ContainerIsolationEnabled
+	containerImage, effectiveIsolationEnabled := getContainerImageForPrePull(ci, containerIsolationEnabled)
+	if effectiveIsolationEnabled && containerImage == "" {
+		grip.Warning(ctx, message.Fields{
+			"message": "container isolation is enabled for this distro but no image is configured; pre-pull will be skipped",
+			"host_id": hostID,
+		})
+	}
+	return script, containerImage, nil
+}
+
+func getContainerImageForPrePull(settings distro.ContainerIsolationSettings, containerIsolationEnabled bool) (string, bool) {
+	if !settings.Enabled || !containerIsolationEnabled {
+		return "", false
+	}
+	return settings.Image, true
 }
 
 // FindHostByIdWithOwner finds a host with given host ID that was
@@ -333,18 +350,18 @@ func makeSpawnOptions(options *restmodel.HostRequestOptions, user *user.DBUser) 
 }
 
 // PostHostIsUp indicates to the app server that a host is up.
-func PostHostIsUp(ctx context.Context, env evergreen.Environment, params host.HostMetadataOptions) (*restmodel.APIHost, error) {
-	h, err := host.FindOneByIdOrTag(ctx, params.HostID)
+func PostHostIsUp(ctx context.Context, env evergreen.Environment, hostID string, params host.HostMetadataOptions) (*restmodel.APIHost, error) {
+	h, err := host.FindOneByIdOrTag(ctx, hostID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "finding host '%s'", params.HostID).Error(),
+			Message:    errors.Wrapf(err, "finding host '%s'", hostID).Error(),
 		}
 	}
 	if h == nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("host '%s' not found", params.HostID),
+			Message:    fmt.Sprintf("host '%s' not found", hostID),
 		}
 	}
 

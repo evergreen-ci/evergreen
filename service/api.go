@@ -232,20 +232,23 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	project := &model.Project{}
 	var projectConfig *model.ProjectConfig
 	ctx := context.Background()
+	svcFlags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		gimlet.WriteJSONError(r.Context(), w, errors.Wrap(err, "getting service flags"))
+		return
+	}
 	opts := &model.GetProjectOpts{
-		ReadFileFrom: model.ReadFromLocal,
+		ReadFileFrom:                model.ReadFromLocal,
+		CrossFileYAMLAnchorsEnabled: svcFlags.CrossFileYAMLAnchorsEnabled,
 	}
 	validationErr := validator.ValidationError{}
-	if _, err = model.LoadProjectInto(ctx, input.ProjectYaml, opts, input.ProjectID, project); err != nil {
+	pp, err := model.LoadProjectInto(ctx, input.ProjectYaml, opts, input.ProjectID, project)
+	if err != nil {
 		validationErr.Message = err.Error()
 		gimlet.WriteJSONError(r.Context(), w, validator.ValidationErrors{validationErr})
 		return
 	}
-	if projectConfig, err = model.CreateProjectConfig(input.ProjectYaml, ""); err != nil {
-		validationErr.Message = err.Error()
-		gimlet.WriteJSONError(r.Context(), w, validator.ValidationErrors{validationErr})
-		return
-	}
+	projectConfig = pp.MergedProjectConfig("")
 
 	projectRef, err := model.FindMergedProjectRef(r.Context(), input.ProjectID, "", false)
 	errs := validator.CheckProject(ctx, project, projectConfig, projectRef, input.ProjectID, err)
@@ -304,6 +307,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	requireUser := gimlet.NewRequireAuthHandler()
 	viewTasks := route.RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksView)
 	submitPatch := route.RequiresProjectPermission(evergreen.PermissionPatches, evergreen.PatchSubmit)
+	rateLimit := route.NewRateLimitMiddleware(as.env, evergreen.RateLimitSurfaceREST)
 
 	app := gimlet.NewApp()
 	app.SetPrefix("/api")
@@ -311,9 +315,9 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.SimpleVersions = true
 
 	// Project lookup and validation routes
-	app.AddRoute("/ref/{projectId}").Wrap(requireUser, viewTasks).Handler(as.fetchLimitedProjectRef).Get()
+	app.AddRoute("/ref/{projectId}").Wrap(requireUser, viewTasks, rateLimit).Handler(as.fetchLimitedProjectRef).Get()
 	// Please do not use this route internally, it is deprecated. Use the REST v2 /validate route instead.
-	app.AddRoute("/validate").Wrap(requireUser).Handler(as.validateProjectConfig).Post()
+	app.AddRoute("/validate").Wrap(requireUser, rateLimit).Handler(as.validateProjectConfig).Post()
 
 	// Internal status reporting
 	// This route is called by the app server's setup scripts which
@@ -321,21 +325,21 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/status/info").Handler(as.serviceStatusSimple).Get()
 
 	// CLI Operation Backends
-	app.AddRoute("/tasks/{projectId}").Wrap(requireUser, requireProject, viewTasks).Handler(as.listTasks).Get()
-	app.AddRoute("/variants/{projectId}").Wrap(requireUser, requireProject, viewTasks).Handler(as.listVariants).Get()
-	app.AddRoute("/projects").Wrap(requireUser).Handler(as.listProjects).Get()
+	app.AddRoute("/tasks/{projectId}").Wrap(requireUser, requireProject, viewTasks, rateLimit).Handler(as.listTasks).Get()
+	app.AddRoute("/variants/{projectId}").Wrap(requireUser, requireProject, viewTasks, rateLimit).Handler(as.listVariants).Get()
+	app.AddRoute("/projects").Wrap(requireUser, rateLimit).Handler(as.listProjects).Get()
 
 	// Patches
-	app.PrefixRoute("/patches").Route("/").Wrap(requireUser).Handler(as.submitPatch).Put()
-	app.PrefixRoute("/patches").Route("/mine").Wrap(requireUser).Handler(as.listPatches).Get()
-	app.PrefixRoute("/patches").Route("/{patchId:\\w+}").Wrap(requireUser, viewTasks).Handler(as.summarizePatch).Get()
-	app.PrefixRoute("/patches").Route("/{patchId:\\w+}").Wrap(requireUser, submitPatch).Handler(as.existingPatchRequest).Post()
-	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/{projectId}/modules").Wrap(requireUser, requireProject, viewTasks).Handler(as.listPatchModules).Get()
-	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/modules").Wrap(requireUser, submitPatch).Handler(as.deletePatchModule).Delete()
-	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/modules").Wrap(requireUser, submitPatch).Handler(as.updatePatchModule).Post()
+	app.PrefixRoute("/patches").Route("/").Wrap(requireUser, rateLimit).Handler(as.submitPatch).Put()
+	app.PrefixRoute("/patches").Route("/mine").Wrap(requireUser, rateLimit).Handler(as.listPatches).Get()
+	app.PrefixRoute("/patches").Route("/{patchId:\\w+}").Wrap(requireUser, viewTasks, rateLimit).Handler(as.summarizePatch).Get()
+	app.PrefixRoute("/patches").Route("/{patchId:\\w+}").Wrap(requireUser, submitPatch, rateLimit).Handler(as.existingPatchRequest).Post()
+	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/{projectId}/modules").Wrap(requireUser, requireProject, viewTasks, rateLimit).Handler(as.listPatchModules).Get()
+	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/modules").Wrap(requireUser, submitPatch, rateLimit).Handler(as.deletePatchModule).Delete()
+	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/modules").Wrap(requireUser, submitPatch, rateLimit).Handler(as.updatePatchModule).Post()
 
 	// Dockerfile
-	app.AddRoute("/dockerfile").Wrap().Handler(getDockerfile).Get()
+	app.AddRoute("/dockerfile").Wrap(rateLimit).Handler(getDockerfile).Get()
 
 	return app
 }

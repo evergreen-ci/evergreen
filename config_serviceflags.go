@@ -14,6 +14,7 @@ type ServiceFlags struct {
 	TaskDispatchDisabled               bool `bson:"task_dispatch_disabled" json:"task_dispatch_disabled"`
 	HostInitDisabled                   bool `bson:"host_init_disabled" json:"host_init_disabled"`
 	LargeParserProjectsDisabled        bool `bson:"large_parser_projects_disabled" json:"large_parser_projects_disabled"`
+	CrossFileYAMLAnchorsEnabled        bool `bson:"cross_file_yaml_anchors_enabled" json:"cross_file_yaml_anchors_enabled"`
 	MonitorDisabled                    bool `bson:"monitor_disabled" json:"monitor_disabled"`
 	MergeQueueRecoveryEnabled          bool `bson:"merge_queue_recovery_enabled" json:"merge_queue_recovery_enabled"`
 	AlertsDisabled                     bool `bson:"alerts_disabled" json:"alerts_disabled"`
@@ -44,6 +45,17 @@ type ServiceFlags struct {
 	PodDiagnosticsDisabled             bool `bson:"pod_diagnostics_disabled" json:"pod_diagnostics_disabled"`
 	RetryFailedLogMoveEnabled          bool `bson:"retry_failed_log_move_enabled" json:"retry_failed_log_move_enabled"`
 	ProjectTranslationCacheEnabled     bool `bson:"project_translation_cache_enabled" json:"project_translation_cache_enabled"`
+	// TaskQueueAutoUnscheduleDisabled stops the scheduler from unscheduling the patch tasks in a
+	// distro queue that has reached set threshold.
+	TaskQueueAutoUnscheduleDisabled bool `bson:"task_queue_auto_unschedule_disabled" json:"task_queue_auto_unschedule_disabled"`
+	// LiveArtifactCredentialsDisabled makes presigning use only the credentials
+	// stored on each artifact.
+	LiveArtifactCredentialsDisabled bool `bson:"live_artifact_credentials_disabled" json:"live_artifact_credentials_disabled"`
+	// ContainerIsolationEnabled is a fleet-wide flag that controls whether
+	// per-distro container isolation settings are honored. When false,
+	// every distro runs in host mode regardless of its container isolation
+	// configuration.
+	ContainerIsolationEnabled bool `bson:"container_isolation_enabled" json:"container_isolation_enabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -73,6 +85,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			taskDispatchKey:                       c.TaskDispatchDisabled,
 			hostInitKey:                           c.HostInitDisabled,
 			largeParserProjectsDisabledKey:        c.LargeParserProjectsDisabled,
+			crossFileYAMLAnchorsEnabledKey:        c.CrossFileYAMLAnchorsEnabled,
 			monitorKey:                            c.MonitorDisabled,
 			mergeQueueRecoveryEnabledKey:          c.MergeQueueRecoveryEnabled,
 			alertsKey:                             c.AlertsDisabled,
@@ -113,6 +126,9 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			backgroundCommandFailureEnabledKey:    c.BackgroundCommandFailureEnabled,
 			apiRateLimiterDisabledKey:             c.APIRateLimiterDisabled,
 			graphqlComplexityLimiterDisabledKey:   c.GraphQLComplexityLimiterDisabled,
+			containerIsolationEnabledKey:          c.ContainerIsolationEnabled,
+			liveArtifactCredentialsDisabledKey:    c.LiveArtifactCredentialsDisabled,
+			taskQueueAutoUnscheduleDisabledKey:    c.TaskQueueAutoUnscheduleDisabled,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }
@@ -136,7 +152,7 @@ func (c *ServiceFlags) ToSlice() []ServiceFlagEntry {
 		if field.Type.Kind() != reflect.Bool {
 			continue
 		}
-		jsonTag := strings.Split(field.Tag.Get("json"), ",")[0]
+		jsonTag, _, _ := strings.Cut(field.Tag.Get("json"), ",")
 		if jsonTag == "" || jsonTag == "-" {
 			continue
 		}
@@ -151,7 +167,7 @@ func (c *ServiceFlags) SetByName(name string, value bool) error {
 	v := reflect.ValueOf(c).Elem()
 	t := v.Type()
 	for i := 0; i < t.NumField(); i++ {
-		jsonTag := strings.Split(t.Field(i).Tag.Get("json"), ",")[0]
+		jsonTag, _, _ := strings.Cut(t.Field(i).Tag.Get("json"), ",")
 		if jsonTag == name {
 			v.Field(i).SetBool(value)
 			return nil

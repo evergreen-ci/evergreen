@@ -467,8 +467,7 @@ var sampleGeneratedProject3 = []string{`
 `}
 
 func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	env := &mock.Environment{}
@@ -530,7 +529,7 @@ func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
 			require.NoError(sampleBuild.Insert(t.Context()))
 
 			pp := model.ParserProject{}
-			err := util.UnmarshalYAML([]byte(sampleBaseProject), &pp)
+			err := util.UnmarshalYAMLWithFallback([]byte(sampleBaseProject), &pp)
 			require.NoError(err)
 			pp.Id = "sample_version"
 			require.NoError(pp.Insert(t.Context()))
@@ -545,9 +544,15 @@ func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
 				DisplayName: "sample_task",
 				Status:      evergreen.TaskStarted,
 			}
+			if storageMethod == evergreen.ProjectStorageMethodDB {
+				sampleTask.GeneratedJSONAsString = sampleGeneratedProject
+				sampleTask.GeneratedJSONStorageMethod = storageMethod
+			}
 			require.NoError(sampleTask.Insert(t.Context()))
 
-			require.NoError(task.GeneratedJSONInsert(ctx, env.Settings(), &sampleTask, sampleGeneratedProject, storageMethod))
+			if storageMethod == evergreen.ProjectStorageMethodS3 {
+				require.NoError(task.GeneratedJSONInsert(ctx, env.Settings(), &sampleTask, sampleGeneratedProject))
+			}
 
 			sampleDistros := []distro.Distro{
 				{
@@ -619,8 +624,7 @@ func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
 }
 
 func TestGeneratedTasksAreNotDependencies(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	env := &mock.Environment{}
@@ -668,7 +672,7 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 	require.NoError(b3.Insert(t.Context()))
 
 	pp := model.ParserProject{}
-	err := util.UnmarshalYAML([]byte(omitGeneratedTasksConfig), &pp)
+	err := util.UnmarshalYAMLWithFallback([]byte(omitGeneratedTasksConfig), &pp)
 	require.NoError(err)
 	pp.Id = "sample_version"
 	require.NoError(pp.Insert(t.Context()))
@@ -713,7 +717,7 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 
 	// check that the generated tasks are included as dependencies by default
 	pp = model.ParserProject{}
-	err = util.UnmarshalYAML([]byte(dependOnGeneratedTasksConfig), &pp)
+	err = util.UnmarshalYAMLWithFallback([]byte(dependOnGeneratedTasksConfig), &pp)
 	require.NoError(err)
 	pp.Id = "sample_version"
 	require.NoError(pp.Insert(t.Context()))
@@ -751,7 +755,7 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 
 	// check that the generated tasks are included as dependencies by default
 	pp = model.ParserProject{}
-	err = util.UnmarshalYAML([]byte(shouldGenerateNewBVConfig), &pp)
+	err = util.UnmarshalYAMLWithFallback([]byte(shouldGenerateNewBVConfig), &pp)
 	require.NoError(err)
 	pp.Id = "sample_version"
 	require.NoError(pp.Insert(t.Context()))
@@ -786,8 +790,7 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 }
 
 func TestParseProjects(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	assert := assert.New(t)
@@ -806,8 +809,7 @@ func TestParseProjects(t *testing.T) {
 }
 
 func TestGenerateSkipsInvalidDependency(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	env := &mock.Environment{}
@@ -896,7 +898,7 @@ buildvariants:
 		},
 	}
 	sampleParserProject := model.ParserProject{}
-	err := util.UnmarshalYAML([]byte(sampleBaseProject), &sampleParserProject)
+	err := util.UnmarshalYAMLWithFallback([]byte(sampleBaseProject), &sampleParserProject)
 	require.NoError(err)
 	sampleParserProject.Id = "sample_version"
 	require.NoError(sampleParserProject.Insert(t.Context()))
@@ -926,8 +928,7 @@ buildvariants:
 }
 
 func TestMarkGeneratedTasksError(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)
 
 	env := &mock.Environment{}
