@@ -1,7 +1,6 @@
 package model
 
 import (
-	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
 
@@ -17,46 +16,17 @@ type anchorEntry struct {
 	node *yaml.Node
 }
 
-// anchorRegistry accumulates YAML anchor definitions across include files for cross-file alias resolution.
-type anchorRegistry struct {
-	entries []anchorEntry
-}
-
-// Length returns the number of entries, or 0 if the receiver is nil.
-func (a *anchorRegistry) Length() int {
-	if a == nil {
-		return 0
-	}
-	return len(a.entries)
-}
-
-// mergeAnchorsFrom collects all anchor definitions from node and merges them
-// into the registry by name. Move re-defined anchors to later in the list to
-// ensure they're defined after dependencies (i.e. any other new anchors that
-// they themselves reference).
-func (a *anchorRegistry) mergeAnchorsFrom(node *yaml.Node) {
-	if a == nil {
-		return
-	}
-	for _, anchor := range collectAnchors(node) {
-		for i, existing := range a.entries {
-			if existing.name == anchor.name {
-				a.entries = append(a.entries[:i], a.entries[i+1:]...)
-				break
-			}
-		}
-		a.entries = append(a.entries, anchor)
-	}
-}
+// anchorEntries accumulates YAML anchor definitions across include files for cross-file alias resolution.
+type anchorEntries []anchorEntry
 
 // collectAnchors walks node in pre-order and returns all anchored nodes in
 // encounter order. AliasNodes are not followed, so only anchor definitions
 // (&name) are collected, never alias uses (*name).
-func collectAnchors(node *yaml.Node) []anchorEntry {
+func collectAnchors(node *yaml.Node) anchorEntries {
 	if node == nil {
 		return nil
 	}
-	var entries []anchorEntry
+	var entries anchorEntries
 	var walk func(*yaml.Node)
 	walk = func(n *yaml.Node) {
 		if n == nil || n.Kind == yaml.AliasNode {
@@ -81,12 +51,12 @@ func collectAnchors(node *yaml.Node) []anchorEntry {
 // Entries must be in encounter order so that any alias references within anchor
 // values (e.g. an anchor whose value itself uses an alias to an earlier anchor)
 // are valid when the preamble is parsed.
-func buildAnchorPreamble(registry *anchorRegistry) ([]byte, error) {
-	if registry.Length() == 0 {
+func buildAnchorPreamble(entries *anchorEntries) ([]byte, error) {
+	if entries == nil || len(*entries) == 0 {
 		return nil, nil
 	}
-	seqContent := make([]*yaml.Node, 0, len(registry.entries))
-	for _, e := range registry.entries {
+	seqContent := make([]*yaml.Node, 0, len(*entries))
+	for _, e := range *entries {
 		seqContent = append(seqContent, e.node)
 	}
 	preambleDoc := &yaml.Node{
@@ -101,8 +71,7 @@ func buildAnchorPreamble(registry *anchorRegistry) ([]byte, error) {
 			},
 		},
 	}
-	out, err := yaml.Marshal(preambleDoc)
-	return out, errors.Wrap(err, "building anchor preamble")
+	return yaml.Marshal(preambleDoc)
 }
 
 // stripEvgAnchorsKey removes the _evg_anchors key and its value from the
