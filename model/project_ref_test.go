@@ -4303,3 +4303,47 @@ func TestArtifactCredentialsSurviveProjectSettingsWrites(t *testing.T) {
 		})
 	}
 }
+
+func TestGetRepoRefIDForProject(t *testing.T) {
+	ctx := t.Context()
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(ProjectRefCollection))
+	})
+	require.NoError(t, db.ClearCollections(ProjectRefCollection))
+
+	for _, pRef := range []ProjectRef{
+		{
+			Id:        "project_with_repo",
+			RepoRefId: "repo",
+		},
+		{
+			Id: "project_without_repo",
+		},
+	} {
+		require.NoError(t, pRef.Insert(ctx))
+	}
+
+	for tName, tCase := range map[string]struct {
+		projectID string
+		expected  string
+	}{
+		"ProjectTrackingARepoReturnsTheRepoRefID": {
+			projectID: "project_with_repo",
+			expected:  "repo",
+		},
+		"ProjectTrackingNoRepoReturnsEmpty": {
+			projectID: "project_without_repo",
+			expected:  "",
+		},
+		"NonexistentProjectReturnsEmpty": {
+			projectID: "nonexistent",
+			expected:  "",
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			repoRefID, err := GetRepoRefIDForProject(ctx, tCase.projectID)
+			require.NoError(t, err)
+			assert.Equal(t, tCase.expected, repoRefID)
+		})
+	}
+}

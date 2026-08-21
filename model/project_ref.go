@@ -1626,6 +1626,19 @@ func GetIdentifierForProjectSecondary(ctx context.Context, id string) (string, e
 	return pRef.Identifier, nil
 }
 
+// GetRepoRefIDForProject returns the ID of the repo that the given branch project tracks. It
+// returns an empty string if the project tracks no repo or does not exist.
+func GetRepoRefIDForProject(ctx context.Context, projectID string) (string, error) {
+	pRef, err := findOneProjectRefQ(ctx, byId(projectID).WithFields(ProjectRefRepoRefIdKey))
+	if err != nil {
+		return "", err
+	}
+	if pRef == nil {
+		return "", nil
+	}
+	return pRef.RepoRefId, nil
+}
+
 func CountProjectRefsWithIdentifier(ctx context.Context, identifier string) (int, error) {
 	return db.CountQ(ctx, ProjectRefCollection, byId(identifier))
 }

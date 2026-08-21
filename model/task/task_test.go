@@ -2534,7 +2534,7 @@ func TestActivateTasks(t *testing.T) {
 		}
 
 		updatedIDs := []string{"t0", "t3", "t4"}
-		activatedDependencyIDs, err := ActivateTasks(ctx, []Task{tasks[0]}, time.Time{}, true, u.Id)
+		activatedDependencyIDs, err := ActivateTasks(ctx, []Task{tasks[0]}, time.Time{}, true, u.Id, "")
 		assert.NoError(t, err)
 		assert.ElementsMatch(t, updatedIDs, activatedDependencyIDs)
 
@@ -2566,7 +2566,7 @@ func TestActivateTasks(t *testing.T) {
 			}
 		}
 
-		activatedDependencyIDs, err = ActivateTasks(ctx, []Task{tasks[1]}, time.Time{}, true, u.Id)
+		activatedDependencyIDs, err = ActivateTasks(ctx, []Task{tasks[1]}, time.Time{}, true, u.Id, "")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), fmt.Sprintf("cannot schedule %d tasks, maximum hourly per-user limit is %d", 102, 100))
 		assert.Empty(t, activatedDependencyIDs)
@@ -2582,7 +2582,7 @@ func TestActivateTasks(t *testing.T) {
 		}
 		require.NoError(t, task.Insert(t.Context()))
 
-		activatedDependencyIDs, err := ActivateTasks(ctx, []Task{task}, time.Now(), true, "abyssinian")
+		activatedDependencyIDs, err := ActivateTasks(ctx, []Task{task}, time.Now(), true, "abyssinian", "")
 		assert.NoError(t, err)
 		assert.Empty(t, activatedDependencyIDs)
 
@@ -2619,7 +2619,7 @@ func TestDeactivateTasks(t *testing.T) {
 	}
 
 	updatedIDs := []string{"t0", "t4", "t5", "t6", "t7"}
-	err := DeactivateTasks(ctx, []Task{tasks[0]}, true, "")
+	err := DeactivateTasks(ctx, []Task{tasks[0]}, true, "", "")
 	assert.NoError(t, err)
 
 	dbTasks, err := FindAll(ctx, All)
@@ -6016,4 +6016,153 @@ func TestSetS3ArtifactStorageCostsLifecycleMissLogging(t *testing.T) {
 		tk.setS3ArtifactStorageCosts(ctx, missingLookup, costConfig)
 		assert.Equal(t, []string{"mciuploads"}, loggedBuckets())
 	})
+}
+
+func TestUpdateSchedulingLimit(t *testing.T) {
+	ctx := t.Context()
+
+	const (
+		username         = "user"
+		serviceUsername  = "service_user"
+		generalLimit     = 100
+		boostedLimit     = 10000
+		boostedProject   = "boosted_project"
+		normalProject    = "normal_project"
+		boostedRepo      = "boosted_repo"
+		boostedRepoChild = "boosted_repo_child"
+		otherRepoChild   = "other_repo_child"
+	)
+
+	settings := evergreen.GetEnvironment().Settings()
+	originalTaskLimits := settings.TaskLimits
+	t.Cleanup(func() {
+		settings.TaskLimits = originalTaskLimits
+		assert.NoError(t, db.ClearCollections(user.Collection))
+	})
+
+	for tName, tCase := range map[string]struct {
+		caller                   string
+		onlyAPI                  bool
+		requester                string
+		projectID                string
+		repoRefID                string
+		numTasksModified         int
+		expectedErr              string
+		expectedGeneralCount     int
+		expectedPerProjectCounts map[string]int
+	}{
+		"BoostedProjectAllowsSchedulingAboveGeneralLimit": {
+			projectID:                boostedProject,
+			numTasksModified:         500,
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{boostedProject: 500},
+		},
+		"NormalProjectStillEnforcesGeneralLimit": {
+			projectID:                normalProject,
+			numTasksModified:         500,
+			expectedErr:              "cannot schedule 500 tasks, maximum hourly per-user limit is 100",
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{},
+		},
+		"NormalProjectUnderGeneralLimitUsesGeneralCounter": {
+			projectID:                normalProject,
+			numTasksModified:         50,
+			expectedGeneralCount:     50,
+			expectedPerProjectCounts: map[string]int{},
+		},
+		"ProjectTrackingBoostedRepoUsesRepoLimitAndRepoCounter": {
+			projectID:                boostedRepoChild,
+			repoRefID:                boostedRepo,
+			numTasksModified:         500,
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{boostedRepo: 500},
+		},
+		"ProjectTrackingUnboostedRepoUsesGeneralLimit": {
+			projectID:                otherRepoChild,
+			repoRefID:                "other_repo",
+			numTasksModified:         500,
+			expectedErr:              "cannot schedule 500 tasks, maximum hourly per-user limit is 100",
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{},
+		},
+		"NonPatchRequesterIsExemptFromBoostedProjectTracking": {
+			requester:                evergreen.RepotrackerVersionRequester,
+			projectID:                boostedProject,
+			numTasksModified:         500,
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{},
+		},
+		"SystemActivatorIsExemptFromBoostedProjectTracking": {
+			caller:                   evergreen.BuildActivator,
+			projectID:                boostedProject,
+			numTasksModified:         500,
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{},
+		},
+		"ServiceUserIsExemptFromBoostedProjectTracking": {
+			caller:                   serviceUsername,
+			onlyAPI:                  true,
+			projectID:                boostedProject,
+			numTasksModified:         500,
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{},
+		},
+		"NoTasksModifiedIsANoop": {
+			projectID:                boostedProject,
+			numTasksModified:         0,
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{},
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(user.Collection))
+
+			settings.TaskLimits = evergreen.TaskLimitsConfig{
+				MaxHourlyPatchTasks: generalLimit,
+				HourlyPatchTaskOverrides: []evergreen.HourlyPatchTaskOverride{
+					{
+						ProjectOrRepoID:     boostedProject,
+						MaxHourlyPatchTasks: boostedLimit,
+					},
+					{
+						ProjectOrRepoID:     boostedRepo,
+						MaxHourlyPatchTasks: boostedLimit,
+					},
+				},
+			}
+
+			caller := tCase.caller
+			if caller == "" {
+				caller = username
+			}
+			u := &user.DBUser{
+				Id:      caller,
+				OnlyAPI: tCase.onlyAPI,
+			}
+			require.NoError(t, u.Insert(ctx))
+
+			requester := tCase.requester
+			if requester == "" {
+				requester = evergreen.PatchVersionRequester
+			}
+
+			err := UpdateSchedulingLimit(ctx, caller, requester, tCase.projectID, tCase.repoRefID, tCase.numTasksModified, true)
+			if tCase.expectedErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tCase.expectedErr)
+			} else {
+				require.NoError(t, err)
+			}
+
+			dbUser, err := user.FindOneById(ctx, caller)
+			require.NoError(t, err)
+			require.NotNil(t, dbUser)
+			assert.Equal(t, tCase.expectedGeneralCount, dbUser.NumScheduledPatchTasks)
+			perProjectCounts := map[string]int{}
+			for _, usage := range dbUser.PerProjectSchedulingUsage {
+				perProjectCounts[usage.ProjectOrRepoID] = usage.NumScheduledPatchTasks
+			}
+			assert.Equal(t, tCase.expectedPerProjectCounts, perProjectCounts)
+		})
+	}
 }
