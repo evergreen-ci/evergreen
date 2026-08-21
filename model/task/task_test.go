@@ -6016,4 +6016,25 @@ func TestSetS3ArtifactStorageCostsLifecycleMissLogging(t *testing.T) {
 		tk.setS3ArtifactStorageCosts(ctx, missingLookup, costConfig)
 		assert.Equal(t, []string{"mciuploads"}, loggedBuckets())
 	})
+
+	// Uploads that are not devprod owned are never priced, so a lookup miss is expected for them.
+	t.Run("SuppressesMissForUploadsOutsideDevprodOwnedList", func(t *testing.T) {
+		ownedConfig := &evergreen.CostConfig{
+			S3Cost: evergreen.S3CostConfig{
+				Storage: evergreen.S3StorageCostConfig{
+					DefaultMaxArtifactExpirationDays: 365,
+					DevprodOwnedAWSAccountIDs:        []string{"123456789012"},
+				},
+			},
+		}
+
+		tk := Task{Id: "t5", S3Usage: usage("unowned-bucket", "arn:aws:iam::210987654321:role/r", "")}
+		tk.setS3ArtifactStorageCosts(ctx, missingLookup, ownedConfig)
+		assert.Empty(t, loggedBuckets())
+
+		tk = Task{Id: "t6", S3Usage: usage("unresolved-bucket", "", "")}
+		tk.setS3ArtifactStorageCosts(ctx, missingLookup, ownedConfig)
+		assert.Empty(t, loggedBuckets(), "an upload with no resolvable account is not devprod owned")
+		assert.Positive(t, tk.TaskCost.OnDemandS3ArtifactStorageCost, "cost must still be computed from the default expiration days")
+	})
 }

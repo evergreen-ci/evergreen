@@ -159,11 +159,11 @@ func TestCostConfigValidateAndDefault(t *testing.T) {
 	})
 }
 
-func TestAWSAccountIDMatchesConfiguredList(t *testing.T) {
-	assert.True(t, isInAccountList("123456789012", []string{"123456789012"}))
-	assert.True(t, isInAccountList("123456789012", []string{" 123456789012 "}))
-	assert.False(t, isInAccountList("123456789012", []string{"999999999999"}))
-	assert.False(t, isInAccountList("123456789012", nil))
+func TestContainsTrimmed(t *testing.T) {
+	assert.True(t, containsTrimmed("123456789012", []string{"123456789012"}))
+	assert.True(t, containsTrimmed("123456789012", []string{" 123456789012 "}))
+	assert.False(t, containsTrimmed("123456789012", []string{"999999999999"}))
+	assert.False(t, containsTrimmed("123456789012", nil))
 }
 
 func TestIsDevprodOwnedArtifactIAMRole(t *testing.T) {
@@ -406,4 +406,65 @@ func TestResolveUploadAccountID(t *testing.T) {
 	t.Run("BothEmptyResolvesToNoAccount", func(t *testing.T) {
 		assert.Empty(t, ResolveUploadAccountID("", ""))
 	})
+}
+
+func TestShouldSkipLifecycleRules(t *testing.T) {
+	cfg := S3StorageCostConfig{
+		DevprodOwnedAWSAccountIDs:                []string{"123456789012"},
+		ArtifactAWSAccountsWithoutLifecycleRules: []string{"999999999999", "123456789012"},
+	}
+
+	for _, tc := range []struct {
+		name      string
+		cfg       S3StorageCostConfig
+		roleARN   string
+		accountID string
+		want      bool
+	}{
+		{
+			name:      "ListedAccountIsSkipped",
+			cfg:       cfg,
+			accountID: "123456789012",
+			want:      true,
+		},
+		{
+			name:      "AccountOutsideDevprodOwnedListIsSkipped",
+			cfg:       cfg,
+			accountID: "210987654321",
+			want:      true,
+		},
+		{
+			name: "UnresolvableAccountIsSkipped",
+			cfg:  cfg,
+			want: true,
+		},
+		{
+			name:      "UnparseableRoleARNIsSkipped",
+			cfg:       cfg,
+			roleARN:   "not-an-arn",
+			accountID: "123456789012",
+			want:      true,
+		},
+		{
+			name:    "DevprodOwnedUnlistedAccountIsNotSkipped",
+			cfg:     S3StorageCostConfig{DevprodOwnedAWSAccountIDs: []string{"123456789012"}},
+			roleARN: "arn:aws:iam::123456789012:role/r",
+		},
+		{
+			name:      "NoDevprodOwnedListTracksEverything",
+			accountID: "210987654321",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, tc.cfg.ShouldSkipLifecycleRules(tc.roleARN, tc.accountID))
+		})
+	}
+}
+
+func TestShouldSkipLifecycleRuleSync(t *testing.T) {
+	cfg := S3StorageCostConfig{DevprodOwnedAWSAccountIDs: []string{"123456789012"}}
+
+	assert.False(t, cfg.ShouldSkipLifecycleRuleSync(""), "rules cached before the account ID was stored must keep being refreshed")
+	assert.True(t, cfg.ShouldSkipLifecycleRuleSync("210987654321"))
+	assert.False(t, cfg.ShouldSkipLifecycleRuleSync("123456789012"))
 }

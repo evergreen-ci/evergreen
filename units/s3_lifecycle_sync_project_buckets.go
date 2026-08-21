@@ -96,7 +96,7 @@ func (j *s3LifecycleSyncProjectBucketsJob) Run(ctx context.Context) {
 	var failedBuckets []string
 
 	for _, bucketName := range bucketNames {
-		if err := j.syncBucket(ctx, client, bucketName, costConfig.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules); err != nil {
+		if err := j.syncBucket(ctx, client, bucketName, &costConfig.S3Cost.Storage); err != nil {
 			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "failed to sync bucket",
 				"bucket":  bucketName,
@@ -105,7 +105,6 @@ func (j *s3LifecycleSyncProjectBucketsJob) Run(ctx context.Context) {
 			j.AddError(err)
 			failureCount++
 			failedBuckets = append(failedBuckets, bucketName)
-			continue
 		}
 	}
 
@@ -122,7 +121,7 @@ func (j *s3LifecycleSyncProjectBucketsJob) Run(ctx context.Context) {
 	grip.Info(ctx, msg)
 }
 
-func (j *s3LifecycleSyncProjectBucketsJob) syncBucket(ctx context.Context, client cloud.S3LifecycleClient, bucketName string, accountsWithoutLifecycleRules []string) error {
+func (j *s3LifecycleSyncProjectBucketsJob) syncBucket(ctx context.Context, client cloud.S3LifecycleClient, bucketName string, storageCostConfig *evergreen.S3StorageCostConfig) error {
 	// Get existing rules to extract region and account ID (all rules for same bucket share these).
 	existingRules, err := s3lifecycle.FindAllRulesForBucket(ctx, bucketName)
 	if err != nil {
@@ -138,13 +137,12 @@ func (j *s3LifecycleSyncProjectBucketsJob) syncBucket(ctx context.Context, clien
 		return nil
 	}
 
-	// Skip sync for buckets belonging to accounts where we don't have lifecycle rule access.
-	// AWSAccountID is populated during discovery for role-based auth buckets. Buckets using
-	// key+secret auth or those discovered before this field was added will have an empty
-	// AWSAccountID and are always synced.
-	if awsAccountID := existingRules[0].AWSAccountID; awsAccountID != "" && evergreen.IsAccountWithoutLifecycleRules(awsAccountID, accountsWithoutLifecycleRules) {
+	// The configuration is the only gate on asking AWS, so removing an account from either list takes
+	// effect on this run.
+	awsAccountID := existingRules[0].AWSAccountID
+	if storageCostConfig.ShouldSkipLifecycleRuleSync(awsAccountID) {
 		grip.Info(ctx, message.Fields{
-			"message":    "skipping lifecycle rule sync for bucket in account without lifecycle rules access",
+			"message":    "skipping lifecycle rule sync for bucket configured without lifecycle rules",
 			"bucket":     bucketName,
 			"account_id": awsAccountID,
 			"job_id":     j.ID(),
