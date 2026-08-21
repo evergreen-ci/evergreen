@@ -36,13 +36,16 @@ func New(apiURL string) Config {
 		if !isStringMap {
 			return nil, ResourceNotFound.Send(ctx, "patchIds not specified")
 		}
-		rawPatchIds, hasPatchIds := args["patchIds"].([]any)
-		if !hasPatchIds {
-			return nil, ResourceNotFound.Send(ctx, "patchIds not specified")
-		}
-		patchIds := make([]string, len(rawPatchIds))
-		for i, v := range rawPatchIds {
-			patchIds[i] = v.(string)
+		var patchIds []string
+		if rawPatchIds, ok := args["patchIds"].([]any); ok {
+			patchIds = make([]string, len(rawPatchIds))
+			for i, v := range rawPatchIds {
+				patchIds[i] = v.(string)
+			}
+		} else if singlePatchId, ok := args["patchId"].(string); ok {
+			patchIds = []string{singlePatchId}
+		} else {
+			return nil, ResourceNotFound.Send(ctx, "patch ID not specified")
 		}
 
 		patches, err := patch.Find(ctx, patch.ByStringIds(patchIds))

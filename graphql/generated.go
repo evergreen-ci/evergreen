@@ -15181,6 +15181,13 @@ func (ec *executionContext) field_Mutation_schedulePatch_argsPatchID(
 	}
 
 	directive1 := func(ctx context.Context) (any, error) {
+		if ec.directives.RequirePatchOwner == nil {
+			var zeroVal string
+			return zeroVal, errors.New("directive requirePatchOwner is not implemented")
+		}
+		return ec.directives.RequirePatchOwner(ctx, rawArgs, directive0)
+	}
+	directive2 := func(ctx context.Context) (any, error) {
 		permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "PATCHES")
 		if err != nil {
 			var zeroVal string
@@ -15195,10 +15202,10 @@ func (ec *executionContext) field_Mutation_schedulePatch_argsPatchID(
 			var zeroVal string
 			return zeroVal, errors.New("directive requireProjectAccess is not implemented")
 		}
-		return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
+		return ec.directives.RequireProjectAccess(ctx, rawArgs, directive1, permission, access)
 	}
 
-	tmp, err := directive1(ctx)
+	tmp, err := directive2(ctx)
 	if err != nil {
 		var zeroVal string
 		return zeroVal, graphql.ErrorOnPath(ctx, err)

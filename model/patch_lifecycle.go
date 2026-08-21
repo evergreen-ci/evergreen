@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -27,6 +28,53 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"gopkg.in/yaml.v2"
 )
+
+// UserCanModifyPatch checks if a user has permission to modify a given patch.
+func UserCanModifyPatch(ctx context.Context, u *user.DBUser, p patch.Patch) bool {
+	if u == nil {
+		return false
+	}
+
+	if p.Author == u.Username() {
+		return true
+	}
+
+	if u.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionAdminSettings,
+		RequiredLevel: evergreen.AdminSettingsEdit.Value,
+	}) {
+		return true
+	}
+
+	if u.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      p.Project,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	}) {
+		return true
+	}
+
+	if u.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      p.Project,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionPatches,
+		RequiredLevel: evergreen.PatchSubmitAdmin.Value,
+	}) {
+		return true
+	}
+
+	// Having PatchSubmit on the project, which is the minimum grant for the route only
+	// for api only users.
+	return u.IsAPIOnly() && u.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      p.Project,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionPatches,
+		RequiredLevel: evergreen.PatchSubmit.Value,
+	})
+}
 
 type TaskVariantPairs struct {
 	ExecTasks    TVPairSet
