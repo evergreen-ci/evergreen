@@ -218,6 +218,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"pr_number": event.GetPullRequest().GetNumber(),
 				"hash":      event.GetPullRequest().GetHead().GetSHA(),
 				"user":      event.GetSender().GetLogin(),
+				"user_id":   event.GetSender().GetID(),
 				"message":   "PR accepted, attempting to queue",
 			})
 
