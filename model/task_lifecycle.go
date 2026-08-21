@@ -2943,6 +2943,31 @@ func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, use
 	if t.IsAutomaticRestart {
 		user = evergreen.AutoRestartActivator
 	}
+
+	// Every execution task that finishes checks whether its display task can
+	// reset, so many of these can run concurrently and the checks above can be
+	// based on a display task that has since been restarted by one of them.
+	// Re-validate before resetting, because resetting a display task that has
+	// already moved on to a new execution will finish that new execution.
+	dbTask, err := task.FindOneId(ctx, t.Id)
+	if err != nil {
+		return errors.Wrapf(err, "getting display task '%s'", t.Id)
+	}
+	if dbTask == nil {
+		return errors.Errorf("display task '%s' not found", t.Id)
+	}
+	if dbTask.Execution != t.Execution || (!dbTask.ResetWhenFinished && !dbTask.ResetFailedWhenFinished) {
+		grip.Info(ctx, message.Fields{
+			"message":           "skipping display task reset because it was already reset by a concurrent execution task",
+			"task_id":           t.Id,
+			"checked_execution": t.Execution,
+			"current_execution": dbTask.Execution,
+			"origin":            origin,
+			"user":              user,
+		})
+		return nil
+	}
+
 	return errors.Wrap(TryResetTask(ctx, setting, t.Id, user, origin, details), "resetting display task")
 }
 
