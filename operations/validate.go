@@ -7,9 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/evergreen-ci/evergreen/util"
-
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -93,14 +92,14 @@ func getCrossFileYAMLAnchorsEnabled(conf *ClientSettings) (bool, error) {
 		return false, errors.Wrap(err, "setting up REST communicator")
 	}
 	defer client.Close()
-	settings, err := client.GetSettings(ctx)
+	flags, err := client.GetServiceFlags(ctx)
 	if err != nil {
-		return false, errors.Wrap(err, "getting admin settings")
+		return false, errors.Wrap(err, "getting service flags")
 	}
-	if settings == nil {
+	if flags == nil {
 		return false, nil
 	}
-	return settings.ServiceFlags.CrossFileYAMLAnchorsEnabled, nil
+	return flags.CrossFileYAMLAnchorsEnabled, nil
 }
 
 func getLocalModulesFromInput(localModulePaths []string) (map[string]string, error) {
