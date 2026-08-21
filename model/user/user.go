@@ -494,31 +494,42 @@ func (u *DBUser) GetViewableProjects(ctx context.Context) ([]string, error) {
 }
 
 func (u *DBUser) HasPermission(ctx context.Context, opts gimlet.PermissionOpts) bool {
+	hasPermission, _ := u.HasPermissionErr(ctx, opts)
+	return hasPermission
+}
+
+// Gimlet's permission middleware calls HasPermissionErr only if DBUser
+// satisfies this interface; without it, a failed check silently returns 401.
+var _ gimlet.PermissionChecker = &DBUser{}
+
+// HasPermissionErr is HasPermission, but it returns any error that prevented the
+// check from completing so callers can tell a denial apart from a failed lookup.
+func (u *DBUser) HasPermissionErr(ctx context.Context, opts gimlet.PermissionOpts) (bool, error) {
 	if evergreen.PermissionsDisabledForTests() {
-		return true
+		return true, nil
 	}
 	roleManager := evergreen.GetEnvironment().RoleManager()
 	roles, err := roleManager.GetRoles(ctx, u.Roles())
 	if err != nil {
-		grip.ErrorWhen(ctx, !errors.Is(context.Canceled, err), message.WrapError(err, message.Fields{
+		grip.ErrorWhen(ctx, !errors.Is(err, context.Canceled), message.WrapError(err, message.Fields{
 			"message": "error getting roles",
 		}))
-		return false
+		return false, errors.Wrap(err, "getting roles")
 	}
 	roles, err = roleManager.FilterForResource(ctx, roles, opts.Resource, opts.ResourceType)
 	if err != nil {
-		grip.ErrorWhen(ctx, !errors.Is(context.Canceled, err), message.WrapError(err, message.Fields{
+		grip.ErrorWhen(ctx, !errors.Is(err, context.Canceled), message.WrapError(err, message.Fields{
 			"message": "error filtering resources",
 		}))
-		return false
+		return false, errors.Wrap(err, "filtering roles for resource")
 	}
 	for _, role := range roles {
 		level, hasPermission := role.Permissions[opts.Permission]
 		if hasPermission && level >= opts.RequiredLevel {
-			return true
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }
 
 // HasProjectCreatePermission returns true if the user is an admin for any existing project.
