@@ -2325,47 +2325,48 @@ type ComplexityRoot struct {
 	}
 
 	Version struct {
-		Activated                  func(childComplexity int) int
-		Author                     func(childComplexity int) int
-		AuthorEmail                func(childComplexity int) int
-		BaseVersion                func(childComplexity int) int
-		Branch                     func(childComplexity int) int
-		BuildVariantStats          func(childComplexity int, options BuildVariantOptions) int
-		BuildVariants              func(childComplexity int, options BuildVariantOptions) int
-		ChildVersions              func(childComplexity int) int
-		Cost                       func(childComplexity int) int
-		CreateTime                 func(childComplexity int) int
-		Errors                     func(childComplexity int) int
-		ExternalLinksForMetadata   func(childComplexity int) int
-		FinishTime                 func(childComplexity int) int
-		GeneratedTaskCounts        func(childComplexity int) int
-		GitTags                    func(childComplexity int) int
-		Id                         func(childComplexity int) int
-		Ignored                    func(childComplexity int) int
-		IngestTime                 func(childComplexity int) int
-		IsPatch                    func(childComplexity int) int
-		Manifest                   func(childComplexity int) int
-		Message                    func(childComplexity int) int
-		Order                      func(childComplexity int) int
-		Parameters                 func(childComplexity int) int
-		Patch                      func(childComplexity int) int
-		PredictedCost              func(childComplexity int) int
-		PreviousVersion            func(childComplexity int) int
-		ProjectMetadata            func(childComplexity int) int
-		Repo                       func(childComplexity int) int
-		Requester                  func(childComplexity int) int
-		Revision                   func(childComplexity int) int
-		StartTime                  func(childComplexity int) int
-		Status                     func(childComplexity int) int
-		TaskCount                  func(childComplexity int, options *TaskCountOptions) int
-		TaskQuarantinedTestsSample func(childComplexity int, taskIds []string, limit *int) int
-		TaskStatusStats            func(childComplexity int, options BuildVariantOptions) int
-		TaskStatuses               func(childComplexity int) int
-		Tasks                      func(childComplexity int, options TaskFilterOptions) int
-		UpstreamProject            func(childComplexity int) int
-		User                       func(childComplexity int) int
-		VersionTiming              func(childComplexity int) int
-		Warnings                   func(childComplexity int) int
+		Activated                    func(childComplexity int) int
+		Author                       func(childComplexity int) int
+		AuthorEmail                  func(childComplexity int) int
+		BaseVersion                  func(childComplexity int) int
+		Branch                       func(childComplexity int) int
+		BuildVariantStats            func(childComplexity int, options BuildVariantOptions) int
+		BuildVariants                func(childComplexity int, options BuildVariantOptions) int
+		ChildVersions                func(childComplexity int) int
+		Cost                         func(childComplexity int) int
+		CreateTime                   func(childComplexity int) int
+		Errors                       func(childComplexity int) int
+		ExternalLinksForMetadata     func(childComplexity int) int
+		FinishTime                   func(childComplexity int) int
+		GeneratedTaskCounts          func(childComplexity int) int
+		GitTags                      func(childComplexity int) int
+		Id                           func(childComplexity int) int
+		Ignored                      func(childComplexity int) int
+		IngestTime                   func(childComplexity int) int
+		IsPatch                      func(childComplexity int) int
+		Manifest                     func(childComplexity int) int
+		Message                      func(childComplexity int) int
+		Order                        func(childComplexity int) int
+		Parameters                   func(childComplexity int) int
+		Patch                        func(childComplexity int) int
+		PredictedCost                func(childComplexity int) int
+		PreviousVersion              func(childComplexity int) int
+		ProjectMetadata              func(childComplexity int) int
+		QuarantinedTestsSkippedCount func(childComplexity int) int
+		Repo                         func(childComplexity int) int
+		Requester                    func(childComplexity int) int
+		Revision                     func(childComplexity int) int
+		StartTime                    func(childComplexity int) int
+		Status                       func(childComplexity int) int
+		TaskCount                    func(childComplexity int, options *TaskCountOptions) int
+		TaskQuarantinedTestsSample   func(childComplexity int, taskIds []string, limit *int) int
+		TaskStatusStats              func(childComplexity int, options BuildVariantOptions) int
+		TaskStatuses                 func(childComplexity int) int
+		Tasks                        func(childComplexity int, options TaskFilterOptions) int
+		UpstreamProject              func(childComplexity int) int
+		User                         func(childComplexity int) int
+		VersionTiming                func(childComplexity int) int
+		Warnings                     func(childComplexity int) int
 	}
 
 	VersionLite struct {
@@ -2854,6 +2855,7 @@ type VersionResolver interface {
 
 	PreviousVersion(ctx context.Context, obj *model.APIVersion) (*model.APIVersion, error)
 	ProjectMetadata(ctx context.Context, obj *model.APIVersion) (*model.APIProjectRef, error)
+	QuarantinedTestsSkippedCount(ctx context.Context, obj *model.APIVersion) (int, error)
 
 	Status(ctx context.Context, obj *model.APIVersion) (string, error)
 	TaskCount(ctx context.Context, obj *model.APIVersion, options *TaskCountOptions) (*int, error)
@@ -12742,6 +12744,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Version.ProjectMetadata(childComplexity), true
+	case "Version.quarantinedTestsSkippedCount":
+		if e.complexity.Version.QuarantinedTestsSkippedCount == nil {
+			break
+		}
+
+		return e.complexity.Version.QuarantinedTestsSkippedCount(childComplexity), true
 	case "Version.repo":
 		if e.complexity.Version.Repo == nil {
 			break
@@ -35703,6 +35711,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_rolledUpVersions(
 				return ec.fieldContext_Version_previousVersion(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
+			case "quarantinedTestsSkippedCount":
+				return ec.fieldContext_Version_quarantinedTestsSkippedCount(ctx, field)
 			case "repo":
 				return ec.fieldContext_Version_repo(ctx, field)
 			case "requester":
@@ -35816,6 +35826,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_version(_ context
 				return ec.fieldContext_Version_previousVersion(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
+			case "quarantinedTestsSkippedCount":
+				return ec.fieldContext_Version_quarantinedTestsSkippedCount(ctx, field)
 			case "repo":
 				return ec.fieldContext_Version_repo(ctx, field)
 			case "requester":
@@ -42245,6 +42257,8 @@ func (ec *executionContext) fieldContext_Mutation_restartVersions(ctx context.Co
 				return ec.fieldContext_Version_previousVersion(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
+			case "quarantinedTestsSkippedCount":
+				return ec.fieldContext_Version_quarantinedTestsSkippedCount(ctx, field)
 			case "repo":
 				return ec.fieldContext_Version_repo(ctx, field)
 			case "requester":
@@ -45698,6 +45712,8 @@ func (ec *executionContext) fieldContext_Patch_versionFull(_ context.Context, fi
 				return ec.fieldContext_Version_previousVersion(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
+			case "quarantinedTestsSkippedCount":
+				return ec.fieldContext_Version_quarantinedTestsSkippedCount(ctx, field)
 			case "repo":
 				return ec.fieldContext_Version_repo(ctx, field)
 			case "requester":
@@ -54999,6 +55015,8 @@ func (ec *executionContext) fieldContext_Query_version(ctx context.Context, fiel
 				return ec.fieldContext_Version_previousVersion(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
+			case "quarantinedTestsSkippedCount":
+				return ec.fieldContext_Version_quarantinedTestsSkippedCount(ctx, field)
 			case "repo":
 				return ec.fieldContext_Version_repo(ctx, field)
 			case "requester":
@@ -67327,6 +67345,8 @@ func (ec *executionContext) fieldContext_Task_versionMetadata(_ context.Context,
 				return ec.fieldContext_Version_previousVersion(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
+			case "quarantinedTestsSkippedCount":
+				return ec.fieldContext_Version_quarantinedTestsSkippedCount(ctx, field)
 			case "repo":
 				return ec.fieldContext_Version_repo(ctx, field)
 			case "requester":
@@ -73445,6 +73465,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_version(_ context.Conte
 				return ec.fieldContext_Version_previousVersion(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
+			case "quarantinedTestsSkippedCount":
+				return ec.fieldContext_Version_quarantinedTestsSkippedCount(ctx, field)
 			case "repo":
 				return ec.fieldContext_Version_repo(ctx, field)
 			case "requester":
@@ -74813,6 +74835,8 @@ func (ec *executionContext) fieldContext_Version_baseVersion(_ context.Context, 
 				return ec.fieldContext_Version_previousVersion(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
+			case "quarantinedTestsSkippedCount":
+				return ec.fieldContext_Version_quarantinedTestsSkippedCount(ctx, field)
 			case "repo":
 				return ec.fieldContext_Version_repo(ctx, field)
 			case "requester":
@@ -75053,6 +75077,8 @@ func (ec *executionContext) fieldContext_Version_childVersions(_ context.Context
 				return ec.fieldContext_Version_previousVersion(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
+			case "quarantinedTestsSkippedCount":
+				return ec.fieldContext_Version_quarantinedTestsSkippedCount(ctx, field)
 			case "repo":
 				return ec.fieldContext_Version_repo(ctx, field)
 			case "requester":
@@ -75790,6 +75816,8 @@ func (ec *executionContext) fieldContext_Version_previousVersion(_ context.Conte
 				return ec.fieldContext_Version_previousVersion(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
+			case "quarantinedTestsSkippedCount":
+				return ec.fieldContext_Version_quarantinedTestsSkippedCount(ctx, field)
 			case "repo":
 				return ec.fieldContext_Version_repo(ctx, field)
 			case "requester":
@@ -75959,6 +75987,35 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(_ context.Conte
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Version_quarantinedTestsSkippedCount(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Version_quarantinedTestsSkippedCount,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Version().QuarantinedTestsSkippedCount(ctx, obj)
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Version_quarantinedTestsSkippedCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -111722,6 +111779,42 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 					}
 				}()
 				res = ec._Version_projectMetadata(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "quarantinedTestsSkippedCount":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Version_quarantinedTestsSkippedCount(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 
