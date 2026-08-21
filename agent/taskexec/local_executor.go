@@ -703,8 +703,20 @@ func (e *LocalExecutor) PrepareTask(ctx context.Context, taskName, variantName s
 			}
 		}
 		e.debugState.SelectedVariant = variantName
+		e.taskConfig.BuildVariant = *bv
 		e.taskConfig.Expansions.Put("build_variant", variantName)
 		e.taskConfig.Expansions.Update(bv.Expansions)
+
+		expandedModules := make([]string, 0, len(e.taskConfig.BuildVariant.Modules))
+		for _, moduleName := range e.taskConfig.BuildVariant.Modules {
+			expanded, err := e.taskConfig.Expansions.ExpandString(moduleName)
+			if err != nil {
+				return errors.Wrapf(err, "expanding module '%s'", moduleName)
+			}
+			expandedModules = append(expandedModules, expanded)
+		}
+		e.taskConfig.BuildVariant.Modules = expandedModules
+
 		e.logger.Infof(ctx, "Applied expansions from build variant: %s", variantName)
 	}
 
