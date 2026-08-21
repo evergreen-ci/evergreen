@@ -75,6 +75,19 @@ var (
 // the PR title or description.
 var skipCILabels = []string{"[skip ci]", "[skip-ci]"}
 
+// isCommenterAuthorized checks whether a GitHub comment author is authorized
+// to trigger versions.
+var isCommenterAuthorized = func(ctx context.Context, requiredOrg, owner, repo, commenter string) (bool, error) {
+	isMember, err := thirdparty.GithubUserInOrganization(ctx, requiredOrg, commenter)
+	if err != nil {
+		return false, err
+	}
+	if isMember {
+		return true, nil
+	}
+	return thirdparty.GitHubUserHasWritePermission(ctx, owner, repo, commenter)
+}
+
 type githubHookApi struct {
 	queue  amboy.Queue
 	secret []byte
@@ -258,7 +271,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				break
 			}
 
-			if err := gh.AddIntentForPR(ctx, event.PullRequest, event.PullRequest.GetUser().GetLogin(), patch.AutomatedCaller, "", false); err != nil {
+			if err := gh.AddIntentForPR(ctx, event.PullRequest, event.PullRequest.GetUser().GetLogin(), patch.AutomatedCaller, "", "", false); err != nil {
 				grip.Error(ctx, message.WrapError(err, message.Fields{
 					"source":    "GitHub hook",
 					"msg_id":    gh.msgID,
@@ -752,7 +765,7 @@ func (gh *githubHookApi) handleComment(ctx context.Context, event *github.IssueC
 		}
 		grip.Info(ctx, gh.getCommentLogWithMessage(event, fmt.Sprintf("'%s' triggered", commentBody)))
 
-		err := gh.createPRPatch(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), callerType, alias, event.Issue.GetNumber())
+		err := gh.createPRPatch(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), callerType, alias, event.GetSender().GetLogin(), event.Issue.GetNumber())
 		grip.Error(ctx, message.WrapError(err, gh.getCommentLogWithMessage(event,
 			fmt.Sprintf("can't create PR for '%s'", commentBody))))
 		return errors.Wrap(err, "creating patch")
@@ -1002,7 +1015,7 @@ func shouldSkipCIForGraphite(ctx context.Context, owner, repo string, prNumber i
 	return responseBody.Skip, nil
 }
 
-func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledBy, alias string, prNumber int) error {
+func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledBy, alias, commenter string, prNumber int) error {
 	pr, err := thirdparty.GetGithubPullRequest(ctx, owner, repo, prNumber)
 	if err != nil {
 		return errors.Wrapf(err, "getting PR for repo '%s:%s', PR #%d", owner, repo, prNumber)
@@ -1024,7 +1037,7 @@ func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledB
 		return gh.sc.AddCommentToPR(ctx, owner, repo, prNumber, graphiteRebaseComment)
 	}
 
-	return gh.AddIntentForPR(ctx, pr, pr.User.GetLogin(), calledBy, alias, true)
+	return gh.AddIntentForPR(ctx, pr, pr.User.GetLogin(), calledBy, alias, commenter, true)
 }
 
 // keepPRPatchDefinition looks for the most recent patch created for the pr number and updates the
@@ -1076,7 +1089,7 @@ func (gh *githubHookApi) refreshPatchStatus(ctx context.Context, owner, repo str
 // before creating a new one. For example, if multiple patches with the same head sha exist, the PR(s) will get
 // both updates from patches and be in a race condition for which one GitHub checks shows last- so we want
 // to avoid this state when possible.
-func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequest, owner, calledBy, alias string, overrideExisting bool) error {
+func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequest, owner, calledBy, alias, commenter string, overrideExisting bool) error {
 	// Verify that the owner/repo uses PR testing before inserting the intent.
 	baseRepoName := pr.Base.Repo.GetFullName()
 	baseOwnerRepo := strings.Split(baseRepoName, "/")
@@ -1098,6 +1111,31 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 			"pr_num":  pr.GetNumber(),
 		})
 		return nil
+	}
+
+	if commenter != "" {
+		requiredOrg := gh.settings.GithubPRCreatorOrg
+		authorized, err := isCommenterAuthorized(ctx, requiredOrg, baseOwnerRepo[0], baseOwnerRepo[1], commenter)
+		if err != nil {
+			grip.Error(ctx, message.WrapError(err, message.Fields{
+				"message":   "checking commenter authorization",
+				"commenter": commenter,
+				"owner":     baseOwnerRepo[0],
+				"repo":      baseOwnerRepo[1],
+				"pr_num":    pr.GetNumber(),
+			}))
+		}
+		if !authorized {
+			grip.Warning(ctx, message.Fields{
+				"message":   "commenter is not authorized to trigger CI",
+				"commenter": commenter,
+				"owner":     baseOwnerRepo[0],
+				"repo":      baseOwnerRepo[1],
+				"pr_num":    pr.GetNumber(),
+			})
+			unauthorizedComment := fmt.Sprintf("GitHub user %s is not authorized to trigger Evergreen CI.", commenter)
+			return gh.sc.AddCommentToPR(ctx, baseOwnerRepo[0], baseOwnerRepo[1], pr.GetNumber(), unauthorizedComment)
+		}
 	}
 
 	if isGraphiteBaseBranch(baseBranch) {
@@ -1170,7 +1208,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		}
 	}
 
-	conflictingPatches, err := getOtherPatchesWithHash(ctx, pr.Head.GetSHA(), pr.GetNumber())
+	conflictingPatches, err := getOtherPatchesWithHash(ctx, pr.Head.GetSHA(), baseOwnerRepo[0], baseOwnerRepo[1], pr.GetNumber())
 	if err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":           "error getting same hash patches",
@@ -1627,8 +1665,8 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 	return gh.sc.CreateVersionFromConfig(ctx, &projectInfo, metadata)
 }
 
-func getOtherPatchesWithHash(ctx context.Context, githash string, prNum int) ([]patch.Patch, error) {
-	patches, err := patch.Find(ctx, patch.ByGithash(githash))
+func getOtherPatchesWithHash(ctx context.Context, githash, owner, repo string, prNum int) ([]patch.Patch, error) {
+	patches, err := patch.Find(ctx, patch.ByGithash(githash, owner, repo))
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting same hash patches")
 	}
