@@ -225,6 +225,48 @@ func TestValidate(t *testing.T) {
 			},
 			errorExpected: false,
 		},
+		"GithubPullRequestMissingOwnerShouldError": {
+			s: Subscriber{
+				Type:   GithubPullRequestSubscriberType,
+				Target: &GithubPullRequestSubscriber{Repo: "evergreen", Ref: "abc123"},
+			},
+			errorExpected: true,
+		},
+		"GithubPullRequestMissingRepoShouldError": {
+			s: Subscriber{
+				Type:   GithubPullRequestSubscriberType,
+				Target: &GithubPullRequestSubscriber{Owner: "mongodb", Ref: "abc123"},
+			},
+			errorExpected: true,
+		},
+		"GithubPullRequestMissingRefShouldError": {
+			s: Subscriber{
+				Type:   GithubPullRequestSubscriberType,
+				Target: &GithubPullRequestSubscriber{Owner: "mongodb", Repo: "evergreen"},
+			},
+			errorExpected: true,
+		},
+		"ValidGithubPullRequest": {
+			s: Subscriber{
+				Type:   GithubPullRequestSubscriberType,
+				Target: &GithubPullRequestSubscriber{Owner: "mongodb", Repo: "evergreen", Ref: "abc123"},
+			},
+			errorExpected: false,
+		},
+		"GithubMergeMissingRepoShouldError": {
+			s: Subscriber{
+				Type:   GithubMergeSubscriberType,
+				Target: &GithubMergeSubscriber{Owner: "mongodb", Ref: "abc123"},
+			},
+			errorExpected: true,
+		},
+		"ValidGithubMerge": {
+			s: Subscriber{
+				Type:   GithubMergeSubscriberType,
+				Target: &GithubMergeSubscriber{Owner: "mongodb", Repo: "evergreen", Ref: "abc123"},
+			},
+			errorExpected: false,
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			if testCase.errorExpected {

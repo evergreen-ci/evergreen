@@ -44,6 +44,17 @@ var SubscriberTypes = []string{
 	RunChildPatchSubscriberType,
 }
 
+// IsGitHubSubscriberType returns whether the given subscriber type is one of
+// the GitHub subscriber types that post statuses via our global GitHub app.
+func IsGitHubSubscriberType(t string) bool {
+	switch t {
+	case GithubPullRequestSubscriberType, GithubCheckSubscriberType, GithubMergeSubscriberType:
+		return true
+	default:
+		return false
+	}
+}
+
 type Subscriber struct {
 	Type string `bson:"type"`
 	// sad violin
@@ -121,6 +132,18 @@ func (s *Subscriber) Validate() error {
 	case WebhookSubscriber:
 		catcher.Add(v.validate())
 	case *WebhookSubscriber:
+		catcher.Add(v.validate())
+	case GithubPullRequestSubscriber:
+		catcher.Add(v.validate())
+	case *GithubPullRequestSubscriber:
+		catcher.Add(v.validate())
+	case GithubCheckSubscriber:
+		catcher.Add(v.validate())
+	case *GithubCheckSubscriber:
+		catcher.Add(v.validate())
+	case GithubMergeSubscriber:
+		catcher.Add(v.validate())
+	case *GithubMergeSubscriber:
 		catcher.Add(v.validate())
 	}
 
@@ -232,6 +255,14 @@ func (s *GithubPullRequestSubscriber) String() string {
 	return fmt.Sprintf("%s-%s-%d-%s-%s", s.Owner, s.Repo, s.PRNumber, s.Ref, s.ChildId)
 }
 
+func (s *GithubPullRequestSubscriber) validate() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(s.Owner == "", "owner is required for GitHub pull request subscriber")
+	catcher.NewWhen(s.Repo == "", "repo is required for GitHub pull request subscriber")
+	catcher.NewWhen(s.Ref == "", "ref is required for GitHub pull request subscriber")
+	return catcher.Resolve()
+}
+
 type GithubCheckSubscriber struct {
 	Owner string `bson:"owner"`
 	Repo  string `bson:"repo"`
@@ -240,6 +271,14 @@ type GithubCheckSubscriber struct {
 
 func (s *GithubCheckSubscriber) String() string {
 	return fmt.Sprintf("%s-%s-%s", s.Owner, s.Repo, s.Ref)
+}
+
+func (s *GithubCheckSubscriber) validate() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(s.Owner == "", "owner is required for GitHub check subscriber")
+	catcher.NewWhen(s.Repo == "", "repo is required for GitHub check subscriber")
+	catcher.NewWhen(s.Ref == "", "ref is required for GitHub check subscriber")
+	return catcher.Resolve()
 }
 
 type GithubMergeSubscriber struct {
@@ -251,6 +290,14 @@ type GithubMergeSubscriber struct {
 
 func (s *GithubMergeSubscriber) String() string {
 	return fmt.Sprintf("%s-%s-%s-%s", s.Owner, s.Repo, s.Ref, s.ChildId)
+}
+
+func (s *GithubMergeSubscriber) validate() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(s.Owner == "", "owner is required for GitHub merge subscriber")
+	catcher.NewWhen(s.Repo == "", "repo is required for GitHub merge subscriber")
+	catcher.NewWhen(s.Ref == "", "ref is required for GitHub merge subscriber")
+	return catcher.Resolve()
 }
 
 type ChildPatchSubscriber struct {
