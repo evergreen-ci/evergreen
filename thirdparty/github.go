@@ -1418,6 +1418,11 @@ func AppAuthorizedForOrg(ctx context.Context, requiredOrganization, name string)
 	// Do not attempt to authorize names that aren't formatted as apps, since a
 	// user can share a name with an app.
 	if !strings.HasSuffix(name, botSuffix) {
+		grip.Debug(ctx, message.Fields{
+			"message": "name does not have bot suffix, skipping app authorization",
+			"name":    name,
+			"ticket":  "DEVPROD-41932",
+		})
 		return false, nil
 	}
 	// Remove the bot suffix because GitHub doesn't include it in the app slug.
@@ -1443,7 +1448,7 @@ func AppAuthorizedForOrg(ctx context.Context, requiredOrganization, name string)
 		for _, installation := range installations.Installations {
 			appSlug := installation.GetAppSlug()
 			grip.Debug(ctx, message.Fields{
-				"message":  "DEVPROD-41919",
+				"message":  "DEVPROD-41932",
 				"app_slug": appSlug,
 				"app_id":   installation.GetAppID(),
 			})
