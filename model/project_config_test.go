@@ -45,4 +45,19 @@ github_pr_aliases:
 	assert.Equal(t, []string{"BF"}, pc.BuildBaronSettings.TicketSearchProjects)
 	assert.Equal(t, "BF", pc.BuildBaronSettings.TicketCreateProject)
 	assert.Equal(t, "Bug", pc.BuildBaronSettings.TicketCreateIssueType)
+
+	projYml = `
+github_pr_aliases:
+  - variant_tags: ["pr-default"]
+    task: ".*"
+  - variant_tags: ["pr-e2e"]
+    task: ".*"
+    required_labels: ["evergreen:e2e"]
+`
+	pc, err = CreateProjectConfig([]byte(projYml), "")
+	assert.NoError(t, err)
+	assert.NotNil(t, pc)
+	assert.Len(t, pc.GitHubPRAliases, 2)
+	assert.Empty(t, pc.GitHubPRAliases[0].RequiredLabels)
+	assert.Equal(t, []string{"evergreen:e2e"}, pc.GitHubPRAliases[1].RequiredLabels)
 }

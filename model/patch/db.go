@@ -503,6 +503,26 @@ func FindLatestGithubPRPatch(ctx context.Context, owner, repo string, prNumber i
 	return &patches[0], nil
 }
 
+// FindFinalizedGithubPRPatchForHeadSHA returns a finalized patch for the given
+// PR and head SHA, if one exists.
+func FindFinalizedGithubPRPatchForHeadSHA(ctx context.Context, owner, repo string, prNumber int, headSHA string) (*Patch, error) {
+	patches, err := Find(ctx, db.Query(bson.M{
+		AliasKey:   bson.M{"$ne": evergreen.CommitQueueAlias},
+		VersionKey: bson.M{"$ne": ""},
+		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchBaseOwnerKey): owner,
+		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchBaseRepoKey):  repo,
+		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchPRNumberKey):  prNumber,
+		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchHeadHashKey):  headSHA,
+	}).Sort([]string{"-" + CreateTimeKey}).Limit(1))
+	if err != nil {
+		return nil, err
+	}
+	if len(patches) == 0 {
+		return nil, nil
+	}
+	return &patches[0], nil
+}
+
 func FindProjectForPatch(ctx context.Context, patchID mgobson.ObjectId) (string, error) {
 	p, err := FindOne(ctx, ById(patchID).Project(bson.M{ProjectKey: 1}))
 	if err != nil {

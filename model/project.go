@@ -1137,7 +1137,7 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, knownHo
 		return nil, errors.New("task cannot be nil")
 	}
 
-	projectRef, err := FindBranchProjectRef(ctx, t.Project)
+	projectRef, err := FindMergedProjectRef(ctx, t.Project, t.Version, false)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project ref")
 	}
@@ -1149,7 +1149,9 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, knownHo
 	expansions.Put("task_name", t.DisplayName)
 	expansions.Put("build_id", t.BuildId)
 	expansions.Put("build_variant", t.BuildVariant)
-	expansions.Put("is_test_selection_enabled", strconv.FormatBool(t.TestSelectionEnabled))
+	expansions.Put("is_test_selection_enabled", strconv.FormatBool(
+		projectRef.IsTestSelectionFilteringEnabled(t.Requester, t.TestSelectionEnabled),
+	))
 	expansions.Put("revision", t.Revision)
 	expansions.Put("github_commit", t.Revision)
 	expansions.Put("activated_by", t.ActivatedBy)
@@ -1939,6 +1941,10 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 		catcher := grip.NewBasicCatcher()
 		aliasDefs, err := findAliasesForPatch(ctx, p.Identifier, alias, patchDoc)
 		catcher.Wrapf(err, "retrieving alias '%s' for patched project config '%s'", alias, patchDoc.Id.Hex())
+
+		if !catcher.HasErrors() && patchDoc.IsGithubPRPatch() {
+			aliasDefs = filterAliasesByLabels(aliasDefs, patchDoc.GithubPatchData.Labels)
+		}
 
 		aliasPairs := TaskVariantPairs{}
 		if !catcher.HasErrors() {

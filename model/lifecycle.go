@@ -793,20 +793,24 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo, opt
 	}
 
 	// Fetch generate tasks estimations for all generator tasks.
-	var generatorDisplayNames []string
-	for _, t := range tasksToCreate {
-		if creationInfo.Project.IsGenerateTask(t.Name) {
-			generatorDisplayNames = append(generatorDisplayNames, t.Name)
+	// Skip the query when the limit is disabled.
+	var generateTaskEstimations map[string]task.GenerateTasksEstimation
+	if evergreen.GetEnvironment().Settings().TaskLimits.MaxPendingGeneratedTasks > 0 {
+		var generatorDisplayNames []string
+		for _, t := range tasksToCreate {
+			if creationInfo.Project.IsGenerateTask(t.Name) {
+				generatorDisplayNames = append(generatorDisplayNames, t.Name)
+			}
 		}
-	}
-	generateTaskEstimations, err := task.GetBatchedGenerateTasksEstimations(ctx, creationInfo.Project.Identifier, creationInfo.BuildVariant.Name, generatorDisplayNames)
-	if err != nil {
-		grip.Warning(ctx, message.WrapError(err, message.Fields{
-			"message": "getting batched generate tasks estimations",
-			"project": creationInfo.Project.Identifier,
-			"variant": creationInfo.BuildVariant.Name,
-		}))
-		generateTaskEstimations = map[string]task.GenerateTasksEstimation{}
+		var err error
+		generateTaskEstimations, err = task.GetBatchedGenerateTasksEstimations(ctx, creationInfo.Project.Identifier, creationInfo.BuildVariant.Name, generatorDisplayNames)
+		if err != nil {
+			grip.Warning(ctx, message.WrapError(err, message.Fields{
+				"message": "getting batched generate tasks estimations",
+				"project": creationInfo.Project.Identifier,
+				"variant": creationInfo.BuildVariant.Name,
+			}))
+		}
 	}
 
 	// create all the actual tasks

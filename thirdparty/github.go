@@ -176,7 +176,8 @@ type GithubPatch struct {
 	CommitMessage string `bson:"commit_message"`
 	MergeBase     string `bson:"merge_base"`
 	// the patchId to copy the definitions for for the next patch the pr creates
-	RepeatPatchIdNextPatch string `bson:"repeat_patch_id_next_patch"`
+	RepeatPatchIdNextPatch string   `bson:"repeat_patch_id_next_patch"`
+	Labels                 []string `bson:"labels,omitempty"`
 }
 
 // GithubMergeGroup stores patch data for patches created from GitHub merge groups
@@ -313,6 +314,8 @@ var (
 	GithubPatchBaseOwnerKey   = bsonutil.MustHaveTag(GithubPatch{}, "BaseOwner")
 	GithubPatchBaseRepoKey    = bsonutil.MustHaveTag(GithubPatch{}, "BaseRepo")
 	RepeatPatchIdNextPatchKey = bsonutil.MustHaveTag(GithubPatch{}, "RepeatPatchIdNextPatch")
+	GithubPatchLabelsKey      = bsonutil.MustHaveTag(GithubPatch{}, "Labels")
+	GithubPatchHeadHashKey    = bsonutil.MustHaveTag(GithubPatch{}, "HeadHash")
 )
 
 type retryConfig struct {

@@ -399,6 +399,10 @@ func TestPopulateExpansions(t *testing.T) {
 		Identifier: "mci-favorite",
 		Owner:      "my_org",
 		Repo:       "my_repo",
+		TestSelection: TestSelectionSettings{
+			Allowed:        utility.TruePtr(),
+			DefaultEnabled: utility.TruePtr(),
+		},
 	}
 	require.NoError(projectRef.Insert(t.Context()))
 	v := &Version{
@@ -422,6 +426,7 @@ func TestPopulateExpansions(t *testing.T) {
 		BuildVariant: "magic",
 		Revision:     "0ed7cbd33263043fa95aadb3f6068ef8d076854a",
 		Project:      "mci",
+		Requester:    evergreen.GitTagRequester,
 	}
 
 	expansions, err := PopulateExpansions(t.Context(), taskDoc, &h, "")
@@ -457,8 +462,23 @@ func TestPopulateExpansions(t *testing.T) {
 	taskDoc.TestSelectionEnabled = true
 
 	require.NoError(VersionUpdateOne(t.Context(), bson.M{VersionIdKey: v.Id}, bson.M{
+		"$set": bson.M{VersionRequesterKey: evergreen.RepotrackerVersionRequester},
+	}))
+	taskDoc.Requester = evergreen.RepotrackerVersionRequester
+	expansions, err = PopulateExpansions(t.Context(), taskDoc, &h, "")
+	require.NoError(err)
+	assert.Equal("false", expansions.Get("is_test_selection_enabled"))
+
+	projectRef.TestSelection.MainlineDefaultEnabled = utility.TruePtr()
+	require.NoError(projectRef.Replace(t.Context()))
+	expansions, err = PopulateExpansions(t.Context(), taskDoc, &h, "")
+	require.NoError(err)
+	assert.Equal("true", expansions.Get("is_test_selection_enabled"))
+
+	require.NoError(VersionUpdateOne(t.Context(), bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.PatchVersionRequester},
 	}))
+	taskDoc.Requester = evergreen.PatchVersionRequester
 	p := patch.Patch{
 		Version: v.Id,
 	}
@@ -1581,7 +1601,7 @@ tasks:
   depends_on:
     - name: dist-test
 `
-	intermediate, err := createIntermediateProject([]byte(projYml), false, nil)
+	intermediate, _, err := createIntermediateProject([]byte(projYml), false, nil)
 	s.NoError(err)
 	marshaled, err := yaml.Marshal(intermediate)
 	s.NoError(err)

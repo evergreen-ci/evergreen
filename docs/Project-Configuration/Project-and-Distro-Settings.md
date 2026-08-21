@@ -272,6 +272,38 @@ For security reasons, commits by users outside of your organization will
 not automatically be run. A patch will still be created and must be
 manually authorized to run by a logged-in user.
 
+#### Label-Based PR Testing
+
+You can conditionally include PR alias entries based on GitHub PR labels by adding a
+`required_labels` field to your `github_pr_aliases` in the project YAML. This lets teams
+gate specific test suites behind labels like `myproject:e2e`, reducing work on PRs that don't need those tests.
+
+Removing labels is a no-op. Tasks that were already created are not removed. Labels added
+before the PR patch finishes creating won't take effect until the next push or `evergreen retry`.
+
+##### Configuration
+
+Add `required_labels` to any `github_pr_aliases` entry in your project YAML:
+
+```yaml
+github_pr_aliases:
+  # Always runs
+  - variant: "^lint$"
+    task: "^generate-lint$"
+
+  # Only runs when the PR has the "evergreen:e2e" or "evergreen:full" label.
+  - variant_tags: ["e2e"]
+    task: ".*"
+    required_labels:
+      - "evergreen:e2e"
+      - "evergreen:full"
+```
+
+For [build Variant Path Filtering](Project-Configuration-Files#build-variant-path-filtering),
+label-triggered tasks still respect `paths` on their build variants. If a variant's path
+patterns don't match the PR's changed files, it will not run even if the label condition is
+satisfied.
+
 #### Limiting when PR patches will run
 
 You can optionally specify the oldest commit SHA that is allowed to be a merge base
@@ -761,7 +793,17 @@ commit_queue_aliases:
 github_pr_aliases:
   - variant: "^lint$"
     task: "^generate-lint$"
+
+  - variant_tags: ["e2e"]
+    task: ".*"
+    required_labels:
+      - "evergreen:e2e"
+      - "evergreen:full"
 ```
+
+PR aliases support an optional `required_labels` field. When set, the alias only
+includes its variants and tasks if the PR carries at least one of the
+listed labels. See [Label-Based PR Testing](#label-based-pr-testing) for full details.
 
 ### Git Tag Aliases
 
@@ -835,17 +877,20 @@ need to run because it's giving a false negative signal about your patch's merge
 a project's tests, reduce time for versions to finish, and save on the cost of running low-signal tasks.
 
 To allow any test selection features to be used in your project, first go to "Test Selection" -> "Project-Level Test
-Selection" and enable it. Doing this is necessary to allow any test selection features to be used. Patch tasks in the
-project may use the [test selection command](Project-Commands#test_selectionget).
+Selection" and enable it. This setting controls whether the project can use test selection features, including test
+quarantine.
 
-To enable test selection by default for all patch tasks, go to "Test Selection" -> "Task-Level Test Selection" and
-enable it. Doing this will enable the usage of the [test selection command](Project-Commands#test_selectionget) in all
-patch tasks by default. This default can still be overridden by choosing specific variants/tasks in which to enable test
-selection when submitting a manual patch from [the CLI](../CLI.md#test-selection).
+The "Task-Level Test Selection" setting controls which tasks run test selection by default:
 
-Test selection can appear enabled on mainline commit versions when these project and task settings are enabled. However,
-the [test selection command](Project-Commands#test_selectionget) only requests selected tests for patch tasks. On
-mainline commits and other non-patch versions, the command writes an empty test list, so no tests are excluded.
+- "Disabled" leaves test selection disabled by default. Manual patches can still enable it for selected variants or
+  tasks from [the CLI](../CLI.md#test-selection).
+- "Enabled for patches" enables test selection by default for manual patches, GitHub pull requests, and merge queue
+  patches.
+- "Enabled for patches and mainline commits" additionally enables test selection for commits created by repotracker.
+
+The task-level setting only has an effect when project-level test selection is enabled. Git tags, periodic builds,
+triggered versions, and other non-patch versions do not run the
+[test selection command](Project-Commands#test_selectionget).
 
 ## GitHub App Settings
 

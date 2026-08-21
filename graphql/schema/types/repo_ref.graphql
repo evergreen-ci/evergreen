@@ -40,6 +40,7 @@ input RepoRefInput {
   stepbackDisabled: Boolean
   stepbackBisect: Boolean
   taskAnnotationSettings: TaskAnnotationSettingsInput
+  taskOwnership: TaskOwnershipSettingsInput
   testSelection: TestSelectionSettingsInput
   triggers: [TriggerAliasInput!]
   versionControlEnabled: Boolean
@@ -92,6 +93,7 @@ type RepoRef {
   stepbackDisabled: Boolean!
   stepbackBisect: Boolean
   taskAnnotationSettings: TaskAnnotationSettings!
+  taskOwnership: RepoTaskOwnershipSettings
   testSelection: RepoTestSelectionSettings
   triggers: [TriggerAlias!]!
   versionControlEnabled: Boolean!
@@ -115,7 +117,13 @@ type WorkstationSetupCommand {
   directory: String!
 }
 
+type RepoTaskOwnershipSettings {
+  defaultMothraTeam: String!
+  defaultMothraTeamForBreakingCommit: String!
+}
+
 type RepoTestSelectionSettings {
   allowed: Boolean!
   defaultEnabled: Boolean!
+  mainlineDefaultEnabled: Boolean!
 }
