@@ -24,5 +24,8 @@ func (s *ServiceFlagsSuite) TestServiceFlagsGet() {
 	resp := route.Run(ctx)
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
-	s.IsType(&model.APIServiceFlags{}, resp.Data())
+
+	flags, ok := resp.Data().(*model.APIServiceFlags)
+	s.True(ok)
+	s.NotNil(flags)
 }

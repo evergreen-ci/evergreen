@@ -72,7 +72,12 @@ func TestFetchServiceFlagsAllFieldsReturned(t *testing.T) {
 			f.SetBool(true)
 		}
 	}
+	original, err := evergreen.GetServiceFlags(ctx)
+	require.NoError(t, err)
 	require.NoError(t, allTrue.Set(ctx))
+	t.Cleanup(func() {
+		require.NoError(t, original.Set(context.Background()))
+	})
 
 	getHandler := makeFetchServiceFlags()
 	resp := getHandler.Run(ctx)
