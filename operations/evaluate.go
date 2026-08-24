@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"gopkg.in/yaml.v3"
@@ -14,10 +15,9 @@ import (
 
 func Evaluate() cli.Command {
 	const (
-		taskFlagName        = "tasks"
-		variantsFlagName    = "variants"
-		diffableFlagName    = "diffable"
-		yamlAnchorsFlagName = "yaml-anchors"
+		taskFlagName     = "tasks"
+		variantsFlagName = "variants"
+		diffableFlagName = "diffable"
 	)
 
 	return cli.Command{
@@ -39,10 +39,6 @@ func Evaluate() cli.Command {
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(localModulesFlagName, "lm"),
 				Usage: "specify local modules for included files as MODULE_NAME=PATH pairs",
-			},
-			cli.BoolFlag{
-				Name:  yamlAnchorsFlagName,
-				Usage: "(BETA) enable cross-file YAML anchors in included files",
 			},
 		),
 		Before: mergeBeforeFuncs(requirePathFlag),
@@ -67,13 +63,23 @@ func Evaluate() cli.Command {
 				return errors.Wrap(err, "getting current working directory")
 			}
 
+			confPath := c.Parent().String(ConfFlagName)
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "loading configuration")
+			}
+
 			p := &model.Project{}
 			ctx := context.Background()
+			anchorsEnabled, err := getCrossFileYAMLAnchorsEnabled(conf)
+			if err != nil {
+				grip.Warning(ctx, errors.Wrap(err, "could not get cross-file YAML anchors setting; anchors will be disabled"))
+			}
 			opts := &model.GetProjectOpts{
-				LocalModules:      localModuleMap,
-				ReadFileFrom:      model.ReadFromLocal,
-				LocalIncludeDir:   cwd,
-				EnableYAMLAnchors: c.Bool(yamlAnchorsFlagName),
+				LocalModules:                localModuleMap,
+				ReadFileFrom:                model.ReadFromLocal,
+				LocalIncludeDir:             cwd,
+				CrossFileYAMLAnchorsEnabled: anchorsEnabled,
 			}
 			_, err = model.LoadProjectInto(ctx, configBytes, opts, "", p)
 			if err != nil {
