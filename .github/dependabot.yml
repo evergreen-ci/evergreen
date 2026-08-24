@@ -27,6 +27,7 @@ updates:
       - dependency-name: "golang.org/x/sync"
       - dependency-name: "golang.org/x/text"
       - dependency-name: "golang.org/x/tools"
+      - dependency-name: "google.golang.org/grpc"
     groups:
       otel-dependencies:
         applies-to: version-updates
