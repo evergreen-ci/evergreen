@@ -11,6 +11,7 @@ enum ProjectSettingsSection {
   PLUGINS
   VIEWS_AND_FILTERS
   TEST_SELECTION
+  TASK_OWNERSHIP_AND_FOLIAGE
 
   # GitHub sections.
   GITHUB_APP_SETTINGS
@@ -82,6 +83,7 @@ input ProjectInput {
   stepbackDisabled: Boolean
   stepbackBisect: Boolean
   taskAnnotationSettings: TaskAnnotationSettingsInput
+  taskOwnership: TaskOwnershipSettingsInput
   testSelection: TestSelectionSettingsInput
   triggers: [TriggerAliasInput!]
   versionControlEnabled: Boolean
@@ -185,4 +187,5 @@ type ProjectAlias {
   variant: String!
   variantTags: [String!]!
   parameters: [Parameter!]!
+  requiredLabels: [String!]!
 }

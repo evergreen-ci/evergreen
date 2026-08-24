@@ -467,20 +467,44 @@ func (p *APIGitHubDynamicTokenPermissionGroup) BuildFromService(h model.GitHubDy
 type APITestSelectionSettings struct {
 	// Whether or not test selection features can be used.
 	Allowed *bool `json:"allowed,omitzero"`
-	// Whether or not test selection is enabled by default for tasks.
+	// Whether or not test selection is enabled by default for patch tasks.
 	DefaultEnabled *bool `json:"default_enabled,omitzero"`
+	// Whether or not test selection is enabled by default for mainline commit
+	// tasks.
+	MainlineDefaultEnabled *bool `json:"mainline_default_enabled,omitzero"`
 }
 
 func (ts *APITestSelectionSettings) ToService() model.TestSelectionSettings {
 	return model.TestSelectionSettings{
-		Allowed:        utility.BoolPtrCopy(ts.Allowed),
-		DefaultEnabled: utility.BoolPtrCopy(ts.DefaultEnabled),
+		Allowed:                utility.BoolPtrCopy(ts.Allowed),
+		DefaultEnabled:         utility.BoolPtrCopy(ts.DefaultEnabled),
+		MainlineDefaultEnabled: utility.BoolPtrCopy(ts.MainlineDefaultEnabled),
 	}
 }
 
 func (ts *APITestSelectionSettings) BuildFromService(settings model.TestSelectionSettings) {
 	ts.Allowed = utility.BoolPtrCopy(settings.Allowed)
 	ts.DefaultEnabled = utility.BoolPtrCopy(settings.DefaultEnabled)
+	ts.MainlineDefaultEnabled = utility.BoolPtrCopy(settings.MainlineDefaultEnabled)
+}
+
+type APITaskOwnershipSettings struct {
+	// DefaultMothraTeam is the default Mothra team for tasks in this project.
+	DefaultMothraTeam *string `json:"default_mothra_team,omitempty"`
+	// DefaultMothraTeamForBreakingCommit is the default Mothra team for breaking commit tasks.
+	DefaultMothraTeamForBreakingCommit *string `json:"default_mothra_team_for_breaking_commit,omitempty"`
+}
+
+func (to *APITaskOwnershipSettings) ToService() model.TaskOwnershipSettings {
+	return model.TaskOwnershipSettings{
+		DefaultMothraTeam:                  utility.FromStringPtr(to.DefaultMothraTeam),
+		DefaultMothraTeamForBreakingCommit: utility.FromStringPtr(to.DefaultMothraTeamForBreakingCommit),
+	}
+}
+
+func (to *APITaskOwnershipSettings) BuildFromService(settings model.TaskOwnershipSettings) {
+	to.DefaultMothraTeam = utility.ToStringPtr(settings.DefaultMothraTeam)
+	to.DefaultMothraTeamForBreakingCommit = utility.ToStringPtr(settings.DefaultMothraTeamForBreakingCommit)
 }
 
 type APIProjectRef struct {
@@ -607,6 +631,8 @@ type APIProjectRef struct {
 	GitHubPermissionGroupByRequester map[string]string `json:"github_permission_group_by_requester,omitempty"`
 	// Test selection settings.
 	TestSelection APITestSelectionSettings `json:"test_selection,omitzero"`
+	// Task ownership settings. This is related to Foliage Web Services (FWS).
+	TaskOwnership APITaskOwnershipSettings `json:"task_ownership,omitempty"`
 	// Whether or not to run every mainline commit version.
 	RunEveryMainlineCommit *bool `json:"run_every_mainline_commit,omitzero"`
 }
@@ -658,6 +684,7 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		ProjectHealthView:                p.ProjectHealthView,
 		GitHubPermissionGroupByRequester: p.GitHubPermissionGroupByRequester,
 		TestSelection:                    p.TestSelection.ToService(),
+		TaskOwnership:                    p.TaskOwnership.ToService(),
 		RunEveryMainlineCommit:           p.RunEveryMainlineCommit,
 	}
 
@@ -765,6 +792,7 @@ func (p *APIProjectRef) BuildPublicFields(ctx context.Context, projectRef model.
 	p.GithubMQTriggerAliases = utility.ToStringPtrSlice(projectRef.GithubMQTriggerAliases)
 	p.GitHubPermissionGroupByRequester = projectRef.GitHubPermissionGroupByRequester
 	p.TestSelection.BuildFromService(projectRef.TestSelection)
+	p.TaskOwnership.BuildFromService(projectRef.TaskOwnership)
 	p.RunEveryMainlineCommit = projectRef.RunEveryMainlineCommit
 
 	if projectRef.ProjectHealthView == "" {

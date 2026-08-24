@@ -56,7 +56,8 @@
               "maxPendingGeneratedTasks": 1,
               "maxScheduledTasksPerDistro": 1,
               "maxTaskExecution": 1,
-              "maxTasksPerVersion": 1
+              "maxTasksPerVersion": 1,
+              "taskQueueAutoUnscheduleThreshold": 1
             },
             "repotracker": {
               "maxConcurrentRequests": 1,

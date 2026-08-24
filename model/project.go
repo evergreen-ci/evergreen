@@ -77,15 +77,18 @@ type Project struct {
 
 	// tasksByName is an in-memory cache for O(1) task lookups.
 	tasksByName map[string]*ProjectTask `yaml:"-" bson:"-"`
+	// generateTasks is an in-memory cache for O(1) generate task lookups.
+	generateTasks map[string]int `yaml:"-" bson:"-"`
 }
 
-// buildTaskCache creates the tasksByName map for O(1) task lookups.
+// buildTaskCache creates task lookup maps after the project is fully constructed.
 // This should be called once after the Project is fully constructed.
 func (p *Project) buildTaskCache() {
 	p.tasksByName = make(map[string]*ProjectTask, len(p.Tasks))
 	for i := range p.Tasks {
 		p.tasksByName[p.Tasks[i].Name] = &p.Tasks[i]
 	}
+	p.generateTasks = p.TasksThatCallCommand(evergreen.GenerateTasksCommandName)
 }
 
 // cloneForCacheReturn shallow-clones p's top-level slices and maps, and rebuilds the task cache
@@ -1134,7 +1137,7 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, knownHo
 		return nil, errors.New("task cannot be nil")
 	}
 
-	projectRef, err := FindBranchProjectRef(ctx, t.Project)
+	projectRef, err := FindMergedProjectRef(ctx, t.Project, t.Version, false)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project ref")
 	}
@@ -1146,7 +1149,9 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, knownHo
 	expansions.Put("task_name", t.DisplayName)
 	expansions.Put("build_id", t.BuildId)
 	expansions.Put("build_variant", t.BuildVariant)
-	expansions.Put("is_test_selection_enabled", strconv.FormatBool(t.TestSelectionEnabled))
+	expansions.Put("is_test_selection_enabled", strconv.FormatBool(
+		projectRef.IsTestSelectionFilteringEnabled(t.Requester, t.TestSelectionEnabled),
+	))
 	expansions.Put("revision", t.Revision)
 	expansions.Put("github_commit", t.Revision)
 	expansions.Put("activated_by", t.ActivatedBy)
@@ -1937,6 +1942,10 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 		aliasDefs, err := findAliasesForPatch(ctx, p.Identifier, alias, patchDoc)
 		catcher.Wrapf(err, "retrieving alias '%s' for patched project config '%s'", alias, patchDoc.Id.Hex())
 
+		if !catcher.HasErrors() && patchDoc.IsGithubPRPatch() {
+			aliasDefs = filterAliasesByLabels(aliasDefs, patchDoc.GithubPatchData.Labels)
+		}
+
 		aliasPairs := TaskVariantPairs{}
 		if !catcher.HasErrors() {
 			aliasPairs, err = p.BuildProjectTVPairsWithAlias(aliasDefs, requester, branch)
@@ -2030,7 +2039,11 @@ func (p *Project) TasksThatCallCommand(find string) map[string]int {
 // IsGenerateTask indicates that the task generates other tasks, which the
 // scheduler will use to prioritize this task.
 func (p *Project) IsGenerateTask(taskName string) bool {
-	_, ok := p.TasksThatCallCommand(evergreen.GenerateTasksCommandName)[taskName]
+	generateTasks := p.generateTasks
+	if generateTasks == nil {
+		generateTasks = p.TasksThatCallCommand(evergreen.GenerateTasksCommandName)
+	}
+	_, ok := generateTasks[taskName]
 	return ok
 }
 

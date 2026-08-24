@@ -32,6 +32,18 @@ input TaskLimitsConfigInput {
   maxTaskExecution: Int!
   maxDailyAutomaticRestarts: Int!
   maxScheduledTasksPerDistro: Int!
+  taskQueueAutoUnscheduleThreshold: Int
+  hourlyPatchTaskOverrides: [HourlyPatchTaskOverrideInput!]
+}
+
+input HourlyPatchTaskOverrideInput {
+  projectOrRepoId: String!
+  maxHourlyPatchTasks: Int!
+}
+
+type HourlyPatchTaskOverride {
+  projectOrRepoId: String
+  maxHourlyPatchTasks: Int
 }
 
 type TaskLimitsConfig {
@@ -48,6 +60,8 @@ type TaskLimitsConfig {
   maxTaskExecution: Int
   maxDailyAutomaticRestarts: Int
   maxScheduledTasksPerDistro: Int
+  taskQueueAutoUnscheduleThreshold: Int
+  hourlyPatchTaskOverrides: [HourlyPatchTaskOverride!]!
 }
 
 input HostInitConfigInput {

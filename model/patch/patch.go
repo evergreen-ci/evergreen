@@ -400,6 +400,20 @@ func (p *Patch) SetVariantsTasks(ctx context.Context, variantsTasks []VariantTas
 	)
 }
 
+// SetGithubLabels updates the GitHub PR labels on the patch document.
+func (p *Patch) SetGithubLabels(ctx context.Context, labels []string) error {
+	p.GithubPatchData.Labels = labels
+	return UpdateOne(
+		ctx,
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$set": bson.M{
+				bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchLabelsKey): labels,
+			},
+		},
+	)
+}
+
 // UpdateRepeatPatchId updates the repeat patch Id value to be used for subsequent pr patches
 func (p *Patch) UpdateRepeatPatchId(ctx context.Context, patchId string) error {
 	repeatKey := bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.RepeatPatchIdNextPatchKey)

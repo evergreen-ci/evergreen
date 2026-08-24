@@ -75,11 +75,9 @@ func TestTestSelectionGet(t *testing.T) {
 			require.NoError(t, utility.ReadJSONFile(cmd.OutputFile, &output))
 			assert.Empty(t, output.Tests)
 		},
-		"SkipsForNonPatchRequester": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
+		"SkipsForMainlineRequesterByDefault": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
 			cmd := &testSelectionGet{OutputFile: "test.json", Tests: []string{"test1", "test3"}}
 
-			// Test selection must not run on mainline commits even when allowed
-			// and enabled, so that it never changes which tests they run.
 			conf.Task.Requester = evergreen.RepotrackerVersionRequester
 			require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
 
@@ -88,6 +86,26 @@ func TestTestSelectionGet(t *testing.T) {
 			var output testSelectionOutputFile
 			require.NoError(t, utility.ReadJSONFile(cmd.OutputFile, &output))
 			assert.Empty(t, output.Tests)
+		},
+		"CallsTestSelectionAPIForMainlineRequesterWhenEnabled": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
+			cmd := &testSelectionGet{OutputFile: "test.json", Tests: []string{"test1", "test3"}}
+
+			conf.Task.Requester = evergreen.RepotrackerVersionRequester
+			conf.ProjectRef.TestSelection.DefaultEnabled = utility.TruePtr()
+			conf.ProjectRef.TestSelection.MainlineDefaultEnabled = utility.TruePtr()
+			require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
+
+			assert.True(t, comm.SelectTestsCalled)
+			assert.Equal(t, evergreen.RepotrackerVersionRequester, comm.SelectTestsRequest.Requester)
+		},
+		"SkipsForOtherNonPatchRequester": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
+			cmd := &testSelectionGet{OutputFile: "test.json", Tests: []string{"test1", "test3"}}
+
+			conf.Task.Requester = evergreen.AdHocRequester
+			conf.ProjectRef.TestSelection.MainlineDefaultEnabled = utility.TruePtr()
+			require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
+
+			assert.False(t, comm.SelectTestsCalled)
 		},
 		"CallsTestSelectionAPIWhenEnabled": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
 			cmd := &testSelectionGet{OutputFile: "test.json", Tests: []string{"test1", "test3"}}

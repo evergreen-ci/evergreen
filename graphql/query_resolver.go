@@ -26,30 +26,6 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
-// BbGetCreatedTickets is the resolver for the bbGetCreatedTickets field.
-func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) ([]*thirdparty.JiraTicket, error) {
-	createdTickets, err := bbGetCreatedTicketsPointers(ctx, taskID)
-	if err != nil {
-		return nil, err
-	}
-
-	return createdTickets, nil
-}
-
-// BuildBaron is the resolver for the buildBaron field.
-func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, execution int) (*BuildBaron, error) {
-	searchReturnInfo, bbConfig, err := model.GetBuildBaron(ctx, taskID, execution)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
-	}
-
-	return &BuildBaron{
-		SearchReturnInfo:        searchReturnInfo,
-		BuildBaronConfigured:    bbConfig.SearchConfigured,
-		BbTicketCreationDefined: bbConfig.TicketCreationDefined,
-	}, nil
-}
-
 // AdminEvents is the resolver for the adminEvents field.
 func (r *queryResolver) AdminEvents(ctx context.Context, opts AdminEventsInput) (*AdminEventsPayload, error) {
 	before := utility.FromTimePtr(opts.Before)
@@ -628,7 +604,8 @@ func (r *queryResolver) MyVolumes(ctx context.Context) ([]*restModel.APIVolume, 
 
 // Task is the resolver for the task field.
 func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int) (*restModel.APITask, error) {
-	return getTask(ctx, taskID, execution, r.sc.GetURL())
+	settings := evergreen.GetEnvironment().Settings()
+	return getTask(ctx, taskID, execution, settings.Ui.Url)
 }
 
 // TaskAllExecutions is the resolver for the taskAllExecutions field.

@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -835,4 +836,66 @@ func TestValidateGitTagAlias(t *testing.T) {
 	a.RemotePath = "hello.yml"
 	errs = validateGitTagAlias(a, "gitTag", 1)
 	assert.Empty(t, errs)
+}
+
+func TestFilterAliasesByLabels(t *testing.T) {
+	noLabels := ProjectAlias{Alias: evergreen.GithubPRAlias, Variant: ".*"}
+	withLabelA := ProjectAlias{Alias: evergreen.GithubPRAlias, Variant: ".*", RequiredLabels: []string{"A"}}
+	withLabelAB := ProjectAlias{Alias: evergreen.GithubPRAlias, Variant: ".*", RequiredLabels: []string{"A", "B"}}
+
+	t.Run("NoRequiredLabelsAlwaysPasses", func(t *testing.T) {
+		result := filterAliasesByLabels([]ProjectAlias{noLabels}, nil)
+		assert.Len(t, result, 1)
+	})
+	t.Run("MatchingLabelPasses", func(t *testing.T) {
+		result := filterAliasesByLabels([]ProjectAlias{withLabelA}, []string{"A"})
+		assert.Len(t, result, 1)
+	})
+	t.Run("ORSemanticsAnyLabelSuffices", func(t *testing.T) {
+		result := filterAliasesByLabels([]ProjectAlias{withLabelAB}, []string{"B"})
+		assert.Len(t, result, 1)
+	})
+	t.Run("CaseSensitiveMismatch", func(t *testing.T) {
+		result := filterAliasesByLabels([]ProjectAlias{withLabelA}, []string{"a"})
+		assert.Len(t, result, 0)
+	})
+	t.Run("NoMatchingLabelsExcludesAlias", func(t *testing.T) {
+		result := filterAliasesByLabels([]ProjectAlias{withLabelA}, []string{"C"})
+		assert.Len(t, result, 0)
+	})
+	t.Run("MixedAliasesReturnsCorrectSubset", func(t *testing.T) {
+		result := filterAliasesByLabels([]ProjectAlias{noLabels, withLabelA, withLabelAB}, []string{"B"})
+		assert.Len(t, result, 2)
+		assert.Empty(t, result[0].RequiredLabels)
+		assert.Equal(t, []string{"A", "B"}, result[1].RequiredLabels)
+	})
+	t.Run("EmptyPRLabelsOnlyReturnsUnlabeled", func(t *testing.T) {
+		result := filterAliasesByLabels([]ProjectAlias{noLabels, withLabelA}, nil)
+		assert.Len(t, result, 1)
+		assert.Empty(t, result[0].RequiredLabels)
+	})
+}
+
+func TestValidateRequiredLabelsOnlyOnGithubPRAliases(t *testing.T) {
+	alias := ProjectAlias{
+		Alias:          evergreen.CommitQueueAlias,
+		Variant:        ".*",
+		Task:           ".*",
+		RequiredLabels: []string{"foo"},
+	}
+	errs := ValidateProjectAliases([]ProjectAlias{alias}, "commit_queue_aliases")
+	found := false
+	for _, e := range errs {
+		if strings.Contains(e, "required_labels") {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "expected validation error for required_labels on non-github alias")
+
+	alias.Alias = evergreen.GithubPRAlias
+	errs = ValidateProjectAliases([]ProjectAlias{alias}, "github_pr_aliases")
+	for _, e := range errs {
+		assert.NotContains(t, e, "required_labels")
+	}
 }

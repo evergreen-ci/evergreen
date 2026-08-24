@@ -145,6 +145,9 @@ type ProjectRef struct {
 	// Test selection settings
 	TestSelection TestSelectionSettings `bson:"test_selection,omitempty" json:"test_selection,omitzero" yaml:"test_selection,omitempty"`
 
+	// TaskOwnership contains default team ownership settings for tasks. This is related to Foliage Web Services (FWS).
+	TaskOwnership TaskOwnershipSettings `bson:"task_ownership,omitempty" json:"task_ownership,omitzero" yaml:"task_ownership,omitempty"`
+
 	// RunEveryMainlineCommit indicates that the project should activate the versions for all mainline commits.
 	// This goes against Evergreen's optimization of only activating the latest commit in a series of mainline commits.
 	// This is used for projects that use tasks on mainline commits to trigger downstream processes, like deployments.
@@ -485,12 +488,25 @@ type EmailAlertData struct {
 }
 
 type TestSelectionSettings struct {
-	// Allowed determines if test selection featuers can be used in this project
+	// Allowed determines if test selection features can be used in this project
 	// at all.
 	Allowed *bool `bson:"allowed,omitempty" json:"allowed,omitzero" yaml:"allowed,omitempty"`
 	// DefaultEnabled indicates whether test selection is enabled or disabled by
 	// default for patch tasks in this project.
 	DefaultEnabled *bool `bson:"default_enabled,omitempty" json:"default_enabled,omitzero" yaml:"default_enabled,omitempty"`
+	// MainlineDefaultEnabled indicates whether test selection is enabled for
+	// mainline commit tasks that are otherwise eligible for test selection.
+	MainlineDefaultEnabled *bool `bson:"mainline_default_enabled,omitempty" json:"mainline_default_enabled,omitzero" yaml:"mainline_default_enabled,omitempty"`
+}
+
+// TaskOwnershipSettings contains default team ownership settings for tasks in
+// this project.
+type TaskOwnershipSettings struct {
+	// DefaultMothraTeam is the default Mothra team for tasks in this project.
+	DefaultMothraTeam string `bson:"default_mothra_team,omitempty" json:"default_mothra_team,omitempty" yaml:"default_mothra_team,omitempty"`
+	// DefaultMothraTeamForBreakingCommit is the default Mothra team for
+	// breaking commit tasks in this project.
+	DefaultMothraTeamForBreakingCommit string `bson:"default_mothra_team_for_breaking_commit,omitempty" json:"default_mothra_team_for_breaking_commit,omitempty" yaml:"default_mothra_team_for_breaking_commit,omitempty"`
 }
 
 var (
@@ -548,6 +564,7 @@ var (
 	projectRefLastAutoRestartedTaskAtKey            = bsonutil.MustHaveTag(ProjectRef{}, "LastAutoRestartedTaskAt")
 	projectRefNumAutoRestartedTasksKey              = bsonutil.MustHaveTag(ProjectRef{}, "NumAutoRestartedTasks")
 	projectRefTestSelectionKey                      = bsonutil.MustHaveTag(ProjectRef{}, "TestSelection")
+	projectRefTaskOwnershipKey                      = bsonutil.MustHaveTag(ProjectRef{}, "TaskOwnership")
 
 	commitQueueEnabledKey       = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	triggerDefinitionProjectKey = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
@@ -669,6 +686,26 @@ func (p *ProjectRef) IsTestSelectionDefaultEnabled() bool {
 	return utility.FromBoolPtr(p.TestSelection.DefaultEnabled)
 }
 
+func (p *ProjectRef) IsTestSelectionMainlineDefaultEnabled() bool {
+	return utility.FromBoolPtr(p.TestSelection.MainlineDefaultEnabled)
+}
+
+// IsTestSelectionFilteringEnabled returns whether test selection may filter
+// tests for a task. Patch requesters may use test selection whenever the task
+// is enabled. Mainline commits additionally require the mainline project
+// setting. Other non-patch requesters are not supported.
+func (p *ProjectRef) IsTestSelectionFilteringEnabled(requester string, taskEnabled bool) bool {
+	if !p.IsTestSelectionAllowed() || !taskEnabled {
+		return false
+	}
+	if evergreen.IsPatchRequester(requester) {
+		return true
+	}
+	return requester == evergreen.RepotrackerVersionRequester &&
+		p.IsTestSelectionDefaultEnabled() &&
+		p.IsTestSelectionMainlineDefaultEnabled()
+}
+
 const (
 	ProjectRefCollection     = "project_ref"
 	ProjectTriggerLevelTask  = "task"
@@ -682,23 +719,24 @@ type ProjectPageSection string
 
 // These values must remain consistent with the GraphQL enum ProjectSettingsSection.
 const (
-	ProjectPageGeneralSection           = "GENERAL"
-	ProjectPageAccessSection            = "ACCESS"
-	ProjectPageVariablesSection         = "VARIABLES"
-	ProjectPageNotificationsSection     = "NOTIFICATIONS"
-	ProjectPagePatchAliasSection        = "PATCH_ALIASES"
-	ProjectPageWorkstationsSection      = "WORKSTATION"
-	ProjectPageTriggersSection          = "TRIGGERS"
-	ProjectPagePeriodicBuildsSection    = "PERIODIC_BUILDS"
-	ProjectPagePluginSection            = "PLUGINS"
-	ProjectPageViewsAndFiltersSection   = "VIEWS_AND_FILTERS"
-	ProjectPageTestSelectionSection     = "TEST_SELECTION"
-	ProjectPageGithubAppSettingsSection = "GITHUB_APP_SETTINGS"
-	ProjectPageGithubPermissionsSection = "GITHUB_PERMISSIONS"
-	ProjectPagePullRequestsSection      = "PULL_REQUESTS"
-	ProjectPageGitTagsSection           = "GIT_TAGS"
-	ProjectPageMergeQueueSection        = "MERGE_QUEUE"
-	ProjectPageCommitChecksSection      = "COMMIT_CHECKS"
+	ProjectPageGeneralSection                 = "GENERAL"
+	ProjectPageAccessSection                  = "ACCESS"
+	ProjectPageVariablesSection               = "VARIABLES"
+	ProjectPageNotificationsSection           = "NOTIFICATIONS"
+	ProjectPagePatchAliasSection              = "PATCH_ALIASES"
+	ProjectPageWorkstationsSection            = "WORKSTATION"
+	ProjectPageTriggersSection                = "TRIGGERS"
+	ProjectPagePeriodicBuildsSection          = "PERIODIC_BUILDS"
+	ProjectPagePluginSection                  = "PLUGINS"
+	ProjectPageViewsAndFiltersSection         = "VIEWS_AND_FILTERS"
+	ProjectPageTestSelectionSection           = "TEST_SELECTION"
+	ProjectPageTaskOwnershipAndFoliageSection = "TASK_OWNERSHIP_AND_FOLIAGE"
+	ProjectPageGithubAppSettingsSection       = "GITHUB_APP_SETTINGS"
+	ProjectPageGithubPermissionsSection       = "GITHUB_PERMISSIONS"
+	ProjectPagePullRequestsSection            = "PULL_REQUESTS"
+	ProjectPageGitTagsSection                 = "GIT_TAGS"
+	ProjectPageMergeQueueSection              = "MERGE_QUEUE"
+	ProjectPageCommitChecksSection            = "COMMIT_CHECKS"
 )
 
 const (
@@ -1588,6 +1626,19 @@ func GetIdentifierForProjectSecondary(ctx context.Context, id string) (string, e
 	return pRef.Identifier, nil
 }
 
+// GetRepoRefIDForProject returns the ID of the repo that the given branch project tracks. It
+// returns an empty string if the project tracks no repo or does not exist.
+func GetRepoRefIDForProject(ctx context.Context, projectID string) (string, error) {
+	pRef, err := findOneProjectRefQ(ctx, byId(projectID).WithFields(ProjectRefRepoRefIdKey))
+	if err != nil {
+		return "", err
+	}
+	if pRef == nil {
+		return "", nil
+	}
+	return pRef.RepoRefId, nil
+}
+
 func CountProjectRefsWithIdentifier(ctx context.Context, identifier string) (int, error) {
 	return db.CountQ(ctx, ProjectRefCollection, byId(identifier))
 }
@@ -2474,6 +2525,14 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 			bson.M{
 				"$set": bson.M{
 					projectRefTestSelectionKey: p.TestSelection,
+				},
+			})
+	case ProjectPageTaskOwnershipAndFoliageSection:
+		err = db.Update(ctx, coll,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{
+					projectRefTaskOwnershipKey: p.TaskOwnership,
 				},
 			})
 	case ProjectPageGithubAppSettingsSection:

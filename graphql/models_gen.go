@@ -14,7 +14,6 @@ import (
 	model1 "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 )
 
 type AbortInfo struct {
@@ -51,15 +50,6 @@ type AdminEventsPayload struct {
 
 type AdminTasksToRestartPayload struct {
 	TasksToRestart []*model.APITask `json:"tasksToRestart"`
-}
-
-// Build Baron is a service that can be integrated into a project (see Confluence Wiki for more details).
-// This type is returned from the buildBaron query, and contains information about Build Baron configurations and suggested
-// tickets from JIRA for a given task on a given execution.
-type BuildBaron struct {
-	BbTicketCreationDefined bool                         `json:"bbTicketCreationDefined"`
-	BuildBaronConfigured    bool                         `json:"buildBaronConfigured"`
-	SearchReturnInfo        *thirdparty.SearchReturnInfo `json:"searchReturnInfo,omitempty"`
 }
 
 // BuildVariantOptions is an input to the mainlineCommits query.
@@ -1225,23 +1215,24 @@ func (e ProjectPermission) MarshalJSON() ([]byte, error) {
 type ProjectSettingsSection string
 
 const (
-	ProjectSettingsSectionGeneral           ProjectSettingsSection = "GENERAL"
-	ProjectSettingsSectionAccess            ProjectSettingsSection = "ACCESS"
-	ProjectSettingsSectionVariables         ProjectSettingsSection = "VARIABLES"
-	ProjectSettingsSectionNotifications     ProjectSettingsSection = "NOTIFICATIONS"
-	ProjectSettingsSectionPatchAliases      ProjectSettingsSection = "PATCH_ALIASES"
-	ProjectSettingsSectionWorkstation       ProjectSettingsSection = "WORKSTATION"
-	ProjectSettingsSectionTriggers          ProjectSettingsSection = "TRIGGERS"
-	ProjectSettingsSectionPeriodicBuilds    ProjectSettingsSection = "PERIODIC_BUILDS"
-	ProjectSettingsSectionPlugins           ProjectSettingsSection = "PLUGINS"
-	ProjectSettingsSectionViewsAndFilters   ProjectSettingsSection = "VIEWS_AND_FILTERS"
-	ProjectSettingsSectionTestSelection     ProjectSettingsSection = "TEST_SELECTION"
-	ProjectSettingsSectionGithubAppSettings ProjectSettingsSection = "GITHUB_APP_SETTINGS"
-	ProjectSettingsSectionGithubPermissions ProjectSettingsSection = "GITHUB_PERMISSIONS"
-	ProjectSettingsSectionPullRequests      ProjectSettingsSection = "PULL_REQUESTS"
-	ProjectSettingsSectionGitTags           ProjectSettingsSection = "GIT_TAGS"
-	ProjectSettingsSectionMergeQueue        ProjectSettingsSection = "MERGE_QUEUE"
-	ProjectSettingsSectionCommitChecks      ProjectSettingsSection = "COMMIT_CHECKS"
+	ProjectSettingsSectionGeneral                 ProjectSettingsSection = "GENERAL"
+	ProjectSettingsSectionAccess                  ProjectSettingsSection = "ACCESS"
+	ProjectSettingsSectionVariables               ProjectSettingsSection = "VARIABLES"
+	ProjectSettingsSectionNotifications           ProjectSettingsSection = "NOTIFICATIONS"
+	ProjectSettingsSectionPatchAliases            ProjectSettingsSection = "PATCH_ALIASES"
+	ProjectSettingsSectionWorkstation             ProjectSettingsSection = "WORKSTATION"
+	ProjectSettingsSectionTriggers                ProjectSettingsSection = "TRIGGERS"
+	ProjectSettingsSectionPeriodicBuilds          ProjectSettingsSection = "PERIODIC_BUILDS"
+	ProjectSettingsSectionPlugins                 ProjectSettingsSection = "PLUGINS"
+	ProjectSettingsSectionViewsAndFilters         ProjectSettingsSection = "VIEWS_AND_FILTERS"
+	ProjectSettingsSectionTestSelection           ProjectSettingsSection = "TEST_SELECTION"
+	ProjectSettingsSectionTaskOwnershipAndFoliage ProjectSettingsSection = "TASK_OWNERSHIP_AND_FOLIAGE"
+	ProjectSettingsSectionGithubAppSettings       ProjectSettingsSection = "GITHUB_APP_SETTINGS"
+	ProjectSettingsSectionGithubPermissions       ProjectSettingsSection = "GITHUB_PERMISSIONS"
+	ProjectSettingsSectionPullRequests            ProjectSettingsSection = "PULL_REQUESTS"
+	ProjectSettingsSectionGitTags                 ProjectSettingsSection = "GIT_TAGS"
+	ProjectSettingsSectionMergeQueue              ProjectSettingsSection = "MERGE_QUEUE"
+	ProjectSettingsSectionCommitChecks            ProjectSettingsSection = "COMMIT_CHECKS"
 )
 
 var AllProjectSettingsSection = []ProjectSettingsSection{
@@ -1256,6 +1247,7 @@ var AllProjectSettingsSection = []ProjectSettingsSection{
 	ProjectSettingsSectionPlugins,
 	ProjectSettingsSectionViewsAndFilters,
 	ProjectSettingsSectionTestSelection,
+	ProjectSettingsSectionTaskOwnershipAndFoliage,
 	ProjectSettingsSectionGithubAppSettings,
 	ProjectSettingsSectionGithubPermissions,
 	ProjectSettingsSectionPullRequests,
@@ -1266,7 +1258,7 @@ var AllProjectSettingsSection = []ProjectSettingsSection{
 
 func (e ProjectSettingsSection) IsValid() bool {
 	switch e {
-	case ProjectSettingsSectionGeneral, ProjectSettingsSectionAccess, ProjectSettingsSectionVariables, ProjectSettingsSectionNotifications, ProjectSettingsSectionPatchAliases, ProjectSettingsSectionWorkstation, ProjectSettingsSectionTriggers, ProjectSettingsSectionPeriodicBuilds, ProjectSettingsSectionPlugins, ProjectSettingsSectionViewsAndFilters, ProjectSettingsSectionTestSelection, ProjectSettingsSectionGithubAppSettings, ProjectSettingsSectionGithubPermissions, ProjectSettingsSectionPullRequests, ProjectSettingsSectionGitTags, ProjectSettingsSectionMergeQueue, ProjectSettingsSectionCommitChecks:
+	case ProjectSettingsSectionGeneral, ProjectSettingsSectionAccess, ProjectSettingsSectionVariables, ProjectSettingsSectionNotifications, ProjectSettingsSectionPatchAliases, ProjectSettingsSectionWorkstation, ProjectSettingsSectionTriggers, ProjectSettingsSectionPeriodicBuilds, ProjectSettingsSectionPlugins, ProjectSettingsSectionViewsAndFilters, ProjectSettingsSectionTestSelection, ProjectSettingsSectionTaskOwnershipAndFoliage, ProjectSettingsSectionGithubAppSettings, ProjectSettingsSectionGithubPermissions, ProjectSettingsSectionPullRequests, ProjectSettingsSectionGitTags, ProjectSettingsSectionMergeQueue, ProjectSettingsSectionCommitChecks:
 		return true
 	}
 	return false

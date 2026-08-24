@@ -975,3 +975,58 @@ func TestAPIRateLimitConfig(t *testing.T) {
 		})
 	})
 }
+
+func TestAPITaskLimitsConfigHourlyPatchTaskOverrides(t *testing.T) {
+	t.Run("BuildFromServiceConvertsProjectAndRepoOverrides", func(t *testing.T) {
+		svc := evergreen.TaskLimitsConfig{
+			MaxHourlyPatchTasks: 15000,
+			HourlyPatchTaskOverrides: []evergreen.HourlyPatchTaskOverride{
+				{
+					ProjectOrRepoID:     "project",
+					MaxHourlyPatchTasks: 40000,
+				},
+				{
+					ProjectOrRepoID:     "repo",
+					MaxHourlyPatchTasks: 30000,
+				},
+			},
+		}
+		api := APITaskLimitsConfig{}
+		require.NoError(t, api.BuildFromService(svc))
+		require.Len(t, api.HourlyPatchTaskOverrides, 2)
+		assert.Equal(t, "project", utility.FromStringPtr(api.HourlyPatchTaskOverrides[0].ProjectOrRepoID))
+		assert.Equal(t, 40000, utility.FromIntPtr(api.HourlyPatchTaskOverrides[0].MaxHourlyPatchTasks))
+		assert.Equal(t, "repo", utility.FromStringPtr(api.HourlyPatchTaskOverrides[1].ProjectOrRepoID))
+		assert.Equal(t, 30000, utility.FromIntPtr(api.HourlyPatchTaskOverrides[1].MaxHourlyPatchTasks))
+	})
+
+	t.Run("RoundTripPreservesOverrides", func(t *testing.T) {
+		svc := evergreen.TaskLimitsConfig{
+			MaxHourlyPatchTasks: 15000,
+			HourlyPatchTaskOverrides: []evergreen.HourlyPatchTaskOverride{
+				{
+					ProjectOrRepoID:     "project",
+					MaxHourlyPatchTasks: 40000,
+				},
+				{
+					ProjectOrRepoID:     "repo",
+					MaxHourlyPatchTasks: 30000,
+				},
+			},
+		}
+		api := APITaskLimitsConfig{}
+		require.NoError(t, api.BuildFromService(svc))
+		roundTripped, err := api.ToService()
+		require.NoError(t, err)
+		assert.Equal(t, svc.HourlyPatchTaskOverrides, roundTripped.(evergreen.TaskLimitsConfig).HourlyPatchTaskOverrides)
+	})
+
+	t.Run("NoOverridesRoundTripsToEmpty", func(t *testing.T) {
+		api := APITaskLimitsConfig{}
+		require.NoError(t, api.BuildFromService(evergreen.TaskLimitsConfig{MaxHourlyPatchTasks: 15000}))
+		assert.Empty(t, api.HourlyPatchTaskOverrides)
+		roundTripped, err := api.ToService()
+		require.NoError(t, err)
+		assert.Empty(t, roundTripped.(evergreen.TaskLimitsConfig).HourlyPatchTaskOverrides)
+	})
+}
