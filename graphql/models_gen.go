@@ -14,7 +14,6 @@ import (
 	model1 "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 )
 
 type AbortInfo struct {
@@ -51,15 +50,6 @@ type AdminEventsPayload struct {
 
 type AdminTasksToRestartPayload struct {
 	TasksToRestart []*model.APITask `json:"tasksToRestart"`
-}
-
-// Build Baron is a service that can be integrated into a project (see Confluence Wiki for more details).
-// This type is returned from the buildBaron query, and contains information about Build Baron configurations and suggested
-// tickets from JIRA for a given task on a given execution.
-type BuildBaron struct {
-	BbTicketCreationDefined bool                         `json:"bbTicketCreationDefined"`
-	BuildBaronConfigured    bool                         `json:"buildBaronConfigured"`
-	SearchReturnInfo        *thirdparty.SearchReturnInfo `json:"searchReturnInfo,omitempty"`
 }
 
 // BuildVariantOptions is an input to the mainlineCommits query.
