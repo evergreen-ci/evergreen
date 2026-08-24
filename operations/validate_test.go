@@ -186,10 +186,10 @@ func TestLoadProjectYAML(t *testing.T) {
 	require.NoError(t, err)
 
 	for testName, testCase := range map[string]struct {
-		useNonexistentPath  bool
-		fileContent         []byte
-		serviceFlagErr      error
-		expectErr           string
+		useNonexistentPath bool
+		fileContent        []byte
+		serviceFlagErr     error
+		expectErr          string
 	}{
 		"SucceedsWithValidFile": {},
 		"FailsWithNonexistentFile": {
