@@ -1,8 +1,6 @@
 # This file lists all of the queries. The query definitions can be found in the corresponding files in the resolvers folder.
 type Query {
   # annotations
-  bbGetCreatedTickets(taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: VIEW)): [JiraTicket!]!
-  buildBaron(taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: VIEW), execution: Int!): BuildBaron!
 
   # config
   adminEvents(opts: AdminEventsInput!): AdminEventsPayload! @requireAdmin

@@ -1,7 +1,0 @@
-query {
-  bbGetCreatedTickets(taskId: "no_permissions")  {
-    fields {
-      assignedTeam
-    }
-  }
-}
