@@ -195,7 +195,13 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 		cmd.SetType(c.GetType(project))
 		cmd.SetFullDisplayName(c.DisplayName)
 		cmd.SetIdleTimeout(time.Duration(c.TimeoutSecs) * time.Second)
-		cmd.SetRetryOnFailure(c.RetryOnFailure)
+
+		// Special case on git.get_project due to increasing GitHub instability.
+		retryOnFailure := c.Command == evergreen.GitGetProjectCommandName
+		if c.RetryOnFailure != nil {
+			retryOnFailure = *c.RetryOnFailure
+		}
+		cmd.SetRetryOnFailure(retryOnFailure)
 		cmd.SetFailureMetadataTags(c.FailureMetadataTags)
 
 		out = append(out, cmd)
