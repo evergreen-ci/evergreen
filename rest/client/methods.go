@@ -693,6 +693,8 @@ func (c *communicatorImpl) SetServiceFlags(ctx context.Context, f *model.APIServ
 	return nil
 }
 
+// GetServiceFlags returns the service flags for the Evergreen service; this purposefully doesn't require admin permissions,
+// since it's needed to make hard changes to CLI behavior in response to service flag changes.
 func (c *communicatorImpl) GetServiceFlags(ctx context.Context) (*model.APIServiceFlags, error) {
 	info := requestInfo{
 		method: http.MethodGet,
