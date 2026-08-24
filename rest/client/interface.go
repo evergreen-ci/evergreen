@@ -41,6 +41,8 @@ type Communicator interface {
 	GetBannerMessage(context.Context) (string, error)
 	GetUiV2URL(context.Context) (string, error)
 	SetServiceFlags(context.Context, *restmodel.APIServiceFlags) error
+	// GetServiceFlags returns the service flags for the Evergreen service; this purposefully doesn't require admin permissions,
+	// since it's needed to make hard changes to CLI behavior in response to service flag changes.
 	GetServiceFlags(context.Context) (*restmodel.APIServiceFlags, error)
 	IsServiceUser(context.Context, string) (bool, error)
 	RestartRecentTasks(context.Context, time.Time, time.Time) error
