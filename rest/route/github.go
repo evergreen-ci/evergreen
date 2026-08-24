@@ -36,6 +36,8 @@ const (
 	githubActionSynchronize     = "synchronize"
 	githubActionReopened        = "reopened"
 	githubActionAutoBaseChange  = "automatic_base_change_succeeded"
+	githubActionLabeled         = "labeled"
+	githubActionUnlabeled       = "unlabeled"
 	githubActionChecksRequested = "checks_requested"
 	githubActionRerequested     = "rerequested"
 	githubActionDestroyed       = "destroyed"
@@ -216,6 +218,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"pr_number": event.GetPullRequest().GetNumber(),
 				"hash":      event.GetPullRequest().GetHead().GetSHA(),
 				"user":      event.GetSender().GetLogin(),
+				"user_id":   event.GetSender().GetID(),
 				"message":   "PR accepted, attempting to queue",
 			})
 
@@ -293,6 +296,41 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			}
 
 			return gimlet.NewJSONResponse(struct{}{})
+		} else if action == githubActionLabeled {
+			grip.Info(ctx, message.Fields{
+				"source":    "GitHub hook",
+				"msg_id":    gh.msgID,
+				"event":     gh.eventType,
+				"action":    action,
+				"repo":      event.GetPullRequest().GetBase().GetRepo().GetFullName(),
+				"pr_number": event.GetPullRequest().GetNumber(),
+				"label":     event.GetLabel().GetName(),
+				"hash":      event.GetPullRequest().GetHead().GetSHA(),
+				"message":   "PR labeled, checking for newly applicable aliases",
+			})
+			if err := gh.handlePRLabeled(ctx, event); err != nil {
+				grip.Error(ctx, message.WrapError(err, message.Fields{
+					"source":    "GitHub hook",
+					"msg_id":    gh.msgID,
+					"event":     gh.eventType,
+					"repo":      event.GetPullRequest().GetBase().GetRepo().GetFullName(),
+					"pr_number": event.GetPullRequest().GetNumber(),
+					"label":     event.GetLabel().GetName(),
+					"message":   "handling labeled event",
+				}))
+				return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "handling labeled PR event"))
+			}
+		} else if action == githubActionUnlabeled {
+			grip.Debug(ctx, message.Fields{
+				"source":    "GitHub hook",
+				"msg_id":    gh.msgID,
+				"event":     gh.eventType,
+				"action":    action,
+				"repo":      event.GetPullRequest().GetBase().GetRepo().GetFullName(),
+				"pr_number": event.GetPullRequest().GetNumber(),
+				"label":     event.GetLabel().GetName(),
+				"message":   "PR unlabeled, no-op",
+			})
 		}
 	case *github.PushEvent:
 		fromApp := event.GetInstallation() != nil
@@ -1173,6 +1211,65 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 	}
 
 	return errors.Wrap(data.AddPRPatchIntent(ctx, ghi, gh.queue), "saving GitHub patch intent")
+}
+
+// handlePRLabeled processes a GitHub PR "labeled" event by finding the existing
+// patch version for the PR's head SHA and injecting tasks from any aliases that
+// are now applicable due to the label. If no finalized patch exists for the SHA,
+// this is a no-op.
+func (gh *githubHookApi) handlePRLabeled(ctx context.Context, event *github.PullRequestEvent) error {
+	pr := event.GetPullRequest()
+	if pr == nil || pr.Base == nil || pr.Base.Repo == nil || pr.Head == nil {
+		return errors.New("incomplete pull request event")
+	}
+
+	owner := pr.Base.Repo.Owner.GetLogin()
+	repo := pr.Base.Repo.GetName()
+	prNumber := pr.GetNumber()
+	headSHA := pr.Head.GetSHA()
+	baseBranch := pr.Base.GetRef()
+
+	projectRef, err := model.FindOneProjectRefByRepoAndBranchWithPRTesting(ctx, owner, repo, baseBranch, patch.AutomatedCaller)
+	if err != nil {
+		return errors.Wrap(err, "finding project ref")
+	}
+	if projectRef == nil {
+		return nil
+	}
+
+	existingPatch, err := patch.FindFinalizedGithubPRPatchForHeadSHA(ctx, owner, repo, prNumber, headSHA)
+	if err != nil {
+		return errors.Wrap(err, "finding existing patch for head SHA")
+	}
+	if existingPatch == nil {
+		grip.Debug(ctx, message.Fields{
+			"source":    "GitHub hook",
+			"msg_id":    gh.msgID,
+			"message":   "no finalized patch for head SHA, skipping labeled event",
+			"owner":     owner,
+			"repo":      repo,
+			"pr_number": prNumber,
+			"head_sha":  headSHA,
+		})
+		return nil
+	}
+
+	v, err := model.VersionFindOneId(ctx, existingPatch.Version)
+	if err != nil {
+		return errors.Wrapf(err, "finding version '%s'", existingPatch.Version)
+	}
+	if v == nil {
+		return errors.Errorf("version '%s' not found", existingPatch.Version)
+	}
+
+	currentLabels := make([]string, 0, len(pr.Labels))
+	for _, l := range pr.Labels {
+		if l.GetName() != "" {
+			currentLabels = append(currentLabels, l.GetName())
+		}
+	}
+
+	return model.AddLabelTriggeredTasksForPatch(ctx, gh.settings, existingPatch, v, projectRef, currentLabels)
 }
 
 // overrideOtherPRs aborts the given patches and comments on each patch's PR to inform the user that their patch

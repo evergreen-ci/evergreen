@@ -345,6 +345,44 @@ buildvariants:
 		assert.Equal(t, "enterprise", executor.taskConfig.Expansions.Get("edition"))
 	})
 
+	t.Run("PopulatesBuildVariantModules", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		yamlFile := filepath.Join(tmpDir, "test.yml")
+		yamlContent := `
+tasks:
+  - name: test-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "test"
+modules:
+  - name: my-module
+    repo: git@github.com:test/my-module.git
+    branch: main
+    prefix: src/modules
+buildvariants:
+  - name: ubuntu2204
+    display_name: Ubuntu 22.04
+    modules:
+      - my-module
+    tasks:
+      - name: test-task
+`
+		err := os.WriteFile(yamlFile, []byte(yamlContent), 0644)
+		require.NoError(t, err)
+
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		_, err = executor.LoadProject(yamlFile)
+		require.NoError(t, err)
+
+		err = executor.PrepareTask(t.Context(), "test-task", "ubuntu2204")
+		require.NoError(t, err)
+		require.Len(t, executor.taskConfig.BuildVariant.Modules, 1)
+		assert.Equal(t, "my-module", executor.taskConfig.BuildVariant.Modules[0])
+	})
+
 	t.Run("ReturnsErrorForNonexistentVariant", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		yamlFile := filepath.Join(tmpDir, "test.yml")

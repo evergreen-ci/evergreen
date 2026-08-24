@@ -488,6 +488,25 @@ func (ts *APITestSelectionSettings) BuildFromService(settings model.TestSelectio
 	ts.MainlineDefaultEnabled = utility.BoolPtrCopy(settings.MainlineDefaultEnabled)
 }
 
+type APITaskOwnershipSettings struct {
+	// DefaultMothraTeam is the default Mothra team for tasks in this project.
+	DefaultMothraTeam *string `json:"default_mothra_team,omitempty"`
+	// DefaultMothraTeamForBreakingCommit is the default Mothra team for breaking commit tasks.
+	DefaultMothraTeamForBreakingCommit *string `json:"default_mothra_team_for_breaking_commit,omitempty"`
+}
+
+func (to *APITaskOwnershipSettings) ToService() model.TaskOwnershipSettings {
+	return model.TaskOwnershipSettings{
+		DefaultMothraTeam:                  utility.FromStringPtr(to.DefaultMothraTeam),
+		DefaultMothraTeamForBreakingCommit: utility.FromStringPtr(to.DefaultMothraTeamForBreakingCommit),
+	}
+}
+
+func (to *APITaskOwnershipSettings) BuildFromService(settings model.TaskOwnershipSettings) {
+	to.DefaultMothraTeam = utility.ToStringPtr(settings.DefaultMothraTeam)
+	to.DefaultMothraTeamForBreakingCommit = utility.ToStringPtr(settings.DefaultMothraTeamForBreakingCommit)
+}
+
 type APIProjectRef struct {
 	Id *string `json:"id"`
 	// GitHub org name.
@@ -612,6 +631,8 @@ type APIProjectRef struct {
 	GitHubPermissionGroupByRequester map[string]string `json:"github_permission_group_by_requester,omitempty"`
 	// Test selection settings.
 	TestSelection APITestSelectionSettings `json:"test_selection,omitzero"`
+	// Task ownership settings. This is related to Foliage Web Services (FWS).
+	TaskOwnership APITaskOwnershipSettings `json:"task_ownership,omitempty"`
 	// Whether or not to run every mainline commit version.
 	RunEveryMainlineCommit *bool `json:"run_every_mainline_commit,omitzero"`
 }
@@ -663,6 +684,7 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		ProjectHealthView:                p.ProjectHealthView,
 		GitHubPermissionGroupByRequester: p.GitHubPermissionGroupByRequester,
 		TestSelection:                    p.TestSelection.ToService(),
+		TaskOwnership:                    p.TaskOwnership.ToService(),
 		RunEveryMainlineCommit:           p.RunEveryMainlineCommit,
 	}
 
@@ -770,6 +792,7 @@ func (p *APIProjectRef) BuildPublicFields(ctx context.Context, projectRef model.
 	p.GithubMQTriggerAliases = utility.ToStringPtrSlice(projectRef.GithubMQTriggerAliases)
 	p.GitHubPermissionGroupByRequester = projectRef.GitHubPermissionGroupByRequester
 	p.TestSelection.BuildFromService(projectRef.TestSelection)
+	p.TaskOwnership.BuildFromService(projectRef.TaskOwnership)
 	p.RunEveryMainlineCommit = projectRef.RunEveryMainlineCommit
 
 	if projectRef.ProjectHealthView == "" {

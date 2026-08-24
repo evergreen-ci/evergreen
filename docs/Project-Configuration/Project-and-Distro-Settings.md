@@ -272,6 +272,38 @@ For security reasons, commits by users outside of your organization will
 not automatically be run. A patch will still be created and must be
 manually authorized to run by a logged-in user.
 
+#### Label-Based PR Testing
+
+You can conditionally include PR alias entries based on GitHub PR labels by adding a
+`required_labels` field to your `github_pr_aliases` in the project YAML. This lets teams
+gate specific test suites behind labels like `myproject:e2e`, reducing work on PRs that don't need those tests.
+
+Removing labels is a no-op. Tasks that were already created are not removed. Labels added
+before the PR patch finishes creating won't take effect until the next push or `evergreen retry`.
+
+##### Configuration
+
+Add `required_labels` to any `github_pr_aliases` entry in your project YAML:
+
+```yaml
+github_pr_aliases:
+  # Always runs
+  - variant: "^lint$"
+    task: "^generate-lint$"
+
+  # Only runs when the PR has the "evergreen:e2e" or "evergreen:full" label.
+  - variant_tags: ["e2e"]
+    task: ".*"
+    required_labels:
+      - "evergreen:e2e"
+      - "evergreen:full"
+```
+
+For [build Variant Path Filtering](Project-Configuration-Files#build-variant-path-filtering),
+label-triggered tasks still respect `paths` on their build variants. If a variant's path
+patterns don't match the PR's changed files, it will not run even if the label condition is
+satisfied.
+
 #### Limiting when PR patches will run
 
 You can optionally specify the oldest commit SHA that is allowed to be a merge base
@@ -761,7 +793,17 @@ commit_queue_aliases:
 github_pr_aliases:
   - variant: "^lint$"
     task: "^generate-lint$"
+
+  - variant_tags: ["e2e"]
+    task: ".*"
+    required_labels:
+      - "evergreen:e2e"
+      - "evergreen:full"
 ```
+
+PR aliases support an optional `required_labels` field. When set, the alias only
+includes its variants and tasks if the PR carries at least one of the
+listed labels. See [Label-Based PR Testing](#label-based-pr-testing) for full details.
 
 ### Git Tag Aliases
 

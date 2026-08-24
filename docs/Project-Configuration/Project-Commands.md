@@ -956,6 +956,30 @@ Parameters:
   patch builds, Evergreen will `git fetch --unshallow` if the base
   commit is older than `<clone_depth>` commits. `clone_depth` takes precedence over `shallow_clone`.
 - `shallow_clone`: Sets `clone_depth` to 100, if not already set.
+- `filter`: Clone with `git clone --filter=<filter>` (a partial clone). The
+  most common value is `blob:none`, which omits all file content from the
+  initial clone and lazily fetches blobs on demand. Combine with
+  `sparse_checkout_paths` to check out only the files a task needs.
+- `sparse_checkout_paths`: Restrict the working tree to the listed paths via
+  `git sparse-checkout` (no-cone mode). The clone is done with `--no-checkout`,
+  the sparse set is applied, and only then is the revision checked out, so only
+  the matching paths land on disk. Only takes effect when `filter` is also set;
+  with an empty `filter` these paths are ignored and a normal full clone runs, so
+  the behavior can be toggled with `filter` alone. Entries are gitignore-style
+  patterns, not plain paths: an unanchored entry like `README.md` matches that
+  name in every directory, so anchor a single file with a leading slash, e.g.
+  `/scripts/foo.sh`.
+
+  Both `filter` and `sparse_checkout_paths` apply only to the source clone;
+  module and wiki clones are unaffected. `sparse_checkout_paths` requires a
+  distro git of 2.35 or newer (for `git sparse-checkout set --no-cone`). Patch
+  builds whose diffs only touch files inside `sparse_checkout_paths` work
+  normally, but a patch that touches anything outside the sparse set fails to
+  apply: Evergreen applies patches with `git apply`, which errors on files
+  missing from the working tree. Combining `filter` with `clone_depth` is
+  supported, but the `git fetch --unshallow` fallback for older base commits
+  requires a distro git new enough to unshallow a partial clone.
+
 - `recurse_submodules`: automatically initialize and update each
   submodule in the repository, including any nested submodules.
 

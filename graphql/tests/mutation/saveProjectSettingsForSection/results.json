@@ -261,6 +261,22 @@
       }
     },
     {
+      "query_file": "task_ownership_and_foliage_section.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "projectRef": {
+              "id": "sandbox_project_id",
+              "taskOwnership": {
+                "defaultMothraTeam": "my-team",
+                "defaultMothraTeamForBreakingCommit": "breaking-team"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "query_file": "pull_requests_section.graphql",
       "result": {
         "data": {

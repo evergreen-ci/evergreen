@@ -735,6 +735,8 @@ models:
         resolver: true
   RepoSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
+  RepoTaskOwnershipSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskOwnershipSettings
   RepoTestSelectionSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APITestSelectionSettings
   RepotrackerConfig:
@@ -966,6 +968,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APITestQuarantineEntry
   TestResult:
     model: github.com/evergreen-ci/evergreen/rest/model.APITest
+  TaskOwnershipSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskOwnershipSettings
+  TaskOwnershipSettingsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskOwnershipSettings
   TestSelectionSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APITestSelectionSettings
   TestSelectionSettingsInput:

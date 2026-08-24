@@ -37,6 +37,15 @@ type StatusChanges struct {
 	BuildComplete    bool
 }
 
+// getRepoRefIDForTasks returns the ID of the repo tracked by the project that
+// the given tasks belong to. The tasks must all be from the same version.
+func getRepoRefIDForTasks(ctx context.Context, tasks []task.Task) (string, error) {
+	if len(tasks) == 0 {
+		return "", nil
+	}
+	return GetRepoRefIDForProject(ctx, tasks[0].Project)
+}
+
 func SetActiveState(ctx context.Context, caller string, active bool, tasks ...task.Task) error {
 	tasksToActivate := []task.Task{}
 	versionIdsSet := map[string]bool{}
@@ -78,7 +87,11 @@ func SetActiveState(ctx context.Context, caller string, active bool, tasks ...ta
 	}
 
 	if active {
-		if _, err := task.ActivateTasks(ctx, tasksToActivate, time.Now(), true, caller); err != nil {
+		repoRefID, err := getRepoRefIDForTasks(ctx, tasksToActivate)
+		if err != nil {
+			return errors.Wrap(err, "getting repo for tasks to activate")
+		}
+		if _, err := task.ActivateTasks(ctx, tasksToActivate, time.Now(), true, caller, repoRefID); err != nil {
 			return errors.Wrap(err, "activating tasks")
 		}
 
@@ -124,7 +137,11 @@ func SetActiveState(ctx context.Context, caller string, active bool, tasks ...ta
 			return errors.Wrap(err, "marking builds as activated")
 		}
 	} else {
-		if err := task.DeactivateTasks(ctx, tasksToActivate, true, caller); err != nil {
+		repoRefID, err := getRepoRefIDForTasks(ctx, tasksToActivate)
+		if err != nil {
+			return errors.Wrap(err, "getting repo for tasks to deactivate")
+		}
+		if err := task.DeactivateTasks(ctx, tasksToActivate, true, caller, repoRefID); err != nil {
 			return errors.Wrap(err, "deactivating task")
 		}
 	}
@@ -184,7 +201,7 @@ func resetEarlierSingleHostTaskGroupTasks(ctx context.Context, activatingTasks, 
 // later task group tasks are activated.
 func activateTasksWithDependencies(ctx context.Context, taskIDs []string, caller string) error {
 	tasks, err := task.FindAll(ctx, db.Query(task.ByIdsAndStatus(taskIDs, []string{evergreen.TaskUndispatched})).
-		WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.ActivatedKey, task.BuildIdKey, task.TaskGroupKey, task.TaskGroupMaxHostsKey, task.TaskGroupOrderKey))
+		WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.ActivatedKey, task.BuildIdKey, task.TaskGroupKey, task.TaskGroupMaxHostsKey, task.TaskGroupOrderKey, task.RequesterKey, task.ProjectKey))
 	if err != nil {
 		return errors.Wrap(err, "getting tasks for activation")
 	}
@@ -196,7 +213,12 @@ func activateTasksWithDependencies(ctx context.Context, taskIDs []string, caller
 	if err != nil {
 		return errors.Wrap(err, "restarting earlier finished single-host task group tasks")
 	}
-	if _, err := task.ActivateTasks(ctx, append(tasks, deps...), time.Now(), true, caller); err != nil {
+	tasksToActivate := append(tasks, deps...)
+	repoRefID, err := getRepoRefIDForTasks(ctx, tasksToActivate)
+	if err != nil {
+		return errors.Wrap(err, "getting repo for tasks to activate")
+	}
+	if _, err := task.ActivateTasks(ctx, tasksToActivate, time.Now(), true, caller, repoRefID); err != nil {
 		return errors.Wrap(err, "activating tasks and their dependencies")
 	}
 	return nil
@@ -366,7 +388,11 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 		caller = user
 	}
 	if t.IsPartOfSingleHostTaskGroup() {
-		if err = t.SetResetWhenFinished(ctx, user); err != nil {
+		repoRefID, err := getRepoRefIDForTasks(ctx, []task.Task{*t})
+		if err != nil {
+			return errors.Wrap(err, "getting repo for task group to reset")
+		}
+		if err = t.SetResetWhenFinished(ctx, user, repoRefID); err != nil {
 			return errors.Wrap(err, "marking task group for reset")
 		}
 		return errors.Wrap(checkResetSingleHostTaskGroup(ctx, t, caller), "resetting single host task group")
@@ -385,7 +411,11 @@ func resetTask(ctx context.Context, taskId, caller string) error {
 	if t.IsPartOfDisplay(ctx) {
 		return errors.Errorf("cannot restart execution task '%s' because it is part of a display task", t.Id)
 	}
-	if err = task.CheckUsersPatchTaskLimit(ctx, t.Requester, caller, false, *t); err != nil {
+	repoRefID, err := getRepoRefIDForTasks(ctx, []task.Task{*t})
+	if err != nil {
+		return errors.Wrap(err, "getting repo for task to reset")
+	}
+	if err = task.CheckUsersPatchTaskLimit(ctx, t.Requester, caller, repoRefID, false, *t); err != nil {
 		return errors.Wrap(err, "updating patch task limit for user")
 	}
 	if err = t.Archive(ctx); err != nil {
@@ -2390,7 +2420,11 @@ func RestartFailedTasks(ctx context.Context, opts RestartOptions) (RestartResult
 		if dt.IsFinished() {
 			idsToRestart = append(idsToRestart, id)
 		} else {
-			if err = dt.SetResetWhenFinished(ctx, opts.User); err != nil {
+			repoRefID, err := getRepoRefIDForTasks(ctx, []task.Task{dt})
+			if err != nil {
+				return results, errors.Wrap(err, "getting repo for display task to reset")
+			}
+			if err = dt.SetResetWhenFinished(ctx, opts.User, repoRefID); err != nil {
 				return results, errors.Wrapf(err, "marking display task '%s' for reset", id)
 			}
 		}
@@ -2632,12 +2666,16 @@ func ResetTaskOrDisplayTask(ctx context.Context, settings *evergreen.Settings, t
 		}
 	}
 	if taskToReset.DisplayOnly {
+		repoRefID, err := getRepoRefIDForTasks(ctx, []task.Task{taskToReset})
+		if err != nil {
+			return errors.Wrap(err, "getting repo for display task to reset")
+		}
 		if failedOnly {
-			if err := taskToReset.SetResetFailedWhenFinished(ctx, user); err != nil {
+			if err := taskToReset.SetResetFailedWhenFinished(ctx, user, repoRefID); err != nil {
 				return errors.Wrap(err, "marking display task for reset")
 			}
 		} else {
-			if err := taskToReset.SetResetWhenFinished(ctx, user); err != nil {
+			if err := taskToReset.SetResetWhenFinished(ctx, user, repoRefID); err != nil {
 				return errors.Wrap(err, "marking display task for reset")
 			}
 		}
