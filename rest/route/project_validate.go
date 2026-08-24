@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
@@ -67,8 +68,13 @@ func (v *validateProjectHandler) Run(ctx context.Context) gimlet.Responder {
 	var projectConfig *model.ProjectConfig
 	var err error
 
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "getting service flags"))
+	}
 	opts := &model.GetProjectOpts{
-		ReadFileFrom: model.ReadFromLocal,
+		ReadFileFrom:                model.ReadFromLocal,
+		CrossFileYAMLAnchorsEnabled: flags.CrossFileYAMLAnchorsEnabled,
 	}
 	validationErr := validator.ValidationError{}
 	pp, err := model.LoadProjectInto(ctx, v.input.ProjectYaml, opts, v.input.ProjectID, project)
