@@ -2,6 +2,7 @@ package cloud
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"testing"
 	"time"
@@ -445,6 +446,27 @@ func TestUploadLaunchTemplate(t *testing.T) {
 		assert.Equal(t, "ami", *mockClient.CreateLaunchTemplateInput.LaunchTemplateData.ImageId)
 		assert.Equal(t, "ht_0", *mockClient.CreateLaunchTemplateInput.LaunchTemplateName)
 		assert.Nil(t, mockClient.CreateLaunchTemplateInput.LaunchTemplateData.CpuOptions)
+	})
+
+	t.Run("UserDataDoesNotExpandGitHubAppPrivateKey", func(t *testing.T) {
+		m := &ec2FleetManager{
+			EC2FleetManagerOptions: &EC2FleetManagerOptions{
+				client: &awsClientMock{},
+			},
+			settings: &evergreen.Settings{Expansions: map[string]string{
+				evergreen.GithubAppPrivateKey: "private-key",
+				"other_expansion":             "other-value",
+			}},
+		}
+		assert.NoError(t, m.uploadLaunchTemplate(t.Context(), &host.Host{Tag: "ht_0"}, &EC2ProviderSettings{AMI: "ami", UserData: "#!/bin/bash\necho ${github_app_key} ${other_expansion}"}))
+
+		mockClient := m.client.(*awsClientMock)
+		require.NotNil(t, mockClient.CreateLaunchTemplateInput.LaunchTemplateData.UserData)
+		userData, err := base64.StdEncoding.DecodeString(*mockClient.CreateLaunchTemplateInput.LaunchTemplateData.UserData)
+		require.NoError(t, err)
+		assert.NotContains(t, string(userData), "private-key")
+		// Every other expansion still resolves.
+		assert.Contains(t, string(userData), "other-value")
 	})
 
 	t.Run("NestedVirtualizationEnabled", func(t *testing.T) {
