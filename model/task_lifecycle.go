@@ -911,7 +911,7 @@ func markEndDisplayTask(ctx context.Context, settings *evergreen.Settings, t *ta
 	if err != nil {
 		return errors.Wrap(err, "getting display task")
 	}
-	return errors.Wrap(checkResetDisplayTask(ctx, settings, caller, origin, dt), "checking display task reset")
+	return errors.Wrap(checkResetDisplayTask(ctx, settings, caller, origin, dt), "checking and resetting display task")
 }
 
 func getDeactivatePrevious(t *task.Task, pRef *ProjectRef, project *Project) bool {
@@ -2906,9 +2906,8 @@ func checkResetSingleHostTaskGroup(ctx context.Context, t *task.Task, caller str
 	return errors.Wrap(resetManyTasks(ctx, tasks, caller), "resetting task group tasks")
 }
 
-// checkResetDisplayTask attempts to reset all tasks that are under the same
-// parent display task as t once all tasks under the display task are finished
-// running.
+// checkResetDisplayTask attempts to reset tasks that are under the same parent
+// display task as t once all tasks under the display task are finished running.
 func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, user, origin string, t *task.Task) (theErr error) {
 	if !t.ResetWhenFinished && !t.ResetFailedWhenFinished {
 		return nil
@@ -2944,11 +2943,10 @@ func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, use
 		user = evergreen.AutoRestartActivator
 	}
 
-	// Every execution task that finishes checks whether its display task can
-	// reset, so many of these can run concurrently and the checks above can be
-	// based on a display task that has since been restarted by one of them.
-	// Re-validate before resetting, because resetting a display task that has
-	// already moved on to a new execution will finish that new execution.
+	// If there are many execution tasks concurrently finishing and trying to
+	// reset the display task, the display task data might be stale (i.e. the
+	// display task may have already restarted). Re-check the DB state to
+	// confirm that the display task still needs to be reset.
 	dbTask, err := task.FindOneId(ctx, t.Id)
 	if err != nil {
 		return errors.Wrapf(err, "getting display task '%s'", t.Id)
@@ -2957,14 +2955,8 @@ func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, use
 		return errors.Errorf("display task '%s' not found", t.Id)
 	}
 	if dbTask.Execution != t.Execution || (!dbTask.ResetWhenFinished && !dbTask.ResetFailedWhenFinished) {
-		grip.Info(ctx, message.Fields{
-			"message":           "skipping display task reset because it was already reset by a concurrent execution task",
-			"task_id":           t.Id,
-			"checked_execution": t.Execution,
-			"current_execution": dbTask.Execution,
-			"origin":            origin,
-			"user":              user,
-		})
+		// Another execution task under this display task already reset the
+		// display task, so this doesn't need to do anything.
 		return nil
 	}
 
