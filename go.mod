@@ -40,7 +40,7 @@ require (
 	github.com/robfig/cron v1.2.0
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
 	github.com/smartystreets/goconvey v1.8.1
-	github.com/stretchr/testify v1.11.1
+	github.com/stretchr/testify v1.12.0
 	github.com/urfave/cli v1.22.17
 	github.com/vektah/gqlparser/v2 v2.5.32
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.64.0
@@ -87,7 +87,6 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf // indirect
 	github.com/coreos/go-systemd/v22 v22.6.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
-	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 // indirect
 	github.com/dghubble/oauth1 v0.7.3 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
@@ -133,7 +132,6 @@ require (
 	github.com/peterhellberg/link v1.2.0 // indirect
 	github.com/phyber/negroni-gzip v1.0.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
-	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/rs/cors v1.11.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
@@ -180,7 +178,7 @@ require (
 	github.com/parquet-go/parquet-go v0.29.0
 	github.com/redis/go-redis/v9 v9.22.0
 	github.com/shirou/gopsutil/v3 v3.24.5
-	github.com/sirupsen/logrus v1.9.4
+	github.com/sirupsen/logrus v1.10.1
 	github.com/vikstrous/dataloadgen v0.0.10
 	go.opentelemetry.io/contrib/detectors/aws/ec2/v2 v2.1.0
 	go.uber.org/automaxprocs v1.6.0
