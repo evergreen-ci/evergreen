@@ -73,19 +73,6 @@ var (
 // the PR title or description.
 var skipCILabels = []string{"[skip ci]", "[skip-ci]"}
 
-// isCommenterAuthorized checks whether a GitHub comment author is authorized
-// to trigger versions.
-var isCommenterAuthorized = func(ctx context.Context, requiredOrg, owner, repo, commenter string) (bool, error) {
-	isMember, err := thirdparty.GithubUserInOrganization(ctx, requiredOrg, commenter)
-	if err != nil {
-		return false, err
-	}
-	if isMember {
-		return true, nil
-	}
-	return thirdparty.GitHubUserHasWritePermission(ctx, owner, repo, commenter)
-}
-
 type githubHookApi struct {
 	queue  amboy.Queue
 	secret []byte
@@ -96,25 +83,42 @@ type githubHookApi struct {
 	sc        data.Connector
 	settings  *evergreen.Settings
 	comments  githubComments
+
+	// isCommenterAuthorized checks whether a GitHub comment author is
+	// authorized to trigger CI. It can be overridden in tests.
+	isCommenterAuthorized func(ctx context.Context, requiredOrg, owner, repo, commenter string) (bool, error)
+}
+
+func defaultIsCommenterAuthorized(ctx context.Context, requiredOrg, owner, repo, commenter string) (bool, error) {
+	isMember, err := thirdparty.GithubUserInOrganization(ctx, requiredOrg, commenter)
+	if err != nil {
+		return false, err
+	}
+	if isMember {
+		return true, nil
+	}
+	return thirdparty.GitHubUserHasWritePermission(ctx, owner, repo, commenter)
 }
 
 func makeGithubHooksRoute(sc data.Connector, queue amboy.Queue, secret []byte, settings *evergreen.Settings) gimlet.RouteHandler {
 	return &githubHookApi{
-		sc:       sc,
-		settings: settings,
-		queue:    queue,
-		secret:   secret,
-		comments: newGithubComments(settings.Ui.UIv2Url),
+		sc:                    sc,
+		settings:              settings,
+		queue:                 queue,
+		secret:                secret,
+		comments:              newGithubComments(settings.Ui.UIv2Url),
+		isCommenterAuthorized: defaultIsCommenterAuthorized,
 	}
 }
 
 func (gh *githubHookApi) Factory() gimlet.RouteHandler {
 	return &githubHookApi{
-		queue:    gh.queue,
-		secret:   gh.secret,
-		sc:       gh.sc,
-		settings: gh.settings,
-		comments: newGithubComments(gh.settings.Ui.UIv2Url),
+		queue:                 gh.queue,
+		secret:                gh.secret,
+		sc:                    gh.sc,
+		settings:              gh.settings,
+		comments:              newGithubComments(gh.settings.Ui.UIv2Url),
+		isCommenterAuthorized: defaultIsCommenterAuthorized,
 	}
 }
 
@@ -1078,7 +1082,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 
 	if commenter != "" {
 		requiredOrg := gh.settings.GithubPRCreatorOrg
-		authorized, err := isCommenterAuthorized(ctx, requiredOrg, baseOwnerRepo[0], baseOwnerRepo[1], commenter)
+		authorized, err := gh.isCommenterAuthorized(ctx, requiredOrg, baseOwnerRepo[0], baseOwnerRepo[1], commenter)
 		if err != nil {
 			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":   "checking commenter authorization",

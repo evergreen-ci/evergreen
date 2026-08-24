@@ -631,9 +631,6 @@ func TestGetOtherPatchesWithHash(t *testing.T) {
 }
 
 func TestAddIntentForPRCommenterAuthorization(t *testing.T) {
-	originalIsCommenterAuthorized := isCommenterAuthorized
-	t.Cleanup(func() { isCommenterAuthorized = originalIsCommenterAuthorized })
-
 	owner := "evergreen-ci"
 	repoName := "evergreen"
 	fullName := owner + "/" + repoName
@@ -657,34 +654,38 @@ func TestAddIntentForPRCommenterAuthorization(t *testing.T) {
 
 	t.Run("UnauthorizedCommenterIsRejected", func(t *testing.T) {
 		require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
-		isCommenterAuthorized = func(ctx context.Context, requiredOrg, owner, repo, commenter string) (bool, error) {
-			return false, nil
-		}
 		insertProjectRef(t)
 		gh := &githubHookApi{
 			sc:       &data.MockGitHubConnector{MockGitHubConnectorImpl: data.MockGitHubConnectorImpl{}},
 			settings: &evergreen.Settings{GithubPRCreatorOrg: "mongodb"},
+			isCommenterAuthorized: func(ctx context.Context, requiredOrg, owner, repo, commenter string) (bool, error) {
+				return false, nil
+			},
 		}
 		err := gh.AddIntentForPR(t.Context(), makePR(), prUser, patch.AllCallers, "", "attacker", true)
 		assert.NoError(t, err)
 	})
 	t.Run("AuthorizedCommenterProceeds", func(t *testing.T) {
 		require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
-		isCommenterAuthorized = func(ctx context.Context, requiredOrg, owner, repo, commenter string) (bool, error) {
-			return true, nil
-		}
 		insertProjectRef(t)
-		gh := &githubHookApi{settings: &evergreen.Settings{GithubPRCreatorOrg: "mongodb"}}
+		gh := &githubHookApi{
+			settings: &evergreen.Settings{GithubPRCreatorOrg: "mongodb"},
+			isCommenterAuthorized: func(ctx context.Context, requiredOrg, owner, repo, commenter string) (bool, error) {
+				return true, nil
+			},
+		}
 		err := gh.AddIntentForPR(t.Context(), makePR(), prUser, patch.AllCallers, "", "member", true)
 		assert.Error(t, err)
 	})
 	t.Run("EmptyCommenterSkipsCheck", func(t *testing.T) {
 		require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
-		isCommenterAuthorized = func(ctx context.Context, requiredOrg, owner, repo, commenter string) (bool, error) {
-			t.Error("should not be called for empty commenter")
-			return false, nil
+		gh := &githubHookApi{
+			settings: &evergreen.Settings{GithubPRCreatorOrg: "mongodb"},
+			isCommenterAuthorized: func(ctx context.Context, requiredOrg, owner, repo, commenter string) (bool, error) {
+				t.Error("should not be called for empty commenter")
+				return false, nil
+			},
 		}
-		gh := &githubHookApi{settings: &evergreen.Settings{GithubPRCreatorOrg: "mongodb"}}
 		err := gh.AddIntentForPR(t.Context(), makePR(), prUser, patch.AutomatedCaller, "", "", false)
 		assert.NoError(t, err)
 	})
