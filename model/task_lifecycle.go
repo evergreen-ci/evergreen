@@ -2947,14 +2947,14 @@ func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, use
 	// reset the display task, the display task data might be stale (i.e. the
 	// display task may have already restarted). Re-check the DB state to
 	// confirm that the display task still needs to be reset.
-	dbTask, err := task.FindOneId(ctx, t.Id)
+	latestDisplayTask, err := task.FindOneId(ctx, t.Id)
 	if err != nil {
 		return errors.Wrapf(err, "getting display task '%s'", t.Id)
 	}
-	if dbTask == nil {
+	if latestDisplayTask == nil {
 		return errors.Errorf("display task '%s' not found", t.Id)
 	}
-	if dbTask.Execution != t.Execution || (!dbTask.ResetWhenFinished && !dbTask.ResetFailedWhenFinished) {
+	if latestDisplayTask.Execution != t.Execution || (!latestDisplayTask.ResetWhenFinished && !latestDisplayTask.ResetFailedWhenFinished) {
 		// Another execution task under this display task already reset the
 		// display task, so this doesn't need to do anything.
 		return nil

@@ -6836,48 +6836,45 @@ func TestBuildTaskCompletedSpanAttributesCostFields(t *testing.T) {
 
 func TestCheckResetDisplayTaskConcurrentReset(t *testing.T) {
 	settings := testutil.TestConfig()
-	settings.TaskLimits.MaxTaskExecution = 9
+	settings.TaskLimits.MaxTaskExecution = 100
 
-	execTaskFinishTime := time.Date(2026, time.August, 20, 2, 31, 39, 0, time.UTC)
-	systemFailure := apimodels.TaskEndDetail{
+	execTaskFinishTime := utility.BSONTime(time.Now())
+	systemFailureDetails := apimodels.TaskEndDetail{
 		Status:      evergreen.TaskFailed,
 		Type:        evergreen.CommandTypeSystem,
 		Description: evergreen.TaskDescriptionHeartbeat,
 	}
 
 	for tName, tCase := range map[string]struct {
-		liveExecution           int
-		liveStatus              string
-		liveResetFailedWhenDone bool
-		failedExecTaskExecution int
-		test                    func(t *testing.T, dbDisplayTask, dbSucceededExecTask *task.Task)
+		displayTaskLatestExecution           int
+		displayTaskLatestStatus              string
+		displayTaskLatestResetFailedWhenDone bool
+		execTaskExecution                    int
+		test                                 func(t *testing.T, dbDisplayTask, dbSucceededExecTask *task.Task)
 	}{
-		"ResetsWhenTheDisplayTaskStillNeedsTheReset": {
-			liveExecution:           0,
-			liveStatus:              evergreen.TaskFailed,
-			liveResetFailedWhenDone: true,
-			failedExecTaskExecution: 0,
+		"ResetsWhenTheDisplayTaskStillNeedsToReset": {
+			displayTaskLatestExecution:           0,
+			displayTaskLatestStatus:              evergreen.TaskFailed,
+			displayTaskLatestResetFailedWhenDone: true,
 			test: func(t *testing.T, dbDisplayTask, dbSucceededExecTask *task.Task) {
 				assert.Equal(t, 1, dbDisplayTask.Execution, "display task should have been reset to the next execution")
 			},
 		},
 		"SkipsResetWhenTheDisplayTaskAlreadyAdvancedToANewExecution": {
-			liveExecution:           1,
-			liveStatus:              evergreen.TaskUndispatched,
-			liveResetFailedWhenDone: true,
-			failedExecTaskExecution: 1,
+			displayTaskLatestExecution:           1,
+			displayTaskLatestStatus:              evergreen.TaskUndispatched,
+			displayTaskLatestResetFailedWhenDone: true,
 			test: func(t *testing.T, dbDisplayTask, dbSucceededExecTask *task.Task) {
 				assert.Equal(t, 1, dbDisplayTask.Execution, "display task should not advance past the execution it was already reset to")
-				assert.False(t, dbDisplayTask.IsFinished(), "the new display task execution should not be finished")
+				assert.False(t, dbDisplayTask.IsFinished(), "the just-reset display task execution should not be finished")
 				assert.Equal(t, evergreen.TaskSucceeded, dbSucceededExecTask.Status, "a succeeded execution task should keep its result")
 				assert.True(t, execTaskFinishTime.Equal(dbSucceededExecTask.FinishTime), "a succeeded execution task should keep its finish time")
 			},
 		},
-		"SkipsResetWhenTheDisplayTaskNoLongerNeedsIt": {
-			liveExecution:           0,
-			liveStatus:              evergreen.TaskFailed,
-			liveResetFailedWhenDone: false,
-			failedExecTaskExecution: 0,
+		"SkipsResetWhenTheDisplayTaskNoLongerNeedsToReset": {
+			displayTaskLatestExecution:           0,
+			displayTaskLatestStatus:              evergreen.TaskFailed,
+			displayTaskLatestResetFailedWhenDone: false,
 			test: func(t *testing.T, dbDisplayTask, dbSucceededExecTask *task.Task) {
 				assert.Equal(t, 0, dbDisplayTask.Execution, "display task should not be reset again")
 			},
@@ -6892,24 +6889,24 @@ func TestCheckResetDisplayTaskConcurrentReset(t *testing.T) {
 			})
 
 			pRef := &ProjectRef{
-				Id:         "project",
+				Id:         "project_id",
 				Identifier: "project",
 			}
 			require.NoError(t, pRef.Insert(t.Context()))
 			v := &Version{
-				Id:     "version",
+				Id:     "version_id",
 				Status: evergreen.VersionStarted,
 			}
 			require.NoError(t, v.Insert(t.Context()))
 			b := &build.Build{
-				Id:      "build",
+				Id:      "build_id",
 				Version: v.Id,
 				Status:  evergreen.BuildStarted,
 			}
 			require.NoError(t, b.Insert(t.Context()))
 
 			succeededExecTask := &task.Task{
-				Id:          "succeeded_exec_task",
+				Id:          "succeeded_exec_task_id",
 				DisplayName: "succeeded_exec_task",
 				BuildId:     b.Id,
 				Version:     v.Id,
@@ -6921,39 +6918,35 @@ func TestCheckResetDisplayTaskConcurrentReset(t *testing.T) {
 			}
 			require.NoError(t, succeededExecTask.Insert(t.Context()))
 			failedExecTask := &task.Task{
-				Id:          "failed_exec_task",
+				Id:          "failed_exec_task_id",
 				DisplayName: "failed_exec_task",
 				BuildId:     b.Id,
 				Version:     v.Id,
 				Project:     pRef.Id,
 				Activated:   true,
-				Execution:   tCase.failedExecTaskExecution,
 				Status:      evergreen.TaskFailed,
-				Details:     systemFailure,
+				Details:     systemFailureDetails,
 				StartTime:   execTaskFinishTime.Add(-time.Minute),
 				FinishTime:  execTaskFinishTime,
 			}
 			require.NoError(t, failedExecTask.Insert(t.Context()))
 
 			dt := &task.Task{
-				Id:                      "display_task",
+				Id:                      "display_task_id",
 				DisplayName:             "display_task",
 				BuildId:                 b.Id,
 				Version:                 v.Id,
 				Project:                 pRef.Id,
 				DisplayOnly:             true,
 				Activated:               true,
-				Execution:               tCase.liveExecution,
-				Status:                  tCase.liveStatus,
-				Details:                 systemFailure,
-				ResetFailedWhenFinished: tCase.liveResetFailedWhenDone,
+				Execution:               tCase.displayTaskLatestExecution,
+				Status:                  tCase.displayTaskLatestStatus,
+				Details:                 systemFailureDetails,
+				ResetFailedWhenFinished: tCase.displayTaskLatestResetFailedWhenDone,
 				ExecutionTasks:          []string{succeededExecTask.Id, failedExecTask.Id},
 			}
 			require.NoError(t, dt.Insert(t.Context()))
 
-			// A concurrent execution task's end task request holds a display
-			// task it read before any of this, so it still sees execution 0 and
-			// still believes the display task needs to be reset.
 			staleDisplayTask := *dt
 			staleDisplayTask.Execution = 0
 			staleDisplayTask.Status = evergreen.TaskFailed
