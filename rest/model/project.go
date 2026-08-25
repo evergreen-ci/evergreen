@@ -631,6 +631,8 @@ type APIProjectRef struct {
 	GitHubPermissionGroupByRequester map[string]string `json:"github_permission_group_by_requester,omitempty"`
 	// Test selection settings.
 	TestSelection APITestSelectionSettings `json:"test_selection,omitzero"`
+	// Virtual task registration enabled.
+	VirtualTasksEnabled *bool `json:"virtual_tasks_enabled,omitempty"`
 	// Task ownership settings. This is related to Foliage Web Services (FWS).
 	TaskOwnership APITaskOwnershipSettings `json:"task_ownership,omitempty"`
 	// Whether or not to run every mainline commit version.
@@ -684,6 +686,7 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		ProjectHealthView:                p.ProjectHealthView,
 		GitHubPermissionGroupByRequester: p.GitHubPermissionGroupByRequester,
 		TestSelection:                    p.TestSelection.ToService(),
+		VirtualTasksEnabled:              utility.BoolPtrCopy(p.VirtualTasksEnabled),
 		TaskOwnership:                    p.TaskOwnership.ToService(),
 		RunEveryMainlineCommit:           p.RunEveryMainlineCommit,
 	}
@@ -792,6 +795,7 @@ func (p *APIProjectRef) BuildPublicFields(ctx context.Context, projectRef model.
 	p.GithubMQTriggerAliases = utility.ToStringPtrSlice(projectRef.GithubMQTriggerAliases)
 	p.GitHubPermissionGroupByRequester = projectRef.GitHubPermissionGroupByRequester
 	p.TestSelection.BuildFromService(projectRef.TestSelection)
+	p.VirtualTasksEnabled = utility.BoolPtrCopy(projectRef.VirtualTasksEnabled)
 	p.TaskOwnership.BuildFromService(projectRef.TaskOwnership)
 	p.RunEveryMainlineCommit = projectRef.RunEveryMainlineCommit
 
