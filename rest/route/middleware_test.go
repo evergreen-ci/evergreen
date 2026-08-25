@@ -724,6 +724,87 @@ func TestProjectViewPermission(t *testing.T) {
 	assert.Equal(1, counter)
 }
 
+func TestRepoViewMiddleware(t *testing.T) {
+	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.RepoRefCollection, evergreen.RoleCollection, evergreen.ScopeCollection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.RepoRefCollection, evergreen.RoleCollection, evergreen.ScopeCollection))
+	})
+
+	ctx := t.Context()
+	env := testutil.NewEnvironment(ctx, t)
+	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
+
+	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
+		Id:    "my-repo",
+		Owner: "evergreen-ci",
+		Repo:  "evergreen",
+	}}
+	require.NoError(t, repoRef.Replace(ctx))
+
+	branchProject := model.ProjectRef{
+		Id:         "branch-project",
+		RepoRefId:  "my-repo",
+		Owner:      "evergreen-ci",
+		Repo:       "evergreen",
+		Branch:     "main",
+		Identifier: "branch-project",
+	}
+	require.NoError(t, branchProject.Insert(ctx))
+
+	branchProjectScope := gimlet.Scope{
+		ID:        "project-scope",
+		Resources: []string{branchProject.Id},
+		Type:      evergreen.ProjectResourceType,
+	}
+	require.NoError(t, env.RoleManager().AddScope(ctx, branchProjectScope))
+
+	viewRole := gimlet.Role{
+		ID:          "view-role",
+		Scope:       branchProjectScope.ID,
+		Permissions: map[string]int{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsView.Value},
+	}
+	require.NoError(t, env.RoleManager().UpdateRole(ctx, viewRole))
+
+	mw := NewRepoViewMiddleware()
+
+	t.Run("NoUserReturnsUnauthorized", func(t *testing.T) {
+		r, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "/repos/my-repo", nil)
+		require.NoError(t, err)
+		r = gimlet.SetURLVars(r, map[string]string{"repo_id": "my-repo"})
+		rw := httptest.NewRecorder()
+		mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+			rw.WriteHeader(http.StatusOK)
+		})
+		assert.Equal(t, http.StatusUnauthorized, rw.Code)
+	})
+
+	t.Run("UserWithoutPermissionReturnsForbidden", func(t *testing.T) {
+		r, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "/repos/my-repo", nil)
+		require.NoError(t, err)
+		r = gimlet.SetURLVars(r, map[string]string{"repo_id": "my-repo"})
+		userCtx := gimlet.AttachUser(r.Context(), &user.DBUser{Id: "unauthorized-user"})
+		r = r.WithContext(userCtx)
+		rw := httptest.NewRecorder()
+		mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+			rw.WriteHeader(http.StatusOK)
+		})
+		assert.Equal(t, http.StatusForbidden, rw.Code)
+	})
+
+	t.Run("UserWithPermissionSucceeds", func(t *testing.T) {
+		r, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "/repos/my-repo", nil)
+		require.NoError(t, err)
+		r = gimlet.SetURLVars(r, map[string]string{"repo_id": "my-repo"})
+		userCtx := gimlet.AttachUser(r.Context(), &user.DBUser{Id: "view-user", SystemRoles: []string{"view-role"}})
+		r = r.WithContext(userCtx)
+		rw := httptest.NewRecorder()
+		mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+			rw.WriteHeader(http.StatusOK)
+		})
+		assert.Equal(t, http.StatusOK, rw.Code)
+	})
+}
+
 func TestURLVarsToDistroScopes(t *testing.T) {
 	require.NoError(t, db.ClearCollections(distro.Collection))
 	t.Cleanup(func() {

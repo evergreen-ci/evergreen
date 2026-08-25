@@ -482,6 +482,34 @@ func RequiresProjectPermission(permission string, level evergreen.PermissionLeve
 	return gimlet.RequiresPermission(opts)
 }
 
+// NewRepoViewMiddleware returns a middleware that checks if a user has view permission for any of the branch projects
+// attached to the repo. If they do, that means they have view access to the repo.
+func NewRepoViewMiddleware() gimlet.Middleware {
+	return &repoViewPermissionMiddleware{}
+}
+
+type repoViewPermissionMiddleware struct{}
+
+func (m *repoViewPermissionMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	ctx := r.Context()
+	usr := MustHaveUser(ctx)
+	if usr == nil {
+		http.Error(rw, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	repoID := gimlet.GetVars(r)["repo_id"]
+	hasPermission, err := model.UserHasRepoViewPermission(ctx, usr, repoID)
+	if err != nil {
+		http.Error(rw, "checking repo view permission", http.StatusInternalServerError)
+		return
+	}
+	if !hasPermission {
+		http.Error(rw, "forbidden", http.StatusForbidden)
+		return
+	}
+	next(rw, r)
+}
+
 func RequiresDistroPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
 	opts := gimlet.RequiresPermissionMiddlewareOpts{
 		RM:            evergreen.GetEnvironment().RoleManager(),
