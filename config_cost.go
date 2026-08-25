@@ -191,15 +191,6 @@ func (c *S3StorageCostConfig) ShouldSkipLifecycleRules(awsRoleARN, awsAccountID 
 	return containsTrimmed(ResolveUploadAccountID(awsRoleARN, awsAccountID), c.ArtifactAWSAccountsWithoutLifecycleRules)
 }
 
-// ShouldSkipLifecycleRuleSync is ShouldSkipLifecycleRules for the sync job, where an unrecorded account
-// must keep syncing because nothing would ever populate it.
-func (c *S3StorageCostConfig) ShouldSkipLifecycleRuleSync(awsAccountID string) bool {
-	if awsAccountID == "" {
-		return false
-	}
-	return c.ShouldSkipLifecycleRules("", awsAccountID)
-}
-
 // IsDevprodOwnedUpload reports whether an upload belongs to a devprod-owned account.
 // Returns true when the owned account list is empty, meaning all uploads are tracked.
 func IsDevprodOwnedUpload(awsRoleARN, awsAccountID string, devprodOwnedAWSAccountIDs []string) bool {

@@ -140,7 +140,9 @@ func (j *s3LifecycleSyncProjectBucketsJob) syncBucket(ctx context.Context, clien
 	// The configuration is the only gate on asking AWS, so removing an account from either list takes
 	// effect on this run.
 	awsAccountID := existingRules[0].AWSAccountID
-	if storageCostConfig.ShouldSkipLifecycleRuleSync(awsAccountID) {
+	// An unrecorded account must keep syncing because nothing would ever populate it.
+	shouldSkip := awsAccountID != "" && storageCostConfig.ShouldSkipLifecycleRules("", awsAccountID)
+	if shouldSkip {
 		grip.Info(ctx, message.Fields{
 			"message":    "skipping lifecycle rule sync for bucket configured without lifecycle rules",
 			"bucket":     bucketName,

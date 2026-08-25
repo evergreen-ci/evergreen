@@ -460,11 +460,3 @@ func TestShouldSkipLifecycleRules(t *testing.T) {
 		})
 	}
 }
-
-func TestShouldSkipLifecycleRuleSync(t *testing.T) {
-	cfg := S3StorageCostConfig{DevprodOwnedAWSAccountIDs: []string{"123456789012"}}
-
-	assert.False(t, cfg.ShouldSkipLifecycleRuleSync(""), "rules cached before the account ID was stored must keep being refreshed")
-	assert.True(t, cfg.ShouldSkipLifecycleRuleSync("210987654321"))
-	assert.False(t, cfg.ShouldSkipLifecycleRuleSync("123456789012"))
-}
