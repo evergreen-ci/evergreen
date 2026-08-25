@@ -919,7 +919,6 @@ const (
 	AttachXUnitResultsCommandName = "attach.xunit_results"
 	CacheRestoreCommandName       = "cache.restore"
 	CacheSaveCommandName          = "cache.save"
-	GitGetProjectCommandName      = "git.get_project"
 )
 
 var AttachCommands = []string{
