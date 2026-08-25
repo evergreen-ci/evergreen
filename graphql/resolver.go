@@ -34,7 +34,7 @@ func New(apiURL string) Config {
 		user := mustHaveUser(ctx)
 		args, isStringMap := obj.(map[string]any)
 		if !isStringMap {
-			return nil, ResourceNotFound.Send(ctx, "patchIds not specified")
+			return nil, ResourceNotFound.Send(ctx, "patch ID(s) not specified")
 		}
 		var patchIds []string
 		if rawPatchIds, ok := args["patchIds"].([]any); ok {

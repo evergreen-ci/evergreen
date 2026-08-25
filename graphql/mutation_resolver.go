@@ -417,18 +417,8 @@ func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []st
 
 // SchedulePatch is the resolver for the schedulePatch field.
 func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*restModel.APIPatch, error) {
-	usr := mustHaveUser(ctx)
-	p, err := patch.FindOneId(ctx, patchID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()))
-	}
-	if p == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", patchID))
-	}
-	if !userCanModifyPatch(ctx, usr, *p) {
-		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' is not authorized to configure patch '%s'", usr.Username(), patchID))
-	}
 	patchUpdateReq := buildFromGqlInput(configure)
+	usr := mustHaveUser(ctx)
 	patchUpdateReq.Caller = usr.Id
 	version, err := model.VersionFindOneId(ctx, patchID)
 	if err != nil && !adb.ResultsNotFound(err) {

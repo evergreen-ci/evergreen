@@ -39,41 +39,39 @@ func UserCanModifyPatch(ctx context.Context, u *user.DBUser, p patch.Patch) bool
 		return true
 	}
 
-	if u.HasPermission(ctx, gimlet.PermissionOpts{
-		Resource:      evergreen.SuperUserPermissionsID,
-		ResourceType:  evergreen.SuperUserResourceType,
-		Permission:    evergreen.PermissionAdminSettings,
-		RequiredLevel: evergreen.AdminSettingsEdit.Value,
-	}) {
+	if evergreen.PermissionsDisabledForTests() {
 		return true
 	}
 
-	if u.HasPermission(ctx, gimlet.PermissionOpts{
-		Resource:      p.Project,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionProjectSettings,
-		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-	}) {
-		return true
+	rm := evergreen.GetEnvironment().RoleManager()
+	roles, err := rm.GetRoles(ctx, u.Roles())
+	if err != nil {
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message": "getting roles for patch ownership check",
+			"user":    u.Username(),
+		}))
+		return false
 	}
 
-	if u.HasPermission(ctx, gimlet.PermissionOpts{
-		Resource:      p.Project,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionPatches,
-		RequiredLevel: evergreen.PatchSubmitAdmin.Value,
-	}) {
-		return true
+	checks := []gimlet.PermissionOpts{
+		{Resource: evergreen.SuperUserPermissionsID, ResourceType: evergreen.SuperUserResourceType, Permission: evergreen.PermissionAdminSettings, RequiredLevel: evergreen.AdminSettingsEdit.Value},
+		{Resource: p.Project, ResourceType: evergreen.ProjectResourceType, Permission: evergreen.PermissionProjectSettings, RequiredLevel: evergreen.ProjectSettingsEdit.Value},
+		{Resource: p.Project, ResourceType: evergreen.ProjectResourceType, Permission: evergreen.PermissionPatches, RequiredLevel: evergreen.PatchSubmitAdmin.Value},
+	}
+	for _, opts := range checks {
+		if gimlet.HasPermission(ctx, rm, opts, roles) {
+			return true
+		}
 	}
 
 	// Having PatchSubmit on the project, which is the minimum grant for the route only
 	// for api only users.
-	return u.IsAPIOnly() && u.HasPermission(ctx, gimlet.PermissionOpts{
+	return u.IsAPIOnly() && gimlet.HasPermission(ctx, rm, gimlet.PermissionOpts{
 		Resource:      p.Project,
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionPatches,
 		RequiredLevel: evergreen.PatchSubmit.Value,
-	})
+	}, roles)
 }
 
 type TaskVariantPairs struct {
