@@ -93,16 +93,9 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings())
 	s.NotNil(s.env.Settings())
 
-	// This setup has to both:
-	// 1. update the admin settings in the DB and
-	// 2. set the global environment.
-	//
-	// Both are necessary because deep down in the logic to set up GitHub merge
-	// queue subscriptions, it ignores the job's environment and instead:
-	// 1. loads the GitHub app settings directly from the DB to check branch
-	//       protection settings (so it's using the DB settings) and
-	// 2. calls evergreen.GetEnvironment directly to send a pending status to
-	//       GitHub (so it's using the global testing environment).
+	// GitHub API calls use app credentials from the global environment, while
+	// other patch setup reads admin settings from the DB. Keep both sources
+	// aligned with this test's environment.
 	originalConfig, err := evergreen.GetConfig(s.ctx)
 	s.Require().NoError(err)
 	s.originalConfig = originalConfig
