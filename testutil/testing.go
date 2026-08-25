@@ -70,21 +70,21 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings) {
 	err = testSettings.Set(context.Background())
 	require.NoError(t, err, "Error updating admin settings in DB")
 
-	cachedSettings := evergreen.GetEnvironment().Settings()
-	cachedSettings.AuthConfig = testSettings.AuthConfig
-	if val, ok := integrationSettings.Expansions[evergreen.GithubAppPrivateKey]; ok {
-		if cachedSettings.Expansions == nil {
-			cachedSettings.Expansions = map[string]string{}
-		}
-		cachedSettings.Expansions[evergreen.GithubAppPrivateKey] = val
-	}
-
 	catcher := grip.NewBasicCatcher()
 	evergreen.StoreAdminSecrets(context.Background(),
 		evergreen.GetEnvironment().ParameterManager(),
 		reflect.ValueOf(testSettings).Elem(),
 		reflect.TypeOf(*testSettings), "", catcher)
 	require.NoError(t, catcher.Resolve(), "Error storing admin secrets in parameter store")
+
+	cachedSettings := evergreen.GetEnvironment().Settings()
+	cachedSettings.AuthConfig = integrationSettings.AuthConfig
+	if val, ok := integrationSettings.Expansions[evergreen.GithubAppPrivateKey]; ok {
+		if cachedSettings.Expansions == nil {
+			cachedSettings.Expansions = map[string]string{}
+		}
+		cachedSettings.Expansions[evergreen.GithubAppPrivateKey] = val
+	}
 
 	// Don't clobber allowed images if it doesn't exist in the override
 	// A longer-term fix will be in DEVPROD-745

@@ -88,6 +88,8 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.ctx = testutil.TestSpan(s.suiteCtx, s.T())
 	s.Require().NoError(s.env.Configure(s.ctx))
 
+	s.originalEnv = evergreen.GetEnvironment()
+	evergreen.SetEnvironment(s.env)
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings())
 	s.NotNil(s.env.Settings())
 
@@ -101,11 +103,9 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	//       protection settings (so it's using the DB settings) and
 	// 2. calls evergreen.GetEnvironment directly to send a pending status to
 	//       GitHub (so it's using the global testing environment).
-	s.originalEnv = evergreen.GetEnvironment()
 	originalConfig, err := evergreen.GetConfig(s.ctx)
 	s.Require().NoError(err)
 	s.originalConfig = originalConfig
-	evergreen.SetEnvironment(s.env)
 	s.NoError(evergreen.UpdateConfig(s.ctx, s.env.Settings()))
 
 	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, model.ProjectVarsCollection, fakeparameter.Collection,
