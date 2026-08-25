@@ -61,7 +61,6 @@ var (
 	taskDispatchKey                       = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")
 	hostInitKey                           = bsonutil.MustHaveTag(ServiceFlags{}, "HostInitDisabled")
 	largeParserProjectsDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "LargeParserProjectsDisabled")
-	crossFileYAMLAnchorsEnabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "CrossFileYAMLAnchorsEnabled")
 	monitorKey                            = bsonutil.MustHaveTag(ServiceFlags{}, "MonitorDisabled")
 	mergeQueueRecoveryEnabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "MergeQueueRecoveryEnabled")
 	alertsKey                             = bsonutil.MustHaveTag(ServiceFlags{}, "AlertsDisabled")
