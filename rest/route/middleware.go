@@ -62,6 +62,9 @@ func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 	versionId := vars["version_id"]
 	patchId := vars["patch_id"]
 	projectId := vars["project_id"]
+	if projectId == "" {
+		projectId = vars["repo_id"]
+	}
 
 	opCtx, err := model.LoadContext(r.Context(), taskId, buildId, versionId, patchId, projectId)
 	if err != nil {
@@ -482,29 +485,61 @@ func RequiresProjectPermission(permission string, level evergreen.PermissionLeve
 	return gimlet.RequiresPermission(opts)
 }
 
-// NewRepoViewMiddleware returns a middleware that checks if a user has view permission for any of the branch projects
-// attached to the repo. If they do, that means they have view access to the repo.
-func NewRepoViewMiddleware() gimlet.Middleware {
-	return &repoViewPermissionMiddleware{}
+func RequiresRepoPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
+	return &repoPermissionMiddleware{
+		permission: permission,
+		level:      level,
+	}
 }
 
-type repoViewPermissionMiddleware struct{}
+type repoPermissionMiddleware struct {
+	permission string
+	level      evergreen.PermissionLevel
+}
 
-func (m *repoViewPermissionMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+func (m *repoPermissionMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	ctx := r.Context()
 	usr := MustHaveUser(ctx)
-	if usr == nil {
-		http.Error(rw, "unauthorized", http.StatusUnauthorized)
+	opCtx := MustHaveProjectContext(ctx)
+
+	if opCtx.RepoRef == nil {
+		gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    "repo not found",
+		}))
 		return
 	}
-	repoID := gimlet.GetVars(r)["repo_id"]
-	hasPermission, err := model.UserHasRepoViewPermission(ctx, usr, repoID)
-	if err != nil {
-		http.Error(rw, "checking repo view permission", http.StatusInternalServerError)
+
+	// View-level permission uses a special check that grants view access to the repo if the user
+	// has view access to any branch project.
+	if m.level == evergreen.ProjectSettingsView {
+		hasPermission, err := model.UserHasRepoViewPermission(ctx, usr, opCtx.RepoRef.Id)
+		if err != nil {
+			gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "checking repo view permission")))
+			return
+		}
+		if !hasPermission {
+			gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusUnauthorized,
+				Message:    "not authorized",
+			}))
+			return
+		}
+		next(rw, r)
 		return
 	}
+
+	hasPermission := usr.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      opCtx.RepoRef.Id,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    m.permission,
+		RequiredLevel: m.level.Value,
+	})
 	if !hasPermission {
-		http.Error(rw, "forbidden", http.StatusForbidden)
+		gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    "not authorized",
+		}))
 		return
 	}
 	next(rw, r)

@@ -23,7 +23,7 @@ func TestRepoGetByID(t *testing.T) {
 		Owner: "evergreen-ci",
 		Repo:  "evergreen",
 	}}
-	require.NoError(t, repoRef.Insert(t.Context()))
+	require.NoError(t, repoRef.Replace(t.Context()))
 
 	t.Run("NonexistentRepoReturnsError", func(t *testing.T) {
 		h := &repoIDGetHandler{repoID: "nonexistent"}
