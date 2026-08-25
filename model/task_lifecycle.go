@@ -2943,10 +2943,9 @@ func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, use
 		user = evergreen.AutoRestartActivator
 	}
 
-	// If there are many execution tasks concurrently finishing and trying to
-	// reset the display task, the display task data might be stale (i.e. the
-	// display task may have already restarted). Re-check the DB state to
-	// confirm that the display task still needs to be reset.
+	// If there are multiple execution tasks concurrently finishing and trying
+	// to reset the display task, the display task data might be stale. Re-check
+	// the DB state to confirm that the display task still needs to be reset.
 	latestDisplayTask, err := task.FindOneId(ctx, t.Id)
 	if err != nil {
 		return errors.Wrapf(err, "getting display task '%s'", t.Id)
