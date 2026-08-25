@@ -4488,10 +4488,9 @@ func (t *Task) setS3ArtifactStorageCosts(ctx context.Context, lookup bucketExpir
 	t.TaskCost.OnDemandS3ArtifactStorageCost = 0
 	t.TaskCost.AdjustedS3ArtifactStorageCost = 0
 	for _, bucketEntry := range t.S3Usage.Artifacts.BytesByBucketAndKey {
-		// A lookup miss is expected for these accounts, so don't log one. The lookup still runs because
+		// A lookup miss is expected for these buckets, so don't log one. The lookup still runs because
 		// rules cached before the account was listed are still valid.
-		accountID := evergreen.ResolveUploadAccountID(bucketEntry.AWSRoleARN, bucketEntry.AWSAccountID)
-		expectedMiss := evergreen.IsAccountWithoutLifecycleRules(accountID, costConfig.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules)
+		expectedMiss := costConfig.S3Cost.Storage.ShouldSkipLifecycleRules(bucketEntry.AWSRoleARN, bucketEntry.AWSAccountID)
 		for _, fileEntry := range bucketEntry.Files {
 			days, usedLookup := lookupExpirationDays(ctx, bucketEntry.Bucket, fileEntry.FileKey, lookup, costConfig)
 			if !usedLookup && !expectedMiss {
