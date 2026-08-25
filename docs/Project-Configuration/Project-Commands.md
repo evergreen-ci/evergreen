@@ -916,8 +916,9 @@ directory, and checks out the revision associated with the task. Also
 applies patches to the source after cloning it, if the task was created
 by a patch submission.
 
-Due to increased GitHub instability, git.get_project will have the retry_on_failure parameter set to true by default. 
-This means that if the task fails at this command, the task will restart automatically, unless set otherwise.
+Due to increased GitHub instability, `git.get_project` sets `retry_on_failure` to
+true by default. If the task fails at this command, it restarts once
+automatically, unless `retry_on_failure` is explicitly set to false.
 
 ```yaml
 - command: git.get_project
