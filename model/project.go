@@ -643,7 +643,8 @@ type PluginCommandConf struct {
 	Vars map[string]string `yaml:"vars,omitempty" bson:"vars,omitempty"`
 
 	// RetryOnFailure indicates whether the task should be retried if this command fails.
-	RetryOnFailure bool `yaml:"retry_on_failure,omitempty" bson:"retry_on_failure,omitempty"`
+	// Defaults to false except git.get_project commands.
+	RetryOnFailure *bool `yaml:"retry_on_failure,omitempty" bson:"retry_on_failure,omitempty"`
 
 	// FailureMetadataTags are user-defined tags which are not used directly by
 	// Evergreen but can be used to allow users to set additional metadata about
@@ -678,7 +679,7 @@ func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(any) error) error {
 		Params              map[string]any    `yaml:"params,omitempty" bson:"params,omitempty"`
 		ParamsYAML          string            `yaml:"params_yaml,omitempty" bson:"params_yaml,omitempty"`
 		Vars                map[string]string `yaml:"vars,omitempty" bson:"vars,omitempty"`
-		RetryOnFailure      bool              `yaml:"retry_on_failure,omitempty" bson:"retry_on_failure,omitempty"`
+		RetryOnFailure      *bool             `yaml:"retry_on_failure,omitempty" bson:"retry_on_failure,omitempty"`
 		FailureMetadataTags []string          `yaml:"failure_metadata_tags,omitempty" bson:"failure_metadata_tags,omitempty"`
 	}{}
 

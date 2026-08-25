@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -248,4 +249,47 @@ func TestGetFullDisplayName(t *testing.T) {
 			TotalSubCmds: 10,
 		}))
 	})
+}
+
+func TestRenderCommandsRetryOnFailure(t *testing.T) {
+	registry := newCommandRegistry()
+	registry.cmds = map[string]CommandFactory{
+		evergreen.GitGetProjectCommandName: gitFetchProjectFactory,
+		"command.mock":                     MockCommandFactory,
+	}
+	gitParams := map[string]any{"directory": "src"}
+
+	for _, tCase := range []struct {
+		name     string
+		info     model.PluginCommandConf
+		expected bool
+	}{
+		{
+			name:     "GitGetProjectUnsetShouldRetry",
+			info:     model.PluginCommandConf{Command: evergreen.GitGetProjectCommandName, Params: gitParams},
+			expected: true,
+		},
+		{
+			name:     "GitGetProjectExplicitFalseShouldNotRetry",
+			info:     model.PluginCommandConf{Command: evergreen.GitGetProjectCommandName, Params: gitParams, RetryOnFailure: utility.FalsePtr()},
+			expected: false,
+		},
+		{
+			name:     "OtherCommandUnsetShouldNotRetry",
+			info:     model.PluginCommandConf{Command: "command.mock"},
+			expected: false,
+		},
+		{
+			name:     "OtherCommandExplicitTrueShouldRetry",
+			info:     model.PluginCommandConf{Command: "command.mock", RetryOnFailure: utility.TruePtr()},
+			expected: true,
+		},
+	} {
+		t.Run(tCase.name, func(t *testing.T) {
+			cmds, err := registry.renderCommands(tCase.info, &model.Project{}, BlockInfo{})
+			require.NoError(t, err)
+			require.Len(t, cmds, 1)
+			assert.Equal(t, tCase.expected, cmds[0].RetryOnFailure())
+		})
+	}
 }
