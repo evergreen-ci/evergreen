@@ -70,6 +70,15 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings) {
 	err = testSettings.Set(context.Background())
 	require.NoError(t, err, "Error updating admin settings in DB")
 
+	cachedSettings := evergreen.GetEnvironment().Settings()
+	cachedSettings.AuthConfig = testSettings.AuthConfig
+	if val, ok := integrationSettings.Expansions[evergreen.GithubAppPrivateKey]; ok {
+		if cachedSettings.Expansions == nil {
+			cachedSettings.Expansions = map[string]string{}
+		}
+		cachedSettings.Expansions[evergreen.GithubAppPrivateKey] = val
+	}
+
 	catcher := grip.NewBasicCatcher()
 	evergreen.StoreAdminSecrets(context.Background(),
 		evergreen.GetEnvironment().ParameterManager(),
