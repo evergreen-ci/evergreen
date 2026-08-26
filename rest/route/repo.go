@@ -5,6 +5,8 @@ import (
 	"net/http"
 
 	dbModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -52,6 +54,24 @@ func (h *repoIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	repoModel := &model.APIProjectRef{}
 	if err = repoModel.BuildFromService(ctx, repoRef.ProjectRef); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting repo '%s' to API model", h.repoID))
+	}
+
+	variables, err := data.FindProjectVarsById(ctx, repoRef.Id, "", true)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding vars for repo '%s'", h.repoID))
+	}
+	repoModel.Variables = *variables
+	dbAliases, err := dbModel.FindAliasesForRepo(ctx, repoRef.Id)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding aliases for repo '%s'", h.repoID))
+	}
+	for _, a := range dbAliases {
+		apiAlias := model.APIProjectAlias{}
+		apiAlias.BuildFromService(a)
+		repoModel.Aliases = append(repoModel.Aliases, apiAlias)
+	}
+	if repoModel.Subscriptions, err = data.GetSubscriptions(ctx, repoRef.Id, event.OwnerTypeProject); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting subscriptions for repo '%s'", h.repoID))
 	}
 
 	return gimlet.NewJSONResponse(repoModel)
