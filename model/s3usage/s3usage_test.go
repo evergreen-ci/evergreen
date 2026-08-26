@@ -425,26 +425,26 @@ func TestCalculateS3PutCostWithConfig(t *testing.T) {
 	}
 
 	t.Run("WithValidConfig", func(t *testing.T) {
-		standard, adjusted := CalculateS3PutCostWithConfig(t.Context(),1000, validConfig)
+		standard, adjusted := CalculateS3PutCostWithConfig(t.Context(), 1000, validConfig)
 		assert.InDelta(t, 0.005, standard, 0.000001)
 		assert.InDelta(t, 0.0035, adjusted, 0.000001)
 		assert.Greater(t, standard, adjusted)
 	})
 
 	t.Run("WithNilConfig", func(t *testing.T) {
-		standard, adjusted := CalculateS3PutCostWithConfig(t.Context(),1000, nil)
+		standard, adjusted := CalculateS3PutCostWithConfig(t.Context(), 1000, nil)
 		assert.InDelta(t, 0.005, standard, 0.000001)
 		assert.Equal(t, 0.0, adjusted)
 	})
 
 	t.Run("WithZeroPutRequests", func(t *testing.T) {
-		standard, adjusted := CalculateS3PutCostWithConfig(t.Context(),0, validConfig)
+		standard, adjusted := CalculateS3PutCostWithConfig(t.Context(), 0, validConfig)
 		assert.Equal(t, 0.0, standard)
 		assert.Equal(t, 0.0, adjusted)
 	})
 
 	t.Run("WithNegativePutRequests", func(t *testing.T) {
-		standard, adjusted := CalculateS3PutCostWithConfig(t.Context(),-5, validConfig)
+		standard, adjusted := CalculateS3PutCostWithConfig(t.Context(), -5, validConfig)
 		assert.Equal(t, 0.0, standard)
 		assert.Equal(t, 0.0, adjusted)
 	})
@@ -457,7 +457,7 @@ func TestCalculateS3PutCostWithConfig(t *testing.T) {
 				},
 			},
 		}
-		standard, adjusted := CalculateS3PutCostWithConfig(t.Context(),1000, invalidConfig)
+		standard, adjusted := CalculateS3PutCostWithConfig(t.Context(), 1000, invalidConfig)
 		assert.InDelta(t, 0.005, standard, 0.000001)
 		assert.Equal(t, 0.0, adjusted)
 	})
