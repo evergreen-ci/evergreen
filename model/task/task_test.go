@@ -4828,6 +4828,8 @@ func TestReset(t *testing.T) {
 		assert.Empty(t, dbTask.TaskOutputInfo)
 		assert.Empty(t, dbTask.Details)
 		assert.Zero(t, dbTask.ExecutionPlatform)
+		assert.Zero(t, t0.ExecutionPlatform)
+		assert.True(t, dbTask.IsHostDispatchable())
 		assert.Zero(t, dbTask.NumNextTaskDispatches)
 		assert.Zero(t, dbTask.NumQuarantinedTestsSkipped)
 		assert.True(t, dbTask.TaskCost.IsZero())
@@ -4863,6 +4865,7 @@ func TestResetTasks(t *testing.T) {
 		assert.False(t, dbTask.UnattainableDependency)
 		assert.Equal(t, "user", dbTask.ActivatedBy)
 		assert.Zero(t, dbTask.ExecutionPlatform)
+		assert.True(t, dbTask.IsHostDispatchable())
 	})
 
 	t.Run("UnattainableDependency", func(t *testing.T) {

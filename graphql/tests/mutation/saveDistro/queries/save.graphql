@@ -48,6 +48,13 @@ mutation {
             numTasks: 0
             virtualMemoryKb: -1
           }
+          containerIsolation: {
+            enabled: true
+            image: "ubuntu:22.04"
+            memoryMb: 1024
+            cpus: 2
+            requireIsolation: false
+          }
           rootDir: "C:/cygwin"
           serviceUser: ""
           shellPath: "/bin/fish"
@@ -106,6 +113,8 @@ mutation {
         containerIsolation {
           enabled
           image
+          memoryMb
+          cpus
           requireIsolation
         }
       }

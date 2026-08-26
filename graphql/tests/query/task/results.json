@@ -36,6 +36,17 @@
           }
         }
       }
+    },
+    {
+      "query_file": "task_virtual.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "3",
+            "executionPlatform": "VIRTUAL"
+          }
+        }
+      }
     }
   ]
 }

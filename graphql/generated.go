@@ -400,8 +400,10 @@ type ComplexityRoot struct {
 	}
 
 	ContainerIsolationSettings struct {
+		CPUs             func(childComplexity int) int
 		Enabled          func(childComplexity int) int
 		Image            func(childComplexity int) int
+		MemoryMB         func(childComplexity int) int
 		RequireIsolation func(childComplexity int) int
 	}
 
@@ -4160,6 +4162,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.CommitQueueParams.Message(childComplexity), true
 
+	case "ContainerIsolationSettings.cpus":
+		if e.complexity.ContainerIsolationSettings.CPUs == nil {
+			break
+		}
+
+		return e.complexity.ContainerIsolationSettings.CPUs(childComplexity), true
 	case "ContainerIsolationSettings.enabled":
 		if e.complexity.ContainerIsolationSettings.Enabled == nil {
 			break
@@ -4172,6 +4180,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ContainerIsolationSettings.Image(childComplexity), true
+	case "ContainerIsolationSettings.memoryMb":
+		if e.complexity.ContainerIsolationSettings.MemoryMB == nil {
+			break
+		}
+
+		return e.complexity.ContainerIsolationSettings.MemoryMB(childComplexity), true
 	case "ContainerIsolationSettings.requireIsolation":
 		if e.complexity.ContainerIsolationSettings.RequireIsolation == nil {
 			break
@@ -22566,6 +22580,10 @@ func (ec *executionContext) fieldContext_BootstrapSettings_containerIsolation(_ 
 				return ec.fieldContext_ContainerIsolationSettings_enabled(ctx, field)
 			case "image":
 				return ec.fieldContext_ContainerIsolationSettings_image(ctx, field)
+			case "memoryMb":
+				return ec.fieldContext_ContainerIsolationSettings_memoryMb(ctx, field)
+			case "cpus":
+				return ec.fieldContext_ContainerIsolationSettings_cpus(ctx, field)
 			case "requireIsolation":
 				return ec.fieldContext_ContainerIsolationSettings_requireIsolation(ctx, field)
 			}
@@ -24360,6 +24378,64 @@ func (ec *executionContext) fieldContext_ContainerIsolationSettings_image(_ cont
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ContainerIsolationSettings_memoryMb(ctx context.Context, field graphql.CollectedField, obj *model.APIContainerIsolationSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ContainerIsolationSettings_memoryMb,
+		func(ctx context.Context) (any, error) {
+			return obj.MemoryMB, nil
+		},
+		nil,
+		ec.marshalNInt2int64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ContainerIsolationSettings_memoryMb(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ContainerIsolationSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ContainerIsolationSettings_cpus(ctx context.Context, field graphql.CollectedField, obj *model.APIContainerIsolationSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ContainerIsolationSettings_cpus,
+		func(ctx context.Context) (any, error) {
+			return obj.CPUs, nil
+		},
+		nil,
+		ec.marshalNInt2int64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ContainerIsolationSettings_cpus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ContainerIsolationSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -82585,7 +82661,7 @@ func (ec *executionContext) unmarshalInputContainerIsolationSettingsInput(ctx co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"enabled", "image", "requireIsolation"}
+	fieldsInOrder := [...]string{"enabled", "image", "memoryMb", "cpus", "requireIsolation"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -82606,6 +82682,20 @@ func (ec *executionContext) unmarshalInputContainerIsolationSettingsInput(ctx co
 				return it, err
 			}
 			it.Image = data
+		case "memoryMb":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("memoryMb"))
+			data, err := ec.unmarshalNInt2int64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MemoryMB = data
+		case "cpus":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cpus"))
+			data, err := ec.unmarshalNInt2int64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CPUs = data
 		case "requireIsolation":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requireIsolation"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)
@@ -94188,6 +94278,16 @@ func (ec *executionContext) _ContainerIsolationSettings(ctx context.Context, sel
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "memoryMb":
+			out.Values[i] = ec._ContainerIsolationSettings_memoryMb(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "cpus":
+			out.Values[i] = ec._ContainerIsolationSettings_cpus(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "requireIsolation":
 			out.Values[i] = ec._ContainerIsolationSettings_requireIsolation(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -114735,10 +114835,12 @@ var (
 	unmarshalNExecutionPlatform2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐExecutionPlatform = map[string]task.ExecutionPlatform{
 		"HOST":      task.ExecutionPlatformHost,
 		"CONTAINER": task.ExecutionPlatformContainer,
+		"VIRTUAL":   task.ExecutionPlatformVirtual,
 	}
 	marshalNExecutionPlatform2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐExecutionPlatform = map[task.ExecutionPlatform]string{
 		task.ExecutionPlatformHost:      "HOST",
 		task.ExecutionPlatformContainer: "CONTAINER",
+		task.ExecutionPlatformVirtual:   "VIRTUAL",
 	}
 )
 

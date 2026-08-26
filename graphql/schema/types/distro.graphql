@@ -170,6 +170,8 @@ input BootstrapSettingsInput {
 input ContainerIsolationSettingsInput {
   enabled: Boolean!
   image: String!
+  memoryMb: Int!
+  cpus: Int!
   requireIsolation: Boolean!
 }
 
@@ -351,6 +353,8 @@ inside an ephemeral Docker container rather than directly on the host.
 type ContainerIsolationSettings {
   enabled: Boolean!
   image: String!
+  memoryMb: Int!
+  cpus: Int!
   """
   RequireIsolation opts into fail-closed behavior. When true, container
   creation or image-pull failure fails the task immediately rather than

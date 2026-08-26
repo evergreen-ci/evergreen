@@ -179,6 +179,8 @@ models:
         value: github.com/evergreen-ci/evergreen/model/task.ExecutionPlatformHost
       CONTAINER:
         value: github.com/evergreen-ci/evergreen/model/task.ExecutionPlatformContainer
+      VIRTUAL:
+        value: github.com/evergreen-ci/evergreen/model/task.ExecutionPlatformVirtual
   ContainerPool:
     model: github.com/evergreen-ci/evergreen/rest/model.APIContainerPool
   ContainerPoolInput:
