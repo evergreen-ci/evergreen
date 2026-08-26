@@ -480,6 +480,13 @@ type APITaskArgs struct {
 	IncludeArtifacts         bool
 	LogURL                   string
 	ParsleyLogURL            string
+	// ArtifactsByTask, when non-nil, supplies the artifact entries keyed by the
+	// task ID and execution they were stored under, instead of querying for them.
+	// Callers converting a page of tasks should prefetch with
+	// artifact.ByTaskIdsAndExecutions rather than paying one query per task. The
+	// execution is part of the key because a page can contain both a display task
+	// and its execution tasks at differing executions.
+	ArtifactsByTask map[artifact.TaskIDAndExecution][]artifact.Entry
 }
 
 // BuildFromService converts from a service level task by loading the data
@@ -521,7 +528,7 @@ func (at *APITask) BuildFromService(ctx context.Context, t *task.Task, args *API
 		}
 	}
 	if args.IncludeArtifacts {
-		if err := at.getArtifacts(ctx, args.LogURL); err != nil {
+		if err := at.getArtifacts(ctx, args.LogURL, args.ArtifactsByTask); err != nil {
 			return errors.Wrap(err, "getting artifacts")
 		}
 	}
@@ -662,10 +669,17 @@ func (at *APITask) ToService() (*task.Task, error) {
 	return st, nil
 }
 
-func (at *APITask) getArtifacts(ctx context.Context, baseURL string) error {
+func (at *APITask) getArtifacts(ctx context.Context, baseURL string, prefetched map[artifact.TaskIDAndExecution][]artifact.Entry) error {
 	var err error
 	var entries []artifact.Entry
-	if at.DisplayOnly {
+	switch {
+	case prefetched != nil && at.DisplayOnly:
+		for _, t := range at.ExecutionTasks {
+			entries = append(entries, prefetched[artifact.TaskIDAndExecution{TaskID: utility.FromStringPtr(t), Execution: at.Execution}]...)
+		}
+	case prefetched != nil:
+		entries = prefetched[artifact.TaskIDAndExecution{TaskID: utility.FromStringPtr(at.Id), Execution: at.Execution}]
+	case at.DisplayOnly:
 		ets := []artifact.TaskIDAndExecution{}
 		for _, t := range at.ExecutionTasks {
 			ets = append(ets, artifact.TaskIDAndExecution{TaskID: *t, Execution: at.Execution})
@@ -673,7 +687,7 @@ func (at *APITask) getArtifacts(ctx context.Context, baseURL string) error {
 		if len(ets) > 0 {
 			entries, err = artifact.FindAll(ctx, artifact.ByTaskIdsAndExecutions(ets))
 		}
-	} else {
+	default:
 		entries, err = artifact.FindAll(ctx, artifact.ByTaskIdAndExecution(utility.FromStringPtr(at.Id), at.Execution))
 	}
 	if err != nil {

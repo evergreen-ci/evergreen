@@ -4,6 +4,9 @@ import (
 	"context"
 	"net/http"
 
+	dbModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -101,17 +104,39 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	tasks = tasks[:lastIndex]
+
+	// Artifacts, the project identifier, and host AMIs are all resolved up front
+	// for the whole page. Letting BuildFromService fetch them per task turns a
+	// single request into hundreds of queries.
+	artifactsByTask, err := getArtifactsForTasks(ctx, tasks)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding artifacts for tasks in build '%s'", tbh.buildId))
+	}
+	amisByHostID, err := getAMIsForTasks(ctx, tasks)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding hosts for tasks in build '%s'", tbh.buildId))
+	}
+	// Every task in a build belongs to the same project. A lookup failure is not
+	// fatal here, and a successful lookup of an empty identifier still sets the
+	// field, both matching APITask.GetProjectIdentifier.
+	projectIdentifier, foundProjectIdentifier := getProjectIdentifierForTasks(ctx, tasks)
+
 	for i := range tasks {
 		taskModel := &model.APITask{}
 
 		if err = taskModel.BuildFromService(ctx, &tasks[i], &model.APITaskArgs{
-			IncludeAMI:               true,
-			IncludeArtifacts:         true,
-			IncludeProjectIdentifier: true,
-			LogURL:                   GetURL(ctx),
-			ParsleyLogURL:            tbh.parsleyURL,
+			IncludeArtifacts: true,
+			ArtifactsByTask:  artifactsByTask,
+			LogURL:           GetURL(ctx),
+			ParsleyLogURL:    tbh.parsleyURL,
 		}); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting task '%s' to API model", tasks[i].Id))
+		}
+		if foundProjectIdentifier {
+			taskModel.ProjectIdentifier = utility.ToStringPtr(projectIdentifier)
+		}
+		if ami := amisByHostID[tasks[i].HostId]; ami != "" {
+			taskModel.AMI = utility.ToStringPtr(ami)
 		}
 
 		if tbh.fetchAllExecutions {
@@ -139,4 +164,76 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return resp
+}
+
+// getArtifactsForTasks fetches the artifact entries for a page of tasks in one
+// query, keyed by the task ID and execution they were stored under. Display
+// tasks store their artifacts under their execution tasks, so those IDs are keys
+// as well, at the display task's execution.
+func getArtifactsForTasks(ctx context.Context, tasks []task.Task) (map[artifact.TaskIDAndExecution][]artifact.Entry, error) {
+	var pairs []artifact.TaskIDAndExecution
+	for _, t := range tasks {
+		if t.DisplayOnly {
+			for _, execTaskID := range t.ExecutionTasks {
+				pairs = append(pairs, artifact.TaskIDAndExecution{TaskID: execTaskID, Execution: t.Execution})
+			}
+			continue
+		}
+		pairs = append(pairs, artifact.TaskIDAndExecution{TaskID: t.Id, Execution: t.Execution})
+	}
+
+	artifactsByTask := map[artifact.TaskIDAndExecution][]artifact.Entry{}
+	if len(pairs) == 0 {
+		return artifactsByTask, nil
+	}
+	entries, err := artifact.FindAll(ctx, artifact.ByTaskIdsAndExecutions(pairs))
+	if err != nil {
+		return nil, errors.Wrap(err, "finding artifacts")
+	}
+	for _, entry := range entries {
+		key := artifact.TaskIDAndExecution{TaskID: entry.TaskId, Execution: entry.Execution}
+		artifactsByTask[key] = append(artifactsByTask[key], entry)
+	}
+	return artifactsByTask, nil
+}
+
+// getAMIsForTasks fetches the AMI of every host running a task in the page in
+// one query, keyed by host ID.
+func getAMIsForTasks(ctx context.Context, tasks []task.Task) (map[string]string, error) {
+	var hostIDs []string
+	seen := map[string]bool{}
+	for _, t := range tasks {
+		if t.HostId == "" || seen[t.HostId] {
+			continue
+		}
+		seen[t.HostId] = true
+		hostIDs = append(hostIDs, t.HostId)
+	}
+
+	amisByHostID := map[string]string{}
+	if len(hostIDs) == 0 {
+		return amisByHostID, nil
+	}
+	hosts, err := host.Find(ctx, host.ByIds(hostIDs))
+	if err != nil {
+		return nil, errors.Wrap(err, "finding hosts")
+	}
+	for _, h := range hosts {
+		if ami := h.GetAMI(); ami != "" {
+			amisByHostID[h.Id] = ami
+		}
+	}
+	return amisByHostID, nil
+}
+
+// getProjectIdentifierForTasks resolves the project identifier shared by a page
+// of tasks. The boolean reports whether the lookup succeeded, so that a project
+// ref with an empty identifier still sets the field rather than leaving it null,
+// matching APITask.GetProjectIdentifier.
+func getProjectIdentifierForTasks(ctx context.Context, tasks []task.Task) (string, bool) {
+	if len(tasks) == 0 || tasks[0].Project == "" {
+		return "", false
+	}
+	identifier, err := dbModel.GetIdentifierForProjectSecondary(ctx, tasks[0].Project)
+	return identifier, err == nil
 }

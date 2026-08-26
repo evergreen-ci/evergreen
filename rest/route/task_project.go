@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -134,17 +135,38 @@ func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 
 	tasks = tasks[:lastIndex]
 
+	// Artifacts, the project identifier, and host AMIs are all resolved up front
+	// for the whole page. Letting BuildFromService fetch them per task turns a
+	// single request into hundreds of queries.
+	artifactsByTask, err := getArtifactsForTasks(ctx, tasks)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding artifacts for tasks"))
+	}
+	amisByHostID, err := getAMIsForTasks(ctx, tasks)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding hosts for tasks"))
+	}
+	// The tasks are queried by project, so they all share one identifier. A lookup
+	// failure is not fatal here, and a successful lookup of an empty identifier
+	// still sets the field, both matching APITask.GetProjectIdentifier.
+	projectIdentifier, foundProjectIdentifier := getProjectIdentifierForTasks(ctx, tasks)
+
 	for _, t := range tasks {
 		taskModel := &model.APITask{}
 		err = taskModel.BuildFromService(ctx, &t, &model.APITaskArgs{
-			IncludeAMI:               true,
-			IncludeProjectIdentifier: true,
-			IncludeArtifacts:         true,
-			LogURL:                   GetURL(ctx),
-			ParsleyLogURL:            tph.parsleyURL,
+			IncludeArtifacts: true,
+			ArtifactsByTask:  artifactsByTask,
+			LogURL:           GetURL(ctx),
+			ParsleyLogURL:    tph.parsleyURL,
 		})
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
+		}
+		if foundProjectIdentifier {
+			taskModel.ProjectIdentifier = utility.ToStringPtr(projectIdentifier)
+		}
+		if ami := amisByHostID[t.HostId]; ami != "" {
+			taskModel.AMI = utility.ToStringPtr(ami)
 		}
 
 		err = resp.AddData(taskModel)

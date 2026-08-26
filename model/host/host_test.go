@@ -7299,3 +7299,52 @@ func TestValidateDisplayName(t *testing.T) {
 		})
 	}
 }
+
+// TestGetPaginatedRunningHostsCountsAndTaskJoin pins the behavior that the
+// running-task $lookup is applied after filtering: the counts must not depend on
+// it, and hosts with no running task must still be returned.
+func TestGetPaginatedRunningHostsCountsAndTaskJoin(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(Collection, task.Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(Collection, task.Collection))
+	})
+
+	require.NoError(t, (&task.Task{Id: "t1", DisplayName: "some_task"}).Insert(ctx))
+	for _, h := range []Host{
+		{Id: "h1", Status: evergreen.HostRunning, StartedBy: "me", RunningTask: "t1"},
+		{Id: "h2", Status: evergreen.HostRunning, StartedBy: "me"},
+		{Id: "h3", Status: evergreen.HostProvisioning, StartedBy: "someone_else"},
+		{Id: "h4", Status: evergreen.HostTerminated, StartedBy: "me"},
+	} {
+		require.NoError(t, h.Insert(ctx))
+	}
+
+	t.Run("NoFiltersCountsEveryNonTerminatedHostAndLeavesFilteredCountNil", func(t *testing.T) {
+		hosts, filteredCount, totalCount, err := GetPaginatedRunningHosts(ctx, HostsFilterOptions{SortDir: 1})
+		require.NoError(t, err)
+		assert.Equal(t, 3, totalCount)
+		assert.Nil(t, filteredCount)
+		require.Len(t, hosts, 3)
+	})
+
+	t.Run("FilteredCountReflectsTheFilterAndTotalStaysWhole", func(t *testing.T) {
+		hosts, filteredCount, totalCount, err := GetPaginatedRunningHosts(ctx, HostsFilterOptions{StartedBy: "me", SortDir: 1})
+		require.NoError(t, err)
+		assert.Equal(t, 3, totalCount)
+		require.NotNil(t, filteredCount)
+		assert.Equal(t, 2, *filteredCount)
+		require.Len(t, hosts, 2)
+	})
+
+	t.Run("HostsWithoutARunningTaskAreStillReturnedAndTheTaskIsJoined", func(t *testing.T) {
+		hosts, _, _, err := GetPaginatedRunningHosts(ctx, HostsFilterOptions{SortBy: IdKey, SortDir: 1})
+		require.NoError(t, err)
+		require.Len(t, hosts, 3)
+		require.Equal(t, "h1", hosts[0].Id)
+		require.NotNil(t, hosts[0].RunningTaskFull)
+		assert.Equal(t, "some_task", hosts[0].RunningTaskFull.DisplayName)
+		assert.Equal(t, "h2", hosts[1].Id)
+		assert.Nil(t, hosts[1].RunningTaskFull)
+	})
+}
