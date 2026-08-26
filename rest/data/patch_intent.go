@@ -30,7 +30,7 @@ func AddPRPatchIntent(ctx context.Context, intent patch.Intent, queue amboy.Queu
 	}
 
 	job := units.NewPatchIntentProcessor(evergreen.GetEnvironment(), mgobson.NewObjectId(), intent)
-	if err := queue.Put(context.Background(), job); err != nil {
+	if err := queue.Put(ctx, job); err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"source":    "GitHub hook",
 			"message":   "GitHub pull request not queued for processing",
@@ -67,7 +67,7 @@ func AddGithubMergeIntent(ctx context.Context, intent patch.Intent, queue amboy.
 	}
 
 	job := units.NewPatchIntentProcessor(evergreen.GetEnvironment(), mgobson.NewObjectId(), intent)
-	if err := queue.Put(context.Background(), job); err != nil {
+	if err := queue.Put(ctx, job); err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"source":    "GitHub hook",
 			"message":   "GitHub merge group not queued for processing",

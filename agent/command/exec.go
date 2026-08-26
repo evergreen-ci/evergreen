@@ -356,7 +356,7 @@ func runJasperProcess(ctx context.Context, jpm jasper.Manager, background bool, 
 // command in the default PATH locations, the command will fall back to checking
 // the command's PATH environment variable for a matching executable location
 // (if any).
-func (c *subprocessExec) getExecutablePath(logger client.LoggerProducer) (absPath string, err error) {
+func (c *subprocessExec) getExecutablePath(ctx context.Context, logger client.LoggerProducer) (absPath string, err error) {
 	defaultPath, err := exec.LookPath(c.Binary)
 	if defaultPath != "" {
 		return c.Binary, err
@@ -373,7 +373,7 @@ func (c *subprocessExec) getExecutablePath(logger client.LoggerProducer) (absPat
 		return c.Binary, nil
 	}
 
-	logger.Execution().Debug(context.Background(), "could not find executable binary in the default runtime environment PATH, falling back to trying the command's PATH")
+	logger.Execution().Debug(ctx, "could not find executable binary in the default runtime environment PATH, falling back to trying the command's PATH")
 
 	originalPath := os.Getenv("PATH")
 	defer func() {
@@ -384,7 +384,7 @@ func (c *subprocessExec) getExecutablePath(logger client.LoggerProducer) (absPat
 		// (e.g. due to having insufficient memory to reset it) , it doesn't
 		// seem worth handling in a better way.
 		if resetErr := os.Setenv("PATH", originalPath); resetErr != nil {
-			logger.Execution().Error(context.Background(), errors.Wrap(resetErr, "resetting agent's PATH env var back to its original state").Error())
+			logger.Execution().Error(ctx, errors.Wrap(resetErr, "resetting agent's PATH env var back to its original state").Error())
 		}
 	}()
 
@@ -438,7 +438,7 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 		}
 	}
 
-	execPath, err := c.getExecutablePath(logger)
+	execPath, err := c.getExecutablePath(ctx, logger)
 	if execPath == "" && err != nil {
 		return errors.Wrap(err, "resolving executable path")
 	}

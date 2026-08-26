@@ -40,7 +40,7 @@ type BlockExecutorDeps struct {
 	ResetHeartbeatTimeout func()
 
 	// HandlePanic handles panics that occur during command execution.
-	HandlePanic func(panicErr error, originalErr error, op string) error
+	HandlePanic func(ctx context.Context, panicErr error, originalErr error, op string) error
 
 	// RunCommandOrFunc executes a command or function. If nil, commands are not executed.
 	RunCommandOrFunc func(ctx context.Context, commandInfo model.PluginCommandConf, cmds []command.Command, block command.BlockType, canFailTask bool) error
@@ -83,7 +83,7 @@ func RunCommandsInBlock(ctx context.Context, deps BlockExecutorDeps, cmdBlock Co
 		// Use the provided panic handler if available (for agent),
 		// otherwise fall back to basic logging (for local execution)
 		if deps.HandlePanic != nil {
-			err = deps.HandlePanic(pErr, err, op)
+			err = deps.HandlePanic(ctx, pErr, err, op)
 			return
 		}
 
