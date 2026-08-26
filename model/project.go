@@ -1514,9 +1514,20 @@ func (p *Project) FindExpandedTaskForVariant(task, variant string) *BuildVariant
 	if bv == nil {
 		return nil
 	}
-	for _, bvt := range p.expandBuildVariantTasks(*bv) {
+	for _, bvt := range bv.Tasks {
+		if bvt.IsGroup {
+			for _, groupTask := range p.tasksFromGroup(bvt) {
+				if groupTask.Name == task {
+					p.addImplicitTaskGroupDependency(&groupTask)
+					return &groupTask
+				}
+			}
+			continue
+		}
 		if bvt.Name == task {
-			p.addImplicitTaskGroupDependency(&bvt)
+			if projectTask := p.FindProjectTask(task); projectTask != nil {
+				bvt.Populate(*projectTask, *bv)
+			}
 			return &bvt
 		}
 	}
@@ -1753,26 +1764,22 @@ func (p *Project) FindAllVariants() []string {
 // considered build variant task units, are not preserved. Instead, each task in
 // the task group is expanded into its own individual tasks units.
 func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
+	tasksByName := map[string]ProjectTask{}
+	for _, t := range p.Tasks {
+		tasksByName[t.Name] = t
+	}
 	allBVTs := []BuildVariantTaskUnit{}
 	for _, b := range p.BuildVariants {
-		allBVTs = append(allBVTs, p.expandBuildVariantTasks(b)...)
+		for _, t := range b.Tasks {
+			if t.IsGroup {
+				allBVTs = append(allBVTs, p.tasksFromGroup(t)...)
+			} else {
+				t.Populate(tasksByName[t.Name], b)
+				allBVTs = append(allBVTs, t)
+			}
+		}
 	}
 	return allBVTs
-}
-
-func (p *Project) expandBuildVariantTasks(bv BuildVariant) []BuildVariantTaskUnit {
-	tasks := []BuildVariantTaskUnit{}
-	for _, bvt := range bv.Tasks {
-		if bvt.IsGroup {
-			tasks = append(tasks, p.tasksFromGroup(bvt)...)
-			continue
-		}
-		if projectTask := p.FindProjectTask(bvt.Name); projectTask != nil {
-			bvt.Populate(*projectTask, bv)
-		}
-		tasks = append(tasks, bvt)
-	}
-	return tasks
 }
 
 // tasksFromGroup returns a slice of the task group's tasks.
