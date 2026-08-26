@@ -52,7 +52,6 @@ func Handler(apiURL string, allowMutations bool, env evergreen.Environment) func
 		}),
 		otelgqlgen.WithRequestVariablesAttributesBuilder(
 			otelgqlgen.RequestVariablesBuilderFunc(func(requestVariables map[string]any) []attribute.KeyValue {
-				// otelgqlgen request variable builders do not receive a context.
 				redactedRequestVariables := RedactFieldsInMap(context.Background(), requestVariables, redactedFields)
 				flattenedVariables := flattenOtelVariables(redactedRequestVariables)
 
