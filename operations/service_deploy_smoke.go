@@ -35,16 +35,13 @@ func startLocalEvergreen() cli.Command {
 		Name:  "start-local-evergreen",
 		Usage: "start an Evergreen for local development",
 		Action: func(c *cli.Context) error {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
 			exit := make(chan error, 1)
 			wd, err := os.Getwd()
 			if err != nil {
 				return errors.Wrap(err, "getting working directory")
 			}
 			binary := filepath.Join(wd, "clients", runtime.GOOS+"_"+runtime.GOARCH, "evergreen")
-			if err := smokeRunBinary(ctx, exit, "web.service", wd, nil, binary, "service", "web", "--db", "evergreen_local", "--testing-env"); err != nil {
+			if err := smokeRunBinary(exit, "web.service", wd, nil, binary, "service", "web", "--db", "evergreen_local", "--testing-env"); err != nil {
 				return errors.Wrap(err, "running web service")
 			}
 			<-exit
@@ -135,13 +132,13 @@ func smokeStartEvergreen() cli.Command {
 			exit := make(chan error, 3)
 
 			if startWeb {
-				if err := smokeRunBinary(ctx, exit, "web.service", wd, nil, binary, "service", "web", "--testing-env", "--conf", confPath); err != nil {
+				if err := smokeRunBinary(exit, "web.service", wd, nil, binary, "service", "web", "--testing-env", "--conf", confPath); err != nil {
 					return errors.Wrap(err, "running web service")
 				}
 			}
 
 			if startAgent {
-				err := smokeRunBinary(ctx, exit, "agent",
+				err := smokeRunBinary(exit, "agent",
 					wd,
 					makeHostAuthEnvVars(hostID, hostSecret),
 					binary,
@@ -187,7 +184,6 @@ func smokeStartEvergreen() cli.Command {
 				}
 
 				err = smokeRunBinary(
-					ctx,
 					exit,
 					"agent.monitor",
 					wd,
@@ -228,7 +224,7 @@ func makeHostAuthEnvVars(hostID, secret string) []string {
 	}
 }
 
-func smokeRunBinary(ctx context.Context, exit chan error, name string, wd string, envVars []string, bin string, cmdParts ...string) error {
+func smokeRunBinary(exit chan error, name string, wd string, envVars []string, bin string, cmdParts ...string) error {
 	cmd := exec.Command(bin, cmdParts...)
 	cmd.Env = append(os.Environ(), fmt.Sprintf("EVGHOME=%s", wd))
 	cmd.Env = append(cmd.Env, envVars...)
@@ -241,7 +237,7 @@ func smokeRunBinary(ctx context.Context, exit chan error, name string, wd string
 	}
 	go func() {
 		exit <- cmd.Wait()
-		grip.Errorf(ctx, "%s exited", name)
+		grip.Errorf(context.Background(), "%s exited", name)
 	}()
 	return nil
 }

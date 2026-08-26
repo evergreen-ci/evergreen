@@ -52,9 +52,9 @@ func (s *S3Usage) Init() {
 
 // Snapshot returns a locked copy for reporting. Logs a critical alert if Init was never called,
 // since concurrent senders may have written without protection throughout the task.
-func (s *S3Usage) Snapshot(ctx context.Context) S3Usage {
+func (s *S3Usage) Snapshot() S3Usage {
 	if s.mu == nil {
-		grip.Critical(ctx, message.Fields{
+		grip.Critical(context.Background(), message.Fields{
 			"message": "S3Usage.Snapshot called without Init — concurrent log senders may have caused a data race",
 		})
 		return *s
@@ -138,11 +138,11 @@ const (
 
 // BuildFileMetrics constructs a FileMetrics entry for a successfully uploaded file,
 // statting the file for size. If the stat fails, logs a warning and uses zero size.
-func BuildFileMetrics(ctx context.Context, logger grip.Journaler, localPath, remotePath string, putRequests int) (FileMetrics, int64) {
+func BuildFileMetrics(logger grip.Journaler, localPath, remotePath string, putRequests int) (FileMetrics, int64) {
 	fileInfo, err := os.Stat(localPath)
 	var fileSize int64
 	if err != nil {
-		logger.Debugf(ctx, "Unable to calculate file size for '%s' after successful upload: %s. Using zero values for metadata.", localPath, err)
+		logger.Debugf(context.Background(), "Unable to calculate file size for '%s' after successful upload: %s. Using zero values for metadata.", localPath, err)
 	} else {
 		fileSize = fileInfo.Size()
 	}
@@ -175,7 +175,7 @@ func ComputePerFileExtremes(files []FileMetrics) (maxPuts, minPuts int) {
 // CalculateS3PutCostWithConfig calculates the S3 PUT request cost, returning both the standard
 // (non-discounted) and adjusted (discounted) values. If config is nil or the discount is invalid,
 // adjusted is returned as 0.
-func CalculateS3PutCostWithConfig(ctx context.Context, putRequests int, costConfig *evergreen.CostConfig) (standard, adjusted float64) {
+func CalculateS3PutCostWithConfig(putRequests int, costConfig *evergreen.CostConfig) (standard, adjusted float64) {
 	if putRequests <= 0 {
 		return 0.0, 0.0
 	}
@@ -183,7 +183,7 @@ func CalculateS3PutCostWithConfig(ctx context.Context, putRequests int, costConf
 	standard = float64(putRequests) * S3PutRequestCost
 
 	if costConfig == nil {
-		grip.Warning(ctx, message.Fields{
+		grip.Warning(context.Background(), message.Fields{
 			"message": "cost config is not available to calculate S3 PUT cost",
 		})
 		return standard, 0.0
@@ -191,7 +191,7 @@ func CalculateS3PutCostWithConfig(ctx context.Context, putRequests int, costConf
 
 	discount := costConfig.S3Cost.Upload.UploadCostDiscount
 	if discount < 0.0 || discount > 1.0 {
-		grip.Warning(ctx, message.Fields{
+		grip.Warning(context.Background(), message.Fields{
 			"message":  "invalid S3 upload cost discount",
 			"discount": discount,
 		})

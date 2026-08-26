@@ -3465,7 +3465,7 @@ func TestGetProjectSetupCommands(t *testing.T) {
 		{Command: "c1"},
 	}
 
-	cmds, err := p.GetProjectSetupCommands(t.Context(), apimodels.WorkstationSetupCommandOptions{})
+	cmds, err := p.GetProjectSetupCommands(apimodels.WorkstationSetupCommandOptions{})
 	assert.NoError(t, err)
 	assert.Len(t, cmds, 2)
 	assert.Contains(t, cmds[0].String(), "c0")

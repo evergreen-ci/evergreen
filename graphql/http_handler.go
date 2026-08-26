@@ -52,8 +52,7 @@ func Handler(apiURL string, allowMutations bool, env evergreen.Environment) func
 		}),
 		otelgqlgen.WithRequestVariablesAttributesBuilder(
 			otelgqlgen.RequestVariablesBuilderFunc(func(requestVariables map[string]any) []attribute.KeyValue {
-				// otelgqlgen request variable builders do not receive a context.
-				redactedRequestVariables := RedactFieldsInMap(context.Background(), requestVariables, redactedFields)
+				redactedRequestVariables := RedactFieldsInMap(requestVariables, redactedFields)
 				flattenedVariables := flattenOtelVariables(redactedRequestVariables)
 
 				return otelgqlgen.RequestVariables(flattenedVariables)
@@ -104,7 +103,7 @@ func Handler(apiURL string, allowMutations bool, env evergreen.Environment) func
 			queryPath = fieldCtx.Path().String()
 			args = fieldCtx.Args
 		}
-		args = RedactFieldsInMap(ctx, args, redactedFields)
+		args = RedactFieldsInMap(args, redactedFields)
 		if err != nil && !strings.HasSuffix(err.Error(), context.Canceled.Error()) && !loaders.IsBatchError(err) {
 			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"path":    "/graphql/query",

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -230,7 +231,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 
 	project := &model.Project{}
 	var projectConfig *model.ProjectConfig
-	ctx := r.Context()
+	ctx := context.Background()
 	opts := &model.GetProjectOpts{
 		ReadFileFrom: model.ReadFromLocal,
 	}

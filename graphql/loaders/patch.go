@@ -13,7 +13,7 @@ import (
 type patchReader struct{}
 
 func (r *patchReader) getPatches(ctx context.Context, patchIDs []string) (map[string]*patch.Patch, error) {
-	patches, err := patch.Find(ctx, patch.ByStringIds(ctx, patchIDs))
+	patches, err := patch.Find(ctx, patch.ByStringIds(patchIDs))
 	if err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "error fetching patches in dataloader",

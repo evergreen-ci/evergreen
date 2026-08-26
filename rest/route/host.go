@@ -93,7 +93,7 @@ func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 
 		h := &model.APIHost{}
-		h.BuildFromService(ctx, foundHost, nil)
+		h.BuildFromService(foundHost, nil)
 		if err = resp.AddData(h); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding response data for host '%s'", utility.FromStringPtr(h.Id)))
 		}
@@ -171,7 +171,7 @@ func (h *hostIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 	hostModel := &model.APIHost{}
-	hostModel.BuildFromService(ctx, foundHost, runningTask)
+	hostModel.BuildFromService(foundHost, runningTask)
 	return gimlet.NewJSONResponse(hostModel)
 }
 
@@ -321,7 +321,7 @@ func (hgh *hostGetHandler) Run(ctx context.Context) gimlet.Responder {
 				runningTask = &t
 			}
 		}
-		apiHost.BuildFromService(ctx, &h, runningTask)
+		apiHost.BuildFromService(&h, runningTask)
 		if err = resp.AddData(apiHost); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "adding host data to response"))
 		}
@@ -395,7 +395,7 @@ func (h *hostFilterGetHandler) Run(ctx context.Context) gimlet.Responder {
 	resp := gimlet.NewResponseBuilder()
 	for _, h := range hosts {
 		apiHost := &model.APIHost{}
-		apiHost.BuildFromService(ctx, &h, nil)
+		apiHost.BuildFromService(&h, nil)
 		if err = resp.AddData(apiHost); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding response data for host '%s'", utility.FromStringPtr(apiHost.Id)))
 		}
@@ -577,6 +577,6 @@ func (h *hostIpAddressGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	hostModel := &model.APIHost{}
-	hostModel.BuildFromService(ctx, host, nil)
+	hostModel.BuildFromService(host, nil)
 	return gimlet.NewJSONResponse(hostModel)
 }

@@ -386,7 +386,7 @@ func CheckInstanceTypeValid(ctx context.Context, d distro.Distro, requestedType 
 		}
 	}
 	env := evergreen.GetEnvironment()
-	opts, err := GetManagerOptions(ctx, d)
+	opts, err := GetManagerOptions(d)
 	if err != nil {
 		return errors.Wrap(err, "getting cloud manager options")
 	}
