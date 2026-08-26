@@ -150,17 +150,11 @@ func validateAWSAccountID(id, fieldLabel string) error {
 	return nil
 }
 
-// isInAccountList reports whether an account ID is in the given list, ignoring surrounding whitespace.
-func isInAccountList(accountID string, list []string) bool {
-	return slices.ContainsFunc(list, func(id string) bool {
-		return strings.TrimSpace(id) == accountID
+// containsTrimmed reports whether value is in the list, ignoring whitespace on the list entries.
+func containsTrimmed(value string, list []string) bool {
+	return slices.ContainsFunc(list, func(entry string) bool {
+		return strings.TrimSpace(entry) == value
 	})
-}
-
-// IsAccountWithoutLifecycleRules reports whether the account ID is in the list of accounts
-// for which we do not have access to fetch S3 lifecycle rules.
-func IsAccountWithoutLifecycleRules(accountID string, accountsWithoutLifecycleRules []string) bool {
-	return isInAccountList(accountID, accountsWithoutLifecycleRules)
 }
 
 // IsDevprodOwnedArtifactIAMRole reports whether an IAM role ARN belongs to an account in the list
@@ -170,7 +164,7 @@ func IsDevprodOwnedArtifactIAMRole(awsRoleARN string, devprodOwnedAWSAccountIDs 
 		return true
 	}
 	acctID, ok := util.AWSAccountIDFromIAMARN(awsRoleARN)
-	return ok && isInAccountList(acctID, devprodOwnedAWSAccountIDs)
+	return ok && containsTrimmed(acctID, devprodOwnedAWSAccountIDs)
 }
 
 // ResolveUploadAccountID returns the AWS account ID that owns an upload. When awsRoleARN is non-empty
@@ -187,6 +181,16 @@ func ResolveUploadAccountID(awsRoleARN, awsAccountID string) string {
 	return acctID
 }
 
+// ShouldSkipLifecycleRules reports whether Evergreen should neither ask AWS for an upload's bucket
+// lifecycle rules nor expect to find any. It mirrors IsDevprodOwnedUpload, which gates whether the
+// upload is recorded at all, so an upload with no resolvable account is skipped here too.
+func (c *S3StorageCostConfig) ShouldSkipLifecycleRules(awsRoleARN, awsAccountID string) bool {
+	if !IsDevprodOwnedUpload(awsRoleARN, awsAccountID, c.DevprodOwnedAWSAccountIDs) {
+		return true
+	}
+	return containsTrimmed(ResolveUploadAccountID(awsRoleARN, awsAccountID), c.ArtifactAWSAccountsWithoutLifecycleRules)
+}
+
 // IsDevprodOwnedUpload reports whether an upload belongs to a devprod-owned account.
 // Returns true when the owned account list is empty, meaning all uploads are tracked.
 func IsDevprodOwnedUpload(awsRoleARN, awsAccountID string, devprodOwnedAWSAccountIDs []string) bool {
@@ -194,7 +198,7 @@ func IsDevprodOwnedUpload(awsRoleARN, awsAccountID string, devprodOwnedAWSAccoun
 		return true
 	}
 	acctID := ResolveUploadAccountID(awsRoleARN, awsAccountID)
-	return acctID != "" && isInAccountList(acctID, devprodOwnedAWSAccountIDs)
+	return acctID != "" && containsTrimmed(acctID, devprodOwnedAWSAccountIDs)
 }
 
 // ShouldHideCost reports whether the given project's cost fields should be hidden.
