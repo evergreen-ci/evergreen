@@ -2166,6 +2166,7 @@ type APIServiceFlags struct {
 	GraphQLComplexityLimiterDisabled bool `json:"graphql_complexity_limiter_disabled"`
 
 	TaskQueueAutoUnscheduleDisabled bool `json:"task_queue_auto_unschedule_disabled"`
+	VirtualTasksDisabled            bool `json:"virtual_tasks_disabled"`
 }
 
 type APIProjectTasksPair struct {
@@ -2619,6 +2620,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.APIRateLimiterDisabled = v.APIRateLimiterDisabled
 		as.GraphQLComplexityLimiterDisabled = v.GraphQLComplexityLimiterDisabled
 		as.TaskQueueAutoUnscheduleDisabled = v.TaskQueueAutoUnscheduleDisabled
+		as.VirtualTasksDisabled = v.VirtualTasksDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2674,6 +2676,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		APIRateLimiterDisabled:             as.APIRateLimiterDisabled,
 		GraphQLComplexityLimiterDisabled:   as.GraphQLComplexityLimiterDisabled,
 		TaskQueueAutoUnscheduleDisabled:    as.TaskQueueAutoUnscheduleDisabled,
+		VirtualTasksDisabled:               as.VirtualTasksDisabled,
 	}, nil
 }
 

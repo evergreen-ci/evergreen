@@ -145,6 +145,10 @@ type ProjectRef struct {
 	// Test selection settings
 	TestSelection TestSelectionSettings `bson:"test_selection,omitempty" json:"test_selection,omitzero" yaml:"test_selection,omitempty"`
 
+	// VirtualTasksEnabled controls whether virtual task registration is enabled
+	// for the project.
+	VirtualTasksEnabled *bool `bson:"virtual_tasks_enabled,omitempty" json:"virtual_tasks_enabled,omitempty" yaml:"virtual_tasks_enabled,omitempty"`
+
 	// TaskOwnership contains default team ownership settings for tasks. This is related to Foliage Web Services (FWS).
 	TaskOwnership TaskOwnershipSettings `bson:"task_ownership,omitempty" json:"task_ownership,omitzero" yaml:"task_ownership,omitempty"`
 
@@ -564,6 +568,7 @@ var (
 	projectRefLastAutoRestartedTaskAtKey            = bsonutil.MustHaveTag(ProjectRef{}, "LastAutoRestartedTaskAt")
 	projectRefNumAutoRestartedTasksKey              = bsonutil.MustHaveTag(ProjectRef{}, "NumAutoRestartedTasks")
 	projectRefTestSelectionKey                      = bsonutil.MustHaveTag(ProjectRef{}, "TestSelection")
+	projectRefVirtualTasksEnabledKey                = bsonutil.MustHaveTag(ProjectRef{}, "VirtualTasksEnabled")
 	projectRefTaskOwnershipKey                      = bsonutil.MustHaveTag(ProjectRef{}, "TaskOwnership")
 
 	commitQueueEnabledKey       = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
@@ -676,6 +681,10 @@ func (c *WorkstationConfig) ShouldGitClone() bool {
 
 func (p *ProjectRef) AliasesNeeded() bool {
 	return p.IsGithubChecksEnabled() || p.IsGitTagVersionsEnabled() || p.IsGithubChecksEnabled() || p.IsPRTestingEnabled()
+}
+
+func (p *ProjectRef) IsVirtualTasksEnabled() bool {
+	return utility.FromBoolPtr(p.VirtualTasksEnabled)
 }
 
 func (p *ProjectRef) IsTestSelectionAllowed() bool {
@@ -2434,6 +2443,7 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 			ProjectRefDisabledStatsCacheKey:      p.DisabledStatsCache,
 			projectRefDebugSpawnHostsDisabledKey: p.DebugSpawnHostsDisabled,
 			projectRefRunEveryMainlineCommitKey:  p.RunEveryMainlineCommit,
+			projectRefVirtualTasksEnabledKey:     p.VirtualTasksEnabled,
 		}
 		// Allow a user to modify owner and repo only if they are editing an unattached project
 		if !isRepo && !p.UseRepoSettings() && !defaultToRepo {
