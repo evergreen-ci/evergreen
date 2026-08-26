@@ -1,7 +1,6 @@
 package util
 
 import (
-	"context"
 	"reflect"
 	"testing"
 
@@ -52,7 +51,7 @@ func TestRecursivelySetUndefinedFields(t *testing.T) {
 
 	reflectedA := reflect.ValueOf(aPtr).Elem()
 	reflectedB := reflect.ValueOf(bPtr).Elem()
-	RecursivelySetUndefinedFields(context.Background(), reflectedB, reflectedA)
+	RecursivelySetUndefinedFields(reflectedB, reflectedA)
 	assert.Equal("b", bPtr.A)
 	assert.Equal(1, utility.FromIntPtr(bPtr.B))
 	assert.True(bPtr.C)
@@ -63,7 +62,7 @@ func TestRecursivelySetUndefinedFields(t *testing.T) {
 	}
 	cPtr := &c
 	reflectedC := reflect.ValueOf(cPtr).Elem()
-	RecursivelySetUndefinedFields(context.Background(), reflectedC, reflectedA)
+	RecursivelySetUndefinedFields(reflectedC, reflectedA)
 	assert.Equal("c", cPtr.A)
 	assert.Equal(1, utility.FromIntPtr(cPtr.B))
 	assert.True(cPtr.C)
@@ -86,7 +85,7 @@ func TestRecursivelySetUndefinedFields(t *testing.T) {
 	}
 	ePtr := &e
 	reflectedE := reflect.ValueOf(ePtr).Elem()
-	RecursivelySetUndefinedFields(context.Background(), reflectedE, reflectedD)
+	RecursivelySetUndefinedFields(reflectedE, reflectedD)
 	assert.Equal("e", ePtr.A)
 	assert.Nil(ePtr.B)
 	assert.False(ePtr.C)

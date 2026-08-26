@@ -2492,7 +2492,7 @@ func TestTopologicalSort(t *testing.T) {
 		{Id: "t3", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t1"}}},
 	}
 
-	sortedTasks, err := topologicalSort(t.Context(), tasks)
+	sortedTasks, err := topologicalSort(tasks)
 	assert.NoError(t, err)
 	assert.Len(t, sortedTasks, 4)
 
