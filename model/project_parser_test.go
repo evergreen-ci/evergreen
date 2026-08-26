@@ -2076,15 +2076,15 @@ func TestParserProjectStorage(t *testing.T) {
 					assert.NoError(t, err)
 					assert.Zero(t, pp)
 				},
-				"FindOneByIDBSONReturnsNilErrorAndResultForNonexistentParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
+				"FindOneByIDRawReturnsNilErrorAndResultForNonexistentParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
 					ppStorage, err := GetParserProjectStorage(ctx, env.Settings(), ppStorageMethod)
 					require.NoError(t, err)
 
-					ppBytes, err := ppStorage.FindOneByIDBSON(ctx, "nonexistent")
+					ppBytes, err := ppStorage.FindOneByIDRaw(ctx, "nonexistent")
 					assert.NoError(t, err)
 					assert.Nil(t, ppBytes)
 				},
-				"FindOneByIDBSONReturnsBSONMatchingTheDecodedParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
+				"FindOneByIDRawReturnsBSONMatchingTheDecodedParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
 					pp := &ParserProject{
 						Id:    "my-project",
 						Owner: utility.ToStringPtr("me"),
@@ -2104,7 +2104,7 @@ func TestParserProjectStorage(t *testing.T) {
 					require.NoError(t, err)
 					require.NoError(t, ppStorage.UpsertOne(ctx, pp))
 
-					ppBytes, err := ppStorage.FindOneByIDBSON(ctx, pp.Id)
+					ppBytes, err := ppStorage.FindOneByIDRaw(ctx, pp.Id)
 					require.NoError(t, err)
 					require.NotNil(t, ppBytes)
 
@@ -4388,7 +4388,7 @@ func mustLoadIntermediate(t *testing.T, yml string) *ParserProject {
 	return pp
 }
 
-func TestParserProjectDBStorageFindOneByIDBSON(t *testing.T) {
+func TestParserProjectDBStorageFindOneByIDRaw(t *testing.T) {
 	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(ParserProjectCollection))
@@ -4425,7 +4425,7 @@ buildvariants:
 	var ppStorage ParserProjectDBStorage
 	require.NoError(t, ppStorage.UpsertOne(ctx, pp))
 
-	ppBytes, err := ppStorage.FindOneByIDBSON(ctx, pp.Id)
+	ppBytes, err := ppStorage.FindOneByIDRaw(ctx, pp.Id)
 	require.NoError(t, err)
 	require.NotNil(t, ppBytes)
 
@@ -4438,7 +4438,7 @@ buildvariants:
 	require.NoError(t, err)
 	assert.Equal(t, fromReencoded, fromBSON, "project translated from the stored BSON should match the project translated from re-encoded BSON")
 
-	nonexistent, err := ppStorage.FindOneByIDBSON(ctx, "nonexistent")
+	nonexistent, err := ppStorage.FindOneByIDRaw(ctx, "nonexistent")
 	assert.NoError(t, err)
 	assert.Nil(t, nonexistent)
 }

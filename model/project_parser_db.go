@@ -81,22 +81,21 @@ func parserProjectReplaceOne(ctx context.Context, query any, replacement any) er
 // access parser projects stored in the DB.
 type ParserProjectDBStorage struct{}
 
-// FindOneByID finds a parser project from the DB by its ID. This ignores the
-// context parameter.
+// FindOneByID finds a parser project from the DB by its ID.
 func (s ParserProjectDBStorage) FindOneByID(ctx context.Context, id string) (*ParserProject, error) {
 	return parserProjectFindOneById(ctx, id)
 }
 
 // FindOneByIDWithFields returns the parser project from the DB with only the
 // requested fields populated. This may be more efficient than fetching the
-// entire parser project. This ignores the context parameter.
+// entire parser project.
 func (s ParserProjectDBStorage) FindOneByIDWithFields(ctx context.Context, id string, fields ...string) (*ParserProject, error) {
 	return parserProjectFindOne(ctx, parserProjectById(id).WithFields(fields...))
 }
 
-// FindOneByIDBSON returns the BSON for the parser project in the DB with the
-// given ID. This ignores the context parameter.
-func (s ParserProjectDBStorage) FindOneByIDBSON(ctx context.Context, id string) ([]byte, error) {
+// FindOneByIDBSON returns the raw BSON for the parser project in the DB with
+// the given ID.
+func (s ParserProjectDBStorage) FindOneByIDRaw(ctx context.Context, id string) ([]byte, error) {
 	var raw mongobson.Raw
 	err := db.FindOneQ(ctx, ParserProjectCollection, parserProjectById(id), &raw)
 	if adb.ResultsNotFound(err) {

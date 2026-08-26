@@ -24,14 +24,9 @@ type ParserProjectStorage interface {
 	// storage, implementations must return a nil parser project and nil error.
 	// Implementations may or may not respect the context.
 	FindOneByIDWithFields(ctx context.Context, id string, fields ...string) (*ParserProject, error)
-	// FindOneByIDBSON finds a parser project using its ID and returns its
-	// BSON representation without decoding it. Callers that only need to pass
-	// the parser project along verbatim (such as serving it to the agent) can
-	// use this to skip the cost of decoding and re-encoding it. If the parser
-	// project does not exist in the underlying storage, implementations must
-	// return nil bytes and a nil error. Implementations may or may not respect
-	// the context.
-	FindOneByIDBSON(ctx context.Context, id string) ([]byte, error)
+	// FindOneByIDRaw is the same as FindOneByID but it returns the raw parser
+	// project bytes without decoding it.
+	FindOneByIDRaw(ctx context.Context, id string) ([]byte, error)
 	// UpsertOne replaces a parser project if the parser project with the
 	// same ID already exists. If it does not exist yet, it inserts a new parser
 	// project.
@@ -68,14 +63,14 @@ func ParserProjectFindOneByID(ctx context.Context, settings *evergreen.Settings,
 	return ppStorage.FindOneByID(ctx, id)
 }
 
-// ParserProjectFindOneByIDBSON is a convenience wrapper to find the BSON for
-// one parser project by ID from persistent storage.
-func ParserProjectFindOneByIDBSON(ctx context.Context, settings *evergreen.Settings, method evergreen.ParserProjectStorageMethod, id string) ([]byte, error) {
+// ParserProjectFindOneByIDRaw is the same as ParserProjectFindOneByID but it
+// returns the raw parser project bytes without decoding it.
+func ParserProjectFindOneByIDRaw(ctx context.Context, settings *evergreen.Settings, method evergreen.ParserProjectStorageMethod, id string) ([]byte, error) {
 	ppStorage, err := GetParserProjectStorage(ctx, settings, method)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting parser project storage")
 	}
-	return ppStorage.FindOneByIDBSON(ctx, id)
+	return ppStorage.FindOneByIDRaw(ctx, id)
 }
 
 // ParserProjectUpsertOne is a convenience wrapper to upsert one parser project

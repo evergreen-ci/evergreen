@@ -34,7 +34,7 @@ func NewParserProjectS3Storage(ctx context.Context, ppConf evergreen.ParserProje
 // FindOneByID finds a parser project in S3 using its ID. If the context errors,
 // it will return the context error.
 func (s *ParserProjectS3Storage) FindOneByID(ctx context.Context, id string) (*ParserProject, error) {
-	b, err := s.FindOneByIDBSON(ctx, id)
+	b, err := s.FindOneByIDRaw(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -54,9 +54,9 @@ func (s *ParserProjectS3Storage) FindOneByID(ctx context.Context, id string) (*P
 	return &pp, nil
 }
 
-// FindOneByIDBSON returns the BSON for the parser project in S3 with the given
-// ID. If the context errors, it will return the context error.
-func (s *ParserProjectS3Storage) FindOneByIDBSON(ctx context.Context, id string) ([]byte, error) {
+// FindOneByIDRaw is the same as FindOneByID but it returns the raw parser
+// project bytes without decoding it.
+func (s *ParserProjectS3Storage) FindOneByIDRaw(ctx context.Context, id string) ([]byte, error) {
 	r, err := s.bucket.Get(ctx, id)
 	if pail.IsKeyNotFoundError(err) {
 		return nil, nil
