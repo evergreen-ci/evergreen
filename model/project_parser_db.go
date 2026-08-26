@@ -7,6 +7,8 @@ import (
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/pkg/errors"
+	mongobson "go.mongodb.org/mongo-driver/bson"
 )
 
 const (
@@ -90,6 +92,20 @@ func (s ParserProjectDBStorage) FindOneByID(ctx context.Context, id string) (*Pa
 // entire parser project. This ignores the context parameter.
 func (s ParserProjectDBStorage) FindOneByIDWithFields(ctx context.Context, id string, fields ...string) (*ParserProject, error) {
 	return parserProjectFindOne(ctx, parserProjectById(id).WithFields(fields...))
+}
+
+// FindOneByIDBSON returns the BSON for the parser project in the DB with the
+// given ID. This ignores the context parameter.
+func (s ParserProjectDBStorage) FindOneByIDBSON(ctx context.Context, id string) ([]byte, error) {
+	var raw mongobson.Raw
+	err := db.FindOneQ(ctx, ParserProjectCollection, parserProjectById(id), &raw)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding parser project '%s'", id)
+	}
+	return raw, nil
 }
 
 // UpsertOne replaces a parser project in the DB if one exists with the same ID.

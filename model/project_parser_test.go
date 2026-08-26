@@ -2076,6 +2076,52 @@ func TestParserProjectStorage(t *testing.T) {
 					assert.NoError(t, err)
 					assert.Zero(t, pp)
 				},
+				"FindOneByIDBSONReturnsNilErrorAndResultForNonexistentParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
+					ppStorage, err := GetParserProjectStorage(ctx, env.Settings(), ppStorageMethod)
+					require.NoError(t, err)
+
+					ppBytes, err := ppStorage.FindOneByIDBSON(ctx, "nonexistent")
+					assert.NoError(t, err)
+					assert.Nil(t, ppBytes)
+				},
+				"FindOneByIDBSONReturnsBSONMatchingTheDecodedParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
+					pp := &ParserProject{
+						Id:    "my-project",
+						Owner: utility.ToStringPtr("me"),
+						Tasks: []parserTask{
+							{
+								Name: "task_1",
+								Commands: []PluginCommandConf{
+									{
+										Command: "shell.exec",
+										Params:  map[string]any{"script": "echo hi"},
+									},
+								},
+							},
+						},
+					}
+					ppStorage, err := GetParserProjectStorage(ctx, env.Settings(), ppStorageMethod)
+					require.NoError(t, err)
+					require.NoError(t, ppStorage.UpsertOne(ctx, pp))
+
+					ppBytes, err := ppStorage.FindOneByIDBSON(ctx, pp.Id)
+					require.NoError(t, err)
+					require.NotNil(t, ppBytes)
+
+					var fromBSON ParserProject
+					require.NoError(t, bson.Unmarshal(ppBytes, &fromBSON))
+
+					decoded, err := ppStorage.FindOneByID(ctx, pp.Id)
+					require.NoError(t, err)
+					require.NotNil(t, decoded)
+
+					assert.Equal(t, decoded.Id, fromBSON.Id)
+					assert.Equal(t, utility.FromStringPtr(decoded.Owner), utility.FromStringPtr(fromBSON.Owner))
+					require.Len(t, fromBSON.Tasks, 1)
+					require.Len(t, fromBSON.Tasks[0].Commands, 1)
+					assert.Equal(t, "shell.exec", fromBSON.Tasks[0].Commands[0].Command)
+					assert.Equal(t, map[string]any{"script": "echo hi"}, fromBSON.Tasks[0].Commands[0].Params)
+				},
 				"UpsertCreatesNewParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
 					pp := &ParserProject{
 						Id:    "my-project",
@@ -4340,4 +4386,59 @@ func mustLoadIntermediate(t *testing.T, yml string) *ParserProject {
 	pp, err := LoadProjectInto(t.Context(), []byte(yml), nil, "id", proj)
 	require.NoError(t, err)
 	return pp
+}
+
+func TestParserProjectDBStorageFindOneByIDBSON(t *testing.T) {
+	ctx := t.Context()
+
+	require.NoError(t, db.ClearCollections(ParserProjectCollection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(ParserProjectCollection))
+	})
+
+	yml := `
+functions:
+  fn_one:
+  - command: shell.exec
+    params:
+      script: echo hi
+tasks:
+- name: task_1
+  commands:
+  - func: fn_one
+  - command: subprocess.exec
+    params:
+      binary: ls
+      args: ["-l"]
+buildvariants:
+- name: bv
+  display_name: BV
+  run_on:
+  - d
+  tasks:
+  - name: task_1
+`
+	pp, err := createIntermediateProject([]byte(yml), false, &anchorEntries{})
+	require.NoError(t, err)
+	pp.Id = "my-version"
+
+	var ppStorage ParserProjectDBStorage
+	require.NoError(t, ppStorage.UpsertOne(ctx, pp))
+
+	ppBytes, err := ppStorage.FindOneByIDBSON(ctx, pp.Id)
+	require.NoError(t, err)
+	require.NotNil(t, ppBytes)
+
+	reencoded, err := pp.MarshalBSON()
+	require.NoError(t, err)
+
+	fromBSON, err := GetProjectFromBSON(ppBytes)
+	require.NoError(t, err)
+	fromReencoded, err := GetProjectFromBSON(reencoded)
+	require.NoError(t, err)
+	assert.Equal(t, fromReencoded, fromBSON, "project translated from the stored BSON should match the project translated from re-encoded BSON")
+
+	nonexistent, err := ppStorage.FindOneByIDBSON(ctx, "nonexistent")
+	assert.NoError(t, err)
+	assert.Nil(t, nonexistent)
 }
