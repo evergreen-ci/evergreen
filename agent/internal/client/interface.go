@@ -122,7 +122,8 @@ type SharedCommunicator interface {
 	SelectTests(ctx context.Context, taskData TaskData, request restmodel.SelectTestsRequest) ([]string, error)
 
 	// CreateInstallationTokenForClone creates an installation token for the given owner and repo if there is a GitHub app installed.
-	CreateInstallationTokenForClone(ctx context.Context, td TaskData, owner, repo string) (string, error)
+	// If refresh in true, the function creates a new token and replaces the one the app server has cached.
+	CreateInstallationTokenForClone(ctx context.Context, td TaskData, owner, repo string, refresh bool) (string, error)
 
 	// CreateGitHubDynamicAccessToken creates a dynamic access token using the task's project's GitHub app.
 	// It intersects the permissions requested with the permissions set in the project settings for the requester

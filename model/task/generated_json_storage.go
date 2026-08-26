@@ -4,9 +4,6 @@ import (
 	"context"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -15,9 +12,6 @@ import (
 type GeneratedJSONFileStorage interface {
 	// FindByTaskID finds all generated JSON files for a given task.
 	Find(ctx context.Context, t *Task) (GeneratedJSONFiles, error)
-	// Insert inserts all the generated JSON files for the given task. If any
-	// of the files already exist, they are replaced.
-	Insert(ctx context.Context, t *Task, files GeneratedJSONFiles) error
 }
 
 // GetGeneratedJSONFileStorage returns the generated JSON file storage mechanism
@@ -45,42 +39,11 @@ func GeneratedJSONFind(ctx context.Context, settings *evergreen.Settings, t *Tas
 }
 
 // GeneratedJSONInsert is a convenience wrapper to insert all generated JSON
-// files for the given task to persistent storage.
-func GeneratedJSONInsert(ctx context.Context, settings *evergreen.Settings, t *Task, files GeneratedJSONFiles, method evergreen.ParserProjectStorageMethod) error {
-	fileStorage, err := GetGeneratedJSONFileStorage(ctx, settings, method)
+// files for the given task into S3.
+func GeneratedJSONInsert(ctx context.Context, settings *evergreen.Settings, t *Task, files GeneratedJSONFiles) error {
+	fileStorage, err := newGeneratedJSONS3Storage(ctx, settings.Providers.AWS.ParserProject)
 	if err != nil {
 		return errors.Wrap(err, "getting generated JSON file storage")
 	}
 	return fileStorage.Insert(ctx, t, files)
-}
-
-// GeneratedJSONInsertWithS3Fallback attempts to insert the generated JSON files
-// into persistent storage using the given storage method. If it fails due to DB
-// document size limitations, it will attempt to fall back to using S3 to store
-// it. If it succeeds, this returns the actual storage method used to persist
-// the generated JSON files; otherwise, it returns the originally-requested
-// storage method.
-func GeneratedJSONInsertWithS3Fallback(ctx context.Context, settings *evergreen.Settings, t *Task, files GeneratedJSONFiles, method evergreen.ParserProjectStorageMethod) (evergreen.ParserProjectStorageMethod, error) {
-	err := GeneratedJSONInsert(ctx, settings, t, files, method)
-	if method == evergreen.ProjectStorageMethodS3 {
-		return method, errors.Wrap(err, "inserting generated JSON files into S3")
-	}
-
-	if !db.IsDocumentLimit(err) {
-		return method, errors.Wrap(err, "inserting generated JSON files into the DB")
-	}
-
-	newMethod := evergreen.ProjectStorageMethodS3
-	if err := GeneratedJSONInsert(ctx, settings, t, files, newMethod); err != nil {
-		return method, errors.Wrap(err, "falling back to generated JSON files into S3")
-	}
-
-	grip.Info(ctx, message.Fields{
-		"message":            "successfully inserted generated JSON files into S3 as fallback due to document size limitation",
-		"task_id":            t.Id,
-		"old_storage_method": method,
-		"new_storage_method": newMethod,
-	})
-
-	return newMethod, nil
 }

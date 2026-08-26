@@ -5,10 +5,9 @@
       "result": {
         "data": {
           "waterfall": {
-            "flattenedVersions": [
+            "versions": [
               {
                 "activated": true,
-                "author": "mohamed.khelif",
                 "id": "evergreen_version5",
                 "order": 45,
                 "waterfallBuilds": [
@@ -29,14 +28,12 @@
               },
               {
                 "activated": false,
-                "author": "mohamed.khelif",
                 "id": "evergreen_version4",
                 "order": 44,
                 "waterfallBuilds": null
               },
               {
                 "activated": true,
-                "author": "mohamed.khelif",
                 "id": "evergreen_version3",
                 "order": 43,
                 "waterfallBuilds": [
@@ -76,7 +73,6 @@
               },
               {
                 "activated": true,
-                "author": "mohamed.khelif",
                 "id": "evergreen_version2",
                 "order": 42,
                 "waterfallBuilds": [
@@ -103,7 +99,6 @@
               },
               {
                 "activated": true,
-                "author": "mohamed.khelif",
                 "id": "evergreen_version1",
                 "order": 41,
                 "waterfallBuilds": [
@@ -130,14 +125,12 @@
               },
               {
                 "activated": false,
-                "author": "mohamed.khelif",
                 "id": "evergreen_version0",
                 "order": 40,
                 "waterfallBuilds": null
               },
               {
                 "activated": true,
-                "author": "mohamed.khelif",
                 "id": "evergreen_version39",
                 "order": 1,
                 "waterfallBuilds": []
@@ -157,40 +150,34 @@
       "result": {
         "data": {
           "waterfall": {
-            "flattenedVersions": [
+            "versions": [
               {
                 "activated": false,
-                "author": "mohamed.khelif",
                 "id": "evergreen_version4",
                 "order": 44
               },
               {
                 "activated": true,
-                "author": "mohamed.khelif",
                 "id": "evergreen_version3",
                 "order": 43
               },
               {
                 "activated": true,
-                "author": "mohamed.khelif",
                 "id": "evergreen_version2",
                 "order": 42
               },
               {
                 "activated": true,
-                "author": "mohamed.khelif",
                 "id": "evergreen_version1",
                 "order": 41
               },
               {
                 "activated": false,
-                "author": "mohamed.khelif",
                 "id": "evergreen_version0",
                 "order": 40
               },
               {
                 "activated": true,
-                "author": "mohamed.khelif",
                 "id": "evergreen_version39",
                 "order": 1
               }
@@ -208,22 +195,19 @@
       "result": {
         "data": {
           "waterfall": {
-            "flattenedVersions": [
+            "versions": [
               {
                 "activated": true,
-                "author": "mohamed.khelif",
                 "id": "evergreen_version5",
                 "order": 45
               },
               {
                 "activated": false,
-                "author": "mohamed.khelif",
                 "id": "evergreen_version4",
                 "order": 44
               },
               {
                 "activated": true,
-                "author": "mohamed.khelif",
                 "id": "evergreen_version3",
                 "order": 43
               }
@@ -241,22 +225,19 @@
       "result": {
         "data": {
           "waterfall": {
-            "flattenedVersions": [
+            "versions": [
               {
                 "activated": false,
-                "author": "sophie.stadler",
                 "id": "inactive3",
                 "order": 3
               },
               {
                 "activated": false,
-                "author": "sophie.stadler",
                 "id": "inactive2",
                 "order": 2
               },
               {
                 "activated": false,
-                "author": "sophie.stadler",
                 "id": "inactive1",
                 "order": 1
               }
@@ -289,7 +270,7 @@
       "result": {
         "data": {
           "waterfall": {
-            "flattenedVersions": [
+            "versions": [
               {
                 "id": "evergreen_version3",
                 "order": 43,
@@ -329,7 +310,7 @@
       "result": {
         "data": {
           "waterfall": {
-            "flattenedVersions": [
+            "versions": [
               {
                 "id": "evergreen_version5",
                 "order": 45,
@@ -388,7 +369,7 @@
       "result": {
         "data": {
           "waterfall": {
-            "flattenedVersions": [
+            "versions": [
               {
                 "createTime": "2019-12-30T19:00:03-05:00",
                 "id": "evergreen_version0",
@@ -413,7 +394,7 @@
       "result": {
         "data": {
           "waterfall": {
-            "flattenedVersions": [
+            "versions": [
               {
                 "createTime": "2020-01-05T07:00:00-05:00",
                 "id": "evergreen_version5",
@@ -472,46 +453,39 @@
       "result": {
         "data": {
           "waterfall": {
-            "flattenedVersions": [
+            "versions": [
               {
                 "activated": true,
-                "author": "mohamed.khelif",
                 "id": "evergreen_version5",
                 "order": 45
               },
               {
                 "activated": false,
-                "author": "mohamed.khelif",
                 "id": "evergreen_version4",
                 "order": 44
               },
               {
                 "activated": true,
-                "author": "mohamed.khelif",
                 "id": "evergreen_version3",
                 "order": 43
               },
               {
                 "activated": true,
-                "author": "mohamed.khelif",
                 "id": "evergreen_version2",
                 "order": 42
               },
               {
                 "activated": true,
-                "author": "mohamed.khelif",
                 "id": "evergreen_version1",
                 "order": 41
               },
               {
                 "activated": false,
-                "author": "mohamed.khelif",
                 "id": "evergreen_version0",
                 "order": 40
               },
               {
                 "activated": true,
-                "author": "mohamed.khelif",
                 "id": "evergreen_version39",
                 "order": 1
               }
@@ -525,7 +499,7 @@
       "result": {
         "data": {
           "waterfall": {
-            "flattenedVersions": [
+            "versions": [
               {
                 "id": "sandbox_active",
                 "order": 3,
@@ -564,7 +538,7 @@
                 "evergreen_version39"
               ]
             },
-            "flattenedVersions": [
+            "versions": [
               {
                 "id": "evergreen_version5",
                 "waterfallBuilds": [
@@ -682,7 +656,7 @@
             "pagination": {
               "activeVersionIds": ["evergreen_version3"]
             },
-            "flattenedVersions": [
+            "versions": [
               {
                 "id": "evergreen_version5",
                 "waterfallBuilds": null
@@ -719,7 +693,7 @@
             "pagination": {
               "activeVersionIds": ["evergreen_version1"]
             },
-            "flattenedVersions": [
+            "versions": [
               {
                 "id": "evergreen_version5",
                 "activated": true,
@@ -760,7 +734,7 @@
       "result": {
         "data": {
           "waterfall": {
-            "flattenedVersions": [
+            "versions": [
               {
                 "id": "evergreen_version5",
                 "activated": true,
@@ -789,7 +763,7 @@
       "result": {
         "data": {
           "waterfall": {
-            "flattenedVersions": [
+            "versions": [
               {
                 "id": "evergreen_version5",
                 "activated": true,
@@ -818,7 +792,7 @@
       "result": {
         "data": {
           "waterfall": {
-            "flattenedVersions": [
+            "versions": [
               {
                 "id": "evergreen_version2",
                 "activated": true,
@@ -841,7 +815,7 @@
             "pagination": {
               "activeVersionIds": []
             },
-            "flattenedVersions": [
+            "versions": [
               {
                 "id": "evergreen_version5",
                 "waterfallBuilds": null
@@ -883,7 +857,7 @@
             "pagination": {
               "activeVersionIds": ["evergreen_version2"]
             },
-            "flattenedVersions": [
+            "versions": [
               {
                 "id": "evergreen_version5",
                 "waterfallBuilds": null
@@ -904,32 +878,6 @@
                     "activated": true,
                     "displayName": "02 Ubuntu 16.04"
                   }
-                ]
-              }
-            ]
-          }
-        }
-      }
-    },
-    {
-      "query_file": "version_waterfall_builds.graphql",
-      "result": {
-        "data": {
-          "version": {
-            "id": "evergreen_version1",
-            "gitTags": [
-              { "tag": "v1.0.0", "pusher": "mohamed.khelif" },
-              { "tag": "v1.0.1", "pusher": "sophie.stadler" }
-            ],
-            "waterfallBuilds": [
-              {
-                "id": "evergreen_version1_build",
-                "buildVariant": "enterprise-ubuntu1604-64",
-                "displayName": "01 Ubuntu 16.04",
-                "version": "evergreen_version1",
-                "tasks": [
-                  { "id": "task_1", "displayName": "Task A" },
-                  { "id": "task_2", "displayName": "Task B" }
                 ]
               }
             ]

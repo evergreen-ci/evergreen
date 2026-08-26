@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
@@ -34,17 +35,18 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2026-07-22c"
+	ClientVersion = "2026-08-12"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2026-07-22"
+	AgentVersion = "2026-08-21"
 )
 
 const (
-	mongoTimeout          = 5 * time.Minute
-	mongoConnectTimeout   = 5 * time.Second
-	parameterStoreTimeout = 30 * time.Second
+	mongoTimeout                = 5 * time.Minute
+	mongoConnectTimeout         = 5 * time.Second
+	parameterStoreTimeout       = 30 * time.Second
+	SettingsContextCancelledErr = "context is cancelled, cannot get settings"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -304,7 +306,7 @@ func getSettings(ctx context.Context, includeOverrides, includeParameterStore bo
 		paramCache := map[string]string{}
 		params, err := paramMgr.Get(ctx, collectSecretPaths(settingsValue, settingsType, "")...)
 		if ctx.Err() != nil {
-			return nil, errors.Wrap(ctx.Err(), "context is cancelled, cannot get settings")
+			return nil, errors.Wrap(ctx.Err(), SettingsContextCancelledErr)
 		} else if err != nil {
 			grip.Error(ctx, errors.Wrap(err, "getting all admin secrets from parameter store"))
 		} else {
@@ -323,7 +325,7 @@ func getSettings(ctx context.Context, includeOverrides, includeParameterStore bo
 
 	// The context may be cancelled while getting settings.
 	if ctx.Err() != nil {
-		return nil, errors.Wrap(ctx.Err(), "context is cancelled, cannot get settings")
+		return nil, errors.Wrap(ctx.Err(), SettingsContextCancelledErr)
 	}
 	if catcher.HasErrors() {
 		return nil, errors.WithStack(catcher.Resolve())
@@ -563,6 +565,7 @@ func (settings *Settings) Validate() error {
 
 	// validate the root-level settings struct
 	catcher.Add(settings.ValidateAndDefault())
+	catcher.Add(settings.Database.Validate())
 
 	// validate each sub-document
 	valConfig := reflect.ValueOf(*settings)
@@ -806,9 +809,21 @@ type DBSettings struct {
 	WriteConcernSettings WriteConcern `yaml:"write_concern"`
 	ReadConcernSettings  ReadConcern  `yaml:"read_concern"`
 	AWSAuthEnabled       bool         `yaml:"aws_auth_enabled"`
+	OIDCAuthEnabled      bool         `yaml:"oidc_auth_enabled"`
+	OIDCTokenFile        string       `yaml:"oidc_token_file"`
 }
 
 type mongoClientOpt func(*options.ClientOptions)
+
+func (s DBSettings) Validate() error {
+	if s.AWSAuthEnabled && s.OIDCAuthEnabled {
+		return errors.New("MongoDB AWS and OIDC authentication cannot both be enabled")
+	}
+	if s.OIDCAuthEnabled && s.OIDCTokenFile == "" {
+		return errors.New("MongoDB OIDC authentication requires a token file")
+	}
+	return nil
+}
 
 func withReadPreference(rp *readpref.ReadPref) mongoClientOpt {
 	return func(o *options.ClientOptions) { o.SetReadPreference(rp) }
@@ -822,7 +837,13 @@ func (s *DBSettings) mongoOptions(url string, extra ...mongoClientOpt) *options.
 		SetSocketTimeout(mongoTimeout).
 		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections)))
 
-	if s.AWSAuthEnabled {
+	if s.OIDCAuthEnabled {
+		opts.SetAuth(options.Credential{
+			AuthMechanism:       oidcAuthMechanism,
+			AuthSource:          mongoExternalAuthSource,
+			OIDCMachineCallback: mongoOIDCTokenFileCallback(s.OIDCTokenFile),
+		})
+	} else if s.AWSAuthEnabled {
 		opts.SetAuth(options.Credential{
 			AuthMechanism: awsAuthMechanism,
 			AuthSource:    mongoExternalAuthSource,
@@ -832,6 +853,20 @@ func (s *DBSettings) mongoOptions(url string, extra ...mongoClientOpt) *options.
 		opt(opts)
 	}
 	return opts
+}
+
+func mongoOIDCTokenFileCallback(tokenFile string) options.OIDCCallback {
+	return func(context.Context, *options.OIDCArgs) (*options.OIDCCredential, error) {
+		token, err := os.ReadFile(tokenFile)
+		if err != nil {
+			return nil, errors.Wrapf(err, "reading MongoDB OIDC token file '%s'", tokenFile)
+		}
+		accessToken := strings.TrimSpace(string(token))
+		if accessToken == "" {
+			return nil, errors.Errorf("MongoDB OIDC token file '%s' is empty", tokenFile)
+		}
+		return &options.OIDCCredential{AccessToken: accessToken}, nil
+	}
 }
 
 // Supported banner themes in Evergreen.

@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -22,8 +23,14 @@ type VersionModification struct {
 func ModifyVersion(ctx context.Context, version Version, user user.DBUser, modifications VersionModification) (int, error) {
 	switch modifications.Action {
 	case evergreen.RestartAction:
-		if version.Requester == evergreen.GithubMergeRequester {
-			return http.StatusBadRequest, errors.New("merge queue patches cannot be manually restarted")
+		for _, vtr := range modifications.VersionsToRestart {
+			r, err := GetVersionRequester(ctx, utility.FromStringPtr(vtr.VersionId))
+			if err != nil {
+				return http.StatusInternalServerError, errors.Wrap(err, "getting version requester")
+			}
+			if r == evergreen.GithubMergeRequester {
+				return http.StatusBadRequest, errors.Errorf("merge queue patch '%s' cannot be manually restarted", utility.FromStringPtr(vtr.VersionId))
+			}
 		}
 		if err := RestartVersions(ctx, modifications.VersionsToRestart, modifications.Abort, user.Id); err != nil {
 			return http.StatusInternalServerError, errors.Wrap(err, "restarting patch")

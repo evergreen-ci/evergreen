@@ -22,6 +22,9 @@ type requestInfo struct {
 	method   string
 	path     string
 	taskData *TaskData
+	// headers are request-specific headers, added on top of the communicator's
+	// standard ones.
+	headers map[string]string
 
 	retryOn413 bool
 }
@@ -76,6 +79,9 @@ func (c *baseCommunicator) createRequest(info requestInfo, data any) (*http.Requ
 	r, err := c.newRequest(info.method, info.path, taskID, secret, data)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating request")
+	}
+	for name, value := range info.headers {
+		r.Header.Add(name, value)
 	}
 
 	return r, nil

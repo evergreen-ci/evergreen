@@ -62,6 +62,13 @@ func SaveSubscriptions(ctx context.Context, owner string, subscriptions []restMo
 				Message:    errors.Wrap(err, "converting subscription to service model").Error(),
 			}
 		}
+		if event.IsGitHubSubscriberType(dbSubscription.Subscriber.Type) {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    "GitHub subscriber types cannot be created through the API",
+			}
+		}
+
 		if isProjectOwner {
 			dbSubscription.OwnerType = event.OwnerTypeProject
 			dbSubscription.Owner = owner

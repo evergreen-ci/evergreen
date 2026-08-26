@@ -1,0 +1,22 @@
+mutation {
+  saveRepoSettingsForSection(
+    repoSettings: {
+      repoId: "sandbox_repo_id"
+      projectRef: {
+        id: "sandbox_repo_id"
+        taskOwnership: {
+          defaultMothraTeam: "my-team"
+          defaultMothraTeamForBreakingCommit: "breaking-team"
+        }
+      }
+    }
+    section: TASK_OWNERSHIP_AND_FOLIAGE
+  ) {
+    projectRef {
+      taskOwnership {
+        defaultMothraTeam
+        defaultMothraTeamForBreakingCommit
+      }
+    }
+  }
+}

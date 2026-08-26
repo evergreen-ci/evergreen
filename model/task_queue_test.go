@@ -5,95 +5,130 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDequeueTask(t *testing.T) {
-	var taskIds []string
-	var distroId string
-	var taskQueue *TaskQueue
+	const distroID = "d1"
+	taskIDs := []string{"t1", "t2", "t3"}
 
-	Convey("When attempting to pull a task from a task queue", t, func() {
-
-		taskIds = []string{"t1", "t2", "t3"}
-		distroId = "d1"
-		taskQueue = &TaskQueue{
-			Distro: distroId,
-			Queue:  []TaskQueueItem{},
+	// remainingTaskIDs returns the tasks still waiting in the distro's queue.
+	// LoadTaskQueue returns a nil queue once every item is dispatched.
+	remainingTaskIDs := func(t *testing.T) []string {
+		queue, err := LoadTaskQueue(t.Context(), distroID)
+		require.NoError(t, err)
+		ids := []string{}
+		if queue == nil {
+			return ids
 		}
+		for _, item := range queue.Queue {
+			ids = append(ids, item.Id)
+		}
+		return ids
+	}
 
-		So(db.Clear(TaskQueuesCollection), ShouldBeNil)
+	for tName, tCase := range map[string]func(t *testing.T){
+		"EmptyQueueShouldNotError": func(t *testing.T) {
+			require.NoError(t, NewTaskQueue(distroID, []TaskQueueItem{}, DistroQueueInfo{}).Save(t.Context()))
+			assert.NoError(t, DequeueTask(t.Context(), taskIDs[0], distroID))
+		},
+		"TaskMissingFromQueueShouldNotError": func(t *testing.T) {
+			require.NoError(t, NewTaskQueue(distroID, []TaskQueueItem{{Id: taskIDs[1]}}, DistroQueueInfo{}).Save(t.Context()))
+			assert.NoError(t, DequeueTask(t.Context(), taskIDs[0], distroID))
+			assert.Equal(t, []string{taskIDs[1]}, remainingTaskIDs(t))
+		},
+		"NonexistentDistroQueueShouldNotError": func(t *testing.T) {
+			assert.NoError(t, DequeueTask(t.Context(), taskIDs[0], "nonexistent"))
+		},
+		"QueuedTaskShouldNoLongerBeWaiting": func(t *testing.T) {
+			items := []TaskQueueItem{{Id: taskIDs[0]}, {Id: taskIDs[1]}, {Id: taskIDs[2]}}
+			require.NoError(t, NewTaskQueue(distroID, items, DistroQueueInfo{}).Save(t.Context()))
 
-		Convey("if the task queue is empty, an error should not be thrown", func() {
-			So(taskQueue.Save(t.Context()), ShouldBeNil)
-			So(taskQueue.DequeueTask(t.Context(), taskIds[0]), ShouldBeNil)
+			require.NoError(t, DequeueTask(t.Context(), taskIDs[1], distroID))
+			assert.Equal(t, []string{taskIDs[0], taskIDs[2]}, remainingTaskIDs(t))
+
+			require.NoError(t, DequeueTask(t.Context(), taskIDs[2], distroID))
+			require.NoError(t, DequeueTask(t.Context(), taskIDs[0], distroID))
+			assert.Empty(t, remainingTaskIDs(t))
+		},
+		"DuplicateTaskShouldOnlyDequeueTheFirstOccurrence": func(t *testing.T) {
+			items := []TaskQueueItem{{Id: taskIDs[0]}, {Id: taskIDs[1]}, {Id: taskIDs[0]}}
+			require.NoError(t, NewTaskQueue(distroID, items, DistroQueueInfo{}).Save(t.Context()))
+
+			require.NoError(t, DequeueTask(t.Context(), taskIDs[0], distroID))
+			assert.Equal(t, []string{taskIDs[1], taskIDs[0]}, remainingTaskIDs(t))
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.Clear(TaskQueuesCollection))
+			tCase(t)
 		})
+	}
+}
 
-		Convey("if the task is not present in the queue, an error should not be"+
-			" thrown", func() {
-			taskQueue.Queue = append(taskQueue.Queue,
-				TaskQueueItem{Id: taskIds[1]})
-			So(taskQueue.Save(t.Context()), ShouldBeNil)
-			So(taskQueue.DequeueTask(t.Context(), taskIds[0]), ShouldBeNil)
-		})
-
-		Convey("if the task is present in the in-memory queue but not in the db queue"+
-			", an error should not be thrown", func() {
-			taskQueue.Queue = append(taskQueue.Queue,
-				TaskQueueItem{Id: taskIds[1]})
-			So(taskQueue.Save(t.Context()), ShouldBeNil)
-			taskQueue.Queue = append(taskQueue.Queue,
-				TaskQueueItem{Id: taskIds[0]})
-			So(taskQueue.DequeueTask(t.Context(), taskIds[0]), ShouldBeNil)
-		})
-
-		Convey("if the task is present in the queue, it should be removed"+
-			" from the in-memory and db versions of the queue", func() {
-			taskQueue.Queue = []TaskQueueItem{
-				{Id: taskIds[0]},
-				{Id: taskIds[1]},
-				{Id: taskIds[2]},
+func TestGetTaskQueueLengths(t *testing.T) {
+	for tName, tCase := range map[string]func(t *testing.T){
+		"NoQueueForDistroShouldReturnNil": func(t *testing.T) {
+			lengths, err := GetTaskQueueLengths(t.Context(), "nonexistent", TaskQueuesCollection)
+			require.NoError(t, err)
+			assert.Nil(t, lengths)
+		},
+		"EmptyQueueShouldReturnZeroLengths": func(t *testing.T) {
+			require.NoError(t, NewTaskQueue("d1", []TaskQueueItem{}, DistroQueueInfo{}).Save(t.Context()))
+			lengths, err := GetTaskQueueLengths(t.Context(), "d1", TaskQueuesCollection)
+			require.NoError(t, err)
+			require.NotNil(t, lengths)
+			assert.Zero(t, lengths.Undispatched)
+			assert.Zero(t, lengths.UndispatchedWithDependenciesMet)
+		},
+		"ShouldOnlyCountUndispatchedItems": func(t *testing.T) {
+			items := []TaskQueueItem{
+				{Id: "t1", DependenciesMet: true},
+				{Id: "t2", DependenciesMet: true, IsDispatched: true},
+				{Id: "t3"},
+				{Id: "t4", IsDispatched: true},
 			}
-			So(taskQueue.Save(t.Context()), ShouldBeNil)
-			So(taskQueue.DequeueTask(t.Context(), taskIds[1]), ShouldBeNil)
+			require.NoError(t, NewTaskQueue("d1", items, DistroQueueInfo{Length: 4}).Save(t.Context()))
 
-			// make sure the queue was updated in memory
-			So(taskQueue.Length(), ShouldEqual, 2)
-			So(taskQueue.Queue[0].Id, ShouldEqual, taskIds[0])
-			So(taskQueue.Queue[1].Id, ShouldEqual, taskIds[2])
-
-			var err error
-			// make sure the db representation was updated
-			taskQueue, err = LoadTaskQueue(t.Context(), distroId)
-			So(err, ShouldBeNil)
-			So(taskQueue.Length(), ShouldEqual, 2)
-			So(taskQueue.Queue[0].Id, ShouldEqual, taskIds[0])
-			So(taskQueue.Queue[1].Id, ShouldEqual, taskIds[2])
-
-			// should be safe to remove the last item
-			So(taskQueue.DequeueTask(t.Context(), taskIds[2]), ShouldBeNil)
-			So(taskQueue.Length(), ShouldEqual, 1)
-
-			So(taskQueue.DequeueTask(t.Context(), taskIds[0]), ShouldBeNil)
-			So(taskQueue.Length(), ShouldEqual, 0)
-
-			So(taskQueue.DequeueTask(t.Context(), "foo"), ShouldBeNil)
-			So(taskQueue.Length(), ShouldEqual, 0)
-		})
-		Convey("modern: duplicate tasks shouldn't lead to anics", func() {
-			taskQueue.Queue = []TaskQueueItem{
-				{Id: taskIds[0]},
-				{Id: taskIds[1]},
-				{Id: taskIds[0]},
+			lengths, err := GetTaskQueueLengths(t.Context(), "d1", TaskQueuesCollection)
+			require.NoError(t, err)
+			require.NotNil(t, lengths)
+			assert.Equal(t, 2, lengths.Undispatched)
+			assert.Equal(t, 1, lengths.UndispatchedWithDependenciesMet)
+		},
+		"ShouldMatchLoadTaskQueueLength": func(t *testing.T) {
+			items := []TaskQueueItem{
+				{Id: "t1", DependenciesMet: true},
+				{Id: "t2", IsDispatched: true},
+				{Id: "t3", DependenciesMet: true},
 			}
-			So(taskQueue.Save(t.Context()), ShouldBeNil)
+			require.NoError(t, NewTaskQueue("d1", items, DistroQueueInfo{Length: 3}).Save(t.Context()))
 
-			So(taskQueue.DequeueTask(t.Context(), taskIds[0]), ShouldBeNil)
-			So(taskQueue.Length(), ShouldEqual, 1)
+			queue, err := LoadTaskQueue(t.Context(), "d1")
+			require.NoError(t, err)
+			require.NotNil(t, queue)
+			lengths, err := GetTaskQueueLengths(t.Context(), "d1", TaskQueuesCollection)
+			require.NoError(t, err)
+			require.NotNil(t, lengths)
+			assert.Equal(t, queue.Length(), lengths.Undispatched)
+		},
+		"ShouldReadFromTheSecondaryQueueCollection": func(t *testing.T) {
+			require.NoError(t, NewTaskQueue("d1", []TaskQueueItem{{Id: "t1"}}, DistroQueueInfo{}).Save(t.Context()))
+			secondary := NewTaskQueue("d1", []TaskQueueItem{{Id: "t2"}, {Id: "t3"}}, DistroQueueInfo{SecondaryQueue: true})
+			require.NoError(t, secondary.Save(t.Context()))
+
+			lengths, err := GetTaskQueueLengths(t.Context(), "d1", TaskSecondaryQueuesCollection)
+			require.NoError(t, err)
+			require.NotNil(t, lengths)
+			assert.Equal(t, 2, lengths.Undispatched)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(TaskQueuesCollection, TaskSecondaryQueuesCollection))
+			tCase(t)
 		})
-	})
+	}
 }
 
 func TestClearTaskQueue(t *testing.T) {

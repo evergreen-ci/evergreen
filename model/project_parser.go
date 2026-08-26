@@ -122,6 +122,15 @@ type ParserProject struct {
 
 	// Matrix code
 	Axes []matrixAxis `yaml:"axes,omitempty" bson:"axes,omitempty"`
+
+	// projectConfigFields stores version-controlled project
+	// configuration parsed from the main file and all included files. It is
+	// intentionally unexported so that it's never persisted to the DB and it only exists in memory.
+	projectConfigFields *ProjectConfigFields
+	// redefinedProjectConfigSettings records version-controlled settings
+	// structs that were defined in more than one YAML file. It is
+	// intentionally unexported so that it's never persisted to the DB and it only exists in memory.
+	redefinedProjectConfigSettings []string
 } // End of ParserProject mergeable fields (this comment is used by the linter).
 
 type parserTaskGroup struct {
@@ -613,6 +622,18 @@ const (
 	ppTranslationCacheHottestKeyOtelAttribute = "evergreen.parser_project.translation_cache_hottest_key"
 	// ppTranslationCacheHottestKeyHitsOtelAttribute records how many hits the hottest key has served.
 	ppTranslationCacheHottestKeyHitsOtelAttribute = "evergreen.parser_project.translation_cache_hottest_key_hits"
+	// ppTranslateInFlightOtelAttribute records how many translations held a concurrency slot when
+	// this one started, including itself.
+	ppTranslateInFlightOtelAttribute = "evergreen.parser_project.translate_in_flight"
+	// ppTranslateLimitOtelAttribute records the configured concurrency limit, 0 meaning unlimited.
+	ppTranslateLimitOtelAttribute = "evergreen.parser_project.translate_limit"
+	// ppTranslateWaitingOtelAttribute records how many callers are queued behind the limit.
+	ppTranslateWaitingOtelAttribute = "evergreen.parser_project.translate_waiting"
+	// ppTranslateBlockedTotalOtelAttribute records the cumulative count of acquires that had to wait
+	// for a slot.
+	ppTranslateBlockedTotalOtelAttribute = "evergreen.parser_project.translate_blocked_total"
+	// ppTranslateWaitMSOtelAttribute records how long this call waited for a slot, 0 if it did not wait.
+	ppTranslateWaitMSOtelAttribute = "evergreen.parser_project.translate_wait_ms"
 )
 
 // projectTranslationCacheEnabled reports whether the project translation cache ServiceFlag is on.
@@ -639,6 +660,19 @@ func setTranslationCacheSpanAttributes(span trace.Span, cacheHit, deduped, cache
 		attribute.Int64(ppTranslationCacheEvictionsOtelAttribute, evictions),
 		attribute.String(ppTranslationCacheHottestKeyOtelAttribute, hottestKey),
 		attribute.Int64(ppTranslationCacheHottestKeyHitsOtelAttribute, hottestHits),
+	)
+}
+
+// setTranslateSemaphoreSpanAttributes records the state of the translation concurrency limiter as
+// observed by a caller that just acquired a slot, plus how long that caller waited for it.
+func setTranslateSemaphoreSpanAttributes(span trace.Span, waited time.Duration) {
+	inUse, waiting, limit, blockedTotal := translateSemaphoreStats()
+	span.SetAttributes(
+		attribute.Int64(ppTranslateInFlightOtelAttribute, inUse),
+		attribute.Int64(ppTranslateLimitOtelAttribute, limit),
+		attribute.Int64(ppTranslateWaitingOtelAttribute, waiting),
+		attribute.Int64(ppTranslateBlockedTotalOtelAttribute, blockedTotal),
+		attribute.Int64(ppTranslateWaitMSOtelAttribute, waited.Milliseconds()),
 	)
 }
 
@@ -1060,6 +1094,8 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 			// Return intermediateProject even if we run into issues to show merge progress.
 			return errors.Wrapf(err, "%s: merging file '%s'", LoadProjectError, path.FileName)
 		}
+
+		intermediateProject.mergeProjectConfigFields(add)
 	}
 
 	return nil
@@ -1354,6 +1390,31 @@ func (opts *GetProjectOpts) UpdateReadFileFrom(path string) {
 	}
 }
 
+// readLocalInclude reads an included file from within localIncludeDir. Local
+// includes are only resolved for the CLI and agent, which operate on a trusted
+// local checkout. Callers with no include directory (the server validation
+// routes) get an error, as do absolute paths or paths outside the directory.
+func readLocalInclude(remotePath, localIncludeDir string) ([]byte, error) {
+	if localIncludeDir == "" {
+		return nil, errors.New("resolving local includes is not supported here")
+	}
+	if filepath.IsAbs(remotePath) {
+		return nil, errors.Errorf("included file path '%s' must be relative", remotePath)
+	}
+
+	baseDir := filepath.Clean(localIncludeDir)
+	resolved := filepath.Join(baseDir, remotePath)
+	if resolved != baseDir && !strings.HasPrefix(resolved, baseDir+string(os.PathSeparator)) {
+		return nil, errors.Errorf("included file path '%s' is outside the include directory", remotePath)
+	}
+
+	fileContents, err := os.ReadFile(resolved)
+	if err != nil {
+		return nil, errors.Wrap(err, "reading included file")
+	}
+	return fileContents, nil
+}
+
 // retrieveFile retrieves a file from its source location. If no
 // opts.ReadFileFrom is specified, it will default to retrieving the file from
 // GitHub.
@@ -1364,15 +1425,7 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 
 	switch opts.ReadFileFrom {
 	case ReadFromLocal:
-		remotePath := opts.RemotePath
-		if !filepath.IsAbs(remotePath) && opts.LocalIncludeDir != "" {
-			remotePath = filepath.Join(opts.LocalIncludeDir, remotePath)
-		}
-		fileContents, err := os.ReadFile(remotePath)
-		if err != nil {
-			return nil, errors.Wrap(err, "reading project config")
-		}
-		return fileContents, nil
+		return readLocalInclude(opts.RemotePath, opts.LocalIncludeDir)
 	case ReadFromPatch:
 		fileContents, err := getFileForPatchDiff(ctx, opts)
 		if err != nil {
@@ -1560,10 +1613,7 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts, settings *ever
 	}
 	var pc *ProjectConfig
 	if opts.Ref.IsVersionControlEnabled() {
-		pc, err = CreateProjectConfig(fileContents, opts.Ref.Id)
-		if err != nil {
-			return ProjectInfo{}, errors.Wrapf(err, "parsing project config for '%s'", opts.Ref.Id)
-		}
+		pc = pp.MergedProjectConfig(opts.Ref.Id)
 	}
 	return ProjectInfo{
 		Project:             &config,
@@ -1593,9 +1643,15 @@ func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRe
 				return nil, errors.Wrap(err, "unmarshalling parser project from YAML")
 			}
 			p = strictProjectWithVariables.ParserProject
+			if !strictProjectWithVariables.ProjectConfigFields.isEmpty() {
+				p.projectConfigFields = &strictProjectWithVariables.ProjectConfigFields
+			}
 		} else {
 			if err := util.UnmarshalYAMLWithFallback(parseBytes, &p); err != nil {
 				return nil, errors.Wrap(err, "unmarshalling parser project from YAML")
+			}
+			if err := p.setProjectConfigFields(parseBytes); err != nil {
+				return nil, err
 			}
 		}
 		if p.Functions == nil {
@@ -1621,6 +1677,35 @@ func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRe
 		result.Functions = map[string]*YAMLCommandSet{}
 	}
 	return result, nil
+}
+
+func (pp *ParserProject) setProjectConfigFields(parseBytes []byte) error {
+	pcf := ProjectConfigFields{}
+	if err := util.UnmarshalYAMLWithFallback(parseBytes, &pcf); err != nil {
+		yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
+		return errors.Wrap(yamlErr, TranslateProjectConfigError)
+	}
+	if !pcf.isEmpty() {
+		pp.projectConfigFields = &pcf
+	}
+	return nil
+}
+
+// MergedProjectConfig returns the version-controlled project config merged
+// across the main project file and all included files.
+func (pp *ParserProject) MergedProjectConfig(identifier string) *ProjectConfig {
+	if pp.projectConfigFields == nil {
+		return nil
+	}
+	pc := &ProjectConfig{
+		CreateTime:          time.Now(),
+		ProjectConfigFields: *pp.projectConfigFields,
+		RedefinedSettings:   pp.redefinedProjectConfigSettings,
+	}
+	if identifier != "" {
+		pc.Project = identifier
+	}
+	return pc
 }
 
 // decodeWithAnchors decodes parseBytes into a ParserProject using a yaml.Node as an intermediate
@@ -1704,11 +1789,14 @@ func capParserPriorities(p *ParserProject) {
 // TranslateProject converts our intermediate project representation into
 // the Project type that Evergreen actually uses.
 func TranslateProject(ctx context.Context, pp *ParserProject) (*Project, error) {
-	release, err := acquireTranslateSlot(ctx)
+	release, waited, err := acquireTranslateSlot(ctx)
 	if err != nil {
+		// Record the limiter state for callers that gave up while queued, not just those that got a slot.
+		setTranslateSemaphoreSpanAttributes(trace.SpanFromContext(ctx), waited)
 		return nil, errors.Wrap(err, "waiting for a translate concurrency slot")
 	}
 	defer release()
+	setTranslateSemaphoreSpanAttributes(trace.SpanFromContext(ctx), waited)
 
 	// Transfer top level fields
 	proj := &Project{
@@ -1861,11 +1949,6 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			Timeout:                  ptg.Timeout,
 			ShareProcs:               ptg.ShareProcs,
 		}
-		if tg.MaxHosts == -1 {
-			tg.MaxHosts = len(ptg.Tasks)
-		} else if tg.MaxHosts < 1 {
-			tg.MaxHosts = 1
-		}
 		// expand, validate that tasks defined in a group are listed in the project tasks
 		var taskNames []string
 		for _, taskName := range ptg.Tasks {
@@ -1879,6 +1962,14 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			taskNames = append(taskNames, names...)
 		}
 		tg.Tasks = taskNames
+		// Max hosts has to be resolved after the task selectors are expanded so
+		// that -1 counts the actual tasks in the group rather than the number of
+		// selectors that produced them.
+		if tg.MaxHosts == -1 {
+			tg.MaxHosts = len(tg.Tasks)
+		} else if tg.MaxHosts < 1 {
+			tg.MaxHosts = 1
+		}
 		groups = append(groups, tg)
 	}
 	return tasks, groups, evalErrs

@@ -55,6 +55,9 @@
             { "name": "pod_diagnostics_disabled", "enabled": false },
             { "name": "retry_failed_log_move_enabled", "enabled": false },
             { "name": "project_translation_cache_enabled", "enabled": false },
+            { "name": "task_queue_auto_unschedule_disabled", "enabled": false },
+            { "name": "live_artifact_credentials_disabled", "enabled": false },
+            { "name": "container_isolation_enabled", "enabled": false },
             { "name": "event_processing_disabled", "enabled": false },
             { "name": "jira_notifications_disabled", "enabled": false },
             { "name": "slack_notifications_disabled", "enabled": false },
@@ -64,7 +67,8 @@
             { "name": "secondary_reads_disabled", "enabled": false },
             { "name": "background_command_failure_enabled", "enabled": false },
             { "name": "api_rate_limiter_disabled", "enabled": false },
-            { "name": "graphql_complexity_limiter_disabled", "enabled": false }
+            { "name": "graphql_complexity_limiter_disabled", "enabled": false },
+            { "name": "virtual_tasks_disabled", "enabled": false }
           ]
         }
       }

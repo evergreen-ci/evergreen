@@ -225,6 +225,9 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			if strings.Contains(err.Error(), thirdparty.Github502Error) {
 				j.gitHubError = GitHubInternalError
 			}
+			if strings.Contains(err.Error(), evergreen.SettingsContextCancelledErr) {
+				j.gitHubError = ContextCancelledError
+			}
 		}
 		catcher.Wrap(err, "building GitHub patch document")
 	case patch.GithubMergeIntentType:
@@ -373,6 +376,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	// If all variants were filtered out, send success messages and don't create the patch.
 	if len(patchDoc.VariantsTasks) == 0 && len(ignoredVariants) > 0 {
 		j.sendGitHubSuccessMessages(ctx, patchDoc, pref)
+		j.sendGitHubSuccessMessageForIgnoredVariants(ctx, patchDoc, ignoredVariants)
 		return nil
 	}
 
@@ -1453,11 +1457,14 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	// GitHub Dependabot patches should be automatically authorized.
-	if githubUser == githubDependabotUser || githubUser == githubActionsUser {
+	// Dependabot and GitHub Actions patches are automatically authorized, but
+	// only for same-repo PRs to ensure we never auto-authorize code originating from an external fork.
+	isSameRepoPR := strings.EqualFold(patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.BaseOwner) &&
+		strings.EqualFold(patchDoc.GithubPatchData.HeadRepo, patchDoc.GithubPatchData.BaseRepo)
+	if isSameRepoPR && (githubUser == githubDependabotUser || githubUser == githubActionsUser) {
 		grip.Info(ctx, message.Fields{
 			"job":       j.ID(),
-			"message":   fmt.Sprintf("authorizing patch from special user '%s'", githubDependabotUser),
+			"message":   fmt.Sprintf("authorizing patch from special user '%s'", githubUser),
 			"source":    "patch intents",
 			"base_repo": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
 			"head_repo": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),

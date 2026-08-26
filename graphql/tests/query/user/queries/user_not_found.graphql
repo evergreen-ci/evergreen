@@ -1,5 +1,5 @@
 {
-  userLite(userId: "nonexistent-userid") {
+  user(userId: "nonexistent-userid") {
     id
   }
 }

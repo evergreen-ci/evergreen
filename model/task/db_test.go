@@ -956,6 +956,85 @@ func TestGetTasksByVersionFilterDisplayTaskMembers(t *testing.T) {
 	assert.Equal(t, "grouped", tasks[1].DisplayName)
 }
 
+func TestGetTasksByVersionFilterDisplayTaskBySubtaskStatus(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+
+	// The display task's aggregate status is success, but it contains an aborted
+	// execution task. Filtering by a subtask status should still surface the
+	// display task even though its own status does not match.
+	abortedExec := Task{
+		Id:                 "aborted-exec",
+		Version:            "v1",
+		DisplayTaskId:      utility.ToStringPtr("display"),
+		Status:             evergreen.TaskFailed,
+		Aborted:            true,
+		DisplayStatusCache: evergreen.TaskAborted,
+		ActivatedTime:      time.Now(),
+	}
+	successExec := Task{
+		Id:                 "success-exec",
+		Version:            "v1",
+		DisplayTaskId:      utility.ToStringPtr("display"),
+		Status:             evergreen.TaskSucceeded,
+		DisplayStatusCache: evergreen.TaskSucceeded,
+		ActivatedTime:      time.Now(),
+	}
+	display := Task{
+		Id:                 "display",
+		Version:            "v1",
+		DisplayOnly:        true,
+		ExecutionTasks:     []string{"aborted-exec", "success-exec"},
+		Status:             evergreen.TaskSucceeded,
+		DisplayStatusCache: evergreen.TaskSucceeded,
+		ActivatedTime:      time.Now(),
+	}
+	standalone := Task{
+		Id:                 "standalone",
+		Version:            "v1",
+		DisplayTaskId:      utility.ToStringPtr(""),
+		Status:             evergreen.TaskFailed,
+		DisplayStatusCache: evergreen.TaskFailed,
+		ActivatedTime:      time.Now(),
+	}
+	require.NoError(t, db.InsertMany(t.Context(), Collection, abortedExec, successExec, display, standalone))
+
+	ctx := context.TODO()
+
+	t.Run("IncludesDisplayTaskWhenOnlyASubtaskMatches", func(t *testing.T) {
+		tasks, count, err := GetTasksByVersion(ctx, "v1", GetTasksByVersionOptions{Statuses: []string{evergreen.TaskAborted}})
+		require.NoError(t, err)
+		assert.Equal(t, 1, count)
+		require.Len(t, tasks, 1)
+		assert.Equal(t, "display", tasks[0].Id)
+	})
+
+	t.Run("IncludesOnlyMatchingSubtaskWhenExecutionTasksAreRequested", func(t *testing.T) {
+		tasks, count, err := GetTasksByVersion(ctx, "v1", GetTasksByVersionOptions{
+			Statuses:              []string{evergreen.TaskAborted},
+			IncludeExecutionTasks: true,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, 1, count)
+		require.Len(t, tasks, 1)
+		assert.Equal(t, "aborted-exec", tasks[0].Id)
+	})
+
+	t.Run("MatchesStandaloneByOwnStatus", func(t *testing.T) {
+		tasks, count, err := GetTasksByVersion(ctx, "v1", GetTasksByVersionOptions{Statuses: []string{evergreen.TaskFailed}})
+		require.NoError(t, err)
+		assert.Equal(t, 1, count)
+		require.Len(t, tasks, 1)
+		assert.Equal(t, "standalone", tasks[0].Id)
+	})
+
+	t.Run("ExcludesDisplayTaskWhenNeitherItNorASubtaskMatches", func(t *testing.T) {
+		tasks, count, err := GetTasksByVersion(ctx, "v1", GetTasksByVersionOptions{Statuses: []string{evergreen.TaskSystemFailed}})
+		require.NoError(t, err)
+		assert.Equal(t, 0, count)
+		assert.Empty(t, tasks)
+	})
+}
+
 func TestGetTasksByVersionIncludeNeverActivatedTasks(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 
@@ -2157,6 +2236,35 @@ func TestActivateTasksUpdate(t *testing.T) {
 		assert.True(t, activationTime.Equal(dbTask.ActivatedTime))
 		assert.False(t, dbTask.UnattainableDependency)
 		assert.EqualValues(t, 0, dbTask.Priority)
+	})
+	t.Run("VirtualTaskExcludedFromHostSchedulable", func(t *testing.T) {
+		ctx := t.Context()
+		require.NoError(t, db.ClearCollections(Collection, distro.Collection))
+
+		d := distro.Distro{Id: "d"}
+		hostTask := Task{
+			Id:                "host_task",
+			Status:            evergreen.TaskUndispatched,
+			Activated:         true,
+			ExecutionPlatform: ExecutionPlatformHost,
+			DistroId:          "d",
+		}
+		virtualTask := Task{
+			Id:                "virtual_task",
+			Status:            evergreen.TaskUndispatched,
+			Activated:         true,
+			ExecutionPlatform: ExecutionPlatformVirtual,
+			DistroId:          "d",
+		}
+
+		require.NoError(t, d.Insert(ctx))
+		require.NoError(t, hostTask.Insert(ctx))
+		require.NoError(t, virtualTask.Insert(ctx))
+
+		tasks, err := FindHostSchedulable(ctx, "d")
+		require.NoError(t, err)
+		require.Len(t, tasks, 1)
+		assert.Equal(t, "host_task", tasks[0].Id)
 	})
 }
 

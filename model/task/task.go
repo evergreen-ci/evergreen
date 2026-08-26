@@ -70,6 +70,18 @@ const (
 	// dependencyResolutionTimeout is the maximum time allowed for recursive
 	// dependency resolution.
 	dependencyResolutionTimeout = 10 * time.Minute
+
+	// estimateCacheTTL bounds how stale a process-local estimate may be. It is far shorter than predictionTTL
+	// because a task document that inherits a cached estimate stamps it as freshly collected, so the two compound.
+	estimateCacheTTL = time.Hour
+
+	// noHistoryCacheTTL bounds how long a generator is remembered as having no history. Its first successful run
+	// flips the estimate from nothing to full size, so this must not outlive a build's turnaround by much.
+	noHistoryCacheTTL = 5 * time.Minute
+
+	// estimateCacheMaxSize caps each cache at roughly the distinct
+	// (project, build variant, display name) triples seen within estimateCacheTTL.
+	estimateCacheMaxSize = 50000
 )
 
 // maxDependencyDepth is the maximum recursion depth for dependency traversal.
@@ -306,6 +318,9 @@ type Task struct {
 	// project YAML for generate.tasks. This is only used to store the
 	// configuration if GeneratedJSONStorageMethod is unset or is explicitly set
 	// to "db".
+	//
+	// TODO (DEVPROD-41456): delete this field. Only tasks written before the
+	// switch to S3 still store their generated JSON here.
 	GeneratedJSONAsString GeneratedJSONFiles `bson:"generated_json,omitempty" json:"generated_json,omitempty"`
 	// GeneratedJSONStorageMethod describes how the generated JSON for
 	// generate.tasks is stored for this task before it's merged with the
@@ -411,8 +426,9 @@ type ExecutionPlatform string
 const (
 	// ExecutionPlatformHost indicates that the task runs in a host.
 	ExecutionPlatformHost ExecutionPlatform = "host"
-	// ExecutionPlatformContainer indicates that the task runs in a container.
-	ExecutionPlatformContainer ExecutionPlatform = "container"
+	// ExecutionPlatformVirtual indicates that the task's results are pushed
+	// externally and it never enters a task queue or runs on a host.
+	ExecutionPlatformVirtual ExecutionPlatform = "virtual"
 )
 
 func (t *Task) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(t) }
@@ -1079,41 +1095,11 @@ func MarkGeneratedTasksErr(ctx context.Context, taskID string, errorToSet error)
 func GenerateNotRun(ctx context.Context) ([]Task, error) {
 	const maxGenerateTimeAgo = 24 * time.Hour
 	return FindAll(ctx, db.Query(bson.M{
-		StatusKey:                evergreen.TaskStarted,                              // task is running
-		StartTimeKey:             bson.M{"$gt": time.Now().Add(-maxGenerateTimeAgo)}, // ignore older tasks, just in case
-		GeneratedTasksKey:        bson.M{"$ne": true},                                // generate.tasks has not yet run
-		GeneratedJSONAsStringKey: bson.M{"$exists": true},                            // config has been posted by generate.tasks command
+		StatusKey:                     evergreen.TaskStarted,                              // task is running
+		StartTimeKey:                  bson.M{"$gt": time.Now().Add(-maxGenerateTimeAgo)}, // ignore older tasks, just in case
+		GeneratedTasksKey:             bson.M{"$ne": true},                                // generate.tasks has not yet run
+		GeneratedJSONStorageMethodKey: bson.M{"$exists": true},                            // config has been posted by generate.tasks command
 	}))
-}
-
-// SetGeneratedJSON sets JSON data to generate tasks from. If the generated JSON
-// files have already been stored, this is a no-op.
-func (t *Task) SetGeneratedJSON(ctx context.Context, files GeneratedJSONFiles) error {
-	if len(t.GeneratedJSONAsString) > 0 || t.GeneratedJSONStorageMethod != "" {
-		return nil
-	}
-
-	if err := UpdateOne(
-		ctx,
-		bson.M{
-			IdKey:                         t.Id,
-			GeneratedJSONAsStringKey:      bson.M{"$exists": false},
-			GeneratedJSONStorageMethodKey: nil,
-		},
-		bson.M{
-			"$set": bson.M{
-				GeneratedJSONAsStringKey:      files,
-				GeneratedJSONStorageMethodKey: evergreen.ProjectStorageMethodDB,
-			},
-		},
-	); err != nil {
-		return err
-	}
-
-	t.GeneratedJSONAsString = files
-	t.GeneratedJSONStorageMethod = evergreen.ProjectStorageMethodDB
-
-	return nil
 }
 
 // SetGeneratedJSONStorageMethod sets the task's generated JSON file storage
@@ -1366,7 +1352,7 @@ func DeactivateStepbackTask(ctx context.Context, projectId, buildVariantName, ta
 		return errors.Errorf("no stepback task '%s' for variant '%s' found", taskName, buildVariantName)
 	}
 
-	if err = DeactivateTasks(ctx, []Task{*t}, true, caller); err != nil {
+	if err = DeactivateTasks(ctx, []Task{*t}, true, caller, ""); err != nil {
 		return errors.Wrap(err, "deactivating stepback task")
 	}
 	if t.IsAbortable() {
@@ -1396,8 +1382,26 @@ func (t *Task) MarkFailed(ctx context.Context) error {
 	)
 }
 
+// EstimatedFinishTime returns the best available estimate of when a
+// task stopped running for an unhealthy/unresponsive task. Typically should
+// only be used for system failures where the task itself is not finishing
+// normally. For example, when a task monitoring job determines the task is
+// stuck well after the task already stopped running.
+func (t *Task) EstimatedFinishTime(now time.Time) time.Time {
+	if utility.IsZeroTime(t.LastHeartbeat) || t.LastHeartbeat.After(now) {
+		return now
+	}
+
+	// If the task is finishing due to certain system failures (e.g.
+	// stranded/stale task that's been unassigned from a host but wasn't marked
+	// finished), there's no definitive time when the task finished. The best
+	// guess for when the task stopped running is the last time it had a
+	// heartbeat.
+	return t.LastHeartbeat
+}
+
 func (t *Task) MarkSystemFailed(ctx context.Context, description string) error {
-	t.FinishTime = time.Now()
+	t.FinishTime = t.EstimatedFinishTime(time.Now())
 	t.Details = GetSystemFailureDetails(description)
 
 	switch t.ExecutionPlatform {
@@ -1628,6 +1632,25 @@ func (t *Task) SetResultsInfo(ctx context.Context, failedResults bool) error {
 	return errors.WithStack(UpdateOne(ctx, ById(t.Id), bson.M{"$set": set}))
 }
 
+// IncNumQuarantinedTestsSkipped increments the number of tests skipped because
+// they were quarantined in TSS for this task execution.
+func (t *Task) IncNumQuarantinedTestsSkipped(ctx context.Context, num int) error {
+	if num <= 0 {
+		return nil
+	}
+	err := UpdateOne(ctx, ByIdAndExecution(t.Id, t.Execution), bson.M{
+		"$inc": bson.M{NumQuarantinedTestsSkippedKey: num},
+	})
+	if adb.ResultsNotFound(err) {
+		return nil
+	}
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	t.NumQuarantinedTestsSkipped += num
+	return nil
+}
+
 // HasResults returns whether the task has test results or not.
 func (t *Task) HasResults(ctx context.Context) bool {
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
@@ -1661,7 +1684,7 @@ func (t *Task) HasResults(ctx context.Context) bool {
 // ActivateTasks sets all given tasks to active, logs them as activated, and
 // proceeds to activate any dependencies that were deactivated. This returns the
 // task IDs that were activated.
-func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, updateDependencies bool, caller string) ([]string, error) {
+func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, updateDependencies bool, caller, repoRefID string) ([]string, error) {
 	if len(tasks) == 0 {
 		return nil, nil
 	}
@@ -1687,7 +1710,7 @@ func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, 
 	// Tasks passed into this function will all be from the same version or build, so we can assume
 	// all tasks also share the same requester field.
 	numTasksModified := len(taskIDs) + len(depTaskIDsToUpdate) + numEstimatedActivatedGeneratedTasks
-	if err = UpdateSchedulingLimit(ctx, caller, tasks[0].Requester, numTasksModified, true); err != nil {
+	if err = UpdateSchedulingLimit(ctx, caller, tasks[0].Requester, tasks[0].Project, repoRefID, numTasksModified, true); err != nil {
 		return nil, err
 	}
 	err = activateTasks(ctx, taskIDs, caller, activationTime)
@@ -1717,12 +1740,12 @@ func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, 
 
 // UpdateSchedulingLimit retrieves a user from the DB and updates their hourly scheduling limit info
 // if they are not a service user.
-func UpdateSchedulingLimit(ctx context.Context, username, requester string, numTasksModified int, activated bool) error {
+func UpdateSchedulingLimit(ctx context.Context, username, requester, projectID, repoRefID string, numTasksModified int, activated bool) error {
 	if evergreen.IsSystemActivator(username) || !evergreen.IsPatchRequester(requester) || numTasksModified == 0 {
 		return nil
 	}
 	s := evergreen.GetEnvironment().Settings()
-	maxScheduledTasks := s.TaskLimits.MaxHourlyPatchTasks
+	maxScheduledTasks, projectOrRepoID := s.TaskLimits.HourlyPatchTaskLimitForProject(projectID, repoRefID)
 	if maxScheduledTasks == 0 {
 		return nil
 	}
@@ -1730,32 +1753,13 @@ func UpdateSchedulingLimit(ctx context.Context, username, requester string, numT
 	if err != nil {
 		return errors.Wrap(err, "getting user")
 	}
-	if u != nil && !u.OnlyAPI {
-		return errors.Wrapf(u.CheckAndUpdateSchedulingLimit(ctx, maxScheduledTasks, numTasksModified, activated), "checking task scheduling limit for user '%s'", u.Id)
+	if u == nil || u.OnlyAPI {
+		return nil
 	}
-	return nil
-}
-
-// ActivateTasksByIdsWithDependencies activates the given tasks and their dependencies.
-func ActivateTasksByIdsWithDependencies(ctx context.Context, ids []string, caller string) error {
-	q := db.Query(bson.M{
-		IdKey:     bson.M{"$in": ids},
-		StatusKey: evergreen.TaskUndispatched,
-	})
-
-	tasks, err := FindAll(ctx, q.WithFields(IdKey, DependsOnKey, ExecutionKey, ActivatedKey))
-	if err != nil {
-		return errors.Wrap(err, "getting tasks for activation")
+	if projectOrRepoID != "" {
+		return errors.Wrapf(u.CheckAndUpdatePerProjectSchedulingLimit(ctx, projectOrRepoID, maxScheduledTasks, numTasksModified, activated), "checking task scheduling limit for user '%s' in project '%s'", u.Id, projectID)
 	}
-	dependOn, err := GetRecursiveDependenciesUp(ctx, tasks, nil)
-	if err != nil {
-		return errors.Wrap(err, "getting recursive dependencies")
-	}
-
-	if _, err = ActivateTasks(ctx, append(tasks, dependOn...), time.Now(), true, caller); err != nil {
-		return errors.Wrap(err, "updating tasks for activation")
-	}
-	return nil
+	return errors.Wrapf(u.CheckAndUpdateSchedulingLimit(ctx, maxScheduledTasks, numTasksModified, activated), "checking task scheduling limit for user '%s'", u.Id)
 }
 
 func getDependencyTaskIdsToActivate(ctx context.Context, tasks []string, updateDependencies bool) (map[string]Task, []string, error) {
@@ -1982,7 +1986,7 @@ func topologicalSort(tasks []Task) ([]Task, error) {
 	return sortedTasks, nil
 }
 
-func DeactivateTasks(ctx context.Context, tasks []Task, updateDependencies bool, caller string) error {
+func DeactivateTasks(ctx context.Context, tasks []Task, updateDependencies bool, caller, repoRefID string) error {
 	if len(tasks) == 0 {
 		return nil
 	}
@@ -2011,7 +2015,7 @@ func DeactivateTasks(ctx context.Context, tasks []Task, updateDependencies bool,
 	// Tasks passed into this function will all be from the same version or build, so we can assume
 	// all tasks also share the same requester field.
 	numTasksModified := len(taskIDs) + len(depTaskIDsToUpdate) + numEstimatedActivatedGeneratedTasks
-	if err = UpdateSchedulingLimit(ctx, caller, tasks[0].Requester, numTasksModified, false); err != nil {
+	if err = UpdateSchedulingLimit(ctx, caller, tasks[0].Requester, tasks[0].Project, repoRefID, numTasksModified, false); err != nil {
 		return err
 	}
 
@@ -2118,16 +2122,21 @@ func DeactivateDependencies(ctx context.Context, tasks []string, caller string) 
 	return errors.Wrap(deactivateDependencies(ctx, tasksToUpdate, taskIDsToUpdate, caller), "marking dependencies deactivated")
 }
 
-// MarkEnd handles the Task updates associated with ending a task. If the task's start time is zero
-// at this time, it will set it to the finish time minus the timeout time.
+// MarkEnd handles the Task updates associated with ending a task. If the task
+// never reported that it started, its start time is estimated.
 func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimodels.TaskEndDetail) error {
-	// if there is no start time set, either set it to the create time
-	// or set 2 hours previous to the finish time.
 	if utility.IsZeroTime(t.StartTime) {
 		timedOutStart := finishTime.Add(-2 * time.Hour)
-		t.StartTime = timedOutStart
-		if timedOutStart.Before(t.IngestTime) {
+		if !utility.IsZeroTime(t.DispatchTime) {
+			t.StartTime = t.DispatchTime
+		} else if timedOutStart.Before(t.IngestTime) {
 			t.StartTime = t.IngestTime
+		} else {
+			// If the task was never dispatched and the ingest time is a long
+			// time ago (e.g. restarting a really old task), set the start time
+			// to 2 hours ago. This is an arbitrary guess, but that's preferable
+			// to having a really long task duration.
+			t.StartTime = timedOutStart
 		}
 	}
 
@@ -2153,8 +2162,17 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 		}
 	}
 
-	// Calculate EC2 runtime costs now that we have the actual runtime.
-	t.UpdateTaskCost(ctx)
+	if t.HostId == "" {
+		t.TaskCost.OnDemandEC2Cost = 0
+		t.TaskCost.AdjustedEC2Cost = 0
+		t.TaskCost.OnDemandEBSThroughputCost = 0
+		t.TaskCost.AdjustedEBSThroughputCost = 0
+		t.TaskCost.OnDemandEBSStorageCost = 0
+		t.TaskCost.AdjustedEBSStorageCost = 0
+	} else {
+		// Calculate EC2 runtime costs now that we have the actual runtime.
+		t.UpdateTaskCost(ctx)
+	}
 
 	// record that the task has finished, in memory and in the db
 	t.Status = detail.Status
@@ -2369,6 +2387,8 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 		t.CanReset = false
 		t.IsAutomaticRestart = false
 		t.HasAnnotations = false
+		t.TaskCost = cost.Cost{}
+		t.S3Usage = s3usage.S3Usage{}
 		if prediction != nil {
 			t.SetPredictedCost(prediction.PredictedCost)
 		}
@@ -2413,6 +2433,8 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 				OverrideDependenciesKey,
 				CanResetKey,
 				HasAnnotationsKey,
+				TaskCostKey,
+				S3UsageKey,
 			},
 		},
 		addDisplayStatusCache,
@@ -2519,7 +2541,7 @@ func getRecursiveDependenciesUpHelper(ctx context.Context, tasks []Task, depCach
 		return nil, nil
 	}
 
-	deps, err := FindWithFields(ctx, ByIds(tasksToFind), IdKey, DependsOnKey, ExecutionKey, BuildIdKey, StatusKey, TaskGroupKey, ActivatedKey, DisplayNameKey, PriorityKey)
+	deps, err := FindWithFields(ctx, ByIds(tasksToFind), IdKey, DependsOnKey, ExecutionKey, BuildIdKey, StatusKey, TaskGroupKey, ActivatedKey, DisplayNameKey, PriorityKey, RequesterKey, ProjectKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting dependencies")
 	}
@@ -3177,11 +3199,11 @@ func (t *Task) GetTestResultsTasks(ctx context.Context) ([]Task, error) {
 
 // SetResetWhenFinished requests that a display task or single-host task group
 // reset itself when finished. Will mark itself as system failed.
-func (t *Task) SetResetWhenFinished(ctx context.Context, caller string) error {
+func (t *Task) SetResetWhenFinished(ctx context.Context, caller, repoRefID string) error {
 	if t.ResetWhenFinished {
 		return nil
 	}
-	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller); err != nil {
+	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller, repoRefID); err != nil {
 		return errors.Wrapf(err, "updating user '%s' patch task scheduling limit", caller)
 	}
 	t.ResetFailedWhenFinished = false
@@ -3238,11 +3260,11 @@ func (t *Task) SetResetWhenFinishedWithInc(ctx context.Context) error {
 
 // SetResetFailedWhenFinished requests that a display task
 // only restarts failed tasks.
-func (t *Task) SetResetFailedWhenFinished(ctx context.Context, caller string) error {
+func (t *Task) SetResetFailedWhenFinished(ctx context.Context, caller, repoRefID string) error {
 	if t.ResetFailedWhenFinished {
 		return nil
 	}
-	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller); err != nil {
+	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller, repoRefID); err != nil {
 		return errors.Wrapf(err, "updating user '%s' patch task scheduling limit", caller)
 	}
 	t.ResetWhenFinished = false
@@ -3263,7 +3285,10 @@ func (t *Task) SetResetFailedWhenFinished(ctx context.Context, caller string) er
 	)
 }
 
-func updateSchedulingLimitForResetWhenFinished(ctx context.Context, t *Task, caller string) error {
+// updateSchedulingLimitForResetWhenFinished is the same as
+// UpdateSchedulingLimit but only applies if the task is being reset when
+// finished.
+func updateSchedulingLimitForResetWhenFinished(ctx context.Context, t *Task, caller, repoRefID string) error {
 	if !(t.Requester == evergreen.PatchVersionRequester || t.Requester == evergreen.GithubPRRequester) || evergreen.IsSystemActivator(caller) {
 		return nil
 	}
@@ -3283,20 +3308,18 @@ func updateSchedulingLimitForResetWhenFinished(ctx context.Context, t *Task, cal
 	if len(tasks) == 0 {
 		return nil
 	}
-	return errors.Wrap(CheckUsersPatchTaskLimit(ctx, t.Requester, caller, true, tasks...), "updating patch task limit for user")
+	return errors.Wrap(CheckUsersPatchTaskLimit(ctx, t.Requester, caller, repoRefID, true, tasks...), "updating patch task limit for user")
 }
 
 // CheckUsersPatchTaskLimit takes in an input list of tasks that is set to get activated, and checks if they're
 // non commit-queue patch tasks, and that the request has been submitted by a user. If so, the maximum hourly patch tasks counter
 // will be incremented accordingly. The includeDisplayAndTaskGroups parameter indicates that execution tasks and single host task
 // group tasks are to be counted as part of the limit update, otherwise they will be ignored.
-func CheckUsersPatchTaskLimit(ctx context.Context, requester, username string, includeDisplayAndTaskGroups bool, tasks ...Task) error {
-	// we only care about patch tasks that are to be activated by an actual user
-	if !(requester == evergreen.PatchVersionRequester || requester == evergreen.GithubPRRequester) || evergreen.IsSystemActivator(username) {
+func CheckUsersPatchTaskLimit(ctx context.Context, requester, username, repoRefID string, includeDisplayAndTaskGroups bool, tasks ...Task) error {
+	if len(tasks) == 0 {
 		return nil
 	}
-	s := evergreen.GetEnvironment().Settings()
-	if s.TaskLimits.MaxHourlyPatchTasks == 0 {
+	if !(requester == evergreen.PatchVersionRequester || requester == evergreen.GithubPRRequester) || evergreen.IsSystemActivator(username) {
 		return nil
 	}
 	numTasksToActivate := 0
@@ -3309,7 +3332,7 @@ func CheckUsersPatchTaskLimit(ctx context.Context, requester, username string, i
 			numTasksToActivate += utility.FromIntPtr(t.EstimatedNumActivatedGeneratedTasks)
 		}
 	}
-	return UpdateSchedulingLimit(ctx, username, requester, numTasksToActivate, true)
+	return UpdateSchedulingLimit(ctx, username, requester, tasks[0].Project, repoRefID, numTasksToActivate, true)
 }
 
 func FindExecTasksToReset(ctx context.Context, t *Task) ([]string, error) {
@@ -3529,7 +3552,26 @@ func (t *Task) FetchExpectedDuration(ctx context.Context) util.DurationStats {
 		return util.DurationStats{Average: t.ExpectedDuration, StdDev: t.ExpectedDurationStdDev}
 	}
 
+	cacheKey := estimateCacheKey{project: t.Project, buildVariant: t.BuildVariant, taskDisplayName: t.DisplayName}
 	refresher := func(previous util.DurationStats) (util.DurationStats, bool) {
+		// Only cache consultations get a span. A task whose persisted prediction is still valid never runs this.
+		ctx, span := tracer.Start(ctx, "refresh-expected-duration")
+		defer span.End()
+		record := func(outcome string) {
+			span.SetAttributes(
+				attribute.String("evergreen.task.expected_duration_cache_outcome", outcome),
+				attribute.Int("evergreen.task.expected_duration_cache_size", expectedDurationCache.Len()),
+				attribute.String(evergreen.ProjectIdentifierOtelAttribute, cacheKey.project),
+				attribute.String(evergreen.BuildNameOtelAttribute, cacheKey.buildVariant),
+				attribute.String(evergreen.TaskNameOtelAttribute, cacheKey.taskDisplayName),
+			)
+		}
+
+		if stats, ok := expectedDurationCache.Get(cacheKey); ok {
+			record("hit")
+			return stats, true
+		}
+
 		defaultVal := util.DurationStats{Average: defaultTaskDuration, StdDev: 0}
 		vals, err := getExpectedDurationsForWindow(ctx, t.DisplayName, t.Project, t.BuildVariant,
 			time.Now().Add(-taskCompletionEstimateWindow), time.Now())
@@ -3541,10 +3583,13 @@ func (t *Task) FetchExpectedDuration(ctx context.Context) util.DurationStats {
 			"operation": "fetching expected duration, expect stale scheduling data",
 		}))
 		if err != nil {
+			record("query_error")
 			return defaultVal, false
 		}
 
+		// Nothing gets cached without usable history, so these keys miss on every lookup.
 		if len(vals) != 1 {
+			record("no_history")
 			if previous.Average == 0 {
 				return defaultVal, true
 			}
@@ -3554,10 +3599,14 @@ func (t *Task) FetchExpectedDuration(ctx context.Context) util.DurationStats {
 
 		avg := time.Duration(vals[0].ExpectedDuration)
 		if avg == 0 {
+			record("no_history")
 			return defaultVal, true
 		}
 		stdDev := time.Duration(vals[0].StdDev)
-		return util.DurationStats{Average: avg, StdDev: stdDev}, true
+		stats := util.DurationStats{Average: avg, StdDev: stdDev}
+		expectedDurationCache.Add(cacheKey, stats)
+		record("miss")
+		return stats, true
 	}
 
 	grip.Error(ctx, message.WrapError(t.DurationPrediction.SetRefresher(refresher), message.Fields{
@@ -3903,17 +3952,57 @@ func (t *Task) SetNumDependents(ctx context.Context) error {
 	}, update)
 }
 
+func addDisplayTaskIDToExecTasksUpdate(displayTaskID string, execTaskIDs []string) (bson.M, bson.M) {
+	return bson.M{
+			IdKey: bson.M{"$in": execTaskIDs},
+		},
+		bson.M{"$set": bson.M{
+			DisplayTaskIdKey: displayTaskID,
+		}}
+}
+
+func addExecTasksToDisplayTaskUpdate(displayTaskID string, execTaskIDs []string) (bson.M, bson.M) {
+	return bson.M{IdKey: displayTaskID},
+		bson.M{"$addToSet": bson.M{
+			ExecutionTasksKey: bson.M{"$each": execTaskIDs},
+		}}
+}
+
+func displayTaskActivationFields() bson.M {
+	return bson.M{
+		ActivatedKey:     true,
+		ActivatedTimeKey: time.Now(),
+	}
+}
+
+// NewAddDisplayTaskIDToExecTasksModel creates a bulk write model that assigns a display task parent ID.
+func NewAddDisplayTaskIDToExecTasksModel(displayTaskID string, execTaskIDs []string) mongo.WriteModel {
+	filter, update := addDisplayTaskIDToExecTasksUpdate(displayTaskID, execTaskIDs)
+	return mongo.NewUpdateManyModel().SetFilter(filter).SetUpdate(update)
+}
+
+// NewAddExecTasksToDisplayTaskModel creates a bulk write model that adds execution tasks to a display task.
+func NewAddExecTasksToDisplayTaskModel(displayTaskID string, execTaskIDs []string) mongo.WriteModel {
+	filter, update := addExecTasksToDisplayTaskUpdate(displayTaskID, execTaskIDs)
+	return mongo.NewUpdateOneModel().SetFilter(filter).SetUpdate(update)
+}
+
+// NewActivateDisplayTaskModel creates a bulk write model that activates an inactive display task.
+func NewActivateDisplayTaskModel(displayTaskID string) mongo.WriteModel {
+	return mongo.NewUpdateOneModel().
+		SetFilter(bson.M{
+			IdKey:        displayTaskID,
+			ActivatedKey: false,
+		}).
+		SetUpdate(bson.M{"$set": displayTaskActivationFields()})
+}
+
 func AddDisplayTaskIdToExecTasks(ctx context.Context, displayTaskId string, execTasksToUpdate []string) error {
 	if len(execTasksToUpdate) == 0 {
 		return nil
 	}
-	_, err := UpdateAll(ctx, bson.M{
-		IdKey: bson.M{"$in": execTasksToUpdate},
-	},
-		bson.M{"$set": bson.M{
-			DisplayTaskIdKey: displayTaskId,
-		}},
-	)
+	filter, update := addDisplayTaskIDToExecTasksUpdate(displayTaskId, execTasksToUpdate)
+	_, err := UpdateAll(ctx, filter, update)
 	return err
 }
 
@@ -3921,9 +4010,7 @@ func AddExecTasksToDisplayTask(ctx context.Context, displayTaskId string, execTa
 	if len(execTasks) == 0 {
 		return nil
 	}
-	update := bson.M{"$addToSet": bson.M{
-		ExecutionTasksKey: bson.M{"$each": execTasks},
-	}}
+	filter, update := addExecTasksToDisplayTaskUpdate(displayTaskId, execTasks)
 
 	if displayTaskActivated {
 		// verify that the display task isn't already activated
@@ -3935,18 +4022,11 @@ func AddExecTasksToDisplayTask(ctx context.Context, displayTaskId string, execTa
 			return errors.Errorf("display task not found")
 		}
 		if !dt.Activated {
-			update["$set"] = bson.M{
-				ActivatedKey:     true,
-				ActivatedTimeKey: time.Now(),
-			}
+			update["$set"] = displayTaskActivationFields()
 		}
 	}
 
-	return UpdateOne(
-		ctx,
-		bson.M{IdKey: displayTaskId},
-		update,
-	)
+	return UpdateOne(ctx, filter, update)
 }
 
 // in the process of aborting and will eventually reset themselves.
@@ -4409,9 +4489,12 @@ func (t *Task) setS3ArtifactStorageCosts(ctx context.Context, lookup bucketExpir
 	t.TaskCost.OnDemandS3ArtifactStorageCost = 0
 	t.TaskCost.AdjustedS3ArtifactStorageCost = 0
 	for _, bucketEntry := range t.S3Usage.Artifacts.BytesByBucketAndKey {
+		// A lookup miss is expected for these buckets, so don't log one. The lookup still runs because
+		// rules cached before the account was listed are still valid.
+		expectedMiss := costConfig.S3Cost.Storage.ShouldSkipLifecycleRules(bucketEntry.AWSRoleARN, bucketEntry.AWSAccountID)
 		for _, fileEntry := range bucketEntry.Files {
 			days, usedLookup := lookupExpirationDays(ctx, bucketEntry.Bucket, fileEntry.FileKey, lookup, costConfig)
-			if !usedLookup {
+			if !usedLookup && !expectedMiss {
 				grip.Info(ctx, message.Fields{
 					"message": "no S3 lifecycle rule found for artifact bucket, using default expiration days",
 					"bucket":  bucketEntry.Bucket,

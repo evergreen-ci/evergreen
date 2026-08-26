@@ -119,11 +119,16 @@ func loadProjectYAML(path string, quiet, errorOnWarnings, enableAnchors bool, lo
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading file '%s'", path)
 	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting current working directory")
+	}
 	project := &model.Project{}
 	ctx := context.Background()
 	opts := &model.GetProjectOpts{
 		LocalModules:      localModuleMap,
 		ReadFileFrom:      model.ReadFromLocal,
+		LocalIncludeDir:   cwd,
 		EnableYAMLAnchors: enableAnchors,
 	}
 	if !quiet {
@@ -182,15 +187,6 @@ func validateProjectRemotely(conf *ClientSettings, projectYaml []byte, path stri
 func loadProjectIntoWithValidation(ctx context.Context, data []byte, opts *model.GetProjectOpts, errorOnWarnings bool,
 	project *model.Project, projectID string) (*model.ParserProject, *model.ProjectConfig, validator.ValidationErrors) {
 	errs := validator.ValidationErrors{}
-	// We validate the project config regardless if version control is disabled for the project
-	// to ensure that the config will remain valid if it is turned on.
-	pc, err := model.CreateProjectConfig(data, "")
-	if err != nil {
-		errs = append(errs, validator.ValidationError{
-			Level:   validator.Error,
-			Message: err.Error(),
-		})
-	}
 	pp, err := model.LoadProjectInto(ctx, data, opts, projectID, project)
 	if err != nil {
 		// If the error came from unmarshalling strict, try it again without strict to verify if
@@ -203,12 +199,23 @@ func loadProjectIntoWithValidation(ctx context.Context, data []byte, opts *model
 					Level:   validator.Warning,
 					Message: errors.Wrap(err, "strict unmarshalling YAML").Error(),
 				})
-				return pp, pc, errs
+				return pp, pp.MergedProjectConfig(""), errs
 			}
 		}
 		errs = append(errs, validator.ValidationError{
 			Level:   validator.Error,
 			Message: err.Error(),
+		})
+	}
+	// We validate the project config regardless if version control is disabled for the project
+	// to ensure that the config will remain valid if it is turned on.
+	var pc *model.ProjectConfig
+	if pp != nil {
+		pc = pp.MergedProjectConfig("")
+	} else if _, pcErr := model.CreateProjectConfig(data, ""); pcErr != nil {
+		errs = append(errs, validator.ValidationError{
+			Level:   validator.Error,
+			Message: pcErr.Error(),
 		})
 	}
 	return pp, pc, errs

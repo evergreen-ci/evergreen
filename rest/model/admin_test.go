@@ -108,6 +108,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.RateLimit.GraphQLServiceBurst, apiSettings.RateLimit.GraphQLServiceBurst)
 	assert.EqualValues(testSettings.RateLimit.GraphQLComplexityLimit, apiSettings.RateLimit.GraphQLComplexityLimit)
 	assert.EqualValues(testSettings.RateLimit.ElevatedUserIDs, apiSettings.RateLimit.ElevatedUserIDs)
+	assert.EqualValues(testSettings.RateLimit.ExemptUserIDs, apiSettings.RateLimit.ExemptUserIDs)
 	assert.EqualValues(testSettings.AuthConfig.PreferredType, utility.FromStringPtr(apiSettings.AuthConfig.PreferredType))
 	assert.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, utility.FromStringPtr(apiSettings.AuthConfig.Naive.Users[0].Username))
 	assert.EqualValues(testSettings.AuthConfig.Okta.ClientID, utility.FromStringPtr(apiSettings.AuthConfig.Okta.ClientID))
@@ -166,9 +167,6 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ProjectCreation.RepoProjectLimit, apiSettings.ProjectCreation.RepoProjectLimit)
 	assert.EqualValues(testSettings.ProjectCreation.RepoExceptions[0].Owner, utility.FromStringPtr(apiSettings.ProjectCreation.RepoExceptions[0].Owner))
 	assert.EqualValues(testSettings.ProjectCreation.RepoExceptions[0].Repo, utility.FromStringPtr(apiSettings.ProjectCreation.RepoExceptions[0].Repo))
-	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Name, utility.FromStringPtr(apiSettings.Providers.AWS.EC2Keys[0].Name))
-	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Key, utility.FromStringPtr(apiSettings.Providers.AWS.EC2Keys[0].Key))
-	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Secret, utility.FromStringPtr(apiSettings.Providers.AWS.EC2Keys[0].Secret))
 	assert.EqualValues(testSettings.Providers.AWS.DefaultSecurityGroup, utility.FromStringPtr(apiSettings.Providers.AWS.DefaultSecurityGroup))
 	assert.EqualValues(testSettings.Providers.AWS.MaxVolumeSizePerUser, *apiSettings.Providers.AWS.MaxVolumeSizePerUser)
 	assert.EqualValues(testSettings.Providers.AWS.ParserProject.Key, utility.FromStringPtr(apiSettings.Providers.AWS.ParserProject.Key))
@@ -178,11 +176,14 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Providers.AWS.ParserProject.GeneratedJSONPrefix, utility.FromStringPtr(apiSettings.Providers.AWS.ParserProject.GeneratedJSONPrefix))
 	assert.EqualValues(testSettings.Providers.AWS.PersistentDNS.HostedZoneID, utility.FromStringPtr(apiSettings.Providers.AWS.PersistentDNS.HostedZoneID))
 	assert.EqualValues(testSettings.Providers.AWS.PersistentDNS.Domain, utility.FromStringPtr(apiSettings.Providers.AWS.PersistentDNS.Domain))
+	assert.EqualValues(testSettings.Providers.AWS.SubnetTagName, utility.FromStringPtr(apiSettings.Providers.AWS.SubnetTagName))
+	assert.EqualValues(testSettings.Providers.AWS.SubnetTagValue, utility.FromStringPtr(apiSettings.Providers.AWS.SubnetTagValue))
 	require.Len(apiSettings.Providers.AWS.AccountRoles, len(testSettings.Providers.AWS.AccountRoles))
 	for i, ar := range testSettings.Providers.AWS.AccountRoles {
 		assert.Equal(ar.Account, utility.FromStringPtr(apiSettings.Providers.AWS.AccountRoles[i].Account))
 		assert.Equal(ar.Role, utility.FromStringPtr(apiSettings.Providers.AWS.AccountRoles[i].Role))
 	}
+	assert.EqualValues(testSettings.Providers.AWS.AllowedSNSTopicARNs, utility.FromStringPtrSlice(apiSettings.Providers.AWS.AllowedSNSTopicARNs))
 	assert.EqualValues(testSettings.Providers.Docker.APIVersion, utility.FromStringPtr(apiSettings.Providers.Docker.APIVersion))
 	assert.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, apiSettings.RepoTracker.MaxConcurrentRequests)
 	assert.EqualValues(testSettings.Scheduler.TaskFinder, utility.FromStringPtr(apiSettings.Scheduler.TaskFinder))
@@ -283,9 +284,6 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ProjectCreation.RepoProjectLimit, dbSettings.ProjectCreation.RepoProjectLimit)
 	assert.EqualValues(testSettings.ProjectCreation.RepoExceptions[0].Owner, dbSettings.ProjectCreation.RepoExceptions[0].Owner)
 	assert.EqualValues(testSettings.ProjectCreation.RepoExceptions[0].Repo, dbSettings.ProjectCreation.RepoExceptions[0].Repo)
-	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Name, dbSettings.Providers.AWS.EC2Keys[0].Name)
-	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Key, dbSettings.Providers.AWS.EC2Keys[0].Key)
-	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Secret, dbSettings.Providers.AWS.EC2Keys[0].Secret)
 	assert.EqualValues(testSettings.Providers.AWS.DefaultSecurityGroup, dbSettings.Providers.AWS.DefaultSecurityGroup)
 	assert.EqualValues(testSettings.Providers.AWS.MaxVolumeSizePerUser, dbSettings.Providers.AWS.MaxVolumeSizePerUser)
 	assert.EqualValues(testSettings.Providers.AWS.ParserProject.Key, dbSettings.Providers.AWS.ParserProject.Key)
@@ -975,5 +973,60 @@ func TestAPIRateLimitConfig(t *testing.T) {
 			assert.Equal(t, 1000, svc.GraphQLComplexityLimit)
 			assert.Equal(t, []string{"user1", "user2"}, svc.ElevatedUserIDs)
 		})
+	})
+}
+
+func TestAPITaskLimitsConfigHourlyPatchTaskOverrides(t *testing.T) {
+	t.Run("BuildFromServiceConvertsProjectAndRepoOverrides", func(t *testing.T) {
+		svc := evergreen.TaskLimitsConfig{
+			MaxHourlyPatchTasks: 15000,
+			HourlyPatchTaskOverrides: []evergreen.HourlyPatchTaskOverride{
+				{
+					ProjectOrRepoID:     "project",
+					MaxHourlyPatchTasks: 40000,
+				},
+				{
+					ProjectOrRepoID:     "repo",
+					MaxHourlyPatchTasks: 30000,
+				},
+			},
+		}
+		api := APITaskLimitsConfig{}
+		require.NoError(t, api.BuildFromService(svc))
+		require.Len(t, api.HourlyPatchTaskOverrides, 2)
+		assert.Equal(t, "project", utility.FromStringPtr(api.HourlyPatchTaskOverrides[0].ProjectOrRepoID))
+		assert.Equal(t, 40000, utility.FromIntPtr(api.HourlyPatchTaskOverrides[0].MaxHourlyPatchTasks))
+		assert.Equal(t, "repo", utility.FromStringPtr(api.HourlyPatchTaskOverrides[1].ProjectOrRepoID))
+		assert.Equal(t, 30000, utility.FromIntPtr(api.HourlyPatchTaskOverrides[1].MaxHourlyPatchTasks))
+	})
+
+	t.Run("RoundTripPreservesOverrides", func(t *testing.T) {
+		svc := evergreen.TaskLimitsConfig{
+			MaxHourlyPatchTasks: 15000,
+			HourlyPatchTaskOverrides: []evergreen.HourlyPatchTaskOverride{
+				{
+					ProjectOrRepoID:     "project",
+					MaxHourlyPatchTasks: 40000,
+				},
+				{
+					ProjectOrRepoID:     "repo",
+					MaxHourlyPatchTasks: 30000,
+				},
+			},
+		}
+		api := APITaskLimitsConfig{}
+		require.NoError(t, api.BuildFromService(svc))
+		roundTripped, err := api.ToService()
+		require.NoError(t, err)
+		assert.Equal(t, svc.HourlyPatchTaskOverrides, roundTripped.(evergreen.TaskLimitsConfig).HourlyPatchTaskOverrides)
+	})
+
+	t.Run("NoOverridesRoundTripsToEmpty", func(t *testing.T) {
+		api := APITaskLimitsConfig{}
+		require.NoError(t, api.BuildFromService(evergreen.TaskLimitsConfig{MaxHourlyPatchTasks: 15000}))
+		assert.Empty(t, api.HourlyPatchTaskOverrides)
+		roundTripped, err := api.ToService()
+		require.NoError(t, err)
+		assert.Empty(t, roundTripped.(evergreen.TaskLimitsConfig).HourlyPatchTaskOverrides)
 	})
 }

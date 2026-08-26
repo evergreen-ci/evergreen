@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
@@ -109,26 +108,12 @@ type S3LifecycleClient interface {
 
 // DiscoverAndCacheProjectBucket checks if we have lifecycle rules cached for a bucket and fetches them if not.
 // It returns true if rules were successfully cached (discovery succeeded), false if already cached, if the
-// bucket's account is in accountsWithoutLifecycleRules, or if discovery failed.
+// bucket's artifacts are never priced or its rules are unreadable, or if discovery failed.
+// fallbackAccountID is used when the account cannot be derived from roleARN, which is the case for key+secret
+// s3.put uploads. An upload with no account at all is skipped, since it is never priced.
 // This is best-effort - errors are logged but not returned to avoid failing file uploads.
-func DiscoverAndCacheProjectBucket(ctx context.Context, bucketName, region string, roleARN *string, externalID *string, projectID string, accountsWithoutLifecycleRules []string, client S3LifecycleClient) bool {
-	// Derive the AWS account ID from the role ARN so we can check it against the skip list.
-	var awsAccountID string
-	if roleARN != nil {
-		if id, ok := util.AWSAccountIDFromIAMARN(*roleARN); ok {
-			awsAccountID = id
-		}
-	}
-
-	if awsAccountID != "" && evergreen.IsAccountWithoutLifecycleRules(awsAccountID, accountsWithoutLifecycleRules) {
-		grip.Info(ctx, message.Fields{
-			"message":    "skipping lifecycle rule discovery for bucket in account without lifecycle rules access",
-			"bucket":     bucketName,
-			"account_id": awsAccountID,
-			"project":    projectID,
-		})
-		return false
-	}
+func DiscoverAndCacheProjectBucket(ctx context.Context, bucketName, region string, roleARN *string, externalID *string, fallbackAccountID, projectID string, storageCostConfig *evergreen.S3StorageCostConfig, client S3LifecycleClient) bool {
+	awsAccountID := evergreen.ResolveUploadAccountID(utility.FromStringPtr(roleARN), fallbackAccountID)
 
 	existingRules, err := FindAllRulesForBucket(ctx, bucketName)
 	if err != nil {
@@ -140,6 +125,18 @@ func DiscoverAndCacheProjectBucket(ctx context.Context, bucketName, region strin
 	}
 
 	if len(existingRules) > 0 {
+		return false
+	}
+
+	// Never ask AWS for a bucket whose artifacts are not priced or whose rules we cannot read. Nothing
+	// is cached, so discovery runs again on the next upload once the configuration changes.
+	if storageCostConfig.ShouldSkipLifecycleRules("", awsAccountID) {
+		grip.Debug(ctx, message.Fields{
+			"message":    "skipping lifecycle rule discovery for bucket configured without lifecycle rules",
+			"bucket":     bucketName,
+			"account_id": awsAccountID,
+			"project":    projectID,
+		})
 		return false
 	}
 

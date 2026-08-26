@@ -956,6 +956,30 @@ Parameters:
   patch builds, Evergreen will `git fetch --unshallow` if the base
   commit is older than `<clone_depth>` commits. `clone_depth` takes precedence over `shallow_clone`.
 - `shallow_clone`: Sets `clone_depth` to 100, if not already set.
+- `filter`: Clone with `git clone --filter=<filter>` (a partial clone). The
+  most common value is `blob:none`, which omits all file content from the
+  initial clone and lazily fetches blobs on demand. Combine with
+  `sparse_checkout_paths` to check out only the files a task needs.
+- `sparse_checkout_paths`: Restrict the working tree to the listed paths via
+  `git sparse-checkout` (no-cone mode). The clone is done with `--no-checkout`,
+  the sparse set is applied, and only then is the revision checked out, so only
+  the matching paths land on disk. Only takes effect when `filter` is also set;
+  with an empty `filter` these paths are ignored and a normal full clone runs, so
+  the behavior can be toggled with `filter` alone. Entries are gitignore-style
+  patterns, not plain paths: an unanchored entry like `README.md` matches that
+  name in every directory, so anchor a single file with a leading slash, e.g.
+  `/scripts/foo.sh`.
+
+  Both `filter` and `sparse_checkout_paths` apply only to the source clone;
+  module and wiki clones are unaffected. `sparse_checkout_paths` requires a
+  distro git of 2.35 or newer (for `git sparse-checkout set --no-cone`). Patch
+  builds whose diffs only touch files inside `sparse_checkout_paths` work
+  normally, but a patch that touches anything outside the sparse set fails to
+  apply: Evergreen applies patches with `git apply`, which errors on files
+  missing from the working tree. Combining `filter` with `clone_depth` is
+  supported, but the `git fetch --unshallow` fallback for older base commits
+  requires a distro git new enough to unshallow a partial clone.
+
 - `recurse_submodules`: automatically initialize and update each
   submodule in the repository, including any nested submodules.
 
@@ -1570,6 +1594,9 @@ Parameters:
   the presigned url.
   Note: This parameter does \_not* affect the underlying permissions of the file
   on S3, only the visibility in the Evergreen UI. To change the permissions of the file on S3, use the `permissions` parameter.
+  See [Rotating AWS credentials for signed artifacts](#rotating-aws-credentials-for-signed-artifacts)
+  for how presigning picks up rotated credentials, and how to repair links for artifacts
+  uploaded before that.
 - `patchable`: defaults to true. If set to false, the command will
   no-op for patches (i.e. continue without performing the s3 put).
 - `patch_only`: defaults to false. If set to true, the command will
@@ -1594,6 +1621,41 @@ Parameters:
     }
   ]
   ```
+
+### Rotating AWS credentials for signed artifacts
+
+A presigned URL for a `visibility: signed` artifact is generated when someone opens
+the file, not when the file is uploaded, so it has to be signed with credentials that
+are still valid. When `aws_key` and `aws_secret` are given as single expansions, as in
+`aws_key: ${aws_key}`, Evergreen records the expansion names alongside the artifact and
+re-reads those project variables each time it presigns. Rotating the credentials is
+therefore enough to fix links for artifacts uploaded that way, with no need to keep the
+retired key pair around.
+
+Artifacts uploaded before Evergreen started recording those names have no names to
+re-read. For those, name the project variables once at the project level and Evergreen
+will use them for any signed artifact in the project that has none of its own:
+
+```bash
+curl -X PATCH \
+  -H "Authorization: Bearer $(evergreen client get-oauth-token)" \
+  -H "Content-Type: application/json" \
+  https://evergreen.mongodb.com/rest/v2/projects/<project> \
+  -d '{"artifact_credentials": {"aws_key_var_name": "name_of_your_aws_key_variable", "aws_secret_var_name": "name_of_your_aws_secret_variable"}}'
+```
+
+`aws_key_var_name` and `aws_secret_var_name` are the **names** of the project variables
+holding the credentials, not the credentials themselves. They must be set together, and
+the variables must exist in the project's variables. This setting is not editable from
+the project settings UI.
+
+`artifact_credentials` is unset by default and is only needed as a one-time backfill for
+those older artifacts.
+
+Artifacts uploaded with `role_arn` are unaffected by any of this. They are presigned by
+assuming that role each time, so rotating the role's credentials needs no action.
+Changing or deleting the role itself, however, breaks those links permanently, and
+`artifact_credentials` cannot repair them.
 
 ## s3.put with multiple files
 
@@ -1840,10 +1902,14 @@ This command allows a task to get a recommended list of tests from the [test sel
 service](https://wiki.corp.mongodb.com/spaces/DBDEVPROD/pages/385846915/Test+Selection+Services). The command will
 populate an output JSON file, which your task can use to decide which tests should run.
 
-This command can only request selected tests if [the test selection feature is enabled by the
-project](Project-and-Distro-Settings#test-selection-settings) and the task is running in a patch. On mainline commits and
-other non-patch versions, the command writes an empty test list to the output file, so no tests are excluded, even if the
-version page shows that test selection is enabled.
+This command only requests selected tests when [test selection filtering is enabled for the running
+task](Project-and-Distro-Settings#test-selection-settings). Projects can enable filtering for patches only or for both
+patches and mainline commits. Git tags, periodic builds, triggered versions, and other unsupported versions write an
+empty test list to the output file so that no tests are excluded.
+
+When test selection excludes tests because they are quarantined, Evergreen records those tests on the task so the UI can
+show which tests were skipped due to quarantine. The command may be called multiple times in a task, so
+the recorded tests accumulate across calls and are deduplicated by test name within a single task execution.
 
 ```yaml
 - command: test_selection.get

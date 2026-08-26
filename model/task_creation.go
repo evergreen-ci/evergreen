@@ -45,6 +45,14 @@ type TaskCreationInfo struct {
 	TestSelectionParams      TestSelectionParams // Task creation parameters for test selection
 }
 
+// repoRefID returns the ID of the repo that the project tracks, if any.
+func (info *TaskCreationInfo) repoRefID() string {
+	if info.ProjectRef == nil {
+		return ""
+	}
+	return info.ProjectRef.RepoRefId
+}
+
 // TestSelectionParams contains parameters for enabling test selection on tasks
 // in a build variant.
 type TestSelectionParams struct {

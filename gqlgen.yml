@@ -81,6 +81,8 @@ models:
         value: github.com/evergreen-ci/evergreen/rest/model.MultiPreferredType
       KANOPY:
         value: github.com/evergreen-ci/evergreen/rest/model.KanopyPreferredType
+  QuarantinedTest:
+    model: github.com/evergreen-ci/evergreen/model/testresult.QuarantinedTest
   AuthUser:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAuthUser
   AuthUserInput:
@@ -220,8 +222,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDuration
   EC2Key:
     model: github.com/evergreen-ci/evergreen/rest/model.APIEC2Key
-  EC2KeyInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIEC2Key
   EnvVar:
     model: github.com/evergreen-ci/evergreen/rest/model.APIEnvVar
   EnvVarInput:
@@ -314,6 +314,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIHomeVolumeSettings
   Host:
     model: github.com/evergreen-ci/evergreen/rest/model.APIHost
+  HourlyPatchTaskOverride:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIHourlyPatchTaskOverride
+  HourlyPatchTaskOverrideInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIHourlyPatchTaskOverride
   HostAllocatorSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIHostAllocatorSettings
   HostAllocatorSettingsInput:
@@ -719,6 +723,8 @@ models:
         resolver: true
   RepoSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
+  RepoTaskOwnershipSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskOwnershipSettings
   RepoTestSelectionSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APITestSelectionSettings
   RepotrackerConfig:
@@ -944,12 +950,18 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskQuarantineEntry
   TaskQueueItem:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskQueueItem
+  TaskQuarantinedTestsSample:
+    model: github.com/evergreen-ci/evergreen/model/testresult.TaskTestResultsQuarantinedSample
   TestLog:
     model: github.com/evergreen-ci/evergreen/rest/model.TestLogs
   TestQuarantineEntry:
     model: github.com/evergreen-ci/evergreen/rest/model.APITestQuarantineEntry
   TestResult:
     model: github.com/evergreen-ci/evergreen/rest/model.APITest
+  TaskOwnershipSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskOwnershipSettings
+  TaskOwnershipSettingsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskOwnershipSettings
   TestSelectionSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APITestSelectionSettings
   TestSelectionSettingsInput:

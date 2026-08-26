@@ -176,7 +176,8 @@ type GithubPatch struct {
 	CommitMessage string `bson:"commit_message"`
 	MergeBase     string `bson:"merge_base"`
 	// the patchId to copy the definitions for for the next patch the pr creates
-	RepeatPatchIdNextPatch string `bson:"repeat_patch_id_next_patch"`
+	RepeatPatchIdNextPatch string   `bson:"repeat_patch_id_next_patch"`
+	Labels                 []string `bson:"labels,omitempty"`
 }
 
 // GithubMergeGroup stores patch data for patches created from GitHub merge groups
@@ -313,6 +314,8 @@ var (
 	GithubPatchBaseOwnerKey   = bsonutil.MustHaveTag(GithubPatch{}, "BaseOwner")
 	GithubPatchBaseRepoKey    = bsonutil.MustHaveTag(GithubPatch{}, "BaseRepo")
 	RepeatPatchIdNextPatchKey = bsonutil.MustHaveTag(GithubPatch{}, "RepeatPatchIdNextPatch")
+	GithubPatchLabelsKey      = bsonutil.MustHaveTag(GithubPatch{}, "Labels")
+	GithubPatchHeadHashKey    = bsonutil.MustHaveTag(GithubPatch{}, "HeadHash")
 )
 
 type retryConfig struct {
@@ -460,7 +463,7 @@ func getInstallationToken(ctx context.Context, owner, repo string, opts *github.
 		return "", errors.Wrap(err, "getting config")
 	}
 
-	return githubapp.CreateGitHubAppAuth(settings).CreateCachedInstallationToken(ctx, owner, repo, defaultGitHubAPIRequestLifetime, opts)
+	return githubapp.CreateGitHubAppAuth(settings).CreateCachedInstallationToken(ctx, owner, repo, defaultGitHubAPIRequestLifetime, opts, false)
 }
 
 // RevokeInstallationToken revokes an installation token. Take care to make sure
@@ -705,7 +708,7 @@ func runGitHubOp(ctx context.Context, owner, repo, caller string, ghAppAuth *git
 // a 401 indicates the app lacks the necessary credentials and retrying would
 // be futile.
 func runGitHubOpWithExternalGitHubApp(ctx context.Context, owner, repo, caller string, ghAppAuth *githubapp.GithubAppAuth, op func(ctx context.Context, ghClient *githubapp.GitHubClient) error) error {
-	token, err := ghAppAuth.CreateCachedInstallationToken(ctx, owner, repo, defaultGitHubAPIRequestLifetime, nil)
+	token, err := ghAppAuth.CreateCachedInstallationToken(ctx, owner, repo, defaultGitHubAPIRequestLifetime, nil, false)
 	if err != nil {
 		return errors.Wrapf(err, "getting installation token with external GitHub app '%d'", ghAppAuth.AppID)
 	}
@@ -962,7 +965,7 @@ func githubRequest(ctx context.Context, method string, url string, oauthToken st
 
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
-	client := utility.GetHTTPClient()
+	client := utility.WithOTelTracing(utility.GetHTTPClient())
 	defer utility.PutHTTPClient(client)
 
 	return client.Do(req)
@@ -1302,7 +1305,7 @@ func CheckGithubAPILimit(ctx context.Context, owner, repo string, ghAppAuth *git
 			attribute.String(githubOwnerAttribute, owner),
 			attribute.String(githubRepoAttribute, repo),
 		)
-		token, err = ghAppAuth.CreateCachedInstallationToken(ctx, owner, repo, defaultGitHubAPIRequestLifetime, nil)
+		token, err = ghAppAuth.CreateCachedInstallationToken(ctx, owner, repo, defaultGitHubAPIRequestLifetime, nil, false)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting installation token with external GitHub app ID %d for owner/repo '%s/%s'", ghAppAuth.AppID, owner, repo)
 		}
@@ -1412,6 +1415,19 @@ func AppAuthorizedForOrg(ctx context.Context, requiredOrganization, name string)
 	))
 	defer span.End()
 
+	// Do not attempt to authorize names that aren't formatted as apps, since a
+	// user can share a name with an app.
+	if !strings.HasSuffix(name, botSuffix) {
+		grip.Debug(ctx, message.Fields{
+			"message": "name does not have bot suffix, skipping app authorization",
+			"name":    name,
+			"ticket":  "DEVPROD-41932",
+		})
+		return false, nil
+	}
+	// Remove the bot suffix because GitHub doesn't include it in the app slug.
+	nameWithoutBotSuffix := strings.TrimSuffix(name, botSuffix)
+
 	token, err := getInstallationTokenWithDefaultOwnerRepo(ctx, nil)
 	if err != nil {
 		return false, errors.Wrap(err, "getting installation token")
@@ -1419,9 +1435,6 @@ func AppAuthorizedForOrg(ctx context.Context, requiredOrganization, name string)
 
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 	defer githubClient.Close()
-
-	// GitHub often appends [bot] to GitHub App usage, but this doesn't match the App slug, so we should check without this.
-	nameWithoutBotSuffix := strings.TrimSuffix(name, botSuffix)
 	opts := &github.ListOptions{PerPage: 100}
 	for {
 		installations, resp, err := githubClient.Organizations.ListInstallations(ctx, requiredOrganization, opts)
@@ -1434,7 +1447,12 @@ func AppAuthorizedForOrg(ctx context.Context, requiredOrganization, name string)
 
 		for _, installation := range installations.Installations {
 			appSlug := installation.GetAppSlug()
-			if appSlug == name || appSlug == nameWithoutBotSuffix {
+			grip.Debug(ctx, message.Fields{
+				"message":  "DEVPROD-41932",
+				"app_slug": appSlug,
+				"app_id":   installation.GetAppID(),
+			})
+			if appSlug == nameWithoutBotSuffix {
 				prPermission := installation.GetPermissions().GetPullRequests()
 				if utility.StringSliceContains(githubWritePermissions, prPermission) {
 					return true, nil

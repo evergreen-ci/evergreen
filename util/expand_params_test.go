@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestIsExpandable(t *testing.T) {
@@ -280,4 +281,24 @@ func TestExpandValues(t *testing.T) {
 			So(testmap["A"]["deep"], ShouldEqual, "C")
 		})
 	})
+}
+
+func TestExpansionVarName(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		value    string
+		expected string
+	}{
+		"SingleExpansionReturnsName":              {value: "${aws_key}", expected: "aws_key"},
+		"ExpansionWithDefaultReturnsName":         {value: "${aws_key|fallback}", expected: "aws_key"},
+		"LiteralReturnsEmpty":                     {value: "AKIAFAKEKEY", expected: ""},
+		"ExpansionWithSurroundingTextIsNotSingle": {value: "prefix-${aws_key}", expected: ""},
+		"UnclosedExpansionReturnsEmpty":           {value: "${aws_key", expected: ""},
+		"AdjacentExpansionsReturnEmpty":           {value: "${aws_key}${aws_secret}", expected: ""},
+		"NestedExpansionReturnsEmpty":             {value: "${aws_${key}}", expected: ""},
+		"EmptyExpansionReturnsEmpty":              {value: "${}", expected: ""},
+	} {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, testCase.expected, ExpansionVarName(testCase.value))
+		})
+	}
 }

@@ -39,10 +39,11 @@ type Parameter struct {
 }
 
 type GitMetadata struct {
-	Username    string `bson:"username" json:"username"`
-	Email       string `bson:"email" json:"email"`
-	GitVersion  string `bson:"git_version,omitempty" json:"git_version,omitempty"`
-	LocalBranch string `bson:"local_branch,omitempty" json:"local_branch,omitempty"`
+	Username      string `bson:"username" json:"username"`
+	Email         string `bson:"email" json:"email"`
+	GitVersion    string `bson:"git_version,omitempty" json:"git_version,omitempty"`
+	LocalBranch   string `bson:"local_branch,omitempty" json:"local_branch,omitempty"`
+	LocalHeadHash string `bson:"local_head_hash,omitempty" json:"local_head_hash,omitempty"`
 }
 
 type LocalModuleInclude struct {
@@ -394,6 +395,20 @@ func (p *Patch) SetVariantsTasks(ctx context.Context, variantsTasks []VariantTas
 				VariantsTasksKey: variantsTasks,
 				BuildVariantsKey: p.BuildVariants,
 				TasksKey:         p.Tasks,
+			},
+		},
+	)
+}
+
+// SetGithubLabels updates the GitHub PR labels on the patch document.
+func (p *Patch) SetGithubLabels(ctx context.Context, labels []string) error {
+	p.GithubPatchData.Labels = labels
+	return UpdateOne(
+		ctx,
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$set": bson.M{
+				bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchLabelsKey): labels,
 			},
 		},
 	)

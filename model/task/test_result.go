@@ -50,6 +50,84 @@ func AppendTestResultMetadata(ctx context.Context, t *Task, env evergreen.Enviro
 	return svc.AppendTestResultMetadata(ctx, failedTestSample, failedCount, totalResults, record)
 }
 
+// AppendQuarantinedTests records tests skipped by test selection because they
+// were quarantined in TSS on the test results record for the given task run.
+// A record is created if the task has not attached any test results yet.
+// Tests already present in the snapshot are skipped. It returns the
+// number of tests newly added to the snapshot.
+func AppendQuarantinedTests(ctx context.Context, t *Task, env evergreen.Environment, quarantinedTests []testresult.QuarantinedTest) (int, error) {
+	if len(quarantinedTests) == 0 {
+		return 0, nil
+	}
+	output, ok := t.GetTaskOutputSafe()
+	if !ok {
+		return 0, nil
+	}
+	svc, err := getTestResultService(env, output.TestResults.Version)
+	if err != nil {
+		return 0, errors.Wrap(err, "getting test result service")
+	}
+
+	allTaskResults, err := svc.Get(ctx, []Task{*t}, GetTaskTestResultsOptions{Fields: []string{testresult.QuarantinedTestsKey}})
+	if err != nil {
+		return 0, errors.Wrap(err, "getting existing quarantined tests")
+	}
+	recorded := map[string]bool{}
+	for _, taskResults := range allTaskResults {
+		for _, quarantinedTest := range taskResults.QuarantinedTests {
+			recorded[quarantinedTest.TestName] = true
+		}
+	}
+	newTests := make([]testresult.QuarantinedTest, 0, len(quarantinedTests))
+	for _, quarantinedTest := range quarantinedTests {
+		if !recorded[quarantinedTest.TestName] {
+			newTests = append(newTests, quarantinedTest)
+			recorded[quarantinedTest.TestName] = true
+		}
+	}
+	if len(newTests) == 0 {
+		return 0, nil
+	}
+
+	info, err := makeTestResultsInfo(ctx, t)
+	if err != nil {
+		return 0, errors.Wrap(err, "making test results info")
+	}
+	record := testresult.DbTaskTestResults{
+		ID:   info.ID(),
+		Info: info,
+	}
+	if err = svc.AppendQuarantinedTests(ctx, record, newTests); err != nil {
+		return 0, err
+	}
+	return len(newTests), nil
+}
+
+// makeTestResultsInfo mirrors how the agent constructs test results info when
+// attaching test results so that both compute the same record ID for a task
+// run.
+func makeTestResultsInfo(ctx context.Context, t *Task) (testresult.TestResultsInfo, error) {
+	dt, err := t.GetDisplayTask(ctx)
+	if err != nil {
+		return testresult.TestResultsInfo{}, errors.Wrap(err, "finding display task")
+	}
+	info := testresult.TestResultsInfo{
+		Project:   t.Project,
+		Version:   t.Version,
+		Variant:   t.BuildVariant,
+		TaskID:    t.Id,
+		TaskName:  t.DisplayName,
+		Execution: t.Execution,
+		Requester: t.Requester,
+		Mainline:  !t.IsPatchRequest(),
+	}
+	if dt != nil {
+		info.DisplayTaskID = dt.Id
+		info.DisplayTaskName = dt.DisplayName
+	}
+	return info, nil
+}
+
 // getMergedTaskTestResults returns test results belonging to the specified task run.
 func getMergedTaskTestResults(ctx context.Context, env evergreen.Environment, tasks []Task, getOpts *FilterOptions) (testresult.TaskTestResults, error) {
 	if len(tasks) == 0 {
@@ -131,6 +209,52 @@ func GetFailedTestSamples(ctx context.Context, env evergreen.Environment, tasks 
 	if err != nil {
 		return nil, errors.Wrap(err, "getting failed test result samples")
 	}
+	return samples, nil
+}
+
+// GetQuarantinedTestSamples returns tests skipped because they were
+// quarantined in TSS for each task specified.
+func GetQuarantinedTestSamples(ctx context.Context, env evergreen.Environment, tasks []Task, limit int) ([]testresult.TaskTestResultsQuarantinedSample, error) {
+	if len(tasks) == 0 {
+		return nil, errors.New("must specify task options")
+	}
+	output, ok := tasks[0].GetTaskOutputSafe()
+	if !ok {
+		return []testresult.TaskTestResultsQuarantinedSample{}, nil
+	}
+	svc, err := getTestResultService(env, output.TestResults.Version)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting test results service")
+	}
+	allTaskResults, err := svc.Get(ctx, tasks, GetTaskTestResultsOptions{
+		Fields: []string{
+			testresult.TestResultsInfoKey,
+			testresult.QuarantinedTestsCountKey,
+			testresult.QuarantinedTestsKey,
+		},
+		QuarantinedTestsLimit: &limit,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "getting test results")
+	}
+
+	samples := make([]testresult.TaskTestResultsQuarantinedSample, 0, len(allTaskResults))
+	for _, taskResults := range allTaskResults {
+		if taskResults.Info.TaskID == "" {
+			if taskResults.QuarantinedTestsCount == 0 && len(taskResults.QuarantinedTests) == 0 {
+				continue
+			}
+			return nil, errors.New("test result metadata is missing task info")
+		}
+
+		samples = append(samples, testresult.TaskTestResultsQuarantinedSample{
+			TaskID:                       taskResults.Info.TaskID,
+			Execution:                    taskResults.Info.Execution,
+			QuarantinedTestsSkippedCount: taskResults.QuarantinedTestsCount,
+			QuarantinedTests:             taskResults.QuarantinedTests,
+		})
+	}
+
 	return samples, nil
 }
 

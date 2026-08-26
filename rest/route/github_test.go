@@ -135,6 +135,12 @@ func (s *GithubWebhookRouteSuite) TestAddIntentAndFailsWithDuplicate() {
 	s.NoError(err)
 	s.Equal(1, count)
 
+	intent, err := patch.FindIntent(s.T().Context(), "1", patch.GithubIntentType)
+	s.NoError(err)
+	s.Require().NotNil(intent)
+	patchDoc := intent.NewPatch()
+	s.Equal("ZackarySantana", patchDoc.GithubPatchData.Author)
+
 	resp = s.h.Run(s.T().Context())
 	s.NotEqual(http.StatusOK, resp.Status())
 	count, err = db.CountQ(s.T().Context(), patch.IntentCollection, db.Query(bson.M{}))
@@ -592,4 +598,95 @@ func TestShouldSkipWebhookPersonalStaging(t *testing.T) {
 			assert.Equal(t, tc.expectSkip, result)
 		})
 	}
+}
+
+func TestGetOtherPatchesWithHash(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.Clear(patch.Collection))
+
+	sha := "abc123def456"
+	makePatch := func(owner, repo string, prNum int) patch.Patch {
+		return patch.Patch{
+			Id:              mgobson.NewObjectId(),
+			GithubPatchData: thirdparty.GithubPatch{BaseOwner: owner, BaseRepo: repo, HeadHash: sha, PRNumber: prNum},
+		}
+	}
+	require.NoError(t, db.InsertMany(ctx, patch.Collection,
+		makePatch("evergreen-ci", "evergreen", 10),
+		makePatch("evergreen-ci", "evergreen", 5),
+		makePatch("other-org", "other-repo", 20),
+	))
+
+	t.Run("CrossRepoExcluded", func(t *testing.T) {
+		patches, err := getOtherPatchesWithHash(ctx, sha, "evergreen-ci", "evergreen", 999)
+		require.NoError(t, err)
+		assert.Len(t, patches, 2)
+	})
+	t.Run("SamePRFilteredOut", func(t *testing.T) {
+		patches, err := getOtherPatchesWithHash(ctx, sha, "evergreen-ci", "evergreen", 10)
+		require.NoError(t, err)
+		assert.Len(t, patches, 1)
+		assert.Equal(t, 5, patches[0].GithubPatchData.PRNumber)
+	})
+}
+
+func TestAddIntentForPRCommenterAuthorization(t *testing.T) {
+	owner := "evergreen-ci"
+	repoName := "evergreen"
+	fullName := owner + "/" + repoName
+	branch := "main"
+	prNum := 42
+	headSHA := "abc123"
+	prUser := "pr-author"
+	makePR := func() *github.PullRequest {
+		return &github.PullRequest{
+			Number: &prNum,
+			User:   &github.User{Login: &prUser},
+			Base:   &github.PullRequestBranch{Ref: &branch, Repo: &github.Repository{FullName: &fullName, Name: &repoName}, User: &github.User{Login: &owner}},
+			Head:   &github.PullRequestBranch{SHA: &headSHA, Ref: &branch},
+		}
+	}
+	insertProjectRef := func(t *testing.T) {
+		require.NoError(t, (&model.ProjectRef{
+			Id: "test-project", Owner: owner, Repo: repoName, Branch: branch, Enabled: true, PRTestingEnabled: utility.TruePtr(),
+		}).Insert(t.Context()))
+	}
+
+	t.Run("UnauthorizedCommenterIsRejected", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
+		insertProjectRef(t)
+		gh := &githubHookApi{
+			sc:       &data.MockGitHubConnector{MockGitHubConnectorImpl: data.MockGitHubConnectorImpl{}},
+			settings: &evergreen.Settings{GithubPRCreatorOrg: "mongodb"},
+			isCommenterAuthorized: func(ctx context.Context, requiredOrg, owner, repo, commenter string) (bool, error) {
+				return false, nil
+			},
+		}
+		err := gh.AddIntentForPR(t.Context(), makePR(), prUser, patch.AllCallers, "", "attacker", true)
+		assert.NoError(t, err)
+	})
+	t.Run("AuthorizedCommenterProceeds", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
+		insertProjectRef(t)
+		gh := &githubHookApi{
+			settings: &evergreen.Settings{GithubPRCreatorOrg: "mongodb"},
+			isCommenterAuthorized: func(ctx context.Context, requiredOrg, owner, repo, commenter string) (bool, error) {
+				return true, nil
+			},
+		}
+		err := gh.AddIntentForPR(t.Context(), makePR(), prUser, patch.AllCallers, "", "member", true)
+		assert.Error(t, err)
+	})
+	t.Run("EmptyCommenterSkipsCheck", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
+		gh := &githubHookApi{
+			settings: &evergreen.Settings{GithubPRCreatorOrg: "mongodb"},
+			isCommenterAuthorized: func(ctx context.Context, requiredOrg, owner, repo, commenter string) (bool, error) {
+				t.Error("should not be called for empty commenter")
+				return false, nil
+			},
+		}
+		err := gh.AddIntentForPR(t.Context(), makePR(), prUser, patch.AutomatedCaller, "", "", false)
+		assert.NoError(t, err)
+	})
 }

@@ -121,6 +121,41 @@ func (s *ProjectPatchByIDSuite) TestParse() {
 	s.NotNil(s.rm.(*projectIDPatchHandler).user)
 }
 
+// Artifact credentials are settable here but not in the project settings UI, and
+// this route replaces the whole document, so a later patch must not drop them.
+func (s *ProjectPatchByIDSuite) TestRunSetsAndPreservesArtifactCredentials() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
+
+	patch := func(body string) gimlet.Responder {
+		req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBufferString(body))
+		req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+		s.Require().NoError(s.rm.Parse(ctx, req))
+		return s.rm.Run(ctx)
+	}
+	credentials := serviceModel.ArtifactCredentialSettings{AWSKeyVarName: "aws_key", AWSSecretVarName: "aws_secret"}
+
+	resp := patch(`{"artifact_credentials": {"aws_key_var_name": "aws_key", "aws_secret_var_name": "aws_secret"}}`)
+	s.Equal(http.StatusOK, resp.Status())
+	pRef, err := serviceModel.FindBranchProjectRef(ctx, "dimoxinil")
+	s.NoError(err)
+	s.Require().NotNil(pRef)
+	s.Equal(credentials, pRef.ArtifactCredentials)
+
+	resp = patch(`{"batch_time": 55}`)
+	s.Equal(http.StatusOK, resp.Status())
+	pRef, err = serviceModel.FindBranchProjectRef(ctx, "dimoxinil")
+	s.NoError(err)
+	s.Require().NotNil(pRef)
+	s.Equal(credentials, pRef.ArtifactCredentials)
+	s.Equal(55, pRef.BatchTime)
+
+	// Half a pair resolves to nothing, leaving artifacts on stale stored credentials.
+	resp = patch(`{"artifact_credentials": {"aws_key_var_name": "only_key", "aws_secret_var_name": ""}}`)
+	s.Equal(http.StatusBadRequest, resp.Status())
+}
+
 func (s *ProjectPatchByIDSuite) TestRunInvalidIdentifierChange() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -435,7 +470,7 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 func (s *ProjectPatchByIDSuite) TestRunWithTestSelection() {
 	ctx := s.T().Context()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
-	jsonBody := []byte(`{"enabled": true, "test_selection": {"allowed": true, "default_enabled": false}}`)
+	jsonBody := []byte(`{"enabled": true, "test_selection": {"allowed": true, "default_enabled": true, "mainline_default_enabled": true}}`)
 	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
 	err := s.rm.Parse(ctx, req)
@@ -452,7 +487,9 @@ func (s *ProjectPatchByIDSuite) TestRunWithTestSelection() {
 	s.Require().NotNil(pRef.TestSelection.Allowed)
 	s.True(*pRef.TestSelection.Allowed)
 	s.Require().NotNil(pRef.TestSelection.DefaultEnabled)
-	s.False(*pRef.TestSelection.DefaultEnabled)
+	s.True(*pRef.TestSelection.DefaultEnabled)
+	s.Require().NotNil(pRef.TestSelection.MainlineDefaultEnabled)
+	s.True(*pRef.TestSelection.MainlineDefaultEnabled)
 }
 
 func (s *ProjectPatchByIDSuite) TestRunEveryMainlineCommit() {
@@ -902,6 +939,85 @@ func TestGetProjectTasks(t *testing.T) {
 	resp := h.Run(ctx)
 	assert.Equal(http.StatusOK, resp.Status())
 	assert.Len(resp.Data(), 21)
+}
+
+func TestGetProjectTasksParse(t *testing.T) {
+	ctx := t.Context()
+
+	for testName, testCase := range map[string]func(*testing.T){
+		"DefaultsWhenNoOptionsSpecified": func(t *testing.T) {
+			h := &getProjectTasksHandler{}
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/tasks/task", http.NoBody)
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj", "task_name": "task"})
+			require.NoError(t, h.Parse(ctx, req))
+			assert.Equal(t, defaultVersionLimit, h.opts.Limit)
+		},
+		"AcceptsBodyOptions": func(t *testing.T) {
+			h := &getProjectTasksHandler{}
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/tasks/task", bytes.NewBufferString(`{"num_versions":10,"build_variant":"variant","start_at":20,"requesters":["ad_hoc"]}`))
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj", "task_name": "task"})
+			require.NoError(t, h.Parse(ctx, req))
+			assert.Equal(t, model.GetProjectTasksOpts{
+				Limit:        10,
+				BuildVariant: "variant",
+				StartAt:      20,
+				Requesters:   []string{evergreen.AdHocRequester},
+			}, h.opts)
+		},
+		"AcceptsQueryOptions": func(t *testing.T) {
+			h := &getProjectTasksHandler{}
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/tasks/task?num_versions=10&build_variant=variant&start_at=20&requesters=ad_hoc&requesters=gitter_request", http.NoBody)
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj", "task_name": "task"})
+			require.NoError(t, h.Parse(ctx, req))
+			assert.Equal(t, model.GetProjectTasksOpts{
+				Limit:        10,
+				BuildVariant: "variant",
+				StartAt:      20,
+				Requesters:   []string{evergreen.AdHocRequester, evergreen.RepotrackerVersionRequester},
+			}, h.opts)
+		},
+		"AcceptsCommaSeparatedRequesters": func(t *testing.T) {
+			h := &getProjectTasksHandler{}
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/tasks/task?requesters=ad_hoc,gitter_request", http.NoBody)
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj", "task_name": "task"})
+			require.NoError(t, h.Parse(ctx, req))
+			assert.Equal(t, []string{evergreen.AdHocRequester, evergreen.RepotrackerVersionRequester}, h.opts.Requesters)
+		},
+		"QueryOptionsOverrideBodyOptions": func(t *testing.T) {
+			h := &getProjectTasksHandler{}
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/tasks/task?num_versions=10&build_variant=query_variant&start_at=20&requesters=gitter_request", bytes.NewBufferString(`{"num_versions":5,"build_variant":"body_variant","start_at":10,"requesters":["ad_hoc"]}`))
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj", "task_name": "task"})
+			require.NoError(t, h.Parse(ctx, req))
+			assert.Equal(t, model.GetProjectTasksOpts{
+				Limit:        10,
+				BuildVariant: "query_variant",
+				StartAt:      20,
+				Requesters:   []string{evergreen.RepotrackerVersionRequester},
+			}, h.opts)
+		},
+		"RejectsInvalidQueryOptions": func(t *testing.T) {
+			for _, query := range []string{
+				"num_versions=not_an_int",
+				"num_versions=-1",
+				"start_at=not_an_int",
+				"start_at=-1",
+				"requesters=invalid",
+			} {
+				h := &getProjectTasksHandler{}
+				req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/tasks/task?"+query, http.NoBody)
+				require.NoError(t, err)
+				req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj", "task_name": "task"})
+				assert.Error(t, h.Parse(ctx, req))
+			}
+		},
+	} {
+		t.Run(testName, testCase)
+	}
 }
 
 func TestGetProjectVersions(t *testing.T) {

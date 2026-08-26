@@ -136,30 +136,35 @@ func (c *dockerClientImpl) createClient(h *host.Host, httpClient *http.Client, t
 func (c *dockerClientImpl) Init(apiVersion string) error {
 	c.apiVersion = apiVersion
 
-	c.httpClient = c.getHTTPClient(0)
+	var err error
+	c.httpClient, err = c.getHTTPClient(0)
+	if err != nil {
+		return errors.Wrap(err, "creating HTTP client")
+	}
 
 	// Create HTTP client for importing images with higher timeout.
-	c.importHTTPClient = c.getHTTPClient(imageImportTimeout)
+	c.importHTTPClient, err = c.getHTTPClient(imageImportTimeout)
+	if err != nil {
+		return errors.Wrap(err, "creating HTTP client for importing images")
+	}
 
 	return nil
 }
 
-// getHTTPClient returns an HTTP client for Docker. The transport is left as a
-// plain *http.Transport (rather than being wrapped with otelhttp instrumentation
-// like the utility HTTP client pool) because the Docker client inspects the
-// transport to detect that it must communicate over TLS. Wrapping the transport
-// hides it from the Docker client, which then sends plain HTTP requests to the
-// TLS Docker daemon.
-func (c *dockerClientImpl) getHTTPClient(timeout time.Duration) *http.Client {
-	transport := utility.DefaultTransport()
-	transport.TLSClientConfig.InsecureSkipVerify = true
+// getHTTPClient returns an HTTP client for Docker.
+func (c *dockerClientImpl) getHTTPClient(timeout time.Duration) (*http.Client, error) {
+	client := utility.GetHTTPClient()
 
-	client := utility.DefaultHttpClient(transport)
 	if timeout > 0 {
 		client.Timeout = timeout
 	}
+	transport, ok := client.Transport.(*http.Transport)
+	if !ok {
+		return client, errors.New("type assertion failed: transport is not an *http.Transport")
+	}
+	transport.TLSClientConfig.InsecureSkipVerify = true
 
-	return client
+	return client, nil
 }
 
 // EnsureImageDownloaded checks if the image in s3 specified by the URL already exists,

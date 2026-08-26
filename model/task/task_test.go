@@ -21,6 +21,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -1077,13 +1081,13 @@ func TestEndingTask(t *testing.T) {
 				So(task.FinishTime.Unix(), ShouldEqual, now.Unix())
 			})
 		})
-		Convey("a task that is allocated a container should be deallocated", func() {
+		Convey("a non-host task should still be markable as ended", func() {
 			now := time.Now()
 			task := &Task{
 				Id:                "taskId",
 				Status:            evergreen.TaskStarted,
 				StartTime:         now.Add(-5 * time.Minute),
-				ExecutionPlatform: ExecutionPlatformContainer,
+				ExecutionPlatform: ExecutionPlatformVirtual,
 			}
 			So(task.Insert(t.Context()), ShouldBeNil)
 			details := &apimodels.TaskEndDetail{
@@ -1095,6 +1099,164 @@ func TestEndingTask(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(task.Status, ShouldEqual, evergreen.TaskFailed)
 		})
+	})
+}
+
+func TestEstimatedFinishTime(t *testing.T) {
+	now := time.Now()
+	for tName, tCase := range map[string]struct {
+		lastHeartbeat      time.Time
+		expectedFinishTime time.Time
+	}{
+		"IsLastHeartbeatWhenTaskStoppedReporting": {
+			lastHeartbeat:      now.Add(-10 * time.Minute),
+			expectedFinishTime: now.Add(-10 * time.Minute),
+		},
+		"IsNowWithoutAHeartbeat": {
+			expectedFinishTime: now,
+		},
+		"IsNowWhenHeartbeatMoreRecent": {
+			lastHeartbeat:      now.Add(time.Minute),
+			expectedFinishTime: now,
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			tsk := Task{LastHeartbeat: tCase.lastHeartbeat}
+			assert.Equal(t, tCase.expectedFinishTime, tsk.EstimatedFinishTime(now))
+		})
+	}
+}
+
+func TestMarkEnd(t *testing.T) {
+	ctx := t.Context()
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(Collection, distro.Collection, evergreen.ConfigCollection))
+	})
+
+	require.NoError(t, (&evergreen.CostConfig{
+		FinanceFormula:      0.6,
+		SavingsPlanDiscount: 0.5,
+		OnDemandDiscount:    0.04,
+	}).Set(ctx))
+	require.NoError(t, (&distro.Distro{
+		Id: "test_distro",
+		CostData: distro.CostData{
+			OnDemandRate:    0.20,
+			SavingsPlanRate: 0.10,
+		},
+	}).Insert(ctx))
+
+	t.Run("HostTaskHasRuntimeCost", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+		now := utility.BSONTime(time.Now())
+		tsk := Task{
+			Id:        "host_task",
+			HostId:    "host",
+			DistroId:  "test_distro",
+			StartTime: now.Add(-time.Hour),
+		}
+		require.NoError(t, tsk.Insert(ctx))
+
+		require.NoError(t, tsk.MarkEnd(ctx, now, &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}))
+
+		dbTask, err := FindOneId(ctx, tsk.Id)
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		assert.Positive(t, dbTask.TaskCost.OnDemandEC2Cost)
+		assert.Positive(t, dbTask.TaskCost.AdjustedEC2Cost)
+	})
+
+	t.Run("TaskWithoutHostHasNoRuntimeCost", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+		now := time.Now()
+		tsk := Task{
+			Id:        "task_without_host",
+			DistroId:  "test_distro",
+			StartTime: now.Add(-time.Hour),
+			TaskCost: cost.Cost{
+				OnDemandEC2Cost:           1,
+				AdjustedEC2Cost:           1,
+				OnDemandEBSThroughputCost: 1,
+				AdjustedEBSThroughputCost: 1,
+				OnDemandEBSStorageCost:    1,
+				AdjustedEBSStorageCost:    1,
+			},
+		}
+		require.NoError(t, tsk.Insert(ctx))
+
+		require.NoError(t, tsk.MarkEnd(ctx, now, &apimodels.TaskEndDetail{Status: evergreen.TaskFailed}))
+
+		dbTask, err := FindOneId(ctx, tsk.Id)
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		assert.True(t, dbTask.TaskCost.IsZero())
+	})
+
+	t.Run("EstimatedStartTimeForTaskThatNeverStarted", func(t *testing.T) {
+		finishTime := utility.BSONTime(time.Now())
+		for tName, tCase := range map[string]struct {
+			dispatchTime      time.Time
+			ingestTime        time.Time
+			expectedStartTime time.Time
+		}{
+			"IsDispatchTimeIfSet": {
+				dispatchTime:      finishTime.Add(-time.Minute),
+				ingestTime:        finishTime.Add(-3 * time.Hour),
+				expectedStartTime: finishTime.Add(-time.Minute),
+			},
+			"IsIngestTimeIfDispatchTimeIsUnset": {
+				ingestTime:        finishTime.Add(-time.Minute),
+				expectedStartTime: finishTime.Add(-time.Minute),
+			},
+			"IsDispatchTimeEvenWhenItIsOlderThanTheOtherEstimates": {
+				dispatchTime:      finishTime.Add(-10 * time.Hour),
+				ingestTime:        finishTime.Add(-3 * time.Hour),
+				expectedStartTime: finishTime.Add(-10 * time.Hour),
+			},
+		} {
+			t.Run(tName, func(t *testing.T) {
+				require.NoError(t, db.Clear(Collection))
+				tsk := Task{
+					Id:           "task_that_never_started",
+					HostId:       "host",
+					DistroId:     "test_distro",
+					DispatchTime: tCase.dispatchTime,
+					IngestTime:   tCase.ingestTime,
+				}
+				require.NoError(t, tsk.Insert(ctx))
+
+				require.NoError(t, tsk.MarkEnd(ctx, finishTime, &apimodels.TaskEndDetail{Status: evergreen.TaskFailed}))
+
+				dbTask, err := FindOneId(ctx, tsk.Id)
+				require.NoError(t, err)
+				require.NotNil(t, dbTask)
+				assert.WithinDuration(t, tCase.expectedStartTime, dbTask.StartTime, 0)
+				assert.Equal(t, finishTime.Sub(tCase.expectedStartTime), dbTask.TimeTaken)
+			})
+		}
+	})
+
+	t.Run("StartTimeIsKeptIfTaskStarted", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+		finishTime := utility.BSONTime(time.Now())
+		startTime := finishTime.Add(-10 * time.Minute)
+		tsk := Task{
+			Id:           "started_task",
+			HostId:       "host",
+			DistroId:     "test_distro",
+			DispatchTime: finishTime.Add(-11 * time.Minute),
+			IngestTime:   finishTime.Add(-30 * time.Minute),
+			StartTime:    startTime,
+		}
+		require.NoError(t, tsk.Insert(ctx))
+
+		require.NoError(t, tsk.MarkEnd(ctx, finishTime, &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}))
+
+		dbTask, err := FindOneId(ctx, tsk.Id)
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		assert.WithinDuration(t, startTime, dbTask.StartTime, 0)
+		assert.Equal(t, 10*time.Minute, dbTask.TimeTaken)
 	})
 }
 
@@ -2372,7 +2534,7 @@ func TestActivateTasks(t *testing.T) {
 		}
 
 		updatedIDs := []string{"t0", "t3", "t4"}
-		activatedDependencyIDs, err := ActivateTasks(ctx, []Task{tasks[0]}, time.Time{}, true, u.Id)
+		activatedDependencyIDs, err := ActivateTasks(ctx, []Task{tasks[0]}, time.Time{}, true, u.Id, "")
 		assert.NoError(t, err)
 		assert.ElementsMatch(t, updatedIDs, activatedDependencyIDs)
 
@@ -2404,7 +2566,7 @@ func TestActivateTasks(t *testing.T) {
 			}
 		}
 
-		activatedDependencyIDs, err = ActivateTasks(ctx, []Task{tasks[1]}, time.Time{}, true, u.Id)
+		activatedDependencyIDs, err = ActivateTasks(ctx, []Task{tasks[1]}, time.Time{}, true, u.Id, "")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), fmt.Sprintf("cannot schedule %d tasks, maximum hourly per-user limit is %d", 102, 100))
 		assert.Empty(t, activatedDependencyIDs)
@@ -2420,7 +2582,7 @@ func TestActivateTasks(t *testing.T) {
 		}
 		require.NoError(t, task.Insert(t.Context()))
 
-		activatedDependencyIDs, err := ActivateTasks(ctx, []Task{task}, time.Now(), true, "abyssinian")
+		activatedDependencyIDs, err := ActivateTasks(ctx, []Task{task}, time.Now(), true, "abyssinian", "")
 		assert.NoError(t, err)
 		assert.Empty(t, activatedDependencyIDs)
 
@@ -2457,7 +2619,7 @@ func TestDeactivateTasks(t *testing.T) {
 	}
 
 	updatedIDs := []string{"t0", "t4", "t5", "t6", "t7"}
-	err := DeactivateTasks(ctx, []Task{tasks[0]}, true, "")
+	err := DeactivateTasks(ctx, []Task{tasks[0]}, true, "", "")
 	assert.NoError(t, err)
 
 	dbTasks, err := FindAll(ctx, All)
@@ -2522,8 +2684,8 @@ func TestIsHostDispatchable(t *testing.T) {
 			tsk.ExecutionPlatform = ""
 			assert.True(t, tsk.IsHostDispatchable())
 		},
-		"ReturnsFalseForContainerTask": func(t *testing.T, tsk Task) {
-			tsk.ExecutionPlatform = ExecutionPlatformContainer
+		"ReturnsFalseForVirtualTask": func(t *testing.T, tsk Task) {
+			tsk.ExecutionPlatform = ExecutionPlatformVirtual
 			assert.False(t, tsk.IsHostDispatchable())
 		},
 		"ReturnsFalseForTaskWithoutUndispatchedStatus": func(t *testing.T, tsk Task) {
@@ -3454,9 +3616,9 @@ func TestArchive(t *testing.T) {
 
 			checkEventLogHostTaskExecutions(t, hostID, archivedExecTaskID, archivedExecution)
 		},
-		"ArchivesContainerTask": func(t *testing.T, tsk Task) {
+		"ArchivesVirtualTask": func(t *testing.T, tsk Task) {
 			archivedTaskID := MakeOldID(tsk.Id, tsk.Execution)
-			tsk.ExecutionPlatform = ExecutionPlatformContainer
+			tsk.ExecutionPlatform = ExecutionPlatformVirtual
 			require.NoError(t, tsk.Insert(ctx))
 
 			require.NoError(t, tsk.Archive(ctx))
@@ -4522,7 +4684,7 @@ func TestWillRun(t *testing.T) {
 		tsk := Task{
 			Status:            evergreen.TaskUndispatched,
 			Activated:         true,
-			ExecutionPlatform: ExecutionPlatformContainer,
+			ExecutionPlatform: ExecutionPlatformHost,
 			DependsOn:         []Dependency{{Unattainable: false}},
 		}
 		assert.True(t, tsk.WillRun())
@@ -4531,7 +4693,7 @@ func TestWillRun(t *testing.T) {
 		tsk := Task{
 			Status:            evergreen.TaskUndispatched,
 			Activated:         true,
-			ExecutionPlatform: ExecutionPlatformContainer,
+			ExecutionPlatform: ExecutionPlatformHost,
 			DependsOn:         []Dependency{{Unattainable: true}},
 		}
 		assert.False(t, tsk.WillRun())
@@ -4643,6 +4805,8 @@ func TestReset(t *testing.T) {
 			HostCreateDetails:          []HostCreateDetail{{HostId: "h"}},
 			NumNextTaskDispatches:      3,
 			NumQuarantinedTestsSkipped: 2,
+			TaskCost:                   cost.Cost{OnDemandEC2Cost: 1, AdjustedS3ArtifactPutCost: 1},
+			S3Usage:                    s3usage.S3Usage{Artifacts: s3usage.ArtifactMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 1}}},
 		}
 		assert.NoError(t, t0.Insert(t.Context()))
 
@@ -4664,6 +4828,10 @@ func TestReset(t *testing.T) {
 		assert.Empty(t, dbTask.Details)
 		assert.Zero(t, dbTask.NumNextTaskDispatches)
 		assert.Zero(t, dbTask.NumQuarantinedTestsSkipped)
+		assert.True(t, dbTask.TaskCost.IsZero())
+		assert.True(t, dbTask.S3Usage.IsZero())
+		assert.True(t, t0.TaskCost.IsZero())
+		assert.True(t, t0.S3Usage.IsZero())
 
 	})
 
@@ -4733,6 +4901,26 @@ func TestResetTasks(t *testing.T) {
 		assert.NoError(t, err)
 		assert.False(t, dbTask.UnattainableDependency)
 	})
+
+	t.Run("ClearsExecutionCostAndUsage", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+
+		t0 := Task{
+			Id:       "t0",
+			Status:   evergreen.TaskSucceeded,
+			CanReset: true,
+			TaskCost: cost.Cost{OnDemandEC2Cost: 1, AdjustedS3ArtifactPutCost: 1},
+			S3Usage:  s3usage.S3Usage{Logs: s3usage.LogMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 1}}},
+		}
+		require.NoError(t, t0.Insert(t.Context()))
+
+		require.NoError(t, ResetTasks(ctx, []Task{t0}, "user"))
+		dbTask, err := FindOneId(ctx, t0.Id)
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		assert.True(t, dbTask.TaskCost.IsZero())
+		assert.True(t, dbTask.S3Usage.IsZero())
+	})
 }
 
 func TestGenerateNotRun(t *testing.T) {
@@ -4768,7 +4956,7 @@ func TestGenerateNotRun(t *testing.T) {
 			assert.Empty(t, tasks)
 		},
 		"IgnoresTasksThatHaveNothingToGenerate": func(t *testing.T, tsk *Task) {
-			tsk.GeneratedJSONAsString = nil
+			tsk.GeneratedJSONStorageMethod = ""
 			require.NoError(t, tsk.Insert(t.Context()))
 
 			tasks, err := GenerateNotRun(ctx)
@@ -4788,87 +4976,11 @@ func TestGenerateNotRun(t *testing.T) {
 			require.NoError(t, db.ClearCollections(Collection))
 
 			tCase(t, &Task{
-				Id:                    "task_id",
-				Status:                evergreen.TaskStarted,
-				StartTime:             time.Now(),
-				GeneratedTasks:        false,
-				GeneratedJSONAsString: []string{"some_generated_json"},
-			})
-		})
-	}
-}
-
-func TestSetGeneratedJSON(t *testing.T) {
-	ctx := t.Context()
-
-	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection))
-	}()
-
-	for tName, tCase := range map[string]func(t *testing.T, tsk *Task){
-		"Succeeds": func(t *testing.T, tsk *Task) {
-			files := GeneratedJSONFiles{"generated_json"}
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			require.NoError(t, tsk.SetGeneratedJSON(ctx, files))
-
-			dbTask, err := FindOneIdWithGeneratedJSON(ctx, tsk.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbTask)
-			assert.Equal(t, files, dbTask.GeneratedJSONAsString)
-		},
-		"NoopsForAlreadySetGeneratedJSON": func(t *testing.T, tsk *Task) {
-			originalFiles := GeneratedJSONFiles{"generated_files"}
-			tsk.GeneratedJSONAsString = originalFiles
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			require.NoError(t, tsk.SetGeneratedJSON(ctx, []string{"new_generated_json"}))
-
-			dbTask, err := FindOneIdWithGeneratedJSON(ctx, tsk.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbTask)
-			assert.EqualValues(t, originalFiles, dbTask.GeneratedJSONAsString)
-			assert.Empty(t, dbTask.GeneratedJSONStorageMethod)
-		},
-		"NoopsForAlreadySetGeneratedJSONDBStorage": func(t *testing.T, tsk *Task) {
-			originalFiles := GeneratedJSONFiles{"generated_json"}
-			tsk.GeneratedJSONAsString = originalFiles
-			tsk.GeneratedJSONStorageMethod = evergreen.ProjectStorageMethodDB
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			require.NoError(t, tsk.SetGeneratedJSON(ctx, GeneratedJSONFiles{"new_generated_json"}))
-
-			dbTask, err := FindOneIdWithGeneratedJSON(ctx, tsk.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbTask)
-			assert.Equal(t, originalFiles, dbTask.GeneratedJSONAsString)
-			assert.Equal(t, evergreen.ProjectStorageMethodDB, dbTask.GeneratedJSONStorageMethod)
-		},
-		"NoopsForAlreadySetGeneratedJSONS3Storage": func(t *testing.T, tsk *Task) {
-			tsk.GeneratedJSONStorageMethod = evergreen.ProjectStorageMethodS3
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			require.NoError(t, tsk.SetGeneratedJSON(ctx, GeneratedJSONFiles{"new_generated_json"}))
-
-			dbTask, err := FindOneId(ctx, tsk.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbTask)
-			assert.Equal(t, evergreen.ProjectStorageMethodS3, dbTask.GeneratedJSONStorageMethod)
-			assert.Empty(t, dbTask.GeneratedJSONAsString)
-		},
-		"FailsForNonexistentTask": func(t *testing.T, tsk *Task) {
-			assert.Error(t, tsk.SetGeneratedJSON(ctx, GeneratedJSONFiles{"generated_json"}))
-			assert.Empty(t, tsk.GeneratedJSONAsString)
-			assert.Empty(t, tsk.GeneratedJSONStorageMethod)
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(Collection))
-
-			tCase(t, &Task{
-				Id:        "task_id",
-				Status:    evergreen.TaskStarted,
-				StartTime: time.Now(),
+				Id:                         "task_id",
+				Status:                     evergreen.TaskStarted,
+				StartTime:                  time.Now(),
+				GeneratedTasks:             false,
+				GeneratedJSONStorageMethod: evergreen.ProjectStorageMethodS3,
 			})
 		})
 	}
@@ -5790,4 +5902,288 @@ func TestGetS3ArtifactUsageFromDB(t *testing.T) {
 		assert.Equal(t, int64(150), metrics.UploadBytes, "bytes should reflect S3 overwrite semantics, not the sum")
 		assert.Equal(t, 1, metrics.Count, "deduped FileKey produces one logical artifact")
 	})
+}
+
+func TestIncNumQuarantinedTestsSkipped(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	})
+
+	tsk := &Task{Id: "quarantined_task", Execution: 1}
+	require.NoError(t, tsk.Insert(ctx))
+
+	findTask := func(t *testing.T) *Task {
+		dbTask, err := FindOneId(ctx, tsk.Id)
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		return dbTask
+	}
+
+	t.Run("MatchingExecutionIncrements", func(t *testing.T) {
+		require.NoError(t, tsk.IncNumQuarantinedTestsSkipped(ctx, 3))
+		assert.Equal(t, 3, tsk.NumQuarantinedTestsSkipped)
+		assert.Equal(t, 3, findTask(t).NumQuarantinedTestsSkipped)
+	})
+
+	t.Run("RepeatedIncrementsAccumulate", func(t *testing.T) {
+		require.NoError(t, tsk.IncNumQuarantinedTestsSkipped(ctx, 2))
+		assert.Equal(t, 5, tsk.NumQuarantinedTestsSkipped)
+		assert.Equal(t, 5, findTask(t).NumQuarantinedTestsSkipped)
+	})
+
+	t.Run("StaleExecutionIsDropped", func(t *testing.T) {
+		staleTask := &Task{Id: tsk.Id, Execution: 0}
+		require.NoError(t, staleTask.IncNumQuarantinedTestsSkipped(ctx, 7))
+		assert.Zero(t, staleTask.NumQuarantinedTestsSkipped)
+		assert.Equal(t, 5, findTask(t).NumQuarantinedTestsSkipped, "an increment for a previous execution should not apply to the current one")
+	})
+}
+
+func TestSetS3ArtifactStorageCostsLifecycleMissLogging(t *testing.T) {
+	ctx := t.Context()
+
+	// Capture grip output to assert on the log the cost path emits on a lifecycle lookup miss.
+	sender, err := send.NewInternalLogger("test", send.LevelInfo{Threshold: level.Debug, Default: level.Debug})
+	require.NoError(t, err)
+	original := grip.GetSender()
+	require.NoError(t, grip.SetSender(sender))
+	t.Cleanup(func() {
+		require.NoError(t, grip.SetSender(original))
+	})
+
+	const skippedAccount = "999999999999"
+	costConfig := &evergreen.CostConfig{
+		S3Cost: evergreen.S3CostConfig{
+			Storage: evergreen.S3StorageCostConfig{
+				DefaultMaxArtifactExpirationDays:         365,
+				ArtifactAWSAccountsWithoutLifecycleRules: []string{skippedAccount},
+			},
+		},
+	}
+	// Always miss, so the only thing under test is whether the miss is logged.
+	missingLookup := func(context.Context, string, string) (int, bool) { return 0, false }
+
+	loggedBuckets := func() []string {
+		var buckets []string
+		for sender.HasMessage() {
+			fields, ok := sender.GetMessage().Message.Raw().(message.Fields)
+			if !ok {
+				continue
+			}
+			if fields["message"] == "no S3 lifecycle rule found for artifact bucket, using default expiration days" {
+				buckets = append(buckets, fields["bucket"].(string))
+			}
+		}
+		return buckets
+	}
+
+	usage := func(bucket, roleARN, accountID string) s3usage.S3Usage {
+		return s3usage.S3Usage{
+			Artifacts: s3usage.ArtifactMetrics{
+				BytesByBucketAndKey: []s3usage.BucketFileMetrics{{
+					Bucket:       bucket,
+					AWSRoleARN:   roleARN,
+					AWSAccountID: accountID,
+					Files:        []s3usage.FileBytes{{FileKey: "f", Bytes: 5 * 1024 * 1024}},
+				}},
+			},
+		}
+	}
+
+	t.Run("SuppressesMissForKeySecretUploadInAccountWithoutLifecycleRules", func(t *testing.T) {
+		tk := Task{Id: "t1", S3Usage: usage("cdn-origin-compass-dev", "", skippedAccount)}
+		tk.setS3ArtifactStorageCosts(ctx, missingLookup, costConfig)
+		assert.Empty(t, loggedBuckets())
+		assert.True(t, tk.TaskCost.OnDemandS3ArtifactStorageCost > 0, "cost must still be computed from the default expiration days")
+	})
+
+	t.Run("SuppressesMissForRoleARNUploadInAccountWithoutLifecycleRules", func(t *testing.T) {
+		tk := Task{Id: "t2", S3Usage: usage("b", "arn:aws:iam::"+skippedAccount+":role/r", "")}
+		tk.setS3ArtifactStorageCosts(ctx, missingLookup, costConfig)
+		assert.Empty(t, loggedBuckets())
+	})
+
+	t.Run("LogsMissForAccountThatShouldHaveLifecycleRules", func(t *testing.T) {
+		tk := Task{Id: "t3", S3Usage: usage("mciuploads", "arn:aws:iam::123456789012:role/r", "")}
+		tk.setS3ArtifactStorageCosts(ctx, missingLookup, costConfig)
+		assert.Equal(t, []string{"mciuploads"}, loggedBuckets())
+	})
+
+	t.Run("LogsMissWhenBucketAccountIsUnknown", func(t *testing.T) {
+		tk := Task{Id: "t4", S3Usage: usage("mciuploads", "", "")}
+		tk.setS3ArtifactStorageCosts(ctx, missingLookup, costConfig)
+		assert.Equal(t, []string{"mciuploads"}, loggedBuckets())
+	})
+
+	// Uploads that are not devprod owned are never priced, so a lookup miss is expected for them.
+	t.Run("SuppressesMissForUploadsOutsideDevprodOwnedList", func(t *testing.T) {
+		ownedConfig := &evergreen.CostConfig{
+			S3Cost: evergreen.S3CostConfig{
+				Storage: evergreen.S3StorageCostConfig{
+					DefaultMaxArtifactExpirationDays: 365,
+					DevprodOwnedAWSAccountIDs:        []string{"123456789012"},
+				},
+			},
+		}
+
+		tk := Task{Id: "t5", S3Usage: usage("unowned-bucket", "arn:aws:iam::210987654321:role/r", "")}
+		tk.setS3ArtifactStorageCosts(ctx, missingLookup, ownedConfig)
+		assert.Empty(t, loggedBuckets())
+
+		tk = Task{Id: "t6", S3Usage: usage("unresolved-bucket", "", "")}
+		tk.setS3ArtifactStorageCosts(ctx, missingLookup, ownedConfig)
+		assert.Empty(t, loggedBuckets(), "an upload with no resolvable account is not devprod owned")
+		assert.Positive(t, tk.TaskCost.OnDemandS3ArtifactStorageCost, "cost must still be computed from the default expiration days")
+	})
+}
+
+func TestUpdateSchedulingLimit(t *testing.T) {
+	ctx := t.Context()
+
+	const (
+		username         = "user"
+		serviceUsername  = "service_user"
+		generalLimit     = 100
+		boostedLimit     = 10000
+		boostedProject   = "boosted_project"
+		normalProject    = "normal_project"
+		boostedRepo      = "boosted_repo"
+		boostedRepoChild = "boosted_repo_child"
+		otherRepoChild   = "other_repo_child"
+	)
+
+	settings := evergreen.GetEnvironment().Settings()
+	originalTaskLimits := settings.TaskLimits
+	t.Cleanup(func() {
+		settings.TaskLimits = originalTaskLimits
+		assert.NoError(t, db.ClearCollections(user.Collection))
+	})
+
+	for tName, tCase := range map[string]struct {
+		caller                   string
+		onlyAPI                  bool
+		requester                string
+		projectID                string
+		repoRefID                string
+		numTasksModified         int
+		expectedErr              string
+		expectedGeneralCount     int
+		expectedPerProjectCounts map[string]int
+	}{
+		"BoostedProjectAllowsSchedulingAboveGeneralLimit": {
+			projectID:                boostedProject,
+			numTasksModified:         500,
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{boostedProject: 500},
+		},
+		"NormalProjectStillEnforcesGeneralLimit": {
+			projectID:                normalProject,
+			numTasksModified:         500,
+			expectedErr:              "cannot schedule 500 tasks, maximum hourly per-user limit is 100",
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{},
+		},
+		"NormalProjectUnderGeneralLimitUsesGeneralCounter": {
+			projectID:                normalProject,
+			numTasksModified:         50,
+			expectedGeneralCount:     50,
+			expectedPerProjectCounts: map[string]int{},
+		},
+		"ProjectTrackingBoostedRepoUsesRepoLimitAndRepoCounter": {
+			projectID:                boostedRepoChild,
+			repoRefID:                boostedRepo,
+			numTasksModified:         500,
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{boostedRepo: 500},
+		},
+		"ProjectTrackingUnboostedRepoUsesGeneralLimit": {
+			projectID:                otherRepoChild,
+			repoRefID:                "other_repo",
+			numTasksModified:         500,
+			expectedErr:              "cannot schedule 500 tasks, maximum hourly per-user limit is 100",
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{},
+		},
+		"NonPatchRequesterIsExemptFromBoostedProjectTracking": {
+			requester:                evergreen.RepotrackerVersionRequester,
+			projectID:                boostedProject,
+			numTasksModified:         500,
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{},
+		},
+		"SystemActivatorIsExemptFromBoostedProjectTracking": {
+			caller:                   evergreen.BuildActivator,
+			projectID:                boostedProject,
+			numTasksModified:         500,
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{},
+		},
+		"ServiceUserIsExemptFromBoostedProjectTracking": {
+			caller:                   serviceUsername,
+			onlyAPI:                  true,
+			projectID:                boostedProject,
+			numTasksModified:         500,
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{},
+		},
+		"NoTasksModifiedIsANoop": {
+			projectID:                boostedProject,
+			numTasksModified:         0,
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{},
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(user.Collection))
+
+			settings.TaskLimits = evergreen.TaskLimitsConfig{
+				MaxHourlyPatchTasks: generalLimit,
+				HourlyPatchTaskOverrides: []evergreen.HourlyPatchTaskOverride{
+					{
+						ProjectOrRepoID:     boostedProject,
+						MaxHourlyPatchTasks: boostedLimit,
+					},
+					{
+						ProjectOrRepoID:     boostedRepo,
+						MaxHourlyPatchTasks: boostedLimit,
+					},
+				},
+			}
+
+			caller := tCase.caller
+			if caller == "" {
+				caller = username
+			}
+			u := &user.DBUser{
+				Id:      caller,
+				OnlyAPI: tCase.onlyAPI,
+			}
+			require.NoError(t, u.Insert(ctx))
+
+			requester := tCase.requester
+			if requester == "" {
+				requester = evergreen.PatchVersionRequester
+			}
+
+			err := UpdateSchedulingLimit(ctx, caller, requester, tCase.projectID, tCase.repoRefID, tCase.numTasksModified, true)
+			if tCase.expectedErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tCase.expectedErr)
+			} else {
+				require.NoError(t, err)
+			}
+
+			dbUser, err := user.FindOneById(ctx, caller)
+			require.NoError(t, err)
+			require.NotNil(t, dbUser)
+			assert.Equal(t, tCase.expectedGeneralCount, dbUser.NumScheduledPatchTasks)
+			perProjectCounts := map[string]int{}
+			for _, usage := range dbUser.PerProjectSchedulingUsage {
+				perProjectCounts[usage.ProjectOrRepoID] = usage.NumScheduledPatchTasks
+			}
+			assert.Equal(t, tCase.expectedPerProjectCounts, perProjectCounts)
+		})
+	}
 }

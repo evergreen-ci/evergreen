@@ -2,18 +2,6 @@ mutation SaveAdminSettings {
   saveAdminSettings(adminSettings: {
     providers: {
       aws: {
-        ec2Keys: [
-          {
-            name: "test-key-1"
-            key: "21039487102938470912837"
-            secret: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-          }
-          {
-            name: "test-key-2"
-            key: "120938471209384701298"
-            secret: "je7MtGbClwBF/2Zp9Utk/h3yCo8nvbEXAMPLEKEY"
-          }
-        ]
         subnets: [
           {
             az: "us-east-1a"
@@ -45,6 +33,7 @@ mutation SaveAdminSettings {
         ]
         ipamPoolID: "pool-id"
         elasticIPUsageRate: 0.5
+        allowedSNSTopicARNs: ["arn:aws:sns:us-east-1:012345678901:topic"]
       }
       docker: {
         apiVersion: "1.40"
@@ -108,6 +97,7 @@ mutation SaveAdminSettings {
         }
         ipamPoolID
         elasticIPUsageRate
+        allowedSNSTopicARNs
       }
       docker {
         apiVersion

@@ -544,9 +544,15 @@ func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
 				DisplayName: "sample_task",
 				Status:      evergreen.TaskStarted,
 			}
+			if storageMethod == evergreen.ProjectStorageMethodDB {
+				sampleTask.GeneratedJSONAsString = sampleGeneratedProject
+				sampleTask.GeneratedJSONStorageMethod = storageMethod
+			}
 			require.NoError(sampleTask.Insert(t.Context()))
 
-			require.NoError(task.GeneratedJSONInsert(ctx, env.Settings(), &sampleTask, sampleGeneratedProject, storageMethod))
+			if storageMethod == evergreen.ProjectStorageMethodS3 {
+				require.NoError(task.GeneratedJSONInsert(ctx, env.Settings(), &sampleTask, sampleGeneratedProject))
+			}
 
 			sampleDistros := []distro.Distro{
 				{

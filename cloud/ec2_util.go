@@ -658,10 +658,12 @@ func getEC2ManagerOptionsFromSettings(d distro.Distro, settings *EC2ProviderSett
 }
 
 func validateEC2HostModifyOptions(h *host.Host, opts host.HostModifyOptions) error {
-	if opts.InstanceType != "" && h.Status != evergreen.HostStopped {
-		return errors.New("host must be stopped to modify instance type")
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(opts.InstanceType != "" && h.Status != evergreen.HostStopped, "host must be stopped to modify instance type")
+	if opts.NewName != "" {
+		catcher.Wrap(host.ValidateDisplayName(opts.NewName), "invalid display name")
 	}
-	return nil
+	return catcher.Resolve()
 }
 
 func ValidVolumeOptions(v *host.Volume, s *evergreen.Settings) error {
@@ -670,12 +672,16 @@ func ValidVolumeOptions(v *host.Volume, s *evergreen.Settings) error {
 		catcher.Errorf("invalid volume type '%s', valid EBS volume types are: %s", v.Type, ValidVolumeTypes)
 	}
 
-	_, err := getSubnetForZone(s.Providers.AWS.Subnets, v.AvailabilityZone)
+	// Spawn hosts/volumes are only supported in the default AWS account
+	// currently, so only look for subnets in the default account.
+	_, err := getSubnetForZoneInDefaultAccount(s.Providers.AWS.Subnets, v.AvailabilityZone)
 	catcher.Add(err)
 	return catcher.Resolve()
 }
 
-func getSubnetForZone(subnets []evergreen.Subnet, zone string) (string, error) {
+// getSubnetForZoneInDefaultAccount gets a subnet that is in the given
+// availability zone. This only supports subnets in the default AWS account.
+func getSubnetForZoneInDefaultAccount(subnets []evergreen.Subnet, zone string) (string, error) {
 	zones := []string{}
 	for _, subnet := range subnets {
 		if subnet.AZ == zone {

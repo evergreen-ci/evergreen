@@ -46,13 +46,15 @@ const (
 	versionIDFlagName       = "version_id"
 	yesFlagName             = "yes"
 
-	dbAWSAuthFlagName   = "mongo-aws-auth"
-	dbNameFlagName      = "db"
-	dbRmodeFlagName     = "rmode"
-	dbUrlFlagName       = "url"
-	dbWmodeFlagName     = "wmode"
-	dbWriteNumFlagName  = "w"
-	sharedDBUrlFlagName = "shared-db-url"
+	dbAWSAuthFlagName       = "mongo-aws-auth"
+	dbNameFlagName          = "db"
+	dbOIDCAuthFlagName      = "mongo-oidc-auth"
+	dbOIDCTokenFileFlagName = "mongo-oidc-token-file"
+	dbRmodeFlagName         = "rmode"
+	dbUrlFlagName           = "url"
+	dbWmodeFlagName         = "wmode"
+	dbWriteNumFlagName      = "w"
+	sharedDBUrlFlagName     = "shared-db-url"
 
 	jsonFlagName = "json"
 )
@@ -204,6 +206,16 @@ func addDbSettingsFlags(flags ...cli.Flag) []cli.Flag {
 			Name:   dbAWSAuthFlagName,
 			Usage:  "Enable MONGODB_AWS authentication with the database.",
 			EnvVar: evergreen.MongoAWSAuthEnabled,
+		},
+		cli.BoolFlag{
+			Name:   dbOIDCAuthFlagName,
+			Usage:  "Enable MONGODB-OIDC authentication with the database.",
+			EnvVar: evergreen.MongoOIDCAuthEnabled,
+		},
+		cli.StringFlag{
+			Name:   dbOIDCTokenFileFlagName,
+			Usage:  "Path to the Kubernetes service account token for MONGODB-OIDC authentication.",
+			EnvVar: evergreen.MongoOIDCTokenFile,
 		},
 		cli.StringFlag{
 			Name:  dbNameFlagName,

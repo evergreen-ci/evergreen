@@ -3,6 +3,7 @@ package cloud
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -48,6 +49,9 @@ type AWSClient interface {
 
 	// DescribeInstanceTypeOfferings is a wrapper for ec2.DescribeInstanceTypeOfferings.
 	DescribeInstanceTypeOfferings(context.Context, *ec2.DescribeInstanceTypeOfferingsInput) (*ec2.DescribeInstanceTypeOfferingsOutput, error)
+
+	// DescribeSubnets is a wrapper for ec2.DescribeSubnets.
+	DescribeSubnets(context.Context, *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error)
 
 	// CreateTags is a wrapper for ec2.CreateTags.
 	CreateTags(context.Context, *ec2.CreateTagsInput) (*ec2.CreateTagsOutput, error)
@@ -285,6 +289,31 @@ func (c *awsClientImpl) DescribeInstanceTypeOfferings(ctx context.Context, input
 		func() (bool, error) {
 			msg := makeAWSLogMessage("DescribeInstanceTypeOfferings", fmt.Sprintf("%T", c), input)
 			output, err = c.ec2Client.DescribeInstanceTypeOfferings(ctx, input)
+			if err != nil {
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(ctx, message.WrapError(apiErr, msg))
+				}
+				return true, err
+			}
+			grip.Info(ctx, msg)
+			return false, nil
+		}, awsClientDefaultRetryOptions())
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+// DescribeSubnets is a wrapper for ec2.DescribeSubnets.
+func (c *awsClientImpl) DescribeSubnets(ctx context.Context, input *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error) {
+	var output *ec2.DescribeSubnetsOutput
+	var err error
+	err = utility.Retry(
+		ctx,
+		func() (bool, error) {
+			msg := makeAWSLogMessage("DescribeSubnets", fmt.Sprintf("%T", c), input)
+			output, err = c.ec2Client.DescribeSubnets(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
@@ -1144,6 +1173,13 @@ type awsClientMock struct { //nolint
 	RequestGetInstanceInfoError error
 	DescribeInstancesError      error
 	*ec2.DescribeInstanceTypeOfferingsOutput
+	DescribeInstanceTypeOfferingsError error
+	DescribeInstanceTypeOfferingsCount int
+
+	*ec2.DescribeSubnetsInput
+	*ec2.DescribeSubnetsOutput
+	DescribeSubnetsError error
+	DescribeSubnetsCount int
 
 	launchTemplates []types.LaunchTemplate
 
@@ -1240,7 +1276,20 @@ func (c *awsClientMock) ModifyInstanceAttribute(ctx context.Context, input *ec2.
 
 func (c *awsClientMock) DescribeInstanceTypeOfferings(ctx context.Context, input *ec2.DescribeInstanceTypeOfferingsInput) (*ec2.DescribeInstanceTypeOfferingsOutput, error) {
 	c.DescribeInstanceTypeOfferingsInput = input
+	c.DescribeInstanceTypeOfferingsCount++
+	if c.DescribeInstanceTypeOfferingsError != nil {
+		return nil, c.DescribeInstanceTypeOfferingsError
+	}
 	return c.DescribeInstanceTypeOfferingsOutput, nil
+}
+
+func (c *awsClientMock) DescribeSubnets(ctx context.Context, input *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error) {
+	c.DescribeSubnetsInput = input
+	c.DescribeSubnetsCount++
+	if c.DescribeSubnetsError != nil {
+		return nil, c.DescribeSubnetsError
+	}
+	return c.DescribeSubnetsOutput, nil
 }
 
 // TerminateInstances is a mock for ec2.TerminateInstances.
@@ -1542,10 +1591,50 @@ func makeAWSLogMessage(name, client string, args any) message.Fields {
 
 	argMap := make(map[string]any)
 	if err := mapstructure.Decode(args, &argMap); err == nil {
+		redactAWSUserData(argMap)
 		msg["args"] = argMap
 	} else {
 		msg["args"] = fmt.Sprintf("%+v", args)
 	}
 
 	return msg
+}
+
+// redactAWSUserData recursively redacts any UserData field in a decoded AWS
+// request. Nested structs are decoded into fresh maps so the caller's original
+// request is never mutated.
+func redactAWSUserData(argMap map[string]any) {
+	for k, v := range argMap {
+		if k == "UserData" {
+			argMap[k] = "{REDACTED}"
+			continue
+		}
+		if nested := decodeAWSStruct(v); nested != nil {
+			redactAWSUserData(nested)
+			argMap[k] = nested
+		}
+	}
+}
+
+// decodeAWSStruct decodes a struct or pointer-to-struct value into a fresh map
+// so it can be recursively redacted. It returns nil for any other kind of value.
+func decodeAWSStruct(v any) map[string]any {
+	if v == nil {
+		return nil
+	}
+	rv := reflect.ValueOf(v)
+	for rv.Kind() == reflect.Ptr {
+		if rv.IsNil() {
+			return nil
+		}
+		rv = rv.Elem()
+	}
+	if rv.Kind() != reflect.Struct {
+		return nil
+	}
+	m := make(map[string]any)
+	if err := mapstructure.Decode(rv.Interface(), &m); err != nil {
+		return nil
+	}
+	return m
 }

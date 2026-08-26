@@ -1,6 +1,6 @@
 {
   waterfall(options: { projectIdentifier: "sandbox_project_id", maxOrder: 4 }) {
-    flattenedVersions {
+    versions {
       id
       order
       revision

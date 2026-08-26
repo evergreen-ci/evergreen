@@ -43,10 +43,17 @@ categories=(
 )
 
 # The analyzer only sees files that build for the current platform, so files behind //go:build tags for other operating
-# systems (e.g. *_linux.go, *_windows.go) are invisible unless we vary GOOS. Scan every OS that Evergreen builds for so a
-# regression in a platform-specific file can't slip through the CI host's own platform. GOARCH is left at the host
-# default; build tags in this codebase gate on OS, not architecture.
-platforms=(linux windows darwin)
+# systems (e.g. *_linux.go, *_windows.go) are invisible unless we vary GOOS. CI achieves full coverage by running one
+# task per OS in parallel, each passing its target GOOS in MODERNIZE_GOOS. A local `make modernize` leaves it unset and
+# falls back to scanning only the current GOOS, which is fast; CI is the backstop that catches platform-specific
+# regressions. `go env GOOS` reports the host default while still honoring an explicit override (e.g.
+# `GOOS=windows make modernize`). GOARCH is left at the default; build tags in this codebase gate on OS, not
+# architecture.
+if [ -n "$MODERNIZE_GOOS" ]; then
+    platforms=("$MODERNIZE_GOOS")
+else
+    platforms=("$(go env GOOS)")
+fi
 
 # Generated files are intentionally left unmodernized, so drop any findings in them. This list must cover every checked-in
 # generated file, because the modernize suite does not skip generated files on its own; a finding in one would otherwise

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -311,16 +312,20 @@ func MakeSmokeRequest(ctx context.Context, params APIParams, method string, clie
 
 // SmokeRunBinary runs a smoke test Evergreen binary in the background. The name
 // indicates the process name so that it can be tracked in output logs. The
-// given wd is used as the working directory for the command.
-func SmokeRunBinary(ctx context.Context, name, wd, bin string, cmdParts ...string) (jasper.Process, error) {
+// given wd is used as the working directory for the command, and env holds any
+// environment variables to set in addition to EVGHOME.
+func SmokeRunBinary(ctx context.Context, name, wd string, env map[string]string, bin string, cmdParts ...string) (jasper.Process, error) {
 	grip.Infof(ctx, "Running command: %s", append([]string{bin}, cmdParts...))
 
 	cmdSender := send.NewWriterSender(send.MakeNative())
 	cmdSender.SetName(name)
 
+	procEnv := map[string]string{"EVGHOME": wd}
+	maps.Copy(procEnv, env)
+
 	proc, err := jasper.NewProcess(ctx, &options.Create{
 		Args:             append([]string{bin}, cmdParts...),
-		Environment:      map[string]string{"EVGHOME": wd},
+		Environment:      procEnv,
 		WorkingDirectory: wd,
 		Output: options.Output{
 			Output: cmdSender,
@@ -338,9 +343,19 @@ func SmokeRunBinary(ctx context.Context, name, wd, bin string, cmdParts ...strin
 func StartAppServer(ctx context.Context, t *testing.T, params APIParams) jasper.Process {
 	grip.Info(ctx, "Starting smoke test app server.")
 
+	// The app server stores generated task JSON in S3, and pail resolves those
+	// credentials from the environment rather than the admin settings.
+	awsEnv := map[string]string{}
+	for _, envVar := range []string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"} {
+		if val := os.Getenv(envVar); val != "" {
+			awsEnv[envVar] = val
+		}
+	}
+
 	appServerCmd, err := SmokeRunBinary(ctx,
 		"smoke-app-server",
 		params.EVGHome,
+		awsEnv,
 		params.CLIPath,
 		"service",
 		"deploy",
@@ -363,6 +378,7 @@ func StartAgent(ctx context.Context, t *testing.T, params APIParams, hostID, hos
 	agentCmd, err := SmokeRunBinary(ctx,
 		"smoke-agent",
 		params.EVGHome,
+		nil,
 		params.CLIPath,
 		"service",
 		"deploy",

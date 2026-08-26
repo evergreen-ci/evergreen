@@ -64,6 +64,19 @@ type gitFetchProject struct {
 	ShallowClone bool `mapstructure:"shallow_clone"`
 	CloneDepth   int  `mapstructure:"clone_depth"`
 
+	// Filter passes git clone's --filter (partial clone), e.g. "blob:none" to
+	// omit file content from the initial clone and fetch blobs lazily on demand.
+	Filter string `plugin:"expand" mapstructure:"filter"`
+
+	// SparseCheckoutPaths restricts the working tree to the listed paths via
+	// git sparse-checkout (no-cone mode). Only takes effect when Filter is set;
+	// otherwise the paths are ignored and a normal full clone runs.
+	//
+	// Entries are gitignore-style patterns, NOT plain paths: an unanchored entry
+	// like "README.md" matches that name in every directory. To select one
+	// specific file, anchor it with a leading slash, e.g. "/scripts/foo.sh".
+	SparseCheckoutPaths []string `plugin:"expand" mapstructure:"sparse_checkout_paths"`
+
 	RecurseSubmodules bool `mapstructure:"recurse_submodules"`
 
 	CommitterName string `mapstructure:"committer_name"`
@@ -76,14 +89,16 @@ type gitFetchProject struct {
 }
 
 type cloneOpts struct {
-	owner             string
-	repo              string
-	branch            string
-	dir               string
-	token             string
-	recurseSubmodules bool
-	useVerbose        bool
-	cloneDepth        int
+	owner               string
+	repo                string
+	branch              string
+	dir                 string
+	token               string
+	recurseSubmodules   bool
+	useVerbose          bool
+	cloneDepth          int
+	filter              string
+	sparseCheckoutPaths []string
 }
 
 func (opts cloneOpts) validate() error {
@@ -105,7 +120,7 @@ func getCloneToken(ctx context.Context, comm client.Communicator, conf *internal
 
 	owner := conf.ProjectRef.Owner
 	repo := conf.ProjectRef.Repo
-	appToken, err := comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), owner, repo)
+	appToken, err := comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), owner, repo, false)
 	if err != nil {
 		return "", errors.Wrap(err, "creating app token")
 	}
@@ -135,6 +150,12 @@ func (opts cloneOpts) getCloneCommand() ([]string, error) {
 		return nil, errors.Wrap(err, "invalid clone command options")
 	}
 
+	// A sparse checkout without a partial-clone filter still downloads every
+	// blob, so an empty filter means the sparse paths are ignored.
+	if opts.filter == "" {
+		opts.sparseCheckoutPaths = nil
+	}
+
 	gitURL := thirdparty.FormGitURLForApp(opts.owner, opts.repo, opts.token)
 
 	clone := fmt.Sprintf("git clone %s '%s'", gitURL, opts.dir)
@@ -148,17 +169,39 @@ func (opts cloneOpts) getCloneCommand() ([]string, error) {
 	if opts.cloneDepth > 0 {
 		clone = fmt.Sprintf("%s --depth %d", clone, opts.cloneDepth)
 	}
+	if opts.filter != "" {
+		clone = fmt.Sprintf("%s --filter=%s", clone, util.ShellQuote(opts.filter))
+	}
+	if len(opts.sparseCheckoutPaths) > 0 {
+		// --no-checkout defers populating the tree until after the sparse set is
+		// applied below, so the default sparse contents are never materialized.
+		clone = fmt.Sprintf("%s --sparse --no-checkout", clone)
+	}
 	if opts.branch != "" {
 		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
 	}
 
-	return []string{
+	cmds := []string{
 		"set +o xtrace",
 		fmt.Sprintf(`echo %s`, strconv.Quote(clone)),
 		clone,
 		"set -o xtrace",
 		fmt.Sprintf("cd %s", opts.dir),
-	}, nil
+	}
+
+	if len(opts.sparseCheckoutPaths) > 0 {
+		// no-cone mode (git 2.35+) treats the entries as gitignore-style
+		// patterns (see the SparseCheckoutPaths field doc on anchoring).
+		quotedPaths := make([]string, len(opts.sparseCheckoutPaths))
+		for i, p := range opts.sparseCheckoutPaths {
+			quotedPaths[i] = util.ShellQuote(p)
+		}
+		sparse := fmt.Sprintf("git sparse-checkout set --no-cone %s",
+			strings.Join(quotedPaths, " "))
+		cmds = append(cmds, sparse)
+	}
+
+	return cmds, nil
 }
 
 // getCloneCommandForWikiModule runs a plain git clone to opts.dir. GitHub
@@ -326,12 +369,14 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 func (c *gitFetchProject) opts(ctx context.Context, cloneToken string, logger client.LoggerProducer, conf *internal.TaskConfig) (cloneOpts, error) {
 	shallowCloneEnabled := conf.Distro == nil || !conf.Distro.DisableShallowClone
 	opts := cloneOpts{
-		owner:             conf.ProjectRef.Owner,
-		repo:              conf.ProjectRef.Repo,
-		branch:            conf.ProjectRef.Branch,
-		dir:               c.Directory,
-		token:             cloneToken,
-		recurseSubmodules: c.RecurseSubmodules,
+		owner:               conf.ProjectRef.Owner,
+		repo:                conf.ProjectRef.Repo,
+		branch:              conf.ProjectRef.Branch,
+		dir:                 c.Directory,
+		token:               cloneToken,
+		recurseSubmodules:   c.RecurseSubmodules,
+		filter:              c.Filter,
+		sparseCheckoutPaths: c.SparseCheckoutPaths,
 	}
 
 	cloneDepth := c.CloneDepth
@@ -394,12 +439,29 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 
 func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerProducer, comm client.Communicator, conf *internal.TaskConfig, opts cloneOpts) error {
 	attempt := 0
+	token := opts.token
 	return c.retryFetch(ctx, logger, comm, conf, true, opts, func(opts cloneOpts) error {
 		attempt++
+		// Don't refresh c.Token because it is user supplied.
+		if attempt == gitFetchProjectRetries && c.Token == "" {
+			refreshed, err := refreshCloneToken(ctx, comm, conf, opts.owner, opts.repo)
+			if err != nil {
+				logger.Task().Warningf(ctx, "Refreshing clone token, retrying with the previous one: %s", err)
+			} else {
+				token = refreshed
+			}
+		}
+		opts.token = token
+
 		// On the second attempt, check if the merge queue ref was deleted before retrying.
 		if attempt == 2 && conf.Task.Requester == evergreen.GithubMergeRequester && conf.GithubMergeData.HeadBranch != "" {
 			ref := "heads/" + conf.GithubMergeData.HeadBranch
-			appToken, tokenErr := comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), opts.owner, opts.repo)
+			// A user-supplied clone token can't authenticate an app-scoped API call.
+			appToken := token
+			var tokenErr error
+			if c.Token != "" {
+				appToken, tokenErr = comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), opts.owner, opts.repo, false)
+			}
 			if tokenErr == nil && appToken != "" {
 				exists, checkErr := thirdparty.MergeQueueRefExists(ctx, opts.owner, opts.repo, ref, appToken)
 				if checkErr != nil {
@@ -446,6 +508,15 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 
 		return nil
 	})
+}
+
+func refreshCloneToken(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, owner, repo string) (string, error) {
+	token, err := comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), owner, repo, true)
+	if err != nil {
+		return "", errors.Wrap(err, "creating app token")
+	}
+	conf.NewExpansions.Redact(generatedTokenKey, token)
+	return token, nil
 }
 
 func (c *gitFetchProject) retryFetch(ctx context.Context, logger client.LoggerProducer, comm client.Communicator, conf *internal.TaskConfig, isSource bool, opts cloneOpts, fetch func(cloneOpts) error) error {
@@ -547,7 +618,8 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 			" to https format. Please update your project config.", module.Repo)
 	}
 
-	appToken, err := comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), owner, parentRepoForGitHubAppToken(repo))
+	tokenRepo := parentRepoForGitHubAppToken(repo)
+	appToken, err := comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), owner, tokenRepo, false)
 	if err != nil {
 		return errors.Wrap(err, "creating app token")
 	}
@@ -566,15 +638,25 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		modulePatch = p.FindModule(moduleName)
 	}
 
-	var moduleCmds []string
-	moduleCmds, err = c.buildModuleCloneCommand(conf, opts, revision, modulePatch)
-	if err != nil {
-		return err
-	}
-
 	attempt := 0
+	token := appToken
 	return c.retryFetch(ctx, logger, comm, conf, false, opts, func(opts cloneOpts) error {
 		attempt++
+		if attempt == gitFetchProjectRetries {
+			refreshed, err := refreshCloneToken(ctx, comm, conf, owner, tokenRepo)
+			if err != nil {
+				logger.Task().Warningf(ctx, "Refreshing clone token, retrying with the previous one: %s", err)
+			} else {
+				token = refreshed
+			}
+		}
+		opts.token = token
+
+		moduleCmds, err := c.buildModuleCloneCommand(conf, opts, revision, modulePatch)
+		if err != nil {
+			return err
+		}
+
 		ctx, span := getTracer().Start(ctx, "clone_module", trace.WithAttributes(
 			attribute.String(cloneModuleAttribute, module.Name),
 			attribute.String(cloneOwnerAttribute, opts.owner),
@@ -895,6 +977,9 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
 
 		if err = cmd.Run(ctx); err != nil {
+			if patchPart.ModuleName == "" && c.Filter != "" && len(c.SparseCheckoutPaths) > 0 {
+				return errors.Wrap(err, "applying patch in a sparse checkout (a patch that touches files outside sparse_checkout_paths cannot be applied)")
+			}
 			return errors.WithStack(err)
 		}
 	}
