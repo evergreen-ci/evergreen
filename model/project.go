@@ -1498,8 +1498,9 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 }
 
 // FindExpandedTaskForVariant returns the fully populated build variant task
-// unit for a task. Unlike FindTaskForVariant, tasks within task groups are
-// returned as individual task units rather than as their containing group.
+// unit for a task, including implicit task group dependencies. Unlike
+// FindTaskForVariant, tasks within task groups are returned as individual task
+// units rather than as their containing group.
 func (p *Project) FindExpandedTaskForVariant(task, variant string) *BuildVariantTaskUnit {
 	bv := p.FindBuildVariant(variant)
 	if bv == nil {
@@ -1510,6 +1511,7 @@ func (p *Project) FindExpandedTaskForVariant(task, variant string) *BuildVariant
 		if bvt.IsGroup {
 			for _, expandedTask := range p.tasksFromGroup(bvt) {
 				if expandedTask.Name == task {
+					p.addImplicitTaskGroupDependency(&expandedTask)
 					return &expandedTask
 				}
 			}
@@ -1523,6 +1525,26 @@ func (p *Project) FindExpandedTaskForVariant(task, variant string) *BuildVariant
 		}
 	}
 	return nil
+}
+
+func (p *Project) addImplicitTaskGroupDependency(bvt *BuildVariantTaskUnit) {
+	if bvt.GroupName == "" {
+		return
+	}
+	tg := p.FindTaskGroup(bvt.GroupName)
+	if tg == nil || tg.MaxHosts > 1 {
+		return
+	}
+	for i, taskName := range tg.Tasks {
+		if taskName == bvt.Name && i > 0 {
+			bvt.DependsOn = append(bvt.DependsOn, TaskUnitDependency{
+				Name:    tg.Tasks[i-1],
+				Variant: bvt.Variant,
+				Status:  evergreen.TaskSucceeded,
+			})
+			return
+		}
+	}
 }
 
 func (p *Project) FindBuildVariant(build string) *BuildVariant {
@@ -2284,20 +2306,7 @@ func (p *Project) DependencyGraph() task.DependencyGraph {
 func dependenciesForTaskUnit(taskUnits []BuildVariantTaskUnit, p *Project) []task.DependencyEdge {
 	var dependencies []task.DependencyEdge
 	for _, dependentTask := range taskUnits {
-		if dependentTask.GroupName != "" {
-			tg := p.FindTaskGroup(dependentTask.GroupName)
-			if tg != nil && tg.MaxHosts <= 1 {
-				// Single host task groups are a special case of dependencies because they implicitly form a linear
-				// dependency chain on the prior task group tasks.
-				for i, v := range slices.Backward(tg.Tasks) {
-					// Check the task display names since no display name will appear twice
-					// within the same task group.
-					if dependentTask.Name == v && i > 0 {
-						dependentTask.DependsOn = append(dependentTask.DependsOn, TaskUnitDependency{Name: tg.Tasks[i-1], Variant: dependentTask.Variant})
-					}
-				}
-			}
-		}
+		p.addImplicitTaskGroupDependency(&dependentTask)
 		for _, dep := range dependentTask.DependsOn {
 			// Use the current variant if none is specified.
 			if dep.Variant == "" {

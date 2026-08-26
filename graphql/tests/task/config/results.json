@@ -53,6 +53,11 @@
                   "name": "setup",
                   "status": "success",
                   "variant": ""
+                },
+                {
+                  "name": "group_setup",
+                  "status": "success",
+                  "variant": "linux"
                 }
               ],
               "groupName": "test_group",

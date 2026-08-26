@@ -64,6 +64,9 @@
           "ps": "task-ps"
         },
         {
+          "name": "group_setup"
+        },
+        {
           "name": "test",
           "priority": 4,
           "depends_on": [
@@ -79,7 +82,8 @@
       "task_groups": [
         {
           "name": "test_group",
-          "tasks": ["test"]
+          "max_hosts": 1,
+          "tasks": ["group_setup", "test"]
         }
       ],
       "buildvariants": [

@@ -2692,6 +2692,7 @@ func TestFindExpandedTaskForVariant(t *testing.T) {
 	p := Project{
 		Tasks: []ProjectTask{
 			{Name: "standalone", Priority: 1},
+			{Name: "in_group_0"},
 			{Name: "in_group", Priority: 2},
 		},
 		BuildVariants: []BuildVariant{{
@@ -2701,7 +2702,7 @@ func TestFindExpandedTaskForVariant(t *testing.T) {
 				{Name: tgName, IsGroup: true, Variant: bvName},
 			},
 		}},
-		TaskGroups: []TaskGroup{{Name: tgName, Tasks: []string{"in_group"}}},
+		TaskGroups: []TaskGroup{{Name: tgName, MaxHosts: 1, Tasks: []string{"in_group_0", "in_group"}}},
 	}
 
 	t.Run("StandaloneTask", func(t *testing.T) {
@@ -2722,6 +2723,12 @@ func TestFindExpandedTaskForVariant(t *testing.T) {
 		assert.False(t, bvt.IsGroup)
 		assert.True(t, bvt.IsPartOfGroup)
 		assert.Equal(t, tgName, bvt.GroupName)
+		require.Len(t, bvt.DependsOn, 1)
+		assert.Equal(t, TaskUnitDependency{
+			Name:    "in_group_0",
+			Variant: bvName,
+			Status:  evergreen.TaskSucceeded,
+		}, bvt.DependsOn[0])
 	})
 
 	t.Run("MissingTask", func(t *testing.T) {
@@ -2913,8 +2920,8 @@ func TestDependenciesForTaskUnit(t *testing.T) {
 				},
 			},
 			expectedDependencies: []task.DependencyEdge{
-				{From: task.TaskNode{Name: "task2", Variant: "ubuntu"}, To: task.TaskNode{Name: "task1", Variant: "ubuntu"}},
-				{From: task.TaskNode{Name: "task3", Variant: "ubuntu"}, To: task.TaskNode{Name: "task2", Variant: "ubuntu"}},
+				{Status: evergreen.TaskSucceeded, From: task.TaskNode{Name: "task2", Variant: "ubuntu"}, To: task.TaskNode{Name: "task1", Variant: "ubuntu"}},
+				{Status: evergreen.TaskSucceeded, From: task.TaskNode{Name: "task3", Variant: "ubuntu"}, To: task.TaskNode{Name: "task2", Variant: "ubuntu"}},
 			},
 		},
 		"WithMultiHostTaskGroup": {
@@ -2994,7 +3001,7 @@ func TestDependenciesForTaskUnit(t *testing.T) {
 				},
 			},
 			expectedDependencies: []task.DependencyEdge{
-				{From: task.TaskNode{Name: "task2", Variant: "ubuntu"}, To: task.TaskNode{Name: "task1", Variant: "ubuntu"}},
+				{Status: evergreen.TaskSucceeded, From: task.TaskNode{Name: "task2", Variant: "ubuntu"}, To: task.TaskNode{Name: "task1", Variant: "ubuntu"}},
 				{From: task.TaskNode{Name: "task2", Variant: "ubuntu"}, To: task.TaskNode{Name: "external_task", Variant: "ubuntu"}},
 			},
 		},
