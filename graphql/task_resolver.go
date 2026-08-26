@@ -283,6 +283,15 @@ func (r *taskResolver) CanUnschedule(ctx context.Context, obj *restModel.APITask
 	return (obj.Activated && *obj.Status == evergreen.TaskUndispatched && obj.ParentTaskId == ""), nil
 }
 
+// Config is the resolver for the config field.
+func (r *taskResolver) Config(ctx context.Context, obj *restModel.APITask) (*model.BuildVariantTaskUnit, error) {
+	project, err := model.FindProjectFromVersionID(ctx, utility.FromStringPtr(obj.Version))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	return project.FindTaskForVariant(utility.FromStringPtr(obj.DisplayName), utility.FromStringPtr(obj.BuildVariant)), nil
+}
+
 // DependsOn is the resolver for the dependsOn field.
 func (r *taskResolver) DependsOn(ctx context.Context, obj *restModel.APITask) ([]*Dependency, error) {
 	dependencies := []*Dependency{}
