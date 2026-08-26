@@ -53,14 +53,14 @@ type schedulableUnit struct {
 }
 
 // newDistroTaskDAGDispatchService creates a basicCachedDAGDispatcherImpl from a slice of TaskQueueItems.
-func newDistroTaskDAGDispatchService(taskQueue TaskQueue, ttl time.Duration) (*basicCachedDAGDispatcherImpl, error) {
+func newDistroTaskDAGDispatchService(ctx context.Context, taskQueue TaskQueue, ttl time.Duration) (*basicCachedDAGDispatcherImpl, error) {
 	d := &basicCachedDAGDispatcherImpl{
 		distroID: taskQueue.Distro,
 		ttl:      ttl,
 	}
 
 	if taskQueue.Length() != 0 {
-		if err := d.rebuild(taskQueue.Queue); err != nil {
+		if err := d.rebuild(ctx, taskQueue.Queue); err != nil {
 			return nil, errors.Wrapf(err, "creating distro DAG task dispatch service for distro '%s'", taskQueue.Distro)
 		}
 	}
@@ -86,7 +86,7 @@ func (d *basicCachedDAGDispatcherImpl) Refresh(ctx context.Context) error {
 	}
 
 	taskQueueItems := taskQueue.Queue
-	if err := d.rebuild(taskQueueItems); err != nil {
+	if err := d.rebuild(ctx, taskQueueItems); err != nil {
 		return errors.Wrapf(err, "building the directed graph for distro '%s'", d.distroID)
 	}
 
@@ -118,7 +118,7 @@ func (d *basicCachedDAGDispatcherImpl) getNodeByItemID(id string) graph.Node {
 
 // Each node is a task and each edge definition represents a dependency: an edge (A, B) means that B depends on A.
 // There is a dependency <from> A <to> B.
-func (d *basicCachedDAGDispatcherImpl) addEdge(fromID string, toID string) error {
+func (d *basicCachedDAGDispatcherImpl) addEdge(ctx context.Context, fromID string, toID string) error {
 	fromNode := d.getNodeByItemID(fromID)
 	toNode := d.getNodeByItemID(toID)
 
@@ -129,7 +129,7 @@ func (d *basicCachedDAGDispatcherImpl) addEdge(fromID string, toID string) error
 
 	// A Node for the "dependent" <to> task is not present in the DAG.
 	if toNode == nil {
-		grip.Warning(context.Background(), message.Fields{
+		grip.Warning(ctx, message.Fields{
 			"dispatcher":         DAGDispatcher,
 			"function":           "addEdge",
 			"message":            "a Node for a dependent taskQueueItem is not present in the DAG",
@@ -150,7 +150,7 @@ func (d *basicCachedDAGDispatcherImpl) addEdge(fromID string, toID string) error
 	return nil
 }
 
-func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
+func (d *basicCachedDAGDispatcherImpl) rebuild(ctx context.Context, items []TaskQueueItem) error {
 	d.graph = multi.NewDirectedGraph()
 	d.sorted = []graph.Node{}
 	d.itemNodeMap = map[string]graph.Node{}     // map[TaskQueueItem.Id]Node
@@ -195,7 +195,7 @@ func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 	for _, item := range items {
 		for _, dependency := range item.Dependencies {
 			// addEdge(A, B) means that B depends on A.
-			if err := d.addEdge(dependency, item.Id); err != nil {
+			if err := d.addEdge(ctx, dependency, item.Id); err != nil {
 				return errors.Wrap(err, "adding edge")
 			}
 		}
@@ -217,7 +217,7 @@ func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 	if err != nil {
 		unorderableNodes, ok := err.(topo.Unorderable)
 		if !ok {
-			grip.Alert(context.Background(), message.WrapError(err, message.Fields{
+			grip.Alert(ctx, message.WrapError(err, message.Fields{
 				"dispatcher":                 DAGDispatcher,
 				"function":                   "rebuild",
 				"message":                    "problem ordering the tasks and associated dependencies within the DirectedGraph",
@@ -237,7 +237,7 @@ func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 			}
 			cycles = append(cycles, cycleIDs)
 		}
-		grip.Error(context.Background(), message.Fields{
+		grip.Error(ctx, message.Fields{
 			"dispatcher": DAGDispatcher,
 			"function":   "rebuild",
 			"message":    "tasks in the queue form dependency cycle(s)",

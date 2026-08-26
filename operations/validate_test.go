@@ -188,6 +188,7 @@ func TestLoadProjectYAML(t *testing.T) {
 	for testName, testCase := range map[string]struct {
 		useNonexistentPath bool
 		fileContent        []byte
+		serviceFlagErr     error
 		expectErr          string
 	}{
 		"SucceedsWithValidFile": {},
@@ -199,9 +200,12 @@ func TestLoadProjectYAML(t *testing.T) {
 			fileContent: []byte("invalid: [yaml: bad"),
 			expectErr:   "invalid configuration",
 		},
+		"SucceedsWithWarningWhenGetServiceFlagsFails": {
+			serviceFlagErr: errors.New("not authorized"),
+		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			mockClient = &client.Mock{}
+			mockClient = &client.Mock{MockServiceFlagErr: testCase.serviceFlagErr}
 			var path string
 			if testCase.useNonexistentPath {
 				path = filepath.Join("nonexistent", "file.yml")

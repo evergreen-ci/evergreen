@@ -63,17 +63,22 @@ func Evaluate() cli.Command {
 				return errors.Wrap(err, "getting current working directory")
 			}
 
+			p := &model.Project{}
+			ctx := context.Background()
+			var anchorsEnabled bool
 			confPath := c.Parent().String(ConfFlagName)
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "loading configuration")
+				grip.Warning(ctx, errors.Wrap(err, "could not load client configuration; cross-file YAML anchors will be disabled"))
+			} else {
+				var flagErr error
+				anchorsEnabled, flagErr = getCrossFileYAMLAnchorsEnabled(conf)
+				if flagErr != nil {
+					grip.Warning(ctx, errors.Wrap(flagErr, "could not get cross-file YAML anchors setting; anchors will be disabled"))
+				}
 			}
-
-			p := &model.Project{}
-			ctx := context.Background()
-			anchorsEnabled, err := getCrossFileYAMLAnchorsEnabled(conf)
-			if err != nil {
-				grip.Warning(ctx, errors.Wrap(err, "could not get cross-file YAML anchors setting; anchors will be disabled"))
+			if anchorsEnabled {
+				grip.Info(ctx, "cross-file YAML anchors are enabled")
 			}
 			opts := &model.GetProjectOpts{
 				LocalModules:                localModuleMap,

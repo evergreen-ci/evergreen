@@ -661,12 +661,8 @@ func ByExecutionPlatform(platform ExecutionPlatform) bson.M {
 				{ExecutionPlatformKey: platform},
 			},
 		}
-	case ExecutionPlatformContainer:
-		return bson.M{
-			ExecutionPlatformKey: platform,
-		}
 	default:
-		return bson.M{}
+		return bson.M{ExecutionPlatformKey: platform}
 	}
 }
 

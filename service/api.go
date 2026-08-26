@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -231,12 +230,16 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 
 	project := &model.Project{}
 	var projectConfig *model.ProjectConfig
+<<<<<<< HEAD
 	ctx := context.Background()
 	svcFlags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		gimlet.WriteJSONError(r.Context(), w, errors.Wrap(err, "getting service flags"))
 		return
 	}
+=======
+	ctx := r.Context()
+>>>>>>> main
 	opts := &model.GetProjectOpts{
 		ReadFileFrom:                model.ReadFromLocal,
 		CrossFileYAMLAnchorsEnabled: svcFlags.CrossFileYAMLAnchorsEnabled,

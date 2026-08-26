@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -76,6 +77,7 @@ func (v *validateProjectHandler) Run(ctx context.Context) gimlet.Responder {
 		ReadFileFrom:                model.ReadFromLocal,
 		CrossFileYAMLAnchorsEnabled: flags.CrossFileYAMLAnchorsEnabled,
 	}
+	grip.InfoWhen(ctx, flags.CrossFileYAMLAnchorsEnabled, "cross-file YAML anchors are enabled for validate request")
 	validationErr := validator.ValidationError{}
 	pp, err := model.LoadProjectInto(ctx, v.input.ProjectYaml, opts, v.input.ProjectID, project)
 	if err != nil {

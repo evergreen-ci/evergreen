@@ -353,12 +353,6 @@ type ComplexityRoot struct {
 		Status            func(childComplexity int) int
 	}
 
-	BuildBaron struct {
-		BbTicketCreationDefined func(childComplexity int) int
-		BuildBaronConfigured    func(childComplexity int) int
-		SearchReturnInfo        func(childComplexity int) int
-	}
-
 	BuildBaronSettings struct {
 		TicketCreateIssueType func(childComplexity int) int
 		TicketCreateProject   func(childComplexity int) int
@@ -1356,6 +1350,7 @@ type ComplexityRoot struct {
 		TestSelection                      func(childComplexity int) int
 		Triggers                           func(childComplexity int) int
 		VersionControlEnabled              func(childComplexity int) int
+		VirtualTasksEnabled                func(childComplexity int) int
 		WaterfallDisabled                  func(childComplexity int) int
 		WorkstationConfig                  func(childComplexity int) int
 	}
@@ -1497,8 +1492,6 @@ type ComplexityRoot struct {
 		AdminEvents              func(childComplexity int, opts AdminEventsInput) int
 		AdminSettings            func(childComplexity int) int
 		AdminTasksToRestart      func(childComplexity int, opts model1.RestartOptions) int
-		BbGetCreatedTickets      func(childComplexity int, taskID string) int
-		BuildBaron               func(childComplexity int, taskID string, execution int) int
 		BuildVariantsForTaskName func(childComplexity int, projectIdentifier string, taskName string) int
 		ClientConfig             func(childComplexity int) int
 		Distro                   func(childComplexity int, distroID string) int
@@ -1621,6 +1614,7 @@ type ComplexityRoot struct {
 		TestSelection                      func(childComplexity int) int
 		Triggers                           func(childComplexity int) int
 		VersionControlEnabled              func(childComplexity int) int
+		VirtualTasksEnabled                func(childComplexity int) int
 		WaterfallDisabled                  func(childComplexity int) int
 		WorkstationConfig                  func(childComplexity int) int
 	}
@@ -2668,8 +2662,6 @@ type ProjectVarsResolver interface {
 	PrivateVars(ctx context.Context, obj *model.APIProjectVars) ([]string, error)
 }
 type QueryResolver interface {
-	BbGetCreatedTickets(ctx context.Context, taskID string) ([]*thirdparty.JiraTicket, error)
-	BuildBaron(ctx context.Context, taskID string, execution int) (*BuildBaron, error)
 	AdminEvents(ctx context.Context, opts AdminEventsInput) (*AdminEventsPayload, error)
 	AdminSettings(ctx context.Context) (*model.APIAdminSettings, error)
 	AdminTasksToRestart(ctx context.Context, opts model1.RestartOptions) (*AdminTasksToRestartPayload, error)
@@ -4020,25 +4012,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Build.Status(childComplexity), true
-
-	case "BuildBaron.bbTicketCreationDefined":
-		if e.complexity.BuildBaron.BbTicketCreationDefined == nil {
-			break
-		}
-
-		return e.complexity.BuildBaron.BbTicketCreationDefined(childComplexity), true
-	case "BuildBaron.buildBaronConfigured":
-		if e.complexity.BuildBaron.BuildBaronConfigured == nil {
-			break
-		}
-
-		return e.complexity.BuildBaron.BuildBaronConfigured(childComplexity), true
-	case "BuildBaron.searchReturnInfo":
-		if e.complexity.BuildBaron.SearchReturnInfo == nil {
-			break
-		}
-
-		return e.complexity.BuildBaron.SearchReturnInfo(childComplexity), true
 
 	case "BuildBaronSettings.ticketCreateIssueType":
 		if e.complexity.BuildBaronSettings.TicketCreateIssueType == nil {
@@ -8349,6 +8322,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Project.VersionControlEnabled(childComplexity), true
+	case "Project.virtualTasksEnabled":
+		if e.complexity.Project.VirtualTasksEnabled == nil {
+			break
+		}
+
+		return e.complexity.Project.VirtualTasksEnabled(childComplexity), true
 	case "Project.waterfallDisabled":
 		if e.complexity.Project.WaterfallDisabled == nil {
 			break
@@ -8950,28 +8929,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.AdminTasksToRestart(childComplexity, args["opts"].(model1.RestartOptions)), true
-	case "Query.bbGetCreatedTickets":
-		if e.complexity.Query.BbGetCreatedTickets == nil {
-			break
-		}
-
-		args, err := ec.field_Query_bbGetCreatedTickets_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.BbGetCreatedTickets(childComplexity, args["taskId"].(string)), true
-	case "Query.buildBaron":
-		if e.complexity.Query.BuildBaron == nil {
-			break
-		}
-
-		args, err := ec.field_Query_buildBaron_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.BuildBaron(childComplexity, args["taskId"].(string), args["execution"].(int)), true
 	case "Query.buildVariantsForTaskName":
 		if e.complexity.Query.BuildVariantsForTaskName == nil {
 			break
@@ -9737,6 +9694,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RepoRef.VersionControlEnabled(childComplexity), true
+	case "RepoRef.virtualTasksEnabled":
+		if e.complexity.RepoRef.VirtualTasksEnabled == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.VirtualTasksEnabled(childComplexity), true
 	case "RepoRef.waterfallDisabled":
 		if e.complexity.RepoRef.WaterfallDisabled == nil {
 			break
@@ -15977,135 +15940,6 @@ func (ec *executionContext) field_Query_adminTasksToRestart_args(ctx context.Con
 	}
 	args["opts"] = arg0
 	return args, nil
-}
-
-func (ec *executionContext) field_Query_bbGetCreatedTickets_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-
-	arg0, err := ec.field_Query_bbGetCreatedTickets_argsTaskID(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["taskId"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Query_bbGetCreatedTickets_argsTaskID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	if _, ok := rawArgs["taskId"]; !ok {
-		var zeroVal string
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
-	directive0 := func(ctx context.Context) (any, error) {
-		tmp, ok := rawArgs["taskId"]
-		if !ok {
-			var zeroVal string
-			return zeroVal, nil
-		}
-		return ec.unmarshalNString2string(ctx, tmp)
-	}
-
-	directive1 := func(ctx context.Context) (any, error) {
-		permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "ANNOTATIONS")
-		if err != nil {
-			var zeroVal string
-			return zeroVal, err
-		}
-		access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "VIEW")
-		if err != nil {
-			var zeroVal string
-			return zeroVal, err
-		}
-		if ec.directives.RequireProjectAccess == nil {
-			var zeroVal string
-			return zeroVal, errors.New("directive requireProjectAccess is not implemented")
-		}
-		return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
-	}
-
-	tmp, err := directive1(ctx)
-	if err != nil {
-		var zeroVal string
-		return zeroVal, graphql.ErrorOnPath(ctx, err)
-	}
-	if data, ok := tmp.(string); ok {
-		return data, nil
-	} else {
-		var zeroVal string
-		return zeroVal, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
-	}
-}
-
-func (ec *executionContext) field_Query_buildBaron_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-
-	arg0, err := ec.field_Query_buildBaron_argsTaskID(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["taskId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "execution", ec.unmarshalNInt2int)
-	if err != nil {
-		return nil, err
-	}
-	args["execution"] = arg1
-	return args, nil
-}
-
-func (ec *executionContext) field_Query_buildBaron_argsTaskID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	if _, ok := rawArgs["taskId"]; !ok {
-		var zeroVal string
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
-	directive0 := func(ctx context.Context) (any, error) {
-		tmp, ok := rawArgs["taskId"]
-		if !ok {
-			var zeroVal string
-			return zeroVal, nil
-		}
-		return ec.unmarshalNString2string(ctx, tmp)
-	}
-
-	directive1 := func(ctx context.Context) (any, error) {
-		permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "ANNOTATIONS")
-		if err != nil {
-			var zeroVal string
-			return zeroVal, err
-		}
-		access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "VIEW")
-		if err != nil {
-			var zeroVal string
-			return zeroVal, err
-		}
-		if ec.directives.RequireProjectAccess == nil {
-			var zeroVal string
-			return zeroVal, errors.New("directive requireProjectAccess is not implemented")
-		}
-		return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
-	}
-
-	tmp, err := directive1(ctx)
-	if err != nil {
-		var zeroVal string
-		return zeroVal, graphql.ErrorOnPath(ctx, err)
-	}
-	if data, ok := tmp.(string); ok {
-		return data, nil
-	} else {
-		var zeroVal string
-		return zeroVal, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
-	}
 }
 
 func (ec *executionContext) field_Query_buildVariantsForTaskName_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
@@ -23752,101 +23586,6 @@ func (ec *executionContext) fieldContext_Build_status(_ context.Context, field g
 	return fc, nil
 }
 
-func (ec *executionContext) _BuildBaron_bbTicketCreationDefined(ctx context.Context, field graphql.CollectedField, obj *BuildBaron) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_BuildBaron_bbTicketCreationDefined,
-		func(ctx context.Context) (any, error) {
-			return obj.BbTicketCreationDefined, nil
-		},
-		nil,
-		ec.marshalNBoolean2bool,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_BuildBaron_bbTicketCreationDefined(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BuildBaron",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _BuildBaron_buildBaronConfigured(ctx context.Context, field graphql.CollectedField, obj *BuildBaron) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_BuildBaron_buildBaronConfigured,
-		func(ctx context.Context) (any, error) {
-			return obj.BuildBaronConfigured, nil
-		},
-		nil,
-		ec.marshalNBoolean2bool,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_BuildBaron_buildBaronConfigured(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BuildBaron",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _BuildBaron_searchReturnInfo(ctx context.Context, field graphql.CollectedField, obj *BuildBaron) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_BuildBaron_searchReturnInfo,
-		func(ctx context.Context) (any, error) {
-			return obj.SearchReturnInfo, nil
-		},
-		nil,
-		ec.marshalOSearchReturnInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐSearchReturnInfo,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_BuildBaron_searchReturnInfo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BuildBaron",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "issues":
-				return ec.fieldContext_SearchReturnInfo_issues(ctx, field)
-			case "search":
-				return ec.fieldContext_SearchReturnInfo_search(ctx, field)
-			case "source":
-				return ec.fieldContext_SearchReturnInfo_source(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type SearchReturnInfo", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _BuildBaronSettings_ticketCreateProject(ctx context.Context, field graphql.CollectedField, obj *model.APIBuildBaronSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -30037,6 +29776,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(_ context.Cont
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -30156,6 +29897,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_repo(_ context.Context,
 				return ec.fieldContext_RepoRef_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_RepoRef_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_RepoRef_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_RepoRef_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -37626,6 +37369,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -37777,6 +37522,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -37928,6 +37675,8 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -38079,6 +37828,8 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -38398,6 +38149,8 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -41608,6 +41361,8 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -41876,6 +41631,8 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -45256,6 +45013,8 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(_ context.Context
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -48965,6 +48724,35 @@ func (ec *executionContext) fieldContext_Project_testSelection(_ context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_virtualTasksEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Project_virtualTasksEnabled,
+		func(ctx context.Context) (any, error) {
+			return obj.VirtualTasksEnabled, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Project_virtualTasksEnabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Project_triggers(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -50028,6 +49816,8 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(_ conte
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -51640,6 +51430,8 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(_ context.Co
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -52083,102 +51875,6 @@ func (ec *executionContext) fieldContext_QuarantinedTest_testName(_ context.Cont
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
 		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_bbGetCreatedTickets(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Query_bbGetCreatedTickets,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().BbGetCreatedTickets(ctx, fc.Args["taskId"].(string))
-		},
-		nil,
-		ec.marshalNJiraTicket2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraTicketᚄ,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Query_bbGetCreatedTickets(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "fields":
-				return ec.fieldContext_JiraTicket_fields(ctx, field)
-			case "key":
-				return ec.fieldContext_JiraTicket_key(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type JiraTicket", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_bbGetCreatedTickets_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_buildBaron(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Query_buildBaron,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().BuildBaron(ctx, fc.Args["taskId"].(string), fc.Args["execution"].(int))
-		},
-		nil,
-		ec.marshalNBuildBaron2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBuildBaron,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Query_buildBaron(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "bbTicketCreationDefined":
-				return ec.fieldContext_BuildBaron_bbTicketCreationDefined(ctx, field)
-			case "buildBaronConfigured":
-				return ec.fieldContext_BuildBaron_buildBaronConfigured(ctx, field)
-			case "searchReturnInfo":
-				return ec.fieldContext_BuildBaron_searchReturnInfo(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type BuildBaron", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_buildBaron_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
 	}
 	return fc, nil
 }
@@ -53458,6 +53154,8 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -57156,6 +56854,35 @@ func (ec *executionContext) fieldContext_RepoRef_testSelection(_ context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _RepoRef_virtualTasksEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RepoRef_virtualTasksEnabled,
+		func(ctx context.Context) (any, error) {
+			return obj.VirtualTasksEnabled, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RepoRef_virtualTasksEnabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RepoRef_triggers(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -57542,6 +57269,8 @@ func (ec *executionContext) fieldContext_RepoSettings_projectRef(_ context.Conte
 				return ec.fieldContext_RepoRef_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_RepoRef_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_RepoRef_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_RepoRef_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -66479,6 +66208,8 @@ func (ec *executionContext) fieldContext_Task_project(_ context.Context, field g
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -75951,6 +75682,8 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(_ context.Conte
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -86945,7 +86678,7 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "debugSpawnHostsDisabled", "disabledStatsCache", "dispatchingDisabled", "waterfallDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "runEveryMainlineCommit", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "taskOwnership", "testSelection", "triggers", "versionControlEnabled", "workstationConfig"}
+	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "debugSpawnHostsDisabled", "disabledStatsCache", "dispatchingDisabled", "waterfallDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "runEveryMainlineCommit", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "taskOwnership", "testSelection", "virtualTasksEnabled", "triggers", "versionControlEnabled", "workstationConfig"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -87274,6 +87007,13 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.TestSelection = data
+		case "virtualTasksEnabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("virtualTasksEnabled"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.VirtualTasksEnabled = data
 		case "triggers":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("triggers"))
 			data, err := ec.unmarshalOTriggerAliasInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITriggerDefinitionᚄ(ctx, v)
@@ -88068,7 +87808,7 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "waterfallDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "runEveryMainlineCommit", "spawnHostScriptPath", "debugSpawnHostsDisabled", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "taskOwnership", "testSelection", "triggers", "versionControlEnabled", "workstationConfig"}
+	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "waterfallDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "runEveryMainlineCommit", "spawnHostScriptPath", "debugSpawnHostsDisabled", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "taskOwnership", "testSelection", "virtualTasksEnabled", "triggers", "versionControlEnabled", "workstationConfig"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -88369,6 +88109,13 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.TestSelection = data
+		case "virtualTasksEnabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("virtualTasksEnabled"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.VirtualTasksEnabled = data
 		case "triggers":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("triggers"))
 			data, err := ec.unmarshalOTriggerAliasInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITriggerDefinitionᚄ(ctx, v)
@@ -93711,52 +93458,6 @@ func (ec *executionContext) _Build(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var buildBaronImplementors = []string{"BuildBaron"}
-
-func (ec *executionContext) _BuildBaron(ctx context.Context, sel ast.SelectionSet, obj *BuildBaron) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, buildBaronImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("BuildBaron")
-		case "bbTicketCreationDefined":
-			out.Values[i] = ec._BuildBaron_bbTicketCreationDefined(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "buildBaronConfigured":
-			out.Values[i] = ec._BuildBaron_buildBaronConfigured(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "searchReturnInfo":
-			out.Values[i] = ec._BuildBaron_searchReturnInfo(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -102047,6 +101748,8 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Project_taskOwnership(ctx, field, obj)
 		case "testSelection":
 			out.Values[i] = ec._Project_testSelection(ctx, field, obj)
+		case "virtualTasksEnabled":
+			out.Values[i] = ec._Project_virtualTasksEnabled(ctx, field, obj)
 		case "triggers":
 			out.Values[i] = ec._Project_triggers(ctx, field, obj)
 		case "versionControlEnabled":
@@ -103174,50 +102877,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Query")
-		case "bbGetCreatedTickets":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_bbGetCreatedTickets(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "buildBaron":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_buildBaron(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "adminEvents":
 			field := field
 
@@ -104605,6 +104264,8 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._RepoRef_taskOwnership(ctx, field, obj)
 		case "testSelection":
 			out.Values[i] = ec._RepoRef_testSelection(ctx, field, obj)
+		case "virtualTasksEnabled":
+			out.Values[i] = ec._RepoRef_virtualTasksEnabled(ctx, field, obj)
 		case "triggers":
 			out.Values[i] = ec._RepoRef_triggers(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -114092,20 +113753,6 @@ func (ec *executionContext) marshalNBuild2ᚖgithubᚗcomᚋevergreenᚑciᚋeve
 		return graphql.Null
 	}
 	return ec._Build(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNBuildBaron2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBuildBaron(ctx context.Context, sel ast.SelectionSet, v BuildBaron) graphql.Marshaler {
-	return ec._BuildBaron(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNBuildBaron2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBuildBaron(ctx context.Context, sel ast.SelectionSet, v *BuildBaron) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._BuildBaron(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNBuildBaronSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBuildBaronSettings(ctx context.Context, sel ast.SelectionSet, v model.APIBuildBaronSettings) graphql.Marshaler {

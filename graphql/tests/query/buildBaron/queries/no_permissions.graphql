@@ -1,5 +1,0 @@
-query {
-  buildBaron(taskId: "no_permissions", execution: 1) {
-    bbTicketCreationDefined
-  }
-}

@@ -119,13 +119,13 @@ func ByStringId(id string) db.Q {
 	return db.Query(bson.M{IdKey: NewId(id)})
 }
 
-func ByStringIds(ids []string) db.Q {
+func ByStringIds(ctx context.Context, ids []string) db.Q {
 	objectIds := []mgobson.ObjectId{}
 	for _, id := range ids {
 		if IsValidId(id) {
 			objectIds = append(objectIds, NewId(id))
 		} else {
-			grip.Debug(context.Background(), message.Fields{
+			grip.Debug(ctx, message.Fields{
 				"message": "patch id is not valid",
 				"id":      id,
 			})
@@ -146,8 +146,12 @@ func ByUserAndCommitQueue(user string, filterCommitQueue bool) db.Q {
 	return db.Query(q)
 }
 
-func ByGithash(githash string) db.Q {
-	return db.Query(bson.M{bsonutil.GetDottedKeyName(githubPatchDataKey, headHashKey): githash})
+func ByGithash(githash, owner, repo string) db.Q {
+	return db.Query(bson.M{
+		bsonutil.GetDottedKeyName(githubPatchDataKey, headHashKey):                        githash,
+		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchBaseOwnerKey): owner,
+		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchBaseRepoKey):  repo,
+	})
 }
 
 type ProjectOrUserPatchesOptions struct {
@@ -549,7 +553,7 @@ func GetFinalizedChildPatchIdsForPatch(ctx context.Context, patchID string) ([]s
 		return nil, nil
 	}
 
-	childPatches, err := Find(ctx, ByStringIds(p.Triggers.ChildPatches).WithFields(VersionKey))
+	childPatches, err := Find(ctx, ByStringIds(ctx, p.Triggers.ChildPatches).WithFields(VersionKey))
 	if err != nil {
 		return nil, errors.Wrap(err, "getting child patches")
 	}
