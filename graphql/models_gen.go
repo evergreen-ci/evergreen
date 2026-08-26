@@ -332,12 +332,6 @@ type PatchConfigure struct {
 	VariantsTasks       []*VariantTasks       `json:"variantsTasks"`
 }
 
-type PatchDuration struct {
-	Makespan  *string    `json:"makespan,omitempty"`
-	Time      *PatchTime `json:"time,omitempty"`
-	TimeTaken *string    `json:"timeTaken,omitempty"`
-}
-
 type PatchProject struct {
 	Variants []*ProjectBuildVariant `json:"variants"`
 }
