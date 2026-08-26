@@ -374,7 +374,7 @@ buildvariants:
 		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
 		require.NoError(t, err)
 
-		_, err = executor.LoadProject(yamlFile)
+		_, err = executor.LoadProject(t.Context(), yamlFile)
 		require.NoError(t, err)
 
 		err = executor.PrepareTask(t.Context(), "test-task", "ubuntu2204")
