@@ -408,10 +408,10 @@ enum UserRequester {
 
 type TaskUnitDependency {
   name: String!
-  omitGeneratedTasks: Boolean!
-  patchOptional: Boolean!
-  status: String!
-  variant: String!
+  omitGeneratedTasks: Boolean
+  patchOptional: Boolean
+  status: String
+  variant: String
 }
 
 type TaskConfig {

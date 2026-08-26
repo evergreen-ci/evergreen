@@ -71522,9 +71522,9 @@ func (ec *executionContext) _TaskUnitDependency_omitGeneratedTasks(ctx context.C
 			return obj.OmitGeneratedTasks, nil
 		},
 		nil,
-		ec.marshalNBoolean2bool,
+		ec.marshalOBoolean2bool,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -71551,9 +71551,9 @@ func (ec *executionContext) _TaskUnitDependency_patchOptional(ctx context.Contex
 			return obj.PatchOptional, nil
 		},
 		nil,
-		ec.marshalNBoolean2bool,
+		ec.marshalOBoolean2bool,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -71580,9 +71580,9 @@ func (ec *executionContext) _TaskUnitDependency_status(ctx context.Context, fiel
 			return obj.Status, nil
 		},
 		nil,
-		ec.marshalNString2string,
+		ec.marshalOString2string,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -71609,9 +71609,9 @@ func (ec *executionContext) _TaskUnitDependency_variant(ctx context.Context, fie
 			return obj.Variant, nil
 		},
 		nil,
-		ec.marshalNString2string,
+		ec.marshalOString2string,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -110643,24 +110643,12 @@ func (ec *executionContext) _TaskUnitDependency(ctx context.Context, sel ast.Sel
 			}
 		case "omitGeneratedTasks":
 			out.Values[i] = ec._TaskUnitDependency_omitGeneratedTasks(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "patchOptional":
 			out.Values[i] = ec._TaskUnitDependency_patchOptional(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "status":
 			out.Values[i] = ec._TaskUnitDependency_status(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "variant":
 			out.Values[i] = ec._TaskUnitDependency_variant(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
