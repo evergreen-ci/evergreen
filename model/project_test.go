@@ -2689,6 +2689,8 @@ func TestFindExpandedTaskForVariant(t *testing.T) {
 		bvName = "bv"
 		tgName = "task_group"
 	)
+	batchTime := 15
+	ps := "group-ps"
 	p := Project{
 		Tasks: []ProjectTask{
 			{Name: "standalone", Priority: 1},
@@ -2699,7 +2701,18 @@ func TestFindExpandedTaskForVariant(t *testing.T) {
 			Name: bvName,
 			Tasks: []BuildVariantTaskUnit{
 				{Name: "standalone", Variant: bvName},
-				{Name: tgName, IsGroup: true, Variant: bvName},
+				{
+					Name:              tgName,
+					IsGroup:           true,
+					Variant:           bvName,
+					AllowedBranches:   []string{"^group$"},
+					IgnoredBranches:   []string{"^ignored$"},
+					ExecTimeoutSecs:   30,
+					BatchTime:         &batchTime,
+					PS:                &ps,
+					CreateCheckRun:    &CheckRun{},
+					AllowedRequesters: []evergreen.UserRequester{evergreen.AdHocUserRequester},
+				},
 			},
 		}},
 		TaskGroups: []TaskGroup{{Name: tgName, MaxHosts: 1, Tasks: []string{"in_group_0", "in_group"}}},
@@ -2723,6 +2736,13 @@ func TestFindExpandedTaskForVariant(t *testing.T) {
 		assert.False(t, bvt.IsGroup)
 		assert.True(t, bvt.IsPartOfGroup)
 		assert.Equal(t, tgName, bvt.GroupName)
+		assert.Equal(t, []string{"^group$"}, bvt.AllowedBranches)
+		assert.Equal(t, []string{"^ignored$"}, bvt.IgnoredBranches)
+		assert.Equal(t, 30, bvt.ExecTimeoutSecs)
+		assert.Equal(t, &batchTime, bvt.BatchTime)
+		assert.Equal(t, &ps, bvt.PS)
+		assert.NotNil(t, bvt.CreateCheckRun)
+		assert.Equal(t, []evergreen.UserRequester{evergreen.AdHocUserRequester}, bvt.AllowedRequesters)
 		require.Len(t, bvt.DependsOn, 1)
 		assert.Equal(t, TaskUnitDependency{
 			Name:    "in_group_0",
@@ -2733,6 +2753,10 @@ func TestFindExpandedTaskForVariant(t *testing.T) {
 
 	t.Run("MissingTask", func(t *testing.T) {
 		assert.Nil(t, p.FindExpandedTaskForVariant("missing", bvName))
+	})
+
+	t.Run("TaskGroupParent", func(t *testing.T) {
+		assert.Nil(t, p.FindExpandedTaskForVariant(tgName, bvName))
 	})
 
 	t.Run("MissingVariant", func(t *testing.T) {

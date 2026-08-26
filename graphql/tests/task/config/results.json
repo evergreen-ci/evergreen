@@ -48,6 +48,8 @@
           "task": {
             "id": "task_group_member",
             "config": {
+              "allowedBranches": ["^group$"],
+              "batchTime": 20,
               "dependsOn": [
                 {
                   "name": "setup",
@@ -60,11 +62,14 @@
                   "variant": "linux"
                 }
               ],
+              "execTimeoutSecs": 45,
               "groupName": "test_group",
+              "ignoredBranches": ["^ignored$"],
               "isGroup": false,
               "isPartOfGroup": true,
               "name": "test",
-              "priority": 4
+              "priority": 4,
+              "ps": "group-ps"
             }
           }
         }

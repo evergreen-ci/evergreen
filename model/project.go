@@ -191,6 +191,14 @@ type BuildVariantTaskUnit struct {
 	CreateCheckRun *CheckRun `yaml:"create_check_run,omitempty" bson:"create_check_run,omitempty"`
 }
 
+func (bvt BuildVariantTaskUnit) asTaskGroupMember(task string) BuildVariantTaskUnit {
+	bvt.GroupName = bvt.Name
+	bvt.Name = task
+	bvt.IsGroup = false
+	bvt.IsPartOfGroup = true
+	return bvt
+}
+
 func (b BuildVariant) Get(name string) (BuildVariantTaskUnit, error) {
 	for idx := range b.Tasks {
 		if b.Tasks[idx].Name == name {
@@ -1506,21 +1514,9 @@ func (p *Project) FindExpandedTaskForVariant(task, variant string) *BuildVariant
 	if bv == nil {
 		return nil
 	}
-
-	for _, bvt := range bv.Tasks {
-		if bvt.IsGroup {
-			for _, expandedTask := range p.tasksFromGroup(bvt) {
-				if expandedTask.Name == task {
-					p.addImplicitTaskGroupDependency(&expandedTask)
-					return &expandedTask
-				}
-			}
-			continue
-		}
+	for _, bvt := range p.expandBuildVariantTasks(*bv) {
 		if bvt.Name == task {
-			if projectTask := p.FindProjectTask(task); projectTask != nil {
-				bvt.Populate(*projectTask, *bv)
-			}
+			p.addImplicitTaskGroupDependency(&bvt)
 			return &bvt
 		}
 	}
@@ -1537,7 +1533,7 @@ func (p *Project) addImplicitTaskGroupDependency(bvt *BuildVariantTaskUnit) {
 	}
 	for i, taskName := range tg.Tasks {
 		if taskName == bvt.Name && i > 0 {
-			bvt.DependsOn = append(bvt.DependsOn, TaskUnitDependency{
+			bvt.DependsOn = append(slices.Clone(bvt.DependsOn), TaskUnitDependency{
 				Name:    tg.Tasks[i-1],
 				Variant: bvt.Variant,
 				Status:  evergreen.TaskSucceeded,
@@ -1757,22 +1753,26 @@ func (p *Project) FindAllVariants() []string {
 // considered build variant task units, are not preserved. Instead, each task in
 // the task group is expanded into its own individual tasks units.
 func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
-	tasksByName := map[string]ProjectTask{}
-	for _, t := range p.Tasks {
-		tasksByName[t.Name] = t
-	}
 	allBVTs := []BuildVariantTaskUnit{}
 	for _, b := range p.BuildVariants {
-		for _, t := range b.Tasks {
-			if t.IsGroup {
-				allBVTs = append(allBVTs, p.tasksFromGroup(t)...)
-			} else {
-				t.Populate(tasksByName[t.Name], b)
-				allBVTs = append(allBVTs, t)
-			}
-		}
+		allBVTs = append(allBVTs, p.expandBuildVariantTasks(b)...)
 	}
 	return allBVTs
+}
+
+func (p *Project) expandBuildVariantTasks(bv BuildVariant) []BuildVariantTaskUnit {
+	tasks := []BuildVariantTaskUnit{}
+	for _, bvt := range bv.Tasks {
+		if bvt.IsGroup {
+			tasks = append(tasks, p.tasksFromGroup(bvt)...)
+			continue
+		}
+		if projectTask := p.FindProjectTask(bvt.Name); projectTask != nil {
+			bvt.Populate(*projectTask, bv)
+		}
+		tasks = append(tasks, bvt)
+	}
+	return tasks
 }
 
 // tasksFromGroup returns a slice of the task group's tasks.
@@ -1797,34 +1797,12 @@ func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVarian
 	}
 
 	tasks := []BuildVariantTaskUnit{}
-	taskMap := map[string]ProjectTask{}
-	for _, projTask := range p.Tasks {
-		taskMap[projTask.Name] = projTask
-	}
-
 	for _, t := range tg.Tasks {
-		bvt := BuildVariantTaskUnit{
-			Name: t,
-			// IsPartOfGroup and GroupName are used to indicate that the task
-			// unit is a task within the task group, not the task group itself.
-			// These are not persisted.
-			IsPartOfGroup:     true,
-			GroupName:         bvTaskGroup.Name,
-			Variant:           bvTaskGroup.Variant,
-			Patchable:         bvTaskGroup.Patchable,
-			PatchOnly:         bvTaskGroup.PatchOnly,
-			Disable:           bvTaskGroup.Disable,
-			AllowForGitTag:    bvTaskGroup.AllowForGitTag,
-			GitTagOnly:        bvTaskGroup.GitTagOnly,
-			AllowedRequesters: bvTaskGroup.AllowedRequesters,
-			Priority:          bvTaskGroup.Priority,
-			DependsOn:         bvTaskGroup.DependsOn,
-			RunOn:             bvTaskGroup.RunOn,
-			Stepback:          bvTaskGroup.Stepback,
-			Activate:          bvTaskGroup.Activate,
-		}
+		bvt := bvTaskGroup.asTaskGroupMember(t)
 		// Default to project task settings when unspecified
-		bvt.Populate(taskMap[t], *bv)
+		if projectTask := p.FindProjectTask(t); projectTask != nil {
+			bvt.Populate(*projectTask, *bv)
+		}
 		tasks = append(tasks, bvt)
 	}
 	return tasks

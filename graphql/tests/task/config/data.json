@@ -116,7 +116,12 @@
               ]
             },
             {
-              "name": "test_group"
+              "name": "test_group",
+              "allowed_branches": ["^group$"],
+              "ignored_branches": ["^ignored$"],
+              "exec_timeout_secs": 45,
+              "batchtime": 20,
+              "ps": "group-ps"
             }
           ]
         }
