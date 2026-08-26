@@ -7300,17 +7300,20 @@ func TestValidateDisplayName(t *testing.T) {
 	}
 }
 
-// TestGetPaginatedRunningHostsCountsAndTaskJoin pins the behavior that the
-// running-task $lookup is applied after filtering: the counts must not depend on
-// it, and hosts with no running task must still be returned.
+// TestGetPaginatedRunningHostsCountsAndTaskJoin tests that the
+// running-task $lookup is applied after filtering.
 func TestGetPaginatedRunningHostsCountsAndTaskJoin(t *testing.T) {
 	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(Collection, task.Collection))
 	t.Cleanup(func() {
 		assert.NoError(t, db.ClearCollections(Collection, task.Collection))
 	})
+	someTask := task.Task{
+		Id:          "t1",
+		DisplayName: "some_task",
+	}
 
-	require.NoError(t, (&task.Task{Id: "t1", DisplayName: "some_task"}).Insert(ctx))
+	require.NoError(t, someTask.Insert(ctx))
 	for _, h := range []Host{
 		{Id: "h1", Status: evergreen.HostRunning, StartedBy: "me", RunningTask: "t1"},
 		{Id: "h2", Status: evergreen.HostRunning, StartedBy: "me"},

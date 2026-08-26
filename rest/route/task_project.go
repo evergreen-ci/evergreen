@@ -135,10 +135,7 @@ func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 
 	tasks = tasks[:lastIndex]
 
-	// Artifacts, the project identifier, and host AMIs are all resolved up front
-	// for the whole page. Letting BuildFromService fetch them per task turns a
-	// single request into hundreds of queries.
-	artifactsByTask, err := getArtifactsForTasks(ctx, tasks)
+	artifactsCache, err := getArtifactsForTasks(ctx, tasks)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding artifacts for tasks"))
 	}
@@ -146,16 +143,13 @@ func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding hosts for tasks"))
 	}
-	// The tasks are queried by project, so they all share one identifier. A lookup
-	// failure is not fatal here, and a successful lookup of an empty identifier
-	// still sets the field, both matching APITask.GetProjectIdentifier.
 	projectIdentifier, foundProjectIdentifier := getProjectIdentifierForTasks(ctx, tasks)
 
 	for _, t := range tasks {
 		taskModel := &model.APITask{}
 		err = taskModel.BuildFromService(ctx, &t, &model.APITaskArgs{
 			IncludeArtifacts: true,
-			ArtifactsByTask:  artifactsByTask,
+			ArtifactsCache:   artifactsCache,
 			LogURL:           GetURL(ctx),
 			ParsleyLogURL:    tph.parsleyURL,
 		})

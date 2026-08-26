@@ -2311,32 +2311,27 @@ func checkBuildVariants(project *model.Project) ValidationErrors {
 func GetAllowedSingleTaskDistroTasksForProject(ctx context.Context, identifier string, settings *evergreen.Settings) (evergreen.ProjectTasksPair, error) {
 	allowList := evergreen.ProjectTasksPair{}
 
-	if len(settings.SingleTaskDistro.ProjectTasksPairs) == 0 {
-		return allowList, nil
-	}
-
-	// The refs depend only on the identifier, so they are resolved once rather
-	// than once per configured pair.
 	projectsToLookFor := []string{}
-	pRef, err := model.FindBranchProjectRef(ctx, identifier)
-	if err != nil {
-		return allowList, errors.Wrapf(err, "finding project ref '%s'", identifier)
-	}
-	if pRef != nil {
-		projectsToLookFor = append(projectsToLookFor, pRef.Id, pRef.Identifier, pRef.RepoRefId)
-	} else {
-		// If project ref is nil, it means the project is a repo project.
-		repoRef, err := model.FindOneRepoRef(ctx, identifier)
-		if err != nil {
-			return allowList, errors.Wrapf(err, "finding repo ref '%s'", identifier)
-		}
-		if repoRef == nil {
-			return allowList, errors.Errorf("project or repo ref '%s' not found", identifier)
-		}
-		projectsToLookFor = append(projectsToLookFor, repoRef.Id)
-	}
-
 	for _, pairs := range settings.SingleTaskDistro.ProjectTasksPairs {
+		pRef, err := model.FindBranchProjectRef(ctx, identifier)
+		if err != nil {
+			return allowList, errors.Wrapf(err, "finding project ref '%s'", identifier)
+		}
+
+		// Look for allowed tasks for the project and its repo project.
+		if pRef != nil {
+			projectsToLookFor = append(projectsToLookFor, pRef.Id, pRef.Identifier, pRef.RepoRefId)
+		} else {
+			// If project ref is nil, it means the project is a repo project.
+			repoRef, err := model.FindOneRepoRef(ctx, identifier)
+			if err != nil {
+				return allowList, errors.Wrapf(err, "finding repo ref '%s'", identifier)
+			}
+			if repoRef == nil {
+				return allowList, errors.Errorf("project or repo ref '%s' not found", identifier)
+			}
+			projectsToLookFor = append(projectsToLookFor, repoRef.Id)
+		}
 		if utility.StringSliceContains(projectsToLookFor, pairs.ProjectID) {
 			allowList.AllowedTasks = append(allowList.AllowedTasks, pairs.AllowedTasks...)
 			allowList.AllowedBVs = append(allowList.AllowedBVs, pairs.AllowedBVs...)

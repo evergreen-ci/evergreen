@@ -480,13 +480,7 @@ type APITaskArgs struct {
 	IncludeArtifacts         bool
 	LogURL                   string
 	ParsleyLogURL            string
-	// ArtifactsByTask, when non-nil, supplies the artifact entries keyed by the
-	// task ID and execution they were stored under, instead of querying for them.
-	// Callers converting a page of tasks should prefetch with
-	// artifact.ByTaskIdsAndExecutions rather than paying one query per task. The
-	// execution is part of the key because a page can contain both a display task
-	// and its execution tasks at differing executions.
-	ArtifactsByTask map[artifact.TaskIDAndExecution][]artifact.Entry
+	ArtifactsCache           map[artifact.TaskIDAndExecution][]artifact.Entry
 }
 
 // BuildFromService converts from a service level task by loading the data
@@ -528,7 +522,7 @@ func (at *APITask) BuildFromService(ctx context.Context, t *task.Task, args *API
 		}
 	}
 	if args.IncludeArtifacts {
-		if err := at.getArtifacts(ctx, args.LogURL, args.ArtifactsByTask); err != nil {
+		if err := at.getArtifacts(ctx, args.LogURL, args.ArtifactsCache); err != nil {
 			return errors.Wrap(err, "getting artifacts")
 		}
 	}

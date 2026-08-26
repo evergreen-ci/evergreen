@@ -105,10 +105,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 
 	tasks = tasks[:lastIndex]
 
-	// Artifacts, the project identifier, and host AMIs are all resolved up front
-	// for the whole page. Letting BuildFromService fetch them per task turns a
-	// single request into hundreds of queries.
-	artifactsByTask, err := getArtifactsForTasks(ctx, tasks)
+	artifactsCache, err := getArtifactsForTasks(ctx, tasks)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding artifacts for tasks in build '%s'", tbh.buildId))
 	}
@@ -116,9 +113,6 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding hosts for tasks in build '%s'", tbh.buildId))
 	}
-	// Every task in a build belongs to the same project. A lookup failure is not
-	// fatal here, and a successful lookup of an empty identifier still sets the
-	// field, both matching APITask.GetProjectIdentifier.
 	projectIdentifier, foundProjectIdentifier := getProjectIdentifierForTasks(ctx, tasks)
 
 	for i := range tasks {
@@ -126,7 +120,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 
 		if err = taskModel.BuildFromService(ctx, &tasks[i], &model.APITaskArgs{
 			IncludeArtifacts: true,
-			ArtifactsByTask:  artifactsByTask,
+			ArtifactsCache:   artifactsCache,
 			LogURL:           GetURL(ctx),
 			ParsleyLogURL:    tbh.parsleyURL,
 		}); err != nil {
@@ -167,9 +161,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 }
 
 // getArtifactsForTasks fetches the artifact entries for a page of tasks in one
-// query, keyed by the task ID and execution they were stored under. Display
-// tasks store their artifacts under their execution tasks, so those IDs are keys
-// as well, at the display task's execution.
+// query. Display tasks store their artifacts under their execution tasks.
 func getArtifactsForTasks(ctx context.Context, tasks []task.Task) (map[artifact.TaskIDAndExecution][]artifact.Entry, error) {
 	var pairs []artifact.TaskIDAndExecution
 	for _, t := range tasks {
@@ -197,8 +189,7 @@ func getArtifactsForTasks(ctx context.Context, tasks []task.Task) (map[artifact.
 	return artifactsByTask, nil
 }
 
-// getAMIsForTasks fetches the AMI of every host running a task in the page in
-// one query, keyed by host ID.
+// getAMIsForTasks fetches the AMI of every host running a task in the page.
 func getAMIsForTasks(ctx context.Context, tasks []task.Task) (map[string]string, error) {
 	var hostIDs []string
 	seen := map[string]bool{}
@@ -227,9 +218,7 @@ func getAMIsForTasks(ctx context.Context, tasks []task.Task) (map[string]string,
 }
 
 // getProjectIdentifierForTasks resolves the project identifier shared by a page
-// of tasks. The boolean reports whether the lookup succeeded, so that a project
-// ref with an empty identifier still sets the field rather than leaving it null,
-// matching APITask.GetProjectIdentifier.
+// of tasks. Project ref with an empty identifier still sets the field rather than leaving it null
 func getProjectIdentifierForTasks(ctx context.Context, tasks []task.Task) (string, bool) {
 	if len(tasks) == 0 || tasks[0].Project == "" {
 		return "", false

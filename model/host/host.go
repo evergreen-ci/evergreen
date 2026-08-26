@@ -3710,9 +3710,7 @@ func GetPaginatedRunningHosts(ctx context.Context, opts HostsFilterOptions) ([]H
 	if opts.SortBy != IdKey {
 		sorters = append(sorters, bson.E{Key: IdKey, Value: 1})
 	}
-	// The running-task join is applied after filtering and before sorting, so the
-	// counts above never pay for it and it runs over the filtered set rather than
-	// every non-terminated host.
+	// Only add the lookup stage after counting since it's not needed for the count pipelines.
 	runningHostsPipeline = append(runningHostsPipeline,
 		bson.M{
 			"$lookup": bson.M{
