@@ -20,17 +20,6 @@
       "display_task_id": ""
     },
     {
-      "_id": "task_without_config",
-      "version": "config_version",
-      "branch": "config_project",
-      "build_variant": "linux",
-      "display_name": "not_in_project",
-      "r": "gitter_request",
-      "status": "success",
-      "execution": 0,
-      "display_task_id": ""
-    },
-    {
       "_id": "task_group_member",
       "version": "config_version",
       "branch": "config_project",

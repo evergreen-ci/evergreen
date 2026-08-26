@@ -77,6 +77,7 @@ type ResolverRoot interface {
 	SpruceConfig() SpruceConfigResolver
 	SubscriberWrapper() SubscriberWrapperResolver
 	Task() TaskResolver
+	TaskConfig() TaskConfigResolver
 	TaskLogs() TaskLogsResolver
 	TicketFields() TicketFieldsResolver
 	UIConfig() UIConfigResolver
@@ -2830,6 +2831,9 @@ type TaskResolver interface {
 	TotalTestCount(ctx context.Context, obj *model.APITask) (int, error)
 	Version(ctx context.Context, obj *model.APITask) (*model1.Version, error)
 	VersionMetadata(ctx context.Context, obj *model.APITask) (*model.APIVersion, error)
+}
+type TaskConfigResolver interface {
+	AllowedRequesters(ctx context.Context, obj *model1.BuildVariantTaskUnit) ([]string, error)
 }
 type TaskLogsResolver interface {
 	AgentLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error)
@@ -67416,10 +67420,10 @@ func (ec *executionContext) _TaskConfig_allowedRequesters(ctx context.Context, f
 		field,
 		ec.fieldContext_TaskConfig_allowedRequesters,
 		func(ctx context.Context) (any, error) {
-			return obj.AllowedRequesters, nil
+			return ec.resolvers.TaskConfig().AllowedRequesters(ctx, obj)
 		},
 		nil,
-		ec.marshalOUserRequester2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚐUserRequesterᚄ,
+		ec.marshalOString2ᚕstringᚄ,
 		true,
 		false,
 	)
@@ -67429,10 +67433,10 @@ func (ec *executionContext) fieldContext_TaskConfig_allowedRequesters(_ context.
 	fc = &graphql.FieldContext{
 		Object:     "TaskConfig",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type UserRequester does not have child fields")
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -109237,7 +109241,38 @@ func (ec *executionContext) _TaskConfig(ctx context.Context, sel ast.SelectionSe
 		case "allowedBranches":
 			out.Values[i] = ec._TaskConfig_allowedBranches(ctx, field, obj)
 		case "allowedRequesters":
-			out.Values[i] = ec._TaskConfig_allowedRequesters(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._TaskConfig_allowedRequesters(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "allowForGitTag":
 			out.Values[i] = ec._TaskConfig_allowForGitTag(ctx, field, obj)
 		case "batchTime":
@@ -109263,7 +109298,7 @@ func (ec *executionContext) _TaskConfig(ctx context.Context, sel ast.SelectionSe
 		case "name":
 			out.Values[i] = ec._TaskConfig_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "patchable":
 			out.Values[i] = ec._TaskConfig_patchable(ctx, field, obj)
@@ -120037,44 +120072,6 @@ func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 	return ec._User(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNUserRequester2githubᚗcomᚋevergreenᚑciᚋevergreenᚐUserRequester(ctx context.Context, v any) (evergreen.UserRequester, error) {
-	tmp, err := graphql.UnmarshalString(v)
-	res := unmarshalNUserRequester2githubᚗcomᚋevergreenᚑciᚋevergreenᚐUserRequester[tmp]
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNUserRequester2githubᚗcomᚋevergreenᚑciᚋevergreenᚐUserRequester(ctx context.Context, sel ast.SelectionSet, v evergreen.UserRequester) graphql.Marshaler {
-	_ = sel
-	res := graphql.MarshalString(marshalNUserRequester2githubᚗcomᚋevergreenᚑciᚋevergreenᚐUserRequester[v])
-	if res == graphql.Null {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-	}
-	return res
-}
-
-var (
-	unmarshalNUserRequester2githubᚗcomᚋevergreenᚑciᚋevergreenᚐUserRequester = map[string]evergreen.UserRequester{
-		"AD_HOC":              evergreen.AdHocUserRequester,
-		"GIT_TAG":             evergreen.GitTagUserRequester,
-		"GITHUB_MERGE":        evergreen.GithubMergeUserRequester,
-		"GITHUB_PR":           evergreen.GithubPRUserRequester,
-		"PATCH_VERSION":       evergreen.PatchVersionUserRequester,
-		"REPOTRACKER_VERSION": evergreen.RepotrackerVersionUserRequester,
-		"TRIGGER":             evergreen.TriggerUserRequester,
-	}
-	marshalNUserRequester2githubᚗcomᚋevergreenᚑciᚋevergreenᚐUserRequester = map[evergreen.UserRequester]string{
-		evergreen.AdHocUserRequester:              "AD_HOC",
-		evergreen.GitTagUserRequester:             "GIT_TAG",
-		evergreen.GithubMergeUserRequester:        "GITHUB_MERGE",
-		evergreen.GithubPRUserRequester:           "GITHUB_PR",
-		evergreen.PatchVersionUserRequester:       "PATCH_VERSION",
-		evergreen.RepotrackerVersionUserRequester: "REPOTRACKER_VERSION",
-		evergreen.TriggerUserRequester:            "TRIGGER",
-	}
-)
-
 func (ec *executionContext) marshalNUserServiceFlags2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIServiceFlags(ctx context.Context, sel ast.SelectionSet, v *model.APIServiceFlags) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -124697,71 +124694,6 @@ func (ec *executionContext) marshalOUserConfig2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._UserConfig(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalOUserRequester2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚐUserRequesterᚄ(ctx context.Context, v any) ([]evergreen.UserRequester, error) {
-	if v == nil {
-		return nil, nil
-	}
-	var vSlice []any
-	vSlice = graphql.CoerceList(v)
-	var err error
-	res := make([]evergreen.UserRequester, len(vSlice))
-	for i := range vSlice {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNUserRequester2githubᚗcomᚋevergreenᚑciᚋevergreenᚐUserRequester(ctx, vSlice[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return res, nil
-}
-
-func (ec *executionContext) marshalOUserRequester2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚐUserRequesterᚄ(ctx context.Context, sel ast.SelectionSet, v []evergreen.UserRequester) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNUserRequester2githubᚗcomᚋevergreenᚑciᚋevergreenᚐUserRequester(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
 }
 
 func (ec *executionContext) marshalOUserSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings(ctx context.Context, sel ast.SelectionSet, v *model.APIUserSettings) graphql.Marshaler {

@@ -967,11 +967,24 @@ func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITa
 	return apiVersion, nil
 }
 
+// AllowedRequesters is the resolver for the allowedRequesters field.
+func (r *taskConfigResolver) AllowedRequesters(ctx context.Context, obj *model.BuildVariantTaskUnit) ([]string, error) {
+	requesters := make([]string, len(obj.AllowedRequesters))
+	for i, requester := range obj.AllowedRequesters {
+		requesters[i] = string(requester)
+	}
+	return requesters, nil
+}
+
 // Cost returns CostResolver implementation.
 func (r *Resolver) Cost() CostResolver { return &costResolver{r} }
 
 // Task returns TaskResolver implementation.
 func (r *Resolver) Task() TaskResolver { return &taskResolver{r} }
 
+// TaskConfig returns TaskConfigResolver implementation.
+func (r *Resolver) TaskConfig() TaskConfigResolver { return &taskConfigResolver{r} }
+
 type costResolver struct{ *Resolver }
 type taskResolver struct{ *Resolver }
+type taskConfigResolver struct{ *Resolver }

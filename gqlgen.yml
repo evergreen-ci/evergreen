@@ -997,23 +997,6 @@ models:
     fields:
       displayName:
         fieldName: "DispName"
-  UserRequester:
-    model: github.com/evergreen-ci/evergreen.UserRequester
-    enum_values:
-      AD_HOC:
-        value: github.com/evergreen-ci/evergreen.AdHocUserRequester
-      GIT_TAG:
-        value: github.com/evergreen-ci/evergreen.GitTagUserRequester
-      GITHUB_PR:
-        value: github.com/evergreen-ci/evergreen.GithubPRUserRequester
-      GITHUB_MERGE:
-        value: github.com/evergreen-ci/evergreen.GithubMergeUserRequester
-      PATCH_VERSION:
-        value: github.com/evergreen-ci/evergreen.PatchVersionUserRequester
-      REPOTRACKER_VERSION:
-        value: github.com/evergreen-ci/evergreen.RepotrackerVersionUserRequester
-      TRIGGER:
-        value: github.com/evergreen-ci/evergreen.TriggerUserRequester
   UserServiceFlags:
     model: github.com/evergreen-ci/evergreen/rest/model.APIServiceFlags
   UserSettings:

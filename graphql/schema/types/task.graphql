@@ -396,16 +396,6 @@ input UnquarantineTestInput {
   testName: String!
 }
 
-enum UserRequester {
-  AD_HOC
-  GIT_TAG
-  GITHUB_MERGE
-  GITHUB_PR
-  PATCH_VERSION
-  REPOTRACKER_VERSION
-  TRIGGER
-}
-
 type TaskUnitDependency {
   name: String!
   omitGeneratedTasks: Boolean
@@ -417,7 +407,7 @@ type TaskUnitDependency {
 type TaskConfig {
   activate: Boolean
   allowedBranches: [String!]
-  allowedRequesters: [UserRequester!]
+  allowedRequesters: [String!]
   allowForGitTag: Boolean
   batchTime: Int
   cronBatchTime: String

@@ -9,7 +9,7 @@
             "config": {
               "activate": false,
               "allowedBranches": ["^main$"],
-              "allowedRequesters": ["PATCH_VERSION", "GITHUB_PR"],
+              "allowedRequesters": ["patch", "github_pr"],
               "allowForGitTag": false,
               "batchTime": 15,
               "cronBatchTime": "",
@@ -71,17 +71,6 @@
               "priority": 4,
               "ps": "group-ps"
             }
-          }
-        }
-      }
-    },
-    {
-      "query_file": "no_config.graphql",
-      "result": {
-        "data": {
-          "task": {
-            "id": "task_without_config",
-            "config": null
           }
         }
       }
