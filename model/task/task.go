@@ -1778,7 +1778,7 @@ func getDependencyTaskIdsToActivate(ctx context.Context, tasks []string, updateD
 
 	// do a topological sort so we've dealt with
 	// all a task's dependencies by the time we get up to it
-	sortedDependencies, err := topologicalSort(tasksDependingOnTheseTasks)
+	sortedDependencies, err := topologicalSort(ctx, tasksDependingOnTheseTasks)
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
@@ -1934,7 +1934,7 @@ func activateDeactivatedDependencies(ctx context.Context, tasksToActivate map[st
 	return nil
 }
 
-func topologicalSort(tasks []Task) ([]Task, error) {
+func topologicalSort(ctx context.Context, tasks []Task) ([]Task, error) {
 	var fromTask, toTask string
 	defer func() {
 		taskIds := []string{}
@@ -1942,7 +1942,7 @@ func topologicalSort(tasks []Task) ([]Task, error) {
 			taskIds = append(taskIds, t.Id)
 		}
 		panicErr := recovery.HandlePanicWithError(recover(), nil, "problem adding edge")
-		grip.Error(context.Background(), message.WrapError(panicErr, message.Fields{
+		grip.Error(ctx, message.WrapError(panicErr, message.Fields{
 			"function":       "topologicalSort",
 			"from_task":      fromTask,
 			"to_task":        toTask,
@@ -4416,7 +4416,7 @@ func (t *Task) SaveS3Usage(ctx context.Context, logLookup, artifactLookup bucket
 		return errors.Wrap(err, "getting cost config")
 	}
 
-	t.calculateS3PutCosts(costConfig)
+	t.calculateS3PutCosts(ctx, costConfig)
 	t.setS3ArtifactStorageCosts(ctx, artifactLookup, costConfig)
 	t.setS3LogStorageCosts(ctx, logBucketName, logLookup, costConfig)
 
@@ -4471,12 +4471,12 @@ func lookupExpirationDays(ctx context.Context, bucket, fileKey string, lookup bu
 // calculateS3PutCosts calculates S3 PUT costs for both artifact uploads and log uploads.
 // Artifact PUT counts exclude non-DevProd-owned uploads when the allowlist is configured; that filtering
 // happens in s3usage.S3Usage.IncrementArtifacts (agent s3.put), so aggregates here already match priced PUTs.
-func (t *Task) calculateS3PutCosts(costConfig *evergreen.CostConfig) {
+func (t *Task) calculateS3PutCosts(ctx context.Context, costConfig *evergreen.CostConfig) {
 	if t.S3Usage.Artifacts.PutRequests > 0 {
-		t.TaskCost.OnDemandS3ArtifactPutCost, t.TaskCost.AdjustedS3ArtifactPutCost = s3usage.CalculateS3PutCostWithConfig(t.S3Usage.Artifacts.PutRequests, costConfig)
+		t.TaskCost.OnDemandS3ArtifactPutCost, t.TaskCost.AdjustedS3ArtifactPutCost = s3usage.CalculateS3PutCostWithConfig(ctx, t.S3Usage.Artifacts.PutRequests, costConfig)
 	}
 	if t.S3Usage.Logs.PutRequests > 0 {
-		t.TaskCost.OnDemandS3LogPutCost, t.TaskCost.AdjustedS3LogPutCost = s3usage.CalculateS3PutCostWithConfig(t.S3Usage.Logs.PutRequests, costConfig)
+		t.TaskCost.OnDemandS3LogPutCost, t.TaskCost.AdjustedS3LogPutCost = s3usage.CalculateS3PutCostWithConfig(ctx, t.S3Usage.Logs.PutRequests, costConfig)
 	}
 }
 

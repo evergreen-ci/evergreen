@@ -183,12 +183,12 @@ func (tc *taskContext) getOtherFailingCommands() []apimodels.FailingCommand {
 	return otherFailingCmds
 }
 
-func (tc *taskContext) setCurrentCommand(command command.Command) {
+func (tc *taskContext) setCurrentCommand(ctx context.Context, command command.Command) {
 	tc.Lock()
 	defer tc.Unlock()
 	tc.currentCommand = command
 	if tc.logger != nil {
-		tc.logger.Execution().Infof(context.Background(), "Current command set to %s (%s).", tc.currentCommand.FullDisplayName(), tc.currentCommand.Type())
+		tc.logger.Execution().Infof(ctx, "Current command set to %s (%s).", tc.currentCommand.FullDisplayName(), tc.currentCommand.Type())
 	}
 }
 

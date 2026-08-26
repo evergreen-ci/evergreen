@@ -36,7 +36,7 @@ func newLocalDaemonREST(port int, conf *ClientSettings) *localDaemonREST {
 }
 
 // Start starts the REST debug daemon
-func (d *localDaemonREST) Start() error {
+func (d *localDaemonREST) Start(ctx context.Context) error {
 	router := mux.NewRouter()
 	router.HandleFunc("/health", d.handleHealth).Methods("GET")
 	router.HandleFunc("/config/load", d.handleLoadConfig).Methods("POST")
@@ -50,10 +50,10 @@ func (d *localDaemonREST) Start() error {
 	router.HandleFunc("/status", d.handleStatus).Methods("GET")
 
 	if err := d.writeDaemonInfo(); err != nil {
-		grip.Warning(context.Background(), errors.Wrap(err, "writing daemon info"))
+		grip.Warning(ctx, errors.Wrap(err, "writing daemon info"))
 	}
 
-	grip.Infof(context.Background(), "Starting REST daemon on port %d", d.port)
+	grip.Infof(ctx, "Starting REST daemon on port %d", d.port)
 	return http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", d.port), router)
 }
 
@@ -139,13 +139,13 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 	// When a config path is provided, load the provided YAML to override the
 	// server config.
 	if req.ConfigPath != "" {
-		if _, err := executor.LoadProject(req.ConfigPath); err != nil {
+		if _, err := executor.LoadProject(r.Context(), req.ConfigPath); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	}
 
-	if err := executor.SetupWorkingDirectory(workDir); err != nil {
+	if err := executor.SetupWorkingDirectory(r.Context(), workDir); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -266,7 +266,7 @@ func (d *localDaemonREST) handleJumpTo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := d.executor.JumpTo(index); err != nil {
+	if err := d.executor.JumpTo(r.Context(), index); err != nil {
 		http.Error(w, errors.Wrap(err, "jumping to step").Error(), http.StatusBadRequest)
 		return
 	}
@@ -423,7 +423,7 @@ func (d *localDaemonREST) handleSetVariable(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	d.executor.SetVariable(req.Key, req.Value)
+	d.executor.SetVariable(r.Context(), req.Key, req.Value)
 	grip.Error(r.Context(), json.NewEncoder(w).Encode(map[string]bool{"success": true}))
 }
 

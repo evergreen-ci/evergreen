@@ -89,7 +89,7 @@ type TaskReliability struct {
 // calculateSuccessRate using
 // https://en.wikipedia.org/wiki/Binomial_proportion_confidence_interval#Wilson_score_interval
 // and return the lower value (for success rates).
-func (s *TaskReliability) calculateSuccessRate() {
+func (s *TaskReliability) calculateSuccessRate(ctx context.Context) {
 	total := float64(s.NumTotal)
 	success := float64(s.NumSuccess)
 	low := 0.0
@@ -106,7 +106,7 @@ func (s *TaskReliability) calculateSuccessRate() {
 		low = math.Max(0, (c1-dist)/denominator)
 	}
 	s.SuccessRate = (math.Ceil(low*100) / 100)
-	grip.Info(context.Background(), message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":      "calculated task success rate",
 		"num_success":  s.NumSuccess,
 		"num_failed":   s.NumFailed,
@@ -121,7 +121,7 @@ func (s *TaskReliability) calculateSuccessRate() {
 
 // Create a TaskReliability struct from the task stats and calculate the success rate
 // using the z score.
-func newTaskReliability(taskStat taskstats.TaskStats, z float64) TaskReliability {
+func newTaskReliability(ctx context.Context, taskStat taskstats.TaskStats, z float64) TaskReliability {
 	reliability := TaskReliability{
 		TaskName:           taskStat.TaskName,
 		BuildVariant:       taskStat.BuildVariant,
@@ -138,7 +138,7 @@ func newTaskReliability(taskStat taskstats.TaskStats, z float64) TaskReliability
 		LastUpdate:         taskStat.LastUpdate,
 		Z:                  z,
 	}
-	reliability.calculateSuccessRate()
+	reliability.calculateSuccessRate(ctx)
 	return reliability
 }
 
@@ -146,9 +146,9 @@ func newTaskReliability(taskStat taskstats.TaskStats, z float64) TaskReliability
 // The z score is the number of standard deviations from the mean.
 // https://www.investopedia.com/terms/z/zscore.asp.
 // https://www.investopedia.com/terms/t/two-tailed-test.asp
-func significanceToZ(significance float64) float64 {
+func significanceToZ(ctx context.Context, significance float64) float64 {
 	z := distuv.Normal{Mu: 0., Sigma: 1.}.Quantile(1. - significance/2.)
-	grip.Debugf(context.Background(), "significanceToZ: significance=%.4f, z=%.4f\n", significance, z)
+	grip.Debugf(ctx, "significanceToZ: significance=%.4f, z=%.4f\n", significance, z)
 	return z
 }
 
@@ -166,9 +166,9 @@ func GetTaskReliabilityScores(ctx context.Context, filter TaskReliabilityFilter)
 	}
 
 	apiReliabilityResult := make([]TaskReliability, len(taskStats))
-	z := significanceToZ(filter.Significance)
+	z := significanceToZ(ctx, filter.Significance)
 	for i, taskStat := range taskStats {
-		apiReliabilityResult[i] = newTaskReliability(taskStat, z)
+		apiReliabilityResult[i] = newTaskReliability(ctx, taskStat, z)
 	}
 	return apiReliabilityResult, nil
 }

@@ -101,7 +101,7 @@ func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, cmdBloc
 		ResetHeartbeatTimeout: func() {
 			tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 		},
-		HandlePanic: func(panicErr error, originalErr error, op string) error {
+		HandlePanic: func(ctx context.Context, panicErr error, originalErr error, op string) error {
 			return a.logPanic(ctx, tc, panicErr, originalErr, op)
 		},
 		RunCommandOrFunc: func(ctx context.Context, commandInfo model.PluginCommandConf, cmds []command.Command, block command.BlockType, canFailTask bool) error {
@@ -208,7 +208,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, commandInfo mod
 	}
 	defer cleanup()
 
-	tc.setCurrentCommand(cmd)
+	tc.setCurrentCommand(ctx, cmd)
 	switch options.block {
 	case command.PreBlock, command.SetupGroupBlock, command.SetupTaskBlock, command.MainTaskBlock:
 		// Only set the idle timeout in cases where the idle timeout is actually
