@@ -172,6 +172,13 @@ models:
         resolver: true
   ContainerIsolationSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIContainerIsolationSettings
+  ExecutionPlatform:
+    model: github.com/evergreen-ci/evergreen/model/task.ExecutionPlatform
+    enum_values:
+      HOST:
+        value: github.com/evergreen-ci/evergreen/model/task.ExecutionPlatformHost
+      CONTAINER:
+        value: github.com/evergreen-ci/evergreen/model/task.ExecutionPlatformContainer
   ContainerPool:
     model: github.com/evergreen-ci/evergreen/rest/model.APIContainerPool
   ContainerPoolInput:

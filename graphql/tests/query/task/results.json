@@ -10,6 +10,7 @@
             "displayName": "test-thirdparty-docker",
             "requester": "github_pull_request",
             "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+            "executionPlatform": "HOST",
             "testSelectionEnabled": true,
             "taskCost": {
               "adjustedEC2Cost": 0.89,
@@ -21,6 +22,17 @@
               "adjustedS3LogStorageCost": 0,
               "total": 1
             }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "task_container.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "2",
+            "executionPlatform": "CONTAINER"
           }
         }
       }

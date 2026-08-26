@@ -2775,6 +2775,7 @@ type TaskResolver interface {
 	Errors(ctx context.Context, obj *model.APITask) ([]string, error)
 	EstimatedStart(ctx context.Context, obj *model.APITask) (*model.APIDuration, error)
 
+	ExecutionPlatform(ctx context.Context, obj *model.APITask) (task.ExecutionPlatform, error)
 	ExecutionSteps(ctx context.Context, obj *model.APITask) ([]*model1.TaskExecutionStep, error)
 
 	ExecutionTasksFull(ctx context.Context, obj *model.APITask, options *ExecutionTasksFilterOptions) ([]*model.APITask, error)
@@ -63617,10 +63618,10 @@ func (ec *executionContext) _Task_executionPlatform(ctx context.Context, field g
 		field,
 		ec.fieldContext_Task_executionPlatform,
 		func(ctx context.Context) (any, error) {
-			return obj.ExecutionPlatform, nil
+			return ec.resolvers.Task().ExecutionPlatform(ctx, obj)
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalNExecutionPlatform2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐExecutionPlatform,
 		true,
 		true,
 	)
@@ -63630,10 +63631,10 @@ func (ec *executionContext) fieldContext_Task_executionPlatform(_ context.Contex
 	fc = &graphql.FieldContext{
 		Object:     "Task",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type ExecutionPlatform does not have child fields")
 		},
 	}
 	return fc, nil
@@ -107778,10 +107779,41 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "executionPlatform":
-			out.Values[i] = ec._Task_executionPlatform(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_executionPlatform(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "executionSteps":
 			field := field
 
@@ -115034,6 +115066,34 @@ func (ec *executionContext) unmarshalNEnvVarInput2ᚕgithubᚗcomᚋevergreenᚑ
 	}
 	return res, nil
 }
+
+func (ec *executionContext) unmarshalNExecutionPlatform2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐExecutionPlatform(ctx context.Context, v any) (task.ExecutionPlatform, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := unmarshalNExecutionPlatform2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐExecutionPlatform[tmp]
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNExecutionPlatform2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐExecutionPlatform(ctx context.Context, sel ast.SelectionSet, v task.ExecutionPlatform) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalString(marshalNExecutionPlatform2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐExecutionPlatform[v])
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
+var (
+	unmarshalNExecutionPlatform2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐExecutionPlatform = map[string]task.ExecutionPlatform{
+		"HOST":      task.ExecutionPlatformHost,
+		"CONTAINER": task.ExecutionPlatformContainer,
+	}
+	marshalNExecutionPlatform2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐExecutionPlatform = map[task.ExecutionPlatform]string{
+		task.ExecutionPlatformHost:      "HOST",
+		task.ExecutionPlatformContainer: "CONTAINER",
+	}
+)
 
 func (ec *executionContext) marshalNExpansion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExpansion(ctx context.Context, sel ast.SelectionSet, v model.APIExpansion) graphql.Marshaler {
 	return ec._Expansion(ctx, sel, &v)
