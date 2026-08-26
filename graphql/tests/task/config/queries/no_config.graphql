@@ -1,0 +1,8 @@
+{
+  task(taskId: "task_without_config") {
+    id
+    config {
+      name
+    }
+  }
+}

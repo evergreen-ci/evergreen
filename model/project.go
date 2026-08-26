@@ -1497,6 +1497,34 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 	return nil
 }
 
+// FindExpandedTaskForVariant returns the fully populated build variant task
+// unit for a task. Unlike FindTaskForVariant, tasks within task groups are
+// returned as individual task units rather than as their containing group.
+func (p *Project) FindExpandedTaskForVariant(task, variant string) *BuildVariantTaskUnit {
+	bv := p.FindBuildVariant(variant)
+	if bv == nil {
+		return nil
+	}
+
+	for _, bvt := range bv.Tasks {
+		if bvt.IsGroup {
+			for _, expandedTask := range p.tasksFromGroup(bvt) {
+				if expandedTask.Name == task {
+					return &expandedTask
+				}
+			}
+			continue
+		}
+		if bvt.Name == task {
+			if projectTask := p.FindProjectTask(task); projectTask != nil {
+				bvt.Populate(*projectTask, *bv)
+			}
+			return &bvt
+		}
+	}
+	return nil
+}
+
 func (p *Project) FindBuildVariant(build string) *BuildVariant {
 	for _, b := range p.BuildVariants {
 		if b.Name == build {

@@ -2684,6 +2684,55 @@ func TestFindAllBuildVariantTasks(t *testing.T) {
 	})
 }
 
+func TestFindExpandedTaskForVariant(t *testing.T) {
+	const (
+		bvName = "bv"
+		tgName = "task_group"
+	)
+	p := Project{
+		Tasks: []ProjectTask{
+			{Name: "standalone", Priority: 1},
+			{Name: "in_group", Priority: 2},
+		},
+		BuildVariants: []BuildVariant{{
+			Name: bvName,
+			Tasks: []BuildVariantTaskUnit{
+				{Name: "standalone", Variant: bvName},
+				{Name: tgName, IsGroup: true, Variant: bvName},
+			},
+		}},
+		TaskGroups: []TaskGroup{{Name: tgName, Tasks: []string{"in_group"}}},
+	}
+
+	t.Run("StandaloneTask", func(t *testing.T) {
+		bvt := p.FindExpandedTaskForVariant("standalone", bvName)
+		require.NotNil(t, bvt)
+		assert.Equal(t, "standalone", bvt.Name)
+		assert.Equal(t, int64(1), bvt.Priority)
+		assert.False(t, bvt.IsGroup)
+		assert.False(t, bvt.IsPartOfGroup)
+		assert.Empty(t, bvt.GroupName)
+	})
+
+	t.Run("TaskGroupMember", func(t *testing.T) {
+		bvt := p.FindExpandedTaskForVariant("in_group", bvName)
+		require.NotNil(t, bvt)
+		assert.Equal(t, "in_group", bvt.Name)
+		assert.Equal(t, int64(2), bvt.Priority)
+		assert.False(t, bvt.IsGroup)
+		assert.True(t, bvt.IsPartOfGroup)
+		assert.Equal(t, tgName, bvt.GroupName)
+	})
+
+	t.Run("MissingTask", func(t *testing.T) {
+		assert.Nil(t, p.FindExpandedTaskForVariant("missing", bvName))
+	})
+
+	t.Run("MissingVariant", func(t *testing.T) {
+		assert.Nil(t, p.FindExpandedTaskForVariant("standalone", "missing"))
+	})
+}
+
 func TestDependenciesForTaskUnit(t *testing.T) {
 	for testName, testCase := range map[string]struct {
 		expectedDependencies []task.DependencyEdge

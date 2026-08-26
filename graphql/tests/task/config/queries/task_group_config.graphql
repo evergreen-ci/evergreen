@@ -1,0 +1,17 @@
+{
+  task(taskId: "task_group_member") {
+    id
+    config {
+      dependsOn {
+        name
+        status
+        variant
+      }
+      groupName
+      isGroup
+      isPartOfGroup
+      name
+      priority
+    }
+  }
+}

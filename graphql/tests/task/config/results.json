@@ -1,0 +1,80 @@
+{
+  "tests": [
+    {
+      "query_file": "config.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "configured_task",
+            "config": {
+              "activate": false,
+              "allowedBranches": ["^main$"],
+              "allowedRequesters": ["PATCH_VERSION", "GITHUB_PR"],
+              "allowForGitTag": false,
+              "batchTime": 15,
+              "cronBatchTime": "",
+              "dependsOn": [
+                {
+                  "name": "setup",
+                  "omitGeneratedTasks": true,
+                  "patchOptional": true,
+                  "status": "success",
+                  "variant": ""
+                }
+              ],
+              "disable": true,
+              "execTimeoutSecs": 300,
+              "gitTagOnly": true,
+              "groupName": "",
+              "ignoredBranches": ["^legacy$"],
+              "isGroup": false,
+              "isPartOfGroup": false,
+              "name": "compile",
+              "patchable": false,
+              "patchOnly": true,
+              "priority": 9,
+              "ps": "task-ps",
+              "runOn": ["task-distro"],
+              "stepback": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "task_group_config.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "task_group_member",
+            "config": {
+              "dependsOn": [
+                {
+                  "name": "setup",
+                  "status": "success",
+                  "variant": ""
+                }
+              ],
+              "groupName": "test_group",
+              "isGroup": false,
+              "isPartOfGroup": true,
+              "name": "test",
+              "priority": 4
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "no_config.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "task_without_config",
+            "config": null
+          }
+        }
+      }
+    }
+  ]
+}

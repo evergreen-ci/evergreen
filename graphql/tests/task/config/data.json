@@ -1,0 +1,122 @@
+{
+  "versions": [
+    {
+      "_id": "config_version",
+      "identifier": "config_project",
+      "storage_method": "db",
+      "r": "gitter_request"
+    }
+  ],
+  "tasks": [
+    {
+      "_id": "configured_task",
+      "version": "config_version",
+      "branch": "config_project",
+      "build_variant": "linux",
+      "display_name": "compile",
+      "r": "gitter_request",
+      "status": "success",
+      "execution": 0,
+      "display_task_id": ""
+    },
+    {
+      "_id": "task_without_config",
+      "version": "config_version",
+      "branch": "config_project",
+      "build_variant": "linux",
+      "display_name": "not_in_project",
+      "r": "gitter_request",
+      "status": "success",
+      "execution": 0,
+      "display_task_id": ""
+    },
+    {
+      "_id": "task_group_member",
+      "version": "config_version",
+      "branch": "config_project",
+      "build_variant": "linux",
+      "display_name": "test",
+      "r": "gitter_request",
+      "status": "success",
+      "execution": 0,
+      "display_task_id": ""
+    }
+  ],
+  "parser_projects": [
+    {
+      "_id": "config_version",
+      "identifier": "config_project",
+      "tasks": [
+        {
+          "name": "setup"
+        },
+        {
+          "name": "compile",
+          "priority": 5,
+          "exec_timeout_secs": 300,
+          "run_on": ["task-distro"],
+          "patchable": false,
+          "patch_only": true,
+          "allowed_requesters": ["patch", "github_pr"],
+          "allowed_branches": ["^main$"],
+          "ignored_branches": ["^legacy$"],
+          "stepback": true,
+          "ps": "task-ps"
+        },
+        {
+          "name": "test",
+          "priority": 4,
+          "depends_on": [
+            {
+              "taskselector": {
+                "name": "setup"
+              },
+              "status": "success"
+            }
+          ]
+        }
+      ],
+      "task_groups": [
+        {
+          "name": "test_group",
+          "tasks": ["test"]
+        }
+      ],
+      "buildvariants": [
+        {
+          "name": "linux",
+          "run_on": ["variant-distro"],
+          "disable": true,
+          "allow_for_git_tag": false,
+          "git_tag_only": true,
+          "exec_timeout_secs": 600,
+          "tasks": [
+            {
+              "name": "setup"
+            },
+            {
+              "name": "compile",
+              "priority": 9,
+              "batchtime": 15,
+              "activate": false,
+              "stepback": false,
+              "depends_on": [
+                {
+                  "taskselector": {
+                    "name": "setup"
+                  },
+                  "status": "success",
+                  "patch_optional": true,
+                  "omit_generated_tasks": true
+                }
+              ]
+            },
+            {
+              "name": "test_group"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

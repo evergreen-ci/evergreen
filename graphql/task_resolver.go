@@ -289,7 +289,7 @@ func (r *taskResolver) Config(ctx context.Context, obj *restModel.APITask) (*mod
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-	return project.FindTaskForVariant(utility.FromStringPtr(obj.DisplayName), utility.FromStringPtr(obj.BuildVariant)), nil
+	return project.FindExpandedTaskForVariant(utility.FromStringPtr(obj.DisplayName), utility.FromStringPtr(obj.BuildVariant)), nil
 }
 
 // DependsOn is the resolver for the dependsOn field.
