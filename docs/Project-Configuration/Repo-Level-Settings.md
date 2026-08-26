@@ -8,13 +8,18 @@ Once a project is attached, any undefined fields will default to the repo's fiel
 
 ![repo_sidebar.png](../images/repo_sidebar.png)
 
-Changing the owner or repo for a branch project will result in it inheriting values from a different repo value, so there is a new operation "Move to New Repo".
+Attaching a project to a repo that already has a repo project requires admin permissions on that repo, since attaching gives the branch access to repo-wide settings. Being an admin of the branch project alone is not sufficient. If no repo project exists for the owner/repo yet, the user attaching the project becomes its first admin, so no additional permissions are needed.
+
+Changing the owner or repo for a branch project will result in it inheriting values from a different repo value, so there is a new operation "Move to New Repo". This also requires admin permissions on the target repo if a repo project already exists for it.
 
 ![detach_from_repo.png](../images/detach_from_repo.png)
 
 ## How It Works
 
 Branch projects can either have settings defined individually, or they can be set to default to the repo-level setting (repo-level settings can be defined on the repo project page itself). Entire sections of the project settings can be defaulted by clicking Default to Repo on Page at the top corner.
+
+Test selection settings follow the same inheritance rules. An attached project can inherit whether test selection
+features are allowed and whether task-level filtering is enabled for patches or for both patches and mainline commits.
 
 ![default_to_repo.png](../images/default_to_repo.png)
 

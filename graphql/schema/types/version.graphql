@@ -4,7 +4,7 @@ VersionToRestart is the input to the restartVersions mutation.
 It contains an array of taskIds to restart for a given versionId.
 """
 input VersionToRestart {
-  versionId: String!
+  versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT)
   taskIds: [String!]!
 }
 
@@ -92,10 +92,8 @@ type Version {
   taskStatusStats(options: BuildVariantOptions!): TaskStats
   upstreamProject: UpstreamProject
   user: User!
-  userLite: User!
   versionTiming: VersionTiming
   warnings: [String!]!
-  waterfallBuilds: [WaterfallBuild!]
 }
 
 type VersionTasks {

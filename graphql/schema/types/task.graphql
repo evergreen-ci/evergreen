@@ -44,6 +44,14 @@ input TaskPriority {
   priority: Int!
 }
 
+"""
+ExecutionTasksFilterOptions is an input for the task.executionTasksFull field.
+It's used to filter a display task's execution tasks.
+"""
+input ExecutionTasksFilterOptions {
+  statuses: [String!] = []
+}
+
 input PrevTaskOptions {
   skipOnParentCompleted: Boolean
 }
@@ -68,6 +76,8 @@ type Task {
   baseTask: Task
   blocked: Boolean!
   buildId: String!
+  buildBaronCreatedTickets: [JiraTicket!]! @requireProjectAccess(permission: ANNOTATIONS, access: VIEW)
+  buildBaronSuggestions: SearchReturnInfo @requireProjectAccess(permission: ANNOTATIONS, access: VIEW)
   buildVariant: String!
   buildVariantDisplayName: String
   canAbort: Boolean!
@@ -95,7 +105,7 @@ type Task {
   execution: Int!
   executionSteps: [TaskExecutionStep!]
   executionTasks: [String!]
-  executionTasksFull: [Task!]
+  executionTasksFull(options: ExecutionTasksFilterOptions): [Task!]
   expectedDuration: Duration
   failedTestCount: Int!
   files: TaskFiles!

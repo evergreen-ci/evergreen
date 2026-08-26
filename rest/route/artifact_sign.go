@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/gimlet"
 )
@@ -78,7 +79,7 @@ func artifactSignHandler() http.HandlerFunc {
 			return
 		}
 
-		presignedURL, err := artifact.PresignFile(ctx, *found)
+		presignedURL, err := artifact.PresignFile(ctx, *found, model.NewArtifactCredentialResolver(taskID))
 		if err != nil {
 			http.Error(w, "presigning artifact URL", http.StatusInternalServerError)
 			return

@@ -138,6 +138,48 @@ func TestValidate(t *testing.T) {
 			},
 			errorExpected: true,
 		},
+		"WebhookUnsupportedSchemeURL": {
+			s: Subscriber{
+				Type:   EvergreenWebhookSubscriberType,
+				Target: WebhookSubscriber{URL: "ftp://evergreen.mongodb.com", Secret: []byte("shh")},
+			},
+			errorExpected: true,
+		},
+		"WebhookURLWithUserInfo": {
+			s: Subscriber{
+				Type:   EvergreenWebhookSubscriberType,
+				Target: WebhookSubscriber{URL: "https://user:password@evergreen.mongodb.com", Secret: []byte("shh")},
+			},
+			errorExpected: true,
+		},
+		"WebhookURLWithLoopbackIP": {
+			s: Subscriber{
+				Type:   EvergreenWebhookSubscriberType,
+				Target: WebhookSubscriber{URL: "https://127.0.0.1", Secret: []byte("shh")},
+			},
+			errorExpected: true,
+		},
+		"WebhookURLWithLinkLocalIP": {
+			s: Subscriber{
+				Type:   EvergreenWebhookSubscriberType,
+				Target: WebhookSubscriber{URL: "https://169.254.169.254", Secret: []byte("shh")},
+			},
+			errorExpected: true,
+		},
+		"WebhookURLWithPrivateIP": {
+			s: Subscriber{
+				Type:   EvergreenWebhookSubscriberType,
+				Target: WebhookSubscriber{URL: "https://10.0.0.1", Secret: []byte("shh")},
+			},
+			errorExpected: true,
+		},
+		"WebhookURLWithIPv6Loopback": {
+			s: Subscriber{
+				Type:   EvergreenWebhookSubscriberType,
+				Target: WebhookSubscriber{URL: "https://[::1]", Secret: []byte("shh")},
+			},
+			errorExpected: true,
+		},
 		"WebhookTooManyRetries": {
 			s: Subscriber{
 				Type: EvergreenWebhookSubscriberType,
@@ -180,6 +222,48 @@ func TestValidate(t *testing.T) {
 					Secret:  []byte("shh"),
 					Headers: []WebhookHeader{{Key: "X-Header", Value: "value1"}, {Key: "X-Another-Header", Value: "value2"}},
 				},
+			},
+			errorExpected: false,
+		},
+		"GithubPullRequestMissingOwnerShouldError": {
+			s: Subscriber{
+				Type:   GithubPullRequestSubscriberType,
+				Target: &GithubPullRequestSubscriber{Repo: "evergreen", Ref: "abc123"},
+			},
+			errorExpected: true,
+		},
+		"GithubPullRequestMissingRepoShouldError": {
+			s: Subscriber{
+				Type:   GithubPullRequestSubscriberType,
+				Target: &GithubPullRequestSubscriber{Owner: "mongodb", Ref: "abc123"},
+			},
+			errorExpected: true,
+		},
+		"GithubPullRequestMissingRefShouldError": {
+			s: Subscriber{
+				Type:   GithubPullRequestSubscriberType,
+				Target: &GithubPullRequestSubscriber{Owner: "mongodb", Repo: "evergreen"},
+			},
+			errorExpected: true,
+		},
+		"ValidGithubPullRequest": {
+			s: Subscriber{
+				Type:   GithubPullRequestSubscriberType,
+				Target: &GithubPullRequestSubscriber{Owner: "mongodb", Repo: "evergreen", Ref: "abc123"},
+			},
+			errorExpected: false,
+		},
+		"GithubMergeMissingRepoShouldError": {
+			s: Subscriber{
+				Type:   GithubMergeSubscriberType,
+				Target: &GithubMergeSubscriber{Owner: "mongodb", Ref: "abc123"},
+			},
+			errorExpected: true,
+		},
+		"ValidGithubMerge": {
+			s: Subscriber{
+				Type:   GithubMergeSubscriberType,
+				Target: &GithubMergeSubscriber{Owner: "mongodb", Repo: "evergreen", Ref: "abc123"},
 			},
 			errorExpected: false,
 		},

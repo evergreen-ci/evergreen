@@ -4,14 +4,38 @@ import (
 	"context"
 
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // TestResultsService is an interface for fetching test results data from an
 // underlying test results store.
 type TestResultsService interface {
 	AppendTestResultMetadata(context.Context, []string, int, int, testresult.DbTaskTestResults) error
+	AppendQuarantinedTests(context.Context, testresult.DbTaskTestResults, []testresult.QuarantinedTest) error
 	Get(context.Context, []Task, GetTaskTestResultsOptions) ([]testresult.TaskTestResults, error)
 	GetTaskTestResultsStats(context.Context, []Task) (testresult.TaskTestResultsStats, error)
+}
+
+// maxQuarantinedTestsPerRecord caps how many quarantined tests are stored on a
+// single test results record to keep the document under 16MB.
+const maxQuarantinedTestsPerRecord = 40000
+
+// appendQuarantinedTestsUpdate returns the update document that appends the
+// given tests to a test results record's quarantined-tests snapshot and
+// increments the snapshot count.
+func appendQuarantinedTestsUpdate(info testresult.TestResultsInfo, quarantinedTests []testresult.QuarantinedTest) bson.M {
+	return bson.M{
+		"$setOnInsert": bson.M{
+			testresult.TestResultsInfoKey: info,
+		},
+		"$inc": bson.M{testresult.QuarantinedTestsCountKey: len(quarantinedTests)},
+		"$push": bson.M{
+			testresult.QuarantinedTestsKey: bson.M{
+				"$each":  quarantinedTests,
+				"$slice": maxQuarantinedTestsPerRecord,
+			},
+		},
+	}
 }
 
 // GetTaskTestResultsOptions configures how test result metadata is fetched.

@@ -56,7 +56,8 @@
               "maxPendingGeneratedTasks": 1,
               "maxScheduledTasksPerDistro": 1,
               "maxTaskExecution": 1,
-              "maxTasksPerVersion": 1
+              "maxTasksPerVersion": 1,
+              "taskQueueAutoUnscheduleThreshold": 1
             },
             "repotracker": {
               "maxConcurrentRequests": 1,
@@ -102,6 +103,7 @@
             },
             "rateLimit": {
               "elevatedUserIds": ["user1", "user2"],
+              "exemptUserIds": ["user3"],
               "graphqlComplexityLimit": 1000,
               "graphqlServiceBurst": 40,
               "graphqlServicePerHour": 400,
@@ -479,7 +481,8 @@
                   }
                 ],
                 "ipamPoolID": "pool-id",
-                "elasticIPUsageRate": 0.5
+                "elasticIPUsageRate": 0.5,
+                "allowedSNSTopicARNs": ["arn:aws:sns:us-east-1:012345678901:topic"]
               },
               "docker": {
                 "apiVersion": "1.40"

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strconv"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
@@ -26,32 +25,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 )
-
-// BbGetCreatedTickets is the resolver for the bbGetCreatedTickets field.
-func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) ([]*thirdparty.JiraTicket, error) {
-	createdTickets, err := bbGetCreatedTicketsPointers(ctx, taskID)
-	if err != nil {
-		return nil, err
-	}
-
-	return createdTickets, nil
-}
-
-// BuildBaron is the resolver for the buildBaron field.
-func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, execution int) (*BuildBaron, error) {
-	execString := strconv.Itoa(execution)
-
-	searchReturnInfo, bbConfig, err := model.GetSearchReturnInfo(ctx, taskID, execString)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
-	}
-
-	return &BuildBaron{
-		SearchReturnInfo:        searchReturnInfo,
-		BuildBaronConfigured:    bbConfig.ProjectFound && bbConfig.SearchConfigured,
-		BbTicketCreationDefined: bbConfig.TicketCreationDefined,
-	}, nil
-}
 
 // AdminEvents is the resolver for the adminEvents field.
 func (r *queryResolver) AdminEvents(ctx context.Context, opts AdminEventsInput) (*AdminEventsPayload, error) {
@@ -631,7 +604,8 @@ func (r *queryResolver) MyVolumes(ctx context.Context) ([]*restModel.APIVolume, 
 
 // Task is the resolver for the task field.
 func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int) (*restModel.APITask, error) {
-	return getTask(ctx, taskID, execution, r.sc.GetURL())
+	settings := evergreen.GetEnvironment().Settings()
+	return getTask(ctx, taskID, execution, settings.Ui.Url)
 }
 
 // TaskAllExecutions is the resolver for the taskAllExecutions field.
@@ -738,22 +712,6 @@ func (r *queryResolver) MyPublicKeys(ctx context.Context) ([]*restModel.APIPubKe
 
 // User is the resolver for the user field.
 func (r *queryResolver) User(ctx context.Context, userID *string) (*user.DBUser, error) {
-	usr := mustHaveUser(ctx)
-	if userID != nil {
-		dbUser, err := user.FindOneById(ctx, utility.FromStringPtr(userID))
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching user '%s': %s", utility.FromStringPtr(userID), err.Error()))
-		}
-		if dbUser == nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("user '%s' not found", utility.FromStringPtr(userID)))
-		}
-		return dbUser, nil
-	}
-	return usr, nil
-}
-
-// UserLite is the resolver for the userLite field.
-func (r *queryResolver) UserLite(ctx context.Context, userID *string) (*user.DBUser, error) {
 	usr := mustHaveUser(ctx)
 	if userID != nil {
 		dbUser, err := user.FindOneById(ctx, utility.FromStringPtr(userID))
@@ -1132,19 +1090,13 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		}
 	}
 
-	flattenedVersions := []*restModel.APIVersion{}
 	versionPtrs := []*model.Version{}
 	for _, v := range allVersions {
-		apiVersion := &restModel.APIVersion{}
-		apiVersion.BuildFromService(ctx, v)
-		flattenedVersions = append(flattenedVersions, apiVersion)
-
 		vCopy := v
 		versionPtrs = append(versionPtrs, &vCopy)
 	}
 
 	results := &Waterfall{
-		FlattenedVersions: flattenedVersions,
 		Pagination: &WaterfallPagination{
 			ActiveVersionIds:       activeVersionIds,
 			NextPageOrder:          nextPageOrder,
@@ -1266,9 +1218,9 @@ func (r *queryResolver) HasVersion(ctx context.Context, patchID string) (bool, e
 	}
 
 	if patch.IsValidId(patchID) {
-		p, err := patch.FindOneId(ctx, patchID)
+		p, err := loaders.GetPatch(ctx, patchID)
 		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()))
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()), err)
 		}
 		if p != nil {
 			return false, nil

@@ -20,6 +20,10 @@ type ProjectConfig struct {
 	// ProjectConfigFields are the properties on the project config that do not duplicate parser project's fields to allow strict unmarshalling of a full config file.
 	// Since a config file gets split into ParserProject and ProjectConfig, strict unmarshalling does not work when duplicate fields exist (e.g. Id, CreateTime).
 	ProjectConfigFields `yaml:",inline" bson:",inline"`
+	// RedefinedSettings lists version-controlled settings structs that were
+	// defined in more than one YAML file, cached for validation. It is not
+	// persisted.
+	RedefinedSettings []string `yaml:"-" bson:"-"`
 }
 
 type ProjectConfigFields struct {
@@ -50,7 +54,14 @@ func (pc *ProjectConfig) MarshalBSON() ([]byte, error) {
 
 func (pc *ProjectConfig) isEmpty() bool {
 	// ProjectConfig values outside of ProjectConfigFields are metadata, so we don't want to check those.
-	reflectedConfig := reflect.ValueOf(pc.ProjectConfigFields)
+	return pc.ProjectConfigFields.isEmpty()
+}
+
+func (pcf *ProjectConfigFields) isEmpty() bool {
+	if pcf == nil {
+		return true
+	}
+	reflectedConfig := reflect.ValueOf(*pcf)
 
 	for i := 0; i < reflectedConfig.NumField(); i++ {
 		field := reflectedConfig.Field(i)

@@ -204,6 +204,23 @@ func TestS3Usage(t *testing.T) {
 		assert.True(t, s3Usage.IsZero())
 	})
 
+	t.Run("IncrementArtifactsRecordsResolvedAccountIDOnBucketEntry", func(t *testing.T) {
+		s3Usage := S3Usage{}
+		opts := ArtifactIncrementOptions{
+			PutRequests:  1,
+			UploadBytes:  50,
+			FileCount:    1,
+			MaxPuts:      1,
+			MinPuts:      1,
+			Bucket:       "b",
+			AWSAccountID: "999999999999",
+			Files:        []FileMetrics{{RemotePath: "z", FileSizeBytes: 50}},
+		}
+		s3Usage.IncrementArtifacts(opts)
+		require.Len(t, s3Usage.Artifacts.BytesByBucketAndKey, 1)
+		assert.Equal(t, "999999999999", s3Usage.Artifacts.BytesByBucketAndKey[0].AWSAccountID, "key+secret uploads must persist the resolved account ID for cost-time lifecycle checks")
+	})
+
 	t.Run("IncrementLogs", func(t *testing.T) {
 		s3Usage := S3Usage{}
 		assert.Equal(t, 0, s3Usage.Logs.PutRequests)

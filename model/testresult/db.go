@@ -63,6 +63,7 @@ func PartitionKey(createdAt time.Time, project string, id string) string {
 var (
 	IdKey                             = bsonutil.MustHaveTag(DbTaskTestResults{}, "ID")
 	StatsKey                          = bsonutil.MustHaveTag(DbTaskTestResults{}, "Stats")
+	TestResultsCreatedAtKey           = bsonutil.MustHaveTag(DbTaskTestResults{}, "CreatedAt")
 	TotalCountKey                     = bsonutil.MustHaveTag(TaskTestResultsStats{}, "TotalCount")
 	FailedCountKey                    = bsonutil.MustHaveTag(TaskTestResultsStats{}, "FailedCount")
 	TestResultsInfoKey                = bsonutil.MustHaveTag(DbTaskTestResults{}, "Info")

@@ -750,3 +750,230 @@ func TestCostData(t *testing.T) {
 	assert.Equal(t, 0.0, found2.CostData.OnDemandRate)
 	assert.Equal(t, 0.0, found2.CostData.SavingsPlanRate)
 }
+
+func TestContainerIsolationSettingsValidation(t *testing.T) {
+	t.Run("ValidLinuxConfig", func(t *testing.T) {
+		d := Distro{
+			Id:       "test-distro",
+			Arch:     "linux_amd64",
+			ExecUser: "mci-exec",
+			BootstrapSettings: BootstrapSettings{
+				Method:                BootstrapMethodSSH,
+				Communication:         CommunicationMethodSSH,
+				ClientDir:             "/home/agent",
+				JasperBinaryDir:       "/home/agent",
+				JasperCredentialsPath: "/home/agent/creds",
+				ShellPath:             "/bin/bash",
+				ContainerIsolation: ContainerIsolationSettings{
+					Enabled: true,
+					Image:   "ubuntu:22.04",
+				},
+			},
+		}
+		assert.NoError(t, d.ValidateBootstrapSettings())
+	})
+
+	t.Run("EnabledWithRequireIsolationAndMissingExecUserRejected", func(t *testing.T) {
+		// Ensures both ExecUser and RequireIsolation validations fire together
+		// on the most security-sensitive configuration (fail-closed isolation).
+		d := Distro{
+			Id:   "test-distro",
+			Arch: "linux_amd64",
+			BootstrapSettings: BootstrapSettings{
+				Method:                BootstrapMethodSSH,
+				Communication:         CommunicationMethodSSH,
+				ClientDir:             "/home/agent",
+				JasperBinaryDir:       "/home/agent",
+				JasperCredentialsPath: "/home/agent/creds",
+				ShellPath:             "/bin/bash",
+				ContainerIsolation: ContainerIsolationSettings{
+					Enabled:          true,
+					Image:            "ubuntu:22.04",
+					RequireIsolation: true,
+				},
+			},
+		}
+		assert.ErrorContains(t, d.ValidateBootstrapSettings(), "ExecUser")
+	})
+
+	t.Run("RequireIsolationWithoutEnabledRejected", func(t *testing.T) {
+		d := Distro{
+			Id:   "test-distro",
+			Arch: "linux_amd64",
+			BootstrapSettings: BootstrapSettings{
+				Method:                BootstrapMethodSSH,
+				Communication:         CommunicationMethodSSH,
+				ClientDir:             "/home/agent",
+				JasperBinaryDir:       "/home/agent",
+				JasperCredentialsPath: "/home/agent/creds",
+				ShellPath:             "/bin/bash",
+				ContainerIsolation: ContainerIsolationSettings{
+					Enabled:          false,
+					RequireIsolation: true,
+				},
+			},
+		}
+		assert.ErrorContains(t, d.ValidateBootstrapSettings(), "require_isolation has no effect")
+	})
+
+	t.Run("ContainerIsolationWithoutExecUserRejected", func(t *testing.T) {
+		d := Distro{
+			Id:   "test-distro",
+			Arch: "linux_amd64",
+			BootstrapSettings: BootstrapSettings{
+				Method:                BootstrapMethodSSH,
+				Communication:         CommunicationMethodSSH,
+				ClientDir:             "/home/agent",
+				JasperBinaryDir:       "/home/agent",
+				JasperCredentialsPath: "/home/agent/creds",
+				ShellPath:             "/bin/bash",
+				ContainerIsolation: ContainerIsolationSettings{
+					Enabled: true,
+					Image:   "ubuntu:22.04",
+				},
+			},
+		}
+		assert.ErrorContains(t, d.ValidateBootstrapSettings(), "ExecUser")
+	})
+
+	t.Run("EnabledWithoutImage", func(t *testing.T) {
+		d := Distro{
+			Id:   "test-distro",
+			Arch: "linux_amd64",
+			BootstrapSettings: BootstrapSettings{
+				Method:                BootstrapMethodSSH,
+				Communication:         CommunicationMethodSSH,
+				ClientDir:             "/home/agent",
+				JasperBinaryDir:       "/home/agent",
+				JasperCredentialsPath: "/home/agent/creds",
+				ShellPath:             "/bin/bash",
+				ContainerIsolation: ContainerIsolationSettings{
+					Enabled: true,
+				},
+			},
+		}
+		assert.Error(t, d.ValidateBootstrapSettings())
+	})
+}
+
+func TestGetTargetTimeForQueue(t *testing.T) {
+	for _, tCase := range []struct {
+		name                 string
+		targetTime           time.Duration
+		mergeQueueTargetTime time.Duration
+		hasMergeQueueTasks   bool
+		expected             time.Duration
+	}{
+		{
+			name:                 "NoMergeQueueTasksShouldUseTargetTime",
+			targetTime:           30 * time.Minute,
+			mergeQueueTargetTime: 5 * time.Minute,
+			hasMergeQueueTasks:   false,
+			expected:             30 * time.Minute,
+		},
+		{
+			name:                 "MergeQueueTasksShouldUseLowerMergeQueueTargetTime",
+			targetTime:           30 * time.Minute,
+			mergeQueueTargetTime: 5 * time.Minute,
+			hasMergeQueueTasks:   true,
+			expected:             5 * time.Minute,
+		},
+		{
+			name:                 "UnsetMergeQueueTargetTimeShouldUseTargetTime",
+			targetTime:           30 * time.Minute,
+			mergeQueueTargetTime: 0,
+			hasMergeQueueTasks:   true,
+			expected:             30 * time.Minute,
+		},
+		{
+			name:                 "HigherMergeQueueTargetTimeShouldNotSlowAllocation",
+			targetTime:           5 * time.Minute,
+			mergeQueueTargetTime: 30 * time.Minute,
+			hasMergeQueueTasks:   true,
+			expected:             5 * time.Minute,
+		},
+		{
+			// A distro with no target time still gets the default, so a merge queue
+			// target time below it must still take effect.
+			name:                 "MergeQueueTargetTimeShouldApplyAgainstDefaultTargetTime",
+			targetTime:           0,
+			mergeQueueTargetTime: time.Minute,
+			hasMergeQueueTasks:   true,
+			expected:             time.Minute,
+		},
+	} {
+		t.Run(tCase.name, func(t *testing.T) {
+			d := Distro{
+				Id: "distro",
+				PlannerSettings: PlannerSettings{
+					TargetTime:           tCase.targetTime,
+					MergeQueueTargetTime: tCase.mergeQueueTargetTime,
+				},
+			}
+			assert.Equal(t, tCase.expected, d.GetTargetTimeForQueue(tCase.hasMergeQueueTasks))
+		})
+	}
+}
+
+func TestGetResolvedPlannerSettingsMergeQueueTargetTime(t *testing.T) {
+	makeSettings := func(adminSeconds, releaseOverrideSeconds int, releaseModeDisabled bool) *evergreen.Settings {
+		return &evergreen.Settings{
+			Scheduler: evergreen.SchedulerConfig{
+				TaskFinder:                  "legacy",
+				HostAllocator:               evergreen.HostAllocatorUtilization,
+				TargetTimeSeconds:           1800,
+				MergeQueueTargetTimeSeconds: adminSeconds,
+			},
+			ReleaseMode: evergreen.ReleaseModeConfig{
+				MergeQueueTargetTimeSecondsOverride: releaseOverrideSeconds,
+			},
+			ServiceFlags: evergreen.ServiceFlags{ReleaseModeDisabled: releaseModeDisabled},
+		}
+	}
+
+	t.Run("UnsetDistroValueShouldFallBackToAdminValue", func(t *testing.T) {
+		d := Distro{Id: "distro"}
+		resolved, err := d.GetResolvedPlannerSettings(makeSettings(300, 0, true))
+		require.NoError(t, err)
+		assert.Equal(t, 300*time.Second, resolved.MergeQueueTargetTime)
+	})
+
+	t.Run("DistroValueShouldOverrideAdminValue", func(t *testing.T) {
+		d := Distro{
+			Id:              "distro",
+			PlannerSettings: PlannerSettings{MergeQueueTargetTime: 120 * time.Second},
+		}
+		resolved, err := d.GetResolvedPlannerSettings(makeSettings(300, 0, true))
+		require.NoError(t, err)
+		assert.Equal(t, 120*time.Second, resolved.MergeQueueTargetTime)
+	})
+
+	t.Run("ReleaseModeOverrideShouldWinOverDistroAndAdminValues", func(t *testing.T) {
+		d := Distro{
+			Id:              "distro",
+			PlannerSettings: PlannerSettings{MergeQueueTargetTime: 120 * time.Second},
+		}
+		resolved, err := d.GetResolvedPlannerSettings(makeSettings(300, 60, false))
+		require.NoError(t, err)
+		assert.Equal(t, 60*time.Second, resolved.MergeQueueTargetTime)
+	})
+
+	t.Run("DisabledReleaseModeShouldIgnoreOverride", func(t *testing.T) {
+		d := Distro{
+			Id:              "distro",
+			PlannerSettings: PlannerSettings{MergeQueueTargetTime: 120 * time.Second},
+		}
+		resolved, err := d.GetResolvedPlannerSettings(makeSettings(300, 60, true))
+		require.NoError(t, err)
+		assert.Equal(t, 120*time.Second, resolved.MergeQueueTargetTime)
+	})
+
+	t.Run("UnsetEverywhereShouldResolveToZeroAndLeaveTargetTimeInEffect", func(t *testing.T) {
+		d := Distro{Id: "distro"}
+		resolved, err := d.GetResolvedPlannerSettings(makeSettings(0, 0, true))
+		require.NoError(t, err)
+		assert.Zero(t, resolved.MergeQueueTargetTime)
+		assert.Equal(t, 1800*time.Second, resolved.TargetTime)
+		assert.Equal(t, 1800*time.Second, d.GetTargetTimeForQueue(true))
+	})
+}

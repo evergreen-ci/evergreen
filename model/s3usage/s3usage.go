@@ -74,8 +74,10 @@ type S3UploadMetrics struct {
 type BucketFileMetrics struct {
 	Bucket string `bson:"bucket" json:"bucket"`
 	// AWSRoleARN is the IAM role ARN used for artifact uploads (when assume-role is configured).
-	AWSRoleARN string      `bson:"aws_role_arn,omitempty" json:"aws_role_arn,omitempty"`
-	Files      []FileBytes `bson:"files" json:"files"`
+	AWSRoleARN string `bson:"aws_role_arn,omitempty" json:"aws_role_arn,omitempty"`
+	// AWSAccountID is the owning account, resolved by the agent when AWSRoleARN is empty.
+	AWSAccountID string      `bson:"aws_account_id,omitempty" json:"aws_account_id,omitempty"`
+	Files        []FileBytes `bson:"files" json:"files"`
 }
 
 // FileBytes tracks bytes uploaded for a single S3 file key.
@@ -292,8 +294,9 @@ func (s *S3Usage) IncrementArtifacts(opts ArtifactIncrementOptions) {
 	}
 	if bucketEntry == nil {
 		s.Artifacts.BytesByBucketAndKey = append(s.Artifacts.BytesByBucketAndKey, BucketFileMetrics{
-			Bucket:     opts.Bucket,
-			AWSRoleARN: opts.AWSRoleARN,
+			Bucket:       opts.Bucket,
+			AWSRoleARN:   opts.AWSRoleARN,
+			AWSAccountID: opts.AWSAccountID,
 		})
 		bucketEntry = &s.Artifacts.BytesByBucketAndKey[len(s.Artifacts.BytesByBucketAndKey)-1]
 	}

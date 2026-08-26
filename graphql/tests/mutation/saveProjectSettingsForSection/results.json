@@ -252,7 +252,24 @@
               "id": "sandbox_project_id",
               "testSelection": {
                 "allowed": true,
-                "defaultEnabled": false
+                "defaultEnabled": true,
+                "mainlineDefaultEnabled": true
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "task_ownership_and_foliage_section.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "projectRef": {
+              "id": "sandbox_project_id",
+              "taskOwnership": {
+                "defaultMothraTeam": "my-team",
+                "defaultMothraTeamForBreakingCommit": "breaking-team"
               }
             }
           }

@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/utility"
 )
 
 // AvailableRegions is the resolver for the availableRegions field.
@@ -50,6 +51,12 @@ func (r *distroInputResolver) ProviderSettingsList(ctx context.Context, obj *mod
 // AcceptableHostIdleTime is the resolver for the acceptableHostIdleTime field.
 func (r *hostAllocatorSettingsInputResolver) AcceptableHostIdleTime(ctx context.Context, obj *model.APIHostAllocatorSettings, data int) error {
 	obj.AcceptableHostIdleTime = model.NewAPIDuration(time.Duration(data) * time.Millisecond)
+	return nil
+}
+
+// MergeQueueTargetTime is the resolver for the mergeQueueTargetTime field.
+func (r *plannerSettingsInputResolver) MergeQueueTargetTime(ctx context.Context, obj *model.APIPlannerSettings, data *int) error {
+	obj.MergeQueueTargetTime = model.NewAPIDuration(time.Duration(utility.FromIntPtr(data)) * time.Millisecond)
 	return nil
 }
 

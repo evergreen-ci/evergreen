@@ -48,6 +48,10 @@ const (
 	backstageUser    = "backstage"
 )
 
+// hostCommunicationWriteInterval is the minimum time between writes to a host's last
+// communication time.
+const hostCommunicationWriteInterval = time.Minute
+
 type projCtxMiddleware struct{}
 
 func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
@@ -246,12 +250,21 @@ func (m *canCreateMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 	next(rw, r)
 }
 
-type hostAuthMiddleware struct{}
+type hostAuthMiddleware struct {
+	// updateAccessTime records that the host communicated; read-only routes leave it unset.
+	updateAccessTime bool
+}
+
+// NewReadOnlyHostAuthMiddleware is NewHostAuthMiddleware without the communication-time
+// write, for routes that only read host state.
+func NewReadOnlyHostAuthMiddleware() gimlet.Middleware {
+	return &hostAuthMiddleware{}
+}
 
 // NewHostAuthMiddleware returns a route middleware that verifies the request's
 // host ID and secret.
 func NewHostAuthMiddleware() gimlet.Middleware {
-	return &hostAuthMiddleware{}
+	return &hostAuthMiddleware{updateAccessTime: true}
 }
 
 func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
@@ -276,7 +289,9 @@ func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 	}
 	r = r.WithContext(context.WithValue(r.Context(), model.ApiHostKey, h))
 
-	updateHostAccessTime(r.Context(), h)
+	if m.updateAccessTime {
+		updateHostAccessTime(r.Context(), h)
+	}
 	next(rw, r)
 }
 
@@ -402,8 +417,10 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 // updateHostAccessTime updates the host access time and disables the host's flags to deploy new a new agent
 // or agent monitor if they are set.
 func updateHostAccessTime(ctx context.Context, h *host.Host) {
-	if err := h.UpdateLastCommunicated(ctx); err != nil {
-		grip.Warningf(ctx, "Could not update host last communication time for %s: %+v", h.Id, err)
+	if time.Since(h.LastCommunicationTime) >= hostCommunicationWriteInterval {
+		if err := h.UpdateLastCommunicated(ctx); err != nil {
+			grip.Warningf(ctx, "Could not update host last communication time for %s: %+v", h.Id, err)
+		}
 	}
 	// Since the host has contacted the app server, we should prevent the
 	// app server from attempting to deploy agents or agent monitors.
@@ -585,59 +602,23 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 	return res, http.StatusOK, nil
 }
 
-// urlVarsToDistroScopes returns all distros being requested for access and the
+// urlVarsToDistroScopes returns the distro being requested for access and the
 // HTTP status code.
 func urlVarsToDistroScopes(r *http.Request) ([]string, int, error) {
-	var err error
-	vars := gimlet.GetVars(r)
-	query := r.URL.Query()
-
-	resourceType := strings.ToUpper(util.CoalesceStrings(query["resource_type"], vars["resource_type"]))
-	if resourceType != "" {
-		switch resourceType {
-		case event.ResourceTypeDistro:
-			vars["distro_id"] = vars["resource_id"]
-		case event.ResourceTypeHost:
-			vars["host_id"] = vars["resource_id"]
-		}
-	}
-
-	distroID := util.CoalesceStrings(append(query["distro_id"], query["distroId"]...), vars["distro_id"], vars["distroId"])
-
-	hostID := util.CoalesceStrings(append(query["host_id"], query["hostId"]...), vars["host_id"], vars["hostId"])
-	if distroID == "" && hostID != "" {
-		distroID, err = host.FindDistroForHost(r.Context(), hostID)
-		if err != nil {
-			return nil, http.StatusNotFound, errors.Wrapf(err, "finding distro for host '%s'", hostID)
-		}
-	}
-
-	// no distro found - return a 404
+	distroID := gimlet.GetVars(r)["distro_id"]
 	if distroID == "" {
 		return nil, http.StatusNotFound, errors.New("no distro found")
 	}
 
-	dat, err := distro.NewDistroAliasesLookupTable(r.Context())
+	d, err := distro.FindOneId(r.Context(), distroID)
 	if err != nil {
-		return nil, http.StatusInternalServerError, errors.Wrap(err, "getting distro lookup table")
+		return nil, http.StatusInternalServerError, errors.Wrapf(err, "finding distro '%s'", distroID)
 	}
-	distroIDs := dat.Expand([]string{distroID})
-	if len(distroIDs) == 0 {
-		return nil, http.StatusNotFound, errors.Errorf("distro '%s' did not match any existing distros", distroID)
-	}
-	// Verify that all the concrete distros that this request is accessing
-	// exist.
-	for _, resolvedDistroID := range distroIDs {
-		d, err := distro.FindOneId(r.Context(), resolvedDistroID)
-		if err != nil {
-			return nil, http.StatusInternalServerError, errors.Wrapf(err, "finding distro '%s'", resolvedDistroID)
-		}
-		if d == nil {
-			return nil, http.StatusNotFound, errors.Errorf("distro '%s' does not exist", resolvedDistroID)
-		}
+	if d == nil {
+		return nil, http.StatusNotFound, errors.Errorf("distro '%s' does not exist", distroID)
 	}
 
-	return distroIDs, http.StatusOK, nil
+	return []string{distroID}, http.StatusOK, nil
 }
 
 func superUserResource(_ *http.Request) ([]string, int, error) {
@@ -895,13 +876,20 @@ func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 	isService := dbUser.OnlyAPI
 	settings := m.env.Settings()
 	cfg := settings.RateLimit
+
 	perHour, burst := limitsFor(&cfg, m.surface, isService)
 
 	// Handle elevated users - 2x normal limits.
-	if slices.Contains(cfg.ElevatedUserIDs, u.Username()) {
+	elevated := slices.Contains(cfg.ElevatedUserIDs, u.Username())
+	if elevated {
 		perHour *= 2
 		burst *= 2
 	}
+
+	// Exempt users are never limited and get no rate limit headers, but they still
+	// consume from their bucket so their usage against the limit they would
+	// otherwise have is reported.
+	exempt := slices.Contains(cfg.ExemptUserIDs, u.Username())
 
 	limiter, err := ratelimit.NewRateLimiter(m.env.RedisClient())
 
@@ -928,23 +916,42 @@ func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 	}
 
 	if res != nil {
-		rw.Header().Set(evergreen.RateLimitLimitHeader, fmt.Sprintf("%d", perHour))
-		rw.Header().Set(evergreen.RateLimitBurstHeader, fmt.Sprintf("%d", burst))
-		rw.Header().Set(evergreen.RateLimitRemainingHeader, fmt.Sprintf("%d", res.Remaining))
-		resetTimestamp := time.Now().Add(res.ResetAfter).Unix()
-		rw.Header().Set(evergreen.RateLimitResetHeader, fmt.Sprintf("%d", resetTimestamp))
-
-		if res.Allowed == 0 {
-			rw.Header().Set(evergreen.RateLimitExceededHeader, "true")
+		exceeded := res.Allowed == 0
+		enforced := false
+		if exceeded && !exempt {
 			flags, _ := evergreen.GetServiceFlags(ctx)
-			if flags != nil && !flags.APIRateLimiterDisabled {
-				// Retry-After is a standard HTTP header that indicates how long the user should wait before making another request.
-				rw.Header().Set(evergreen.RetryAfterHeader, fmt.Sprintf("%d", int(res.RetryAfter.Seconds())))
-				gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-					StatusCode: http.StatusTooManyRequests,
-					Message:    "rate limit exceeded",
-				}))
-				return
+			enforced = flags != nil && !flags.APIRateLimiterDisabled
+		}
+		resetTimestamp := time.Now().Add(res.ResetAfter).Unix()
+
+		// Annotate the request's "completed" log message so limit usage is attributable
+		// per request, including for requests that were never blocked.
+		gimlet.AddLoggingAnnotation(r, "rate_limit", message.Fields{
+			"surface":      m.surface,
+			"remaining":    res.Remaining,
+			"reset_time":   resetTimestamp,
+			"per_hour":     perHour,
+			"burst":        burst,
+			"service_user": isService,
+		})
+
+		if !exempt {
+			rw.Header().Set(evergreen.RateLimitLimitHeader, fmt.Sprintf("%d", perHour))
+			rw.Header().Set(evergreen.RateLimitBurstHeader, fmt.Sprintf("%d", burst))
+			rw.Header().Set(evergreen.RateLimitRemainingHeader, fmt.Sprintf("%d", res.Remaining))
+			rw.Header().Set(evergreen.RateLimitResetHeader, fmt.Sprintf("%d", resetTimestamp))
+
+			if exceeded {
+				rw.Header().Set(evergreen.RateLimitExceededHeader, "true")
+				if enforced {
+					// Retry-After is a standard HTTP header that indicates how long the user should wait before making another request.
+					rw.Header().Set(evergreen.RetryAfterHeader, fmt.Sprintf("%d", int(res.RetryAfter.Seconds())))
+					gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+						StatusCode: http.StatusTooManyRequests,
+						Message:    "rate limit exceeded",
+					}))
+					return
+				}
 			}
 		}
 	}

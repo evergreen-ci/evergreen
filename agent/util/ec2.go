@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -116,51 +115,9 @@ func getEC2InstanceStartTime(ctx context.Context) (time.Time, error) {
 	})
 }
 
-// getEC2BlockDeviceMappings returns all block device mappings from the metadata endpoint.
-func getEC2BlockDeviceMappings(ctx context.Context) ([]host.VolumeAttachment, error) {
-	deviceList, err := getEC2Metadata(ctx, "block-device-mapping/", readBodyAsString)
-	if err != nil {
-		return nil, nil
-	}
-
-	deviceNames := strings.Fields(deviceList)
-	if len(deviceNames) == 0 {
-		return nil, nil
-	}
-
-	var volumes []host.VolumeAttachment
-	for _, deviceName := range deviceNames {
-		if strings.HasPrefix(deviceName, "ephemeral") {
-			continue
-		}
-		volumeID, err := getEC2Metadata(ctx, fmt.Sprintf("block-device-mapping/%s", deviceName), func(resp *http.Response) (string, error) {
-			body, err := readBodyAsString(resp)
-			if err != nil {
-				return "", err
-			}
-			return body, nil
-		})
-		if err != nil {
-			continue
-		}
-		// Only include valid EBS volume IDs (which start with "vol-").
-		// The EC2 metadata API can return device names like "sda1" for certain
-		// block device mapping entries (e.g., "ami", "root"), which are not
-		// actual EBS volume IDs and should not be tagged.
-		if !strings.HasPrefix(volumeID, "vol-") {
-			continue
-		}
-		volumes = append(volumes, host.VolumeAttachment{
-			VolumeID:   volumeID,
-			DeviceName: deviceName,
-		})
-	}
-
-	return volumes, nil
-}
-
-// GetEC2Metadata fetches necessary EC2 metadata needed for the needed for
-// the /hosts/{host_id}/is_up endpoint.
+// GetEC2Metadata fetches necessary EC2 metadata needed for the
+// /hosts/{host_id}/is_up endpoint. Volume IDs are not available from
+// the instance metadata endpoint, so they are not included.
 func GetEC2Metadata(ctx context.Context) (host.HostMetadataOptions, error) {
 	metadata := host.HostMetadataOptions{}
 
@@ -199,12 +156,6 @@ func GetEC2Metadata(ctx context.Context) (host.HostMetadataOptions, error) {
 		return metadata, errors.Wrapf(err, "fetching EC2 ipv6")
 	}
 	metadata.IPv6 = ipv6
-
-	volumes, err := getEC2BlockDeviceMappings(ctx)
-	if err != nil {
-		return metadata, errors.Wrapf(err, "fetching EC2 volume attachments")
-	}
-	metadata.Volumes = volumes
 
 	startTime, err := getEC2InstanceStartTime(ctx)
 	if err != nil {

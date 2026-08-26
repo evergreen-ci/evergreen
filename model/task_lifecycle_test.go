@@ -2031,6 +2031,62 @@ func TestMarkEnd(t *testing.T) {
 	})
 }
 
+func TestActivateTasksWithDependencies(t *testing.T) {
+	ctx := t.Context()
+	colls := []string{task.Collection, task.OldCollection, build.Collection, VersionCollection}
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(colls...))
+	})
+	require.NoError(t, db.ClearCollections(colls...))
+	b := &build.Build{
+		Id:      "build",
+		Version: "version",
+	}
+	require.NoError(t, b.Insert(ctx))
+	v := &Version{
+		Id: "version",
+	}
+	require.NoError(t, v.Insert(ctx))
+
+	t1 := &task.Task{
+		Id:                "task1",
+		BuildId:           "build",
+		Version:           "version",
+		DistroId:          "arch",
+		Status:            evergreen.TaskSucceeded,
+		Activated:         true,
+		TaskGroup:         "tg",
+		TaskGroupMaxHosts: 1,
+		TaskGroupOrder:    1,
+	}
+	require.NoError(t, t1.Insert(ctx))
+	t2 := &task.Task{
+		Id:                "task2",
+		BuildId:           "build",
+		Version:           "version",
+		DistroId:          "arch",
+		Status:            evergreen.TaskUndispatched,
+		Activated:         false,
+		TaskGroup:         "tg",
+		TaskGroupMaxHosts: 1,
+		TaskGroupOrder:    2,
+	}
+	require.NoError(t, t2.Insert(ctx))
+
+	require.NoError(t, activateTasksWithDependencies(ctx, []string{"task2"}, evergreen.ElapsedTaskActivator))
+
+	dbTask1, err := task.FindOneId(ctx, t1.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbTask1)
+	assert.Equal(t, 1, dbTask1.Execution, "earlier finished single-host task group task should be restarted")
+	assert.Equal(t, evergreen.TaskUndispatched, dbTask1.Status)
+
+	dbTask2, err := task.FindOneId(ctx, t2.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbTask2)
+	assert.True(t, dbTask2.Activated, "elapsed task should be activated")
+}
+
 func TestMarkEndWithTaskGroup(t *testing.T) {
 	ctx := t.Context()
 
@@ -2077,7 +2133,7 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 			assert.Equal(t, evergreen.TaskFailed, runningTaskDB.Status)
 		},
 		"ResetWhenFinished": func(t *testing.T) {
-			assert.NoError(t, runningTask.SetResetWhenFinished(ctx, "test"))
+			assert.NoError(t, runningTask.SetResetWhenFinished(ctx, "test", ""))
 			assert.NoError(t, MarkEnd(ctx, settings, runningTask, "test", time.Now(), detail))
 
 			runningTaskDB, err := task.FindOneId(ctx, runningTask.Id)
@@ -2148,6 +2204,8 @@ func TestMarkEndIsAutomaticRestart(t *testing.T) {
 		Version:            "abc",
 		BuildVariant:       "a_variant",
 		HostId:             "h1",
+		StartTime:          time.Now().Add(-time.Hour),
+		LastHeartbeat:      time.Now().Add(-30 * time.Second),
 	}
 	displayTask := &task.Task{
 		ResetWhenFinished:  true,
@@ -2236,12 +2294,18 @@ func TestMarkEndIsAutomaticRestart(t *testing.T) {
 	}
 	for name, test := range map[string]func(*testing.T){
 		"ResetsSingleTask": func(t *testing.T) {
-			assert.NoError(t, MarkEnd(ctx, &evergreen.Settings{}, runningTask, "test", time.Now(), detail))
+			finishTime := utility.BSONTime(time.Now())
+			assert.NoError(t, MarkEnd(ctx, &evergreen.Settings{}, runningTask, "test", finishTime, detail))
 			runningTaskDB, err := task.FindOneId(ctx, runningTask.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, runningTaskDB)
 			assert.Equal(t, 1, runningTaskDB.Execution)
 			assert.Equal(t, evergreen.TaskUndispatched, runningTaskDB.Status)
+
+			archivedTask, err := task.FindOneIdAndExecution(ctx, runningTask.Id, 0)
+			require.NoError(t, err)
+			require.NotZero(t, archivedTask)
+			assert.WithinDuration(t, finishTime, archivedTask.FinishTime, 0, "archived execution should keep its self-reported finish time")
 
 			// Check that trying to automatically reset again does not reset the task again.
 			runningTaskDB.HostId = "h1"
@@ -4107,6 +4171,8 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 
 	settings := testutil.TestConfig()
 
+	strandedTaskLastHeartbeat := utility.BSONTime(time.Now().Add(-time.Hour))
+
 	tasks := []task.Task{
 		{
 			Id:            "t",
@@ -4116,6 +4182,8 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 			BuildId:       "b",
 			Version:       "version",
 			HostId:        "h1",
+			StartTime:     time.Now().Add(-90 * time.Minute),
+			LastHeartbeat: strandedTaskLastHeartbeat,
 		},
 		{
 			Id:            "t2",
@@ -4211,6 +4279,11 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	runningTask, err := task.FindOne(ctx, db.Query(task.ById("t")))
 	require.NoError(t, err)
 	assert.Equal(evergreen.TaskUndispatched, runningTask.Status)
+
+	archivedTask, err := task.FindOneIdAndExecution(ctx, "t", 0)
+	require.NoError(t, err)
+	require.NotZero(t, archivedTask)
+	assert.WithinDuration(strandedTaskLastHeartbeat, archivedTask.FinishTime, 0)
 
 	foundBuild, err := build.FindOneId(t.Context(), "b")
 	require.NoError(t, err)
@@ -4965,7 +5038,7 @@ func TestDisplayTaskDelayedRestart(t *testing.T) {
 	settings := testutil.TestConfig()
 
 	// request that the task restarts when it's done
-	assert.NoError(dt.SetResetWhenFinished(ctx, "caller"))
+	assert.NoError(dt.SetResetWhenFinished(ctx, "caller", ""))
 	dbTask, err := task.FindOne(ctx, db.Query(task.ById(dt.Id)))
 	assert.NoError(err)
 	assert.True(dbTask.ResetWhenFinished)

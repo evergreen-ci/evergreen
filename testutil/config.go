@@ -163,6 +163,7 @@ func MockConfig() *evergreen.Settings {
 			GraphQLServiceBurst:    40,
 			GraphQLComplexityLimit: 1000,
 			ElevatedUserIDs:        []string{"user1", "user2"},
+			ExemptUserIDs:          []string{"user3"},
 		},
 		AuthConfig: evergreen.AuthConfig{
 			Okta: &evergreen.OktaConfig{
@@ -282,6 +283,12 @@ func MockConfig() *evergreen.Settings {
 		},
 		TaskLimits: evergreen.TaskLimitsConfig{
 			MaxTasksPerVersion: 1000,
+			HourlyPatchTaskOverrides: []evergreen.HourlyPatchTaskOverride{
+				{
+					ProjectOrRepoID:     "project_id",
+					MaxHourlyPatchTasks: 2000,
+				},
+			},
 		},
 		LoggerConfig: evergreen.LoggerConfig{
 			Buffer: evergreen.LogBuffering{
@@ -321,6 +328,8 @@ func MockConfig() *evergreen.Settings {
 			AWS: evergreen.AWSConfig{
 				DefaultSecurityGroup: "test_security_group",
 				MaxVolumeSizePerUser: 200,
+				SubnetTagName:        "subnet_tag_name",
+				SubnetTagValue:       "subnet_tag_value",
 				ParserProject: evergreen.ParserProjectS3Config{
 					S3Credentials: evergreen.S3Credentials{
 						Bucket: "parser_project_bucket",
@@ -337,8 +346,9 @@ func MockConfig() *evergreen.Settings {
 						Role:    "role",
 					},
 				},
-				IPAMPoolID:         "pool_id",
-				ElasticIPUsageRate: 0.3,
+				IPAMPoolID:          "pool_id",
+				ElasticIPUsageRate:  0.3,
+				AllowedSNSTopicARNs: []string{"arn:aws:sns:us-east-1:012345678901:topic"},
 			},
 			Docker: evergreen.DockerConfig{
 				APIVersion: "docker_version",

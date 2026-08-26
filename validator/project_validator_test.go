@@ -2991,6 +2991,22 @@ func TestValidateProjectAliases(t *testing.T) {
 	})
 }
 
+func TestValidateProjectConfigRedefinedSettings(t *testing.T) {
+	t.Run("NoRedefinedSettingsReturnsNoErrors", func(t *testing.T) {
+		assert.Empty(t, validateProjectConfigRedefinedSettings(t.Context(), &model.ProjectConfig{}))
+	})
+
+	t.Run("RedefinedSettingsReturnErrors", func(t *testing.T) {
+		pc := &model.ProjectConfig{RedefinedSettings: []string{"workstation_config", "build_baron_settings"}}
+		validationErrs := validateProjectConfigRedefinedSettings(t.Context(), pc)
+		require.Len(t, validationErrs, 2)
+		assert.Equal(t, Error, validationErrs[0].Level)
+		assert.Contains(t, validationErrs[0].Message, "'workstation_config' can only be defined in one YAML file")
+		assert.Equal(t, Error, validationErrs[1].Level)
+		assert.Contains(t, validationErrs[1].Message, "'build_baron_settings' can only be defined in one YAML file")
+	})
+}
+
 func TestCheckTaskCommands(t *testing.T) {
 	Convey("When validating a project", t, func() {
 		Convey("ensure tasks that do not have at least one command throw "+

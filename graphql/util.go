@@ -158,18 +158,21 @@ func getDisplayStatus(ctx context.Context, v *model.Version) (string, error) {
 		return status, nil
 	}
 
-	p, err := patch.FindOneId(ctx, v.Id)
+	p, err := loaders.GetPatch(ctx, v.Id)
 	if err != nil {
-		return "", errors.Wrapf(err, "finding patch '%s': %s", v.Id, err.Error())
+		return "", errors.Wrapf(err, "finding patch '%s'", v.Id)
 	}
 	if p == nil {
 		return "", errors.Errorf("patch '%s' not found", v.Id)
 	}
 	allStatuses := []string{status}
+	if len(p.Triggers.ChildPatches) > 0 {
+		loaders.PreloadVersions(ctx, p.Triggers.ChildPatches)
+	}
 	for _, cp := range p.Triggers.ChildPatches {
-		cpVersion, err := model.VersionFindOneId(ctx, cp)
+		cpVersion, err := loaders.GetVersion(ctx, cp)
 		if err != nil {
-			return "", errors.Wrapf(err, "finding version for child patch '%s': %s", cp, err.Error())
+			return "", errors.Wrapf(err, "finding version for child patch '%s'", cp)
 		}
 		if cpVersion == nil {
 			continue
@@ -1128,6 +1131,15 @@ func userHasVolumePermission(ctx context.Context, u *user.DBUser, volumeId strin
 	return u.Username() == createdBy || u.HasPermission(ctx, opts)
 }
 
+func userHasSuperuserProjectPermission(ctx context.Context, u *user.DBUser) bool {
+	return u.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionProjectCreate,
+		RequiredLevel: evergreen.ProjectCreate.Value,
+	})
+}
+
 // canViewUserSubscriptions returns whether the requesting user is allowed to
 // view the personal subscriptions belonging to ownerUserID. A user may view
 // their own subscriptions, and superusers may view anyone's.
@@ -1388,9 +1400,9 @@ func isPatchAuthorForTask(ctx context.Context, obj *restModel.APITask) (bool, er
 	authUser := gimlet.GetUser(ctx)
 	patchID := utility.FromStringPtr(obj.Version)
 	if utility.StringSliceContains(evergreen.PatchRequesters, utility.FromStringPtr(obj.Requester)) {
-		p, err := patch.FindOneId(ctx, patchID)
+		p, err := loaders.GetPatch(ctx, patchID)
 		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", patchID, err.Error()))
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", patchID, err.Error()), err)
 		}
 		if p == nil {
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", patchID))

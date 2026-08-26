@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -484,6 +486,139 @@ func TestHostAuthMiddleware(t *testing.T) {
 	}
 }
 
+func TestReadOnlyHostAuthMiddleware(t *testing.T) {
+	m := NewReadOnlyHostAuthMiddleware()
+	for testName, testCase := range map[string]func(t *testing.T, ctx context.Context, h *host.Host, rw *httptest.ResponseRecorder){
+		"SucceedsWithoutWritingCommunicationTime": func(t *testing.T, ctx context.Context, h *host.Host, rw *httptest.ResponseRecorder) {
+			stale := time.Now().Add(-time.Hour)
+			require.NoError(t, host.UpdateOne(ctx, mongobson.M{host.IdKey: h.Id}, mongobson.M{"$set": mongobson.M{host.LastCommunicationTimeKey: stale}}))
+
+			r := &http.Request{
+				Header: http.Header{
+					evergreen.HostHeader:       []string{h.Id},
+					evergreen.HostSecretHeader: []string{h.Secret},
+				},
+			}
+			called := false
+			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+				called = true
+				foundHost := GetHost(r.Context())
+				require.NotNil(t, foundHost)
+				assert.Equal(t, h.Id, foundHost.Id)
+			})
+			assert.Equal(t, http.StatusOK, rw.Code)
+			assert.True(t, called)
+
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotNil(t, dbHost)
+			assert.WithinDuration(t, stale, dbHost.LastCommunicationTime, time.Millisecond)
+		},
+		"FailsWithInvalidSecret": func(t *testing.T, ctx context.Context, h *host.Host, rw *httptest.ResponseRecorder) {
+			r := &http.Request{
+				Header: http.Header{
+					evergreen.HostHeader:       []string{h.Id},
+					evergreen.HostSecretHeader: []string{"foo"},
+				},
+			}
+			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+			assert.NotEqual(t, http.StatusOK, rw.Code)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			ctx := t.Context()
+			require.NoError(t, db.Clear(host.Collection))
+			t.Cleanup(func() {
+				assert.NoError(t, db.Clear(host.Collection))
+			})
+			h := &host.Host{
+				Id:     "id",
+				Secret: "secret",
+			}
+			require.NoError(t, h.Insert(ctx))
+
+			testCase(t, ctx, h, httptest.NewRecorder())
+		})
+	}
+}
+
+func TestUpdateHostAccessTime(t *testing.T) {
+	for testName, testCase := range map[string]func(t *testing.T, ctx context.Context, h *host.Host){
+		"StaleCommunicationTimeWritesUpdate": func(t *testing.T, ctx context.Context, h *host.Host) {
+			stale := time.Now().Add(-time.Hour)
+			require.NoError(t, host.UpdateOne(ctx, mongobson.M{host.IdKey: h.Id}, mongobson.M{"$set": mongobson.M{host.LastCommunicationTimeKey: stale}}))
+			h.LastCommunicationTime = stale
+
+			updateHostAccessTime(ctx, h)
+
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotNil(t, dbHost)
+			assert.True(t, dbHost.LastCommunicationTime.After(stale))
+		},
+		"RecentCommunicationTimeSkipsWrite": func(t *testing.T, ctx context.Context, h *host.Host) {
+			recent := time.Now().Add(-time.Second)
+			require.NoError(t, host.UpdateOne(ctx, mongobson.M{host.IdKey: h.Id}, mongobson.M{"$set": mongobson.M{host.LastCommunicationTimeKey: recent}}))
+			h.LastCommunicationTime = recent
+
+			updateHostAccessTime(ctx, h)
+
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotNil(t, dbHost)
+			assert.WithinDuration(t, recent, dbHost.LastCommunicationTime, time.Millisecond)
+		},
+		"CommunicationTimeWithinIntervalButOverThirtySecondsSkipsWrite": func(t *testing.T, ctx context.Context, h *host.Host) {
+			// Pins the interval above the agent's 30s heartbeat.
+			require.Greater(t, hostCommunicationWriteInterval, 45*time.Second)
+			recent := time.Now().Add(-45 * time.Second)
+			require.NoError(t, host.UpdateOne(ctx, mongobson.M{host.IdKey: h.Id}, mongobson.M{"$set": mongobson.M{host.LastCommunicationTimeKey: recent}}))
+			h.LastCommunicationTime = recent
+
+			updateHostAccessTime(ctx, h)
+
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotNil(t, dbHost)
+			assert.WithinDuration(t, recent, dbHost.LastCommunicationTime, time.Millisecond)
+		},
+		"RecentCommunicationTimeStillClearsAgentFlags": func(t *testing.T, ctx context.Context, h *host.Host) {
+			recent := time.Now().Add(-time.Second)
+			require.NoError(t, host.UpdateOne(ctx, mongobson.M{host.IdKey: h.Id}, mongobson.M{"$set": mongobson.M{
+				host.LastCommunicationTimeKey: recent,
+				host.NeedsNewAgentKey:         true,
+				host.NeedsNewAgentMonitorKey:  true,
+			}}))
+			h.LastCommunicationTime = recent
+			h.NeedsNewAgent = true
+			h.NeedsNewAgentMonitor = true
+
+			updateHostAccessTime(ctx, h)
+
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotNil(t, dbHost)
+			assert.False(t, dbHost.NeedsNewAgent)
+			assert.False(t, dbHost.NeedsNewAgentMonitor)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			ctx := t.Context()
+			require.NoError(t, db.Clear(host.Collection))
+			t.Cleanup(func() {
+				assert.NoError(t, db.Clear(host.Collection))
+			})
+			h := &host.Host{
+				Id:     "id",
+				Secret: "secret",
+			}
+			require.NoError(t, h.Insert(ctx))
+
+			testCase(t, ctx, h)
+		})
+	}
+}
+
 func TestProjectViewPermission(t *testing.T) {
 	assert := assert.New(t)
 	ctx := t.Context()
@@ -587,4 +722,71 @@ func TestProjectViewPermission(t *testing.T) {
 	authHandler.ServeHTTP(rw, req, checkPermission)
 	assert.Equal(http.StatusOK, rw.Code)
 	assert.Equal(1, counter)
+}
+
+func TestURLVarsToDistroScopes(t *testing.T) {
+	require.NoError(t, db.ClearCollections(distro.Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(distro.Collection))
+	})
+
+	targetDistro := distro.Distro{
+		Id: "distro",
+	}
+	require.NoError(t, targetDistro.Insert(t.Context()))
+	otherDistro := distro.Distro{
+		Id: "other-distro",
+	}
+	require.NoError(t, otherDistro.Insert(t.Context()))
+
+	for tName, tCase := range map[string]struct {
+		pathVars           map[string]string
+		queryString        string
+		expectedDistroIDs  []string
+		expectedStatusCode int
+	}{
+		"ResolvesDistroFromPath": {
+			pathVars:           map[string]string{"distro_id": targetDistro.Id},
+			expectedDistroIDs:  []string{targetDistro.Id},
+			expectedStatusCode: http.StatusOK,
+		},
+		"IgnoresQueryStringDistroWhenPathHasDistro": {
+			pathVars:           map[string]string{"distro_id": targetDistro.Id},
+			queryString:        fmt.Sprintf("distro_id=%s", otherDistro.Id),
+			expectedDistroIDs:  []string{targetDistro.Id},
+			expectedStatusCode: http.StatusOK,
+		},
+		"QueryStringOnlyDistroIsNotFound": {
+			queryString:        fmt.Sprintf("distro_id=%s", otherDistro.Id),
+			expectedStatusCode: http.StatusNotFound,
+		},
+		"NonexistentDistroInPathIsNotFound": {
+			pathVars:           map[string]string{"distro_id": "nonexistent-distro"},
+			expectedStatusCode: http.StatusNotFound,
+		},
+		"NoDistroIsNotFound": {
+			expectedStatusCode: http.StatusNotFound,
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			url := "/rest/v2/distros/some-distro"
+			if tCase.queryString != "" {
+				url += "?" + tCase.queryString
+			}
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, url, nil)
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, tCase.pathVars)
+
+			distroIDs, statusCode, err := urlVarsToDistroScopes(req)
+
+			assert.Equal(t, tCase.expectedStatusCode, statusCode)
+			if tCase.expectedStatusCode != http.StatusOK {
+				assert.Error(t, err)
+				assert.Empty(t, distroIDs)
+				return
+			}
+			assert.NoError(t, err)
+			assert.ElementsMatch(t, tCase.expectedDistroIDs, distroIDs)
+		})
+	}
 }

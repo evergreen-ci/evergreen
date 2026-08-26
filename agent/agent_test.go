@@ -341,6 +341,21 @@ func (s *AgentSuite) TestAgentExitsSingleTaskDistros() {
 	s.NoError(s.a.loop(ctx))
 }
 
+func (s *AgentSuite) TestProcessNextTaskErrorOnSingleTaskDistroShouldExitAfterTeardown() {
+	s.setupRunTask(defaultProjYml)
+	s.a.opts.SingleTaskDistro = true
+	s.mockCommunicator.EndTaskShouldFail = true
+
+	ntr, err := s.a.processNextTask(s.ctx, &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}, s.tc, false)
+
+	s.NoError(err)
+	s.True(ntr.needTeardownGroup)
+	s.True(ntr.taskErrored)
+}
+
 func (s *AgentSuite) TestFinishTaskWithNormalCompletedTask() {
 	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
 

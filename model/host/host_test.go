@@ -560,6 +560,87 @@ func TestHostSetDNSName(t *testing.T) {
 	assert.Equal(t, newHostname, dbHost.Host, "existing hostname should be retained even if an empty string is passed")
 }
 
+func TestSetEC2Metadata(t *testing.T) {
+	metadataWithoutVolumes := CloudProviderData{
+		PublicDNS:   "hostname",
+		Zone:        "us-east-1a",
+		PublicIPv4:  "1.2.3.4",
+		PrivateIPv4: "10.0.0.1",
+		IPv6:        "::1",
+		StartedAt:   time.Now(),
+	}
+	metadataWithVolumes := metadataWithoutVolumes
+	metadataWithVolumes.Volumes = []VolumeAttachment{{VolumeID: "vol-123", DeviceName: "/dev/sda1"}}
+
+	for tName, tCase := range map[string]func(t *testing.T){
+		"TaskHostSetsMetadataWithoutVolumes": func(t *testing.T) {
+			ctx := t.Context()
+			h := &Host{
+				Id:        "task-host",
+				StartedBy: evergreen.User,
+			}
+			require.NoError(t, h.Insert(ctx))
+
+			require.NoError(t, h.SetEC2Metadata(ctx, HostMetadataOptions{CloudProviderData: metadataWithoutVolumes}))
+
+			assert.Equal(t, "hostname", h.Host)
+			assert.Equal(t, "us-east-1a", h.Zone)
+			assert.Equal(t, "1.2.3.4", h.PublicIPv4)
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, "hostname", dbHost.Host)
+			assert.True(t, dbHost.Provisioned)
+		},
+		"SpawnHostNoOpsWithoutVolumes": func(t *testing.T) {
+			ctx := t.Context()
+			h := &Host{
+				Id:        "spawn-host",
+				StartedBy: "user",
+			}
+			require.NoError(t, h.Insert(ctx))
+
+			require.NoError(t, h.SetEC2Metadata(ctx, HostMetadataOptions{CloudProviderData: metadataWithoutVolumes}))
+
+			assert.Empty(t, h.Host, "spawn host should not set metadata without volumes")
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Empty(t, dbHost.Host)
+			assert.False(t, dbHost.Provisioned)
+		},
+		"SpawnHostSetsMetadataWithVolumes": func(t *testing.T) {
+			ctx := t.Context()
+			h := &Host{
+				Id:        "spawn-host",
+				StartedBy: "user",
+			}
+			require.NoError(t, h.Insert(ctx))
+
+			require.NoError(t, h.SetEC2Metadata(ctx, HostMetadataOptions{CloudProviderData: metadataWithVolumes}))
+
+			assert.Equal(t, "hostname", h.Host)
+			assert.Len(t, h.Volumes, 1)
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, "hostname", dbHost.Host)
+			assert.True(t, dbHost.Provisioned)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection))
+			t.Cleanup(func() {
+				assert.NoError(t, db.ClearCollections(Collection))
+			})
+			tCase(t)
+		})
+	}
+}
+
 func TestMarkReachable(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection))
@@ -7187,4 +7268,34 @@ func TestFindDebugHostsForProject(t *testing.T) {
 	found, err = FindTerminatableDebugHostsForProject(ctx, "nonexistent_project")
 	require.NoError(t, err)
 	assert.Len(t, found, 0, "should find no debug hosts for non-existent project")
+}
+
+func TestValidateDisplayName(t *testing.T) {
+	for tName, tCase := range map[string]struct {
+		name        string
+		shouldError bool
+	}{
+		"AlphanumericNameShouldSucceed":          {name: "myhost123", shouldError: false},
+		"NameWithSpacesShouldSucceed":            {name: "user's workstation", shouldError: false},
+		"NameWithParenthesesShouldSucceed":       {name: "workstation (user)", shouldError: false},
+		"NameWithColonShouldSucceed":             {name: "localhost:27017", shouldError: false},
+		"NameWithAtSignShouldSucceed":            {name: "me@mongodb.com", shouldError: false},
+		"NameWithDoubleQuoteShouldSucceed":       {name: `"good" host`, shouldError: false},
+		"NameWithUnderscoreAndDashShouldSucceed": {name: "my_host-1", shouldError: false},
+		"EmptyNameShouldSucceed":                 {name: "", shouldError: false},
+		"TooLongNameShouldError":                 {name: strings.Repeat("a", maxDisplayNameLength+1), shouldError: true},
+		"NameWithHTMLTagShouldError":             {name: "<b>important</b>", shouldError: true},
+		"NameWithSlackLinkShouldError":           {name: "<https://evil.example.com|click here>", shouldError: true},
+		"NameWithAmpersandShouldError":           {name: "foo & bar", shouldError: true},
+		"NameWithNonASCIICharacterShouldError":   {name: "host\x00gnp.exe", shouldError: true},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			err := ValidateDisplayName(tCase.name)
+			if tCase.shouldError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }

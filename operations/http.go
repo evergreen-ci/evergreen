@@ -50,13 +50,12 @@ func NewAPIError(resp *http.Response) APIError {
 	defer resp.Body.Close()
 	bodyBytes, _ := io.ReadAll(resp.Body) // ignore error, request has already failed anyway
 	bodyStr := string(bodyBytes)
+	// If the response is a 429 (rate limit exceeded), replace the response body
+	// with the rate limit metadata from the response headers.
+	if resp.StatusCode == http.StatusTooManyRequests {
+		bodyStr = client.RateLimitMessage(resp.Header)
+	}
 	return APIError{bodyStr, resp.Status, resp.StatusCode}
-}
-
-func newAuthError(resp *http.Response) APIError {
-	apiError := NewAPIError(resp)
-	apiError.body = fmt.Sprintf("%s (%s)", apiError.body, client.AuthError)
-	return apiError
 }
 
 func newVPNError(resp *http.Response) APIError {
@@ -150,9 +149,6 @@ func (ac *legacyClient) modifyExisting(ctx context.Context, patchId, action stri
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusUnauthorized {
-		return newAuthError(resp)
-	}
 	if resp.StatusCode == http.StatusForbidden {
 		return newVPNError(resp)
 	}
@@ -178,9 +174,6 @@ func (ac *legacyClient) GetPatches(n int) ([]patch.Patch, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, newAuthError(resp)
-	}
 	if resp.StatusCode == http.StatusForbidden {
 		return nil, newVPNError(resp)
 	}
@@ -202,9 +195,6 @@ func (ac *legacyClient) GetRestPatch(patchId string) (*service.RestPatch, error)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, newAuthError(resp)
-	}
 	if resp.StatusCode == http.StatusForbidden {
 		return nil, newVPNError(resp)
 	}
@@ -226,9 +216,6 @@ func (ac *legacyClient) GetPatch(patchId string) (*patch.Patch, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, newAuthError(resp)
-	}
 	if resp.StatusCode == http.StatusForbidden {
 		return nil, newVPNError(resp)
 	}
@@ -254,9 +241,6 @@ func (ac *legacyClient) GetProjectRef(projectId string) (*model.ProjectRef, erro
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, newAuthError(resp)
-	}
 	if resp.StatusCode == http.StatusForbidden {
 		return nil, newVPNError(resp)
 	}
@@ -278,9 +262,6 @@ func (ac *legacyClient) GetPatchedConfig(patchId string) (*model.Project, error)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, newAuthError(resp)
-	}
 	if resp.StatusCode == http.StatusForbidden {
 		return nil, newVPNError(resp)
 	}
@@ -307,9 +288,6 @@ func (ac *legacyClient) GetConfig(versionId string) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, newAuthError(resp)
-	}
 	if resp.StatusCode == http.StatusForbidden {
 		return nil, newVPNError(resp)
 	}
@@ -332,9 +310,6 @@ func (ac *legacyClient) GetProject(versionId string) (*model.Project, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, newAuthError(resp)
-	}
 	if resp.StatusCode == http.StatusForbidden {
 		return nil, newVPNError(resp)
 	}
@@ -362,9 +337,6 @@ func (ac *legacyClient) GetLastGreen(project string, variants []string) (*model.
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, newAuthError(resp)
-	}
 	if resp.StatusCode == http.StatusForbidden {
 		return nil, newVPNError(resp)
 	}
@@ -386,9 +358,6 @@ func (ac *legacyClient) DeletePatchModule(patchId, module string) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusUnauthorized {
-		return newAuthError(resp)
-	}
 	if resp.StatusCode == http.StatusForbidden {
 		return newVPNError(resp)
 	}
@@ -433,9 +402,6 @@ func (ac *legacyClient) UpdatePatchModule(ctx context.Context, params UpdatePatc
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusUnauthorized {
-		return newAuthError(resp)
-	}
 	if resp.StatusCode == http.StatusForbidden {
 		return newVPNError(resp)
 	}
@@ -452,9 +418,6 @@ func (ac *legacyClient) ListProjects() ([]model.ProjectRef, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, newAuthError(resp)
-	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, NewAPIError(resp)
 	}
@@ -472,9 +435,6 @@ func (ac *legacyClient) ListTasks(project string) ([]model.ProjectTask, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, newAuthError(resp)
-	}
 	if resp.StatusCode == http.StatusForbidden {
 		return nil, newVPNError(resp)
 	}
@@ -495,9 +455,6 @@ func (ac *legacyClient) ListVariants(project string) ([]model.BuildVariant, erro
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, newAuthError(resp)
-	}
 	if resp.StatusCode == http.StatusForbidden {
 		return nil, newVPNError(resp)
 	}
@@ -585,9 +542,6 @@ func (ac *legacyClient) PutPatch(ctx context.Context, incomingPatch patchSubmiss
 		return nil, err
 	}
 
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, newAuthError(resp)
-	}
 	if resp.StatusCode == http.StatusForbidden {
 		return nil, newVPNError(resp)
 	}
@@ -616,9 +570,6 @@ func (ac *legacyClient) GetTask(taskId string) (*service.RestTask, error) {
 
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, nil
-	}
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, newAuthError(resp)
 	}
 	if resp.StatusCode == http.StatusForbidden {
 		return nil, newVPNError(resp)
@@ -651,9 +602,6 @@ func (ac *legacyClient) GetTaskV2(taskId string, execution *int) (*restModel.API
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, nil
 	}
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, newAuthError(resp)
-	}
 	if resp.StatusCode == http.StatusForbidden {
 		return nil, newVPNError(resp)
 	}
@@ -676,9 +624,6 @@ func (ac *legacyClient) GetRecentVersions(projectID string) ([]string, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, newAuthError(resp)
-	}
 	if resp.StatusCode == http.StatusForbidden {
 		return nil, newVPNError(resp)
 	}
@@ -719,9 +664,6 @@ func (ac *legacyClient) UpdateRole(role *gimlet.Role) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusUnauthorized {
-		return newAuthError(resp)
-	}
 	if resp.StatusCode == http.StatusForbidden {
 		return newVPNError(resp)
 	}

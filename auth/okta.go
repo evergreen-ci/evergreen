@@ -57,14 +57,15 @@ func NewOktaUserManager(conf *evergreen.OktaConfig, evgURL, loginDomain string) 
 
 // makeReconciliateID maps a validated email to a username, stripping the domain
 // only for allow-listed domains so accounts sharing a local-part across domains
-// cannot collide. An empty allow-list strips unconditionally (legacy behavior).
+// cannot collide. Emails from any other domain, including when the allow-list is
+// empty, keep their full address as the username.
 func makeReconciliateID(expectedEmailDomains []string) func(string) string {
 	return func(id string) string {
 		emailDomainStart := strings.LastIndex(id, "@")
 		if emailDomainStart == -1 {
 			return id
 		}
-		if len(expectedEmailDomains) > 0 && !domainInAllowList(expectedEmailDomains, id[emailDomainStart+1:]) {
+		if !domainInAllowList(expectedEmailDomains, id[emailDomainStart+1:]) {
 			return id
 		}
 		return id[:emailDomainStart]

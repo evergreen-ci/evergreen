@@ -26,17 +26,6 @@ type Source {
   time: Time!
 }
 
-"""
-Build Baron is a service that can be integrated into a project (see Confluence Wiki for more details).
-This type is returned from the buildBaron query, and contains information about Build Baron configurations and suggested
-tickets from JIRA for a given task on a given execution.
-"""
-type BuildBaron {
-  bbTicketCreationDefined: Boolean!
-  buildBaronConfigured: Boolean!
-  searchReturnInfo: SearchReturnInfo # contains array of suggested tickets from JIRA
-}
-
 type SearchReturnInfo {
   issues: [JiraTicket!]!
   search: String!

@@ -14,6 +14,7 @@ import (
 type APIPlannerSettings struct {
 	Version                   *string     `json:"version"`
 	TargetTime                APIDuration `json:"target_time"`
+	MergeQueueTargetTime      APIDuration `json:"merge_queue_target_time"`
 	GroupVersions             bool        `json:"group_versions"`
 	PatchFactor               int64       `json:"patch_factor"`
 	PatchTimeInQueueFactor    int64       `json:"patch_time_in_queue_factor"`
@@ -31,6 +32,7 @@ func (s *APIPlannerSettings) BuildFromService(settings distro.PlannerSettings) {
 		s.Version = utility.ToStringPtr(evergreen.PlannerVersionTunable)
 	}
 	s.TargetTime = NewAPIDuration(settings.TargetTime)
+	s.MergeQueueTargetTime = NewAPIDuration(settings.MergeQueueTargetTime)
 	s.GroupVersions = utility.FromBoolPtr(settings.GroupVersions)
 	s.PatchFactor = settings.PatchFactor
 	s.ExpectedRuntimeFactor = settings.ExpectedRuntimeFactor
@@ -49,6 +51,7 @@ func (s *APIPlannerSettings) ToService() distro.PlannerSettings {
 		settings.Version = evergreen.PlannerVersionTunable
 	}
 	settings.TargetTime = s.TargetTime.ToDuration()
+	settings.MergeQueueTargetTime = s.MergeQueueTargetTime.ToDuration()
 	settings.GroupVersions = utility.ToBoolPtr(s.GroupVersions)
 	settings.PatchFactor = s.PatchFactor
 	settings.PatchTimeInQueueFactor = s.PatchTimeInQueueFactor
@@ -173,17 +176,53 @@ func (s *APIDispatcherSettings) ToService() distro.DispatcherSettings {
 // APIBootstrapSettings is the model to be returned by the API whenever distro.BootstrapSettings are fetched
 
 type APIBootstrapSettings struct {
-	Method                *string                 `json:"method"`
-	Communication         *string                 `json:"communication"`
-	ClientDir             *string                 `json:"client_dir"`
-	JasperBinaryDir       *string                 `json:"jasper_binary_dir"`
-	JasperCredentialsPath *string                 `json:"jasper_credentials_path"`
-	ServiceUser           *string                 `json:"service_user"`
-	ShellPath             *string                 `json:"shell_path"`
-	RootDir               *string                 `json:"root_dir"`
-	Env                   []APIEnvVar             `json:"env"`
-	ResourceLimits        APIResourceLimits       `json:"resource_limits"`
-	PreconditionScripts   []APIPreconditionScript `json:"precondition_scripts"`
+	Method                *string                       `json:"method"`
+	Communication         *string                       `json:"communication"`
+	ClientDir             *string                       `json:"client_dir"`
+	JasperBinaryDir       *string                       `json:"jasper_binary_dir"`
+	JasperCredentialsPath *string                       `json:"jasper_credentials_path"`
+	ServiceUser           *string                       `json:"service_user"`
+	ShellPath             *string                       `json:"shell_path"`
+	RootDir               *string                       `json:"root_dir"`
+	Env                   []APIEnvVar                   `json:"env"`
+	ResourceLimits        APIResourceLimits             `json:"resource_limits"`
+	PreconditionScripts   []APIPreconditionScript       `json:"precondition_scripts"`
+	ContainerIsolation    APIContainerIsolationSettings `json:"container_isolation"`
+}
+
+// APIContainerIsolationSettings is the API model for per-task container
+// isolation configuration on a distro.
+type APIContainerIsolationSettings struct {
+	Enabled  bool    `json:"enabled"`
+	Image    *string `json:"image,omitempty"`
+	MemoryMB int64   `json:"memory_mb,omitempty"`
+	CPUs     int64   `json:"cpus,omitempty"`
+	// RequireIsolation has no omitempty so that an explicit false is
+	// serialized and the fail-closed flag is never silently dropped
+	// when a client round-trips the full block.
+	RequireIsolation bool `json:"require_isolation"`
+}
+
+func (s *APIContainerIsolationSettings) BuildFromService(ci distro.ContainerIsolationSettings) {
+	s.Enabled = ci.Enabled
+	// Only set Image pointer when non-empty so omitempty correctly omits it
+	// in GET responses for distros with no image configured.
+	if ci.Image != "" {
+		s.Image = utility.ToStringPtr(ci.Image)
+	}
+	s.MemoryMB = ci.MemoryMB
+	s.CPUs = ci.CPUs
+	s.RequireIsolation = ci.RequireIsolation
+}
+
+func (s *APIContainerIsolationSettings) ToService() distro.ContainerIsolationSettings {
+	return distro.ContainerIsolationSettings{
+		Enabled:          s.Enabled,
+		Image:            utility.FromStringPtr(s.Image),
+		MemoryMB:         s.MemoryMB,
+		CPUs:             s.CPUs,
+		RequireIsolation: s.RequireIsolation,
+	}
 }
 
 type APIEnvVar struct {
@@ -268,6 +307,7 @@ func (s *APIBootstrapSettings) BuildFromService(settings distro.BootstrapSetting
 	s.ResourceLimits.NumTasks = settings.ResourceLimits.NumTasks
 	s.ResourceLimits.LockedMemoryKB = settings.ResourceLimits.LockedMemoryKB
 	s.ResourceLimits.VirtualMemoryKB = settings.ResourceLimits.VirtualMemoryKB
+	s.ContainerIsolation.BuildFromService(settings.ContainerIsolation)
 }
 
 // ToService returns a service layer distro.BootstrapSettings using the data
@@ -299,6 +339,7 @@ func (s *APIBootstrapSettings) ToService() distro.BootstrapSettings {
 	settings.ResourceLimits.NumTasks = s.ResourceLimits.NumTasks
 	settings.ResourceLimits.LockedMemoryKB = s.ResourceLimits.LockedMemoryKB
 	settings.ResourceLimits.VirtualMemoryKB = s.ResourceLimits.VirtualMemoryKB
+	settings.ContainerIsolation = s.ContainerIsolation.ToService()
 
 	return settings
 }

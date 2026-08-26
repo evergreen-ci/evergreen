@@ -22,6 +22,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -44,6 +46,40 @@ type EC2Suite struct {
 func TestEC2Suite(t *testing.T) {
 	s := &EC2Suite{}
 	suite.Run(t, s)
+}
+
+func TestEC2ProviderSettingsToDocument(t *testing.T) {
+	const (
+		subnetGroupName  = "subnet_group"
+		subnetGroupValue = "evergreen"
+	)
+	settings := &EC2ProviderSettings{
+		Region:                     evergreen.DefaultEC2Region,
+		AMI:                        "ami",
+		InstanceType:               "instance",
+		SecurityGroupIDs:           []string{"sg-123456"},
+		EnableNestedVirtualization: true,
+		SubnetTagName:              subnetGroupName,
+		SubnetTagValue:             subnetGroupValue,
+	}
+
+	doc, err := settings.ToDocument()
+	require.NoError(t, err)
+	enabled, ok := doc.ExportMap()["enable_nested_virtualization"].(bool)
+	require.True(t, ok)
+	assert.True(t, enabled)
+	tagName, ok := doc.ExportMap()["subnet_tag_name"].(string)
+	require.True(t, ok)
+	assert.Equal(t, subnetGroupName, tagName)
+	tagValue, ok := doc.ExportMap()["subnet_tag_value"].(string)
+	require.True(t, ok)
+	assert.Equal(t, subnetGroupValue, tagValue)
+
+	var roundTrippedSettings EC2ProviderSettings
+	require.NoError(t, roundTrippedSettings.FromDocument(doc))
+	assert.True(t, roundTrippedSettings.EnableNestedVirtualization)
+	assert.Equal(t, subnetGroupName, roundTrippedSettings.SubnetTagName)
+	assert.Equal(t, subnetGroupValue, roundTrippedSettings.SubnetTagValue)
 }
 
 func (s *EC2Suite) TearDownTest() {
@@ -156,6 +192,15 @@ func (s *EC2Suite) TestValidateProviderSettings() {
 	p.IsVpc = true
 	s.Error(p.Validate())
 	p.SubnetId = "subnet-123456"
+	s.NoError(p.Validate())
+
+	p.SubnetTagName = "subnet_group"
+	s.Error(p.Validate(), "subnet tag name without a tag value should be invalid")
+	p.SubnetTagValue = "evergreen"
+	s.NoError(p.Validate())
+	p.SubnetTagName = ""
+	s.Error(p.Validate(), "subnet tag value without a tag name should be invalid")
+	p.SubnetTagValue = ""
 	s.NoError(p.Validate())
 }
 

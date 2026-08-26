@@ -19,6 +19,9 @@ import (
 	"github.com/urfave/cli"
 )
 
+// containerImagePullTimeout bounds image pulls during provisioning.
+const containerImagePullTimeout = 15 * time.Minute
+
 func hostProvision() cli.Command {
 	const (
 		hostIDFlagName        = "host_id"
@@ -111,6 +114,19 @@ func hostProvision() cli.Command {
 				return errors.Wrap(err, "running host provisioning script")
 			}
 
+			if opts.ContainerImage != "" {
+				// Pull failures are non-fatal because the first task can retry.
+				pullCtx, pullCancel := context.WithTimeout(ctx, containerImagePullTimeout)
+				defer pullCancel()
+				if err := prePullContainerImage(pullCtx, opts.ContainerImage); err != nil {
+					grip.Warning(ctx, message.Fields{
+						"message": "failed to pre-pull container image during provisioning; the first task will pull it at exec time",
+						"image":   opts.ContainerImage,
+						"error":   err.Error(),
+					})
+				}
+			}
+
 			return nil
 		},
 	}
@@ -172,4 +188,16 @@ func runHostProvisioningScript(ctx context.Context, shellPath, scriptPath, worki
 		return errors.WithStack(err)
 	}
 	return nil
+}
+
+// prePullContainerImage uses the host's Docker credential helpers.
+func prePullContainerImage(ctx context.Context, image string) error {
+	return errors.Wrapf(
+		jasper.NewCommand().
+			Add([]string{"docker", "pull", image}).
+			SetOutputWriter(utility.NopWriteCloser(os.Stdout)).
+			SetErrorWriter(utility.NopWriteCloser(os.Stderr)).
+			Run(ctx),
+		"pulling container image '%s'", image,
+	)
 }

@@ -272,7 +272,7 @@ func TestSyncBucket(t *testing.T) {
 	}
 
 	job := makeS3LifecycleSyncProjectBucketsJob()
-	err := job.syncBucket(ctx, mockClient, "test-bucket", nil)
+	err := job.syncBucket(ctx, mockClient, "test-bucket", &evergreen.S3StorageCostConfig{})
 	require.NoError(t, err)
 
 	// Verify sandbox/ rule was updated.
@@ -316,7 +316,7 @@ func TestSyncBucketWithNoExistingRules(t *testing.T) {
 	}
 
 	job := makeS3LifecycleSyncProjectBucketsJob()
-	err := job.syncBucket(ctx, mockClient, "test-bucket", nil)
+	err := job.syncBucket(ctx, mockClient, "test-bucket", &evergreen.S3StorageCostConfig{})
 	require.NoError(t, err)
 
 	// No error, but also no sync should happen since there are no existing rules.
@@ -364,7 +364,7 @@ func TestSyncBucketAWSAccountIDPreserved(t *testing.T) {
 
 	job := makeS3LifecycleSyncProjectBucketsJob()
 	// Account is not in the restricted list, so the sync should proceed.
-	err := job.syncBucket(t.Context(), mockClient, "my-bucket", nil)
+	err := job.syncBucket(t.Context(), mockClient, "my-bucket", &evergreen.S3StorageCostConfig{})
 	require.NoError(t, err)
 
 	// The rule should be updated with the new AWS data AND the AWSAccountID must be preserved.
@@ -406,7 +406,7 @@ func TestSyncBucketSkipsAccountWithoutLifecycleRulesAccess(t *testing.T) {
 
 	accountsWithoutLifecycleRules := []string{"999999999999"}
 	job := makeS3LifecycleSyncProjectBucketsJob()
-	err := job.syncBucket(t.Context(), mockClient, "restricted-bucket", accountsWithoutLifecycleRules)
+	err := job.syncBucket(t.Context(), mockClient, "restricted-bucket", &evergreen.S3StorageCostConfig{ArtifactAWSAccountsWithoutLifecycleRules: accountsWithoutLifecycleRules})
 	require.NoError(t, err)
 
 	// The existing rule should be unchanged, confirming no AWS call was made.
@@ -414,4 +414,72 @@ func TestSyncBucketSkipsAccountWithoutLifecycleRulesAccess(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, rule)
 	assert.Equal(t, "old-rule", rule.RuleID, "rule should be unchanged when sync is skipped")
+}
+
+// TestSyncBucketConfigGate covers which buckets the sync job asks AWS about. A rule with no stored
+// account ID must keep being refreshed: discovery never revisits a bucket that already has rules, so
+// nothing would ever populate its account ID, and skipping it would freeze its expiration days forever.
+func TestSyncBucketConfigGate(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		accountID    string
+		devprodOwned []string
+		wantSynced   bool
+	}{
+		{
+			name:         "NoStoredAccountIDIsSynced",
+			devprodOwned: []string{"123456789012"},
+			wantSynced:   true,
+		},
+		{
+			name:       "UnlistedAccountIsSynced",
+			accountID:  "999999999999",
+			wantSynced: true,
+		},
+		{
+			name:         "NonDevprodOwnedAccountIsSkipped",
+			accountID:    "999999999999",
+			devprodOwned: []string{"123456789012"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			require.NoError(t, db.Clear(s3lifecycle.Collection))
+			t.Cleanup(func() {
+				require.NoError(t, db.Clear(s3lifecycle.Collection))
+			})
+
+			existingRule := &s3lifecycle.S3LifecycleRuleDoc{
+				BucketName:     "b",
+				BucketType:     s3lifecycle.BucketTypeUserSpecified,
+				Region:         "us-east-1",
+				AWSAccountID:   tc.accountID,
+				RuleID:         "stale-rule",
+				RuleStatus:     "Enabled",
+				ExpirationDays: utility.ToIntPtr(30),
+				LastSyncedAt:   time.Now().Add(-24 * time.Hour),
+			}
+			require.NoError(t, existingRule.Upsert(t.Context()))
+
+			mockClient := &mockS3LifecycleClient{
+				rules: map[string][]pail.LifecycleRule{
+					"b": {{ID: "fresh-rule", Status: "Enabled", ExpirationDays: utility.ToInt32Ptr(90)}},
+				},
+			}
+			job := makeS3LifecycleSyncProjectBucketsJob()
+			require.NoError(t, job.syncBucket(t.Context(), mockClient, "b", &evergreen.S3StorageCostConfig{
+				DevprodOwnedAWSAccountIDs: tc.devprodOwned,
+			}))
+
+			rule, err := s3lifecycle.FindByBucketAndPrefix(t.Context(), "b", "")
+			require.NoError(t, err)
+			require.NotNil(t, rule)
+			if !tc.wantSynced {
+				assert.Equal(t, "stale-rule", rule.RuleID, "a skipped bucket must not be refreshed")
+				return
+			}
+			assert.Equal(t, "fresh-rule", rule.RuleID)
+			require.NotNil(t, rule.ExpirationDays)
+			assert.Equal(t, 90, *rule.ExpirationDays)
+		})
+	}
 }

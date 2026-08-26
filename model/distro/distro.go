@@ -129,9 +129,10 @@ type BootstrapSettings struct {
 	Communication string `bson:"communication,omitempty" json:"communication,omitempty" mapstructure:"communication,omitempty"`
 
 	// Optional
-	Env                 []EnvVar             `bson:"env,omitempty" json:"env,omitempty" mapstructure:"env,omitempty"`
-	ResourceLimits      ResourceLimits       `bson:"resource_limits,omitempty" json:"resource_limits" mapstructure:"resource_limits,omitempty"`
-	PreconditionScripts []PreconditionScript `bson:"precondition_scripts,omitempty" json:"precondition_scripts,omitempty" mapstructure:"precondition_scripts,omitempty"`
+	Env                 []EnvVar                   `bson:"env,omitempty" json:"env,omitempty" mapstructure:"env,omitempty"`
+	ResourceLimits      ResourceLimits             `bson:"resource_limits,omitempty" json:"resource_limits" mapstructure:"resource_limits,omitempty"`
+	ContainerIsolation  ContainerIsolationSettings `bson:"container_isolation,omitempty" json:"container_isolation,omitempty" mapstructure:"container_isolation,omitempty"`
+	PreconditionScripts []PreconditionScript       `bson:"precondition_scripts,omitempty" json:"precondition_scripts,omitempty" mapstructure:"precondition_scripts,omitempty"`
 
 	// Required for new provisioning
 	ClientDir             string `bson:"client_dir,omitempty" json:"client_dir,omitempty" mapstructure:"client_dir,omitempty"`
@@ -163,6 +164,21 @@ type ResourceLimits struct {
 	NumTasks        int `bson:"num_tasks,omitempty" json:"num_tasks,omitempty" mapstructure:"num_tasks,omitempty"`
 	LockedMemoryKB  int `bson:"locked_memory,omitempty" json:"locked_memory,omitempty" mapstructure:"locked_memory,omitempty"`
 	VirtualMemoryKB int `bson:"virtual_memory,omitempty" json:"virtual_memory,omitempty" mapstructure:"virtual_memory,omitempty"`
+}
+
+// ContainerIsolationSettings controls per-task container isolation.
+// When enabled, task commands (subprocess.exec, shell.exec) run inside
+// an ephemeral Docker container. The task working directory is bind-mounted
+// from the host into the container.
+type ContainerIsolationSettings struct {
+	Enabled  bool   `bson:"enabled" json:"enabled" mapstructure:"enabled"`
+	Image    string `bson:"image" json:"image" mapstructure:"image"`
+	MemoryMB int64  `bson:"memory_mb,omitempty" json:"memory_mb,omitempty" mapstructure:"memory_mb,omitempty"`
+	CPUs     int64  `bson:"cpus,omitempty" json:"cpus,omitempty" mapstructure:"cpus,omitempty"`
+	// RequireIsolation opts into fail-closed behavior. When true, container
+	// creation or image-pull failure fails the task immediately rather than
+	// degrading to host-mode. Default (false) is fail-open.
+	RequireIsolation bool `bson:"require_isolation,omitempty" json:"require_isolation,omitempty" mapstructure:"require_isolation,omitempty"`
 }
 
 type HomeVolumeSettings struct {
@@ -256,6 +272,14 @@ func (d *Distro) ValidateBootstrapSettings() error {
 	catcher.NewWhen(d.IsLinux() && d.BootstrapSettings.ResourceLimits.LockedMemoryKB < -1, "max locked memory should be a positive number or -1")
 	catcher.NewWhen(d.IsLinux() && d.BootstrapSettings.ResourceLimits.VirtualMemoryKB < -1, "max virtual memory should be a positive number or -1")
 
+	if ci := d.BootstrapSettings.ContainerIsolation; ci.Enabled {
+		catcher.NewWhen(!d.IsLinux(), "container isolation is only supported on Linux")
+		catcher.NewWhen(ci.Image == "", "container image cannot be empty when container isolation is enabled")
+		catcher.NewWhen(d.ExecUser == "", "container isolation requires ExecUser to be set; it is used to scope between-task process cleanup inside the container's PID namespace")
+	} else if d.BootstrapSettings.ContainerIsolation.RequireIsolation {
+		catcher.New("require_isolation has no effect when container isolation is not enabled")
+	}
+
 	return catcher.Resolve()
 }
 
@@ -284,8 +308,10 @@ type FinderSettings struct {
 }
 
 type PlannerSettings struct {
-	Version                   string        `bson:"version" json:"version" mapstructure:"version"`
-	TargetTime                time.Duration `bson:"target_time" json:"target_time" mapstructure:"target_time,omitempty"`
+	Version    string        `bson:"version" json:"version" mapstructure:"version"`
+	TargetTime time.Duration `bson:"target_time" json:"target_time" mapstructure:"target_time,omitempty"`
+	// MergeQueueTargetTime is the target time to use while the queue holds merge queue tasks. Zero means always use TargetTime.
+	MergeQueueTargetTime      time.Duration `bson:"merge_queue_target_time" json:"merge_queue_target_time" mapstructure:"merge_queue_target_time,omitempty"`
 	GroupVersions             *bool         `bson:"group_versions" json:"group_versions" mapstructure:"group_versions,omitempty"`
 	PatchFactor               int64         `bson:"patch_zipper_factor" json:"patch_factor" mapstructure:"patch_factor"`
 	PatchTimeInQueueFactor    int64         `bson:"patch_time_in_queue_factor" json:"patch_time_in_queue_factor" mapstructure:"patch_time_in_queue_factor"`
@@ -433,6 +459,19 @@ func (d *Distro) GetTargetTime() time.Duration {
 	}
 
 	return d.PlannerSettings.TargetTime
+}
+
+// GetTargetTimeForQueue returns the target time host allocation should aim for across the whole
+// distro queue. Hosts aren't allocated per task, so any runnable merge queue task lowers the target
+// time for every task in the queue. The merge queue target time only applies when it's lower than
+// the regular target time.
+func (d *Distro) GetTargetTimeForQueue(hasMergeQueueTasks bool) time.Duration {
+	targetTime := d.GetTargetTime()
+	if !hasMergeQueueTasks || d.PlannerSettings.MergeQueueTargetTime <= 0 {
+		return targetTime
+	}
+
+	return min(targetTime, d.PlannerSettings.MergeQueueTargetTime)
 }
 
 // IsPowerShellSetup returns whether or not the setup script is a powershell
@@ -730,6 +769,7 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	resolved := PlannerSettings{
 		Version:                   ps.Version,
 		TargetTime:                ps.TargetTime,
+		MergeQueueTargetTime:      ps.MergeQueueTargetTime,
 		GroupVersions:             ps.GroupVersions,
 		PatchFactor:               ps.PatchFactor,
 		PatchTimeInQueueFactor:    ps.PatchTimeInQueueFactor,
@@ -756,6 +796,13 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 		resolved.TargetTime = time.Duration(s.ReleaseMode.TargetTimeSecondsOverride) * time.Second
 	} else if resolved.TargetTime == 0 { // Fallback to the admin value if not set at the distro level.
 		resolved.TargetTime = time.Duration(config.TargetTimeSeconds) * time.Second
+	}
+
+	// If enabled, release mode takes precedent over both distro and admin value.
+	if !s.ServiceFlags.ReleaseModeDisabled && s.ReleaseMode.MergeQueueTargetTimeSecondsOverride > 0 {
+		resolved.MergeQueueTargetTime = time.Duration(s.ReleaseMode.MergeQueueTargetTimeSecondsOverride) * time.Second
+	} else if resolved.MergeQueueTargetTime == 0 { // Fallback to the admin value if not set at the distro level.
+		resolved.MergeQueueTargetTime = time.Duration(config.MergeQueueTargetTimeSeconds) * time.Second
 	}
 
 	if resolved.GroupVersions == nil {
