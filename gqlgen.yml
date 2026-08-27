@@ -128,8 +128,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBucketsConfig
   BucketConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBucketConfig
-  Build:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIBuild
   BuildBaronSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBuildBaronSettings
   BuildBaronSettingsInput:
