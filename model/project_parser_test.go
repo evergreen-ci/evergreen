@@ -2094,7 +2094,9 @@ func TestParserProjectStorage(t *testing.T) {
 								Commands: []PluginCommandConf{
 									{
 										Command: "shell.exec",
-										Params:  map[string]any{"script": "echo hi"},
+										// Params is not persisted (see ParamsYAML), so
+										// the stored form is what must be set up here.
+										ParamsYAML: "script: echo hi\n",
 									},
 								},
 							},
@@ -2120,7 +2122,7 @@ func TestParserProjectStorage(t *testing.T) {
 					require.Len(t, fromBSON.Tasks, 1)
 					require.Len(t, fromBSON.Tasks[0].Commands, 1)
 					assert.Equal(t, "shell.exec", fromBSON.Tasks[0].Commands[0].Command)
-					assert.Equal(t, map[string]any{"script": "echo hi"}, fromBSON.Tasks[0].Commands[0].Params)
+					assert.Equal(t, map[string]any{"script": "echo hi"}, fromBSON.Tasks[0].Commands[0].Params, "params should be rehydrated from the stored params YAML")
 				},
 				"UpsertCreatesNewParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
 					pp := &ParserProject{
