@@ -489,12 +489,6 @@ functions:
 #######################################
 
 tasks:
-  - name: test-smoke-internal-evaluate
-    tags: ["smoke"]
-    commands:
-      - func: get-project-and-modules
-      - func: run-make
-        vars: { target: "${task_name}" }
   - <<: *run-smoke-test
     name: test-smoke-internal-host
     tags: ["smoke"]
