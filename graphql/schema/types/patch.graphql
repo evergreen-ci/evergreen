@@ -69,41 +69,39 @@ type Patch {
   activated: Boolean!
   alias: String
   aliases: [String!]
-  author: String!
-  authorDisplayName: String!
-  builds: [Build!]!
   childPatchAliases: [ChildPatchAlias!]
   childPatches: [Patch!]
+  """
+  Aggregated actual cost for the patch's version, when cost data exists.
+  """
+  cost: Cost
   createTime: Time
-  ingestTime: Time
   description: String!
-  duration: PatchDuration
   generatedTaskCounts: [GeneratedTaskCountResults!]!
   githash: String!
   githubPatchData: GithubPatch
   hidden: Boolean!
   includedLocalModules: [IncludedLocalModule!]!
+  ingestTime: Time
+  invalidatedByUpstream: Boolean!
   moduleCodeChanges: [ModuleCodeChange!]!
   parameters: [Parameter!]!
   patchNumber: Int!
   patchTriggerAliases: [PatchTriggerAlias!]!
+  """
+  Aggregated predicted cost for the patch's version.
+  """
+  predictedCost: Cost
   project: PatchProject
   projectMetadata: Project
   status: String!
   taskCount: Int
   tasks: [String!]!
-  taskStatuses: [String!]!
   time: PatchTime
   user: User!
   variants: [String!]!
   variantsTasks: [VariantTask!]!
   version: VersionLite
-  versionFull: Version
-  """Aggregated actual cost for the patch's version, when cost data exists."""
-  cost: Cost
-  """Aggregated predicted cost for the patch's version."""
-  predictedCost: Cost
-  invalidatedByUpstream: Boolean!
 }
 
 type ChildPatchAlias {
@@ -179,24 +177,10 @@ type Parameter {
   value: String!
 }
 
-type PatchDuration {
-  makespan: String
-  time: PatchTime
-  timeTaken: String
-}
-
 type PatchTime {
   finished: String
   started: String
   submittedAt: String!
-}
-
-type Build {
-  id: String!
-  actualMakespan: Duration!
-  buildVariant: String!
-  predictedMakespan: Duration!
-  status: String!
 }
 
 """

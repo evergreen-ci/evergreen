@@ -27,26 +27,6 @@
       }
     },
     {
-      "query_file": "author_display_name.graphql",
-      "test_user_id": "regular_user",
-      "result": {
-        "data": {
-          "project": {
-            "patches": {
-              "patches": [
-                {
-                  "id": "5e4ff3abe3c3317e352062e8",
-                  "author": "regular_user",
-                  "authorDisplayName": "Regular User"
-                }
-              ],
-              "filteredPatchCount": 6
-            }
-          }
-        }
-      }
-    },
-    {
       "query_file": "default_params.graphql",
       "result": {
         "data": {

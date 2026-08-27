@@ -693,3 +693,30 @@ func TestBuildGithubHeadPRURL(t *testing.T) {
 		})
 	}
 }
+
+func TestAppAuthorizedForOrgNonAppNames(t *testing.T) {
+	// A GitHub user can share a name with an app, so anything that isn't
+	// suffixed like an app must not be authorized. These cases short-circuit
+	// before any GitHub call, so they need no integration setup.
+	for _, name := range []string{"annie", "annie[bot", "annie[bot]extra", "[bot]annie", "", "bot"} {
+		t.Run("Name"+name, func(t *testing.T) {
+			authorized, err := AppAuthorizedForOrg(t.Context(), "evergreen-ci", name)
+			assert.NoError(t, err)
+			assert.False(t, authorized)
+		})
+	}
+}
+
+func (s *githubSuite) TestAppAuthorizedForOrgWithUninstalledApp() {
+	authorized, err := AppAuthorizedForOrg(s.ctx, "evergreen-ci", "not-a-real-evergreen-app[bot]")
+	s.NoError(err)
+	s.False(authorized)
+}
+
+func (s *githubSuite) TestAppAuthorizedForOrgWithUserSharingAppName() {
+	// A user whose name matches an installed app slug must not be authorized
+	// without the bot suffix.
+	authorized, err := AppAuthorizedForOrg(s.ctx, "evergreen-ci", "evergreen-ci")
+	s.NoError(err)
+	s.False(authorized)
+}

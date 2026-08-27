@@ -26,30 +26,6 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
-// BbGetCreatedTickets is the resolver for the bbGetCreatedTickets field.
-func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) ([]*thirdparty.JiraTicket, error) {
-	createdTickets, err := bbGetCreatedTicketsPointers(ctx, taskID)
-	if err != nil {
-		return nil, err
-	}
-
-	return createdTickets, nil
-}
-
-// BuildBaron is the resolver for the buildBaron field.
-func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, execution int) (*BuildBaron, error) {
-	searchReturnInfo, bbConfig, err := model.GetBuildBaron(ctx, taskID, execution)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
-	}
-
-	return &BuildBaron{
-		SearchReturnInfo:        searchReturnInfo,
-		BuildBaronConfigured:    bbConfig.SearchConfigured,
-		BbTicketCreationDefined: bbConfig.TicketCreationDefined,
-	}, nil
-}
-
 // AdminEvents is the resolver for the adminEvents field.
 func (r *queryResolver) AdminEvents(ctx context.Context, opts AdminEventsInput) (*AdminEventsPayload, error) {
 	before := utility.FromTimePtr(opts.Before)
@@ -292,7 +268,7 @@ func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.API
 	}
 
 	apiHost := &restModel.APIHost{}
-	apiHost.BuildFromService(host, host.RunningTaskFull)
+	apiHost.BuildFromService(ctx, host, host.RunningTaskFull)
 	return apiHost, nil
 }
 
@@ -384,7 +360,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 			})
 		}
 		apiHost := restModel.APIHost{}
-		apiHost.BuildFromService(&h, h.RunningTaskFull)
+		apiHost.BuildFromService(ctx, &h, h.RunningTaskFull)
 		apiHosts = append(apiHosts, &apiHost)
 	}
 	return &HostsResponse{
@@ -517,7 +493,7 @@ func (r *queryResolver) ProjectSettings(ctx context.Context, projectIdentifier s
 	}
 	if !projectRef.UseRepoSettings() {
 		// Default values so the UI understands what to do with nil values.
-		res.ProjectRef.DefaultUnsetBooleans()
+		res.ProjectRef.DefaultUnsetBooleans(ctx)
 	}
 	return res, nil
 }
@@ -554,7 +530,7 @@ func (r *queryResolver) RepoSettings(ctx context.Context, repoID string) (*restM
 	}
 
 	// Default values so the UI understands what to do with nil values.
-	res.ProjectRef.DefaultUnsetBooleans()
+	res.ProjectRef.DefaultUnsetBooleans(ctx)
 	return res, nil
 }
 
@@ -610,7 +586,7 @@ func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, erro
 	var apiHosts []*restModel.APIHost
 	for _, h := range hosts {
 		apiHost := restModel.APIHost{}
-		apiHost.BuildFromService(&h, nil)
+		apiHost.BuildFromService(ctx, &h, nil)
 		apiHosts = append(apiHosts, &apiHost)
 	}
 	return apiHosts, nil

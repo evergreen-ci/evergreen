@@ -304,18 +304,27 @@ func NewTaskConfig(opts TaskConfigOptions) (*TaskConfig, error) {
 	}
 
 	if opts.ExpansionsAndVars != nil && opts.ExpansionsAndVars.Expansions != nil {
-		expandedModules := make([]string, 0, len(taskConfig.BuildVariant.Modules))
-		for _, moduleName := range taskConfig.BuildVariant.Modules {
-			expanded, err := opts.ExpansionsAndVars.Expansions.ExpandString(moduleName)
-			if err != nil {
-				return nil, errors.Wrapf(err, "expanding module '%s'", moduleName)
-			}
-			expandedModules = append(expandedModules, expanded)
+		var err error
+		taskConfig.BuildVariant.Modules, err = ExpandModuleNames(taskConfig.BuildVariant.Modules, opts.ExpansionsAndVars.Expansions)
+		if err != nil {
+			return nil, err
 		}
-		taskConfig.BuildVariant.Modules = expandedModules
 	}
 
 	return taskConfig, nil
+}
+
+// ExpandModuleNames expands any expansion variables in module names.
+func ExpandModuleNames(modules []string, expansions util.Expansions) ([]string, error) {
+	expanded := make([]string, 0, len(modules))
+	for _, moduleName := range modules {
+		name, err := expansions.ExpandString(moduleName)
+		if err != nil {
+			return nil, errors.Wrapf(err, "expanding module '%s'", moduleName)
+		}
+		expanded = append(expanded, name)
+	}
+	return expanded, nil
 }
 
 // ApplyFunctionVarsToExpansions expands the given function vars and puts them into

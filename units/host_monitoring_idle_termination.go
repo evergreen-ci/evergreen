@@ -318,7 +318,7 @@ func checkTerminationExemptions(ctx context.Context, h *host.Host, env evergreen
 	}
 
 	// get a cloud manager for the host
-	mgrOpts, err := cloud.GetManagerOptions(h.Distro)
+	mgrOpts, err := cloud.GetManagerOptions(ctx, h.Distro)
 	if err != nil {
 		return true, errors.Wrapf(err, "getting cloud manager options for host '%s'", h.Id)
 	}

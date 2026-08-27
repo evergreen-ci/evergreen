@@ -1081,13 +1081,13 @@ func TestEndingTask(t *testing.T) {
 				So(task.FinishTime.Unix(), ShouldEqual, now.Unix())
 			})
 		})
-		Convey("a task that is allocated a container should be deallocated", func() {
+		Convey("a non-host task should still be markable as ended", func() {
 			now := time.Now()
 			task := &Task{
 				Id:                "taskId",
 				Status:            evergreen.TaskStarted,
 				StartTime:         now.Add(-5 * time.Minute),
-				ExecutionPlatform: ExecutionPlatformContainer,
+				ExecutionPlatform: ExecutionPlatformVirtual,
 			}
 			So(task.Insert(t.Context()), ShouldBeNil)
 			details := &apimodels.TaskEndDetail{
@@ -2492,7 +2492,7 @@ func TestTopologicalSort(t *testing.T) {
 		{Id: "t3", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t1"}}},
 	}
 
-	sortedTasks, err := topologicalSort(tasks)
+	sortedTasks, err := topologicalSort(t.Context(), tasks)
 	assert.NoError(t, err)
 	assert.Len(t, sortedTasks, 4)
 
@@ -2534,7 +2534,7 @@ func TestActivateTasks(t *testing.T) {
 		}
 
 		updatedIDs := []string{"t0", "t3", "t4"}
-		activatedDependencyIDs, err := ActivateTasks(ctx, []Task{tasks[0]}, time.Time{}, true, u.Id)
+		activatedDependencyIDs, err := ActivateTasks(ctx, []Task{tasks[0]}, time.Time{}, true, u.Id, "")
 		assert.NoError(t, err)
 		assert.ElementsMatch(t, updatedIDs, activatedDependencyIDs)
 
@@ -2566,7 +2566,7 @@ func TestActivateTasks(t *testing.T) {
 			}
 		}
 
-		activatedDependencyIDs, err = ActivateTasks(ctx, []Task{tasks[1]}, time.Time{}, true, u.Id)
+		activatedDependencyIDs, err = ActivateTasks(ctx, []Task{tasks[1]}, time.Time{}, true, u.Id, "")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), fmt.Sprintf("cannot schedule %d tasks, maximum hourly per-user limit is %d", 102, 100))
 		assert.Empty(t, activatedDependencyIDs)
@@ -2582,7 +2582,7 @@ func TestActivateTasks(t *testing.T) {
 		}
 		require.NoError(t, task.Insert(t.Context()))
 
-		activatedDependencyIDs, err := ActivateTasks(ctx, []Task{task}, time.Now(), true, "abyssinian")
+		activatedDependencyIDs, err := ActivateTasks(ctx, []Task{task}, time.Now(), true, "abyssinian", "")
 		assert.NoError(t, err)
 		assert.Empty(t, activatedDependencyIDs)
 
@@ -2619,7 +2619,7 @@ func TestDeactivateTasks(t *testing.T) {
 	}
 
 	updatedIDs := []string{"t0", "t4", "t5", "t6", "t7"}
-	err := DeactivateTasks(ctx, []Task{tasks[0]}, true, "")
+	err := DeactivateTasks(ctx, []Task{tasks[0]}, true, "", "")
 	assert.NoError(t, err)
 
 	dbTasks, err := FindAll(ctx, All)
@@ -2684,8 +2684,8 @@ func TestIsHostDispatchable(t *testing.T) {
 			tsk.ExecutionPlatform = ""
 			assert.True(t, tsk.IsHostDispatchable())
 		},
-		"ReturnsFalseForContainerTask": func(t *testing.T, tsk Task) {
-			tsk.ExecutionPlatform = ExecutionPlatformContainer
+		"ReturnsFalseForVirtualTask": func(t *testing.T, tsk Task) {
+			tsk.ExecutionPlatform = ExecutionPlatformVirtual
 			assert.False(t, tsk.IsHostDispatchable())
 		},
 		"ReturnsFalseForTaskWithoutUndispatchedStatus": func(t *testing.T, tsk Task) {
@@ -3616,9 +3616,9 @@ func TestArchive(t *testing.T) {
 
 			checkEventLogHostTaskExecutions(t, hostID, archivedExecTaskID, archivedExecution)
 		},
-		"ArchivesContainerTask": func(t *testing.T, tsk Task) {
+		"ArchivesVirtualTask": func(t *testing.T, tsk Task) {
 			archivedTaskID := MakeOldID(tsk.Id, tsk.Execution)
-			tsk.ExecutionPlatform = ExecutionPlatformContainer
+			tsk.ExecutionPlatform = ExecutionPlatformVirtual
 			require.NoError(t, tsk.Insert(ctx))
 
 			require.NoError(t, tsk.Archive(ctx))
@@ -4684,7 +4684,7 @@ func TestWillRun(t *testing.T) {
 		tsk := Task{
 			Status:            evergreen.TaskUndispatched,
 			Activated:         true,
-			ExecutionPlatform: ExecutionPlatformContainer,
+			ExecutionPlatform: ExecutionPlatformHost,
 			DependsOn:         []Dependency{{Unattainable: false}},
 		}
 		assert.True(t, tsk.WillRun())
@@ -4693,7 +4693,7 @@ func TestWillRun(t *testing.T) {
 		tsk := Task{
 			Status:            evergreen.TaskUndispatched,
 			Activated:         true,
-			ExecutionPlatform: ExecutionPlatformContainer,
+			ExecutionPlatform: ExecutionPlatformHost,
 			DependsOn:         []Dependency{{Unattainable: true}},
 		}
 		assert.False(t, tsk.WillRun())
@@ -4790,6 +4790,7 @@ func TestReset(t *testing.T) {
 		t0 := Task{
 			Id:                         "t0",
 			Status:                     evergreen.TaskSucceeded,
+			ExecutionPlatform:          ExecutionPlatformContainer,
 			Details:                    apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded},
 			TaskOutputInfo:             &TaskOutput{TaskLogs: TaskLogOutput{Version: 1}},
 			ResultsFailed:              true,
@@ -4826,6 +4827,9 @@ func TestReset(t *testing.T) {
 		assert.Empty(t, dbTask.HostCreateDetails)
 		assert.Empty(t, dbTask.TaskOutputInfo)
 		assert.Empty(t, dbTask.Details)
+		assert.Zero(t, dbTask.ExecutionPlatform)
+		assert.Zero(t, t0.ExecutionPlatform)
+		assert.True(t, dbTask.IsHostDispatchable())
 		assert.Zero(t, dbTask.NumNextTaskDispatches)
 		assert.Zero(t, dbTask.NumQuarantinedTestsSkipped)
 		assert.True(t, dbTask.TaskCost.IsZero())
@@ -4848,9 +4852,10 @@ func TestResetTasks(t *testing.T) {
 		require.NoError(t, db.Clear(Collection))
 
 		t0 := Task{
-			Id:       "t0",
-			Status:   evergreen.TaskSucceeded,
-			CanReset: true,
+			Id:                "t0",
+			Status:            evergreen.TaskSucceeded,
+			ExecutionPlatform: ExecutionPlatformContainer,
+			CanReset:          true,
 		}
 		assert.NoError(t, t0.Insert(t.Context()))
 
@@ -4859,6 +4864,8 @@ func TestResetTasks(t *testing.T) {
 		assert.NoError(t, err)
 		assert.False(t, dbTask.UnattainableDependency)
 		assert.Equal(t, "user", dbTask.ActivatedBy)
+		assert.Zero(t, dbTask.ExecutionPlatform)
+		assert.True(t, dbTask.IsHostDispatchable())
 	})
 
 	t.Run("UnattainableDependency", func(t *testing.T) {
@@ -6016,4 +6023,174 @@ func TestSetS3ArtifactStorageCostsLifecycleMissLogging(t *testing.T) {
 		tk.setS3ArtifactStorageCosts(ctx, missingLookup, costConfig)
 		assert.Equal(t, []string{"mciuploads"}, loggedBuckets())
 	})
+
+	// Uploads that are not devprod owned are never priced, so a lookup miss is expected for them.
+	t.Run("SuppressesMissForUploadsOutsideDevprodOwnedList", func(t *testing.T) {
+		ownedConfig := &evergreen.CostConfig{
+			S3Cost: evergreen.S3CostConfig{
+				Storage: evergreen.S3StorageCostConfig{
+					DefaultMaxArtifactExpirationDays: 365,
+					DevprodOwnedAWSAccountIDs:        []string{"123456789012"},
+				},
+			},
+		}
+
+		tk := Task{Id: "t5", S3Usage: usage("unowned-bucket", "arn:aws:iam::210987654321:role/r", "")}
+		tk.setS3ArtifactStorageCosts(ctx, missingLookup, ownedConfig)
+		assert.Empty(t, loggedBuckets())
+
+		tk = Task{Id: "t6", S3Usage: usage("unresolved-bucket", "", "")}
+		tk.setS3ArtifactStorageCosts(ctx, missingLookup, ownedConfig)
+		assert.Empty(t, loggedBuckets(), "an upload with no resolvable account is not devprod owned")
+		assert.Positive(t, tk.TaskCost.OnDemandS3ArtifactStorageCost, "cost must still be computed from the default expiration days")
+	})
+}
+
+func TestUpdateSchedulingLimit(t *testing.T) {
+	ctx := t.Context()
+
+	const (
+		username         = "user"
+		serviceUsername  = "service_user"
+		generalLimit     = 100
+		boostedLimit     = 10000
+		boostedProject   = "boosted_project"
+		normalProject    = "normal_project"
+		boostedRepo      = "boosted_repo"
+		boostedRepoChild = "boosted_repo_child"
+		otherRepoChild   = "other_repo_child"
+	)
+
+	settings := evergreen.GetEnvironment().Settings()
+	originalTaskLimits := settings.TaskLimits
+	t.Cleanup(func() {
+		settings.TaskLimits = originalTaskLimits
+		assert.NoError(t, db.ClearCollections(user.Collection))
+	})
+
+	for tName, tCase := range map[string]struct {
+		caller                   string
+		onlyAPI                  bool
+		requester                string
+		projectID                string
+		repoRefID                string
+		numTasksModified         int
+		expectedErr              string
+		expectedGeneralCount     int
+		expectedPerProjectCounts map[string]int
+	}{
+		"BoostedProjectAllowsSchedulingAboveGeneralLimit": {
+			projectID:                boostedProject,
+			numTasksModified:         500,
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{boostedProject: 500},
+		},
+		"NormalProjectStillEnforcesGeneralLimit": {
+			projectID:                normalProject,
+			numTasksModified:         500,
+			expectedErr:              "cannot schedule 500 tasks, maximum hourly per-user limit is 100",
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{},
+		},
+		"NormalProjectUnderGeneralLimitUsesGeneralCounter": {
+			projectID:                normalProject,
+			numTasksModified:         50,
+			expectedGeneralCount:     50,
+			expectedPerProjectCounts: map[string]int{},
+		},
+		"ProjectTrackingBoostedRepoUsesRepoLimitAndRepoCounter": {
+			projectID:                boostedRepoChild,
+			repoRefID:                boostedRepo,
+			numTasksModified:         500,
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{boostedRepo: 500},
+		},
+		"ProjectTrackingUnboostedRepoUsesGeneralLimit": {
+			projectID:                otherRepoChild,
+			repoRefID:                "other_repo",
+			numTasksModified:         500,
+			expectedErr:              "cannot schedule 500 tasks, maximum hourly per-user limit is 100",
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{},
+		},
+		"NonPatchRequesterIsExemptFromBoostedProjectTracking": {
+			requester:                evergreen.RepotrackerVersionRequester,
+			projectID:                boostedProject,
+			numTasksModified:         500,
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{},
+		},
+		"SystemActivatorIsExemptFromBoostedProjectTracking": {
+			caller:                   evergreen.BuildActivator,
+			projectID:                boostedProject,
+			numTasksModified:         500,
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{},
+		},
+		"ServiceUserIsExemptFromBoostedProjectTracking": {
+			caller:                   serviceUsername,
+			onlyAPI:                  true,
+			projectID:                boostedProject,
+			numTasksModified:         500,
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{},
+		},
+		"NoTasksModifiedIsANoop": {
+			projectID:                boostedProject,
+			numTasksModified:         0,
+			expectedGeneralCount:     0,
+			expectedPerProjectCounts: map[string]int{},
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(user.Collection))
+
+			settings.TaskLimits = evergreen.TaskLimitsConfig{
+				MaxHourlyPatchTasks: generalLimit,
+				HourlyPatchTaskOverrides: []evergreen.HourlyPatchTaskOverride{
+					{
+						ProjectOrRepoID:     boostedProject,
+						MaxHourlyPatchTasks: boostedLimit,
+					},
+					{
+						ProjectOrRepoID:     boostedRepo,
+						MaxHourlyPatchTasks: boostedLimit,
+					},
+				},
+			}
+
+			caller := tCase.caller
+			if caller == "" {
+				caller = username
+			}
+			u := &user.DBUser{
+				Id:      caller,
+				OnlyAPI: tCase.onlyAPI,
+			}
+			require.NoError(t, u.Insert(ctx))
+
+			requester := tCase.requester
+			if requester == "" {
+				requester = evergreen.PatchVersionRequester
+			}
+
+			err := UpdateSchedulingLimit(ctx, caller, requester, tCase.projectID, tCase.repoRefID, tCase.numTasksModified, true)
+			if tCase.expectedErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tCase.expectedErr)
+			} else {
+				require.NoError(t, err)
+			}
+
+			dbUser, err := user.FindOneById(ctx, caller)
+			require.NoError(t, err)
+			require.NotNil(t, dbUser)
+			assert.Equal(t, tCase.expectedGeneralCount, dbUser.NumScheduledPatchTasks)
+			perProjectCounts := map[string]int{}
+			for _, usage := range dbUser.PerProjectSchedulingUsage {
+				perProjectCounts[usage.ProjectOrRepoID] = usage.NumScheduledPatchTasks
+			}
+			assert.Equal(t, tCase.expectedPerProjectCounts, perProjectCounts)
+		})
+	}
 }

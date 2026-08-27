@@ -2117,7 +2117,6 @@ type APIServiceFlags struct {
 	TaskDispatchDisabled               bool `json:"task_dispatch_disabled"`
 	HostInitDisabled                   bool `json:"host_init_disabled"`
 	LargeParserProjectsDisabled        bool `json:"large_parser_projects_disabled"`
-	CrossFileYAMLAnchorsEnabled        bool `json:"cross_file_yaml_anchors_enabled"`
 	MonitorDisabled                    bool `json:"monitor_disabled"`
 	MergeQueueRecoveryEnabled          bool `json:"merge_queue_recovery_enabled"`
 	AlertsDisabled                     bool `json:"alerts_disabled"`
@@ -2167,10 +2166,13 @@ type APIServiceFlags struct {
 	GraphQLComplexityLimiterDisabled bool `json:"graphql_complexity_limiter_disabled"`
 
 	TaskQueueAutoUnscheduleDisabled bool `json:"task_queue_auto_unschedule_disabled"`
+	VirtualTasksDisabled            bool `json:"virtual_tasks_disabled"`
 }
 
 type APIProjectTasksPair struct {
-	ProjectID    string   `json:"project_id"`
+	ProjectID string `json:"project_id"`
+	// IsRegex uses a pointer to handle the legacy case where we don't support regex.
+	IsRegex      *bool    `json:"is_regex"`
 	AllowedTasks []string `json:"allowed_tasks"`
 	AllowedBVs   []string `json:"allowed_bvs"`
 }
@@ -2179,6 +2181,7 @@ func (a *APIProjectTasksPair) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.ProjectTasksPair:
 		a.ProjectID = v.ProjectID
+		a.IsRegex = utility.ToBoolPtr(v.IsRegex)
 		a.AllowedTasks = v.AllowedTasks
 		a.AllowedBVs = v.AllowedBVs
 	default:
@@ -2190,6 +2193,7 @@ func (a *APIProjectTasksPair) BuildFromService(h any) error {
 func (a *APIProjectTasksPair) ToService() (any, error) {
 	return evergreen.ProjectTasksPair{
 		ProjectID:    a.ProjectID,
+		IsRegex:      utility.FromBoolPtr(a.IsRegex),
 		AllowedTasks: a.AllowedTasks,
 		AllowedBVs:   a.AllowedBVs,
 	}, nil
@@ -2577,7 +2581,6 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.TaskDispatchDisabled = v.TaskDispatchDisabled
 		as.HostInitDisabled = v.HostInitDisabled
 		as.LargeParserProjectsDisabled = v.LargeParserProjectsDisabled
-		as.CrossFileYAMLAnchorsEnabled = v.CrossFileYAMLAnchorsEnabled
 		as.MonitorDisabled = v.MonitorDisabled
 		as.MergeQueueRecoveryEnabled = v.MergeQueueRecoveryEnabled
 		as.AlertsDisabled = v.AlertsDisabled
@@ -2621,6 +2624,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.APIRateLimiterDisabled = v.APIRateLimiterDisabled
 		as.GraphQLComplexityLimiterDisabled = v.GraphQLComplexityLimiterDisabled
 		as.TaskQueueAutoUnscheduleDisabled = v.TaskQueueAutoUnscheduleDisabled
+		as.VirtualTasksDisabled = v.VirtualTasksDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2633,7 +2637,6 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		TaskDispatchDisabled:               as.TaskDispatchDisabled,
 		HostInitDisabled:                   as.HostInitDisabled,
 		LargeParserProjectsDisabled:        as.LargeParserProjectsDisabled,
-		CrossFileYAMLAnchorsEnabled:        as.CrossFileYAMLAnchorsEnabled,
 		MonitorDisabled:                    as.MonitorDisabled,
 		MergeQueueRecoveryEnabled:          as.MergeQueueRecoveryEnabled,
 		AlertsDisabled:                     as.AlertsDisabled,
@@ -2677,6 +2680,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		APIRateLimiterDisabled:             as.APIRateLimiterDisabled,
 		GraphQLComplexityLimiterDisabled:   as.GraphQLComplexityLimiterDisabled,
 		TaskQueueAutoUnscheduleDisabled:    as.TaskQueueAutoUnscheduleDisabled,
+		VirtualTasksDisabled:               as.VirtualTasksDisabled,
 	}, nil
 }
 

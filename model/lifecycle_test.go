@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -2400,7 +2401,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	assert.NoError(resetTaskData())
 	dt, err := task.FindOneId(ctx, "displayTask1")
 	assert.NoError(err)
-	assert.NoError(dt.SetResetFailedWhenFinished(ctx, "caller"))
+	assert.NoError(dt.SetResetFailedWhenFinished(ctx, "caller", ""))
 
 	// Confirm that marking a display task to reset when finished increments the user's scheduling limit
 	dbUser, err := user.FindOneById(t.Context(), "caller")
@@ -3205,6 +3206,83 @@ func TestAddNewTasks(t *testing.T) {
 			assert.Equal(t, testCase.bvActive, build.Activated)
 		})
 	}
+}
+
+func TestAddNewTasksBatchesDisplayTaskUpdates(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection))
+	})
+
+	b := build.Build{Id: "b0", BuildVariant: "bv0", Version: "v0", Activated: true}
+	require.NoError(t, b.Insert(ctx))
+	v := &Version{Id: "v0", BuildIds: []string{b.Id}}
+	require.NoError(t, v.Insert(ctx))
+	require.NoError(t, (&task.Task{
+		Id:           "t0",
+		DisplayName:  "t0",
+		BuildId:      b.Id,
+		BuildVariant: b.BuildVariant,
+		Version:      v.Id,
+		Activated:    true,
+	}).Insert(ctx))
+	require.NoError(t, (&task.Task{
+		Id:             "dt",
+		DisplayName:    "dt",
+		BuildId:        b.Id,
+		BuildVariant:   b.BuildVariant,
+		Version:        v.Id,
+		DisplayOnly:    true,
+		ExecutionTasks: []string{"t0"},
+	}).Insert(ctx))
+
+	project := &Project{
+		BuildVariants: []BuildVariant{{
+			Name: b.BuildVariant,
+			Tasks: []BuildVariantTaskUnit{
+				{Name: "t0"},
+				{Name: "t1", RunOn: []string{"d0"}},
+			},
+			DisplayTasks: []patch.DisplayTask{{
+				Name:      "dt",
+				ExecTasks: []string{"t0", "t1"},
+			}},
+		}},
+		Tasks: []ProjectTask{{Name: "t0"}, {Name: "t1"}},
+	}
+	creationInfo := TaskCreationInfo{
+		Project:    project,
+		ProjectRef: &ProjectRef{},
+		Version:    v,
+		Pairs: TaskVariantPairs{ExecTasks: []TVPair{{
+			Variant:  b.BuildVariant,
+			TaskName: "t1",
+		}}},
+	}
+	_, _, err := addNewTasksToExistingBuilds(ctx, creationInfo, []build.Build{b}, "")
+	require.NoError(t, err)
+
+	displayTask, err := task.FindOneId(ctx, "dt")
+	require.NoError(t, err)
+	require.NotNil(t, displayTask)
+
+	executionTasks, err := task.FindAll(ctx, db.Query(task.ByBuildId(b.Id)))
+	require.NoError(t, err)
+	var newExecutionTaskID string
+	for _, executionTask := range executionTasks {
+		if executionTask.DisplayOnly {
+			continue
+		}
+		assert.Equal(t, displayTask.Id, utility.FromStringPtr(executionTask.DisplayTaskId))
+		if executionTask.DisplayName == "t1" {
+			newExecutionTaskID = executionTask.Id
+		}
+	}
+	require.NotEmpty(t, newExecutionTaskID)
+	assert.ElementsMatch(t, []string{"t0", newExecutionTaskID}, displayTask.ExecutionTasks)
+	assert.True(t, displayTask.Activated)
+	assert.False(t, utility.IsZeroTime(displayTask.ActivatedTime))
 }
 
 func TestAddNewTasksBatchesBuildFlagUpdates(t *testing.T) {

@@ -3465,7 +3465,7 @@ func TestGetProjectSetupCommands(t *testing.T) {
 		{Command: "c1"},
 	}
 
-	cmds, err := p.GetProjectSetupCommands(apimodels.WorkstationSetupCommandOptions{})
+	cmds, err := p.GetProjectSetupCommands(t.Context(), apimodels.WorkstationSetupCommandOptions{})
 	assert.NoError(t, err)
 	assert.Len(t, cmds, 2)
 	assert.Contains(t, cmds[0].String(), "c0")
@@ -4300,6 +4300,50 @@ func TestArtifactCredentialsSurviveProjectSettingsWrites(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, saved)
 			assert.Equal(t, credentials, saved.ArtifactCredentials)
+		})
+	}
+}
+
+func TestGetRepoRefIDForProject(t *testing.T) {
+	ctx := t.Context()
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(ProjectRefCollection))
+	})
+	require.NoError(t, db.ClearCollections(ProjectRefCollection))
+
+	for _, pRef := range []ProjectRef{
+		{
+			Id:        "project_with_repo",
+			RepoRefId: "repo",
+		},
+		{
+			Id: "project_without_repo",
+		},
+	} {
+		require.NoError(t, pRef.Insert(ctx))
+	}
+
+	for tName, tCase := range map[string]struct {
+		projectID string
+		expected  string
+	}{
+		"ProjectTrackingARepoReturnsTheRepoRefID": {
+			projectID: "project_with_repo",
+			expected:  "repo",
+		},
+		"ProjectTrackingNoRepoReturnsEmpty": {
+			projectID: "project_without_repo",
+			expected:  "",
+		},
+		"NonexistentProjectReturnsEmpty": {
+			projectID: "nonexistent",
+			expected:  "",
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			repoRefID, err := GetRepoRefIDForProject(ctx, tCase.projectID)
+			require.NoError(t, err)
+			assert.Equal(t, tCase.expected, repoRefID)
 		})
 	}
 }

@@ -1601,7 +1601,7 @@ tasks:
   depends_on:
     - name: dist-test
 `
-	intermediate, _, err := createIntermediateProject([]byte(projYml), false, nil)
+	intermediate, err := createIntermediateProject([]byte(projYml), false, nil)
 	s.NoError(err)
 	marshaled, err := yaml.Marshal(intermediate)
 	s.NoError(err)
@@ -1697,6 +1697,10 @@ func (s *projectSuite) TestIsGenerateTask() {
 	s.False(s.project.IsGenerateTask("disabled_task"))
 	s.False(s.project.IsGenerateTask("another_disabled_task"))
 	s.False(s.project.IsGenerateTask("task_does_not_exist"))
+
+	s.project.buildTaskCache()
+	s.True(s.project.IsGenerateTask("a_task_2"))
+	s.False(s.project.IsGenerateTask("a_task_1"))
 }
 
 func (s *projectSuite) TestFindAllTasksMap() {
