@@ -1351,6 +1351,7 @@ type ComplexityRoot struct {
 		TestSelection                      func(childComplexity int) int
 		Triggers                           func(childComplexity int) int
 		VersionControlEnabled              func(childComplexity int) int
+		VirtualTasksEnabled                func(childComplexity int) int
 		WaterfallDisabled                  func(childComplexity int) int
 		WorkstationConfig                  func(childComplexity int) int
 	}
@@ -1467,6 +1468,7 @@ type ComplexityRoot struct {
 		AllowedBVs   func(childComplexity int) int
 		AllowedTasks func(childComplexity int) int
 		DisplayName  func(childComplexity int) int
+		IsRegex      func(childComplexity int) int
 		ProjectID    func(childComplexity int) int
 	}
 
@@ -1614,6 +1616,7 @@ type ComplexityRoot struct {
 		TestSelection                      func(childComplexity int) int
 		Triggers                           func(childComplexity int) int
 		VersionControlEnabled              func(childComplexity int) int
+		VirtualTasksEnabled                func(childComplexity int) int
 		WaterfallDisabled                  func(childComplexity int) int
 		WorkstationConfig                  func(childComplexity int) int
 	}
@@ -8358,6 +8361,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Project.VersionControlEnabled(childComplexity), true
+	case "Project.virtualTasksEnabled":
+		if e.complexity.Project.VirtualTasksEnabled == nil {
+			break
+		}
+
+		return e.complexity.Project.VirtualTasksEnabled(childComplexity), true
 	case "Project.waterfallDisabled":
 		if e.complexity.Project.WaterfallDisabled == nil {
 			break
@@ -8867,6 +8876,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ProjectTasksPair.DisplayName(childComplexity), true
+	case "ProjectTasksPair.isRegex":
+		if e.complexity.ProjectTasksPair.IsRegex == nil {
+			break
+		}
+
+		return e.complexity.ProjectTasksPair.IsRegex(childComplexity), true
 	case "ProjectTasksPair.projectId":
 		if e.complexity.ProjectTasksPair.ProjectID == nil {
 			break
@@ -9724,6 +9739,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RepoRef.VersionControlEnabled(childComplexity), true
+	case "RepoRef.virtualTasksEnabled":
+		if e.complexity.RepoRef.VirtualTasksEnabled == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.VirtualTasksEnabled(childComplexity), true
 	case "RepoRef.waterfallDisabled":
 		if e.complexity.RepoRef.WaterfallDisabled == nil {
 			break
@@ -29968,6 +29989,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(_ context.Cont
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -30087,6 +30110,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_repo(_ context.Context,
 				return ec.fieldContext_RepoRef_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_RepoRef_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_RepoRef_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_RepoRef_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -37559,6 +37584,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -37710,6 +37737,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -37861,6 +37890,8 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -38012,6 +38043,8 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -38331,6 +38364,8 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -41559,6 +41594,8 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -41827,6 +41864,8 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -45209,6 +45248,8 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(_ context.Context
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -48918,6 +48959,35 @@ func (ec *executionContext) fieldContext_Project_testSelection(_ context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_virtualTasksEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Project_virtualTasksEnabled,
+		func(ctx context.Context) (any, error) {
+			return obj.VirtualTasksEnabled, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Project_virtualTasksEnabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Project_triggers(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -49981,6 +50051,8 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(_ conte
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -51593,6 +51665,8 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(_ context.Co
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -51716,6 +51790,35 @@ func (ec *executionContext) fieldContext_ProjectTasksPair_projectId(_ context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProjectTasksPair_isRegex(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectTasksPair) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProjectTasksPair_isRegex,
+		func(ctx context.Context) (any, error) {
+			return obj.IsRegex, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProjectTasksPair_isRegex(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectTasksPair",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -53315,6 +53418,8 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -57017,6 +57122,35 @@ func (ec *executionContext) fieldContext_RepoRef_testSelection(_ context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _RepoRef_virtualTasksEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RepoRef_virtualTasksEnabled,
+		func(ctx context.Context) (any, error) {
+			return obj.VirtualTasksEnabled, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RepoRef_virtualTasksEnabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RepoRef_triggers(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -57403,6 +57537,8 @@ func (ec *executionContext) fieldContext_RepoSettings_projectRef(_ context.Conte
 				return ec.fieldContext_RepoRef_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_RepoRef_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_RepoRef_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_RepoRef_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -59759,6 +59895,8 @@ func (ec *executionContext) fieldContext_SingleTaskDistroConfig_projectTasksPair
 			switch field.Name {
 			case "projectId":
 				return ec.fieldContext_ProjectTasksPair_projectId(ctx, field)
+			case "isRegex":
+				return ec.fieldContext_ProjectTasksPair_isRegex(ctx, field)
 			case "displayName":
 				return ec.fieldContext_ProjectTasksPair_displayName(ctx, field)
 			case "allowedTasks":
@@ -66437,6 +66575,8 @@ func (ec *executionContext) fieldContext_Task_project(_ context.Context, field g
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -76679,6 +76819,8 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(_ context.Conte
 				return ec.fieldContext_Project_taskOwnership(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
+			case "virtualTasksEnabled":
+				return ec.fieldContext_Project_virtualTasksEnabled(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -87675,7 +87817,7 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "debugSpawnHostsDisabled", "disabledStatsCache", "dispatchingDisabled", "waterfallDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "runEveryMainlineCommit", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "taskOwnership", "testSelection", "triggers", "versionControlEnabled", "workstationConfig"}
+	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "debugSpawnHostsDisabled", "disabledStatsCache", "dispatchingDisabled", "waterfallDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "runEveryMainlineCommit", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "taskOwnership", "testSelection", "virtualTasksEnabled", "triggers", "versionControlEnabled", "workstationConfig"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -88004,6 +88146,13 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.TestSelection = data
+		case "virtualTasksEnabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("virtualTasksEnabled"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.VirtualTasksEnabled = data
 		case "triggers":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("triggers"))
 			data, err := ec.unmarshalOTriggerAliasInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITriggerDefinitionᚄ(ctx, v)
@@ -88195,7 +88344,7 @@ func (ec *executionContext) unmarshalInputProjectTasksPairInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"projectID", "allowedTasks", "allowedBVs"}
+	fieldsInOrder := [...]string{"projectID", "isRegex", "allowedTasks", "allowedBVs"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -88209,6 +88358,13 @@ func (ec *executionContext) unmarshalInputProjectTasksPairInput(ctx context.Cont
 				return it, err
 			}
 			it.ProjectID = data
+		case "isRegex":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isRegex"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IsRegex = data
 		case "allowedTasks":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("allowedTasks"))
 			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
@@ -88798,7 +88954,7 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "waterfallDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "runEveryMainlineCommit", "spawnHostScriptPath", "debugSpawnHostsDisabled", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "taskOwnership", "testSelection", "triggers", "versionControlEnabled", "workstationConfig"}
+	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "waterfallDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "runEveryMainlineCommit", "spawnHostScriptPath", "debugSpawnHostsDisabled", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "taskOwnership", "testSelection", "virtualTasksEnabled", "triggers", "versionControlEnabled", "workstationConfig"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -89099,6 +89255,13 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.TestSelection = data
+		case "virtualTasksEnabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("virtualTasksEnabled"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.VirtualTasksEnabled = data
 		case "triggers":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("triggers"))
 			data, err := ec.unmarshalOTriggerAliasInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITriggerDefinitionᚄ(ctx, v)
@@ -102731,6 +102894,8 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Project_taskOwnership(ctx, field, obj)
 		case "testSelection":
 			out.Values[i] = ec._Project_testSelection(ctx, field, obj)
+		case "virtualTasksEnabled":
+			out.Values[i] = ec._Project_virtualTasksEnabled(ctx, field, obj)
 		case "triggers":
 			out.Values[i] = ec._Project_triggers(ctx, field, obj)
 		case "versionControlEnabled":
@@ -103575,6 +103740,8 @@ func (ec *executionContext) _ProjectTasksPair(ctx context.Context, sel ast.Selec
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "isRegex":
+			out.Values[i] = ec._ProjectTasksPair_isRegex(ctx, field, obj)
 		case "displayName":
 			field := field
 
@@ -105245,6 +105412,8 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._RepoRef_taskOwnership(ctx, field, obj)
 		case "testSelection":
 			out.Values[i] = ec._RepoRef_testSelection(ctx, field, obj)
+		case "virtualTasksEnabled":
+			out.Values[i] = ec._RepoRef_virtualTasksEnabled(ctx, field, obj)
 		case "triggers":
 			out.Values[i] = ec._RepoRef_triggers(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

@@ -1081,13 +1081,13 @@ func TestEndingTask(t *testing.T) {
 				So(task.FinishTime.Unix(), ShouldEqual, now.Unix())
 			})
 		})
-		Convey("a task that is allocated a container should be deallocated", func() {
+		Convey("a non-host task should still be markable as ended", func() {
 			now := time.Now()
 			task := &Task{
 				Id:                "taskId",
 				Status:            evergreen.TaskStarted,
 				StartTime:         now.Add(-5 * time.Minute),
-				ExecutionPlatform: ExecutionPlatformContainer,
+				ExecutionPlatform: ExecutionPlatformVirtual,
 			}
 			So(task.Insert(t.Context()), ShouldBeNil)
 			details := &apimodels.TaskEndDetail{
@@ -2492,7 +2492,7 @@ func TestTopologicalSort(t *testing.T) {
 		{Id: "t3", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t1"}}},
 	}
 
-	sortedTasks, err := topologicalSort(tasks)
+	sortedTasks, err := topologicalSort(t.Context(), tasks)
 	assert.NoError(t, err)
 	assert.Len(t, sortedTasks, 4)
 
@@ -2684,8 +2684,8 @@ func TestIsHostDispatchable(t *testing.T) {
 			tsk.ExecutionPlatform = ""
 			assert.True(t, tsk.IsHostDispatchable())
 		},
-		"ReturnsFalseForContainerTask": func(t *testing.T, tsk Task) {
-			tsk.ExecutionPlatform = ExecutionPlatformContainer
+		"ReturnsFalseForVirtualTask": func(t *testing.T, tsk Task) {
+			tsk.ExecutionPlatform = ExecutionPlatformVirtual
 			assert.False(t, tsk.IsHostDispatchable())
 		},
 		"ReturnsFalseForTaskWithoutUndispatchedStatus": func(t *testing.T, tsk Task) {
@@ -3616,9 +3616,9 @@ func TestArchive(t *testing.T) {
 
 			checkEventLogHostTaskExecutions(t, hostID, archivedExecTaskID, archivedExecution)
 		},
-		"ArchivesContainerTask": func(t *testing.T, tsk Task) {
+		"ArchivesVirtualTask": func(t *testing.T, tsk Task) {
 			archivedTaskID := MakeOldID(tsk.Id, tsk.Execution)
-			tsk.ExecutionPlatform = ExecutionPlatformContainer
+			tsk.ExecutionPlatform = ExecutionPlatformVirtual
 			require.NoError(t, tsk.Insert(ctx))
 
 			require.NoError(t, tsk.Archive(ctx))
@@ -4684,7 +4684,7 @@ func TestWillRun(t *testing.T) {
 		tsk := Task{
 			Status:            evergreen.TaskUndispatched,
 			Activated:         true,
-			ExecutionPlatform: ExecutionPlatformContainer,
+			ExecutionPlatform: ExecutionPlatformHost,
 			DependsOn:         []Dependency{{Unattainable: false}},
 		}
 		assert.True(t, tsk.WillRun())
@@ -4693,7 +4693,7 @@ func TestWillRun(t *testing.T) {
 		tsk := Task{
 			Status:            evergreen.TaskUndispatched,
 			Activated:         true,
-			ExecutionPlatform: ExecutionPlatformContainer,
+			ExecutionPlatform: ExecutionPlatformHost,
 			DependsOn:         []Dependency{{Unattainable: true}},
 		}
 		assert.False(t, tsk.WillRun())
