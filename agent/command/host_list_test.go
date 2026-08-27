@@ -194,3 +194,40 @@ func TestHostListSetsFalseWorkdirBoundaryAttributeForRelativePath(t *testing.T) 
 	}
 	assert.True(t, found, "workdir boundary violation attribute was not set on the span")
 }
+
+func TestHostListSetsFalseWorkdirBoundaryAttributeWithoutPath(t *testing.T) {
+	spanRecorder := tracetest.NewSpanRecorder()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(spanRecorder))
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		require.NoError(t, tp.Shutdown(ctx))
+	})
+
+	ctx, span := tp.Tracer("test").Start(t.Context(), "test")
+	comm := client.NewMock("http://localhost.com")
+	conf := &internal.TaskConfig{
+		WorkDir:    "/data/mci/work",
+		Expansions: util.Expansions{},
+		Task:       task.Task{},
+		Project:    model.Project{},
+	}
+	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+	require.NoError(t, err)
+
+	cmd := listHostFactory().(*listHosts)
+	require.NoError(t, cmd.Execute(ctx, comm, logger, conf))
+	span.End()
+
+	ended := spanRecorder.Ended()
+	require.Len(t, ended, 1)
+
+	found := false
+	for _, attr := range ended[0].Attributes() {
+		if string(attr.Key) == workdirBoundaryViolationAttribute {
+			assert.False(t, attr.Value.AsBool(), "workdir boundary violation attribute should be false")
+			found = true
+		}
+	}
+	assert.True(t, found, "workdir boundary violation attribute was not set on the span")
+}

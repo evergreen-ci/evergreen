@@ -283,8 +283,16 @@ func TestTarballCreateSetsWorkdirBoundaryAttributeOnViolation(t *testing.T) {
 	ctx, span := tp.Tracer("test").Start(t.Context(), "test")
 
 	comm := client.NewMock("http://localhost.com")
+	testDir := t.TempDir()
+	workDir := filepath.Join(testDir, "workdir")
+	sourceDir := filepath.Join(testDir, "source")
+	target := filepath.Join(testDir, "outside-workdir.tgz")
+	require.NoError(t, os.Mkdir(workDir, 0755))
+	require.NoError(t, os.Mkdir(sourceDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "input.txt"), []byte("archive contents"), 0600))
+
 	conf := &internal.TaskConfig{
-		WorkDir:    "/data/mci/work",
+		WorkDir:    workDir,
 		Expansions: util.Expansions{},
 		Task:       task.Task{},
 		Project:    model.Project{},
@@ -293,13 +301,12 @@ func TestTarballCreateSetsWorkdirBoundaryAttributeOnViolation(t *testing.T) {
 	require.NoError(t, err)
 
 	cmd := tarballCreateFactory().(*tarballCreate)
-	cmd.Target = "/tmp/outside-workdir.tgz"
-	cmd.SourceDir = "/etc"
-	cmd.Include = []string{"passwd"}
+	cmd.Target = target
+	cmd.SourceDir = sourceDir
+	cmd.Include = []string{"input.txt"}
 
-	// Execute will fail (cannot create archive at /tmp), but the workdir
-	// boundary attribute is set before the archive operation begins.
-	_ = cmd.Execute(ctx, comm, logger, conf)
+	require.NoError(t, cmd.Execute(ctx, comm, logger, conf))
+	require.FileExists(t, target)
 	span.End()
 
 	ended := spanRecorder.Ended()
