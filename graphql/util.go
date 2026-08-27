@@ -186,48 +186,8 @@ func getDisplayStatus(ctx context.Context, v *model.Version) (string, error) {
 	return patch.GetCollectiveStatusFromPatchStatuses(ctx, allStatuses), nil
 }
 
-// userCanModifyPatch checks if a user can make changes to a given patch. This is mainly to prevent
-// users from modifying other users' patches.
-func userCanModifyPatch(ctx context.Context, u *user.DBUser, patch patch.Patch) bool {
-	if u == nil {
-		return false
-	}
-
-	// Check if user is patch owner.
-	if patch.Author == u.Username() {
-		return true
-	}
-
-	// Check if user is superuser.
-	permissions := gimlet.PermissionOpts{
-		Resource:      evergreen.SuperUserPermissionsID,
-		ResourceType:  evergreen.SuperUserResourceType,
-		Permission:    evergreen.PermissionAdminSettings,
-		RequiredLevel: evergreen.AdminSettingsEdit.Value,
-	}
-	if u.HasPermission(ctx, permissions) {
-		return true
-	}
-
-	// Check if user is project admin.
-	permissions = gimlet.PermissionOpts{
-		Resource:      patch.Project,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionProjectSettings,
-		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-	}
-	if u.HasPermission(ctx, permissions) {
-		return true
-	}
-
-	// Check if user has patch admin permissions.
-	permissions = gimlet.PermissionOpts{
-		Resource:      patch.Project,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionPatches,
-		RequiredLevel: evergreen.PatchSubmitAdmin.Value,
-	}
-	return u.HasPermission(ctx, permissions)
+func userCanModifyPatch(ctx context.Context, u *user.DBUser, p patch.Patch) bool {
+	return model.UserCanModifyPatch(ctx, u, p)
 }
 
 // getPatchProjectVariantsAndTasksForUI gets the variants and tasks for a project for a patch id
