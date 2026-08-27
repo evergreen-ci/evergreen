@@ -4,6 +4,14 @@
       id
       activated
       requester
+      waterfallBuilds {
+        id
+        displayName
+        tasks {
+          id
+          displayName
+        }
+      }
     }
     pagination {
       activeVersionIds

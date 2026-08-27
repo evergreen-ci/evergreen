@@ -672,11 +672,6 @@
                     "id": "evergreen_version1_build_b",
                     "activated": false,
                     "displayName": "01 Ubuntu 16.04"
-                  },
-                  {
-                    "id": "evergreen_version3_build",
-                    "activated": true,
-                    "displayName": "03 Linter"
                   }
                 ]
               }
@@ -738,17 +733,32 @@
               {
                 "id": "evergreen_version5",
                 "activated": true,
-                "requester": "gitter_request"
+                "requester": "gitter_request",
+                "waterfallBuilds": [
+                  {
+                    "id": "evergreen_version3_build",
+                    "displayName": "03 Linter",
+                    "tasks": [{ "id": "task_5", "displayName": "Task C" }]
+                  }
+                ]
               },
               {
                 "id": "evergreen_version4",
                 "activated": false,
-                "requester": "gitter_request"
+                "requester": "gitter_request",
+                "waterfallBuilds": null
               },
               {
                 "id": "evergreen_version3",
                 "activated": true,
-                "requester": "gitter_request"
+                "requester": "gitter_request",
+                "waterfallBuilds": [
+                  {
+                    "id": "evergreen_version3_build",
+                    "displayName": "03 Linter",
+                    "tasks": [{ "id": "task_5_v3", "displayName": "Task C" }]
+                  }
+                ]
               }
             ],
             "pagination": {
@@ -767,17 +777,32 @@
               {
                 "id": "evergreen_version5",
                 "activated": true,
-                "requester": "gitter_request"
+                "requester": "gitter_request",
+                "waterfallBuilds": [
+                  {
+                    "id": "evergreen_version3_build",
+                    "displayName": "03 Linter",
+                    "tasks": [{ "id": "task_5", "displayName": "Task C" }]
+                  }
+                ]
               },
               {
                 "id": "evergreen_version4",
                 "activated": false,
-                "requester": "gitter_request"
+                "requester": "gitter_request",
+                "waterfallBuilds": null
               },
               {
                 "id": "evergreen_version3",
                 "activated": true,
-                "requester": "gitter_request"
+                "requester": "gitter_request",
+                "waterfallBuilds": [
+                  {
+                    "id": "evergreen_version3_build",
+                    "displayName": "03 Linter",
+                    "tasks": [{ "id": "task_5_v3", "displayName": "Task C" }]
+                  }
+                ]
               }
             ],
             "pagination": {

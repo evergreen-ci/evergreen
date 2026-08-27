@@ -1606,6 +1606,22 @@ func getWaterfallFromContext(ctx context.Context) (*Waterfall, bool) {
 	return nil, false
 }
 
+func getWaterfallFilterOptionsFromContext(ctx context.Context) model.WaterfallOptions {
+	for fc := graphql.GetFieldContext(ctx); fc != nil; fc = fc.Parent {
+		if options, ok := fc.Args["options"].(WaterfallOptions); ok && fc.Object == "Query" && fc.Field.Name == "waterfall" {
+			return model.WaterfallOptions{
+				OmitInactiveBuilds:   utility.FromBoolPtr(options.OmitInactiveBuilds),
+				Statuses:             utility.FilterSlice(options.Statuses, func(s string) bool { return s != "" }),
+				Tasks:                utility.FilterSlice(options.Tasks, func(s string) bool { return s != "" }),
+				TaskCaseSensitive:    utility.FromBoolTPtr(options.TaskCaseSensitive),
+				Variants:             utility.FilterSlice(options.Variants, func(s string) bool { return s != "" }),
+				VariantCaseSensitive: utility.FromBoolTPtr(options.TaskCaseSensitive),
+			}
+		}
+	}
+	return model.WaterfallOptions{}
+}
+
 // setTestQuarantineState updates the quarantine state for testName on the
 // given task.
 func setTestQuarantineState(ctx context.Context, taskID, testName string, isManuallyQuarantined bool) (*restModel.APITest, error) {

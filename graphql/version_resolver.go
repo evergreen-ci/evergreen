@@ -776,7 +776,8 @@ func (r *versionLiteResolver) WaterfallBuilds(ctx context.Context, obj *model.Ve
 		}
 	}
 
-	builds, err := model.GetVersionBuilds(ctx, versionID, obj.BuildIds)
+	opts := getWaterfallFilterOptionsFromContext(ctx)
+	builds, err := model.GetVersionBuilds(ctx, *obj, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variants for version '%s': %s", versionID, err.Error()))
 	}
