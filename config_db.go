@@ -98,7 +98,6 @@ var (
 	retryFailedLogMoveEnabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "RetryFailedLogMoveEnabled")
 	projectTranslationCacheEnabledKey     = bsonutil.MustHaveTag(ServiceFlags{}, "ProjectTranslationCacheEnabled")
 	secondaryReadsDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "SecondaryReadsDisabled")
-	backgroundCommandFailureEnabledKey    = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundCommandFailureEnabled")
 	apiRateLimiterDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "APIRateLimiterDisabled")
 	graphqlComplexityLimiterDisabledKey   = bsonutil.MustHaveTag(ServiceFlags{}, "GraphQLComplexityLimiterDisabled")
 	liveArtifactCredentialsDisabledKey    = bsonutil.MustHaveTag(ServiceFlags{}, "LiveArtifactCredentialsDisabled")

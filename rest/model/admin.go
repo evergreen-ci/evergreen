@@ -2159,8 +2159,6 @@ type APIServiceFlags struct {
 	GithubStatusAPIDisabled      bool `json:"github_status_api_disabled"`
 	SecondaryReadsDisabled       bool `json:"secondary_reads_disabled"`
 
-	BackgroundCommandFailureEnabled bool `json:"background_command_failure_enabled"`
-
 	// Rate Limiting Flags
 	APIRateLimiterDisabled           bool `json:"api_rate_limiter_disabled"`
 	GraphQLComplexityLimiterDisabled bool `json:"graphql_complexity_limiter_disabled"`
@@ -2620,7 +2618,6 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.ProjectTranslationCacheEnabled = v.ProjectTranslationCacheEnabled
 		as.ContainerIsolationEnabled = v.ContainerIsolationEnabled
 		as.LiveArtifactCredentialsDisabled = v.LiveArtifactCredentialsDisabled
-		as.BackgroundCommandFailureEnabled = v.BackgroundCommandFailureEnabled
 		as.APIRateLimiterDisabled = v.APIRateLimiterDisabled
 		as.GraphQLComplexityLimiterDisabled = v.GraphQLComplexityLimiterDisabled
 		as.TaskQueueAutoUnscheduleDisabled = v.TaskQueueAutoUnscheduleDisabled
@@ -2674,7 +2671,6 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		PodDiagnosticsDisabled:             as.PodDiagnosticsDisabled,
 		RetryFailedLogMoveEnabled:          as.RetryFailedLogMoveEnabled,
 		ProjectTranslationCacheEnabled:     as.ProjectTranslationCacheEnabled,
-		BackgroundCommandFailureEnabled:    as.BackgroundCommandFailureEnabled,
 		ContainerIsolationEnabled:          as.ContainerIsolationEnabled,
 		LiveArtifactCredentialsDisabled:    as.LiveArtifactCredentialsDisabled,
 		APIRateLimiterDisabled:             as.APIRateLimiterDisabled,

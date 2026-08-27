@@ -173,7 +173,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 				opts.StandardInput = strings.NewReader(c.Script)
 			}
 
-			return runJasperProcessWithContainer(lctx, opts, c.FullDisplayName(), c.WorkingDir, conf, c.JasperManager(), c.Background, logger, conf.Task.Id, conf.BackgroundFailures, c.ContinueOnError, conf.BackgroundCommandFailureEnabled)
+			return runJasperProcessWithContainer(lctx, opts, c.FullDisplayName(), c.WorkingDir, conf, c.JasperManager(), c.Background, logger, conf.Task.Id, conf.BackgroundFailures, c.ContinueOnError)
 		})
 
 	if !c.IgnoreStandardOutput {

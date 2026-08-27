@@ -89,7 +89,6 @@ func (h *agentSetup) Run(ctx context.Context) gimlet.Responder {
 		TaskOutput:                      h.settings.Buckets.Credentials,
 		MaxExecTimeoutSecs:              h.settings.TaskLimits.MaxExecTimeoutSecs,
 		PSLoggingDisabled:               h.settings.ServiceFlags.PSLoggingDisabled,
-		BackgroundCommandFailureEnabled: h.settings.ServiceFlags.BackgroundCommandFailureEnabled,
 	}
 
 	if h.settings.Tracer.Enabled {

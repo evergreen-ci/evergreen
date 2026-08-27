@@ -342,7 +342,6 @@ functions:
 	s.setUpConfigAndProject(projYml)
 
 	// Wire and pre-load the channel that setupTask normally creates in production.
-	s.tc.taskConfig.BackgroundCommandFailureEnabled = true
 	s.tc.backgroundFailures = make(chan error, 10)
 	s.tc.taskConfig.BackgroundFailures = s.tc.backgroundFailures
 	s.tc.backgroundFailures <- errors.New("background command (PID 99999) exited with code 1")

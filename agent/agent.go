@@ -515,11 +515,6 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	tc.taskConfig = taskConfig
 	tc.s3Usage.Init()
 	tc.taskConfig.S3Usage = &tc.s3Usage
-	if tc.taskConfig.BackgroundCommandFailureEnabled {
-		// Buffered to bound accumulation between drain cycles after each foreground command.
-		tc.backgroundFailures = make(chan error, 10)
-		tc.taskConfig.BackgroundFailures = tc.backgroundFailures
-	}
 
 	if err := a.startLogging(agentCtx, tc); err != nil {
 		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
