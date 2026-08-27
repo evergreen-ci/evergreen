@@ -48,9 +48,15 @@ func PrefetchProjectContext(ctx context.Context, r *http.Request, input map[stri
 }
 
 func TestPrefetchProject(t *testing.T) {
-	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.RepoRefCollection, patch.Collection, user.Collection))
+	collections := []string{
+		model.ProjectRefCollection,
+		model.RepoRefCollection,
+		patch.Collection,
+		user.Collection,
+	}
+	require.NoError(t, db.ClearCollections(collections...))
 	t.Cleanup(func() {
-		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.RepoRefCollection, patch.Collection, user.Collection))
+		assert.NoError(t, db.ClearCollections(collections...))
 	})
 
 	projectRef := model.ProjectRef{Id: "mci"}
@@ -737,9 +743,15 @@ func TestProjectViewPermission(t *testing.T) {
 }
 
 func TestRequiresRepoPermission(t *testing.T) {
-	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.RepoRefCollection, evergreen.RoleCollection, evergreen.ScopeCollection))
+	collections := []string{
+		model.ProjectRefCollection,
+		model.RepoRefCollection,
+		evergreen.RoleCollection,
+		evergreen.ScopeCollection,
+	}
+	require.NoError(t, db.ClearCollections(collections...))
 	t.Cleanup(func() {
-		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.RepoRefCollection, evergreen.RoleCollection, evergreen.ScopeCollection))
+		assert.NoError(t, db.ClearCollections(collections...))
 	})
 
 	ctx := t.Context()
