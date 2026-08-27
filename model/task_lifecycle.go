@@ -309,13 +309,13 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 						// some individual execution tasks may already be
 						// finished. Only MarkEnd on unfinished execution tasks.
 						if !evergreen.IsFinishedTaskStatus(execTask.Status) {
-							if err = MarkEnd(ctx, settings, execTask, origin, execTask.EstimatedFinishTime(time.Now()), detail); err != nil {
+							if err = MarkEnd(ctx, settings, execTask, origin, time.Now(), detail); err != nil {
 								return errors.Wrap(err, "marking execution task as ended")
 							}
 						}
 					}
 				}
-				return errors.WithStack(MarkEnd(ctx, settings, t, origin, t.EstimatedFinishTime(time.Now()), detail))
+				return errors.WithStack(MarkEnd(ctx, settings, t, origin, time.Now(), detail))
 			} else {
 				grip.Critical(ctx, message.Fields{
 					"message":     "TryResetTask called with nil TaskEndDetail",
