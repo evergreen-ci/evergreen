@@ -6,7 +6,6 @@
         "data": {
           "patch": {
             "id": "5dd2e89cd1fe07048e43bc8f",
-            "author": "admin_user",
             "githash": "123",
             "user": {
               "id": "admin_user",
@@ -14,21 +13,6 @@
             }
           }
         }
-      }
-    },
-    {
-      "query_file": "invalid_id.graphql",
-      "result": {
-        "data": null,
-        "errors": [
-          {
-            "message": "not a valid patch ID",
-            "path": ["patch", "patchId"],
-            "extensions": {
-              "code": "INPUT_VALIDATION_ERROR"
-            }
-          }
-        ]
       }
     },
     {

@@ -65,7 +65,7 @@ func (pcf *ProjectConfigFields) isEmpty() bool {
 
 	for i := 0; i < reflectedConfig.NumField(); i++ {
 		field := reflectedConfig.Field(i)
-		if !util.IsFieldUndefined(field) {
+		if !util.IsFieldUndefined(context.Background(), field) {
 			return false
 		}
 	}

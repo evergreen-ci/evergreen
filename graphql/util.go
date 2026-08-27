@@ -183,7 +183,7 @@ func getDisplayStatus(ctx context.Context, v *model.Version) (string, error) {
 			allStatuses = append(allStatuses, cpVersion.Status)
 		}
 	}
-	return patch.GetCollectiveStatusFromPatchStatuses(allStatuses), nil
+	return patch.GetCollectiveStatusFromPatchStatuses(ctx, allStatuses), nil
 }
 
 // userCanModifyPatch checks if a user can make changes to a given patch. This is mainly to prevent
@@ -463,20 +463,6 @@ func removeGeneralSubscriptions(usr *user.DBUser, subscriptions []event.Subscrip
 	}
 
 	return filteredSubscriptions
-}
-
-func makePatchDuration(timeTaken, makeSpan string) *PatchDuration {
-	res := &PatchDuration{}
-
-	if timeTaken != "0s" {
-		res.TimeTaken = &timeTaken
-	}
-
-	if makeSpan != "0s" {
-		res.Makespan = &makeSpan
-	}
-
-	return res
 }
 
 func getResourceTypeAndIdFromSubscriptionSelectors(ctx context.Context, selectors []restModel.APISelector) (string, string, error) {

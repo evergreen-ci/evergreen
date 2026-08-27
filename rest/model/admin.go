@@ -2166,10 +2166,13 @@ type APIServiceFlags struct {
 	GraphQLComplexityLimiterDisabled bool `json:"graphql_complexity_limiter_disabled"`
 
 	TaskQueueAutoUnscheduleDisabled bool `json:"task_queue_auto_unschedule_disabled"`
+	VirtualTasksDisabled            bool `json:"virtual_tasks_disabled"`
 }
 
 type APIProjectTasksPair struct {
-	ProjectID    string   `json:"project_id"`
+	ProjectID string `json:"project_id"`
+	// IsRegex uses a pointer to handle the legacy case where we don't support regex.
+	IsRegex      *bool    `json:"is_regex"`
 	AllowedTasks []string `json:"allowed_tasks"`
 	AllowedBVs   []string `json:"allowed_bvs"`
 }
@@ -2178,6 +2181,7 @@ func (a *APIProjectTasksPair) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.ProjectTasksPair:
 		a.ProjectID = v.ProjectID
+		a.IsRegex = utility.ToBoolPtr(v.IsRegex)
 		a.AllowedTasks = v.AllowedTasks
 		a.AllowedBVs = v.AllowedBVs
 	default:
@@ -2189,6 +2193,7 @@ func (a *APIProjectTasksPair) BuildFromService(h any) error {
 func (a *APIProjectTasksPair) ToService() (any, error) {
 	return evergreen.ProjectTasksPair{
 		ProjectID:    a.ProjectID,
+		IsRegex:      utility.FromBoolPtr(a.IsRegex),
 		AllowedTasks: a.AllowedTasks,
 		AllowedBVs:   a.AllowedBVs,
 	}, nil
@@ -2619,6 +2624,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.APIRateLimiterDisabled = v.APIRateLimiterDisabled
 		as.GraphQLComplexityLimiterDisabled = v.GraphQLComplexityLimiterDisabled
 		as.TaskQueueAutoUnscheduleDisabled = v.TaskQueueAutoUnscheduleDisabled
+		as.VirtualTasksDisabled = v.VirtualTasksDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2674,6 +2680,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		APIRateLimiterDisabled:             as.APIRateLimiterDisabled,
 		GraphQLComplexityLimiterDisabled:   as.GraphQLComplexityLimiterDisabled,
 		TaskQueueAutoUnscheduleDisabled:    as.TaskQueueAutoUnscheduleDisabled,
+		VirtualTasksDisabled:               as.VirtualTasksDisabled,
 	}, nil
 }
 
