@@ -1,6 +1,6 @@
 {
   patch(patchId: "5c74085f32f41738270aeba8") {
-    versionFull {
+    version {
       id
     }
   }

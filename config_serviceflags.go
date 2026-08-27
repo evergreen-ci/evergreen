@@ -70,6 +70,7 @@ type ServiceFlags struct {
 	// Rate Limiting Flags
 	APIRateLimiterDisabled           bool `bson:"api_rate_limiter_disabled" json:"api_rate_limiter_disabled"`
 	GraphQLComplexityLimiterDisabled bool `bson:"graphql_complexity_limiter_disabled" json:"graphql_complexity_limiter_disabled"`
+	VirtualTasksDisabled             bool `bson:"virtual_tasks_disabled" json:"virtual_tasks_disabled"`
 }
 
 func (c *ServiceFlags) SectionId() string { return "service_flags" }
@@ -127,6 +128,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			containerIsolationEnabledKey:          c.ContainerIsolationEnabled,
 			liveArtifactCredentialsDisabledKey:    c.LiveArtifactCredentialsDisabled,
 			taskQueueAutoUnscheduleDisabledKey:    c.TaskQueueAutoUnscheduleDisabled,
+			virtualTasksDisabledKey:               c.VirtualTasksDisabled,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

@@ -1932,7 +1932,9 @@ func EmitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 
 	if !endTime.IsZero() && !queueEntryTime.IsZero() {
 		timeInQueue := endTime.Sub(queueEntryTime).Milliseconds()
-		span.SetAttributes(attribute.Int64(patch.MergeQueueAttrTimeInQueueMs, timeInQueue))
+		if timeInQueue > 0 {
+			span.SetAttributes(attribute.Int64(patch.MergeQueueAttrTimeInQueueMs, timeInQueue))
+		}
 	}
 
 	// Collect all version IDs for the patch family (parent + all children).

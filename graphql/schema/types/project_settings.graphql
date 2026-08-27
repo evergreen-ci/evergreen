@@ -85,6 +85,7 @@ input ProjectInput {
   taskAnnotationSettings: TaskAnnotationSettingsInput
   taskOwnership: TaskOwnershipSettingsInput
   testSelection: TestSelectionSettingsInput
+  virtualTasksEnabled: Boolean
   triggers: [TriggerAliasInput!]
   versionControlEnabled: Boolean
   workstationConfig: WorkstationConfigInput

@@ -5,7 +5,7 @@
       "result": {
         "data": {
           "patch": {
-            "versionFull": null
+            "version": null
           }
         }
       }
@@ -15,19 +15,6 @@
       "result": {
         "data": {
           "patch": {
-            "versionFull": {
-              "id": "5dd2e89cd1fe07048e43bb9c",
-              "cost": {
-                "adjustedEBSStorageCost": 0.03,
-                "adjustedEBSThroughputCost": 0.05,
-                "adjustedEC2Cost": 0.89,
-                "adjustedS3ArtifactPutCost": 0.01,
-                "adjustedS3ArtifactStorageCost": 0,
-                "adjustedS3LogPutCost": 0.02,
-                "adjustedS3LogStorageCost": 0,
-                "total": 1
-              }
-            },
             "version": {
               "id": "5dd2e89cd1fe07048e43bb9c",
               "status": "failed",
