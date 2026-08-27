@@ -7,7 +7,6 @@ import (
 	"sort"
 
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"gopkg.in/yaml.v3"
@@ -67,18 +66,10 @@ func Evaluate() cli.Command {
 			ctx := context.Background()
 			var anchorsEnabled bool
 			confPath := c.Parent().String(ConfFlagName)
-			conf, err := NewClientSettings(confPath)
-			if err != nil {
-				grip.Warning(ctx, errors.Wrap(err, "could not load client configuration; cross-file YAML anchors will be disabled"))
-			} else {
-				var flagErr error
-				anchorsEnabled, flagErr = getCrossFileYAMLAnchorsEnabled(conf)
-				if flagErr != nil {
-					grip.Warning(ctx, errors.Wrap(flagErr, "could not get cross-file YAML anchors setting; anchors will be disabled"))
-				}
-			}
-			if anchorsEnabled {
-				grip.Info(ctx, "cross-file YAML anchors are enabled")
+			// If we can't load the conf, we just assume anchors are disabled.
+			// Avoid logging to prevent breaking scripts.
+			if conf, err := NewClientSettings(confPath); err == nil {
+				anchorsEnabled, _ = getCrossFileYAMLAnchorsEnabled(conf)
 			}
 			opts := &model.GetProjectOpts{
 				LocalModules:                localModuleMap,
