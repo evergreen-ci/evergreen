@@ -300,6 +300,18 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 		if !t.IsFinished() {
 			if detail != nil {
 				if t.DisplayOnly {
+					// TODO (DEVPROD-31861): remove this log once confirmed that
+					// the display task does not race to reset anymore.
+					grip.Info(ctx, message.Fields{
+						"message":                     "reached max executions for display task, marking the display task and all unfinished execution tasks as finished",
+						"display_task_id":             t.Id,
+						"display_task_execution":      t.Execution,
+						"display_task_status":         t.Status,
+						"display_task_max_executions": maxExecution,
+						"num_execution_tasks":         len(t.ExecutionTasks),
+						"origin":                      origin,
+						"ticket":                      "DEVPROD-31861",
+					})
 					for _, etId := range t.ExecutionTasks {
 						execTask, err = task.FindOneId(ctx, etId)
 						if err != nil {
@@ -309,6 +321,20 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 						// some individual execution tasks may already be
 						// finished. Only MarkEnd on unfinished execution tasks.
 						if !evergreen.IsFinishedTaskStatus(execTask.Status) {
+							// TODO (DEVPROD-31861): remove this log once
+							// confirmed that the display task does not race to
+							// reset anymore.
+							grip.Info(ctx, message.Fields{
+								"message":                     "reached max executions for display task, marking unfinished execution task as finished",
+								"display_task_id":             t.Id,
+								"display_task_execution":      t.Execution,
+								"display_task_max_executions": maxExecution,
+								"execution_task_id":           execTask.Id,
+								"execution_task_execution":    execTask.Execution,
+								"execution_task_status":       execTask.Status,
+								"origin":                      origin,
+								"ticket":                      "DEVPROD-31861",
+							})
 							if err = MarkEnd(ctx, settings, execTask, origin, time.Now(), detail); err != nil {
 								return errors.Wrap(err, "marking execution task as ended")
 							}
