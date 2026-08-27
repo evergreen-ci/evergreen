@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	dbModel "github.com/evergreen-ci/evergreen/model"
@@ -48,7 +49,10 @@ func (h *repoIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding repo '%s'", h.repoID))
 	}
 	if repoRef == nil {
-		return gimlet.MakeJSONErrorResponder(errors.Errorf("repo '%s' not found", h.repoID))
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("repo '%s' not found", h.repoID),
+		})
 	}
 
 	repoModel := &model.APIProjectRef{}
