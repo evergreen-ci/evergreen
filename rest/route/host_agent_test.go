@@ -863,6 +863,34 @@ func TestHostEndTask(t *testing.T) {
 			require.Equal(t, evergreen.TaskFailed, foundTask.Status)
 			require.Equal(t, evergreen.TaskFailed, foundTask.Details.Status)
 		},
+		"AbortedContainerTaskPreservesExecutionPlatform": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
+			foundTask, err := task.FindOneId(ctx, taskId)
+			require.NoError(t, err)
+			require.NotNil(t, foundTask)
+			require.NoError(t, task.UpdateOne(ctx, task.ById(taskId), bson.M{
+				"$set": bson.M{task.ExecutionPlatformKey: task.ExecutionPlatformContainer},
+			}))
+			foundTask.ExecutionPlatform = task.ExecutionPlatformContainer
+			require.NoError(t, foundTask.SetAborted(ctx, task.AbortInfo{User: "user"}))
+			handler.details = apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}
+
+			resp := handler.Run(ctx)
+			require.Equal(t, http.StatusOK, resp.Status())
+			foundTask, err = task.FindOneId(ctx, taskId)
+			require.NoError(t, err)
+			require.NotNil(t, foundTask)
+			assert.Equal(t, task.ExecutionPlatformContainer, foundTask.ExecutionPlatform)
+			assert.Equal(t, string(task.ExecutionPlatformContainer), foundTask.Details.ExecutionPlatform)
+		},
+		"RejectsUnknownExecutionPlatform": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
+			handler.details = apimodels.TaskEndDetail{
+				Status:            evergreen.TaskSucceeded,
+				ExecutionPlatform: "unknown",
+			}
+
+			resp := handler.Run(ctx)
+			require.Equal(t, http.StatusBadRequest, resp.Status())
+		},
 		"WithTaskEndDetailsButTaskIsInactive": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
 			task2 := task.Task{
 				Id:        "task2",

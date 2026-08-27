@@ -80,6 +80,7 @@ type TaskEndDetail struct {
 	TraceID              string                  `bson:"trace_id,omitempty" json:"trace_id,omitempty"`
 	DiskDevices          []string                `bson:"disk_devices,omitempty" json:"disk_devices,omitempty"`
 	ResourceConstraints  *ResourceConstraintInfo `bson:"resource_constraints,omitempty" json:"resource_constraints,omitempty"`
+	ExecutionPlatform    string                  `bson:"execution_platform,omitempty" json:"execution_platform,omitempty"`
 }
 
 // FailingCommand represents a command that failed in a task.

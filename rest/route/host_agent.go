@@ -1320,6 +1320,12 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		msg := fmt.Errorf("invalid end status '%s' for task %s", h.details.Status, t.Id)
 		return gimlet.MakeJSONErrorResponder(msg)
 	}
+	if platform := h.details.ExecutionPlatform; platform != "" && platform != string(task.ExecutionPlatformHost) && platform != string(task.ExecutionPlatformContainer) {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("invalid execution platform '%s' for task %s", platform, t.Id),
+		})
+	}
 
 	if currentHost.RunningTask == "" {
 		grip.Notice(ctx, message.Fields{
@@ -1385,9 +1391,17 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 
 	details := &h.details
 	if t.Aborted {
+		executionPlatform := h.details.ExecutionPlatform
+		if executionPlatform == "" {
+			executionPlatform = string(t.ExecutionPlatform)
+			if executionPlatform == "" {
+				executionPlatform = string(task.ExecutionPlatformHost)
+			}
+		}
 		details = &apimodels.TaskEndDetail{
-			Status:      evergreen.TaskFailed,
-			Description: evergreen.TaskDescriptionAborted,
+			Status:            evergreen.TaskFailed,
+			Description:       evergreen.TaskDescriptionAborted,
+			ExecutionPlatform: executionPlatform,
 		}
 	}
 	// If the task failed, move its logs to the failed bucket if the project is not
