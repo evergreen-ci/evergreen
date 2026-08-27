@@ -789,6 +789,8 @@ type APIBucketsConfig struct {
 	RetryFailedLogMoveLookbackMonths *int             `json:"retry_failed_log_move_lookback_months,omitempty"`
 	RetryFailedLogMoveMaxJobsPerRun  *int             `json:"retry_failed_log_move_max_jobs_per_run,omitempty"`
 	TestResultsBucket                APIBucketConfig  `json:"test_results_bucket"`
+	SourceCacheBucket                APIBucketConfig  `json:"source_cache_bucket"`
+	SourceCacheProjects              []string         `json:"source_cache_projects"`
 	InternalBuckets                  []string         `json:"internal_buckets"`
 	Credentials                      APIS3Credentials `json:"credentials"`
 }
@@ -865,6 +867,8 @@ func (a *APIBucketsConfig) BuildFromService(h any) error {
 		a.LogBucketLongRetention.buildFromService(v.LogBucketLongRetention)
 		a.LogBucketFailedTasks.buildFromService(v.LogBucketFailedTasks)
 		a.TestResultsBucket.buildFromService(v.TestResultsBucket)
+		a.SourceCacheBucket.buildFromService(v.SourceCacheBucket)
+		a.SourceCacheProjects = v.SourceCacheProjects
 
 		a.LongRetentionProjects = v.LongRetentionProjects
 		a.RetryFailedLogMoveLookbackDays = utility.ToIntPtr(v.RetryFailedLogMoveLookbackDays)
@@ -906,6 +910,8 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 		RetryFailedLogMoveLookbackDays:  utility.FromIntPtr(lookbackDays),
 		RetryFailedLogMoveMaxJobsPerRun: utility.FromIntPtr(a.RetryFailedLogMoveMaxJobsPerRun),
 		TestResultsBucket:               a.TestResultsBucket.ToService(),
+		SourceCacheBucket:               a.SourceCacheBucket.ToService(),
+		SourceCacheProjects:             a.SourceCacheProjects,
 		Credentials:                     creds,
 	}, nil
 }
