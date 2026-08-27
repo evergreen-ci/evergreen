@@ -93,8 +93,8 @@ func (s ParserProjectDBStorage) FindOneByIDWithFields(ctx context.Context, id st
 	return parserProjectFindOne(ctx, parserProjectById(id).WithFields(fields...))
 }
 
-// FindOneByIDBSON returns the raw BSON for the parser project in the DB with
-// the given ID.
+// FindOneByIDRaw is the same as FindOneByID but it returns the raw parser
+// project bytes without decoding it.
 func (s ParserProjectDBStorage) FindOneByIDRaw(ctx context.Context, id string) ([]byte, error) {
 	var raw mongobson.Raw
 	err := db.FindOneQ(ctx, ParserProjectCollection, parserProjectById(id), &raw)
