@@ -65,7 +65,7 @@ func TestRepoGetByID(t *testing.T) {
 		h := &repoIDGetHandler{repoID: "nonexistent"}
 		resp := h.Run(t.Context())
 		require.NotNil(t, resp)
-		assert.Equal(t, http.StatusBadRequest, resp.Status())
+		assert.Equal(t, http.StatusNotFound, resp.Status())
 	})
 
 	t.Run("ExistingRepoReturnsData", func(t *testing.T) {

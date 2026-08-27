@@ -60,7 +60,7 @@ func (h *repoIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting repo '%s' to API model", h.repoID))
 	}
 
-	variables, err := data.FindProjectVarsById(ctx, repoRef.Id, "", true)
+	variables, err := data.FindProjectVarsById(ctx, "", repoRef.Id, true)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding vars for repo '%s'", h.repoID))
 	}
