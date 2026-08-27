@@ -782,12 +782,12 @@ func TestRequiresRepoPermission(t *testing.T) {
 	}
 	require.NoError(t, env.RoleManager().AddScope(ctx, repoScope))
 
-	editRepoRole := gimlet.Role{
+	repoEditRole := gimlet.Role{
 		ID:          "edit-repo-role",
 		Scope:       repoScope.ID,
 		Permissions: map[string]int{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value},
 	}
-	require.NoError(t, env.RoleManager().UpdateRole(ctx, editRepoRole))
+	require.NoError(t, env.RoleManager().UpdateRole(ctx, repoEditRole))
 
 	branchProjectScope := gimlet.Scope{
 		ID:        "project-scope",
