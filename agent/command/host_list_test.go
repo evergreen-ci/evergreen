@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -123,8 +124,9 @@ func TestHostListSetsWorkdirBoundaryAttributeOnViolation(t *testing.T) {
 	ctx, span := tp.Tracer("test").Start(t.Context(), "test")
 
 	comm := client.NewMock("http://localhost.com")
+	root := t.TempDir()
 	conf := &internal.TaskConfig{
-		WorkDir:    "/data/mci/work",
+		WorkDir:    filepath.Join(root, "work"),
 		Expansions: util.Expansions{},
 		Task:       task.Task{},
 		Project:    model.Project{},
@@ -133,10 +135,10 @@ func TestHostListSetsWorkdirBoundaryAttributeOnViolation(t *testing.T) {
 	require.NoError(t, err)
 
 	cmd := listHostFactory().(*listHosts)
-	cmd.Path = "/etc/passwd"
+	cmd.Path = filepath.Join(root, "outside", "hosts.json")
 	cmd.Silent = true
 
-	// Execute may return an error (e.g. cannot write to /etc/passwd), but
+	// Execute may return an error because the output directory does not exist, but
 	// the workdir boundary attribute is set before any file I/O.
 	_ = cmd.Execute(ctx, comm, logger, conf)
 	span.End()

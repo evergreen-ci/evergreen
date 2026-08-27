@@ -271,9 +271,11 @@ func (s *shellExecuteCommandSuite) TestWorkdirBoundaryViolationSetsSpanAttribute
 
 	ctx, span := tp.Tracer("test").Start(s.ctx, "test_shell_exec_workdir_boundary")
 
-	s.conf.WorkDir = "/data/mci/work"
+	root := s.T().TempDir()
+	s.conf.WorkDir = filepath.Join(root, "work")
+	s.Require().NoError(os.MkdirAll(s.conf.WorkDir, 0755))
 	cmd := &shellExec{
-		WorkingDir: "/etc",
+		WorkingDir: filepath.Join(root, "outside"),
 		Shell:      "bash",
 		Script:     "exit 0",
 	}

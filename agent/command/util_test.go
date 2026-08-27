@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -89,18 +90,19 @@ func TestGetWorkingDirectoryLegacy(t *testing.T) {
 }
 
 func TestRelativePathUnderWorkdirIsNotViolation(t *testing.T) {
-	conf := &internal.TaskConfig{WorkDir: "/data/mci/work"}
+	conf := &internal.TaskConfig{WorkDir: filepath.Join(t.TempDir(), "work")}
 	assert.False(t, IsWorkdirBoundaryViolation(conf, "src/foo"))
 }
 
 func TestAbsolutePathUnderWorkdirIsNotViolation(t *testing.T) {
-	conf := &internal.TaskConfig{WorkDir: "/data/mci/work"}
-	assert.False(t, IsWorkdirBoundaryViolation(conf, "/data/mci/work/src/foo"))
+	conf := &internal.TaskConfig{WorkDir: filepath.Join(t.TempDir(), "work")}
+	assert.False(t, IsWorkdirBoundaryViolation(conf, filepath.Join(conf.WorkDir, "src", "foo")))
 }
 
 func TestAbsolutePathOutsideWorkdirIsViolation(t *testing.T) {
-	conf := &internal.TaskConfig{WorkDir: "/data/mci/work"}
-	assert.True(t, IsWorkdirBoundaryViolation(conf, "/etc/passwd"))
+	root := t.TempDir()
+	conf := &internal.TaskConfig{WorkDir: filepath.Join(root, "work")}
+	assert.True(t, IsWorkdirBoundaryViolation(conf, filepath.Join(root, "outside")))
 }
 
 func TestEmptyPathIsNotViolation(t *testing.T) {
@@ -109,48 +111,56 @@ func TestEmptyPathIsNotViolation(t *testing.T) {
 }
 
 func TestPathEqualToWorkdirIsNotViolation(t *testing.T) {
-	conf := &internal.TaskConfig{WorkDir: "/data/mci/work"}
-	assert.False(t, IsWorkdirBoundaryViolation(conf, "/data/mci/work"))
+	conf := &internal.TaskConfig{WorkDir: filepath.Join(t.TempDir(), "work")}
+	assert.False(t, IsWorkdirBoundaryViolation(conf, conf.WorkDir))
 }
 
 func TestSiblingPrefixPathIsViolation(t *testing.T) {
-	// /data/mci/work-other starts with /data/mci/work, so a naive
+	// work-other starts with work, so a naive
 	// strings.HasPrefix check would miss this. filepath.Rel correctly
 	// identifies it as outside the workdir.
-	conf := &internal.TaskConfig{WorkDir: "/data/mci/work"}
-	assert.True(t, IsWorkdirBoundaryViolation(conf, "/data/mci/work-other"))
+	root := t.TempDir()
+	conf := &internal.TaskConfig{WorkDir: filepath.Join(root, "work")}
+	assert.True(t, IsWorkdirBoundaryViolation(conf, filepath.Join(root, "work-other")))
 }
 
 func TestRelativeTraversalOutsideWorkdirIsViolation(t *testing.T) {
 	// ../../etc/passwd joined to /data/mci/work resolves to /data/etc/passwd,
 	// which is outside the workdir.
-	conf := &internal.TaskConfig{WorkDir: "/data/mci/work"}
+	conf := &internal.TaskConfig{WorkDir: filepath.Join(t.TempDir(), "data", "mci", "work")}
 	assert.True(t, IsWorkdirBoundaryViolation(conf, "../../etc/passwd"))
 }
 
 func TestTrailingSlashNormalization(t *testing.T) {
+	root := t.TempDir()
+	workdir := filepath.Join(root, "work")
+	inside := filepath.Join(workdir, "foo")
+	outside := filepath.Join(root, "work-other")
+
 	// Workdir with trailing slash, path without — should not be a violation.
-	conf := &internal.TaskConfig{WorkDir: "/data/mci/work/"}
-	assert.False(t, IsWorkdirBoundaryViolation(conf, "/data/mci/work/foo"))
+	conf := &internal.TaskConfig{WorkDir: workdir + string(filepath.Separator)}
+	assert.False(t, IsWorkdirBoundaryViolation(conf, inside))
 
 	// Workdir without trailing slash, path with trailing slash — should not
 	// be a violation.
-	conf.WorkDir = "/data/mci/work"
-	assert.False(t, IsWorkdirBoundaryViolation(conf, "/data/mci/work/foo/"))
+	conf.WorkDir = workdir
+	assert.False(t, IsWorkdirBoundaryViolation(conf, inside+string(filepath.Separator)))
 
 	// Workdir with trailing slash, sibling-prefix path — should be a
 	// violation.
-	conf.WorkDir = "/data/mci/work/"
-	assert.True(t, IsWorkdirBoundaryViolation(conf, "/data/mci/work-other"))
+	conf.WorkDir = workdir + string(filepath.Separator)
+	assert.True(t, IsWorkdirBoundaryViolation(conf, outside))
 }
 
 func TestCrossVolumePathIsViolation(t *testing.T) {
-	// True cross-volume paths (different drive letters) only occur on Windows.
-	// On all platforms, filepath.Rel returns an error when the base is
-	// relative and the target is absolute, which exercises the same
-	// err != nil branch that a cross-volume path would on Windows.
+	if runtime.GOOS == "windows" {
+		conf := &internal.TaskConfig{WorkDir: `C:\work`}
+		assert.True(t, IsWorkdirBoundaryViolation(conf, `D:\outside`))
+		return
+	}
+
 	conf := &internal.TaskConfig{WorkDir: "relative/workdir"}
-	assert.True(t, IsWorkdirBoundaryViolation(conf, "/etc/passwd"))
+	assert.True(t, IsWorkdirBoundaryViolation(conf, "/outside"))
 }
 
 func TestSetWorkdirBoundaryAttributeSetsTrueOnViolation(t *testing.T) {
@@ -163,8 +173,9 @@ func TestSetWorkdirBoundaryAttributeSetsTrueOnViolation(t *testing.T) {
 	})
 
 	ctx, span := tp.Tracer("test").Start(t.Context(), "test")
-	conf := &internal.TaskConfig{WorkDir: "/data/mci/work"}
-	SetWorkdirBoundaryAttribute(ctx, conf, "/data/mci/work-other")
+	root := t.TempDir()
+	conf := &internal.TaskConfig{WorkDir: filepath.Join(root, "work")}
+	SetWorkdirBoundaryAttribute(ctx, conf, filepath.Join(root, "work-other"))
 	span.End()
 
 	ended := spanRecorder.Ended()
@@ -190,8 +201,8 @@ func TestSetWorkdirBoundaryAttributeSetsFalseWithoutViolation(t *testing.T) {
 	})
 
 	ctx, span := tp.Tracer("test").Start(t.Context(), "test")
-	conf := &internal.TaskConfig{WorkDir: "/data/mci/work"}
-	SetWorkdirBoundaryAttribute(ctx, conf, "/data/mci/work/src/foo")
+	conf := &internal.TaskConfig{WorkDir: filepath.Join(t.TempDir(), "work")}
+	SetWorkdirBoundaryAttribute(ctx, conf, filepath.Join(conf.WorkDir, "src", "foo"))
 	span.End()
 
 	ended := spanRecorder.Ended()
@@ -217,8 +228,9 @@ func TestSetWorkdirBoundaryAttributePreservesViolationAcrossPaths(t *testing.T) 
 	})
 
 	ctx, span := tp.Tracer("test").Start(t.Context(), "test")
-	conf := &internal.TaskConfig{WorkDir: "/data/mci/work"}
-	SetWorkdirBoundaryAttribute(ctx, conf, "/data/mci/work-other", "/data/mci/work/src/foo")
+	root := t.TempDir()
+	conf := &internal.TaskConfig{WorkDir: filepath.Join(root, "work")}
+	SetWorkdirBoundaryAttribute(ctx, conf, filepath.Join(root, "work-other"), filepath.Join(conf.WorkDir, "src", "foo"))
 	span.End()
 
 	ended := spanRecorder.Ended()
