@@ -1,8 +1,14 @@
 {
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    }
+  ],
   "versions": [
     {
       "_id": "config_version",
-      "identifier": "config_project",
+      "identifier": "spruce",
       "storage_method": "db",
       "r": "gitter_request"
     }
@@ -11,7 +17,7 @@
     {
       "_id": "configured_task",
       "version": "config_version",
-      "branch": "config_project",
+      "branch": "spruce",
       "build_variant": "linux",
       "display_name": "compile",
       "r": "gitter_request",
@@ -22,7 +28,7 @@
     {
       "_id": "task_group_member",
       "version": "config_version",
-      "branch": "config_project",
+      "branch": "spruce",
       "build_variant": "linux",
       "display_name": "test",
       "r": "gitter_request",
@@ -34,7 +40,7 @@
   "parser_projects": [
     {
       "_id": "config_version",
-      "identifier": "config_project",
+      "identifier": "spruce",
       "tasks": [
         {
           "name": "setup"
