@@ -25,6 +25,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -958,6 +959,50 @@ func GetVersionsToModify(ctx context.Context, projectName string, opts ModifyVer
 	return versions, nil
 }
 
+const manifestModuleResolutionConcurrency = 4
+
+type manifestModuleResolutionKey struct {
+	owner      string
+	repo       string
+	branch     string
+	ref        string
+	useHistory bool
+	ingestTime int64
+}
+
+func makeManifestModuleResolutionKey(module Module, owner, repo, requester string, ingestTime time.Time) manifestModuleResolutionKey {
+	useHistory := module.Ref == "" && !evergreen.IsPatchRequester(requester) && requester != evergreen.AdHocRequester
+	if !useHistory {
+		ingestTime = time.Time{}
+	}
+
+	// A pinned ref does not use the branch for resolution. Keeping it out of the
+	// key allows modules with different manifest branches to share the GitHub
+	// lookup while each module retains its own branch below.
+	branch := module.Branch
+	if module.Ref != "" {
+		branch = ""
+	}
+
+	return manifestModuleResolutionKey{
+		owner:      owner,
+		repo:       repo,
+		branch:     branch,
+		ref:        module.Ref,
+		useHistory: useHistory,
+		ingestTime: ingestTime.UTC().UnixNano(),
+	}
+}
+
+type manifestModuleResolutionGroup struct {
+	module  Module
+	indices []int
+}
+
+type manifestModuleRepositoryGroup struct {
+	groups []*manifestModuleResolutionGroup
+}
+
 // constructManifest will construct a manifest from the given project and version.
 func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, moduleList ModuleList) (*manifest.Manifest, error) {
 	if len(moduleList) == 0 {
@@ -993,13 +1038,16 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 		}
 	}
 
-	modules := map[string]*manifest.Module{}
+	moduleResults := make([]*manifest.Module, len(moduleList))
 	ingestTime := v.IngestTime
 	if utility.IsZeroTime(ingestTime) {
 		ingestTime = v.CreateTime
 	}
-	for _, module := range moduleList {
-		_, modRepo, err := module.GetOwnerAndRepo()
+	groups := make(map[manifestModuleResolutionKey]*manifestModuleResolutionGroup, len(moduleList))
+	repositories := make(map[gitOwnerRepo]*manifestModuleRepositoryGroup, len(moduleList))
+	repositoryOrder := make([]*manifestModuleRepositoryGroup, 0, len(moduleList))
+	for i, module := range moduleList {
+		modOwner, modRepo, err := module.GetOwnerAndRepo()
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
 		}
@@ -1009,20 +1057,64 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 			if baseModule, ok := baseManifest.Modules[module.Name]; ok {
 				// Use base module revision unless the YAML explicitly specifies a different ref.
 				if module.Ref == "" || module.Ref == baseModule.Revision {
-					modules[module.Name] = baseModule
+					moduleResults[i] = baseModule
 					continue
 				}
 			}
 		}
 
-		mfstModule, err := getManifestModule(ctx, projectRef, module, v.Requester, ingestTime)
-		if err != nil {
-			return nil, errors.Wrapf(err, "module '%s'", module.Name)
+		if IsWikiRepo(modRepo) {
+			mfstModule, err := getManifestModule(ctx, projectRef, module, v.Requester, ingestTime)
+			if err != nil {
+				return nil, errors.Wrapf(err, "module '%s'", module.Name)
+			}
+			moduleResults[i] = mfstModule
+			continue
 		}
 
-		modules[module.Name] = mfstModule
+		key := makeManifestModuleResolutionKey(module, modOwner, modRepo, v.Requester, ingestTime)
+		group, ok := groups[key]
+		if !ok {
+			group = &manifestModuleResolutionGroup{module: module}
+			groups[key] = group
+			repository, ok := repositories[gitOwnerRepo{owner: modOwner, repo: modRepo}]
+			if !ok {
+				repository = &manifestModuleRepositoryGroup{}
+				repositories[gitOwnerRepo{owner: modOwner, repo: modRepo}] = repository
+				repositoryOrder = append(repositoryOrder, repository)
+			}
+			repository.groups = append(repository.groups, group)
+		}
+		group.indices = append(group.indices, i)
 	}
-	newManifest.Modules = modules
+
+	g, groupCtx := errgroup.WithContext(ctx)
+	g.SetLimit(manifestModuleResolutionConcurrency)
+	for _, repository := range repositoryOrder {
+		repository := repository
+		g.Go(func() error {
+			for _, group := range repository.groups {
+				mfstModule, err := getManifestModule(groupCtx, projectRef, group.module, v.Requester, ingestTime)
+				if err != nil {
+					return errors.Wrapf(err, "module '%s'", group.module.Name)
+				}
+				for _, i := range group.indices {
+					resolved := *mfstModule
+					resolved.Branch = moduleList[i].Branch
+					moduleResults[i] = &resolved
+				}
+			}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	newManifest.Modules = make(map[string]*manifest.Module, len(moduleResults))
+	for i, module := range moduleList {
+		newManifest.Modules[module.Name] = moduleResults[i]
+	}
 	return newManifest, nil
 }
 
