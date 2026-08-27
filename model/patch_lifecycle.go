@@ -47,7 +47,7 @@ func UserCanModifyPatch(ctx context.Context, u *user.DBUser, p patch.Patch) bool
 	roles, err := rm.GetRoles(ctx, u.Roles())
 	if err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
-			"message": "getting roles for patch ownership check",
+			"message": "could not get roles for patch ownership check",
 			"user":    u.Username(),
 		}))
 		return false
@@ -64,8 +64,9 @@ func UserCanModifyPatch(ctx context.Context, u *user.DBUser, p patch.Patch) bool
 		}
 	}
 
-	// Having PatchSubmit on the project, which is the minimum grant for the route only
-	// for api only users.
+	// API-only service users originally had patch edit access through PatchSubmit alone
+	// (before this ownership check existed), so requiring higher permissions now would
+	// break existing automation.
 	return u.IsAPIOnly() && gimlet.HasPermission(ctx, rm, gimlet.PermissionOpts{
 		Resource:      p.Project,
 		ResourceType:  evergreen.ProjectResourceType,
