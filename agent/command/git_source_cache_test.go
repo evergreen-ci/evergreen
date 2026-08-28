@@ -85,6 +85,19 @@ func TestSourceCacheKeyVariesByRevisionAndCloneShape(t *testing.T) {
 	require.NotNil(t, shallow)
 	assert.NotEqual(t, base.key, shallow.key)
 
+	// Two project refs on one repo at the same commit must not share an artifact.
+	branchOpts := sourceCacheTestOpts()
+	branchOpts.branch = "release-v1"
+	branch, _ := newSourceCache(sourceCacheTestConfig(), c, branchOpts, "linux")
+	require.NotNil(t, branch)
+	assert.NotEqual(t, base.key, branch.key)
+
+	otherBranchOpts := sourceCacheTestOpts()
+	otherBranchOpts.branch = "release-v2"
+	otherBranch, _ := newSourceCache(sourceCacheTestConfig(), c, otherBranchOpts, "linux")
+	require.NotNil(t, otherBranch)
+	assert.NotEqual(t, branch.key, otherBranch.key)
+
 	// The project directory is deliberately not in the key: the artifact is
 	// rooted inside it, so a tree cloned into one directory restores into
 	// another. TestSourceCacheArchiveRestoresIntoADifferentDirectory covers the
@@ -93,6 +106,35 @@ func TestSourceCacheKeyVariesByRevisionAndCloneShape(t *testing.T) {
 	require.NotNil(t, otherDir)
 	assert.Equal(t, base.remoteKey, otherDir.remoteKey)
 	assert.Equal(t, filepath.Join("/data/mci", "other"), otherDir.projectDir())
+}
+
+// A PR artifact is pinned to the PR head, so the branch would fragment it for no gain.
+func TestSourceCachePRKeysIgnoreTheBranch(t *testing.T) {
+	c := &gitFetchProject{Directory: "src"}
+	const prHead = "55ca6286e3e4f4fba5d0448333fa99fc5a404a73"
+
+	prConf := func() *internal.TaskConfig {
+		conf := sourceCacheTestConfig()
+		conf.Task.Requester = evergreen.GithubPRRequester
+		conf.GithubPatchData.PRNumber = 9001
+		conf.GithubPatchData.HeadHash = prHead
+		return conf
+	}
+
+	branchOpts := sourceCacheTestOpts()
+	branchOpts.branch = "release-v1"
+	withBranch, _ := newSourceCache(prConf(), c, branchOpts, "linux")
+	require.NotNil(t, withBranch)
+	withoutBranch, _ := newSourceCache(prConf(), c, sourceCacheTestOpts(), "linux")
+	require.NotNil(t, withoutBranch)
+	assert.Equal(t, withoutBranch.remoteKey, withBranch.remoteKey)
+
+	// The base revision the PR falls back to is keyed on the branch.
+	baseKey, _, err := withBranch.cacheKeysForRevision("abc123")
+	require.NoError(t, err)
+	otherBaseKey, _, err := withoutBranch.cacheKeysForRevision("abc123")
+	require.NoError(t, err)
+	assert.NotEqual(t, otherBaseKey, baseKey)
 }
 
 func TestSourceCacheKeysPRCheckoutsInTheirOwnNamespace(t *testing.T) {
@@ -202,26 +244,14 @@ func TestBuildPostRestoreCommand(t *testing.T) {
 		assert.Contains(t, joined, "git remote set-url origin https://x-access-token:"+projectGitHubToken+"@github.com/some-org/some-repo.git")
 	})
 
-	// The cache key pins the revision but not the branch, so a hit produced by
-	// a different branch at the same commit would otherwise report that
-	// branch's name.
-	t.Run("ReconcilesBranchOnANonPRHit", func(t *testing.T) {
+	// Renaming the branch here would mislabel a PR hit, whose tree is at the PR head.
+	t.Run("LeavesTheRestoredBranchAlone", func(t *testing.T) {
 		conf := sourceCacheTestConfig()
 		joined := strings.Join(c.buildPostRestoreCommand(conf, cloneOpts{owner: "some-org", repo: "some-repo", branch: "release-v1"}, conf.Task.Revision, false), "\n")
-		assert.Contains(t, joined, `git checkout -B 'release-v1' abc123`)
-	})
-
-	t.Run("SkipsBranchReconciliationWhenPRCheckoutRuns", func(t *testing.T) {
-		conf := prConf()
-		joined := strings.Join(c.buildPostRestoreCommand(conf, cloneOpts{owner: "some-org", repo: "some-repo", branch: "release-v1"}, conf.Task.Revision, true), "\n")
 		assert.NotContains(t, joined, "git checkout -B")
-		assert.Contains(t, joined, `git fetch origin "pull/9001/head:evg-pr-test-`)
-	})
 
-	t.Run("OmitsBranchReconciliationWithoutABranch", func(t *testing.T) {
-		conf := sourceCacheTestConfig()
-		joined := strings.Join(c.buildPostRestoreCommand(conf, cloneOpts{owner: "some-org", repo: "some-repo"}, conf.Task.Revision, false), "\n")
-		assert.NotContains(t, joined, "git checkout -B")
+		prJoined := strings.Join(c.buildPostRestoreCommand(prConf(), cloneOpts{owner: "some-org", repo: "some-repo", branch: "release-v1"}, prHead, false), "\n")
+		assert.NotContains(t, prJoined, "git checkout -B")
 	})
 
 	t.Run("FetchesPRRefWithAuthenticatedOrigin", func(t *testing.T) {
@@ -282,16 +312,12 @@ func TestPostRestoreCommandFailsOnWrongRevision(t *testing.T) {
 	conf.Task.Revision = strings.TrimSpace(string(headBytes))
 	assert.NoError(t, c.runCommands(ctx, logger, conf, c.buildPostRestoreCommand(conf, opts, conf.Task.Revision, false)))
 
-	// The tree was produced on main, but this task asked for a branch that
-	// points at the same commit, so the restored tree has to report that one.
+	// The branch the producer left behind is kept as is, since the key pins it.
 	branchOpts := cloneOpts{owner: "some-org", repo: "some-repo", branch: "release-v1"}
 	require.NoError(t, c.runCommands(ctx, logger, conf, c.buildPostRestoreCommand(conf, branchOpts, conf.Task.Revision, false)))
 	branchBytes, err := exec.CommandContext(ctx, "git", "-C", repoDir, "rev-parse", "--abbrev-ref", "HEAD").Output()
 	require.NoError(t, err)
-	assert.Equal(t, "release-v1", strings.TrimSpace(string(branchBytes)))
-	headAfter, err := exec.CommandContext(ctx, "git", "-C", repoDir, "rev-parse", "HEAD").Output()
-	require.NoError(t, err)
-	assert.Equal(t, conf.Task.Revision, strings.TrimSpace(string(headAfter)))
+	assert.Equal(t, "main", strings.TrimSpace(string(branchBytes)))
 }
 
 func TestSourceCacheSpanDurationsAreNumericMilliseconds(t *testing.T) {

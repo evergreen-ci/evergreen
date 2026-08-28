@@ -72,6 +72,7 @@ type sourceCache struct {
 	workDir           string
 	dir               string
 	owner, repo       string
+	branch            string
 	baseRevision      string
 	prRevision        string
 	revision          string
@@ -110,6 +111,7 @@ func newSourceCache(conf *internal.TaskConfig, c *gitFetchProject, opts cloneOpt
 		dir:               c.Directory,
 		owner:             opts.owner,
 		repo:              opts.repo,
+		branch:            opts.branch,
 		baseRevision:      conf.Task.Revision,
 		cloneDepth:        opts.cloneDepth,
 		recurseSubmodules: opts.recurseSubmodules,
@@ -146,7 +148,12 @@ func (sc *sourceCache) namespaceForRevision(revision string) string {
 // keyFor returns the content key and S3 object key for a revision.
 func (sc *sourceCache) cacheKeysForRevision(revision string) (string, string, error) {
 	namespace := sc.namespaceForRevision(revision)
-	expansions := []string{namespace, sc.owner, sc.repo, revision, strconv.Itoa(sc.cloneDepth), strconv.FormatBool(sc.recurseSubmodules)}
+	// A PR artifact is already pinned to the PR head, so the branch would only fragment its keys.
+	branch := sc.branch
+	if namespace == sourceCachePRNamespace {
+		branch = ""
+	}
+	expansions := []string{namespace, sc.owner, sc.repo, branch, revision, strconv.Itoa(sc.cloneDepth), strconv.FormatBool(sc.recurseSubmodules)}
 	key, err := computeCacheKey(nil, expansions, true)
 	if err != nil {
 		return "", "", err
