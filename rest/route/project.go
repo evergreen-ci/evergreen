@@ -230,6 +230,7 @@ func (h *projectIDPatchHandler) Factory() gimlet.RouteHandler {
 func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.project = gimlet.GetVars(r)["project_id"]
 	h.user = MustHaveUser(ctx)
+
 	body := utility.NewRequestReader(r)
 	defer body.Close()
 	b, err := io.ReadAll(body)
@@ -299,16 +300,9 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	adminsToDelete := utility.FromStringPtrSlice(h.apiNewProjectRef.DeleteAdmins)
 	adminsToAdd := h.newProjectRef.Admins
-	allAdmins := utility.UniqueStrings(append(h.originalProject.Admins, h.newProjectRef.Admins...)) // get original and new admin
-	h.newProjectRef.Admins, _ = utility.StringSliceSymmetricDifference(allAdmins, adminsToDelete)   // add users that are in allAdmins and not in adminsToDelete
-
-	usersToDelete := utility.FromStringPtrSlice(h.apiNewProjectRef.DeleteGitTagAuthorizedUsers)
-	allAuthorizedUsers := utility.UniqueStrings(append(h.originalProject.GitTagAuthorizedUsers, h.newProjectRef.GitTagAuthorizedUsers...))
-	h.newProjectRef.GitTagAuthorizedUsers, _ = utility.StringSliceSymmetricDifference(allAuthorizedUsers, usersToDelete)
-
-	teamsToDelete := utility.FromStringPtrSlice(h.apiNewProjectRef.DeleteGitTagAuthorizedTeams)
-	allAuthorizedTeams := utility.UniqueStrings(append(h.originalProject.GitTagAuthorizedTeams, h.newProjectRef.GitTagAuthorizedTeams...))
-	h.newProjectRef.GitTagAuthorizedTeams, _ = utility.StringSliceSymmetricDifference(allAuthorizedTeams, teamsToDelete)
+	h.newProjectRef.Admins = mergeListWithDeletions(h.originalProject.Admins, h.newProjectRef.Admins, adminsToDelete)
+	h.newProjectRef.GitTagAuthorizedUsers = mergeListWithDeletions(h.originalProject.GitTagAuthorizedUsers, h.newProjectRef.GitTagAuthorizedUsers, utility.FromStringPtrSlice(h.apiNewProjectRef.DeleteGitTagAuthorizedUsers))
+	h.newProjectRef.GitTagAuthorizedTeams = mergeListWithDeletions(h.originalProject.GitTagAuthorizedTeams, h.newProjectRef.GitTagAuthorizedTeams, utility.FromStringPtrSlice(h.apiNewProjectRef.DeleteGitTagAuthorizedTeams))
 
 	// If the project ref doesn't use the repo, then this will just be the same as newProjectRef.
 	// Used to verify that if something is set to nil in the request, we properly validate using the merged project ref.
@@ -373,35 +367,8 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	// validate triggers before updating project
-	catcher := grip.NewSimpleCatcher()
-	for i := range h.newProjectRef.Triggers {
-		catcher.Add(h.newProjectRef.Triggers[i].Validate(ctx, h.newProjectRef.Id))
-	}
-	for i := range h.newProjectRef.PatchTriggerAliases {
-		h.newProjectRef.PatchTriggerAliases[i], err = dbModel.ValidateTriggerDefinition(ctx, h.newProjectRef.PatchTriggerAliases[i], h.newProjectRef.Id)
-		catcher.Add(err)
-	}
-	for _, buildDef := range h.newProjectRef.PeriodicBuilds {
-		catcher.Wrapf(buildDef.Validate(), "invalid periodic build definition")
-	}
-	if catcher.HasErrors() {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "invalid triggers"))
-	}
-
-	// Validate Parsley filters before updating project.
-	err = parsley.ValidateFilters(h.newProjectRef.ParsleyFilters)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "invalid Parsley filters"))
-	}
-
-	err = dbModel.ValidateBbProject(ctx, h.newProjectRef.Id, h.newProjectRef.BuildBaronSettings, &h.newProjectRef.TaskAnnotationSettings.FileTicketWebhook)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating build baron config"))
-	}
-
-	if err = h.newProjectRef.ArtifactCredentials.Validate(); err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "invalid artifact credentials").Error()})
+	if resp := validateProjectRefSettings(ctx, h.newProjectRef); resp != nil {
+		return resp
 	}
 
 	newRevision := utility.FromStringPtr(h.apiNewProjectRef.Revision)
@@ -437,45 +404,20 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	// complete all updates
+	// Complete all updates to the project ref.
 	if err = h.newProjectRef.Replace(ctx); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating project '%s'", h.newProjectRef.Id))
-	}
-
-	if err = data.UpdateProjectVars(ctx, h.newProjectRef.Id, &h.apiNewProjectRef.Variables, false); err != nil { // destructively modifies h.apiNewProjectRef.Variables
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating variables for project '%s'", h.project))
-	}
-	if err = data.UpdateProjectAliases(ctx, h.newProjectRef.Id, h.apiNewProjectRef.Aliases); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating aliases for project '%s'", h.project))
 	}
 
 	if err = dbModel.UpdateAdminRoles(ctx, h.newProjectRef, adminsToAdd, adminsToDelete); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating admins for project '%s'", h.project))
 	}
 
-	// Don't use Save to delete subscriptions, since we aren't checking the
-	// delete subscriptions list against the inputted list of subscriptions.
-	if err = data.SaveSubscriptions(ctx, h.newProjectRef.Id, h.apiNewProjectRef.Subscriptions, true); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "saving subscriptions for project '%s'", h.project))
+	if resp := updateProjectOrRepoSettings(ctx, h.newProjectRef, h.apiNewProjectRef, h.user.Username(), before); resp != nil {
+		return resp
 	}
 
-	toDelete := []string{}
-	for _, deleteSub := range h.apiNewProjectRef.DeleteSubscriptions {
-		toDelete = append(toDelete, utility.FromStringPtr(deleteSub))
-	}
-	if err = data.DeleteSubscriptions(ctx, h.newProjectRef.Id, toDelete); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting subscriptions for project '%s'", h.project))
-	}
-
-	after, err := dbModel.GetProjectSettings(ctx, h.newProjectRef)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting project settings after update for project '%s'", h.project))
-	}
-	if err = dbModel.LogProjectModified(ctx, h.newProjectRef.Id, h.user.Username(), before, after); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "logging modification event for project '%s'", h.project))
-	}
-
-	// run the repotracker for the project
+	// Run repotracker for the project.
 	if newRevision != "" {
 		ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
 		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), h.newProjectRef.Id)
@@ -491,6 +433,86 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 func (h projectIDPatchHandler) ownerRepoChanged() bool {
 	return h.newProjectRef.Owner != h.originalProject.Owner || h.newProjectRef.Repo != h.originalProject.Repo
+}
+
+// mergeListWithDeletions merges original and new list entries, then removes
+// any entries present in toDelete. This is used to handle the add/delete
+// semantics for admins, git tag authorized users, and git tag authorized teams.
+func mergeListWithDeletions(original, new, toDelete []string) []string {
+	all := utility.UniqueStrings(append(original, new...))
+	result, _ := utility.StringSliceSymmetricDifference(all, toDelete)
+	return result
+}
+
+// validateProjectRefSettings validates settings that are shared between
+// project refs and repo refs: triggers, patch trigger aliases, periodic
+// builds, Parsley filters, Build Baron config, and artifact credentials.
+func validateProjectRefSettings(ctx context.Context, pRef *dbModel.ProjectRef) gimlet.Responder {
+	catcher := grip.NewSimpleCatcher()
+	var err error
+	for i := range pRef.Triggers {
+		catcher.Add(pRef.Triggers[i].Validate(ctx, pRef.Id))
+	}
+	for i := range pRef.PatchTriggerAliases {
+		pRef.PatchTriggerAliases[i], err = dbModel.ValidateTriggerDefinition(ctx, pRef.PatchTriggerAliases[i], pRef.Id)
+		catcher.Add(err)
+	}
+	for _, buildDef := range pRef.PeriodicBuilds {
+		catcher.Wrapf(buildDef.Validate(), "invalid periodic build definition")
+	}
+	if catcher.HasErrors() {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "invalid triggers"))
+	}
+
+	if err = parsley.ValidateFilters(pRef.ParsleyFilters); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "invalid Parsley filters"))
+	}
+
+	if err = dbModel.ValidateBbProject(ctx, pRef.Id, pRef.BuildBaronSettings, &pRef.TaskAnnotationSettings.FileTicketWebhook); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating build baron config"))
+	}
+
+	if err = pRef.ArtifactCredentials.Validate(); err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "invalid artifact credentials").Error()})
+	}
+
+	return nil
+}
+
+// updateProjectOrRepoSettings updates variables, aliases, subscriptions, and
+// subscription deletions, then logs the modification event. These operations
+// are shared between the project PATCH and repo PATCH handlers.
+func updateProjectOrRepoSettings(ctx context.Context, pRef *dbModel.ProjectRef, apiRef *model.APIProjectRef, username string, before *dbModel.ProjectSettings) gimlet.Responder {
+	if err := data.UpdateProjectVars(ctx, pRef.Id, &apiRef.Variables, false); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating variables for project '%s'", pRef.Id))
+	}
+	if err := data.UpdateProjectAliases(ctx, pRef.Id, apiRef.Aliases); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating aliases for project '%s'", pRef.Id))
+	}
+
+	// Don't use Save to delete subscriptions, since we aren't checking the
+	// delete subscriptions list against the inputted list of subscriptions.
+	if err := data.SaveSubscriptions(ctx, pRef.Id, apiRef.Subscriptions, true); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "saving subscriptions for project '%s'", pRef.Id))
+	}
+
+	toDelete := make([]string, 0, len(apiRef.DeleteSubscriptions))
+	for _, deleteSub := range apiRef.DeleteSubscriptions {
+		toDelete = append(toDelete, utility.FromStringPtr(deleteSub))
+	}
+	if err := data.DeleteSubscriptions(ctx, pRef.Id, toDelete); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting subscriptions for project '%s'", pRef.Id))
+	}
+
+	after, err := dbModel.GetProjectSettings(ctx, pRef)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting settings after update for project '%s'", pRef.Id))
+	}
+	if err = dbModel.LogProjectModified(ctx, pRef.Id, username, before, after); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "logging modification event for project '%s'", pRef.Id))
+	}
+
+	return nil
 }
 
 // verify for a given alias that either the user has added a new definition or there is a pre-existing definition
