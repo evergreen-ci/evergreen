@@ -93,14 +93,14 @@ func getCrossFileYAMLAnchorsEnabled(conf *ClientSettings) (bool, error) {
 		return false, errors.Wrap(err, "setting up REST communicator")
 	}
 	defer client.Close()
-	settings, err := client.GetSettings(ctx)
+	flags, err := client.GetServiceFlags(ctx)
 	if err != nil {
-		return false, errors.Wrap(err, "getting admin settings")
+		return false, errors.Wrap(err, "getting service flags")
 	}
-	if settings == nil {
+	if flags == nil {
 		return false, nil
 	}
-	return settings.ServiceFlags.CrossFileYAMLAnchorsEnabled, nil
+	return flags.CrossFileYAMLAnchorsEnabled, nil
 }
 
 func getLocalModulesFromInput(localModulePaths []string) (map[string]string, error) {
@@ -138,10 +138,7 @@ func loadProjectYAML(conf *ClientSettings, path string, quiet, errorOnWarnings b
 	}
 	project := &model.Project{}
 	ctx := context.Background()
-	anchorsEnabled, err := getCrossFileYAMLAnchorsEnabled(conf)
-	if err != nil {
-		grip.Warning(ctx, errors.Wrap(err, "could not get cross-file YAML anchors setting; anchors will be disabled"))
-	}
+	anchorsEnabled, _ := getCrossFileYAMLAnchorsEnabled(conf)
 	opts := &model.GetProjectOpts{
 		LocalModules:                localModuleMap,
 		ReadFileFrom:                model.ReadFromLocal,
