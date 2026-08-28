@@ -201,9 +201,13 @@ func hostTerminationJobs(ctx context.Context, env evergreen.Environment, _ time.
 			})
 			continue
 		}
+		terminationReason := "host is expired, decommissioned, or failed to provision"
+		if h.Distro.SingleTaskDistro && h.LastTask != "" {
+			terminationReason = "single task host finished its task"
+		}
 		jobs = append(jobs, NewHostTerminationJob(env, &h, HostTerminationOptions{
 			TerminateIfBusy:   true,
-			TerminationReason: "host is expired, decommissioned, or failed to provision (this is not an error)",
+			TerminationReason: terminationReason,
 		}))
 	}
 
