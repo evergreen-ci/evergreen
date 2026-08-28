@@ -222,7 +222,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/permissions").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(&permissionsGetHandler{})
 	app.AddRoute("/permissions/users").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeGetAllUsersPermissions(env.RoleManager()))
 	app.AddRoute("/repos/{repo_id}").Version(2).Get().Wrap(requireUser, addProject, viewRepoSettings, rateLimit).RouteHandler(makeGetRepoByID())
-	app.AddRoute("/repos/{repo_id}").Version(2).Patch().Wrap(requireUser, addProject, editRepoSettings, requireProjectAdmin, rateLimit).RouteHandler(makePatchRepoByID(settings))
+	app.AddRoute("/repos/{repo_id}").Version(2).Patch().Wrap(requireUser, addProject, requireProjectAdmin, editRepoSettings, rateLimit).RouteHandler(makePatchRepoByID(settings))
 	app.AddRoute("/roles").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(acl.NewGetAllRolesHandler(env.RoleManager()))
 	app.AddRoute("/roles/{role_id}/users").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeGetUsersWithRole())
 	app.AddRoute("/select/tests").Version(2).Post().Wrap(requireUserOrTaskAuthOnly, rateLimit).RouteHandler(makeSelectTestsHandler(env))
