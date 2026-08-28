@@ -272,17 +272,17 @@ func TestPostRestoreCommandFailsOnWrongRevision(t *testing.T) {
 	opts := cloneOpts{owner: "some-org", repo: "some-repo"}
 
 	// The revision the task asked for isn't the one in the restored tree.
-	assert.Error(t, c.runGitScript(ctx, logger, conf, c.buildPostRestoreCommand(conf, opts, conf.Task.Revision, false)))
+	assert.Error(t, c.runCommands(ctx, logger, conf, c.buildPostRestoreCommand(conf, opts, conf.Task.Revision, false)))
 
 	headBytes, err := exec.CommandContext(ctx, "git", "-C", repoDir, "rev-parse", "HEAD").Output()
 	require.NoError(t, err)
 	conf.Task.Revision = strings.TrimSpace(string(headBytes))
-	assert.NoError(t, c.runGitScript(ctx, logger, conf, c.buildPostRestoreCommand(conf, opts, conf.Task.Revision, false)))
+	assert.NoError(t, c.runCommands(ctx, logger, conf, c.buildPostRestoreCommand(conf, opts, conf.Task.Revision, false)))
 
 	// The tree was produced on main, but this task asked for a branch that
 	// points at the same commit, so the restored tree has to report that one.
 	branchOpts := cloneOpts{owner: "some-org", repo: "some-repo", branch: "release-v1"}
-	require.NoError(t, c.runGitScript(ctx, logger, conf, c.buildPostRestoreCommand(conf, branchOpts, conf.Task.Revision, false)))
+	require.NoError(t, c.runCommands(ctx, logger, conf, c.buildPostRestoreCommand(conf, branchOpts, conf.Task.Revision, false)))
 	branchBytes, err := exec.CommandContext(ctx, "git", "-C", repoDir, "rev-parse", "--abbrev-ref", "HEAD").Output()
 	require.NoError(t, err)
 	assert.Equal(t, "release-v1", strings.TrimSpace(string(branchBytes)))
@@ -294,8 +294,8 @@ func TestPostRestoreCommandFailsOnWrongRevision(t *testing.T) {
 func TestSourceCacheSpanDurationsAreNumericMilliseconds(t *testing.T) {
 	recorder := tracetest.NewSpanRecorder()
 	ctx, span := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(recorder)).Tracer("test").Start(t.Context(), "git.get_project")
-	setSourceCacheSpanDuration(ctx, "clone_duration", 1500*time.Millisecond)
-	setSourceCacheSpanDuration(ctx, "download_duration", 250*time.Microsecond)
+	setSourceCacheSpanDuration(ctx, sourceCacheCloneDurationAttribute, 1500*time.Millisecond)
+	setSourceCacheSpanDuration(ctx, sourceCacheDownloadDurationAttribute, 250*time.Microsecond)
 	span.End()
 
 	want := map[string]float64{

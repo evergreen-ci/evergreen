@@ -31,6 +31,29 @@ const sourceCachePRNamespace = "pr"
 // sourceCacheRegion is the region the source cache bucket lives in.
 const sourceCacheRegion = evergreen.DefaultEC2Region
 
+var (
+	sourceCacheOutcomeAttribute           = sourceCacheAttribute("outcome")
+	sourceCacheReasonAttribute            = sourceCacheAttribute("reason")
+	sourceCacheKeyAttribute               = sourceCacheAttribute("cache_key")
+	sourceCacheOwnerAttribute             = sourceCacheAttribute("owner")
+	sourceCacheRepoAttribute              = sourceCacheAttribute("repo")
+	sourceCacheRevisionAttribute          = sourceCacheAttribute("revision")
+	sourceCacheRestoredRevisionAttribute  = sourceCacheAttribute("restored_revision")
+	sourceCacheCloneDepthAttribute        = sourceCacheAttribute("clone_depth")
+	sourceCacheRecurseSubmodulesAttribute = sourceCacheAttribute("recurse_submodules")
+	sourceCacheArtifactBytesAttribute     = sourceCacheAttribute("artifact_bytes")
+
+	sourceCacheCloneDurationAttribute    = sourceCacheAttribute("clone_duration_ms")
+	sourceCacheDownloadDurationAttribute = sourceCacheAttribute("download_duration_ms")
+	sourceCacheExtractDurationAttribute  = sourceCacheAttribute("extract_duration_ms")
+	sourceCacheArchiveDurationAttribute  = sourceCacheAttribute("archive_duration_ms")
+	sourceCacheUploadDurationAttribute   = sourceCacheAttribute("upload_duration_ms")
+)
+
+func sourceCacheAttribute(name string) string {
+	return fmt.Sprintf("%s.source_cache.%s", gitGetProjectAttribute, name)
+}
+
 // Source cache outcomes reported on the command's span.
 const (
 	sourceCacheHit          = "hit"
@@ -198,7 +221,7 @@ func (sc *sourceCache) restore(ctx context.Context, comm client.Communicator, lo
 	if miss {
 		return false, nil
 	}
-	setSourceCacheSpanDuration(ctx, "download_duration", time.Since(start))
+	setSourceCacheSpanDuration(ctx, sourceCacheDownloadDurationAttribute, time.Since(start))
 
 	info, err := os.Stat(localPath)
 	if err != nil {
@@ -207,7 +230,7 @@ func (sc *sourceCache) restore(ctx context.Context, comm client.Communicator, lo
 	if info.Size() == 0 {
 		return false, nil
 	}
-	trace.SpanFromContext(ctx).SetAttributes(attribute.Int64(sourceCacheAttribute("artifact_bytes"), info.Size()))
+	trace.SpanFromContext(ctx).SetAttributes(attribute.Int64(sourceCacheArtifactBytesAttribute, info.Size()))
 
 	f, err := os.Open(localPath)
 	if err != nil {
@@ -230,7 +253,7 @@ func (sc *sourceCache) restore(ctx context.Context, comm client.Communicator, lo
 	if err := extractTarball(ctx, f, sc.projectDir(), []string{}, true); err != nil {
 		return false, errors.Wrap(err, "extracting source cache archive")
 	}
-	setSourceCacheSpanDuration(ctx, "extract_duration", time.Since(start))
+	setSourceCacheSpanDuration(ctx, sourceCacheExtractDurationAttribute, time.Since(start))
 	return true, nil
 }
 
@@ -248,9 +271,9 @@ func (sc *sourceCache) save(ctx context.Context, comm client.Communicator, logge
 	if err := makeCacheArchive(ctx, sc.projectDir(), []string{sc.projectDir()}, localPath, logger.Task(), true); err != nil {
 		return false, errors.Wrap(err, "creating source cache archive")
 	}
-	setSourceCacheSpanDuration(ctx, "archive_duration", time.Since(start))
+	setSourceCacheSpanDuration(ctx, sourceCacheArchiveDurationAttribute, time.Since(start))
 	if info, err := os.Stat(localPath); err == nil {
-		trace.SpanFromContext(ctx).SetAttributes(attribute.Int64(sourceCacheAttribute("artifact_bytes"), info.Size()))
+		trace.SpanFromContext(ctx).SetAttributes(attribute.Int64(sourceCacheArtifactBytesAttribute, info.Size()))
 	}
 
 	httpClient := utility.GetHTTPClient()
@@ -283,29 +306,29 @@ func (sc *sourceCache) save(ctx context.Context, comm client.Communicator, logge
 	if err != nil {
 		return false, errors.Wrapf(err, "uploading cache object '%s'", sc.remoteKey)
 	}
-	setSourceCacheSpanDuration(ctx, "upload_duration", time.Since(start))
+	setSourceCacheSpanDuration(ctx, sourceCacheUploadDurationAttribute, time.Since(start))
 	return !alreadyExists, nil
 }
 
-func setSourceCacheSpanDuration(ctx context.Context, name string, d time.Duration) {
+func setSourceCacheSpanDuration(ctx context.Context, attr string, d time.Duration) {
 	ms := float64(d) / float64(time.Millisecond)
-	trace.SpanFromContext(ctx).SetAttributes(attribute.Float64(sourceCacheAttribute(name+"_ms"), ms))
+	trace.SpanFromContext(ctx).SetAttributes(attribute.Float64(attr, ms))
 }
 
 // setSpanOutcome records the outcome of the source cache path, with the reason
 // for the outcomes that have one.
 func (sc *sourceCache) setSpanOutcome(ctx context.Context, outcome, reason string) {
 	attrs := []attribute.KeyValue{
-		attribute.String(sourceCacheAttribute("outcome"), outcome),
-		attribute.String(sourceCacheAttribute("cache_key"), sc.key),
-		attribute.String(sourceCacheAttribute("owner"), sc.owner),
-		attribute.String(sourceCacheAttribute("repo"), sc.repo),
-		attribute.String(sourceCacheAttribute("revision"), sc.revision),
-		attribute.Int(sourceCacheAttribute("clone_depth"), sc.cloneDepth),
-		attribute.Bool(sourceCacheAttribute("recurse_submodules"), sc.recurseSubmodules),
+		attribute.String(sourceCacheOutcomeAttribute, outcome),
+		attribute.String(sourceCacheKeyAttribute, sc.key),
+		attribute.String(sourceCacheOwnerAttribute, sc.owner),
+		attribute.String(sourceCacheRepoAttribute, sc.repo),
+		attribute.String(sourceCacheRevisionAttribute, sc.revision),
+		attribute.Int(sourceCacheCloneDepthAttribute, sc.cloneDepth),
+		attribute.Bool(sourceCacheRecurseSubmodulesAttribute, sc.recurseSubmodules),
 	}
 	if reason != "" {
-		attrs = append(attrs, attribute.String(sourceCacheAttribute("reason"), reason))
+		attrs = append(attrs, attribute.String(sourceCacheReasonAttribute, reason))
 	}
 	trace.SpanFromContext(ctx).SetAttributes(attrs...)
 }
@@ -314,11 +337,7 @@ func (sc *sourceCache) setSpanOutcome(ctx context.Context, outcome, reason strin
 // source cache, so disabled runs stay queryable alongside the rest.
 func setSourceCacheSpanSkipped(ctx context.Context, reason string) {
 	trace.SpanFromContext(ctx).SetAttributes(
-		attribute.String(sourceCacheAttribute("outcome"), sourceCacheSkipped),
-		attribute.String(sourceCacheAttribute("reason"), reason),
+		attribute.String(sourceCacheOutcomeAttribute, sourceCacheSkipped),
+		attribute.String(sourceCacheReasonAttribute, reason),
 	)
-}
-
-func sourceCacheAttribute(name string) string {
-	return fmt.Sprintf("%s.source_cache.%s", gitGetProjectAttribute, name)
 }
