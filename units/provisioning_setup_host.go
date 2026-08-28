@@ -889,7 +889,7 @@ func GetGithubTokensForTask(ctx context.Context, taskId string) (string, []strin
 	if projectOwner != "" && projectRepo != "" && err == nil && settings != nil {
 		// Ignore any errors because if the repo is not private, cloning the repo will still work.
 		// Either way, we should still spin up the host even if we can't fetch the data.
-		githubAppToken, _, err = githubapp.CreateGitHubAppAuth(settings).CreateInstallationToken(ctx, projectOwner, projectRepo, opts)
+		githubAppToken, _, err = githubapp.CreateGitHubAppAuth(settings).CreateInstallationToken(ctx, projectOwner, projectRepo, opts, false)
 		catcher.Add(err)
 
 	}
@@ -901,7 +901,7 @@ func GetGithubTokensForTask(ctx context.Context, taskId string) (string, []strin
 			catcher.Add(err)
 		}
 		if module.Owner != "" && repo != "" && settings != nil {
-			token, _, err := githubapp.CreateGitHubAppAuth(settings).CreateInstallationToken(ctx, module.Owner, repo, opts)
+			token, _, err := githubapp.CreateGitHubAppAuth(settings).CreateInstallationToken(ctx, module.Owner, repo, opts, false)
 			catcher.Add(err)
 			moduleTokens = append(moduleTokens, fmt.Sprintf("%s:%s", moduleName, token))
 		}
