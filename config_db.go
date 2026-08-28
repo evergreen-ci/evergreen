@@ -105,6 +105,7 @@ var (
 	liveArtifactCredentialsDisabledKey    = bsonutil.MustHaveTag(ServiceFlags{}, "LiveArtifactCredentialsDisabled")
 	containerIsolationEnabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "ContainerIsolationEnabled")
 	taskQueueAutoUnscheduleDisabledKey    = bsonutil.MustHaveTag(ServiceFlags{}, "TaskQueueAutoUnscheduleDisabled")
+	virtualTasksDisabledKey               = bsonutil.MustHaveTag(ServiceFlags{}, "VirtualTasksDisabled")
 
 	// DiagnosticsConfig keys
 	diagnosticsS3BucketNameKey = bsonutil.MustHaveTag(DiagnosticsConfig{}, "S3BucketName")

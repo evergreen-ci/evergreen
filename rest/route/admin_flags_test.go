@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"reflect"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -13,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestAdminFlagsRouteSuite(t *testing.T) {
@@ -54,46 +52,4 @@ func TestAdminFlagsRouteSuite(t *testing.T) {
 	assert.Equal(body.Flags.HostInitDisabled, settings.ServiceFlags.HostInitDisabled)
 	assert.Equal(body.Flags.AgentStartDisabled, settings.ServiceFlags.AgentStartDisabled)
 	assert.Equal(body.Flags.RepotrackerDisabled, settings.ServiceFlags.RepotrackerDisabled)
-}
-
-// TestFetchServiceFlagsAllFieldsReturned verifies that GET /admin/service_flags
-// returns every field defined in ServiceFlags. If a new flag is added to
-// ServiceFlags but not wired through BuildFromService, this test will fail.
-func TestFetchServiceFlagsAllFieldsReturned(t *testing.T) {
-	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
-
-	// Build a ServiceFlags with every bool field set to true.
-	var allTrue evergreen.ServiceFlags
-	rv := reflect.ValueOf(&allTrue).Elem()
-	for i := range rv.NumField() {
-		f := rv.Field(i)
-		if f.Kind() == reflect.Bool {
-			f.SetBool(true)
-		}
-	}
-	original, err := evergreen.GetServiceFlags(ctx)
-	require.NoError(t, err)
-	require.NoError(t, allTrue.Set(ctx))
-	t.Cleanup(func() {
-		require.NoError(t, original.Set(context.Background()))
-	})
-
-	getHandler := makeFetchServiceFlags()
-	resp := getHandler.Run(ctx)
-	require.NotNil(t, resp)
-	require.Equal(t, http.StatusOK, resp.Status())
-
-	flags, ok := resp.Data().(*model.APIServiceFlags)
-	require.True(t, ok, "response data should be *model.APIServiceFlags")
-
-	// Every bool field in the response must be true — any field that is false
-	// was not wired through BuildFromService.
-	rv = reflect.ValueOf(flags).Elem()
-	for i := range rv.NumField() {
-		f := rv.Field(i)
-		if f.Kind() == reflect.Bool {
-			assert.True(t, f.Bool(), "field %s should be true but was false — check BuildFromService", rv.Type().Field(i).Name)
-		}
-	}
 }

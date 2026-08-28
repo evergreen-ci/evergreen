@@ -425,7 +425,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	})
 
 	span.SetAttributes(attribute.String(createHostStageOtelAttribute, "get_cloud_manager"))
-	mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
+	mgrOpts, err := cloud.GetManagerOptions(ctx, j.host.Distro)
 	if err != nil {
 		return errors.Wrapf(err, "getting cloud manager options for distro '%s'", j.host.Distro.Id)
 	}

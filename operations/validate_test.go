@@ -200,9 +200,8 @@ func TestLoadProjectYAML(t *testing.T) {
 			fileContent: []byte("invalid: [yaml: bad"),
 			expectErr:   "invalid configuration",
 		},
-		"ReturnsErrorWhenGetServiceFlagsFails": {
+		"SucceedsWithWarningWhenGetServiceFlagsFails": {
 			serviceFlagErr: errors.New("not authorized"),
-			expectErr:      "getting service flags",
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {

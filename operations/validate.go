@@ -7,8 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
+
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -92,14 +93,14 @@ func getCrossFileYAMLAnchorsEnabled(conf *ClientSettings) (bool, error) {
 		return false, errors.Wrap(err, "setting up REST communicator")
 	}
 	defer client.Close()
-	flags, err := client.GetServiceFlags(ctx)
+	settings, err := client.GetSettings(ctx)
 	if err != nil {
-		return false, errors.Wrap(err, "getting service flags")
+		return false, errors.Wrap(err, "getting admin settings")
 	}
-	if flags == nil {
+	if settings == nil {
 		return false, nil
 	}
-	return flags.CrossFileYAMLAnchorsEnabled, nil
+	return settings.ServiceFlags.CrossFileYAMLAnchorsEnabled, nil
 }
 
 func getLocalModulesFromInput(localModulePaths []string) (map[string]string, error) {
@@ -139,7 +140,7 @@ func loadProjectYAML(conf *ClientSettings, path string, quiet, errorOnWarnings b
 	ctx := context.Background()
 	anchorsEnabled, err := getCrossFileYAMLAnchorsEnabled(conf)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting cross-file YAML anchors setting")
+		grip.Warning(ctx, errors.Wrap(err, "could not get cross-file YAML anchors setting; anchors will be disabled"))
 	}
 	opts := &model.GetProjectOpts{
 		LocalModules:                localModuleMap,

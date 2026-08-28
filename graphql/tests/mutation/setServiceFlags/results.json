@@ -68,7 +68,8 @@
             { "name": "secondary_reads_disabled", "enabled": false },
             { "name": "background_command_failure_enabled", "enabled": false },
             { "name": "api_rate_limiter_disabled", "enabled": false },
-            { "name": "graphql_complexity_limiter_disabled", "enabled": false }
+            { "name": "graphql_complexity_limiter_disabled", "enabled": false },
+            { "name": "virtual_tasks_disabled", "enabled": false }
           ]
         }
       }

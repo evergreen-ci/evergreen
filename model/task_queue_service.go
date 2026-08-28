@@ -111,7 +111,7 @@ func (s *taskDispatchService) ensureQueue(ctx context.Context, distroID string) 
 
 	switch d.DispatcherSettings.Version {
 	case evergreen.DispatcherVersionRevisedWithDependencies:
-		distroDispatchService, err = newDistroTaskDAGDispatchService(taskQueue, s.ttl)
+		distroDispatchService, err = newDistroTaskDAGDispatchService(ctx, taskQueue, s.ttl)
 		if err != nil {
 			return nil, err
 		}

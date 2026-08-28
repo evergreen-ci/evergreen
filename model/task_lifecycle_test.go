@@ -6834,6 +6834,121 @@ func TestBuildTaskCompletedSpanAttributesCostFields(t *testing.T) {
 	})
 }
 
+func TestTryResetDisplayTaskAtMaxExecution(t *testing.T) {
+	settings := testutil.TestConfig()
+
+	realStartTime := time.Date(2026, time.August, 20, 2, 30, 25, 0, time.UTC)
+	realFinishTime := time.Date(2026, time.August, 20, 2, 31, 39, 0, time.UTC)
+
+	systemFailure := &apimodels.TaskEndDetail{
+		Status:      evergreen.TaskFailed,
+		Type:        evergreen.CommandTypeSystem,
+		Description: evergreen.TaskDescriptionHeartbeat,
+		TimedOut:    true,
+	}
+
+	for tName, tCase := range map[string]struct {
+		execTaskStatus string
+		test           func(t *testing.T, execTask *task.Task)
+	}{
+		"SucceededExecutionTaskKeepsItsResults": {
+			execTaskStatus: evergreen.TaskSucceeded,
+			test: func(t *testing.T, execTask *task.Task) {
+				assert.Equal(t, evergreen.TaskSucceeded, execTask.Status)
+				assert.True(t, realFinishTime.Equal(execTask.FinishTime), "finish time should not move to the time the display task hit its execution cap")
+				assert.Empty(t, execTask.Details.Description)
+			},
+		},
+		"FailedExecutionTaskKeepsItsResults": {
+			execTaskStatus: evergreen.TaskFailed,
+			test: func(t *testing.T, execTask *task.Task) {
+				assert.Equal(t, evergreen.TaskFailed, execTask.Status)
+				assert.True(t, realFinishTime.Equal(execTask.FinishTime), "finish time should not move to the time the display task hit its execution cap")
+				assert.Empty(t, execTask.Details.Description)
+			},
+		},
+		"UnfinishedExecutionTaskIsMarkedEnded": {
+			execTaskStatus: evergreen.TaskStarted,
+			test: func(t *testing.T, execTask *task.Task) {
+				assert.Equal(t, evergreen.TaskFailed, execTask.Status)
+				assert.Equal(t, evergreen.TaskDescriptionHeartbeat, execTask.Details.Description)
+			},
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx := t.Context()
+			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection, event.EventCollection, host.Collection))
+			t.Cleanup(func() {
+				assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection, event.EventCollection, host.Collection))
+			})
+
+			h := &host.Host{
+				Id:          "host",
+				RunningTask: "exec_task",
+			}
+			require.NoError(t, h.Insert(ctx))
+			v := &Version{
+				Id:     "version",
+				Status: evergreen.VersionStarted,
+			}
+			require.NoError(t, v.Insert(t.Context()))
+			b := &build.Build{
+				Id:      "build",
+				Version: v.Id,
+				Status:  evergreen.BuildStarted,
+			}
+			require.NoError(t, b.Insert(t.Context()))
+
+			execTask := &task.Task{
+				Id:            "exec_task",
+				DisplayName:   "exec_task",
+				BuildId:       b.Id,
+				Version:       v.Id,
+				Project:       "project",
+				Activated:     true,
+				HostId:        "host",
+				Status:        tCase.execTaskStatus,
+				StartTime:     realStartTime,
+				FinishTime:    realFinishTime,
+				LastHeartbeat: realFinishTime,
+			}
+			if !evergreen.IsFinishedTaskStatus(tCase.execTaskStatus) {
+				execTask.FinishTime = time.Time{}
+			}
+			require.NoError(t, execTask.Insert(t.Context()))
+
+			// System failures only allow one restart, so a display task
+			// already on execution 1 is past its cap and resetting it falls
+			// into the branch that marks it and its execution tasks as ended.
+			dt := &task.Task{
+				Id:             "display_task",
+				DisplayName:    "display_task",
+				BuildId:        b.Id,
+				Version:        v.Id,
+				Project:        "project",
+				DisplayOnly:    true,
+				Activated:      true,
+				Execution:      1,
+				Status:         evergreen.TaskStarted,
+				ExecutionTasks: []string{execTask.Id},
+			}
+			require.NoError(t, dt.Insert(t.Context()))
+
+			require.NoError(t, TryResetTask(ctx, settings, dt.Id, evergreen.User, evergreen.MonitorPackage, systemFailure))
+
+			dbExecTask, err := task.FindOneId(ctx, execTask.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbExecTask)
+			tCase.test(t, dbExecTask)
+
+			dbDisplayTask, err := task.FindOneId(ctx, dt.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbDisplayTask)
+			assert.True(t, dbDisplayTask.IsFinished(), "display task should be marked finished once it is past its execution cap")
+		})
+	}
+}
+
 func TestCheckResetDisplayTaskConcurrentReset(t *testing.T) {
 	settings := testutil.TestConfig()
 	settings.TaskLimits.MaxTaskExecution = 100

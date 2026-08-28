@@ -448,6 +448,17 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		res.Parameters[param.Key] = param.Value
 	}
 
+	res.SourceCacheBucket = h.settings.Buckets.GetSourceCacheBucket(t.Project)
+	if res.SourceCacheBucket.Name == "" {
+		grip.Debug(ctx, message.Fields{
+			"message":     "no source cache bucket for task",
+			"task":        t.Id,
+			"project":     t.Project,
+			"opted_in":    slices.Contains(h.settings.Buckets.SourceCacheProjects, t.Project),
+			"bucket_name": h.settings.Buckets.SourceCacheBucket.Name,
+		})
+	}
+
 	var costCfg evergreen.CostConfig
 	if err := costCfg.Get(ctx); err != nil {
 		grip.Error(ctx, errors.Wrap(err, "loading cost config for expansions_and_vars"))
@@ -801,7 +812,7 @@ func discoverAndCacheBucketLifecycleRules(ctx context.Context, t *task.Task, fil
 			externalID = &file.ExternalID
 		}
 
-		wasCached := s3lifecycle.DiscoverAndCacheProjectBucket(ctx, bucketName, region, roleARN, externalID, file.AWSAccountID, t.Project, costConfig.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules, cloud.NewS3LifecycleClient())
+		wasCached := s3lifecycle.DiscoverAndCacheProjectBucket(ctx, bucketName, region, roleARN, externalID, file.AWSAccountID, t.Project, &costConfig.S3Cost.Storage, cloud.NewS3LifecycleClient())
 		if wasCached {
 			cachedBuckets = append(cachedBuckets, bucketName)
 		}

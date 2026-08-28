@@ -424,6 +424,7 @@ functions:
         args: ["modernize"]
         include_expansions_in_env: ["GOROOT"]
         env:
+          GOTOOLCHAIN: go1.26.0
           MODERNIZE_GOOS: ${goos}
 
   verify-client-version-update:

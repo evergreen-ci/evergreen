@@ -631,6 +631,8 @@ type APIProjectRef struct {
 	GitHubPermissionGroupByRequester map[string]string `json:"github_permission_group_by_requester,omitempty"`
 	// Test selection settings.
 	TestSelection APITestSelectionSettings `json:"test_selection,omitzero"`
+	// Virtual task registration enabled.
+	VirtualTasksEnabled *bool `json:"virtual_tasks_enabled,omitempty"`
 	// Task ownership settings. This is related to Foliage Web Services (FWS).
 	TaskOwnership APITaskOwnershipSettings `json:"task_ownership,omitempty"`
 	// Whether or not to run every mainline commit version.
@@ -684,6 +686,7 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		ProjectHealthView:                p.ProjectHealthView,
 		GitHubPermissionGroupByRequester: p.GitHubPermissionGroupByRequester,
 		TestSelection:                    p.TestSelection.ToService(),
+		VirtualTasksEnabled:              utility.BoolPtrCopy(p.VirtualTasksEnabled),
 		TaskOwnership:                    p.TaskOwnership.ToService(),
 		RunEveryMainlineCommit:           p.RunEveryMainlineCommit,
 	}
@@ -792,6 +795,7 @@ func (p *APIProjectRef) BuildPublicFields(ctx context.Context, projectRef model.
 	p.GithubMQTriggerAliases = utility.ToStringPtrSlice(projectRef.GithubMQTriggerAliases)
 	p.GitHubPermissionGroupByRequester = projectRef.GitHubPermissionGroupByRequester
 	p.TestSelection.BuildFromService(projectRef.TestSelection)
+	p.VirtualTasksEnabled = utility.BoolPtrCopy(projectRef.VirtualTasksEnabled)
 	p.TaskOwnership.BuildFromService(projectRef.TaskOwnership)
 	p.RunEveryMainlineCommit = projectRef.RunEveryMainlineCommit
 
@@ -906,20 +910,20 @@ func (p *APIProjectRef) BuildFromService(ctx context.Context, projectRef model.P
 }
 
 // DefaultUnsetBooleans is used to set booleans to their default value.
-func (pRef *APIProjectRef) DefaultUnsetBooleans() {
+func (pRef *APIProjectRef) DefaultUnsetBooleans(ctx context.Context) {
 	if pRef.DebugSpawnHostsDisabled == nil {
 		// DebugSpawnHostsDisabled needs to be on by default to enforce opt-in
 		pRef.DebugSpawnHostsDisabled = utility.TruePtr()
 	}
 	reflected := reflect.ValueOf(pRef).Elem()
-	recursivelyDefaultBooleans(reflected)
+	recursivelyDefaultBooleans(ctx, reflected)
 }
 
-func recursivelyDefaultBooleans(structToSet reflect.Value) {
+func recursivelyDefaultBooleans(ctx context.Context, structToSet reflect.Value) {
 	var err error
 	var i int
 	defer func() {
-		grip.Error(context.Background(), recovery.HandlePanicWithError(recover(), err, fmt.Sprintf("panicked while recursively defaulting booleans for field number %d", i)))
+		grip.Error(ctx, recovery.HandlePanicWithError(recover(), err, fmt.Sprintf("panicked while recursively defaulting booleans for field number %d", i)))
 	}()
 	falseType := reflect.TypeOf(false)
 	// Iterate through each field of the struct.
@@ -927,11 +931,11 @@ func recursivelyDefaultBooleans(structToSet reflect.Value) {
 		field := structToSet.Field(i)
 
 		// If it's a boolean pointer, set the default recursively.
-		if field.Type() == reflect.PtrTo(falseType) && util.IsFieldUndefined(field) {
+		if field.Type() == reflect.PtrTo(falseType) && util.IsFieldUndefined(ctx, field) {
 			field.Set(reflect.New(falseType))
 
 		} else if field.Kind() == reflect.Struct {
-			recursivelyDefaultBooleans(field)
+			recursivelyDefaultBooleans(ctx, field)
 		}
 	}
 }

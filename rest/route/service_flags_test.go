@@ -2,10 +2,9 @@ package route
 
 import (
 	"context"
-	"net/http"
+	"encoding/json"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -23,9 +22,9 @@ func (s *ServiceFlagsSuite) TestServiceFlagsGet() {
 
 	resp := route.Run(ctx)
 	s.NotNil(resp)
-	s.Equal(http.StatusOK, resp.Status())
+	s.Equal(200, resp.Status())
 
-	flags, ok := resp.Data().(*model.APIServiceFlags)
-	s.True(ok)
-	s.NotNil(flags)
+	data, err := json.Marshal(resp.Data())
+	s.NoError(err)
+	s.JSONEq(`{"static_api_keys_disabled":true}`, string(data))
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -27,6 +28,52 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"gopkg.in/yaml.v2"
 )
+
+// UserCanModifyPatch checks if a user has permission to modify a given patch.
+func UserCanModifyPatch(ctx context.Context, u *user.DBUser, p patch.Patch) bool {
+	if u == nil {
+		return false
+	}
+
+	if p.Author == u.Username() {
+		return true
+	}
+
+	if evergreen.PermissionsDisabledForTests() {
+		return true
+	}
+
+	rm := evergreen.GetEnvironment().RoleManager()
+	roles, err := rm.GetRoles(ctx, u.Roles())
+	if err != nil {
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message": "could not get roles for patch ownership check",
+			"user":    u.Username(),
+		}))
+		return false
+	}
+
+	checks := []gimlet.PermissionOpts{
+		{Resource: evergreen.SuperUserPermissionsID, ResourceType: evergreen.SuperUserResourceType, Permission: evergreen.PermissionAdminSettings, RequiredLevel: evergreen.AdminSettingsEdit.Value},
+		{Resource: p.Project, ResourceType: evergreen.ProjectResourceType, Permission: evergreen.PermissionProjectSettings, RequiredLevel: evergreen.ProjectSettingsEdit.Value},
+		{Resource: p.Project, ResourceType: evergreen.ProjectResourceType, Permission: evergreen.PermissionPatches, RequiredLevel: evergreen.PatchSubmitAdmin.Value},
+	}
+	for _, opts := range checks {
+		if gimlet.HasPermission(ctx, rm, opts, roles) {
+			return true
+		}
+	}
+
+	// API-only service users originally had patch edit access through PatchSubmit alone
+	// (before this ownership check existed), so requiring higher permissions now would
+	// break existing automation.
+	return u.IsAPIOnly() && gimlet.HasPermission(ctx, rm, gimlet.PermissionOpts{
+		Resource:      p.Project,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionPatches,
+		RequiredLevel: evergreen.PatchSubmit.Value,
+	}, roles)
+}
 
 type TaskVariantPairs struct {
 	ExecTasks    TVPairSet

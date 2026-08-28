@@ -1083,6 +1083,7 @@ buildvariants:
 	unfinalized := patch.Patch{
 		Id:                   mgobson.NewObjectId(),
 		Project:              projectRef.Id,
+		Author:               "user",
 		Githash:              "3c7bfeb82d492dc453e7431be664539c35b5db4b",
 		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
 		PatchedProjectConfig: config,
@@ -1187,6 +1188,7 @@ buildvariants:
 	patch2 := patch.Patch{
 		Id:                   mgobson.NewObjectId(),
 		Project:              projectRef.Id,
+		Author:               "user",
 		Githash:              "3c7bfeb82d492dc453e7431be664539c35b5db4b",
 		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
 		PatchedProjectConfig: config,
@@ -1221,6 +1223,7 @@ buildvariants:
 	patch3 := patch.Patch{
 		Id:                   mgobson.NewObjectId(),
 		Project:              projectRef.Id,
+		Author:               "user",
 		Githash:              "3c7bfeb82d492dc453e7431be664539c35b5db4b",
 		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
 		PatchedProjectConfig: config,
@@ -1500,6 +1503,7 @@ tasks:
 	unfinalized := patch.Patch{
 		Id:                   mgobson.NewObjectId(),
 		Project:              projectRef.Id,
+		Author:               "user",
 		Githash:              "3c7bfeb82d492dc453e7431be664539c35b5db4b",
 		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
 		PatchedProjectConfig: config,

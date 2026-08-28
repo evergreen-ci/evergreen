@@ -293,6 +293,7 @@ type Project {
   taskAnnotationSettings: TaskAnnotationSettings!
   taskOwnership: TaskOwnershipSettings
   testSelection: TestSelectionSettings
+  virtualTasksEnabled: Boolean
   triggers: [TriggerAlias!]
   versionControlEnabled: Boolean
   workstationConfig: WorkstationConfig!
