@@ -113,6 +113,7 @@
       "task_dispatch_disabled": false,
       "s3_binary_downloads_disabled": false,
       "large_parser_projects_disabled": false,
+      "cross_file_yaml_anchors_enabled": false,
       "monitor_disabled": false,
       "notifications_disabled": false,
       "taskrunner_disabled": false,
