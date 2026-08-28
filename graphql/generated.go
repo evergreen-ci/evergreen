@@ -344,6 +344,8 @@ type ComplexityRoot struct {
 		RetryFailedLogMoveLookbackDays   func(childComplexity int) int
 		RetryFailedLogMoveLookbackMonths func(childComplexity int) int
 		RetryFailedLogMoveMaxJobsPerRun  func(childComplexity int) int
+		SourceCacheBucket                func(childComplexity int) int
+		SourceCacheProjects              func(childComplexity int) int
 		TestResultsBucket                func(childComplexity int) int
 	}
 
@@ -3972,6 +3974,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.BucketsConfig.RetryFailedLogMoveMaxJobsPerRun(childComplexity), true
+	case "BucketsConfig.sourceCacheBucket":
+		if e.complexity.BucketsConfig.SourceCacheBucket == nil {
+			break
+		}
+
+		return e.complexity.BucketsConfig.SourceCacheBucket(childComplexity), true
+	case "BucketsConfig.sourceCacheProjects":
+		if e.complexity.BucketsConfig.SourceCacheProjects == nil {
+			break
+		}
+
+		return e.complexity.BucketsConfig.SourceCacheProjects(childComplexity), true
 	case "BucketsConfig.testResultsBucket":
 		if e.complexity.BucketsConfig.TestResultsBucket == nil {
 			break
@@ -18692,6 +18706,10 @@ func (ec *executionContext) fieldContext_AdminSettings_buckets(_ context.Context
 				return ec.fieldContext_BucketsConfig_retryFailedLogMoveMaxJobsPerRun(ctx, field)
 			case "testResultsBucket":
 				return ec.fieldContext_BucketsConfig_testResultsBucket(ctx, field)
+			case "sourceCacheBucket":
+				return ec.fieldContext_BucketsConfig_sourceCacheBucket(ctx, field)
+			case "sourceCacheProjects":
+				return ec.fieldContext_BucketsConfig_sourceCacheProjects(ctx, field)
 			case "internalBuckets":
 				return ec.fieldContext_BucketsConfig_internalBuckets(ctx, field)
 			case "credentials":
@@ -23362,6 +23380,84 @@ func (ec *executionContext) fieldContext_BucketsConfig_testResultsBucket(_ conte
 				return ec.fieldContext_BucketConfig_lifecycleSyncError(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type BucketConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BucketsConfig_sourceCacheBucket(ctx context.Context, field graphql.CollectedField, obj *model.APIBucketsConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BucketsConfig_sourceCacheBucket,
+		func(ctx context.Context) (any, error) {
+			return obj.SourceCacheBucket, nil
+		},
+		nil,
+		ec.marshalOBucketConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBucketConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BucketsConfig_sourceCacheBucket(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BucketsConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_BucketConfig_name(ctx, field)
+			case "testResultsPrefix":
+				return ec.fieldContext_BucketConfig_testResultsPrefix(ctx, field)
+			case "roleARN":
+				return ec.fieldContext_BucketConfig_roleARN(ctx, field)
+			case "type":
+				return ec.fieldContext_BucketConfig_type(ctx, field)
+			case "expirationDays":
+				return ec.fieldContext_BucketConfig_expirationDays(ctx, field)
+			case "transitionToIADays":
+				return ec.fieldContext_BucketConfig_transitionToIADays(ctx, field)
+			case "transitionToGlacierDays":
+				return ec.fieldContext_BucketConfig_transitionToGlacierDays(ctx, field)
+			case "lifecycleLastSyncedAt":
+				return ec.fieldContext_BucketConfig_lifecycleLastSyncedAt(ctx, field)
+			case "lifecycleSyncError":
+				return ec.fieldContext_BucketConfig_lifecycleSyncError(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BucketConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BucketsConfig_sourceCacheProjects(ctx context.Context, field graphql.CollectedField, obj *model.APIBucketsConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BucketsConfig_sourceCacheProjects,
+		func(ctx context.Context) (any, error) {
+			return obj.SourceCacheProjects, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BucketsConfig_sourceCacheProjects(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BucketsConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -81664,7 +81760,7 @@ func (ec *executionContext) unmarshalInputBucketsConfigInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"logBucket", "logBucketLongRetention", "logBucketFailedTasks", "longRetentionProjects", "retryFailedLogMoveLookbackDays", "retryFailedLogMoveLookbackMonths", "retryFailedLogMoveMaxJobsPerRun", "testResultsBucket", "internalBuckets", "credentials"}
+	fieldsInOrder := [...]string{"logBucket", "logBucketLongRetention", "logBucketFailedTasks", "longRetentionProjects", "retryFailedLogMoveLookbackDays", "retryFailedLogMoveLookbackMonths", "retryFailedLogMoveMaxJobsPerRun", "testResultsBucket", "sourceCacheBucket", "sourceCacheProjects", "internalBuckets", "credentials"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -81727,6 +81823,20 @@ func (ec *executionContext) unmarshalInputBucketsConfigInput(ctx context.Context
 				return it, err
 			}
 			it.TestResultsBucket = data
+		case "sourceCacheBucket":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sourceCacheBucket"))
+			data, err := ec.unmarshalOBucketConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBucketConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SourceCacheBucket = data
+		case "sourceCacheProjects":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sourceCacheProjects"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SourceCacheProjects = data
 		case "internalBuckets":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("internalBuckets"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
@@ -93137,6 +93247,10 @@ func (ec *executionContext) _BucketsConfig(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._BucketsConfig_retryFailedLogMoveMaxJobsPerRun(ctx, field, obj)
 		case "testResultsBucket":
 			out.Values[i] = ec._BucketsConfig_testResultsBucket(ctx, field, obj)
+		case "sourceCacheBucket":
+			out.Values[i] = ec._BucketsConfig_sourceCacheBucket(ctx, field, obj)
+		case "sourceCacheProjects":
+			out.Values[i] = ec._BucketsConfig_sourceCacheProjects(ctx, field, obj)
 		case "internalBuckets":
 			out.Values[i] = ec._BucketsConfig_internalBuckets(ctx, field, obj)
 		case "credentials":

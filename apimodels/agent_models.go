@@ -396,6 +396,9 @@ type ExpansionsAndVars struct {
 	// ArtifactAWSAccountsWithoutLifecycleRules contains the AWS account IDs of the accounts that we
 	// calculate s3 costs for but cannot read lifecycle rules from.
 	ArtifactAWSAccountsWithoutLifecycleRules []string `json:"artifact_aws_accounts_without_lifecycle_rules,omitempty"`
+	// SourceCacheBucket is the git.get_project source cache bucket resolved for
+	// the task's project. It is zero when the project is not opted in.
+	SourceCacheBucket evergreen.BucketConfig `json:"source_cache_bucket,omitempty"`
 }
 
 // CheckRunOutput represents the output for a CheckRun.

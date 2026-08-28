@@ -83,6 +83,26 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			assert.Equal(t, map[string]bool{"b": true}, data.PrivateVars)
 			assert.Equal(t, []string{"pass", "secret"}, data.RedactKeys)
 		},
+		"RunReturnsSourceCacheBucketForAllowlistedProject": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
+			rh.settings.Buckets.SourceCacheBucket = evergreen.BucketConfig{Name: "source-cache"}
+			rh.settings.Buckets.SourceCacheProjects = []string{"p1"}
+			rh.taskID = "t1"
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			data, ok := resp.Data().(apimodels.ExpansionsAndVars)
+			require.True(t, ok)
+			assert.Equal(t, "source-cache", data.SourceCacheBucket.Name)
+		},
+		"RunReturnsNoSourceCacheBucketForProjectNotAllowlisted": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
+			rh.settings.Buckets.SourceCacheBucket = evergreen.BucketConfig{Name: "source-cache"}
+			rh.settings.Buckets.SourceCacheProjects = nil
+			rh.taskID = "t1"
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			data, ok := resp.Data().(apimodels.ExpansionsAndVars)
+			require.True(t, ok)
+			assert.Zero(t, data.SourceCacheBucket)
+		},
 		"RunSucceedsWithHostDistroExpansions": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
 			rh.taskID = "t1"
 			rh.hostID = "host_id"
