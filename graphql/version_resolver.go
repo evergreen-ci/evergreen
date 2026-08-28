@@ -134,13 +134,34 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIV
 }
 
 // Cost is the field resolver for Version.cost. It applies RoundCost to all adjusted fields
-// so the GraphQL API returns clean values without floating-point noise.
+// so the GraphQL API returns clean values without floating-point noise. For patch versions
+// with child patches, it also includes the child patches' costs in the total.
 func (r *versionResolver) Cost(ctx context.Context, obj *restModel.APIVersion) (*cost.Cost, error) {
 	if obj.Cost == nil {
 		return nil, nil
 	}
+
+	// If the version is a patch requester, we need to include costs of its child patches.
+	childPatchesCost := float64(0)
+	if obj.IsPatchRequester() {
+		versionID := utility.FromStringPtr(obj.Id)
+		foundPatch, err := loaders.GetPatch(ctx, versionID)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s' for cost: %s", versionID, err.Error()), err)
+		}
+		if foundPatch != nil && len(foundPatch.Triggers.ChildPatches) > 0 {
+			childVersions, err := model.VersionFind(ctx, model.VersionByIds(foundPatch.Triggers.ChildPatches).WithFields(model.VersionCostKey))
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding child versions for cost: %s", err.Error()), err)
+			}
+			childPatchesCost, _ = cost.SumPerChildVersionAdjustedTotals(len(childVersions), func(i int) (actual, predicted *cost.Cost) {
+				return &childVersions[i].Cost, nil
+			})
+		}
+	}
 	rounded := obj.Cost.RoundedBase()
-	rounded.Total = cost.RoundCost(obj.Cost.AdjustedTotal())
+	rounded.ChildPatchesTotalCost = cost.RoundCost(childPatchesCost)
+	rounded.Total = cost.RoundCost(obj.Cost.AdjustedTotal() + childPatchesCost)
 	return &rounded, nil
 }
 
