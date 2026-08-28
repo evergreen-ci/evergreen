@@ -115,15 +115,6 @@ type TaskInfo {
   name: String!
 }
 
-type DistroInfo {
-  id: String
-  bootstrapMethod: String
-  isVirtualWorkStation: Boolean
-  isWindows: Boolean
-  user: String
-  workDir: String
-}
-
 type InstanceTag {
   canBeModified: Boolean!
   key: String!

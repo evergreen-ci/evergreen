@@ -229,8 +229,6 @@ models:
         fieldName: "Name"
   DistroInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDistro
-  DistroInfo:
-    model: github.com/evergreen-ci/evergreen/rest/model.DistroInfo
   DockerConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDockerConfig
   DockerConfigInput:
