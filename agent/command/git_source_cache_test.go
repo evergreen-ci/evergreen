@@ -199,6 +199,28 @@ func TestBuildPostRestoreCommand(t *testing.T) {
 		assert.Contains(t, joined, "git remote set-url origin https://x-access-token:"+projectGitHubToken+"@github.com/some-org/some-repo.git")
 	})
 
+	// The cache key pins the revision but not the branch, so a hit produced by
+	// a different branch at the same commit would otherwise report that
+	// branch's name.
+	t.Run("ReconcilesBranchOnANonPRHit", func(t *testing.T) {
+		conf := sourceCacheTestConfig()
+		joined := strings.Join(c.buildPostRestoreCommand(conf, cloneOpts{owner: "some-org", repo: "some-repo", branch: "release-v1"}, conf.Task.Revision, false), "\n")
+		assert.Contains(t, joined, `git checkout -B 'release-v1' abc123`)
+	})
+
+	t.Run("SkipsBranchReconciliationWhenPRCheckoutRuns", func(t *testing.T) {
+		conf := prConf()
+		joined := strings.Join(c.buildPostRestoreCommand(conf, cloneOpts{owner: "some-org", repo: "some-repo", branch: "release-v1"}, conf.Task.Revision, true), "\n")
+		assert.NotContains(t, joined, "git checkout -B")
+		assert.Contains(t, joined, `git fetch origin "pull/9001/head:evg-pr-test-`)
+	})
+
+	t.Run("OmitsBranchReconciliationWithoutABranch", func(t *testing.T) {
+		conf := sourceCacheTestConfig()
+		joined := strings.Join(c.buildPostRestoreCommand(conf, cloneOpts{owner: "some-org", repo: "some-repo"}, conf.Task.Revision, false), "\n")
+		assert.NotContains(t, joined, "git checkout -B")
+	})
+
 	t.Run("FetchesPRRefWithAuthenticatedOrigin", func(t *testing.T) {
 		conf := prConf()
 		joined := strings.Join(c.buildPostRestoreCommand(conf, cloneOpts{owner: "some-org", repo: "some-repo", token: projectGitHubToken}, conf.Task.Revision, true), "\n")
@@ -256,6 +278,17 @@ func TestPostRestoreCommandFailsOnWrongRevision(t *testing.T) {
 	require.NoError(t, err)
 	conf.Task.Revision = strings.TrimSpace(string(headBytes))
 	assert.NoError(t, c.runGitScript(ctx, logger, conf, c.buildPostRestoreCommand(conf, opts, conf.Task.Revision, false)))
+
+	// The tree was produced on main, but this task asked for a branch that
+	// points at the same commit, so the restored tree has to report that one.
+	branchOpts := cloneOpts{owner: "some-org", repo: "some-repo", branch: "release-v1"}
+	require.NoError(t, c.runGitScript(ctx, logger, conf, c.buildPostRestoreCommand(conf, branchOpts, conf.Task.Revision, false)))
+	branchBytes, err := exec.CommandContext(ctx, "git", "-C", repoDir, "rev-parse", "--abbrev-ref", "HEAD").Output()
+	require.NoError(t, err)
+	assert.Equal(t, "release-v1", strings.TrimSpace(string(branchBytes)))
+	headAfter, err := exec.CommandContext(ctx, "git", "-C", repoDir, "rev-parse", "HEAD").Output()
+	require.NoError(t, err)
+	assert.Equal(t, conf.Task.Revision, strings.TrimSpace(string(headAfter)))
 }
 
 func TestSourceCacheSpanDurationsAreNumericMilliseconds(t *testing.T) {

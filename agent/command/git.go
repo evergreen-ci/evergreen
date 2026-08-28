@@ -552,12 +552,18 @@ func (c *gitFetchProject) saveSourceCache(ctx context.Context, comm client.Commu
 }
 
 // buildPostRestoreCommand returns the script run over a restored tree. It
-// verifies HEAD against the expected revision and optionally checks out a PR.
+// verifies HEAD against the expected revision, reconciles the checked out
+// branch, and optionally checks out a PR.
 func (c *gitFetchProject) buildPostRestoreCommand(conf *internal.TaskConfig, opts cloneOpts, revision string, runPRCheckout bool) []string {
 	cmds := c.scriptInProjectDir(fmt.Sprintf(`test "$(git rev-parse HEAD)" = "%s"`, revision))
 	cmds = append(cmds, setOriginURLCommands(opts)...)
 	if runPRCheckout {
 		cmds = append(cmds, prCheckoutCommands(conf)...)
+	} else if opts.branch != "" {
+		// The cache key pins the revision but not the branch, so a producer
+		// that cloned a different branch at the same commit would leave that
+		// branch name behind for `git branch` to report.
+		cmds = append(cmds, fmt.Sprintf(`git checkout -B '%s' %s`, opts.branch, revision))
 	}
 	return append(cmds, "git log --oneline -n 10")
 }
