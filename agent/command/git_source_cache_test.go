@@ -1,9 +1,11 @@
 package command
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
@@ -446,4 +449,120 @@ func TestPostSaveCommandRestoresSubmoduleTokens(t *testing.T) {
 	origin, err := os.ReadFile(parentConfig)
 	require.NoError(t, err)
 	assert.NotContains(t, string(origin), "x-access-token:"+projectGitHubToken+"@x-access-token:")
+}
+
+// mergeQueueTestConfig returns a merge queue task config keyed on its cached queue head.
+func mergeQueueTestConfig() *internal.TaskConfig {
+	conf := sourceCacheTestConfig()
+	conf.Task.Requester = evergreen.GithubMergeRequester
+	conf.GithubMergeData.HeadSHA = "55ca6286e3e4f4fba5d0448333fa99fc5a404a73"
+	conf.GithubMergeData.HeadBranch = "gh-readonly-queue/main/pr-9001"
+	return conf
+}
+
+// stubMergeQueueRefExists swaps the GitHub lookup for the duration of a test.
+func stubMergeQueueRefExists(t *testing.T, exists bool, err error) *int {
+	calls := 0
+	original := mergeQueueRefExists
+	mergeQueueRefExists = func(ctx context.Context, owner, repo, ref, token string) (bool, error) {
+		calls++
+		return exists, err
+	}
+	t.Cleanup(func() { mergeQueueRefExists = original })
+	return &calls
+}
+
+func TestMergeQueueRefDeletedOnlyChecksMergeQueueTasks(t *testing.T) {
+	opts := sourceCacheTestOpts()
+	opts.token = "a-token"
+
+	for _, tc := range []struct {
+		name   string
+		mutate func(*internal.TaskConfig, *cloneOpts)
+	}{
+		{
+			name:   "MainlineTaskIsNotChecked",
+			mutate: func(conf *internal.TaskConfig, _ *cloneOpts) { *conf = *sourceCacheTestConfig() },
+		},
+		{
+			name: "PullRequestTaskIsNotChecked",
+			mutate: func(conf *internal.TaskConfig, _ *cloneOpts) {
+				*conf = *sourceCacheTestConfig()
+				conf.Task.Requester = evergreen.GithubPRRequester
+			},
+		},
+		{
+			name:   "MergeQueueTaskWithoutAHeadBranchIsNotChecked",
+			mutate: func(conf *internal.TaskConfig, _ *cloneOpts) { conf.GithubMergeData.HeadBranch = "" },
+		},
+		{
+			name:   "MergeQueueTaskWithoutATokenIsNotChecked",
+			mutate: func(_ *internal.TaskConfig, opts *cloneOpts) { opts.token = "" },
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			calls := stubMergeQueueRefExists(t, false, nil)
+			conf, tcOpts := mergeQueueTestConfig(), opts
+			tc.mutate(conf, &tcOpts)
+
+			deleted, err := mergeQueueRefDeleted(t.Context(), client.NewMock("http://localhost.com"), conf, "", tcOpts)
+			assert.NoError(t, err)
+			// A task that is never checked has no definite answer, so it must not fail fast.
+			assert.False(t, deleted)
+			assert.Zero(t, *calls)
+		})
+	}
+}
+
+func TestMergeQueueRefDeletedReportsGitHubsAnswer(t *testing.T) {
+	opts := sourceCacheTestOpts()
+	opts.token = "a-token"
+	comm := client.NewMock("http://localhost.com")
+
+	t.Run("DeletedRefIsReported", func(t *testing.T) {
+		calls := stubMergeQueueRefExists(t, false, nil)
+		deleted, err := mergeQueueRefDeleted(t.Context(), comm, mergeQueueTestConfig(), "", opts)
+		assert.NoError(t, err)
+		assert.True(t, deleted)
+		assert.Equal(t, 1, *calls)
+	})
+
+	t.Run("ExistingRefIsNotReported", func(t *testing.T) {
+		stubMergeQueueRefExists(t, true, nil)
+		deleted, err := mergeQueueRefDeleted(t.Context(), comm, mergeQueueTestConfig(), "", opts)
+		assert.NoError(t, err)
+		assert.False(t, deleted)
+	})
+
+	t.Run("LookupErrorIsReturnedWithoutADeletedVerdict", func(t *testing.T) {
+		stubMergeQueueRefExists(t, false, errors.New("GitHub is down"))
+		deleted, err := mergeQueueRefDeleted(t.Context(), comm, mergeQueueTestConfig(), "", opts)
+		assert.ErrorContains(t, err, "GitHub is down")
+		assert.False(t, deleted)
+	})
+}
+
+func TestFetchOrRestoreSourceFailsFastWhenTheMergeQueueRefIsDeleted(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		// The check lives behind the source cache, which only runs on Linux.
+		t.Skip("the source cache is only enabled on Linux agents")
+	}
+	ctx := t.Context()
+	opts := sourceCacheTestOpts()
+	opts.token = "a-token"
+
+	calls := stubMergeQueueRefExists(t, false, nil)
+	comm := client.NewMock("http://localhost.com")
+	conf := mergeQueueTestConfig()
+	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+	require.NoError(t, err)
+	c := &gitFetchProject{Directory: "src"}
+
+	// No Jasper manager is set, so reaching a restore or a clone panics rather than quietly passing.
+	err = c.fetchOrRestoreSource(ctx, comm, logger, conf, opts)
+
+	require.ErrorContains(t, err, mergeQueueRefGoneMessage)
+	assert.Equal(t, 1, *calls)
+	assert.True(t, c.refNotFound)
+	assert.True(t, comm.MarkedMergeQueueGitRefNotFound)
 }

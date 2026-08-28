@@ -473,6 +473,20 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 		return err
 	}
 
+	// A cache hit on the merge SHA never contacts GitHub, so nothing else would notice a deleted ref.
+	deleted, err := mergeQueueRefDeleted(ctx, comm, conf, c.Token, opts)
+	if err != nil {
+		// The clone's own check is still a backstop for an inconclusive answer.
+		logger.Task().Warningf(ctx, "Checking whether the merge queue ref still exists: %s", err)
+	} else if deleted {
+		c.refNotFound = true
+		if markErr := comm.MarkMergeQueueGitRefNotFound(ctx, conf.TaskData()); markErr != nil {
+			logger.Task().Warningf(ctx, "Failed to mark git ref not found: %s", markErr)
+		}
+		setSourceCacheSpanSkipped(ctx, "the merge queue ref was deleted")
+		return errors.New(mergeQueueRefGoneMessage)
+	}
+
 	fallbackReason := ""
 	for _, revision := range sc.restoreRevisions() {
 		_, remoteKey, err := sc.cacheKeysForRevision(revision)
@@ -668,23 +682,14 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 		opts.token = token
 
 		// On the second attempt, check if the merge queue ref was deleted before retrying.
-		if attempt == 2 && conf.Task.Requester == evergreen.GithubMergeRequester && conf.GithubMergeData.HeadBranch != "" {
-			ref := "heads/" + conf.GithubMergeData.HeadBranch
-			// A user-supplied clone token can't authenticate an app-scoped API call.
-			appToken := token
-			var tokenErr error
-			if c.Token != "" {
-				appToken, tokenErr = comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), opts.owner, opts.repo, false)
+		if attempt == 2 {
+			deleted, checkErr := mergeQueueRefDeleted(ctx, comm, conf, c.Token, opts)
+			if checkErr != nil {
+				return checkErr
 			}
-			if tokenErr == nil && appToken != "" {
-				exists, checkErr := thirdparty.MergeQueueRefExists(ctx, opts.owner, opts.repo, ref, appToken)
-				if checkErr != nil {
-					return errors.Wrap(checkErr, "checking if merge queue ref exists")
-				}
-				if !exists {
-					c.refNotFound = true
-					return errors.New("the GitHub merge SHA is not available most likely because the merge completed or was aborted")
-				}
+			if deleted {
+				c.refNotFound = true
+				return errors.New(mergeQueueRefGoneMessage)
 			}
 		}
 
@@ -723,6 +728,39 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 		return nil
 	})
 	return token, err
+}
+
+// mergeQueueRefGoneMessage is the error a merge queue task fails with once its head ref is confirmed deleted.
+const mergeQueueRefGoneMessage = "the GitHub merge SHA is not available most likely because the merge completed or was aborted"
+
+// mergeQueueRefExists is a variable so tests can check the fail-fast path without reaching GitHub.
+var mergeQueueRefExists = thirdparty.MergeQueueRefExists
+
+// mergeQueueRefDeleted reports whether this merge queue task's head ref is gone from GitHub, meaning the
+// queue item merged or was kicked out. It reports false whenever there is no definite answer to be had.
+func mergeQueueRefDeleted(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, userToken string, opts cloneOpts) (bool, error) {
+	if conf.Task.Requester != evergreen.GithubMergeRequester || conf.GithubMergeData.HeadBranch == "" {
+		return false, nil
+	}
+
+	// A user-supplied clone token can't authenticate an app-scoped API call.
+	appToken := opts.token
+	if userToken != "" {
+		var err error
+		appToken, err = comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), opts.owner, opts.repo, false)
+		if err != nil {
+			return false, nil
+		}
+	}
+	if appToken == "" {
+		return false, nil
+	}
+
+	exists, err := mergeQueueRefExists(ctx, opts.owner, opts.repo, "heads/"+conf.GithubMergeData.HeadBranch, appToken)
+	if err != nil {
+		return false, errors.Wrap(err, "checking if merge queue ref exists")
+	}
+	return !exists, nil
 }
 
 func refreshCloneToken(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, owner, repo string) (string, error) {
@@ -769,7 +807,7 @@ func (c *gitFetchProject) retryFetch(ctx context.Context, logger client.LoggerPr
 					if markErr := comm.MarkMergeQueueGitRefNotFound(ctx, conf.TaskData()); markErr != nil {
 						logger.Task().Warningf(ctx, "Failed to mark git ref not found: %s", markErr)
 					}
-					return false, errors.Wrap(err, "the GitHub merge SHA is not available most likely because the merge completed or was aborted")
+					return false, errors.Wrap(err, mergeQueueRefGoneMessage)
 				}
 				return true, errors.Wrapf(err, "attempt %d", attemptNum)
 			}
