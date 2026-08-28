@@ -1606,9 +1606,11 @@ func getWaterfallFromContext(ctx context.Context) (*Waterfall, bool) {
 	return nil, false
 }
 
+// Grab options provided to parent waterfall resolver for use in nested resolvers
 func getWaterfallFilterOptionsFromContext(ctx context.Context) model.WaterfallOptions {
 	for fc := graphql.GetFieldContext(ctx); fc != nil; fc = fc.Parent {
 		if options, ok := fc.Args["options"].(WaterfallOptions); ok && fc.Object == "Query" && fc.Field.Name == "waterfall" {
+			// Ignore options if this flag is specified
 			if utility.FromBoolTPtr(options.IncludeAllBuildsAndTasks) {
 				return model.WaterfallOptions{}
 			}
