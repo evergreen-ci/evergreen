@@ -1,8 +1,10 @@
 package graphql
 
 import (
+	"cmp"
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/graphql/loaders"
@@ -140,6 +142,11 @@ func (r *hostResolver) Volumes(ctx context.Context, obj *host.Host) ([]*host.Vol
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprint("getting volumes", err.Error()))
 	}
+
+	// Preserve the order that the volumes appear in the host document
+	slices.SortStableFunc(volumes, func(a, b host.Volume) int {
+		return cmp.Compare(slices.Index(volumeIds, a.ID), slices.Index(volumeIds, b.ID))
+	})
 
 	volumePtrs := make([]*host.Volume, 0, len(volumes))
 	for i := range volumes {
