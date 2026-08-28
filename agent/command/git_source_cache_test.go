@@ -349,3 +349,101 @@ func TestSourceCacheArchiveRestoresIntoADifferentDirectory(t *testing.T) {
 	_, err = os.Stat(filepath.Join(consumerWorkDir, "src"))
 	assert.True(t, os.IsNotExist(err))
 }
+
+// TestPreSaveCommandScrubsSubmoduleTokens runs the pre-save script over a real
+// repo, since the submodule scrub is a shell pipeline whose behavior a string
+// assertion would not catch.
+func TestPreSaveCommandScrubsSubmoduleTokens(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is not installed")
+	}
+	ctx := t.Context()
+
+	workDir := t.TempDir()
+	repoDir := filepath.Join(workDir, "src")
+	for _, args := range [][]string{
+		{"init", "--initial-branch=main", repoDir},
+		{"-C", repoDir, "remote", "add", "origin", "https://x-access-token:" + projectGitHubToken + "@github.com/some-org/some-repo.git"},
+	} {
+		require.NoError(t, exec.CommandContext(ctx, "git", args...).Run())
+	}
+	require.NoError(t, os.MkdirAll(filepath.Join(repoDir, ".git", "modules", "sub"), 0755))
+	tokenURL := "https://x-access-token:" + projectGitHubToken + "@github.com/some-org/some-sub.git"
+	// Git resolves a relative submodule URL with the parent's credential and
+	// records it in both the parent config and the submodule's own config.
+	parentConfig := filepath.Join(repoDir, ".git", "config")
+	existing, err := os.ReadFile(parentConfig)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(parentConfig,
+		append(existing, []byte("[submodule \"sub\"]\n\turl = "+tokenURL+"\n")...), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(repoDir, ".git", "modules", "sub", "config"),
+		[]byte("[remote \"origin\"]\n\turl = "+tokenURL+"\n"), 0644))
+
+	c := &gitFetchProject{Directory: "src"}
+	script := strings.Join(c.buildPreSaveCommand(cloneOpts{owner: "some-org", repo: "some-repo", token: projectGitHubToken}), "\n")
+	cmd := exec.CommandContext(ctx, "bash", "-c", script)
+	cmd.Dir = workDir
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(out))
+
+	for _, config := range []string{
+		filepath.Join(repoDir, ".git", "config"),
+		filepath.Join(repoDir, ".git", "modules", "sub", "config"),
+	} {
+		contents, err := os.ReadFile(config)
+		require.NoError(t, err)
+		assert.NotContains(t, string(contents), projectGitHubToken, "token left in '%s'", config)
+		assert.Contains(t, string(contents), "https://github.com/some-org/some-sub.git")
+	}
+}
+
+// TestPostSaveCommandRestoresSubmoduleTokens runs the scrub and then the
+// restore over a real repo, since together they have to leave the submodule
+// remotes usable again for the rest of the producer's task.
+func TestPostSaveCommandRestoresSubmoduleTokens(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is not installed")
+	}
+	ctx := t.Context()
+
+	workDir := t.TempDir()
+	repoDir := filepath.Join(workDir, "src")
+	opts := cloneOpts{owner: "some-org", repo: "some-repo", token: projectGitHubToken}
+	tokenURL := "https://x-access-token:" + projectGitHubToken + "@github.com/some-org/some-sub.git"
+	for _, args := range [][]string{
+		{"init", "--initial-branch=main", repoDir},
+		{"-C", repoDir, "remote", "add", "origin", "https://x-access-token:" + projectGitHubToken + "@github.com/some-org/some-repo.git"},
+	} {
+		require.NoError(t, exec.CommandContext(ctx, "git", args...).Run())
+	}
+	require.NoError(t, os.MkdirAll(filepath.Join(repoDir, ".git", "modules", "sub"), 0755))
+	parentConfig := filepath.Join(repoDir, ".git", "config")
+	existing, err := os.ReadFile(parentConfig)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(parentConfig,
+		append(existing, []byte("[submodule \"sub\"]\n\turl = "+tokenURL+"\n")...), 0644))
+	moduleConfig := filepath.Join(repoDir, ".git", "modules", "sub", "config")
+	require.NoError(t, os.WriteFile(moduleConfig,
+		[]byte("[remote \"origin\"]\n\turl = "+tokenURL+"\n"), 0644))
+
+	c := &gitFetchProject{Directory: "src"}
+	runScript := func(cmds []string) {
+		cmd := exec.CommandContext(ctx, "bash", "-c", strings.Join(cmds, "\n"))
+		cmd.Dir = workDir
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, string(out))
+	}
+	runScript(c.buildPreSaveCommand(opts))
+	runScript(c.buildPostSaveCommand(opts))
+
+	for _, config := range []string{parentConfig, moduleConfig} {
+		contents, err := os.ReadFile(config)
+		require.NoError(t, err)
+		assert.Contains(t, string(contents), tokenURL, "submodule credential not restored in '%s'", config)
+	}
+	// The origin is set explicitly rather than by the rewrite, so it must not
+	// have picked up a second credential.
+	origin, err := os.ReadFile(parentConfig)
+	require.NoError(t, err)
+	assert.NotContains(t, string(origin), "x-access-token:"+projectGitHubToken+"@x-access-token:")
+}

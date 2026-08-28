@@ -558,6 +558,9 @@ func (c *gitFetchProject) saveSourceCache(ctx context.Context, comm client.Commu
 func (c *gitFetchProject) buildPostRestoreCommand(conf *internal.TaskConfig, opts cloneOpts, revision string, runPRCheckout bool) []string {
 	cmds := c.scriptInProjectDir(fmt.Sprintf(`test "$(git rev-parse HEAD)" = "%s"`, revision))
 	cmds = append(cmds, setOriginURLCommands(opts)...)
+	// The archive was scrubbed of the producer's credentials, so a restored
+	// tree needs this task's own put into the submodule remotes.
+	cmds = append(cmds, restoreGitConfigCredentialsCommands(opts.token)...)
 	if runPRCheckout {
 		cmds = append(cmds, prCheckoutCommands(conf)...)
 	} else if opts.branch != "" {
@@ -574,13 +577,40 @@ func (c *gitFetchProject) buildPostRestoreCommand(conf *internal.TaskConfig, opt
 // own credential, so both are scrubbed.
 func (c *gitFetchProject) buildPreSaveCommand(opts cloneOpts) []string {
 	tokenless := cloneOpts{owner: opts.owner, repo: opts.repo}
-	return append(c.scriptInProjectDir("rm -rf .git/hooks"), setOriginURLCommands(tokenless)...)
+	cmds := append(c.scriptInProjectDir("rm -rf .git/hooks"), setOriginURLCommands(tokenless)...)
+	return append(cmds, scrubGitConfigCredentialsCommand)
 }
 
-// buildPostSaveCommand puts the task's own authenticated origin URL back after
-// the scrubbed tree has been archived.
+// scrubGitConfigCredentialsCommand strips the userinfo from every remote URL
+// recorded under .git. Submodule URLs are resolved with the parent's credential
+// and written to .git/config and .git/modules/*/config, so setting origin alone
+// would leave the producer's token in the archive.
+const scrubGitConfigCredentialsCommand = `find .git -type f -name config | while read -r cfg; do sed -E 's#://[^/@]*@#://#g' "$cfg" > "$cfg.scrubbed" && mv "$cfg.scrubbed" "$cfg"; done`
+
+// restoreGitConfigCredentialsCommands is the inverse of
+// scrubGitConfigCredentialsCommand for submodules: it puts the task's own
+// credential back into the scrubbed GitHub URLs so submodule fetches keep
+// working. URLs that already carry userinfo, such as the origin the caller set
+// separately, do not match and are left alone.
+func restoreGitConfigCredentialsCommands(token string) []string {
+	if token == "" {
+		return nil
+	}
+	rewrite := fmt.Sprintf(`s#://github\.com/#://x-access-token:%s@github.com/#g`, token)
+	return []string{
+		"set +o xtrace",
+		fmt.Sprintf("echo %s", strconv.Quote("restoring submodule credentials in .git configs")),
+		fmt.Sprintf(`find .git -type f -name config | while read -r cfg; do sed -E '%s' "$cfg" > "$cfg.restored" && mv "$cfg.restored" "$cfg"; done`, rewrite),
+		"set -o xtrace",
+	}
+}
+
+// buildPostSaveCommand puts the task's own credentials back after the scrubbed
+// tree has been archived, for origin and for any submodule remotes the scrub
+// stripped.
 func (c *gitFetchProject) buildPostSaveCommand(opts cloneOpts) []string {
-	return append(c.scriptInProjectDir(), setOriginURLCommands(opts)...)
+	cmds := append(c.scriptInProjectDir(), setOriginURLCommands(opts)...)
+	return append(cmds, restoreGitConfigCredentialsCommands(opts.token)...)
 }
 
 // scriptInProjectDir starts a git script in the project directory, with cmds
