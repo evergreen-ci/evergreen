@@ -204,7 +204,7 @@ func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating admins for repo '%s'", h.repoID))
 	}
 
-	if resp := saveProjectOrRepoSettings(ctx, &h.newRepoRef.ProjectRef, h.apiNewRepoRef, h.user.Username(), before); resp != nil {
+	if resp := updateProjectOrRepoSettings(ctx, &h.newRepoRef.ProjectRef, h.apiNewRepoRef, h.user.Username(), before); resp != nil {
 		return resp
 	}
 

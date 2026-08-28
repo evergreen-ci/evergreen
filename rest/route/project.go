@@ -413,7 +413,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating admins for project '%s'", h.project))
 	}
 
-	if resp := saveProjectOrRepoSettings(ctx, h.newProjectRef, h.apiNewProjectRef, h.user.Username(), before); resp != nil {
+	if resp := updateProjectOrRepoSettings(ctx, h.newProjectRef, h.apiNewProjectRef, h.user.Username(), before); resp != nil {
 		return resp
 	}
 
@@ -479,10 +479,10 @@ func validateProjectRefSettings(ctx context.Context, pRef *dbModel.ProjectRef) g
 	return nil
 }
 
-// saveProjectOrRepoSettings saves variables, aliases, subscriptions, and
+// updateProjectOrRepoSettings updates variables, aliases, subscriptions, and
 // subscription deletions, then logs the modification event. These operations
 // are shared between the project PATCH and repo PATCH handlers.
-func saveProjectOrRepoSettings(ctx context.Context, pRef *dbModel.ProjectRef, apiRef *model.APIProjectRef, username string, before *dbModel.ProjectSettings) gimlet.Responder {
+func updateProjectOrRepoSettings(ctx context.Context, pRef *dbModel.ProjectRef, apiRef *model.APIProjectRef, username string, before *dbModel.ProjectSettings) gimlet.Responder {
 	if err := data.UpdateProjectVars(ctx, pRef.Id, &apiRef.Variables, false); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating variables for project '%s'", pRef.Id))
 	}
