@@ -196,6 +196,7 @@ func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return resp
 	}
 
+	// Complete all updates to the repo ref.
 	if err = h.newRepoRef.Replace(ctx); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating repo '%s'", h.repoID))
 	}
