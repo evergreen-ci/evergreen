@@ -18,6 +18,8 @@ import (
 )
 
 func Validate() cli.Command {
+	const yamlAnchorsFlagName = "yaml-anchors"
+
 	return cli.Command{
 		Name:  "validate",
 		Usage: "verify that an evergreen project config is valid",
@@ -33,6 +35,9 @@ func Validate() cli.Command {
 		}, cli.StringFlag{
 			Name:  joinFlagNames(projectFlagName, "p"),
 			Usage: "specify project identifier in order to run validation requiring project settings",
+		}, cli.BoolFlag{
+			Name:  yamlAnchorsFlagName,
+			Usage: "(BETA) enable cross-file YAML anchors in included files",
 		}),
 		Before: mergeBeforeFuncs(autoUpdateCLI, setPlainLogger, requirePathFlag),
 		Action: func(c *cli.Context) error {
@@ -44,6 +49,7 @@ func Validate() cli.Command {
 			quiet := c.Bool(quietFlagName)
 			errorOnWarnings := c.Bool(errorOnWarningsFlagName)
 			projectID := c.String(projectFlagName)
+			enableAnchors := c.Bool(yamlAnchorsFlagName)
 			localModulePaths := c.StringSlice(localModulesFlagName)
 			localModuleMap, err := getLocalModulesFromInput(localModulePaths)
 			if err != nil {
@@ -54,6 +60,7 @@ func Validate() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
+
 			if projectID == "" {
 				cwd, err := os.Getwd()
 				grip.Error(ctx, errors.Wrap(err, "getting current working directory"))
@@ -74,35 +81,15 @@ func Validate() cli.Command {
 				}
 				catcher := grip.NewSimpleCatcher()
 				for _, file := range files {
-					catcher.Add(validateFile(conf, filepath.Join(path, file.Name()), quiet, errorOnWarnings, localModuleMap, projectID))
+					catcher.Add(validateFile(conf, filepath.Join(path, file.Name()), quiet, errorOnWarnings, enableAnchors, localModuleMap, projectID))
 				}
 				return catcher.Resolve()
 			}
 
-			return validateFile(conf, path, quiet, errorOnWarnings, localModuleMap, projectID)
+			return validateFile(conf, path, quiet, errorOnWarnings, enableAnchors, localModuleMap, projectID)
 		},
 	}
 }
-
-// getCrossFileYAMLAnchorsEnabled fetches the CrossFileYAMLAnchorsEnabled service flag from the
-// server via REST.
-func getCrossFileYAMLAnchorsEnabled(conf *ClientSettings) (bool, error) {
-	ctx := context.Background()
-	client, err := conf.setupRestCommunicator(ctx, false)
-	if err != nil {
-		return false, errors.Wrap(err, "setting up REST communicator")
-	}
-	defer client.Close()
-	settings, err := client.GetSettings(ctx)
-	if err != nil {
-		return false, errors.Wrap(err, "getting admin settings")
-	}
-	if settings == nil {
-		return false, nil
-	}
-	return settings.ServiceFlags.CrossFileYAMLAnchorsEnabled, nil
-}
-
 func getLocalModulesFromInput(localModulePaths []string) (map[string]string, error) {
 	moduleMap := make(map[string]string)
 	catcher := grip.NewBasicCatcher()
@@ -117,8 +104,8 @@ func getLocalModulesFromInput(localModulePaths []string) (map[string]string, err
 	return moduleMap, catcher.Resolve()
 }
 
-func validateFile(conf *ClientSettings, path string, quiet, errorOnWarnings bool, localModuleMap map[string]string, projectID string) error {
-	projectYaml, err := loadProjectYAML(conf, path, quiet, errorOnWarnings, localModuleMap, projectID)
+func validateFile(conf *ClientSettings, path string, quiet, errorOnWarnings, enableAnchors bool, localModuleMap map[string]string, projectID string) error {
+	projectYaml, err := loadProjectYAML(path, quiet, errorOnWarnings, enableAnchors, localModuleMap, projectID)
 	if err != nil {
 		return err
 	}
@@ -127,7 +114,7 @@ func validateFile(conf *ClientSettings, path string, quiet, errorOnWarnings bool
 
 // loadProjectYAML reads and parses the project config file, performs local validation,
 // and returns the marshalled YAML bytes for remote validation.
-func loadProjectYAML(conf *ClientSettings, path string, quiet, errorOnWarnings bool, localModuleMap map[string]string, projectID string) ([]byte, error) {
+func loadProjectYAML(path string, quiet, errorOnWarnings, enableAnchors bool, localModuleMap map[string]string, projectID string) ([]byte, error) {
 	confFile, err := os.ReadFile(path)
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading file '%s'", path)
@@ -138,15 +125,11 @@ func loadProjectYAML(conf *ClientSettings, path string, quiet, errorOnWarnings b
 	}
 	project := &model.Project{}
 	ctx := context.Background()
-	anchorsEnabled, err := getCrossFileYAMLAnchorsEnabled(conf)
-	if err != nil {
-		grip.Warning(ctx, errors.Wrap(err, "could not get cross-file YAML anchors setting; anchors will be disabled"))
-	}
 	opts := &model.GetProjectOpts{
-		LocalModules:                localModuleMap,
-		ReadFileFrom:                model.ReadFromLocal,
-		LocalIncludeDir:             cwd,
-		CrossFileYAMLAnchorsEnabled: anchorsEnabled,
+		LocalModules:      localModuleMap,
+		ReadFileFrom:      model.ReadFromLocal,
+		LocalIncludeDir:   cwd,
+		EnableYAMLAnchors: enableAnchors,
 	}
 	if !quiet {
 		opts.UnmarshalStrict = true
