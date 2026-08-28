@@ -114,6 +114,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/task/{task_id}/restart").Version(2).Post().Wrap(requireTask, rateLimit).RouteHandler(makeMarkTaskForRestart())
 	app.AddRoute("/task/{task_id}/check_run").Version(2).Post().Wrap(requireTask, rateLimit).RouteHandler(makeCheckRun(settings))
 	app.AddRoute("/task/{task_id}/aws/assume_role").Version(2).Post().Wrap(requireUserOrTask, rateLimit).RouteHandler(makeAWSAssumeRole(stsManager))
+	app.AddRoute("/task/{task_id}/source_cache/credentials").Version(2).Post().Wrap(requireTask, requireHost, rateLimit).RouteHandler(makeSourceCacheCredentials(settings, stsManager))
 	app.AddRoute("/task/{task_id}/mark_git_ref_not_found").Version(2).Patch().Wrap(requireTask, rateLimit).RouteHandler(makeMarkMergeQueueGitRefNotFound())
 
 	// REST v2 API Routes

@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/smithy-go"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
@@ -20,13 +21,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
-
-// sourceCachePrefix is the top-level S3 key prefix for source cache artifacts.
-const sourceCachePrefix = "source_cache/v1"
-
-// sourceCachePRNamespace isolates artifacts produced by PR or merge queue tasks
-// from base-revision artifacts to enforce trust boundaries.
-const sourceCachePRNamespace = "pr"
 
 // sourceCacheRegion is the region the source cache bucket lives in.
 const sourceCacheRegion = evergreen.DefaultEC2Region
@@ -67,20 +61,47 @@ const (
 // of git.get_project. It keys on (owner, repo, revision, clone shape) so every
 // version built on a commit shares one artifact.
 type sourceCache struct {
-	cfg               evergreen.BucketConfig
-	taskData          client.TaskData
-	workDir           string
-	dir               string
-	owner, repo       string
-	branch            string
-	baseRevision      string
-	prRevision        string
-	revision          string
+	cfg          evergreen.BucketConfig
+	taskData     client.TaskData
+	workDir      string
+	dir          string
+	owner, repo  string
+	branch       string
+	baseRevision string
+	prRevision   string
+	revision     string
+	// prNamespace is whether the app server grants this task write access to the PR
+	// namespace rather than the base namespace.
+	prNamespace       bool
 	cloneDepth        int
 	recurseSubmodules bool
 
+	// creds is assumed once per task and shared by the restore and save buckets.
+	creds aws.CredentialsProvider
+
+	// entries are what the cache may be restored from, most specific first. The
+	// first is also what this task saves under, so its namespace must be the one
+	// the app server grants write access to or every upload is denied.
+	entries []sourceCacheEntry
+}
+
+// sourceCacheEntry is one revision the cache may be restored from, with the
+// namespace and S3 object key holding its artifact.
+type sourceCacheEntry struct {
+	revision  string
+	namespace string
 	key       string
 	remoteKey string
+}
+
+// saveKey returns the S3 object key this task uploads its own artifact to.
+func (sc *sourceCache) saveKey() string {
+	return sc.entries[0].remoteKey
+}
+
+// contentKey returns the content key for the revision this task saves under.
+func (sc *sourceCache) contentKey() string {
+	return sc.entries[0].key
 }
 
 // newSourceCache returns the source cache for this run, or a nil cache and the
@@ -116,41 +137,57 @@ func newSourceCache(conf *internal.TaskConfig, c *gitFetchProject, opts cloneOpt
 		cloneDepth:        opts.cloneDepth,
 		recurseSubmodules: opts.recurseSubmodules,
 	}
-	if pr := prCheckoutCommit(conf); pr != conf.Task.Revision {
-		sc.prRevision = pr
-	}
-	sc.revision = sc.restoreRevisions()[0]
+	sc.prRevision = prCheckoutCommit(conf)
+	// This must match sourceCacheNamespaceForTask, which grants write access by
+	// requester and parent PR checkout rather than by what HEAD ends up at.
+	sc.prNamespace = conf.Task.Requester == evergreen.GithubPRRequester ||
+		conf.Task.Requester == evergreen.GithubMergeRequester ||
+		(conf.GitHubParentPRCheckout != nil && conf.GitHubParentPRCheckout.ForSource)
 
-	key, remoteKey, err := sc.cacheKeysForRevision(sc.revision)
+	entries, err := sc.restoreEntries()
 	if err != nil {
 		return nil, fmt.Sprintf("computing the source cache key: %s", err)
 	}
-	sc.key = key
-	sc.remoteKey = remoteKey
+	sc.entries = entries
+	sc.revision = entries[0].revision
 	return sc, ""
 }
 
-// restoreRevisions returns candidate lookup revisions, most specific first.
-func (sc *sourceCache) restoreRevisions() []string {
-	if sc.prRevision != "" {
-		return []string{sc.prRevision, sc.baseRevision}
+// restoreEntries returns the cache entries to try, most specific first.
+func (sc *sourceCache) restoreEntries() ([]sourceCacheEntry, error) {
+	writeNamespace := evergreen.SourceCacheBaseNamespace
+	if sc.prNamespace {
+		writeNamespace = evergreen.SourceCachePRNamespace
 	}
-	return []string{sc.baseRevision}
+
+	entries := []sourceCacheEntry{{revision: sc.baseRevision, namespace: writeNamespace}}
+	if sc.prRevision != "" && sc.prRevision != sc.baseRevision {
+		entries = []sourceCacheEntry{
+			{revision: sc.prRevision, namespace: writeNamespace},
+			{revision: sc.baseRevision, namespace: evergreen.SourceCacheBaseNamespace},
+		}
+	} else if writeNamespace != evergreen.SourceCacheBaseNamespace {
+		// The task writes to the PR namespace but builds the base revision, so a
+		// mainline task's artifact for it is still worth reading.
+		entries = append(entries, sourceCacheEntry{revision: sc.baseRevision, namespace: evergreen.SourceCacheBaseNamespace})
+	}
+
+	for i, entry := range entries {
+		key, remoteKey, err := sc.cacheKeysForRevision(entry.revision, entry.namespace)
+		if err != nil {
+			return nil, err
+		}
+		entries[i].key = key
+		entries[i].remoteKey = remoteKey
+	}
+	return entries, nil
 }
 
-func (sc *sourceCache) namespaceForRevision(revision string) string {
-	if revision == sc.prRevision {
-		return sourceCachePRNamespace
-	}
-	return ""
-}
-
-// keyFor returns the content key and S3 object key for a revision.
-func (sc *sourceCache) cacheKeysForRevision(revision string) (string, string, error) {
-	namespace := sc.namespaceForRevision(revision)
-	// A PR artifact is already pinned to the PR head, so the branch would only fragment its keys.
+// cacheKeysForRevision returns the content key and S3 object key for a revision.
+func (sc *sourceCache) cacheKeysForRevision(revision, namespace string) (string, string, error) {
+	// The revision alone determines a PR artifact, so the branch would only fragment its keys.
 	branch := sc.branch
-	if namespace == sourceCachePRNamespace {
+	if namespace == evergreen.SourceCachePRNamespace {
 		branch = ""
 	}
 	expansions := []string{namespace, sc.owner, sc.repo, branch, revision, strconv.Itoa(sc.cloneDepth), strconv.FormatBool(sc.recurseSubmodules)}
@@ -158,7 +195,7 @@ func (sc *sourceCache) cacheKeysForRevision(revision string) (string, string, er
 	if err != nil {
 		return "", "", err
 	}
-	return key, path.Join(sourceCachePrefix, sc.owner, sc.repo, namespace, revision, key+cacheArchiveSuffix), nil
+	return key, path.Join(evergreen.SourceCacheNamespacePrefix(sc.owner, sc.repo, namespace), revision, key+cacheArchiveSuffix), nil
 }
 
 func (sc *sourceCache) projectDir() string {
@@ -171,9 +208,10 @@ func (sc *sourceCache) createBucket(ctx context.Context, comm client.Communicato
 		Name:        sc.cfg.Name,
 		IfNotExists: ifNotExists,
 	}
-	if sc.cfg.RoleARN != "" {
-		opts.Credentials = newCachedEvergreenCredentials(comm, sc.taskData, nil, sc.cfg.RoleARN, nil)
+	if sc.creds == nil {
+		sc.creds = newCachedSourceCacheCredentials(comm, sc.taskData)
 	}
+	opts.Credentials = sc.creds
 	bucket, err := pail.NewS3MultiPartBucketWithHTTPClient(ctx, httpClient, opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "connecting to S3")
@@ -294,9 +332,9 @@ func (sc *sourceCache) save(ctx context.Context, comm client.Communicator, logge
 
 	start = time.Now()
 	alreadyExists := false
-	uploadDesc := fmt.Sprintf("upload cache object '%s'", sc.remoteKey)
+	uploadDesc := fmt.Sprintf("upload cache object '%s'", sc.saveKey())
 	err = retryS3Op(ctx, logger.Task(), uploadDesc, func() (bool, error) {
-		uploadErr := bucket.Upload(ctx, sc.remoteKey, localPath)
+		uploadErr := bucket.Upload(ctx, sc.saveKey(), localPath)
 		if uploadErr == nil {
 			return false, nil
 		}
@@ -311,7 +349,7 @@ func (sc *sourceCache) save(ctx context.Context, comm client.Communicator, logge
 		return true, uploadErr
 	})
 	if err != nil {
-		return false, errors.Wrapf(err, "uploading cache object '%s'", sc.remoteKey)
+		return false, errors.Wrapf(err, "uploading cache object '%s'", sc.saveKey())
 	}
 	setSourceCacheSpanDuration(ctx, sourceCacheUploadDurationAttribute, time.Since(start))
 	return !alreadyExists, nil
@@ -327,7 +365,7 @@ func setSourceCacheSpanDuration(ctx context.Context, attr string, d time.Duratio
 func (sc *sourceCache) setSpanOutcome(ctx context.Context, outcome, reason string) {
 	attrs := []attribute.KeyValue{
 		attribute.String(sourceCacheOutcomeAttribute, outcome),
-		attribute.String(sourceCacheKeyAttribute, sc.key),
+		attribute.String(sourceCacheKeyAttribute, sc.contentKey()),
 		attribute.String(sourceCacheOwnerAttribute, sc.owner),
 		attribute.String(sourceCacheRepoAttribute, sc.repo),
 		attribute.String(sourceCacheRevisionAttribute, sc.revision),

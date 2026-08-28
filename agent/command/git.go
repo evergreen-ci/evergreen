@@ -488,14 +488,10 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 	}
 
 	fallbackReason := ""
-	for _, revision := range sc.restoreRevisions() {
-		_, remoteKey, err := sc.cacheKeysForRevision(revision)
-		if err != nil {
-			fallbackReason = errors.Wrap(err, "computing the source cache key").Error()
-			break
-		}
-		logger.Task().Infof(ctx, "Looking up source cache '%s/%s'.", sc.cfg.Name, remoteKey)
-		restored, err := sc.restore(ctx, comm, logger, remoteKey)
+	for _, entry := range sc.entries {
+		revision := entry.revision
+		logger.Task().Infof(ctx, "Looking up source cache '%s/%s'.", sc.cfg.Name, entry.remoteKey)
+		restored, err := sc.restore(ctx, comm, logger, entry.remoteKey)
 		if err != nil {
 			fallbackReason = err.Error()
 			break
@@ -533,7 +529,6 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 	produced, err := c.saveSourceCache(ctx, comm, logger, conf, sc, opts)
 	if err != nil {
 		logger.Task().Warningf(ctx, "Saving source to the cache: %s", err)
-		outcome = sourceCacheFallback
 		if fallbackReason == "" {
 			fallbackReason = err.Error()
 		}
@@ -567,15 +562,15 @@ func (c *gitFetchProject) saveSourceCache(ctx context.Context, comm client.Commu
 		return false, errors.Wrap(err, "scrubbing source tree before saving")
 	}
 	produced, saveErr := sc.save(ctx, comm, logger)
-	if err := c.runCommands(ctx, logger, conf, c.buildPostSaveCommand(opts)); err != nil {
-		return produced, errors.Wrap(err, "restoring origin URL after saving")
-	}
-	return produced, saveErr
+	catcher := grip.NewBasicCatcher()
+	catcher.Add(saveErr)
+	catcher.Wrap(c.runCommands(ctx, logger, conf, c.buildPostSaveCommand(opts)), "restoring origin URL after saving")
+	return produced, catcher.Resolve()
 }
 
-// buildPostRestoreCommand returns the script run over a restored tree. It
-// verifies HEAD against the expected revision, restores this task's
-// credentials, and optionally checks out a PR.
+// buildPostRestoreCommand returns the script run over a restored tree. It verifies
+// HEAD, restores this task's credentials, reconciles the checked out branch, and
+// optionally checks out a PR.
 func (c *gitFetchProject) buildPostRestoreCommand(conf *internal.TaskConfig, opts cloneOpts, revision string, runPRCheckout bool) []string {
 	cmds := c.scriptInProjectDir(fmt.Sprintf(`test "$(git rev-parse HEAD)" = "%s"`, revision))
 	cmds = append(cmds, setOriginURLCommands(opts)...)
@@ -584,6 +579,10 @@ func (c *gitFetchProject) buildPostRestoreCommand(conf *internal.TaskConfig, opt
 	cmds = append(cmds, restoreGitConfigCredentialsCommands(opts.token)...)
 	if runPRCheckout {
 		cmds = append(cmds, prCheckoutCommands(conf)...)
+	} else if opts.branch != "" {
+		// The key pins the revision but not the branch, so a producer that cloned a
+		// different branch at the same commit would leave its branch name behind.
+		cmds = append(cmds, fmt.Sprintf(`git checkout -B '%s' %s`, opts.branch, revision))
 	}
 	return append(cmds, "git log --oneline -n 10")
 }
@@ -597,11 +596,15 @@ func (c *gitFetchProject) buildPreSaveCommand(opts cloneOpts) []string {
 	return append(cmds, scrubGitConfigCredentialsCommand)
 }
 
-// scrubGitConfigCredentialsCommand strips the userinfo from every remote URL
-// recorded under .git. Submodule URLs are resolved with the parent's credential
-// and written to .git/config and .git/modules/*/config, so setting origin alone
-// would leave the producer's token in the archive.
-const scrubGitConfigCredentialsCommand = `find .git -type f -name config | while read -r cfg; do sed -E 's#://[^/@]*@#://#g' "$cfg" > "$cfg.scrubbed" && mv "$cfg.scrubbed" "$cfg"; done`
+// rewriteGitConfigsCommand applies a sed expression to every config file under .git.
+// Submodule URLs carry the parent's credential, so touching origin alone would leave
+// the producer's token in the archive.
+func rewriteGitConfigsCommand(sedExpr string) string {
+	return fmt.Sprintf(`find .git -type f -name config | while read -r cfg; do sed -E '%s' "$cfg" > "$cfg.tmp" && mv "$cfg.tmp" "$cfg"; done`, sedExpr)
+}
+
+// scrubGitConfigCredentialsCommand strips the userinfo from every remote URL recorded under .git.
+var scrubGitConfigCredentialsCommand = rewriteGitConfigsCommand(`s#://[^/@]*@#://#g`)
 
 // restoreGitConfigCredentialsCommands is the inverse of
 // scrubGitConfigCredentialsCommand for submodules: it puts the task's own
@@ -612,11 +615,10 @@ func restoreGitConfigCredentialsCommands(token string) []string {
 	if token == "" {
 		return nil
 	}
-	rewrite := fmt.Sprintf(`s#://github\.com/#://x-access-token:%s@github.com/#g`, token)
 	return []string{
 		"set +o xtrace",
 		fmt.Sprintf("echo %s", strconv.Quote("restoring submodule credentials in .git configs")),
-		fmt.Sprintf(`find .git -type f -name config | while read -r cfg; do sed -E '%s' "$cfg" > "$cfg.restored" && mv "$cfg.restored" "$cfg"; done`, rewrite),
+		rewriteGitConfigsCommand(fmt.Sprintf(`s#://github\.com/#://x-access-token:%s@github.com/#g`, token)),
 		"set -o xtrace",
 	}
 }

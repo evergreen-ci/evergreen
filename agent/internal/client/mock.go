@@ -75,6 +75,9 @@ type Mock struct {
 	RevokeGitHubDynamicAccessTokenFail   bool
 	AssumeRoleResponse                   *apimodels.AWSCredentials
 	AssumeRoleCount                      int
+	SourceCacheCredentialsResponse       *apimodels.AWSCredentials
+	SourceCacheCredentialsCount          int
+	SourceCacheCredentialsErr            error
 	S3Response                           *apimodels.AWSCredentials
 	SendTaskDetailsShouldFail            bool
 
@@ -662,6 +665,14 @@ func (c *Mock) SelectTests(ctx context.Context, taskData TaskData, request restm
 func (c *Mock) AssumeRole(ctx context.Context, td TaskData, request apimodels.AssumeRoleRequest) (*apimodels.AWSCredentials, error) {
 	c.AssumeRoleCount++
 	return c.AssumeRoleResponse, nil
+}
+
+func (c *Mock) SourceCacheCredentials(ctx context.Context, td TaskData) (*apimodels.AWSCredentials, error) {
+	c.SourceCacheCredentialsCount++
+	if c.SourceCacheCredentialsErr != nil {
+		return nil, c.SourceCacheCredentialsErr
+	}
+	return c.SourceCacheCredentialsResponse, nil
 }
 
 func (c *Mock) S3Credentials(ctx context.Context, td TaskData, bucket string) (*apimodels.AWSCredentials, error) {

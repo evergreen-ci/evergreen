@@ -1051,6 +1051,27 @@ func (c *baseCommunicator) AssumeRole(ctx context.Context, td TaskData, request 
 	return &creds, nil
 }
 
+func (c *baseCommunicator) SourceCacheCredentials(ctx context.Context, td TaskData) (*apimodels.AWSCredentials, error) {
+	info := requestInfo{
+		method:   http.MethodPost,
+		taskData: &td,
+	}
+	info.setTaskPathSuffix("source_cache/credentials")
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return nil, util.RespError(resp, errors.Wrap(err, "getting source cache credentials").Error())
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, util.RespError(resp, "getting source cache credentials")
+	}
+	var creds apimodels.AWSCredentials
+	if err := utility.ReadJSON(resp.Body, &creds); err != nil {
+		return nil, errors.Wrap(err, "reading source cache credentials response")
+	}
+	return &creds, nil
+}
+
 func (c *baseCommunicator) S3Credentials(ctx context.Context, td TaskData, bucket string) (*apimodels.AWSCredentials, error) {
 	info := requestInfo{
 		method:   http.MethodPost,
