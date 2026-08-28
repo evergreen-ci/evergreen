@@ -2076,6 +2076,54 @@ func TestParserProjectStorage(t *testing.T) {
 					assert.NoError(t, err)
 					assert.Zero(t, pp)
 				},
+				"FindOneByIDRawReturnsNilErrorAndResultForNonexistentParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
+					ppStorage, err := GetParserProjectStorage(ctx, env.Settings(), ppStorageMethod)
+					require.NoError(t, err)
+
+					ppBytes, err := ppStorage.FindOneByIDRaw(ctx, "nonexistent")
+					assert.NoError(t, err)
+					assert.Nil(t, ppBytes)
+				},
+				"FindOneByIDRawReturnsBSONMatchingTheDecodedParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
+					pp := &ParserProject{
+						Id:    "my-project",
+						Owner: utility.ToStringPtr("me"),
+						Tasks: []parserTask{
+							{
+								Name: "task_1",
+								Commands: []PluginCommandConf{
+									{
+										Command: "shell.exec",
+										// Params is not persisted (see ParamsYAML), so
+										// the stored form is what must be set up here.
+										ParamsYAML: "script: echo hi\n",
+									},
+								},
+							},
+						},
+					}
+					ppStorage, err := GetParserProjectStorage(ctx, env.Settings(), ppStorageMethod)
+					require.NoError(t, err)
+					require.NoError(t, ppStorage.UpsertOne(ctx, pp))
+
+					ppBytes, err := ppStorage.FindOneByIDRaw(ctx, pp.Id)
+					require.NoError(t, err)
+					require.NotNil(t, ppBytes)
+
+					var fromBSON ParserProject
+					require.NoError(t, bson.Unmarshal(ppBytes, &fromBSON))
+
+					decoded, err := ppStorage.FindOneByID(ctx, pp.Id)
+					require.NoError(t, err)
+					require.NotNil(t, decoded)
+
+					assert.Equal(t, decoded.Id, fromBSON.Id)
+					assert.Equal(t, utility.FromStringPtr(decoded.Owner), utility.FromStringPtr(fromBSON.Owner))
+					require.Len(t, fromBSON.Tasks, 1)
+					require.Len(t, fromBSON.Tasks[0].Commands, 1)
+					assert.Equal(t, "shell.exec", fromBSON.Tasks[0].Commands[0].Command)
+					assert.Equal(t, map[string]any{"script": "echo hi"}, fromBSON.Tasks[0].Commands[0].Params, "params should be rehydrated from the stored params YAML")
+				},
 				"UpsertCreatesNewParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
 					pp := &ParserProject{
 						Id:    "my-project",

@@ -2057,3 +2057,113 @@ func TestGetDistroView(t *testing.T) {
 		})
 	}
 }
+
+func TestGetParserProject(t *testing.T) {
+	ctx := t.Context()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	collections := []string{task.Collection, model.VersionCollection, model.ParserProjectCollection}
+	require.NoError(t, db.ClearCollections(collections...))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(collections...))
+	})
+
+	taskWithParserProject := &task.Task{
+		Id:      "task_with_parser_project",
+		Version: "version_with_parser_project",
+	}
+	require.NoError(t, taskWithParserProject.Insert(ctx))
+	require.NoError(t, (&model.Version{
+		Id:                   taskWithParserProject.Version,
+		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
+	}).Insert(ctx))
+
+	pp := &model.ParserProject{
+		Id:    taskWithParserProject.Version,
+		Owner: utility.ToStringPtr("me"),
+		Functions: map[string]*model.YAMLCommandSet{
+			"fn_one": {
+				SingleCommand: &model.PluginCommandConf{
+					Command: "shell.exec",
+					Params:  map[string]any{"script": "echo hi"},
+				},
+			},
+		},
+		Pre: &model.YAMLCommandSet{
+			MultiCommand: []model.PluginCommandConf{
+				{
+					Command: "subprocess.exec",
+					Params:  map[string]any{"binary": "ls", "args": []any{"-l"}},
+				},
+			},
+		},
+	}
+	require.NoError(t, model.ParserProjectUpsertOne(ctx, env.Settings(), evergreen.ProjectStorageMethodDB, pp))
+
+	taskWithoutParserProject := &task.Task{
+		Id:      "task_without_parser_project",
+		Version: "version_without_parser_project",
+	}
+	require.NoError(t, taskWithoutParserProject.Insert(ctx))
+	require.NoError(t, (&model.Version{
+		Id:                   taskWithoutParserProject.Version,
+		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
+	}).Insert(ctx))
+
+	taskWithoutVersion := &task.Task{
+		Id:      "task_without_version",
+		Version: "nonexistent_version",
+	}
+	require.NoError(t, taskWithoutVersion.Insert(ctx))
+
+	for _, test := range []struct {
+		name           string
+		taskID         string
+		expectedStatus int
+	}{
+		{
+			name:           "TaskDNEShouldNotBeFound",
+			taskID:         "nonexistent",
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "VersionDNEShouldNotBeFound",
+			taskID:         taskWithoutVersion.Id,
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "ParserProjectDNEShouldNotBeFound",
+			taskID:         taskWithoutParserProject.Id,
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "ParserProjectShouldReturnBSONTheAgentCanTranslate",
+			taskID:         taskWithParserProject.Id,
+			expectedStatus: http.StatusOK,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			h := &getParserProjectHandler{taskID: test.taskID, env: env}
+
+			resp := h.Run(ctx)
+			require.Equal(t, test.expectedStatus, resp.Status())
+			if test.expectedStatus != http.StatusOK {
+				return
+			}
+
+			ppBytes, ok := resp.Data().([]byte)
+			require.True(t, ok, "response data should be raw BSON bytes")
+
+			reencoded, err := pp.MarshalBSON()
+			require.NoError(t, err)
+			expected, err := model.GetProjectFromBSON(reencoded)
+			require.NoError(t, err)
+
+			actual, err := model.GetProjectFromBSON(ppBytes)
+			require.NoError(t, err)
+			assert.Equal(t, expected, actual, "served BSON should translate to the same project as re-encoded BSON")
+		})
+	}
+}
