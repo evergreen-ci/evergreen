@@ -88,6 +88,7 @@ type Task {
   canSchedule: Boolean!
   canSetPriority: Boolean!
   canUnschedule: Boolean!
+  config: TaskConfig
   createTime: Time
   dependsOn: [Dependency!]
   details: TaskEndDetail
@@ -405,4 +406,36 @@ input QuarantineTestInput {
 input UnquarantineTestInput {
   taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)
   testName: String!
+}
+
+type TaskUnitDependency {
+  name: String!
+  omitGeneratedTasks: Boolean
+  patchOptional: Boolean
+  status: String
+  variant: String
+}
+
+type TaskConfig {
+  activate: Boolean
+  allowedBranches: [String!]
+  allowedRequesters: [String!]
+  allowForGitTag: Boolean
+  batchTime: Int
+  cronBatchTime: String
+  dependsOn: [TaskUnitDependency!]
+  disable: Boolean
+  execTimeoutSecs: Int
+  gitTagOnly: Boolean
+  groupName: String
+  ignoredBranches: [String!]
+  isGroup: Boolean
+  isPartOfGroup: Boolean
+  name: String!
+  patchable: Boolean
+  patchOnly: Boolean
+  priority: Int
+  ps: String
+  runOn: [String!]
+  stepback: Boolean
 }

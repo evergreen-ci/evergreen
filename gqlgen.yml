@@ -913,6 +913,8 @@ models:
     model: github.com/evergreen-ci/evergreen/model.TaskExecutionStep
   TaskAnnotationSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotationSettings
+  TaskConfig:
+    model: github.com/evergreen-ci/evergreen/model.BuildVariantTaskUnit
   TaskContainerCreationOpts:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPodTaskContainerCreationOptions
   Cost:
@@ -976,6 +978,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskOwnershipSettings
   TaskOwnershipSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskOwnershipSettings
+  TaskUnitDependency:
+    model: github.com/evergreen-ci/evergreen/model.TaskUnitDependency
   TestSelectionSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APITestSelectionSettings
   TestSelectionSettingsInput:

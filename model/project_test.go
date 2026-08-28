@@ -2684,6 +2684,86 @@ func TestFindAllBuildVariantTasks(t *testing.T) {
 	})
 }
 
+func TestFindExpandedTaskForVariant(t *testing.T) {
+	const (
+		bvName = "bv"
+		tgName = "task_group"
+	)
+	batchTime := 15
+	ps := "group-ps"
+	p := Project{
+		Tasks: []ProjectTask{
+			{Name: "standalone", Priority: 1},
+			{Name: "in_group_0"},
+			{Name: "in_group", Priority: 2},
+		},
+		BuildVariants: []BuildVariant{{
+			Name: bvName,
+			Tasks: []BuildVariantTaskUnit{
+				{Name: "standalone", Variant: bvName},
+				{
+					Name:              tgName,
+					IsGroup:           true,
+					Variant:           bvName,
+					AllowedBranches:   []string{"^group$"},
+					IgnoredBranches:   []string{"^ignored$"},
+					ExecTimeoutSecs:   30,
+					BatchTime:         &batchTime,
+					PS:                &ps,
+					CreateCheckRun:    &CheckRun{},
+					AllowedRequesters: []evergreen.UserRequester{evergreen.AdHocUserRequester},
+				},
+			},
+		}},
+		TaskGroups: []TaskGroup{{Name: tgName, MaxHosts: 1, Tasks: []string{"in_group_0", "in_group"}}},
+	}
+
+	t.Run("StandaloneTask", func(t *testing.T) {
+		bvt := p.FindExpandedTaskForVariant("standalone", bvName)
+		require.NotNil(t, bvt)
+		assert.Equal(t, "standalone", bvt.Name)
+		assert.Equal(t, int64(1), bvt.Priority)
+		assert.False(t, bvt.IsGroup)
+		assert.False(t, bvt.IsPartOfGroup)
+		assert.Empty(t, bvt.GroupName)
+	})
+
+	t.Run("TaskGroupMember", func(t *testing.T) {
+		bvt := p.FindExpandedTaskForVariant("in_group", bvName)
+		require.NotNil(t, bvt)
+		assert.Equal(t, "in_group", bvt.Name)
+		assert.Equal(t, int64(2), bvt.Priority)
+		assert.False(t, bvt.IsGroup)
+		assert.True(t, bvt.IsPartOfGroup)
+		assert.Equal(t, tgName, bvt.GroupName)
+		assert.Equal(t, []string{"^group$"}, bvt.AllowedBranches)
+		assert.Equal(t, []string{"^ignored$"}, bvt.IgnoredBranches)
+		assert.Equal(t, 30, bvt.ExecTimeoutSecs)
+		assert.Equal(t, &batchTime, bvt.BatchTime)
+		assert.Equal(t, &ps, bvt.PS)
+		assert.NotNil(t, bvt.CreateCheckRun)
+		assert.Equal(t, []evergreen.UserRequester{evergreen.AdHocUserRequester}, bvt.AllowedRequesters)
+		require.Len(t, bvt.DependsOn, 1)
+		assert.Equal(t, TaskUnitDependency{
+			Name:    "in_group_0",
+			Variant: bvName,
+			Status:  evergreen.TaskSucceeded,
+		}, bvt.DependsOn[0])
+	})
+
+	t.Run("MissingTask", func(t *testing.T) {
+		assert.Nil(t, p.FindExpandedTaskForVariant("missing", bvName))
+	})
+
+	t.Run("TaskGroupParent", func(t *testing.T) {
+		assert.Nil(t, p.FindExpandedTaskForVariant(tgName, bvName))
+	})
+
+	t.Run("MissingVariant", func(t *testing.T) {
+		assert.Nil(t, p.FindExpandedTaskForVariant("standalone", "missing"))
+	})
+}
+
 func TestDependenciesForTaskUnit(t *testing.T) {
 	for testName, testCase := range map[string]struct {
 		expectedDependencies []task.DependencyEdge
@@ -2864,8 +2944,8 @@ func TestDependenciesForTaskUnit(t *testing.T) {
 				},
 			},
 			expectedDependencies: []task.DependencyEdge{
-				{From: task.TaskNode{Name: "task2", Variant: "ubuntu"}, To: task.TaskNode{Name: "task1", Variant: "ubuntu"}},
-				{From: task.TaskNode{Name: "task3", Variant: "ubuntu"}, To: task.TaskNode{Name: "task2", Variant: "ubuntu"}},
+				{Status: evergreen.TaskSucceeded, From: task.TaskNode{Name: "task2", Variant: "ubuntu"}, To: task.TaskNode{Name: "task1", Variant: "ubuntu"}},
+				{Status: evergreen.TaskSucceeded, From: task.TaskNode{Name: "task3", Variant: "ubuntu"}, To: task.TaskNode{Name: "task2", Variant: "ubuntu"}},
 			},
 		},
 		"WithMultiHostTaskGroup": {
@@ -2945,7 +3025,7 @@ func TestDependenciesForTaskUnit(t *testing.T) {
 				},
 			},
 			expectedDependencies: []task.DependencyEdge{
-				{From: task.TaskNode{Name: "task2", Variant: "ubuntu"}, To: task.TaskNode{Name: "task1", Variant: "ubuntu"}},
+				{Status: evergreen.TaskSucceeded, From: task.TaskNode{Name: "task2", Variant: "ubuntu"}, To: task.TaskNode{Name: "task1", Variant: "ubuntu"}},
 				{From: task.TaskNode{Name: "task2", Variant: "ubuntu"}, To: task.TaskNode{Name: "external_task", Variant: "ubuntu"}},
 			},
 		},

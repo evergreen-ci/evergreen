@@ -1,0 +1,79 @@
+{
+  "tests": [
+    {
+      "query_file": "config.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "configured_task",
+            "config": {
+              "activate": false,
+              "allowedBranches": ["^main$"],
+              "allowedRequesters": ["patch", "github_pr"],
+              "allowForGitTag": false,
+              "batchTime": 15,
+              "cronBatchTime": "",
+              "dependsOn": [
+                {
+                  "name": "setup",
+                  "omitGeneratedTasks": true,
+                  "patchOptional": true,
+                  "status": "success",
+                  "variant": ""
+                }
+              ],
+              "disable": true,
+              "execTimeoutSecs": 300,
+              "gitTagOnly": true,
+              "groupName": "",
+              "ignoredBranches": ["^legacy$"],
+              "isGroup": false,
+              "isPartOfGroup": false,
+              "name": "compile",
+              "patchable": false,
+              "patchOnly": true,
+              "priority": 9,
+              "ps": "task-ps",
+              "runOn": ["task-distro"],
+              "stepback": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "task_group_config.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "task_group_member",
+            "config": {
+              "allowedBranches": ["^group$"],
+              "batchTime": 20,
+              "dependsOn": [
+                {
+                  "name": "setup",
+                  "status": "success",
+                  "variant": ""
+                },
+                {
+                  "name": "group_setup",
+                  "status": "success",
+                  "variant": "linux"
+                }
+              ],
+              "execTimeoutSecs": 45,
+              "groupName": "test_group",
+              "ignoredBranches": ["^ignored$"],
+              "isGroup": false,
+              "isPartOfGroup": true,
+              "name": "test",
+              "priority": 4,
+              "ps": "group-ps"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
