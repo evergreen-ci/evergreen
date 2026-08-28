@@ -1,5 +1,11 @@
 {
-  waterfall(options: { projectIdentifier: "spruce-identifier", statuses: ["system-failed"] }) {
+  waterfall(
+    options: {
+      projectIdentifier: "spruce-identifier"
+      statuses: ["system-failed"]
+      includeAllBuildsAndTasks: false
+    }
+  ) {
     versions {
       id
       activated

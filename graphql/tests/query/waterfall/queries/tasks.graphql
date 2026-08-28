@@ -1,5 +1,11 @@
 {
-  waterfall(options: { projectIdentifier: "spruce-identifier", tasks: ["Task C"] }) {
+  waterfall(
+    options: {
+      projectIdentifier: "spruce-identifier"
+      tasks: ["Task C"]
+      includeAllBuildsAndTasks: false
+    }
+  ) {
     versions {
       id
       activated

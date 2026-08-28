@@ -672,6 +672,11 @@
                     "id": "evergreen_version1_build_b",
                     "activated": false,
                     "displayName": "01 Ubuntu 16.04"
+                  },
+                  {
+                    "id": "evergreen_version3_build",
+                    "activated": true,
+                    "displayName": "03 Linter"
                   }
                 ]
               }

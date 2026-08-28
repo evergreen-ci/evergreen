@@ -1609,6 +1609,9 @@ func getWaterfallFromContext(ctx context.Context) (*Waterfall, bool) {
 func getWaterfallFilterOptionsFromContext(ctx context.Context) model.WaterfallOptions {
 	for fc := graphql.GetFieldContext(ctx); fc != nil; fc = fc.Parent {
 		if options, ok := fc.Args["options"].(WaterfallOptions); ok && fc.Object == "Query" && fc.Field.Name == "waterfall" {
+			if utility.FromBoolTPtr(options.IncludeAllBuildsAndTasks) {
+				return model.WaterfallOptions{}
+			}
 			return model.WaterfallOptions{
 				OmitInactiveBuilds:   utility.FromBoolPtr(options.OmitInactiveBuilds),
 				Statuses:             utility.FilterSlice(options.Statuses, func(s string) bool { return s != "" }),

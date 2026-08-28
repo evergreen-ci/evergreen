@@ -1,5 +1,7 @@
 input WaterfallOptions {
   date: Time
+  "Return all builds and tasks for each matching version instead of applying the waterfall filters to them."
+  includeAllBuildsAndTasks: Boolean = true
   limit: Int = 5
   "Return versions with an order greater than minOrder. Used for paginating backward."
   minOrder: Int

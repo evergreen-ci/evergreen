@@ -761,8 +761,10 @@ type Waterfall struct {
 }
 
 type WaterfallOptions struct {
-	Date  *time.Time `json:"date,omitempty"`
-	Limit *int       `json:"limit,omitempty"`
+	Date *time.Time `json:"date,omitempty"`
+	// Return all builds and tasks for each matching version instead of applying the waterfall filters to them.
+	IncludeAllBuildsAndTasks *bool `json:"includeAllBuildsAndTasks,omitempty"`
+	Limit                    *int  `json:"limit,omitempty"`
 	// Return versions with an order greater than minOrder. Used for paginating backward.
 	MinOrder *int `json:"minOrder,omitempty"`
 	// Return versions with an order lower than maxOrder. Used for paginating forward.
