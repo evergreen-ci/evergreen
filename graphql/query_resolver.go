@@ -26,30 +26,6 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
-// BbGetCreatedTickets is the resolver for the bbGetCreatedTickets field.
-func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) ([]*thirdparty.JiraTicket, error) {
-	createdTickets, err := bbGetCreatedTicketsPointers(ctx, taskID)
-	if err != nil {
-		return nil, err
-	}
-
-	return createdTickets, nil
-}
-
-// BuildBaron is the resolver for the buildBaron field.
-func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, execution int) (*BuildBaron, error) {
-	searchReturnInfo, bbConfig, err := model.GetBuildBaron(ctx, taskID, execution)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
-	}
-
-	return &BuildBaron{
-		SearchReturnInfo:        searchReturnInfo,
-		BuildBaronConfigured:    bbConfig.SearchConfigured,
-		BbTicketCreationDefined: bbConfig.TicketCreationDefined,
-	}, nil
-}
-
 // AdminEvents is the resolver for the adminEvents field.
 func (r *queryResolver) AdminEvents(ctx context.Context, opts AdminEventsInput) (*AdminEventsPayload, error) {
 	before := utility.FromTimePtr(opts.Before)
@@ -513,7 +489,7 @@ func (r *queryResolver) ProjectSettings(ctx context.Context, projectIdentifier s
 	}
 	if !projectRef.UseRepoSettings() {
 		// Default values so the UI understands what to do with nil values.
-		res.ProjectRef.DefaultUnsetBooleans()
+		res.ProjectRef.DefaultUnsetBooleans(ctx)
 	}
 	return res, nil
 }
@@ -550,7 +526,7 @@ func (r *queryResolver) RepoSettings(ctx context.Context, repoID string) (*restM
 	}
 
 	// Default values so the UI understands what to do with nil values.
-	res.ProjectRef.DefaultUnsetBooleans()
+	res.ProjectRef.DefaultUnsetBooleans(ctx)
 	return res, nil
 }
 

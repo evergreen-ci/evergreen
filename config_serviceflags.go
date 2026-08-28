@@ -14,6 +14,7 @@ type ServiceFlags struct {
 	TaskDispatchDisabled               bool `bson:"task_dispatch_disabled" json:"task_dispatch_disabled"`
 	HostInitDisabled                   bool `bson:"host_init_disabled" json:"host_init_disabled"`
 	LargeParserProjectsDisabled        bool `bson:"large_parser_projects_disabled" json:"large_parser_projects_disabled"`
+	CrossFileYAMLAnchorsEnabled        bool `bson:"cross_file_yaml_anchors_enabled" json:"cross_file_yaml_anchors_enabled"`
 	MonitorDisabled                    bool `bson:"monitor_disabled" json:"monitor_disabled"`
 	MergeQueueRecoveryEnabled          bool `bson:"merge_queue_recovery_enabled" json:"merge_queue_recovery_enabled"`
 	AlertsDisabled                     bool `bson:"alerts_disabled" json:"alerts_disabled"`
@@ -70,6 +71,7 @@ type ServiceFlags struct {
 	// Rate Limiting Flags
 	APIRateLimiterDisabled           bool `bson:"api_rate_limiter_disabled" json:"api_rate_limiter_disabled"`
 	GraphQLComplexityLimiterDisabled bool `bson:"graphql_complexity_limiter_disabled" json:"graphql_complexity_limiter_disabled"`
+	VirtualTasksDisabled             bool `bson:"virtual_tasks_disabled" json:"virtual_tasks_disabled"`
 }
 
 func (c *ServiceFlags) SectionId() string { return "service_flags" }
@@ -84,6 +86,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			taskDispatchKey:                       c.TaskDispatchDisabled,
 			hostInitKey:                           c.HostInitDisabled,
 			largeParserProjectsDisabledKey:        c.LargeParserProjectsDisabled,
+			crossFileYAMLAnchorsEnabledKey:        c.CrossFileYAMLAnchorsEnabled,
 			monitorKey:                            c.MonitorDisabled,
 			mergeQueueRecoveryEnabledKey:          c.MergeQueueRecoveryEnabled,
 			alertsKey:                             c.AlertsDisabled,
@@ -127,6 +130,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			containerIsolationEnabledKey:          c.ContainerIsolationEnabled,
 			liveArtifactCredentialsDisabledKey:    c.LiveArtifactCredentialsDisabled,
 			taskQueueAutoUnscheduleDisabledKey:    c.TaskQueueAutoUnscheduleDisabled,
+			virtualTasksDisabledKey:               c.VirtualTasksDisabled,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

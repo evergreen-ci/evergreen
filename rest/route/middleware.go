@@ -48,6 +48,10 @@ const (
 	backstageUser    = "backstage"
 )
 
+// hostCommunicationWriteInterval is the minimum time between writes to a host's last
+// communication time.
+const hostCommunicationWriteInterval = time.Minute
+
 type projCtxMiddleware struct{}
 
 func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
@@ -58,6 +62,9 @@ func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 	versionId := vars["version_id"]
 	patchId := vars["patch_id"]
 	projectId := vars["project_id"]
+	if projectId == "" {
+		projectId = vars["repo_id"]
+	}
 
 	opCtx, err := model.LoadContext(r.Context(), taskId, buildId, versionId, patchId, projectId)
 	if err != nil {
@@ -246,12 +253,21 @@ func (m *canCreateMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 	next(rw, r)
 }
 
-type hostAuthMiddleware struct{}
+type hostAuthMiddleware struct {
+	// updateAccessTime records that the host communicated; read-only routes leave it unset.
+	updateAccessTime bool
+}
+
+// NewReadOnlyHostAuthMiddleware is NewHostAuthMiddleware without the communication-time
+// write, for routes that only read host state.
+func NewReadOnlyHostAuthMiddleware() gimlet.Middleware {
+	return &hostAuthMiddleware{}
+}
 
 // NewHostAuthMiddleware returns a route middleware that verifies the request's
 // host ID and secret.
 func NewHostAuthMiddleware() gimlet.Middleware {
-	return &hostAuthMiddleware{}
+	return &hostAuthMiddleware{updateAccessTime: true}
 }
 
 func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
@@ -276,7 +292,9 @@ func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 	}
 	r = r.WithContext(context.WithValue(r.Context(), model.ApiHostKey, h))
 
-	updateHostAccessTime(r.Context(), h)
+	if m.updateAccessTime {
+		updateHostAccessTime(r.Context(), h)
+	}
 	next(rw, r)
 }
 
@@ -402,8 +420,10 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 // updateHostAccessTime updates the host access time and disables the host's flags to deploy new a new agent
 // or agent monitor if they are set.
 func updateHostAccessTime(ctx context.Context, h *host.Host) {
-	if err := h.UpdateLastCommunicated(ctx); err != nil {
-		grip.Warningf(ctx, "Could not update host last communication time for %s: %+v", h.Id, err)
+	if time.Since(h.LastCommunicationTime) >= hostCommunicationWriteInterval {
+		if err := h.UpdateLastCommunicated(ctx); err != nil {
+			grip.Warningf(ctx, "Could not update host last communication time for %s: %+v", h.Id, err)
+		}
 	}
 	// Since the host has contacted the app server, we should prevent the
 	// app server from attempting to deploy agents or agent monitors.
@@ -463,6 +483,66 @@ func RequiresProjectPermission(permission string, level evergreen.PermissionLeve
 	}
 
 	return gimlet.RequiresPermission(opts)
+}
+
+func RequiresRepoPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
+	return &repoPermissionMiddleware{
+		permission: permission,
+		level:      level,
+	}
+}
+
+type repoPermissionMiddleware struct {
+	permission string
+	level      evergreen.PermissionLevel
+}
+
+func (m *repoPermissionMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	ctx := r.Context()
+	usr := MustHaveUser(ctx)
+	opCtx := MustHaveProjectContext(ctx)
+
+	if opCtx.RepoRef == nil {
+		gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    "repo not found",
+		}))
+		return
+	}
+
+	// View-level permission uses a special check that grants view access to the repo if the user
+	// has view access to any branch project.
+	if m.level == evergreen.ProjectSettingsView {
+		hasPermission, err := model.UserHasRepoViewPermission(ctx, usr, opCtx.RepoRef.Id)
+		if err != nil {
+			gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "checking repo view permission")))
+			return
+		}
+		if !hasPermission {
+			gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusUnauthorized,
+				Message:    "not authorized",
+			}))
+			return
+		}
+		next(rw, r)
+		return
+	}
+
+	hasPermission := usr.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      opCtx.RepoRef.Id,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    m.permission,
+		RequiredLevel: m.level.Value,
+	})
+	if !hasPermission {
+		gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    "not authorized",
+		}))
+		return
+	}
+	next(rw, r)
 }
 
 func RequiresDistroPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {

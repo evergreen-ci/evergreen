@@ -14,10 +14,9 @@ import (
 
 func Evaluate() cli.Command {
 	const (
-		taskFlagName        = "tasks"
-		variantsFlagName    = "variants"
-		diffableFlagName    = "diffable"
-		yamlAnchorsFlagName = "yaml-anchors"
+		taskFlagName     = "tasks"
+		variantsFlagName = "variants"
+		diffableFlagName = "diffable"
 	)
 
 	return cli.Command{
@@ -39,10 +38,6 @@ func Evaluate() cli.Command {
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(localModulesFlagName, "lm"),
 				Usage: "specify local modules for included files as MODULE_NAME=PATH pairs",
-			},
-			cli.BoolFlag{
-				Name:  yamlAnchorsFlagName,
-				Usage: "(BETA) enable cross-file YAML anchors in included files",
 			},
 		),
 		Before: mergeBeforeFuncs(requirePathFlag),
@@ -69,11 +64,18 @@ func Evaluate() cli.Command {
 
 			p := &model.Project{}
 			ctx := context.Background()
+			var anchorsEnabled bool
+			confPath := c.Parent().String(ConfFlagName)
+			// If we can't load the conf, we just assume anchors are disabled.
+			// Avoid logging to prevent breaking scripts.
+			if conf, err := NewClientSettings(confPath); err == nil {
+				anchorsEnabled, _ = getCrossFileYAMLAnchorsEnabled(conf)
+			}
 			opts := &model.GetProjectOpts{
-				LocalModules:      localModuleMap,
-				ReadFileFrom:      model.ReadFromLocal,
-				LocalIncludeDir:   cwd,
-				EnableYAMLAnchors: c.Bool(yamlAnchorsFlagName),
+				LocalModules:                localModuleMap,
+				ReadFileFrom:                model.ReadFromLocal,
+				LocalIncludeDir:             cwd,
+				CrossFileYAMLAnchorsEnabled: anchorsEnabled,
 			}
 			_, err = model.LoadProjectInto(ctx, configBytes, opts, "", p)
 			if err != nil {

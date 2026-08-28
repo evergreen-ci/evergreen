@@ -1081,13 +1081,13 @@ func TestEndingTask(t *testing.T) {
 				So(task.FinishTime.Unix(), ShouldEqual, now.Unix())
 			})
 		})
-		Convey("a task that is allocated a container should be deallocated", func() {
+		Convey("a non-host task should still be markable as ended", func() {
 			now := time.Now()
 			task := &Task{
 				Id:                "taskId",
 				Status:            evergreen.TaskStarted,
 				StartTime:         now.Add(-5 * time.Minute),
-				ExecutionPlatform: ExecutionPlatformContainer,
+				ExecutionPlatform: ExecutionPlatformVirtual,
 			}
 			So(task.Insert(t.Context()), ShouldBeNil)
 			details := &apimodels.TaskEndDetail{
@@ -2492,7 +2492,7 @@ func TestTopologicalSort(t *testing.T) {
 		{Id: "t3", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t1"}}},
 	}
 
-	sortedTasks, err := topologicalSort(tasks)
+	sortedTasks, err := topologicalSort(t.Context(), tasks)
 	assert.NoError(t, err)
 	assert.Len(t, sortedTasks, 4)
 
@@ -2684,8 +2684,8 @@ func TestIsHostDispatchable(t *testing.T) {
 			tsk.ExecutionPlatform = ""
 			assert.True(t, tsk.IsHostDispatchable())
 		},
-		"ReturnsFalseForContainerTask": func(t *testing.T, tsk Task) {
-			tsk.ExecutionPlatform = ExecutionPlatformContainer
+		"ReturnsFalseForVirtualTask": func(t *testing.T, tsk Task) {
+			tsk.ExecutionPlatform = ExecutionPlatformVirtual
 			assert.False(t, tsk.IsHostDispatchable())
 		},
 		"ReturnsFalseForTaskWithoutUndispatchedStatus": func(t *testing.T, tsk Task) {
@@ -3616,9 +3616,9 @@ func TestArchive(t *testing.T) {
 
 			checkEventLogHostTaskExecutions(t, hostID, archivedExecTaskID, archivedExecution)
 		},
-		"ArchivesContainerTask": func(t *testing.T, tsk Task) {
+		"ArchivesVirtualTask": func(t *testing.T, tsk Task) {
 			archivedTaskID := MakeOldID(tsk.Id, tsk.Execution)
-			tsk.ExecutionPlatform = ExecutionPlatformContainer
+			tsk.ExecutionPlatform = ExecutionPlatformVirtual
 			require.NoError(t, tsk.Insert(ctx))
 
 			require.NoError(t, tsk.Archive(ctx))
@@ -4684,7 +4684,7 @@ func TestWillRun(t *testing.T) {
 		tsk := Task{
 			Status:            evergreen.TaskUndispatched,
 			Activated:         true,
-			ExecutionPlatform: ExecutionPlatformContainer,
+			ExecutionPlatform: ExecutionPlatformHost,
 			DependsOn:         []Dependency{{Unattainable: false}},
 		}
 		assert.True(t, tsk.WillRun())
@@ -4693,7 +4693,7 @@ func TestWillRun(t *testing.T) {
 		tsk := Task{
 			Status:            evergreen.TaskUndispatched,
 			Activated:         true,
-			ExecutionPlatform: ExecutionPlatformContainer,
+			ExecutionPlatform: ExecutionPlatformHost,
 			DependsOn:         []Dependency{{Unattainable: true}},
 		}
 		assert.False(t, tsk.WillRun())
@@ -4790,6 +4790,7 @@ func TestReset(t *testing.T) {
 		t0 := Task{
 			Id:                         "t0",
 			Status:                     evergreen.TaskSucceeded,
+			ExecutionPlatform:          ExecutionPlatformContainer,
 			Details:                    apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded},
 			TaskOutputInfo:             &TaskOutput{TaskLogs: TaskLogOutput{Version: 1}},
 			ResultsFailed:              true,
@@ -4826,6 +4827,9 @@ func TestReset(t *testing.T) {
 		assert.Empty(t, dbTask.HostCreateDetails)
 		assert.Empty(t, dbTask.TaskOutputInfo)
 		assert.Empty(t, dbTask.Details)
+		assert.Zero(t, dbTask.ExecutionPlatform)
+		assert.Zero(t, t0.ExecutionPlatform)
+		assert.True(t, dbTask.IsHostDispatchable())
 		assert.Zero(t, dbTask.NumNextTaskDispatches)
 		assert.Zero(t, dbTask.NumQuarantinedTestsSkipped)
 		assert.True(t, dbTask.TaskCost.IsZero())
@@ -4848,9 +4852,10 @@ func TestResetTasks(t *testing.T) {
 		require.NoError(t, db.Clear(Collection))
 
 		t0 := Task{
-			Id:       "t0",
-			Status:   evergreen.TaskSucceeded,
-			CanReset: true,
+			Id:                "t0",
+			Status:            evergreen.TaskSucceeded,
+			ExecutionPlatform: ExecutionPlatformContainer,
+			CanReset:          true,
 		}
 		assert.NoError(t, t0.Insert(t.Context()))
 
@@ -4859,6 +4864,8 @@ func TestResetTasks(t *testing.T) {
 		assert.NoError(t, err)
 		assert.False(t, dbTask.UnattainableDependency)
 		assert.Equal(t, "user", dbTask.ActivatedBy)
+		assert.Zero(t, dbTask.ExecutionPlatform)
+		assert.True(t, dbTask.IsHostDispatchable())
 	})
 
 	t.Run("UnattainableDependency", func(t *testing.T) {
@@ -6015,6 +6022,27 @@ func TestSetS3ArtifactStorageCostsLifecycleMissLogging(t *testing.T) {
 		tk := Task{Id: "t4", S3Usage: usage("mciuploads", "", "")}
 		tk.setS3ArtifactStorageCosts(ctx, missingLookup, costConfig)
 		assert.Equal(t, []string{"mciuploads"}, loggedBuckets())
+	})
+
+	// Uploads that are not devprod owned are never priced, so a lookup miss is expected for them.
+	t.Run("SuppressesMissForUploadsOutsideDevprodOwnedList", func(t *testing.T) {
+		ownedConfig := &evergreen.CostConfig{
+			S3Cost: evergreen.S3CostConfig{
+				Storage: evergreen.S3StorageCostConfig{
+					DefaultMaxArtifactExpirationDays: 365,
+					DevprodOwnedAWSAccountIDs:        []string{"123456789012"},
+				},
+			},
+		}
+
+		tk := Task{Id: "t5", S3Usage: usage("unowned-bucket", "arn:aws:iam::210987654321:role/r", "")}
+		tk.setS3ArtifactStorageCosts(ctx, missingLookup, ownedConfig)
+		assert.Empty(t, loggedBuckets())
+
+		tk = Task{Id: "t6", S3Usage: usage("unresolved-bucket", "", "")}
+		tk.setS3ArtifactStorageCosts(ctx, missingLookup, ownedConfig)
+		assert.Empty(t, loggedBuckets(), "an upload with no resolvable account is not devprod owned")
+		assert.Positive(t, tk.TaskCost.OnDemandS3ArtifactStorageCost, "cost must still be computed from the default expiration days")
 	})
 }
 

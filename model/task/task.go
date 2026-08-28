@@ -426,6 +426,9 @@ type ExecutionPlatform string
 const (
 	// ExecutionPlatformHost indicates that the task runs in a host.
 	ExecutionPlatformHost ExecutionPlatform = "host"
+	// ExecutionPlatformVirtual indicates that the task's results are pushed
+	// externally and it never enters a task queue or runs on a host.
+	ExecutionPlatformVirtual ExecutionPlatform = "virtual"
 	// ExecutionPlatformContainer indicates that the task runs in a container.
 	ExecutionPlatformContainer ExecutionPlatform = "container"
 )
@@ -1777,7 +1780,7 @@ func getDependencyTaskIdsToActivate(ctx context.Context, tasks []string, updateD
 
 	// do a topological sort so we've dealt with
 	// all a task's dependencies by the time we get up to it
-	sortedDependencies, err := topologicalSort(tasksDependingOnTheseTasks)
+	sortedDependencies, err := topologicalSort(ctx, tasksDependingOnTheseTasks)
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
@@ -1933,7 +1936,7 @@ func activateDeactivatedDependencies(ctx context.Context, tasksToActivate map[st
 	return nil
 }
 
-func topologicalSort(tasks []Task) ([]Task, error) {
+func topologicalSort(ctx context.Context, tasks []Task) ([]Task, error) {
 	var fromTask, toTask string
 	defer func() {
 		taskIds := []string{}
@@ -1941,7 +1944,7 @@ func topologicalSort(tasks []Task) ([]Task, error) {
 			taskIds = append(taskIds, t.Id)
 		}
 		panicErr := recovery.HandlePanicWithError(recover(), nil, "problem adding edge")
-		grip.Error(context.Background(), message.WrapError(panicErr, message.Fields{
+		grip.Error(ctx, message.WrapError(panicErr, message.Fields{
 			"function":       "topologicalSort",
 			"from_task":      fromTask,
 			"to_task":        toTask,
@@ -2177,6 +2180,9 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 	t.Status = detail.Status
 	t.FinishTime = finishTime
 	t.Details = *detail
+	if detail.ExecutionPlatform != "" {
+		t.ExecutionPlatform = ExecutionPlatform(detail.ExecutionPlatform)
+	}
 	t.DisplayStatusCache = t.DetermineDisplayStatus()
 	setFields := bson.M{
 		FinishTimeKey:         finishTime,
@@ -2186,6 +2192,7 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 		StartTimeKey:          t.StartTime,
 		DisplayStatusCacheKey: t.DisplayStatusCache,
 		TaskOutputInfoKey:     t.TaskOutputInfo,
+		ExecutionPlatformKey:  t.ExecutionPlatform,
 	}
 	ec2EBSSetFields(TaskCostKey, t.TaskCost, setFields)
 	return UpdateOne(ctx, bson.M{IdKey: t.Id}, bson.M{"$set": setFields})
@@ -2363,6 +2370,7 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 		t.ActivatedBy = caller
 		t.Secret = newSecret
 		t.HostId = ""
+		t.ExecutionPlatform = ""
 		t.Status = evergreen.TaskUndispatched
 		t.DispatchTime = utility.ZeroTime
 		t.StartTime = utility.ZeroTime
@@ -2428,6 +2436,7 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 				ResetFailedWhenFinishedKey,
 				AgentVersionKey,
 				HostIdKey,
+				ExecutionPlatformKey,
 				HostCreateDetailsKey,
 				OverrideDependenciesKey,
 				CanResetKey,
@@ -4415,7 +4424,7 @@ func (t *Task) SaveS3Usage(ctx context.Context, logLookup, artifactLookup bucket
 		return errors.Wrap(err, "getting cost config")
 	}
 
-	t.calculateS3PutCosts(costConfig)
+	t.calculateS3PutCosts(ctx, costConfig)
 	t.setS3ArtifactStorageCosts(ctx, artifactLookup, costConfig)
 	t.setS3LogStorageCosts(ctx, logBucketName, logLookup, costConfig)
 
@@ -4470,12 +4479,12 @@ func lookupExpirationDays(ctx context.Context, bucket, fileKey string, lookup bu
 // calculateS3PutCosts calculates S3 PUT costs for both artifact uploads and log uploads.
 // Artifact PUT counts exclude non-DevProd-owned uploads when the allowlist is configured; that filtering
 // happens in s3usage.S3Usage.IncrementArtifacts (agent s3.put), so aggregates here already match priced PUTs.
-func (t *Task) calculateS3PutCosts(costConfig *evergreen.CostConfig) {
+func (t *Task) calculateS3PutCosts(ctx context.Context, costConfig *evergreen.CostConfig) {
 	if t.S3Usage.Artifacts.PutRequests > 0 {
-		t.TaskCost.OnDemandS3ArtifactPutCost, t.TaskCost.AdjustedS3ArtifactPutCost = s3usage.CalculateS3PutCostWithConfig(t.S3Usage.Artifacts.PutRequests, costConfig)
+		t.TaskCost.OnDemandS3ArtifactPutCost, t.TaskCost.AdjustedS3ArtifactPutCost = s3usage.CalculateS3PutCostWithConfig(ctx, t.S3Usage.Artifacts.PutRequests, costConfig)
 	}
 	if t.S3Usage.Logs.PutRequests > 0 {
-		t.TaskCost.OnDemandS3LogPutCost, t.TaskCost.AdjustedS3LogPutCost = s3usage.CalculateS3PutCostWithConfig(t.S3Usage.Logs.PutRequests, costConfig)
+		t.TaskCost.OnDemandS3LogPutCost, t.TaskCost.AdjustedS3LogPutCost = s3usage.CalculateS3PutCostWithConfig(ctx, t.S3Usage.Logs.PutRequests, costConfig)
 	}
 }
 
@@ -4488,10 +4497,9 @@ func (t *Task) setS3ArtifactStorageCosts(ctx context.Context, lookup bucketExpir
 	t.TaskCost.OnDemandS3ArtifactStorageCost = 0
 	t.TaskCost.AdjustedS3ArtifactStorageCost = 0
 	for _, bucketEntry := range t.S3Usage.Artifacts.BytesByBucketAndKey {
-		// A lookup miss is expected for these accounts, so don't log one. The lookup still runs because
+		// A lookup miss is expected for these buckets, so don't log one. The lookup still runs because
 		// rules cached before the account was listed are still valid.
-		accountID := evergreen.ResolveUploadAccountID(bucketEntry.AWSRoleARN, bucketEntry.AWSAccountID)
-		expectedMiss := evergreen.IsAccountWithoutLifecycleRules(accountID, costConfig.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules)
+		expectedMiss := costConfig.S3Cost.Storage.ShouldSkipLifecycleRules(bucketEntry.AWSRoleARN, bucketEntry.AWSAccountID)
 		for _, fileEntry := range bucketEntry.Files {
 			days, usedLookup := lookupExpirationDays(ctx, bucketEntry.Bucket, fileEntry.FileKey, lookup, costConfig)
 			if !usedLookup && !expectedMiss {

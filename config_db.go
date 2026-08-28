@@ -61,6 +61,7 @@ var (
 	taskDispatchKey                       = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")
 	hostInitKey                           = bsonutil.MustHaveTag(ServiceFlags{}, "HostInitDisabled")
 	largeParserProjectsDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "LargeParserProjectsDisabled")
+	crossFileYAMLAnchorsEnabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "CrossFileYAMLAnchorsEnabled")
 	monitorKey                            = bsonutil.MustHaveTag(ServiceFlags{}, "MonitorDisabled")
 	mergeQueueRecoveryEnabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "MergeQueueRecoveryEnabled")
 	alertsKey                             = bsonutil.MustHaveTag(ServiceFlags{}, "AlertsDisabled")
@@ -104,6 +105,7 @@ var (
 	liveArtifactCredentialsDisabledKey    = bsonutil.MustHaveTag(ServiceFlags{}, "LiveArtifactCredentialsDisabled")
 	containerIsolationEnabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "ContainerIsolationEnabled")
 	taskQueueAutoUnscheduleDisabledKey    = bsonutil.MustHaveTag(ServiceFlags{}, "TaskQueueAutoUnscheduleDisabled")
+	virtualTasksDisabledKey               = bsonutil.MustHaveTag(ServiceFlags{}, "VirtualTasksDisabled")
 
 	// DiagnosticsConfig keys
 	diagnosticsS3BucketNameKey = bsonutil.MustHaveTag(DiagnosticsConfig{}, "S3BucketName")

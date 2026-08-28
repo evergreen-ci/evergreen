@@ -396,6 +396,15 @@ func (r *taskResolver) EstimatedStart(ctx context.Context, obj *restModel.APITas
 	return &duration, nil
 }
 
+// ExecutionPlatform is the resolver for the executionPlatform field.
+func (r *taskResolver) ExecutionPlatform(ctx context.Context, obj *restModel.APITask) (task.ExecutionPlatform, error) {
+	platform := utility.FromStringPtr(obj.ExecutionPlatform)
+	if platform == "" {
+		return task.ExecutionPlatformHost, nil
+	}
+	return task.ExecutionPlatform(platform), nil
+}
+
 // ExecutionSteps is the resolver for the executionSteps field.
 func (r *taskResolver) ExecutionSteps(ctx context.Context, obj *restModel.APITask) ([]*model.TaskExecutionStep, error) {
 	versionID := utility.FromStringPtr(obj.Version)

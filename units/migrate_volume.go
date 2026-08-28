@@ -88,7 +88,7 @@ func (j *volumeMigrationJob) Run(ctx context.Context) {
 		}
 	}
 
-	mgrOpts, err := cloud.GetManagerOptions(j.initialHost.Distro)
+	mgrOpts, err := cloud.GetManagerOptions(ctx, j.initialHost.Distro)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "getting cloud manager options for host '%s'", j.initialHost.Id))
 		return

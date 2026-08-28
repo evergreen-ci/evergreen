@@ -494,7 +494,7 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 		grip.Alert(setupCtx, errors.New("setup.initial command is not registered"))
 	}
 	if factory != nil {
-		tc.setCurrentCommand(factory())
+		tc.setCurrentCommand(setupCtx, factory())
 	}
 
 	a.comm.UpdateLastMessageTime()
@@ -571,7 +571,7 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 
 	// We are only calling this again to get the log for the current command after logging has been set up.
 	if factory != nil {
-		tc.setCurrentCommand(factory())
+		tc.setCurrentCommand(setupCtx, factory())
 	}
 
 	tc.logger.Task().Infof(setupCtx, "Task logger initialized (agent version '%s' from Evergreen build revision '%s').", evergreen.AgentVersion, evergreen.BuildRevision)
@@ -1139,7 +1139,7 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 			grip.Error(ctx, tc.logger.Close())
 		}
 		// Snapshot avoids racing with senders still shutting down.
-		grip.Error(ctx, errors.Wrap(a.comm.ReportS3Usage(ctx, tc.task, tc.s3Usage.Snapshot(), true), "reporting S3 usage"))
+		grip.Error(ctx, errors.Wrap(a.comm.ReportS3Usage(ctx, tc.task, tc.s3Usage.Snapshot(ctx), true), "reporting S3 usage"))
 	}()
 	defer a.clearGlobalFiles(ctx, tc)
 
@@ -1514,12 +1514,16 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 	}
 
 	detail := &apimodels.TaskEndDetail{
-		TraceID:     tc.traceID,
-		DiskDevices: tc.diskDevices,
+		TraceID:           tc.traceID,
+		DiskDevices:       tc.diskDevices,
+		ExecutionPlatform: string(task.ExecutionPlatformHost),
 	}
 	setEndTaskFailureDetails(tc, detail, status, highestPriorityDescription, userDefinedFailureType, userDefinedFailureMetadataTags)
 	if tc.taskConfig != nil {
 		detail.Modules.Prefixes = tc.taskConfig.ModulePaths
+		if tc.taskConfig.ContainerID != "" {
+			detail.ExecutionPlatform = string(task.ExecutionPlatformContainer)
+		}
 	}
 	return detail
 }

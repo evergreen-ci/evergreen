@@ -5,6 +5,7 @@
     displayName
     requester
     revision
+    executionPlatform
     testSelectionEnabled
     taskCost {
       adjustedEBSStorageCost

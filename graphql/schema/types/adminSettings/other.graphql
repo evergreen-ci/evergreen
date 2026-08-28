@@ -27,6 +27,8 @@ input BucketsConfigInput {
   retryFailedLogMoveLookbackMonths: Int
   retryFailedLogMoveMaxJobsPerRun: Int
   testResultsBucket: BucketConfigInput
+  sourceCacheBucket: BucketConfigInput
+  sourceCacheProjects: [String!]
   internalBuckets: [String!]
   credentials: S3CredentialsInput @redactSecrets
 }
@@ -41,6 +43,8 @@ type BucketsConfig {
   retryFailedLogMoveLookbackMonths: Int
   retryFailedLogMoveMaxJobsPerRun: Int
   testResultsBucket: BucketConfig
+  sourceCacheBucket: BucketConfig
+  sourceCacheProjects: [String!]
   internalBuckets: [String!]
   credentials: S3Credentials @requireAdmin
 }
@@ -165,12 +169,14 @@ type SpawnHostConfig {
 
 input ProjectTasksPairInput {
   projectID: String!
+  isRegex: Boolean
   allowedTasks: [String!]!
   allowedBVs: [String!]!
 }
 
 type ProjectTasksPair {
   projectId: String!
+  isRegex: Boolean
   displayName: String!
   allowedTasks: [String!]!
   allowedBVs: [String!]!
