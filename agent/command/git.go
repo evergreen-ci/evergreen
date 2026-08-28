@@ -280,34 +280,7 @@ func (c *gitFetchProject) buildSourceCloneCommand(conf *internal.TaskConfig, opt
 
 	// If there's a PR checkout the ref containing the changes.
 	if usesGitHubParentPRCheckout(conf) {
-		var suffix, localBranchName, remoteBranchName, commitToTest string
-		if conf.GitHubParentPRCheckout != nil && conf.GitHubParentPRCheckout.ForSource {
-			suffix = "/head"
-			commitToTest = conf.GitHubParentPRCheckout.HeadHash
-			localBranchName = fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
-			remoteBranchName = fmt.Sprintf("pull/%d", conf.GitHubParentPRCheckout.PRNumber)
-		} else if conf.Task.Requester == evergreen.GithubPRRequester {
-			// Github creates a ref called refs/pull/[pr number]/head
-			// that provides the entire tree of changes, including merges
-			suffix = "/head"
-			commitToTest = conf.GithubPatchData.HeadHash
-			localBranchName = fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
-			remoteBranchName = fmt.Sprintf("pull/%d", conf.GithubPatchData.PRNumber)
-		} else if conf.Task.Requester == evergreen.GithubMergeRequester {
-			suffix = "" // redundant, included for clarity
-			commitToTest = conf.GithubMergeData.HeadSHA
-			localBranchName = fmt.Sprintf("evg-mg-test-%s", utility.RandomString())
-			// HeadRef looks like "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
-			remoteBranchName = conf.GithubMergeData.HeadBranch
-		}
-		if commitToTest != "" {
-			gitCommands = append(gitCommands, []string{
-				fmt.Sprintf(`git fetch origin "%s%s:%s"`, remoteBranchName, suffix, localBranchName),
-				fmt.Sprintf(`git checkout "%s"`, localBranchName),
-				fmt.Sprintf("git reset --hard %s", commitToTest),
-			}...)
-		}
-
+		gitCommands = append(gitCommands, prCheckoutCommands(conf)...)
 	} else {
 		if opts.cloneDepth > 0 {
 			// If this git log fails, then we know the clone is too shallow so we unshallow before reset.
@@ -319,6 +292,55 @@ func (c *gitFetchProject) buildSourceCloneCommand(conf *internal.TaskConfig, opt
 	gitCommands = append(gitCommands, "git log --oneline -n 10")
 
 	return gitCommands, nil
+}
+
+// prCheckoutCommit returns the commit a PR or merge queue checkout leaves HEAD
+// at, or "" when the task does no PR checkout.
+func prCheckoutCommit(conf *internal.TaskConfig) string {
+	if conf.GitHubParentPRCheckout != nil && conf.GitHubParentPRCheckout.ForSource {
+		return conf.GitHubParentPRCheckout.HeadHash
+	}
+	switch conf.Task.Requester {
+	case evergreen.GithubPRRequester:
+		return conf.GithubPatchData.HeadHash
+	case evergreen.GithubMergeRequester:
+		return conf.GithubMergeData.HeadSHA
+	}
+	return ""
+}
+
+// prCheckoutCommands returns the commands that check out the ref containing a
+// PR's or merge queue group's changes. They run after a clone, which leaves HEAD
+// at the base revision.
+func prCheckoutCommands(conf *internal.TaskConfig) []string {
+	commitToTest := prCheckoutCommit(conf)
+	if commitToTest == "" {
+		return nil
+	}
+
+	var suffix, localBranchName, remoteBranchName string
+	if conf.GitHubParentPRCheckout != nil && conf.GitHubParentPRCheckout.ForSource {
+		suffix = "/head"
+		localBranchName = fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
+		remoteBranchName = fmt.Sprintf("pull/%d", conf.GitHubParentPRCheckout.PRNumber)
+	} else if conf.Task.Requester == evergreen.GithubPRRequester {
+		// Github creates a ref called refs/pull/[pr number]/head
+		// that provides the entire tree of changes, including merges
+		suffix = "/head"
+		localBranchName = fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
+		remoteBranchName = fmt.Sprintf("pull/%d", conf.GithubPatchData.PRNumber)
+	} else if conf.Task.Requester == evergreen.GithubMergeRequester {
+		suffix = "" // redundant, included for clarity
+		localBranchName = fmt.Sprintf("evg-mg-test-%s", utility.RandomString())
+		// HeadRef looks like "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
+		remoteBranchName = conf.GithubMergeData.HeadBranch
+	}
+
+	return []string{
+		fmt.Sprintf(`git fetch origin "%s%s:%s"`, remoteBranchName, suffix, localBranchName),
+		fmt.Sprintf(`git checkout "%s"`, localBranchName),
+		fmt.Sprintf("git reset --hard %s", commitToTest),
+	}
 }
 
 func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opts cloneOpts, ref string, modulePatch *patch.ModulePatch) ([]string, error) {

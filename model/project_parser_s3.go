@@ -34,6 +34,29 @@ func NewParserProjectS3Storage(ctx context.Context, ppConf evergreen.ParserProje
 // FindOneByID finds a parser project in S3 using its ID. If the context errors,
 // it will return the context error.
 func (s *ParserProjectS3Storage) FindOneByID(ctx context.Context, id string) (*ParserProject, error) {
+	b, err := s.FindOneByIDRaw(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if b == nil {
+		return nil, nil
+	}
+
+	var pp ParserProject
+	if err := bson.Unmarshal(b, &pp); err != nil {
+		return nil, errors.Wrapf(err, "unmarshalling parser project '%s' from BSON", id)
+	}
+
+	if pp.Functions == nil {
+		pp.Functions = map[string]*YAMLCommandSet{}
+	}
+
+	return &pp, nil
+}
+
+// FindOneByIDRaw is the same as FindOneByID but it returns the raw parser
+// project bytes without decoding it.
+func (s *ParserProjectS3Storage) FindOneByIDRaw(ctx context.Context, id string) ([]byte, error) {
 	r, err := s.bucket.Get(ctx, id)
 	if pail.IsKeyNotFoundError(err) {
 		return nil, nil
@@ -48,16 +71,7 @@ func (s *ParserProjectS3Storage) FindOneByID(ctx context.Context, id string) (*P
 		return nil, errors.Wrapf(err, "reading parser project '%s'", id)
 	}
 
-	var pp ParserProject
-	if err := bson.Unmarshal(b, &pp); err != nil {
-		return nil, errors.Wrapf(err, "unmarshalling parser project '%s' from BSON", id)
-	}
-
-	if pp.Functions == nil {
-		pp.Functions = map[string]*YAMLCommandSet{}
-	}
-
-	return &pp, nil
+	return b, nil
 }
 
 // FindOneByIDWithFields finds a parser project using its ID from S3 and returns

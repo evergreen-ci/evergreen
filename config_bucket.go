@@ -49,6 +49,10 @@ type BucketsConfig struct {
 	RetryFailedLogMoveMaxJobsPerRun int `bson:"retry_failed_log_move_max_jobs_per_run" json:"retry_failed_log_move_max_jobs_per_run" yaml:"retry_failed_log_move_max_jobs_per_run"`
 	// TestResultsBucket is the bucket information for test results.
 	TestResultsBucket BucketConfig `bson:"test_results_bucket" json:"test_results_bucket" yaml:"test_results_bucket"`
+	// SourceCacheBucket is the bucket information for the git.get_project source cache.
+	SourceCacheBucket BucketConfig `bson:"source_cache_bucket" json:"source_cache_bucket" yaml:"source_cache_bucket"`
+	// SourceCacheProjects is the list of project IDs whose tasks may use the source cache.
+	SourceCacheProjects []string `bson:"source_cache_projects" json:"source_cache_projects" yaml:"source_cache_projects"`
 	// Credentials for accessing the LogBucket.
 	Credentials S3Credentials `bson:"credentials" json:"credentials" yaml:"credentials"`
 }
@@ -61,6 +65,8 @@ var (
 	BucketsConfigRetryFailedLogMoveLookbackDaysKey  = bsonutil.MustHaveTag(BucketsConfig{}, "RetryFailedLogMoveLookbackDays")
 	BucketsConfigRetryFailedLogMoveMaxJobsPerRunKey = bsonutil.MustHaveTag(BucketsConfig{}, "RetryFailedLogMoveMaxJobsPerRun")
 	BucketsConfigTestResultsBucketKey               = bsonutil.MustHaveTag(BucketsConfig{}, "TestResultsBucket")
+	BucketsConfigSourceCacheBucketKey               = bsonutil.MustHaveTag(BucketsConfig{}, "SourceCacheBucket")
+	BucketsConfigSourceCacheProjectsKey             = bsonutil.MustHaveTag(BucketsConfig{}, "SourceCacheProjects")
 	BucketsConfigCredentialsKey                     = bsonutil.MustHaveTag(BucketsConfig{}, "Credentials")
 )
 
@@ -118,6 +124,8 @@ func (c *BucketsConfig) Set(ctx context.Context) error {
 				BucketsConfigRetryFailedLogMoveLookbackDaysKey:  c.RetryFailedLogMoveLookbackDays,
 				BucketsConfigRetryFailedLogMoveMaxJobsPerRunKey: c.RetryFailedLogMoveMaxJobsPerRun,
 				BucketsConfigTestResultsBucketKey:               c.TestResultsBucket,
+				BucketsConfigSourceCacheBucketKey:               c.SourceCacheBucket,
+				BucketsConfigSourceCacheProjectsKey:             c.SourceCacheProjects,
 				BucketsConfigCredentialsKey:                     c.Credentials,
 			},
 		}),
@@ -130,6 +138,7 @@ func (c *BucketsConfig) ValidateAndDefault() error {
 	catcher.Add(c.LogBucket.validate())
 	catcher.Add(c.LogBucketLongRetention.validate())
 	catcher.Add(c.LogBucketFailedTasks.validate())
+	catcher.Add(c.SourceCacheBucket.validate())
 	if c.RetryFailedLogMoveLookbackDays < 0 {
 		catcher.Add(errors.New("retry_failed_log_move_lookback_days cannot be negative"))
 	}
@@ -146,6 +155,15 @@ func (c *BucketsConfig) GetLogBucket(projectID string) BucketConfig {
 		return c.LogBucketLongRetention
 	}
 	return c.LogBucket
+}
+
+// GetSourceCacheBucket returns the source cache bucket for the project, or a
+// zero BucketConfig when the project isn't opted in or no bucket is configured.
+func (c *BucketsConfig) GetSourceCacheBucket(projectID string) BucketConfig {
+	if !slices.Contains(c.SourceCacheProjects, projectID) {
+		return BucketConfig{}
+	}
+	return c.SourceCacheBucket
 }
 
 // LogBucketExpirationDays returns the configured expiration days for the given

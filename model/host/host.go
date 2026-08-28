@@ -3603,20 +3603,6 @@ func GetPaginatedRunningHosts(ctx context.Context, opts HostsFilterOptions) ([]H
 		{
 			"$match": bson.M{StatusKey: bson.M{"$ne": evergreen.HostTerminated}},
 		},
-		{
-			"$lookup": bson.M{
-				"from":         task.Collection,
-				"localField":   RunningTaskKey,
-				"foreignField": task.IdKey,
-				"as":           RunningTaskFullKey,
-			},
-		},
-		{
-			"$unwind": bson.M{
-				"path":                       "$" + RunningTaskFullKey,
-				"preserveNullAndEmptyArrays": true,
-			},
-		},
 	}
 
 	countPipeline := []bson.M{}
@@ -3724,6 +3710,24 @@ func GetPaginatedRunningHosts(ctx context.Context, opts HostsFilterOptions) ([]H
 	if opts.SortBy != IdKey {
 		sorters = append(sorters, bson.E{Key: IdKey, Value: 1})
 	}
+	// Only add the lookup stage after counting since it's not needed for the count pipelines.
+	runningHostsPipeline = append(runningHostsPipeline,
+		bson.M{
+			"$lookup": bson.M{
+				"from":         task.Collection,
+				"localField":   RunningTaskKey,
+				"foreignField": task.IdKey,
+				"as":           RunningTaskFullKey,
+			},
+		},
+		bson.M{
+			"$unwind": bson.M{
+				"path":                       "$" + RunningTaskFullKey,
+				"preserveNullAndEmptyArrays": true,
+			},
+		},
+	)
+
 	runningHostsPipeline = append(runningHostsPipeline, bson.M{
 		"$sort": sorters,
 	})

@@ -53,3 +53,28 @@ func TestBucketsConfigLogBucketExpirationDays(t *testing.T) {
 		assert.False(t, ok)
 	})
 }
+
+func TestBucketsConfigGetSourceCacheBucket(t *testing.T) {
+	bucket := BucketConfig{Name: "source-cache", RoleARN: "arn:aws:iam::123:role/source-cache"}
+
+	t.Run("ProjectInListShouldReturnBucket", func(t *testing.T) {
+		cfg := &BucketsConfig{SourceCacheBucket: bucket, SourceCacheProjects: []string{"proj-a", "proj-b"}}
+		assert.Equal(t, bucket, cfg.GetSourceCacheBucket("proj-b"))
+	})
+
+	// Absence from the list is the only "off" state the feature has.
+	t.Run("ProjectNotNamedAnywhereShouldReturnZeroBucket", func(t *testing.T) {
+		cfg := &BucketsConfig{SourceCacheBucket: bucket, SourceCacheProjects: []string{"proj-a"}}
+		assert.Zero(t, cfg.GetSourceCacheBucket("proj-unnamed"))
+	})
+
+	t.Run("EmptyProjectListShouldReturnZeroBucketForEveryProject", func(t *testing.T) {
+		cfg := &BucketsConfig{SourceCacheBucket: bucket}
+		assert.Zero(t, cfg.GetSourceCacheBucket("proj-a"))
+	})
+
+	t.Run("ListedProjectWithNoBucketConfiguredShouldReturnZeroBucket", func(t *testing.T) {
+		cfg := &BucketsConfig{SourceCacheProjects: []string{"proj-a"}}
+		assert.Zero(t, cfg.GetSourceCacheBucket("proj-a"))
+	})
+}

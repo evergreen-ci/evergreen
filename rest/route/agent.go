@@ -448,6 +448,17 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		res.Parameters[param.Key] = param.Value
 	}
 
+	res.SourceCacheBucket = h.settings.Buckets.GetSourceCacheBucket(t.Project)
+	if res.SourceCacheBucket.Name == "" {
+		grip.Debug(ctx, message.Fields{
+			"message":     "no source cache bucket for task",
+			"task":        t.Id,
+			"project":     t.Project,
+			"opted_in":    slices.Contains(h.settings.Buckets.SourceCacheProjects, t.Project),
+			"bucket_name": h.settings.Buckets.SourceCacheBucket.Name,
+		})
+	}
+
 	var costCfg evergreen.CostConfig
 	if err := costCfg.Get(ctx); err != nil {
 		grip.Error(ctx, errors.Wrap(err, "loading cost config for expansions_and_vars"))
@@ -573,21 +584,19 @@ func (h *getParserProjectHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	pp, err := model.ParserProjectFindOneByID(ctx, h.env.Settings(), v.ProjectStorageMethod, v.Id)
+	// Retrieve and send just the raw parser project bytes to avoid the cost of
+	// unnecessarily marshalling/unmarshalling the parser project here.
+	ppBytes, err := model.ParserProjectFindOneByIDRaw(ctx, h.env.Settings(), v.ProjectStorageMethod, v.Id)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding parser project '%s'", v.Id))
 	}
-	if pp == nil {
+	if ppBytes == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("parser project '%s' not found", v.Id),
 		})
 	}
-	projBytes, err := pp.MarshalBSON()
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "marshalling project bytes to bson"))
-	}
-	return gimlet.NewBinaryResponse(projBytes)
+	return gimlet.NewBinaryResponse(ppBytes)
 }
 
 // GET /task/{task_id}/distro_view

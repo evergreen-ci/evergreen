@@ -690,6 +690,12 @@ func (p *schedulePatchHandler) Parse(ctx context.Context, r *http.Request) error
 
 func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
+	if !dbModel.UserCanModifyPatch(ctx, u, p.patch) {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusForbidden,
+			Message:    fmt.Sprintf("user '%s' is not authorized to configure patch '%s'", u.Username(), p.patchId),
+		})
+	}
 	dbVersion, _ := dbModel.VersionFindOneId(ctx, p.patchId)
 	var project *dbModel.Project
 	var err error

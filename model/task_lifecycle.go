@@ -322,13 +322,44 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 		if !t.IsFinished() {
 			if detail != nil {
 				if t.DisplayOnly {
+					// TODO (DEVPROD-31861): remove this log once confirmed that
+					// the display task does not race to reset anymore.
+					grip.Info(ctx, message.Fields{
+						"message":                     "reached max executions for display task, marking the display task and all unfinished execution tasks as finished",
+						"display_task_id":             t.Id,
+						"display_task_execution":      t.Execution,
+						"display_task_status":         t.Status,
+						"display_task_max_executions": maxExecution,
+						"num_execution_tasks":         len(t.ExecutionTasks),
+						"origin":                      origin,
+						"ticket":                      "DEVPROD-31861",
+					})
 					for _, etId := range t.ExecutionTasks {
 						execTask, err = task.FindOneId(ctx, etId)
 						if err != nil {
 							return errors.Wrap(err, "finding execution task")
 						}
-						if err = MarkEnd(ctx, settings, execTask, origin, time.Now(), detail); err != nil {
-							return errors.Wrap(err, "marking execution task as ended")
+						// Even though the overall display task is unfinished,
+						// some individual execution tasks may already be
+						// finished. Only MarkEnd on unfinished execution tasks.
+						if !evergreen.IsFinishedTaskStatus(execTask.Status) {
+							// TODO (DEVPROD-31861): remove this log once
+							// confirmed that the display task does not race to
+							// reset anymore.
+							grip.Info(ctx, message.Fields{
+								"message":                     "reached max executions for display task, marking unfinished execution task as finished",
+								"display_task_id":             t.Id,
+								"display_task_execution":      t.Execution,
+								"display_task_max_executions": maxExecution,
+								"execution_task_id":           execTask.Id,
+								"execution_task_execution":    execTask.Execution,
+								"execution_task_status":       execTask.Status,
+								"origin":                      origin,
+								"ticket":                      "DEVPROD-31861",
+							})
+							if err = MarkEnd(ctx, settings, execTask, origin, time.Now(), detail); err != nil {
+								return errors.Wrap(err, "marking execution task as ended")
+							}
 						}
 					}
 				}
@@ -911,7 +942,7 @@ func markEndDisplayTask(ctx context.Context, settings *evergreen.Settings, t *ta
 	if err != nil {
 		return errors.Wrap(err, "getting display task")
 	}
-	return errors.Wrap(checkResetDisplayTask(ctx, settings, caller, origin, dt), "checking display task reset")
+	return errors.Wrap(checkResetDisplayTask(ctx, settings, caller, origin, dt), "checking and resetting display task")
 }
 
 func getDeactivatePrevious(t *task.Task, pRef *ProjectRef, project *Project) bool {
@@ -2908,9 +2939,8 @@ func checkResetSingleHostTaskGroup(ctx context.Context, t *task.Task, caller str
 	return errors.Wrap(resetManyTasks(ctx, tasks, caller), "resetting task group tasks")
 }
 
-// checkResetDisplayTask attempts to reset all tasks that are under the same
-// parent display task as t once all tasks under the display task are finished
-// running.
+// checkResetDisplayTask attempts to reset tasks that are under the same parent
+// display task as t once all tasks under the display task are finished running.
 func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, user, origin string, t *task.Task) (theErr error) {
 	if !t.ResetWhenFinished && !t.ResetFailedWhenFinished {
 		return nil
@@ -2945,6 +2975,23 @@ func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, use
 	if t.IsAutomaticRestart {
 		user = evergreen.AutoRestartActivator
 	}
+
+	// If there are multiple execution tasks concurrently finishing and trying
+	// to reset the display task, the display task data might be stale. Re-check
+	// the DB state to confirm that the display task still needs to be reset.
+	latestDisplayTask, err := task.FindOneId(ctx, t.Id)
+	if err != nil {
+		return errors.Wrapf(err, "getting display task '%s'", t.Id)
+	}
+	if latestDisplayTask == nil {
+		return errors.Errorf("display task '%s' not found", t.Id)
+	}
+	if latestDisplayTask.Execution != t.Execution || (!latestDisplayTask.ResetWhenFinished && !latestDisplayTask.ResetFailedWhenFinished) {
+		// Another execution task under this display task already reset the
+		// display task, so this doesn't need to do anything.
+		return nil
+	}
+
 	return errors.Wrap(TryResetTask(ctx, setting, t.Id, user, origin, details), "resetting display task")
 }
 

@@ -80,6 +80,7 @@ type TaskEndDetail struct {
 	TraceID              string                  `bson:"trace_id,omitempty" json:"trace_id,omitempty"`
 	DiskDevices          []string                `bson:"disk_devices,omitempty" json:"disk_devices,omitempty"`
 	ResourceConstraints  *ResourceConstraintInfo `bson:"resource_constraints,omitempty" json:"resource_constraints,omitempty"`
+	ExecutionPlatform    string                  `bson:"execution_platform,omitempty" json:"execution_platform,omitempty"`
 }
 
 // FailingCommand represents a command that failed in a task.
@@ -395,6 +396,9 @@ type ExpansionsAndVars struct {
 	// ArtifactAWSAccountsWithoutLifecycleRules contains the AWS account IDs of the accounts that we
 	// calculate s3 costs for but cannot read lifecycle rules from.
 	ArtifactAWSAccountsWithoutLifecycleRules []string `json:"artifact_aws_accounts_without_lifecycle_rules,omitempty"`
+	// SourceCacheBucket is the git.get_project source cache bucket resolved for
+	// the task's project. It is zero when the project is not opted in.
+	SourceCacheBucket evergreen.BucketConfig `json:"source_cache_bucket,omitempty"`
 }
 
 // CheckRunOutput represents the output for a CheckRun.

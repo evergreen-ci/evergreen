@@ -295,6 +295,11 @@ func (r *mutationResolver) SaveDistro(ctx context.Context, opts SaveDistroInput)
 	if oldDistro == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("distro '%s' not found", d.Id))
 	}
+	if opts.Distro.BootstrapSettings.ContainerIsolation == nil {
+		d.BootstrapSettings.ContainerIsolation = oldDistro.BootstrapSettings.ContainerIsolation
+		opts.Distro.BootstrapSettings.ContainerIsolation = &restModel.APIContainerIsolationSettings{}
+		opts.Distro.BootstrapSettings.ContainerIsolation.BuildFromService(d.BootstrapSettings.ContainerIsolation)
+	}
 
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {

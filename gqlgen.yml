@@ -163,6 +163,22 @@ models:
         value: github.com/evergreen-ci/evergreen/model/distro.CommunicationMethodSSH
       RPC:
         value: github.com/evergreen-ci/evergreen/model/distro.CommunicationMethodRPC
+  ContainerIsolationSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIContainerIsolationSettings
+    fields:
+      image:
+        resolver: true
+  ContainerIsolationSettingsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIContainerIsolationSettings
+  ExecutionPlatform:
+    model: github.com/evergreen-ci/evergreen/model/task.ExecutionPlatform
+    enum_values:
+      HOST:
+        value: github.com/evergreen-ci/evergreen/model/task.ExecutionPlatformHost
+      CONTAINER:
+        value: github.com/evergreen-ci/evergreen/model/task.ExecutionPlatformContainer
+      VIRTUAL:
+        value: github.com/evergreen-ci/evergreen/model/task.ExecutionPlatformVirtual
   ContainerPool:
     model: github.com/evergreen-ci/evergreen/rest/model.APIContainerPool
   ContainerPoolInput:
