@@ -469,7 +469,8 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 	if sc == nil {
 		logger.Task().Infof(ctx, "Not using the source cache: %s.", skipReason)
 		setSourceCacheSpanSkipped(ctx, skipReason)
-		return c.cloneSource(ctx, comm, logger, conf, opts)
+		_, err := c.cloneSource(ctx, comm, logger, conf, opts)
+		return err
 	}
 
 	fallbackReason := ""
@@ -506,9 +507,13 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 		logger.Task().Warningf(ctx, "Falling back to a GitHub clone: %s", fallbackReason)
 	}
 
-	if err := c.cloneSource(ctx, comm, logger, conf, opts); err != nil {
+	token, err := c.cloneSource(ctx, comm, logger, conf, opts)
+	if err != nil {
 		return err
 	}
+	// The clone may have refreshed the token, and the post-save script puts this
+	// URL back into .git for the rest of the task to use.
+	opts.token = token
 
 	outcome := sourceCacheMissProduced
 	produced, err := c.saveSourceCache(ctx, comm, logger, conf, sc, opts)
@@ -528,15 +533,17 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 	return nil
 }
 
-// cloneSource clones the project from GitHub.
-func (c *gitFetchProject) cloneSource(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, opts cloneOpts) error {
+// cloneSource clones the project from GitHub, returning the token the clone
+// ended up using.
+func (c *gitFetchProject) cloneSource(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, opts cloneOpts) (string, error) {
 	start := time.Now()
 	// Deferred so a failed clone is timed too, since those are the runs most
 	// worth comparing against a cache hit.
 	defer func() {
 		setSourceCacheSpanDuration(ctx, sourceCacheCloneDurationAttribute, time.Since(start))
 	}()
-	return errors.Wrap(c.fetchSource(ctx, logger, comm, conf, opts), "running fetch command")
+	token, err := c.fetchSource(ctx, logger, comm, conf, opts)
+	return token, errors.Wrap(err, "running fetch command")
 }
 
 // saveSourceCache scrubs the cloned tree of anything task-specific, uploads it,
@@ -641,10 +648,13 @@ func (c *gitFetchProject) runCommands(ctx context.Context, logger client.LoggerP
 		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Execution().GetSender()).Run(ctx)
 }
 
-func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerProducer, comm client.Communicator, conf *internal.TaskConfig, opts cloneOpts) error {
+// fetchSource clones the project, returning the token it ended up using. A
+// retry can refresh the token, and callers that rewrite the origin URL
+// afterwards need the current one rather than the one they passed in.
+func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerProducer, comm client.Communicator, conf *internal.TaskConfig, opts cloneOpts) (string, error) {
 	attempt := 0
 	token := opts.token
-	return c.retryFetch(ctx, logger, comm, conf, true, opts, func(opts cloneOpts) error {
+	err := c.retryFetch(ctx, logger, comm, conf, true, opts, func(opts cloneOpts) error {
 		attempt++
 		// Don't refresh c.Token because it is user supplied.
 		if attempt == gitFetchProjectRetries && c.Token == "" {
@@ -712,6 +722,7 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 
 		return nil
 	})
+	return token, err
 }
 
 func refreshCloneToken(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, owner, repo string) (string, error) {
