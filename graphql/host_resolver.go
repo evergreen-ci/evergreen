@@ -138,13 +138,12 @@ func (r *hostResolver) Volumes(ctx context.Context, obj *host.Host) ([]*host.Vol
 
 	volumes, err := host.FindVolumesByIDs(ctx, volumeIds)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting volumes", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprint("getting volumes", err.Error()))
 	}
 
 	volumePtrs := make([]*host.Volume, 0, len(volumes))
-	for _, vol := range volumes {
-		vCopy := vol
-		volumePtrs = append(volumePtrs, &vCopy)
+	for i := range volumes {
+		volumePtrs = append(volumePtrs, &volumes[i])
 	}
 
 	return volumePtrs, nil

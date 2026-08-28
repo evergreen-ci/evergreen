@@ -297,6 +297,8 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 			sorter = bsonutil.GetDottedKeyName(host.DistroKey, distro.IdKey)
 		case HostSortByID:
 			sorter = host.IdKey
+		case HostSortByElapsed:
+			sorter = bsonutil.GetDottedKeyName(host.RunningTaskFullKey, task.StartTimeKey)
 		case HostSortByIdleTime:
 			sorter = host.TotalIdleTimeKey
 		case HostSortByOwner:
@@ -342,7 +344,8 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 
 	usr := mustHaveUser(ctx)
 	hostsPtrs := []*host.Host{}
-	for _, h := range hosts {
+	for i := range hosts {
+		h := &hosts[i]
 		forbiddenHosts := []string{}
 		if !userHasHostPermission(ctx, usr, h.Distro.Id, evergreen.HostsView.Value, h.StartedBy) {
 			forbiddenHosts = append(forbiddenHosts, h.Id)
@@ -355,8 +358,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 				"ticket":          "DEVPROD-5753",
 			})
 		}
-		hCopy := h
-		hostsPtrs = append(hostsPtrs, &hCopy)
+		hostsPtrs = append(hostsPtrs, h)
 	}
 	// TODO: Upon adding a hosts dataloader, could probably preload RunningTasks to yield elapsed time
 	return &HostsResponse{
@@ -580,9 +582,8 @@ func (r *queryResolver) MyHosts(ctx context.Context) ([]*host.Host, error) {
 	hosts = append(hosts, recentlyTerminatedHosts...)
 
 	var hostsPtrs []*host.Host
-	for _, h := range hosts {
-		hCopy := h
-		hostsPtrs = append(hostsPtrs, &hCopy)
+	for i := range hosts {
+		hostsPtrs = append(hostsPtrs, &hosts[i])
 	}
 	return hostsPtrs, nil
 }
@@ -595,9 +596,8 @@ func (r *queryResolver) MyVolumes(ctx context.Context) ([]*host.Volume, error) {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	volumePtrs := make([]*host.Volume, 0, len(volumes))
-	for _, vol := range volumes {
-		vCopy := vol
-		volumePtrs = append(volumePtrs, &vCopy)
+	for i := range volumes {
+		volumePtrs = append(volumePtrs, &volumes[i])
 	}
 	return volumePtrs, nil
 }

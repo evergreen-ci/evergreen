@@ -6,8 +6,6 @@ query {
     availabilityZone
     size
     expiration
-    deviceName
-    hostID
     noExpiration
     homeVolume
     creationTime
