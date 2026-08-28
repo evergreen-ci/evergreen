@@ -32,7 +32,9 @@ import (
 )
 
 const (
-	s3PutAttribute = "evergreen.command.s3_put"
+	s3PutAttribute           = "evergreen.command.s3_put"
+	s3PresignMinimumDuration = time.Second
+	s3PresignMaximumDuration = 7 * 24 * time.Hour
 )
 
 var (
@@ -110,6 +112,10 @@ type s3put struct {
 	// If unset, the file will be public.
 	Visibility string `mapstructure:"visibility" plugin:"expand"`
 
+	// PresignDuration controls how long presigned URLs remain valid. It only
+	// applies when Visibility is set to signed.
+	PresignDuration string `mapstructure:"presign_duration" plugin:"expand"`
+
 	// Optional, when set to true, causes this command to be skipped over without an error when
 	// the path specified in local_file does not exist. Defaults to false, which triggers errors
 	// for missing files.
@@ -147,6 +153,7 @@ type s3put struct {
 	preservePath       bool
 	skipExistingBool   bool
 	checksumSHA256Bool bool
+	presignDuration    time.Duration
 	isPatchable        bool
 	isPatchOnly        bool
 
@@ -294,6 +301,19 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 		s3pc.checksumSHA256Bool, err = strconv.ParseBool(s3pc.UploadChecksumSHA256)
 		if err != nil {
 			return errors.Wrap(err, "parsing checksum SHA256 parameter as a boolean")
+		}
+	}
+
+	if s3pc.PresignDuration != "" {
+		s3pc.presignDuration, err = time.ParseDuration(s3pc.PresignDuration)
+		if err != nil {
+			return errors.Wrap(err, "parsing presign duration")
+		}
+		if s3pc.presignDuration < s3PresignMinimumDuration || s3pc.presignDuration > s3PresignMaximumDuration {
+			return errors.Errorf("presign duration must be between %s and %s", s3PresignMinimumDuration, s3PresignMaximumDuration)
+		}
+		if s3pc.Visibility != artifact.Signed {
+			return errors.New("presign duration can only be used with signed visibility")
 		}
 	}
 
@@ -673,6 +693,7 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, up
 			FileSize:         uploadInfo.FileSizeBytes,
 			PutRequests:      uploadInfo.PutRequests,
 			AssociatedLinks:  s3pc.associatedLinks,
+			PresignDuration:  s3pc.presignDuration,
 		})
 	}
 

@@ -8,6 +8,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/grip"
@@ -92,6 +97,8 @@ type File struct {
 	AssociatedLinks []AssociatedLink `json:"associated_links,omitempty" bson:"associated_links,omitempty"`
 	// DoNotEncodeLink indicates that the file link should not be escaped.
 	DoNotEncodeLink bool `json:"do_not_encode_link,omitempty" bson:"do_not_encode_link,omitempty"`
+	// PresignDuration is how long a presigned URL for this file remains valid.
+	PresignDuration time.Duration `json:"presign_duration,omitempty" bson:"presign_duration,omitempty"`
 }
 
 func (f *File) validate() error {
@@ -211,7 +218,57 @@ func PresignFile(ctx context.Context, file File, resolver CredentialResolver) (s
 		AWSRoleARN:            file.AWSRoleARN,
 		ExternalID:            externalID,
 	}
+	if file.PresignDuration != 0 {
+		requestParams.SignatureExpiryWindow = file.PresignDuration
+		return presignFileWithDuration(ctx, requestParams, file.PresignDuration)
+	}
 	return pail.PreSign(ctx, requestParams)
+}
+
+func presignFileWithDuration(ctx context.Context, params pail.PreSignRequestParams, duration time.Duration) (string, error) {
+	region := params.Region
+	if region == "" {
+		region = evergreen.DefaultEC2Region
+	}
+
+	cfg, err := awsconfig.LoadDefaultConfig(ctx,
+		awsconfig.WithRegion(region),
+		awsconfig.WithCredentialsCacheOptions(func(options *aws.CredentialsCacheOptions) {
+			options.ExpiryWindow = duration
+		}),
+	)
+	if err != nil {
+		return "", errors.Wrap(err, "loading AWS config")
+	}
+
+	if params.AWSKey != "" {
+		cfg.Credentials = pail.CreateAWSStaticCredentials(params.AWSKey, params.AWSSecret, params.AWSSessionToken)
+	} else if params.AWSRoleARN != "" {
+		cacheKey := params.AWSRoleARN
+		if params.ExternalID != nil {
+			cacheKey += "|" + *params.ExternalID
+		}
+		stsClient := sts.NewFromConfig(cfg)
+		cfg.Credentials = pail.WithSeed(
+			stscreds.NewAssumeRoleProvider(stsClient, params.AWSRoleARN, func(options *stscreds.AssumeRoleOptions) {
+				options.ExternalID = params.ExternalID
+				options.Duration = max(duration, stscreds.DefaultDuration)
+			}),
+			cacheKey,
+			duration,
+		)
+	}
+
+	presignClient := s3.NewPresignClient(s3.NewFromConfig(cfg))
+	request, err := presignClient.PresignGetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(params.Bucket),
+		Key:    aws.String(params.FileKey),
+	}, s3.WithPresignExpires(duration))
+	if err != nil {
+		return "", errors.Wrap(err, "presigning S3 object")
+	}
+
+	return request.URL, nil
 }
 
 func GetAllArtifacts(ctx context.Context, tasks []TaskIDAndExecution) ([]File, error) {
