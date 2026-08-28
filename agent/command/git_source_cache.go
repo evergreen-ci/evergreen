@@ -151,7 +151,7 @@ func (sc *sourceCache) cacheKeysForRevision(revision string) (string, string, er
 	if err != nil {
 		return "", "", err
 	}
-	return key, path.Join(sourceCachePrefix, namespace, sc.owner, sc.repo, revision, key+cacheArchiveSuffix), nil
+	return key, path.Join(sourceCachePrefix, sc.owner, sc.repo, namespace, revision, key+cacheArchiveSuffix), nil
 }
 
 func (sc *sourceCache) projectDir() string {

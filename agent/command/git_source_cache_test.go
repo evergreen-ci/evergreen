@@ -144,7 +144,7 @@ func TestSourceCacheKeysPRCheckoutsInTheirOwnNamespace(t *testing.T) {
 				// The PR artifact is tried first, then the base revision one a
 				// mainline build produces.
 				assert.Equal(t, []string{prHead, "abc123"}, sc.restoreRevisions())
-				assert.Equal(t, "source_cache/v1/pr/some-org/some-repo/"+prHead+"/"+sc.key+".tgz", sc.remoteKey)
+				assert.Equal(t, "source_cache/v1/some-org/some-repo/pr/"+prHead+"/"+sc.key+".tgz", sc.remoteKey)
 			} else {
 				assert.Equal(t, []string{"abc123"}, sc.restoreRevisions())
 				assert.Equal(t, "source_cache/v1/some-org/some-repo/abc123/"+sc.key+".tgz", sc.remoteKey)
