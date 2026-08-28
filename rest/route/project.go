@@ -490,6 +490,8 @@ func updateProjectOrRepoSettings(ctx context.Context, pRef *dbModel.ProjectRef, 
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating aliases for project '%s'", pRef.Id))
 	}
 
+	// Don't use Save to delete subscriptions, since we aren't checking the
+	// delete subscriptions list against the inputted list of subscriptions.
 	if err := data.SaveSubscriptions(ctx, pRef.Id, apiRef.Subscriptions, true); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "saving subscriptions for project '%s'", pRef.Id))
 	}
