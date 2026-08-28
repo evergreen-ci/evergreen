@@ -61,10 +61,7 @@ func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 	buildId := vars["build_id"]
 	versionId := vars["version_id"]
 	patchId := vars["patch_id"]
-	projectId := vars["project_id"]
-	if projectId == "" {
-		projectId = vars["repo_id"]
-	}
+	projectId := util.CoalesceString(vars["project_id"], vars["repo_id"])
 
 	opCtx, err := model.LoadContext(r.Context(), taskId, buildId, versionId, patchId, projectId)
 	if err != nil {
