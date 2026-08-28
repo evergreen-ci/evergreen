@@ -663,6 +663,8 @@ func (at *APITask) ToService() (*task.Task, error) {
 	return st, nil
 }
 
+// getArtifacts batch fetches artifacts for all tasks. If the prefetched artifacts are passed in, we can guarantee
+// that all needed artifacts are in the cache.
 func (at *APITask) getArtifacts(ctx context.Context, baseURL string, prefetched map[artifact.TaskIDAndExecution][]artifact.Entry) error {
 	var err error
 	var entries []artifact.Entry
