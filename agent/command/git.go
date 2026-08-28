@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -459,6 +460,150 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 	return err
 }
 
+// fetchOrRestoreSource restores the project directory from the source cache when
+// the project is opted in, and otherwise clones it from GitHub. Any source cache
+// failure falls back to the clone, so the cache can only save time, never change
+// what is tested.
+func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, opts cloneOpts) error {
+	sc, skipReason := newSourceCache(conf, c, opts, runtime.GOOS)
+	if sc == nil {
+		logger.Task().Infof(ctx, "Not using the source cache: %s.", skipReason)
+		setSourceCacheSpanSkipped(ctx, skipReason)
+		return c.cloneSource(ctx, comm, logger, conf, opts)
+	}
+
+	fallbackReason := ""
+	for _, revision := range sc.restoreRevisions() {
+		_, remoteKey, err := sc.cacheKeysForRevision(revision)
+		if err != nil {
+			fallbackReason = errors.Wrap(err, "computing the source cache key").Error()
+			break
+		}
+		logger.Task().Infof(ctx, "Looking up source cache '%s/%s'.", sc.cfg.Name, remoteKey)
+		restored, err := sc.restore(ctx, comm, logger, remoteKey)
+		if err != nil {
+			fallbackReason = err.Error()
+			break
+		}
+		if !restored {
+			continue
+		}
+		// A base revision artifact is at the commit the PR is built on, so the
+		// PR still has to be checked out over it.
+		runPRCheckout := revision != sc.revision
+		// buildPostRestoreCommand verifies HEAD against revision, so a restored
+		// tree at the wrong commit fails here and falls back to a clone below.
+		if err := c.runGitScript(ctx, logger, conf, c.buildPostRestoreCommand(conf, opts, revision, runPRCheckout)); err != nil {
+			fallbackReason = errors.Wrap(err, "preparing restored source tree").Error()
+			break
+		}
+		logger.Task().Infof(ctx, "Restored source from the cache for revision '%s'.", revision)
+		trace.SpanFromContext(ctx).SetAttributes(attribute.String(sourceCacheAttribute("restored_revision"), revision))
+		sc.setSpanOutcome(ctx, sourceCacheHit, "")
+		return nil
+	}
+	if fallbackReason != "" {
+		logger.Task().Warningf(ctx, "Falling back to a GitHub clone: %s", fallbackReason)
+	}
+
+	if err := c.cloneSource(ctx, comm, logger, conf, opts); err != nil {
+		return err
+	}
+
+	outcome := sourceCacheMissProduced
+	produced, err := c.saveSourceCache(ctx, comm, logger, conf, sc, opts)
+	if err != nil {
+		logger.Task().Warningf(ctx, "Saving source to the cache: %s", err)
+		outcome = sourceCacheFallback
+		if fallbackReason == "" {
+			fallbackReason = err.Error()
+		}
+	} else if !produced {
+		outcome = sourceCacheMissLostRace
+	}
+	if fallbackReason != "" {
+		outcome = sourceCacheFallback
+	}
+	sc.setSpanOutcome(ctx, outcome, fallbackReason)
+	return nil
+}
+
+// cloneSource clones the project from GitHub.
+func (c *gitFetchProject) cloneSource(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, opts cloneOpts) error {
+	start := time.Now()
+	if err := c.fetchSource(ctx, logger, comm, conf, opts); err != nil {
+		return errors.Wrap(err, "running fetch command")
+	}
+	setSourceCacheSpanDuration(ctx, "clone_duration", time.Since(start))
+	return nil
+}
+
+// saveSourceCache scrubs the cloned tree of anything task-specific, uploads it,
+// and puts the task's own authenticated origin URL back for the rest of the run.
+func (c *gitFetchProject) saveSourceCache(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, sc *sourceCache, opts cloneOpts) (bool, error) {
+	if err := c.runGitScript(ctx, logger, conf, c.buildPreSaveCommand(opts)); err != nil {
+		return false, errors.Wrap(err, "scrubbing source tree before saving")
+	}
+	produced, saveErr := sc.save(ctx, comm, logger)
+	if err := c.runGitScript(ctx, logger, conf, c.buildPostSaveCommand(opts)); err != nil {
+		return produced, errors.Wrap(err, "restoring origin URL after saving")
+	}
+	return produced, saveErr
+}
+
+// buildPostRestoreCommand returns the script run over a restored tree. It
+// verifies HEAD against the expected revision and optionally checks out a PR.
+func (c *gitFetchProject) buildPostRestoreCommand(conf *internal.TaskConfig, opts cloneOpts, revision string, runPRCheckout bool) []string {
+	cmds := c.scriptInProjectDir(fmt.Sprintf(`test "$(git rev-parse HEAD)" = "%s"`, revision))
+	cmds = append(cmds, setOriginURLCommands(opts)...)
+	if runPRCheckout {
+		cmds = append(cmds, prCheckoutCommands(conf)...)
+	}
+	return append(cmds, "git log --oneline -n 10")
+}
+
+// buildPreSaveCommand returns the script run before archiving the cloned tree.
+// Hooks in a restored .git execute on checkout, and origin holds the producer's
+// own credential, so both are scrubbed.
+func (c *gitFetchProject) buildPreSaveCommand(opts cloneOpts) []string {
+	tokenless := cloneOpts{owner: opts.owner, repo: opts.repo}
+	return append(c.scriptInProjectDir("rm -rf .git/hooks"), setOriginURLCommands(tokenless)...)
+}
+
+// buildPostSaveCommand puts the task's own authenticated origin URL back after
+// the scrubbed tree has been archived.
+func (c *gitFetchProject) buildPostSaveCommand(opts cloneOpts) []string {
+	return append(c.scriptInProjectDir(), setOriginURLCommands(opts)...)
+}
+
+// scriptInProjectDir starts a git script in the project directory, with cmds
+// appended after the shell options every one of these scripts sets.
+func (c *gitFetchProject) scriptInProjectDir(cmds ...string) []string {
+	return append([]string{
+		"set -o xtrace",
+		"set -o errexit",
+		fmt.Sprintf("cd %s", c.Directory),
+	}, cmds...)
+}
+
+// setOriginURLCommands points origin at the given URL with xtrace off, since the
+// URL embeds a token when one is set.
+func setOriginURLCommands(opts cloneOpts) []string {
+	return []string{
+		"set +o xtrace",
+		fmt.Sprintf("echo %s", strconv.Quote("git remote set-url origin <redacted>")),
+		fmt.Sprintf("git remote set-url origin %s", thirdparty.FormGitURLForApp(opts.owner, opts.repo, opts.token)),
+		"set -o xtrace",
+	}
+}
+
+func (c *gitFetchProject) runGitScript(ctx context.Context, logger client.LoggerProducer, conf *internal.TaskConfig, cmds []string) error {
+	script := strings.Join(cmds, "\n")
+	logger.Task().Debugf(ctx, "Commands are: %s", script)
+	return c.JasperManager().CreateCommand(ctx).Add([]string{"bash", "-c", script}).Directory(conf.WorkDir).
+		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Execution().GetSender()).Run(ctx)
+}
+
 func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerProducer, comm client.Communicator, conf *internal.TaskConfig, opts cloneOpts) error {
 	attempt := 0
 	token := opts.token
@@ -775,9 +920,9 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	// Clone the project.
-	if err := c.fetchSource(ctx, logger, comm, conf, opts); err != nil {
-		return errors.Wrap(err, "running fetch command")
+	// Clone the project, or restore it from the source cache.
+	if err := c.fetchOrRestoreSource(ctx, comm, logger, conf, opts); err != nil {
+		return err
 	}
 
 	// Retrieve the patch for the version if one exists.
