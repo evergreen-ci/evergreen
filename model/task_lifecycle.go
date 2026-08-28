@@ -942,7 +942,7 @@ func markEndDisplayTask(ctx context.Context, settings *evergreen.Settings, t *ta
 	if err != nil {
 		return errors.Wrap(err, "getting display task")
 	}
-	return errors.Wrap(checkResetDisplayTask(ctx, settings, caller, origin, dt), "checking display task reset")
+	return errors.Wrap(checkResetDisplayTask(ctx, settings, caller, origin, dt), "checking and resetting display task")
 }
 
 func getDeactivatePrevious(t *task.Task, pRef *ProjectRef, project *Project) bool {
@@ -2939,9 +2939,8 @@ func checkResetSingleHostTaskGroup(ctx context.Context, t *task.Task, caller str
 	return errors.Wrap(resetManyTasks(ctx, tasks, caller), "resetting task group tasks")
 }
 
-// checkResetDisplayTask attempts to reset all tasks that are under the same
-// parent display task as t once all tasks under the display task are finished
-// running.
+// checkResetDisplayTask attempts to reset tasks that are under the same parent
+// display task as t once all tasks under the display task are finished running.
 func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, user, origin string, t *task.Task) (theErr error) {
 	if !t.ResetWhenFinished && !t.ResetFailedWhenFinished {
 		return nil
@@ -2976,6 +2975,23 @@ func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, use
 	if t.IsAutomaticRestart {
 		user = evergreen.AutoRestartActivator
 	}
+
+	// If there are multiple execution tasks concurrently finishing and trying
+	// to reset the display task, the display task data might be stale. Re-check
+	// the DB state to confirm that the display task still needs to be reset.
+	latestDisplayTask, err := task.FindOneId(ctx, t.Id)
+	if err != nil {
+		return errors.Wrapf(err, "getting display task '%s'", t.Id)
+	}
+	if latestDisplayTask == nil {
+		return errors.Errorf("display task '%s' not found", t.Id)
+	}
+	if latestDisplayTask.Execution != t.Execution || (!latestDisplayTask.ResetWhenFinished && !latestDisplayTask.ResetFailedWhenFinished) {
+		// Another execution task under this display task already reset the
+		// display task, so this doesn't need to do anything.
+		return nil
+	}
+
 	return errors.Wrap(TryResetTask(ctx, setting, t.Id, user, origin, details), "resetting display task")
 }
 
