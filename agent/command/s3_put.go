@@ -32,9 +32,7 @@ import (
 )
 
 const (
-	s3PutAttribute           = "evergreen.command.s3_put"
-	s3PresignMinimumDuration = time.Second
-	s3PresignMaximumDuration = 7 * 24 * time.Hour
+	s3PutAttribute = "evergreen.command.s3_put"
 )
 
 var (
@@ -309,11 +307,11 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 		if err != nil {
 			return errors.Wrap(err, "parsing presign duration")
 		}
-		if s3pc.presignDuration < s3PresignMinimumDuration || s3pc.presignDuration > s3PresignMaximumDuration {
-			return errors.Errorf("presign duration must be between %s and %s", s3PresignMinimumDuration, s3PresignMaximumDuration)
-		}
 		if s3pc.Visibility != artifact.Signed {
 			return errors.New("presign duration can only be used with signed visibility")
+		}
+		if err := artifact.ValidatePresignDuration(s3pc.presignDuration, s3pc.getRoleARN()); err != nil {
+			return err
 		}
 	}
 
@@ -394,6 +392,9 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 			Expires:         expiration,
 			CanExpire:       true,
 		}
+	}
+	if err := artifact.ValidatePresignDuration(s3pc.presignDuration, s3pc.getRoleARN()); err != nil {
+		return err
 	}
 
 	// For key+secret uploads with no role ARN, resolve the AWS account ID via STS so cost tracking and lifecycle rule discovery can gate on it.

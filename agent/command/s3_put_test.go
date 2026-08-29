@@ -398,6 +398,7 @@ func TestExpandS3PutPresignDuration(t *testing.T) {
 	for name, testCase := range map[string]struct {
 		duration         string
 		visibility       string
+		roleARN          string
 		expectedDuration time.Duration
 		expectsError     bool
 	}{
@@ -429,6 +430,18 @@ func TestExpandS3PutPresignDuration(t *testing.T) {
 			visibility:   artifact.Signed,
 			expectsError: true,
 		},
+		"RoleDurationAtMaximumIsValid": {
+			duration:         "12h",
+			visibility:       artifact.Signed,
+			roleARN:          "arn:aws:iam::000000000000:role/test",
+			expectedDuration: 12 * time.Hour,
+		},
+		"RoleDurationAboveMaximumErrors": {
+			duration:     "13h",
+			visibility:   artifact.Signed,
+			roleARN:      "arn:aws:iam::000000000000:role/test",
+			expectsError: true,
+		},
 		"UnsignedVisibilityErrors": {
 			duration:     "1h",
 			visibility:   artifact.Public,
@@ -436,7 +449,7 @@ func TestExpandS3PutPresignDuration(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			cmd := &s3put{PresignDuration: testCase.duration, Visibility: testCase.visibility}
+			cmd := &s3put{PresignDuration: testCase.duration, Visibility: testCase.visibility, RoleARN: testCase.roleARN}
 			err := cmd.expandParams(conf)
 			if testCase.expectsError {
 				require.Error(t, err)

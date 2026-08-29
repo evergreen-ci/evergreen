@@ -1600,7 +1600,9 @@ Parameters:
   uploaded before that.
 - `presign_duration`: the duration that a URL generated for a `visibility: signed`
   artifact remains valid. Specify a duration from one second through seven days using
-  Go duration syntax, such as `30m`, `1h`, or `24h`. Defaults to 15 minutes when omitted.
+  Go duration syntax, such as `30m`, `1h`, or `24h`. When using `role_arn` or credentials
+  from `ec2.assume_role`, the maximum is 12 hours, although the role's configuration may
+  impose a lower limit. Defaults to 15 minutes when omitted.
 - `patchable`: defaults to true. If set to false, the command will
   no-op for patches (i.e. continue without performing the s3 put).
 - `patch_only`: defaults to false. If set to true, the command will

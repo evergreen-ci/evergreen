@@ -444,3 +444,47 @@ func TestPresignFileDuration(t *testing.T) {
 		})
 	}
 }
+
+func TestValidatePresignDuration(t *testing.T) {
+	const roleARN = "arn:aws:iam::000000000000:role/test"
+
+	for name, testCase := range map[string]struct {
+		duration     time.Duration
+		roleARN      string
+		expectsError bool
+	}{
+		"ZeroUsesDefault": {},
+		"MinimumIsValid": {
+			duration: time.Second,
+		},
+		"StaticCredentialMaximumIsValid": {
+			duration: 7 * 24 * time.Hour,
+		},
+		"BelowMinimumErrors": {
+			duration:     time.Millisecond,
+			expectsError: true,
+		},
+		"AboveS3MaximumErrors": {
+			duration:     7*24*time.Hour + time.Second,
+			expectsError: true,
+		},
+		"RoleMaximumIsValid": {
+			duration: 12 * time.Hour,
+			roleARN:  roleARN,
+		},
+		"AboveRoleMaximumErrors": {
+			duration:     12*time.Hour + time.Second,
+			roleARN:      roleARN,
+			expectsError: true,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			err := ValidatePresignDuration(testCase.duration, testCase.roleARN)
+			if testCase.expectsError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
