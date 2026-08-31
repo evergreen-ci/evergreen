@@ -1,9 +1,23 @@
 {
-  waterfall(options: { projectIdentifier: "spruce-identifier", tasks: ["Task C"] }) {
+  waterfall(
+    options: {
+      projectIdentifier: "spruce-identifier"
+      tasks: ["Task C"]
+      includeAllBuildsAndTasks: false
+    }
+  ) {
     versions {
       id
       activated
       requester
+      waterfallBuilds {
+        id
+        displayName
+        tasks {
+          id
+          displayName
+        }
+      }
     }
     pagination {
       activeVersionIds

@@ -92716,11 +92716,14 @@ func (ec *executionContext) unmarshalInputWaterfallOptions(ctx context.Context, 
 		asMap[k] = v
 	}
 
+	if _, present := asMap["includeAllBuildsAndTasks"]; !present {
+		asMap["includeAllBuildsAndTasks"] = true
+	}
 	if _, present := asMap["limit"]; !present {
 		asMap["limit"] = 5
 	}
 
-	fieldsInOrder := [...]string{"date", "limit", "minOrder", "maxOrder", "omitInactiveBuilds", "projectIdentifier", "requesters", "revision", "statuses", "tasks", "taskCaseSensitive", "variants", "variantCaseSensitive"}
+	fieldsInOrder := [...]string{"date", "includeAllBuildsAndTasks", "limit", "minOrder", "maxOrder", "omitInactiveBuilds", "projectIdentifier", "requesters", "revision", "statuses", "tasks", "taskCaseSensitive", "variants", "variantCaseSensitive"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -92734,6 +92737,13 @@ func (ec *executionContext) unmarshalInputWaterfallOptions(ctx context.Context, 
 				return it, err
 			}
 			it.Date = data
+		case "includeAllBuildsAndTasks":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeAllBuildsAndTasks"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IncludeAllBuildsAndTasks = data
 		case "limit":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
