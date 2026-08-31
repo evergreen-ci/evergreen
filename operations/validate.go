@@ -21,19 +21,28 @@ func Validate() cli.Command {
 	return cli.Command{
 		Name:  "validate",
 		Usage: "verify that an evergreen project config is valid",
-		Flags: addPathFlag(cli.BoolFlag{
-			Name:  joinFlagNames(quietFlagName, "q"),
-			Usage: "suppress warnings",
-		}, cli.BoolFlag{
-			Name:  joinFlagNames(errorOnWarningsFlagName, "w"),
-			Usage: "treat warnings as errors",
-		}, cli.StringSliceFlag{
-			Name:  joinFlagNames(localModulesFlagName, "lm"),
-			Usage: "specify local modules for included files as MODULE_NAME=PATH pairs",
-		}, cli.StringFlag{
-			Name:  joinFlagNames(projectFlagName, "p"),
-			Usage: "specify project identifier in order to run validation requiring project settings",
-		}),
+		Flags: mergeFlagSlices(
+			addPathFlag(),
+			addCrossFileAnchorsFlag(),
+			[]cli.Flag{
+				cli.BoolFlag{
+					Name:  joinFlagNames(quietFlagName, "q"),
+					Usage: "suppress warnings",
+				},
+				cli.BoolFlag{
+					Name:  joinFlagNames(errorOnWarningsFlagName, "w"),
+					Usage: "treat warnings as errors",
+				},
+				cli.StringSliceFlag{
+					Name:  joinFlagNames(localModulesFlagName, "lm"),
+					Usage: "specify local modules for included files as MODULE_NAME=PATH pairs",
+				},
+				cli.StringFlag{
+					Name:  joinFlagNames(projectFlagName, "p"),
+					Usage: "specify project identifier in order to run validation requiring project settings",
+				},
+			},
+		),
 		Before: mergeBeforeFuncs(autoUpdateCLI, setPlainLogger, requirePathFlag),
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
@@ -44,6 +53,7 @@ func Validate() cli.Command {
 			quiet := c.Bool(quietFlagName)
 			errorOnWarnings := c.Bool(errorOnWarningsFlagName)
 			projectID := c.String(projectFlagName)
+			cliAnchors := c.Bool(crossFileAnchorsFlagName)
 			localModulePaths := c.StringSlice(localModulesFlagName)
 			localModuleMap, err := getLocalModulesFromInput(localModulePaths)
 			if err != nil {
@@ -74,12 +84,12 @@ func Validate() cli.Command {
 				}
 				catcher := grip.NewSimpleCatcher()
 				for _, file := range files {
-					catcher.Add(validateFile(conf, filepath.Join(path, file.Name()), quiet, errorOnWarnings, localModuleMap, projectID))
+					catcher.Add(validateFile(conf, filepath.Join(path, file.Name()), quiet, errorOnWarnings, localModuleMap, projectID, cliAnchors))
 				}
 				return catcher.Resolve()
 			}
 
-			return validateFile(conf, path, quiet, errorOnWarnings, localModuleMap, projectID)
+			return validateFile(conf, path, quiet, errorOnWarnings, localModuleMap, projectID, cliAnchors)
 		},
 	}
 }
@@ -117,8 +127,8 @@ func getLocalModulesFromInput(localModulePaths []string) (map[string]string, err
 	return moduleMap, catcher.Resolve()
 }
 
-func validateFile(conf *ClientSettings, path string, quiet, errorOnWarnings bool, localModuleMap map[string]string, projectID string) error {
-	projectYaml, err := loadProjectYAML(conf, path, quiet, errorOnWarnings, localModuleMap, projectID)
+func validateFile(conf *ClientSettings, path string, quiet, errorOnWarnings bool, localModuleMap map[string]string, projectID string, cliAnchors bool) error {
+	projectYaml, err := loadProjectYAML(conf, path, quiet, errorOnWarnings, localModuleMap, projectID, cliAnchors)
 	if err != nil {
 		return err
 	}
@@ -127,7 +137,7 @@ func validateFile(conf *ClientSettings, path string, quiet, errorOnWarnings bool
 
 // loadProjectYAML reads and parses the project config file, performs local validation,
 // and returns the marshalled YAML bytes for remote validation.
-func loadProjectYAML(conf *ClientSettings, path string, quiet, errorOnWarnings bool, localModuleMap map[string]string, projectID string) ([]byte, error) {
+func loadProjectYAML(conf *ClientSettings, path string, quiet, errorOnWarnings bool, localModuleMap map[string]string, projectID string, cliAnchors bool) ([]byte, error) {
 	confFile, err := os.ReadFile(path)
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading file '%s'", path)
@@ -138,7 +148,10 @@ func loadProjectYAML(conf *ClientSettings, path string, quiet, errorOnWarnings b
 	}
 	project := &model.Project{}
 	ctx := context.Background()
-	anchorsEnabled, _ := getCrossFileYAMLAnchorsEnabled(conf)
+	anchorsEnabled := cliAnchors
+	if !cliAnchors {
+		anchorsEnabled, _ = getCrossFileYAMLAnchorsEnabled(conf)
+	}
 	opts := &model.GetProjectOpts{
 		LocalModules:                localModuleMap,
 		ReadFileFrom:                model.ReadFromLocal,

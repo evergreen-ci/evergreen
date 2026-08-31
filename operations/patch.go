@@ -41,6 +41,7 @@ const (
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 	return mergeFlagSlices(
 		addProjectFlag(flags...),
+		addCrossFileAnchorsFlag(),
 		addPatchFinalizeFlag(),
 		addVariantsFlag(),
 		addParameterFlag(),
@@ -179,6 +180,7 @@ func Patch() cli.Command {
 				RepeatFailed:                       c.Bool(repeatFailedDefinitionFlag),
 				IncludeModules:                     c.Bool(includeModulesFlag),
 				SelectNone:                         c.Bool(emptyFlagName),
+				CrossFileYAMLAnchors:               c.Bool(crossFileAnchorsFlagName),
 			}
 
 			var err error
@@ -483,19 +485,20 @@ func PatchFile() cli.Command {
 				grip.Error(ctx, errors.Wrap(grip.SetLevel(l), "increasing log level to suppress non-errors for JSON output"))
 			}
 			params := &patchParams{
-				Project:          c.String(projectFlagName),
-				Variants:         utility.SplitCommas(c.StringSlice(variantsFlagName)),
-				Tasks:            utility.SplitCommas(c.StringSlice(tasksFlagName)),
-				Aliases:          utility.SplitCommas(c.StringSlice(patchAliasFlagName)),
-				SkipConfirm:      c.Bool(skipConfirmFlagName) || outputJSON,
-				Description:      c.String(patchDescriptionFlagName),
-				AutoDescription:  c.Bool(autoDescriptionFlag),
-				ShowSummary:      c.Bool(patchVerboseFlagName),
-				Large:            c.Bool(largeFlagName),
-				PatchAuthor:      c.String(patchAuthorFlag),
-				RepeatPatchId:    c.String(repeatPatchIdFlag),
-				RepeatDefinition: c.Bool(repeatDefinitionFlag) || c.String(repeatPatchIdFlag) != "",
-				RepeatFailed:     c.Bool(repeatFailedDefinitionFlag),
+				Project:              c.String(projectFlagName),
+				Variants:             utility.SplitCommas(c.StringSlice(variantsFlagName)),
+				Tasks:                utility.SplitCommas(c.StringSlice(tasksFlagName)),
+				Aliases:              utility.SplitCommas(c.StringSlice(patchAliasFlagName)),
+				SkipConfirm:          c.Bool(skipConfirmFlagName) || outputJSON,
+				Description:          c.String(patchDescriptionFlagName),
+				AutoDescription:      c.Bool(autoDescriptionFlag),
+				ShowSummary:          c.Bool(patchVerboseFlagName),
+				Large:                c.Bool(largeFlagName),
+				PatchAuthor:          c.String(patchAuthorFlag),
+				RepeatPatchId:        c.String(repeatPatchIdFlag),
+				RepeatDefinition:     c.Bool(repeatDefinitionFlag) || c.String(repeatPatchIdFlag) != "",
+				RepeatFailed:         c.Bool(repeatFailedDefinitionFlag),
+				CrossFileYAMLAnchors: c.Bool(crossFileAnchorsFlagName),
 			}
 			var err error
 			diffPath := c.String(diffPathFlagName)

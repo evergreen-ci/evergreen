@@ -471,7 +471,7 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "getting service flags")
 	}
-	opts.CrossFileYAMLAnchorsEnabled = svcFlags.CrossFileYAMLAnchorsEnabled
+	opts.CrossFileYAMLAnchorsEnabled = svcFlags.CrossFileYAMLAnchorsEnabled || p.CrossFileYAMLAnchorsEnabled
 
 	projectFileBytes, err := getPatchedProjectYAML(ctx, projectRef, opts, p)
 	if err != nil {

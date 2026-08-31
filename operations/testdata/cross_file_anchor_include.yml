@@ -1,0 +1,4 @@
+tasks:
+  - name: include-task
+    commands:
+      - *base-cmd
