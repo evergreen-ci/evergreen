@@ -6,12 +6,8 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	awsconfig "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/grip"
@@ -34,13 +30,6 @@ const (
 	minimumPresignDuration = time.Second
 	maximumPresignDuration = 7 * 24 * time.Hour
 )
-
-var presignAWSConfigs = struct {
-	sync.Mutex
-	configs map[string]aws.Config
-}{
-	configs: map[string]aws.Config{},
-}
 
 // Entry stores groups of names and links (not content!) for
 // files uploaded to the api server by a running agent. These links could
@@ -232,14 +221,11 @@ func PresignFile(ctx context.Context, file File, resolver CredentialResolver) (s
 		Bucket:                file.Bucket,
 		FileKey:               file.FileKey,
 		SignatureExpiryWindow: evergreen.PresignMinimumValidTime,
+		PresignDuration:       file.PresignDuration,
 		AWSKey:                creds.AWSKey,
 		AWSSecret:             creds.AWSSecret,
 		AWSRoleARN:            file.AWSRoleARN,
 		ExternalID:            externalID,
-	}
-	if file.PresignDuration != 0 {
-		requestParams.SignatureExpiryWindow = file.PresignDuration
-		return presignFileWithDuration(ctx, requestParams)
 	}
 	return pail.PreSign(ctx, requestParams)
 }
@@ -250,49 +236,6 @@ func ValidatePresignDuration(duration time.Duration) error {
 		return errors.Errorf("presign duration must be between %s and %s", minimumPresignDuration, maximumPresignDuration)
 	}
 	return nil
-}
-
-func presignFileWithDuration(ctx context.Context, params pail.PreSignRequestParams) (string, error) {
-	region := params.Region
-	if region == "" {
-		region = evergreen.DefaultEC2Region
-	}
-
-	cfg, err := getPresignAWSConfig(ctx, region)
-	if err != nil {
-		return "", err
-	}
-
-	if params.AWSKey != "" {
-		cfg.Credentials = pail.CreateAWSStaticCredentials(params.AWSKey, params.AWSSecret, params.AWSSessionToken)
-	}
-
-	presignClient := s3.NewPresignClient(s3.NewFromConfig(cfg))
-	request, err := presignClient.PresignGetObject(ctx, &s3.GetObjectInput{
-		Bucket: aws.String(params.Bucket),
-		Key:    aws.String(params.FileKey),
-	}, s3.WithPresignExpires(params.SignatureExpiryWindow))
-	if err != nil {
-		return "", errors.Wrap(err, "presigning S3 object")
-	}
-
-	return request.URL, nil
-}
-
-func getPresignAWSConfig(ctx context.Context, region string) (aws.Config, error) {
-	presignAWSConfigs.Lock()
-	defer presignAWSConfigs.Unlock()
-
-	if cfg, ok := presignAWSConfigs.configs[region]; ok {
-		return cfg, nil
-	}
-
-	cfg, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithRegion(region))
-	if err != nil {
-		return aws.Config{}, errors.Wrap(err, "loading AWS config")
-	}
-	presignAWSConfigs.configs[region] = cfg
-	return cfg, nil
 }
 
 func GetAllArtifacts(ctx context.Context, tasks []TaskIDAndExecution) ([]File, error) {

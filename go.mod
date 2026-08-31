@@ -243,3 +243,5 @@ require (
 )
 
 tool github.com/99designs/gqlgen
+
+replace github.com/evergreen-ci/pail => github.com/zackwintermdb/pail v0.0.0-20260831210140-94da12fd8ac6
