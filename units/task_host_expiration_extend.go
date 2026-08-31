@@ -3,10 +3,12 @@ package units
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -14,7 +16,9 @@ import (
 )
 
 const (
-	taskHostExpirationExtendName = "task-host-expiration-extend"
+	taskHostExpirationExtendName        = "task-host-expiration-extend"
+	taskHostExpirationExtendMaxAttempts = 3
+	taskHostExpirationExtendMaxTime     = 5 * time.Minute
 )
 
 func init() {
@@ -47,6 +51,13 @@ func NewTaskHostExpirationExtendJob(ts string, h *host.Host) amboy.Job {
 	j.SetID(fmt.Sprintf("%s.%s.%s", taskHostExpirationExtendName, h.Id, ts))
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", taskHostExpirationExtendName, h.Id)})
 	j.SetEnqueueAllScopes(true)
+	j.UpdateRetryInfo(amboy.JobRetryOptions{
+		Retryable:   utility.TruePtr(),
+		MaxAttempts: utility.ToIntPtr(taskHostExpirationExtendMaxAttempts),
+	})
+	j.UpdateTimeInfo(amboy.JobTimeInfo{
+		MaxTime: taskHostExpirationExtendMaxTime,
+	})
 	j.HostID = h.Id
 	return j
 }
