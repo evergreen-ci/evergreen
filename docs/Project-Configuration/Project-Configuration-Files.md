@@ -357,7 +357,9 @@ include:
     module: module_name
 ```
 
-#### YAML Anchors
+#### YAML Anchors (Beta)
+
+Cross-file YAML anchor support is in beta. It must be enabled either globally by an Evergreen admin via the **Cross-file YAML anchors** service flag, or per-invocation using the `--cross-file-anchors` flag on `evergreen patch`, `evergreen evaluate`, or `evergreen validate`. The CLI flag is useful for testing your config before the feature is enabled globally for your project.
 
 YAML anchors (`&name`) and aliases (`*name`) are supported within a single file and across include files.
 
