@@ -619,10 +619,10 @@ type patchTasks struct {
 	// Required, these are the variants and tasks that the patch should run.
 	// For an already-scheduled patch, any new tasks in this array will be
 	// created and any existing tasks not in this array will be unscheduled.
-	Variants []variant `json:"variants"`
+	Variants []patchVariant `json:"variants"`
 }
 
-type variant struct {
+type patchVariant struct {
 	Id    string   `json:"id"`
 	Tasks []string `json:"tasks"`
 }
