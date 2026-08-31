@@ -430,14 +430,8 @@ func TestExpandS3PutPresignDuration(t *testing.T) {
 			visibility:   artifact.Signed,
 			expectsError: true,
 		},
-		"RoleDurationAtMaximumIsValid": {
-			duration:         "12h",
-			visibility:       artifact.Signed,
-			roleARN:          "arn:aws:iam::000000000000:role/test",
-			expectedDuration: 12 * time.Hour,
-		},
-		"RoleDurationAboveMaximumErrors": {
-			duration:     "13h",
+		"RoleDurationErrors": {
+			duration:     "1h",
 			visibility:   artifact.Signed,
 			roleARN:      "arn:aws:iam::000000000000:role/test",
 			expectsError: true,
@@ -459,6 +453,15 @@ func TestExpandS3PutPresignDuration(t *testing.T) {
 			assert.Equal(t, testCase.expectedDuration, cmd.presignDuration)
 		})
 	}
+}
+
+func TestValidateS3PutPresignDurationWithAssumedRoleErrors(t *testing.T) {
+	cmd := &s3put{
+		PresignDuration: "1h",
+		presignDuration: time.Hour,
+		assumedRoleARN:  "arn:aws:iam::000000000000:role/test",
+	}
+	require.Error(t, cmd.validatePresignDuration())
 }
 
 func TestSignedUrlVisibility(t *testing.T) {

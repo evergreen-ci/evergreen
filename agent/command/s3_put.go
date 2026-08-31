@@ -310,7 +310,7 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 		if s3pc.Visibility != artifact.Signed {
 			return errors.New("presign duration can only be used with signed visibility")
 		}
-		if err := artifact.ValidatePresignDuration(s3pc.presignDuration, s3pc.getRoleARN()); err != nil {
+		if err := s3pc.validatePresignDuration(); err != nil {
 			return err
 		}
 	}
@@ -393,7 +393,7 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 			CanExpire:       true,
 		}
 	}
-	if err := artifact.ValidatePresignDuration(s3pc.presignDuration, s3pc.getRoleARN()); err != nil {
+	if err := s3pc.validatePresignDuration(); err != nil {
 		return err
 	}
 
@@ -756,6 +756,16 @@ func (s3pc *s3put) getRoleARN() string {
 		return s3pc.assumedRoleARN
 	}
 	return s3pc.RoleARN
+}
+
+func (s3pc *s3put) validatePresignDuration() error {
+	if s3pc.PresignDuration == "" {
+		return nil
+	}
+	if s3pc.getRoleARN() != "" {
+		return errors.New("presign duration cannot be used with role-backed credentials")
+	}
+	return artifact.ValidatePresignDuration(s3pc.presignDuration)
 }
 
 func readAssociatedLinksFile(fn string, conf *internal.TaskConfig) ([]artifact.AssociatedLink, error) {

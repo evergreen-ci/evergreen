@@ -11,9 +11,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/grip"
@@ -33,9 +31,8 @@ const (
 var ValidVisibilities = []string{Public, Private, None, Signed, ""}
 
 const (
-	minimumPresignDuration     = time.Second
-	maximumPresignDuration     = 7 * 24 * time.Hour
-	maximumRolePresignDuration = 12 * time.Hour
+	minimumPresignDuration = time.Second
+	maximumPresignDuration = 7 * 24 * time.Hour
 )
 
 var presignAWSConfigs = struct {
@@ -215,8 +212,13 @@ func PresignFile(ctx context.Context, file File, resolver CredentialResolver) (s
 	if err := file.validate(); err != nil {
 		return "", errors.Wrap(err, "file validation failed")
 	}
-	if err := ValidatePresignDuration(file.PresignDuration, file.AWSRoleARN); err != nil {
-		return "", err
+	if file.PresignDuration != 0 {
+		if file.AWSRoleARN != "" {
+			return "", errors.New("presign duration cannot be used with role-backed credentials")
+		}
+		if err := ValidatePresignDuration(file.PresignDuration); err != nil {
+			return "", err
+		}
 	}
 
 	creds := credentialsForPresign(ctx, file, resolver)
@@ -226,39 +228,31 @@ func PresignFile(ctx context.Context, file File, resolver CredentialResolver) (s
 		externalID = &file.ExternalID
 	}
 
-	duration := file.PresignDuration
-	if duration == 0 {
-		duration = evergreen.PresignMinimumValidTime
-	}
-
 	requestParams := pail.PreSignRequestParams{
 		Bucket:                file.Bucket,
 		FileKey:               file.FileKey,
-		SignatureExpiryWindow: duration,
+		SignatureExpiryWindow: evergreen.PresignMinimumValidTime,
 		AWSKey:                creds.AWSKey,
 		AWSSecret:             creds.AWSSecret,
 		AWSRoleARN:            file.AWSRoleARN,
 		ExternalID:            externalID,
 	}
-	return presignFile(ctx, requestParams)
+	if file.PresignDuration != 0 {
+		requestParams.SignatureExpiryWindow = file.PresignDuration
+		return presignFileWithDuration(ctx, requestParams)
+	}
+	return pail.PreSign(ctx, requestParams)
 }
 
-// ValidatePresignDuration checks that a configured duration is supported by S3
-// and, when applicable, by AWS role sessions. A zero duration selects the default.
-func ValidatePresignDuration(duration time.Duration, roleARN string) error {
-	if duration == 0 {
-		return nil
-	}
+// ValidatePresignDuration checks that a configured duration is supported by S3.
+func ValidatePresignDuration(duration time.Duration) error {
 	if duration < minimumPresignDuration || duration > maximumPresignDuration {
 		return errors.Errorf("presign duration must be between %s and %s", minimumPresignDuration, maximumPresignDuration)
-	}
-	if roleARN != "" && duration > maximumRolePresignDuration {
-		return errors.Errorf("presign duration cannot exceed %s when using a role ARN", maximumRolePresignDuration)
 	}
 	return nil
 }
 
-func presignFile(ctx context.Context, params pail.PreSignRequestParams) (string, error) {
+func presignFileWithDuration(ctx context.Context, params pail.PreSignRequestParams) (string, error) {
 	region := params.Region
 	if region == "" {
 		region = evergreen.DefaultEC2Region
@@ -271,20 +265,6 @@ func presignFile(ctx context.Context, params pail.PreSignRequestParams) (string,
 
 	if params.AWSKey != "" {
 		cfg.Credentials = pail.CreateAWSStaticCredentials(params.AWSKey, params.AWSSecret, params.AWSSessionToken)
-	} else if params.AWSRoleARN != "" {
-		cacheKey := params.AWSRoleARN
-		if params.ExternalID != nil {
-			cacheKey += "|" + *params.ExternalID
-		}
-		stsClient := sts.NewFromConfig(cfg)
-		cfg.Credentials = pail.WithSeed(
-			stscreds.NewAssumeRoleProvider(stsClient, params.AWSRoleARN, func(options *stscreds.AssumeRoleOptions) {
-				options.ExternalID = params.ExternalID
-				options.Duration = max(params.SignatureExpiryWindow, stscreds.DefaultDuration)
-			}),
-			cacheKey,
-			params.SignatureExpiryWindow,
-		)
 	}
 
 	presignClient := s3.NewPresignClient(s3.NewFromConfig(cfg))
