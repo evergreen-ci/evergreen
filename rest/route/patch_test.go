@@ -1108,7 +1108,7 @@ buildvariants:
 	description := "some text"
 	body := patchTasks{
 		Description: description,
-		Variants:    []variant{{Id: "ubuntu", Tasks: []string{"compile", "passing_test"}}},
+		Variants:    []patchVariant{{Id: "ubuntu", Tasks: []string{"compile", "passing_test"}}},
 	}
 	jsonBody, err := json.Marshal(&body)
 	assert.NoError(t, err)
@@ -1144,7 +1144,7 @@ buildvariants:
 	// valid request, reconfiguring a finalized patch
 	handler = makeSchedulePatchHandler(env).(*schedulePatchHandler)
 	body = patchTasks{
-		Variants: []variant{{Id: "ubuntu", Tasks: []string{"failing_test"}}},
+		Variants: []patchVariant{{Id: "ubuntu", Tasks: []string{"failing_test"}}},
 	}
 	jsonBody, err = json.Marshal(&body)
 	assert.NoError(t, err)
@@ -1202,7 +1202,7 @@ buildvariants:
 
 	handler = makeSchedulePatchHandler(env).(*schedulePatchHandler)
 	body = patchTasks{
-		Variants: []variant{{Id: "ubuntu", Tasks: []string{"*"}}},
+		Variants: []patchVariant{{Id: "ubuntu", Tasks: []string{"*"}}},
 	}
 	jsonBody, err = json.Marshal(&body)
 	assert.NoError(t, err)
@@ -1236,7 +1236,7 @@ buildvariants:
 	require.NoError(t, pp.Insert(t.Context()))
 	handler = makeSchedulePatchHandler(env).(*schedulePatchHandler)
 	body = patchTasks{
-		Variants: []variant{{Id: "ubuntu_task_group", Tasks: []string{"task_group_task_2"}}},
+		Variants: []patchVariant{{Id: "ubuntu_task_group", Tasks: []string{"task_group_task_2"}}},
 	}
 	jsonBody, err = json.Marshal(&body)
 	assert.NoError(t, err)
@@ -1520,7 +1520,7 @@ tasks:
 	description := "some text"
 	body := patchTasks{
 		Description: description,
-		Variants:    []variant{{Id: "generate-tasks-for-version", Tasks: []string{"version_gen"}}},
+		Variants:    []patchVariant{{Id: "generate-tasks-for-version", Tasks: []string{"version_gen"}}},
 	}
 	jsonBody, err := json.Marshal(&body)
 	assert.NoError(t, err)
@@ -1550,7 +1550,7 @@ tasks:
 	// this task has two dependencies which should also be activated
 	handler = makeSchedulePatchHandler(env).(*schedulePatchHandler)
 	body = patchTasks{
-		Variants: []variant{
+		Variants: []patchVariant{
 			{Id: "testBV4", Tasks: []string{"dependencyTask"}},
 		},
 	}
@@ -1576,7 +1576,7 @@ tasks:
 	// Check that scheduling a task group works.
 	handler = makeSchedulePatchHandler(env).(*schedulePatchHandler)
 	body = patchTasks{
-		Variants: []variant{
+		Variants: []patchVariant{
 			{Id: "testBV1", Tasks: []string{"some_task_group"}},
 		},
 	}

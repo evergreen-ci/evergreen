@@ -356,12 +356,12 @@ func (h *versionRestartHandler) Run(ctx context.Context) gimlet.Responder {
 // POST /rest/v2/versions/{version_id}/activate_tasks
 
 type versionActivateTasksHandler struct {
-	Variants []Variant `json:"variants" validate:"required"`
+	Variants []versionVariant `json:"variants" validate:"required"`
 
 	versionId string
 }
 
-type Variant struct {
+type versionVariant struct {
 	Name  string   `json:"name"`
 	Tasks []string `json:"tasks"`
 }
