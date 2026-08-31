@@ -45,6 +45,7 @@ type Mock struct {
 	NextTaskShouldFail                   bool
 	GetPatchFileShouldFail               bool
 	TaskShouldRetryOnFail                bool
+	MarkedMergeQueueGitRefNotFound       bool
 	loggingShouldFail                    bool
 	NextTaskResponse                     *apimodels.NextTaskResponse
 	NextTaskIsNil                        bool
@@ -609,6 +610,7 @@ func (c *Mock) MarkFailedTaskToRestart(ctx context.Context, td TaskData) error {
 }
 
 func (c *Mock) MarkMergeQueueGitRefNotFound(ctx context.Context, td TaskData) error {
+	c.MarkedMergeQueueGitRefNotFound = true
 	return nil
 }
 

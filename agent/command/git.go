@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -459,10 +460,210 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 	return err
 }
 
-func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerProducer, comm client.Communicator, conf *internal.TaskConfig, opts cloneOpts) error {
+// fetchOrRestoreSource restores the project directory from the source cache when
+// the project is opted in, and otherwise clones it from GitHub. Any source cache
+// failure falls back to the clone, so the cache can only save time, never change
+// what is tested.
+func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, opts cloneOpts) error {
+	sc, skipReason := newSourceCache(conf, c, opts, runtime.GOOS)
+	if sc == nil {
+		logger.Task().Infof(ctx, "Not using the source cache: %s.", skipReason)
+		setSourceCacheSpanSkipped(ctx, skipReason)
+		_, err := c.cloneSource(ctx, comm, logger, conf, opts)
+		return err
+	}
+
+	// A cache hit on the merge SHA never contacts GitHub, so nothing else would notice a deleted ref.
+	deleted, err := mergeQueueRefDeleted(ctx, comm, conf, c.Token, opts)
+	if err != nil {
+		// The clone's own check is still a backstop for an inconclusive answer.
+		logger.Task().Warningf(ctx, "Checking whether the merge queue ref still exists: %s", err)
+	} else if deleted {
+		c.refNotFound = true
+		if markErr := comm.MarkMergeQueueGitRefNotFound(ctx, conf.TaskData()); markErr != nil {
+			logger.Task().Warningf(ctx, "Failed to mark git ref not found: %s", markErr)
+		}
+		setSourceCacheSpanSkipped(ctx, "the merge queue ref was deleted")
+		return errors.New(mergeQueueRefGoneMessage)
+	}
+
+	fallbackReason := ""
+	for _, revision := range sc.restoreRevisions() {
+		_, remoteKey, err := sc.cacheKeysForRevision(revision)
+		if err != nil {
+			fallbackReason = errors.Wrap(err, "computing the source cache key").Error()
+			break
+		}
+		logger.Task().Infof(ctx, "Looking up source cache '%s/%s'.", sc.cfg.Name, remoteKey)
+		restored, err := sc.restore(ctx, comm, logger, remoteKey)
+		if err != nil {
+			fallbackReason = err.Error()
+			break
+		}
+		if !restored {
+			continue
+		}
+		// A base revision artifact is at the commit the PR is built on, so the
+		// PR still has to be checked out over it.
+		runPRCheckout := revision != sc.revision
+		// buildPostRestoreCommand verifies HEAD against revision, so a restored
+		// tree at the wrong commit fails here and falls back to a clone below.
+		if err := c.runCommands(ctx, logger, conf, c.buildPostRestoreCommand(conf, opts, revision, runPRCheckout)); err != nil {
+			fallbackReason = errors.Wrap(err, "preparing restored source tree").Error()
+			break
+		}
+		logger.Task().Infof(ctx, "Restored source from the cache for revision '%s'.", revision)
+		trace.SpanFromContext(ctx).SetAttributes(attribute.String(sourceCacheRestoredRevisionAttribute, revision))
+		sc.setSpanOutcome(ctx, sourceCacheHit, "")
+		return nil
+	}
+	if fallbackReason != "" {
+		logger.Task().Warningf(ctx, "Falling back to a GitHub clone: %s", fallbackReason)
+	}
+
+	token, err := c.cloneSource(ctx, comm, logger, conf, opts)
+	if err != nil {
+		return err
+	}
+	// The clone may have refreshed the token, and the post-save script puts this
+	// URL back into .git for the rest of the task to use.
+	opts.token = token
+
+	outcome := sourceCacheMissProduced
+	produced, err := c.saveSourceCache(ctx, comm, logger, conf, sc, opts)
+	if err != nil {
+		logger.Task().Warningf(ctx, "Saving source to the cache: %s", err)
+		outcome = sourceCacheFallback
+		if fallbackReason == "" {
+			fallbackReason = err.Error()
+		}
+	} else if !produced {
+		outcome = sourceCacheMissLostRace
+	}
+	if fallbackReason != "" {
+		outcome = sourceCacheFallback
+	}
+	sc.setSpanOutcome(ctx, outcome, fallbackReason)
+	return nil
+}
+
+// cloneSource clones the project from GitHub, returning the token the clone
+// ended up using.
+func (c *gitFetchProject) cloneSource(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, opts cloneOpts) (string, error) {
+	start := time.Now()
+	// Deferred so a failed clone is timed too, since those are the runs most
+	// worth comparing against a cache hit.
+	defer func() {
+		setSourceCacheSpanDuration(ctx, sourceCacheCloneDurationAttribute, time.Since(start))
+	}()
+	token, err := c.fetchSource(ctx, logger, comm, conf, opts)
+	return token, errors.Wrap(err, "running fetch command")
+}
+
+// saveSourceCache scrubs the cloned tree of anything task-specific, uploads it,
+// and puts the task's own authenticated origin URL back for the rest of the run.
+func (c *gitFetchProject) saveSourceCache(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, sc *sourceCache, opts cloneOpts) (bool, error) {
+	if err := c.runCommands(ctx, logger, conf, c.buildPreSaveCommand(opts)); err != nil {
+		return false, errors.Wrap(err, "scrubbing source tree before saving")
+	}
+	produced, saveErr := sc.save(ctx, comm, logger)
+	if err := c.runCommands(ctx, logger, conf, c.buildPostSaveCommand(opts)); err != nil {
+		return produced, errors.Wrap(err, "restoring origin URL after saving")
+	}
+	return produced, saveErr
+}
+
+// buildPostRestoreCommand returns the script run over a restored tree. It
+// verifies HEAD against the expected revision, restores this task's
+// credentials, and optionally checks out a PR.
+func (c *gitFetchProject) buildPostRestoreCommand(conf *internal.TaskConfig, opts cloneOpts, revision string, runPRCheckout bool) []string {
+	cmds := c.scriptInProjectDir(fmt.Sprintf(`test "$(git rev-parse HEAD)" = "%s"`, revision))
+	cmds = append(cmds, setOriginURLCommands(opts)...)
+	// The archive was scrubbed of the producer's credentials, so a restored
+	// tree needs this task's own put into the submodule remotes.
+	cmds = append(cmds, restoreGitConfigCredentialsCommands(opts.token)...)
+	if runPRCheckout {
+		cmds = append(cmds, prCheckoutCommands(conf)...)
+	}
+	return append(cmds, "git log --oneline -n 10")
+}
+
+// buildPreSaveCommand returns the script run before archiving the cloned tree.
+// Hooks in a restored .git execute on checkout, and origin holds the producer's
+// own credential, so both are scrubbed.
+func (c *gitFetchProject) buildPreSaveCommand(opts cloneOpts) []string {
+	tokenless := cloneOpts{owner: opts.owner, repo: opts.repo}
+	cmds := append(c.scriptInProjectDir("rm -rf .git/hooks"), setOriginURLCommands(tokenless)...)
+	return append(cmds, scrubGitConfigCredentialsCommand)
+}
+
+// scrubGitConfigCredentialsCommand strips the userinfo from every remote URL
+// recorded under .git. Submodule URLs are resolved with the parent's credential
+// and written to .git/config and .git/modules/*/config, so setting origin alone
+// would leave the producer's token in the archive.
+const scrubGitConfigCredentialsCommand = `find .git -type f -name config | while read -r cfg; do sed -E 's#://[^/@]*@#://#g' "$cfg" > "$cfg.scrubbed" && mv "$cfg.scrubbed" "$cfg"; done`
+
+// restoreGitConfigCredentialsCommands is the inverse of
+// scrubGitConfigCredentialsCommand for submodules: it puts the task's own
+// credential back into the scrubbed GitHub URLs so submodule fetches keep
+// working. URLs that already carry userinfo, such as the origin the caller set
+// separately, do not match and are left alone.
+func restoreGitConfigCredentialsCommands(token string) []string {
+	if token == "" {
+		return nil
+	}
+	rewrite := fmt.Sprintf(`s#://github\.com/#://x-access-token:%s@github.com/#g`, token)
+	return []string{
+		"set +o xtrace",
+		fmt.Sprintf("echo %s", strconv.Quote("restoring submodule credentials in .git configs")),
+		fmt.Sprintf(`find .git -type f -name config | while read -r cfg; do sed -E '%s' "$cfg" > "$cfg.restored" && mv "$cfg.restored" "$cfg"; done`, rewrite),
+		"set -o xtrace",
+	}
+}
+
+// buildPostSaveCommand puts the task's own credentials back after the scrubbed
+// tree has been archived, for origin and for any submodule remotes the scrub
+// stripped.
+func (c *gitFetchProject) buildPostSaveCommand(opts cloneOpts) []string {
+	cmds := append(c.scriptInProjectDir(), setOriginURLCommands(opts)...)
+	return append(cmds, restoreGitConfigCredentialsCommands(opts.token)...)
+}
+
+// scriptInProjectDir starts a git script in the project directory, with cmds
+// appended after the shell options every one of these scripts sets.
+func (c *gitFetchProject) scriptInProjectDir(cmds ...string) []string {
+	return append([]string{
+		"set -o xtrace",
+		"set -o errexit",
+		fmt.Sprintf("cd %s", c.Directory),
+	}, cmds...)
+}
+
+// setOriginURLCommands points origin at the given URL with xtrace off, since the
+// URL embeds a token when one is set.
+func setOriginURLCommands(opts cloneOpts) []string {
+	return []string{
+		"set +o xtrace",
+		fmt.Sprintf("echo %s", strconv.Quote("git remote set-url origin <redacted>")),
+		fmt.Sprintf("git remote set-url origin %s", thirdparty.FormGitURLForApp(opts.owner, opts.repo, opts.token)),
+		"set -o xtrace",
+	}
+}
+
+func (c *gitFetchProject) runCommands(ctx context.Context, logger client.LoggerProducer, conf *internal.TaskConfig, cmds []string) error {
+	script := strings.Join(cmds, "\n")
+	logger.Task().Debugf(ctx, "Commands are: %s", script)
+	return c.JasperManager().CreateCommand(ctx).Add([]string{"bash", "-c", script}).Directory(conf.WorkDir).
+		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Execution().GetSender()).Run(ctx)
+}
+
+// fetchSource clones the project, returning the token it ended up using. A
+// retry can refresh the token, and callers that rewrite the origin URL
+// afterwards need the current one rather than the one they passed in.
+func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerProducer, comm client.Communicator, conf *internal.TaskConfig, opts cloneOpts) (string, error) {
 	attempt := 0
 	token := opts.token
-	return c.retryFetch(ctx, logger, comm, conf, true, opts, func(opts cloneOpts) error {
+	err := c.retryFetch(ctx, logger, comm, conf, true, opts, func(opts cloneOpts) error {
 		attempt++
 		// Don't refresh c.Token because it is user supplied.
 		if attempt == gitFetchProjectRetries && c.Token == "" {
@@ -476,23 +677,14 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 		opts.token = token
 
 		// On the second attempt, check if the merge queue ref was deleted before retrying.
-		if attempt == 2 && conf.Task.Requester == evergreen.GithubMergeRequester && conf.GithubMergeData.HeadBranch != "" {
-			ref := "heads/" + conf.GithubMergeData.HeadBranch
-			// A user-supplied clone token can't authenticate an app-scoped API call.
-			appToken := token
-			var tokenErr error
-			if c.Token != "" {
-				appToken, tokenErr = comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), opts.owner, opts.repo, false)
+		if attempt == 2 {
+			deleted, checkErr := mergeQueueRefDeleted(ctx, comm, conf, c.Token, opts)
+			if checkErr != nil {
+				return checkErr
 			}
-			if tokenErr == nil && appToken != "" {
-				exists, checkErr := thirdparty.MergeQueueRefExists(ctx, opts.owner, opts.repo, ref, appToken)
-				if checkErr != nil {
-					return errors.Wrap(checkErr, "checking if merge queue ref exists")
-				}
-				if !exists {
-					c.refNotFound = true
-					return errors.New("the GitHub merge SHA is not available most likely because the merge completed or was aborted")
-				}
+			if deleted {
+				c.refNotFound = true
+				return errors.New(mergeQueueRefGoneMessage)
 			}
 		}
 
@@ -530,6 +722,40 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 
 		return nil
 	})
+	return token, err
+}
+
+// mergeQueueRefGoneMessage is the error a merge queue task fails with once its head ref is confirmed deleted.
+const mergeQueueRefGoneMessage = "the GitHub merge SHA is not available most likely because the merge completed or was aborted"
+
+// mergeQueueRefExists is a variable so tests can check the fail-fast path without reaching GitHub.
+var mergeQueueRefExists = thirdparty.MergeQueueRefExists
+
+// mergeQueueRefDeleted reports whether this merge queue task's head ref is gone from GitHub, meaning the
+// queue item merged or was kicked out. It reports false whenever there is no definite answer to be had.
+func mergeQueueRefDeleted(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, userToken string, opts cloneOpts) (bool, error) {
+	if conf.Task.Requester != evergreen.GithubMergeRequester || conf.GithubMergeData.HeadBranch == "" {
+		return false, nil
+	}
+
+	// A user-supplied clone token can't authenticate an app-scoped API call.
+	appToken := opts.token
+	if userToken != "" {
+		var err error
+		appToken, err = comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), opts.owner, opts.repo, false)
+		if err != nil {
+			return false, nil
+		}
+	}
+	if appToken == "" {
+		return false, nil
+	}
+
+	exists, err := mergeQueueRefExists(ctx, opts.owner, opts.repo, "heads/"+conf.GithubMergeData.HeadBranch, appToken)
+	if err != nil {
+		return false, errors.Wrap(err, "checking if merge queue ref exists")
+	}
+	return !exists, nil
 }
 
 func refreshCloneToken(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, owner, repo string) (string, error) {
@@ -576,7 +802,7 @@ func (c *gitFetchProject) retryFetch(ctx context.Context, logger client.LoggerPr
 					if markErr := comm.MarkMergeQueueGitRefNotFound(ctx, conf.TaskData()); markErr != nil {
 						logger.Task().Warningf(ctx, "Failed to mark git ref not found: %s", markErr)
 					}
-					return false, errors.Wrap(err, "the GitHub merge SHA is not available most likely because the merge completed or was aborted")
+					return false, errors.Wrap(err, mergeQueueRefGoneMessage)
 				}
 				return true, errors.Wrapf(err, "attempt %d", attemptNum)
 			}
@@ -775,9 +1001,9 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	// Clone the project.
-	if err := c.fetchSource(ctx, logger, comm, conf, opts); err != nil {
-		return errors.Wrap(err, "running fetch command")
+	// Clone the project, or restore it from the source cache.
+	if err := c.fetchOrRestoreSource(ctx, comm, logger, conf, opts); err != nil {
+		return err
 	}
 
 	// Retrieve the patch for the version if one exists.
