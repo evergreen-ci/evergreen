@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/util"
 
@@ -97,7 +98,8 @@ func Validate() cli.Command {
 // getCrossFileYAMLAnchorsEnabled fetches the CrossFileYAMLAnchorsEnabled service flag from the
 // server via REST.
 func getCrossFileYAMLAnchorsEnabled(conf *ClientSettings) (bool, error) {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	client, err := conf.setupRestCommunicator(ctx, false)
 	if err != nil {
 		return false, errors.Wrap(err, "setting up REST communicator")
