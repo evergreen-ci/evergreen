@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -15,7 +14,7 @@ import (
 type versionReader struct{}
 
 func (v *versionReader) getVersions(ctx context.Context, versionIDs []string) (map[string]*model.Version, error) {
-	query := db.Query(bson.M{model.VersionIdKey: bson.M{"$in": versionIDs}}).Project(bson.M{model.VersionBuildVariantsKey: 0})
+	query := model.VersionByIds(versionIDs).Project(bson.M{model.VersionBuildVariantsKey: 0})
 	versions, err := model.VersionFind(ctx, query)
 	if err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{

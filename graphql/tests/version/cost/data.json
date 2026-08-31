@@ -1,0 +1,49 @@
+{
+  "versions": [
+    {
+      "_id": "aabbccddeeff001122334455",
+      "identifier": "evergreen",
+      "r": "patch_request",
+      "status": "succeeded",
+      "cost": {
+        "adjusted_ec2_cost": 5.0,
+        "adjusted_ebs_throughput_cost": 1.0
+      }
+    },
+    {
+      "_id": "child-version-1",
+      "identifier": "child-project-1",
+      "r": "patch_request",
+      "status": "succeeded",
+      "cost": {
+        "adjusted_ec2_cost": 3.0
+      }
+    },
+    {
+      "_id": "child-version-2",
+      "identifier": "child-project-2",
+      "r": "patch_request",
+      "cost": {
+        "adjusted_ec2_cost": 1.0,
+        "adjusted_ebs_throughput_cost": 0.5
+      }
+    }
+  ],
+  "patches": [
+    {
+      "_id": {
+        "$oid": "aabbccddeeff001122334455"
+      },
+      "version": "aabbccddeeff001122334455",
+      "triggers": {
+        "child_patches": ["child-version-1", "child-version-2"]
+      }
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen"
+    }
+  ]
+}
