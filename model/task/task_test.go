@@ -5955,12 +5955,13 @@ func TestGetQuarantinedTestsSkippedCountByVersion(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(Collection))
 	})
 
+	activatedTime := time.Now()
 	tasks := []Task{
-		{Id: "display_task", Version: "version", DisplayTaskId: utility.ToStringPtr(""), NumQuarantinedTestsSkipped: 3},
-		{Id: "display_only_task", Version: "version", DisplayOnly: true, DisplayTaskId: utility.ToStringPtr("parent"), NumQuarantinedTestsSkipped: 2},
-		{Id: "task_without_display_task_id", Version: "version", NumQuarantinedTestsSkipped: 4},
-		{Id: "execution_task", Version: "version", DisplayTaskId: utility.ToStringPtr("display_task"), NumQuarantinedTestsSkipped: 3},
-		{Id: "other_version_task", Version: "other_version", NumQuarantinedTestsSkipped: 7},
+		{Id: "display_task", Version: "version", DisplayTaskId: utility.ToStringPtr(""), ActivatedTime: activatedTime, NumQuarantinedTestsSkipped: 3},
+		{Id: "display_only_task", Version: "version", DisplayOnly: true, DisplayTaskId: utility.ToStringPtr("parent"), ActivatedTime: activatedTime, NumQuarantinedTestsSkipped: 2},
+		{Id: "task_without_display_task_id", Version: "version", ActivatedTime: activatedTime, NumQuarantinedTestsSkipped: 4},
+		{Id: "execution_task", Version: "version", DisplayTaskId: utility.ToStringPtr("display_task"), ActivatedTime: activatedTime, NumQuarantinedTestsSkipped: 3},
+		{Id: "other_version_task", Version: "other_version", ActivatedTime: activatedTime, NumQuarantinedTestsSkipped: 7},
 	}
 	for _, task := range tasks {
 		require.NoError(t, task.Insert(ctx))

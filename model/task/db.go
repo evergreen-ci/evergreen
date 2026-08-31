@@ -1966,10 +1966,11 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 }
 
 // GetQuarantinedTestsSkippedCountByVersion returns the total number of tests
-// skipped by TSS across the version's display tasks.
+// skipped by TSS for a version, counting regular tasks directly and display
+// tasks as rollups for their execution tasks.
 func GetQuarantinedTestsSkippedCountByVersion(ctx context.Context, versionID string) (int, error) {
 	pipeline := []bson.M{
-		{"$match": DisplayTasksByVersion(versionID, true)},
+		{"$match": DisplayTasksByVersion(versionID, false)},
 		{"$group": bson.M{
 			"_id":   nil,
 			"count": bson.M{"$sum": "$" + NumQuarantinedTestsSkippedKey},
