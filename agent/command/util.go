@@ -80,12 +80,12 @@ func GetWorkingDirectory(conf *internal.TaskConfig, path string) string {
 // falls outside the task working directory.
 const workdirBoundaryViolationAttribute = "plugin.workdir_boundary_violation"
 
-// IsWorkdirBoundaryViolation returns true when the resolved path falls outside
-// conf.WorkDir. It resolves the path the same way GetWorkingDirectory does,
-// then uses filepath.Rel to determine containment. This correctly handles
-// sibling-prefix paths (e.g. /data/mci/work vs /data/mci/work-other) that a
-// naive strings.HasPrefix check would miss, as well as relative-traversal
-// paths (e.g. ../../etc) that resolve outside the workdir once joined.
+// IsWorkdirBoundaryViolation returns true when a configured path resolves
+// outside conf.WorkDir. It intentionally evaluates the configured path before
+// legacy command-specific rewriting so telemetry captures tasks that request
+// unsupported out-of-workdir paths, even if the command ultimately executes
+// from a rewritten path under the workdir. Relative paths are resolved as
+// GetWorkingDirectory resolves them, then filepath.Rel determines containment.
 func IsWorkdirBoundaryViolation(conf *internal.TaskConfig, path string) bool {
 	if path == "" {
 		return false

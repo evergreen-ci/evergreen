@@ -58,9 +58,7 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 		return errors.Wrap(err, "applying expansions")
 	}
 
-	paths := []string{c.Prefix}
-	paths = append(paths, c.Files...)
-	SetWorkdirBoundaryAttribute(ctx, conf, paths...)
+	SetWorkdirBoundaryAttribute(ctx, conf, append([]string{c.Prefix}, c.Files...)...)
 
 	if !c.ExactFileNames {
 		workDir := GetWorkingDirectory(conf, c.Prefix)
