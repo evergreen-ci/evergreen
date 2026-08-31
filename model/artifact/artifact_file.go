@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -182,6 +183,11 @@ func credentialsForPresign(ctx context.Context, file File, resolver CredentialRe
 	}
 
 	resolved, err := resolver(ctx, file)
+	grip.InfoWhen(ctx, err != nil, message.WrapError(err, message.Fields{
+		"message": "resolving current artifact credentials, falling back to the credentials stored on the artifact",
+		"bucket":  file.Bucket,
+		"file":    file.Name,
+	}))
 	if err == nil && resolved != nil {
 		creds = *resolved
 	}
