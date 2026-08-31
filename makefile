@@ -356,6 +356,11 @@ swaggo-format:
 
 swaggo-build:
 	swag init -g service/service.go -o $(buildDir) --outputTypes json --parseDependency --parseInternal
+	$(MAKE) swaggo-convert SWAGGER_JSON_FILE=$(buildDir)/swagger.json
+
+# swaggo only generates Swagger 2.0, so convert the generated spec to OpenAPI 3.
+swaggo-convert:
+	go run ./cmd/swagger-to-openapi -input $(SWAGGER_JSON_FILE)
 
 swaggo-render:
 	npx @redocly/cli build-docs $(buildDir)/swagger.json -o $(buildDir)/redoc-static.html
@@ -387,7 +392,7 @@ generate-fws-client:
 	echo "Swaggo format done."
 
 
-phony += swaggo swaggo-install swaggo-format swaggo-build swaggo-render fws-client generate-fws-client download-fws-config
+phony += swaggo swaggo-install swaggo-format swaggo-build swaggo-convert swaggo-render fws-client generate-fws-client download-fws-config
 
 # mongodb utility targets
 mongodb/.get-mongodb:
