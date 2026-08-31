@@ -523,6 +523,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     name: test-rest-model
     tags: ["db", "test"]
+  - <<: *run-go-test-suite
+    name: test-rest-openapi
+    tags: ["nodb", "test"]
   - <<: *run-go-test-suite-with-mongodb
     tags: ["test", "db"]
     name: test-units
