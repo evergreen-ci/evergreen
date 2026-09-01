@@ -7,6 +7,7 @@ type Volume {
   expiration: Time
   homeVolume: Boolean!
   host: Host
+  hostID: String! @deprecated(reason: "Use host.id instead")
   migrating: Boolean!
   noExpiration: Boolean!
   size: Int!

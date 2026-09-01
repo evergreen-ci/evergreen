@@ -28,6 +28,11 @@ func (r *hostResolver) Distro(ctx context.Context, obj *host.Host) (*restModel.A
 	return apiDistro, nil
 }
 
+// DistroID is the resolver for the distroId field.
+func (r *hostResolver) DistroID(ctx context.Context, obj *host.Host) (*string, error) {
+	return utility.ToStringPtr(obj.Distro.Id), nil
+}
+
 // Elapsed is the resolver for the elapsed field.
 func (r *hostResolver) Elapsed(ctx context.Context, obj *host.Host) (*time.Time, error) {
 	taskId := obj.RunningTask

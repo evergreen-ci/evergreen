@@ -360,7 +360,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 		}
 		hostsPtrs = append(hostsPtrs, h)
 	}
-	// TODO: Upon adding a hosts dataloader, could probably preload RunningTasks to yield elapsed time
+	// TODO DEVPROD-42476: Upon adding a hosts dataloader, could probably preload RunningTasks to yield elapsed time
 	return &HostsResponse{
 		Hosts:              hostsPtrs,
 		FilteredHostsCount: filteredHostsCount,

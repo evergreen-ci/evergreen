@@ -1052,6 +1052,8 @@ models:
     fields:
       creationTime:
         fieldName: "CreationDate"
+      hostID:
+        fieldName: "Host"
   WaterfallBuild:
     model: github.com/evergreen-ci/evergreen/model.WaterfallBuild
   WaterfallBuildVariant:

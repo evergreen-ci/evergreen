@@ -714,6 +714,7 @@ type ComplexityRoot struct {
 		CreationTime          func(childComplexity int) int
 		DisplayName           func(childComplexity int) int
 		Distro                func(childComplexity int) int
+		DistroID              func(childComplexity int) int
 		Elapsed               func(childComplexity int) int
 		EventTypes            func(childComplexity int) int
 		Events                func(childComplexity int, opts HostEventsInput) int
@@ -2490,6 +2491,7 @@ type HostResolver interface {
 	Ami(ctx context.Context, obj *host.Host) (*string, error)
 
 	Distro(ctx context.Context, obj *host.Host) (*model.APIDistro, error)
+	DistroID(ctx context.Context, obj *host.Host) (*string, error)
 	Elapsed(ctx context.Context, obj *host.Host) (*time.Time, error)
 	Events(ctx context.Context, obj *host.Host, opts HostEventsInput) (*HostEvents, error)
 	EventTypes(ctx context.Context, obj *host.Host) ([]string, error)
@@ -5252,6 +5254,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Host.Distro(childComplexity), true
+	case "Host.distroId":
+		if e.complexity.Host.DistroID == nil {
+			break
+		}
+
+		return e.complexity.Host.DistroID(childComplexity), true
 	case "Host.elapsed":
 		if e.complexity.Host.Elapsed == nil {
 			break
@@ -12953,7 +12961,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Volume.HomeVolume(childComplexity), true
-	case "Volume.host":
+	case "Volume.host", "Volume.hostID":
 		if e.complexity.Volume.Host == nil {
 			break
 		}
@@ -30231,6 +30239,35 @@ func (ec *executionContext) fieldContext_Host_distro(_ context.Context, field gr
 	return fc, nil
 }
 
+func (ec *executionContext) _Host_distroId(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Host_distroId,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Host().DistroID(ctx, obj)
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Host_distroId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Host",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Host_elapsed(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -30434,6 +30471,8 @@ func (ec *executionContext) fieldContext_Host_homeVolume(_ context.Context, fiel
 				return ec.fieldContext_Volume_homeVolume(ctx, field)
 			case "host":
 				return ec.fieldContext_Volume_host(ctx, field)
+			case "hostID":
+				return ec.fieldContext_Volume_hostID(ctx, field)
 			case "migrating":
 				return ec.fieldContext_Volume_migrating(ctx, field)
 			case "noExpiration":
@@ -30958,6 +30997,8 @@ func (ec *executionContext) fieldContext_Host_volumes(_ context.Context, field g
 				return ec.fieldContext_Volume_homeVolume(ctx, field)
 			case "host":
 				return ec.fieldContext_Volume_host(ctx, field)
+			case "hostID":
+				return ec.fieldContext_Volume_hostID(ctx, field)
 			case "migrating":
 				return ec.fieldContext_Volume_migrating(ctx, field)
 			case "noExpiration":
@@ -32333,6 +32374,8 @@ func (ec *executionContext) fieldContext_HostsResponse_hosts(_ context.Context, 
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
 				return ec.fieldContext_Host_distro(ctx, field)
+			case "distroId":
+				return ec.fieldContext_Host_distroId(ctx, field)
 			case "elapsed":
 				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
@@ -38510,6 +38553,8 @@ func (ec *executionContext) fieldContext_Mutation_editSpawnHost(ctx context.Cont
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
 				return ec.fieldContext_Host_distro(ctx, field)
+			case "distroId":
+				return ec.fieldContext_Host_distroId(ctx, field)
 			case "elapsed":
 				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
@@ -38648,6 +38693,8 @@ func (ec *executionContext) fieldContext_Mutation_spawnHost(ctx context.Context,
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
 				return ec.fieldContext_Host_distro(ctx, field)
+			case "distroId":
+				return ec.fieldContext_Host_distroId(ctx, field)
 			case "elapsed":
 				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
@@ -38827,6 +38874,8 @@ func (ec *executionContext) fieldContext_Mutation_updateSpawnHostStatus(ctx cont
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
 				return ec.fieldContext_Host_distro(ctx, field)
+			case "distroId":
+				return ec.fieldContext_Host_distroId(ctx, field)
 			case "elapsed":
 				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
@@ -52350,6 +52399,8 @@ func (ec *executionContext) fieldContext_Query_host(ctx context.Context, field g
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
 				return ec.fieldContext_Host_distro(ctx, field)
+			case "distroId":
+				return ec.fieldContext_Host_distroId(ctx, field)
 			case "elapsed":
 				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
@@ -53158,6 +53209,8 @@ func (ec *executionContext) fieldContext_Query_myHosts(_ context.Context, field 
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
 				return ec.fieldContext_Host_distro(ctx, field)
+			case "distroId":
+				return ec.fieldContext_Host_distroId(ctx, field)
 			case "elapsed":
 				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
@@ -53249,6 +53302,8 @@ func (ec *executionContext) fieldContext_Query_myVolumes(_ context.Context, fiel
 				return ec.fieldContext_Volume_homeVolume(ctx, field)
 			case "host":
 				return ec.fieldContext_Volume_host(ctx, field)
+			case "hostID":
+				return ec.fieldContext_Volume_hostID(ctx, field)
 			case "migrating":
 				return ec.fieldContext_Volume_migrating(ctx, field)
 			case "noExpiration":
@@ -77405,6 +77460,8 @@ func (ec *executionContext) fieldContext_Volume_host(_ context.Context, field gr
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
 				return ec.fieldContext_Host_distro(ctx, field)
+			case "distroId":
+				return ec.fieldContext_Host_distroId(ctx, field)
 			case "elapsed":
 				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
@@ -77451,6 +77508,35 @@ func (ec *executionContext) fieldContext_Volume_host(_ context.Context, field gr
 				return ec.fieldContext_Host_volumes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Host", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Volume_hostID(ctx context.Context, field graphql.CollectedField, obj *host.Volume) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Volume_hostID,
+		func(ctx context.Context) (any, error) {
+			return obj.Host, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Volume_hostID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Volume",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -96038,6 +96124,39 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "distroId":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Host_distroId(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "elapsed":
 			field := field
 
@@ -111903,6 +112022,11 @@ func (ec *executionContext) _Volume(ctx context.Context, sel ast.SelectionSet, o
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "hostID":
+			out.Values[i] = ec._Volume_hostID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "migrating":
 			out.Values[i] = ec._Volume_migrating(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
