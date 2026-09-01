@@ -68,8 +68,8 @@ type Patch {
   id: ID!
   activated: Boolean!
   alias: String
-  childPatchAliases: [ChildPatchAlias!]
-  childPatches: [Patch!]
+  childPatchAliases: [ChildPatchAlias!]!
+  childPatches: [Patch!]!
   createTime: Time
   description: String!
   generatedTaskCounts: [GeneratedTaskCountResults!]!
@@ -86,7 +86,9 @@ type Patch {
   project: PatchProject
   projectMetadata: Project
   status: String!
+  tasks: [String!]!
   user: User!
+  variants: [String!]!
   variantsTasks: [VariantTask!]!
   version: VersionLite
 }
