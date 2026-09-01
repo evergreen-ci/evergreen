@@ -361,6 +361,10 @@ type versionActivateTasksHandler struct {
 	versionId string
 }
 
+// versionVariant is named for the route it serves rather than just "variant"
+// because it appears in the generated OpenAPI spec alongside patchVariant.
+// Names that differ only by case collide when clients are generated from the
+// spec, silently dropping endpoints. See DEVPROD-42404.
 type versionVariant struct {
 	Name  string   `json:"name"`
 	Tasks []string `json:"tasks"`
