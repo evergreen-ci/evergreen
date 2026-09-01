@@ -258,8 +258,8 @@ func (r *queryResolver) DistroTaskQueue(ctx context.Context, distroID string) ([
 }
 
 // Host is the resolver for the host field.
-func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.APIHost, error) {
-	host, err := host.GetHostByIdOrTagWithTask(ctx, hostID)
+func (r *queryResolver) Host(ctx context.Context, hostID string) (*host.Host, error) {
+	host, err := host.FindOneByIdOrTag(ctx, hostID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching host '%s': %s", hostID, err.Error()))
 	}
@@ -267,9 +267,7 @@ func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.API
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("host '%s' not found", hostID))
 	}
 
-	apiHost := &restModel.APIHost{}
-	apiHost.BuildFromService(ctx, host, host.RunningTaskFull)
-	return apiHost, nil
+	return host, nil
 }
 
 // Hosts is the resolver for the hosts field.
@@ -297,10 +295,10 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 			sorter = host.RunningTaskKey
 		case HostSortByDistro:
 			sorter = bsonutil.GetDottedKeyName(host.DistroKey, distro.IdKey)
-		case HostSortByElapsed:
-			sorter = "task_full.start_time"
 		case HostSortByID:
 			sorter = host.IdKey
+		case HostSortByElapsed:
+			sorter = bsonutil.GetDottedKeyName(host.RunningTaskFullKey, task.StartTimeKey)
 		case HostSortByIdleTime:
 			sorter = host.TotalIdleTimeKey
 		case HostSortByOwner:
@@ -345,8 +343,9 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 	}
 
 	usr := mustHaveUser(ctx)
-	apiHosts := []*restModel.APIHost{}
-	for _, h := range hosts {
+	hostsPtrs := []*host.Host{}
+	for i := range hosts {
+		h := &hosts[i]
 		forbiddenHosts := []string{}
 		if !userHasHostPermission(ctx, usr, h.Distro.Id, evergreen.HostsView.Value, h.StartedBy) {
 			forbiddenHosts = append(forbiddenHosts, h.Id)
@@ -359,12 +358,11 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 				"ticket":          "DEVPROD-5753",
 			})
 		}
-		apiHost := restModel.APIHost{}
-		apiHost.BuildFromService(ctx, &h, h.RunningTaskFull)
-		apiHosts = append(apiHosts, &apiHost)
+		hostsPtrs = append(hostsPtrs, h)
 	}
+	// TODO DEVPROD-42476: Upon adding a hosts dataloader, could probably preload RunningTasks to yield elapsed time
 	return &HostsResponse{
-		Hosts:              apiHosts,
+		Hosts:              hostsPtrs,
 		FilteredHostsCount: filteredHostsCount,
 		TotalHostsCount:    totalHostsCount,
 	}, nil
@@ -567,7 +565,7 @@ func (r *queryResolver) IsRepo(ctx context.Context, projectOrRepoID string) (boo
 }
 
 // MyHosts is the resolver for the myHosts field.
-func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, error) {
+func (r *queryResolver) MyHosts(ctx context.Context) ([]*host.Host, error) {
 	usr := mustHaveUser(ctx)
 	hosts, err := host.Find(ctx, host.ByUserWithRunningStatus(usr.Username()))
 	if err != nil {
@@ -583,23 +581,25 @@ func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, erro
 	}
 	hosts = append(hosts, recentlyTerminatedHosts...)
 
-	var apiHosts []*restModel.APIHost
-	for _, h := range hosts {
-		apiHost := restModel.APIHost{}
-		apiHost.BuildFromService(ctx, &h, nil)
-		apiHosts = append(apiHosts, &apiHost)
+	var hostsPtrs []*host.Host
+	for i := range hosts {
+		hostsPtrs = append(hostsPtrs, &hosts[i])
 	}
-	return apiHosts, nil
+	return hostsPtrs, nil
 }
 
 // MyVolumes is the resolver for the myVolumes field.
-func (r *queryResolver) MyVolumes(ctx context.Context) ([]*restModel.APIVolume, error) {
+func (r *queryResolver) MyVolumes(ctx context.Context) ([]*host.Volume, error) {
 	usr := mustHaveUser(ctx)
 	volumes, err := host.FindSortedVolumesByUser(ctx, usr.Username())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-	return getAPIVolumeList(volumes)
+	volumePtrs := make([]*host.Volume, 0, len(volumes))
+	for i := range volumes {
+		volumePtrs = append(volumePtrs, &volumes[i])
+	}
+	return volumePtrs, nil
 }
 
 // Task is the resolver for the task field.

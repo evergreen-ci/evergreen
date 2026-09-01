@@ -8,7 +8,7 @@
             "id": "rhel71-ppc-1.pic.build.10gen.cc",
             "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
             "tag": "",
-            "distroId": "rhel71-power8-large",
+            "distro": { "id": "rhel71-power8-large" },
             "startedBy": "mci",
             "provider": "static",
             "user": "mci-exec",

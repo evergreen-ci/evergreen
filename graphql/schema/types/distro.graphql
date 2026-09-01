@@ -291,11 +291,13 @@ type SaveDistroPayload {
 Distro models an environment configuration for a host.
 """
 type Distro {
+  id: String!
   adminOnly: Boolean!
   aliases: [String!]!
   arch: Arch!
   authorizedKeysFile: String!
   availableRegions: [String!]!
+  bootstrapMethod: String!
   bootstrapSettings: BootstrapSettings!
   containerPool: String!
   disabled: Boolean!
@@ -309,6 +311,7 @@ type Distro {
   iceCreamSettings: IceCreamSettings!
   imageId: String!
   isCluster: Boolean!
+  isWindows: Boolean!
   isVirtualWorkStation: Boolean!
   mountpoints: [String!]!
   name: String!

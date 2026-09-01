@@ -224,10 +224,11 @@ models:
         value: github.com/evergreen-ci/evergreen.DispatcherVersionRevisedWithDependencies
   Distro:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDistro
+    fields:
+      id:
+        fieldName: "Name"
   DistroInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDistro
-  DistroInfo:
-    model: github.com/evergreen-ci/evergreen/rest/model.DistroInfo
   DockerConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDockerConfig
   DockerConfigInput:
@@ -327,7 +328,16 @@ models:
   HomeVolumeSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIHomeVolumeSettings
   Host:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIHost
+    model: github.com/evergreen-ci/evergreen/model/host.Host
+    fields:
+      availabilityZone:
+        fieldName: "Zone"
+      expiration:
+        fieldName: "ExpirationTime"
+      hostUrl:
+        fieldName: "Host"
+      uptime:
+        fieldName: "CreationTime"
   HourlyPatchTaskOverride:
     model: github.com/evergreen-ci/evergreen/rest/model.APIHourlyPatchTaskOverride
   HourlyPatchTaskOverrideInput:
@@ -928,8 +938,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.TaskEventData
   TaskEventLogEntry:
     model: github.com/evergreen-ci/evergreen/rest/model.TaskAPIEventLogEntry
-  TaskInfo:
-    model: github.com/evergreen-ci/evergreen/rest/model.TaskInfo
   TestSelectionConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APITestSelectionConfig
   TestSelectionConfigInput:
@@ -1044,7 +1052,12 @@ models:
   VersionToRestart:
     model: github.com/evergreen-ci/evergreen/model.VersionToRestart
   Volume:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIVolume
+    model: github.com/evergreen-ci/evergreen/model/host.Volume
+    fields:
+      creationTime:
+        fieldName: "CreationDate"
+      hostID:
+        fieldName: "Host"
   WaterfallBuild:
     model: github.com/evergreen-ci/evergreen/model.WaterfallBuild
   WaterfallBuildVariant:
