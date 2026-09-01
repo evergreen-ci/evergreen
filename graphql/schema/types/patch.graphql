@@ -68,6 +68,7 @@ type Patch {
   id: ID!
   activated: Boolean!
   alias: String
+  aliases: [String!]!
   childPatchAliases: [ChildPatchAlias!]!
   childPatches: [Patch!]!
   createTime: Time
