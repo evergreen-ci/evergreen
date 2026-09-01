@@ -56,8 +56,9 @@ generated from the API's source code:
 [https://mciuploads.s3.amazonaws.com/evergreen/latest/swagger.json](https://mciuploads.s3.amazonaws.com/evergreen/latest/swagger.json)
 
 The file is named `swagger.json` for historical reasons, but its contents are
-OpenAPI 3.0. It is regenerated and republished on every commit to Evergreen, so
-it always describes the currently deployed API.
+OpenAPI 3.0. It is regenerated and republished when changes are merged to
+Evergreen's main branch, so it tracks the latest merged code and may be slightly
+ahead of what is currently deployed.
 
 You can use it to generate a client in your language of choice, rather than
 writing REST calls by hand. For example, with
