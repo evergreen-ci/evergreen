@@ -130,23 +130,6 @@ func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskI
 	return apiTasks, nil
 }
 
-// getFormattedDate returns a time.Time type in the format "Dec 13, 2020, 11:58:04 pm"
-func getFormattedDate(t *time.Time, timezone string) (*string, error) {
-	if t == nil {
-		return nil, nil
-	}
-
-	loc, err := time.LoadLocation(timezone)
-	if err != nil {
-		return nil, err
-	}
-
-	timeInUserTimezone := t.In(loc)
-	newTime := fmt.Sprintf("%s %d, %d, %s", timeInUserTimezone.Month(), timeInUserTimezone.Day(), timeInUserTimezone.Year(), timeInUserTimezone.Format(time.Kitchen))
-
-	return &newTime, nil
-}
-
 // GetDisplayStatus considers both child patch statuses and
 // aborted status, and returns an overall status.
 func getDisplayStatus(ctx context.Context, v *model.Version) (string, error) {

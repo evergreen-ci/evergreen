@@ -1182,10 +1182,8 @@ type ComplexityRoot struct {
 	Patch struct {
 		Activated             func(childComplexity int) int
 		Alias                 func(childComplexity int) int
-		Aliases               func(childComplexity int) int
 		ChildPatchAliases     func(childComplexity int) int
 		ChildPatches          func(childComplexity int) int
-		Cost                  func(childComplexity int) int
 		CreateTime            func(childComplexity int) int
 		Description           func(childComplexity int) int
 		GeneratedTaskCounts   func(childComplexity int) int
@@ -1200,15 +1198,10 @@ type ComplexityRoot struct {
 		Parameters            func(childComplexity int) int
 		PatchNumber           func(childComplexity int) int
 		PatchTriggerAliases   func(childComplexity int) int
-		PredictedCost         func(childComplexity int) int
 		Project               func(childComplexity int) int
 		ProjectMetadata       func(childComplexity int) int
 		Status                func(childComplexity int) int
-		TaskCount             func(childComplexity int) int
-		Tasks                 func(childComplexity int) int
-		Time                  func(childComplexity int) int
 		User                  func(childComplexity int) int
-		Variants              func(childComplexity int) int
 		VariantsTasks         func(childComplexity int) int
 		Version               func(childComplexity int) int
 	}
@@ -2627,8 +2620,6 @@ type MutationResolver interface {
 	UnscheduleVersionTasks(ctx context.Context, versionID string, abort bool) (*string, error)
 }
 type PatchResolver interface {
-	Cost(ctx context.Context, obj *model.APIPatch) (*cost.Cost, error)
-
 	GeneratedTaskCounts(ctx context.Context, obj *model.APIPatch) ([]*GeneratedTaskCountResults, error)
 
 	IncludedLocalModules(ctx context.Context, obj *model.APIPatch) ([]*model.APILocalModuleInclude, error)
@@ -2636,13 +2627,9 @@ type PatchResolver interface {
 	Parameters(ctx context.Context, obj *model.APIPatch) ([]*model.APIParameter, error)
 
 	PatchTriggerAliases(ctx context.Context, obj *model.APIPatch) ([]*model.APIPatchTriggerDefinition, error)
-	PredictedCost(ctx context.Context, obj *model.APIPatch) (*cost.Cost, error)
 	Project(ctx context.Context, obj *model.APIPatch) (*PatchProject, error)
 	ProjectMetadata(ctx context.Context, obj *model.APIPatch) (*model.APIProjectRef, error)
 
-	TaskCount(ctx context.Context, obj *model.APIPatch) (*int, error)
-
-	Time(ctx context.Context, obj *model.APIPatch) (*PatchTime, error)
 	User(ctx context.Context, obj *model.APIPatch) (*user.DBUser, error)
 
 	Version(ctx context.Context, obj *model.APIPatch) (*model1.Version, error)
@@ -7514,12 +7501,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Patch.Alias(childComplexity), true
-	case "Patch.aliases":
-		if e.complexity.Patch.Aliases == nil {
-			break
-		}
-
-		return e.complexity.Patch.Aliases(childComplexity), true
 	case "Patch.childPatchAliases":
 		if e.complexity.Patch.ChildPatchAliases == nil {
 			break
@@ -7532,12 +7513,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Patch.ChildPatches(childComplexity), true
-	case "Patch.cost":
-		if e.complexity.Patch.Cost == nil {
-			break
-		}
-
-		return e.complexity.Patch.Cost(childComplexity), true
 	case "Patch.createTime":
 		if e.complexity.Patch.CreateTime == nil {
 			break
@@ -7622,12 +7597,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Patch.PatchTriggerAliases(childComplexity), true
-	case "Patch.predictedCost":
-		if e.complexity.Patch.PredictedCost == nil {
-			break
-		}
-
-		return e.complexity.Patch.PredictedCost(childComplexity), true
 	case "Patch.project":
 		if e.complexity.Patch.Project == nil {
 			break
@@ -7646,36 +7615,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Patch.Status(childComplexity), true
-	case "Patch.taskCount":
-		if e.complexity.Patch.TaskCount == nil {
-			break
-		}
-
-		return e.complexity.Patch.TaskCount(childComplexity), true
-	case "Patch.tasks":
-		if e.complexity.Patch.Tasks == nil {
-			break
-		}
-
-		return e.complexity.Patch.Tasks(childComplexity), true
-	case "Patch.time":
-		if e.complexity.Patch.Time == nil {
-			break
-		}
-
-		return e.complexity.Patch.Time(childComplexity), true
 	case "Patch.user":
 		if e.complexity.Patch.User == nil {
 			break
 		}
 
 		return e.complexity.Patch.User(childComplexity), true
-	case "Patch.variants":
-		if e.complexity.Patch.Variants == nil {
-			break
-		}
-
-		return e.complexity.Patch.Variants(childComplexity), true
 	case "Patch.variantsTasks":
 		if e.complexity.Patch.VariantsTasks == nil {
 			break
@@ -37307,14 +37252,10 @@ func (ec *executionContext) fieldContext_Mutation_setPatchVisibility(ctx context
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
-			case "aliases":
-				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "childPatchAliases":
 				return ec.fieldContext_Patch_childPatchAliases(ctx, field)
 			case "childPatches":
 				return ec.fieldContext_Patch_childPatches(ctx, field)
-			case "cost":
-				return ec.fieldContext_Patch_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Patch_createTime(ctx, field)
 			case "description":
@@ -37341,24 +37282,14 @@ func (ec *executionContext) fieldContext_Mutation_setPatchVisibility(ctx context
 				return ec.fieldContext_Patch_patchNumber(ctx, field)
 			case "patchTriggerAliases":
 				return ec.fieldContext_Patch_patchTriggerAliases(ctx, field)
-			case "predictedCost":
-				return ec.fieldContext_Patch_predictedCost(ctx, field)
 			case "project":
 				return ec.fieldContext_Patch_project(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
 				return ec.fieldContext_Patch_status(ctx, field)
-			case "taskCount":
-				return ec.fieldContext_Patch_taskCount(ctx, field)
-			case "tasks":
-				return ec.fieldContext_Patch_tasks(ctx, field)
-			case "time":
-				return ec.fieldContext_Patch_time(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
-			case "variants":
-				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
 			case "version":
@@ -37412,14 +37343,10 @@ func (ec *executionContext) fieldContext_Mutation_schedulePatch(ctx context.Cont
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
-			case "aliases":
-				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "childPatchAliases":
 				return ec.fieldContext_Patch_childPatchAliases(ctx, field)
 			case "childPatches":
 				return ec.fieldContext_Patch_childPatches(ctx, field)
-			case "cost":
-				return ec.fieldContext_Patch_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Patch_createTime(ctx, field)
 			case "description":
@@ -37446,24 +37373,14 @@ func (ec *executionContext) fieldContext_Mutation_schedulePatch(ctx context.Cont
 				return ec.fieldContext_Patch_patchNumber(ctx, field)
 			case "patchTriggerAliases":
 				return ec.fieldContext_Patch_patchTriggerAliases(ctx, field)
-			case "predictedCost":
-				return ec.fieldContext_Patch_predictedCost(ctx, field)
 			case "project":
 				return ec.fieldContext_Patch_project(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
 				return ec.fieldContext_Patch_status(ctx, field)
-			case "taskCount":
-				return ec.fieldContext_Patch_taskCount(ctx, field)
-			case "tasks":
-				return ec.fieldContext_Patch_tasks(ctx, field)
-			case "time":
-				return ec.fieldContext_Patch_time(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
-			case "variants":
-				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
 			case "version":
@@ -44419,35 +44336,6 @@ func (ec *executionContext) fieldContext_Patch_alias(_ context.Context, field gr
 	return fc, nil
 }
 
-func (ec *executionContext) _Patch_aliases(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Patch_aliases,
-		func(ctx context.Context) (any, error) {
-			return obj.Aliases, nil
-		},
-		nil,
-		ec.marshalOString2ᚕstringᚄ,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_Patch_aliases(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Patch",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Patch_childPatchAliases(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -44513,14 +44401,10 @@ func (ec *executionContext) fieldContext_Patch_childPatches(_ context.Context, f
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
-			case "aliases":
-				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "childPatchAliases":
 				return ec.fieldContext_Patch_childPatchAliases(ctx, field)
 			case "childPatches":
 				return ec.fieldContext_Patch_childPatches(ctx, field)
-			case "cost":
-				return ec.fieldContext_Patch_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Patch_createTime(ctx, field)
 			case "description":
@@ -44547,79 +44431,20 @@ func (ec *executionContext) fieldContext_Patch_childPatches(_ context.Context, f
 				return ec.fieldContext_Patch_patchNumber(ctx, field)
 			case "patchTriggerAliases":
 				return ec.fieldContext_Patch_patchTriggerAliases(ctx, field)
-			case "predictedCost":
-				return ec.fieldContext_Patch_predictedCost(ctx, field)
 			case "project":
 				return ec.fieldContext_Patch_project(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
 				return ec.fieldContext_Patch_status(ctx, field)
-			case "taskCount":
-				return ec.fieldContext_Patch_taskCount(ctx, field)
-			case "tasks":
-				return ec.fieldContext_Patch_tasks(ctx, field)
-			case "time":
-				return ec.fieldContext_Patch_time(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
-			case "variants":
-				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
 			case "version":
 				return ec.fieldContext_Patch_version(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Patch", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Patch_cost(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Patch_cost,
-		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Patch().Cost(ctx, obj)
-		},
-		nil,
-		ec.marshalOCost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋcostᚐCost,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_Patch_cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Patch",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "total":
-				return ec.fieldContext_Cost_total(ctx, field)
-			case "childPatchesTotalCost":
-				return ec.fieldContext_Cost_childPatchesTotalCost(ctx, field)
-			case "adjustedEC2Cost":
-				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
-			case "adjustedEBSStorageCost":
-				return ec.fieldContext_Cost_adjustedEBSStorageCost(ctx, field)
-			case "adjustedEBSThroughputCost":
-				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
-			case "adjustedS3ArtifactPutCost":
-				return ec.fieldContext_Cost_adjustedS3ArtifactPutCost(ctx, field)
-			case "adjustedS3ArtifactStorageCost":
-				return ec.fieldContext_Cost_adjustedS3ArtifactStorageCost(ctx, field)
-			case "adjustedS3LogPutCost":
-				return ec.fieldContext_Cost_adjustedS3LogPutCost(ctx, field)
-			case "adjustedS3LogStorageCost":
-				return ec.fieldContext_Cost_adjustedS3LogStorageCost(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
 	}
 	return fc, nil
@@ -45070,55 +44895,6 @@ func (ec *executionContext) fieldContext_Patch_patchTriggerAliases(_ context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _Patch_predictedCost(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Patch_predictedCost,
-		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Patch().PredictedCost(ctx, obj)
-		},
-		nil,
-		ec.marshalOCost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋcostᚐCost,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_Patch_predictedCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Patch",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "total":
-				return ec.fieldContext_Cost_total(ctx, field)
-			case "childPatchesTotalCost":
-				return ec.fieldContext_Cost_childPatchesTotalCost(ctx, field)
-			case "adjustedEC2Cost":
-				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
-			case "adjustedEBSStorageCost":
-				return ec.fieldContext_Cost_adjustedEBSStorageCost(ctx, field)
-			case "adjustedEBSThroughputCost":
-				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
-			case "adjustedS3ArtifactPutCost":
-				return ec.fieldContext_Cost_adjustedS3ArtifactPutCost(ctx, field)
-			case "adjustedS3ArtifactStorageCost":
-				return ec.fieldContext_Cost_adjustedS3ArtifactStorageCost(ctx, field)
-			case "adjustedS3LogPutCost":
-				return ec.fieldContext_Cost_adjustedS3LogPutCost(ctx, field)
-			case "adjustedS3LogStorageCost":
-				return ec.fieldContext_Cost_adjustedS3LogStorageCost(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Patch_project(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -45322,101 +45098,6 @@ func (ec *executionContext) fieldContext_Patch_status(_ context.Context, field g
 	return fc, nil
 }
 
-func (ec *executionContext) _Patch_taskCount(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Patch_taskCount,
-		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Patch().TaskCount(ctx, obj)
-		},
-		nil,
-		ec.marshalOInt2ᚖint,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_Patch_taskCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Patch",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Patch_tasks(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Patch_tasks,
-		func(ctx context.Context) (any, error) {
-			return obj.Tasks, nil
-		},
-		nil,
-		ec.marshalNString2ᚕᚖstringᚄ,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Patch_tasks(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Patch",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Patch_time(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Patch_time,
-		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Patch().Time(ctx, obj)
-		},
-		nil,
-		ec.marshalOPatchTime2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchTime,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_Patch_time(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Patch",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "finished":
-				return ec.fieldContext_PatchTime_finished(ctx, field)
-			case "started":
-				return ec.fieldContext_PatchTime_started(ctx, field)
-			case "submittedAt":
-				return ec.fieldContext_PatchTime_submittedAt(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type PatchTime", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Patch_user(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -45465,35 +45146,6 @@ func (ec *executionContext) fieldContext_Patch_user(_ context.Context, field gra
 				return ec.fieldContext_User_tokenAccessTokenExpiresAt(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Patch_variants(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Patch_variants,
-		func(ctx context.Context) (any, error) {
-			return obj.Variants, nil
-		},
-		nil,
-		ec.marshalNString2ᚕᚖstringᚄ,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Patch_variants(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Patch",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -46044,14 +45696,10 @@ func (ec *executionContext) fieldContext_Patches_patches(_ context.Context, fiel
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
-			case "aliases":
-				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "childPatchAliases":
 				return ec.fieldContext_Patch_childPatchAliases(ctx, field)
 			case "childPatches":
 				return ec.fieldContext_Patch_childPatches(ctx, field)
-			case "cost":
-				return ec.fieldContext_Patch_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Patch_createTime(ctx, field)
 			case "description":
@@ -46078,24 +45726,14 @@ func (ec *executionContext) fieldContext_Patches_patches(_ context.Context, fiel
 				return ec.fieldContext_Patch_patchNumber(ctx, field)
 			case "patchTriggerAliases":
 				return ec.fieldContext_Patch_patchTriggerAliases(ctx, field)
-			case "predictedCost":
-				return ec.fieldContext_Patch_predictedCost(ctx, field)
 			case "project":
 				return ec.fieldContext_Patch_project(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
 				return ec.fieldContext_Patch_status(ctx, field)
-			case "taskCount":
-				return ec.fieldContext_Patch_taskCount(ctx, field)
-			case "tasks":
-				return ec.fieldContext_Patch_tasks(ctx, field)
-			case "time":
-				return ec.fieldContext_Patch_time(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
-			case "variants":
-				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
 			case "version":
@@ -52822,14 +52460,10 @@ func (ec *executionContext) fieldContext_Query_patch(ctx context.Context, field 
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
-			case "aliases":
-				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "childPatchAliases":
 				return ec.fieldContext_Patch_childPatchAliases(ctx, field)
 			case "childPatches":
 				return ec.fieldContext_Patch_childPatches(ctx, field)
-			case "cost":
-				return ec.fieldContext_Patch_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Patch_createTime(ctx, field)
 			case "description":
@@ -52856,24 +52490,14 @@ func (ec *executionContext) fieldContext_Query_patch(ctx context.Context, field 
 				return ec.fieldContext_Patch_patchNumber(ctx, field)
 			case "patchTriggerAliases":
 				return ec.fieldContext_Patch_patchTriggerAliases(ctx, field)
-			case "predictedCost":
-				return ec.fieldContext_Patch_predictedCost(ctx, field)
 			case "project":
 				return ec.fieldContext_Patch_project(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
 				return ec.fieldContext_Patch_status(ctx, field)
-			case "taskCount":
-				return ec.fieldContext_Patch_taskCount(ctx, field)
-			case "tasks":
-				return ec.fieldContext_Patch_tasks(ctx, field)
-			case "time":
-				return ec.fieldContext_Patch_time(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
-			case "variants":
-				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
 			case "version":
@@ -65145,14 +64769,10 @@ func (ec *executionContext) fieldContext_Task_patch(_ context.Context, field gra
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
-			case "aliases":
-				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "childPatchAliases":
 				return ec.fieldContext_Patch_childPatchAliases(ctx, field)
 			case "childPatches":
 				return ec.fieldContext_Patch_childPatches(ctx, field)
-			case "cost":
-				return ec.fieldContext_Patch_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Patch_createTime(ctx, field)
 			case "description":
@@ -65179,24 +64799,14 @@ func (ec *executionContext) fieldContext_Task_patch(_ context.Context, field gra
 				return ec.fieldContext_Patch_patchNumber(ctx, field)
 			case "patchTriggerAliases":
 				return ec.fieldContext_Patch_patchTriggerAliases(ctx, field)
-			case "predictedCost":
-				return ec.fieldContext_Patch_predictedCost(ctx, field)
 			case "project":
 				return ec.fieldContext_Patch_project(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
 				return ec.fieldContext_Patch_status(ctx, field)
-			case "taskCount":
-				return ec.fieldContext_Patch_taskCount(ctx, field)
-			case "tasks":
-				return ec.fieldContext_Patch_tasks(ctx, field)
-			case "time":
-				return ec.fieldContext_Patch_time(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
-			case "variants":
-				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
 			case "version":
@@ -76173,14 +75783,10 @@ func (ec *executionContext) fieldContext_Version_patch(_ context.Context, field 
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
-			case "aliases":
-				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "childPatchAliases":
 				return ec.fieldContext_Patch_childPatchAliases(ctx, field)
 			case "childPatches":
 				return ec.fieldContext_Patch_childPatches(ctx, field)
-			case "cost":
-				return ec.fieldContext_Patch_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Patch_createTime(ctx, field)
 			case "description":
@@ -76207,24 +75813,14 @@ func (ec *executionContext) fieldContext_Version_patch(_ context.Context, field 
 				return ec.fieldContext_Patch_patchNumber(ctx, field)
 			case "patchTriggerAliases":
 				return ec.fieldContext_Patch_patchTriggerAliases(ctx, field)
-			case "predictedCost":
-				return ec.fieldContext_Patch_predictedCost(ctx, field)
 			case "project":
 				return ec.fieldContext_Patch_project(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
 				return ec.fieldContext_Patch_status(ctx, field)
-			case "taskCount":
-				return ec.fieldContext_Patch_taskCount(ctx, field)
-			case "tasks":
-				return ec.fieldContext_Patch_tasks(ctx, field)
-			case "time":
-				return ec.fieldContext_Patch_time(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
-			case "variants":
-				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
 			case "version":
@@ -101071,45 +100667,10 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			}
 		case "alias":
 			out.Values[i] = ec._Patch_alias(ctx, field, obj)
-		case "aliases":
-			out.Values[i] = ec._Patch_aliases(ctx, field, obj)
 		case "childPatchAliases":
 			out.Values[i] = ec._Patch_childPatchAliases(ctx, field, obj)
 		case "childPatches":
 			out.Values[i] = ec._Patch_childPatches(ctx, field, obj)
-		case "cost":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Patch_cost(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "createTime":
 			out.Values[i] = ec._Patch_createTime(ctx, field, obj)
 		case "description":
@@ -101290,39 +100851,6 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "predictedCost":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Patch_predictedCost(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "project":
 			field := field
 
@@ -101394,77 +100922,6 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "taskCount":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Patch_taskCount(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "tasks":
-			out.Values[i] = ec._Patch_tasks(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "time":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Patch_time(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "user":
 			field := field
 
@@ -101501,11 +100958,6 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "variants":
-			out.Values[i] = ec._Patch_variants(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "variantsTasks":
 			out.Values[i] = ec._Patch_variantsTasks(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -122886,13 +122338,6 @@ func (ec *executionContext) marshalOPatchProject2ᚖgithubᚗcomᚋevergreenᚑc
 		return graphql.Null
 	}
 	return ec._PatchProject(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalOPatchTime2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchTime(ctx context.Context, sel ast.SelectionSet, v *PatchTime) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._PatchTime(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOPatchTriggerAlias2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchTriggerDefinitionᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIPatchTriggerDefinition) graphql.Marshaler {
