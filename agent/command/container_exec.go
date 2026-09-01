@@ -15,7 +15,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-func runJasperProcessWithContainer(ctx context.Context, opts *options.Create, commandName, workDir string, conf *internal.TaskConfig, manager jasper.Manager, background bool, logger client.LoggerProducer, taskID string, backgroundFailures chan<- error, continueOnError bool, backgroundCommandFailureEnabled bool) (jasper.Process, error) {
+func runJasperProcessWithContainer(ctx context.Context, opts *options.Create, commandName, workDir string, conf *internal.TaskConfig, manager jasper.Manager, background bool, logger client.LoggerProducer, taskID string, backgroundFailures chan<- internal.BackgroundFailure, continueOnError bool, backgroundCommandFailureEnabled bool) (jasper.Process, error) {
 	processCtx := ctx
 	var span trace.Span
 	if conf.Distro != nil && conf.ContainerID != "" {
@@ -35,7 +35,7 @@ func runJasperProcessWithContainer(ctx context.Context, opts *options.Create, co
 			return nil, errors.Wrap(err, "wrapping command for container execution")
 		}
 	}
-	proc, err := runJasperProcess(processCtx, manager, background, opts, taskID, logger, backgroundFailures, continueOnError, backgroundCommandFailureEnabled)
+	proc, err := runJasperProcess(processCtx, manager, background, opts, commandName, taskID, logger, backgroundFailures, continueOnError, backgroundCommandFailureEnabled)
 	if span != nil {
 		if err != nil {
 			span.SetStatus(codes.Error, err.Error())

@@ -60,7 +60,10 @@ type taskContext struct {
 	// s3Usage tracks S3 API usage accumulated during task execution
 	s3Usage s3usage.S3Usage
 	// backgroundFailures is the bidirectional end of the channel whose send-only end is exposed to commands via TaskConfig.
-	backgroundFailures chan error
+	backgroundFailures chan internal.BackgroundFailure
+	// backgroundFailingCommand is the display name of the first background
+	// command whose failure caused the task to fail.
+	backgroundFailingCommand string
 	// taskCleanups and taskGroupCleanups store the cleanup commands for the
 	// task and setup group, respectively.
 	taskCleanups       []internal.CommandCleanup
@@ -181,6 +184,20 @@ func (tc *taskContext) getOtherFailingCommands() []apimodels.FailingCommand {
 		})
 	}
 	return otherFailingCmds
+}
+
+func (tc *taskContext) setBackgroundFailingCommand(name string) {
+	tc.Lock()
+	defer tc.Unlock()
+	if tc.backgroundFailingCommand == "" {
+		tc.backgroundFailingCommand = name
+	}
+}
+
+func (tc *taskContext) getBackgroundFailingCommand() string {
+	tc.RLock()
+	defer tc.RUnlock()
+	return tc.backgroundFailingCommand
 }
 
 func (tc *taskContext) setCurrentCommand(ctx context.Context, command command.Command) {

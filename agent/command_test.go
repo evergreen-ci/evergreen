@@ -343,9 +343,12 @@ functions:
 
 	// Wire and pre-load the channel that setupTask normally creates in production.
 	s.tc.taskConfig.BackgroundCommandFailureEnabled = true
-	s.tc.backgroundFailures = make(chan error, 10)
+	s.tc.backgroundFailures = make(chan internal.BackgroundFailure, 10)
 	s.tc.taskConfig.BackgroundFailures = s.tc.backgroundFailures
-	s.tc.backgroundFailures <- errors.New("background command (PID 99999) exited with code 1")
+	s.tc.backgroundFailures <- internal.BackgroundFailure{
+		Err:         errors.New("background command 'shell.exec' (PID 99999) exited with code 1"),
+		CommandName: "shell.exec",
+	}
 
 	func1 := model.PluginCommandConf{
 		Function:    "trivial",
@@ -359,6 +362,7 @@ functions:
 	s.Require().Error(err, "drain should convert background failure into a command block error")
 	s.Contains(err.Error(), "background command failed")
 	s.Empty(s.tc.backgroundFailures, "drain should have consumed the pre-loaded failure")
+	s.Equal("shell.exec", s.tc.getBackgroundFailingCommand(), "should record the background command that caused the failure")
 }
 
 func (s *CommandSuite) TestBackgroundCommandFailureIgnoredWhenFlagDisabled() {

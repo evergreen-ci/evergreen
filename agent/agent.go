@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/globals"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
@@ -517,7 +518,7 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	tc.taskConfig.S3Usage = &tc.s3Usage
 	if tc.taskConfig.BackgroundCommandFailureEnabled {
 		// Buffered to bound accumulation between drain cycles after each foreground command.
-		tc.backgroundFailures = make(chan error, 10)
+		tc.backgroundFailures = make(chan internal.BackgroundFailure, 10)
 		tc.taskConfig.BackgroundFailures = tc.backgroundFailures
 	}
 
@@ -888,7 +889,7 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		return evergreen.TaskFailed
 	}
 
-	count, msgs := drainBackgroundFailures(ctx, tc.backgroundFailures, tc.logger.Task())
+	count, msgs, commandNames := drainBackgroundFailures(ctx, tc.backgroundFailures, tc.logger.Task())
 	if count > 0 {
 		span := trace.SpanFromContext(ctx)
 		span.SetAttributes(
@@ -896,6 +897,9 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 			attribute.Int(backgroundCommandFailureCountAttribute, count),
 			attribute.StringSlice(backgroundCommandFailuresAttribute, msgs),
 		)
+		if len(commandNames) > 0 {
+			tc.setBackgroundFailingCommand(commandNames[0])
+		}
 		return evergreen.TaskFailed
 	}
 
@@ -1542,12 +1546,18 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 		if tc.userEndTaskRespOriginatingCommand != nil {
 			detail.FailingCommand = tc.userEndTaskRespOriginatingCommand.FullDisplayName()
 			tc.setFailingCommand(tc.userEndTaskRespOriginatingCommand)
+		} else if bgCmd := tc.getBackgroundFailingCommand(); bgCmd != "" {
+			detail.FailingCommand = bgCmd
 		} else {
 			detail.FailingCommand = currCmd.FullDisplayName()
 			tc.setFailingCommand(currCmd)
 		}
 		detail.Type = failureType
-		detail.FailureMetadataTags = utility.UniqueStrings(append(tc.getFailingCommand().FailureMetadataTags(), failureMetadataTagsToAdd...))
+		if failingCmd := tc.getFailingCommand(); failingCmd != nil {
+			detail.FailureMetadataTags = utility.UniqueStrings(append(failingCmd.FailureMetadataTags(), failureMetadataTagsToAdd...))
+		} else {
+			detail.FailureMetadataTags = utility.UniqueStrings(failureMetadataTagsToAdd)
+		}
 	}
 
 	detail.OtherFailingCommands = tc.getOtherFailingCommands()

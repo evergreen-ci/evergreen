@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/executor"
 	"github.com/evergreen-ci/evergreen/agent/globals"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
@@ -39,18 +40,19 @@ var (
 // drainBackgroundFailures consolidates the consume-and-log step shared by the two
 // task-level pass/fail decision points so they don't drift apart over time; the
 // call sites still own the divergent attribute target and failure status.
-func drainBackgroundFailures(ctx context.Context, ch <-chan error, taskLog grip.Journaler) (count int, msgs []string) {
+func drainBackgroundFailures(ctx context.Context, ch <-chan internal.BackgroundFailure, taskLog grip.Journaler) (count int, msgs []string, commandNames []string) {
 	if ch == nil {
-		return 0, nil
+		return 0, nil, nil
 	}
 	for {
 		select {
-		case bgErr := <-ch:
-			taskLog.Errorf(ctx, "Background command failed: %s", bgErr)
+		case bgFailure := <-ch:
+			taskLog.Errorf(ctx, "Background command '%s' failed: %s", bgFailure.CommandName, bgFailure.Err)
 			count++
-			msgs = append(msgs, bgErr.Error())
+			msgs = append(msgs, bgFailure.Error())
+			commandNames = append(commandNames, bgFailure.CommandName)
 		default:
-			return count, msgs
+			return count, msgs, commandNames
 		}
 	}
 }
@@ -184,7 +186,7 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 		commandSpan.End()
 
 		// Anything reaching this channel must fail the task; continue_on_err filtering happens at the trigger.
-		count, msgs := drainBackgroundFailures(ctx, tc.backgroundFailures, tc.logger.Task())
+		count, msgs, commandNames := drainBackgroundFailures(ctx, tc.backgroundFailures, tc.logger.Task())
 		if count > 0 {
 			span := trace.SpanFromContext(blockCtx)
 			span.SetAttributes(
@@ -192,6 +194,9 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 				attribute.Int(backgroundCommandFailureCountAttribute, count),
 				attribute.StringSlice(backgroundCommandFailuresAttribute, msgs),
 			)
+			if len(commandNames) > 0 {
+				tc.setBackgroundFailingCommand(commandNames[0])
+			}
 			return errors.New("background command failed")
 		}
 	}
