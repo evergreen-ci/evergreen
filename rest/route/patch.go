@@ -622,6 +622,10 @@ type patchTasks struct {
 	Variants []patchVariant `json:"variants"`
 }
 
+// patchVariant is named for the route it serves rather than just "variant"
+// because it appears in the generated OpenAPI spec alongside versionVariant.
+// Names that differ only by case collide when clients are generated from the
+// spec, silently dropping endpoints. See DEVPROD-42404.
 type patchVariant struct {
 	Id    string   `json:"id"`
 	Tasks []string `json:"tasks"`
