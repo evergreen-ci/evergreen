@@ -2138,11 +2138,11 @@ the task to fail. The type affects the task's color and display status, as well
 as behavior such as automatic retries, stepback, statistics, notifications, and
 administrative restart filtering. There are three failure types:
 
-| Type | Color | Display status | Intended use |
-| ---- | ----- | -------------- | ------------ |
-| `test` | Red | `failed` (or a timeout status) | A test or other expected task operation failed. This is the default. |
-| `system` | Purple | `system-failed`, `system-timed-out`, or `system-unresponsive` | The host or Evergreen infrastructure failed rather than the task's work. Evergreen automatically retries the first execution of a system-failed task once, unless this behavior is disabled by an Evergreen administrator. |
-| `setup` | Lavender | `setup-failed` | Test setup or an external service required by the task failed. |
+| Type     | Color    | Display status                                                | Intended use                                                                                                                                                                                                               |
+| -------- | -------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `test`   | Red      | `failed` (or a timeout status)                                | A test or other expected task operation failed. This is the default.                                                                                                                                                       |
+| `system` | Purple   | `system-failed`, `system-timed-out`, or `system-unresponsive` | The host or Evergreen infrastructure failed rather than the task's work. Evergreen automatically retries the first execution of a system-failed task once, unless this behavior is disabled by an Evergreen administrator. |
+| `setup`  | Lavender | `setup-failed`                                                | Test setup or an external service required by the task failed.                                                                                                                                                             |
 
 Only `test` failures can start [stepback](Stepback-Bisection). Setup and system
 failures do not indicate that a source-code commit caused the failure, so they
