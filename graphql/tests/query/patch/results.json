@@ -10,7 +10,9 @@
             "user": {
               "id": "admin_user",
               "displayName": "Admin User"
-            }
+            },
+            "tasks": ["test-graphql"],
+            "variants": ["ubuntu1604"]
           }
         }
       }
