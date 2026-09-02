@@ -69,6 +69,7 @@ type Patch {
   activated: Boolean!
   alias: String
   aliases: [String!]!
+  buildVariants: [String!]!
   childPatchAliases: [ChildPatchAlias!]!
   childPatches: [Patch!]!
   createTime: Time
@@ -89,7 +90,6 @@ type Patch {
   status: String!
   tasks: [String!]!
   user: User!
-  variants: [String!]!
   variantsTasks: [VariantTask!]! # Variants and tasks that have been selected to run i.e. these are configured and scheduled to run. TODO: Make another field with a better name.
   version: VersionLite
 }
