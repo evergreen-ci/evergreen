@@ -904,3 +904,26 @@ func TestFindFinalizedMergeQueuePatchesMissingCompletionMetricsExcludesNonEligib
 	assert.Contains(t, patchIDs, eligible.Id)
 	assert.Contains(t, patchIDs, failedEmit.Id)
 }
+
+func TestHasMergeQueuePatchForHeadSHASeesFinishedPatches(t *testing.T) {
+	t.Cleanup(func() { require.NoError(t, db.ClearCollections(Collection)) })
+	require.NoError(t, db.ClearCollections(Collection))
+
+	p := Patch{
+		Id:              bson.NewObjectId(),
+		Project:         "my-project",
+		Alias:           evergreen.CommitQueueAlias,
+		Status:          evergreen.VersionSucceeded,
+		CreateTime:      time.Now(),
+		GithubMergeData: thirdparty.GithubMergeGroup{Org: "10gen", Repo: "mongo", HeadSHA: "head-sha"},
+	}
+	require.NoError(t, db.Insert(t.Context(), Collection, p))
+
+	hasPatch, err := FindAllMergeQueuePatchesByProject(t.Context(), "my-project", "10gen", "mongo", "head-sha")
+	require.NoError(t, err)
+	assert.True(t, hasPatch)
+
+	hasPatch, err = FindAllMergeQueuePatchesByProject(t.Context(), "my-project", "10gen", "mongo", "other-head-sha")
+	require.NoError(t, err)
+	assert.False(t, hasPatch)
+}
