@@ -1205,6 +1205,7 @@ type ComplexityRoot struct {
 		Status                func(childComplexity int) int
 		Tasks                 func(childComplexity int) int
 		User                  func(childComplexity int) int
+		Variants              func(childComplexity int) int
 		VariantsTasks         func(childComplexity int) int
 		Version               func(childComplexity int) int
 	}
@@ -2643,6 +2644,7 @@ type PatchResolver interface {
 	ProjectMetadata(ctx context.Context, obj *patch.Patch) (*model.APIProjectRef, error)
 
 	User(ctx context.Context, obj *patch.Patch) (*user.DBUser, error)
+	Variants(ctx context.Context, obj *patch.Patch) ([]string, error)
 	VariantsTasks(ctx context.Context, obj *patch.Patch) ([]*model.VariantTask, error)
 	Version(ctx context.Context, obj *patch.Patch) (*model1.Version, error)
 }
@@ -7645,6 +7647,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Patch.User(childComplexity), true
+	case "Patch.variants":
+		if e.complexity.Patch.Variants == nil {
+			break
+		}
+
+		return e.complexity.Patch.Variants(childComplexity), true
 	case "Patch.variantsTasks":
 		if e.complexity.Patch.VariantsTasks == nil {
 			break
@@ -37318,6 +37326,8 @@ func (ec *executionContext) fieldContext_Mutation_setPatchVisibility(ctx context
 				return ec.fieldContext_Patch_tasks(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
+			case "variants":
+				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
 			case "version":
@@ -37413,6 +37423,8 @@ func (ec *executionContext) fieldContext_Mutation_schedulePatch(ctx context.Cont
 				return ec.fieldContext_Patch_tasks(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
+			case "variants":
+				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
 			case "version":
@@ -44504,6 +44516,8 @@ func (ec *executionContext) fieldContext_Patch_childPatches(_ context.Context, f
 				return ec.fieldContext_Patch_tasks(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
+			case "variants":
+				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
 			case "version":
@@ -45245,6 +45259,35 @@ func (ec *executionContext) fieldContext_Patch_user(_ context.Context, field gra
 	return fc, nil
 }
 
+func (ec *executionContext) _Patch_variants(ctx context.Context, field graphql.CollectedField, obj *patch.Patch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Patch_variants,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Patch().Variants(ctx, obj)
+		},
+		nil,
+		ec.marshalNString2ᚕstringᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Patch_variants(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Patch",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Patch_variantsTasks(ctx context.Context, field graphql.CollectedField, obj *patch.Patch) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -45832,6 +45875,8 @@ func (ec *executionContext) fieldContext_Patches_patches(_ context.Context, fiel
 				return ec.fieldContext_Patch_tasks(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
+			case "variants":
+				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
 			case "version":
@@ -52600,6 +52645,8 @@ func (ec *executionContext) fieldContext_Query_patch(ctx context.Context, field 
 				return ec.fieldContext_Patch_tasks(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
+			case "variants":
+				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
 			case "version":
@@ -64913,6 +64960,8 @@ func (ec *executionContext) fieldContext_Task_patch(_ context.Context, field gra
 				return ec.fieldContext_Patch_tasks(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
+			case "variants":
+				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
 			case "version":
@@ -75931,6 +75980,8 @@ func (ec *executionContext) fieldContext_Version_patch(_ context.Context, field 
 				return ec.fieldContext_Patch_tasks(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
+			case "variants":
+				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
 			case "version":
@@ -101244,6 +101295,42 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 					}
 				}()
 				res = ec._Patch_user(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "variants":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Patch_variants(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}

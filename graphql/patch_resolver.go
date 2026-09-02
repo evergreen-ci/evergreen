@@ -278,6 +278,11 @@ func (r *patchResolver) User(ctx context.Context, obj *patch.Patch) (*user.DBUse
 	return dbUser, nil
 }
 
+// Variants is the resolver for the variants field.
+func (r *patchResolver) Variants(ctx context.Context, obj *patch.Patch) ([]string, error) {
+	panic(fmt.Errorf("not implemented: Variants - variants"))
+}
+
 // VariantsTasks is the resolver for the variantsTasks field.
 func (r *patchResolver) VariantsTasks(ctx context.Context, obj *patch.Patch) ([]*restModel.VariantTask, error) {
 	result := make([]*restModel.VariantTask, 0, len(obj.VariantsTasks))
