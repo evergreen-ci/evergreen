@@ -37,6 +37,9 @@ const (
 	gitGetProjectAttribute = "evergreen.command.git_get_project"
 
 	generatedTokenKey = "EVERGREEN_GENERATED_GITHUB_TOKEN"
+
+	// restoreSubmoduleCredentialsRewrite injects the task's token into scrubbed GitHub submodule remotes.
+	restoreSubmoduleCredentialsRewrite = `s#://github\.com/#://x-access-token:%s@github.com/#g`
 )
 
 var (
@@ -618,7 +621,7 @@ func restoreGitConfigCredentialsCommands(token string) []string {
 	return []string{
 		"set +o xtrace",
 		fmt.Sprintf("echo %s", strconv.Quote("restoring submodule credentials in .git configs")),
-		rewriteGitConfigsCommand(fmt.Sprintf(`s#://github\.com/#://x-access-token:%s@github.com/#g`, token)),
+		rewriteGitConfigsCommand(fmt.Sprintf(restoreSubmoduleCredentialsRewrite, token)),
 		"set -o xtrace",
 	}
 }
