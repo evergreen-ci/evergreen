@@ -22,10 +22,14 @@ const (
 )
 
 var (
-	idKey         = bsonutil.MustHaveTag(Notification{}, "ID")
-	subscriberKey = bsonutil.MustHaveTag(Notification{}, "Subscriber")
-	sentAtKey     = bsonutil.MustHaveTag(Notification{}, "SentAt")
-	errorKey      = bsonutil.MustHaveTag(Notification{}, "Error")
+	idKey             = bsonutil.MustHaveTag(Notification{}, "ID")
+	subscriberKey     = bsonutil.MustHaveTag(Notification{}, "Subscriber")
+	sentAtKey         = bsonutil.MustHaveTag(Notification{}, "SentAt")
+	errorKey          = bsonutil.MustHaveTag(Notification{}, "Error")
+	nextAttemptAtKey  = bsonutil.MustHaveTag(Notification{}, "NextAttemptAt")
+	sendAttemptsKey   = bsonutil.MustHaveTag(Notification{}, "SendAttempts")
+	firstAttemptAtKey = bsonutil.MustHaveTag(Notification{}, "FirstAttemptAt")
+	lastAttemptAtKey  = bsonutil.MustHaveTag(Notification{}, "LastAttemptAt")
 )
 
 type unmarshalNotification struct {
@@ -36,6 +40,11 @@ type unmarshalNotification struct {
 	SentAt   time.Time            `bson:"sent_at,omitempty"`
 	Error    string               `bson:"error,omitempty"`
 	Metadata NotificationMetadata `bson:"metadata,omitempty"`
+
+	SendAttempts   int       `bson:"send_attempts,omitempty"`
+	FirstAttemptAt time.Time `bson:"first_attempt_at,omitempty"`
+	LastAttemptAt  time.Time `bson:"last_attempt_at,omitempty"`
+	NextAttemptAt  time.Time `bson:"next_attempt_at,omitempty"`
 }
 
 func (d *Notification) UnmarshalBSON(in []byte) error {
@@ -81,6 +90,10 @@ func (n *Notification) SetBSON(raw mgobson.Raw) error {
 	n.SentAt = temp.SentAt
 	n.Error = temp.Error
 	n.Metadata = temp.Metadata
+	n.SendAttempts = temp.SendAttempts
+	n.FirstAttemptAt = temp.FirstAttemptAt
+	n.LastAttemptAt = temp.LastAttemptAt
+	n.NextAttemptAt = temp.NextAttemptAt
 
 	return nil
 }
@@ -124,7 +137,15 @@ func FindByEventID(ctx context.Context, id string) ([]Notification, error) {
 
 func FindUnprocessed(ctx context.Context) ([]Notification, error) {
 	notifications := []Notification{}
-	err := db.FindAllQ(ctx, Collection, db.Query(bson.M{sentAtKey: bson.M{"$exists": false}}), &notifications)
+	err := db.FindAllQ(ctx, Collection, db.Query(bson.M{
+		"$and": []bson.M{
+			{sentAtKey: bson.M{"$exists": false}},
+			{"$or": []bson.M{
+				{nextAttemptAtKey: bson.M{"$exists": false}},
+				{nextAttemptAtKey: bson.M{"$lte": time.Now()}},
+			}},
+		},
+	}), &notifications)
 
 	return notifications, errors.Wrap(err, "finding unprocessed notifications")
 }

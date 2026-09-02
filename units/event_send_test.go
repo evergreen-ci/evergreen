@@ -2,6 +2,8 @@ package units
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"regexp"
 	"testing"
 	"time"
@@ -14,7 +16,9 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type eventNotificationSuite struct {
@@ -32,6 +36,24 @@ type eventNotificationSuite struct {
 	slack         *notification.Notification
 	jiraComment   *notification.Notification
 	jiraIssue     *notification.Notification
+}
+
+type eventSendEnvironment struct {
+	*mock.Environment
+	githubSender send.Sender
+}
+
+func (e *eventSendEnvironment) GetGitHubSender(string, string, evergreen.CreateInstallationTokenFunc) (send.Sender, error) {
+	return e.githubSender, nil
+}
+
+type eventSendErrorSender struct {
+	send.Sender
+	err error
+}
+
+func (s *eventSendErrorSender) SendWithError(context.Context, message.Composer) error {
+	return s.err
 }
 
 func TestEventNotificationJob(t *testing.T) {
@@ -272,4 +294,132 @@ func (s *eventNotificationSuite) TestSendFailureResultsInNoMessages() {
 	}
 
 	s.NotZero(s.notificationHasError(s.ctx, s.webhook.ID, "^composer is not loggable$"))
+}
+
+func (s *eventNotificationSuite) TestRetryableGitHubFailurePreservesNotification() {
+	sender := &eventSendErrorSender{
+		Sender: s.env.InternalSender,
+		err: &send.GitHubSendError{
+			StatusCode: http.StatusInternalServerError,
+			Attempts:   evergreen.GitHubRetryAttempts,
+			Retryable:  true,
+			Err:        errors.New("GitHub unavailable"),
+		},
+	}
+	job := NewEventSendJob("github-status", "").(*eventSendJob)
+	job.env = &eventSendEnvironment{Environment: s.env, githubSender: sender}
+	job.Run(s.ctx)
+
+	s.Error(job.Error())
+	n, err := notification.Find(s.ctx, "github-status")
+	s.NoError(err)
+	s.Require().NotNil(n)
+	s.Zero(n.SentAt)
+	s.Equal(1, n.SendAttempts)
+	s.WithinDuration(time.Now().Add(time.Minute), n.NextAttemptAt, time.Second)
+}
+
+func (s *eventNotificationSuite) TestPermanentGitHubFailureCompletesNotification() {
+	sender := &eventSendErrorSender{
+		Sender: s.env.InternalSender,
+		err: &send.GitHubSendError{
+			StatusCode: http.StatusUnprocessableEntity,
+			Attempts:   1,
+			Retryable:  false,
+			Err:        errors.New("invalid status"),
+		},
+	}
+	job := NewEventSendJob("github-status", "").(*eventSendJob)
+	job.env = &eventSendEnvironment{Environment: s.env, githubSender: sender}
+	job.Run(s.ctx)
+
+	s.Error(job.Error())
+	n, err := notification.Find(s.ctx, "github-status")
+	s.NoError(err)
+	s.Require().NotNil(n)
+	s.NotZero(n.SentAt)
+	s.Equal("invalid status after 1 attempt(s)", n.Error)
+}
+
+func (s *eventNotificationSuite) TestPendingGitHubFailureCompletesNotification() {
+	n, err := notification.Find(s.ctx, "github-status")
+	s.NoError(err)
+	s.Require().NotNil(n)
+	status, ok := n.Payload.(*message.GithubStatus)
+	s.Require().True(ok)
+	status.State = message.GithubStatePending
+	_, err = db.Replace(s.ctx, notification.Collection, bson.M{"_id": n.ID}, n)
+	s.NoError(err)
+
+	sender := &eventSendErrorSender{
+		Sender: s.env.InternalSender,
+		err: &send.GitHubSendError{
+			StatusCode: http.StatusInternalServerError,
+			Attempts:   evergreen.GitHubRetryAttempts,
+			Retryable:  true,
+			Err:        errors.New("GitHub unavailable"),
+		},
+	}
+	job := NewEventSendJob(n.ID, "").(*eventSendJob)
+	job.env = &eventSendEnvironment{Environment: s.env, githubSender: sender}
+	job.Run(s.ctx)
+
+	s.Error(job.Error())
+	n, err = notification.Find(s.ctx, n.ID)
+	s.NoError(err)
+	s.Require().NotNil(n)
+	s.NotZero(n.SentAt)
+	s.Zero(n.SendAttempts)
+	s.Zero(n.NextAttemptAt)
+}
+
+func (s *eventNotificationSuite) TestExhaustedGitHubRetriesCompleteNotification() {
+	n, err := notification.Find(s.ctx, "github-status")
+	s.NoError(err)
+	s.Require().NotNil(n)
+	for range githubNotificationRetryDelays {
+		s.NoError(n.MarkRetry(s.ctx, errors.New("GitHub unavailable"), 0))
+	}
+
+	sender := &eventSendErrorSender{
+		Sender: s.env.InternalSender,
+		err: &send.GitHubSendError{
+			StatusCode: http.StatusServiceUnavailable,
+			Attempts:   evergreen.GitHubRetryAttempts,
+			Retryable:  true,
+			Err:        errors.New("GitHub unavailable"),
+		},
+	}
+	job := NewEventSendJob(n.ID, "").(*eventSendJob)
+	job.env = &eventSendEnvironment{Environment: s.env, githubSender: sender}
+	job.Run(s.ctx)
+
+	s.Error(job.Error())
+	n, err = notification.Find(s.ctx, n.ID)
+	s.NoError(err)
+	s.Require().NotNil(n)
+	s.NotZero(n.SentAt)
+	s.Equal(len(githubNotificationRetryDelays), n.SendAttempts)
+	s.Equal("GitHub unavailable after 3 attempt(s)", n.Error)
+}
+
+func (s *eventNotificationSuite) TestSuccessfulGitHubRetryMarksNotificationSent() {
+	n, err := notification.Find(s.ctx, "github-status")
+	s.NoError(err)
+	s.Require().NotNil(n)
+	s.NoError(n.MarkRetry(s.ctx, errors.New("GitHub unavailable"), 0))
+
+	sender := &eventSendErrorSender{Sender: s.env.InternalSender}
+	job := NewEventSendJob(n.ID, "").(*eventSendJob)
+	job.env = &eventSendEnvironment{Environment: s.env, githubSender: sender}
+	job.Run(s.ctx)
+
+	s.NoError(job.Error())
+	n, err = notification.Find(s.ctx, n.ID)
+	s.NoError(err)
+	s.Require().NotNil(n)
+	s.NotZero(n.SentAt)
+	s.Equal(1, n.SendAttempts)
+	s.Empty(n.Error)
+	s.Zero(n.NextAttemptAt)
 }
