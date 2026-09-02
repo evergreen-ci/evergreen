@@ -54,11 +54,6 @@ type Notification struct {
 	SentAt   time.Time            `bson:"sent_at,omitempty"`
 	Error    string               `bson:"error,omitempty"`
 	Metadata NotificationMetadata `bson:"metadata,omitempty"`
-
-	SendAttempts   int       `bson:"send_attempts,omitempty"`
-	FirstAttemptAt time.Time `bson:"first_attempt_at,omitempty"`
-	LastAttemptAt  time.Time `bson:"last_attempt_at,omitempty"`
-	NextAttemptAt  time.Time `bson:"next_attempt_at,omitempty"`
 }
 
 type NotificationMetadata struct {
@@ -239,52 +234,12 @@ func (n *Notification) MarkSent(ctx context.Context) error {
 		"$set": bson.M{
 			sentAtKey: n.SentAt,
 		},
-		"$unset": bson.M{
-			errorKey:         "",
-			nextAttemptAtKey: "",
-		},
 	}
 
 	if err := db.UpdateId(ctx, Collection, n.ID, update); err != nil {
 		return errors.Wrap(err, "marking notification as sent")
 	}
-	n.Error = ""
-	n.NextAttemptAt = time.Time{}
 
-	return nil
-}
-
-// MarkRetry records a failed delivery attempt without marking the notification
-// sent so that it can be selected again after the delay.
-func (n *Notification) MarkRetry(ctx context.Context, sendErr error, delay time.Duration) error {
-	if sendErr == nil {
-		return nil
-	}
-	if len(n.ID) == 0 {
-		return errors.New("notification has no ID")
-	}
-
-	now := time.Now().Truncate(time.Millisecond)
-	if n.FirstAttemptAt.IsZero() {
-		n.FirstAttemptAt = now
-	}
-	n.LastAttemptAt = now
-	n.NextAttemptAt = now.Add(delay)
-	n.SendAttempts++
-	n.Error = sendErr.Error()
-
-	update := bson.M{
-		"$set": bson.M{
-			errorKey:          n.Error,
-			firstAttemptAtKey: n.FirstAttemptAt,
-			lastAttemptAtKey:  n.LastAttemptAt,
-			nextAttemptAtKey:  n.NextAttemptAt,
-			sendAttemptsKey:   n.SendAttempts,
-		},
-	}
-	if err := db.UpdateId(ctx, Collection, n.ID, update); err != nil {
-		return errors.Wrap(err, "marking notification for retry")
-	}
 	return nil
 }
 
