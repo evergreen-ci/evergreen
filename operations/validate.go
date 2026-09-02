@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/util"
 
@@ -18,27 +19,31 @@ import (
 )
 
 func Validate() cli.Command {
-	const yamlAnchorsFlagName = "yaml-anchors"
-
 	return cli.Command{
 		Name:  "validate",
 		Usage: "verify that an evergreen project config is valid",
-		Flags: addPathFlag(cli.BoolFlag{
-			Name:  joinFlagNames(quietFlagName, "q"),
-			Usage: "suppress warnings",
-		}, cli.BoolFlag{
-			Name:  joinFlagNames(errorOnWarningsFlagName, "w"),
-			Usage: "treat warnings as errors",
-		}, cli.StringSliceFlag{
-			Name:  joinFlagNames(localModulesFlagName, "lm"),
-			Usage: "specify local modules for included files as MODULE_NAME=PATH pairs",
-		}, cli.StringFlag{
-			Name:  joinFlagNames(projectFlagName, "p"),
-			Usage: "specify project identifier in order to run validation requiring project settings",
-		}, cli.BoolFlag{
-			Name:  yamlAnchorsFlagName,
-			Usage: "(BETA) enable cross-file YAML anchors in included files",
-		}),
+		Flags: mergeFlagSlices(
+			addPathFlag(),
+			addCrossFileAnchorsFlag(),
+			[]cli.Flag{
+				cli.BoolFlag{
+					Name:  joinFlagNames(quietFlagName, "q"),
+					Usage: "suppress warnings",
+				},
+				cli.BoolFlag{
+					Name:  joinFlagNames(errorOnWarningsFlagName, "w"),
+					Usage: "treat warnings as errors",
+				},
+				cli.StringSliceFlag{
+					Name:  joinFlagNames(localModulesFlagName, "lm"),
+					Usage: "specify local modules for included files as MODULE_NAME=PATH pairs",
+				},
+				cli.StringFlag{
+					Name:  joinFlagNames(projectFlagName, "p"),
+					Usage: "specify project identifier in order to run validation requiring project settings",
+				},
+			},
+		),
 		Before: mergeBeforeFuncs(autoUpdateCLI, setPlainLogger, requirePathFlag),
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
@@ -49,7 +54,7 @@ func Validate() cli.Command {
 			quiet := c.Bool(quietFlagName)
 			errorOnWarnings := c.Bool(errorOnWarningsFlagName)
 			projectID := c.String(projectFlagName)
-			enableAnchors := c.Bool(yamlAnchorsFlagName)
+			cliAnchors := c.Bool(crossFileAnchorsFlagName)
 			localModulePaths := c.StringSlice(localModulesFlagName)
 			localModuleMap, err := getLocalModulesFromInput(localModulePaths)
 			if err != nil {
@@ -60,7 +65,6 @@ func Validate() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-
 			if projectID == "" {
 				cwd, err := os.Getwd()
 				grip.Error(ctx, errors.Wrap(err, "getting current working directory"))
@@ -81,15 +85,36 @@ func Validate() cli.Command {
 				}
 				catcher := grip.NewSimpleCatcher()
 				for _, file := range files {
-					catcher.Add(validateFile(conf, filepath.Join(path, file.Name()), quiet, errorOnWarnings, enableAnchors, localModuleMap, projectID))
+					catcher.Add(validateFile(conf, filepath.Join(path, file.Name()), quiet, errorOnWarnings, localModuleMap, projectID, cliAnchors))
 				}
 				return catcher.Resolve()
 			}
 
-			return validateFile(conf, path, quiet, errorOnWarnings, enableAnchors, localModuleMap, projectID)
+			return validateFile(conf, path, quiet, errorOnWarnings, localModuleMap, projectID, cliAnchors)
 		},
 	}
 }
+
+// getCrossFileYAMLAnchorsEnabled fetches the CrossFileYAMLAnchorsEnabled service flag from the
+// server via REST.
+func getCrossFileYAMLAnchorsEnabled(conf *ClientSettings) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	client, err := conf.setupRestCommunicator(ctx, false)
+	if err != nil {
+		return false, errors.Wrap(err, "setting up REST communicator")
+	}
+	defer client.Close()
+	flags, err := client.GetServiceFlags(ctx)
+	if err != nil {
+		return false, errors.Wrap(err, "getting service flags")
+	}
+	if flags == nil {
+		return false, nil
+	}
+	return flags.CrossFileYAMLAnchorsEnabled, nil
+}
+
 func getLocalModulesFromInput(localModulePaths []string) (map[string]string, error) {
 	moduleMap := make(map[string]string)
 	catcher := grip.NewBasicCatcher()
@@ -104,8 +129,8 @@ func getLocalModulesFromInput(localModulePaths []string) (map[string]string, err
 	return moduleMap, catcher.Resolve()
 }
 
-func validateFile(conf *ClientSettings, path string, quiet, errorOnWarnings, enableAnchors bool, localModuleMap map[string]string, projectID string) error {
-	projectYaml, err := loadProjectYAML(path, quiet, errorOnWarnings, enableAnchors, localModuleMap, projectID)
+func validateFile(conf *ClientSettings, path string, quiet, errorOnWarnings bool, localModuleMap map[string]string, projectID string, cliAnchors bool) error {
+	projectYaml, err := loadProjectYAML(conf, path, quiet, errorOnWarnings, localModuleMap, projectID, cliAnchors)
 	if err != nil {
 		return err
 	}
@@ -114,7 +139,7 @@ func validateFile(conf *ClientSettings, path string, quiet, errorOnWarnings, ena
 
 // loadProjectYAML reads and parses the project config file, performs local validation,
 // and returns the marshalled YAML bytes for remote validation.
-func loadProjectYAML(path string, quiet, errorOnWarnings, enableAnchors bool, localModuleMap map[string]string, projectID string) ([]byte, error) {
+func loadProjectYAML(conf *ClientSettings, path string, quiet, errorOnWarnings bool, localModuleMap map[string]string, projectID string, cliAnchors bool) ([]byte, error) {
 	confFile, err := os.ReadFile(path)
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading file '%s'", path)
@@ -125,11 +150,15 @@ func loadProjectYAML(path string, quiet, errorOnWarnings, enableAnchors bool, lo
 	}
 	project := &model.Project{}
 	ctx := context.Background()
+	anchorsEnabled := cliAnchors
+	if !cliAnchors {
+		anchorsEnabled, _ = getCrossFileYAMLAnchorsEnabled(conf)
+	}
 	opts := &model.GetProjectOpts{
-		LocalModules:      localModuleMap,
-		ReadFileFrom:      model.ReadFromLocal,
-		LocalIncludeDir:   cwd,
-		EnableYAMLAnchors: enableAnchors,
+		LocalModules:                localModuleMap,
+		ReadFileFrom:                model.ReadFromLocal,
+		LocalIncludeDir:             cwd,
+		CrossFileYAMLAnchorsEnabled: anchorsEnabled,
 	}
 	if !quiet {
 		opts.UnmarshalStrict = true

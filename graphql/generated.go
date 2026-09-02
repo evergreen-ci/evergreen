@@ -474,6 +474,7 @@ type ComplexityRoot struct {
 		Arch                  func(childComplexity int) int
 		AuthorizedKeysFile    func(childComplexity int) int
 		AvailableRegions      func(childComplexity int) int
+		BootstrapMethod       func(childComplexity int) int
 		BootstrapSettings     func(childComplexity int) int
 		ContainerPool         func(childComplexity int) int
 		CostData              func(childComplexity int) int
@@ -489,6 +490,7 @@ type ComplexityRoot struct {
 		ImageID               func(childComplexity int) int
 		IsCluster             func(childComplexity int) int
 		IsVirtualWorkstation  func(childComplexity int) int
+		IsWindows             func(childComplexity int) int
 		Mountpoints           func(childComplexity int) int
 		Name                  func(childComplexity int) int
 		Note                  func(childComplexity int) int
@@ -519,15 +521,6 @@ type ComplexityRoot struct {
 	DistroEventsPayload struct {
 		Count           func(childComplexity int) int
 		EventLogEntries func(childComplexity int) int
-	}
-
-	DistroInfo struct {
-		BootstrapMethod      func(childComplexity int) int
-		Id                   func(childComplexity int) int
-		IsVirtualWorkstation func(childComplexity int) int
-		IsWindows            func(childComplexity int) int
-		User                 func(childComplexity int) int
-		WorkDir              func(childComplexity int) int
 	}
 
 	DistroPermissions struct {
@@ -719,17 +712,17 @@ type ComplexityRoot struct {
 
 	Host struct {
 		Ami                   func(childComplexity int) int
-		AvailabilityZone      func(childComplexity int) int
+		CreationTime          func(childComplexity int) int
 		DisplayName           func(childComplexity int) int
 		Distro                func(childComplexity int) int
 		DistroID              func(childComplexity int) int
 		Elapsed               func(childComplexity int) int
 		EventTypes            func(childComplexity int) int
 		Events                func(childComplexity int, opts HostEventsInput) int
-		Expiration            func(childComplexity int) int
+		ExpirationTime        func(childComplexity int) int
 		HomeVolume            func(childComplexity int) int
 		HomeVolumeID          func(childComplexity int) int
-		HostURL               func(childComplexity int) int
+		Host                  func(childComplexity int) int
 		Id                    func(childComplexity int) int
 		InstanceTags          func(childComplexity int) int
 		InstanceType          func(childComplexity int) int
@@ -743,9 +736,9 @@ type ComplexityRoot struct {
 		Status                func(childComplexity int) int
 		Tag                   func(childComplexity int) int
 		TotalIdleTime         func(childComplexity int) int
-		Uptime                func(childComplexity int) int
 		User                  func(childComplexity int) int
 		Volumes               func(childComplexity int) int
+		Zone                  func(childComplexity int) int
 	}
 
 	HostAllocatorSettings struct {
@@ -1192,7 +1185,6 @@ type ComplexityRoot struct {
 		Aliases               func(childComplexity int) int
 		ChildPatchAliases     func(childComplexity int) int
 		ChildPatches          func(childComplexity int) int
-		Cost                  func(childComplexity int) int
 		CreateTime            func(childComplexity int) int
 		Description           func(childComplexity int) int
 		GeneratedTaskCounts   func(childComplexity int) int
@@ -1207,13 +1199,10 @@ type ComplexityRoot struct {
 		Parameters            func(childComplexity int) int
 		PatchNumber           func(childComplexity int) int
 		PatchTriggerAliases   func(childComplexity int) int
-		PredictedCost         func(childComplexity int) int
 		Project               func(childComplexity int) int
 		ProjectMetadata       func(childComplexity int) int
 		Status                func(childComplexity int) int
-		TaskCount             func(childComplexity int) int
 		Tasks                 func(childComplexity int) int
-		Time                  func(childComplexity int) int
 		User                  func(childComplexity int) int
 		Variants              func(childComplexity int) int
 		VariantsTasks         func(childComplexity int) int
@@ -2059,7 +2048,7 @@ type ComplexityRoot struct {
 	}
 
 	TaskInfo struct {
-		Id   func(childComplexity int) int
+		ID   func(childComplexity int) int
 		Name func(childComplexity int) int
 	}
 
@@ -2347,47 +2336,48 @@ type ComplexityRoot struct {
 	}
 
 	Version struct {
-		Activated                  func(childComplexity int) int
-		Author                     func(childComplexity int) int
-		AuthorEmail                func(childComplexity int) int
-		BaseVersion                func(childComplexity int) int
-		Branch                     func(childComplexity int) int
-		BuildVariantStats          func(childComplexity int, options BuildVariantOptions) int
-		BuildVariants              func(childComplexity int, options BuildVariantOptions) int
-		ChildVersions              func(childComplexity int) int
-		Cost                       func(childComplexity int) int
-		CreateTime                 func(childComplexity int) int
-		Errors                     func(childComplexity int) int
-		ExternalLinksForMetadata   func(childComplexity int) int
-		FinishTime                 func(childComplexity int) int
-		GeneratedTaskCounts        func(childComplexity int) int
-		GitTags                    func(childComplexity int) int
-		Id                         func(childComplexity int) int
-		Ignored                    func(childComplexity int) int
-		IngestTime                 func(childComplexity int) int
-		IsPatch                    func(childComplexity int) int
-		Manifest                   func(childComplexity int) int
-		Message                    func(childComplexity int) int
-		Order                      func(childComplexity int) int
-		Parameters                 func(childComplexity int) int
-		Patch                      func(childComplexity int) int
-		PredictedCost              func(childComplexity int) int
-		PreviousVersion            func(childComplexity int) int
-		ProjectMetadata            func(childComplexity int) int
-		Repo                       func(childComplexity int) int
-		Requester                  func(childComplexity int) int
-		Revision                   func(childComplexity int) int
-		StartTime                  func(childComplexity int) int
-		Status                     func(childComplexity int) int
-		TaskCount                  func(childComplexity int, options *TaskCountOptions) int
-		TaskQuarantinedTestsSample func(childComplexity int, taskIds []string, limit *int) int
-		TaskStatusStats            func(childComplexity int, options BuildVariantOptions) int
-		TaskStatuses               func(childComplexity int) int
-		Tasks                      func(childComplexity int, options TaskFilterOptions) int
-		UpstreamProject            func(childComplexity int) int
-		User                       func(childComplexity int) int
-		VersionTiming              func(childComplexity int) int
-		Warnings                   func(childComplexity int) int
+		Activated                    func(childComplexity int) int
+		Author                       func(childComplexity int) int
+		AuthorEmail                  func(childComplexity int) int
+		BaseVersion                  func(childComplexity int) int
+		Branch                       func(childComplexity int) int
+		BuildVariantStats            func(childComplexity int, options BuildVariantOptions) int
+		BuildVariants                func(childComplexity int, options BuildVariantOptions) int
+		ChildVersions                func(childComplexity int) int
+		Cost                         func(childComplexity int) int
+		CreateTime                   func(childComplexity int) int
+		Errors                       func(childComplexity int) int
+		ExternalLinksForMetadata     func(childComplexity int) int
+		FinishTime                   func(childComplexity int) int
+		GeneratedTaskCounts          func(childComplexity int) int
+		GitTags                      func(childComplexity int) int
+		Id                           func(childComplexity int) int
+		Ignored                      func(childComplexity int) int
+		IngestTime                   func(childComplexity int) int
+		IsPatch                      func(childComplexity int) int
+		Manifest                     func(childComplexity int) int
+		Message                      func(childComplexity int) int
+		Order                        func(childComplexity int) int
+		Parameters                   func(childComplexity int) int
+		Patch                        func(childComplexity int) int
+		PredictedCost                func(childComplexity int) int
+		PreviousVersion              func(childComplexity int) int
+		ProjectMetadata              func(childComplexity int) int
+		QuarantinedTestsSkippedCount func(childComplexity int) int
+		Repo                         func(childComplexity int) int
+		Requester                    func(childComplexity int) int
+		Revision                     func(childComplexity int) int
+		StartTime                    func(childComplexity int) int
+		Status                       func(childComplexity int) int
+		TaskCount                    func(childComplexity int, options *TaskCountOptions) int
+		TaskQuarantinedTestsSample   func(childComplexity int, taskIds []string, limit *int) int
+		TaskStatusStats              func(childComplexity int, options BuildVariantOptions) int
+		TaskStatuses                 func(childComplexity int) int
+		Tasks                        func(childComplexity int, options TaskFilterOptions) int
+		UpstreamProject              func(childComplexity int) int
+		User                         func(childComplexity int) int
+		VersionTiming                func(childComplexity int) int
+		Warnings                     func(childComplexity int) int
 	}
 
 	VersionLite struct {
@@ -2431,13 +2421,11 @@ type ComplexityRoot struct {
 	Volume struct {
 		AvailabilityZone func(childComplexity int) int
 		CreatedBy        func(childComplexity int) int
-		CreationTime     func(childComplexity int) int
-		DeviceName       func(childComplexity int) int
+		CreationDate     func(childComplexity int) int
 		DisplayName      func(childComplexity int) int
 		Expiration       func(childComplexity int) int
 		HomeVolume       func(childComplexity int) int
 		Host             func(childComplexity int) int
-		HostID           func(childComplexity int) int
 		ID               func(childComplexity int) int
 		Migrating        func(childComplexity int) int
 		NoExpiration     func(childComplexity int) int
@@ -2524,24 +2512,28 @@ type CostResolver interface {
 }
 type DistroResolver interface {
 	AvailableRegions(ctx context.Context, obj *model.APIDistro) ([]string, error)
+	BootstrapMethod(ctx context.Context, obj *model.APIDistro) (string, error)
+
+	IsWindows(ctx context.Context, obj *model.APIDistro) (bool, error)
 
 	ProviderSettingsList(ctx context.Context, obj *model.APIDistro) ([]map[string]any, error)
 }
 type HostResolver interface {
-	Ami(ctx context.Context, obj *model.APIHost) (*string, error)
+	Ami(ctx context.Context, obj *host.Host) (*string, error)
 
-	DistroID(ctx context.Context, obj *model.APIHost) (*string, error)
-	Elapsed(ctx context.Context, obj *model.APIHost) (*time.Time, error)
-	Events(ctx context.Context, obj *model.APIHost, opts HostEventsInput) (*HostEvents, error)
-	EventTypes(ctx context.Context, obj *model.APIHost) ([]string, error)
+	Distro(ctx context.Context, obj *host.Host) (*model.APIDistro, error)
+	DistroID(ctx context.Context, obj *host.Host) (*string, error)
+	Elapsed(ctx context.Context, obj *host.Host) (*time.Time, error)
+	Events(ctx context.Context, obj *host.Host, opts HostEventsInput) (*HostEvents, error)
+	EventTypes(ctx context.Context, obj *host.Host) ([]string, error)
 
-	HomeVolume(ctx context.Context, obj *model.APIHost) (*model.APIVolume, error)
+	HomeVolume(ctx context.Context, obj *host.Host) (*host.Volume, error)
 
-	SleepSchedule(ctx context.Context, obj *model.APIHost) (*host.SleepScheduleInfo, error)
+	RunningTask(ctx context.Context, obj *host.Host) (*TaskInfo, error)
 
-	Uptime(ctx context.Context, obj *model.APIHost) (*time.Time, error)
+	TotalIdleTime(ctx context.Context, obj *host.Host) (*model.APIDuration, error)
 
-	Volumes(ctx context.Context, obj *model.APIHost) ([]*model.APIVolume, error)
+	Volumes(ctx context.Context, obj *host.Host) ([]*host.Volume, error)
 }
 type ImageResolver interface {
 	Distros(ctx context.Context, obj *model.APIImage) ([]*model.APIDistro, error)
@@ -2594,12 +2586,12 @@ type MutationResolver interface {
 	SetLastRevision(ctx context.Context, opts SetLastRevisionInput) (*SetLastRevisionPayload, error)
 	AttachVolumeToHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error)
 	DetachVolumeFromHost(ctx context.Context, volumeID string) (bool, error)
-	EditSpawnHost(ctx context.Context, spawnHost *EditSpawnHostInput) (*model.APIHost, error)
+	EditSpawnHost(ctx context.Context, spawnHost *EditSpawnHostInput) (*host.Host, error)
 	MigrateVolume(ctx context.Context, volumeID string, spawnHostInput *SpawnHostInput) (bool, error)
-	SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*model.APIHost, error)
+	SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*host.Host, error)
 	SpawnVolume(ctx context.Context, spawnVolumeInput SpawnVolumeInput) (bool, error)
 	RemoveVolume(ctx context.Context, volumeID string) (bool, error)
-	UpdateSpawnHostStatus(ctx context.Context, updateSpawnHostStatusInput UpdateSpawnHostStatusInput) (*model.APIHost, error)
+	UpdateSpawnHostStatus(ctx context.Context, updateSpawnHostStatusInput UpdateSpawnHostStatusInput) (*host.Host, error)
 	UpdateVolume(ctx context.Context, updateVolumeInput UpdateVolumeInput) (bool, error)
 	AbortTask(ctx context.Context, taskID string) (*model.APITask, error)
 	OverrideTaskDependencies(ctx context.Context, taskID string) (*model.APITask, error)
@@ -2631,8 +2623,6 @@ type MutationResolver interface {
 	UnscheduleVersionTasks(ctx context.Context, versionID string, abort bool) (*string, error)
 }
 type PatchResolver interface {
-	Cost(ctx context.Context, obj *model.APIPatch) (*cost.Cost, error)
-
 	GeneratedTaskCounts(ctx context.Context, obj *model.APIPatch) ([]*GeneratedTaskCountResults, error)
 
 	IncludedLocalModules(ctx context.Context, obj *model.APIPatch) ([]*model.APILocalModuleInclude, error)
@@ -2640,13 +2630,9 @@ type PatchResolver interface {
 	Parameters(ctx context.Context, obj *model.APIPatch) ([]*model.APIParameter, error)
 
 	PatchTriggerAliases(ctx context.Context, obj *model.APIPatch) ([]*model.APIPatchTriggerDefinition, error)
-	PredictedCost(ctx context.Context, obj *model.APIPatch) (*cost.Cost, error)
 	Project(ctx context.Context, obj *model.APIPatch) (*PatchProject, error)
 	ProjectMetadata(ctx context.Context, obj *model.APIPatch) (*model.APIProjectRef, error)
 
-	TaskCount(ctx context.Context, obj *model.APIPatch) (*int, error)
-
-	Time(ctx context.Context, obj *model.APIPatch) (*PatchTime, error)
 	User(ctx context.Context, obj *model.APIPatch) (*user.DBUser, error)
 
 	Version(ctx context.Context, obj *model.APIPatch) (*model1.Version, error)
@@ -2700,7 +2686,7 @@ type QueryResolver interface {
 	DistroEvents(ctx context.Context, opts DistroEventsInput) (*DistroEventsPayload, error)
 	Distros(ctx context.Context, onlySpawnable bool) ([]*model.APIDistro, error)
 	DistroTaskQueue(ctx context.Context, distroID string) ([]*model.APITaskQueueItem, error)
-	Host(ctx context.Context, hostID string) (*model.APIHost, error)
+	Host(ctx context.Context, hostID string) (*host.Host, error)
 	Hosts(ctx context.Context, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) (*HostsResponse, error)
 	TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistro, error)
 	Patch(ctx context.Context, patchID string) (*model.APIPatch, error)
@@ -2713,8 +2699,8 @@ type QueryResolver interface {
 	RepoSettings(ctx context.Context, repoID string) (*model.APIProjectSettings, error)
 	ViewableProjectRefs(ctx context.Context) ([]*GroupedProjects, error)
 	IsRepo(ctx context.Context, projectOrRepoID string) (bool, error)
-	MyHosts(ctx context.Context) ([]*model.APIHost, error)
-	MyVolumes(ctx context.Context) ([]*model.APIVolume, error)
+	MyHosts(ctx context.Context) ([]*host.Host, error)
+	MyVolumes(ctx context.Context) ([]*host.Volume, error)
 	Task(ctx context.Context, taskID string, execution *int) (*model.APITask, error)
 	TaskAllExecutions(ctx context.Context, taskID string) ([]*model.APITask, error)
 	TaskTestSample(ctx context.Context, versionID string, taskIds []string, filters []*TestFilter) ([]*TaskTestResultSample, error)
@@ -2877,6 +2863,7 @@ type VersionResolver interface {
 
 	PreviousVersion(ctx context.Context, obj *model.APIVersion) (*model.APIVersion, error)
 	ProjectMetadata(ctx context.Context, obj *model.APIVersion) (*model.APIProjectRef, error)
+	QuarantinedTestsSkippedCount(ctx context.Context, obj *model.APIVersion) (int, error)
 
 	Status(ctx context.Context, obj *model.APIVersion) (string, error)
 	TaskCount(ctx context.Context, obj *model.APIVersion, options *TaskCountOptions) (*int, error)
@@ -2905,7 +2892,7 @@ type VersionLiteResolver interface {
 	WaterfallBuilds(ctx context.Context, obj *model1.Version) ([]*model1.WaterfallBuild, error)
 }
 type VolumeResolver interface {
-	Host(ctx context.Context, obj *model.APIVolume) (*model.APIHost, error)
+	Host(ctx context.Context, obj *host.Volume) (*host.Host, error)
 }
 
 type AdminSettingsInputResolver interface {
@@ -4429,6 +4416,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Distro.AvailableRegions(childComplexity), true
+	case "Distro.bootstrapMethod":
+		if e.complexity.Distro.BootstrapMethod == nil {
+			break
+		}
+
+		return e.complexity.Distro.BootstrapMethod(childComplexity), true
 	case "Distro.bootstrapSettings":
 		if e.complexity.Distro.BootstrapSettings == nil {
 			break
@@ -4519,13 +4512,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Distro.IsVirtualWorkstation(childComplexity), true
+	case "Distro.isWindows":
+		if e.complexity.Distro.IsWindows == nil {
+			break
+		}
+
+		return e.complexity.Distro.IsWindows(childComplexity), true
 	case "Distro.mountpoints":
 		if e.complexity.Distro.Mountpoints == nil {
 			break
 		}
 
 		return e.complexity.Distro.Mountpoints(childComplexity), true
-	case "Distro.name":
+	case "Distro.id", "Distro.name":
 		if e.complexity.Distro.Name == nil {
 			break
 		}
@@ -4665,43 +4664,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.DistroEventsPayload.EventLogEntries(childComplexity), true
-
-	case "DistroInfo.bootstrapMethod":
-		if e.complexity.DistroInfo.BootstrapMethod == nil {
-			break
-		}
-
-		return e.complexity.DistroInfo.BootstrapMethod(childComplexity), true
-	case "DistroInfo.id":
-		if e.complexity.DistroInfo.Id == nil {
-			break
-		}
-
-		return e.complexity.DistroInfo.Id(childComplexity), true
-	case "DistroInfo.isVirtualWorkStation":
-		if e.complexity.DistroInfo.IsVirtualWorkstation == nil {
-			break
-		}
-
-		return e.complexity.DistroInfo.IsVirtualWorkstation(childComplexity), true
-	case "DistroInfo.isWindows":
-		if e.complexity.DistroInfo.IsWindows == nil {
-			break
-		}
-
-		return e.complexity.DistroInfo.IsWindows(childComplexity), true
-	case "DistroInfo.user":
-		if e.complexity.DistroInfo.User == nil {
-			break
-		}
-
-		return e.complexity.DistroInfo.User(childComplexity), true
-	case "DistroInfo.workDir":
-		if e.complexity.DistroInfo.WorkDir == nil {
-			break
-		}
-
-		return e.complexity.DistroInfo.WorkDir(childComplexity), true
 
 	case "DistroPermissions.admin":
 		if e.complexity.DistroPermissions.Admin == nil {
@@ -5304,12 +5266,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Host.Ami(childComplexity), true
-	case "Host.availabilityZone":
-		if e.complexity.Host.AvailabilityZone == nil {
+	case "Host.uptime":
+		if e.complexity.Host.CreationTime == nil {
 			break
 		}
 
-		return e.complexity.Host.AvailabilityZone(childComplexity), true
+		return e.complexity.Host.CreationTime(childComplexity), true
 	case "Host.displayName":
 		if e.complexity.Host.DisplayName == nil {
 			break
@@ -5352,11 +5314,11 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Host.Events(childComplexity, args["opts"].(HostEventsInput)), true
 	case "Host.expiration":
-		if e.complexity.Host.Expiration == nil {
+		if e.complexity.Host.ExpirationTime == nil {
 			break
 		}
 
-		return e.complexity.Host.Expiration(childComplexity), true
+		return e.complexity.Host.ExpirationTime(childComplexity), true
 	case "Host.homeVolume":
 		if e.complexity.Host.HomeVolume == nil {
 			break
@@ -5370,11 +5332,11 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Host.HomeVolumeID(childComplexity), true
 	case "Host.hostUrl":
-		if e.complexity.Host.HostURL == nil {
+		if e.complexity.Host.Host == nil {
 			break
 		}
 
-		return e.complexity.Host.HostURL(childComplexity), true
+		return e.complexity.Host.Host(childComplexity), true
 	case "Host.id":
 		if e.complexity.Host.Id == nil {
 			break
@@ -5453,12 +5415,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Host.TotalIdleTime(childComplexity), true
-	case "Host.uptime":
-		if e.complexity.Host.Uptime == nil {
-			break
-		}
-
-		return e.complexity.Host.Uptime(childComplexity), true
 	case "Host.user":
 		if e.complexity.Host.User == nil {
 			break
@@ -5471,6 +5427,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Host.Volumes(childComplexity), true
+	case "Host.availabilityZone":
+		if e.complexity.Host.Zone == nil {
+			break
+		}
+
+		return e.complexity.Host.Zone(childComplexity), true
 
 	case "HostAllocatorSettings.acceptableHostIdleTime":
 		if e.complexity.HostAllocatorSettings.AcceptableHostIdleTime == nil {
@@ -7560,12 +7522,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Patch.ChildPatches(childComplexity), true
-	case "Patch.cost":
-		if e.complexity.Patch.Cost == nil {
-			break
-		}
-
-		return e.complexity.Patch.Cost(childComplexity), true
 	case "Patch.createTime":
 		if e.complexity.Patch.CreateTime == nil {
 			break
@@ -7650,12 +7606,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Patch.PatchTriggerAliases(childComplexity), true
-	case "Patch.predictedCost":
-		if e.complexity.Patch.PredictedCost == nil {
-			break
-		}
-
-		return e.complexity.Patch.PredictedCost(childComplexity), true
 	case "Patch.project":
 		if e.complexity.Patch.Project == nil {
 			break
@@ -7674,24 +7624,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Patch.Status(childComplexity), true
-	case "Patch.taskCount":
-		if e.complexity.Patch.TaskCount == nil {
-			break
-		}
-
-		return e.complexity.Patch.TaskCount(childComplexity), true
 	case "Patch.tasks":
 		if e.complexity.Patch.Tasks == nil {
 			break
 		}
 
 		return e.complexity.Patch.Tasks(childComplexity), true
-	case "Patch.time":
-		if e.complexity.Patch.Time == nil {
-			break
-		}
-
-		return e.complexity.Patch.Time(childComplexity), true
 	case "Patch.user":
 		if e.complexity.Patch.User == nil {
 			break
@@ -11566,11 +11504,11 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		return e.complexity.TaskHostOverrides.SubnetID(childComplexity), true
 
 	case "TaskInfo.id":
-		if e.complexity.TaskInfo.Id == nil {
+		if e.complexity.TaskInfo.ID == nil {
 			break
 		}
 
-		return e.complexity.TaskInfo.Id(childComplexity), true
+		return e.complexity.TaskInfo.ID(childComplexity), true
 	case "TaskInfo.name":
 		if e.complexity.TaskInfo.Name == nil {
 			break
@@ -12875,6 +12813,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Version.ProjectMetadata(childComplexity), true
+	case "Version.quarantinedTestsSkippedCount":
+		if e.complexity.Version.QuarantinedTestsSkippedCount == nil {
+			break
+		}
+
+		return e.complexity.Version.QuarantinedTestsSkippedCount(childComplexity), true
 	case "Version.repo":
 		if e.complexity.Version.Repo == nil {
 			break
@@ -13170,17 +13114,11 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Volume.CreatedBy(childComplexity), true
 	case "Volume.creationTime":
-		if e.complexity.Volume.CreationTime == nil {
+		if e.complexity.Volume.CreationDate == nil {
 			break
 		}
 
-		return e.complexity.Volume.CreationTime(childComplexity), true
-	case "Volume.deviceName":
-		if e.complexity.Volume.DeviceName == nil {
-			break
-		}
-
-		return e.complexity.Volume.DeviceName(childComplexity), true
+		return e.complexity.Volume.CreationDate(childComplexity), true
 	case "Volume.displayName":
 		if e.complexity.Volume.DisplayName == nil {
 			break
@@ -13199,18 +13137,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Volume.HomeVolume(childComplexity), true
-	case "Volume.host":
+	case "Volume.host", "Volume.hostID":
 		if e.complexity.Volume.Host == nil {
 			break
 		}
 
 		return e.complexity.Volume.Host(childComplexity), true
-	case "Volume.hostID":
-		if e.complexity.Volume.HostID == nil {
-			break
-		}
-
-		return e.complexity.Volume.HostID(childComplexity), true
 	case "Volume.id":
 		if e.complexity.Volume.ID == nil {
 			break
@@ -25505,6 +25437,35 @@ func (ec *executionContext) fieldContext_DispatcherSettings_version(_ context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _Distro_id(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Distro_id,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalNString2ᚖstring,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Distro_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Distro",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Distro_adminOnly(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -25638,6 +25599,35 @@ func (ec *executionContext) _Distro_availableRegions(ctx context.Context, field 
 }
 
 func (ec *executionContext) fieldContext_Distro_availableRegions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Distro",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Distro_bootstrapMethod(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Distro_bootstrapMethod,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Distro().BootstrapMethod(ctx, obj)
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Distro_bootstrapMethod(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Distro",
 		Field:      field,
@@ -26090,6 +26080,35 @@ func (ec *executionContext) fieldContext_Distro_isCluster(_ context.Context, fie
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Distro_isWindows(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Distro_isWindows,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Distro().IsWindows(ctx, obj)
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Distro_isWindows(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Distro",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
 		},
@@ -26900,180 +26919,6 @@ func (ec *executionContext) fieldContext_DistroEventsPayload_eventLogEntries(_ c
 				return ec.fieldContext_DistroEvent_user(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type DistroEvent", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DistroInfo_id(ctx context.Context, field graphql.CollectedField, obj *model.DistroInfo) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_DistroInfo_id,
-		func(ctx context.Context) (any, error) {
-			return obj.Id, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_DistroInfo_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DistroInfo",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DistroInfo_bootstrapMethod(ctx context.Context, field graphql.CollectedField, obj *model.DistroInfo) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_DistroInfo_bootstrapMethod,
-		func(ctx context.Context) (any, error) {
-			return obj.BootstrapMethod, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_DistroInfo_bootstrapMethod(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DistroInfo",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DistroInfo_isVirtualWorkStation(ctx context.Context, field graphql.CollectedField, obj *model.DistroInfo) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_DistroInfo_isVirtualWorkStation,
-		func(ctx context.Context) (any, error) {
-			return obj.IsVirtualWorkstation, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_DistroInfo_isVirtualWorkStation(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DistroInfo",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DistroInfo_isWindows(ctx context.Context, field graphql.CollectedField, obj *model.DistroInfo) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_DistroInfo_isWindows,
-		func(ctx context.Context) (any, error) {
-			return obj.IsWindows, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_DistroInfo_isWindows(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DistroInfo",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DistroInfo_user(ctx context.Context, field graphql.CollectedField, obj *model.DistroInfo) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_DistroInfo_user,
-		func(ctx context.Context) (any, error) {
-			return obj.User, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_DistroInfo_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DistroInfo",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DistroInfo_workDir(ctx context.Context, field graphql.CollectedField, obj *model.DistroInfo) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_DistroInfo_workDir,
-		func(ctx context.Context) (any, error) {
-			return obj.WorkDir, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_DistroInfo_workDir(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DistroInfo",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -30347,7 +30192,7 @@ func (ec *executionContext) fieldContext_HomeVolumeSettings_formatCommand(_ cont
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_id(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_id(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -30357,7 +30202,7 @@ func (ec *executionContext) _Host_id(ctx context.Context, field graphql.Collecte
 			return obj.Id, nil
 		},
 		nil,
-		ec.marshalNID2ᚖstring,
+		ec.marshalNID2string,
 		true,
 		true,
 	)
@@ -30376,17 +30221,17 @@ func (ec *executionContext) fieldContext_Host_id(_ context.Context, field graphq
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_availabilityZone(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_availabilityZone(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		ec.fieldContext_Host_availabilityZone,
 		func(ctx context.Context) (any, error) {
-			return obj.AvailabilityZone, nil
+			return obj.Zone, nil
 		},
 		nil,
-		ec.marshalOString2ᚖstring,
+		ec.marshalOString2string,
 		true,
 		false,
 	)
@@ -30405,7 +30250,7 @@ func (ec *executionContext) fieldContext_Host_availabilityZone(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_ami(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_ami(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -30434,7 +30279,7 @@ func (ec *executionContext) fieldContext_Host_ami(_ context.Context, field graph
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_displayName(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_displayName(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -30444,7 +30289,7 @@ func (ec *executionContext) _Host_displayName(ctx context.Context, field graphql
 			return obj.DisplayName, nil
 		},
 		nil,
-		ec.marshalOString2ᚖstring,
+		ec.marshalOString2string,
 		true,
 		false,
 	)
@@ -30463,17 +30308,17 @@ func (ec *executionContext) fieldContext_Host_displayName(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_distro(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_distro(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		ec.fieldContext_Host_distro,
 		func(ctx context.Context) (any, error) {
-			return obj.Distro, nil
+			return ec.resolvers.Host().Distro(ctx, obj)
 		},
 		nil,
-		ec.marshalODistroInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐDistroInfo,
+		ec.marshalODistro2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro,
 		true,
 		false,
 	)
@@ -30483,30 +30328,98 @@ func (ec *executionContext) fieldContext_Host_distro(_ context.Context, field gr
 	fc = &graphql.FieldContext{
 		Object:     "Host",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_DistroInfo_id(ctx, field)
+				return ec.fieldContext_Distro_id(ctx, field)
+			case "adminOnly":
+				return ec.fieldContext_Distro_adminOnly(ctx, field)
+			case "aliases":
+				return ec.fieldContext_Distro_aliases(ctx, field)
+			case "arch":
+				return ec.fieldContext_Distro_arch(ctx, field)
+			case "authorizedKeysFile":
+				return ec.fieldContext_Distro_authorizedKeysFile(ctx, field)
+			case "availableRegions":
+				return ec.fieldContext_Distro_availableRegions(ctx, field)
 			case "bootstrapMethod":
-				return ec.fieldContext_DistroInfo_bootstrapMethod(ctx, field)
-			case "isVirtualWorkStation":
-				return ec.fieldContext_DistroInfo_isVirtualWorkStation(ctx, field)
+				return ec.fieldContext_Distro_bootstrapMethod(ctx, field)
+			case "bootstrapSettings":
+				return ec.fieldContext_Distro_bootstrapSettings(ctx, field)
+			case "containerPool":
+				return ec.fieldContext_Distro_containerPool(ctx, field)
+			case "disabled":
+				return ec.fieldContext_Distro_disabled(ctx, field)
+			case "disableShallowClone":
+				return ec.fieldContext_Distro_disableShallowClone(ctx, field)
+			case "dispatcherSettings":
+				return ec.fieldContext_Distro_dispatcherSettings(ctx, field)
+			case "execUser":
+				return ec.fieldContext_Distro_execUser(ctx, field)
+			case "expansions":
+				return ec.fieldContext_Distro_expansions(ctx, field)
+			case "finderSettings":
+				return ec.fieldContext_Distro_finderSettings(ctx, field)
+			case "homeVolumeSettings":
+				return ec.fieldContext_Distro_homeVolumeSettings(ctx, field)
+			case "hostAllocatorSettings":
+				return ec.fieldContext_Distro_hostAllocatorSettings(ctx, field)
+			case "iceCreamSettings":
+				return ec.fieldContext_Distro_iceCreamSettings(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Distro_imageId(ctx, field)
+			case "isCluster":
+				return ec.fieldContext_Distro_isCluster(ctx, field)
 			case "isWindows":
-				return ec.fieldContext_DistroInfo_isWindows(ctx, field)
+				return ec.fieldContext_Distro_isWindows(ctx, field)
+			case "isVirtualWorkStation":
+				return ec.fieldContext_Distro_isVirtualWorkStation(ctx, field)
+			case "mountpoints":
+				return ec.fieldContext_Distro_mountpoints(ctx, field)
+			case "name":
+				return ec.fieldContext_Distro_name(ctx, field)
+			case "note":
+				return ec.fieldContext_Distro_note(ctx, field)
+			case "plannerSettings":
+				return ec.fieldContext_Distro_plannerSettings(ctx, field)
+			case "provider":
+				return ec.fieldContext_Distro_provider(ctx, field)
+			case "providerAccount":
+				return ec.fieldContext_Distro_providerAccount(ctx, field)
+			case "providerSettingsList":
+				return ec.fieldContext_Distro_providerSettingsList(ctx, field)
+			case "setup":
+				return ec.fieldContext_Distro_setup(ctx, field)
+			case "setupAsSudo":
+				return ec.fieldContext_Distro_setupAsSudo(ctx, field)
+			case "singleTaskDistro":
+				return ec.fieldContext_Distro_singleTaskDistro(ctx, field)
+			case "sshOptions":
+				return ec.fieldContext_Distro_sshOptions(ctx, field)
+			case "taskHostOverrides":
+				return ec.fieldContext_Distro_taskHostOverrides(ctx, field)
 			case "user":
-				return ec.fieldContext_DistroInfo_user(ctx, field)
+				return ec.fieldContext_Distro_user(ctx, field)
+			case "userSpawnAllowed":
+				return ec.fieldContext_Distro_userSpawnAllowed(ctx, field)
+			case "validProjects":
+				return ec.fieldContext_Distro_validProjects(ctx, field)
+			case "warningNote":
+				return ec.fieldContext_Distro_warningNote(ctx, field)
 			case "workDir":
-				return ec.fieldContext_DistroInfo_workDir(ctx, field)
+				return ec.fieldContext_Distro_workDir(ctx, field)
+			case "costData":
+				return ec.fieldContext_Distro_costData(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type DistroInfo", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type Distro", field.Name)
 		},
 	}
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_distroId(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_distroId(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -30535,7 +30448,7 @@ func (ec *executionContext) fieldContext_Host_distroId(_ context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_elapsed(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_elapsed(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -30564,7 +30477,7 @@ func (ec *executionContext) fieldContext_Host_elapsed(_ context.Context, field g
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_events(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_events(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -30611,7 +30524,7 @@ func (ec *executionContext) fieldContext_Host_events(ctx context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_eventTypes(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_eventTypes(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -30640,17 +30553,17 @@ func (ec *executionContext) fieldContext_Host_eventTypes(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_expiration(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_expiration(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		ec.fieldContext_Host_expiration,
 		func(ctx context.Context) (any, error) {
-			return obj.Expiration, nil
+			return obj.ExpirationTime, nil
 		},
 		nil,
-		ec.marshalOTime2ᚖtimeᚐTime,
+		ec.marshalOTime2timeᚐTime,
 		true,
 		false,
 	)
@@ -30669,17 +30582,17 @@ func (ec *executionContext) fieldContext_Host_expiration(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_hostUrl(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_hostUrl(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		ec.fieldContext_Host_hostUrl,
 		func(ctx context.Context) (any, error) {
-			return obj.HostURL, nil
+			return obj.Host, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalNString2string,
 		true,
 		true,
 	)
@@ -30698,7 +30611,7 @@ func (ec *executionContext) fieldContext_Host_hostUrl(_ context.Context, field g
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_homeVolume(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_homeVolume(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -30708,7 +30621,7 @@ func (ec *executionContext) _Host_homeVolume(ctx context.Context, field graphql.
 			return ec.resolvers.Host().HomeVolume(ctx, obj)
 		},
 		nil,
-		ec.marshalOVolume2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVolume,
+		ec.marshalOVolume2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐVolume,
 		true,
 		false,
 	)
@@ -30730,8 +30643,6 @@ func (ec *executionContext) fieldContext_Host_homeVolume(_ context.Context, fiel
 				return ec.fieldContext_Volume_createdBy(ctx, field)
 			case "creationTime":
 				return ec.fieldContext_Volume_creationTime(ctx, field)
-			case "deviceName":
-				return ec.fieldContext_Volume_deviceName(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Volume_displayName(ctx, field)
 			case "expiration":
@@ -30757,7 +30668,7 @@ func (ec *executionContext) fieldContext_Host_homeVolume(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_homeVolumeID(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_homeVolumeID(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -30767,7 +30678,7 @@ func (ec *executionContext) _Host_homeVolumeID(ctx context.Context, field graphq
 			return obj.HomeVolumeID, nil
 		},
 		nil,
-		ec.marshalOString2ᚖstring,
+		ec.marshalOString2string,
 		true,
 		false,
 	)
@@ -30786,7 +30697,7 @@ func (ec *executionContext) fieldContext_Host_homeVolumeID(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_instanceType(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_instanceType(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -30796,7 +30707,7 @@ func (ec *executionContext) _Host_instanceType(ctx context.Context, field graphq
 			return obj.InstanceType, nil
 		},
 		nil,
-		ec.marshalOString2ᚖstring,
+		ec.marshalOString2string,
 		true,
 		false,
 	)
@@ -30815,7 +30726,7 @@ func (ec *executionContext) fieldContext_Host_instanceType(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_instanceTags(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_instanceTags(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -30852,7 +30763,7 @@ func (ec *executionContext) fieldContext_Host_instanceTags(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_lastCommunicationTime(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_lastCommunicationTime(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -30881,7 +30792,7 @@ func (ec *executionContext) fieldContext_Host_lastCommunicationTime(_ context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_noExpiration(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_noExpiration(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -30910,7 +30821,7 @@ func (ec *executionContext) fieldContext_Host_noExpiration(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_persistentDnsName(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_persistentDnsName(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -30920,7 +30831,7 @@ func (ec *executionContext) _Host_persistentDnsName(ctx context.Context, field g
 			return obj.PersistentDNSName, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalNString2string,
 		true,
 		true,
 	)
@@ -30939,7 +30850,7 @@ func (ec *executionContext) fieldContext_Host_persistentDnsName(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_provider(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_provider(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -30949,7 +30860,7 @@ func (ec *executionContext) _Host_provider(ctx context.Context, field graphql.Co
 			return obj.Provider, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalNString2string,
 		true,
 		true,
 	)
@@ -30968,17 +30879,17 @@ func (ec *executionContext) fieldContext_Host_provider(_ context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_runningTask(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_runningTask(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		ec.fieldContext_Host_runningTask,
 		func(ctx context.Context) (any, error) {
-			return obj.RunningTask, nil
+			return ec.resolvers.Host().RunningTask(ctx, obj)
 		},
 		nil,
-		ec.marshalOTaskInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTaskInfo,
+		ec.marshalOTaskInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskInfo,
 		true,
 		false,
 	)
@@ -30988,8 +30899,8 @@ func (ec *executionContext) fieldContext_Host_runningTask(_ context.Context, fie
 	fc = &graphql.FieldContext{
 		Object:     "Host",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -31003,17 +30914,17 @@ func (ec *executionContext) fieldContext_Host_runningTask(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_sleepSchedule(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_sleepSchedule(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		ec.fieldContext_Host_sleepSchedule,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Host().SleepSchedule(ctx, obj)
+			return obj.SleepSchedule, nil
 		},
 		nil,
-		ec.marshalOSleepSchedule2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐSleepScheduleInfo,
+		ec.marshalOSleepSchedule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐSleepScheduleInfo,
 		true,
 		false,
 	)
@@ -31023,8 +30934,8 @@ func (ec *executionContext) fieldContext_Host_sleepSchedule(_ context.Context, f
 	fc = &graphql.FieldContext{
 		Object:     "Host",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "dailyStartTime":
@@ -31052,7 +30963,7 @@ func (ec *executionContext) fieldContext_Host_sleepSchedule(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_startedBy(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_startedBy(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -31062,7 +30973,7 @@ func (ec *executionContext) _Host_startedBy(ctx context.Context, field graphql.C
 			return obj.StartedBy, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalNString2string,
 		true,
 		true,
 	)
@@ -31081,7 +30992,7 @@ func (ec *executionContext) fieldContext_Host_startedBy(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_status(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_status(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -31091,7 +31002,7 @@ func (ec *executionContext) _Host_status(ctx context.Context, field graphql.Coll
 			return obj.Status, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalNString2string,
 		true,
 		true,
 	)
@@ -31110,7 +31021,7 @@ func (ec *executionContext) fieldContext_Host_status(_ context.Context, field gr
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_tag(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_tag(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -31120,7 +31031,7 @@ func (ec *executionContext) _Host_tag(ctx context.Context, field graphql.Collect
 			return obj.Tag, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalNString2string,
 		true,
 		true,
 	)
@@ -31139,17 +31050,17 @@ func (ec *executionContext) fieldContext_Host_tag(_ context.Context, field graph
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_totalIdleTime(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_totalIdleTime(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		ec.fieldContext_Host_totalIdleTime,
 		func(ctx context.Context) (any, error) {
-			return obj.TotalIdleTime, nil
+			return ec.resolvers.Host().TotalIdleTime(ctx, obj)
 		},
 		nil,
-		ec.marshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration,
+		ec.marshalODuration2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration,
 		true,
 		false,
 	)
@@ -31159,8 +31070,8 @@ func (ec *executionContext) fieldContext_Host_totalIdleTime(_ context.Context, f
 	fc = &graphql.FieldContext{
 		Object:     "Host",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Duration does not have child fields")
 		},
@@ -31168,17 +31079,17 @@ func (ec *executionContext) fieldContext_Host_totalIdleTime(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_uptime(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_uptime(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		ec.fieldContext_Host_uptime,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Host().Uptime(ctx, obj)
+			return obj.CreationTime, nil
 		},
 		nil,
-		ec.marshalOTime2ᚖtimeᚐTime,
+		ec.marshalOTime2timeᚐTime,
 		true,
 		false,
 	)
@@ -31188,8 +31099,8 @@ func (ec *executionContext) fieldContext_Host_uptime(_ context.Context, field gr
 	fc = &graphql.FieldContext{
 		Object:     "Host",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
 		},
@@ -31197,7 +31108,7 @@ func (ec *executionContext) fieldContext_Host_uptime(_ context.Context, field gr
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_user(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_user(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -31207,7 +31118,7 @@ func (ec *executionContext) _Host_user(ctx context.Context, field graphql.Collec
 			return obj.User, nil
 		},
 		nil,
-		ec.marshalOString2ᚖstring,
+		ec.marshalOString2string,
 		true,
 		false,
 	)
@@ -31226,7 +31137,7 @@ func (ec *executionContext) fieldContext_Host_user(_ context.Context, field grap
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_volumes(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_volumes(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -31236,7 +31147,7 @@ func (ec *executionContext) _Host_volumes(ctx context.Context, field graphql.Col
 			return ec.resolvers.Host().Volumes(ctx, obj)
 		},
 		nil,
-		ec.marshalNVolume2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVolumeᚄ,
+		ec.marshalNVolume2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐVolumeᚄ,
 		true,
 		true,
 	)
@@ -31258,8 +31169,6 @@ func (ec *executionContext) fieldContext_Host_volumes(_ context.Context, field g
 				return ec.fieldContext_Volume_createdBy(ctx, field)
 			case "creationTime":
 				return ec.fieldContext_Volume_creationTime(ctx, field)
-			case "deviceName":
-				return ec.fieldContext_Volume_deviceName(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Volume_displayName(ctx, field)
 			case "expiration":
@@ -32621,7 +32530,7 @@ func (ec *executionContext) _HostsResponse_hosts(ctx context.Context, field grap
 			return obj.Hosts, nil
 		},
 		nil,
-		ec.marshalNHost2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHostᚄ,
+		ec.marshalNHost2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐHostᚄ,
 		true,
 		true,
 	)
@@ -32925,6 +32834,8 @@ func (ec *executionContext) fieldContext_Image_distros(_ context.Context, field 
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "id":
+				return ec.fieldContext_Distro_id(ctx, field)
 			case "adminOnly":
 				return ec.fieldContext_Distro_adminOnly(ctx, field)
 			case "aliases":
@@ -32935,6 +32846,8 @@ func (ec *executionContext) fieldContext_Image_distros(_ context.Context, field 
 				return ec.fieldContext_Distro_authorizedKeysFile(ctx, field)
 			case "availableRegions":
 				return ec.fieldContext_Distro_availableRegions(ctx, field)
+			case "bootstrapMethod":
+				return ec.fieldContext_Distro_bootstrapMethod(ctx, field)
 			case "bootstrapSettings":
 				return ec.fieldContext_Distro_bootstrapSettings(ctx, field)
 			case "containerPool":
@@ -32961,6 +32874,8 @@ func (ec *executionContext) fieldContext_Image_distros(_ context.Context, field 
 				return ec.fieldContext_Distro_imageId(ctx, field)
 			case "isCluster":
 				return ec.fieldContext_Distro_isCluster(ctx, field)
+			case "isWindows":
+				return ec.fieldContext_Distro_isWindows(ctx, field)
 			case "isVirtualWorkStation":
 				return ec.fieldContext_Distro_isVirtualWorkStation(ctx, field)
 			case "mountpoints":
@@ -35761,6 +35676,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_rolledUpVersions(
 				return ec.fieldContext_Version_previousVersion(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
+			case "quarantinedTestsSkippedCount":
+				return ec.fieldContext_Version_quarantinedTestsSkippedCount(ctx, field)
 			case "repo":
 				return ec.fieldContext_Version_repo(ctx, field)
 			case "requester":
@@ -35874,6 +35791,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_version(_ context
 				return ec.fieldContext_Version_previousVersion(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
+			case "quarantinedTestsSkippedCount":
+				return ec.fieldContext_Version_quarantinedTestsSkippedCount(ctx, field)
 			case "repo":
 				return ec.fieldContext_Version_repo(ctx, field)
 			case "requester":
@@ -37360,8 +37279,6 @@ func (ec *executionContext) fieldContext_Mutation_setPatchVisibility(ctx context
 				return ec.fieldContext_Patch_childPatchAliases(ctx, field)
 			case "childPatches":
 				return ec.fieldContext_Patch_childPatches(ctx, field)
-			case "cost":
-				return ec.fieldContext_Patch_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Patch_createTime(ctx, field)
 			case "description":
@@ -37388,20 +37305,14 @@ func (ec *executionContext) fieldContext_Mutation_setPatchVisibility(ctx context
 				return ec.fieldContext_Patch_patchNumber(ctx, field)
 			case "patchTriggerAliases":
 				return ec.fieldContext_Patch_patchTriggerAliases(ctx, field)
-			case "predictedCost":
-				return ec.fieldContext_Patch_predictedCost(ctx, field)
 			case "project":
 				return ec.fieldContext_Patch_project(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
 				return ec.fieldContext_Patch_status(ctx, field)
-			case "taskCount":
-				return ec.fieldContext_Patch_taskCount(ctx, field)
 			case "tasks":
 				return ec.fieldContext_Patch_tasks(ctx, field)
-			case "time":
-				return ec.fieldContext_Patch_time(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
 			case "variants":
@@ -37465,8 +37376,6 @@ func (ec *executionContext) fieldContext_Mutation_schedulePatch(ctx context.Cont
 				return ec.fieldContext_Patch_childPatchAliases(ctx, field)
 			case "childPatches":
 				return ec.fieldContext_Patch_childPatches(ctx, field)
-			case "cost":
-				return ec.fieldContext_Patch_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Patch_createTime(ctx, field)
 			case "description":
@@ -37493,20 +37402,14 @@ func (ec *executionContext) fieldContext_Mutation_schedulePatch(ctx context.Cont
 				return ec.fieldContext_Patch_patchNumber(ctx, field)
 			case "patchTriggerAliases":
 				return ec.fieldContext_Patch_patchTriggerAliases(ctx, field)
-			case "predictedCost":
-				return ec.fieldContext_Patch_predictedCost(ctx, field)
 			case "project":
 				return ec.fieldContext_Patch_project(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
 				return ec.fieldContext_Patch_status(ctx, field)
-			case "taskCount":
-				return ec.fieldContext_Patch_taskCount(ctx, field)
 			case "tasks":
 				return ec.fieldContext_Patch_tasks(ctx, field)
-			case "time":
-				return ec.fieldContext_Patch_time(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
 			case "variants":
@@ -38796,7 +38699,7 @@ func (ec *executionContext) _Mutation_editSpawnHost(ctx context.Context, field g
 			return ec.resolvers.Mutation().EditSpawnHost(ctx, fc.Args["spawnHost"].(*EditSpawnHostInput))
 		},
 		nil,
-		ec.marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost,
+		ec.marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐHost,
 		true,
 		true,
 	)
@@ -38936,7 +38839,7 @@ func (ec *executionContext) _Mutation_spawnHost(ctx context.Context, field graph
 			return ec.resolvers.Mutation().SpawnHost(ctx, fc.Args["spawnHostInput"].(*SpawnHostInput))
 		},
 		nil,
-		ec.marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost,
+		ec.marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐHost,
 		true,
 		true,
 	)
@@ -39117,7 +39020,7 @@ func (ec *executionContext) _Mutation_updateSpawnHostStatus(ctx context.Context,
 			return ec.resolvers.Mutation().UpdateSpawnHostStatus(ctx, fc.Args["updateSpawnHostStatusInput"].(UpdateSpawnHostStatusInput))
 		},
 		nil,
-		ec.marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost,
+		ec.marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐHost,
 		true,
 		true,
 	)
@@ -42329,6 +42232,8 @@ func (ec *executionContext) fieldContext_Mutation_restartVersions(ctx context.Co
 				return ec.fieldContext_Version_previousVersion(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
+			case "quarantinedTestsSkippedCount":
+				return ec.fieldContext_Version_quarantinedTestsSkippedCount(ctx, field)
 			case "repo":
 				return ec.fieldContext_Version_repo(ctx, field)
 			case "requester":
@@ -44474,9 +44379,9 @@ func (ec *executionContext) _Patch_aliases(ctx context.Context, field graphql.Co
 			return obj.Aliases, nil
 		},
 		nil,
-		ec.marshalOString2ᚕstringᚄ,
+		ec.marshalNString2ᚕstringᚄ,
 		true,
-		false,
+		true,
 	)
 }
 
@@ -44503,9 +44408,9 @@ func (ec *executionContext) _Patch_childPatchAliases(ctx context.Context, field 
 			return obj.ChildPatchAliases, nil
 		},
 		nil,
-		ec.marshalOChildPatchAlias2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIChildPatchAliasᚄ,
+		ec.marshalNChildPatchAlias2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIChildPatchAliasᚄ,
 		true,
-		false,
+		true,
 	)
 }
 
@@ -44538,9 +44443,9 @@ func (ec *executionContext) _Patch_childPatches(ctx context.Context, field graph
 			return obj.ChildPatches, nil
 		},
 		nil,
-		ec.marshalOPatch2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchᚄ,
+		ec.marshalNPatch2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchᚄ,
 		true,
-		false,
+		true,
 	)
 }
 
@@ -44564,8 +44469,6 @@ func (ec *executionContext) fieldContext_Patch_childPatches(_ context.Context, f
 				return ec.fieldContext_Patch_childPatchAliases(ctx, field)
 			case "childPatches":
 				return ec.fieldContext_Patch_childPatches(ctx, field)
-			case "cost":
-				return ec.fieldContext_Patch_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Patch_createTime(ctx, field)
 			case "description":
@@ -44592,20 +44495,14 @@ func (ec *executionContext) fieldContext_Patch_childPatches(_ context.Context, f
 				return ec.fieldContext_Patch_patchNumber(ctx, field)
 			case "patchTriggerAliases":
 				return ec.fieldContext_Patch_patchTriggerAliases(ctx, field)
-			case "predictedCost":
-				return ec.fieldContext_Patch_predictedCost(ctx, field)
 			case "project":
 				return ec.fieldContext_Patch_project(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
 				return ec.fieldContext_Patch_status(ctx, field)
-			case "taskCount":
-				return ec.fieldContext_Patch_taskCount(ctx, field)
 			case "tasks":
 				return ec.fieldContext_Patch_tasks(ctx, field)
-			case "time":
-				return ec.fieldContext_Patch_time(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
 			case "variants":
@@ -44616,55 +44513,6 @@ func (ec *executionContext) fieldContext_Patch_childPatches(_ context.Context, f
 				return ec.fieldContext_Patch_version(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Patch", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Patch_cost(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Patch_cost,
-		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Patch().Cost(ctx, obj)
-		},
-		nil,
-		ec.marshalOCost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋcostᚐCost,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_Patch_cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Patch",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "total":
-				return ec.fieldContext_Cost_total(ctx, field)
-			case "childPatchesTotalCost":
-				return ec.fieldContext_Cost_childPatchesTotalCost(ctx, field)
-			case "adjustedEC2Cost":
-				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
-			case "adjustedEBSStorageCost":
-				return ec.fieldContext_Cost_adjustedEBSStorageCost(ctx, field)
-			case "adjustedEBSThroughputCost":
-				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
-			case "adjustedS3ArtifactPutCost":
-				return ec.fieldContext_Cost_adjustedS3ArtifactPutCost(ctx, field)
-			case "adjustedS3ArtifactStorageCost":
-				return ec.fieldContext_Cost_adjustedS3ArtifactStorageCost(ctx, field)
-			case "adjustedS3LogPutCost":
-				return ec.fieldContext_Cost_adjustedS3LogPutCost(ctx, field)
-			case "adjustedS3LogStorageCost":
-				return ec.fieldContext_Cost_adjustedS3LogStorageCost(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
 	}
 	return fc, nil
@@ -45115,55 +44963,6 @@ func (ec *executionContext) fieldContext_Patch_patchTriggerAliases(_ context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _Patch_predictedCost(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Patch_predictedCost,
-		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Patch().PredictedCost(ctx, obj)
-		},
-		nil,
-		ec.marshalOCost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋcostᚐCost,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_Patch_predictedCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Patch",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "total":
-				return ec.fieldContext_Cost_total(ctx, field)
-			case "childPatchesTotalCost":
-				return ec.fieldContext_Cost_childPatchesTotalCost(ctx, field)
-			case "adjustedEC2Cost":
-				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
-			case "adjustedEBSStorageCost":
-				return ec.fieldContext_Cost_adjustedEBSStorageCost(ctx, field)
-			case "adjustedEBSThroughputCost":
-				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
-			case "adjustedS3ArtifactPutCost":
-				return ec.fieldContext_Cost_adjustedS3ArtifactPutCost(ctx, field)
-			case "adjustedS3ArtifactStorageCost":
-				return ec.fieldContext_Cost_adjustedS3ArtifactStorageCost(ctx, field)
-			case "adjustedS3LogPutCost":
-				return ec.fieldContext_Cost_adjustedS3LogPutCost(ctx, field)
-			case "adjustedS3LogStorageCost":
-				return ec.fieldContext_Cost_adjustedS3LogStorageCost(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Patch_project(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -45367,35 +45166,6 @@ func (ec *executionContext) fieldContext_Patch_status(_ context.Context, field g
 	return fc, nil
 }
 
-func (ec *executionContext) _Patch_taskCount(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Patch_taskCount,
-		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Patch().TaskCount(ctx, obj)
-		},
-		nil,
-		ec.marshalOInt2ᚖint,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_Patch_taskCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Patch",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Patch_tasks(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -45420,43 +45190,6 @@ func (ec *executionContext) fieldContext_Patch_tasks(_ context.Context, field gr
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Patch_time(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Patch_time,
-		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Patch().Time(ctx, obj)
-		},
-		nil,
-		ec.marshalOPatchTime2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchTime,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_Patch_time(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Patch",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "finished":
-				return ec.fieldContext_PatchTime_finished(ctx, field)
-			case "started":
-				return ec.fieldContext_PatchTime_started(ctx, field)
-			case "submittedAt":
-				return ec.fieldContext_PatchTime_submittedAt(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type PatchTime", field.Name)
 		},
 	}
 	return fc, nil
@@ -46095,8 +45828,6 @@ func (ec *executionContext) fieldContext_Patches_patches(_ context.Context, fiel
 				return ec.fieldContext_Patch_childPatchAliases(ctx, field)
 			case "childPatches":
 				return ec.fieldContext_Patch_childPatches(ctx, field)
-			case "cost":
-				return ec.fieldContext_Patch_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Patch_createTime(ctx, field)
 			case "description":
@@ -46123,20 +45854,14 @@ func (ec *executionContext) fieldContext_Patches_patches(_ context.Context, fiel
 				return ec.fieldContext_Patch_patchNumber(ctx, field)
 			case "patchTriggerAliases":
 				return ec.fieldContext_Patch_patchTriggerAliases(ctx, field)
-			case "predictedCost":
-				return ec.fieldContext_Patch_predictedCost(ctx, field)
 			case "project":
 				return ec.fieldContext_Patch_project(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
 				return ec.fieldContext_Patch_status(ctx, field)
-			case "taskCount":
-				return ec.fieldContext_Patch_taskCount(ctx, field)
 			case "tasks":
 				return ec.fieldContext_Patch_tasks(ctx, field)
-			case "time":
-				return ec.fieldContext_Patch_time(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
 			case "variants":
@@ -52318,6 +52043,8 @@ func (ec *executionContext) fieldContext_Query_distro(ctx context.Context, field
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "id":
+				return ec.fieldContext_Distro_id(ctx, field)
 			case "adminOnly":
 				return ec.fieldContext_Distro_adminOnly(ctx, field)
 			case "aliases":
@@ -52328,6 +52055,8 @@ func (ec *executionContext) fieldContext_Query_distro(ctx context.Context, field
 				return ec.fieldContext_Distro_authorizedKeysFile(ctx, field)
 			case "availableRegions":
 				return ec.fieldContext_Distro_availableRegions(ctx, field)
+			case "bootstrapMethod":
+				return ec.fieldContext_Distro_bootstrapMethod(ctx, field)
 			case "bootstrapSettings":
 				return ec.fieldContext_Distro_bootstrapSettings(ctx, field)
 			case "containerPool":
@@ -52354,6 +52083,8 @@ func (ec *executionContext) fieldContext_Query_distro(ctx context.Context, field
 				return ec.fieldContext_Distro_imageId(ctx, field)
 			case "isCluster":
 				return ec.fieldContext_Distro_isCluster(ctx, field)
+			case "isWindows":
+				return ec.fieldContext_Distro_isWindows(ctx, field)
 			case "isVirtualWorkStation":
 				return ec.fieldContext_Distro_isVirtualWorkStation(ctx, field)
 			case "mountpoints":
@@ -52482,6 +52213,8 @@ func (ec *executionContext) fieldContext_Query_distros(ctx context.Context, fiel
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "id":
+				return ec.fieldContext_Distro_id(ctx, field)
 			case "adminOnly":
 				return ec.fieldContext_Distro_adminOnly(ctx, field)
 			case "aliases":
@@ -52492,6 +52225,8 @@ func (ec *executionContext) fieldContext_Query_distros(ctx context.Context, fiel
 				return ec.fieldContext_Distro_authorizedKeysFile(ctx, field)
 			case "availableRegions":
 				return ec.fieldContext_Distro_availableRegions(ctx, field)
+			case "bootstrapMethod":
+				return ec.fieldContext_Distro_bootstrapMethod(ctx, field)
 			case "bootstrapSettings":
 				return ec.fieldContext_Distro_bootstrapSettings(ctx, field)
 			case "containerPool":
@@ -52518,6 +52253,8 @@ func (ec *executionContext) fieldContext_Query_distros(ctx context.Context, fiel
 				return ec.fieldContext_Distro_imageId(ctx, field)
 			case "isCluster":
 				return ec.fieldContext_Distro_isCluster(ctx, field)
+			case "isWindows":
+				return ec.fieldContext_Distro_isWindows(ctx, field)
 			case "isVirtualWorkStation":
 				return ec.fieldContext_Distro_isVirtualWorkStation(ctx, field)
 			case "mountpoints":
@@ -52650,7 +52387,7 @@ func (ec *executionContext) _Query_host(ctx context.Context, field graphql.Colle
 			return ec.resolvers.Query().Host(ctx, fc.Args["hostId"].(string))
 		},
 		nil,
-		ec.marshalOHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost,
+		ec.marshalOHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐHost,
 		true,
 		false,
 	)
@@ -52861,8 +52598,6 @@ func (ec *executionContext) fieldContext_Query_patch(ctx context.Context, field 
 				return ec.fieldContext_Patch_childPatchAliases(ctx, field)
 			case "childPatches":
 				return ec.fieldContext_Patch_childPatches(ctx, field)
-			case "cost":
-				return ec.fieldContext_Patch_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Patch_createTime(ctx, field)
 			case "description":
@@ -52889,20 +52624,14 @@ func (ec *executionContext) fieldContext_Query_patch(ctx context.Context, field 
 				return ec.fieldContext_Patch_patchNumber(ctx, field)
 			case "patchTriggerAliases":
 				return ec.fieldContext_Patch_patchTriggerAliases(ctx, field)
-			case "predictedCost":
-				return ec.fieldContext_Patch_predictedCost(ctx, field)
 			case "project":
 				return ec.fieldContext_Patch_project(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
 				return ec.fieldContext_Patch_status(ctx, field)
-			case "taskCount":
-				return ec.fieldContext_Patch_taskCount(ctx, field)
 			case "tasks":
 				return ec.fieldContext_Patch_tasks(ctx, field)
-			case "time":
-				return ec.fieldContext_Patch_time(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
 			case "variants":
@@ -53460,7 +53189,7 @@ func (ec *executionContext) _Query_myHosts(ctx context.Context, field graphql.Co
 			return ec.resolvers.Query().MyHosts(ctx)
 		},
 		nil,
-		ec.marshalNHost2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHostᚄ,
+		ec.marshalNHost2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐHostᚄ,
 		true,
 		true,
 	)
@@ -53547,7 +53276,7 @@ func (ec *executionContext) _Query_myVolumes(ctx context.Context, field graphql.
 			return ec.resolvers.Query().MyVolumes(ctx)
 		},
 		nil,
-		ec.marshalNVolume2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVolumeᚄ,
+		ec.marshalNVolume2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐVolumeᚄ,
 		true,
 		true,
 	)
@@ -53569,8 +53298,6 @@ func (ec *executionContext) fieldContext_Query_myVolumes(_ context.Context, fiel
 				return ec.fieldContext_Volume_createdBy(ctx, field)
 			case "creationTime":
 				return ec.fieldContext_Volume_creationTime(ctx, field)
-			case "deviceName":
-				return ec.fieldContext_Volume_deviceName(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Volume_displayName(ctx, field)
 			case "expiration":
@@ -54656,6 +54383,8 @@ func (ec *executionContext) fieldContext_Query_version(ctx context.Context, fiel
 				return ec.fieldContext_Version_previousVersion(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
+			case "quarantinedTestsSkippedCount":
+				return ec.fieldContext_Version_quarantinedTestsSkippedCount(ctx, field)
 			case "repo":
 				return ec.fieldContext_Version_repo(ctx, field)
 			case "requester":
@@ -58574,6 +58303,8 @@ func (ec *executionContext) fieldContext_SaveDistroPayload_distro(_ context.Cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "id":
+				return ec.fieldContext_Distro_id(ctx, field)
 			case "adminOnly":
 				return ec.fieldContext_Distro_adminOnly(ctx, field)
 			case "aliases":
@@ -58584,6 +58315,8 @@ func (ec *executionContext) fieldContext_SaveDistroPayload_distro(_ context.Cont
 				return ec.fieldContext_Distro_authorizedKeysFile(ctx, field)
 			case "availableRegions":
 				return ec.fieldContext_Distro_availableRegions(ctx, field)
+			case "bootstrapMethod":
+				return ec.fieldContext_Distro_bootstrapMethod(ctx, field)
 			case "bootstrapSettings":
 				return ec.fieldContext_Distro_bootstrapSettings(ctx, field)
 			case "containerPool":
@@ -58610,6 +58343,8 @@ func (ec *executionContext) fieldContext_SaveDistroPayload_distro(_ context.Cont
 				return ec.fieldContext_Distro_imageId(ctx, field)
 			case "isCluster":
 				return ec.fieldContext_Distro_isCluster(ctx, field)
+			case "isWindows":
+				return ec.fieldContext_Distro_isWindows(ctx, field)
 			case "isVirtualWorkStation":
 				return ec.fieldContext_Distro_isVirtualWorkStation(ctx, field)
 			case "mountpoints":
@@ -65178,8 +64913,6 @@ func (ec *executionContext) fieldContext_Task_patch(_ context.Context, field gra
 				return ec.fieldContext_Patch_childPatchAliases(ctx, field)
 			case "childPatches":
 				return ec.fieldContext_Patch_childPatches(ctx, field)
-			case "cost":
-				return ec.fieldContext_Patch_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Patch_createTime(ctx, field)
 			case "description":
@@ -65206,20 +64939,14 @@ func (ec *executionContext) fieldContext_Task_patch(_ context.Context, field gra
 				return ec.fieldContext_Patch_patchNumber(ctx, field)
 			case "patchTriggerAliases":
 				return ec.fieldContext_Patch_patchTriggerAliases(ctx, field)
-			case "predictedCost":
-				return ec.fieldContext_Patch_predictedCost(ctx, field)
 			case "project":
 				return ec.fieldContext_Patch_project(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
 				return ec.fieldContext_Patch_status(ctx, field)
-			case "taskCount":
-				return ec.fieldContext_Patch_taskCount(ctx, field)
 			case "tasks":
 				return ec.fieldContext_Patch_tasks(ctx, field)
-			case "time":
-				return ec.fieldContext_Patch_time(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
 			case "variants":
@@ -67157,6 +66884,8 @@ func (ec *executionContext) fieldContext_Task_versionMetadata(_ context.Context,
 				return ec.fieldContext_Version_previousVersion(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
+			case "quarantinedTestsSkippedCount":
+				return ec.fieldContext_Version_quarantinedTestsSkippedCount(ctx, field)
 			case "repo":
 				return ec.fieldContext_Version_repo(ctx, field)
 			case "requester":
@@ -69331,19 +69060,19 @@ func (ec *executionContext) fieldContext_TaskHostOverrides_subnetId(_ context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _TaskInfo_id(ctx context.Context, field graphql.CollectedField, obj *model.TaskInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _TaskInfo_id(ctx context.Context, field graphql.CollectedField, obj *TaskInfo) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		ec.fieldContext_TaskInfo_id,
 		func(ctx context.Context) (any, error) {
-			return obj.Id, nil
+			return obj.ID, nil
 		},
 		nil,
-		ec.marshalOID2ᚖstring,
+		ec.marshalNID2string,
 		true,
-		false,
+		true,
 	)
 }
 
@@ -69360,7 +69089,7 @@ func (ec *executionContext) fieldContext_TaskInfo_id(_ context.Context, field gr
 	return fc, nil
 }
 
-func (ec *executionContext) _TaskInfo_name(ctx context.Context, field graphql.CollectedField, obj *model.TaskInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _TaskInfo_name(ctx context.Context, field graphql.CollectedField, obj *TaskInfo) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -69370,9 +69099,9 @@ func (ec *executionContext) _TaskInfo_name(ctx context.Context, field graphql.Co
 			return obj.Name, nil
 		},
 		nil,
-		ec.marshalOString2ᚖstring,
+		ec.marshalNString2string,
 		true,
-		false,
+		true,
 	)
 }
 
@@ -74049,6 +73778,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_version(_ context.Conte
 				return ec.fieldContext_Version_previousVersion(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
+			case "quarantinedTestsSkippedCount":
+				return ec.fieldContext_Version_quarantinedTestsSkippedCount(ctx, field)
 			case "repo":
 				return ec.fieldContext_Version_repo(ctx, field)
 			case "requester":
@@ -75417,6 +75148,8 @@ func (ec *executionContext) fieldContext_Version_baseVersion(_ context.Context, 
 				return ec.fieldContext_Version_previousVersion(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
+			case "quarantinedTestsSkippedCount":
+				return ec.fieldContext_Version_quarantinedTestsSkippedCount(ctx, field)
 			case "repo":
 				return ec.fieldContext_Version_repo(ctx, field)
 			case "requester":
@@ -75657,6 +75390,8 @@ func (ec *executionContext) fieldContext_Version_childVersions(_ context.Context
 				return ec.fieldContext_Version_previousVersion(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
+			case "quarantinedTestsSkippedCount":
+				return ec.fieldContext_Version_quarantinedTestsSkippedCount(ctx, field)
 			case "repo":
 				return ec.fieldContext_Version_repo(ctx, field)
 			case "requester":
@@ -76198,8 +75933,6 @@ func (ec *executionContext) fieldContext_Version_patch(_ context.Context, field 
 				return ec.fieldContext_Patch_childPatchAliases(ctx, field)
 			case "childPatches":
 				return ec.fieldContext_Patch_childPatches(ctx, field)
-			case "cost":
-				return ec.fieldContext_Patch_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Patch_createTime(ctx, field)
 			case "description":
@@ -76226,20 +75959,14 @@ func (ec *executionContext) fieldContext_Version_patch(_ context.Context, field 
 				return ec.fieldContext_Patch_patchNumber(ctx, field)
 			case "patchTriggerAliases":
 				return ec.fieldContext_Patch_patchTriggerAliases(ctx, field)
-			case "predictedCost":
-				return ec.fieldContext_Patch_predictedCost(ctx, field)
 			case "project":
 				return ec.fieldContext_Patch_project(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
 				return ec.fieldContext_Patch_status(ctx, field)
-			case "taskCount":
-				return ec.fieldContext_Patch_taskCount(ctx, field)
 			case "tasks":
 				return ec.fieldContext_Patch_tasks(ctx, field)
-			case "time":
-				return ec.fieldContext_Patch_time(ctx, field)
 			case "user":
 				return ec.fieldContext_Patch_user(ctx, field)
 			case "variants":
@@ -76382,6 +76109,8 @@ func (ec *executionContext) fieldContext_Version_previousVersion(_ context.Conte
 				return ec.fieldContext_Version_previousVersion(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
+			case "quarantinedTestsSkippedCount":
+				return ec.fieldContext_Version_quarantinedTestsSkippedCount(ctx, field)
 			case "repo":
 				return ec.fieldContext_Version_repo(ctx, field)
 			case "requester":
@@ -76553,6 +76282,35 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(_ context.Conte
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Version_quarantinedTestsSkippedCount(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Version_quarantinedTestsSkippedCount,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Version().QuarantinedTestsSkippedCount(ctx, obj)
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Version_quarantinedTestsSkippedCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -78367,7 +78125,7 @@ func (ec *executionContext) fieldContext_VersionTiming_timeTaken(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _Volume_id(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
+func (ec *executionContext) _Volume_id(ctx context.Context, field graphql.CollectedField, obj *host.Volume) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -78377,7 +78135,7 @@ func (ec *executionContext) _Volume_id(ctx context.Context, field graphql.Collec
 			return obj.ID, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalNString2string,
 		true,
 		true,
 	)
@@ -78396,7 +78154,7 @@ func (ec *executionContext) fieldContext_Volume_id(_ context.Context, field grap
 	return fc, nil
 }
 
-func (ec *executionContext) _Volume_availabilityZone(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
+func (ec *executionContext) _Volume_availabilityZone(ctx context.Context, field graphql.CollectedField, obj *host.Volume) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -78406,7 +78164,7 @@ func (ec *executionContext) _Volume_availabilityZone(ctx context.Context, field 
 			return obj.AvailabilityZone, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalNString2string,
 		true,
 		true,
 	)
@@ -78425,7 +78183,7 @@ func (ec *executionContext) fieldContext_Volume_availabilityZone(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _Volume_createdBy(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
+func (ec *executionContext) _Volume_createdBy(ctx context.Context, field graphql.CollectedField, obj *host.Volume) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -78435,7 +78193,7 @@ func (ec *executionContext) _Volume_createdBy(ctx context.Context, field graphql
 			return obj.CreatedBy, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalNString2string,
 		true,
 		true,
 	)
@@ -78454,17 +78212,17 @@ func (ec *executionContext) fieldContext_Volume_createdBy(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _Volume_creationTime(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
+func (ec *executionContext) _Volume_creationTime(ctx context.Context, field graphql.CollectedField, obj *host.Volume) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		ec.fieldContext_Volume_creationTime,
 		func(ctx context.Context) (any, error) {
-			return obj.CreationTime, nil
+			return obj.CreationDate, nil
 		},
 		nil,
-		ec.marshalOTime2ᚖtimeᚐTime,
+		ec.marshalOTime2timeᚐTime,
 		true,
 		false,
 	)
@@ -78483,36 +78241,7 @@ func (ec *executionContext) fieldContext_Volume_creationTime(_ context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _Volume_deviceName(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Volume_deviceName,
-		func(ctx context.Context) (any, error) {
-			return obj.DeviceName, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_Volume_deviceName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Volume",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Volume_displayName(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
+func (ec *executionContext) _Volume_displayName(ctx context.Context, field graphql.CollectedField, obj *host.Volume) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -78522,7 +78251,7 @@ func (ec *executionContext) _Volume_displayName(ctx context.Context, field graph
 			return obj.DisplayName, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalNString2string,
 		true,
 		true,
 	)
@@ -78541,7 +78270,7 @@ func (ec *executionContext) fieldContext_Volume_displayName(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _Volume_expiration(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
+func (ec *executionContext) _Volume_expiration(ctx context.Context, field graphql.CollectedField, obj *host.Volume) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -78551,7 +78280,7 @@ func (ec *executionContext) _Volume_expiration(ctx context.Context, field graphq
 			return obj.Expiration, nil
 		},
 		nil,
-		ec.marshalOTime2ᚖtimeᚐTime,
+		ec.marshalOTime2timeᚐTime,
 		true,
 		false,
 	)
@@ -78570,7 +78299,7 @@ func (ec *executionContext) fieldContext_Volume_expiration(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _Volume_homeVolume(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
+func (ec *executionContext) _Volume_homeVolume(ctx context.Context, field graphql.CollectedField, obj *host.Volume) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -78599,7 +78328,7 @@ func (ec *executionContext) fieldContext_Volume_homeVolume(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _Volume_host(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
+func (ec *executionContext) _Volume_host(ctx context.Context, field graphql.CollectedField, obj *host.Volume) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -78609,7 +78338,7 @@ func (ec *executionContext) _Volume_host(ctx context.Context, field graphql.Coll
 			return ec.resolvers.Volume().Host(ctx, obj)
 		},
 		nil,
-		ec.marshalOHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost,
+		ec.marshalOHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐHost,
 		true,
 		false,
 	)
@@ -78686,17 +78415,17 @@ func (ec *executionContext) fieldContext_Volume_host(_ context.Context, field gr
 	return fc, nil
 }
 
-func (ec *executionContext) _Volume_hostID(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
+func (ec *executionContext) _Volume_hostID(ctx context.Context, field graphql.CollectedField, obj *host.Volume) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		ec.fieldContext_Volume_hostID,
 		func(ctx context.Context) (any, error) {
-			return obj.HostID, nil
+			return obj.Host, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalNString2string,
 		true,
 		true,
 	)
@@ -78715,7 +78444,7 @@ func (ec *executionContext) fieldContext_Volume_hostID(_ context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _Volume_migrating(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
+func (ec *executionContext) _Volume_migrating(ctx context.Context, field graphql.CollectedField, obj *host.Volume) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -78744,7 +78473,7 @@ func (ec *executionContext) fieldContext_Volume_migrating(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _Volume_noExpiration(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
+func (ec *executionContext) _Volume_noExpiration(ctx context.Context, field graphql.CollectedField, obj *host.Volume) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -78773,7 +78502,7 @@ func (ec *executionContext) fieldContext_Volume_noExpiration(_ context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _Volume_size(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
+func (ec *executionContext) _Volume_size(ctx context.Context, field graphql.CollectedField, obj *host.Volume) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -78783,7 +78512,7 @@ func (ec *executionContext) _Volume_size(ctx context.Context, field graphql.Coll
 			return obj.Size, nil
 		},
 		nil,
-		ec.marshalNInt2int,
+		ec.marshalNInt2int32,
 		true,
 		true,
 	)
@@ -78802,7 +78531,7 @@ func (ec *executionContext) fieldContext_Volume_size(_ context.Context, field gr
 	return fc, nil
 }
 
-func (ec *executionContext) _Volume_type(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
+func (ec *executionContext) _Volume_type(ctx context.Context, field graphql.CollectedField, obj *host.Volume) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -78812,7 +78541,7 @@ func (ec *executionContext) _Volume_type(ctx context.Context, field graphql.Coll
 			return obj.Type, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalNString2string,
 		true,
 		true,
 	)
@@ -95373,6 +95102,11 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Distro")
+		case "id":
+			out.Values[i] = ec._Distro_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "adminOnly":
 			out.Values[i] = ec._Distro_adminOnly(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -95403,6 +95137,42 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 					}
 				}()
 				res = ec._Distro_availableRegions(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "bootstrapMethod":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Distro_bootstrapMethod(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -95494,6 +95264,42 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "isWindows":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Distro_isWindows(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "isVirtualWorkStation":
 			out.Values[i] = ec._Distro_isVirtualWorkStation(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -95708,52 +95514,6 @@ func (ec *executionContext) _DistroEventsPayload(ctx context.Context, sel ast.Se
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var distroInfoImplementors = []string{"DistroInfo"}
-
-func (ec *executionContext) _DistroInfo(ctx context.Context, sel ast.SelectionSet, obj *model.DistroInfo) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, distroInfoImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("DistroInfo")
-		case "id":
-			out.Values[i] = ec._DistroInfo_id(ctx, field, obj)
-		case "bootstrapMethod":
-			out.Values[i] = ec._DistroInfo_bootstrapMethod(ctx, field, obj)
-		case "isVirtualWorkStation":
-			out.Values[i] = ec._DistroInfo_isVirtualWorkStation(ctx, field, obj)
-		case "isWindows":
-			out.Values[i] = ec._DistroInfo_isWindows(ctx, field, obj)
-		case "user":
-			out.Values[i] = ec._DistroInfo_user(ctx, field, obj)
-		case "workDir":
-			out.Values[i] = ec._DistroInfo_workDir(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -97192,7 +96952,7 @@ func (ec *executionContext) _HomeVolumeSettings(ctx context.Context, sel ast.Sel
 
 var hostImplementors = []string{"Host"}
 
-func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj *model.APIHost) graphql.Marshaler {
+func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj *host.Host) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, hostImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -97244,7 +97004,38 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 		case "displayName":
 			out.Values[i] = ec._Host_displayName(ctx, field, obj)
 		case "distro":
-			out.Values[i] = ec._Host_distro(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Host_distro(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "distroId":
 			field := field
 
@@ -97450,8 +97241,6 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "runningTask":
-			out.Values[i] = ec._Host_runningTask(ctx, field, obj)
-		case "sleepSchedule":
 			field := field
 
 			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
@@ -97460,7 +97249,7 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Host_sleepSchedule(ctx, field, obj)
+				res = ec._Host_runningTask(ctx, field, obj)
 				return res
 			}
 
@@ -97484,6 +97273,8 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "sleepSchedule":
+			out.Values[i] = ec._Host_sleepSchedule(ctx, field, obj)
 		case "startedBy":
 			out.Values[i] = ec._Host_startedBy(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -97500,8 +97291,6 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "totalIdleTime":
-			out.Values[i] = ec._Host_totalIdleTime(ctx, field, obj)
-		case "uptime":
 			field := field
 
 			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
@@ -97510,7 +97299,7 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Host_uptime(ctx, field, obj)
+				res = ec._Host_totalIdleTime(ctx, field, obj)
 				return res
 			}
 
@@ -97534,6 +97323,8 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "uptime":
+			out.Values[i] = ec._Host_uptime(ctx, field, obj)
 		case "user":
 			out.Values[i] = ec._Host_user(ctx, field, obj)
 		case "volumes":
@@ -101028,43 +100819,19 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			out.Values[i] = ec._Patch_alias(ctx, field, obj)
 		case "aliases":
 			out.Values[i] = ec._Patch_aliases(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "childPatchAliases":
 			out.Values[i] = ec._Patch_childPatchAliases(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "childPatches":
 			out.Values[i] = ec._Patch_childPatches(ctx, field, obj)
-		case "cost":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Patch_cost(ctx, field, obj)
-				return res
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
 			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "createTime":
 			out.Values[i] = ec._Patch_createTime(ctx, field, obj)
 		case "description":
@@ -101245,39 +101012,6 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "predictedCost":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Patch_predictedCost(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "project":
 			field := field
 
@@ -101349,77 +101083,11 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "taskCount":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Patch_taskCount(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "tasks":
 			out.Values[i] = ec._Patch_tasks(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "time":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Patch_time(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "user":
 			field := field
 
@@ -109614,7 +109282,7 @@ func (ec *executionContext) _TaskHostOverrides(ctx context.Context, sel ast.Sele
 
 var taskInfoImplementors = []string{"TaskInfo"}
 
-func (ec *executionContext) _TaskInfo(ctx context.Context, sel ast.SelectionSet, obj *model.TaskInfo) graphql.Marshaler {
+func (ec *executionContext) _TaskInfo(ctx context.Context, sel ast.SelectionSet, obj *TaskInfo) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, taskInfoImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -109625,8 +109293,14 @@ func (ec *executionContext) _TaskInfo(ctx context.Context, sel ast.SelectionSet,
 			out.Values[i] = graphql.MarshalString("TaskInfo")
 		case "id":
 			out.Values[i] = ec._TaskInfo_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "name":
 			out.Values[i] = ec._TaskInfo_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -112413,6 +112087,42 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "quarantinedTestsSkippedCount":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Version_quarantinedTestsSkippedCount(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "repo":
 			out.Values[i] = ec._Version_repo(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -113256,7 +112966,7 @@ func (ec *executionContext) _VersionTiming(ctx context.Context, sel ast.Selectio
 
 var volumeImplementors = []string{"Volume"}
 
-func (ec *executionContext) _Volume(ctx context.Context, sel ast.SelectionSet, obj *model.APIVolume) graphql.Marshaler {
+func (ec *executionContext) _Volume(ctx context.Context, sel ast.SelectionSet, obj *host.Volume) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, volumeImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -113282,8 +112992,6 @@ func (ec *executionContext) _Volume(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "creationTime":
 			out.Values[i] = ec._Volume_creationTime(ctx, field, obj)
-		case "deviceName":
-			out.Values[i] = ec._Volume_deviceName(ctx, field, obj)
 		case "displayName":
 			out.Values[i] = ec._Volume_displayName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -114731,6 +114439,50 @@ func (ec *executionContext) marshalNChildPatchAlias2githubᚗcomᚋevergreenᚑc
 	return ec._ChildPatchAlias(ctx, sel, &v)
 }
 
+func (ec *executionContext) marshalNChildPatchAlias2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIChildPatchAliasᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIChildPatchAlias) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNChildPatchAlias2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIChildPatchAlias(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) marshalNClientBinary2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIClientBinary(ctx context.Context, sel ast.SelectionSet, v model.APIClientBinary) graphql.Marshaler {
 	return ec._ClientBinary(ctx, sel, &v)
 }
@@ -115890,11 +115642,11 @@ func (ec *executionContext) unmarshalNHomeVolumeSettingsInput2githubᚗcomᚋeve
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNHost2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx context.Context, sel ast.SelectionSet, v model.APIHost) graphql.Marshaler {
+func (ec *executionContext) marshalNHost2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐHost(ctx context.Context, sel ast.SelectionSet, v host.Host) graphql.Marshaler {
 	return ec._Host(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNHost2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHostᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIHost) graphql.Marshaler {
+func (ec *executionContext) marshalNHost2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐHostᚄ(ctx context.Context, sel ast.SelectionSet, v []*host.Host) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -115918,7 +115670,7 @@ func (ec *executionContext) marshalNHost2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋe
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx, sel, v[i])
+			ret[i] = ec.marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐHost(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -115938,7 +115690,7 @@ func (ec *executionContext) marshalNHost2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋe
 	return ret
 }
 
-func (ec *executionContext) marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx context.Context, sel ast.SelectionSet, v *model.APIHost) graphql.Marshaler {
+func (ec *executionContext) marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐHost(ctx context.Context, sel ast.SelectionSet, v *host.Host) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
@@ -116727,6 +116479,22 @@ func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v any) (int, 
 func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.SelectionSet, v int) graphql.Marshaler {
 	_ = sel
 	res := graphql.MarshalInt(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) unmarshalNInt2int32(ctx context.Context, v any) (int32, error) {
+	res, err := graphql.UnmarshalInt32(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNInt2int32(ctx context.Context, sel ast.SelectionSet, v int32) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalInt32(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
@@ -117623,6 +117391,50 @@ func (ec *executionContext) unmarshalNParsleyFilterInput2githubᚗcomᚋevergree
 
 func (ec *executionContext) marshalNPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx context.Context, sel ast.SelectionSet, v model.APIPatch) graphql.Marshaler {
 	return ec._Patch(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPatch2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIPatch) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalNPatch2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIPatch) graphql.Marshaler {
@@ -120094,7 +119906,7 @@ func (ec *executionContext) unmarshalNVersionToRestart2ᚖgithubᚗcomᚋevergre
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNVolume2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVolumeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIVolume) graphql.Marshaler {
+func (ec *executionContext) marshalNVolume2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐVolumeᚄ(ctx context.Context, sel ast.SelectionSet, v []*host.Volume) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -120118,7 +119930,7 @@ func (ec *executionContext) marshalNVolume2ᚕᚖgithubᚗcomᚋevergreenᚑci�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNVolume2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVolume(ctx, sel, v[i])
+			ret[i] = ec.marshalNVolume2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐVolume(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -120138,7 +119950,7 @@ func (ec *executionContext) marshalNVolume2ᚕᚖgithubᚗcomᚋevergreenᚑci�
 	return ret
 }
 
-func (ec *executionContext) marshalNVolume2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVolume(ctx context.Context, sel ast.SelectionSet, v *model.APIVolume) graphql.Marshaler {
+func (ec *executionContext) marshalNVolume2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐVolume(ctx context.Context, sel ast.SelectionSet, v *host.Volume) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
@@ -120873,53 +120685,6 @@ func (ec *executionContext) unmarshalOCedarConfigInput2ᚖgithubᚗcomᚋevergre
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOChildPatchAlias2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIChildPatchAliasᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIChildPatchAlias) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNChildPatchAlias2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIChildPatchAlias(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
 func (ec *executionContext) marshalOClientBinary2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIClientBinaryᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIClientBinary) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -121141,10 +120906,6 @@ func (ec *executionContext) marshalODistro2ᚖgithubᚗcomᚋevergreenᚑciᚋev
 		return graphql.Null
 	}
 	return ec._Distro(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalODistroInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐDistroInfo(ctx context.Context, sel ast.SelectionSet, v model.DistroInfo) graphql.Marshaler {
-	return ec._DistroInfo(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalODockerConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDockerConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIDockerConfig) graphql.Marshaler {
@@ -121838,7 +121599,7 @@ func (ec *executionContext) marshalOGroupedTaskStatusCount2ᚕᚖgithubᚗcomᚋ
 	return ret
 }
 
-func (ec *executionContext) marshalOHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx context.Context, sel ast.SelectionSet, v *model.APIHost) graphql.Marshaler {
+func (ec *executionContext) marshalOHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐHost(ctx context.Context, sel ast.SelectionSet, v *host.Host) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -122094,24 +121855,6 @@ func (ec *executionContext) unmarshalOHourlyPatchTaskOverrideInput2ᚕgithubᚗc
 		}
 	}
 	return res, nil
-}
-
-func (ec *executionContext) unmarshalOID2ᚖstring(ctx context.Context, v any) (*string, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := graphql.UnmarshalID(v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	_ = sel
-	_ = ctx
-	res := graphql.MarshalID(*v)
-	return res
 }
 
 func (ec *executionContext) marshalOImage2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIImage(ctx context.Context, sel ast.SelectionSet, v *model.APIImage) graphql.Marshaler {
@@ -122748,53 +122491,6 @@ func (ec *executionContext) unmarshalOParsleyFilterInput2ᚕgithubᚗcomᚋeverg
 	return res, nil
 }
 
-func (ec *executionContext) marshalOPatch2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIPatch) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
 func (ec *executionContext) marshalOPatch2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx context.Context, sel ast.SelectionSet, v *model.APIPatch) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -122807,13 +122503,6 @@ func (ec *executionContext) marshalOPatchProject2ᚖgithubᚗcomᚋevergreenᚑc
 		return graphql.Null
 	}
 	return ec._PatchProject(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalOPatchTime2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchTime(ctx context.Context, sel ast.SelectionSet, v *PatchTime) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._PatchTime(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOPatchTriggerAlias2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchTriggerDefinitionᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIPatchTriggerDefinition) graphql.Marshaler {
@@ -123613,11 +123302,8 @@ func (ec *executionContext) unmarshalOSlackOptionsInput2ᚖgithubᚗcomᚋevergr
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOSleepSchedule2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐSleepScheduleInfo(ctx context.Context, sel ast.SelectionSet, v *host.SleepScheduleInfo) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._SleepSchedule(ctx, sel, v)
+func (ec *executionContext) marshalOSleepSchedule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐSleepScheduleInfo(ctx context.Context, sel ast.SelectionSet, v host.SleepScheduleInfo) graphql.Marshaler {
+	return ec._SleepSchedule(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalOSleepScheduleConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISleepScheduleConfig(ctx context.Context, sel ast.SelectionSet, v *model.APISleepScheduleConfig) graphql.Marshaler {
@@ -124065,8 +123751,11 @@ func (ec *executionContext) unmarshalOTaskHostOverridesInput2ᚖgithubᚗcomᚋe
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOTaskInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTaskInfo(ctx context.Context, sel ast.SelectionSet, v model.TaskInfo) graphql.Marshaler {
-	return ec._TaskInfo(ctx, sel, &v)
+func (ec *executionContext) marshalOTaskInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskInfo(ctx context.Context, sel ast.SelectionSet, v *TaskInfo) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._TaskInfo(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOTaskLimitsConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskLimitsConfig(ctx context.Context, sel ast.SelectionSet, v *model.APITaskLimitsConfig) graphql.Marshaler {
@@ -124651,7 +124340,7 @@ func (ec *executionContext) marshalOVersionTiming2ᚖgithubᚗcomᚋevergreenᚑ
 	return ec._VersionTiming(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOVolume2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVolume(ctx context.Context, sel ast.SelectionSet, v *model.APIVolume) graphql.Marshaler {
+func (ec *executionContext) marshalOVolume2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐVolume(ctx context.Context, sel ast.SelectionSet, v *host.Volume) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/birch"
@@ -24,6 +25,16 @@ func (r *distroResolver) AvailableRegions(ctx context.Context, obj *model.APIDis
 	d := obj.ToService()
 	availableRegions := d.GetRegionsList(ctx, settings.Providers.AWS.AllowedRegions)
 	return availableRegions, nil
+}
+
+// BootstrapMethod is the resolver for the bootstrapMethod field.
+func (r *distroResolver) BootstrapMethod(ctx context.Context, obj *model.APIDistro) (string, error) {
+	return utility.FromStringPtr(obj.BootstrapSettings.Method), nil
+}
+
+// IsWindows is the resolver for the isWindows field.
+func (r *distroResolver) IsWindows(ctx context.Context, obj *model.APIDistro) (bool, error) {
+	return strings.Contains(utility.FromStringPtr(obj.Arch), "windows"), nil
 }
 
 // ProviderSettingsList is the resolver for the providerSettingsList field.

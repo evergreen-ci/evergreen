@@ -348,6 +348,8 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 		return nil
 	}
 
+	SetWorkdirBoundaryAttribute(ctx, conf, s3pc.LocalFile, s3pc.AssociatedLinksFile, s3pc.LocalFilesIncludeFilterPrefix)
+
 	if s3pc.AssociatedLinksFile != "" {
 		associatedLinks, err := readAssociatedLinksFile(s3pc.AssociatedLinksFile, conf)
 		if err != nil {

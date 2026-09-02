@@ -68,13 +68,9 @@ type Patch {
   id: ID!
   activated: Boolean!
   alias: String
-  aliases: [String!]
-  childPatchAliases: [ChildPatchAlias!]
-  childPatches: [Patch!]
-  """
-  Aggregated actual cost for the patch's version, when cost data exists.
-  """
-  cost: Cost
+  aliases: [String!]!
+  childPatchAliases: [ChildPatchAlias!]!
+  childPatches: [Patch!]!
   createTime: Time
   description: String!
   generatedTaskCounts: [GeneratedTaskCountResults!]!
@@ -88,16 +84,10 @@ type Patch {
   parameters: [Parameter!]!
   patchNumber: Int!
   patchTriggerAliases: [PatchTriggerAlias!]!
-  """
-  Aggregated predicted cost for the patch's version.
-  """
-  predictedCost: Cost
   project: PatchProject
   projectMetadata: Project
   status: String!
-  taskCount: Int
   tasks: [String!]!
-  time: PatchTime
   user: User!
   variants: [String!]!
   variantsTasks: [VariantTask!]!

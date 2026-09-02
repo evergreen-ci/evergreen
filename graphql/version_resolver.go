@@ -301,6 +301,17 @@ func (r *versionResolver) ProjectMetadata(ctx context.Context, obj *restModel.AP
 	return apiProjectRef, err
 }
 
+// QuarantinedTestsSkippedCount is the resolver for the quarantinedTestsSkippedCount field.
+func (r *versionResolver) QuarantinedTestsSkippedCount(ctx context.Context, obj *restModel.APIVersion) (int, error) {
+	versionID := utility.FromStringPtr(obj.Id)
+	count, err := task.GetQuarantinedTestsSkippedCountByVersion(ctx, versionID)
+	if err != nil {
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting TSS-skipped test count for version '%s': %s", versionID, err.Error()))
+	}
+
+	return count, nil
+}
+
 // Status is the resolver for the status field.
 func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion) (string, error) {
 	versionID := utility.FromStringPtr(obj.Id)

@@ -225,9 +225,9 @@ type HostEventsInput struct {
 // HostsResponse is the return value for the hosts query.
 // It contains an array of Hosts matching the filter conditions, as well as some count information.
 type HostsResponse struct {
-	FilteredHostsCount *int             `json:"filteredHostsCount,omitempty"`
-	Hosts              []*model.APIHost `json:"hosts"`
-	TotalHostsCount    int              `json:"totalHostsCount"`
+	FilteredHostsCount *int         `json:"filteredHostsCount,omitempty"`
+	Hosts              []*host.Host `json:"hosts"`
+	TotalHostsCount    int          `json:"totalHostsCount"`
 }
 
 type ImageEventsPayload struct {
@@ -587,6 +587,11 @@ type TaskHistoryOpts struct {
 type TaskHistoryPagination struct {
 	MostRecentTaskOrder int `json:"mostRecentTaskOrder"`
 	OldestTaskOrder     int `json:"oldestTaskOrder"`
+}
+
+type TaskInfo struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 // TaskLogs is the return value for the task.taskLogs query.

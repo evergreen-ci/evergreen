@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
@@ -29,6 +30,8 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
 
 func TestS3GetValidateParams(t *testing.T) {
@@ -476,4 +479,59 @@ func TestGetWithRetryDoesNotRetryOnKeyNotFound(t *testing.T) {
 	require.Error(t, err)
 	assert.True(t, pail.IsKeyNotFoundError(err))
 	assert.Equal(t, 1, mock.calls, "should not retry when key does not exist")
+}
+
+func TestS3GetSetsWorkdirBoundaryViolationAttribute(t *testing.T) {
+	spanRecorder := tracetest.NewSpanRecorder()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(spanRecorder))
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		require.NoError(t, tp.Shutdown(ctx))
+	})
+
+	testCtx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	ctx, span := tp.Tracer("test").Start(testCtx, "s3.get")
+
+	dir := t.TempDir()
+	workdir := filepath.Join(dir, "workdir")
+	outsideFile := filepath.Join(dir, "outside-file.txt")
+	require.NoError(t, os.MkdirAll(workdir, 0755))
+
+	comm := client.NewMock("http://localhost.com")
+	tsk := task.Task{Id: "mock_id", Secret: "mock_secret"}
+	logger, err := comm.GetLoggerProducer(ctx, &tsk, nil)
+	require.NoError(t, err)
+
+	conf := &internal.TaskConfig{
+		WorkDir:    workdir,
+		Task:       tsk,
+		Expansions: util.Expansions{},
+	}
+
+	cmd := &s3get{
+		AwsKey:     "key",
+		AwsSecret:  "secret",
+		RemoteFile: "remote",
+		Bucket:     "test-bucket",
+		LocalFile:  outsideFile,
+	}
+
+	// Execute will fail at S3 bucket creation or check, but the workdir
+	// boundary violation attribute is set before that point.
+	_ = cmd.Execute(ctx, comm, logger, conf)
+	span.End()
+
+	ended := spanRecorder.Ended()
+	require.Len(t, ended, 1)
+
+	found := false
+	for _, attr := range ended[0].Attributes() {
+		if string(attr.Key) == workdirBoundaryViolationAttribute {
+			assert.True(t, attr.Value.AsBool())
+			found = true
+		}
+	}
+	assert.True(t, found, "workdir boundary violation attribute was not set on the span")
 }

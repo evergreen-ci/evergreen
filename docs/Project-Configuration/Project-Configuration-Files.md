@@ -359,7 +359,9 @@ include:
 
 #### YAML Anchors (Beta)
 
-YAML anchors (`&name`) and aliases (`*name`) are supported within a single file and across include files. Cross-file anchor support is in beta and requires passing `--yaml-anchors` to `evergreen validate` or `evergreen evaluate`.
+Cross-file YAML anchor support is in beta. It must be enabled either globally by an Evergreen admin via the **Cross-file YAML anchors** service flag, or per-invocation using the `--cross-file-anchors` flag on `evergreen patch`, `evergreen evaluate`, or `evergreen validate`. The CLI flag is useful for testing your config before the feature is enabled globally for your project.
+
+YAML anchors (`&name`) and aliases (`*name`) are supported within a single file and across include files.
 
 An anchor defined in the main config file or in an earlier include file can be referenced as an alias in any later include file. Files are processed in the order they are listed in `include`, so an alias can only refer to an anchor that was defined in a file that appears earlier in the list (or in the main config file).
 

@@ -227,7 +227,7 @@ func getInstallationTokenNoCache(ctx context.Context, owner, repo string, opts *
 		return "", errors.Wrap(err, "getting config")
 	}
 
-	token, _, err := githubapp.CreateGitHubAppAuth(settings).CreateInstallationToken(ctx, owner, repo, opts)
+	token, _, err := githubapp.CreateGitHubAppAuth(settings).CreateInstallationToken(ctx, owner, repo, opts, false)
 	if err != nil {
 		return "", errors.Wrap(err, "creating installation token")
 	}
