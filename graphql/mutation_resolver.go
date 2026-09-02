@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -390,15 +391,15 @@ func (r *mutationResolver) UpdateHostStatus(ctx context.Context, hostIds []strin
 }
 
 // SetPatchVisibility is the resolver for the setPatchVisibility field.
-func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []string, hidden bool) ([]*restModel.APIPatch, error) {
+func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []string, hidden bool) ([]*patch.Patch, error) {
 	user := mustHaveUser(ctx)
-	updatedPatches := []*restModel.APIPatch{}
 	patches, err := patch.Find(ctx, patch.ByStringIds(ctx, patchIds))
 
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patches '%s': %s", patchIds, err.Error()))
 	}
 
+	updatedPatches := []*patch.Patch{}
 	for _, p := range patches {
 		if !userCanModifyPatch(ctx, user, p) {
 			return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to change visibility of patch '%s'", p.Id))
@@ -407,21 +408,13 @@ func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []st
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting visibility for patch '%s': %s", p.Id, err.Error()))
 		}
-		apiPatch := restModel.APIPatch{}
-		err = apiPatch.BuildFromService(ctx, p, &restModel.APIPatchArgs{
-			IncludeProjectIdentifier: true,
-			IncludeVersionCost:       true,
-		})
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting patch '%s' to APIPatch: %s", p.Id, err.Error()))
-		}
-		updatedPatches = append(updatedPatches, &apiPatch)
+		updatedPatches = append(updatedPatches, &p)
 	}
 	return updatedPatches, nil
 }
 
 // SchedulePatch is the resolver for the schedulePatch field.
-func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*restModel.APIPatch, error) {
+func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*patch.Patch, error) {
 	patchUpdateReq := buildFromGqlInput(configure)
 	usr := mustHaveUser(ctx)
 	patchUpdateReq.Caller = usr.Id
@@ -433,7 +426,7 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, co
 	if err != nil {
 		return nil, mapHTTPStatusToGqlError(ctx, statusCode, werrors.Errorf("scheduling patch '%s': %s", patchID, err.Error()))
 	}
-	scheduledPatch, err := data.FindPatchById(ctx, patchID)
+	scheduledPatch, err := loaders.GetPatch(ctx, patchID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting scheduled patch '%s': %s", patchID, err.Error()))
 	}

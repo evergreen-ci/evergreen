@@ -473,19 +473,25 @@ func (apiPatch *APIPatch) buildModuleChanges(p patch.Patch, identifier string) {
 	if env == nil {
 		return
 	}
+	apiPatch.ModuleCodeChanges = BuildModuleCodeChanges(p, identifier, env.Settings().Api.URL)
+}
+
+// BuildModuleCodeChanges constructs the list of module code changes for a patch,
+// including file diff links. It is used by both the REST API and GraphQL resolvers.
+func BuildModuleCodeChanges(p patch.Patch, identifier, apiURL string) []APIModulePatch {
 	codeChanges := []APIModulePatch{}
-	apiURL := env.Settings().Api.URL
+	patchID := p.Id.Hex()
 
 	for patchNumber, modPatch := range p.Patches {
 		branchName := modPatch.ModuleName
 		if branchName == "" {
 			branchName = identifier
 		}
-		htmlLink := fmt.Sprintf("%s/filediff/%s?patch_number=%d", apiURL, *apiPatch.Id, patchNumber)
-		rawLink := fmt.Sprintf("%s/rawdiff/%s?patch_number=%d", apiURL, *apiPatch.Id, patchNumber)
+		htmlLink := fmt.Sprintf("%s/filediff/%s?patch_number=%d", apiURL, patchID, patchNumber)
+		rawLink := fmt.Sprintf("%s/rawdiff/%s?patch_number=%d", apiURL, patchID, patchNumber)
 		fileDiffs := []FileDiff{}
 		for i, file := range modPatch.PatchSet.Summary {
-			diffLink := fmt.Sprintf("%s/filediff/%s?file_name=%s&patch_number=%d&commit_number=%d", apiURL, *apiPatch.Id, url.QueryEscape(file.Name), patchNumber, i)
+			diffLink := fmt.Sprintf("%s/filediff/%s?file_name=%s&patch_number=%d&commit_number=%d", apiURL, patchID, url.QueryEscape(file.Name), patchNumber, i)
 			fileName := file.Name
 			fileDiff := FileDiff{
 				FileName:    &fileName,
@@ -506,7 +512,7 @@ func (apiPatch *APIPatch) buildModuleChanges(p patch.Patch, identifier string) {
 		codeChanges = append(codeChanges, apiModPatch)
 	}
 
-	apiPatch.ModuleCodeChanges = codeChanges
+	return codeChanges
 }
 
 // ToService converts a service layer patch using the data from APIPatch

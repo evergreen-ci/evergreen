@@ -174,14 +174,10 @@ func userCanModifyPatch(ctx context.Context, u *user.DBUser, p patch.Patch) bool
 }
 
 // getPatchProjectVariantsAndTasksForUI gets the variants and tasks for a project for a patch id
-func getPatchProjectVariantsAndTasksForUI(ctx context.Context, apiPatch *restModel.APIPatch) (*PatchProject, error) {
-	p, err := apiPatch.ToService()
+func getPatchProjectVariantsAndTasksForUI(ctx context.Context, p *patch.Patch) (*PatchProject, error) {
+	patchProjectVariantsAndTasks, err := model.GetVariantsAndTasksFromPatchProject(ctx, evergreen.GetEnvironment().Settings(), p)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("converting APIPatch '%s' to service", utility.FromStringPtr(apiPatch.Id)))
-	}
-	patchProjectVariantsAndTasks, err := model.GetVariantsAndTasksFromPatchProject(ctx, evergreen.GetEnvironment().Settings(), &p)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project variants and tasks for patch '%s': %s", utility.FromStringPtr(apiPatch.Id), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project variants and tasks for patch '%s': %s", p.Id, err.Error()))
 	}
 
 	// convert variants to UI data structure
