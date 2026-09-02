@@ -3024,7 +3024,23 @@ func ArchiveMany(ctx context.Context, tasks []Task) error {
 			if err != nil {
 				return errors.Wrapf(err, "finding execution tasks for display task '%s'", t.Id)
 			}
-			execTaskIds = append(execTaskIds, t.ExecutionTasks...)
+			unscheduledExecTasks, err := FindAll(ctx, db.Query(bson.M{
+				IdKey:        bson.M{"$in": t.ExecutionTasks},
+				StatusKey:    evergreen.TaskUndispatched,
+				ActivatedKey: false,
+			}))
+			if err != nil {
+				return errors.Wrapf(err, "finding unscheduled execution tasks for display task '%s'", t.Id)
+			}
+			unscheduledExecTaskIDs := map[string]bool{}
+			for _, et := range unscheduledExecTasks {
+				unscheduledExecTaskIDs[et.Id] = true
+			}
+			for _, etID := range t.ExecutionTasks {
+				if !unscheduledExecTaskIDs[etID] {
+					execTaskIds = append(execTaskIds, etID)
+				}
+			}
 			for _, et := range execTasks {
 				if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, et.Status) {
 					grip.Debug(ctx, message.Fields{
@@ -3037,20 +3053,6 @@ func ArchiveMany(ctx context.Context, tasks []Task) error {
 				}
 				archivedTasks = append(archivedTasks, et.makeArchivedTask())
 				toUpdateExecTaskIds = append(toUpdateExecTaskIds, et.Id)
-			}
-
-			if !t.IsRestartFailedOnly() {
-				unscheduledExecTasks, err := FindAll(ctx, db.Query(bson.M{
-					IdKey:        bson.M{"$in": t.ExecutionTasks},
-					StatusKey:    evergreen.TaskUndispatched,
-					ActivatedKey: false,
-				}))
-				if err != nil {
-					return errors.Wrapf(err, "finding unscheduled execution tasks for display task '%s'", t.Id)
-				}
-				for _, et := range unscheduledExecTasks {
-					toUpdateExecTaskIds = append(toUpdateExecTaskIds, et.Id)
-				}
 			}
 		}
 	}
