@@ -635,7 +635,7 @@ func TestSourceCacheHealsOnlyTheKeyItWrites(t *testing.T) {
 	t.Run("PRTaskDoesNotHealTheSharedBaseArtifact", func(t *testing.T) {
 		sc, reason := newSourceCache(prConfig(), c, sourceCacheTestOpts(), "linux")
 		require.NotNil(t, sc, reason)
-		_, baseKey, err := sc.cacheKeysForRevision("abc123")
+		_, baseKey, err := sc.cacheKeysForRevision(sc.baseRevision)
 		require.NoError(t, err)
 		require.NotEqual(t, sc.remoteKey, baseKey)
 
