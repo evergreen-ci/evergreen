@@ -280,26 +280,10 @@ func TestBuildPostRestoreCommand(t *testing.T) {
 			wantNotContain: []string{"git fetch origin"},
 		},
 		{
-			// The key pins the revision but not the branch, so a hit from another branch at that commit must be reconciled.
-			name:         "ReconcilesBranchOnANonPRHit",
-			conf:         sourceCacheTestConfig(),
-			opts:         cloneOpts{owner: "some-org", repo: "some-repo", branch: "release-v1"},
-			revision:     "abc123",
-			wantContains: []string{`git checkout -B 'release-v1' abc123`},
-		},
-		{
-			name:           "SkipsBranchReconciliationWhenPRCheckoutRuns",
-			conf:           prConf(),
-			opts:           cloneOpts{owner: "some-org", repo: "some-repo", branch: "release-v1"},
-			revision:       "abc123",
-			runPRCheckout:  true,
-			wantContains:   []string{`git fetch origin "pull/9001/head:evg-pr-test-`},
-			wantNotContain: []string{"git checkout -B"},
-		},
-		{
-			name:           "OmitsBranchReconciliationWithoutABranch",
+			// The branch is part of the cache key, so a hit already came from the same branch and the restored branch is left alone.
+			name:           "LeavesTheRestoredBranchAlone",
 			conf:           sourceCacheTestConfig(),
-			opts:           cloneOpts{owner: "some-org", repo: "some-repo"},
+			opts:           cloneOpts{owner: "some-org", repo: "some-repo", branch: "release-v1"},
 			revision:       "abc123",
 			wantNotContain: []string{"git checkout -B"},
 		},
@@ -373,13 +357,13 @@ func TestPostRestoreCommandFailsOnWrongRevision(t *testing.T) {
 	conf.Task.Revision = strings.TrimSpace(string(headBytes))
 	assert.NoError(t, c.runCommands(ctx, logger, conf, c.buildPostRestoreCommand(conf, opts, conf.Task.Revision, false)))
 
-	// The tree was produced on main, but this task asked for a branch that
-	// points at the same commit, so the restored tree has to report that one.
+	// The branch is part of the cache key, so a restored tree keeps the branch
+	// the producer left in it.
 	branchOpts := cloneOpts{owner: "some-org", repo: "some-repo", branch: "release-v1"}
 	require.NoError(t, c.runCommands(ctx, logger, conf, c.buildPostRestoreCommand(conf, branchOpts, conf.Task.Revision, false)))
 	branchBytes, err := exec.CommandContext(ctx, "git", "-C", repoDir, "rev-parse", "--abbrev-ref", "HEAD").Output()
 	require.NoError(t, err)
-	assert.Equal(t, "release-v1", strings.TrimSpace(string(branchBytes)))
+	assert.Equal(t, "main", strings.TrimSpace(string(branchBytes)))
 	headAfter, err := exec.CommandContext(ctx, "git", "-C", repoDir, "rev-parse", "HEAD").Output()
 	require.NoError(t, err)
 	assert.Equal(t, conf.Task.Revision, strings.TrimSpace(string(headAfter)))
