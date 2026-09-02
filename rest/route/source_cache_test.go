@@ -76,8 +76,10 @@ func TestSourceCacheCredentialsRun(t *testing.T) {
 	for tName, tCase := range map[string]struct {
 		mutateSettings func(*evergreen.Settings)
 		insertTask     bool
+		requester      string
 		owner, repo    string
 		expectedStatus int
+		wantNamespace  string
 	}{
 		"UnknownTaskIsNotFound": {
 			expectedStatus: http.StatusNotFound,
@@ -97,9 +99,15 @@ func TestSourceCacheCredentialsRun(t *testing.T) {
 			insertTask:     true,
 			expectedStatus: http.StatusConflict,
 		},
-		"MainlineTaskGetsCredentials": {
+		"MainlineTaskGetsTheBaseNamespace": {
 			insertTask: true, owner: "some-org", repo: "some-repo",
 			expectedStatus: http.StatusOK,
+			wantNamespace:  evergreen.SourceCacheBaseNamespace,
+		},
+		"PullRequestTaskGetsThePRNamespace": {
+			insertTask: true, requester: evergreen.GithubPRRequester, owner: "some-org", repo: "some-repo",
+			expectedStatus: http.StatusOK,
+			wantNamespace:  evergreen.SourceCachePRNamespace,
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -109,7 +117,11 @@ func TestSourceCacheCredentialsRun(t *testing.T) {
 			}
 			handler := setupSourceCacheCredentialsHandler(t, settings)
 			if tCase.insertTask {
-				insertSourceCacheTask(t, evergreen.RepotrackerVersionRequester, "v1", tCase.owner, tCase.repo)
+				requester := tCase.requester
+				if requester == "" {
+					requester = evergreen.RepotrackerVersionRequester
+				}
+				insertSourceCacheTask(t, requester, "v1", tCase.owner, tCase.repo)
 			}
 			require.NoError(t, handler.Parse(t.Context(), newSourceCacheCredentialsRequest(t)))
 
@@ -120,12 +132,13 @@ func TestSourceCacheCredentialsRun(t *testing.T) {
 				return
 			}
 
-			creds, ok := resp.Data().(apimodels.AWSCredentials)
+			creds, ok := resp.Data().(apimodels.SourceCacheCredentialsResponse)
 			require.True(t, ok)
 			assert.NotEmpty(t, creds.AccessKeyID)
 			assert.NotEmpty(t, creds.SessionToken)
 			// The prefix is what lets the role's trust policy reject the generic route.
 			assert.Contains(t, creds.ExternalID, evergreen.SourceCacheExternalIDPrefix)
+			assert.Equal(t, []string{tCase.wantNamespace}, creds.Namespaces)
 		})
 	}
 }

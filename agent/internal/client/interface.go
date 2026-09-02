@@ -149,8 +149,9 @@ type SharedCommunicator interface {
 	S3Credentials(ctx context.Context, td TaskData, bucket string) (*apimodels.AWSCredentials, error)
 
 	// SourceCacheCredentials returns source cache credentials, scoped by the app
-	// server to the task's own bucket prefix.
-	SourceCacheCredentials(ctx context.Context, td TaskData) (*apimodels.AWSCredentials, error)
+	// server to the task's own bucket prefix, plus the namespace the credentials
+	// may write under.
+	SourceCacheCredentials(ctx context.Context, td TaskData) (*apimodels.SourceCacheCredentialsResponse, error)
 }
 
 // TaskData contains the taskData.ID and taskData.Secret. It must be set for

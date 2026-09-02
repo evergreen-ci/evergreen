@@ -1051,7 +1051,7 @@ func (c *baseCommunicator) AssumeRole(ctx context.Context, td TaskData, request 
 	return &creds, nil
 }
 
-func (c *baseCommunicator) SourceCacheCredentials(ctx context.Context, td TaskData) (*apimodels.AWSCredentials, error) {
+func (c *baseCommunicator) SourceCacheCredentials(ctx context.Context, td TaskData) (*apimodels.SourceCacheCredentialsResponse, error) {
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &td,
@@ -1065,7 +1065,7 @@ func (c *baseCommunicator) SourceCacheCredentials(ctx context.Context, td TaskDa
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespError(resp, "getting source cache credentials")
 	}
-	var creds apimodels.AWSCredentials
+	var creds apimodels.SourceCacheCredentialsResponse
 	if err := utility.ReadJSON(resp.Body, &creds); err != nil {
 		return nil, errors.Wrap(err, "reading source cache credentials response")
 	}

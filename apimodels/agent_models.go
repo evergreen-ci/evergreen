@@ -243,6 +243,13 @@ type AWSCredentials struct {
 	ExternalID string `json:"external_id"`
 }
 
+// SourceCacheCredentialsResponse contains source cache credentials and the
+// namespaces the app server granted them write access under.
+type SourceCacheCredentialsResponse struct {
+	AWSCredentials
+	Namespaces []string `json:"namespaces"`
+}
+
 // S3CredentialsRequest contains the s3 bucket to access.
 type S3CredentialsRequest struct {
 	// Bucket is the name of the S3 bucket to access.

@@ -107,12 +107,16 @@ func (h *sourceCacheCredentials) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "assuming the source cache role for task '%s'", h.taskID))
 	}
 
-	return gimlet.NewJSONResponse(apimodels.AWSCredentials{
-		AccessKeyID:     creds.AccessKeyID,
-		SecretAccessKey: creds.SecretAccessKey,
-		SessionToken:    creds.SessionToken,
-		Expiration:      creds.Expiration.Format(time.RFC3339),
-		ExternalID:      creds.ExternalID,
+	return gimlet.NewJSONResponse(apimodels.SourceCacheCredentialsResponse{
+		AWSCredentials: apimodels.AWSCredentials{
+			AccessKeyID:     creds.AccessKeyID,
+			SecretAccessKey: creds.SecretAccessKey,
+			SessionToken:    creds.SessionToken,
+			Expiration:      creds.Expiration.Format(time.RFC3339),
+			ExternalID:      creds.ExternalID,
+		},
+		// The namespace the policy scopes writes to, so the agent does not re-derive it.
+		Namespaces: []string{namespace},
 	})
 }
 

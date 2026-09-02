@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
@@ -37,6 +38,20 @@ func sourceCacheTestOpts() cloneOpts {
 	return cloneOpts{owner: "some-org", repo: "some-repo", dir: "src", cloneDepth: 1000}
 }
 
+// sourceCacheTestComm returns a mock communicator whose source cache credentials
+// grant the base namespace, or the namespaces provided.
+func sourceCacheTestComm(namespaces ...string) *client.Mock {
+	if len(namespaces) == 0 {
+		namespaces = []string{evergreen.SourceCacheBaseNamespace}
+	}
+	comm := client.NewMock("http://localhost.com")
+	comm.SourceCacheCredentialsResponse = &apimodels.SourceCacheCredentialsResponse{
+		AWSCredentials: apimodels.AWSCredentials{Expiration: "2030-01-01T00:00:00Z"},
+		Namespaces:     namespaces,
+	}
+	return comm
+}
+
 // entriesWithoutKeys returns the cache entries with their computed keys cleared, so
 // assertions can compare just the revision and namespace.
 func entriesWithoutKeys(t *testing.T, sc *sourceCache) []sourceCacheEntry {
@@ -53,23 +68,30 @@ func TestNewSourceCacheSkipsWhenNotOptedInOrSparse(t *testing.T) {
 	t.Run("NoBucketConfiguredSkips", func(t *testing.T) {
 		conf := sourceCacheTestConfig()
 		conf.SourceCacheBucket = evergreen.BucketConfig{}
-		sc, reason := newSourceCache(conf, &gitFetchProject{Directory: "src"}, sourceCacheTestOpts(), "linux")
+		sc, reason := newSourceCache(t.Context(), sourceCacheTestComm(), conf, &gitFetchProject{Directory: "src"}, sourceCacheTestOpts(), "linux")
 		assert.Nil(t, sc)
 		assert.Contains(t, reason, "no source cache bucket")
 	})
 	t.Run("SparseCheckoutSkips", func(t *testing.T) {
 		c := &gitFetchProject{Directory: "src", Filter: "blob:none", SparseCheckoutPaths: []string{"/etc"}}
-		sc, reason := newSourceCache(sourceCacheTestConfig(), c, sourceCacheTestOpts(), "linux")
+		sc, reason := newSourceCache(t.Context(), sourceCacheTestComm(), sourceCacheTestConfig(), c, sourceCacheTestOpts(), "linux")
 		assert.Nil(t, sc)
 		assert.Contains(t, reason, "sparse")
 	})
 	t.Run("NonLinuxAgentSkips", func(t *testing.T) {
-		sc, reason := newSourceCache(sourceCacheTestConfig(), &gitFetchProject{Directory: "src"}, sourceCacheTestOpts(), "windows")
+		sc, reason := newSourceCache(t.Context(), sourceCacheTestComm(), sourceCacheTestConfig(), &gitFetchProject{Directory: "src"}, sourceCacheTestOpts(), "windows")
 		assert.Nil(t, sc)
 		assert.Contains(t, reason, "Linux")
 	})
+	t.Run("AppServerGrantsNoNamespaceSkips", func(t *testing.T) {
+		comm := client.NewMock("http://localhost.com")
+		comm.SourceCacheCredentialsResponse = &apimodels.SourceCacheCredentialsResponse{}
+		sc, reason := newSourceCache(t.Context(), comm, sourceCacheTestConfig(), &gitFetchProject{Directory: "src"}, sourceCacheTestOpts(), "linux")
+		assert.Nil(t, sc)
+		assert.Contains(t, reason, "no source cache namespaces")
+	})
 	t.Run("OptedInProjectIsNotSkipped", func(t *testing.T) {
-		sc, reason := newSourceCache(sourceCacheTestConfig(), &gitFetchProject{Directory: "src"}, sourceCacheTestOpts(), "linux")
+		sc, reason := newSourceCache(t.Context(), sourceCacheTestComm(), sourceCacheTestConfig(), &gitFetchProject{Directory: "src"}, sourceCacheTestOpts(), "linux")
 		require.NotNil(t, sc)
 		assert.Empty(t, reason)
 	})
@@ -77,41 +99,42 @@ func TestNewSourceCacheSkipsWhenNotOptedInOrSparse(t *testing.T) {
 
 func TestSourceCacheKeyVariesByRevisionAndCloneShape(t *testing.T) {
 	c := &gitFetchProject{Directory: "src"}
+	comm := sourceCacheTestComm()
 
-	base, _ := newSourceCache(sourceCacheTestConfig(), c, sourceCacheTestOpts(), "linux")
+	base, _ := newSourceCache(t.Context(), comm, sourceCacheTestConfig(), c, sourceCacheTestOpts(), "linux")
 	require.NotNil(t, base)
-	same, _ := newSourceCache(sourceCacheTestConfig(), c, sourceCacheTestOpts(), "linux")
+	same, _ := newSourceCache(t.Context(), comm, sourceCacheTestConfig(), c, sourceCacheTestOpts(), "linux")
 	require.NotNil(t, same)
 	assert.Equal(t, base.contentKey(), same.contentKey())
 	assert.Equal(t, "source_cache/v1/some-org/some-repo/base/abc123/"+base.contentKey()+".tgz", base.saveKey())
 
 	otherRevisionConf := sourceCacheTestConfig()
 	otherRevisionConf.Task.Revision = "def456"
-	otherRevision, _ := newSourceCache(otherRevisionConf, c, sourceCacheTestOpts(), "linux")
+	otherRevision, _ := newSourceCache(t.Context(), comm, otherRevisionConf, c, sourceCacheTestOpts(), "linux")
 	require.NotNil(t, otherRevision)
 	assert.NotEqual(t, base.contentKey(), otherRevision.contentKey())
 
 	shallowOpts := sourceCacheTestOpts()
 	shallowOpts.cloneDepth = 1
-	shallow, _ := newSourceCache(sourceCacheTestConfig(), c, shallowOpts, "linux")
+	shallow, _ := newSourceCache(t.Context(), comm, sourceCacheTestConfig(), c, shallowOpts, "linux")
 	require.NotNil(t, shallow)
 	assert.NotEqual(t, base.contentKey(), shallow.contentKey())
 
 	// Two project refs on one repo at the same commit must not share an artifact.
 	branchOpts := sourceCacheTestOpts()
 	branchOpts.branch = "release-v1"
-	branch, _ := newSourceCache(sourceCacheTestConfig(), c, branchOpts, "linux")
+	branch, _ := newSourceCache(t.Context(), comm, sourceCacheTestConfig(), c, branchOpts, "linux")
 	require.NotNil(t, branch)
 	assert.NotEqual(t, base.contentKey(), branch.contentKey())
 
 	otherBranchOpts := sourceCacheTestOpts()
 	otherBranchOpts.branch = "release-v2"
-	otherBranch, _ := newSourceCache(sourceCacheTestConfig(), c, otherBranchOpts, "linux")
+	otherBranch, _ := newSourceCache(t.Context(), comm, sourceCacheTestConfig(), c, otherBranchOpts, "linux")
 	require.NotNil(t, otherBranch)
 	assert.NotEqual(t, branch.contentKey(), otherBranch.contentKey())
 
 	// The directory is deliberately not in the key; TestSourceCacheArchiveRestoresIntoADifferentDirectory covers the layout half.
-	otherDir, _ := newSourceCache(sourceCacheTestConfig(), &gitFetchProject{Directory: "other"}, sourceCacheTestOpts(), "linux")
+	otherDir, _ := newSourceCache(t.Context(), comm, sourceCacheTestConfig(), &gitFetchProject{Directory: "other"}, sourceCacheTestOpts(), "linux")
 	require.NotNil(t, otherDir)
 	assert.Equal(t, base.saveKey(), otherDir.saveKey())
 	assert.Equal(t, filepath.Join("/data/mci", "other"), otherDir.projectDir())
@@ -120,6 +143,7 @@ func TestSourceCacheKeyVariesByRevisionAndCloneShape(t *testing.T) {
 // A PR artifact is pinned to the PR head, so the branch would fragment it for no gain.
 func TestSourceCachePRKeysIgnoreTheBranch(t *testing.T) {
 	c := &gitFetchProject{Directory: "src"}
+	comm := sourceCacheTestComm(evergreen.SourceCachePRNamespace)
 	const prHead = "55ca6286e3e4f4fba5d0448333fa99fc5a404a73"
 
 	prConf := func() *internal.TaskConfig {
@@ -132,9 +156,9 @@ func TestSourceCachePRKeysIgnoreTheBranch(t *testing.T) {
 
 	branchOpts := sourceCacheTestOpts()
 	branchOpts.branch = "release-v1"
-	withBranch, _ := newSourceCache(prConf(), c, branchOpts, "linux")
+	withBranch, _ := newSourceCache(t.Context(), comm, prConf(), c, branchOpts, "linux")
 	require.NotNil(t, withBranch)
-	withoutBranch, _ := newSourceCache(prConf(), c, sourceCacheTestOpts(), "linux")
+	withoutBranch, _ := newSourceCache(t.Context(), comm, prConf(), c, sourceCacheTestOpts(), "linux")
 	require.NotNil(t, withoutBranch)
 	assert.Equal(t, withoutBranch.saveKey(), withBranch.saveKey())
 
@@ -151,14 +175,16 @@ func TestSourceCacheKeysPRCheckoutsInTheirOwnNamespace(t *testing.T) {
 	const prHead = "55ca6286e3e4f4fba5d0448333fa99fc5a404a73"
 
 	for _, tc := range []struct {
-		name    string
-		mutate  func(*internal.TaskConfig)
-		wantRev string
+		name      string
+		mutate    func(*internal.TaskConfig)
+		wantRev   string
+		namespace string
 	}{
 		{
-			name:    "MainlineTaskKeysOnItsOwnRevision",
-			mutate:  func(*internal.TaskConfig) {},
-			wantRev: "abc123",
+			name:      "MainlineTaskKeysOnItsOwnRevision",
+			mutate:    func(*internal.TaskConfig) {},
+			wantRev:   "abc123",
+			namespace: evergreen.SourceCacheBaseNamespace,
 		},
 		{
 			name: "PullRequestKeysOnThePRHead",
@@ -167,7 +193,8 @@ func TestSourceCacheKeysPRCheckoutsInTheirOwnNamespace(t *testing.T) {
 				conf.GithubPatchData.PRNumber = 9001
 				conf.GithubPatchData.HeadHash = prHead
 			},
-			wantRev: prHead,
+			wantRev:   prHead,
+			namespace: evergreen.SourceCachePRNamespace,
 		},
 		{
 			name: "MergeQueueKeysOnTheQueueHead",
@@ -176,20 +203,22 @@ func TestSourceCacheKeysPRCheckoutsInTheirOwnNamespace(t *testing.T) {
 				conf.GithubMergeData.HeadSHA = prHead
 				conf.GithubMergeData.HeadBranch = "gh-readonly-queue/main/pr-9001"
 			},
-			wantRev: prHead,
+			wantRev:   prHead,
+			namespace: evergreen.SourceCachePRNamespace,
 		},
 		{
 			name: "ParentPRCheckoutKeysOnTheParentPRHead",
 			mutate: func(conf *internal.TaskConfig) {
 				conf.GitHubParentPRCheckout = &patch.GitHubParentPRCheckout{ForSource: true, PRNumber: 9001, HeadHash: prHead}
 			},
-			wantRev: prHead,
+			wantRev:   prHead,
+			namespace: evergreen.SourceCachePRNamespace,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			conf := sourceCacheTestConfig()
 			tc.mutate(conf)
-			sc, reason := newSourceCache(conf, c, sourceCacheTestOpts(), "linux")
+			sc, reason := newSourceCache(t.Context(), sourceCacheTestComm(tc.namespace), conf, c, sourceCacheTestOpts(), "linux")
 			require.NotNil(t, sc, reason)
 
 			assert.Equal(t, tc.wantRev, sc.revision, "a task must save under whatever its own clone leaves HEAD at")
@@ -207,7 +236,7 @@ func TestSourceCacheKeysPRCheckoutsInTheirOwnNamespace(t *testing.T) {
 			}
 
 			// The namespace is the security boundary, so a PR task's base revision key must match a mainline task's exactly.
-			mainline, _ := newSourceCache(sourceCacheTestConfig(), c, sourceCacheTestOpts(), "linux")
+			mainline, _ := newSourceCache(t.Context(), sourceCacheTestComm(), sourceCacheTestConfig(), c, sourceCacheTestOpts(), "linux")
 			require.NotNil(t, mainline)
 			_, baseKey, err := sc.cacheKeysForRevision("abc123", evergreen.SourceCacheBaseNamespace)
 			require.NoError(t, err)
@@ -219,23 +248,23 @@ func TestSourceCacheKeysPRCheckoutsInTheirOwnNamespace(t *testing.T) {
 	}
 }
 
-func TestSourceCacheNamespaceFollowsTheRequesterWithoutAPRHead(t *testing.T) {
+func TestSourceCacheWriteNamespaceComesFromTheServer(t *testing.T) {
 	c := &gitFetchProject{Directory: "src"}
 	conf := sourceCacheTestConfig()
 	conf.Task.Requester = evergreen.GithubMergeRequester
 
-	sc, reason := newSourceCache(conf, c, sourceCacheTestOpts(), "linux")
+	// The server grants a merge queue task the PR namespace even when it checks
+	// out no PR head, so the agent saves only where that grant allows.
+	sc, reason := newSourceCache(t.Context(), sourceCacheTestComm(evergreen.SourceCachePRNamespace), conf, c, sourceCacheTestOpts(), "linux")
 	require.NotNil(t, sc, reason)
 
-	// The app server grants a merge queue task the PR namespace regardless of
-	// what it checks out, so saving anywhere else is denied.
 	assert.Equal(t, "source_cache/v1/some-org/some-repo/pr/abc123/"+sc.contentKey()+".tgz", sc.saveKey())
 	assert.Equal(t, []sourceCacheEntry{
 		{revision: "abc123", namespace: evergreen.SourceCachePRNamespace},
 		{revision: "abc123", namespace: evergreen.SourceCacheBaseNamespace},
 	}, entriesWithoutKeys(t, sc))
 
-	mainline, _ := newSourceCache(sourceCacheTestConfig(), c, sourceCacheTestOpts(), "linux")
+	mainline, _ := newSourceCache(t.Context(), sourceCacheTestComm(), sourceCacheTestConfig(), c, sourceCacheTestOpts(), "linux")
 	require.NotNil(t, mainline)
 	require.Len(t, sc.entries, 2)
 	assert.Equal(t, mainline.saveKey(), sc.entries[1].remoteKey)
@@ -608,7 +637,7 @@ func TestFetchOrRestoreSourceFailsFastWhenTheMergeQueueRefIsDeleted(t *testing.T
 	opts.token = "a-token"
 
 	calls := stubMergeQueueRefExists(t, false, nil)
-	comm := client.NewMock("http://localhost.com")
+	comm := sourceCacheTestComm(evergreen.SourceCachePRNamespace)
 	conf := mergeQueueTestConfig()
 	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 	require.NoError(t, err)

@@ -70,9 +70,8 @@ type sourceCache struct {
 	baseRevision string
 	prRevision   string
 	revision     string
-	// prNamespace is whether the app server grants this task write access to the PR
-	// namespace rather than the base namespace.
-	prNamespace       bool
+	// writeNamespace is the namespace the app server grants this task write access to.
+	writeNamespace    string
 	cloneDepth        int
 	recurseSubmodules bool
 
@@ -107,7 +106,7 @@ func (sc *sourceCache) contentKey() string {
 // newSourceCache returns the source cache for this run, or a nil cache and the
 // reason it is off, given the agent's GOOS. It never returns an error the
 // command should fail on.
-func newSourceCache(conf *internal.TaskConfig, c *gitFetchProject, opts cloneOpts, goos string) (*sourceCache, string) {
+func newSourceCache(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, c *gitFetchProject, opts cloneOpts, goos string) (*sourceCache, string) {
 	if goos != "linux" {
 		// Producers and consumers must share a platform because the key holds
 		// no platform component and working-tree materialization differs.
@@ -138,11 +137,17 @@ func newSourceCache(conf *internal.TaskConfig, c *gitFetchProject, opts cloneOpt
 		recurseSubmodules: opts.recurseSubmodules,
 	}
 	sc.prRevision = prCheckoutCommit(conf)
-	// This must match sourceCacheNamespaceForTask, which grants write access by
-	// requester and parent PR checkout rather than by what HEAD ends up at.
-	sc.prNamespace = conf.Task.Requester == evergreen.GithubPRRequester ||
-		conf.Task.Requester == evergreen.GithubMergeRequester ||
-		(conf.GitHubParentPRCheckout != nil && conf.GitHubParentPRCheckout.ForSource)
+
+	// The app server alone decides the write namespace from the requester and
+	// parent PR checkout, so a drift here cannot happen.
+	creds, err := comm.SourceCacheCredentials(ctx, conf.TaskData())
+	if err != nil {
+		return nil, fmt.Sprintf("getting source cache credentials: %s", err)
+	}
+	if creds == nil || len(creds.Namespaces) == 0 {
+		return nil, "the app server granted no source cache namespaces"
+	}
+	sc.writeNamespace = creds.Namespaces[0]
 
 	entries, err := sc.restoreEntries()
 	if err != nil {
@@ -155,10 +160,7 @@ func newSourceCache(conf *internal.TaskConfig, c *gitFetchProject, opts cloneOpt
 
 // restoreEntries returns the cache entries to try, most specific first.
 func (sc *sourceCache) restoreEntries() ([]sourceCacheEntry, error) {
-	writeNamespace := evergreen.SourceCacheBaseNamespace
-	if sc.prNamespace {
-		writeNamespace = evergreen.SourceCachePRNamespace
-	}
+	writeNamespace := sc.writeNamespace
 
 	entries := []sourceCacheEntry{{revision: sc.baseRevision, namespace: writeNamespace}}
 	if sc.prRevision != "" && sc.prRevision != sc.baseRevision {

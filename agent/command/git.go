@@ -468,7 +468,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 // failure falls back to the clone, so the cache can only save time, never change
 // what is tested.
 func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, opts cloneOpts) error {
-	sc, skipReason := newSourceCache(conf, c, opts, runtime.GOOS)
+	sc, skipReason := newSourceCache(ctx, comm, conf, c, opts, runtime.GOOS)
 	if sc == nil {
 		logger.Task().Infof(ctx, "Not using the source cache: %s.", skipReason)
 		setSourceCacheSpanSkipped(ctx, skipReason)
