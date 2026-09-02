@@ -7,10 +7,8 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -18,17 +16,6 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 )
-
-// Cost returns the patch's cost with values rounded for display.
-func (r *patchResolver) Cost(ctx context.Context, obj *restModel.APIPatch) (*cost.Cost, error) {
-	if obj.Cost == nil {
-		return nil, nil
-	}
-	rounded := obj.Cost.RoundedBase()
-	rounded.ChildPatchesTotalCost = cost.RoundCost(obj.Cost.ChildPatchesTotalCost)
-	rounded.Total = cost.RoundCost(obj.Cost.AdjustedTotal() + obj.Cost.ChildPatchesTotalCost)
-	return &rounded, nil
-}
 
 // GeneratedTaskCounts is the resolver for the generatedTaskCounts field.
 func (r *patchResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.APIPatch) ([]*GeneratedTaskCountResults, error) {
@@ -184,17 +171,6 @@ func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.
 	return aliases, nil
 }
 
-// PredictedCost returns the patch's predicted cost with values rounded for display.
-func (r *patchResolver) PredictedCost(ctx context.Context, obj *restModel.APIPatch) (*cost.Cost, error) {
-	if obj.PredictedCost == nil {
-		return nil, nil
-	}
-	rounded := obj.PredictedCost.RoundedBase()
-	rounded.ChildPatchesTotalCost = cost.RoundCost(obj.PredictedCost.ChildPatchesTotalCost)
-	rounded.Total = cost.RoundCost(obj.PredictedCost.AdjustedTotal() + obj.PredictedCost.ChildPatchesTotalCost)
-	return &rounded, nil
-}
-
 // Project is the resolver for the project field.
 func (r *patchResolver) Project(ctx context.Context, obj *restModel.APIPatch) (*PatchProject, error) {
 	patchProject, err := getPatchProjectVariantsAndTasksForUI(ctx, obj)
@@ -208,40 +184,6 @@ func (r *patchResolver) Project(ctx context.Context, obj *restModel.APIPatch) (*
 func (r *patchResolver) ProjectMetadata(ctx context.Context, obj *restModel.APIPatch) (*restModel.APIProjectRef, error) {
 	apiProjectRef, err := getAPIProjectRef(ctx, obj.ProjectId)
 	return apiProjectRef, err
-}
-
-// TaskCount is the resolver for the taskCount field.
-func (r *patchResolver) TaskCount(ctx context.Context, obj *restModel.APIPatch) (*int, error) {
-	patchID := utility.FromStringPtr(obj.Id)
-	taskCount, err := task.Count(ctx, db.Query(task.DisplayTasksByVersion(patchID, false)))
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task count for patch '%s': %s", patchID, err.Error()))
-	}
-	return &taskCount, nil
-}
-
-// Time is the resolver for the time field.
-func (r *patchResolver) Time(ctx context.Context, obj *restModel.APIPatch) (*PatchTime, error) {
-	usr := mustHaveUser(ctx)
-
-	started, err := getFormattedDate(obj.StartTime, usr.Settings.Timezone)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
-	}
-	finished, err := getFormattedDate(obj.FinishTime, usr.Settings.Timezone)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
-	}
-	submittedAt, err := getFormattedDate(obj.CreateTime, usr.Settings.Timezone)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
-	}
-
-	return &PatchTime{
-		Started:     started,
-		Finished:    finished,
-		SubmittedAt: *submittedAt,
-	}, nil
 }
 
 // User is the resolver for the user field.

@@ -1,12 +1,12 @@
 {
   "tests": [
     {
-      "query_file": "child_patches_null.graphql",
+      "query_file": "child_patches_empty.graphql",
       "result": {
         "data": {
           "patch": {
             "id": "5d7288d91f8c8a403bc34a7d",
-            "childPatches": null
+            "childPatches": []
           }
         }
       }
