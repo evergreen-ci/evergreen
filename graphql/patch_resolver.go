@@ -3,6 +3,7 @@ package graphql
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/99designs/gqlgen/graphql"
@@ -25,7 +26,7 @@ func (r *patchResolver) ID(ctx context.Context, obj *patch.Patch) (string, error
 // ChildPatchAliases is the resolver for the childPatchAliases field.
 func (r *patchResolver) ChildPatchAliases(ctx context.Context, obj *patch.Patch) ([]*restModel.APIChildPatchAlias, error) {
 	if len(obj.Triggers.ChildPatches) == 0 || len(obj.Triggers.Aliases) == 0 {
-		return nil, nil
+		return []*restModel.APIChildPatchAlias{}, nil
 	}
 	result := make([]*restModel.APIChildPatchAlias, 0, len(obj.Triggers.ChildPatches))
 	for i, childPatchID := range obj.Triggers.ChildPatches {
@@ -42,15 +43,20 @@ func (r *patchResolver) ChildPatchAliases(ctx context.Context, obj *patch.Patch)
 // ChildPatches is the resolver for the childPatches field.
 func (r *patchResolver) ChildPatches(ctx context.Context, obj *patch.Patch) ([]*patch.Patch, error) {
 	if len(obj.Triggers.ChildPatches) == 0 {
-		return nil, nil
+		return []*patch.Patch{}, nil
 	}
-	childPatches, err := patch.Find(ctx, patch.ByStringIds(ctx, obj.Triggers.ChildPatches))
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting child patches for patch '%s': %s", obj.Id.Hex(), err.Error()), err)
-	}
-	result := make([]*patch.Patch, len(childPatches))
-	for i := range childPatches {
-		result[i] = &childPatches[i]
+	loaders.PreloadPatches(ctx, obj.Triggers.ChildPatches)
+
+	result := make([]*patch.Patch, len(obj.Triggers.ChildPatches))
+	for _, pId := range obj.Triggers.ChildPatches {
+		p, err := loaders.GetPatch(ctx, pId)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting child patch '%s': %s", pId, err.Error()), err)
+		}
+		if p == nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("child patch '%s' not found", pId))
+		}
+		result = append(result, p)
 	}
 	return result, nil
 }
@@ -240,11 +246,47 @@ func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *patch.Patc
 
 // Project is the resolver for the project field.
 func (r *patchResolver) Project(ctx context.Context, obj *patch.Patch) (*PatchProject, error) {
-	patchProject, err := getPatchProjectVariantsAndTasksForUI(ctx, obj)
+	patchProjectVariantsAndTasks, err := model.GetVariantsAndTasksFromPatchProject(ctx, evergreen.GetEnvironment().Settings(), obj)
 	if err != nil {
-		return nil, err
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project variants and tasks for patch '%s': %s", obj.Id, err.Error()))
 	}
-	return patchProject, nil
+
+	// convert variants to UI data structure
+	variants := []*ProjectBuildVariant{}
+	for _, buildVariant := range patchProjectVariantsAndTasks.Variants {
+		projBuildVariant := ProjectBuildVariant{
+			Name:        buildVariant.Name,
+			DisplayName: buildVariant.DisplayName,
+		}
+		projTasks := []string{}
+		executionTasks := map[string]bool{}
+		for _, displayTask := range buildVariant.DisplayTasks {
+			projTasks = append(projTasks, displayTask.Name)
+			for _, execTask := range displayTask.ExecTasks {
+				executionTasks[execTask] = true
+			}
+		}
+		for _, taskUnit := range buildVariant.Tasks {
+			// Only add task if it is not an execution task.
+			if !executionTasks[taskUnit.Name] {
+				projTasks = append(projTasks, taskUnit.Name)
+			}
+		}
+		// Sort tasks alphanumerically by display name.
+		sort.SliceStable(projTasks, func(i, j int) bool {
+			return projTasks[i] < projTasks[j]
+		})
+		projBuildVariant.Tasks = projTasks
+		variants = append(variants, &projBuildVariant)
+	}
+	sort.SliceStable(variants, func(i, j int) bool {
+		return variants[i].DisplayName < variants[j].DisplayName
+	})
+
+	patchProject := PatchProject{
+		Variants: variants,
+	}
+	return &patchProject, nil
 }
 
 // ProjectMetadata is the resolver for the projectMetadata field.
@@ -296,7 +338,7 @@ func (r *patchResolver) Version(ctx context.Context, obj *patch.Patch) (*model.V
 	if versionID == "" {
 		return nil, nil
 	}
-	v, err := model.VersionFindOneId(ctx, versionID)
+	v, err := loaders.GetVersion(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}
