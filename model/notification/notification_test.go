@@ -77,42 +77,6 @@ func (s *notificationSuite) TestMarkSent() {
 	s.NotZero(n.SentAt)
 }
 
-func (s *notificationSuite) TestMarkRetryPreservesNotificationUntilNextAttempt() {
-	s.n.ID = "1"
-	s.NoError(InsertMany(s.T().Context(), s.n))
-
-	delay := time.Hour
-	s.NoError(s.n.MarkRetry(s.T().Context(), errors.New("transient failure"), delay))
-	s.Equal("transient failure", s.n.Error)
-	s.Equal(1, s.n.SendAttempts)
-	s.NotZero(s.n.FirstAttemptAt)
-	s.Equal(s.n.FirstAttemptAt, s.n.LastAttemptAt)
-	s.Equal(s.n.LastAttemptAt.Add(delay), s.n.NextAttemptAt)
-	s.Zero(s.n.SentAt)
-
-	n, err := Find(s.T().Context(), s.n.ID)
-	s.NoError(err)
-	s.Require().NotNil(n)
-	s.Equal(s.n.Error, n.Error)
-	s.Equal(s.n.SendAttempts, n.SendAttempts)
-	s.Equal(s.n.FirstAttemptAt, n.FirstAttemptAt)
-	s.Equal(s.n.LastAttemptAt, n.LastAttemptAt)
-	s.Equal(s.n.NextAttemptAt, n.NextAttemptAt)
-	s.Zero(n.SentAt)
-
-	s.NoError(n.MarkSent(s.T().Context()))
-	s.Empty(n.Error)
-	s.Zero(n.NextAttemptAt)
-	s.NotZero(n.SentAt)
-
-	n, err = Find(s.T().Context(), s.n.ID)
-	s.NoError(err)
-	s.Require().NotNil(n)
-	s.Empty(n.Error)
-	s.Zero(n.NextAttemptAt)
-	s.NotZero(n.SentAt)
-}
-
 func (s *notificationSuite) TestMarkError() {
 	// MarkError, uninserted notification
 	s.EqualError(s.n.MarkError(s.T().Context(), errors.New("")), "notification has no ID")
@@ -506,20 +470,12 @@ func (s *notificationSuite) TestCollectUnsentNotificationStats() {
 func (s *notificationSuite) TestFindUnprocessed() {
 	s.n.ID = "unsent"
 	s.NoError(db.Insert(s.T().Context(), Collection, s.n))
-	s.n.ID = "retry-ready"
-	s.n.NextAttemptAt = time.Now().Add(-time.Minute)
-	s.NoError(db.Insert(s.T().Context(), Collection, s.n))
-	s.n.ID = "retry-waiting"
-	s.n.NextAttemptAt = time.Now().Add(time.Minute)
-	s.NoError(db.Insert(s.T().Context(), Collection, s.n))
 	s.n.ID = "sent"
-	s.n.NextAttemptAt = time.Time{}
 	s.n.SentAt = time.Now()
 	s.NoError(db.Insert(s.T().Context(), Collection, s.n))
 
 	unprocessedNotifications, err := FindUnprocessed(s.T().Context())
 	s.NoError(err)
-	s.Len(unprocessedNotifications, 2)
-	ids := []string{unprocessedNotifications[0].ID, unprocessedNotifications[1].ID}
-	s.ElementsMatch([]string{"unsent", "retry-ready"}, ids)
+	s.Len(unprocessedNotifications, 1)
+	s.Equal("unsent", unprocessedNotifications[0].ID)
 }

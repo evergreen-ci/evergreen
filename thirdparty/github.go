@@ -27,7 +27,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/send"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -776,9 +775,7 @@ func SendPendingStatusToGithub(ctx context.Context, input SendGithubStatusInput,
 		return errors.Wrap(err, "setting priority")
 	}
 
-	if err = send.SendWithError(ctx, sender, c); err != nil {
-		return errors.Wrap(err, "sending pending GitHub status")
-	}
+	sender.Send(ctx, c)
 	grip.Info(ctx, message.Fields{
 		"ticket":  GithubInvestigation,
 		"message": "called github status send",

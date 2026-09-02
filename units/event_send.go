@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -24,16 +23,6 @@ import (
 const (
 	eventSendJobName = "event-send"
 )
-
-// The delays are cumulative so that a terminal status is retried for about
-// 30 minutes without keeping a worker occupied.
-var githubNotificationRetryDelays = []time.Duration{
-	time.Minute,
-	2 * time.Minute,
-	4 * time.Minute,
-	8 * time.Minute,
-	15 * time.Minute,
-}
 
 func init() {
 	registry.AddJobType(eventSendJobName, func() amboy.Job { return makeEventSendJob() })
@@ -120,11 +109,10 @@ func (j *eventSendJob) Run(ctx context.Context) {
 	}
 
 	logFields := message.Fields{
-		"job_id":               j.ID(),
-		"notification_id":      n.ID,
-		"notification_type":    n.Subscriber.Type,
-		"message":              "send failed",
-		"notification_attempt": n.SendAttempts + 1,
+		"job_id":            j.ID(),
+		"notification_id":   n.ID,
+		"notification_type": n.Subscriber.Type,
+		"message":           "send failed",
 	}
 	var githubErr *send.GitHubSendError
 	if errors.As(err, &githubErr) {
@@ -134,20 +122,6 @@ func (j *eventSendJob) Run(ctx context.Context) {
 		if status != nil {
 			logFields["context"] = status.Context
 			logFields["sha"] = status.Ref
-		}
-		// Retrying an old pending status after a terminal status is sent can
-		// make GitHub consider the check pending again.
-		canRetry := githubErr.Retryable &&
-			status != nil &&
-			status.State != message.GithubStatePending &&
-			n.SendAttempts < len(githubNotificationRetryDelays)
-		if canRetry {
-			delay := githubNotificationRetryDelays[n.SendAttempts]
-			logFields["retry_delay_secs"] = delay.Seconds()
-			grip.Error(ctx, message.WrapError(err, logFields))
-			j.AddError(err)
-			j.AddError(errors.Wrapf(n.MarkRetry(ctx, err, delay), "preserving notification '%s' for retry", n.ID))
-			return
 		}
 	}
 
