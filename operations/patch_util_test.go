@@ -667,6 +667,7 @@ include:
 		require.Len(t, includes, 1)
 		assert.Equal(t, "override", string(includes[0].FileContent))
 	})
+
 }
 
 func TestParseModuleOverrides(t *testing.T) {

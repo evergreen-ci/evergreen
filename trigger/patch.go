@@ -126,7 +126,7 @@ func (t *patchTriggers) patchOutcome(ctx context.Context, sub *event.Subscriptio
 			if suppressable {
 				return nil, nil
 			}
-			err = finalizeChildPatch(ctx, sub)
+			err = finalizeChildPatch(ctx, sub, t.patch.Id.Hex())
 
 			if err != nil {
 				return nil, errors.Wrap(err, "finalizing child patch")
@@ -167,7 +167,9 @@ func (t *patchTriggers) patchFailure(ctx context.Context, sub *event.Subscriptio
 	return t.generate(ctx, sub)
 }
 
-func finalizeChildPatch(ctx context.Context, sub *event.Subscription) error {
+// finalizeChildPatch finalizes the subscription's target patch. parentPatchID is the patch
+// that the event fired for; only a child of that patch may be finalized here.
+func finalizeChildPatch(ctx context.Context, sub *event.Subscription, parentPatchID string) error {
 	target, ok := sub.Subscriber.Target.(*event.ChildPatchSubscriber)
 	if !ok {
 		return errors.Errorf("target '%s' had unexpected type %T", sub.Subscriber.Target, sub.Subscriber.Target)
@@ -178,6 +180,9 @@ func finalizeChildPatch(ctx context.Context, sub *event.Subscription) error {
 	}
 	if childPatch == nil {
 		return errors.Errorf("child patch '%s' not found", target.ChildPatchId)
+	}
+	if !childPatch.IsChild() || childPatch.Triggers.ParentPatch != parentPatchID {
+		return errors.Errorf("patch '%s' is not a child of patch '%s'", childPatch.Id.Hex(), parentPatchID)
 	}
 	// Return if patch is already finalized
 	if childPatch.Version != "" {

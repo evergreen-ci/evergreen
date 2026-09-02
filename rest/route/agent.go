@@ -2162,10 +2162,11 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	// tasks could be using.
 	token, permissions, err := githubAppAuth.CreateInstallationToken(ctx, h.owner, h.repo, &github.InstallationTokenOptions{
 		Permissions: permissions,
-	})
+	}, true)
 	if err != nil {
 		// This intentionally returns a 4xx error to prevent the agent from
-		// retrying because CreateInstallationToken already retries internally.
+		// retrying because CreateInstallationToken already retries internally,
+		// including (potentially) transient "Bad Request" responses from GitHub.
 		// It's assumed that if the token can't be created after retries, it's
 		// not a transient issue.
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "creating installation token for '%s/%s'", h.owner, h.repo))

@@ -14,35 +14,34 @@ import (
 
 func Evaluate() cli.Command {
 	const (
-		taskFlagName        = "tasks"
-		variantsFlagName    = "variants"
-		diffableFlagName    = "diffable"
-		yamlAnchorsFlagName = "yaml-anchors"
+		taskFlagName     = "tasks"
+		variantsFlagName = "variants"
+		diffableFlagName = "diffable"
 	)
 
 	return cli.Command{
 		Name:  "evaluate",
 		Usage: "prints the given project configuration with tags and included files expanded (excluding files included from a separate module)",
-		Flags: addPathFlag(
-			cli.BoolFlag{
-				Name:  taskFlagName,
-				Usage: "only show task and function definitions",
-			},
-			cli.BoolFlag{
-				Name:  variantsFlagName,
-				Usage: "only show variant definitions",
-			},
-			cli.BoolFlag{
-				Name:  diffableFlagName,
-				Usage: "show the project configuration in an ordered, diff-friendly format",
-			},
-			cli.StringSliceFlag{
-				Name:  joinFlagNames(localModulesFlagName, "lm"),
-				Usage: "specify local modules for included files as MODULE_NAME=PATH pairs",
-			},
-			cli.BoolFlag{
-				Name:  yamlAnchorsFlagName,
-				Usage: "(BETA) enable cross-file YAML anchors in included files",
+		Flags: mergeFlagSlices(
+			addPathFlag(),
+			addCrossFileAnchorsFlag(),
+			[]cli.Flag{
+				cli.BoolFlag{
+					Name:  taskFlagName,
+					Usage: "only show task and function definitions",
+				},
+				cli.BoolFlag{
+					Name:  variantsFlagName,
+					Usage: "only show variant definitions",
+				},
+				cli.BoolFlag{
+					Name:  diffableFlagName,
+					Usage: "show the project configuration in an ordered, diff-friendly format",
+				},
+				cli.StringSliceFlag{
+					Name:  joinFlagNames(localModulesFlagName, "lm"),
+					Usage: "specify local modules for included files as MODULE_NAME=PATH pairs",
+				},
 			},
 		),
 		Before: mergeBeforeFuncs(requirePathFlag),
@@ -69,11 +68,21 @@ func Evaluate() cli.Command {
 
 			p := &model.Project{}
 			ctx := context.Background()
+			cliAnchors := c.Bool(crossFileAnchorsFlagName)
+			anchorsEnabled := cliAnchors
+			if !cliAnchors {
+				// Best-effort: fetch the admin service flag. Avoid logging on failure
+				// to prevent polluting YAML output to stdout.
+				confPath := c.Parent().String(ConfFlagName)
+				if conf, err := NewClientSettings(confPath); err == nil {
+					anchorsEnabled, _ = getCrossFileYAMLAnchorsEnabled(conf)
+				}
+			}
 			opts := &model.GetProjectOpts{
-				LocalModules:      localModuleMap,
-				ReadFileFrom:      model.ReadFromLocal,
-				LocalIncludeDir:   cwd,
-				EnableYAMLAnchors: c.Bool(yamlAnchorsFlagName),
+				LocalModules:                localModuleMap,
+				ReadFileFrom:                model.ReadFromLocal,
+				LocalIncludeDir:             cwd,
+				CrossFileYAMLAnchorsEnabled: anchorsEnabled,
 			}
 			_, err = model.LoadProjectInto(ctx, configBytes, opts, "", p)
 			if err != nil {

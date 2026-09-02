@@ -7,7 +7,9 @@
       "githash": "123",
       "branch": "spruce",
       "author": "admin_user",
-      "status": "failed"
+      "status": "failed",
+      "build_variants": ["ubuntu1604"],
+      "tasks": ["test-graphql"]
     },
     {
       "_id": {

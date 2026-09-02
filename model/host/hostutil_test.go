@@ -1047,6 +1047,26 @@ func TestSpawnHostConfig(t *testing.T) {
 	assert.Equal(t, serviceUser.APIKey, config.APIKey)
 }
 
+func TestSpawnHostSetupConfigDirCommands(t *testing.T) {
+	h := &Host{
+		Distro: distro.Distro{
+			Arch: evergreen.ArchLinuxAmd64,
+			User: "user",
+		},
+	}
+	cmd := h.spawnHostSetupConfigDirCommands([]byte("config_content"))
+
+	t.Run("CopiesBothBinariesIntoConfigDir", func(t *testing.T) {
+		assert.Contains(t, cmd, "cp /home/user/evergreen_agent_monitor /home/user/cli_bin")
+		assert.Contains(t, cmd, "(cp /home/user/evergreen /home/user/cli_bin || true)")
+	})
+
+	t.Run("AddsConfigDirToPath", func(t *testing.T) {
+		assert.Contains(t, cmd, "export PATH")
+		assert.Contains(t, cmd, "/home/user/cli_bin")
+	})
+}
+
 func TestAddPublicKeyScript(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T, h *Host){
 		"CreatesExpectedScript": func(t *testing.T, h *Host) {
