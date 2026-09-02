@@ -571,12 +571,25 @@ variants ending with `-required`:
 evergreen last-revision -p mongodb-mongo-master --rv '.*-required$' --min-finished 0.15
 ```
 
+##### Failed Tasks Threshold
+
+`--min-failed` is an option to specify a threshold proportion of tasks (between 0 and 1) that must have failed in _any_ of
+the matching build variant(s). This means that unlike the other thresholds, `--min-failed` only has to be met by _at
+least one_ matching build variant rather than all of them.
+
+For example, to find a commit in the `mongodb-mongo-master` project where at least 15% of tasks have failed in some
+build variant ending with `-required`:
+
+```sh
+evergreen last-revision -p mongodb-mongo-master --rv '.*-required$' --min-failed 0.15
+```
+
 ##### Mixing Multiple Criteria
 
 Multiple criteria can be combined together. The last-revision command will search for a commit that satisfies _all_ the
-criteria.
+criteria for all build variants, except for `--min-failed`, which only needs to be met by one matching build variant.
 
-For example, to find a commit in the `mongodb-mongo-master` project where 95% of tasks have finished and the
+For example, to find a commit in the `mongodb-mongo-master` project where 95% of tasks have finished _and_ the
 `noPassthrough` task has succeeded in all build variants that end with `-required`:
 
 ```sh
