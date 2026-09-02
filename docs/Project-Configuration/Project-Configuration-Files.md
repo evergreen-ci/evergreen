@@ -2133,36 +2133,44 @@ some of our project code. For a quick example, see:
 
 ### Command Failure Colors
 
-Evergreen tasks can fail with different colors. By default failing tasks
-turn red, but there are 3 different modes.
+Each command has a failure type that classifies the task if the command causes
+the task to fail. The type affects the task's color and display status, as well
+as behavior such as automatic retries, stepback, statistics, notifications, and
+administrative restart filtering. There are three failure types:
 
-- `test`: red
-- `system`: purple
-- `setup`: lavender
+| Type | Color | Display status | Intended use |
+| ---- | ----- | -------------- | ------------ |
+| `test` | Red | `failed` (or a timeout status) | A test or other expected task operation failed. This is the default. |
+| `system` | Purple | `system-failed`, `system-timed-out`, or `system-unresponsive` | The host or Evergreen infrastructure failed rather than the task's work. Evergreen automatically retries the first execution of a system-failed task once, unless this behavior is disabled by an Evergreen administrator. |
+| `setup` | Lavender | `setup-failed` | Test setup or an external service required by the task failed. |
 
-In general you should use purple to indicate that something has gone
-wrong with the host running the task, since Evergreen will also use this
-color. You can use lavender to indicate something has gone wrong with
-test setup, or with some external service that the task depends on.
+Only `test` failures can start [stepback](Stepback-Bisection). Setup and system
+failures do not indicate that a source-code commit caused the failure, so they
+do not start stepback. All three types can be selected independently when
+filtering failure notifications or when administrators restart failed tasks.
 
-You can set the default at the top of the config file.
+You can set the project default at the top of the config file.
 
 ```yaml
 command_type: system
 ```
 
-You can set the failure mode of individual commands.
+You can override the failure type for an individual command.
 
 ```yaml
 - command: shell.exec
-     type: test
+  type: test
 ```
 
-Note that although you cannot conditionally make a command fail
-different colors, you can hack this by having a command write to a file
-based on its exit status, and then subsequent commands with different
-types can exit non-zero conditionally based on the contents of that
-file.
+For a command in a function, a type set directly on the command takes
+precedence over a type set where the function is called. Otherwise, the
+function call's type applies. If neither is set, Evergreen uses the project
+`command_type`; if the project does not set one, Evergreen uses `test`.
+
+To choose a failure type conditionally while a task is running, use the local
+[task status REST endpoint](Task-Runtime-Behavior#manually-set-task-status). A
+type set through that endpoint takes precedence over the command's configured
+failure type.
 
 ### Task Fields Override Hierarchy
 
