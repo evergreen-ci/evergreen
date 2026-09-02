@@ -293,7 +293,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating project repotracker"))
 	}
 
-	before, err := dbModel.GetProjectSettings(ctx, h.newProjectRef)
+	before, err := dbModel.GetProjectSettings(ctx, h.originalProject)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting original project settings for project '%s'", h.newProjectRef.Identifier))
 	}
