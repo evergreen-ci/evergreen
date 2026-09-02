@@ -1740,6 +1740,36 @@ func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, 
 	return activatedTaskIDs, nil
 }
 
+// ActivateUnscheduledTasks activates tasks that are unscheduled (undispatched
+// and deactivated). This is used during display task restarts to activate
+// execution tasks that were never scheduled and therefore could not be handled
+// by ResetTasks.
+func ActivateUnscheduledTasks(ctx context.Context, taskIDs []string, caller string) error {
+	if len(taskIDs) == 0 {
+		return nil
+	}
+	_, err := UpdateAll(
+		ctx,
+		bson.M{
+			IdKey:        bson.M{"$in": taskIDs},
+			StatusKey:    evergreen.TaskUndispatched,
+			ActivatedKey: false,
+		},
+		[]bson.M{
+			{
+				"$set": bson.M{
+					ActivatedKey:     true,
+					ActivatedByKey:   caller,
+					ActivatedTimeKey: time.Now(),
+				},
+			},
+			{"$unset": bson.A{CanResetKey}},
+			addDisplayStatusCache,
+		},
+	)
+	return errors.Wrap(err, "activating unscheduled tasks")
+}
+
 // UpdateSchedulingLimit retrieves a user from the DB and updates their hourly scheduling limit info
 // if they are not a service user.
 func UpdateSchedulingLimit(ctx context.Context, username, requester, projectID, repoRefID string, numTasksModified int, activated bool) error {
@@ -3007,6 +3037,20 @@ func ArchiveMany(ctx context.Context, tasks []Task) error {
 				}
 				archivedTasks = append(archivedTasks, et.makeArchivedTask())
 				toUpdateExecTaskIds = append(toUpdateExecTaskIds, et.Id)
+			}
+
+			if !t.IsRestartFailedOnly() {
+				unscheduledExecTasks, err := FindAll(ctx, db.Query(bson.M{
+					IdKey:        bson.M{"$in": t.ExecutionTasks},
+					StatusKey:    evergreen.TaskUndispatched,
+					ActivatedKey: false,
+				}))
+				if err != nil {
+					return errors.Wrapf(err, "finding unscheduled execution tasks for display task '%s'", t.Id)
+				}
+				for _, et := range unscheduledExecTasks {
+					toUpdateExecTaskIds = append(toUpdateExecTaskIds, et.Id)
+				}
 			}
 		}
 	}

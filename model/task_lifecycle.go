@@ -2355,6 +2355,10 @@ func MarkTasksReset(ctx context.Context, taskIds []string, caller string) error 
 		return errors.Wrap(err, "resetting tasks in database")
 	}
 
+	if err = task.ActivateUnscheduledTasks(ctx, taskIds, caller); err != nil {
+		return errors.Wrap(err, "activating unscheduled tasks during reset")
+	}
+
 	catcher := grip.NewBasicCatcher()
 	catcher.Wrapf(UpdateUnblockedDependencies(ctx, tasks), "clearing unattainable dependencies for tasks")
 	for _, t := range tasks {
