@@ -47,7 +47,7 @@ func (r *patchResolver) ChildPatches(ctx context.Context, obj *patch.Patch) ([]*
 	}
 	loaders.PreloadPatches(ctx, obj.Triggers.ChildPatches)
 
-	result := make([]*patch.Patch, len(obj.Triggers.ChildPatches))
+	result := make([]*patch.Patch, 0, len(obj.Triggers.ChildPatches))
 	for _, pId := range obj.Triggers.ChildPatches {
 		p, err := loaders.GetPatch(ctx, pId)
 		if err != nil {
@@ -117,7 +117,7 @@ func (r *patchResolver) GithubPatchData(ctx context.Context, obj *patch.Patch) (
 
 // IncludedLocalModules is the resolver for the includedLocalModules field.
 func (r *patchResolver) IncludedLocalModules(ctx context.Context, obj *patch.Patch) ([]*restModel.APILocalModuleInclude, error) {
-	result := make([]*restModel.APILocalModuleInclude, len(obj.LocalModuleIncludes))
+	result := make([]*restModel.APILocalModuleInclude, 0, len(obj.LocalModuleIncludes))
 	for i, module := range obj.LocalModuleIncludes {
 		result[i] = &restModel.APILocalModuleInclude{
 			Module:   module.Module,
@@ -140,7 +140,7 @@ func (r *patchResolver) ModuleCodeChanges(ctx context.Context, obj *patch.Patch)
 	}
 	apiURL := evergreen.GetEnvironment().Settings().Api.URL
 	codeChanges := restModel.BuildModuleCodeChanges(*obj, identifier, apiURL)
-	result := make([]*restModel.APIModulePatch, len(codeChanges))
+	result := make([]*restModel.APIModulePatch, 0, len(codeChanges))
 	for i := range codeChanges {
 		result[i] = &codeChanges[i]
 	}
