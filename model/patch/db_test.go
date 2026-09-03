@@ -919,11 +919,11 @@ func TestHasMergeQueuePatchForHeadSHASeesFinishedPatches(t *testing.T) {
 	}
 	require.NoError(t, db.Insert(t.Context(), Collection, p))
 
-	hasPatch, err := FindAllMergeQueuePatchesByProject(t.Context(), "my-project", "10gen", "mongo", "head-sha")
+	hasPatch, err := HasDuplicateMergeQueuePatch(t.Context(), "my-project", "10gen", "mongo", "head-sha")
 	require.NoError(t, err)
 	assert.True(t, hasPatch)
 
-	hasPatch, err = FindAllMergeQueuePatchesByProject(t.Context(), "my-project", "10gen", "mongo", "other-head-sha")
+	hasPatch, err = HasDuplicateMergeQueuePatch(t.Context(), "my-project", "10gen", "mongo", "other-head-sha")
 	require.NoError(t, err)
 	assert.False(t, hasPatch)
 }

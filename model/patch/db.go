@@ -587,15 +587,18 @@ func FindMergeQueuePatchesByProject(ctx context.Context, projectID string) ([]Pa
 	return Find(ctx, db.Query(query))
 }
 
-// FindAllMergeQueuePatchesByProject reports whether a patch exists for the merge patch with this
+// HasDuplicateMergeQueuePatch reports whether a patch exists for the merge patch with this
 // project, org, repo, and head SHA.
-func FindAllMergeQueuePatchesByProject(ctx context.Context, projectID, org, repo, headSHA string) (bool, error) {
+func HasDuplicateMergeQueuePatch(ctx context.Context, projectID, org, repo, headSHA string) (bool, error) {
 	query := bson.M{
 		AliasKey:   evergreen.CommitQueueAlias,
 		ProjectKey: projectID,
 		bsonutil.GetDottedKeyName(GithubMergeDataKey, githubMergeGroupOrgKey):     org,
 		bsonutil.GetDottedKeyName(GithubMergeDataKey, githubMergeGroupRepoKey):    repo,
 		bsonutil.GetDottedKeyName(GithubMergeDataKey, githubMergeGroupHeadSHAKey): headSHA,
+		CreateTimeKey: bson.M{
+			"$gte": time.Now().Add(-24 * time.Hour),
+		},
 	}
 
 	patches, err := Find(ctx, db.Query(query).WithFields(IdKey).Limit(1))
