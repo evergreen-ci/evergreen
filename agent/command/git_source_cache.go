@@ -153,6 +153,12 @@ func newSourceCache(ctx context.Context, comm client.Communicator, conf *interna
 	}
 	sc.writeNamespace = creds.Namespaces[0]
 
+	provider, err := newCachedSourceCacheCredentials(comm, sc.taskData, creds)
+	if err != nil {
+		return nil, fmt.Sprintf("parsing source cache credentials: %s", err)
+	}
+	sc.creds = provider
+
 	entries, err := sc.restoreEntries()
 	if err != nil {
 		return nil, fmt.Sprintf("computing the source cache key: %s", err)
@@ -215,7 +221,11 @@ func (sc *sourceCache) createBucket(ctx context.Context, comm client.Communicato
 		IfNotExists: ifNotExists,
 	}
 	if sc.creds == nil {
-		sc.creds = newCachedSourceCacheCredentials(comm, sc.taskData)
+		var err error
+		sc.creds, err = newCachedSourceCacheCredentials(comm, sc.taskData, nil)
+		if err != nil {
+			return nil, errors.Wrap(err, "creating source cache credentials")
+		}
 	}
 	opts.Credentials = sc.creds
 	bucket, err := pail.NewS3MultiPartBucketWithHTTPClient(ctx, httpClient, opts)

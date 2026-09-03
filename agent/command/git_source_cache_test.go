@@ -270,6 +270,18 @@ func TestSourceCacheWriteNamespaceComesFromTheServer(t *testing.T) {
 	assert.Equal(t, mainline.saveKey(), sc.entries[1].remoteKey)
 }
 
+func TestSourceCacheCredentialsAreFetchedOnce(t *testing.T) {
+	comm := sourceCacheTestComm()
+	sc, reason := newSourceCache(t.Context(), comm, sourceCacheTestConfig(), &gitFetchProject{Directory: "src"}, sourceCacheTestOpts(), "linux")
+	require.NotNil(t, sc, reason)
+	assert.Equal(t, 1, comm.SourceCacheCredentialsCount)
+
+	creds, err := sc.creds.Retrieve(t.Context())
+	require.NoError(t, err)
+	require.True(t, creds.CanExpire)
+	assert.Equal(t, 1, comm.SourceCacheCredentialsCount, "the initial response must be reused instead of being requested again")
+}
+
 func TestBuildPostRestoreCommand(t *testing.T) {
 	c := &gitFetchProject{Directory: "src"}
 	const prHead = "55ca6286e3e4f4fba5d0448333fa99fc5a404a73"
