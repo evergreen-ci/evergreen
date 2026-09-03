@@ -25,6 +25,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -993,12 +994,14 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 		}
 	}
 
-	modules := map[string]*manifest.Module{}
+	moduleResults := make([]*manifest.Module, len(moduleList))
 	ingestTime := v.IngestTime
 	if utility.IsZeroTime(ingestTime) {
 		ingestTime = v.CreateTime
 	}
-	for _, module := range moduleList {
+	g, groupCtx := errgroup.WithContext(ctx)
+	g.SetLimit(4)
+	for i, module := range moduleList {
 		_, modRepo, err := module.GetOwnerAndRepo()
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
@@ -1009,20 +1012,28 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 			if baseModule, ok := baseManifest.Modules[module.Name]; ok {
 				// Use base module revision unless the YAML explicitly specifies a different ref.
 				if module.Ref == "" || module.Ref == baseModule.Revision {
-					modules[module.Name] = baseModule
+					moduleResults[i] = baseModule
 					continue
 				}
 			}
 		}
 
-		mfstModule, err := getManifestModule(ctx, projectRef, module, v.Requester, ingestTime)
-		if err != nil {
-			return nil, errors.Wrapf(err, "module '%s'", module.Name)
-		}
-
-		modules[module.Name] = mfstModule
+		g.Go(func() error {
+			mfstModule, err := getManifestModule(groupCtx, projectRef, module, v.Requester, ingestTime)
+			if err != nil {
+				return errors.Wrapf(err, "module '%s'", module.Name)
+			}
+			moduleResults[i] = mfstModule
+			return nil
+		})
 	}
-	newManifest.Modules = modules
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+	newManifest.Modules = make(map[string]*manifest.Module, len(moduleResults))
+	for i, module := range moduleList {
+		newManifest.Modules[module.Name] = moduleResults[i]
+	}
 	return newManifest, nil
 }
 

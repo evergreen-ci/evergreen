@@ -434,7 +434,7 @@ func getGithubClient(ctx context.Context, token, caller string, config retryConf
 
 	initializeTransportCache()
 
-	httpClient := utility.GetHTTPClient()
+	httpClient := utility.WithOTelTracing(utility.GetHTTPClient())
 	httpClient.Transport = githubTransport
 
 	client := utility.SetupOauth2CustomHTTPRetryableClient(
@@ -458,12 +458,7 @@ const defaultGitHubAPIRequestLifetime = 15 * time.Minute
 // getInstallationToken creates an installation token using Github app auth.
 // If creating a token fails it will return the legacyToken.
 func getInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
-	settings, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		return "", errors.Wrap(err, "getting config")
-	}
-
-	return githubapp.CreateGitHubAppAuth(settings).CreateCachedInstallationToken(ctx, owner, repo, defaultGitHubAPIRequestLifetime, opts, false)
+	return githubapp.CreateGitHubAppAuth(evergreen.GetEnvironment().Settings()).CreateCachedInstallationToken(ctx, owner, repo, defaultGitHubAPIRequestLifetime, opts, false)
 }
 
 // RevokeInstallationToken revokes an installation token. Take care to make sure
