@@ -1608,13 +1608,13 @@ func (h *manifestLoadHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	currentManifest, err := manifest.FindFromVersion(ctx, v.Id, v.Identifier, v.Revision, v.Requester)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "retrieving manifest with version id '%s'", t.Version))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "retrieving manifest with version id '%s'", t.Version))
 	}
 
 	env := evergreen.GetEnvironment()
 	project, _, err := model.FindAndTranslateProjectForVersion(ctx, env.Settings(), v, false)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "loading project from version"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "loading project from version"))
 	}
 	if project == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
