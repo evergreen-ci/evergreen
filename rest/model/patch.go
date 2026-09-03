@@ -136,6 +136,8 @@ type APIRawPatch struct {
 	Patch APIRawModule `json:"patch"`
 	// The list of module diffs
 	RawModules []APIRawModule `json:"raw_modules"`
+	// LocalModuleIncludes contains module config file overrides from the source patch.
+	LocalModuleIncludes []APILocalModuleInclude `json:"local_module_includes,omitempty"`
 }
 
 // APIRawModule contains a module diff.
@@ -149,8 +151,9 @@ type APIRawModule struct {
 }
 
 type APILocalModuleInclude struct {
-	Module   string `json:"module"`
-	FileName string `json:"filename"`
+	Module      string `json:"module"`
+	FileName    string `json:"filename"`
+	FileContent []byte `json:"file_content,omitempty"`
 }
 
 // ToService converts a service layer parameter using the data from APIParameter
