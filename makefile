@@ -6,7 +6,7 @@ packages := $(name) agent agent-command agent-container agent-executor agent-glo
 packages += db util units graphql graphql-loaders thirdparty thirdparty-docker auth scheduler model validator service repotracker mock
 packages += model-annotations model-patch model-artifact model-host model-build model-event model-task model-user model-distro model-manifest model-testresult model-log model-testlog model-parsley
 packages += model-commitqueue model-cache model-githubapp model-hoststat model-cost model-s3lifecycle model-s3usage model-ec2mount model-ec2settings model-ec2instancereferenceprice
-packages += rest-client rest-data rest-route rest-model trigger model-alertrecord model-notification model-taskstats model-reliability
+packages += rest-client rest-data rest-route rest-model rest-openapi trigger model-alertrecord model-notification model-taskstats model-reliability
 packages += taskoutput cloud-parameterstore cloud-parameterstore-fakeparameter ratelimit
 lintOnlyPackages := api apimodels testutil model-manifest model-testutil model-testresult-testutil service-testutil service-graphql db-mgo db-mgo-bson db-mgo-internal-json rest
 lintOnlyPackages += smoke-internal smoke-internal-host smoke-internal-agentmonitor smoke-internal-endpoint thirdparty-clients-fws
@@ -356,6 +356,11 @@ swaggo-format:
 
 swaggo-build:
 	swag init -g service/service.go -o $(buildDir) --outputTypes json --parseDependency --parseInternal
+	$(MAKE) swaggo-convert SWAGGER_JSON_FILE=$(buildDir)/swagger.json
+
+# swaggo only generates Swagger 2.0, so convert the generated spec to OpenAPI 3.
+swaggo-convert:
+	go run ./cmd/swagger-to-openapi -input $(SWAGGER_JSON_FILE)
 
 swaggo-render:
 	npx @redocly/cli build-docs $(buildDir)/swagger.json -o $(buildDir)/redoc-static.html
@@ -387,7 +392,7 @@ generate-fws-client:
 	echo "Swaggo format done."
 
 
-phony += swaggo swaggo-install swaggo-format swaggo-build swaggo-render fws-client generate-fws-client download-fws-config
+phony += swaggo swaggo-install swaggo-format swaggo-build swaggo-convert swaggo-render fws-client generate-fws-client download-fws-config
 
 # mongodb utility targets
 mongodb/.get-mongodb:

@@ -523,6 +523,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     name: test-rest-model
     tags: ["db", "test"]
+  - <<: *run-go-test-suite
+    name: test-rest-openapi
+    tags: ["nodb", "test"]
   - <<: *run-go-test-suite-with-mongodb
     tags: ["test", "db"]
     name: test-units
@@ -789,16 +792,17 @@ tasks:
             GOPATH: ${workdir}/gopath
           include_expansions_in_env:
             - GOROOT
-      - command: shell.exec
+      - command: subprocess.exec
         params:
-          shell: bash
+          binary: make
+          args: ["swaggo-build", "buildDir=docs"]
           working_dir: evergreen
+          # swaggo-install installs the swag binary into GOPATH/bin.
+          add_to_path: ["${workdir}/gopath/bin"]
           env:
             GOPATH: ${workdir}/gopath
-          script: |
-            set -o verbose
-            set -o errexit
-            $GOPATH/bin/swag init -g service/service.go
+          include_expansions_in_env:
+            - GOROOT
       - command: s3.get
         params:
           role_arn: ${assume_role_arn}
