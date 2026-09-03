@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -27,7 +28,6 @@ const sourceCacheRegion = evergreen.DefaultEC2Region
 var (
 	sourceCacheOutcomeAttribute           = sourceCacheAttribute("outcome")
 	sourceCacheReasonAttribute            = sourceCacheAttribute("reason")
-	sourceCacheKeyAttribute               = sourceCacheAttribute("cache_key")
 	sourceCacheOwnerAttribute             = sourceCacheAttribute("owner")
 	sourceCacheRepoAttribute              = sourceCacheAttribute("repo")
 	sourceCacheRevisionAttribute          = sourceCacheAttribute("revision")
@@ -60,49 +60,37 @@ const (
 // of git.get_project. It keys on (owner, repo, revision, clone shape) so every
 // version built on a commit shares one artifact.
 type sourceCache struct {
-	cfg          evergreen.BucketConfig
-	taskData     client.TaskData
-	workDir      string
-	dir          string
-	owner, repo  string
-	branch       string
-	baseRevision string
-	prRevision   string
-	revision     string
-	// writeNamespace is the namespace the app server grants this task write access to.
-	writeNamespace    string
+	cfg               evergreen.BucketConfig
+	taskData          client.TaskData
+	workDir           string
+	dir               string
+	owner, repo       string
+	branch            string
+	revision          string
 	cloneDepth        int
 	recurseSubmodules bool
 
 	// creds is assumed once per task and shared by the restore and save buckets.
 	creds aws.CredentialsProvider
 
-	// entries are what the cache may be restored from, most specific first. The
-	// first is also what this task saves under, so its namespace must be the one
-	// the app server grants write access to or every upload is denied.
+	// entries are what the cache may be restored from, most specific first, as
+	// the app server granted them. The first is also what this task saves under.
 	entries []sourceCacheEntry
 
 	// corruptRemoteKey is set when restore extracts a corrupt artifact; save heals it.
 	corruptRemoteKey string
 }
 
-// sourceCacheEntry is one revision the cache may be restored from, with the
-// namespace and S3 object key holding its artifact.
+// sourceCacheEntry is one revision the cache may be restored from, at the S3
+// object key the app server granted.
 type sourceCacheEntry struct {
 	revision  string
-	namespace string
-	key       string
 	remoteKey string
 }
 
 // saveKey returns the S3 object key this task uploads its own artifact to.
 func (sc *sourceCache) saveKey() string {
 	return sc.entries[0].remoteKey
-}
-
-// contentKey returns the content key for the revision this task saves under.
-func (sc *sourceCache) contentKey() string {
-	return sc.entries[0].key
 }
 
 // newSourceCache returns the source cache for this run, or a nil cache and the
@@ -134,69 +122,35 @@ func newSourceCache(ctx context.Context, comm client.Communicator, conf *interna
 		owner:             opts.owner,
 		repo:              opts.repo,
 		branch:            opts.branch,
-		baseRevision:      conf.Task.Revision,
 		cloneDepth:        opts.cloneDepth,
 		recurseSubmodules: opts.recurseSubmodules,
 	}
-	sc.prRevision = prCheckoutCommit(conf)
 
-	// The app server alone decides the write namespace from the requester and
-	// parent PR checkout, so a drift here cannot happen.
-	creds, err := comm.SourceCacheCredentials(ctx, conf.TaskData())
+	// The app server alone resolves the restore and save keys, so a drift here
+	// cannot happen. The clone shape is the only input the server cannot derive.
+	request := apimodels.SourceCacheCredentialsRequest{
+		Branch:            opts.branch,
+		CloneDepth:        opts.cloneDepth,
+		RecurseSubmodules: opts.recurseSubmodules,
+	}
+	creds, err := comm.SourceCacheCredentials(ctx, sc.taskData, request)
 	if err != nil {
 		return nil, fmt.Sprintf("getting source cache credentials: %s", err)
 	}
-	if creds == nil || len(creds.Namespaces) == 0 {
-		return nil, "the app server granted no source cache namespaces"
+	if creds == nil || len(creds.RestoreKeys) == 0 || creds.SaveKey.Key == "" {
+		return nil, "the app server granted no source cache keys"
 	}
-	sc.writeNamespace = creds.Namespaces[0]
+	for _, restoreKey := range creds.RestoreKeys {
+		sc.entries = append(sc.entries, sourceCacheEntry{revision: restoreKey.Revision, remoteKey: restoreKey.Key})
+	}
+	sc.revision = creds.SaveKey.Revision
 
-	provider, err := newCachedSourceCacheCredentials(comm, sc.taskData, creds)
+	provider, err := newCachedSourceCacheCredentials(comm, sc.taskData, request, creds)
 	if err != nil {
 		return nil, fmt.Sprintf("parsing source cache credentials: %s", err)
 	}
 	sc.creds = provider
-
-	entries, err := sc.restoreEntries()
-	if err != nil {
-		return nil, fmt.Sprintf("computing the source cache key: %s", err)
-	}
-	sc.entries = entries
-	sc.revision = entries[0].revision
 	return sc, ""
-}
-
-// restoreEntries returns the cache entries to try, most specific first.
-func (sc *sourceCache) restoreEntries() ([]sourceCacheEntry, error) {
-	writeNamespace := sc.writeNamespace
-
-	entries := []sourceCacheEntry{{revision: sc.baseRevision, namespace: writeNamespace}}
-	if sc.prRevision != "" && sc.prRevision != sc.baseRevision {
-		entries = []sourceCacheEntry{
-			{revision: sc.prRevision, namespace: writeNamespace},
-			{revision: sc.baseRevision, namespace: evergreen.SourceCacheBaseNamespace},
-		}
-	} else if writeNamespace != evergreen.SourceCacheBaseNamespace {
-		// The task writes to the PR namespace but builds the base revision, so a
-		// mainline task's artifact for it is still worth reading.
-		entries = append(entries, sourceCacheEntry{revision: sc.baseRevision, namespace: evergreen.SourceCacheBaseNamespace})
-	}
-
-	for i, entry := range entries {
-		key, remoteKey, err := sc.cacheKeysForRevision(entry.revision, entry.namespace)
-		if err != nil {
-			return nil, err
-		}
-		entries[i].key = key
-		entries[i].remoteKey = remoteKey
-	}
-	return entries, nil
-}
-
-// cacheKeysForRevision returns the content key and S3 object key for a revision.
-func (sc *sourceCache) cacheKeysForRevision(revision, namespace string) (string, string, error) {
-	return evergreen.SourceCacheKeyHash(sc.owner, sc.repo, namespace, sc.branch, revision, sc.cloneDepth, sc.recurseSubmodules),
-		evergreen.SourceCacheObjectKey(sc.owner, sc.repo, namespace, sc.branch, revision, sc.cloneDepth, sc.recurseSubmodules), nil
 }
 
 func (sc *sourceCache) projectDir() string {
@@ -211,7 +165,7 @@ func (sc *sourceCache) createBucket(ctx context.Context, comm client.Communicato
 	}
 	if sc.creds == nil {
 		var err error
-		sc.creds, err = newCachedSourceCacheCredentials(comm, sc.taskData, nil)
+		sc.creds, err = newCachedSourceCacheCredentials(comm, sc.taskData, apimodels.SourceCacheCredentialsRequest{}, nil)
 		if err != nil {
 			return nil, errors.Wrap(err, "creating source cache credentials")
 		}
@@ -390,7 +344,6 @@ func setSourceCacheSpanDuration(ctx context.Context, attr string, d time.Duratio
 func (sc *sourceCache) setSpanOutcome(ctx context.Context, outcome, reason string) {
 	attrs := []attribute.KeyValue{
 		attribute.String(sourceCacheOutcomeAttribute, outcome),
-		attribute.String(sourceCacheKeyAttribute, sc.contentKey()),
 		attribute.String(sourceCacheOwnerAttribute, sc.owner),
 		attribute.String(sourceCacheRepoAttribute, sc.repo),
 		attribute.String(sourceCacheRevisionAttribute, sc.revision),

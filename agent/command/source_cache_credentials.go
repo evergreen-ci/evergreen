@@ -16,6 +16,7 @@ import (
 type sourceCacheCredentialProvider struct {
 	comm     client.Communicator
 	taskData client.TaskData
+	request  apimodels.SourceCacheCredentialsRequest
 
 	// initial is the response the task already fetched while building the cache,
 	// so it is not requested again on the first S3 call.
@@ -24,10 +25,10 @@ type sourceCacheCredentialProvider struct {
 
 // newCachedSourceCacheCredentials returns a provider seeded with the route
 // response the task already fetched, so a new role is not assumed from scratch on
-// the first S3 request. Refreshes hit the route only when the seeded credentials
-// expire.
-func newCachedSourceCacheCredentials(comm client.Communicator, taskData client.TaskData, initial *apimodels.SourceCacheCredentialsResponse) (aws.CredentialsProvider, error) {
-	p := &sourceCacheCredentialProvider{comm: comm, taskData: taskData}
+// the first S3 request. Refreshes hit the route with the same request, so the
+// renewed grant matches the original one.
+func newCachedSourceCacheCredentials(comm client.Communicator, taskData client.TaskData, request apimodels.SourceCacheCredentialsRequest, initial *apimodels.SourceCacheCredentialsResponse) (aws.CredentialsProvider, error) {
+	p := &sourceCacheCredentialProvider{comm: comm, taskData: taskData, request: request}
 	if initial == nil {
 		return aws.NewCredentialsCache(p), nil
 	}
@@ -43,7 +44,7 @@ func (p *sourceCacheCredentialProvider) Retrieve(ctx context.Context) (aws.Crede
 	if p.initial != nil && time.Until(p.initial.Expires) > 0 {
 		return *p.initial, nil
 	}
-	resp, err := p.comm.SourceCacheCredentials(ctx, p.taskData)
+	resp, err := p.comm.SourceCacheCredentials(ctx, p.taskData, p.request)
 	if err != nil {
 		return aws.Credentials{}, errors.Wrap(err, "getting source cache credentials")
 	}

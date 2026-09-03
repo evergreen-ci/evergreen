@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"regexp"
 	"time"
@@ -25,6 +26,7 @@ import (
 type sourceCacheCredentials struct {
 	taskID string
 	hostID string
+	req    apimodels.SourceCacheCredentialsRequest
 
 	settings   *evergreen.Settings
 	stsManager cloud.STSManager
@@ -43,7 +45,11 @@ func (h *sourceCacheCredentials) Parse(ctx context.Context, r *http.Request) err
 		return errors.New("missing task ID")
 	}
 	h.hostID = r.Header.Get(evergreen.HostHeader)
-	return nil
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return errors.Wrap(err, "reading request body")
+	}
+	return errors.Wrap(json.Unmarshal(body, &h.req), "reading source cache credentials request")
 }
 
 func (h *sourceCacheCredentials) Run(ctx context.Context) gimlet.Responder {
@@ -95,12 +101,12 @@ func (h *sourceCacheCredentials) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	namespace, err := sourceCacheNamespaceForTask(ctx, t)
+	plan, err := buildSourceCachePlan(ctx, t, pRef, h.req)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "resolving the source cache namespace for task '%s'", h.taskID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "computing the source cache plan"))
 	}
 
-	policy, err := sourceCacheSessionPolicy(bucket.Name, pRef.Owner, pRef.Repo, namespace)
+	policy, err := sourceCacheSessionPolicy(bucket.Name, plan.restoreKeys, plan.saveKey)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "building the source cache session policy"))
 	}
@@ -122,8 +128,8 @@ func (h *sourceCacheCredentials) Run(ctx context.Context) gimlet.Responder {
 			Expiration:      creds.Expiration.Format(time.RFC3339),
 			ExternalID:      creds.ExternalID,
 		},
-		// The namespace the policy scopes writes to, so the agent does not re-derive it.
-		Namespaces: []string{namespace},
+		RestoreKeys: plan.restoreKeys,
+		SaveKey:     plan.saveKey,
 	})
 }
 
@@ -146,8 +152,7 @@ func validateSourceCacheRepoComponents(owner, repo string) error {
 	return nil
 }
 
-// sourceCacheNamespaceForTask returns the namespace the task may write to. It must
-// agree with the agent's namespace or the task's uploads are denied.
+// sourceCacheNamespaceForTask returns the namespace the task's own artifact lives in.
 func sourceCacheNamespaceForTask(ctx context.Context, t *task.Task) (string, error) {
 	if t.Requester == evergreen.GithubPRRequester || t.Requester == evergreen.GithubMergeRequester {
 		return evergreen.SourceCachePRNamespace, nil
@@ -167,16 +172,91 @@ func sourceCacheNamespaceForTask(ctx context.Context, t *task.Task) (string, err
 	return evergreen.SourceCacheBaseNamespace, nil
 }
 
-// sourceCacheSessionPolicy allows reads under the task's whole repo prefix, so a PR
-// task can restore the base artifact, but writes only under its own namespace.
-func sourceCacheSessionPolicy(bucketName, owner, repo, namespace string) (string, error) {
+// sourceCachePlan holds the exact origin keys a session may touch.
+type sourceCachePlan struct {
+	restoreKeys []apimodels.SourceCacheRestoreKey
+	saveKey     apimodels.SourceCacheRestoreKey
+}
+
+// sourceCacheCandidate is one artifact the task may restore from.
+type sourceCacheCandidate struct {
+	revision  string
+	namespace string
+}
+
+// buildSourceCachePlan resolves the ordered restore keys and the save key from the
+// task, the patch, and the clone shape the agent resolved.
+func buildSourceCachePlan(ctx context.Context, t *task.Task, pRef *model.ProjectRef, req apimodels.SourceCacheCredentialsRequest) (*sourceCachePlan, error) {
+	namespace, err := sourceCacheNamespaceForTask(ctx, t)
+	if err != nil {
+		return nil, errors.Wrap(err, "resolving the namespace")
+	}
+	prRevision, err := sourceCachePRRevision(ctx, t)
+	if err != nil {
+		return nil, errors.Wrap(err, "resolving the PR head")
+	}
+
+	candidates := []sourceCacheCandidate{{revision: t.Revision, namespace: namespace}}
+	if prRevision != "" && prRevision != t.Revision {
+		candidates = []sourceCacheCandidate{
+			{revision: prRevision, namespace: namespace},
+			{revision: t.Revision, namespace: evergreen.SourceCacheBaseNamespace},
+		}
+	} else if namespace != evergreen.SourceCacheBaseNamespace {
+		candidates = append(candidates, sourceCacheCandidate{revision: t.Revision, namespace: evergreen.SourceCacheBaseNamespace})
+	}
+
+	plan := &sourceCachePlan{}
+	for i, candidate := range candidates {
+		key := evergreen.SourceCacheObjectKey(pRef.Owner, pRef.Repo, candidate.namespace, req.Branch, candidate.revision, req.CloneDepth, req.RecurseSubmodules)
+		restoreKey := apimodels.SourceCacheRestoreKey{Revision: candidate.revision, Key: key}
+		plan.restoreKeys = append(plan.restoreKeys, restoreKey)
+		if i == 0 {
+			plan.saveKey = restoreKey
+		}
+	}
+	return plan, nil
+}
+
+// sourceCachePRRevision returns the commit a PR or merge queue checkout leaves HEAD
+// at, mirroring the agent's prCheckoutCommit from the patch.
+func sourceCachePRRevision(ctx context.Context, t *task.Task) (string, error) {
+	p, err := patch.FindOneId(ctx, t.Version)
+	if err != nil {
+		return "", errors.Wrapf(err, "finding patch '%s'", t.Version)
+	}
+	if p == nil {
+		return "", nil
+	}
+	// A parent PR checkout leaves the working tree at unreviewed PR code.
+	if p.GitHubParentPRCheckout != nil && p.GitHubParentPRCheckout.ForSource {
+		return p.GitHubParentPRCheckout.HeadHash, nil
+	}
+	switch t.Requester {
+	case evergreen.GithubPRRequester:
+		return p.GithubPatchData.HeadHash, nil
+	case evergreen.GithubMergeRequester:
+		return p.GithubMergeData.HeadSHA, nil
+	}
+	return "", nil
+}
+
+// sourceCacheSessionPolicy admits reads of the exact restore keys and writes of the
+// exact save key, so a session cannot touch any other artifact. Writes cover the
+// multipart actions pail uses for large uploads; the client sends If-None-Match on
+// create-only puts, so corruption repair still works.
+func sourceCacheSessionPolicy(bucketName string, restoreKeys []apimodels.SourceCacheRestoreKey, saveKey apimodels.SourceCacheRestoreKey) (string, error) {
 	type statement struct {
 		Sid      string
 		Effect   string
 		Action   []string
-		Resource string
+		Resource []string
 	}
 	bucketARN := fmt.Sprintf("arn:aws:s3:::%s", bucketName)
+	readResources := make([]string, 0, len(restoreKeys))
+	for _, key := range restoreKeys {
+		readResources = append(readResources, fmt.Sprintf("%s/%s", bucketARN, key.Key))
+	}
 	policy, err := json.Marshal(struct {
 		Version   string
 		Statement []statement
@@ -187,13 +267,13 @@ func sourceCacheSessionPolicy(bucketName, owner, repo, namespace string) (string
 				Sid:      "SourceCacheRead",
 				Effect:   "Allow",
 				Action:   []string{"s3:GetObject"},
-				Resource: fmt.Sprintf("%s/%s/*", bucketARN, evergreen.SourceCacheRepoPrefix(owner, repo)),
+				Resource: readResources,
 			},
 			{
 				Sid:      "SourceCacheWrite",
 				Effect:   "Allow",
-				Action:   []string{"s3:PutObject", "s3:AbortMultipartUpload"},
-				Resource: fmt.Sprintf("%s/%s/*", bucketARN, evergreen.SourceCacheNamespacePrefix(owner, repo, namespace)),
+				Action:   []string{"s3:PutObject", "s3:CreateMultipartUpload", "s3:UploadPart", "s3:CompleteMultipartUpload", "s3:AbortMultipartUpload"},
+				Resource: []string{fmt.Sprintf("%s/%s", bucketARN, saveKey.Key)},
 			},
 		},
 	})

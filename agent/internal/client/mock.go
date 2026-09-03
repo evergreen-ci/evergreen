@@ -78,6 +78,7 @@ type Mock struct {
 	SourceCacheCredentialsResponse       *apimodels.SourceCacheCredentialsResponse
 	SourceCacheCredentialsCount          int
 	SourceCacheCredentialsErr            error
+	SourceCacheCredentialsRequest        apimodels.SourceCacheCredentialsRequest
 	S3Response                           *apimodels.AWSCredentials
 	SendTaskDetailsShouldFail            bool
 
@@ -667,8 +668,9 @@ func (c *Mock) AssumeRole(ctx context.Context, td TaskData, request apimodels.As
 	return c.AssumeRoleResponse, nil
 }
 
-func (c *Mock) SourceCacheCredentials(ctx context.Context, td TaskData) (*apimodels.SourceCacheCredentialsResponse, error) {
+func (c *Mock) SourceCacheCredentials(ctx context.Context, td TaskData, request apimodels.SourceCacheCredentialsRequest) (*apimodels.SourceCacheCredentialsResponse, error) {
 	c.SourceCacheCredentialsCount++
+	c.SourceCacheCredentialsRequest = request
 	if c.SourceCacheCredentialsErr != nil {
 		return nil, c.SourceCacheCredentialsErr
 	}

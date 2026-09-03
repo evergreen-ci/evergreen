@@ -2,6 +2,7 @@ package route
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -14,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,7 +37,7 @@ func sourceCacheTestSettings() *evergreen.Settings {
 }
 
 func newSourceCacheCredentialsRequest(t *testing.T) *http.Request {
-	request, err := http.NewRequest(http.MethodPost, "/task/"+sourceCacheTaskID+"/source_cache/credentials", nil)
+	request, err := http.NewRequest(http.MethodPost, "/task/"+sourceCacheTaskID+"/source_cache/credentials", strings.NewReader(`{}`))
 	require.NoError(t, err)
 	request = gimlet.SetURLVars(request, map[string]string{"task_id": sourceCacheTaskID})
 	request.Header.Set(evergreen.HostHeader, sourceCacheHostID)
@@ -59,7 +61,7 @@ func setupSourceCacheCredentialsHandler(t *testing.T, settings *evergreen.Settin
 // insertSourceCacheTask inserts a task and its project ref. An empty owner or repo
 // leaves them unset on the project ref.
 func insertSourceCacheTask(t *testing.T, requester, versionID, owner, repo string) {
-	tsk := task.Task{Id: sourceCacheTaskID, Project: sourceCacheProjectID, Requester: requester, Version: versionID}
+	tsk := task.Task{Id: sourceCacheTaskID, Project: sourceCacheProjectID, Requester: requester, Version: versionID, Revision: "abc123"}
 	require.NoError(t, tsk.Insert(t.Context()))
 	pRef := model.ProjectRef{Id: sourceCacheProjectID, Owner: owner, Repo: repo}
 	require.NoError(t, pRef.Insert(t.Context()))
@@ -79,7 +81,6 @@ func TestSourceCacheCredentialsRun(t *testing.T) {
 		requester      string
 		owner, repo    string
 		expectedStatus int
-		wantNamespace  string
 	}{
 		"UnknownTaskIsNotFound": {
 			expectedStatus: http.StatusNotFound,
@@ -113,15 +114,13 @@ func TestSourceCacheCredentialsRun(t *testing.T) {
 			insertTask: true, owner: "some/org", repo: "some-repo",
 			expectedStatus: http.StatusConflict,
 		},
-		"MainlineTaskGetsTheBaseNamespace": {
+		"MainlineTaskGetsARestorePlan": {
 			insertTask: true, owner: "some-org", repo: "some-repo",
 			expectedStatus: http.StatusOK,
-			wantNamespace:  evergreen.SourceCacheBaseNamespace,
 		},
-		"PullRequestTaskGetsThePRNamespace": {
+		"PullRequestTaskGetsARestorePlan": {
 			insertTask: true, requester: evergreen.GithubPRRequester, owner: "some-org", repo: "some-repo",
 			expectedStatus: http.StatusOK,
-			wantNamespace:  evergreen.SourceCachePRNamespace,
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -135,7 +134,7 @@ func TestSourceCacheCredentialsRun(t *testing.T) {
 				if requester == "" {
 					requester = evergreen.RepotrackerVersionRequester
 				}
-				insertSourceCacheTask(t, requester, "v1", tCase.owner, tCase.repo)
+				insertSourceCacheTask(t, requester, "5bedc62ee4055d31f0340b1d", tCase.owner, tCase.repo)
 			}
 			require.NoError(t, handler.Parse(t.Context(), newSourceCacheCredentialsRequest(t)))
 
@@ -152,7 +151,11 @@ func TestSourceCacheCredentialsRun(t *testing.T) {
 			assert.NotEmpty(t, creds.SessionToken)
 			// The fixed external ID lets the role's trust policy reject the generic route.
 			assert.Equal(t, evergreen.SourceCacheExternalID, creds.ExternalID)
-			assert.Equal(t, []string{tCase.wantNamespace}, creds.Namespaces)
+			require.NotEmpty(t, creds.RestoreKeys)
+			assert.Equal(t, "abc123", creds.SaveKey.Revision)
+			assert.Equal(t, creds.RestoreKeys[0], creds.SaveKey)
+			assert.True(t, strings.HasPrefix(creds.SaveKey.Key, "source_cache/v1/some-org/some-repo/"))
+			assert.True(t, strings.HasSuffix(creds.SaveKey.Key, ".tgz"))
 		})
 	}
 }
@@ -242,11 +245,15 @@ func TestValidateSourceCacheRepoComponents(t *testing.T) {
 }
 
 func TestSourceCacheSessionPolicy(t *testing.T) {
-	policy, err := sourceCacheSessionPolicy("source-cache", "some-org", "some-repo", evergreen.SourceCachePRNamespace)
+	restoreKeys := []apimodels.SourceCacheRestoreKey{
+		{Revision: "pr-head", Key: "source_cache/v1/some-org/some-repo/pr/pr-head/k1.tgz"},
+		{Revision: "abc123", Key: "source_cache/v1/some-org/some-repo/base/abc123/k2.tgz"},
+	}
+	policy, err := sourceCacheSessionPolicy("source-cache", restoreKeys, restoreKeys[0])
 	require.NoError(t, err)
 
-	// Reads span the whole repo prefix so a PR task can restore the base artifact,
-	// but writes cannot reach outside the PR namespace.
+	// Reads are the exact restore keys and writes are the exact save key, so a
+	// session cannot touch any other artifact.
 	assert.JSONEq(t, `{
 		"Version": "2012-10-17",
 		"Statement": [
@@ -254,14 +261,65 @@ func TestSourceCacheSessionPolicy(t *testing.T) {
 				"Sid": "SourceCacheRead",
 				"Effect": "Allow",
 				"Action": ["s3:GetObject"],
-				"Resource": "arn:aws:s3:::source-cache/source_cache/v1/some-org/some-repo/*"
+				"Resource": [
+					"arn:aws:s3:::source-cache/source_cache/v1/some-org/some-repo/pr/pr-head/k1.tgz",
+					"arn:aws:s3:::source-cache/source_cache/v1/some-org/some-repo/base/abc123/k2.tgz"
+				]
 			},
 			{
 				"Sid": "SourceCacheWrite",
 				"Effect": "Allow",
-				"Action": ["s3:PutObject", "s3:AbortMultipartUpload"],
-				"Resource": "arn:aws:s3:::source-cache/source_cache/v1/some-org/some-repo/pr/*"
+				"Action": ["s3:PutObject", "s3:CreateMultipartUpload", "s3:UploadPart", "s3:CompleteMultipartUpload", "s3:AbortMultipartUpload"],
+				"Resource": ["arn:aws:s3:::source-cache/source_cache/v1/some-org/some-repo/pr/pr-head/k1.tgz"]
 			}
 		]
 	}`, policy)
+}
+
+// sourceCachePlanKeyParts returns the namespace and revision the key's object sits under.
+func sourceCachePlanKeyParts(key string) (namespace, revision string) {
+	parts := strings.Split(key, "/")
+	return parts[4], parts[5]
+}
+
+func TestSourceCachePlan(t *testing.T) {
+	for tName, tCase := range map[string]struct {
+		requester string
+		head      string
+		want      [][2]string
+	}{
+		"MainlineRestoresTheBaseArtifact": {
+			requester: evergreen.RepotrackerVersionRequester,
+			want:      [][2]string{{"base", "abc123"}},
+		},
+		"PullRequestRestoresThePRHeadThenTheBaseArtifact": {
+			requester: evergreen.GithubPRRequester,
+			head:      "55ca6286e3e4f4fba5d0448333fa99fc5a404a73",
+			want:      [][2]string{{"pr", "55ca6286e3e4f4fba5d0448333fa99fc5a404a73"}, {"base", "abc123"}},
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, patch.Collection))
+			const versionID = "5bedc62ee4055d31f0340b1d"
+			if tCase.head != "" {
+				patchDoc := patch.Patch{
+					Id:              mgobson.ObjectIdHex(versionID),
+					GithubPatchData: thirdparty.GithubPatch{HeadHash: tCase.head},
+				}
+				require.NoError(t, patchDoc.Insert(t.Context()))
+			}
+			tsk := &task.Task{Id: sourceCacheTaskID, Requester: tCase.requester, Version: versionID, Revision: "abc123"}
+			pRef := &model.ProjectRef{Id: sourceCacheProjectID, Owner: "some-org", Repo: "some-repo"}
+
+			plan, err := buildSourceCachePlan(t.Context(), tsk, pRef, apimodels.SourceCacheCredentialsRequest{Branch: "main", CloneDepth: 1000})
+			require.NoError(t, err)
+			require.Len(t, plan.restoreKeys, len(tCase.want))
+			for i, want := range tCase.want {
+				namespace, revision := sourceCachePlanKeyParts(plan.restoreKeys[i].Key)
+				assert.Equal(t, want[0], namespace)
+				assert.Equal(t, want[1], revision)
+			}
+			assert.Equal(t, plan.restoreKeys[0], plan.saveKey)
+		})
+	}
 }

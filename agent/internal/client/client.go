@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -1051,13 +1052,17 @@ func (c *baseCommunicator) AssumeRole(ctx context.Context, td TaskData, request 
 	return &creds, nil
 }
 
-func (c *baseCommunicator) SourceCacheCredentials(ctx context.Context, td TaskData) (*apimodels.SourceCacheCredentialsResponse, error) {
+func (c *baseCommunicator) SourceCacheCredentials(ctx context.Context, td TaskData, request apimodels.SourceCacheCredentialsRequest) (*apimodels.SourceCacheCredentialsResponse, error) {
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &td,
 	}
 	info.setTaskPathSuffix("source_cache/credentials")
-	resp, err := c.retryRequest(ctx, info, nil)
+	body, err := json.Marshal(request)
+	if err != nil {
+		return nil, errors.Wrap(err, "marshalling source cache credentials request")
+	}
+	resp, err := c.retryRequest(ctx, info, bytes.NewReader(body))
 	if err != nil {
 		return nil, util.RespError(resp, errors.Wrap(err, "getting source cache credentials").Error())
 	}
