@@ -2162,6 +2162,12 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 		Permissions: permissions,
 	}, true)
 	if err != nil {
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message": "creating installation token",
+			"task":    t.Id,
+			"owner":   h.owner,
+			"repo":    h.repo,
+		}))
 		// This intentionally returns a 4xx error to prevent the agent from
 		// retrying because CreateInstallationToken already retries internally,
 		// including (potentially) transient "Bad Request" responses from GitHub.
