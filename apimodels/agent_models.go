@@ -141,7 +141,6 @@ type AgentSetupData struct {
 	TraceCollectorEndpoint          string                  `json:"trace_collector_endpoint"`
 	MaxExecTimeoutSecs              int                     `json:"max_exec_timeout_secs"`
 	PSLoggingDisabled               bool                    `json:"ps_logging_disabled"`
-	BackgroundCommandFailureEnabled bool                    `json:"background_command_failure_enabled"`
 }
 
 // NextTaskResponse represents the response sent back when an agent asks for a next task
