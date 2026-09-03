@@ -103,6 +103,22 @@ func TestHostNextTask(t *testing.T) {
 			require.NotZero(t, dbHost)
 			assert.False(t, utility.IsZeroTime(dbHost.AgentStartTime))
 		},
+		"ShouldNotDispatchToUserHost": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
+			userHost := *rh.host
+			userHost.UserHost = true
+			rh.host = &userHost
+			resp := rh.Run(ctx)
+			assert.NotNil(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+			taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
+			require.True(t, ok, resp.Data())
+			assert.Empty(t, taskResp.TaskId)
+			assert.Empty(t, taskResp.TaskSecret)
+			dbHost, err := host.FindOneId(ctx, userHost.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.True(t, utility.IsZeroTime(dbHost.AgentStartTime))
+		},
 		"ShouldExitWithOutOfDateRevisionAndTaskGroup": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
 			sampleHost, err := host.FindOneId(ctx, "h1")
 			require.NoError(t, err)

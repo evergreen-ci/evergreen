@@ -86,6 +86,11 @@ func (h *hostAgentNextTask) Parse(ctx context.Context, r *http.Request) error {
 func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	begin := time.Now()
 
+	// Don't return anything for user hosts.
+	if h.host.UserHost {
+		return gimlet.NewJSONResponse(apimodels.NextTaskResponse{})
+	}
+
 	setAgentFirstContactTime(ctx, h.host)
 
 	if err := h.host.UnsetTaskGroupTeardownStartTime(ctx); err != nil {
