@@ -118,11 +118,11 @@ func (r *patchResolver) GithubPatchData(ctx context.Context, obj *patch.Patch) (
 // IncludedLocalModules is the resolver for the includedLocalModules field.
 func (r *patchResolver) IncludedLocalModules(ctx context.Context, obj *patch.Patch) ([]*restModel.APILocalModuleInclude, error) {
 	result := make([]*restModel.APILocalModuleInclude, 0, len(obj.LocalModuleIncludes))
-	for i, module := range obj.LocalModuleIncludes {
-		result[i] = &restModel.APILocalModuleInclude{
+	for _, module := range obj.LocalModuleIncludes {
+		result = append(result, &restModel.APILocalModuleInclude{
 			Module:   module.Module,
 			FileName: module.FileName,
-		}
+		})
 	}
 	return result, nil
 }
@@ -142,7 +142,7 @@ func (r *patchResolver) ModuleCodeChanges(ctx context.Context, obj *patch.Patch)
 	codeChanges := restModel.BuildModuleCodeChanges(*obj, identifier, apiURL)
 	result := make([]*restModel.APIModulePatch, 0, len(codeChanges))
 	for i := range codeChanges {
-		result[i] = &codeChanges[i]
+		result = append(result, &codeChanges[i])
 	}
 	return result, nil
 }
@@ -376,7 +376,7 @@ func (r *patchesResolver) Patches(ctx context.Context, obj *Patches) ([]*patch.P
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patches: %s", err.Error()))
 	}
 
-	patchList := []*patch.Patch{}
+	patchList := make([]*patch.Patch, 0, len(patches))
 	projectIDs := make([]string, 0, len(patches))
 	patchIDs := make([]string, 0, len(patches))
 	for _, p := range patches {
