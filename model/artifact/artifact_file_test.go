@@ -2,7 +2,9 @@ package artifact
 
 import (
 	"context"
+	"net/url"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	_ "github.com/evergreen-ci/evergreen/testutil"
@@ -32,14 +34,15 @@ func (s *TestArtifactFileSuite) SetupTest() {
 			BuildId:         "build1",
 			Files: []File{
 				{
-					Name:           "cat_pix",
-					Link:           "http://placekitten.com/800/600",
-					Visibility:     "signed",
-					IgnoreForFetch: false,
-					AWSKey:         "key",
-					AWSSecret:      "secret",
-					Bucket:         "bucket",
-					FileKey:        "filekey",
+					Name:            "cat_pix",
+					Link:            "http://placekitten.com/800/600",
+					Visibility:      "signed",
+					IgnoreForFetch:  false,
+					AWSKey:          "key",
+					AWSSecret:       "secret",
+					Bucket:          "bucket",
+					FileKey:         "filekey",
+					PresignDuration: 2 * time.Hour,
 				},
 				{
 					Name:           "fast_download",
@@ -109,6 +112,7 @@ func (s *TestArtifactFileSuite) TestArtifactFieldsArePresent() {
 	s.Len(entryFromDb.Files, 2)
 	s.Equal("cat_pix", entryFromDb.Files[0].Name)
 	s.Equal("http://placekitten.com/800/600", entryFromDb.Files[0].Link)
+	s.Equal(2*time.Hour, entryFromDb.Files[0].PresignDuration)
 	s.Equal("fast_download", entryFromDb.Files[1].Name)
 	s.Equal("https://fastdl.mongodb.org", entryFromDb.Files[1].Link)
 	s.Equal(1, entryFromDb.Execution)
@@ -405,4 +409,84 @@ func TestPresignFileDoesNotWriteToDB(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, after, 1)
 	assert.Equal(t, "AKIAFAKESTOREDKEY", after[0].Files[0].AWSKey)
+}
+
+func TestPresignFileDuration(t *testing.T) {
+	resolver := func(context.Context, File) (*Credentials, error) {
+		return &Credentials{AWSKey: "AKIAFAKEKEY", AWSSecret: "fake-secret"}, nil
+	}
+
+	for name, testCase := range map[string]struct {
+		duration        time.Duration
+		expectedSeconds string
+	}{
+		"UnsetUsesDefault": {
+			expectedSeconds: "900",
+		},
+		"ConfiguredDurationIsUsed": {
+			duration:        2 * time.Hour,
+			expectedSeconds: "7200",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			presignedURL, err := PresignFile(t.Context(), File{
+				Name:            "Binaries",
+				Bucket:          "bucket",
+				FileKey:         "key",
+				Visibility:      Signed,
+				PresignDuration: testCase.duration,
+			}, resolver)
+			require.NoError(t, err)
+
+			parsed, err := url.Parse(presignedURL)
+			require.NoError(t, err)
+			assert.Equal(t, testCase.expectedSeconds, parsed.Query().Get("X-Amz-Expires"))
+		})
+	}
+}
+
+func TestValidatePresignDuration(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		duration     time.Duration
+		expectsError bool
+	}{
+		"ZeroErrors": {
+			expectsError: true,
+		},
+		"MinimumIsValid": {
+			duration: time.Second,
+		},
+		"StaticCredentialMaximumIsValid": {
+			duration: 7 * 24 * time.Hour,
+		},
+		"BelowMinimumErrors": {
+			duration:     time.Millisecond,
+			expectsError: true,
+		},
+		"AboveS3MaximumErrors": {
+			duration:     7*24*time.Hour + time.Second,
+			expectsError: true,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			err := ValidatePresignDuration(testCase.duration)
+			if testCase.expectsError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestPresignFileRoleDurationErrors(t *testing.T) {
+	_, err := PresignFile(t.Context(), File{
+		Name:            "Binaries",
+		Bucket:          "bucket",
+		FileKey:         "key",
+		Visibility:      Signed,
+		AWSRoleARN:      "arn:aws:iam::000000000000:role/test",
+		PresignDuration: time.Hour,
+	}, nil)
+	require.Error(t, err)
 }

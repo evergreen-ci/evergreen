@@ -110,6 +110,10 @@ type s3put struct {
 	// If unset, the file will be public.
 	Visibility string `mapstructure:"visibility" plugin:"expand"`
 
+	// PresignDuration controls how long presigned URLs remain valid. It only
+	// applies when Visibility is set to signed.
+	PresignDuration string `mapstructure:"presign_duration" plugin:"expand"`
+
 	// Optional, when set to true, causes this command to be skipped over without an error when
 	// the path specified in local_file does not exist. Defaults to false, which triggers errors
 	// for missing files.
@@ -147,6 +151,7 @@ type s3put struct {
 	preservePath       bool
 	skipExistingBool   bool
 	checksumSHA256Bool bool
+	presignDuration    time.Duration
 	isPatchable        bool
 	isPatchOnly        bool
 
@@ -297,6 +302,19 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 		}
 	}
 
+	if s3pc.PresignDuration != "" {
+		s3pc.presignDuration, err = time.ParseDuration(s3pc.PresignDuration)
+		if err != nil {
+			return errors.Wrap(err, "parsing presign duration")
+		}
+		if s3pc.Visibility != artifact.Signed {
+			return errors.New("presign duration can only be used with signed visibility")
+		}
+		if err := s3pc.validatePresignDuration(); err != nil {
+			return err
+		}
+	}
+
 	if s3pc.PatchOnly != "" {
 		s3pc.isPatchOnly, err = strconv.ParseBool(s3pc.PatchOnly)
 		if err != nil {
@@ -374,6 +392,9 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 			Expires:         expiration,
 			CanExpire:       true,
 		}
+	}
+	if err := s3pc.validatePresignDuration(); err != nil {
+		return err
 	}
 
 	// For key+secret uploads with no role ARN, resolve the AWS account ID via STS so cost tracking and lifecycle rule discovery can gate on it.
@@ -673,6 +694,7 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, up
 			FileSize:         uploadInfo.FileSizeBytes,
 			PutRequests:      uploadInfo.PutRequests,
 			AssociatedLinks:  s3pc.associatedLinks,
+			PresignDuration:  s3pc.presignDuration,
 		})
 	}
 
@@ -734,6 +756,16 @@ func (s3pc *s3put) getRoleARN() string {
 		return s3pc.assumedRoleARN
 	}
 	return s3pc.RoleARN
+}
+
+func (s3pc *s3put) validatePresignDuration() error {
+	if s3pc.PresignDuration == "" {
+		return nil
+	}
+	if s3pc.getRoleARN() != "" {
+		return errors.New("presign duration cannot be used with role-backed credentials")
+	}
+	return artifact.ValidatePresignDuration(s3pc.presignDuration)
 }
 
 func readAssociatedLinksFile(fn string, conf *internal.TaskConfig) ([]artifact.AssociatedLink, error) {
