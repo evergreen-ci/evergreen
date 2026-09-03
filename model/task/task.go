@@ -3257,7 +3257,7 @@ func (t *Task) SetResetWhenFinished(ctx context.Context, caller, repoRefID strin
 	if t.ResetWhenFinished {
 		return nil
 	}
-	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller, repoRefID); err != nil {
+	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller, repoRefID, true); err != nil {
 		return errors.Wrapf(err, "updating user '%s' patch task scheduling limit", caller)
 	}
 	t.ResetFailedWhenFinished = false
@@ -3318,7 +3318,7 @@ func (t *Task) SetResetFailedWhenFinished(ctx context.Context, caller, repoRefID
 	if t.ResetFailedWhenFinished {
 		return nil
 	}
-	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller, repoRefID); err != nil {
+	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller, repoRefID, false); err != nil {
 		return errors.Wrapf(err, "updating user '%s' patch task scheduling limit", caller)
 	}
 	t.ResetWhenFinished = false
@@ -3342,7 +3342,7 @@ func (t *Task) SetResetFailedWhenFinished(ctx context.Context, caller, repoRefID
 // updateSchedulingLimitForResetWhenFinished is the same as
 // UpdateSchedulingLimit but only applies if the task is being reset when
 // finished.
-func updateSchedulingLimitForResetWhenFinished(ctx context.Context, t *Task, caller, repoRefID string) error {
+func updateSchedulingLimitForResetWhenFinished(ctx context.Context, t *Task, caller, repoRefID string, countUnscheduled bool) error {
 	if !(t.Requester == evergreen.PatchVersionRequester || t.Requester == evergreen.GithubPRRequester) || evergreen.IsSystemActivator(caller) {
 		return nil
 	}
@@ -3362,7 +3362,21 @@ func updateSchedulingLimitForResetWhenFinished(ctx context.Context, t *Task, cal
 	if len(tasks) == 0 {
 		return nil
 	}
-	return errors.Wrap(CheckUsersPatchTaskLimit(ctx, t.Requester, caller, repoRefID, true, tasks...), "updating patch task limit for user")
+	if err := CheckUsersPatchTaskLimit(ctx, t.Requester, caller, repoRefID, true, tasks...); err != nil {
+		return errors.Wrap(err, "updating patch task limit for user")
+	}
+	if countUnscheduled {
+		numUnscheduled := 0
+		for _, et := range tasks {
+			if et.IsUnscheduled() {
+				numUnscheduled++
+			}
+		}
+		if numUnscheduled > 0 {
+			return UpdateSchedulingLimit(ctx, caller, t.Requester, tasks[0].Project, repoRefID, numUnscheduled, true)
+		}
+	}
+	return nil
 }
 
 // CheckUsersPatchTaskLimit takes in an input list of tasks that is set to get activated, and checks if they're
