@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/executor"
 	"github.com/evergreen-ci/evergreen/agent/globals"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
@@ -36,21 +37,23 @@ var (
 	backgroundCommandFailuresAttribute     = fmt.Sprintf("%s.background_failures", commandsAttribute)
 )
 
-// drainBackgroundFailures consolidates the consume-and-log step shared by the two
-// task-level pass/fail decision points so they don't drift apart over time; the
-// call sites still own the divergent attribute target and failure status.
-func drainBackgroundFailures(ctx context.Context, ch <-chan error, taskLog grip.Journaler) (count int, msgs []string) {
+// drainBackgroundFailures consolidates the consume-and-log step shared by the
+// task-level pass/fail decision points so they don't drift apart over time;
+// the call sites still own the divergent attribute target and failure status.
+// Failures are returned in channel receive order, which matches the
+// chronological order they were sent by background process triggers.
+func drainBackgroundFailures(ctx context.Context, ch <-chan internal.BackgroundFailure, taskLog grip.Journaler) (failures []internal.BackgroundFailure, msgs []string) {
 	if ch == nil {
-		return 0, nil
+		return nil, nil
 	}
 	for {
 		select {
-		case bgErr := <-ch:
-			taskLog.Errorf(ctx, "Background command failed: %s", bgErr)
-			count++
-			msgs = append(msgs, bgErr.Error())
+		case bgFailure := <-ch:
+			taskLog.Errorf(ctx, "Background command '%s' failed: %s", bgFailure.CommandName, bgFailure.Err)
+			failures = append(failures, bgFailure)
+			msgs = append(msgs, bgFailure.Error())
 		default:
-			return count, msgs
+			return failures, msgs
 		}
 	}
 }
@@ -184,14 +187,15 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 		commandSpan.End()
 
 		// Anything reaching this channel must fail the task; continue_on_err filtering happens at the trigger.
-		count, msgs := drainBackgroundFailures(ctx, tc.backgroundFailures, tc.logger.Task())
-		if count > 0 {
+		failures, msgs := drainBackgroundFailures(ctx, tc.backgroundFailures, tc.logger.Task())
+		if len(failures) > 0 {
 			span := trace.SpanFromContext(blockCtx)
 			span.SetAttributes(
 				attribute.Bool(backgroundCommandFailureAttribute, true),
-				attribute.Int(backgroundCommandFailureCountAttribute, count),
+				attribute.Int(backgroundCommandFailureCountAttribute, len(failures)),
 				attribute.StringSlice(backgroundCommandFailuresAttribute, msgs),
 			)
+			tc.setBackgroundFailingCommand(failures[0])
 			return errors.New("background command failed")
 		}
 	}
