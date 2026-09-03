@@ -390,6 +390,80 @@ func TestExpandS3PutParams(t *testing.T) {
 	})
 }
 
+func TestExpandS3PutPresignDuration(t *testing.T) {
+	conf := &internal.TaskConfig{
+		Expansions: *util.NewExpansions(map[string]string{"duration": "2h"}),
+	}
+
+	for name, testCase := range map[string]struct {
+		duration         string
+		visibility       string
+		roleARN          string
+		expectedDuration time.Duration
+		expectsError     bool
+	}{
+		"UnsetUsesDefault": {
+			visibility: artifact.Signed,
+		},
+		"DurationIsParsed": {
+			duration:         "2h",
+			visibility:       artifact.Signed,
+			expectedDuration: 2 * time.Hour,
+		},
+		"DurationIsExpanded": {
+			duration:         "${duration}",
+			visibility:       artifact.Signed,
+			expectedDuration: 2 * time.Hour,
+		},
+		"InvalidDurationErrors": {
+			duration:     "two hours",
+			visibility:   artifact.Signed,
+			expectsError: true,
+		},
+		"DurationBelowMinimumErrors": {
+			duration:     "500ms",
+			visibility:   artifact.Signed,
+			expectsError: true,
+		},
+		"DurationAboveMaximumErrors": {
+			duration:     "169h",
+			visibility:   artifact.Signed,
+			expectsError: true,
+		},
+		"RoleDurationErrors": {
+			duration:     "1h",
+			visibility:   artifact.Signed,
+			roleARN:      "arn:aws:iam::000000000000:role/test",
+			expectsError: true,
+		},
+		"UnsignedVisibilityErrors": {
+			duration:     "1h",
+			visibility:   artifact.Public,
+			expectsError: true,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			cmd := &s3put{PresignDuration: testCase.duration, Visibility: testCase.visibility, RoleARN: testCase.roleARN}
+			err := cmd.expandParams(conf)
+			if testCase.expectsError {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, testCase.expectedDuration, cmd.presignDuration)
+		})
+	}
+}
+
+func TestValidateS3PutPresignDurationWithAssumedRoleErrors(t *testing.T) {
+	cmd := &s3put{
+		PresignDuration: "1h",
+		presignDuration: time.Hour,
+		assumedRoleARN:  "arn:aws:iam::000000000000:role/test",
+	}
+	require.Error(t, cmd.validatePresignDuration())
+}
+
 func TestSignedUrlVisibility(t *testing.T) {
 	ctx := t.Context()
 
@@ -1154,6 +1228,13 @@ func TestAttachFilesRecordsCredentialVarNames(t *testing.T) {
 		assert.Empty(t, file.AWSKeyVarName)
 		assert.Empty(t, file.AWSSecretVarName)
 		assert.Equal(t, "arn:aws:iam::000000000000:role/fake-role", file.AWSRoleARN)
+	})
+
+	t.Run("PresignDurationIsAttached", func(t *testing.T) {
+		cmd := newCmd()
+		cmd.PresignDuration = "2h"
+		file := attach(t, cmd)
+		assert.Equal(t, 2*time.Hour, file.PresignDuration)
 	})
 }
 
