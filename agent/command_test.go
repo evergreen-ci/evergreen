@@ -362,7 +362,8 @@ functions:
 	s.Require().Error(err, "drain should convert background failure into a command block error")
 	s.Contains(err.Error(), "background command failed")
 	s.Empty(s.tc.backgroundFailures, "drain should have consumed the pre-loaded failure")
-	s.Equal("shell.exec", s.tc.getBackgroundFailingCommand(), "should record the background command that caused the failure")
+	s.Require().NotNil(s.tc.getBackgroundFailingCommand(), "should record the background command that caused the failure")
+	s.Equal("shell.exec", s.tc.getBackgroundFailingCommand().CommandName)
 }
 
 func (s *CommandSuite) TestBackgroundCommandFailureIgnoredWhenFlagDisabled() {

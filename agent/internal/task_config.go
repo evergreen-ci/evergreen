@@ -127,8 +127,9 @@ func (tc *TaskConfig) TaskData() client.TaskData {
 // BackgroundFailure carries information about a background command that failed
 // so the agent can attribute the failure to the correct command.
 type BackgroundFailure struct {
-	Err         error
-	CommandName string
+	Err                 error
+	CommandName         string
+	FailureMetadataTags []string
 }
 
 func (b BackgroundFailure) Error() string { return b.Err.Error() }

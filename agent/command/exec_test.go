@@ -464,7 +464,7 @@ func (s *execCmdSuite) TestBackgroundCommandFailureSendsToChannel() {
 	bgFailures := make(chan internal.BackgroundFailure, 5)
 	_, err := runJasperProcess(s.ctx, s.jasper, true, &options.Create{
 		Args: []string{"bash", "-c", "exit 1"},
-	}, "test-command", "test-task", s.logger, bgFailures, false, true)
+	}, "test-command", "test-task", nil, s.logger, bgFailures, false, true)
 	s.Require().NoError(err)
 
 	select {
@@ -481,7 +481,7 @@ func (s *execCmdSuite) TestBackgroundCommandFailureTrackingDisabledDoesNotSendTo
 	bgFailures := make(chan internal.BackgroundFailure, 5)
 	_, err := runJasperProcess(s.ctx, s.jasper, true, &options.Create{
 		Args: []string{"bash", "-c", "exit 1"},
-	}, "test-command", "test-task", s.logger, bgFailures, false, false)
+	}, "test-command", "test-task", nil, s.logger, bgFailures, false, false)
 	s.Require().NoError(err)
 
 	time.Sleep(1500 * time.Millisecond)
@@ -492,7 +492,7 @@ func (s *execCmdSuite) TestBackgroundCommandSuccessDoesNotSendToChannel() {
 	bgFailures := make(chan internal.BackgroundFailure, 5)
 	_, err := runJasperProcess(s.ctx, s.jasper, true, &options.Create{
 		Args: []string{"bash", "-c", "exit 0"},
-	}, "test-command", "test-task", s.logger, bgFailures, false, true)
+	}, "test-command", "test-task", nil, s.logger, bgFailures, false, true)
 	s.Require().NoError(err)
 
 	time.Sleep(1500 * time.Millisecond)
@@ -503,7 +503,7 @@ func (s *execCmdSuite) TestBackgroundCommandFailureWithContinueOnErrorDoesNotSen
 	bgFailures := make(chan internal.BackgroundFailure, 5)
 	_, err := runJasperProcess(s.ctx, s.jasper, true, &options.Create{
 		Args: []string{"bash", "-c", "exit 1"},
-	}, "test-command", "test-task", s.logger, bgFailures, true, true)
+	}, "test-command", "test-task", nil, s.logger, bgFailures, true, true)
 	s.Require().NoError(err)
 
 	time.Sleep(1500 * time.Millisecond)
@@ -514,7 +514,7 @@ func (s *execCmdSuite) TestBackgroundCommandSigkillExitDoesNotSendToChannel() {
 	bgFailures := make(chan internal.BackgroundFailure, 5)
 	_, err := runJasperProcess(s.ctx, s.jasper, true, &options.Create{
 		Args: []string{"bash", "-c", "exit 9"},
-	}, "test-command", "test-task", s.logger, bgFailures, false, true)
+	}, "test-command", "test-task", nil, s.logger, bgFailures, false, true)
 	s.Require().NoError(err)
 
 	time.Sleep(1500 * time.Millisecond)
@@ -525,7 +525,7 @@ func (s *execCmdSuite) TestBackgroundCommandSigtermExitDoesNotSendToChannel() {
 	bgFailures := make(chan internal.BackgroundFailure, 5)
 	_, err := runJasperProcess(s.ctx, s.jasper, true, &options.Create{
 		Args: []string{"bash", "-c", "exit 15"},
-	}, "test-command", "test-task", s.logger, bgFailures, false, true)
+	}, "test-command", "test-task", nil, s.logger, bgFailures, false, true)
 	s.Require().NoError(err)
 
 	time.Sleep(1500 * time.Millisecond)
@@ -539,7 +539,7 @@ func (s *execCmdSuite) TestConcurrentBackgroundFailuresSendToChannel() {
 	for range numProcs {
 		_, err := runJasperProcess(s.ctx, s.jasper, true, &options.Create{
 			Args: []string{"bash", "-c", "exit 1"},
-		}, "test-command", "test-task", s.logger, bgFailures, false, true)
+		}, "test-command", "test-task", nil, s.logger, bgFailures, false, true)
 		s.Require().NoError(err)
 	}
 

@@ -889,17 +889,15 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		return evergreen.TaskFailed
 	}
 
-	count, msgs, commandNames := drainBackgroundFailures(ctx, tc.backgroundFailures, tc.logger.Task())
-	if count > 0 {
+	failures, msgs := drainBackgroundFailures(ctx, tc.backgroundFailures, tc.logger.Task())
+	if len(failures) > 0 {
 		span := trace.SpanFromContext(ctx)
 		span.SetAttributes(
 			attribute.Bool(backgroundCommandFailureAttribute, true),
-			attribute.Int(backgroundCommandFailureCountAttribute, count),
+			attribute.Int(backgroundCommandFailureCountAttribute, len(failures)),
 			attribute.StringSlice(backgroundCommandFailuresAttribute, msgs),
 		)
-		if len(commandNames) > 0 {
-			tc.setBackgroundFailingCommand(commandNames[0])
-		}
+		tc.setBackgroundFailingCommand(failures[0])
 		return evergreen.TaskFailed
 	}
 
@@ -1546,8 +1544,9 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 		if tc.userEndTaskRespOriginatingCommand != nil {
 			detail.FailingCommand = tc.userEndTaskRespOriginatingCommand.FullDisplayName()
 			tc.setFailingCommand(tc.userEndTaskRespOriginatingCommand)
-		} else if bgCmd := tc.getBackgroundFailingCommand(); bgCmd != "" {
-			detail.FailingCommand = bgCmd
+		} else if bgFailure := tc.getBackgroundFailingCommand(); bgFailure != nil {
+			detail.FailingCommand = bgFailure.CommandName
+			failureMetadataTagsToAdd = append(failureMetadataTagsToAdd, bgFailure.FailureMetadataTags...)
 		} else {
 			detail.FailingCommand = currCmd.FullDisplayName()
 			tc.setFailingCommand(currCmd)
