@@ -338,7 +338,7 @@ func (s *VersionSuite) TestActivateVersionTasks() {
 
 	handler := &versionActivateTasksHandler{
 		versionId: versionId,
-		Variants: []Variant{
+		Variants: []versionVariant{
 			{
 				Name:  s.bv[0],
 				Tasks: []string{"test_task_1", "test_task_2"},
@@ -375,7 +375,7 @@ func (s *VersionSuite) TestActivateVersionTasksInvalidVariant() {
 
 	handler := &versionActivateTasksHandler{
 		versionId: versionId,
-		Variants: []Variant{
+		Variants: []versionVariant{
 			{
 				Name:  s.bv[0],
 				Tasks: []string{"test_task_1", "test_task_2"},

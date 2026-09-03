@@ -356,12 +356,16 @@ func (h *versionRestartHandler) Run(ctx context.Context) gimlet.Responder {
 // POST /rest/v2/versions/{version_id}/activate_tasks
 
 type versionActivateTasksHandler struct {
-	Variants []Variant `json:"variants" validate:"required"`
+	Variants []versionVariant `json:"variants" validate:"required"`
 
 	versionId string
 }
 
-type Variant struct {
+// versionVariant is named for the route it serves rather than just "variant"
+// because it appears in the generated OpenAPI spec alongside patchVariant.
+// Names that differ only by case collide when clients are generated from the
+// spec, silently dropping endpoints. See DEVPROD-42404.
+type versionVariant struct {
 	Name  string   `json:"name"`
 	Tasks []string `json:"tasks"`
 }

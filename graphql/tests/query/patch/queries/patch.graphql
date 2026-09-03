@@ -6,5 +6,7 @@
       id
       displayName
     }
+    tasks
+    variants
   }
 }
