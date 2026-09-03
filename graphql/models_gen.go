@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	model1 "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/model"
 )
 
@@ -345,8 +346,8 @@ type PatchTime struct {
 // Patches is the return value of the patches field for the User and Project types.
 // It contains an array Patches for either an individual user or a project.
 type Patches struct {
-	FilteredPatchCount int               `json:"filteredPatchCount"`
-	Patches            []*model.APIPatch `json:"patches"`
+	FilteredPatchCount int            `json:"filteredPatchCount"`
+	Patches            []*patch.Patch `json:"patches"`
 }
 
 // PatchesInput is the input value to the patches field for the User and Project types.

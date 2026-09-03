@@ -552,6 +552,13 @@ func PatchFile() cli.Command {
 				}
 				diffData.fullPatch = rp.Patch.Diff
 				diffData.base = rp.Patch.Githash
+				for _, lmi := range rp.LocalModuleIncludes {
+					params.LocalModuleIncludes = append(params.LocalModuleIncludes, patch.LocalModuleInclude{
+						Module:      lmi.Module,
+						FileName:    lmi.FileName,
+						FileContent: lmi.FileContent,
+					})
+				}
 			}
 
 			if err = params.validateSubmission(ctx, &diffData); err != nil {

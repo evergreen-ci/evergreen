@@ -651,3 +651,89 @@ func TestFetchOrRestoreSourceFailsFastWhenTheMergeQueueRefIsDeleted(t *testing.T
 	assert.True(t, c.refNotFound)
 	assert.True(t, comm.MarkedMergeQueueGitRefNotFound)
 }
+
+// TestSourceCacheHealsOnlyTheKeyItWrites covers the decision to overwrite an
+// existing artifact. Overwriting is normally forbidden so concurrent producers
+// don't re-upload the same tree, so a task may only replace an object it proved
+// corrupt, and only when that object is the one it saves under anyway.
+func TestSourceCacheHealsOnlyTheKeyItWrites(t *testing.T) {
+	const prHead = "55ca6286e3e4f4fba5d0448333fa99fc5a404a73"
+	c := &gitFetchProject{Directory: "src"}
+
+	prConfig := func() *internal.TaskConfig {
+		conf := sourceCacheTestConfig()
+		conf.Task.Requester = evergreen.GithubPRRequester
+		conf.GithubPatchData.PRNumber = 9001
+		conf.GithubPatchData.HeadHash = prHead
+		return conf
+	}
+
+	t.Run("NoCorruptionDoesNotHeal", func(t *testing.T) {
+		sc, reason := newSourceCache(t.Context(), sourceCacheTestComm(), sourceCacheTestConfig(), c, sourceCacheTestOpts(), "linux")
+		require.NotNil(t, sc, reason)
+		assert.False(t, sc.healsCorruptArtifact())
+	})
+
+	t.Run("MainlineTaskHealsItsOwnRevision", func(t *testing.T) {
+		sc, reason := newSourceCache(t.Context(), sourceCacheTestComm(), sourceCacheTestConfig(), c, sourceCacheTestOpts(), "linux")
+		require.NotNil(t, sc, reason)
+		sc.corruptRemoteKey = sc.saveKey()
+		assert.True(t, sc.healsCorruptArtifact())
+	})
+
+	t.Run("PRTaskHealsItsOwnPRArtifact", func(t *testing.T) {
+		sc, reason := newSourceCache(t.Context(), sourceCacheTestComm(evergreen.SourceCachePRNamespace), prConfig(), c, sourceCacheTestOpts(), "linux")
+		require.NotNil(t, sc, reason)
+		sc.corruptRemoteKey = sc.saveKey()
+		assert.True(t, sc.healsCorruptArtifact())
+	})
+
+	// A PR task's tree has the PR applied on top of the base revision, so it
+	// must never overwrite the shared mainline artifact, even after proving that
+	// artifact is corrupt.
+	t.Run("PRTaskDoesNotHealTheSharedBaseArtifact", func(t *testing.T) {
+		sc, reason := newSourceCache(t.Context(), sourceCacheTestComm(evergreen.SourceCachePRNamespace), prConfig(), c, sourceCacheTestOpts(), "linux")
+		require.NotNil(t, sc, reason)
+		_, baseKey, err := sc.cacheKeysForRevision(sc.baseRevision, evergreen.SourceCacheBaseNamespace)
+		require.NoError(t, err)
+		require.NotEqual(t, sc.saveKey(), baseKey)
+
+		sc.corruptRemoteKey = baseKey
+		assert.False(t, sc.healsCorruptArtifact())
+	})
+}
+
+func TestSourceCacheExtractMarksAnUndecodableArtifactCorrupt(t *testing.T) {
+	ctx := t.Context()
+	logger := grip.NewJournaler("test")
+	const remoteKey = "source_cache/v2/10gen/mongo/abc123/key.tgz"
+
+	newCache := func(t *testing.T) *sourceCache {
+		sc := &sourceCache{workDir: t.TempDir(), dir: "src", entries: []sourceCacheEntry{{remoteKey: remoteKey}}}
+		require.NoError(t, os.MkdirAll(sc.projectDir(), 0755))
+		return sc
+	}
+
+	t.Run("UndecodableArchiveIsMarkedAndHealed", func(t *testing.T) {
+		sc := newCache(t)
+		require.Error(t, sc.extractArchive(ctx, strings.NewReader("this is not a gzip stream"), remoteKey))
+		assert.Equal(t, remoteKey, sc.corruptRemoteKey)
+		assert.True(t, sc.healsCorruptArtifact())
+	})
+
+	t.Run("ValidArchiveIsNotMarked", func(t *testing.T) {
+		producer := &sourceCache{workDir: t.TempDir(), dir: "src"}
+		require.NoError(t, os.MkdirAll(producer.projectDir(), 0755))
+		require.NoError(t, os.WriteFile(filepath.Join(producer.projectDir(), "top.txt"), []byte("top"), 0644))
+		archive := filepath.Join(t.TempDir(), "source"+cacheArchiveSuffix)
+		require.NoError(t, makeCacheArchive(ctx, producer.projectDir(), []string{producer.projectDir()}, archive, logger, true))
+		f, err := os.Open(archive)
+		require.NoError(t, err)
+		t.Cleanup(func() { assert.NoError(t, f.Close()) })
+
+		sc := newCache(t)
+		require.NoError(t, sc.extractArchive(ctx, f, remoteKey))
+		assert.Empty(t, sc.corruptRemoteKey)
+		assert.False(t, sc.healsCorruptArtifact())
+	})
+}

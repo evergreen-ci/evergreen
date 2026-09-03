@@ -26,6 +26,11 @@ const (
 
 var ValidVisibilities = []string{Public, Private, None, Signed, ""}
 
+const (
+	minimumPresignDuration = time.Second
+	maximumPresignDuration = 7 * 24 * time.Hour
+)
+
 // Entry stores groups of names and links (not content!) for
 // files uploaded to the api server by a running agent. These links could
 // be for build or task-relevant files (things like extra results,
@@ -92,6 +97,8 @@ type File struct {
 	AssociatedLinks []AssociatedLink `json:"associated_links,omitempty" bson:"associated_links,omitempty"`
 	// DoNotEncodeLink indicates that the file link should not be escaped.
 	DoNotEncodeLink bool `json:"do_not_encode_link,omitempty" bson:"do_not_encode_link,omitempty"`
+	// PresignDuration is how long a presigned URL for this file remains valid.
+	PresignDuration time.Duration `json:"presign_duration,omitempty" bson:"presign_duration,omitempty"`
 }
 
 func (f *File) validate() error {
@@ -194,6 +201,14 @@ func PresignFile(ctx context.Context, file File, resolver CredentialResolver) (s
 	if err := file.validate(); err != nil {
 		return "", errors.Wrap(err, "file validation failed")
 	}
+	if file.PresignDuration != 0 {
+		if file.AWSRoleARN != "" {
+			return "", errors.New("presign duration cannot be used with role-backed credentials")
+		}
+		if err := ValidatePresignDuration(file.PresignDuration); err != nil {
+			return "", err
+		}
+	}
 
 	creds := credentialsForPresign(ctx, file, resolver)
 
@@ -206,12 +221,21 @@ func PresignFile(ctx context.Context, file File, resolver CredentialResolver) (s
 		Bucket:                file.Bucket,
 		FileKey:               file.FileKey,
 		SignatureExpiryWindow: evergreen.PresignMinimumValidTime,
+		PresignDuration:       file.PresignDuration,
 		AWSKey:                creds.AWSKey,
 		AWSSecret:             creds.AWSSecret,
 		AWSRoleARN:            file.AWSRoleARN,
 		ExternalID:            externalID,
 	}
 	return pail.PreSign(ctx, requestParams)
+}
+
+// ValidatePresignDuration checks that a configured duration is supported by S3.
+func ValidatePresignDuration(duration time.Duration) error {
+	if duration < minimumPresignDuration || duration > maximumPresignDuration {
+		return errors.Errorf("presign duration must be between %s and %s", minimumPresignDuration, maximumPresignDuration)
+	}
+	return nil
 }
 
 func GetAllArtifacts(ctx context.Context, tasks []TaskIDAndExecution) ([]File, error) {

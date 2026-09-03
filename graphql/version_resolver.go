@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/manifest"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -265,16 +266,16 @@ func (r *versionResolver) Manifest(ctx context.Context, obj *restModel.APIVersio
 }
 
 // Patch is the resolver for the patch field.
-func (r *versionResolver) Patch(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIPatch, error) {
+func (r *versionResolver) Patch(ctx context.Context, obj *restModel.APIVersion) (*patch.Patch, error) {
 	if !evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)) {
 		return nil, nil
 	}
 	patchID := utility.FromStringPtr(obj.Id)
-	apiPatch, err := data.FindPatchById(ctx, patchID)
+	p, err := loaders.GetPatch(ctx, patchID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", patchID, err.Error()))
 	}
-	return apiPatch, nil
+	return p, nil
 }
 
 // PreviousVersion is the resolver for the previousVersion field.

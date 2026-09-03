@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path"
@@ -82,6 +83,9 @@ type sourceCache struct {
 	// first is also what this task saves under, so its namespace must be the one
 	// the app server grants write access to or every upload is denied.
 	entries []sourceCacheEntry
+
+	// corruptRemoteKey is set when restore extracts a corrupt artifact; save heals it.
+	corruptRemoteKey string
 }
 
 // sourceCacheEntry is one revision the cache may be restored from, with the
@@ -297,11 +301,25 @@ func (sc *sourceCache) restore(ctx context.Context, comm client.Communicator, lo
 	}
 
 	start = time.Now()
-	if err := extractTarball(ctx, f, sc.projectDir(), []string{}, true); err != nil {
-		return false, errors.Wrap(err, "extracting source cache archive")
+	if err := sc.extractArchive(ctx, f, remoteKey); err != nil {
+		return false, err
 	}
 	setSourceCacheSpanDuration(ctx, sourceCacheExtractDurationAttribute, time.Since(start))
 	return true, nil
+}
+
+// extractArchive unpacks a downloaded artifact into the project directory.
+func (sc *sourceCache) extractArchive(ctx context.Context, r io.Reader, remoteKey string) error {
+	if err := extractTarball(ctx, r, sc.projectDir(), []string{}, true); err != nil {
+		sc.corruptRemoteKey = remoteKey
+		return errors.Wrap(err, "extracting source cache archive")
+	}
+	return nil
+}
+
+// healsCorruptArtifact reports whether save should overwrite a corrupt artifact.
+func (sc *sourceCache) healsCorruptArtifact() bool {
+	return sc.corruptRemoteKey != "" && sc.corruptRemoteKey == sc.saveKey()
 }
 
 // save archives and uploads the project directory.
@@ -327,7 +345,13 @@ func (sc *sourceCache) save(ctx context.Context, comm client.Communicator, logge
 	httpClient.Timeout = s3HTTPClientTimeout
 	defer utility.PutHTTPClient(httpClient)
 
-	bucket, err := sc.createBucket(ctx, comm, httpClient, true)
+	heal := sc.healsCorruptArtifact()
+	if heal {
+		logger.Task().Warningf(ctx, "Overwriting the corrupt source cache artifact at '%s'.", sc.saveKey())
+	}
+	trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(sourceCacheAttribute("healed_corrupt_artifact"), heal))
+
+	bucket, err := sc.createBucket(ctx, comm, httpClient, !heal)
 	if err != nil {
 		return false, err
 	}

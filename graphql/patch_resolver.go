@@ -3,6 +3,7 @@ package graphql
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/99designs/gqlgen/graphql"
@@ -17,9 +18,52 @@ import (
 	"github.com/evergreen-ci/utility"
 )
 
+// ID is the resolver for the id field.
+func (r *patchResolver) ID(ctx context.Context, obj *patch.Patch) (string, error) {
+	return obj.Id.Hex(), nil
+}
+
+// ChildPatchAliases is the resolver for the childPatchAliases field.
+func (r *patchResolver) ChildPatchAliases(ctx context.Context, obj *patch.Patch) ([]*restModel.APIChildPatchAlias, error) {
+	if len(obj.Triggers.ChildPatches) == 0 || len(obj.Triggers.Aliases) == 0 {
+		return []*restModel.APIChildPatchAlias{}, nil
+	}
+	result := make([]*restModel.APIChildPatchAlias, 0, len(obj.Triggers.ChildPatches))
+	for i, childPatchID := range obj.Triggers.ChildPatches {
+		if i < len(obj.Triggers.Aliases) {
+			result = append(result, &restModel.APIChildPatchAlias{
+				Alias:   utility.ToStringPtr(obj.Triggers.Aliases[i]),
+				PatchID: utility.ToStringPtr(childPatchID),
+			})
+		}
+	}
+	return result, nil
+}
+
+// ChildPatches is the resolver for the childPatches field.
+func (r *patchResolver) ChildPatches(ctx context.Context, obj *patch.Patch) ([]*patch.Patch, error) {
+	if len(obj.Triggers.ChildPatches) == 0 {
+		return []*patch.Patch{}, nil
+	}
+	loaders.PreloadPatches(ctx, obj.Triggers.ChildPatches)
+
+	result := make([]*patch.Patch, 0, len(obj.Triggers.ChildPatches))
+	for _, pId := range obj.Triggers.ChildPatches {
+		p, err := loaders.GetPatch(ctx, pId)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting child patch '%s': %s", pId, err.Error()), err)
+		}
+		if p == nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("child patch '%s' not found", pId))
+		}
+		result = append(result, p)
+	}
+	return result, nil
+}
+
 // GeneratedTaskCounts is the resolver for the generatedTaskCounts field.
-func (r *patchResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.APIPatch) ([]*GeneratedTaskCountResults, error) {
-	patchID := utility.FromStringPtr(obj.Id)
+func (r *patchResolver) GeneratedTaskCounts(ctx context.Context, obj *patch.Patch) ([]*GeneratedTaskCountResults, error) {
+	patchID := obj.Id.Hex()
 	p, err := loaders.GetPatch(ctx, patchID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()), err)
@@ -64,24 +108,53 @@ func (r *patchResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.
 	return res, nil
 }
 
+// GithubPatchData is the resolver for the githubPatchData field.
+func (r *patchResolver) GithubPatchData(ctx context.Context, obj *patch.Patch) (*restModel.APIGithubPatch, error) {
+	apiGithubPatch := &restModel.APIGithubPatch{}
+	apiGithubPatch.BuildFromService(obj.GithubPatchData)
+	return apiGithubPatch, nil
+}
+
 // IncludedLocalModules is the resolver for the includedLocalModules field.
-func (r *patchResolver) IncludedLocalModules(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APILocalModuleInclude, error) {
-	// Convert []APILocalModuleInclude to []*APILocalModuleInclude
-	result := make([]*restModel.APILocalModuleInclude, len(obj.LocalModuleIncludes))
-	for i, module := range obj.LocalModuleIncludes {
-		result[i] = &module
+func (r *patchResolver) IncludedLocalModules(ctx context.Context, obj *patch.Patch) ([]*restModel.APILocalModuleInclude, error) {
+	result := make([]*restModel.APILocalModuleInclude, 0, len(obj.LocalModuleIncludes))
+	for _, module := range obj.LocalModuleIncludes {
+		result = append(result, &restModel.APILocalModuleInclude{
+			Module:   module.Module,
+			FileName: module.FileName,
+		})
+	}
+	return result, nil
+}
+
+// InvalidatedByUpstream is the resolver for the invalidatedByUpstream field.
+func (r *patchResolver) InvalidatedByUpstream(ctx context.Context, obj *patch.Patch) (bool, error) {
+	return obj.GithubMergeData.InvalidatedByUpstream, nil
+}
+
+// ModuleCodeChanges is the resolver for the moduleCodeChanges field.
+func (r *patchResolver) ModuleCodeChanges(ctx context.Context, obj *patch.Patch) ([]*restModel.APIModulePatch, error) {
+	identifier, err := model.GetIdentifierForProjectSecondary(ctx, obj.Project)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project identifier for project '%s': %s", obj.Project, err.Error()), err)
+	}
+	apiURL := evergreen.GetEnvironment().Settings().Api.URL
+	codeChanges := restModel.BuildModuleCodeChanges(*obj, identifier, apiURL)
+	result := make([]*restModel.APIModulePatch, 0, len(codeChanges))
+	for i := range codeChanges {
+		result = append(result, &codeChanges[i])
 	}
 	return result, nil
 }
 
 // Parameters is the resolver for the parameters field.
-func (r *patchResolver) Parameters(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIParameter, error) {
+func (r *patchResolver) Parameters(ctx context.Context, obj *patch.Patch) ([]*restModel.APIParameter, error) {
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
 	}
 
-	projectId := utility.FromStringPtr(obj.ProjectId)
+	projectId := obj.Project
 	projVars, err := model.FindMergedProjectVars(ctx, projectId)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project vars for project '%s': %s", projectId, err.Error()))
@@ -91,18 +164,18 @@ func (r *patchResolver) Parameters(ctx context.Context, obj *restModel.APIPatch)
 	var res []*restModel.APIParameter
 	for _, param := range obj.Parameters {
 		redactedParam := &restModel.APIParameter{
-			Key:   param.Key,
-			Value: param.Value,
+			Key:   utility.ToStringPtr(param.Key),
+			Value: utility.ToStringPtr(param.Value),
 		}
 		for _, pattern := range redactKeys {
-			if strings.Contains(strings.ToLower(utility.FromStringPtr(param.Key)), pattern) {
+			if strings.Contains(strings.ToLower(param.Key), pattern) {
 				redactedParam.Value = utility.ToStringPtr(evergreen.RedactedValue)
 				break
 			}
 		}
 		if projVars != nil {
 			for varKey, varValue := range projVars.Vars {
-				if strings.Contains(utility.FromStringPtr(param.Value), varValue) && projVars.PrivateVars[varKey] {
+				if strings.Contains(param.Value, varValue) && projVars.PrivateVars[varKey] {
 					redactedParam.Value = utility.ToStringPtr(evergreen.RedactedValue)
 					break
 				}
@@ -114,8 +187,8 @@ func (r *patchResolver) Parameters(ctx context.Context, obj *restModel.APIPatch)
 }
 
 // PatchTriggerAliases is the resolver for the patchTriggerAliases field.
-func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIPatchTriggerDefinition, error) {
-	projectID := utility.FromStringPtr(obj.ProjectId)
+func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *patch.Patch) ([]*restModel.APIPatchTriggerDefinition, error) {
+	projectID := obj.Project
 	projectRef, err := data.FindProjectById(ctx, projectID, true, true)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectID, err.Error()))
@@ -142,7 +215,7 @@ func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.
 			projectCache[alias.ChildProject] = project
 		}
 
-		matchingTasks, err := project.VariantTasksForSelectors(ctx, []patch.PatchTriggerDefinition{alias}, utility.FromStringPtr(obj.Requester))
+		matchingTasks, err := project.VariantTasksForSelectors(ctx, []patch.PatchTriggerDefinition{alias}, obj.GetRequester())
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("matching tasks to definitions for alias '%s': %s", alias.Alias, err.Error()))
 		}
@@ -172,29 +245,65 @@ func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.
 }
 
 // Project is the resolver for the project field.
-func (r *patchResolver) Project(ctx context.Context, obj *restModel.APIPatch) (*PatchProject, error) {
-	patchProject, err := getPatchProjectVariantsAndTasksForUI(ctx, obj)
+func (r *patchResolver) Project(ctx context.Context, obj *patch.Patch) (*PatchProject, error) {
+	patchProjectVariantsAndTasks, err := model.GetVariantsAndTasksFromPatchProject(ctx, evergreen.GetEnvironment().Settings(), obj)
 	if err != nil {
-		return nil, err
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project variants and tasks for patch '%s': %s", obj.Id, err.Error()))
 	}
-	return patchProject, nil
+
+	// convert variants to UI data structure
+	variants := []*ProjectBuildVariant{}
+	for _, buildVariant := range patchProjectVariantsAndTasks.Variants {
+		projBuildVariant := ProjectBuildVariant{
+			Name:        buildVariant.Name,
+			DisplayName: buildVariant.DisplayName,
+		}
+		projTasks := []string{}
+		executionTasks := map[string]bool{}
+		for _, displayTask := range buildVariant.DisplayTasks {
+			projTasks = append(projTasks, displayTask.Name)
+			for _, execTask := range displayTask.ExecTasks {
+				executionTasks[execTask] = true
+			}
+		}
+		for _, taskUnit := range buildVariant.Tasks {
+			// Only add task if it is not an execution task.
+			if !executionTasks[taskUnit.Name] {
+				projTasks = append(projTasks, taskUnit.Name)
+			}
+		}
+		// Sort tasks alphanumerically by display name.
+		sort.SliceStable(projTasks, func(i, j int) bool {
+			return projTasks[i] < projTasks[j]
+		})
+		projBuildVariant.Tasks = projTasks
+		variants = append(variants, &projBuildVariant)
+	}
+	sort.SliceStable(variants, func(i, j int) bool {
+		return variants[i].DisplayName < variants[j].DisplayName
+	})
+
+	patchProject := PatchProject{
+		Variants: variants,
+	}
+	return &patchProject, nil
 }
 
 // ProjectMetadata is the resolver for the projectMetadata field.
-func (r *patchResolver) ProjectMetadata(ctx context.Context, obj *restModel.APIPatch) (*restModel.APIProjectRef, error) {
-	apiProjectRef, err := getAPIProjectRef(ctx, obj.ProjectId)
+func (r *patchResolver) ProjectMetadata(ctx context.Context, obj *patch.Patch) (*restModel.APIProjectRef, error) {
+	apiProjectRef, err := getAPIProjectRef(ctx, utility.ToStringPtr(obj.Project))
 	return apiProjectRef, err
 }
 
 // User is the resolver for the user field.
-func (r *patchResolver) User(ctx context.Context, obj *restModel.APIPatch) (*user.DBUser, error) {
+func (r *patchResolver) User(ctx context.Context, obj *patch.Patch) (*user.DBUser, error) {
 	// If only id is requested, we can return it without a database call.
 	requestedFields := graphql.CollectAllFields(ctx)
 	if len(requestedFields) == 1 && requestedFields[0] == "id" {
-		return &user.DBUser{Id: utility.FromStringPtr(obj.Author)}, nil
+		return &user.DBUser{Id: obj.Author}, nil
 	}
 
-	authorId := utility.FromStringPtr(obj.Author)
+	authorId := obj.Author
 	currentUser := mustHaveUser(ctx)
 	if currentUser.Id == authorId {
 		return currentUser, nil
@@ -211,13 +320,25 @@ func (r *patchResolver) User(ctx context.Context, obj *restModel.APIPatch) (*use
 	return dbUser, nil
 }
 
+// VariantsTasks is the resolver for the variantsTasks field.
+func (r *patchResolver) VariantsTasks(ctx context.Context, obj *patch.Patch) ([]*restModel.VariantTask, error) {
+	result := make([]*restModel.VariantTask, 0, len(obj.VariantsTasks))
+	for _, vt := range obj.VariantsTasks {
+		result = append(result, &restModel.VariantTask{
+			Name:  utility.ToStringPtr(vt.Variant),
+			Tasks: utility.ToStringPtrSlice(vt.Tasks),
+		})
+	}
+	return result, nil
+}
+
 // Version is the resolver for the version field.
-func (r *patchResolver) Version(ctx context.Context, obj *restModel.APIPatch) (*model.Version, error) {
-	versionID := utility.FromStringPtr(obj.Version)
+func (r *patchResolver) Version(ctx context.Context, obj *patch.Patch) (*model.Version, error) {
+	versionID := obj.Version
 	if versionID == "" {
 		return nil, nil
 	}
-	v, err := model.VersionFindOneId(ctx, versionID)
+	v, err := loaders.GetVersion(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}
@@ -243,7 +364,7 @@ func (r *patchesResolver) FilteredPatchCount(ctx context.Context, obj *Patches) 
 }
 
 // Patches is the resolver for the patches field.
-func (r *patchesResolver) Patches(ctx context.Context, obj *Patches) ([]*restModel.APIPatch, error) {
+func (r *patchesResolver) Patches(ctx context.Context, obj *Patches) ([]*patch.Patch, error) {
 	fc := graphql.GetFieldContext(ctx)
 	opts, err := buildOptionsFromParentArgs(ctx, fc)
 	if err != nil {
@@ -255,21 +376,13 @@ func (r *patchesResolver) Patches(ctx context.Context, obj *Patches) ([]*restMod
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patches: %s", err.Error()))
 	}
 
-	apiPatches := []*restModel.APIPatch{}
+	patchList := make([]*patch.Patch, 0, len(patches))
 	projectIDs := make([]string, 0, len(patches))
 	patchIDs := make([]string, 0, len(patches))
 	for _, p := range patches {
-		apiPatch := restModel.APIPatch{}
-		if err := apiPatch.BuildFromService(ctx, p, &restModel.APIPatchArgs{
-			IncludeVersionCost: true,
-		}); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting patch '%s' to APIPatch: %s", p.Id.Hex(), err.Error()))
-		}
-		apiPatches = append(apiPatches, &apiPatch)
+		patchList = append(patchList, &p)
 		patchIDs = append(patchIDs, p.Id.Hex())
-		if projectID := utility.FromStringPtr(apiPatch.ProjectId); projectID != "" {
-			projectIDs = append(projectIDs, projectID)
-		}
+		projectIDs = append(projectIDs, p.Project)
 	}
 
 	if len(patchIDs) > 0 {
@@ -279,7 +392,7 @@ func (r *patchesResolver) Patches(ctx context.Context, obj *Patches) ([]*restMod
 		loaders.PreloadProjects(ctx, projectIDs)
 	}
 
-	return apiPatches, nil
+	return patchList, nil
 }
 
 // Patch returns PatchResolver implementation.
