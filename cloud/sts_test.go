@@ -82,6 +82,27 @@ func TestAssumeRole(t *testing.T) {
 			assert.Equal(t, policy, utility.FromStringPtr(awsClientMock.AssumeRoleInput.Policy))
 			assert.Equal(t, externalID, utility.FromStringPtr(awsClientMock.AssumeRoleInput.ExternalId))
 		},
+		"LiteralExternalIDOverridesTheDebugPrefix": func(t *testing.T, manager STSManager, awsClientMock *awsClientMock) {
+			task := task.Task{Id: taskID, Project: projectID, Requester: requester}
+			require.NoError(t, task.Insert(t.Context()))
+			project := model.ProjectRef{Id: projectID, RepoRefId: repoRefID}
+			require.NoError(t, project.Insert(t.Context()))
+			repoRef := model.RepoRef{ProjectRef: model.ProjectRef{Id: repoRefID}}
+			require.NoError(t, repoRef.Replace(t.Context()))
+			h := host.Host{Id: hostID, IsDebug: true}
+			require.NoError(t, h.Insert(t.Context()))
+
+			const literalExternalID = "literal-external-id"
+			creds, err := manager.AssumeRole(t.Context(), taskID, hostID, AssumeRoleOptions{
+				RoleARN:    roleARN,
+				Policy:     &policy,
+				ExternalID: literalExternalID,
+			})
+			require.NoError(t, err)
+			require.NotEmpty(t, creds.ExternalID)
+			assert.Equal(t, roleARN, utility.FromStringPtr(awsClientMock.AssumeRoleInput.RoleArn))
+			assert.Equal(t, literalExternalID, utility.FromStringPtr(awsClientMock.AssumeRoleInput.ExternalId))
+		},
 		"Success/UntrackedBranch": func(t *testing.T, manager STSManager, awsClientMock *awsClientMock) {
 			task := task.Task{Id: taskID, Project: projectID, Requester: requester}
 			require.NoError(t, task.Insert(t.Context()))

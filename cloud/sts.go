@@ -54,9 +54,8 @@ type AssumeRoleOptions struct {
 	DurationSeconds *int32
 	// UseDebug indicates whether the debug prefix on the external ID will be used.
 	UseDebug bool
-	// ExternalIDPrefix is prepended to the computed external ID, letting a role's
-	// trust policy accept only the route that sets the prefix.
-	ExternalIDPrefix string
+	// ExternalID overrides the computed external ID for routes whose role is server-controlled.
+	ExternalID string
 }
 
 // AssumeRoleCredentials are the credentials to be returned from
@@ -100,7 +99,10 @@ func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID, hostID string, 
 		return AssumeRoleCredentials{}, fmt.Errorf("host '%s' not found", hostID)
 	}
 
-	externalID := createExternalID(t, p, opts.ExternalIDPrefix, opts.UseDebug || dbHost.IsDebug)
+	externalID := opts.ExternalID
+	if externalID == "" {
+		externalID = createExternalID(t, p, opts.UseDebug || dbHost.IsDebug)
+	}
 	creds, err := s.assumeRole(ctx, externalID, opts)
 	if err != nil {
 		return AssumeRoleCredentials{}, errors.Wrapf(err, "assuming role: '%v'", err)
@@ -150,12 +152,12 @@ func (s *stsManagerImpl) GetCallerIdentityARN(ctx context.Context) (string, erro
 	return *output.Arn, nil
 }
 
-func createExternalID(task *task.Task, projectRef *model.ProjectRef, prefix string, isDebug bool) string {
+func createExternalID(task *task.Task, projectRef *model.ProjectRef, isDebug bool) string {
 	// The external ID is used as a trust boundary for the AssumeRole call.
 	// It is an unconfigurable computed value from the task's properties
 	// to avoid the confused deputy problem since Evergreen
 	// assumes many roles on behalf of tasks.
-	externalID := fmt.Sprintf("%s%s", prefix, createExternalIDHelper(task, projectRef))
+	externalID := createExternalIDHelper(task, projectRef)
 	if isDebug {
 		return fmt.Sprintf("debug-%s", externalID)
 	}

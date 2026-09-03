@@ -150,8 +150,8 @@ func TestSourceCacheCredentialsRun(t *testing.T) {
 			require.True(t, ok)
 			assert.NotEmpty(t, creds.AccessKeyID)
 			assert.NotEmpty(t, creds.SessionToken)
-			// The prefix is what lets the role's trust policy reject the generic route.
-			assert.Contains(t, creds.ExternalID, evergreen.SourceCacheExternalIDPrefix)
+			// The fixed external ID lets the role's trust policy reject the generic route.
+			assert.Equal(t, evergreen.SourceCacheExternalID, creds.ExternalID)
 			assert.Equal(t, []string{tCase.wantNamespace}, creds.Namespaces)
 		})
 	}

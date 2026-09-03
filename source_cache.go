@@ -13,12 +13,8 @@ const (
 	// credentials handed to a PR task can deny writes to the base namespace.
 	SourceCachePRNamespace = "pr"
 
-	// SourceCacheExternalIDPrefix marks the source cache's AssumeRole calls. The
-	// role's trust policy requires it, so a task cannot assume the role through the
-	// generic route, whose external ID starts with the caller-supplied project ID.
-	// The colon is load-bearing: it is legal in an external ID but not a project ID,
-	// so no project can forge the prefix.
-	SourceCacheExternalIDPrefix = "source-cache:"
+	// SourceCacheExternalID is the fixed external ID for source cache role assumptions.
+	SourceCacheExternalID = "source-cache:"
 )
 
 // SourceCacheRepoPrefix returns the key prefix holding a repo's artifacts across
