@@ -27,6 +27,7 @@ func LastRevision() cli.Command {
 		regexpVariantsDisplayNameFlagName = "regex-display-variants"
 		minSuccessProportionFlagName      = "min-success"
 		minFinishedProportionFlagName     = "min-finished"
+		minFailedProportionFlagName       = "min-failed"
 		successfulTasks                   = "successful-tasks"
 		knownIssuesAreSuccessFlagName     = "known-issues-are-success"
 		jsonFlagName                      = "json"
@@ -60,6 +61,10 @@ func LastRevision() cli.Command {
 			cli.Float64Flag{
 				Name:  minFinishedProportionFlagName,
 				Usage: "minimum proportion of finished tasks (between 0 and 1 inclusive) in a build for it to be considered a match",
+			},
+			cli.Float64Flag{
+				Name:  minFailedProportionFlagName,
+				Usage: "minimum proportion of failed tasks (between 0 and 1 inclusive) in a build for it to be considered a match. Only one matching build variant needs to meet this criterion for the version to match",
 			},
 			cli.BoolFlag{
 				Name:  knownIssuesAreSuccessFlagName,
@@ -119,6 +124,9 @@ func LastRevision() cli.Command {
 				if c.Float64(minFinishedProportionFlagName) < 0 || c.Float64(minFinishedProportionFlagName) > 1 {
 					return errors.New("minimum finished proportion must be between 0 and 1 inclusive")
 				}
+				if c.Float64(minFailedProportionFlagName) < 0 || c.Float64(minFailedProportionFlagName) > 1 {
+					return errors.New("minimum failed proportion must be between 0 and 1 inclusive")
+				}
 				return nil
 			},
 			func(c *cli.Context) error {
@@ -133,13 +141,14 @@ func LastRevision() cli.Command {
 				}
 				return nil
 			},
-			requireAtLeastOneFlag(reuseFlagName, listFlagName, minSuccessProportionFlagName, minFinishedProportionFlagName, successfulTasks),
+			requireAtLeastOneFlag(reuseFlagName, listFlagName, minSuccessProportionFlagName, minFinishedProportionFlagName, minFailedProportionFlagName, successfulTasks),
 			mutuallyExclusiveArgs(false, reuseFlagName, saveFlagName, listFlagName),
 			func(c *cli.Context) error {
 				reuseCriteria := c.String(reuseFlagName) != ""
 				listCriteria := c.Bool(listFlagName)
 				searchCriteriaSpecified := c.IsSet(regexpVariantsFlagName) || c.IsSet(regexpVariantsDisplayNameFlagName) ||
-					c.IsSet(minSuccessProportionFlagName) || c.IsSet(minFinishedProportionFlagName) || c.IsSet(successfulTasks)
+					c.IsSet(minSuccessProportionFlagName) || c.IsSet(minFinishedProportionFlagName) ||
+					c.IsSet(minFailedProportionFlagName) || c.IsSet(successfulTasks)
 				if reuseCriteria && searchCriteriaSpecified {
 					return errors.New("cannot both reuse criteria and also specify other search criteria")
 				}
@@ -157,6 +166,7 @@ func LastRevision() cli.Command {
 			bvDisplayNameRegexps := c.StringSlice(regexpVariantsDisplayNameFlagName)
 			minSuccessProp := c.Float64(minSuccessProportionFlagName)
 			minFinishedProp := c.Float64(minFinishedProportionFlagName)
+			minFailedProp := c.Float64(minFailedProportionFlagName)
 			successfulTasks := c.StringSlice(successfulTasks)
 			knownIssuesAreSuccess := c.Bool(knownIssuesAreSuccessFlagName)
 			jsonOutput := c.Bool(jsonFlagName)
@@ -171,7 +181,7 @@ func LastRevision() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 			if saveCriteriaName != "" {
-				criteria, err := newLastRevisionCriteria(projectID, bvRegexps, bvDisplayNameRegexps, minSuccessProp, minFinishedProp, successfulTasks, knownIssuesAreSuccess)
+				criteria, err := newLastRevisionCriteria(projectID, bvRegexps, bvDisplayNameRegexps, minSuccessProp, minFinishedProp, minFailedProp, successfulTasks, knownIssuesAreSuccess)
 				if err != nil {
 					return errors.Wrap(err, "building last revision options")
 				}
@@ -216,7 +226,7 @@ func LastRevision() cli.Command {
 					return errors.Wrapf(err, "getting last revision criteria with name '%s'", reuseCriteriaName)
 				}
 			} else {
-				criteria, err := newLastRevisionCriteria(projectID, bvRegexps, bvDisplayNameRegexps, minSuccessProp, minFinishedProp, successfulTasks, knownIssuesAreSuccess)
+				criteria, err := newLastRevisionCriteria(projectID, bvRegexps, bvDisplayNameRegexps, minSuccessProp, minFinishedProp, minFailedProp, successfulTasks, knownIssuesAreSuccess)
 				if err != nil {
 					return errors.Wrap(err, "building last revision options")
 				}
@@ -340,7 +350,7 @@ func printCriteriaGroups(groups []lastRevisionCriteriaGroup, jsonOutput bool) er
 	}
 
 	t := tabby.New()
-	t.AddHeader("Name", "Build Variant Regexps", "Build Variant Display Name Regexps", "Min Success Proportion", "Min Finished Proportion", "Required Successful Tasks")
+	t.AddHeader("Name", "Build Variant Regexps", "Build Variant Display Name Regexps", "Min Success Proportion", "Min Finished Proportion", "Min Failed Proportion", "Required Successful Tasks")
 	for _, cg := range groups {
 		for i, c := range cg.Criteria {
 			name := cg.Name
@@ -363,11 +373,15 @@ func printCriteriaGroups(groups []lastRevisionCriteriaGroup, jsonOutput bool) er
 			if c.MinFinishedProportion > 0 {
 				minFinishedProp = fmt.Sprintf("%.2f", c.MinFinishedProportion)
 			}
+			minFailedProp := ""
+			if c.MinFailedProportion > 0 {
+				minFailedProp = fmt.Sprintf("%.2f", c.MinFailedProportion)
+			}
 			successfulTasks := ""
 			if len(c.SuccessfulTasks) > 0 {
 				successfulTasks = fmt.Sprint(c.SuccessfulTasks)
 			}
-			t.AddLine(name, bvRegexps, bvDisplayRegexps, minSuccessProp, minFinishedProp, successfulTasks)
+			t.AddLine(name, bvRegexps, bvDisplayRegexps, minSuccessProp, minFinishedProp, minFailedProp, successfulTasks)
 		}
 	}
 	t.Print()
@@ -392,11 +406,14 @@ type lastRevisionBuildInfo struct {
 	numSuccessfulTasks int
 	// numFinishedTasks is the number of tasks in the build that finished.
 	numFinishedTasks int
+	// numFailedTasks is the number of tasks in the build that failed.
+	numFailedTasks int
 }
 
 func newLastRevisionBuildInfo(b model.APIBuild, buildTasks []model.APITask, knownIssuesAreSuccess bool) lastRevisionBuildInfo {
 	numFinishedTasks := 0
 	numSuccessfulTasks := 0
+	numFailedTasks := 0
 	for _, t := range buildTasks {
 		status := utility.FromStringPtr(t.Status)
 		if evergreen.IsFinishedTaskStatus(status) {
@@ -404,6 +421,8 @@ func newLastRevisionBuildInfo(b model.APIBuild, buildTasks []model.APITask, know
 		}
 		if isSuccessfulTask(t, knownIssuesAreSuccess) {
 			numSuccessfulTasks++
+		} else if evergreen.IsFailedTaskStatus(status) {
+			numFailedTasks++
 		}
 	}
 	return lastRevisionBuildInfo{
@@ -414,6 +433,7 @@ func newLastRevisionBuildInfo(b model.APIBuild, buildTasks []model.APITask, know
 		allTasks:                buildTasks,
 		numSuccessfulTasks:      numSuccessfulTasks,
 		numFinishedTasks:        numFinishedTasks,
+		numFailedTasks:          numFailedTasks,
 	}
 }
 
@@ -427,6 +447,12 @@ func (i *lastRevisionBuildInfo) successProportion() float64 {
 // the tasks in the build.
 func (i *lastRevisionBuildInfo) finishedProportion() float64 {
 	return float64(i.numFinishedTasks) / float64(len(i.allTasks))
+}
+
+// failedProportion calculates the proportion of failed tasks out of all the
+// tasks in the build.
+func (i *lastRevisionBuildInfo) failedProportion() float64 {
+	return float64(i.numFailedTasks) / float64(len(i.allTasks))
 }
 
 // isSuccessfulTask checks if a task is considered successful for last revision
@@ -459,6 +485,13 @@ type lastRevisionCriteria struct {
 	// minSuccessProportion is a criterion for the minimum proportion of tasks
 	// in a matching build that must be finished.
 	minFinishedProportion float64
+	// minFailedProportion is a criterion for the minimum proportion of tasks
+	// in a matching build that must have failed. Unlike the other criteria,
+	// this only has to be met by one matching build rather than all of them.
+	// This is because users tend to care more about failures than successes,
+	// so they're typically using this to pinpoint individual builds that have
+	// unusually high rates of failure.
+	minFailedProportion float64
 	// successfulTasks is a criterion for the list of task names that, if
 	// present in the build, must have succeeded. If the task is not present in
 	// the build, then this criterion does not apply.
@@ -468,7 +501,7 @@ type lastRevisionCriteria struct {
 	knownIssuesAreSuccess bool
 }
 
-func newLastRevisionCriteria(project string, bvRegexpsAsStr, bvDisplayRegexpsAsStr []string, minSuccessProportion, minFinishedProportion float64, successfulTasks []string, knownIssuesAreSuccess bool) (*lastRevisionCriteria, error) {
+func newLastRevisionCriteria(project string, bvRegexpsAsStr, bvDisplayRegexpsAsStr []string, minSuccessProportion, minFinishedProportion, minFailedProportion float64, successfulTasks []string, knownIssuesAreSuccess bool) (*lastRevisionCriteria, error) {
 	bvRegexps := make([]regexp.Regexp, 0, len(bvRegexpsAsStr))
 	for _, bvRegexpStr := range bvRegexpsAsStr {
 		bvRegexp, err := regexp.Compile(bvRegexpStr)
@@ -492,6 +525,7 @@ func newLastRevisionCriteria(project string, bvRegexpsAsStr, bvDisplayRegexpsAsS
 		buildVariantDisplayNameRegexps: bvDisplayRegexps,
 		minSuccessProportion:           minSuccessProportion,
 		minFinishedProportion:          minFinishedProportion,
+		minFailedProportion:            minFailedProportion,
 		successfulTasks:                successfulTasks,
 		knownIssuesAreSuccess:          knownIssuesAreSuccess,
 	}, nil
@@ -543,6 +577,19 @@ func (c *lastRevisionCriteria) check(ctx context.Context, info lastRevisionBuild
 			"build_variant_display_name": info.buildVariantDisplayName,
 			"min_finished_proportion":    c.minFinishedProportion,
 			"finished_proportion":        info.finishedProportion(),
+		})
+		return false
+	}
+
+	if info.failedProportion() < c.minFailedProportion {
+		grip.Debug(ctx, message.Fields{
+			"message":                    "build does not meet minimum failed tasks proportion",
+			"version_id":                 info.versionID,
+			"build_id":                   info.buildID,
+			"build_variant":              info.buildVariant,
+			"build_variant_display_name": info.buildVariantDisplayName,
+			"min_failed_proportion":      c.minFailedProportion,
+			"failed_proportion":          info.failedProportion(),
 		})
 		return false
 	}
@@ -606,11 +653,23 @@ func findLatestMatchingVersion(ctx context.Context, c client.Communicator, lates
 	return nil, nil
 }
 
-// checkBuildsPassCriteria checks if all the provided builds pass the criteria.
+// checkBuildsPassCriteria checks if the provided builds pass the criteria. All
+// builds must pass the criteria, except for minimum failed proportion criteria,
+// which only have to be met by one matching build.
 func checkBuildsPassCriteria(ctx context.Context, c client.Communicator, builds []model.APIBuild, criteria []lastRevisionCriteria) (passesCriteria bool, err error) {
+	var allBuildCriteria, anyBuildCriteria []lastRevisionCriteria
+	for _, criterion := range criteria {
+		if criterion.minFailedProportion > 0 {
+			anyBuildCriteria = append(anyBuildCriteria, criterion)
+		} else {
+			allBuildCriteria = append(allBuildCriteria, criterion)
+		}
+	}
+
 	type buildResult struct {
-		passesCriteria bool
-		err            error
+		passesAllBuildCriteria bool
+		passesAnyBuildCriteria bool
+		err                    error
 	}
 
 	buildResults := make(chan buildResult, len(builds))
@@ -622,7 +681,7 @@ func checkBuildsPassCriteria(ctx context.Context, c client.Communicator, builds 
 			defer wg.Done()
 
 			res := buildResult{}
-			res.passesCriteria, res.err = checkBuildPassesCriteria(ctx, c, b, criteria)
+			res.passesAllBuildCriteria, res.passesAnyBuildCriteria, res.err = checkBuildPassesCriteria(ctx, c, b, allBuildCriteria, anyBuildCriteria)
 			select {
 			case <-ctx.Done():
 			case buildResults <- res:
@@ -634,29 +693,48 @@ func checkBuildsPassCriteria(ctx context.Context, c client.Communicator, builds 
 	close(buildResults)
 
 	catcher := grip.NewBasicCatcher()
-	allBuildsPassedCriteria := true
+	allBuildsPassedAllBuildCriteria := true
+	someBuildPassedAnyBuildCriteria := false
 	for res := range buildResults {
 		if res.err != nil {
 			catcher.Add(res.err)
 		}
-		if !res.passesCriteria {
-			allBuildsPassedCriteria = false
+		if !res.passesAllBuildCriteria {
+			allBuildsPassedAllBuildCriteria = false
+		}
+		if res.passesAnyBuildCriteria {
+			someBuildPassedAnyBuildCriteria = true
 		}
 	}
-	return allBuildsPassedCriteria, catcher.Resolve()
+	if len(anyBuildCriteria) > 0 && !someBuildPassedAnyBuildCriteria {
+		return false, catcher.Resolve()
+	}
+	return allBuildsPassedAllBuildCriteria, catcher.Resolve()
 }
 
 // checkBuildPassesCriteria checks if a single build passes the criteria.
-func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b model.APIBuild, criteria []lastRevisionCriteria) (passesCriteria bool, err error) {
+// passesAllBuildCriteria is whether the build passes the criteria that must be
+// met by every matching build. passesAnyBuildCriteria is whether the
+// build passes at least one of the criteria that only needs to be met by one
+// matching build.
+func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b model.APIBuild, allBuildCriteria, anyBuildCriteria []lastRevisionCriteria) (passesAllBuildCriteria, passesAnyBuildCriteria bool, err error) {
 	anyCriteriaApply := false
-	for _, c := range criteria {
+	for _, c := range allBuildCriteria {
 		if c.shouldApply(utility.FromStringPtr(b.BuildVariant), utility.FromStringPtr(b.DisplayName)) {
 			anyCriteriaApply = true
 			break
 		}
 	}
 	if !anyCriteriaApply {
-		return true, nil
+		for _, c := range anyBuildCriteria {
+			if c.shouldApply(utility.FromStringPtr(b.BuildVariant), utility.FromStringPtr(b.DisplayName)) {
+				anyCriteriaApply = true
+				break
+			}
+		}
+	}
+	if !anyCriteriaApply {
+		return true, false, nil
 	}
 
 	grip.Debug(ctx, message.Fields{
@@ -675,7 +753,7 @@ func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b mode
 	for {
 		tasksBatch, err := c.GetTasksForBuild(ctx, utility.FromStringPtr(b.Id), startAt, buildTasksLimitPerRequest)
 		if err != nil {
-			return false, errors.Wrapf(err, "getting tasks for build '%s'", utility.FromStringPtr(b.Id))
+			return false, false, errors.Wrapf(err, "getting tasks for build '%s'", utility.FromStringPtr(b.Id))
 		}
 		numTasksInBatch := len(tasksBatch)
 		if startAt != "" {
@@ -694,14 +772,24 @@ func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b mode
 		}
 	}
 
-	for _, c := range criteria {
+	for _, c := range allBuildCriteria {
 		buildInfo := newLastRevisionBuildInfo(b, tasks, c.knownIssuesAreSuccess)
-		passesCriteria := c.check(ctx, buildInfo)
-		if !passesCriteria {
-			return false, nil
+		if !c.check(ctx, buildInfo) {
+			return false, false, nil
 		}
 	}
-	return true, nil
+	for _, c := range anyBuildCriteria {
+		if !c.shouldApply(utility.FromStringPtr(b.BuildVariant), utility.FromStringPtr(b.DisplayName)) {
+			// These criteria only need to be met by one matching build, and
+			// this build does not match anyways, so skip it.
+			continue
+		}
+		buildInfo := newLastRevisionBuildInfo(b, tasks, c.knownIssuesAreSuccess)
+		if c.check(ctx, buildInfo) {
+			return true, true, nil
+		}
+	}
+	return true, false, nil
 }
 
 // lastRevisionCriteriaGroup is a group of last revision criteria that can be
@@ -714,7 +802,7 @@ type lastRevisionCriteriaGroup struct {
 func (cg *lastRevisionCriteriaGroup) toLastRevisionCriteria(projectID string, knownIssuesAreSuccess bool) ([]lastRevisionCriteria, error) {
 	allCriteria := make([]lastRevisionCriteria, 0, len(cg.Criteria))
 	for i, c := range cg.Criteria {
-		criteria, err := newLastRevisionCriteria(projectID, c.BVRegexps, c.BVDisplayRegexps, c.MinSuccessProportion, c.MinFinishedProportion, c.SuccessfulTasks, knownIssuesAreSuccess)
+		criteria, err := newLastRevisionCriteria(projectID, c.BVRegexps, c.BVDisplayRegexps, c.MinSuccessProportion, c.MinFinishedProportion, c.MinFailedProportion, c.SuccessfulTasks, knownIssuesAreSuccess)
 		if err != nil {
 			return nil, errors.Wrapf(err, "reusing last revision criteria from group '%s' at index %d", cg.Name, i)
 		}
@@ -730,6 +818,7 @@ type reusableLastRevisionCriteria struct {
 	BVDisplayRegexps      []string `json:"bv_display_regexps,omitempty" yaml:"bv_display_regexps,omitempty"`
 	MinSuccessProportion  float64  `json:"min_success_proportion,omitempty" yaml:"min_success_proportion,omitempty"`
 	MinFinishedProportion float64  `json:"min_finished_proportion,omitempty" yaml:"min_finished_proportion,omitempty"`
+	MinFailedProportion   float64  `json:"min_failed_proportion,omitempty" yaml:"min_failed_proportion,omitempty"`
 	SuccessfulTasks       []string `json:"successful_tasks,omitempty" yaml:"successful_tasks,omitempty"`
 }
 
@@ -747,6 +836,7 @@ func newReusableLastRevisionCriteria(c *lastRevisionCriteria) reusableLastRevisi
 		BVDisplayRegexps:      bvDisplayRegexps,
 		MinSuccessProportion:  c.minSuccessProportion,
 		MinFinishedProportion: c.minFinishedProportion,
+		MinFailedProportion:   c.minFailedProportion,
 		SuccessfulTasks:       c.successfulTasks,
 	}
 }
