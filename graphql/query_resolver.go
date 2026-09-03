@@ -399,15 +399,15 @@ func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistr
 }
 
 // Patch is the resolver for the patch field.
-func (r *queryResolver) Patch(ctx context.Context, patchID string) (*restModel.APIPatch, error) {
-	apiPatch, err := data.FindPatchById(ctx, patchID)
+func (r *queryResolver) Patch(ctx context.Context, patchID string) (*patch.Patch, error) {
+	p, err := loaders.GetPatch(ctx, patchID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", patchID, err.Error()), err)
 	}
-	if apiPatch == nil {
+	if p == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", patchID))
 	}
-	return apiPatch, nil
+	return p, nil
 }
 
 // GithubProjectConflicts is the resolver for the githubProjectConflicts field.

@@ -12,7 +12,7 @@
               "displayName": "Admin User"
             },
             "tasks": ["test-graphql"],
-            "variants": ["ubuntu1604"]
+            "buildVariants": ["ubuntu1604"]
           }
         }
       }
