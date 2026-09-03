@@ -2509,10 +2509,15 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 			require.NotNil(t, successfulExecTask)
 			assert.Equal(t, evergreen.TaskSucceeded, successfulExecTask.Status, "successful execution task should not be reset")
 
+			unscheduledExecTask, err := task.FindOneId(ctx, "task8")
+			assert.NoError(t, err)
+			require.NotNil(t, unscheduledExecTask)
+			assert.False(t, unscheduledExecTask.Activated, "unscheduled execution task should not be activated for failed-only restart")
+
 			dbUser, err := user.FindOneById(t.Context(), "caller")
 			assert.NoError(t, err)
 			require.NotNil(t, dbUser)
-			assert.Equal(t, len(dt.ExecutionTasks), dbUser.NumScheduledPatchTasks)
+			assert.Equal(t, 2, dbUser.NumScheduledPatchTasks, "scheduling limit should only count activated execution tasks")
 
 			assert.NoError(t, ResetTaskOrDisplayTask(ctx, settings, dt, "caller", evergreen.StepbackTaskActivator, true, nil))
 			dt, err = task.FindOneId(ctx, "displayTask1")
