@@ -99,6 +99,20 @@ func TestSourceCacheCredentialsRun(t *testing.T) {
 			insertTask:     true,
 			expectedStatus: http.StatusConflict,
 		},
+		// An owner or repo that could widen the IAM resource pattern or escape the
+		// repo prefix must not be used to build the policy.
+		"ProjectWithATraversalOwnerIsRefused": {
+			insertTask: true, owner: "..", repo: "some-repo",
+			expectedStatus: http.StatusConflict,
+		},
+		"ProjectWithAWildcardRepoIsRefused": {
+			insertTask: true, owner: "some-org", repo: "*",
+			expectedStatus: http.StatusConflict,
+		},
+		"ProjectWithASeparatorOwnerIsRefused": {
+			insertTask: true, owner: "some/org", repo: "some-repo",
+			expectedStatus: http.StatusConflict,
+		},
 		"MainlineTaskGetsTheBaseNamespace": {
 			insertTask: true, owner: "some-org", repo: "some-repo",
 			expectedStatus: http.StatusOK,
@@ -192,6 +206,37 @@ func TestSourceCacheNamespaceForTask(t *testing.T) {
 			namespace, err := sourceCacheNamespaceForTask(t.Context(), tsk)
 			require.NoError(t, err)
 			assert.Equal(t, tCase.wantNamespace, namespace)
+		})
+	}
+}
+
+func TestValidateSourceCacheRepoComponents(t *testing.T) {
+	for tName, tCase := range map[string]struct {
+		owner, repo string
+		expectError bool
+	}{
+		"ValidOwnerAndRepo": {
+			owner: "some-org", repo: "some-repo",
+		},
+		"ValidOwnerAndRepoWithUnderlines": {
+			owner: "org_name", repo: "repo_name",
+		},
+		"SingleDotOwnerFails":        {owner: ".", repo: "some-repo", expectError: true},
+		"ParentDirOwnerFails":        {owner: "..", repo: "some-repo", expectError: true},
+		"ParentDirRepoFails":         {owner: "some-org", repo: "..", expectError: true},
+		"SlashInOwnerFails":          {owner: "some/org", repo: "some-repo", expectError: true},
+		"IAMWildcardInRepoFails":     {owner: "some-org", repo: "some*", expectError: true},
+		"IAMSingleCharWildcardFails": {owner: "some-org", repo: "some?", expectError: true},
+		"EmptyOwnerFails":            {owner: "", repo: "some-repo", expectError: true},
+		"NonASCIIRepoFails":          {owner: "some-org", repo: "répo", expectError: true},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			err := validateSourceCacheRepoComponents(tCase.owner, tCase.repo)
+			if tCase.expectError {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
 		})
 	}
 }

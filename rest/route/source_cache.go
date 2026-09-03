@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -87,6 +88,12 @@ func (h *sourceCacheCredentials) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("project '%s' has no owner and repo to scope source cache credentials to", t.Project),
 		})
 	}
+	if err := validateSourceCacheRepoComponents(pRef.Owner, pRef.Repo); err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusConflict,
+			Message:    fmt.Sprintf("project '%s' has an owner or repo that cannot appear in a source cache policy: %s", t.Project, err),
+		})
+	}
 
 	namespace, err := sourceCacheNamespaceForTask(ctx, t)
 	if err != nil {
@@ -118,6 +125,25 @@ func (h *sourceCacheCredentials) Run(ctx context.Context) gimlet.Responder {
 		// The namespace the policy scopes writes to, so the agent does not re-derive it.
 		Namespaces: []string{namespace},
 	})
+}
+
+// sourceCacheRepoComponentRegexp matches the characters safe to interpolate into an IAM resource ARN.
+var sourceCacheRepoComponentRegexp = regexp.MustCompile(`^[A-Za-z0-9_.-]+$`)
+
+// validateSourceCacheRepoComponents rejects an owner or repo that could widen or escape the IAM resource pattern.
+func validateSourceCacheRepoComponents(owner, repo string) error {
+	for _, component := range []struct{ name, value string }{
+		{name: "owner", value: owner},
+		{name: "repo", value: repo},
+	} {
+		if component.value == "." || component.value == ".." {
+			return errors.Errorf("%s '%s' is not a valid GitHub path component", component.name, component.value)
+		}
+		if !sourceCacheRepoComponentRegexp.MatchString(component.value) {
+			return errors.Errorf("%s '%s' must match %s", component.name, component.value, sourceCacheRepoComponentRegexp.String())
+		}
+	}
+	return nil
 }
 
 // sourceCacheNamespaceForTask returns the namespace the task may write to. It must
