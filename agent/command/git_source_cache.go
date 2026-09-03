@@ -6,9 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -197,17 +195,8 @@ func (sc *sourceCache) restoreEntries() ([]sourceCacheEntry, error) {
 
 // cacheKeysForRevision returns the content key and S3 object key for a revision.
 func (sc *sourceCache) cacheKeysForRevision(revision, namespace string) (string, string, error) {
-	// The revision alone determines a PR artifact, so the branch would only fragment its keys.
-	branch := sc.branch
-	if namespace == evergreen.SourceCachePRNamespace {
-		branch = ""
-	}
-	expansions := []string{namespace, sc.owner, sc.repo, branch, revision, strconv.Itoa(sc.cloneDepth), strconv.FormatBool(sc.recurseSubmodules)}
-	key, err := computeCacheKey(nil, expansions, true)
-	if err != nil {
-		return "", "", err
-	}
-	return key, path.Join(evergreen.SourceCacheNamespacePrefix(sc.owner, sc.repo, namespace), revision, key+cacheArchiveSuffix), nil
+	return evergreen.SourceCacheKeyHash(sc.owner, sc.repo, namespace, sc.branch, revision, sc.cloneDepth, sc.recurseSubmodules),
+		evergreen.SourceCacheObjectKey(sc.owner, sc.repo, namespace, sc.branch, revision, sc.cloneDepth, sc.recurseSubmodules), nil
 }
 
 func (sc *sourceCache) projectDir() string {
