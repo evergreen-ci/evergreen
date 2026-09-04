@@ -220,6 +220,9 @@ func (sc *sourceCache) restore(ctx context.Context, comm client.Communicator, lo
 		return false, errors.Wrapf(err, "stating downloaded source cache file '%s'", localPath)
 	}
 	if info.Size() == 0 {
+		// A zero-byte object already occupies the key, so a create-only save
+		// could never replace it. Mark it corrupt so save overwrites it instead.
+		sc.corruptRemoteKey = remoteKey
 		return false, nil
 	}
 	trace.SpanFromContext(ctx).SetAttributes(attribute.Int64(sourceCacheArtifactBytesAttribute, info.Size()))
