@@ -68,6 +68,3 @@ CLAUDE.local.md
 .claude/scheduled_tasks.lock
 .claude/settings.local.json
 .claude/worktrees/
-
-# graft's local graph cache — regenerable, not committed (run `graft build`).
-/graft/
