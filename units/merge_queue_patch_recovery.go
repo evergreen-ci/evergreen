@@ -107,14 +107,12 @@ func (j *mergeQueuePatchRecoveryJob) recoverProject(ctx context.Context, project
 		return nil
 	}
 
-	existingPatches, err := patch.FindMergeQueuePatchesByProject(ctx, projectRef.Id)
+	hasPatch, err := patch.HasDuplicateMergeQueuePatch(ctx, projectRef.Id, projectRef.Owner, projectRef.Repo, frontSHA)
 	if err != nil {
-		return errors.Wrap(err, "finding active merge queue patches")
+		return errors.Wrap(err, "checking for an existing merge queue patch")
 	}
-	for _, p := range existingPatches {
-		if p.GithubMergeData.HeadSHA == frontSHA {
-			return nil
-		}
+	if hasPatch {
+		return nil
 	}
 
 	if err := j.recoverMergeGroup(ctx, projectRef, frontRef, frontSHA); err != nil {

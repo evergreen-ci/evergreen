@@ -267,6 +267,14 @@ func GetRawPatches(ctx context.Context, patchID string) (*restModel.APIRawPatch,
 		rawPatch.Patch.Githash = patchDoc.Githash
 	}
 
+	for _, lmi := range patchDoc.LocalModuleIncludes {
+		rawPatch.LocalModuleIncludes = append(rawPatch.LocalModuleIncludes, restModel.APILocalModuleInclude{
+			Module:      lmi.Module,
+			FileName:    lmi.FileName,
+			FileContent: lmi.FileContent,
+		})
+	}
+
 	return &rawPatch, nil
 }
 

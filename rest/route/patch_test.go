@@ -840,6 +840,13 @@ func TestPatchRawModulesHandler(t *testing.T) {
 				},
 			},
 		},
+		LocalModuleIncludes: []patch.LocalModuleInclude{
+			{
+				Module:      "module1",
+				FileName:    "evergreen.yml",
+				FileContent: []byte("module config override"),
+			},
+		},
 	}
 	assert.NoError(t, patchToInsert.Insert(t.Context()))
 
@@ -863,6 +870,11 @@ func TestPatchRawModulesHandler(t *testing.T) {
 
 	assert.Equal(t, "module2", modules[1].Name)
 	assert.Equal(t, "module2 diff", modules[1].Diff)
+
+	require.Len(t, rawModulesResponse.LocalModuleIncludes, 1)
+	assert.Equal(t, "module1", rawModulesResponse.LocalModuleIncludes[0].Module)
+	assert.Equal(t, "evergreen.yml", rawModulesResponse.LocalModuleIncludes[0].FileName)
+	assert.Equal(t, []byte("module config override"), rawModulesResponse.LocalModuleIncludes[0].FileContent)
 }
 
 func TestPatchRawHandler(t *testing.T) {

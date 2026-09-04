@@ -6,7 +6,7 @@
       id
       displayName
     }
+    buildVariants
     tasks
-    variants
   }
 }

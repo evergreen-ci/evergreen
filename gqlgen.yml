@@ -570,7 +570,7 @@ models:
   ParsleyFilterInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParsleyFilter
   Patch:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIPatch
+    model: github.com/evergreen-ci/evergreen/model/patch.Patch
     fields:
       includedLocalModules:
         resolver: true

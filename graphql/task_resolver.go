@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -668,26 +669,26 @@ func (r *taskResolver) InvalidatedByUpstream(ctx context.Context, obj *restModel
 	if !evergreen.IsGithubMergeQueueRequester(utility.FromStringPtr(obj.Requester)) {
 		return nil, nil
 	}
-	apiPatch, err := data.FindPatchById(ctx, utility.FromStringPtr(obj.Version))
+	p, err := loaders.GetPatch(ctx, utility.FromStringPtr(obj.Version))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", utility.FromStringPtr(obj.Version), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", utility.FromStringPtr(obj.Version), err.Error()), err)
 	}
-	if apiPatch == nil {
+	if p == nil {
 		return nil, nil
 	}
-	return &apiPatch.InvalidatedByUpstream, nil
+	return &p.GithubMergeData.InvalidatedByUpstream, nil
 }
 
 // Patch is the resolver for the patch field.
-func (r *taskResolver) Patch(ctx context.Context, obj *restModel.APITask) (*restModel.APIPatch, error) {
+func (r *taskResolver) Patch(ctx context.Context, obj *restModel.APITask) (*patch.Patch, error) {
 	if !evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)) {
 		return nil, nil
 	}
-	apiPatch, err := data.FindPatchById(ctx, utility.FromStringPtr(obj.Version))
+	p, err := loaders.GetPatch(ctx, utility.FromStringPtr(obj.Version))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", utility.FromStringPtr(obj.Version), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", utility.FromStringPtr(obj.Version), err.Error()), err)
 	}
-	return apiPatch, nil
+	return p, nil
 }
 
 // PatchNumber is the resolver for the patchNumber field.

@@ -548,6 +548,15 @@ func PatchFile() cli.Command {
 				if err != nil {
 					return err
 				}
+				if rp != nil {
+					for _, lmi := range rp.LocalModuleIncludes {
+						params.LocalModuleIncludes = append(params.LocalModuleIncludes, patch.LocalModuleInclude{
+							Module:      lmi.Module,
+							FileName:    lmi.FileName,
+							FileContent: lmi.FileContent,
+						})
+					}
+				}
 			}
 
 			if err = params.validateSubmission(ctx, &diffData); err != nil {
