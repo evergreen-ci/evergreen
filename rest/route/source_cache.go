@@ -242,9 +242,9 @@ func sourceCachePRRevision(ctx context.Context, t *task.Task) (string, error) {
 }
 
 // sourceCacheSessionPolicy admits reads of the exact restore keys and writes of the
-// exact save key, so a session cannot touch any other artifact. Writes cover the
-// multipart actions pail uses for large uploads; the client sends If-None-Match on
-// create-only puts, so corruption repair still works.
+// exact save key, so a session cannot touch any other artifact. PutObject covers the
+// single-part put and the multipart init, upload, and complete calls pail makes;
+// the client sends If-None-Match on create-only puts, so corruption repair still works.
 func sourceCacheSessionPolicy(bucketName string, restoreKeys []apimodels.SourceCacheRestoreKey, saveKey apimodels.SourceCacheRestoreKey) (string, error) {
 	type statement struct {
 		Sid      string
@@ -272,7 +272,7 @@ func sourceCacheSessionPolicy(bucketName string, restoreKeys []apimodels.SourceC
 			{
 				Sid:      "SourceCacheWrite",
 				Effect:   "Allow",
-				Action:   []string{"s3:PutObject", "s3:CreateMultipartUpload", "s3:UploadPart", "s3:CompleteMultipartUpload", "s3:AbortMultipartUpload"},
+				Action:   []string{"s3:PutObject", "s3:AbortMultipartUpload"},
 				Resource: []string{fmt.Sprintf("%s/%s", bucketARN, saveKey.Key)},
 			},
 		},

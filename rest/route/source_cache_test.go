@@ -269,7 +269,7 @@ func TestSourceCacheSessionPolicy(t *testing.T) {
 			{
 				"Sid": "SourceCacheWrite",
 				"Effect": "Allow",
-				"Action": ["s3:PutObject", "s3:CreateMultipartUpload", "s3:UploadPart", "s3:CompleteMultipartUpload", "s3:AbortMultipartUpload"],
+				"Action": ["s3:PutObject", "s3:AbortMultipartUpload"],
 				"Resource": ["arn:aws:s3:::source-cache/source_cache/v1/some-org/some-repo/pr/pr-head/k1.tgz"]
 			}
 		]
