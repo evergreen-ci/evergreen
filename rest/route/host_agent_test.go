@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy/queue"
 	. "github.com/smartystreets/goconvey/convey"
@@ -106,18 +107,16 @@ func TestHostNextTask(t *testing.T) {
 		"ShouldNotDispatchToUserHost": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
 			userHost := *rh.host
 			userHost.UserHost = true
-			rh.host = &userHost
-			resp := rh.Run(ctx)
-			assert.NotNil(t, resp)
-			assert.Equal(t, http.StatusOK, resp.Status())
-			taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
-			require.True(t, ok, resp.Data())
-			assert.Empty(t, taskResp.TaskId)
-			assert.Empty(t, taskResp.TaskSecret)
-			dbHost, err := host.FindOneId(ctx, userHost.Id)
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/hosts/{host_id}/agent/next_task", nil)
 			require.NoError(t, err)
-			require.NotZero(t, dbHost)
-			assert.True(t, utility.IsZeroTime(dbHost.AgentStartTime))
+			req = gimlet.SetURLVars(req, map[string]string{"host_id": userHost.Id})
+			ctx = context.WithValue(ctx, model.ApiHostKey, &userHost)
+			err = rh.Parse(ctx, req)
+			require.Error(t, err)
+			respErr, ok := err.(gimlet.ErrorResponse)
+			require.True(t, ok, err)
+			assert.Equal(t, http.StatusForbidden, respErr.StatusCode)
+			assert.Equal(t, "user hosts cannot be dispatched tasks", respErr.Message)
 		},
 		"ShouldExitWithOutOfDateRevisionAndTaskGroup": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
 			sampleHost, err := host.FindOneId(ctx, "h1")

@@ -74,7 +74,7 @@ func (h *hostAgentNextTask) Parse(ctx context.Context, r *http.Request) error {
 	if h.host.UserHost {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusForbidden,
-			Message:    "user hosts cannot be dispatched tasks",
+			;qMessage:    "user hosts cannot be dispatched tasks",
 		}
 	}
 
