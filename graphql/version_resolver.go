@@ -103,8 +103,7 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *model.Version)
 		loaders.PreloadVersions(ctx, childPatchIds)
 		childVersions := []*model.Version{}
 		for _, cp := range childPatchIds {
-			// this calls the graphql Version query resolver
-			cv, err := r.Query().Version(ctx, cp)
+			cv, err := loaders.GetVersion(ctx, cp)
 			if err != nil {
 				// before erroring due to the version being nil or not found,
 				// fetch the child patch to see if it's activated
