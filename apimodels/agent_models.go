@@ -257,6 +257,9 @@ type SourceCacheRestoreKey struct {
 	Revision string `json:"revision"`
 	// Key is the S3 object key of the artifact.
 	Key string `json:"key"`
+	// PRCheckout is true when the artifact's tree is not at the revision the task
+	// will test, so the agent must check out the PR over the restored tree.
+	PRCheckout bool `json:"pr_checkout"`
 }
 
 // SourceCacheCredentialsResponse carries source cache credentials and the exact

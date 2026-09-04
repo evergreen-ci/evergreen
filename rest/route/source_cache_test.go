@@ -320,6 +320,11 @@ func TestSourceCachePlan(t *testing.T) {
 				assert.Equal(t, want[1], revision)
 			}
 			assert.Equal(t, plan.restoreKeys[0], plan.saveKey)
+			// The PR checkout flag is server-derived: only a restore key whose tree
+			// is not the tested revision needs a PR checked out over it.
+			for _, restoreKey := range plan.restoreKeys {
+				assert.Equal(t, restoreKey.Revision != plan.saveKey.Revision, restoreKey.PRCheckout)
+			}
 		})
 	}
 }

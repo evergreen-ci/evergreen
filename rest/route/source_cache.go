@@ -206,10 +206,13 @@ func buildSourceCachePlan(ctx context.Context, t *task.Task, pRef *model.Project
 		candidates = append(candidates, sourceCacheCandidate{revision: t.Revision, namespace: evergreen.SourceCacheBaseNamespace})
 	}
 
+	saveRevision := candidates[0].revision
 	plan := &sourceCachePlan{}
 	for i, candidate := range candidates {
 		key := evergreen.SourceCacheObjectKey(pRef.Owner, pRef.Repo, candidate.namespace, req.Branch, candidate.revision, req.CloneDepth, req.RecurseSubmodules)
-		restoreKey := apimodels.SourceCacheRestoreKey{Revision: candidate.revision, Key: key}
+		// A restore key whose tree is not the tested revision needs the PR checked
+		// out over it, so the agent never re-derives that from the key pair.
+		restoreKey := apimodels.SourceCacheRestoreKey{Revision: candidate.revision, Key: key, PRCheckout: candidate.revision != saveRevision}
 		plan.restoreKeys = append(plan.restoreKeys, restoreKey)
 		if i == 0 {
 			plan.saveKey = restoreKey

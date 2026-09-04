@@ -501,9 +501,9 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 		if !restored {
 			continue
 		}
-		// A base revision artifact is at the commit the PR is built on, so the
-		// PR still has to be checked out over it.
-		runPRCheckout := restoreKey.Revision != sc.saveKey.Revision
+		// The app server marks on the restore key whether the PR must be checked
+		// out over the restored tree, so the agent does not re-derive that.
+		runPRCheckout := restoreKey.PRCheckout
 		// buildPostRestoreCommand verifies HEAD against the revision, so a restored
 		// tree at the wrong commit fails here and falls back to a clone below.
 		if err := c.runCommands(ctx, logger, conf, c.buildPostRestoreCommand(conf, opts, restoreKey.Revision, runPRCheckout)); err != nil {

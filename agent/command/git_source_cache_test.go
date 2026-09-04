@@ -39,7 +39,8 @@ func sourceCacheTestOpts() cloneOpts {
 
 // sourceCacheTestComm returns a mock communicator serving a plan for the given
 // namespace: a single save/restore key, or a PR plan with the base artifact as the
-// second restore key.
+// second restore key. The PR-checkout flag stays unset, which is correct because
+// every plan it serves restores and saves the same revision.
 func sourceCacheTestComm(namespace ...string) *client.Mock {
 	comm := client.NewMock("http://localhost.com")
 	ns := evergreen.SourceCacheBaseNamespace
