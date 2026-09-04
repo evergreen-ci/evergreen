@@ -491,10 +491,9 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 	}
 
 	fallbackReason := ""
-	for _, entry := range sc.entries {
-		revision := entry.revision
-		logger.Task().Infof(ctx, "Looking up source cache '%s/%s'.", sc.cfg.Name, entry.remoteKey)
-		restored, err := sc.restore(ctx, comm, logger, entry.remoteKey)
+	for _, restoreKey := range sc.restoreKeys {
+		logger.Task().Infof(ctx, "Looking up source cache '%s/%s'.", sc.cfg.Name, restoreKey.Key)
+		restored, err := sc.restore(ctx, comm, logger, restoreKey.Key)
 		if err != nil {
 			fallbackReason = err.Error()
 			break
@@ -504,15 +503,15 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 		}
 		// A base revision artifact is at the commit the PR is built on, so the
 		// PR still has to be checked out over it.
-		runPRCheckout := revision != sc.revision
-		// buildPostRestoreCommand verifies HEAD against revision, so a restored
+		runPRCheckout := restoreKey.Revision != sc.saveKey.Revision
+		// buildPostRestoreCommand verifies HEAD against the revision, so a restored
 		// tree at the wrong commit fails here and falls back to a clone below.
-		if err := c.runCommands(ctx, logger, conf, c.buildPostRestoreCommand(conf, opts, revision, runPRCheckout)); err != nil {
+		if err := c.runCommands(ctx, logger, conf, c.buildPostRestoreCommand(conf, opts, restoreKey.Revision, runPRCheckout)); err != nil {
 			fallbackReason = errors.Wrap(err, "preparing restored source tree").Error()
 			break
 		}
-		logger.Task().Infof(ctx, "Restored source from the cache for revision '%s'.", revision)
-		trace.SpanFromContext(ctx).SetAttributes(attribute.String(sourceCacheRestoredRevisionAttribute, revision))
+		logger.Task().Infof(ctx, "Restored source from the cache for revision '%s'.", restoreKey.Revision)
+		trace.SpanFromContext(ctx).SetAttributes(attribute.String(sourceCacheRestoredRevisionAttribute, restoreKey.Revision))
 		sc.setSpanOutcome(ctx, sourceCacheHit, "")
 		return nil
 	}

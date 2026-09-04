@@ -66,31 +66,21 @@ type sourceCache struct {
 	dir               string
 	owner, repo       string
 	branch            string
-	revision          string
 	cloneDepth        int
 	recurseSubmodules bool
 
 	// creds is assumed once per task and shared by the restore and save buckets.
 	creds aws.CredentialsProvider
 
-	// entries are what the cache may be restored from, most specific first, as
-	// the app server granted them. The first is also what this task saves under.
-	entries []sourceCacheEntry
+	// restoreKeys are the artifacts the cache may be restored from, most specific
+	// first, exactly as the app server granted them.
+	restoreKeys []apimodels.SourceCacheRestoreKey
+
+	// saveKey is the artifact this task uploads its own tree to.
+	saveKey apimodels.SourceCacheRestoreKey
 
 	// corruptRemoteKey is set when restore extracts a corrupt artifact; save heals it.
 	corruptRemoteKey string
-}
-
-// sourceCacheEntry is one revision the cache may be restored from, at the S3
-// object key the app server granted.
-type sourceCacheEntry struct {
-	revision  string
-	remoteKey string
-}
-
-// saveKey returns the S3 object key this task uploads its own artifact to.
-func (sc *sourceCache) saveKey() string {
-	return sc.entries[0].remoteKey
 }
 
 // newSourceCache returns the source cache for this run, or a nil cache and the
@@ -140,10 +130,8 @@ func newSourceCache(ctx context.Context, comm client.Communicator, conf *interna
 	if creds == nil || len(creds.RestoreKeys) == 0 || creds.SaveKey.Key == "" {
 		return nil, "the app server granted no source cache keys"
 	}
-	for _, restoreKey := range creds.RestoreKeys {
-		sc.entries = append(sc.entries, sourceCacheEntry{revision: restoreKey.Revision, remoteKey: restoreKey.Key})
-	}
-	sc.revision = creds.SaveKey.Revision
+	sc.restoreKeys = creds.RestoreKeys
+	sc.saveKey = creds.SaveKey
 
 	provider, err := newCachedSourceCacheCredentials(comm, sc.taskData, request, creds)
 	if err != nil {
@@ -272,7 +260,7 @@ func (sc *sourceCache) extractArchive(ctx context.Context, r io.Reader, remoteKe
 
 // healsCorruptArtifact reports whether save should overwrite a corrupt artifact.
 func (sc *sourceCache) healsCorruptArtifact() bool {
-	return sc.corruptRemoteKey != "" && sc.corruptRemoteKey == sc.saveKey()
+	return sc.corruptRemoteKey != "" && sc.corruptRemoteKey == sc.saveKey.Key
 }
 
 // save archives and uploads the project directory.
@@ -300,7 +288,7 @@ func (sc *sourceCache) save(ctx context.Context, comm client.Communicator, logge
 
 	heal := sc.healsCorruptArtifact()
 	if heal {
-		logger.Task().Warningf(ctx, "Overwriting the corrupt source cache artifact at '%s'.", sc.saveKey())
+		logger.Task().Warningf(ctx, "Overwriting the corrupt source cache artifact at '%s'.", sc.saveKey.Key)
 	}
 	trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(sourceCacheAttribute("healed_corrupt_artifact"), heal))
 
@@ -311,9 +299,9 @@ func (sc *sourceCache) save(ctx context.Context, comm client.Communicator, logge
 
 	start = time.Now()
 	alreadyExists := false
-	uploadDesc := fmt.Sprintf("upload cache object '%s'", sc.saveKey())
+	uploadDesc := fmt.Sprintf("upload cache object '%s'", sc.saveKey.Key)
 	err = retryS3Op(ctx, logger.Task(), uploadDesc, func() (bool, error) {
-		uploadErr := bucket.Upload(ctx, sc.saveKey(), localPath)
+		uploadErr := bucket.Upload(ctx, sc.saveKey.Key, localPath)
 		if uploadErr == nil {
 			return false, nil
 		}
@@ -328,7 +316,7 @@ func (sc *sourceCache) save(ctx context.Context, comm client.Communicator, logge
 		return true, uploadErr
 	})
 	if err != nil {
-		return false, errors.Wrapf(err, "uploading cache object '%s'", sc.saveKey())
+		return false, errors.Wrapf(err, "uploading cache object '%s'", sc.saveKey.Key)
 	}
 	setSourceCacheSpanDuration(ctx, sourceCacheUploadDurationAttribute, time.Since(start))
 	return !alreadyExists, nil
@@ -346,7 +334,7 @@ func (sc *sourceCache) setSpanOutcome(ctx context.Context, outcome, reason strin
 		attribute.String(sourceCacheOutcomeAttribute, outcome),
 		attribute.String(sourceCacheOwnerAttribute, sc.owner),
 		attribute.String(sourceCacheRepoAttribute, sc.repo),
-		attribute.String(sourceCacheRevisionAttribute, sc.revision),
+		attribute.String(sourceCacheRevisionAttribute, sc.saveKey.Revision),
 		attribute.Int(sourceCacheCloneDepthAttribute, sc.cloneDepth),
 		attribute.Bool(sourceCacheRecurseSubmodulesAttribute, sc.recurseSubmodules),
 	}

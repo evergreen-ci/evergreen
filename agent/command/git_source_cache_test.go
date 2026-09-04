@@ -516,14 +516,14 @@ func TestSourceCacheHealsOnlyTheKeyItWrites(t *testing.T) {
 	t.Run("MainlineTaskHealsItsOwnRevision", func(t *testing.T) {
 		sc, reason := newSourceCache(t.Context(), sourceCacheTestComm(), sourceCacheTestConfig(), c, sourceCacheTestOpts(), "linux")
 		require.NotNil(t, sc, reason)
-		sc.corruptRemoteKey = sc.saveKey()
+		sc.corruptRemoteKey = sc.saveKey.Key
 		assert.True(t, sc.healsCorruptArtifact())
 	})
 
 	t.Run("PRTaskHealsItsOwnPRArtifact", func(t *testing.T) {
 		sc, reason := newSourceCache(t.Context(), sourceCacheTestComm(evergreen.SourceCachePRNamespace), prConfig(), c, sourceCacheTestOpts(), "linux")
 		require.NotNil(t, sc, reason)
-		sc.corruptRemoteKey = sc.saveKey()
+		sc.corruptRemoteKey = sc.saveKey.Key
 		assert.True(t, sc.healsCorruptArtifact())
 	})
 
@@ -533,9 +533,9 @@ func TestSourceCacheHealsOnlyTheKeyItWrites(t *testing.T) {
 	t.Run("PRTaskDoesNotHealTheSharedBaseArtifact", func(t *testing.T) {
 		sc, reason := newSourceCache(t.Context(), sourceCacheTestComm(evergreen.SourceCachePRNamespace), prConfig(), c, sourceCacheTestOpts(), "linux")
 		require.NotNil(t, sc, reason)
-		require.Len(t, sc.entries, 2)
-		baseKey := sc.entries[1].remoteKey
-		require.NotEqual(t, sc.saveKey(), baseKey)
+		require.Len(t, sc.restoreKeys, 2)
+		baseKey := sc.restoreKeys[1].Key
+		require.NotEqual(t, sc.saveKey.Key, baseKey)
 
 		sc.corruptRemoteKey = baseKey
 		assert.False(t, sc.healsCorruptArtifact())
@@ -548,7 +548,7 @@ func TestSourceCacheExtractMarksAnUndecodableArtifactCorrupt(t *testing.T) {
 	const remoteKey = "source_cache/v2/10gen/mongo/abc123/key.tgz"
 
 	newCache := func(t *testing.T) *sourceCache {
-		sc := &sourceCache{workDir: t.TempDir(), dir: "src", entries: []sourceCacheEntry{{remoteKey: remoteKey}}}
+		sc := &sourceCache{workDir: t.TempDir(), dir: "src", saveKey: apimodels.SourceCacheRestoreKey{Key: remoteKey}}
 		require.NoError(t, os.MkdirAll(sc.projectDir(), 0755))
 		return sc
 	}
