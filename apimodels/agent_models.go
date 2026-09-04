@@ -243,6 +243,35 @@ type AWSCredentials struct {
 	ExternalID string `json:"external_id"`
 }
 
+// SourceCacheCredentialsRequest carries the clone shape the agent resolved, which
+// is the only input to a cache key the server cannot derive from the task.
+type SourceCacheCredentialsRequest struct {
+	Branch            string `json:"branch"`
+	CloneDepth        int    `json:"clone_depth"`
+	RecurseSubmodules bool   `json:"recurse_submodules"`
+}
+
+// SourceCacheRestoreKey is one source cache object a task may restore.
+type SourceCacheRestoreKey struct {
+	// Revision is the commit the object's tree is expected to be at.
+	Revision string `json:"revision"`
+	// Key is the S3 object key of the artifact.
+	Key string `json:"key"`
+	// PRCheckout is true when the artifact's tree is not at the revision the task
+	// will test, so the agent must check out the PR over the restored tree.
+	PRCheckout bool `json:"pr_checkout"`
+}
+
+// SourceCacheCredentialsResponse carries source cache credentials and the exact
+// restore and save keys the server granted them.
+type SourceCacheCredentialsResponse struct {
+	AWSCredentials
+	// RestoreKeys are the objects to try, most specific first.
+	RestoreKeys []SourceCacheRestoreKey `json:"restore_keys"`
+	// SaveKey is the object the task uploads its own tree to.
+	SaveKey SourceCacheRestoreKey `json:"save_key"`
+}
+
 // S3CredentialsRequest contains the s3 bucket to access.
 type S3CredentialsRequest struct {
 	// Bucket is the name of the S3 bucket to access.
@@ -396,8 +425,9 @@ type ExpansionsAndVars struct {
 	// ArtifactAWSAccountsWithoutLifecycleRules contains the AWS account IDs of the accounts that we
 	// calculate s3 costs for but cannot read lifecycle rules from.
 	ArtifactAWSAccountsWithoutLifecycleRules []string `json:"artifact_aws_accounts_without_lifecycle_rules,omitempty"`
-	// SourceCacheBucket is the git.get_project source cache bucket resolved for
-	// the task's project. It is zero when the project is not opted in.
+	// SourceCacheBucket is the git.get_project source cache bucket resolved for the
+	// task's project. It is zero when the project is not opted in. Its RoleARN is
+	// left unset so a task cannot assume the role through the generic route.
 	SourceCacheBucket evergreen.BucketConfig `json:"source_cache_bucket,omitempty"`
 }
 

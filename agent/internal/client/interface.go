@@ -147,6 +147,10 @@ type SharedCommunicator interface {
 
 	// S3Credentials returns the S3 credentials for the task when uploading to devprod owned buckets.
 	S3Credentials(ctx context.Context, td TaskData, bucket string) (*apimodels.AWSCredentials, error)
+
+	// SourceCacheCredentials returns source cache credentials scoped by the app
+	// server to the exact restore and save keys for the given clone shape.
+	SourceCacheCredentials(ctx context.Context, td TaskData, request apimodels.SourceCacheCredentialsRequest) (*apimodels.SourceCacheCredentialsResponse, error)
 }
 
 // TaskData contains the taskData.ID and taskData.Secret. It must be set for
