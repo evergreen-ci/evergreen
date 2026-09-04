@@ -1,7 +1,6 @@
 package client
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -1058,11 +1057,7 @@ func (c *baseCommunicator) SourceCacheCredentials(ctx context.Context, td TaskDa
 		taskData: &td,
 	}
 	info.setTaskPathSuffix("source_cache/credentials")
-	body, err := json.Marshal(request)
-	if err != nil {
-		return nil, errors.Wrap(err, "marshalling source cache credentials request")
-	}
-	resp, err := c.retryRequest(ctx, info, bytes.NewReader(body))
+	resp, err := c.retryRequest(ctx, info, &request)
 	if err != nil {
 		return nil, util.RespError(resp, errors.Wrap(err, "getting source cache credentials").Error())
 	}
