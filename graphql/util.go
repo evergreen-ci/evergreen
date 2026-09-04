@@ -1161,16 +1161,16 @@ func concurrentlyBuildVersionsMatchingTasksMap(ctx context.Context, versions []m
 	return hasMatchingTasksMap, nil
 }
 
-func collapseCommit(ctx context.Context, mainlineCommits MainlineCommits, mainlineCommitVersion *MainlineCommitVersion, apiVersion restModel.APIVersion) {
+func collapseCommit(ctx context.Context, mainlineCommits MainlineCommits, mainlineCommitVersion *MainlineCommitVersion, version model.Version) {
 	if len(mainlineCommits.Versions) > 0 {
 		lastMainlineCommit := mainlineCommits.Versions[len(mainlineCommits.Versions)-1]
 		if lastMainlineCommit.RolledUpVersions != nil {
-			lastMainlineCommit.RolledUpVersions = append(lastMainlineCommit.RolledUpVersions, &apiVersion)
+			lastMainlineCommit.RolledUpVersions = append(lastMainlineCommit.RolledUpVersions, &version)
 		} else {
-			mainlineCommitVersion.RolledUpVersions = []*restModel.APIVersion{&apiVersion}
+			mainlineCommitVersion.RolledUpVersions = []*model.Version{&version}
 		}
 	} else {
-		mainlineCommitVersion.RolledUpVersions = []*restModel.APIVersion{&apiVersion}
+		mainlineCommitVersion.RolledUpVersions = []*model.Version{&version}
 	}
 }
 
@@ -1632,4 +1632,41 @@ func buildQuarantineMutationResponse(ctx context.Context, t *task.Task, testName
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	return apiTest, nil
+}
+
+func redactParameters(ctx context.Context, projectId string, parameters []patch.Parameter) ([]*restModel.APIParameter, error) {
+	config, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
+	}
+
+	projVars, err := model.FindMergedProjectVars(ctx, projectId)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project vars for project '%s': %s", projectId, err.Error()))
+	}
+
+	redactKeys := config.LoggerConfig.RedactKeys
+	res := make([]*restModel.APIParameter, 0, len(parameters))
+	for _, param := range parameters {
+		redactedParam := &restModel.APIParameter{
+			Key:   utility.ToStringPtr(param.Key),
+			Value: utility.ToStringPtr(param.Value),
+		}
+		for _, pattern := range redactKeys {
+			if strings.Contains(strings.ToLower(param.Key), pattern) {
+				redactedParam.Value = utility.ToStringPtr(evergreen.RedactedValue)
+				break
+			}
+		}
+		if projVars != nil {
+			for varKey, varValue := range projVars.Vars {
+				if strings.Contains(param.Value, varValue) && projVars.PrivateVars[varKey] {
+					redactedParam.Value = utility.ToStringPtr(evergreen.RedactedValue)
+					break
+				}
+			}
+		}
+		res = append(res, redactedParam)
+	}
+	return res, nil
 }

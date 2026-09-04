@@ -1469,7 +1469,7 @@ func (r *mutationResolver) RefreshGitHubStatuses(ctx context.Context, opts Refre
 }
 
 // RestartVersions is the resolver for the restartVersions field.
-func (r *mutationResolver) RestartVersions(ctx context.Context, versionID string, abort bool, versionsToRestart []*model.VersionToRestart) ([]*restModel.APIVersion, error) {
+func (r *mutationResolver) RestartVersions(ctx context.Context, versionID string, abort bool, versionsToRestart []*model.VersionToRestart) ([]*model.Version, error) {
 	if len(versionsToRestart) == 0 {
 		return nil, InputValidationError.Send(ctx, "No versions provided. You must provide at least one version to restart.")
 	}
@@ -1482,21 +1482,23 @@ func (r *mutationResolver) RestartVersions(ctx context.Context, versionID string
 	if err != nil {
 		return nil, err
 	}
-	versions := []*restModel.APIVersion{}
+
+	versionIDs := []string{}
 	for _, version := range versionsToRestart {
-		if version.VersionId != nil {
-			currVersionID := utility.FromStringPtr(version.VersionId)
-			v, versionErr := model.VersionFindOneIdWithBuildVariants(ctx, currVersionID)
-			if versionErr != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", currVersionID, versionErr.Error()))
-			}
-			if v == nil {
-				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", currVersionID))
-			}
-			apiVersion := restModel.APIVersion{}
-			apiVersion.BuildFromService(ctx, *v)
-			versions = append(versions, &apiVersion)
+		versionIDs = append(versionIDs, utility.FromStringPtr(version.VersionId))
+	}
+
+	loaders.PreloadVersions(ctx, versionIDs)
+	versions := []*model.Version{}
+	for _, vId := range versionIDs {
+		v, versionErr := loaders.GetVersion(ctx, vId)
+		if versionErr != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", vId, versionErr.Error()))
 		}
+		if v == nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", vId))
+		}
+		versions = append(versions, v)
 	}
 	return versions, nil
 }

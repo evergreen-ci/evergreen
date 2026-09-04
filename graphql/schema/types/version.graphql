@@ -56,9 +56,9 @@ type Version {
   authorEmail: String!
   baseVersion: Version
   branch: String!
-  buildVariants(options: BuildVariantOptions!): [GroupedBuildVariant!]
-  buildVariantStats(options: BuildVariantOptions!): [GroupedTaskStatusCount!]
-  childVersions: [Version!]
+  buildVariants(options: BuildVariantOptions!): [GroupedBuildVariant!]!
+  buildVariantStats(options: BuildVariantOptions!): [GroupedTaskStatusCount!]!
+  childVersions: [Version!]!
   cost: Cost
   createTime: Time!
   ingestTime: Time
@@ -66,7 +66,7 @@ type Version {
   externalLinksForMetadata: [ExternalLinkForMetadata!]!
   finishTime: Time
   generatedTaskCounts: [GeneratedTaskCountResults!]!
-  gitTags: [GitTag!]
+  gitTags: [GitTag!]!
   ignored: Boolean!
   isPatch: Boolean!
   manifest: Manifest
@@ -87,10 +87,13 @@ type Version {
   """
   Returns up to limit (default 50) TSS-quarantined tests per task; quarantinedTestsSkippedCount is authoritative because stored samples may be truncated.
   """
-  taskQuarantinedTestsSample(taskIds: [String!]!, limit: Int): [TaskQuarantinedTestsSample!]
+  taskQuarantinedTestsSample(
+    taskIds: [String!]!
+    limit: Int
+  ): [TaskQuarantinedTestsSample!]
   tasks(options: TaskFilterOptions!): VersionTasks!
   taskStatuses: [String!]!
-  taskStatusStats(options: BuildVariantOptions!): TaskStats
+  taskStatusStats(options: BuildVariantOptions!): TaskStats # TODO: Must make this match the taskStatusStats field on VersionLite
   upstreamProject: UpstreamProject
   user: User!
   versionTiming: VersionTiming

@@ -1032,11 +1032,15 @@ models:
   VariantTaskInput:
     model: github.com/evergreen-ci/evergreen/rest/model.VariantTask
   Version:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIVersion
+    model: github.com/evergreen-ci/evergreen/model.Version
     fields:
       cost:
         resolver: true
       status:
+        resolver: true
+      order:
+        fieldName: "RevisionOrderNumber"
+      parameters:
         resolver: true
   VersionLite:
     model: github.com/evergreen-ci/evergreen/model.Version

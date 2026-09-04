@@ -872,18 +872,16 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		// Loop through the current versions to check for matching versions.
 		for _, v := range versions {
 			mainlineCommitVersion := MainlineCommitVersion{}
-			apiVersion := restModel.APIVersion{}
-			apiVersion.BuildFromService(ctx, v)
 			versionsCheckedCount++
 
 			if !utility.FromBoolPtr(v.Activated) {
-				collapseCommit(ctx, mainlineCommits, &mainlineCommitVersion, apiVersion)
+				collapseCommit(ctx, mainlineCommits, &mainlineCommitVersion, v)
 			} else if hasFilters && !versionsMatchingTasksMap[v.Id] {
-				collapseCommit(ctx, mainlineCommits, &mainlineCommitVersion, apiVersion)
+				collapseCommit(ctx, mainlineCommits, &mainlineCommitVersion, v)
 			} else {
 				matchingVersionCount++
 				mainlineCommits.NextPageOrderNumber = utility.ToIntPtr(v.RevisionOrderNumber)
-				mainlineCommitVersion.Version = &apiVersion
+				mainlineCommitVersion.Version = &v
 			}
 
 			// Only add a mainlineCommit if a new one was added and it's not a modified existing RolledUpVersion.
@@ -1230,17 +1228,15 @@ func (r *queryResolver) HasVersion(ctx context.Context, patchID string) (bool, e
 }
 
 // Version is the resolver for the version field.
-func (r *queryResolver) Version(ctx context.Context, versionID string) (*restModel.APIVersion, error) {
-	v, err := model.VersionFindOneIdWithBuildVariants(ctx, versionID)
+func (r *queryResolver) Version(ctx context.Context, versionID string) (*model.Version, error) {
+	v, err := loaders.GetVersion(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}
 	if v == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
 	}
-	apiVersion := restModel.APIVersion{}
-	apiVersion.BuildFromService(ctx, *v)
-	return &apiVersion, nil
+	return v, nil
 }
 
 // Image is the resolver for the image field returning information about an image including kernel, version, ami, name, and last deployed time.
