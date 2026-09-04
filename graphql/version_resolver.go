@@ -158,7 +158,7 @@ func (r *versionResolver) Cost(ctx context.Context, obj *model.Version) (*cost.C
 
 // ExternalLinksForMetadata is the resolver for the externalLinksForMetadata field.
 func (r *versionResolver) ExternalLinksForMetadata(ctx context.Context, obj *model.Version) ([]*ExternalLinkForMetadata, error) {
-	projectID := obj.Branch
+	projectID := obj.Identifier
 	pRef, err := data.FindProjectById(ctx, projectID, false, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectID, err.Error()))
@@ -218,7 +218,7 @@ func (r *versionResolver) IsPatch(ctx context.Context, obj *model.Version) (bool
 
 // Manifest is the resolver for the manifest field.
 func (r *versionResolver) Manifest(ctx context.Context, obj *model.Version) (*Manifest, error) {
-	m, err := manifest.FindFromVersion(ctx, obj.Id, obj.Branch, obj.Revision, obj.Requester)
+	m, err := manifest.FindFromVersion(ctx, obj.Id, obj.Identifier, obj.Revision, obj.Requester)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting manifest for version '%s': %s", obj.Id, err.Error()))
 	}
@@ -267,7 +267,7 @@ func (r *versionResolver) Patch(ctx context.Context, obj *model.Version) (*patch
 // PreviousVersion is the resolver for the previousVersion field.
 func (r *versionResolver) PreviousVersion(ctx context.Context, obj *model.Version) (*model.Version, error) {
 	if !evergreen.IsPatchRequester(obj.Requester) {
-		previousVersion, err := model.VersionFindOne(ctx, model.VersionByProjectIdAndOrder(obj.Branch, obj.RevisionOrderNumber-1))
+		previousVersion, err := model.VersionFindOne(ctx, model.VersionByProjectIdAndOrder(obj.Identifier, obj.RevisionOrderNumber-1))
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding previous version for version '%s': %s", obj.Id, err.Error()))
 		}
@@ -281,7 +281,7 @@ func (r *versionResolver) PreviousVersion(ctx context.Context, obj *model.Versio
 
 // ProjectMetadata is the resolver for the projectMetadata field.
 func (r *versionResolver) ProjectMetadata(ctx context.Context, obj *model.Version) (*restModel.APIProjectRef, error) {
-	apiProjectRef, err := getAPIProjectRef(ctx, &obj.Branch)
+	apiProjectRef, err := getAPIProjectRef(ctx, &obj.Identifier)
 	return apiProjectRef, err
 }
 
@@ -325,7 +325,7 @@ func (r *versionResolver) TaskCount(ctx context.Context, obj *model.Version, opt
 // TaskQuarantinedTestsSample is the resolver for the taskQuarantinedTestsSample field.
 func (r *versionResolver) TaskQuarantinedTestsSample(ctx context.Context, obj *model.Version, taskIds []string, limit *int) ([]*testresult.TaskTestResultsQuarantinedSample, error) {
 	versionID := obj.Id
-	if err := checkProjectAccess(ctx, obj.Branch, ProjectPermissionTasks, AccessLevelView); err != nil {
+	if err := checkProjectAccess(ctx, obj.Identifier, ProjectPermissionTasks, AccessLevelView); err != nil {
 		return nil, err
 	}
 	if len(taskIds) == 0 {
