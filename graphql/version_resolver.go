@@ -242,11 +242,6 @@ func (r *versionResolver) Manifest(ctx context.Context, obj *model.Version) (*Ma
 	return &versionManifest, nil
 }
 
-// Order is the resolver for the order field.
-func (r *versionResolver) Order(ctx context.Context, obj *model.Version) (int, error) {
-	panic(fmt.Errorf("not implemented: Order - order"))
-}
-
 // Parameters is the resolver for the parameters field.
 func (r *versionResolver) Parameters(ctx context.Context, obj *model.Version) ([]*restModel.APIParameter, error) {
 	panic(fmt.Errorf("not implemented: Parameters - parameters"))

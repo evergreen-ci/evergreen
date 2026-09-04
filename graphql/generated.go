@@ -2358,7 +2358,6 @@ type ComplexityRoot struct {
 		IsPatch                      func(childComplexity int) int
 		Manifest                     func(childComplexity int) int
 		Message                      func(childComplexity int) int
-		Order                        func(childComplexity int) int
 		Parameters                   func(childComplexity int) int
 		Patch                        func(childComplexity int) int
 		PredictedCost                func(childComplexity int) int
@@ -2368,6 +2367,7 @@ type ComplexityRoot struct {
 		Repo                         func(childComplexity int) int
 		Requester                    func(childComplexity int) int
 		Revision                     func(childComplexity int) int
+		RevisionOrderNumber          func(childComplexity int) int
 		StartTime                    func(childComplexity int) int
 		Status                       func(childComplexity int) int
 		TaskCount                    func(childComplexity int, options *TaskCountOptions) int
@@ -2868,7 +2868,6 @@ type VersionResolver interface {
 	IsPatch(ctx context.Context, obj *model1.Version) (bool, error)
 	Manifest(ctx context.Context, obj *model1.Version) (*Manifest, error)
 
-	Order(ctx context.Context, obj *model1.Version) (int, error)
 	Parameters(ctx context.Context, obj *model1.Version) ([]*model.APIParameter, error)
 	Patch(ctx context.Context, obj *model1.Version) (*patch.Patch, error)
 
@@ -12787,12 +12786,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Version.Message(childComplexity), true
-	case "Version.order":
-		if e.complexity.Version.Order == nil {
-			break
-		}
-
-		return e.complexity.Version.Order(childComplexity), true
 	case "Version.parameters":
 		if e.complexity.Version.Parameters == nil {
 			break
@@ -12847,6 +12840,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Version.Revision(childComplexity), true
+	case "Version.order":
+		if e.complexity.Version.RevisionOrderNumber == nil {
+			break
+		}
+
+		return e.complexity.Version.RevisionOrderNumber(childComplexity), true
 	case "Version.startTime":
 		if e.complexity.Version.StartTime == nil {
 			break
@@ -75850,7 +75849,7 @@ func (ec *executionContext) _Version_order(ctx context.Context, field graphql.Co
 		field,
 		ec.fieldContext_Version_order,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Version().Order(ctx, obj)
+			return obj.RevisionOrderNumber, nil
 		},
 		nil,
 		ec.marshalNInt2int,
@@ -75863,8 +75862,8 @@ func (ec *executionContext) fieldContext_Version_order(_ context.Context, field 
 	fc = &graphql.FieldContext{
 		Object:     "Version",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
 		},
@@ -112185,41 +112184,10 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "order":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Version_order(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
+			out.Values[i] = ec._Version_order(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
 			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "parameters":
 			field := field
 

@@ -1038,6 +1038,8 @@ models:
         resolver: true
       status:
         resolver: true
+      order:
+        fieldName: "RevisionOrderNumber"
   VersionLite:
     model: github.com/evergreen-ci/evergreen/model.Version
     fields:
