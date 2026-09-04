@@ -112,9 +112,9 @@ func (h *sourceCacheCredentials) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	creds, err := h.stsManager.AssumeRole(ctx, h.taskID, h.hostID, cloud.AssumeRoleOptions{
-		RoleARN:    bucket.RoleARN,
-		Policy:     &policy,
-		ExternalID: evergreen.SourceCacheExternalID,
+		RoleARN:       bucket.RoleARN,
+		Policy:        &policy,
+		IsSourceCache: true,
 	})
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "assuming the source cache role for task '%s'", h.taskID))
