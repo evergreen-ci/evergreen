@@ -140,8 +140,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APICedarConfig
   ChildPatch:
     model: github.com/evergreen-ci/evergreen/rest/model.ChildPatch
-  ChildPatchAlias:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIChildPatchAlias
   ClientBinary:
     model: github.com/evergreen-ci/evergreen/rest/model.APIClientBinary
   ClientConfig:
@@ -306,7 +304,7 @@ models:
   GitHubDynamicTokenPermissionGroup:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGitHubDynamicTokenPermissionGroup
   GithubPatch:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIGithubPatch
+    model: github.com/evergreen-ci/evergreen/thirdparty.GithubPatch
   GithubProjectConflicts:
     model: github.com/evergreen-ci/evergreen/model.GithubProjectConflicts
   GithubPRSubscriber:
@@ -573,7 +571,7 @@ models:
     model: github.com/evergreen-ci/evergreen/model/patch.Patch
     fields:
       includedLocalModules:
-        resolver: true
+        fieldName: "LocalModuleIncludes"
       parameters:
         resolver: true
   Patches:
@@ -583,7 +581,7 @@ models:
       patches:
         resolver: true
   IncludedLocalModule:
-    model: github.com/evergreen-ci/evergreen/rest/model.APILocalModuleInclude
+    model: github.com/evergreen-ci/evergreen/model/patch.LocalModuleInclude
   PatchTriggerAlias:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPatchTriggerDefinition
   PatchTriggerAliasInput:
@@ -1028,8 +1026,6 @@ models:
   VariantQuarantineStatus:
     model: github.com/evergreen-ci/evergreen/rest/model.APIVariantQuarantineStatus
   VariantTask:
-    model: github.com/evergreen-ci/evergreen/rest/model.VariantTask
-  VariantTaskInput:
     model: github.com/evergreen-ci/evergreen/rest/model.VariantTask
   Version:
     model: github.com/evergreen-ci/evergreen/rest/model.APIVersion
