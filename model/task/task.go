@@ -1740,6 +1740,36 @@ func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, 
 	return activatedTaskIDs, nil
 }
 
+// ActivateUnscheduledTasks activates tasks that are unscheduled (undispatched
+// and deactivated). This is used during display task restarts to activate
+// execution tasks that were never scheduled and therefore could not be handled
+// by ResetTasks.
+func ActivateUnscheduledTasks(ctx context.Context, taskIDs []string, caller string) error {
+	if len(taskIDs) == 0 {
+		return nil
+	}
+	_, err := UpdateAll(
+		ctx,
+		bson.M{
+			IdKey:        bson.M{"$in": taskIDs},
+			StatusKey:    evergreen.TaskUndispatched,
+			ActivatedKey: false,
+		},
+		[]bson.M{
+			{
+				"$set": bson.M{
+					ActivatedKey:     true,
+					ActivatedByKey:   caller,
+					ActivatedTimeKey: time.Now(),
+				},
+			},
+			{"$unset": bson.A{CanResetKey}},
+			addDisplayStatusCache,
+		},
+	)
+	return errors.Wrap(err, "activating unscheduled tasks")
+}
+
 // UpdateSchedulingLimit retrieves a user from the DB and updates their hourly scheduling limit info
 // if they are not a service user.
 func UpdateSchedulingLimit(ctx context.Context, username, requester, projectID, repoRefID string, numTasksModified int, activated bool) error {
@@ -2994,7 +3024,23 @@ func ArchiveMany(ctx context.Context, tasks []Task) error {
 			if err != nil {
 				return errors.Wrapf(err, "finding execution tasks for display task '%s'", t.Id)
 			}
-			execTaskIds = append(execTaskIds, t.ExecutionTasks...)
+			unscheduledExecTasks, err := FindAll(ctx, db.Query(bson.M{
+				IdKey:        bson.M{"$in": t.ExecutionTasks},
+				StatusKey:    evergreen.TaskUndispatched,
+				ActivatedKey: false,
+			}))
+			if err != nil {
+				return errors.Wrapf(err, "finding unscheduled execution tasks for display task '%s'", t.Id)
+			}
+			unscheduledExecTaskIDs := map[string]bool{}
+			for _, et := range unscheduledExecTasks {
+				unscheduledExecTaskIDs[et.Id] = true
+			}
+			for _, etID := range t.ExecutionTasks {
+				if !unscheduledExecTaskIDs[etID] {
+					execTaskIds = append(execTaskIds, etID)
+				}
+			}
 			for _, et := range execTasks {
 				if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, et.Status) {
 					grip.Debug(ctx, message.Fields{
@@ -3211,7 +3257,7 @@ func (t *Task) SetResetWhenFinished(ctx context.Context, caller, repoRefID strin
 	if t.ResetWhenFinished {
 		return nil
 	}
-	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller, repoRefID); err != nil {
+	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller, repoRefID, true); err != nil {
 		return errors.Wrapf(err, "updating user '%s' patch task scheduling limit", caller)
 	}
 	t.ResetFailedWhenFinished = false
@@ -3272,7 +3318,7 @@ func (t *Task) SetResetFailedWhenFinished(ctx context.Context, caller, repoRefID
 	if t.ResetFailedWhenFinished {
 		return nil
 	}
-	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller, repoRefID); err != nil {
+	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller, repoRefID, false); err != nil {
 		return errors.Wrapf(err, "updating user '%s' patch task scheduling limit", caller)
 	}
 	t.ResetWhenFinished = false
@@ -3296,7 +3342,7 @@ func (t *Task) SetResetFailedWhenFinished(ctx context.Context, caller, repoRefID
 // updateSchedulingLimitForResetWhenFinished is the same as
 // UpdateSchedulingLimit but only applies if the task is being reset when
 // finished.
-func updateSchedulingLimitForResetWhenFinished(ctx context.Context, t *Task, caller, repoRefID string) error {
+func updateSchedulingLimitForResetWhenFinished(ctx context.Context, t *Task, caller, repoRefID string, countUnscheduled bool) error {
 	if !(t.Requester == evergreen.PatchVersionRequester || t.Requester == evergreen.GithubPRRequester) || evergreen.IsSystemActivator(caller) {
 		return nil
 	}
@@ -3316,7 +3362,21 @@ func updateSchedulingLimitForResetWhenFinished(ctx context.Context, t *Task, cal
 	if len(tasks) == 0 {
 		return nil
 	}
-	return errors.Wrap(CheckUsersPatchTaskLimit(ctx, t.Requester, caller, repoRefID, true, tasks...), "updating patch task limit for user")
+	if err := CheckUsersPatchTaskLimit(ctx, t.Requester, caller, repoRefID, true, tasks...); err != nil {
+		return errors.Wrap(err, "updating patch task limit for user")
+	}
+	if countUnscheduled {
+		numUnscheduled := 0
+		for _, et := range tasks {
+			if et.IsUnscheduled() {
+				numUnscheduled++
+			}
+		}
+		if numUnscheduled > 0 {
+			return UpdateSchedulingLimit(ctx, caller, t.Requester, tasks[0].Project, repoRefID, numUnscheduled, true)
+		}
+	}
+	return nil
 }
 
 // CheckUsersPatchTaskLimit takes in an input list of tasks that is set to get activated, and checks if they're
