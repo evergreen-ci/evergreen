@@ -244,7 +244,11 @@ func (r *versionResolver) Manifest(ctx context.Context, obj *model.Version) (*Ma
 
 // Parameters is the resolver for the parameters field.
 func (r *versionResolver) Parameters(ctx context.Context, obj *model.Version) ([]*restModel.APIParameter, error) {
-	panic(fmt.Errorf("not implemented: Parameters - parameters"))
+	redactedParameters, err := redactParameters(ctx, obj.Identifier, obj.Parameters)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("redacting parameters for version '%s': %s", obj.Id, err.Error()), err)
+	}
+	return redactedParameters, nil
 }
 
 // Patch is the resolver for the patch field.
