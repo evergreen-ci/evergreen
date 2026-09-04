@@ -87,7 +87,10 @@ type Version {
   """
   Returns up to limit (default 50) TSS-quarantined tests per task; quarantinedTestsSkippedCount is authoritative because stored samples may be truncated.
   """
-  taskQuarantinedTestsSample(taskIds: [String!]!, limit: Int): [TaskQuarantinedTestsSample!]
+  taskQuarantinedTestsSample(
+    taskIds: [String!]!
+    limit: Int
+  ): [TaskQuarantinedTestsSample!]
   tasks(options: TaskFilterOptions!): VersionTasks!
   taskStatuses: [String!]!
   taskStatusStats(options: BuildVariantOptions!): TaskStats

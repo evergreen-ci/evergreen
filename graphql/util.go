@@ -1161,16 +1161,16 @@ func concurrentlyBuildVersionsMatchingTasksMap(ctx context.Context, versions []m
 	return hasMatchingTasksMap, nil
 }
 
-func collapseCommit(ctx context.Context, mainlineCommits MainlineCommits, mainlineCommitVersion *MainlineCommitVersion, apiVersion restModel.APIVersion) {
+func collapseCommit(ctx context.Context, mainlineCommits MainlineCommits, mainlineCommitVersion *MainlineCommitVersion, version model.Version) {
 	if len(mainlineCommits.Versions) > 0 {
 		lastMainlineCommit := mainlineCommits.Versions[len(mainlineCommits.Versions)-1]
 		if lastMainlineCommit.RolledUpVersions != nil {
-			lastMainlineCommit.RolledUpVersions = append(lastMainlineCommit.RolledUpVersions, &apiVersion)
+			lastMainlineCommit.RolledUpVersions = append(lastMainlineCommit.RolledUpVersions, &version)
 		} else {
-			mainlineCommitVersion.RolledUpVersions = []*restModel.APIVersion{&apiVersion}
+			mainlineCommitVersion.RolledUpVersions = []*model.Version{&version}
 		}
 	} else {
-		mainlineCommitVersion.RolledUpVersions = []*restModel.APIVersion{&apiVersion}
+		mainlineCommitVersion.RolledUpVersions = []*model.Version{&version}
 	}
 }
 
