@@ -47,6 +47,8 @@ func (d *localDaemonREST) Start(ctx context.Context) error {
 	router.HandleFunc("/step/run-until/{step}", d.handleRunUntil).Methods("POST")
 	router.HandleFunc("/step/jump/{step}", d.handleJumpTo).Methods("POST")
 	router.HandleFunc("/variable/set", d.handleSetVariable).Methods("POST")
+	router.HandleFunc("/variable/get/{key}", d.handleGetVariable).Methods("GET")
+	router.HandleFunc("/variable/all", d.handleGetVariables).Methods("GET")
 	router.HandleFunc("/status", d.handleStatus).Methods("GET")
 
 	if err := d.writeDaemonInfo(); err != nil {
@@ -425,6 +427,40 @@ func (d *localDaemonREST) handleSetVariable(w http.ResponseWriter, r *http.Reque
 
 	d.executor.SetVariable(r.Context(), req.Key, req.Value)
 	grip.Error(r.Context(), json.NewEncoder(w).Encode(map[string]bool{"success": true}))
+}
+
+// handleGetVariable returns the value of a single expansion variable.
+func (d *localDaemonREST) handleGetVariable(w http.ResponseWriter, r *http.Request) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	if d.executor == nil {
+		http.Error(w, "no configuration loaded", http.StatusBadRequest)
+		return
+	}
+
+	key := mux.Vars(r)["key"]
+	value, found := d.executor.GetVariable(key)
+	grip.Error(r.Context(), json.NewEncoder(w).Encode(map[string]any{
+		"key":   key,
+		"value": value,
+		"found": found,
+	}))
+}
+
+// handleGetVariables returns all expansion variables.
+func (d *localDaemonREST) handleGetVariables(w http.ResponseWriter, r *http.Request) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	if d.executor == nil {
+		http.Error(w, "no configuration loaded", http.StatusBadRequest)
+		return
+	}
+
+	grip.Error(r.Context(), json.NewEncoder(w).Encode(map[string]any{
+		"variables": d.executor.GetVariables(),
+	}))
 }
 
 // handleStepNext executes the next step with streaming output.

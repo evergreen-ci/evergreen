@@ -310,6 +310,16 @@ func (e *LocalExecutor) SetVariable(ctx context.Context, key, value string) {
 	e.logger.Infof(ctx, "Set variable %s=%s", key, value)
 }
 
+// GetVariable returns the value of an expansion by key and whether it exists.
+func (e *LocalExecutor) GetVariable(key string) (string, bool) {
+	return e.expansions.Get(key), e.expansions.Exists(key)
+}
+
+// GetVariables returns all current expansion variables.
+func (e *LocalExecutor) GetVariables() map[string]string {
+	return e.expansions.Map()
+}
+
 // StepNext executes the current step and advances to the next
 func (e *LocalExecutor) StepNext(ctx context.Context) error {
 	if !e.debugState.HasMoreSteps() {
