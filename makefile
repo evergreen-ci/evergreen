@@ -26,6 +26,13 @@ ifneq (,$(GOROOT))
 gobin := $(GOROOT)/bin/go
 endif
 
+# Some tools shell out to the go binary themselves rather than being invoked via
+# $(gobin), so they need the Go toolchain on the PATH.
+goBinPathPrefix :=
+ifneq (,$(GOROOT))
+goBinPathPrefix := $(GOROOT)/bin:
+endif
+
 goCache := $(GOCACHE)
 ifeq (,$(goCache))
 goCache := $(abspath $(buildDir)/.cache)
@@ -354,13 +361,16 @@ swaggo-install:
 swaggo-format:
 	swag fmt -g service/service.go --exclude thirdparty/clients,graphql
 
+# --parseDependency makes swag resolve types from dependencies, which it does by
+# running `go list`, so the Go toolchain has to be on the PATH here.
+swaggo-build: export PATH := $(goBinPathPrefix)$(PATH)
 swaggo-build:
 	swag init -g service/service.go -o $(buildDir) --outputTypes json --parseDependency --parseInternal
 	$(MAKE) swaggo-convert SWAGGER_JSON_FILE=$(buildDir)/swagger.json
 
 # swaggo only generates Swagger 2.0, so convert the generated spec to OpenAPI 3.
 swaggo-convert:
-	go run ./cmd/swagger-to-openapi -input $(SWAGGER_JSON_FILE)
+	$(gobin) run ./cmd/swagger-to-openapi -input $(SWAGGER_JSON_FILE)
 
 swaggo-render:
 	npx @redocly/cli build-docs $(buildDir)/swagger.json -o $(buildDir)/redoc-static.html
