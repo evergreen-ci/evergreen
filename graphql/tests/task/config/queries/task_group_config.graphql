@@ -1,0 +1,22 @@
+{
+  task(taskId: "task_group_member") {
+    id
+    config {
+      allowedBranches
+      batchTime
+      dependsOn {
+        name
+        status
+        variant
+      }
+      execTimeoutSecs
+      groupName
+      ignoredBranches
+      isGroup
+      isPartOfGroup
+      name
+      priority
+      ps
+    }
+  }
+}

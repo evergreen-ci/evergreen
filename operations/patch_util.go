@@ -99,6 +99,7 @@ type patchParams struct {
 	IncludeModules                     bool
 	IncludeModuleOverrides             map[string]string
 	LocalModuleIncludes                []patch.LocalModuleInclude
+	CrossFileYAMLAnchors               bool
 }
 
 type patchSubmission struct {
@@ -127,6 +128,7 @@ type patchSubmission struct {
 	githubAuthor                       string
 	patchAuthor                        string
 	localModuleIncludes                []patch.LocalModuleInclude
+	crossFileYAMLAnchors               bool
 }
 
 func (p *patchParams) createPatch(ctx context.Context, ac *legacyClient, diffData *localDiff) (*patch.Patch, error) {
@@ -156,6 +158,7 @@ func (p *patchParams) createPatch(ctx context.Context, ac *legacyClient, diffDat
 		githubAuthor:                       p.GithubAuthor,
 		patchAuthor:                        p.PatchAuthor,
 		localModuleIncludes:                p.LocalModuleIncludes,
+		crossFileYAMLAnchors:               p.CrossFileYAMLAnchors,
 	}
 
 	newPatch, err := ac.PutPatch(ctx, patchSub)

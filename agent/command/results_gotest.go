@@ -66,6 +66,7 @@ func (c *goTestResults) Execute(ctx context.Context,
 	}
 
 	// All file patterns should be relative to the task's working directory.
+	SetWorkdirBoundaryAttribute(ctx, conf, c.Files...)
 	for i, file := range c.Files {
 		c.Files[i] = GetWorkingDirectory(conf, file)
 	}

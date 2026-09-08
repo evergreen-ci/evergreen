@@ -26,6 +26,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
 
 type execCmdSuite struct {
@@ -461,26 +463,27 @@ func (s *execCmdSuite) TestEnvAddsExpansionsAndDefaults() {
 }
 
 func (s *execCmdSuite) TestBackgroundCommandFailureSendsToChannel() {
-	bgFailures := make(chan error, 5)
+	bgFailures := make(chan internal.BackgroundFailure, 5)
 	_, err := runJasperProcess(s.ctx, s.jasper, true, &options.Create{
 		Args: []string{"bash", "-c", "exit 1"},
-	}, "test-task", s.logger, bgFailures, false, true)
+	}, "test-command", "test-task", nil, s.logger, bgFailures, false, true)
 	s.Require().NoError(err)
 
 	select {
-	case bgErr := <-bgFailures:
-		s.Require().Error(bgErr)
-		s.Contains(bgErr.Error(), "exited with code 1")
+	case bgFailure := <-bgFailures:
+		s.Require().Error(bgFailure.Err)
+		s.Contains(bgFailure.Error(), "exited with code 1")
+		s.Equal("test-command", bgFailure.CommandName)
 	case <-time.After(5 * time.Second):
 		s.Fail("timed out waiting for background failure to be sent to channel")
 	}
 }
 
 func (s *execCmdSuite) TestBackgroundCommandFailureTrackingDisabledDoesNotSendToChannel() {
-	bgFailures := make(chan error, 5)
+	bgFailures := make(chan internal.BackgroundFailure, 5)
 	_, err := runJasperProcess(s.ctx, s.jasper, true, &options.Create{
 		Args: []string{"bash", "-c", "exit 1"},
-	}, "test-task", s.logger, bgFailures, false, false)
+	}, "test-command", "test-task", nil, s.logger, bgFailures, false, false)
 	s.Require().NoError(err)
 
 	time.Sleep(1500 * time.Millisecond)
@@ -488,10 +491,10 @@ func (s *execCmdSuite) TestBackgroundCommandFailureTrackingDisabledDoesNotSendTo
 }
 
 func (s *execCmdSuite) TestBackgroundCommandSuccessDoesNotSendToChannel() {
-	bgFailures := make(chan error, 5)
+	bgFailures := make(chan internal.BackgroundFailure, 5)
 	_, err := runJasperProcess(s.ctx, s.jasper, true, &options.Create{
 		Args: []string{"bash", "-c", "exit 0"},
-	}, "test-task", s.logger, bgFailures, false, true)
+	}, "test-command", "test-task", nil, s.logger, bgFailures, false, true)
 	s.Require().NoError(err)
 
 	time.Sleep(1500 * time.Millisecond)
@@ -499,10 +502,10 @@ func (s *execCmdSuite) TestBackgroundCommandSuccessDoesNotSendToChannel() {
 }
 
 func (s *execCmdSuite) TestBackgroundCommandFailureWithContinueOnErrorDoesNotSendToChannel() {
-	bgFailures := make(chan error, 5)
+	bgFailures := make(chan internal.BackgroundFailure, 5)
 	_, err := runJasperProcess(s.ctx, s.jasper, true, &options.Create{
 		Args: []string{"bash", "-c", "exit 1"},
-	}, "test-task", s.logger, bgFailures, true, true)
+	}, "test-command", "test-task", nil, s.logger, bgFailures, true, true)
 	s.Require().NoError(err)
 
 	time.Sleep(1500 * time.Millisecond)
@@ -510,10 +513,10 @@ func (s *execCmdSuite) TestBackgroundCommandFailureWithContinueOnErrorDoesNotSen
 }
 
 func (s *execCmdSuite) TestBackgroundCommandSigkillExitDoesNotSendToChannel() {
-	bgFailures := make(chan error, 5)
+	bgFailures := make(chan internal.BackgroundFailure, 5)
 	_, err := runJasperProcess(s.ctx, s.jasper, true, &options.Create{
 		Args: []string{"bash", "-c", "exit 9"},
-	}, "test-task", s.logger, bgFailures, false, true)
+	}, "test-command", "test-task", nil, s.logger, bgFailures, false, true)
 	s.Require().NoError(err)
 
 	time.Sleep(1500 * time.Millisecond)
@@ -521,10 +524,10 @@ func (s *execCmdSuite) TestBackgroundCommandSigkillExitDoesNotSendToChannel() {
 }
 
 func (s *execCmdSuite) TestBackgroundCommandSigtermExitDoesNotSendToChannel() {
-	bgFailures := make(chan error, 5)
+	bgFailures := make(chan internal.BackgroundFailure, 5)
 	_, err := runJasperProcess(s.ctx, s.jasper, true, &options.Create{
 		Args: []string{"bash", "-c", "exit 15"},
-	}, "test-task", s.logger, bgFailures, false, true)
+	}, "test-command", "test-task", nil, s.logger, bgFailures, false, true)
 	s.Require().NoError(err)
 
 	time.Sleep(1500 * time.Millisecond)
@@ -533,12 +536,12 @@ func (s *execCmdSuite) TestBackgroundCommandSigtermExitDoesNotSendToChannel() {
 
 func (s *execCmdSuite) TestConcurrentBackgroundFailuresSendToChannel() {
 	const numProcs = 5
-	bgFailures := make(chan error, numProcs)
+	bgFailures := make(chan internal.BackgroundFailure, numProcs)
 
 	for range numProcs {
 		_, err := runJasperProcess(s.ctx, s.jasper, true, &options.Create{
 			Args: []string{"bash", "-c", "exit 1"},
-		}, "test-task", s.logger, bgFailures, false, true)
+		}, "test-command", "test-task", nil, s.logger, bgFailures, false, true)
 		s.Require().NoError(err)
 	}
 
@@ -554,6 +557,44 @@ func (s *execCmdSuite) TestConcurrentBackgroundFailuresSendToChannel() {
 		}
 	}
 	s.Equal(numProcs, received)
+}
+
+func (s *execCmdSuite) TestWorkdirBoundaryViolationSetsSpanAttribute() {
+	spanRecorder := tracetest.NewSpanRecorder()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(spanRecorder))
+	s.T().Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		s.Require().NoError(tp.Shutdown(ctx))
+	})
+
+	ctx, span := tp.Tracer("test").Start(s.ctx, "test_subprocess_exec_workdir_boundary")
+
+	root := s.T().TempDir()
+	s.conf.WorkDir = filepath.Join(root, "work")
+	s.Require().NoError(os.MkdirAll(s.conf.WorkDir, 0755))
+	cmd := &subprocessExec{
+		WorkingDir: filepath.Join(root, "outside"),
+		Command:    "bash -c 'exit 0'",
+	}
+	cmd.SetJasperManager(s.jasper)
+	s.NoError(cmd.ParseParams(map[string]any{}))
+
+	// Execute errors because getWorkingDirectoryLegacy cannot resolve the
+	// joined path, but the boundary attribute is set before that point.
+	s.Error(cmd.Execute(ctx, s.comm, s.logger, s.conf))
+	span.End()
+
+	ended := spanRecorder.Ended()
+	s.Require().Len(ended, 1)
+	found := false
+	for _, attr := range ended[0].Attributes() {
+		if string(attr.Key) == workdirBoundaryViolationAttribute {
+			s.True(attr.Value.AsBool(), "workdir boundary violation attribute should be true")
+			found = true
+		}
+	}
+	s.True(found, "workdir boundary violation attribute was not set on the span")
 }
 
 func TestAddTemp(t *testing.T) {

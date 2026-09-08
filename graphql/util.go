@@ -130,23 +130,6 @@ func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskI
 	return apiTasks, nil
 }
 
-// getFormattedDate returns a time.Time type in the format "Dec 13, 2020, 11:58:04 pm"
-func getFormattedDate(t *time.Time, timezone string) (*string, error) {
-	if t == nil {
-		return nil, nil
-	}
-
-	loc, err := time.LoadLocation(timezone)
-	if err != nil {
-		return nil, err
-	}
-
-	timeInUserTimezone := t.In(loc)
-	newTime := fmt.Sprintf("%s %d, %d, %s", timeInUserTimezone.Month(), timeInUserTimezone.Day(), timeInUserTimezone.Year(), timeInUserTimezone.Format(time.Kitchen))
-
-	return &newTime, nil
-}
-
 // GetDisplayStatus considers both child patch statuses and
 // aborted status, and returns an overall status.
 func getDisplayStatus(ctx context.Context, v *model.Version) (string, error) {
@@ -186,97 +169,8 @@ func getDisplayStatus(ctx context.Context, v *model.Version) (string, error) {
 	return patch.GetCollectiveStatusFromPatchStatuses(ctx, allStatuses), nil
 }
 
-// userCanModifyPatch checks if a user can make changes to a given patch. This is mainly to prevent
-// users from modifying other users' patches.
-func userCanModifyPatch(ctx context.Context, u *user.DBUser, patch patch.Patch) bool {
-	if u == nil {
-		return false
-	}
-
-	// Check if user is patch owner.
-	if patch.Author == u.Username() {
-		return true
-	}
-
-	// Check if user is superuser.
-	permissions := gimlet.PermissionOpts{
-		Resource:      evergreen.SuperUserPermissionsID,
-		ResourceType:  evergreen.SuperUserResourceType,
-		Permission:    evergreen.PermissionAdminSettings,
-		RequiredLevel: evergreen.AdminSettingsEdit.Value,
-	}
-	if u.HasPermission(ctx, permissions) {
-		return true
-	}
-
-	// Check if user is project admin.
-	permissions = gimlet.PermissionOpts{
-		Resource:      patch.Project,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionProjectSettings,
-		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-	}
-	if u.HasPermission(ctx, permissions) {
-		return true
-	}
-
-	// Check if user has patch admin permissions.
-	permissions = gimlet.PermissionOpts{
-		Resource:      patch.Project,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionPatches,
-		RequiredLevel: evergreen.PatchSubmitAdmin.Value,
-	}
-	return u.HasPermission(ctx, permissions)
-}
-
-// getPatchProjectVariantsAndTasksForUI gets the variants and tasks for a project for a patch id
-func getPatchProjectVariantsAndTasksForUI(ctx context.Context, apiPatch *restModel.APIPatch) (*PatchProject, error) {
-	p, err := apiPatch.ToService()
-	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("converting APIPatch '%s' to service", utility.FromStringPtr(apiPatch.Id)))
-	}
-	patchProjectVariantsAndTasks, err := model.GetVariantsAndTasksFromPatchProject(ctx, evergreen.GetEnvironment().Settings(), &p)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project variants and tasks for patch '%s': %s", utility.FromStringPtr(apiPatch.Id), err.Error()))
-	}
-
-	// convert variants to UI data structure
-	variants := []*ProjectBuildVariant{}
-	for _, buildVariant := range patchProjectVariantsAndTasks.Variants {
-		projBuildVariant := ProjectBuildVariant{
-			Name:        buildVariant.Name,
-			DisplayName: buildVariant.DisplayName,
-		}
-		projTasks := []string{}
-		executionTasks := map[string]bool{}
-		for _, displayTask := range buildVariant.DisplayTasks {
-			projTasks = append(projTasks, displayTask.Name)
-			for _, execTask := range displayTask.ExecTasks {
-				executionTasks[execTask] = true
-			}
-		}
-		for _, taskUnit := range buildVariant.Tasks {
-			// Only add task if it is not an execution task.
-			if !executionTasks[taskUnit.Name] {
-				projTasks = append(projTasks, taskUnit.Name)
-			}
-		}
-		// Sort tasks alphanumerically by display name.
-		sort.SliceStable(projTasks, func(i, j int) bool {
-			return projTasks[i] < projTasks[j]
-		})
-		projBuildVariant.Tasks = projTasks
-		variants = append(variants, &projBuildVariant)
-	}
-	sort.SliceStable(variants, func(i, j int) bool {
-		return variants[i].DisplayName < variants[j].DisplayName
-	})
-
-	patchProject := PatchProject{
-		Variants: variants,
-	}
-	return &patchProject, nil
+func userCanModifyPatch(ctx context.Context, u *user.DBUser, p patch.Patch) bool {
+	return model.UserCanModifyPatch(ctx, u, p)
 }
 
 // buildFromGqlInput takes a PatchConfigure gql type and returns a PatchUpdate type
@@ -543,16 +437,6 @@ func getMyPublicKeys(ctx context.Context) []*restModel.APIPubKey {
 		return *publicKeys[i].Name < *publicKeys[j].Name
 	})
 	return publicKeys
-}
-
-func getAPIVolumeList(volumes []host.Volume) ([]*restModel.APIVolume, error) {
-	apiVolumes := make([]*restModel.APIVolume, 0, len(volumes))
-	for _, vol := range volumes {
-		apiVolume := restModel.APIVolume{}
-		apiVolume.BuildFromService(vol)
-		apiVolumes = append(apiVolumes, &apiVolume)
-	}
-	return apiVolumes, nil
 }
 
 func mustHaveUser(ctx context.Context) *user.DBUser {
@@ -1604,6 +1488,27 @@ func getWaterfallFromContext(ctx context.Context) (*Waterfall, bool) {
 		}
 	}
 	return nil, false
+}
+
+// Grab options provided to parent waterfall resolver for use in nested resolvers
+func getWaterfallFilterOptionsFromContext(ctx context.Context) model.WaterfallOptions {
+	for fc := graphql.GetFieldContext(ctx); fc != nil; fc = fc.Parent {
+		if options, ok := fc.Args["options"].(WaterfallOptions); ok && fc.Object == "Query" && fc.Field.Name == "waterfall" {
+			// Ignore options if this flag is specified
+			if utility.FromBoolTPtr(options.IncludeAllBuildsAndTasks) {
+				return model.WaterfallOptions{}
+			}
+			return model.WaterfallOptions{
+				OmitInactiveBuilds:   utility.FromBoolPtr(options.OmitInactiveBuilds),
+				Statuses:             utility.FilterSlice(options.Statuses, func(s string) bool { return s != "" }),
+				Tasks:                utility.FilterSlice(options.Tasks, func(s string) bool { return s != "" }),
+				TaskCaseSensitive:    utility.FromBoolTPtr(options.TaskCaseSensitive),
+				Variants:             utility.FilterSlice(options.Variants, func(s string) bool { return s != "" }),
+				VariantCaseSensitive: utility.FromBoolTPtr(options.TaskCaseSensitive),
+			}
+		}
+	}
+	return model.WaterfallOptions{}
 }
 
 // setTestQuarantineState updates the quarantine state for testName on the

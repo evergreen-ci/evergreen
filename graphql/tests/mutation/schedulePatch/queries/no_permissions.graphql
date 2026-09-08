@@ -16,8 +16,6 @@ mutation {
     id
     status
     activated
-    tasks
-    variants
     variantsTasks {
       name
       tasks

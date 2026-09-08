@@ -57,6 +57,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	submitPatches := RequiresProjectPermission(evergreen.PermissionPatches, evergreen.PatchSubmit)
 	viewProjectSettings := RequiresProjectPermission(evergreen.PermissionProjectSettings, evergreen.ProjectSettingsView)
 	editProjectSettings := RequiresProjectPermission(evergreen.PermissionProjectSettings, evergreen.ProjectSettingsEdit)
+	viewRepoSettings := RequiresRepoPermission(evergreen.PermissionProjectSettings, evergreen.ProjectSettingsView)
+	editRepoSettings := RequiresRepoPermission(evergreen.PermissionProjectSettings, evergreen.ProjectSettingsEdit)
 	viewDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsView)
 	editDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsEdit)
 	removeDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsAdmin)
@@ -112,6 +114,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/task/{task_id}/restart").Version(2).Post().Wrap(requireTask, rateLimit).RouteHandler(makeMarkTaskForRestart())
 	app.AddRoute("/task/{task_id}/check_run").Version(2).Post().Wrap(requireTask, rateLimit).RouteHandler(makeCheckRun(settings))
 	app.AddRoute("/task/{task_id}/aws/assume_role").Version(2).Post().Wrap(requireUserOrTask, rateLimit).RouteHandler(makeAWSAssumeRole(stsManager))
+	app.AddRoute("/task/{task_id}/source_cache/credentials").Version(2).Post().Wrap(requireTask, requireHost, rateLimit).RouteHandler(makeSourceCacheCredentials(settings, stsManager))
 	app.AddRoute("/task/{task_id}/mark_git_ref_not_found").Version(2).Patch().Wrap(requireTask, rateLimit).RouteHandler(makeMarkMergeQueueGitRefNotFound())
 
 	// REST v2 API Routes
@@ -219,6 +222,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/projects/{project_id}/variants/{variant_name}/quarantine_status").Version(2).Get().Wrap(requireUser, addProject, viewTasks, rateLimit).RouteHandler(makeVariantQuarantineStatusHandler())
 	app.AddRoute("/permissions").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(&permissionsGetHandler{})
 	app.AddRoute("/permissions/users").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeGetAllUsersPermissions(env.RoleManager()))
+	app.AddRoute("/repos/{repo_id}").Version(2).Get().Wrap(requireUser, addProject, viewRepoSettings, rateLimit).RouteHandler(makeGetRepoByID())
+	app.AddRoute("/repos/{repo_id}").Version(2).Patch().Wrap(requireUser, addProject, requireProjectAdmin, editRepoSettings, rateLimit).RouteHandler(makePatchRepoByID(settings))
 	app.AddRoute("/roles").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(acl.NewGetAllRolesHandler(env.RoleManager()))
 	app.AddRoute("/roles/{role_id}/users").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeGetUsersWithRole())
 	app.AddRoute("/select/tests").Version(2).Post().Wrap(requireUserOrTaskAuthOnly, rateLimit).RouteHandler(makeSelectTestsHandler(env))

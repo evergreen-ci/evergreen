@@ -24,6 +24,9 @@ type ParserProjectStorage interface {
 	// storage, implementations must return a nil parser project and nil error.
 	// Implementations may or may not respect the context.
 	FindOneByIDWithFields(ctx context.Context, id string, fields ...string) (*ParserProject, error)
+	// FindOneByIDRaw is the same as FindOneByID but it returns the raw parser
+	// project bytes without decoding it.
+	FindOneByIDRaw(ctx context.Context, id string) ([]byte, error)
 	// UpsertOne replaces a parser project if the parser project with the
 	// same ID already exists. If it does not exist yet, it inserts a new parser
 	// project.
@@ -58,6 +61,16 @@ func ParserProjectFindOneByID(ctx context.Context, settings *evergreen.Settings,
 		return nil, errors.Wrap(err, "getting parser project storage")
 	}
 	return ppStorage.FindOneByID(ctx, id)
+}
+
+// ParserProjectFindOneByIDRaw is the same as ParserProjectFindOneByID but it
+// returns the raw parser project bytes without decoding it.
+func ParserProjectFindOneByIDRaw(ctx context.Context, settings *evergreen.Settings, method evergreen.ParserProjectStorageMethod, id string) ([]byte, error) {
+	ppStorage, err := GetParserProjectStorage(ctx, settings, method)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting parser project storage")
+	}
+	return ppStorage.FindOneByIDRaw(ctx, id)
 }
 
 // ParserProjectUpsertOne is a convenience wrapper to upsert one parser project

@@ -10,7 +10,7 @@
             "hosts": [
               {
                 "id": "i-06f80fa6e28f93b7d",
-                "distroId": "ubuntu1604-small",
+                "distro": { "id": "ubuntu1604-small" },
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-34-207-222-84.compute-1.amazonaws.com",
@@ -24,7 +24,7 @@
               },
               {
                 "id": "i-0fb9fe0592ea38150",
-                "distroId": "debian92-small",
+                "distro": { "id": "debian92-small" },
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-146-18-248.compute-1.amazonaws.com",
@@ -38,35 +38,29 @@
               },
               {
                 "id": "macos-1014-68.macstadium.build.10gen.cc",
-                "distroId": "macos-1014",
+                "distro": { "id": "macos-1014" },
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
                 "totalIdleTime": 0,
                 "uptime": "2019-09-16T11:49:05.059-04:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               },
               {
                 "id": "ubuntu1804-ppc-3.pic.build.10gen.cc",
-                "distroId": "ubuntu1804-power8-small",
+                "distro": { "id": "ubuntu1804-power8-small" },
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1804-ppc-3.pic.build.10gen.cc",
                 "totalIdleTime": 0,
                 "uptime": "2019-01-25T12:40:50.223-05:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               },
               {
                 "id": "build10.ny.cbi.10gen.cc",
-                "distroId": "centos6-perf",
+                "distro": { "id": "centos6-perf" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "build10.ny.cbi.10gen.cc",
@@ -93,21 +87,18 @@
             "hosts": [
               {
                 "id": "i-0d0ae8b83366d22be",
-                "distroId": "ubuntu1604-small",
+                "distro": { "id": "ubuntu1604-small" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-35-153-50-124.compute-1.amazonaws.com",
                 "totalIdleTime": 45837,
                 "uptime": "2020-07-20T10:48:05.256-04:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               },
               {
                 "id": "i-0f81a2d39744003dd",
-                "distroId": "ubuntu1604-large",
+                "distro": { "id": "ubuntu1604-large" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-161-252-150.compute-1.amazonaws.com",
@@ -121,7 +112,7 @@
               },
               {
                 "id": "rhel71-ppc-1.pic.build.10gen.cc",
-                "distroId": "rhel71-power8-large",
+                "distro": { "id": "rhel71-power8-large" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
@@ -135,17 +126,14 @@
               },
               {
                 "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
-                "distroId": "ubuntu1604-power8-large",
+                "distro": { "id": "ubuntu1604-power8-large" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
                 "totalIdleTime": 0,
                 "uptime": "2018-09-19T09:32:26.199-04:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               }
             ]
           }
@@ -162,17 +150,14 @@
             "hosts": [
               {
                 "id": "i-0d0ae8b83366d22be",
-                "distroId": "ubuntu1604-small",
+                "distro": { "id": "ubuntu1604-small" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-35-153-50-124.compute-1.amazonaws.com",
                 "totalIdleTime": 45837,
                 "uptime": "2020-07-20T10:48:05.256-04:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               }
             ]
           }
@@ -189,17 +174,14 @@
             "hosts": [
               {
                 "id": "macos-1014-68.macstadium.build.10gen.cc",
-                "distroId": "macos-1014",
+                "distro": { "id": "macos-1014" },
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
                 "totalIdleTime": 0,
                 "uptime": "2019-09-16T11:49:05.059-04:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               }
             ]
           }
@@ -216,7 +198,7 @@
             "hosts": [
               {
                 "id": "macos-1014-68.macstadium.build.10gen.cc",
-                "distroId": "macos-1014",
+                "distro": { "id": "macos-1014" },
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
@@ -256,7 +238,7 @@
             "hosts": [
               {
                 "id": "build10.ny.cbi.10gen.cc",
-                "distroId": "centos6-perf",
+                "distro": { "id": "centos6-perf" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "build10.ny.cbi.10gen.cc",
@@ -283,35 +265,29 @@
             "hosts": [
               {
                 "id": "macos-1014-68.macstadium.build.10gen.cc",
-                "distroId": "macos-1014",
+                "distro": { "id": "macos-1014" },
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
                 "totalIdleTime": 0,
                 "uptime": "2019-09-16T11:49:05.059-04:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               },
               {
                 "id": "ubuntu1804-ppc-3.pic.build.10gen.cc",
-                "distroId": "ubuntu1804-power8-small",
+                "distro": { "id": "ubuntu1804-power8-small" },
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1804-ppc-3.pic.build.10gen.cc",
                 "totalIdleTime": 0,
                 "uptime": "2019-01-25T12:40:50.223-05:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               },
               {
                 "id": "build10.ny.cbi.10gen.cc",
-                "distroId": "centos6-perf",
+                "distro": { "id": "centos6-perf" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "build10.ny.cbi.10gen.cc",
@@ -325,21 +301,18 @@
               },
               {
                 "id": "i-0d0ae8b83366d22be",
-                "distroId": "ubuntu1604-small",
+                "distro": { "id": "ubuntu1604-small" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-35-153-50-124.compute-1.amazonaws.com",
                 "totalIdleTime": 45837,
                 "uptime": "2020-07-20T10:48:05.256-04:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               },
               {
                 "id": "i-0f81a2d39744003dd",
-                "distroId": "ubuntu1604-large",
+                "distro": { "id": "ubuntu1604-large" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-161-252-150.compute-1.amazonaws.com",
@@ -353,7 +326,7 @@
               },
               {
                 "id": "rhel71-ppc-1.pic.build.10gen.cc",
-                "distroId": "rhel71-power8-large",
+                "distro": { "id": "rhel71-power8-large" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
@@ -367,17 +340,14 @@
               },
               {
                 "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
-                "distroId": "ubuntu1604-power8-large",
+                "distro": { "id": "ubuntu1604-power8-large" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
                 "totalIdleTime": 0,
                 "uptime": "2018-09-19T09:32:26.199-04:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               }
             ]
           }
@@ -394,7 +364,7 @@
             "hosts": [
               {
                 "id": "build10.ny.cbi.10gen.cc",
-                "distroId": "centos6-perf",
+                "distro": { "id": "centos6-perf" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "build10.ny.cbi.10gen.cc",
@@ -408,7 +378,7 @@
               },
               {
                 "id": "i-06f80fa6e28f93b7d",
-                "distroId": "ubuntu1604-small",
+                "distro": { "id": "ubuntu1604-small" },
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-34-207-222-84.compute-1.amazonaws.com",
@@ -422,21 +392,18 @@
               },
               {
                 "id": "i-0d0ae8b83366d22be",
-                "distroId": "ubuntu1604-small",
+                "distro": { "id": "ubuntu1604-small" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-35-153-50-124.compute-1.amazonaws.com",
                 "totalIdleTime": 45837,
                 "uptime": "2020-07-20T10:48:05.256-04:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               },
               {
                 "id": "i-0f81a2d39744003dd",
-                "distroId": "ubuntu1604-large",
+                "distro": { "id": "ubuntu1604-large" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-161-252-150.compute-1.amazonaws.com",
@@ -450,7 +417,7 @@
               },
               {
                 "id": "i-0fb9fe0592ea38150",
-                "distroId": "debian92-small",
+                "distro": { "id": "debian92-small" },
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-146-18-248.compute-1.amazonaws.com",
@@ -464,21 +431,18 @@
               },
               {
                 "id": "macos-1014-68.macstadium.build.10gen.cc",
-                "distroId": "macos-1014",
+                "distro": { "id": "macos-1014" },
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
                 "totalIdleTime": 0,
                 "uptime": "2019-09-16T11:49:05.059-04:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               },
               {
                 "id": "rhel71-ppc-1.pic.build.10gen.cc",
-                "distroId": "rhel71-power8-large",
+                "distro": { "id": "rhel71-power8-large" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
@@ -492,31 +456,25 @@
               },
               {
                 "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
-                "distroId": "ubuntu1604-power8-large",
+                "distro": { "id": "ubuntu1604-power8-large" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
                 "totalIdleTime": 0,
                 "uptime": "2018-09-19T09:32:26.199-04:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               },
               {
                 "id": "ubuntu1804-ppc-3.pic.build.10gen.cc",
-                "distroId": "ubuntu1804-power8-small",
+                "distro": { "id": "ubuntu1804-power8-small" },
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1804-ppc-3.pic.build.10gen.cc",
                 "totalIdleTime": 0,
                 "uptime": "2019-01-25T12:40:50.223-05:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               }
             ]
           }
@@ -533,7 +491,7 @@
             "hosts": [
               {
                 "id": "build10.ny.cbi.10gen.cc",
-                "distroId": "centos6-perf",
+                "distro": { "id": "centos6-perf" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "build10.ny.cbi.10gen.cc",
@@ -547,7 +505,7 @@
               },
               {
                 "id": "i-0fb9fe0592ea38150",
-                "distroId": "debian92-small",
+                "distro": { "id": "debian92-small" },
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-146-18-248.compute-1.amazonaws.com",
@@ -561,21 +519,18 @@
               },
               {
                 "id": "macos-1014-68.macstadium.build.10gen.cc",
-                "distroId": "macos-1014",
+                "distro": { "id": "macos-1014" },
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
                 "totalIdleTime": 0,
                 "uptime": "2019-09-16T11:49:05.059-04:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               },
               {
                 "id": "rhel71-ppc-1.pic.build.10gen.cc",
-                "distroId": "rhel71-power8-large",
+                "distro": { "id": "rhel71-power8-large" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
@@ -589,7 +544,7 @@
               },
               {
                 "id": "i-0f81a2d39744003dd",
-                "distroId": "ubuntu1604-large",
+                "distro": { "id": "ubuntu1604-large" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-161-252-150.compute-1.amazonaws.com",
@@ -603,21 +558,18 @@
               },
               {
                 "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
-                "distroId": "ubuntu1604-power8-large",
+                "distro": { "id": "ubuntu1604-power8-large" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
                 "totalIdleTime": 0,
                 "uptime": "2018-09-19T09:32:26.199-04:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               },
               {
                 "id": "i-06f80fa6e28f93b7d",
-                "distroId": "ubuntu1604-small",
+                "distro": { "id": "ubuntu1604-small" },
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-34-207-222-84.compute-1.amazonaws.com",
@@ -631,31 +583,25 @@
               },
               {
                 "id": "i-0d0ae8b83366d22be",
-                "distroId": "ubuntu1604-small",
+                "distro": { "id": "ubuntu1604-small" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-35-153-50-124.compute-1.amazonaws.com",
                 "totalIdleTime": 45837,
                 "uptime": "2020-07-20T10:48:05.256-04:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               },
               {
                 "id": "ubuntu1804-ppc-3.pic.build.10gen.cc",
-                "distroId": "ubuntu1804-power8-small",
+                "distro": { "id": "ubuntu1804-power8-small" },
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1804-ppc-3.pic.build.10gen.cc",
                 "totalIdleTime": 0,
                 "uptime": "2019-01-25T12:40:50.223-05:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               }
             ]
           }
@@ -672,63 +618,51 @@
             "hosts": [
               {
                 "id": "i-0d0ae8b83366d22be",
-                "distroId": "ubuntu1604-small",
+                "distro": { "id": "ubuntu1604-small" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-35-153-50-124.compute-1.amazonaws.com",
                 "totalIdleTime": 45837,
                 "uptime": "2020-07-20T10:48:05.256-04:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               },
               {
                 "id": "macos-1014-68.macstadium.build.10gen.cc",
-                "distroId": "macos-1014",
+                "distro": { "id": "macos-1014" },
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
                 "totalIdleTime": 0,
                 "uptime": "2019-09-16T11:49:05.059-04:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               },
               {
                 "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
-                "distroId": "ubuntu1604-power8-large",
+                "distro": { "id": "ubuntu1604-power8-large" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
                 "totalIdleTime": 0,
                 "uptime": "2018-09-19T09:32:26.199-04:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               },
               {
                 "id": "ubuntu1804-ppc-3.pic.build.10gen.cc",
-                "distroId": "ubuntu1804-power8-small",
+                "distro": { "id": "ubuntu1804-power8-small" },
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1804-ppc-3.pic.build.10gen.cc",
                 "totalIdleTime": 0,
                 "uptime": "2019-01-25T12:40:50.223-05:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               },
               {
                 "id": "rhel71-ppc-1.pic.build.10gen.cc",
-                "distroId": "rhel71-power8-large",
+                "distro": { "id": "rhel71-power8-large" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
@@ -742,7 +676,7 @@
               },
               {
                 "id": "i-06f80fa6e28f93b7d",
-                "distroId": "ubuntu1604-small",
+                "distro": { "id": "ubuntu1604-small" },
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-34-207-222-84.compute-1.amazonaws.com",
@@ -756,7 +690,7 @@
               },
               {
                 "id": "i-0fb9fe0592ea38150",
-                "distroId": "debian92-small",
+                "distro": { "id": "debian92-small" },
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-146-18-248.compute-1.amazonaws.com",
@@ -770,7 +704,7 @@
               },
               {
                 "id": "i-0f81a2d39744003dd",
-                "distroId": "ubuntu1604-large",
+                "distro": { "id": "ubuntu1604-large" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-161-252-150.compute-1.amazonaws.com",
@@ -784,7 +718,7 @@
               },
               {
                 "id": "build10.ny.cbi.10gen.cc",
-                "distroId": "centos6-perf",
+                "distro": { "id": "centos6-perf" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "build10.ny.cbi.10gen.cc",
@@ -811,63 +745,51 @@
             "hosts": [
               {
                 "id": "i-0d0ae8b83366d22be",
-                "distroId": "ubuntu1604-small",
+                "distro": { "id": "ubuntu1604-small" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-35-153-50-124.compute-1.amazonaws.com",
                 "totalIdleTime": 45837,
                 "uptime": "2020-07-20T10:48:05.256-04:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               },
               {
                 "id": "macos-1014-68.macstadium.build.10gen.cc",
-                "distroId": "macos-1014",
+                "distro": { "id": "macos-1014" },
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
                 "totalIdleTime": 0,
                 "uptime": "2019-09-16T11:49:05.059-04:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               },
               {
                 "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
-                "distroId": "ubuntu1604-power8-large",
+                "distro": { "id": "ubuntu1604-power8-large" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
                 "totalIdleTime": 0,
                 "uptime": "2018-09-19T09:32:26.199-04:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               },
               {
                 "id": "ubuntu1804-ppc-3.pic.build.10gen.cc",
-                "distroId": "ubuntu1804-power8-small",
+                "distro": { "id": "ubuntu1804-power8-small" },
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1804-ppc-3.pic.build.10gen.cc",
                 "totalIdleTime": 0,
                 "uptime": "2019-01-25T12:40:50.223-05:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               },
               {
                 "id": "i-06f80fa6e28f93b7d",
-                "distroId": "ubuntu1604-small",
+                "distro": { "id": "ubuntu1604-small" },
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-34-207-222-84.compute-1.amazonaws.com",
@@ -881,7 +803,7 @@
               },
               {
                 "id": "i-0fb9fe0592ea38150",
-                "distroId": "debian92-small",
+                "distro": { "id": "debian92-small" },
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-146-18-248.compute-1.amazonaws.com",
@@ -895,7 +817,7 @@
               },
               {
                 "id": "build10.ny.cbi.10gen.cc",
-                "distroId": "centos6-perf",
+                "distro": { "id": "centos6-perf" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "build10.ny.cbi.10gen.cc",
@@ -909,7 +831,7 @@
               },
               {
                 "id": "i-0f81a2d39744003dd",
-                "distroId": "ubuntu1604-large",
+                "distro": { "id": "ubuntu1604-large" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-161-252-150.compute-1.amazonaws.com",
@@ -923,7 +845,7 @@
               },
               {
                 "id": "rhel71-ppc-1.pic.build.10gen.cc",
-                "distroId": "rhel71-power8-large",
+                "distro": { "id": "rhel71-power8-large" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
@@ -950,21 +872,18 @@
             "hosts": [
               {
                 "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
-                "distroId": "ubuntu1604-power8-large",
+                "distro": { "id": "ubuntu1604-power8-large" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
                 "totalIdleTime": 0,
                 "uptime": "2018-09-19T09:32:26.199-04:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               },
               {
                 "id": "rhel71-ppc-1.pic.build.10gen.cc",
-                "distroId": "rhel71-power8-large",
+                "distro": { "id": "rhel71-power8-large" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
@@ -978,7 +897,7 @@
               },
               {
                 "id": "build10.ny.cbi.10gen.cc",
-                "distroId": "centos6-perf",
+                "distro": { "id": "centos6-perf" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "build10.ny.cbi.10gen.cc",
@@ -992,35 +911,29 @@
               },
               {
                 "id": "ubuntu1804-ppc-3.pic.build.10gen.cc",
-                "distroId": "ubuntu1804-power8-small",
+                "distro": { "id": "ubuntu1804-power8-small" },
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1804-ppc-3.pic.build.10gen.cc",
                 "totalIdleTime": 0,
                 "uptime": "2019-01-25T12:40:50.223-05:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               },
               {
                 "id": "macos-1014-68.macstadium.build.10gen.cc",
-                "distroId": "macos-1014",
+                "distro": { "id": "macos-1014" },
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
                 "totalIdleTime": 0,
                 "uptime": "2019-09-16T11:49:05.059-04:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               },
               {
                 "id": "i-06f80fa6e28f93b7d",
-                "distroId": "ubuntu1604-small",
+                "distro": { "id": "ubuntu1604-small" },
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-34-207-222-84.compute-1.amazonaws.com",
@@ -1034,21 +947,18 @@
               },
               {
                 "id": "i-0d0ae8b83366d22be",
-                "distroId": "ubuntu1604-small",
+                "distro": { "id": "ubuntu1604-small" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-35-153-50-124.compute-1.amazonaws.com",
                 "totalIdleTime": 45837,
                 "uptime": "2020-07-20T10:48:05.256-04:00",
                 "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
+                "runningTask": null
               },
               {
                 "id": "i-0f81a2d39744003dd",
-                "distroId": "ubuntu1604-large",
+                "distro": { "id": "ubuntu1604-large" },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-161-252-150.compute-1.amazonaws.com",
@@ -1062,7 +972,7 @@
               },
               {
                 "id": "i-0fb9fe0592ea38150",
-                "distroId": "debian92-small",
+                "distro": { "id": "debian92-small" },
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-146-18-248.compute-1.amazonaws.com",

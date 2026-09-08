@@ -6833,3 +6833,249 @@ func TestBuildTaskCompletedSpanAttributesCostFields(t *testing.T) {
 		assert.False(t, hasEBSStorage)
 	})
 }
+
+func TestTryResetDisplayTaskAtMaxExecution(t *testing.T) {
+	settings := testutil.TestConfig()
+
+	realStartTime := time.Date(2026, time.August, 20, 2, 30, 25, 0, time.UTC)
+	realFinishTime := time.Date(2026, time.August, 20, 2, 31, 39, 0, time.UTC)
+
+	systemFailure := &apimodels.TaskEndDetail{
+		Status:      evergreen.TaskFailed,
+		Type:        evergreen.CommandTypeSystem,
+		Description: evergreen.TaskDescriptionHeartbeat,
+		TimedOut:    true,
+	}
+
+	for tName, tCase := range map[string]struct {
+		execTaskStatus string
+		test           func(t *testing.T, execTask *task.Task)
+	}{
+		"SucceededExecutionTaskKeepsItsResults": {
+			execTaskStatus: evergreen.TaskSucceeded,
+			test: func(t *testing.T, execTask *task.Task) {
+				assert.Equal(t, evergreen.TaskSucceeded, execTask.Status)
+				assert.True(t, realFinishTime.Equal(execTask.FinishTime), "finish time should not move to the time the display task hit its execution cap")
+				assert.Empty(t, execTask.Details.Description)
+			},
+		},
+		"FailedExecutionTaskKeepsItsResults": {
+			execTaskStatus: evergreen.TaskFailed,
+			test: func(t *testing.T, execTask *task.Task) {
+				assert.Equal(t, evergreen.TaskFailed, execTask.Status)
+				assert.True(t, realFinishTime.Equal(execTask.FinishTime), "finish time should not move to the time the display task hit its execution cap")
+				assert.Empty(t, execTask.Details.Description)
+			},
+		},
+		"UnfinishedExecutionTaskIsMarkedEnded": {
+			execTaskStatus: evergreen.TaskStarted,
+			test: func(t *testing.T, execTask *task.Task) {
+				assert.Equal(t, evergreen.TaskFailed, execTask.Status)
+				assert.Equal(t, evergreen.TaskDescriptionHeartbeat, execTask.Details.Description)
+			},
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx := t.Context()
+			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection, event.EventCollection, host.Collection))
+			t.Cleanup(func() {
+				assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection, event.EventCollection, host.Collection))
+			})
+
+			h := &host.Host{
+				Id:          "host",
+				RunningTask: "exec_task",
+			}
+			require.NoError(t, h.Insert(ctx))
+			v := &Version{
+				Id:     "version",
+				Status: evergreen.VersionStarted,
+			}
+			require.NoError(t, v.Insert(t.Context()))
+			b := &build.Build{
+				Id:      "build",
+				Version: v.Id,
+				Status:  evergreen.BuildStarted,
+			}
+			require.NoError(t, b.Insert(t.Context()))
+
+			execTask := &task.Task{
+				Id:            "exec_task",
+				DisplayName:   "exec_task",
+				BuildId:       b.Id,
+				Version:       v.Id,
+				Project:       "project",
+				Activated:     true,
+				HostId:        "host",
+				Status:        tCase.execTaskStatus,
+				StartTime:     realStartTime,
+				FinishTime:    realFinishTime,
+				LastHeartbeat: realFinishTime,
+			}
+			if !evergreen.IsFinishedTaskStatus(tCase.execTaskStatus) {
+				execTask.FinishTime = time.Time{}
+			}
+			require.NoError(t, execTask.Insert(t.Context()))
+
+			// System failures only allow one restart, so a display task
+			// already on execution 1 is past its cap and resetting it falls
+			// into the branch that marks it and its execution tasks as ended.
+			dt := &task.Task{
+				Id:             "display_task",
+				DisplayName:    "display_task",
+				BuildId:        b.Id,
+				Version:        v.Id,
+				Project:        "project",
+				DisplayOnly:    true,
+				Activated:      true,
+				Execution:      1,
+				Status:         evergreen.TaskStarted,
+				ExecutionTasks: []string{execTask.Id},
+			}
+			require.NoError(t, dt.Insert(t.Context()))
+
+			require.NoError(t, TryResetTask(ctx, settings, dt.Id, evergreen.User, evergreen.MonitorPackage, systemFailure))
+
+			dbExecTask, err := task.FindOneId(ctx, execTask.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbExecTask)
+			tCase.test(t, dbExecTask)
+
+			dbDisplayTask, err := task.FindOneId(ctx, dt.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbDisplayTask)
+			assert.True(t, dbDisplayTask.IsFinished(), "display task should be marked finished once it is past its execution cap")
+		})
+	}
+}
+
+func TestCheckResetDisplayTaskConcurrentReset(t *testing.T) {
+	settings := testutil.TestConfig()
+	settings.TaskLimits.MaxTaskExecution = 100
+
+	execTaskFinishTime := utility.BSONTime(time.Now())
+	systemFailureDetails := apimodels.TaskEndDetail{
+		Status:      evergreen.TaskFailed,
+		Type:        evergreen.CommandTypeSystem,
+		Description: evergreen.TaskDescriptionHeartbeat,
+	}
+
+	for tName, tCase := range map[string]struct {
+		displayTaskLatestExecution           int
+		displayTaskLatestStatus              string
+		displayTaskLatestResetFailedWhenDone bool
+		execTaskExecution                    int
+		test                                 func(t *testing.T, dbDisplayTask, dbSucceededExecTask *task.Task)
+	}{
+		"ResetsWhenTheDisplayTaskStillNeedsToReset": {
+			displayTaskLatestExecution:           0,
+			displayTaskLatestStatus:              evergreen.TaskFailed,
+			displayTaskLatestResetFailedWhenDone: true,
+			test: func(t *testing.T, dbDisplayTask, dbSucceededExecTask *task.Task) {
+				assert.Equal(t, 1, dbDisplayTask.Execution, "display task should have been reset to the next execution")
+			},
+		},
+		"SkipsResetWhenTheDisplayTaskAlreadyAdvancedToANewExecution": {
+			displayTaskLatestExecution:           1,
+			displayTaskLatestStatus:              evergreen.TaskUndispatched,
+			displayTaskLatestResetFailedWhenDone: true,
+			test: func(t *testing.T, dbDisplayTask, dbSucceededExecTask *task.Task) {
+				assert.Equal(t, 1, dbDisplayTask.Execution, "display task should not advance past the execution it was already reset to")
+				assert.False(t, dbDisplayTask.IsFinished(), "the just-reset display task execution should not be finished")
+				assert.Equal(t, evergreen.TaskSucceeded, dbSucceededExecTask.Status, "a succeeded execution task should keep its result")
+				assert.True(t, execTaskFinishTime.Equal(dbSucceededExecTask.FinishTime), "a succeeded execution task should keep its finish time")
+			},
+		},
+		"SkipsResetWhenTheDisplayTaskNoLongerNeedsToReset": {
+			displayTaskLatestExecution:           0,
+			displayTaskLatestStatus:              evergreen.TaskFailed,
+			displayTaskLatestResetFailedWhenDone: false,
+			test: func(t *testing.T, dbDisplayTask, dbSucceededExecTask *task.Task) {
+				assert.Equal(t, 0, dbDisplayTask.Execution, "display task should not be reset again")
+			},
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx := t.Context()
+			colls := []string{task.Collection, task.OldCollection, build.Collection, VersionCollection, event.EventCollection, host.Collection, ProjectRefCollection}
+			require.NoError(t, db.ClearCollections(colls...))
+			t.Cleanup(func() {
+				assert.NoError(t, db.ClearCollections(colls...))
+			})
+
+			pRef := &ProjectRef{
+				Id:         "project_id",
+				Identifier: "project",
+			}
+			require.NoError(t, pRef.Insert(t.Context()))
+			v := &Version{
+				Id:     "version_id",
+				Status: evergreen.VersionStarted,
+			}
+			require.NoError(t, v.Insert(t.Context()))
+			b := &build.Build{
+				Id:      "build_id",
+				Version: v.Id,
+				Status:  evergreen.BuildStarted,
+			}
+			require.NoError(t, b.Insert(t.Context()))
+
+			succeededExecTask := &task.Task{
+				Id:          "succeeded_exec_task_id",
+				DisplayName: "succeeded_exec_task",
+				BuildId:     b.Id,
+				Version:     v.Id,
+				Project:     pRef.Id,
+				Activated:   true,
+				Status:      evergreen.TaskSucceeded,
+				StartTime:   execTaskFinishTime.Add(-time.Minute),
+				FinishTime:  execTaskFinishTime,
+			}
+			require.NoError(t, succeededExecTask.Insert(t.Context()))
+			failedExecTask := &task.Task{
+				Id:          "failed_exec_task_id",
+				DisplayName: "failed_exec_task",
+				BuildId:     b.Id,
+				Version:     v.Id,
+				Project:     pRef.Id,
+				Activated:   true,
+				Status:      evergreen.TaskFailed,
+				Details:     systemFailureDetails,
+				StartTime:   execTaskFinishTime.Add(-time.Minute),
+				FinishTime:  execTaskFinishTime,
+			}
+			require.NoError(t, failedExecTask.Insert(t.Context()))
+
+			dt := &task.Task{
+				Id:                      "display_task_id",
+				DisplayName:             "display_task",
+				BuildId:                 b.Id,
+				Version:                 v.Id,
+				Project:                 pRef.Id,
+				DisplayOnly:             true,
+				Activated:               true,
+				Execution:               tCase.displayTaskLatestExecution,
+				Status:                  tCase.displayTaskLatestStatus,
+				Details:                 systemFailureDetails,
+				ResetFailedWhenFinished: tCase.displayTaskLatestResetFailedWhenDone,
+				ExecutionTasks:          []string{succeededExecTask.Id, failedExecTask.Id},
+			}
+			require.NoError(t, dt.Insert(t.Context()))
+
+			staleDisplayTask := *dt
+			staleDisplayTask.Execution = 0
+			staleDisplayTask.Status = evergreen.TaskFailed
+			staleDisplayTask.ResetFailedWhenFinished = true
+
+			require.NoError(t, checkResetDisplayTask(ctx, settings, evergreen.User, evergreen.MonitorPackage, &staleDisplayTask))
+
+			dbDisplayTask, err := task.FindOneId(ctx, dt.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbDisplayTask)
+			dbSucceededExecTask, err := task.FindOneId(ctx, succeededExecTask.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbSucceededExecTask)
+			tCase.test(t, dbDisplayTask, dbSucceededExecTask)
+		})
+	}
+}

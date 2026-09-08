@@ -137,6 +137,8 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 		fmt.Sprintf("The working directory is an absolute path [%s], which isn't supported except when prefixed by '%s'.",
 			c.WorkingDir, conf.WorkDir))
 
+	SetWorkdirBoundaryAttribute(ctx, conf, c.WorkingDir)
+
 	c.WorkingDir, err = getWorkingDirectoryLegacy(conf, c.WorkingDir)
 	if err != nil {
 		return errors.Wrap(err, "getting working directory")
@@ -173,7 +175,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 				opts.StandardInput = strings.NewReader(c.Script)
 			}
 
-			return runJasperProcessWithContainer(lctx, opts, c.FullDisplayName(), c.WorkingDir, conf, c.JasperManager(), c.Background, logger, conf.Task.Id, conf.BackgroundFailures, c.ContinueOnError, conf.BackgroundCommandFailureEnabled)
+			return runJasperProcessWithContainer(lctx, opts, c.FullDisplayName(), c.WorkingDir, c.FailureMetadataTags(), conf, c.JasperManager(), c.Background, logger, conf.Task.Id, conf.BackgroundFailures, c.ContinueOnError, conf.BackgroundCommandFailureEnabled)
 		})
 
 	if !c.IgnoreStandardOutput {

@@ -554,6 +554,13 @@ func TestGetRawPatches(t *testing.T) {
 		Patches: []patch.ModulePatch{
 			{ModuleName: "different", Githash: "home fries"},
 		},
+		LocalModuleIncludes: []patch.LocalModuleInclude{
+			{
+				Module:      "myModule",
+				FileName:    "config.yml",
+				FileContent: []byte("some yaml content"),
+			},
+		},
 	}
 	assert.NoError(t, p.Insert(t.Context()))
 	raw, err := GetRawPatches(t.Context(), p.Id.Hex())
@@ -564,4 +571,9 @@ func TestGetRawPatches(t *testing.T) {
 	require.Len(t, raw.RawModules, 1)
 	assert.Equal(t, raw.RawModules[0].Name, p.Patches[0].ModuleName)
 	assert.Equal(t, raw.RawModules[0].Githash, p.Patches[0].Githash)
+
+	require.Len(t, raw.LocalModuleIncludes, 1)
+	assert.Equal(t, "myModule", raw.LocalModuleIncludes[0].Module)
+	assert.Equal(t, "config.yml", raw.LocalModuleIncludes[0].FileName)
+	assert.Equal(t, []byte("some yaml content"), raw.LocalModuleIncludes[0].FileContent)
 }

@@ -24,6 +24,8 @@ import (
 const (
 	HostTerminationJobName         = "host-termination-job"
 	hostTerminationAttributePrefix = "evergreen.host_termination"
+	hostTerminationMaxAttempts     = 3
+	hostTerminationMaxTime         = 5 * time.Minute
 )
 
 func init() {
@@ -77,6 +79,13 @@ func NewHostTerminationJob(env evergreen.Environment, h *host.Host, opts HostTer
 	j.SetID(fmt.Sprintf("%s.%s.%s", HostTerminationJobName, h.Id, ts))
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", HostTerminationJobName, h.Id)})
 	j.SetEnqueueAllScopes(true)
+	j.UpdateRetryInfo(amboy.JobRetryOptions{
+		Retryable:   utility.TruePtr(),
+		MaxAttempts: utility.ToIntPtr(hostTerminationMaxAttempts),
+	})
+	j.UpdateTimeInfo(amboy.JobTimeInfo{
+		MaxTime: hostTerminationMaxTime,
+	})
 
 	return j
 }

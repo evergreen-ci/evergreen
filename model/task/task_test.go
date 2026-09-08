@@ -4790,6 +4790,7 @@ func TestReset(t *testing.T) {
 		t0 := Task{
 			Id:                         "t0",
 			Status:                     evergreen.TaskSucceeded,
+			ExecutionPlatform:          ExecutionPlatformContainer,
 			Details:                    apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded},
 			TaskOutputInfo:             &TaskOutput{TaskLogs: TaskLogOutput{Version: 1}},
 			ResultsFailed:              true,
@@ -4826,6 +4827,9 @@ func TestReset(t *testing.T) {
 		assert.Empty(t, dbTask.HostCreateDetails)
 		assert.Empty(t, dbTask.TaskOutputInfo)
 		assert.Empty(t, dbTask.Details)
+		assert.Zero(t, dbTask.ExecutionPlatform)
+		assert.Zero(t, t0.ExecutionPlatform)
+		assert.True(t, dbTask.IsHostDispatchable())
 		assert.Zero(t, dbTask.NumNextTaskDispatches)
 		assert.Zero(t, dbTask.NumQuarantinedTestsSkipped)
 		assert.True(t, dbTask.TaskCost.IsZero())
@@ -4848,9 +4852,10 @@ func TestResetTasks(t *testing.T) {
 		require.NoError(t, db.Clear(Collection))
 
 		t0 := Task{
-			Id:       "t0",
-			Status:   evergreen.TaskSucceeded,
-			CanReset: true,
+			Id:                "t0",
+			Status:            evergreen.TaskSucceeded,
+			ExecutionPlatform: ExecutionPlatformContainer,
+			CanReset:          true,
 		}
 		assert.NoError(t, t0.Insert(t.Context()))
 
@@ -4859,6 +4864,8 @@ func TestResetTasks(t *testing.T) {
 		assert.NoError(t, err)
 		assert.False(t, dbTask.UnattainableDependency)
 		assert.Equal(t, "user", dbTask.ActivatedBy)
+		assert.Zero(t, dbTask.ExecutionPlatform)
+		assert.True(t, dbTask.IsHostDispatchable())
 	})
 
 	t.Run("UnattainableDependency", func(t *testing.T) {
@@ -5939,6 +5946,34 @@ func TestIncNumQuarantinedTestsSkipped(t *testing.T) {
 		assert.Zero(t, staleTask.NumQuarantinedTestsSkipped)
 		assert.Equal(t, 5, findTask(t).NumQuarantinedTestsSkipped, "an increment for a previous execution should not apply to the current one")
 	})
+}
+
+func TestGetQuarantinedTestsSkippedCountByVersion(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	})
+
+	activatedTime := time.Now()
+	tasks := []Task{
+		{Id: "display_task", Version: "version", DisplayTaskId: utility.ToStringPtr(""), ActivatedTime: activatedTime, NumQuarantinedTestsSkipped: 3},
+		{Id: "display_only_task", Version: "version", DisplayOnly: true, DisplayTaskId: utility.ToStringPtr("parent"), ActivatedTime: activatedTime, NumQuarantinedTestsSkipped: 2},
+		{Id: "task_without_display_task_id", Version: "version", ActivatedTime: activatedTime, NumQuarantinedTestsSkipped: 4},
+		{Id: "execution_task", Version: "version", DisplayTaskId: utility.ToStringPtr("display_task"), ActivatedTime: activatedTime, NumQuarantinedTestsSkipped: 3},
+		{Id: "other_version_task", Version: "other_version", ActivatedTime: activatedTime, NumQuarantinedTestsSkipped: 7},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert(ctx))
+	}
+
+	count, err := GetQuarantinedTestsSkippedCountByVersion(ctx, "version")
+	require.NoError(t, err)
+	assert.Equal(t, 9, count)
+
+	count, err = GetQuarantinedTestsSkippedCountByVersion(ctx, "empty_version")
+	require.NoError(t, err)
+	assert.Zero(t, count)
 }
 
 func TestSetS3ArtifactStorageCostsLifecycleMissLogging(t *testing.T) {

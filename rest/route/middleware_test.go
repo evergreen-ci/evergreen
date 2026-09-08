@@ -20,7 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
-	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	mongobson "go.mongodb.org/mongo-driver/bson"
@@ -49,54 +48,73 @@ func PrefetchProjectContext(ctx context.Context, r *http.Request, input map[stri
 }
 
 func TestPrefetchProject(t *testing.T) {
-	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, patch.Collection, user.Collection))
-	doc := &model.ProjectRef{
-		Id: "mci",
+	collections := []string{
+		model.ProjectRefCollection,
+		model.RepoRefCollection,
+		patch.Collection,
+		user.Collection,
 	}
-	require.NoError(t, doc.Insert(t.Context()))
-	patchDoc := &patch.Patch{
-		Id: bson.ObjectIdHex("aabbccddeeff112233445566"),
-	}
-	require.NoError(t, patchDoc.Insert(t.Context()))
+	require.NoError(t, db.ClearCollections(collections...))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(collections...))
+	})
+
+	projectRef := model.ProjectRef{Id: "mci"}
+	require.NoError(t, projectRef.Insert(t.Context()))
+
+	patch := patch.Patch{Id: bson.ObjectIdHex("aabbccddeeff112233445566")}
+	require.NoError(t, patch.Insert(t.Context()))
+
+	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
+		Id:    "my-repo",
+		Owner: "evergreen-ci",
+		Repo:  "evergreen",
+	}}
+	require.NoError(t, repoRef.Replace(t.Context()))
+
 	testUser := &user.DBUser{Id: "test_user"}
 	require.NoError(t, testUser.Insert(t.Context()))
-	Convey("When there is a data and a request", t, func() {
+
+	t.Run("ProjectWithNoUserShouldError", func(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, "/", nil)
-		So(err, ShouldBeNil)
-		Convey("When fetching the project context", func() {
-			ctx := context.Background()
-			Convey("should error if project is private and no user is set", func() {
-				ctx, err = PrefetchProjectContext(ctx, req, map[string]string{"project_id": "mci"})
-				So(ctx.Value(RequestContext), ShouldBeNil)
+		require.NoError(t, err)
+		ctx, err := PrefetchProjectContext(t.Context(), req, map[string]string{"project_id": "mci"})
+		assert.Equal(t, gimlet.ErrorResponse{StatusCode: http.StatusNotFound, Message: "not found"}, err)
+		assert.Nil(t, ctx.Value(RequestContext))
+	})
 
-				errToResemble := gimlet.ErrorResponse{
-					StatusCode: http.StatusNotFound,
-					Message:    "not found",
-				}
-				So(err, ShouldResemble, errToResemble)
-			})
-			Convey("should error if patch exists and no user is set", func() {
-				ctx, err = PrefetchProjectContext(ctx, req, map[string]string{"patch_id": "aabbccddeeff112233445566"})
-				So(ctx.Value(RequestContext), ShouldBeNil)
+	t.Run("PatchWithNoUserShouldError", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		ctx, err := PrefetchProjectContext(t.Context(), req, map[string]string{"patch_id": "aabbccddeeff112233445566"})
+		assert.Equal(t, gimlet.ErrorResponse{StatusCode: http.StatusNotFound, Message: "not found"}, err)
+		assert.Nil(t, ctx.Value(RequestContext))
+	})
 
-				errToResemble := gimlet.ErrorResponse{
-					StatusCode: http.StatusNotFound,
-					Message:    "not found",
-				}
-				So(err, ShouldResemble, errToResemble)
-			})
-			Convey("should succeed if project ref exists and user is set", func() {
-				opCtx := model.Context{}
-				opCtx.ProjectRef = &model.ProjectRef{
-					Id: "mci",
-				}
-				ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "test_user"})
-				ctx, err = PrefetchProjectContext(ctx, req, map[string]string{"project_id": "mci"})
-				So(err, ShouldBeNil)
+	t.Run("ProjectWithUserShouldSucceed", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		ctx := gimlet.AttachUser(t.Context(), testUser)
+		ctx, err = PrefetchProjectContext(ctx, req, map[string]string{"project_id": "mci"})
+		require.NoError(t, err)
 
-				So(ctx.Value(RequestContext), ShouldResemble, &opCtx)
-			})
-		})
+		opCtx, ok := ctx.Value(RequestContext).(*model.Context)
+		require.True(t, ok)
+		require.NotNil(t, opCtx.ProjectRef)
+		assert.Equal(t, "mci", opCtx.ProjectRef.Id)
+	})
+
+	t.Run("RepoIDPopulatesRepoRefInContext", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		ctx := gimlet.AttachUser(t.Context(), testUser)
+		ctx, err = PrefetchProjectContext(ctx, req, map[string]string{"repo_id": "my-repo"})
+		require.NoError(t, err)
+
+		opCtx, ok := ctx.Value(RequestContext).(*model.Context)
+		require.True(t, ok)
+		require.NotNil(t, opCtx.RepoRef)
+		assert.Equal(t, "my-repo", opCtx.RepoRef.Id)
 	})
 }
 
@@ -722,6 +740,137 @@ func TestProjectViewPermission(t *testing.T) {
 	authHandler.ServeHTTP(rw, req, checkPermission)
 	assert.Equal(http.StatusOK, rw.Code)
 	assert.Equal(1, counter)
+}
+
+func TestRequiresRepoPermission(t *testing.T) {
+	collections := []string{
+		model.ProjectRefCollection,
+		model.RepoRefCollection,
+		evergreen.RoleCollection,
+		evergreen.ScopeCollection,
+	}
+	require.NoError(t, db.ClearCollections(collections...))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(collections...))
+	})
+
+	ctx := t.Context()
+	env := testutil.NewEnvironment(ctx, t)
+	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
+
+	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
+		Id:    "my-repo",
+		Owner: "evergreen-ci",
+		Repo:  "evergreen",
+	}}
+	require.NoError(t, repoRef.Replace(ctx))
+
+	branchProject := model.ProjectRef{
+		Id:         "branch-project",
+		RepoRefId:  "my-repo",
+		Owner:      "evergreen-ci",
+		Repo:       "evergreen",
+		Branch:     "main",
+		Identifier: "branch-project",
+	}
+	require.NoError(t, branchProject.Insert(ctx))
+
+	repoScope := gimlet.Scope{
+		ID:        "repo-scope",
+		Resources: []string{repoRef.Id},
+		Type:      evergreen.ProjectResourceType,
+	}
+	require.NoError(t, env.RoleManager().AddScope(ctx, repoScope))
+
+	repoEditRole := gimlet.Role{
+		ID:          "edit-repo-role",
+		Scope:       repoScope.ID,
+		Permissions: map[string]int{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value},
+	}
+	require.NoError(t, env.RoleManager().UpdateRole(ctx, repoEditRole))
+
+	branchProjectScope := gimlet.Scope{
+		ID:        "project-scope",
+		Resources: []string{branchProject.Id},
+		Type:      evergreen.ProjectResourceType,
+	}
+	require.NoError(t, env.RoleManager().AddScope(ctx, branchProjectScope))
+
+	branchProjectViewRole := gimlet.Role{
+		ID:          "view-project-role",
+		Scope:       branchProjectScope.ID,
+		Permissions: map[string]int{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsView.Value},
+	}
+	require.NoError(t, env.RoleManager().UpdateRole(ctx, branchProjectViewRole))
+
+	viewMiddleware := RequiresRepoPermission(evergreen.PermissionProjectSettings, evergreen.ProjectSettingsView)
+	editMiddleware := RequiresRepoPermission(evergreen.PermissionProjectSettings, evergreen.ProjectSettingsEdit)
+
+	// Helper to build a request with user and project context populated (as addProject would do).
+	makeRepoRequest := func(t *testing.T, usr *user.DBUser, repoID string) *http.Request {
+		t.Helper()
+		r, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "/repos/"+repoID, nil)
+		require.NoError(t, err)
+		userCtx := gimlet.AttachUser(r.Context(), usr)
+		userCtx, err = PrefetchProjectContext(userCtx, r, map[string]string{"repo_id": repoID})
+		require.NoError(t, err)
+		return r.WithContext(userCtx)
+	}
+
+	t.Run("NonexistentRepoReturnsNotFound", func(t *testing.T) {
+		r := makeRepoRequest(t, &user.DBUser{Id: "some-user"}, "nonexistent")
+		rw := httptest.NewRecorder()
+		viewMiddleware.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+			rw.WriteHeader(http.StatusOK)
+		})
+		assert.Equal(t, http.StatusNotFound, rw.Code)
+	})
+
+	t.Run("UserWithoutViewPermissionReturnsForbidden", func(t *testing.T) {
+		r := makeRepoRequest(t, &user.DBUser{Id: "unauthorized-user"}, "my-repo")
+		rw := httptest.NewRecorder()
+		viewMiddleware.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+			rw.WriteHeader(http.StatusOK)
+		})
+		assert.Equal(t, http.StatusUnauthorized, rw.Code)
+	})
+
+	t.Run("UserWithViewPermissionSucceeds", func(t *testing.T) {
+		r := makeRepoRequest(t, &user.DBUser{Id: "view-user", SystemRoles: []string{"view-project-role"}}, "my-repo")
+		rw := httptest.NewRecorder()
+		viewMiddleware.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+			rw.WriteHeader(http.StatusOK)
+		})
+		assert.Equal(t, http.StatusOK, rw.Code)
+	})
+
+	t.Run("ViewOnlyUserCannotEdit", func(t *testing.T) {
+		r := makeRepoRequest(t, &user.DBUser{Id: "view-only-user", SystemRoles: []string{"view-project-role"}}, "my-repo")
+		rw := httptest.NewRecorder()
+		editMiddleware.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+			rw.WriteHeader(http.StatusOK)
+		})
+		assert.Equal(t, http.StatusUnauthorized, rw.Code)
+	})
+
+	t.Run("UserWithoutEditPermissionReturnsUnauthorized", func(t *testing.T) {
+		r := makeRepoRequest(t, &user.DBUser{Id: "unauthorized-user"}, "my-repo")
+		rw := httptest.NewRecorder()
+		editMiddleware.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+			rw.WriteHeader(http.StatusOK)
+		})
+		assert.Equal(t, http.StatusUnauthorized, rw.Code)
+	})
+
+	t.Run("UserWithEditPermissionSucceeds", func(t *testing.T) {
+		r := makeRepoRequest(t, &user.DBUser{Id: "edit-user", SystemRoles: []string{"edit-repo-role"}}, "my-repo")
+		rw := httptest.NewRecorder()
+		editMiddleware.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+			rw.WriteHeader(http.StatusOK)
+		})
+		assert.Equal(t, http.StatusOK, rw.Code)
+	})
+
 }
 
 func TestURLVarsToDistroScopes(t *testing.T) {

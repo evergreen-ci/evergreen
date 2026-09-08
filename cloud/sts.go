@@ -43,7 +43,7 @@ type stsManagerImpl struct {
 
 // AssumeRoleOptions are the options for assuming a role.
 // Some internal options are not present and are set by the manager
-// (e.g. ExternalID).
+// (e.g. the external ID).
 type AssumeRoleOptions struct {
 	// RoleARN is the Amazon Resource Name (ARN) of the role to assume.
 	RoleARN string
@@ -54,6 +54,9 @@ type AssumeRoleOptions struct {
 	DurationSeconds *int32
 	// UseDebug indicates whether the debug prefix on the external ID will be used.
 	UseDebug bool
+	// IsSourceCache indicates the assumption is for the source cache role, which
+	// uses the fixed external ID rather than the task-computed one.
+	IsSourceCache bool
 }
 
 // AssumeRoleCredentials are the credentials to be returned from
@@ -97,7 +100,12 @@ func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID, hostID string, 
 		return AssumeRoleCredentials{}, fmt.Errorf("host '%s' not found", hostID)
 	}
 
-	externalID := createExternalID(t, p, opts.UseDebug || dbHost.IsDebug)
+	var externalID string
+	if opts.IsSourceCache {
+		externalID = evergreen.SourceCacheExternalID
+	} else {
+		externalID = createExternalID(t, p, opts.UseDebug || dbHost.IsDebug)
+	}
 	creds, err := s.assumeRole(ctx, externalID, opts)
 	if err != nil {
 		return AssumeRoleCredentials{}, errors.Wrapf(err, "assuming role: '%v'", err)

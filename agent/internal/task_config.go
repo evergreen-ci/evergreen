@@ -78,6 +78,9 @@ type TaskConfig struct {
 	// ArtifactAWSAccountsWithoutLifecycleRules contains the AWS account IDs of the accounts that we
 	// calculate s3 costs for but cannot read lifecycle rules from.
 	ArtifactAWSAccountsWithoutLifecycleRules []string
+	// SourceCacheBucket is the git.get_project source cache bucket, resolved
+	// server-side.
+	SourceCacheBucket evergreen.BucketConfig
 	// awsAccountIDByKey caches resolved AWS account IDs keyed by AWS access key ID,
 	// so repeated s3.put commands using the same key avoid redundant STS calls.
 	awsAccountIDByKey map[string]string
@@ -96,7 +99,7 @@ type TaskConfig struct {
 	PSLoggingDisabled               bool
 	BackgroundCommandFailureEnabled bool
 	// BackgroundFailures is the send-only end of a channel for background command failures; the agent reads from the bidirectional end on taskContext.
-	BackgroundFailures chan<- error
+	BackgroundFailures chan<- BackgroundFailure
 
 	// ContainerID is the Docker container ID for this task's isolation container.
 	// Empty if container isolation is not enabled for this task.
@@ -120,6 +123,16 @@ func (tc *TaskConfig) TaskData() client.TaskData {
 		Secret: tc.Task.Secret,
 	}
 }
+
+// BackgroundFailure carries information about a background command that failed
+// so the agent can attribute the failure to the correct command.
+type BackgroundFailure struct {
+	Err                 error
+	CommandName         string
+	FailureMetadataTags []string
+}
+
+func (b BackgroundFailure) Error() string { return b.Err.Error() }
 
 // CommandCleanup is a cleanup function associated with a command. As a command
 // block is executed, the cleanup function(s) are added to the TaskConfig. When
@@ -301,6 +314,7 @@ func NewTaskConfig(opts TaskConfigOptions) (*TaskConfig, error) {
 	if opts.ExpansionsAndVars != nil {
 		taskConfig.DevprodOwnedAWSAccountIDs = opts.ExpansionsAndVars.DevprodOwnedAWSAccountIDs
 		taskConfig.ArtifactAWSAccountsWithoutLifecycleRules = opts.ExpansionsAndVars.ArtifactAWSAccountsWithoutLifecycleRules
+		taskConfig.SourceCacheBucket = opts.ExpansionsAndVars.SourceCacheBucket
 	}
 
 	if opts.ExpansionsAndVars != nil && opts.ExpansionsAndVars.Expansions != nil {

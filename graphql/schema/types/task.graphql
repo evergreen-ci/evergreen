@@ -88,6 +88,7 @@ type Task {
   canSchedule: Boolean!
   canSetPriority: Boolean!
   canUnschedule: Boolean!
+  config: TaskConfig
   createTime: Time
   dependsOn: [Dependency!]
   details: TaskEndDetail
@@ -103,6 +104,12 @@ type Task {
   errors: [String!]
   estimatedStart: Duration
   execution: Int!
+  """
+  executionPlatform indicates the environment the task ran in: HOST for a
+  task that ran directly on the host, or CONTAINER for a task that ran inside
+  a Docker container on the host.
+  """
+  executionPlatform: ExecutionPlatform!
   executionSteps: [TaskExecutionStep!]
   executionTasks: [String!]
   executionTasksFull(options: ExecutionTasksFilterOptions): [Task!]
@@ -174,6 +181,12 @@ type Task {
   totalTestCount: Int!
   version: VersionLite!
   versionMetadata: Version!
+}
+
+enum ExecutionPlatform {
+  HOST
+  CONTAINER
+  VIRTUAL
 }
 
 """
@@ -393,4 +406,36 @@ input QuarantineTestInput {
 input UnquarantineTestInput {
   taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)
   testName: String!
+}
+
+type TaskUnitDependency {
+  name: String!
+  omitGeneratedTasks: Boolean
+  patchOptional: Boolean
+  status: String
+  variant: String
+}
+
+type TaskConfig {
+  activate: Boolean
+  allowedBranches: [String!]
+  allowedRequesters: [String!]
+  allowForGitTag: Boolean
+  batchTime: Int
+  cronBatchTime: String
+  dependsOn: [TaskUnitDependency!]
+  disable: Boolean
+  execTimeoutSecs: Int
+  gitTagOnly: Boolean
+  groupName: String
+  ignoredBranches: [String!]
+  isGroup: Boolean
+  isPartOfGroup: Boolean
+  name: String!
+  patchable: Boolean
+  patchOnly: Boolean
+  priority: Int
+  ps: String
+  runOn: [String!]
+  stepback: Boolean
 }

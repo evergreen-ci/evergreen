@@ -840,6 +840,13 @@ func TestPatchRawModulesHandler(t *testing.T) {
 				},
 			},
 		},
+		LocalModuleIncludes: []patch.LocalModuleInclude{
+			{
+				Module:      "module1",
+				FileName:    "evergreen.yml",
+				FileContent: []byte("module config override"),
+			},
+		},
 	}
 	assert.NoError(t, patchToInsert.Insert(t.Context()))
 
@@ -863,6 +870,11 @@ func TestPatchRawModulesHandler(t *testing.T) {
 
 	assert.Equal(t, "module2", modules[1].Name)
 	assert.Equal(t, "module2 diff", modules[1].Diff)
+
+	require.Len(t, rawModulesResponse.LocalModuleIncludes, 1)
+	assert.Equal(t, "module1", rawModulesResponse.LocalModuleIncludes[0].Module)
+	assert.Equal(t, "evergreen.yml", rawModulesResponse.LocalModuleIncludes[0].FileName)
+	assert.Equal(t, []byte("module config override"), rawModulesResponse.LocalModuleIncludes[0].FileContent)
 }
 
 func TestPatchRawHandler(t *testing.T) {
@@ -1083,6 +1095,7 @@ buildvariants:
 	unfinalized := patch.Patch{
 		Id:                   mgobson.NewObjectId(),
 		Project:              projectRef.Id,
+		Author:               "user",
 		Githash:              "3c7bfeb82d492dc453e7431be664539c35b5db4b",
 		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
 		PatchedProjectConfig: config,
@@ -1107,7 +1120,7 @@ buildvariants:
 	description := "some text"
 	body := patchTasks{
 		Description: description,
-		Variants:    []variant{{Id: "ubuntu", Tasks: []string{"compile", "passing_test"}}},
+		Variants:    []patchVariant{{Id: "ubuntu", Tasks: []string{"compile", "passing_test"}}},
 	}
 	jsonBody, err := json.Marshal(&body)
 	assert.NoError(t, err)
@@ -1143,7 +1156,7 @@ buildvariants:
 	// valid request, reconfiguring a finalized patch
 	handler = makeSchedulePatchHandler(env).(*schedulePatchHandler)
 	body = patchTasks{
-		Variants: []variant{{Id: "ubuntu", Tasks: []string{"failing_test"}}},
+		Variants: []patchVariant{{Id: "ubuntu", Tasks: []string{"failing_test"}}},
 	}
 	jsonBody, err = json.Marshal(&body)
 	assert.NoError(t, err)
@@ -1187,6 +1200,7 @@ buildvariants:
 	patch2 := patch.Patch{
 		Id:                   mgobson.NewObjectId(),
 		Project:              projectRef.Id,
+		Author:               "user",
 		Githash:              "3c7bfeb82d492dc453e7431be664539c35b5db4b",
 		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
 		PatchedProjectConfig: config,
@@ -1200,7 +1214,7 @@ buildvariants:
 
 	handler = makeSchedulePatchHandler(env).(*schedulePatchHandler)
 	body = patchTasks{
-		Variants: []variant{{Id: "ubuntu", Tasks: []string{"*"}}},
+		Variants: []patchVariant{{Id: "ubuntu", Tasks: []string{"*"}}},
 	}
 	jsonBody, err = json.Marshal(&body)
 	assert.NoError(t, err)
@@ -1221,6 +1235,7 @@ buildvariants:
 	patch3 := patch.Patch{
 		Id:                   mgobson.NewObjectId(),
 		Project:              projectRef.Id,
+		Author:               "user",
 		Githash:              "3c7bfeb82d492dc453e7431be664539c35b5db4b",
 		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
 		PatchedProjectConfig: config,
@@ -1233,7 +1248,7 @@ buildvariants:
 	require.NoError(t, pp.Insert(t.Context()))
 	handler = makeSchedulePatchHandler(env).(*schedulePatchHandler)
 	body = patchTasks{
-		Variants: []variant{{Id: "ubuntu_task_group", Tasks: []string{"task_group_task_2"}}},
+		Variants: []patchVariant{{Id: "ubuntu_task_group", Tasks: []string{"task_group_task_2"}}},
 	}
 	jsonBody, err = json.Marshal(&body)
 	assert.NoError(t, err)
@@ -1500,6 +1515,7 @@ tasks:
 	unfinalized := patch.Patch{
 		Id:                   mgobson.NewObjectId(),
 		Project:              projectRef.Id,
+		Author:               "user",
 		Githash:              "3c7bfeb82d492dc453e7431be664539c35b5db4b",
 		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
 		PatchedProjectConfig: config,
@@ -1516,7 +1532,7 @@ tasks:
 	description := "some text"
 	body := patchTasks{
 		Description: description,
-		Variants:    []variant{{Id: "generate-tasks-for-version", Tasks: []string{"version_gen"}}},
+		Variants:    []patchVariant{{Id: "generate-tasks-for-version", Tasks: []string{"version_gen"}}},
 	}
 	jsonBody, err := json.Marshal(&body)
 	assert.NoError(t, err)
@@ -1546,7 +1562,7 @@ tasks:
 	// this task has two dependencies which should also be activated
 	handler = makeSchedulePatchHandler(env).(*schedulePatchHandler)
 	body = patchTasks{
-		Variants: []variant{
+		Variants: []patchVariant{
 			{Id: "testBV4", Tasks: []string{"dependencyTask"}},
 		},
 	}
@@ -1572,7 +1588,7 @@ tasks:
 	// Check that scheduling a task group works.
 	handler = makeSchedulePatchHandler(env).(*schedulePatchHandler)
 	body = patchTasks{
-		Variants: []variant{
+		Variants: []patchVariant{
 			{Id: "testBV1", Tasks: []string{"some_task_group"}},
 		},
 	}

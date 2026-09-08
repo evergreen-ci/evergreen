@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/birch"
@@ -12,12 +13,28 @@ import (
 	"github.com/evergreen-ci/utility"
 )
 
+// Image is the resolver for the image field.
+func (r *containerIsolationSettingsResolver) Image(ctx context.Context, obj *model.APIContainerIsolationSettings) (string, error) {
+	// Treat unset images as empty strings because the GraphQL field is non-nullable.
+	return utility.FromStringPtr(obj.Image), nil
+}
+
 // AvailableRegions is the resolver for the availableRegions field.
 func (r *distroResolver) AvailableRegions(ctx context.Context, obj *model.APIDistro) ([]string, error) {
 	settings := evergreen.GetEnvironment().Settings()
 	d := obj.ToService()
 	availableRegions := d.GetRegionsList(ctx, settings.Providers.AWS.AllowedRegions)
 	return availableRegions, nil
+}
+
+// BootstrapMethod is the resolver for the bootstrapMethod field.
+func (r *distroResolver) BootstrapMethod(ctx context.Context, obj *model.APIDistro) (string, error) {
+	return utility.FromStringPtr(obj.BootstrapSettings.Method), nil
+}
+
+// IsWindows is the resolver for the isWindows field.
+func (r *distroResolver) IsWindows(ctx context.Context, obj *model.APIDistro) (bool, error) {
+	return strings.Contains(utility.FromStringPtr(obj.Arch), "windows"), nil
 }
 
 // ProviderSettingsList is the resolver for the providerSettingsList field.
@@ -66,6 +83,11 @@ func (r *plannerSettingsInputResolver) TargetTime(ctx context.Context, obj *mode
 	return nil
 }
 
+// ContainerIsolationSettings returns ContainerIsolationSettingsResolver implementation.
+func (r *Resolver) ContainerIsolationSettings() ContainerIsolationSettingsResolver {
+	return &containerIsolationSettingsResolver{r}
+}
+
 // Distro returns DistroResolver implementation.
 func (r *Resolver) Distro() DistroResolver { return &distroResolver{r} }
 
@@ -82,6 +104,7 @@ func (r *Resolver) PlannerSettingsInput() PlannerSettingsInputResolver {
 	return &plannerSettingsInputResolver{r}
 }
 
+type containerIsolationSettingsResolver struct{ *Resolver }
 type distroResolver struct{ *Resolver }
 type distroInputResolver struct{ *Resolver }
 type hostAllocatorSettingsInputResolver struct{ *Resolver }

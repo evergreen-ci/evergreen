@@ -62,6 +62,7 @@ func (c *autoArchiveCreate) Execute(ctx context.Context,
 
 	c.SourceDir = GetWorkingDirectory(conf, c.SourceDir)
 	c.Target = GetWorkingDirectory(conf, c.Target)
+	SetWorkdirBoundaryAttribute(ctx, conf, c.Target, c.SourceDir)
 
 	var filenames []string
 	var directoryArchive bool

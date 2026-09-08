@@ -2,6 +2,8 @@ package githubapp
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -270,4 +272,34 @@ func TestCreateCacheID(t *testing.T) {
 			assert.Equal(t, tc.expected, result)
 		})
 	}
+}
+
+func TestGithubClientShouldRetry(t *testing.T) {
+	makeRequest := func() *http.Request {
+		return httptest.NewRequest(http.MethodPost, "https://api.github.com/app/installations/1/access_tokens", nil)
+	}
+
+	t.Run("BadRequestWithoutOptInDoesNotRetry", func(t *testing.T) {
+		retryFn := githubClientShouldRetry(retryConfig{})
+		resp := &http.Response{StatusCode: http.StatusBadRequest}
+		assert.False(t, retryFn(0, makeRequest(), resp, nil))
+	})
+
+	t.Run("BadRequestWithOptInRetries", func(t *testing.T) {
+		retryFn := githubClientShouldRetry(retryConfig{retry400: true})
+		resp := &http.Response{StatusCode: http.StatusBadRequest}
+		assert.True(t, retryFn(0, makeRequest(), resp, nil))
+	})
+
+	t.Run("ServerErrorRetriesWithoutOptIn", func(t *testing.T) {
+		retryFn := githubClientShouldRetry(retryConfig{})
+		resp := &http.Response{StatusCode: http.StatusInternalServerError}
+		assert.True(t, retryFn(0, makeRequest(), resp, nil))
+	})
+
+	t.Run("SuccessfulResponseDoesNotRetry", func(t *testing.T) {
+		retryFn := githubClientShouldRetry(retryConfig{retry400: true})
+		resp := &http.Response{StatusCode: http.StatusOK}
+		assert.False(t, retryFn(0, makeRequest(), resp, nil))
+	})
 }

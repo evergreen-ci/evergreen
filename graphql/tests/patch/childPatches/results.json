@@ -1,12 +1,12 @@
 {
   "tests": [
     {
-      "query_file": "child_patches_null.graphql",
+      "query_file": "child_patches_empty.graphql",
       "result": {
         "data": {
           "patch": {
             "id": "5d7288d91f8c8a403bc34a7d",
-            "childPatches": null
+            "childPatches": []
           }
         }
       }
@@ -24,15 +24,7 @@
                   "id": "spruce"
                 }
               }
-            ],
-            "version": {
-              "id": "5e4ff3abe3c3317e352062e1",
-              "childVersions": [
-                {
-                  "id": "5e4ff3abe3c3317e352062e4"
-                }
-              ]
-            }
+            ]
           }
         }
       }

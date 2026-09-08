@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -283,6 +284,15 @@ func (r *taskResolver) CanUnschedule(ctx context.Context, obj *restModel.APITask
 	return (obj.Activated && *obj.Status == evergreen.TaskUndispatched && obj.ParentTaskId == ""), nil
 }
 
+// Config is the resolver for the config field.
+func (r *taskResolver) Config(ctx context.Context, obj *restModel.APITask) (*model.BuildVariantTaskUnit, error) {
+	project, err := model.FindProjectFromVersionID(ctx, utility.FromStringPtr(obj.Version))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	return project.FindExpandedTaskForVariant(utility.FromStringPtr(obj.DisplayName), utility.FromStringPtr(obj.BuildVariant)), nil
+}
+
 // DependsOn is the resolver for the dependsOn field.
 func (r *taskResolver) DependsOn(ctx context.Context, obj *restModel.APITask) ([]*Dependency, error) {
 	dependencies := []*Dependency{}
@@ -394,6 +404,15 @@ func (r *taskResolver) EstimatedStart(ctx context.Context, obj *restModel.APITas
 	}
 	duration := restModel.NewAPIDuration(start)
 	return &duration, nil
+}
+
+// ExecutionPlatform is the resolver for the executionPlatform field.
+func (r *taskResolver) ExecutionPlatform(ctx context.Context, obj *restModel.APITask) (task.ExecutionPlatform, error) {
+	platform := utility.FromStringPtr(obj.ExecutionPlatform)
+	if platform == "" {
+		return task.ExecutionPlatformHost, nil
+	}
+	return task.ExecutionPlatform(platform), nil
 }
 
 // ExecutionSteps is the resolver for the executionSteps field.
@@ -650,26 +669,26 @@ func (r *taskResolver) InvalidatedByUpstream(ctx context.Context, obj *restModel
 	if !evergreen.IsGithubMergeQueueRequester(utility.FromStringPtr(obj.Requester)) {
 		return nil, nil
 	}
-	apiPatch, err := data.FindPatchById(ctx, utility.FromStringPtr(obj.Version))
+	p, err := loaders.GetPatch(ctx, utility.FromStringPtr(obj.Version))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", utility.FromStringPtr(obj.Version), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", utility.FromStringPtr(obj.Version), err.Error()), err)
 	}
-	if apiPatch == nil {
+	if p == nil {
 		return nil, nil
 	}
-	return &apiPatch.InvalidatedByUpstream, nil
+	return &p.GithubMergeData.InvalidatedByUpstream, nil
 }
 
 // Patch is the resolver for the patch field.
-func (r *taskResolver) Patch(ctx context.Context, obj *restModel.APITask) (*restModel.APIPatch, error) {
+func (r *taskResolver) Patch(ctx context.Context, obj *restModel.APITask) (*patch.Patch, error) {
 	if !evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)) {
 		return nil, nil
 	}
-	apiPatch, err := data.FindPatchById(ctx, utility.FromStringPtr(obj.Version))
+	p, err := loaders.GetPatch(ctx, utility.FromStringPtr(obj.Version))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", utility.FromStringPtr(obj.Version), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", utility.FromStringPtr(obj.Version), err.Error()), err)
 	}
-	return apiPatch, nil
+	return p, nil
 }
 
 // PatchNumber is the resolver for the patchNumber field.
@@ -958,11 +977,24 @@ func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITa
 	return apiVersion, nil
 }
 
+// AllowedRequesters is the resolver for the allowedRequesters field.
+func (r *taskConfigResolver) AllowedRequesters(ctx context.Context, obj *model.BuildVariantTaskUnit) ([]string, error) {
+	requesters := make([]string, len(obj.AllowedRequesters))
+	for i, requester := range obj.AllowedRequesters {
+		requesters[i] = string(requester)
+	}
+	return requesters, nil
+}
+
 // Cost returns CostResolver implementation.
 func (r *Resolver) Cost() CostResolver { return &costResolver{r} }
 
 // Task returns TaskResolver implementation.
 func (r *Resolver) Task() TaskResolver { return &taskResolver{r} }
 
+// TaskConfig returns TaskConfigResolver implementation.
+func (r *Resolver) TaskConfig() TaskConfigResolver { return &taskConfigResolver{r} }
+
 type costResolver struct{ *Resolver }
 type taskResolver struct{ *Resolver }
+type taskConfigResolver struct{ *Resolver }

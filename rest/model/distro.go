@@ -176,18 +176,18 @@ func (s *APIDispatcherSettings) ToService() distro.DispatcherSettings {
 // APIBootstrapSettings is the model to be returned by the API whenever distro.BootstrapSettings are fetched
 
 type APIBootstrapSettings struct {
-	Method                *string                       `json:"method"`
-	Communication         *string                       `json:"communication"`
-	ClientDir             *string                       `json:"client_dir"`
-	JasperBinaryDir       *string                       `json:"jasper_binary_dir"`
-	JasperCredentialsPath *string                       `json:"jasper_credentials_path"`
-	ServiceUser           *string                       `json:"service_user"`
-	ShellPath             *string                       `json:"shell_path"`
-	RootDir               *string                       `json:"root_dir"`
-	Env                   []APIEnvVar                   `json:"env"`
-	ResourceLimits        APIResourceLimits             `json:"resource_limits"`
-	PreconditionScripts   []APIPreconditionScript       `json:"precondition_scripts"`
-	ContainerIsolation    APIContainerIsolationSettings `json:"container_isolation"`
+	Method                *string                        `json:"method"`
+	Communication         *string                        `json:"communication"`
+	ClientDir             *string                        `json:"client_dir"`
+	JasperBinaryDir       *string                        `json:"jasper_binary_dir"`
+	JasperCredentialsPath *string                        `json:"jasper_credentials_path"`
+	ServiceUser           *string                        `json:"service_user"`
+	ShellPath             *string                        `json:"shell_path"`
+	RootDir               *string                        `json:"root_dir"`
+	Env                   []APIEnvVar                    `json:"env"`
+	ResourceLimits        APIResourceLimits              `json:"resource_limits"`
+	PreconditionScripts   []APIPreconditionScript        `json:"precondition_scripts"`
+	ContainerIsolation    *APIContainerIsolationSettings `json:"container_isolation"`
 }
 
 // APIContainerIsolationSettings is the API model for per-task container
@@ -307,6 +307,7 @@ func (s *APIBootstrapSettings) BuildFromService(settings distro.BootstrapSetting
 	s.ResourceLimits.NumTasks = settings.ResourceLimits.NumTasks
 	s.ResourceLimits.LockedMemoryKB = settings.ResourceLimits.LockedMemoryKB
 	s.ResourceLimits.VirtualMemoryKB = settings.ResourceLimits.VirtualMemoryKB
+	s.ContainerIsolation = &APIContainerIsolationSettings{}
 	s.ContainerIsolation.BuildFromService(settings.ContainerIsolation)
 }
 
@@ -339,7 +340,9 @@ func (s *APIBootstrapSettings) ToService() distro.BootstrapSettings {
 	settings.ResourceLimits.NumTasks = s.ResourceLimits.NumTasks
 	settings.ResourceLimits.LockedMemoryKB = s.ResourceLimits.LockedMemoryKB
 	settings.ResourceLimits.VirtualMemoryKB = s.ResourceLimits.VirtualMemoryKB
-	settings.ContainerIsolation = s.ContainerIsolation.ToService()
+	if s.ContainerIsolation != nil {
+		settings.ContainerIsolation = s.ContainerIsolation.ToService()
+	}
 
 	return settings
 }

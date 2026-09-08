@@ -1,0 +1,34 @@
+{
+  task(taskId: "configured_task") {
+    id
+    config {
+      activate
+      allowedBranches
+      allowedRequesters
+      allowForGitTag
+      batchTime
+      cronBatchTime
+      dependsOn {
+        name
+        omitGeneratedTasks
+        patchOptional
+        status
+        variant
+      }
+      disable
+      execTimeoutSecs
+      gitTagOnly
+      groupName
+      ignoredBranches
+      isGroup
+      isPartOfGroup
+      name
+      patchable
+      patchOnly
+      priority
+      ps
+      runOn
+      stepback
+    }
+  }
+}

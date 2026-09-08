@@ -1,4 +1,4 @@
-# ValidationErrorLocInner
+# LocationInner
 
 ## Properties
 
@@ -7,20 +7,20 @@ Name | Type | Description | Notes
 
 ## Methods
 
-### NewValidationErrorLocInner
+### NewLocationInner
 
-`func NewValidationErrorLocInner() *ValidationErrorLocInner`
+`func NewLocationInner() *LocationInner`
 
-NewValidationErrorLocInner instantiates a new ValidationErrorLocInner object
+NewLocationInner instantiates a new LocationInner object
 This constructor will assign default values to properties that have it defined,
 and makes sure properties required by API are set, but the set of arguments
 will change when the set of required properties is changed
 
-### NewValidationErrorLocInnerWithDefaults
+### NewLocationInnerWithDefaults
 
-`func NewValidationErrorLocInnerWithDefaults() *ValidationErrorLocInner`
+`func NewLocationInnerWithDefaults() *LocationInner`
 
-NewValidationErrorLocInnerWithDefaults instantiates a new ValidationErrorLocInner object
+NewLocationInnerWithDefaults instantiates a new LocationInner object
 This constructor will only assign default values to properties that have it defined,
 but it doesn't guarantee that properties required by API are set
 

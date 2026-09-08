@@ -501,6 +501,7 @@ func (ac *legacyClient) PutPatch(ctx context.Context, incomingPatch patchSubmiss
 		GithubAuthor                       string                     `json:"github_author"`
 		PatchAuthor                        string                     `json:"patch_author"`
 		LocalModuleIncludes                []patch.LocalModuleInclude `json:"local_module_includes"`
+		CrossFileYAMLAnchorsEnabled        bool                       `json:"cross_file_yaml_anchors_enabled"`
 	}{
 		Description:                        incomingPatch.description,
 		Project:                            incomingPatch.projectName,
@@ -527,6 +528,7 @@ func (ac *legacyClient) PutPatch(ctx context.Context, incomingPatch patchSubmiss
 		GithubAuthor:                       incomingPatch.githubAuthor,
 		PatchAuthor:                        incomingPatch.patchAuthor,
 		LocalModuleIncludes:                incomingPatch.localModuleIncludes,
+		CrossFileYAMLAnchorsEnabled:        incomingPatch.crossFileYAMLAnchors,
 	}
 
 	rPipe, wPipe := io.Pipe()

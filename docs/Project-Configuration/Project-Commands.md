@@ -1490,6 +1490,7 @@ distribution. Refer to [Task Artifacts Data Retention Policy](../Reference/Limit
     region: us-east-1
     permissions: private
     visibility: signed
+    presign_duration: 1h
     content_type: ${content_type|application/x-gzip}
     display_name: Binaries
 # Or:
@@ -1597,6 +1598,11 @@ Parameters:
   See [Rotating AWS credentials for signed artifacts](#rotating-aws-credentials-for-signed-artifacts)
   for how presigning picks up rotated credentials, and how to repair links for artifacts
   uploaded before that.
+- `presign_duration`: the duration that a URL generated for a `visibility: signed`
+  artifact remains valid. Specify a duration from one second through seven days using
+  Go duration syntax, such as `30m`, `1h`, or `24h`. This option is only supported with
+  static AWS credentials; configurations using `role_arn` or credentials from
+  `ec2.assume_role` fail. Defaults to 15 minutes when omitted.
 - `patchable`: defaults to true. If set to false, the command will
   no-op for patches (i.e. continue without performing the s3 put).
 - `patch_only`: defaults to false. If set to true, the command will

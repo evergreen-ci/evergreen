@@ -169,7 +169,7 @@ func TestValidateFile(t *testing.T) {
 				path = filepath.Join(t.TempDir(), "project.yml")
 				require.NoError(t, os.WriteFile(path, sampleYAML, 0644))
 			}
-			err := validateFile(&ClientSettings{}, path, testCase.quiet, testCase.errorOnWarnings, false, nil, "")
+			err := validateFile(&ClientSettings{}, path, testCase.quiet, testCase.errorOnWarnings, nil, "", false)
 
 			if testCase.expectErr != "" {
 				assert.ErrorContains(t, err, testCase.expectErr)
@@ -184,10 +184,14 @@ func TestValidateFile(t *testing.T) {
 func TestLoadProjectYAML(t *testing.T) {
 	sampleYAML, err := os.ReadFile(filepath.Join("testdata", "sample.yml"))
 	require.NoError(t, err)
+	crossFileAnchorMainYAML, err := os.ReadFile(filepath.Join("testdata", "cross_file_anchor_main.yml"))
+	require.NoError(t, err)
 
 	for testName, testCase := range map[string]struct {
 		useNonexistentPath bool
 		fileContent        []byte
+		serviceFlagErr     error
+		cliAnchors         bool
 		expectErr          string
 	}{
 		"SucceedsWithValidFile": {},
@@ -199,8 +203,20 @@ func TestLoadProjectYAML(t *testing.T) {
 			fileContent: []byte("invalid: [yaml: bad"),
 			expectErr:   "invalid configuration",
 		},
+		"SucceedsWithWarningWhenGetServiceFlagsFails": {
+			serviceFlagErr: errors.New("not authorized"),
+		},
+		"CrossFileAnchorYAMLFailsWithoutFlag": {
+			fileContent: crossFileAnchorMainYAML,
+			expectErr:   "invalid configuration",
+		},
+		"CrossFileAnchorYAMLSucceedsWithCLIFlag": {
+			fileContent: crossFileAnchorMainYAML,
+			cliAnchors:  true,
+		},
 	} {
 		t.Run(testName, func(t *testing.T) {
+			mockClient = &client.Mock{MockServiceFlagErr: testCase.serviceFlagErr}
 			var path string
 			if testCase.useNonexistentPath {
 				path = filepath.Join("nonexistent", "file.yml")
@@ -212,7 +228,7 @@ func TestLoadProjectYAML(t *testing.T) {
 				path = filepath.Join(t.TempDir(), "project.yml")
 				require.NoError(t, os.WriteFile(path, content, 0644))
 			}
-			projectYaml, err := loadProjectYAML(path, false, false, false, nil, "")
+			projectYaml, err := loadProjectYAML(&ClientSettings{}, path, false, false, nil, "", testCase.cliAnchors)
 
 			if testCase.expectErr != "" {
 				assert.ErrorContains(t, err, testCase.expectErr)

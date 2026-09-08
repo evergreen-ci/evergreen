@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy/queue"
 	. "github.com/smartystreets/goconvey/convey"
@@ -102,6 +103,20 @@ func TestHostNextTask(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.False(t, utility.IsZeroTime(dbHost.AgentStartTime))
+		},
+		"ShouldNotDispatchToUserHost": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
+			userHost := *rh.host
+			userHost.UserHost = true
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/hosts/{host_id}/agent/next_task", nil)
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"host_id": userHost.Id})
+			ctx = context.WithValue(ctx, model.ApiHostKey, &userHost)
+			err = rh.Parse(ctx, req)
+			require.Error(t, err)
+			respErr, ok := err.(gimlet.ErrorResponse)
+			require.True(t, ok, err)
+			assert.Equal(t, http.StatusForbidden, respErr.StatusCode)
+			assert.Equal(t, "user hosts cannot be dispatched tasks", respErr.Message)
 		},
 		"ShouldExitWithOutOfDateRevisionAndTaskGroup": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
 			sampleHost, err := host.FindOneId(ctx, "h1")
@@ -862,6 +877,34 @@ func TestHostEndTask(t *testing.T) {
 			require.NotZero(t, foundTask)
 			require.Equal(t, evergreen.TaskFailed, foundTask.Status)
 			require.Equal(t, evergreen.TaskFailed, foundTask.Details.Status)
+		},
+		"AbortedContainerTaskPreservesExecutionPlatform": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
+			foundTask, err := task.FindOneId(ctx, taskId)
+			require.NoError(t, err)
+			require.NotNil(t, foundTask)
+			require.NoError(t, task.UpdateOne(ctx, task.ById(taskId), bson.M{
+				"$set": bson.M{task.ExecutionPlatformKey: task.ExecutionPlatformContainer},
+			}))
+			foundTask.ExecutionPlatform = task.ExecutionPlatformContainer
+			require.NoError(t, foundTask.SetAborted(ctx, task.AbortInfo{User: "user"}))
+			handler.details = apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}
+
+			resp := handler.Run(ctx)
+			require.Equal(t, http.StatusOK, resp.Status())
+			foundTask, err = task.FindOneId(ctx, taskId)
+			require.NoError(t, err)
+			require.NotNil(t, foundTask)
+			assert.Equal(t, task.ExecutionPlatformContainer, foundTask.ExecutionPlatform)
+			assert.Equal(t, string(task.ExecutionPlatformContainer), foundTask.Details.ExecutionPlatform)
+		},
+		"RejectsUnknownExecutionPlatform": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
+			handler.details = apimodels.TaskEndDetail{
+				Status:            evergreen.TaskSucceeded,
+				ExecutionPlatform: "unknown",
+			}
+
+			resp := handler.Run(ctx)
+			require.Equal(t, http.StatusBadRequest, resp.Status())
 		},
 		"WithTaskEndDetailsButTaskIsInactive": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
 			task2 := task.Task{

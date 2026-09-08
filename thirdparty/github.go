@@ -2087,6 +2087,9 @@ type mergeQueueFrontEntryResponse struct {
 			MergeQueue struct {
 				Entries struct {
 					Nodes []struct {
+						BaseCommit struct {
+							Oid string `json:"oid"`
+						} `json:"baseCommit"`
 						HeadCommit struct {
 							Oid string `json:"oid"`
 						} `json:"headCommit"`
@@ -2128,7 +2131,7 @@ func GetMergeQueueFrontEntry(ctx context.Context, owner, repo, baseBranch string
 			repository(owner: $owner, name: $repo) {
 				mergeQueue(branch: $branch) {
 					entries(first: 1) {
-						nodes { headCommit { oid } pullRequest { number } }
+						nodes { baseCommit { oid } headCommit { oid } pullRequest { number } }
 					}
 				}
 			}
@@ -2174,6 +2177,6 @@ func GetMergeQueueFrontEntry(ctx context.Context, owner, repo, baseBranch string
 
 	node := nodes[0]
 	// Merge group refs follow this naming scheme according to GitHub docs.
-	headRef = fmt.Sprintf("refs/heads/gh-readonly-queue/%s/pr-%d-%s", baseBranch, node.PullRequest.Number, node.HeadCommit.Oid)
+	headRef = fmt.Sprintf("refs/heads/gh-readonly-queue/%s/pr-%d-%s", baseBranch, node.PullRequest.Number, node.BaseCommit.Oid)
 	return headRef, node.HeadCommit.Oid, true, nil
 }

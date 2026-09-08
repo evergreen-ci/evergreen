@@ -428,29 +428,29 @@ func addNetworkMetrics(ctx context.Context, meter metric.Meter) error {
 		observer.ObserveInt64(transmit, int64(stats.BytesSent))
 		observer.ObserveInt64(receive, int64(stats.BytesRecv))
 
-		if !lastTime.IsZero() {
-			dt := now.Sub(lastTime).Seconds()
-			if dt > 0 {
-				txBps := float64(stats.BytesSent-lastTransmit) / dt
-				rxBps := float64(stats.BytesRecv-lastReceive) / dt
-				if txBps < 0 {
-					txBps = 0
-				}
-				if rxBps < 0 {
-					rxBps = 0
-				}
-				observer.ObserveFloat64(transmitBps, txBps)
-				observer.ObserveFloat64(receiveBps, rxBps)
-				if txBps > maxTransmit {
-					maxTransmit = txBps
-				}
-				if rxBps > maxReceive {
-					maxReceive = rxBps
-				}
-				observer.ObserveFloat64(maxTransmitBps, maxTransmit)
-				observer.ObserveFloat64(maxReceiveBps, maxReceive)
+		// Windows has a coarse clock, so two collections can land on the same tick. Report a
+		// zero rate in that case rather than dropping the gauges from the collection entirely.
+		var txBps, rxBps float64
+		if dt := now.Sub(lastTime).Seconds(); dt > 0 {
+			txBps = float64(stats.BytesSent-lastTransmit) / dt
+			rxBps = float64(stats.BytesRecv-lastReceive) / dt
+			if txBps < 0 {
+				txBps = 0
+			}
+			if rxBps < 0 {
+				rxBps = 0
 			}
 		}
+		observer.ObserveFloat64(transmitBps, txBps)
+		observer.ObserveFloat64(receiveBps, rxBps)
+		if txBps > maxTransmit {
+			maxTransmit = txBps
+		}
+		if rxBps > maxReceive {
+			maxReceive = rxBps
+		}
+		observer.ObserveFloat64(maxTransmitBps, maxTransmit)
+		observer.ObserveFloat64(maxReceiveBps, maxReceive)
 		lastTransmit = stats.BytesSent
 		lastReceive = stats.BytesRecv
 		lastTime = now
