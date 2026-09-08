@@ -76522,9 +76522,9 @@ func (ec *executionContext) _Version_taskQuarantinedTestsSample(ctx context.Cont
 			return ec.resolvers.Version().TaskQuarantinedTestsSample(ctx, obj, fc.Args["taskIds"].([]string), fc.Args["limit"].(*int))
 		},
 		nil,
-		ec.marshalNTaskQuarantinedTestsSample2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtestresultᚐTaskTestResultsQuarantinedSampleᚄ,
+		ec.marshalOTaskQuarantinedTestsSample2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtestresultᚐTaskTestResultsQuarantinedSampleᚄ,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -112438,16 +112438,13 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 		case "taskQuarantinedTestsSample":
 			field := field
 
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
 				defer func() {
 					if r := recover(); r != nil {
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
 				res = ec._Version_taskQuarantinedTestsSample(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
 				return res
 			}
 
@@ -119277,50 +119274,6 @@ func (ec *executionContext) marshalNTaskQuarantineEntry2ᚕgithubᚗcomᚋevergr
 	return ret
 }
 
-func (ec *executionContext) marshalNTaskQuarantinedTestsSample2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtestresultᚐTaskTestResultsQuarantinedSampleᚄ(ctx context.Context, sel ast.SelectionSet, v []*testresult.TaskTestResultsQuarantinedSample) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNTaskQuarantinedTestsSample2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtestresultᚐTaskTestResultsQuarantinedSample(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
 func (ec *executionContext) marshalNTaskQuarantinedTestsSample2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtestresultᚐTaskTestResultsQuarantinedSample(ctx context.Context, sel ast.SelectionSet, v *testresult.TaskTestResultsQuarantinedSample) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -123949,6 +123902,53 @@ func (ec *executionContext) marshalOTaskOwnershipSettings2githubᚗcomᚋevergre
 func (ec *executionContext) unmarshalOTaskOwnershipSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskOwnershipSettings(ctx context.Context, v any) (model.APITaskOwnershipSettings, error) {
 	res, err := ec.unmarshalInputTaskOwnershipSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOTaskQuarantinedTestsSample2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtestresultᚐTaskTestResultsQuarantinedSampleᚄ(ctx context.Context, sel ast.SelectionSet, v []*testresult.TaskTestResultsQuarantinedSample) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNTaskQuarantinedTestsSample2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtestresultᚐTaskTestResultsQuarantinedSample(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalOTaskSpecifier2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifierᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APITaskSpecifier) graphql.Marshaler {

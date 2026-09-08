@@ -90,7 +90,7 @@ type Version {
   taskQuarantinedTestsSample(
     taskIds: [String!]!
     limit: Int
-  ): [TaskQuarantinedTestsSample!]!
+  ): [TaskQuarantinedTestsSample!]
   tasks(options: TaskFilterOptions!): VersionTasks!
   taskStatuses: [String!]!
   taskStatusStats(options: BuildVariantOptions!): TaskStats # TODO: Must make this match the taskStatusStats field on VersionLite
