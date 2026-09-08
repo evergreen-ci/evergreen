@@ -139,6 +139,21 @@ PASS
 
 		assert.Equal(t, []int{2}, parser.MalformedLines())
 	})
+	t.Run("TruncatedEndLineForUnstartedTestIsIgnored", func(t *testing.T) {
+		logdata := `=== RUN   TestSuite/TestName
+    --- SKIP: TestSuite/TestName (0.00s)
+This test prints output that looks like go test's own: --- FAIL: TestNeverRan
+--- PASS: TestSuite (0.01s)
+PASS
+`
+		parser := &goTestParser{}
+		require.NoError(t, parser.Parse(strings.NewReader(logdata)))
+
+		assert.Empty(t, parser.MalformedLines())
+		for _, res := range parser.Results() {
+			assert.NotEqual(t, "TestNeverRan", res.Name)
+		}
+	})
 	t.Run("WellFormedOutputHasNoMalformedLines", func(t *testing.T) {
 		logdata := `=== RUN   TestSuite/TestName
     --- SKIP: TestSuite/TestName (0.00s)

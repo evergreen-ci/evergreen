@@ -152,6 +152,16 @@ func (vp *goTestParser) handleLine(line string) error {
 		return vp.handleStart(line, gocheckStartRegex, false)
 	case endRegex.MatchString(line):
 		if !wellFormedEndRegex.MatchString(line) {
+			// A partially-matching end line is only trusted for a test that was seen starting.
+			// Otherwise it's most likely a test printing text that resembles go test's own output,
+			// which must not be reported as a test result or as malformed output.
+			name, _, _, err := endInfoFromLogLine(line, endRegex)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			if len(vp.tests[name]) == 0 {
+				return nil
+			}
 			vp.malformedLines = append(vp.malformedLines, len(vp.logs))
 		}
 		return vp.handleEnd(line, endRegex)
