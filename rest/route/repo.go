@@ -64,6 +64,7 @@ func (h *repoIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = repoModel.BuildFromService(ctx, repoRef.ProjectRef); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting repo '%s' to API model", h.repoID))
 	}
+	includeFileTicketWebhookSecretForProjectAdmin(ctx, repoRef.Id, repoRef.TaskAnnotationSettings, &repoModel.TaskAnnotationSettings)
 
 	variables, err := data.FindProjectVarsById(ctx, "", repoRef.Id, true)
 	if err != nil {

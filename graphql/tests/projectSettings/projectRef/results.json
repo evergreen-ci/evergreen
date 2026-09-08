@@ -110,6 +110,23 @@
       }
     },
     {
+      "query_file": "webhook_secret.graphql",
+      "test_user_id": "privileged_user",
+      "result": {
+        "data": {
+          "projectSettings": {
+            "projectRef": {
+              "taskAnnotationSettings": {
+                "fileTicketWebhook": {
+                  "secret": "{REDACTED}"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "query_file": "nonexistent.graphql",
       "result": {
         "data": null,

@@ -26,6 +26,8 @@ func TestRepoGetByID(t *testing.T) {
 		model.ProjectAliasCollection,
 		fakeparameter.Collection,
 		event.SubscriptionsCollection,
+		evergreen.ScopeCollection,
+		evergreen.RoleCollection,
 	}
 	require.NoError(t, db.ClearCollections(collections...))
 	t.Cleanup(func() {
@@ -44,6 +46,18 @@ func TestRepoGetByID(t *testing.T) {
 		},
 	}}
 	require.NoError(t, repoRef.Replace(t.Context()))
+	require.NoError(t, evergreen.GetEnvironment().RoleManager().AddScope(t.Context(), gimlet.Scope{
+		ID:        "repo-admin-scope",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"my-repo"},
+	}))
+	require.NoError(t, evergreen.GetEnvironment().RoleManager().UpdateRole(t.Context(), gimlet.Role{
+		ID:    "repo-admin",
+		Scope: "repo-admin-scope",
+		Permissions: gimlet.Permissions{
+			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+		},
+	}))
 
 	repoVars := model.ProjectVars{
 		Id:   "my-repo",
@@ -92,6 +106,18 @@ func TestRepoGetByID(t *testing.T) {
 		assert.Equal(t, "evergreen", utility.FromStringPtr(apiRef.Repo))
 		assert.Equal(t, "https://example.com/file-ticket", utility.FromStringPtr(apiRef.TaskAnnotationSettings.FileTicketWebhook.Endpoint))
 		assert.Equal(t, evergreen.RedactedValue, utility.FromStringPtr(apiRef.TaskAnnotationSettings.FileTicketWebhook.Secret))
+	})
+
+	t.Run("AdminReceivesWebhookSecret", func(t *testing.T) {
+		h := &repoIDGetHandler{repoID: "my-repo"}
+		ctx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "admin", SystemRoles: []string{"repo-admin"}})
+		resp := h.Run(ctx)
+		require.NotNil(t, resp)
+		assert.Equal(t, http.StatusOK, resp.Status())
+
+		apiRef, ok := resp.Data().(*restmodel.APIProjectRef)
+		require.True(t, ok)
+		assert.Equal(t, "file-ticket-secret", utility.FromStringPtr(apiRef.TaskAnnotationSettings.FileTicketWebhook.Secret))
 	})
 
 	t.Run("ReturnsVars", func(t *testing.T) {
