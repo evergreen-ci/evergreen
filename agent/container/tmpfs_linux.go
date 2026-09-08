@@ -36,13 +36,9 @@ func provisionEnvTmpfs(dir string) error {
 	return nil
 }
 
-// ensureEnvDir creates dir (the per-task env dir) and its parents. The base
-// dir lives under /var/run, which is a root-owned tmpfs, so the agent cannot
-// create the base dir unprivileged and it disappears on every host reboot.
-// Unprivileged creation is attempted first because it succeeds in the steady
-// state (once the base dir exists and is owned by the agent); if that fails,
-// the base dir is created via sudo with mkdir and chown, like the mount step,
-// so per-task dirs can then be created unprivileged.
+// ensureEnvDir creates dir and its parents, falling back to sudo mkdir plus
+// chown (like the mount step) because the base dir under /var/run is on a
+// root-owned tmpfs and disappears on every reboot.
 func ensureEnvDir(dir string) error {
 	if err := os.MkdirAll(dir, 0700); err == nil {
 		return nil
