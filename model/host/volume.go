@@ -169,6 +169,12 @@ func FindVolumeByID(ctx context.Context, id string) (*Volume, error) {
 	return FindOneVolume(ctx, bson.M{VolumeIDKey: id})
 }
 
+// FindVolumesByIDs finds volumes by their ID fields.
+func FindVolumesByIDs(ctx context.Context, ids []string) ([]Volume, error) {
+	query := bson.M{VolumeIDKey: bson.M{"$in": ids}}
+	return findVolumes(ctx, query)
+}
+
 type volumeSize struct {
 	TotalVolumeSize int `bson:"total"`
 }

@@ -1,0 +1,19 @@
+{
+  "tests": [
+    {
+      "query_file": "cost.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "cost": {
+              "total": 10.5,
+              "childPatchesTotalCost": 4.5,
+              "adjustedEC2Cost": 5,
+              "adjustedEBSThroughputCost": 1
+            }
+          }
+        }
+      }
+    }
+  ]
+}

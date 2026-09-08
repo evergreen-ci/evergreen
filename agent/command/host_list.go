@@ -70,6 +70,7 @@ func (c *listHosts) Execute(ctx context.Context, comm client.Communicator, logge
 			c.Path = GetWorkingDirectory(conf, c.Path)
 		}
 	}
+	SetWorkdirBoundaryAttribute(ctx, conf, c.Path)
 
 	if c.TimeoutSecs > 0 {
 		var cancel context.CancelFunc

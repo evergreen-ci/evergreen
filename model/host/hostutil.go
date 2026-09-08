@@ -1124,6 +1124,7 @@ func (h *Host) spawnHostSetupConfigDirCommands(conf []byte) string {
 		fmt.Sprintf("echo \"%s\" > %s", conf, h.spawnHostConfigFile()),
 		fmt.Sprintf("chmod +x %s", h.AgentMonitorBinary()),
 		fmt.Sprintf("cp %s %s", h.AgentMonitorBinary(), h.spawnHostConfigDir()),
+		fmt.Sprintf("(cp %s %s || true)", h.AgentBinary(), h.spawnHostConfigDir()),
 		fmt.Sprintf("(echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.profile || true; echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.bash_profile || true)", h.spawnHostConfigDir(), h.Distro.HomeDir(), h.spawnHostConfigDir(), h.Distro.HomeDir()),
 		fmt.Sprintf("(%s || true)", h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), ".profile"), filepath.Join(h.Distro.HomeDir(), ".bash_profile"))),
 	}, " && ")

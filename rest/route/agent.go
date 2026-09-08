@@ -449,6 +449,8 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 	}
 
 	res.SourceCacheBucket = h.settings.Buckets.GetSourceCacheBucket(t.Project)
+	// The role ARN never goes to the agent; it uses the scoped credentials route.
+	res.SourceCacheBucket.RoleARN = ""
 	if res.SourceCacheBucket.Name == "" {
 		grip.Debug(ctx, message.Fields{
 			"message":     "no source cache bucket for task",
@@ -1608,13 +1610,13 @@ func (h *manifestLoadHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	currentManifest, err := manifest.FindFromVersion(ctx, v.Id, v.Identifier, v.Revision, v.Requester)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "retrieving manifest with version id '%s'", t.Version))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "retrieving manifest with version id '%s'", t.Version))
 	}
 
 	env := evergreen.GetEnvironment()
 	project, _, err := model.FindAndTranslateProjectForVersion(ctx, env.Settings(), v, false)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "loading project from version"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "loading project from version"))
 	}
 	if project == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -2160,10 +2162,19 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	// tasks could be using.
 	token, permissions, err := githubAppAuth.CreateInstallationToken(ctx, h.owner, h.repo, &github.InstallationTokenOptions{
 		Permissions: permissions,
-	})
+	}, true)
 	if err != nil {
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message":    "creating installation token",
+			"task_id":    t.Id,
+			"owner":      h.owner,
+			"repo":       h.repo,
+			"project_id": t.Project,
+			"app_id":     githubAppAuth.AppID,
+		}))
 		// This intentionally returns a 4xx error to prevent the agent from
-		// retrying because CreateInstallationToken already retries internally.
+		// retrying because CreateInstallationToken already retries internally,
+		// including (potentially) transient "Bad Request" responses from GitHub.
 		// It's assumed that if the token can't be created after retries, it's
 		// not a transient issue.
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "creating installation token for '%s/%s'", h.owner, h.repo))

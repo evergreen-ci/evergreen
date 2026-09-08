@@ -5948,6 +5948,34 @@ func TestIncNumQuarantinedTestsSkipped(t *testing.T) {
 	})
 }
 
+func TestGetQuarantinedTestsSkippedCountByVersion(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	})
+
+	activatedTime := time.Now()
+	tasks := []Task{
+		{Id: "display_task", Version: "version", DisplayTaskId: utility.ToStringPtr(""), ActivatedTime: activatedTime, NumQuarantinedTestsSkipped: 3},
+		{Id: "display_only_task", Version: "version", DisplayOnly: true, DisplayTaskId: utility.ToStringPtr("parent"), ActivatedTime: activatedTime, NumQuarantinedTestsSkipped: 2},
+		{Id: "task_without_display_task_id", Version: "version", ActivatedTime: activatedTime, NumQuarantinedTestsSkipped: 4},
+		{Id: "execution_task", Version: "version", DisplayTaskId: utility.ToStringPtr("display_task"), ActivatedTime: activatedTime, NumQuarantinedTestsSkipped: 3},
+		{Id: "other_version_task", Version: "other_version", ActivatedTime: activatedTime, NumQuarantinedTestsSkipped: 7},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert(ctx))
+	}
+
+	count, err := GetQuarantinedTestsSkippedCountByVersion(ctx, "version")
+	require.NoError(t, err)
+	assert.Equal(t, 9, count)
+
+	count, err = GetQuarantinedTestsSkippedCountByVersion(ctx, "empty_version")
+	require.NoError(t, err)
+	assert.Zero(t, count)
+}
+
 func TestSetS3ArtifactStorageCostsLifecycleMissLogging(t *testing.T) {
 	ctx := t.Context()
 

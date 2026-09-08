@@ -465,6 +465,39 @@ func TestSaveSubscriptionsRejectsOtherOwnersSubscription(t *testing.T) {
 	assert.Contains(t, err.Error(), "cannot modify a subscription owned by another user or project")
 }
 
+func TestSaveSubscriptionsRejectsRunChildPatchSubscriber(t *testing.T) {
+	require.NoError(t, db.ClearCollections(event.SubscriptionsCollection))
+
+	subscription := restModel.APISubscription{
+		ResourceType: utility.ToStringPtr(event.ResourceTypePatch),
+		Trigger:      utility.ToStringPtr(event.TriggerOutcome),
+		Owner:        utility.ToStringPtr("regular-user"),
+		OwnerType:    utility.ToStringPtr(string(event.OwnerTypePerson)),
+		Selectors: []restModel.APISelector{
+			{
+				Type: utility.ToStringPtr(event.SelectorObject),
+				Data: utility.ToStringPtr(event.ObjectPatch),
+			},
+		},
+		Subscriber: restModel.APISubscriber{
+			Type: utility.ToStringPtr(event.RunChildPatchSubscriberType),
+			Target: map[string]any{
+				"parent_status":  "*",
+				"child_patch_id": "5aab4514f27e4f9984646d97",
+				"requester":      evergreen.TriggerRequester,
+			},
+		},
+	}
+
+	err := SaveSubscriptions(t.Context(), "regular-user", []restModel.APISubscription{subscription}, false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "reserved for internal use")
+
+	subs, err := event.FindSubscriptionsByOwner(t.Context(), "regular-user", event.OwnerTypePerson)
+	assert.NoError(t, err)
+	assert.Empty(t, subs)
+}
+
 func TestSaveProjectSubscriptionAuthorization(t *testing.T) {
 	env := testutil.NewEnvironment(t.Context(), t)
 	rm := env.RoleManager()

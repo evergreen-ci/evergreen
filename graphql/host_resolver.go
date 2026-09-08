@@ -1,10 +1,13 @@
 package graphql
 
 import (
+	"cmp"
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -14,37 +17,46 @@ import (
 )
 
 // Ami is the resolver for the ami field.
-func (r *hostResolver) Ami(ctx context.Context, obj *restModel.APIHost) (*string, error) {
-	hostID := utility.FromStringPtr(obj.Id)
-	host, err := host.FindOneId(ctx, hostID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding host '%s': %s", hostID, err.Error()))
-	}
-	if host == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("host '%s' not found", hostID))
-	}
-	return utility.ToStringPtr(host.GetAMI()), nil
+func (r *hostResolver) Ami(ctx context.Context, obj *host.Host) (*string, error) {
+	return utility.ToStringPtr(obj.GetAMI()), nil
+}
+
+// Distro is the resolver for the distro field.
+func (r *hostResolver) Distro(ctx context.Context, obj *host.Host) (*restModel.APIDistro, error) {
+	apiDistro := &restModel.APIDistro{}
+	apiDistro.BuildFromService(obj.Distro)
+	return apiDistro, nil
 }
 
 // DistroID is the resolver for the distroId field.
-func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
-	return obj.Distro.Id, nil
+func (r *hostResolver) DistroID(ctx context.Context, obj *host.Host) (*string, error) {
+	return utility.ToStringPtr(obj.Distro.Id), nil
 }
 
 // Elapsed is the resolver for the elapsed field.
-func (r *hostResolver) Elapsed(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
-	return obj.RunningTask.StartTime, nil
+func (r *hostResolver) Elapsed(ctx context.Context, obj *host.Host) (*time.Time, error) {
+	taskId := obj.RunningTask
+	if taskId == "" {
+		return nil, nil
+	}
+
+	runningTask, err := loaders.GetTask(ctx, taskId)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", taskId, err.Error()))
+	}
+
+	return utility.ToTimePtr(runningTask.StartTime), nil
 }
 
 // Events is the resolver for the events field.
-func (r *hostResolver) Events(ctx context.Context, obj *restModel.APIHost, opts HostEventsInput) (*HostEvents, error) {
+func (r *hostResolver) Events(ctx context.Context, obj *host.Host, opts HostEventsInput) (*HostEvents, error) {
 	sortAsc := false
 	if opts.SortDir != nil {
 		sortAsc = *opts.SortDir == SortDirectionAsc
 	}
 	hostQueryOpts := event.PaginatedHostEventsOpts{
-		ID:         utility.FromStringPtr(obj.Id),
-		Tag:        utility.FromStringPtr(obj.Tag),
+		ID:         obj.Id,
+		Tag:        obj.Tag,
 		Limit:      utility.FromIntPtr(opts.Limit),
 		Page:       utility.FromIntPtr(opts.Page),
 		SortAsc:    sortAsc,
@@ -52,7 +64,7 @@ func (r *hostResolver) Events(ctx context.Context, obj *restModel.APIHost, opts 
 	}
 	events, count, err := event.GetPaginatedHostEvents(ctx, hostQueryOpts)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching events for host '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching events for host '%s': %s", obj.Id, err.Error()))
 	}
 	apiEventLogPointers := []*restModel.HostAPIEventLogEntry{}
 	for _, e := range events {
@@ -70,18 +82,18 @@ func (r *hostResolver) Events(ctx context.Context, obj *restModel.APIHost, opts 
 }
 
 // EventTypes is the resolver for the eventTypes field.
-func (r *hostResolver) EventTypes(ctx context.Context, obj *restModel.APIHost) ([]string, error) {
-	eventTypes, err := event.GetEventTypesForHost(ctx, utility.FromStringPtr(obj.Id), utility.FromStringPtr(obj.Tag))
+func (r *hostResolver) EventTypes(ctx context.Context, obj *host.Host) ([]string, error) {
+	eventTypes, err := event.GetEventTypesForHost(ctx, obj.Id, obj.Tag)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting event types for host '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting event types for host '%s': %s", obj.Id, err.Error()))
 	}
 	return eventTypes, nil
 }
 
 // HomeVolume is the resolver for the homeVolume field.
-func (r *hostResolver) HomeVolume(ctx context.Context, obj *restModel.APIHost) (*restModel.APIVolume, error) {
-	if utility.FromStringPtr(obj.HomeVolumeID) != "" {
-		volumeID := utility.FromStringPtr(obj.HomeVolumeID)
+func (r *hostResolver) HomeVolume(ctx context.Context, obj *host.Host) (*host.Volume, error) {
+	if obj.HomeVolumeID != "" {
+		volumeID := obj.HomeVolumeID
 		volume, err := host.FindVolumeByID(ctx, volumeID)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding volume '%s': %s", volumeID, err.Error()))
@@ -94,48 +106,59 @@ func (r *hostResolver) HomeVolume(ctx context.Context, obj *restModel.APIHost) (
 			})
 			return nil, nil
 		}
-		apiVolume := &restModel.APIVolume{}
-		apiVolume.BuildFromService(*volume)
-		return apiVolume, nil
+		return volume, nil
 	}
 	return nil, nil
 }
 
-// SleepSchedule is the resolver for the sleepSchedule field.
-func (r *hostResolver) SleepSchedule(ctx context.Context, obj *restModel.APIHost) (*host.SleepScheduleInfo, error) {
-	hostID := utility.FromStringPtr(obj.Id)
-	h, err := host.FindOne(ctx, host.ById(hostID))
+// RunningTask is the resolver for the runningTask field.
+func (r *hostResolver) RunningTask(ctx context.Context, obj *host.Host) (*TaskInfo, error) {
+	taskId := obj.RunningTask
+	if taskId == "" {
+		return nil, nil
+	}
+
+	runningTask, err := loaders.GetTask(ctx, taskId)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting host '%s': %s", hostID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", taskId, err.Error()))
 	}
-	if h == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("host '%s' not found", hostID))
-	}
-	return &h.SleepSchedule, nil
+
+	// TODO DEVPROD-38056: Ideally can return Task type here once off REST
+	return &TaskInfo{
+		ID:   runningTask.Id,
+		Name: runningTask.DisplayName,
+	}, nil
 }
 
-// Uptime is the resolver for the uptime field.
-func (r *hostResolver) Uptime(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
-	return obj.CreationTime, nil
+// TotalIdleTime is the resolver for the totalIdleTime field.
+func (r *hostResolver) TotalIdleTime(ctx context.Context, obj *host.Host) (*restModel.APIDuration, error) {
+	idleTime := restModel.NewAPIDuration(obj.TotalIdleTime)
+	return &idleTime, nil
 }
 
 // Volumes is the resolver for the volumes field.
-func (r *hostResolver) Volumes(ctx context.Context, obj *restModel.APIHost) ([]*restModel.APIVolume, error) {
-	volumes := make([]*restModel.APIVolume, 0, len(obj.AttachedVolumeIDs))
-	for _, volumeID := range obj.AttachedVolumeIDs {
-		volume, err := host.FindVolumeByID(ctx, volumeID)
-		if err != nil {
-			return volumes, InternalServerError.Send(ctx, fmt.Sprintf("getting volume '%s': %s", volumeID, err.Error()))
-		}
-		if volume == nil {
-			continue
-		}
-		apiVolume := &restModel.APIVolume{}
-		apiVolume.BuildFromService(*volume)
-		volumes = append(volumes, apiVolume)
+func (r *hostResolver) Volumes(ctx context.Context, obj *host.Host) ([]*host.Volume, error) {
+	volumeIds := make([]string, 0, len(obj.Volumes))
+	for _, v := range obj.Volumes {
+		volumeIds = append(volumeIds, v.VolumeID)
 	}
 
-	return volumes, nil
+	volumes, err := host.FindVolumesByIDs(ctx, volumeIds)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprint("getting volumes", err.Error()))
+	}
+
+	// Preserve the order that the volumes appear in the host document
+	slices.SortStableFunc(volumes, func(a, b host.Volume) int {
+		return cmp.Compare(slices.Index(volumeIds, a.ID), slices.Index(volumeIds, b.ID))
+	})
+
+	volumePtrs := make([]*host.Volume, 0, len(volumes))
+	for i := range volumes {
+		volumePtrs = append(volumePtrs, &volumes[i])
+	}
+
+	return volumePtrs, nil
 }
 
 // WholeWeekdaysOff is the resolver for the wholeWeekdaysOff field.

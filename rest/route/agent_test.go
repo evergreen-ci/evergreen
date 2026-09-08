@@ -2167,3 +2167,37 @@ func TestGetParserProject(t *testing.T) {
 		})
 	}
 }
+
+func TestManifestLoadParserProjectStorageErrorShouldBeInternalServerError(t *testing.T) {
+	ctx := t.Context()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	collections := []string{manifest.Collection, model.ProjectRefCollection, model.VersionCollection}
+	require.NoError(t, db.ClearCollections(collections...))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(collections...))
+	})
+
+	const (
+		projectID = "project"
+		versionID = "version"
+	)
+	require.NoError(t, (&model.ProjectRef{Id: projectID}).Insert(ctx))
+	require.NoError(t, (&model.Version{
+		Id:                   versionID,
+		Identifier:           projectID,
+		ProjectStorageMethod: evergreen.ParserProjectStorageMethod("invalid"),
+	}).Insert(ctx))
+
+	tsk := &task.Task{Project: projectID, Version: versionID}
+	ctx = context.WithValue(ctx, model.ApiTaskKey, tsk)
+	h := &manifestLoadHandler{settings: env.Settings()}
+
+	resp := h.Run(ctx)
+	require.Equal(t, http.StatusInternalServerError, resp.Status())
+	errResp, ok := resp.Data().(gimlet.ErrorResponse)
+	require.True(t, ok)
+	assert.Contains(t, errResp.Message, "loading project from version")
+}

@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -73,6 +74,54 @@ func GetWorkingDirectory(conf *internal.TaskConfig, path string) string {
 		return path
 	}
 	return filepath.Join(conf.WorkDir, path)
+}
+
+// workdirBoundaryViolationAttribute records whether a command's resolved path
+// falls outside the task working directory.
+const workdirBoundaryViolationAttribute = "plugin.workdir_boundary_violation"
+
+// IsWorkdirBoundaryViolation returns true when a configured path resolves
+// outside conf.WorkDir. It intentionally evaluates the configured path before
+// legacy command-specific rewriting so telemetry captures tasks that request
+// unsupported out-of-workdir paths, even if the command ultimately executes
+// from a rewritten path under the workdir. Relative paths are resolved as
+// GetWorkingDirectory resolves them, then filepath.Rel determines containment.
+func IsWorkdirBoundaryViolation(conf *internal.TaskConfig, path string) bool {
+	if path == "" {
+		return false
+	}
+
+	resolved := path
+	if !filepath.IsAbs(path) {
+		resolved = filepath.Join(conf.WorkDir, path)
+	}
+
+	workdir := filepath.Clean(conf.WorkDir)
+	resolved = filepath.Clean(resolved)
+
+	rel, err := filepath.Rel(workdir, resolved)
+	if err != nil {
+		// The path is on a different volume or otherwise incomparable.
+		return true
+	}
+
+	return rel == ".." ||
+		strings.HasPrefix(rel, ".."+string(filepath.Separator)) ||
+		filepath.IsAbs(rel)
+}
+
+// SetWorkdirBoundaryAttribute records whether any resolved path falls outside
+// the task workdir on the span from the context. This is informational only;
+// it does not block or error on violations.
+func SetWorkdirBoundaryAttribute(ctx context.Context, conf *internal.TaskConfig, paths ...string) {
+	violation := false
+	for _, path := range paths {
+		if IsWorkdirBoundaryViolation(conf, path) {
+			violation = true
+			break
+		}
+	}
+	trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(workdirBoundaryViolationAttribute, violation))
 }
 
 // getWorkingDirectoryLegacy is a legacy function to get the working directory

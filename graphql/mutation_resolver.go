@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -390,38 +391,34 @@ func (r *mutationResolver) UpdateHostStatus(ctx context.Context, hostIds []strin
 }
 
 // SetPatchVisibility is the resolver for the setPatchVisibility field.
-func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []string, hidden bool) ([]*restModel.APIPatch, error) {
+func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []string, hidden bool) ([]*patch.Patch, error) {
 	user := mustHaveUser(ctx)
-	updatedPatches := []*restModel.APIPatch{}
-	patches, err := patch.Find(ctx, patch.ByStringIds(ctx, patchIds))
+	loaders.PreloadPatches(ctx, patchIds)
 
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patches '%s': %s", patchIds, err.Error()))
-	}
+	patchPtrs := []*patch.Patch{}
+	for _, pId := range patchIds {
+		p, err := loaders.GetPatch(ctx, pId)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting patch '%s': %s", pId, err.Error()))
+		}
+		if p == nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", pId))
+		}
 
-	for _, p := range patches {
-		if !userCanModifyPatch(ctx, user, p) {
+		if !userCanModifyPatch(ctx, user, *p) {
 			return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to change visibility of patch '%s'", p.Id))
 		}
 		err = p.SetPatchVisibility(ctx, hidden)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting visibility for patch '%s': %s", p.Id, err.Error()))
 		}
-		apiPatch := restModel.APIPatch{}
-		err = apiPatch.BuildFromService(ctx, p, &restModel.APIPatchArgs{
-			IncludeProjectIdentifier: true,
-			IncludeVersionCost:       true,
-		})
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting patch '%s' to APIPatch: %s", p.Id, err.Error()))
-		}
-		updatedPatches = append(updatedPatches, &apiPatch)
+		patchPtrs = append(patchPtrs, p)
 	}
-	return updatedPatches, nil
+	return patchPtrs, nil
 }
 
 // SchedulePatch is the resolver for the schedulePatch field.
-func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*restModel.APIPatch, error) {
+func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*patch.Patch, error) {
 	patchUpdateReq := buildFromGqlInput(configure)
 	usr := mustHaveUser(ctx)
 	patchUpdateReq.Caller = usr.Id
@@ -433,7 +430,7 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, co
 	if err != nil {
 		return nil, mapHTTPStatusToGqlError(ctx, statusCode, werrors.Errorf("scheduling patch '%s': %s", patchID, err.Error()))
 	}
-	scheduledPatch, err := data.FindPatchById(ctx, patchID)
+	scheduledPatch, err := loaders.GetPatch(ctx, patchID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting scheduled patch '%s': %s", patchID, err.Error()))
 	}
@@ -751,7 +748,7 @@ func (r *mutationResolver) DetachVolumeFromHost(ctx context.Context, volumeID st
 }
 
 // EditSpawnHost is the resolver for the editSpawnHost field.
-func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpawnHostInput) (*restModel.APIHost, error) {
+func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpawnHostInput) (*host.Host, error) {
 	var v *host.Volume
 	usr := mustHaveUser(ctx)
 	h, err := host.FindOneByIdOrTag(ctx, spawnHost.HostID)
@@ -856,9 +853,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 		}
 	}
 
-	apiHost := restModel.APIHost{}
-	apiHost.BuildFromService(ctx, h, nil)
-	return &apiHost, nil
+	return h, nil
 }
 
 // MigrateVolume is the resolver for the migrateVolume field.
@@ -872,7 +867,7 @@ func (r *mutationResolver) MigrateVolume(ctx context.Context, volumeID string, s
 }
 
 // SpawnHost is the resolver for the spawnHost field.
-func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*restModel.APIHost, error) {
+func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*host.Host, error) {
 	usr := mustHaveUser(ctx)
 	options, err := getHostRequestOptions(ctx, usr, spawnHostInput)
 	if err != nil {
@@ -912,9 +907,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 	if spawnHost == nil {
 		return nil, InternalServerError.Send(ctx, "creating intent for spawn host")
 	}
-	apiHost := restModel.APIHost{}
-	apiHost.BuildFromService(ctx, spawnHost, nil)
-	return &apiHost, nil
+	return spawnHost, nil
 }
 
 // SpawnVolume is the resolver for the spawnVolume field.
@@ -983,7 +976,7 @@ func (r *mutationResolver) RemoveVolume(ctx context.Context, volumeID string) (b
 }
 
 // UpdateSpawnHostStatus is the resolver for the updateSpawnHostStatus field.
-func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, updateSpawnHostStatusInput UpdateSpawnHostStatusInput) (*restModel.APIHost, error) {
+func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, updateSpawnHostStatusInput UpdateSpawnHostStatusInput) (*host.Host, error) {
 	hostID := updateSpawnHostStatusInput.HostID
 	action := updateSpawnHostStatusInput.Action
 	shouldKeepOff := utility.FromBoolPtr(updateSpawnHostStatusInput.ShouldKeepOff)
@@ -1029,9 +1022,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, updateSpaw
 		}
 		return nil, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
-	apiHost := restModel.APIHost{}
-	apiHost.BuildFromService(ctx, h, nil)
-	return &apiHost, nil
+	return h, nil
 }
 
 // UpdateVolume is the resolver for the updateVolume field.
