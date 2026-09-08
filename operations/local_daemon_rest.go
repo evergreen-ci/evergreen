@@ -440,11 +440,15 @@ func (d *localDaemonREST) handleGetVariable(w http.ResponseWriter, r *http.Reque
 	}
 
 	key := mux.Vars(r)["key"]
-	value, found := d.executor.GetVariable(key)
+	value, found, redacted := d.executor.GetVariable(key)
+	if redacted {
+		value = "<redacted>"
+	}
 	grip.Error(r.Context(), json.NewEncoder(w).Encode(map[string]any{
-		"key":   key,
-		"value": value,
-		"found": found,
+		"key":      key,
+		"value":    value,
+		"found":    found,
+		"redacted": redacted,
 	}))
 }
 
@@ -458,8 +462,12 @@ func (d *localDaemonREST) handleGetVariables(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	vars, redactedKeys := d.executor.GetVariables()
+	for key := range redactedKeys {
+		vars[key] = "<redacted>"
+	}
 	grip.Error(r.Context(), json.NewEncoder(w).Encode(map[string]any{
-		"variables": d.executor.GetVariables(),
+		"variables": vars,
 	}))
 }
 

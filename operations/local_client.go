@@ -757,10 +757,12 @@ func getAndPrintVariable(url, key string) error {
 		return err
 	}
 
-	if result["found"].(bool) {
-		fmt.Printf("%s=%s\n", key, result["value"])
-	} else {
+	if !result["found"].(bool) {
 		fmt.Printf("%s: <not set>\n", key)
+	} else if result["redacted"].(bool) {
+		fmt.Printf("%s=<redacted>\n", key)
+	} else {
+		fmt.Printf("%s=%s\n", key, result["value"])
 	}
 	return nil
 }

@@ -6,6 +6,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -310,14 +311,29 @@ func (e *LocalExecutor) SetVariable(ctx context.Context, key, value string) {
 	e.logger.Infof(ctx, "Set variable %s=%s", key, value)
 }
 
-// GetVariable returns the value of an expansion by key and whether it exists.
-func (e *LocalExecutor) GetVariable(key string) (string, bool) {
-	return e.expansions.Get(key), e.expansions.Exists(key)
+// GetVariable returns the value of an expansion by key, whether it exists,
+// and whether it should be redacted.
+func (e *LocalExecutor) GetVariable(key string) (value string, found bool, redacted bool) {
+	return e.expansions.Get(key), e.expansions.Exists(key), e.isRedacted(key)
 }
 
-// GetVariables returns all current expansion variables.
-func (e *LocalExecutor) GetVariables() map[string]string {
-	return e.expansions.Map()
+// GetVariables returns all current expansion variables and which keys are redacted.
+func (e *LocalExecutor) GetVariables() (vars map[string]string, redactedKeys map[string]bool) {
+	allVars := e.expansions.Map()
+	redacted := make(map[string]bool, len(e.taskConfig.Redacted))
+	for _, key := range e.taskConfig.Redacted {
+		if _, overridden := e.debugState.CustomVars[key]; !overridden {
+			redacted[key] = true
+		}
+	}
+	return allVars, redacted
+}
+
+func (e *LocalExecutor) isRedacted(key string) bool {
+	if _, overridden := e.debugState.CustomVars[key]; overridden {
+		return false
+	}
+	return slices.Contains(e.taskConfig.Redacted, key)
 }
 
 // StepNext executes the current step and advances to the next

@@ -289,9 +289,15 @@ If a variable is not set, the output indicates this:
 MISSING_KEY: <not set>
 ```
 
+Private variables are redacted unless you've overridden them with `set-var`:
+
+```text
+secret_token=<redacted>
+```
+
 #### `evergreen debug get-vars`
 
-Display all expansion variables and their current values, sorted alphabetically.
+Display all expansion variables and their current values, sorted alphabetically. Private variables are shown as `<redacted>` unless overridden with `set-var`.
 
 ```bash
 evergreen debug get-vars
@@ -303,9 +309,7 @@ Example output:
 BUILD_TYPE=debug
 MY_FLAG=--verbose
 distro_id=ubuntu2204-large
-otel_collector_endpoint=DEBUG_MODE_NO_TRACE_COLLECTOR
-otel_parent_id=DEBUG_MODE_NO_TRACE_PARENT
-otel_trace_id=DEBUG_MODE_NO_TRACE_ID
+secret_token=<redacted>
 workdir=/data/mci
 ```
 
