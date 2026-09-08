@@ -1111,6 +1111,32 @@ Parameters:
 - `optional_output`: boolean to indicate if having no files found will
   result in a task failure.
 
+### Expected input
+
+The parser is line-oriented and reads `go test -v`'s human-readable output, so each
+test's start and end lines must be intact and on their own line:
+
+```
+=== RUN   TestName
+--- PASS: TestName (0.00s)
+```
+
+A test that has a `=== RUN` line but no recognizable `--- PASS`/`--- SKIP`/`--- FAIL`
+line is reported as a failure, since the parser can't tell an unfinished test from a
+crashed one.
+
+The most common way to break this is to have the program under test write to the same
+stream as `go test`. Concurrent writes interleave mid-line and corrupt the end lines:
+
+```
+--- SKIP: TestName (0.0{"level":"trace","message":"heartbeat succeeded"}
+```
+
+Evergreen recovers the status and name where it can, but it logs the affected line
+numbers and fails the command, because the output can no longer be fully trusted. To
+avoid this, send the program's own logging to a separate file or to stderr rather than
+into the file being parsed.
+
 ## host.create
 
 `host.create` starts a host from a task.
