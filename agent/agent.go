@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/globals"
-	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
@@ -516,11 +515,6 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	tc.taskConfig = taskConfig
 	tc.s3Usage.Init()
 	tc.taskConfig.S3Usage = &tc.s3Usage
-	if tc.taskConfig.BackgroundCommandFailureEnabled {
-		// Buffered to bound accumulation between drain cycles after each foreground command.
-		tc.backgroundFailures = make(chan internal.BackgroundFailure, 10)
-		tc.taskConfig.BackgroundFailures = tc.backgroundFailures
-	}
 
 	if err := a.startLogging(agentCtx, tc); err != nil {
 		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
