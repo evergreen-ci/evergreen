@@ -136,6 +136,19 @@ PASS
 		assert.Equal(t, "TestSuite/TestName", results[0].Name)
 		assert.Equal(t, SKIP, results[0].Status)
 		assert.Equal(t, time.Duration(0), results[0].RunTime)
+
+		assert.Equal(t, []int{2}, parser.MalformedLines())
+	})
+	t.Run("WellFormedOutputHasNoMalformedLines", func(t *testing.T) {
+		logdata := `=== RUN   TestSuite/TestName
+    --- SKIP: TestSuite/TestName (0.00s)
+--- PASS: TestSuite (0.01s)
+PASS
+`
+		parser := &goTestParser{}
+		require.NoError(t, parser.Parse(strings.NewReader(logdata)))
+
+		assert.Empty(t, parser.MalformedLines())
 	})
 	t.Run("GocheckLogFile", func(t *testing.T) {
 		logdata, err := os.ReadFile(filepath.Join(cwd, "testdata", "gotest", "2_simple.log"))

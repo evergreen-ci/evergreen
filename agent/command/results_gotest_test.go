@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/internal/testutil"
 	"github.com/evergreen-ci/evergreen/db"
@@ -13,6 +15,7 @@ import (
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -142,5 +145,50 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 
 			})
 		})
+	})
+}
+
+func TestParseTestOutputFilesMalformedOutput(t *testing.T) {
+	ctx := t.Context()
+	comm := client.NewMock("http://localhost.com")
+	conf := &internal.TaskConfig{Task: task.Task{Id: "task", Execution: 0}}
+	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		assert.NoError(t, logger.Close())
+	})
+
+	writeOutput := func(t *testing.T, contents string) string {
+		file := filepath.Join(t.TempDir(), "0_malformed.suite")
+		require.NoError(t, os.WriteFile(file, []byte(contents), 0644))
+		return file
+	}
+
+	t.Run("TruncatedEndLineIsReportedAsMalformed", func(t *testing.T) {
+		file := writeOutput(t, `=== RUN   TestSuite/TestName
+    --- SKIP: TestSuite/TestName (0.0{"level":"trace","message":"heartbeat succeeded"}
+--- PASS: TestSuite (0.01s)
+PASS
+`)
+
+		_, results, malformed, err := parseTestOutputFiles(ctx, logger, conf, []string{file})
+		require.NoError(t, err)
+		require.Len(t, malformed, 1)
+		assert.Contains(t, malformed[0], "0_malformed.suite")
+
+		// The malformed line must not turn the test itself into a failure.
+		require.Len(t, results, 2)
+		assert.Equal(t, evergreen.TestSkippedStatus, results[0].Status)
+	})
+	t.Run("WellFormedOutputIsNotReportedAsMalformed", func(t *testing.T) {
+		file := writeOutput(t, `=== RUN   TestSuite/TestName
+    --- SKIP: TestSuite/TestName (0.00s)
+--- PASS: TestSuite (0.01s)
+PASS
+`)
+
+		_, _, malformed, err := parseTestOutputFiles(ctx, logger, conf, []string{file})
+		require.NoError(t, err)
+		assert.Empty(t, malformed)
 	})
 }

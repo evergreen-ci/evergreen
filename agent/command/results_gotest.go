@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -86,7 +87,7 @@ func (c *goTestResults) Execute(ctx context.Context,
 	}
 
 	// parse all of the files
-	logs, results, err := parseTestOutputFiles(ctx, logger, conf, outputFiles)
+	logs, results, malformed, err := parseTestOutputFiles(ctx, logger, conf, outputFiles)
 	if err != nil {
 		return errors.Wrap(err, "parsing output results")
 	}
@@ -97,6 +98,12 @@ func (c *goTestResults) Execute(ctx context.Context,
 
 	if err := sendTestLogsAndResults(ctx, comm, logger, conf, logs, results); err != nil {
 		return errors.Wrap(err, "sending test logs and test results")
+	}
+
+	// Malformed output is reported after the results are sent so that the results, which are still
+	// usable, are available even though this command fails.
+	if len(malformed) > 0 {
+		return errors.Errorf("test output is malformed, which usually means output from the program under test interleaved with go test's own output: %s", strings.Join(malformed, "; "))
 	}
 
 	return nil
@@ -127,15 +134,16 @@ func globFiles(patterns ...string) ([]string, error) {
 	return matchedFiles, nil
 }
 
-// parseTestOutput parses the test results and logs from a single output source.
-func parseTestOutput(ctx context.Context, conf *internal.TaskConfig, report io.Reader, suiteName string) (testlog.TestLog, []testresult.TestResult, error) {
+// parseTestOutput parses the test results and logs from a single output source. It also returns the
+// line numbers of any malformed test end lines it encountered.
+func parseTestOutput(ctx context.Context, conf *internal.TaskConfig, report io.Reader, suiteName string) (testlog.TestLog, []testresult.TestResult, []int, error) {
 	parser := &goTestParser{}
 	if err := parser.Parse(report); err != nil {
-		return testlog.TestLog{}, nil, errors.Wrap(err, "parsing file")
+		return testlog.TestLog{}, nil, nil, errors.Wrap(err, "parsing file")
 	}
 
 	if len(parser.order) == 0 && len(parser.logs) == 0 {
-		return testlog.TestLog{}, nil, errors.New("no results found")
+		return testlog.TestLog{}, nil, nil, errors.New("no results found")
 	}
 
 	logLines := parser.Logs()
@@ -146,20 +154,21 @@ func parseTestOutput(ctx context.Context, conf *internal.TaskConfig, report io.R
 		Lines:         logLines,
 	}
 
-	return logs, ToModelTestResults(parser.Results(), suiteName), nil
+	return logs, ToModelTestResults(parser.Results(), suiteName), parser.MalformedLines(), nil
 }
 
-// parseTestOutputFiles parses all of the files that are passed in, and returns
-// the test logs and test results found within.
-func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer, conf *internal.TaskConfig, outputFiles []string) ([]testlog.TestLog, []testresult.TestResult, error) {
+// parseTestOutputFiles parses all of the files that are passed in, and returns the test logs and
+// test results found within, plus a description of any malformed output per file.
+func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer, conf *internal.TaskConfig, outputFiles []string) ([]testlog.TestLog, []testresult.TestResult, []string, error) {
 	var (
 		allResults []testresult.TestResult
 		logs       []testlog.TestLog
+		malformed  []string
 	)
 
 	for _, outputFile := range outputFiles {
 		if err := ctx.Err(); err != nil {
-			return nil, nil, errors.Wrap(err, "canceled while processing test output files")
+			return nil, nil, nil, errors.Wrap(err, "canceled while processing test output files")
 		}
 
 		_, suiteName := filepath.Split(outputFile)
@@ -172,15 +181,19 @@ func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer, con
 		}
 		defer fileReader.Close() //nolint: evg-lint
 
-		log, results, err := parseTestOutput(ctx, conf, fileReader, suiteName)
+		log, results, malformedLines, err := parseTestOutput(ctx, conf, fileReader, suiteName)
 		if err != nil {
 			logger.Task().Error(ctx, errors.Wrapf(err, "parsing file '%s'", outputFile))
 			continue
+		}
+		if len(malformedLines) > 0 {
+			logger.Task().Errorf(ctx, "Test output file '%s' has malformed test end lines on lines %v. The tests' statuses were still parsed, but their runtimes may be missing.", outputFile, malformedLines)
+			malformed = append(malformed, fmt.Sprintf("file '%s' on lines %v", outputFile, malformedLines))
 		}
 
 		allResults = append(allResults, results...)
 		logs = append(logs, log)
 	}
 
-	return logs, allResults, nil
+	return logs, allResults, malformed, nil
 }

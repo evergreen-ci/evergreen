@@ -27,6 +27,10 @@ var (
 	// dropping the runtime is preferable to failing to detect the test's status at all.
 	endRegex = regexp.MustCompile(`--- (PASS|SKIP|FAIL): (\S+)(?: \(-*([0-9\.m]+[ ]*s))?`)
 
+	// Match a complete end line, including the runtime. An end line that matches endRegex but not
+	// this one is malformed, i.e. the runtime is missing or truncated.
+	wellFormedEndRegex = regexp.MustCompile(`--- (PASS|SKIP|FAIL): (\S+) \(-*([0-9\.m]+[ ]*s)`)
+
 	// Match the start prefix and save the group of non-space characters following the word "RUN"
 	gocheckStartRegex = regexp.MustCompile(`START: .*.go:[0-9]+: (\S+)`)
 
@@ -100,11 +104,20 @@ type goTestParser struct {
 	// executions of the same test in the same log
 	tests map[string][]*goTestResult
 	order []*goTestResult
+	// malformedLines holds the line numbers [1...] of test end lines that were only partially
+	// parseable, which usually means output from the program under test interleaved with go test's.
+	malformedLines []int
 }
 
 // Logs returns an array of logs captured during test execution.
 func (vp *goTestParser) Logs() []string {
 	return vp.logs
+}
+
+// MalformedLines returns the line numbers [1...] of test end lines that could not be fully parsed.
+// The tests' statuses are still reported, but the results for those lines may be incomplete.
+func (vp *goTestParser) MalformedLines() []int {
+	return vp.malformedLines
 }
 
 // Results returns an array of test results parsed during test execution.
@@ -138,6 +151,9 @@ func (vp *goTestParser) handleLine(line string) error {
 	case gocheckStartRegex.MatchString(line):
 		return vp.handleStart(line, gocheckStartRegex, false)
 	case endRegex.MatchString(line):
+		if !wellFormedEndRegex.MatchString(line) {
+			vp.malformedLines = append(vp.malformedLines, len(vp.logs))
+		}
 		return vp.handleEnd(line, endRegex)
 	case gocheckEndRegex.MatchString(line):
 		return vp.handleEnd(line, gocheckEndRegex)
