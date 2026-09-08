@@ -395,6 +395,35 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			require.NotNil(t, projectFromDB)
 			assert.Equal(t, "replacement-secret", projectFromDB.TaskAnnotationSettings.FileTicketWebhook.Secret)
 		},
+		"RedactedInheritedWebhookSecretRemainsInherited": func(t *testing.T, ref model.ProjectRef) {
+			repoRef, err := model.FindOneRepoRef(t.Context(), ref.RepoRefId)
+			require.NoError(t, err)
+			require.NotNil(t, repoRef)
+			repoRef.TaskAnnotationSettings.FileTicketWebhook.Secret = "repo-secret"
+			require.NoError(t, repoRef.Replace(t.Context()))
+
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: restModel.APIProjectRef{
+					TaskAnnotationSettings: restModel.APITaskAnnotationSettings{
+						FileTicketWebhook: restModel.APIWebHook{
+							Secret: utility.ToStringPtr(evergreen.RedactedValue),
+						},
+					},
+				},
+			}
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
+			require.NoError(t, err)
+			require.NotNil(t, settings)
+
+			projectFromDB, err := model.FindBranchProjectRef(ctx, ref.Id)
+			require.NoError(t, err)
+			require.NotNil(t, projectFromDB)
+			assert.Empty(t, projectFromDB.TaskAnnotationSettings.FileTicketWebhook.Secret)
+
+			mergedProject, err := model.GetProjectRefMergedWithRepo(ctx, *projectFromDB)
+			require.NoError(t, err)
+			assert.Equal(t, "repo-secret", mergedProject.TaskAnnotationSettings.FileTicketWebhook.Secret)
+		},
 		"enabling performance plugin should fail if id and identifier are different": func(t *testing.T, ref model.ProjectRef) {
 			// Set identifier
 			apiProjectRef := restModel.APIProjectRef{

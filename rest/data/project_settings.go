@@ -262,9 +262,8 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 	}
 	if section == model.ProjectPagePluginSection &&
 		newProjectRef.TaskAnnotationSettings.FileTicketWebhook.Secret == evergreen.RedactedValue {
-		secret := mergedBeforeRef.TaskAnnotationSettings.FileTicketWebhook.Secret
-		newProjectRef.TaskAnnotationSettings.FileTicketWebhook.Secret = secret
-		mergedSection.TaskAnnotationSettings.FileTicketWebhook.Secret = secret
+		newProjectRef.TaskAnnotationSettings.FileTicketWebhook.Secret = before.ProjectRef.TaskAnnotationSettings.FileTicketWebhook.Secret
+		mergedSection.TaskAnnotationSettings.FileTicketWebhook.Secret = mergedBeforeRef.TaskAnnotationSettings.FileTicketWebhook.Secret
 	}
 	if mergedSection.IsHidden() {
 		return nil, errors.New("can't update a hidden project")
