@@ -23,7 +23,7 @@ func provisionEnvTmpfs(dir string) error {
 			return errors.Wrapf(err, "clearing stale tmpfs mount at '%s'", dir)
 		}
 	}
-	if err := os.MkdirAll(dir, 0700); err != nil {
+	if err := ensureEnvDir(dir); err != nil {
 		return errors.Wrapf(err, "creating env tmpfs dir '%s'", dir)
 	}
 	uid := os.Getuid()
@@ -34,6 +34,29 @@ func provisionEnvTmpfs(dir string) error {
 		return errors.Wrapf(err, "mounting tmpfs at '%s'", dir)
 	}
 	return nil
+}
+
+// ensureEnvDir creates dir (the per-task env dir) and its parents. The base
+// dir lives under /var/run, which is a root-owned tmpfs, so the agent cannot
+// create the base dir unprivileged and it disappears on every host reboot.
+// Unprivileged creation is attempted first because it succeeds in the steady
+// state (once the base dir exists and is owned by the agent); if that fails,
+// the base dir is created via sudo with mkdir and chown, like the mount step,
+// so per-task dirs can then be created unprivileged.
+func ensureEnvDir(dir string) error {
+	if err := os.MkdirAll(dir, 0700); err == nil {
+		return nil
+	}
+	base := activeEnvFileBaseDir
+	uid := os.Getuid()
+	gid := os.Getgid()
+	if err := exec.Command("sudo", "mkdir", "-m", "0700", "-p", base).Run(); err != nil {
+		return errors.Wrapf(err, "creating env base dir '%s'", base)
+	}
+	if err := exec.Command("sudo", "chown", fmt.Sprintf("%d:%d", uid, gid), base).Run(); err != nil {
+		return errors.Wrapf(err, "chowning env base dir '%s'", base)
+	}
+	return errors.Wrapf(os.MkdirAll(dir, 0700), "creating per-task env dir under base dir '%s'", base)
 }
 
 // removeEnvTmpfs unmounts and removes the env tmpfs directory. If the
