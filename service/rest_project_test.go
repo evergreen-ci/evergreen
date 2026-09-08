@@ -44,8 +44,16 @@ func TestProjectRoutes(t *testing.T) {
 			Enabled: true,
 			Repo:    "repo1",
 			Admins:  []string{},
+			TaskAnnotationSettings: evergreen.AnnotationsSettings{
+				FileTicketWebhook: evergreen.WebHook{
+					Endpoint: "https://example.com/webhook",
+					Secret:   "secret",
+				},
+			},
 		}
 		So(public.Insert(t.Context()), ShouldBeNil)
+		redactedPublic := *public
+		redactedPublic.RedactSecrets()
 
 		url := "/rest/v1/projects/" + publicId
 
@@ -60,7 +68,8 @@ func TestProjectRoutes(t *testing.T) {
 			outRef := &model.ProjectRef{}
 			So(response.Code, ShouldEqual, http.StatusOK)
 			So(json.Unmarshal(response.Body.Bytes(), outRef), ShouldBeNil)
-			So(outRef, ShouldResemble, public)
+			So(outRef, ShouldResemble, &redactedPublic)
+			So(outRef.TaskAnnotationSettings.FileTicketWebhook.Secret, ShouldBeEmpty)
 		})
 		Convey("and a logged-in user", func() {
 			request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
@@ -68,7 +77,7 @@ func TestProjectRoutes(t *testing.T) {
 			outRef := &model.ProjectRef{}
 			So(response.Code, ShouldEqual, http.StatusOK)
 			So(json.Unmarshal(response.Body.Bytes(), outRef), ShouldBeNil)
-			So(outRef, ShouldResemble, public)
+			So(outRef, ShouldResemble, &redactedPublic)
 		})
 		Convey("and be visible to the project_list route", func() {
 			url := "/rest/v1/projects"

@@ -16,7 +16,9 @@ func (restapi restAPI) getProjectRef(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSONResponse(r.Context(), w, http.StatusNotFound, responseError{Message: "error finding project"})
 		return
 	}
-	gimlet.WriteJSON(r.Context(), w, ref)
+	redactedRef := *ref
+	redactedRef.RedactSecrets()
+	gimlet.WriteJSON(r.Context(), w, &redactedRef)
 }
 
 // getProjectsIds returns a JSON response of an array of active project Ids.

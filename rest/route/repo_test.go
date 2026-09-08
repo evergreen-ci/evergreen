@@ -36,6 +36,12 @@ func TestRepoGetByID(t *testing.T) {
 		Id:    "my-repo",
 		Owner: "evergreen-ci",
 		Repo:  "evergreen",
+		TaskAnnotationSettings: evergreen.AnnotationsSettings{
+			FileTicketWebhook: evergreen.WebHook{
+				Endpoint: "https://example.com/file-ticket",
+				Secret:   "file-ticket-secret",
+			},
+		},
 	}}
 	require.NoError(t, repoRef.Replace(t.Context()))
 
@@ -84,6 +90,8 @@ func TestRepoGetByID(t *testing.T) {
 		assert.Equal(t, "my-repo", utility.FromStringPtr(apiRef.Id))
 		assert.Equal(t, "evergreen-ci", utility.FromStringPtr(apiRef.Owner))
 		assert.Equal(t, "evergreen", utility.FromStringPtr(apiRef.Repo))
+		assert.Equal(t, "https://example.com/file-ticket", utility.FromStringPtr(apiRef.TaskAnnotationSettings.FileTicketWebhook.Endpoint))
+		assert.Equal(t, evergreen.RedactedValue, utility.FromStringPtr(apiRef.TaskAnnotationSettings.FileTicketWebhook.Secret))
 	})
 
 	t.Run("ReturnsVars", func(t *testing.T) {
@@ -156,6 +164,12 @@ func TestRepoPatchByID(t *testing.T) {
 		Repo:       "evergreen",
 		Admins:     []string{"me"},
 		Restricted: utility.FalsePtr(),
+		TaskAnnotationSettings: evergreen.AnnotationsSettings{
+			FileTicketWebhook: evergreen.WebHook{
+				Endpoint: "https://example.com/file-ticket",
+				Secret:   "file-ticket-secret",
+			},
+		},
 	}}
 	require.NoError(t, repoRef.Replace(ctx))
 
@@ -243,6 +257,18 @@ func TestRepoPatchByID(t *testing.T) {
 		require.NotNil(t, updated)
 		assert.Equal(t, "New Display Name", updated.DisplayName)
 		assert.Equal(t, "my-mothra-team", updated.TaskOwnership.DefaultMothraTeam)
+	})
+
+	t.Run("RedactedWebhookSecretPreservesStoredSecret", func(t *testing.T) {
+		resp := makeRequest(t, `{"task_annotation_settings": {"web_hook": {"endpoint": "https://example.com/updated", "secret": "{REDACTED}"}}}`)
+		require.NotNil(t, resp)
+		require.Equal(t, http.StatusOK, resp.Status())
+
+		updated, err := model.FindOneRepoRef(t.Context(), "my-repo")
+		require.NoError(t, err)
+		require.NotNil(t, updated)
+		assert.Equal(t, "https://example.com/updated", updated.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
+		assert.Equal(t, "file-ticket-secret", updated.TaskAnnotationSettings.FileTicketWebhook.Secret)
 	})
 
 	t.Run("UpdateAdmins", func(t *testing.T) {

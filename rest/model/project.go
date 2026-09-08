@@ -332,6 +332,18 @@ func (ta *APITaskAnnotationSettings) BuildFromService(config evergreen.Annotatio
 	apiWebhook.Secret = utility.ToStringPtr(config.FileTicketWebhook.Secret)
 	apiWebhook.Endpoint = utility.ToStringPtr(config.FileTicketWebhook.Endpoint)
 	ta.FileTicketWebhook = apiWebhook
+	ta.RedactSecrets()
+}
+
+// RedactSecrets replaces configured secrets with the standard redacted value.
+func (ta *APITaskAnnotationSettings) RedactSecrets() {
+	secret := utility.FromStringPtr(ta.FileTicketWebhook.Secret)
+	switch secret {
+	case "", evergreen.RedactedValue, evergreen.RedactedBeforeValue, evergreen.RedactedAfterValue:
+		return
+	default:
+		ta.FileTicketWebhook.Secret = utility.ToStringPtr(evergreen.RedactedValue)
+	}
 }
 
 type APIWorkstationConfig struct {

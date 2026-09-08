@@ -268,6 +268,9 @@ func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) erro
 	if err != nil {
 		return errors.Wrap(err, "converting new project to service model")
 	}
+	if newProjectRef.TaskAnnotationSettings.FileTicketWebhook.Secret == evergreen.RedactedValue {
+		newProjectRef.TaskAnnotationSettings.FileTicketWebhook.Secret = oldProject.TaskAnnotationSettings.FileTicketWebhook.Secret
+	}
 	newProjectRef.RepoRefId = oldProject.RepoRefId // this can't be modified by users
 
 	h.newProjectRef = newProjectRef

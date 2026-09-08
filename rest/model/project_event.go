@@ -97,13 +97,15 @@ func (e *APIProjectEvent) BuildFromService(ctx context.Context, entry model.Proj
 	if !ok {
 		return errors.Errorf("programmatic error: expected project change event but got type %T", entry.Data)
 	}
+	redactedData := *data
+	redactedData.RedactSecrets()
 
-	user := utility.ToStringPtr(data.User)
-	before, err := DbProjectSettingsToRestModel(ctx, model.NewProjectSettingsFromEvent(data.Before))
+	user := utility.ToStringPtr(redactedData.User)
+	before, err := DbProjectSettingsToRestModel(ctx, model.NewProjectSettingsFromEvent(redactedData.Before))
 	if err != nil {
 		return errors.Wrap(err, "converting 'before' project settings to API model")
 	}
-	after, err := DbProjectSettingsToRestModel(ctx, model.NewProjectSettingsFromEvent(data.After))
+	after, err := DbProjectSettingsToRestModel(ctx, model.NewProjectSettingsFromEvent(redactedData.After))
 	if err != nil {
 		return errors.Wrap(err, "converting 'after' project settings to API model")
 	}
