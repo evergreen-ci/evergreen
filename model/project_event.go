@@ -126,9 +126,9 @@ type ProjectChangeEvent struct {
 
 // RedactSecrets redacts project secrets from a project change event. Project
 // variables that are not changed are cleared and project variables that are
-// changed are replaced with redacted placeholders. Webhook secrets and
-// Authorization headers that changed are replaced with a redacted placeholder;
-// those that did not change are cleared.
+// changed are replaced with redacted placeholders. File-ticket and subscription
+// webhook secrets, along with Authorization headers, are replaced with a
+// redacted placeholder when changed; those that did not change are cleared.
 func (e *ProjectChangeEvent) RedactSecrets() {
 	modifiedVarKeys := e.getModifiedProjectVars()
 	e.Before.Vars.Vars = getRedactedVarsCopy(e.Before.Vars.Vars, modifiedVarKeys, evergreen.RedactedBeforeValue)
@@ -139,6 +139,16 @@ func (e *ProjectChangeEvent) RedactSecrets() {
 	modifiedSecrets, modifiedAuthHeaders := getModifiedWebhookFields(e.Before.Subscriptions, e.After.Subscriptions)
 	e.Before.Subscriptions = getRedactedSubscriptionsCopy(e.Before.Subscriptions, modifiedSecrets, modifiedAuthHeaders, evergreen.RedactedBeforeValue)
 	e.After.Subscriptions = getRedactedSubscriptionsCopy(e.After.Subscriptions, modifiedSecrets, modifiedAuthHeaders, evergreen.RedactedAfterValue)
+	isFileTicketSecretModified := e.Before.ProjectRef.TaskAnnotationSettings.FileTicketWebhook.Secret != e.After.ProjectRef.TaskAnnotationSettings.FileTicketWebhook.Secret
+	e.Before.ProjectRef.TaskAnnotationSettings.FileTicketWebhook.Secret = getRedactedSecret(e.Before.ProjectRef.TaskAnnotationSettings.FileTicketWebhook.Secret, isFileTicketSecretModified, evergreen.RedactedBeforeValue)
+	e.After.ProjectRef.TaskAnnotationSettings.FileTicketWebhook.Secret = getRedactedSecret(e.After.ProjectRef.TaskAnnotationSettings.FileTicketWebhook.Secret, isFileTicketSecretModified, evergreen.RedactedAfterValue)
+}
+
+func getRedactedSecret(secret string, isModified bool, placeholder string) string {
+	if secret == "" || !isModified {
+		return ""
+	}
+	return placeholder
 }
 
 // getModifiedProjectVars returns the set of project variables in the change

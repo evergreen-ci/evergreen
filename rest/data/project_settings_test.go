@@ -358,6 +358,43 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			require.NoError(t, err)
 			assert.NotNil(t, settings)
 		},
+		"RedactedWebhookSecretPreservesStoredSecret": func(t *testing.T, ref model.ProjectRef) {
+			ref.TaskAnnotationSettings.FileTicketWebhook = evergreen.WebHook{
+				Endpoint: "https://example.com/original",
+				Secret:   "existing-secret",
+			}
+			require.NoError(t, ref.Replace(t.Context()))
+
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: restModel.APIProjectRef{
+					TaskAnnotationSettings: restModel.APITaskAnnotationSettings{
+						FileTicketWebhook: restModel.APIWebHook{
+							Endpoint: utility.ToStringPtr("https://example.com/updated"),
+							Secret:   utility.ToStringPtr(evergreen.RedactedValue),
+						},
+					},
+				},
+			}
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
+			require.NoError(t, err)
+			require.NotNil(t, settings)
+
+			projectFromDB, err := model.FindBranchProjectRef(ctx, ref.Id)
+			require.NoError(t, err)
+			require.NotNil(t, projectFromDB)
+			assert.Equal(t, "https://example.com/updated", projectFromDB.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
+			assert.Equal(t, "existing-secret", projectFromDB.TaskAnnotationSettings.FileTicketWebhook.Secret)
+
+			apiChanges.ProjectRef.TaskAnnotationSettings.FileTicketWebhook.Secret = utility.ToStringPtr("replacement-secret")
+			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
+			require.NoError(t, err)
+			require.NotNil(t, settings)
+
+			projectFromDB, err = model.FindBranchProjectRef(ctx, ref.Id)
+			require.NoError(t, err)
+			require.NotNil(t, projectFromDB)
+			assert.Equal(t, "replacement-secret", projectFromDB.TaskAnnotationSettings.FileTicketWebhook.Secret)
+		},
 		"enabling performance plugin should fail if id and identifier are different": func(t *testing.T, ref model.ProjectRef) {
 			// Set identifier
 			apiProjectRef := restModel.APIProjectRef{
@@ -1529,10 +1566,13 @@ func TestCopyProject(t *testing.T) {
 			require.NotNil(t, newProject)
 			assert.Equal(t, "myNewProject", utility.FromStringPtr(newProject.Identifier))
 			assert.Equal(t, "12345", utility.FromStringPtr(newProject.Id))
+			assert.Equal(t, "https://example.com/file-ticket", utility.FromStringPtr(newProject.TaskAnnotationSettings.FileTicketWebhook.Endpoint))
+			assert.Equal(t, evergreen.RedactedValue, utility.FromStringPtr(newProject.TaskAnnotationSettings.FileTicketWebhook.Secret))
 
 			dbProjRef, err := model.FindBranchProjectRef(ctx, utility.FromStringPtr(newProject.Id))
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
+			assert.Equal(t, "file-ticket-secret", dbProjRef.TaskAnnotationSettings.FileTicketWebhook.Secret)
 		},
 		"CopiesProjectWithPartialError": func(t *testing.T, ref model.ProjectRef) {
 			copyProjectOpts := restModel.CopyProjectOpts{
@@ -1603,6 +1643,12 @@ func TestCopyProject(t *testing.T) {
 			Restricted: utility.FalsePtr(),
 			Enabled:    true,
 			Admins:     []string{"oldAdmin"},
+			TaskAnnotationSettings: evergreen.AnnotationsSettings{
+				FileTicketWebhook: evergreen.WebHook{
+					Endpoint: "https://example.com/file-ticket",
+					Secret:   "file-ticket-secret",
+				},
+			},
 		}
 		assert.NoError(t, pRef.Insert(t.Context()))
 

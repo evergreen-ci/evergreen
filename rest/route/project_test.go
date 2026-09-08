@@ -113,12 +113,13 @@ func (s *ProjectPatchByIDSuite) TestParse() {
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
 
-	json := []byte(`{"private" : false}`)
+	json := []byte(`{"private": false, "task_annotation_settings": {"web_hook": {"secret": "{REDACTED}"}}}`)
 	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(json))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
 	s.NotNil(s.rm.(*projectIDPatchHandler).user)
+	s.Equal("file-ticket-secret", s.rm.(*projectIDPatchHandler).newProjectRef.TaskAnnotationSettings.FileTicketWebhook.Secret)
 }
 
 // Artifact credentials are settable here but not in the project settings UI, and
@@ -736,6 +737,8 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	s.Equal(cachedProject.NotifyOnBuildFailure, projectRef.NotifyOnBuildFailure)
 	s.Equal(cachedProject.DisabledStatsCache, projectRef.DisabledStatsCache)
 	s.Equal(cachedProject.DebugSpawnHostsDisabled, projectRef.DebugSpawnHostsDisabled)
+	s.Equal(cachedProject.TaskAnnotationSettings.FileTicketWebhook.Endpoint, utility.FromStringPtr(projectRef.TaskAnnotationSettings.FileTicketWebhook.Endpoint))
+	s.Equal(evergreen.RedactedValue, utility.FromStringPtr(projectRef.TaskAnnotationSettings.FileTicketWebhook.Secret))
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -926,6 +929,12 @@ func getTestProjectRef() *serviceModel.ProjectRef {
 		NotifyOnBuildFailure:    utility.FalsePtr(),
 		DisabledStatsCache:      utility.TruePtr(),
 		DebugSpawnHostsDisabled: utility.TruePtr(),
+		TaskAnnotationSettings: evergreen.AnnotationsSettings{
+			FileTicketWebhook: evergreen.WebHook{
+				Endpoint: "https://example.com/file-ticket",
+				Secret:   "file-ticket-secret",
+			},
+		},
 	}
 }
 
