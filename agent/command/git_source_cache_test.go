@@ -13,7 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
@@ -37,182 +37,83 @@ func sourceCacheTestOpts() cloneOpts {
 	return cloneOpts{owner: "some-org", repo: "some-repo", dir: "src", cloneDepth: 1000}
 }
 
+// sourceCacheTestComm returns a mock communicator serving a plan for the given
+// namespace: a single save/restore key, or a PR plan with the base artifact as the
+// second restore key. The PR-checkout flag stays unset, which is correct because
+// every plan it serves restores and saves the same revision.
+func sourceCacheTestComm(namespace ...string) *client.Mock {
+	comm := client.NewMock("http://localhost.com")
+	ns := evergreen.SourceCacheBaseNamespace
+	if len(namespace) > 0 {
+		ns = namespace[0]
+	}
+	restoreKeys := []apimodels.SourceCacheRestoreKey{{
+		Revision: "abc123",
+		Key:      evergreen.SourceCacheObjectKey("some-org", "some-repo", ns, "main", "abc123", 1000, false),
+	}}
+	if ns == evergreen.SourceCachePRNamespace {
+		restoreKeys = append(restoreKeys, apimodels.SourceCacheRestoreKey{
+			Revision: "abc123",
+			Key:      evergreen.SourceCacheObjectKey("some-org", "some-repo", evergreen.SourceCacheBaseNamespace, "main", "abc123", 1000, false),
+		})
+	}
+	comm.SourceCacheCredentialsResponse = &apimodels.SourceCacheCredentialsResponse{
+		AWSCredentials: apimodels.AWSCredentials{Expiration: "2030-01-01T00:00:00Z"},
+		RestoreKeys:    restoreKeys,
+		SaveKey:        restoreKeys[0],
+	}
+	return comm
+}
+
 func TestNewSourceCacheSkipsWhenNotOptedInOrSparse(t *testing.T) {
 	t.Run("NoBucketConfiguredSkips", func(t *testing.T) {
 		conf := sourceCacheTestConfig()
 		conf.SourceCacheBucket = evergreen.BucketConfig{}
-		sc, reason := newSourceCache(conf, &gitFetchProject{Directory: "src"}, sourceCacheTestOpts(), "linux")
+		sc, reason := newSourceCache(t.Context(), sourceCacheTestComm(), conf, &gitFetchProject{Directory: "src"}, sourceCacheTestOpts(), "linux")
 		assert.Nil(t, sc)
 		assert.Contains(t, reason, "no source cache bucket")
 	})
 	t.Run("SparseCheckoutSkips", func(t *testing.T) {
 		c := &gitFetchProject{Directory: "src", Filter: "blob:none", SparseCheckoutPaths: []string{"/etc"}}
-		sc, reason := newSourceCache(sourceCacheTestConfig(), c, sourceCacheTestOpts(), "linux")
+		sc, reason := newSourceCache(t.Context(), sourceCacheTestComm(), sourceCacheTestConfig(), c, sourceCacheTestOpts(), "linux")
 		assert.Nil(t, sc)
 		assert.Contains(t, reason, "sparse")
 	})
 	t.Run("NonLinuxAgentSkips", func(t *testing.T) {
-		sc, reason := newSourceCache(sourceCacheTestConfig(), &gitFetchProject{Directory: "src"}, sourceCacheTestOpts(), "windows")
+		sc, reason := newSourceCache(t.Context(), sourceCacheTestComm(), sourceCacheTestConfig(), &gitFetchProject{Directory: "src"}, sourceCacheTestOpts(), "windows")
 		assert.Nil(t, sc)
 		assert.Contains(t, reason, "Linux")
 	})
+	t.Run("AppServerGrantsNoKeysSkips", func(t *testing.T) {
+		comm := client.NewMock("http://localhost.com")
+		comm.SourceCacheCredentialsResponse = &apimodels.SourceCacheCredentialsResponse{}
+		sc, reason := newSourceCache(t.Context(), comm, sourceCacheTestConfig(), &gitFetchProject{Directory: "src"}, sourceCacheTestOpts(), "linux")
+		assert.Nil(t, sc)
+		assert.Contains(t, reason, "no source cache keys")
+	})
 	t.Run("OptedInProjectIsNotSkipped", func(t *testing.T) {
-		sc, reason := newSourceCache(sourceCacheTestConfig(), &gitFetchProject{Directory: "src"}, sourceCacheTestOpts(), "linux")
+		sc, reason := newSourceCache(t.Context(), sourceCacheTestComm(), sourceCacheTestConfig(), &gitFetchProject{Directory: "src"}, sourceCacheTestOpts(), "linux")
 		require.NotNil(t, sc)
 		assert.Empty(t, reason)
 	})
 }
 
-func TestSourceCacheKeyVariesByRevisionAndCloneShape(t *testing.T) {
-	c := &gitFetchProject{Directory: "src"}
+func TestSourceCacheCredentialsAreFetchedOnce(t *testing.T) {
+	comm := sourceCacheTestComm()
+	sc, reason := newSourceCache(t.Context(), comm, sourceCacheTestConfig(), &gitFetchProject{Directory: "src"}, sourceCacheTestOpts(), "linux")
+	require.NotNil(t, sc, reason)
+	assert.Equal(t, 1, comm.SourceCacheCredentialsCount)
 
-	base, _ := newSourceCache(sourceCacheTestConfig(), c, sourceCacheTestOpts(), "linux")
-	require.NotNil(t, base)
-	same, _ := newSourceCache(sourceCacheTestConfig(), c, sourceCacheTestOpts(), "linux")
-	require.NotNil(t, same)
-	assert.Equal(t, base.key, same.key)
-	assert.Equal(t, "source_cache/v1/some-org/some-repo/abc123/"+base.key+".tgz", base.remoteKey)
-
-	otherRevisionConf := sourceCacheTestConfig()
-	otherRevisionConf.Task.Revision = "def456"
-	otherRevision, _ := newSourceCache(otherRevisionConf, c, sourceCacheTestOpts(), "linux")
-	require.NotNil(t, otherRevision)
-	assert.NotEqual(t, base.key, otherRevision.key)
-
-	shallowOpts := sourceCacheTestOpts()
-	shallowOpts.cloneDepth = 1
-	shallow, _ := newSourceCache(sourceCacheTestConfig(), c, shallowOpts, "linux")
-	require.NotNil(t, shallow)
-	assert.NotEqual(t, base.key, shallow.key)
-
-	// Two project refs on one repo at the same commit must not share an artifact.
-	branchOpts := sourceCacheTestOpts()
-	branchOpts.branch = "release-v1"
-	branch, _ := newSourceCache(sourceCacheTestConfig(), c, branchOpts, "linux")
-	require.NotNil(t, branch)
-	assert.NotEqual(t, base.key, branch.key)
-
-	otherBranchOpts := sourceCacheTestOpts()
-	otherBranchOpts.branch = "release-v2"
-	otherBranch, _ := newSourceCache(sourceCacheTestConfig(), c, otherBranchOpts, "linux")
-	require.NotNil(t, otherBranch)
-	assert.NotEqual(t, branch.key, otherBranch.key)
-
-	// The project directory is deliberately not in the key: the artifact is
-	// rooted inside it, so a tree cloned into one directory restores into
-	// another. TestSourceCacheArchiveRestoresIntoADifferentDirectory covers the
-	// layout half of that contract.
-	otherDir, _ := newSourceCache(sourceCacheTestConfig(), &gitFetchProject{Directory: "other"}, sourceCacheTestOpts(), "linux")
-	require.NotNil(t, otherDir)
-	assert.Equal(t, base.remoteKey, otherDir.remoteKey)
-	assert.Equal(t, filepath.Join("/data/mci", "other"), otherDir.projectDir())
-}
-
-// A PR artifact is pinned to the PR head, so the branch would fragment it for no gain.
-func TestSourceCachePRKeysIgnoreTheBranch(t *testing.T) {
-	c := &gitFetchProject{Directory: "src"}
-	const prHead = "55ca6286e3e4f4fba5d0448333fa99fc5a404a73"
-
-	prConf := func() *internal.TaskConfig {
-		conf := sourceCacheTestConfig()
-		conf.Task.Requester = evergreen.GithubPRRequester
-		conf.GithubPatchData.PRNumber = 9001
-		conf.GithubPatchData.HeadHash = prHead
-		return conf
-	}
-
-	branchOpts := sourceCacheTestOpts()
-	branchOpts.branch = "release-v1"
-	withBranch, _ := newSourceCache(prConf(), c, branchOpts, "linux")
-	require.NotNil(t, withBranch)
-	withoutBranch, _ := newSourceCache(prConf(), c, sourceCacheTestOpts(), "linux")
-	require.NotNil(t, withoutBranch)
-	assert.Equal(t, withoutBranch.remoteKey, withBranch.remoteKey)
-
-	// The base revision the PR falls back to is keyed on the branch.
-	baseKey, _, err := withBranch.cacheKeysForRevision("abc123")
+	creds, err := sc.creds.Retrieve(t.Context())
 	require.NoError(t, err)
-	otherBaseKey, _, err := withoutBranch.cacheKeysForRevision("abc123")
-	require.NoError(t, err)
-	assert.NotEqual(t, otherBaseKey, baseKey)
-}
-
-func TestSourceCacheKeysPRCheckoutsInTheirOwnNamespace(t *testing.T) {
-	c := &gitFetchProject{Directory: "src"}
-	const prHead = "55ca6286e3e4f4fba5d0448333fa99fc5a404a73"
-
-	for _, tc := range []struct {
-		name    string
-		mutate  func(*internal.TaskConfig)
-		wantRev string
-	}{
-		{
-			name:    "MainlineTaskKeysOnItsOwnRevision",
-			mutate:  func(*internal.TaskConfig) {},
-			wantRev: "abc123",
-		},
-		{
-			name: "PullRequestKeysOnThePRHead",
-			mutate: func(conf *internal.TaskConfig) {
-				conf.Task.Requester = evergreen.GithubPRRequester
-				conf.GithubPatchData.PRNumber = 9001
-				conf.GithubPatchData.HeadHash = prHead
-			},
-			wantRev: prHead,
-		},
-		{
-			name: "MergeQueueKeysOnTheQueueHead",
-			mutate: func(conf *internal.TaskConfig) {
-				conf.Task.Requester = evergreen.GithubMergeRequester
-				conf.GithubMergeData.HeadSHA = prHead
-				conf.GithubMergeData.HeadBranch = "gh-readonly-queue/main/pr-9001"
-			},
-			wantRev: prHead,
-		},
-		{
-			name: "ParentPRCheckoutKeysOnTheParentPRHead",
-			mutate: func(conf *internal.TaskConfig) {
-				conf.GitHubParentPRCheckout = &patch.GitHubParentPRCheckout{ForSource: true, PRNumber: 9001, HeadHash: prHead}
-			},
-			wantRev: prHead,
-		},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			conf := sourceCacheTestConfig()
-			tc.mutate(conf)
-			sc, reason := newSourceCache(conf, c, sourceCacheTestOpts(), "linux")
-			require.NotNil(t, sc, reason)
-
-			assert.Equal(t, tc.wantRev, sc.revision, "a task must save under whatever its own clone leaves HEAD at")
-			isPR := tc.wantRev != "abc123"
-			if isPR {
-				// The PR artifact is tried first, then the base revision one a
-				// mainline build produces.
-				assert.Equal(t, []string{prHead, "abc123"}, sc.restoreRevisions())
-				assert.Equal(t, "source_cache/v1/some-org/some-repo/pr/"+prHead+"/"+sc.key+".tgz", sc.remoteKey)
-			} else {
-				assert.Equal(t, []string{"abc123"}, sc.restoreRevisions())
-				assert.Equal(t, "source_cache/v1/some-org/some-repo/abc123/"+sc.key+".tgz", sc.remoteKey)
-			}
-
-			// The namespace is the security boundary: whatever a PR task saves,
-			// its base revision key must stay byte-identical to the key a
-			// mainline task on that same commit computes.
-			mainline, _ := newSourceCache(sourceCacheTestConfig(), c, sourceCacheTestOpts(), "linux")
-			require.NotNil(t, mainline)
-			_, baseKey, err := sc.cacheKeysForRevision("abc123")
-			require.NoError(t, err)
-			assert.Equal(t, mainline.remoteKey, baseKey)
-			if isPR {
-				assert.NotEqual(t, mainline.remoteKey, sc.remoteKey)
-			}
-		})
-	}
+	require.True(t, creds.CanExpire)
+	assert.Equal(t, 1, comm.SourceCacheCredentialsCount, "the initial response must be reused instead of being requested again")
 }
 
 func TestBuildPostRestoreCommand(t *testing.T) {
 	c := &gitFetchProject{Directory: "src"}
 	const prHead = "55ca6286e3e4f4fba5d0448333fa99fc5a404a73"
+	const authedOrigin = "git remote set-url origin https://x-access-token:" + projectGitHubToken + "@github.com/some-org/some-repo.git"
 
 	prConf := func() *internal.TaskConfig {
 		conf := sourceCacheTestConfig()
@@ -222,45 +123,58 @@ func TestBuildPostRestoreCommand(t *testing.T) {
 		return conf
 	}
 
-	t.Run("SkipsPRCheckoutOnAPRNamespacedHit", func(t *testing.T) {
-		conf := prConf()
-		joined := strings.Join(c.buildPostRestoreCommand(conf, cloneOpts{owner: "some-org", repo: "some-repo"}, prHead, false), "\n")
-		assert.Contains(t, joined, `test "$(git rev-parse HEAD)" = "`+prHead+`"`)
-		assert.NotContains(t, joined, "git fetch origin")
-	})
-
-	t.Run("VerifiesHeadBeforeTrustingTree", func(t *testing.T) {
-		conf := sourceCacheTestConfig()
-		joined := strings.Join(c.buildPostRestoreCommand(conf, cloneOpts{owner: "some-org", repo: "some-repo", token: projectGitHubToken}, conf.Task.Revision, false), "\n")
-		assert.Contains(t, joined, `test "$(git rev-parse HEAD)" = "abc123"`)
-	})
-
-	// A restored tree keeps the producer's scrubbed, tokenless origin, so the
-	// restore must put the task's own credential back. Otherwise a hit would
-	// leave a remote that can't fetch from a private repo, where a clone can.
-	t.Run("RestoresAuthenticatedOriginSoHitMatchesClone", func(t *testing.T) {
-		conf := sourceCacheTestConfig()
-		joined := strings.Join(c.buildPostRestoreCommand(conf, cloneOpts{owner: "some-org", repo: "some-repo", token: projectGitHubToken}, conf.Task.Revision, false), "\n")
-		assert.Contains(t, joined, "git remote set-url origin https://x-access-token:"+projectGitHubToken+"@github.com/some-org/some-repo.git")
-	})
-
-	// Renaming the branch here would mislabel a PR hit, whose tree is at the PR head.
-	t.Run("LeavesTheRestoredBranchAlone", func(t *testing.T) {
-		conf := sourceCacheTestConfig()
-		joined := strings.Join(c.buildPostRestoreCommand(conf, cloneOpts{owner: "some-org", repo: "some-repo", branch: "release-v1"}, conf.Task.Revision, false), "\n")
-		assert.NotContains(t, joined, "git checkout -B")
-
-		prJoined := strings.Join(c.buildPostRestoreCommand(prConf(), cloneOpts{owner: "some-org", repo: "some-repo", branch: "release-v1"}, prHead, false), "\n")
-		assert.NotContains(t, prJoined, "git checkout -B")
-	})
-
-	t.Run("FetchesPRRefWithAuthenticatedOrigin", func(t *testing.T) {
-		conf := prConf()
-		joined := strings.Join(c.buildPostRestoreCommand(conf, cloneOpts{owner: "some-org", repo: "some-repo", token: projectGitHubToken}, conf.Task.Revision, true), "\n")
-		assert.Contains(t, joined, "git remote set-url origin https://x-access-token:"+projectGitHubToken+"@github.com/some-org/some-repo.git")
-		assert.Contains(t, joined, `git fetch origin "pull/9001/head:evg-pr-test-`)
-		assert.Contains(t, joined, "git reset --hard "+prHead)
-	})
+	for _, tc := range []struct {
+		name           string
+		conf           *internal.TaskConfig
+		opts           cloneOpts
+		revision       string
+		runPRCheckout  bool
+		wantContains   []string
+		wantNotContain []string
+	}{
+		{
+			// A restored tree keeps the producer's scrubbed origin, so the restore must put the task's own credential back.
+			name:         "VerifiesHeadAndRestoresAuthenticatedOrigin",
+			conf:         sourceCacheTestConfig(),
+			opts:         cloneOpts{owner: "some-org", repo: "some-repo", token: projectGitHubToken},
+			revision:     "abc123",
+			wantContains: []string{`test "$(git rev-parse HEAD)" = "abc123"`, authedOrigin},
+		},
+		{
+			name:           "SkipsPRCheckoutOnAPRNamespacedHit",
+			conf:           prConf(),
+			opts:           cloneOpts{owner: "some-org", repo: "some-repo"},
+			revision:       prHead,
+			wantContains:   []string{`test "$(git rev-parse HEAD)" = "` + prHead + `"`},
+			wantNotContain: []string{"git fetch origin"},
+		},
+		{
+			// The branch is part of the cache key, so a hit already came from the same branch and the restored branch is left alone.
+			name:           "LeavesTheRestoredBranchAlone",
+			conf:           sourceCacheTestConfig(),
+			opts:           cloneOpts{owner: "some-org", repo: "some-repo", branch: "release-v1"},
+			revision:       "abc123",
+			wantNotContain: []string{"git checkout -B"},
+		},
+		{
+			name:          "FetchesPRRefWithAuthenticatedOrigin",
+			conf:          prConf(),
+			opts:          cloneOpts{owner: "some-org", repo: "some-repo", token: projectGitHubToken},
+			revision:      "abc123",
+			runPRCheckout: true,
+			wantContains:  []string{authedOrigin, `git fetch origin "pull/9001/head:evg-pr-test-`, "git reset --hard " + prHead},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			joined := strings.Join(c.buildPostRestoreCommand(tc.conf, tc.opts, tc.revision, tc.runPRCheckout), "\n")
+			for _, want := range tc.wantContains {
+				assert.Contains(t, joined, want)
+			}
+			for _, unwanted := range tc.wantNotContain {
+				assert.NotContains(t, joined, unwanted)
+			}
+		})
+	}
 }
 
 func TestBuildPreSaveCommandScrubsHooksAndToken(t *testing.T) {
@@ -312,12 +226,16 @@ func TestPostRestoreCommandFailsOnWrongRevision(t *testing.T) {
 	conf.Task.Revision = strings.TrimSpace(string(headBytes))
 	assert.NoError(t, c.runCommands(ctx, logger, conf, c.buildPostRestoreCommand(conf, opts, conf.Task.Revision, false)))
 
-	// The branch the producer left behind is kept as is, since the key pins it.
+	// The branch is part of the cache key, so a restored tree keeps the branch
+	// the producer left in it.
 	branchOpts := cloneOpts{owner: "some-org", repo: "some-repo", branch: "release-v1"}
 	require.NoError(t, c.runCommands(ctx, logger, conf, c.buildPostRestoreCommand(conf, branchOpts, conf.Task.Revision, false)))
 	branchBytes, err := exec.CommandContext(ctx, "git", "-C", repoDir, "rev-parse", "--abbrev-ref", "HEAD").Output()
 	require.NoError(t, err)
 	assert.Equal(t, "main", strings.TrimSpace(string(branchBytes)))
+	headAfter, err := exec.CommandContext(ctx, "git", "-C", repoDir, "rev-parse", "HEAD").Output()
+	require.NoError(t, err)
+	assert.Equal(t, conf.Task.Revision, strings.TrimSpace(string(headAfter)))
 }
 
 func TestSourceCacheSpanDurationsAreNumericMilliseconds(t *testing.T) {
@@ -371,54 +289,63 @@ func TestSourceCacheArchiveRestoresIntoADifferentDirectory(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "nested", string(nested))
 
-	// The producer's directory name must not survive anywhere in the restored
-	// tree, which is what a workDir-rooted archive would leave behind.
+	// The producer's directory name must not survive anywhere in the restored tree.
 	_, err = os.Stat(filepath.Join(consumer.projectDir(), "src"))
 	assert.True(t, os.IsNotExist(err))
 	_, err = os.Stat(filepath.Join(consumerWorkDir, "src"))
 	assert.True(t, os.IsNotExist(err))
 }
 
-// TestPreSaveCommandScrubsSubmoduleTokens runs the pre-save script over a real
-// repo, since the submodule scrub is a shell pipeline whose behavior a string
-// assertion would not catch.
-func TestPreSaveCommandScrubsSubmoduleTokens(t *testing.T) {
+// newRepoWithSubmoduleCredentials builds a repo whose origin, parent config and
+// submodule config all carry the producer's token, and returns the work
+// directory plus the two config paths. Git resolves a relative submodule URL
+// with the parent's credential and records it in both configs.
+func newRepoWithSubmoduleCredentials(t *testing.T) (workDir, parentConfig, moduleConfig string) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git is not installed")
 	}
-	ctx := t.Context()
-
-	workDir := t.TempDir()
+	workDir = t.TempDir()
 	repoDir := filepath.Join(workDir, "src")
 	for _, args := range [][]string{
 		{"init", "--initial-branch=main", repoDir},
 		{"-C", repoDir, "remote", "add", "origin", "https://x-access-token:" + projectGitHubToken + "@github.com/some-org/some-repo.git"},
 	} {
-		require.NoError(t, exec.CommandContext(ctx, "git", args...).Run())
+		require.NoError(t, exec.CommandContext(t.Context(), "git", args...).Run())
 	}
 	require.NoError(t, os.MkdirAll(filepath.Join(repoDir, ".git", "modules", "sub"), 0755))
-	tokenURL := "https://x-access-token:" + projectGitHubToken + "@github.com/some-org/some-sub.git"
-	// Git resolves a relative submodule URL with the parent's credential and
-	// records it in both the parent config and the submodule's own config.
-	parentConfig := filepath.Join(repoDir, ".git", "config")
+
+	parentConfig = filepath.Join(repoDir, ".git", "config")
 	existing, err := os.ReadFile(parentConfig)
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(parentConfig,
-		append(existing, []byte("[submodule \"sub\"]\n\turl = "+tokenURL+"\n")...), 0644))
-	require.NoError(t, os.WriteFile(filepath.Join(repoDir, ".git", "modules", "sub", "config"),
-		[]byte("[remote \"origin\"]\n\turl = "+tokenURL+"\n"), 0644))
+		append(existing, []byte("[submodule \"sub\"]\n\turl = "+submoduleTokenURL+"\n")...), 0644))
 
-	c := &gitFetchProject{Directory: "src"}
-	script := strings.Join(c.buildPreSaveCommand(cloneOpts{owner: "some-org", repo: "some-repo", token: projectGitHubToken}), "\n")
-	cmd := exec.CommandContext(ctx, "bash", "-c", script)
+	moduleConfig = filepath.Join(repoDir, ".git", "modules", "sub", "config")
+	require.NoError(t, os.WriteFile(moduleConfig,
+		[]byte("[remote \"origin\"]\n\turl = "+submoduleTokenURL+"\n"), 0644))
+	return workDir, parentConfig, moduleConfig
+}
+
+const submoduleTokenURL = "https://x-access-token:" + projectGitHubToken + "@github.com/some-org/some-sub.git"
+
+// runScriptInWorkDir runs a built command script the way the agent would.
+func runScriptInWorkDir(t *testing.T, workDir string, cmds []string) {
+	cmd := exec.CommandContext(t.Context(), "bash", "-c", strings.Join(cmds, "\n"))
 	cmd.Dir = workDir
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(out))
+}
 
-	for _, config := range []string{
-		filepath.Join(repoDir, ".git", "config"),
-		filepath.Join(repoDir, ".git", "modules", "sub", "config"),
-	} {
+// TestPreSaveCommandScrubsSubmoduleTokens runs the pre-save script over a real
+// repo, since the submodule scrub is a shell pipeline whose behavior a string
+// assertion would not catch.
+func TestPreSaveCommandScrubsSubmoduleTokens(t *testing.T) {
+	workDir, parentConfig, moduleConfig := newRepoWithSubmoduleCredentials(t)
+
+	c := &gitFetchProject{Directory: "src"}
+	runScriptInWorkDir(t, workDir, c.buildPreSaveCommand(cloneOpts{owner: "some-org", repo: "some-repo", token: projectGitHubToken}))
+
+	for _, config := range []string{parentConfig, moduleConfig} {
 		contents, err := os.ReadFile(config)
 		require.NoError(t, err)
 		assert.NotContains(t, string(contents), projectGitHubToken, "token left in '%s'", config)
@@ -430,45 +357,17 @@ func TestPreSaveCommandScrubsSubmoduleTokens(t *testing.T) {
 // restore over a real repo, since together they have to leave the submodule
 // remotes usable again for the rest of the producer's task.
 func TestPostSaveCommandRestoresSubmoduleTokens(t *testing.T) {
-	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git is not installed")
-	}
-	ctx := t.Context()
-
-	workDir := t.TempDir()
-	repoDir := filepath.Join(workDir, "src")
-	opts := cloneOpts{owner: "some-org", repo: "some-repo", token: projectGitHubToken}
-	tokenURL := "https://x-access-token:" + projectGitHubToken + "@github.com/some-org/some-sub.git"
-	for _, args := range [][]string{
-		{"init", "--initial-branch=main", repoDir},
-		{"-C", repoDir, "remote", "add", "origin", "https://x-access-token:" + projectGitHubToken + "@github.com/some-org/some-repo.git"},
-	} {
-		require.NoError(t, exec.CommandContext(ctx, "git", args...).Run())
-	}
-	require.NoError(t, os.MkdirAll(filepath.Join(repoDir, ".git", "modules", "sub"), 0755))
-	parentConfig := filepath.Join(repoDir, ".git", "config")
-	existing, err := os.ReadFile(parentConfig)
-	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(parentConfig,
-		append(existing, []byte("[submodule \"sub\"]\n\turl = "+tokenURL+"\n")...), 0644))
-	moduleConfig := filepath.Join(repoDir, ".git", "modules", "sub", "config")
-	require.NoError(t, os.WriteFile(moduleConfig,
-		[]byte("[remote \"origin\"]\n\turl = "+tokenURL+"\n"), 0644))
+	workDir, parentConfig, moduleConfig := newRepoWithSubmoduleCredentials(t)
 
 	c := &gitFetchProject{Directory: "src"}
-	runScript := func(cmds []string) {
-		cmd := exec.CommandContext(ctx, "bash", "-c", strings.Join(cmds, "\n"))
-		cmd.Dir = workDir
-		out, err := cmd.CombinedOutput()
-		require.NoError(t, err, string(out))
-	}
-	runScript(c.buildPreSaveCommand(opts))
-	runScript(c.buildPostSaveCommand(opts))
+	opts := cloneOpts{owner: "some-org", repo: "some-repo", token: projectGitHubToken}
+	runScriptInWorkDir(t, workDir, c.buildPreSaveCommand(opts))
+	runScriptInWorkDir(t, workDir, c.buildPostSaveCommand(opts))
 
 	for _, config := range []string{parentConfig, moduleConfig} {
 		contents, err := os.ReadFile(config)
 		require.NoError(t, err)
-		assert.Contains(t, string(contents), tokenURL, "submodule credential not restored in '%s'", config)
+		assert.Contains(t, string(contents), submoduleTokenURL, "submodule credential not restored in '%s'", config)
 	}
 	// The origin is set explicitly rather than by the rewrite, so it must not
 	// have picked up a second credential.
@@ -578,7 +477,7 @@ func TestFetchOrRestoreSourceFailsFastWhenTheMergeQueueRefIsDeleted(t *testing.T
 	opts.token = "a-token"
 
 	calls := stubMergeQueueRefExists(t, false, nil)
-	comm := client.NewMock("http://localhost.com")
+	comm := sourceCacheTestComm(evergreen.SourceCachePRNamespace)
 	conf := mergeQueueTestConfig()
 	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 	require.NoError(t, err)
@@ -610,22 +509,22 @@ func TestSourceCacheHealsOnlyTheKeyItWrites(t *testing.T) {
 	}
 
 	t.Run("NoCorruptionDoesNotHeal", func(t *testing.T) {
-		sc, reason := newSourceCache(sourceCacheTestConfig(), c, sourceCacheTestOpts(), "linux")
+		sc, reason := newSourceCache(t.Context(), sourceCacheTestComm(), sourceCacheTestConfig(), c, sourceCacheTestOpts(), "linux")
 		require.NotNil(t, sc, reason)
 		assert.False(t, sc.healsCorruptArtifact())
 	})
 
 	t.Run("MainlineTaskHealsItsOwnRevision", func(t *testing.T) {
-		sc, reason := newSourceCache(sourceCacheTestConfig(), c, sourceCacheTestOpts(), "linux")
+		sc, reason := newSourceCache(t.Context(), sourceCacheTestComm(), sourceCacheTestConfig(), c, sourceCacheTestOpts(), "linux")
 		require.NotNil(t, sc, reason)
-		sc.corruptRemoteKey = sc.remoteKey
+		sc.corruptRemoteKey = sc.saveKey.Key
 		assert.True(t, sc.healsCorruptArtifact())
 	})
 
 	t.Run("PRTaskHealsItsOwnPRArtifact", func(t *testing.T) {
-		sc, reason := newSourceCache(prConfig(), c, sourceCacheTestOpts(), "linux")
+		sc, reason := newSourceCache(t.Context(), sourceCacheTestComm(evergreen.SourceCachePRNamespace), prConfig(), c, sourceCacheTestOpts(), "linux")
 		require.NotNil(t, sc, reason)
-		sc.corruptRemoteKey = sc.remoteKey
+		sc.corruptRemoteKey = sc.saveKey.Key
 		assert.True(t, sc.healsCorruptArtifact())
 	})
 
@@ -633,11 +532,11 @@ func TestSourceCacheHealsOnlyTheKeyItWrites(t *testing.T) {
 	// must never overwrite the shared mainline artifact, even after proving that
 	// artifact is corrupt.
 	t.Run("PRTaskDoesNotHealTheSharedBaseArtifact", func(t *testing.T) {
-		sc, reason := newSourceCache(prConfig(), c, sourceCacheTestOpts(), "linux")
+		sc, reason := newSourceCache(t.Context(), sourceCacheTestComm(evergreen.SourceCachePRNamespace), prConfig(), c, sourceCacheTestOpts(), "linux")
 		require.NotNil(t, sc, reason)
-		_, baseKey, err := sc.cacheKeysForRevision(sc.baseRevision)
-		require.NoError(t, err)
-		require.NotEqual(t, sc.remoteKey, baseKey)
+		require.Len(t, sc.restoreKeys, 2)
+		baseKey := sc.restoreKeys[1].Key
+		require.NotEqual(t, sc.saveKey.Key, baseKey)
 
 		sc.corruptRemoteKey = baseKey
 		assert.False(t, sc.healsCorruptArtifact())
@@ -650,7 +549,7 @@ func TestSourceCacheExtractMarksAnUndecodableArtifactCorrupt(t *testing.T) {
 	const remoteKey = "source_cache/v2/10gen/mongo/abc123/key.tgz"
 
 	newCache := func(t *testing.T) *sourceCache {
-		sc := &sourceCache{workDir: t.TempDir(), dir: "src", remoteKey: remoteKey}
+		sc := &sourceCache{workDir: t.TempDir(), dir: "src", saveKey: apimodels.SourceCacheRestoreKey{Key: remoteKey}}
 		require.NoError(t, os.MkdirAll(sc.projectDir(), 0755))
 		return sc
 	}

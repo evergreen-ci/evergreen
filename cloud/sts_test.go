@@ -7,6 +7,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -81,6 +82,27 @@ func TestAssumeRole(t *testing.T) {
 			assert.Equal(t, roleARN, utility.FromStringPtr(awsClientMock.AssumeRoleInput.RoleArn))
 			assert.Equal(t, policy, utility.FromStringPtr(awsClientMock.AssumeRoleInput.Policy))
 			assert.Equal(t, externalID, utility.FromStringPtr(awsClientMock.AssumeRoleInput.ExternalId))
+		},
+		"SourceCacheUsesTheFixedExternalID": func(t *testing.T, manager STSManager, awsClientMock *awsClientMock) {
+			task := task.Task{Id: taskID, Project: projectID, Requester: requester}
+			require.NoError(t, task.Insert(t.Context()))
+			project := model.ProjectRef{Id: projectID, RepoRefId: repoRefID}
+			require.NoError(t, project.Insert(t.Context()))
+			repoRef := model.RepoRef{ProjectRef: model.ProjectRef{Id: repoRefID}}
+			require.NoError(t, repoRef.Replace(t.Context()))
+			// The fixed external ID wins even over the debug prefix.
+			h := host.Host{Id: hostID, IsDebug: true}
+			require.NoError(t, h.Insert(t.Context()))
+
+			creds, err := manager.AssumeRole(t.Context(), taskID, hostID, AssumeRoleOptions{
+				RoleARN:       roleARN,
+				Policy:        &policy,
+				IsSourceCache: true,
+			})
+			require.NoError(t, err)
+			assert.Equal(t, roleARN, utility.FromStringPtr(awsClientMock.AssumeRoleInput.RoleArn))
+			assert.Equal(t, evergreen.SourceCacheExternalID, utility.FromStringPtr(awsClientMock.AssumeRoleInput.ExternalId))
+			assert.Equal(t, evergreen.SourceCacheExternalID, creds.ExternalID)
 		},
 		"Success/UntrackedBranch": func(t *testing.T, manager STSManager, awsClientMock *awsClientMock) {
 			task := task.Task{Id: taskID, Project: projectID, Requester: requester}

@@ -449,6 +449,8 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 	}
 
 	res.SourceCacheBucket = h.settings.Buckets.GetSourceCacheBucket(t.Project)
+	// The role ARN never goes to the agent; it uses the scoped credentials route.
+	res.SourceCacheBucket.RoleARN = ""
 	if res.SourceCacheBucket.Name == "" {
 		grip.Debug(ctx, message.Fields{
 			"message":     "no source cache bucket for task",
