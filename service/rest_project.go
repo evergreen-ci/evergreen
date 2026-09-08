@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/gimlet"
 )
@@ -16,9 +17,17 @@ func (restapi restAPI) getProjectRef(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSONResponse(r.Context(), w, http.StatusNotFound, responseError{Message: "error finding project"})
 		return
 	}
-	redactedRef := *ref
-	redactedRef.RedactSecrets()
-	gimlet.WriteJSON(r.Context(), w, &redactedRef)
+	refForResponse := *ref
+	usr := gimlet.GetUser(r.Context())
+	if usr == nil || !usr.HasPermission(r.Context(), gimlet.PermissionOpts{
+		Resource:      ref.Id,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	}) {
+		refForResponse.TaskAnnotationSettings.FileTicketWebhook.Secret = ""
+	}
+	gimlet.WriteJSON(r.Context(), w, &refForResponse)
 }
 
 // getProjectsIds returns a JSON response of an array of active project Ids.

@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,6 +30,22 @@ func TestProjectRoutes(t *testing.T) {
 	privUsr := addViewTasksPermission(t, "priv")
 	usr := pubUsr
 	usr.SystemRoles = append(usr.SystemRoles, privUsr.SystemRoles...)
+	settingsScope := gimlet.Scope{
+		ID:        "pub_settings_scope",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"pub"},
+	}
+	require.NoError(t, evergreen.GetEnvironment().RoleManager().AddScope(ctx, settingsScope))
+	settingsRole := gimlet.Role{
+		ID:    "pub_edit_settings",
+		Scope: settingsScope.ID,
+		Permissions: gimlet.Permissions{
+			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+		},
+	}
+	require.NoError(t, evergreen.GetEnvironment().RoleManager().UpdateRole(ctx, settingsRole))
+	settingsUsr := *usr
+	settingsUsr.SystemRoles = append(append([]string{}, usr.SystemRoles...), settingsRole.ID)
 	serviceutil.MockUser.SystemRoles = usr.SystemRoles
 	t.Cleanup(func() {
 		serviceutil.MockUser.SystemRoles = nil
@@ -50,10 +67,13 @@ func TestProjectRoutes(t *testing.T) {
 					Secret:   "secret",
 				},
 			},
+			WorkstationConfig: model.WorkstationConfig{
+				GitClone: utility.TruePtr(),
+			},
 		}
 		So(public.Insert(t.Context()), ShouldBeNil)
 		redactedPublic := *public
-		redactedPublic.RedactSecrets()
+		redactedPublic.TaskAnnotationSettings.FileTicketWebhook.Secret = ""
 
 		url := "/rest/v1/projects/" + publicId
 
@@ -70,6 +90,8 @@ func TestProjectRoutes(t *testing.T) {
 			So(json.Unmarshal(response.Body.Bytes(), outRef), ShouldBeNil)
 			So(outRef, ShouldResemble, &redactedPublic)
 			So(outRef.TaskAnnotationSettings.FileTicketWebhook.Secret, ShouldBeEmpty)
+			So(outRef.TaskAnnotationSettings.FileTicketWebhook.Endpoint, ShouldEqual, public.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
+			So(outRef.WorkstationConfig, ShouldResemble, public.WorkstationConfig)
 		})
 		Convey("and a logged-in user", func() {
 			request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
@@ -78,6 +100,18 @@ func TestProjectRoutes(t *testing.T) {
 			So(response.Code, ShouldEqual, http.StatusOK)
 			So(json.Unmarshal(response.Body.Bytes(), outRef), ShouldBeNil)
 			So(outRef, ShouldResemble, &redactedPublic)
+		})
+		Convey("by a project settings editor", func() {
+			request, err := http.NewRequest("GET", url, nil)
+			So(err, ShouldBeNil)
+			request = request.WithContext(gimlet.AttachUser(request.Context(), &settingsUsr))
+			response := httptest.NewRecorder()
+
+			router.ServeHTTP(response, request)
+			outRef := &model.ProjectRef{}
+			So(response.Code, ShouldEqual, http.StatusOK)
+			So(json.Unmarshal(response.Body.Bytes(), outRef), ShouldBeNil)
+			So(outRef, ShouldResemble, public)
 		})
 		Convey("and be visible to the project_list route", func() {
 			url := "/rest/v1/projects"

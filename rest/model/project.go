@@ -346,6 +346,20 @@ func (ta *APITaskAnnotationSettings) RedactSecrets() {
 	}
 }
 
+// IncludeFileTicketWebhookSecret restores the file-ticket webhook secret after
+// API model conversion redacts it.
+func (ta *APITaskAnnotationSettings) IncludeFileTicketWebhookSecret(config evergreen.AnnotationsSettings) {
+	ta.FileTicketWebhook.Secret = utility.ToStringPtr(config.FileTicketWebhook.Secret)
+}
+
+// PreserveRedactedFileTicketWebhookSecret replaces a redacted placeholder with
+// the currently stored secret.
+func PreserveRedactedFileTicketWebhookSecret(updated *evergreen.AnnotationsSettings, current evergreen.AnnotationsSettings) {
+	if updated.FileTicketWebhook.Secret == evergreen.RedactedValue {
+		updated.FileTicketWebhook.Secret = current.FileTicketWebhook.Secret
+	}
+}
+
 type APIWorkstationConfig struct {
 	// List of setup commands to run.
 	SetupCommands []APIWorkstationSetupCommand `bson:"setup_commands" json:"setup_commands"`

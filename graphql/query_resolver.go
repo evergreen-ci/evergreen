@@ -538,7 +538,7 @@ func includeFileTicketWebhookSecretForProjectAdmin(ctx context.Context, projectI
 	// API model conversion redacts by default so callers cannot accidentally expose the secret.
 	// Settings editors are the only users allowed to opt back into the cleartext value.
 	if userHasProjectSettingsPermission(ctx, mustHaveUser(ctx), projectID, evergreen.ProjectSettingsEdit.Value) {
-		target.FileTicketWebhook.Secret = utility.ToStringPtr(source.FileTicketWebhook.Secret)
+		target.IncludeFileTicketWebhookSecret(source)
 	}
 }
 
