@@ -1634,10 +1634,8 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 				}
 			}
 		} else if tc.taskConfig.Distro.ContainerIsolation != nil {
-			// Never run the host-wide pkill on a container-isolated
-			// distro: task processes live in container namespaces, and
-			// the container may not exist yet (task start, or failed
-			// container creation), so there is nothing safe to kill here.
+			// Task processes live in containers, which may not exist yet; the
+			// host-wide pkill is unsafe here.
 			logger.Infof(ctx, "Skipping process cleanup for task '%s': distro has container isolation enabled but no container is running.", tc.task.ID)
 		} else {
 			logger.Infof(ctx, "Cleaning up processes for task: '%s'.", tc.task.ID)

@@ -122,10 +122,8 @@ func TestKillProcsContainerRouting(t *testing.T) {
 	})
 }
 
-// TestKillProcsIsolationDistroWithoutContainerSkipsHostKill verifies that on a
-// container-isolated distro the host-wide pkill never runs, even when no
-// container exists yet (task start, or failed container creation in fail-open
-// mode).
+// TestKillProcsIsolationDistroWithoutContainerSkipsHostKill verifies the
+// host-wide pkill never runs on an isolated distro without a container.
 func TestKillProcsIsolationDistroWithoutContainerSkipsHostKill(t *testing.T) {
 	ctx := t.Context()
 	a := agentForKillTest()
