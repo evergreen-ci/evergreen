@@ -45,6 +45,15 @@ func TestParserRegex(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, expDur, dur)
 	})
+	t.Run("TestEndVanillaLogsWithInterleavedOutputTruncatingRuntime", func(t *testing.T) {
+		// Output from the program under test can interleave with go test's own output and cut off
+		// the runtime. The status and name must still be parsed so the test isn't left as a failure.
+		name, status, dur, err := endInfoFromLogLine(`    --- SKIP: TestSuite/TestName (0.0{"time":"2026-08-21T13:51:04.204349Z","level":"trace","message":"heartbeat succeeded"}`, endRegex)
+		require.NoError(t, err)
+		assert.Equal(t, "TestSuite/TestName", name)
+		assert.Equal(t, SKIP, status)
+		assert.Equal(t, time.Duration(0), dur)
+	})
 	t.Run("TestEndGocheckLogs", func(t *testing.T) {
 		name, status, dur, err := endInfoFromLogLine(
 			"FAIL: adjust_test.go:40: AdjustSuite.TestAdjust", gocheckEndRegex)
@@ -111,6 +120,22 @@ func TestParserFunctionality(t *testing.T) {
 		assert.Equal(t, rTime, results[1].RunTime)
 		assert.Equal(t, 15, results[1].StartLine)
 		assert.Equal(t, 15, results[1].EndLine)
+	})
+	t.Run("InterleavedOutputTruncatingRuntimeStillReportsStatus", func(t *testing.T) {
+		logdata := `=== RUN   TestSuite/TestName
+    --- SKIP: TestSuite/TestName (0.0{"time":"2026-08-21T13:51:04.204349Z","level":"trace","message":"heartbeat succeeded"}
+--- PASS: TestSuite (0.01s)
+PASS
+`
+		parser := &goTestParser{}
+		require.NoError(t, parser.Parse(strings.NewReader(logdata)))
+
+		results := parser.Results()
+		require.Len(t, results, 2)
+
+		assert.Equal(t, "TestSuite/TestName", results[0].Name)
+		assert.Equal(t, SKIP, results[0].Status)
+		assert.Equal(t, time.Duration(0), results[0].RunTime)
 	})
 	t.Run("GocheckLogFile", func(t *testing.T) {
 		logdata, err := os.ReadFile(filepath.Join(cwd, "testdata", "gotest", "2_simple.log"))

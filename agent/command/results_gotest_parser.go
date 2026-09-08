@@ -22,8 +22,10 @@ var (
 	// Match the start prefix and save the group of non-space characters following the word "RUN"
 	startRegex = regexp.MustCompile(`=== RUN\s+(\S+)`)
 
-	// Match the end prefix, save PASS/FAIL/SKIP, save the decimal value for number of seconds
-	endRegex = regexp.MustCompile(`--- (PASS|SKIP|FAIL): (\S+) \(-*([0-9\.m]+[ ]*s)`)
+	// Match the end prefix, save PASS/FAIL/SKIP, save the decimal value for number of seconds. The
+	// duration is optional because other output can interleave with go test's and truncate it, and
+	// dropping the runtime is preferable to failing to detect the test's status at all.
+	endRegex = regexp.MustCompile(`--- (PASS|SKIP|FAIL): (\S+)(?: \(-*([0-9\.m]+[ ]*s))?`)
 
 	// Match the start prefix and save the group of non-space characters following the word "RUN"
 	gocheckStartRegex = regexp.MustCompile(`START: .*.go:[0-9]+: (\S+)`)
