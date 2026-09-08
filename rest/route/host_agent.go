@@ -69,6 +69,15 @@ func (h *hostAgentNextTask) Parse(ctx context.Context, r *http.Request) error {
 		return errors.New("missing host ID")
 	}
 	h.host = MustHaveHost(ctx)
+
+	// Don't return anything for user hosts.
+	if h.host.UserHost {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusForbidden,
+			Message:    "user hosts cannot be dispatched tasks",
+		}
+	}
+
 	details, err := getDetails(h.host, r)
 	if err != nil {
 		return gimlet.ErrorResponse{
