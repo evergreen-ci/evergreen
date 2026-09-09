@@ -1012,3 +1012,57 @@ tasks:
 		assert.True(t, isNoOp, "s3.put inside a function should be detected as a noOp command")
 	})
 }
+
+func TestGetVariable(t *testing.T) {
+	t.Run("ReturnsSetVariable", func(t *testing.T) {
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		executor.SetVariable(t.Context(), "my_key", "my_value")
+
+		value, found, redacted := executor.GetVariable("my_key")
+		assert.True(t, found)
+		assert.False(t, redacted)
+		assert.Equal(t, "my_value", value)
+	})
+
+	t.Run("RedactedPrivateVariable", func(t *testing.T) {
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		executor.expansions.Put("secret_token", "s3cr3t")
+		executor.taskConfig.Redacted = []string{"secret_token"}
+
+		_, found, redacted := executor.GetVariable("secret_token")
+		assert.True(t, found)
+		assert.True(t, redacted)
+	})
+}
+
+func TestGetVariables(t *testing.T) {
+	t.Run("ReturnsAllVariablesWithRedactionInfo", func(t *testing.T) {
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		executor.SetVariable(t.Context(), "key1", "value1")
+		executor.expansions.Put("private_key", "secret")
+		executor.taskConfig.Redacted = []string{"private_key"}
+
+		vars, redactedKeys := executor.GetVariables()
+		assert.Equal(t, "value1", vars["key1"])
+		assert.Equal(t, "secret", vars["private_key"])
+		assert.False(t, redactedKeys["key1"])
+		assert.True(t, redactedKeys["private_key"])
+	})
+
+	t.Run("OverriddenPrivateVarNotRedacted", func(t *testing.T) {
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		executor.taskConfig.Redacted = []string{"private_key"}
+		executor.SetVariable(t.Context(), "private_key", "overridden")
+
+		_, redactedKeys := executor.GetVariables()
+		assert.False(t, redactedKeys["private_key"])
+	})
+}
