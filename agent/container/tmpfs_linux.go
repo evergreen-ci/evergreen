@@ -38,7 +38,9 @@ func provisionEnvTmpfs(dir string) error {
 
 // ensureEnvDir creates dir and its parents, falling back to sudo mkdir plus
 // chown (like the mount step) because the base dir under /var/run is on a
-// root-owned tmpfs and disappears on every reboot.
+// root-owned tmpfs and disappears on every reboot. The eventual end state is
+// image-level provisioning (e.g. a tmpfiles.d entry); the sudo path exists
+// only until then and is skipped whenever the base dir already exists.
 func ensureEnvDir(dir string) error {
 	if err := os.MkdirAll(dir, 0700); err == nil {
 		return nil
