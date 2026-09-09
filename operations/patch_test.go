@@ -28,7 +28,7 @@ func TestResolveDiffSource(t *testing.T) {
 			},
 		}
 		var diffData localDiff
-		rp, err := resolveDiffSource(t.Context(), comm, patchID, &diffData)
+		rp, err := resolveDiffSource(t.Context(), comm, patchID, false, &diffData)
 		require.NoError(t, err)
 		require.NotNil(t, rp)
 		assert.Equal(t, "some diff", diffData.fullPatch)
@@ -40,7 +40,7 @@ func TestResolveDiffSource(t *testing.T) {
 	t.Run("MissingPatchShouldError", func(t *testing.T) {
 		comm := &client.Mock{}
 		var diffData localDiff
-		rp, err := resolveDiffSource(t.Context(), comm, patchID, &diffData)
+		rp, err := resolveDiffSource(t.Context(), comm, patchID, false, &diffData)
 		assert.Nil(t, rp)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "not found")
@@ -55,7 +55,7 @@ func TestResolveDiffSource(t *testing.T) {
 			GetRawPatchWithModulesErr: errors.New("should not be called"),
 		}
 		var diffData localDiff
-		rp, err := resolveDiffSource(t.Context(), comm, mainlineVersionID, &diffData)
+		rp, err := resolveDiffSource(t.Context(), comm, mainlineVersionID, false, &diffData)
 		require.NoError(t, err)
 		// A nil raw patch keeps the caller from trying to replay module diffs.
 		assert.Nil(t, rp)
@@ -66,7 +66,7 @@ func TestResolveDiffSource(t *testing.T) {
 	t.Run("UnknownVersionIDShouldError", func(t *testing.T) {
 		comm := &client.Mock{GetVersionErr: errors.New("404 version not found")}
 		var diffData localDiff
-		rp, err := resolveDiffSource(t.Context(), comm, mainlineVersionID, &diffData)
+		rp, err := resolveDiffSource(t.Context(), comm, mainlineVersionID, false, &diffData)
 		assert.Nil(t, rp)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "is not a patch ID")
@@ -75,9 +75,22 @@ func TestResolveDiffSource(t *testing.T) {
 	t.Run("VersionWithoutRevisionShouldError", func(t *testing.T) {
 		comm := &client.Mock{GetVersionResult: &restmodel.APIVersion{}}
 		var diffData localDiff
-		rp, err := resolveDiffSource(t.Context(), comm, mainlineVersionID, &diffData)
+		rp, err := resolveDiffSource(t.Context(), comm, mainlineVersionID, false, &diffData)
 		assert.Nil(t, rp)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "no revision")
+	})
+
+	t.Run("MainlineVersionIDWithRepeatFailedShouldError", func(t *testing.T) {
+		comm := &client.Mock{
+			GetVersionResult: &restmodel.APIVersion{
+				Revision: utility.ToStringPtr(revision),
+			},
+		}
+		var diffData localDiff
+		rp, err := resolveDiffSource(t.Context(), comm, mainlineVersionID, true, &diffData)
+		assert.Nil(t, rp)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "repeat-failed")
 	})
 }

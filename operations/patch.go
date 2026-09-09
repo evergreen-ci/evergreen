@@ -544,7 +544,7 @@ func PatchFile() cli.Command {
 				diffData.fullPatch = string(fullPatch)
 				diffData.base = base
 			} else {
-				rp, err = resolveDiffSource(ctx, comm, diffPatchId, &diffData)
+				rp, err = resolveDiffSource(ctx, comm, diffPatchId, params.RepeatFailed, &diffData)
 				if err != nil {
 					return err
 				}
@@ -610,8 +610,9 @@ func PatchFile() cli.Command {
 
 // resolveDiffSource populates diffData from the --diff-patchId: a patch ID contributes its raw
 // and module diffs, while a mainline version ID has no patch document, yielding an empty diff
-// based at that version's revision and a nil raw patch.
-func resolveDiffSource(ctx context.Context, comm client.Communicator, diffPatchId string, diffData *localDiff) (*restmodel.APIRawPatch, error) {
+// based at that version's revision and a nil raw patch. A mainline version cannot be
+// combined with --repeat-failed, since the server does not support it there.
+func resolveDiffSource(ctx context.Context, comm client.Communicator, diffPatchId string, repeatFailed bool, diffData *localDiff) (*restmodel.APIRawPatch, error) {
 	if !patch.IsValidId(diffPatchId) {
 		v, err := comm.GetVersion(ctx, diffPatchId)
 		if err != nil {
@@ -619,6 +620,9 @@ func resolveDiffSource(ctx context.Context, comm client.Communicator, diffPatchI
 		}
 		if v == nil {
 			return nil, errors.Errorf("'%s' is neither a patch ID nor an existing version ID", diffPatchId)
+		}
+		if repeatFailed {
+			return nil, errors.Errorf("--repeat-failed is not supported for mainline version IDs")
 		}
 		diffData.base = utility.FromStringPtr(v.Revision)
 		if diffData.base == "" {
