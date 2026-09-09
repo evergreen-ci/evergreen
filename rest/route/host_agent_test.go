@@ -2111,3 +2111,42 @@ func TestCheckHostHealth(t *testing.T) {
 		})
 	})
 }
+
+func TestValidateSingleTaskDistro(t *testing.T) {
+	allowlist := evergreen.ProjectTasksPair{
+		AllowedTasks: []string{"allowed_task", "allowed_group_TG"},
+		AllowedBVs:   []string{"allowed_bv"},
+	}
+
+	for testName, testCase := range map[string]struct {
+		nextTask *task.Task
+		expected bool
+	}{
+		"TaskInAllowedTaskGroupIsAllowed": {
+			nextTask: &task.Task{DisplayName: "member_task", TaskGroup: "allowed_group_TG", BuildVariant: "bv"},
+			expected: true,
+		},
+		"TaskInDisallowedTaskGroupIsNotAllowed": {
+			nextTask: &task.Task{DisplayName: "member_task", TaskGroup: "other_group_TG", BuildVariant: "bv"},
+			expected: false,
+		},
+		"TaskAllowedByItsOwnNameIsAllowed": {
+			nextTask: &task.Task{DisplayName: "allowed_task", BuildVariant: "bv"},
+			expected: true,
+		},
+		"TaskWithoutTaskGroupNotInAllowlistIsNotAllowed": {
+			nextTask: &task.Task{DisplayName: "other_task", BuildVariant: "bv"},
+			expected: false,
+		},
+		"TaskOnAllowedBuildVariantIsAllowed": {
+			nextTask: &task.Task{DisplayName: "other_task", BuildVariant: "allowed_bv"},
+			expected: true,
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			matched, err := validateSingleTaskDistro(allowlist, testCase.nextTask)
+			require.NoError(t, err)
+			assert.Equal(t, testCase.expected, matched)
+		})
+	}
+}
