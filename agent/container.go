@@ -190,7 +190,7 @@ func (a *Agent) ensureContainer(ctx context.Context, conf *internal.TaskConfig, 
 		}
 	}
 
-	extraMounts := toolchainMounts(ctx, conf.Task.Id, log)
+	extraMounts := toolchainMounts(ctx, conf.Task.Id, a.opts.CompatClientPath, log)
 
 	factory := a.containerFactory
 	if factory == nil {
@@ -266,9 +266,10 @@ const (
 
 // containerToolchainDirs are the host toolchain directories bind-mounted
 // read-only into the container. Toolchains are installed at AMI provisioning
-// rather than baked into the image. Only these paths are mounted; the whole
-// of /opt is not, because a read-only mount still lets a task read (and
-// exfiltrate) anything beneath it.
+// rather than baked into the image. Only these paths (plus the compat client
+// path passed in by the monitor) are mounted; the whole of /opt is not,
+// because a read-only mount still lets a task read (and exfiltrate) anything
+// beneath it.
 var containerToolchainDirs = []string{
 	"/opt/mongodbtoolchain",
 	"/opt/golang",
@@ -278,16 +279,25 @@ var containerToolchainDirs = []string{
 	"/opt/python",
 }
 
-// toolchainMounts returns read-only mounts for the toolchain directories that
-// exist on the host. Nonexistent sources are skipped because Docker rejects
-// bind mounts whose source is missing, which would fail container creation.
-func toolchainMounts(ctx context.Context, taskID string, log grip.Journaler) []agentcontainer.Mount {
+// toolchainMounts returns read-only mounts for the toolchain directories and
+// the compat client path that exist on the host. Nonexistent sources are
+// skipped because Docker rejects bind mounts whose source is missing, which
+// would fail container creation.
+func toolchainMounts(ctx context.Context, taskID, compatClientPath string, log grip.Journaler) []agentcontainer.Mount {
 	var mounts []agentcontainer.Mount
-	for _, dir := range containerToolchainDirs {
-		if _, err := os.Stat(dir); err != nil {
-			continue
+	mounted := map[string]bool{}
+	addMount := func(source string) {
+		if _, err := os.Stat(source); err != nil || mounted[source] {
+			return
 		}
-		mounts = append(mounts, agentcontainer.Mount{Source: dir, Target: dir, ReadOnly: true})
+		mounted[source] = true
+		mounts = append(mounts, agentcontainer.Mount{Source: source, Target: source, ReadOnly: true})
+	}
+	for _, dir := range containerToolchainDirs {
+		addMount(dir)
+	}
+	if compatClientPath != "" {
+		addMount(compatClientPath)
 	}
 	if len(mounts) == 0 && log != nil {
 		log.Warningf(ctx, "No host toolchain directories found; container for task '%s' will only see image-provided toolchains.", taskID)

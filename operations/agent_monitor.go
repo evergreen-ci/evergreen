@@ -432,9 +432,20 @@ func (m *monitor) allowAgentNice(ctx context.Context) error {
 		m.clientPath}).Run(ctx)
 }
 
+// agentCmdArgs builds the argv for the agent process the monitor spawns. The
+// compat client path is forwarded so the agent can mount it read-only into
+// task isolation containers.
+func (m *monitor) agentCmdArgs() []string {
+	args := append([]string{m.clientPath, "agent"}, m.agentArgs...)
+	if m.compatClientPath != "" {
+		args = append(args, fmt.Sprintf("--compat_client_path=%s", m.compatClientPath))
+	}
+	return args
+}
+
 // createAgentProcess attempts to start an agent subprocess.
 func (m *monitor) createAgentProcess(ctx context.Context, retry utility.RetryOptions) (jasper.Process, error) {
-	agentCmdArgs := append([]string{m.clientPath, "agent"}, m.agentArgs...)
+	agentCmdArgs := m.agentCmdArgs()
 
 	// Copy the monitor's environment to the agent.
 	env := make(map[string]string)

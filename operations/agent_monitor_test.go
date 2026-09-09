@@ -142,3 +142,27 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 		})
 	}
 }
+
+func TestAgentCmdArgsForwardsCompatClientPath(t *testing.T) {
+	m := &monitor{
+		clientPath:       "/path/to/client",
+		compatClientPath: "/home/user/evergreen",
+		agentArgs:        []string{"--api_server=http://localhost", "--host_id=h1"},
+	}
+
+	args := m.agentCmdArgs()
+
+	assert.Equal(t, []string{
+		"/path/to/client",
+		"agent",
+		"--api_server=http://localhost",
+		"--host_id=h1",
+		"--compat_client_path=/home/user/evergreen",
+	}, args, "the monitor must pass the compat client path down to the agent so it can mount it into isolation containers")
+}
+
+func TestAgentCmdArgsOmitsUnsetCompatClientPath(t *testing.T) {
+	m := &monitor{clientPath: "/path/to/client"}
+
+	assert.Equal(t, []string{"/path/to/client", "agent"}, m.agentCmdArgs())
+}

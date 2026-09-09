@@ -618,12 +618,78 @@ func TestToolchainMountsOnlyIncludesExistingDirsReadOnly(t *testing.T) {
 	t.Cleanup(func() { containerToolchainDirs = original })
 	containerToolchainDirs = []string{existing, missing}
 
-	mounts := toolchainMounts(t.Context(), "task-1", nil)
+	mounts := toolchainMounts(t.Context(), "task-1", "", nil)
 
 	require.Len(t, mounts, 1, "a nonexistent source would make Docker reject container creation")
 	assert.Equal(t, existing, mounts[0].Source)
 	assert.Equal(t, existing, mounts[0].Target)
 	assert.True(t, mounts[0].ReadOnly, "toolchain mounts must be read-only")
+}
+
+func TestToolchainMountsIncludesExistingCompatClientPath(t *testing.T) {
+	compatPath := filepath.Join(t.TempDir(), "evergreen")
+	require.NoError(t, os.WriteFile(compatPath, []byte("client"), 0755))
+
+	mounts := toolchainMounts(t.Context(), "task-1", compatPath, nil)
+
+	require.Len(t, mounts, 1)
+	assert.Equal(t, compatPath, mounts[0].Source)
+	assert.Equal(t, compatPath, mounts[0].Target, "the compat client must appear at the same path inside the container so legacy tasks can invoke it")
+	assert.True(t, mounts[0].ReadOnly, "compat client mount must be read-only")
+}
+
+func TestToolchainMountsSkipsMissingCompatClientPath(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "absent", "evergreen")
+
+	assert.Empty(t, toolchainMounts(t.Context(), "task-1", missing, nil),
+		"a nonexistent source would make Docker reject container creation")
+}
+
+func TestToolchainMountsSkipsEmptyCompatClientPath(t *testing.T) {
+	assert.Empty(t, toolchainMounts(t.Context(), "task-1", "", nil))
+}
+
+func TestToolchainMountsDoesNotDuplicateCompatClientPathMatchingToolchainDir(t *testing.T) {
+	compatPath := t.TempDir()
+
+	original := containerToolchainDirs
+	t.Cleanup(func() { containerToolchainDirs = original })
+	containerToolchainDirs = []string{compatPath}
+
+	mounts := toolchainMounts(t.Context(), "task-1", compatPath, nil)
+
+	require.Len(t, mounts, 1, "the same source should not be mounted twice")
+}
+
+func TestEnsureContainerPassesCompatClientMount(t *testing.T) {
+	ctx := t.Context()
+	compatPath := filepath.Join(t.TempDir(), "evergreen")
+	require.NoError(t, os.WriteFile(compatPath, []byte("client"), 0755))
+
+	a := agentForContainerTest()
+	a.opts.CompatClientPath = compatPath
+	var gotConfig agentcontainer.Config
+	a.containerFactory = func(_ context.Context, cfg agentcontainer.Config) (ContainerHandle, error) {
+		gotConfig = cfg
+		return &fakeContainer{id: "newid", name: "evergreen-task-new", envFileHostDir: "/tmp/env-new"}, nil
+	}
+	conf := &internal.TaskConfig{
+		Distro: makeDistroWithIsolation("ubuntu:22.04"),
+		Task:   task.Task{Id: "task-1"},
+	}
+
+	err := a.ensureContainer(ctx, conf, nil)
+	require.NoError(t, err)
+
+	var found bool
+	for _, mount := range gotConfig.ExtraMounts {
+		if mount.Source == compatPath {
+			found = true
+			assert.Equal(t, compatPath, mount.Target)
+			assert.True(t, mount.ReadOnly)
+		}
+	}
+	assert.True(t, found, "compat client path should be mounted into the isolation container")
 }
 
 func TestSecureContainerDirs(t *testing.T) {
