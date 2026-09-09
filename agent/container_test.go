@@ -122,6 +122,41 @@ func TestKillProcsContainerRouting(t *testing.T) {
 	})
 }
 
+// TestKillProcsIsolationDistroWithoutContainerSkipsHostKill verifies the
+// host-wide pkill never runs on an isolated distro without a container.
+func TestKillProcsIsolationDistroWithoutContainerSkipsHostKill(t *testing.T) {
+	ctx := t.Context()
+	a := agentForKillTest()
+	sender := send.MakeInternalLogger()
+
+	tc := &taskContext{
+		task:   client.TaskData{ID: "test-task-1"},
+		logger: client.NewSingleChannelLogHarness("test", sender),
+		taskConfig: &internal.TaskConfig{
+			WorkDir: t.TempDir(),
+			Distro: &apimodels.DistroView{
+				ExecUser:           "evg-task-user",
+				ContainerIsolation: &apimodels.ContainerIsolationSettings{Image: "ubuntu:22.04"},
+			},
+		},
+	}
+
+	require.NoError(t, a.killProcs(ctx, tc, true, "test"))
+	var messages []string
+	for {
+		msg, ok := sender.GetMessageSafe()
+		if !ok {
+			break
+		}
+		messages = append(messages, msg.Message.String())
+	}
+	joined := strings.Join(messages, "\n")
+	assert.Contains(t, joined, "Skipping process cleanup",
+		"the host-wide pkill must be skipped on an isolated distro with no container")
+	assert.NotContains(t, joined, "Cleaned up processes",
+		"the host-side kill must not run on an isolated distro with no container")
+}
+
 func makeSnapshotTC(expansions map[string]string, redacted []string, secrets map[string]string) *taskContext {
 	exp := util.Expansions{}
 	maps.Copy(exp, expansions)
