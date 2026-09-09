@@ -63,6 +63,11 @@ type BuildVariantOptions struct {
 	Variants                   []string `json:"variants,omitempty"`
 }
 
+type ChildPatchAlias struct {
+	Alias   string `json:"alias"`
+	PatchID string `json:"patchId"`
+}
+
 // CreateDistroInput is the input to the createDistro mutation.
 type CreateDistroInput struct {
 	NewDistroID      string `json:"newDistroId"`

@@ -24,16 +24,13 @@ func (r *patchResolver) ID(ctx context.Context, obj *patch.Patch) (string, error
 }
 
 // ChildPatchAliases is the resolver for the childPatchAliases field.
-func (r *patchResolver) ChildPatchAliases(ctx context.Context, obj *patch.Patch) ([]*restModel.APIChildPatchAlias, error) {
-	if len(obj.Triggers.ChildPatches) == 0 || len(obj.Triggers.Aliases) == 0 {
-		return []*restModel.APIChildPatchAlias{}, nil
-	}
-	result := make([]*restModel.APIChildPatchAlias, 0, len(obj.Triggers.ChildPatches))
+func (r *patchResolver) ChildPatchAliases(ctx context.Context, obj *patch.Patch) ([]*ChildPatchAlias, error) {
+	result := make([]*ChildPatchAlias, 0, len(obj.Triggers.ChildPatches))
 	for i, childPatchID := range obj.Triggers.ChildPatches {
 		if i < len(obj.Triggers.Aliases) {
-			result = append(result, &restModel.APIChildPatchAlias{
-				Alias:   utility.ToStringPtr(obj.Triggers.Aliases[i]),
-				PatchID: utility.ToStringPtr(childPatchID),
+			result = append(result, &ChildPatchAlias{
+				Alias:   obj.Triggers.Aliases[i],
+				PatchID: childPatchID,
 			})
 		}
 	}
@@ -106,25 +103,6 @@ func (r *patchResolver) GeneratedTaskCounts(ctx context.Context, obj *patch.Patc
 		}
 	}
 	return res, nil
-}
-
-// GithubPatchData is the resolver for the githubPatchData field.
-func (r *patchResolver) GithubPatchData(ctx context.Context, obj *patch.Patch) (*restModel.APIGithubPatch, error) {
-	apiGithubPatch := &restModel.APIGithubPatch{}
-	apiGithubPatch.BuildFromService(obj.GithubPatchData)
-	return apiGithubPatch, nil
-}
-
-// IncludedLocalModules is the resolver for the includedLocalModules field.
-func (r *patchResolver) IncludedLocalModules(ctx context.Context, obj *patch.Patch) ([]*restModel.APILocalModuleInclude, error) {
-	result := make([]*restModel.APILocalModuleInclude, 0, len(obj.LocalModuleIncludes))
-	for _, module := range obj.LocalModuleIncludes {
-		result = append(result, &restModel.APILocalModuleInclude{
-			Module:   module.Module,
-			FileName: module.FileName,
-		})
-	}
-	return result, nil
 }
 
 // InvalidatedByUpstream is the resolver for the invalidatedByUpstream field.
