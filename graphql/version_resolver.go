@@ -40,9 +40,9 @@ func (r *versionResolver) BaseVersion(ctx context.Context, obj *model.Version) (
 // BuildVariants is the resolver for the buildVariants field.
 func (r *versionResolver) BuildVariants(ctx context.Context, obj *model.Version, options BuildVariantOptions) ([]*GroupedBuildVariant, error) {
 	versionID := obj.Id
-	// If activated is nil in the db we should resolve it and cache it for subsequent queries. There is a very low likely hood of this field being hit
+	// If activated is nil in the db, we should resolve it and cache it for subsequent queries. There is a very low likelihood of this field being hit.
 	if obj.Activated == nil {
-		version, err := model.VersionFindOneIdWithBuildVariants(ctx, versionID)
+		version, err := loaders.GetVersion(ctx, versionID)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionID, err.Error()))
 		}
@@ -186,7 +186,7 @@ func (r *versionResolver) ExternalLinksForMetadata(ctx context.Context, obj *mod
 // GeneratedTaskCounts is the resolver for the generatedTaskCounts field.
 func (r *versionResolver) GeneratedTaskCounts(ctx context.Context, obj *model.Version) ([]*GeneratedTaskCountResults, error) {
 	versionID := obj.Id
-	v, err := model.VersionFindOneId(ctx, versionID)
+	v, err := loaders.GetVersion(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}
@@ -297,7 +297,7 @@ func (r *versionResolver) QuarantinedTestsSkippedCount(ctx context.Context, obj 
 // Status is the resolver for the status field.
 func (r *versionResolver) Status(ctx context.Context, obj *model.Version) (string, error) {
 	versionID := obj.Id
-	v, err := model.VersionFindOneId(ctx, versionID)
+	v, err := loaders.GetVersion(ctx, versionID)
 	if err != nil {
 		return "", InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}
@@ -564,7 +564,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *model.Versio
 	}
 
 	versionID := obj.Id
-	v, err := model.VersionFindOneId(ctx, versionID)
+	v, err := loaders.GetVersion(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}
@@ -605,7 +605,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *model.Versio
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("upstream build '%s' not found", v.TriggerID))
 		}
 
-		upstreamVersion, err := model.VersionFindOneIdWithBuildVariants(ctx, upstreamBuild.Version)
+		upstreamVersion, err := loaders.GetVersion(ctx, upstreamBuild.Version)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching upstream version '%s': %s", upstreamBuild.Version, err.Error()))
 		}
@@ -648,7 +648,7 @@ func (r *versionResolver) User(ctx context.Context, obj *model.Version) (*user.D
 // VersionTiming is the resolver for the versionTiming field.
 func (r *versionResolver) VersionTiming(ctx context.Context, obj *model.Version) (*VersionTiming, error) {
 	versionID := obj.Id
-	v, err := model.VersionFindOneId(ctx, versionID)
+	v, err := loaders.GetVersion(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}
