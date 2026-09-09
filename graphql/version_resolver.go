@@ -39,25 +39,12 @@ func (r *versionResolver) BaseVersion(ctx context.Context, obj *model.Version) (
 
 // BuildVariants is the resolver for the buildVariants field.
 func (r *versionResolver) BuildVariants(ctx context.Context, obj *model.Version, options BuildVariantOptions) ([]*GroupedBuildVariant, error) {
-	versionID := obj.Id
-	// If activated is nil in the db, we should resolve it and cache it for subsequent queries. There is a very low likelihood of this field being hit.
-	if obj.Activated == nil {
-		version, err := loaders.GetVersion(ctx, versionID)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionID, err.Error()))
-		}
-		if err = setVersionActivationStatus(ctx, version); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting version activation status for version '%s': %s", versionID, err.Error()))
-		}
-		obj.Activated = version.Activated
-	}
-
 	if evergreen.IsPatchRequester(obj.Requester) && !utility.FromBoolPtr(obj.Activated) {
 		return nil, nil
 	}
-	groupedBuildVariants, err := generateBuildVariants(ctx, versionID, options, obj.Requester, r.sc.GetURL())
+	groupedBuildVariants, err := generateBuildVariants(ctx, obj.Id, options, obj.Requester, r.sc.GetURL())
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("generating build variants for version '%s': %s", versionID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("generating build variants for version '%s': %s", obj.Id, err.Error()))
 	}
 	return groupedBuildVariants, nil
 }
@@ -185,22 +172,13 @@ func (r *versionResolver) ExternalLinksForMetadata(ctx context.Context, obj *mod
 
 // GeneratedTaskCounts is the resolver for the generatedTaskCounts field.
 func (r *versionResolver) GeneratedTaskCounts(ctx context.Context, obj *model.Version) ([]*GeneratedTaskCountResults, error) {
-	versionID := obj.Id
-	v, err := loaders.GetVersion(ctx, versionID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
-	}
-	if v == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
-	}
-
 	var res []*GeneratedTaskCountResults
 	versionGeneratorTasks, err := task.Find(ctx, bson.M{
-		task.VersionKey:      versionID,
+		task.VersionKey:      obj.Id,
 		task.GenerateTaskKey: true,
 	})
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding generator tasks from version '%s': %s", versionID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding generator tasks from version '%s': %s", obj.Id, err.Error()))
 	}
 	for _, generatorTask := range versionGeneratorTasks {
 		res = append(res, &GeneratedTaskCountResults{
@@ -296,15 +274,7 @@ func (r *versionResolver) QuarantinedTestsSkippedCount(ctx context.Context, obj 
 
 // Status is the resolver for the status field.
 func (r *versionResolver) Status(ctx context.Context, obj *model.Version) (string, error) {
-	versionID := obj.Id
-	v, err := loaders.GetVersion(ctx, versionID)
-	if err != nil {
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
-	}
-	if v == nil {
-		return "", ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
-	}
-	return getDisplayStatus(ctx, v)
+	return getDisplayStatus(ctx, obj)
 }
 
 // TaskCount is the resolver for the taskCount field.
@@ -563,27 +533,19 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *model.Versio
 		return nil, nil
 	}
 
-	versionID := obj.Id
-	v, err := loaders.GetVersion(ctx, versionID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
-	}
-	if v == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
-	}
-	if v.TriggerID == "" || v.TriggerType == "" {
+	if obj.TriggerID == "" || obj.TriggerType == "" {
 		return nil, nil
 	}
 
 	var projectID string
 	var upstreamProject *UpstreamProject
-	if v.TriggerType == model.ProjectTriggerLevelTask {
-		upstreamTask, err := task.FindOneId(ctx, v.TriggerID)
+	if obj.TriggerType == model.ProjectTriggerLevelTask {
+		upstreamTask, err := task.FindOneId(ctx, obj.TriggerID)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching upstream task '%s': %s", v.TriggerID, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching upstream task '%s': %s", obj.TriggerID, err.Error()))
 		}
 		if upstreamTask == nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("upstream task '%s' not found", v.TriggerID))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("upstream task '%s' not found", obj.TriggerID))
 		}
 
 		apiTask := restModel.APITask{}
@@ -596,13 +558,13 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *model.Versio
 			Revision: upstreamTask.Revision,
 			Task:     &apiTask,
 		}
-	} else if v.TriggerType == model.ProjectTriggerLevelBuild {
-		upstreamBuild, err := build.FindOneId(ctx, v.TriggerID)
+	} else if obj.TriggerType == model.ProjectTriggerLevelBuild {
+		upstreamBuild, err := build.FindOneId(ctx, obj.TriggerID)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching upstream build '%s': %s", v.TriggerID, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching upstream build '%s': %s", obj.TriggerID, err.Error()))
 		}
 		if upstreamBuild == nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("upstream build '%s' not found", v.TriggerID))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("upstream build '%s' not found", obj.TriggerID))
 		}
 
 		upstreamVersion, err := loaders.GetVersion(ctx, upstreamBuild.Version)
@@ -618,10 +580,10 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *model.Versio
 			Revision: upstreamBuild.Revision,
 			Version:  upstreamVersion,
 		}
-	} else if v.TriggerType == model.ProjectTriggerLevelPush {
-		projectID = v.TriggerID
+	} else if obj.TriggerType == model.ProjectTriggerLevelPush {
+		projectID = obj.TriggerID
 		upstreamProject = &UpstreamProject{
-			Revision: v.TriggerSHA,
+			Revision: obj.TriggerSHA,
 		}
 	}
 	upstreamProjectRef, err := model.FindBranchProjectRefSecondary(ctx, projectID)
@@ -635,8 +597,8 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *model.Versio
 	upstreamProject.Owner = upstreamProjectRef.Owner
 	upstreamProject.Repo = upstreamProjectRef.Repo
 	upstreamProject.Project = upstreamProjectRef.Identifier
-	upstreamProject.TriggerID = v.TriggerID
-	upstreamProject.TriggerType = v.TriggerType
+	upstreamProject.TriggerID = obj.TriggerID
+	upstreamProject.TriggerType = obj.TriggerType
 	return upstreamProject, nil
 }
 
@@ -647,17 +609,9 @@ func (r *versionResolver) User(ctx context.Context, obj *model.Version) (*user.D
 
 // VersionTiming is the resolver for the versionTiming field.
 func (r *versionResolver) VersionTiming(ctx context.Context, obj *model.Version) (*VersionTiming, error) {
-	versionID := obj.Id
-	v, err := loaders.GetVersion(ctx, versionID)
+	timeTaken, makespan, err := obj.GetTimeSpent(ctx)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
-	}
-	if v == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
-	}
-	timeTaken, makespan, err := v.GetTimeSpent(ctx)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting timing for version '%s': %s", versionID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting timing for version '%s': %s", obj.Id, err.Error()))
 	}
 	// return nil if rounded timeTaken/makespan == 0s
 	t := timeTaken.Round(time.Second)

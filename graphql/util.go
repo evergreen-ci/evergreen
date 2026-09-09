@@ -500,20 +500,6 @@ func applyVolumeOptions(ctx context.Context, volume host.Volume, volumeOptions r
 	return nil
 }
 
-func setVersionActivationStatus(ctx context.Context, version *model.Version) error {
-	defaultSort := []task.TasksSortOrder{
-		{Key: task.DisplayNameKey, Order: 1},
-	}
-	opts := task.GetTasksByVersionOptions{
-		Sorts: defaultSort,
-	}
-	tasks, _, err := task.GetTasksByVersion(ctx, version.Id, opts)
-	if err != nil {
-		return errors.Wrapf(err, "getting tasks for version '%s'", version.Id)
-	}
-	return errors.Wrapf(version.SetActivated(ctx, task.AnyActiveTasks(tasks)), "updating version activated status for '%s'", version.Id)
-}
-
 func isPopulated(buildVariantOptions *BuildVariantOptions) bool {
 	if buildVariantOptions == nil {
 		return false
