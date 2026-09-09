@@ -29,6 +29,7 @@ type ApiByFoliageLogicApiOwnerByFoliageLogicTaskIdGetRequest struct {
 	taskId string
 	testFileName *string
 	offendingVersionId *string
+	maxTestFiles *int32
 }
 
 func (r ApiByFoliageLogicApiOwnerByFoliageLogicTaskIdGetRequest) TestFileName(testFileName string) ApiByFoliageLogicApiOwnerByFoliageLogicTaskIdGetRequest {
@@ -38,6 +39,11 @@ func (r ApiByFoliageLogicApiOwnerByFoliageLogicTaskIdGetRequest) TestFileName(te
 
 func (r ApiByFoliageLogicApiOwnerByFoliageLogicTaskIdGetRequest) OffendingVersionId(offendingVersionId string) ApiByFoliageLogicApiOwnerByFoliageLogicTaskIdGetRequest {
 	r.offendingVersionId = &offendingVersionId
+	return r
+}
+
+func (r ApiByFoliageLogicApiOwnerByFoliageLogicTaskIdGetRequest) MaxTestFiles(maxTestFiles int32) ApiByFoliageLogicApiOwnerByFoliageLogicTaskIdGetRequest {
+	r.maxTestFiles = &maxTestFiles
 	return r
 }
 
@@ -53,6 +59,11 @@ Get the owner of a task by foliage logic.
 :param task_id: The task id.
 :param test_file_name: The test file name.
 :param offending_version_id: The offending version id.
+:param max_test_files: How many of the task's failing tests to attribute ownership
+       by. 0, the default, disables assignment by test file path, so a caller only
+       opts in to it by asking. 1 considers a single test: test_file_name if given,
+       otherwise the task's first failing test. Higher values consider up to that
+       many failing tests and take the team owning most of them.
 :return: The owning team data according to the foliage logic.
 
  @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
@@ -68,7 +79,7 @@ func (a *OwnerAPIService) ByFoliageLogicApiOwnerByFoliageLogicTaskIdGet(ctx cont
 }
 
 // Execute executes the request
-//	@return	FinalAssignmentResults
+//  @return FinalAssignmentResults
 func (a *OwnerAPIService) ByFoliageLogicApiOwnerByFoliageLogicTaskIdGetExecute(r ApiByFoliageLogicApiOwnerByFoliageLogicTaskIdGetRequest) (*FinalAssignmentResults, *http.Response, error) {
 	var (
 		localVarHTTPMethod   = http.MethodGet
@@ -94,6 +105,13 @@ func (a *OwnerAPIService) ByFoliageLogicApiOwnerByFoliageLogicTaskIdGetExecute(r
 	}
 	if r.offendingVersionId != nil {
 		parameterAddToHeaderOrQuery(localVarQueryParams, "offending_version_id", r.offendingVersionId, "form", "")
+	}
+	if r.maxTestFiles != nil {
+		parameterAddToHeaderOrQuery(localVarQueryParams, "max_test_files", r.maxTestFiles, "form", "")
+	} else {
+		var defaultValue int32 = 0
+		parameterAddToHeaderOrQuery(localVarQueryParams, "max_test_files", defaultValue, "form", "")
+		r.maxTestFiles = &defaultValue
 	}
 	// to determine the Content-Type header
 	localVarHTTPContentTypes := []string{}
@@ -197,7 +215,7 @@ func (a *OwnerAPIService) ByJiraKeyApiOwnerByJiraKeyJiraKeyGet(ctx context.Conte
 }
 
 // Execute executes the request
-//	@return	TeamDataWithOwner
+//  @return TeamDataWithOwner
 func (a *OwnerAPIService) ByJiraKeyApiOwnerByJiraKeyJiraKeyGetExecute(r ApiByJiraKeyApiOwnerByJiraKeyJiraKeyGetRequest) (*TeamDataWithOwner, *http.Response, error) {
 	var (
 		localVarHTTPMethod   = http.MethodGet
@@ -291,7 +309,7 @@ type ApiGetRegexMappingApiOwnerRegexByProjectProjectIdGetRequest struct {
 	projectId string
 }
 
-func (r ApiGetRegexMappingApiOwnerRegexByProjectProjectIdGetRequest) Execute() (*map[string]GetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue, *http.Response, error) {
+func (r ApiGetRegexMappingApiOwnerRegexByProjectProjectIdGetRequest) Execute() (*map[string]*TeamData, *http.Response, error) {
 	return r.ApiService.GetRegexMappingApiOwnerRegexByProjectProjectIdGetExecute(r)
 }
 
@@ -316,13 +334,13 @@ func (a *OwnerAPIService) GetRegexMappingApiOwnerRegexByProjectProjectIdGet(ctx 
 }
 
 // Execute executes the request
-//	@return	map[string]GetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue
-func (a *OwnerAPIService) GetRegexMappingApiOwnerRegexByProjectProjectIdGetExecute(r ApiGetRegexMappingApiOwnerRegexByProjectProjectIdGetRequest) (*map[string]GetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue, *http.Response, error) {
+//  @return map[string]*TeamData
+func (a *OwnerAPIService) GetRegexMappingApiOwnerRegexByProjectProjectIdGetExecute(r ApiGetRegexMappingApiOwnerRegexByProjectProjectIdGetRequest) (*map[string]*TeamData, *http.Response, error) {
 	var (
 		localVarHTTPMethod   = http.MethodGet
 		localVarPostBody     interface{}
 		formFiles            []formFile
-		localVarReturnValue  *map[string]GetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue
+		localVarReturnValue  *map[string]*TeamData
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "OwnerAPIService.GetRegexMappingApiOwnerRegexByProjectProjectIdGet")

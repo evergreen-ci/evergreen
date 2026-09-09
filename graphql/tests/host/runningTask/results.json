@@ -5,10 +5,7 @@
       "result": {
         "data": {
           "host": {
-            "runningTask": {
-              "id": null,
-              "name": null
-            }
+            "runningTask": null
           }
         }
       }

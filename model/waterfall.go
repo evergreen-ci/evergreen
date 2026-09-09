@@ -59,6 +59,31 @@ type WaterfallOptions struct {
 	VariantCaseSensitive bool     `bson:"-" json:"-"`
 }
 
+func addWaterfallTaskFilters(match bson.M, opts WaterfallOptions) {
+	if len(opts.Statuses) > 0 {
+		match[task.DisplayStatusCacheKey] = bson.M{"$in": opts.Statuses}
+	}
+	if len(opts.Tasks) > 0 {
+		taskNamesAsRegex := strings.Join(opts.Tasks, "|")
+		match[task.DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex}
+		if !opts.TaskCaseSensitive {
+			match[task.DisplayNameKey].(bson.M)["$options"] = "i"
+		}
+	}
+	if len(opts.Variants) > 0 {
+		variantsAsRegex := strings.Join(opts.Variants, "|")
+		variantMatch := []bson.M{
+			{task.BuildVariantKey: bson.M{"$regex": variantsAsRegex}},
+			{task.BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex}},
+		}
+		if !opts.VariantCaseSensitive {
+			variantMatch[0][task.BuildVariantKey].(bson.M)["$options"] = "i"
+			variantMatch[1][task.BuildVariantDisplayNameKey].(bson.M)["$options"] = "i"
+		}
+		match["$and"] = []bson.M{{"$or": variantMatch}}
+	}
+}
+
 const (
 	minRevisionLength = 7
 )
@@ -138,34 +163,7 @@ func GetActiveVersionsByTaskFilters(ctx context.Context, projectId string, opts 
 	}
 	match[task.RevisionOrderNumberKey] = revisionFilter
 
-	if len(opts.Statuses) > 0 {
-		match[task.DisplayStatusCacheKey] = bson.M{"$in": opts.Statuses}
-	}
-
-	if len(opts.Tasks) > 0 {
-		taskNamesAsRegex := strings.Join(opts.Tasks, "|")
-		if opts.TaskCaseSensitive {
-			match[task.DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex}
-		} else {
-			match[task.DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
-		}
-
-	}
-
-	if len(opts.Variants) > 0 {
-		variantsAsRegex := strings.Join(opts.Variants, "|")
-		if opts.VariantCaseSensitive {
-			match["$or"] = []bson.M{
-				{task.BuildVariantKey: bson.M{"$regex": variantsAsRegex}},
-				{task.BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex}},
-			}
-		} else {
-			match["$or"] = []bson.M{
-				{task.BuildVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
-				{task.BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
-			}
-		}
-	}
+	addWaterfallTaskFilters(match, opts)
 
 	pipeline := []bson.M{{"$match": match}}
 
@@ -340,10 +338,10 @@ func GetAllWaterfallVersions(ctx context.Context, projectId string, minOrder int
 // GetVersionBuilds returns a list of builds with populated tasks for the given version.
 // Tasks are grouped by display task when applicable - execution tasks are shown under their
 // parent display task, while regular tasks (not part of a display task) are shown individually.
-func GetVersionBuilds(ctx context.Context, versionID string, buildIds []string) ([]*WaterfallBuild, error) {
+func GetVersionBuilds(ctx context.Context, version Version, opts WaterfallOptions) ([]*WaterfallBuild, error) {
 	ctx = utility.ContextWithAppendedAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetVersionBuilds")})
 
-	if len(buildIds) == 0 {
+	if len(version.BuildIds) == 0 {
 		return []*WaterfallBuild{}, nil
 	}
 
@@ -352,8 +350,8 @@ func GetVersionBuilds(ctx context.Context, versionID string, buildIds []string) 
 	// 2. Regular tasks that are not part of a display task (DisplayTaskId is empty or doesn't exist)
 	// This excludes execution tasks that are part of a display task.
 	match := bson.M{
-		task.VersionKey:   versionID,
-		task.BuildIdKey:   bson.M{"$in": buildIds},
+		task.VersionKey:   version.Id,
+		task.BuildIdKey:   bson.M{"$in": version.BuildIds},
 		task.RequesterKey: bson.M{"$in": evergreen.SystemVersionRequesterTypes},
 		"$or": []bson.M{
 			{task.DisplayOnlyKey: true},
@@ -361,6 +359,8 @@ func GetVersionBuilds(ctx context.Context, versionID string, buildIds []string) 
 			{task.DisplayTaskIdKey: ""},
 		},
 	}
+
+	addWaterfallTaskFilters(match, opts)
 
 	pipeline := []bson.M{
 		{"$match": match},
@@ -405,7 +405,12 @@ func GetVersionBuilds(ctx context.Context, versionID string, buildIds []string) 
 			},
 		},
 		{"$unwind": "$build"},
-		{
+	}
+	if opts.OmitInactiveBuilds {
+		pipeline = append(pipeline, bson.M{"$match": bson.M{"build." + build.ActivatedKey: true}})
+	}
+	pipeline = append(pipeline,
+		bson.M{
 			"$project": bson.M{
 				"_id":           "$build." + build.IdKey,
 				"activated":     "$build." + build.ActivatedKey,
@@ -415,8 +420,8 @@ func GetVersionBuilds(ctx context.Context, versionID string, buildIds []string) 
 				"tasks":         1,
 			},
 		},
-		{"$sort": bson.M{"display_name": 1}},
-	}
+		bson.M{"$sort": bson.M{"display_name": 1}},
+	)
 
 	res := []*WaterfallBuild{}
 	env := evergreen.GetEnvironment()

@@ -83,6 +83,15 @@ func SaveSubscriptions(ctx context.Context, owner string, subscriptions []restMo
 			}
 		}
 
+		// The run-child-patch subscriber is only ever created internally, from a
+		// verified parent/child trigger relationship.
+		if dbSubscription.Subscriber.Type == event.RunChildPatchSubscriberType {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    fmt.Sprintf("subscriber type '%s' is reserved for internal use", event.RunChildPatchSubscriberType),
+			}
+		}
+
 		if !trigger.ValidateTrigger(dbSubscription.ResourceType, dbSubscription.Trigger) {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,

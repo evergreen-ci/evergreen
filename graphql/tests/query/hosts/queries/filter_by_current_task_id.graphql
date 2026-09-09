@@ -6,7 +6,9 @@ query {
     totalHostsCount
     hosts {
       id
-      distroId
+      distro {
+        id
+      }
       status
       startedBy
       hostUrl

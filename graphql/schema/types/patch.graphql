@@ -68,13 +68,10 @@ type Patch {
   id: ID!
   activated: Boolean!
   alias: String
-  aliases: [String!]
-  childPatchAliases: [ChildPatchAlias!]
-  childPatches: [Patch!]
-  """
-  Aggregated actual cost for the patch's version, when cost data exists.
-  """
-  cost: Cost
+  aliases: [String!]!
+  buildVariants: [String!]!
+  childPatchAliases: [ChildPatchAlias!]!
+  childPatches: [Patch!]!
   createTime: Time
   description: String!
   generatedTaskCounts: [GeneratedTaskCountResults!]!
@@ -88,19 +85,12 @@ type Patch {
   parameters: [Parameter!]!
   patchNumber: Int!
   patchTriggerAliases: [PatchTriggerAlias!]!
-  """
-  Aggregated predicted cost for the patch's version.
-  """
-  predictedCost: Cost
   project: PatchProject
   projectMetadata: Project
   status: String!
-  taskCount: Int
   tasks: [String!]!
-  time: PatchTime
   user: User!
-  variants: [String!]!
-  variantsTasks: [VariantTask!]!
+  variantsTasks: [VariantTask!]! # Variants and tasks that have been selected to run i.e. these are configured and scheduled to run. TODO: Make another field with a better name.
   version: VersionLite
 }
 
@@ -141,7 +131,7 @@ type TaskSpecifier {
 }
 
 type PatchProject {
-  variants: [ProjectBuildVariant!]!
+  variants: [ProjectBuildVariant!]! # All possible variants and tasks that can be selected to run. TODO: Make another field with a better name.
 }
 
 type ProjectBuildVariant {

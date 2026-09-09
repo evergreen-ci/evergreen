@@ -80,6 +80,9 @@ func (s *patchSuite) SetupTest() {
 		Status:     evergreen.VersionCreated,
 		StartTime:  startTime,
 		FinishTime: startTime.Add(10 * time.Minute),
+		Triggers: patch.TriggerInfo{
+			ParentPatch: patchID.Hex(),
+		},
 		GithubPatchData: thirdparty.GithubPatch{
 			BaseOwner: "evergreen-ci",
 			BaseRepo:  "evergreen",
@@ -294,6 +297,54 @@ func (s *patchSuite) TestRunChildrenOnPatchOutcome() {
 	s.Contains(err.Error(), "finalizing child patch")
 	s.Nil(n)
 
+}
+
+func (s *patchSuite) TestRunChildrenOnPatchOutcomeWithUnrelatedTargetShouldError() {
+	for testName, targetPatch := range map[string]patch.Patch{
+		// An external PR patch that was never finalized, so it has no version.
+		"UnfinalizedPatchWithNoParent": {
+			Id:      mgobson.NewObjectId(),
+			Project: "test",
+			Author:  "someone",
+			Status:  evergreen.VersionCreated,
+		},
+		"ChildOfADifferentParent": {
+			Id:      mgobson.NewObjectId(),
+			Project: "test",
+			Author:  "someone",
+			Status:  evergreen.VersionCreated,
+			Triggers: patch.TriggerInfo{
+				ParentPatch: mgobson.NewObjectId().Hex(),
+			},
+		},
+	} {
+		s.Run(testName, func() {
+			s.NoError(targetPatch.Insert(s.ctx))
+
+			// A parent status of "*" matches any outcome of the event's patch.
+			sub := event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerOutcome, s.event.ResourceId, event.Subscriber{
+				Type: event.RunChildPatchSubscriberType,
+				Target: &event.ChildPatchSubscriber{
+					ParentStatus: "*",
+					ChildPatchId: targetPatch.Id.Hex(),
+					Requester:    evergreen.TriggerRequester,
+				},
+			})
+			s.NoError(sub.Upsert(s.ctx))
+
+			s.data.Status = evergreen.VersionSucceeded
+			n, err := s.t.patchOutcome(s.ctx, &sub)
+			s.Require().Error(err)
+			s.Contains(err.Error(), "is not a child of")
+			s.Nil(n)
+
+			// The target patch must not have been finalized.
+			dbPatch, err := patch.FindOneId(s.ctx, targetPatch.Id.Hex())
+			s.NoError(err)
+			s.Require().NotNil(dbPatch)
+			s.Empty(dbPatch.Version)
+		})
+	}
 }
 
 func (s *patchSuite) TestPatchFamilyOutcomeWithAbortedPatch() {

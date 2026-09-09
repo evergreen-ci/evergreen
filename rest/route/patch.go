@@ -619,10 +619,14 @@ type patchTasks struct {
 	// Required, these are the variants and tasks that the patch should run.
 	// For an already-scheduled patch, any new tasks in this array will be
 	// created and any existing tasks not in this array will be unscheduled.
-	Variants []variant `json:"variants"`
+	Variants []patchVariant `json:"variants"`
 }
 
-type variant struct {
+// patchVariant is named for the route it serves rather than just "variant"
+// because it appears in the generated OpenAPI spec alongside versionVariant.
+// Names that differ only by case collide when clients are generated from the
+// spec, silently dropping endpoints. See DEVPROD-42404.
+type patchVariant struct {
 	Id    string   `json:"id"`
 	Tasks []string `json:"tasks"`
 }

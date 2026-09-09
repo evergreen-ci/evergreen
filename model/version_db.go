@@ -68,6 +68,11 @@ func VersionById(id string) db.Q {
 	return db.Query(bson.M{VersionIdKey: id})
 }
 
+// VersionByIds returns a db.Q object which will filter on {_id : {$in : <ids>}}.
+func VersionByIds(ids []string) db.Q {
+	return db.Query(bson.M{VersionIdKey: bson.M{"$in": ids}})
+}
+
 // All is a query for all versions.
 var VersionAll = db.Query(bson.D{})
 

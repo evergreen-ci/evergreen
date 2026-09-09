@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	model1 "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/model"
 )
 
@@ -60,6 +61,11 @@ type BuildVariantOptions struct {
 	Statuses                   []string `json:"statuses,omitempty"`
 	Tasks                      []string `json:"tasks,omitempty"`
 	Variants                   []string `json:"variants,omitempty"`
+}
+
+type ChildPatchAlias struct {
+	Alias   string `json:"alias"`
+	PatchID string `json:"patchId"`
 }
 
 // CreateDistroInput is the input to the createDistro mutation.
@@ -225,9 +231,9 @@ type HostEventsInput struct {
 // HostsResponse is the return value for the hosts query.
 // It contains an array of Hosts matching the filter conditions, as well as some count information.
 type HostsResponse struct {
-	FilteredHostsCount *int             `json:"filteredHostsCount,omitempty"`
-	Hosts              []*model.APIHost `json:"hosts"`
-	TotalHostsCount    int              `json:"totalHostsCount"`
+	FilteredHostsCount *int         `json:"filteredHostsCount,omitempty"`
+	Hosts              []*host.Host `json:"hosts"`
+	TotalHostsCount    int          `json:"totalHostsCount"`
 }
 
 type ImageEventsPayload struct {
@@ -345,8 +351,8 @@ type PatchTime struct {
 // Patches is the return value of the patches field for the User and Project types.
 // It contains an array Patches for either an individual user or a project.
 type Patches struct {
-	FilteredPatchCount int               `json:"filteredPatchCount"`
-	Patches            []*model.APIPatch `json:"patches"`
+	FilteredPatchCount int            `json:"filteredPatchCount"`
+	Patches            []*patch.Patch `json:"patches"`
 }
 
 // PatchesInput is the input value to the patches field for the User and Project types.
@@ -589,6 +595,11 @@ type TaskHistoryPagination struct {
 	OldestTaskOrder     int `json:"oldestTaskOrder"`
 }
 
+type TaskInfo struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 // TaskLogs is the return value for the task.taskLogs query.
 // It contains the logs for a given task on a given execution.
 type TaskLogs struct {
@@ -761,8 +772,10 @@ type Waterfall struct {
 }
 
 type WaterfallOptions struct {
-	Date  *time.Time `json:"date,omitempty"`
-	Limit *int       `json:"limit,omitempty"`
+	Date *time.Time `json:"date,omitempty"`
+	// Return all builds and tasks for each matching version instead of applying the waterfall filters to them.
+	IncludeAllBuildsAndTasks *bool `json:"includeAllBuildsAndTasks,omitempty"`
+	Limit                    *int  `json:"limit,omitempty"`
 	// Return versions with an order greater than minOrder. Used for paginating backward.
 	MinOrder *int `json:"minOrder,omitempty"`
 	// Return versions with an order lower than maxOrder. Used for paginating forward.

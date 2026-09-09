@@ -1,0 +1,19 @@
+include:
+  - filename: testdata/cross_file_anchor_include.yml
+
+tasks:
+  - name: main-task
+    commands:
+      - &base-cmd
+        command: shell.exec
+        params:
+          script: ./run.sh
+
+buildvariants:
+  - name: bv
+    display_name: BV
+    run_on:
+      - rhel70
+    tasks:
+      - name: main-task
+      - name: include-task

@@ -50,7 +50,7 @@ func TestProjectPatchSuite(t *testing.T) {
 
 func (s *ProjectPatchByIDSuite) SetupTest() {
 	s.NoError(db.ClearCollections(serviceModel.RepoRefCollection, user.Collection, serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, fakeparameter.Collection, serviceModel.RepositoriesCollection, serviceModel.ProjectAliasCollection,
-		evergreen.ScopeCollection, evergreen.RoleCollection, evergreen.ConfigCollection))
+		evergreen.ScopeCollection, evergreen.RoleCollection, evergreen.ConfigCollection, event.EventCollection))
 	user := user.DBUser{
 		Id:          "langdon.alger",
 		SystemRoles: []string{"admin"},
@@ -511,6 +511,33 @@ func (s *ProjectPatchByIDSuite) TestRunEveryMainlineCommit() {
 	s.NoError(err)
 	s.NotNil(pRef.RunEveryMainlineCommit)
 	s.True(*pRef.RunEveryMainlineCommit)
+}
+
+func (s *ProjectPatchByIDSuite) TestEventLogCapturesOriginalProjectSettings() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
+
+	originalDisplayName := "Dimoxinil"
+
+	newDisplayName := "New Display Name"
+	jsonBody := []byte(fmt.Sprintf(`{"display_name": %q}`, newDisplayName))
+	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	err := s.rm.Parse(ctx, req)
+	s.NoError(err)
+
+	resp := s.rm.Run(ctx)
+	s.Require().Equal(http.StatusOK, resp.Status())
+
+	events, err := serviceModel.MostRecentProjectEvents(s.T().Context(), "dimoxinil", 1)
+	s.NoError(err)
+	s.Require().Len(events, 1)
+
+	eventData, ok := events[0].Data.(*serviceModel.ProjectChangeEvent)
+	s.Require().True(ok)
+	s.Equal(originalDisplayName, eventData.Before.ProjectRef.DisplayName, "before snapshot should have the original display name")
+	s.Equal(newDisplayName, eventData.After.ProjectRef.DisplayName, "after snapshot should have the new display name")
 }
 
 ////////////////////////////////////////////////////////////////////////

@@ -24,7 +24,7 @@ type TeamData struct {
 	TeamName string `json:"team_name"`
 	JiraProject string `json:"jira_project"`
 	SlackChannelId NullableString `json:"slack_channel_id"`
-	EvergreenTagName string `json:"evergreen_tag_name"`
+	EvergreenTagName NullableString `json:"evergreen_tag_name,omitempty"`
 	TriageTeamName NullableString `json:"triage_team_name,omitempty"`
 	SlackGroupId NullableString `json:"slack_group_id,omitempty"`
 	TriagedTeamNames []string `json:"triaged_team_names,omitempty"`
@@ -37,12 +37,11 @@ type _TeamData TeamData
 // This constructor will assign default values to properties that have it defined,
 // and makes sure properties required by API are set, but the set of arguments
 // will change when the set of required properties is changed
-func NewTeamData(teamName string, jiraProject string, slackChannelId NullableString, evergreenTagName string) *TeamData {
+func NewTeamData(teamName string, jiraProject string, slackChannelId NullableString) *TeamData {
 	this := TeamData{}
 	this.TeamName = teamName
 	this.JiraProject = jiraProject
 	this.SlackChannelId = slackChannelId
-	this.EvergreenTagName = evergreenTagName
 	return &this
 }
 
@@ -128,28 +127,46 @@ func (o *TeamData) SetSlackChannelId(v string) {
 	o.SlackChannelId.Set(&v)
 }
 
-// GetEvergreenTagName returns the EvergreenTagName field value
+// GetEvergreenTagName returns the EvergreenTagName field value if set, zero value otherwise (both if not set or set to explicit null).
 func (o *TeamData) GetEvergreenTagName() string {
-	if o == nil {
+	if o == nil || IsNil(o.EvergreenTagName.Get()) {
 		var ret string
 		return ret
 	}
-
-	return o.EvergreenTagName
+	return *o.EvergreenTagName.Get()
 }
 
-// GetEvergreenTagNameOk returns a tuple with the EvergreenTagName field value
+// GetEvergreenTagNameOk returns a tuple with the EvergreenTagName field value if set, nil otherwise
 // and a boolean to check if the value has been set.
+// NOTE: If the value is an explicit nil, `nil, true` will be returned
 func (o *TeamData) GetEvergreenTagNameOk() (*string, bool) {
 	if o == nil {
 		return nil, false
 	}
-	return &o.EvergreenTagName, true
+	return o.EvergreenTagName.Get(), o.EvergreenTagName.IsSet()
 }
 
-// SetEvergreenTagName sets field value
+// HasEvergreenTagName returns a boolean if a field has been set.
+func (o *TeamData) HasEvergreenTagName() bool {
+	if o != nil && o.EvergreenTagName.IsSet() {
+		return true
+	}
+
+	return false
+}
+
+// SetEvergreenTagName gets a reference to the given NullableString and assigns it to the EvergreenTagName field.
 func (o *TeamData) SetEvergreenTagName(v string) {
-	o.EvergreenTagName = v
+	o.EvergreenTagName.Set(&v)
+}
+// SetEvergreenTagNameNil sets the value for EvergreenTagName to be an explicit nil
+func (o *TeamData) SetEvergreenTagNameNil() {
+	o.EvergreenTagName.Set(nil)
+}
+
+// UnsetEvergreenTagName ensures that no value is present for EvergreenTagName, not even an explicit nil
+func (o *TeamData) UnsetEvergreenTagName() {
+	o.EvergreenTagName.Unset()
 }
 
 // GetTriageTeamName returns the TriageTeamName field value if set, zero value otherwise (both if not set or set to explicit null).
@@ -314,7 +331,9 @@ func (o TeamData) ToMap() (map[string]interface{}, error) {
 	toSerialize["team_name"] = o.TeamName
 	toSerialize["jira_project"] = o.JiraProject
 	toSerialize["slack_channel_id"] = o.SlackChannelId.Get()
-	toSerialize["evergreen_tag_name"] = o.EvergreenTagName
+	if o.EvergreenTagName.IsSet() {
+		toSerialize["evergreen_tag_name"] = o.EvergreenTagName.Get()
+	}
 	if o.TriageTeamName.IsSet() {
 		toSerialize["triage_team_name"] = o.TriageTeamName.Get()
 	}
@@ -338,7 +357,6 @@ func (o *TeamData) UnmarshalJSON(data []byte) (err error) {
 		"team_name",
 		"jira_project",
 		"slack_channel_id",
-		"evergreen_tag_name",
 	}
 
 	allProperties := make(map[string]interface{})

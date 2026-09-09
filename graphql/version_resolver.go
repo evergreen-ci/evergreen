@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/manifest"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -134,13 +135,34 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIV
 }
 
 // Cost is the field resolver for Version.cost. It applies RoundCost to all adjusted fields
-// so the GraphQL API returns clean values without floating-point noise.
+// so the GraphQL API returns clean values without floating-point noise. For patch versions
+// with child patches, it also includes the child patches' costs in the total.
 func (r *versionResolver) Cost(ctx context.Context, obj *restModel.APIVersion) (*cost.Cost, error) {
 	if obj.Cost == nil {
 		return nil, nil
 	}
+
+	// If the version is a patch requester, we need to include costs of its child patches.
+	childPatchesCost := float64(0)
+	if obj.IsPatchRequester() {
+		versionID := utility.FromStringPtr(obj.Id)
+		foundPatch, err := loaders.GetPatch(ctx, versionID)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s' for cost: %s", versionID, err.Error()), err)
+		}
+		if foundPatch != nil && len(foundPatch.Triggers.ChildPatches) > 0 {
+			childVersions, err := model.VersionFind(ctx, model.VersionByIds(foundPatch.Triggers.ChildPatches).WithFields(model.VersionCostKey))
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding child versions for cost: %s", err.Error()), err)
+			}
+			childPatchesCost, _ = cost.SumPerChildVersionAdjustedTotals(len(childVersions), func(i int) (actual, predicted *cost.Cost) {
+				return &childVersions[i].Cost, nil
+			})
+		}
+	}
 	rounded := obj.Cost.RoundedBase()
-	rounded.Total = cost.RoundCost(obj.Cost.AdjustedTotal())
+	rounded.ChildPatchesTotalCost = cost.RoundCost(childPatchesCost)
+	rounded.Total = cost.RoundCost(obj.Cost.AdjustedTotal() + childPatchesCost)
 	return &rounded, nil
 }
 
@@ -244,16 +266,16 @@ func (r *versionResolver) Manifest(ctx context.Context, obj *restModel.APIVersio
 }
 
 // Patch is the resolver for the patch field.
-func (r *versionResolver) Patch(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIPatch, error) {
+func (r *versionResolver) Patch(ctx context.Context, obj *restModel.APIVersion) (*patch.Patch, error) {
 	if !evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)) {
 		return nil, nil
 	}
 	patchID := utility.FromStringPtr(obj.Id)
-	apiPatch, err := data.FindPatchById(ctx, patchID)
+	p, err := loaders.GetPatch(ctx, patchID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", patchID, err.Error()))
 	}
-	return apiPatch, nil
+	return p, nil
 }
 
 // PreviousVersion is the resolver for the previousVersion field.
@@ -278,6 +300,17 @@ func (r *versionResolver) PreviousVersion(ctx context.Context, obj *restModel.AP
 func (r *versionResolver) ProjectMetadata(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIProjectRef, error) {
 	apiProjectRef, err := getAPIProjectRef(ctx, obj.Project)
 	return apiProjectRef, err
+}
+
+// QuarantinedTestsSkippedCount is the resolver for the quarantinedTestsSkippedCount field.
+func (r *versionResolver) QuarantinedTestsSkippedCount(ctx context.Context, obj *restModel.APIVersion) (int, error) {
+	versionID := utility.FromStringPtr(obj.Id)
+	count, err := task.GetQuarantinedTestsSkippedCountByVersion(ctx, versionID)
+	if err != nil {
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting TSS-skipped test count for version '%s': %s", versionID, err.Error()))
+	}
+
+	return count, nil
 }
 
 // Status is the resolver for the status field.
@@ -776,7 +809,8 @@ func (r *versionLiteResolver) WaterfallBuilds(ctx context.Context, obj *model.Ve
 		}
 	}
 
-	builds, err := model.GetVersionBuilds(ctx, versionID, obj.BuildIds)
+	opts := getWaterfallFilterOptionsFromContext(ctx)
+	builds, err := model.GetVersionBuilds(ctx, *obj, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variants for version '%s': %s", versionID, err.Error()))
 	}

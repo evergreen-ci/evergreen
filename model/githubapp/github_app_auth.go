@@ -127,7 +127,7 @@ func (g *GithubAppAuth) CreateCachedInstallationToken(ctx context.Context, owner
 		}
 	}
 
-	installToken, err := g.createInstallationTokenForID(ctx, installationID, opts)
+	installToken, err := g.createInstallationTokenForID(ctx, installationID, opts, retryConfig{})
 	if err != nil {
 		return "", errors.Wrap(err, "creating installation token")
 	}
@@ -145,14 +145,16 @@ func (g *GithubAppAuth) CreateGitHubSenderInstallationToken(ctx context.Context,
 
 // CreateInstallationToken creates an installation token for the given
 // owner/repo. This is never cached, and should only be used in scenarios where
-// the token can be revoked at any time.
-func (g *GithubAppAuth) CreateInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, *github.InstallationPermissions, error) {
+// the token can be revoked at any time. When retry400 is true, bad request responses
+// are retried up to GitHubMaxRetries times, since those responses have been shown to be
+// transient in the past.
+func (g *GithubAppAuth) CreateInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions, retry400 bool) (string, *github.InstallationPermissions, error) {
 	installationID, err := getInstallationID(ctx, g, owner, repo)
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "getting installation id for '%s/%s'", owner, repo)
 	}
 
-	installToken, err := g.createInstallationTokenForID(ctx, installationID, opts)
+	installToken, err := g.createInstallationTokenForID(ctx, installationID, opts, retryConfig{retry400: retry400})
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "creating installation token for '%s/%s'", owner, repo)
 	}
@@ -169,14 +171,14 @@ type installationToken struct {
 
 // createInstallationTokenForID returns an installation token from GitHub given an installation ID.
 // This function cannot be moved to thirdparty because it is needed to set up the environment.
-func (g *GithubAppAuth) createInstallationTokenForID(ctx context.Context, installationID int64, opts *github.InstallationTokenOptions) (*installationToken, error) {
+func (g *GithubAppAuth) createInstallationTokenForID(ctx context.Context, installationID int64, opts *github.InstallationTokenOptions, conf retryConfig) (*installationToken, error) {
 	const caller = "CreateInstallationToken"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubAppEndpointAttribute, caller),
 	))
 	defer span.End()
 
-	client, err := getGitHubClientForAuth(g)
+	client, err := getGitHubClientForAuth(g, conf)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting GitHub client for token creation")
 	}

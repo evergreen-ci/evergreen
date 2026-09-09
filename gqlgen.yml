@@ -140,8 +140,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APICedarConfig
   ChildPatch:
     model: github.com/evergreen-ci/evergreen/rest/model.ChildPatch
-  ChildPatchAlias:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIChildPatchAlias
   ClientBinary:
     model: github.com/evergreen-ci/evergreen/rest/model.APIClientBinary
   ClientConfig:
@@ -224,10 +222,11 @@ models:
         value: github.com/evergreen-ci/evergreen.DispatcherVersionRevisedWithDependencies
   Distro:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDistro
+    fields:
+      id:
+        fieldName: "Name"
   DistroInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDistro
-  DistroInfo:
-    model: github.com/evergreen-ci/evergreen/rest/model.DistroInfo
   DockerConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDockerConfig
   DockerConfigInput:
@@ -305,7 +304,7 @@ models:
   GitHubDynamicTokenPermissionGroup:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGitHubDynamicTokenPermissionGroup
   GithubPatch:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIGithubPatch
+    model: github.com/evergreen-ci/evergreen/thirdparty.GithubPatch
   GithubProjectConflicts:
     model: github.com/evergreen-ci/evergreen/model.GithubProjectConflicts
   GithubPRSubscriber:
@@ -327,7 +326,16 @@ models:
   HomeVolumeSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIHomeVolumeSettings
   Host:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIHost
+    model: github.com/evergreen-ci/evergreen/model/host.Host
+    fields:
+      availabilityZone:
+        fieldName: "Zone"
+      expiration:
+        fieldName: "ExpirationTime"
+      hostUrl:
+        fieldName: "Host"
+      uptime:
+        fieldName: "CreationTime"
   HourlyPatchTaskOverride:
     model: github.com/evergreen-ci/evergreen/rest/model.APIHourlyPatchTaskOverride
   HourlyPatchTaskOverrideInput:
@@ -560,14 +568,10 @@ models:
   ParsleyFilterInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParsleyFilter
   Patch:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIPatch
+    model: github.com/evergreen-ci/evergreen/model/patch.Patch
     fields:
-      cost:
-        resolver: true
-      predictedCost:
-        resolver: true
       includedLocalModules:
-        resolver: true
+        fieldName: "LocalModuleIncludes"
       parameters:
         resolver: true
   Patches:
@@ -577,7 +581,7 @@ models:
       patches:
         resolver: true
   IncludedLocalModule:
-    model: github.com/evergreen-ci/evergreen/rest/model.APILocalModuleInclude
+    model: github.com/evergreen-ci/evergreen/model/patch.LocalModuleInclude
   PatchTriggerAlias:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPatchTriggerDefinition
   PatchTriggerAliasInput:
@@ -928,8 +932,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.TaskEventData
   TaskEventLogEntry:
     model: github.com/evergreen-ci/evergreen/rest/model.TaskAPIEventLogEntry
-  TaskInfo:
-    model: github.com/evergreen-ci/evergreen/rest/model.TaskInfo
   TestSelectionConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APITestSelectionConfig
   TestSelectionConfigInput:
@@ -1025,8 +1027,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIVariantQuarantineStatus
   VariantTask:
     model: github.com/evergreen-ci/evergreen/rest/model.VariantTask
-  VariantTaskInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.VariantTask
   Version:
     model: github.com/evergreen-ci/evergreen/rest/model.APIVersion
     fields:
@@ -1044,7 +1044,12 @@ models:
   VersionToRestart:
     model: github.com/evergreen-ci/evergreen/model.VersionToRestart
   Volume:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIVolume
+    model: github.com/evergreen-ci/evergreen/model/host.Volume
+    fields:
+      creationTime:
+        fieldName: "CreationDate"
+      hostID:
+        fieldName: "Host"
   WaterfallBuild:
     model: github.com/evergreen-ci/evergreen/model.WaterfallBuild
   WaterfallBuildVariant:

@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -23,6 +24,8 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
 
 func TestTarGzPackParseParams(t *testing.T) {
@@ -266,4 +269,55 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestTarballCreateSetsWorkdirBoundaryAttributeOnViolation(t *testing.T) {
+	spanRecorder := tracetest.NewSpanRecorder()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(spanRecorder))
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		require.NoError(t, tp.Shutdown(ctx))
+	})
+
+	ctx, span := tp.Tracer("test").Start(t.Context(), "test")
+
+	comm := client.NewMock("http://localhost.com")
+	testDir := t.TempDir()
+	workDir := filepath.Join(testDir, "workdir")
+	sourceDir := filepath.Join(testDir, "source")
+	target := filepath.Join(testDir, "outside-workdir.tgz")
+	require.NoError(t, os.Mkdir(workDir, 0755))
+	require.NoError(t, os.Mkdir(sourceDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "input.txt"), []byte("archive contents"), 0600))
+
+	conf := &internal.TaskConfig{
+		WorkDir:    workDir,
+		Expansions: util.Expansions{},
+		Task:       task.Task{},
+		Project:    model.Project{},
+	}
+	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+	require.NoError(t, err)
+
+	cmd := tarballCreateFactory().(*tarballCreate)
+	cmd.Target = target
+	cmd.SourceDir = sourceDir
+	cmd.Include = []string{"input.txt"}
+
+	require.NoError(t, cmd.Execute(ctx, comm, logger, conf))
+	require.FileExists(t, target)
+	span.End()
+
+	ended := spanRecorder.Ended()
+	require.Len(t, ended, 1)
+
+	found := false
+	for _, attr := range ended[0].Attributes() {
+		if string(attr.Key) == workdirBoundaryViolationAttribute {
+			assert.True(t, attr.Value.AsBool(), "workdir boundary violation attribute should be true")
+			found = true
+		}
+	}
+	assert.True(t, found, "workdir boundary violation attribute was not set on the span")
 }

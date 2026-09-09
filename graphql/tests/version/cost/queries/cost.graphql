@@ -1,0 +1,10 @@
+{
+  version(versionId: "aabbccddeeff001122334455") {
+    cost {
+      total
+      childPatchesTotalCost
+      adjustedEC2Cost
+      adjustedEBSThroughputCost
+    }
+  }
+}
