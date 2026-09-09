@@ -53,7 +53,7 @@ func TestProjectRoutes(t *testing.T) {
 	})
 
 	Convey("When loading a public project, it should be found", t, func() {
-		require.NoError(t, db.Clear(model.ProjectRefCollection), "Error clearing '%v' collection", model.ProjectRefCollection)
+		require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.RepoRefCollection))
 
 		publicId := "pub"
 		public := &model.ProjectRef{
@@ -131,8 +131,37 @@ func TestProjectRoutes(t *testing.T) {
 		})
 	})
 
+	Convey("When loading a project with an inherited webhook secret", t, func() {
+		require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.RepoRefCollection))
+
+		repo := &model.RepoRef{ProjectRef: model.ProjectRef{
+			Id: "repo",
+			TaskAnnotationSettings: evergreen.AnnotationsSettings{
+				FileTicketWebhook: evergreen.WebHook{Secret: "repo-secret"},
+			},
+		}}
+		So(repo.Replace(t.Context()), ShouldBeNil)
+		project := &model.ProjectRef{
+			Id:        "pub",
+			Enabled:   true,
+			RepoRefId: repo.Id,
+		}
+		So(project.Insert(t.Context()), ShouldBeNil)
+
+		request, err := http.NewRequest(http.MethodGet, "/rest/v1/projects/"+project.Id, nil)
+		So(err, ShouldBeNil)
+		request = request.WithContext(gimlet.AttachUser(request.Context(), &settingsUsr))
+		response := httptest.NewRecorder()
+
+		router.ServeHTTP(response, request)
+		outRef := &model.ProjectRef{}
+		So(response.Code, ShouldEqual, http.StatusOK)
+		So(json.Unmarshal(response.Body.Bytes(), outRef), ShouldBeNil)
+		So(outRef.TaskAnnotationSettings.FileTicketWebhook.Secret, ShouldBeEmpty)
+	})
+
 	Convey("When loading a private project", t, func() {
-		require.NoError(t, db.Clear(model.ProjectRefCollection), "Error clearing '%v' collection", model.ProjectRefCollection)
+		require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.RepoRefCollection))
 
 		privateId := "priv"
 		private := &model.ProjectRef{
