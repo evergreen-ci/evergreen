@@ -610,6 +610,16 @@ func TestContainerToolchainDirsDoesNotMountAllOfOpt(t *testing.T) {
 		"mounting all of /opt exposes anything provisioning writes there to every containerized task")
 }
 
+func TestContainerToolchainDirsIncludesDevTools(t *testing.T) {
+	assert.Contains(t, containerToolchainDirs, "/opt/devtools",
+		"installed by the toolchain-devtools role in buildhost-post-config on amazon2023 distros")
+}
+
+func TestContainerToolchainDirsNeverIncludesEvergreenDir(t *testing.T) {
+	assert.NotContains(t, containerToolchainDirs, "/opt/evergreen",
+		"it holds jasper credentials")
+}
+
 func TestToolchainMountsOnlyIncludesExistingDirsReadOnly(t *testing.T) {
 	existing := t.TempDir()
 	missing := filepath.Join(t.TempDir(), "absent")
@@ -630,6 +640,10 @@ func TestToolchainMountsIncludesExistingCompatClientPath(t *testing.T) {
 	compatPath := filepath.Join(t.TempDir(), "evergreen")
 	require.NoError(t, os.WriteFile(compatPath, []byte("client"), 0755))
 
+	original := containerToolchainDirs
+	t.Cleanup(func() { containerToolchainDirs = original })
+	containerToolchainDirs = nil
+
 	mounts := toolchainMounts(t.Context(), "task-1", compatPath, nil)
 
 	require.Len(t, mounts, 1)
@@ -641,11 +655,19 @@ func TestToolchainMountsIncludesExistingCompatClientPath(t *testing.T) {
 func TestToolchainMountsSkipsMissingCompatClientPath(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "absent", "evergreen")
 
+	original := containerToolchainDirs
+	t.Cleanup(func() { containerToolchainDirs = original })
+	containerToolchainDirs = nil
+
 	assert.Empty(t, toolchainMounts(t.Context(), "task-1", missing, nil),
 		"a nonexistent source would make Docker reject container creation")
 }
 
 func TestToolchainMountsSkipsEmptyCompatClientPath(t *testing.T) {
+	original := containerToolchainDirs
+	t.Cleanup(func() { containerToolchainDirs = original })
+	containerToolchainDirs = nil
+
 	assert.Empty(t, toolchainMounts(t.Context(), "task-1", "", nil))
 }
 
