@@ -266,10 +266,9 @@ const (
 
 // containerToolchainDirs are the host toolchain directories bind-mounted
 // read-only into the container. Toolchains are installed at AMI provisioning
-// rather than baked into the image. Only these paths (plus the compat client
-// path passed in by the monitor) are mounted; the whole of /opt is not,
-// because a read-only mount still lets a task read (and exfiltrate) anything
-// beneath it.
+// rather than baked into the image. Only these paths are mounted; the whole
+// of /opt is not, because a read-only mount still lets a task read (and
+// exfiltrate) anything beneath it.
 var containerToolchainDirs = []string{
 	"/opt/mongodbtoolchain",
 	"/opt/golang",
@@ -280,9 +279,8 @@ var containerToolchainDirs = []string{
 }
 
 // toolchainMounts returns read-only mounts for the toolchain directories and
-// the compat client path that exist on the host. Nonexistent sources are
-// skipped because Docker rejects bind mounts whose source is missing, which
-// would fail container creation.
+// the compat client path, skipping sources that do not exist on the host
+// because Docker rejects bind mounts with missing sources.
 func toolchainMounts(ctx context.Context, taskID, compatClientPath string, log grip.Journaler) []agentcontainer.Mount {
 	var mounts []agentcontainer.Mount
 	mounted := map[string]bool{}

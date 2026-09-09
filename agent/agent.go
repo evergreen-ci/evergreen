@@ -108,10 +108,8 @@ type Options struct {
 	// alive after a task failure so on-call can docker exec into it for
 	// post-mortem inspection. Zero disables retention.
 	ContainerRetainOnFailureSecs int
-	// CompatClientPath is the legacy home evergreen client path (typically
-	// ~/evergreen) that existing tasks still invoke. When set, it is mounted
-	// read-only into isolation containers so those tasks can run the client
-	// there.
+	// CompatClientPath is the legacy home evergreen client path, mounted
+	// read-only into isolation containers.
 	CompatClientPath string
 }
 

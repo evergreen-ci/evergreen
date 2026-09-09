@@ -634,7 +634,7 @@ func TestToolchainMountsIncludesExistingCompatClientPath(t *testing.T) {
 
 	require.Len(t, mounts, 1)
 	assert.Equal(t, compatPath, mounts[0].Source)
-	assert.Equal(t, compatPath, mounts[0].Target, "the compat client must appear at the same path inside the container so legacy tasks can invoke it")
+	assert.Equal(t, compatPath, mounts[0].Target, "compat client must appear at the same path in the container")
 	assert.True(t, mounts[0].ReadOnly, "compat client mount must be read-only")
 }
 

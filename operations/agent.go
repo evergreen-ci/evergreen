@@ -118,7 +118,7 @@ func Agent() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  compatClientPathFlagName,
-				Usage: "internal only: legacy home client path to mount read-only into isolation containers; set by the agent monitor",
+				Usage: "internal only: legacy home client path to mount into isolation containers; set by the agent monitor",
 			},
 		},
 		Before: mergeBeforeFuncs(

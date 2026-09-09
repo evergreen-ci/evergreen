@@ -158,7 +158,7 @@ func TestAgentCmdArgsForwardsCompatClientPath(t *testing.T) {
 		"--api_server=http://localhost",
 		"--host_id=h1",
 		"--compat_client_path=/home/user/evergreen",
-	}, args, "the monitor must pass the compat client path down to the agent so it can mount it into isolation containers")
+	}, args)
 }
 
 func TestAgentCmdArgsOmitsUnsetCompatClientPath(t *testing.T) {
