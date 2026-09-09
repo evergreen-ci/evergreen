@@ -173,6 +173,8 @@ github.com/evergreen-ci/lru v0.0.0-20260326190734-0d627bf39810 h1:Q+MNMS3rHQw6bG
 github.com/evergreen-ci/lru v0.0.0-20260326190734-0d627bf39810/go.mod h1:A+sGkHeCogvvRBXUrF/Ghu5Gec6lyLtb1MKZN/xfWmI=
 github.com/evergreen-ci/negroni v1.0.1-0.20211028183800-67b6d7c2c035 h1:oVU/ni/sRq+GAogUMLa7LBGtvVHMVLbisuytxBC5KaY=
 github.com/evergreen-ci/negroni v1.0.1-0.20211028183800-67b6d7c2c035/go.mod h1:pvK7NM0ZC+sfTLuIiJN4BgM1S9S5Oo79PJReAFFph18=
+github.com/evergreen-ci/pail v0.0.0-20260902154906-60ffdb29341d h1:3aioAuqGbes6BYYIehRmr6g8yADDqQzQB2XPa88zc8U=
+github.com/evergreen-ci/pail v0.0.0-20260902154906-60ffdb29341d/go.mod h1:lj8oxBSqzEoapX1apBDy88B7wRjj27QQu9EXk2i3AOM=
 github.com/evergreen-ci/poplar v0.0.0-20260330180450-c8cf511d1bd6 h1:leuRlgINHoR0/takPgoHYrfHt5mAtXcLdKdfQ0KVnyQ=
 github.com/evergreen-ci/poplar v0.0.0-20260330180450-c8cf511d1bd6/go.mod h1:y7hhmPo+0k+kI8PTEyX9EziG2Um5727LFTu3Pln5gAQ=
 github.com/evergreen-ci/shrub v0.0.0-20251017154811-4d3ed1599154 h1:YO1VY9Qj68KjjRfd6TF8sHEss2kIfnpkUqZyxWAoEI8=
@@ -467,8 +469,6 @@ github.com/yuin/gopher-lua v1.1.1 h1:kYKnWBjvbNP4XLT3+bPEwAXJx262OhaHDWDVOPjL46M
 github.com/yuin/gopher-lua v1.1.1/go.mod h1:GBR0iDaNXjAgGg9zfCvksxSRnQx76gclCIb7kdAd1Pw=
 github.com/yusufpapurcu/wmi v1.2.4 h1:zFUKzehAFReQwLys1b/iSMl+JQGSCSjtVqQn9bBrPo0=
 github.com/yusufpapurcu/wmi v1.2.4/go.mod h1:SBZ9tNy3G9/m5Oi98Zks0QjeHVDvuK0qfxQmPyzfmi0=
-github.com/evergreen-ci/pail v0.0.0-20260902154906-60ffdb29341d h1:3aioAuqGbes6BYYIehRmr6g8yADDqQzQB2XPa88zc8U=
-github.com/evergreen-ci/pail v0.0.0-20260902154906-60ffdb29341d/go.mod h1:lj8oxBSqzEoapX1apBDy88B7wRjj27QQu9EXk2i3AOM=
 github.com/zeebo/xxh3 v1.1.0 h1:s7DLGDK45Dyfg7++yxI0khrfwq9661w9EN78eP/UZVs=
 github.com/zeebo/xxh3 v1.1.0/go.mod h1:IisAie1LELR4xhVinxWS5+zf1lA4p0MW4T+w+W07F5s=
 go.mongodb.org/mongo-driver v1.17.9 h1:IexDdCuuNJ3BHrELgBlyaH9p60JXAvdzWR128q+U5tU=
@@ -528,8 +528,8 @@ golang.org/x/net v0.0.0-20210510120150-4163338589ed/go.mod h1:9nx3DQGgdP8bBQD5qx
 golang.org/x/net v0.0.0-20220722155237-a158d28d115b/go.mod h1:XRhObCWvk6IyKnWLug+ECip1KBveYUHfp+8e9klMJ9c=
 golang.org/x/net v0.49.0 h1:eeHFmOGUTtaaPSGNmjBKpbng9MulQsJURQUAfUwY++o=
 golang.org/x/net v0.49.0/go.mod h1:/ysNB2EvaqvesRkuLAyjI1ycPZlQHM3q01F02UY/MV8=
-golang.org/x/oauth2 v0.34.0 h1:hqK/t4AKgbqWkdkcAeI8XLmbK+4m4G5YeQRrmiotGlw=
-golang.org/x/oauth2 v0.34.0/go.mod h1:lzm5WQJQwKZ3nwavOZ3IS5Aulzxi68dUSgRHujetwEA=
+golang.org/x/oauth2 v0.37.0 h1:JUlcxA8oAtauLfiH8FX2/FkAWHAdi0QtGCGc+hofE98=
+golang.org/x/oauth2 v0.37.0/go.mod h1:IxwZNxUULJmpBFf9K/9NTMSIfZZuvuTy1gGxhigP/58=
 golang.org/x/sync v0.0.0-20190423024810-112230192c58/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.19.0 h1:vV+1eWNmZ5geRlYjzm2adRgW2/mcpevXNg50YZtPCE4=
