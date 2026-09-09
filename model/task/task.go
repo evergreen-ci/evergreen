@@ -3024,11 +3024,11 @@ func ArchiveMany(ctx context.Context, tasks []Task) error {
 			if err != nil {
 				return errors.Wrapf(err, "finding execution tasks for display task '%s'", t.Id)
 			}
-			unscheduledExecTasks, err := FindAll(ctx, db.Query(bson.M{
+			unscheduledExecTasks, err := FindWithFields(ctx, bson.M{
 				IdKey:        bson.M{"$in": t.ExecutionTasks},
 				StatusKey:    evergreen.TaskUndispatched,
 				ActivatedKey: false,
-			}))
+			}, IdKey)
 			if err != nil {
 				return errors.Wrapf(err, "finding unscheduled execution tasks for display task '%s'", t.Id)
 			}
