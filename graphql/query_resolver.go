@@ -534,14 +534,6 @@ func (r *queryResolver) RepoSettings(ctx context.Context, repoID string) (*restM
 	return res, nil
 }
 
-func includeFileTicketWebhookSecretForProjectAdmin(ctx context.Context, projectID string, source evergreen.AnnotationsSettings, target *restModel.APITaskAnnotationSettings) {
-	// API model conversion redacts by default so callers cannot accidentally expose the secret.
-	// Settings editors are the only users allowed to opt back into the cleartext value.
-	if userHasProjectSettingsPermission(ctx, mustHaveUser(ctx), projectID, evergreen.ProjectSettingsEdit.Value) {
-		target.IncludeFileTicketWebhookSecret(source)
-	}
-}
-
 // ViewableProjectRefs is the resolver for the viewableProjectRefs field.
 func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*GroupedProjects, error) {
 	usr := mustHaveUser(ctx)
