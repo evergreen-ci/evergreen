@@ -94,7 +94,7 @@ evergreen patch --repeat-patch <patch_id>
 
 `--repeat-patch` also accepts a mainline (waterfall) version ID, in which case the new patch reproduces that version's per-variant task mapping. Note that `--repeat-failed` is not supported for mainline version IDs.
 
-If you have no source checkout, use `patch-file` and pass the same ID to `--diff-patchId`. The patch is then created empty at that version's revision:
+If you have no source checkout, use `patch-file`. Pass the version ID to `--diff-patchId` to create an empty patch at that revision, and to `--repeat-patch` to reproduce its task mapping:
 
 ```bash
 evergreen patch-file --diff-patchId <mainline_version_id> --repeat-patch <mainline_version_id> --project <project> -y --finalize
