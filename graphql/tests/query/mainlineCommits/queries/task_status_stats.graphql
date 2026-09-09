@@ -3,13 +3,7 @@
     versions {
       version {
         id
-        taskStatusStats(
-          options: {
-            statuses: ["success"]
-            tasks: ["Some Other Task"]
-            variants: ["enterprise-ubuntu1604-64"]
-          }
-        ) {
+        taskStatusStats {
           eta
           counts {
             status
@@ -19,6 +13,13 @@
       }
       rolledUpVersions {
         id
+        taskStatusStats {
+          eta
+          counts {
+            status
+            count
+          }
+        }
       }
     }
   }
