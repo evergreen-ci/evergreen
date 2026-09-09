@@ -21,6 +21,9 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+// sourceCacheNamespaceAttribute names the source cache namespace a task resolves to.
+const sourceCacheNamespaceAttribute = "evergreen.command.git_get_project.source_cache.namespace"
+
 // POST /rest/v2/task/{task_id}/source_cache/credentials
 //
 // Returns source cache credentials scoped server-side to the task's own repo
@@ -156,9 +159,6 @@ func validateSourceCacheRepoComponents(owner, repo string) error {
 	}
 	return nil
 }
-
-// sourceCacheNamespaceAttribute names the source cache namespace a task resolves to.
-const sourceCacheNamespaceAttribute = "evergreen.command.git_get_project.source_cache.namespace"
 
 // sourceCacheNamespaceForTask returns the namespace the task's own artifact lives in.
 func sourceCacheNamespaceForTask(t *task.Task) string {
