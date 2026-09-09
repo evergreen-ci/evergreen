@@ -1091,7 +1091,6 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 	g, groupCtx := errgroup.WithContext(ctx)
 	g.SetLimit(manifestModuleResolutionConcurrency)
 	for _, repository := range repositoryOrder {
-		repository := repository
 		g.Go(func() error {
 			for _, group := range repository.groups {
 				mfstModule, err := getManifestModule(groupCtx, projectRef, group.module, v.Requester, ingestTime)
