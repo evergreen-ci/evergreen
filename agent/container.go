@@ -265,13 +265,9 @@ const (
 )
 
 // containerToolchainDirs are the host toolchain directories bind-mounted
-// read-only into the container. Toolchains are installed at AMI provisioning
-// rather than baked into the image, and the source of truth for this list
-// is the toolchain roles in buildhost-post-config; new toolchain roles must be
-// reflected here. This list must stay explicit and must never include all of
-// /opt or the home directory, because a read-only mount still lets a task read
-// (and exfiltrate) anything beneath it. /opt/evergreen must never be added, as
-// it holds jasper credentials.
+// read-only into the container. This allowlist mirrors the toolchain roles in
+// buildhost-post-config; keep it explicit rather than mounting all of /opt or
+// the home directory, and never add /opt/evergreen (jasper credentials).
 var containerToolchainDirs = []string{
 	"/opt/mongodbtoolchain",
 	"/opt/golang",
@@ -279,14 +275,13 @@ var containerToolchainDirs = []string{
 	"/opt/ruby",
 	"/opt/node",
 	"/opt/python",
-	// Installed by the toolchain-devtools role in buildhost-post-config on
-	// amazon2023 distros; absent elsewhere, in which case the mount is skipped.
+	// Installed by the toolchain-devtools role on amazon2023 distros.
 	"/opt/devtools",
 }
 
 // toolchainMounts returns read-only mounts for the toolchain directories and
-// the compat client path, skipping sources that do not exist on the host
-// because Docker rejects bind mounts with missing sources.
+// the compat client path, skipping sources that do not exist because Docker
+// rejects bind mounts with missing sources.
 func toolchainMounts(ctx context.Context, taskID, compatClientPath string, log grip.Journaler) []agentcontainer.Mount {
 	var mounts []agentcontainer.Mount
 	mounted := map[string]bool{}

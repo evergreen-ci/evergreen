@@ -432,8 +432,7 @@ func (m *monitor) allowAgentNice(ctx context.Context) error {
 		m.clientPath}).Run(ctx)
 }
 
-// agentCmdArgs builds the argv for the agent process the monitor spawns,
-// forwarding the compat client path for container mounting.
+// agentCmdArgs builds the agent argv, forwarding the compat client path.
 func (m *monitor) agentCmdArgs() []string {
 	args := append([]string{m.clientPath, "agent"}, m.agentArgs...)
 	if m.compatClientPath != "" {
