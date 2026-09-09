@@ -309,12 +309,12 @@ func (r *versionResolver) Status(ctx context.Context, obj *model.Version) (strin
 
 // TaskCount is the resolver for the taskCount field.
 func (r *versionResolver) TaskCount(ctx context.Context, obj *model.Version, options *TaskCountOptions) (*int, error) {
-	// if includeNeverActivatedTasks is nil, we default to using the value of the requester
-	includeNeverActivatedTasks := utility.ToBoolPtr(!evergreen.IsPatchRequester(obj.Requester))
+	// If includeNeverActivatedTasks is nil, default to using the value of the requester.
+	includeNeverActivatedTasks := !evergreen.IsPatchRequester(obj.Requester)
 	if options != nil && options.IncludeNeverActivatedTasks != nil {
-		includeNeverActivatedTasks = options.IncludeNeverActivatedTasks
+		includeNeverActivatedTasks = *options.IncludeNeverActivatedTasks
 	}
-	taskCount, err := task.Count(ctx, db.Query(task.DisplayTasksByVersion(obj.Id, utility.FromBoolPtr(includeNeverActivatedTasks))))
+	taskCount, err := task.Count(ctx, db.Query(task.DisplayTasksByVersion(obj.Id, includeNeverActivatedTasks)))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task count for version '%s': %s", obj.Id, err.Error()))
 	}
