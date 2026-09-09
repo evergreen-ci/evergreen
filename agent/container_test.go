@@ -135,6 +135,7 @@ func TestKillProcsIsolationDistroWithoutContainerSkipsHostKill(t *testing.T) {
 		taskConfig: &internal.TaskConfig{
 			WorkDir: t.TempDir(),
 			Distro: &apimodels.DistroView{
+				ExecUser:           "evg-task-user",
 				ContainerIsolation: &apimodels.ContainerIsolationSettings{Image: "ubuntu:22.04"},
 			},
 		},

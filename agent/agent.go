@@ -1636,7 +1636,7 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 		} else if tc.taskConfig.Distro.ContainerIsolation != nil {
 			// Task processes live in containers, which may not exist yet; the
 			// host-wide pkill is unsafe here.
-			logger.Infof(ctx, "Skipping process cleanup for task '%s': distro has container isolation enabled but no container is running.", tc.task.ID)
+			logger.Warningf(ctx, "Skipping process cleanup for task '%s': distro has container isolation enabled but no container is running.", tc.task.ID)
 		} else {
 			logger.Infof(ctx, "Cleaning up processes for task: '%s'.", tc.task.ID)
 			if err := agentutil.KillSpawnedProcs(ctx, tc.task.ID, tc.taskConfig.WorkDir, tc.taskConfig.Distro.ExecUser, logger); err != nil {
