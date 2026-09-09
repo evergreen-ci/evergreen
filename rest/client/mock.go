@@ -36,6 +36,10 @@ type Mock struct {
 	MockIsServiceUser    bool
 	MockIsServiceUserErr error
 
+	GetVersionResult                    *restmodel.APIVersion
+	GetVersionErr                       error
+	GetRawPatchWithModulesResult        *restmodel.APIRawPatch
+	GetRawPatchWithModulesErr           error
 	GetRecentVersionsResult             []restmodel.APIVersion
 	GetRecentVersionsResultsByRequester map[string][]restmodel.APIVersion
 	GetBuildsForVersionResult           []restmodel.APIBuild
@@ -354,7 +358,11 @@ func (c *Mock) GetHostProvisioningOptions(ctx context.Context) (*restmodel.APIHo
 }
 
 func (c *Mock) GetRawPatchWithModules(context.Context, string) (*restmodel.APIRawPatch, error) {
-	return nil, nil
+	return c.GetRawPatchWithModulesResult, c.GetRawPatchWithModulesErr
+}
+
+func (c *Mock) GetVersion(context.Context, string) (*restmodel.APIVersion, error) {
+	return c.GetVersionResult, c.GetVersionErr
 }
 
 func (c *Mock) GetEstimatedGeneratedTasks(ctx context.Context, patchId string, tvPairs []serviceModel.TVPair) (int, error) {
