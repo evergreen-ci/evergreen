@@ -1116,7 +1116,7 @@ Parameters:
 The parser is line-oriented and reads `go test -v`'s human-readable output, so each
 test's start and end lines must be intact and on their own line:
 
-```
+```text
 === RUN   TestName
 --- PASS: TestName (0.00s)
 ```
@@ -1128,7 +1128,7 @@ crashed one.
 The most common way to break this is to have the program under test write to the same
 stream as `go test`. Concurrent writes interleave mid-line and corrupt the end lines:
 
-```
+```text
 --- SKIP: TestName (0.0{"level":"trace","message":"heartbeat succeeded"}
 ```
 
