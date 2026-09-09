@@ -91,7 +91,7 @@ type Patch {
   tasks: [String!]!
   user: User!
   variantsTasks: [VariantTask!]! # Variants and tasks that have been selected to run i.e. these are configured and scheduled to run. TODO: Make another field with a better name.
-  version: VersionLite
+  version: Version
 }
 
 type ChildPatchAlias {
