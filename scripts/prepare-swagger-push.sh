@@ -74,6 +74,14 @@ perl -pi -e 's/OPENAPI_VERSION_PLACEHOLDER/'$version_number'/' "${SWAGGER_JSON_F
 # Replace the host placeholder with the environment-specific host URL.
 perl -pi -e 's/OPENAPI_HOST_PLACEHOLDER/'$host_url'/' "${SWAGGER_JSON_FILE}"
 
+# perl exits successfully whether or not the pattern matched, so check that no
+# placeholder survived rather than publishing a spec that still contains one.
+if grep -q 'OPENAPI_[A-Z]*_PLACEHOLDER' "${SWAGGER_JSON_FILE}"; then
+    echo "Error: '${SWAGGER_JSON_FILE}' still contains an unsubstituted placeholder:"
+    grep -o 'OPENAPI_[A-Z]*_PLACEHOLDER' "${SWAGGER_JSON_FILE}" | sort -u
+    exit 1
+fi
+
 # Compute a new SHA with the latest version number.
 new_sha=$(shasum -a 256 "${SWAGGER_JSON_FILE}" | cut -d ' ' -f 1)
 
