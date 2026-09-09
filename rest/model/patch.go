@@ -2,8 +2,6 @@ package model
 
 import (
 	"context"
-	"fmt"
-	"net/url"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -104,7 +102,7 @@ type VariantTask struct {
 	Tasks []*string `json:"tasks"`
 }
 
-type FileDiff struct {
+type APIFileDiff struct {
 	FileName    *string `json:"file_name"`
 	Additions   int     `json:"additions"`
 	Deletions   int     `json:"deletions"`
@@ -118,11 +116,11 @@ type APIChildPatchAlias struct {
 }
 
 type APIModulePatch struct {
-	BranchName     *string    `json:"branch_name"`
-	HTMLLink       *string    `json:"html_link"`
-	RawLink        *string    `json:"raw_link"`
-	CommitMessages []*string  `json:"commit_messages"`
-	FileDiffs      []FileDiff `json:"file_diffs"`
+	BranchName     *string       `json:"branch_name"`
+	HTMLLink       *string       `json:"html_link"`
+	RawLink        *string       `json:"raw_link"`
+	CommitMessages []*string     `json:"commit_messages"`
+	FileDiffs      []APIFileDiff `json:"file_diffs"`
 }
 
 type APIParameter struct {
@@ -476,46 +474,29 @@ func (apiPatch *APIPatch) buildModuleChanges(p patch.Patch, identifier string) {
 	if env == nil {
 		return
 	}
-	apiPatch.ModuleCodeChanges = BuildModuleCodeChanges(p, identifier, env.Settings().Api.URL)
-}
+	changes := patch.BuildModuleCodeChanges(p, identifier, env.Settings().Api.URL)
 
-// BuildModuleCodeChanges constructs the list of module code changes for a patch,
-// including file diff links. It is used by both the REST API and GraphQL resolvers.
-func BuildModuleCodeChanges(p patch.Patch, identifier, apiURL string) []APIModulePatch {
-	codeChanges := []APIModulePatch{}
-	patchID := p.Id.Hex()
-
-	for patchNumber, modPatch := range p.Patches {
-		branchName := modPatch.ModuleName
-		if branchName == "" {
-			branchName = identifier
+	apiModuleCodeChanges := make([]APIModulePatch, 0, len(changes))
+	for _, c := range changes {
+		fileDiffs := make([]APIFileDiff, 0, len(c.FileDiffs))
+		for _, fd := range c.FileDiffs {
+			fileDiffs = append(fileDiffs, APIFileDiff{
+				FileName:    utility.ToStringPtr(fd.FileName),
+				Additions:   fd.Additions,
+				Deletions:   fd.Deletions,
+				DiffLink:    utility.ToStringPtr(fd.DiffLink),
+				Description: fd.Description,
+			})
 		}
-		htmlLink := fmt.Sprintf("%s/filediff/%s?patch_number=%d", apiURL, patchID, patchNumber)
-		rawLink := fmt.Sprintf("%s/rawdiff/%s?patch_number=%d", apiURL, patchID, patchNumber)
-		fileDiffs := []FileDiff{}
-		for i, file := range modPatch.PatchSet.Summary {
-			diffLink := fmt.Sprintf("%s/filediff/%s?file_name=%s&patch_number=%d&commit_number=%d", apiURL, patchID, url.QueryEscape(file.Name), patchNumber, i)
-			fileName := file.Name
-			fileDiff := FileDiff{
-				FileName:    &fileName,
-				Additions:   file.Additions,
-				Deletions:   file.Deletions,
-				DiffLink:    &diffLink,
-				Description: file.Description,
-			}
-			fileDiffs = append(fileDiffs, fileDiff)
-		}
-		apiModPatch := APIModulePatch{
-			BranchName:     &branchName,
-			HTMLLink:       &htmlLink,
-			RawLink:        &rawLink,
+		apiModuleCodeChanges = append(apiModuleCodeChanges, APIModulePatch{
+			BranchName:     utility.ToStringPtr(c.BranchName),
+			HTMLLink:       utility.ToStringPtr(c.HTMLLink),
+			RawLink:        utility.ToStringPtr(c.RawLink),
 			FileDiffs:      fileDiffs,
-			CommitMessages: utility.ToStringPtrSlice(modPatch.PatchSet.CommitMessages),
-		}
-		codeChanges = append(codeChanges, apiModPatch)
+			CommitMessages: utility.ToStringPtrSlice(c.CommitMessages),
+		})
 	}
-
-	return codeChanges
+	apiPatch.ModuleCodeChanges = apiModuleCodeChanges
 }
 
 // ToService converts a service layer patch using the data from APIPatch
