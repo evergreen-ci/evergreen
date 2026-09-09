@@ -137,7 +137,8 @@ PASS
 		assert.Equal(t, SKIP, results[0].Status)
 		assert.Equal(t, time.Duration(0), results[0].RunTime)
 
-		assert.Equal(t, []int{2}, parser.MalformedLines())
+		require.Len(t, parser.malformedLines, 1)
+		assert.Equal(t, malformedLine{lineNum: 2, testName: "TestSuite/TestName", status: SKIP}, parser.malformedLines[0])
 	})
 	t.Run("TruncatedEndLineForUnstartedTestIsIgnored", func(t *testing.T) {
 		logdata := `=== RUN   TestSuite/TestName
@@ -149,10 +150,27 @@ PASS
 		parser := &goTestParser{}
 		require.NoError(t, parser.Parse(strings.NewReader(logdata)))
 
-		assert.Empty(t, parser.MalformedLines())
+		assert.Empty(t, parser.malformedLines)
 		for _, res := range parser.Results() {
 			assert.NotEqual(t, "TestNeverRan", res.Name)
 		}
+	})
+	t.Run("TruncatedEndLineForAlreadyEndedTestIsIgnored", func(t *testing.T) {
+		logdata := `=== RUN   TestSuite/TestName
+    --- PASS: TestSuite/TestName (0.00s)
+--- FAIL: TestSuite/TestName
+--- PASS: TestSuite (0.01s)
+PASS
+`
+		parser := &goTestParser{}
+		require.NoError(t, parser.Parse(strings.NewReader(logdata)))
+
+		assert.Empty(t, parser.malformedLines)
+
+		results := parser.Results()
+		require.Len(t, results, 2)
+		assert.Equal(t, "TestSuite/TestName", results[0].Name)
+		assert.Equal(t, PASS, results[0].Status)
 	})
 	t.Run("WellFormedOutputHasNoMalformedLines", func(t *testing.T) {
 		logdata := `=== RUN   TestSuite/TestName
@@ -163,7 +181,7 @@ PASS
 		parser := &goTestParser{}
 		require.NoError(t, parser.Parse(strings.NewReader(logdata)))
 
-		assert.Empty(t, parser.MalformedLines())
+		assert.Empty(t, parser.malformedLines)
 	})
 	t.Run("GocheckLogFile", func(t *testing.T) {
 		logdata, err := os.ReadFile(filepath.Join(cwd, "testdata", "gotest", "2_simple.log"))

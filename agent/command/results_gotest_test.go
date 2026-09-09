@@ -175,6 +175,8 @@ PASS
 		require.NoError(t, err)
 		require.Len(t, malformed, 1)
 		assert.Contains(t, malformed[0], "0_malformed.suite")
+		assert.Contains(t, malformed[0], "TestSuite/TestName")
+		assert.Contains(t, malformed[0], SKIP)
 
 		// The malformed line must not turn the test itself into a failure.
 		require.Len(t, results, 2)
