@@ -963,7 +963,7 @@ func (r *taskResolver) Version(ctx context.Context, obj *restModel.APITask) (*mo
 }
 
 // VersionMetadata is the resolver for the versionMetadata field.
-func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITask) (*restModel.APIVersion, error) {
+func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITask) (*model.Version, error) {
 	versionID := utility.FromStringPtr(obj.Version)
 	v, err := loaders.GetVersion(ctx, versionID)
 	if err != nil {
@@ -972,9 +972,7 @@ func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITa
 	if v == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
 	}
-	apiVersion := &restModel.APIVersion{}
-	apiVersion.BuildFromService(ctx, *v)
-	return apiVersion, nil
+	return v, nil
 }
 
 // AllowedRequesters is the resolver for the allowedRequesters field.

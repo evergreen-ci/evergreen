@@ -1,0 +1,34 @@
+{
+  "versions": [
+    {
+      "_id": "5e4ff3abe3c3317e352062e4",
+      "identifier": "spruce",
+      "parameters": [
+        {
+          "key": "iter_count",
+          "value": "5"
+        },
+        {
+          "key": "my_parameter",
+          "value": "this_is_it"
+        },
+        {
+          "key": "secret_parameter",
+          "value": "abc"
+        }
+      ]
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    }
+  ],
+  "admin": [
+    {
+      "_id": "logger_config",
+      "redact_keys": ["secret", "password"]
+    }
+  ]
+}
