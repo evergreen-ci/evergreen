@@ -1194,9 +1194,9 @@ type ComplexityRoot struct {
 		GithubPatchData       func(childComplexity int) int
 		Hidden                func(childComplexity int) int
 		ID                    func(childComplexity int) int
-		IncludedLocalModules  func(childComplexity int) int
 		IngestTime            func(childComplexity int) int
 		InvalidatedByUpstream func(childComplexity int) int
+		LocalModuleIncludes   func(childComplexity int) int
 		ModuleCodeChanges     func(childComplexity int) int
 		Parameters            func(childComplexity int) int
 		PatchNumber           func(childComplexity int) int
@@ -2626,14 +2626,10 @@ type MutationResolver interface {
 type PatchResolver interface {
 	ID(ctx context.Context, obj *patch.Patch) (string, error)
 
-	ChildPatchAliases(ctx context.Context, obj *patch.Patch) ([]*model.APIChildPatchAlias, error)
+	ChildPatchAliases(ctx context.Context, obj *patch.Patch) ([]*ChildPatchAlias, error)
 	ChildPatches(ctx context.Context, obj *patch.Patch) ([]*patch.Patch, error)
 
 	GeneratedTaskCounts(ctx context.Context, obj *patch.Patch) ([]*GeneratedTaskCountResults, error)
-
-	GithubPatchData(ctx context.Context, obj *patch.Patch) (*model.APIGithubPatch, error)
-
-	IncludedLocalModules(ctx context.Context, obj *patch.Patch) ([]*model.APILocalModuleInclude, error)
 
 	InvalidatedByUpstream(ctx context.Context, obj *patch.Patch) (bool, error)
 	ModuleCodeChanges(ctx context.Context, obj *patch.Patch) ([]*model.APIModulePatch, error)
@@ -7579,12 +7575,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Patch.ID(childComplexity), true
-	case "Patch.includedLocalModules":
-		if e.complexity.Patch.IncludedLocalModules == nil {
-			break
-		}
-
-		return e.complexity.Patch.IncludedLocalModules(childComplexity), true
 	case "Patch.ingestTime":
 		if e.complexity.Patch.IngestTime == nil {
 			break
@@ -7597,6 +7587,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Patch.InvalidatedByUpstream(childComplexity), true
+	case "Patch.includedLocalModules":
+		if e.complexity.Patch.LocalModuleIncludes == nil {
+			break
+		}
+
+		return e.complexity.Patch.LocalModuleIncludes(childComplexity), true
 	case "Patch.moduleCodeChanges":
 		if e.complexity.Patch.ModuleCodeChanges == nil {
 			break
@@ -23903,7 +23899,7 @@ func (ec *executionContext) fieldContext_CedarConfig_dbName(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _ChildPatchAlias_alias(ctx context.Context, field graphql.CollectedField, obj *model.APIChildPatchAlias) (ret graphql.Marshaler) {
+func (ec *executionContext) _ChildPatchAlias_alias(ctx context.Context, field graphql.CollectedField, obj *ChildPatchAlias) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -23913,7 +23909,7 @@ func (ec *executionContext) _ChildPatchAlias_alias(ctx context.Context, field gr
 			return obj.Alias, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalNString2string,
 		true,
 		true,
 	)
@@ -23932,7 +23928,7 @@ func (ec *executionContext) fieldContext_ChildPatchAlias_alias(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _ChildPatchAlias_patchId(ctx context.Context, field graphql.CollectedField, obj *model.APIChildPatchAlias) (ret graphql.Marshaler) {
+func (ec *executionContext) _ChildPatchAlias_patchId(ctx context.Context, field graphql.CollectedField, obj *ChildPatchAlias) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -23942,7 +23938,7 @@ func (ec *executionContext) _ChildPatchAlias_patchId(ctx context.Context, field 
 			return obj.PatchID, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalNString2string,
 		true,
 		true,
 	)
@@ -28933,7 +28929,7 @@ func (ec *executionContext) fieldContext_GithubPRSubscriber_repo(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _GithubPatch_author(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
+func (ec *executionContext) _GithubPatch_author(ctx context.Context, field graphql.CollectedField, obj *thirdparty.GithubPatch) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -28943,7 +28939,7 @@ func (ec *executionContext) _GithubPatch_author(ctx context.Context, field graph
 			return obj.Author, nil
 		},
 		nil,
-		ec.marshalOString2ᚖstring,
+		ec.marshalOString2string,
 		true,
 		false,
 	)
@@ -28962,7 +28958,7 @@ func (ec *executionContext) fieldContext_GithubPatch_author(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _GithubPatch_baseOwner(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
+func (ec *executionContext) _GithubPatch_baseOwner(ctx context.Context, field graphql.CollectedField, obj *thirdparty.GithubPatch) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -28972,7 +28968,7 @@ func (ec *executionContext) _GithubPatch_baseOwner(ctx context.Context, field gr
 			return obj.BaseOwner, nil
 		},
 		nil,
-		ec.marshalOString2ᚖstring,
+		ec.marshalOString2string,
 		true,
 		false,
 	)
@@ -28991,7 +28987,7 @@ func (ec *executionContext) fieldContext_GithubPatch_baseOwner(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _GithubPatch_baseRepo(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
+func (ec *executionContext) _GithubPatch_baseRepo(ctx context.Context, field graphql.CollectedField, obj *thirdparty.GithubPatch) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -29001,7 +28997,7 @@ func (ec *executionContext) _GithubPatch_baseRepo(ctx context.Context, field gra
 			return obj.BaseRepo, nil
 		},
 		nil,
-		ec.marshalOString2ᚖstring,
+		ec.marshalOString2string,
 		true,
 		false,
 	)
@@ -29020,7 +29016,7 @@ func (ec *executionContext) fieldContext_GithubPatch_baseRepo(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _GithubPatch_headBranch(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
+func (ec *executionContext) _GithubPatch_headBranch(ctx context.Context, field graphql.CollectedField, obj *thirdparty.GithubPatch) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -29030,7 +29026,7 @@ func (ec *executionContext) _GithubPatch_headBranch(ctx context.Context, field g
 			return obj.HeadBranch, nil
 		},
 		nil,
-		ec.marshalOString2ᚖstring,
+		ec.marshalOString2string,
 		true,
 		false,
 	)
@@ -29049,7 +29045,7 @@ func (ec *executionContext) fieldContext_GithubPatch_headBranch(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _GithubPatch_headHash(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
+func (ec *executionContext) _GithubPatch_headHash(ctx context.Context, field graphql.CollectedField, obj *thirdparty.GithubPatch) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -29059,7 +29055,7 @@ func (ec *executionContext) _GithubPatch_headHash(ctx context.Context, field gra
 			return obj.HeadHash, nil
 		},
 		nil,
-		ec.marshalOString2ᚖstring,
+		ec.marshalOString2string,
 		true,
 		false,
 	)
@@ -29078,7 +29074,7 @@ func (ec *executionContext) fieldContext_GithubPatch_headHash(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _GithubPatch_headOwner(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
+func (ec *executionContext) _GithubPatch_headOwner(ctx context.Context, field graphql.CollectedField, obj *thirdparty.GithubPatch) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -29088,7 +29084,7 @@ func (ec *executionContext) _GithubPatch_headOwner(ctx context.Context, field gr
 			return obj.HeadOwner, nil
 		},
 		nil,
-		ec.marshalOString2ᚖstring,
+		ec.marshalOString2string,
 		true,
 		false,
 	)
@@ -29107,7 +29103,7 @@ func (ec *executionContext) fieldContext_GithubPatch_headOwner(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _GithubPatch_headRepo(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
+func (ec *executionContext) _GithubPatch_headRepo(ctx context.Context, field graphql.CollectedField, obj *thirdparty.GithubPatch) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -29117,7 +29113,7 @@ func (ec *executionContext) _GithubPatch_headRepo(ctx context.Context, field gra
 			return obj.HeadRepo, nil
 		},
 		nil,
-		ec.marshalOString2ᚖstring,
+		ec.marshalOString2string,
 		true,
 		false,
 	)
@@ -29136,7 +29132,7 @@ func (ec *executionContext) fieldContext_GithubPatch_headRepo(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _GithubPatch_prNumber(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
+func (ec *executionContext) _GithubPatch_prNumber(ctx context.Context, field graphql.CollectedField, obj *thirdparty.GithubPatch) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -34227,7 +34223,7 @@ func (ec *executionContext) fieldContext_ImageToolchainsPayload_totalCount(_ con
 	return fc, nil
 }
 
-func (ec *executionContext) _IncludedLocalModule_module(ctx context.Context, field graphql.CollectedField, obj *model.APILocalModuleInclude) (ret graphql.Marshaler) {
+func (ec *executionContext) _IncludedLocalModule_module(ctx context.Context, field graphql.CollectedField, obj *patch.LocalModuleInclude) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -34256,7 +34252,7 @@ func (ec *executionContext) fieldContext_IncludedLocalModule_module(_ context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _IncludedLocalModule_fileName(ctx context.Context, field graphql.CollectedField, obj *model.APILocalModuleInclude) (ret graphql.Marshaler) {
+func (ec *executionContext) _IncludedLocalModule_fileName(ctx context.Context, field graphql.CollectedField, obj *patch.LocalModuleInclude) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -44446,7 +44442,7 @@ func (ec *executionContext) _Patch_childPatchAliases(ctx context.Context, field 
 			return ec.resolvers.Patch().ChildPatchAliases(ctx, obj)
 		},
 		nil,
-		ec.marshalNChildPatchAlias2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIChildPatchAliasᚄ,
+		ec.marshalNChildPatchAlias2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐChildPatchAliasᚄ,
 		true,
 		true,
 	)
@@ -44689,10 +44685,10 @@ func (ec *executionContext) _Patch_githubPatchData(ctx context.Context, field gr
 		field,
 		ec.fieldContext_Patch_githubPatchData,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Patch().GithubPatchData(ctx, obj)
+			return obj.GithubPatchData, nil
 		},
 		nil,
-		ec.marshalOGithubPatch2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubPatch,
+		ec.marshalOGithubPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐGithubPatch,
 		true,
 		false,
 	)
@@ -44702,8 +44698,8 @@ func (ec *executionContext) fieldContext_Patch_githubPatchData(_ context.Context
 	fc = &graphql.FieldContext{
 		Object:     "Patch",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "author":
@@ -44765,10 +44761,10 @@ func (ec *executionContext) _Patch_includedLocalModules(ctx context.Context, fie
 		field,
 		ec.fieldContext_Patch_includedLocalModules,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Patch().IncludedLocalModules(ctx, obj)
+			return obj.LocalModuleIncludes, nil
 		},
 		nil,
-		ec.marshalNIncludedLocalModule2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPILocalModuleIncludeᚄ,
+		ec.marshalNIncludedLocalModule2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋpatchᚐLocalModuleIncludeᚄ,
 		true,
 		true,
 	)
@@ -44778,8 +44774,8 @@ func (ec *executionContext) fieldContext_Patch_includedLocalModules(_ context.Co
 	fc = &graphql.FieldContext{
 		Object:     "Patch",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "module":
@@ -94263,7 +94259,7 @@ func (ec *executionContext) _CedarConfig(ctx context.Context, sel ast.SelectionS
 
 var childPatchAliasImplementors = []string{"ChildPatchAlias"}
 
-func (ec *executionContext) _ChildPatchAlias(ctx context.Context, sel ast.SelectionSet, obj *model.APIChildPatchAlias) graphql.Marshaler {
+func (ec *executionContext) _ChildPatchAlias(ctx context.Context, sel ast.SelectionSet, obj *ChildPatchAlias) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, childPatchAliasImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -96567,7 +96563,7 @@ func (ec *executionContext) _GithubPRSubscriber(ctx context.Context, sel ast.Sel
 
 var githubPatchImplementors = []string{"GithubPatch"}
 
-func (ec *executionContext) _GithubPatch(ctx context.Context, sel ast.SelectionSet, obj *model.APIGithubPatch) graphql.Marshaler {
+func (ec *executionContext) _GithubPatch(ctx context.Context, sel ast.SelectionSet, obj *thirdparty.GithubPatch) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, githubPatchImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -98605,7 +98601,7 @@ func (ec *executionContext) _ImageToolchainsPayload(ctx context.Context, sel ast
 
 var includedLocalModuleImplementors = []string{"IncludedLocalModule"}
 
-func (ec *executionContext) _IncludedLocalModule(ctx context.Context, sel ast.SelectionSet, obj *model.APILocalModuleInclude) graphql.Marshaler {
+func (ec *executionContext) _IncludedLocalModule(ctx context.Context, sel ast.SelectionSet, obj *patch.LocalModuleInclude) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, includedLocalModuleImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -100988,79 +100984,17 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "githubPatchData":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Patch_githubPatchData(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			out.Values[i] = ec._Patch_githubPatchData(ctx, field, obj)
 		case "hidden":
 			out.Values[i] = ec._Patch_hidden(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "includedLocalModules":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Patch_includedLocalModules(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
+			out.Values[i] = ec._Patch_includedLocalModules(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
 			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "ingestTime":
 			out.Values[i] = ec._Patch_ingestTime(ctx, field, obj)
 		case "invalidatedByUpstream":
@@ -114630,7 +114564,7 @@ func (ec *executionContext) marshalNBuildVariantTuple2ᚖgithubᚗcomᚋevergree
 	return ec._BuildVariantTuple(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNChildPatchAlias2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIChildPatchAliasᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIChildPatchAlias) graphql.Marshaler {
+func (ec *executionContext) marshalNChildPatchAlias2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐChildPatchAliasᚄ(ctx context.Context, sel ast.SelectionSet, v []*ChildPatchAlias) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -114654,7 +114588,7 @@ func (ec *executionContext) marshalNChildPatchAlias2ᚕᚖgithubᚗcomᚋevergre
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNChildPatchAlias2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIChildPatchAlias(ctx, sel, v[i])
+			ret[i] = ec.marshalNChildPatchAlias2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐChildPatchAlias(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -114674,7 +114608,7 @@ func (ec *executionContext) marshalNChildPatchAlias2ᚕᚖgithubᚗcomᚋevergre
 	return ret
 }
 
-func (ec *executionContext) marshalNChildPatchAlias2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIChildPatchAlias(ctx context.Context, sel ast.SelectionSet, v *model.APIChildPatchAlias) graphql.Marshaler {
+func (ec *executionContext) marshalNChildPatchAlias2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐChildPatchAlias(ctx context.Context, sel ast.SelectionSet, v *ChildPatchAlias) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
@@ -116555,7 +116489,11 @@ func (ec *executionContext) marshalNImageToolchainsPayload2ᚖgithubᚗcomᚋeve
 	return ec._ImageToolchainsPayload(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNIncludedLocalModule2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPILocalModuleIncludeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APILocalModuleInclude) graphql.Marshaler {
+func (ec *executionContext) marshalNIncludedLocalModule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋpatchᚐLocalModuleInclude(ctx context.Context, sel ast.SelectionSet, v patch.LocalModuleInclude) graphql.Marshaler {
+	return ec._IncludedLocalModule(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNIncludedLocalModule2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋpatchᚐLocalModuleIncludeᚄ(ctx context.Context, sel ast.SelectionSet, v []patch.LocalModuleInclude) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -116579,7 +116517,7 @@ func (ec *executionContext) marshalNIncludedLocalModule2ᚕᚖgithubᚗcomᚋeve
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNIncludedLocalModule2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPILocalModuleInclude(ctx, sel, v[i])
+			ret[i] = ec.marshalNIncludedLocalModule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋpatchᚐLocalModuleInclude(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -116597,16 +116535,6 @@ func (ec *executionContext) marshalNIncludedLocalModule2ᚕᚖgithubᚗcomᚋeve
 	}
 
 	return ret
-}
-
-func (ec *executionContext) marshalNIncludedLocalModule2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPILocalModuleInclude(ctx context.Context, sel ast.SelectionSet, v *model.APILocalModuleInclude) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._IncludedLocalModule(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNInstanceTag2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐTag(ctx context.Context, sel ast.SelectionSet, v host.Tag) graphql.Marshaler {
@@ -121583,11 +121511,8 @@ func (ec *executionContext) marshalOGithubPRSubscriber2ᚖgithubᚗcomᚋevergre
 	return ec._GithubPRSubscriber(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOGithubPatch2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubPatch(ctx context.Context, sel ast.SelectionSet, v *model.APIGithubPatch) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._GithubPatch(ctx, sel, v)
+func (ec *executionContext) marshalOGithubPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐGithubPatch(ctx context.Context, sel ast.SelectionSet, v thirdparty.GithubPatch) graphql.Marshaler {
+	return ec._GithubPatch(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalOGithubUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubUser(ctx context.Context, sel ast.SelectionSet, v *model.APIGithubUser) graphql.Marshaler {
