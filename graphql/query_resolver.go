@@ -400,7 +400,7 @@ func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistr
 
 // Patch is the resolver for the patch field.
 func (r *queryResolver) Patch(ctx context.Context, patchID string) (*patch.Patch, error) {
-	p, err := loaders.GetPatch(ctx, patchID)
+	p, err := patch.FindOneId(ctx, patchID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", patchID, err.Error()), err)
 	}
@@ -1216,7 +1216,7 @@ func (r *queryResolver) HasVersion(ctx context.Context, patchID string) (bool, e
 	}
 
 	if patch.IsValidId(patchID) {
-		p, err := loaders.GetPatch(ctx, patchID)
+		p, err := patch.FindOneId(ctx, patchID)
 		if err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()), err)
 		}
@@ -1229,7 +1229,7 @@ func (r *queryResolver) HasVersion(ctx context.Context, patchID string) (bool, e
 
 // Version is the resolver for the version field.
 func (r *queryResolver) Version(ctx context.Context, versionID string) (*model.Version, error) {
-	v, err := loaders.GetVersion(ctx, versionID)
+	v, err := model.VersionFindOneId(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}
