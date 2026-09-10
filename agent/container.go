@@ -267,7 +267,8 @@ const (
 // containerToolchainDirs are the host toolchain directories bind-mounted
 // read-only into the container. This allowlist mirrors the toolchain roles in
 // buildhost-post-config; keep it explicit rather than mounting all of /opt or
-// the home directory, and never add /opt/evergreen (jasper credentials).
+// the home directory, because a read-only mount still lets a task read (and
+// exfiltrate) anything beneath it. Never add /opt/evergreen (jasper credentials).
 var containerToolchainDirs = []string{
 	"/opt/mongodbtoolchain",
 	"/opt/golang",

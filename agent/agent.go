@@ -108,8 +108,8 @@ type Options struct {
 	// alive after a task failure so on-call can docker exec into it for
 	// post-mortem inspection. Zero disables retention.
 	ContainerRetainOnFailureSecs int
-	// CompatClientPath is the legacy home evergreen client path for
-	// isolation container mounts.
+	// CompatClientPath is the absolute path to the legacy ~/evergreen binary,
+	// mounted read-only into isolation containers.
 	CompatClientPath string
 }
 
