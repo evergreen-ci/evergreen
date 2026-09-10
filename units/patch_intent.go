@@ -165,7 +165,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 			if j.gitHubError == "" {
 				j.gitHubError = OtherErrors
 			}
-			j.handleGitHubProcessingError(ctx, patchDoc, err)
+			j.reportGitHubProcessingError(ctx, patchDoc, err)
 			msg := message.Fields{
 				"job":          j.ID(),
 				"message":      "sent GitHub status error",
@@ -1570,29 +1570,34 @@ func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchD
 	}
 }
 
-func (j *patchIntentProcessor) handleGitHubProcessingError(ctx context.Context, patchDoc *patch.Patch, processingErr error) {
-	handlerCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+func (j *patchIntentProcessor) reportGitHubProcessingError(ctx context.Context, patchDoc *patch.Patch, processingErr error) {
+	reportCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 	defer cancel()
+	targetPath := j.makeGitHubProcessingErrorTarget(reportCtx, patchDoc, processingErr)
+	j.sendGitHubErrorStatus(reportCtx, patchDoc, targetPath)
+}
 
-	targetPath := ""
+func (j *patchIntentProcessor) makeGitHubProcessingErrorTarget(ctx context.Context, patchDoc *patch.Patch, processingErr error) string {
 	if j.patchCreated {
-		targetPath = "/patch/" + patchDoc.Id.Hex()
-	} else if j.ProjectID != "" {
-		storedError, err := patch.InsertGitHubIntentProcessingError(handlerCtx, j.ProjectID, processingErr.Error())
-		if err != nil {
-			j.AddError(err)
-			grip.Error(handlerCtx, message.WrapError(err, message.Fields{
-				"message":     "could not save GitHub intent processing error",
-				"job":         j.ID(),
-				"intent_id":   j.IntentID,
-				"intent_type": j.IntentType,
-				"source":      "patch intents",
-			}))
-		} else {
-			targetPath = "/rest/v2/github/intent-processing-errors/" + storedError.ID.Hex()
-		}
+		return "/patch/" + patchDoc.Id.Hex()
 	}
-	j.sendGitHubErrorStatus(handlerCtx, patchDoc, targetPath)
+	if j.ProjectID == "" {
+		return ""
+	}
+
+	storedError, err := patch.InsertGitHubIntentProcessingError(ctx, j.ProjectID, processingErr.Error())
+	if err != nil {
+		j.AddError(err)
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message":     "could not save GitHub intent processing error",
+			"job":         j.ID(),
+			"intent_id":   j.IntentID,
+			"intent_type": j.IntentType,
+			"source":      "patch intents",
+		}))
+		return ""
+	}
+	return "/rest/v2/github/intent-processing-errors/" + storedError.ID.Hex()
 }
 
 // sendGitHubSuccessMessageForIgnoredVariants sends GitHub success messages for variants that were ignored
