@@ -31,6 +31,7 @@ const (
 	agentHostSecretFlagName              = "host_secret"
 	singleTaskDistroFlagName             = "single_task_distro"
 	containerRetainOnFailureSecsFlagName = "container_retain_on_failure_secs"
+	compatClientPathFlagName             = "compat_client_path"
 )
 
 func Agent() cli.Command {
@@ -115,6 +116,10 @@ func Agent() cli.Command {
 				Usage: "seconds to retain the isolation container after a task failure for on-call inspection (0 = destroy immediately, default = 300)",
 				Value: 300,
 			},
+			cli.StringFlag{
+				Name:  compatClientPathFlagName,
+				Usage: "internal only: legacy home client path to mount into isolation containers; set by the agent monitor",
+			},
 		},
 		Before: mergeBeforeFuncs(
 			func(c *cli.Context) error {
@@ -159,6 +164,7 @@ func Agent() cli.Command {
 				SendTaskLogsToGlobalSender:   c.Bool(sendTaskLogsToGlobalSenderFlagName),
 				SingleTaskDistro:             c.Bool(singleTaskDistroFlagName),
 				ContainerRetainOnFailureSecs: c.Int(containerRetainOnFailureSecsFlagName),
+				CompatClientPath:             c.String(compatClientPathFlagName),
 			}
 
 			// Once the agent has retrieved the host ID and secret, unset those

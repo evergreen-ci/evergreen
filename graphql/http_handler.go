@@ -62,11 +62,17 @@ func Handler(apiURL string, allowMutations bool, env evergreen.Environment) func
 
 	ctx, cancel := env.Context()
 	defer cancel()
-	flags, _ := evergreen.GetServiceFlags(ctx)
-	complexityLimit := env.Settings().RateLimit.GraphQLComplexityLimit
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message": "getting service flags for GraphQL complexity limiter, defaulting to disabled",
+		}))
+	}
 
-	// Reject queries that exceed the enabled complexity limit
-	if !flags.GraphQLComplexityLimiterDisabled && complexityLimit > 0 {
+	complexityLimit := env.Settings().RateLimit.GraphQLComplexityLimit
+	// Default to turning off limiter if settings can't be fetched.
+	// Reject queries that exceed the enabled complexity limit.
+	if flags != nil && !flags.GraphQLComplexityLimiterDisabled && complexityLimit > 0 {
 		srv.Use(extension.FixedComplexityLimit(complexityLimit))
 	}
 

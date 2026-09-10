@@ -1,0 +1,27 @@
+{
+  "tests": [
+    {
+      "query_file": "redact_parameters.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "parameters": [
+              {
+                "key": "iter_count",
+                "value": "5"
+              },
+              {
+                "key": "my_parameter",
+                "value": "this_is_it"
+              },
+              {
+                "key": "secret_parameter",
+                "value": "{REDACTED}"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

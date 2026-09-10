@@ -2441,6 +2441,26 @@ func TestDisplayTaskRestart(t *testing.T) {
 		assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
 		assert.True(dbTask.Activated, dbTask.Id)
 	}
+
+	// test that restarting a display task activates unscheduled execution tasks via resetTask
+	assert.NoError(resetTaskData())
+	assert.NoError(resetTask(ctx, "displayTask1", "caller"))
+	unscheduledTask, err := task.FindOneId(ctx, "task8")
+	assert.NoError(err)
+	require.NotNil(t, unscheduledTask)
+	assert.Equal(evergreen.TaskUndispatched, unscheduledTask.Status)
+	assert.True(unscheduledTask.Activated)
+	assert.Equal("caller", unscheduledTask.ActivatedBy)
+
+	// test that restarting a version activates unscheduled execution tasks
+	assert.NoError(resetTaskData())
+	assert.NoError(RestartVersion(ctx, "version", displayTasks, false, "test"))
+	unscheduledTask, err = task.FindOneId(ctx, "task8")
+	assert.NoError(err)
+	require.NotNil(t, unscheduledTask)
+	assert.Equal(evergreen.TaskUndispatched, unscheduledTask.Status)
+	assert.True(unscheduledTask.Activated)
+	assert.Equal("test", unscheduledTask.ActivatedBy)
 }
 
 func TestResetTaskOrDisplayTask(t *testing.T) {
@@ -2489,10 +2509,15 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 			require.NotNil(t, successfulExecTask)
 			assert.Equal(t, evergreen.TaskSucceeded, successfulExecTask.Status, "successful execution task should not be reset")
 
+			unscheduledExecTask, err := task.FindOneId(ctx, "task8")
+			assert.NoError(t, err)
+			require.NotNil(t, unscheduledExecTask)
+			assert.False(t, unscheduledExecTask.Activated, "unscheduled execution task should not be activated for failed-only restart")
+
 			dbUser, err := user.FindOneById(t.Context(), "caller")
 			assert.NoError(t, err)
 			require.NotNil(t, dbUser)
-			assert.Equal(t, len(dt.ExecutionTasks), dbUser.NumScheduledPatchTasks)
+			assert.Equal(t, 2, dbUser.NumScheduledPatchTasks, "scheduling limit should only count activated execution tasks")
 
 			assert.NoError(t, ResetTaskOrDisplayTask(ctx, settings, dt, "caller", evergreen.StepbackTaskActivator, true, nil))
 			dt, err = task.FindOneId(ctx, "displayTask1")
@@ -2701,6 +2726,18 @@ func resetTaskData() error {
 	if err := task7.Insert(ctx); err != nil {
 		return err
 	}
+	task8 := &task.Task{
+		Id:            "task8",
+		DisplayName:   "task8",
+		BuildId:       build3.Id,
+		Version:       v.Id,
+		DisplayTaskId: utility.ToStringPtr("displayTask1"),
+		Status:        evergreen.TaskUndispatched,
+		Activated:     false,
+	}
+	if err := task8.Insert(ctx); err != nil {
+		return err
+	}
 	displayTask1 := &task.Task{
 		Id:             "displayTask1",
 		DisplayName:    "displayTask1",
@@ -2710,7 +2747,7 @@ func resetTaskData() error {
 		Version:        v.Id,
 		DisplayTaskId:  utility.ToStringPtr(""),
 		DisplayOnly:    true,
-		ExecutionTasks: []string{task5.Id, task6.Id},
+		ExecutionTasks: []string{task5.Id, task6.Id, task8.Id},
 		Status:         evergreen.TaskFailed,
 		Activated:      true,
 		DispatchTime:   time.Now(),
