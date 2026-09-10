@@ -1229,7 +1229,7 @@ func (r *queryResolver) HasVersion(ctx context.Context, patchID string) (bool, e
 
 // Version is the resolver for the version field.
 func (r *queryResolver) Version(ctx context.Context, versionID string) (*model.Version, error) {
-	v, err := loaders.GetVersion(ctx, versionID)
+	v, err := model.VersionFindOneId(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}
