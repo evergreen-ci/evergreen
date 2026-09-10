@@ -70,7 +70,7 @@ type githubStatusUpdateJob struct {
 	Ref           string `bson:"ref" json:"ref" yaml:"ref"`
 	GithubContext string `bson:"github_context" json:"github_context" yaml:"github_context"`
 	Description   string `bson:"description" json:"description" yaml:"description"`
-	IntentID      string `bson:"intent_id" json:"intent_id" yaml:"intent_id"`
+	TargetPath    string `bson:"target_path" json:"target_path" yaml:"target_path"`
 }
 
 func makeGithubStatusUpdateJob() *githubStatusUpdateJob {
@@ -123,7 +123,7 @@ func NewGithubStatusUpdateJobForExternalPatch(patchID string) amboy.Job {
 }
 
 // NewGithubStatusUpdateJobForProcessingError marks a ref as failed because Evergreen encountered an error creating a patch.
-func NewGithubStatusUpdateJobForProcessingError(githubContext, owner, repo, ref, description, intentID string) amboy.Job {
+func NewGithubStatusUpdateJobForProcessingError(githubContext, owner, repo, ref, description, targetPath string) amboy.Job {
 	job := makeGithubStatusUpdateJob()
 	job.Owner = owner
 	job.Repo = repo
@@ -131,7 +131,7 @@ func NewGithubStatusUpdateJobForProcessingError(githubContext, owner, repo, ref,
 	job.UpdateType = githubUpdateTypeProcessingError
 	job.GithubContext = githubContext
 	job.Description = description
-	job.IntentID = intentID
+	job.TargetPath = targetPath
 
 	job.SetID(fmt.Sprintf("%s:%s-%s-%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, owner, repo, description, time.Now().String()))
 
@@ -173,8 +173,8 @@ func (j *githubStatusUpdateJob) fetch(ctx context.Context) (*message.GithubStatu
 	}
 
 	if j.UpdateType == githubUpdateTypeProcessingError {
-		if j.IntentID != "" {
-			status.URL = fmt.Sprintf("%s/rest/v2/github/patch-intents/%s", j.urlBase, j.IntentID)
+		if j.TargetPath != "" {
+			status.URL = j.urlBase + j.TargetPath
 		}
 		status.Context = j.GithubContext
 		status.State = message.GithubStateFailure
