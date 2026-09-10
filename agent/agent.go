@@ -107,6 +107,9 @@ type Options struct {
 	// alive after a task failure so on-call can docker exec into it for
 	// post-mortem inspection. Zero disables retention.
 	ContainerRetainOnFailureSecs int
+	// CompatClientPath is the absolute path to the legacy ~/evergreen binary,
+	// mounted read-only into isolation containers.
+	CompatClientPath string
 }
 
 // AddLoggableInfo is a helper to add relevant information about the agent
