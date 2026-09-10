@@ -50,6 +50,39 @@ const (
 	gitHashLength = 40 // A git hash contains 40 characters.
 )
 
+func (r *Resolver) buildViewableAPIDistros(ctx context.Context, usr *user.DBUser, distros []distro.Distro) ([]*restModel.APIDistro, error) {
+	viewableDistroIDs, err := usr.GetViewableDistroSettings(ctx, r.roleManager)
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting viewable distros for user '%s'", usr.Username())
+	}
+
+	var viewableDistros map[string]struct{}
+	if viewableDistroIDs != nil {
+		viewableDistros = make(map[string]struct{}, len(viewableDistroIDs))
+		for _, id := range viewableDistroIDs {
+			viewableDistros[id] = struct{}{}
+		}
+	}
+
+	userHasDistroCreatePermission := usr.HasDistroCreatePermission(ctx)
+	apiDistros := make([]*restModel.APIDistro, 0, len(distros))
+	for _, d := range distros {
+		if viewableDistros != nil {
+			if _, ok := viewableDistros[d.Id]; !ok {
+				continue
+			}
+		}
+		if d.AdminOnly && !userHasDistroCreatePermission {
+			continue
+		}
+
+		apiDistro := &restModel.APIDistro{}
+		apiDistro.BuildFromService(d)
+		apiDistros = append(apiDistros, apiDistro)
+	}
+	return apiDistros, nil
+}
+
 // getGroupedFiles returns the files of a Task inside a GroupedFile struct
 func getGroupedFiles(ctx context.Context, name string, taskID string, execution int) (*GroupedFiles, error) {
 	taskFiles, err := artifact.GetAllArtifacts(ctx, []artifact.TaskIDAndExecution{{TaskID: taskID, Execution: execution}})

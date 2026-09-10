@@ -21,17 +21,9 @@ func (r *imageResolver) Distros(ctx context.Context, obj *model.APIImage) ([]*mo
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding distros for image '%s': %s", imageID, err.Error()))
 	}
 
-	userHasDistroCreatePermission := usr.HasDistroCreatePermission(ctx)
-
-	apiDistros := []*model.APIDistro{}
-	for _, d := range distros {
-		// Omit admin-only distros if user lacks permissions.
-		if d.AdminOnly && !userHasDistroCreatePermission {
-			continue
-		}
-		apiDistro := model.APIDistro{}
-		apiDistro.BuildFromService(d)
-		apiDistros = append(apiDistros, &apiDistro)
+	apiDistros, err := r.buildViewableAPIDistros(ctx, usr, distros)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	return apiDistros, nil
 }

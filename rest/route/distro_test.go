@@ -19,12 +19,55 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
+
+func TestDistroGetHandlerReturnsOnlyDistrosWithViewPermission(t *testing.T) {
+	ctx := t.Context()
+	env := testutil.NewEnvironment(ctx, t)
+	rm := env.RoleManager()
+	require.NoError(t, db.ClearCollections(distro.Collection, evergreen.RoleCollection, evergreen.ScopeCollection))
+
+	viewableDistro := distro.Distro{Id: "viewable", Setup: "viewable secret"}
+	require.NoError(t, viewableDistro.Insert(ctx))
+	require.NoError(t, (&distro.Distro{Id: "restricted", Setup: "restricted secret"}).Insert(ctx))
+	require.NoError(t, (&distro.Distro{Id: "admin-only", AdminOnly: true, Setup: "admin secret"}).Insert(ctx))
+
+	const scopeID = "viewable_distro_scope"
+	const roleID = "viewable_distro_role"
+	require.NoError(t, rm.AddScope(ctx, gimlet.Scope{ID: scopeID, Resources: []string{viewableDistro.Id, "admin-only"}, Type: evergreen.DistroResourceType}))
+	require.NoError(t, rm.UpdateRole(ctx, gimlet.Role{
+		ID:          roleID,
+		Scope:       scopeID,
+		Permissions: gimlet.Permissions{evergreen.PermissionDistroSettings: evergreen.DistroSettingsView.Value},
+	}))
+
+	usr := &user.DBUser{Id: "user", SystemRoles: []string{roleID}}
+	ctx = gimlet.AttachUser(ctx, usr)
+	handler := makeDistroRoute(rm).Factory()
+	resp := handler.Run(ctx)
+	require.Equal(t, http.StatusOK, resp.Status())
+	data, ok := resp.Data().([]interface{})
+	require.True(t, ok)
+	require.Len(t, data, 1)
+	apiDistro, ok := data[0].(*restModel.APIDistro)
+	require.True(t, ok)
+	assert.Equal(t, viewableDistro.Id, utility.FromStringPtr(apiDistro.Name))
+	assert.Equal(t, viewableDistro.Setup, utility.FromStringPtr(apiDistro.Setup))
+
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "restricted-user"})
+	resp = handler.Run(ctx)
+	require.Equal(t, http.StatusOK, resp.Status())
+	data, ok = resp.Data().([]interface{})
+	require.True(t, ok)
+	assert.Empty(t, data)
+}
 
 ////////////////////////////////////////////////////////////////////////
 //

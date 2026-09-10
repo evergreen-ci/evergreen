@@ -35,6 +35,15 @@
           ]
         }
       }
+    },
+    {
+      "query_file": "restricted_distros.graphql",
+      "test_user_id": "branch_admin_user",
+      "result": {
+        "data": {
+          "distros": []
+        }
+      }
     }
   ]
 }

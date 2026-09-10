@@ -552,6 +552,23 @@ func (u *DBUser) GetViewableProjectSettings(ctx context.Context) ([]string, erro
 	return viewableProjects, nil
 }
 
+// GetViewableDistroSettings returns the distros whose settings the user can view.
+// A nil result indicates that permissions are disabled.
+func (u *DBUser) GetViewableDistroSettings(ctx context.Context, roleManager gimlet.RoleManager) ([]string, error) {
+	if evergreen.PermissionsDisabledForTests() {
+		return nil, nil
+	}
+
+	viewableDistros, err := rolemanager.FindAllowedResources(ctx, roleManager, u.Roles(), evergreen.DistroResourceType, evergreen.PermissionDistroSettings, evergreen.DistroSettingsView.Value)
+	if err != nil {
+		return nil, err
+	}
+	if viewableDistros == nil {
+		return []string{}, nil
+	}
+	return viewableDistros, nil
+}
+
 // GetViewableProjects returns the lists of projects the user can view.
 func (u *DBUser) GetViewableProjects(ctx context.Context) ([]string, error) {
 	if evergreen.PermissionsDisabledForTests() {
