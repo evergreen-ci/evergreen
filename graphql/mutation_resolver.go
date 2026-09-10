@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -393,11 +392,10 @@ func (r *mutationResolver) UpdateHostStatus(ctx context.Context, hostIds []strin
 // SetPatchVisibility is the resolver for the setPatchVisibility field.
 func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []string, hidden bool) ([]*patch.Patch, error) {
 	user := mustHaveUser(ctx)
-	loaders.PreloadPatches(ctx, patchIds)
 
 	patchPtrs := []*patch.Patch{}
 	for _, pId := range patchIds {
-		p, err := loaders.GetPatch(ctx, pId)
+		p, err := patch.FindOneId(ctx, pId)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting patch '%s': %s", pId, err.Error()))
 		}
@@ -1488,10 +1486,9 @@ func (r *mutationResolver) RestartVersions(ctx context.Context, versionID string
 		versionIDs = append(versionIDs, utility.FromStringPtr(version.VersionId))
 	}
 
-	loaders.PreloadVersions(ctx, versionIDs)
 	versions := []*model.Version{}
 	for _, vId := range versionIDs {
-		v, versionErr := loaders.GetVersion(ctx, vId)
+		v, versionErr := model.VersionFindOneId(ctx, vId)
 		if versionErr != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", vId, versionErr.Error()))
 		}
