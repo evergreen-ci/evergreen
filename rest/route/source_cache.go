@@ -17,7 +17,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
+
+// sourceCacheNamespaceAttribute names the source cache namespace a task resolves to.
+const sourceCacheNamespaceAttribute = "evergreen.command.git_get_project.source_cache.namespace"
 
 // POST /rest/v2/task/{task_id}/source_cache/credentials
 //
@@ -53,6 +58,9 @@ func (h *sourceCacheCredentials) Parse(ctx context.Context, r *http.Request) err
 }
 
 func (h *sourceCacheCredentials) Run(ctx context.Context) gimlet.Responder {
+	ctx, span := tracer.Start(ctx, "source-cache-credentials")
+	defer span.End()
+
 	t, err := task.FindOneId(ctx, h.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
@@ -153,23 +161,16 @@ func validateSourceCacheRepoComponents(owner, repo string) error {
 }
 
 // sourceCacheNamespaceForTask returns the namespace the task's own artifact lives in.
-func sourceCacheNamespaceForTask(ctx context.Context, t *task.Task) (string, error) {
+func sourceCacheNamespaceForTask(t *task.Task) string {
 	if t.Requester == evergreen.GithubPRRequester || t.Requester == evergreen.GithubMergeRequester {
-		return evergreen.SourceCachePRNamespace, nil
+		return evergreen.SourceCachePRNamespace
 	}
 	if !evergreen.IsPatchRequester(t.Requester) {
-		return evergreen.SourceCacheBaseNamespace, nil
+		return evergreen.SourceCacheBaseNamespace
 	}
-
-	// A parent PR checkout leaves the working tree at unreviewed PR code.
-	p, err := patch.FindOneId(ctx, t.Version)
-	if err != nil {
-		return "", errors.Wrapf(err, "finding patch '%s'", t.Version)
-	}
-	if p != nil && p.GitHubParentPRCheckout != nil && p.GitHubParentPRCheckout.ForSource {
-		return evergreen.SourceCachePRNamespace, nil
-	}
-	return evergreen.SourceCacheBaseNamespace, nil
+	// A CLI patch can run at a commit mainline has not built yet, so it must not
+	// write to the base namespace a mainline build will write to.
+	return evergreen.SourceCacheCLINamespace
 }
 
 // sourceCachePlan holds the exact origin keys a session may touch.
@@ -187,10 +188,8 @@ type sourceCacheCandidate struct {
 // buildSourceCachePlan resolves the ordered restore keys and the save key from the
 // task, the patch, and the clone shape the agent resolved.
 func buildSourceCachePlan(ctx context.Context, t *task.Task, pRef *model.ProjectRef, req apimodels.SourceCacheCredentialsRequest) (*sourceCachePlan, error) {
-	namespace, err := sourceCacheNamespaceForTask(ctx, t)
-	if err != nil {
-		return nil, errors.Wrap(err, "resolving the namespace")
-	}
+	namespace := sourceCacheNamespaceForTask(t)
+	trace.SpanFromContext(ctx).SetAttributes(attribute.String(sourceCacheNamespaceAttribute, namespace))
 	prRevision, err := sourceCachePRRevision(ctx, t)
 	if err != nil {
 		return nil, errors.Wrap(err, "resolving the PR head")
