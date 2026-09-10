@@ -2,8 +2,6 @@ package model
 
 import (
 	"context"
-	"fmt"
-	"net/url"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -66,18 +64,18 @@ type APIPatch struct {
 	Activated bool `json:"activated"`
 	// InvalidatedByUpstream is whether the patch was invalidated because an item ahead of it in the merge queue failed.
 	// Repeated from GithubMergeData to preserve backwards compatibility.
-	InvalidatedByUpstream bool                 `json:"invalidated_by_upstream"`
-	Alias                 *string              `json:"alias,omitempty"`
-	Aliases               []string             `json:"aliases,omitempty"`
-	GithubPatchData       APIGithubPatch       `json:"github_patch_data"`
-	GithubMergeData       APIGithubMergeGroup  `json:"github_merge_data"`
-	ModuleCodeChanges     []APIModulePatch     `json:"module_code_changes"`
-	Parameters            []APIParameter       `json:"parameters"`
-	ProjectStorageMethod  *string              `json:"project_storage_method,omitempty"`
-	ChildPatches          []APIPatch           `json:"child_patches"`
-	ChildPatchAliases     []APIChildPatchAlias `json:"child_patch_aliases,omitempty"`
-	Requester             *string              `json:"requester"`
-	MergedFrom            *string              `json:"merged_from"`
+	InvalidatedByUpstream bool                     `json:"invalidated_by_upstream"`
+	Alias                 *string                  `json:"alias,omitempty"`
+	Aliases               []string                 `json:"aliases,omitempty"`
+	GithubPatchData       APIGithubPatch           `json:"github_patch_data"`
+	GithubMergeData       APIGithubMergeGroup      `json:"github_merge_data"`
+	ModuleCodeChanges     []patch.ModuleCodeChange `json:"module_code_changes"`
+	Parameters            []APIParameter           `json:"parameters"`
+	ProjectStorageMethod  *string                  `json:"project_storage_method,omitempty"`
+	ChildPatches          []APIPatch               `json:"child_patches"`
+	ChildPatchAliases     []APIChildPatchAlias     `json:"child_patch_aliases,omitempty"`
+	Requester             *string                  `json:"requester"`
+	MergedFrom            *string                  `json:"merged_from"`
 	// GitInfo contains metadata about the author's local git environment for CLI patches.
 	GitInfo *APIGitMetadata `json:"git_info,omitempty"`
 
@@ -104,25 +102,9 @@ type VariantTask struct {
 	Tasks []*string `json:"tasks"`
 }
 
-type FileDiff struct {
-	FileName    *string `json:"file_name"`
-	Additions   int     `json:"additions"`
-	Deletions   int     `json:"deletions"`
-	DiffLink    *string `json:"diff_link"`
-	Description string  `json:"description"`
-}
-
 type APIChildPatchAlias struct {
 	Alias   *string `json:"alias"`
 	PatchID *string `json:"patch_id"`
-}
-
-type APIModulePatch struct {
-	BranchName     *string    `json:"branch_name"`
-	HTMLLink       *string    `json:"html_link"`
-	RawLink        *string    `json:"raw_link"`
-	CommitMessages []*string  `json:"commit_messages"`
-	FileDiffs      []FileDiff `json:"file_diffs"`
 }
 
 type APIParameter struct {
@@ -476,46 +458,7 @@ func (apiPatch *APIPatch) buildModuleChanges(p patch.Patch, identifier string) {
 	if env == nil {
 		return
 	}
-	apiPatch.ModuleCodeChanges = BuildModuleCodeChanges(p, identifier, env.Settings().Api.URL)
-}
-
-// BuildModuleCodeChanges constructs the list of module code changes for a patch,
-// including file diff links. It is used by both the REST API and GraphQL resolvers.
-func BuildModuleCodeChanges(p patch.Patch, identifier, apiURL string) []APIModulePatch {
-	codeChanges := []APIModulePatch{}
-	patchID := p.Id.Hex()
-
-	for patchNumber, modPatch := range p.Patches {
-		branchName := modPatch.ModuleName
-		if branchName == "" {
-			branchName = identifier
-		}
-		htmlLink := fmt.Sprintf("%s/filediff/%s?patch_number=%d", apiURL, patchID, patchNumber)
-		rawLink := fmt.Sprintf("%s/rawdiff/%s?patch_number=%d", apiURL, patchID, patchNumber)
-		fileDiffs := []FileDiff{}
-		for i, file := range modPatch.PatchSet.Summary {
-			diffLink := fmt.Sprintf("%s/filediff/%s?file_name=%s&patch_number=%d&commit_number=%d", apiURL, patchID, url.QueryEscape(file.Name), patchNumber, i)
-			fileName := file.Name
-			fileDiff := FileDiff{
-				FileName:    &fileName,
-				Additions:   file.Additions,
-				Deletions:   file.Deletions,
-				DiffLink:    &diffLink,
-				Description: file.Description,
-			}
-			fileDiffs = append(fileDiffs, fileDiff)
-		}
-		apiModPatch := APIModulePatch{
-			BranchName:     &branchName,
-			HTMLLink:       &htmlLink,
-			RawLink:        &rawLink,
-			FileDiffs:      fileDiffs,
-			CommitMessages: utility.ToStringPtrSlice(modPatch.PatchSet.CommitMessages),
-		}
-		codeChanges = append(codeChanges, apiModPatch)
-	}
-
-	return codeChanges
+	apiPatch.ModuleCodeChanges = patch.BuildModuleCodeChanges(p, identifier, env.Settings().Api.URL)
 }
 
 // ToService converts a service layer patch using the data from APIPatch

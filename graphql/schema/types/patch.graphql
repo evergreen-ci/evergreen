@@ -90,7 +90,7 @@ type Patch {
   status: String!
   tasks: [String!]!
   user: User!
-  variantsTasks: [VariantTask!]! # Variants and tasks that have been selected to run i.e. these are configured and scheduled to run. TODO: Make another field with a better name.
+  variantsTasks: [VariantTask!]! # Variants and tasks that have been selected to run i.e. these are configured and scheduled to run. TODO DEVPROD-42880: Make another field with a better name.
   version: VersionLite
 }
 
@@ -131,7 +131,7 @@ type TaskSpecifier {
 }
 
 type PatchProject {
-  variants: [ProjectBuildVariant!]! # All possible variants and tasks that can be selected to run. TODO: Make another field with a better name.
+  variants: [ProjectBuildVariant!]! # All possible variants and tasks that can be selected to run. TODO DEVPROD-42880: Make another field with a better name.
 }
 
 type ProjectBuildVariant {

@@ -2632,7 +2632,7 @@ type PatchResolver interface {
 	GeneratedTaskCounts(ctx context.Context, obj *patch.Patch) ([]*GeneratedTaskCountResults, error)
 
 	InvalidatedByUpstream(ctx context.Context, obj *patch.Patch) (bool, error)
-	ModuleCodeChanges(ctx context.Context, obj *patch.Patch) ([]*model.APIModulePatch, error)
+	ModuleCodeChanges(ctx context.Context, obj *patch.Patch) ([]*patch.ModuleCodeChange, error)
 	Parameters(ctx context.Context, obj *patch.Patch) ([]*model.APIParameter, error)
 
 	PatchTriggerAliases(ctx context.Context, obj *patch.Patch) ([]*model.APIPatchTriggerDefinition, error)
@@ -27702,7 +27702,7 @@ func (ec *executionContext) fieldContext_File_associatedLinks(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _FileDiff_additions(ctx context.Context, field graphql.CollectedField, obj *model.FileDiff) (ret graphql.Marshaler) {
+func (ec *executionContext) _FileDiff_additions(ctx context.Context, field graphql.CollectedField, obj *patch.FileDiff) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -27731,7 +27731,7 @@ func (ec *executionContext) fieldContext_FileDiff_additions(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _FileDiff_deletions(ctx context.Context, field graphql.CollectedField, obj *model.FileDiff) (ret graphql.Marshaler) {
+func (ec *executionContext) _FileDiff_deletions(ctx context.Context, field graphql.CollectedField, obj *patch.FileDiff) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -27760,7 +27760,7 @@ func (ec *executionContext) fieldContext_FileDiff_deletions(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _FileDiff_description(ctx context.Context, field graphql.CollectedField, obj *model.FileDiff) (ret graphql.Marshaler) {
+func (ec *executionContext) _FileDiff_description(ctx context.Context, field graphql.CollectedField, obj *patch.FileDiff) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -27789,7 +27789,7 @@ func (ec *executionContext) fieldContext_FileDiff_description(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _FileDiff_diffLink(ctx context.Context, field graphql.CollectedField, obj *model.FileDiff) (ret graphql.Marshaler) {
+func (ec *executionContext) _FileDiff_diffLink(ctx context.Context, field graphql.CollectedField, obj *patch.FileDiff) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -27799,7 +27799,7 @@ func (ec *executionContext) _FileDiff_diffLink(ctx context.Context, field graphq
 			return obj.DiffLink, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalNString2string,
 		true,
 		true,
 	)
@@ -27818,7 +27818,7 @@ func (ec *executionContext) fieldContext_FileDiff_diffLink(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _FileDiff_fileName(ctx context.Context, field graphql.CollectedField, obj *model.FileDiff) (ret graphql.Marshaler) {
+func (ec *executionContext) _FileDiff_fileName(ctx context.Context, field graphql.CollectedField, obj *patch.FileDiff) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -27828,7 +27828,7 @@ func (ec *executionContext) _FileDiff_fileName(ctx context.Context, field graphq
 			return obj.FileName, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalNString2string,
 		true,
 		true,
 	)
@@ -36224,7 +36224,7 @@ func (ec *executionContext) fieldContext_MetadataLink_source(_ context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _ModuleCodeChange_branchName(ctx context.Context, field graphql.CollectedField, obj *model.APIModulePatch) (ret graphql.Marshaler) {
+func (ec *executionContext) _ModuleCodeChange_branchName(ctx context.Context, field graphql.CollectedField, obj *patch.ModuleCodeChange) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -36234,7 +36234,7 @@ func (ec *executionContext) _ModuleCodeChange_branchName(ctx context.Context, fi
 			return obj.BranchName, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalNString2string,
 		true,
 		true,
 	)
@@ -36253,7 +36253,7 @@ func (ec *executionContext) fieldContext_ModuleCodeChange_branchName(_ context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _ModuleCodeChange_fileDiffs(ctx context.Context, field graphql.CollectedField, obj *model.APIModulePatch) (ret graphql.Marshaler) {
+func (ec *executionContext) _ModuleCodeChange_fileDiffs(ctx context.Context, field graphql.CollectedField, obj *patch.ModuleCodeChange) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -36263,7 +36263,7 @@ func (ec *executionContext) _ModuleCodeChange_fileDiffs(ctx context.Context, fie
 			return obj.FileDiffs, nil
 		},
 		nil,
-		ec.marshalNFileDiff2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐFileDiffᚄ,
+		ec.marshalNFileDiff2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋpatchᚐFileDiffᚄ,
 		true,
 		true,
 	)
@@ -36294,7 +36294,7 @@ func (ec *executionContext) fieldContext_ModuleCodeChange_fileDiffs(_ context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _ModuleCodeChange_htmlLink(ctx context.Context, field graphql.CollectedField, obj *model.APIModulePatch) (ret graphql.Marshaler) {
+func (ec *executionContext) _ModuleCodeChange_htmlLink(ctx context.Context, field graphql.CollectedField, obj *patch.ModuleCodeChange) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -36304,7 +36304,7 @@ func (ec *executionContext) _ModuleCodeChange_htmlLink(ctx context.Context, fiel
 			return obj.HTMLLink, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalNString2string,
 		true,
 		true,
 	)
@@ -36323,7 +36323,7 @@ func (ec *executionContext) fieldContext_ModuleCodeChange_htmlLink(_ context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _ModuleCodeChange_rawLink(ctx context.Context, field graphql.CollectedField, obj *model.APIModulePatch) (ret graphql.Marshaler) {
+func (ec *executionContext) _ModuleCodeChange_rawLink(ctx context.Context, field graphql.CollectedField, obj *patch.ModuleCodeChange) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -36333,7 +36333,7 @@ func (ec *executionContext) _ModuleCodeChange_rawLink(ctx context.Context, field
 			return obj.RawLink, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalNString2string,
 		true,
 		true,
 	)
@@ -44857,7 +44857,7 @@ func (ec *executionContext) _Patch_moduleCodeChanges(ctx context.Context, field 
 			return ec.resolvers.Patch().ModuleCodeChanges(ctx, obj)
 		},
 		nil,
-		ec.marshalNModuleCodeChange2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIModulePatchᚄ,
+		ec.marshalNModuleCodeChange2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋpatchᚐModuleCodeChangeᚄ,
 		true,
 		true,
 	)
@@ -96039,7 +96039,7 @@ func (ec *executionContext) _File(ctx context.Context, sel ast.SelectionSet, obj
 
 var fileDiffImplementors = []string{"FileDiff"}
 
-func (ec *executionContext) _FileDiff(ctx context.Context, sel ast.SelectionSet, obj *model.FileDiff) graphql.Marshaler {
+func (ec *executionContext) _FileDiff(ctx context.Context, sel ast.SelectionSet, obj *patch.FileDiff) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, fileDiffImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -99483,7 +99483,7 @@ func (ec *executionContext) _MetadataLink(ctx context.Context, sel ast.Selection
 
 var moduleCodeChangeImplementors = []string{"ModuleCodeChange"}
 
-func (ec *executionContext) _ModuleCodeChange(ctx context.Context, sel ast.SelectionSet, obj *model.APIModulePatch) graphql.Marshaler {
+func (ec *executionContext) _ModuleCodeChange(ctx context.Context, sel ast.SelectionSet, obj *patch.ModuleCodeChange) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, moduleCodeChangeImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -115380,11 +115380,11 @@ func (ec *executionContext) marshalNFile2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 	return ec._File(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNFileDiff2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐFileDiff(ctx context.Context, sel ast.SelectionSet, v model.FileDiff) graphql.Marshaler {
+func (ec *executionContext) marshalNFileDiff2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋpatchᚐFileDiff(ctx context.Context, sel ast.SelectionSet, v patch.FileDiff) graphql.Marshaler {
 	return ec._FileDiff(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNFileDiff2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐFileDiffᚄ(ctx context.Context, sel ast.SelectionSet, v []model.FileDiff) graphql.Marshaler {
+func (ec *executionContext) marshalNFileDiff2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋpatchᚐFileDiffᚄ(ctx context.Context, sel ast.SelectionSet, v []patch.FileDiff) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -115408,7 +115408,7 @@ func (ec *executionContext) marshalNFileDiff2ᚕgithubᚗcomᚋevergreenᚑciᚋ
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNFileDiff2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐFileDiff(ctx, sel, v[i])
+			ret[i] = ec.marshalNFileDiff2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋpatchᚐFileDiff(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -117089,7 +117089,7 @@ func (ec *executionContext) unmarshalNMetadataLinkInput2ᚖgithubᚗcomᚋevergr
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNModuleCodeChange2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIModulePatchᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIModulePatch) graphql.Marshaler {
+func (ec *executionContext) marshalNModuleCodeChange2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋpatchᚐModuleCodeChangeᚄ(ctx context.Context, sel ast.SelectionSet, v []*patch.ModuleCodeChange) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -117113,7 +117113,7 @@ func (ec *executionContext) marshalNModuleCodeChange2ᚕᚖgithubᚗcomᚋevergr
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNModuleCodeChange2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIModulePatch(ctx, sel, v[i])
+			ret[i] = ec.marshalNModuleCodeChange2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋpatchᚐModuleCodeChange(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -117133,7 +117133,7 @@ func (ec *executionContext) marshalNModuleCodeChange2ᚕᚖgithubᚗcomᚋevergr
 	return ret
 }
 
-func (ec *executionContext) marshalNModuleCodeChange2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIModulePatch(ctx context.Context, sel ast.SelectionSet, v *model.APIModulePatch) graphql.Marshaler {
+func (ec *executionContext) marshalNModuleCodeChange2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋpatchᚐModuleCodeChange(ctx context.Context, sel ast.SelectionSet, v *patch.ModuleCodeChange) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
