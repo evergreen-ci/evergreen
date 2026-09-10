@@ -29,6 +29,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -249,10 +250,12 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.Equal(patchIntentJobName, factory().Type().Name)
 }
 
-func TestSaveGitHubProcessingError(t *testing.T) {
+func TestHandleGitHubProcessingError(t *testing.T) {
 	ctx := testutil.TestSpan(t.Context(), t)
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
+	require.NoError(t, (&evergreen.UIConfig{Url: "https://example.com"}).Set(ctx))
+	require.NoError(t, evergreen.SetServiceFlags(ctx, evergreen.ServiceFlags{}))
 
 	originalEnv := evergreen.GetEnvironment()
 	evergreen.SetEnvironment(env)
@@ -260,20 +263,62 @@ func TestSaveGitHubProcessingError(t *testing.T) {
 		evergreen.SetEnvironment(originalEnv)
 	})
 
-	require.NoError(t, db.ClearCollections(patch.IntentCollection, patch.Collection))
+	require.NoError(t, db.ClearCollections(patch.IntentCollection, patch.Collection, patch.GitHubIntentProcessingErrorCollection))
 	intent, err := patch.NewGithubIntent(ctx, "1", "", "", "", "", testutil.NewGithubPR(1, "evergreen-ci/evergreen", "base-hash", "octocat/evergreen", "head-hash", "octocat", "PR title"))
 	require.NoError(t, err)
 	require.NoError(t, intent.Insert(ctx))
 
-	j, ok := NewPatchIntentProcessor(env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j, ok := NewGitHubPatchIntentProcessor(env, mgobson.NewObjectId(), intent, "project-id").(*patchIntentProcessor)
 	require.True(t, ok)
-	j.saveGitHubProcessingError(ctx, assert.AnError)
-	require.NoError(t, j.Error())
+	j.gitHubError = OtherErrors
+	patchDoc := intent.NewPatch()
+	cancelledCtx, cancel := context.WithCancel(ctx)
+	cancel()
+	j.handleGitHubProcessingError(cancelledCtx, patchDoc, assert.AnError)
 
-	found, err := patch.FindGitHubIntentProcessingError(ctx, intent.ID())
+	var found []patch.GitHubIntentProcessingError
+	err = db.FindAllQ(ctx, patch.GitHubIntentProcessingErrorCollection, db.Query(nil), &found)
 	require.NoError(t, err)
-	require.NotNil(t, found)
-	assert.Equal(t, assert.AnError.Error(), found.ProcessingError)
+	require.Len(t, found, 1)
+	assert.Equal(t, "project-id", found[0].ProjectID)
+	assert.Equal(t, assert.AnError.Error(), found[0].Message)
+	status := j.env.(*mock.Environment).InternalSender
+	msg, ok := status.GetMessageSafe()
+	require.True(t, ok)
+	githubStatus, ok := msg.Message.Raw().(*message.GithubStatus)
+	require.True(t, ok)
+	assert.Equal(t, "/rest/v2/github/intent-processing-errors/"+found[0].ID.Hex(), strings.TrimPrefix(githubStatus.URL, "https://example.com"))
+
+	t.Run("CreatedPatchUsesPatchURLAndDoesNotStoreError", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(patch.GitHubIntentProcessingErrorCollection))
+		j.patchCreated = true
+		patchDoc.Id = mgobson.NewObjectId()
+		j.handleGitHubProcessingError(ctx, patchDoc, assert.AnError)
+
+		var stored []patch.GitHubIntentProcessingError
+		require.NoError(t, db.FindAllQ(ctx, patch.GitHubIntentProcessingErrorCollection, db.Query(nil), &stored))
+		assert.Empty(t, stored)
+		msg, ok := status.GetMessageSafe()
+		require.True(t, ok)
+		githubStatus, ok := msg.Message.Raw().(*message.GithubStatus)
+		require.True(t, ok)
+		assert.Equal(t, "https://example.com/patch/"+patchDoc.Id.Hex(), githubStatus.URL)
+	})
+
+	t.Run("MissingProjectSendsStatusWithoutURL", func(t *testing.T) {
+		j.patchCreated = false
+		j.ProjectID = ""
+		j.handleGitHubProcessingError(ctx, patchDoc, assert.AnError)
+
+		var stored []patch.GitHubIntentProcessingError
+		require.NoError(t, db.FindAllQ(ctx, patch.GitHubIntentProcessingErrorCollection, db.Query(nil), &stored))
+		assert.Empty(t, stored)
+		msg, ok := status.GetMessageSafe()
+		require.True(t, ok)
+		githubStatus, ok := msg.Message.Raw().(*message.GithubStatus)
+		require.True(t, ok)
+		assert.Empty(t, githubStatus.URL)
+	})
 }
 
 func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {

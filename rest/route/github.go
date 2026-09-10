@@ -630,7 +630,7 @@ func (gh *githubHookApi) handleMergeGroupChecksRequested(ctx context.Context, ev
 		})
 		return nil
 	}
-	if err := gh.AddIntentForGithubMerge(ctx, event); err != nil {
+	if err := gh.AddIntentForGithubMerge(ctx, event, projectRef.Id); err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"source":   "GitHub hook",
 			"msg_id":   gh.msgID,
@@ -648,12 +648,12 @@ func (gh *githubHookApi) handleMergeGroupChecksRequested(ctx context.Context, ev
 }
 
 // AddIntentForGithubMerge creates and inserts an intent document in response to a GitHub merge group event.
-func (gh *githubHookApi) AddIntentForGithubMerge(ctx context.Context, mg *github.MergeGroupEvent) error {
+func (gh *githubHookApi) AddIntentForGithubMerge(ctx context.Context, mg *github.MergeGroupEvent, projectID string) error {
 	intent, err := patch.NewGithubMergeIntent(ctx, gh.msgID, patch.AutomatedCaller, mg)
 	if err != nil {
 		return errors.Wrap(err, "creating GitHub merge intent")
 	}
-	if err := data.AddGithubMergeIntent(ctx, intent, gh.queue); err != nil {
+	if err := data.AddGithubMergeIntent(ctx, intent, projectID, gh.queue); err != nil {
 		return errors.Wrap(err, "saving GitHub merge intent")
 	}
 	return nil
@@ -1230,7 +1230,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 
 	// If no conflicting patches exist, we can create the patch
 	if len(conflictingPatches) == 0 {
-		return errors.Wrap(data.AddPRPatchIntent(ctx, ghi, gh.queue), "saving GitHub patch intent")
+		return errors.Wrap(data.AddPRPatchIntent(ctx, ghi, projectRef.Id, gh.queue), "saving GitHub patch intent")
 	}
 
 	// If we don't want to override any existing patches, comment to inform the user and no-op.
@@ -1253,7 +1253,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		return errors.Wrap(err, "overriding other PRs")
 	}
 
-	return errors.Wrap(data.AddPRPatchIntent(ctx, ghi, gh.queue), "saving GitHub patch intent")
+	return errors.Wrap(data.AddPRPatchIntent(ctx, ghi, projectRef.Id, gh.queue), "saving GitHub patch intent")
 }
 
 // handlePRLabeled processes a GitHub PR "labeled" event by finding the existing

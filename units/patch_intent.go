@@ -58,11 +58,13 @@ type patchIntentProcessor struct {
 	IntentID   string           `bson:"intent_id" json:"intent_id" yaml:"intent_id"`
 	IntentType string           `bson:"intent_type" json:"intent_type" yaml:"intent_type"`
 	PatchID    mgobson.ObjectId `bson:"patch_id,omitempty" json:"patch_id" yaml:"patch_id"`
+	ProjectID  string           `bson:"project_id,omitempty" json:"project_id" yaml:"project_id"`
 
 	user   *user.DBUser
 	intent patch.Intent
 
-	gitHubError string
+	gitHubError  string
+	patchCreated bool
 }
 
 // NewPatchIntentProcessor creates an amboy job to create a patch from the
@@ -80,6 +82,13 @@ func NewPatchIntentProcessor(env evergreen.Environment, patchID mgobson.ObjectId
 	j.UpdateTimeInfo(amboy.JobTimeInfo{
 		MaxTime: maxPatchIntentJobTime,
 	})
+	return j
+}
+
+// NewGitHubPatchIntentProcessor creates a project-scoped processor for a GitHub intent.
+func NewGitHubPatchIntentProcessor(env evergreen.Environment, patchID mgobson.ObjectId, intent patch.Intent, projectID string) amboy.Job {
+	j := NewPatchIntentProcessor(env, patchID, intent).(*patchIntentProcessor)
+	j.ProjectID = projectID
 	return j
 }
 
@@ -156,8 +165,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 			if j.gitHubError == "" {
 				j.gitHubError = OtherErrors
 			}
-			j.saveGitHubProcessingError(ctx, err)
-			j.sendGitHubErrorStatus(ctx, patchDoc)
+			j.handleGitHubProcessingError(ctx, patchDoc, err)
 			msg := message.Fields{
 				"job":          j.ID(),
 				"message":      "sent GitHub status error",
@@ -421,6 +429,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			return errors.Wrapf(err, "inserting patch '%s'", patchDoc.Id.Hex())
 		}
 	}
+	j.patchCreated = true
 
 	if err = processTriggerAliases(ctx, patchDoc, pref, j.env, patchDoc.Triggers.Aliases); err != nil {
 		if strings.Contains(err.Error(), noChildPatchTasksOrVariants) {
@@ -1100,6 +1109,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 	}
 	patchDoc.Author = j.user.Id
 	patchDoc.Project = projectRef.Id
+	j.ProjectID = projectRef.Id
 
 	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, patchDoc.GithubPatchData)
 	if err != nil {
@@ -1224,6 +1234,7 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 	}
 	patchDoc.Author = j.user.Id
 	patchDoc.Project = projectRef.Id
+	j.ProjectID = projectRef.Id
 	patchDoc.Description = makeMergeQueueDescription(patchDoc.GithubMergeData)
 
 	if len(projectRef.GithubMQTriggerAliases) > 0 {
@@ -1526,7 +1537,7 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 	return hasWritePermission, nil
 }
 
-func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchDoc *patch.Patch) {
+func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchDoc *patch.Patch, targetPath string) {
 	if j.IntentType == patch.GithubIntentType {
 		update := NewGithubStatusUpdateJobForProcessingError(
 			thirdparty.GithubStatusDefaultContext,
@@ -1534,7 +1545,7 @@ func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchD
 			patchDoc.GithubPatchData.BaseRepo,
 			patchDoc.GithubPatchData.HeadHash,
 			j.gitHubError,
-			j.IntentID,
+			targetPath,
 		)
 		update.Run(ctx)
 		j.AddError(update.Error())
@@ -1548,7 +1559,7 @@ func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchD
 				patchDoc.GithubMergeData.Repo,
 				patchDoc.GithubMergeData.HeadSHA,
 				j.gitHubError,
-				j.IntentID,
+				targetPath,
 			)
 			update.Run(ctx)
 			j.AddError(update.Error())
@@ -1559,25 +1570,29 @@ func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchD
 	}
 }
 
-func (j *patchIntentProcessor) saveGitHubProcessingError(ctx context.Context, err error) {
-	if err == nil {
-		return
-	}
-	if j.IntentType != patch.GithubIntentType && j.IntentType != patch.GithubMergeIntentType {
-		j.AddError(errors.Errorf("unexpected intent type '%s'", j.IntentType))
-		return
-	}
+func (j *patchIntentProcessor) handleGitHubProcessingError(ctx context.Context, patchDoc *patch.Patch, processingErr error) {
+	handlerCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+	defer cancel()
 
-	if saveErr := patch.SetIntentProcessingError(ctx, j.IntentID, j.IntentType, err.Error()); saveErr != nil {
-		j.AddError(saveErr)
-		grip.Error(ctx, message.WrapError(saveErr, message.Fields{
-			"message":     "could not save GitHub patch intent processing error",
-			"job":         j.ID(),
-			"intent_id":   j.IntentID,
-			"intent_type": j.IntentType,
-			"source":      "patch intents",
-		}))
+	targetPath := ""
+	if j.patchCreated {
+		targetPath = "/patch/" + patchDoc.Id.Hex()
+	} else if j.ProjectID != "" {
+		storedError, err := patch.InsertGitHubIntentProcessingError(handlerCtx, j.ProjectID, processingErr.Error())
+		if err != nil {
+			j.AddError(err)
+			grip.Error(handlerCtx, message.WrapError(err, message.Fields{
+				"message":     "could not save GitHub intent processing error",
+				"job":         j.ID(),
+				"intent_id":   j.IntentID,
+				"intent_type": j.IntentType,
+				"source":      "patch intents",
+			}))
+		} else {
+			targetPath = "/rest/v2/github/intent-processing-errors/" + storedError.ID.Hex()
+		}
 	}
+	j.sendGitHubErrorStatus(handlerCtx, patchDoc, targetPath)
 }
 
 // sendGitHubSuccessMessageForIgnoredVariants sends GitHub success messages for variants that were ignored
