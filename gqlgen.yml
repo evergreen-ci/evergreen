@@ -1038,13 +1038,6 @@ models:
         fieldName: "RevisionOrderNumber"
       parameters:
         resolver: true
-  VersionLite:
-    model: github.com/evergreen-ci/evergreen/model.Version
-    fields:
-      order:
-        fieldName: "RevisionOrderNumber"
-      status:
-        resolver: true
   VersionToRestart:
     model: github.com/evergreen-ci/evergreen/model.VersionToRestart
   Volume:

@@ -256,6 +256,18 @@ func (r *versionResolver) PreviousVersion(ctx context.Context, obj *model.Versio
 	return nil, nil
 }
 
+// Project is the resolver for the project field.
+func (r *versionResolver) Project(ctx context.Context, obj *model.Version) (*model.ProjectRef, error) {
+	projectRef, err := loaders.GetProject(ctx, obj.Identifier)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding merged project ref for project '%s': %s", obj.Identifier, err.Error()), err)
+	}
+	if projectRef == nil {
+		return nil, nil
+	}
+	return projectRef, nil
+}
+
 // ProjectMetadata is the resolver for the projectMetadata field.
 func (r *versionResolver) ProjectMetadata(ctx context.Context, obj *model.Version) (*restModel.APIProjectRef, error) {
 	apiProjectRef, err := getAPIProjectRef(ctx, &obj.Identifier)
@@ -506,25 +518,9 @@ func (r *versionResolver) TaskStatuses(ctx context.Context, obj *model.Version) 
 }
 
 // TaskStatusStats is the resolver for the taskStatusStats field.
-func (r *versionResolver) TaskStatusStats(ctx context.Context, obj *model.Version, options BuildVariantOptions) (*task.TaskStats, error) {
-	includeNeverActivatedTasks := options.IncludeNeverActivatedTasks
-	if includeNeverActivatedTasks == nil {
-		includeNeverActivatedTasks = utility.ToBoolPtr(false)
-	}
-	opts := task.GetTasksByVersionOptions{
-		IncludeExecutionTasks: false,
-		TaskNames:             options.Tasks,
-		Variants:              options.Variants,
-		Statuses:              getValidTaskStatusesFilter(options.Statuses),
-		// If the version is a patch, we don't want to include its never activated tasks.
-		IncludeNeverActivatedTasks: *includeNeverActivatedTasks || !evergreen.IsPatchRequester(obj.Requester),
-	}
-
-	stats, err := task.GetFilteredTaskStatsByVersion(ctx, obj.Id, opts)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task status stats for version '%s': %s", obj.Id, err.Error()))
-	}
-	return stats, nil
+func (r *versionResolver) TaskStatusStats(ctx context.Context, obj *model.Version) (*task.TaskStats, error) {
+	includeNeverActivated := !evergreen.IsPatchRequester(obj.Requester)
+	return task.GetTaskStatsByVersion(ctx, obj.Id, includeNeverActivated)
 }
 
 // UpstreamProject is the resolver for the upstreamProject field.
@@ -632,85 +628,8 @@ func (r *versionResolver) VersionTiming(ctx context.Context, obj *model.Version)
 	}, nil
 }
 
-// BaseVersion is the resolver for the baseVersion field.
-func (r *versionLiteResolver) BaseVersion(ctx context.Context, obj *model.Version) (*model.Version, error) {
-	baseVersion, err := model.FindBaseVersionForVersion(ctx, obj.Id)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base version for version '%s': %s", obj.Id, err.Error()))
-	}
-	return baseVersion, nil
-}
-
-// ChildVersions is the resolver for the childVersions field.
-func (r *versionLiteResolver) ChildVersions(ctx context.Context, obj *model.Version) ([]*model.Version, error) {
-	if !evergreen.IsPatchRequester(obj.Requester) {
-		return nil, nil
-	}
-	if err := data.ValidatePatchID(obj.Id); err != nil {
-		return nil, werrors.WithStack(err)
-	}
-	foundPatch, err := loaders.GetPatch(ctx, obj.Id)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", obj.Id, err.Error()), err)
-	}
-	if foundPatch == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", obj.Id))
-	}
-	childPatchIds := foundPatch.Triggers.ChildPatches
-	if len(childPatchIds) > 0 {
-		loaders.PreloadVersions(ctx, childPatchIds)
-		childVersions := make([]*model.Version, 0, len(childPatchIds))
-		for _, cp := range childPatchIds {
-			v, err := loaders.GetVersion(ctx, cp)
-			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching child version '%s' for patch '%s': %s", cp, obj.Id, err.Error()), err)
-			}
-			if v != nil {
-				childVersions = append(childVersions, v)
-			}
-		}
-		return childVersions, nil
-	}
-	return nil, nil
-}
-
-// IsPatch is the resolver for the isPatch field.
-func (r *versionLiteResolver) IsPatch(ctx context.Context, obj *model.Version) (bool, error) {
-	return evergreen.IsPatchRequester(obj.Requester), nil
-}
-
-// Project is the resolver for the project field.
-func (r *versionLiteResolver) Project(ctx context.Context, obj *model.Version) (*model.ProjectRef, error) {
-	projectRef, err := loaders.GetProject(ctx, obj.Identifier)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding merged project ref for project '%s': %s", obj.Identifier, err.Error()), err)
-	}
-	if projectRef == nil {
-		return nil, nil
-	}
-	return projectRef, nil
-}
-
-// Status is the resolver for the status field.
-func (r *versionLiteResolver) Status(ctx context.Context, obj *model.Version) (string, error) {
-	return getDisplayStatus(ctx, obj)
-}
-
-// TaskStatusStats is the resolver for the taskStatusStats field.
-func (r *versionLiteResolver) TaskStatusStats(ctx context.Context, obj *model.Version) (*task.TaskStats, error) {
-	includeNeverActivated := !evergreen.IsPatchRequester(obj.Requester)
-	return task.GetTaskStatsByVersion(ctx, obj.Id, includeNeverActivated)
-}
-
-// User is the resolver for the user field.
-func (r *versionLiteResolver) User(ctx context.Context, obj *model.Version) (*user.DBUser, error) {
-	return getVersionAuthorDBUser(ctx, obj.AuthorID, obj.Author, obj.AuthorEmail)
-}
-
 // WaterfallBuilds is the resolver for the waterfallBuilds field.
-func (r *versionLiteResolver) WaterfallBuilds(ctx context.Context, obj *model.Version) ([]*model.WaterfallBuild, error) {
-	versionID := obj.Id
-
+func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *model.Version) ([]*model.WaterfallBuild, error) {
 	// No need to fetch build variants for unactivated versions
 	if !utility.FromBoolPtr(obj.Activated) {
 		return nil, nil
@@ -720,7 +639,7 @@ func (r *versionLiteResolver) WaterfallBuilds(ctx context.Context, obj *model.Ve
 	if ok {
 		// If we can't find the activeVersionIds in the parent query, eagerly continue with this aggregation.
 		activeVersionIds := parentWaterfall.Pagination.ActiveVersionIds
-		if !utility.StringSliceContains(activeVersionIds, versionID) {
+		if !utility.StringSliceContains(activeVersionIds, obj.Id) {
 			return nil, nil
 		}
 	}
@@ -728,7 +647,7 @@ func (r *versionLiteResolver) WaterfallBuilds(ctx context.Context, obj *model.Ve
 	opts := getWaterfallFilterOptionsFromContext(ctx)
 	builds, err := model.GetVersionBuilds(ctx, *obj, opts)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variants for version '%s': %s", versionID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variants for version '%s': %s", obj.Id, err.Error()))
 	}
 	return builds, nil
 }
@@ -736,8 +655,4 @@ func (r *versionLiteResolver) WaterfallBuilds(ctx context.Context, obj *model.Ve
 // Version returns VersionResolver implementation.
 func (r *Resolver) Version() VersionResolver { return &versionResolver{r} }
 
-// VersionLite returns VersionLiteResolver implementation.
-func (r *Resolver) VersionLite() VersionLiteResolver { return &versionLiteResolver{r} }
-
 type versionResolver struct{ *Resolver }
-type versionLiteResolver struct{ *Resolver }

@@ -1,0 +1,69 @@
+{
+  "versions": [
+    {
+      "_id": "spruce_version",
+      "gitspec": "2c9056df66d42fb1908d52eed096750a91f1f089",
+      "identifier": "spruce",
+      "r": "gitter_request",
+      "activated": true,
+      "author": "mohamed.khelif",
+      "status": "success",
+      "order": 2
+    },
+    {
+      "_id": "no_task_stats",
+      "gitspec": "revision3",
+      "identifier": "spruce",
+      "r": "gitter_request",
+      "activated": false,
+      "author": "mohamed.khelif",
+      "status": "created",
+      "order": 3
+    }
+  ],
+  "tasks": [
+    {
+      "_id": "task_1",
+      "version": "spruce_version",
+      "status": "failed",
+      "display_status_cache": "failed",
+      "display_name": "Some Task",
+      "activated": true,
+      "build_variant": "enterprise-ubuntu1604-64",
+      "build_variant_display_name": "Ubuntu 16.04",
+      "build_id": "spruce_version_build",
+      "create_time": {
+        "$date": "2020-01-01T00:00:05Z"
+      },
+      "display_task_id": ""
+    },
+    {
+      "_id": "task_2",
+      "version": "spruce_version",
+      "status": "success",
+      "display_status_cache": "success",
+      "display_name": "Some Other Task",
+      "activated": true,
+      "build_variant": "enterprise-ubuntu1604-64",
+      "build_variant_display_name": "Ubuntu 16.04",
+      "build_id": "spruce_version_build",
+      "create_time": {
+        "$date": "2020-01-01T00:00:05Z"
+      },
+      "display_task_id": ""
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    }
+  ],
+  "builds": [
+    {
+      "_id": "spruce_version_build",
+      "build_variant": "enterprise-ubuntu1604-64",
+      "display_name": "Ubuntu 16.04"
+    }
+  ]
+}

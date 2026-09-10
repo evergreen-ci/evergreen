@@ -1,0 +1,37 @@
+{
+  "tests": [
+    {
+      "query_file": "task_status_stats.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "taskStatusStats": {
+              "counts": [
+                {
+                  "count": 1,
+                  "status": "failed"
+                },
+                {
+                  "count": 1,
+                  "status": "success"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "task_status_stats_none.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "taskStatusStats": {
+              "counts": null
+            }
+          }
+        }
+      }
+    }
+  ]
+}
