@@ -1,0 +1,10 @@
+{
+  version(versionId: "no_task_stats") {
+    taskStatusStats {
+      counts {
+        count
+        status
+      }
+    }
+  }
+}
