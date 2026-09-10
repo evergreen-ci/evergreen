@@ -251,7 +251,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.Equal(patchIntentJobName, factory().Type().Name)
 }
 
-func TestHandleGitHubProcessingError(t *testing.T) {
+func TestReportGitHubProcessingError(t *testing.T) {
 	ctx := testutil.TestSpan(t.Context(), t)
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
@@ -275,7 +275,7 @@ func TestHandleGitHubProcessingError(t *testing.T) {
 	patchDoc := intent.NewPatch()
 	cancelledCtx, cancel := context.WithCancel(ctx)
 	cancel()
-	j.handleGitHubProcessingError(cancelledCtx, patchDoc, assert.AnError)
+	j.reportGitHubProcessingError(cancelledCtx, patchDoc, assert.AnError)
 
 	var found []patch.GitHubIntentProcessingError
 	err = db.FindAllQ(ctx, patch.GitHubIntentProcessingErrorCollection, db.Query(nil), &found)
@@ -294,7 +294,7 @@ func TestHandleGitHubProcessingError(t *testing.T) {
 		require.NoError(t, db.ClearCollections(patch.GitHubIntentProcessingErrorCollection))
 		j.patchCreated = true
 		patchDoc.Id = mgobson.NewObjectId()
-		j.handleGitHubProcessingError(ctx, patchDoc, assert.AnError)
+		j.reportGitHubProcessingError(ctx, patchDoc, assert.AnError)
 
 		var stored []patch.GitHubIntentProcessingError
 		require.NoError(t, db.FindAllQ(ctx, patch.GitHubIntentProcessingErrorCollection, db.Query(nil), &stored))
@@ -309,7 +309,7 @@ func TestHandleGitHubProcessingError(t *testing.T) {
 	t.Run("MissingProjectSendsStatusWithoutURL", func(t *testing.T) {
 		j.patchCreated = false
 		j.ProjectID = ""
-		j.handleGitHubProcessingError(ctx, patchDoc, assert.AnError)
+		j.reportGitHubProcessingError(ctx, patchDoc, assert.AnError)
 
 		var stored []patch.GitHubIntentProcessingError
 		require.NoError(t, db.FindAllQ(ctx, patch.GitHubIntentProcessingErrorCollection, db.Query(nil), &stored))
