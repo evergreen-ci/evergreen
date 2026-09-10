@@ -142,7 +142,7 @@ func TestMainlineCommits(t *testing.T) {
 
 	lastCommit := res.Versions[len(res.Versions)-1].Version
 	assert.NotNil(t, lastCommit)
-	require.Equal(t, utility.FromIntPtr(res.NextPageOrderNumber), lastCommit.Order)
+	require.Equal(t, utility.FromIntPtr(res.NextPageOrderNumber), lastCommit.RevisionOrderNumber)
 
 	mainlineCommitOptions.ShouldCollapse = utility.FalsePtr()
 	// Should return all mainline commits without folding up unmatching ones when there are filters and shouldCollapse is false
@@ -164,7 +164,7 @@ func TestMainlineCommits(t *testing.T) {
 
 	lastCommit = res.Versions[len(res.Versions)-1].Version
 	assert.NotNil(t, lastCommit)
-	require.Equal(t, utility.FromIntPtr(res.NextPageOrderNumber), lastCommit.Order)
+	require.Equal(t, utility.FromIntPtr(res.NextPageOrderNumber), lastCommit.RevisionOrderNumber)
 
 	// Should only return mainline commits that match the passed in requester
 	mainlineCommitOptions.Requesters = []string{evergreen.RepotrackerVersionRequester}
@@ -178,7 +178,7 @@ func TestMainlineCommits(t *testing.T) {
 
 	for _, v := range res.Versions {
 		if v.Version != nil {
-			assert.Equal(t, evergreen.RepotrackerVersionRequester, utility.FromStringPtr(v.Version.Requester))
+			assert.Equal(t, evergreen.RepotrackerVersionRequester, v.Version.Requester)
 		}
 	}
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
@@ -24,16 +23,13 @@ func (r *patchResolver) ID(ctx context.Context, obj *patch.Patch) (string, error
 }
 
 // ChildPatchAliases is the resolver for the childPatchAliases field.
-func (r *patchResolver) ChildPatchAliases(ctx context.Context, obj *patch.Patch) ([]*restModel.APIChildPatchAlias, error) {
-	if len(obj.Triggers.ChildPatches) == 0 || len(obj.Triggers.Aliases) == 0 {
-		return []*restModel.APIChildPatchAlias{}, nil
-	}
-	result := make([]*restModel.APIChildPatchAlias, 0, len(obj.Triggers.ChildPatches))
+func (r *patchResolver) ChildPatchAliases(ctx context.Context, obj *patch.Patch) ([]*ChildPatchAlias, error) {
+	result := make([]*ChildPatchAlias, 0, len(obj.Triggers.ChildPatches))
 	for i, childPatchID := range obj.Triggers.ChildPatches {
 		if i < len(obj.Triggers.Aliases) {
-			result = append(result, &restModel.APIChildPatchAlias{
-				Alias:   utility.ToStringPtr(obj.Triggers.Aliases[i]),
-				PatchID: utility.ToStringPtr(childPatchID),
+			result = append(result, &ChildPatchAlias{
+				Alias:   obj.Triggers.Aliases[i],
+				PatchID: childPatchID,
 			})
 		}
 	}
@@ -108,25 +104,6 @@ func (r *patchResolver) GeneratedTaskCounts(ctx context.Context, obj *patch.Patc
 	return res, nil
 }
 
-// GithubPatchData is the resolver for the githubPatchData field.
-func (r *patchResolver) GithubPatchData(ctx context.Context, obj *patch.Patch) (*restModel.APIGithubPatch, error) {
-	apiGithubPatch := &restModel.APIGithubPatch{}
-	apiGithubPatch.BuildFromService(obj.GithubPatchData)
-	return apiGithubPatch, nil
-}
-
-// IncludedLocalModules is the resolver for the includedLocalModules field.
-func (r *patchResolver) IncludedLocalModules(ctx context.Context, obj *patch.Patch) ([]*restModel.APILocalModuleInclude, error) {
-	result := make([]*restModel.APILocalModuleInclude, 0, len(obj.LocalModuleIncludes))
-	for _, module := range obj.LocalModuleIncludes {
-		result = append(result, &restModel.APILocalModuleInclude{
-			Module:   module.Module,
-			FileName: module.FileName,
-		})
-	}
-	return result, nil
-}
-
 // InvalidatedByUpstream is the resolver for the invalidatedByUpstream field.
 func (r *patchResolver) InvalidatedByUpstream(ctx context.Context, obj *patch.Patch) (bool, error) {
 	return obj.GithubMergeData.InvalidatedByUpstream, nil
@@ -149,41 +126,11 @@ func (r *patchResolver) ModuleCodeChanges(ctx context.Context, obj *patch.Patch)
 
 // Parameters is the resolver for the parameters field.
 func (r *patchResolver) Parameters(ctx context.Context, obj *patch.Patch) ([]*restModel.APIParameter, error) {
-	config, err := evergreen.GetConfig(ctx)
+	redactedParameters, err := redactParameters(ctx, obj.Project, obj.Parameters)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("redacting parameters for patch '%s': %s", obj.Id.Hex(), err.Error()), err)
 	}
-
-	projectId := obj.Project
-	projVars, err := model.FindMergedProjectVars(ctx, projectId)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project vars for project '%s': %s", projectId, err.Error()))
-	}
-
-	redactKeys := config.LoggerConfig.RedactKeys
-	var res []*restModel.APIParameter
-	for _, param := range obj.Parameters {
-		redactedParam := &restModel.APIParameter{
-			Key:   utility.ToStringPtr(param.Key),
-			Value: utility.ToStringPtr(param.Value),
-		}
-		for _, pattern := range redactKeys {
-			if strings.Contains(strings.ToLower(param.Key), pattern) {
-				redactedParam.Value = utility.ToStringPtr(evergreen.RedactedValue)
-				break
-			}
-		}
-		if projVars != nil {
-			for varKey, varValue := range projVars.Vars {
-				if strings.Contains(param.Value, varValue) && projVars.PrivateVars[varKey] {
-					redactedParam.Value = utility.ToStringPtr(evergreen.RedactedValue)
-					break
-				}
-			}
-		}
-		res = append(res, redactedParam)
-	}
-	return res, nil
+	return redactedParameters, nil
 }
 
 // PatchTriggerAliases is the resolver for the patchTriggerAliases field.

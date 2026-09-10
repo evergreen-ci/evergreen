@@ -63,6 +63,11 @@ type BuildVariantOptions struct {
 	Variants                   []string `json:"variants,omitempty"`
 }
 
+type ChildPatchAlias struct {
+	Alias   string `json:"alias"`
+	PatchID string `json:"patchId"`
+}
+
 // CreateDistroInput is the input to the createDistro mutation.
 type CreateDistroInput struct {
 	NewDistroID      string `json:"newDistroId"`
@@ -275,8 +280,8 @@ type JiraNotificationsProjectEntryInput struct {
 }
 
 type MainlineCommitVersion struct {
-	RolledUpVersions []*model.APIVersion `json:"rolledUpVersions,omitempty"`
-	Version          *model.APIVersion   `json:"version,omitempty"`
+	RolledUpVersions []*model1.Version `json:"rolledUpVersions,omitempty"`
+	Version          *model1.Version   `json:"version,omitempty"`
 }
 
 // MainlineCommits is returned by the mainline commits query.
@@ -714,15 +719,15 @@ type UpdateVolumeInput struct {
 }
 
 type UpstreamProject struct {
-	Owner       string            `json:"owner"`
-	Project     string            `json:"project"`
-	Repo        string            `json:"repo"`
-	ResourceID  string            `json:"resourceID"`
-	Revision    string            `json:"revision"`
-	Task        *model.APITask    `json:"task,omitempty"`
-	TriggerID   string            `json:"triggerID"`
-	TriggerType string            `json:"triggerType"`
-	Version     *model.APIVersion `json:"version,omitempty"`
+	Owner       string          `json:"owner"`
+	Project     string          `json:"project"`
+	Repo        string          `json:"repo"`
+	ResourceID  string          `json:"resourceID"`
+	Revision    string          `json:"revision"`
+	Task        *model.APITask  `json:"task,omitempty"`
+	TriggerID   string          `json:"triggerID"`
+	TriggerType string          `json:"triggerType"`
+	Version     *model1.Version `json:"version,omitempty"`
 }
 
 // UserConfig is returned by the userConfig query.
