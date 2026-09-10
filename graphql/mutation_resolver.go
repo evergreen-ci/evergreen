@@ -422,7 +422,7 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, co
 	patchUpdateReq := buildFromGqlInput(configure)
 	usr := mustHaveUser(ctx)
 	patchUpdateReq.Caller = usr.Id
-	version, err := loaders.GetVersion(ctx, patchID)
+	version, err := model.VersionFindOneId(ctx, patchID)
 	if err != nil && !adb.ResultsNotFound(err) {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()))
 	}
