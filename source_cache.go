@@ -19,6 +19,10 @@ const (
 	// credentials handed to a PR task can deny writes to the base namespace.
 	SourceCachePRNamespace = "pr"
 
+	// SourceCacheCLINamespace holds artifacts produced by CLI patches, so a patch
+	// cannot pre-populate the base namespace before mainline builds a commit.
+	SourceCacheCLINamespace = "cli"
+
 	// SourceCacheExternalID is the fixed external ID for source cache role assumptions.
 	SourceCacheExternalID = "source-cache:"
 
