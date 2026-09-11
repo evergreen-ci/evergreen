@@ -20,20 +20,14 @@ import (
 )
 
 type Resolver struct {
-	sc          data.Connector
-	roleManager gimlet.RoleManager
+	sc data.Connector
 }
 
 func New(apiURL string) Config {
-	return newConfig(apiURL, evergreen.GetEnvironment().RoleManager())
-}
-
-func newConfig(apiURL string, roleManager gimlet.RoleManager) Config {
 	dbConnector := &data.DBConnector{URL: apiURL}
 	c := Config{
 		Resolvers: &Resolver{
-			sc:          dbConnector,
-			roleManager: roleManager,
+			sc: dbConnector,
 		},
 	}
 	c.Directives.RequirePatchOwner = func(ctx context.Context, obj any, next graphql.Resolver) (any, error) {
