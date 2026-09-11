@@ -325,8 +325,8 @@ github.com/mongodb/anser v0.0.0-20260326191204-f2d0a92e3f0a h1:aerBBPXwQOo+s1BR7
 github.com/mongodb/anser v0.0.0-20260326191204-f2d0a92e3f0a/go.mod h1:y5tT5wIiax8QSqifu02lYQcumwsvAwAYb2PmpguRyfE=
 github.com/mongodb/ftdc v0.0.0-20251208183831-018e343a1aac h1:KL3+DC+q8yS+QmdPAvnJiMHNU9VcYD3+4+0U1F+Crzo=
 github.com/mongodb/ftdc v0.0.0-20251208183831-018e343a1aac/go.mod h1:iaQJgZ9mNDQzR9Y8BY6D/Y6i8IzadyjY91a20xE5sOE=
-github.com/mongodb/grip v0.0.0-20260728153343-09a3a7fc4c49 h1:/s5If9JUis71QMB/6Ik3alNFSfElvY0JNt4gqR0tOaU=
-github.com/mongodb/grip v0.0.0-20260728153343-09a3a7fc4c49/go.mod h1:8C/dvHEa6ydNcHnlO3BWg5eUqkrKQnP6MI0HQ31rNSc=
+github.com/mongodb/grip v0.0.0-20260909201319-1a8f7357053d h1:arPAEhAJqG17G4ANtW/3tCH1Ar+OtK/crJkvsAWmQyc=
+github.com/mongodb/grip v0.0.0-20260909201319-1a8f7357053d/go.mod h1:8C/dvHEa6ydNcHnlO3BWg5eUqkrKQnP6MI0HQ31rNSc=
 github.com/mongodb/jasper v0.0.0-20260330133616-5411573646d1 h1:SSUZlMk2YvlnqB8o8BxdQzEBACZ/m0/Biu8uljAYCTc=
 github.com/mongodb/jasper v0.0.0-20260330133616-5411573646d1/go.mod h1:dNPRgqt6EwehE2ADcYPuvtVy+3/RbgY956R+R6Ln58s=
 github.com/montanaflynn/stats v0.7.1 h1:etflOAAHORrCC44V+aR6Ftzort912ZU+YLiSTuV8eaE=

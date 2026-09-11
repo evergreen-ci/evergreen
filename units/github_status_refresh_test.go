@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -98,6 +99,23 @@ func (s *githubStatusRefreshSuite) TestRunInDegradedMode() {
 	job.Run(s.ctx)
 
 	s.False(job.HasErrors())
+}
+
+func (s *githubStatusRefreshSuite) TestSendErrorIsReported() {
+	job := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
+	job.sender = &eventSendErrorSender{
+		Sender: s.env.InternalSender,
+		err:    errors.New("GitHub unavailable"),
+	}
+	job.sendStatus(s.ctx, &message.GithubStatus{
+		Owner:   "evergreen-ci",
+		Repo:    "evergreen",
+		Ref:     "abc123",
+		Context: "evergreen",
+		State:   message.GithubStateSuccess,
+	})
+
+	s.EqualError(job.Error(), "GitHub unavailable")
 }
 
 func (s *githubStatusRefreshSuite) TestFetch() {

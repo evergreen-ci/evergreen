@@ -103,14 +103,30 @@ func (j *eventSendJob) Run(ctx context.Context) {
 	}
 
 	err = j.send(ctx, n)
-	grip.Error(ctx, message.WrapError(err, message.Fields{
+	if err == nil {
+		j.AddError(errors.Wrapf(n.MarkSent(ctx), "marking notification '%s' as sent", n.ID))
+		return
+	}
+
+	logFields := message.Fields{
 		"job_id":            j.ID(),
 		"notification_id":   n.ID,
 		"notification_type": n.Subscriber.Type,
 		"message":           "send failed",
-	}))
+	}
+	var githubErr *send.GitHubSendError
+	if errors.As(err, &githubErr) {
+		logFields["status_code"] = githubErr.StatusCode
+		logFields["retry_count"] = githubErr.Attempts - 1
+		status, _ := n.Payload.(*message.GithubStatus)
+		if status != nil {
+			logFields["context"] = status.Context
+			logFields["sha"] = status.Ref
+		}
+	}
+
+	grip.Error(ctx, message.WrapError(err, logFields))
 	j.AddError(err)
-	j.AddError(errors.Wrapf(n.MarkSent(ctx), "marking notification '%s' as sent", n.ID))
 	j.AddError(errors.Wrapf(n.MarkError(ctx, err), "setting error for notification '%s'", n.ID))
 }
 
@@ -147,8 +163,7 @@ func (j *eventSendJob) send(ctx context.Context, n *notification.Notification) e
 			return errors.Wrap(err, "getting global notification sender")
 		}
 	}
-	sender.Send(ctx, c)
-	return nil
+	return send.SendWithError(ctx, sender, c)
 }
 
 func (j *eventSendJob) checkDegradedMode(ctx context.Context, n *notification.Notification) error {

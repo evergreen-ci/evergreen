@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"net/http"
 	"os"
 	"os/exec"
 	"regexp"
@@ -1403,9 +1404,10 @@ func (e *envState) GetGitHubSender(owner, repo string, createInstallationToken C
 		return nil, errors.Wrap(err, "creating GitHub app installation token")
 	}
 	sender, err := send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
-		Token:       token,
-		MinDelay:    GithubRetryMinDelay,
-		MaxAttempts: GitHubRetryAttempts,
+		Token:                    token,
+		MinDelay:                 GithubRetryMinDelay,
+		MaxAttempts:              GitHubRetryAttempts,
+		RetryableHTTPStatusCodes: []int{http.StatusInternalServerError, http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout},
 	}, "")
 	if err != nil {
 		return nil, errors.Wrap(err, "creating GitHub status logger")
