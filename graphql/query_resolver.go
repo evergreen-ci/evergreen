@@ -489,6 +489,7 @@ func (r *queryResolver) ProjectSettings(ctx context.Context, projectIdentifier s
 	if err = res.ProjectRef.BuildFromService(ctx, *projectRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting project '%s' to APIProjectRef: %s", projectIdentifier, err.Error()))
 	}
+	includeFileTicketWebhookSecretForProjectAdmin(ctx, projectRef.Id, projectRef.TaskAnnotationSettings, &res.ProjectRef.TaskAnnotationSettings)
 	if !projectRef.UseRepoSettings() {
 		// Default values so the UI understands what to do with nil values.
 		res.ProjectRef.DefaultUnsetBooleans(ctx)
@@ -526,6 +527,7 @@ func (r *queryResolver) RepoSettings(ctx context.Context, repoID string) (*restM
 	if err = res.ProjectRef.BuildFromService(ctx, repoRef.ProjectRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting repo '%s' to APIProjectRef: %s", repoID, err.Error()))
 	}
+	includeFileTicketWebhookSecretForProjectAdmin(ctx, repoRef.Id, repoRef.TaskAnnotationSettings, &res.ProjectRef.TaskAnnotationSettings)
 
 	// Default values so the UI understands what to do with nil values.
 	res.ProjectRef.DefaultUnsetBooleans(ctx)

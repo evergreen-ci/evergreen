@@ -4,12 +4,68 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestTaskAnnotationSettingsBuildFromServiceRedactsSecret(t *testing.T) {
+	for name, tc := range map[string]struct {
+		secret   string
+		expected string
+	}{
+		"Empty":          {},
+		"Cleartext":      {secret: "secret", expected: evergreen.RedactedValue},
+		"Redacted":       {secret: evergreen.RedactedValue, expected: evergreen.RedactedValue},
+		"RedactedBefore": {secret: evergreen.RedactedBeforeValue, expected: evergreen.RedactedBeforeValue},
+		"RedactedAfter":  {secret: evergreen.RedactedAfterValue, expected: evergreen.RedactedAfterValue},
+	} {
+		t.Run(name, func(t *testing.T) {
+			settings := APITaskAnnotationSettings{}
+			settings.BuildFromService(evergreen.AnnotationsSettings{
+				FileTicketWebhook: evergreen.WebHook{
+					Endpoint: "https://example.com/file-ticket",
+					Secret:   tc.secret,
+				},
+			})
+
+			assert.Equal(t, "https://example.com/file-ticket", utility.FromStringPtr(settings.FileTicketWebhook.Endpoint))
+			assert.Equal(t, tc.expected, utility.FromStringPtr(settings.FileTicketWebhook.Secret))
+		})
+	}
+}
+
+func TestTaskAnnotationSettingsIncludeFileTicketWebhookSecret(t *testing.T) {
+	settings := APITaskAnnotationSettings{}
+	settings.BuildFromService(evergreen.AnnotationsSettings{
+		FileTicketWebhook: evergreen.WebHook{Secret: "secret"},
+	})
+	assert.Equal(t, evergreen.RedactedValue, utility.FromStringPtr(settings.FileTicketWebhook.Secret))
+
+	settings.IncludeFileTicketWebhookSecret(evergreen.AnnotationsSettings{
+		FileTicketWebhook: evergreen.WebHook{Secret: "secret"},
+	})
+	assert.Equal(t, "secret", utility.FromStringPtr(settings.FileTicketWebhook.Secret))
+}
+
+func TestPreserveRedactedFileTicketWebhookSecret(t *testing.T) {
+	updated := evergreen.AnnotationsSettings{
+		FileTicketWebhook: evergreen.WebHook{Secret: evergreen.RedactedValue},
+	}
+	current := evergreen.AnnotationsSettings{
+		FileTicketWebhook: evergreen.WebHook{Secret: "secret"},
+	}
+
+	PreserveRedactedFileTicketWebhookSecret(&updated, current)
+	assert.Equal(t, "secret", updated.FileTicketWebhook.Secret)
+
+	updated.FileTicketWebhook.Secret = "replacement"
+	PreserveRedactedFileTicketWebhookSecret(&updated, current)
+	assert.Equal(t, "replacement", updated.FileTicketWebhook.Secret)
+}
 
 func TestRepoBuildFromService(t *testing.T) {
 	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{

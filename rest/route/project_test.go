@@ -113,12 +113,13 @@ func (s *ProjectPatchByIDSuite) TestParse() {
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
 
-	json := []byte(`{"private" : false}`)
+	json := []byte(`{"private": false, "task_annotation_settings": {"web_hook": {"secret": "{REDACTED}"}}}`)
 	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(json))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
 	s.NotNil(s.rm.(*projectIDPatchHandler).user)
+	s.Equal("file-ticket-secret", s.rm.(*projectIDPatchHandler).newProjectRef.TaskAnnotationSettings.FileTicketWebhook.Secret)
 }
 
 // Artifact credentials are settable here but not in the project settings UI, and
@@ -685,10 +686,22 @@ func TestProjectGetByIDSuite(t *testing.T) {
 }
 
 func (s *ProjectGetByIDSuite) SetupTest() {
-	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, fakeparameter.Collection, serviceModel.ProjectConfigCollection))
+	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, fakeparameter.Collection, serviceModel.ProjectConfigCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	s.NoError(getTestProjectRef().Insert(s.T().Context()))
 	s.NoError(getTestVar().Insert(s.T().Context()))
 	s.NoError(getTestProjectConfig().Insert(s.T().Context()))
+	s.NoError(evergreen.GetEnvironment().RoleManager().AddScope(s.T().Context(), gimlet.Scope{
+		ID:        "project-admin-scope",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"dimoxinil"},
+	}))
+	s.NoError(evergreen.GetEnvironment().RoleManager().UpdateRole(s.T().Context(), gimlet.Role{
+		ID:    "project-admin",
+		Scope: "project-admin-scope",
+		Permissions: gimlet.Permissions{
+			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+		},
+	}))
 	s.rm = makeGetProjectByID().(*projectIDGetHandler)
 }
 
@@ -736,6 +749,22 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	s.Equal(cachedProject.NotifyOnBuildFailure, projectRef.NotifyOnBuildFailure)
 	s.Equal(cachedProject.DisabledStatsCache, projectRef.DisabledStatsCache)
 	s.Equal(cachedProject.DebugSpawnHostsDisabled, projectRef.DebugSpawnHostsDisabled)
+	s.Equal(cachedProject.TaskAnnotationSettings.FileTicketWebhook.Endpoint, utility.FromStringPtr(projectRef.TaskAnnotationSettings.FileTicketWebhook.Endpoint))
+	s.Equal(evergreen.RedactedValue, utility.FromStringPtr(projectRef.TaskAnnotationSettings.FileTicketWebhook.Secret))
+}
+
+func (s *ProjectGetByIDSuite) TestRunExistingIdAsAdmin() {
+	ctx := gimlet.AttachUser(s.T().Context(), &user.DBUser{Id: "admin", SystemRoles: []string{"project-admin"}})
+	h := s.rm.(*projectIDGetHandler)
+	h.projectName = "dimoxinil"
+
+	resp := s.rm.Run(ctx)
+	s.Require().NotNil(resp.Data())
+	s.Equal(http.StatusOK, resp.Status())
+
+	projectRef, ok := resp.Data().(*model.APIProjectRef)
+	s.Require().True(ok)
+	s.Equal("file-ticket-secret", utility.FromStringPtr(projectRef.TaskAnnotationSettings.FileTicketWebhook.Secret))
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -926,6 +955,12 @@ func getTestProjectRef() *serviceModel.ProjectRef {
 		NotifyOnBuildFailure:    utility.FalsePtr(),
 		DisabledStatsCache:      utility.TruePtr(),
 		DebugSpawnHostsDisabled: utility.TruePtr(),
+		TaskAnnotationSettings: evergreen.AnnotationsSettings{
+			FileTicketWebhook: evergreen.WebHook{
+				Endpoint: "https://example.com/file-ticket",
+				Secret:   "file-ticket-secret",
+			},
+		},
 	}
 }
 

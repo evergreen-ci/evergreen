@@ -268,6 +268,7 @@ func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) erro
 	if err != nil {
 		return errors.Wrap(err, "converting new project to service model")
 	}
+	model.PreserveRedactedFileTicketWebhookSecret(&newProjectRef.TaskAnnotationSettings, oldProject.TaskAnnotationSettings)
 	newProjectRef.RepoRefId = oldProject.RepoRefId // this can't be modified by users
 
 	h.newProjectRef = newProjectRef
@@ -747,6 +748,17 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = projectModel.BuildFromService(ctx, *project); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting project '%s' to API model", h.projectName))
 	}
+	secretOwnerID := project.Id
+	if h.includeRepo && project.RepoRefId != "" {
+		branchProject, err := dbModel.FindBranchProjectRef(ctx, h.projectName)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding branch project '%s'", h.projectName))
+		}
+		if branchProject != nil && branchProject.TaskAnnotationSettings.FileTicketWebhook.Secret == "" {
+			secretOwnerID = project.RepoRefId
+		}
+	}
+	includeFileTicketWebhookSecretForProjectAdmin(ctx, secretOwnerID, project.TaskAnnotationSettings, &projectModel.TaskAnnotationSettings)
 
 	// we pass the repoId through so we don't have to re-look up the project
 	repoId := ""
@@ -765,6 +777,20 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting subscriptions for project '%s'", project.Id))
 	}
 	return gimlet.NewJSONResponse(projectModel)
+}
+
+func includeFileTicketWebhookSecretForProjectAdmin(ctx context.Context, projectID string, source evergreen.AnnotationsSettings, target *model.APITaskAnnotationSettings) {
+	// API model conversion redacts by default so callers cannot accidentally expose the secret.
+	// Settings editors are the only users allowed to opt back into the cleartext value.
+	usr := gimlet.GetUser(ctx)
+	if usr != nil && usr.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      projectID,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	}) {
+		target.IncludeFileTicketWebhookSecret(source)
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////

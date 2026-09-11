@@ -1022,6 +1022,14 @@ func userHasProjectSettingsPermission(ctx context.Context, u *user.DBUser, proje
 	return u.HasPermission(ctx, opts)
 }
 
+func includeFileTicketWebhookSecretForProjectAdmin(ctx context.Context, projectID string, source evergreen.AnnotationsSettings, target *restModel.APITaskAnnotationSettings) {
+	// API model conversion redacts by default so callers cannot accidentally expose the secret.
+	// Settings editors are the only users allowed to opt back into the cleartext value.
+	if userHasProjectSettingsPermission(ctx, mustHaveUser(ctx), projectID, evergreen.ProjectSettingsEdit.Value) {
+		target.IncludeFileTicketWebhookSecret(source)
+	}
+}
+
 func makeDistroEvent(ctx context.Context, entry event.EventLogEntry) (*DistroEvent, error) {
 	data, ok := entry.Data.(*event.DistroEventData)
 	if !ok {
