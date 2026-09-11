@@ -217,10 +217,11 @@ func PresignFile(ctx context.Context, file File, resolver CredentialResolver) (s
 		externalID = &file.ExternalID
 	}
 
+	// The expiry window also serves as pail's minimum remaining lifetime for reusing assumed-role credentials, so it must be well below the 15m STS credential duration for the cache to be effective.
 	requestParams := pail.PreSignRequestParams{
 		Bucket:                file.Bucket,
 		FileKey:               file.FileKey,
-		SignatureExpiryWindow: evergreen.PresignMinimumValidTime,
+		SignatureExpiryWindow: evergreen.PresignCredentialsLifetime,
 		PresignDuration:       file.PresignDuration,
 		AWSKey:                creds.AWSKey,
 		AWSSecret:             creds.AWSSecret,
