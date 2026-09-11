@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -203,4 +204,50 @@ func TestImage(t *testing.T) {
 	res, err := config.Resolvers.Query().Image(ctx, "ubuntu2204")
 	require.NoError(t, err)
 	assert.NotEmpty(t, res)
+}
+
+func TestDistrosReturnsOnlyDistrosWithViewPermission(t *testing.T) {
+	setupPermissions(t)
+	require.NoError(t, db.ClearCollections(distro.Collection, user.Collection))
+	config := New("/graphql")
+	ctx := getContext(t)
+	usr := mustHaveUser(ctx)
+
+	viewableDistro := distro.Distro{Id: "distro-id", SpawnAllowed: true, Setup: "viewable secret"}
+	require.NoError(t, viewableDistro.Insert(ctx))
+	require.NoError(t, (&distro.Distro{Id: "restricted", SpawnAllowed: true, Setup: "restricted secret"}).Insert(ctx))
+
+	result, err := config.Resolvers.Query().Distros(ctx, false)
+	require.NoError(t, err)
+	assert.Empty(t, result)
+
+	require.NoError(t, usr.AddRole(ctx, evergreen.SuperUserRole))
+	result, err = config.Resolvers.Query().Distros(ctx, false)
+	require.NoError(t, err)
+	assert.Empty(t, result)
+	require.NoError(t, usr.RemoveRole(ctx, evergreen.SuperUserRole))
+
+	require.NoError(t, usr.AddRole(ctx, "view_distro-id"))
+	result, err = config.Resolvers.Query().Distros(ctx, false)
+	require.NoError(t, err)
+	require.Len(t, result, 1)
+	assert.Equal(t, "distro-id", utility.FromStringPtr(result[0].Name))
+	assert.Equal(t, "viewable secret", utility.FromStringPtr(result[0].Setup))
+
+	result, err = config.Resolvers.Query().Distros(ctx, true)
+	require.NoError(t, err)
+	require.Len(t, result, 1)
+	assert.Equal(t, "distro-id", utility.FromStringPtr(result[0].Name))
+
+	viewableDistro.AdminOnly = true
+	require.NoError(t, viewableDistro.ReplaceOne(ctx))
+	result, err = config.Resolvers.Query().Distros(ctx, false)
+	require.NoError(t, err)
+	assert.Empty(t, result)
+
+	require.NoError(t, usr.AddRole(ctx, evergreen.SuperUserRole))
+	result, err = config.Resolvers.Query().Distros(ctx, false)
+	require.NoError(t, err)
+	require.Len(t, result, 1)
+	assert.Equal(t, "distro-id", utility.FromStringPtr(result[0].Name))
 }

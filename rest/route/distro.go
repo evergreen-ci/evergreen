@@ -575,22 +575,24 @@ func (h *distroAMIHandler) Run(ctx context.Context) gimlet.Responder {
 //
 // GET /rest/v2/distros
 
-type distroGetHandler struct{}
+type distroGetHandler struct {
+	roleManager gimlet.RoleManager
+}
 
-func makeDistroRoute() gimlet.RouteHandler {
-	return &distroGetHandler{}
+func makeDistroRoute(roleManager gimlet.RoleManager) gimlet.RouteHandler {
+	return &distroGetHandler{roleManager: roleManager}
 }
 
 // Factory creates an instance of the handler.
 //
 //	@Summary		Get all distros
-//	@Description	Fetches all available distros.
+//	@Description	Fetches all distros whose settings the user may view.
 //	@Tags			distros
 //	@Router			/distros [get]
 //	@Security		Api-User || Api-Key
 //	@Success		200	{array}	model.APIDistro
 func (h *distroGetHandler) Factory() gimlet.RouteHandler {
-	return &distroGetHandler{}
+	return &distroGetHandler{roleManager: h.roleManager}
 }
 
 func (h *distroGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -598,6 +600,12 @@ func (h *distroGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *distroGetHandler) Run(ctx context.Context) gimlet.Responder {
+	usr := MustHaveUser(ctx)
+	viewableDistroIDs, err := usr.GetViewableDistroSettings(ctx, h.roleManager)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting viewable distros for user '%s'", usr.Username()))
+	}
+
 	distros, err := distro.AllDistros(ctx)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding all distros"))
@@ -609,8 +617,26 @@ func (h *distroGetHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
+	var viewableDistros map[string]struct{}
+	if viewableDistroIDs != nil {
+		viewableDistros = make(map[string]struct{}, len(viewableDistroIDs))
+		for _, id := range viewableDistroIDs {
+			viewableDistros[id] = struct{}{}
+		}
+	}
+	userHasDistroCreatePermission := usr.HasDistroCreatePermission(ctx)
+
 	resp := gimlet.NewResponseBuilder()
 	for _, d := range distros {
+		if viewableDistros != nil {
+			if _, ok := viewableDistros[d.Id]; !ok {
+				continue
+			}
+		}
+		if d.AdminOnly && !userHasDistroCreatePermission {
+			continue
+		}
+
 		distroModel := &model.APIDistro{}
 		distroModel.BuildFromService(d)
 
