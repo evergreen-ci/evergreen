@@ -51,7 +51,7 @@ const (
 )
 
 func (r *Resolver) buildViewableAPIDistros(ctx context.Context, usr *user.DBUser, distros []distro.Distro) ([]*restModel.APIDistro, error) {
-	viewableDistroIDs, err := usr.GetViewableDistroSettings(ctx, r.roleManager)
+	viewableDistroIDs, err := usr.GetViewableDistroSettings(ctx, evergreen.GetEnvironment().RoleManager())
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting viewable distros for user '%s'", usr.Username())
 	}
