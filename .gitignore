@@ -65,6 +65,10 @@ evergreen
 
 # Agent related files
 CLAUDE.local.md
-.claude/scheduled_tasks.lock
-.claude/settings.local.json
-.claude/worktrees/
+.claude/
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/
+
+# graphify's local knowledge graph — regenerable, not committed (run `/graphify .`).
+/graphify-out/
