@@ -819,21 +819,6 @@ func (c *gitFetchProject) retryFetch(ctx context.Context, logger client.LoggerPr
 		})
 }
 
-// moduleCloneDepth returns the depth to clone a module at, and the reason the
-// module's configured depth does not apply, if it does not. A module's clone
-// depth comes from the project config rather than the command, so it is
-// independent of the depth used for the source repo. Wiki modules need no
-// special case here because their clone never takes a depth.
-func moduleCloneDepth(conf *internal.TaskConfig, module *model.Module) (depth int, skipReason string) {
-	if module.CloneDepth == 0 {
-		return 0, ""
-	}
-	if conf.Distro != nil && conf.Distro.DisableShallowClone {
-		return 0, "clone depth is disabled for this distro"
-	}
-	return module.CloneDepth, ""
-}
-
 func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	comm client.Communicator,
 	conf *internal.TaskConfig,
@@ -875,11 +860,14 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		dir:    moduleBase,
 	}
 
-	cloneDepth, skipDepthReason := moduleCloneDepth(conf, module)
-	if skipDepthReason != "" {
-		logger.Task().Infof(ctx, "Ignoring the clone depth configured for module '%s': %s.", module.Name, skipDepthReason)
+	// The module's clone depth comes from the project config rather than the
+	// command, so it is independent of the depth used for the source repo.
+	shallowCloneEnabled := conf.Distro == nil || !conf.Distro.DisableShallowClone
+	if !shallowCloneEnabled && module.CloneDepth != 0 {
+		logger.Task().Infof(ctx, "Clone depth is disabled for this distro; ignoring the clone depth configured for module '%s'.", module.Name)
+	} else {
+		opts.cloneDepth = module.CloneDepth
 	}
-	opts.cloneDepth = cloneDepth
 
 	// If the module repo is using the deprecated ssh cloning method, extract the owner
 	// and repo from the string and save it to clone options so that the an https cloning link

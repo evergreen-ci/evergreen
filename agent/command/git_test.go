@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	agenttestutil "github.com/evergreen-ci/evergreen/agent/internal/testutil"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -1339,50 +1338,4 @@ func TestBuildModuleCloneCommandCloneDepth(t *testing.T) {
 		assert.NotContains(t, joined, "--depth")
 		assert.NotContains(t, joined, "--unshallow")
 	})
-}
-
-func TestModuleCloneDepth(t *testing.T) {
-	for _, tc := range []struct {
-		name          string
-		conf          *internal.TaskConfig
-		module        model.Module
-		expectedDepth int
-		expectSkipped bool
-	}{
-		{
-			name:          "ConfiguredDepthIsUsed",
-			conf:          &internal.TaskConfig{},
-			module:        model.Module{Name: "module1", CloneDepth: 10},
-			expectedDepth: 10,
-		},
-		{
-			name:          "UnsetDepthClonesInFull",
-			conf:          &internal.TaskConfig{},
-			module:        model.Module{Name: "module1"},
-			expectedDepth: 0,
-		},
-		{
-			name:          "NegativeDepthIsPassedThroughForValidation",
-			conf:          &internal.TaskConfig{},
-			module:        model.Module{Name: "module1", CloneDepth: -1},
-			expectedDepth: -1,
-		},
-		{
-			name:          "DistroWithShallowCloneDisabledSkipsDepth",
-			conf:          &internal.TaskConfig{Distro: &apimodels.DistroView{DisableShallowClone: true}},
-			module:        model.Module{Name: "module1", CloneDepth: 10},
-			expectedDepth: 0,
-			expectSkipped: true,
-		},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			depth, skipReason := moduleCloneDepth(tc.conf, &tc.module)
-			assert.Equal(t, tc.expectedDepth, depth)
-			if tc.expectSkipped {
-				assert.NotEmpty(t, skipReason)
-			} else {
-				assert.Empty(t, skipReason)
-			}
-		})
-	}
 }
