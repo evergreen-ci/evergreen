@@ -734,14 +734,20 @@ func validateSingleTaskDistro(singleTaskDistroAllowlist evergreen.ProjectTasksPa
 		}
 	}
 
-	// Check if the task is allowed on the distro.
+	// Check if the task (or task group) is allowed on the distro.
+	taskNames := []string{nextTask.DisplayName}
+	if nextTask.TaskGroup != "" {
+		taskNames = append(taskNames, nextTask.TaskGroup)
+	}
 	for _, allowedTask := range singleTaskDistroAllowlist.AllowedTasks {
-		matched, err := regexp.MatchString(allowedTask, nextTask.DisplayName)
-		if err != nil {
-			return false, errors.Wrapf(err, "could not process task regex '%s'", allowedTask)
-		}
-		if matched {
-			return true, nil
+		for _, taskName := range taskNames {
+			matched, err := regexp.MatchString(allowedTask, taskName)
+			if err != nil {
+				return false, errors.Wrapf(err, "could not process task regex '%s'", allowedTask)
+			}
+			if matched {
+				return true, nil
+			}
 		}
 	}
 
