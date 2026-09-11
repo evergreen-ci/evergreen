@@ -37,6 +37,9 @@ func GenerateSignToken(appSecret []byte, taskID string, execution int, fileName 
 
 // ValidateSignToken checks that the token is valid and not expired.
 func ValidateSignToken(appSecret []byte, taskID string, execution int, fileName string, token string, expiryStr string) bool {
+	if len(appSecret) == 0 {
+		return false
+	}
 	expiry, err := strconv.ParseInt(expiryStr, 10, 64)
 	if err != nil {
 		return false
