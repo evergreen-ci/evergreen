@@ -66,8 +66,6 @@ type ServiceFlags struct {
 	GithubStatusAPIDisabled      bool `bson:"github_status_api_disabled" json:"github_status_api_disabled"`
 	SecondaryReadsDisabled       bool `bson:"secondary_reads_disabled" json:"secondary_reads_disabled"`
 
-	BackgroundCommandFailureEnabled bool `bson:"background_command_failure_enabled" json:"background_command_failure_enabled"`
-
 	// Rate Limiting Flags
 	APIRateLimiterDisabled           bool `bson:"api_rate_limiter_disabled" json:"api_rate_limiter_disabled"`
 	GraphQLComplexityLimiterDisabled bool `bson:"graphql_complexity_limiter_disabled" json:"graphql_complexity_limiter_disabled"`
@@ -124,7 +122,6 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			retryFailedLogMoveEnabledKey:          c.RetryFailedLogMoveEnabled,
 			projectTranslationCacheEnabledKey:     c.ProjectTranslationCacheEnabled,
 			secondaryReadsDisabledKey:             c.SecondaryReadsDisabled,
-			backgroundCommandFailureEnabledKey:    c.BackgroundCommandFailureEnabled,
 			apiRateLimiterDisabledKey:             c.APIRateLimiterDisabled,
 			graphqlComplexityLimiterDisabledKey:   c.GraphQLComplexityLimiterDisabled,
 			containerIsolationEnabledKey:          c.ContainerIsolationEnabled,
