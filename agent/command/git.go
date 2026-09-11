@@ -386,6 +386,12 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 			fmt.Sprintf("git reset --hard %s", checkout.HeadHash),
 		}...)
 	} else {
+		if opts.cloneDepth > 0 {
+			// A shallow clone only contains the default branch's recent history, so
+			// the module's ref may be missing. If so, deepen the clone to the full
+			// history of every branch before checking it out.
+			gitCommands = append(gitCommands, fmt.Sprintf(`git log HEAD..'%s' || git fetch --unshallow origin '+refs/heads/*:refs/remotes/origin/*'`, ref))
+		}
 		gitCommands = append(gitCommands, fmt.Sprintf("git checkout '%s'", ref))
 	}
 
@@ -852,6 +858,13 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	opts := cloneOpts{
 		branch: "",
 		dir:    moduleBase,
+	}
+
+	shallowCloneDisabled := conf.Distro != nil && conf.Distro.DisableShallowClone
+	if module.CloneDepth > 0 && shallowCloneDisabled {
+		logger.Task().Infof(ctx, "Clone depth is disabled for this distro; ignoring the clone depth configured for module '%s'.", module.Name)
+	} else {
+		opts.cloneDepth = module.CloneDepth
 	}
 
 	// If the module repo is using the deprecated ssh cloning method, extract the owner

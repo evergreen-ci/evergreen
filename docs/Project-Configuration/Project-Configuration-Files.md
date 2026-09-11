@@ -517,6 +517,11 @@ Fields:
   time of the Evergreen version creation)
 - `auto_update`: if true, the latest revision for the module will be
   dynamically retrieved for each Github PR, CLI patch, and periodic build submission
+- `clone_depth`: clone this module with `git clone --depth <clone_depth>`. It is
+  independent of [git.get_project](Project-Commands#gitgetproject)'s own
+  `clone_depth`, which only applies to the source repo. Ignored for wiki modules,
+  distros where shallow clone is disabled, or when the module's revision is not
+  in the shallow clone.
 
 #### Wiki modules
 

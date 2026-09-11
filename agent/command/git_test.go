@@ -1291,3 +1291,51 @@ func TestParentRepoForGitHubAppToken(t *testing.T) {
 	assert.Equal(t, "mongo", parentRepoForGitHubAppToken("mongo.wiki.git"))
 	assert.Equal(t, "other", parentRepoForGitHubAppToken("other"))
 }
+
+func TestBuildModuleCloneCommandCloneDepth(t *testing.T) {
+	c := &gitFetchProject{Directory: "dir", Token: projectGitHubToken}
+	conf := &internal.TaskConfig{}
+	baseOpts := cloneOpts{
+		token: projectGitHubToken,
+		owner: "evergreen-ci",
+		repo:  "sample",
+		dir:   "module",
+	}
+
+	t.Run("PositiveDepthShallowClonesAndDeepensForMissingRef", func(t *testing.T) {
+		opts := baseOpts
+		opts.cloneDepth = 5
+		cmds, err := c.buildModuleCloneCommand(conf, opts, "main", nil)
+		require.NoError(t, err)
+		joined := strings.Join(cmds, "\n")
+		assert.Contains(t, joined, "--depth 5")
+		assert.Contains(t, joined, "git log HEAD..'main' || git fetch --unshallow")
+		assert.Contains(t, joined, "git checkout 'main'")
+	})
+
+	t.Run("UnsetDepthClonesInFull", func(t *testing.T) {
+		cmds, err := c.buildModuleCloneCommand(conf, baseOpts, "main", nil)
+		require.NoError(t, err)
+		joined := strings.Join(cmds, "\n")
+		assert.NotContains(t, joined, "--depth")
+		assert.NotContains(t, joined, "--unshallow")
+	})
+
+	t.Run("NegativeDepthShouldError", func(t *testing.T) {
+		opts := baseOpts
+		opts.cloneDepth = -1
+		_, err := c.buildModuleCloneCommand(conf, opts, "main", nil)
+		assert.ErrorContains(t, err, "clone depth cannot be negative")
+	})
+
+	t.Run("WikiModuleIgnoresDepth", func(t *testing.T) {
+		opts := baseOpts
+		opts.repo = "parent.wiki"
+		opts.cloneDepth = 5
+		cmds, err := c.buildModuleCloneCommand(conf, opts, "", nil)
+		require.NoError(t, err)
+		joined := strings.Join(cmds, "\n")
+		assert.NotContains(t, joined, "--depth")
+		assert.NotContains(t, joined, "--unshallow")
+	})
+}
