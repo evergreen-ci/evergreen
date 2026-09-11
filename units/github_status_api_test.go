@@ -125,13 +125,7 @@ func (s *githubStatusUpdateSuite) TestForPatchCreated() {
 }
 
 func (s *githubStatusUpdateSuite) TestForProcessingError() {
-	intent, err := patch.NewGithubIntent(s.ctx, "1", "", "", "", "", testutil.NewGithubPR(448,
-		"evergreen-ci/evergreen", "7c38f3f63c05675329518c148d3a176e1da6ec2d", "tychoish/evergreen", "776f608b5b12cd27b8d931c8ee4ca0c13f857299", "tychoish", "Title"))
-	s.NoError(err)
-	s.NotNil(intent)
-	s.NoError(intent.Insert(s.ctx))
-
-	job, ok := NewGithubStatusUpdateJobForProcessingError("evergreen/commit-queue", "evergreen-ci", "evergreen", "776f608b5b12cd27b8d931c8ee4ca0c13f857299", OtherErrors).(*githubStatusUpdateJob)
+	job, ok := NewGithubStatusUpdateJobForProcessingError("evergreen/commit-queue", "evergreen-ci", "evergreen", "776f608b5b12cd27b8d931c8ee4ca0c13f857299", OtherErrors, "/rest/v2/github/intent-processing-errors/error-id").(*githubStatusUpdateJob)
 	s.Require().NotNil(job)
 	s.Require().True(ok)
 	s.Require().Equal(githubUpdateTypeProcessingError, job.UpdateType)
@@ -144,6 +138,7 @@ func (s *githubStatusUpdateSuite) TestForProcessingError() {
 	s.Equal("evergreen-ci", status.Owner)
 	s.Equal("evergreen", status.Repo)
 	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", status.Ref)
+	s.Equal("https://example.com/rest/v2/github/intent-processing-errors/error-id", status.URL)
 	s.Equal(OtherErrors, status.Description)
 	s.Equal("evergreen/commit-queue", status.Context)
 	s.Equal(message.GithubStateFailure, status.State)
