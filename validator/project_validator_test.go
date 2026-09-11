@@ -2126,7 +2126,7 @@ func TestCheckModules(t *testing.T) {
 	})
 }
 
-func TestCheckModulesCloneDepth(t *testing.T) {
+func TestValidateModuleCloneDepths(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
 		cloneDepth  int
@@ -2148,7 +2148,7 @@ func TestCheckModulesCloneDepth(t *testing.T) {
 					},
 				},
 			}
-			errs := checkModules(project)
+			errs := validateModuleCloneDepths(project)
 			if tc.expectError {
 				require.Len(t, errs, 1)
 				assert.Equal(t, Error, errs[0].Level)

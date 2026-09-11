@@ -140,6 +140,7 @@ var projectErrorValidators = []projectValidator{
 	validateHostCreates,
 	validateDuplicateBVTasks,
 	validateGenerateTasks,
+	validateModuleCloneDepths,
 }
 
 // Functions used to validate the syntax of project configs representing properties found on the project page.
@@ -1170,6 +1171,21 @@ func checkTaskNames(task *model.ProjectTask) ValidationErrors {
 	return errs
 }
 
+// validateModuleCloneDepths checks that no module sets a clone depth that git
+// cannot clone with, which would fail the task at git.get_project.
+func validateModuleCloneDepths(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
+	for _, module := range project.Modules {
+		if module.CloneDepth < 0 {
+			errs = append(errs, ValidationError{
+				Level:   Error,
+				Message: fmt.Sprintf("module '%s' cannot have a negative clone depth", module.Name),
+			})
+		}
+	}
+	return errs
+}
+
 // checkModules checks to make sure that the module's name, branch, and repo are correct.
 func checkModules(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
@@ -1225,13 +1241,6 @@ func checkModules(project *model.Project) ValidationErrors {
 			errs = append(errs, ValidationError{
 				Level:   Warning,
 				Message: fmt.Sprintf("module '%s' should have a set repo", module.Name),
-			})
-		}
-
-		if module.CloneDepth < 0 {
-			errs = append(errs, ValidationError{
-				Level:   Error,
-				Message: fmt.Sprintf("module '%s' cannot have a negative clone depth", module.Name),
 			})
 		}
 

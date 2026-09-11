@@ -860,10 +860,8 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		dir:    moduleBase,
 	}
 
-	// The module's clone depth comes from the project config rather than the
-	// command, so it is independent of the depth used for the source repo.
-	shallowCloneEnabled := conf.Distro == nil || !conf.Distro.DisableShallowClone
-	if !shallowCloneEnabled && module.CloneDepth != 0 {
+	shallowCloneDisabled := conf.Distro != nil && conf.Distro.DisableShallowClone
+	if module.CloneDepth > 0 && shallowCloneDisabled {
 		logger.Task().Infof(ctx, "Clone depth is disabled for this distro; ignoring the clone depth configured for module '%s'.", module.Name)
 	} else {
 		opts.cloneDepth = module.CloneDepth
