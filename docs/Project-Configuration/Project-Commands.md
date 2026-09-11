@@ -994,6 +994,9 @@ The parameters for each module are:
   parameter if both specified (for commits)
 - `branch`: must be the name of branch, commit hashes _are not
   accepted_.
+- `clone_depth`: clone the module with `git clone --depth <clone_depth>`. This is
+  set per module in the [modules](Project-Configuration-Files#modules) section,
+  not on the command, and the command's `clone_depth` does not apply to modules.
 
 ### Module Hash Hierarchy
 

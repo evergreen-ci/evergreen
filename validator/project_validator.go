@@ -1228,6 +1228,13 @@ func checkModules(project *model.Project) ValidationErrors {
 			})
 		}
 
+		if module.CloneDepth < 0 {
+			errs = append(errs, ValidationError{
+				Level:   Error,
+				Message: fmt.Sprintf("module '%s' cannot have a negative clone depth", module.Name),
+			})
+		}
+
 	}
 
 	return errs

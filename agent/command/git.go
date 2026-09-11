@@ -386,6 +386,12 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 			fmt.Sprintf("git reset --hard %s", checkout.HeadHash),
 		}...)
 	} else {
+		if opts.cloneDepth > 0 {
+			// A shallow clone only contains the default branch's recent history, so
+			// the module's ref may be missing. If so, deepen the clone to the full
+			// history of every branch before checking it out.
+			gitCommands = append(gitCommands, fmt.Sprintf(`git log HEAD..'%s' || git fetch --unshallow origin '+refs/heads/*:refs/remotes/origin/*'`, ref))
+		}
 		gitCommands = append(gitCommands, fmt.Sprintf("git checkout '%s'", ref))
 	}
 
@@ -813,6 +819,23 @@ func (c *gitFetchProject) retryFetch(ctx context.Context, logger client.LoggerPr
 		})
 }
 
+// moduleCloneDepth returns the depth to clone a module at, and the reason the
+// module's configured depth does not apply, if it does not. A module's clone
+// depth comes from the project config rather than the command, so it is
+// independent of the depth used for the source repo.
+func moduleCloneDepth(conf *internal.TaskConfig, module *model.Module, repo string) (depth int, skipReason string) {
+	if module.CloneDepth == 0 {
+		return 0, ""
+	}
+	if conf.Distro != nil && conf.Distro.DisableShallowClone {
+		return 0, "clone depth is disabled for this distro"
+	}
+	if model.IsWikiRepo(repo) {
+		return 0, "wiki modules are always cloned in full"
+	}
+	return module.CloneDepth, ""
+}
+
 func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	comm client.Communicator,
 	conf *internal.TaskConfig,
@@ -853,6 +876,12 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		branch: "",
 		dir:    moduleBase,
 	}
+
+	cloneDepth, skipDepthReason := moduleCloneDepth(conf, module, repo)
+	if skipDepthReason != "" {
+		logger.Task().Infof(ctx, "Ignoring the clone depth configured for module '%s': %s.", module.Name, skipDepthReason)
+	}
+	opts.cloneDepth = cloneDepth
 
 	// If the module repo is using the deprecated ssh cloning method, extract the owner
 	// and repo from the string and save it to clone options so that the an https cloning link

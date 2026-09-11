@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	agenttestutil "github.com/evergreen-ci/evergreen/agent/internal/testutil"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -1290,4 +1291,111 @@ func TestParentRepoForGitHubAppToken(t *testing.T) {
 	assert.Equal(t, "mongo", parentRepoForGitHubAppToken("mongo.wiki"))
 	assert.Equal(t, "mongo", parentRepoForGitHubAppToken("mongo.wiki.git"))
 	assert.Equal(t, "other", parentRepoForGitHubAppToken("other"))
+}
+
+func TestBuildModuleCloneCommandCloneDepth(t *testing.T) {
+	c := &gitFetchProject{Directory: "dir", Token: projectGitHubToken}
+	conf := &internal.TaskConfig{}
+	baseOpts := cloneOpts{
+		token: projectGitHubToken,
+		owner: "evergreen-ci",
+		repo:  "sample",
+		dir:   "module",
+	}
+
+	t.Run("PositiveDepthShallowClonesAndDeepensForMissingRef", func(t *testing.T) {
+		opts := baseOpts
+		opts.cloneDepth = 5
+		cmds, err := c.buildModuleCloneCommand(conf, opts, "main", nil)
+		require.NoError(t, err)
+		joined := strings.Join(cmds, "\n")
+		assert.Contains(t, joined, "--depth 5")
+		assert.Contains(t, joined, "git log HEAD..'main' || git fetch --unshallow")
+		assert.Contains(t, joined, "git checkout 'main'")
+	})
+
+	t.Run("UnsetDepthClonesInFull", func(t *testing.T) {
+		cmds, err := c.buildModuleCloneCommand(conf, baseOpts, "main", nil)
+		require.NoError(t, err)
+		joined := strings.Join(cmds, "\n")
+		assert.NotContains(t, joined, "--depth")
+		assert.NotContains(t, joined, "--unshallow")
+	})
+
+	t.Run("NegativeDepthShouldError", func(t *testing.T) {
+		opts := baseOpts
+		opts.cloneDepth = -1
+		_, err := c.buildModuleCloneCommand(conf, opts, "main", nil)
+		assert.ErrorContains(t, err, "clone depth cannot be negative")
+	})
+
+	t.Run("WikiModuleIgnoresDepth", func(t *testing.T) {
+		opts := baseOpts
+		opts.repo = "parent.wiki"
+		opts.cloneDepth = 5
+		cmds, err := c.buildModuleCloneCommand(conf, opts, "", nil)
+		require.NoError(t, err)
+		joined := strings.Join(cmds, "\n")
+		assert.NotContains(t, joined, "--depth")
+		assert.NotContains(t, joined, "--unshallow")
+	})
+}
+
+func TestModuleCloneDepth(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		conf          *internal.TaskConfig
+		module        model.Module
+		repo          string
+		expectedDepth int
+		expectSkipped bool
+	}{
+		{
+			name:          "ConfiguredDepthIsUsed",
+			conf:          &internal.TaskConfig{},
+			module:        model.Module{Name: "module1", CloneDepth: 10},
+			repo:          "sample",
+			expectedDepth: 10,
+		},
+		{
+			name:          "UnsetDepthClonesInFull",
+			conf:          &internal.TaskConfig{},
+			module:        model.Module{Name: "module1"},
+			repo:          "sample",
+			expectedDepth: 0,
+		},
+		{
+			name:          "NegativeDepthIsPassedThroughForValidation",
+			conf:          &internal.TaskConfig{},
+			module:        model.Module{Name: "module1", CloneDepth: -1},
+			repo:          "sample",
+			expectedDepth: -1,
+		},
+		{
+			name:          "DistroWithShallowCloneDisabledSkipsDepth",
+			conf:          &internal.TaskConfig{Distro: &apimodels.DistroView{DisableShallowClone: true}},
+			module:        model.Module{Name: "module1", CloneDepth: 10},
+			repo:          "sample",
+			expectedDepth: 0,
+			expectSkipped: true,
+		},
+		{
+			name:          "WikiModuleSkipsDepth",
+			conf:          &internal.TaskConfig{},
+			module:        model.Module{Name: "module1", CloneDepth: 10},
+			repo:          "parent.wiki",
+			expectedDepth: 0,
+			expectSkipped: true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			depth, skipReason := moduleCloneDepth(tc.conf, &tc.module, tc.repo)
+			assert.Equal(t, tc.expectedDepth, depth)
+			if tc.expectSkipped {
+				assert.NotEmpty(t, skipReason)
+			} else {
+				assert.Empty(t, skipReason)
+			}
+		})
+	}
 }

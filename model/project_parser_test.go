@@ -4699,3 +4699,26 @@ tasks:
 		require.NoError(b, err)
 	}
 }
+
+func TestParseModuleCloneDepth(t *testing.T) {
+	yml := `
+modules:
+- name: "shallow"
+  repo: "dsi"
+  owner: "10gen"
+  branch: "main"
+  clone_depth: 1
+- name: "full"
+  repo: "mongo"
+  owner: "10gen"
+  branch: "main"
+tasks:
+- name: t1
+`
+	pp, decodeErr, err := createIntermediateProject([]byte(yml), false, nil)
+	require.NoError(t, err)
+	require.NoError(t, decodeErr)
+	require.Len(t, pp.Modules, 2)
+	assert.Equal(t, 1, pp.Modules[0].CloneDepth)
+	assert.Zero(t, pp.Modules[1].CloneDepth)
+}

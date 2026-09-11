@@ -2126,6 +2126,40 @@ func TestCheckModules(t *testing.T) {
 	})
 }
 
+func TestCheckModulesCloneDepth(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		cloneDepth  int
+		expectError bool
+	}{
+		{name: "UnsetDepthShouldNotError"},
+		{name: "PositiveDepthShouldNotError", cloneDepth: 100},
+		{name: "NegativeDepthShouldError", cloneDepth: -1, expectError: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			project := &model.Project{
+				Modules: model.ModuleList{
+					model.Module{
+						Name:       "module-0",
+						Branch:     "main",
+						Owner:      "evergreen-ci",
+						Repo:       "evergreen",
+						CloneDepth: tc.cloneDepth,
+					},
+				},
+			}
+			errs := checkModules(project)
+			if tc.expectError {
+				require.Len(t, errs, 1)
+				assert.Equal(t, Error, errs[0].Level)
+				assert.Contains(t, errs[0].Message, "negative clone depth")
+			} else {
+				assert.Empty(t, errs)
+			}
+		})
+	}
+}
+
 func TestValidateBVNames(t *testing.T) {
 	Convey("When validating a project's build variants' names", t, func() {
 		Convey("if any variant has a duplicate entry, an error should be returned", func() {
