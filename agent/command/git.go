@@ -822,16 +822,14 @@ func (c *gitFetchProject) retryFetch(ctx context.Context, logger client.LoggerPr
 // moduleCloneDepth returns the depth to clone a module at, and the reason the
 // module's configured depth does not apply, if it does not. A module's clone
 // depth comes from the project config rather than the command, so it is
-// independent of the depth used for the source repo.
-func moduleCloneDepth(conf *internal.TaskConfig, module *model.Module, repo string) (depth int, skipReason string) {
+// independent of the depth used for the source repo. Wiki modules need no
+// special case here because their clone never takes a depth.
+func moduleCloneDepth(conf *internal.TaskConfig, module *model.Module) (depth int, skipReason string) {
 	if module.CloneDepth == 0 {
 		return 0, ""
 	}
 	if conf.Distro != nil && conf.Distro.DisableShallowClone {
 		return 0, "clone depth is disabled for this distro"
-	}
-	if model.IsWikiRepo(repo) {
-		return 0, "wiki modules are always cloned in full"
 	}
 	return module.CloneDepth, ""
 }
@@ -877,7 +875,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		dir:    moduleBase,
 	}
 
-	cloneDepth, skipDepthReason := moduleCloneDepth(conf, module, repo)
+	cloneDepth, skipDepthReason := moduleCloneDepth(conf, module)
 	if skipDepthReason != "" {
 		logger.Task().Infof(ctx, "Ignoring the clone depth configured for module '%s': %s.", module.Name, skipDepthReason)
 	}

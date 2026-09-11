@@ -1346,7 +1346,6 @@ func TestModuleCloneDepth(t *testing.T) {
 		name          string
 		conf          *internal.TaskConfig
 		module        model.Module
-		repo          string
 		expectedDepth int
 		expectSkipped bool
 	}{
@@ -1354,42 +1353,30 @@ func TestModuleCloneDepth(t *testing.T) {
 			name:          "ConfiguredDepthIsUsed",
 			conf:          &internal.TaskConfig{},
 			module:        model.Module{Name: "module1", CloneDepth: 10},
-			repo:          "sample",
 			expectedDepth: 10,
 		},
 		{
 			name:          "UnsetDepthClonesInFull",
 			conf:          &internal.TaskConfig{},
 			module:        model.Module{Name: "module1"},
-			repo:          "sample",
 			expectedDepth: 0,
 		},
 		{
 			name:          "NegativeDepthIsPassedThroughForValidation",
 			conf:          &internal.TaskConfig{},
 			module:        model.Module{Name: "module1", CloneDepth: -1},
-			repo:          "sample",
 			expectedDepth: -1,
 		},
 		{
 			name:          "DistroWithShallowCloneDisabledSkipsDepth",
 			conf:          &internal.TaskConfig{Distro: &apimodels.DistroView{DisableShallowClone: true}},
 			module:        model.Module{Name: "module1", CloneDepth: 10},
-			repo:          "sample",
-			expectedDepth: 0,
-			expectSkipped: true,
-		},
-		{
-			name:          "WikiModuleSkipsDepth",
-			conf:          &internal.TaskConfig{},
-			module:        model.Module{Name: "module1", CloneDepth: 10},
-			repo:          "parent.wiki",
 			expectedDepth: 0,
 			expectSkipped: true,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			depth, skipReason := moduleCloneDepth(tc.conf, &tc.module, tc.repo)
+			depth, skipReason := moduleCloneDepth(tc.conf, &tc.module)
 			assert.Equal(t, tc.expectedDepth, depth)
 			if tc.expectSkipped {
 				assert.NotEmpty(t, skipReason)
