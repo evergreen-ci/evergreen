@@ -48,6 +48,29 @@ A returned object will always contain its complete list of fields. Any
 field that does not have an associated value will be filled with JSON's
 null value.
 
+## OpenAPI specification
+
+Evergreen publishes an **OpenAPI 3.0** specification for the REST v2 API,
+generated from the API's source code:
+
+[https://mciuploads.s3.amazonaws.com/evergreen/latest/swagger.json](https://mciuploads.s3.amazonaws.com/evergreen/latest/swagger.json)
+
+The file is named `swagger.json` for historical reasons, but its contents are
+OpenAPI 3.0. It is regenerated and republished when changes are merged to
+Evergreen's main branch, so it tracks the latest merged code and may be slightly
+ahead of what is currently deployed.
+
+You can use it to generate a client in your language of choice, rather than
+writing REST calls by hand. For example, with
+[openapi-generator](https://openapi-generator.tech/):
+
+```bash
+curl -O https://mciuploads.s3.amazonaws.com/evergreen/latest/swagger.json
+openapi-generator generate -i swagger.json -g python -o evergreen-client
+```
+
+The API docs below are rendered from this same specification.
+
 ## API Docs
 
 import ApiDocMdx from "@theme/ApiDocMdx";

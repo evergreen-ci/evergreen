@@ -523,6 +523,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     name: test-rest-model
     tags: ["db", "test"]
+  - <<: *run-go-test-suite
+    name: test-rest-openapi
+    tags: ["nodb", "test"]
   - <<: *run-go-test-suite-with-mongodb
     tags: ["test", "db"]
     name: test-units
@@ -795,14 +798,17 @@ tasks:
           working_dir: evergreen
           env:
             GOPATH: ${workdir}/gopath
+          include_expansions_in_env:
+            - GOROOT
           script: |
             set -o verbose
             set -o errexit
-            $GOPATH/bin/swag init -g service/service.go
+            export PATH="$GOPATH/bin:$PATH"
+            make swaggo-build
       - command: s3.get
         params:
           role_arn: ${assume_role_arn}
-          local_file: evergreen/docs/swagger.old.sum
+          local_file: evergreen/bin/swagger.old.sum
           remote_file: evergreen/latest/swagger${environment-suffix}.sum
           bucket: mciuploads
           content_type: text/plain
@@ -813,15 +819,15 @@ tasks:
           binary: bash
           args: ["scripts/prepare-swagger-push.sh"]
           env:
-            SWAGGER_JSON_FILE: docs/swagger.json
-            SWAGGER_OLD_SUM_FILE: docs/swagger.old.sum
-            OUTPUT_SUM_FILE: docs/swagger.sum
+            SWAGGER_JSON_FILE: bin/swagger.json
+            SWAGGER_OLD_SUM_FILE: bin/swagger.old.sum
+            OUTPUT_SUM_FILE: bin/swagger.sum
             environment: ${environment}
             environment-suffix: ${environment-suffix}
       - command: s3.put
         params:
           role_arn: ${assume_role_arn}
-          local_file: evergreen/docs/swagger.json
+          local_file: evergreen/bin/swagger.json
           remote_file: evergreen/${task_id}/${execution}/swagger.json
           bucket: mciuploads
           content_type: application/json
@@ -830,7 +836,7 @@ tasks:
       - command: s3.put
         params:
           role_arn: ${assume_role_arn}
-          local_file: evergreen/docs/swagger.json
+          local_file: evergreen/bin/swagger.json
           remote_file: evergreen/latest/swagger${environment-suffix}.json
           bucket: mciuploads
           content_type: application/json
@@ -840,7 +846,7 @@ tasks:
       - command: s3.put
         params:
           role_arn: ${assume_role_arn}
-          local_file: evergreen/docs/swagger.sum
+          local_file: evergreen/bin/swagger.sum
           remote_file: evergreen/latest/swagger${environment-suffix}.sum
           bucket: mciuploads
           content_type: text/plain
