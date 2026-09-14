@@ -2930,6 +2930,7 @@ func (s *AgentSuite) TestFetchTaskInfo() {
 	s.Equal(s.mockCommunicator.GetProjectResponse.Identifier, tcOpts.project.Identifier)
 	s.Require().NotZero(tcOpts.expansionsAndVars.Expansions)
 	s.Equal("bar", tcOpts.expansionsAndVars.Expansions["foo"], "should include mock communicator expansions")
+	s.Equal("display_task_name", tcOpts.expansionsAndVars.Expansions["display_task_name"], "should include the parent display task name")
 	s.Equal("new-parameter-value", tcOpts.expansionsAndVars.Expansions["overwrite-this-parameter"], "user-specified parameter should overwrite any other conflicting expansion")
 	s.Require().NotZero(tcOpts.expansionsAndVars.PrivateVars)
 	s.True(tcOpts.expansionsAndVars.PrivateVars["some_private_var"], "should include mock communicator private variables")

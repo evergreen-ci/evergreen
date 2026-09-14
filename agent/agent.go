@@ -682,6 +682,9 @@ func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*taskInfo, 
 	if err != nil {
 		return nil, errors.Wrap(err, "getting task's display task info")
 	}
+	if opts.displayTaskInfo != nil && opts.displayTaskInfo.Name != "" {
+		opts.expansionsAndVars.Expansions.Put("display_task_name", opts.displayTaskInfo.Name)
+	}
 
 	agentutil.AddVariantAndParameterExpansions(opts.expansionsAndVars, opts.project, opts.task.BuildVariant)
 	return opts, nil
