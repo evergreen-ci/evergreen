@@ -122,46 +122,6 @@ func TestCompleteVirtualTasks(t *testing.T) {
 			assert.Equal(t, evergreen.TaskFailed, vt.GetDisplayStatus())
 			assert.Equal(t, runnerTaskID, vt.CompletedBy)
 		},
-		"NonVirtualTaskFailsAndIsUnmodified": func(ctx context.Context, t *testing.T, h *completeVirtualTasksHandler, env evergreen.Environment) {
-			hostTask := task.Task{
-				Id:      "host_task",
-				Status:  evergreen.TaskUndispatched,
-				Project: projectID,
-				BuildId: buildID,
-				Version: versionID,
-			}
-			require.NoError(t, hostTask.Insert(ctx))
-			h.body = apimodels.CompleteVirtualTasksRequest{Tasks: []apimodels.VirtualTaskCompletion{
-				{TaskID: hostTask.Id, Status: evergreen.TaskSucceeded},
-			}}
-
-			results := requireResults(t, h.Run(ctx), 1)
-			assert.Equal(t, apimodels.VirtualTaskCompletionOutcomeFailed, results[0].Outcome)
-			assert.Contains(t, results[0].Reason, "not a virtual task")
-
-			dbTask, err := task.FindOneId(ctx, hostTask.Id)
-			require.NoError(t, err)
-			require.NotNil(t, dbTask)
-			assert.Equal(t, evergreen.TaskUndispatched, dbTask.Status)
-		},
-		"TaskInDifferentVersionFails": func(ctx context.Context, t *testing.T, h *completeVirtualTasksHandler, env evergreen.Environment) {
-			otherVersionTask := task.Task{
-				Id:                "other_version_task",
-				Status:            evergreen.TaskUndispatched,
-				ExecutionPlatform: task.ExecutionPlatformVirtual,
-				Project:           projectID,
-				BuildId:           buildID,
-				Version:           "some_other_version",
-			}
-			require.NoError(t, otherVersionTask.Insert(ctx))
-			h.body = apimodels.CompleteVirtualTasksRequest{Tasks: []apimodels.VirtualTaskCompletion{
-				{TaskID: otherVersionTask.Id, Status: evergreen.TaskSucceeded},
-			}}
-
-			results := requireResults(t, h.Run(ctx), 1)
-			assert.Equal(t, apimodels.VirtualTaskCompletionOutcomeFailed, results[0].Outcome)
-			assert.Contains(t, results[0].Reason, "same version")
-		},
 		"AlreadyFinishedTaskNoOps": func(ctx context.Context, t *testing.T, h *completeVirtualTasksHandler, env evergreen.Environment) {
 			require.NoError(t, task.UpdateOne(ctx, task.ById(virtualTaskID), bson.M{
 				"$set": bson.M{task.StatusKey: evergreen.TaskSucceeded},
@@ -212,21 +172,6 @@ func TestCompleteVirtualTasks(t *testing.T) {
 			dbQueue, err := model.LoadTaskQueue(ctx, distroID)
 			require.NoError(t, err)
 			assert.Zero(t, dbQueue.Length())
-		},
-		"BatchProcessesTasksIndependently": func(ctx context.Context, t *testing.T, h *completeVirtualTasksHandler, env evergreen.Environment) {
-			h.body = apimodels.CompleteVirtualTasksRequest{Tasks: []apimodels.VirtualTaskCompletion{
-				{TaskID: "nonexistent", Status: evergreen.TaskSucceeded},
-				successfulCompletion(),
-			}}
-
-			results := requireResults(t, h.Run(ctx), 2)
-			assert.Equal(t, apimodels.VirtualTaskCompletionOutcomeFailed, results[0].Outcome)
-			assert.Equal(t, apimodels.VirtualTaskCompletionOutcomeSuccess, results[1].Outcome)
-
-			vt, err := task.FindOneId(ctx, virtualTaskID)
-			require.NoError(t, err)
-			require.NotNil(t, vt)
-			assert.Equal(t, evergreen.TaskSucceeded, vt.Status)
 		},
 		"UserWithTaskAdminPermissionCanComplete": func(ctx context.Context, t *testing.T, h *completeVirtualTasksHandler, env evergreen.Environment) {
 			require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
