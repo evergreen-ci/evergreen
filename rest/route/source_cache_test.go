@@ -163,7 +163,7 @@ func TestSourceCacheCredentialsRun(t *testing.T) {
 func TestSourceCacheNamespaceForTask(t *testing.T) {
 	for tName, tCase := range map[string]struct {
 		requester     string
-		parentPR      *patch.GitHubParentPRCheckout
+		insertPatch   bool
 		wantNamespace string
 	}{
 		"MainlineCommitGetsTheBaseNamespace": {
@@ -178,37 +178,27 @@ func TestSourceCacheNamespaceForTask(t *testing.T) {
 			requester:     evergreen.GithubMergeRequester,
 			wantNamespace: evergreen.SourceCachePRNamespace,
 		},
-		"PlainPatchGetsTheBaseNamespace": {
+		"CLIPatchGetsTheCLINamespace": {
 			requester:     evergreen.PatchVersionRequester,
-			wantNamespace: evergreen.SourceCacheBaseNamespace,
+			insertPatch:   true,
+			wantNamespace: evergreen.SourceCacheCLINamespace,
 		},
-		"PatchWithAParentPRSourceCheckoutGetsThePRNamespace": {
+		"PatchWithNoPatchDocumentGetsTheCLINamespace": {
 			requester:     evergreen.PatchVersionRequester,
-			parentPR:      &patch.GitHubParentPRCheckout{ForSource: true, PRNumber: 9001, HeadHash: "abc123"},
-			wantNamespace: evergreen.SourceCachePRNamespace,
-		},
-		"PatchWithAParentPRModuleCheckoutGetsTheBaseNamespace": {
-			requester:     evergreen.PatchVersionRequester,
-			parentPR:      &patch.GitHubParentPRCheckout{ForModule: "some-module", PRNumber: 9001, HeadHash: "abc123"},
-			wantNamespace: evergreen.SourceCacheBaseNamespace,
+			wantNamespace: evergreen.SourceCacheCLINamespace,
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(patch.Collection))
 
 			const versionID = "5bedc62ee4055d31f0340b1d"
-			if tCase.parentPR != nil {
-				patchDoc := patch.Patch{
-					Id:                     mgobson.ObjectIdHex(versionID),
-					GitHubParentPRCheckout: tCase.parentPR,
-				}
+			if tCase.insertPatch {
+				patchDoc := patch.Patch{Id: mgobson.ObjectIdHex(versionID)}
 				require.NoError(t, patchDoc.Insert(t.Context()))
 			}
 
 			tsk := &task.Task{Id: sourceCacheTaskID, Requester: tCase.requester, Version: versionID}
-			namespace, err := sourceCacheNamespaceForTask(t.Context(), tsk)
-			require.NoError(t, err)
-			assert.Equal(t, tCase.wantNamespace, namespace)
+			assert.Equal(t, tCase.wantNamespace, sourceCacheNamespaceForTask(tsk))
 		})
 	}
 }
@@ -284,9 +274,10 @@ func sourceCachePlanKeyParts(key string) (namespace, revision string) {
 
 func TestSourceCachePlan(t *testing.T) {
 	for tName, tCase := range map[string]struct {
-		requester string
-		head      string
-		want      [][2]string
+		requester   string
+		head        string
+		insertPatch bool
+		want        [][2]string
 	}{
 		"MainlineRestoresTheBaseArtifact": {
 			requester: evergreen.RepotrackerVersionRequester,
@@ -297,10 +288,19 @@ func TestSourceCachePlan(t *testing.T) {
 			head:      "55ca6286e3e4f4fba5d0448333fa99fc5a404a73",
 			want:      [][2]string{{"pr", "55ca6286e3e4f4fba5d0448333fa99fc5a404a73"}, {"base", "abc123"}},
 		},
+		"CLIPatchRestoresTheCLIArtifactThenTheBaseArtifact": {
+			requester:   evergreen.PatchVersionRequester,
+			insertPatch: true,
+			want:        [][2]string{{"cli", "abc123"}, {"base", "abc123"}},
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, patch.Collection))
 			const versionID = "5bedc62ee4055d31f0340b1d"
+			if tCase.insertPatch {
+				patchDoc := patch.Patch{Id: mgobson.ObjectIdHex(versionID)}
+				require.NoError(t, patchDoc.Insert(t.Context()))
+			}
 			if tCase.head != "" {
 				patchDoc := patch.Patch{
 					Id:              mgobson.ObjectIdHex(versionID),

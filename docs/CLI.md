@@ -92,6 +92,14 @@ To repeat a specific patch id, you can use the `--repeat-patch` flag.
 evergreen patch --repeat-patch <patch_id>
 ```
 
+`--repeat-patch` also accepts a mainline (waterfall) version ID, in which case the new patch reproduces that version's per-variant task mapping. Note that `--repeat-failed` is not supported for mainline version IDs.
+
+If you have no source checkout, use `patch-file`. Pass the version ID to `--diff-patchId` to create an empty patch at that revision, and to `--repeat-patch` to reproduce its task mapping:
+
+```bash
+evergreen patch-file --diff-patchId <mainline_version_id> --repeat-patch <mainline_version_id> --project <project> -y --finalize
+```
+
 Similarly, using the `--repeat-failed` flag will perform the same behavior as the `--reuse` flag and by default use the last patch as a reference, with the only difference being that it will repeat only the failed tasks and build variants from the most recent patch (if any failures exist).
 
 ```bash

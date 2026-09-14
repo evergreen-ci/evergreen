@@ -1627,6 +1627,34 @@ func (c *communicatorImpl) GetManifestForVersion(ctx context.Context, versionID 
 	return &manifestResp, nil
 }
 
+// GetVersion fetches the version with the given ID.
+func (c *communicatorImpl) GetVersion(ctx context.Context, versionID string) (*restmodel.APIVersion, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("versions/%s", versionID),
+	}
+	resp, err := c.retryRequest(ctx, info, nil)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return nil, errors.Wrapf(err, "sending request to get version '%s'", versionID)
+	}
+
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, util.RespError(resp, VPNError)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, util.RespError(resp, fmt.Sprintf("getting version '%s'", versionID))
+	}
+
+	versionResp := restmodel.APIVersion{}
+	if err = utility.ReadJSON(resp.Body, &versionResp); err != nil {
+		return nil, errors.Wrap(err, "reading version response body")
+	}
+	return &versionResp, nil
+}
+
 func (c *communicatorImpl) GetTaskLogs(ctx context.Context, opts GetTaskLogsOptions) (io.ReadCloser, error) {
 	var params []string
 	if opts.Execution != nil {

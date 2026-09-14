@@ -111,6 +111,8 @@ type Communicator interface {
 	GetManifestByTask(ctx context.Context, taskId string) (*manifest.Manifest, error)
 	// GetManifestForVersion returns the manifest for a given version ID.
 	GetManifestForVersion(ctx context.Context, versionID string) (*restmodel.APIManifest, error)
+	// GetVersion returns the version with the given ID.
+	GetVersion(ctx context.Context, versionID string) (*restmodel.APIVersion, error)
 
 	// GetRecentVersionsForProject returns the most recent versions for a
 	// project.

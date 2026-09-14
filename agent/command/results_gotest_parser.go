@@ -22,8 +22,14 @@ var (
 	// Match the start prefix and save the group of non-space characters following the word "RUN"
 	startRegex = regexp.MustCompile(`=== RUN\s+(\S+)`)
 
-	// Match the end prefix, save PASS/FAIL/SKIP, save the decimal value for number of seconds
-	endRegex = regexp.MustCompile(`--- (PASS|SKIP|FAIL): (\S+) \(-*([0-9\.m]+[ ]*s)`)
+	// Match the end prefix, save PASS/FAIL/SKIP, save the decimal value for number of seconds. The
+	// duration is optional because other output can interleave with go test's and truncate it, and
+	// dropping the runtime is preferable to failing to detect the test's status at all.
+	endRegex = regexp.MustCompile(`--- (PASS|SKIP|FAIL): (\S+)(?: \(-*([0-9\.m]+[ ]*s))?`)
+
+	// Match a complete end line, including the runtime. An end line that matches endRegex but not
+	// this one is malformed, i.e. the runtime is missing or truncated.
+	wellFormedEndRegex = regexp.MustCompile(`--- (PASS|SKIP|FAIL): (\S+) \(-*([0-9\.m]+[ ]*s)`)
 
 	// Match the start prefix and save the group of non-space characters following the word "RUN"
 	gocheckStartRegex = regexp.MustCompile(`START: .*.go:[0-9]+: (\S+)`)
@@ -98,6 +104,20 @@ type goTestParser struct {
 	// executions of the same test in the same log
 	tests map[string][]*goTestResult
 	order []*goTestResult
+	// malformedLines holds the test end lines that were only partially parseable, which usually
+	// means output from the program under test interleaved with go test's.
+	malformedLines []malformedLine
+}
+
+// malformedLine describes a test end line that could only be partially parsed. It intentionally
+// does not include the line's contents, which are arbitrary output from the program under test.
+type malformedLine struct {
+	// lineNum is the line's number [1...] in the test's logged output.
+	lineNum int
+	// testName is the name of the test the line reported on.
+	testName string
+	// status is the status recovered from the line.
+	status string
 }
 
 // Logs returns an array of logs captured during test execution.
@@ -136,6 +156,23 @@ func (vp *goTestParser) handleLine(line string) error {
 	case gocheckStartRegex.MatchString(line):
 		return vp.handleStart(line, gocheckStartRegex, false)
 	case endRegex.MatchString(line):
+		if !wellFormedEndRegex.MatchString(line) {
+			// A partially-matching end line is only trusted for a test that has started and not yet
+			// ended. Otherwise it's most likely a test printing text that resembles go test's own
+			// output, which must not be reported as a test result or as malformed output.
+			name, status, _, err := endInfoFromLogLine(line, endRegex)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			if !vp.hasUnfinishedTest(name) {
+				return nil
+			}
+			vp.malformedLines = append(vp.malformedLines, malformedLine{
+				lineNum:  len(vp.logs),
+				testName: name,
+				status:   status,
+			})
+		}
 		return vp.handleEnd(line, endRegex)
 	case gocheckEndRegex.MatchString(line):
 		return vp.handleEnd(line, gocheckEndRegex)
@@ -143,6 +180,16 @@ func (vp *goTestParser) handleLine(line string) error {
 		return vp.handleFailedBuild(line)
 	}
 	return nil
+}
+
+// hasUnfinishedTest returns whether the most recent execution of the named test has started but has
+// not reported an end line yet.
+func (vp *goTestParser) hasUnfinishedTest(name string) bool {
+	tAry := vp.tests[name]
+	if len(tAry) == 0 {
+		return false
+	}
+	return tAry[len(tAry)-1].EndLine == 0
 }
 
 // handleEnd gets the end data from an ending line and stores it.

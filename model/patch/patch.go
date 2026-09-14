@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/url"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -518,6 +519,59 @@ func (p *Patch) FilesChanged() []string {
 		}
 	}
 	return filenames
+}
+
+// ModuleCodeChange represents the code changes for a single module in a patch.
+type ModuleCodeChange struct {
+	BranchName     string
+	HTMLLink       string
+	RawLink        string
+	CommitMessages []string
+	FileDiffs      []FileDiff
+}
+
+// FileDiff represents a single file diff in a module code change.
+type FileDiff struct {
+	FileName    string
+	Additions   int
+	Deletions   int
+	DiffLink    string
+	Description string
+}
+
+// BuildModuleCodeChanges constructs the list of module code changes for a patch.
+func BuildModuleCodeChanges(p Patch, identifier, apiURL string) []ModuleCodeChange {
+	var codeChanges []ModuleCodeChange
+	patchID := p.Id.Hex()
+
+	for patchNumber, modPatch := range p.Patches {
+		branchName := modPatch.ModuleName
+		if branchName == "" {
+			branchName = identifier
+		}
+		htmlLink := fmt.Sprintf("%s/filediff/%s?patch_number=%d", apiURL, patchID, patchNumber)
+		rawLink := fmt.Sprintf("%s/rawdiff/%s?patch_number=%d", apiURL, patchID, patchNumber)
+		var fileDiffs []FileDiff
+		for i, file := range modPatch.PatchSet.Summary {
+			diffLink := fmt.Sprintf("%s/filediff/%s?file_name=%s&patch_number=%d&commit_number=%d", apiURL, patchID, url.QueryEscape(file.Name), patchNumber, i)
+			fileDiffs = append(fileDiffs, FileDiff{
+				FileName:    file.Name,
+				Additions:   file.Additions,
+				Deletions:   file.Deletions,
+				DiffLink:    diffLink,
+				Description: file.Description,
+			})
+		}
+		codeChanges = append(codeChanges, ModuleCodeChange{
+			BranchName:     branchName,
+			HTMLLink:       htmlLink,
+			RawLink:        rawLink,
+			CommitMessages: modPatch.PatchSet.CommitMessages,
+			FileDiffs:      fileDiffs,
+		})
+	}
+
+	return codeChanges
 }
 
 // SetFinalized marks the patch as finalized.

@@ -2355,6 +2355,25 @@ func MarkTasksReset(ctx context.Context, taskIds []string, caller string) error 
 		return errors.Wrap(err, "resetting tasks in database")
 	}
 
+	numUnscheduled := 0
+	for _, t := range tasks {
+		if t.IsUnscheduled() {
+			numUnscheduled++
+		}
+	}
+	if err = task.ActivateUnscheduledTasks(ctx, taskIds, caller); err != nil {
+		return errors.Wrap(err, "activating unscheduled tasks during reset")
+	}
+	if numUnscheduled > 0 && len(tasks) > 0 {
+		repoRefID, err := getRepoRefIDForTasks(ctx, tasks)
+		if err != nil {
+			return errors.Wrap(err, "getting repo for unscheduled task scheduling limit")
+		}
+		if err := task.UpdateSchedulingLimit(ctx, caller, tasks[0].Requester, tasks[0].Project, repoRefID, numUnscheduled, true); err != nil {
+			return errors.Wrap(err, "updating scheduling limit for activated unscheduled tasks")
+		}
+	}
+
 	catcher := grip.NewBasicCatcher()
 	catcher.Wrapf(UpdateUnblockedDependencies(ctx, tasks), "clearing unattainable dependencies for tasks")
 	for _, t := range tasks {
