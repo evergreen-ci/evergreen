@@ -12,7 +12,7 @@ Method | HTTP request | Description
 
 ## ByFoliageLogicApiOwnerByFoliageLogicTaskIdGet
 
-> FinalAssignmentResults ByFoliageLogicApiOwnerByFoliageLogicTaskIdGet(ctx, taskId).TestFileName(testFileName).OffendingVersionId(offendingVersionId).Execute()
+> FinalAssignmentResults ByFoliageLogicApiOwnerByFoliageLogicTaskIdGet(ctx, taskId).TestFileName(testFileName).OffendingVersionId(offendingVersionId).MaxTestFiles(maxTestFiles).Execute()
 
 By Foliage Logic
 
@@ -31,13 +31,14 @@ import (
 )
 
 func main() {
-	taskId := "taskId_example" // string | 
+	taskId := "taskId_example" // string |
 	testFileName := "testFileName_example" // string |  (optional)
 	offendingVersionId := "offendingVersionId_example" // string |  (optional)
+	maxTestFiles := int32(56) // int32 |  (optional) (default to 0)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.OwnerAPI.ByFoliageLogicApiOwnerByFoliageLogicTaskIdGet(context.Background(), taskId).TestFileName(testFileName).OffendingVersionId(offendingVersionId).Execute()
+	resp, r, err := apiClient.OwnerAPI.ByFoliageLogicApiOwnerByFoliageLogicTaskIdGet(context.Background(), taskId).TestFileName(testFileName).OffendingVersionId(offendingVersionId).MaxTestFiles(maxTestFiles).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `OwnerAPI.ByFoliageLogicApiOwnerByFoliageLogicTaskIdGet``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -53,7 +54,7 @@ func main() {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 **ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
-**taskId** | **string** |  | 
+**taskId** | **string** |  |
 
 ### Other Parameters
 
@@ -63,8 +64,9 @@ Other parameters are passed through a pointer to a apiByFoliageLogicApiOwnerByFo
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 
- **testFileName** | **string** |  | 
- **offendingVersionId** | **string** |  | 
+ **testFileName** | **string** |  |
+ **offendingVersionId** | **string** |  |
+ **maxTestFiles** | **int32** |  | [default to 0]
 
 ### Return type
 
@@ -105,7 +107,7 @@ import (
 )
 
 func main() {
-	jiraKey := "jiraKey_example" // string | 
+	jiraKey := "jiraKey_example" // string |
 	projectId := "projectId_example" // string |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
@@ -126,7 +128,7 @@ func main() {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 **ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
-**jiraKey** | **string** |  | 
+**jiraKey** | **string** |  |
 
 ### Other Parameters
 
@@ -136,7 +138,7 @@ Other parameters are passed through a pointer to a apiByJiraKeyApiOwnerByJiraKey
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 
- **projectId** | **string** |  | 
+ **projectId** | **string** |  |
 
 ### Return type
 
@@ -158,7 +160,7 @@ No authorization required
 
 ## GetRegexMappingApiOwnerRegexByProjectProjectIdGet
 
-> map[string]GetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue GetRegexMappingApiOwnerRegexByProjectProjectIdGet(ctx, projectId).Execute()
+> map[string]*TeamData GetRegexMappingApiOwnerRegexByProjectProjectIdGet(ctx, projectId).Execute()
 
 Get Regex Mapping
 
@@ -177,7 +179,7 @@ import (
 )
 
 func main() {
-	projectId := "projectId_example" // string | 
+	projectId := "projectId_example" // string |
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
@@ -186,7 +188,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error when calling `OwnerAPI.GetRegexMappingApiOwnerRegexByProjectProjectIdGet``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
 	}
-	// response from `GetRegexMappingApiOwnerRegexByProjectProjectIdGet`: map[string]GetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue
+	// response from `GetRegexMappingApiOwnerRegexByProjectProjectIdGet`: map[string]*TeamData
 	fmt.Fprintf(os.Stdout, "Response from `OwnerAPI.GetRegexMappingApiOwnerRegexByProjectProjectIdGet`: %v\n", resp)
 }
 ```
@@ -197,7 +199,7 @@ func main() {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 **ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
-**projectId** | **string** |  | 
+**projectId** | **string** |  |
 
 ### Other Parameters
 
@@ -210,7 +212,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**map[string]GetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue**](GetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue.md)
+[**map[string]*TeamData**](TeamData.md)
 
 ### Authorization
 

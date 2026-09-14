@@ -69,6 +69,15 @@ func (h *hostAgentNextTask) Parse(ctx context.Context, r *http.Request) error {
 		return errors.New("missing host ID")
 	}
 	h.host = MustHaveHost(ctx)
+
+	// Don't return anything for user hosts.
+	if h.host.UserHost {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusForbidden,
+			Message:    "user hosts cannot be dispatched tasks",
+		}
+	}
+
 	details, err := getDetails(h.host, r)
 	if err != nil {
 		return gimlet.ErrorResponse{
@@ -725,14 +734,20 @@ func validateSingleTaskDistro(singleTaskDistroAllowlist evergreen.ProjectTasksPa
 		}
 	}
 
-	// Check if the task is allowed on the distro.
+	// Check if the task (or task group) is allowed on the distro.
+	taskNames := []string{nextTask.DisplayName}
+	if nextTask.TaskGroup != "" {
+		taskNames = append(taskNames, nextTask.TaskGroup)
+	}
 	for _, allowedTask := range singleTaskDistroAllowlist.AllowedTasks {
-		matched, err := regexp.MatchString(allowedTask, nextTask.DisplayName)
-		if err != nil {
-			return false, errors.Wrapf(err, "could not process task regex '%s'", allowedTask)
-		}
-		if matched {
-			return true, nil
+		for _, taskName := range taskNames {
+			matched, err := regexp.MatchString(allowedTask, taskName)
+			if err != nil {
+				return false, errors.Wrapf(err, "could not process task regex '%s'", allowedTask)
+			}
+			if matched {
+				return true, nil
+			}
 		}
 	}
 

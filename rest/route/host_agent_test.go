@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy/queue"
 	. "github.com/smartystreets/goconvey/convey"
@@ -102,6 +103,20 @@ func TestHostNextTask(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.False(t, utility.IsZeroTime(dbHost.AgentStartTime))
+		},
+		"ShouldNotDispatchToUserHost": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
+			userHost := *rh.host
+			userHost.UserHost = true
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/hosts/{host_id}/agent/next_task", nil)
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"host_id": userHost.Id})
+			ctx = context.WithValue(ctx, model.ApiHostKey, &userHost)
+			err = rh.Parse(ctx, req)
+			require.Error(t, err)
+			respErr, ok := err.(gimlet.ErrorResponse)
+			require.True(t, ok, err)
+			assert.Equal(t, http.StatusForbidden, respErr.StatusCode)
+			assert.Equal(t, "user hosts cannot be dispatched tasks", respErr.Message)
 		},
 		"ShouldExitWithOutOfDateRevisionAndTaskGroup": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
 			sampleHost, err := host.FindOneId(ctx, "h1")
@@ -2095,4 +2110,43 @@ func TestCheckHostHealth(t *testing.T) {
 			So(shouldExit, ShouldBeTrue)
 		})
 	})
+}
+
+func TestValidateSingleTaskDistro(t *testing.T) {
+	allowlist := evergreen.ProjectTasksPair{
+		AllowedTasks: []string{"allowed_task", "allowed_group_TG"},
+		AllowedBVs:   []string{"allowed_bv"},
+	}
+
+	for testName, testCase := range map[string]struct {
+		nextTask *task.Task
+		expected bool
+	}{
+		"TaskInAllowedTaskGroupIsAllowed": {
+			nextTask: &task.Task{DisplayName: "member_task", TaskGroup: "allowed_group_TG", BuildVariant: "bv"},
+			expected: true,
+		},
+		"TaskInDisallowedTaskGroupIsNotAllowed": {
+			nextTask: &task.Task{DisplayName: "member_task", TaskGroup: "other_group_TG", BuildVariant: "bv"},
+			expected: false,
+		},
+		"TaskAllowedByItsOwnNameIsAllowed": {
+			nextTask: &task.Task{DisplayName: "allowed_task", BuildVariant: "bv"},
+			expected: true,
+		},
+		"TaskWithoutTaskGroupNotInAllowlistIsNotAllowed": {
+			nextTask: &task.Task{DisplayName: "other_task", BuildVariant: "bv"},
+			expected: false,
+		},
+		"TaskOnAllowedBuildVariantIsAllowed": {
+			nextTask: &task.Task{DisplayName: "other_task", BuildVariant: "allowed_bv"},
+			expected: true,
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			matched, err := validateSingleTaskDistro(allowlist, testCase.nextTask)
+			require.NoError(t, err)
+			assert.Equal(t, testCase.expected, matched)
+		})
+	}
 }

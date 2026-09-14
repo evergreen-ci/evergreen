@@ -1111,6 +1111,32 @@ Parameters:
 - `optional_output`: boolean to indicate if having no files found will
   result in a task failure.
 
+### Expected input
+
+The parser is line-oriented and reads `go test -v`'s human-readable output, so each
+test's start and end lines must be intact and on their own line:
+
+```text
+=== RUN   TestName
+--- PASS: TestName (0.00s)
+```
+
+A test that has a `=== RUN` line but no recognizable `--- PASS`/`--- SKIP`/`--- FAIL`
+line is reported as a failure, since the parser can't tell an unfinished test from a
+crashed one.
+
+The most common way to break this is to have the program under test write to the same
+stream as `go test`. Concurrent writes interleave mid-line and corrupt the end lines:
+
+```text
+--- SKIP: TestName (0.0{"level":"trace","message":"heartbeat succeeded"}
+```
+
+Evergreen recovers the status and name where it can, but it logs the affected line
+numbers and fails the command, because the output can no longer be fully trusted. To
+avoid this, send the program's own logging to a separate file or to stderr rather than
+into the file being parsed.
+
 ## host.create
 
 `host.create` starts a host from a task.
@@ -1490,6 +1516,7 @@ distribution. Refer to [Task Artifacts Data Retention Policy](../Reference/Limit
     region: us-east-1
     permissions: private
     visibility: signed
+    presign_duration: 1h
     content_type: ${content_type|application/x-gzip}
     display_name: Binaries
 # Or:
@@ -1597,6 +1624,11 @@ Parameters:
   See [Rotating AWS credentials for signed artifacts](#rotating-aws-credentials-for-signed-artifacts)
   for how presigning picks up rotated credentials, and how to repair links for artifacts
   uploaded before that.
+- `presign_duration`: the duration that a URL generated for a `visibility: signed`
+  artifact remains valid. Specify a duration from one second through seven days using
+  Go duration syntax, such as `30m`, `1h`, or `24h`. This option is only supported with
+  static AWS credentials; configurations using `role_arn` or credentials from
+  `ec2.assume_role` fail. Defaults to 15 minutes when omitted.
 - `patchable`: defaults to true. If set to false, the command will
   no-op for patches (i.e. continue without performing the s3 put).
 - `patch_only`: defaults to false. If set to true, the command will

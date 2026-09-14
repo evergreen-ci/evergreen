@@ -16,14 +16,14 @@ import (
 )
 
 
-// ValidationErrorLocInner struct for ValidationErrorLocInner
-type ValidationErrorLocInner struct {
+// LocationInner struct for LocationInner
+type LocationInner struct {
 	Int32 *int32
 	String *string
 }
 
 // Unmarshal JSON data into any of the pointers in the struct
-func (dst *ValidationErrorLocInner) UnmarshalJSON(data []byte) error {
+func (dst *LocationInner) UnmarshalJSON(data []byte) error {
 	var err error
 	// try to unmarshal JSON data into Int32
 	err = json.Unmarshal(data, &dst.Int32);
@@ -51,11 +51,11 @@ func (dst *ValidationErrorLocInner) UnmarshalJSON(data []byte) error {
 		dst.String = nil
 	}
 
-	return fmt.Errorf("data failed to match schemas in anyOf(ValidationErrorLocInner)")
+	return fmt.Errorf("data failed to match schemas in anyOf(LocationInner)")
 }
 
 // Marshal data from the first non-nil pointers in the struct to JSON
-func (src ValidationErrorLocInner) MarshalJSON() ([]byte, error) {
+func (src LocationInner) MarshalJSON() ([]byte, error) {
 	if src.Int32 != nil {
 		return json.Marshal(&src.Int32)
 	}
@@ -68,38 +68,38 @@ func (src ValidationErrorLocInner) MarshalJSON() ([]byte, error) {
 }
 
 
-type NullableValidationErrorLocInner struct {
-	value *ValidationErrorLocInner
+type NullableLocationInner struct {
+	value *LocationInner
 	isSet bool
 }
 
-func (v NullableValidationErrorLocInner) Get() *ValidationErrorLocInner {
+func (v NullableLocationInner) Get() *LocationInner {
 	return v.value
 }
 
-func (v *NullableValidationErrorLocInner) Set(val *ValidationErrorLocInner) {
+func (v *NullableLocationInner) Set(val *LocationInner) {
 	v.value = val
 	v.isSet = true
 }
 
-func (v NullableValidationErrorLocInner) IsSet() bool {
+func (v NullableLocationInner) IsSet() bool {
 	return v.isSet
 }
 
-func (v *NullableValidationErrorLocInner) Unset() {
+func (v *NullableLocationInner) Unset() {
 	v.value = nil
 	v.isSet = false
 }
 
-func NewNullableValidationErrorLocInner(val *ValidationErrorLocInner) *NullableValidationErrorLocInner {
-	return &NullableValidationErrorLocInner{value: val, isSet: true}
+func NewNullableLocationInner(val *LocationInner) *NullableLocationInner {
+	return &NullableLocationInner{value: val, isSet: true}
 }
 
-func (v NullableValidationErrorLocInner) MarshalJSON() ([]byte, error) {
+func (v NullableLocationInner) MarshalJSON() ([]byte, error) {
 	return json.Marshal(v.value)
 }
 
-func (v *NullableValidationErrorLocInner) UnmarshalJSON(src []byte) error {
+func (v *NullableLocationInner) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }

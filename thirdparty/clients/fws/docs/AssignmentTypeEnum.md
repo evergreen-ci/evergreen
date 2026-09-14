@@ -11,6 +11,8 @@
 
 * `TEST_FILE_NAME` (value: `"test file name"`)
 
+* `TEST_FILE_PATH` (value: `"test file path"`)
+
 * `TASK_TAG` (value: `"task tag"`)
 
 * `BUILD_VARIANT_TAG` (value: `"build variant tag"`)

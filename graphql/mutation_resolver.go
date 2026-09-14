@@ -390,38 +390,33 @@ func (r *mutationResolver) UpdateHostStatus(ctx context.Context, hostIds []strin
 }
 
 // SetPatchVisibility is the resolver for the setPatchVisibility field.
-func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []string, hidden bool) ([]*restModel.APIPatch, error) {
+func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []string, hidden bool) ([]*patch.Patch, error) {
 	user := mustHaveUser(ctx)
-	updatedPatches := []*restModel.APIPatch{}
-	patches, err := patch.Find(ctx, patch.ByStringIds(ctx, patchIds))
 
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patches '%s': %s", patchIds, err.Error()))
-	}
+	patchPtrs := []*patch.Patch{}
+	for _, pId := range patchIds {
+		p, err := patch.FindOneId(ctx, pId)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting patch '%s': %s", pId, err.Error()))
+		}
+		if p == nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", pId))
+		}
 
-	for _, p := range patches {
-		if !userCanModifyPatch(ctx, user, p) {
+		if !userCanModifyPatch(ctx, user, *p) {
 			return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to change visibility of patch '%s'", p.Id))
 		}
 		err = p.SetPatchVisibility(ctx, hidden)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting visibility for patch '%s': %s", p.Id, err.Error()))
 		}
-		apiPatch := restModel.APIPatch{}
-		err = apiPatch.BuildFromService(ctx, p, &restModel.APIPatchArgs{
-			IncludeProjectIdentifier: true,
-			IncludeVersionCost:       true,
-		})
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting patch '%s' to APIPatch: %s", p.Id, err.Error()))
-		}
-		updatedPatches = append(updatedPatches, &apiPatch)
+		patchPtrs = append(patchPtrs, p)
 	}
-	return updatedPatches, nil
+	return patchPtrs, nil
 }
 
 // SchedulePatch is the resolver for the schedulePatch field.
-func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*restModel.APIPatch, error) {
+func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*patch.Patch, error) {
 	patchUpdateReq := buildFromGqlInput(configure)
 	usr := mustHaveUser(ctx)
 	patchUpdateReq.Caller = usr.Id
@@ -433,7 +428,7 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, co
 	if err != nil {
 		return nil, mapHTTPStatusToGqlError(ctx, statusCode, werrors.Errorf("scheduling patch '%s': %s", patchID, err.Error()))
 	}
-	scheduledPatch, err := data.FindPatchById(ctx, patchID)
+	scheduledPatch, err := patch.FindOneId(ctx, patchID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting scheduled patch '%s': %s", patchID, err.Error()))
 	}
@@ -1472,7 +1467,7 @@ func (r *mutationResolver) RefreshGitHubStatuses(ctx context.Context, opts Refre
 }
 
 // RestartVersions is the resolver for the restartVersions field.
-func (r *mutationResolver) RestartVersions(ctx context.Context, versionID string, abort bool, versionsToRestart []*model.VersionToRestart) ([]*restModel.APIVersion, error) {
+func (r *mutationResolver) RestartVersions(ctx context.Context, versionID string, abort bool, versionsToRestart []*model.VersionToRestart) ([]*model.Version, error) {
 	if len(versionsToRestart) == 0 {
 		return nil, InputValidationError.Send(ctx, "No versions provided. You must provide at least one version to restart.")
 	}
@@ -1485,21 +1480,22 @@ func (r *mutationResolver) RestartVersions(ctx context.Context, versionID string
 	if err != nil {
 		return nil, err
 	}
-	versions := []*restModel.APIVersion{}
+
+	versionIDs := []string{}
 	for _, version := range versionsToRestart {
-		if version.VersionId != nil {
-			currVersionID := utility.FromStringPtr(version.VersionId)
-			v, versionErr := model.VersionFindOneIdWithBuildVariants(ctx, currVersionID)
-			if versionErr != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", currVersionID, versionErr.Error()))
-			}
-			if v == nil {
-				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", currVersionID))
-			}
-			apiVersion := restModel.APIVersion{}
-			apiVersion.BuildFromService(ctx, *v)
-			versions = append(versions, &apiVersion)
+		versionIDs = append(versionIDs, utility.FromStringPtr(version.VersionId))
+	}
+
+	versions := []*model.Version{}
+	for _, vId := range versionIDs {
+		v, versionErr := model.VersionFindOneId(ctx, vId)
+		if versionErr != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", vId, versionErr.Error()))
 		}
+		if v == nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", vId))
+		}
+		versions = append(versions, v)
 	}
 	return versions, nil
 }

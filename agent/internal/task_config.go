@@ -99,7 +99,7 @@ type TaskConfig struct {
 	PSLoggingDisabled               bool
 	BackgroundCommandFailureEnabled bool
 	// BackgroundFailures is the send-only end of a channel for background command failures; the agent reads from the bidirectional end on taskContext.
-	BackgroundFailures chan<- error
+	BackgroundFailures chan<- BackgroundFailure
 
 	// ContainerID is the Docker container ID for this task's isolation container.
 	// Empty if container isolation is not enabled for this task.
@@ -123,6 +123,16 @@ func (tc *TaskConfig) TaskData() client.TaskData {
 		Secret: tc.Task.Secret,
 	}
 }
+
+// BackgroundFailure carries information about a background command that failed
+// so the agent can attribute the failure to the correct command.
+type BackgroundFailure struct {
+	Err                 error
+	CommandName         string
+	FailureMetadataTags []string
+}
+
+func (b BackgroundFailure) Error() string { return b.Err.Error() }
 
 // CommandCleanup is a cleanup function associated with a command. As a command
 // block is executed, the cleanup function(s) are added to the TaskConfig. When

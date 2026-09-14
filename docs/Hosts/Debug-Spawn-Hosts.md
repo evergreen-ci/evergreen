@@ -110,6 +110,9 @@ evergreen debug next
 Need to test with different expansion values?
 
 ```bash
+# Check the current value of an expansion
+evergreen debug get-var BUILD_FLAGS
+
 # Set a custom expansion
 evergreen debug set-var VERBOSE=true
 evergreen debug set-var BUILD_FLAGS="--debug"
@@ -262,6 +265,53 @@ Set expansion: MY_FLAG=--verbose
 ```
 
 ### Inspection Commands
+
+#### `evergreen debug get-var <key> [<key>...]`
+
+Get the current value of one or more expansion variables.
+
+```bash
+evergreen debug get-var distro_id
+evergreen debug get-var MY_FLAG BUILD_TYPE
+```
+
+Example output:
+
+```text
+distro_id=ubuntu2204-large
+MY_FLAG=--verbose
+BUILD_TYPE=debug
+```
+
+If a variable is not set, the output indicates this:
+
+```text
+MISSING_KEY: <not set>
+```
+
+Private variables are redacted unless you've overridden them with `set-var`:
+
+```text
+secret_token=<redacted>
+```
+
+#### `evergreen debug get-vars`
+
+Display all expansion variables and their current values, sorted alphabetically. Private variables are shown as `<redacted>` unless overridden with `set-var`.
+
+```bash
+evergreen debug get-vars
+```
+
+Example output:
+
+```text
+BUILD_TYPE=debug
+MY_FLAG=--verbose
+distro_id=ubuntu2204-large
+secret_token=<redacted>
+workdir=/data/mci
+```
 
 #### `evergreen debug list-steps`
 

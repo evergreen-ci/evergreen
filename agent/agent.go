@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/globals"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
@@ -107,6 +108,9 @@ type Options struct {
 	// alive after a task failure so on-call can docker exec into it for
 	// post-mortem inspection. Zero disables retention.
 	ContainerRetainOnFailureSecs int
+	// CompatClientPath is the absolute path to the legacy ~/evergreen binary,
+	// mounted read-only into isolation containers.
+	CompatClientPath string
 }
 
 // AddLoggableInfo is a helper to add relevant information about the agent
@@ -517,7 +521,7 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	tc.taskConfig.S3Usage = &tc.s3Usage
 	if tc.taskConfig.BackgroundCommandFailureEnabled {
 		// Buffered to bound accumulation between drain cycles after each foreground command.
-		tc.backgroundFailures = make(chan error, 10)
+		tc.backgroundFailures = make(chan internal.BackgroundFailure, 10)
 		tc.taskConfig.BackgroundFailures = tc.backgroundFailures
 	}
 
@@ -677,6 +681,9 @@ func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*taskInfo, 
 	getDisplayTaskSpan.End()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting task's display task info")
+	}
+	if opts.displayTaskInfo != nil && opts.displayTaskInfo.Name != "" {
+		opts.expansionsAndVars.Expansions.Put("display_task_name", opts.displayTaskInfo.Name)
 	}
 
 	agentutil.AddVariantAndParameterExpansions(opts.expansionsAndVars, opts.project, opts.task.BuildVariant)
@@ -888,14 +895,15 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		return evergreen.TaskFailed
 	}
 
-	count, msgs := drainBackgroundFailures(ctx, tc.backgroundFailures, tc.logger.Task())
-	if count > 0 {
+	failures, msgs := drainBackgroundFailures(ctx, tc.backgroundFailures, tc.logger.Task())
+	if len(failures) > 0 {
 		span := trace.SpanFromContext(ctx)
 		span.SetAttributes(
 			attribute.Bool(backgroundCommandFailureAttribute, true),
-			attribute.Int(backgroundCommandFailureCountAttribute, count),
+			attribute.Int(backgroundCommandFailureCountAttribute, len(failures)),
 			attribute.StringSlice(backgroundCommandFailuresAttribute, msgs),
 		)
+		tc.setBackgroundFailingCommand(failures[0])
 		return evergreen.TaskFailed
 	}
 
@@ -1542,12 +1550,19 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 		if tc.userEndTaskRespOriginatingCommand != nil {
 			detail.FailingCommand = tc.userEndTaskRespOriginatingCommand.FullDisplayName()
 			tc.setFailingCommand(tc.userEndTaskRespOriginatingCommand)
+		} else if bgFailure := tc.getBackgroundFailingCommand(); bgFailure != nil {
+			detail.FailingCommand = bgFailure.CommandName
+			failureMetadataTagsToAdd = append(failureMetadataTagsToAdd, bgFailure.FailureMetadataTags...)
 		} else {
 			detail.FailingCommand = currCmd.FullDisplayName()
 			tc.setFailingCommand(currCmd)
 		}
 		detail.Type = failureType
-		detail.FailureMetadataTags = utility.UniqueStrings(append(tc.getFailingCommand().FailureMetadataTags(), failureMetadataTagsToAdd...))
+		if failingCmd := tc.getFailingCommand(); failingCmd != nil {
+			detail.FailureMetadataTags = utility.UniqueStrings(append(failingCmd.FailureMetadataTags(), failureMetadataTagsToAdd...))
+		} else {
+			detail.FailureMetadataTags = utility.UniqueStrings(failureMetadataTagsToAdd)
+		}
 	}
 
 	detail.OtherFailingCommands = tc.getOtherFailingCommands()
@@ -1624,6 +1639,10 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 					logger.Infof(ctx, "Completed in-container process cleanup for task '%s'.", tc.task.ID)
 				}
 			}
+		} else if tc.taskConfig.Distro.ContainerIsolation != nil {
+			// Task processes live in containers, which may not exist yet; the
+			// host-wide pkill is unsafe here.
+			logger.Warningf(ctx, "Skipping process cleanup for task '%s': distro has container isolation enabled but no container is running.", tc.task.ID)
 		} else {
 			logger.Infof(ctx, "Cleaning up processes for task: '%s'.", tc.task.ID)
 			if err := agentutil.KillSpawnedProcs(ctx, tc.task.ID, tc.taskConfig.WorkDir, tc.taskConfig.Distro.ExecUser, logger); err != nil {

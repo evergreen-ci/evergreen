@@ -140,8 +140,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APICedarConfig
   ChildPatch:
     model: github.com/evergreen-ci/evergreen/rest/model.ChildPatch
-  ChildPatchAlias:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIChildPatchAlias
   ClientBinary:
     model: github.com/evergreen-ci/evergreen/rest/model.APIClientBinary
   ClientConfig:
@@ -265,7 +263,7 @@ models:
   File:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFile
   FileDiff:
-    model: github.com/evergreen-ci/evergreen/rest/model.FileDiff
+    model: github.com/evergreen-ci/evergreen/model/patch.FileDiff
   FinderSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFinderSettings
   FinderSettingsInput:
@@ -306,7 +304,7 @@ models:
   GitHubDynamicTokenPermissionGroup:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGitHubDynamicTokenPermissionGroup
   GithubPatch:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIGithubPatch
+    model: github.com/evergreen-ci/evergreen/thirdparty.GithubPatch
   GithubProjectConflicts:
     model: github.com/evergreen-ci/evergreen/model.GithubProjectConflicts
   GithubPRSubscriber:
@@ -504,10 +502,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIMetadataLink
   MetadataLinkInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIMetadataLink
-  Module:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIModule
   ModuleCodeChange:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIModulePatch
+    model: github.com/evergreen-ci/evergreen/model/patch.ModuleCodeChange
   MultiAuthConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIMultiAuthConfig
   MultiAuthConfigInput:
@@ -570,10 +566,10 @@ models:
   ParsleyFilterInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParsleyFilter
   Patch:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIPatch
+    model: github.com/evergreen-ci/evergreen/model/patch.Patch
     fields:
       includedLocalModules:
-        resolver: true
+        fieldName: "LocalModuleIncludes"
       parameters:
         resolver: true
   Patches:
@@ -583,7 +579,7 @@ models:
       patches:
         resolver: true
   IncludedLocalModule:
-    model: github.com/evergreen-ci/evergreen/rest/model.APILocalModuleInclude
+    model: github.com/evergreen-ci/evergreen/model/patch.LocalModuleInclude
   PatchTriggerAlias:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPatchTriggerDefinition
   PatchTriggerAliasInput:
@@ -1029,14 +1025,16 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIVariantQuarantineStatus
   VariantTask:
     model: github.com/evergreen-ci/evergreen/rest/model.VariantTask
-  VariantTaskInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.VariantTask
   Version:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIVersion
+    model: github.com/evergreen-ci/evergreen/model.Version
     fields:
       cost:
         resolver: true
       status:
+        resolver: true
+      order:
+        fieldName: "RevisionOrderNumber"
+      parameters:
         resolver: true
   VersionLite:
     model: github.com/evergreen-ci/evergreen/model.Version

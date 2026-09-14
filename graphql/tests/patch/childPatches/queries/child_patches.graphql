@@ -7,11 +7,5 @@
         id
       }
     }
-    version {
-      id
-      childVersions {
-        id
-      }
-    }
   }
 }

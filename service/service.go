@@ -67,12 +67,16 @@ func GetRouter(ctx context.Context, as *APIServer, uis *UIServer) (http.Handler,
 	// and UI endpoints. While there were no users of restv1 in
 	// with the "api" prefix, there are many users of restv2, so
 	// we will continue to publish these routes in these
-	// endpoints. The version uses a placeholder that's computed
-	// and replaced during publishing.
+	// endpoints. The version and host use placeholders that are computed
+	// and replaced during publishing. These placeholders deliberately avoid
+	// curly braces, which OpenAPI 3 would interpret as server variables.
+	//
+	// These annotations are Swagger 2.0; the generated spec is converted to
+	// OpenAPI 3 by cmd/swagger-to-openapi as part of the build.
 	//
 	//	@title						Evergreen REST v2 API
-	//	@version					{OPENAPI_VERSION}
-	//	@host						{OPENAPI_HOST}
+	//	@version					OPENAPI_VERSION_PLACEHOLDER
+	//	@host						OPENAPI_HOST_PLACEHOLDER
 	//	@BasePath					/rest/v2
 	//	@accept						json
 	//	@produce					json

@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	model1 "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/model"
 )
 
@@ -60,6 +61,11 @@ type BuildVariantOptions struct {
 	Statuses                   []string `json:"statuses,omitempty"`
 	Tasks                      []string `json:"tasks,omitempty"`
 	Variants                   []string `json:"variants,omitempty"`
+}
+
+type ChildPatchAlias struct {
+	Alias   string `json:"alias"`
+	PatchID string `json:"patchId"`
 }
 
 // CreateDistroInput is the input to the createDistro mutation.
@@ -274,8 +280,8 @@ type JiraNotificationsProjectEntryInput struct {
 }
 
 type MainlineCommitVersion struct {
-	RolledUpVersions []*model.APIVersion `json:"rolledUpVersions,omitempty"`
-	Version          *model.APIVersion   `json:"version,omitempty"`
+	RolledUpVersions []*model1.Version `json:"rolledUpVersions,omitempty"`
+	Version          *model1.Version   `json:"version,omitempty"`
 }
 
 // MainlineCommits is returned by the mainline commits query.
@@ -345,8 +351,8 @@ type PatchTime struct {
 // Patches is the return value of the patches field for the User and Project types.
 // It contains an array Patches for either an individual user or a project.
 type Patches struct {
-	FilteredPatchCount int               `json:"filteredPatchCount"`
-	Patches            []*model.APIPatch `json:"patches"`
+	FilteredPatchCount int            `json:"filteredPatchCount"`
+	Patches            []*patch.Patch `json:"patches"`
 }
 
 // PatchesInput is the input value to the patches field for the User and Project types.
@@ -713,15 +719,15 @@ type UpdateVolumeInput struct {
 }
 
 type UpstreamProject struct {
-	Owner       string            `json:"owner"`
-	Project     string            `json:"project"`
-	Repo        string            `json:"repo"`
-	ResourceID  string            `json:"resourceID"`
-	Revision    string            `json:"revision"`
-	Task        *model.APITask    `json:"task,omitempty"`
-	TriggerID   string            `json:"triggerID"`
-	TriggerType string            `json:"triggerType"`
-	Version     *model.APIVersion `json:"version,omitempty"`
+	Owner       string          `json:"owner"`
+	Project     string          `json:"project"`
+	Repo        string          `json:"repo"`
+	ResourceID  string          `json:"resourceID"`
+	Revision    string          `json:"revision"`
+	Task        *model.APITask  `json:"task,omitempty"`
+	TriggerID   string          `json:"triggerID"`
+	TriggerType string          `json:"triggerType"`
+	Version     *model1.Version `json:"version,omitempty"`
 }
 
 // UserConfig is returned by the userConfig query.

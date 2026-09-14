@@ -4,20 +4,20 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**TeamName** | **string** |  | 
-**JiraProject** | **string** |  | 
-**SlackChannelId** | **NullableString** |  | 
-**EvergreenTagName** | **string** |  | 
-**TriageTeamName** | Pointer to **NullableString** |  | [optional] 
-**SlackGroupId** | Pointer to **NullableString** |  | [optional] 
-**TriagedTeamNames** | Pointer to **[]string** |  | [optional] 
-**CodeOwners** | Pointer to **[]string** |  | [optional] 
+**TeamName** | **string** |  |
+**JiraProject** | **string** |  |
+**SlackChannelId** | **NullableString** |  |
+**EvergreenTagName** | Pointer to **NullableString** |  | [optional]
+**TriageTeamName** | Pointer to **NullableString** |  | [optional]
+**SlackGroupId** | Pointer to **NullableString** |  | [optional]
+**TriagedTeamNames** | Pointer to **[]string** |  | [optional]
+**CodeOwners** | Pointer to **[]string** |  | [optional]
 
 ## Methods
 
 ### NewTeamData
 
-`func NewTeamData(teamName string, jiraProject string, slackChannelId NullableString, evergreenTagName string, ) *TeamData`
+`func NewTeamData(teamName string, jiraProject string, slackChannelId NullableString, ) *TeamData`
 
 NewTeamData instantiates a new TeamData object
 This constructor will assign default values to properties that have it defined,
@@ -121,7 +121,22 @@ and a boolean to check if the value has been set.
 
 SetEvergreenTagName sets EvergreenTagName field to given value.
 
+### HasEvergreenTagName
 
+`func (o *TeamData) HasEvergreenTagName() bool`
+
+HasEvergreenTagName returns a boolean if a field has been set.
+
+### SetEvergreenTagNameNil
+
+`func (o *TeamData) SetEvergreenTagNameNil(b bool)`
+
+ SetEvergreenTagNameNil sets the value for EvergreenTagName to be an explicit nil
+
+### UnsetEvergreenTagName
+`func (o *TeamData) UnsetEvergreenTagName()`
+
+UnsetEvergreenTagName ensures that no value is present for EvergreenTagName, not even an explicit nil
 ### GetTriageTeamName
 
 `func (o *TeamData) GetTriageTeamName() string`

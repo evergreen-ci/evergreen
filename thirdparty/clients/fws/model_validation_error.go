@@ -21,9 +21,11 @@ var _ MappedNullable = &ValidationError{}
 
 // ValidationError struct for ValidationError
 type ValidationError struct {
-	Loc []ValidationErrorLocInner `json:"loc"`
+	Loc []LocationInner `json:"loc"`
 	Msg string `json:"msg"`
 	Type string `json:"type"`
+	Input interface{} `json:"input,omitempty"`
+	Ctx map[string]interface{} `json:"ctx,omitempty"`
 }
 
 type _ValidationError ValidationError
@@ -32,7 +34,7 @@ type _ValidationError ValidationError
 // This constructor will assign default values to properties that have it defined,
 // and makes sure properties required by API are set, but the set of arguments
 // will change when the set of required properties is changed
-func NewValidationError(loc []ValidationErrorLocInner, msg string, type_ string) *ValidationError {
+func NewValidationError(loc []LocationInner, msg string, type_ string) *ValidationError {
 	this := ValidationError{}
 	this.Loc = loc
 	this.Msg = msg
@@ -49,9 +51,9 @@ func NewValidationErrorWithDefaults() *ValidationError {
 }
 
 // GetLoc returns the Loc field value
-func (o *ValidationError) GetLoc() []ValidationErrorLocInner {
+func (o *ValidationError) GetLoc() []LocationInner {
 	if o == nil {
-		var ret []ValidationErrorLocInner
+		var ret []LocationInner
 		return ret
 	}
 
@@ -60,7 +62,7 @@ func (o *ValidationError) GetLoc() []ValidationErrorLocInner {
 
 // GetLocOk returns a tuple with the Loc field value
 // and a boolean to check if the value has been set.
-func (o *ValidationError) GetLocOk() ([]ValidationErrorLocInner, bool) {
+func (o *ValidationError) GetLocOk() ([]LocationInner, bool) {
 	if o == nil {
 		return nil, false
 	}
@@ -68,7 +70,7 @@ func (o *ValidationError) GetLocOk() ([]ValidationErrorLocInner, bool) {
 }
 
 // SetLoc sets field value
-func (o *ValidationError) SetLoc(v []ValidationErrorLocInner) {
+func (o *ValidationError) SetLoc(v []LocationInner) {
 	o.Loc = v
 }
 
@@ -120,6 +122,71 @@ func (o *ValidationError) SetType(v string) {
 	o.Type = v
 }
 
+// GetInput returns the Input field value if set, zero value otherwise (both if not set or set to explicit null).
+func (o *ValidationError) GetInput() interface{} {
+	if o == nil {
+		var ret interface{}
+		return ret
+	}
+	return o.Input
+}
+
+// GetInputOk returns a tuple with the Input field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+// NOTE: If the value is an explicit nil, `nil, true` will be returned
+func (o *ValidationError) GetInputOk() (*interface{}, bool) {
+	if o == nil || IsNil(o.Input) {
+		return nil, false
+	}
+	return &o.Input, true
+}
+
+// HasInput returns a boolean if a field has been set.
+func (o *ValidationError) HasInput() bool {
+	if o != nil && !IsNil(o.Input) {
+		return true
+	}
+
+	return false
+}
+
+// SetInput gets a reference to the given interface{} and assigns it to the Input field.
+func (o *ValidationError) SetInput(v interface{}) {
+	o.Input = v
+}
+
+// GetCtx returns the Ctx field value if set, zero value otherwise.
+func (o *ValidationError) GetCtx() map[string]interface{} {
+	if o == nil || IsNil(o.Ctx) {
+		var ret map[string]interface{}
+		return ret
+	}
+	return o.Ctx
+}
+
+// GetCtxOk returns a tuple with the Ctx field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *ValidationError) GetCtxOk() (map[string]interface{}, bool) {
+	if o == nil || IsNil(o.Ctx) {
+		return map[string]interface{}{}, false
+	}
+	return o.Ctx, true
+}
+
+// HasCtx returns a boolean if a field has been set.
+func (o *ValidationError) HasCtx() bool {
+	if o != nil && !IsNil(o.Ctx) {
+		return true
+	}
+
+	return false
+}
+
+// SetCtx gets a reference to the given map[string]interface{} and assigns it to the Ctx field.
+func (o *ValidationError) SetCtx(v map[string]interface{}) {
+	o.Ctx = v
+}
+
 func (o ValidationError) MarshalJSON() ([]byte, error) {
 	toSerialize,err := o.ToMap()
 	if err != nil {
@@ -133,6 +200,12 @@ func (o ValidationError) ToMap() (map[string]interface{}, error) {
 	toSerialize["loc"] = o.Loc
 	toSerialize["msg"] = o.Msg
 	toSerialize["type"] = o.Type
+	if o.Input != nil {
+		toSerialize["input"] = o.Input
+	}
+	if !IsNil(o.Ctx) {
+		toSerialize["ctx"] = o.Ctx
+	}
 	return toSerialize, nil
 }
 

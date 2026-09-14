@@ -5,6 +5,7 @@ All URIs are relative to *http://localhost*
 Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**GetAllTeamsApiMothraAllTeamsGet**](MothraAPI.md#GetAllTeamsApiMothraAllTeamsGet) | **Get** /api/mothra/all_teams | Get All Teams
+[**GetBackstageCodeownersApiMothraBackstageCodeownersGet**](MothraAPI.md#GetBackstageCodeownersApiMothraBackstageCodeownersGet) | **Get** /api/mothra/backstage/codeowners | Get Backstage Codeowners
 [**GetCodeownersByRepoAndFilepathApiMothraCodeownerByRepoAndFilepathOrgRepoNameBranchFilePathGet**](MothraAPI.md#GetCodeownersByRepoAndFilepathApiMothraCodeownerByRepoAndFilepathOrgRepoNameBranchFilePathGet) | **Get** /api/mothra/codeowner_by_repo_and_filepath/{org}/{repo_name}/{branch}/{file_path} | Get Codeowners By Repo And Filepath
 [**GetTeamByNameAndProjectApiMothraTeamByNameAndProjectNameProjectGet**](MothraAPI.md#GetTeamByNameAndProjectApiMothraTeamByNameAndProjectNameProjectGet) | **Get** /api/mothra/team_by_name_and_project/{name}/{project} | Get Team By Name And Project
 [**GetTeamByRepoAndFilepathApiMothraTeamByRepoAndFilepathOrgRepoNameBranchFilePathGet**](MothraAPI.md#GetTeamByRepoAndFilepathApiMothraTeamByRepoAndFilepathOrgRepoNameBranchFilePathGet) | **Get** /api/mothra/team_by_repo_and_filepath/{org}/{repo_name}/{branch}/{file_path} | Get Team By Repo And Filepath
@@ -74,6 +75,72 @@ No authorization required
 [[Back to README]](../README.md)
 
 
+## GetBackstageCodeownersApiMothraBackstageCodeownersGet
+
+> map[string]interface{} GetBackstageCodeownersApiMothraBackstageCodeownersGet(ctx).GithubTeam(githubTeam).Execute()
+
+Get Backstage Codeowners
+
+
+
+### Example
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+	openapiclient "github.com/evergreen-ci/evergreen"
+)
+
+func main() {
+	githubTeam := "githubTeam_example" // string |  (optional)
+
+	configuration := openapiclient.NewConfiguration()
+	apiClient := openapiclient.NewAPIClient(configuration)
+	resp, r, err := apiClient.MothraAPI.GetBackstageCodeownersApiMothraBackstageCodeownersGet(context.Background()).GithubTeam(githubTeam).Execute()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error when calling `MothraAPI.GetBackstageCodeownersApiMothraBackstageCodeownersGet``: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
+	}
+	// response from `GetBackstageCodeownersApiMothraBackstageCodeownersGet`: map[string]interface{}
+	fmt.Fprintf(os.Stdout, "Response from `MothraAPI.GetBackstageCodeownersApiMothraBackstageCodeownersGet`: %v\n", resp)
+}
+```
+
+### Path Parameters
+
+
+
+### Other Parameters
+
+Other parameters are passed through a pointer to a apiGetBackstageCodeownersApiMothraBackstageCodeownersGetRequest struct via the builder pattern
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **githubTeam** | **string** |  |
+
+### Return type
+
+**map[string]interface{}**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
 ## GetCodeownersByRepoAndFilepathApiMothraCodeownerByRepoAndFilepathOrgRepoNameBranchFilePathGet
 
 > []*string GetCodeownersByRepoAndFilepathApiMothraCodeownerByRepoAndFilepathOrgRepoNameBranchFilePathGet(ctx, org, repoName, branch, filePath).Execute()
@@ -95,10 +162,10 @@ import (
 )
 
 func main() {
-	org := "org_example" // string | 
-	repoName := "repoName_example" // string | 
-	branch := "branch_example" // string | 
-	filePath := "filePath_example" // string | 
+	org := "org_example" // string |
+	repoName := "repoName_example" // string |
+	branch := "branch_example" // string |
+	filePath := "filePath_example" // string |
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
@@ -118,10 +185,10 @@ func main() {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 **ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
-**org** | **string** |  | 
-**repoName** | **string** |  | 
-**branch** | **string** |  | 
-**filePath** | **string** |  | 
+**org** | **string** |  |
+**repoName** | **string** |  |
+**branch** | **string** |  |
+**filePath** | **string** |  |
 
 ### Other Parameters
 
@@ -174,8 +241,8 @@ import (
 )
 
 func main() {
-	name := "name_example" // string | 
-	project := "project_example" // string | 
+	name := "name_example" // string |
+	project := "project_example" // string |
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
@@ -195,8 +262,8 @@ func main() {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 **ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
-**name** | **string** |  | 
-**project** | **string** |  | 
+**name** | **string** |  |
+**project** | **string** |  |
 
 ### Other Parameters
 
@@ -247,10 +314,10 @@ import (
 )
 
 func main() {
-	org := "org_example" // string | 
-	repoName := "repoName_example" // string | 
-	branch := "branch_example" // string | 
-	filePath := "filePath_example" // string | 
+	org := "org_example" // string |
+	repoName := "repoName_example" // string |
+	branch := "branch_example" // string |
+	filePath := "filePath_example" // string |
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
@@ -270,10 +337,10 @@ func main() {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 **ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
-**org** | **string** |  | 
-**repoName** | **string** |  | 
-**branch** | **string** |  | 
-**filePath** | **string** |  | 
+**org** | **string** |  |
+**repoName** | **string** |  |
+**branch** | **string** |  |
+**filePath** | **string** |  |
 
 ### Other Parameters
 
@@ -326,7 +393,7 @@ import (
 )
 
 func main() {
-	tag := "tag_example" // string | 
+	tag := "tag_example" // string |
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
@@ -346,7 +413,7 @@ func main() {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 **ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
-**tag** | **string** |  | 
+**tag** | **string** |  |
 
 ### Other Parameters
 
@@ -396,7 +463,7 @@ import (
 )
 
 func main() {
-	name := "name_example" // string | 
+	name := "name_example" // string |
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
@@ -416,7 +483,7 @@ func main() {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 **ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
-**name** | **string** |  | 
+**name** | **string** |  |
 
 ### Other Parameters
 

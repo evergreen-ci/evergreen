@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"syscall"
 	"time"
@@ -173,6 +174,17 @@ func Debug() cli.Command {
 				Usage:     "Set a custom variable",
 				ArgsUsage: "<key>=<value>",
 				Action:    setVariableCmd,
+			},
+			{
+				Name:      "get-var",
+				Usage:     "Get expansion value(s) by name",
+				ArgsUsage: "<key> [<key>...]",
+				Action:    getVariableCmd,
+			},
+			{
+				Name:   "get-vars",
+				Usage:  "List all expansion variables",
+				Action: getVariablesCmd,
 			},
 			{
 				Name:      "jump",
@@ -705,6 +717,95 @@ func setVariableCmd(c *cli.Context) error {
 	}
 
 	fmt.Printf("Set variable: %s=%s\n", key, value)
+	return nil
+}
+
+// getVariableCmd gets one or more expansion values by name.
+func getVariableCmd(c *cli.Context) error {
+	if c.NArg() < 1 {
+		return errors.New("at least one variable name required")
+	}
+
+	url, err := getDaemonURL()
+	if err != nil {
+		return err
+	}
+
+	for i := 0; i < c.NArg(); i++ {
+		if err := getAndPrintVariable(url, c.Args().Get(i)); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func getAndPrintVariable(url, key string) error {
+	resp, err := http.Get(url + "/variable/get/" + key)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyData, _ := io.ReadAll(resp.Body)
+		return errors.Errorf("request failed with status %d: %s", resp.StatusCode, string(bodyData))
+	}
+
+	var result map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return err
+	}
+
+	if !result["found"].(bool) {
+		fmt.Printf("%s: <not set>\n", key)
+	} else if result["redacted"].(bool) {
+		fmt.Printf("%s=<redacted>\n", key)
+	} else {
+		fmt.Printf("%s=%s\n", key, result["value"])
+	}
+	return nil
+}
+
+// getVariablesCmd lists all expansion variables.
+func getVariablesCmd(c *cli.Context) error {
+	url, err := getDaemonURL()
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.Get(url + "/variable/all")
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyData, _ := io.ReadAll(resp.Body)
+		return errors.Errorf("request failed with status %d: %s", resp.StatusCode, string(bodyData))
+	}
+
+	var result map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return err
+	}
+
+	variables := result["variables"].(map[string]any)
+	if len(variables) == 0 {
+		fmt.Println("No variables set.")
+		return nil
+	}
+
+	keys := make([]string, 0, len(variables))
+	for k := range variables {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		fmt.Printf("%s=%s\n", k, variables[k])
+	}
+
 	return nil
 }
 

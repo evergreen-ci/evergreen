@@ -6,6 +6,68 @@ info:
 servers:
 - url: /
 paths:
+  /api/jira/project-access:
+    get:
+      description: |-
+        Check whether the FWS service account can access a Jira project.
+
+        Returns {"accessible": true} if the project exists and the service account
+        has at least read access, {"accessible": false, "reason": "..."} otherwise.
+      operationId: get_jira_project_access_api_jira_project_access_get
+      parameters:
+      - explode: true
+        in: query
+        name: project
+        required: true
+        schema:
+          title: Project
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JiraProjectAccessResponse"
+          description: Successful Response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Get Jira Project Access
+      tags:
+      - jira
+  /api/jira/project-teams:
+    get:
+      description: Return all valid Assigned Teams field values for a Jira project.
+      operationId: get_jira_project_teams_api_jira_project_teams_get
+      parameters:
+      - explode: true
+        in: query
+        name: project
+        required: true
+        schema:
+          title: Project
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JiraProjectTeamsResponse"
+          description: Successful Response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Get Jira Project Teams
+      tags:
+      - jira
   /api/mothra/team_by_tag/{tag}:
     get:
       description: Get team by tag from mothra.
@@ -94,6 +156,7 @@ paths:
                   $ref: "#/components/schemas/TeamData"
                 title: Response Get Team Projects By Name Api Mothra Team Projects
                   By Name  Name  Get
+                type: object
           description: Successful Response
         "422":
           content:
@@ -115,9 +178,46 @@ paths:
               schema:
                 items:
                   $ref: "#/components/schemas/TeamData"
+                title: Response Get All Teams Api Mothra All Teams Get
                 type: array
+                default: null
           description: Successful Response
       summary: Get All Teams
+      tags:
+      - mothra
+  /api/mothra/backstage/codeowners:
+    get:
+      description: |-
+        Get codeowners mappings from the Backstage catalog.
+
+        Returns a mapping of GitHub team name to owning TeamData for all teams that have
+        ``code_owners`` configured.  Optionally filter to a single *github_team*.
+      operationId: get_backstage_codeowners_api_mothra_backstage_codeowners_get
+      parameters:
+      - explode: true
+        in: query
+        name: github_team
+        required: false
+        schema:
+          nullable: true
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                title: Response Get Backstage Codeowners Api Mothra Backstage Codeowners
+                  Get
+                type: object
+          description: Successful Response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Get Backstage Codeowners
       tags:
       - mothra
   /api/mothra/team_by_repo_and_filepath/{org}/{repo_name}/{branch}/{file_path}:
@@ -232,7 +332,10 @@ paths:
                 items:
                   nullable: true
                   type: string
+                title: Response Get Codeowners By Repo And Filepath Api Mothra Codeowner
+                  By Repo And Filepath  Org   Repo Name   Branch   File Path  Get
                 type: array
+                default: null
           description: Successful Response
         "422":
           content:
@@ -251,6 +354,11 @@ paths:
         :param task_id: The task id.
         :param test_file_name: The test file name.
         :param offending_version_id: The offending version id.
+        :param max_test_files: How many of the task's failing tests to attribute ownership
+               by. 0, the default, disables assignment by test file path, so a caller only
+               opts in to it by asking. 1 considers a single test: test_file_name if given,
+               otherwise the task's first failing test. Higher values consider up to that
+               many failing tests and take the team owning most of them.
         :return: The owning team data according to the foliage logic.
       operationId: by_foliage_logic_api_owner_by_foliage_logic__task_id__get
       parameters:
@@ -277,6 +385,16 @@ paths:
         schema:
           nullable: true
           type: string
+        style: form
+      - explode: true
+        in: query
+        name: max_test_files
+        required: false
+        schema:
+          default: 0
+          minimum: 0
+          title: Max Test Files
+          type: integer
         style: form
       responses:
         "200":
@@ -359,8 +477,11 @@ paths:
             application/json:
               schema:
                 additionalProperties:
-                  $ref: "#/components/schemas/get_regex_mapping_api_owner_regex_by_project__project_id__get_200_response_value"
+                  allOf:
+                  - $ref: "#/components/schemas/TeamData"
+                  nullable: true
                 nullable: true
+                type: object
           description: Successful Response
         "422":
           content:
@@ -377,22 +498,8 @@ components:
       description: Result for assignment.
       example:
         assignment_type: offending version id
-        team_data_with_owner:
-          team_data:
-            triage_team_name: triage_team_name
-            slack_channel_id: slack_channel_id
-            slack_group_id: slack_group_id
-            jira_project: jira_project
-            evergreen_tag_name: evergreen_tag_name
-            code_owners:
-            - code_owners
-            - code_owners
-            triaged_team_names:
-            - triaged_team_names
-            - triaged_team_names
-            team_name: team_name
-          owning_user: owning_user
         messages: messages
+        team_data_with_owner: ""
       properties:
         assignment_type:
           $ref: "#/components/schemas/AssignmentTypeEnum"
@@ -400,7 +507,9 @@ components:
           title: Messages
           type: string
         team_data_with_owner:
-          $ref: "#/components/schemas/TeamDataWithOwner"
+          allOf:
+          - $ref: "#/components/schemas/TeamDataWithOwner"
+          nullable: true
       required:
       - assignment_type
       - messages
@@ -412,6 +521,7 @@ components:
       - failure metadata tag
       - system and setup failure
       - test file name
+      - test file path
       - task tag
       - build variant tag
       - task to team mapping
@@ -425,63 +535,23 @@ components:
       example:
         all_assignment_results:
         - assignment_type: offending version id
-          team_data_with_owner:
-            team_data:
-              triage_team_name: triage_team_name
-              slack_channel_id: slack_channel_id
-              slack_group_id: slack_group_id
-              jira_project: jira_project
-              evergreen_tag_name: evergreen_tag_name
-              code_owners:
-              - code_owners
-              - code_owners
-              triaged_team_names:
-              - triaged_team_names
-              - triaged_team_names
-              team_name: team_name
-            owning_user: owning_user
           messages: messages
+          team_data_with_owner: ""
         - assignment_type: offending version id
-          team_data_with_owner:
-            team_data:
-              triage_team_name: triage_team_name
-              slack_channel_id: slack_channel_id
-              slack_group_id: slack_group_id
-              jira_project: jira_project
-              evergreen_tag_name: evergreen_tag_name
-              code_owners:
-              - code_owners
-              - code_owners
-              triaged_team_names:
-              - triaged_team_names
-              - triaged_team_names
-              team_name: team_name
-            owning_user: owning_user
           messages: messages
+          team_data_with_owner: ""
+        all_messages: all_messages
         selected_assignment:
           assignment_type: offending version id
-          team_data_with_owner:
-            team_data:
-              triage_team_name: triage_team_name
-              slack_channel_id: slack_channel_id
-              slack_group_id: slack_group_id
-              jira_project: jira_project
-              evergreen_tag_name: evergreen_tag_name
-              code_owners:
-              - code_owners
-              - code_owners
-              triaged_team_names:
-              - triaged_team_names
-              - triaged_team_names
-              team_name: team_name
-            owning_user: owning_user
           messages: messages
-        all_messages: all_messages
+          team_data_with_owner: ""
       properties:
         all_assignment_results:
           items:
             $ref: "#/components/schemas/AssignmentResult"
+          title: All Assignment Results
           type: array
+          default: null
         all_messages:
           title: All Messages
           type: string
@@ -495,37 +565,72 @@ components:
     HTTPValidationError:
       example:
         detail:
-        - msg: msg
-          loc:
-          - ValidationError_loc_inner
-          - ValidationError_loc_inner
+        - loc:
+          - Location_inner
+          - Location_inner
+          msg: msg
           type: type
-        - msg: msg
-          loc:
-          - ValidationError_loc_inner
-          - ValidationError_loc_inner
+          input: ""
+          ctx: "{}"
+        - loc:
+          - Location_inner
+          - Location_inner
+          msg: msg
           type: type
+          input: ""
+          ctx: "{}"
       properties:
         detail:
           items:
             $ref: "#/components/schemas/ValidationError"
+          title: Detail
           type: array
+          default: null
       title: HTTPValidationError
+    JiraProjectAccessResponse:
+      example:
+        accessible: true
+        reason: reason
+      properties:
+        accessible:
+          title: Accessible
+          type: boolean
+        reason:
+          nullable: true
+          type: string
+      required:
+      - accessible
+      title: JiraProjectAccessResponse
+    JiraProjectTeamsResponse:
+      example:
+        teams:
+        - teams
+        - teams
+      properties:
+        teams:
+          items:
+            type: string
+          title: Teams
+          type: array
+          default: null
+      required:
+      - teams
+      title: JiraProjectTeamsResponse
     TeamData:
       description: This dataclass holds the team data for a specific team.
       example:
-        triage_team_name: triage_team_name
-        slack_channel_id: slack_channel_id
-        slack_group_id: slack_group_id
+        team_name: team_name
         jira_project: jira_project
+        slack_channel_id: slack_channel_id
         evergreen_tag_name: evergreen_tag_name
-        code_owners:
-        - code_owners
-        - code_owners
+        triage_team_name: triage_team_name
+        slack_group_id: slack_group_id
         triaged_team_names:
         - triaged_team_names
         - triaged_team_names
-        team_name: team_name
+        code_owners:
+        - code_owners
+        - code_owners
       properties:
         team_name:
           title: Team Name
@@ -537,7 +642,7 @@ components:
           nullable: true
           type: string
         evergreen_tag_name:
-          title: Evergreen Tag Name
+          nullable: true
           type: string
         triage_team_name:
           nullable: true
@@ -548,14 +653,16 @@ components:
         triaged_team_names:
           items:
             type: string
+          title: Triaged Team Names
           type: array
+          default: null
         code_owners:
           items:
             type: string
           nullable: true
           type: array
+          default: null
       required:
-      - evergreen_tag_name
       - jira_project
       - slack_channel_id
       - team_name
@@ -564,18 +671,18 @@ components:
       description: Team data with owner information.
       example:
         team_data:
-          triage_team_name: triage_team_name
-          slack_channel_id: slack_channel_id
-          slack_group_id: slack_group_id
+          team_name: team_name
           jira_project: jira_project
+          slack_channel_id: slack_channel_id
           evergreen_tag_name: evergreen_tag_name
-          code_owners:
-          - code_owners
-          - code_owners
+          triage_team_name: triage_team_name
+          slack_group_id: slack_group_id
           triaged_team_names:
           - triaged_team_names
           - triaged_team_names
-          team_name: team_name
+          code_owners:
+          - code_owners
+          - code_owners
         owning_user: owning_user
       properties:
         team_data:
@@ -588,32 +695,37 @@ components:
       title: TeamDataWithOwner
     ValidationError:
       example:
-        msg: msg
         loc:
-        - ValidationError_loc_inner
-        - ValidationError_loc_inner
+        - Location_inner
+        - Location_inner
+        msg: msg
         type: type
+        input: ""
+        ctx: "{}"
       properties:
         loc:
           items:
-            $ref: "#/components/schemas/ValidationError_loc_inner"
+            $ref: "#/components/schemas/Location_inner"
+          title: Location
           type: array
+          default: null
         msg:
           title: Message
           type: string
         type:
           title: Error Type
           type: string
+        input:
+          title: Input
+        ctx:
+          title: Context
+          type: object
       required:
       - loc
       - msg
       - type
       title: ValidationError
-    get_regex_mapping_api_owner_regex_by_project__project_id__get_200_response_value:
-      anyOf:
-      - $ref: "#/components/schemas/TeamData"
-      nullable: true
-    ValidationError_loc_inner:
+    Location_inner:
       anyOf:
       - type: string
       - type: integer

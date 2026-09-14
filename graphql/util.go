@@ -173,55 +173,6 @@ func userCanModifyPatch(ctx context.Context, u *user.DBUser, p patch.Patch) bool
 	return model.UserCanModifyPatch(ctx, u, p)
 }
 
-// getPatchProjectVariantsAndTasksForUI gets the variants and tasks for a project for a patch id
-func getPatchProjectVariantsAndTasksForUI(ctx context.Context, apiPatch *restModel.APIPatch) (*PatchProject, error) {
-	p, err := apiPatch.ToService()
-	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("converting APIPatch '%s' to service", utility.FromStringPtr(apiPatch.Id)))
-	}
-	patchProjectVariantsAndTasks, err := model.GetVariantsAndTasksFromPatchProject(ctx, evergreen.GetEnvironment().Settings(), &p)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project variants and tasks for patch '%s': %s", utility.FromStringPtr(apiPatch.Id), err.Error()))
-	}
-
-	// convert variants to UI data structure
-	variants := []*ProjectBuildVariant{}
-	for _, buildVariant := range patchProjectVariantsAndTasks.Variants {
-		projBuildVariant := ProjectBuildVariant{
-			Name:        buildVariant.Name,
-			DisplayName: buildVariant.DisplayName,
-		}
-		projTasks := []string{}
-		executionTasks := map[string]bool{}
-		for _, displayTask := range buildVariant.DisplayTasks {
-			projTasks = append(projTasks, displayTask.Name)
-			for _, execTask := range displayTask.ExecTasks {
-				executionTasks[execTask] = true
-			}
-		}
-		for _, taskUnit := range buildVariant.Tasks {
-			// Only add task if it is not an execution task.
-			if !executionTasks[taskUnit.Name] {
-				projTasks = append(projTasks, taskUnit.Name)
-			}
-		}
-		// Sort tasks alphanumerically by display name.
-		sort.SliceStable(projTasks, func(i, j int) bool {
-			return projTasks[i] < projTasks[j]
-		})
-		projBuildVariant.Tasks = projTasks
-		variants = append(variants, &projBuildVariant)
-	}
-	sort.SliceStable(variants, func(i, j int) bool {
-		return variants[i].DisplayName < variants[j].DisplayName
-	})
-
-	patchProject := PatchProject{
-		Variants: variants,
-	}
-	return &patchProject, nil
-}
-
 // buildFromGqlInput takes a PatchConfigure gql type and returns a PatchUpdate type
 func buildFromGqlInput(r PatchConfigure) model.PatchUpdate {
 	p := model.PatchUpdate{}
@@ -547,20 +498,6 @@ func applyVolumeOptions(ctx context.Context, volume host.Volume, volumeOptions r
 		}
 	}
 	return nil
-}
-
-func setVersionActivationStatus(ctx context.Context, version *model.Version) error {
-	defaultSort := []task.TasksSortOrder{
-		{Key: task.DisplayNameKey, Order: 1},
-	}
-	opts := task.GetTasksByVersionOptions{
-		Sorts: defaultSort,
-	}
-	tasks, _, err := task.GetTasksByVersion(ctx, version.Id, opts)
-	if err != nil {
-		return errors.Wrapf(err, "getting tasks for version '%s'", version.Id)
-	}
-	return errors.Wrapf(version.SetActivated(ctx, task.AnyActiveTasks(tasks)), "updating version activated status for '%s'", version.Id)
 }
 
 func isPopulated(buildVariantOptions *BuildVariantOptions) bool {
@@ -1210,16 +1147,16 @@ func concurrentlyBuildVersionsMatchingTasksMap(ctx context.Context, versions []m
 	return hasMatchingTasksMap, nil
 }
 
-func collapseCommit(ctx context.Context, mainlineCommits MainlineCommits, mainlineCommitVersion *MainlineCommitVersion, apiVersion restModel.APIVersion) {
+func collapseCommit(ctx context.Context, mainlineCommits MainlineCommits, mainlineCommitVersion *MainlineCommitVersion, version model.Version) {
 	if len(mainlineCommits.Versions) > 0 {
 		lastMainlineCommit := mainlineCommits.Versions[len(mainlineCommits.Versions)-1]
 		if lastMainlineCommit.RolledUpVersions != nil {
-			lastMainlineCommit.RolledUpVersions = append(lastMainlineCommit.RolledUpVersions, &apiVersion)
+			lastMainlineCommit.RolledUpVersions = append(lastMainlineCommit.RolledUpVersions, &version)
 		} else {
-			mainlineCommitVersion.RolledUpVersions = []*restModel.APIVersion{&apiVersion}
+			mainlineCommitVersion.RolledUpVersions = []*model.Version{&version}
 		}
 	} else {
-		mainlineCommitVersion.RolledUpVersions = []*restModel.APIVersion{&apiVersion}
+		mainlineCommitVersion.RolledUpVersions = []*model.Version{&version}
 	}
 }
 
@@ -1681,4 +1618,41 @@ func buildQuarantineMutationResponse(ctx context.Context, t *task.Task, testName
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	return apiTest, nil
+}
+
+func redactParameters(ctx context.Context, projectId string, parameters []patch.Parameter) ([]*restModel.APIParameter, error) {
+	config, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
+	}
+
+	projVars, err := model.FindMergedProjectVars(ctx, projectId)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project vars for project '%s': %s", projectId, err.Error()))
+	}
+
+	redactKeys := config.LoggerConfig.RedactKeys
+	res := make([]*restModel.APIParameter, 0, len(parameters))
+	for _, param := range parameters {
+		redactedParam := &restModel.APIParameter{
+			Key:   utility.ToStringPtr(param.Key),
+			Value: utility.ToStringPtr(param.Value),
+		}
+		for _, pattern := range redactKeys {
+			if strings.Contains(strings.ToLower(param.Key), pattern) {
+				redactedParam.Value = utility.ToStringPtr(evergreen.RedactedValue)
+				break
+			}
+		}
+		if projVars != nil {
+			for varKey, varValue := range projVars.Vars {
+				if strings.Contains(param.Value, varValue) && projVars.PrivateVars[varKey] {
+					redactedParam.Value = utility.ToStringPtr(evergreen.RedactedValue)
+					break
+				}
+			}
+		}
+		res = append(res, redactedParam)
+	}
+	return res, nil
 }
