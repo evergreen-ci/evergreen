@@ -179,7 +179,7 @@ require (
 	github.com/parquet-go/parquet-go v0.29.0
 	github.com/redis/go-redis/v9 v9.22.0
 	github.com/shirou/gopsutil/v3 v3.24.5
-	github.com/sirupsen/logrus v1.9.4
+	github.com/sirupsen/logrus v1.10.2
 	github.com/vikstrous/dataloadgen v0.0.10
 	go.opentelemetry.io/contrib/detectors/aws/ec2/v2 v2.1.0
 	go.uber.org/automaxprocs v1.6.0
