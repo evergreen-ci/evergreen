@@ -188,6 +188,12 @@ type sourceCacheCandidate struct {
 // buildSourceCachePlan resolves the ordered restore keys and the save key from the
 // task, the patch, and the clone shape the agent resolved.
 func buildSourceCachePlan(ctx context.Context, t *task.Task, pRef *model.ProjectRef, req apimodels.SourceCacheCredentialsRequest) (*sourceCachePlan, error) {
+	if t.Revision == "" {
+		return nil, &gimlet.ErrorResponse{
+			StatusCode: http.StatusConflict,
+			Message:    "task has no revision to key the source cache object on",
+		}
+	}
 	namespace := sourceCacheNamespaceForTask(t)
 	trace.SpanFromContext(ctx).SetAttributes(attribute.String(sourceCacheNamespaceAttribute, namespace))
 	prRevision, err := sourceCachePRRevision(ctx, t)
@@ -223,6 +229,10 @@ func buildSourceCachePlan(ctx context.Context, t *task.Task, pRef *model.Project
 // sourceCachePRRevision returns the commit a PR or merge queue checkout leaves HEAD
 // at, mirroring the agent's prCheckoutCommit from the patch.
 func sourceCachePRRevision(ctx context.Context, t *task.Task) (string, error) {
+	// Only patch requesters have a PR head, and their versions always carry the patch's ObjectId.
+	if t.Requester != evergreen.GithubPRRequester && t.Requester != evergreen.GithubMergeRequester {
+		return "", nil
+	}
 	p, err := patch.FindOneId(ctx, t.Version)
 	if err != nil {
 		return "", errors.Wrapf(err, "finding patch '%s'", t.Version)
