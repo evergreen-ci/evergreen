@@ -91,6 +91,7 @@ var (
 	DetailsKey                    = bsonutil.MustHaveTag(Task{}, "Details")
 	AbortedKey                    = bsonutil.MustHaveTag(Task{}, "Aborted")
 	AbortInfoKey                  = bsonutil.MustHaveTag(Task{}, "AbortInfo")
+	CompletedByKey                = bsonutil.MustHaveTag(Task{}, "CompletedBy")
 	TimeTakenKey                  = bsonutil.MustHaveTag(Task{}, "TimeTaken")
 	TaskCostKey                   = bsonutil.MustHaveTag(Task{}, "TaskCost")
 	PredictedTaskCostKey          = bsonutil.MustHaveTag(Task{}, "PredictedTaskCost")

@@ -244,6 +244,10 @@ type Task struct {
 	Aborted   bool                    `bson:"abort,omitempty" json:"abort"`
 	AbortInfo AbortInfo               `bson:"abort_info,omitempty" json:"abort_info,omitempty"`
 
+	// CompletedBy is the ID of the runner task that push-completed this
+	// virtual task.
+	CompletedBy string `bson:"completed_by,omitempty" json:"completed_by,omitempty"`
+
 	// HostCreateDetails stores information about why host.create failed for this task
 	HostCreateDetails []HostCreateDetail `bson:"host_create_details,omitempty" json:"host_create_details,omitempty"`
 	// DisplayStatus is not persisted to the db. It is the status to display in the UI.
@@ -2152,6 +2156,21 @@ func DeactivateDependencies(ctx context.Context, tasks []string, caller string) 
 		return errors.Wrap(err, "retrieving dependency tasks to deactivate")
 	}
 	return errors.Wrap(deactivateDependencies(ctx, tasksToUpdate, taskIDsToUpdate, caller), "marking dependencies deactivated")
+}
+
+// SetCompletedBy records the runner task that push-completed this virtual task.
+func (t *Task) SetCompletedBy(ctx context.Context, completedBy string) error {
+	if err := UpdateOne(ctx,
+		bson.M{
+			IdKey:     t.Id,
+			StatusKey: evergreen.TaskUndispatched,
+		},
+		bson.M{"$set": bson.M{CompletedByKey: completedBy}},
+	); err != nil {
+		return err
+	}
+	t.CompletedBy = completedBy
+	return nil
 }
 
 // MarkEnd handles the Task updates associated with ending a task. If the task
