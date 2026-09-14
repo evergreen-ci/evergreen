@@ -1117,12 +1117,20 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 		return nil, errors.Errorf("cannot create task  '%s' in build variant '%s' for project '%s' with an empty task ID", creationInfo.ProjectRef.Id, buildVarTask.Name, creationInfo.Build.BuildVariant)
 	}
 
+	projectTask := creationInfo.Project.FindProjectTask(buildVarTask.Name)
+	isVirtual := projectTask != nil && projectTask.Virtual
+
 	activateTask := creationInfo.Build.Activated && !creationInfo.ActivationInfo.taskHasSpecificActivation(creationInfo.Build.BuildVariant, buildVarTask.Name)
 
 	// If stepback is enabled, check if the task should be activated via stepback.
 	stepbackInfo := creationInfo.ActivationInfo.getStepbackTask(creationInfo.Build.BuildVariant, buildVarTask.Name)
 	if stepbackInfo != nil {
 		activateTask = stepbackInfo.shouldActivate()
+	}
+
+	if isVirtual {
+		// Virtual tasks are default inactive.
+		activateTask = false
 	}
 
 	buildVarTask.RunOn = creationInfo.DistroAliases.Expand(buildVarTask.RunOn)
@@ -1165,6 +1173,7 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 		LastHeartbeat:              utility.ZeroTime,
 		Status:                     evergreen.TaskUndispatched,
 		Activated:                  activateTask,
+		IsVirtual:                  isVirtual,
 		ActivatedTime:              activatedTime,
 		RevisionOrderNumber:        creationInfo.Version.RevisionOrderNumber,
 		Requester:                  creationInfo.Version.Requester,
@@ -1192,7 +1201,6 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 		t.CheckRunPath = utility.ToStringPtr(buildVarTask.CreateCheckRun.PathToOutputs)
 	}
 
-	projectTask := creationInfo.Project.FindProjectTask(buildVarTask.Name)
 	if projectTask != nil {
 		t.MustHaveResults = utility.FromBoolPtr(projectTask.MustHaveResults)
 	}

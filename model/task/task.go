@@ -144,6 +144,13 @@ type Task struct {
 	Activated                bool   `bson:"activated" json:"activated"`
 	ActivatedBy              string `bson:"activated_by" json:"activated_by"`
 	DeactivatedForDependency bool   `bson:"deactivated_for_dependency" json:"deactivated_for_dependency"`
+	// IsVirtual indicates that this is a virtual task. Virtual tasks start out
+	// inactive by default and can be push-completed by another task or activated
+	// to run on a host.
+	IsVirtual bool `bson:"is_virtual,omitempty" json:"is_virtual,omitempty"`
+	// CompletedBy is the ID of the runner task that push-completed this virtual
+	// task. It is only set when the virtual task is push-completed.
+	CompletedBy string `bson:"completed_by,omitempty" json:"completed_by,omitempty"`
 
 	BuildId                 string       `bson:"build_id" json:"build_id"`
 	DistroId                string       `bson:"distro" json:"distro"`
