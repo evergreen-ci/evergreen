@@ -76,6 +76,7 @@ type Version {
   patch: Patch
   predictedCost: Cost
   previousVersion: Version
+  project: ProjectLite
   projectMetadata: Project
   quarantinedTestsSkippedCount: Int!
   repo: String!
@@ -93,11 +94,12 @@ type Version {
   ): [TaskQuarantinedTestsSample!]
   tasks(options: TaskFilterOptions!): VersionTasks!
   taskStatuses: [String!]!
-  taskStatusStats(options: BuildVariantOptions!): TaskStats # TODO: Must make this match the taskStatusStats field on VersionLite
+  taskStatusStats: TaskStats
   upstreamProject: UpstreamProject
   user: User!
   versionTiming: VersionTiming
   warnings: [String!]!
+  waterfallBuilds: [WaterfallBuild!]
 }
 
 type VersionTasks {
@@ -162,35 +164,4 @@ type ExternalLinkForMetadata {
 type GitTag {
   tag: String!
   pusher: String!
-}
-
-"""
-VersionLite replaces Version by sidestepping the APIVersion layer. It does not contain all Version fields at this time.
-"""
-type VersionLite {
-  id: String!
-  activated: Boolean
-  baseVersion: VersionLite
-  branch: String!
-  childVersions: [VersionLite!]
-  cost: Cost
-  createTime: Time!
-  gitTags: [GitTag!]
-  ingestTime: Time
-  errors: [String!]!
-  finishTime: Time
-  ignored: Boolean!
-  isPatch: Boolean!
-  message: String!
-  order: Int!
-  project: ProjectLite
-  repo: String!
-  requester: String!
-  revision: String!
-  startTime: Time
-  status: String!
-  taskStatusStats: TaskStats
-  user: User!
-  warnings: [String!]!
-  waterfallBuilds: [WaterfallBuild!]
 }
