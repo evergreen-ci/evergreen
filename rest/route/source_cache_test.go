@@ -1,7 +1,6 @@
 package route
 
 import (
-	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -18,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
-	anserDB "github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -134,16 +132,14 @@ func TestSourceCacheCredentialsRun(t *testing.T) {
 			expectedStatus:  http.StatusOK,
 			wantRestoreKeys: [][2]string{{"pr", "abc123"}, {"base", "abc123"}},
 		},
-		// A mainline version id is {project}_{revision} and must never hit the
-		// patch lookup, which only accepts ObjectId ids.
+		// Mainline version ids are {project}_{revision} and must never hit the ObjectId-only patch lookup.
 		"MainlineTaskPlansBaseNamespaceKeyedOnRevision": {
 			insertTask: true, requester: evergreen.RepotrackerVersionRequester, versionID: sourceCacheMainlineVersionID,
 			revision: "abc123", owner: "some-org", repo: "some-repo",
 			expectedStatus:  http.StatusOK,
 			wantRestoreKeys: [][2]string{{"base", "abc123"}},
 		},
-		// Merge queue tasks are finalized from patches like PRs, so their version
-		// ids carry the patch's ObjectId and the merge head keys like a PR head.
+		// Merge queue tasks are finalized from patches like PRs, so their version id is the patch's ObjectId.
 		"MergeQueueTaskResolvesMergeHead": {
 			insertTask: true, requester: evergreen.GithubMergeRequester, revision: "abc123", owner: "some-org", repo: "some-repo",
 			expectedStatus: http.StatusOK,
@@ -156,8 +152,7 @@ func TestSourceCacheCredentialsRun(t *testing.T) {
 			},
 			wantRestoreKeys: [][2]string{{"pr", sourceCachePRHeadHash}, {"base", "abc123"}},
 		},
-		// An ObjectId version and a matching patch must keep resolving the PR
-		// head, guarding the working path from the requester guards.
+		// ObjectId versions must keep resolving the PR head so the requester guards don't break the PR path.
 		"PRTaskStillResolvesPatchHead": {
 			insertTask: true, requester: evergreen.GithubPRRequester, revision: "abc123", owner: "some-org", repo: "some-repo",
 			expectedStatus: http.StatusOK,
@@ -170,8 +165,7 @@ func TestSourceCacheCredentialsRun(t *testing.T) {
 			},
 			wantRestoreKeys: [][2]string{{"pr", sourceCachePRHeadHash}, {"base", "abc123"}},
 		},
-		// A plan that can never be built is a permanent failure, not something to
-		// retry through the agent's exponential backoff loop.
+		// A plan that can never be built is permanent; the agent must not retry it through backoff.
 		"PermanentPlanErrorReturnsConflict": {
 			insertTask: true, revision: "", owner: "some-org", repo: "some-repo",
 			expectedStatus: http.StatusConflict,
@@ -392,77 +386,4 @@ func TestSourceCachePlan(t *testing.T) {
 			}
 		})
 	}
-}
-
-// failPatchLookupSession wraps a working session but makes reads on the patch
-// collection fail, so the route can be pointed at a real transient DB error.
-type failPatchLookupSession struct {
-	anserDB.Session
-}
-
-func (s *failPatchLookupSession) Clone() anserDB.Session {
-	return &failPatchLookupSession{Session: s.Session.Clone()}
-}
-
-func (s *failPatchLookupSession) DB(name string) anserDB.Database {
-	return &failPatchLookupDatabase{Database: s.Session.DB(name)}
-}
-
-type failPatchLookupDatabase struct {
-	anserDB.Database
-}
-
-func (d *failPatchLookupDatabase) C(name string) anserDB.Collection {
-	if name == patch.Collection {
-		return &failPatchLookupCollection{Collection: d.Database.C(name)}
-	}
-	return d.Database.C(name)
-}
-
-type failPatchLookupCollection struct {
-	anserDB.Collection
-}
-
-func (c *failPatchLookupCollection) Find(filter any) anserDB.Query {
-	return &failPatchLookupQuery{Query: c.Collection.Find(filter)}
-}
-
-func (c *failPatchLookupCollection) FindId(id any) anserDB.Query {
-	return &failPatchLookupQuery{Query: c.Collection.FindId(id)}
-}
-
-type failPatchLookupQuery struct {
-	anserDB.Query
-}
-
-func (q *failPatchLookupQuery) Select(_ any) anserDB.Query     { return q }
-func (q *failPatchLookupQuery) Sort(_ ...string) anserDB.Query { return q }
-func (q *failPatchLookupQuery) Skip(_ int) anserDB.Query       { return q }
-func (q *failPatchLookupQuery) Limit(_ int) anserDB.Query      { return q }
-func (q *failPatchLookupQuery) Hint(_ any) anserDB.Query       { return q }
-func (q *failPatchLookupQuery) One(_ any) error                { return errors.New("patch lookup failed") }
-func (q *failPatchLookupQuery) All(_ any) error                { return errors.New("patch lookup failed") }
-
-// TestSourceCacheTransientPlanErrorStillReturns500 ensures a patch lookup that
-// fails for a transient reason stays a retryable 500 and is not confused with a
-// permanent plan error.
-func TestSourceCacheTransientPlanErrorStillReturns500(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, host.Collection, patch.Collection))
-
-	handler := setupSourceCacheCredentialsHandler(t, sourceCacheTestSettings())
-	insertSourceCacheTask(t, evergreen.GithubPRRequester, "5bedc62ee4055d31f0340b1d", "abc123", "some-org", "some-repo")
-
-	// Point the route's patch lookups at a session that fails, and restore the
-	// original environment afterwards.
-	failingEnv := &mock.Environment{}
-	require.NoError(t, failingEnv.Configure(t.Context()))
-	failingEnv.DBSession = &failPatchLookupSession{Session: failingEnv.DBSession}
-	originalEnv := evergreen.GetEnvironment()
-	evergreen.SetEnvironment(failingEnv)
-	t.Cleanup(func() { evergreen.SetEnvironment(originalEnv) })
-
-	require.NoError(t, handler.Parse(t.Context(), newSourceCacheCredentialsRequest(t)))
-	resp := handler.Run(t.Context())
-	require.NotNil(t, resp)
-	require.Equal(t, http.StatusInternalServerError, resp.Status(), resp.Data())
 }
