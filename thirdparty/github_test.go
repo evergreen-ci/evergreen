@@ -694,29 +694,56 @@ func TestBuildGithubHeadPRURL(t *testing.T) {
 	}
 }
 
-func TestAppAuthorizedForOrgNonAppNames(t *testing.T) {
-	// A GitHub user can share a name with an app, so anything that isn't
-	// suffixed like an app must not be authorized. These cases short-circuit
-	// before any GitHub call, so they need no integration setup.
-	for _, name := range []string{"annie", "annie[bot", "annie[bot]extra", "[bot]annie", "", "bot"} {
-		t.Run("Name"+name, func(t *testing.T) {
-			authorized, err := AppAuthorizedForOrg(t.Context(), "evergreen-ci", name)
-			assert.NoError(t, err)
-			assert.False(t, authorized)
+func TestAppAuthorizedForOrgZeroUserIDShouldError(t *testing.T) {
+	authorized, err := AppAuthorizedForOrg(t.Context(), "evergreen-ci", 0)
+	assert.Error(t, err)
+	assert.False(t, authorized)
+}
+
+func TestGetGitHubUserByIDZeroUserIDShouldError(t *testing.T) {
+	githubUser, err := GetGitHubUserByID(t.Context(), 0)
+	assert.Error(t, err)
+	assert.Nil(t, githubUser)
+}
+
+func TestGithubAppSlugForUser(t *testing.T) {
+	for name, test := range map[string]struct {
+		user         *github.User
+		userID       int
+		expectedSlug string
+		expectsError bool
+	}{
+		"BotReturnsSlug": {
+			user:         &github.User{ID: utility.ToInt64Ptr(123), Login: utility.ToStringPtr("trusted-app[bot]"), Type: utility.ToStringPtr("Bot")},
+			userID:       123,
+			expectedSlug: "trusted-app",
+		},
+		"UserWithBotSuffixIsNotApp": {
+			user:   &github.User{ID: utility.ToInt64Ptr(123), Login: utility.ToStringPtr("trusted-app[bot]"), Type: utility.ToStringPtr("User")},
+			userID: 123,
+		},
+		"BotWithoutSuffixIsNotApp": {
+			user:   &github.User{ID: utility.ToInt64Ptr(123), Login: utility.ToStringPtr("trusted-app"), Type: utility.ToStringPtr("Bot")},
+			userID: 123,
+		},
+		"DifferentIDErrors": {
+			user:         &github.User{ID: utility.ToInt64Ptr(456), Login: utility.ToStringPtr("trusted-app[bot]"), Type: utility.ToStringPtr("Bot")},
+			userID:       123,
+			expectsError: true,
+		},
+		"MissingUserErrors": {
+			userID:       123,
+			expectsError: true,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			slug, err := githubAppSlugForUser(test.user, test.userID, "[bot]")
+			if test.expectsError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, test.expectedSlug, slug)
 		})
 	}
-}
-
-func (s *githubSuite) TestAppAuthorizedForOrgWithUninstalledApp() {
-	authorized, err := AppAuthorizedForOrg(s.ctx, "evergreen-ci", "not-a-real-evergreen-app[bot]")
-	s.NoError(err)
-	s.False(authorized)
-}
-
-func (s *githubSuite) TestAppAuthorizedForOrgWithUserSharingAppName() {
-	// A user whose name matches an installed app slug must not be authorized
-	// without the bot suffix.
-	authorized, err := AppAuthorizedForOrg(s.ctx, "evergreen-ci", "evergreen-ci")
-	s.NoError(err)
-	s.False(authorized)
 }

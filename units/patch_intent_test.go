@@ -30,6 +30,7 @@ import (
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip/send"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
@@ -2843,20 +2844,25 @@ func TestIsUserAuthorized(t *testing.T) {
 		originalGitHubUserInOrganization := githubUserInOrganization
 		originalAppAuthorizedForOrg := appAuthorizedForOrg
 		originalGitHubUserHasWritePermission := githubUserHasWritePermission
+		originalGetGitHubUserByID := getGitHubUserByID
 		t.Cleanup(func() {
 			githubUserInOrganization = originalGitHubUserInOrganization
 			appAuthorizedForOrg = originalAppAuthorizedForOrg
 			githubUserHasWritePermission = originalGitHubUserHasWritePermission
+			getGitHubUserByID = originalGetGitHubUserByID
 		})
+		getGitHubUserByID = func(ctx context.Context, userID int) (*github.User, error) {
+			assert.Equal(t, 12345, userID)
+			return &github.User{ID: utility.ToInt64Ptr(int64(userID)), Login: utility.ToStringPtr("external-user"), Type: utility.ToStringPtr("User")}, nil
+		}
 
 		githubUserInOrganization = func(ctx context.Context, org, username string) (bool, error) {
 			assert.Equal(t, "required-org", org)
 			assert.Equal(t, "external-user", username)
 			return false, nil
 		}
-		appAuthorizedForOrg = func(ctx context.Context, org, username string) (bool, error) {
-			assert.Equal(t, "required-org", org)
-			assert.Equal(t, "external-user", username)
+		appAuthorizedForOrg = func(ctx context.Context, org string, userID int) (bool, error) {
+			t.Fatal("regular users must not be checked as GitHub Apps")
 			return false, nil
 		}
 
@@ -2877,10 +2883,11 @@ func TestIsUserAuthorized(t *testing.T) {
 				HeadRepo:  "fork-repo",
 				PRNumber:  123,
 				Author:    "external-user",
+				AuthorUID: 12345,
 			},
 		}
 
-		authorized, err := j.isUserAuthorized(t.Context(), patchDoc, "required-org", "external-user")
+		authorized, err := j.isUserAuthorized(t.Context(), patchDoc, "required-org")
 
 		assert.NoError(t, err)
 		assert.True(t, authorized)
@@ -2892,16 +2899,21 @@ func TestIsUserAuthorized(t *testing.T) {
 		originalGitHubUserInOrganization := githubUserInOrganization
 		originalAppAuthorizedForOrg := appAuthorizedForOrg
 		originalGitHubUserHasWritePermission := githubUserHasWritePermission
+		originalGetGitHubUserByID := getGitHubUserByID
 		t.Cleanup(func() {
 			githubUserInOrganization = originalGitHubUserInOrganization
 			appAuthorizedForOrg = originalAppAuthorizedForOrg
 			githubUserHasWritePermission = originalGitHubUserHasWritePermission
+			getGitHubUserByID = originalGetGitHubUserByID
 		})
+		getGitHubUserByID = func(ctx context.Context, userID int) (*github.User, error) {
+			return &github.User{ID: utility.ToInt64Ptr(int64(userID)), Login: utility.ToStringPtr("external-user"), Type: utility.ToStringPtr("User")}, nil
+		}
 
 		githubUserInOrganization = func(ctx context.Context, org, username string) (bool, error) {
 			return false, nil
 		}
-		appAuthorizedForOrg = func(ctx context.Context, org, username string) (bool, error) {
+		appAuthorizedForOrg = func(ctx context.Context, org string, userID int) (bool, error) {
 			return false, nil
 		}
 		var checkedOwner, checkedRepo string
@@ -2920,10 +2932,11 @@ func TestIsUserAuthorized(t *testing.T) {
 				HeadRepo:  "fork-repo",
 				PRNumber:  123,
 				Author:    "external-user",
+				AuthorUID: 12345,
 			},
 		}
 
-		authorized, err := j.isUserAuthorized(t.Context(), patchDoc, "required-org", "external-user")
+		authorized, err := j.isUserAuthorized(t.Context(), patchDoc, "required-org")
 
 		assert.NoError(t, err)
 		assert.False(t, authorized)
@@ -2935,17 +2948,22 @@ func TestIsUserAuthorized(t *testing.T) {
 		originalGitHubUserInOrganization := githubUserInOrganization
 		originalAppAuthorizedForOrg := appAuthorizedForOrg
 		originalGitHubUserHasWritePermission := githubUserHasWritePermission
+		originalGetGitHubUserByID := getGitHubUserByID
 		t.Cleanup(func() {
 			githubUserInOrganization = originalGitHubUserInOrganization
 			appAuthorizedForOrg = originalAppAuthorizedForOrg
 			githubUserHasWritePermission = originalGitHubUserHasWritePermission
+			getGitHubUserByID = originalGetGitHubUserByID
 		})
+		getGitHubUserByID = func(ctx context.Context, userID int) (*github.User, error) {
+			return &github.User{ID: utility.ToInt64Ptr(int64(userID)), Login: utility.ToStringPtr("dependabot[bot]"), Type: utility.ToStringPtr("Bot")}, nil
+		}
 		var consultedFallback bool
 		githubUserInOrganization = func(ctx context.Context, org, username string) (bool, error) {
 			consultedFallback = true
 			return false, nil
 		}
-		appAuthorizedForOrg = func(ctx context.Context, org, username string) (bool, error) {
+		appAuthorizedForOrg = func(ctx context.Context, org string, userID int) (bool, error) {
 			consultedFallback = true
 			return false, nil
 		}
@@ -2962,11 +2980,12 @@ func TestIsUserAuthorized(t *testing.T) {
 				HeadOwner: "base-owner",
 				HeadRepo:  "base-repo",
 				PRNumber:  123,
-				Author:    githubDependabotUser,
+				Author:    "untrusted-name",
+				AuthorUID: githubDependabotUserID,
 			},
 		}
 
-		authorized, err := j.isUserAuthorized(t.Context(), patchDoc, "required-org", githubDependabotUser)
+		authorized, err := j.isUserAuthorized(t.Context(), patchDoc, "required-org")
 
 		assert.NoError(t, err)
 		assert.True(t, authorized)
@@ -2977,15 +2996,20 @@ func TestIsUserAuthorized(t *testing.T) {
 		originalGitHubUserInOrganization := githubUserInOrganization
 		originalAppAuthorizedForOrg := appAuthorizedForOrg
 		originalGitHubUserHasWritePermission := githubUserHasWritePermission
+		originalGetGitHubUserByID := getGitHubUserByID
 		t.Cleanup(func() {
 			githubUserInOrganization = originalGitHubUserInOrganization
 			appAuthorizedForOrg = originalAppAuthorizedForOrg
 			githubUserHasWritePermission = originalGitHubUserHasWritePermission
+			getGitHubUserByID = originalGetGitHubUserByID
 		})
+		getGitHubUserByID = func(ctx context.Context, userID int) (*github.User, error) {
+			return &github.User{ID: utility.ToInt64Ptr(int64(userID)), Login: utility.ToStringPtr("dependabot[bot]"), Type: utility.ToStringPtr("Bot")}, nil
+		}
 		githubUserInOrganization = func(ctx context.Context, org, username string) (bool, error) {
 			return false, nil
 		}
-		appAuthorizedForOrg = func(ctx context.Context, org, username string) (bool, error) {
+		appAuthorizedForOrg = func(ctx context.Context, org string, userID int) (bool, error) {
 			return false, nil
 		}
 		var consultedWritePermission bool
@@ -3002,14 +3026,147 @@ func TestIsUserAuthorized(t *testing.T) {
 				HeadOwner: "fork-owner",
 				HeadRepo:  "fork-repo",
 				PRNumber:  123,
-				Author:    githubDependabotUser,
+				Author:    "untrusted-name",
+				AuthorUID: githubDependabotUserID,
 			},
 		}
 
-		authorized, err := j.isUserAuthorized(t.Context(), patchDoc, "required-org", githubDependabotUser)
+		authorized, err := j.isUserAuthorized(t.Context(), patchDoc, "required-org")
 
 		assert.NoError(t, err)
 		assert.False(t, authorized)
 		assert.True(t, consultedWritePermission)
+	})
+
+	t.Run("MatchingStoredNameWithDifferentIDIsUnauthorized", func(t *testing.T) {
+		originalGitHubUserInOrganization := githubUserInOrganization
+		originalAppAuthorizedForOrg := appAuthorizedForOrg
+		originalGitHubUserHasWritePermission := githubUserHasWritePermission
+		originalGetGitHubUserByID := getGitHubUserByID
+		t.Cleanup(func() {
+			githubUserInOrganization = originalGitHubUserInOrganization
+			appAuthorizedForOrg = originalAppAuthorizedForOrg
+			githubUserHasWritePermission = originalGitHubUserHasWritePermission
+			getGitHubUserByID = originalGetGitHubUserByID
+		})
+
+		getGitHubUserByID = func(ctx context.Context, userID int) (*github.User, error) {
+			assert.Equal(t, 98765, userID)
+			return &github.User{ID: utility.ToInt64Ptr(int64(userID)), Login: utility.ToStringPtr("untrusted-user"), Type: utility.ToStringPtr("User")}, nil
+		}
+		githubUserInOrganization = func(ctx context.Context, org, username string) (bool, error) {
+			assert.Equal(t, "untrusted-user", username)
+			return false, nil
+		}
+		appAuthorizedForOrg = func(ctx context.Context, org string, userID int) (bool, error) {
+			t.Fatal("regular users must not be checked as GitHub Apps")
+			return false, nil
+		}
+		githubUserHasWritePermission = func(ctx context.Context, owner, repo, username string) (bool, error) {
+			assert.Equal(t, "untrusted-user", username)
+			return false, nil
+		}
+
+		j := &patchIntentProcessor{}
+		patchDoc := &patch.Patch{GithubPatchData: thirdparty.GithubPatch{
+			BaseOwner: "base-owner",
+			BaseRepo:  "base-repo",
+			HeadOwner: "fork-owner",
+			HeadRepo:  "fork-repo",
+			Author:    "trusted-app[bot]",
+			AuthorUID: 98765,
+		}}
+
+		authorized, err := j.isUserAuthorized(t.Context(), patchDoc, "required-org")
+		assert.NoError(t, err)
+		assert.False(t, authorized)
+	})
+
+	t.Run("MatchingStoredAppNameWithDifferentIDIsDeniedByAppCheck", func(t *testing.T) {
+		originalGitHubUserInOrganization := githubUserInOrganization
+		originalAppAuthorizedForOrg := appAuthorizedForOrg
+		originalGitHubUserHasWritePermission := githubUserHasWritePermission
+		originalGetGitHubUserByID := getGitHubUserByID
+		t.Cleanup(func() {
+			githubUserInOrganization = originalGitHubUserInOrganization
+			appAuthorizedForOrg = originalAppAuthorizedForOrg
+			githubUserHasWritePermission = originalGitHubUserHasWritePermission
+			getGitHubUserByID = originalGetGitHubUserByID
+		})
+
+		getGitHubUserByID = func(ctx context.Context, userID int) (*github.User, error) {
+			return &github.User{ID: utility.ToInt64Ptr(int64(userID)), Login: utility.ToStringPtr("trusted-app[bot]"), Type: utility.ToStringPtr("Bot")}, nil
+		}
+		githubUserInOrganization = func(ctx context.Context, org, username string) (bool, error) {
+			return false, nil
+		}
+		appAuthorizedForOrg = func(ctx context.Context, org string, userID int) (bool, error) {
+			assert.Equal(t, 98765, userID)
+			return false, nil
+		}
+		githubUserHasWritePermission = func(ctx context.Context, owner, repo, username string) (bool, error) {
+			return false, nil
+		}
+
+		j := &patchIntentProcessor{}
+		patchDoc := &patch.Patch{GithubPatchData: thirdparty.GithubPatch{
+			BaseOwner: "base-owner",
+			BaseRepo:  "base-repo",
+			HeadOwner: "fork-owner",
+			HeadRepo:  "fork-repo",
+			Author:    "trusted-app[bot]",
+			AuthorUID: 98765,
+		}}
+
+		authorized, err := j.isUserAuthorized(t.Context(), patchDoc, "required-org")
+		assert.NoError(t, err)
+		assert.False(t, authorized)
+	})
+
+	t.Run("AppVerificationFailureFailsClosed", func(t *testing.T) {
+		originalGitHubUserInOrganization := githubUserInOrganization
+		originalAppAuthorizedForOrg := appAuthorizedForOrg
+		originalGitHubUserHasWritePermission := githubUserHasWritePermission
+		originalGetGitHubUserByID := getGitHubUserByID
+		t.Cleanup(func() {
+			githubUserInOrganization = originalGitHubUserInOrganization
+			appAuthorizedForOrg = originalAppAuthorizedForOrg
+			githubUserHasWritePermission = originalGitHubUserHasWritePermission
+			getGitHubUserByID = originalGetGitHubUserByID
+		})
+
+		getGitHubUserByID = func(ctx context.Context, userID int) (*github.User, error) {
+			return &github.User{ID: utility.ToInt64Ptr(int64(userID)), Login: utility.ToStringPtr("trusted-app[bot]"), Type: utility.ToStringPtr("Bot")}, nil
+		}
+		githubUserInOrganization = func(ctx context.Context, org, username string) (bool, error) {
+			return false, nil
+		}
+		appAuthorizedForOrg = func(ctx context.Context, org string, userID int) (bool, error) {
+			return false, errors.New("GitHub API unavailable")
+		}
+		githubUserHasWritePermission = func(ctx context.Context, owner, repo, username string) (bool, error) {
+			t.Fatal("write permission must not be used after App verification fails")
+			return true, nil
+		}
+
+		j := &patchIntentProcessor{}
+		patchDoc := &patch.Patch{GithubPatchData: thirdparty.GithubPatch{
+			BaseOwner: "base-owner",
+			BaseRepo:  "base-repo",
+			HeadOwner: "fork-owner",
+			HeadRepo:  "fork-repo",
+			AuthorUID: 98765,
+		}}
+
+		authorized, err := j.isUserAuthorized(t.Context(), patchDoc, "required-org")
+		assert.Error(t, err)
+		assert.False(t, authorized)
+	})
+
+	t.Run("MissingAuthorIDIsUnauthorized", func(t *testing.T) {
+		j := &patchIntentProcessor{}
+		authorized, err := j.isUserAuthorized(t.Context(), &patch.Patch{}, "required-org")
+		assert.Error(t, err)
+		assert.False(t, authorized)
 	})
 }
