@@ -110,18 +110,19 @@ func (r *patchResolver) InvalidatedByUpstream(ctx context.Context, obj *patch.Pa
 }
 
 // ModuleCodeChanges is the resolver for the moduleCodeChanges field.
-func (r *patchResolver) ModuleCodeChanges(ctx context.Context, obj *patch.Patch) ([]*restModel.APIModulePatch, error) {
+func (r *patchResolver) ModuleCodeChanges(ctx context.Context, obj *patch.Patch) ([]*patch.ModuleCodeChange, error) {
 	identifier, err := model.GetIdentifierForProjectSecondary(ctx, obj.Project)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project identifier for project '%s': %s", obj.Project, err.Error()), err)
 	}
 	apiURL := evergreen.GetEnvironment().Settings().Api.URL
-	codeChanges := restModel.BuildModuleCodeChanges(*obj, identifier, apiURL)
-	result := make([]*restModel.APIModulePatch, 0, len(codeChanges))
+	codeChanges := patch.BuildModuleCodeChanges(*obj, identifier, apiURL)
+
+	codeChangePtrs := make([]*patch.ModuleCodeChange, 0, len(codeChanges))
 	for i := range codeChanges {
-		result = append(result, &codeChanges[i])
+		codeChangePtrs = append(codeChangePtrs, &codeChanges[i])
 	}
-	return result, nil
+	return codeChangePtrs, nil
 }
 
 // Parameters is the resolver for the parameters field.

@@ -105,6 +105,17 @@ func TestArtifactSignHandler(t *testing.T) {
 		handler.ServeHTTP(rr, req)
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
 	})
+	t.Run("EmptySecretFailsClosed", func(t *testing.T) {
+		settings := evergreen.GetEnvironment().Settings()
+		defer func() { settings.ArtifactSignSecret = testSecret }()
+		settings.ArtifactSignSecret = ""
+		forgedToken, forgedExpiry := artifact.GenerateSignToken(nil, "task1", 0, "signed_report")
+		req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("/tasks/task1/artifact/sign?execution=0&name=signed_report&token=%s&exp=%d", forgedToken, forgedExpiry), nil)
+		req = gimlet.SetURLVars(req, map[string]string{"task_id": "task1"})
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+	})
 	t.Run("SignedFileRedirects", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("/tasks/task1/artifact/sign?execution=0&name=signed_report&token=%s&exp=%d", validToken, validExpiry), nil)
 		req = gimlet.SetURLVars(req, map[string]string{"task_id": "task1"})

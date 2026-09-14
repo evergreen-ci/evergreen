@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"net/http"
 	"os"
 	"os/exec"
 	"regexp"
@@ -1402,10 +1403,14 @@ func (e *envState) GetGitHubSender(owner, repo string, createInstallationToken C
 	if err != nil {
 		return nil, errors.Wrap(err, "creating GitHub app installation token")
 	}
+	// Retry transient GitHub server and gateway failures that may result from
+	// network blips or temporary GitHub outages. We retry on all major 5xx
+	// responses that indicate service failure.
 	sender, err := send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
-		Token:       token,
-		MinDelay:    GithubRetryMinDelay,
-		MaxAttempts: GitHubRetryAttempts,
+		Token:                    token,
+		MinDelay:                 GithubRetryMinDelay,
+		MaxAttempts:              GitHubRetryAttempts,
+		RetryableHTTPStatusCodes: []int{http.StatusInternalServerError, http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout},
 	}, "")
 	if err != nil {
 		return nil, errors.Wrap(err, "creating GitHub status logger")

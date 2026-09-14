@@ -30,4 +30,10 @@ func TestGenerateAndValidateSignToken(t *testing.T) {
 		expiredToken := computeMAC(key, taskID, execution, fileName, pastExpiry)
 		assert.False(t, ValidateSignToken(secret, taskID, execution, fileName, expiredToken, strconv.FormatInt(pastExpiry, 10)))
 	})
+
+	t.Run("EmptySecretRejectsForgedToken", func(t *testing.T) {
+		token, expiry := GenerateSignToken(nil, taskID, execution, fileName)
+		assert.False(t, ValidateSignToken(nil, taskID, execution, fileName, token, strconv.FormatInt(expiry, 10)))
+		assert.False(t, ValidateSignToken([]byte(""), taskID, execution, fileName, token, strconv.FormatInt(expiry, 10)))
+	})
 }

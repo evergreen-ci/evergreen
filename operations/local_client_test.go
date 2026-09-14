@@ -498,3 +498,114 @@ func TestValidateDebugLocal(t *testing.T) {
 		assert.Contains(t, err.Error(), "debug spawn hosts currently disabled")
 	})
 }
+
+func TestGetVariableCmd(t *testing.T) {
+	t.Run("SingleKeyFound", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.Path {
+			case "/health":
+				w.WriteHeader(http.StatusOK)
+			case "/variable/get/my_key":
+				require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+					"key":      "my_key",
+					"value":    "my_value",
+					"found":    true,
+					"redacted": false,
+				}))
+			}
+		}))
+		defer server.Close()
+
+		tempDir := t.TempDir()
+		setHomeDir(t, tempDir)
+
+		daemonDir := filepath.Join(tempDir, ".evergreen-local")
+		require.NoError(t, os.MkdirAll(daemonDir, 0755))
+
+		var port int
+		_, err := fmt.Sscanf(server.URL, "http://127.0.0.1:%d", &port)
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(filepath.Join(daemonDir, "daemon.port"), []byte(fmt.Sprintf("%d", port)), 0644))
+
+		app := cli.NewApp()
+		set := flag.NewFlagSet("test", 0)
+		require.NoError(t, set.Parse([]string{"my_key"}))
+		c := cli.NewContext(app, set, nil)
+
+		err = getVariableCmd(c)
+		assert.NoError(t, err)
+	})
+
+	t.Run("RedactedVariable", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.Path {
+			case "/health":
+				w.WriteHeader(http.StatusOK)
+			case "/variable/get/secret_token":
+				require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+					"key":      "secret_token",
+					"value":    "<redacted>",
+					"found":    true,
+					"redacted": true,
+				}))
+			}
+		}))
+		defer server.Close()
+
+		tempDir := t.TempDir()
+		setHomeDir(t, tempDir)
+
+		daemonDir := filepath.Join(tempDir, ".evergreen-local")
+		require.NoError(t, os.MkdirAll(daemonDir, 0755))
+
+		var port int
+		_, err := fmt.Sscanf(server.URL, "http://127.0.0.1:%d", &port)
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(filepath.Join(daemonDir, "daemon.port"), []byte(fmt.Sprintf("%d", port)), 0644))
+
+		app := cli.NewApp()
+		set := flag.NewFlagSet("test", 0)
+		require.NoError(t, set.Parse([]string{"secret_token"}))
+		c := cli.NewContext(app, set, nil)
+
+		err = getVariableCmd(c)
+		assert.NoError(t, err)
+	})
+}
+
+func TestGetVariablesCmd(t *testing.T) {
+	t.Run("SuccessfulFetch", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.Path {
+			case "/health":
+				w.WriteHeader(http.StatusOK)
+			case "/variable/all":
+				require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+					"variables": map[string]string{
+						"alpha": "one",
+						"beta":  "two",
+					},
+				}))
+			}
+		}))
+		defer server.Close()
+
+		tempDir := t.TempDir()
+		setHomeDir(t, tempDir)
+
+		daemonDir := filepath.Join(tempDir, ".evergreen-local")
+		require.NoError(t, os.MkdirAll(daemonDir, 0755))
+
+		var port int
+		_, err := fmt.Sscanf(server.URL, "http://127.0.0.1:%d", &port)
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(filepath.Join(daemonDir, "daemon.port"), []byte(fmt.Sprintf("%d", port)), 0644))
+
+		app := cli.NewApp()
+		set := flag.NewFlagSet("test", 0)
+		c := cli.NewContext(app, set, nil)
+
+		err = getVariablesCmd(c)
+		assert.NoError(t, err)
+	})
+}

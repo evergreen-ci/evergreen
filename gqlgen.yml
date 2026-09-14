@@ -263,7 +263,7 @@ models:
   File:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFile
   FileDiff:
-    model: github.com/evergreen-ci/evergreen/rest/model.FileDiff
+    model: github.com/evergreen-ci/evergreen/model/patch.FileDiff
   FinderSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFinderSettings
   FinderSettingsInput:
@@ -502,10 +502,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIMetadataLink
   MetadataLinkInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIMetadataLink
-  Module:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIModule
   ModuleCodeChange:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIModulePatch
+    model: github.com/evergreen-ci/evergreen/model/patch.ModuleCodeChange
   MultiAuthConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIMultiAuthConfig
   MultiAuthConfigInput:
