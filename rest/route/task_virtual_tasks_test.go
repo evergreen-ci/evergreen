@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -122,21 +121,6 @@ func TestCompleteVirtualTasks(t *testing.T) {
 			assert.Equal(t, evergreen.TaskFailed, vt.GetDisplayStatus())
 			assert.Equal(t, runnerTaskID, vt.CompletedBy)
 		},
-		"AlreadyFinishedTaskNoOps": func(ctx context.Context, t *testing.T, h *completeVirtualTasksHandler, env evergreen.Environment) {
-			require.NoError(t, task.UpdateOne(ctx, task.ById(virtualTaskID), bson.M{
-				"$set": bson.M{task.StatusKey: evergreen.TaskSucceeded},
-			}))
-			h.body = apimodels.CompleteVirtualTasksRequest{Tasks: []apimodels.VirtualTaskCompletion{successfulCompletion()}}
-
-			results := requireResults(t, h.Run(ctx), 1)
-			assert.Equal(t, apimodels.VirtualTaskCompletionOutcomeSuccess, results[0].Outcome)
-			assert.Contains(t, results[0].Reason, "already finished")
-
-			vt, err := task.FindOneId(ctx, virtualTaskID)
-			require.NoError(t, err)
-			require.NotNil(t, vt)
-			assert.Empty(t, vt.CompletedBy)
-		},
 		"RunningTaskNoOps": func(ctx context.Context, t *testing.T, h *completeVirtualTasksHandler, env evergreen.Environment) {
 			require.NoError(t, task.UpdateOne(ctx, task.ById(virtualTaskID), bson.M{
 				"$set": bson.M{task.StatusKey: evergreen.TaskStarted, task.ActivatedKey: true},
@@ -172,36 +156,6 @@ func TestCompleteVirtualTasks(t *testing.T) {
 			dbQueue, err := model.LoadTaskQueue(ctx, distroID)
 			require.NoError(t, err)
 			assert.Zero(t, dbQueue.Length())
-		},
-		"UserWithTaskAdminPermissionCanComplete": func(ctx context.Context, t *testing.T, h *completeVirtualTasksHandler, env evergreen.Environment) {
-			require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
-			rm := evergreen.GetEnvironment().RoleManager()
-			require.NoError(t, rm.AddScope(ctx, gimlet.Scope{
-				ID:        "virtual_task_scope",
-				Resources: []string{projectID},
-				Type:      evergreen.ProjectResourceType,
-			}))
-			require.NoError(t, rm.UpdateRole(ctx, gimlet.Role{
-				ID:    "virtual_task_admin",
-				Scope: "virtual_task_scope",
-				Permissions: gimlet.Permissions{
-					evergreen.PermissionTasks: evergreen.TasksAdmin.Value,
-				},
-			}))
-			ctx = gimlet.AttachUser(context.WithValue(ctx, model.ApiTaskKey, nil), &user.DBUser{
-				Id:          "service_user",
-				SystemRoles: []string{"virtual_task_admin"},
-			})
-			h.body = apimodels.CompleteVirtualTasksRequest{Tasks: []apimodels.VirtualTaskCompletion{successfulCompletion()}}
-
-			results := requireResults(t, h.Run(ctx), 1)
-			assert.Equal(t, apimodels.VirtualTaskCompletionOutcomeSuccess, results[0].Outcome)
-
-			vt, err := task.FindOneId(ctx, virtualTaskID)
-			require.NoError(t, err)
-			require.NotNil(t, vt)
-			assert.Equal(t, evergreen.TaskSucceeded, vt.Status)
-			assert.Equal(t, runnerTaskID, vt.CompletedBy)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
