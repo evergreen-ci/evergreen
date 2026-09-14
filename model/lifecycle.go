@@ -1129,8 +1129,12 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 	}
 
 	if isVirtual {
-		// Virtual tasks are default inactive.
-		activateTask = false
+		if creationInfo.GeneratedBy != "" || !evergreen.IsPatchRequester(creationInfo.Version.Requester) {
+			// Generated virtual tasks are default inactive upon creation. For
+			// patches, it's default inactive except if the patch is explicitly
+			// scheduling it.
+			activateTask = false
+		}
 	}
 
 	buildVarTask.RunOn = creationInfo.DistroAliases.Expand(buildVarTask.RunOn)
