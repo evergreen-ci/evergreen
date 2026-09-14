@@ -95,6 +95,7 @@ input AdminSettingsInput {
   rateLimit: RateLimitConfigInput
   releaseMode: ReleaseModeConfigInput
   repotracker: RepotrackerConfigInput
+  resourceTags: ResourceTagsConfigInput
   runtimeEnvironments: RuntimeEnvironmentConfigInput
   scheduler: SchedulerConfigInput
   shutdownWaitSeconds: Int
@@ -153,6 +154,7 @@ type AdminSettings {
   rateLimit: RateLimitConfig
   releaseMode: ReleaseModeConfig
   repotracker: RepotrackerConfig
+  resourceTags: ResourceTagsConfig
   runtimeEnvironments: RuntimeEnvironmentConfig
   scheduler: SchedulerConfig
   serviceFlagsList: [ServiceFlag!]

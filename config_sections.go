@@ -47,6 +47,7 @@ func NewConfigSections() ConfigSections {
 		&RateLimitConfig{},
 		&RepoTrackerConfig{},
 		&ReleaseModeConfig{},
+		&ResourceTagsConfig{},
 		&RuntimeEnvironmentsConfig{},
 		&SageConfig{},
 		&SchedulerConfig{},

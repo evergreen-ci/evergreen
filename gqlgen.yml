@@ -751,6 +751,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIRepoTrackerConfig
   RepotrackerError:
     model: github.com/evergreen-ci/evergreen/rest/model.APIRepositoryErrorDetails
+  ResourceTagsConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIResourceTagsConfig
+  ResourceTagsConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIResourceTagsConfig
   RepoWorkstationConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIWorkstationConfig
   ResourceLimits:
