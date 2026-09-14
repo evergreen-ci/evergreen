@@ -546,9 +546,10 @@ func (c *lastRevisionCriteria) shouldApply(bv, bvDisplayName string) bool {
 	return false
 }
 
-// check returns whether the criteria applies to the build and if so, if it
-// passes all the criteria. This returns true if the criteria does not apply.
-func (c *lastRevisionCriteria) check(ctx context.Context, info lastRevisionBuildInfo) bool {
+// checkAllBuildThresholds checks the criteria which must be met by every single
+// matching build variant. It returns true if the criterion does not apply to
+// this build.
+func (c *lastRevisionCriteria) checkAllBuildThresholds(ctx context.Context, info lastRevisionBuildInfo) bool {
 	if !c.shouldApply(info.buildVariant, info.buildVariantDisplayName) {
 		// The criteria does not apply to this build variant, so it
 		// automatically passes checks.
@@ -581,19 +582,6 @@ func (c *lastRevisionCriteria) check(ctx context.Context, info lastRevisionBuild
 		return false
 	}
 
-	if info.failedProportion() < c.minFailedProportion {
-		grip.Debug(ctx, message.Fields{
-			"message":                    "build does not meet minimum failed tasks proportion",
-			"version_id":                 info.versionID,
-			"build_id":                   info.buildID,
-			"build_variant":              info.buildVariant,
-			"build_variant_display_name": info.buildVariantDisplayName,
-			"min_failed_proportion":      c.minFailedProportion,
-			"failed_proportion":          info.failedProportion(),
-		})
-		return false
-	}
-
 	allTasksSet := make(map[string]model.APITask, len(info.allTasks))
 	for _, t := range info.allTasks {
 		allTasksSet[utility.FromStringPtr(t.DisplayName)] = t
@@ -617,6 +605,32 @@ func (c *lastRevisionCriteria) check(ctx context.Context, info lastRevisionBuild
 			})
 			return false
 		}
+	}
+
+	return true
+}
+
+// checkMinFailed checks the minimum failed proportion threshold, which only has
+// to be met by one matching build variant.
+func (c *lastRevisionCriteria) checkMinFailed(ctx context.Context, info lastRevisionBuildInfo) bool {
+	if !c.shouldApply(info.buildVariant, info.buildVariantDisplayName) {
+		//  Return false if the criterion does not apply to this build, since a
+		//  build the criterion does not apply to cannot satisfy a check that
+		//  needs at least one build to pass the min failed threshold.
+		return false
+	}
+
+	if info.failedProportion() < c.minFailedProportion {
+		grip.Debug(ctx, message.Fields{
+			"message":                    "build does not meet minimum failed tasks proportion",
+			"version_id":                 info.versionID,
+			"build_id":                   info.buildID,
+			"build_variant":              info.buildVariant,
+			"build_variant_display_name": info.buildVariantDisplayName,
+			"min_failed_proportion":      c.minFailedProportion,
+			"failed_proportion":          info.failedProportion(),
+		})
+		return false
 	}
 
 	return true
@@ -653,23 +667,18 @@ func findLatestMatchingVersion(ctx context.Context, c client.Communicator, lates
 	return nil, nil
 }
 
-// checkBuildsPassCriteria checks if the provided builds pass the criteria. All
-// builds must pass the criteria, except for minimum failed proportion criteria,
-// which only have to be met by one matching build.
+// checkBuildsPassCriteria checks if the provided builds pass the criteria. The
+// success, finished, and successful-tasks thresholds must be met by every
+// matching build variant. Each minimum failed proportion threshold only has to
+// be met by one matching build variant.
 func checkBuildsPassCriteria(ctx context.Context, c client.Communicator, builds []model.APIBuild, criteria []lastRevisionCriteria) (passesCriteria bool, err error) {
-	var allBuildCriteria, anyBuildCriteria []lastRevisionCriteria
-	for _, criterion := range criteria {
-		if criterion.minFailedProportion > 0 {
-			anyBuildCriteria = append(anyBuildCriteria, criterion)
-		} else {
-			allBuildCriteria = append(allBuildCriteria, criterion)
-		}
-	}
-
 	type buildResult struct {
 		passesAllBuildCriteria bool
-		passesAnyBuildCriteria bool
-		err                    error
+		// metFailedCriteria[i] is true if this build met the minimum failed
+		// proportion threshold for criteria[i]. This is to support reused
+		// criteria groups that have multiple different minimum failed criteria.
+		metFailedCriteria []bool
+		err               error
 	}
 
 	buildResults := make(chan buildResult, len(builds))
@@ -681,7 +690,7 @@ func checkBuildsPassCriteria(ctx context.Context, c client.Communicator, builds 
 			defer wg.Done()
 
 			res := buildResult{}
-			res.passesAllBuildCriteria, res.passesAnyBuildCriteria, res.err = checkBuildPassesCriteria(ctx, c, b, allBuildCriteria, anyBuildCriteria)
+			res.passesAllBuildCriteria, res.metFailedCriteria, res.err = checkBuildPassesCriteria(ctx, c, b, criteria)
 			select {
 			case <-ctx.Done():
 			case buildResults <- res:
@@ -694,7 +703,7 @@ func checkBuildsPassCriteria(ctx context.Context, c client.Communicator, builds 
 
 	catcher := grip.NewBasicCatcher()
 	allBuildsPassedAllBuildCriteria := true
-	someBuildPassedAnyBuildCriteria := false
+	criterionMetBySomeBuild := make([]bool, len(criteria))
 	for res := range buildResults {
 		if res.err != nil {
 			catcher.Add(res.err)
@@ -702,39 +711,37 @@ func checkBuildsPassCriteria(ctx context.Context, c client.Communicator, builds 
 		if !res.passesAllBuildCriteria {
 			allBuildsPassedAllBuildCriteria = false
 		}
-		if res.passesAnyBuildCriteria {
-			someBuildPassedAnyBuildCriteria = true
+		for i, met := range res.metFailedCriteria {
+			if met {
+				criterionMetBySomeBuild[i] = true
+			}
 		}
 	}
-	if len(anyBuildCriteria) > 0 && !someBuildPassedAnyBuildCriteria {
-		return false, catcher.Resolve()
+	everyFailedCriteriaIsMet := true
+	for i, criterion := range criteria {
+		if criterion.minFailedProportion > 0 && !criterionMetBySomeBuild[i] {
+			everyFailedCriteriaIsMet = false
+			break
+		}
 	}
-	return allBuildsPassedAllBuildCriteria, catcher.Resolve()
+	return allBuildsPassedAllBuildCriteria && everyFailedCriteriaIsMet, catcher.Resolve()
 }
 
-// checkBuildPassesCriteria checks if a single build passes the criteria.
-// passesAllBuildCriteria is whether the build passes the criteria that must be
-// met by every matching build. passesAnyBuildCriteria is whether the
-// build passes at least one of the criteria that only needs to be met by one
-// matching build.
-func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b model.APIBuild, allBuildCriteria, anyBuildCriteria []lastRevisionCriteria) (passesAllBuildCriteria, passesAnyBuildCriteria bool, err error) {
+// checkBuildPassesCriteria checks a single build against the criteria.
+// passesAllBuildCriteria is whether the build satisfies every criteria
+// that must be met by all matching build variants. metFailedCriteria[i] is
+// whether the build meets the minimum failed proportion threshold for
+// criteria[i] (each only needs to be met by one matching build variant).
+func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b model.APIBuild, criteria []lastRevisionCriteria) (passesAllBuildCriteria bool, metFailedCriteria []bool, err error) {
 	anyCriteriaApply := false
-	for _, c := range allBuildCriteria {
+	for _, c := range criteria {
 		if c.shouldApply(utility.FromStringPtr(b.BuildVariant), utility.FromStringPtr(b.DisplayName)) {
 			anyCriteriaApply = true
 			break
 		}
 	}
 	if !anyCriteriaApply {
-		for _, c := range anyBuildCriteria {
-			if c.shouldApply(utility.FromStringPtr(b.BuildVariant), utility.FromStringPtr(b.DisplayName)) {
-				anyCriteriaApply = true
-				break
-			}
-		}
-	}
-	if !anyCriteriaApply {
-		return true, false, nil
+		return true, nil, nil
 	}
 
 	grip.Debug(ctx, message.Fields{
@@ -753,7 +760,7 @@ func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b mode
 	for {
 		tasksBatch, err := c.GetTasksForBuild(ctx, utility.FromStringPtr(b.Id), startAt, buildTasksLimitPerRequest)
 		if err != nil {
-			return false, false, errors.Wrapf(err, "getting tasks for build '%s'", utility.FromStringPtr(b.Id))
+			return false, nil, errors.Wrapf(err, "getting tasks for build '%s'", utility.FromStringPtr(b.Id))
 		}
 		numTasksInBatch := len(tasksBatch)
 		if startAt != "" {
@@ -772,24 +779,18 @@ func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b mode
 		}
 	}
 
-	for _, c := range allBuildCriteria {
+	passesAllBuildCriteria = true
+	metFailedCriteria = make([]bool, len(criteria))
+	for i, c := range criteria {
 		buildInfo := newLastRevisionBuildInfo(b, tasks, c.knownIssuesAreSuccess)
-		if !c.check(ctx, buildInfo) {
-			return false, false, nil
+		if !c.checkAllBuildThresholds(ctx, buildInfo) {
+			passesAllBuildCriteria = false
+		}
+		if c.minFailedProportion > 0 && c.checkMinFailed(ctx, buildInfo) {
+			metFailedCriteria[i] = true
 		}
 	}
-	for _, c := range anyBuildCriteria {
-		if !c.shouldApply(utility.FromStringPtr(b.BuildVariant), utility.FromStringPtr(b.DisplayName)) {
-			// These criteria only need to be met by one matching build, and
-			// this build does not match anyways, so skip it.
-			continue
-		}
-		buildInfo := newLastRevisionBuildInfo(b, tasks, c.knownIssuesAreSuccess)
-		if c.check(ctx, buildInfo) {
-			return true, true, nil
-		}
-	}
-	return true, false, nil
+	return passesAllBuildCriteria, metFailedCriteria, nil
 }
 
 // lastRevisionCriteriaGroup is a group of last revision criteria that can be

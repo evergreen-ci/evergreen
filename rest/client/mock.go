@@ -40,6 +40,9 @@ type Mock struct {
 	GetRecentVersionsResultsByRequester map[string][]restmodel.APIVersion
 	GetBuildsForVersionResult           []restmodel.APIBuild
 	GetTasksForBuildResult              []restmodel.APITask
+	// GetTasksForBuildResultByBuild returns task results keyed by build ID. When
+	// set, it takes precedence over GetTasksForBuildResult.
+	GetTasksForBuildResultByBuild map[string][]restmodel.APITask
 
 	SendSlackNotificationData *model.APISlack
 	SendEmailNotificationData *model.APIEmail
@@ -317,6 +320,12 @@ func (c *Mock) GetBuildsForVersion(ctx context.Context, versionID string) ([]res
 }
 
 func (c *Mock) GetTasksForBuild(ctx context.Context, buildID string, startAt string, limit int) ([]restmodel.APITask, error) {
+	if c.GetTasksForBuildResultByBuild != nil {
+		if tasks, ok := c.GetTasksForBuildResultByBuild[buildID]; ok {
+			return tasks, nil
+		}
+		return nil, nil
+	}
 	if c.GetTasksForBuildResult != nil {
 		return c.GetTasksForBuildResult, nil
 	}
