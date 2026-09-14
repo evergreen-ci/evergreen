@@ -149,7 +149,7 @@ func (j *mergeQueuePatchRecoveryJob) recoverMergeGroup(ctx context.Context, proj
 	if err := intent.Insert(ctx); err != nil {
 		return errors.Wrap(err, "inserting merge intent")
 	}
-	processor := NewPatchIntentProcessor(j.env, mgobson.NewObjectId(), intent)
+	processor := NewGitHubPatchIntentProcessor(j.env, mgobson.NewObjectId(), intent, projectRef.Id)
 	if err := j.env.RemoteQueue().Put(ctx, processor); err != nil {
 		return errors.Wrap(err, "enqueueing merge queue patch intent processor")
 	}
