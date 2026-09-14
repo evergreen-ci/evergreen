@@ -776,7 +776,13 @@ func TestTaskByBuildPaginator(t *testing.T) {
 					IncludeProjectIdentifier: true,
 				})
 				So(err, ShouldBeNil)
-				err = nextModelTask.BuildPreviousExecutions(ctx, cachedOldTasks, "http://evergreen.example.net", "http://parsley.example.net")
+				err = nextModelTask.BuildPreviousExecutions(ctx, cachedOldTasks, &model.APITaskArgs{
+					LogURL:                   "http://evergreen.example.net",
+					ParsleyLogURL:            "http://parsley.example.net",
+					IncludeProjectIdentifier: true,
+					IncludeAMI:               true,
+					IncludeArtifacts:         true,
+				})
 				So(err, ShouldBeNil)
 				expectedTasks = append(expectedTasks, nextModelTask)
 				expectedPages := &gimlet.ResponsePages{

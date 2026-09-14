@@ -346,6 +346,14 @@ func ByOldTaskID(id string) bson.M {
 	}
 }
 
+// ByOldTaskIDs creates a query that finds the archived executions of all the
+// given tasks.
+func ByOldTaskIDs(ids []string) bson.M {
+	return bson.M{
+		OldTaskIdKey: bson.M{"$in": ids},
+	}
+}
+
 // ByIds creates a query that finds all tasks with the given ids.
 func ByIds(ids []string) bson.M {
 	return bson.M{
