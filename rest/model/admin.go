@@ -44,6 +44,7 @@ func NewConfigModel() *APIAdminSettings {
 		RateLimit:           &APIRateLimitConfig{},
 		RepoTracker:         &APIRepoTrackerConfig{},
 		ReleaseMode:         &APIReleaseModeConfig{},
+		ResourceTags:        &APIResourceTagsConfig{},
 		RuntimeEnvironments: &APIRuntimeEnvironmentsConfig{},
 		Scheduler:           &APISchedulerConfig{},
 		ServiceFlags:        &APIServiceFlags{},
@@ -108,6 +109,7 @@ type APIAdminSettings struct {
 	RateLimit               *APIRateLimitConfig           `json:"rate_limit,omitempty"`
 	RepoTracker             *APIRepoTrackerConfig         `json:"repotracker,omitempty"`
 	ReleaseMode             *APIReleaseModeConfig         `json:"release_mode,omitempty"`
+	ResourceTags            *APIResourceTagsConfig        `json:"resource_tags,omitempty"`
 	RuntimeEnvironments     *APIRuntimeEnvironmentsConfig `json:"runtime_environments,omitempty"`
 	Scheduler               *APISchedulerConfig           `json:"scheduler,omitempty"`
 	ServiceFlags            *APIServiceFlags              `json:"service_flags,omitempty"`
@@ -3171,6 +3173,29 @@ func (c *APITestSelectionConfig) ToService() (any, error) {
 type APIRuntimeEnvironmentsConfig struct {
 	BaseURL *string `json:"base_url"`
 	APIKey  *string `json:"api_key"`
+}
+
+type APIResourceTagsConfig struct {
+	MongoDBEnv   *string `json:"mongodb_env"`
+	MongoDBOwner *string `json:"mongodb_owner"`
+}
+
+func (a *APIResourceTagsConfig) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case evergreen.ResourceTagsConfig:
+		a.MongoDBEnv = utility.ToStringPtr(v.MongoDBEnv)
+		a.MongoDBOwner = utility.ToStringPtr(v.MongoDBOwner)
+	default:
+		return errors.Errorf("programmatic error: expected Resource Tags config but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APIResourceTagsConfig) ToService() (any, error) {
+	return evergreen.ResourceTagsConfig{
+		MongoDBEnv:   utility.FromStringPtr(a.MongoDBEnv),
+		MongoDBOwner: utility.FromStringPtr(a.MongoDBOwner),
+	}, nil
 }
 
 func (a *APIRuntimeEnvironmentsConfig) BuildFromService(h any) error {
