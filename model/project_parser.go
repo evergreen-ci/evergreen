@@ -1575,6 +1575,10 @@ func getRevisionForRemoteModule(ctx context.Context, mod Module, modName string,
 		}
 	}
 
+	if mod.Ref != "" {
+		return mod.Ref, nil
+	}
+
 	return mod.Branch, nil
 }
 
