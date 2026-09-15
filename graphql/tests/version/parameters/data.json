@@ -17,6 +17,11 @@
           "value": "abc"
         }
       ]
+    },
+    {
+      "_id": "6aa877f227e38c0007ed0ce4",
+      "identifier": "spruce",
+      "parameters": []
     }
   ],
   "project_ref": [

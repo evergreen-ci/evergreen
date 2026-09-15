@@ -22,6 +22,16 @@
           }
         }
       }
+    },
+    {
+      "query_file": "empty.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "parameters": []
+          }
+        }
+      }
     }
   ]
 }
