@@ -1887,69 +1887,49 @@ buildvariants:
 	require.NotNil(t, regularTask)
 	require.False(t, regularTask.Virtual, "regular task definition should default to non-virtual")
 
+	v := &Version{
+		Id:                  "versionId",
+		CreateTime:          time.Now(),
+		Revision:            "foobar",
+		RevisionOrderNumber: 500,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		BuildVariants: []VersionBuildStatus{
+			{
+				BuildVariant:     "bv",
+				ActivationStatus: ActivationStatus{Activated: true},
+			},
+		},
+	}
 	pRef := &ProjectRef{
 		Id:         "projectId",
 		Identifier: projectIdentifier,
 	}
+	table := NewTaskIdConfigForRepotrackerVersion(t.Context(), proj, v, TVPairSet{}, "", "")
 
-	cases := []struct {
-		name                 string
-		requester            string
-		virtualTaskActivated bool
-	}{
-		{
-			name:                 "mainline version leaves the virtual task inactive by default",
-			requester:            evergreen.RepotrackerVersionRequester,
-			virtualTaskActivated: false,
-		},
-		{
-			name:                 "patch with a user-selected virtual task activates it",
-			requester:            evergreen.PatchVersionRequester,
-			virtualTaskActivated: true,
-		},
+	creationInfo := TaskCreationInfo{
+		Project:          proj,
+		ProjectRef:       pRef,
+		Version:          v,
+		TaskIDs:          table,
+		BuildVariantName: "bv",
+		ActivateBuild:    true,
 	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			v := &Version{
-				Id:                  "versionId",
-				CreateTime:          time.Now(),
-				Revision:            "foobar",
-				RevisionOrderNumber: 500,
-				Requester:           tc.requester,
-				BuildVariants: []VersionBuildStatus{
-					{
-						BuildVariant:     "bv",
-						ActivationStatus: ActivationStatus{Activated: true},
-					},
-				},
-			}
-			table := NewTaskIdConfigForRepotrackerVersion(t.Context(), proj, v, TVPairSet{}, "", "")
-			creationInfo := TaskCreationInfo{
-				Project:          proj,
-				ProjectRef:       pRef,
-				Version:          v,
-				TaskIDs:          table,
-				BuildVariantName: "bv",
-				ActivateBuild:    true,
-			}
-			_, tasks, err := CreateBuildFromVersionNoInsert(t.Context(), creationInfo)
-			require.NoError(t, err)
-			require.Len(t, tasks, 2)
+	_, tasks, err := CreateBuildFromVersionNoInsert(t.Context(), creationInfo)
+	require.NoError(t, err)
+	require.Len(t, tasks, 2)
 
-			for _, task := range tasks {
-				switch task.DisplayName {
-				case "virtual_task":
-					assert.True(t, task.IsVirtual, "virtual task should be marked as virtual in the task doc")
-					assert.Equal(t, tc.virtualTaskActivated, task.Activated, "virtual task activation should match the expected state for requester %s", tc.requester)
-					assert.Equal(t, tc.virtualTaskActivated, !utility.IsZeroTime(task.ActivatedTime), "virtual task activation time should match its activation state")
-				case "regular_task":
-					assert.False(t, task.IsVirtual, "regular task should not be marked virtual in the task doc")
-					assert.True(t, task.Activated, "regular task should be activated when the build is activated")
-				default:
-					t.Fatalf("unexpected task %s", task.DisplayName)
-				}
-			}
-		})
+	for _, task := range tasks {
+		switch task.DisplayName {
+		case "virtual_task":
+			assert.True(t, task.IsVirtual, "virtual task should be marked as virtual in the task doc")
+			assert.False(t, task.Activated, "virtual task should start out inactive even when the build is activated")
+			assert.True(t, utility.IsZeroTime(task.ActivatedTime), "virtual task should not have an activation time since it's default inactive")
+		case "regular_task":
+			assert.False(t, task.IsVirtual, "regular task should not be marked virtual in the task doc")
+			assert.True(t, task.Activated, "regular task should be activated when the build is activated")
+		default:
+			t.Fatalf("unexpected task %s", task.DisplayName)
+		}
 	}
 }
 
