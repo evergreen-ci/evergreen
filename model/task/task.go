@@ -2162,8 +2162,9 @@ func DeactivateDependencies(ctx context.Context, tasks []string, caller string) 
 func (t *Task) SetCompletedBy(ctx context.Context, completedBy string) error {
 	if err := UpdateOne(ctx,
 		bson.M{
-			IdKey:     t.Id,
-			StatusKey: evergreen.TaskUndispatched,
+			IdKey:        t.Id,
+			ExecutionKey: t.Execution,
+			StatusKey:    evergreen.TaskUndispatched,
 		},
 		bson.M{"$set": bson.M{CompletedByKey: completedBy}},
 	); err != nil {

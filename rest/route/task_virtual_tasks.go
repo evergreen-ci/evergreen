@@ -19,6 +19,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+const maxVirtualTaskCompletionBatchSize = 100
+
 // POST /task/{task_id}/virtual_tasks/complete
 type completeVirtualTasksHandler struct {
 	env    evergreen.Environment
@@ -44,6 +46,9 @@ func (h *completeVirtualTasksHandler) Parse(ctx context.Context, r *http.Request
 	if len(h.body.Tasks) == 0 {
 		return errors.New("must specify at least one task to complete")
 	}
+	if len(h.body.Tasks) > maxVirtualTaskCompletionBatchSize {
+		return errors.Errorf("batch size %d exceeds the maximum of %d", len(h.body.Tasks), maxVirtualTaskCompletionBatchSize)
+	}
 	return nil
 }
 
@@ -59,6 +64,9 @@ func (h *completeVirtualTasksHandler) Run(ctx context.Context) gimlet.Responder 
 		})
 	}
 
+	// For task auth, the authenticated task is the runner. For user auth
+	// (service users), the URL task ID identifies the runner on whose behalf
+	// the user is pushing results.
 	runner := GetTask(ctx)
 	if runner == nil {
 		runner, err = task.FindOneId(ctx, h.taskID)
@@ -107,7 +115,16 @@ func (h *completeVirtualTasksHandler) Run(ctx context.Context) gimlet.Responder 
 
 	resp := apimodels.CompleteVirtualTasksResponse{}
 	for _, completion := range h.body.Tasks {
-		resp.Results = append(resp.Results, h.completeTask(ctx, runner, completion))
+		result := h.completeTask(ctx, runner, completion)
+		grip.Info(ctx, message.Fields{
+			"message":   "virtual task push completion",
+			"runner":    runner.Id,
+			"task_id":   completion.TaskID,
+			"outcome":   result.Outcome,
+			"reason":    result.Reason,
+			"execution": completion.Execution,
+		})
+		resp.Results = append(resp.Results, result)
 	}
 
 	responder := gimlet.NewJSONResponse(resp)
@@ -126,7 +143,8 @@ func (h *completeVirtualTasksHandler) completeTask(ctx context.Context, runner *
 			Reason:  reason,
 		}
 	}
-	noop := func(reason string) apimodels.VirtualTaskCompletionResult {
+	// No-ops return success so that runners don't retry idempotent pushes.
+	successNoop := func(reason string) apimodels.VirtualTaskCompletionResult {
 		return apimodels.VirtualTaskCompletionResult{
 			TaskID:  completion.TaskID,
 			Outcome: apimodels.VirtualTaskCompletionOutcomeSuccess,
@@ -142,6 +160,9 @@ func (h *completeVirtualTasksHandler) completeTask(ctx context.Context, runner *
 	}
 	files := make([]artifact.File, 0, len(completion.Artifacts))
 	for _, a := range completion.Artifacts {
+		if a.Name == "" || a.URL == "" {
+			return failed("artifact name and URL must be non-empty")
+		}
 		if !utility.StringSliceContains(artifact.ValidVisibilities, a.Visibility) {
 			return failed(fmt.Sprintf("invalid visibility '%s' for artifact '%s'", a.Visibility, a.Name))
 		}
@@ -170,20 +191,20 @@ func (h *completeVirtualTasksHandler) completeTask(ctx context.Context, runner *
 	}
 
 	if vt.Execution != completion.Execution {
-		return noop(fmt.Sprintf("completion is for execution %d but the task is on execution %d", completion.Execution, vt.Execution))
+		return successNoop(fmt.Sprintf("completion is for execution %d but the task is on execution %d", completion.Execution, vt.Execution))
 	}
 	if vt.IsFinished() {
-		return noop("task is already finished")
+		return successNoop("task is already finished")
 	}
 	if vt.Status != evergreen.TaskUndispatched {
-		return noop("task is already running")
+		return successNoop("task is already running")
 	}
 
 	// Claim the task before dequeueing it. SetCompletedBy only matches while
 	// the task is undispatched, so a task that was just dispatched no-ops here.
 	if err = vt.SetCompletedBy(ctx, runner.Id); err != nil {
 		if adb.ResultsNotFound(err) {
-			return noop("task is no longer waiting to be dispatched")
+			return successNoop("task is no longer waiting to be dispatched")
 		}
 		return failed(errors.Wrap(err, "setting completing task").Error())
 	}
