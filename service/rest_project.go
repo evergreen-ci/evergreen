@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/gimlet"
 )
@@ -18,26 +17,7 @@ func (restapi restAPI) getProjectRef(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	refForResponse := *ref
-	secretOwnerID := ref.Id
-	if ref.RepoRefId != "" {
-		branchProject, err := model.FindBranchProjectRef(r.Context(), ref.Id)
-		if err != nil {
-			gimlet.WriteJSONResponse(r.Context(), w, http.StatusInternalServerError, responseError{Message: "error finding project"})
-			return
-		}
-		if branchProject != nil && branchProject.TaskAnnotationSettings.FileTicketWebhook.Secret == "" {
-			secretOwnerID = ref.RepoRefId
-		}
-	}
-	usr := gimlet.GetUser(r.Context())
-	if usr == nil || !usr.HasPermission(r.Context(), gimlet.PermissionOpts{
-		Resource:      secretOwnerID,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionProjectSettings,
-		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-	}) {
-		refForResponse.TaskAnnotationSettings.FileTicketWebhook.Secret = ""
-	}
+	refForResponse.TaskAnnotationSettings.FileTicketWebhook.Secret = ""
 	gimlet.WriteJSON(r.Context(), w, &refForResponse)
 }
 

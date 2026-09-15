@@ -325,140 +325,155 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.Contains(t, err.Error(), "PR testing (projects: conflicting-project) and commit checks (projects: conflicting-project)")
 			assert.NotContains(t, err.Error(), "the commit queue")
 		},
-		"invalid URL should error when saving": func(t *testing.T, ref model.ProjectRef) {
-			apiProjectRef := restModel.APIProjectRef{
-				ExternalLinks: []restModel.APIExternalLink{
-					{
-						URLTemplate: utility.ToStringPtr("invalid URL template"),
-						DisplayName: utility.ToStringPtr("display name"),
-					},
-				},
+		model.ProjectPagePluginSection: func(t *testing.T, ref model.ProjectRef) {
+			initialRef := ref
+			run := func(name string, test func(t *testing.T)) {
+				t.Run(name, func(t *testing.T) {
+					ref = initialRef
+					require.NoError(t, ref.Replace(t.Context()))
+					repoRef, err := model.FindOneRepoRef(t.Context(), ref.RepoRefId)
+					require.NoError(t, err)
+					require.NotNil(t, repoRef)
+					repoRef.TaskAnnotationSettings = evergreen.AnnotationsSettings{}
+					require.NoError(t, repoRef.Replace(t.Context()))
+					test(t)
+				})
 			}
-			apiChanges := &restModel.APIProjectSettings{
-				ProjectRef: apiProjectRef,
-			}
-			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
-			require.Error(t, err)
-			assert.Nil(t, settings)
-			assert.Contains(t, err.Error(), "validating external links")
-		},
-		"valid URL should succeed when saving": func(t *testing.T, ref model.ProjectRef) {
-			apiProjectRef := restModel.APIProjectRef{
-				ExternalLinks: []restModel.APIExternalLink{
-					{
-						URLTemplate: utility.ToStringPtr("https://arnars.com/{version_id}"),
-						DisplayName: utility.ToStringPtr("A link"),
-					},
-				},
-			}
-			apiChanges := &restModel.APIProjectSettings{
-				ProjectRef: apiProjectRef,
-			}
-			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
-			require.NoError(t, err)
-			assert.NotNil(t, settings)
-		},
-		"RedactedWebhookSecretPreservesStoredSecret": func(t *testing.T, ref model.ProjectRef) {
-			ref.TaskAnnotationSettings.FileTicketWebhook = evergreen.WebHook{
-				Endpoint: "https://example.com/original",
-				Secret:   "existing-secret",
-			}
-			require.NoError(t, ref.Replace(t.Context()))
-
-			apiChanges := &restModel.APIProjectSettings{
-				ProjectRef: restModel.APIProjectRef{
-					TaskAnnotationSettings: restModel.APITaskAnnotationSettings{
-						FileTicketWebhook: restModel.APIWebHook{
-							Endpoint: utility.ToStringPtr("https://example.com/updated"),
-							Secret:   utility.ToStringPtr(evergreen.RedactedValue),
+			run("InvalidURLShouldErrorWhenSaving", func(t *testing.T) {
+				apiProjectRef := restModel.APIProjectRef{
+					ExternalLinks: []restModel.APIExternalLink{
+						{
+							URLTemplate: utility.ToStringPtr("invalid URL template"),
+							DisplayName: utility.ToStringPtr("display name"),
 						},
 					},
-				},
-			}
-			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
-			require.NoError(t, err)
-			require.NotNil(t, settings)
-
-			projectFromDB, err := model.FindBranchProjectRef(ctx, ref.Id)
-			require.NoError(t, err)
-			require.NotNil(t, projectFromDB)
-			assert.Equal(t, "https://example.com/updated", projectFromDB.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
-			assert.Equal(t, "existing-secret", projectFromDB.TaskAnnotationSettings.FileTicketWebhook.Secret)
-
-			apiChanges.ProjectRef.TaskAnnotationSettings.FileTicketWebhook.Secret = utility.ToStringPtr("replacement-secret")
-			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
-			require.NoError(t, err)
-			require.NotNil(t, settings)
-
-			projectFromDB, err = model.FindBranchProjectRef(ctx, ref.Id)
-			require.NoError(t, err)
-			require.NotNil(t, projectFromDB)
-			assert.Equal(t, "replacement-secret", projectFromDB.TaskAnnotationSettings.FileTicketWebhook.Secret)
-		},
-		"RedactedInheritedWebhookSecretRemainsInherited": func(t *testing.T, ref model.ProjectRef) {
-			repoRef, err := model.FindOneRepoRef(t.Context(), ref.RepoRefId)
-			require.NoError(t, err)
-			require.NotNil(t, repoRef)
-			repoRef.TaskAnnotationSettings.FileTicketWebhook.Secret = "repo-secret"
-			require.NoError(t, repoRef.Replace(t.Context()))
-
-			apiChanges := &restModel.APIProjectSettings{
-				ProjectRef: restModel.APIProjectRef{
-					TaskAnnotationSettings: restModel.APITaskAnnotationSettings{
-						FileTicketWebhook: restModel.APIWebHook{
-							Secret: utility.ToStringPtr(evergreen.RedactedValue),
+				}
+				apiChanges := &restModel.APIProjectSettings{
+					ProjectRef: apiProjectRef,
+				}
+				settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
+				require.Error(t, err)
+				assert.Nil(t, settings)
+				assert.Contains(t, err.Error(), "validating external links")
+			})
+			run("ValidURLShouldSucceedWhenSaving", func(t *testing.T) {
+				apiProjectRef := restModel.APIProjectRef{
+					ExternalLinks: []restModel.APIExternalLink{
+						{
+							URLTemplate: utility.ToStringPtr("https://arnars.com/{version_id}"),
+							DisplayName: utility.ToStringPtr("A link"),
 						},
 					},
-				},
-			}
-			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
-			require.NoError(t, err)
-			require.NotNil(t, settings)
+				}
+				apiChanges := &restModel.APIProjectSettings{
+					ProjectRef: apiProjectRef,
+				}
+				settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
+				require.NoError(t, err)
+				assert.NotNil(t, settings)
+			})
+			run("RedactedWebhookSecretPreservesStoredSecret", func(t *testing.T) {
+				ref.TaskAnnotationSettings.FileTicketWebhook = evergreen.WebHook{
+					Endpoint: "https://example.com/original",
+					Secret:   "existing-secret",
+				}
+				require.NoError(t, ref.Replace(t.Context()))
 
-			projectFromDB, err := model.FindBranchProjectRef(ctx, ref.Id)
-			require.NoError(t, err)
-			require.NotNil(t, projectFromDB)
-			assert.Empty(t, projectFromDB.TaskAnnotationSettings.FileTicketWebhook.Secret)
+				apiChanges := &restModel.APIProjectSettings{
+					ProjectRef: restModel.APIProjectRef{
+						TaskAnnotationSettings: restModel.APITaskAnnotationSettings{
+							FileTicketWebhook: restModel.APIWebHook{
+								Endpoint: utility.ToStringPtr("https://example.com/updated"),
+								Secret:   utility.ToStringPtr(evergreen.RedactedValue),
+							},
+						},
+					},
+				}
+				settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
+				require.NoError(t, err)
+				require.NotNil(t, settings)
 
-			mergedProject, err := model.GetProjectRefMergedWithRepo(ctx, *projectFromDB)
-			require.NoError(t, err)
-			assert.Equal(t, "repo-secret", mergedProject.TaskAnnotationSettings.FileTicketWebhook.Secret)
-		},
-		"enabling performance plugin should fail if id and identifier are different": func(t *testing.T, ref model.ProjectRef) {
-			// Set identifier
-			apiProjectRef := restModel.APIProjectRef{
-				Identifier: utility.ToStringPtr("different identifier"),
-			}
-			apiChanges := &restModel.APIProjectSettings{
-				ProjectRef: apiProjectRef,
-			}
-			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, false, "me")
-			require.NoError(t, err)
-			assert.NotNil(t, settings)
+				projectFromDB, err := model.FindBranchProjectRef(ctx, ref.Id)
+				require.NoError(t, err)
+				require.NotNil(t, projectFromDB)
+				assert.Equal(t, "https://example.com/updated", projectFromDB.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
+				assert.Equal(t, "existing-secret", projectFromDB.TaskAnnotationSettings.FileTicketWebhook.Secret)
 
-			// Try enabling performance plugin
-			apiProjectRef = restModel.APIProjectRef{
-				PerfEnabled: utility.TruePtr(),
-			}
-			apiChanges = &restModel.APIProjectSettings{
-				ProjectRef: apiProjectRef,
-			}
-			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
-			require.Error(t, err)
-			assert.Nil(t, settings)
-			assert.Contains(t, err.Error(), "cannot enable performance plugin")
-		},
-		"enabling performance plugin should succeed if id and identifier are the same": func(t *testing.T, ref model.ProjectRef) {
-			// Try enabling performance plugin
-			apiProjectRef := restModel.APIProjectRef{
-				PerfEnabled: utility.TruePtr(),
-			}
-			apiChanges := &restModel.APIProjectSettings{
-				ProjectRef: apiProjectRef,
-			}
-			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
-			require.NoError(t, err)
-			assert.NotNil(t, settings)
+				apiChanges.ProjectRef.TaskAnnotationSettings.FileTicketWebhook.Secret = utility.ToStringPtr("replacement-secret")
+				settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
+				require.NoError(t, err)
+				require.NotNil(t, settings)
+
+				projectFromDB, err = model.FindBranchProjectRef(ctx, ref.Id)
+				require.NoError(t, err)
+				require.NotNil(t, projectFromDB)
+				assert.Equal(t, "replacement-secret", projectFromDB.TaskAnnotationSettings.FileTicketWebhook.Secret)
+			})
+			run("RedactedInheritedWebhookSecretRemainsInherited", func(t *testing.T) {
+				repoRef, err := model.FindOneRepoRef(t.Context(), ref.RepoRefId)
+				require.NoError(t, err)
+				require.NotNil(t, repoRef)
+				repoRef.TaskAnnotationSettings.FileTicketWebhook.Secret = "repo-secret"
+				require.NoError(t, repoRef.Replace(t.Context()))
+
+				apiChanges := &restModel.APIProjectSettings{
+					ProjectRef: restModel.APIProjectRef{
+						TaskAnnotationSettings: restModel.APITaskAnnotationSettings{
+							FileTicketWebhook: restModel.APIWebHook{
+								Secret: utility.ToStringPtr(evergreen.RedactedValue),
+							},
+						},
+					},
+				}
+				settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
+				require.NoError(t, err)
+				require.NotNil(t, settings)
+
+				projectFromDB, err := model.FindBranchProjectRef(ctx, ref.Id)
+				require.NoError(t, err)
+				require.NotNil(t, projectFromDB)
+				assert.Empty(t, projectFromDB.TaskAnnotationSettings.FileTicketWebhook.Secret)
+
+				mergedProject, err := model.GetProjectRefMergedWithRepo(ctx, *projectFromDB)
+				require.NoError(t, err)
+				assert.Equal(t, "repo-secret", mergedProject.TaskAnnotationSettings.FileTicketWebhook.Secret)
+			})
+			run("EnablingPerfPluginShouldFailIfIDAndIdentifierAreDifferent", func(t *testing.T) {
+				// Set identifier
+				apiProjectRef := restModel.APIProjectRef{
+					Identifier: utility.ToStringPtr("different identifier"),
+				}
+				apiChanges := &restModel.APIProjectSettings{
+					ProjectRef: apiProjectRef,
+				}
+				settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, false, "me")
+				require.NoError(t, err)
+				assert.NotNil(t, settings)
+
+				// Try enabling performance plugin
+				apiProjectRef = restModel.APIProjectRef{
+					PerfEnabled: utility.TruePtr(),
+				}
+				apiChanges = &restModel.APIProjectSettings{
+					ProjectRef: apiProjectRef,
+				}
+				settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
+				require.Error(t, err)
+				assert.Nil(t, settings)
+				assert.Contains(t, err.Error(), "cannot enable performance plugin")
+			})
+			run("EnablingPerfPluginShouldSucceedIfIDAndIdentifierAreTheSame", func(t *testing.T) {
+				// Try enabling performance plugin
+				apiProjectRef := restModel.APIProjectRef{
+					PerfEnabled: utility.TruePtr(),
+				}
+				apiChanges := &restModel.APIProjectSettings{
+					ProjectRef: apiProjectRef,
+				}
+				settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
+				require.NoError(t, err)
+				assert.NotNil(t, settings)
+			})
 		},
 		model.ProjectPageGithubPermissionsSection: func(t *testing.T, ref model.ProjectRef) {
 			apiChanges := &restModel.APIProjectSettings{

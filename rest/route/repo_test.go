@@ -108,7 +108,7 @@ func TestRepoGetByID(t *testing.T) {
 		assert.Equal(t, evergreen.RedactedValue, utility.FromStringPtr(apiRef.TaskAnnotationSettings.FileTicketWebhook.Secret))
 	})
 
-	t.Run("AdminReceivesWebhookSecret", func(t *testing.T) {
+	t.Run("AdminWebhookSecretIsRedacted", func(t *testing.T) {
 		h := &repoIDGetHandler{repoID: "my-repo"}
 		ctx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "admin", SystemRoles: []string{"repo-admin"}})
 		resp := h.Run(ctx)
@@ -117,7 +117,7 @@ func TestRepoGetByID(t *testing.T) {
 
 		apiRef, ok := resp.Data().(*restmodel.APIProjectRef)
 		require.True(t, ok)
-		assert.Equal(t, "file-ticket-secret", utility.FromStringPtr(apiRef.TaskAnnotationSettings.FileTicketWebhook.Secret))
+		assert.Equal(t, evergreen.RedactedValue, utility.FromStringPtr(apiRef.TaskAnnotationSettings.FileTicketWebhook.Secret))
 	})
 
 	t.Run("ReturnsVars", func(t *testing.T) {
