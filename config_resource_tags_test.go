@@ -18,6 +18,18 @@ func TestResourceTagsConfigValidateAndDefault(t *testing.T) {
 			},
 			valid: true,
 		},
+		"allows environment without owner": {
+			config: ResourceTagsConfig{
+				MongoDBEnv: "staging",
+			},
+			valid: true,
+		},
+		"allows owner without environment": {
+			config: ResourceTagsConfig{
+				MongoDBOwner: "evergreen@mongodb.com",
+			},
+			valid: true,
+		},
 		"rejects unsupported environment": {
 			config: ResourceTagsConfig{
 				MongoDBEnv:   "production",
