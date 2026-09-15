@@ -321,6 +321,8 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			}
 		}
 	case model.ProjectPagePluginSection:
+		restModel.PreserveRedactedFileTicketWebhookSecret(&newProjectRef.TaskAnnotationSettings, before.ProjectRef.TaskAnnotationSettings)
+		restModel.PreserveRedactedFileTicketWebhookSecret(&mergedSection.TaskAnnotationSettings, mergedBeforeRef.TaskAnnotationSettings)
 		for _, link := range mergedSection.ExternalLinks {
 			if link.DisplayName != "" && link.URLTemplate != "" {
 				// check length of link display name
