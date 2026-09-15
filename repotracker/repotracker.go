@@ -939,7 +939,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 
 	var githubCheckAliases model.ProjectAliases
 	if v.Requester == evergreen.RepotrackerVersionRequester && projectInfo.Ref.IsGithubChecksEnabled() {
-		githubCheckAliases, err = model.FindAliasInProjectRepoOrConfig(ctx, v.Identifier, evergreen.GithubChecksAlias)
+		githubCheckAliases, err = model.FindAliasInProjectRepoOrConfigForVersion(ctx, v.Identifier, v.Id, projectInfo.Config, evergreen.GithubChecksAlias)
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "error getting github check aliases",
 			"project": projectInfo.Project.Identifier,
