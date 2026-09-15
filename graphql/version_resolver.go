@@ -420,9 +420,9 @@ func (r *versionResolver) TaskQuarantinedTestsSample(ctx context.Context, obj *m
 // Tasks is the resolver for the tasks field.
 func (r *versionResolver) Tasks(ctx context.Context, obj *model.Version, options TaskFilterOptions) (*VersionTasks, error) {
 	versionID := obj.Id
-	includeNeverActivatedTasks := options.IncludeNeverActivatedTasks
-	if includeNeverActivatedTasks == nil {
-		includeNeverActivatedTasks = utility.ToBoolPtr(false)
+	includeNeverActivatedTasks := !evergreen.IsPatchRequester(obj.Requester)
+	if options.IncludeNeverActivatedTasks != nil {
+		includeNeverActivatedTasks = *options.IncludeNeverActivatedTasks
 	}
 	pageParam := 0
 	if options.Page != nil {
@@ -476,15 +476,14 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *model.Version, options
 		baseVersionID = baseVersion.Id
 	}
 	opts := task.GetTasksByVersionOptions{
-		Statuses:     getValidTaskStatusesFilter(options.Statuses),
-		BaseStatuses: getValidTaskStatusesFilter(options.BaseStatuses),
-		Variants:     []string{variantParam},
-		TaskNames:    []string{taskNameParam},
-		Page:         pageParam,
-		Limit:        limitParam,
-		Sorts:        taskSorts,
-		// If the version is a patch, we want to exclude inactive tasks by default.
-		IncludeNeverActivatedTasks: *includeNeverActivatedTasks || !evergreen.IsPatchRequester(obj.Requester),
+		Statuses:                   getValidTaskStatusesFilter(options.Statuses),
+		BaseStatuses:               getValidTaskStatusesFilter(options.BaseStatuses),
+		Variants:                   []string{variantParam},
+		TaskNames:                  []string{taskNameParam},
+		Page:                       pageParam,
+		Limit:                      limitParam,
+		Sorts:                      taskSorts,
+		IncludeNeverActivatedTasks: includeNeverActivatedTasks,
 		BaseVersionID:              baseVersionID,
 	}
 	tasks, count, err := task.GetTasksByVersion(ctx, versionID, opts)

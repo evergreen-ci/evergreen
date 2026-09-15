@@ -1,0 +1,8 @@
+{
+  version: version(versionId: "version_with_unactivated_tasks") {
+    totalCount: taskCount(options: { includeNeverActivatedTasks: false })
+    tasks(options: { includeNeverActivatedTasks: false }) {
+      filteredCount: count
+    }
+  }
+}
