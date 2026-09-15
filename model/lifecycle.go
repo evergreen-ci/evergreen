@@ -1129,7 +1129,7 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 	}
 
 	if isVirtual {
-		// Virtual tasks are default inactive.
+		// When created, virtual tasks start out inactive.
 		activateTask = false
 	}
 
