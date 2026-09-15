@@ -49,19 +49,20 @@ func (c *ResourceTagsConfig) Set(ctx context.Context) error {
 }
 
 func (c *ResourceTagsConfig) ValidateAndDefault() error {
-	if c.MongoDBEnv == "" && c.MongoDBOwner == "" {
-		return nil
+	if c.MongoDBEnv != "" {
+		if _, ok := validMongoDBEnvironments[c.MongoDBEnv]; !ok {
+			return errors.Errorf("invalid MongoDB environment '%s'", c.MongoDBEnv)
+		}
 	}
-	if _, ok := validMongoDBEnvironments[c.MongoDBEnv]; !ok {
-		return errors.Errorf("invalid MongoDB environment '%s'", c.MongoDBEnv)
-	}
-	parsed, err := mail.ParseAddress(c.MongoDBOwner)
-	if err != nil || parsed.Address != c.MongoDBOwner {
-		return errors.Errorf("invalid MongoDB owner email '%s'", c.MongoDBOwner)
-	}
-	domain := strings.TrimPrefix(parsed.Address, parsed.Address[:strings.LastIndex(parsed.Address, "@")+1])
-	if !strings.Contains(domain, ".") {
-		return errors.Errorf("invalid MongoDB owner email '%s'", c.MongoDBOwner)
+	if c.MongoDBOwner != "" {
+		parsed, err := mail.ParseAddress(c.MongoDBOwner)
+		if err != nil || parsed.Address != c.MongoDBOwner {
+			return errors.Errorf("invalid MongoDB owner email '%s'", c.MongoDBOwner)
+		}
+		domain := strings.TrimPrefix(parsed.Address, parsed.Address[:strings.LastIndex(parsed.Address, "@")+1])
+		if !strings.Contains(domain, ".") {
+			return errors.Errorf("invalid MongoDB owner email '%s'", c.MongoDBOwner)
+		}
 	}
 	return nil
 }
