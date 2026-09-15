@@ -44,7 +44,6 @@ func NewConfigModel() *APIAdminSettings {
 		RateLimit:           &APIRateLimitConfig{},
 		RepoTracker:         &APIRepoTrackerConfig{},
 		ReleaseMode:         &APIReleaseModeConfig{},
-		ResourceTags:        &APIResourceTagsConfig{},
 		RuntimeEnvironments: &APIRuntimeEnvironmentsConfig{},
 		Scheduler:           &APISchedulerConfig{},
 		ServiceFlags:        &APIServiceFlags{},
@@ -109,7 +108,6 @@ type APIAdminSettings struct {
 	RateLimit               *APIRateLimitConfig           `json:"rate_limit,omitempty"`
 	RepoTracker             *APIRepoTrackerConfig         `json:"repotracker,omitempty"`
 	ReleaseMode             *APIReleaseModeConfig         `json:"release_mode,omitempty"`
-	ResourceTags            *APIResourceTagsConfig        `json:"resource_tags,omitempty"`
 	RuntimeEnvironments     *APIRuntimeEnvironmentsConfig `json:"runtime_environments,omitempty"`
 	Scheduler               *APISchedulerConfig           `json:"scheduler,omitempty"`
 	ServiceFlags            *APIServiceFlags              `json:"service_flags,omitempty"`
@@ -1707,6 +1705,7 @@ func (a *APISubnet) ToService() (any, error) {
 
 type APIAWSConfig struct {
 	Subnets                []APISubnet                `json:"subnets"`
+	ResourceTags           *APIResourceTagsConfig     `json:"resource_tags"`
 	SubnetTagName          *string                    `json:"subnet_tag_name"`
 	SubnetTagValue         *string                    `json:"subnet_tag_value"`
 	ParserProject          *APIParserProjectS3Config  `json:"parser_project"`
@@ -1725,6 +1724,10 @@ type APIAWSConfig struct {
 func (a *APIAWSConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.AWSConfig:
+		a.ResourceTags = &APIResourceTagsConfig{}
+		if err := a.ResourceTags.BuildFromService(v.ResourceTags); err != nil {
+			return errors.Wrap(err, "converting AWS resource tags config to API model")
+		}
 		for _, subnet := range v.Subnets {
 			apiSubnet := APISubnet{}
 			if err := apiSubnet.BuildFromService(subnet); err != nil {
@@ -1776,6 +1779,13 @@ func (a *APIAWSConfig) ToService() (any, error) {
 	config := evergreen.AWSConfig{
 		DefaultSecurityGroup: utility.FromStringPtr(a.DefaultSecurityGroup),
 		MaxVolumeSizePerUser: evergreen.DefaultMaxVolumeSizePerUser,
+	}
+	if a.ResourceTags != nil {
+		resourceTags, err := a.ResourceTags.ToService()
+		if err != nil {
+			return nil, errors.Wrap(err, "converting AWS resource tags config to service model")
+		}
+		config.ResourceTags = resourceTags.(evergreen.ResourceTagsConfig)
 	}
 
 	var i any

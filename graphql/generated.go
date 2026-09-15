@@ -136,6 +136,7 @@ type ComplexityRoot struct {
 		MaxVolumeSizePerUser   func(childComplexity int) int
 		ParserProject          func(childComplexity int) int
 		PersistentDNS          func(childComplexity int) int
+		ResourceTags           func(childComplexity int) int
 		SubnetTagName          func(childComplexity int) int
 		SubnetTagValue         func(childComplexity int) int
 		Subnets                func(childComplexity int) int
@@ -209,7 +210,6 @@ type ComplexityRoot struct {
 		RateLimit               func(childComplexity int) int
 		ReleaseMode             func(childComplexity int) int
 		RepoTracker             func(childComplexity int) int
-		ResourceTags            func(childComplexity int) int
 		RuntimeEnvironments     func(childComplexity int) int
 		SSH                     func(childComplexity int) int
 		Sage                    func(childComplexity int) int
@@ -3056,6 +3056,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AWSConfig.PersistentDNS(childComplexity), true
+	case "AWSConfig.resourceTags":
+		if e.complexity.AWSConfig.ResourceTags == nil {
+			break
+		}
+
+		return e.complexity.AWSConfig.ResourceTags(childComplexity), true
 	case "AWSConfig.subnetTagName":
 		if e.complexity.AWSConfig.SubnetTagName == nil {
 			break
@@ -3409,12 +3415,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AdminSettings.RepoTracker(childComplexity), true
-	case "AdminSettings.resourceTags":
-		if e.complexity.AdminSettings.ResourceTags == nil {
-			break
-		}
-
-		return e.complexity.AdminSettings.ResourceTags(childComplexity), true
 	case "AdminSettings.runtimeEnvironments":
 		if e.complexity.AdminSettings.RuntimeEnvironments == nil {
 			break
@@ -17655,6 +17655,41 @@ func (ec *executionContext) fieldContext_AWSConfig_subnets(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _AWSConfig_resourceTags(ctx context.Context, field graphql.CollectedField, obj *model.APIAWSConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AWSConfig_resourceTags,
+		func(ctx context.Context) (any, error) {
+			return obj.ResourceTags, nil
+		},
+		nil,
+		ec.marshalOResourceTagsConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIResourceTagsConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AWSConfig_resourceTags(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AWSConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "mongodbEnv":
+				return ec.fieldContext_ResourceTagsConfig_mongodbEnv(ctx, field)
+			case "mongodbOwner":
+				return ec.fieldContext_ResourceTagsConfig_mongodbOwner(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ResourceTagsConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _AWSConfig_subnetTagName(ctx context.Context, field graphql.CollectedField, obj *model.APIAWSConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -19985,41 +20020,6 @@ func (ec *executionContext) fieldContext_AdminSettings_repotracker(_ context.Con
 				return ec.fieldContext_RepotrackerConfig_maxConcurrentRequests(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RepotrackerConfig", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AdminSettings_resourceTags(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AdminSettings_resourceTags,
-		func(ctx context.Context) (any, error) {
-			return obj.ResourceTags, nil
-		},
-		nil,
-		ec.marshalOResourceTagsConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIResourceTagsConfig,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_AdminSettings_resourceTags(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AdminSettings",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "mongodbEnv":
-				return ec.fieldContext_ResourceTagsConfig_mongodbEnv(ctx, field)
-			case "mongodbOwner":
-				return ec.fieldContext_ResourceTagsConfig_mongodbOwner(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ResourceTagsConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -24229,6 +24229,8 @@ func (ec *executionContext) fieldContext_CloudProviderConfig_aws(_ context.Conte
 			switch field.Name {
 			case "subnets":
 				return ec.fieldContext_AWSConfig_subnets(ctx, field)
+			case "resourceTags":
+				return ec.fieldContext_AWSConfig_resourceTags(ctx, field)
 			case "subnetTagName":
 				return ec.fieldContext_AWSConfig_subnetTagName(ctx, field)
 			case "subnetTagValue":
@@ -36836,8 +36838,6 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 				return ec.fieldContext_AdminSettings_releaseMode(ctx, field)
 			case "repotracker":
 				return ec.fieldContext_AdminSettings_repotracker(ctx, field)
-			case "resourceTags":
-				return ec.fieldContext_AdminSettings_resourceTags(ctx, field)
 			case "runtimeEnvironments":
 				return ec.fieldContext_AdminSettings_runtimeEnvironments(ctx, field)
 			case "scheduler":
@@ -51813,8 +51813,6 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 				return ec.fieldContext_AdminSettings_releaseMode(ctx, field)
 			case "repotracker":
 				return ec.fieldContext_AdminSettings_repotracker(ctx, field)
-			case "resourceTags":
-				return ec.fieldContext_AdminSettings_resourceTags(ctx, field)
 			case "runtimeEnvironments":
 				return ec.fieldContext_AdminSettings_runtimeEnvironments(ctx, field)
 			case "scheduler":
@@ -81267,7 +81265,7 @@ func (ec *executionContext) unmarshalInputAWSConfigInput(ctx context.Context, ob
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"subnets", "subnetTagName", "subnetTagValue", "parserProject", "persistentDNS", "defaultSecurityGroup", "allowedInstanceTypes", "alertableInstanceTypes", "allowedRegions", "maxVolumeSizePerUser", "accountRoles", "ipamPoolID", "elasticIPUsageRate", "allowedSNSTopicARNs"}
+	fieldsInOrder := [...]string{"subnets", "resourceTags", "subnetTagName", "subnetTagValue", "parserProject", "persistentDNS", "defaultSecurityGroup", "allowedInstanceTypes", "alertableInstanceTypes", "allowedRegions", "maxVolumeSizePerUser", "accountRoles", "ipamPoolID", "elasticIPUsageRate", "allowedSNSTopicARNs"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -81281,6 +81279,13 @@ func (ec *executionContext) unmarshalInputAWSConfigInput(ctx context.Context, ob
 				return it, err
 			}
 			it.Subnets = data
+		case "resourceTags":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("resourceTags"))
+			data, err := ec.unmarshalOResourceTagsConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIResourceTagsConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ResourceTags = data
 		case "subnetTagName":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("subnetTagName"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -81556,7 +81561,7 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "oktaServiceConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "debugSpawnHosts", "diagnostics", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "pprofPort", "projectCreation", "providers", "rateLimit", "releaseMode", "repotracker", "resourceTags", "runtimeEnvironments", "scheduler", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui", "sage"}
+	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "oktaServiceConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "debugSpawnHosts", "diagnostics", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "pprofPort", "projectCreation", "providers", "rateLimit", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui", "sage"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -81881,13 +81886,6 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 				return it, err
 			}
 			it.RepoTracker = data
-		case "resourceTags":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("resourceTags"))
-			data, err := ec.unmarshalOResourceTagsConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIResourceTagsConfig(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ResourceTags = data
 		case "runtimeEnvironments":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("runtimeEnvironments"))
 			data, err := ec.unmarshalORuntimeEnvironmentConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIRuntimeEnvironmentsConfig(ctx, v)
@@ -93108,6 +93106,8 @@ func (ec *executionContext) _AWSConfig(ctx context.Context, sel ast.SelectionSet
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "resourceTags":
+			out.Values[i] = ec._AWSConfig_resourceTags(ctx, field, obj)
 		case "subnetTagName":
 			out.Values[i] = ec._AWSConfig_subnetTagName(ctx, field, obj)
 		case "subnetTagValue":
@@ -93499,8 +93499,6 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._AdminSettings_releaseMode(ctx, field, obj)
 		case "repotracker":
 			out.Values[i] = ec._AdminSettings_repotracker(ctx, field, obj)
-		case "resourceTags":
-			out.Values[i] = ec._AdminSettings_resourceTags(ctx, field, obj)
 		case "runtimeEnvironments":
 			out.Values[i] = ec._AdminSettings_runtimeEnvironments(ctx, field, obj)
 		case "scheduler":
