@@ -183,9 +183,6 @@ func (h *completeVirtualTasksHandler) completeTask(ctx context.Context, runner *
 	if vt.ExecutionPlatform != task.ExecutionPlatformVirtual {
 		return failed("task is not a virtual task")
 	}
-	if vt.DisplayOnly {
-		return failed("cannot push-complete a display task")
-	}
 	if vt.Version != runner.Version {
 		return failed(fmt.Sprintf("task does not belong to the same version as task '%s'", runner.Id))
 	}
