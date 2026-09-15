@@ -20,15 +20,17 @@ func TestSaveAdminSettingsPersistsResourceTags(t *testing.T) {
 	}
 	resolver := &mutationResolver{&Resolver{}}
 	updatedSettings, err := resolver.SaveAdminSettings(ctx, restModel.APIAdminSettings{
-		ResourceTags: resourceTags,
+		Providers: &restModel.APICloudProviders{
+			AWS: &restModel.APIAWSConfig{ResourceTags: resourceTags},
+		},
 	})
 	require.NoError(t, err)
-	require.NotNil(t, updatedSettings.ResourceTags)
-	require.Equal(t, resourceTags.MongoDBEnv, updatedSettings.ResourceTags.MongoDBEnv)
-	require.Equal(t, resourceTags.MongoDBOwner, updatedSettings.ResourceTags.MongoDBOwner)
+	require.NotNil(t, updatedSettings.Providers.AWS.ResourceTags)
+	require.Equal(t, resourceTags.MongoDBEnv, updatedSettings.Providers.AWS.ResourceTags.MongoDBEnv)
+	require.Equal(t, resourceTags.MongoDBOwner, updatedSettings.Providers.AWS.ResourceTags.MongoDBOwner)
 
 	persistedSettings, err := evergreen.GetConfig(ctx)
 	require.NoError(t, err)
-	require.Equal(t, "staging", persistedSettings.ResourceTags.MongoDBEnv)
-	require.Equal(t, "evergreen@mongodb.com", persistedSettings.ResourceTags.MongoDBOwner)
+	require.Equal(t, "staging", persistedSettings.Providers.AWS.ResourceTags.MongoDBEnv)
+	require.Equal(t, "evergreen@mongodb.com", persistedSettings.Providers.AWS.ResourceTags.MongoDBOwner)
 }

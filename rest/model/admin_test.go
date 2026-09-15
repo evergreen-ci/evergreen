@@ -51,7 +51,7 @@ func TestModelConversion(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	testSettings := testutil.MockConfig()
-	testSettings.ResourceTags = evergreen.ResourceTagsConfig{
+	testSettings.Providers.AWS.ResourceTags = evergreen.ResourceTagsConfig{
 		MongoDBEnv:   "staging",
 		MongoDBOwner: "evergreen@mongodb.com",
 	}
@@ -65,8 +65,8 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.ConfigDir, *apiSettings.ConfigDir)
 	assert.Equal(testSettings.GithubPRCreatorOrg, *apiSettings.GithubPRCreatorOrg)
 	assert.Equal(testSettings.LogPath, *apiSettings.LogPath)
-	assert.Equal(testSettings.ResourceTags.MongoDBEnv, *apiSettings.ResourceTags.MongoDBEnv)
-	assert.Equal(testSettings.ResourceTags.MongoDBOwner, *apiSettings.ResourceTags.MongoDBOwner)
+	assert.Equal(testSettings.Providers.AWS.ResourceTags.MongoDBEnv, *apiSettings.Providers.AWS.ResourceTags.MongoDBEnv)
+	assert.Equal(testSettings.Providers.AWS.ResourceTags.MongoDBOwner, *apiSettings.Providers.AWS.ResourceTags.MongoDBOwner)
 	assert.Equal(testSettings.PprofPort, *apiSettings.PprofPort)
 
 	for k, v := range testSettings.Expansions {
@@ -260,7 +260,7 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(len(testSettings.AuthConfig.Github.Users), len(dbSettings.AuthConfig.Github.Users))
 	assert.EqualValues(testSettings.AuthConfig.Multi.ReadWrite[0], dbSettings.AuthConfig.Multi.ReadWrite[0])
 	assert.EqualValues(testSettings.AuthConfig.Kanopy.Issuer, dbSettings.AuthConfig.Kanopy.Issuer)
-	assert.EqualValues(testSettings.ResourceTags, dbSettings.ResourceTags)
+	assert.EqualValues(testSettings.Providers.AWS.ResourceTags, dbSettings.Providers.AWS.ResourceTags)
 	assert.Equal(testSettings.Buckets.LogBucket.Name, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Name))
 	assert.EqualValues(testSettings.Buckets.LogBucket.Type, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Type))
 	assert.Equal(testSettings.Buckets.LogBucket.DBName, utility.FromStringPtr(apiSettings.Buckets.LogBucket.DBName))

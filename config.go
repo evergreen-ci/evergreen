@@ -115,7 +115,6 @@ type Settings struct {
 	RateLimit               RateLimitConfig           `yaml:"rate_limit" bson:"rate_limit" json:"rate_limit" id:"rate_limit"`
 	ReleaseMode             ReleaseModeConfig         `yaml:"release_mode" bson:"release_mode" json:"release_mode" id:"release_mode"`
 	RepoTracker             RepoTrackerConfig         `yaml:"repotracker" bson:"repotracker" json:"repotracker" id:"repotracker"`
-	ResourceTags            ResourceTagsConfig        `yaml:"resource_tags" bson:"resource_tags" json:"resource_tags" id:"resource_tags"`
 	RuntimeEnvironments     RuntimeEnvironmentsConfig `yaml:"runtime_environments" bson:"runtime_environments" json:"runtime_environments" id:"runtime_environments"`
 	Scheduler               SchedulerConfig           `yaml:"scheduler" bson:"scheduler" json:"scheduler" id:"scheduler"`
 	ServiceFlags            ServiceFlags              `bson:"service_flags" json:"service_flags" id:"service_flags" yaml:"service_flags"`

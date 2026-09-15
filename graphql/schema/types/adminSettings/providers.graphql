@@ -10,6 +10,7 @@ type AWSAccountRoleMapping {
 
 input AWSConfigInput {
   subnets: [SubnetInput!]!
+  resourceTags: ResourceTagsConfigInput
   subnetTagName: String
   subnetTagValue: String
   parserProject: ParserProjectS3ConfigInput @redactSecrets
@@ -27,6 +28,7 @@ input AWSConfigInput {
 
 type AWSConfig {
   subnets: [Subnet!]!
+  resourceTags: ResourceTagsConfig
   subnetTagName: String
   subnetTagValue: String
   parserProject: ParserProjectS3Config @requireAdmin

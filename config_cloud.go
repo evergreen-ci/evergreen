@@ -40,6 +40,7 @@ func (c *CloudProviders) ValidateAndDefault() error {
 	for i, m := range c.AWS.AccountRoles {
 		catcher.Wrapf(m.Validate(), "invalid account role mapping at index %d", i)
 	}
+	catcher.Wrap(c.AWS.ResourceTags.Validate(), "invalid AWS resource tags")
 	catcher.NewWhen(c.AWS.SubnetTagName == "" && c.AWS.SubnetTagValue != "", "must specify a subnet tag name if a subnet tag value is set")
 	catcher.NewWhen(c.AWS.SubnetTagName != "" && c.AWS.SubnetTagValue == "", "must specify a subnet tag value if a subnet tag name is set")
 	return catcher.Resolve()
@@ -59,7 +60,8 @@ type Subnet struct {
 
 // AWSConfig stores auth info for Amazon Web Services.
 type AWSConfig struct {
-	Subnets []Subnet `bson:"subnets" json:"subnets" yaml:"subnets"`
+	Subnets      []Subnet           `bson:"subnets" json:"subnets" yaml:"subnets"`
+	ResourceTags ResourceTagsConfig `bson:"resource_tags" json:"resource_tags" yaml:"resource_tags"`
 
 	// SubnetTagName is the name of the tag that marks a subnet as usable by
 	// Evergreen.

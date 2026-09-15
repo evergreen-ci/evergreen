@@ -2,47 +2,47 @@ package evergreen
 
 import "testing"
 
-func TestResourceTagsConfigValidateAndDefault(t *testing.T) {
+func TestResourceTagsConfigValidate(t *testing.T) {
 	for name, test := range map[string]struct {
 		config ResourceTagsConfig
 		valid  bool
 	}{
-		"allows unset config": {
+		"AllowsUnsetConfig": {
 			config: ResourceTagsConfig{},
 			valid:  true,
 		},
-		"allows valid config": {
+		"AllowsValidConfig": {
 			config: ResourceTagsConfig{
 				MongoDBEnv:   "staging",
 				MongoDBOwner: "evergreen@mongodb.com",
 			},
 			valid: true,
 		},
-		"allows environment without owner": {
+		"AllowsEnvironmentWithoutOwner": {
 			config: ResourceTagsConfig{
 				MongoDBEnv: "staging",
 			},
 			valid: true,
 		},
-		"allows owner without environment": {
+		"AllowsOwnerWithoutEnvironment": {
 			config: ResourceTagsConfig{
 				MongoDBOwner: "evergreen@mongodb.com",
 			},
 			valid: true,
 		},
-		"rejects unsupported environment": {
+		"RejectsUnsupportedEnvironment": {
 			config: ResourceTagsConfig{
 				MongoDBEnv:   "production",
 				MongoDBOwner: "evergreen@mongodb.com",
 			},
 		},
-		"rejects invalid email": {
+		"RejectsInvalidEmail": {
 			config: ResourceTagsConfig{
 				MongoDBEnv:   "staging",
 				MongoDBOwner: "evergreen",
 			},
 		},
-		"rejects email without domain suffix": {
+		"RejectsEmailWithoutDomainSuffix": {
 			config: ResourceTagsConfig{
 				MongoDBEnv:   "staging",
 				MongoDBOwner: "evergreen@mongodb",
@@ -50,7 +50,7 @@ func TestResourceTagsConfigValidateAndDefault(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			err := test.config.ValidateAndDefault()
+			err := test.config.Validate()
 			if test.valid && err != nil {
 				t.Fatalf("expected valid config, got %s", err)
 			}
