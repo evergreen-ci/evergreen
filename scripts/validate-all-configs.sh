@@ -17,14 +17,6 @@ print_error() {
     echo -e "[ERROR] $1"
 }
 
-get_go_binary() {
-    local gobin="go"
-    if [ -n "$GOROOT" ]; then
-        gobin="$GOROOT/bin/go"
-    fi
-    echo "$gobin"
-}
-
 get_validation_stats() {
     local json_file=$1
     python3 -c "
@@ -38,10 +30,8 @@ with open('$json_file', 'r') as f:
 build_evergreen_cli() {
     print_status "Building evergreen CLI..."
 
-    local gobin=$(get_go_binary)
-
     if [ ! -f "bin/evergreen" ]; then
-        if ! $gobin build -o bin/evergreen cmd/evergreen/evergreen.go; then
+        if ! bash scripts/go-sdk.sh go build -o bin/evergreen cmd/evergreen/evergreen.go; then
             print_error "Failed to build evergreen CLI"
             return 1
         fi
@@ -103,9 +93,7 @@ download_configs() {
 build_validator() {
     print_status "Building config validation program..."
 
-    local gobin=$(get_go_binary)
-
-    if ! $gobin build -o bin/validate-all-configs scripts/validate-all-configs.go; then
+    if ! bash scripts/go-sdk.sh go build -o bin/validate-all-configs scripts/validate-all-configs.go; then
         print_error "Failed to build validation program"
         return 1
     fi

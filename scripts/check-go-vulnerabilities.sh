@@ -63,11 +63,7 @@ if ! command -v "$govul" &> /dev/null; then
     exit 1
 fi
 
-# We re-export the go binary in the front to make sure agents pick up the latest version. Without this,
-# the agent picks up an older version that isn't compatible with govulncheck.
-export PATH="$GOROOT/bin:$PATH"
-
-result=$($govul -json -C "$(pwd)" ./...)
+result=$(bash scripts/go-sdk.sh exec "$govul" -json -C "$(pwd)" ./...)
 
 # Parse vulnerabilities from govulncheck JSON output and remove duplicates
 # Note: Same vulnerability can appear multiple times due to different code paths
