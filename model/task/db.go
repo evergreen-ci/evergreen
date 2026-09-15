@@ -68,7 +68,6 @@ var (
 	ActivatedKey                  = bsonutil.MustHaveTag(Task{}, "Activated")
 	DeactivatedForDependencyKey   = bsonutil.MustHaveTag(Task{}, "DeactivatedForDependency")
 	IsVirtualKey                  = bsonutil.MustHaveTag(Task{}, "IsVirtual")
-	CompletedByKey                = bsonutil.MustHaveTag(Task{}, "CompletedBy")
 	BuildIdKey                    = bsonutil.MustHaveTag(Task{}, "BuildId")
 	DistroIdKey                   = bsonutil.MustHaveTag(Task{}, "DistroId")
 	SecondaryDistrosKey           = bsonutil.MustHaveTag(Task{}, "SecondaryDistros")
