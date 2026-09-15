@@ -1,0 +1,11 @@
+query {
+  distros(onlySpawnable: false) {
+    name
+    setup
+    expansions {
+      key
+      value
+    }
+    providerSettingsList
+  }
+}
