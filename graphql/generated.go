@@ -711,6 +711,7 @@ type ComplexityRoot struct {
 	}
 
 	Host struct {
+		AgentRevision         func(childComplexity int) int
 		Ami                   func(childComplexity int) int
 		CreationTime          func(childComplexity int) int
 		DisplayName           func(childComplexity int) int
@@ -5226,6 +5227,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.HomeVolumeSettings.FormatCommand(childComplexity), true
 
+	case "Host.agentRevision":
+		if e.complexity.Host.AgentRevision == nil {
+			break
+		}
+
+		return e.complexity.Host.AgentRevision(childComplexity), true
 	case "Host.ami":
 		if e.complexity.Host.Ami == nil {
 			break
@@ -30032,14 +30039,14 @@ func (ec *executionContext) fieldContext_Host_id(_ context.Context, field graphq
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_availabilityZone(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_agentRevision(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_Host_availabilityZone,
+		ec.fieldContext_Host_agentRevision,
 		func(ctx context.Context) (any, error) {
-			return obj.Zone, nil
+			return obj.AgentRevision, nil
 		},
 		nil,
 		ec.marshalOString2string,
@@ -30048,7 +30055,7 @@ func (ec *executionContext) _Host_availabilityZone(ctx context.Context, field gr
 	)
 }
 
-func (ec *executionContext) fieldContext_Host_availabilityZone(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Host_agentRevision(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Host",
 		Field:      field,
@@ -30083,6 +30090,35 @@ func (ec *executionContext) fieldContext_Host_ami(_ context.Context, field graph
 		Field:      field,
 		IsMethod:   true,
 		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Host_availabilityZone(ctx context.Context, field graphql.CollectedField, obj *host.Host) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Host_availabilityZone,
+		func(ctx context.Context) (any, error) {
+			return obj.Zone, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Host_availabilityZone(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Host",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
 		},
@@ -32357,10 +32393,12 @@ func (ec *executionContext) fieldContext_HostsResponse_hosts(_ context.Context, 
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Host_id(ctx, field)
-			case "availabilityZone":
-				return ec.fieldContext_Host_availabilityZone(ctx, field)
+			case "agentRevision":
+				return ec.fieldContext_Host_agentRevision(ctx, field)
 			case "ami":
 				return ec.fieldContext_Host_ami(ctx, field)
+			case "availabilityZone":
+				return ec.fieldContext_Host_availabilityZone(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
@@ -38534,10 +38572,12 @@ func (ec *executionContext) fieldContext_Mutation_editSpawnHost(ctx context.Cont
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Host_id(ctx, field)
-			case "availabilityZone":
-				return ec.fieldContext_Host_availabilityZone(ctx, field)
+			case "agentRevision":
+				return ec.fieldContext_Host_agentRevision(ctx, field)
 			case "ami":
 				return ec.fieldContext_Host_ami(ctx, field)
+			case "availabilityZone":
+				return ec.fieldContext_Host_availabilityZone(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
@@ -38674,10 +38714,12 @@ func (ec *executionContext) fieldContext_Mutation_spawnHost(ctx context.Context,
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Host_id(ctx, field)
-			case "availabilityZone":
-				return ec.fieldContext_Host_availabilityZone(ctx, field)
+			case "agentRevision":
+				return ec.fieldContext_Host_agentRevision(ctx, field)
 			case "ami":
 				return ec.fieldContext_Host_ami(ctx, field)
+			case "availabilityZone":
+				return ec.fieldContext_Host_availabilityZone(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
@@ -38855,10 +38897,12 @@ func (ec *executionContext) fieldContext_Mutation_updateSpawnHostStatus(ctx cont
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Host_id(ctx, field)
-			case "availabilityZone":
-				return ec.fieldContext_Host_availabilityZone(ctx, field)
+			case "agentRevision":
+				return ec.fieldContext_Host_agentRevision(ctx, field)
 			case "ami":
 				return ec.fieldContext_Host_ami(ctx, field)
+			case "availabilityZone":
+				return ec.fieldContext_Host_availabilityZone(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
@@ -52264,10 +52308,12 @@ func (ec *executionContext) fieldContext_Query_host(ctx context.Context, field g
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Host_id(ctx, field)
-			case "availabilityZone":
-				return ec.fieldContext_Host_availabilityZone(ctx, field)
+			case "agentRevision":
+				return ec.fieldContext_Host_agentRevision(ctx, field)
 			case "ami":
 				return ec.fieldContext_Host_ami(ctx, field)
+			case "availabilityZone":
+				return ec.fieldContext_Host_availabilityZone(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
@@ -53066,10 +53112,12 @@ func (ec *executionContext) fieldContext_Query_myHosts(_ context.Context, field 
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Host_id(ctx, field)
-			case "availabilityZone":
-				return ec.fieldContext_Host_availabilityZone(ctx, field)
+			case "agentRevision":
+				return ec.fieldContext_Host_agentRevision(ctx, field)
 			case "ami":
 				return ec.fieldContext_Host_ami(ctx, field)
+			case "availabilityZone":
+				return ec.fieldContext_Host_availabilityZone(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
@@ -77438,10 +77486,12 @@ func (ec *executionContext) fieldContext_Volume_host(_ context.Context, field gr
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Host_id(ctx, field)
-			case "availabilityZone":
-				return ec.fieldContext_Host_availabilityZone(ctx, field)
+			case "agentRevision":
+				return ec.fieldContext_Host_agentRevision(ctx, field)
 			case "ami":
 				return ec.fieldContext_Host_ami(ctx, field)
+			case "availabilityZone":
+				return ec.fieldContext_Host_availabilityZone(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
@@ -96088,8 +96138,8 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "availabilityZone":
-			out.Values[i] = ec._Host_availabilityZone(ctx, field, obj)
+		case "agentRevision":
+			out.Values[i] = ec._Host_agentRevision(ctx, field, obj)
 		case "ami":
 			field := field
 
@@ -96123,6 +96173,8 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "availabilityZone":
+			out.Values[i] = ec._Host_availabilityZone(ctx, field, obj)
 		case "displayName":
 			out.Values[i] = ec._Host_displayName(ctx, field, obj)
 		case "distro":
