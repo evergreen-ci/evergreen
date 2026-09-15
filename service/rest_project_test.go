@@ -111,7 +111,7 @@ func TestProjectRoutes(t *testing.T) {
 			outRef := &model.ProjectRef{}
 			So(response.Code, ShouldEqual, http.StatusOK)
 			So(json.Unmarshal(response.Body.Bytes(), outRef), ShouldBeNil)
-			So(outRef, ShouldResemble, public)
+			So(outRef, ShouldResemble, &redactedPublic)
 		})
 		Convey("and be visible to the project_list route", func() {
 			url := "/rest/v1/projects"

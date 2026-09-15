@@ -38,19 +38,6 @@ func TestTaskAnnotationSettingsBuildFromServiceRedactsSecret(t *testing.T) {
 	}
 }
 
-func TestTaskAnnotationSettingsIncludeFileTicketWebhookSecret(t *testing.T) {
-	settings := APITaskAnnotationSettings{}
-	settings.BuildFromService(evergreen.AnnotationsSettings{
-		FileTicketWebhook: evergreen.WebHook{Secret: "secret"},
-	})
-	assert.Equal(t, evergreen.RedactedValue, utility.FromStringPtr(settings.FileTicketWebhook.Secret))
-
-	settings.IncludeFileTicketWebhookSecret(evergreen.AnnotationsSettings{
-		FileTicketWebhook: evergreen.WebHook{Secret: "secret"},
-	})
-	assert.Equal(t, "secret", utility.FromStringPtr(settings.FileTicketWebhook.Secret))
-}
-
 func TestPreserveRedactedFileTicketWebhookSecret(t *testing.T) {
 	updated := evergreen.AnnotationsSettings{
 		FileTicketWebhook: evergreen.WebHook{Secret: evergreen.RedactedValue},

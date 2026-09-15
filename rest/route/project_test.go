@@ -753,7 +753,7 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	s.Equal(evergreen.RedactedValue, utility.FromStringPtr(projectRef.TaskAnnotationSettings.FileTicketWebhook.Secret))
 }
 
-func (s *ProjectGetByIDSuite) TestRunExistingIdAsAdmin() {
+func (s *ProjectGetByIDSuite) TestRunExistingIDAsAdminRedactsWebhookSecret() {
 	ctx := gimlet.AttachUser(s.T().Context(), &user.DBUser{Id: "admin", SystemRoles: []string{"project-admin"}})
 	h := s.rm.(*projectIDGetHandler)
 	h.projectName = "dimoxinil"
@@ -764,7 +764,7 @@ func (s *ProjectGetByIDSuite) TestRunExistingIdAsAdmin() {
 
 	projectRef, ok := resp.Data().(*model.APIProjectRef)
 	s.Require().True(ok)
-	s.Equal("file-ticket-secret", utility.FromStringPtr(projectRef.TaskAnnotationSettings.FileTicketWebhook.Secret))
+	s.Equal(evergreen.RedactedValue, utility.FromStringPtr(projectRef.TaskAnnotationSettings.FileTicketWebhook.Secret))
 }
 
 ////////////////////////////////////////////////////////////////////////
