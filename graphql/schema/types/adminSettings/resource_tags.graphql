@@ -1,0 +1,9 @@
+input ResourceTagsConfigInput {
+  mongodbEnv: String
+  mongodbOwner: String
+}
+
+type ResourceTagsConfig {
+  mongodbEnv: String
+  mongodbOwner: String
+}

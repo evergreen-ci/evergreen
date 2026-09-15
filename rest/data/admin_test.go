@@ -91,6 +91,10 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 
 	u := &user.DBUser{Id: "user"}
 	testSettings := testutil.MockConfig()
+	testSettings.Providers.AWS.ResourceTags = evergreen.ResourceTagsConfig{
+		MongoDBEnv:   "staging",
+		MongoDBOwner: "evergreen@mongodb.com",
+	}
 	// convert the DB model to an API model
 	restSettings := restModel.NewConfigModel()
 	err := restSettings.BuildFromService(testSettings)
@@ -99,8 +103,9 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	// try to set the DB model with this API model
 	oldSettings, err := evergreen.GetConfig(ctx)
 	s.NoError(err)
-	_, err = SetEvergreenSettings(ctx, restSettings, oldSettings, u, true)
+	savedSettings, err := SetEvergreenSettings(ctx, restSettings, oldSettings, u, true)
 	s.Require().NoError(err)
+	s.Equal(testSettings.Providers.AWS.ResourceTags, savedSettings.Providers.AWS.ResourceTags)
 
 	// read the settings and spot check values
 	settingsFromConnector, err := evergreen.GetConfig(ctx)
@@ -108,6 +113,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.DisabledGQLQueries, settingsFromConnector.DisabledGQLQueries)
 	s.EqualValues(testSettings.Banner, settingsFromConnector.Banner)
 	s.EqualValues(testSettings.ServiceFlags, settingsFromConnector.ServiceFlags)
+	s.EqualValues(testSettings.Providers.AWS.ResourceTags, settingsFromConnector.Providers.AWS.ResourceTags)
 	s.EqualValues(evergreen.Important, testSettings.BannerTheme)
 	s.EqualValues(testSettings.Amboy.Name, settingsFromConnector.Amboy.Name)
 	s.EqualValues(testSettings.Amboy.LocalStorage, settingsFromConnector.Amboy.LocalStorage)
