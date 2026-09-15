@@ -1129,6 +1129,12 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 	}
 
 	if isVirtual {
+		if evergreen.GetEnvironment().Settings().ServiceFlags.VirtualTasksDisabled {
+			return nil, errors.Errorf("virtual tasks are disabled, cannot create virtual task '%s'", buildVarTask.Name)
+		}
+		if !creationInfo.ProjectRef.IsVirtualTasksEnabled() {
+			return nil, errors.Errorf("virtual tasks are not enabled for project '%s', cannot create virtual task '%s'", creationInfo.ProjectRef.Id, buildVarTask.Name)
+		}
 		// When created, virtual tasks start out inactive.
 		activateTask = false
 	}

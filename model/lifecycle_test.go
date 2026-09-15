@@ -1901,8 +1901,9 @@ buildvariants:
 		},
 	}
 	pRef := &ProjectRef{
-		Id:         "projectId",
-		Identifier: projectIdentifier,
+		Id:                  "projectId",
+		Identifier:          projectIdentifier,
+		VirtualTasksEnabled: utility.TruePtr(),
 	}
 	table := NewTaskIdConfigForRepotrackerVersion(t.Context(), proj, v, TVPairSet{}, "", "")
 
