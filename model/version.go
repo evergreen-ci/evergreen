@@ -1077,10 +1077,11 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 		if !ok {
 			group = &manifestModuleResolutionGroup{module: module}
 			groups[key] = group
-			repository, ok := repositories[gitOwnerRepo{owner: modOwner, repo: modRepo}]
+			ownerRepo := newGitOwnerRepo(modOwner, modRepo)
+			repository, ok := repositories[ownerRepo]
 			if !ok {
 				repository = &manifestModuleRepositoryGroup{}
-				repositories[gitOwnerRepo{owner: modOwner, repo: modRepo}] = repository
+				repositories[ownerRepo] = repository
 				repositoryOrder = append(repositoryOrder, repository)
 			}
 			repository.groups = append(repository.groups, group)
