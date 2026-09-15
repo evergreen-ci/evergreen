@@ -934,7 +934,7 @@ func (t *Task) cacheExpectedDuration(ctx context.Context) error {
 // updates fail.
 func (t *Task) MarkAsHostDispatched(ctx context.Context, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
 	doUpdate := func(update []bson.M) error {
-		return UpdateOne(ctx, bson.M{IdKey: t.Id}, update)
+		return UpdateOne(ctx, hostDispatchQuery(t.Id), update)
 	}
 	if err := t.markAsHostDispatchedWithFunc(doUpdate, hostID, distroID, agentRevision, dispatchTime); err != nil {
 		return err
@@ -949,13 +949,28 @@ func (t *Task) MarkAsHostDispatched(ctx context.Context, hostID, distroID, agent
 
 // MarkAsHostDispatchedWithEnv marks that the task has been dispatched onto
 // a particular host. Unlike MarkAsHostDispatched, this does not update the
-// parent display task.
+// parent display task. It returns a not-found error if the task was
+// push-completed.
 func (t *Task) MarkAsHostDispatchedWithEnv(ctx context.Context, env evergreen.Environment, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
 	doUpdate := func(update []bson.M) error {
-		_, err := env.DB().Collection(Collection).UpdateByID(ctx, t.Id, update)
-		return err
+		res, err := env.DB().Collection(Collection).UpdateOne(ctx, hostDispatchQuery(t.Id), update)
+		if err != nil {
+			return err
+		}
+		if res.MatchedCount == 0 {
+			return adb.ErrNotFound
+		}
+		return nil
 	}
 	return t.markAsHostDispatchedWithFunc(doUpdate, hostID, distroID, agentRevision, dispatchTime)
+}
+
+// hostDispatchQuery matches the task to dispatch (unless it was push-completed).
+func hostDispatchQuery(id string) bson.M {
+	return bson.M{
+		IdKey:          id,
+		CompletedByKey: bson.M{"$exists": false},
+	}
 }
 
 func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update []bson.M) error, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
