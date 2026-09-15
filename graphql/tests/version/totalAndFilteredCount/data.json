@@ -1,0 +1,180 @@
+{
+  "versions": [
+    {
+      "_id": "version_with_unactivated_tasks",
+      "create_time": {
+        "$date": "2025-02-21T15:13:48.801Z"
+      },
+      "start_time": {
+        "$date": "2025-02-21T15:15:38.261Z"
+      },
+      "finish_time": {
+        "$date": "2025-02-21T15:29:54.869Z"
+      },
+      "gitspec": "abc123",
+      "author": "testuser",
+      "author_email": "",
+      "status": "failed",
+      "order": 100,
+      "identifier": "spruce",
+      "r": "gitter_request",
+      "branch_name": "main"
+    }
+  ],
+  "tasks": [
+    {
+      "_id": "activated_task_1",
+      "version": "version_with_unactivated_tasks",
+      "build_variant": "ubuntu1604",
+      "build_variant_display_name": "Ubuntu 16.04",
+      "display_name": "test-one",
+      "r": "gitter_request",
+      "status": "success",
+      "display_status_cache": "success",
+      "build_id": "build1",
+      "display_task_id": "",
+      "activated": true,
+      "activated_time": {
+        "$date": "2025-02-21T15:15:38.261Z"
+      }
+    },
+    {
+      "_id": "activated_display_task",
+      "version": "version_with_unactivated_tasks",
+      "build_variant": "ubuntu1604",
+      "build_variant_display_name": "Ubuntu 16.04",
+      "display_name": "display-task-one",
+      "r": "gitter_request",
+      "status": "failed",
+      "display_status_cache": "failed",
+      "build_id": "build1",
+      "display_task_id": "",
+      "display_only": true,
+      "execution_tasks": ["exec_task_1", "exec_task_2", "never_activated_exec_task"],
+      "activated": true,
+      "activated_time": {
+        "$date": "2025-02-21T15:15:38.261Z"
+      }
+    },
+    {
+      "_id": "exec_task_1",
+      "version": "version_with_unactivated_tasks",
+      "build_variant": "ubuntu1604",
+      "build_variant_display_name": "Ubuntu 16.04",
+      "display_name": "exec-one",
+      "r": "gitter_request",
+      "status": "success",
+      "display_status_cache": "success",
+      "build_id": "build1",
+      "display_task_id": "activated_display_task",
+      "activated": true,
+      "activated_time": {
+        "$date": "2025-02-21T15:15:38.261Z"
+      }
+    },
+    {
+      "_id": "exec_task_2",
+      "version": "version_with_unactivated_tasks",
+      "build_variant": "ubuntu1604",
+      "build_variant_display_name": "Ubuntu 16.04",
+      "display_name": "exec-two",
+      "r": "gitter_request",
+      "status": "failed",
+      "display_status_cache": "failed",
+      "build_id": "build1",
+      "display_task_id": "activated_display_task",
+      "activated": true,
+      "activated_time": {
+        "$date": "2025-02-21T15:15:38.261Z"
+      }
+    },
+    {
+      "_id": "never_activated_exec_task",
+      "version": "version_with_unactivated_tasks",
+      "build_variant": "ubuntu1604",
+      "build_variant_display_name": "Ubuntu 16.04",
+      "display_name": "exec-never-activated",
+      "r": "gitter_request",
+      "status": "undispatched",
+      "display_status_cache": "undispatched",
+      "build_id": "build1",
+      "display_task_id": "activated_display_task",
+      "activated": false,
+      "activated_time": {
+        "$date": "1970-01-01T00:00:00.000Z"
+      }
+    },
+    {
+      "_id": "never_activated_display_task",
+      "version": "version_with_unactivated_tasks",
+      "build_variant": "windows",
+      "build_variant_display_name": "Windows",
+      "display_name": "display-task-never-activated",
+      "r": "gitter_request",
+      "status": "undispatched",
+      "display_status_cache": "undispatched",
+      "build_id": "build2",
+      "display_task_id": "",
+      "display_only": true,
+      "execution_tasks": ["never_activated_exec_task_2"],
+      "activated": false,
+      "activated_time": {
+        "$date": "1970-01-01T00:00:00.000Z"
+      }
+    },
+    {
+      "_id": "never_activated_exec_task_2",
+      "version": "version_with_unactivated_tasks",
+      "build_variant": "windows",
+      "build_variant_display_name": "Windows",
+      "display_name": "exec-never-activated-2",
+      "r": "gitter_request",
+      "status": "undispatched",
+      "display_status_cache": "undispatched",
+      "build_id": "build2",
+      "display_task_id": "never_activated_display_task",
+      "activated": false,
+      "activated_time": {
+        "$date": "1970-01-01T00:00:00.000Z"
+      }
+    },
+    {
+      "_id": "never_activated_task_1",
+      "version": "version_with_unactivated_tasks",
+      "build_variant": "windows",
+      "build_variant_display_name": "Windows",
+      "display_name": "test-three",
+      "r": "gitter_request",
+      "status": "undispatched",
+      "display_status_cache": "undispatched",
+      "build_id": "build2",
+      "display_task_id": "",
+      "activated": false,
+      "activated_time": {
+        "$date": "1970-01-01T00:00:00.000Z"
+      }
+    },
+    {
+      "_id": "never_activated_task_2",
+      "version": "version_with_unactivated_tasks",
+      "build_variant": "windows",
+      "build_variant_display_name": "Windows",
+      "display_name": "test-four",
+      "r": "gitter_request",
+      "status": "undispatched",
+      "display_status_cache": "undispatched",
+      "build_id": "build2",
+      "display_task_id": "",
+      "activated": false,
+      "activated_time": {
+        "$date": "1970-01-01T00:00:00.000Z"
+      }
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    }
+  ]
+}
