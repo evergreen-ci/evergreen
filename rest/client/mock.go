@@ -36,10 +36,17 @@ type Mock struct {
 	MockIsServiceUser    bool
 	MockIsServiceUserErr error
 
+	GetVersionResult                    *restmodel.APIVersion
+	GetVersionErr                       error
+	GetRawPatchWithModulesResult        *restmodel.APIRawPatch
+	GetRawPatchWithModulesErr           error
 	GetRecentVersionsResult             []restmodel.APIVersion
 	GetRecentVersionsResultsByRequester map[string][]restmodel.APIVersion
 	GetBuildsForVersionResult           []restmodel.APIBuild
 	GetTasksForBuildResult              []restmodel.APITask
+	// GetTasksForBuildResultByBuild returns task results keyed by build ID. When
+	// set, it takes precedence over GetTasksForBuildResult.
+	GetTasksForBuildResultByBuild map[string][]restmodel.APITask
 
 	SendSlackNotificationData *model.APISlack
 	SendEmailNotificationData *model.APIEmail
@@ -317,6 +324,12 @@ func (c *Mock) GetBuildsForVersion(ctx context.Context, versionID string) ([]res
 }
 
 func (c *Mock) GetTasksForBuild(ctx context.Context, buildID string, startAt string, limit int) ([]restmodel.APITask, error) {
+	if c.GetTasksForBuildResultByBuild != nil {
+		if tasks, ok := c.GetTasksForBuildResultByBuild[buildID]; ok {
+			return tasks, nil
+		}
+		return nil, nil
+	}
 	if c.GetTasksForBuildResult != nil {
 		return c.GetTasksForBuildResult, nil
 	}
@@ -354,7 +367,11 @@ func (c *Mock) GetHostProvisioningOptions(ctx context.Context) (*restmodel.APIHo
 }
 
 func (c *Mock) GetRawPatchWithModules(context.Context, string) (*restmodel.APIRawPatch, error) {
-	return nil, nil
+	return c.GetRawPatchWithModulesResult, c.GetRawPatchWithModulesErr
+}
+
+func (c *Mock) GetVersion(context.Context, string) (*restmodel.APIVersion, error) {
+	return c.GetVersionResult, c.GetVersionErr
 }
 
 func (c *Mock) GetEstimatedGeneratedTasks(ctx context.Context, patchId string, tvPairs []serviceModel.TVPair) (int, error) {

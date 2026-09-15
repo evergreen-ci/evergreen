@@ -11,7 +11,7 @@ On macOS, the evergreen binary is currently not notarized. To allow running it, 
 
 ## Authentication
 
-Human users authenticate with OAuth. [Service users](../Project-Configuration/Project-and-Distro-Settings#service-users), also called API users, authenticate with static credentials in the `.evergreen.yml` file.
+Human users authenticate with OAuth. [Service users](../Project-Configuration/Project-and-Distro-Settings#service-users), also called API users, can authenticate with an API key in the `.evergreen.yml` file.
 
 ### Ensure that your Evergreen CLI is not out of date
 
@@ -19,7 +19,7 @@ Please use `evergreen get-update` to upgrade your Evergreen CLI if you don't hav
 
 ### OAuth Authentication
 
-Human users should comment out or delete the `api_key` field from their `~/.evergreen.yml` file.
+Human users should not configure an `api_key` in their `~/.evergreen.yml` file. If one is present, comment it out or delete it so the CLI uses OAuth.
 
 After doing so, the next time you run an evergreen command that requires authentication, you will be prompted to authenticate. If you would like to not use a browser to authenticate, please see the documentation [here](../Hosts/Spawn-Hosts.md#evergreen-cli-on-a-spawn-host).
 
@@ -90,6 +90,14 @@ To repeat a specific patch id, you can use the `--repeat-patch` flag.
 
 ```bash
 evergreen patch --repeat-patch <patch_id>
+```
+
+`--repeat-patch` also accepts a mainline (waterfall) version ID, in which case the new patch reproduces that version's per-variant task mapping. Note that `--repeat-failed` is not supported for mainline version IDs.
+
+If you have no source checkout, use `patch-file`. Pass the version ID to `--diff-patchId` to create an empty patch at that revision, and to `--repeat-patch` to reproduce its task mapping:
+
+```bash
+evergreen patch-file --diff-patchId <mainline_version_id> --repeat-patch <mainline_version_id> --project <project> -y --finalize
 ```
 
 Similarly, using the `--repeat-failed` flag will perform the same behavior as the `--reuse` flag and by default use the last patch as a reference, with the only difference being that it will repeat only the failed tasks and build variants from the most recent patch (if any failures exist).
@@ -571,12 +579,25 @@ variants ending with `-required`:
 evergreen last-revision -p mongodb-mongo-master --rv '.*-required$' --min-finished 0.15
 ```
 
+##### Failed Tasks Threshold
+
+`--min-failed` is an option to specify a threshold proportion of tasks (between 0 and 1) that must have failed in _any_ of
+the matching build variant(s). This means that unlike the other thresholds, `--min-failed` only has to be met by _at
+least one_ matching build variant rather than all of them.
+
+For example, to find a commit in the `mongodb-mongo-master` project where at least 15% of tasks have failed in some
+build variant ending with `-required`:
+
+```sh
+evergreen last-revision -p mongodb-mongo-master --rv '.*-required$' --min-failed 0.15
+```
+
 ##### Mixing Multiple Criteria
 
 Multiple criteria can be combined together. The last-revision command will search for a commit that satisfies _all_ the
-criteria.
+criteria for all build variants, except for `--min-failed`, which only needs to be met by one matching build variant.
 
-For example, to find a commit in the `mongodb-mongo-master` project where 95% of tasks have finished and the
+For example, to find a commit in the `mongodb-mongo-master` project where 95% of tasks have finished _and_ the
 `noPassthrough` task has succeeded in all build variants that end with `-required`:
 
 ```sh

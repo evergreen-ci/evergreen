@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -393,11 +392,10 @@ func (r *mutationResolver) UpdateHostStatus(ctx context.Context, hostIds []strin
 // SetPatchVisibility is the resolver for the setPatchVisibility field.
 func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []string, hidden bool) ([]*patch.Patch, error) {
 	user := mustHaveUser(ctx)
-	loaders.PreloadPatches(ctx, patchIds)
 
 	patchPtrs := []*patch.Patch{}
 	for _, pId := range patchIds {
-		p, err := loaders.GetPatch(ctx, pId)
+		p, err := patch.FindOneId(ctx, pId)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting patch '%s': %s", pId, err.Error()))
 		}
@@ -430,7 +428,7 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, co
 	if err != nil {
 		return nil, mapHTTPStatusToGqlError(ctx, statusCode, werrors.Errorf("scheduling patch '%s': %s", patchID, err.Error()))
 	}
-	scheduledPatch, err := loaders.GetPatch(ctx, patchID)
+	scheduledPatch, err := patch.FindOneId(ctx, patchID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting scheduled patch '%s': %s", patchID, err.Error()))
 	}
@@ -1469,7 +1467,7 @@ func (r *mutationResolver) RefreshGitHubStatuses(ctx context.Context, opts Refre
 }
 
 // RestartVersions is the resolver for the restartVersions field.
-func (r *mutationResolver) RestartVersions(ctx context.Context, versionID string, abort bool, versionsToRestart []*model.VersionToRestart) ([]*restModel.APIVersion, error) {
+func (r *mutationResolver) RestartVersions(ctx context.Context, versionID string, abort bool, versionsToRestart []*model.VersionToRestart) ([]*model.Version, error) {
 	if len(versionsToRestart) == 0 {
 		return nil, InputValidationError.Send(ctx, "No versions provided. You must provide at least one version to restart.")
 	}
@@ -1482,21 +1480,22 @@ func (r *mutationResolver) RestartVersions(ctx context.Context, versionID string
 	if err != nil {
 		return nil, err
 	}
-	versions := []*restModel.APIVersion{}
+
+	versionIDs := []string{}
 	for _, version := range versionsToRestart {
-		if version.VersionId != nil {
-			currVersionID := utility.FromStringPtr(version.VersionId)
-			v, versionErr := model.VersionFindOneIdWithBuildVariants(ctx, currVersionID)
-			if versionErr != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", currVersionID, versionErr.Error()))
-			}
-			if v == nil {
-				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", currVersionID))
-			}
-			apiVersion := restModel.APIVersion{}
-			apiVersion.BuildFromService(ctx, *v)
-			versions = append(versions, &apiVersion)
+		versionIDs = append(versionIDs, utility.FromStringPtr(version.VersionId))
+	}
+
+	versions := []*model.Version{}
+	for _, vId := range versionIDs {
+		v, versionErr := model.VersionFindOneId(ctx, vId)
+		if versionErr != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", vId, versionErr.Error()))
 		}
+		if v == nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", vId))
+		}
+		versions = append(versions, v)
 	}
 	return versions, nil
 }
