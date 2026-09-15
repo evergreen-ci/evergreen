@@ -11,7 +11,7 @@ On macOS, the evergreen binary is currently not notarized. To allow running it, 
 
 ## Authentication
 
-Human users authenticate with OAuth. [Service users](../Project-Configuration/Project-and-Distro-Settings#service-users), also called API users, authenticate with static credentials in the `.evergreen.yml` file.
+Human users authenticate with OAuth. [Service users](../Project-Configuration/Project-and-Distro-Settings#service-users), also called API users, can authenticate with an API key in the `.evergreen.yml` file.
 
 ### Ensure that your Evergreen CLI is not out of date
 
@@ -19,7 +19,7 @@ Please use `evergreen get-update` to upgrade your Evergreen CLI if you don't hav
 
 ### OAuth Authentication
 
-Human users should comment out or delete the `api_key` field from their `~/.evergreen.yml` file.
+Human users should not configure an `api_key` in their `~/.evergreen.yml` file. If one is present, comment it out or delete it so the CLI uses OAuth.
 
 After doing so, the next time you run an evergreen command that requires authentication, you will be prompted to authenticate. If you would like to not use a browser to authenticate, please see the documentation [here](../Hosts/Spawn-Hosts.md#evergreen-cli-on-a-spawn-host).
 
