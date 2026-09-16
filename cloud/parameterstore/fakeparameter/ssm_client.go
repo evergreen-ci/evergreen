@@ -15,13 +15,22 @@ import (
 
 // FakeSSMClient implements the parameterstore.SSMClient interface backed by the
 // fake parameters in the DB. This should only be used in testing.
-type FakeSSMClient struct{}
+type FakeSSMClient struct {
+	AddTagsToResourceInput *ssm.AddTagsToResourceInput
+}
 
 // NewFakeSSMClient returns a fake SSM client implementation backed by the DB.
 // This should only be used in testing.
 func NewFakeSSMClient() *FakeSSMClient {
 	checkTestingEnvironment()
 	return &FakeSSMClient{}
+}
+
+// AddTagsToResource records tags added to a fake parameter store resource.
+func (c *FakeSSMClient) AddTagsToResource(_ context.Context, input *ssm.AddTagsToResourceInput) (*ssm.AddTagsToResourceOutput, error) {
+	checkTestingEnvironment()
+	c.AddTagsToResourceInput = input
+	return &ssm.AddTagsToResourceOutput{}, nil
 }
 
 // PutParameter inserts a parameter into the fake parameter store.

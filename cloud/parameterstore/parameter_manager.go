@@ -37,7 +37,8 @@ type Parameter struct {
 // parameters in AWS Systems Manager Parameter Store. It supports caching to
 // optimize parameter retrieval.
 type ParameterManager struct {
-	pathPrefix string
+	pathPrefix   string
+	resourceTags []ssmTypes.Tag
 	// cache holds the in-memory cache of parameters. If parameter caching is
 	// enabled, the cache will reduce the number of reads from Parameter Store
 	// by only fetching directly from Parameter Store if the value is missing
@@ -53,6 +54,7 @@ type ParameterManagerOptions struct {
 	// all parameters should be stored under this prefix.
 	PathPrefix     string
 	CachingEnabled bool
+	ResourceTags   map[string]string
 	SSMClient      SSMClient
 	DB             *mongo.Database
 }
@@ -88,6 +90,11 @@ func NewParameterManager(ctx context.Context, opts ParameterManagerOptions) (*Pa
 		ssmClient:  opts.SSMClient,
 		DB:         opts.DB,
 	}
+	for key, value := range opts.ResourceTags {
+		if value != "" {
+			pm.resourceTags = append(pm.resourceTags, ssmTypes.Tag{Key: aws.String(key), Value: aws.String(value)})
+		}
+	}
 	if opts.CachingEnabled {
 		pm.cache = newParameterCache()
 	}
@@ -109,6 +116,15 @@ func (pm *ParameterManager) Put(ctx context.Context, name, value string) (*Param
 		Tier:      ssmTypes.ParameterTierIntelligentTiering,
 	}); err != nil {
 		return nil, errors.Wrapf(err, "putting parameter '%s'", name)
+	}
+	if len(pm.resourceTags) != 0 {
+		if _, err := pm.ssmClient.AddTagsToResource(ctx, &ssm.AddTagsToResourceInput{
+			ResourceId:   aws.String(fullName),
+			ResourceType: ssmTypes.ResourceTypeForTaggingParameter,
+			Tags:         pm.resourceTags,
+		}); err != nil {
+			return nil, errors.Wrapf(err, "tagging parameter '%s'", name)
+		}
 	}
 
 	// Regardless of whether caching is enabled or not, still record that the
