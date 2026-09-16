@@ -1042,16 +1042,25 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 			return nil, errors.Wrapf(err, "finding host '%s' associated with volume", volume.Host)
 		}
 		if associatedHost != nil {
-			for _, tag := range associatedHost.InstanceTags {
-				if tag.Key == evergreen.TagMongoDBOwner || tag.Key == evergreen.TagMongoDBEnv {
-					volumeTags = append(volumeTags, types.Tag{Key: aws.String(tag.Key), Value: aws.String(tag.Value)})
-				}
-			}
+			volumeTags = append(volumeTags, hostToEC2Tags(filterMongoDBResourceTags(associatedHost.InstanceTags))...)
 		}
 		volumeTags = append(volumeTags, types.Tag{Key: aws.String(evergreen.TagHostName), Value: aws.String(volume.Host)})
 		// Clear before inserting so the DB field isn't left as the intent host tag;
 		// AddVolumeToHost sets volume.Host to the real host ID after attachment.
 		volume.Host = ""
+	} else {
+		var ownerEmail string
+		if volume.CreatedBy != "" {
+			owner, err := user.FindOneById(ctx, volume.CreatedBy)
+			if err != nil {
+				return nil, errors.Wrapf(err, "finding volume owner '%s'", volume.CreatedBy)
+			}
+			if owner != nil {
+				ownerEmail = owner.Email()
+			}
+		}
+		resourceTags := m.settings.Providers.AWS.ResourceTags
+		volumeTags = append(volumeTags, hostToEC2Tags(makeMongoDBResourceTags(ownerEmail, resourceTags.MongoDBEnv))...)
 	}
 	input := &ec2.CreateVolumeInput{
 		AvailabilityZone: aws.String(volume.AvailabilityZone),

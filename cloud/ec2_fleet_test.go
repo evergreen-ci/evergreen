@@ -372,6 +372,10 @@ func TestFleet(t *testing.T) {
 		},
 		"RequestFleet": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
 			ec2Settings := &EC2ProviderSettings{VpcName: "my_vpc", InstanceType: "instanceType0", IAMInstanceProfileARN: "my-profile"}
+			h.InstanceTags = []host.Tag{
+				{Key: evergreen.TagMongoDBOwner, Value: "evergreen@mongodb.com"},
+				{Key: evergreen.TagMongoDBEnv, Value: "prod"},
+			}
 
 			instanceID, err := m.requestFleet(ctx, h, ec2Settings)
 			assert.NoError(t, err)
@@ -379,6 +383,14 @@ func TestFleet(t *testing.T) {
 
 			assert.Len(t, client.CreateFleetInput.LaunchTemplateConfigs, 1)
 			assert.Equal(t, "ht_1", *client.CreateFleetInput.LaunchTemplateConfigs[0].LaunchTemplateSpecification.LaunchTemplateName)
+			require.Len(t, client.CreateFleetInput.TagSpecifications, 1)
+			assert.Equal(t, types.ResourceTypeFleet, client.CreateFleetInput.TagSpecifications[0].ResourceType)
+			tagsByKey := map[string]string{}
+			for _, tag := range client.CreateFleetInput.TagSpecifications[0].Tags {
+				tagsByKey[aws.ToString(tag.Key)] = aws.ToString(tag.Value)
+			}
+			assert.Equal(t, "evergreen@mongodb.com", tagsByKey[evergreen.TagMongoDBOwner])
+			assert.Equal(t, "prod", tagsByKey[evergreen.TagMongoDBEnv])
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -452,7 +464,7 @@ func TestUploadLaunchTemplate(t *testing.T) {
 
 		mockClient := m.client.(*awsClientMock)
 		tagSpecifications := mockClient.CreateLaunchTemplateInput.LaunchTemplateData.TagSpecifications
-		require.Len(t, tagSpecifications, 2)
+		require.Len(t, tagSpecifications, 3)
 		resourceTypes := map[types.ResourceType]bool{}
 		for _, spec := range tagSpecifications {
 			resourceTypes[spec.ResourceType] = true
@@ -465,6 +477,16 @@ func TestUploadLaunchTemplate(t *testing.T) {
 		}
 		assert.True(t, resourceTypes[types.ResourceTypeInstance])
 		assert.True(t, resourceTypes[types.ResourceTypeVolume])
+		assert.True(t, resourceTypes[types.ResourceTypeNetworkInterface])
+
+		require.Len(t, mockClient.CreateLaunchTemplateInput.TagSpecifications, 1)
+		assert.Equal(t, types.ResourceTypeLaunchTemplate, mockClient.CreateLaunchTemplateInput.TagSpecifications[0].ResourceType)
+		launchTemplateTagsByKey := map[string]string{}
+		for _, tag := range mockClient.CreateLaunchTemplateInput.TagSpecifications[0].Tags {
+			launchTemplateTagsByKey[aws.ToString(tag.Key)] = aws.ToString(tag.Value)
+		}
+		assert.Equal(t, resourceTags.MongoDBOwner, launchTemplateTagsByKey[evergreen.TagMongoDBOwner])
+		assert.Equal(t, resourceTags.MongoDBEnv, launchTemplateTagsByKey[evergreen.TagMongoDBEnv])
 	})
 
 	t.Run("UploadNew", func(t *testing.T) {

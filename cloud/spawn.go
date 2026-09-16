@@ -242,14 +242,7 @@ func AddUserSpawnHostResourceTags(intentHost *host.Host, userEmail string, resou
 		return
 	}
 
-	tags := []host.Tag{}
-	if userEmail != "" {
-		tags = append(tags, host.Tag{Key: evergreen.TagMongoDBOwner, Value: userEmail, CanBeModified: false})
-	}
-	if resourceTags.MongoDBEnv != "" {
-		tags = append(tags, host.Tag{Key: evergreen.TagMongoDBEnv, Value: resourceTags.MongoDBEnv, CanBeModified: false})
-	}
-	intentHost.AddTags(tags)
+	intentHost.AddTags(makeMongoDBResourceTags(userEmail, resourceTags.MongoDBEnv))
 }
 
 // getDebugSetupScript returns the debug setup script to use. The

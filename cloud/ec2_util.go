@@ -195,18 +195,34 @@ func makeTags(intentHost *host.Host, resourceTags evergreen.ResourceTagsConfig) 
 		}
 	}
 	if !intentHost.UserHost || intentHost.SpawnOptions.SpawnedByTask {
-		if resourceTags.MongoDBOwner != "" {
-			systemTags = append(systemTags, host.Tag{Key: evergreen.TagMongoDBOwner, Value: resourceTags.MongoDBOwner, CanBeModified: false})
-		}
-		if resourceTags.MongoDBEnv != "" {
-			systemTags = append(systemTags, host.Tag{Key: evergreen.TagMongoDBEnv, Value: resourceTags.MongoDBEnv, CanBeModified: false})
-		}
+		systemTags = append(systemTags, makeMongoDBResourceTags(resourceTags.MongoDBOwner, resourceTags.MongoDBEnv)...)
 	}
 
 	// Add Evergreen-generated tags to host object
 	intentHost.AddTags(systemTags)
 
 	return intentHost.InstanceTags
+}
+
+func makeMongoDBResourceTags(owner, environment string) []host.Tag {
+	tags := []host.Tag{}
+	if owner != "" {
+		tags = append(tags, host.Tag{Key: evergreen.TagMongoDBOwner, Value: owner, CanBeModified: false})
+	}
+	if environment != "" {
+		tags = append(tags, host.Tag{Key: evergreen.TagMongoDBEnv, Value: environment, CanBeModified: false})
+	}
+	return tags
+}
+
+func filterMongoDBResourceTags(tags []host.Tag) []host.Tag {
+	resourceTags := []host.Tag{}
+	for _, tag := range tags {
+		if tag.Key == evergreen.TagMongoDBOwner || tag.Key == evergreen.TagMongoDBEnv {
+			resourceTags = append(resourceTags, tag)
+		}
+	}
+	return resourceTags
 }
 
 func hostToEC2Tags(hostTags []host.Tag) []types.Tag {
@@ -227,6 +243,10 @@ func makeTagTemplate(hostTags []host.Tag) []types.LaunchTemplateTagSpecification
 		// every host has at least a root volume that needs to be tagged
 		{
 			ResourceType: types.ResourceTypeVolume,
+			Tags:         tags,
+		},
+		{
+			ResourceType: types.ResourceTypeNetworkInterface,
 			Tags:         tags,
 		},
 	}
@@ -704,7 +724,7 @@ func getSubnetForZoneInDefaultAccount(subnets []evergreen.Subnet, zone string) (
 // created for the project, user spawned hosts use the spawn host key, and task hosts use the task host key.
 func getKeyName(ctx context.Context, h *host.Host, settings *evergreen.Settings, client AWSClient) (string, error) {
 	if h.SpawnOptions.SpawnedByTask {
-		return client.GetKey(ctx, h)
+		return client.GetKey(ctx, h, settings.Providers.AWS.ResourceTags)
 	}
 	if h.UserHost {
 		return settings.SSH.SpawnHostKey.Name, nil
@@ -920,6 +940,16 @@ func associateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) e
 
 	ctx, span := tracer.Start(ctx, "associateIPAddressForHost")
 	defer span.End()
+
+	resourceTags := hostToEC2Tags(filterMongoDBResourceTags(h.InstanceTags))
+	if len(resourceTags) != 0 {
+		if _, err := c.CreateTags(ctx, &ec2.CreateTagsInput{
+			Resources: []string{h.IPAllocationID},
+			Tags:      resourceTags,
+		}); err != nil {
+			return errors.Wrap(err, "tagging allocated IP address")
+		}
+	}
 
 	assocAddrOut, err := c.AssociateAddress(ctx, h, &ec2.AssociateAddressInput{
 		InstanceId:   aws.String(h.Id),
