@@ -1037,6 +1037,17 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 		{Key: aws.String(evergreen.TagExpireOn), Value: aws.String(expireInDays(evergreen.SpawnHostExpireDays))},
 	}
 	if volume.Host != "" {
+		associatedHost, err := host.FindOneByIdOrTag(ctx, volume.Host)
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding host '%s' associated with volume", volume.Host)
+		}
+		if associatedHost != nil {
+			for _, tag := range associatedHost.InstanceTags {
+				if tag.Key == evergreen.TagMongoDBOwner || tag.Key == evergreen.TagMongoDBEnv {
+					volumeTags = append(volumeTags, types.Tag{Key: aws.String(tag.Key), Value: aws.String(tag.Value)})
+				}
+			}
+		}
 		volumeTags = append(volumeTags, types.Tag{Key: aws.String(evergreen.TagHostName), Value: aws.String(volume.Host)})
 		// Clear before inserting so the DB field isn't left as the intent host tag;
 		// AddVolumeToHost sets volume.Host to the real host ID after attachment.
