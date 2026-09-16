@@ -248,6 +248,7 @@ func (h *completeVirtualTasksHandler) completeTask(ctx context.Context, runner *
 	vt.StartTime = finishTime
 	detail := &apimodels.TaskEndDetail{
 		Status:                    completion.Status,
+		ExecutionPlatform:         string(vt.ExecutionPlatform),
 		ExternalExecutionMetadata: completion.ExternalMetadata,
 	}
 	if err = model.MarkEnd(ctx, h.env.Settings(), vt, evergreen.APIServerTaskActivator, finishTime, detail); err != nil {

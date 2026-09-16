@@ -79,7 +79,7 @@ func TestCompleteVirtualTasks(t *testing.T) {
 			require.NotNil(t, vt)
 			assert.Equal(t, evergreen.TaskSucceeded, vt.Status)
 			assert.Equal(t, evergreen.TaskSucceeded, vt.Details.Status)
-			assert.Equal(t, vt.ExecutionPlatform, vt.Details.ExecutionPlatform, "a push-completed task should preserve its execution platform (which is irrelevant since it didn't run)")
+			assert.EqualValues(t, task.ExecutionPlatformHost, vt.Details.ExecutionPlatform, "a push-completed task should preserve its execution platform (which is irrelevant since it didn't run)")
 			assert.Equal(t, runnerTaskID, vt.CompletedBy)
 			assert.True(t, vt.StartTime.Equal(vt.FinishTime), "a push-completed task should have no duration of its own")
 			assert.Zero(t, vt.TimeTaken)
