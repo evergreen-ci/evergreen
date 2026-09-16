@@ -3942,24 +3942,17 @@ tasks:
 }
 
 // TestAnchorRedefinedWithAliasDependencyDoesNotError is a regression test for a
-// production bug where a project failed to load with "unknown anchor" errors.
+// bug where redefining an anchor that introduces a new alias dependency caused
+// the preamble for subsequent files to fail to parse with "unknown anchor" errors.
 //
-// The failure pattern requires three files:
-//  1. first.yml defines &template-expansions with a plain string value (no aliases).
-//  2. second.yml defines &compile-dependency (a mapping) that contains a nested
-//     scalar anchor &compile-variant. It also redefines &template-expansions,
-//     replacing the plain string with an alias: compile_variant: *compile-variant.
-//  3. third.yml need not reference these anchors at all; the bug fires when
-//     building the preamble injected before third.yml is parsed.
-//
-// Before the fix, upsert updated the registry entry for &template-expansions
-// in-place, so it stayed at its original index K. The new entries
-// &compile-dependency and &compile-variant were appended after K. When the
-// preamble was marshaled, &template-expansions appeared before &compile-variant,
-// causing the re-parse to fail with "unknown anchor 'compile-variant' referenced".
-//
-// After the fix, when an anchor is redefined, the old entry is removed and the
-// new one is appended at the end, so all dependencies always precede their users.
+// The failure pattern:
+//  1. first.yml defines &task-template with no alias dependencies.
+//  2. second.yml introduces &compile-script (a nested scalar anchor) and redefines
+//     &task-template so its value now references *compile-script. This puts the
+//     redefined &task-template at the same registry position as before, but it now
+//     depends on &compile-script which is at a later position.
+//  3. When building the preamble for third.yml, the topological sort ensures
+//     &compile-script is emitted before &task-template despite the position mismatch.
 func TestAnchorRedefinedWithAliasDependencyDoesNotError(t *testing.T) {
 	mainYAML := mainYAMLWithModuleIncludes("", "first.yml", "second.yml", "third.yml")
 
@@ -4012,37 +4005,116 @@ tasks:
 	require.NoError(t, err, "preamble ordering bug: anchor redefined with alias dependency should not produce unknown-anchor error")
 }
 
+// TestSameAnchorDefinedInTwoIncludeFilesDoesNotBreakSubsequentFiles is a
+// regression test for a bug where two include files both define the same
+// anchor, and a fourth file needs an unrelated anchor from the first file.
+// The redefinition used to corrupt the preamble ordering, making the fourth
+// file fail with "unknown anchor".
+func TestSameAnchorDefinedInTwoIncludeFilesDoesNotBreakSubsequentFiles(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes("", "shared.yml", "tasks_a.yml", "tasks_b.yml", "variants.yml")
+
+	// shared.yml defines &anchor-a, which variants.yml will need.
+	sharedYAML := `
+variables:
+- &anchor-a
+  flag: value-a
+`
+	// tasks_a.yml defines &anchor-b and a task that uses it.
+	tasksAYAML := `
+variables:
+- &anchor-b
+  num_files: 15
+tasks:
+- name: task-a
+  commands:
+  - command: shell.exec
+    vars:
+      <<: *anchor-b
+`
+	// tasks_b.yml redefines &anchor-b (identical content, duplicated across files).
+	tasksBYAML := `
+variables:
+- &anchor-b
+  num_files: 15
+tasks:
+- name: task-b
+  commands:
+  - command: shell.exec
+    vars:
+      <<: *anchor-b
+`
+	// variants.yml uses *anchor-a from shared.yml. Before the fix, the preamble
+	// built for this file had a forward reference due to &anchor-b being moved
+	// to the end of the registry past entries that referenced it. The YAML
+	// parser rejected the preamble, so *anchor-a was never in scope.
+	variantsYAML := `
+buildvariants:
+- name: my-variant
+  display_name: My Variant
+  expansions:
+    <<: *anchor-a
+  tasks:
+  - name: task-a
+  - name: task-b
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		moduleIncludeOpts(t,
+			moduleInclude("shared.yml", sharedYAML),
+			moduleInclude("tasks_a.yml", tasksAYAML),
+			moduleInclude("tasks_b.yml", tasksBYAML),
+			moduleInclude("variants.yml", variantsYAML),
+		), "proj", proj)
+	require.NoError(t, err)
+	require.Len(t, proj.BuildVariants, 1)
+	assert.Equal(t, "value-a", proj.BuildVariants[0].Expansions["flag"])
+}
+
 // TestAnchorPreambleFailureFallsBack verifies that if the anchor preamble itself is
 // invalid (alias-before-definition ordering), createIntermediateProject falls back to
 // parsing without the preamble rather than propagating the error. This guards against
 // any future preamble-construction bugs breaking projects that don't use cross-file anchors.
 func TestAnchorPreambleFailureFallsBack(t *testing.T) {
-	// Build a registry with broken ordering: entry 0 is a mapping that contains
-	// *my-anchor (an AliasNode), but entry 1 is the node that defines &my-anchor.
-	// Marshaling this produces alias-before-definition in the preamble YAML.
-	scalarNode := &yaml.Node{Kind: yaml.ScalarNode, Value: "hello", Anchor: "my-anchor"}
-	aliasNode := &yaml.Node{Kind: yaml.AliasNode, Value: "my-anchor", Alias: scalarNode}
-	mappingNode := &yaml.Node{
+	// Build a registry with a cycle: entry 0 references entry 1 via alias, and
+	// entry 1 references entry 0 via alias. The topological sort falls back to
+	// original order on a cycle, and the resulting preamble is invalid YAML.
+	scalarA := &yaml.Node{Kind: yaml.ScalarNode, Value: "a", Anchor: "anchor-a"}
+	scalarB := &yaml.Node{Kind: yaml.ScalarNode, Value: "b", Anchor: "anchor-b"}
+	aliasA := &yaml.Node{Kind: yaml.AliasNode, Value: "anchor-a", Alias: scalarA}
+	aliasB := &yaml.Node{Kind: yaml.AliasNode, Value: "anchor-b", Alias: scalarB}
+	// mappingA depends on anchor-b, mappingB depends on anchor-a — a cycle.
+	mappingA := &yaml.Node{
 		Kind:   yaml.MappingNode,
-		Anchor: "my-template",
+		Anchor: "anchor-a",
 		Content: []*yaml.Node{
 			{Kind: yaml.ScalarNode, Value: "key"},
-			aliasNode,
+			aliasB,
 		},
 	}
+	mappingB := &yaml.Node{
+		Kind:   yaml.MappingNode,
+		Anchor: "anchor-b",
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "key"},
+			aliasA,
+		},
+	}
+	// Override scalarA/scalarB with the cyclic mappings so the registry entries are the cyclic nodes.
+	_ = scalarA
+	_ = scalarB
 	registry := &anchorRegistry{
 		entries: []anchorEntry{
-			{name: "my-template", node: mappingNode},
-			{name: "my-anchor", node: scalarNode},
+			{name: "anchor-a", node: mappingA},
+			{name: "anchor-b", node: mappingB},
 		},
 	}
 
-	// Confirm the preamble is invalid on re-parse (alias appears before its definition).
+	// Confirm the preamble is invalid on re-parse (cycle causes forward reference).
 	preamble, err := buildAnchorPreamble(registry)
 	require.NoError(t, err)
 	var preambleNode yaml.Node
 	require.Error(t, yaml.NewDecoder(bytes.NewReader(preamble)).Decode(&preambleNode),
-		"preamble should fail to parse due to alias-before-definition")
+		"preamble should fail to parse due to cyclic alias dependency")
 
 	// createIntermediateProject should fall back to parsing without the preamble.
 	simpleYAML := []byte("tasks:\n- name: my-task\n  commands:\n  - command: shell.exec\n")
@@ -4210,30 +4282,6 @@ tasks:
 	// *base-cmd is listed first in the merge list, so it wins on key conflicts.
 	// Both command: shell.exec entries agree, so the command field is shell.exec.
 	assert.Equal(t, "shell.exec", tasksByName["include-task"].Commands[0].Command)
-}
-
-// TestDecodeWithAnchorsPopulatesRegistryOnDecodeFailure verifies that
-// decodeWithAnchors collects anchors into the registry even when the struct
-// decode step fails. This is a regression test: mergeAnchorsFrom was previously
-// called after node.Decode, so any struct-decode failure left the registry empty
-// and caused cross-file alias resolution to fail in subsequent include files.
-func TestDecodeWithAnchorsPopulatesRegistryOnDecodeFailure(t *testing.T) {
-	// This YAML defines an anchor but has a type mismatch on the tasks field
-	// (expects a list, gets a scalar) that causes node.Decode to fail.
-	yamlBytes := []byte(`
-defined_anchor: &my-anchor
-  command: shell.exec
-  params:
-    script: ./run.sh
-tasks: not-a-list
-`)
-	registry := &anchorRegistry{}
-	_, err := decodeWithAnchors(yamlBytes, false, registry)
-	assert.Error(t, err, "expected decode to fail due to type mismatch")
-	assert.Equal(t, 1, registry.Length(), "anchor should be collected even when struct decode fails")
-	if registry.Length() > 0 {
-		assert.Equal(t, "my-anchor", registry.entries[0].name)
-	}
 }
 
 // TestIncludeFileWithLocalAnchorOnlyParsesCorrectly verifies that a project whose

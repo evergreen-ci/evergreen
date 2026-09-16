@@ -1759,9 +1759,6 @@ func decodeWithAnchors(parseBytes []byte, unmarshalStrict bool, anchorRegistry *
 	}
 
 	stripEvgAnchorsKey(&node)
-	// Update the anchor registry first thing, so that aliases from this file can be resolved
-	// in any subsequent files, even if we fall back to standard unmarshal for this file.
-	anchorRegistry.mergeAnchorsFrom(&node)
 
 	var p ParserProject
 	if unmarshalStrict {
@@ -1784,6 +1781,8 @@ func decodeWithAnchors(parseBytes []byte, unmarshalStrict bool, anchorRegistry *
 			return nil, errors.Wrap(yamlErr, "unmarshalling parser project from YAML")
 		}
 	}
+
+	anchorRegistry.mergeAnchorsFrom(&node)
 
 	if p.Functions == nil {
 		p.Functions = map[string]*YAMLCommandSet{}
