@@ -57,6 +57,56 @@ type AttachTestResultsRequest struct {
 	CreatedAt    time.Time                       `json:"created_at"`
 }
 
+// CompleteVirtualTasksRequest is the request body for push-completing a batch
+// of virtual tasks.
+type CompleteVirtualTasksRequest struct {
+	Tasks []VirtualTaskCompletion `json:"tasks"`
+}
+
+// VirtualTaskCompletion contains the final results for a single virtual task.
+type VirtualTaskCompletion struct {
+	TaskID string `json:"task_id"`
+	// Execution must match the task's current execution or the completion
+	// no-ops.
+	Execution        int                        `json:"execution"`
+	Status           string                     `json:"status"`
+	TestResults      *VirtualTaskTestResults    `json:"test_results,omitempty"`
+	Artifacts        []VirtualTaskArtifact      `json:"artifacts,omitempty"`
+	ExternalMetadata *ExternalExecutionMetadata `json:"external_metadata,omitempty"`
+}
+
+// VirtualTaskTestResults contains test result metadata pushed for a virtual task.
+type VirtualTaskTestResults struct {
+	Stats        testresult.TaskTestResultsStats `json:"stats"`
+	FailedSample []string                        `json:"failed_sample,omitempty"`
+	CreatedAt    time.Time                       `json:"created_at"`
+}
+
+// VirtualTaskArtifact describes an artifact file pushed for a virtual task.
+type VirtualTaskArtifact struct {
+	Name       string `json:"name"`
+	URL        string `json:"url"`
+	Visibility string `json:"visibility,omitempty"`
+}
+
+// CompleteVirtualTasksResponse contains the per-task outcomes of a push completion.
+type CompleteVirtualTasksResponse struct {
+	Results []VirtualTaskCompletionResult `json:"results"`
+}
+
+const (
+	VirtualTaskCompletionOutcomeSuccess = "success"
+	VirtualTaskCompletionOutcomeFailed  = "failed"
+)
+
+// VirtualTaskCompletionResult is the outcome of completing a single virtual
+// task in a push completion.
+type VirtualTaskCompletionResult struct {
+	TaskID  string `json:"task_id"`
+	Outcome string `json:"outcome"`
+	Reason  string `json:"reason,omitempty"`
+}
+
 // TaskEndDetail contains data sent from the agent to the API server after each task run.
 // This should be used to store data relating to what happened when the task ran
 type TaskEndDetail struct {
@@ -81,6 +131,15 @@ type TaskEndDetail struct {
 	DiskDevices          []string                `bson:"disk_devices,omitempty" json:"disk_devices,omitempty"`
 	ResourceConstraints  *ResourceConstraintInfo `bson:"resource_constraints,omitempty" json:"resource_constraints,omitempty"`
 	ExecutionPlatform    string                  `bson:"execution_platform,omitempty" json:"execution_platform,omitempty"`
+	// ExternalExecutionMetadata is only set for push-completed virtual tasks.
+	ExternalExecutionMetadata *ExternalExecutionMetadata `bson:"external_execution_metadata,omitempty" json:"external_execution_metadata,omitempty"`
+}
+
+// ExternalExecutionMetadata identifies the external execution that produced a
+// virtual task's results.
+type ExternalExecutionMetadata struct {
+	EngFlowInvocationID string `bson:"engflow_invocation_id,omitempty" json:"engflow_invocation_id,omitempty"`
+	ShardID             string `bson:"shard_id,omitempty" json:"shard_id,omitempty"`
 }
 
 // FailingCommand represents a command that failed in a task.
