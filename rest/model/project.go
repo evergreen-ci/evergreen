@@ -343,9 +343,9 @@ func (ta *APITaskAnnotationSettings) RedactSecrets() {
 	}
 }
 
-// PreserveRedactedFileTicketWebhookSecret replaces a redacted placeholder with
+// RestoreRedactedFileTicketWebhookSecret replaces a redacted placeholder with
 // the currently stored secret.
-func PreserveRedactedFileTicketWebhookSecret(updated *evergreen.AnnotationsSettings, current evergreen.AnnotationsSettings) {
+func RestoreRedactedFileTicketWebhookSecret(updated *evergreen.AnnotationsSettings, current evergreen.AnnotationsSettings) {
 	if updated.FileTicketWebhook.Secret == evergreen.RedactedValue {
 		updated.FileTicketWebhook.Secret = current.FileTicketWebhook.Secret
 	}

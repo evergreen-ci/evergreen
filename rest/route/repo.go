@@ -168,7 +168,7 @@ func (h *repoIDPatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	if err != nil {
 		return errors.Wrap(err, "converting new repo to service model")
 	}
-	model.PreserveRedactedFileTicketWebhookSecret(&newProjectRef.TaskAnnotationSettings, oldRepoRef.TaskAnnotationSettings)
+	model.RestoreRedactedFileTicketWebhookSecret(&newProjectRef.TaskAnnotationSettings, oldRepoRef.TaskAnnotationSettings)
 
 	h.newRepoRef = &dbModel.RepoRef{ProjectRef: *newProjectRef}
 	h.originalRepoRef = oldRepoRef

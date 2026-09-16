@@ -35,7 +35,8 @@ func TestProjectRoutes(t *testing.T) {
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"pub"},
 	}
-	require.NoError(t, evergreen.GetEnvironment().RoleManager().AddScope(ctx, settingsScope))
+	rm := env.RoleManager()
+	require.NoError(t, rm.AddScope(ctx, settingsScope))
 	settingsRole := gimlet.Role{
 		ID:    "pub_edit_settings",
 		Scope: settingsScope.ID,
@@ -43,7 +44,7 @@ func TestProjectRoutes(t *testing.T) {
 			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
 		},
 	}
-	require.NoError(t, evergreen.GetEnvironment().RoleManager().UpdateRole(ctx, settingsRole))
+	require.NoError(t, rm.UpdateRole(ctx, settingsRole))
 	settingsUsr := *usr
 	settingsUsr.SystemRoles = append(append([]string{}, usr.SystemRoles...), settingsRole.ID)
 	serviceutil.MockUser.SystemRoles = usr.SystemRoles
@@ -101,7 +102,7 @@ func TestProjectRoutes(t *testing.T) {
 			So(json.Unmarshal(response.Body.Bytes(), outRef), ShouldBeNil)
 			So(outRef, ShouldResemble, &redactedPublic)
 		})
-		Convey("by a project settings editor", func() {
+		Convey("by a user with project settings edit permissions", func() {
 			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
 			request = request.WithContext(gimlet.AttachUser(request.Context(), &settingsUsr))

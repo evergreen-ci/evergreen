@@ -20,6 +20,9 @@ import (
 )
 
 func TestRepoGetByID(t *testing.T) {
+	ctx := t.Context()
+	env := testutil.NewEnvironment(ctx, t)
+	rm := env.RoleManager()
 	collections := []string{
 		model.RepoRefCollection,
 		model.ProjectVarsCollection,
@@ -45,13 +48,13 @@ func TestRepoGetByID(t *testing.T) {
 			},
 		},
 	}}
-	require.NoError(t, repoRef.Replace(t.Context()))
-	require.NoError(t, evergreen.GetEnvironment().RoleManager().AddScope(t.Context(), gimlet.Scope{
+	require.NoError(t, repoRef.Replace(ctx))
+	require.NoError(t, rm.AddScope(ctx, gimlet.Scope{
 		ID:        "repo-admin-scope",
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"my-repo"},
 	}))
-	require.NoError(t, evergreen.GetEnvironment().RoleManager().UpdateRole(t.Context(), gimlet.Role{
+	require.NoError(t, rm.UpdateRole(ctx, gimlet.Role{
 		ID:    "repo-admin",
 		Scope: "repo-admin-scope",
 		Permissions: gimlet.Permissions{
@@ -285,7 +288,7 @@ func TestRepoPatchByID(t *testing.T) {
 		assert.Equal(t, "my-mothra-team", updated.TaskOwnership.DefaultMothraTeam)
 	})
 
-	t.Run("RedactedWebhookSecretPreservesStoredSecret", func(t *testing.T) {
+	t.Run("UpdatingEndpointPreservesStoredWebhookSecret", func(t *testing.T) {
 		resp := makeRequest(t, `{"task_annotation_settings": {"web_hook": {"endpoint": "https://example.com/updated", "secret": "{REDACTED}"}}}`)
 		require.NotNil(t, resp)
 		require.Equal(t, http.StatusOK, resp.Status())
