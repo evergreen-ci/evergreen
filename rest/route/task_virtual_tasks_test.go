@@ -79,7 +79,7 @@ func TestCompleteVirtualTasks(t *testing.T) {
 			require.NotNil(t, vt)
 			assert.Equal(t, evergreen.TaskSucceeded, vt.Status)
 			assert.Equal(t, evergreen.TaskSucceeded, vt.Details.Status)
-			assert.Equal(t, string(task.ExecutionPlatformVirtual), vt.Details.ExecutionPlatform)
+			assert.Empty(t, vt.Details.ExecutionPlatform, "a push-completed task should not have its own execution platform since it was never run")
 			assert.Equal(t, runnerTaskID, vt.CompletedBy)
 			assert.True(t, vt.StartTime.Equal(vt.FinishTime), "a push-completed task should have no duration of its own")
 			assert.Zero(t, vt.TimeTaken)
@@ -201,18 +201,18 @@ func TestCompleteVirtualTasks(t *testing.T) {
 			}
 			require.NoError(t, runnerTask.Insert(ctx))
 			virtualTask := task.Task{
-				Id:                virtualTaskID,
-				DisplayName:       "virtual_task_display_name",
-				Status:            evergreen.TaskUndispatched,
-				Activated:         false,
-				ExecutionPlatform: task.ExecutionPlatformVirtual,
-				Project:           projectID,
-				BuildVariant:      "bv",
-				BuildId:           buildID,
-				Version:           versionID,
-				DistroId:          distroID,
-				CreateTime:        time.Now(),
-				Requester:         evergreen.PatchVersionRequester,
+				Id:           virtualTaskID,
+				DisplayName:  "virtual_task_display_name",
+				Status:       evergreen.TaskUndispatched,
+				Activated:    false,
+				IsVirtual:    true,
+				Project:      projectID,
+				BuildVariant: "bv",
+				BuildId:      buildID,
+				Version:      versionID,
+				DistroId:     distroID,
+				CreateTime:   time.Now(),
+				Requester:    evergreen.PatchVersionRequester,
 			}
 			require.NoError(t, virtualTask.Insert(ctx))
 

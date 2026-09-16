@@ -1030,7 +1030,7 @@ func logTaskEndStats(ctx context.Context, t *task.Task) error {
 	}
 
 	isHostMode := t.IsHostTask()
-	if isHostMode {
+	if isHostMode && t.CompletedBy == "" {
 		taskHost, err := host.FindOneId(ctx, t.HostId)
 		if err != nil {
 			return err

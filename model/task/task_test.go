@@ -1085,10 +1085,10 @@ func TestEndingTask(t *testing.T) {
 		Convey("a non-host task should still be markable as ended", func() {
 			now := time.Now()
 			task := &Task{
-				Id:                "taskId",
-				Status:            evergreen.TaskStarted,
-				StartTime:         now.Add(-5 * time.Minute),
-				ExecutionPlatform: ExecutionPlatformVirtual,
+				Id:        "taskId",
+				Status:    evergreen.TaskStarted,
+				StartTime: now.Add(-5 * time.Minute),
+				IsVirtual: true,
 			}
 			So(task.Insert(t.Context()), ShouldBeNil)
 			details := &apimodels.TaskEndDetail{
@@ -1110,11 +1110,11 @@ func TestMarkAsHostDispatchedOnPushCompletedTask(t *testing.T) {
 	})
 
 	tsk := &Task{
-		Id:                "virtual_task",
-		Status:            evergreen.TaskUndispatched,
-		Activated:         true,
-		ExecutionPlatform: ExecutionPlatformVirtual,
-		CompletedBy:       "runner_task",
+		Id:          "virtual_task",
+		Status:      evergreen.TaskUndispatched,
+		Activated:   true,
+		IsVirtual:   true,
+		CompletedBy: "runner_task",
 	}
 	require.NoError(t, tsk.Insert(t.Context()))
 
@@ -2710,10 +2710,6 @@ func TestIsHostDispatchable(t *testing.T) {
 			tsk.ExecutionPlatform = ""
 			assert.True(t, tsk.IsHostDispatchable())
 		},
-		"ReturnsFalseForVirtualTask": func(t *testing.T, tsk Task) {
-			tsk.ExecutionPlatform = ExecutionPlatformVirtual
-			assert.False(t, tsk.IsHostDispatchable())
-		},
 		"ReturnsFalseForTaskWithoutUndispatchedStatus": func(t *testing.T, tsk Task) {
 			tsk.Status = evergreen.TaskDispatched
 			assert.False(t, tsk.IsHostDispatchable())
@@ -3644,7 +3640,7 @@ func TestArchive(t *testing.T) {
 		},
 		"ArchivesVirtualTask": func(t *testing.T, tsk Task) {
 			archivedTaskID := MakeOldID(tsk.Id, tsk.Execution)
-			tsk.ExecutionPlatform = ExecutionPlatformVirtual
+			tsk.IsVirtual = true
 			require.NoError(t, tsk.Insert(ctx))
 
 			require.NoError(t, tsk.Archive(ctx))
