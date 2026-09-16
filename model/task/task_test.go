@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -1100,6 +1101,31 @@ func TestEndingTask(t *testing.T) {
 			So(task.Status, ShouldEqual, evergreen.TaskFailed)
 		})
 	})
+}
+
+func TestMarkAsHostDispatchedOnPushCompletedTask(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	})
+
+	tsk := &Task{
+		Id:                "virtual_task",
+		Status:            evergreen.TaskUndispatched,
+		Activated:         true,
+		ExecutionPlatform: ExecutionPlatformVirtual,
+		CompletedBy:       "runner_task",
+	}
+	require.NoError(t, tsk.Insert(t.Context()))
+
+	err := tsk.MarkAsHostDispatched(t.Context(), "host_id", "distro_id", "abc", time.Now())
+	assert.True(t, adb.ResultsNotFound(err))
+
+	dbTask, err := FindOneId(t.Context(), tsk.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbTask)
+	assert.Equal(t, evergreen.TaskUndispatched, dbTask.Status)
+	assert.Empty(t, dbTask.HostId)
 }
 
 func TestEstimatedFinishTime(t *testing.T) {

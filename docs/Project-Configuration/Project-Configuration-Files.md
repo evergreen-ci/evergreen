@@ -1041,6 +1041,9 @@ Every task has some expansions available by default:
 - `${build_variant}` is the name of the build variant the task belongs
   to
 - `${created_at}` is the time the version was created
+- `${display_task_name}` is the name of the display task that contains the
+  running execution task. It is undefined if the task is not part of a display
+  task.
 - `${distro_arch}` is the architecture of the distro the task is running on, in
   `<GOOS>_<GOARCH>` form (e.g. `linux_amd64`)
 - `${distro_id}` is name of the distro the task is running on

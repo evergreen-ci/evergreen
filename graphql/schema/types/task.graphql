@@ -76,8 +76,10 @@ type Task {
   baseTask: Task
   blocked: Boolean!
   buildId: String!
-  buildBaronCreatedTickets: [JiraTicket!]! @requireProjectAccess(permission: ANNOTATIONS, access: VIEW)
-  buildBaronSuggestions: SearchReturnInfo @requireProjectAccess(permission: ANNOTATIONS, access: VIEW)
+  buildBaronCreatedTickets: [JiraTicket!]!
+    @requireProjectAccess(permission: ANNOTATIONS, access: VIEW)
+  buildBaronSuggestions: SearchReturnInfo
+    @requireProjectAccess(permission: ANNOTATIONS, access: VIEW)
   buildVariant: String!
   buildVariantDisplayName: String
   canAbort: Boolean!
@@ -179,7 +181,7 @@ type Task {
   testSelectionEnabled: Boolean!
   timeTaken: Duration
   totalTestCount: Int!
-  version: VersionLite!
+  version: Version!
   versionMetadata: Version!
 }
 

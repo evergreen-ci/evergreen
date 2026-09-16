@@ -1,0 +1,10 @@
+{
+  version(versionId: "spruce_version") {
+    taskStatusStats {
+      counts {
+        count
+        status
+      }
+    }
+  }
+}

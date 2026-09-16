@@ -318,16 +318,12 @@ func (ar *APIResourceConstraintInfo) ToService() *apimodels.ResourceConstraintIn
 }
 
 // BuildPreviousExecutions adds the given previous executions to the given API task.
-func (at *APITask) BuildPreviousExecutions(ctx context.Context, tasks []task.Task, logURL, parsleyURL string) error {
+// The args are applied to every execution, so a caller with prefetched data
+// can avoid querying per execution.
+func (at *APITask) BuildPreviousExecutions(ctx context.Context, tasks []task.Task, args *APITaskArgs) error {
 	at.PreviousExecutions = make([]APITask, len(tasks))
 	for i := range at.PreviousExecutions {
-		if err := at.PreviousExecutions[i].BuildFromService(ctx, &tasks[i], &APITaskArgs{
-			IncludeProjectIdentifier: true,
-			IncludeAMI:               true,
-			IncludeArtifacts:         true,
-			LogURL:                   logURL,
-			ParsleyLogURL:            parsleyURL,
-		}); err != nil {
+		if err := at.PreviousExecutions[i].BuildFromService(ctx, &tasks[i], args); err != nil {
 			return errors.Wrapf(err, "converting previous task execution at index %d to API model", i)
 		}
 	}

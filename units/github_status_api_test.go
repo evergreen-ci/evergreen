@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -147,6 +148,18 @@ func (s *githubStatusUpdateSuite) TestForProcessingError() {
 	s.Equal(OtherErrors, status.Description)
 	s.Equal("evergreen/commit-queue", status.Context)
 	s.Equal(message.GithubStateFailure, status.State)
+}
+
+func (s *githubStatusUpdateSuite) TestSendErrorIsReported() {
+	sender := &eventSendErrorSender{
+		Sender: s.env.InternalSender,
+		err:    errors.New("GitHub unavailable"),
+	}
+	job := NewGithubStatusUpdateJobWithSuccessMessage("evergreen", "evergreen-ci", "evergreen", "abc123", "done").(*githubStatusUpdateJob)
+	job.env = &eventSendEnvironment{Environment: s.env, githubSender: sender}
+	job.Run(s.ctx)
+
+	s.EqualError(job.Error(), "GitHub unavailable")
 }
 
 func (s *githubStatusUpdateSuite) TestRequestForAuth() {

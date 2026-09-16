@@ -3414,6 +3414,45 @@ func TestCapParserPriorities(t *testing.T) {
 	})
 }
 
+func TestGetRevisionForRemoteModule(t *testing.T) {
+	t.Run("AutoUpdateRevisionTakesPrecedenceOverRefAndBranch", func(t *testing.T) {
+		mod := Module{
+			Name:   "mymod",
+			Branch: "main",
+			Ref:    "abc123",
+		}
+		opts := GetProjectOpts{
+			AutoUpdateModuleRevisions: map[string]string{
+				"mymod": "auto-update-sha",
+			},
+		}
+		revision, err := getRevisionForRemoteModule(t.Context(), mod, "mymod", opts)
+		require.NoError(t, err)
+		assert.Equal(t, "auto-update-sha", revision)
+	})
+	t.Run("RefTakesPrecedenceOverBranch", func(t *testing.T) {
+		mod := Module{
+			Name:   "mymod",
+			Branch: "main",
+			Ref:    "pinned-sha",
+		}
+		opts := GetProjectOpts{}
+		revision, err := getRevisionForRemoteModule(t.Context(), mod, "mymod", opts)
+		require.NoError(t, err)
+		assert.Equal(t, "pinned-sha", revision)
+	})
+	t.Run("FallsBackToBranchWhenRefIsEmpty", func(t *testing.T) {
+		mod := Module{
+			Name:   "mymod",
+			Branch: "main",
+		}
+		opts := GetProjectOpts{}
+		revision, err := getRevisionForRemoteModule(t.Context(), mod, "mymod", opts)
+		require.NoError(t, err)
+		assert.Equal(t, "main", revision)
+	})
+}
+
 func TestSetupParallelGitIncludeDirs(t *testing.T) {
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings)
