@@ -51,6 +51,12 @@ Whenever modifying the `operations/` package (CLI commands), increment `ClientVe
 The format is the calendar date (`YYYY-MM-DD`); append a letter suffix (e.g. `2026-05-20a`) if there
 are multiple changes on the same day.
 
+### Agent Changes
+
+Whenever modifying the `agent/` package, increment `AgentVersion` in `config.go` to trigger agent
+rollover. The format is the calendar date (`YYYY-MM-DD`); append a letter suffix (e.g. `2026-05-20a`)
+if there are multiple changes on the same day.
+
 ### CI Self-Tests
 
 The Evergreen codebase has automated tests defined in `self-tests.yml`, which itself runs in Evergreen. For most tasks in
