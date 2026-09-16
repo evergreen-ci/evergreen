@@ -1349,6 +1349,32 @@ func (s *EC2Suite) TestCreateVolumeWithHostTagAppliesHostNameTag() {
 	s.Equal("ht_abc123", hostNameTagValue)
 }
 
+func (s *EC2Suite) TestCreateVolumeForSpawnHostAppliesMongoDBResourceTags() {
+	associatedHost := host.Host{
+		Id:  "i-abc123",
+		Tag: "ht_abc123",
+		InstanceTags: []host.Tag{
+			{Key: evergreen.TagMongoDBOwner, Value: "test.user@mongodb.com"},
+			{Key: evergreen.TagMongoDBEnv, Value: "dev"},
+		},
+	}
+	s.Require().NoError(associatedHost.Insert(s.ctx))
+	s.volume.Host = associatedHost.Tag
+	_, err := s.onDemandManager.CreateVolume(s.ctx, s.volume)
+	s.Require().NoError(err)
+
+	mock, ok := s.impl.client.(*awsClientMock)
+	s.Require().True(ok)
+	tagsByKey := map[string]string{}
+	for _, spec := range mock.CreateVolumeInput.TagSpecifications {
+		for _, tag := range spec.Tags {
+			tagsByKey[utility.FromStringPtr(tag.Key)] = utility.FromStringPtr(tag.Value)
+		}
+	}
+	s.Equal("test.user@mongodb.com", tagsByKey[evergreen.TagMongoDBOwner])
+	s.Equal("dev", tagsByKey[evergreen.TagMongoDBEnv])
+}
+
 func (s *EC2Suite) TestCreateVolumeWithoutHostTagOmitsHostNameTag() {
 	s.volume.Host = ""
 	_, err := s.onDemandManager.CreateVolume(s.ctx, s.volume)
