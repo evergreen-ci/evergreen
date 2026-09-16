@@ -171,13 +171,14 @@ AI-assisted code is welcome, but the author is responsible for the final result.
 
 ## AI Tooling
 
-This repo is indexed by two local tools. Use them before greping or reading files cold:
+Optional local tools — not everyone has them installed. If a tool is missing, fall back to normal search and
+read tools; do not try to install it or retry.
 
-* **graft** — prebuilt symbol/call graph (`graft ask`, `graft callers`, `graft grep`). Exact, always available. Run
-  `graft build` once if `graft/` is missing.
+* **graft** — prebuilt symbol/call graph (`graft ask`, `graft callers`, `graft grep`). If installed, prefer it
+  over greping or reading files cold. Run `graft build` once if `graft/` is missing.
 * **graphify** — semantic knowledge graph including the docs/decisions layer (`/graphify query "<question>"`).
   Cross-subsystem orientation only; its INFERRED/AMBIGUOUS edges are leads, not facts — verify with graft or source.
-  Build once with `/graphify .`, refresh with `/graphify . --update`. Do not commit `graphify-out/`.
+  If available, build once with `/graphify .`, refresh with `/graphify . --update`. Do not commit `graphify-out/`.
 * **docs/** — for "why" questions, consult `docs/decisions/` (ADRs) and `docs/` (intended behavior) alongside the code.
 
 ## Pull Requests
