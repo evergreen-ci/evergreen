@@ -965,7 +965,7 @@ func (t *Task) MarkAsHostDispatchedWithEnv(ctx context.Context, env evergreen.En
 	return t.markAsHostDispatchedWithFunc(doUpdate, hostID, distroID, agentRevision, dispatchTime)
 }
 
-// hostDispatchQuery matches the task to dispatch (unless it was push-completed).
+// hostDispatchQuery matches the task to dispatch (unless it's a virtual task that was push-completed).
 func hostDispatchQuery(id string) bson.M {
 	return bson.M{
 		IdKey:          id,
