@@ -883,6 +883,8 @@ func allocateIPAddressForHost(ctx context.Context, h *host.Host) error {
 		return nil
 	}
 
+	// Elastic IPs are provisioned and tagged outside Evergreen. Evergreen only
+	// leases an existing address from its pool and associates it with a host.
 	// This intentionally uses the host tag to identify the host instead of the
 	// host ID because the host ID changes after a host is created.
 	ipAddr, err := host.AssignUnusedIPAddress(ctx, h.Tag)
@@ -940,16 +942,6 @@ func associateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) e
 
 	ctx, span := tracer.Start(ctx, "associateIPAddressForHost")
 	defer span.End()
-
-	resourceTags := hostToEC2Tags(filterMongoDBResourceTags(h.InstanceTags))
-	if len(resourceTags) != 0 {
-		if _, err := c.CreateTags(ctx, &ec2.CreateTagsInput{
-			Resources: []string{h.IPAllocationID},
-			Tags:      resourceTags,
-		}); err != nil {
-			return errors.Wrap(err, "tagging allocated IP address")
-		}
-	}
 
 	assocAddrOut, err := c.AssociateAddress(ctx, h, &ec2.AssociateAddressInput{
 		InstanceId:   aws.String(h.Id),

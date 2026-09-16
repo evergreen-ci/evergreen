@@ -245,47 +245,6 @@ func TestAllocateIPAddressForHost(t *testing.T) {
 	}
 }
 
-func TestAssociateIPAddressForHostAppliesMongoDBResourceTags(t *testing.T) {
-	serviceFlags, err := evergreen.GetServiceFlags(t.Context())
-	require.NoError(t, err)
-	if serviceFlags.ElasticIPsDisabled {
-		originalFlags := *serviceFlags
-		serviceFlags.ElasticIPsDisabled = false
-		require.NoError(t, evergreen.SetServiceFlags(t.Context(), *serviceFlags))
-		t.Cleanup(func() {
-			assert.NoError(t, evergreen.SetServiceFlags(t.Context(), originalFlags))
-		})
-	}
-
-	h := &host.Host{
-		Id:             "i-12345",
-		Tag:            "host_tag",
-		IPAllocationID: "eipalloc-12345",
-		InstanceTags: []host.Tag{
-			{Key: evergreen.TagMongoDBOwner, Value: "evergreen@mongodb.com"},
-			{Key: evergreen.TagMongoDBEnv, Value: "prod"},
-			{Key: evergreen.TagDistro, Value: "distro"},
-		},
-	}
-	require.NoError(t, h.Insert(t.Context()))
-	t.Cleanup(func() {
-		assert.NoError(t, db.ClearCollections(host.Collection))
-	})
-	client := &awsClientMock{
-		AssociateAddressOutput: &ec2.AssociateAddressOutput{AssociationId: aws.String("eipassoc-12345")},
-	}
-
-	require.NoError(t, associateIPAddressForHost(t.Context(), client, h))
-	require.Equal(t, []string{h.IPAllocationID}, client.CreateTagsInput.Resources)
-	tagsByKey := map[string]string{}
-	for _, tag := range client.CreateTagsInput.Tags {
-		tagsByKey[aws.ToString(tag.Key)] = aws.ToString(tag.Value)
-	}
-	assert.Equal(t, "evergreen@mongodb.com", tagsByKey[evergreen.TagMongoDBOwner])
-	assert.Equal(t, "prod", tagsByKey[evergreen.TagMongoDBEnv])
-	assert.NotContains(t, tagsByKey, evergreen.TagDistro)
-}
-
 func TestReleaseIPAddressForHost(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.ClearCollections(host.Collection, host.IPAddressCollection))
