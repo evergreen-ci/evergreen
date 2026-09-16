@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -1292,6 +1293,75 @@ func TestParentRepoForGitHubAppToken(t *testing.T) {
 	assert.Equal(t, "other", parentRepoForGitHubAppToken("other"))
 }
 
+func TestGetCloneCommandWithFullCloneFallback(t *testing.T) {
+	baseOpts := cloneOpts{
+		token: projectGitHubToken,
+		owner: "evergreen-ci",
+		repo:  "sample",
+		dir:   "src/module",
+	}
+	shallowClone := fmt.Sprintf("git clone https://x-access-token:%s@github.com/evergreen-ci/sample.git 'src/module' --depth 5", projectGitHubToken)
+	fullClone := fmt.Sprintf("git clone https://x-access-token:%s@github.com/evergreen-ci/sample.git 'src/module'", projectGitHubToken)
+
+	t.Run("ShallowCloneWithRefAppendsFallbackAfterTheClone", func(t *testing.T) {
+		opts := baseOpts
+		opts.cloneDepth = 5
+		cmds, err := opts.getCloneCommandWithFullCloneFallback("abc123", false)
+		require.NoError(t, err)
+
+		assert.True(t, utility.ContainsOrderedSubset(cmds, []string{
+			"module_clone_root=$(pwd)",
+			shallowClone,
+			"cd src/module",
+			`if ! git rev-parse -q --verify 'abc123^{commit}' > /dev/null; then`,
+			`cd "$module_clone_root"`,
+			"rm -rf src/module",
+			fullClone,
+			"cd src/module",
+			"fi",
+		}), cmds)
+		fallbackStart := slices.Index(cmds, `if ! git rev-parse -q --verify 'abc123^{commit}' > /dev/null; then`)
+		require.NotEqual(t, -1, fallbackStart)
+		// The fallback clone must not carry the depth over.
+		assert.NotContains(t, strings.Join(cmds[fallbackStart:], "\n"), "--depth")
+	})
+
+	t.Run("FullCloneReturnsTheCloneUnchanged", func(t *testing.T) {
+		cmds, err := baseOpts.getCloneCommandWithFullCloneFallback("abc123", false)
+		require.NoError(t, err)
+		expected, err := baseOpts.getCloneCommand()
+		require.NoError(t, err)
+		assert.Equal(t, expected, cmds)
+	})
+
+	t.Run("EmptyRefReturnsTheShallowCloneUnchanged", func(t *testing.T) {
+		opts := baseOpts
+		opts.cloneDepth = 5
+		cmds, err := opts.getCloneCommandWithFullCloneFallback("", false)
+		require.NoError(t, err)
+		expected, err := opts.getCloneCommand()
+		require.NoError(t, err)
+		assert.Equal(t, expected, cmds)
+	})
+
+	t.Run("PRCheckoutReturnsTheShallowCloneUnchanged", func(t *testing.T) {
+		opts := baseOpts
+		opts.cloneDepth = 5
+		cmds, err := opts.getCloneCommandWithFullCloneFallback("abc123", true)
+		require.NoError(t, err)
+		expected, err := opts.getCloneCommand()
+		require.NoError(t, err)
+		assert.Equal(t, expected, cmds)
+	})
+
+	t.Run("NegativeDepthShouldError", func(t *testing.T) {
+		opts := baseOpts
+		opts.cloneDepth = -1
+		_, err := opts.getCloneCommandWithFullCloneFallback("abc123", false)
+		assert.ErrorContains(t, err, "clone depth cannot be negative")
+	})
+}
+
 func TestBuildModuleCloneCommandCloneDepth(t *testing.T) {
 	c := &gitFetchProject{Directory: "dir", Token: projectGitHubToken}
 	conf := &internal.TaskConfig{}
@@ -1302,23 +1372,27 @@ func TestBuildModuleCloneCommandCloneDepth(t *testing.T) {
 		dir:   "module",
 	}
 
-	t.Run("PositiveDepthShallowClonesAndDeepensForMissingRef", func(t *testing.T) {
+	t.Run("PositiveDepthShallowClonesAndFallsBackToFullCloneForMissingRef", func(t *testing.T) {
 		opts := baseOpts
 		opts.cloneDepth = 5
 		cmds, err := c.buildModuleCloneCommand(conf, opts, "main", nil)
 		require.NoError(t, err)
 		joined := strings.Join(cmds, "\n")
 		assert.Contains(t, joined, "--depth 5")
-		assert.Contains(t, joined, "git log HEAD..'main' || git fetch --unshallow")
+		assert.Contains(t, joined, `git rev-parse -q --verify 'main^{commit}'`)
+		assert.Contains(t, joined, "rm -rf module")
+		// The fallback re-clones without a depth.
+		assert.Contains(t, joined, fmt.Sprintf("git clone https://x-access-token:%s@github.com/evergreen-ci/sample.git 'module'\n", projectGitHubToken))
 		assert.Contains(t, joined, "git checkout 'main'")
 	})
 
-	t.Run("UnsetDepthClonesInFull", func(t *testing.T) {
+	t.Run("UnsetDepthClonesInFullWithoutAFallback", func(t *testing.T) {
 		cmds, err := c.buildModuleCloneCommand(conf, baseOpts, "main", nil)
 		require.NoError(t, err)
 		joined := strings.Join(cmds, "\n")
 		assert.NotContains(t, joined, "--depth")
-		assert.NotContains(t, joined, "--unshallow")
+		assert.NotContains(t, joined, "rev-parse")
+		assert.NotContains(t, joined, "rm -rf")
 	})
 
 	t.Run("NegativeDepthShouldError", func(t *testing.T) {
@@ -1336,6 +1410,24 @@ func TestBuildModuleCloneCommandCloneDepth(t *testing.T) {
 		require.NoError(t, err)
 		joined := strings.Join(cmds, "\n")
 		assert.NotContains(t, joined, "--depth")
-		assert.NotContains(t, joined, "--unshallow")
+		assert.NotContains(t, joined, "rev-parse")
+		assert.NotContains(t, joined, "rm -rf")
+	})
+
+	t.Run("EmptyRefSkipsTheFallback", func(t *testing.T) {
+		prConf := &internal.TaskConfig{
+			Task: task.Task{Requester: evergreen.PatchVersionRequester, ParentPatchID: "parent-patch-id"},
+			GitHubParentPRCheckout: &patch.GitHubParentPRCheckout{
+				PRNumber: 9001, HeadHash: "55ca6286e3e4f4fba5d0448333fa99fc5a404a73", ForModule: "module1",
+			},
+		}
+		opts := baseOpts
+		opts.cloneDepth = 5
+		cmds, err := c.buildModuleCloneCommand(prConf, opts, "", &patch.ModulePatch{ModuleName: "module1"})
+		require.NoError(t, err)
+		joined := strings.Join(cmds, "\n")
+		assert.Contains(t, joined, "--depth 5")
+		assert.NotContains(t, joined, "rev-parse")
+		assert.NotContains(t, joined, "rm -rf")
 	})
 }

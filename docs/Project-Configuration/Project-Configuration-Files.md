@@ -519,9 +519,13 @@ Fields:
   dynamically retrieved for each Github PR, CLI patch, and periodic build submission
 - `clone_depth`: clone this module with `git clone --depth <clone_depth>`. It is
   independent of [git.get_project](Project-Commands#gitgetproject)'s own
-  `clone_depth`, which only applies to the source repo. Ignored for wiki modules,
-  distros where shallow clone is disabled, or when the module's revision is not
-  in the shallow clone.
+  `clone_depth`, which only applies to the source repo. Ignored for wiki modules
+  and distros where shallow clone is disabled. If the revision to check out is
+  not in the shallow history, Evergreen clones the module again at full depth, so
+  too small a depth costs time but never fails the checkout. Leave `clone_depth`
+  unset for a module pinned with `ref`, since a `ref` older than `clone_depth`
+  falls back on every clone, paying for a shallow clone that is always thrown
+  away.
 
 #### Wiki modules
 
