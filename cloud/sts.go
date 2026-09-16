@@ -3,7 +3,7 @@ package cloud
 import (
 	"context"
 	"fmt"
-	"strconv"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -106,7 +106,7 @@ func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID, hostID string, 
 	} else {
 		externalID = createExternalID(t, p, opts.UseDebug || dbHost.IsDebug)
 	}
-	creds, err := s.assumeRole(ctx, externalID, opts)
+	creds, err := s.assumeRole(ctx, externalID, createRoleSessionName(t), opts)
 	if err != nil {
 		return AssumeRoleCredentials{}, errors.Wrapf(err, "assuming role: '%v'", err)
 	}
@@ -119,13 +119,13 @@ func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID, hostID string, 
 	}, nil
 }
 
-func (s *stsManagerImpl) assumeRole(ctx context.Context, externalID string, opts AssumeRoleOptions) (*sts.AssumeRoleOutput, error) {
+func (s *stsManagerImpl) assumeRole(ctx context.Context, externalID, sessionName string, opts AssumeRoleOptions) (*sts.AssumeRoleOutput, error) {
 	output, err := s.client.AssumeRole(ctx, &sts.AssumeRoleInput{
 		RoleArn:         &opts.RoleARN,
 		Policy:          opts.Policy,
 		DurationSeconds: opts.DurationSeconds,
 		ExternalId:      aws.String(externalID),
-		RoleSessionName: aws.String(strconv.Itoa(int(time.Now().Unix()))),
+		RoleSessionName: aws.String(sessionName),
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "assuming role")
@@ -173,6 +173,26 @@ func createExternalIDHelper(task *task.Task, projectRef *model.ProjectRef) strin
 	}
 	return fmt.Sprintf("%s-%s", task.Project, task.Requester)
 
+}
+
+// createRoleSessionName returns a human-readable session name that follows
+// AWS naming conventions.
+func createRoleSessionName(task *task.Task) string {
+	sessionName := fmt.Sprintf("%s-%s-%s", task.Project, task.DisplayName, task.BuildVariant)
+	sessionName = strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+			return r
+		case strings.ContainsRune("=,.@-", r):
+			return r
+		default:
+			return '-'
+		}
+	}, sessionName)
+	if len(sessionName) > 64 {
+		return sessionName[:64]
+	}
+	return sessionName
 }
 
 func validateAssumeRoleOutput(assumeRole *sts.AssumeRoleOutput) error {
