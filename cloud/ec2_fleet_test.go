@@ -433,6 +433,40 @@ func TestFleet(t *testing.T) {
 }
 
 func TestUploadLaunchTemplate(t *testing.T) {
+	t.Run("TagsTaskHostAndVolumesWithMongoDBResourceTags", func(t *testing.T) {
+		resourceTags := evergreen.ResourceTagsConfig{
+			MongoDBOwner: "evergreen@mongodb.com",
+			MongoDBEnv:   "prod",
+		}
+		m := &ec2FleetManager{
+			EC2FleetManagerOptions: &EC2FleetManagerOptions{
+				client: &awsClientMock{},
+			},
+			settings: &evergreen.Settings{
+				Providers: evergreen.CloudProviders{
+					AWS: evergreen.AWSConfig{ResourceTags: resourceTags},
+				},
+			},
+		}
+		require.NoError(t, m.uploadLaunchTemplate(t.Context(), &host.Host{Tag: "ht_0"}, &EC2ProviderSettings{AMI: "ami"}))
+
+		mockClient := m.client.(*awsClientMock)
+		tagSpecifications := mockClient.CreateLaunchTemplateInput.LaunchTemplateData.TagSpecifications
+		require.Len(t, tagSpecifications, 2)
+		resourceTypes := map[types.ResourceType]bool{}
+		for _, spec := range tagSpecifications {
+			resourceTypes[spec.ResourceType] = true
+			tagsByKey := map[string]string{}
+			for _, tag := range spec.Tags {
+				tagsByKey[utility.FromStringPtr(tag.Key)] = utility.FromStringPtr(tag.Value)
+			}
+			assert.Equal(t, resourceTags.MongoDBOwner, tagsByKey[evergreen.TagMongoDBOwner])
+			assert.Equal(t, resourceTags.MongoDBEnv, tagsByKey[evergreen.TagMongoDBEnv])
+		}
+		assert.True(t, resourceTypes[types.ResourceTypeInstance])
+		assert.True(t, resourceTypes[types.ResourceTypeVolume])
+	})
+
 	t.Run("UploadNew", func(t *testing.T) {
 		m := &ec2FleetManager{
 			EC2FleetManagerOptions: &EC2FleetManagerOptions{

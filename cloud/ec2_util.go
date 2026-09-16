@@ -126,7 +126,7 @@ func expireInDays(numDays int) string {
 
 // makeTags populates a slice of tags based on a host object, which contain keys
 // for the user, owner, hostname, and if it's a spawnhost or not.
-func makeTags(intentHost *host.Host) []host.Tag {
+func makeTags(intentHost *host.Host, resourceTags evergreen.ResourceTagsConfig) []host.Tag {
 	// get requester host name
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -192,6 +192,14 @@ func makeTags(intentHost *host.Host) []host.Tag {
 		}
 		if intentHost.SpawnOptions.BuildID != "" {
 			systemTags = append(systemTags, host.Tag{Key: evergreen.TagBuildID, Value: intentHost.SpawnOptions.BuildID, CanBeModified: false})
+		}
+	}
+	if !intentHost.UserHost || intentHost.SpawnOptions.SpawnedByTask {
+		if resourceTags.MongoDBOwner != "" {
+			systemTags = append(systemTags, host.Tag{Key: evergreen.TagMongoDBOwner, Value: resourceTags.MongoDBOwner, CanBeModified: false})
+		}
+		if resourceTags.MongoDBEnv != "" {
+			systemTags = append(systemTags, host.Tag{Key: evergreen.TagMongoDBEnv, Value: resourceTags.MongoDBEnv, CanBeModified: false})
 		}
 	}
 
