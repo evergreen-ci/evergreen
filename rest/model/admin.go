@@ -2176,6 +2176,12 @@ type APIServiceFlags struct {
 	VirtualTasksDisabled            bool `json:"virtual_tasks_disabled"`
 }
 
+// APIServiceFlagsResponse contains service flags used by Evergreen clients.
+type APIServiceFlagsResponse struct {
+	DebugSpawnHostDisabled      bool `json:"debug_spawn_host_disabled"`
+	CrossFileYAMLAnchorsEnabled bool `json:"cross_file_yaml_anchors_enabled"`
+}
+
 type APIProjectTasksPair struct {
 	ProjectID string `json:"project_id"`
 	// IsRegex uses a pointer to handle the legacy case where we don't support regex.

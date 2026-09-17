@@ -30,7 +30,7 @@ type Mock struct {
 
 	// mock behavior
 	GetSubscriptionsFail bool
-	MockServiceFlags     *model.APIServiceFlags
+	MockServiceFlags     *model.APIServiceFlagsResponse
 	MockServiceFlagErr   error
 	MockGetProjectResult *model.APIProjectRef
 	MockIsServiceUser    bool
@@ -165,7 +165,7 @@ func (c *Mock) SetBannerMessage(ctx context.Context, m string, t evergreen.Banne
 func (c *Mock) GetBannerMessage(ctx context.Context) (string, error)                { return "", nil }
 func (c *Mock) SetServiceFlags(ctx context.Context, f *model.APIServiceFlags) error { return nil }
 
-func (c *Mock) GetServiceFlags(ctx context.Context) (*model.APIServiceFlags, error) {
+func (c *Mock) GetServiceFlags(ctx context.Context) (*model.APIServiceFlagsResponse, error) {
 	if c.MockServiceFlagErr != nil {
 		return c.MockServiceFlags, c.MockServiceFlagErr
 	}

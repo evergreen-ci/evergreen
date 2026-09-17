@@ -693,7 +693,7 @@ func (c *communicatorImpl) SetServiceFlags(ctx context.Context, f *model.APIServ
 	return nil
 }
 
-func (c *communicatorImpl) GetServiceFlags(ctx context.Context) (*model.APIServiceFlags, error) {
+func (c *communicatorImpl) GetServiceFlags(ctx context.Context) (*model.APIServiceFlagsResponse, error) {
 	info := requestInfo{
 		method: http.MethodGet,
 		path:   "admin/service_flags",
@@ -709,7 +709,7 @@ func (c *communicatorImpl) GetServiceFlags(ctx context.Context) (*model.APIServi
 		return nil, errors.Errorf("HTTP request returned unexpected status: %d", resp.StatusCode)
 	}
 
-	flags := &model.APIServiceFlags{}
+	flags := &model.APIServiceFlagsResponse{}
 	if err = utility.ReadJSON(resp.Body, flags); err != nil {
 		return nil, errors.Wrap(err, "reading JSON response body")
 	}
