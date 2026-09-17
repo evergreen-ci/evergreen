@@ -841,6 +841,13 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo, opt
 		if err != nil {
 			return nil, errors.Wrapf(err, "creating task '%s'", id)
 		}
+		if newTask == nil {
+			// createOneTask returns a nil task to gracefully skip virtual tasks
+			// that can't be created due to them being disabled.
+			// TODO (DEVPROD-43493): remove this case once the temporary virtual
+			// task feature flags are removed.
+			continue
+		}
 		newTask.SetGenerateTasksEstimationsFromMap(generateTaskEstimations)
 
 		projectTask := creationInfo.Project.FindProjectTask(t.Name)
@@ -1129,12 +1136,25 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 	}
 
 	if isVirtual {
+		skipReason := ""
 		if evergreen.GetEnvironment().Settings().ServiceFlags.VirtualTasksDisabled {
-			return nil, errors.Errorf("virtual tasks are disabled, cannot create virtual task '%s'", buildVarTask.Name)
+			skipReason = "virtual tasks are disabled globally"
+		} else if !creationInfo.ProjectRef.IsVirtualTasksEnabled() {
+			skipReason = fmt.Sprintf("virtual tasks are not enabled for project '%s'", creationInfo.ProjectRef.Id)
 		}
-		if !creationInfo.ProjectRef.IsVirtualTasksEnabled() {
-			return nil, errors.Errorf("virtual tasks are not enabled for project '%s', cannot create virtual task '%s'", creationInfo.ProjectRef.Id, buildVarTask.Name)
+		if skipReason != "" {
+			grip.Warning(ctx, message.Fields{
+				"message":   "skipping virtual task creation because the virtual tasks feature is not enabled",
+				"reason":    skipReason,
+				"task":      buildVarTask.Name,
+				"variant":   creationInfo.Build.BuildVariant,
+				"project":   creationInfo.ProjectRef.Id,
+				"version":   creationInfo.Version.Id,
+				"requester": creationInfo.Version.Requester,
+			})
+			return nil, nil
 		}
+
 		// When created, virtual tasks start out inactive.
 		activateTask = false
 	}
