@@ -13,14 +13,14 @@ func TestResourceTagsConfigValidate(t *testing.T) {
 		},
 		"AllowsValidConfig": {
 			config: ResourceTagsConfig{
-				MongoDBEnv:   "staging",
+				MongoDBEnv:   MongoDBEnvironmentStaging,
 				MongoDBOwner: "evergreen@mongodb.com",
 			},
 			valid: true,
 		},
 		"AllowsEnvironmentWithoutOwner": {
 			config: ResourceTagsConfig{
-				MongoDBEnv: "staging",
+				MongoDBEnv: MongoDBEnvironmentStaging,
 			},
 			valid: true,
 		},
@@ -38,13 +38,13 @@ func TestResourceTagsConfigValidate(t *testing.T) {
 		},
 		"RejectsInvalidEmail": {
 			config: ResourceTagsConfig{
-				MongoDBEnv:   "staging",
+				MongoDBEnv:   MongoDBEnvironmentStaging,
 				MongoDBOwner: "evergreen",
 			},
 		},
 		"RejectsEmailWithoutDomainSuffix": {
 			config: ResourceTagsConfig{
-				MongoDBEnv:   "staging",
+				MongoDBEnv:   MongoDBEnvironmentStaging,
 				MongoDBOwner: "evergreen@mongodb",
 			},
 		},

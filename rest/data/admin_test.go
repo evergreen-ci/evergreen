@@ -92,7 +92,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	u := &user.DBUser{Id: "user"}
 	testSettings := testutil.MockConfig()
 	testSettings.Providers.AWS.ResourceTags = evergreen.ResourceTagsConfig{
-		MongoDBEnv:   "staging",
+		MongoDBEnv:   evergreen.MongoDBEnvironmentStaging,
 		MongoDBOwner: "evergreen@mongodb.com",
 	}
 	// convert the DB model to an API model
@@ -386,7 +386,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 func (s *AdminDataSuite) TestSetEvergreenSettingsRejectsClearingResourceTags() {
 	oldSettings := testutil.MockConfig()
 	oldSettings.Providers.AWS.ResourceTags = evergreen.ResourceTagsConfig{
-		MongoDBEnv:   "staging",
+		MongoDBEnv:   evergreen.MongoDBEnvironmentStaging,
 		MongoDBOwner: "evergreen@mongodb.com",
 	}
 

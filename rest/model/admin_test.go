@@ -52,7 +52,7 @@ func TestModelConversion(t *testing.T) {
 	require := require.New(t)
 	testSettings := testutil.MockConfig()
 	testSettings.Providers.AWS.ResourceTags = evergreen.ResourceTagsConfig{
-		MongoDBEnv:   "staging",
+		MongoDBEnv:   evergreen.MongoDBEnvironmentStaging,
 		MongoDBOwner: "evergreen@mongodb.com",
 	}
 	apiSettings := NewConfigModel()
@@ -342,7 +342,7 @@ func TestModelConversion(t *testing.T) {
 
 func TestAPIResourceTagsConfigBuildFromServiceOmitsUnsetValues(t *testing.T) {
 	apiConfig := APIResourceTagsConfig{
-		MongoDBEnv:   utility.ToStringPtr("staging"),
+		MongoDBEnv:   utility.ToStringPtr(evergreen.MongoDBEnvironmentStaging),
 		MongoDBOwner: utility.ToStringPtr("evergreen@mongodb.com"),
 	}
 

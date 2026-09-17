@@ -15,7 +15,7 @@ func TestSaveAdminSettingsPersistsResourceTags(t *testing.T) {
 	require.NoError(t, evergreen.UpdateConfig(ctx, testutil.MockConfig()))
 
 	resourceTags := &restModel.APIResourceTagsConfig{
-		MongoDBEnv:   utility.ToStringPtr("staging"),
+		MongoDBEnv:   utility.ToStringPtr(evergreen.MongoDBEnvironmentStaging),
 		MongoDBOwner: utility.ToStringPtr("evergreen@mongodb.com"),
 	}
 	resolver := &mutationResolver{&Resolver{}}
@@ -31,7 +31,7 @@ func TestSaveAdminSettingsPersistsResourceTags(t *testing.T) {
 
 	persistedSettings, err := evergreen.GetConfig(ctx)
 	require.NoError(t, err)
-	require.Equal(t, "staging", persistedSettings.Providers.AWS.ResourceTags.MongoDBEnv)
+	require.Equal(t, evergreen.MongoDBEnvironmentStaging, persistedSettings.Providers.AWS.ResourceTags.MongoDBEnv)
 	require.Equal(t, "evergreen@mongodb.com", persistedSettings.Providers.AWS.ResourceTags.MongoDBOwner)
 }
 
@@ -39,7 +39,7 @@ func TestSaveAdminSettingsRejectsClearingResourceTags(t *testing.T) {
 	ctx := getContext(t)
 	settings := testutil.MockConfig()
 	settings.Providers.AWS.ResourceTags = evergreen.ResourceTagsConfig{
-		MongoDBEnv:   "staging",
+		MongoDBEnv:   evergreen.MongoDBEnvironmentStaging,
 		MongoDBOwner: "evergreen@mongodb.com",
 	}
 	require.NoError(t, evergreen.UpdateConfig(ctx, settings))
