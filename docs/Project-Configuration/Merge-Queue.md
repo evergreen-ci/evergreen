@@ -282,8 +282,8 @@ settings, refer to the [official GitHub documentation](https://docs.github.com/e
 
 Evergreen samples merge queue depth metrics every 5 minutes and emits them to Honeycomb as `merge_queue.depth_sample` spans. These metrics help you monitor queue backlogs, capacity, and identify stuck patches.
 
-- `evergreen.merge_queue.depth` - Total patches in queue (sampled every 5 minutes)
-  - **Note:** Because items in the merge queue are grouped together, the merge queue depth may not match the number of items you see in the queue. For example, there may be 10 items in the queue but only 4 patches and a depth of 4 because of how they are grouped together.
+- `evergreen.merge_queue.depth` - Total patches (not total merge queue items) for items in the merge queue (sampled every 5 minutes)
+  - **Note:** Because items in the merge queue are grouped together, and because github doesn't test all items at once, the merge queue depth will normally not match the number of items you see in the queue. For example, there may be 10 items in the queue but only 4 patches and a depth of 4 because of how they are grouped together.
 - `evergreen.merge_queue.pending_count` - Patches not yet started
 - `evergreen.merge_queue.running_count` - Patches currently running
 - `evergreen.merge_queue.running_tasks_count` - Count of running tasks across all patches in queue
