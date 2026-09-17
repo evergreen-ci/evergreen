@@ -41,7 +41,7 @@ type Communicator interface {
 	GetBannerMessage(context.Context) (string, error)
 	GetUiV2URL(context.Context) (string, error)
 	SetServiceFlags(context.Context, *restmodel.APIServiceFlags) error
-	GetServiceFlags(context.Context) (*restmodel.APIServiceFlags, error)
+	GetServiceFlags(context.Context) (*restmodel.APIServiceFlagsResponse, error)
 	IsServiceUser(context.Context, string) (bool, error)
 	RestartRecentTasks(context.Context, time.Time, time.Time) error
 	GetSettings(context.Context) (*evergreen.Settings, error)
