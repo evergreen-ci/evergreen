@@ -340,6 +340,17 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Sage.BaseURL, dbSettings.Sage.BaseURL)
 }
 
+func TestAPIResourceTagsConfigBuildFromServiceOmitsUnsetValues(t *testing.T) {
+	apiConfig := APIResourceTagsConfig{
+		MongoDBEnv:   utility.ToStringPtr("staging"),
+		MongoDBOwner: utility.ToStringPtr("evergreen@mongodb.com"),
+	}
+
+	require.NoError(t, apiConfig.BuildFromService(evergreen.ResourceTagsConfig{}))
+	require.Nil(t, apiConfig.MongoDBEnv)
+	require.Nil(t, apiConfig.MongoDBOwner)
+}
+
 func TestAPIBucketsConfigJSON(t *testing.T) {
 	const payload = `{
 		"log_bucket": {"name": "logs", "type": "s3"},

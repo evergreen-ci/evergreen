@@ -3193,8 +3193,14 @@ type APIResourceTagsConfig struct {
 func (a *APIResourceTagsConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.ResourceTagsConfig:
-		a.MongoDBEnv = utility.ToStringPtr(v.MongoDBEnv)
-		a.MongoDBOwner = utility.ToStringPtr(v.MongoDBOwner)
+		a.MongoDBEnv = nil
+		if v.MongoDBEnv != "" {
+			a.MongoDBEnv = utility.ToStringPtr(v.MongoDBEnv)
+		}
+		a.MongoDBOwner = nil
+		if v.MongoDBOwner != "" {
+			a.MongoDBOwner = utility.ToStringPtr(v.MongoDBOwner)
+		}
 	default:
 		return errors.Errorf("programmatic error: expected Resource Tags config but got type %T", h)
 	}
