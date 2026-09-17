@@ -1224,6 +1224,12 @@ func IsSystemActivator(caller string) bool {
 	return utility.StringSliceContains(SystemActivators, caller)
 }
 
+// IsTimeBasedActivator returns true when the task activator is an automatic
+// background time-based activation (cron/batchtime).
+func IsTimeBasedActivator(caller string) bool {
+	return caller == ElapsedBuildActivator || caller == ElapsedTaskActivator
+}
+
 func IsPatchRequester(requester string) bool {
 	return requester == PatchVersionRequester || IsGitHubPatchRequester(requester)
 }

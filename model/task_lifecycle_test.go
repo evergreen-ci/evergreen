@@ -2087,6 +2087,55 @@ func TestActivateTasksWithDependencies(t *testing.T) {
 	assert.True(t, dbTask2.Activated, "elapsed task should be activated")
 }
 
+func TestActivateTasksWithDependenciesVirtualTaskExclusion(t *testing.T) {
+	ctx := t.Context()
+	colls := []string{task.Collection, task.OldCollection, build.Collection, VersionCollection}
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(colls...))
+	})
+	require.NoError(t, db.ClearCollections(colls...))
+
+	require.NoError(t, (&build.Build{Id: "build", Version: "version"}).Insert(ctx))
+	require.NoError(t, (&Version{Id: "version"}).Insert(ctx))
+
+	tasks := []task.Task{
+		{
+			Id:      "regular",
+			BuildId: "build",
+			Version: "version",
+			Status:  evergreen.TaskUndispatched,
+			DependsOn: []task.Dependency{
+				{TaskId: "virtual_dep"},
+			},
+		},
+		{Id: "virtual", BuildId: "build", Version: "version", Status: evergreen.TaskUndispatched, IsVirtual: true},
+		{Id: "virtual_dep", BuildId: "build", Version: "version", Status: evergreen.TaskUndispatched, IsVirtual: true},
+	}
+	for _, tk := range tasks {
+		require.NoError(t, tk.Insert(ctx))
+	}
+
+	// Simulate cron/batchtime activating the elapsed "regular" and "virtual"
+	// tasks. The virtual task must not be activated directly, but the virtual
+	// dependency of the regular task must still activate via the cascade.
+	require.NoError(t, activateTasksWithDependencies(ctx, []string{"regular", "virtual"}, evergreen.ElapsedTaskActivator))
+
+	dbRegular, err := task.FindOneId(ctx, "regular")
+	require.NoError(t, err)
+	require.NotNil(t, dbRegular)
+	assert.True(t, dbRegular.Activated, "regular elapsed task should be activated")
+
+	dbVirtual, err := task.FindOneId(ctx, "virtual")
+	require.NoError(t, err)
+	require.NotNil(t, dbVirtual)
+	assert.False(t, dbVirtual.Activated, "virtual task should not be activated by time-based activation")
+
+	dbVirtualDep, err := task.FindOneId(ctx, "virtual_dep")
+	require.NoError(t, err)
+	require.NotNil(t, dbVirtualDep)
+	assert.True(t, dbVirtualDep.Activated, "virtual dependency should activate via the dependency cascade")
+}
+
 func TestMarkEndWithTaskGroup(t *testing.T) {
 	ctx := t.Context()
 

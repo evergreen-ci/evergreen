@@ -147,6 +147,12 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 			task.StatusKey:   evergreen.TaskUndispatched,
 			task.PriorityKey: bson.M{"$gt": evergreen.DisabledTaskPriority},
 		}
+		if evergreen.IsTimeBasedActivator(caller) {
+			// Automatic time-based activation (cron/batchtime) must not activate
+			// virtual tasks directly. They can still be activated as a dependency
+			// of a regular task in the cascade below, or manually/by stepback.
+			q[task.IsVirtualKey] = bson.M{"$ne": true}
+		}
 		if len(ignoreTasks) > 0 {
 			q[task.IdKey] = bson.M{"$nin": ignoreTasks}
 			// Keep non-display tasks OR display tasks with at least one exec task not ignored.
@@ -1129,12 +1135,6 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 
 	activateTask := creationInfo.Build.Activated && !creationInfo.ActivationInfo.taskHasSpecificActivation(creationInfo.Build.BuildVariant, buildVarTask.Name)
 
-	// If stepback is enabled, check if the task should be activated via stepback.
-	stepbackInfo := creationInfo.ActivationInfo.getStepbackTask(creationInfo.Build.BuildVariant, buildVarTask.Name)
-	if stepbackInfo != nil {
-		activateTask = stepbackInfo.shouldActivate()
-	}
-
 	if isVirtual {
 		skipReason := ""
 		if evergreen.GetEnvironment().Settings().ServiceFlags.VirtualTasksDisabled {
@@ -1155,8 +1155,15 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 			return nil, nil
 		}
 
-		// When created, virtual tasks start out inactive.
+		// Virtual tasks start out inactive by default, but stepback may still
+		// activate them at creation time (checked below).
 		activateTask = false
+	}
+
+	// If stepback is enabled, check if the task should be activated via stepback.
+	stepbackInfo := creationInfo.ActivationInfo.getStepbackTask(creationInfo.Build.BuildVariant, buildVarTask.Name)
+	if stepbackInfo != nil {
+		activateTask = stepbackInfo.shouldActivate()
 	}
 
 	buildVarTask.RunOn = creationInfo.DistroAliases.Expand(buildVarTask.RunOn)
