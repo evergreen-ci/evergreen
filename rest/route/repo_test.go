@@ -20,12 +20,17 @@ import (
 )
 
 func TestRepoGetByID(t *testing.T) {
+	ctx := t.Context()
+	env := testutil.NewEnvironment(ctx, t)
+	rm := env.RoleManager()
 	collections := []string{
 		model.RepoRefCollection,
 		model.ProjectVarsCollection,
 		model.ProjectAliasCollection,
 		fakeparameter.Collection,
 		event.SubscriptionsCollection,
+		evergreen.ScopeCollection,
+		evergreen.RoleCollection,
 	}
 	require.NoError(t, db.ClearCollections(collections...))
 	t.Cleanup(func() {
@@ -36,8 +41,26 @@ func TestRepoGetByID(t *testing.T) {
 		Id:    "my-repo",
 		Owner: "evergreen-ci",
 		Repo:  "evergreen",
+		TaskAnnotationSettings: evergreen.AnnotationsSettings{
+			FileTicketWebhook: evergreen.WebHook{
+				Endpoint: "https://example.com/file-ticket",
+				Secret:   "file-ticket-secret",
+			},
+		},
 	}}
-	require.NoError(t, repoRef.Replace(t.Context()))
+	require.NoError(t, repoRef.Replace(ctx))
+	require.NoError(t, rm.AddScope(ctx, gimlet.Scope{
+		ID:        "repo-admin-scope",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"my-repo"},
+	}))
+	require.NoError(t, rm.UpdateRole(ctx, gimlet.Role{
+		ID:    "repo-admin",
+		Scope: "repo-admin-scope",
+		Permissions: gimlet.Permissions{
+			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+		},
+	}))
 
 	repoVars := model.ProjectVars{
 		Id:   "my-repo",
@@ -84,6 +107,20 @@ func TestRepoGetByID(t *testing.T) {
 		assert.Equal(t, "my-repo", utility.FromStringPtr(apiRef.Id))
 		assert.Equal(t, "evergreen-ci", utility.FromStringPtr(apiRef.Owner))
 		assert.Equal(t, "evergreen", utility.FromStringPtr(apiRef.Repo))
+		assert.Equal(t, "https://example.com/file-ticket", utility.FromStringPtr(apiRef.TaskAnnotationSettings.FileTicketWebhook.Endpoint))
+		assert.Equal(t, evergreen.RedactedValue, utility.FromStringPtr(apiRef.TaskAnnotationSettings.FileTicketWebhook.Secret))
+	})
+
+	t.Run("AdminWebhookSecretIsRedacted", func(t *testing.T) {
+		h := &repoIDGetHandler{repoID: "my-repo"}
+		ctx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "admin", SystemRoles: []string{"repo-admin"}})
+		resp := h.Run(ctx)
+		require.NotNil(t, resp)
+		assert.Equal(t, http.StatusOK, resp.Status())
+
+		apiRef, ok := resp.Data().(*restmodel.APIProjectRef)
+		require.True(t, ok)
+		assert.Equal(t, evergreen.RedactedValue, utility.FromStringPtr(apiRef.TaskAnnotationSettings.FileTicketWebhook.Secret))
 	})
 
 	t.Run("ReturnsVars", func(t *testing.T) {
@@ -156,6 +193,12 @@ func TestRepoPatchByID(t *testing.T) {
 		Repo:       "evergreen",
 		Admins:     []string{"me"},
 		Restricted: utility.FalsePtr(),
+		TaskAnnotationSettings: evergreen.AnnotationsSettings{
+			FileTicketWebhook: evergreen.WebHook{
+				Endpoint: "https://example.com/file-ticket",
+				Secret:   "file-ticket-secret",
+			},
+		},
 	}}
 	require.NoError(t, repoRef.Replace(ctx))
 
@@ -243,6 +286,18 @@ func TestRepoPatchByID(t *testing.T) {
 		require.NotNil(t, updated)
 		assert.Equal(t, "New Display Name", updated.DisplayName)
 		assert.Equal(t, "my-mothra-team", updated.TaskOwnership.DefaultMothraTeam)
+	})
+
+	t.Run("UpdatingEndpointPreservesStoredWebhookSecret", func(t *testing.T) {
+		resp := makeRequest(t, `{"task_annotation_settings": {"web_hook": {"endpoint": "https://example.com/updated", "secret": "{REDACTED}"}}}`)
+		require.NotNil(t, resp)
+		require.Equal(t, http.StatusOK, resp.Status())
+
+		updated, err := model.FindOneRepoRef(t.Context(), "my-repo")
+		require.NoError(t, err)
+		require.NotNil(t, updated)
+		assert.Equal(t, "https://example.com/updated", updated.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
+		assert.Equal(t, "file-ticket-secret", updated.TaskAnnotationSettings.FileTicketWebhook.Secret)
 	})
 
 	t.Run("UpdateAdmins", func(t *testing.T) {
