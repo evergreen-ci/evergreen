@@ -177,13 +177,14 @@ func createExternalIDHelper(task *task.Task, projectRef *model.ProjectRef) strin
 
 // createRoleSessionName returns a human-readable session name that follows
 // AWS naming conventions.
+// https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#API_AssumeRole_RequestParameters
 func createRoleSessionName(task *task.Task) string {
 	sessionName := fmt.Sprintf("%s-%s-%s", task.Project, task.BuildVariant, task.DisplayName)
 	sessionName = strings.Map(func(r rune) rune {
 		switch {
 		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
 			return r
-		case strings.ContainsRune("=,.@-", r):
+		case strings.ContainsRune("+=,.@-", r):
 			return r
 		default:
 			return '-'
