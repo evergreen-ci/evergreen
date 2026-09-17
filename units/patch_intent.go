@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -1457,17 +1458,20 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 	defer cancel()
 
 	githubUserID := patchDoc.GithubPatchData.AuthorUID
-	if githubUserID == 0 {
-		return false, errors.New("GitHub PR author ID is missing")
-	}
-	resolvedUser, err := getGitHubUserByID(ctx, githubUserID)
+	resolvedUser, err := resolveGitHubPRAuthor(ctx, githubUserID)
 	if err != nil {
-		return false, errors.Wrapf(err, "resolving GitHub PR author ID '%d'", githubUserID)
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"job":        j.ID(),
+			"message":    "failed to resolve GitHub PR author",
+			"source":     "patch intents",
+			"creator_id": githubUserID,
+			"base_repo":  fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
+			"head_repo":  fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
+			"pr_number":  patchDoc.GithubPatchData.PRNumber,
+		}))
+		return false, err
 	}
 	githubUser := resolvedUser.GetLogin()
-	if githubUser == "" {
-		return false, errors.Errorf("GitHub PR author ID '%d' has no login", githubUserID)
-	}
 
 	// Dependabot and GitHub Actions patches are automatically authorized, but
 	// only for same-repo PRs to ensure we never auto-authorize code originating from an external fork.
@@ -1540,6 +1544,20 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 		}))
 	}
 	return hasWritePermission, nil
+}
+
+func resolveGitHubPRAuthor(ctx context.Context, githubUserID int) (*github.User, error) {
+	if githubUserID == 0 {
+		return nil, errors.New("GitHub PR author ID is missing")
+	}
+	resolvedUser, err := getGitHubUserByID(ctx, githubUserID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "resolving GitHub PR author ID '%d'", githubUserID)
+	}
+	if resolvedUser.GetLogin() == "" {
+		return nil, errors.Errorf("GitHub PR author ID '%d' has no login", githubUserID)
+	}
+	return resolvedUser, nil
 }
 
 func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchDoc *patch.Patch) {

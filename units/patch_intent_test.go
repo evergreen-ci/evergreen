@@ -3170,3 +3170,46 @@ func TestIsUserAuthorized(t *testing.T) {
 		assert.False(t, authorized)
 	})
 }
+
+func TestResolveGitHubPRAuthor(t *testing.T) {
+	originalGetGitHubUserByID := getGitHubUserByID
+	t.Cleanup(func() {
+		getGitHubUserByID = originalGetGitHubUserByID
+	})
+
+	t.Run("MissingAuthorIDErrors", func(t *testing.T) {
+		resolvedUser, err := resolveGitHubPRAuthor(t.Context(), 0)
+		assert.Error(t, err)
+		assert.Nil(t, resolvedUser)
+	})
+
+	t.Run("LookupFailureErrors", func(t *testing.T) {
+		getGitHubUserByID = func(ctx context.Context, userID int) (*github.User, error) {
+			return nil, errors.New("GitHub API unavailable")
+		}
+
+		resolvedUser, err := resolveGitHubPRAuthor(t.Context(), 12345)
+		assert.Error(t, err)
+		assert.Nil(t, resolvedUser)
+	})
+
+	t.Run("MissingLoginErrors", func(t *testing.T) {
+		getGitHubUserByID = func(ctx context.Context, userID int) (*github.User, error) {
+			return &github.User{ID: utility.ToInt64Ptr(int64(userID))}, nil
+		}
+
+		resolvedUser, err := resolveGitHubPRAuthor(t.Context(), 12345)
+		assert.Error(t, err)
+		assert.Nil(t, resolvedUser)
+	})
+
+	t.Run("ResolvedAuthorReturnsUser", func(t *testing.T) {
+		getGitHubUserByID = func(ctx context.Context, userID int) (*github.User, error) {
+			return &github.User{ID: utility.ToInt64Ptr(int64(userID)), Login: utility.ToStringPtr("github-user")}, nil
+		}
+
+		resolvedUser, err := resolveGitHubPRAuthor(t.Context(), 12345)
+		assert.NoError(t, err)
+		assert.Equal(t, "github-user", resolvedUser.GetLogin())
+	})
+}
