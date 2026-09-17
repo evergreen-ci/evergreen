@@ -3,6 +3,8 @@
     {
       "_id": "animals",
       "identifier": "animals",
+      "owner_name": "evergreen-ci",
+      "repo_name": "animals-repo",
       "display_name": "animals_display"
     }
   ],
