@@ -114007,12 +114007,10 @@ var (
 	unmarshalNExecutionPlatform2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐExecutionPlatform = map[string]task.ExecutionPlatform{
 		"HOST":      task.ExecutionPlatformHost,
 		"CONTAINER": task.ExecutionPlatformContainer,
-		"VIRTUAL":   task.ExecutionPlatformVirtual,
 	}
 	marshalNExecutionPlatform2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐExecutionPlatform = map[task.ExecutionPlatform]string{
 		task.ExecutionPlatformHost:      "HOST",
 		task.ExecutionPlatformContainer: "CONTAINER",
-		task.ExecutionPlatformVirtual:   "VIRTUAL",
 	}
 )
 

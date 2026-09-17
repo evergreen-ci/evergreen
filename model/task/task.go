@@ -434,9 +434,6 @@ type ExecutionPlatform string
 const (
 	// ExecutionPlatformHost indicates that the task runs in a host.
 	ExecutionPlatformHost ExecutionPlatform = "host"
-	// ExecutionPlatformVirtual indicates that the task's results are pushed
-	// externally and it never enters a task queue or runs on a host.
-	ExecutionPlatformVirtual ExecutionPlatform = "virtual"
 	// ExecutionPlatformContainer indicates that the task runs in a container.
 	ExecutionPlatformContainer ExecutionPlatform = "container"
 )
