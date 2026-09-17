@@ -180,7 +180,7 @@ func (h *completeVirtualTasksHandler) completeTask(ctx context.Context, runner *
 	if vt == nil {
 		return failed("task not found")
 	}
-	if vt.ExecutionPlatform != task.ExecutionPlatformVirtual {
+	if !vt.IsVirtual {
 		return failed("task is not a virtual task")
 	}
 	if vt.Version != runner.Version {
@@ -248,7 +248,7 @@ func (h *completeVirtualTasksHandler) completeTask(ctx context.Context, runner *
 	vt.StartTime = finishTime
 	detail := &apimodels.TaskEndDetail{
 		Status:                    completion.Status,
-		ExecutionPlatform:         string(task.ExecutionPlatformVirtual),
+		ExecutionPlatform:         string(vt.ExecutionPlatform),
 		ExternalExecutionMetadata: completion.ExternalMetadata,
 	}
 	if err = model.MarkEnd(ctx, h.env.Settings(), vt, evergreen.APIServerTaskActivator, finishTime, detail); err != nil {

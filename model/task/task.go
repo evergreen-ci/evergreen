@@ -244,6 +244,10 @@ type Task struct {
 	Aborted   bool                    `bson:"abort,omitempty" json:"abort"`
 	AbortInfo AbortInfo               `bson:"abort_info,omitempty" json:"abort_info,omitempty"`
 
+	// IsVirtual indicates that this is a virtual task, which means it has the
+	// option to either be push-completed by a runner task (see CompletedBy) or
+	// run just like a regular task.
+	IsVirtual bool `bson:"is_virtual,omitempty" json:"is_virtual,omitempty"`
 	// CompletedBy is the ID of the runner task that push-completed this
 	// virtual task.
 	CompletedBy string `bson:"completed_by,omitempty" json:"completed_by,omitempty"`

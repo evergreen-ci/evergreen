@@ -542,6 +542,36 @@ func TestTranslateTasks(t *testing.T) {
 	assert.Equal(t, "path", checkRunBV.Tasks[0].CreateCheckRun.PathToOutputs)
 }
 
+func TestTranslateVirtualTask(t *testing.T) {
+	parserProject := &ParserProject{
+		BuildVariants: []parserBV{
+			{
+				Name: "bv",
+				Tasks: parserBVTaskUnits{
+					{Name: "virtual_task"},
+					{Name: "regular_task"},
+				},
+			},
+		},
+		Tasks: []parserTask{
+			{Name: "virtual_task", Virtual: true},
+			{Name: "regular_task"},
+		},
+	}
+	out, err := TranslateProject(t.Context(), parserProject)
+	assert.NoError(t, err)
+	require.NotNil(t, out)
+	require.Len(t, out.Tasks, 2)
+
+	virtualTask := out.FindProjectTask("virtual_task")
+	require.NotNil(t, virtualTask)
+	assert.True(t, virtualTask.Virtual, "virtual task definition should translate virtual: true")
+
+	regularTask := out.FindProjectTask("regular_task")
+	require.NotNil(t, regularTask)
+	assert.False(t, regularTask.Virtual, "regular task definition should default to non-virtual")
+}
+
 func TestTranslateDependsOn(t *testing.T) {
 	Convey("With an intermediate parseProject", t, func() {
 		pp := &ParserProject{}

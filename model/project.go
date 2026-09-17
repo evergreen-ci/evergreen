@@ -853,6 +853,7 @@ type ProjectTask struct {
 	IgnoredBranches   []string                  `yaml:"ignored_branches,omitempty" bson:"ignored_branches,omitempty"`
 	Stepback          *bool                     `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	MustHaveResults   *bool                     `yaml:"must_have_test_results,omitempty" bson:"must_have_test_results,omitempty"`
+	Virtual           bool                      `yaml:"virtual,omitempty" bson:"virtual,omitempty"`
 	PS                *string                   `yaml:"ps,omitempty" bson:"ps,omitempty"`
 }
 
