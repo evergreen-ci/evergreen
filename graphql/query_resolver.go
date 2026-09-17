@@ -526,7 +526,6 @@ func (r *queryResolver) RepoSettings(ctx context.Context, repoID string) (*restM
 	if err = res.ProjectRef.BuildFromService(ctx, repoRef.ProjectRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting repo '%s' to APIProjectRef: %s", repoID, err.Error()))
 	}
-
 	// Default values so the UI understands what to do with nil values.
 	res.ProjectRef.DefaultUnsetBooleans(ctx)
 	return res, nil

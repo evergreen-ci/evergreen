@@ -91,6 +91,7 @@ var (
 	DetailsKey                    = bsonutil.MustHaveTag(Task{}, "Details")
 	AbortedKey                    = bsonutil.MustHaveTag(Task{}, "Aborted")
 	AbortInfoKey                  = bsonutil.MustHaveTag(Task{}, "AbortInfo")
+	CompletedByKey                = bsonutil.MustHaveTag(Task{}, "CompletedBy")
 	TimeTakenKey                  = bsonutil.MustHaveTag(Task{}, "TimeTaken")
 	TaskCostKey                   = bsonutil.MustHaveTag(Task{}, "TaskCost")
 	PredictedTaskCostKey          = bsonutil.MustHaveTag(Task{}, "PredictedTaskCost")
@@ -343,6 +344,14 @@ func ByIdAndExecution(id string, execution int) bson.M {
 func ByOldTaskID(id string) bson.M {
 	return bson.M{
 		OldTaskIdKey: id,
+	}
+}
+
+// ByOldTaskIDs creates a query that finds the archived executions of all the
+// given tasks.
+func ByOldTaskIDs(ids []string) bson.M {
+	return bson.M{
+		OldTaskIdKey: bson.M{"$in": ids},
 	}
 }
 

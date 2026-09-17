@@ -89,7 +89,7 @@
               "taskAnnotationSettings": {
                 "fileTicketWebhook": {
                   "endpoint": "endpoint",
-                  "secret": "shh"
+                  "secret": "{REDACTED}"
                 }
               },
               "externalLinks": [

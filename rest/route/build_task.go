@@ -1,8 +1,10 @@
 package route
 
 import (
+	"cmp"
 	"context"
 	"net/http"
+	"slices"
 
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
@@ -105,15 +107,40 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 
 	tasks = tasks[:lastIndex]
 
-	artifactsCache, err := getArtifactsForTasks(ctx, tasks)
+	// Fetch the archived executions of the whole page up front so that the
+	// artifact, host, and project identifier lookups below can batch over
+	// them instead of querying per task.
+	oldTasksByTaskID := map[string][]task.Task{}
+	if tbh.fetchAllExecutions {
+		oldTasksByTaskID, err = getOldTasksForTasks(ctx, tasks)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding archived tasks for build '%s'", tbh.buildId))
+		}
+	}
+	allTasksToSearch := tasks
+	for _, oldTasks := range oldTasksByTaskID {
+		allTasksToSearch = append(allTasksToSearch, oldTasks...)
+	}
+
+	artifactsCache, err := getArtifactsForTasks(ctx, allTasksToSearch)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding artifacts for tasks in build '%s'", tbh.buildId))
 	}
-	amisByHostID, err := getAMIsForTasks(ctx, tasks)
+	amisByHostID, err := getAMIsForTasks(ctx, allTasksToSearch)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding hosts for tasks in build '%s'", tbh.buildId))
 	}
 	projectIdentifier, foundProjectIdentifier := getProjectIdentifierForTasks(ctx, tasks)
+
+	prevExecArgs := &model.APITaskArgs{
+		IncludeArtifacts: true,
+		ArtifactsCache:   artifactsCache,
+		LogURL:           GetURL(ctx),
+		ParsleyLogURL:    tbh.parsleyURL,
+	}
+	if !foundProjectIdentifier {
+		prevExecArgs.IncludeProjectIdentifier = true
+	}
 
 	for i := range tasks {
 		taskModel := &model.APITask{}
@@ -134,15 +161,17 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 
 		if tbh.fetchAllExecutions {
-			var oldTasks []task.Task
-
-			oldTasks, err = task.FindOldWithDisplayTasks(ctx, task.ByOldTaskID(tasks[i].Id))
-			if err != nil {
-				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding archived task '%s'", tasks[i].Id))
-			}
-
-			if err = taskModel.BuildPreviousExecutions(ctx, oldTasks, GetURL(ctx), tbh.parsleyURL); err != nil {
+			oldTasks := oldTasksByTaskID[tasks[i].Id]
+			if err = taskModel.BuildPreviousExecutions(ctx, oldTasks, prevExecArgs); err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "adding previous task executions to API model"))
+			}
+			for j := range taskModel.PreviousExecutions {
+				if foundProjectIdentifier {
+					taskModel.PreviousExecutions[j].ProjectIdentifier = utility.ToStringPtr(projectIdentifier)
+				}
+				if ami := amisByHostID[oldTasks[j].HostId]; ami != "" {
+					taskModel.PreviousExecutions[j].AMI = utility.ToStringPtr(ami)
+				}
 			}
 		}
 
@@ -160,8 +189,37 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 	return resp
 }
 
+// getOldTasksForTasks fetches the archived executions of every task in the
+// page in one query.
+func getOldTasksForTasks(ctx context.Context, tasks []task.Task) (map[string][]task.Task, error) {
+	oldTasksByTaskID := map[string][]task.Task{}
+	if len(tasks) == 0 {
+		return oldTasksByTaskID, nil
+	}
+	ids := make([]string, 0, len(tasks))
+	for _, t := range tasks {
+		ids = append(ids, t.Id)
+	}
+	oldTasks, err := task.FindOldWithDisplayTasks(ctx, task.ByOldTaskIDs(ids))
+	if err != nil {
+		return nil, errors.Wrap(err, "finding archived tasks")
+	}
+	for _, oldTask := range oldTasks {
+		oldTasksByTaskID[oldTask.OldTaskId] = append(oldTasksByTaskID[oldTask.OldTaskId], oldTask)
+	}
+
+	// Sort old tasks so they are always in the same order.
+	for taskID := range oldTasksByTaskID {
+		slices.SortFunc(oldTasksByTaskID[taskID], func(a, b task.Task) int {
+			return cmp.Compare(a.Execution, b.Execution)
+		})
+	}
+	return oldTasksByTaskID, nil
+}
+
 // getArtifactsForTasks fetches the artifact entries for a page of tasks in one
 // query. Display tasks store their artifacts under their execution tasks.
+// Archived tasks store them under the ID they ran as, not their archived _id.
 func getArtifactsForTasks(ctx context.Context, tasks []task.Task) (map[artifact.TaskIDAndExecution][]artifact.Entry, error) {
 	var pairs []artifact.TaskIDAndExecution
 	for _, t := range tasks {
@@ -171,7 +229,11 @@ func getArtifactsForTasks(ctx context.Context, tasks []task.Task) (map[artifact.
 			}
 			continue
 		}
-		pairs = append(pairs, artifact.TaskIDAndExecution{TaskID: t.Id, Execution: t.Execution})
+		taskID := t.Id
+		if t.OldTaskId != "" {
+			taskID = t.OldTaskId
+		}
+		pairs = append(pairs, artifact.TaskIDAndExecution{TaskID: taskID, Execution: t.Execution})
 	}
 
 	artifactsByTask := map[artifact.TaskIDAndExecution][]artifact.Entry{}

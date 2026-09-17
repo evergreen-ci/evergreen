@@ -562,6 +562,8 @@ type Module struct {
 	Prefix     string `yaml:"prefix,omitempty" bson:"prefix"  plugin:"expand"`
 	Ref        string `yaml:"ref,omitempty" bson:"ref"  plugin:"expand"`
 	AutoUpdate bool   `yaml:"auto_update,omitempty" bson:"auto_update"`
+	// CloneDepth shallow clones the module with git clone --depth.
+	CloneDepth int `yaml:"clone_depth,omitempty" bson:"clone_depth,omitempty"`
 }
 
 // GetOwnerAndRepo returns the owner and repo for a module

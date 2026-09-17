@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
@@ -622,8 +623,10 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, num
 			}
 		}
 
+		// A not-found error means the task was push-completed, so skip it and
+		// move on to the next task.
 		lockErr := dispatchHostTaskAtomically(ctx, env, currentHost, nextTask)
-		if lockErr != nil && !db.IsDuplicateKey(lockErr) {
+		if lockErr != nil && !db.IsDuplicateKey(lockErr) && !adb.ResultsNotFound(lockErr) {
 			return nil, false, errors.Wrapf(err, "dispatching task '%s' to host '%s'", nextTask.Id, currentHost.Id)
 		}
 		dispatchedTask := lockErr == nil
