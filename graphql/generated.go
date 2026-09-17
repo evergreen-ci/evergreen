@@ -57575,7 +57575,7 @@ func (ec *executionContext) _ResourceTagsConfig_mongodbEnv(ctx context.Context, 
 			return obj.MongoDBEnv, nil
 		},
 		nil,
-		ec.marshalOString2ᚖstring,
+		ec.marshalOMongoDBEnvironment2ᚖstring,
 		true,
 		false,
 	)
@@ -57588,7 +57588,7 @@ func (ec *executionContext) fieldContext_ResourceTagsConfig_mongodbEnv(_ context
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type MongoDBEnvironment does not have child fields")
 		},
 	}
 	return fc, nil
@@ -88363,7 +88363,7 @@ func (ec *executionContext) unmarshalInputResourceTagsConfigInput(ctx context.Co
 		switch k {
 		case "mongodbEnv":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mongodbEnv"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalOMongoDBEnvironment2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -121276,6 +121276,52 @@ func (ec *executionContext) marshalOMetadataLink2ᚕgithubᚗcomᚋevergreenᚑc
 
 	return ret
 }
+
+func (ec *executionContext) unmarshalOMongoDBEnvironment2ᚖstring(ctx context.Context, v any) (*string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	tmp, err := graphql.UnmarshalString(v)
+	res := unmarshalOMongoDBEnvironment2ᚖstring[tmp]
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOMongoDBEnvironment2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalString(marshalOMongoDBEnvironment2ᚖstring[*v])
+	return res
+}
+
+var (
+	unmarshalOMongoDBEnvironment2ᚖstring = map[string]string{
+		"PROD":    evergreen.MongoDBEnvironmentProd,
+		"STAGING": evergreen.MongoDBEnvironmentStaging,
+		"DEV":     evergreen.MongoDBEnvironmentDev,
+		"QA":      evergreen.MongoDBEnvironmentQA,
+		"TEST":    evergreen.MongoDBEnvironmentTest,
+		"LOCAL":   evergreen.MongoDBEnvironmentLocal,
+		"POC":     evergreen.MongoDBEnvironmentPOC,
+		"DEMO":    evergreen.MongoDBEnvironmentDemo,
+		"UAT":     evergreen.MongoDBEnvironmentUAT,
+		"SANDBOX": evergreen.MongoDBEnvironmentSandbox,
+	}
+	marshalOMongoDBEnvironment2ᚖstring = map[string]string{
+		evergreen.MongoDBEnvironmentProd:    "PROD",
+		evergreen.MongoDBEnvironmentStaging: "STAGING",
+		evergreen.MongoDBEnvironmentDev:     "DEV",
+		evergreen.MongoDBEnvironmentQA:      "QA",
+		evergreen.MongoDBEnvironmentTest:    "TEST",
+		evergreen.MongoDBEnvironmentLocal:   "LOCAL",
+		evergreen.MongoDBEnvironmentPOC:     "POC",
+		evergreen.MongoDBEnvironmentDemo:    "DEMO",
+		evergreen.MongoDBEnvironmentUAT:     "UAT",
+		evergreen.MongoDBEnvironmentSandbox: "SANDBOX",
+	}
+)
 
 func (ec *executionContext) marshalOMultiAuthConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIMultiAuthConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIMultiAuthConfig) graphql.Marshaler {
 	if v == nil {

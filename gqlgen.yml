@@ -504,6 +504,29 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIMetadataLink
   ModuleCodeChange:
     model: github.com/evergreen-ci/evergreen/model/patch.ModuleCodeChange
+  MongoDBEnvironment:
+    model: github.com/99designs/gqlgen/graphql.String
+    enum_values:
+      PROD:
+        value: github.com/evergreen-ci/evergreen.MongoDBEnvironmentProd
+      STAGING:
+        value: github.com/evergreen-ci/evergreen.MongoDBEnvironmentStaging
+      DEV:
+        value: github.com/evergreen-ci/evergreen.MongoDBEnvironmentDev
+      QA:
+        value: github.com/evergreen-ci/evergreen.MongoDBEnvironmentQA
+      TEST:
+        value: github.com/evergreen-ci/evergreen.MongoDBEnvironmentTest
+      LOCAL:
+        value: github.com/evergreen-ci/evergreen.MongoDBEnvironmentLocal
+      POC:
+        value: github.com/evergreen-ci/evergreen.MongoDBEnvironmentPOC
+      DEMO:
+        value: github.com/evergreen-ci/evergreen.MongoDBEnvironmentDemo
+      UAT:
+        value: github.com/evergreen-ci/evergreen.MongoDBEnvironmentUAT
+      SANDBOX:
+        value: github.com/evergreen-ci/evergreen.MongoDBEnvironmentSandbox
   MultiAuthConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIMultiAuthConfig
   MultiAuthConfigInput:

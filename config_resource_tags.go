@@ -7,17 +7,30 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	MongoDBEnvironmentProd    = "prod"
+	MongoDBEnvironmentStaging = "staging"
+	MongoDBEnvironmentDev     = "dev"
+	MongoDBEnvironmentQA      = "qa"
+	MongoDBEnvironmentTest    = "test"
+	MongoDBEnvironmentLocal   = "local"
+	MongoDBEnvironmentPOC     = "poc"
+	MongoDBEnvironmentDemo    = "demo"
+	MongoDBEnvironmentUAT     = "uat"
+	MongoDBEnvironmentSandbox = "sandbox"
+)
+
 var validMongoDBEnvironments = map[string]struct{}{
-	"prod":    {},
-	"staging": {},
-	"dev":     {},
-	"qa":      {},
-	"test":    {},
-	"local":   {},
-	"poc":     {},
-	"demo":    {},
-	"uat":     {},
-	"sandbox": {},
+	MongoDBEnvironmentProd:    {},
+	MongoDBEnvironmentStaging: {},
+	MongoDBEnvironmentDev:     {},
+	MongoDBEnvironmentQA:      {},
+	MongoDBEnvironmentTest:    {},
+	MongoDBEnvironmentLocal:   {},
+	MongoDBEnvironmentPOC:     {},
+	MongoDBEnvironmentDemo:    {},
+	MongoDBEnvironmentUAT:     {},
+	MongoDBEnvironmentSandbox: {},
 }
 
 type ResourceTagsConfig struct {
