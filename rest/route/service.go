@@ -41,6 +41,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	requireHost := NewHostAuthMiddleware()
 	requireHostReadOnly := NewReadOnlyHostAuthMiddleware()
 	addProject := NewProjectContextMiddleware()
+	addGitHubIntentProcessingError := newGitHubIntentProcessingErrorContextMiddleware()
 	requireProjectAdmin := NewProjectAdminMiddleware()
 	requireAlertmanager := NewAlertmanagerMiddleware()
 	requireBackstage := newBackstageMiddleware()
@@ -160,6 +161,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 
 	app.AddRoute("/hooks/github").Version(2).Post().Wrap(requireValidGithubPayload, rateLimit).RouteHandler(makeGithubHooksRoute(sc, opts.APIQueue, opts.GithubSecret, settings))
 	app.AddRoute("/hooks/aws").Version(2).Post().Wrap(requireValidSNSPayload, rateLimit).RouteHandler(makeEC2SNS(env, opts.APIQueue))
+	app.AddRoute("/github/intent-processing-errors/{error_id}").Version(2).Get().Wrap(requireUser, addGitHubIntentProcessingError, viewTasks, rateLimit).RouteHandler(makeGitHubIntentProcessingError())
 
 	app.AddRoute("/host/filter").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeFetchHostFilter())
 	app.AddRoute("/host/start_processes").Version(2).Post().Wrap(requireUser, rateLimit).RouteHandler(makeHostStartProcesses(env))
