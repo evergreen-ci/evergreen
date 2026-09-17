@@ -499,7 +499,7 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding repo ref '%s': %s", dbProjectRef.RepoRefId, err.Error()))
 		}
 		if repoRef == nil {
-			return nil, InputValidationError.Send(ctx, fmt.Sprintf("repo ref '%s' not found", dbProjectRef.RepoRefId))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("repo ref '%s' not found", dbProjectRef.RepoRefId))
 		}
 		if !u.HasPermission(ctx, gimlet.PermissionOpts{
 			Resource:      repoRef.Id,

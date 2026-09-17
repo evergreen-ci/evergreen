@@ -1,7 +1,7 @@
 {
   "tests": [
     {
-      "query_file": "create_project.graphql",
+      "query_file": "create_project_success.graphql",
       "result": {
         "data": {
           "createProject": {
@@ -13,7 +13,7 @@
       }
     },
     {
-      "query_file": "create_project_2.graphql",
+      "query_file": "create_project_failure.graphql",
       "result": {
         "data": null,
         "errors": [
