@@ -1551,7 +1551,7 @@ func FindAll(ctx context.Context, query db.Q) ([]Task, error) {
 	return tasks, err
 }
 
-// Find returns really all tasks that satisfy the query.
+// FindAllOld returns all archived task executions matching the given query.
 func FindAllOld(ctx context.Context, query db.Q) ([]Task, error) {
 	tasks := []Task{}
 	err := db.FindAllQ(ctx, OldCollection, query, &tasks)
