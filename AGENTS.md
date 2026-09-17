@@ -175,6 +175,18 @@ AI-assisted code is welcome, but the author is responsible for the final result.
   the code under test.
 * Check for performance anti-patterns the AI commonly introduces (DB calls inside deep loops, redundant queries).
 
+## AI Tooling
+
+Optional local tools — not everyone has them installed. If a tool is missing, fall back to normal search and
+read tools; do not try to install it or retry.
+
+* **graft** — prebuilt symbol/call graph (`graft ask`, `graft callers`, `graft grep`). If installed, prefer it
+  over greping or reading files cold. Run `graft build` once if `graft/` is missing.
+* **graphify** — semantic knowledge graph including the docs/decisions layer (`/graphify query "<question>"`).
+  Cross-subsystem orientation only; its INFERRED/AMBIGUOUS edges are leads, not facts — verify with graft or source.
+  If available, build once with `/graphify .`, refresh with `/graphify . --update`. Do not commit `graphify-out/`.
+* **docs/** — for "why" questions, consult `docs/decisions/` (ADRs) and `docs/` (intended behavior) alongside the code.
+
 ## Pull Requests
 
 For opening PRs, follow the template in `.github/pull_request_template.md`:
