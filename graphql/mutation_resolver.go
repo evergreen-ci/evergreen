@@ -153,9 +153,6 @@ func (r *mutationResolver) SaveAdminSettings(ctx context.Context, adminSettings 
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
 	}
-	if err = validateResourceTagsUpdate(oldSettings, &adminSettings); err != nil {
-		return nil, InputValidationError.Send(ctx, err.Error())
-	}
 	newSettingsUnredacted, err := data.SetEvergreenSettings(ctx, &adminSettings, oldSettings, mustHaveUser(ctx), false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting admin settings: %s", err.Error()))
@@ -182,22 +179,6 @@ func (r *mutationResolver) SaveAdminSettings(ctx context.Context, adminSettings 
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting updated settings to API model: %s", err.Error()))
 	}
 	return updatedAdminSettings, nil
-}
-
-func validateResourceTagsUpdate(oldSettings *evergreen.Settings, adminSettings *restModel.APIAdminSettings) error {
-	if adminSettings.Providers == nil || adminSettings.Providers.AWS == nil || adminSettings.Providers.AWS.ResourceTags == nil {
-		return nil
-	}
-
-	resourceTags := adminSettings.Providers.AWS.ResourceTags
-	if oldSettings.Providers.AWS.ResourceTags.MongoDBEnv != "" && resourceTags.MongoDBEnv != nil && *resourceTags.MongoDBEnv == "" {
-		return fmt.Errorf("MongoDB environment cannot be cleared once set")
-	}
-	if oldSettings.Providers.AWS.ResourceTags.MongoDBOwner != "" && resourceTags.MongoDBOwner != nil && *resourceTags.MongoDBOwner == "" {
-		return fmt.Errorf("MongoDB owner cannot be cleared once set")
-	}
-
-	return nil
 }
 
 // SetServiceFlags is the resolver for the setServiceFlags field.

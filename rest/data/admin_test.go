@@ -383,6 +383,28 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Tracer.TraceURLTemplate, settingsFromConnector.Tracer.TraceURLTemplate)
 }
 
+func (s *AdminDataSuite) TestSetEvergreenSettingsRejectsClearingResourceTags() {
+	oldSettings := testutil.MockConfig()
+	oldSettings.Providers.AWS.ResourceTags = evergreen.ResourceTagsConfig{
+		MongoDBEnv:   "staging",
+		MongoDBOwner: "evergreen@mongodb.com",
+	}
+
+	for name, resourceTags := range map[string]*restModel.APIResourceTagsConfig{
+		"Environment": {MongoDBEnv: utility.ToStringPtr("")},
+		"Owner":       {MongoDBOwner: utility.ToStringPtr("")},
+	} {
+		s.Run(name, func() {
+			_, err := SetEvergreenSettings(s.T().Context(), &restModel.APIAdminSettings{
+				Providers: &restModel.APICloudProviders{
+					AWS: &restModel.APIAWSConfig{ResourceTags: resourceTags},
+				},
+			}, oldSettings, &user.DBUser{}, false)
+			s.Error(err)
+		})
+	}
+}
+
 func (s *AdminDataSuite) TestSetEvergreenSettingsPreservesBucketLifecycleFields() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
