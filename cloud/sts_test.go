@@ -26,7 +26,7 @@ func TestAssumeRole(t *testing.T) {
 	requester := "requester"
 	taskDisplayName := "display name"
 	buildVariant := "build_variant"
-	sessionName := "project-id-display-name-build-variant"
+	sessionName := "project-id-build-variant-display-name"
 
 	roleARN := "role_arn"
 	policy := "policy"
@@ -246,15 +246,15 @@ func TestCreateRoleSessionName(t *testing.T) {
 	}{
 		"AllowedCharactersPassThroughUnchanged": {
 			task:            task.Task{Project: "sys-perf", DisplayName: "compile", BuildVariant: "linux-64"},
-			wantSessionName: "sys-perf-compile-linux-64",
+			wantSessionName: "sys-perf-linux-64-compile",
 		},
 		"DisallowedCharactersAreReplacedWithHyphens": {
 			task:            task.Task{Project: "project_id", DisplayName: "display name", BuildVariant: "variant.2"},
-			wantSessionName: "project-id-display-name-variant.2",
+			wantSessionName: "project-id-variant.2-display-name",
 		},
 		"NamesLongerThan64CharactersAreTruncated": {
 			task:            task.Task{Project: "p", DisplayName: strings.Repeat("a", 100), BuildVariant: "b"},
-			wantSessionName: fmt.Sprintf("p-%s", strings.Repeat("a", 62)),
+			wantSessionName: fmt.Sprintf("p-b-%s", strings.Repeat("a", 60)),
 		},
 	}
 	for tName, tCase := range testCases {

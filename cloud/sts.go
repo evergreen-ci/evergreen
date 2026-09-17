@@ -178,7 +178,7 @@ func createExternalIDHelper(task *task.Task, projectRef *model.ProjectRef) strin
 // createRoleSessionName returns a human-readable session name that follows
 // AWS naming conventions.
 func createRoleSessionName(task *task.Task) string {
-	sessionName := fmt.Sprintf("%s-%s-%s", task.Project, task.DisplayName, task.BuildVariant)
+	sessionName := fmt.Sprintf("%s-%s-%s", task.Project, task.BuildVariant, task.DisplayName)
 	sessionName = strings.Map(func(r rune) rune {
 		switch {
 		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
