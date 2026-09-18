@@ -26,11 +26,15 @@ func TestSelectTestsHandler(t *testing.T) {
 		"build_variant": "variant",
 		"task_id": "my-task-1234",
 		"task_name": "my-task",
+		"display_task_name": "my-display-task",
 		"tests": ["test1", "test2", "test3"]
 	}`)
 	req, _ := http.NewRequest(http.MethodPost, "/select/tests", bytes.NewBuffer(j))
 	sth := makeSelectTestsHandler(env)
 	require.NoError(t, sth.Parse(ctx, req), "request should parse successfully")
+	handler, ok := sth.(*selectTestsHandler)
+	require.True(t, ok)
+	assert.Equal(t, "my-display-task", handler.selectTests.DisplayTaskName)
 
 	j = []byte(`{
 		"project_id": "my-project",
