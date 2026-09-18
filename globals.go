@@ -655,6 +655,7 @@ const (
 
 	// HTTP request otel attributes.
 	HTTPClientAuthOtelAttribute  = "evergreen.http.client_auth"
+	HTTPCLIVersionOtelAttribute  = "evergreen.http.cli_version"
 	HTTPUserOnlyAPIOtelAttribute = "evergreen.http.user.only_api"
 )
 
@@ -692,6 +693,7 @@ const (
 	SageUserHeader       = "x-authenticated-sage-user"
 	AuthorizationHeader  = "Authorization"
 	EnvironmentHeader    = "X-Evergreen-Environment"
+	CLIVersionHeader     = "X-Evergreen-CLI-Version"
 	GraphQLAIAgentHeader = "X-Graphql-Ai-Agent"
 
 	// RefreshGitHubTokenHeader is set to "true" by callers whose installation
