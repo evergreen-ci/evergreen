@@ -722,11 +722,12 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 		return errors.Wrap(err, "making block device mappings")
 	}
 
+	hostTags := makeTags(h, m.settings.Providers.AWS.ResourceTags)
 	launchTemplate := &types.RequestLaunchTemplateData{
 		ImageId:             aws.String(ec2Settings.AMI),
 		InstanceType:        types.InstanceType(ec2Settings.InstanceType),
 		BlockDeviceMappings: blockDevices,
-		TagSpecifications:   makeTagTemplate(makeTags(h)),
+		TagSpecifications:   makeTagTemplate(hostTags),
 	}
 	if ec2Settings.EnableNestedVirtualization {
 		launchTemplate.CpuOptions = &types.LaunchTemplateCpuOptionsRequest{
@@ -787,12 +788,14 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 		launchTemplate.UserData = &userData
 	}
 
+	launchTemplateTags := []types.Tag{{Key: aws.String(evergreen.TagDistro), Value: aws.String(h.Distro.Id)}}
+	launchTemplateTags = append(launchTemplateTags, hostToEC2Tags(filterMongoDBResourceTags(hostTags))...)
 	_, err = m.client.CreateLaunchTemplate(ctx, &ec2.CreateLaunchTemplateInput{
 		LaunchTemplateData: launchTemplate,
 		LaunchTemplateName: aws.String(cleanLaunchTemplateName(h.Tag)),
 		TagSpecifications: []types.TagSpecification{{
 			ResourceType: types.ResourceTypeLaunchTemplate,
-			Tags:         []types.Tag{{Key: aws.String(evergreen.TagDistro), Value: aws.String(h.Distro.Id)}}},
+			Tags:         launchTemplateTags},
 		},
 	})
 	if err != nil {
@@ -832,6 +835,13 @@ func (m *ec2FleetManager) requestFleet(ctx context.Context, h *host.Host, ec2Set
 			DefaultTargetCapacityType: types.DefaultTargetCapacityTypeOnDemand,
 		},
 		Type: types.FleetTypeInstant,
+	}
+	resourceTags := hostToEC2Tags(filterMongoDBResourceTags(h.InstanceTags))
+	if len(resourceTags) != 0 {
+		createFleetInput.TagSpecifications = []types.TagSpecification{{
+			ResourceType: types.ResourceTypeFleet,
+			Tags:         resourceTags,
+		}}
 	}
 
 	createFleetResponse, err := m.client.CreateFleet(ctx, createFleetInput)
