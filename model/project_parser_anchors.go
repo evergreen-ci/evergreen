@@ -17,7 +17,10 @@ type anchorEntry struct {
 	node *yaml.Node
 }
 
-// anchorRegistry accumulates YAML anchor definitions across include files for cross-file alias resolution.
+// anchorRegistry accumulates YAML anchor definitions across include files for
+// cross-file alias resolution. Entries are self-contained: aliases are expanded
+// at collection time, so no entry references another and preamble order is
+// irrelevant. See docs/decisions/2026-09-16_cross_file_yaml_anchors.md.
 type anchorRegistry struct {
 	entries []anchorEntry
 }
@@ -31,27 +34,31 @@ func (a *anchorRegistry) Length() int {
 }
 
 // mergeAnchorsFrom collects all anchor definitions from node and merges them
-// into the registry by name. Move re-defined anchors to later in the list to
-// ensure they're defined after dependencies (i.e. any other new anchors that
-// they themselves reference).
+// into the registry. New anchors are appended; redefined anchors are updated
+// in place, so the latest definition wins for subsequent files.
 func (a *anchorRegistry) mergeAnchorsFrom(node *yaml.Node) {
 	if a == nil {
 		return
 	}
 	for _, anchor := range collectAnchors(node) {
+		found := false
 		for i, existing := range a.entries {
 			if existing.name == anchor.name {
-				a.entries = append(a.entries[:i], a.entries[i+1:]...)
+				a.entries[i] = anchor
+				found = true
 				break
 			}
 		}
-		a.entries = append(a.entries, anchor)
+		if !found {
+			a.entries = append(a.entries, anchor)
+		}
 	}
 }
 
-// collectAnchors walks node in pre-order and returns all anchored nodes in
-// encounter order. AliasNodes are not followed, so only anchor definitions
-// (&name) are collected, never alias uses (*name).
+// collectAnchors walks node in pre-order and returns all anchor definitions
+// (&name) in encounter order. Each returned node is a self-contained copy with
+// aliases expanded, so its value is frozen at collection time: redefining an
+// anchor later never changes the value of other anchors that referenced it.
 func collectAnchors(node *yaml.Node) []anchorEntry {
 	if node == nil {
 		return nil
@@ -63,7 +70,11 @@ func collectAnchors(node *yaml.Node) []anchorEntry {
 			return
 		}
 		if n.Anchor != "" {
-			entries = append(entries, anchorEntry{name: n.Anchor, node: n})
+			expanded := expandAliases(n)
+			// Restore the anchor name on the top-level node so it defines
+			// &name in the preamble; expandAliases strips all anchors.
+			expanded.Anchor = n.Anchor
+			entries = append(entries, anchorEntry{name: n.Anchor, node: expanded})
 		}
 		for _, child := range n.Content {
 			walk(child)
@@ -73,14 +84,32 @@ func collectAnchors(node *yaml.Node) []anchorEntry {
 	return entries
 }
 
+// expandAliases returns a deep copy of node with every alias replaced by a copy
+// of the node it references, and all anchor names stripped. Nested anchors are
+// collected as their own registry entries, so stripping them here avoids
+// duplicate definitions in the preamble.
+func expandAliases(node *yaml.Node) *yaml.Node {
+	if node == nil {
+		return nil
+	}
+	if node.Kind == yaml.AliasNode {
+		return expandAliases(node.Alias)
+	}
+	copied := *node
+	copied.Anchor = ""
+	if len(node.Content) > 0 {
+		copied.Content = make([]*yaml.Node, len(node.Content))
+		for i, child := range node.Content {
+			copied.Content[i] = expandAliases(child)
+		}
+	}
+	return &copied
+}
+
 // buildAnchorPreamble marshals all registry entries into a YAML document under
 // the _evg_anchors key. Prepending the returned bytes to an include file's raw
 // bytes before parsing makes all accumulated anchor definitions visible to the
 // YAML parser, enabling cross-file alias resolution.
-//
-// Entries must be in encounter order so that any alias references within anchor
-// values (e.g. an anchor whose value itself uses an alias to an earlier anchor)
-// are valid when the preamble is parsed.
 func buildAnchorPreamble(registry *anchorRegistry) ([]byte, error) {
 	if registry.Length() == 0 {
 		return nil, nil
