@@ -2292,8 +2292,32 @@ func (p *Project) DependencyGraph() task.DependencyGraph {
 
 // dependenciesForTaskUnit returns a slice of dependencies between tasks in the project.
 func dependenciesForTaskUnit(taskUnits []BuildVariantTaskUnit, p *Project) []task.DependencyEdge {
+	return dependenciesForSelectedTaskUnits(taskUnits, nil, p)
+}
+
+// dependenciesForSelectedTaskUnits returns dependencies for the selected dependent tasks. All task
+// units remain eligible dependency targets. A nil selection includes every dependent task.
+func dependenciesForSelectedTaskUnits(taskUnits []BuildVariantTaskUnit, selected map[TVPair]struct{}, p *Project) []task.DependencyEdge {
+	byName := make(map[string][]int)
+	byVariant := make(map[string][]int)
+	byPair := make(map[TVPair][]int)
+	all := make([]int, len(taskUnits))
+	for i := range taskUnits {
+		all[i] = i
+		pair := taskUnits[i].ToTVPair()
+		byName[pair.TaskName] = append(byName[pair.TaskName], i)
+		byVariant[pair.Variant] = append(byVariant[pair.Variant], i)
+		byPair[pair] = append(byPair[pair], i)
+	}
+
 	var dependencies []task.DependencyEdge
 	for _, dependentTask := range taskUnits {
+		dependentPair := dependentTask.ToTVPair()
+		if selected != nil {
+			if _, ok := selected[dependentPair]; !ok {
+				continue
+			}
+		}
 		p.addImplicitTaskGroupDependency(&dependentTask)
 		for _, dep := range dependentTask.DependsOn {
 			// Use the current variant if none is specified.
@@ -2301,16 +2325,28 @@ func dependenciesForTaskUnit(taskUnits []BuildVariantTaskUnit, p *Project) []tas
 				dep.Variant = dependentTask.Variant
 			}
 
-			for _, dependedOnTask := range taskUnits {
-				if dependedOnTask.ToTVPair() != dependentTask.ToTVPair() &&
-					(dep.Variant == AllVariants || dependedOnTask.Variant == dep.Variant) &&
-					(dep.Name == AllDependencies || dependedOnTask.Name == dep.Name) {
-					dependencies = append(dependencies, task.DependencyEdge{
-						Status: dep.Status,
-						From:   dependentTask.toTaskNode(),
-						To:     dependedOnTask.toTaskNode(),
-					})
+			var candidates []int
+			switch {
+			case dep.Variant == AllVariants && dep.Name == AllDependencies:
+				candidates = all
+			case dep.Variant == AllVariants:
+				candidates = byName[dep.Name]
+			case dep.Name == AllDependencies:
+				candidates = byVariant[dep.Variant]
+			default:
+				candidates = byPair[TVPair{Variant: dep.Variant, TaskName: dep.Name}]
+			}
+
+			for _, candidate := range candidates {
+				dependedOnTask := taskUnits[candidate]
+				if dependedOnTask.ToTVPair() == dependentPair {
+					continue
 				}
+				dependencies = append(dependencies, task.DependencyEdge{
+					Status: dep.Status,
+					From:   dependentTask.toTaskNode(),
+					To:     dependedOnTask.toTaskNode(),
+				})
 			}
 		}
 	}

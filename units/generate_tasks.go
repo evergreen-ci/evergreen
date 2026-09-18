@@ -24,7 +24,8 @@ import (
 )
 
 const (
-	generateTasksJobName = "generate-tasks"
+	generateTasksJobName          = "generate-tasks"
+	generateTasksConcurrencyLimit = 1
 	// hasGeneratedTasksOtelAttribute uses a hyphenated legacy key; renaming it would break
 	// existing Honeycomb queries, so new attributes below use the underscore namespace instead.
 	hasGeneratedTasksOtelAttribute = "evergreen.generate-tasks.has_generated_tasks"
@@ -32,7 +33,28 @@ const (
 	generateTasksOutcomeAttribute                = "evergreen.generate_tasks.outcome"
 	generateTasksIsSaveErrorAttribute            = "evergreen.generate_tasks.is_save_error"
 	generateTasksNumActivatedForVersionAttribute = "evergreen.generate_tasks.num_activated_for_version"
+	generateTasksConcurrencyLimitAttribute       = "evergreen.generate_tasks.concurrency_limit"
+	generateTasksConcurrencyInFlightAttribute    = "evergreen.generate_tasks.concurrency_in_flight"
+	generateTasksConcurrencyWaitMSAttribute      = "evergreen.generate_tasks.concurrency_wait_ms"
 )
+
+var generateTasksExecutionSlots = make(chan struct{}, generateTasksConcurrencyLimit)
+
+func acquireGenerateTasksExecutionSlot(ctx context.Context, slots chan struct{}) (func(), time.Duration, error) {
+	select {
+	case slots <- struct{}{}:
+		return func() { <-slots }, 0, nil
+	default:
+	}
+
+	start := time.Now()
+	select {
+	case slots <- struct{}{}:
+		return func() { <-slots }, time.Since(start), nil
+	case <-ctx.Done():
+		return nil, time.Since(start), ctx.Err()
+	}
+}
 
 // generateTasksOutcome classifies why a generate.tasks job execution ended the way it did,
 // distinguishing outcomes that share the same underlying error (e.g. mongo.ErrNoDocuments is
@@ -275,8 +297,21 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 	span.SetAttributes(generateTasksSpanAttributes(t)...)
-
-	outcome, counts, err := j.generate(ctx, t)
+	release, waited, err := acquireGenerateTasksExecutionSlot(ctx, generateTasksExecutionSlots)
+	span.SetAttributes(
+		attribute.Int(generateTasksConcurrencyLimitAttribute, cap(generateTasksExecutionSlots)),
+		attribute.Int(generateTasksConcurrencyInFlightAttribute, len(generateTasksExecutionSlots)),
+		attribute.Int64(generateTasksConcurrencyWaitMSAttribute, waited.Milliseconds()),
+	)
+	if err != nil {
+		span.SetAttributes(attribute.String(generateTasksOutcomeAttribute, string(outcomeError)))
+		j.AddError(errors.Wrap(err, "waiting for a generate.tasks execution slot"))
+		return
+	}
+	outcome, counts, err := func() (generateTasksOutcome, model.GenerateTasksCounts, error) {
+		defer release()
+		return j.generate(ctx, t)
+	}()
 	shouldNoop := adb.ResultsNotFound(err) || db.IsDuplicateKey(err)
 	if err != nil && len(err.Error()) > maxGenerateTasksErrMsgLength {
 		// If the error is excessively long (e.g. due to lots of validation

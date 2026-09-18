@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -465,6 +466,27 @@ var sampleGeneratedProject3 = []string{`
   ]
 }
 `}
+
+func TestAcquireGenerateTasksExecutionSlotHonorsLimitAndContext(t *testing.T) {
+	slots := make(chan struct{}, 1)
+	release, waited, err := acquireGenerateTasksExecutionSlot(t.Context(), slots)
+	require.NoError(t, err)
+	assert.Zero(t, waited)
+	assert.Len(t, slots, 1)
+
+	canceledCtx, cancel := context.WithCancel(t.Context())
+	cancel()
+	blockedRelease, waited, err := acquireGenerateTasksExecutionSlot(canceledCtx, slots)
+	require.ErrorIs(t, err, context.Canceled)
+	assert.Nil(t, blockedRelease)
+	assert.GreaterOrEqual(t, waited, time.Duration(0))
+
+	release()
+	assert.Empty(t, slots)
+	release, _, err = acquireGenerateTasksExecutionSlot(t.Context(), slots)
+	require.NoError(t, err)
+	release()
+}
 
 func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
 	ctx := t.Context()
