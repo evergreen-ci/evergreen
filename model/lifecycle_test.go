@@ -1934,7 +1934,7 @@ buildvariants:
 	}
 }
 
-func TestCreateVirtualTaskStepbackActivation(t *testing.T) {
+func TestCreateVirtualTaskWithStepbackActivation(t *testing.T) {
 	require.NoError(t, db.ClearCollections(build.Collection, task.Collection))
 	projYml := `
 tasks:
@@ -2005,16 +2005,16 @@ buildvariants:
 		switch task.DisplayName {
 		case "virtual_stepback_activate":
 			assert.True(t, task.IsVirtual, "stepped-back virtual task should be virtual")
-			assert.True(t, task.Activated, "virtual task targeted by stepback should be activated at creation")
-			assert.Equal(t, evergreen.StepbackTaskActivator, task.ActivatedBy, "stepped-back virtual task should be activated by stepback")
+			assert.Equal(t, evergreen.StepbackTaskActivator, task.ActivatedBy, "virtual task should be created for stepback")
+			assert.True(t, task.Activated, "virtual task being created for stepback should be activated at creation")
 		case "virtual_stepback_no_activate":
-			assert.True(t, task.IsVirtual, "virtual task should be virtual")
+			assert.True(t, task.IsVirtual)
 			assert.False(t, task.Activated, "virtual task targeted by stepback with activate=false should stay inactive")
 		case "virtual_no_stepback":
-			assert.True(t, task.IsVirtual, "virtual task should be virtual")
+			assert.True(t, task.IsVirtual)
 			assert.False(t, task.Activated, "virtual task without stepback should stay inactive")
 		case "regular_task":
-			assert.False(t, task.IsVirtual, "regular task should not be marked virtual in the task doc")
+			assert.False(t, task.IsVirtual)
 			assert.True(t, task.Activated, "regular task should be activated when the build is activated")
 		default:
 			t.Fatalf("unexpected task %s", task.DisplayName)
@@ -3154,7 +3154,7 @@ func TestSetTaskActivationForBuildsWithIgnoreTasks(t *testing.T) {
 	}
 }
 
-func TestSetTaskActivationForBuildsVirtualTaskExclusion(t *testing.T) {
+func TestSetTaskActivationForBuildsWithVirtualTasks(t *testing.T) {
 	ctx := t.Context()
 	colls := []string{task.Collection, build.Collection, VersionCollection}
 	t.Cleanup(func() {
@@ -3162,16 +3162,16 @@ func TestSetTaskActivationForBuildsVirtualTaskExclusion(t *testing.T) {
 	})
 
 	for name, test := range map[string]struct {
-		caller           string
-		virtualActivated bool
+		caller                     string
+		expectVirtualTaskActivated bool
 	}{
 		"TimeBasedActivatorSkipsVirtualTask": {
-			caller:           evergreen.ElapsedBuildActivator,
-			virtualActivated: false,
+			caller:                     evergreen.ElapsedBuildActivator,
+			expectVirtualTaskActivated: false,
 		},
 		"ManualActivatorActivatesVirtualTask": {
-			caller:           "user",
-			virtualActivated: true,
+			caller:                     "user",
+			expectVirtualTaskActivated: true,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -3195,7 +3195,7 @@ func TestSetTaskActivationForBuildsVirtualTaskExclusion(t *testing.T) {
 			virtualTask, err := task.FindOneId(ctx, "virtual")
 			require.NoError(t, err)
 			require.NotNil(t, virtualTask)
-			assert.Equal(t, test.virtualActivated, virtualTask.Activated, "virtual task activation for caller '%s'", test.caller)
+			assert.Equal(t, test.expectVirtualTaskActivated, virtualTask.Activated)
 
 			regularTask, err := task.FindOneId(ctx, "regular")
 			require.NoError(t, err)
@@ -3205,7 +3205,7 @@ func TestSetTaskActivationForBuildsVirtualTaskExclusion(t *testing.T) {
 			virtualDep, err := task.FindOneId(ctx, "virtual_dep")
 			require.NoError(t, err)
 			require.NotNil(t, virtualDep)
-			assert.True(t, virtualDep.Activated, "virtual dependency should activate via the dependency cascade even for time-based activation")
+			assert.True(t, virtualDep.Activated, "virtual task should be activated if a task is being activated that depends on it")
 		})
 	}
 }

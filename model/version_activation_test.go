@@ -629,7 +629,7 @@ func (s *VersionActivationSuite) TestDoProjectActivationNoVersionsToActivate() {
 	require.Len(activated, 0)
 }
 
-func TestActivateElapsedBuildsAndTasksSkipsVirtualTasks(t *testing.T) {
+func TestActivateElapsedBuildsAndTasksWithVirtualTasks(t *testing.T) {
 	ctx := t.Context()
 	colls := []string{task.Collection, build.Collection, VersionCollection, ProjectRefCollection}
 	t.Cleanup(func() {
@@ -658,7 +658,12 @@ func TestActivateElapsedBuildsAndTasksSkipsVirtualTasks(t *testing.T) {
 		},
 	}
 	require.NoError(t, v.Insert(ctx))
-	require.NoError(t, (&build.Build{Id: buildID, Version: versionID, BuildVariant: "bv"}).Insert(ctx))
+	b := &build.Build{
+		Id:           buildID,
+		Version:      versionID,
+		BuildVariant: "bv",
+	}
+	require.NoError(t, b.Insert(ctx))
 
 	tasks := []task.Task{
 		{

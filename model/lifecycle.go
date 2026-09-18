@@ -148,7 +148,7 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 			task.PriorityKey: bson.M{"$gt": evergreen.DisabledTaskPriority},
 		}
 		if evergreen.IsTimeBasedActivator(caller) {
-			// Automatic time-based activation (cron/batchtime) should not
+			// Automatic time-based activation (cron/batchtime) does not
 			// activate virtual tasks.
 			q[task.IsVirtualKey] = bson.M{"$ne": true}
 		}
@@ -1160,7 +1160,8 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 
 	// If stepback is enabled, check if the task should be activated via stepback.
 	// If a virtual task is being created by generate.tasks to perform stepback
-	// on this task, that's allowed to activate a virtual task.
+	// on this task, stepback is allowed to create and activate a virtual
+	// task.
 	stepbackInfo := creationInfo.ActivationInfo.getStepbackTask(creationInfo.Build.BuildVariant, buildVarTask.Name)
 	if stepbackInfo != nil {
 		activateTask = stepbackInfo.shouldActivate()

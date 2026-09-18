@@ -2087,7 +2087,7 @@ func TestActivateTasksWithDependencies(t *testing.T) {
 	assert.True(t, dbTask2.Activated, "elapsed task should be activated")
 }
 
-func TestActivateTasksWithDependenciesVirtualTaskExclusion(t *testing.T) {
+func TestActivateTasksWithDependenciesWithVirtualTasks(t *testing.T) {
 	ctx := t.Context()
 	colls := []string{task.Collection, task.OldCollection, build.Collection, VersionCollection}
 	t.Cleanup(func() {
@@ -2095,8 +2095,15 @@ func TestActivateTasksWithDependenciesVirtualTaskExclusion(t *testing.T) {
 	})
 	require.NoError(t, db.ClearCollections(colls...))
 
-	require.NoError(t, (&build.Build{Id: "build", Version: "version"}).Insert(ctx))
-	require.NoError(t, (&Version{Id: "version"}).Insert(ctx))
+	b := &build.Build{
+		Id:      "build",
+		Version: "version",
+	}
+	require.NoError(t, b.Insert(ctx))
+	v := &Version{
+		Id: "version",
+	}
+	require.NoError(t, v.Insert(ctx))
 
 	tasks := []task.Task{
 		{
@@ -2115,9 +2122,6 @@ func TestActivateTasksWithDependenciesVirtualTaskExclusion(t *testing.T) {
 		require.NoError(t, tk.Insert(ctx))
 	}
 
-	// Simulate cron/batchtime activating the elapsed "regular" and "virtual"
-	// tasks. The virtual task must not be activated directly, but the virtual
-	// dependency of the regular task must still activate via the cascade.
 	require.NoError(t, activateTasksWithDependencies(ctx, []string{"regular", "virtual"}, evergreen.ElapsedTaskActivator))
 
 	dbRegular, err := task.FindOneId(ctx, "regular")
@@ -2133,7 +2137,7 @@ func TestActivateTasksWithDependenciesVirtualTaskExclusion(t *testing.T) {
 	dbVirtualDep, err := task.FindOneId(ctx, "virtual_dep")
 	require.NoError(t, err)
 	require.NotNil(t, dbVirtualDep)
-	assert.True(t, dbVirtualDep.Activated, "virtual dependency should activate via the dependency cascade")
+	assert.True(t, dbVirtualDep.Activated, "virtual dependency should activate if it's a dependency of an activated task")
 }
 
 func TestMarkEndWithTaskGroup(t *testing.T) {

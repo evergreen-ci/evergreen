@@ -202,9 +202,8 @@ func resetEarlierSingleHostTaskGroupTasks(ctx context.Context, activatingTasks, 
 func activateTasksWithDependencies(ctx context.Context, taskIDs []string, caller string) error {
 	query := task.ByIdsAndStatus(taskIDs, []string{evergreen.TaskUndispatched})
 	if evergreen.IsTimeBasedActivator(caller) {
-		// Automatic time-based activation (cron/batchtime) must not activate
-		// virtual tasks directly. They can still be activated as a dependency
-		// of a regular task in the cascade below.
+		// Automatic time-based activation (cron/batchtime) should not
+		// activate virtual tasks.
 		query[task.IsVirtualKey] = bson.M{"$ne": true}
 	}
 	tasks, err := task.FindAll(ctx, db.Query(query).
