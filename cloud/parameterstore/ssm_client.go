@@ -24,6 +24,8 @@ const ParamValueMaxLength = 8192
 // SSMClient is an interface to interact with AWS Systems Manager (SSM)
 // Parameter Store.
 type SSMClient interface {
+	// AddTagsToResource adds or updates tags on an SSM resource.
+	AddTagsToResource(context.Context, *ssm.AddTagsToResourceInput) (*ssm.AddTagsToResourceOutput, error)
 	// PutParameter puts a parameter into Parameter Store.
 	PutParameter(context.Context, *ssm.PutParameterInput) (*ssm.PutParameterOutput, error)
 	// DeleteParametersSimple is the same as DeleteParameters but only returns
@@ -72,6 +74,12 @@ func newSSMClient(ctx context.Context, region string) (*ssmClientImpl, error) {
 	c := ssm.NewFromConfig(*configCache[region])
 
 	return &ssmClientImpl{client: c}, nil
+}
+
+func (c *ssmClientImpl) AddTagsToResource(ctx context.Context, input *ssm.AddTagsToResourceInput) (*ssm.AddTagsToResourceOutput, error) {
+	return retrySSMClientOp(ctx, c.client, input, func(ctx context.Context, client *ssm.Client, input *ssm.AddTagsToResourceInput) (*ssm.AddTagsToResourceOutput, error) {
+		return client.AddTagsToResource(ctx, input)
+	}, "AddTagsToResource")
 }
 
 func (c *ssmClientImpl) PutParameter(ctx context.Context, input *ssm.PutParameterInput) (*ssm.PutParameterOutput, error) {

@@ -303,6 +303,8 @@ const (
 	TagTaskExecution     = "task-execution"
 	TagBuildID           = "build-id"
 	TagProject           = "project"
+	TagMongoDBOwner      = "mongodb-owner"
+	TagMongoDBEnv        = "mongodb-env"
 
 	FinderVersionLegacy    = "legacy"
 	FinderVersionParallel  = "parallel"
