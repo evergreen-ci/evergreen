@@ -7,6 +7,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -625,4 +627,77 @@ func (s *VersionActivationSuite) TestDoProjectActivationNoVersionsToActivate() {
 	activated, err := DoProjectActivation(s.ctx, projectRef, now)
 	require.NoError(err)
 	require.Len(activated, 0)
+}
+
+func TestActivateElapsedBuildsAndTasksWithVirtualTasks(t *testing.T) {
+	ctx := t.Context()
+	colls := []string{task.Collection, build.Collection, VersionCollection, ProjectRefCollection}
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(colls...))
+	})
+	require.NoError(t, db.ClearCollections(colls...))
+
+	now := time.Now()
+	versionID := "version-virtual"
+	buildID := "build-virtual"
+	v := &Version{
+		Id:                  versionID,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Identifier:          "project",
+		CreateTime:          now.Add(-10 * time.Minute),
+		RevisionOrderNumber: 1,
+		BuildVariants: []VersionBuildStatus{
+			{
+				BuildVariant: "bv",
+				BuildId:      buildID,
+				ActivationStatus: ActivationStatus{
+					Activated:  false,
+					ActivateAt: now.Add(-5 * time.Minute),
+				},
+			},
+		},
+	}
+	require.NoError(t, v.Insert(ctx))
+	b := &build.Build{
+		Id:           buildID,
+		Version:      versionID,
+		BuildVariant: "bv",
+	}
+	require.NoError(t, b.Insert(ctx))
+
+	tasks := []task.Task{
+		{
+			Id:      "regular",
+			BuildId: buildID,
+			Version: versionID,
+			Status:  evergreen.TaskUndispatched,
+			DependsOn: []task.Dependency{
+				{TaskId: "virtual_dep"},
+			},
+		},
+		{Id: "virtual", BuildId: buildID, Version: versionID, Status: evergreen.TaskUndispatched, IsVirtual: true},
+		{Id: "virtual_dep", BuildId: buildID, Version: versionID, Status: evergreen.TaskUndispatched, IsVirtual: true},
+	}
+	for _, tk := range tasks {
+		require.NoError(t, tk.Insert(ctx))
+	}
+
+	activated, err := ActivateElapsedBuildsAndTasks(ctx, v)
+	require.NoError(t, err)
+	assert.True(t, activated)
+
+	dbRegular, err := task.FindOneId(ctx, "regular")
+	require.NoError(t, err)
+	require.NotNil(t, dbRegular)
+	assert.True(t, dbRegular.Activated, "regular task in an elapsed build should be activated by cron/batchtime")
+
+	dbVirtual, err := task.FindOneId(ctx, "virtual")
+	require.NoError(t, err)
+	require.NotNil(t, dbVirtual)
+	assert.False(t, dbVirtual.Activated, "virtual task should not be activated by cron/batchtime")
+
+	dbVirtualDep, err := task.FindOneId(ctx, "virtual_dep")
+	require.NoError(t, err)
+	require.NotNil(t, dbVirtualDep)
+	assert.True(t, dbVirtualDep.Activated, "virtual dependency should activate via the dependency cascade")
 }
