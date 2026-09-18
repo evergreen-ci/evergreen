@@ -53,6 +53,7 @@ func init() {
 		"setup.initial":                         initialSetupFactory,
 		"test_selection.get":                    testSelectionGetFactory,
 		"timeout.update":                        timeoutUpdateFactory,
+		"virtual_tasks.complete":                completeVirtualTasksFactory,
 	}
 
 	for name, factory := range cmds {
