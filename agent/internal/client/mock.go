@@ -111,6 +111,11 @@ type Mock struct {
 	SelectTestsResponse []string
 	SelectTestsError    error
 
+	// CompleteVirtualTasks mock fields
+	CompleteVirtualTasksShouldFail  bool
+	CompleteVirtualTasksResponse    *apimodels.CompleteVirtualTasksResponse
+	CompleteVirtualTasksCompletions []apimodels.VirtualTaskCompletion
+
 	mu sync.RWMutex
 }
 
@@ -548,6 +553,30 @@ func (c *Mock) GenerateTasksPoll(ctx context.Context, td TaskData) (*apimodels.G
 	}
 	if c.GenerateTasksShouldFail {
 		resp.Error = "error polling generate tasks!"
+	}
+	return resp, nil
+}
+
+func (c *Mock) CompleteVirtualTasks(ctx context.Context, td TaskData, completions []apimodels.VirtualTaskCompletion) (*apimodels.CompleteVirtualTasksResponse, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.CompleteVirtualTasksCompletions = append(c.CompleteVirtualTasksCompletions, completions...)
+
+	if c.CompleteVirtualTasksShouldFail {
+		return nil, errors.New("completing virtual tasks")
+	}
+
+	if c.CompleteVirtualTasksResponse != nil {
+		return c.CompleteVirtualTasksResponse, nil
+	}
+
+	resp := &apimodels.CompleteVirtualTasksResponse{}
+	for _, comp := range completions {
+		resp.Results = append(resp.Results, apimodels.VirtualTaskCompletionResult{
+			TaskID:  comp.TaskID,
+			Outcome: apimodels.VirtualTaskCompletionOutcomeSuccess,
+		})
 	}
 	return resp, nil
 }
