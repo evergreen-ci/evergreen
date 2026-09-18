@@ -1,8 +1,8 @@
 # 2026-09-16 Cross-file YAML anchors: expand aliases at collection time
 
-* status: accepted
-* date: 2026-09-16
-* authors: Annie Black
+- status: accepted
+- date: 2026-09-16
+- authors: Annie Black
 
 ## Context and Problem Statement
 
@@ -16,7 +16,7 @@ The preamble must be valid YAML, which requires every `&name` definition to appe
    reference. The preamble failed to parse and all cross-file anchors silently
    stopped working for subsequent files.
 2. Because the preamble was re-serialized and re-parsed as text for each file,
-   aliases inside stored anchors re-resolved against the *latest* definition.
+   aliases inside stored anchors re-resolved against the _latest_ definition.
    Redefining an anchor retroactively changed the value of every other anchor
    that referenced it — surprising, and different from single-file YAML semantics.
 
@@ -33,8 +33,8 @@ The preamble must be valid YAML, which requires every `&name` definition to appe
 
 Registry entries never reference each other, so:
 
-* Preamble ordering is irrelevant — no forward references, no sorting.
-* An anchor's value is fixed at the point it was defined. Redefining `&anchorA`
+- Preamble ordering is irrelevant — no forward references, no sorting.
+- An anchor's value is fixed at the point it was defined. Redefining `&anchorA`
   later changes what `*anchorA` resolves to in subsequent files, but never changes
   the stored value of an `&anchorB` that referenced `*anchorA` before the
   redefinition (resolve-at-definition-time, matching single-file YAML semantics).
