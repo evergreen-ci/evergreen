@@ -53,7 +53,7 @@ func TestDistroGetHandlerReturnsOnlyDistrosWithViewPermission(t *testing.T) {
 	handler := makeDistroRoute(rm).Factory()
 	resp := handler.Run(ctx)
 	require.Equal(t, http.StatusOK, resp.Status())
-	data, ok := resp.Data().([]interface{})
+	data, ok := resp.Data().([]any)
 	require.True(t, ok)
 	require.Len(t, data, 1)
 	apiDistro, ok := data[0].(*restModel.APIDistro)
@@ -64,7 +64,7 @@ func TestDistroGetHandlerReturnsOnlyDistrosWithViewPermission(t *testing.T) {
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "restricted-user"})
 	resp = handler.Run(ctx)
 	require.Equal(t, http.StatusOK, resp.Status())
-	data, ok = resp.Data().([]interface{})
+	data, ok = resp.Data().([]any)
 	require.True(t, ok)
 	assert.Empty(t, data)
 }
