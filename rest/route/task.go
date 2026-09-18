@@ -562,7 +562,8 @@ func (h *deleteGitHubDynamicAccessTokens) Run(ctx context.Context) gimlet.Respon
 //
 // PATCH /rest/v2/tasks/{task_id}/mark_git_ref_not_found
 
-// markMergeQueueGitRefNotFoundHandler marks a merge queue patch's GitRefNotFound field.
+// markMergeQueueGitRefNotFoundHandler marks a merge queue patch's GitRefNotFound field,
+// and aborts the tasks in the version
 type markMergeQueueGitRefNotFoundHandler struct {
 	taskID string
 }
@@ -601,6 +602,22 @@ func (h *markMergeQueueGitRefNotFoundHandler) Run(ctx context.Context) gimlet.Re
 
 	if err := data.SetMergeQueueGitRefNotFound(ctx, t.Version); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "updating patch"))
+	}
+
+	abortInfo := task.AbortInfo{
+		TaskID: t.Id,
+		User:   evergreen.GithubMergeRequester,
+	}
+	if err := t.SetAborted(ctx, abortInfo); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "aborting task"))
+	}
+
+	reason := fmt.Sprintf("merge queue git ref not found for task '%s'", t.Id)
+	if err := dbModel.SetVersionActivation(ctx, t.Version, false, reason); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "deactivating version"))
+	}
+	if err := task.AbortVersionTasks(ctx, t.Version, abortInfo); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "aborting version tasks"))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
