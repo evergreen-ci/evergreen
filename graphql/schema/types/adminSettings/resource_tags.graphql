@@ -1,0 +1,22 @@
+enum MongoDBEnvironment {
+  PROD
+  STAGING
+  DEV
+  QA
+  TEST
+  LOCAL
+  POC
+  DEMO
+  UAT
+  SANDBOX
+}
+
+input ResourceTagsConfigInput {
+  mongodbEnv: MongoDBEnvironment
+  mongodbOwner: String
+}
+
+type ResourceTagsConfig {
+  mongodbEnv: MongoDBEnvironment
+  mongodbOwner: String
+}

@@ -35,6 +35,10 @@ query Providers {
         alertableInstanceTypes
         allowedRegions
         maxVolumeSizePerUser
+        resourceTags {
+          mongodbEnv
+          mongodbOwner
+        }
         accountRoles {
           account
           role

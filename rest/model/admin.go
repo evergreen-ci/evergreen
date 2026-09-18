@@ -1705,6 +1705,7 @@ func (a *APISubnet) ToService() (any, error) {
 
 type APIAWSConfig struct {
 	Subnets                []APISubnet                `json:"subnets"`
+	ResourceTags           *APIResourceTagsConfig     `json:"resource_tags"`
 	SubnetTagName          *string                    `json:"subnet_tag_name"`
 	SubnetTagValue         *string                    `json:"subnet_tag_value"`
 	ParserProject          *APIParserProjectS3Config  `json:"parser_project"`
@@ -1723,6 +1724,10 @@ type APIAWSConfig struct {
 func (a *APIAWSConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.AWSConfig:
+		a.ResourceTags = &APIResourceTagsConfig{}
+		if err := a.ResourceTags.BuildFromService(v.ResourceTags); err != nil {
+			return errors.Wrap(err, "converting AWS resource tags config to API model")
+		}
 		for _, subnet := range v.Subnets {
 			apiSubnet := APISubnet{}
 			if err := apiSubnet.BuildFromService(subnet); err != nil {
@@ -1774,6 +1779,13 @@ func (a *APIAWSConfig) ToService() (any, error) {
 	config := evergreen.AWSConfig{
 		DefaultSecurityGroup: utility.FromStringPtr(a.DefaultSecurityGroup),
 		MaxVolumeSizePerUser: evergreen.DefaultMaxVolumeSizePerUser,
+	}
+	if a.ResourceTags != nil {
+		resourceTags, err := a.ResourceTags.ToService()
+		if err != nil {
+			return nil, errors.Wrap(err, "converting AWS resource tags config to service model")
+		}
+		config.ResourceTags = resourceTags.(evergreen.ResourceTagsConfig)
 	}
 
 	var i any
@@ -3177,6 +3189,35 @@ func (c *APITestSelectionConfig) ToService() (any, error) {
 type APIRuntimeEnvironmentsConfig struct {
 	BaseURL *string `json:"base_url"`
 	APIKey  *string `json:"api_key"`
+}
+
+type APIResourceTagsConfig struct {
+	MongoDBEnv   *string `json:"mongodb_env"`
+	MongoDBOwner *string `json:"mongodb_owner"`
+}
+
+func (a *APIResourceTagsConfig) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case evergreen.ResourceTagsConfig:
+		a.MongoDBEnv = nil
+		if v.MongoDBEnv != "" {
+			a.MongoDBEnv = utility.ToStringPtr(v.MongoDBEnv)
+		}
+		a.MongoDBOwner = nil
+		if v.MongoDBOwner != "" {
+			a.MongoDBOwner = utility.ToStringPtr(v.MongoDBOwner)
+		}
+	default:
+		return errors.Errorf("programmatic error: expected Resource Tags config but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APIResourceTagsConfig) ToService() (any, error) {
+	return evergreen.ResourceTagsConfig{
+		MongoDBEnv:   utility.FromStringPtr(a.MongoDBEnv),
+		MongoDBOwner: utility.FromStringPtr(a.MongoDBOwner),
+	}, nil
 }
 
 func (a *APIRuntimeEnvironmentsConfig) BuildFromService(h any) error {
