@@ -2156,3 +2156,30 @@ func TestPostBackstageVariables(t *testing.T) {
 		})
 	}
 }
+
+func TestMergeListWithDeletions(t *testing.T) {
+	t.Run("NoChangesPreservesOriginalOrder", func(t *testing.T) {
+		result := mergeListWithDeletions([]string{"d", "b", "a"}, nil, nil)
+		assert.Equal(t, []string{"d", "b", "a"}, result)
+	})
+	t.Run("AdditionsAppendedAtEnd", func(t *testing.T) {
+		result := mergeListWithDeletions([]string{"d", "b", "a"}, []string{"c"}, nil)
+		assert.Equal(t, []string{"d", "b", "a", "c"}, result)
+	})
+	t.Run("DeletionsRemoveWithoutReordering", func(t *testing.T) {
+		result := mergeListWithDeletions([]string{"d", "b", "a"}, nil, []string{"b"})
+		assert.Equal(t, []string{"d", "a"}, result)
+	})
+	t.Run("AddAndDeleteSimultaneously", func(t *testing.T) {
+		result := mergeListWithDeletions([]string{"d", "b", "a"}, []string{"c"}, []string{"b"})
+		assert.Equal(t, []string{"d", "a", "c"}, result)
+	})
+	t.Run("DuplicatesInOriginalAreDeduped", func(t *testing.T) {
+		result := mergeListWithDeletions([]string{"a", "b", "a"}, []string{"c"}, nil)
+		assert.Equal(t, []string{"a", "b", "c"}, result)
+	})
+	t.Run("AddingExistingItemIsNoOp", func(t *testing.T) {
+		result := mergeListWithDeletions([]string{"d", "b", "a"}, []string{"b"}, nil)
+		assert.Equal(t, []string{"d", "b", "a"}, result)
+	})
+}
