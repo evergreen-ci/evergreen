@@ -6,6 +6,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	ssmTypes "github.com/aws/aws-sdk-go-v2/service/ssm/types"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
 	"github.com/evergreen-ci/evergreen/db"
@@ -13,6 +15,52 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestParameterManagerPutAppliesResourceTags(t *testing.T) {
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(Collection, parameterstore.Collection))
+	})
+	client := NewFakeSSMClient()
+	pm, err := parameterstore.NewParameterManager(t.Context(), parameterstore.ParameterManagerOptions{
+		PathPrefix: "prefix",
+		ResourceTags: map[string]string{
+			evergreen.TagMongoDBOwner: "evergreen@mongodb.com",
+			evergreen.TagMongoDBEnv:   "prod",
+			"empty":                   "",
+		},
+		SSMClient: client,
+		DB:        evergreen.GetEnvironment().DB(),
+	})
+	require.NoError(t, err)
+
+	_, err = pm.Put(t.Context(), "parameter", "value")
+	require.NoError(t, err)
+	require.NotNil(t, client.PutParameterInput)
+	assert.Nil(t, client.AddTagsToResourceInput)
+	tagsByKey := map[string]string{}
+	for _, tag := range client.PutParameterInput.Tags {
+		tagsByKey[aws.ToString(tag.Key)] = aws.ToString(tag.Value)
+	}
+	assert.Equal(t, "evergreen@mongodb.com", tagsByKey[evergreen.TagMongoDBOwner])
+	assert.Equal(t, "prod", tagsByKey[evergreen.TagMongoDBEnv])
+	assert.NotContains(t, tagsByKey, "empty")
+
+	client.PutParameterInput = nil
+	_, err = pm.Put(t.Context(), "parameter", "new-value")
+	require.NoError(t, err)
+	require.NotNil(t, client.PutParameterInput)
+	assert.Empty(t, client.PutParameterInput.Tags)
+	require.NotNil(t, client.AddTagsToResourceInput)
+	assert.Equal(t, "/prefix/parameter", aws.ToString(client.AddTagsToResourceInput.ResourceId))
+	assert.Equal(t, ssmTypes.ResourceTypeForTaggingParameter, client.AddTagsToResourceInput.ResourceType)
+	tagsByKey = map[string]string{}
+	for _, tag := range client.AddTagsToResourceInput.Tags {
+		tagsByKey[aws.ToString(tag.Key)] = aws.ToString(tag.Value)
+	}
+	assert.Equal(t, "evergreen@mongodb.com", tagsByKey[evergreen.TagMongoDBOwner])
+	assert.Equal(t, "prod", tagsByKey[evergreen.TagMongoDBEnv])
+	assert.NotContains(t, tagsByKey, "empty")
+}
 
 // Tests for the ParameterManager functionality are in this package to avoid a
 // circular dependency between the two packages.

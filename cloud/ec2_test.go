@@ -1349,6 +1349,32 @@ func (s *EC2Suite) TestCreateVolumeWithHostTagAppliesHostNameTag() {
 	s.Equal("ht_abc123", hostNameTagValue)
 }
 
+func (s *EC2Suite) TestCreateVolumeForSpawnHostAppliesMongoDBResourceTags() {
+	associatedHost := host.Host{
+		Id:  "i-abc123",
+		Tag: "ht_abc123",
+		InstanceTags: []host.Tag{
+			{Key: evergreen.TagMongoDBOwner, Value: "test.user@mongodb.com"},
+			{Key: evergreen.TagMongoDBEnv, Value: "dev"},
+		},
+	}
+	s.Require().NoError(associatedHost.Insert(s.ctx))
+	s.volume.Host = associatedHost.Tag
+	_, err := s.onDemandManager.CreateVolume(s.ctx, s.volume)
+	s.Require().NoError(err)
+
+	mock, ok := s.impl.client.(*awsClientMock)
+	s.Require().True(ok)
+	tagsByKey := map[string]string{}
+	for _, spec := range mock.CreateVolumeInput.TagSpecifications {
+		for _, tag := range spec.Tags {
+			tagsByKey[utility.FromStringPtr(tag.Key)] = utility.FromStringPtr(tag.Value)
+		}
+	}
+	s.Equal("test.user@mongodb.com", tagsByKey[evergreen.TagMongoDBOwner])
+	s.Equal("dev", tagsByKey[evergreen.TagMongoDBEnv])
+}
+
 func (s *EC2Suite) TestCreateVolumeWithoutHostTagOmitsHostNameTag() {
 	s.volume.Host = ""
 	_, err := s.onDemandManager.CreateVolume(s.ctx, s.volume)
@@ -1364,6 +1390,28 @@ func (s *EC2Suite) TestCreateVolumeWithoutHostTagOmitsHostNameTag() {
 			}
 		}
 	}
+}
+
+func (s *EC2Suite) TestCreateStandaloneVolumeAppliesUserMongoDBResourceTags() {
+	const userEmail = "test.user@mongodb.com"
+	s.Require().NoError((&user.DBUser{Id: s.volume.CreatedBy, EmailAddress: userEmail}).Insert(s.ctx))
+	s.onDemandManager.settings.Providers.AWS.ResourceTags = evergreen.ResourceTagsConfig{
+		MongoDBOwner: "evergreen@mongodb.com",
+		MongoDBEnv:   "dev",
+	}
+
+	s.volume.Host = ""
+	_, err := s.onDemandManager.CreateVolume(s.ctx, s.volume)
+	s.Require().NoError(err)
+
+	tagsByKey := map[string]string{}
+	for _, spec := range s.mock.CreateVolumeInput.TagSpecifications {
+		for _, tag := range spec.Tags {
+			tagsByKey[aws.ToString(tag.Key)] = aws.ToString(tag.Value)
+		}
+	}
+	s.Equal(userEmail, tagsByKey[evergreen.TagMongoDBOwner])
+	s.Equal("dev", tagsByKey[evergreen.TagMongoDBEnv])
 }
 
 func (s *EC2Suite) TestDeleteVolume() {

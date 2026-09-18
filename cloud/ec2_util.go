@@ -126,7 +126,7 @@ func expireInDays(numDays int) string {
 
 // makeTags populates a slice of tags based on a host object, which contain keys
 // for the user, owner, hostname, and if it's a spawnhost or not.
-func makeTags(intentHost *host.Host) []host.Tag {
+func makeTags(intentHost *host.Host, resourceTags evergreen.ResourceTagsConfig) []host.Tag {
 	// get requester host name
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -194,11 +194,52 @@ func makeTags(intentHost *host.Host) []host.Tag {
 			systemTags = append(systemTags, host.Tag{Key: evergreen.TagBuildID, Value: intentHost.SpawnOptions.BuildID, CanBeModified: false})
 		}
 	}
+	var authoritativeResourceTags []host.Tag
+	if !intentHost.UserHost || intentHost.SpawnOptions.SpawnedByTask {
+		authoritativeResourceTags = makeMongoDBResourceTags(resourceTags.MongoDBOwner, resourceTags.MongoDBEnv)
+	}
 
 	// Add Evergreen-generated tags to host object
 	intentHost.AddTags(systemTags)
+	addOrReplaceTags(intentHost, authoritativeResourceTags)
 
 	return intentHost.InstanceTags
+}
+
+// addOrReplaceTags adds tags to a host, replacing existing values regardless of
+// whether they are marked as modifiable. This should only be used for tags whose
+// values are controlled by Evergreen.
+func addOrReplaceTags(intentHost *host.Host, tags []host.Tag) {
+	for _, tag := range tags {
+		filteredTags := intentHost.InstanceTags[:0]
+		for _, existingTag := range intentHost.InstanceTags {
+			if existingTag.Key != tag.Key {
+				filteredTags = append(filteredTags, existingTag)
+			}
+		}
+		intentHost.InstanceTags = append(filteredTags, tag)
+	}
+}
+
+func makeMongoDBResourceTags(owner, environment string) []host.Tag {
+	tags := []host.Tag{}
+	if owner != "" {
+		tags = append(tags, host.Tag{Key: evergreen.TagMongoDBOwner, Value: owner, CanBeModified: false})
+	}
+	if environment != "" {
+		tags = append(tags, host.Tag{Key: evergreen.TagMongoDBEnv, Value: environment, CanBeModified: false})
+	}
+	return tags
+}
+
+func filterMongoDBResourceTags(tags []host.Tag) []host.Tag {
+	resourceTags := []host.Tag{}
+	for _, tag := range tags {
+		if tag.Key == evergreen.TagMongoDBOwner || tag.Key == evergreen.TagMongoDBEnv {
+			resourceTags = append(resourceTags, tag)
+		}
+	}
+	return resourceTags
 }
 
 func hostToEC2Tags(hostTags []host.Tag) []types.Tag {
@@ -219,6 +260,10 @@ func makeTagTemplate(hostTags []host.Tag) []types.LaunchTemplateTagSpecification
 		// every host has at least a root volume that needs to be tagged
 		{
 			ResourceType: types.ResourceTypeVolume,
+			Tags:         tags,
+		},
+		{
+			ResourceType: types.ResourceTypeNetworkInterface,
 			Tags:         tags,
 		},
 	}
@@ -696,7 +741,7 @@ func getSubnetForZoneInDefaultAccount(subnets []evergreen.Subnet, zone string) (
 // created for the project, user spawned hosts use the spawn host key, and task hosts use the task host key.
 func getKeyName(ctx context.Context, h *host.Host, settings *evergreen.Settings, client AWSClient) (string, error) {
 	if h.SpawnOptions.SpawnedByTask {
-		return client.GetKey(ctx, h)
+		return client.GetKey(ctx, h, settings.Providers.AWS.ResourceTags)
 	}
 	if h.UserHost {
 		return settings.SSH.SpawnHostKey.Name, nil
@@ -855,6 +900,8 @@ func allocateIPAddressForHost(ctx context.Context, h *host.Host) error {
 		return nil
 	}
 
+	// Elastic IPs are provisioned and tagged outside Evergreen. Evergreen only
+	// leases an existing address from its pool and associates it with a host.
 	// This intentionally uses the host tag to identify the host instead of the
 	// host ID because the host ID changes after a host is created.
 	ipAddr, err := host.AssignUnusedIPAddress(ctx, h.Tag)

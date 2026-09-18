@@ -113,7 +113,7 @@ type AWSClient interface {
 	// CreateFleet is a wrapper for ec2.CreateFleet.
 	CreateFleet(context.Context, *ec2.CreateFleetInput) (*ec2.CreateFleetOutput, error)
 
-	GetKey(context.Context, *host.Host) (string, error)
+	GetKey(context.Context, *host.Host, evergreen.ResourceTagsConfig) (string, error)
 
 	GetInstanceBlockDevices(context.Context, *host.Host) ([]types.InstanceBlockDeviceMapping, error)
 
@@ -906,7 +906,7 @@ func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetI
 	return output, nil
 }
 
-func (c *awsClientImpl) GetKey(ctx context.Context, h *host.Host) (string, error) {
+func (c *awsClientImpl) GetKey(ctx context.Context, h *host.Host, resourceTags evergreen.ResourceTagsConfig) (string, error) {
 	t, err := task.FindOneId(ctx, h.StartedBy)
 	if err != nil {
 		return "", errors.Wrapf(err, "finding task '%s'", h.StartedBy)
@@ -922,14 +922,14 @@ func (c *awsClientImpl) GetKey(ctx context.Context, h *host.Host) (string, error
 		return k.Name, nil
 	}
 
-	newKey, err := c.makeNewKey(ctx, t.Project)
+	newKey, err := c.makeNewKey(ctx, t.Project, resourceTags)
 	if err != nil {
 		return "", errors.Wrap(err, "creating new key")
 	}
 	return newKey, nil
 }
 
-func (c *awsClientImpl) makeNewKey(ctx context.Context, project string) (string, error) {
+func (c *awsClientImpl) makeNewKey(ctx context.Context, project string, resourceTags evergreen.ResourceTagsConfig) (string, error) {
 	name := "evg_auto_" + project
 	_, err := c.DeleteKeyPair(ctx, &ec2.DeleteKeyPairInput{KeyName: aws.String(name)})
 	if err != nil { // error does not indicate a problem, but log anyway for debugging
@@ -938,7 +938,7 @@ func (c *awsClientImpl) makeNewKey(ctx context.Context, project string) (string,
 			"key_name": name,
 		}))
 	}
-	resp, err := c.CreateKeyPair(ctx, &ec2.CreateKeyPairInput{KeyName: aws.String(name)})
+	resp, err := c.CreateKeyPair(ctx, makeCreateKeyPairInput(name, resourceTags))
 	if err != nil {
 		return "", errors.Wrap(err, "creating key pair")
 	}
@@ -948,6 +948,18 @@ func (c *awsClientImpl) makeNewKey(ctx context.Context, project string) (string,
 	}
 
 	return name, nil
+}
+
+func makeCreateKeyPairInput(name string, resourceTags evergreen.ResourceTagsConfig) *ec2.CreateKeyPairInput {
+	input := &ec2.CreateKeyPairInput{KeyName: aws.String(name)}
+	tags := hostToEC2Tags(makeMongoDBResourceTags(resourceTags.MongoDBOwner, resourceTags.MongoDBEnv))
+	if len(tags) != 0 {
+		input.TagSpecifications = []types.TagSpecification{{
+			ResourceType: types.ResourceTypeKeyPair,
+			Tags:         tags,
+		}}
+	}
+	return input
 }
 
 func (c *awsClientImpl) GetInstanceBlockDevices(ctx context.Context, h *host.Host) ([]types.InstanceBlockDeviceMapping, error) {
@@ -1505,7 +1517,7 @@ func (c *awsClientMock) CreateFleet(ctx context.Context, input *ec2.CreateFleetI
 	}, nil
 }
 
-func (c *awsClientMock) GetKey(ctx context.Context, h *host.Host) (string, error) {
+func (c *awsClientMock) GetKey(ctx context.Context, h *host.Host, resourceTags evergreen.ResourceTagsConfig) (string, error) {
 	return "evg_auto_evergreen", nil
 }
 

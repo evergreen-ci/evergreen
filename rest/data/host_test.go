@@ -174,8 +174,9 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	}
 	s.NoError(d.Insert(ctx))
 	testUser := &user.DBUser{
-		Id:     testUserID,
-		APIKey: testUserAPIKey,
+		Id:           testUserID,
+		APIKey:       testUserAPIKey,
+		EmailAddress: "test.user@mongodb.com",
 		Settings: user.UserSettings{
 			Timezone: "Asia/Macau",
 		},
@@ -203,6 +204,26 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 			s.NoError(ec2Settings.FromDistroSettings(foundHost.Distro, ""))
 			s.Equal(ec2Settings.UserData, options.UserData)
 
+		},
+		"IntentHostHasMongoDBResourceTags": func(t *testing.T, options *restmodel.HostRequestOptions) {
+			env.Settings().Providers.AWS.ResourceTags.MongoDBEnv = "dev"
+			t.Cleanup(func() {
+				env.Settings().Providers.AWS.ResourceTags.MongoDBEnv = ""
+			})
+			options.InstanceTags = []host.Tag{
+				{Key: "mongodb-owner", Value: "not-the-user@mongodb.com", CanBeModified: false},
+				{Key: "mongodb-env", Value: "prod", CanBeModified: false},
+			}
+			intentHost, err := NewIntentHost(ctx, options, testUser, env)
+			s.Require().NoError(err)
+			s.Require().NotNil(intentHost)
+
+			tagsByKey := map[string]host.Tag{}
+			for _, tag := range intentHost.InstanceTags {
+				tagsByKey[tag.Key] = tag
+			}
+			s.Equal(host.Tag{Key: "mongodb-owner", Value: testUser.EmailAddress}, tagsByKey["mongodb-owner"])
+			s.Equal(host.Tag{Key: "mongodb-env", Value: "dev"}, tagsByKey["mongodb-env"])
 		},
 		"UnexpirableIntentHostSetsDefaultSleepSchedule": func(t *testing.T, options *restmodel.HostRequestOptions) {
 			options.NoExpiration = true
