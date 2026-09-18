@@ -17,6 +17,8 @@ type ProjectConfig struct {
 	Id         string    `yaml:"_id" bson:"_id"`
 	CreateTime time.Time `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
 	Project    string    `yaml:"project,omitempty" bson:"project,omitempty"`
+	// Requester is the requester of the version this config came from, recording whether it originated from a mainline commit or a patch.
+	Requester string `yaml:"-" bson:"requester,omitempty"`
 	// ProjectConfigFields are the properties on the project config that do not duplicate parser project's fields to allow strict unmarshalling of a full config file.
 	// Since a config file gets split into ParserProject and ProjectConfig, strict unmarshalling does not work when duplicate fields exist (e.g. Id, CreateTime).
 	ProjectConfigFields `yaml:",inline" bson:",inline"`

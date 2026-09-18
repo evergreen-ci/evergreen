@@ -239,6 +239,30 @@ func FindAliasInProjectRepoOrConfig(ctx context.Context, projectID, alias string
 	return getMatchingAliasesForProjectConfig(ctx, projectID, "", alias)
 }
 
+// FindAliasInProjectRepoOrConfigForVersion is like FindAliasInProjectRepoOrConfig, but resolves
+// the project config against the given version's own config rather than the latest config. It takes
+// the version's config as an argument so callers can pass an in-memory config that has not been
+// persisted yet (e.g. while creating the version).
+func FindAliasInProjectRepoOrConfigForVersion(ctx context.Context, projectID, versionID string, projectConfig *ProjectConfig, alias string) ([]ProjectAlias, error) {
+	aliases, err := findAliasInProjectOrRepoFromDb(ctx, projectID, alias)
+	if err != nil {
+		return nil, errors.Wrap(err, "checking for existing aliases")
+	}
+	if len(aliases) > 0 {
+		return aliases, nil
+	}
+	if projectConfig == nil {
+		projectConfig, err = FindProjectConfigById(ctx, versionID)
+		if err != nil {
+			return nil, errors.Wrap(err, "finding project config")
+		}
+	}
+	if projectConfig == nil {
+		return nil, nil
+	}
+	return findAliasFromProjectConfig(projectConfig, alias)
+}
+
 // patchAliasKey is used internally to group patch aliases together.
 const patchAliasKey = "patch_alias"
 
