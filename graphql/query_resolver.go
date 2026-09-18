@@ -616,20 +616,21 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 	if latestTask == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
 	}
-	allTasks := []*restModel.APITask{}
-	for i := 0; i < latestTask.Execution; i++ {
-		var dbTask *task.Task
-		dbTask, err = task.FindByIdExecution(ctx, taskID, &i)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s' with execution %d: %s", taskID, i, err.Error()))
-		}
-		if dbTask == nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' with execution %d not found", taskID, i))
-		}
+
+	oldTasks, err := task.FindAllOld(ctx, db.Query(task.ByOldTaskID(taskID)))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching old executions of task '%s': %s", taskID, err.Error()))
+	}
+	sort.Slice(oldTasks, func(i, j int) bool {
+		return oldTasks[i].Execution < oldTasks[j].Execution
+	})
+
+	allTasks := make([]*restModel.APITask, 0, len(oldTasks)+1)
+	for _, oldTask := range oldTasks {
 		var apiTask *restModel.APITask
-		apiTask, err = getAPITaskFromTask(ctx, r.sc.GetURL(), *dbTask)
+		apiTask, err = getAPITaskFromTask(ctx, r.sc.GetURL(), oldTask)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' with execution %d to APITask", taskID, i))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' with execution %d to APITask", taskID, oldTask.Execution))
 		}
 		allTasks = append(allTasks, apiTask)
 	}
