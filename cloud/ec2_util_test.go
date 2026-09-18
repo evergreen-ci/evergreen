@@ -392,7 +392,10 @@ func TestMakeTagsIncludesMongoDBResourceTagsForSupportedHosts(t *testing.T) {
 		expectsTags bool
 	}{
 		"TaskHost": {
-			host:        &host.Host{},
+			host: &host.Host{InstanceTags: []host.Tag{
+				{Key: evergreen.TagMongoDBOwner, Value: "incorrect-owner", CanBeModified: false},
+				{Key: evergreen.TagMongoDBEnv, Value: "incorrect-environment", CanBeModified: false},
+			}},
 			expectsTags: true,
 		},
 		"HostCreateHost": {

@@ -211,8 +211,8 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 				env.Settings().Providers.AWS.ResourceTags.MongoDBEnv = ""
 			})
 			options.InstanceTags = []host.Tag{
-				{Key: "mongodb-owner", Value: "not-the-user@mongodb.com", CanBeModified: true},
-				{Key: "mongodb-env", Value: "prod", CanBeModified: true},
+				{Key: "mongodb-owner", Value: "not-the-user@mongodb.com", CanBeModified: false},
+				{Key: "mongodb-env", Value: "prod", CanBeModified: false},
 			}
 			intentHost, err := NewIntentHost(ctx, options, testUser, env)
 			s.Require().NoError(err)

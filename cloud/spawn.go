@@ -242,7 +242,7 @@ func AddUserSpawnHostResourceTags(intentHost *host.Host, userEmail string, resou
 		return
 	}
 
-	intentHost.AddTags(makeMongoDBResourceTags(userEmail, resourceTags.MongoDBEnv))
+	addOrReplaceTags(intentHost, makeMongoDBResourceTags(userEmail, resourceTags.MongoDBEnv))
 }
 
 // getDebugSetupScript returns the debug setup script to use. The

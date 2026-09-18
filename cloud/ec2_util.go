@@ -194,14 +194,31 @@ func makeTags(intentHost *host.Host, resourceTags evergreen.ResourceTagsConfig) 
 			systemTags = append(systemTags, host.Tag{Key: evergreen.TagBuildID, Value: intentHost.SpawnOptions.BuildID, CanBeModified: false})
 		}
 	}
+	var authoritativeResourceTags []host.Tag
 	if !intentHost.UserHost || intentHost.SpawnOptions.SpawnedByTask {
-		systemTags = append(systemTags, makeMongoDBResourceTags(resourceTags.MongoDBOwner, resourceTags.MongoDBEnv)...)
+		authoritativeResourceTags = makeMongoDBResourceTags(resourceTags.MongoDBOwner, resourceTags.MongoDBEnv)
 	}
 
 	// Add Evergreen-generated tags to host object
 	intentHost.AddTags(systemTags)
+	addOrReplaceTags(intentHost, authoritativeResourceTags)
 
 	return intentHost.InstanceTags
+}
+
+// addOrReplaceTags adds tags to a host, replacing existing values regardless of
+// whether they are marked as modifiable. This should only be used for tags whose
+// values are controlled by Evergreen.
+func addOrReplaceTags(intentHost *host.Host, tags []host.Tag) {
+	for _, tag := range tags {
+		filteredTags := intentHost.InstanceTags[:0]
+		for _, existingTag := range intentHost.InstanceTags {
+			if existingTag.Key != tag.Key {
+				filteredTags = append(filteredTags, existingTag)
+			}
+		}
+		intentHost.InstanceTags = append(filteredTags, tag)
+	}
 }
 
 func makeMongoDBResourceTags(owner, environment string) []host.Tag {
