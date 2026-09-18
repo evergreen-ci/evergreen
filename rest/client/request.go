@@ -61,6 +61,7 @@ func (c *communicatorImpl) newRequest(method, path string, data any) (*http.Requ
 		r.Header.Add(evergreen.HostSecretHeader, c.hostSecret)
 	}
 	r.Header.Add(evergreen.ContentTypeHeader, evergreen.ContentTypeValue)
+	r.Header.Add(evergreen.CLIVersionHeader, evergreen.ClientVersion)
 
 	return r, nil
 }
