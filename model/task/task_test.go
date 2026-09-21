@@ -5802,6 +5802,68 @@ func TestHasValidDistro(t *testing.T) {
 	})
 }
 
+func TestFindInvalidDistros(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(Collection, distro.Collection))
+
+	validDistro := distro.Distro{
+		Id:      "valid-distro",
+		Aliases: []string{"valid-distro-alias"},
+	}
+	require.NoError(t, validDistro.Insert(ctx))
+
+	t.Run("TaskWithValidPrimaryDistroReturnsEmpty", func(t *testing.T) {
+		task := &Task{
+			Id:       "task-with-valid-distro",
+			DistroId: validDistro.Id,
+		}
+		assert.Empty(t, task.FindInvalidDistros(ctx))
+	})
+
+	t.Run("TaskWithPrimaryDistroReferencedByAliasReturnsEmpty", func(t *testing.T) {
+		task := &Task{
+			Id:       "task-with-distro-alias",
+			DistroId: "valid-distro-alias",
+		}
+		assert.Empty(t, task.FindInvalidDistros(ctx))
+	})
+
+	t.Run("TaskWithInvalidPrimaryDistroReturnsPrimaryDistro", func(t *testing.T) {
+		task := &Task{
+			Id:       "task-with-invalid-distro",
+			DistroId: "nonexistent-distro",
+		}
+		assert.Equal(t, []string{"nonexistent-distro"}, task.FindInvalidDistros(ctx))
+	})
+
+	t.Run("TaskWithValidPrimaryAndInvalidSecondaryDistroReturnsOnlyInvalidSecondary", func(t *testing.T) {
+		task := &Task{
+			Id:               "task-with-invalid-secondary",
+			DistroId:         validDistro.Id,
+			SecondaryDistros: []string{"nonexistent-distro-2"},
+		}
+		assert.Equal(t, []string{"nonexistent-distro-2"}, task.FindInvalidDistros(ctx))
+	})
+
+	t.Run("TaskWithNoValidDistrosReturnsAllDistros", func(t *testing.T) {
+		task := &Task{
+			Id:               "task-no-valid-distro",
+			DistroId:         "nonexistent-distro",
+			SecondaryDistros: []string{"nonexistent-distro-2", "nonexistent-distro-3"},
+		}
+		assert.Equal(t, []string{"nonexistent-distro", "nonexistent-distro-2", "nonexistent-distro-3"}, task.FindInvalidDistros(ctx))
+	})
+
+	t.Run("DisplayTaskWithInvalidDistroStillReportsIt", func(t *testing.T) {
+		task := &Task{
+			Id:          "display-task",
+			DisplayOnly: true,
+			DistroId:    "nonexistent-distro",
+		}
+		assert.Equal(t, []string{"nonexistent-distro"}, task.FindInvalidDistros(ctx))
+	})
+}
+
 func TestGetS3ArtifactUsageFromDB(t *testing.T) {
 	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(artifact.Collection, evergreen.ConfigCollection))
