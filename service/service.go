@@ -108,6 +108,9 @@ func GetRouter(ctx context.Context, as *APIServer, uis *UIServer) (http.Handler,
 	//	@tag.name					manifests
 	//	@tag.description			A manifest tracks metadata about a version.
 	//
+	//	@tag.name					notifications
+	//	@tag.description			Notifications are messages sent by Evergreen, such as Slack messages and emails.
+	//
 	//	@tag.name					patches
 	//	@tag.description			A patch build is a version not triggered by a commit to a repository. It either runs tasks on a base commit plus some diff if submitted by the CLI or on a git branch if created by a GitHub pull request.
 	//

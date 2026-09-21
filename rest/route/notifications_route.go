@@ -15,6 +15,14 @@ func makeFetchNotifcationStatusRoute() gimlet.RouteHandler {
 
 type notificationsStatusHandler struct{}
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Get notification status
+//	@Description	Get statistics on unprocessed events and pending notifications.
+//	@Tags			notifications
+//	@Router			/status/notifications [get]
+//	@Security		Api-User || Api-Key
+//	@Success		200	{object}	model.APIEventStats
 func (gh *notificationsStatusHandler) Factory() gimlet.RouteHandler {
 	return &notificationsStatusHandler{}
 }

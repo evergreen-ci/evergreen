@@ -32,6 +32,15 @@ func makeSlackNotification(environment evergreen.Environment) gimlet.RouteHandle
 	}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Send a Slack notification
+//	@Description	Send a Slack message to a user or channel.
+//	@Tags			notifications
+//	@Router			/notifications/slack [post]
+//	@Security		Api-User || Api-Key
+//	@Param			{object}	body	model.APISlack	true	"the message to send"
+//	@Success		200
 func (h *slackNotificationPostHandler) Factory() gimlet.RouteHandler {
 	return &slackNotificationPostHandler{
 		environment: h.environment,
@@ -94,6 +103,15 @@ func makeEmailNotification(environment evergreen.Environment) gimlet.RouteHandle
 	}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Send an email notification
+//	@Description	Send an email to a list of recipients.
+//	@Tags			notifications
+//	@Router			/notifications/email [post]
+//	@Security		Api-User || Api-Key
+//	@Param			{object}	body	model.APIEmail	true	"the email to send"
+//	@Success		200
 func (h *emailNotificationPostHandler) Factory() gimlet.RouteHandler {
 	return &emailNotificationPostHandler{
 		environment: h.environment,
