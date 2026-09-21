@@ -115,6 +115,7 @@ type Mock struct {
 	CompleteVirtualTasksShouldFail  bool
 	CompleteVirtualTasksResponse    *apimodels.CompleteVirtualTasksResponse
 	CompleteVirtualTasksCompletions []apimodels.VirtualTaskCompletion
+	CompleteVirtualTasksCallCount   int
 
 	mu sync.RWMutex
 }
@@ -561,6 +562,7 @@ func (c *Mock) CompleteVirtualTasks(ctx context.Context, td TaskData, completion
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	c.CompleteVirtualTasksCallCount++
 	c.CompleteVirtualTasksCompletions = append(c.CompleteVirtualTasksCompletions, completions...)
 
 	if c.CompleteVirtualTasksShouldFail {

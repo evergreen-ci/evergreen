@@ -36,7 +36,7 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig){
 		"FileNotFoundShouldError": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
 			cmd := &completeVirtualTasks{Files: []string{"nonexistent.json"}}
-			assert.Error(t, cmd.Execute(ctx, comm, logger, conf))
+			require.Error(t, cmd.Execute(ctx, comm, logger, conf))
 		},
 		"OptionalNoFilesSucceeds": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
 			cmd := &completeVirtualTasks{Files: []string{"nonexistent_*.json"}, Optional: true}
@@ -83,6 +83,7 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 			require.NoError(t, cmd.Execute(ctx, comm, logger, conf))
 
 			assert.Len(t, comm.CompleteVirtualTasksCompletions, 150)
+			assert.Equal(t, 2, comm.CompleteVirtualTasksCallCount)
 		},
 		"APIFailureReturnsError": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
 			require.NoError(t, utility.WriteJSONFile(

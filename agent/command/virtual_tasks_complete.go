@@ -62,7 +62,7 @@ func (c *completeVirtualTasks) Execute(ctx context.Context, comm client.Communic
 	catcher := grip.NewBasicCatcher()
 	for _, fn := range c.Files {
 		if ctx.Err() != nil {
-			catcher.Wrapf(ctx.Err(), "cancelled while processing file '%s'", fn)
+			catcher.Wrapf(ctx.Err(), "cancelled before processing file '%s'", fn)
 			break
 		}
 		completions, err := readVirtualTaskCompletionsFile(conf, fn)
@@ -115,9 +115,6 @@ func (c *completeVirtualTasks) Execute(ctx context.Context, comm client.Communic
 
 func readVirtualTaskCompletionsFile(conf *internal.TaskConfig, fn string) ([]apimodels.VirtualTaskCompletion, error) {
 	fileLoc := GetWorkingDirectory(conf, fn)
-	if _, err := os.Stat(fileLoc); os.IsNotExist(err) {
-		return nil, errors.Wrapf(err, "getting information for file '%s'", fn)
-	}
 	f, err := os.Open(fileLoc)
 	if err != nil {
 		return nil, errors.Wrapf(err, "opening file '%s'", fn)
