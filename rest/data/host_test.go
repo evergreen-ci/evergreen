@@ -205,7 +205,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 			s.Equal(ec2Settings.UserData, options.UserData)
 
 		},
-		"IntentHostHasMongoDBResourceTags": func(t *testing.T, options *restmodel.HostRequestOptions) {
+		"IntentHostPreservesExistingMongoDBResourceTags": func(t *testing.T, options *restmodel.HostRequestOptions) {
 			env.Settings().Providers.AWS.ResourceTags.MongoDBEnv = "dev"
 			t.Cleanup(func() {
 				env.Settings().Providers.AWS.ResourceTags.MongoDBEnv = ""
@@ -222,8 +222,8 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 			for _, tag := range intentHost.InstanceTags {
 				tagsByKey[tag.Key] = tag
 			}
-			s.Equal(host.Tag{Key: "mongodb-owner", Value: testUser.EmailAddress}, tagsByKey["mongodb-owner"])
-			s.Equal(host.Tag{Key: "mongodb-env", Value: "dev"}, tagsByKey["mongodb-env"])
+			s.Equal(host.Tag{Key: "mongodb-owner", Value: "not-the-user@mongodb.com", CanBeModified: false}, tagsByKey["mongodb-owner"])
+			s.Equal(host.Tag{Key: "mongodb-env", Value: "prod", CanBeModified: false}, tagsByKey["mongodb-env"])
 		},
 		"UnexpirableIntentHostSetsDefaultSleepSchedule": func(t *testing.T, options *restmodel.HostRequestOptions) {
 			options.NoExpiration = true

@@ -276,11 +276,7 @@ func NewEnvironment(ctx context.Context, confPath, versionID, clientS3Bucket str
 		if settingsWithoutSecrets == nil {
 			return nil, errors.New("temporary settings from DB not found")
 		}
-		resourceTags := map[string]string{
-			TagMongoDBOwner: settingsWithoutSecrets.Providers.AWS.ResourceTags.MongoDBOwner,
-			TagMongoDBEnv:   settingsWithoutSecrets.Providers.AWS.ResourceTags.MongoDBEnv,
-		}
-		if err := e.initParameterManager(ctx, tracer, settingsWithoutSecrets.ParameterStore.Prefix, resourceTags); err != nil {
+		if err := e.initParameterManager(ctx, tracer, settingsWithoutSecrets.ParameterStore.Prefix); err != nil {
 			return nil, errors.Wrap(err, "initializing parameter manager")
 		}
 	}
@@ -1060,14 +1056,13 @@ func (e *envState) initDepot(ctx context.Context, tracer trace.Tracer) error {
 	return nil
 }
 
-func (e *envState) initParameterManager(ctx context.Context, tracer trace.Tracer, pathPrefix string, resourceTags map[string]string) error {
+func (e *envState) initParameterManager(ctx context.Context, tracer trace.Tracer, pathPrefix string) error {
 	ctx, span := tracer.Start(ctx, "InitParameterManager")
 	defer span.End()
 
 	pm, err := parameterstore.NewParameterManager(ctx, parameterstore.ParameterManagerOptions{
 		PathPrefix:     pathPrefix,
 		CachingEnabled: true,
-		ResourceTags:   resourceTags,
 		DB:             e.client.Database(e.dbName),
 	})
 	if err != nil {

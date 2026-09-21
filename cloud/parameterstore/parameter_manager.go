@@ -37,8 +37,7 @@ type Parameter struct {
 // parameters in AWS Systems Manager Parameter Store. It supports caching to
 // optimize parameter retrieval.
 type ParameterManager struct {
-	pathPrefix   string
-	resourceTags []ssmTypes.Tag
+	pathPrefix string
 	// cache holds the in-memory cache of parameters. If parameter caching is
 	// enabled, the cache will reduce the number of reads from Parameter Store
 	// by only fetching directly from Parameter Store if the value is missing
@@ -54,7 +53,6 @@ type ParameterManagerOptions struct {
 	// all parameters should be stored under this prefix.
 	PathPrefix     string
 	CachingEnabled bool
-	ResourceTags   map[string]string
 	SSMClient      SSMClient
 	DB             *mongo.Database
 }
@@ -90,11 +88,6 @@ func NewParameterManager(ctx context.Context, opts ParameterManagerOptions) (*Pa
 		ssmClient:  opts.SSMClient,
 		DB:         opts.DB,
 	}
-	for key, value := range opts.ResourceTags {
-		if value != "" {
-			pm.resourceTags = append(pm.resourceTags, ssmTypes.Tag{Key: aws.String(key), Value: aws.String(value)})
-		}
-	}
 	if opts.CachingEnabled {
 		pm.cache = newParameterCache()
 	}
@@ -108,31 +101,13 @@ func (pm *ParameterManager) Put(ctx context.Context, name, value string) (*Param
 	}
 
 	fullName := pm.GetPrefixedName(name)
-	input := &ssm.PutParameterInput{
+	if _, err := pm.ssmClient.PutParameter(ctx, &ssm.PutParameterInput{
 		Name:      aws.String(fullName),
 		Value:     aws.String(value),
 		Overwrite: aws.Bool(true),
 		Type:      ssmTypes.ParameterTypeSecureString,
 		Tier:      ssmTypes.ParameterTierIntelligentTiering,
-	}
-	if len(pm.resourceTags) != 0 {
-		existing, err := pm.ssmClient.GetParametersSimple(ctx, &ssm.GetParametersInput{Names: []string{fullName}})
-		if err != nil {
-			return nil, errors.Wrapf(err, "checking if parameter '%s' exists", name)
-		}
-		if len(existing) == 0 {
-			// PutParameter only accepts tags when creating a parameter. Including
-			// them here ensures tag-on-create policies can authorize the request.
-			input.Tags = pm.resourceTags
-		} else if _, err := pm.ssmClient.AddTagsToResource(ctx, &ssm.AddTagsToResourceInput{
-			ResourceId:   aws.String(fullName),
-			ResourceType: ssmTypes.ResourceTypeForTaggingParameter,
-			Tags:         pm.resourceTags,
-		}); err != nil {
-			return nil, errors.Wrapf(err, "tagging parameter '%s'", name)
-		}
-	}
-	if _, err := pm.ssmClient.PutParameter(ctx, input); err != nil {
+	}); err != nil {
 		return nil, errors.Wrapf(err, "putting parameter '%s'", name)
 	}
 

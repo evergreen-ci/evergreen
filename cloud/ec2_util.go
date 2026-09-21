@@ -194,30 +194,35 @@ func makeTags(intentHost *host.Host, resourceTags evergreen.ResourceTagsConfig) 
 			systemTags = append(systemTags, host.Tag{Key: evergreen.TagBuildID, Value: intentHost.SpawnOptions.BuildID, CanBeModified: false})
 		}
 	}
-	var authoritativeResourceTags []host.Tag
-	if !intentHost.UserHost || intentHost.SpawnOptions.SpawnedByTask {
-		authoritativeResourceTags = makeMongoDBResourceTags(resourceTags.MongoDBOwner, resourceTags.MongoDBEnv)
+	var defaultResourceTags []host.Tag
+	if !intentHost.UserHost {
+		defaultResourceTags = makeMongoDBResourceTags(resourceTags.MongoDBOwner, resourceTags.MongoDBEnv)
 	}
 
 	// Add Evergreen-generated tags to host object
 	intentHost.AddTags(systemTags)
-	addOrReplaceTags(intentHost, authoritativeResourceTags)
+	addMissingTags(intentHost, defaultResourceTags)
 
 	return intentHost.InstanceTags
 }
 
-// addOrReplaceTags adds tags to a host, replacing existing values regardless of
-// whether they are marked as modifiable. This should only be used for tags whose
-// values are controlled by Evergreen.
-func addOrReplaceTags(intentHost *host.Host, tags []host.Tag) {
+// addMissingTags adds tags only when no value has already been specified.
+func addMissingTags(intentHost *host.Host, tags []host.Tag) {
 	for _, tag := range tags {
-		filteredTags := intentHost.InstanceTags[:0]
-		for _, existingTag := range intentHost.InstanceTags {
+		found := false
+		for i, existingTag := range intentHost.InstanceTags {
 			if existingTag.Key != tag.Key {
-				filteredTags = append(filteredTags, existingTag)
+				continue
 			}
+			found = true
+			if existingTag.Value == "" {
+				intentHost.InstanceTags[i] = tag
+			}
+			break
 		}
-		intentHost.InstanceTags = append(filteredTags, tag)
+		if !found {
+			intentHost.InstanceTags = append(intentHost.InstanceTags, tag)
+		}
 	}
 }
 
@@ -260,10 +265,6 @@ func makeTagTemplate(hostTags []host.Tag) []types.LaunchTemplateTagSpecification
 		// every host has at least a root volume that needs to be tagged
 		{
 			ResourceType: types.ResourceTypeVolume,
-			Tags:         tags,
-		},
-		{
-			ResourceType: types.ResourceTypeNetworkInterface,
 			Tags:         tags,
 		},
 	}
@@ -741,7 +742,7 @@ func getSubnetForZoneInDefaultAccount(subnets []evergreen.Subnet, zone string) (
 // created for the project, user spawned hosts use the spawn host key, and task hosts use the task host key.
 func getKeyName(ctx context.Context, h *host.Host, settings *evergreen.Settings, client AWSClient) (string, error) {
 	if h.SpawnOptions.SpawnedByTask {
-		return client.GetKey(ctx, h, settings.Providers.AWS.ResourceTags)
+		return client.GetKey(ctx, h)
 	}
 	if h.UserHost {
 		return settings.SSH.SpawnHostKey.Name, nil

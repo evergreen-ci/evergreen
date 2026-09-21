@@ -381,52 +381,51 @@ func TestMakeTagsIncludesHostNameTag(t *testing.T) {
 	assert.Equal(t, h.Tag, hostNameTagValue, "host-name tag should be set to the evergreen intent host ID (h.Tag), not the EC2 instance ID")
 }
 
-func TestMakeTagsIncludesMongoDBResourceTagsForSupportedHosts(t *testing.T) {
+func TestMakeTagsAddsMissingMongoDBResourceTagsForTaskHosts(t *testing.T) {
 	resourceTags := evergreen.ResourceTagsConfig{
 		MongoDBOwner: "evergreen@mongodb.com",
 		MongoDBEnv:   "prod",
 	}
-
-	for testName, testCase := range map[string]struct {
-		host        *host.Host
-		expectsTags bool
-	}{
-		"TaskHost": {
-			host: &host.Host{InstanceTags: []host.Tag{
-				{Key: evergreen.TagMongoDBOwner, Value: "incorrect-owner", CanBeModified: false},
-				{Key: evergreen.TagMongoDBEnv, Value: "incorrect-environment", CanBeModified: false},
-			}},
-			expectsTags: true,
-		},
-		"HostCreateHost": {
-			host: &host.Host{
-				UserHost: true,
-				SpawnOptions: host.SpawnOptions{
-					SpawnedByTask: true,
-				},
-			},
-			expectsTags: true,
-		},
-		"SpawnHost": {
-			host: &host.Host{UserHost: true},
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			tags := makeTags(testCase.host, resourceTags)
-			tagsByKey := map[string]host.Tag{}
-			for _, tag := range tags {
-				tagsByKey[tag.Key] = tag
-			}
-
-			if !testCase.expectsTags {
-				assert.NotContains(t, tagsByKey, evergreen.TagMongoDBOwner)
-				assert.NotContains(t, tagsByKey, evergreen.TagMongoDBEnv)
-				return
-			}
-			assert.Equal(t, host.Tag{Key: evergreen.TagMongoDBOwner, Value: resourceTags.MongoDBOwner}, tagsByKey[evergreen.TagMongoDBOwner])
-			assert.Equal(t, host.Tag{Key: evergreen.TagMongoDBEnv, Value: resourceTags.MongoDBEnv}, tagsByKey[evergreen.TagMongoDBEnv])
-		})
+	h := &host.Host{InstanceTags: []host.Tag{
+		{Key: evergreen.TagMongoDBOwner, Value: "existing-owner", CanBeModified: false},
+		{Key: evergreen.TagMongoDBEnv, CanBeModified: false},
+	}}
+	tagsByKey := map[string]host.Tag{}
+	for _, tag := range makeTags(h, resourceTags) {
+		tagsByKey[tag.Key] = tag
 	}
+	assert.Equal(t, "existing-owner", tagsByKey[evergreen.TagMongoDBOwner].Value)
+	assert.Equal(t, resourceTags.MongoDBEnv, tagsByKey[evergreen.TagMongoDBEnv].Value)
+}
+
+func TestMakeTagsDoesNotAddDefaultMongoDBResourceTagsForUserHosts(t *testing.T) {
+	h := &host.Host{UserHost: true, SpawnOptions: host.SpawnOptions{SpawnedByTask: true}}
+	tagsByKey := map[string]host.Tag{}
+	for _, tag := range makeTags(h, evergreen.ResourceTagsConfig{
+		MongoDBOwner: "evergreen@mongodb.com",
+		MongoDBEnv:   "prod",
+	}) {
+		tagsByKey[tag.Key] = tag
+	}
+	assert.NotContains(t, tagsByKey, evergreen.TagMongoDBOwner)
+	assert.NotContains(t, tagsByKey, evergreen.TagMongoDBEnv)
+}
+
+func TestAddUserSpawnHostResourceTagsAddsMissingValues(t *testing.T) {
+	h := &host.Host{
+		Provider: evergreen.ProviderNameEc2Fleet,
+		InstanceTags: []host.Tag{
+			{Key: evergreen.TagMongoDBOwner, Value: "existing-owner", CanBeModified: false},
+			{Key: evergreen.TagMongoDBEnv, CanBeModified: false},
+		},
+	}
+	AddUserSpawnHostResourceTags(h, "user@mongodb.com", evergreen.ResourceTagsConfig{MongoDBEnv: "prod"})
+	tagsByKey := map[string]host.Tag{}
+	for _, tag := range h.InstanceTags {
+		tagsByKey[tag.Key] = tag
+	}
+	assert.Equal(t, "existing-owner", tagsByKey[evergreen.TagMongoDBOwner].Value)
+	assert.Equal(t, "prod", tagsByKey[evergreen.TagMongoDBEnv].Value)
 }
 
 func TestDeleteHostPersistentDNSName(t *testing.T) {

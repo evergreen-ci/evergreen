@@ -788,14 +788,12 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 		launchTemplate.UserData = &userData
 	}
 
-	launchTemplateTags := []types.Tag{{Key: aws.String(evergreen.TagDistro), Value: aws.String(h.Distro.Id)}}
-	launchTemplateTags = append(launchTemplateTags, hostToEC2Tags(filterMongoDBResourceTags(hostTags))...)
 	_, err = m.client.CreateLaunchTemplate(ctx, &ec2.CreateLaunchTemplateInput{
 		LaunchTemplateData: launchTemplate,
 		LaunchTemplateName: aws.String(cleanLaunchTemplateName(h.Tag)),
 		TagSpecifications: []types.TagSpecification{{
 			ResourceType: types.ResourceTypeLaunchTemplate,
-			Tags:         launchTemplateTags},
+			Tags:         []types.Tag{{Key: aws.String(evergreen.TagDistro), Value: aws.String(h.Distro.Id)}}},
 		},
 	})
 	if err != nil {
@@ -836,14 +834,6 @@ func (m *ec2FleetManager) requestFleet(ctx context.Context, h *host.Host, ec2Set
 		},
 		Type: types.FleetTypeInstant,
 	}
-	resourceTags := hostToEC2Tags(filterMongoDBResourceTags(h.InstanceTags))
-	if len(resourceTags) != 0 {
-		createFleetInput.TagSpecifications = []types.TagSpecification{{
-			ResourceType: types.ResourceTypeFleet,
-			Tags:         resourceTags,
-		}}
-	}
-
 	createFleetResponse, err := m.client.CreateFleet(ctx, createFleetInput)
 	if err != nil {
 		return "", errors.Wrap(err, "creating fleet")
