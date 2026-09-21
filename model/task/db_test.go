@@ -2168,34 +2168,26 @@ func TestActivateTasksUpdate(t *testing.T) {
 		assert.False(t, dbTask.UnattainableDependency)
 		assert.EqualValues(t, 0, dbTask.Priority)
 	})
-	t.Run("VirtualTaskExcludedFromHostSchedulable", func(t *testing.T) {
+	t.Run("VirtualTaskIsHostSchedulableIfActivated", func(t *testing.T) {
 		ctx := t.Context()
 		require.NoError(t, db.ClearCollections(Collection, distro.Collection))
 
 		d := distro.Distro{Id: "d"}
-		hostTask := Task{
-			Id:                "host_task",
-			Status:            evergreen.TaskUndispatched,
-			Activated:         true,
-			ExecutionPlatform: ExecutionPlatformHost,
-			DistroId:          "d",
-		}
 		virtualTask := Task{
-			Id:                "virtual_task",
-			Status:            evergreen.TaskUndispatched,
-			Activated:         true,
-			ExecutionPlatform: ExecutionPlatformVirtual,
-			DistroId:          "d",
+			Id:        "virtual_task",
+			Status:    evergreen.TaskUndispatched,
+			IsVirtual: true,
+			Activated: true,
+			DistroId:  "d",
 		}
 
 		require.NoError(t, d.Insert(ctx))
-		require.NoError(t, hostTask.Insert(ctx))
 		require.NoError(t, virtualTask.Insert(ctx))
 
 		tasks, err := FindHostSchedulable(ctx, "d")
 		require.NoError(t, err)
 		require.Len(t, tasks, 1)
-		assert.Equal(t, "host_task", tasks[0].Id)
+		assert.Equal(t, "virtual_task", tasks[0].Id)
 	})
 }
 

@@ -244,6 +244,14 @@ type Task struct {
 	Aborted   bool                    `bson:"abort,omitempty" json:"abort"`
 	AbortInfo AbortInfo               `bson:"abort_info,omitempty" json:"abort_info,omitempty"`
 
+	// IsVirtual indicates that this is a virtual task, which means it has the
+	// option to either be push-completed by a runner task (see CompletedBy) or
+	// run just like a regular task.
+	IsVirtual bool `bson:"is_virtual,omitempty" json:"is_virtual,omitempty"`
+	// CompletedBy is the ID of the runner task that push-completed this
+	// virtual task.
+	CompletedBy string `bson:"completed_by,omitempty" json:"completed_by,omitempty"`
+
 	// HostCreateDetails stores information about why host.create failed for this task
 	HostCreateDetails []HostCreateDetail `bson:"host_create_details,omitempty" json:"host_create_details,omitempty"`
 	// DisplayStatus is not persisted to the db. It is the status to display in the UI.
@@ -426,9 +434,6 @@ type ExecutionPlatform string
 const (
 	// ExecutionPlatformHost indicates that the task runs in a host.
 	ExecutionPlatformHost ExecutionPlatform = "host"
-	// ExecutionPlatformVirtual indicates that the task's results are pushed
-	// externally and it never enters a task queue or runs on a host.
-	ExecutionPlatformVirtual ExecutionPlatform = "virtual"
 	// ExecutionPlatformContainer indicates that the task runs in a container.
 	ExecutionPlatformContainer ExecutionPlatform = "container"
 )
@@ -930,7 +935,7 @@ func (t *Task) cacheExpectedDuration(ctx context.Context) error {
 // updates fail.
 func (t *Task) MarkAsHostDispatched(ctx context.Context, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
 	doUpdate := func(update []bson.M) error {
-		return UpdateOne(ctx, bson.M{IdKey: t.Id}, update)
+		return UpdateOne(ctx, hostDispatchQuery(t.Id), update)
 	}
 	if err := t.markAsHostDispatchedWithFunc(doUpdate, hostID, distroID, agentRevision, dispatchTime); err != nil {
 		return err
@@ -945,13 +950,28 @@ func (t *Task) MarkAsHostDispatched(ctx context.Context, hostID, distroID, agent
 
 // MarkAsHostDispatchedWithEnv marks that the task has been dispatched onto
 // a particular host. Unlike MarkAsHostDispatched, this does not update the
-// parent display task.
+// parent display task. It returns a not-found error if the task was
+// push-completed.
 func (t *Task) MarkAsHostDispatchedWithEnv(ctx context.Context, env evergreen.Environment, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
 	doUpdate := func(update []bson.M) error {
-		_, err := env.DB().Collection(Collection).UpdateByID(ctx, t.Id, update)
-		return err
+		res, err := env.DB().Collection(Collection).UpdateOne(ctx, hostDispatchQuery(t.Id), update)
+		if err != nil {
+			return err
+		}
+		if res.MatchedCount == 0 {
+			return adb.ErrNotFound
+		}
+		return nil
 	}
 	return t.markAsHostDispatchedWithFunc(doUpdate, hostID, distroID, agentRevision, dispatchTime)
+}
+
+// hostDispatchQuery matches the task to dispatch (unless it's a virtual task that was push-completed).
+func hostDispatchQuery(id string) bson.M {
+	return bson.M{
+		IdKey:          id,
+		CompletedByKey: bson.M{"$exists": false},
+	}
 }
 
 func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update []bson.M) error, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
@@ -2152,6 +2172,22 @@ func DeactivateDependencies(ctx context.Context, tasks []string, caller string) 
 		return errors.Wrap(err, "retrieving dependency tasks to deactivate")
 	}
 	return errors.Wrap(deactivateDependencies(ctx, tasksToUpdate, taskIDsToUpdate, caller), "marking dependencies deactivated")
+}
+
+// SetCompletedBy records the runner task that push-completed this virtual task.
+func (t *Task) SetCompletedBy(ctx context.Context, completedBy string) error {
+	if err := UpdateOne(ctx,
+		bson.M{
+			IdKey:        t.Id,
+			ExecutionKey: t.Execution,
+			StatusKey:    evergreen.TaskUndispatched,
+		},
+		bson.M{"$set": bson.M{CompletedByKey: completedBy}},
+	); err != nil {
+		return err
+	}
+	t.CompletedBy = completedBy
+	return nil
 }
 
 // MarkEnd handles the Task updates associated with ending a task. If the task

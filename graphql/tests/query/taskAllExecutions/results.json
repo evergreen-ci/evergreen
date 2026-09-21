@@ -18,6 +18,27 @@
       }
     },
     {
+      "query_file": "exec_task_with_gaps.graphql",
+      "result": {
+        "data": {
+          "taskAllExecutions": [
+            {
+              "id": "exec_task_with_gaps",
+              "execution": 0
+            },
+            {
+              "id": "exec_task_with_gaps",
+              "execution": 2
+            },
+            {
+              "id": "exec_task_with_gaps",
+              "execution": 3
+            }
+          ]
+        }
+      }
+    },
+    {
       "query_file": "no_permissions.graphql",
       "test_user_id": "regular_user",
       "result": {

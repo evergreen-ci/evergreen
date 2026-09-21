@@ -11,6 +11,16 @@
       "execution": 1
     },
     {
+      "_id": "exec_task_with_gaps",
+      "r": "github_pull_request",
+      "branch": "spruce",
+      "gitspec": "12345",
+      "build_variant": "ubuntu1604",
+      "status": "success",
+      "display_name": "exec_task_with_gaps",
+      "execution": 3
+    },
+    {
       "_id": "no_permissions",
       "r": "github_pull_request",
       "branch": "evergreen",
@@ -32,6 +42,30 @@
       "display_name": "multi_exec_task",
       "execution": 0,
       "old_task_id": "multi_exec_task",
+      "archived": true
+    },
+    {
+      "_id": "exec_task_with_gaps_0",
+      "r": "github_pull_request",
+      "branch": "spruce",
+      "gitspec": "12345",
+      "build_variant": "ubuntu1604",
+      "status": "success",
+      "display_name": "exec_task_with_gaps",
+      "execution": 0,
+      "old_task_id": "exec_task_with_gaps",
+      "archived": true
+    },
+    {
+      "_id": "exec_task_with_gaps_2",
+      "r": "github_pull_request",
+      "branch": "spruce",
+      "gitspec": "12345",
+      "build_variant": "ubuntu1604",
+      "status": "success",
+      "display_name": "exec_task_with_gaps",
+      "execution": 2,
+      "old_task_id": "exec_task_with_gaps",
       "archived": true
     }
   ],

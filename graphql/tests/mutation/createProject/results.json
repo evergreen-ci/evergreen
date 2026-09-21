@@ -1,7 +1,7 @@
 {
   "tests": [
     {
-      "query_file": "create_project.graphql",
+      "query_file": "create_project_success.graphql",
       "result": {
         "data": {
           "createProject": {
@@ -13,15 +13,18 @@
       }
     },
     {
-      "query_file": "create_project_2.graphql",
+      "query_file": "create_project_failure.graphql",
       "result": {
-        "data": {
-          "createProject": {
-            "id": "happyAbyssinian",
-            "identifier": "abyssinianVideos",
-            "repo": "catGenerator"
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'admin_user' is not an admin of repo 'evergreen-ci/animals-repo'",
+            "path": ["createProject"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
           }
-        }
+        ]
       }
     }
   ]

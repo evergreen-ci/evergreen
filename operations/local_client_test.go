@@ -487,7 +487,7 @@ func TestValidateDebugLocal(t *testing.T) {
 
 	t.Run("ServiceFlagsDisabledShouldError", func(t *testing.T) {
 		mockClient = &client.Mock{
-			MockServiceFlags: &restmodel.APIServiceFlags{
+			MockServiceFlags: &restmodel.APIServiceFlagsResponse{
 				DebugSpawnHostDisabled: true,
 			},
 		}

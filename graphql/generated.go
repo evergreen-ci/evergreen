@@ -135,6 +135,7 @@ type ComplexityRoot struct {
 		MaxVolumeSizePerUser   func(childComplexity int) int
 		ParserProject          func(childComplexity int) int
 		PersistentDNS          func(childComplexity int) int
+		ResourceTags           func(childComplexity int) int
 		SubnetTagName          func(childComplexity int) int
 		SubnetTagValue         func(childComplexity int) int
 		Subnets                func(childComplexity int) int
@@ -1648,6 +1649,11 @@ type ComplexityRoot struct {
 		VirtualMemoryKB func(childComplexity int) int
 	}
 
+	ResourceTagsConfig struct {
+		MongoDBEnv   func(childComplexity int) int
+		MongoDBOwner func(childComplexity int) int
+	}
+
 	RestartAdminTasksPayload struct {
 		NumRestartedTasks func(childComplexity int) int
 	}
@@ -3012,6 +3018,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AWSConfig.PersistentDNS(childComplexity), true
+	case "AWSConfig.resourceTags":
+		if e.complexity.AWSConfig.ResourceTags == nil {
+			break
+		}
+
+		return e.complexity.AWSConfig.ResourceTags(childComplexity), true
 	case "AWSConfig.subnetTagName":
 		if e.complexity.AWSConfig.SubnetTagName == nil {
 			break
@@ -9775,6 +9787,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ResourceLimits.VirtualMemoryKB(childComplexity), true
 
+	case "ResourceTagsConfig.mongodbEnv":
+		if e.complexity.ResourceTagsConfig.MongoDBEnv == nil {
+			break
+		}
+
+		return e.complexity.ResourceTagsConfig.MongoDBEnv(childComplexity), true
+	case "ResourceTagsConfig.mongodbOwner":
+		if e.complexity.ResourceTagsConfig.MongoDBOwner == nil {
+			break
+		}
+
+		return e.complexity.ResourceTagsConfig.MongoDBOwner(childComplexity), true
+
 	case "RestartAdminTasksPayload.numRestartedTasks":
 		if e.complexity.RestartAdminTasksPayload.NumRestartedTasks == nil {
 			break
@@ -13335,6 +13360,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputRepoSettingsInput,
 		ec.unmarshalInputRepotrackerConfigInput,
 		ec.unmarshalInputResourceLimitsInput,
+		ec.unmarshalInputResourceTagsConfigInput,
 		ec.unmarshalInputRestartAdminTasksOptions,
 		ec.unmarshalInputRuntimeEnvironmentConfigInput,
 		ec.unmarshalInputS3CostConfigInput,
@@ -13497,7 +13523,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(ec.Schema(), ec.Schema().Types[name]), nil
 }
 
-//go:embed "schema/directives.graphql" "schema/mutation.graphql" "schema/query.graphql" "schema/scalars.graphql" "schema/types/adminSettings/auth.graphql" "schema/types/adminSettings/background_processing.graphql" "schema/types/adminSettings/external_communications.graphql" "schema/types/adminSettings/okta_service.graphql" "schema/types/adminSettings/other.graphql" "schema/types/adminSettings/providers.graphql" "schema/types/adminSettings/runners.graphql" "schema/types/adminSettings/service_flags.graphql" "schema/types/adminSettings/web.graphql" "schema/types/annotation.graphql" "schema/types/config.graphql" "schema/types/distro.graphql" "schema/types/host.graphql" "schema/types/image.graphql" "schema/types/issue_link.graphql" "schema/types/mainline_commits.graphql" "schema/types/patch.graphql" "schema/types/permissions.graphql" "schema/types/project.graphql" "schema/types/project_settings.graphql" "schema/types/project_vars.graphql" "schema/types/repo_ref.graphql" "schema/types/repo_settings.graphql" "schema/types/spawn.graphql" "schema/types/subscriptions.graphql" "schema/types/task.graphql" "schema/types/task_history.graphql" "schema/types/task_logs.graphql" "schema/types/task_queue_item.graphql" "schema/types/test_selection.graphql" "schema/types/ticket_fields.graphql" "schema/types/user.graphql" "schema/types/version.graphql" "schema/types/volume.graphql" "schema/types/waterfall.graphql"
+//go:embed "schema/directives.graphql" "schema/mutation.graphql" "schema/query.graphql" "schema/scalars.graphql" "schema/types/adminSettings/auth.graphql" "schema/types/adminSettings/background_processing.graphql" "schema/types/adminSettings/external_communications.graphql" "schema/types/adminSettings/okta_service.graphql" "schema/types/adminSettings/other.graphql" "schema/types/adminSettings/providers.graphql" "schema/types/adminSettings/resource_tags.graphql" "schema/types/adminSettings/runners.graphql" "schema/types/adminSettings/service_flags.graphql" "schema/types/adminSettings/web.graphql" "schema/types/annotation.graphql" "schema/types/config.graphql" "schema/types/distro.graphql" "schema/types/host.graphql" "schema/types/image.graphql" "schema/types/issue_link.graphql" "schema/types/mainline_commits.graphql" "schema/types/patch.graphql" "schema/types/permissions.graphql" "schema/types/project.graphql" "schema/types/project_settings.graphql" "schema/types/project_vars.graphql" "schema/types/repo_ref.graphql" "schema/types/repo_settings.graphql" "schema/types/spawn.graphql" "schema/types/subscriptions.graphql" "schema/types/task.graphql" "schema/types/task_history.graphql" "schema/types/task_logs.graphql" "schema/types/task_queue_item.graphql" "schema/types/test_selection.graphql" "schema/types/ticket_fields.graphql" "schema/types/user.graphql" "schema/types/version.graphql" "schema/types/volume.graphql" "schema/types/waterfall.graphql"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -13519,6 +13545,7 @@ var sources = []*ast.Source{
 	{Name: "schema/types/adminSettings/okta_service.graphql", Input: sourceData("schema/types/adminSettings/okta_service.graphql"), BuiltIn: false},
 	{Name: "schema/types/adminSettings/other.graphql", Input: sourceData("schema/types/adminSettings/other.graphql"), BuiltIn: false},
 	{Name: "schema/types/adminSettings/providers.graphql", Input: sourceData("schema/types/adminSettings/providers.graphql"), BuiltIn: false},
+	{Name: "schema/types/adminSettings/resource_tags.graphql", Input: sourceData("schema/types/adminSettings/resource_tags.graphql"), BuiltIn: false},
 	{Name: "schema/types/adminSettings/runners.graphql", Input: sourceData("schema/types/adminSettings/runners.graphql"), BuiltIn: false},
 	{Name: "schema/types/adminSettings/service_flags.graphql", Input: sourceData("schema/types/adminSettings/service_flags.graphql"), BuiltIn: false},
 	{Name: "schema/types/adminSettings/web.graphql", Input: sourceData("schema/types/adminSettings/web.graphql"), BuiltIn: false},
@@ -17436,6 +17463,41 @@ func (ec *executionContext) fieldContext_AWSConfig_subnets(_ context.Context, fi
 				return ec.fieldContext_Subnet_subnetId(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Subnet", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AWSConfig_resourceTags(ctx context.Context, field graphql.CollectedField, obj *model.APIAWSConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AWSConfig_resourceTags,
+		func(ctx context.Context) (any, error) {
+			return obj.ResourceTags, nil
+		},
+		nil,
+		ec.marshalOResourceTagsConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIResourceTagsConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AWSConfig_resourceTags(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AWSConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "mongodbEnv":
+				return ec.fieldContext_ResourceTagsConfig_mongodbEnv(ctx, field)
+			case "mongodbOwner":
+				return ec.fieldContext_ResourceTagsConfig_mongodbOwner(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ResourceTagsConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -23980,6 +24042,8 @@ func (ec *executionContext) fieldContext_CloudProviderConfig_aws(_ context.Conte
 			switch field.Name {
 			case "subnets":
 				return ec.fieldContext_AWSConfig_subnets(ctx, field)
+			case "resourceTags":
+				return ec.fieldContext_AWSConfig_resourceTags(ctx, field)
 			case "subnetTagName":
 				return ec.fieldContext_AWSConfig_subnetTagName(ctx, field)
 			case "subnetTagValue":
@@ -57501,6 +57565,64 @@ func (ec *executionContext) fieldContext_ResourceLimits_virtualMemoryKb(_ contex
 	return fc, nil
 }
 
+func (ec *executionContext) _ResourceTagsConfig_mongodbEnv(ctx context.Context, field graphql.CollectedField, obj *model.APIResourceTagsConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ResourceTagsConfig_mongodbEnv,
+		func(ctx context.Context) (any, error) {
+			return obj.MongoDBEnv, nil
+		},
+		nil,
+		ec.marshalOMongoDBEnvironment2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ResourceTagsConfig_mongodbEnv(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ResourceTagsConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type MongoDBEnvironment does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ResourceTagsConfig_mongodbOwner(ctx context.Context, field graphql.CollectedField, obj *model.APIResourceTagsConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ResourceTagsConfig_mongodbOwner,
+		func(ctx context.Context) (any, error) {
+			return obj.MongoDBOwner, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ResourceTagsConfig_mongodbOwner(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ResourceTagsConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RestartAdminTasksPayload_numRestartedTasks(ctx context.Context, field graphql.CollectedField, obj *RestartAdminTasksPayload) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -80310,7 +80432,7 @@ func (ec *executionContext) unmarshalInputAWSConfigInput(ctx context.Context, ob
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"subnets", "subnetTagName", "subnetTagValue", "parserProject", "persistentDNS", "defaultSecurityGroup", "allowedInstanceTypes", "alertableInstanceTypes", "allowedRegions", "maxVolumeSizePerUser", "accountRoles", "ipamPoolID", "elasticIPUsageRate", "allowedSNSTopicARNs"}
+	fieldsInOrder := [...]string{"subnets", "resourceTags", "subnetTagName", "subnetTagValue", "parserProject", "persistentDNS", "defaultSecurityGroup", "allowedInstanceTypes", "alertableInstanceTypes", "allowedRegions", "maxVolumeSizePerUser", "accountRoles", "ipamPoolID", "elasticIPUsageRate", "allowedSNSTopicARNs"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -80324,6 +80446,13 @@ func (ec *executionContext) unmarshalInputAWSConfigInput(ctx context.Context, ob
 				return it, err
 			}
 			it.Subnets = data
+		case "resourceTags":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("resourceTags"))
+			data, err := ec.unmarshalOResourceTagsConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIResourceTagsConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ResourceTags = data
 		case "subnetTagName":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("subnetTagName"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -88218,6 +88347,40 @@ func (ec *executionContext) unmarshalInputResourceLimitsInput(ctx context.Contex
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputResourceTagsConfigInput(ctx context.Context, obj any) (model.APIResourceTagsConfig, error) {
+	var it model.APIResourceTagsConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"mongodbEnv", "mongodbOwner"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "mongodbEnv":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mongodbEnv"))
+			data, err := ec.unmarshalOMongoDBEnvironment2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MongoDBEnv = data
+		case "mongodbOwner":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mongodbOwner"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MongoDBOwner = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputRestartAdminTasksOptions(ctx context.Context, obj any) (model1.RestartOptions, error) {
 	var it model1.RestartOptions
 	asMap := map[string]any{}
@@ -92110,6 +92273,8 @@ func (ec *executionContext) _AWSConfig(ctx context.Context, sel ast.SelectionSet
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "resourceTags":
+			out.Values[i] = ec._AWSConfig_resourceTags(ctx, field, obj)
 		case "subnetTagName":
 			out.Values[i] = ec._AWSConfig_subnetTagName(ctx, field, obj)
 		case "subnetTagValue":
@@ -104570,6 +104735,44 @@ func (ec *executionContext) _ResourceLimits(ctx context.Context, sel ast.Selecti
 	return out
 }
 
+var resourceTagsConfigImplementors = []string{"ResourceTagsConfig"}
+
+func (ec *executionContext) _ResourceTagsConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIResourceTagsConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, resourceTagsConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ResourceTagsConfig")
+		case "mongodbEnv":
+			out.Values[i] = ec._ResourceTagsConfig_mongodbEnv(ctx, field, obj)
+		case "mongodbOwner":
+			out.Values[i] = ec._ResourceTagsConfig_mongodbOwner(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var restartAdminTasksPayloadImplementors = []string{"RestartAdminTasksPayload"}
 
 func (ec *executionContext) _RestartAdminTasksPayload(ctx context.Context, sel ast.SelectionSet, obj *RestartAdminTasksPayload) graphql.Marshaler {
@@ -114007,12 +114210,10 @@ var (
 	unmarshalNExecutionPlatform2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐExecutionPlatform = map[string]task.ExecutionPlatform{
 		"HOST":      task.ExecutionPlatformHost,
 		"CONTAINER": task.ExecutionPlatformContainer,
-		"VIRTUAL":   task.ExecutionPlatformVirtual,
 	}
 	marshalNExecutionPlatform2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐExecutionPlatform = map[task.ExecutionPlatform]string{
 		task.ExecutionPlatformHost:      "HOST",
 		task.ExecutionPlatformContainer: "CONTAINER",
-		task.ExecutionPlatformVirtual:   "VIRTUAL",
 	}
 )
 
@@ -121074,6 +121275,52 @@ func (ec *executionContext) marshalOMetadataLink2ᚕgithubᚗcomᚋevergreenᚑc
 	return ret
 }
 
+func (ec *executionContext) unmarshalOMongoDBEnvironment2ᚖstring(ctx context.Context, v any) (*string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	tmp, err := graphql.UnmarshalString(v)
+	res := unmarshalOMongoDBEnvironment2ᚖstring[tmp]
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOMongoDBEnvironment2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalString(marshalOMongoDBEnvironment2ᚖstring[*v])
+	return res
+}
+
+var (
+	unmarshalOMongoDBEnvironment2ᚖstring = map[string]string{
+		"PROD":    evergreen.MongoDBEnvironmentProd,
+		"STAGING": evergreen.MongoDBEnvironmentStaging,
+		"DEV":     evergreen.MongoDBEnvironmentDev,
+		"QA":      evergreen.MongoDBEnvironmentQA,
+		"TEST":    evergreen.MongoDBEnvironmentTest,
+		"LOCAL":   evergreen.MongoDBEnvironmentLocal,
+		"POC":     evergreen.MongoDBEnvironmentPOC,
+		"DEMO":    evergreen.MongoDBEnvironmentDemo,
+		"UAT":     evergreen.MongoDBEnvironmentUAT,
+		"SANDBOX": evergreen.MongoDBEnvironmentSandbox,
+	}
+	marshalOMongoDBEnvironment2ᚖstring = map[string]string{
+		evergreen.MongoDBEnvironmentProd:    "PROD",
+		evergreen.MongoDBEnvironmentStaging: "STAGING",
+		evergreen.MongoDBEnvironmentDev:     "DEV",
+		evergreen.MongoDBEnvironmentQA:      "QA",
+		evergreen.MongoDBEnvironmentTest:    "TEST",
+		evergreen.MongoDBEnvironmentLocal:   "LOCAL",
+		evergreen.MongoDBEnvironmentPOC:     "POC",
+		evergreen.MongoDBEnvironmentDemo:    "DEMO",
+		evergreen.MongoDBEnvironmentUAT:     "UAT",
+		evergreen.MongoDBEnvironmentSandbox: "SANDBOX",
+	}
+)
+
 func (ec *executionContext) marshalOMultiAuthConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIMultiAuthConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIMultiAuthConfig) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -121936,6 +122183,21 @@ func (ec *executionContext) marshalORepotrackerError2ᚖgithubᚗcomᚋevergreen
 		return graphql.Null
 	}
 	return ec._RepotrackerError(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOResourceTagsConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIResourceTagsConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIResourceTagsConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ResourceTagsConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOResourceTagsConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIResourceTagsConfig(ctx context.Context, v any) (*model.APIResourceTagsConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputResourceTagsConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalORoundingRule2ᚖstring(ctx context.Context, v any) (*string, error) {
