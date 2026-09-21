@@ -86,10 +86,7 @@ func (c *completeVirtualTasks) Execute(ctx context.Context, comm client.Communic
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	failCatcher := grip.NewBasicCatcher()
 	for i := 0; i < len(allCompletions); i += maxCompletionBatchSize {
-		end := i + maxCompletionBatchSize
-		if end > len(allCompletions) {
-			end = len(allCompletions)
-		}
+		end := min(i+maxCompletionBatchSize, len(allCompletions))
 		batch := allCompletions[i:end]
 
 		resp, err := comm.CompleteVirtualTasks(ctx, td, batch)
