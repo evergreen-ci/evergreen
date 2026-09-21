@@ -4946,3 +4946,15 @@ func (t *Task) HasValidDistro(ctx context.Context) bool {
 	}
 	return hasValid
 }
+
+// FindInvalidDistros returns the subset of distros that do not correspond to a known distro ID or alias.
+func (t *Task) FindInvalidDistros(ctx context.Context) []string {
+	invalidDistros := []string{}
+	for _, distroID := range append([]string{t.DistroId}, t.SecondaryDistros...) {
+		hasValid, _ := distro.HasAnyByIdOrAlias(ctx, []string{distroID})
+		if !hasValid {
+			invalidDistros = append(invalidDistros, distroID)
+		}
+	}
+	return invalidDistros
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -387,7 +388,8 @@ func (r *taskResolver) Errors(ctx context.Context, obj *restModel.APITask) ([]st
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting APITask '%s' to service", utility.FromStringPtr(obj.Id)))
 	}
 	if !t.HasValidDistro(ctx) {
-		errors = append(errors, evergreen.DistroNotFoundForTaskError)
+		invalidDistros := t.FindInvalidDistros(ctx)
+		errors = append(errors, fmt.Sprintf("%s: %s", evergreen.DistroNotFoundForTaskError, strings.Join(invalidDistros, ", ")))
 	}
 	return errors, nil
 }
