@@ -244,9 +244,9 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 			baseVersionID = baseVersion.Id
 		}
 	}
-	includeNeverActivatedTasks := buildVariantOpts.IncludeNeverActivatedTasks
-	if includeNeverActivatedTasks == nil {
-		includeNeverActivatedTasks = utility.ToBoolPtr(false)
+	includeNeverActivatedTasks := false
+	if buildVariantOpts.IncludeNeverActivatedTasks != nil {
+		includeNeverActivatedTasks = *buildVariantOpts.IncludeNeverActivatedTasks
 	}
 	opts := task.GetTasksByVersionOptions{
 		Statuses:      getValidTaskStatusesFilter(buildVariantOpts.Statuses),
@@ -254,8 +254,8 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 		TaskNames:     buildVariantOpts.Tasks,
 		Sorts:         defaultSort,
 		BaseVersionID: baseVersionID,
-		// Do not fetch inactive tasks for patches. This is because the UI does not display inactive tasks for patches.
-		IncludeNeverActivatedTasks: *includeNeverActivatedTasks || !evergreen.IsPatchRequester(requester),
+		// If the version is mainline, include never-activated tasks regardless of the user's preference.
+		IncludeNeverActivatedTasks: includeNeverActivatedTasks || !evergreen.IsPatchRequester(requester),
 	}
 
 	tasks, _, err := task.GetTasksByVersion(ctx, versionId, opts)

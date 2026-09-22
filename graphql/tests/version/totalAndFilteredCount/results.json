@@ -1,0 +1,30 @@
+{
+  "tests": [
+    {
+      "query_file": "include_activated_tasks_false.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "totalCount": 2,
+            "tasks": {
+              "filteredCount": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "include_activated_tasks_true.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "totalCount": 5,
+            "tasks": {
+              "filteredCount": 5
+            }
+          }
+        }
+      }
+    }
+  ]
+}
