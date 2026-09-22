@@ -5804,6 +5804,18 @@ func TestDistroErrors(t *testing.T) {
 		}, task.DistroErrors(ctx))
 	})
 
+	t.Run("TaskWithValidPrimaryDistroAndSecondaryDistrosWithWarningAndNonexistent", func(t *testing.T) {
+		task := &Task{
+			Id:               "task-with-warning-and-nonexistent-secondary",
+			DistroId:         validDistro.Id,
+			SecondaryDistros: []string{warningDistro.Id, "nonexistent-distro"},
+		}
+		assert.Equal(t, []string{
+			warningDistro.WarningNoteMessage(),
+			fmt.Sprintf("nonexistent-distro: %s", evergreen.DistroNotFoundForTaskError),
+		}, task.DistroErrors(ctx))
+	})
+
 	t.Run("TaskWithNoValidDistros", func(t *testing.T) {
 		task := &Task{
 			Id:               "task-no-valid-distro",
