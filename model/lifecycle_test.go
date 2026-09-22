@@ -1935,7 +1935,11 @@ buildvariants:
 }
 
 func TestCreateVirtualTaskWithStepbackActivation(t *testing.T) {
-	require.NoError(t, db.ClearCollections(build.Collection, task.Collection))
+	colls := []string{build.Collection, task.Collection}
+	require.NoError(t, db.ClearCollections(colls...))
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(colls...))
+	})
 	projYml := `
 tasks:
 - name: virtual_stepback_activate
