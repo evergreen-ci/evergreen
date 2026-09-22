@@ -515,21 +515,16 @@ func (d *Distro) IsEphemeral() bool {
 }
 
 // WarningNoteMessage returns the distro's warning note
-func (d *Distro) WarningNoteMessage() (string, bool) {
+func (d *Distro) WarningNoteMessage() string {
 	if d.WarningNote == "" {
-		return "", false
+		return ""
 	}
 	msg := d.Id
 	if len(d.Aliases) > 0 {
 		msg += fmt.Sprintf(" (alias: %s)", strings.Join(d.Aliases, ", "))
 	}
 	msg += ": " + d.WarningNote
-	return msg, true
-}
-
-// DistroNotFoundMessage returns a distro not found message
-func DistroNotFoundMessage(distroID string) string {
-	return fmt.Sprintf("%s: %s", distroID, evergreen.DistroNotFoundForTaskError)
+	return msg
 }
 
 func (d *Distro) BinaryName() string {
