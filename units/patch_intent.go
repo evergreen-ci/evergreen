@@ -39,6 +39,7 @@ const (
 	githubActionsUserID        = 41898282
 	BuildTasksAndVariantsError = "building tasks and variants"
 	maxPatchIntentJobTime      = 10 * time.Minute
+	githubIntentInfoPathPrefix = "/rest/v2/github/intent-processing-errors/"
 )
 
 var (
@@ -1572,7 +1573,15 @@ func resolveGitHubPRAuthor(ctx context.Context, githubUserID int) (*github.User,
 	return resolvedUser, nil
 }
 
-func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchDoc *patch.Patch, targetPath string) {
+func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchDoc *patch.Patch, intentInfoID string) {
+	targetPath := ""
+	if j.patchCreated {
+		targetPath = "/patch/" + patchDoc.Id.Hex()
+	} else if intentInfoID != "" {
+		targetPath = githubIntentInfoPathPrefix + intentInfoID
+	}
+
+
 	if j.IntentType == patch.GithubIntentType {
 		update := NewGithubStatusUpdateJobForProcessingError(
 			thirdparty.GithubStatusDefaultContext,
@@ -1608,23 +1617,23 @@ func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchD
 func (j *patchIntentProcessor) reportGitHubProcessingError(ctx context.Context, patchDoc *patch.Patch, processingErr error) {
 	reportCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 	defer cancel()
-	targetPath := j.makeGitHubProcessingErrorTarget(reportCtx, patchDoc, processingErr)
-	j.sendGitHubErrorStatus(reportCtx, patchDoc, targetPath)
+	intentInfoID := j.storeGitHubIntentInfo(reportCtx, processingErr)
+	j.sendGitHubErrorStatus(reportCtx, patchDoc, intentInfoID)
 }
 
-func (j *patchIntentProcessor) makeGitHubProcessingErrorTarget(ctx context.Context, patchDoc *patch.Patch, processingErr error) string {
-	if j.patchCreated {
-		return "/patch/" + patchDoc.Id.Hex()
-	}
-	if j.ProjectID == "" {
+// storeGitHubIntentInfo stores the error that prevented the GitHub intent from creating a patch and
+// returns the stored info's ID. It returns an empty ID if the patch was already created, the project
+// is unknown, or the info cannot be stored.
+func (j *patchIntentProcessor) storeGitHubIntentInfo(ctx context.Context, processingErr error) string {
+	if j.patchCreated || j.ProjectID == "" {
 		return ""
 	}
 
-	storedError, err := patch.InsertGitHubIntentProcessingError(ctx, j.ProjectID, processingErr.Error())
+	intentInfo, err := patch.InsertGitHubIntentInfo(ctx, j.ProjectID, j.IntentID, processingErr.Error())
 	if err != nil {
 		j.AddError(err)
 		grip.Error(ctx, message.WrapError(err, message.Fields{
-			"message":     "could not save GitHub intent processing error",
+			"message":     "could not save GitHub intent info",
 			"job":         j.ID(),
 			"intent_id":   j.IntentID,
 			"intent_type": j.IntentType,
@@ -1632,7 +1641,7 @@ func (j *patchIntentProcessor) makeGitHubProcessingErrorTarget(ctx context.Conte
 		}))
 		return ""
 	}
-	return "/rest/v2/github/intent-processing-errors/" + storedError.ID.Hex()
+	return intentInfo.ID.Hex()
 }
 
 // sendGitHubSuccessMessageForIgnoredVariants sends GitHub success messages for variants that were ignored

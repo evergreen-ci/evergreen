@@ -34,7 +34,7 @@ func (h *githubIntentProcessingErrorHandler) Parse(ctx context.Context, r *http.
 }
 
 func (h *githubIntentProcessingErrorHandler) Run(ctx context.Context) gimlet.Responder {
-	processingError, ok := ctx.Value(githubIntentProcessingErrorContextKey{}).(*patch.GitHubIntentProcessingError)
+	processingError, ok := ctx.Value(githubIntentProcessingErrorContextKey{}).(*patch.GitHubIntentInfo)
 	if !ok {
 		return gimlet.MakeJSONInternalErrorResponder(errors.New("GitHub intent processing error is missing from context"))
 	}
@@ -56,7 +56,7 @@ func (m *githubIntentProcessingErrorContextMiddleware) ServeHTTP(rw http.Respons
 	}
 
 	// Get and set the project_id request variables for the project permission middleware.
-	processingError, err := patch.FindGitHubIntentProcessingError(r.Context(), mgobson.ObjectIdHex(errorID))
+	processingError, err := patch.FindGitHubIntentInfo(r.Context(), mgobson.ObjectIdHex(errorID))
 	if err != nil {
 		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding GitHub intent processing error '%s'", errorID)))
 		return

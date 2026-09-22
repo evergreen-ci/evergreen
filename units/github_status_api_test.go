@@ -140,7 +140,7 @@ func (s *githubStatusUpdateSuite) TestForProcessingError() {
 	s.Equal("evergreen", status.Repo)
 	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", status.Ref)
 	s.Equal("https://example.com/rest/v2/github/intent-processing-errors/error-id", status.URL)
-	s.Equal(OtherErrors, status.Description)
+	s.Equal(OtherErrors+" (click link for details)", status.Description)
 	s.Equal("evergreen/commit-queue", status.Context)
 	s.Equal(message.GithubStateFailure, status.State)
 }

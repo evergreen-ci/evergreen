@@ -264,7 +264,7 @@ func TestReportGitHubProcessingError(t *testing.T) {
 		evergreen.SetEnvironment(originalEnv)
 	})
 
-	require.NoError(t, db.ClearCollections(patch.IntentCollection, patch.Collection, patch.GitHubIntentProcessingErrorCollection))
+	require.NoError(t, db.ClearCollections(patch.IntentCollection, patch.Collection, patch.GitHubIntentInfoCollection))
 	intent, err := patch.NewGithubIntent(ctx, "1", "", "", "", "", testutil.NewGithubPR(1, "evergreen-ci/evergreen", "base-hash", "octocat/evergreen", "head-hash", "octocat", "PR title"))
 	require.NoError(t, err)
 	require.NoError(t, intent.Insert(ctx))
@@ -277,11 +277,12 @@ func TestReportGitHubProcessingError(t *testing.T) {
 	cancel()
 	j.reportGitHubProcessingError(cancelledCtx, patchDoc, assert.AnError)
 
-	var found []patch.GitHubIntentProcessingError
-	err = db.FindAllQ(ctx, patch.GitHubIntentProcessingErrorCollection, db.Query(nil), &found)
+	var found []patch.GitHubIntentInfo
+	err = db.FindAllQ(ctx, patch.GitHubIntentInfoCollection, db.Query(nil), &found)
 	require.NoError(t, err)
 	require.Len(t, found, 1)
 	assert.Equal(t, "project-id", found[0].ProjectID)
+	assert.Equal(t, intent.ID(), found[0].IntentID)
 	assert.Equal(t, assert.AnError.Error(), found[0].Message)
 	status := j.env.(*mock.Environment).InternalSender
 	msg, ok := status.GetMessageSafe()
@@ -291,13 +292,13 @@ func TestReportGitHubProcessingError(t *testing.T) {
 	assert.Equal(t, "/rest/v2/github/intent-processing-errors/"+found[0].ID.Hex(), strings.TrimPrefix(githubStatus.URL, "https://example.com"))
 
 	t.Run("CreatedPatchUsesPatchURLAndDoesNotStoreError", func(t *testing.T) {
-		require.NoError(t, db.ClearCollections(patch.GitHubIntentProcessingErrorCollection))
+		require.NoError(t, db.ClearCollections(patch.GitHubIntentInfoCollection))
 		j.patchCreated = true
 		patchDoc.Id = mgobson.NewObjectId()
 		j.reportGitHubProcessingError(ctx, patchDoc, assert.AnError)
 
-		var stored []patch.GitHubIntentProcessingError
-		require.NoError(t, db.FindAllQ(ctx, patch.GitHubIntentProcessingErrorCollection, db.Query(nil), &stored))
+		var stored []patch.GitHubIntentInfo
+		require.NoError(t, db.FindAllQ(ctx, patch.GitHubIntentInfoCollection, db.Query(nil), &stored))
 		assert.Empty(t, stored)
 		msg, ok := status.GetMessageSafe()
 		require.True(t, ok)
@@ -311,8 +312,8 @@ func TestReportGitHubProcessingError(t *testing.T) {
 		j.ProjectID = ""
 		j.reportGitHubProcessingError(ctx, patchDoc, assert.AnError)
 
-		var stored []patch.GitHubIntentProcessingError
-		require.NoError(t, db.FindAllQ(ctx, patch.GitHubIntentProcessingErrorCollection, db.Query(nil), &stored))
+		var stored []patch.GitHubIntentInfo
+		require.NoError(t, db.FindAllQ(ctx, patch.GitHubIntentInfoCollection, db.Query(nil), &stored))
 		assert.Empty(t, stored)
 		msg, ok := status.GetMessageSafe()
 		require.True(t, ok)

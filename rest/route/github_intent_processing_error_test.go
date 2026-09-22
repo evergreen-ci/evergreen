@@ -19,11 +19,11 @@ import (
 
 func TestGitHubIntentProcessingError(t *testing.T) {
 	env := testutil.NewEnvironment(t.Context(), t)
-	require.NoError(t, db.ClearCollections(patch.GitHubIntentProcessingErrorCollection, model.ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
+	require.NoError(t, db.ClearCollections(patch.GitHubIntentInfoCollection, model.ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	require.NoError(t, (&model.ProjectRef{Id: "project-id"}).Insert(t.Context()))
 
-	stored, err := patch.InsertGitHubIntentProcessingError(t.Context(), "project-id", "processing failed")
+	stored, err := patch.InsertGitHubIntentInfo(t.Context(), "project-id", "intent-id", "processing failed")
 	require.NoError(t, err)
 
 	scope := gimlet.Scope{ID: "project-scope", Type: evergreen.ProjectResourceType, Resources: []string{"project-id"}}

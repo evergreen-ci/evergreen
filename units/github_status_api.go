@@ -173,12 +173,14 @@ func (j *githubStatusUpdateJob) fetch(ctx context.Context) (*message.GithubStatu
 	}
 
 	if j.UpdateType == githubUpdateTypeProcessingError {
-		if j.TargetPath != "" {
-			status.URL = j.urlBase + j.TargetPath
-		}
 		status.Context = j.GithubContext
 		status.State = message.GithubStateFailure
-		status.Description = j.Description
+		if j.TargetPath != "" {
+			status.URL = j.urlBase + j.TargetPath
+			status.Description = fmt.Sprintf("%s (click link for details)", j.Description)
+		} else {
+			status.Description = j.Description
+		}
 
 	} else if j.UpdateType == githubUpdateTypeSuccessMessage {
 		status.Context = j.GithubContext
