@@ -112,16 +112,6 @@ func FindOneByIdOrAlias(ctx context.Context, id string) (*Distro, error) {
 	return FindOne(ctx, byIdsOrAliases([]string{id}))
 }
 
-// HasAnyByIdOrAlias returns whether at least one distro exists whose ID is in
-// ids or whose aliases contain any of ids.
-func HasAnyByIdOrAlias(ctx context.Context, ids []string) (bool, error) {
-	d, err := FindOne(ctx, byIdsOrAliases(ids), options.FindOne().SetProjection(bson.M{IdKey: 1}))
-	if err != nil {
-		return false, errors.Wrap(err, "finding distro by ID or alias")
-	}
-	return d != nil, nil
-}
-
 // FindOneForDistroView returns a Distro containing only the fields needed by
 // the distro_view agent endpoint (bootstrap settings and exec user). Using a
 // projection avoids deserializing the full document — which can be large for
