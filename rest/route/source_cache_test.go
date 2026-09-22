@@ -94,7 +94,7 @@ func TestSourceCacheCredentialsRun(t *testing.T) {
 			expectedStatus: http.StatusNotFound,
 		},
 		"ProjectWithSourceCacheDisabledIsRefused": {
-			insertTask:     true, owner: "some-org", repo: "some-repo",
+			insertTask: true, owner: "some-org", repo: "some-repo",
 			sourceCacheMode: model.SourceCacheModeDisabled,
 			expectedStatus:  http.StatusConflict,
 		},

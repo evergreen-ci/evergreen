@@ -53,4 +53,3 @@ func TestBucketsConfigLogBucketExpirationDays(t *testing.T) {
 		assert.False(t, ok)
 	})
 }
-
