@@ -60,7 +60,17 @@ func getGroupedFiles(ctx context.Context, name string, taskID string, execution 
 	env := evergreen.GetEnvironment()
 	settings := env.Settings()
 	baseURL := settings.Ui.Url
-	strippedFiles := artifact.StripHiddenFilesLazy(taskFiles, hasUser, baseURL, taskID, execution, []byte(settings.ArtifactSignSecret))
+	artifactSignSecret := []byte(settings.ArtifactSignSecret)
+	var strippedFiles []artifact.File
+	if baseURL != "" && len(artifactSignSecret) > 0 {
+		strippedFiles = artifact.StripHiddenFilesLazy(taskFiles, hasUser, baseURL, taskID, execution, artifactSignSecret)
+	} else {
+		var err error
+		strippedFiles, err = artifact.StripHiddenFiles(ctx, taskFiles, hasUser, model.NewArtifactCredentialResolver(taskID))
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	apiFileList := []*restModel.APIFile{}
 	for _, file := range strippedFiles {
