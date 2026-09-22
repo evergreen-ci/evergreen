@@ -441,8 +441,8 @@ func (h projectIDPatchHandler) ownerRepoChanged() bool {
 // semantics for admins, git tag authorized users, and git tag authorized teams.
 func mergeListWithDeletions(original, new, toDelete []string) []string {
 	all := utility.UniqueStrings(append(original, new...))
-	result, _ := utility.StringSliceSymmetricDifference(all, toDelete)
-	return result
+	_, allResult := utility.StringSliceSymmetricDifference(toDelete, all)
+	return allResult
 }
 
 // validateProjectRefSettings validates settings that are shared between
