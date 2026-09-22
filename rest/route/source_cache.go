@@ -72,7 +72,24 @@ func (h *sourceCacheCredentials) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	bucket := h.settings.Buckets.GetSourceCacheBucket(t.Project)
+	pRef, err := model.GetProjectRefForTask(ctx, h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting project for task '%s'", h.taskID))
+	}
+	if pRef == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("project '%s' not found for task '%s'", t.Project, h.taskID),
+		})
+	}
+	if !model.SourceCacheEnabled(pRef.GetSourceCacheMode(), t.IsPatchRequest()) {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusConflict,
+			Message:    fmt.Sprintf("source cache is disabled for project '%s'", t.Project),
+		})
+	}
+
+	bucket := h.settings.Buckets.SourceCacheBucket
 	if bucket.Name == "" {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusConflict,
@@ -83,17 +100,6 @@ func (h *sourceCacheCredentials) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusConflict,
 			Message:    "no role is configured for the source cache bucket",
-		})
-	}
-
-	pRef, err := model.GetProjectRefForTask(ctx, h.taskID)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting project for task '%s'", h.taskID))
-	}
-	if pRef == nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("project '%s' not found for task '%s'", t.Project, h.taskID),
 		})
 	}
 	if pRef.Owner == "" || pRef.Repo == "" {

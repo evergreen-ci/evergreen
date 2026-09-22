@@ -4347,3 +4347,22 @@ func TestGetRepoRefIDForProject(t *testing.T) {
 		})
 	}
 }
+
+func TestSourceCacheEnabled(t *testing.T) {
+	for tName, tCase := range map[string]struct {
+		mode    SourceCacheMode
+		isPatch bool
+		want    bool
+	}{
+		"DisabledIsNeverEnabled":   {mode: SourceCacheModeDisabled, isPatch: false, want: false},
+		"UnsetIsNeverEnabled":      {mode: "", isPatch: false, want: false},
+		"AllIsEnabledForMainline":  {mode: SourceCacheModeAll, isPatch: false, want: true},
+		"AllIsEnabledForPatch":     {mode: SourceCacheModeAll, isPatch: true, want: true},
+		"WaterfallOnlyForMainline": {mode: SourceCacheModeWaterfall, isPatch: false, want: true},
+		"WaterfallOffForPatch":     {mode: SourceCacheModeWaterfall, isPatch: true, want: false},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			assert.Equal(t, tCase.want, SourceCacheEnabled(tCase.mode, tCase.isPatch))
+		})
+	}
+}
