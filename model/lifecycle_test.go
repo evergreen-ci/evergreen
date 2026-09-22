@@ -2682,6 +2682,73 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 			require.NotNil(t, unscheduledExecTask)
 			assert.False(t, unscheduledExecTask.Activated, "execution task not in the scoped set should remain unscheduled")
 		},
+		"RestartingExecutionTasksInSeparateRequestsMergesPendingReset": func(ctx context.Context, t *testing.T, settings *evergreen.Settings) {
+			// Remove the unscheduled execution task from the fixture so the
+			// deferred reset only involves finished execution tasks.
+			require.NoError(t, task.UpdateOne(ctx,
+				bson.M{task.IdKey: "displayTask1"},
+				bson.M{"$set": bson.M{task.ExecutionTasksKey: []string{"task5", "task6"}}},
+			))
+			require.NoError(t, db.Remove(ctx, task.Collection, bson.M{task.IdKey: "task8"}))
+
+			dt, err := task.FindOneId(ctx, "displayTask1")
+			require.NoError(t, err)
+			require.NotNil(t, dt)
+
+			// The first request resets immediately because all execution tasks
+			// are finished.
+			require.NoError(t, ResetTaskOrDisplayTask(ctx, settings, dt, ResetTaskOptions{
+				User:             "caller",
+				Origin:           evergreen.StepbackTaskActivator,
+				ExecutionTaskIDs: []string{"task5"},
+			}))
+			dt, err = task.FindOneId(ctx, "displayTask1")
+			require.NoError(t, err)
+			require.NotNil(t, dt)
+			require.Equal(t, 1, dt.Execution)
+			require.Empty(t, dt.ExecutionTasksToRestart)
+
+			// Subsequent requests arrive while task5 is running, so they are
+			// deferred and must accumulate rather than overwrite each other.
+			for _, id := range []string{"task6", "task5"} {
+				require.NoError(t, ResetTaskOrDisplayTask(ctx, settings, dt, ResetTaskOptions{
+					User:             "caller",
+					Origin:           evergreen.StepbackTaskActivator,
+					ExecutionTaskIDs: []string{id},
+				}))
+			}
+			dt, err = task.FindOneId(ctx, "displayTask1")
+			require.NoError(t, err)
+			require.NotNil(t, dt)
+			assert.Equal(t, 1, dt.Execution, "reset should be deferred while task5 is running")
+			assert.True(t, dt.ResetWhenFinished)
+			assert.ElementsMatch(t, []string{"task5", "task6"}, dt.ExecutionTasksToRestart, "pending restart set should accumulate instead of being overwritten")
+
+			// Simulate task5 finishing to trigger the deferred reset through the
+			// same path used when an execution task ends.
+			require.NoError(t, task.UpdateOne(ctx,
+				bson.M{task.IdKey: "task5"},
+				bson.M{"$set": bson.M{task.StatusKey: evergreen.TaskSucceeded}},
+			))
+			dbTask5, err := task.FindOneId(ctx, "task5")
+			require.NoError(t, err)
+			require.NotNil(t, dbTask5)
+			require.NoError(t, markEndDisplayTask(ctx, settings, dbTask5, "caller", evergreen.StepbackTaskActivator))
+
+			dt, err = task.FindOneId(ctx, "displayTask1")
+			require.NoError(t, err)
+			require.NotNil(t, dt)
+			assert.Equal(t, 2, dt.Execution, "deferred reset should bump the display task exactly once")
+			assert.Empty(t, dt.ExecutionTasksToRestart, "pending restart set should be cleared after the reset")
+
+			for _, id := range []string{"task5", "task6"} {
+				execTask, err := task.FindOneId(ctx, id)
+				require.NoError(t, err)
+				require.NotNil(t, execTask)
+				assert.Equal(t, evergreen.TaskUndispatched, execTask.Status, "execution task '%s' should be reset", id)
+				assert.Equal(t, 2, execTask.Execution, "execution task '%s' should align with the display task execution", id)
+			}
+		},
 		"ResettingExecutionTaskNotInDisplayTaskShouldError": func(ctx context.Context, t *testing.T, settings *evergreen.Settings) {
 			dt, err := task.FindOneId(ctx, "displayTask1")
 			assert.NoError(t, err)

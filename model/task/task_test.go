@@ -3454,6 +3454,53 @@ func TestArchiveScopedExecutionTasks(t *testing.T) {
 	assert.Nil(t, archivedET1, "execution task not in the scoped set should not be archived")
 }
 
+func TestSetResetExecutionTasksWhenFinishedMerges(t *testing.T) {
+	ctx := t.Context()
+
+	require.NoError(t, db.Clear(Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.Clear(Collection))
+	})
+
+	execTaskIDs := []string{"et1", "et2", "et3", "et4", "et5"}
+	dt := Task{
+		Id:             "dt",
+		DisplayOnly:    true,
+		ExecutionTasks: execTaskIDs,
+	}
+	require.NoError(t, dt.Insert(ctx))
+
+	// Separate requests for each execution task should be merged into a single
+	// pending reset rather than overwriting each other.
+	for _, id := range execTaskIDs {
+		require.NoError(t, dt.SetResetExecutionTasksWhenFinished(ctx, "caller", "", []string{id}))
+	}
+	// Re-adding an already-pending execution task should not duplicate it.
+	require.NoError(t, dt.SetResetExecutionTasksWhenFinished(ctx, "caller", "", []string{"et1"}))
+
+	dbDT, err := FindOneId(ctx, dt.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbDT)
+	assert.True(t, dbDT.ResetWhenFinished)
+	assert.False(t, dbDT.ResetFailedWhenFinished)
+	assert.ElementsMatch(t, execTaskIDs, dbDT.ExecutionTasksToRestart)
+
+	// A full or failed-only reset should clear any pending scoped set.
+	require.NoError(t, dbDT.SetResetWhenFinished(ctx, "caller", ""))
+	dbDT, err = FindOneId(ctx, dt.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbDT)
+	assert.Empty(t, dbDT.ExecutionTasksToRestart)
+
+	require.NoError(t, dbDT.SetResetExecutionTasksWhenFinished(ctx, "caller", "", execTaskIDs))
+	require.NoError(t, dbDT.SetResetFailedWhenFinished(ctx, "caller", ""))
+	dbDT, err = FindOneId(ctx, dt.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbDT)
+	assert.Empty(t, dbDT.ExecutionTasksToRestart)
+	assert.True(t, dbDT.ResetFailedWhenFinished)
+}
+
 func TestFindExecTasksToReset(t *testing.T) {
 	ctx := t.Context()
 

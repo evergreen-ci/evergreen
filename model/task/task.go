@@ -3290,7 +3290,10 @@ func (t *Task) GetTestResultsTasks(ctx context.Context) ([]Task, error) {
 // SetResetWhenFinished requests that a display task or single-host task group
 // reset itself when finished. Will mark itself as system failed.
 func (t *Task) SetResetWhenFinished(ctx context.Context, caller, repoRefID string) error {
-	if t.ResetWhenFinished {
+	// If a full reset is already pending, this is a no-op. A pending scoped
+	// reset is superseded below because a full reset restarts every execution
+	// task.
+	if t.ResetWhenFinished && len(t.ExecutionTasksToRestart) == 0 {
 		return nil
 	}
 	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller, repoRefID, true); err != nil {
@@ -3319,14 +3322,31 @@ func (t *Task) SetResetWhenFinished(ctx context.Context, caller, repoRefID strin
 // SetResetExecutionTasksWhenFinished requests that a display task restart only
 // the given execution tasks when it finishes. Unlike SetResetFailedWhenFinished,
 // the listed execution tasks are restarted regardless of whether they failed.
+// If the display task is already marked to reset a set of execution tasks, the
+// given execution tasks are added to that set so that concurrent restart
+// requests for different execution tasks are merged into a single reset rather
+// than overwriting each other.
 func (t *Task) SetResetExecutionTasksWhenFinished(ctx context.Context, caller, repoRefID string, execTaskIDs []string) error {
 	execTaskIDs = utility.UniqueStrings(execTaskIDs)
-	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller, repoRefID, true); err != nil {
-		return errors.Wrapf(err, "updating user '%s' patch task scheduling limit", caller)
+	if len(execTaskIDs) == 0 {
+		return nil
+	}
+	// If a full reset is already pending, every execution task is already going
+	// to restart, so there's nothing to scope.
+	if t.ResetWhenFinished && len(t.ExecutionTasksToRestart) == 0 {
+		return nil
+	}
+	// Only update the scheduling limit when the reset isn't already pending,
+	// since the limit is accrued per execution task and merging requests would
+	// otherwise double-count.
+	if !t.ResetWhenFinished || len(t.ExecutionTasksToRestart) == 0 {
+		if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller, repoRefID, true); err != nil {
+			return errors.Wrapf(err, "updating user '%s' patch task scheduling limit", caller)
+		}
 	}
 	t.ResetFailedWhenFinished = false
 	t.ResetWhenFinished = true
-	t.ExecutionTasksToRestart = execTaskIDs
+	t.ExecutionTasksToRestart = utility.UniqueStrings(append(t.ExecutionTasksToRestart, execTaskIDs...))
 	return UpdateOne(
 		ctx,
 		bson.M{
@@ -3337,8 +3357,12 @@ func (t *Task) SetResetExecutionTasksWhenFinished(ctx context.Context, caller, r
 				ResetFailedWhenFinishedKey: 1,
 			},
 			"$set": bson.M{
-				ResetWhenFinishedKey:       true,
-				ExecutionTasksToRestartKey: execTaskIDs,
+				ResetWhenFinishedKey: true,
+			},
+			// Use $addToSet so that concurrent requests for different execution
+			// tasks don't clobber each other's pending restart set.
+			"$addToSet": bson.M{
+				ExecutionTasksToRestartKey: bson.M{"$each": execTaskIDs},
 			},
 		},
 	)
