@@ -107,6 +107,11 @@ func FindOneId(ctx context.Context, id string) (*Distro, error) {
 	return FindOne(ctx, ById(id))
 }
 
+// FindOneByIdOrAlias returns the distro matching id, by ID or alias.
+func FindOneByIdOrAlias(ctx context.Context, id string) (*Distro, error) {
+	return FindOne(ctx, byIdsOrAliases([]string{id}))
+}
+
 // HasAnyByIdOrAlias returns whether at least one distro exists whose ID is in
 // ids or whose aliases contain any of ids.
 func HasAnyByIdOrAlias(ctx context.Context, ids []string) (bool, error) {
