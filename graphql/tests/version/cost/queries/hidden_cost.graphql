@@ -1,0 +1,10 @@
+{
+  version(versionId: "hidden-cost-version") {
+    cost {
+      total
+      childPatchesTotalCost
+      adjustedEC2Cost
+      adjustedEBSThroughputCost
+    }
+  }
+}

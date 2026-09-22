@@ -415,7 +415,7 @@ func (at *APITask) buildTask(t *task.Task) error {
 		at.TimeTaken = NewAPIDuration(time.Since(t.StartTime))
 	}
 
-	if !shouldHideCostForProject(t.Project) {
+	if !ShouldHideCostForProject(t.Project) {
 		if !t.TaskCost.IsZero() {
 			taskCost := t.TaskCost
 			taskCost.Total = taskCost.AdjustedTotal()

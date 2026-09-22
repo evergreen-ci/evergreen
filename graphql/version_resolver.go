@@ -120,6 +120,9 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *model.Version)
 // so the GraphQL API returns clean values without floating-point noise. For patch versions
 // with child patches, it also includes the child patches' costs in the total.
 func (r *versionResolver) Cost(ctx context.Context, obj *model.Version) (*cost.Cost, error) {
+	if restModel.ShouldHideCostForProject(obj.Identifier) {
+		return nil, nil
+	}
 	// If the version is a patch requester, we need to include costs of its child patches.
 	childPatchesCost := float64(0)
 	if evergreen.IsPatchRequester(obj.Requester) {
