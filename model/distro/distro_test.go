@@ -66,6 +66,59 @@ func TestHasAnyByIdOrAlias(t *testing.T) {
 	}
 }
 
+func TestFindOneByIdOrAlias(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+	d := Distro{Id: "distro", Aliases: []string{"distro-alias"}}
+	require.NoError(t, d.Insert(t.Context()))
+
+	t.Run("MatchesByID", func(t *testing.T) {
+		found, err := FindOneByIdOrAlias(t.Context(), "distro")
+		require.NoError(t, err)
+		require.NotNil(t, found)
+		assert.Equal(t, "distro", found.Id)
+	})
+
+	t.Run("MatchesByAlias", func(t *testing.T) {
+		found, err := FindOneByIdOrAlias(t.Context(), "distro-alias")
+		require.NoError(t, err)
+		require.NotNil(t, found)
+		assert.Equal(t, "distro", found.Id)
+	})
+
+	t.Run("DoesNotMatchUnknownID", func(t *testing.T) {
+		found, err := FindOneByIdOrAlias(t.Context(), "nonexistent")
+		require.NoError(t, err)
+		assert.Nil(t, found)
+	})
+}
+
+func TestWarningNoteMessage(t *testing.T) {
+	t.Run("NoWarningNoteReturnsFalse", func(t *testing.T) {
+		d := Distro{Id: "distro"}
+		msg, hasWarning := d.WarningNoteMessage()
+		assert.False(t, hasWarning)
+		assert.Empty(t, msg)
+	})
+
+	t.Run("WarningNoteWithoutAliasesIncludesID", func(t *testing.T) {
+		d := Distro{Id: "distro", WarningNote: "being deprecated"}
+		msg, hasWarning := d.WarningNoteMessage()
+		assert.True(t, hasWarning)
+		assert.Equal(t, "distro: being deprecated", msg)
+	})
+
+	t.Run("WarningNoteWithAliasesIncludesThem", func(t *testing.T) {
+		d := Distro{Id: "distro", Aliases: []string{"distro-alias", "distro-alias-2"}, WarningNote: "being deprecated"}
+		msg, hasWarning := d.WarningNoteMessage()
+		assert.True(t, hasWarning)
+		assert.Equal(t, "distro (alias: distro-alias, distro-alias-2): being deprecated", msg)
+	})
+}
+
+func TestDistroNotFoundMessage(t *testing.T) {
+	assert.Equal(t, fmt.Sprintf("distro: %s", evergreen.DistroNotFoundForTaskError), DistroNotFoundMessage("distro"))
+}
+
 func TestFindAllDistros(t *testing.T) {
 	testConfig := testutil.TestConfig()
 	assert := assert.New(t)
