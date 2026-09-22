@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -101,6 +102,20 @@ func (s *ProjectEventSuite) TestProjectEventMetadata() {
 func (s *ProjectEventSuite) TestProjectRef() {
 	checkProjRef(s, s.projChanges.Before.ProjectRef, s.APIEvent.Before.ProjectRef)
 	checkProjRef(s, s.projChanges.After.ProjectRef, s.APIEvent.After.ProjectRef)
+}
+
+func (s *ProjectEventSuite) TestProjectRefRedactsLegacyFileTicketWebhookSecret() {
+	beforeSecret := "old-secret"
+	afterSecret := "new-secret"
+	s.projChanges.Before.ProjectRef.TaskAnnotationSettings.FileTicketWebhook.Secret = beforeSecret
+	s.projChanges.After.ProjectRef.TaskAnnotationSettings.FileTicketWebhook.Secret = afterSecret
+
+	apiEvent := APIProjectEvent{}
+	s.Require().NoError(apiEvent.BuildFromService(s.T().Context(), s.modelEvent))
+	s.Equal(evergreen.RedactedBeforeValue, utility.FromStringPtr(apiEvent.Before.ProjectRef.TaskAnnotationSettings.FileTicketWebhook.Secret))
+	s.Equal(evergreen.RedactedAfterValue, utility.FromStringPtr(apiEvent.After.ProjectRef.TaskAnnotationSettings.FileTicketWebhook.Secret))
+	s.Equal(beforeSecret, s.projChanges.Before.ProjectRef.TaskAnnotationSettings.FileTicketWebhook.Secret)
+	s.Equal(afterSecret, s.projChanges.After.ProjectRef.TaskAnnotationSettings.FileTicketWebhook.Secret)
 }
 
 func (s *ProjectEventSuite) TestGithubHooksEnabled() {

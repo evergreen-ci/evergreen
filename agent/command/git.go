@@ -347,6 +347,40 @@ func prCheckoutCommands(conf *internal.TaskConfig) []string {
 	}
 }
 
+// getCloneCommandWithFullCloneFallback clones at opts.cloneDepth, falling back to
+// re-cloning at full depth when the shallow history does not contain ref and a ref and clone depth are specified.
+// A PR checkout needs no fallback because it fetches the ref it resets to, and
+// that fetch brings the commit's history no matter how shallow the clone is.
+func (opts cloneOpts) getCloneCommandWithFullCloneFallback(ref string, usesPRCheckout bool) ([]string, error) {
+	clone, err := opts.getCloneCommand()
+	if err != nil {
+		return nil, err
+	}
+	if opts.cloneDepth <= 0 || ref == "" || usesPRCheckout {
+		return clone, nil
+	}
+
+	fullDepthOpts := opts
+	fullDepthOpts.cloneDepth = 0
+	fullClone, err := fullDepthOpts.getCloneCommand()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting command to clone repo at full depth")
+	}
+
+	// getCloneCommand leaves the shell inside the clone, so save the directory it
+	// starts from: the fallback has to come back here to delete the shallow clone
+	// and clone into the same relative path again.
+	cmds := []string{"module_clone_root=$(pwd)"}
+	cmds = append(cmds, clone...)
+	cmds = append(cmds,
+		fmt.Sprintf("if ! git rev-parse -q --verify '%s^{commit}' > /dev/null; then", ref),
+		`cd "$module_clone_root"`,
+		fmt.Sprintf("rm -rf %s", opts.dir),
+	)
+	cmds = append(cmds, fullClone...)
+	return append(cmds, "fi"), nil
+}
+
 func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opts cloneOpts, ref string, modulePatch *patch.ModulePatch) ([]string, error) {
 	gitCommands := []string{
 		"set -o xtrace",
@@ -367,17 +401,18 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 		return gitCommands, nil
 	}
 
-	if ref == "" && !moduleUsesGitHubParentPRCheckout(conf, modulePatch) {
+	usesPRCheckout := moduleUsesGitHubParentPRCheckout(conf, modulePatch)
+	if ref == "" && !usesPRCheckout {
 		return nil, errors.New("empty ref/branch to check out")
 	}
 
-	cloneCmd, err := opts.getCloneCommand()
+	cloneCmd, err := opts.getCloneCommandWithFullCloneFallback(ref, usesPRCheckout)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting command to clone repo")
 	}
 	gitCommands = append(gitCommands, cloneCmd...)
 
-	if moduleUsesGitHubParentPRCheckout(conf, modulePatch) {
+	if usesPRCheckout {
 		checkout := conf.GitHubParentPRCheckout
 		branchName := fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
 		gitCommands = append(gitCommands, []string{
@@ -852,6 +887,13 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	opts := cloneOpts{
 		branch: "",
 		dir:    moduleBase,
+	}
+
+	shallowCloneDisabled := conf.Distro != nil && conf.Distro.DisableShallowClone
+	if module.CloneDepth > 0 && shallowCloneDisabled {
+		logger.Task().Info(ctx, "Shallow clone is disabled for this distro, ignoring clone_depth.")
+	} else {
+		opts.cloneDepth = module.CloneDepth
 	}
 
 	// If the module repo is using the deprecated ssh cloning method, extract the owner

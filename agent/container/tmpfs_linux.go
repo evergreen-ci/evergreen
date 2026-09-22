@@ -23,7 +23,7 @@ func provisionEnvTmpfs(dir string) error {
 			return errors.Wrapf(err, "clearing stale tmpfs mount at '%s'", dir)
 		}
 	}
-	if err := os.MkdirAll(dir, 0700); err != nil {
+	if err := ensureEnvDir(dir); err != nil {
 		return errors.Wrapf(err, "creating env tmpfs dir '%s'", dir)
 	}
 	uid := os.Getuid()
@@ -34,6 +34,25 @@ func provisionEnvTmpfs(dir string) error {
 		return errors.Wrapf(err, "mounting tmpfs at '%s'", dir)
 	}
 	return nil
+}
+
+// ensureEnvDir creates dir and its parents, falling back to sudo mkdir plus
+// chown (like the mount step) because the base dir under /var/run is on a
+// root-owned tmpfs and disappears on every reboot.
+func ensureEnvDir(dir string) error {
+	if err := os.MkdirAll(dir, 0700); err == nil {
+		return nil
+	}
+	base := activeEnvFileBaseDir
+	uid := os.Getuid()
+	gid := os.Getgid()
+	if err := exec.Command("sudo", "mkdir", "-m", "0700", "-p", base).Run(); err != nil {
+		return errors.Wrapf(err, "creating env base dir '%s'", base)
+	}
+	if err := exec.Command("sudo", "chown", fmt.Sprintf("%d:%d", uid, gid), base).Run(); err != nil {
+		return errors.Wrapf(err, "chowning env base dir '%s'", base)
+	}
+	return errors.Wrapf(os.MkdirAll(dir, 0700), "creating per-task env dir under base dir '%s'", base)
 }
 
 // removeEnvTmpfs unmounts and removes the env tmpfs directory. If the

@@ -5,26 +5,32 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/stretchr/testify/suite"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-type ServiceFlagsSuite struct {
-	suite.Suite
-}
+func TestServiceFlagsGetHandler(t *testing.T) {
+	ctx := t.Context()
+	originalFlags, err := evergreen.GetServiceFlags(ctx)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, originalFlags.Set(context.WithoutCancel(ctx)))
+	})
 
-func TestServiceFlagsSuite(t *testing.T) {
-	suite.Run(t, new(ServiceFlagsSuite))
-}
+	flags := *originalFlags
+	flags.DebugSpawnHostDisabled = true
+	flags.CrossFileYAMLAnchorsEnabled = true
+	require.NoError(t, flags.Set(ctx))
 
-func (s *ServiceFlagsSuite) TestServiceFlagsGet() {
-	ctx := context.Background()
-	route := makeFetchServiceFlags().(*serviceFlagsGetHandler)
-
-	resp := route.Run(ctx)
-	s.NotNil(resp)
-	s.Equal(200, resp.Status())
+	resp := makeFetchServiceFlags().Run(ctx)
+	require.NotNil(t, resp)
+	assert.Equal(t, 200, resp.Status())
 
 	data, err := json.Marshal(resp.Data())
-	s.NoError(err)
-	s.JSONEq(`{"static_api_keys_disabled":true}`, string(data))
+	require.NoError(t, err)
+	assert.JSONEq(t, `{
+		"debug_spawn_host_disabled": true,
+		"cross_file_yaml_anchors_enabled": true
+	}`, string(data))
 }

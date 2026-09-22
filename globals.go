@@ -379,6 +379,9 @@ const (
 	// should be valid for.
 	PresignMinimumValidTime = 15 * time.Minute
 
+	// PresignCredentialsLifetime is the minimum remaining validity for reusing assumed-role credentials when presigning instead of reassuming the role.
+	PresignCredentialsLifetime = 5 * time.Minute
+
 	// HighExecTimeoutThreshold is the exec timeout duration above which a task
 	// has an unusually long timeout and warrants alerting.
 	HighExecTimeoutThreshold = 72 * time.Hour

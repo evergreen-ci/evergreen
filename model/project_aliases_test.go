@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -838,6 +839,56 @@ func TestValidateGitTagAlias(t *testing.T) {
 	assert.Empty(t, errs)
 }
 
+func TestFindAliasInProjectRepoOrConfigForVersion(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ProjectConfigCollection, ProjectAliasCollection))
+
+	pRef := ProjectRef{Id: "p1"}
+	require.NoError(t, pRef.Replace(t.Context()))
+
+	t.Run("UsesVersionConfigWhenNotPersisted", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(ProjectConfigCollection, ProjectAliasCollection))
+		config := &ProjectConfig{
+			Id:        "version-1",
+			Project:   pRef.Id,
+			Requester: evergreen.RepotrackerVersionRequester,
+			ProjectConfigFields: ProjectConfigFields{
+				GitHubChecksAliases: []ProjectAlias{{Alias: evergreen.GithubChecksAlias, Variant: "^ubuntu", Task: ".*"}},
+			},
+		}
+
+		aliases, err := FindAliasInProjectRepoOrConfigForVersion(t.Context(), pRef.Id, config.Id, config, evergreen.GithubChecksAlias)
+		require.NoError(t, err)
+		require.Len(t, aliases, 1)
+		assert.Equal(t, "^ubuntu", aliases[0].Variant)
+	})
+
+	t.Run("FallsBackToPersistedVersionConfig", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(ProjectConfigCollection, ProjectAliasCollection))
+		config := ProjectConfig{
+			Id:        "version-2",
+			Project:   pRef.Id,
+			Requester: evergreen.RepotrackerVersionRequester,
+			ProjectConfigFields: ProjectConfigFields{
+				GitHubChecksAliases: []ProjectAlias{{Alias: evergreen.GithubChecksAlias, Variant: "^ubuntu", Task: ".*"}},
+			},
+		}
+		require.NoError(t, config.Insert(t.Context()))
+
+		aliases, err := FindAliasInProjectRepoOrConfigForVersion(t.Context(), pRef.Id, config.Id, nil, evergreen.GithubChecksAlias)
+		require.NoError(t, err)
+		require.Len(t, aliases, 1)
+		assert.Equal(t, "^ubuntu", aliases[0].Variant)
+	})
+
+	t.Run("NoConfigReturnsNoAliases", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(ProjectConfigCollection, ProjectAliasCollection))
+
+		aliases, err := FindAliasInProjectRepoOrConfigForVersion(t.Context(), pRef.Id, "missing-version", nil, evergreen.GithubChecksAlias)
+		require.NoError(t, err)
+		assert.Empty(t, aliases)
+	})
+}
+
 func TestFilterAliasesByLabels(t *testing.T) {
 	noLabels := ProjectAlias{Alias: evergreen.GithubPRAlias, Variant: ".*"}
 	withLabelA := ProjectAlias{Alias: evergreen.GithubPRAlias, Variant: ".*", RequiredLabels: []string{"A"}}
@@ -898,4 +949,36 @@ func TestValidateRequiredLabelsOnlyOnGithubPRAliases(t *testing.T) {
 	for _, e := range errs {
 		assert.NotContains(t, e, "required_labels")
 	}
+}
+
+func TestFindAliasInProjectRepoOrConfigUsesMostRecentEligibleConfig(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ProjectConfigCollection, ProjectAliasCollection))
+
+	pRef := ProjectRef{Id: "p1"}
+	require.NoError(t, pRef.Replace(t.Context()))
+
+	eligibleConfig := ProjectConfig{
+		Id:        "eligible-version",
+		Project:   pRef.Id,
+		Requester: evergreen.RepotrackerVersionRequester,
+		ProjectConfigFields: ProjectConfigFields{
+			PatchAliases: []ProjectAlias{{Alias: "my-alias", Variant: "eligible-variant", Task: ".*"}},
+		},
+	}
+	unvettedConfig := ProjectConfig{
+		Id:         "unvetted-version",
+		Project:    pRef.Id,
+		Requester:  evergreen.PatchVersionRequester,
+		CreateTime: time.Now().Add(time.Hour),
+		ProjectConfigFields: ProjectConfigFields{
+			PatchAliases: []ProjectAlias{{Alias: "my-alias", Variant: "unvetted-variant", Task: ".*"}},
+		},
+	}
+	require.NoError(t, eligibleConfig.Insert(t.Context()))
+	require.NoError(t, unvettedConfig.Insert(t.Context()))
+
+	aliases, err := FindAliasInProjectRepoOrConfig(t.Context(), pRef.Id, "my-alias")
+	require.NoError(t, err)
+	require.Len(t, aliases, 1)
+	assert.Equal(t, "eligible-variant", aliases[0].Variant)
 }

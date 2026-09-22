@@ -1379,6 +1379,44 @@ func GetGithubUser(ctx context.Context, loginName string) (*github.User, error) 
 	return user, nil
 }
 
+// GetGitHubUserByID fetches the GitHub user with the given immutable account ID.
+func GetGitHubUserByID(ctx context.Context, userID int) (*github.User, error) {
+	caller := "GetGitHubUserByID"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+	))
+	defer span.End()
+
+	if userID == 0 {
+		return nil, errors.New("GitHub user ID cannot be zero")
+	}
+
+	token, err := getInstallationTokenWithDefaultOwnerRepo(ctx, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting installation token")
+	}
+
+	githubClient := getGithubClient(ctx, token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
+
+	user, resp, err := githubClient.Users.GetByID(ctx, int64(userID))
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
+	if err != nil {
+		return nil, err
+	}
+	if user == nil || user.ID == nil || user.Login == nil {
+		return nil, errors.New("empty data received from GitHub")
+	}
+	if user.GetID() != int64(userID) {
+		return nil, errors.Errorf("GitHub returned user ID '%d' for requested user ID '%d'", user.GetID(), userID)
+	}
+
+	return user, nil
+}
+
 // GithubUserInOrganization returns true if the given github user is in the
 // given organization. The user with the attached token must have
 // visibility into organization membership, including private members
@@ -1405,9 +1443,9 @@ func GithubUserInOrganization(ctx context.Context, requiredOrganization, usernam
 	return isMember, err
 }
 
-// AppAuthorizedForOrg returns true if the given app name exists in the org's installation list,
-// and has permission to write to pull requests. Returns an error if the app name exists but doesn't have permission.
-func AppAuthorizedForOrg(ctx context.Context, requiredOrganization, name string) (bool, error) {
+// AppAuthorizedForOrg returns true if the given GitHub account ID belongs to an app in the org's installation list
+// with permission to write to pull requests. Returns an error if the app is installed but lacks permission.
+func AppAuthorizedForOrg(ctx context.Context, requiredOrganization string, userID int) (bool, error) {
 	caller := "AppAuthorizedForOrg"
 	const botSuffix = "[bot]"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
@@ -1415,18 +1453,9 @@ func AppAuthorizedForOrg(ctx context.Context, requiredOrganization, name string)
 	))
 	defer span.End()
 
-	// Do not attempt to authorize names that aren't formatted as apps, since a
-	// user can share a name with an app.
-	if !strings.HasSuffix(name, botSuffix) {
-		grip.Debug(ctx, message.Fields{
-			"message": "name does not have bot suffix, skipping app authorization",
-			"name":    name,
-			"ticket":  "DEVPROD-41932",
-		})
-		return false, nil
+	if userID == 0 {
+		return false, errors.New("GitHub user ID cannot be zero")
 	}
-	// Remove the bot suffix because GitHub doesn't include it in the app slug.
-	nameWithoutBotSuffix := strings.TrimSuffix(name, botSuffix)
 
 	token, err := getInstallationTokenWithDefaultOwnerRepo(ctx, nil)
 	if err != nil {
@@ -1435,6 +1464,36 @@ func AppAuthorizedForOrg(ctx context.Context, requiredOrganization, name string)
 
 	githubClient := getGithubClient(ctx, token, caller, retryConfig{retry: true})
 	defer githubClient.Close()
+
+	appUser, resp, err := githubClient.Users.GetByID(ctx, int64(userID))
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return false, errors.Wrapf(err, "resolving GitHub account ID '%d'", userID)
+	}
+	appSlug, err := githubAppSlugForUser(appUser, userID, botSuffix)
+	if err != nil {
+		return false, err
+	}
+	if appSlug == "" {
+		return false, nil
+	}
+	// GitHub does not expose an endpoint that maps a bot account ID directly to its App ID.
+	// The GitHub-owned bot login is only used to retrieve the App record; authorization
+	// compares the immutable IDs returned by GitHub.
+	app, resp, err := githubClient.Apps.Get(ctx, appSlug)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return false, errors.Wrapf(err, "resolving GitHub app for account ID '%d'", userID)
+	}
+	if app == nil || app.ID == nil {
+		return false, errors.Errorf("GitHub returned no app ID for account ID '%d'", userID)
+	}
+	appID := app.GetID()
+
 	opts := &github.ListOptions{PerPage: 100}
 	for {
 		installations, resp, err := githubClient.Organizations.ListInstallations(ctx, requiredOrganization, opts)
@@ -1446,19 +1505,15 @@ func AppAuthorizedForOrg(ctx context.Context, requiredOrganization, name string)
 		}
 
 		for _, installation := range installations.Installations {
-			appSlug := installation.GetAppSlug()
-			grip.Debug(ctx, message.Fields{
-				"message":  "DEVPROD-41932",
-				"app_slug": appSlug,
-				"app_id":   installation.GetAppID(),
-			})
-			if appSlug == nameWithoutBotSuffix {
-				prPermission := installation.GetPermissions().GetPullRequests()
-				if utility.StringSliceContains(githubWritePermissions, prPermission) {
-					return true, nil
-				}
-				return false, errors.Errorf("app '%s' is installed but has pull request permission '%s'", name, prPermission)
+			if installation.GetAppID() != appID {
+				continue
 			}
+
+			prPermission := installation.GetPermissions().GetPullRequests()
+			if utility.StringSliceContains(githubWritePermissions, prPermission) {
+				return true, nil
+			}
+			return false, errors.Errorf("app ID '%d' is installed but has pull request permission '%s'", installation.GetAppID(), prPermission)
 		}
 
 		if resp != nil && resp.NextPage > 0 {
@@ -1469,6 +1524,19 @@ func AppAuthorizedForOrg(ctx context.Context, requiredOrganization, name string)
 	}
 
 	return false, nil
+}
+
+func githubAppSlugForUser(appUser *github.User, userID int, botSuffix string) (string, error) {
+	if appUser == nil || appUser.ID == nil || appUser.Login == nil {
+		return "", errors.Errorf("GitHub returned empty data for account ID '%d'", userID)
+	}
+	if appUser.GetID() != int64(userID) {
+		return "", errors.Errorf("GitHub returned account ID '%d' for requested account ID '%d'", appUser.GetID(), userID)
+	}
+	if appUser.GetType() != "Bot" || !strings.HasSuffix(appUser.GetLogin(), botSuffix) {
+		return "", nil
+	}
+	return strings.TrimSuffix(appUser.GetLogin(), botSuffix), nil
 }
 
 // GitHubUserHasWritePermission returns true if the given user has write permission for the repo.

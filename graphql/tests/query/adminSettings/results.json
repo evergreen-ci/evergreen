@@ -543,6 +543,10 @@
                 "alertableInstanceTypes": ["m5.24xlarge", "c5.24xlarge"],
                 "allowedRegions": ["us-east-1", "us-west-1", "us-west-2"],
                 "maxVolumeSizePerUser": 1000,
+                "resourceTags": {
+                  "mongodbEnv": null,
+                  "mongodbOwner": null
+                },
                 "accountRoles": [
                   {
                     "account": "123456789012",

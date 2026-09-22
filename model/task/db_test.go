@@ -1447,75 +1447,6 @@ func TestGetTasksByVersionSorting(t *testing.T) {
 	assert.Equal(t, "t3", tasks[3].Id)
 }
 
-func TestGetFilteredTaskStatsByVersion(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
-	t1 := Task{
-		Id:                 "t1",
-		Version:            "v1",
-		Execution:          0,
-		Status:             evergreen.TaskStarted,
-		ExpectedDuration:   time.Minute,
-		StartTime:          time.Date(2009, time.November, 10, 12, 0, 0, 0, time.UTC),
-		DisplayTaskId:      utility.ToStringPtr(""),
-		DisplayStatusCache: evergreen.TaskStarted,
-	}
-	t2 := Task{
-		Id:                 "t2",
-		Version:            "v1",
-		Execution:          0,
-		Status:             evergreen.TaskStarted,
-		ExpectedDuration:   150 * time.Minute,
-		StartTime:          time.Date(2009, time.November, 10, 12, 0, 0, 0, time.UTC),
-		DisplayTaskId:      utility.ToStringPtr(""),
-		DisplayStatusCache: evergreen.TaskStarted,
-	}
-	t3 := Task{
-		Id:                 "t3",
-		Version:            "v1",
-		Execution:          1,
-		Status:             evergreen.TaskSucceeded,
-		DisplayTaskId:      utility.ToStringPtr(""),
-		DisplayStatusCache: evergreen.TaskSucceeded,
-	}
-	t4 := Task{
-		Id:                 "t4",
-		Version:            "v1",
-		Execution:          1,
-		Status:             evergreen.TaskFailed,
-		DisplayTaskId:      utility.ToStringPtr(""),
-		DisplayStatusCache: evergreen.TaskFailed,
-	}
-	t5 := Task{
-		Id:                 "t5",
-		Version:            "v1",
-		Execution:          2,
-		Status:             evergreen.TaskStatusPending,
-		DisplayTaskId:      utility.ToStringPtr(""),
-		DisplayStatusCache: evergreen.TaskStatusPending,
-	}
-	t6 := Task{
-		Id:                 "t6",
-		Version:            "v1",
-		Execution:          2,
-		Status:             evergreen.TaskFailed,
-		DisplayTaskId:      utility.ToStringPtr(""),
-		DisplayStatusCache: evergreen.TaskFailed,
-	}
-	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4, t5, t6))
-	ctx := context.TODO()
-	opts := GetTasksByVersionOptions{}
-	stats, err := GetFilteredTaskStatsByVersion(ctx, "v1", opts)
-	assert.NoError(t, err)
-	assert.Len(t, stats.Counts, 4)
-	assert.True(t, stats.ETA.Equal(time.Date(2009, time.November, 10, 14, 30, 0, 0, time.UTC)))
-
-	assert.NoError(t, db.ClearCollections(Collection))
-	assert.NoError(t, db.InsertMany(t.Context(), Collection, t3, t4, t5, t6))
-	stats, err = GetFilteredTaskStatsByVersion(ctx, "v1", opts)
-	assert.NoError(t, err)
-	assert.Nil(t, stats.ETA)
-}
-
 func TestGetTaskStatsByVersion(t *testing.T) {
 	t.Run("BasicCountsByStatus", func(t *testing.T) {
 		require.NoError(t, db.ClearCollections(Collection))
@@ -2237,34 +2168,26 @@ func TestActivateTasksUpdate(t *testing.T) {
 		assert.False(t, dbTask.UnattainableDependency)
 		assert.EqualValues(t, 0, dbTask.Priority)
 	})
-	t.Run("VirtualTaskExcludedFromHostSchedulable", func(t *testing.T) {
+	t.Run("VirtualTaskIsHostSchedulableIfActivated", func(t *testing.T) {
 		ctx := t.Context()
 		require.NoError(t, db.ClearCollections(Collection, distro.Collection))
 
 		d := distro.Distro{Id: "d"}
-		hostTask := Task{
-			Id:                "host_task",
-			Status:            evergreen.TaskUndispatched,
-			Activated:         true,
-			ExecutionPlatform: ExecutionPlatformHost,
-			DistroId:          "d",
-		}
 		virtualTask := Task{
-			Id:                "virtual_task",
-			Status:            evergreen.TaskUndispatched,
-			Activated:         true,
-			ExecutionPlatform: ExecutionPlatformVirtual,
-			DistroId:          "d",
+			Id:        "virtual_task",
+			Status:    evergreen.TaskUndispatched,
+			IsVirtual: true,
+			Activated: true,
+			DistroId:  "d",
 		}
 
 		require.NoError(t, d.Insert(ctx))
-		require.NoError(t, hostTask.Insert(ctx))
 		require.NoError(t, virtualTask.Insert(ctx))
 
 		tasks, err := FindHostSchedulable(ctx, "d")
 		require.NoError(t, err)
 		require.Len(t, tasks, 1)
-		assert.Equal(t, "host_task", tasks[0].Id)
+		assert.Equal(t, "virtual_task", tasks[0].Id)
 	})
 }
 

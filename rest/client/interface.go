@@ -41,7 +41,7 @@ type Communicator interface {
 	GetBannerMessage(context.Context) (string, error)
 	GetUiV2URL(context.Context) (string, error)
 	SetServiceFlags(context.Context, *restmodel.APIServiceFlags) error
-	GetServiceFlags(context.Context) (*restmodel.APIServiceFlags, error)
+	GetServiceFlags(context.Context) (*restmodel.APIServiceFlagsResponse, error)
 	IsServiceUser(context.Context, string) (bool, error)
 	RestartRecentTasks(context.Context, time.Time, time.Time) error
 	GetSettings(context.Context) (*evergreen.Settings, error)
@@ -111,6 +111,8 @@ type Communicator interface {
 	GetManifestByTask(ctx context.Context, taskId string) (*manifest.Manifest, error)
 	// GetManifestForVersion returns the manifest for a given version ID.
 	GetManifestForVersion(ctx context.Context, versionID string) (*restmodel.APIManifest, error)
+	// GetVersion returns the version with the given ID.
+	GetVersion(ctx context.Context, versionID string) (*restmodel.APIVersion, error)
 
 	// GetRecentVersionsForProject returns the most recent versions for a
 	// project.

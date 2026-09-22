@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
@@ -111,57 +110,28 @@ func (r *patchResolver) InvalidatedByUpstream(ctx context.Context, obj *patch.Pa
 }
 
 // ModuleCodeChanges is the resolver for the moduleCodeChanges field.
-func (r *patchResolver) ModuleCodeChanges(ctx context.Context, obj *patch.Patch) ([]*restModel.APIModulePatch, error) {
+func (r *patchResolver) ModuleCodeChanges(ctx context.Context, obj *patch.Patch) ([]*patch.ModuleCodeChange, error) {
 	identifier, err := model.GetIdentifierForProjectSecondary(ctx, obj.Project)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project identifier for project '%s': %s", obj.Project, err.Error()), err)
 	}
 	apiURL := evergreen.GetEnvironment().Settings().Api.URL
-	codeChanges := restModel.BuildModuleCodeChanges(*obj, identifier, apiURL)
-	result := make([]*restModel.APIModulePatch, 0, len(codeChanges))
+	codeChanges := patch.BuildModuleCodeChanges(*obj, identifier, apiURL)
+
+	codeChangePtrs := make([]*patch.ModuleCodeChange, 0, len(codeChanges))
 	for i := range codeChanges {
-		result = append(result, &codeChanges[i])
+		codeChangePtrs = append(codeChangePtrs, &codeChanges[i])
 	}
-	return result, nil
+	return codeChangePtrs, nil
 }
 
 // Parameters is the resolver for the parameters field.
 func (r *patchResolver) Parameters(ctx context.Context, obj *patch.Patch) ([]*restModel.APIParameter, error) {
-	config, err := evergreen.GetConfig(ctx)
+	redactedParameters, err := redactParameters(ctx, obj.Project, obj.Parameters)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("redacting parameters for patch '%s': %s", obj.Id.Hex(), err.Error()), err)
 	}
-
-	projectId := obj.Project
-	projVars, err := model.FindMergedProjectVars(ctx, projectId)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project vars for project '%s': %s", projectId, err.Error()))
-	}
-
-	redactKeys := config.LoggerConfig.RedactKeys
-	var res []*restModel.APIParameter
-	for _, param := range obj.Parameters {
-		redactedParam := &restModel.APIParameter{
-			Key:   utility.ToStringPtr(param.Key),
-			Value: utility.ToStringPtr(param.Value),
-		}
-		for _, pattern := range redactKeys {
-			if strings.Contains(strings.ToLower(param.Key), pattern) {
-				redactedParam.Value = utility.ToStringPtr(evergreen.RedactedValue)
-				break
-			}
-		}
-		if projVars != nil {
-			for varKey, varValue := range projVars.Vars {
-				if strings.Contains(param.Value, varValue) && projVars.PrivateVars[varKey] {
-					redactedParam.Value = utility.ToStringPtr(evergreen.RedactedValue)
-					break
-				}
-			}
-		}
-		res = append(res, redactedParam)
-	}
-	return res, nil
+	return redactedParameters, nil
 }
 
 // PatchTriggerAliases is the resolver for the patchTriggerAliases field.

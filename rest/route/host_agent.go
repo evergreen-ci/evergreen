@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
@@ -622,8 +623,10 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, num
 			}
 		}
 
+		// A not-found error means the task was push-completed, so skip it and
+		// move on to the next task.
 		lockErr := dispatchHostTaskAtomically(ctx, env, currentHost, nextTask)
-		if lockErr != nil && !db.IsDuplicateKey(lockErr) {
+		if lockErr != nil && !db.IsDuplicateKey(lockErr) && !adb.ResultsNotFound(lockErr) {
 			return nil, false, errors.Wrapf(err, "dispatching task '%s' to host '%s'", nextTask.Id, currentHost.Id)
 		}
 		dispatchedTask := lockErr == nil
@@ -734,14 +737,20 @@ func validateSingleTaskDistro(singleTaskDistroAllowlist evergreen.ProjectTasksPa
 		}
 	}
 
-	// Check if the task is allowed on the distro.
+	// Check if the task (or task group) is allowed on the distro.
+	taskNames := []string{nextTask.DisplayName}
+	if nextTask.TaskGroup != "" {
+		taskNames = append(taskNames, nextTask.TaskGroup)
+	}
 	for _, allowedTask := range singleTaskDistroAllowlist.AllowedTasks {
-		matched, err := regexp.MatchString(allowedTask, nextTask.DisplayName)
-		if err != nil {
-			return false, errors.Wrapf(err, "could not process task regex '%s'", allowedTask)
-		}
-		if matched {
-			return true, nil
+		for _, taskName := range taskNames {
+			matched, err := regexp.MatchString(allowedTask, taskName)
+			if err != nil {
+				return false, errors.Wrapf(err, "could not process task regex '%s'", allowedTask)
+			}
+			if matched {
+				return true, nil
+			}
 		}
 	}
 

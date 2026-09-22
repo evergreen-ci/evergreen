@@ -175,8 +175,6 @@ models:
         value: github.com/evergreen-ci/evergreen/model/task.ExecutionPlatformHost
       CONTAINER:
         value: github.com/evergreen-ci/evergreen/model/task.ExecutionPlatformContainer
-      VIRTUAL:
-        value: github.com/evergreen-ci/evergreen/model/task.ExecutionPlatformVirtual
   ContainerPool:
     model: github.com/evergreen-ci/evergreen/rest/model.APIContainerPool
   ContainerPoolInput:
@@ -263,7 +261,7 @@ models:
   File:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFile
   FileDiff:
-    model: github.com/evergreen-ci/evergreen/rest/model.FileDiff
+    model: github.com/evergreen-ci/evergreen/model/patch.FileDiff
   FinderSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFinderSettings
   FinderSettingsInput:
@@ -502,10 +500,31 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIMetadataLink
   MetadataLinkInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIMetadataLink
-  Module:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIModule
   ModuleCodeChange:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIModulePatch
+    model: github.com/evergreen-ci/evergreen/model/patch.ModuleCodeChange
+  MongoDBEnvironment:
+    model: github.com/99designs/gqlgen/graphql.String
+    enum_values:
+      PROD:
+        value: github.com/evergreen-ci/evergreen.MongoDBEnvironmentProd
+      STAGING:
+        value: github.com/evergreen-ci/evergreen.MongoDBEnvironmentStaging
+      DEV:
+        value: github.com/evergreen-ci/evergreen.MongoDBEnvironmentDev
+      QA:
+        value: github.com/evergreen-ci/evergreen.MongoDBEnvironmentQA
+      TEST:
+        value: github.com/evergreen-ci/evergreen.MongoDBEnvironmentTest
+      LOCAL:
+        value: github.com/evergreen-ci/evergreen.MongoDBEnvironmentLocal
+      POC:
+        value: github.com/evergreen-ci/evergreen.MongoDBEnvironmentPOC
+      DEMO:
+        value: github.com/evergreen-ci/evergreen.MongoDBEnvironmentDemo
+      UAT:
+        value: github.com/evergreen-ci/evergreen.MongoDBEnvironmentUAT
+      SANDBOX:
+        value: github.com/evergreen-ci/evergreen.MongoDBEnvironmentSandbox
   MultiAuthConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIMultiAuthConfig
   MultiAuthConfigInput:
@@ -751,6 +770,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIRepoTrackerConfig
   RepotrackerError:
     model: github.com/evergreen-ci/evergreen/rest/model.APIRepositoryErrorDetails
+  ResourceTagsConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIResourceTagsConfig
+  ResourceTagsConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIResourceTagsConfig
   RepoWorkstationConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIWorkstationConfig
   ResourceLimits:
@@ -1028,18 +1051,15 @@ models:
   VariantTask:
     model: github.com/evergreen-ci/evergreen/rest/model.VariantTask
   Version:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIVersion
+    model: github.com/evergreen-ci/evergreen/model.Version
     fields:
       cost:
         resolver: true
       status:
         resolver: true
-  VersionLite:
-    model: github.com/evergreen-ci/evergreen/model.Version
-    fields:
       order:
         fieldName: "RevisionOrderNumber"
-      status:
+      parameters:
         resolver: true
   VersionToRestart:
     model: github.com/evergreen-ci/evergreen/model.VersionToRestart

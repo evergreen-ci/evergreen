@@ -542,6 +542,36 @@ func TestTranslateTasks(t *testing.T) {
 	assert.Equal(t, "path", checkRunBV.Tasks[0].CreateCheckRun.PathToOutputs)
 }
 
+func TestTranslateVirtualTask(t *testing.T) {
+	parserProject := &ParserProject{
+		BuildVariants: []parserBV{
+			{
+				Name: "bv",
+				Tasks: parserBVTaskUnits{
+					{Name: "virtual_task"},
+					{Name: "regular_task"},
+				},
+			},
+		},
+		Tasks: []parserTask{
+			{Name: "virtual_task", Virtual: true},
+			{Name: "regular_task"},
+		},
+	}
+	out, err := TranslateProject(t.Context(), parserProject)
+	assert.NoError(t, err)
+	require.NotNil(t, out)
+	require.Len(t, out.Tasks, 2)
+
+	virtualTask := out.FindProjectTask("virtual_task")
+	require.NotNil(t, virtualTask)
+	assert.True(t, virtualTask.Virtual, "virtual task definition should translate virtual: true")
+
+	regularTask := out.FindProjectTask("regular_task")
+	require.NotNil(t, regularTask)
+	assert.False(t, regularTask.Virtual, "regular task definition should default to non-virtual")
+}
+
 func TestTranslateDependsOn(t *testing.T) {
 	Convey("With an intermediate parseProject", t, func() {
 		pp := &ParserProject{}
@@ -3414,6 +3444,45 @@ func TestCapParserPriorities(t *testing.T) {
 	})
 }
 
+func TestGetRevisionForRemoteModule(t *testing.T) {
+	t.Run("AutoUpdateRevisionTakesPrecedenceOverRefAndBranch", func(t *testing.T) {
+		mod := Module{
+			Name:   "mymod",
+			Branch: "main",
+			Ref:    "abc123",
+		}
+		opts := GetProjectOpts{
+			AutoUpdateModuleRevisions: map[string]string{
+				"mymod": "auto-update-sha",
+			},
+		}
+		revision, err := getRevisionForRemoteModule(t.Context(), mod, "mymod", opts)
+		require.NoError(t, err)
+		assert.Equal(t, "auto-update-sha", revision)
+	})
+	t.Run("RefTakesPrecedenceOverBranch", func(t *testing.T) {
+		mod := Module{
+			Name:   "mymod",
+			Branch: "main",
+			Ref:    "pinned-sha",
+		}
+		opts := GetProjectOpts{}
+		revision, err := getRevisionForRemoteModule(t.Context(), mod, "mymod", opts)
+		require.NoError(t, err)
+		assert.Equal(t, "pinned-sha", revision)
+	})
+	t.Run("FallsBackToBranchWhenRefIsEmpty", func(t *testing.T) {
+		mod := Module{
+			Name:   "mymod",
+			Branch: "main",
+		}
+		opts := GetProjectOpts{}
+		revision, err := getRevisionForRemoteModule(t.Context(), mod, "mymod", opts)
+		require.NoError(t, err)
+		assert.Equal(t, "main", revision)
+	})
+}
+
 func TestSetupParallelGitIncludeDirs(t *testing.T) {
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings)
@@ -4805,4 +4874,27 @@ tasks:
 		_, err := LoadProjectInto(b.Context(), []byte(mainYAML), opts, "proj", proj)
 		require.NoError(b, err)
 	}
+}
+
+func TestParseModuleCloneDepth(t *testing.T) {
+	yml := `
+modules:
+- name: "shallow"
+  repo: "dsi"
+  owner: "10gen"
+  branch: "main"
+  clone_depth: 1
+- name: "full"
+  repo: "mongo"
+  owner: "10gen"
+  branch: "main"
+tasks:
+- name: t1
+`
+	pp, decodeErr, err := createIntermediateProject([]byte(yml), false, nil)
+	require.NoError(t, err)
+	require.NoError(t, decodeErr)
+	require.Len(t, pp.Modules, 2)
+	assert.Equal(t, 1, pp.Modules[0].CloneDepth)
+	assert.Zero(t, pp.Modules[1].CloneDepth)
 }

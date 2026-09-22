@@ -192,7 +192,7 @@ func finalizeChildPatch(ctx context.Context, sub *event.Subscription, parentPatc
 	ctx, cancel := evergreen.GetEnvironment().Context()
 	defer cancel()
 
-	if _, err := model.FinalizePatch(ctx, childPatch, target.Requester, nil); err != nil {
+	if _, err := model.FinalizePatch(ctx, childPatch, childPatch.GetRequester(), nil); err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":       "Failed to finalize patch document",
 			"source":        target.Requester,

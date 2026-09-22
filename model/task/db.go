@@ -67,6 +67,7 @@ var (
 	LastHeartbeatKey              = bsonutil.MustHaveTag(Task{}, "LastHeartbeat")
 	ActivatedKey                  = bsonutil.MustHaveTag(Task{}, "Activated")
 	DeactivatedForDependencyKey   = bsonutil.MustHaveTag(Task{}, "DeactivatedForDependency")
+	IsVirtualKey                  = bsonutil.MustHaveTag(Task{}, "IsVirtual")
 	BuildIdKey                    = bsonutil.MustHaveTag(Task{}, "BuildId")
 	DistroIdKey                   = bsonutil.MustHaveTag(Task{}, "DistroId")
 	SecondaryDistrosKey           = bsonutil.MustHaveTag(Task{}, "SecondaryDistros")
@@ -91,6 +92,7 @@ var (
 	DetailsKey                    = bsonutil.MustHaveTag(Task{}, "Details")
 	AbortedKey                    = bsonutil.MustHaveTag(Task{}, "Aborted")
 	AbortInfoKey                  = bsonutil.MustHaveTag(Task{}, "AbortInfo")
+	CompletedByKey                = bsonutil.MustHaveTag(Task{}, "CompletedBy")
 	TimeTakenKey                  = bsonutil.MustHaveTag(Task{}, "TimeTaken")
 	TaskCostKey                   = bsonutil.MustHaveTag(Task{}, "TaskCost")
 	PredictedTaskCostKey          = bsonutil.MustHaveTag(Task{}, "PredictedTaskCost")
@@ -343,6 +345,14 @@ func ByIdAndExecution(id string, execution int) bson.M {
 func ByOldTaskID(id string) bson.M {
 	return bson.M{
 		OldTaskIdKey: id,
+	}
+}
+
+// ByOldTaskIDs creates a query that finds the archived executions of all the
+// given tasks.
+func ByOldTaskIDs(ids []string) bson.M {
+	return bson.M{
+		OldTaskIdKey: bson.M{"$in": ids},
 	}
 }
 
@@ -1542,7 +1552,7 @@ func FindAll(ctx context.Context, query db.Q) ([]Task, error) {
 	return tasks, err
 }
 
-// Find returns really all tasks that satisfy the query.
+// FindAllOld returns all archived task executions matching the given query.
 func FindAllOld(ctx context.Context, query db.Q) ([]Task, error) {
 	tasks := []Task{}
 	err := db.FindAllQ(ctx, OldCollection, query, &tasks)
@@ -2093,95 +2103,6 @@ func GetTaskStatsByVersion(ctx context.Context, versionID string, includeNeverAc
 	}
 
 	return &TaskStats{Counts: counts}, nil
-}
-
-func GetFilteredTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) (*TaskStats, error) {
-	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetFilteredTaskStatsByVersion")})
-
-	pipeline, err := getTasksByVersionPipeline(versionID, opts)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting tasks by version pipeline")
-	}
-	maxEtaPipeline := []bson.M{
-		{
-			"$match": bson.M{
-				ExpectedDurationKey: bson.M{"$exists": true},
-				StartTimeKey:        bson.M{"$exists": true},
-				DisplayStatusKey:    bson.M{"$in": []string{evergreen.TaskStarted, evergreen.TaskDispatched}},
-			},
-		},
-		{
-			"$project": bson.M{
-				"eta": bson.M{
-					"$add": []any{
-						bson.M{"$divide": []any{"$" + ExpectedDurationKey, time.Millisecond}},
-						"$" + StartTimeKey,
-					},
-				},
-			},
-		},
-		{
-			"$group": bson.M{
-				"_id":     nil,
-				"max_eta": bson.M{"$max": "$eta"},
-			},
-		},
-		{
-			"$project": bson.M{
-				"_id":     0,
-				"max_eta": 1,
-			},
-		},
-	}
-	groupPipeline := []bson.M{
-		{"$group": bson.M{
-			"_id":   "$" + DisplayStatusKey,
-			"count": bson.M{"$sum": 1},
-		}},
-		{"$sort": bson.M{"_id": 1}},
-		{"$project": bson.M{
-			"status": "$_id",
-			"count":  1,
-		}},
-	}
-	pipeline = append(pipeline, bson.M{
-		"$project": bson.M{
-			DisplayStatusKey:    1,
-			ExpectedDurationKey: 1,
-			StartTimeKey:        1,
-		},
-	})
-	facet := bson.M{"$facet": bson.M{
-		"counts": groupPipeline,
-		"eta":    maxEtaPipeline,
-	}}
-	pipeline = append(pipeline, facet)
-
-	type maxETAForQuery struct {
-		MaxETA time.Time `bson:"max_eta"`
-	}
-
-	type taskStatsForQueryResult struct {
-		Counts []StatusCount    `bson:"counts"`
-		ETA    []maxETAForQuery `bson:"eta"`
-	}
-
-	taskStats := []taskStatsForQueryResult{}
-	env := evergreen.GetEnvironment()
-	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
-	if err != nil {
-		return nil, errors.Wrap(err, "aggregating task stats for version")
-	}
-	if err := cursor.All(ctx, &taskStats); err != nil {
-		return nil, errors.Wrap(err, "aggregating task stats for version")
-	}
-	result := TaskStats{}
-	result.Counts = taskStats[0].Counts
-	if len(taskStats[0].ETA) > 0 {
-		result.ETA = &taskStats[0].ETA[0].MaxETA
-	}
-
-	return &result, nil
 }
 
 func GetGroupedTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) ([]*GroupedTaskStatusCount, error) {

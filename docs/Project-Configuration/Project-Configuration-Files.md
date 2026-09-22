@@ -517,6 +517,15 @@ Fields:
   time of the Evergreen version creation)
 - `auto_update`: if true, the latest revision for the module will be
   dynamically retrieved for each Github PR, CLI patch, and periodic build submission
+- `clone_depth`: clone this module with `git clone --depth <clone_depth>`. It is
+  independent of [git.get_project](Project-Commands#gitgetproject)'s own
+  `clone_depth`, which only applies to the source repo. Ignored for wiki modules
+  and distros where shallow clone is disabled. If the revision to check out is
+  not in the shallow history, Evergreen clones the module again at full depth, so
+  too small a depth costs time but never fails the checkout. Leave `clone_depth`
+  unset for a module pinned with `ref`, since a `ref` older than `clone_depth`
+  falls back on every clone, paying for a shallow clone that is always thrown
+  away.
 
 #### Wiki modules
 
@@ -1032,6 +1041,9 @@ Every task has some expansions available by default:
 - `${build_variant}` is the name of the build variant the task belongs
   to
 - `${created_at}` is the time the version was created
+- `${display_task_name}` is the name of the display task that contains the
+  running execution task. It is undefined if the task is not part of a display
+  task.
 - `${distro_arch}` is the architecture of the distro the task is running on, in
   `<GOOS>_<GOARCH>` form (e.g. `linux_amd64`)
 - `${distro_id}` is name of the distro the task is running on

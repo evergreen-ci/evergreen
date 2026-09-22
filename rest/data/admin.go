@@ -43,6 +43,9 @@ func SetEvergreenSettings(ctx context.Context, changes *restModel.APIAdminSettin
 		return nil, errors.Wrap(err, "converting settings to service model")
 	}
 	newSettings := i.(evergreen.Settings)
+	if err = validateResourceTagsUpdate(oldSettings, &newSettings); err != nil {
+		return nil, err
+	}
 
 	if persist {
 		// We have to call Validate before we attempt to persist it because the
@@ -75,6 +78,23 @@ func SetEvergreenSettings(ctx context.Context, changes *restModel.APIAdminSettin
 	}
 
 	return &newSettings, nil
+}
+
+func validateResourceTagsUpdate(oldSettings, newSettings *evergreen.Settings) error {
+	if oldSettings == nil || newSettings == nil {
+		return nil
+	}
+
+	oldTags := oldSettings.Providers.AWS.ResourceTags
+	newTags := newSettings.Providers.AWS.ResourceTags
+	if oldTags.MongoDBEnv != "" && newTags.MongoDBEnv == "" {
+		return errors.New("MongoDB environment cannot be cleared once set")
+	}
+	if oldTags.MongoDBOwner != "" && newTags.MongoDBOwner == "" {
+		return errors.New("MongoDB owner cannot be cleared once set")
+	}
+
+	return nil
 }
 
 func mergeAdminSettings(dst, src reflect.Value) {

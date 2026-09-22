@@ -1,0 +1,8 @@
+{
+  version(versionId: "6aa877f227e38c0007ed0ce4") {
+    parameters {
+      key
+      value
+    }
+  }
+}

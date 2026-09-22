@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,6 +30,23 @@ func TestProjectRoutes(t *testing.T) {
 	privUsr := addViewTasksPermission(t, "priv")
 	usr := pubUsr
 	usr.SystemRoles = append(usr.SystemRoles, privUsr.SystemRoles...)
+	settingsScope := gimlet.Scope{
+		ID:        "pub_settings_scope",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"pub"},
+	}
+	rm := env.RoleManager()
+	require.NoError(t, rm.AddScope(ctx, settingsScope))
+	settingsRole := gimlet.Role{
+		ID:    "pub_edit_settings",
+		Scope: settingsScope.ID,
+		Permissions: gimlet.Permissions{
+			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+		},
+	}
+	require.NoError(t, rm.UpdateRole(ctx, settingsRole))
+	settingsUsr := *usr
+	settingsUsr.SystemRoles = append(append([]string{}, usr.SystemRoles...), settingsRole.ID)
 	serviceutil.MockUser.SystemRoles = usr.SystemRoles
 	t.Cleanup(func() {
 		serviceutil.MockUser.SystemRoles = nil
@@ -36,7 +54,7 @@ func TestProjectRoutes(t *testing.T) {
 	})
 
 	Convey("When loading a public project, it should be found", t, func() {
-		require.NoError(t, db.Clear(model.ProjectRefCollection), "Error clearing '%v' collection", model.ProjectRefCollection)
+		require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.RepoRefCollection))
 
 		publicId := "pub"
 		public := &model.ProjectRef{
@@ -44,8 +62,19 @@ func TestProjectRoutes(t *testing.T) {
 			Enabled: true,
 			Repo:    "repo1",
 			Admins:  []string{},
+			TaskAnnotationSettings: evergreen.AnnotationsSettings{
+				FileTicketWebhook: evergreen.WebHook{
+					Endpoint: "https://example.com/webhook",
+					Secret:   "secret",
+				},
+			},
+			WorkstationConfig: model.WorkstationConfig{
+				GitClone: utility.TruePtr(),
+			},
 		}
 		So(public.Insert(t.Context()), ShouldBeNil)
+		redactedPublic := *public
+		redactedPublic.TaskAnnotationSettings.FileTicketWebhook.Secret = ""
 
 		url := "/rest/v1/projects/" + publicId
 
@@ -60,7 +89,10 @@ func TestProjectRoutes(t *testing.T) {
 			outRef := &model.ProjectRef{}
 			So(response.Code, ShouldEqual, http.StatusOK)
 			So(json.Unmarshal(response.Body.Bytes(), outRef), ShouldBeNil)
-			So(outRef, ShouldResemble, public)
+			So(outRef, ShouldResemble, &redactedPublic)
+			So(outRef.TaskAnnotationSettings.FileTicketWebhook.Secret, ShouldBeEmpty)
+			So(outRef.TaskAnnotationSettings.FileTicketWebhook.Endpoint, ShouldEqual, public.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
+			So(outRef.WorkstationConfig, ShouldResemble, public.WorkstationConfig)
 		})
 		Convey("and a logged-in user", func() {
 			request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
@@ -68,7 +100,19 @@ func TestProjectRoutes(t *testing.T) {
 			outRef := &model.ProjectRef{}
 			So(response.Code, ShouldEqual, http.StatusOK)
 			So(json.Unmarshal(response.Body.Bytes(), outRef), ShouldBeNil)
-			So(outRef, ShouldResemble, public)
+			So(outRef, ShouldResemble, &redactedPublic)
+		})
+		Convey("by a user with project settings edit permissions", func() {
+			request, err := http.NewRequest("GET", url, nil)
+			So(err, ShouldBeNil)
+			request = request.WithContext(gimlet.AttachUser(request.Context(), &settingsUsr))
+			response := httptest.NewRecorder()
+
+			router.ServeHTTP(response, request)
+			outRef := &model.ProjectRef{}
+			So(response.Code, ShouldEqual, http.StatusOK)
+			So(json.Unmarshal(response.Body.Bytes(), outRef), ShouldBeNil)
+			So(outRef, ShouldResemble, &redactedPublic)
 		})
 		Convey("and be visible to the project_list route", func() {
 			url := "/rest/v1/projects"
@@ -88,8 +132,37 @@ func TestProjectRoutes(t *testing.T) {
 		})
 	})
 
+	Convey("When loading a project with an inherited webhook secret", t, func() {
+		require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.RepoRefCollection))
+
+		repo := &model.RepoRef{ProjectRef: model.ProjectRef{
+			Id: "repo",
+			TaskAnnotationSettings: evergreen.AnnotationsSettings{
+				FileTicketWebhook: evergreen.WebHook{Secret: "repo-secret"},
+			},
+		}}
+		So(repo.Replace(t.Context()), ShouldBeNil)
+		project := &model.ProjectRef{
+			Id:        "pub",
+			Enabled:   true,
+			RepoRefId: repo.Id,
+		}
+		So(project.Insert(t.Context()), ShouldBeNil)
+
+		request, err := http.NewRequest(http.MethodGet, "/rest/v1/projects/"+project.Id, nil)
+		So(err, ShouldBeNil)
+		request = request.WithContext(gimlet.AttachUser(request.Context(), &settingsUsr))
+		response := httptest.NewRecorder()
+
+		router.ServeHTTP(response, request)
+		outRef := &model.ProjectRef{}
+		So(response.Code, ShouldEqual, http.StatusOK)
+		So(json.Unmarshal(response.Body.Bytes(), outRef), ShouldBeNil)
+		So(outRef.TaskAnnotationSettings.FileTicketWebhook.Secret, ShouldBeEmpty)
+	})
+
 	Convey("When loading a private project", t, func() {
-		require.NoError(t, db.Clear(model.ProjectRefCollection), "Error clearing '%v' collection", model.ProjectRefCollection)
+		require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.RepoRefCollection))
 
 		privateId := "priv"
 		private := &model.ProjectRef{

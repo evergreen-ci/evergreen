@@ -302,6 +302,57 @@ func (s *ProjectEventSuite) TestRedactSubscriptionSecrets() {
 	}
 }
 
+func (s *ProjectEventSuite) TestRedactFileTicketWebhookSecret() {
+	tests := map[string]struct {
+		beforeSecret         string
+		afterSecret          string
+		expectedBeforeSecret string
+		expectedAfterSecret  string
+	}{
+		"Modified": {
+			beforeSecret:         "old-secret",
+			afterSecret:          "new-secret",
+			expectedBeforeSecret: evergreen.RedactedBeforeValue,
+			expectedAfterSecret:  evergreen.RedactedAfterValue,
+		},
+		"Unmodified": {
+			beforeSecret: "same-secret",
+			afterSecret:  "same-secret",
+		},
+		"Added": {
+			afterSecret:         "new-secret",
+			expectedAfterSecret: evergreen.RedactedAfterValue,
+		},
+		"Removed": {
+			beforeSecret:         "old-secret",
+			expectedBeforeSecret: evergreen.RedactedBeforeValue,
+		},
+	}
+	for name, tc := range tests {
+		s.T().Run(name, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(event.EventCollection))
+			t.Cleanup(func() { require.NoError(t, db.ClearCollections(event.EventCollection)) })
+
+			before := getMockProjectSettings()
+			before.ProjectRef.TaskAnnotationSettings.FileTicketWebhook.Secret = tc.beforeSecret
+			after := getMockProjectSettings()
+			after.ProjectRef.TaskAnnotationSettings.FileTicketWebhook.Secret = tc.afterSecret
+			after.ProjectRef.Enabled = false
+
+			require.NoError(t, LogProjectModified(t.Context(), projectId, username, &before, &after))
+			projectEvents, err := MostRecentProjectEvents(t.Context(), projectId, 5)
+			require.NoError(t, err)
+			require.Len(t, projectEvents, 1)
+
+			eventData, ok := projectEvents[0].Data.(*ProjectChangeEvent)
+			require.True(t, ok)
+			require.NotNil(t, eventData)
+			assert.Equal(t, tc.expectedBeforeSecret, eventData.Before.ProjectRef.TaskAnnotationSettings.FileTicketWebhook.Secret)
+			assert.Equal(t, tc.expectedAfterSecret, eventData.After.ProjectRef.TaskAnnotationSettings.FileTicketWebhook.Secret)
+		})
+	}
+}
+
 func (s *ProjectEventSuite) TestModifyProjectNonEvent() {
 	before := getMockProjectSettings()
 	after := getMockProjectSettings()

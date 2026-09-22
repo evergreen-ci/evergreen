@@ -6,12 +6,14 @@ import (
 	"io"
 	"regexp"
 	"sort"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
@@ -101,6 +103,39 @@ func AppendQuarantinedTests(ctx context.Context, t *Task, env evergreen.Environm
 		return 0, err
 	}
 	return len(newTests), nil
+}
+
+// AppendVirtualTestResultMetadata records test result metadata pushed on
+// behalf of a virtual task.
+func AppendVirtualTestResultMetadata(ctx context.Context, t *Task, env evergreen.Environment, failedSample []string, failedCount, totalCount int, createdAt time.Time) error {
+	if t.TaskOutputInfo == nil {
+		return errors.New("task output info is not set")
+	}
+	info, err := makeTestResultsInfo(ctx, t)
+	if err != nil {
+		return errors.Wrap(err, "making test results info")
+	}
+	record := testresult.DbTaskTestResults{
+		ID:        info.ID(),
+		Info:      info,
+		CreatedAt: createdAt,
+	}
+	if _, err = env.CedarDB().Collection(testresult.Collection).InsertOne(ctx, record); err != nil {
+		if !db.IsDuplicateKey(err) {
+			return errors.Wrap(err, "inserting test result record")
+		}
+		if err = env.CedarDB().Collection(testresult.Collection).FindOne(ctx, ByTaskIDAndExecution(t.Id, t.Execution)).Decode(&record); err != nil {
+			return errors.Wrap(err, "finding existing test result record")
+		}
+		if record.CreatedAt.IsZero() {
+			record.CreatedAt = createdAt
+		}
+	}
+	svc, err := getTestResultService(env, t.TaskOutputInfo.TestResults.Version)
+	if err != nil {
+		return errors.Wrap(err, "getting test result service")
+	}
+	return svc.AppendTestResultMetadata(ctx, failedSample, failedCount, totalCount, record)
 }
 
 // makeTestResultsInfo mirrors how the agent constructs test results info when

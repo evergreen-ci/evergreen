@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"fmt"
 	"regexp"
 	"testing"
 
@@ -11,6 +12,21 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// apiTasksWithStatus builds n tasks with the given status, all belonging to the
+// same build and build variant, with distinct IDs.
+func apiTasksWithStatus(n int, status, buildID, buildVariant string) []model.APITask {
+	tasks := make([]model.APITask, 0, n)
+	for i := range n {
+		tasks = append(tasks, model.APITask{
+			Id:           utility.ToStringPtr(fmt.Sprintf("%s-t%d", buildID, i+1)),
+			BuildId:      utility.ToStringPtr(buildID),
+			BuildVariant: utility.ToStringPtr(buildVariant),
+			Status:       utility.ToStringPtr(status),
+		})
+	}
+	return tasks
+}
 
 func TestFetchVersionBatch(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T, c *client.Mock){
@@ -474,6 +490,344 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 			require.NoError(t, err)
 			assert.True(t, passesCriteria)
 		},
+		"PassesCriteriaWithBuildFailureRateAboveThreshold": func(t *testing.T, c *client.Mock) {
+			builds := []model.APIBuild{
+				{
+					Id:           utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+				},
+			}
+			c.GetTasksForBuildResult = []model.APITask{
+				{
+					Id:           utility.ToStringPtr("t1"),
+					BuildId:      utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+					Status:       utility.ToStringPtr(evergreen.TaskFailed),
+				},
+				{
+					Id:           utility.ToStringPtr("t2"),
+					BuildId:      utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+					Status:       utility.ToStringPtr(evergreen.TaskFailed),
+				},
+			}
+			criteria := lastRevisionCriteria{
+				project:             "test_project",
+				buildVariantRegexps: []regexp.Regexp{*regexp.MustCompile("bv1")},
+				minFailedProportion: 0.5,
+			}
+
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, []lastRevisionCriteria{criteria})
+			require.NoError(t, err)
+			assert.True(t, passesCriteria)
+		},
+		"DoesNotPassCriteriaWithBuildFailureRateBelowThreshold": func(t *testing.T, c *client.Mock) {
+			builds := []model.APIBuild{
+				{
+					Id:           utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+				},
+			}
+			c.GetTasksForBuildResult = []model.APITask{
+				{
+					Id:           utility.ToStringPtr("t1"),
+					BuildId:      utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+					Status:       utility.ToStringPtr(evergreen.TaskFailed),
+				},
+				{
+					Id:           utility.ToStringPtr("t2"),
+					BuildId:      utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+					Status:       utility.ToStringPtr(evergreen.TaskSucceeded),
+				},
+			}
+			criteria := lastRevisionCriteria{
+				project:             "test_project",
+				buildVariantRegexps: []regexp.Regexp{*regexp.MustCompile("bv1")},
+				minFailedProportion: 0.9,
+			}
+
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, []lastRevisionCriteria{criteria})
+			require.NoError(t, err)
+			assert.False(t, passesCriteria)
+		},
+		"DoesNotCountUnfinishedTasksTowardFailedProportion": func(t *testing.T, c *client.Mock) {
+			builds := []model.APIBuild{
+				{
+					Id:           utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+				},
+			}
+			c.GetTasksForBuildResult = []model.APITask{
+				{
+					Id:           utility.ToStringPtr("t1"),
+					BuildId:      utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+					Status:       utility.ToStringPtr(evergreen.TaskFailed),
+				},
+				{
+					Id:           utility.ToStringPtr("t2"),
+					BuildId:      utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+					Status:       utility.ToStringPtr(evergreen.TaskUndispatched),
+				},
+			}
+			criteria := lastRevisionCriteria{
+				project:             "test_project",
+				buildVariantRegexps: []regexp.Regexp{*regexp.MustCompile("bv1")},
+				minFailedProportion: 0.6,
+			}
+
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, []lastRevisionCriteria{criteria})
+			require.NoError(t, err)
+			assert.False(t, passesCriteria, "only the actually-failed task should count toward the failed proportion")
+		},
+		"DoesNotCountKnownIssuesTowardFailedProportionWhenKnownIssuesAreSuccess": func(t *testing.T, c *client.Mock) {
+			builds := []model.APIBuild{
+				{
+					Id:           utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+				},
+			}
+			c.GetTasksForBuildResult = []model.APITask{
+				{
+					Id:             utility.ToStringPtr("t1"),
+					BuildId:        utility.ToStringPtr("b1"),
+					BuildVariant:   utility.ToStringPtr("bv1"),
+					Status:         utility.ToStringPtr(evergreen.TaskFailed),
+					HasAnnotations: true,
+				},
+				{
+					Id:           utility.ToStringPtr("t2"),
+					BuildId:      utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+					Status:       utility.ToStringPtr(evergreen.TaskSucceeded),
+				},
+			}
+			criteria := lastRevisionCriteria{
+				project:               "test_project",
+				buildVariantRegexps:   []regexp.Regexp{*regexp.MustCompile("bv1")},
+				minFailedProportion:   0.5,
+				knownIssuesAreSuccess: true,
+			}
+
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, []lastRevisionCriteria{criteria})
+			require.NoError(t, err)
+			assert.False(t, passesCriteria, "known-issue failures should be excluded from the failed proportion when known issues are treated as success")
+		},
+		"PassesMinFailedCriteriaWhenOneMatchingBuildMeetsThreshold": func(t *testing.T, c *client.Mock) {
+			builds := []model.APIBuild{
+				{
+					Id:           utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+				},
+				{
+					Id:           utility.ToStringPtr("b2"),
+					BuildVariant: utility.ToStringPtr("bv2"),
+				},
+			}
+			c.GetTasksForBuildResult = []model.APITask{
+				{
+					Id:           utility.ToStringPtr("t1"),
+					BuildId:      utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+					Status:       utility.ToStringPtr(evergreen.TaskSucceeded),
+				},
+				{
+					Id:           utility.ToStringPtr("t2"),
+					BuildId:      utility.ToStringPtr("b2"),
+					BuildVariant: utility.ToStringPtr("bv2"),
+					Status:       utility.ToStringPtr(evergreen.TaskFailed),
+				},
+				{
+					Id:           utility.ToStringPtr("t3"),
+					BuildId:      utility.ToStringPtr("b2"),
+					BuildVariant: utility.ToStringPtr("bv2"),
+					Status:       utility.ToStringPtr(evergreen.TaskFailed),
+				},
+			}
+			criteria := lastRevisionCriteria{
+				project:             "test_project",
+				buildVariantRegexps: []regexp.Regexp{*regexp.MustCompile("bv2")},
+				minFailedProportion: 0.5,
+			}
+
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, []lastRevisionCriteria{criteria})
+			require.NoError(t, err)
+			assert.True(t, passesCriteria, "min-failed only needs to be met by one matching build")
+		},
+		"DoesNotPassMinFailedCriteriaWhenNoMatchingBuildMeetsThreshold": func(t *testing.T, c *client.Mock) {
+			builds := []model.APIBuild{
+				{
+					Id:           utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+				},
+				{
+					Id:           utility.ToStringPtr("b2"),
+					BuildVariant: utility.ToStringPtr("bv2"),
+				},
+			}
+			c.GetTasksForBuildResult = []model.APITask{
+				{
+					Id:           utility.ToStringPtr("t1"),
+					BuildId:      utility.ToStringPtr("b2"),
+					BuildVariant: utility.ToStringPtr("bv2"),
+					Status:       utility.ToStringPtr(evergreen.TaskSucceeded),
+				},
+				{
+					Id:           utility.ToStringPtr("t2"),
+					BuildId:      utility.ToStringPtr("b2"),
+					BuildVariant: utility.ToStringPtr("bv2"),
+					Status:       utility.ToStringPtr(evergreen.TaskSucceeded),
+				},
+			}
+			criteria := lastRevisionCriteria{
+				project:             "test_project",
+				buildVariantRegexps: []regexp.Regexp{*regexp.MustCompile("bv2")},
+				minFailedProportion: 0.5,
+			}
+
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, []lastRevisionCriteria{criteria})
+			require.NoError(t, err)
+			assert.False(t, passesCriteria, "a build like b1 that the criterion does not apply to does not satisfy the min-failed criterion")
+		},
+		"DoesNotPassWhenMinFailedCriteriaMetButOtherCriteriaFail": func(t *testing.T, c *client.Mock) {
+			builds := []model.APIBuild{
+				{
+					Id:           utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+				},
+				{
+					Id:           utility.ToStringPtr("b2"),
+					BuildVariant: utility.ToStringPtr("bv2"),
+				},
+			}
+			c.GetTasksForBuildResult = []model.APITask{
+				{
+					Id:           utility.ToStringPtr("t1"),
+					BuildId:      utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+					Status:       utility.ToStringPtr(evergreen.TaskSucceeded),
+				},
+				{
+					Id:           utility.ToStringPtr("t2"),
+					BuildId:      utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+					Status:       utility.ToStringPtr(evergreen.TaskFailed),
+				},
+			}
+			allBuildsCriteria := lastRevisionCriteria{
+				project:              "test_project",
+				buildVariantRegexps:  []regexp.Regexp{*regexp.MustCompile("bv1")},
+				minSuccessProportion: 0.9,
+			}
+			anyBuildCriteria := lastRevisionCriteria{
+				project:             "test_project",
+				buildVariantRegexps: []regexp.Regexp{*regexp.MustCompile("bv2")},
+				minFailedProportion: 0.5,
+			}
+
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, []lastRevisionCriteria{allBuildsCriteria, anyBuildCriteria})
+			require.NoError(t, err)
+			assert.False(t, passesCriteria, "meeting min-failed for one build must not override an unmet all-builds criterion")
+		},
+		"MinSuccessIsRequiredForAllMatchindBuildsWhenCombinedWithMinFailed": func(t *testing.T, c *client.Mock) {
+			// A single criterion bundles min-success and min-failed. min-success
+			// must still apply to all builds, not be relaxed to any one build.
+			builds := []model.APIBuild{
+				{
+					Id:           utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+				},
+				{
+					Id:           utility.ToStringPtr("b2"),
+					BuildVariant: utility.ToStringPtr("bv2"),
+				},
+			}
+			c.GetTasksForBuildResultByBuild = map[string][]model.APITask{
+				"b1": append(
+					apiTasksWithStatus(4, evergreen.TaskSucceeded, "b1", "bv1"),
+					apiTasksWithStatus(1, evergreen.TaskFailed, "b1", "bv1")...,
+				),
+				"b2": append(
+					apiTasksWithStatus(2, evergreen.TaskSucceeded, "b2", "bv2"),
+					apiTasksWithStatus(3, evergreen.TaskFailed, "b2", "bv2")...,
+				),
+			}
+			criteria := lastRevisionCriteria{
+				project:              "test_project",
+				buildVariantRegexps:  []regexp.Regexp{*regexp.MustCompile(".*")},
+				minSuccessProportion: 0.8,
+				minFailedProportion:  0.2,
+			}
+
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, []lastRevisionCriteria{criteria})
+			require.NoError(t, err)
+			assert.False(t, passesCriteria, "min-success must still require all builds to meet it even when min-failed is set on the same criterion")
+		},
+		"PassesWhenMinSuccessIsMetByAllBuildsAndMinFailedIsMetByAtLeastOneBuild": func(t *testing.T, c *client.Mock) {
+			builds := []model.APIBuild{
+				{
+					Id:           utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+				},
+				{
+					Id:           utility.ToStringPtr("b2"),
+					BuildVariant: utility.ToStringPtr("bv2"),
+				},
+			}
+			c.GetTasksForBuildResultByBuild = map[string][]model.APITask{
+				"b1": append(
+					apiTasksWithStatus(4, evergreen.TaskSucceeded, "b1", "bv1"),
+					apiTasksWithStatus(1, evergreen.TaskFailed, "b1", "bv1")...,
+				),
+				"b2": append(
+					apiTasksWithStatus(4, evergreen.TaskSucceeded, "b2", "bv2"),
+					apiTasksWithStatus(1, evergreen.TaskFailed, "b2", "bv2")...,
+				),
+			}
+			criteria := lastRevisionCriteria{
+				project:              "test_project",
+				buildVariantRegexps:  []regexp.Regexp{*regexp.MustCompile(".*")},
+				minSuccessProportion: 0.8,
+				minFailedProportion:  0.1,
+			}
+
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, []lastRevisionCriteria{criteria})
+			require.NoError(t, err)
+			assert.True(t, passesCriteria, "all builds meet min-success and at least one build meets min-failed")
+		},
+		"EachMinFailedCriterionMustBeMetBySomeMatchingBuild": func(t *testing.T, c *client.Mock) {
+			builds := []model.APIBuild{
+				{
+					Id:           utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+				},
+				{
+					Id:           utility.ToStringPtr("b2"),
+					BuildVariant: utility.ToStringPtr("bv2"),
+				},
+			}
+			c.GetTasksForBuildResultByBuild = map[string][]model.APITask{
+				"b1": apiTasksWithStatus(5, evergreen.TaskFailed, "b1", "bv1"),
+				"b2": apiTasksWithStatus(5, evergreen.TaskSucceeded, "b2", "bv2"),
+			}
+			criterion1 := lastRevisionCriteria{
+				project:             "test_project",
+				buildVariantRegexps: []regexp.Regexp{*regexp.MustCompile("bv1")},
+				minFailedProportion: 0.5,
+			}
+			criterion2 := lastRevisionCriteria{
+				project:             "test_project",
+				buildVariantRegexps: []regexp.Regexp{*regexp.MustCompile("bv2")},
+				minFailedProportion: 0.5,
+			}
+
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, []lastRevisionCriteria{criterion1, criterion2})
+			require.NoError(t, err)
+			assert.False(t, passesCriteria, "each min-failed criterion must be met by at least one matching build")
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			tCase(t, &client.Mock{})
@@ -610,6 +964,7 @@ func TestLastRevisionCriteriaReuse(t *testing.T) {
 		BVRegexps:             []string{"bv1"},
 		MinSuccessProportion:  0.5,
 		MinFinishedProportion: 0.9,
+		MinFailedProportion:   0.15,
 		SuccessfulTasks:       []string{"task1", "task2"},
 	}
 	criteria2 := reusableLastRevisionCriteria{
@@ -637,12 +992,14 @@ func TestLastRevisionCriteriaReuse(t *testing.T) {
 		assert.Len(t, allCriteria[0].buildVariantDisplayNameRegexps, len(criteria1.BVDisplayRegexps))
 		assert.Equal(t, criteria1.MinSuccessProportion, allCriteria[0].minSuccessProportion)
 		assert.Equal(t, criteria1.MinFinishedProportion, allCriteria[0].minFinishedProportion)
+		assert.Equal(t, criteria1.MinFailedProportion, allCriteria[0].minFailedProportion)
 		assert.Len(t, allCriteria[0].successfulTasks, len(criteria1.SuccessfulTasks))
 
 		assert.Len(t, allCriteria[1].buildVariantRegexps, len(criteria2.BVRegexps))
 		assert.Len(t, allCriteria[1].buildVariantDisplayNameRegexps, len(criteria2.BVDisplayRegexps))
 		assert.Zero(t, allCriteria[1].minSuccessProportion, criteria2.MinSuccessProportion)
 		assert.Zero(t, allCriteria[1].minFinishedProportion, criteria2.MinFinishedProportion)
+		assert.Zero(t, allCriteria[1].minFailedProportion, criteria2.MinFailedProportion)
 		assert.Len(t, allCriteria[1].successfulTasks, len(criteria2.SuccessfulTasks))
 	})
 	t.Run("ErrorsForNonexistentCriteriaGroup", func(t *testing.T) {

@@ -4,7 +4,10 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/pkg/errors"
 )
 
 type serviceFlagsGetHandler struct{}
@@ -22,13 +25,13 @@ func (h *serviceFlagsGetHandler) Parse(ctx context.Context, r *http.Request) err
 }
 
 func (h *serviceFlagsGetHandler) Run(ctx context.Context) gimlet.Responder {
-	// TODO (DEVPROD-36538): Remove this route once unsupported CLIs no longer
-	// need the legacy service flags payload.
-	flags := struct {
-		StaticAPIKeysDisabled bool `json:"static_api_keys_disabled"`
-	}{
-		StaticAPIKeysDisabled: true,
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting service flags"))
 	}
 
-	return gimlet.NewJSONResponse(flags)
+	return gimlet.NewJSONResponse(model.APIServiceFlagsResponse{
+		DebugSpawnHostDisabled:      flags.DebugSpawnHostDisabled,
+		CrossFileYAMLAnchorsEnabled: flags.CrossFileYAMLAnchorsEnabled,
+	})
 }
