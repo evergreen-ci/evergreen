@@ -634,6 +634,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	projectInfo.IntermediateProject.Init(v.Id, v.CreateTime)
 	if projectInfo.Config != nil {
 		projectInfo.Config.Id = v.Id
+		projectInfo.Config.Requester = v.Requester
 	}
 	v.Ignored = ignore
 
@@ -743,9 +744,7 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		v.CreateTime = createTime
 	} else if metadata.IsAdHoc {
 		v.Id = mgobson.NewObjectId().Hex()
-		if metadata.PeriodicBuildID != "" {
-			v.Requester = evergreen.AdHocRequester
-		}
+		v.Requester = evergreen.AdHocRequester
 		v.CreateTime = time.Now()
 		if metadata.Message != "" {
 			v.Message = metadata.Message
@@ -940,7 +939,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 
 	var githubCheckAliases model.ProjectAliases
 	if v.Requester == evergreen.RepotrackerVersionRequester && projectInfo.Ref.IsGithubChecksEnabled() {
-		githubCheckAliases, err = model.FindAliasInProjectRepoOrConfig(ctx, v.Identifier, evergreen.GithubChecksAlias)
+		githubCheckAliases, err = model.FindAliasInProjectRepoOrConfigForVersion(ctx, v.Identifier, v.Id, projectInfo.Config, evergreen.GithubChecksAlias)
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "error getting github check aliases",
 			"project": projectInfo.Project.Identifier,

@@ -1030,7 +1030,9 @@ func logTaskEndStats(ctx context.Context, t *task.Task) error {
 	}
 
 	isHostMode := t.IsHostTask()
-	if isHostMode {
+	// A task will not have a host ID if it's a push-completed virtual task.
+	isPushCompletedTask := t.IsVirtual && t.CompletedBy != ""
+	if isHostMode && !isPushCompletedTask {
 		taskHost, err := host.FindOneId(ctx, t.HostId)
 		if err != nil {
 			return err

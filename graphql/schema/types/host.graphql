@@ -79,8 +79,9 @@ Host models a host, which are used for things like running tasks or as virtual w
 """
 type Host {
   id: ID!
-  availabilityZone: String
+  agentRevision: String
   ami: String
+  availabilityZone: String
   displayName: String
   distro: Distro
   distroId: String @deprecated(reason: "Use distro.id instead")

@@ -2,6 +2,7 @@ package cloud
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -23,6 +24,9 @@ func TestAssumeRole(t *testing.T) {
 	projectID := "project_id"
 	repoRefID := "repo_ref_id"
 	requester := "requester"
+	taskDisplayName := "display name"
+	buildVariant := "build_variant"
+	sessionName := "project-id-build-variant-display-name"
 
 	roleARN := "role_arn"
 	policy := "policy"
@@ -55,7 +59,7 @@ func TestAssumeRole(t *testing.T) {
 			require.ErrorContains(t, err, fmt.Sprintf("host '%s' not found", hostID))
 		},
 		"Success": func(t *testing.T, manager STSManager, awsClientMock *awsClientMock) {
-			task := task.Task{Id: taskID, Project: projectID, Requester: requester}
+			task := task.Task{Id: taskID, Project: projectID, Requester: requester, DisplayName: taskDisplayName, BuildVariant: buildVariant}
 			require.NoError(t, task.Insert(t.Context()))
 			project := model.ProjectRef{Id: projectID, RepoRefId: repoRefID}
 			require.NoError(t, project.Insert(t.Context()))
@@ -82,6 +86,7 @@ func TestAssumeRole(t *testing.T) {
 			assert.Equal(t, roleARN, utility.FromStringPtr(awsClientMock.AssumeRoleInput.RoleArn))
 			assert.Equal(t, policy, utility.FromStringPtr(awsClientMock.AssumeRoleInput.Policy))
 			assert.Equal(t, externalID, utility.FromStringPtr(awsClientMock.AssumeRoleInput.ExternalId))
+			assert.Equal(t, sessionName, utility.FromStringPtr(awsClientMock.AssumeRoleInput.RoleSessionName))
 		},
 		"SourceCacheUsesTheFixedExternalID": func(t *testing.T, manager STSManager, awsClientMock *awsClientMock) {
 			task := task.Task{Id: taskID, Project: projectID, Requester: requester}
@@ -230,6 +235,31 @@ func TestAssumeRole(t *testing.T) {
 			require.True(t, ok)
 
 			tCase(t, manager, awsClientMock)
+		})
+	}
+}
+
+func TestCreateRoleSessionName(t *testing.T) {
+	testCases := map[string]struct {
+		task            task.Task
+		wantSessionName string
+	}{
+		"AllowedCharactersPassThroughUnchanged": {
+			task:            task.Task{Project: "sys-perf", DisplayName: "compile", BuildVariant: "linux-64"},
+			wantSessionName: "sys-perf-linux-64-compile",
+		},
+		"DisallowedCharactersAreReplacedWithHyphens": {
+			task:            task.Task{Project: "project_id", DisplayName: "display name", BuildVariant: "variant.2"},
+			wantSessionName: "project-id-variant.2-display-name",
+		},
+		"NamesLongerThan64CharactersAreTruncated": {
+			task:            task.Task{Project: "p", DisplayName: strings.Repeat("a", 100), BuildVariant: "b"},
+			wantSessionName: fmt.Sprintf("p-b-%s", strings.Repeat("a", 60)),
+		},
+	}
+	for tName, tCase := range testCases {
+		t.Run(tName, func(t *testing.T) {
+			assert.Equal(t, tCase.wantSessionName, createRoleSessionName(&tCase.task))
 		})
 	}
 }

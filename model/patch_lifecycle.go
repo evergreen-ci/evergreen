@@ -817,6 +817,8 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, transl
 	if config != nil {
 		config.Project = p.Project
 		config.Id = p.Id.Hex()
+		// Use the patch's own requester, not the argument, which for a downstream trigger is the upstream version's.
+		config.Requester = p.GetRequester()
 	}
 
 	distroAliases, err := distro.NewDistroAliasesLookupTable(ctx)
@@ -1289,7 +1291,7 @@ func finalizeOrSubscribeChildPatch(ctx context.Context, childPatchId string, par
 		if childPatchDoc == nil {
 			return errors.Errorf("could not find child patch '%s'", childPatchId)
 		}
-		if _, err := FinalizePatch(ctx, childPatchDoc, requester, nil); err != nil {
+		if _, err := FinalizePatch(ctx, childPatchDoc, childPatchDoc.GetRequester(), nil); err != nil {
 			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":       "Failed to finalize child patch document",
 				"source":        requester,

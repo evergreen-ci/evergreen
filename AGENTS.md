@@ -51,6 +51,12 @@ Whenever modifying the `operations/` package (CLI commands), increment `ClientVe
 The format is the calendar date (`YYYY-MM-DD`); append a letter suffix (e.g. `2026-05-20a`) if there
 are multiple changes on the same day.
 
+### Agent Changes
+
+Whenever modifying the `agent/` package, increment `AgentVersion` in `config.go` to trigger agent
+rollover. The format is the calendar date (`YYYY-MM-DD`); append a letter suffix (e.g. `2026-05-20a`)
+if there are multiple changes on the same day.
+
 ### CI Self-Tests
 
 The Evergreen codebase has automated tests defined in `self-tests.yml`, which itself runs in Evergreen. For most tasks in
@@ -168,6 +174,18 @@ AI-assisted code is welcome, but the author is responsible for the final result.
 * Generated tests should be meaningful: prune cases that are impossible, redundant, or that test the mock rather than
   the code under test.
 * Check for performance anti-patterns the AI commonly introduces (DB calls inside deep loops, redundant queries).
+
+## AI Tooling
+
+Optional local tools — not everyone has them installed. If a tool is missing, fall back to normal search and
+read tools; do not try to install it or retry.
+
+* **graft** — prebuilt symbol/call graph (`graft ask`, `graft callers`, `graft grep`). If installed, prefer it
+  over greping or reading files cold. Run `graft build` once if `graft/` is missing.
+* **graphify** — semantic knowledge graph including the docs/decisions layer (`/graphify query "<question>"`).
+  Cross-subsystem orientation only; its INFERRED/AMBIGUOUS edges are leads, not facts — verify with graft or source.
+  If available, build once with `/graphify .`, refresh with `/graphify . --update`. Do not commit `graphify-out/`.
+* **docs/** — for "why" questions, consult `docs/decisions/` (ADRs) and `docs/` (intended behavior) alongside the code.
 
 ## Pull Requests
 

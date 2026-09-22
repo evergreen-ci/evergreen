@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -34,8 +35,8 @@ import (
 
 const (
 	patchIntentJobName         = "patch-intent-processor"
-	githubDependabotUser       = "dependabot[bot]"
-	githubActionsUser          = "github-actions[bot]"
+	githubDependabotUserID     = 49699333
+	githubActionsUserID        = 41898282
 	BuildTasksAndVariantsError = "building tasks and variants"
 	maxPatchIntentJobTime      = 10 * time.Minute
 )
@@ -44,6 +45,7 @@ var (
 	githubUserInOrganization     = thirdparty.GithubUserInOrganization
 	appAuthorizedForOrg          = thirdparty.AppAuthorizedForOrg
 	githubUserHasWritePermission = thirdparty.GitHubUserHasWritePermission
+	getGitHubUserByID            = thirdparty.GetGitHubUserByID
 )
 
 func init() {
@@ -1063,8 +1065,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 		patchDoc.Triggers = patch.TriggerInfo{Aliases: projectRef.GithubPRTriggerAliases}
 	}
 
-	isMember, err := j.isUserAuthorized(ctx, patchDoc, mustBeMemberOfOrg,
-		patchDoc.GithubPatchData.Author)
+	isMember, err := j.isUserAuthorized(ctx, patchDoc, mustBeMemberOfOrg)
 	if err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":     "GitHub API failure",
@@ -1452,15 +1453,31 @@ func findEvergreenUserForGithubMergeGroup(ctx context.Context) (*user.DBUser, er
 	return u, err
 }
 
-func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *patch.Patch, requiredOrganization, githubUser string) (bool, error) {
+func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *patch.Patch, requiredOrganization string) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
+
+	githubUserID := patchDoc.GithubPatchData.AuthorUID
+	resolvedUser, err := resolveGitHubPRAuthor(ctx, githubUserID)
+	if err != nil {
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"job":        j.ID(),
+			"message":    "failed to resolve GitHub PR author",
+			"source":     "patch intents",
+			"creator_id": githubUserID,
+			"base_repo":  fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
+			"head_repo":  fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
+			"pr_number":  patchDoc.GithubPatchData.PRNumber,
+		}))
+		return false, err
+	}
+	githubUser := resolvedUser.GetLogin()
 
 	// Dependabot and GitHub Actions patches are automatically authorized, but
 	// only for same-repo PRs to ensure we never auto-authorize code originating from an external fork.
 	isSameRepoPR := strings.EqualFold(patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.BaseOwner) &&
 		strings.EqualFold(patchDoc.GithubPatchData.HeadRepo, patchDoc.GithubPatchData.BaseRepo)
-	if isSameRepoPR && (githubUser == githubDependabotUser || githubUser == githubActionsUser) {
+	if isSameRepoPR && (githubUserID == githubDependabotUserID || githubUserID == githubActionsUserID) {
 		grip.Info(ctx, message.Fields{
 			"job":       j.ID(),
 			"message":   fmt.Sprintf("authorizing patch from special user '%s'", githubUser),
@@ -1491,21 +1508,25 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 		return isMember, nil
 	}
 
-	isAuthorizedForOrg, err := appAuthorizedForOrg(ctx, requiredOrganization, githubUser)
-	if err != nil {
-		grip.Error(ctx, message.WrapError(err, message.Fields{
-			"job":          j.ID(),
-			"message":      "failed to check if user is an authorized app",
-			"source":       "patch intents",
-			"creator":      githubUser,
-			"required_org": requiredOrganization,
-			"base_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
-			"head_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
-			"pr_number":    patchDoc.GithubPatchData.PRNumber,
-		}))
-	}
-	if isAuthorizedForOrg {
-		return isAuthorizedForOrg, nil
+	if resolvedUser.GetType() == "Bot" {
+		isAuthorizedForOrg, err := appAuthorizedForOrg(ctx, requiredOrganization, githubUserID)
+		if err != nil {
+			grip.Error(ctx, message.WrapError(err, message.Fields{
+				"job":          j.ID(),
+				"message":      "failed to check if user is an authorized app",
+				"source":       "patch intents",
+				"creator":      githubUser,
+				"creator_id":   githubUserID,
+				"required_org": requiredOrganization,
+				"base_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
+				"head_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
+				"pr_number":    patchDoc.GithubPatchData.PRNumber,
+			}))
+			return false, err
+		}
+		if isAuthorizedForOrg {
+			return true, nil
+		}
 	}
 
 	// Verify external collaborators against the base repository.
@@ -1523,6 +1544,20 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 		}))
 	}
 	return hasWritePermission, nil
+}
+
+func resolveGitHubPRAuthor(ctx context.Context, githubUserID int) (*github.User, error) {
+	if githubUserID == 0 {
+		return nil, errors.New("GitHub PR author ID is missing")
+	}
+	resolvedUser, err := getGitHubUserByID(ctx, githubUserID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "resolving GitHub PR author ID '%d'", githubUserID)
+	}
+	if resolvedUser.GetLogin() == "" {
+		return nil, errors.Errorf("GitHub PR author ID '%d' has no login", githubUserID)
+	}
+	return resolvedUser, nil
 }
 
 func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchDoc *patch.Patch) {

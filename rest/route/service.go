@@ -116,6 +116,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/task/{task_id}/aws/assume_role").Version(2).Post().Wrap(requireUserOrTask, rateLimit).RouteHandler(makeAWSAssumeRole(stsManager))
 	app.AddRoute("/task/{task_id}/source_cache/credentials").Version(2).Post().Wrap(requireTask, requireHost, rateLimit).RouteHandler(makeSourceCacheCredentials(settings, stsManager))
 	app.AddRoute("/task/{task_id}/mark_git_ref_not_found").Version(2).Patch().Wrap(requireTask, rateLimit).RouteHandler(makeMarkMergeQueueGitRefNotFound())
+	app.AddRoute("/task/{task_id}/virtual_tasks/complete").Version(2).Post().Wrap(requireUserOrTaskAuthOnly, rateLimit).RouteHandler(makeCompleteVirtualTasks(env))
 
 	// REST v2 API Routes
 	app.AddRoute("/").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makePlaceHolder())
@@ -126,6 +127,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/admin/spawn_hosts").Version(2).Get().Wrap(requireUser, adminSettings).RouteHandler(makeFetchSpawnHostUsage())
 	app.AddRoute("/admin/restart/tasks").Version(2).Post().Wrap(adminSettings).RouteHandler(makeRestartRoute(opts.APIQueue))
 	app.AddRoute("/admin/revert").Version(2).Post().Wrap(requireUser, adminSettings).RouteHandler(makeRevertRouteManager())
+	app.AddRoute("/admin/service_flags").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchServiceFlags())
 	app.AddRoute("/admin/service_flags").Version(2).Post().Wrap(requireUser, adminSettings).RouteHandler(makeSetServiceFlagsRouteManager())
 	app.AddRoute("/admin/settings").Version(2).Get().Wrap(requireUser, adminSettings).RouteHandler(makeFetchAdminSettings())
 	app.AddRoute("/admin/settings").Version(2).Post().Wrap(requireUser, adminSettings).RouteHandler(makeSetAdminSettings())

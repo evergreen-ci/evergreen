@@ -268,6 +268,7 @@ func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) erro
 	if err != nil {
 		return errors.Wrap(err, "converting new project to service model")
 	}
+	model.RestoreRedactedFileTicketWebhookSecret(&newProjectRef.TaskAnnotationSettings, oldProject.TaskAnnotationSettings)
 	newProjectRef.RepoRefId = oldProject.RepoRefId // this can't be modified by users
 
 	h.newProjectRef = newProjectRef
@@ -747,7 +748,6 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = projectModel.BuildFromService(ctx, *project); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting project '%s' to API model", h.projectName))
 	}
-
 	// we pass the repoId through so we don't have to re-look up the project
 	repoId := ""
 	if h.includeRepo {

@@ -1,0 +1,6 @@
+query {
+  taskAllExecutions(taskId: "exec_task_with_gaps") {
+    id
+    execution
+  }
+}

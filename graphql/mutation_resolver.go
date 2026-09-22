@@ -491,6 +491,26 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 	}
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 
+	// A project created with a repo ref joins the repo's scopes and inherits its
+	// settings and variables, so only admins of that repo may create one.
+	if dbProjectRef.RepoRefId != "" {
+		repoRef, err := model.FindOneRepoRef(ctx, dbProjectRef.RepoRefId)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding repo ref '%s': %s", dbProjectRef.RepoRefId, err.Error()))
+		}
+		if repoRef == nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("repo ref '%s' not found", dbProjectRef.RepoRefId))
+		}
+		if !u.HasPermission(ctx, gimlet.PermissionOpts{
+			Resource:      repoRef.Id,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionProjectSettings,
+			RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+		}) {
+			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' is not an admin of repo '%s/%s'", u.Username(), repoRef.Owner, repoRef.Repo))
+		}
+	}
+
 	if created, err := data.CreateProject(ctx, evergreen.GetEnvironment(), dbProjectRef, u); err != nil {
 		if !created {
 			apiErr, ok := err.(gimlet.ErrorResponse)

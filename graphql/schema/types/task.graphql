@@ -188,7 +188,6 @@ type Task {
 enum ExecutionPlatform {
   HOST
   CONTAINER
-  VIRTUAL
 }
 
 """

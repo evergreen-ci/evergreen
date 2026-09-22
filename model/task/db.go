@@ -67,6 +67,7 @@ var (
 	LastHeartbeatKey              = bsonutil.MustHaveTag(Task{}, "LastHeartbeat")
 	ActivatedKey                  = bsonutil.MustHaveTag(Task{}, "Activated")
 	DeactivatedForDependencyKey   = bsonutil.MustHaveTag(Task{}, "DeactivatedForDependency")
+	IsVirtualKey                  = bsonutil.MustHaveTag(Task{}, "IsVirtual")
 	BuildIdKey                    = bsonutil.MustHaveTag(Task{}, "BuildId")
 	DistroIdKey                   = bsonutil.MustHaveTag(Task{}, "DistroId")
 	SecondaryDistrosKey           = bsonutil.MustHaveTag(Task{}, "SecondaryDistros")
@@ -91,6 +92,7 @@ var (
 	DetailsKey                    = bsonutil.MustHaveTag(Task{}, "Details")
 	AbortedKey                    = bsonutil.MustHaveTag(Task{}, "Aborted")
 	AbortInfoKey                  = bsonutil.MustHaveTag(Task{}, "AbortInfo")
+	CompletedByKey                = bsonutil.MustHaveTag(Task{}, "CompletedBy")
 	TimeTakenKey                  = bsonutil.MustHaveTag(Task{}, "TimeTaken")
 	TaskCostKey                   = bsonutil.MustHaveTag(Task{}, "TaskCost")
 	PredictedTaskCostKey          = bsonutil.MustHaveTag(Task{}, "PredictedTaskCost")
@@ -343,6 +345,14 @@ func ByIdAndExecution(id string, execution int) bson.M {
 func ByOldTaskID(id string) bson.M {
 	return bson.M{
 		OldTaskIdKey: id,
+	}
+}
+
+// ByOldTaskIDs creates a query that finds the archived executions of all the
+// given tasks.
+func ByOldTaskIDs(ids []string) bson.M {
+	return bson.M{
+		OldTaskIdKey: bson.M{"$in": ids},
 	}
 }
 
@@ -1542,7 +1552,7 @@ func FindAll(ctx context.Context, query db.Q) ([]Task, error) {
 	return tasks, err
 }
 
-// Find returns really all tasks that satisfy the query.
+// FindAllOld returns all archived task executions matching the given query.
 func FindAllOld(ctx context.Context, query db.Q) ([]Task, error) {
 	tasks := []Task{}
 	err := db.FindAllQ(ctx, OldCollection, query, &tasks)

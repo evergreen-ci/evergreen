@@ -175,6 +175,7 @@ type parserTask struct {
 	IgnoredBranches   parserStringSlice         `yaml:"ignored_branches,omitempty" bson:"ignored_branches,omitempty"`
 	Stepback          *bool                     `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	MustHaveResults   *bool                     `yaml:"must_have_test_results,omitempty" bson:"must_have_test_results,omitempty"`
+	Virtual           bool                      `yaml:"virtual,omitempty" bson:"virtual,omitempty"`
 	Ps                *string                   `yaml:"ps,omitempty" bson:"ps,omitempty"`
 }
 
@@ -1943,6 +1944,7 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			GitTagOnly:      pt.GitTagOnly,
 			Stepback:        pt.Stepback,
 			MustHaveResults: pt.MustHaveResults,
+			Virtual:         pt.Virtual,
 			PS:              pt.Ps,
 		}
 		if strings.Contains(strings.TrimSpace(pt.Name), " ") {

@@ -1621,6 +1621,11 @@ func buildQuarantineMutationResponse(ctx context.Context, t *task.Task, testName
 }
 
 func redactParameters(ctx context.Context, projectId string, parameters []patch.Parameter) ([]*restModel.APIParameter, error) {
+	res := make([]*restModel.APIParameter, 0, len(parameters))
+	if len(parameters) == 0 {
+		return res, nil
+	}
+
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
@@ -1632,7 +1637,6 @@ func redactParameters(ctx context.Context, projectId string, parameters []patch.
 	}
 
 	redactKeys := config.LoggerConfig.RedactKeys
-	res := make([]*restModel.APIParameter, 0, len(parameters))
 	for _, param := range parameters {
 		redactedParam := &restModel.APIParameter{
 			Key:   utility.ToStringPtr(param.Key),

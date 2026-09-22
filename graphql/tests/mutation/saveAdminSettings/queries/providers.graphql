@@ -28,6 +28,10 @@ mutation SaveAdminSettings {
         alertableInstanceTypes: ["m5.24xlarge", "c5.24xlarge"]
         allowedRegions: ["us-east-1", "us-west-1", "us-west-2"]
         maxVolumeSizePerUser: 1000
+        resourceTags: {
+          mongodbEnv: STAGING
+          mongodbOwner: "evergreen@mongodb.com"
+        }
         accountRoles: [
           {account: "evgUser",  role: "super"}
         ]
@@ -91,6 +95,10 @@ mutation SaveAdminSettings {
         alertableInstanceTypes
         allowedRegions
         maxVolumeSizePerUser
+        resourceTags {
+          mongodbEnv
+          mongodbOwner
+        }
         accountRoles {
           account
           role

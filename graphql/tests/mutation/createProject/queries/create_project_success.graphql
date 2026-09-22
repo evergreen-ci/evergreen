@@ -3,9 +3,8 @@ mutation {
     project: {
       identifier: "catVideos",
       id: "grumpyCat",
-      owner: "theCat", 
+      owner: "theCat",
       repo: "catGenerator"
-      repoRefId: "animals"
       }
   ){
     id

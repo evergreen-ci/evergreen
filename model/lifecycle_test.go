@@ -1859,6 +1859,81 @@ func TestCreateTaskGroup(t *testing.T) {
 	assert.Contains(tasks[2].DependsOn[0].TaskId, "example_task_2")
 }
 
+func TestCreateVirtualTask(t *testing.T) {
+	require.NoError(t, db.ClearCollections(build.Collection, task.Collection))
+	projYml := `
+tasks:
+- name: virtual_task
+  virtual: true
+- name: regular_task
+buildvariants:
+- name: "bv"
+  run_on:
+  - "arch"
+  tasks:
+  - name: virtual_task
+  - name: regular_task
+`
+	proj := &Project{}
+	const projectIdentifier = "test"
+	_, err := LoadProjectInto(t.Context(), []byte(projYml), nil, projectIdentifier, proj)
+	require.NoError(t, err)
+	require.NotNil(t, proj)
+
+	virtualTask := proj.FindProjectTask("virtual_task")
+	require.NotNil(t, virtualTask)
+	require.True(t, virtualTask.Virtual, "virtual task definition should parse virtual: true")
+	regularTask := proj.FindProjectTask("regular_task")
+	require.NotNil(t, regularTask)
+	require.False(t, regularTask.Virtual, "regular task definition should default to non-virtual")
+
+	v := &Version{
+		Id:                  "versionId",
+		CreateTime:          time.Now(),
+		Revision:            "foobar",
+		RevisionOrderNumber: 500,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		BuildVariants: []VersionBuildStatus{
+			{
+				BuildVariant:     "bv",
+				ActivationStatus: ActivationStatus{Activated: true},
+			},
+		},
+	}
+	pRef := &ProjectRef{
+		Id:                  "projectId",
+		Identifier:          projectIdentifier,
+		VirtualTasksEnabled: utility.TruePtr(),
+	}
+	table := NewTaskIdConfigForRepotrackerVersion(t.Context(), proj, v, TVPairSet{}, "", "")
+
+	creationInfo := TaskCreationInfo{
+		Project:          proj,
+		ProjectRef:       pRef,
+		Version:          v,
+		TaskIDs:          table,
+		BuildVariantName: "bv",
+		ActivateBuild:    true,
+	}
+	_, tasks, err := CreateBuildFromVersionNoInsert(t.Context(), creationInfo)
+	require.NoError(t, err)
+	require.Len(t, tasks, 2)
+
+	for _, task := range tasks {
+		switch task.DisplayName {
+		case "virtual_task":
+			assert.True(t, task.IsVirtual, "virtual task should be marked as virtual in the task doc")
+			assert.False(t, task.Activated, "virtual task should start out inactive even when the build is activated")
+			assert.True(t, utility.IsZeroTime(task.ActivatedTime), "virtual task should not have an activation time since it's default inactive")
+		case "regular_task":
+			assert.False(t, task.IsVirtual, "regular task should not be marked virtual in the task doc")
+			assert.True(t, task.Activated, "regular task should be activated when the build is activated")
+		default:
+			t.Fatalf("unexpected task %s", task.DisplayName)
+		}
+	}
+}
+
 func TestGetTaskIdTable(t *testing.T) {
 	ctx := t.Context()
 
