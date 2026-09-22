@@ -99,7 +99,7 @@ func (c *completeVirtualTasks) Execute(ctx context.Context, comm client.Communic
 				logger.Task().Errorf(ctx, "Virtual task '%s' completion failed: %s", result.TaskID, result.Reason)
 				failCatcher.Errorf("virtual task '%s': %s", result.TaskID, result.Reason)
 			} else if result.Reason != "" {
-				logger.Task().Infof(ctx, "Virtual task '%s' completed successfully: %s", result.TaskID, result.Reason)
+				logger.Task().Infof(ctx, "Virtual task '%s' already completed successfully, no-opping: %s", result.TaskID, result.Reason)
 			} else {
 				logger.Task().Infof(ctx, "Virtual task '%s' completed successfully.", result.TaskID)
 			}
