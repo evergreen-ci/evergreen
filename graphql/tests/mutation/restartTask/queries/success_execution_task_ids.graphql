@@ -1,0 +1,10 @@
+mutation {
+  restartTask(taskId: "task4", failedOnly: false, executionTaskIds: ["execution_task_4"]) {
+    id
+    displayStatus
+    executionTasksFull {
+      id
+      displayStatus
+    }
+  }
+}
