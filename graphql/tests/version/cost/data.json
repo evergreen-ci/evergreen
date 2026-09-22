@@ -20,6 +20,16 @@
       }
     },
     {
+      "_id": "hidden-cost-version",
+      "identifier": "spruce",
+      "r": "gitter_request",
+      "status": "succeeded",
+      "cost": {
+        "adjusted_ec2_cost": 10.0,
+        "adjusted_ebs_throughput_cost": 2.0
+      }
+    },
+    {
       "_id": "child-version-2",
       "identifier": "child-project-2",
       "r": "patch_request",
@@ -44,6 +54,10 @@
     {
       "_id": "evergreen",
       "identifier": "evergreen"
+    },
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
     }
   ]
 }

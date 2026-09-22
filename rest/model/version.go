@@ -150,7 +150,7 @@ func (apiVersion *APIVersion) BuildFromService(ctx context.Context, v model.Vers
 		}
 	}
 
-	if !shouldHideCostForProject(v.Identifier) {
+	if !ShouldHideCostForProject(v.Identifier) {
 		if !v.Cost.IsZero() {
 			versionCost := v.Cost
 			versionCost.Total = versionCost.AdjustedTotal()

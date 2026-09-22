@@ -676,6 +676,7 @@ func directorySpecificTestSetup(t *testing.T, state AtomicGraphQLState) {
 		"mutation/quarantineVariant":    {setupQuarantineVariantMutation},
 		"mutation/unquarantineVariant":  {setupQuarantineVariantMutation},
 		"query/variantQuarantineStatus": {setupVariantQuarantineStatusQuery},
+		"version/cost":                  {setupHiddenCostProjects},
 		"distro/availableRegions":       {setupEnvironmentSettings},
 		"patch/generatedTaskCounts":     {setupGeneratedTaskCounts},
 	}
@@ -792,6 +793,10 @@ func addSubnets(t *testing.T) {
 
 func clearSubnets(t *testing.T) {
 	evergreen.GetEnvironment().Settings().Providers.AWS.Subnets = []evergreen.Subnet{}
+}
+
+func setupHiddenCostProjects(t *testing.T) {
+	evergreen.GetEnvironment().Settings().Cost.HiddenCostProjects = []string{"spruce"}
 }
 
 func setupEnvironmentSettings(t *testing.T) {
