@@ -15,9 +15,30 @@ import (
 	"github.com/pkg/errors"
 )
 
-// taskRestartHandler implements the route POST /task/{task_id}/restart. It
-// fetches the needed task and project and calls the service function to
-// set the proper fields when reseting the task.
+// taskRestartHandler implements the route POST /tasks/{task_id}/restart. It
+// fetches the task and project and calls the service function to restart the
+// task (or display task).
+//
+// A display task is the schedulable unit, so restarting a display task restarts
+// its execution tasks. Two mutually exclusive options scope the restart to a
+// subset of a display task's execution tasks:
+//
+//   - FailedOnly restarts only the execution tasks that failed.
+//   - ExecutionTaskIDs restarts only the listed execution tasks, regardless of
+//     whether they failed.
+//
+// A scoped restart (FailedOnly or ExecutionTaskIDs) is deferred until every
+// execution task in the display task is finished, because the display task
+// cannot be re-archived while an execution task may still be running. When the
+// reset happens, the display task's execution is incremented once and only the
+// selected execution tasks are rerun; unselected execution tasks keep their
+// existing results.
+//
+// Scoped restart requests for the same display task that are made while a reset
+// is pending are merged into a single reset. A full display task restart
+// supersedes a pending scoped restart, and a scoped restart is a no-op if a full
+// restart is already pending. ExecutionTaskIDs is ignored for a non-display
+// task.
 type taskRestartHandler struct {
 	// If set for a display task, restarts only failed execution tasks. When
 	// used with a non-display task, this parameter has no effect. Mutually
@@ -25,7 +46,8 @@ type taskRestartHandler struct {
 	FailedOnly bool `json:"failed_only"`
 	// If set for a display task, restarts only the execution tasks with these
 	// IDs, regardless of whether they failed. Mutually exclusive with
-	// FailedOnly and ignored for a non-display task.
+	// FailedOnly. Each ID must be an execution task of the display task; an ID
+	// that is not part of the display task results in a 400 error.
 	ExecutionTaskIDs []string `json:"execution_task_ids,omitempty"`
 
 	taskId   string
@@ -39,7 +61,7 @@ func makeTaskRestartHandler() gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Restart a task
-//	@Description	Restarts the task of the given ID. Can only be performed if the task is finished.
+//	@Description	Restarts the given task. For a display task (or an execution task, which resolves to its display task), the restart reruns the display task's execution tasks; "failed_only" limits this to failed execution tasks and "execution_task_ids" to the listed execution tasks (mutually exclusive, ignored for non-display tasks). Display task resets are deferred until every execution task is finished, and scoped resets arriving while a reset is pending are merged; only a currently running non-display task is rejected.
 //	@Tags			tasks
 //	@Router			/tasks/{task_id}/restart [post]
 //	@Security		Api-User || Api-Key
