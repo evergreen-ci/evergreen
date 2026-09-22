@@ -1,8 +1,8 @@
 {
-  taskCountMainlineCommit: version(versionId: "mainline_commit") {
+  mainlineCommit: version(versionId: "mainline_commit") {
     taskCount
   }
-  taskCountPatch: version(versionId: "patch") {
+  patch: version(versionId: "patch") {
     taskCount
   }
 }
