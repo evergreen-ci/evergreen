@@ -514,6 +514,24 @@ func (d *Distro) IsEphemeral() bool {
 	return utility.StringSliceContains(evergreen.ProviderSpawnable, d.Provider)
 }
 
+// WarningNoteMessage returns the distro's warning note
+func (d *Distro) WarningNoteMessage() (string, bool) {
+	if d.WarningNote == "" {
+		return "", false
+	}
+	msg := d.Id
+	if len(d.Aliases) > 0 {
+		msg += fmt.Sprintf(" (alias: %s)", strings.Join(d.Aliases, ", "))
+	}
+	msg += ": " + d.WarningNote
+	return msg, true
+}
+
+// DistroNotFoundMessage returns a distro not found message
+func DistroNotFoundMessage(distroID string) string {
+	return fmt.Sprintf("%s: %s", distroID, evergreen.DistroNotFoundForTaskError)
+}
+
 func (d *Distro) BinaryName() string {
 	name := "evergreen"
 	if d.IsWindows() {
