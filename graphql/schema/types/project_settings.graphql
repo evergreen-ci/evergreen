@@ -49,6 +49,7 @@ input ProjectInput {
   deactivatePrevious: Boolean
   debugSpawnHostsDisabled: Boolean
   disabledStatsCache: Boolean
+  sourceCacheMode: SourceCacheMode
   dispatchingDisabled: Boolean
   waterfallDisabled: Boolean
   displayName: String

@@ -266,3 +266,36 @@ func TestGitHubDynamicTokenPermissionGroupBuildFromService(t *testing.T) {
 		assert.True(utility.FromBoolPtr(pg.AllPermissions))
 	})
 }
+
+func TestSourceCacheModeRoundTrip(t *testing.T) {
+	// An unset mode round-trips losslessly as nil so a branch can still inherit
+	// the repo-level mode.
+	pRef := &model.ProjectRef{}
+	apiRef := &APIProjectRef{}
+	require.NoError(t, apiRef.BuildFromService(t.Context(), *pRef))
+	assert.Nil(t, apiRef.SourceCacheMode)
+
+	svc, err := apiRef.ToService()
+	require.NoError(t, err)
+	assert.Equal(t, model.SourceCacheMode(""), svc.SourceCacheMode)
+
+	// An explicit OFF mode is preserved through both directions.
+	pRefOff := &model.ProjectRef{SourceCacheMode: model.SourceCacheModeDisabled}
+	apiRefOff := &APIProjectRef{}
+	require.NoError(t, apiRefOff.BuildFromService(t.Context(), *pRefOff))
+	require.NotNil(t, apiRefOff.SourceCacheMode)
+	assert.Equal(t, model.SourceCacheModeDisabled, *apiRefOff.SourceCacheMode)
+	svcOff, err := apiRefOff.ToService()
+	require.NoError(t, err)
+	assert.Equal(t, model.SourceCacheModeDisabled, svcOff.SourceCacheMode)
+
+	// WATERFALL round-trips through both directions.
+	pRef2 := &model.ProjectRef{SourceCacheMode: model.SourceCacheModeWaterfall}
+	apiRef2 := &APIProjectRef{}
+	require.NoError(t, apiRef2.BuildFromService(t.Context(), *pRef2))
+	require.NotNil(t, apiRef2.SourceCacheMode)
+	assert.Equal(t, model.SourceCacheModeWaterfall, *apiRef2.SourceCacheMode)
+	svc2, err := apiRef2.ToService()
+	require.NoError(t, err)
+	assert.Equal(t, model.SourceCacheModeWaterfall, svc2.SourceCacheMode)
+}

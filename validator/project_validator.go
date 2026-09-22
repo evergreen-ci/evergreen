@@ -185,6 +185,7 @@ var projectSettingsValidators = []projectSettingsValidator{
 	validateTimeoutLimits,
 	validateReferentialIntegrity,
 	validateGitHubAppCheckRuns,
+	validateSourceCacheMode,
 }
 
 func (vr ValidationError) Error() string {
@@ -1099,6 +1100,16 @@ func validateGitHubAppCheckRuns(ctx context.Context, settings *evergreen.Setting
 		})
 	}
 	return errs
+}
+
+func validateSourceCacheMode(_ context.Context, _ *evergreen.Settings, _ *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
+	if ref.SourceCacheMode != "" && ref.SourceCacheMode != model.SourceCacheModeAll && ref.SourceCacheMode != model.SourceCacheModeWaterfall && ref.SourceCacheMode != model.SourceCacheModeDisabled {
+		return ValidationErrors{{
+			Message: fmt.Sprintf("invalid source_cache_mode '%s'", ref.SourceCacheMode),
+			Level:   Error,
+		}}
+	}
+	return nil
 }
 
 func validateIncludeLimits(_ context.Context, settings *evergreen.Settings, project *model.Project, _ *model.ProjectRef, _ bool) ValidationErrors {

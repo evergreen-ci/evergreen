@@ -83,9 +83,9 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			assert.Equal(t, map[string]bool{"b": true}, data.PrivateVars)
 			assert.Equal(t, []string{"pass", "secret"}, data.RedactKeys)
 		},
-		"RunReturnsSourceCacheBucketForAllowlistedProject": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
+		"RunReturnsSourceCacheBucketForEnabledProject": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
 			rh.settings.Buckets.SourceCacheBucket = evergreen.BucketConfig{Name: "source-cache"}
-			rh.settings.Buckets.SourceCacheProjects = []string{"p1"}
+			require.NoError(t, db.Update(ctx, model.ProjectRefCollection, mgobson.M{model.ProjectRefIdKey: "p1"}, mgobson.M{"$set": mgobson.M{model.ProjectRefSourceCacheModeKey: model.SourceCacheModeAll}}))
 			rh.taskID = "t1"
 			resp := rh.Run(ctx)
 			require.NotZero(t, resp)
@@ -93,9 +93,9 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			require.True(t, ok)
 			assert.Equal(t, "source-cache", data.SourceCacheBucket.Name)
 		},
-		"RunReturnsNoSourceCacheBucketForProjectNotAllowlisted": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
+		"RunReturnsNoSourceCacheBucketForDisabledProject": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
 			rh.settings.Buckets.SourceCacheBucket = evergreen.BucketConfig{Name: "source-cache"}
-			rh.settings.Buckets.SourceCacheProjects = nil
+			require.NoError(t, db.Update(ctx, model.ProjectRefCollection, mgobson.M{model.ProjectRefIdKey: "p1"}, mgobson.M{"$set": mgobson.M{model.ProjectRefSourceCacheModeKey: model.SourceCacheModeDisabled}}))
 			rh.taskID = "t1"
 			resp := rh.Run(ctx)
 			require.NotZero(t, resp)

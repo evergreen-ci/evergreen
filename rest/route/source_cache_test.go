@@ -34,8 +34,7 @@ const (
 func sourceCacheTestSettings() *evergreen.Settings {
 	return &evergreen.Settings{
 		Buckets: evergreen.BucketsConfig{
-			SourceCacheBucket:   evergreen.BucketConfig{Name: "source-cache", RoleARN: "role_arn"},
-			SourceCacheProjects: []string{sourceCacheProjectID},
+			SourceCacheBucket: evergreen.BucketConfig{Name: "source-cache", RoleARN: "role_arn"},
 		},
 	}
 }
@@ -63,11 +62,11 @@ func setupSourceCacheCredentialsHandler(t *testing.T, settings *evergreen.Settin
 }
 
 // insertSourceCacheTask inserts a task and its project ref. An empty owner or repo
-// leaves them unset on the project ref.
-func insertSourceCacheTask(t *testing.T, requester, versionID, revision, owner, repo string) {
+// leaves them unset on the project ref. An empty mode is left unset on the project.
+func insertSourceCacheTask(t *testing.T, requester, versionID, revision, owner, repo string, mode model.SourceCacheMode) {
 	tsk := task.Task{Id: sourceCacheTaskID, Project: sourceCacheProjectID, Requester: requester, Version: versionID, Revision: revision}
 	require.NoError(t, tsk.Insert(t.Context()))
-	pRef := model.ProjectRef{Id: sourceCacheProjectID, Owner: owner, Repo: repo}
+	pRef := model.ProjectRef{Id: sourceCacheProjectID, Owner: owner, Repo: repo, SourceCacheMode: mode}
 	require.NoError(t, pRef.Insert(t.Context()))
 }
 
@@ -87,16 +86,17 @@ func TestSourceCacheCredentialsRun(t *testing.T) {
 		revision        string
 		insertPatchDoc  func(t *testing.T, versionID string)
 		owner, repo     string
+		sourceCacheMode model.SourceCacheMode
 		expectedStatus  int
 		wantRestoreKeys [][2]string
 	}{
 		"UnknownTaskIsNotFound": {
 			expectedStatus: http.StatusNotFound,
 		},
-		"ProjectNotOptedInIsRefused": {
-			mutateSettings: func(s *evergreen.Settings) { s.Buckets.SourceCacheProjects = nil },
+		"ProjectWithSourceCacheDisabledIsRefused": {
 			insertTask:     true, owner: "some-org", repo: "some-repo",
-			expectedStatus: http.StatusConflict,
+			sourceCacheMode: model.SourceCacheModeDisabled,
+			expectedStatus:  http.StatusConflict,
 		},
 		"BucketWithNoRoleIsRefused": {
 			mutateSettings: func(s *evergreen.Settings) { s.Buckets.SourceCacheBucket.RoleARN = "" },
@@ -124,6 +124,17 @@ func TestSourceCacheCredentialsRun(t *testing.T) {
 		},
 		"MainlineTaskGetsARestorePlan": {
 			insertTask: true, revision: "abc123", owner: "some-org", repo: "some-repo",
+			expectedStatus:  http.StatusOK,
+			wantRestoreKeys: [][2]string{{"base", "abc123"}},
+		},
+		"WaterfallModeRefusesPatchTask": {
+			insertTask: true, requester: evergreen.GithubPRRequester, revision: "abc123", owner: "some-org", repo: "some-repo",
+			sourceCacheMode: model.SourceCacheModeWaterfall,
+			expectedStatus:  http.StatusConflict,
+		},
+		"WaterfallModeAllowsMainlineTask": {
+			insertTask: true, revision: "abc123", owner: "some-org", repo: "some-repo",
+			sourceCacheMode: model.SourceCacheModeWaterfall,
 			expectedStatus:  http.StatusOK,
 			wantRestoreKeys: [][2]string{{"base", "abc123"}},
 		},
@@ -186,7 +197,11 @@ func TestSourceCacheCredentialsRun(t *testing.T) {
 				if versionID == "" {
 					versionID = "5bedc62ee4055d31f0340b1d"
 				}
-				insertSourceCacheTask(t, requester, versionID, tCase.revision, tCase.owner, tCase.repo)
+				mode := tCase.sourceCacheMode
+				if mode == "" {
+					mode = model.SourceCacheModeAll
+				}
+				insertSourceCacheTask(t, requester, versionID, tCase.revision, tCase.owner, tCase.repo, mode)
 				if tCase.insertPatchDoc != nil {
 					tCase.insertPatchDoc(t, versionID)
 				}

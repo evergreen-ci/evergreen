@@ -7,6 +7,7 @@ input RepoRefInput {
   commitQueue: CommitQueueParamsInput
   deactivatePrevious: Boolean
   disabledStatsCache: Boolean
+  sourceCacheMode: SourceCacheMode
   dispatchingDisabled: Boolean
   waterfallDisabled: Boolean
   displayName: String
@@ -62,6 +63,7 @@ type RepoRef {
   commitQueue: RepoCommitQueueParams!
   deactivatePrevious: Boolean!
   disabledStatsCache: Boolean!
+  sourceCacheMode: SourceCacheMode
   dispatchingDisabled: Boolean!
   waterfallDisabled: Boolean!
   displayName: String!
