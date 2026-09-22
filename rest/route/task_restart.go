@@ -20,8 +20,13 @@ import (
 // set the proper fields when reseting the task.
 type taskRestartHandler struct {
 	// If set for a display task, restarts only failed execution tasks. When
-	// used with a non-display task, this parameter has no effect.
+	// used with a non-display task, this parameter has no effect. Mutually
+	// exclusive with ExecutionTaskIDs.
 	FailedOnly bool `json:"failed_only"`
+	// If set for a display task, restarts only the execution tasks with these
+	// IDs, regardless of whether they failed. Mutually exclusive with
+	// FailedOnly and ignored for a non-display task.
+	ExecutionTaskIDs []string `json:"execution_task_ids,omitempty"`
 
 	taskId   string
 	username string
@@ -81,7 +86,7 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 // Execute calls the data ResetTask function and returns the refreshed
 // task from the service.
 func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
-	err := resetTask(ctx, evergreen.GetEnvironment().Settings(), trh.taskId, trh.username, trh.FailedOnly)
+	err := resetTask(ctx, evergreen.GetEnvironment().Settings(), trh.taskId, trh.username, trh.FailedOnly, trh.ExecutionTaskIDs)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -106,8 +111,9 @@ func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
 }
 
 // resetTask sets the task to be in an unexecuted state and prepares it to be run again.
-// If given an execution task, marks the display task for reset.
-func resetTask(ctx context.Context, settings *evergreen.Settings, taskId, username string, failedOnly bool) error {
+// If given an execution task, marks the display task for reset. If execTaskIDs is set, only
+// those execution tasks of the display task are restarted.
+func resetTask(ctx context.Context, settings *evergreen.Settings, taskId, username string, failedOnly bool, execTaskIDs []string) error {
 	t, err := task.FindOneId(ctx, taskId)
 	if err != nil {
 		return gimlet.ErrorResponse{
@@ -121,5 +127,22 @@ func resetTask(ctx context.Context, settings *evergreen.Settings, taskId, userna
 			Message:    fmt.Sprintf("task '%s' not found", taskId),
 		}
 	}
-	return errors.Wrapf(serviceModel.ResetTaskOrDisplayTask(ctx, settings, t, username, evergreen.RESTV2Package, failedOnly, nil), "resetting task '%s'", taskId)
+	if failedOnly && len(execTaskIDs) > 0 {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "cannot restart only failed execution tasks and a specific set of execution tasks at the same time",
+		}
+	}
+	if err := serviceModel.ValidateExecutionTasksToRestart(t, execTaskIDs); err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    err.Error(),
+		}
+	}
+	return errors.Wrapf(serviceModel.ResetTaskOrDisplayTask(ctx, settings, t, serviceModel.ResetTaskOptions{
+		User:             username,
+		Origin:           evergreen.RESTV2Package,
+		FailedOnly:       failedOnly,
+		ExecutionTaskIDs: execTaskIDs,
+	}), "resetting task '%s'", taskId)
 }
