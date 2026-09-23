@@ -95,10 +95,12 @@ func newSourceCache(ctx context.Context, comm client.Communicator, conf *interna
 	if conf.SourceCacheBucket.Name == "" {
 		return nil, "no source cache bucket is configured for this project"
 	}
-	if c.Filter != "" || len(c.SparseCheckoutPaths) > 0 {
+	if c.Filter != "" {
 		// A restored partial clone keeps a promisor remote whose lazy fetches
-		// would run later with an expired token.
-		return nil, "the source cache is skipped for partial and sparse clones"
+		// would run later with an expired token. An empty filter makes a sparse
+		// checkout a no-op (getCloneCommand blanks the paths), so the clone is a
+		// full one the cache can serve.
+		return nil, "the source cache is skipped for partial clones"
 	}
 	if conf.Task.Revision == "" {
 		return nil, "the task has no revision to key the source cache on"
