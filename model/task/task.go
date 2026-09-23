@@ -4932,7 +4932,7 @@ func (t *Task) GetS3ArtifactUsageFromDB(ctx context.Context) (s3usage.ArtifactMe
 	}, nil
 }
 
-// DistroErrors returns a "distro not found" message and a warning message.
+// DistroErrors returns a "distro not found" message and/or a warning message.
 // Display tasks do not have distros, so they never produce any messages.
 func (t *Task) DistroErrors(ctx context.Context) []string {
 	if t.DisplayOnly {
