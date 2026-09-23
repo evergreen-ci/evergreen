@@ -239,6 +239,17 @@ enum ProjectHealthView {
 }
 
 """
+SourceCacheMode controls whether a project's tasks may use the git source cache.
+OFF disables it, ALL enables it for every build, and WATERFALL enables it only
+for mainline (waterfall/commit) builds.
+"""
+enum SourceCacheMode {
+  OFF
+  ALL
+  WATERFALL
+}
+
+"""
 Project models single repository on GitHub.
 """
 type Project {
@@ -252,6 +263,7 @@ type Project {
   deactivatePrevious: Boolean
   debugSpawnHostsDisabled: Boolean
   disabledStatsCache: Boolean
+  sourceCacheMode: SourceCacheMode
   dispatchingDisabled: Boolean
   waterfallDisabled: Boolean
   displayName: String!

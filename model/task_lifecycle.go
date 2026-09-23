@@ -200,7 +200,13 @@ func resetEarlierSingleHostTaskGroupTasks(ctx context.Context, activatingTasks, 
 // dependencies. Tasks in a single host task group task will be restarted if
 // later task group tasks are activated.
 func activateTasksWithDependencies(ctx context.Context, taskIDs []string, caller string) error {
-	tasks, err := task.FindAll(ctx, db.Query(task.ByIdsAndStatus(taskIDs, []string{evergreen.TaskUndispatched})).
+	query := task.ByIdsAndStatus(taskIDs, []string{evergreen.TaskUndispatched})
+	if evergreen.IsTimeBasedActivator(caller) {
+		// Automatic time-based activation (cron/batchtime) should not
+		// activate virtual tasks.
+		query[task.IsVirtualKey] = bson.M{"$ne": true}
+	}
+	tasks, err := task.FindAll(ctx, db.Query(query).
 		WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.ActivatedKey, task.BuildIdKey, task.TaskGroupKey, task.TaskGroupMaxHostsKey, task.TaskGroupOrderKey, task.RequesterKey, task.ProjectKey))
 	if err != nil {
 		return errors.Wrap(err, "getting tasks for activation")

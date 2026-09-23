@@ -60,7 +60,17 @@ func getGroupedFiles(ctx context.Context, name string, taskID string, execution 
 	env := evergreen.GetEnvironment()
 	settings := env.Settings()
 	baseURL := settings.Ui.Url
-	strippedFiles := artifact.StripHiddenFilesLazy(taskFiles, hasUser, baseURL, taskID, execution, []byte(settings.ArtifactSignSecret))
+	artifactSignSecret := []byte(settings.ArtifactSignSecret)
+	var strippedFiles []artifact.File
+	if baseURL != "" && len(artifactSignSecret) > 0 {
+		strippedFiles = artifact.StripHiddenFilesLazy(taskFiles, hasUser, baseURL, taskID, execution, artifactSignSecret)
+	} else {
+		var err error
+		strippedFiles, err = artifact.StripHiddenFiles(ctx, taskFiles, hasUser, model.NewArtifactCredentialResolver(taskID))
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	apiFileList := []*restModel.APIFile{}
 	for _, file := range strippedFiles {
@@ -244,9 +254,9 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 			baseVersionID = baseVersion.Id
 		}
 	}
-	includeNeverActivatedTasks := buildVariantOpts.IncludeNeverActivatedTasks
-	if includeNeverActivatedTasks == nil {
-		includeNeverActivatedTasks = utility.ToBoolPtr(false)
+	includeNeverActivatedTasks := false
+	if buildVariantOpts.IncludeNeverActivatedTasks != nil {
+		includeNeverActivatedTasks = *buildVariantOpts.IncludeNeverActivatedTasks
 	}
 	opts := task.GetTasksByVersionOptions{
 		Statuses:      getValidTaskStatusesFilter(buildVariantOpts.Statuses),
@@ -254,8 +264,8 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 		TaskNames:     buildVariantOpts.Tasks,
 		Sorts:         defaultSort,
 		BaseVersionID: baseVersionID,
-		// Do not fetch inactive tasks for patches. This is because the UI does not display inactive tasks for patches.
-		IncludeNeverActivatedTasks: *includeNeverActivatedTasks || !evergreen.IsPatchRequester(requester),
+		// If the version is mainline, include never-activated tasks regardless of the user's preference.
+		IncludeNeverActivatedTasks: includeNeverActivatedTasks || !evergreen.IsPatchRequester(requester),
 	}
 
 	tasks, _, err := task.GetTasksByVersion(ctx, versionId, opts)

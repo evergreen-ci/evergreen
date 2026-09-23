@@ -684,6 +684,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEventSettings
   ProjectHealthView:
     model: github.com/evergreen-ci/evergreen/model.ProjectHealthView
+  SourceCacheMode:
+    model: github.com/evergreen-ci/evergreen/model.SourceCacheMode
   ProjectInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
   ProjectLite:

@@ -131,6 +131,9 @@ type ProjectRef struct {
 	ProjectHealthView ProjectHealthView `bson:"project_health_view" json:"project_health_view" yaml:"project_health_view"`
 	ParsleyFilters    []parsley.Filter  `bson:"parsley_filters,omitempty" json:"parsley_filters,omitempty"`
 
+	// SourceCacheMode gates whether tasks may use the git source cache.
+	SourceCacheMode SourceCacheMode `bson:"source_cache_mode,omitempty" json:"source_cache_mode,omitempty" yaml:"source_cache_mode,omitempty"`
+
 	// GitHubDynamicTokenPermissionGroups is a list of permission groups for GitHub dynamic access tokens.
 	GitHubDynamicTokenPermissionGroups []GitHubDynamicTokenPermissionGroup `bson:"github_dynamic_token_permission_groups,omitempty" json:"github_dynamic_token_permission_groups,omitempty" yaml:"github_dynamic_token_permission_groups,omitempty"`
 
@@ -417,6 +420,17 @@ const (
 	ProjectHealthViewFailed ProjectHealthView = "FAILED"
 )
 
+// SourceCacheMode controls whether a project's tasks may use the git source cache.
+// The empty value (unset) disables the cache and is the default; it also lets a
+// branch inherit the repo-level mode under the merged project ref.
+type SourceCacheMode string
+
+const (
+	SourceCacheModeDisabled  SourceCacheMode = "OFF"
+	SourceCacheModeAll       SourceCacheMode = "ALL"
+	SourceCacheModeWaterfall SourceCacheMode = "WATERFALL"
+)
+
 type ProjectBanner struct {
 	Theme evergreen.BannerTheme `bson:"theme" json:"theme"`
 	Text  string                `bson:"text" json:"text"`
@@ -530,6 +544,7 @@ var (
 	ProjectRefHiddenKey                             = bsonutil.MustHaveTag(ProjectRef{}, "Hidden")
 	ProjectRefRepotrackerErrorKey                   = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
 	ProjectRefDisabledStatsCacheKey                 = bsonutil.MustHaveTag(ProjectRef{}, "DisabledStatsCache")
+	ProjectRefSourceCacheModeKey                    = bsonutil.MustHaveTag(ProjectRef{}, "SourceCacheMode")
 	ProjectRefAdminsKey                             = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 	ProjectRefGitTagAuthorizedUsersKey              = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedUsers")
 	ProjectRefGitTagAuthorizedTeamsKey              = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedTeams")
@@ -649,6 +664,22 @@ func (p *ProjectRef) IsGitTagVersionsEnabled() bool {
 
 func (p *ProjectRef) IsStatsCacheDisabled() bool {
 	return utility.FromBoolPtr(p.DisabledStatsCache)
+}
+
+// GetSourceCacheMode returns the project's source cache mode, which is empty
+// (disabled) when unset.
+func (p *ProjectRef) GetSourceCacheMode() SourceCacheMode {
+	return p.SourceCacheMode
+}
+
+// SourceCacheEnabled reports whether the source cache is granted for a task
+// with the given patch status. ALL enables it for every build; WATERFALL only
+// for mainline (non-patch) builds.
+func SourceCacheEnabled(mode SourceCacheMode, isPatch bool) bool {
+	if mode == SourceCacheModeAll {
+		return true
+	}
+	return mode == SourceCacheModeWaterfall && !isPatch
 }
 
 func (p *ProjectRef) IsDebugSpawnHostsEnabled() bool {
@@ -2441,6 +2472,7 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 			projectRefRepotrackerDisabledKey:     p.RepotrackerDisabled,
 			projectRefPatchingDisabledKey:        p.PatchingDisabled,
 			ProjectRefDisabledStatsCacheKey:      p.DisabledStatsCache,
+			ProjectRefSourceCacheModeKey:         p.SourceCacheMode,
 			projectRefDebugSpawnHostsDisabledKey: p.DebugSpawnHostsDisabled,
 			projectRefRunEveryMainlineCommitKey:  p.RunEveryMainlineCommit,
 			projectRefVirtualTasksEnabledKey:     p.VirtualTasksEnabled,

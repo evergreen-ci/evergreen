@@ -46,6 +46,10 @@ func artifactSignHandler() http.HandlerFunc {
 		}
 
 		appSecret := []byte(evergreen.GetEnvironment().Settings().ArtifactSignSecret)
+		if len(appSecret) == 0 {
+			http.Error(w, "artifact signing is not configured", http.StatusInternalServerError)
+			return
+		}
 		if !artifact.ValidateSignToken(appSecret, taskID, execution, fileName, token, expiryStr) {
 			http.Error(w, "invalid or expired token", http.StatusUnauthorized)
 			return

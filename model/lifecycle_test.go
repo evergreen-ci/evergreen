@@ -1934,6 +1934,98 @@ buildvariants:
 	}
 }
 
+func TestCreateVirtualTaskWithStepbackActivation(t *testing.T) {
+	colls := []string{build.Collection, task.Collection}
+	require.NoError(t, db.ClearCollections(colls...))
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(colls...))
+	})
+	projYml := `
+tasks:
+- name: virtual_stepback_activate
+  virtual: true
+- name: virtual_stepback_no_activate
+  virtual: true
+- name: virtual_no_stepback
+  virtual: true
+- name: regular_task
+buildvariants:
+- name: "bv"
+  run_on:
+  - "arch"
+  tasks:
+  - name: virtual_stepback_activate
+  - name: virtual_stepback_no_activate
+  - name: virtual_no_stepback
+  - name: regular_task
+`
+	proj := &Project{}
+	const projectIdentifier = "test"
+	_, err := LoadProjectInto(t.Context(), []byte(projYml), nil, projectIdentifier, proj)
+	require.NoError(t, err)
+	require.NotNil(t, proj)
+
+	v := &Version{
+		Id:                  "versionId",
+		CreateTime:          time.Now(),
+		Revision:            "foobar",
+		RevisionOrderNumber: 500,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		BuildVariants: []VersionBuildStatus{
+			{
+				BuildVariant:     "bv",
+				ActivationStatus: ActivationStatus{Activated: true},
+			},
+		},
+	}
+	pRef := &ProjectRef{
+		Id:                  "projectId",
+		Identifier:          projectIdentifier,
+		VirtualTasksEnabled: utility.TruePtr(),
+	}
+	table := NewTaskIdConfigForRepotrackerVersion(t.Context(), proj, v, TVPairSet{}, "", "")
+
+	creationInfo := TaskCreationInfo{
+		Project:          proj,
+		ProjectRef:       pRef,
+		Version:          v,
+		TaskIDs:          table,
+		BuildVariantName: "bv",
+		ActivateBuild:    true,
+		ActivationInfo: specificActivationInfo{
+			stepbackTasks: map[string][]specificStepbackInfo{
+				"bv": {
+					{task: "virtual_stepback_activate", activate: true},
+					{task: "virtual_stepback_no_activate", activate: false},
+				},
+			},
+		},
+	}
+	_, tasks, err := CreateBuildFromVersionNoInsert(t.Context(), creationInfo)
+	require.NoError(t, err)
+	require.Len(t, tasks, 4)
+
+	for _, task := range tasks {
+		switch task.DisplayName {
+		case "virtual_stepback_activate":
+			assert.True(t, task.IsVirtual, "stepped-back virtual task should be virtual")
+			assert.Equal(t, evergreen.StepbackTaskActivator, task.ActivatedBy, "virtual task should be created for stepback")
+			assert.True(t, task.Activated, "virtual task being created for stepback should be activated at creation")
+		case "virtual_stepback_no_activate":
+			assert.True(t, task.IsVirtual)
+			assert.False(t, task.Activated, "virtual task targeted by stepback with activate=false should stay inactive")
+		case "virtual_no_stepback":
+			assert.True(t, task.IsVirtual)
+			assert.False(t, task.Activated, "virtual task without stepback should stay inactive")
+		case "regular_task":
+			assert.False(t, task.IsVirtual)
+			assert.True(t, task.Activated, "regular task should be activated when the build is activated")
+		default:
+			t.Fatalf("unexpected task %s", task.DisplayName)
+		}
+	}
+}
+
 func TestGetTaskIdTable(t *testing.T) {
 	ctx := t.Context()
 
@@ -3063,6 +3155,62 @@ func TestSetTaskActivationForBuildsWithIgnoreTasks(t *testing.T) {
 			continue
 		}
 		assert.True(t, dbTask.Activated)
+	}
+}
+
+func TestSetTaskActivationForBuildsWithVirtualTasks(t *testing.T) {
+	ctx := t.Context()
+	colls := []string{task.Collection, build.Collection, VersionCollection}
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(colls...))
+	})
+
+	for name, test := range map[string]struct {
+		caller                     string
+		expectVirtualTaskActivated bool
+	}{
+		"TimeBasedActivatorSkipsVirtualTask": {
+			caller:                     evergreen.ElapsedBuildActivator,
+			expectVirtualTaskActivated: false,
+		},
+		"ManualActivatorActivatesVirtualTask": {
+			caller:                     "user",
+			expectVirtualTaskActivated: true,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(colls...))
+
+			vId := "v"
+			require.NoError(t, (&Version{Id: vId}).Insert(t.Context()))
+			require.NoError(t, (&build.Build{Id: "b0", Version: vId}).Insert(t.Context()))
+
+			tasks := []task.Task{
+				{Id: "regular", BuildId: "b0", Status: evergreen.TaskUndispatched, DependsOn: []task.Dependency{{TaskId: "virtual_dep"}}},
+				{Id: "virtual", BuildId: "b0", Status: evergreen.TaskUndispatched, IsVirtual: true},
+				{Id: "virtual_dep", BuildId: "b1", Status: evergreen.TaskUndispatched, IsVirtual: true},
+			}
+			for _, tk := range tasks {
+				require.NoError(t, tk.Insert(t.Context()))
+			}
+
+			require.NoError(t, setTaskActivationForBuilds(ctx, []string{"b0"}, true, true, nil, test.caller))
+
+			virtualTask, err := task.FindOneId(ctx, "virtual")
+			require.NoError(t, err)
+			require.NotNil(t, virtualTask)
+			assert.Equal(t, test.expectVirtualTaskActivated, virtualTask.Activated)
+
+			regularTask, err := task.FindOneId(ctx, "regular")
+			require.NoError(t, err)
+			require.NotNil(t, regularTask)
+			assert.True(t, regularTask.Activated, "regular task should always be activated")
+
+			virtualDep, err := task.FindOneId(ctx, "virtual_dep")
+			require.NoError(t, err)
+			require.NotNil(t, virtualDep)
+			assert.True(t, virtualDep.Activated, "virtual task should be activated if a task is being activated that depends on it")
+		})
 	}
 }
 

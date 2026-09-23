@@ -28,6 +28,9 @@ func httpRequestUserOtelAttributes(r *http.Request) *http.Request {
 	if mechanism := httpClientAuthMechanismFromRequest(r); mechanism != "" {
 		attrs = append(attrs, attribute.String(HTTPClientAuthOtelAttribute, mechanism))
 	}
+	if version := r.Header.Get(CLIVersionHeader); version != "" {
+		attrs = append(attrs, attribute.String(HTTPCLIVersionOtelAttribute, version))
+	}
 
 	if u := gimlet.GetUser(r.Context()); u != nil {
 		attrs = append(attrs, attribute.Bool(HTTPUserOnlyAPIOtelAttribute, u.IsAPIOnly()))

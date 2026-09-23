@@ -4,7 +4,7 @@ import "github.com/evergreen-ci/evergreen"
 
 // shouldHideCostForProject reports whether cost fields should be suppressed in API responses for the
 // given project ID.
-func shouldHideCostForProject(projectID string) bool {
+func ShouldHideCostForProject(projectID string) bool {
 	if projectID == "" {
 		return false
 	}

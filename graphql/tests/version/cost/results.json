@@ -14,6 +14,16 @@
           }
         }
       }
+    },
+    {
+      "query_file": "hidden_cost.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "cost": null
+          }
+        }
+      }
     }
   ]
 }
