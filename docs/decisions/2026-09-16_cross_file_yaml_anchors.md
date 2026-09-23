@@ -6,7 +6,7 @@
 
 ## Context and Problem Statement
 
-Evergreen supports cross-file YAML anchors: an anchor defined in one include file can be used as an alias in a later include file. 
+Evergreen supports cross-file YAML anchors: an anchor defined in one include file can be used as an alias in a later include file.
 This works by maintaining an `anchorRegistry` and prepending a serialized preamble of all known anchor definitions before parsing each include file.
 
 The preamble must be valid YAML, which requires every `&name` definition to appear before any `*name` alias that references it. Two bugs came from violating this:
@@ -42,6 +42,6 @@ Registry entries never reference each other, so:
 
 ## More Information
 
-The trade-off is preamble size: an alias serializes as `*name` (a few bytes), while an expanded copy inlines the full 
-referenced value into each anchor that uses it. Deeply chained anchor references could grow the preamble multiplicatively, 
+The trade-off is preamble size: an alias serializes as `*name` (a few bytes), while an expanded copy inlines the full
+referenced value into each anchor that uses it. Deeply chained anchor references could grow the preamble multiplicatively,
 ut real configs use flat config-block anchors and include file sizes are capped (see [2024-07-11 include file limits](2024-07-11_include_file_limits.md)).
