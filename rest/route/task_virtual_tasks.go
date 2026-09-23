@@ -32,6 +32,16 @@ func makeCompleteVirtualTasks(env evergreen.Environment) gimlet.RouteHandler {
 	return &completeVirtualTasksHandler{env: env}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Push-complete virtual tasks
+//	@Description	Push-completes a batch of virtual tasks with results. The task_id in the URL identifies the runner task. The route accepts task auth or service user auth (must have task admin permissions). Tasks that are already finished, already running, or whose execution number does not match will no-op.
+//	@Tags			tasks
+//	@Router			/task/{task_id}/virtual_tasks/complete [post]
+//	@Security		Api-User || Api-Key
+//	@Param			task_id	path		string								true	"the runner task ID"
+//	@Param			{object}	body		apimodels.CompleteVirtualTasksRequest	true	"virtual task completions to push"
+//	@Success		201			{object}	apimodels.CompleteVirtualTasksResponse
 func (h *completeVirtualTasksHandler) Factory() gimlet.RouteHandler {
 	return &completeVirtualTasksHandler{env: h.env}
 }
