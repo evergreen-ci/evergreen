@@ -44,14 +44,18 @@ func TestGitHubIntentProcessingError(t *testing.T) {
 	require.NoError(t, err)
 	authHandler := gimlet.NewAuthenticationHandler(gimlet.NewBasicAuthenticator(nil, nil), userManager)
 
-	runRoute := func(t *testing.T, usr *user.DBUser, errorID string) *httptest.ResponseRecorder {
-		req := httptest.NewRequest(http.MethodGet, "/github/intent-processing-errors/"+errorID, nil)
+	runRoute := func(t *testing.T, usr *user.DBUser, errorID, rawQuery string) *httptest.ResponseRecorder {
+		rawURL := "/github/intent-processing-errors/" + errorID
+		if rawQuery != "" {
+			rawURL += "?" + rawQuery
+		}
+		req := httptest.NewRequest(http.MethodGet, rawURL, nil)
 		req = gimlet.SetURLVars(req, map[string]string{"error_id": errorID})
 		req = req.WithContext(gimlet.AttachUser(req.Context(), usr))
 		recorder := httptest.NewRecorder()
 		authHandler.ServeHTTP(recorder, req, func(rw http.ResponseWriter, r *http.Request) {
 			newGitHubIntentProcessingErrorContextMiddleware().ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
-				RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksView).ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+				newGitHubIntentProcessingErrorPermissionMiddleware().ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
 					gimlet.WriteResponse(r.Context(), rw, makeGitHubIntentProcessingError().(*githubIntentProcessingErrorHandler).Run(r.Context()))
 				})
 			})
@@ -60,7 +64,7 @@ func TestGitHubIntentProcessingError(t *testing.T) {
 	}
 
 	t.Run("AuthorizedUserCanReadMessage", func(t *testing.T) {
-		resp := runRoute(t, &user.DBUser{Id: "authorized", SystemRoles: []string{role.ID}}, stored.ID)
+		resp := runRoute(t, &user.DBUser{Id: "authorized", SystemRoles: []string{role.ID}}, stored.ID, "")
 		require.Equal(t, http.StatusOK, resp.Code, resp.Body.String())
 		data := githubIntentProcessingErrorResponse{}
 		require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &data))
@@ -68,12 +72,12 @@ func TestGitHubIntentProcessingError(t *testing.T) {
 	})
 
 	t.Run("AdminProjectAccessCanReadMessage", func(t *testing.T) {
-		resp := runRoute(t, &user.DBUser{Id: "admin", SystemRoles: []string{adminProjectAccessRole.ID}}, stored.ID)
+		resp := runRoute(t, &user.DBUser{Id: "admin", SystemRoles: []string{adminProjectAccessRole.ID}}, stored.ID, "")
 		require.Equal(t, http.StatusOK, resp.Code, resp.Body.String())
 	})
 
 	t.Run("UnauthorizedUserCannotReadMessage", func(t *testing.T) {
-		resp := runRoute(t, &user.DBUser{Id: "unauthorized"}, stored.ID)
+		resp := runRoute(t, &user.DBUser{Id: "unauthorized"}, stored.ID, "")
 		assert.Equal(t, http.StatusUnauthorized, resp.Code)
 	})
 
@@ -86,17 +90,30 @@ func TestGitHubIntentProcessingError(t *testing.T) {
 			Permissions: gimlet.Permissions{evergreen.PermissionTasks: evergreen.TasksView.Value},
 		}
 		require.NoError(t, db.Insert(t.Context(), evergreen.RoleCollection, otherRole))
-		resp := runRoute(t, &user.DBUser{Id: "other-project-user", SystemRoles: []string{otherRole.ID}}, stored.ID)
+		resp := runRoute(t, &user.DBUser{Id: "other-project-user", SystemRoles: []string{otherRole.ID}}, stored.ID, "")
+		assert.Equal(t, http.StatusUnauthorized, resp.Code)
+	})
+
+	t.Run("ResourceTypeQueryCannotBypassProjectPermission", func(t *testing.T) {
+		otherScope := gimlet.Scope{ID: "bypass-scope", Type: evergreen.ProjectResourceType, Resources: []string{"other-project"}}
+		require.NoError(t, db.Insert(t.Context(), evergreen.ScopeCollection, otherScope))
+		otherRole := gimlet.Role{
+			ID:          "bypass-task-viewer",
+			Scope:       otherScope.ID,
+			Permissions: gimlet.Permissions{evergreen.PermissionTasks: evergreen.TasksView.Value},
+		}
+		require.NoError(t, db.Insert(t.Context(), evergreen.RoleCollection, otherRole))
+		resp := runRoute(t, &user.DBUser{Id: "bypass-user", SystemRoles: []string{otherRole.ID}}, stored.ID, "resource_type=PROJECT&project_id=other-project")
 		assert.Equal(t, http.StatusUnauthorized, resp.Code)
 	})
 
 	t.Run("MissingErrorReturnsNotFound", func(t *testing.T) {
-		resp := runRoute(t, &user.DBUser{Id: "authorized", SystemRoles: []string{role.ID}}, "0123456789abcdef01234567")
+		resp := runRoute(t, &user.DBUser{Id: "authorized", SystemRoles: []string{role.ID}}, "0123456789abcdef01234567", "")
 		assert.Equal(t, http.StatusNotFound, resp.Code)
 	})
 
 	t.Run("InvalidIDReturnsBadRequest", func(t *testing.T) {
-		resp := runRoute(t, &user.DBUser{Id: "authorized", SystemRoles: []string{role.ID}}, "invalid")
+		resp := runRoute(t, &user.DBUser{Id: "authorized", SystemRoles: []string{role.ID}}, "invalid", "")
 		assert.Equal(t, http.StatusBadRequest, resp.Code)
 	})
 }

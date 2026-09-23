@@ -820,16 +820,39 @@ func (m *githubIntentProcessingErrorContextMiddleware) ServeHTTP(rw http.Respons
 		return
 	}
 
-	// Set the project_id request variable so the project permission middleware can authorize it.
-	vars := gimlet.GetVars(r)
-	vars["project_id"] = processingError.ProjectID
-	r = gimlet.SetURLVars(r, vars)
 	r = setGitHubIntentInfo(r, processingError)
 	next(rw, r)
 }
 
 func setGitHubIntentInfo(r *http.Request, intentInfo *patch.GitHubIntentInfo) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), githubIntentProcessingErrorKey, intentInfo))
+}
+
+// githubIntentInfoProjectScope returns the project that owns the GitHub intent processing error
+// loaded into the request context. It deliberately ignores request parameters so that permissions
+// are always checked against the project of the record being served.
+func githubIntentInfoProjectScope(r *http.Request) ([]string, int, error) {
+	intentInfo, err := GetGitHubIntentInfo(r.Context())
+	if err != nil {
+		return nil, http.StatusInternalServerError, err
+	}
+	if intentInfo.ProjectID == "" {
+		return nil, http.StatusInternalServerError, errors.New("GitHub intent processing error is missing a project")
+	}
+	return []string{intentInfo.ProjectID}, http.StatusOK, nil
+}
+
+// newGitHubIntentProcessingErrorPermissionMiddleware returns a middleware that authorizes access
+// to the GitHub intent processing error loaded into the request context by
+// newGitHubIntentProcessingErrorContextMiddleware.
+func newGitHubIntentProcessingErrorPermissionMiddleware() gimlet.Middleware {
+	return gimlet.RequiresPermission(gimlet.RequiresPermissionMiddlewareOpts{
+		RM:            evergreen.GetEnvironment().RoleManager(),
+		PermissionKey: evergreen.PermissionTasks,
+		ResourceType:  evergreen.ProjectResourceType,
+		RequiredLevel: evergreen.TasksView.Value,
+		ResourceFunc:  githubIntentInfoProjectScope,
+	})
 }
 
 func AddCORSHeaders(allowedOrigins []string, next http.HandlerFunc) http.HandlerFunc {
