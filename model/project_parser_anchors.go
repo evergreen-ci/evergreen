@@ -17,10 +17,7 @@ type anchorEntry struct {
 	node *yaml.Node
 }
 
-// anchorRegistry accumulates YAML anchor definitions across include files for
-// cross-file alias resolution. Entries are self-contained: aliases are expanded
-// at collection time, so no entry references another and preamble order is
-// irrelevant. See docs/decisions/2026-09-16_cross_file_yaml_anchors.md.
+// anchorRegistry accumulates YAML anchor definitions across include files for cross-file alias resolution
 type anchorRegistry struct {
 	entries []anchorEntry
 }
@@ -56,9 +53,7 @@ func (a *anchorRegistry) mergeAnchorsFrom(node *yaml.Node) {
 }
 
 // collectAnchors walks node in pre-order and returns all anchor definitions
-// (&name) in encounter order. Each returned node is a self-contained copy with
-// aliases expanded, so its value is frozen at collection time: redefining an
-// anchor later never changes the value of other anchors that referenced it.
+// in encounter order. Each returned node is a self-contained copy with aliases expanded.
 func collectAnchors(node *yaml.Node) []anchorEntry {
 	if node == nil {
 		return nil
@@ -71,8 +66,7 @@ func collectAnchors(node *yaml.Node) []anchorEntry {
 		}
 		if n.Anchor != "" {
 			expanded := expandAliases(n)
-			// Restore the anchor name on the top-level node so it defines
-			// &name in the preamble; expandAliases strips all anchors.
+			// expandAliases strips the anchor so restore it before storing.
 			expanded.Anchor = n.Anchor
 			entries = append(entries, anchorEntry{name: n.Anchor, node: expanded})
 		}

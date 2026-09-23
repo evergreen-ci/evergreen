@@ -3803,6 +3803,83 @@ b:
 	assert.Equal(t, "second", entries[1].name)
 }
 
+func TestExpandAliases(t *testing.T) {
+	t.Run("NilReturnsNil", func(t *testing.T) {
+		assert.Nil(t, expandAliases(nil))
+	})
+
+	// Covers the no-Content path: a scalar has no children, so only the node
+	// itself is copied.
+	t.Run("ScalarCopiedWithAnchorStripped", func(t *testing.T) {
+		original := &yaml.Node{Kind: yaml.ScalarNode, Value: "blue", Anchor: "anchor-a"}
+
+		expanded := expandAliases(original)
+		require.NotNil(t, expanded)
+		assert.NotSame(t, original, expanded)
+		assert.Equal(t, "blue", expanded.Value)
+		assert.Empty(t, expanded.Anchor)
+		assert.Empty(t, expanded.Content)
+		assert.Equal(t, "anchor-a", original.Anchor, "original must not be modified")
+	})
+
+	// Covers the alias-recursion path: expanding an AliasNode returns an
+	// expanded copy of its target.
+	t.Run("AliasNodeReplacedByTargetValue", func(t *testing.T) {
+		yml := `
+a: &anchor-a blue
+b: *anchor-a
+`
+		var node yaml.Node
+		require.NoError(t, yaml.Unmarshal([]byte(yml), &node))
+		// node -> document -> mapping; Content is [key-a, val-a, key-b, val-b].
+		mapping := node.Content[0]
+		require.Len(t, mapping.Content, 4)
+		alias := mapping.Content[3]
+		require.Equal(t, yaml.AliasNode, alias.Kind)
+
+		expanded := expandAliases(alias)
+		require.NotNil(t, expanded)
+		assert.Equal(t, yaml.ScalarNode, expanded.Kind)
+		assert.Equal(t, "blue", expanded.Value)
+		assert.Empty(t, expanded.Anchor, "the target's anchor name must be stripped from the copy")
+	})
+
+	// Covers the Content recursion path with multiple children: the mapping's
+	// keys are copied as-is and its alias value is replaced inline with the
+	// referenced value.
+	t.Run("MappingWithAliasChildExpandedInline", func(t *testing.T) {
+		yml := `
+a: &anchor-a blue
+b: &anchor-b
+  color: *anchor-a
+  size: large
+`
+		var node yaml.Node
+		require.NoError(t, yaml.Unmarshal([]byte(yml), &node))
+		mapping := node.Content[0]
+		require.Len(t, mapping.Content, 4)
+		anchorB := mapping.Content[3]
+		require.Equal(t, "anchor-b", anchorB.Anchor)
+		require.Len(t, anchorB.Content, 4)
+
+		expanded := expandAliases(anchorB)
+		require.NotNil(t, expanded)
+		assert.Empty(t, expanded.Anchor)
+		require.Len(t, expanded.Content, 4)
+
+		// color: *anchor-a becomes color: blue with no alias or anchor remaining.
+		assert.Equal(t, "color", expanded.Content[0].Value)
+		assert.Equal(t, yaml.ScalarNode, expanded.Content[1].Kind)
+		assert.Equal(t, "blue", expanded.Content[1].Value)
+		assert.Empty(t, expanded.Content[1].Anchor)
+		assert.Equal(t, "size", expanded.Content[2].Value)
+		assert.Equal(t, "large", expanded.Content[3].Value)
+
+		// The copy must be independent: the original still holds the alias.
+		assert.Equal(t, yaml.AliasNode, anchorB.Content[1].Kind)
+	})
+}
+
 // TestBuildAnchorPreambleProducesValidYAML verifies that buildAnchorPreamble
 // produces YAML that re-defines all accumulated anchors so the parser can
 // resolve aliases in subsequent files.
