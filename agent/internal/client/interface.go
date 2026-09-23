@@ -108,6 +108,9 @@ type SharedCommunicator interface {
 	// GenerateTasksPoll polls for new tasks for the `generate.tasks` command.
 	GenerateTasksPoll(context.Context, TaskData) (*apimodels.GeneratePollResponse, error)
 
+	// CompleteVirtualTasks push-completes a batch of virtual tasks.
+	CompleteVirtualTasks(context.Context, TaskData, []apimodels.VirtualTaskCompletion) (*apimodels.CompleteVirtualTasksResponse, error)
+
 	// Spawn-hosts for tasks methods
 	CreateHost(context.Context, TaskData, apimodels.CreateHost) ([]string, error)
 	ListHosts(context.Context, TaskData) (restmodel.HostListResults, error)
