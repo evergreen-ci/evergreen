@@ -60,7 +60,7 @@ func TestGitHubIntentProcessingError(t *testing.T) {
 	}
 
 	t.Run("AuthorizedUserCanReadMessage", func(t *testing.T) {
-		resp := runRoute(t, &user.DBUser{Id: "authorized", SystemRoles: []string{role.ID}}, stored.ID.Hex())
+		resp := runRoute(t, &user.DBUser{Id: "authorized", SystemRoles: []string{role.ID}}, stored.ID)
 		require.Equal(t, http.StatusOK, resp.Code, resp.Body.String())
 		data := githubIntentProcessingErrorResponse{}
 		require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &data))
@@ -68,12 +68,12 @@ func TestGitHubIntentProcessingError(t *testing.T) {
 	})
 
 	t.Run("AdminProjectAccessCanReadMessage", func(t *testing.T) {
-		resp := runRoute(t, &user.DBUser{Id: "admin", SystemRoles: []string{adminProjectAccessRole.ID}}, stored.ID.Hex())
+		resp := runRoute(t, &user.DBUser{Id: "admin", SystemRoles: []string{adminProjectAccessRole.ID}}, stored.ID)
 		require.Equal(t, http.StatusOK, resp.Code, resp.Body.String())
 	})
 
 	t.Run("UnauthorizedUserCannotReadMessage", func(t *testing.T) {
-		resp := runRoute(t, &user.DBUser{Id: "unauthorized"}, stored.ID.Hex())
+		resp := runRoute(t, &user.DBUser{Id: "unauthorized"}, stored.ID)
 		assert.Equal(t, http.StatusUnauthorized, resp.Code)
 	})
 
@@ -86,7 +86,7 @@ func TestGitHubIntentProcessingError(t *testing.T) {
 			Permissions: gimlet.Permissions{evergreen.PermissionTasks: evergreen.TasksView.Value},
 		}
 		require.NoError(t, db.Insert(t.Context(), evergreen.RoleCollection, otherRole))
-		resp := runRoute(t, &user.DBUser{Id: "other-project-user", SystemRoles: []string{otherRole.ID}}, stored.ID.Hex())
+		resp := runRoute(t, &user.DBUser{Id: "other-project-user", SystemRoles: []string{otherRole.ID}}, stored.ID)
 		assert.Equal(t, http.StatusUnauthorized, resp.Code)
 	})
 

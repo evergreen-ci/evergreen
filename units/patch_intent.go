@@ -66,8 +66,7 @@ type patchIntentProcessor struct {
 	user   *user.DBUser
 	intent patch.Intent
 
-	gitHubError  string
-	patchCreated bool
+	gitHubError string
 }
 
 // NewPatchIntentProcessor creates an amboy job to create a patch from the
@@ -432,8 +431,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			return errors.Wrapf(err, "inserting patch '%s'", patchDoc.Id.Hex())
 		}
 	}
-	j.patchCreated = true
-
 	if err = processTriggerAliases(ctx, patchDoc, pref, j.env, patchDoc.Triggers.Aliases); err != nil {
 		if strings.Contains(err.Error(), noChildPatchTasksOrVariants) {
 			j.gitHubError = noChildPatchTasksOrVariants
@@ -1575,9 +1572,7 @@ func resolveGitHubPRAuthor(ctx context.Context, githubUserID int) (*github.User,
 
 func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchDoc *patch.Patch, intentInfoID string) {
 	targetPath := ""
-	if j.patchCreated {
-		targetPath = "/patch/" + patchDoc.Id.Hex()
-	} else if intentInfoID != "" {
+	if intentInfoID != "" {
 		targetPath = githubIntentInfoPathPrefix + intentInfoID
 	}
 
@@ -1622,26 +1617,19 @@ func (j *patchIntentProcessor) reportGitHubProcessingError(ctx context.Context, 
 }
 
 // storeGitHubIntentInfo stores the error that prevented the GitHub intent from creating a patch and
-// returns the stored info's ID. It returns an empty ID if the patch was already created, the project
-// is unknown, or the info cannot be stored.
+// returns the stored info's ID. It returns an empty ID if the project is unknown or the info cannot
+// be stored.
 func (j *patchIntentProcessor) storeGitHubIntentInfo(ctx context.Context, processingErr error) string {
-	if j.patchCreated || j.ProjectID == "" {
+	if j.ProjectID == "" {
 		return ""
 	}
 
 	intentInfo, err := patch.InsertGitHubIntentInfo(ctx, j.ProjectID, j.IntentID, processingErr.Error())
 	if err != nil {
-		j.AddError(err)
-		grip.Error(ctx, message.WrapError(err, message.Fields{
-			"message":     "could not save GitHub intent info",
-			"job":         j.ID(),
-			"intent_id":   j.IntentID,
-			"intent_type": j.IntentType,
-			"source":      "patch intents",
-		}))
+		j.AddError(errors.Wrap(err, "saving GitHub intent info"))
 		return ""
 	}
-	return intentInfo.ID.Hex()
+	return intentInfo.ID
 }
 
 // sendGitHubSuccessMessageForIgnoredVariants sends GitHub success messages for variants that were ignored

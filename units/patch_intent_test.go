@@ -289,26 +289,10 @@ func TestReportGitHubProcessingError(t *testing.T) {
 	require.True(t, ok)
 	githubStatus, ok := msg.Message.Raw().(*message.GithubStatus)
 	require.True(t, ok)
-	assert.Equal(t, "/rest/v2/github/intent-processing-errors/"+found[0].ID.Hex(), strings.TrimPrefix(githubStatus.URL, "https://example.com"))
-
-	t.Run("CreatedPatchUsesPatchURLAndDoesNotStoreError", func(t *testing.T) {
-		require.NoError(t, db.ClearCollections(patch.GitHubIntentInfoCollection))
-		j.patchCreated = true
-		patchDoc.Id = mgobson.NewObjectId()
-		j.reportGitHubProcessingError(ctx, patchDoc, assert.AnError)
-
-		var stored []patch.GitHubIntentInfo
-		require.NoError(t, db.FindAllQ(ctx, patch.GitHubIntentInfoCollection, db.Query(nil), &stored))
-		assert.Empty(t, stored)
-		msg, ok := status.GetMessageSafe()
-		require.True(t, ok)
-		githubStatus, ok := msg.Message.Raw().(*message.GithubStatus)
-		require.True(t, ok)
-		assert.Equal(t, "https://example.com/patch/"+patchDoc.Id.Hex(), githubStatus.URL)
-	})
+	assert.Equal(t, "/rest/v2/github/intent-processing-errors/"+found[0].ID, strings.TrimPrefix(githubStatus.URL, "https://example.com"))
 
 	t.Run("MissingProjectSendsStatusWithoutURL", func(t *testing.T) {
-		j.patchCreated = false
+		require.NoError(t, db.ClearCollections(patch.GitHubIntentInfoCollection))
 		j.ProjectID = ""
 		j.reportGitHubProcessingError(ctx, patchDoc, assert.AnError)
 

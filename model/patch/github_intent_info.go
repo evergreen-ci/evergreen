@@ -5,10 +5,10 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // GitHubIntentInfoCollection stores information about GitHub intents that failed to create patches.
@@ -16,11 +16,11 @@ const GitHubIntentInfoCollection = "github_intent_info"
 
 // GitHubIntentInfo contains information about a GitHub intent that prevented it from creating a patch.
 type GitHubIntentInfo struct {
-	ID        mgobson.ObjectId `bson:"_id"`
-	ProjectID string           `bson:"project_id"`
-	IntentID  string           `bson:"intent_id"`
-	Message   string           `bson:"message"`
-	CreatedAt time.Time        `bson:"created_at"`
+	ID        string    `bson:"_id"`
+	ProjectID string    `bson:"project_id"`
+	IntentID  string    `bson:"intent_id"`
+	Message   string    `bson:"message"`
+	CreatedAt time.Time `bson:"created_at"`
 }
 
 // InsertGitHubIntentInfo stores immutable information about a GitHub intent that failed to create a patch.
@@ -32,7 +32,7 @@ func InsertGitHubIntentInfo(ctx context.Context, projectID, intentID, message st
 		return nil, errors.New("message cannot be empty")
 	}
 	intentInfo := &GitHubIntentInfo{
-		ID:        mgobson.NewObjectId(),
+		ID:        primitive.NewObjectID().Hex(),
 		ProjectID: projectID,
 		IntentID:  intentID,
 		Message:   message,
@@ -45,7 +45,7 @@ func InsertGitHubIntentInfo(ctx context.Context, projectID, intentID, message st
 }
 
 // FindGitHubIntentInfo finds information about a GitHub intent processing error by ID.
-func FindGitHubIntentInfo(ctx context.Context, id mgobson.ObjectId) (*GitHubIntentInfo, error) {
+func FindGitHubIntentInfo(ctx context.Context, id string) (*GitHubIntentInfo, error) {
 	intentInfo := &GitHubIntentInfo{}
 	err := db.FindOneQ(ctx, GitHubIntentInfoCollection, db.Query(bson.M{"_id": id}), intentInfo)
 	if adb.ResultsNotFound(err) {

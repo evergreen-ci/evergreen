@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestGitHubIntentInfo(t *testing.T) {
@@ -28,7 +28,7 @@ func TestGitHubIntentInfo(t *testing.T) {
 	assert.Equal(t, stored.Message, found.Message)
 	assert.True(t, stored.CreatedAt.Equal(found.CreatedAt))
 
-	notFound, err := FindGitHubIntentInfo(t.Context(), mgobson.NewObjectId())
+	notFound, err := FindGitHubIntentInfo(t.Context(), primitive.NewObjectID().Hex())
 	require.NoError(t, err)
 	assert.Nil(t, notFound)
 
