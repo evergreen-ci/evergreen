@@ -66,6 +66,14 @@ func TestHTTPRequestOtelAttributes(t *testing.T) {
 			attribute.String(HTTPClientAuthOtelAttribute, "api_key"),
 		}, otelAttributesOnRequest(t, r))
 	})
+	t.Run("CLIVersionHeader", func(t *testing.T) {
+		r, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		r.Header.Set(CLIVersionHeader, "2026-09-18")
+		assert.Equal(t, []attribute.KeyValue{
+			attribute.String(HTTPCLIVersionOtelAttribute, "2026-09-18"),
+		}, otelAttributesOnRequest(t, r))
+	})
 	t.Run("AuthenticatedHumanUser", func(t *testing.T) {
 		r, err := http.NewRequest(http.MethodGet, "/", nil)
 		require.NoError(t, err)
