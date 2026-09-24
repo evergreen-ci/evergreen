@@ -25,6 +25,24 @@ import (
 // sourceCacheRegion is the region the source cache bucket lives in.
 const sourceCacheRegion = evergreen.DefaultEC2Region
 
+const (
+	// sourceCacheSaveMinHeadroom is the least remaining exec time budget a task
+	// needs before it attempts a cache save. A save only benefits future tasks,
+	// so a task without this much left keeps its clone and skips the save.
+	sourceCacheSaveMinHeadroom = 30 * time.Second
+	// sourceCacheSavePostSaveAllowance reserves exec budget for the post-save
+	// command, which must run to put the task's origin URL back.
+	sourceCacheSavePostSaveAllowance = 10 * time.Second
+	// sourceCacheSaveCap bounds the save when the task's exec deadline cannot
+	// be derived, so an upload still cannot run unbounded.
+	sourceCacheSaveCap = 5 * time.Minute
+)
+
+// errSourceCacheSaveTimeout means the cache save was aborted by its time cap.
+// The task keeps its own clone, so this is a skipped seed rather than a task
+// failure and is recorded as a distinct span outcome.
+var errSourceCacheSaveTimeout = errors.New("source cache save timed out")
+
 var (
 	sourceCacheOutcomeAttribute           = sourceCacheAttribute("outcome")
 	sourceCacheReasonAttribute            = sourceCacheAttribute("reason")
@@ -54,6 +72,8 @@ const (
 	sourceCacheMissLostRace = "miss_lost_race"
 	sourceCacheSkipped      = "skipped"
 	sourceCacheFallback     = "fallback"
+	sourceCacheSaveTimedOut = "save_timeout"
+	sourceCacheSaveSkipped  = "save_skipped"
 )
 
 // sourceCache round-trips a task's cloned project directory through S3 on behalf

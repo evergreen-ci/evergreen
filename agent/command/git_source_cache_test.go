@@ -11,9 +11,11 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
@@ -584,4 +586,87 @@ func TestSourceCacheExtractMarksAnUndecodableArtifactCorrupt(t *testing.T) {
 		assert.Empty(t, sc.corruptRemoteKey)
 		assert.False(t, sc.healsCorruptArtifact())
 	})
+}
+
+func TestSourceCacheSaveBudgetFollowsTheExecTimeoutPrecedence(t *testing.T) {
+	// The task started an hour ago, so every budget below is that deadline minus
+	// an hour already spent, minus the post-save allowance.
+	start := time.Now().Add(-time.Hour)
+	expectedBudget := func(deadline time.Duration) time.Duration {
+		return deadline - time.Hour - sourceCacheSavePostSaveAllowance
+	}
+
+	t.Run("DynamicTimeoutWins", func(t *testing.T) {
+		conf := sourceCacheTestConfig()
+		conf.Task.StartTime = start
+		conf.SetExecTimeout(7200)
+		budget, known := sourceCacheSaveBudget(conf)
+		require.True(t, known)
+		assert.InDelta(t, expectedBudget(2*time.Hour), budget, float64(5*time.Second))
+	})
+
+	t.Run("DynamicTimeoutIsCappedByMaxExecTimeout", func(t *testing.T) {
+		conf := sourceCacheTestConfig()
+		conf.Task.StartTime = start
+		conf.SetExecTimeout(7200)
+		conf.MaxExecTimeoutSecs = 3600
+		budget, known := sourceCacheSaveBudget(conf)
+		require.True(t, known)
+		assert.InDelta(t, expectedBudget(time.Hour), budget, float64(5*time.Second))
+	})
+
+	t.Run("BuildVariantTaskTimeoutIsUsedWithoutADynamicTimeout", func(t *testing.T) {
+		conf := sourceCacheTestConfig()
+		conf.Task.StartTime = start
+		conf.Task.DisplayName = "compile"
+		conf.Task.BuildVariant = "linux"
+		conf.Project = model.Project{
+			// FindTaskForVariant only returns a task the project also declares.
+			Tasks: []model.ProjectTask{{Name: "compile"}},
+			BuildVariants: []model.BuildVariant{{
+				Name: "linux",
+				Tasks: []model.BuildVariantTaskUnit{{
+					Name:            "compile",
+					ExecTimeoutSecs: 1800,
+				}},
+			}},
+		}
+		budget, known := sourceCacheSaveBudget(conf)
+		require.True(t, known)
+		assert.InDelta(t, expectedBudget(30*time.Minute), budget, float64(5*time.Second))
+	})
+
+	t.Run("ProjectTimeoutIsUsedWithoutAVariantTimeout", func(t *testing.T) {
+		conf := sourceCacheTestConfig()
+		conf.Task.StartTime = start
+		conf.Project = model.Project{ExecTimeoutSecs: 600}
+		budget, known := sourceCacheSaveBudget(conf)
+		require.True(t, known)
+		assert.InDelta(t, expectedBudget(10*time.Minute), budget, float64(5*time.Second))
+	})
+
+	t.Run("DefaultTimeoutWithoutAnyConfiguredTimeout", func(t *testing.T) {
+		conf := sourceCacheTestConfig()
+		conf.Task.StartTime = start
+		budget, known := sourceCacheSaveBudget(conf)
+		require.True(t, known)
+		assert.InDelta(t, expectedBudget(globals.DefaultExecTimeout), budget, float64(5*time.Second))
+	})
+
+	t.Run("UnknownWithoutAStartTime", func(t *testing.T) {
+		conf := sourceCacheTestConfig()
+		_, known := sourceCacheSaveBudget(conf)
+		assert.False(t, known)
+	})
+}
+
+func TestSourceCacheSaveBudgetIsOutOfBudgetPastTheDeadline(t *testing.T) {
+	conf := sourceCacheTestConfig()
+	// The task started 40 minutes ago with a 10 minute timeout, so the save
+	// budget is long gone.
+	conf.Task.StartTime = time.Now().Add(-40 * time.Minute)
+	conf.Project = model.Project{ExecTimeoutSecs: 600}
+	budget, known := sourceCacheSaveBudget(conf)
+	require.True(t, known)
+	assert.LessOrEqual(t, budget, sourceCacheSaveMinHeadroom)
 }
