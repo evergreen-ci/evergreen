@@ -4825,6 +4825,7 @@ func TestReset(t *testing.T) {
 			HasAnnotations:             true,
 			AgentVersion:               "a1",
 			HostId:                     "h",
+			CompletedBy:                "runner_task",
 			HostCreateDetails:          []HostCreateDetail{{HostId: "h"}},
 			NumNextTaskDispatches:      3,
 			NumQuarantinedTestsSkipped: 2,
@@ -4851,6 +4852,8 @@ func TestReset(t *testing.T) {
 		assert.Empty(t, dbTask.Details)
 		assert.Zero(t, dbTask.ExecutionPlatform)
 		assert.Zero(t, t0.ExecutionPlatform)
+		assert.Empty(t, dbTask.CompletedBy)
+		assert.Empty(t, t0.CompletedBy)
 		assert.True(t, dbTask.IsHostDispatchable())
 		assert.Zero(t, dbTask.NumNextTaskDispatches)
 		assert.Zero(t, dbTask.NumQuarantinedTestsSkipped)

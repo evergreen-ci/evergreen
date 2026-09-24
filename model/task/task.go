@@ -2437,6 +2437,7 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 		t.Secret = newSecret
 		t.HostId = ""
 		t.ExecutionPlatform = ""
+		t.CompletedBy = ""
 		t.Status = evergreen.TaskUndispatched
 		t.DispatchTime = utility.ZeroTime
 		t.StartTime = utility.ZeroTime
@@ -2509,6 +2510,10 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 				HasAnnotationsKey,
 				TaskCostKey,
 				S3UsageKey,
+				// Host dispatch requires that the task has no push-completed
+				// claim, so a restarted push-completed virtual task must drop
+				// its claim to run on a host.
+				CompletedByKey,
 			},
 		},
 		addDisplayStatusCache,
