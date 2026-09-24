@@ -232,17 +232,8 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 	if intentHost == nil { // theoretically this should not happen
 		return nil, errors.New("could not create new intent host")
 	}
-	AddUserSpawnHostResourceTags(intentHost, so.UserEmail, settings.Providers.AWS.ResourceTags)
+	intentHost.SpawnOptions.UserEmail = so.UserEmail
 	return intentHost, nil
-}
-
-// AddUserSpawnHostResourceTags adds the configured MongoDB resource tags to an EC2 user spawn host.
-func AddUserSpawnHostResourceTags(intentHost *host.Host, userEmail string, resourceTags evergreen.ResourceTagsConfig) {
-	if !evergreen.IsEc2Provider(intentHost.Provider) {
-		return
-	}
-
-	addMissingTags(intentHost, makeMongoDBResourceTags(userEmail, resourceTags.MongoDBEnv))
 }
 
 // getDebugSetupScript returns the debug setup script to use. The

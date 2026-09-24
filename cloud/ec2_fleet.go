@@ -722,12 +722,11 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 		return errors.Wrap(err, "making block device mappings")
 	}
 
-	hostTags := makeTags(h, m.settings.Providers.AWS.ResourceTags)
 	launchTemplate := &types.RequestLaunchTemplateData{
 		ImageId:             aws.String(ec2Settings.AMI),
 		InstanceType:        types.InstanceType(ec2Settings.InstanceType),
 		BlockDeviceMappings: blockDevices,
-		TagSpecifications:   makeTagTemplate(hostTags),
+		TagSpecifications:   makeTagTemplate(makeTags(h, m.settings.Providers.AWS.ResourceTags)),
 	}
 	if ec2Settings.EnableNestedVirtualization {
 		launchTemplate.CpuOptions = &types.LaunchTemplateCpuOptionsRequest{
@@ -834,6 +833,7 @@ func (m *ec2FleetManager) requestFleet(ctx context.Context, h *host.Host, ec2Set
 		},
 		Type: types.FleetTypeInstant,
 	}
+
 	createFleetResponse, err := m.client.CreateFleet(ctx, createFleetInput)
 	if err != nil {
 		return "", errors.Wrap(err, "creating fleet")

@@ -194,36 +194,39 @@ func makeTags(intentHost *host.Host, resourceTags evergreen.ResourceTagsConfig) 
 			systemTags = append(systemTags, host.Tag{Key: evergreen.TagBuildID, Value: intentHost.SpawnOptions.BuildID, CanBeModified: false})
 		}
 	}
-	var defaultResourceTags []host.Tag
-	if !intentHost.UserHost {
-		defaultResourceTags = makeMongoDBResourceTags(resourceTags.MongoDBOwner, resourceTags.MongoDBEnv)
+	// Task-spawned hosts are owned by Evergreen rather than the user who
+	// triggered the task, so only user spawn hosts are owned by the user.
+	owner := resourceTags.MongoDBOwner
+	if intentHost.UserHost && !intentHost.SpawnOptions.SpawnedByTask && intentHost.SpawnOptions.UserEmail != "" {
+		owner = intentHost.SpawnOptions.UserEmail
 	}
 
 	// Add Evergreen-generated tags to host object
 	intentHost.AddTags(systemTags)
-	addMissingTags(intentHost, defaultResourceTags)
+	intentHost.InstanceTags = addMissingTags(intentHost.InstanceTags, makeMongoDBResourceTags(owner, resourceTags.MongoDBEnv))
 
 	return intentHost.InstanceTags
 }
 
 // addMissingTags adds tags only when no value has already been specified.
-func addMissingTags(intentHost *host.Host, tags []host.Tag) {
+func addMissingTags(existingTags []host.Tag, tags []host.Tag) []host.Tag {
 	for _, tag := range tags {
 		found := false
-		for i, existingTag := range intentHost.InstanceTags {
+		for i, existingTag := range existingTags {
 			if existingTag.Key != tag.Key {
 				continue
 			}
 			found = true
 			if existingTag.Value == "" {
-				intentHost.InstanceTags[i] = tag
+				existingTags[i].Value = tag.Value
 			}
 			break
 		}
 		if !found {
-			intentHost.InstanceTags = append(intentHost.InstanceTags, tag)
+			existingTags = append(existingTags, tag)
 		}
 	}
+	return existingTags
 }
 
 func makeMongoDBResourceTags(owner, environment string) []host.Tag {
@@ -235,16 +238,6 @@ func makeMongoDBResourceTags(owner, environment string) []host.Tag {
 		tags = append(tags, host.Tag{Key: evergreen.TagMongoDBEnv, Value: environment, CanBeModified: false})
 	}
 	return tags
-}
-
-func filterMongoDBResourceTags(tags []host.Tag) []host.Tag {
-	resourceTags := []host.Tag{}
-	for _, tag := range tags {
-		if tag.Key == evergreen.TagMongoDBOwner || tag.Key == evergreen.TagMongoDBEnv {
-			resourceTags = append(resourceTags, tag)
-		}
-	}
-	return resourceTags
 }
 
 func hostToEC2Tags(hostTags []host.Tag) []types.Tag {
@@ -901,8 +894,6 @@ func allocateIPAddressForHost(ctx context.Context, h *host.Host) error {
 		return nil
 	}
 
-	// Elastic IPs are provisioned and tagged outside Evergreen. Evergreen only
-	// leases an existing address from its pool and associates it with a host.
 	// This intentionally uses the host tag to identify the host instead of the
 	// host ID because the host ID changes after a host is created.
 	ipAddr, err := host.AssignUnusedIPAddress(ctx, h.Tag)

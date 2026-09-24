@@ -27,6 +27,7 @@ func NewFakeSSMClient() *FakeSSMClient {
 // PutParameter inserts a parameter into the fake parameter store.
 func (c *FakeSSMClient) PutParameter(ctx context.Context, input *ssm.PutParameterInput) (*ssm.PutParameterOutput, error) {
 	checkTestingEnvironment()
+
 	name := utility.FromStringPtr(input.Name)
 	value := utility.FromStringPtr(input.Value)
 	catcher := grip.NewBasicCatcher()

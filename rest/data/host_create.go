@@ -134,7 +134,7 @@ func CreateHostsFromTask(ctx context.Context, env evergreen.Environment, t *task
 			continue
 		}
 		for range numHosts {
-			_, err := MakeHost(ctx, env, t.Id, user.Username(), user.Email(), keyVal, createHost, *d)
+			_, err := MakeHost(ctx, env, t.Id, user.Username(), keyVal, createHost, *d)
 			if err != nil {
 				return errors.Wrap(err, "creating intent host")
 			}
@@ -228,7 +228,7 @@ func createHostFromCommand(cmd model.PluginCommandConf) (*apimodels.CreateHost, 
 }
 
 // MakeHost creates a host or container to run for host.create.
-func MakeHost(ctx context.Context, env evergreen.Environment, taskID, userID, userEmail, publicKey string, createHost apimodels.CreateHost, distro distro.Distro) (*host.Host, error) {
+func MakeHost(ctx context.Context, env evergreen.Environment, taskID, userID, publicKey string, createHost apimodels.CreateHost, distro distro.Distro) (*host.Host, error) {
 	if createHost.Region == "" {
 		createHost.Region = evergreen.DefaultEC2Region
 	}
@@ -297,9 +297,6 @@ func MakeHost(ctx context.Context, env evergreen.Environment, taskID, userID, us
 		return nil, errors.Wrap(err, "making intent host options")
 	}
 	intent := host.NewIntent(*options)
-	if userID != "" {
-		cloud.AddUserSpawnHostResourceTags(intent, userEmail, env.Settings().Providers.AWS.ResourceTags)
-	}
 	if err = intent.Insert(ctx); err != nil {
 		return nil, errors.Wrap(err, "inserting intent host")
 	}

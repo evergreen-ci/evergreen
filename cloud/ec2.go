@@ -1036,31 +1036,16 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 		{Key: aws.String(evergreen.TagOwner), Value: aws.String(volume.CreatedBy)},
 		{Key: aws.String(evergreen.TagExpireOn), Value: aws.String(expireInDays(evergreen.SpawnHostExpireDays))},
 	}
+	resourceTags, err := m.makeVolumeResourceTags(ctx, volume)
+	if err != nil {
+		return nil, errors.Wrap(err, "making volume resource tags")
+	}
+	volumeTags = append(volumeTags, hostToEC2Tags(resourceTags)...)
 	if volume.Host != "" {
-		associatedHost, err := host.FindOneByIdOrTag(ctx, volume.Host)
-		if err != nil {
-			return nil, errors.Wrapf(err, "finding host '%s' associated with volume", volume.Host)
-		}
-		if associatedHost != nil {
-			volumeTags = append(volumeTags, hostToEC2Tags(filterMongoDBResourceTags(associatedHost.InstanceTags))...)
-		}
 		volumeTags = append(volumeTags, types.Tag{Key: aws.String(evergreen.TagHostName), Value: aws.String(volume.Host)})
 		// Clear before inserting so the DB field isn't left as the intent host tag;
 		// AddVolumeToHost sets volume.Host to the real host ID after attachment.
 		volume.Host = ""
-	} else {
-		var ownerEmail string
-		if volume.CreatedBy != "" {
-			owner, err := user.FindOneById(ctx, volume.CreatedBy)
-			if err != nil {
-				return nil, errors.Wrapf(err, "finding volume owner '%s'", volume.CreatedBy)
-			}
-			if owner != nil {
-				ownerEmail = owner.Email()
-			}
-		}
-		resourceTags := m.settings.Providers.AWS.ResourceTags
-		volumeTags = append(volumeTags, hostToEC2Tags(makeMongoDBResourceTags(ownerEmail, resourceTags.MongoDBEnv))...)
 	}
 	input := &ec2.CreateVolumeInput{
 		AvailabilityZone: aws.String(volume.AvailabilityZone),
@@ -1254,4 +1239,20 @@ func (m *ec2Manager) CleanupIP(ctx context.Context, h *host.Host) error {
 // Cleanup is a noop for the EC2 provider.
 func (m *ec2Manager) Cleanup(context.Context) error {
 	return nil
+}
+
+// makeVolumeResourceTags returns the MongoDB resource tags for a volume.
+func (m *ec2Manager) makeVolumeResourceTags(ctx context.Context, volume *host.Volume) ([]host.Tag, error) {
+	resourceTagSettings := m.settings.Providers.AWS.ResourceTags
+	owner := resourceTagSettings.MongoDBOwner
+	if volume.CreatedBy != "" {
+		creator, err := user.FindOneById(ctx, volume.CreatedBy)
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding volume creator '%s'", volume.CreatedBy)
+		}
+		if creator != nil && creator.Email() != "" {
+			owner = creator.Email()
+		}
+	}
+	return makeMongoDBResourceTags(owner, resourceTagSettings.MongoDBEnv), nil
 }

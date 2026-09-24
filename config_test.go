@@ -1007,9 +1007,6 @@ func (s *AdminSuite) TestSageConfig() {
 // It only exists to get around a circular dependency in fakeparameter.
 type errorSSMClient struct{}
 
-func (c *errorSSMClient) AddTagsToResource(context.Context, *ssm.AddTagsToResourceInput) (*ssm.AddTagsToResourceOutput, error) {
-	return nil, errors.New("errorSSMClient: not implemented")
-}
 func (c *errorSSMClient) PutParameter(context.Context, *ssm.PutParameterInput) (*ssm.PutParameterOutput, error) {
 	return nil, errors.New("errorSSMClient: not implemented")
 }
