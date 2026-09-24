@@ -31,18 +31,11 @@ shown on the task page for all executions.
 
 ## Enabling Virtual Tasks
 
-Virtual tasks must be enabled both globally and per project before they will be
-created.
+Virtual tasks must be enabled in the project before they can be used (see
+[Project and Distro Settings](Project-and-Distro-Settings#virtual-tasks)).
 
-- **Per-project setting**: enable **Virtual Tasks** on the project settings page
-  (see [Project and Distro Settings](Project-and-Distro-Settings#virtual-tasks)).
-- **Global setting**: an Evergreen admin can disable virtual tasks across
-  all projects via the global service flags. When global setting is disabled, no
-  virtual tasks can be created or push-completed.
-
-If either setting is disabled, any virtual tasks in a version are skipped —
-they are not created, and they do not cause the version to fail. All other
-(regular) tasks in the version are still created normally.
+If the setting is disabled, any virtual tasks in a version are skipped — they
+are not created, and any pre-existing virtual tasks cannot be push-completed.
 
 ## Defining a Virtual Task
 
