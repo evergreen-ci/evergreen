@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/ratelimit"
@@ -28,6 +29,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	sns "github.com/robbiet480/go.sns"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type (
@@ -37,9 +39,10 @@ type (
 
 const (
 	// These are private custom types to avoid key collisions.
-	RequestContext   requestContextKey = 0
-	githubPayloadKey requestContextKey = 3
-	snsPayloadKey    requestContextKey = 5
+	RequestContext                 requestContextKey = 0
+	githubPayloadKey               requestContextKey = 3
+	snsPayloadKey                  requestContextKey = 5
+	githubIntentProcessingErrorKey requestContextKey = 6
 )
 
 const (
@@ -111,6 +114,16 @@ func MustHaveProjectContext(ctx context.Context) *model.Context {
 		panic("project context not attached to request")
 	}
 	return pc
+}
+
+// GetGitHubIntentInfo returns the GitHub intent info attached to the request
+// context, or an error if none is present.
+func GetGitHubIntentInfo(ctx context.Context) (*patch.GitHubIntentInfo, error) {
+	intentInfo, ok := ctx.Value(githubIntentProcessingErrorKey).(*patch.GitHubIntentInfo)
+	if !ok {
+		return nil, errors.New("GitHub intent processing error is missing from context")
+	}
+	return intentInfo, nil
 }
 
 // MustHaveUser returns the user associated with a given request or panics
@@ -774,6 +787,72 @@ func getSNSPayload(ctx context.Context) sns.Payload {
 	}
 
 	return sns.Payload{}
+}
+
+type githubIntentProcessingErrorContextMiddleware struct{}
+
+// newGitHubIntentProcessingErrorContextMiddleware returns a middleware that loads the GitHub
+// intent info identified by the request and attaches it to the request context.
+func newGitHubIntentProcessingErrorContextMiddleware() gimlet.Middleware {
+	return &githubIntentProcessingErrorContextMiddleware{}
+}
+
+func (m *githubIntentProcessingErrorContextMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	errorID := gimlet.GetVars(r)["error_id"]
+	if _, err := primitive.ObjectIDFromHex(errorID); err != nil {
+		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "invalid processing error ID",
+		}))
+		return
+	}
+
+	processingError, err := patch.FindGitHubIntentInfo(r.Context(), errorID)
+	if err != nil {
+		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding GitHub intent processing error '%s'", errorID)))
+		return
+	}
+	if processingError == nil {
+		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("GitHub intent processing error '%s' not found", errorID),
+		}))
+		return
+	}
+
+	r = setGitHubIntentInfo(r, processingError)
+	next(rw, r)
+}
+
+func setGitHubIntentInfo(r *http.Request, intentInfo *patch.GitHubIntentInfo) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), githubIntentProcessingErrorKey, intentInfo))
+}
+
+// githubIntentInfoProjectScope returns the project that owns the GitHub intent processing error
+// loaded into the request context. It deliberately ignores request parameters so that permissions
+// are always checked against the project of the record being served.
+func githubIntentInfoProjectScope(r *http.Request) ([]string, int, error) {
+	intentInfo, err := GetGitHubIntentInfo(r.Context())
+	if err != nil {
+		return nil, http.StatusInternalServerError, err
+	}
+	if intentInfo.ProjectID == "" {
+		return nil, http.StatusInternalServerError, errors.New("GitHub intent processing error is missing a project")
+	}
+	return []string{intentInfo.ProjectID}, http.StatusOK, nil
+}
+
+// newGitHubIntentProcessingErrorPermissionMiddleware returns a middleware that authorizes access
+// to the GitHub intent processing error loaded into the request context by
+// newGitHubIntentProcessingErrorContextMiddleware.
+func newGitHubIntentProcessingErrorPermissionMiddleware() gimlet.Middleware {
+	return gimlet.RequiresPermission(gimlet.RequiresPermissionMiddlewareOpts{
+		RM:            evergreen.GetEnvironment().RoleManager(),
+		PermissionKey: evergreen.PermissionTasks,
+		ResourceType:  evergreen.ProjectResourceType,
+		RequiredLevel: evergreen.TasksView.Value,
+		ResourceFunc:  githubIntentInfoProjectScope,
+	})
 }
 
 func AddCORSHeaders(allowedOrigins []string, next http.HandlerFunc) http.HandlerFunc {
