@@ -335,7 +335,7 @@ func (apiPatch *APIPatch) populateCostFromVersion(ctx context.Context, versionID
 	if v == nil {
 		return
 	}
-	if !shouldHideCostForProject(v.Identifier) {
+	if !ShouldHideCostForProject(v.Identifier) {
 		if !v.Cost.IsZero() {
 			versionCost := v.Cost
 			versionCost.Total = versionCost.AdjustedTotal()
@@ -426,7 +426,7 @@ func (apiPatch *APIPatch) buildChildPatches(ctx context.Context, p patch.Patch) 
 	}
 	apiPatch.DownstreamTasks = downstreamTasks
 	apiPatch.ChildPatches = childPatches
-	if !shouldHideCostForProject(p.Project) {
+	if !ShouldHideCostForProject(p.Project) {
 		addChildPatchesCostToParent(apiPatch, childPatches)
 	}
 	if len(childPatches) == 0 {

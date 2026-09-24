@@ -73,11 +73,19 @@ func TestNewSourceCacheSkipsWhenNotOptedInOrSparse(t *testing.T) {
 		assert.Nil(t, sc)
 		assert.Contains(t, reason, "no source cache bucket")
 	})
-	t.Run("SparseCheckoutSkips", func(t *testing.T) {
+	t.Run("PartialCloneSkips", func(t *testing.T) {
 		c := &gitFetchProject{Directory: "src", Filter: "blob:none", SparseCheckoutPaths: []string{"/etc"}}
 		sc, reason := newSourceCache(t.Context(), sourceCacheTestComm(), sourceCacheTestConfig(), c, sourceCacheTestOpts(), "linux")
 		assert.Nil(t, sc)
-		assert.Contains(t, reason, "sparse")
+		assert.Contains(t, reason, "partial")
+	})
+	t.Run("SparseCheckoutPathsWithoutFilterIsNotSkipped", func(t *testing.T) {
+		// An empty filter means getCloneCommand ignores sparse_checkout_paths, so
+		// the clone is a normal full clone the source cache can serve.
+		c := &gitFetchProject{Directory: "src", SparseCheckoutPaths: []string{"/etc"}}
+		sc, reason := newSourceCache(t.Context(), sourceCacheTestComm(), sourceCacheTestConfig(), c, sourceCacheTestOpts(), "linux")
+		require.NotNil(t, sc)
+		assert.Empty(t, reason)
 	})
 	t.Run("NonLinuxAgentSkips", func(t *testing.T) {
 		sc, reason := newSourceCache(t.Context(), sourceCacheTestComm(), sourceCacheTestConfig(), &gitFetchProject{Directory: "src"}, sourceCacheTestOpts(), "windows")

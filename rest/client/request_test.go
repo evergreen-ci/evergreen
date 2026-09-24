@@ -103,6 +103,7 @@ func (s *RequestTestSuite) TestNewRequest() {
 	r, err := s.evergreenREST.newRequest(http.MethodGet, "path", nil)
 	s.NoError(err)
 	s.Equal(evergreen.ContentTypeValue, r.Header.Get(evergreen.ContentTypeHeader))
+	s.Equal(evergreen.ClientVersion, r.Header.Get(evergreen.CLIVersionHeader))
 }
 
 func (s *RequestTestSuite) TestGetPathReturnsCorrectPath() {

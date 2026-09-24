@@ -51,15 +51,16 @@ func (r *versionResolver) BuildVariants(ctx context.Context, obj *model.Version,
 
 // BuildVariantStats is the resolver for the buildVariantStats field.
 func (r *versionResolver) BuildVariantStats(ctx context.Context, obj *model.Version, options BuildVariantOptions) ([]*task.GroupedTaskStatusCount, error) {
-	includeNeverActivatedTasks := options.IncludeNeverActivatedTasks
-	if includeNeverActivatedTasks == nil {
-		includeNeverActivatedTasks = utility.ToBoolPtr(false)
+	includeNeverActivatedTasks := false
+	if options.IncludeNeverActivatedTasks != nil {
+		includeNeverActivatedTasks = *options.IncludeNeverActivatedTasks
 	}
 	opts := task.GetTasksByVersionOptions{
-		TaskNames:                  options.Tasks,
-		Variants:                   options.Variants,
-		Statuses:                   options.Statuses,
-		IncludeNeverActivatedTasks: *includeNeverActivatedTasks || !evergreen.IsPatchRequester(obj.Requester),
+		TaskNames: options.Tasks,
+		Variants:  options.Variants,
+		Statuses:  options.Statuses,
+		// If the version is mainline, include never-activated tasks regardless of the user's preference.
+		IncludeNeverActivatedTasks: includeNeverActivatedTasks || !evergreen.IsPatchRequester(obj.Requester),
 	}
 	stats, err := task.GetGroupedTaskStatsByVersion(ctx, obj.Id, opts)
 	if err != nil {
@@ -119,6 +120,9 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *model.Version)
 // so the GraphQL API returns clean values without floating-point noise. For patch versions
 // with child patches, it also includes the child patches' costs in the total.
 func (r *versionResolver) Cost(ctx context.Context, obj *model.Version) (*cost.Cost, error) {
+	if restModel.ShouldHideCostForProject(obj.Identifier) {
+		return nil, nil
+	}
 	// If the version is a patch requester, we need to include costs of its child patches.
 	childPatchesCost := float64(0)
 	if evergreen.IsPatchRequester(obj.Requester) {
@@ -291,12 +295,12 @@ func (r *versionResolver) Status(ctx context.Context, obj *model.Version) (strin
 
 // TaskCount is the resolver for the taskCount field.
 func (r *versionResolver) TaskCount(ctx context.Context, obj *model.Version, options *TaskCountOptions) (*int, error) {
-	// If includeNeverActivatedTasks is nil, default to using the value of the requester.
-	includeNeverActivatedTasks := !evergreen.IsPatchRequester(obj.Requester)
+	includeNeverActivatedTasks := false
 	if options != nil && options.IncludeNeverActivatedTasks != nil {
 		includeNeverActivatedTasks = *options.IncludeNeverActivatedTasks
 	}
-	taskCount, err := task.Count(ctx, db.Query(task.DisplayTasksByVersion(obj.Id, includeNeverActivatedTasks)))
+	// If the version is mainline, include never-activated tasks regardless of the user's preference.
+	taskCount, err := task.Count(ctx, db.Query(task.DisplayTasksByVersion(obj.Id, includeNeverActivatedTasks || !evergreen.IsPatchRequester(obj.Requester))))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task count for version '%s': %s", obj.Id, err.Error()))
 	}
@@ -420,9 +424,9 @@ func (r *versionResolver) TaskQuarantinedTestsSample(ctx context.Context, obj *m
 // Tasks is the resolver for the tasks field.
 func (r *versionResolver) Tasks(ctx context.Context, obj *model.Version, options TaskFilterOptions) (*VersionTasks, error) {
 	versionID := obj.Id
-	includeNeverActivatedTasks := options.IncludeNeverActivatedTasks
-	if includeNeverActivatedTasks == nil {
-		includeNeverActivatedTasks = utility.ToBoolPtr(false)
+	includeNeverActivatedTasks := false
+	if options.IncludeNeverActivatedTasks != nil {
+		includeNeverActivatedTasks = *options.IncludeNeverActivatedTasks
 	}
 	pageParam := 0
 	if options.Page != nil {
@@ -483,8 +487,8 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *model.Version, options
 		Page:         pageParam,
 		Limit:        limitParam,
 		Sorts:        taskSorts,
-		// If the version is a patch, we want to exclude inactive tasks by default.
-		IncludeNeverActivatedTasks: *includeNeverActivatedTasks || !evergreen.IsPatchRequester(obj.Requester),
+		// If the version is mainline, include never-activated tasks regardless of the user's preference.
+		IncludeNeverActivatedTasks: includeNeverActivatedTasks || !evergreen.IsPatchRequester(obj.Requester),
 		BaseVersionID:              baseVersionID,
 	}
 	tasks, count, err := task.GetTasksByVersion(ctx, versionID, opts)

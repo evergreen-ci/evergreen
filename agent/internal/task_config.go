@@ -92,12 +92,11 @@ type TaskConfig struct {
 	HasTestResults bool
 	// HasFailingTestResult is true if the task has sent at least one test
 	// result and at least one of those tests failed.
-	HasFailingTestResult            bool
-	TaskGroup                       *model.TaskGroup
-	CommandCleanups                 []CommandCleanup
-	MaxExecTimeoutSecs              int
-	PSLoggingDisabled               bool
-	BackgroundCommandFailureEnabled bool
+	HasFailingTestResult bool
+	TaskGroup            *model.TaskGroup
+	CommandCleanups      []CommandCleanup
+	MaxExecTimeoutSecs   int
+	PSLoggingDisabled    bool
 	// BackgroundFailures is the send-only end of a channel for background command failures; the agent reads from the bidirectional end on taskContext.
 	BackgroundFailures chan<- BackgroundFailure
 

@@ -595,6 +595,8 @@ type APIProjectRef struct {
 	VersionControlEnabled *bool `json:"version_control_enabled"`
 	// Disable stats caching.
 	DisabledStatsCache *bool `json:"disabled_stats_cache"`
+	// Source cache mode, or nil when unset.
+	SourceCacheMode *model.SourceCacheMode `json:"source_cache_mode"`
 	// Usernames of project admins. Can be null for some projects (EVG-6598).
 	Admins []*string `json:"admins"`
 	// Usernames of project admins to remove.
@@ -656,6 +658,24 @@ type APIProjectRef struct {
 	RunEveryMainlineCommit *bool `json:"run_every_mainline_commit,omitzero"`
 }
 
+// sourceCacheModeFromPtr returns the mode, or empty (disabled) when the
+// pointer is nil.
+func sourceCacheModeFromPtr(m *model.SourceCacheMode) model.SourceCacheMode {
+	if m == nil {
+		return model.SourceCacheMode("")
+	}
+	return *m
+}
+
+// sourceCacheModePtr returns a pointer to the mode, or nil when unset so the
+// unset state is preserved (a branch can then inherit the repo-level mode).
+func sourceCacheModePtr(m model.SourceCacheMode) *model.SourceCacheMode {
+	if m == "" {
+		return nil
+	}
+	return &m
+}
+
 // ToService returns a service layer ProjectRef using the data from APIProjectRef
 func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 	projectRef := model.ProjectRef{
@@ -690,6 +710,7 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		StepbackBisect:                   utility.BoolPtrCopy(p.StepbackBisect),
 		VersionControlEnabled:            utility.BoolPtrCopy(p.VersionControlEnabled),
 		DisabledStatsCache:               utility.BoolPtrCopy(p.DisabledStatsCache),
+		SourceCacheMode:                  sourceCacheModeFromPtr(p.SourceCacheMode),
 		NotifyOnBuildFailure:             utility.BoolPtrCopy(p.NotifyOnBuildFailure),
 		DebugSpawnHostsDisabled:          utility.BoolPtrCopy(p.DebugSpawnHostsDisabled),
 		SpawnHostScriptPath:              utility.FromStringPtr(p.SpawnHostScriptPath),
@@ -802,6 +823,7 @@ func (p *APIProjectRef) BuildPublicFields(ctx context.Context, projectRef model.
 	p.StepbackBisect = utility.BoolPtrCopy(projectRef.StepbackBisect)
 	p.VersionControlEnabled = utility.BoolPtrCopy(projectRef.VersionControlEnabled)
 	p.DisabledStatsCache = utility.BoolPtrCopy(projectRef.DisabledStatsCache)
+	p.SourceCacheMode = sourceCacheModePtr(projectRef.SourceCacheMode)
 	p.DebugSpawnHostsDisabled = utility.BoolPtrCopy(projectRef.DebugSpawnHostsDisabled)
 	p.NotifyOnBuildFailure = utility.BoolPtrCopy(projectRef.NotifyOnBuildFailure)
 	p.SpawnHostScriptPath = utility.ToStringPtr(projectRef.SpawnHostScriptPath)

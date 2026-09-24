@@ -342,7 +342,6 @@ functions:
 	s.setUpConfigAndProject(projYml)
 
 	// Wire and pre-load the channel that setupTask normally creates in production.
-	s.tc.taskConfig.BackgroundCommandFailureEnabled = true
 	s.tc.backgroundFailures = make(chan internal.BackgroundFailure, 10)
 	s.tc.taskConfig.BackgroundFailures = s.tc.backgroundFailures
 	s.tc.backgroundFailures <- internal.BackgroundFailure{
@@ -364,28 +363,4 @@ functions:
 	s.Empty(s.tc.backgroundFailures, "drain should have consumed the pre-loaded failure")
 	s.Require().NotNil(s.tc.getBackgroundFailingCommand(), "should record the background command that caused the failure")
 	s.Equal("shell.exec", s.tc.getBackgroundFailingCommand().CommandName)
-}
-
-func (s *CommandSuite) TestBackgroundCommandFailureIgnoredWhenFlagDisabled() {
-	projYml := `
-functions:
-  trivial:
-    command: shell.exec
-    params:
-      script: echo hi
-`
-	s.setUpConfigAndProject(projYml)
-
-	// Flag is false (default) — backgroundFailures channel is nil, matching production behavior from setupTask.
-	// The drain should be a no-op and the task should not fail.
-	func1 := model.PluginCommandConf{
-		Function:    "trivial",
-		DisplayName: "function",
-	}
-
-	cmdBlock := commandBlock{
-		commands: &model.YAMLCommandSet{SingleCommand: &func1},
-	}
-	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmdBlock)
-	s.NoError(err, "background failure should be ignored when flag is disabled")
 }

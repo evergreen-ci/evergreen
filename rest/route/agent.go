@@ -83,13 +83,12 @@ func (h *agentSetup) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *agentSetup) Run(ctx context.Context) gimlet.Responder {
 	data := apimodels.AgentSetupData{
-		SplunkServerURL:                 h.settings.Splunk.SplunkConnectionInfo.ServerURL,
-		SplunkClientToken:               h.settings.Splunk.SplunkConnectionInfo.Token,
-		SplunkChannel:                   h.settings.Splunk.SplunkConnectionInfo.Channel,
-		TaskOutput:                      h.settings.Buckets.Credentials,
-		MaxExecTimeoutSecs:              h.settings.TaskLimits.MaxExecTimeoutSecs,
-		PSLoggingDisabled:               h.settings.ServiceFlags.PSLoggingDisabled,
-		BackgroundCommandFailureEnabled: h.settings.ServiceFlags.BackgroundCommandFailureEnabled,
+		SplunkServerURL:    h.settings.Splunk.SplunkConnectionInfo.ServerURL,
+		SplunkClientToken:  h.settings.Splunk.SplunkConnectionInfo.Token,
+		SplunkChannel:      h.settings.Splunk.SplunkConnectionInfo.Channel,
+		TaskOutput:         h.settings.Buckets.Credentials,
+		MaxExecTimeoutSecs: h.settings.TaskLimits.MaxExecTimeoutSecs,
+		PSLoggingDisabled:  h.settings.ServiceFlags.PSLoggingDisabled,
 	}
 
 	if h.settings.Tracer.Enabled {
@@ -372,7 +371,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		}
 	}
 
-	pRef, err := model.FindBranchProjectRef(ctx, t.Project)
+	pRef, err := model.FindMergedProjectRef(ctx, t.Project, t.Version, false)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project ref '%s'", t.Project))
 	}
@@ -448,7 +447,10 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		res.Parameters[param.Key] = param.Value
 	}
 
-	res.SourceCacheBucket = h.settings.Buckets.GetSourceCacheBucket(t.Project)
+	res.SourceCacheBucket = h.settings.Buckets.SourceCacheBucket
+	if !model.SourceCacheEnabled(pRef.GetSourceCacheMode(), t.IsPatchRequest()) {
+		res.SourceCacheBucket = evergreen.BucketConfig{}
+	}
 	// The role ARN never goes to the agent; it uses the scoped credentials route.
 	res.SourceCacheBucket.RoleARN = ""
 	if res.SourceCacheBucket.Name == "" {
@@ -456,7 +458,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 			"message":     "no source cache bucket for task",
 			"task":        t.Id,
 			"project":     t.Project,
-			"opted_in":    slices.Contains(h.settings.Buckets.SourceCacheProjects, t.Project),
+			"mode":        pRef.GetSourceCacheMode(),
 			"bucket_name": h.settings.Buckets.SourceCacheBucket.Name,
 		})
 	}
