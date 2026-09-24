@@ -10,6 +10,10 @@ To authenticate using OAuth, include a valid OAuth token as the `Authorization` 
 
 OAuth tokens can only be used when authenticating for evergreen.corp.mongodb.com, they cannot be used with evergreen.mongodb.com.
 
+### Token expiration
+
+OAuth tokens are short-lived. `evergreen client get-oauth-token` caches the token and refreshes it automatically when it expires, prompting you to log in again only if it can't be refreshed. Scripts and generated API clients should call it again for a fresh token rather than storing one. See the [CLI docs](../CLI.md#oauth-authentication) for configuring OAuth in `~/.evergreen.yml`.
+
 ### Examples
 
 > Note: Please make sure to use `https://evergreen.corp.mongodb.com`.
