@@ -15,9 +15,11 @@ import (
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -715,4 +717,114 @@ func TestParseS3URL(t *testing.T) {
 			assert.Equal(t, tc.expectedKey, key)
 		})
 	}
+}
+
+func TestMarkMergeQueueGitRefNotFound(t *testing.T) {
+	ctx := t.Context()
+
+	require.NoError(t, db.ClearCollections(task.Collection, serviceModel.VersionCollection, patch.Collection, build.Collection))
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(task.Collection, serviceModel.VersionCollection, patch.Collection, build.Collection))
+	})
+
+	patchID := patch.NewId("aabbccddaabbccddaabbccdd")
+	versionID := patchID.Hex()
+
+	p := patch.Patch{
+		Id:      patchID,
+		Version: versionID,
+		GithubMergeData: thirdparty.GithubMergeGroup{
+			HeadSHA: "abc123",
+		},
+	}
+	require.NoError(t, p.Insert(ctx))
+
+	v := serviceModel.Version{
+		Id:        versionID,
+		Requester: evergreen.GithubMergeRequester,
+	}
+	require.NoError(t, v.Insert(ctx))
+
+	tsk := task.Task{
+		Id:        "task1",
+		Version:   versionID,
+		BuildId:   "build1",
+		Requester: evergreen.GithubMergeRequester,
+		Status:    evergreen.TaskStarted,
+	}
+	require.NoError(t, tsk.Insert(ctx))
+
+	startedTask := task.Task{
+		Id:        "task2",
+		Version:   versionID,
+		BuildId:   "build1",
+		Requester: evergreen.GithubMergeRequester,
+		Status:    evergreen.TaskStarted,
+	}
+	require.NoError(t, startedTask.Insert(ctx))
+
+	dispatchedTask := task.Task{
+		Id:        "task3",
+		Version:   versionID,
+		BuildId:   "build1",
+		Requester: evergreen.GithubMergeRequester,
+		Status:    evergreen.TaskDispatched,
+	}
+	require.NoError(t, dispatchedTask.Insert(ctx))
+
+	succeededTask := task.Task{
+		Id:        "task4",
+		Version:   versionID,
+		BuildId:   "build1",
+		Requester: evergreen.GithubMergeRequester,
+		Status:    evergreen.TaskSucceeded,
+	}
+	require.NoError(t, succeededTask.Insert(ctx))
+
+	undispatchedTask := task.Task{
+		Id:          "task5",
+		Version:     versionID,
+		BuildId:     "build1",
+		Requester:   evergreen.GithubMergeRequester,
+		Status:      evergreen.TaskUndispatched,
+		Activated:   true,
+		ActivatedBy: evergreen.APIServerTaskActivator,
+	}
+	require.NoError(t, undispatchedTask.Insert(ctx))
+	b := build.Build{
+		Id:      "build1",
+		Version: versionID,
+	}
+	require.NoError(t, b.Insert(ctx))
+
+	handler := makeMarkMergeQueueGitRefNotFound()
+	handler.(*markMergeQueueGitRefNotFoundHandler).taskID = "task1"
+	resp := handler.Run(ctx)
+	require.Equal(t, http.StatusOK, resp.Status())
+
+	dbTask, err := task.FindOneId(ctx, "task1")
+	require.NoError(t, err)
+	require.NotNil(t, dbTask)
+	assert.True(t, dbTask.Aborted)
+	assert.Equal(t, evergreen.GithubMergeRequester, dbTask.AbortInfo.User)
+
+	dbTask2, err := task.FindOneId(ctx, "task2")
+	require.NoError(t, err)
+	require.NotNil(t, dbTask2)
+	assert.True(t, dbTask2.Aborted)
+
+	dbTask3, err := task.FindOneId(ctx, "task3")
+	require.NoError(t, err)
+	require.NotNil(t, dbTask3)
+	assert.True(t, dbTask3.Aborted)
+
+	dbTask4, err := task.FindOneId(ctx, "task4")
+	require.NoError(t, err)
+	require.NotNil(t, dbTask4)
+	assert.False(t, dbTask4.Aborted)
+
+	dbTask5, err := task.FindOneId(ctx, "task5")
+	require.NoError(t, err)
+	require.NotNil(t, dbTask5)
+	assert.False(t, dbTask5.Activated)
 }
