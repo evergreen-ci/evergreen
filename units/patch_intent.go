@@ -1576,7 +1576,6 @@ func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchD
 		targetPath = githubIntentInfoPathPrefix + intentInfoID
 	}
 
-
 	if j.IntentType == patch.GithubIntentType {
 		update := NewGithubStatusUpdateJobForProcessingError(
 			thirdparty.GithubStatusDefaultContext,
