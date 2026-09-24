@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
@@ -563,8 +564,18 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 	opts.token = token
 
 	outcome := sourceCacheMissProduced
+	// A save only benefits future tasks, so a task without enough exec time
+	// budget left keeps its clone and skips the save rather than risking the
+	// timeout that would fail the whole task.
+	if budget, known := sourceCacheSaveBudget(conf); known && budget < sourceCacheSaveMinHeadroom {
+		logger.Task().Warningf(ctx, "Skipping the source cache save: %s of exec time budget left.", budget)
+		sc.setSpanOutcome(ctx, sourceCacheSaveSkipped, "not enough exec time budget remaining")
+		return nil
+	}
 	produced, err := c.saveSourceCache(ctx, comm, logger, conf, sc, opts)
-	if err != nil {
+	if errors.Is(err, errSourceCacheSaveTimeout) {
+		outcome = sourceCacheSaveTimedOut
+	} else if err != nil {
 		logger.Task().Warningf(ctx, "Saving source to the cache: %s", err)
 		if fallbackReason == "" {
 			fallbackReason = err.Error()
@@ -592,13 +603,64 @@ func (c *gitFetchProject) cloneSource(ctx context.Context, comm client.Communica
 	return token, errors.Wrap(err, "running fetch command")
 }
 
+// execTimeout mirrors the agent's exec timeout resolution order
+// (agent/task_context.go getExecTimeout) so the save budget is measured against
+// the deadline the task is actually held to.
+func execTimeout(conf *internal.TaskConfig) time.Duration {
+	if dynamic := conf.GetExecTimeout(); dynamic > 0 {
+		if conf.MaxExecTimeoutSecs != 0 && dynamic > conf.MaxExecTimeoutSecs {
+			return time.Duration(conf.MaxExecTimeoutSecs) * time.Second
+		}
+		return time.Duration(dynamic) * time.Second
+	}
+	if bvTask := conf.Project.FindTaskForVariant(conf.Task.DisplayName, conf.Task.BuildVariant); bvTask != nil && bvTask.ExecTimeoutSecs > 0 {
+		return time.Duration(bvTask.ExecTimeoutSecs) * time.Second
+	}
+	if conf.Project.ExecTimeoutSecs > 0 {
+		return time.Duration(conf.Project.ExecTimeoutSecs) * time.Second
+	}
+	return globals.DefaultExecTimeout
+}
+
+// sourceCacheSaveBudget returns how long the save may run before the task's
+// exec timeout, less the post-save allowance, and whether that deadline could
+// be derived at all.
+func sourceCacheSaveBudget(conf *internal.TaskConfig) (time.Duration, bool) {
+	if conf.Task.StartTime.IsZero() {
+		return 0, false
+	}
+	timeout := execTimeout(conf)
+	if timeout <= 0 {
+		return 0, false
+	}
+	return time.Until(conf.Task.StartTime.Add(timeout)) - sourceCacheSavePostSaveAllowance, true
+}
+
 // saveSourceCache scrubs the cloned tree of anything task-specific, uploads it,
 // and puts the task's own authenticated origin URL back for the rest of the run.
 func (c *gitFetchProject) saveSourceCache(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, sc *sourceCache, opts cloneOpts) (bool, error) {
 	if err := c.runCommands(ctx, logger, conf, c.buildPreSaveCommand(opts)); err != nil {
 		return false, errors.Wrap(err, "scrubbing source tree before saving")
 	}
-	produced, saveErr := sc.save(ctx, comm, logger)
+	budget, known := sourceCacheSaveBudget(conf)
+	if !known {
+		budget = sourceCacheSaveCap
+	}
+	saveCtx, cancel := context.WithTimeout(ctx, budget)
+	defer cancel()
+	produced, saveErr := sc.save(saveCtx, comm, logger)
+	if saveErr != nil && saveCtx.Err() != nil {
+		// Bounded by the task's remaining exec budget so a slow save cannot burn
+		// it. The pre-save scrub already removed the producer's credentials, so
+		// the post-save step can still restore the task's origin URL afterward.
+		logger.Task().Warningf(ctx, "Aborting the source cache save after %s: %s", budget, saveErr)
+		// The post-save command restores the origin URL the rest of the task
+		// needs, so it runs even though the save was abandoned.
+		if postErr := c.runCommands(ctx, logger, conf, c.buildPostSaveCommand(opts)); postErr != nil {
+			return produced, errors.Wrap(postErr, "restoring origin URL after saving")
+		}
+		return produced, errSourceCacheSaveTimeout
+	}
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(saveErr)
 	catcher.Wrap(c.runCommands(ctx, logger, conf, c.buildPostSaveCommand(opts)), "restoring origin URL after saving")
