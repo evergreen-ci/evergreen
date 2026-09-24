@@ -2024,12 +2024,15 @@ Note: CLI tools that run on Evergreen (such as DSI) might also have their own ti
 This command push-completes [virtual tasks](Virtual-Tasks) by submitting their
 final results to Evergreen.
 
-- A task that is already finished or already running will no-op.
-- A task whose `execution` does not match its current execution will no-op.
-- A task that is not virtual or is not in the same version as the runner will fail.
+- If a virtual task is already finished or already running, the push-completion
+  will no-op.
+- If the `execution` does not match the virtual task's current execution, the
+  push-completion will no-op.
+- If a task is not virtual or is not in the same version as the runner, the
+  push-completion will fail.
 
-If any task fails to be push-completed, the command returns an error listing the failed
-tasks.
+If any task fails to be push-completed, the command will fail and log errors for
+the failed tasks.
 
 ```yaml
 - command: virtual_tasks.complete
@@ -2049,7 +2052,8 @@ Parameters:
 
 ### Completion File Schema
 
-Each file is a JSON array of objects, one per virtual task to complete. For example:
+Each file is a JSON array of objects, one per virtual task to complete. For
+example:
 
 ```json
 [
@@ -2063,7 +2067,7 @@ Each file is a JSON array of objects, one per virtual task to complete. For exam
             "created_at": "2026-08-12T12:00:00Z"
         },
         "artifacts": [
-            { "name": "test.log", "url": "s3://bucket/path", "visibility": "public" }
+            { "name": "test.log", "url": "s3://bucket/path", "visibility": "signed" }
         ],
         "external_metadata": {
             "engflow_invocation_id": "inv-xyz",
