@@ -2682,13 +2682,64 @@ func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settin
 		return errors.Wrap(err, "logging task end stats")
 	}
 
-	return errors.Wrap(ResetTaskOrDisplayTask(ctx, settings, t, evergreen.User, evergreen.MonitorPackage, true, &t.Details), "resetting task")
+	return errors.Wrap(ResetTaskOrDisplayTask(ctx, settings, t, ResetTaskOptions{
+		User:       evergreen.User,
+		Origin:     evergreen.MonitorPackage,
+		FailedOnly: true,
+		Detail:     &t.Details,
+	}), "resetting task")
+}
+
+// ValidateExecutionTasksToRestart validates that the given execution task IDs
+// are execution tasks of the given display task, so that they can be restarted
+// individually instead of restarting the whole display task.
+func ValidateExecutionTasksToRestart(t *task.Task, execTaskIDs []string) error {
+	if len(execTaskIDs) == 0 {
+		return nil
+	}
+	if !t.DisplayOnly {
+		return errors.Errorf("can only restart individual execution tasks within a display task, but task '%s' is not a display task", t.Id)
+	}
+	execTasks := map[string]bool{}
+	for _, id := range t.ExecutionTasks {
+		execTasks[id] = true
+	}
+	for _, id := range execTaskIDs {
+		if !execTasks[id] {
+			return errors.Errorf("execution task '%s' is not part of display task '%s'", id, t.Id)
+		}
+	}
+	return nil
+}
+
+// ResetTaskOptions specifies how a task or display task should be reset.
+type ResetTaskOptions struct {
+	// User is the user or system that requested the reset.
+	User string
+	// Origin is the source of the reset (e.g. the UI, REST API, or a monitor).
+	Origin string
+	// FailedOnly, when resetting a display task, resets only the execution
+	// tasks that failed. Mutually exclusive with ExecutionTaskIDs.
+	FailedOnly bool
+	// ExecutionTaskIDs, when resetting a display task, resets only the
+	// execution tasks with these IDs, regardless of whether they failed.
+	// Mutually exclusive with FailedOnly.
+	ExecutionTaskIDs []string
+	// Detail is the task end detail to use when resetting the task, if any.
+	Detail *apimodels.TaskEndDetail
 }
 
 // ResetTaskOrDisplayTask is a wrapper for TryResetTask that handles execution and display tasks that are restarted
 // from sources separate from marking the task finished. If an execution task, attempts to restart the display task instead.
-// Marks display tasks as reset when finished and then check if it can be reset immediately.
-func ResetTaskOrDisplayTask(ctx context.Context, settings *evergreen.Settings, t *task.Task, user, origin string, failedOnly bool, detail *apimodels.TaskEndDetail) error {
+// Marks display tasks as reset when finished and then check if it can be reset immediately. If opts.ExecutionTaskIDs is set,
+// only those execution tasks of the given display task are restarted, regardless of whether they failed.
+func ResetTaskOrDisplayTask(ctx context.Context, settings *evergreen.Settings, t *task.Task, opts ResetTaskOptions) error {
+	if opts.FailedOnly && len(opts.ExecutionTaskIDs) > 0 {
+		return errors.New("cannot restart only failed execution tasks and a specific set of execution tasks at the same time")
+	}
+	if err := ValidateExecutionTasksToRestart(t, opts.ExecutionTaskIDs); err != nil {
+		return err
+	}
 	taskToReset := *t
 	if taskToReset.IsPartOfDisplay(ctx) { // if given an execution task, attempt to restart the full display task
 		dt, err := taskToReset.GetDisplayTask(ctx)
@@ -2704,19 +2755,24 @@ func ResetTaskOrDisplayTask(ctx context.Context, settings *evergreen.Settings, t
 		if err != nil {
 			return errors.Wrap(err, "getting repo for display task to reset")
 		}
-		if failedOnly {
-			if err := taskToReset.SetResetFailedWhenFinished(ctx, user, repoRefID); err != nil {
+		switch {
+		case len(opts.ExecutionTaskIDs) > 0:
+			if err := taskToReset.SetResetExecutionTasksWhenFinished(ctx, opts.User, repoRefID, opts.ExecutionTaskIDs); err != nil {
+				return errors.Wrap(err, "marking display task to restart execution tasks")
+			}
+		case opts.FailedOnly:
+			if err := taskToReset.SetResetFailedWhenFinished(ctx, opts.User, repoRefID); err != nil {
 				return errors.Wrap(err, "marking display task for reset")
 			}
-		} else {
-			if err := taskToReset.SetResetWhenFinished(ctx, user, repoRefID); err != nil {
+		default:
+			if err := taskToReset.SetResetWhenFinished(ctx, opts.User, repoRefID); err != nil {
 				return errors.Wrap(err, "marking display task for reset")
 			}
 		}
-		return errors.Wrap(checkResetDisplayTask(ctx, settings, user, origin, &taskToReset), "checking and resetting display task")
+		return errors.Wrap(checkResetDisplayTask(ctx, settings, opts.User, opts.Origin, &taskToReset), "checking and resetting display task")
 	}
 
-	return errors.Wrap(TryResetTask(ctx, settings, t.Id, user, origin, detail), "resetting task")
+	return errors.Wrap(TryResetTask(ctx, settings, t.Id, opts.User, opts.Origin, opts.Detail), "resetting task")
 }
 
 // UpdateDisplayTaskForTask updates the status of the given execution task's display task

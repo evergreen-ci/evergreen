@@ -130,6 +130,7 @@ var (
 	NumActivatedGeneratedTasksKey = bsonutil.MustHaveTag(Task{}, "NumActivatedGeneratedTasks")
 	ResetWhenFinishedKey          = bsonutil.MustHaveTag(Task{}, "ResetWhenFinished")
 	ResetFailedWhenFinishedKey    = bsonutil.MustHaveTag(Task{}, "ResetFailedWhenFinished")
+	ExecutionTasksToRestartKey    = bsonutil.MustHaveTag(Task{}, "ExecutionTasksToRestart")
 	NumAutomaticRestartsKey       = bsonutil.MustHaveTag(Task{}, "NumAutomaticRestarts")
 	IsAutomaticRestartKey         = bsonutil.MustHaveTag(Task{}, "IsAutomaticRestart")
 	DisplayStatusKey              = bsonutil.MustHaveTag(Task{}, "DisplayStatus")
@@ -2898,6 +2899,7 @@ func abortAndMarkResetTasks(ctx context.Context, filter bson.M, taskIDs []string
 			{
 				"$unset": []string{
 					ResetFailedWhenFinishedKey,
+					ExecutionTasksToRestartKey,
 				},
 			},
 			addDisplayStatusCache,
