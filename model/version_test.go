@@ -983,3 +983,49 @@ func TestGetManifestModuleWiki(t *testing.T) {
 	assert.Equal(t, "master", m.Branch)
 	assert.Empty(t, m.URL)
 }
+
+func TestMakeManifestModuleResolutionKey(t *testing.T) {
+	ingestTime := time.Date(2026, time.August, 27, 0, 0, 0, 0, time.UTC)
+	module := Module{Owner: "owner", Repo: "repo", Branch: "main"}
+
+	t.Run("SameResolutionInputsShouldShareKey", func(t *testing.T) {
+		assert.Equal(t,
+			makeManifestModuleResolutionKey(module, "owner", "repo", evergreen.RepotrackerVersionRequester, ingestTime),
+			makeManifestModuleResolutionKey(module, "owner", "repo", evergreen.RepotrackerVersionRequester, ingestTime),
+		)
+	})
+
+	t.Run("DifferentBranchesShouldNotShareKey", func(t *testing.T) {
+		other := module
+		other.Branch = "release"
+		assert.NotEqual(t,
+			makeManifestModuleResolutionKey(module, "owner", "repo", evergreen.RepotrackerVersionRequester, ingestTime),
+			makeManifestModuleResolutionKey(other, "owner", "repo", evergreen.RepotrackerVersionRequester, ingestTime),
+		)
+	})
+
+	t.Run("PinnedRefsShouldIgnoreBranchAndRequester", func(t *testing.T) {
+		pinned := module
+		pinned.Ref = "0123456789abcdef"
+		other := pinned
+		other.Branch = "release"
+		assert.Equal(t,
+			makeManifestModuleResolutionKey(pinned, "owner", "repo", evergreen.RepotrackerVersionRequester, ingestTime),
+			makeManifestModuleResolutionKey(other, "owner", "repo", evergreen.GithubPRRequester, ingestTime.Add(time.Hour)),
+		)
+	})
+
+	t.Run("PatchRequestsShouldIgnoreIngestTime", func(t *testing.T) {
+		assert.Equal(t,
+			makeManifestModuleResolutionKey(module, "owner", "repo", evergreen.GithubPRRequester, ingestTime),
+			makeManifestModuleResolutionKey(module, "owner", "repo", evergreen.GithubPRRequester, ingestTime.Add(time.Hour)),
+		)
+	})
+
+	t.Run("HistoryRequestsShouldIncludeIngestTime", func(t *testing.T) {
+		assert.NotEqual(t,
+			makeManifestModuleResolutionKey(module, "owner", "repo", evergreen.RepotrackerVersionRequester, ingestTime),
+			makeManifestModuleResolutionKey(module, "owner", "repo", evergreen.RepotrackerVersionRequester, ingestTime.Add(time.Hour)),
+		)
+	})
+}
