@@ -2018,3 +2018,79 @@ definition from the project config.
 Commands can also be configured to run if timeout occurs, as documented [here](Project-Configuration-Files#timeout-handler).
 
 Note: CLI tools that run on Evergreen (such as DSI) might also have their own timeout configurations. Please check the documentation of the CLI tools you use for more details.
+
+## virtual_tasks.complete
+
+This command push-completes [virtual tasks](Virtual-Tasks) by submitting their
+final results to Evergreen.
+
+- If a virtual task is already finished or already running, the push-completion
+  will no-op.
+- If the `execution` does not match the virtual task's current execution, the
+  push-completion will no-op.
+- If a task is not virtual or is not in the same version as the runner, the
+  push-completion will fail.
+
+If any task fails to be push-completed, the command will fail and log errors for
+the failed tasks.
+
+```yaml
+- command: virtual_tasks.complete
+  params:
+    files: ["virtual_task_completions.json"]
+    optional: true ## optional
+```
+
+Parameters:
+
+- `files`: an array of gitignore file globs (relative to the task's working
+  directory) matching files that contain the virtual task completion data. Each
+  file must contain a JSON array of completion objects with the schema below.
+- `optional`: if `true`, the command succeeds (no-ops) when no files match or
+  the matched files contain no completions. If `false` (the default), the
+  command fails in those cases.
+
+### Completion File Schema
+
+Each file is a JSON array of objects, one per virtual task to complete. For
+example:
+
+```json
+[
+    {
+        "task_id": "evergreen_task_id",
+        "execution": 0,
+        "status": "success",
+        "test_results": {
+            "stats": { "total_count": 42, "failed_count": 1 },
+            "failed_sample": ["test_name_1"],
+            "created_at": "2026-08-12T12:00:00Z"
+        },
+        "artifacts": [
+            { "name": "test.log", "url": "s3://bucket/path", "visibility": "signed" }
+        ],
+        "external_metadata": {
+            "engflow_invocation_id": "inv-xyz",
+            "shard_id": "shard-3"
+        }
+    }
+]
+```
+
+Fields:
+
+- `task_id`: the Evergreen task ID of the virtual task to complete. The task
+  must be a virtual task in the same version as the runner.
+- `execution`: the execution number the completion applies to. Must match the
+  virtual task's current execution number, otherwise the completion no-ops.
+- `status`: the final task status. Must be `success` or `failed`.
+- `test_results`: optional test result metadata to attach to the task.
+  - `stats`: test result counts. `total_count` and `failed_count` must be
+    non-negative.
+  - `failed_sample`: optional list of failed test names.
+  - `created_at`: timestamp the test results were generated.
+- `artifacts`: optional list of artifact files to attach. Each artifact
+  requires a `name` and `url`; `visibility` is optional and must be a valid
+  artifact visibility if set.
+- `external_metadata`: optional metadata identifying the external execution
+  that produced the results.

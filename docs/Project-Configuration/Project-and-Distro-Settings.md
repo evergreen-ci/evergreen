@@ -832,6 +832,15 @@ definition](#scheduling-settings)
 deactivate_previous: true
 ```
 
+### Virtual Tasks
+
+[View setting
+definition](#virtual-tasks)
+
+```yaml
+virtual_tasks_enabled: true
+```
+
 ### Virtual Workstation Commands
 
 [View setting

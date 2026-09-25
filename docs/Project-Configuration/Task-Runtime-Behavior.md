@@ -6,6 +6,10 @@ configuration. For more information on how to configure a task, see [project
 configuration](Project-Configuration-Files) or [project
 commands](Project-Commands).
 
+This covers regular tasks that run on a host. For virtual tasks, which are
+inactive by default and are typically push-completed by a runner task rather
+than running on a host, see [Virtual Tasks](Virtual-Tasks).
+
 ## Initial Task Setup
 
 Before a task actually runs, it has to run some initial steps to prepare to run
