@@ -44,4 +44,7 @@ Registry entries never reference each other, so:
 
 The trade-off is preamble size: an alias serializes as `*name` (a few bytes), while an expanded copy inlines the full
 referenced value into each anchor that uses it. Deeply chained anchor references could grow the preamble multiplicatively,
-ut real configs use flat config-block anchors and include file sizes are capped (see [2024-07-11 include file limits](2024-07-11_include_file_limits.md)).
+but real configs use flat config-block anchors and include file sizes are capped (see [2024-07-11 include file limits](2024-07-11_include_file_limits.md)).
+
+As a defensive stopgap against pathological configs, expansion is capped at a fixed node budget per file and the
+serialized preamble at a fixed byte size. Exceeding either returns an error. 

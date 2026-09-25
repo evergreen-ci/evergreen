@@ -3797,15 +3797,43 @@ b:
 	var node yaml.Node
 	require.NoError(t, yaml.Unmarshal([]byte(yml), &node))
 
-	entries := collectAnchors(&node)
+	entries, err := collectAnchors(&node)
+	require.NoError(t, err)
 	require.Len(t, entries, 2)
 	assert.Equal(t, "first", entries[0].name)
 	assert.Equal(t, "second", entries[1].name)
 }
 
+// TestCollectAnchorsExpansionBombErrors verifies the node limit guard: a
+// chain of anchors that each reference the previous one twice doubles the
+// expanded size per level, so expansion must be aborted rather than exhausting
+// memory.
+func TestCollectAnchorsExpansionBombErrors(t *testing.T) {
+	yml := "a0: &a0 [x, x]\n"
+	for i := 1; i < 20; i++ {
+		yml += fmt.Sprintf("a%d: &a%d [*a%d, *a%d]\n", i, i, i-1, i-1)
+	}
+	var node yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yml), &node))
+
+	_, err := collectAnchors(&node)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "exceeded the maximum")
+
+	// The file must still parse via fallback, with the reason in decodeErr.
+	pp, decodeErr, err := createIntermediateProject([]byte(yml), false, &anchorRegistry{})
+	require.NoError(t, err)
+	require.NotNil(t, pp)
+	require.Error(t, decodeErr)
+	assert.Contains(t, decodeErr.Error(), "exceeded the maximum")
+}
+
 func TestExpandAliases(t *testing.T) {
 	t.Run("NilReturnsNil", func(t *testing.T) {
-		assert.Nil(t, expandAliases(nil))
+		nodeLimit := maxAnchorExpansionNodes
+		expanded, err := expandAliases(nil, &nodeLimit)
+		require.NoError(t, err)
+		assert.Nil(t, expanded)
 	})
 
 	// Covers the no-Content path: a scalar has no children, so only the node
@@ -3813,7 +3841,9 @@ func TestExpandAliases(t *testing.T) {
 	t.Run("ScalarCopiedWithAnchorStripped", func(t *testing.T) {
 		original := &yaml.Node{Kind: yaml.ScalarNode, Value: "blue", Anchor: "anchor-a"}
 
-		expanded := expandAliases(original)
+		nodeLimit := maxAnchorExpansionNodes
+		expanded, err := expandAliases(original, &nodeLimit)
+		require.NoError(t, err)
 		require.NotNil(t, expanded)
 		assert.NotSame(t, original, expanded)
 		assert.Equal(t, "blue", expanded.Value)
@@ -3837,7 +3867,9 @@ b: *anchor-a
 		alias := mapping.Content[3]
 		require.Equal(t, yaml.AliasNode, alias.Kind)
 
-		expanded := expandAliases(alias)
+		nodeLimit := maxAnchorExpansionNodes
+		expanded, err := expandAliases(alias, &nodeLimit)
+		require.NoError(t, err)
 		require.NotNil(t, expanded)
 		assert.Equal(t, yaml.ScalarNode, expanded.Kind)
 		assert.Equal(t, "blue", expanded.Value)
@@ -3862,7 +3894,9 @@ b: &anchor-b
 		require.Equal(t, "anchor-b", anchorB.Anchor)
 		require.Len(t, anchorB.Content, 4)
 
-		expanded := expandAliases(anchorB)
+		nodeLimit := maxAnchorExpansionNodes
+		expanded, err := expandAliases(anchorB, &nodeLimit)
+		require.NoError(t, err)
 		require.NotNil(t, expanded)
 		assert.Empty(t, expanded.Anchor)
 		require.Len(t, expanded.Content, 4)
@@ -3877,6 +3911,68 @@ b: &anchor-b
 
 		// The copy must be independent: the original still holds the alias.
 		assert.Equal(t, yaml.AliasNode, anchorB.Content[1].Kind)
+	})
+
+	// Covers multi-level chains: anchor-c references anchor-b, which references
+	// anchor-a. The expanded copy must bottom out in real scalar values with no
+	// alias nodes or anchor names anywhere in the tree.
+	t.Run("ChainedAliasesExpandRecursively", func(t *testing.T) {
+		yml := `
+a: &anchor-a blue
+b: &anchor-b
+  color: *anchor-a
+c: &anchor-c
+  inner: *anchor-b
+`
+		var node yaml.Node
+		require.NoError(t, yaml.Unmarshal([]byte(yml), &node))
+		mapping := node.Content[0]
+		require.Len(t, mapping.Content, 6)
+		anchorC := mapping.Content[5]
+		require.Equal(t, "anchor-c", anchorC.Anchor)
+
+		nodeLimit := maxAnchorExpansionNodes
+		expanded, err := expandAliases(anchorC, &nodeLimit)
+		require.NoError(t, err)
+		require.NotNil(t, expanded)
+
+		// expanded is {inner: {color: blue}}.
+		require.Len(t, expanded.Content, 2)
+		assert.Equal(t, "inner", expanded.Content[0].Value)
+		inner := expanded.Content[1]
+		require.Equal(t, yaml.MappingNode, inner.Kind)
+		require.Len(t, inner.Content, 2)
+		assert.Equal(t, "color", inner.Content[0].Value)
+		assert.Equal(t, yaml.ScalarNode, inner.Content[1].Kind)
+		assert.Equal(t, "blue", inner.Content[1].Value)
+
+		var checkClean func(n *yaml.Node)
+		checkClean = func(n *yaml.Node) {
+			assert.NotEqual(t, yaml.AliasNode, n.Kind, "no alias nodes may remain")
+			assert.Empty(t, n.Anchor, "no anchor names may remain")
+			for _, child := range n.Content {
+				checkClean(child)
+			}
+		}
+		checkClean(expanded)
+	})
+
+	t.Run("ExhaustedNodeLimitErrors", func(t *testing.T) {
+		yml := `
+a: &anchor-a
+  color: blue
+  size: large
+`
+		var node yaml.Node
+		require.NoError(t, yaml.Unmarshal([]byte(yml), &node))
+		anchorA := node.Content[0].Content[1]
+		require.Equal(t, "anchor-a", anchorA.Anchor)
+
+		// The anchor's subtree has 5 nodes (mapping + 4 scalars).
+		nodeLimit := 3
+		_, err := expandAliases(anchorA, &nodeLimit)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "exceeded the maximum")
 	})
 }
 
@@ -3894,7 +3990,8 @@ steps:
 `
 	var node yaml.Node
 	require.NoError(t, yaml.Unmarshal([]byte(src), &node))
-	anchors := collectAnchors(&node)
+	anchors, err := collectAnchors(&node)
+	require.NoError(t, err)
 	require.Len(t, anchors, 2)
 
 	registry := &anchorRegistry{entries: anchors}
@@ -3917,6 +4014,25 @@ tasks:
 	combined := append(preamble, []byte(snippet)...)
 	var combinedNode yaml.Node
 	require.NoError(t, yaml.Unmarshal(combined, &combinedNode), "combined preamble+snippet should parse without unknown-anchor errors")
+}
+
+// TestBuildAnchorPreambleOversizedErrors verifies the preamble size cap: a
+// registry whose serialized form exceeds maxAnchorPreambleBytes must error so
+// the caller falls back to parsing without the preamble.
+func TestBuildAnchorPreambleOversizedErrors(t *testing.T) {
+	registry := &anchorRegistry{
+		entries: []anchorEntry{
+			{name: "huge", node: &yaml.Node{
+				Kind:   yaml.ScalarNode,
+				Anchor: "huge",
+				Value:  strings.Repeat("x", maxAnchorPreambleBytes+1),
+			}},
+		},
+	}
+
+	_, err := buildAnchorPreamble(registry)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "exceeds the maximum")
 }
 
 // TestBasicCrossFileAnchor verifies that an anchor defined in the main project
