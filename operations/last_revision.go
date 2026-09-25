@@ -700,11 +700,12 @@ func checkBuildsPassCriteria(ctx context.Context, c client.Communicator, builds 
 		if res.err != nil {
 			catcher.Add(res.err)
 		}
+		if !res.criteriaAppliesToBuild {
+			continue
+		}
+		anyBuildMatchedCriteria = true
 		if !res.passesAllBuildCriteria {
 			allBuildsPassedAllBuildCriteria = false
-		}
-		if res.criteriaAppliesToBuild {
-			anyBuildMatchedCriteria = true
 		}
 		for i, met := range res.metFailedCriteria {
 			if met {
@@ -728,7 +729,8 @@ type buildCriteriaResult struct {
 	// criteriaAppliesToBuild is whether the criteria applies to the build.
 	criteriaAppliesToBuild bool
 	// passesAllBuildCriteria is whether the build satisfies every criteria that
-	// must be met by all matching build variants.
+	// must be met by all matching build variants. Only meaningful when
+	// criteriaAppliesToBuild is true.
 	passesAllBuildCriteria bool
 	// metFailedCriteria[i] is true if this build met the minimum failed
 	// proportion threshold for criteria[i]. This is to support reused criteria
@@ -739,11 +741,9 @@ type buildCriteriaResult struct {
 }
 
 // checkBuildPassesCriteria checks a single build against the criteria and
-// returns the result. A build that no criterion applies to automatically passes
-// all build-level thresholds, but does not count as a matching build for the
-// version as a whole.
+// returns the result.
 func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b model.APIBuild, criteria []lastRevisionCriteria) buildCriteriaResult {
-	res := buildCriteriaResult{passesAllBuildCriteria: true}
+	var res buildCriteriaResult
 	for _, c := range criteria {
 		if c.shouldApply(utility.FromStringPtr(b.BuildVariant), utility.FromStringPtr(b.DisplayName)) {
 			res.criteriaAppliesToBuild = true
@@ -753,6 +753,7 @@ func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b mode
 	if !res.criteriaAppliesToBuild {
 		return res
 	}
+	res.passesAllBuildCriteria = true
 
 	grip.Debug(ctx, message.Fields{
 		"message":                    "checking build for last revision criteria",
