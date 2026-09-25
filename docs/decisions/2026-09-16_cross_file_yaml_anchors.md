@@ -47,4 +47,4 @@ referenced value into each anchor that uses it. Deeply chained anchor references
 but real configs use flat config-block anchors and include file sizes are capped (see [2024-07-11 include file limits](2024-07-11_include_file_limits.md)).
 
 As a defensive stopgap against pathological configs, expansion is capped at a fixed node budget per file and the
-serialized preamble at a fixed byte size. Exceeding either returns an error. 
+serialized preamble at a fixed byte size. Exceeding either returns an error.
