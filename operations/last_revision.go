@@ -671,17 +671,9 @@ func findLatestMatchingVersion(ctx context.Context, c client.Communicator, lates
 // success, finished, and successful-tasks thresholds must be met by every
 // matching build variant. Each minimum failed proportion threshold only has to
 // be met by one matching build variant.
+// At least one build must match some criterion for the version to be a match.
 func checkBuildsPassCriteria(ctx context.Context, c client.Communicator, builds []model.APIBuild, criteria []lastRevisionCriteria) (passesCriteria bool, err error) {
-	type buildResult struct {
-		passesAllBuildCriteria bool
-		// metFailedCriteria[i] is true if this build met the minimum failed
-		// proportion threshold for criteria[i]. This is to support reused
-		// criteria groups that have multiple different minimum failed criteria.
-		metFailedCriteria []bool
-		err               error
-	}
-
-	buildResults := make(chan buildResult, len(builds))
+	buildResults := make(chan buildCriteriaResult, len(builds))
 	wg := sync.WaitGroup{}
 	for _, b := range builds {
 		wg.Add(1)
@@ -689,8 +681,7 @@ func checkBuildsPassCriteria(ctx context.Context, c client.Communicator, builds 
 		go func() {
 			defer wg.Done()
 
-			res := buildResult{}
-			res.passesAllBuildCriteria, res.metFailedCriteria, res.err = checkBuildPassesCriteria(ctx, c, b, criteria)
+			res := checkBuildPassesCriteria(ctx, c, b, criteria)
 			select {
 			case <-ctx.Done():
 			case buildResults <- res:
@@ -703,6 +694,7 @@ func checkBuildsPassCriteria(ctx context.Context, c client.Communicator, builds 
 
 	catcher := grip.NewBasicCatcher()
 	allBuildsPassedAllBuildCriteria := true
+	anyBuildMatchedCriteria := false
 	criterionMetBySomeBuild := make([]bool, len(criteria))
 	for res := range buildResults {
 		if res.err != nil {
@@ -711,6 +703,9 @@ func checkBuildsPassCriteria(ctx context.Context, c client.Communicator, builds 
 		if !res.passesAllBuildCriteria {
 			allBuildsPassedAllBuildCriteria = false
 		}
+		if res.criteriaAppliesToBuild {
+			anyBuildMatchedCriteria = true
+		}
 		for i, met := range res.metFailedCriteria {
 			if met {
 				criterionMetBySomeBuild[i] = true
@@ -718,30 +713,45 @@ func checkBuildsPassCriteria(ctx context.Context, c client.Communicator, builds 
 		}
 	}
 	everyFailedCriteriaIsMet := true
-	for i, criterion := range criteria {
-		if criterion.minFailedProportion > 0 && !criterionMetBySomeBuild[i] {
+	for i, c := range criteria {
+		if c.minFailedProportion > 0 && !criterionMetBySomeBuild[i] {
 			everyFailedCriteriaIsMet = false
 			break
 		}
 	}
-	return allBuildsPassedAllBuildCriteria && everyFailedCriteriaIsMet, catcher.Resolve()
+	return allBuildsPassedAllBuildCriteria && everyFailedCriteriaIsMet && anyBuildMatchedCriteria, catcher.Resolve()
 }
 
-// checkBuildPassesCriteria checks a single build against the criteria.
-// passesAllBuildCriteria is whether the build satisfies every criteria
-// that must be met by all matching build variants. metFailedCriteria[i] is
-// whether the build meets the minimum failed proportion threshold for
-// criteria[i] (each only needs to be met by one matching build variant).
-func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b model.APIBuild, criteria []lastRevisionCriteria) (passesAllBuildCriteria bool, metFailedCriteria []bool, err error) {
-	anyCriteriaApply := false
+// buildCriteriaResult is the result of checking a single build against the last
+// revision criteria.
+type buildCriteriaResult struct {
+	// criteriaAppliesToBuild is whether the criteria applies to the build.
+	criteriaAppliesToBuild bool
+	// passesAllBuildCriteria is whether the build satisfies every criteria that
+	// must be met by all matching build variants.
+	passesAllBuildCriteria bool
+	// metFailedCriteria[i] is true if this build met the minimum failed
+	// proportion threshold for criteria[i]. This is to support reused criteria
+	// groups that have multiple different minimum failed criteria.
+	metFailedCriteria []bool
+	// err is any error encountered while checking the build.
+	err error
+}
+
+// checkBuildPassesCriteria checks a single build against the criteria and
+// returns the result. A build that no criterion applies to automatically passes
+// all build-level thresholds, but does not count as a matching build for the
+// version as a whole.
+func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b model.APIBuild, criteria []lastRevisionCriteria) buildCriteriaResult {
+	res := buildCriteriaResult{passesAllBuildCriteria: true}
 	for _, c := range criteria {
 		if c.shouldApply(utility.FromStringPtr(b.BuildVariant), utility.FromStringPtr(b.DisplayName)) {
-			anyCriteriaApply = true
+			res.criteriaAppliesToBuild = true
 			break
 		}
 	}
-	if !anyCriteriaApply {
-		return true, nil, nil
+	if !res.criteriaAppliesToBuild {
+		return res
 	}
 
 	grip.Debug(ctx, message.Fields{
@@ -760,7 +770,8 @@ func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b mode
 	for {
 		tasksBatch, err := c.GetTasksForBuild(ctx, utility.FromStringPtr(b.Id), startAt, buildTasksLimitPerRequest)
 		if err != nil {
-			return false, nil, errors.Wrapf(err, "getting tasks for build '%s'", utility.FromStringPtr(b.Id))
+			res.err = errors.Wrapf(err, "getting tasks for build '%s'", utility.FromStringPtr(b.Id))
+			return res
 		}
 		numTasksInBatch := len(tasksBatch)
 		if startAt != "" {
@@ -779,18 +790,17 @@ func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b mode
 		}
 	}
 
-	passesAllBuildCriteria = true
-	metFailedCriteria = make([]bool, len(criteria))
+	res.metFailedCriteria = make([]bool, len(criteria))
 	for i, c := range criteria {
 		buildInfo := newLastRevisionBuildInfo(b, tasks, c.knownIssuesAreSuccess)
 		if !c.checkAllBuildThresholds(ctx, buildInfo) {
-			passesAllBuildCriteria = false
+			res.passesAllBuildCriteria = false
 		}
 		if c.minFailedProportion > 0 && c.checkMinFailed(ctx, buildInfo) {
-			metFailedCriteria[i] = true
+			res.metFailedCriteria[i] = true
 		}
 	}
-	return passesAllBuildCriteria, metFailedCriteria, nil
+	return res
 }
 
 // lastRevisionCriteriaGroup is a group of last revision criteria that can be

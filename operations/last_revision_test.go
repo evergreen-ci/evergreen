@@ -169,7 +169,7 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 			require.NoError(t, err)
 			assert.False(t, passesCriteria)
 		},
-		"PassesCriteriaWithNoMatchingBuildVariants": func(t *testing.T, c *client.Mock) {
+		"DoesNotPassCriteriaWithNoMatchingBuildVariants": func(t *testing.T, c *client.Mock) {
 			builds := []model.APIBuild{
 				{
 					Id:           utility.ToStringPtr("b1"),
@@ -192,7 +192,7 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 
 			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, []lastRevisionCriteria{criteria})
 			require.NoError(t, err)
-			assert.True(t, passesCriteria)
+			assert.False(t, passesCriteria, "a version with no build variants matching the regex should not pass")
 		},
 		"PassesCriteriaWithMatchingBuildVariantDisplayNameWhenSuccessRateIsAboveThreshold": func(t *testing.T, c *client.Mock) {
 			builds := []model.APIBuild{
@@ -258,7 +258,7 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 			require.NoError(t, err)
 			assert.False(t, passesCriteria)
 		},
-		"PassesCriteriaWithNoMatchingBuildVariantDisplayNames": func(t *testing.T, c *client.Mock) {
+		"DoesNotPassCriteriaWithNoMatchingBuildVariantDisplayNames": func(t *testing.T, c *client.Mock) {
 			builds := []model.APIBuild{
 				{
 					Id:           utility.ToStringPtr("b1"),
@@ -282,7 +282,7 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 
 			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, []lastRevisionCriteria{criteria})
 			require.NoError(t, err)
-			assert.True(t, passesCriteria)
+			assert.False(t, passesCriteria, "a version with no build variant display names matching the regex should not pass")
 		},
 		"PassesCriteriaWithBuildFinishedRateAboveThreshold": func(t *testing.T, c *client.Mock) {
 			builds := []model.APIBuild{
@@ -918,7 +918,7 @@ func TestLastRevisionCheckVersions(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Nil(t, v)
 		},
-		"ReturnsVersionWithNoMatchingBuildVariants": func(t *testing.T, c *client.Mock) {
+		"DoesNotReturnVersionWithNoMatchingBuildVariants": func(t *testing.T, c *client.Mock) {
 			versions := []model.APIVersion{
 				{
 					Id:      utility.ToStringPtr("v1"),
@@ -949,8 +949,7 @@ func TestLastRevisionCheckVersions(t *testing.T) {
 
 			v, err := findLatestMatchingVersion(t.Context(), c, versions, []lastRevisionCriteria{criteria})
 			require.NoError(t, err)
-			require.NotNil(t, v)
-			assert.Equal(t, "v1", utility.FromStringPtr(v.Id))
+			assert.Nil(t, v, "a version with no build variants matching the regex should not be returned")
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
