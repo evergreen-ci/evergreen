@@ -690,10 +690,10 @@ func setToFilteredTasks(ctx context.Context, patchDoc, reusePatch *patch.Patch, 
 			if t.GeneratedBy != "" {
 				generatedTask, err := task.FindOneId(ctx, t.GeneratedBy)
 				if err != nil {
-					return errors.Wrap(err, "finding generator task")
+					return errors.Wrapf(err, "finding generator task '%s' for generated task '%s'", t.GeneratedBy, t.Id)
 				}
 				if generatedTask == nil {
-					return errors.New("generator task not found")
+					return errors.Errorf("generator task '%s' not found for generated task '%s'", t.GeneratedBy, t.Id)
 				}
 				failedTasks = append(failedTasks, *generatedTask)
 				failedTaskDisplayNames = append(failedTaskDisplayNames, generatedTask.DisplayName)
