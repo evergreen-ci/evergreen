@@ -28,7 +28,7 @@
       "repo_kind": "github",
       "identifier": "spruce",
       "r": "gitter_request",
-      "author_id": "admin_user",
+      "author_id": "fake.user",
       "activated": false,
       "cost": {
         "adjusted_ec2_cost": 0.89,

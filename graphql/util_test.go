@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	gqlgen "github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
@@ -21,6 +22,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vektah/gqlparser/v2/ast"
 )
 
 func init() {
@@ -534,8 +536,23 @@ func TestFlattenOtelVariables(t *testing.T) {
 func TestGetAPIProjectRef(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(model.ProjectRefCollection))
 
+	projectRefContext := func(fields ...string) context.Context {
+		selections := make(ast.SelectionSet, 0, len(fields))
+		for _, field := range fields {
+			selections = append(selections, &ast.Field{Name: field, Alias: field})
+		}
+		ctx := gqlgen.WithOperationContext(t.Context(), &gqlgen.OperationContext{})
+		ctx = gqlgen.WithFieldContext(ctx, &gqlgen.FieldContext{
+			Field: gqlgen.CollectedField{
+				Field:      &ast.Field{Name: "projectRef", Alias: "projectRef"},
+				Selections: selections,
+			},
+		})
+		return loaders.Inject(ctx)
+	}
+
 	t.Run("ReturnsNilForDeletedProject", func(t *testing.T) {
-		ctx := loaders.Inject(t.Context())
+		ctx := projectRefContext("owner")
 		projectId := "deleted_project"
 		result, err := getAPIProjectRef(ctx, &projectId)
 		assert.NoError(t, err)
@@ -543,7 +560,7 @@ func TestGetAPIProjectRef(t *testing.T) {
 	})
 
 	t.Run("ReturnsProjectMetadataForExistingProject", func(t *testing.T) {
-		ctx := loaders.Inject(t.Context())
+		ctx := projectRefContext("owner", "repo")
 		projectRef := model.ProjectRef{
 			Id:         "existing_project",
 			Identifier: "existing_project",
