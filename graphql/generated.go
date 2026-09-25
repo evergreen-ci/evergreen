@@ -2262,6 +2262,7 @@ type ComplexityRoot struct {
 		DefaultProject            func(childComplexity int) int
 		FileStreamingContentTypes func(childComplexity int) int
 		HttpListenAddr            func(childComplexity int) int
+		LogUrl                    func(childComplexity int) int
 		LoginDomain               func(childComplexity int) int
 		ParsleyUrl                func(childComplexity int) int
 		Secret                    func(childComplexity int) int
@@ -12319,6 +12320,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UIConfig.HttpListenAddr(childComplexity), true
+	case "UIConfig.logUrl":
+		if e.complexity.UIConfig.LogUrl == nil {
+			break
+		}
+
+		return e.complexity.UIConfig.LogUrl(childComplexity), true
 	case "UIConfig.loginDomain":
 		if e.complexity.UIConfig.LoginDomain == nil {
 			break
@@ -20427,6 +20434,8 @@ func (ec *executionContext) fieldContext_AdminSettings_ui(_ context.Context, fie
 				return ec.fieldContext_UIConfig_uiv2Url(ctx, field)
 			case "parsleyUrl":
 				return ec.fieldContext_UIConfig_parsleyUrl(ctx, field)
+			case "logUrl":
+				return ec.fieldContext_UIConfig_logUrl(ctx, field)
 			case "httpListenAddr":
 				return ec.fieldContext_UIConfig_httpListenAddr(ctx, field)
 			case "secret":
@@ -60808,6 +60817,8 @@ func (ec *executionContext) fieldContext_SpruceConfig_ui(_ context.Context, fiel
 				return ec.fieldContext_UIConfig_uiv2Url(ctx, field)
 			case "parsleyUrl":
 				return ec.fieldContext_UIConfig_parsleyUrl(ctx, field)
+			case "logUrl":
+				return ec.fieldContext_UIConfig_logUrl(ctx, field)
 			case "httpListenAddr":
 				return ec.fieldContext_UIConfig_httpListenAddr(ctx, field)
 			case "secret":
@@ -73058,6 +73069,35 @@ func (ec *executionContext) _UIConfig_parsleyUrl(ctx context.Context, field grap
 }
 
 func (ec *executionContext) fieldContext_UIConfig_parsleyUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UIConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UIConfig_logUrl(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UIConfig_logUrl,
+		func(ctx context.Context) (any, error) {
+			return obj.LogUrl, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_UIConfig_logUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "UIConfig",
 		Field:      field,
@@ -91092,7 +91132,7 @@ func (ec *executionContext) unmarshalInputUIConfigInput(ctx context.Context, obj
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"url", "uiv2Url", "parsleyUrl", "httpListenAddr", "secret", "defaultProject", "corsOrigins", "fileStreamingContentTypes", "loginDomain", "userVoice", "csrfKey", "cacheTemplates", "stagingEnvironment", "betaFeatures"}
+	fieldsInOrder := [...]string{"url", "uiv2Url", "parsleyUrl", "logUrl", "httpListenAddr", "secret", "defaultProject", "corsOrigins", "fileStreamingContentTypes", "loginDomain", "userVoice", "csrfKey", "cacheTemplates", "stagingEnvironment", "betaFeatures"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -91120,6 +91160,13 @@ func (ec *executionContext) unmarshalInputUIConfigInput(ctx context.Context, obj
 				return it, err
 			}
 			it.ParsleyUrl = data
+		case "logUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("logUrl"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LogUrl = data
 		case "httpListenAddr":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("httpListenAddr"))
 			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
@@ -110487,6 +110534,8 @@ func (ec *executionContext) _UIConfig(ctx context.Context, sel ast.SelectionSet,
 			out.Values[i] = ec._UIConfig_uiv2Url(ctx, field, obj)
 		case "parsleyUrl":
 			out.Values[i] = ec._UIConfig_parsleyUrl(ctx, field, obj)
+		case "logUrl":
+			out.Values[i] = ec._UIConfig_logUrl(ctx, field, obj)
 		case "httpListenAddr":
 			out.Values[i] = ec._UIConfig_httpListenAddr(ctx, field, obj)
 		case "secret":

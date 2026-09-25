@@ -286,6 +286,7 @@
       "userVoice": "https://uservoice.com",
       "uiv2_url": "http://localhost:3000",
       "parsley_url": "http://localhost:4173",
+      "log_url": "http://localhost:9090",
       "beta_features": {
         "spruce_waterfall_enabled": true
       },

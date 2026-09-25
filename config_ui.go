@@ -19,6 +19,7 @@ type UIConfig struct {
 	Url                       string       `bson:"url" json:"url" yaml:"url"`
 	UIv2Url                   string       `bson:"uiv2_url" json:"uiv2_url" yaml:"uiv2_url"`
 	ParsleyUrl                string       `bson:"parsley_url" json:"parsley_url" yaml:"parsley_url"`
+	LogUrl                    string       `bson:"log_url" json:"log_url" yaml:"log_url"`
 	HttpListenAddr            string       `bson:"http_listen_addr" json:"http_listen_addr" yaml:"httplistenaddr"`
 	Secret                    string       `bson:"secret" json:"secret" yaml:"secret"`                                                                   // Secret to encrypt session storage
 	DefaultProject            string       `bson:"default_project" json:"default_project" yaml:"defaultproject"`                                         // Default project to assume when none specified
@@ -44,6 +45,7 @@ func (c *UIConfig) Set(ctx context.Context) error {
 			"url":                          c.Url,
 			"uiv2_url":                     c.UIv2Url,
 			"parsley_url":                  c.ParsleyUrl,
+			"log_url":                      c.LogUrl,
 			"http_listen_addr":             c.HttpListenAddr,
 			"secret":                       c.Secret,
 			"default_project":              c.DefaultProject,
