@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/evergreen/model/user"
 )
@@ -13,27 +12,19 @@ import (
 // and emailAddress fields are served from the denormalized version document; requesting any
 // other field triggers a database fetch.
 func getVersionAuthorDBUser(ctx context.Context, authorID, authorName, authorEmail string) (*user.DBUser, error) {
+	currentUser := mustHaveUser(ctx)
+	if currentUser.Id == authorID {
+		return currentUser, nil
+	}
+
 	fromVersion := &user.DBUser{
 		Id:           authorID,
 		DispName:     authorName,
 		EmailAddress: authorEmail,
 	}
 
-	requestedFields := graphql.CollectAllFields(ctx)
-	needsDBFetch := false
-	for _, field := range requestedFields {
-		if field != "id" && field != "displayName" && field != "emailAddress" {
-			needsDBFetch = true
-			break
-		}
-	}
-	if !needsDBFetch {
+	if !requiresDBRead(ctx, []string{"id", "displayName", "emailAddress"}) {
 		return fromVersion, nil
-	}
-
-	currentUser := mustHaveUser(ctx)
-	if currentUser.Id == authorID {
-		return currentUser, nil
 	}
 
 	dbUser, err := loaders.GetUser(ctx, authorID)
