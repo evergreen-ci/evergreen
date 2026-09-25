@@ -100,7 +100,7 @@ If you have no source checkout, use `patch-file`. Pass the version ID to `--diff
 evergreen patch-file --diff-patchId <mainline_version_id> --repeat-patch <mainline_version_id> --project <project> -y --finalize
 ```
 
-Similarly, using the `--repeat-failed` flag will perform the same behavior as the `--reuse` flag and by default use the last patch as a reference, with the only difference being that it will repeat only the failed tasks and build variants from the most recent patch (if any failures exist).
+Similarly, using the `--repeat-failed` flag will perform the same behavior as the `--reuse` flag and by default use the last patch as a reference, with the only difference being that it will repeat only the failed tasks and build variants from the most recent patch (if any failures exist). Note that for failed generated tasks, this command will schedule the corresponding generator task.
 
 ```bash
 evergreen patch --repeat-failed
