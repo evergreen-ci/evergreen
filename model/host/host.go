@@ -320,6 +320,9 @@ type SpawnOptions struct {
 
 	// SpawnedByTask indicates that this host has been spawned by a task.
 	SpawnedByTask bool `bson:"spawned_by_task,omitempty" json:"spawned_by_task,omitempty"`
+
+	// UserEmail is the email of the user who requested a user spawn host.
+	UserEmail string `bson:"user_email,omitempty" json:"user_email,omitempty"`
 }
 
 // SleepScheduleInfo stores information about a host's sleep schedule and

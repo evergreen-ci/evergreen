@@ -126,7 +126,7 @@ func expireInDays(numDays int) string {
 
 // makeTags populates a slice of tags based on a host object, which contain keys
 // for the user, owner, hostname, and if it's a spawnhost or not.
-func makeTags(intentHost *host.Host) []host.Tag {
+func makeTags(intentHost *host.Host, resourceTags evergreen.ResourceTagsConfig) []host.Tag {
 	// get requester host name
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -194,11 +194,50 @@ func makeTags(intentHost *host.Host) []host.Tag {
 			systemTags = append(systemTags, host.Tag{Key: evergreen.TagBuildID, Value: intentHost.SpawnOptions.BuildID, CanBeModified: false})
 		}
 	}
+	// Task-spawned hosts are owned by Evergreen rather than the user who
+	// triggered the task, so only user spawn hosts are owned by the user.
+	owner := resourceTags.MongoDBOwner
+	if intentHost.UserHost && !intentHost.SpawnOptions.SpawnedByTask && intentHost.SpawnOptions.UserEmail != "" {
+		owner = intentHost.SpawnOptions.UserEmail
+	}
 
 	// Add Evergreen-generated tags to host object
 	intentHost.AddTags(systemTags)
+	intentHost.InstanceTags = addMissingTags(intentHost.InstanceTags, makeMongoDBResourceTags(owner, resourceTags.MongoDBEnv))
 
 	return intentHost.InstanceTags
+}
+
+// addMissingTags adds tags only when no value has already been specified.
+func addMissingTags(existingTags []host.Tag, tags []host.Tag) []host.Tag {
+	for _, tag := range tags {
+		found := false
+		for i, existingTag := range existingTags {
+			if existingTag.Key != tag.Key {
+				continue
+			}
+			found = true
+			if existingTag.Value == "" {
+				existingTags[i].Value = tag.Value
+			}
+			break
+		}
+		if !found {
+			existingTags = append(existingTags, tag)
+		}
+	}
+	return existingTags
+}
+
+func makeMongoDBResourceTags(owner, environment string) []host.Tag {
+	tags := []host.Tag{}
+	if owner != "" {
+		tags = append(tags, host.Tag{Key: evergreen.TagMongoDBOwner, Value: owner, CanBeModified: false})
+	}
+	if environment != "" {
+		tags = append(tags, host.Tag{Key: evergreen.TagMongoDBEnv, Value: environment, CanBeModified: false})
+	}
+	return tags
 }
 
 func hostToEC2Tags(hostTags []host.Tag) []types.Tag {

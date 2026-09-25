@@ -1366,6 +1366,28 @@ func (s *EC2Suite) TestCreateVolumeWithoutHostTagOmitsHostNameTag() {
 	}
 }
 
+func (s *EC2Suite) TestCreateStandaloneVolumeAppliesUserMongoDBResourceTags() {
+	const userEmail = "test.user@mongodb.com"
+	s.Require().NoError((&user.DBUser{Id: s.volume.CreatedBy, EmailAddress: userEmail}).Insert(s.ctx))
+	s.onDemandManager.settings.Providers.AWS.ResourceTags = evergreen.ResourceTagsConfig{
+		MongoDBOwner: "evergreen@mongodb.com",
+		MongoDBEnv:   "dev",
+	}
+
+	s.volume.Host = ""
+	_, err := s.onDemandManager.CreateVolume(s.ctx, s.volume)
+	s.Require().NoError(err)
+
+	tagsByKey := map[string]string{}
+	for _, spec := range s.mock.CreateVolumeInput.TagSpecifications {
+		for _, tag := range spec.Tags {
+			tagsByKey[aws.ToString(tag.Key)] = aws.ToString(tag.Value)
+		}
+	}
+	s.Equal(userEmail, tagsByKey[evergreen.TagMongoDBOwner])
+	s.Equal("dev", tagsByKey[evergreen.TagMongoDBEnv])
+}
+
 func (s *EC2Suite) TestDeleteVolume() {
 	s.NoError(s.volume.Insert(s.ctx))
 	s.NoError(s.onDemandManager.DeleteVolume(s.ctx, s.volume))
