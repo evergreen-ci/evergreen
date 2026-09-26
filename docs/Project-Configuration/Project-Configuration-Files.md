@@ -389,9 +389,18 @@ tasks:
       - *common-setup
 ```
 
-If two files define an anchor with the same name, the later file's definition takes precedence for files processed after it. Within each file, anchors behave according to standard YAML rules.
+If two files define an anchor with the same name, the later file's definition takes precedence for files processed after it. The redefinition is not retroactive: an anchor defined earlier that referenced the old value keeps it. Within each file, anchors behave according to standard YAML rules.
 
 > **Note:** `_evg_anchors` is a reserved key used internally by Evergreen when processing cross-file anchors. Do not use it as a key in your project YAML.
+
+##### Best Practices
+
+Anchors defined in any file are carried forward and re-processed when parsing
+every subsequent include file. For best performance, prefer flat anchors over
+anchors built from other anchors: when an anchor references another anchor, the
+referenced value is copied into it, so chained anchors (or one large anchor
+referenced by many others) multiply the amount of YAML processed for each later
+include file.
 
 #### Limitations and Alternatives
 
