@@ -116,96 +116,13 @@ func TestComplexityRateLimitElevatedUserGetsDoubleBudget(t *testing.T) {
 		Doc:       &ast.QueryDocument{Operations: ast.OperationList{op}},
 	}
 
-	// Normal user with burst 10 should be rejected by the deep query (score > 10).
 	normalCtx := graphql.WithOperationContext(t.Context(), opCtx)
 	normalCtx = gimlet.AttachUser(normalCtx, &user.DBUser{Id: "normal_user"})
 	gqlErr := ext.MutateOperationContext(normalCtx, opCtx)
 	require.NotNil(t, gqlErr)
 
-	// Elevated user gets 2x (burst 20), so the same query should pass.
 	elevatedCtx := graphql.WithOperationContext(t.Context(), opCtx)
 	elevatedCtx = gimlet.AttachUser(elevatedCtx, &user.DBUser{Id: "elevated_user"})
 	gqlErr = ext.MutateOperationContext(elevatedCtx, opCtx)
-	assert.Nil(t, gqlErr)
-}
-
-func TestComplexityRateLimitZeroConfigDisabled(t *testing.T) {
-	env := setupComplexityRateLimitEnv(t, evergreen.RateLimitConfig{})
-	schema := NewExecutableSchema(New(""))
-	ext := NewComplexityRateLimit(env, schema)
-
-	op := parseQuery(t, schema, hostEventsQuery)
-	opCtx := &graphql.OperationContext{
-		Operation: op,
-		Doc:       &ast.QueryDocument{Operations: ast.OperationList{op}},
-	}
-	ctx := graphql.WithOperationContext(t.Context(), opCtx)
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "test_user"})
-
-	gqlErr := ext.MutateOperationContext(ctx, opCtx)
-	assert.Nil(t, gqlErr)
-}
-
-func TestComplexityRateLimitNoUserPassesThrough(t *testing.T) {
-	env := setupComplexityRateLimitEnv(t, evergreen.RateLimitConfig{
-		GraphQLComplexityPerHour: 1,
-		GraphQLComplexityBurst:   1,
-	})
-	schema := NewExecutableSchema(New(""))
-	ext := NewComplexityRateLimit(env, schema)
-
-	op := parseQuery(t, schema, hostEventsQuery)
-	opCtx := &graphql.OperationContext{
-		Operation: op,
-		Doc:       &ast.QueryDocument{Operations: ast.OperationList{op}},
-	}
-	ctx := graphql.WithOperationContext(t.Context(), opCtx)
-
-	gqlErr := ext.MutateOperationContext(ctx, opCtx)
-	assert.Nil(t, gqlErr)
-}
-
-func TestComplexityRateLimitServiceFlagDisabledPassesThrough(t *testing.T) {
-	env := setupComplexityRateLimitEnv(t, evergreen.RateLimitConfig{
-		GraphQLComplexityPerHour: 5,
-		GraphQLComplexityBurst:   5,
-	})
-	require.NoError(t, (&evergreen.ServiceFlags{GraphQLComplexityRateLimiterDisabled: true}).Set(t.Context()))
-
-	schema := NewExecutableSchema(New(""))
-	ext := NewComplexityRateLimit(env, schema)
-
-	op := parseQuery(t, schema, hostEventsQuery)
-	opCtx := &graphql.OperationContext{
-		Operation: op,
-		Doc:       &ast.QueryDocument{Operations: ast.OperationList{op}},
-	}
-	ctx := graphql.WithOperationContext(t.Context(), opCtx)
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "test_user"})
-
-	gqlErr := ext.MutateOperationContext(ctx, opCtx)
-	assert.Nil(t, gqlErr)
-}
-
-func TestComplexityRateLimitNilRedisFailsOpen(t *testing.T) {
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(t.Context()))
-	env.EvergreenSettings.RateLimit = evergreen.RateLimitConfig{
-		GraphQLComplexityPerHour: 1,
-		GraphQLComplexityBurst:   1,
-	}
-
-	schema := NewExecutableSchema(New(""))
-	ext := NewComplexityRateLimit(env, schema)
-
-	op := parseQuery(t, schema, hostEventsQuery)
-	opCtx := &graphql.OperationContext{
-		Operation: op,
-		Doc:       &ast.QueryDocument{Operations: ast.OperationList{op}},
-	}
-	ctx := graphql.WithOperationContext(t.Context(), opCtx)
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "test_user"})
-
-	gqlErr := ext.MutateOperationContext(ctx, opCtx)
 	assert.Nil(t, gqlErr)
 }

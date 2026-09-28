@@ -100,7 +100,6 @@ func (c *ComplexityRateLimit) MutateOperationContext(ctx context.Context, opCtx 
 	if exceeded && !exempt {
 		flags, _ := evergreen.GetServiceFlags(ctx)
 		if flags != nil && !flags.GraphQLComplexityRateLimiterDisabled {
-			// Look up the DB user for logging purposes only when rejecting.
 			isService := false
 			if dbUser, ok := u.(*user.DBUser); ok {
 				isService = dbUser.OnlyAPI
