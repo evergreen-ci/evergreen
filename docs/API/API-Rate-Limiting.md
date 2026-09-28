@@ -27,7 +27,12 @@ Note that tokens are refilled continuously, not reset on a fixed schedule (e.g. 
 
 ## GraphQL Query Complexity
 
-GraphQL requests are additionally subject to a ["complexity"](https://gqlgen.com/reference/complexity) limit, which prevents the execution of queries that could create stressful workloads for the system. Complexity is computed by traversing the query AST and summing a cost of 1 per field, across all levels of nesting, with list limits acting as multipliers on the fields nested beneath them. This is a stateless, per-query ceiling rather than a limit bucket that the user exhausts over time.
+GraphQL requests are additionally subject to a ["complexity"](https://gqlgen.com/reference/complexity) limit, which prevents the execution of queries that could create stressful workloads for the system. Complexity is computed by traversing the query AST and summing a cost of 1 per field, across all levels of nesting. A few list fields whose server cost scales with the number of items requested use their `limit` as a multiplier on the fields nested beneath them:
+
+- `taskHistory(options: { limit })`: multiplied by `limit`, which defaults to 50.
+- `Task.tests(opts: { limit })`: multiplied by `limit`. If `limit` is unset or 0, all test results are returned, so the multiplier is 100.
+
+Multipliers compound when these fields are nested. For example, requesting `tests` inside each task of `taskHistory` multiplies the `tests` score by the number of tasks requested. This is a stateless, per-query ceiling rather than a limit bucket that the user exhausts over time.
 
 ### Example
 
@@ -50,7 +55,7 @@ query TaskHistoryExample {
 }
 ```
 
-The complexity of this query is computed as `taskHistory` (1) + `tasks` (1) + 10 fields per task × 10 tasks (100) = 102. If the configured complexity limit is 101, this query will return an error, independent of any other requests and the GraphQL rate-limiting state. If the query instead had 9 fields under `tasks`, the complexity score would be 92 and the request would succeed.
+The complexity of this query is computed as `taskHistory` (1) + (`tasks` (1) + 10 fields per task) × 10 tasks (110) = 111. If the configured complexity limit is 110, this query will return an error, independent of any other requests and the GraphQL rate-limiting state. If the query instead had 9 fields under `tasks`, the complexity score would be 101 and the request would succeed.
 
 ## API Response
 
