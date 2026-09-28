@@ -8,6 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/gimlet"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 )
 
 // artifactSignHandler generates a presigned S3 URL for a signed artifact and
@@ -15,50 +17,60 @@ import (
 // embedded in the URL rather than session auth, making the URLs curl-friendly.
 func artifactSignHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, span := tracer.Start(r.Context(), evergreen.ArtifactSignOtelSpanName)
+		defer span.End()
+
+		writeErr := func(w http.ResponseWriter, code int, msg string) {
+			span.SetAttributes(attribute.Int(evergreen.ArtifactSignStatusCodeOtelAttribute, code))
+			span.SetStatus(codes.Error, msg)
+			http.Error(w, msg, code)
+		}
+
 		taskID := gimlet.GetVars(r)["task_id"]
 		if taskID == "" {
-			http.Error(w, "missing task ID", http.StatusBadRequest)
+			writeErr(w, http.StatusBadRequest, "missing task ID")
 			return
 		}
+		span.SetAttributes(attribute.String(evergreen.TaskIDOtelAttribute, taskID))
 
 		execStr := r.URL.Query().Get("execution")
 		if execStr == "" {
-			http.Error(w, "missing execution parameter", http.StatusBadRequest)
+			writeErr(w, http.StatusBadRequest, "missing execution parameter")
 			return
 		}
 		execution, err := strconv.Atoi(execStr)
 		if err != nil || execution < 0 {
-			http.Error(w, "execution must be a non-negative integer", http.StatusBadRequest)
+			writeErr(w, http.StatusBadRequest, "execution must be a non-negative integer")
 			return
 		}
+		span.SetAttributes(attribute.Int(evergreen.TaskExecutionOtelAttribute, execution))
 
 		fileName := r.URL.Query().Get("name")
 		if fileName == "" {
-			http.Error(w, "missing name parameter", http.StatusBadRequest)
+			writeErr(w, http.StatusBadRequest, "missing name parameter")
 			return
 		}
 
 		token := r.URL.Query().Get("token")
 		expiryStr := r.URL.Query().Get("exp")
 		if token == "" || expiryStr == "" {
-			http.Error(w, "missing token or exp parameter", http.StatusUnauthorized)
+			writeErr(w, http.StatusUnauthorized, "missing token or exp parameter")
 			return
 		}
 
 		appSecret := []byte(evergreen.GetEnvironment().Settings().ArtifactSignSecret)
 		if len(appSecret) == 0 {
-			http.Error(w, "artifact signing is not configured", http.StatusInternalServerError)
+			writeErr(w, http.StatusInternalServerError, "artifact signing is not configured")
 			return
 		}
 		if !artifact.ValidateSignToken(appSecret, taskID, execution, fileName, token, expiryStr) {
-			http.Error(w, "invalid or expired token", http.StatusUnauthorized)
+			writeErr(w, http.StatusUnauthorized, "invalid or expired token")
 			return
 		}
 
-		ctx := r.Context()
 		entries, err := artifact.FindAll(ctx, artifact.ByTaskIdAndExecution(taskID, execution))
 		if err != nil {
-			http.Error(w, "finding artifact entries", http.StatusInternalServerError)
+			writeErr(w, http.StatusInternalServerError, "finding artifact entries")
 			return
 		}
 
@@ -75,17 +87,17 @@ func artifactSignHandler() http.HandlerFunc {
 			}
 		}
 		if found == nil {
-			http.Error(w, "artifact file not found", http.StatusNotFound)
+			writeErr(w, http.StatusNotFound, "artifact file not found")
 			return
 		}
 		if found.Visibility != artifact.Signed {
-			http.Error(w, "artifact is not a signed file", http.StatusBadRequest)
+			writeErr(w, http.StatusBadRequest, "artifact is not a signed file")
 			return
 		}
 
 		presignedURL, err := artifact.PresignFile(ctx, *found, model.NewArtifactCredentialResolver(taskID))
 		if err != nil {
-			http.Error(w, "presigning artifact URL", http.StatusInternalServerError)
+			writeErr(w, http.StatusInternalServerError, "presigning artifact URL")
 			return
 		}
 
