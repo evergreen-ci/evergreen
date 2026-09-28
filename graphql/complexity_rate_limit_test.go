@@ -103,8 +103,8 @@ func TestComplexityRateLimitExemptUserPassesThrough(t *testing.T) {
 
 func TestComplexityRateLimitElevatedUserGetsDoubleBudget(t *testing.T) {
 	env := setupComplexityRateLimitEnv(t, evergreen.RateLimitConfig{
-		GraphQLComplexityPerHour: 10,
-		GraphQLComplexityBurst:   10,
+		GraphQLComplexityPerHour: 15,
+		GraphQLComplexityBurst:   15,
 		ElevatedUserIDs:          []string{"elevated_user"},
 	})
 	schema := NewExecutableSchema(New(""))
