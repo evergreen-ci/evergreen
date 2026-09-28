@@ -20,7 +20,11 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 )
+
+const volumeOwnerSourceOtelAttribute = "evergreen.volume.owner_source"
 
 // EC2ProviderSettings describes properties of managed instances.
 type EC2ProviderSettings struct {
@@ -1243,16 +1247,28 @@ func (m *ec2Manager) Cleanup(context.Context) error {
 
 // makeVolumeResourceTags returns the MongoDB resource tags for a volume.
 func (m *ec2Manager) makeVolumeResourceTags(ctx context.Context, volume *host.Volume) ([]host.Tag, error) {
+	ctx, span := tracer.Start(ctx, "makeVolumeResourceTags")
+	defer span.End()
+
 	resourceTagSettings := m.settings.Providers.AWS.ResourceTags
 	owner := resourceTagSettings.MongoDBOwner
+	ownerSource := "configured_owner"
 	if volume.CreatedBy != "" {
 		creator, err := user.FindOneById(ctx, volume.CreatedBy)
 		if err != nil {
+			span.SetAttributes(attribute.String(volumeOwnerSourceOtelAttribute, "lookup_error"))
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			return nil, errors.Wrapf(err, "finding volume creator '%s'", volume.CreatedBy)
 		}
 		if creator != nil && creator.Email() != "" {
 			owner = creator.Email()
+			ownerSource = "creator_email"
 		}
 	}
+	if owner == "" {
+		ownerSource = "missing"
+	}
+	span.SetAttributes(attribute.String(volumeOwnerSourceOtelAttribute, ownerSource))
 	return makeMongoDBResourceTags(owner, resourceTagSettings.MongoDBEnv), nil
 }
