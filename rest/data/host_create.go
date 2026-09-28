@@ -134,7 +134,7 @@ func CreateHostsFromTask(ctx context.Context, env evergreen.Environment, t *task
 			continue
 		}
 		for range numHosts {
-			_, err := MakeHost(ctx, env, t.Id, user.Username(), keyVal, createHost, *d)
+			_, err := MakeHost(ctx, env, t.Id, &user, keyVal, createHost, *d)
 			if err != nil {
 				return errors.Wrap(err, "creating intent host")
 			}
@@ -228,7 +228,7 @@ func createHostFromCommand(cmd model.PluginCommandConf) (*apimodels.CreateHost, 
 }
 
 // MakeHost creates a host or container to run for host.create.
-func MakeHost(ctx context.Context, env evergreen.Environment, taskID, userID, publicKey string, createHost apimodels.CreateHost, distro distro.Distro) (*host.Host, error) {
+func MakeHost(ctx context.Context, env evergreen.Environment, taskID string, requestingUser *user.DBUser, publicKey string, createHost apimodels.CreateHost, distro distro.Distro) (*host.Host, error) {
 	if createHost.Region == "" {
 		createHost.Region = evergreen.DefaultEC2Region
 	}
@@ -292,7 +292,7 @@ func MakeHost(ctx context.Context, env evergreen.Environment, taskID, userID, pu
 	}
 	distro.ProviderSettingsList = []*birch.Document{doc}
 
-	options, err := getHostCreationOptions(ctx, distro, taskID, userID, createHost)
+	options, err := getHostCreationOptions(ctx, distro, taskID, requestingUser, createHost)
 	if err != nil {
 		return nil, errors.Wrap(err, "making intent host options")
 	}
@@ -315,14 +315,16 @@ func MakeHost(ctx context.Context, env evergreen.Environment, taskID, userID, pu
 	return intent, nil
 }
 
-func getHostCreationOptions(ctx context.Context, d distro.Distro, taskID, userID string, createHost apimodels.CreateHost) (*host.CreateOptions, error) {
+func getHostCreationOptions(ctx context.Context, d distro.Distro, taskID string, requestingUser *user.DBUser, createHost apimodels.CreateHost) (*host.CreateOptions, error) {
 	options := host.CreateOptions{
 		Distro: d,
 	}
 
-	if userID != "" {
+	if requestingUser != nil && requestingUser.Username() != "" {
+		userID := requestingUser.Username()
 		options.UserName = userID
 		options.UserHost = true
+		options.SpawnOptions.UserEmail = requestingUser.Email()
 		options.ExpirationTime = time.Now().Add(evergreen.DefaultSpawnHostExpiration)
 		options.ProvisionOptions = &host.ProvisionOptions{
 			TaskId:  taskID,
