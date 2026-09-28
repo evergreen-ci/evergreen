@@ -21,7 +21,6 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
 )
 
 const (
@@ -1043,10 +1042,7 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 		{Key: aws.String(evergreen.TagOwner), Value: aws.String(volume.CreatedBy)},
 		{Key: aws.String(evergreen.TagExpireOn), Value: aws.String(expireInDays(evergreen.SpawnHostExpireDays))},
 	}
-	resourceTags, err := m.makeVolumeResourceTags(ctx, volume)
-	if err != nil {
-		return nil, errors.Wrap(err, "making volume resource tags")
-	}
+	resourceTags := m.makeVolumeResourceTags(ctx, volume)
 	volumeTags = append(volumeTags, hostToEC2Tags(resourceTags)...)
 	if volume.Host != "" {
 		volumeTags = append(volumeTags, types.Tag{Key: aws.String(evergreen.TagHostName), Value: aws.String(volume.Host)})
@@ -1249,7 +1245,7 @@ func (m *ec2Manager) Cleanup(context.Context) error {
 }
 
 // makeVolumeResourceTags returns the MongoDB resource tags for a volume.
-func (m *ec2Manager) makeVolumeResourceTags(ctx context.Context, volume *host.Volume) ([]host.Tag, error) {
+func (m *ec2Manager) makeVolumeResourceTags(ctx context.Context, volume *host.Volume) []host.Tag {
 	ctx, span := tracer.Start(ctx, "makeVolumeResourceTags")
 	defer span.End()
 
@@ -1260,12 +1256,10 @@ func (m *ec2Manager) makeVolumeResourceTags(ctx context.Context, volume *host.Vo
 	if volume.CreatedBy != "" {
 		creator, err := user.FindOneById(ctx, volume.CreatedBy)
 		if err != nil {
-			span.SetAttributes(attribute.String(volumeOwnerSourceOtelAttribute, "lookup_error"))
+			// Use the configured owner so a user lookup error does not block volume creation.
+			fallbackReason = "lookup_error"
 			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-			return nil, errors.Wrapf(err, "finding volume creator '%s'", volume.CreatedBy)
-		}
-		if creator == nil {
+		} else if creator == nil {
 			fallbackReason = "creator_not_found"
 		} else if creator.Email() == "" {
 			fallbackReason = "email_missing"
@@ -1282,5 +1276,5 @@ func (m *ec2Manager) makeVolumeResourceTags(ctx context.Context, volume *host.Vo
 	if fallbackReason != "" {
 		span.SetAttributes(attribute.String(volumeOwnerFallbackReasonOtelAttribute, fallbackReason))
 	}
-	return makeMongoDBResourceTags(owner, resourceTagSettings.MongoDBEnv), nil
+	return makeMongoDBResourceTags(owner, resourceTagSettings.MongoDBEnv)
 }
