@@ -76,6 +76,10 @@ func Handler(apiURL string, allowMutations bool, env evergreen.Environment) func
 		srv.Use(extension.FixedComplexityLimit(complexityLimit))
 	}
 
+	if env.Settings().RateLimit.GraphQLComplexityPerHour > 0 {
+		srv.Use(NewComplexityRateLimit(env, schema))
+	}
+
 	// Log graphql requests to splunk
 	srv.Use(MakeSplunkTracing(schema))
 
