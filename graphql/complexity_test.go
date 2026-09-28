@@ -1,6 +1,7 @@
 package graphql
 
 import (
+	"encoding/json"
 	"math"
 	"testing"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vektah/gqlparser/v2"
+	"github.com/vektah/gqlparser/v2/validator"
 	"github.com/vektah/gqlparser/v2/validator/rules"
 )
 
@@ -246,5 +248,53 @@ func TestComplexity(t *testing.T) {
 
 	t.Run("HugeLimitDoesNotOverflow", func(t *testing.T) {
 		assert.Equal(t, math.MaxInt, calculate(t, spruceTaskTestsQuery, spruceTaskTestsVars(math.MaxInt)))
+	})
+
+	t.Run("ZeroLimitUsesResolverFallback", func(t *testing.T) {
+		query := `query { mainlineCommits(options: {projectIdentifier: "project", limit: 0}) { versions { version { id } } } }`
+		// mainlineCommits (1 + (versions (1) + version (1) + id (1)) * 7).
+		assert.Equal(t, 1+3*7, calculate(t, query, nil))
+	})
+
+	t.Run("JSONNumberVariablesAreRead", func(t *testing.T) {
+		doc, gqlErrs := gqlparser.LoadQueryWithRules(schema.Schema(), spruceTaskTestsQuery, rules.NewDefaultRules())
+		require.Empty(t, gqlErrs)
+		vars := spruceTaskTestsVars(0)
+		vars["limitNum"] = json.Number("10")
+		coerced, err := validator.VariableValues(schema.Schema(), doc.Operations[0], vars)
+		require.NoError(t, err)
+		assert.Equal(t, calculate(t, spruceTaskTestsQuery, spruceTaskTestsVars(10)), complexity.Calculate(t.Context(), schema, doc.Operations[0], coerced))
+	})
+
+	t.Run("UnlistedFieldUsesDefaultComplexity", func(t *testing.T) {
+		// user (1) + displayName (1) + spruceConfig (1) + banner (1).
+		assert.Equal(t, 4, calculate(t, `query { user { displayName } spruceConfig { banner } }`, nil))
+	})
+}
+
+func TestListLimitDefaults(t *testing.T) {
+	schema := NewExecutableSchema(New("")).Schema()
+
+	t.Run("AllListLimitFieldsResolveAgainstSchema", func(t *testing.T) {
+		defaults, err := listLimitDefaults(schema, listLimitFields)
+		require.NoError(t, err)
+		require.NotNil(t, defaults["Query.taskHistory"])
+		assert.Equal(t, 50, *defaults["Query.taskHistory"])
+		assert.Nil(t, defaults["Task.tests"])
+	})
+
+	t.Run("MissingFieldShouldError", func(t *testing.T) {
+		_, err := listLimitDefaults(schema, map[string]listLimit{"Task.nonexistent": {arg: "limit"}})
+		assert.Error(t, err)
+	})
+
+	t.Run("MissingArgumentPathShouldError", func(t *testing.T) {
+		_, err := listLimitDefaults(schema, map[string]listLimit{"Task.tests": {arg: "opts.nonexistent"}})
+		assert.Error(t, err)
+	})
+
+	t.Run("NonIntArgumentShouldError", func(t *testing.T) {
+		_, err := listLimitDefaults(schema, map[string]listLimit{"Task.tests": {arg: "opts.testName"}})
+		assert.Error(t, err)
 	})
 }

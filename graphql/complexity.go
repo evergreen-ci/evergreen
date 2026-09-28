@@ -2,76 +2,152 @@ package graphql
 
 import (
 	"context"
+	"fmt"
 	"math"
+	"strings"
 
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/vektah/gqlparser/v2/ast"
 )
 
-const (
-	// unboundedListComplexityMultiplier is the multiplier applied to a list
-	// field whose request does not set a positive limit. Such requests return
-	// every matching item, so they are scored as if they requested a large
-	// page.
-	unboundedListComplexityMultiplier = 100
-	// defaultTaskHistoryLimit is the default value of TaskHistoryOpts.limit in
-	// the schema.
-	defaultTaskHistoryLimit = 50
-)
+// unboundedListSize is the list size assumed for a field whose request
+// returns every matching item.
+const unboundedListSize = 100
 
-// NewSchema returns the executable GraphQL schema with custom complexity
-// scoring for list fields whose cost scales with the requested limit.
-func NewSchema(apiURL string) graphql.ExecutableSchema {
-	return complexitySchema{ExecutableSchema: NewExecutableSchema(New(apiURL))}
+// listLimit describes how a list field's requested size is determined.
+type listLimit struct {
+	// arg is the dot-separated path to the limit argument, e.g. "opts.limit".
+	arg string
+	// fallback is the size the resolver uses when the limit is unset (and has
+	// no schema default) or is not positive.
+	fallback int
 }
 
-// complexitySchema overrides the complexity of specific fields. It reads
-// limits directly from the raw arguments rather than using gqlgen's Config
-// complexity functions, because the generated argument unmarshalling runs input
+// listLimitFields are the fields whose complexity is multiplied by the number
+// of items requested. A field belongs here only if its limit bounds the
+// items the resolver fetches. For waterfall and mainlineCommits, the limit
+// counts versions but each version's builds and tasks are unbounded, so their
+// scores are lower bounds.
+var listLimitFields = map[string]listLimit{
+	"Host.events":           {arg: "opts.limit", fallback: unboundedListSize},
+	"Image.events":          {arg: "limit", fallback: unboundedListSize},
+	"Image.files":           {arg: "opts.limit", fallback: unboundedListSize},
+	"Image.operatingSystem": {arg: "opts.limit", fallback: unboundedListSize},
+	"Image.packages":        {arg: "opts.limit", fallback: unboundedListSize},
+	"Image.toolchains":      {arg: "opts.limit", fallback: unboundedListSize},
+	"Project.patches":       {arg: "patchesInput.limit", fallback: unboundedListSize},
+	"Query.adminEvents":     {arg: "opts.limit", fallback: unboundedListSize},
+	"Query.distroEvents":    {arg: "opts.limit", fallback: unboundedListSize},
+	"Query.hosts":           {arg: "limit", fallback: unboundedListSize},
+	"Query.mainlineCommits": {arg: "options.limit", fallback: 7},
+	"Query.projectEvents":   {arg: "limit", fallback: 10},
+	"Query.repoEvents":      {arg: "limit", fallback: 10},
+	"Query.taskHistory":     {arg: "options.limit", fallback: 50},
+	"Query.waterfall":       {arg: "options.limit", fallback: 5},
+	"Task.tests":            {arg: "opts.limit", fallback: unboundedListSize},
+	"User.patches":          {arg: "patchesInput.limit", fallback: unboundedListSize},
+	"Version.tasks":         {arg: "options.limit", fallback: unboundedListSize},
+}
+
+// NewSchema returns the executable GraphQL schema with complexity scoring
+// that multiplies list fields by the number of items requested.
+func NewSchema(apiURL string) graphql.ExecutableSchema {
+	es := NewExecutableSchema(New(apiURL))
+	defaults, err := listLimitDefaults(es.Schema(), listLimitFields)
+	if err != nil {
+		panic(err)
+	}
+	return complexitySchema{ExecutableSchema: es, limitDefaults: defaults}
+}
+
+// complexitySchema overrides the complexity of list fields. It reads limits
+// directly from the raw arguments rather than using gqlgen's Config complexity
+// functions, because the generated argument unmarshalling runs input
 // directives such as @requireProjectAccess, which query the database and
 // silently fall back to the default complexity when they fail.
 type complexitySchema struct {
 	graphql.ExecutableSchema
+	// limitDefaults maps each field in listLimitFields to the schema default
+	// of its limit argument, if it has one.
+	limitDefaults map[string]*int
 }
 
 func (s complexitySchema) Complexity(ctx context.Context, typeName, fieldName string, childComplexity int, args map[string]any) (int, bool) {
-	switch typeName + "." + fieldName {
-	case "Task.tests":
-		return listComplexity(childComplexity, inputLimit(args, "opts", 0)), true
-	case "Query.taskHistory":
-		return listComplexity(childComplexity, inputLimit(args, "options", defaultTaskHistoryLimit)), true
-	}
-	return s.ExecutableSchema.Complexity(ctx, typeName, fieldName, childComplexity, args)
-}
-
-// inputLimit returns the "limit" field of the input object argument argName,
-// or defaultLimit if it is not set.
-func inputLimit(args map[string]any, argName string, defaultLimit int) int {
-	input, ok := args[argName].(map[string]any)
+	field := typeName + "." + fieldName
+	spec, ok := listLimitFields[field]
 	if !ok {
-		return defaultLimit
+		return s.ExecutableSchema.Complexity(ctx, typeName, fieldName, childComplexity, args)
 	}
-	rawLimit, ok := input["limit"]
-	if !ok || rawLimit == nil {
-		return defaultLimit
+	size := spec.fallback
+	if limit, ok := argInt(args, spec.arg); ok {
+		if limit > 0 {
+			size = limit
+		}
+	} else if def := s.limitDefaults[field]; def != nil && *def > 0 {
+		size = *def
 	}
-	limit, err := graphql.UnmarshalInt(rawLimit)
-	if err != nil {
-		return defaultLimit
-	}
-	return limit
+	return saturatingAdd(1, saturatingMultiply(childComplexity, size)), true
 }
 
-// listComplexity scores a list field as 1 plus the complexity of its children
-// multiplied by the number of items requested. A non-positive limit means the
-// list is unbounded. The multiplier is applied to the field's entire selection
-// set because gqlgen does not expose the complexity of individual child
-// fields.
-func listComplexity(childComplexity, limit int) int {
-	multiplier := unboundedListComplexityMultiplier
-	if limit > 0 {
-		multiplier = limit
+// argInt returns the integer at the dot-separated path in args, or false if
+// it is unset or not an integer.
+func argInt(args map[string]any, path string) (int, bool) {
+	keys := strings.Split(path, ".")
+	for _, key := range keys[:len(keys)-1] {
+		nested, ok := args[key].(map[string]any)
+		if !ok {
+			return 0, false
+		}
+		args = nested
 	}
-	return saturatingAdd(1, saturatingMultiply(childComplexity, multiplier))
+	raw, ok := args[keys[len(keys)-1]]
+	if !ok || raw == nil {
+		return 0, false
+	}
+	v, err := graphql.UnmarshalInt(raw)
+	return v, err == nil
+}
+
+// listLimitDefaults resolves each field's limit argument against the schema
+// and returns its default value. It errors if a field or argument path does
+// not exist so that a stale entry fails at startup.
+func listLimitDefaults(schema *ast.Schema, fields map[string]listLimit) (map[string]*int, error) {
+	defaults := map[string]*int{}
+	for field, spec := range fields {
+		typeName, fieldName, _ := strings.Cut(field, ".")
+		def := schema.Types[typeName]
+		if def == nil || def.Fields.ForName(fieldName) == nil {
+			return nil, fmt.Errorf("list limit field '%s' not found in schema", field)
+		}
+		keys := strings.Split(spec.arg, ".")
+		arg := def.Fields.ForName(fieldName).Arguments.ForName(keys[0])
+		if arg == nil {
+			return nil, fmt.Errorf("argument '%s' not found on field '%s'", keys[0], field)
+		}
+		argType, defaultValue := arg.Type, arg.DefaultValue
+		for _, key := range keys[1:] {
+			input := schema.Types[argType.Name()]
+			if input == nil || input.Kind != ast.InputObject || input.Fields.ForName(key) == nil {
+				return nil, fmt.Errorf("argument path '%s' not found on field '%s'", spec.arg, field)
+			}
+			argType, defaultValue = input.Fields.ForName(key).Type, input.Fields.ForName(key).DefaultValue
+		}
+		if argType.Name() != "Int" {
+			return nil, fmt.Errorf("argument '%s' on field '%s' must be an Int", spec.arg, field)
+		}
+		if defaultValue != nil {
+			v, err := defaultValue.Value(nil)
+			if err != nil {
+				return nil, fmt.Errorf("reading default for argument '%s' on field '%s': %w", spec.arg, field, err)
+			}
+			i, err := graphql.UnmarshalInt(v)
+			if err != nil {
+				return nil, fmt.Errorf("reading default for argument '%s' on field '%s': %w", spec.arg, field, err)
+			}
+			defaults[field] = &i
+		}
+	}
+	return defaults, nil
 }
 
 // saturatingMultiply returns a*b for non-negative operands, capped at
