@@ -75,7 +75,7 @@ func TestMakeHost(t *testing.T) {
 	handler.taskID = "task-id"
 	foundDistro, err := distro.GetHostCreateDistro(ctx, c)
 	require.NoError(err)
-	h, err := data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
+	h, err := data.MakeHost(ctx, env, handler.taskID, nil, "", handler.createHost, *foundDistro)
 	assert.NoError(err)
 	require.NotNil(h)
 
@@ -125,7 +125,7 @@ func TestMakeHost(t *testing.T) {
 	handler.taskID = "task-id"
 	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
 	require.NoError(err)
-	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
+	h, err = data.MakeHost(ctx, env, handler.taskID, nil, "", handler.createHost, *foundDistro)
 	assert.NoError(err)
 	assert.NotNil(h)
 	ec2Settings = &cloud.EC2ProviderSettings{}
@@ -154,7 +154,7 @@ func TestMakeHost(t *testing.T) {
 	handler.taskID = "task-id"
 	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
 	require.NoError(err)
-	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
+	h, err = data.MakeHost(ctx, env, handler.taskID, nil, "", handler.createHost, *foundDistro)
 	require.NoError(err)
 	require.NotNil(h)
 
@@ -184,7 +184,7 @@ func TestMakeHost(t *testing.T) {
 	handler.createHost = c
 	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
 	require.NoError(err)
-	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
+	h, err = data.MakeHost(ctx, env, handler.taskID, nil, "", handler.createHost, *foundDistro)
 	assert.NoError(err)
 	assert.NotNil(h)
 
@@ -224,7 +224,7 @@ func TestMakeHost(t *testing.T) {
 	handler.createHost = c
 	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
 	require.NoError(err)
-	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
+	h, err = data.MakeHost(ctx, env, handler.taskID, nil, "", handler.createHost, *foundDistro)
 	require.NoError(err)
 	require.NotNil(h)
 
@@ -256,7 +256,7 @@ func TestMakeHost(t *testing.T) {
 	handler.createHost = c
 	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
 	require.NoError(err)
-	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
+	h, err = data.MakeHost(ctx, env, handler.taskID, nil, "", handler.createHost, *foundDistro)
 	assert.NoError(err)
 	assert.NotNil(h)
 	assert.Equal("archlinux-test", h.Distro.Id)
@@ -271,7 +271,7 @@ func TestMakeHost(t *testing.T) {
 	handler.createHost.Region = "us-west-1"
 	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
 	require.NoError(err)
-	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
+	h, err = data.MakeHost(ctx, env, handler.taskID, nil, "", handler.createHost, *foundDistro)
 	assert.NoError(err)
 	assert.NotNil(h)
 	assert.Equal("archlinux-test", h.Distro.Id)
