@@ -5460,7 +5460,7 @@ func TestHasPathTraversal(t *testing.T) {
 	}
 }
 
-func TestCheckModulesRejectsTraversalPrefix(t *testing.T) {
+func TestCheckModulePrefixesRejectsTraversalPrefix(t *testing.T) {
 	project := &model.Project{
 		Modules: model.ModuleList{
 			{
@@ -5473,7 +5473,7 @@ func TestCheckModulesRejectsTraversalPrefix(t *testing.T) {
 		},
 	}
 
-	errs := checkModules(project)
+	errs := checkModulePrefixes(project)
 	require.NotEmpty(t, errs)
 	found := false
 	for _, err := range errs {
