@@ -24,7 +24,10 @@ import (
 	"go.opentelemetry.io/otel/codes"
 )
 
-const volumeOwnerSourceOtelAttribute = "evergreen.volume.owner_source"
+const (
+	volumeOwnerSourceOtelAttribute         = "evergreen.volume.owner_source"
+	volumeOwnerFallbackReasonOtelAttribute = "evergreen.volume.owner_fallback_reason"
+)
 
 // EC2ProviderSettings describes properties of managed instances.
 type EC2ProviderSettings struct {
@@ -1253,6 +1256,7 @@ func (m *ec2Manager) makeVolumeResourceTags(ctx context.Context, volume *host.Vo
 	resourceTagSettings := m.settings.Providers.AWS.ResourceTags
 	owner := resourceTagSettings.MongoDBOwner
 	ownerSource := "configured_owner"
+	fallbackReason := "missing_creator_id"
 	if volume.CreatedBy != "" {
 		creator, err := user.FindOneById(ctx, volume.CreatedBy)
 		if err != nil {
@@ -1261,14 +1265,22 @@ func (m *ec2Manager) makeVolumeResourceTags(ctx context.Context, volume *host.Vo
 			span.SetStatus(codes.Error, err.Error())
 			return nil, errors.Wrapf(err, "finding volume creator '%s'", volume.CreatedBy)
 		}
-		if creator != nil && creator.Email() != "" {
+		if creator == nil {
+			fallbackReason = "creator_not_found"
+		} else if creator.Email() == "" {
+			fallbackReason = "email_missing"
+		} else {
 			owner = creator.Email()
 			ownerSource = "creator_email"
+			fallbackReason = ""
 		}
 	}
 	if owner == "" {
 		ownerSource = "missing"
 	}
 	span.SetAttributes(attribute.String(volumeOwnerSourceOtelAttribute, ownerSource))
+	if fallbackReason != "" {
+		span.SetAttributes(attribute.String(volumeOwnerFallbackReasonOtelAttribute, fallbackReason))
+	}
 	return makeMongoDBResourceTags(owner, resourceTagSettings.MongoDBEnv), nil
 }
