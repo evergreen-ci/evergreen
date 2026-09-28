@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"path/filepath"
 	"regexp"
 	"runtime/debug"
 	"slices"
@@ -1255,9 +1256,31 @@ func checkModules(project *model.Project) ValidationErrors {
 			})
 		}
 
+		// Reject module prefixes that could escape the source destination
+		// directory when a patch is fetched locally.
+		if hasPathTraversal(module.Prefix) {
+			errs = append(errs, ValidationError{
+				Level:   Error,
+				Message: fmt.Sprintf("module '%s' prefix '%s' cannot be absolute or contain '..'", module.Name, module.Prefix),
+			})
+		}
+
 	}
 
 	return errs
+}
+
+// hasPathTraversal returns true for prefixes that are absolute paths or
+// contain a ".." component, since either could resolve outside the directory
+// a user fetches source into.
+func hasPathTraversal(prefix string) bool {
+	if filepath.IsAbs(prefix) {
+		return true
+	}
+	components := strings.FieldsFunc(prefix, func(r rune) bool {
+		return r == '/' || r == '\\'
+	})
+	return slices.Contains(components, "..")
 }
 
 // Ensures there aren't any duplicate buildvariant names specified in the given
