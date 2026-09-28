@@ -52,6 +52,14 @@ query TaskHistoryExample {
 
 The complexity of this query is computed as `taskHistory` (1) + `tasks` (1) + 10 fields per task × 10 tasks (100) = 102. If the configured complexity limit is 101, this query will return an error, independent of any other requests and the GraphQL rate-limiting state. If the query instead had 9 fields under `tasks`, the complexity score would be 92 and the request would succeed.
 
+## Cumulative Complexity Rate Limiting
+
+In addition to the per-query complexity ceiling, Evergreen tracks each user's cumulative complexity usage over time. Each GraphQL query's complexity score is charged against a per-user hourly budget using the same token-bucket mechanism as the per-request rate limiter. This means a user sending many expensive queries will exhaust their budget faster than a user sending cheap ones, even if both stay under the per-request rate limit.
+
+When the budget is exceeded, subsequent queries are rejected with a GraphQL error (code `COMPLEXITY_RATE_LIMIT_EXCEEDED`) before any resolvers run. The budget refills continuously at the configured hourly rate, the same way the per-request bucket does. Elevated users receive double the budget, and exempt users are never blocked.
+
+This limit is configured separately from the per-request rate limit via the `GraphQLComplexityPerHour` and `GraphQLComplexityBurst` admin settings. Setting both to zero disables cumulative complexity rate limiting.
+
 ## API Response
 
 If a request is blocked due to rate limiting, it will be rejected with a 429 HTTP response. All requests that are subject to rate-limiting, regardless of whether they are blocked, carry headers providing information on the current limit state. If rate-limiting is disabled across the service, these headers serve only as a warning.
