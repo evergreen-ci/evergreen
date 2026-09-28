@@ -142,6 +142,7 @@ var projectErrorValidators = []projectValidator{
 	validateDuplicateBVTasks,
 	validateGenerateTasks,
 	validateModuleCloneDepths,
+	checkModulePrefixes,
 }
 
 // Functions used to validate the syntax of project configs representing properties found on the project page.
@@ -1255,18 +1256,23 @@ func checkModules(project *model.Project) ValidationErrors {
 				Message: fmt.Sprintf("module '%s' should have a set repo", module.Name),
 			})
 		}
+	}
 
-		// Reject module prefixes that could escape the source destination
-		// directory when a patch is fetched locally.
+	return errs
+}
+
+// checkModulePrefixes rejects module prefixes that could escape the source
+// destination directory when a patch is fetched locally.
+func checkModulePrefixes(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
+	for _, module := range project.Modules {
 		if hasPathTraversal(module.Prefix) {
 			errs = append(errs, ValidationError{
 				Level:   Error,
 				Message: fmt.Sprintf("module '%s' prefix '%s' cannot be absolute or contain '..'", module.Name, module.Prefix),
 			})
 		}
-
 	}
-
 	return errs
 }
 
