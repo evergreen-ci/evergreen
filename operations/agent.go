@@ -158,9 +158,36 @@ func Agent() cli.Command {
 				return nil
 			}
 
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			comm, err := client.NewCommunicator(c.String(agentAPIServerURLFlagName))
+			if err != nil {
+				return errors.Wrap(err, "initializing client")
+			}
+
+			hostID := c.String(agentHostIDFlagName)
+			comm.SetHostID(hostID)
+
+			hostSecret := c.String(agentHostSecretFlagName)
+			// If a setup secret is provided, exchange it for the host secret.
+			// Fall back to the host secret when available so that a transient
+			// exchange failure does not fail the agent.
+			if setupSecret := c.String(agentHostSetupSecretFlagName); setupSecret != "" {
+				exchanged, err := comm.ExchangeSetupSecret(ctx, setupSecret)
+				if err != nil {
+					grip.Warning(ctx, message.WrapError(err, message.Fields{
+						"message": "falling back to the host secret because the setup secret exchange failed",
+						"host_id": hostID,
+					}))
+				} else {
+					hostSecret = exchanged
+				}
+			}
+
 			opts := agent.Options{
-				HostID:                       c.String(agentHostIDFlagName),
-				HostSecret:                   c.String(agentHostSecretFlagName),
+				HostID:                       hostID,
+				HostSecret:                   hostSecret,
 				Mode:                         globals.Mode(c.String(modeFlagName)),
 				StatusPort:                   c.Int(statusPortFlagName),
 				LogPrefix:                    c.String(logPrefixFlagName),
@@ -191,9 +218,6 @@ func Agent() cli.Command {
 				return errors.Wrapf(err, "creating working directory '%s'", opts.WorkingDirectory)
 			}
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
 			grip.Info(ctx, message.Fields{
 				"message":            "starting agent",
 				"commands":           command.RegisteredCommandNames(),
@@ -201,29 +225,6 @@ func Agent() cli.Command {
 				"host_id":            opts.HostID,
 				"single_task_distro": opts.SingleTaskDistro,
 			})
-
-			// If a setup secret is provided, exchange it for the host secret.
-			// Fall back to the host secret when available so that a transient
-			// exchange failure does not fail the agent.
-			if setupSecret := c.String(agentHostSetupSecretFlagName); setupSecret != "" {
-				comm, err := client.NewCommunicator(c.String(agentAPIServerURLFlagName))
-				if err != nil {
-					return errors.Wrap(err, "initializing client")
-				}
-				comm.SetHostID(opts.HostID)
-				exchanged, err := comm.ExchangeSetupSecret(ctx, setupSecret)
-				if err != nil {
-					if opts.HostSecret == "" {
-						return errors.Wrap(err, "exchanging setup secret for host secret")
-					}
-					grip.Warning(ctx, message.WrapError(err, message.Fields{
-						"message": "falling back to the host secret because the setup secret exchange failed",
-						"host_id": opts.HostID,
-					}))
-				} else {
-					opts.HostSecret = exchanged
-				}
-			}
 
 			agt, err := agent.New(ctx, opts, c.String(agentAPIServerURLFlagName))
 			if err != nil {

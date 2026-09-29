@@ -467,8 +467,8 @@ func (m *monitor) createAgentProcess(ctx context.Context, retry utility.RetryOpt
 	}
 
 	// Give the agent a fresh setup secret to exchange for the host secret, so
-	// the host secret itself does not need to be conveyed through the agent's
-	// environment (which can potentially be read in Linux through procfs).
+	// the host secret itself does not need to be passed through the agent's
+	// environment.
 	setupSecret, err := m.comm.CreateSetupSecret(ctx)
 	if err != nil {
 		grip.Warning(ctx, message.WrapError(err, message.Fields{
