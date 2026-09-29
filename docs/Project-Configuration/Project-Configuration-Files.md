@@ -69,6 +69,12 @@ which allows grouping tasks to limit whether [those tasks should run on
 patches/git
 tags/etc.](#controlling-when-tasks-and-variants-run)
 
+Set `virtual: true` to mark a task as a [virtual task](Virtual-Tasks). A virtual
+task has the option to run or be push-completed by a runner task
+rather than running on a host. A virtual task is inactive by default. It
+supports most of the same configuration options as a regular task, see [more
+detailed docs](Virtual-Tasks) for differences.
+
 #### Commands
 
 Commands are the building blocks of tasks. They do things like clone a
