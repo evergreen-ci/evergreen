@@ -2,12 +2,16 @@ package graphql
 
 import (
 	"encoding/json"
+	"math"
 	"testing"
 
 	"github.com/99designs/gqlgen/complexity"
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vektah/gqlparser/v2"
+	"github.com/vektah/gqlparser/v2/ast"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 	"github.com/vektah/gqlparser/v2/validator"
 	"github.com/vektah/gqlparser/v2/validator/rules"
 )
@@ -189,16 +193,21 @@ query {
   }
 }`
 
-func TestComplexity(t *testing.T) {
-	schema := newSchema("")
+func TestCalculateComplexity(t *testing.T) {
+	schema := NewExecutableSchema(New(""))
 
-	calculate := func(t *testing.T, query string, vars map[string]any) int {
+	parse := func(t *testing.T, query string, vars map[string]any) (*ast.OperationDefinition, map[string]any) {
 		doc, gqlErrs := gqlparser.LoadQueryWithRules(schema.Schema(), query, rules.NewDefaultRules())
 		require.Empty(t, gqlErrs)
 		require.Len(t, doc.Operations, 1)
 		coerced, err := validator.VariableValues(schema.Schema(), doc.Operations[0], vars)
 		require.NoError(t, err)
-		return complexity.Calculate(t.Context(), schema, doc.Operations[0], coerced)
+		return doc.Operations[0], coerced
+	}
+	// testResultsCharge returns the complexity added on top of gqlgen's default.
+	testResultsCharge := func(t *testing.T, query string, vars map[string]any) int {
+		op, coerced := parse(t, query, vars)
+		return calculateComplexity(t.Context(), schema, op, coerced) - complexity.Calculate(t.Context(), schema, op, coerced)
 	}
 
 	spruceTaskTestsVars := func(limit int) map[string]any {
@@ -233,61 +242,83 @@ func TestComplexity(t *testing.T) {
 	}
 	limit := func(l int) *int { return &l }
 
-	t.Run("TaskTestsChargesFlatComplexity", func(t *testing.T) {
-		assert.Equal(t, 3+testResultsComplexity+16, calculate(t, spruceTaskTestsQuery, spruceTaskTestsVars(10)))
+	t.Run("TaskTestsIsChargedOnce", func(t *testing.T) {
+		assert.Equal(t, testResultsComplexity, testResultsCharge(t, spruceTaskTestsQuery, spruceTaskTestsVars(10)))
+		assert.Equal(t, testResultsComplexity, testResultsCharge(t, spruceTaskTestsForJobLogsQuery, map[string]any{"id": "task_id"}))
+		assert.Equal(t, testResultsComplexity, testResultsCharge(t, bulkTaskTestsQuery, nil))
 	})
 
-	t.Run("TaskTestsDoesNotScaleWithLimit", func(t *testing.T) {
-		assert.Equal(t, calculate(t, spruceTaskTestsQuery, spruceTaskTestsVars(10)), calculate(t, spruceTaskTestsQuery, spruceTaskTestsVars(100)))
-		assert.Equal(t, calculate(t, spruceTaskTestsQuery, spruceTaskTestsVars(10)), calculate(t, spruceTaskTestsQuery, spruceTaskTestsVars(0)))
+	t.Run("TaskTestsChargeDoesNotScaleWithLimit", func(t *testing.T) {
+		assert.Equal(t, testResultsCharge(t, spruceTaskTestsQuery, spruceTaskTestsVars(10)), testResultsCharge(t, spruceTaskTestsQuery, spruceTaskTestsVars(100)))
 	})
 
-	t.Run("TaskTestsWithoutOptsChargesFlatComplexity", func(t *testing.T) {
-		assert.Equal(t, 8+testResultsComplexity+7, calculate(t, spruceTaskTestsForJobLogsQuery, map[string]any{"id": "task_id"}))
-	})
-
-	t.Run("TaskHistoryScalesWithLimit", func(t *testing.T) {
-		smaller := calculate(t, spruceTaskHistoryQuery, taskHistoryVars(limit(10)))
-		larger := calculate(t, spruceTaskHistoryQuery, taskHistoryVars(limit(50)))
-		assert.Equal(t, 5*(smaller-1), larger-1)
+	t.Run("TaskHistoryChargesTestsPerTask", func(t *testing.T) {
+		assert.Equal(t, 50*testResultsComplexity, testResultsCharge(t, spruceTaskHistoryQuery, taskHistoryVars(limit(50))))
+		assert.Equal(t, 80*testResultsComplexity, testResultsCharge(t, bulkTaskHistoryTestsQuery, nil))
 	})
 
 	t.Run("TaskHistoryWithoutLimitUsesUnboundedSize", func(t *testing.T) {
-		assert.Equal(t, calculate(t, spruceTaskHistoryQuery, taskHistoryVars(limit(unboundedTaskListSize))), calculate(t, spruceTaskHistoryQuery, taskHistoryVars(nil)))
-		assert.Equal(t, calculate(t, spruceTaskHistoryQuery, taskHistoryVars(limit(unboundedTaskListSize))), calculate(t, spruceTaskHistoryQuery, taskHistoryVars(limit(0))))
+		assert.Equal(t, unboundedTaskListSize*testResultsComplexity, testResultsCharge(t, spruceTaskHistoryQuery, taskHistoryVars(nil)))
+		assert.Equal(t, unboundedTaskListSize*testResultsComplexity, testResultsCharge(t, spruceTaskHistoryQuery, taskHistoryVars(limit(0))))
 	})
 
-	t.Run("SpruceTaskHistoryChargesTestsPerTask", func(t *testing.T) {
-		perTask := 12 + 4 + testResultsComplexity + 6 + 6
-		assert.Equal(t, 1+(3+1+perTask)*50, calculate(t, spruceTaskHistoryQuery, taskHistoryVars(limit(50))))
+	t.Run("VersionTasksChargesTestsPerTask", func(t *testing.T) {
+		assert.Equal(t, 20*testResultsComplexity, testResultsCharge(t, spruceTestAnalysisQuery, testAnalysisVars(limit(20))))
+		assert.Equal(t, unboundedTaskListSize*testResultsComplexity, testResultsCharge(t, spruceTestAnalysisQuery, testAnalysisVars(nil)))
 	})
 
-	t.Run("VersionTasksWithoutLimitUsesUnboundedSize", func(t *testing.T) {
-		perTask := 6 + testResultsComplexity + 7
-		assert.Equal(t, 1+1+1+(1+1+perTask)*unboundedTaskListSize, calculate(t, spruceTestAnalysisQuery, testAnalysisVars(nil)))
+	t.Run("TaskListsWithoutTestsAreNotCharged", func(t *testing.T) {
+		query := `query { version(versionId: "version_id") { tasks(options: {}) { data { id displayName } } } }`
+		assert.Zero(t, testResultsCharge(t, query, nil))
 	})
 
-	t.Run("VersionTasksScalesWithLimit", func(t *testing.T) {
-		smaller := calculate(t, spruceTestAnalysisQuery, testAnalysisVars(limit(10)))
-		larger := calculate(t, spruceTestAnalysisQuery, testAnalysisVars(limit(20)))
-		assert.Equal(t, 2*(smaller-3), larger-3)
+	t.Run("NestedTaskListsMultiply", func(t *testing.T) {
+		query := `query { taskHistory(options: {projectIdentifier: "project", taskName: "task", buildVariant: "variant", cursorParams: {cursorId: "task_id", direction: BEFORE, includeCursor: true}, limit: 3}) { tasks { version { tasks(options: {limit: 4}) { data { tests { totalTestCount } } } } } } }`
+		assert.Equal(t, 3*4*testResultsComplexity, testResultsCharge(t, query, nil))
 	})
 
-	t.Run("BulkTaskTestsQuery", func(t *testing.T) {
-		assert.Equal(t, 1+testResultsComplexity+14, calculate(t, bulkTaskTestsQuery, nil))
-	})
-
-	t.Run("BulkTaskHistoryTestsQuery", func(t *testing.T) {
-		assert.Equal(t, 1+(1+testResultsComplexity+14)*80, calculate(t, bulkTaskHistoryTestsQuery, nil))
+	t.Run("FragmentsAreCounted", func(t *testing.T) {
+		query := `query { task(taskId: "task_id") { ...TestFields } } fragment TestFields on Task { tests { totalTestCount } }`
+		assert.Equal(t, testResultsComplexity, testResultsCharge(t, query, nil))
 	})
 
 	t.Run("JSONNumberVariablesAreRead", func(t *testing.T) {
 		vars := taskHistoryVars(nil)
 		vars["options"].(map[string]any)["limit"] = json.Number("10")
-		assert.Equal(t, calculate(t, spruceTaskHistoryQuery, taskHistoryVars(limit(10))), calculate(t, spruceTaskHistoryQuery, vars))
+		assert.Equal(t, 10*testResultsComplexity, testResultsCharge(t, spruceTaskHistoryQuery, vars))
 	})
 
-	t.Run("UnlistedFieldUsesDefaultComplexity", func(t *testing.T) {
-		assert.Equal(t, 4, calculate(t, `query { user { displayName } spruceConfig { banner } }`, nil))
+	t.Run("HugeLimitDoesNotOverflow", func(t *testing.T) {
+		op, coerced := parse(t, spruceTaskHistoryQuery, taskHistoryVars(limit(math.MaxInt)))
+		assert.Positive(t, calculateComplexity(t.Context(), schema, op, coerced))
+	})
+
+	t.Run("QueriesWithoutTestsUseDefaultComplexity", func(t *testing.T) {
+		op, coerced := parse(t, `query { user { displayName } spruceConfig { banner } }`, nil)
+		assert.Equal(t, 4, calculateComplexity(t.Context(), schema, op, coerced))
+	})
+}
+
+func TestComplexityLimit(t *testing.T) {
+	schema := NewExecutableSchema(New(""))
+
+	run := func(t *testing.T, limit int, query string) *gqlerror.Error {
+		doc, gqlErrs := gqlparser.LoadQueryWithRules(schema.Schema(), query, rules.NewDefaultRules())
+		require.Empty(t, gqlErrs)
+		c := newComplexityLimit(limit)
+		require.NoError(t, c.Validate(schema))
+		opCtx := &graphql.OperationContext{Doc: doc}
+		return c.MutateOperationContext(t.Context(), opCtx)
+	}
+
+	t.Run("QueryUnderLimitSucceeds", func(t *testing.T) {
+		assert.Nil(t, run(t, 1000, bulkTaskTestsQuery))
+	})
+
+	t.Run("QueryOverLimitShouldError", func(t *testing.T) {
+		err := run(t, 10, bulkTaskHistoryTestsQuery)
+		require.NotNil(t, err)
+		assert.Contains(t, err.Message, "exceeds the limit of 10")
+		assert.Equal(t, "COMPLEXITY_LIMIT_EXCEEDED", err.Extensions["code"])
 	})
 }

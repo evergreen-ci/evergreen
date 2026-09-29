@@ -26,7 +26,7 @@ import (
 
 // Handler returns a gimlet http handler func used as the gql route handler
 func Handler(apiURL string, allowMutations bool, env evergreen.Environment) func(w http.ResponseWriter, r *http.Request) {
-	schema := newSchema(apiURL)
+	schema := NewExecutableSchema(New(apiURL))
 	srv := handler.New(schema)
 
 	srv.AddTransport(transport.Websocket{
@@ -73,7 +73,7 @@ func Handler(apiURL string, allowMutations bool, env evergreen.Environment) func
 	// Default to turning off limiter if settings can't be fetched.
 	// Reject queries that exceed the enabled complexity limit.
 	if flags != nil && !flags.GraphQLComplexityLimiterDisabled && complexityLimit > 0 {
-		srv.Use(extension.FixedComplexityLimit(complexityLimit))
+		srv.Use(newComplexityLimit(complexityLimit))
 	}
 
 	// Log graphql requests to splunk

@@ -27,7 +27,7 @@ Note that tokens are refilled continuously, not reset on a fixed schedule (e.g. 
 
 ## GraphQL Query Complexity
 
-GraphQL requests are additionally subject to a ["complexity"](https://gqlgen.com/reference/complexity) limit, which prevents the execution of queries that could create stressful workloads for the system. Complexity is computed by traversing the query AST and summing a cost of 1 per field, across all levels of nesting. `Task.tests` costs an extra 50 regardless of `limit`. `taskHistory` and `Version.tasks` multiply the cost of their nested fields by `limit`, or by 100 if `limit` is unset or 0. This is a stateless, per-query ceiling rather than a limit bucket that the user exhausts over time.
+GraphQL requests are additionally subject to a ["complexity"](https://gqlgen.com/reference/complexity) limit, which prevents the execution of queries that could create stressful workloads for the system. Complexity is computed by traversing the query AST and summing a cost of 1 per field, across all levels of nesting. Each task whose test results (`Task.tests`) are fetched adds an extra cost, counted once per task in `taskHistory` and `Version.tasks` based on their `limit`, or 100 tasks if `limit` is unset or 0. This is a stateless, per-query ceiling rather than a limit bucket that the user exhausts over time.
 
 ### Example
 
@@ -36,21 +36,15 @@ query TaskHistoryExample {
   taskHistory(options: { limit: 10 }) {
     tasks {
       id
-      activated
-      buildVariant
-      displayName
-      displayStatus
-      execution
-      order
-      requester
-      status
-      createTime
+      tests {
+        totalTestCount
+      }
     }
   }
 }
 ```
 
-The complexity of this query is computed as `taskHistory` (1) + (`tasks` (1) + 10 fields per task) × 10 tasks (110) = 111. If the configured complexity limit is 110, this query will return an error, independent of any other requests and the GraphQL rate-limiting state. If the query instead had 9 fields under `tasks`, the complexity score would be 101 and the request would succeed.
+The complexity of this query is 1 per field (`taskHistory`, `tasks`, `id`, `tests`, `totalTestCount`) plus the test results cost for each of the 10 tasks. If the configured complexity limit is lower than that total, this query will return an error, independent of any other requests and the GraphQL rate-limiting state. Requesting 5 tasks instead would halve the test results cost.
 
 ## API Response
 

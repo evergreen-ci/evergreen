@@ -3,7 +3,6 @@ package graphql
 import (
 	"context"
 
-	"github.com/99designs/gqlgen/complexity"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/gimlet"
@@ -54,7 +53,7 @@ func (s SplunkTracing) InterceptResponse(ctx context.Context, next graphql.Respo
 		trace.SpanFromContext(ctx).SetAttributes(attribute.String(evergreen.GraphQLAIAgentOtelAttribute, aiAgent))
 	}
 
-	complexityScore := complexity.Calculate(ctx, s.schema, rc.Operation, rc.Variables)
+	complexityScore := calculateComplexity(ctx, s.schema, rc.Operation, rc.Variables)
 	trace.SpanFromContext(ctx).SetAttributes(attribute.Int("gql.request.complexity_score", complexityScore))
 
 	defer func() {
