@@ -169,8 +169,8 @@ func agentMonitor() cli.Command {
 			apiServerURL := c.Parent().String(agentAPIServerURLFlagName)
 			hostID := c.Parent().String(agentHostIDFlagName)
 			hostSecret := c.Parent().String(agentHostSecretFlagName)
-			if hostID == "" || hostSecret == "" {
-				return errors.New("host ID and host secret must be set")
+			if hostID == "" {
+				return errors.New("host ID must be set")
 			}
 			comm, err := client.NewCommunicator(apiServerURL)
 			if err != nil {

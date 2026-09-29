@@ -29,6 +29,7 @@ const (
 	agentCloudProviderFlagName           = "provider"
 	agentHostIDFlagName                  = "host_id"
 	agentHostSecretFlagName              = "host_secret"
+	agentHostSetupSecretFlagName         = "setup_secret"
 	singleTaskDistroFlagName             = "single_task_distro"
 	containerRetainOnFailureSecsFlagName = "container_retain_on_failure_secs"
 	compatClientPathFlagName             = "compat_client_path"
@@ -134,7 +135,7 @@ func Agent() cli.Command {
 				switch mode {
 				case string(globals.HostMode):
 					catcher.Add(requireStringFlag(agentHostIDFlagName)(c))
-					catcher.Add(requireStringFlag(agentHostSecretFlagName)(c))
+					catcher.Add(requireAtLeastOneFlag(agentHostSecretFlagName, agentHostSetupSecretFlagName)(c))
 				default:
 					return errors.Errorf("invalid mode '%s'", mode)
 				}

@@ -69,9 +69,14 @@ func hostProvision() cli.Command {
 		},
 		Before: mergeBeforeFuncs(
 			requireStringFlag(hostIDFlagName),
-			requireStringFlag(hostSecretFlagName),
 			requireStringFlag(apiServerURLFlagName),
 			requireStringFlag(shellPathFlagName),
+			func(c *cli.Context) error {
+				if c.String(hostSecretFlagName) == "" && c.String(setupSecretFlagName) == "" {
+					return errors.Errorf("one of flag '--%s' or '--%s' must be specified", hostSecretFlagName, setupSecretFlagName)
+				}
+				return nil
+			},
 		),
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
@@ -88,11 +93,14 @@ func hostProvision() cli.Command {
 			comm.SetHostID(hostID)
 
 			// If a setup secret is provided, exchange it for the host secret.
-			// Fall back to the host secret if the exchange fails so that a
-			// transient error does not fail provisioning.
+			// Fall back to the host secret when available so that a transient
+			// exchange failure does not fail provisioning.
 			if setupSecret := c.String(setupSecretFlagName); setupSecret != "" {
 				exchanged, err := comm.ExchangeSetupSecret(ctx, setupSecret)
 				if err != nil {
+					if hostSecret == "" {
+						return errors.Wrap(err, "exchanging setup secret for host secret")
+					}
 					grip.Warning(ctx, message.WrapError(err, message.Fields{
 						"message": "falling back to the host secret because the setup secret exchange failed",
 						"host_id": hostID,
