@@ -1151,6 +1151,22 @@ func (h *Host) CreateSetupSecret(ctx context.Context) error {
 	return nil
 }
 
+// EnsureSecrets generates the host secret and setup secret if they don't
+// exist yet.
+func (h *Host) EnsureSecrets(ctx context.Context) error {
+	if h.Secret == "" {
+		if err := h.CreateSecret(ctx, false); err != nil {
+			return errors.Wrap(err, "creating host secret")
+		}
+	}
+	if h.SetupSecret == "" {
+		if err := h.CreateSetupSecret(ctx); err != nil {
+			return errors.Wrap(err, "creating host setup secret")
+		}
+	}
+	return nil
+}
+
 // ExchangeSetupSecret atomically clears the host's setup secret if it matches
 // setupSecret and returns the host with its secret. It returns a nil secret if
 // the setup secret does not match or it was already spent.

@@ -325,16 +325,8 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 	if containerHost.DockerOptions.Command != "" {
 		agentCmdParts = append(agentCmdParts, containerHost.DockerOptions.Command)
 	} else if containerHost.DockerOptions.Command == "" && !containerHost.SpawnOptions.SpawnedByTask {
-		// Generate the host secret for container if none exists.
-		if containerHost.Secret == "" {
-			if err = containerHost.CreateSecret(ctx, false); err != nil {
-				return errors.Wrapf(err, "creating secret for '%s'", containerHost.Id)
-			}
-		}
-		if containerHost.SetupSecret == "" {
-			if err = containerHost.CreateSetupSecret(ctx); err != nil {
-				return errors.Wrapf(err, "creating setup secret for '%s'", containerHost.Id)
-			}
+		if err = containerHost.EnsureSecrets(ctx); err != nil {
+			return errors.Wrapf(err, "creating secrets for '%s'", containerHost.Id)
 		}
 		// Build path to Evergreen executable.
 		pathToExecutable := filepath.Join("/", "evergreen")

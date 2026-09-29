@@ -54,32 +54,9 @@ func ValidateTask(ctx context.Context, taskId string, checkSecret bool, r *http.
 // provided, it ensures that the host should be running this task. It returns a
 // host, http status code, and error.
 func ValidateHost(hostId string, r *http.Request) (*host.Host, int, error) {
-	if hostId == "" {
-		// fall back to the host header if host ids are not part of the path
-		hostId = r.Header.Get(evergreen.HostHeader)
-		if hostId == "" {
-			return nil, http.StatusBadRequest, errors.Errorf("request '%s' is missing host information", r.URL)
-		}
-	}
-	secret := r.Header.Get(evergreen.HostSecretHeader)
-	if secret == "" {
-		return nil, http.StatusBadRequest, errors.Errorf("missing host secret for host '%s'", hostId)
-	}
-
-	// If the host was provisioned through user data, the host will be started
-	// with the intent host ID instead of the _id.
-	h, err := host.FindOneByIdOrTag(r.Context(), hostId)
+	h, statusCode, err := validateHostBySecret(hostId, r, evergreen.HostSecretHeader, "host secret", func(h *host.Host) string { return h.Secret })
 	if err != nil {
-		return nil, http.StatusInternalServerError, errors.Wrapf(err, "finding host '%s'", hostId)
-	}
-	if h == nil {
-		return nil, http.StatusNotFound, errors.Errorf("host '%s' not found", hostId)
-	}
-	if secret != h.Secret {
-		return nil, http.StatusUnauthorized, errors.Errorf("invalid host secret for host '%s'", hostId)
-	}
-	if h.Status == evergreen.HostTerminated {
-		return nil, http.StatusUnauthorized, errors.Errorf("host '%s' cannot make requests in a terminated state", hostId)
+		return nil, statusCode, err
 	}
 
 	// if the task is attached to the context, check host-task relationship
@@ -99,16 +76,23 @@ func ValidateHost(hostId string, r *http.Request) (*host.Host, int, error) {
 // that the setup secret provided in the request matches the host's setup
 // secret.
 func ValidateHostSetupSecret(hostID string, r *http.Request) (*host.Host, int, error) {
+	return validateHostBySecret(hostID, r, evergreen.SetupSecretHeader, "setup secret", func(h *host.Host) string { return h.SetupSecret })
+}
+
+// validateHostBySecret ensures that the host exists in the database and that
+// the secret provided in the request's secretHeader matches the secret
+// returned by expectedSecret. It returns a host, http status code, and error.
+func validateHostBySecret(hostID string, r *http.Request, secretHeader, secretName string, expectedSecret func(*host.Host) string) (*host.Host, int, error) {
 	if hostID == "" {
-		// Fall back to the request's host header when host IDs are not part of the path
+		// fall back to the host header if host ids are not part of the path
 		hostID = r.Header.Get(evergreen.HostHeader)
 		if hostID == "" {
 			return nil, http.StatusBadRequest, errors.Errorf("request '%s' is missing host information", r.URL)
 		}
 	}
-	setupSecret := r.Header.Get(evergreen.SetupSecretHeader)
-	if setupSecret == "" {
-		return nil, http.StatusBadRequest, errors.Errorf("missing setup secret for host '%s'", hostID)
+	secret := r.Header.Get(secretHeader)
+	if secret == "" {
+		return nil, http.StatusBadRequest, errors.Errorf("missing %s for host '%s'", secretName, hostID)
 	}
 
 	// If the host was provisioned through user data, the host will be started
@@ -120,8 +104,8 @@ func ValidateHostSetupSecret(hostID string, r *http.Request) (*host.Host, int, e
 	if h == nil {
 		return nil, http.StatusNotFound, errors.Errorf("host '%s' not found", hostID)
 	}
-	if setupSecret != h.SetupSecret {
-		return nil, http.StatusUnauthorized, errors.Errorf("invalid setup secret for host '%s'", hostID)
+	if secret != expectedSecret(h) {
+		return nil, http.StatusUnauthorized, errors.Errorf("invalid %s for host '%s'", secretName, hostID)
 	}
 	if h.Status == evergreen.HostTerminated {
 		return nil, http.StatusUnauthorized, errors.Errorf("host '%s' cannot make requests in a terminated state", hostID)

@@ -39,7 +39,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	requireValidSNSPayload := NewSNSAuthMiddleware()
 	requireTask := NewTaskAuthMiddleware()
 	requireHost := NewHostAuthMiddleware()
-	requireHostSetup := NewSetupSecretAuthMiddleware()
+	requireHostSetup := NewHostSetupSecretAuthMiddleware()
 	requireHostReadOnly := NewReadOnlyHostAuthMiddleware()
 	addProject := NewProjectContextMiddleware()
 	addGitHubIntentProcessingError := newGitHubIntentProcessingErrorContextMiddleware()

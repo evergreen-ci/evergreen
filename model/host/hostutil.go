@@ -883,18 +883,11 @@ func (h *Host) setupScriptCommands(settings *evergreen.Settings) (string, error)
 }
 
 // StartAgentMonitorRequest builds the Jasper client request that starts the
-// agent monitor on the host. The host secret is created if it doesn't exist
+// agent monitor on the host. The host secrets are created if they don't exist
 // yet.
 func (h *Host) StartAgentMonitorRequest(ctx context.Context, settings *evergreen.Settings) (string, error) {
-	if h.Secret == "" {
-		if err := h.CreateSecret(ctx, false); err != nil {
-			return "", errors.Wrap(err, "creating host secret")
-		}
-	}
-	if h.SetupSecret == "" {
-		if err := h.CreateSetupSecret(ctx); err != nil {
-			return "", errors.Wrap(err, "creating host setup secret")
-		}
+	if err := h.EnsureSecrets(ctx); err != nil {
+		return "", err
 	}
 
 	return h.buildLocalJasperClientRequest(
@@ -1318,15 +1311,8 @@ func (h *Host) SetUserDataHostProvisioned(ctx context.Context) error {
 // GenerateFetchProvisioningScriptUserData creates the user data script to fetch
 // the host provisioning script.
 func (h *Host) GenerateFetchProvisioningScriptUserData(ctx context.Context, env evergreen.Environment) (*userdata.Options, error) {
-	if h.Secret == "" {
-		if err := h.CreateSecret(ctx, false); err != nil {
-			return nil, errors.Wrap(err, "creating host secret")
-		}
-	}
-	if h.SetupSecret == "" {
-		if err := h.CreateSetupSecret(ctx); err != nil {
-			return nil, errors.Wrap(err, "creating host setup secret")
-		}
+	if err := h.EnsureSecrets(ctx); err != nil {
+		return nil, err
 	}
 
 	fetchClient, err := h.CurlCommandWithDefaultRetry(env)

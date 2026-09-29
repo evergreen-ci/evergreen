@@ -310,9 +310,9 @@ func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 
 type hostSetupSecretAuthMiddleware struct{}
 
-// NewSetupSecretAuthMiddleware returns a route middleware that verifies the
+// NewHostSetupSecretAuthMiddleware returns a route middleware that verifies the
 // request's host ID and setup secret.
-func NewSetupSecretAuthMiddleware() gimlet.Middleware {
+func NewHostSetupSecretAuthMiddleware() gimlet.Middleware {
 	return &hostSetupSecretAuthMiddleware{}
 }
 
