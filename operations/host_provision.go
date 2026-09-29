@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
@@ -26,6 +27,7 @@ func hostProvision() cli.Command {
 	const (
 		hostIDFlagName        = "host_id"
 		hostSecretFlagName    = "host_secret"
+		setupSecretFlagName   = "setup_secret"
 		cloudProviderFlagName = "provider"
 		workingDirFlagName    = "working_dir"
 		apiServerURLFlagName  = "api_server"
@@ -42,6 +44,11 @@ func hostProvision() cli.Command {
 			cli.StringFlag{
 				Name:  hostSecretFlagName,
 				Usage: "the host secret",
+			},
+			cli.StringFlag{
+				Name:   setupSecretFlagName,
+				Usage:  "the single-use host setup secret to exchange for the host secret",
+				EnvVar: evergreen.SetupSecretEnvVar,
 			},
 			cli.StringFlag{
 				Name:  cloudProviderFlagName,
@@ -79,6 +86,21 @@ func hostProvision() cli.Command {
 			hostID := c.String(hostIDFlagName)
 			hostSecret := c.String(hostSecretFlagName)
 			comm.SetHostID(hostID)
+
+			// If a setup secret is provided, exchange it for the host secret.
+			// Fall back to the host secret if the exchange fails so that a
+			// transient error does not fail provisioning.
+			if setupSecret := c.String(setupSecretFlagName); setupSecret != "" {
+				exchanged, err := comm.ExchangeSetupSecret(ctx, setupSecret)
+				if err != nil {
+					grip.Warning(ctx, message.WrapError(err, message.Fields{
+						"message": "falling back to the host secret because the setup secret exchange failed",
+						"host_id": hostID,
+					}))
+				} else {
+					hostSecret = exchanged
+				}
+			}
 			comm.SetHostSecret(hostSecret)
 
 			cloudProvider := c.String(cloudProviderFlagName)

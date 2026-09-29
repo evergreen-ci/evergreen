@@ -360,6 +360,10 @@ func (c *Mock) PostHostIsUp(ctx context.Context, options host.HostMetadataOption
 	}, nil
 }
 
+func (c *Mock) ExchangeSetupSecret(context.Context, string) (string, error) {
+	return "", nil
+}
+
 func (c *Mock) GetHostProvisioningOptions(ctx context.Context) (*restmodel.APIHostProvisioningOptions, error) {
 	return &restmodel.APIHostProvisioningOptions{
 		Content: "echo hello world",
