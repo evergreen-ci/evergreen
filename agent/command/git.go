@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
@@ -603,33 +602,15 @@ func (c *gitFetchProject) cloneSource(ctx context.Context, comm client.Communica
 	return token, errors.Wrap(err, "running fetch command")
 }
 
-// execTimeout mirrors the agent's exec timeout resolution order
-// (agent/task_context.go getExecTimeout) so the save budget is measured against
-// the deadline the task is actually held to.
-func execTimeout(conf *internal.TaskConfig) time.Duration {
-	if dynamic := conf.GetExecTimeout(); dynamic > 0 {
-		if conf.MaxExecTimeoutSecs != 0 && dynamic > conf.MaxExecTimeoutSecs {
-			return time.Duration(conf.MaxExecTimeoutSecs) * time.Second
-		}
-		return time.Duration(dynamic) * time.Second
-	}
-	if bvTask := conf.Project.FindTaskForVariant(conf.Task.DisplayName, conf.Task.BuildVariant); bvTask != nil && bvTask.ExecTimeoutSecs > 0 {
-		return time.Duration(bvTask.ExecTimeoutSecs) * time.Second
-	}
-	if conf.Project.ExecTimeoutSecs > 0 {
-		return time.Duration(conf.Project.ExecTimeoutSecs) * time.Second
-	}
-	return globals.DefaultExecTimeout
-}
-
 // sourceCacheSaveBudget returns how long the save may run before the task's
 // exec timeout, less the post-save allowance, and whether that deadline could
-// be derived at all.
+// be derived at all. The timeout resolves through the same shared logic the
+// agent's exec timeout watcher uses.
 func sourceCacheSaveBudget(conf *internal.TaskConfig) (time.Duration, bool) {
 	if conf.Task.StartTime.IsZero() {
 		return 0, false
 	}
-	timeout := execTimeout(conf)
+	timeout := conf.ResolveExecTimeout()
 	if timeout <= 0 {
 		return 0, false
 	}
@@ -651,11 +632,9 @@ func (c *gitFetchProject) saveSourceCache(ctx context.Context, comm client.Commu
 	produced, saveErr := sc.save(saveCtx, comm, logger)
 	if saveErr != nil && saveCtx.Err() != nil {
 		// Bounded by the task's remaining exec budget so a slow save cannot burn
-		// it. The pre-save scrub already removed the producer's credentials, so
-		// the post-save step can still restore the task's origin URL afterward.
+		// it. The post-save command still runs to restore the origin URL the
+		// rest of the task needs, even though the save was abandoned.
 		logger.Task().Warningf(ctx, "Aborting the source cache save after %s: %s", budget, saveErr)
-		// The post-save command restores the origin URL the rest of the task
-		// needs, so it runs even though the save was abandoned.
 		if postErr := c.runCommands(ctx, logger, conf, c.buildPostSaveCommand(opts)); postErr != nil {
 			return produced, errors.Wrap(postErr, "restoring origin URL after saving")
 		}
