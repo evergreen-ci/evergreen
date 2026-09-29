@@ -7377,40 +7377,38 @@ func TestHostCreateSetupSecret(t *testing.T) {
 }
 
 func TestExchangeSetupSecret(t *testing.T) {
-	ctx := t.Context()
-
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"ReturnsHostSecretAndExchangesSetupSecret": func(t *testing.T, h *Host) {
-			exchanged, err := ExchangeSetupSecret(ctx, h.Id, h.SetupSecret)
+			exchanged, err := ExchangeSetupSecret(t.Context(), h.Id, h.SetupSecret)
 			require.NoError(t, err)
 			require.NotNil(t, exchanged)
 			assert.Equal(t, h.Secret, utility.FromStringPtr(exchanged))
 
-			dbHost, err := FindOneId(ctx, h.Id)
+			dbHost, err := FindOneId(t.Context(), h.Id)
 			require.NoError(t, err)
 			assert.Empty(t, dbHost.SetupSecret, "exchanging a setup secret should clear it in the DB")
 		},
 		"FailsAfterSetupSecretIsAlreadySpent": func(t *testing.T, h *Host) {
-			exchanged, err := ExchangeSetupSecret(ctx, h.Id, h.SetupSecret)
+			exchanged, err := ExchangeSetupSecret(t.Context(), h.Id, h.SetupSecret)
 			require.NoError(t, err)
 			require.NotNil(t, exchanged)
 			assert.Equal(t, h.Secret, utility.FromStringPtr(exchanged))
 
-			exchanged, err = ExchangeSetupSecret(ctx, h.Id, h.SetupSecret)
+			exchanged, err = ExchangeSetupSecret(t.Context(), h.Id, h.SetupSecret)
 			require.NoError(t, err)
 			assert.Nil(t, exchanged, "exchanging an already-spent setup secret should not return the secret")
 
-			exchanged, err = ExchangeSetupSecret(ctx, h.Id, "")
+			exchanged, err = ExchangeSetupSecret(t.Context(), h.Id, "")
 			require.NoError(t, err)
 			assert.Nil(t, exchanged, "trying to exchange an empty setup secret that's already been spent should not return the secret")
 		},
 		"FailsWithWrongSetupSecret": func(t *testing.T, h *Host) {
-			exchanged, err := ExchangeSetupSecret(ctx, h.Id, "wrong_setup_secret")
+			exchanged, err := ExchangeSetupSecret(t.Context(), h.Id, "wrong_setup_secret")
 			require.NoError(t, err)
 			assert.Nil(t, exchanged, "exchanging a setup secret that does not match should not return a host")
 		},
 		"FailsWithNonexistentHost": func(t *testing.T, h *Host) {
-			exchanged, err := ExchangeSetupSecret(ctx, "nonexistent_host", h.SetupSecret)
+			exchanged, err := ExchangeSetupSecret(t.Context(), "nonexistent_host", h.SetupSecret)
 			require.NoError(t, err)
 			assert.Nil(t, exchanged, "exchanging a setup secret for a nonexistent host should not return a host")
 		},
@@ -7426,7 +7424,7 @@ func TestExchangeSetupSecret(t *testing.T) {
 				Secret:      "host_secret",
 				SetupSecret: "setup_secret",
 			}
-			require.NoError(t, h.Insert(ctx))
+			require.NoError(t, h.Insert(t.Context()))
 
 			testCase(t, h)
 		})
