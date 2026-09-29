@@ -39,7 +39,7 @@ func makeCompleteVirtualTasks(env evergreen.Environment) gimlet.RouteHandler {
 //	@Tags			tasks
 //	@Router			/task/{task_id}/virtual_tasks/complete [post]
 //	@Security		Api-User || Api-Key
-//	@Param			task_id	path		string								true	"the runner task ID"
+//	@Param			task_id		path		string									true	"the runner task ID"
 //	@Param			{object}	body		apimodels.CompleteVirtualTasksRequest	true	"virtual task completions to push"
 //	@Success		201			{object}	apimodels.CompleteVirtualTasksResponse
 func (h *completeVirtualTasksHandler) Factory() gimlet.RouteHandler {
