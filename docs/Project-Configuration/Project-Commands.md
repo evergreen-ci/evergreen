@@ -1622,7 +1622,7 @@ Parameters:
   but only if the generated credentials are from a previous `ec2.assume_role` command in this task or if
   `role_arn` was passed in, otherwise Evergreen won't know the associated role to assume when generating
   the presigned url.
-  Note: This parameter does *not* affect the underlying permissions of the file
+  Note: This parameter does _not_ affect the underlying permissions of the file
   on S3, only the visibility in the Evergreen UI. To change the permissions of the file on S3, use the `permissions` parameter.
   See [Rotating AWS credentials for signed artifacts](#rotating-aws-credentials-for-signed-artifacts)
   for how presigning picks up rotated credentials, and how to repair links for artifacts

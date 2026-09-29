@@ -1,6 +1,7 @@
 # Virtual Tasks
 
 A virtual task is a special type of task that has the option to either:
+
 1. run like a regular task OR
 2. have its final task information (e.g. status, test results, logs)
    populated by another task in the version (called the "runner").
@@ -68,7 +69,7 @@ execution metadata.
 As an alternative to the `virtual_tasks.complete` command, the push-completion
 API route can be called directly by a user that has task admin permissions.
 
-```
+```txt
 POST /rest/v2/task/{runner_task_id}/virtual_tasks/complete
 ```
 
