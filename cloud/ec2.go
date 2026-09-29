@@ -20,6 +20,12 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.opentelemetry.io/otel/attribute"
+)
+
+const (
+	volumeOwnerSourceOtelAttribute         = "evergreen.volume.owner_source"
+	volumeOwnerFallbackReasonOtelAttribute = "evergreen.volume.owner_fallback_reason"
 )
 
 // EC2ProviderSettings describes properties of managed instances.
@@ -1036,6 +1042,8 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 		{Key: aws.String(evergreen.TagOwner), Value: aws.String(volume.CreatedBy)},
 		{Key: aws.String(evergreen.TagExpireOn), Value: aws.String(expireInDays(evergreen.SpawnHostExpireDays))},
 	}
+	resourceTags := m.makeVolumeResourceTags(ctx, volume)
+	volumeTags = append(volumeTags, hostToEC2Tags(resourceTags)...)
 	if volume.Host != "" {
 		volumeTags = append(volumeTags, types.Tag{Key: aws.String(evergreen.TagHostName), Value: aws.String(volume.Host)})
 		// Clear before inserting so the DB field isn't left as the intent host tag;
@@ -1234,4 +1242,39 @@ func (m *ec2Manager) CleanupIP(ctx context.Context, h *host.Host) error {
 // Cleanup is a noop for the EC2 provider.
 func (m *ec2Manager) Cleanup(context.Context) error {
 	return nil
+}
+
+// makeVolumeResourceTags returns the MongoDB resource tags for a volume.
+func (m *ec2Manager) makeVolumeResourceTags(ctx context.Context, volume *host.Volume) []host.Tag {
+	ctx, span := tracer.Start(ctx, "makeVolumeResourceTags")
+	defer span.End()
+
+	resourceTagSettings := m.settings.Providers.AWS.ResourceTags
+	owner := resourceTagSettings.MongoDBOwner
+	ownerSource := "configured_owner"
+	fallbackReason := "missing_creator_id"
+	if volume.CreatedBy != "" {
+		creator, err := user.FindOneById(ctx, volume.CreatedBy)
+		if err != nil {
+			// Use the configured owner so a user lookup error does not block volume creation.
+			fallbackReason = "lookup_error"
+			span.RecordError(err)
+		} else if creator == nil {
+			fallbackReason = "creator_not_found"
+		} else if creator.Email() == "" {
+			fallbackReason = "email_missing"
+		} else {
+			owner = creator.Email()
+			ownerSource = "creator_email"
+			fallbackReason = ""
+		}
+	}
+	if owner == "" {
+		ownerSource = "missing"
+	}
+	span.SetAttributes(attribute.String(volumeOwnerSourceOtelAttribute, ownerSource))
+	if fallbackReason != "" {
+		span.SetAttributes(attribute.String(volumeOwnerFallbackReasonOtelAttribute, fallbackReason))
+	}
+	return makeMongoDBResourceTags(owner, resourceTagSettings.MongoDBEnv)
 }

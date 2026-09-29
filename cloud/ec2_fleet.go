@@ -726,7 +726,7 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 		ImageId:             aws.String(ec2Settings.AMI),
 		InstanceType:        types.InstanceType(ec2Settings.InstanceType),
 		BlockDeviceMappings: blockDevices,
-		TagSpecifications:   makeTagTemplate(makeTags(h)),
+		TagSpecifications:   makeTagTemplate(makeTags(h, m.settings.Providers.AWS.ResourceTags)),
 	}
 	if ec2Settings.EnableNestedVirtualization {
 		launchTemplate.CpuOptions = &types.LaunchTemplateCpuOptionsRequest{

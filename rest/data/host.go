@@ -326,6 +326,7 @@ func makeSpawnOptions(options *restmodel.HostRequestOptions, user *user.DBUser) 
 		DistroId:              options.DistroID,
 		Userdata:              options.UserData,
 		UserName:              user.Username(),
+		UserEmail:             user.Email(),
 		PublicKey:             keyVal,
 		InstanceTags:          options.InstanceTags,
 		InstanceType:          options.InstanceType,

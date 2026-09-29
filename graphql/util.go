@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -814,13 +815,10 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 
 func getAPIProjectRef(ctx context.Context, projectId *string) (*restModel.APIProjectRef, error) {
 	// If project ID is the only field requested we can return it without a database call.
-	if graphql.HasOperationContext(ctx) {
-		requestedFields := graphql.CollectAllFields(ctx)
-		if len(requestedFields) == 1 && requestedFields[0] == "id" {
-			return &restModel.APIProjectRef{
-				Id: projectId,
-			}, nil
-		}
+	if !requiresDBRead(ctx, []string{"id"}) {
+		return &restModel.APIProjectRef{
+			Id: projectId,
+		}, nil
 	}
 
 	projectRef, err := loaders.GetProject(ctx, utility.FromStringPtr(projectId))
@@ -1702,4 +1700,20 @@ func redactParameters(ctx context.Context, projectId string, parameters []patch.
 		res = append(res, redactedParam)
 	}
 	return res, nil
+}
+
+// Given a slice of fields that are accessible via parent object, determine if a query requests any fields besides these or GraphQL util __typename.
+func requiresDBRead(ctx context.Context, availableFields []string) bool {
+	availableFields = append(availableFields, "__typename")
+
+	if graphql.HasOperationContext(ctx) {
+		requestedFields := graphql.CollectAllFields(ctx)
+
+		for _, field := range requestedFields {
+			if !slices.Contains(availableFields, field) {
+				return true
+			}
+		}
+	}
+	return false
 }
