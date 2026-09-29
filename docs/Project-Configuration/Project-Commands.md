@@ -2057,23 +2057,23 @@ example:
 
 ```json
 [
-    {
-        "task_id": "evergreen_task_id",
-        "execution": 0,
-        "status": "success",
-        "test_results": {
-            "stats": { "total_count": 42, "failed_count": 1 },
-            "failed_sample": ["test_name_1"],
-            "created_at": "2026-08-12T12:00:00Z"
-        },
-        "artifacts": [
-            { "name": "test.log", "url": "s3://bucket/path", "visibility": "signed" }
-        ],
-        "external_metadata": {
-            "engflow_invocation_id": "inv-xyz",
-            "shard_id": "shard-3"
-        }
+  {
+    "task_id": "evergreen_task_id",
+    "execution": 0,
+    "status": "success",
+    "test_results": {
+      "stats": { "total_count": 42, "failed_count": 1 },
+      "failed_sample": ["test_name_1"],
+      "created_at": "2026-08-12T12:00:00Z"
+    },
+    "artifacts": [
+      { "name": "test.log", "url": "s3://bucket/path", "visibility": "signed" }
+    ],
+    "external_metadata": {
+      "engflow_invocation_id": "inv-xyz",
+      "shard_id": "shard-3"
     }
+  }
 ]
 ```
 

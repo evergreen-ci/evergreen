@@ -15,7 +15,7 @@ its results are produced and sent to Evergreen by the runner task.
 ## Regular Tasks vs. Virtual Tasks Behavior
 
 | Behavior                  | Regular task                                 | Virtual task                                                                                |
-| ---                       | ---                                          | ---                                                                                         |
+| ------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | First execution           | Runs on a host by default                    | Inactive by default; does not run on a host unless activated                                |
 | Results                   | Comes directly from the task's execution     | Typically pushed to it by a runner task; can be produced like a regular task if activated   |
 | Cron/batchtime activation | Activates the task at the specified interval | Does **not** activate the task                                                              |
