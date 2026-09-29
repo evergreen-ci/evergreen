@@ -255,8 +255,9 @@ const (
 	AgentMonitorTag = "agent-monitor"
 	HostFetchTag    = "host-fetch"
 
-	HostIDEnvVar     = "HOST_ID"
-	HostSecretEnvVar = "HOST_SECRET"
+	HostIDEnvVar      = "HOST_ID"
+	HostSecretEnvVar  = "HOST_SECRET"
+	SetupSecretEnvVar = "SETUP_SECRET"
 
 	DegradedLoggingPercent = 10
 
@@ -687,6 +688,7 @@ const (
 	TaskSecretHeader     = "Task-Secret"
 	HostHeader           = "Host-Id"
 	HostSecretHeader     = "Host-Secret"
+	SetupSecretHeader    = "Setup-Secret"
 	ContentTypeHeader    = "Content-Type"
 	ContentTypeValue     = "application/json"
 	ContentLengthHeader  = "Content-Length"

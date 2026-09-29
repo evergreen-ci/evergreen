@@ -146,3 +146,109 @@ func TestValidateHost(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateHostSetupSecret(t *testing.T) {
+	ctx := t.Context()
+
+	hostID := "host_id"
+	setupSecret := "setup_secret"
+
+	for testName, testCase := range map[string]func(t *testing.T, h *host.Host, header http.Header){
+		"PassesWithValidSetupSecret": func(t *testing.T, h *host.Host, header http.Header) {
+			require.NoError(t, h.Insert(ctx))
+
+			req := &http.Request{Header: header}
+
+			validatedHost, status, err := ValidateHostSetupSecret(hostID, req)
+			require.NoError(t, err)
+			assert.Equal(t, http.StatusOK, status)
+			assert.Equal(t, h, validatedHost)
+		},
+		"PassesIfHostHasValidTag": func(t *testing.T, h *host.Host, header http.Header) {
+			h.Id = ""
+			require.NoError(t, h.Insert(ctx))
+
+			req := &http.Request{Header: header}
+
+			validatedHost, status, err := ValidateHostSetupSecret(hostID, req)
+			require.NoError(t, err)
+			assert.Equal(t, http.StatusOK, status)
+			assert.Equal(t, h, validatedHost)
+		},
+		"FailsWithoutSetupSecret": func(t *testing.T, h *host.Host, header http.Header) {
+			require.NoError(t, h.Insert(ctx))
+
+			header.Del(evergreen.SetupSecretHeader)
+			req := &http.Request{Header: header}
+
+			validatedHost, status, err := ValidateHostSetupSecret(hostID, req)
+			assert.Error(t, err)
+			assert.Equal(t, http.StatusBadRequest, status)
+			assert.Nil(t, validatedHost)
+		},
+		"FailsWithMismatchedSetupSecret": func(t *testing.T, h *host.Host, header http.Header) {
+			require.NoError(t, h.Insert(ctx))
+
+			header.Set(evergreen.SetupSecretHeader, "invalid_secret")
+			req := &http.Request{Header: header}
+
+			validatedHost, status, err := ValidateHostSetupSecret(hostID, req)
+			assert.Error(t, err)
+			assert.Equal(t, http.StatusUnauthorized, status)
+			assert.Nil(t, validatedHost)
+		},
+		"FailsWithHostSecretInsteadOfSetupSecret": func(t *testing.T, h *host.Host, header http.Header) {
+			require.NoError(t, h.Insert(ctx))
+
+			header.Set(evergreen.SetupSecretHeader, h.Secret)
+			req := &http.Request{Header: header}
+
+			validatedHost, status, err := ValidateHostSetupSecret(hostID, req)
+			assert.Error(t, err)
+			assert.Equal(t, http.StatusUnauthorized, status)
+			assert.Nil(t, validatedHost)
+		},
+		"FailsWithoutMatchingID": func(t *testing.T, h *host.Host, header http.Header) {
+			require.NoError(t, h.Insert(ctx))
+
+			header.Del(evergreen.HostHeader)
+			req := &http.Request{Header: header}
+
+			validatedHost, status, err := ValidateHostSetupSecret("", req)
+			assert.Error(t, err)
+			assert.Equal(t, http.StatusBadRequest, status)
+			assert.Nil(t, validatedHost)
+		},
+		"FailsForTerminatedHost": func(t *testing.T, h *host.Host, header http.Header) {
+			require.NoError(t, h.Insert(ctx))
+			require.NoError(t, h.SetStatus(ctx, evergreen.HostTerminated, "", ""))
+
+			req := &http.Request{Header: header}
+
+			validatedHost, status, err := ValidateHostSetupSecret(hostID, req)
+			assert.Error(t, err)
+			assert.Equal(t, http.StatusUnauthorized, status)
+			assert.Nil(t, validatedHost)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(host.Collection))
+			t.Cleanup(func() {
+				assert.NoError(t, db.ClearCollections(host.Collection))
+			})
+
+			h := &host.Host{
+				Id:          hostID,
+				Tag:         hostID,
+				Secret:      "host_secret",
+				SetupSecret: setupSecret,
+			}
+
+			header := http.Header{}
+			header.Add(evergreen.HostHeader, hostID)
+			header.Add(evergreen.SetupSecretHeader, setupSecret)
+
+			testCase(t, h, header)
+		})
+	}
+}

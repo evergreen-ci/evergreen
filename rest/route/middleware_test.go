@@ -504,6 +504,103 @@ func TestHostAuthMiddleware(t *testing.T) {
 	}
 }
 
+func TestSetupSecretAuthMiddleware(t *testing.T) {
+	ctx := t.Context()
+
+	m := NewSetupSecretAuthMiddleware()
+	for testName, testCase := range map[string]func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder){
+		"Succeeds": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
+			r := &http.Request{
+				Header: http.Header{
+					evergreen.HostHeader:        []string{h.Id},
+					evergreen.SetupSecretHeader: []string{h.SetupSecret},
+				},
+			}
+			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+				// Verify that the host is stored in the request context.
+				foundHost := GetHost(r.Context())
+				assert.NotNil(t, foundHost)
+				assert.Equal(t, h.Id, foundHost.Id)
+			})
+			assert.Equal(t, http.StatusOK, rw.Code)
+		},
+		"FailsWithInvalidSetupSecret": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
+			r := &http.Request{
+				Header: http.Header{
+					evergreen.HostHeader:        []string{h.Id},
+					evergreen.SetupSecretHeader: []string{"foo"},
+				},
+			}
+			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+			assert.NotEqual(t, http.StatusOK, rw.Code)
+		},
+		"FailsWithoutSetupSecret": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
+			r := &http.Request{
+				Header: http.Header{
+					evergreen.HostHeader: []string{h.Id},
+				},
+			}
+			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+			assert.NotEqual(t, http.StatusOK, rw.Code)
+		},
+		"FailsWithoutHostID": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
+			r := &http.Request{
+				Header: http.Header{
+					evergreen.SetupSecretHeader: []string{h.SetupSecret},
+				},
+			}
+			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+			assert.NotEqual(t, http.StatusOK, rw.Code)
+		},
+		"FailsWithInvalidHostID": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
+			r := &http.Request{
+				Header: http.Header{
+					evergreen.HostHeader:        []string{"foo"},
+					evergreen.SetupSecretHeader: []string{h.SetupSecret},
+				},
+			}
+			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+			assert.NotEqual(t, http.StatusOK, rw.Code)
+		},
+		"FailsWithTerminatedHost": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
+			assert.NoError(t, h.SetStatus(ctx, evergreen.HostTerminated, "", ""))
+			r := &http.Request{
+				Header: http.Header{
+					evergreen.HostHeader:        []string{h.Id},
+					evergreen.SetupSecretHeader: []string{h.SetupSecret},
+				},
+			}
+			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+			assert.NotEqual(t, http.StatusOK, rw.Code)
+		},
+		"FailsWithHostSecretInsteadOfSetupSecret": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
+			r := &http.Request{
+				Header: http.Header{
+					evergreen.HostHeader:        []string{h.Id},
+					evergreen.SetupSecretHeader: []string{h.Secret},
+				},
+			}
+			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+			assert.NotEqual(t, http.StatusOK, rw.Code)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.Clear(host.Collection))
+			t.Cleanup(func() {
+				assert.NoError(t, db.Clear(host.Collection))
+			})
+			h := &host.Host{
+				Id:          "id",
+				Secret:      "secret",
+				SetupSecret: "setup_secret",
+			}
+			require.NoError(t, h.Insert(ctx))
+
+			testCase(t, h, httptest.NewRecorder())
+		})
+	}
+}
+
 func TestReadOnlyHostAuthMiddleware(t *testing.T) {
 	m := NewReadOnlyHostAuthMiddleware()
 	for testName, testCase := range map[string]func(t *testing.T, ctx context.Context, h *host.Host, rw *httptest.ResponseRecorder){

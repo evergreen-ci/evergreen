@@ -331,6 +331,11 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 				return errors.Wrapf(err, "creating secret for '%s'", containerHost.Id)
 			}
 		}
+		if containerHost.SetupSecret == "" {
+			if err = containerHost.CreateSetupSecret(ctx, false); err != nil {
+				return errors.Wrapf(err, "creating setup secret for '%s'", containerHost.Id)
+			}
+		}
 		// Build path to Evergreen executable.
 		pathToExecutable := filepath.Join("/", "evergreen")
 		if parentHost.Distro.IsWindows() {

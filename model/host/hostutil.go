@@ -891,6 +891,11 @@ func (h *Host) StartAgentMonitorRequest(ctx context.Context, settings *evergreen
 			return "", errors.Wrap(err, "creating host secret")
 		}
 	}
+	if h.SetupSecret == "" {
+		if err := h.CreateSetupSecret(ctx, false); err != nil {
+			return "", errors.Wrap(err, "creating host setup secret")
+		}
+	}
 
 	return h.buildLocalJasperClientRequest(
 		settings.HostJasper,
@@ -1034,8 +1039,9 @@ func (h *Host) AgentCommand(settings *evergreen.Settings, executablePath string)
 // AgentEnv returns the environment variables required to start the agent.
 func (h *Host) AgentEnv() map[string]string {
 	return map[string]string{
-		evergreen.HostIDEnvVar:     h.Id,
-		evergreen.HostSecretEnvVar: h.Secret,
+		evergreen.HostIDEnvVar:      h.Id,
+		evergreen.HostSecretEnvVar:  h.Secret,
+		evergreen.SetupSecretEnvVar: h.SetupSecret,
 	}
 }
 
@@ -1315,6 +1321,11 @@ func (h *Host) GenerateFetchProvisioningScriptUserData(ctx context.Context, env 
 	if h.Secret == "" {
 		if err := h.CreateSecret(ctx, false); err != nil {
 			return nil, errors.Wrap(err, "creating host secret")
+		}
+	}
+	if h.SetupSecret == "" {
+		if err := h.CreateSetupSecret(ctx, false); err != nil {
+			return nil, errors.Wrap(err, "creating host setup secret")
 		}
 	}
 

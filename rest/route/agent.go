@@ -98,6 +98,42 @@ func (h *agentSetup) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(data)
 }
 
+// POST /rest/v2/agent/exchange_setup_secret
+type exchangeSetupSecret struct {
+	setupSecret string
+}
+
+func makeExchangeSetupSecret() gimlet.RouteHandler {
+	return &exchangeSetupSecret{}
+}
+
+func (h *exchangeSetupSecret) Factory() gimlet.RouteHandler {
+	return &exchangeSetupSecret{}
+}
+
+func (h *exchangeSetupSecret) Parse(_ context.Context, r *http.Request) error {
+	h.setupSecret = r.Header.Get(evergreen.SetupSecretHeader)
+	return nil
+}
+
+func (h *exchangeSetupSecret) Run(ctx context.Context) gimlet.Responder {
+	hst := MustHaveHost(ctx)
+	claimed, err := host.ClaimSetupSecret(ctx, hst.Id, h.setupSecret)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "claiming setup secret for host '%s'", hst.Id))
+	}
+	if claimed == nil {
+		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    fmt.Sprintf("invalid setup secret for host '%s'", hst.Id),
+		})
+	}
+
+	return gimlet.NewJSONResponse(apimodels.ExchangeSetupSecretResponse{
+		HostSecret: claimed.Secret,
+	})
+}
+
 // POST /task/{task_id}/update_push_status
 type updatePushStatusHandler struct {
 	taskID  string

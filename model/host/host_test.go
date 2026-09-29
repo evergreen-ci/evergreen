@@ -7351,3 +7351,86 @@ func TestGetPaginatedRunningHostsCountsAndTaskJoin(t *testing.T) {
 		assert.Nil(t, hosts[1].RunningTaskFull)
 	})
 }
+
+func TestHostCreateSetupSecret(t *testing.T) {
+	ctx := t.Context()
+
+	require.NoError(t, db.Clear(Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.Clear(Collection))
+	})
+
+	h := &Host{Id: "hostOne"}
+	require.NoError(t, h.Insert(ctx))
+
+	assert.Empty(t, h.SetupSecret)
+	require.NoError(t, h.CreateSetupSecret(ctx, false))
+	assert.NotEmpty(t, h.SetupSecret, "creating a setup secret should set it in memory")
+
+	dbHost, err := FindOne(ctx, ById(h.Id))
+	require.NoError(t, err)
+	assert.Equal(t, h.SetupSecret, dbHost.SetupSecret, "creating a setup secret should set it in the DB")
+
+	oldSetupSecret := h.SetupSecret
+	require.NoError(t, h.CreateSetupSecret(ctx, false))
+	assert.NotEqual(t, oldSetupSecret, h.SetupSecret, "creating a setup secret should rotate the existing one")
+
+	require.NoError(t, h.CreateSetupSecret(ctx, true))
+	assert.Empty(t, h.SetupSecret, "clearing a setup secret should set it to empty in memory")
+
+	dbHost, err = FindOne(ctx, ById(h.Id))
+	require.NoError(t, err)
+	assert.Empty(t, dbHost.SetupSecret, "clearing a setup secret should set it to empty in the DB")
+}
+
+func TestClaimSetupSecret(t *testing.T) {
+	ctx := t.Context()
+
+	for testName, testCase := range map[string]func(t *testing.T, h *Host){
+		"ReturnsHostSecretAndClaimsSetupSecret": func(t *testing.T, h *Host) {
+			claimed, err := ClaimSetupSecret(ctx, h.Id, h.SetupSecret)
+			require.NoError(t, err)
+			require.NotNil(t, claimed)
+			assert.Equal(t, h.Secret, claimed.Secret)
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			assert.Empty(t, dbHost.SetupSecret, "claiming a setup secret should clear it in the DB")
+		},
+		"FailsAfterSetupSecretIsClaimed": func(t *testing.T, h *Host) {
+			claimed, err := ClaimSetupSecret(ctx, h.Id, h.SetupSecret)
+			require.NoError(t, err)
+			require.NotNil(t, claimed)
+
+			claimed, err = ClaimSetupSecret(ctx, h.Id, h.SetupSecret)
+			require.NoError(t, err)
+			assert.Nil(t, claimed, "claiming an already-claimed setup secret should not return a host")
+		},
+		"FailsWithWrongSetupSecret": func(t *testing.T, h *Host) {
+			claimed, err := ClaimSetupSecret(ctx, h.Id, "wrong_setup_secret")
+			require.NoError(t, err)
+			assert.Nil(t, claimed, "claiming a setup secret that does not match should not return a host")
+		},
+		"FailsWithNonexistentHost": func(t *testing.T, h *Host) {
+			claimed, err := ClaimSetupSecret(ctx, "nonexistent_host", h.SetupSecret)
+			require.NoError(t, err)
+			assert.Nil(t, claimed, "claiming a setup secret for a nonexistent host should not return a host")
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			t.Cleanup(func() {
+				assert.NoError(t, db.Clear(Collection))
+			})
+
+			h := &Host{
+				Id:          "hostOne",
+				Secret:      "host_secret",
+				SetupSecret: "setup_secret",
+			}
+			require.NoError(t, h.Insert(ctx))
+
+			testCase(t, h)
+		})
+	}
+}

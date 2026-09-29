@@ -338,6 +338,11 @@ func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, settings 
 			return errors.Wrapf(err, "creating secret for host '%s'", j.host.Id)
 		}
 	}
+	if j.host.SetupSecret == "" {
+		if err := j.host.CreateSetupSecret(ctx, false); err != nil {
+			return errors.Wrapf(err, "creating setup secret for host '%s'", j.host.Id)
+		}
+	}
 
 	grip.Info(ctx, j.deployMessage())
 	if _, err := j.host.StartJasperProcess(ctx, j.env, j.host.AgentMonitorOptions(settings)); err != nil {

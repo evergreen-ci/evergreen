@@ -2150,3 +2150,33 @@ func TestValidateSingleTaskDistro(t *testing.T) {
 		})
 	}
 }
+
+func TestHostAgentCreateSetupSecret(t *testing.T) {
+	ctx := t.Context()
+
+	require.NoError(t, db.Clear(host.Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.Clear(host.Collection))
+	})
+
+	h := &host.Host{
+		Id:          "host_id",
+		Secret:      "host_secret",
+		SetupSecret: "old_setup_secret",
+	}
+	require.NoError(t, h.Insert(ctx))
+	ctx = context.WithValue(ctx, model.ApiHostKey, h)
+
+	rh := makeHostAgentCreateSetupSecret()
+	resp := rh.Run(ctx)
+	require.NotZero(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
+
+	data, ok := resp.Data().(apimodels.CreateSetupSecretResponse)
+	require.True(t, ok)
+	assert.NotEqual(t, "old_setup_secret", data.SetupSecret, "creating a setup secret should rotate the existing one")
+
+	dbHost, err := host.FindOneId(ctx, h.Id)
+	require.NoError(t, err)
+	assert.Equal(t, data.SetupSecret, dbHost.SetupSecret)
+}
