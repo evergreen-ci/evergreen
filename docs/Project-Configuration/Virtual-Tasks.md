@@ -16,7 +16,7 @@ its results are produced and sent to Evergreen by the runner task.
 | Behavior                  | Regular task                                 | Virtual task                                                                                |
 | ---                       | ---                                          | ---                                                                                         |
 | First execution           | Runs on a host by default                    | Inactive by default; does not run on a host unless activated                                |
-| Results                   | Comes directly from the task's execution     | Typically pushed to it by a runner task; can be produced like a regular task if activated)  |
+| Results                   | Comes directly from the task's execution     | Typically pushed to it by a runner task; can be produced like a regular task if activated   |
 | Cron/batchtime activation | Activates the task at the specified interval | Does **not** activate the task                                                              |
 | Host info                 | Shown                                        | Hidden if push-completed (e.g. spawn host, host/distro info, cost), shown if runs regularly |
 
@@ -59,22 +59,21 @@ restarted to run on a host](#activation-and-execution-lifecycle).
 ## Push-Completing a Virtual Task
 
 The runner pushes results for virtual tasks using the
-[`virtual_tasks.complete`](Project-Commands#virtualtaskscomplete) agent command.
+[`virtual_tasks.complete`](Project-Commands#virtual_taskscomplete) agent command.
 The runner can push a task's status, test results, artifacts, and external
 execution metadata.
 
 ### Push-Completing a Virtual Task Through the REST API
 
 As an alternative to the `virtual_tasks.complete` command, the push-completion
-API route can be called directly by a service user that has task admin
-permissions.
+API route can be called directly by a user that has task admin permissions.
 
 ```
-POST /rest/v2/task/{task_id}/virtual_tasks/complete
+POST /rest/v2/task/{runner_task_id}/virtual_tasks/complete
 ```
 
-See the [REST route](../API/REST-V2-Usage#tag/tasks/paths/~1task~1{task_id}~1virtual_tasks~1complete/post)
-for the full route specification, including the request and response schema.
+See the [REST route](../API/REST-V2-Usage#tag/tasks/paths/~1task~1{task_id}~1virtual_tasks~1complete/post) for the full
+route specification, including the request and response schema.
 
 ## Activation and Execution Lifecycle
 
