@@ -135,6 +135,8 @@ type Communicator interface {
 	// ExchangeSetupSecret exchanges the host's single-use setup secret for
 	// the host secret.
 	ExchangeSetupSecret(ctx context.Context, setupSecret string) (string, error)
+	// CreateSetupSecret creates a new single-use setup secret for the host.
+	CreateSetupSecret(ctx context.Context) (string, error)
 
 	// GetRawPatchWithModules fetches the raw patch and module diffs for a given patch ID.
 	GetRawPatchWithModules(ctx context.Context, patchId string) (*restmodel.APIRawPatch, error)

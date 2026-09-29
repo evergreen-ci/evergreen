@@ -166,17 +166,33 @@ func agentMonitor() cli.Command {
 			},
 		),
 		Action: func(c *cli.Context) error {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			apiServerURL := c.Parent().String(agentAPIServerURLFlagName)
-			hostID := c.Parent().String(agentHostIDFlagName)
-			hostSecret := c.Parent().String(agentHostSecretFlagName)
-			if hostID == "" {
-				return errors.New("host ID must be set")
-			}
 			comm, err := client.NewCommunicator(apiServerURL)
 			if err != nil {
 				return errors.Wrap(err, "initializing communicator")
 			}
+
+			hostID := c.Parent().String(agentHostIDFlagName)
 			comm.SetHostID(hostID)
+
+			hostSecret := c.Parent().String(agentHostSecretFlagName)
+			// If a setup secret is provided, exchange it for the host secret.
+			// Fall back to the host secret when available so that a transient
+			// exchange failure does not fail the agent monitor.
+			if setupSecret := c.Parent().String(agentHostSetupSecretFlagName); setupSecret != "" {
+				exchanged, err := comm.ExchangeSetupSecret(ctx, setupSecret)
+				if err != nil {
+					grip.Error(ctx, message.WrapError(err, message.Fields{
+						"message": "falling back to the host secret because the setup secret exchange failed",
+						"host_id": hostID,
+					}))
+				} else {
+					hostSecret = exchanged
+				}
+			}
 			comm.SetHostSecret(hostSecret)
 
 			m := &monitor{
@@ -208,8 +224,6 @@ func agentMonitor() cli.Command {
 				return errors.Wrapf(err, "listening on port %d", m.port)
 			}
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
 			go handleMonitorSignals(ctx, cancel)
 
 			if err := m.setupJasperConnection(ctx, agentMonitorDefaultRetryOptions()); err != nil {
@@ -452,8 +466,20 @@ func (m *monitor) createAgentProcess(ctx context.Context, retry utility.RetryOpt
 		env[keyVal[0]] = keyVal[1]
 	}
 
+	// Give the agent a fresh setup secret to exchange for the host secret, so
+	// the host secret itself does not need to be conveyed through the agent's
+	// environment (which can potentially be read in Linux through procfs).
+	setupSecret, err := m.comm.CreateSetupSecret(ctx)
+	if err != nil {
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message": "agent will fall back to its environment's host secret because minting a setup secret failed",
+			"host_id": m.hostID,
+		}))
+	} else {
+		env[evergreen.SetupSecretEnvVar] = setupSecret
+	}
+
 	var proc jasper.Process
-	var err error
 
 	if err = utility.Retry(ctx, func() (bool, error) {
 		cmd := m.jasperClient.CreateCommand(ctx).

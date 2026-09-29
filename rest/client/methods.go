@@ -1544,6 +1544,37 @@ func (c *communicatorImpl) ExchangeSetupSecret(ctx context.Context, setupSecret 
 	return data.HostSecret, nil
 }
 
+// CreateSetupSecret creates a new single-use setup secret for the host.
+func (c *communicatorImpl) CreateSetupSecret(ctx context.Context) (string, error) {
+	info := requestInfo{
+		method: http.MethodPost,
+		path:   fmt.Sprintf("/hosts/%s/setup_secret", c.hostID),
+	}
+	r, err := c.createRequest(info, struct{}{})
+	if err != nil {
+		return "", errors.Wrap(err, "creating request")
+	}
+	resp, err := utility.RetryRequest(ctx, r, utility.RetryRequestOptions{
+		RetryOptions: utility.RetryOptions{
+			MaxAttempts: maxProvisioningRequestAttempts,
+			MinDelay:    minProvisioningRequestDelay,
+			MaxDelay:    maxProvisioningRequestDelay,
+		},
+	})
+	if err != nil {
+		return "", util.RespError(resp, errors.Wrapf(err, "sending request to create setup secret for host '%s'", c.hostID).Error())
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", util.RespErrorf(resp, "creating setup secret for host '%s'", c.hostID)
+	}
+	var data apimodels.CreateSetupSecretResponse
+	if err = utility.ReadJSON(resp.Body, &data); err != nil {
+		return "", errors.Wrap(err, "reading JSON response body")
+	}
+	return data.SetupSecret, nil
+}
+
 func (c *communicatorImpl) GetHostProvisioningOptions(ctx context.Context) (*restmodel.APIHostProvisioningOptions, error) {
 	info := requestInfo{
 		method: http.MethodGet,
