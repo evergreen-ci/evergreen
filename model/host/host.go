@@ -42,10 +42,11 @@ type Host struct {
 	Host   string `bson:"host_id" json:"host"`
 	User   string `bson:"user" json:"user"`
 	Secret string `bson:"secret" json:"secret"`
-	// SetupSecret is a single-use secret that host processes exchange for the
-	// host secret at startup. This keeps the host secret out of process
-	// environment state, which tasks can read from /proc on Linux.
-	SetupSecret     string        `bson:"setup_secret" json:"setup_secret"`
+	// SetupSecret is a single-use secret that task host processes exchange to
+	// get the host secret. This token exchange keeps the long-lived host secret
+	// confidential while still allowing the host to authenticate back to
+	// Evergreen throughout the host's lifetime.
+	SetupSecret     string        `bson:"setup_secret,omitempty" json:"setup_secret,omitempty"`
 	ServicePassword string        `bson:"service_password,omitempty" json:"service_password,omitempty" mapstructure:"service_password,omitempty"`
 	Tag             string        `bson:"tag" json:"tag"`
 	Distro          distro.Distro `bson:"distro" json:"distro"`
@@ -1136,14 +1137,19 @@ func (h *Host) CreateSecret(ctx context.Context, clear bool) error {
 // locally and in the database, with the option to clear the secret rather
 // than set a new one.
 func (h *Host) CreateSetupSecret(ctx context.Context, clear bool) error {
-	secret := utility.RandomString()
+	var update bson.M
+	var secret string
 	if clear {
 		secret = ""
+		update = bson.M{"$unset": bson.M{SetupSecretKey: secret}}
+	} else {
+		secret = utility.RandomString()
+		update = bson.M{"$set": bson.M{SetupSecretKey: secret}}
 	}
 	err := UpdateOne(
 		ctx,
 		bson.M{IdKey: h.Id},
-		bson.M{"$set": bson.M{SetupSecretKey: secret}},
+		update,
 	)
 	if err != nil {
 		return err
@@ -1152,12 +1158,12 @@ func (h *Host) CreateSetupSecret(ctx context.Context, clear bool) error {
 	return nil
 }
 
-// ClaimSetupSecret atomically clears the host's setup secret if it matches
+// ExchangeSetupSecret atomically clears the host's setup secret if it matches
 // setupSecret and returns the host with its secret. It returns a nil host if
 // the setup secret does not match or was already claimed.
-func ClaimSetupSecret(ctx context.Context, hostID, setupSecret string) (*Host, error) {
-	// An empty setup secret must never be claimable, otherwise a claim after
-	// the setup secret was already cleared would succeed.
+func ExchangeSetupSecret(ctx context.Context, hostID, setupSecret string) (*string, error) {
+	// An empty setup secret cannot be used to exchange, otherwise it could
+	// retrieve the secret after the setup secret was already spent.
 	if setupSecret == "" {
 		return nil, nil
 	}
@@ -1167,7 +1173,7 @@ func ClaimSetupSecret(ctx context.Context, hostID, setupSecret string) (*Host, e
 			IdKey:          hostID,
 			SetupSecretKey: setupSecret,
 		},
-		bson.M{"$set": bson.M{SetupSecretKey: ""}},
+		bson.M{"$unset": bson.M{SetupSecretKey: ""}},
 		options.FindOneAndUpdate().SetReturnDocument(options.After),
 	)
 	if res.Err() != nil {
@@ -1180,7 +1186,7 @@ func ClaimSetupSecret(ctx context.Context, hostID, setupSecret string) (*Host, e
 	if err := res.Decode(&h); err != nil {
 		return nil, errors.Wrap(err, "decoding host")
 	}
-	return &h, nil
+	return &h.Secret, nil
 }
 
 func (h *Host) SetBillingStartTime(ctx context.Context, startTime time.Time) error {

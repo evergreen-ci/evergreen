@@ -97,9 +97,7 @@ func ValidateHost(hostId string, r *http.Request) (*host.Host, int, error) {
 
 // ValidateHostSetupSecret ensures that the host exists in the database and
 // that the setup secret provided in the request matches the host's setup
-// secret. Unlike ValidateHost, this does not accept the host secret itself,
-// so it must only be used for routes that exchange the setup secret for the
-// host secret.
+// secret.
 func ValidateHostSetupSecret(hostId string, r *http.Request) (*host.Host, int, error) {
 	if hostId == "" {
 		// fall back to the host header when host ids are not part of the path

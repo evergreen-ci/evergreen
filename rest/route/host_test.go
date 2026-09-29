@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
@@ -1401,4 +1402,102 @@ func TestHostProvisioningOptionsGetHandler(t *testing.T) {
 		resp := rh.Run(ctx)
 		assert.NotEqual(t, http.StatusOK, resp.Status())
 	})
+}
+
+func TestHostExchangeSetupSecret(t *testing.T) {
+	h := &host.Host{
+		Id:          "host_id",
+		Secret:      "host_secret",
+		SetupSecret: "setup_secret",
+	}
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh gimlet.RouteHandler){
+		"ReturnsHostSecretAndClaimsSetupSecret": func(ctx context.Context, t *testing.T, rh gimlet.RouteHandler) {
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			data, ok := resp.Data().(apimodels.ExchangeSetupSecretResponse)
+			require.True(t, ok)
+			assert.Equal(t, h.Secret, data.HostSecret)
+
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			assert.Empty(t, dbHost.SetupSecret, "setup secret should be claimed after it is exchanged")
+		},
+		"FailsAfterSetupSecretIsClaimed": func(ctx context.Context, t *testing.T, rh gimlet.RouteHandler) {
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			require.Equal(t, http.StatusOK, resp.Status())
+
+			// Simulate a replayed request with the same setup secret.
+			replayed := rh.Factory()
+			req, err := http.NewRequest(http.MethodPost, "https://example.com/rest/v2/hosts/host_id/exchange_setup_secret", nil)
+			require.NoError(t, err)
+			req.Header.Set(evergreen.SetupSecretHeader, h.SetupSecret)
+			require.NoError(t, replayed.Parse(ctx, req))
+
+			resp = replayed.Run(ctx)
+			assert.Equal(t, http.StatusUnauthorized, resp.Status())
+		},
+		"FailsWithWrongSetupSecret": func(ctx context.Context, t *testing.T, rh gimlet.RouteHandler) {
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusUnauthorized, resp.Status())
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx := t.Context()
+
+			require.NoError(t, db.Clear(host.Collection))
+			t.Cleanup(func() {
+				assert.NoError(t, db.Clear(host.Collection))
+			})
+			require.NoError(t, h.Insert(ctx))
+			ctx = context.WithValue(ctx, model.ApiHostKey, h)
+
+			rh := makeHostExchangeSetupSecret()
+			req, err := http.NewRequest(http.MethodPost, "https://example.com/rest/v2/hosts/host_id/exchange_setup_secret", nil)
+			require.NoError(t, err)
+			switch tName {
+			case "FailsWithWrongSetupSecret":
+				req.Header.Set(evergreen.SetupSecretHeader, "wrong_setup_secret")
+			default:
+				req.Header.Set(evergreen.SetupSecretHeader, h.SetupSecret)
+			}
+			require.NoError(t, rh.Parse(ctx, req))
+
+			tCase(ctx, t, rh)
+		})
+	}
+}
+
+func TestHostCreateSetupSecret(t *testing.T) {
+	ctx := t.Context()
+
+	require.NoError(t, db.Clear(host.Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.Clear(host.Collection))
+	})
+
+	h := &host.Host{
+		Id:          "host_id",
+		Secret:      "host_secret",
+		SetupSecret: "old_setup_secret",
+	}
+	require.NoError(t, h.Insert(ctx))
+	ctx = context.WithValue(ctx, model.ApiHostKey, h)
+
+	rh := makeHostCreateSetupSecret()
+	resp := rh.Run(ctx)
+	require.NotZero(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
+
+	data, ok := resp.Data().(apimodels.CreateSetupSecretResponse)
+	require.True(t, ok)
+	assert.NotEqual(t, "old_setup_secret", data.SetupSecret, "creating a setup secret should rotate the existing one")
+
+	dbHost, err := host.FindOneId(ctx, h.Id)
+	require.NoError(t, err)
+	assert.Equal(t, data.SetupSecret, dbHost.SetupSecret)
 }

@@ -308,15 +308,15 @@ func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 	next(rw, r)
 }
 
-type setupSecretAuthMiddleware struct{}
+type hostSetupSecretAuthMiddleware struct{}
 
 // NewSetupSecretAuthMiddleware returns a route middleware that verifies the
 // request's host ID and setup secret.
 func NewSetupSecretAuthMiddleware() gimlet.Middleware {
-	return &setupSecretAuthMiddleware{}
+	return &hostSetupSecretAuthMiddleware{}
 }
 
-func (m *setupSecretAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+func (m *hostSetupSecretAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	hostID, ok := gimlet.GetVars(r)["host_id"]
 	if !ok {
 		hostID = r.Header.Get(evergreen.HostHeader)

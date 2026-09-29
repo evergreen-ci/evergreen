@@ -1257,30 +1257,6 @@ func setNextTask(t *task.Task, response *apimodels.NextTaskResponse) {
 	response.Build = t.BuildId
 }
 
-// POST /rest/v2/hosts/{host_id}/agent/setup_secret
-type hostAgentCreateSetupSecret struct{}
-
-func makeHostAgentCreateSetupSecret() gimlet.RouteHandler {
-	return &hostAgentCreateSetupSecret{}
-}
-
-func (h *hostAgentCreateSetupSecret) Factory() gimlet.RouteHandler {
-	return &hostAgentCreateSetupSecret{}
-}
-
-func (*hostAgentCreateSetupSecret) Parse(_ context.Context, _ *http.Request) error { return nil }
-
-func (h *hostAgentCreateSetupSecret) Run(ctx context.Context) gimlet.Responder {
-	hst := MustHaveHost(ctx)
-	if err := hst.CreateSetupSecret(ctx, false); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating setup secret for host '%s'", hst.Id))
-	}
-
-	return gimlet.NewJSONResponse(apimodels.CreateSetupSecretResponse{
-		SetupSecret: hst.SetupSecret,
-	})
-}
-
 // POST /rest/v2/hosts/{host_id}/task/{task_id}/end
 
 type hostAgentEndTask struct {
