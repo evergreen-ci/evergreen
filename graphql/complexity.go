@@ -8,6 +8,8 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/errcode"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/utility"
 	"github.com/vektah/gqlparser/v2/ast"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
@@ -16,59 +18,70 @@ const (
 	// testResultsComplexity is the flat cost of downloading
 	// a task's test results.
 	testResultsComplexity = 1
-	// unboundedTaskListSize is the size assumed for a task list without a
-	// positive limit.
-	unboundedTaskListSize = 100
+	// assumedListSize is the size assumed for a list without a positive limit.
+	assumedListSize = 100
 )
 
 // calculateComplexity returns gqlgen's default complexity plus
 // testResultsComplexity for each time the operation resolves Task.tests.
 func calculateComplexity(ctx context.Context, es graphql.ExecutableSchema, op *ast.OperationDefinition, vars map[string]any) int {
-	testResultsCalls := countTestResultsCalls(op.SelectionSet, vars)
+	testResultsCalls := countTestResultsCalls(op.SelectionSet, vars, 0)
 	return saturatingAdd(complexity.Calculate(ctx, es, op, vars), saturatingMultiply(testResultsComplexity, testResultsCalls))
 }
 
 // countTestResultsCalls returns the number of Task.tests fields in the
-// selection set, multiplied by the size of any task lists containing them.
-func countTestResultsCalls(selectionSet ast.SelectionSet, vars map[string]any) int {
+// selection set, multiplied by the size of any lists containing them. listSize
+// is the size of lists directly in the selection set, or 0 if unknown.
+func countTestResultsCalls(selectionSet ast.SelectionSet, vars map[string]any, listSize int) int {
 	count := 0
 	for _, selection := range selectionSet {
 		switch s := selection.(type) {
 		case *ast.Field:
-			if s.ObjectDefinition == nil {
+			if s.ObjectDefinition == nil || s.Definition == nil {
 				continue
 			}
-			n := countTestResultsCalls(s.SelectionSet, vars)
+			childListSize := 0
 			switch s.ObjectDefinition.Name + "." + s.Name {
-			case "Task.tests":
+			case "Query.taskHistory":
+				childListSize = model.TaskHistoryLimit(limitArg(s.ArgumentMap(vars)))
+			case "Version.tasks":
+				// Version.tasks returns every matching task if the limit is not positive.
+				childListSize = utility.FromIntPtr(limitArg(s.ArgumentMap(vars)))
+			}
+			n := countTestResultsCalls(s.SelectionSet, vars, childListSize)
+			if s.ObjectDefinition.Name == "Task" && s.Name == "tests" {
 				n = saturatingAdd(n, 1)
-			case "Query.taskHistory", "Version.tasks":
-				n = saturatingMultiply(n, taskListSize(s.ArgumentMap(vars)))
+			}
+			if s.Definition.Type.Elem != nil {
+				size := listSize
+				if size <= 0 {
+					size = assumedListSize
+				}
+				n = saturatingMultiply(n, size)
 			}
 			count = saturatingAdd(count, n)
 		case *ast.FragmentSpread:
 			if s.Definition != nil {
-				count = saturatingAdd(count, countTestResultsCalls(s.Definition.SelectionSet, vars))
+				count = saturatingAdd(count, countTestResultsCalls(s.Definition.SelectionSet, vars, listSize))
 			}
 		case *ast.InlineFragment:
-			count = saturatingAdd(count, countTestResultsCalls(s.SelectionSet, vars))
+			count = saturatingAdd(count, countTestResultsCalls(s.SelectionSet, vars, listSize))
 		}
 	}
 	return count
 }
 
-// taskListSize returns options.limit from the args, or unboundedTaskListSize
-// if it is not positive.
-func taskListSize(args map[string]any) int {
+// limitArg returns options.limit from the args, or nil if it is unset.
+func limitArg(args map[string]any) *int {
 	options, ok := args["options"].(map[string]any)
 	if !ok || options["limit"] == nil {
-		return unboundedTaskListSize
+		return nil
 	}
 	limit, err := graphql.UnmarshalInt(options["limit"])
-	if err != nil || limit <= 0 {
-		return unboundedTaskListSize
+	if err != nil {
+		return nil
 	}
-	return limit
+	return &limit
 }
 
 // complexityLimit replaces gqlgen's extension.ComplexityLimit to reject

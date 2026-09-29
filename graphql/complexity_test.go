@@ -7,6 +7,7 @@ import (
 
 	"github.com/99designs/gqlgen/complexity"
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vektah/gqlparser/v2"
@@ -254,17 +255,32 @@ func TestCalculateComplexity(t *testing.T) {
 
 	t.Run("TaskHistoryChargesTestsPerTask", func(t *testing.T) {
 		assert.Equal(t, 50*testResultsComplexity, testResultsCharge(t, spruceTaskHistoryQuery, taskHistoryVars(limit(50))))
-		assert.Equal(t, 80*testResultsComplexity, testResultsCharge(t, bulkTaskHistoryTestsQuery, nil))
+		assert.Equal(t, 10*testResultsComplexity, testResultsCharge(t, spruceTaskHistoryQuery, taskHistoryVars(limit(10))))
 	})
 
-	t.Run("TaskHistoryWithoutLimitUsesUnboundedSize", func(t *testing.T) {
-		assert.Equal(t, unboundedTaskListSize*testResultsComplexity, testResultsCharge(t, spruceTaskHistoryQuery, taskHistoryVars(nil)))
-		assert.Equal(t, unboundedTaskListSize*testResultsComplexity, testResultsCharge(t, spruceTaskHistoryQuery, taskHistoryVars(limit(0))))
+	t.Run("TaskHistoryChargesMaxLimitWhenUnsetOrOutOfRange", func(t *testing.T) {
+		assert.Equal(t, model.MaxTaskHistoryLimit*testResultsComplexity, testResultsCharge(t, spruceTaskHistoryQuery, taskHistoryVars(nil)))
+		assert.Equal(t, model.MaxTaskHistoryLimit*testResultsComplexity, testResultsCharge(t, spruceTaskHistoryQuery, taskHistoryVars(limit(0))))
+		assert.Equal(t, model.MaxTaskHistoryLimit*testResultsComplexity, testResultsCharge(t, bulkTaskHistoryTestsQuery, nil))
 	})
 
 	t.Run("VersionTasksChargesTestsPerTask", func(t *testing.T) {
 		assert.Equal(t, 20*testResultsComplexity, testResultsCharge(t, spruceTestAnalysisQuery, testAnalysisVars(limit(20))))
-		assert.Equal(t, unboundedTaskListSize*testResultsComplexity, testResultsCharge(t, spruceTestAnalysisQuery, testAnalysisVars(nil)))
+		assert.Equal(t, assumedListSize*testResultsComplexity, testResultsCharge(t, spruceTestAnalysisQuery, testAnalysisVars(nil)))
+	})
+
+	t.Run("OtherTaskListsChargeTestsPerAssumedTask", func(t *testing.T) {
+		for _, query := range []string{
+			`query { task(taskId: "task_id") { executionTasksFull { tests { totalTestCount } } } }`,
+			`query { taskAllExecutions(taskId: "task_id") { tests { totalTestCount } } }`,
+		} {
+			assert.Equal(t, assumedListSize*testResultsComplexity, testResultsCharge(t, query, nil), query)
+		}
+	})
+
+	t.Run("UnboundedNestedListsMultiply", func(t *testing.T) {
+		query := `query { version(versionId: "version_id") { buildVariants(options: {}) { tasks { tests { totalTestCount } } } } }`
+		assert.Equal(t, assumedListSize*assumedListSize*testResultsComplexity, testResultsCharge(t, query, nil))
 	})
 
 	t.Run("TaskListsWithoutTestsAreNotCharged", func(t *testing.T) {
@@ -288,9 +304,9 @@ func TestCalculateComplexity(t *testing.T) {
 		assert.Equal(t, 10*testResultsComplexity, testResultsCharge(t, spruceTaskHistoryQuery, vars))
 	})
 
-	t.Run("HugeLimitDoesNotOverflow", func(t *testing.T) {
-		op, coerced := parse(t, spruceTaskHistoryQuery, taskHistoryVars(limit(math.MaxInt)))
-		assert.Positive(t, calculateComplexity(t.Context(), schema, op, coerced))
+	t.Run("HugeLimitSaturates", func(t *testing.T) {
+		op, coerced := parse(t, spruceTestAnalysisQuery, testAnalysisVars(limit(math.MaxInt)))
+		assert.Equal(t, math.MaxInt, calculateComplexity(t.Context(), schema, op, coerced))
 	})
 
 	t.Run("QueriesWithoutTestsUseDefaultComplexity", func(t *testing.T) {

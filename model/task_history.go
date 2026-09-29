@@ -15,7 +15,9 @@ import (
 )
 
 const (
-	maxTaskHistoryLimit = 50
+	// MaxTaskHistoryLimit is the maximum number of tasks returned by a single
+	// task history query.
+	MaxTaskHistoryLimit = 50
 )
 
 // FindTaskHistoryOptions defines options that can be passed to queries for task history.
@@ -41,6 +43,16 @@ func getBaseTaskHistoryFilter(opts FindTaskHistoryOptions) bson.M {
 	}
 }
 
+// TaskHistoryLimit returns the number of tasks a task history query will
+// return for the requested limit. Unset or non-positive limits use the maximum.
+func TaskHistoryLimit(limit *int) int {
+	l := utility.FromIntPtr(limit)
+	if l <= 0 || l > MaxTaskHistoryLimit {
+		return MaxTaskHistoryLimit
+	}
+	return l
+}
+
 // findActiveTasksForHistory finds LIMIT active tasks with the given task name, build variant, and project ID between the specified bounds.
 // Note that only one bound should be specified.
 // The result is sorted by order numbers, descending (e.g. 100, 99, 98, 97, ...).
@@ -62,12 +74,7 @@ func findActiveTasksForHistory(ctx context.Context, opts FindTaskHistoryOptions)
 		isSortedAsc = false
 	}
 
-	queryLimit := maxTaskHistoryLimit
-	if opts.Limit != nil {
-		queryLimit = utility.FromIntPtr(opts.Limit)
-	}
-
-	q := db.Query(filter).Sort(querySort).Limit(queryLimit)
+	q := db.Query(filter).Sort(querySort).Limit(TaskHistoryLimit(opts.Limit))
 	tasks, err := task.FindAll(ctx, q)
 
 	// We want the result to be sorted in descending order numbers. If it's currently sorted in ascending order,
