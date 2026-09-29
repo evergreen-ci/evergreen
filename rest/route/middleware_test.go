@@ -504,10 +504,10 @@ func TestHostAuthMiddleware(t *testing.T) {
 	}
 }
 
-func TestSetupSecretAuthMiddleware(t *testing.T) {
+func TestHostSetupSecretAuthMiddleware(t *testing.T) {
 	ctx := t.Context()
 
-	m := NewSetupSecretAuthMiddleware()
+	m := NewHostSetupSecretAuthMiddleware()
 	for testName, testCase := range map[string]func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder){
 		"Succeeds": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
 			r := &http.Request{

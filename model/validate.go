@@ -98,33 +98,33 @@ func ValidateHost(hostId string, r *http.Request) (*host.Host, int, error) {
 // ValidateHostSetupSecret ensures that the host exists in the database and
 // that the setup secret provided in the request matches the host's setup
 // secret.
-func ValidateHostSetupSecret(hostId string, r *http.Request) (*host.Host, int, error) {
-	if hostId == "" {
-		// fall back to the host header when host ids are not part of the path
-		hostId = r.Header.Get(evergreen.HostHeader)
-		if hostId == "" {
+func ValidateHostSetupSecret(hostID string, r *http.Request) (*host.Host, int, error) {
+	if hostID == "" {
+		// Fall back to the request's host header when host IDs are not part of the path
+		hostID = r.Header.Get(evergreen.HostHeader)
+		if hostID == "" {
 			return nil, http.StatusBadRequest, errors.Errorf("request '%s' is missing host information", r.URL)
 		}
 	}
 	setupSecret := r.Header.Get(evergreen.SetupSecretHeader)
 	if setupSecret == "" {
-		return nil, http.StatusBadRequest, errors.Errorf("missing setup secret for host '%s'", hostId)
+		return nil, http.StatusBadRequest, errors.Errorf("missing setup secret for host '%s'", hostID)
 	}
 
 	// If the host was provisioned through user data, the host will be started
 	// with the intent host ID instead of the _id.
-	h, err := host.FindOneByIdOrTag(r.Context(), hostId)
+	h, err := host.FindOneByIdOrTag(r.Context(), hostID)
 	if err != nil {
-		return nil, http.StatusInternalServerError, errors.Wrapf(err, "finding host '%s'", hostId)
+		return nil, http.StatusInternalServerError, errors.Wrapf(err, "finding host '%s'", hostID)
 	}
 	if h == nil {
-		return nil, http.StatusNotFound, errors.Errorf("host '%s' not found", hostId)
+		return nil, http.StatusNotFound, errors.Errorf("host '%s' not found", hostID)
 	}
 	if setupSecret != h.SetupSecret {
-		return nil, http.StatusUnauthorized, errors.Errorf("invalid setup secret for host '%s'", hostId)
+		return nil, http.StatusUnauthorized, errors.Errorf("invalid setup secret for host '%s'", hostID)
 	}
 	if h.Status == evergreen.HostTerminated {
-		return nil, http.StatusUnauthorized, errors.Errorf("host '%s' cannot make requests in a terminated state", hostId)
+		return nil, http.StatusUnauthorized, errors.Errorf("host '%s' cannot make requests in a terminated state", hostID)
 	}
 
 	return h, http.StatusOK, nil
