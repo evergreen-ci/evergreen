@@ -339,7 +339,7 @@ func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, settings 
 		}
 	}
 	if j.host.SetupSecret == "" {
-		if err := j.host.CreateSetupSecret(ctx, false); err != nil {
+		if err := j.host.CreateSetupSecret(ctx); err != nil {
 			return errors.Wrapf(err, "creating setup secret for host '%s'", j.host.Id)
 		}
 	}

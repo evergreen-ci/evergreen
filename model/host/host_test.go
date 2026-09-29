@@ -7364,7 +7364,7 @@ func TestHostCreateSetupSecret(t *testing.T) {
 	require.NoError(t, h.Insert(ctx))
 
 	assert.Empty(t, h.SetupSecret)
-	require.NoError(t, h.CreateSetupSecret(ctx, false))
+	require.NoError(t, h.CreateSetupSecret(ctx))
 	assert.NotEmpty(t, h.SetupSecret, "creating a setup secret should set it in memory")
 
 	dbHost, err := FindOne(ctx, ById(h.Id))
@@ -7372,15 +7372,8 @@ func TestHostCreateSetupSecret(t *testing.T) {
 	assert.Equal(t, h.SetupSecret, dbHost.SetupSecret, "creating a setup secret should set it in the DB")
 
 	oldSetupSecret := h.SetupSecret
-	require.NoError(t, h.CreateSetupSecret(ctx, false))
+	require.NoError(t, h.CreateSetupSecret(ctx))
 	assert.NotEqual(t, oldSetupSecret, h.SetupSecret, "creating a setup secret should rotate the existing one")
-
-	require.NoError(t, h.CreateSetupSecret(ctx, true))
-	assert.Empty(t, h.SetupSecret, "clearing a setup secret should set it to empty in memory")
-
-	dbHost, err = FindOne(ctx, ById(h.Id))
-	require.NoError(t, err)
-	assert.Empty(t, dbHost.SetupSecret, "clearing a setup secret should set it to empty in the DB")
 }
 
 func TestExchangeSetupSecret(t *testing.T) {
@@ -7391,7 +7384,7 @@ func TestExchangeSetupSecret(t *testing.T) {
 			exchanged, err := ExchangeSetupSecret(ctx, h.Id, h.SetupSecret)
 			require.NoError(t, err)
 			require.NotNil(t, exchanged)
-			assert.Equal(t, h.Secret, exchanged)
+			assert.Equal(t, h.Secret, utility.FromStringPtr(exchanged))
 
 			dbHost, err := FindOneId(ctx, h.Id)
 			require.NoError(t, err)
@@ -7401,7 +7394,7 @@ func TestExchangeSetupSecret(t *testing.T) {
 			exchanged, err := ExchangeSetupSecret(ctx, h.Id, h.SetupSecret)
 			require.NoError(t, err)
 			require.NotNil(t, exchanged)
-			assert.Equal(t, h.Secret, exchanged)
+			assert.Equal(t, h.Secret, utility.FromStringPtr(exchanged))
 
 			exchanged, err = ExchangeSetupSecret(ctx, h.Id, h.SetupSecret)
 			require.NoError(t, err)

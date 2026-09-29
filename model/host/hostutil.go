@@ -892,7 +892,7 @@ func (h *Host) StartAgentMonitorRequest(ctx context.Context, settings *evergreen
 		}
 	}
 	if h.SetupSecret == "" {
-		if err := h.CreateSetupSecret(ctx, false); err != nil {
+		if err := h.CreateSetupSecret(ctx); err != nil {
 			return "", errors.Wrap(err, "creating host setup secret")
 		}
 	}
@@ -1324,7 +1324,7 @@ func (h *Host) GenerateFetchProvisioningScriptUserData(ctx context.Context, env 
 		}
 	}
 	if h.SetupSecret == "" {
-		if err := h.CreateSetupSecret(ctx, false); err != nil {
+		if err := h.CreateSetupSecret(ctx); err != nil {
 			return nil, errors.Wrap(err, "creating host setup secret")
 		}
 	}

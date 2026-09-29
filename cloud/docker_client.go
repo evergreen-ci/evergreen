@@ -332,7 +332,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 			}
 		}
 		if containerHost.SetupSecret == "" {
-			if err = containerHost.CreateSetupSecret(ctx, false); err != nil {
+			if err = containerHost.CreateSetupSecret(ctx); err != nil {
 				return errors.Wrapf(err, "creating setup secret for '%s'", containerHost.Id)
 			}
 		}

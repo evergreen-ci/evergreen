@@ -39,8 +39,10 @@ import (
 type Host struct {
 	Id string `bson:"_id" json:"id"`
 	// Host is the ephemeral DNS name of the host when available.
-	Host   string `bson:"host_id" json:"host"`
-	User   string `bson:"user" json:"user"`
+	Host string `bson:"host_id" json:"host"`
+	User string `bson:"user" json:"user"`
+	// Secret is used to authenticate a task host back to Evergreen throughout
+	// the host's lifetime. It's valid until the host is terminated.
 	Secret string `bson:"secret" json:"secret"`
 	// SetupSecret is a single-use secret that task host processes exchange to
 	// get the host secret. This token exchange keeps the long-lived host secret
@@ -1134,22 +1136,13 @@ func (h *Host) CreateSecret(ctx context.Context, clear bool) error {
 }
 
 // CreateSetupSecret generates a host setup secret and updates the host both
-// locally and in the database, with the option to clear the secret rather
-// than set a new one.
-func (h *Host) CreateSetupSecret(ctx context.Context, clear bool) error {
-	var update bson.M
-	var secret string
-	if clear {
-		secret = ""
-		update = bson.M{"$unset": bson.M{SetupSecretKey: secret}}
-	} else {
-		secret = utility.RandomString()
-		update = bson.M{"$set": bson.M{SetupSecretKey: secret}}
-	}
+// locally and in the database.
+func (h *Host) CreateSetupSecret(ctx context.Context) error {
+	secret := utility.RandomString()
 	err := UpdateOne(
 		ctx,
 		bson.M{IdKey: h.Id},
-		update,
+		bson.M{"$set": bson.M{SetupSecretKey: secret}},
 	)
 	if err != nil {
 		return err
@@ -1159,8 +1152,8 @@ func (h *Host) CreateSetupSecret(ctx context.Context, clear bool) error {
 }
 
 // ExchangeSetupSecret atomically clears the host's setup secret if it matches
-// setupSecret and returns the host with its secret. It returns a nil host if
-// the setup secret does not match or was already claimed.
+// setupSecret and returns the host with its secret. It returns a nil secret if
+// the setup secret does not match or it was already spent.
 func ExchangeSetupSecret(ctx context.Context, hostID, setupSecret string) (*string, error) {
 	// An empty setup secret cannot be used to exchange, otherwise it could
 	// retrieve the secret after the setup secret was already spent.

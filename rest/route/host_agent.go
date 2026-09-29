@@ -154,9 +154,6 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 				if err = h.host.CreateSecret(ctx, true); err != nil {
 					return gimlet.MakeJSONInternalErrorResponder(err)
 				}
-				if err = h.host.CreateSetupSecret(ctx, true); err != nil {
-					return gimlet.MakeJSONInternalErrorResponder(err)
-				}
 			}
 		}
 

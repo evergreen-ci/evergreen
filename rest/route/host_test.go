@@ -1412,7 +1412,7 @@ func TestHostExchangeSetupSecret(t *testing.T) {
 	}
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh gimlet.RouteHandler){
-		"ReturnsHostSecretAndClaimsSetupSecret": func(ctx context.Context, t *testing.T, rh gimlet.RouteHandler) {
+		"ReturnsHostSecretAndExchangesSetupSecret": func(ctx context.Context, t *testing.T, rh gimlet.RouteHandler) {
 			resp := rh.Run(ctx)
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
@@ -1423,14 +1423,13 @@ func TestHostExchangeSetupSecret(t *testing.T) {
 
 			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
-			assert.Empty(t, dbHost.SetupSecret, "setup secret should be claimed after it is exchanged")
+			assert.Empty(t, dbHost.SetupSecret, "setup secret should be spent after it is exchanged")
 		},
-		"FailsAfterSetupSecretIsClaimed": func(ctx context.Context, t *testing.T, rh gimlet.RouteHandler) {
+		"FailsAfterSetupSecretIsSpent": func(ctx context.Context, t *testing.T, rh gimlet.RouteHandler) {
 			resp := rh.Run(ctx)
 			require.NotZero(t, resp)
 			require.Equal(t, http.StatusOK, resp.Status())
 
-			// Simulate a replayed request with the same setup secret.
 			replayed := rh.Factory()
 			req, err := http.NewRequest(http.MethodPost, "https://example.com/rest/v2/hosts/host_id/exchange_setup_secret", nil)
 			require.NoError(t, err)
@@ -1438,7 +1437,16 @@ func TestHostExchangeSetupSecret(t *testing.T) {
 			require.NoError(t, replayed.Parse(ctx, req))
 
 			resp = replayed.Run(ctx)
-			assert.Equal(t, http.StatusUnauthorized, resp.Status())
+			assert.Equal(t, http.StatusUnauthorized, resp.Status(), "setup secret should not be reusable after it is spent")
+
+			replayed = rh.Factory()
+			req, err = http.NewRequest(http.MethodPost, "https://example.com/rest/v2/hosts/host_id/exchange_setup_secret", nil)
+			require.NoError(t, err)
+			req.Header.Set(evergreen.SetupSecretHeader, "")
+			require.NoError(t, replayed.Parse(ctx, req))
+
+			resp = replayed.Run(ctx)
+			assert.Equal(t, http.StatusUnauthorized, resp.Status(), "empty setup secret should not pass auth")
 		},
 		"FailsWithWrongSetupSecret": func(ctx context.Context, t *testing.T, rh gimlet.RouteHandler) {
 			resp := rh.Run(ctx)

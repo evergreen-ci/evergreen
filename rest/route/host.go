@@ -494,7 +494,7 @@ func (*hostCreateSetupSecretHandler) Parse(_ context.Context, _ *http.Request) e
 
 func (rh *hostCreateSetupSecretHandler) Run(ctx context.Context) gimlet.Responder {
 	h := MustHaveHost(ctx)
-	if err := h.CreateSetupSecret(ctx, false); err != nil {
+	if err := h.CreateSetupSecret(ctx); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating setup secret for host '%s'", h.Id))
 	}
 
