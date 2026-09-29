@@ -27,9 +27,7 @@ Note that tokens are refilled continuously, not reset on a fixed schedule (e.g. 
 
 ## GraphQL Query Complexity
 
-GraphQL requests are additionally subject to a ["complexity"](https://gqlgen.com/reference/complexity) limit, which prevents the execution of queries that could create stressful workloads for the system. Complexity is computed by traversing the query AST and summing a cost of 1 per field, across all levels of nesting. Paginated fields that take a `limit` (for example `taskHistory`, `Task.tests`, `Version.tasks`, `patches`, `hosts`, and the event log queries) multiply the cost of the fields nested beneath them by the number of items requested. When `limit` is unset or 0, the multiplier is the number of items the server returns by default, or 100 if it returns everything. Multipliers compound when these fields are nested, so requesting `tests` inside each task of `taskHistory` multiplies the `tests` cost by the number of tasks.
-
-Some fields return nested lists that have no limit, such as the builds and tasks inside each version of `waterfall` and `mainlineCommits`. Those nested lists are counted as a single item, so the complexity of these queries understates their cost. This is a stateless, per-query ceiling rather than a limit bucket that the user exhausts over time.
+GraphQL requests are additionally subject to a ["complexity"](https://gqlgen.com/reference/complexity) limit, which prevents the execution of queries that could create stressful workloads for the system. Complexity is computed by traversing the query AST and summing a cost of 1 per field, across all levels of nesting. `Task.tests` costs an extra 50 regardless of `limit`. `taskHistory` and `Version.tasks` multiply the cost of their nested fields by `limit`, or by 100 if `limit` is unset or 0. This is a stateless, per-query ceiling rather than a limit bucket that the user exhausts over time.
 
 ### Example
 
