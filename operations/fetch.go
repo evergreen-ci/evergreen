@@ -468,27 +468,12 @@ func cloneSource(ctx context.Context, task *service.RestTask, project *model.Pro
 // rejecting prefixes that would resolve outside it. The prefix is
 // patch-controlled, so it cannot be trusted.
 func resolveModuleDir(cloneDir, modulePrefix, moduleName string) (string, error) {
-	if filepath.IsAbs(modulePrefix) {
-		return "", werrors.Errorf("module '%s' has an absolute prefix '%s'", moduleName, modulePrefix)
+	relativePath := filepath.Join(modulePrefix, moduleName)
+	if err := thirdparty.ValidatePathWithinDirectory(cloneDir, relativePath); err != nil {
+		return "", werrors.Wrapf(err, "module '%s' has prefix '%s'", moduleName, modulePrefix)
 	}
 
-	moduleBase := filepath.Join(cloneDir, modulePrefix, moduleName)
-
-	absCloneDir, err := filepath.Abs(cloneDir)
-	if err != nil {
-		return "", werrors.Wrapf(err, "resolving clone directory '%s'", cloneDir)
-	}
-	absModuleBase, err := filepath.Abs(moduleBase)
-	if err != nil {
-		return "", werrors.Wrapf(err, "resolving module destination '%s'", moduleBase)
-	}
-
-	rel, err := filepath.Rel(absCloneDir, absModuleBase)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return "", werrors.Errorf("module '%s' has a prefix '%s' that resolves outside the source directory", moduleName, modulePrefix)
-	}
-
-	return moduleBase, nil
+	return filepath.Join(cloneDir, relativePath), nil
 }
 
 func applyPatch(patch *service.RestPatch, rootCloneDir string, conf *model.Project, variant *model.BuildVariant) error {
