@@ -61,8 +61,8 @@ func smokeStartEvergreen() cli.Command {
 		agentMonitorFlagName = "monitor"
 		distroIDFlagName     = "distro"
 		apiServerURLFlagName = "api_server"
-		hostIDFlagName       = "host_id"
-		hostSecretFlagName   = "host_secret"
+		hostIDFlagName        = "host_id"
+		setupSecretFlagName   = "setup_secret"
 		statusPort           = "2287"
 		monitorPort          = 2288
 		jasperPort           = 2289
@@ -113,8 +113,8 @@ func smokeStartEvergreen() cli.Command {
 				Usage: "the ID of the host running the agent",
 			},
 			cli.StringFlag{
-				Name:  hostSecretFlagName,
-				Usage: "the secret of the host running the agent",
+				Name:  setupSecretFlagName,
+				Usage: "the setup secret of the host running the agent",
 			},
 		},
 		Before: mergeBeforeFuncs(setupSmokeTest(err), requireFileExists(ConfFlagName), requireAtLeastOneBool(webFlagName, agentFlagName, agentMonitorFlagName)),
@@ -125,7 +125,7 @@ func smokeStartEvergreen() cli.Command {
 			startAgent := c.Bool(agentFlagName)
 			startAgentMonitor := c.Bool(agentMonitorFlagName)
 			hostID := c.String(hostIDFlagName)
-			hostSecret := c.String(hostSecretFlagName)
+			setupSecret := c.String(setupSecretFlagName)
 			distroID := c.String(distroIDFlagName)
 			apiServerURL := c.String(apiServerURLFlagName)
 
@@ -143,7 +143,7 @@ func smokeStartEvergreen() cli.Command {
 			if startAgent {
 				err := smokeRunBinary(ctx, exit, "agent",
 					wd,
-					makeHostAuthEnvVars(hostID, hostSecret),
+					makeHostAuthEnvVars(hostID, setupSecret),
 					binary,
 					"agent",
 					fmt.Sprintf("--mode=%s", globals.HostMode),
@@ -191,7 +191,7 @@ func smokeStartEvergreen() cli.Command {
 					exit,
 					"agent.monitor",
 					wd,
-					makeHostAuthEnvVars(hostID, hostSecret),
+					makeHostAuthEnvVars(hostID, setupSecret),
 					binary,
 					"agent",
 					fmt.Sprintf("--mode=%s", globals.HostMode),
@@ -221,10 +221,10 @@ func smokeStartEvergreen() cli.Command {
 	}
 }
 
-func makeHostAuthEnvVars(hostID, secret string) []string {
+func makeHostAuthEnvVars(hostID, setupSecret string) []string {
 	return []string{
 		fmt.Sprintf("%s=%s", evergreen.HostIDEnvVar, hostID),
-		fmt.Sprintf("%s=%s", evergreen.HostSecretEnvVar, secret),
+		fmt.Sprintf("%s=%s", evergreen.SetupSecretEnvVar, setupSecret),
 	}
 }
 

@@ -1033,7 +1033,6 @@ func (h *Host) AgentCommand(settings *evergreen.Settings, executablePath string)
 func (h *Host) AgentEnv() map[string]string {
 	return map[string]string{
 		evergreen.HostIDEnvVar:      h.Id,
-		evergreen.HostSecretEnvVar:  h.Secret,
 		evergreen.SetupSecretEnvVar: h.SetupSecret,
 	}
 }
@@ -1328,7 +1327,7 @@ func (h *Host) GenerateFetchProvisioningScriptUserData(ctx context.Context, env 
 		"provision",
 		fmt.Sprintf("--api_server=%s", env.Settings().Api.URL),
 		fmt.Sprintf("--host_id=%s", h.Id),
-		fmt.Sprintf("--host_secret=%s", h.Secret),
+		fmt.Sprintf("--setup_secret=%s", h.SetupSecret),
 		fmt.Sprintf("--provider=%s", h.Distro.Provider),
 		fmt.Sprintf("--working_dir=%s", h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.JasperBinaryDir)),
 		fmt.Sprintf("--shell_path=%s", h.Distro.ShellBinary()),
