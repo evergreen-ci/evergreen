@@ -54,11 +54,9 @@ The complexity of this query is computed as `taskHistory` (1) + `tasks` (1) + 10
 
 ## Cumulative Complexity Rate Limiting
 
-In addition to the per-query complexity ceiling, Evergreen tracks each user's cumulative complexity usage over time. Each GraphQL query's complexity score is charged against a per-user hourly budget using the same token-bucket mechanism as the per-request rate limiter. This means a user sending many expensive queries will exhaust their budget faster than a user sending cheap ones, even if both stay under the per-request rate limit.
+In addition to the per-query complexity ceiling, Evergreen tracks each user's hourly cumulative complexity usage. Each GraphQL query's complexity score is charged against a per-user hourly budget using the same mechanism as the per-request rate limiter. This means a user sending many expensive queries will exhaust their budget faster than a user sending cheap ones, even if both stay under the per-request rate limit.
 
 When the budget is exceeded, subsequent queries are rejected with a GraphQL error (code `COMPLEXITY_RATE_LIMIT_EXCEEDED`) before any resolvers run. The budget refills continuously at the configured hourly rate, the same way the per-request bucket does. Elevated users receive double the budget, and exempt users are never blocked.
-
-This limit is configured separately from the per-request rate limit via the `GraphQLComplexityPerHour` and `GraphQLComplexityBurst` admin settings. Setting both to zero disables cumulative complexity rate limiting.
 
 ## API Response
 

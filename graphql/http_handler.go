@@ -76,7 +76,9 @@ func Handler(apiURL string, allowMutations bool, env evergreen.Environment) func
 		srv.Use(extension.FixedComplexityLimit(complexityLimit))
 	}
 
-	if env.Settings().RateLimit.GraphQLComplexityPerHour > 0 {
+	// This must be registered after the per-query complexity limiter so that it
+	// can reuse the complexity score that limiter computes.
+	if flags != nil && !flags.GraphQLComplexityRateLimiterDisabled && env.Settings().RateLimit.GraphQLComplexityPerHour > 0 {
 		srv.Use(NewComplexityRateLimit(env, schema))
 	}
 

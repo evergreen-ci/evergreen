@@ -7,8 +7,8 @@ import (
 	"github.com/99designs/gqlgen/complexity"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/errcode"
+	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/ratelimit"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
@@ -50,11 +50,7 @@ func (c *ComplexityRateLimit) MutateOperationContext(ctx context.Context, opCtx 
 		return nil
 	}
 
-	op := opCtx.Doc.Operations.ForName(opCtx.OperationName)
-	if op == nil {
-		return nil
-	}
-	score := complexity.Calculate(ctx, c.schema, op, opCtx.Variables)
+	score := c.complexityScore(ctx, opCtx)
 	if score <= 0 {
 		return nil
 	}
@@ -96,27 +92,29 @@ func (c *ComplexityRateLimit) MutateOperationContext(ctx context.Context, opCtx 
 		return nil
 	}
 
-	exceeded := res.Allowed == 0
-	if exceeded && !exempt {
-		flags, _ := evergreen.GetServiceFlags(ctx)
-		if flags != nil && !flags.GraphQLComplexityRateLimiterDisabled {
-			isService := false
-			if dbUser, ok := u.(*user.DBUser); ok {
-				isService = dbUser.OnlyAPI
-			}
-			grip.Warning(ctx, message.Fields{
-				"message":     "complexity rate limit exceeded, rejecting query",
-				"user":        username,
-				"score":       score,
-				"is_service":  isService,
-				"remaining":   res.Remaining,
-				"retry_after": res.RetryAfter.Seconds(),
-			})
-			gqlErr := gqlerror.Errorf("complexity rate limit exceeded (score %d)", score)
-			errcode.Set(gqlErr, errComplexityRateLimit)
-			return gqlErr
-		}
+	if res.Allowed == 0 && !exempt {
+		grip.Warning(ctx, message.Fields{
+			"message":     "complexity rate limit exceeded, rejecting query",
+			"user":        username,
+			"score":       score,
+			"remaining":   res.Remaining,
+			"retry_after": res.RetryAfter.Seconds(),
+		})
+		gqlErr := gqlerror.Errorf("complexity rate limit exceeded (score %d)", score)
+		errcode.Set(gqlErr, errComplexityRateLimit)
+		return gqlErr
 	}
 
 	return nil
+}
+
+func (c *ComplexityRateLimit) complexityScore(ctx context.Context, opCtx *graphql.OperationContext) int {
+	if stats := extension.GetComplexityStats(ctx); stats != nil {
+		return stats.Complexity
+	}
+	op := opCtx.Doc.Operations.ForName(opCtx.OperationName)
+	if op == nil {
+		return 0
+	}
+	return complexity.Calculate(ctx, c.schema, op, opCtx.Variables)
 }

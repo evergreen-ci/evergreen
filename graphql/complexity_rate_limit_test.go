@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -125,4 +126,26 @@ func TestComplexityRateLimitElevatedUserGetsDoubleBudget(t *testing.T) {
 	elevatedCtx = gimlet.AttachUser(elevatedCtx, &user.DBUser{Id: "elevated_user"})
 	gqlErr = ext.MutateOperationContext(elevatedCtx, opCtx)
 	assert.Nil(t, gqlErr)
+}
+
+func TestComplexityRateLimitUsesExistingComplexityStats(t *testing.T) {
+	env := setupComplexityRateLimitEnv(t, evergreen.RateLimitConfig{
+		GraphQLComplexityPerHour: 100,
+		GraphQLComplexityBurst:   100,
+	})
+	schema := NewExecutableSchema(New(""))
+	ext := NewComplexityRateLimit(env, schema)
+
+	op := parseQuery(t, schema, userSettingsQuery)
+	opCtx := &graphql.OperationContext{
+		Operation: op,
+		Doc:       &ast.QueryDocument{Operations: ast.OperationList{op}},
+	}
+	opCtx.Stats.SetExtension("ComplexityLimit", &extension.ComplexityStats{Complexity: 1000})
+	ctx := graphql.WithOperationContext(t.Context(), opCtx)
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "test_user"})
+
+	gqlErr := ext.MutateOperationContext(ctx, opCtx)
+	require.NotNil(t, gqlErr)
+	assert.Contains(t, gqlErr.Message, "score 1000")
 }
