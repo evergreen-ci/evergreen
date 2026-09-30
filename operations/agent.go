@@ -161,19 +161,19 @@ func Agent() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			comm, err := client.NewCommunicator(c.String(agentAPIServerURLFlagName))
-			if err != nil {
-				return errors.Wrap(err, "initializing client")
-			}
-
 			hostID := c.String(agentHostIDFlagName)
-			comm.SetHostID(hostID)
 
 			hostSecret := c.String(agentHostSecretFlagName)
 			// If a setup secret is provided, exchange it for the host secret.
 			// Fall back to the host secret when available so that a transient
 			// exchange failure does not fail the agent.
 			if setupSecret := c.String(agentHostSetupSecretFlagName); setupSecret != "" {
+				comm, err := client.NewCommunicator(c.String(agentAPIServerURLFlagName))
+				if err != nil {
+					return errors.Wrap(err, "initializing client")
+				}
+				comm.SetHostID(hostID)
+
 				exchanged, err := comm.ExchangeSetupSecret(ctx, setupSecret)
 				if err != nil {
 					grip.Warning(ctx, message.WrapError(err, message.Fields{
