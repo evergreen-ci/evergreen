@@ -14,6 +14,8 @@ input WaterfallOptions {
   revision: String
   statuses: [String!]
   tasks: [String!]
+  "Match any of these exact, case-sensitive task tags. Display tasks match tags on any execution task."
+  taskTags: [String!]
   "Toggle case sensitivity when matching on task names. Note that if false, performance will be slower."
   taskCaseSensitive: Boolean
   variants: [String!]
@@ -26,6 +28,8 @@ type WaterfallTask {
   displayName: String!
   displayStatusCache: String!
   execution: Int!
+  "Task tags, including the union of execution task tags for display tasks."
+  tags: [String!]!
 }
 
 type WaterfallBuild {

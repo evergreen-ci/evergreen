@@ -1217,6 +1217,15 @@ buildvariants:
     tags: ["pr_testing"]
 ```
 
+To try the waterfall's URL-only task tag filter, append `?taskTags=integration`
+to a project's waterfall URL (or `&taskTags=integration` if it already has query
+parameters). Use comma-separated tags, such as `taskTags=integration,frontend`,
+to match any listed tag. Matching is exact and case-sensitive; omit the `.` prefix
+used by YAML tag selectors. Tags combine with the existing task, status, and
+variant filters. A display task matches when any of its execution tasks has a
+matching tag; name and status filters still apply to the display task.
+Remove the task tag chips or the URL parameter to clear the filter.
+
 Tags can be referenced in variant definitions to quickly include groups
 of tasks. If no tasks are selected in the build variant, it will generate
 an error.

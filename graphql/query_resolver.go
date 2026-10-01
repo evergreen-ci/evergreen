@@ -974,6 +974,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		Requesters:           requesters,
 		Statuses:             utility.FilterSlice(options.Statuses, func(s string) bool { return s != "" }),
 		Tasks:                utility.FilterSlice(options.Tasks, func(s string) bool { return s != "" }),
+		TaskTags:             utility.FilterSlice(options.TaskTags, func(s string) bool { return s != "" }),
 		TaskCaseSensitive:    utility.FromBoolTPtr(options.TaskCaseSensitive), // Default to true for performance reasons.
 		Variants:             utility.FilterSlice(options.Variants, func(s string) bool { return s != "" }),
 		VariantCaseSensitive: utility.FromBoolTPtr(options.TaskCaseSensitive), // Default to true for performance reasons.
@@ -988,7 +989,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 	}
 
 	var activeVersions []model.Version
-	if len(opts.Tasks) > 0 || len(opts.Statuses) > 0 {
+	if len(opts.Tasks) > 0 || len(opts.Statuses) > 0 || len(opts.TaskTags) > 0 {
 		var searchOffset int
 		if opts.MaxOrder != 0 {
 			searchOffset = opts.MaxOrder

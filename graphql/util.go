@@ -1529,6 +1529,7 @@ func getWaterfallFilterOptionsFromContext(ctx context.Context) model.WaterfallOp
 				OmitInactiveBuilds:   utility.FromBoolPtr(options.OmitInactiveBuilds),
 				Statuses:             utility.FilterSlice(options.Statuses, func(s string) bool { return s != "" }),
 				Tasks:                utility.FilterSlice(options.Tasks, func(s string) bool { return s != "" }),
+				TaskTags:             utility.FilterSlice(options.TaskTags, func(s string) bool { return s != "" }),
 				TaskCaseSensitive:    utility.FromBoolTPtr(options.TaskCaseSensitive),
 				Variants:             utility.FilterSlice(options.Variants, func(s string) bool { return s != "" }),
 				VariantCaseSensitive: utility.FromBoolTPtr(options.TaskCaseSensitive),
