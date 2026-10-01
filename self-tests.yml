@@ -213,9 +213,10 @@ functions:
       params:
         working_dir: evergreen
         include_expansions_in_env:
-          ["GOROOT", "github_token", "go_modules_cache_hit"]
+          ["github_token", "go_modules_cache_hit"]
         shell: bash
         script: |
+          make go-sdk || exit 1
           # On a cache miss, download the modules into the module cache so cache.save can upload it below. Downloading
           # modules is flaky in the ubuntu1604-arm64 distros, because the TCP connection is sometimes reset by the peer
           # for unknown reasons (this does not happen in other distros). Retry the module download multiple times to
@@ -255,7 +256,6 @@ functions:
       add_to_path: ["${workdir}/evergreen/bin/git/bin"]
       args: ["${make_args|}", "${target}"]
       include_expansions_in_env:
-        - GOROOT
         - AWS_ACCESS_KEY_ID
         - AWS_SECRET_ACCESS_KEY
         - AWS_SESSION_TOKEN
@@ -373,7 +373,6 @@ functions:
       params:
         working_dir: evergreen
         command: make parse-host-file
-        include_expansions_in_env: ["GOROOT"]
         env:
           HOST_FILE: spawned_hosts.json
     - command: expansions.update
@@ -404,7 +403,6 @@ functions:
         working_dir: evergreen
         binary: bash
         args: ["scripts/verify-gqlgen.sh"]
-        include_expansions_in_env: ["GOROOT"]
 
   check-go-vulnerabilities:
     - command: subprocess.exec
@@ -414,7 +412,6 @@ functions:
         args: ["scripts/check-go-vulnerabilities.sh"]
         env:
           GOPATH: ${workdir}/gopath
-        include_expansions_in_env: ["GOROOT"]
 
   check-modernize:
     - command: subprocess.exec
@@ -422,9 +419,7 @@ functions:
         working_dir: evergreen
         binary: make
         args: ["modernize"]
-        include_expansions_in_env: ["GOROOT"]
         env:
-          GOTOOLCHAIN: go1.26.0
           MODERNIZE_GOOS: ${goos}
 
   verify-client-version-update:
@@ -456,7 +451,6 @@ functions:
           - AWS_ACCESS_KEY_ID
           - AWS_SECRET_ACCESS_KEY
           - AWS_SESSION_TOKEN
-          - GOROOT
           - api_key
         env:
           EVERGREEN_ALL: "true"
@@ -490,6 +484,12 @@ functions:
 #######################################
 
 tasks:
+  - name: test-go-sdk
+    tags: ["test", "agent"]
+    commands:
+      - func: get-project-and-modules
+      - func: run-make
+        vars: { target: "test-go-sdk" }
   - <<: *run-smoke-test
     name: test-smoke-internal-host
     tags: ["smoke"]
@@ -678,7 +678,6 @@ tasks:
           working_dir: evergreen
           env:
             GOPATH: ${workdir}/gopath
-          include_expansions_in_env: ["GOROOT"]
       - func: verify-swaggo-fmt
   - name: check-go-vulnerabilities
     tags: ["linter"]
@@ -692,8 +691,6 @@ tasks:
           working_dir: evergreen
           env:
             GOPATH: ${workdir}/gopath
-          include_expansions_in_env:
-            - GOROOT
       - func: check-go-vulnerabilities
   - name: check-modernize-linux
     tags: ["linter"]
@@ -744,7 +741,7 @@ tasks:
           working_dir: evergreen
           binary: make
           args: ["verify-mod-tidy"]
-          include_expansions_in_env: ["GOROOT", "github_token"]
+          include_expansions_in_env: ["github_token"]
   - name: verify-merge-function-update
     tags: ["linter"]
     patch_only: true
@@ -790,16 +787,12 @@ tasks:
           working_dir: evergreen
           env:
             GOPATH: ${workdir}/gopath
-          include_expansions_in_env:
-            - GOROOT
       - command: shell.exec
         params:
           shell: bash
           working_dir: evergreen
           env:
             GOPATH: ${workdir}/gopath
-          include_expansions_in_env:
-            - GOROOT
           script: |
             set -o verbose
             set -o errexit
@@ -928,6 +921,7 @@ buildvariants:
       - "*.patch"
       - "go.mod"
       - "go.sum"
+      - "makefile"
     run_on:
       - ubuntu2204-small
       - ubuntu2204-large
@@ -935,7 +929,6 @@ buildvariants:
       goos: linux
       goarch: amd64
       nodebin: /opt/node/bin
-      GOROOT: /opt/golang/go1.24
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-8.0.0.tgz
       mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-x64.tgz
@@ -955,7 +948,6 @@ buildvariants:
       - ubuntu2204-small
       - ubuntu2204-large
     expansions:
-      GOROOT: /opt/golang/go1.24
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-8.0.0.tgz
       mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-x64.tgz
@@ -966,8 +958,6 @@ buildvariants:
 
   - name: test-config-validation
     display_name: Validate External Configs
-    expansions:
-      GOROOT: /opt/golang/go1.24
     paths:
       - "validator/**"
     run_on:
@@ -977,8 +967,6 @@ buildvariants:
 
   - name: lint-markdown
     display_name: Lint Markdown
-    expansions:
-      GOROOT: /opt/golang/go1.24
     paths:
       - "docs/**"
     run_on:
@@ -998,11 +986,12 @@ buildvariants:
       - "*.sh"
       - "*.diff"
       - "*.patch"
+      - "go.mod"
+      - "go.sum"
+      - "makefile"
     run_on:
       - ubuntu2204-small
       - ubuntu2204-large
-    expansions:
-      GOROOT: /opt/golang/go1.24
     tasks:
       - name: generate-lint
 
@@ -1010,11 +999,15 @@ buildvariants:
     display_name: Windows
     paths:
       - "agent/**"
+      - "scripts/go-sdk*"
+      - "scripts/test-go-sdk.sh"
+      - "go.mod"
+      - "go.sum"
+      - "makefile"
     run_on:
       - windows-vsCurrent-small
       - windows-vsCurrent-large
     expansions:
-      GOROOT: C:/golang/go1.24
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-8.0.0.zip
       mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-win32-x64.zip
@@ -1033,7 +1026,6 @@ buildvariants:
       xc_build: yes
       goarch: arm64
       goos: linux
-      GOROOT: /opt/golang/go1.24
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2204-8.0.0.tgz
       mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-arm64.tgz
@@ -1046,7 +1038,6 @@ buildvariants:
     run_on:
       - macos-1100-arm64
     expansions:
-      GOROOT: /opt/golang/go1.24
       mongodb_url: https://fastdl.mongodb.org/osx/mongodb-macos-arm64-8.0.0.tgz
       mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-darwin-arm64.zip
       mongosh_decompress: unzip
@@ -1072,7 +1063,6 @@ buildvariants:
       - name: ".build-unsigned"
         activate: false
     expansions:
-      GOROOT: /opt/golang/go1.24
       notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.1.2/linux_amd64.zip
     display_tasks:
       - name: build-and-push

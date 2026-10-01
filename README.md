@@ -33,23 +33,40 @@ See test results for your code changes before committing.
 
 Automatically run past commits to pinpoint the origin of a test failure.
 
-## Go Requirements
+## Build Requirements
 
-- [Install Go 1.16 or later](https://golang.org/dl/).
-- This project uses Go modules.
+- Install Git, Make, Bash, curl, tar, and either `sha256sum` or `shasum`.
+  Windows builds also require a Unix shell environment with `cygpath` and `unzip`.
+- A system Go installation is not required. The Makefile downloads the exact Go
+  version from `go.mod`, verifies its SHA-256 checksum, and caches it under
+  `bin/go-sdk/`. Downloads support Linux, macOS, and Windows hosts.
+- Builds ignore the system Go installation, inherited `GOROOT` and
+  `GOTOOLCHAIN`, and persistent `go env -w` settings. Automatic toolchain
+  switching is disabled. Cross-compilation still accepts `GOOS` and `GOARCH`.
+- The first build requires network access for the SDK and Go modules. Later
+  builds reuse their caches. C/C++ compilers are still required for cgo and
+  race-detector builds.
 
 ## Building the Binaries
 
 Setup:
 
-- If you're going to use the makefile, set `GOMODCACHE` (you can just set it to
-  the output of `go env GOMODCACHE`, unless you want it somewhere else).
-- check out a copy of the repo into your gopath. You can use:
-  `go get github.com/evergreen-ci/evergreen` or just
-  `git clone https://github.com/evergreen-ci/evergreen`.
+- Clone the repository with `git clone https://github.com/evergreen-ci/evergreen`
+  and change into its directory.
+- Optionally set `GOMODCACHE` and `GOCACHE` to share existing caches. The defaults
+  are `bin/.mod-cache` and `bin/.cache`.
 
 Possible Targets:
 
 - run `make build` to compile a binary for your local system.
+- run `make go-sdk` to download the SDK without building, or
+  `bash scripts/go-sdk.sh go version` to run Go directly with the pinned SDK.
 - run `make local-evergreen` to start a local Evergreen. You will need a mongod
   running, listening on 27017. To run the UI locally, see [Spruce's README](https://github.com/evergreen-ci/ui/tree/main/apps/spruce#running-locally).
+
+To upgrade the build SDK, update the `go` directive in `go.mod` and the archive
+checksums in `scripts/go-sdk-checksums.txt` using the official
+[Go release metadata](https://go.dev/dl/?mode=json&include=all). Each supported
+host needs a checksum; an unpinned archive is rejected. `make modernize` uses a
+separate Go 1.26.0 SDK pinned in `scripts/go-sdk.sh` because its analyzer requires
+a newer Go release.
