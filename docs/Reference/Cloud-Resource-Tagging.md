@@ -24,8 +24,8 @@ providers:
       mongodb_env: staging
 ```
 
-Use the responsible team email and deployment environment. Evergreen validates email syntax but does not enforce the
-`@mongodb.com` domain. Defaults may initially be unset, but admin settings updates cannot clear a value once set.
+Use the responsible team email and deployment environment. Defaults may initially be unset, but admin settings updates
+cannot clear a value once set.
 
 ## Automatic AWS Tagging
 
