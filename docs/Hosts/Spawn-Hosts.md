@@ -61,7 +61,7 @@ EC2 spawn hosts can be stopped/started and modified from the Spawn Host page, or
 The [MongoDB Cloud Tenant Tag Policy](https://wiki.corp.mongodb.com/spaces/SEC/pages/560370899/Cloud+Tag+Policy)
 is the authoritative source for requirements and exceptions.
 
-Evergreen automatically sets the `mongodb-owner` tag on EC2 spawn hosts:
+Evergreen automatically sets the `mongodb-owner` tag on EC2 spawn hosts and volumes:
 
 - Hosts you request use your MongoDB email address.
 - Hosts created by tasks use the Evergreen team's email address.
