@@ -65,7 +65,6 @@ Evergreen automatically sets the `mongodb-owner` tag on EC2 spawn hosts and volu
 
 - Hosts you request use your MongoDB email address.
 - Hosts created by tasks use the Evergreen team's email address.
-- If your user account has no email address, your spawn hosts use the Evergreen team's email address instead.
 
 ## Evergreen CLI on a spawn host
 
