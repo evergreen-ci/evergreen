@@ -172,6 +172,7 @@ func Agent() cli.Command {
 				if err != nil {
 					return errors.Wrap(err, "initializing client")
 				}
+				defer comm.Close()
 				comm.SetHostID(hostID)
 
 				exchanged, err := comm.ExchangeSetupSecret(ctx, setupSecret)
