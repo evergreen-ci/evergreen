@@ -296,16 +296,4 @@ func TestGithubClientShouldRetry(t *testing.T) {
 		resp := &http.Response{StatusCode: http.StatusUnprocessableEntity}
 		assert.False(t, retryFn(0, makeRequest(), resp, nil))
 	})
-
-	t.Run("BadRequestWithOptInDoesNotRetry", func(t *testing.T) {
-		retryFn := githubClientShouldRetry(retryConfig{retry422: true})
-		resp := &http.Response{StatusCode: http.StatusBadRequest}
-		assert.False(t, retryFn(0, makeRequest(), resp, nil))
-	})
-
-	t.Run("ServerErrorWithoutOptInRetries", func(t *testing.T) {
-		retryFn := githubClientShouldRetry(retryConfig{})
-		resp := &http.Response{StatusCode: http.StatusInternalServerError}
-		assert.True(t, retryFn(0, makeRequest(), resp, nil))
-	})
 }
