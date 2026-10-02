@@ -61,15 +61,6 @@ EC2 spawn hosts can be stopped/started and modified from the Spawn Host page, or
 The [MongoDB Cloud Tenant Tag Policy](https://wiki.corp.mongodb.com/spaces/SEC/pages/560370899/Cloud+Tag+Policy)
 is the authoritative source for requirements and exceptions. This section summarizes Evergreen's AWS tagging behavior.
 
-For more information, ask in the `#ask-cloud-tagging` Slack channel.
-
-### Required Corporate Tags
-
-| Tag             | Required value                                                                              |
-| --------------- | ------------------------------------------------------------------------------------------- |
-| `mongodb-owner` | A reachable individual or team email address ending in `@mongodb.com`.                      |
-| `mongodb-env`   | One of `dev`, `qa`, `test`, `local`, `poc`, `demo`, `uat`, `sandbox`, `staging`, or `prod`. |
-
 ### Automatic AWS Tagging
 
 Evergreen automatically tags EC2 hosts and the EBS volumes created when those hosts launch, including root volumes,
