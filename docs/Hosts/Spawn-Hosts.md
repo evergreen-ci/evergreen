@@ -59,19 +59,13 @@ EC2 spawn hosts can be stopped/started and modified from the Spawn Host page, or
 ## Cloud Resource Tagging
 
 The [MongoDB Cloud Tenant Tag Policy](https://wiki.corp.mongodb.com/spaces/SEC/pages/560370899/Cloud+Tag+Policy)
-is the authoritative source for requirements and exceptions. This section summarizes Evergreen's AWS tagging behavior.
+is the authoritative source for requirements and exceptions.
 
-### Automatic AWS Tagging
+Evergreen automatically sets the `mongodb-owner` tag on EC2 spawn hosts:
 
-Evergreen automatically tags EC2 hosts and the EBS volumes created when those hosts launch, including root volumes,
-as well as EBS volumes created separately through Evergreen.
-
-| Default `mongodb-owner`    | Resources                                                                                                        |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| User's email               | Personal spawn hosts, debug hosts, volumes created when those hosts launch, and separately created user volumes. |
-| The Evergreen team's email | Hosts running CI tasks, hosts created by task commands, and volumes created when those hosts launch.             |
-
-Evergreen also automatically adds a `mongodb-env` tag to these hosts and volumes.
+- Hosts you request use your MongoDB email address.
+- Hosts created by tasks use the Evergreen team's email address.
+- If your user account has no email address, your spawn hosts use the Evergreen team's email address instead.
 
 ## Evergreen CLI on a spawn host
 
