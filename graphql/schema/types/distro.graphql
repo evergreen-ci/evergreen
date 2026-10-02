@@ -132,6 +132,7 @@ input DistroInput {
   costData: CostDataInput
   imageId: String!
   isCluster: Boolean!
+  isIaCManaged: Boolean! = false
   isVirtualWorkStation: Boolean!
   mountpoints: [String!]!
   name: String! @requireDistroAccess(access: EDIT)
@@ -311,6 +312,7 @@ type Distro {
   iceCreamSettings: IceCreamSettings!
   imageId: String!
   isCluster: Boolean!
+  isIaCManaged: Boolean!
   isWindows: Boolean!
   isVirtualWorkStation: Boolean!
   mountpoints: [String!]!

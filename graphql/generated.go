@@ -489,6 +489,7 @@ type ComplexityRoot struct {
 		IcecreamSettings      func(childComplexity int) int
 		ImageID               func(childComplexity int) int
 		IsCluster             func(childComplexity int) int
+		IsIaCManaged          func(childComplexity int) int
 		IsVirtualWorkstation  func(childComplexity int) int
 		IsWindows             func(childComplexity int) int
 		Mountpoints           func(childComplexity int) int
@@ -4484,6 +4485,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Distro.IsCluster(childComplexity), true
+	case "Distro.isIaCManaged":
+		if e.complexity.Distro.IsIaCManaged == nil {
+			break
+		}
+
+		return e.complexity.Distro.IsIaCManaged(childComplexity), true
 	case "Distro.isVirtualWorkStation":
 		if e.complexity.Distro.IsVirtualWorkstation == nil {
 			break
@@ -25965,6 +25972,35 @@ func (ec *executionContext) fieldContext_Distro_isCluster(_ context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _Distro_isIaCManaged(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Distro_isIaCManaged,
+		func(ctx context.Context) (any, error) {
+			return obj.IsIaCManaged, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Distro_isIaCManaged(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Distro",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Distro_isWindows(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -30287,6 +30323,8 @@ func (ec *executionContext) fieldContext_Host_distro(_ context.Context, field gr
 				return ec.fieldContext_Distro_imageId(ctx, field)
 			case "isCluster":
 				return ec.fieldContext_Distro_isCluster(ctx, field)
+			case "isIaCManaged":
+				return ec.fieldContext_Distro_isIaCManaged(ctx, field)
 			case "isWindows":
 				return ec.fieldContext_Distro_isWindows(ctx, field)
 			case "isVirtualWorkStation":
@@ -32791,6 +32829,8 @@ func (ec *executionContext) fieldContext_Image_distros(_ context.Context, field 
 				return ec.fieldContext_Distro_imageId(ctx, field)
 			case "isCluster":
 				return ec.fieldContext_Distro_isCluster(ctx, field)
+			case "isIaCManaged":
+				return ec.fieldContext_Distro_isIaCManaged(ctx, field)
 			case "isWindows":
 				return ec.fieldContext_Distro_isWindows(ctx, field)
 			case "isVirtualWorkStation":
@@ -52149,6 +52189,8 @@ func (ec *executionContext) fieldContext_Query_distro(ctx context.Context, field
 				return ec.fieldContext_Distro_imageId(ctx, field)
 			case "isCluster":
 				return ec.fieldContext_Distro_isCluster(ctx, field)
+			case "isIaCManaged":
+				return ec.fieldContext_Distro_isIaCManaged(ctx, field)
 			case "isWindows":
 				return ec.fieldContext_Distro_isWindows(ctx, field)
 			case "isVirtualWorkStation":
@@ -52319,6 +52361,8 @@ func (ec *executionContext) fieldContext_Query_distros(ctx context.Context, fiel
 				return ec.fieldContext_Distro_imageId(ctx, field)
 			case "isCluster":
 				return ec.fieldContext_Distro_isCluster(ctx, field)
+			case "isIaCManaged":
+				return ec.fieldContext_Distro_isIaCManaged(ctx, field)
 			case "isWindows":
 				return ec.fieldContext_Distro_isWindows(ctx, field)
 			case "isVirtualWorkStation":
@@ -58516,6 +58560,8 @@ func (ec *executionContext) fieldContext_SaveDistroPayload_distro(_ context.Cont
 				return ec.fieldContext_Distro_imageId(ctx, field)
 			case "isCluster":
 				return ec.fieldContext_Distro_isCluster(ctx, field)
+			case "isIaCManaged":
+				return ec.fieldContext_Distro_isIaCManaged(ctx, field)
 			case "isWindows":
 				return ec.fieldContext_Distro_isWindows(ctx, field)
 			case "isVirtualWorkStation":
@@ -83352,7 +83398,11 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj a
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"adminOnly", "aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "execUser", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "costData", "imageId", "isCluster", "isVirtualWorkStation", "mountpoints", "name", "note", "plannerSettings", "provider", "providerAccount", "providerSettingsList", "setup", "setupAsSudo", "singleTaskDistro", "sshOptions", "taskHostOverrides", "user", "userSpawnAllowed", "validProjects", "warningNote", "workDir"}
+	if _, present := asMap["isIaCManaged"]; !present {
+		asMap["isIaCManaged"] = false
+	}
+
+	fieldsInOrder := [...]string{"adminOnly", "aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "execUser", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "costData", "imageId", "isCluster", "isIaCManaged", "isVirtualWorkStation", "mountpoints", "name", "note", "plannerSettings", "provider", "providerAccount", "providerSettingsList", "setup", "setupAsSudo", "singleTaskDistro", "sshOptions", "taskHostOverrides", "user", "userSpawnAllowed", "validProjects", "warningNote", "workDir"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -83485,6 +83535,13 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj a
 				return it, err
 			}
 			it.IsCluster = data
+		case "isIaCManaged":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isIaCManaged"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IsIaCManaged = data
 		case "isVirtualWorkStation":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isVirtualWorkStation"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)
@@ -94863,6 +94920,11 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "isCluster":
 			out.Values[i] = ec._Distro_isCluster(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "isIaCManaged":
+			out.Values[i] = ec._Distro_isIaCManaged(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
