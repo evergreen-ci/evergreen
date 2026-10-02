@@ -27,11 +27,6 @@ For more on their differences and examples, see [controlling when tasks run](../
 
 This is most likely because your repo was cloned with a specified depth and the merge base was outside the range of the depth. To fix this, rebase your HEAD to the latest master. If this happens often, we recommend increasing the clone depth in your project's [`git.get_project`](Project-Configuration/Project-Commands#gitget_project) to a more suitable depth.
 
-## How does Evergreen tag cloud resources?
-
-See [Cloud Resource Tagging](../Hosts/Spawn-Hosts.md#cloud-resource-tagging) for how Evergreen assigns ownership tags to
-spawn hosts.
-
 ## Graphite FAQ
 
 **Q**: Why doesn't Evergreen run CI tests on my Graphite PR immediately?
