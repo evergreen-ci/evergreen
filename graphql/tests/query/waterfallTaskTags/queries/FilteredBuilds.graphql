@@ -1,0 +1,22 @@
+{
+  waterfall(
+    options: {
+      projectIdentifier: "spruce-identifier"
+      taskTags: ["integration"]
+      includeAllBuildsAndTasks: false
+    }
+  ) {
+    pagination {
+      activeVersionIds
+    }
+    versions {
+      id
+      waterfallBuilds {
+        tasks {
+          id
+          tags
+        }
+      }
+    }
+  }
+}

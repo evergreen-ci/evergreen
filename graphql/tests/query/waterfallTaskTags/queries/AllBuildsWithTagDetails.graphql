@@ -1,0 +1,27 @@
+{
+  waterfall(
+    options: {
+      projectIdentifier: "spruce-identifier"
+      taskTags: ["integration"]
+    }
+  ) {
+    pagination {
+      activeVersionIds
+    }
+    versions {
+      id
+      waterfallBuilds {
+        ...BuildTags
+      }
+    }
+  }
+}
+fragment BuildTags on WaterfallBuild {
+  tasks {
+    ...TaskTags
+  }
+}
+fragment TaskTags on WaterfallTask {
+  id
+  tags @include(if: true)
+}

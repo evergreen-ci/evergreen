@@ -1,0 +1,12 @@
+{
+  waterfall(
+    options: {
+      projectIdentifier: "spruce-identifier"
+      taskTags: ["Integration"]
+    }
+  ) {
+    pagination {
+      activeVersionIds
+    }
+  }
+}

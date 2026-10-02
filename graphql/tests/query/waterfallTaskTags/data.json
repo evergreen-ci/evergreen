@@ -1,0 +1,123 @@
+{
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce-identifier"
+    }
+  ],
+  "versions": [
+    {
+      "_id": "v1",
+      "identifier": "spruce",
+      "r": "gitter_request",
+      "activated": true,
+      "order": 1,
+      "builds": ["v1_build"]
+    },
+    {
+      "_id": "v2",
+      "identifier": "spruce",
+      "r": "gitter_request",
+      "activated": true,
+      "order": 2,
+      "builds": ["v2_build"]
+    },
+    {
+      "_id": "v3",
+      "identifier": "spruce",
+      "r": "gitter_request",
+      "activated": true,
+      "order": 3,
+      "builds": ["v3_build"]
+    }
+  ],
+  "builds": [
+    {
+      "_id": "v1_build",
+      "version": "v1",
+      "activated": true,
+      "display_name": "Linux",
+      "build_variant": "linux"
+    },
+    {
+      "_id": "v2_build",
+      "version": "v2",
+      "activated": true,
+      "display_name": "Linux",
+      "build_variant": "linux"
+    },
+    {
+      "_id": "v3_build",
+      "version": "v3",
+      "activated": true,
+      "display_name": "Linux",
+      "build_variant": "linux"
+    }
+  ],
+  "tasks": [
+    {
+      "branch": "spruce",
+      "r": "gitter_request",
+      "activated": true,
+      "build_variant": "linux",
+      "build_id": "v1_build",
+      "_id": "display",
+      "version": "v1",
+      "order": 1,
+      "display_name": "Display",
+      "display_only": true,
+      "execution_tasks": ["child"],
+      "display_status_cache": "failed"
+    },
+    {
+      "branch": "spruce",
+      "r": "gitter_request",
+      "activated": false,
+      "build_variant": "linux",
+      "build_id": "v1_build",
+      "_id": "child",
+      "version": "v1",
+      "order": 1,
+      "display_name": "Child",
+      "display_task_id": "display",
+      "tags": ["integration"],
+      "display_status_cache": "success"
+    },
+    {
+      "branch": "spruce",
+      "r": "gitter_request",
+      "activated": true,
+      "build_variant": "linux",
+      "build_id": "v1_build",
+      "_id": "untagged",
+      "version": "v1",
+      "order": 1,
+      "display_name": "Untagged"
+    },
+    {
+      "branch": "spruce",
+      "r": "gitter_request",
+      "activated": true,
+      "build_variant": "linux",
+      "build_id": "v2_build",
+      "_id": "regular",
+      "version": "v2",
+      "order": 2,
+      "display_name": "Regular",
+      "tags": ["integration"],
+      "display_status_cache": "success"
+    },
+    {
+      "branch": "spruce",
+      "r": "gitter_request",
+      "activated": true,
+      "build_variant": "linux",
+      "build_id": "v3_build",
+      "_id": "unrelated",
+      "version": "v3",
+      "order": 3,
+      "display_name": "Unrelated",
+      "tags": ["unit"]
+    }
+  ]
+}

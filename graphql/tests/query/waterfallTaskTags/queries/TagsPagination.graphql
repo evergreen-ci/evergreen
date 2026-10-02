@@ -1,0 +1,26 @@
+{
+  forward: waterfall(
+    options: {
+      projectIdentifier: "spruce-identifier"
+      taskTags: ["integration"]
+      maxOrder: 2
+      limit: 1
+    }
+  ) {
+    pagination {
+      activeVersionIds
+    }
+  }
+  backward: waterfall(
+    options: {
+      projectIdentifier: "spruce-identifier"
+      taskTags: ["integration"]
+      minOrder: 1
+      limit: 1
+    }
+  ) {
+    pagination {
+      activeVersionIds
+    }
+  }
+}

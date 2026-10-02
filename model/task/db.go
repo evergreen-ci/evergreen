@@ -77,6 +77,7 @@ var (
 	OverrideDependenciesKey       = bsonutil.MustHaveTag(Task{}, "OverrideDependencies")
 	NumDependentsKey              = bsonutil.MustHaveTag(Task{}, "NumDependents")
 	DisplayNameKey                = bsonutil.MustHaveTag(Task{}, "DisplayName")
+	TagsKey                       = bsonutil.MustHaveTag(Task{}, "Tags")
 	ExecutionPlatformKey          = bsonutil.MustHaveTag(Task{}, "ExecutionPlatform")
 	HostIdKey                     = bsonutil.MustHaveTag(Task{}, "HostId")
 	AgentVersionKey               = bsonutil.MustHaveTag(Task{}, "AgentVersion")

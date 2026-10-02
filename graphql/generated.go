@@ -2446,6 +2446,7 @@ type ComplexityRoot struct {
 		DisplayStatusCache func(childComplexity int) int
 		Execution          func(childComplexity int) int
 		Id                 func(childComplexity int) int
+		Tags               func(childComplexity int) int
 	}
 
 	Webhook struct {
@@ -13169,6 +13170,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.WaterfallTask.Id(childComplexity), true
+	case "WaterfallTask.tags":
+		if e.complexity.WaterfallTask.Tags == nil {
+			break
+		}
+
+		return e.complexity.WaterfallTask.Tags(childComplexity), true
 
 	case "Webhook.endpoint":
 		if e.complexity.Webhook.Endpoint == nil {
@@ -78461,6 +78468,8 @@ func (ec *executionContext) fieldContext_WaterfallBuild_tasks(_ context.Context,
 				return ec.fieldContext_WaterfallTask_displayStatusCache(ctx, field)
 			case "execution":
 				return ec.fieldContext_WaterfallTask_execution(ctx, field)
+			case "tags":
+				return ec.fieldContext_WaterfallTask_tags(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type WaterfallTask", field.Name)
 		},
@@ -78753,6 +78762,35 @@ func (ec *executionContext) fieldContext_WaterfallTask_execution(_ context.Conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WaterfallTask_tags(ctx context.Context, field graphql.CollectedField, obj *model1.WaterfallTask) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WaterfallTask_tags,
+		func(ctx context.Context) (any, error) {
+			return obj.Tags, nil
+		},
+		nil,
+		ec.marshalNString2ᚕstringᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WaterfallTask_tags(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WaterfallTask",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -92111,7 +92149,7 @@ func (ec *executionContext) unmarshalInputWaterfallOptions(ctx context.Context, 
 		asMap["limit"] = 5
 	}
 
-	fieldsInOrder := [...]string{"date", "includeAllBuildsAndTasks", "limit", "minOrder", "maxOrder", "omitInactiveBuilds", "projectIdentifier", "requesters", "revision", "statuses", "tasks", "taskCaseSensitive", "variants", "variantCaseSensitive"}
+	fieldsInOrder := [...]string{"date", "includeAllBuildsAndTasks", "limit", "minOrder", "maxOrder", "omitInactiveBuilds", "projectIdentifier", "requesters", "revision", "statuses", "tasks", "taskTags", "taskCaseSensitive", "variants", "variantCaseSensitive"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -92220,6 +92258,13 @@ func (ec *executionContext) unmarshalInputWaterfallOptions(ctx context.Context, 
 				return it, err
 			}
 			it.Tasks = data
+		case "taskTags":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskTags"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TaskTags = data
 		case "taskCaseSensitive":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskCaseSensitive"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -112816,6 +112861,11 @@ func (ec *executionContext) _WaterfallTask(ctx context.Context, sel ast.Selectio
 			}
 		case "execution":
 			out.Values[i] = ec._WaterfallTask_execution(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "tags":
+			out.Values[i] = ec._WaterfallTask_tags(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

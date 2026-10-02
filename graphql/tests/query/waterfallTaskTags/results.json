@@ -1,0 +1,171 @@
+{
+  "tests": [
+    {
+      "query_file": "FilteredBuilds.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "pagination": {
+              "activeVersionIds": ["v2", "v1"]
+            },
+            "versions": [
+              {
+                "id": "v3",
+                "waterfallBuilds": null
+              },
+              {
+                "id": "v2",
+                "waterfallBuilds": [
+                  {
+                    "tasks": [
+                      {
+                        "id": "regular",
+                        "tags": ["integration"]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "v1",
+                "waterfallBuilds": [
+                  {
+                    "tasks": [
+                      {
+                        "id": "display",
+                        "tags": ["integration"]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "AllBuildsWithTagDetails.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "pagination": {
+              "activeVersionIds": ["v2", "v1"]
+            },
+            "versions": [
+              {
+                "id": "v3",
+                "waterfallBuilds": null
+              },
+              {
+                "id": "v2",
+                "waterfallBuilds": [
+                  {
+                    "tasks": [
+                      {
+                        "id": "regular",
+                        "tags": ["integration"]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "v1",
+                "waterfallBuilds": [
+                  {
+                    "tasks": [
+                      {
+                        "id": "display",
+                        "tags": ["integration"]
+                      },
+                      {
+                        "id": "untagged",
+                        "tags": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "TagsWithParentFilters.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "pagination": {
+              "activeVersionIds": ["v1"]
+            },
+            "versions": [
+              {
+                "id": "v3",
+                "waterfallBuilds": null
+              },
+              {
+                "id": "v2",
+                "waterfallBuilds": null
+              },
+              {
+                "id": "v1",
+                "waterfallBuilds": [
+                  {
+                    "tasks": [
+                      {
+                        "id": "display"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "UnmatchedTags.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "pagination": {
+              "activeVersionIds": []
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "EmptyTagsIgnored.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "pagination": {
+              "activeVersionIds": ["v3", "v2", "v1"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "TagsPagination.graphql",
+      "result": {
+        "data": {
+          "forward": {
+            "pagination": {
+              "activeVersionIds": ["v1"]
+            }
+          },
+          "backward": {
+            "pagination": {
+              "activeVersionIds": ["v2"]
+            }
+          }
+        }
+      }
+    }
+  ]
+}
