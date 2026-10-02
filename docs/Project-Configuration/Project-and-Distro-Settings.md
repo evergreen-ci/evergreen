@@ -668,10 +668,6 @@ worker pools were tasks execute. As a result much of the available
 configuration that controls how tasks execute occurs at the distro
 level. For more information about available distro choices see [Guidelines around Evergreen distros](https://wiki.corp.mongodb.com/x/CZ7yBg)
 
-Cloud ownership and environment tag defaults are configured globally by Evergreen administrators, not in distro or
-project YAML. See [Cloud Resource Tagging](../Reference/Cloud-Resource-Tagging.md) for automatic EC2/EBS tagging and the
-tagging responsibilities for resources created by project task scripts.
-
 ### Scheduler Options
 
 The process of scheduling tasks contains a number of distinct phases

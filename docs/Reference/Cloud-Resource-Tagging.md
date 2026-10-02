@@ -3,6 +3,8 @@
 The [MongoDB Cloud Tenant Tag Policy](https://wiki.corp.mongodb.com/spaces/SEC/pages/560370899/Cloud+Tag+Policy)
 is the authoritative source for requirements and exceptions. This page summarizes Evergreen's AWS tagging behavior.
 
+For more information, ask in the `#ask-cloud-tagging` Slack channel.
+
 ## Required Corporate Tags
 
 | Tag             | Required value                                                                              |
@@ -38,12 +40,3 @@ Evergreen tags EC2 instances and their launch-time EBS volumes, including root v
 
 If a user's email is unavailable or a volume creator lookup fails, Evergreen falls back to the configured owner.
 All these resources default to the configured `mongodb-env`, including personal spawn hosts.
-
-## Important Limits
-
-- Explicit nonempty instance tag values override defaults and must comply with the policy.
-- Updating defaults does not retag existing resources.
-- Project teams must tag resources created by their scripts or infrastructure-as-code; host tags do not propagate to them.
-  Infrastructure owners must manage tagging outside Evergreen's EC2/EBS creation paths, including buckets and snapshots.
-- If tagging requirements block Evergreen resource creation, contact Evergreen administrators to check the defaults and
-  explicit tags. Exceptions require the corporate policy's approval process; unset defaults are not an exemption.
