@@ -660,6 +660,15 @@ const (
 	HTTPClientAuthOtelAttribute  = "evergreen.http.client_auth"
 	HTTPCLIVersionOtelAttribute  = "evergreen.http.cli_version"
 	HTTPUserOnlyAPIOtelAttribute = "evergreen.http.user.only_api"
+
+	// artifact presigning otel span names and attributes
+	ArtifactPresignOtelSpanName                 = "artifact.presign"
+	ArtifactSignOtelSpanName                    = "artifact.sign"
+	ArtifactCredentialsLoadOtelSpanName         = "artifact.credentials.load"
+	ArtifactPresignBucketOtelAttribute          = "evergreen.artifact.presign.bucket"
+	ArtifactPresignDurationSecondsOtelAttribute = "evergreen.artifact.presign.duration_seconds"
+	ArtifactPresignCredsSourceOtelAttribute     = "evergreen.artifact.presign.creds_source"
+	ArtifactSignStatusCodeOtelAttribute         = "evergreen.artifact.sign.status_code"
 )
 
 const (

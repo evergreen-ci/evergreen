@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
@@ -210,6 +211,27 @@ func (t *TaskConfig) GetExecTimeout() int {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 	return t.Timeout.ExecTimeoutSecs
+}
+
+// ResolveExecTimeout returns the exec timeout the agent holds the task to,
+// following the same resolution order as the exec timeout watcher: the dynamic
+// timeout set at runtime, capped by the max, then the build-variant task, the
+// project, and finally the default.
+func (t *TaskConfig) ResolveExecTimeout() time.Duration {
+	if dynamicTimeout := t.GetExecTimeout(); dynamicTimeout > 0 {
+		if t.MaxExecTimeoutSecs != 0 && dynamicTimeout > t.MaxExecTimeoutSecs {
+			return time.Duration(t.MaxExecTimeoutSecs) * time.Second
+		}
+		return time.Duration(dynamicTimeout) * time.Second
+	}
+
+	if bvTask := t.Project.FindTaskForVariant(t.Task.DisplayName, t.Task.BuildVariant); bvTask != nil && bvTask.ExecTimeoutSecs > 0 {
+		return time.Duration(bvTask.ExecTimeoutSecs) * time.Second
+	}
+	if t.Project.ExecTimeoutSecs > 0 {
+		return time.Duration(t.Project.ExecTimeoutSecs) * time.Second
+	}
+	return globals.DefaultExecTimeout
 }
 
 type TaskConfigOptions struct {

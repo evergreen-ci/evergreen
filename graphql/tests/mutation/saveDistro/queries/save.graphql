@@ -99,6 +99,7 @@ mutation {
         warningNote: "This is a warning"
         isVirtualWorkStation: false
         isCluster: true
+        isIaCManaged: true
         homeVolumeSettings: { formatCommand: "" }
         iceCreamSettings: { configPath: "", schedulerHost: "" }
         setup: "ls -alF"
@@ -122,6 +123,7 @@ mutation {
       aliases
       disableShallowClone
       isCluster
+      isIaCManaged
       name
       note
       warningNote

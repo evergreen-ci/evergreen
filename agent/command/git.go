@@ -563,8 +563,18 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 	opts.token = token
 
 	outcome := sourceCacheMissProduced
+	// A save only benefits future tasks, so a task without enough exec time
+	// budget left keeps its clone and skips the save rather than risking the
+	// timeout that would fail the whole task.
+	if budget, known := sourceCacheSaveBudget(conf); known && budget < sourceCacheSaveMinHeadroom {
+		logger.Task().Warningf(ctx, "Skipping the source cache save: %s of exec time budget left.", budget)
+		sc.setSpanOutcome(ctx, sourceCacheSaveSkipped, "not enough exec time budget remaining")
+		return nil
+	}
 	produced, err := c.saveSourceCache(ctx, comm, logger, conf, sc, opts)
-	if err != nil {
+	if errors.Is(err, errSourceCacheSaveTimeout) {
+		outcome = sourceCacheSaveTimedOut
+	} else if err != nil {
 		logger.Task().Warningf(ctx, "Saving source to the cache: %s", err)
 		if fallbackReason == "" {
 			fallbackReason = err.Error()
@@ -592,13 +602,44 @@ func (c *gitFetchProject) cloneSource(ctx context.Context, comm client.Communica
 	return token, errors.Wrap(err, "running fetch command")
 }
 
+// sourceCacheSaveBudget returns how long the save may run before the task's
+// exec timeout, less the post-save allowance, and whether that deadline could
+// be derived at all. The timeout resolves through the same shared logic the
+// agent's exec timeout watcher uses.
+func sourceCacheSaveBudget(conf *internal.TaskConfig) (time.Duration, bool) {
+	if conf.Task.StartTime.IsZero() {
+		return 0, false
+	}
+	timeout := conf.ResolveExecTimeout()
+	if timeout <= 0 {
+		return 0, false
+	}
+	return time.Until(conf.Task.StartTime.Add(timeout)) - sourceCacheSavePostSaveAllowance, true
+}
+
 // saveSourceCache scrubs the cloned tree of anything task-specific, uploads it,
 // and puts the task's own authenticated origin URL back for the rest of the run.
 func (c *gitFetchProject) saveSourceCache(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, sc *sourceCache, opts cloneOpts) (bool, error) {
 	if err := c.runCommands(ctx, logger, conf, c.buildPreSaveCommand(opts)); err != nil {
 		return false, errors.Wrap(err, "scrubbing source tree before saving")
 	}
-	produced, saveErr := sc.save(ctx, comm, logger)
+	budget, known := sourceCacheSaveBudget(conf)
+	if !known {
+		budget = sourceCacheSaveCap
+	}
+	saveCtx, cancel := context.WithTimeout(ctx, budget)
+	defer cancel()
+	produced, saveErr := sc.save(saveCtx, comm, logger)
+	if saveErr != nil && saveCtx.Err() != nil {
+		// Bounded by the task's remaining exec budget so a slow save cannot burn
+		// it. The post-save command still runs to restore the origin URL the
+		// rest of the task needs, even though the save was abandoned.
+		logger.Task().Warningf(ctx, "Aborting the source cache save after %s: %s", budget, saveErr)
+		if postErr := c.runCommands(ctx, logger, conf, c.buildPostSaveCommand(opts)); postErr != nil {
+			return produced, errors.Wrap(postErr, "restoring origin URL after saving")
+		}
+		return produced, errSourceCacheSaveTimeout
+	}
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(saveErr)
 	catcher.Wrap(c.runCommands(ctx, logger, conf, c.buildPostSaveCommand(opts)), "restoring origin URL after saving")

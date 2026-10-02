@@ -7,6 +7,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // ArtifactCredentialSettings names where to find a project's current AWS artifact
@@ -86,6 +88,10 @@ func (r *artifactCredentialResolver) load(ctx context.Context) error {
 }
 
 func (r *artifactCredentialResolver) loadUncached(ctx context.Context) error {
+	ctx, span := tracer.Start(ctx, evergreen.ArtifactCredentialsLoadOtelSpanName,
+		trace.WithAttributes(attribute.String(evergreen.TaskIDOtelAttribute, r.taskID)))
+	defer span.End()
+
 	t, err := task.FindOneIdWithFields(ctx, r.taskID, task.ProjectKey, task.VersionKey)
 	if err != nil {
 		return errors.Wrapf(err, "finding task '%s'", r.taskID)
@@ -93,6 +99,7 @@ func (r *artifactCredentialResolver) loadUncached(ctx context.Context) error {
 	if t == nil {
 		return errors.Errorf("task '%s' not found", r.taskID)
 	}
+	span.SetAttributes(attribute.String(evergreen.ProjectIDOtelAttribute, t.Project))
 
 	pRef, err := FindMergedProjectRef(ctx, t.Project, t.Version, false)
 	if err != nil {
