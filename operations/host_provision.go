@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
@@ -24,12 +25,13 @@ const containerImagePullTimeout = 15 * time.Minute
 
 func hostProvision() cli.Command {
 	const (
-		hostIDFlagName        = "host_id"
-		hostSecretFlagName    = "host_secret"
-		cloudProviderFlagName = "provider"
-		workingDirFlagName    = "working_dir"
-		apiServerURLFlagName  = "api_server"
-		shellPathFlagName     = "shell_path"
+		hostIDFlagName          = "host_id"
+		hostSecretFlagName      = "host_secret"
+		hostSetupSecretFlagName = "setup_secret"
+		cloudProviderFlagName   = "provider"
+		workingDirFlagName      = "working_dir"
+		apiServerURLFlagName    = "api_server"
+		shellPathFlagName       = "shell_path"
 	)
 	return cli.Command{
 		Name:  "provision",
@@ -42,6 +44,11 @@ func hostProvision() cli.Command {
 			cli.StringFlag{
 				Name:  hostSecretFlagName,
 				Usage: "the host secret",
+			},
+			cli.StringFlag{
+				Name:   hostSetupSecretFlagName,
+				Usage:  "the single-use host setup secret to exchange for the host secret",
+				EnvVar: evergreen.SetupSecretEnvVar,
 			},
 			cli.StringFlag{
 				Name:  cloudProviderFlagName,
@@ -62,9 +69,9 @@ func hostProvision() cli.Command {
 		},
 		Before: mergeBeforeFuncs(
 			requireStringFlag(hostIDFlagName),
-			requireStringFlag(hostSecretFlagName),
 			requireStringFlag(apiServerURLFlagName),
 			requireStringFlag(shellPathFlagName),
+			requireAtLeastOneFlag(hostSecretFlagName, hostSetupSecretFlagName),
 		),
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
@@ -77,8 +84,23 @@ func hostProvision() cli.Command {
 			defer comm.Close()
 
 			hostID := c.String(hostIDFlagName)
-			hostSecret := c.String(hostSecretFlagName)
 			comm.SetHostID(hostID)
+
+			hostSecret := c.String(hostSecretFlagName)
+			// If a setup secret is provided, exchange it for the host secret.
+			// Fall back to the host secret when available so that a transient
+			// exchange failure does not fail provisioning.
+			if setupSecret := c.String(hostSetupSecretFlagName); setupSecret != "" {
+				exchanged, err := comm.ExchangeSetupSecret(ctx, setupSecret)
+				if err != nil {
+					grip.Warning(ctx, message.WrapError(err, message.Fields{
+						"message": "falling back to the host secret because the setup secret exchange failed",
+						"host_id": hostID,
+					}))
+				} else {
+					hostSecret = exchanged
+				}
+			}
 			comm.SetHostSecret(hostSecret)
 
 			cloudProvider := c.String(cloudProviderFlagName)

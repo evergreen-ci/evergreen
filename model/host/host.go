@@ -39,9 +39,16 @@ import (
 type Host struct {
 	Id string `bson:"_id" json:"id"`
 	// Host is the ephemeral DNS name of the host when available.
-	Host            string        `bson:"host_id" json:"host"`
-	User            string        `bson:"user" json:"user"`
-	Secret          string        `bson:"secret" json:"secret"`
+	Host string `bson:"host_id" json:"host"`
+	User string `bson:"user" json:"user"`
+	// Secret is used to authenticate a task host back to Evergreen throughout
+	// the host's lifetime. It's valid until the host is terminated.
+	Secret string `bson:"secret" json:"secret"`
+	// SetupSecret is a single-use secret that task host processes exchange to
+	// get the host secret. This token exchange keeps the long-lived host secret
+	// confidential while still allowing the host to authenticate back to
+	// Evergreen throughout the host's lifetime.
+	SetupSecret     string        `bson:"setup_secret,omitempty" json:"setup_secret,omitempty"`
 	ServicePassword string        `bson:"service_password,omitempty" json:"service_password,omitempty" mapstructure:"service_password,omitempty"`
 	Tag             string        `bson:"tag" json:"tag"`
 	Distro          distro.Distro `bson:"distro" json:"distro"`
@@ -1126,6 +1133,69 @@ func (h *Host) CreateSecret(ctx context.Context, clear bool) error {
 	}
 	h.Secret = secret
 	return nil
+}
+
+// CreateSetupSecret generates a host setup secret and updates the host both
+// locally and in the database.
+func (h *Host) CreateSetupSecret(ctx context.Context) error {
+	secret := utility.RandomString()
+	err := UpdateOne(
+		ctx,
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{SetupSecretKey: secret}},
+	)
+	if err != nil {
+		return err
+	}
+	h.SetupSecret = secret
+	return nil
+}
+
+// EnsureSecrets generates the host secret and setup secret if they don't
+// exist yet.
+func (h *Host) EnsureSecrets(ctx context.Context) error {
+	if h.Secret == "" {
+		if err := h.CreateSecret(ctx, false); err != nil {
+			return errors.Wrap(err, "creating host secret")
+		}
+	}
+	if h.SetupSecret == "" {
+		if err := h.CreateSetupSecret(ctx); err != nil {
+			return errors.Wrap(err, "creating host setup secret")
+		}
+	}
+	return nil
+}
+
+// ExchangeSetupSecret atomically clears the host's setup secret if it matches
+// setupSecret and returns the host with its secret. It returns a nil secret if
+// the setup secret does not match or it was already spent.
+func ExchangeSetupSecret(ctx context.Context, hostID, setupSecret string) (*string, error) {
+	// An empty setup secret cannot be used to exchange, otherwise it could
+	// retrieve the secret after the setup secret was already spent.
+	if setupSecret == "" {
+		return nil, nil
+	}
+
+	res := evergreen.GetEnvironment().DB().Collection(Collection).FindOneAndUpdate(ctx,
+		bson.M{
+			IdKey:          hostID,
+			SetupSecretKey: setupSecret,
+		},
+		bson.M{"$unset": bson.M{SetupSecretKey: ""}},
+		options.FindOneAndUpdate().SetReturnDocument(options.After),
+	)
+	if res.Err() != nil {
+		if res.Err() == mongo.ErrNoDocuments {
+			return nil, nil
+		}
+		return nil, errors.Wrap(res.Err(), "finding host and clearing setup secret")
+	}
+	var h Host
+	if err := res.Decode(&h); err != nil {
+		return nil, errors.Wrap(err, "decoding host")
+	}
+	return &h.Secret, nil
 }
 
 func (h *Host) SetBillingStartTime(ctx context.Context, startTime time.Time) error {
