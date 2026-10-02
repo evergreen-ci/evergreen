@@ -426,9 +426,23 @@ func TestSourceCachePlanStackedPRsKeyOnDistinctHeads(t *testing.T) {
 	}
 	require.NoError(t, upstackPatch.Insert(t.Context()))
 
-	baseTask := &task.Task{Id: sourceCacheTaskID + "_base", Requester: evergreen.GithubPRRequester, Version: baseVersionID, Revision: baseHead}
-	upstackTask := &task.Task{Id: sourceCacheTaskID + "_up", Requester: evergreen.GithubPRRequester, Version: upstackVersionID, Revision: upstackHead}
-	pRef := &model.ProjectRef{Id: sourceCacheProjectID, Owner: "some-org", Repo: "some-repo"}
+	baseTask := &task.Task{
+		Id:        sourceCacheTaskID + "_base",
+		Requester: evergreen.GithubPRRequester,
+		Version:   baseVersionID,
+		Revision:  baseHead,
+	}
+	upstackTask := &task.Task{
+		Id:        sourceCacheTaskID + "_up",
+		Requester: evergreen.GithubPRRequester,
+		Version:   upstackVersionID,
+		Revision:  upstackHead,
+	}
+	pRef := &model.ProjectRef{
+		Id:    sourceCacheProjectID,
+		Owner: "some-org",
+		Repo:  "some-repo",
+	}
 	req := apimodels.SourceCacheCredentialsRequest{Branch: "main", CloneDepth: 1000}
 
 	basePlan, err := buildSourceCachePlan(t.Context(), baseTask, pRef, req)
@@ -463,8 +477,17 @@ func TestSourceCachePlanParentCheckoutKeysOnTheParentHead(t *testing.T) {
 	}
 	require.NoError(t, upstackPatch.Insert(t.Context()))
 
-	tsk := &task.Task{Id: sourceCacheTaskID + "_up", Requester: evergreen.GithubPRRequester, Version: upstackVersionID, Revision: upstackHead}
-	pRef := &model.ProjectRef{Id: sourceCacheProjectID, Owner: "some-org", Repo: "some-repo"}
+	tsk := &task.Task{
+		Id:        sourceCacheTaskID + "_up",
+		Requester: evergreen.GithubPRRequester,
+		Version:   upstackVersionID,
+		Revision:  upstackHead,
+	}
+	pRef := &model.ProjectRef{
+		Id:    sourceCacheProjectID,
+		Owner: "some-org",
+		Repo:  "some-repo",
+	}
 
 	plan, err := buildSourceCachePlan(t.Context(), tsk, pRef, apimodels.SourceCacheCredentialsRequest{Branch: "main", CloneDepth: 1000})
 	require.NoError(t, err)
