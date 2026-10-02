@@ -1218,7 +1218,12 @@ func checkChildPatchTasksAccess(ctx context.Context, versionID string, tasks []t
 			continue
 		}
 		if err := checkProjectAccess(ctx, t.Project, permission, access); err != nil {
-			return err
+			projectName := t.Project
+			if identifier, identifierErr := model.GetIdentifierForProject(ctx, t.Project); identifierErr == nil && identifier != "" {
+				projectName = identifier
+			}
+			_, permissionInfo, _ := getProjectPermissionLevel(permission, access)
+			return Forbidden.Send(ctx, fmt.Sprintf("task '%s' belongs to a child patch in project '%s', which requires '%s' permission on that project", t.Id, projectName, strings.ToLower(permissionInfo.Description)))
 		}
 		checkedProjects[t.Project] = true
 	}
