@@ -1363,6 +1363,8 @@ There will also be a log in the Agent logs that looks similar to the following:
 
 You can enable process logging by setting the `ps` field at multiple configuration levels. The specified command will run every 60 seconds during task execution to log process information.
 
+When a task runs in an isolation container, the `ps` command runs inside the task's container rather than on the host, since its value is task author-controlled. Diagnostics such as `uptime` and `df` continue to run on the host.
+
 To disable process logging, either omit the `ps` field or set it to an empty string.
 
 The `ps` field follows a priority order (from highest to lowest):
