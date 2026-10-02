@@ -93,13 +93,9 @@ func hostProvision() cli.Command {
 			if setupSecret := c.String(hostSetupSecretFlagName); setupSecret != "" {
 				exchanged, err := comm.ExchangeSetupSecret(ctx, setupSecret)
 				if err != nil {
-					grip.Warning(ctx, message.WrapError(err, message.Fields{
-						"message": "falling back to the host secret because the setup secret exchange failed",
-						"host_id": hostID,
-					}))
-				} else {
-					hostSecret = exchanged
+					return errors.Wrap(err, "exchanging setup secret for host secret")
 				}
+				hostSecret = exchanged
 			}
 			comm.SetHostSecret(hostSecret)
 

@@ -170,20 +170,16 @@ func Agent() cli.Command {
 			if setupSecret := c.String(agentHostSetupSecretFlagName); setupSecret != "" {
 				comm, err := client.NewCommunicator(c.String(agentAPIServerURLFlagName))
 				if err != nil {
-					return errors.Wrap(err, "initializing client")
+					return errors.Wrap(err, "initializing client to retrieve host secret")
 				}
 				defer comm.Close()
 				comm.SetHostID(hostID)
 
 				exchanged, err := comm.ExchangeSetupSecret(ctx, setupSecret)
 				if err != nil {
-					grip.Warning(ctx, message.WrapError(err, message.Fields{
-						"message": "falling back to the host secret because the setup secret exchange failed",
-						"host_id": hostID,
-					}))
-				} else {
-					hostSecret = exchanged
+					return errors.Wrap(err, "exchanging setup secret for host secret")
 				}
+				hostSecret = exchanged
 			}
 
 			opts := agent.Options{
