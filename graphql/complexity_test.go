@@ -55,15 +55,12 @@ func TestComplexity(t *testing.T) {
 		score := calculate(t, taskTestsQuery, map[string]any{"limitNum": 1})
 		assert.Greater(t, score, 2*testResultsFetchComplexity)
 	})
-	t.Run("TaskTestsScalesWithLimit", func(t *testing.T) {
+	t.Run("TaskTestsDoesNotScaleWithLimit", func(t *testing.T) {
+		unbounded := calculate(t, taskTestsQuery, map[string]any{"limitNum": nil})
 		small := calculate(t, taskTestsQuery, map[string]any{"limitNum": 10})
 		large := calculate(t, taskTestsQuery, map[string]any{"limitNum": 100})
-		assert.Greater(t, large, small)
-	})
-	t.Run("TaskTestsWithoutLimitScoresAsUnbounded", func(t *testing.T) {
-		unbounded := calculate(t, taskTestsQuery, map[string]any{"limitNum": nil})
-		bounded := calculate(t, taskTestsQuery, map[string]any{"limitNum": defaultTestResultsCount})
-		assert.Equal(t, bounded, unbounded)
+		assert.Equal(t, small, large)
+		assert.Equal(t, unbounded, large)
 	})
 	t.Run("TaskTestsWithoutOptsExcludesBaseTaskFetch", func(t *testing.T) {
 		withoutOpts := calculate(t, taskTestsNoOptsQuery, nil)
