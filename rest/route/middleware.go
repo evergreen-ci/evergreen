@@ -308,6 +308,40 @@ func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 	next(rw, r)
 }
 
+type hostSetupSecretAuthMiddleware struct{}
+
+// NewHostSetupSecretAuthMiddleware returns a route middleware that verifies the
+// request's host ID and setup secret.
+func NewHostSetupSecretAuthMiddleware() gimlet.Middleware {
+	return &hostSetupSecretAuthMiddleware{}
+}
+
+func (m *hostSetupSecretAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	hostID, ok := gimlet.GetVars(r)["host_id"]
+	if !ok {
+		hostID = r.Header.Get(evergreen.HostHeader)
+		if hostID == "" {
+			gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusUnauthorized,
+				Message:    "missing host ID",
+			}))
+			return
+		}
+	}
+	h, statusCode, err := model.ValidateHostSetupSecret(hostID, r)
+	if err != nil {
+		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: statusCode,
+			Message:    errors.Wrapf(err, "invalid host '%s'", hostID).Error(),
+		}))
+		return
+	}
+	r = r.WithContext(context.WithValue(r.Context(), model.ApiHostKey, h))
+
+	updateHostAccessTime(r.Context(), h)
+	next(rw, r)
+}
+
 type alertmanagerMiddleware struct{}
 
 // NewAlertmanagerMiddleware returns a middleware that verifies the request

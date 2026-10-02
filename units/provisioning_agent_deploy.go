@@ -194,11 +194,8 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 		"job":     j.ID(),
 	})
 
-	// generate the host secret if none exists
-	if j.host.Secret == "" {
-		if err := j.host.CreateSecret(ctx, false); err != nil {
-			return errors.Wrapf(err, "creating secret for host '%s'", j.host.Id)
-		}
+	if err := j.host.EnsureSecrets(ctx); err != nil {
+		return errors.Wrapf(err, "creating secrets for host '%s'", j.host.Id)
 	}
 
 	// Start agent to listen for tasks
