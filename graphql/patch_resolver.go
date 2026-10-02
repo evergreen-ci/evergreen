@@ -52,6 +52,10 @@ func (r *patchResolver) ChildPatches(ctx context.Context, obj *patch.Patch) ([]*
 		if p == nil {
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("child patch '%s' not found", pId))
 		}
+		// Only include child patches whose project the caller has permission to view.
+		if err := checkProjectAccess(ctx, p.Project, ProjectPermissionTasks, AccessLevelView); err != nil {
+			continue
+		}
 		result = append(result, p)
 	}
 	return result, nil
@@ -281,6 +285,9 @@ func (r *patchResolver) VariantsTasks(ctx context.Context, obj *patch.Patch) ([]
 
 // Version is the resolver for the version field.
 func (r *patchResolver) Version(ctx context.Context, obj *patch.Patch) (*model.Version, error) {
+	if err := checkProjectAccess(ctx, obj.Project, ProjectPermissionTasks, AccessLevelView); err != nil {
+		return nil, err
+	}
 	versionID := obj.Version
 	if versionID == "" {
 		return nil, nil
