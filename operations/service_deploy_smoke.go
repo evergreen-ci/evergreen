@@ -61,8 +61,8 @@ func smokeStartEvergreen() cli.Command {
 		agentMonitorFlagName = "monitor"
 		distroIDFlagName     = "distro"
 		apiServerURLFlagName = "api_server"
-		hostIDFlagName        = "host_id"
-		setupSecretFlagName   = "setup_secret"
+		hostIDFlagName       = "host_id"
+		setupSecretFlagName  = "setup_secret"
 		statusPort           = "2287"
 		monitorPort          = 2288
 		jasperPort           = 2289
