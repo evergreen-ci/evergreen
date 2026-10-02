@@ -16,11 +16,9 @@ For more information, ask in the `#ask-cloud-tagging` Slack channel.
 
 Evergreen tags EC2 instances and their launch-time EBS volumes, including root volumes, and separately created EBS volumes.
 
-| Resource                             | Default `mongodb-owner`     |
-| ------------------------------------ | --------------------------- |
-| CI hosts and hosts spawned by tasks  | The Evergreen team's email.      |
-| Personal spawn hosts and debug hosts | Requesting user's email.    |
-| Launch-time EBS volumes              | Same owner as the instance. |
-| Separately created EBS volumes       | Volume creator's email.     |
+| Default `mongodb-owner`    | Resources                                                                                              |
+| -------------------------- | ------------------------------------------------------------------------------------------------------ |
+| User's email               | Personal spawn hosts, debug hosts, their launch-time EBS volumes, and separately created user volumes. |
+| The Evergreen team's email | CI hosts, hosts spawned by tasks, and their launch-time EBS volumes.                                   |
 
 Evergreen also automatically adds a `mongodb-env` tag to these EC2 instances and EBS volumes.
