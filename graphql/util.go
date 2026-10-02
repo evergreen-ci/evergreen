@@ -1209,6 +1209,22 @@ func checkProjectAccess(ctx context.Context, projectID string, permission Projec
 	return checkProjectPermission(ctx, projectID, requiredPermission, permissionInfo)
 }
 
+// checkChildPatchTasksAccess checks that the user has the given access on the project of every task that belongs
+// to a child patch of the version rather than to the version itself.
+func checkChildPatchTasksAccess(ctx context.Context, versionID string, tasks []task.Task, permission ProjectPermission, access AccessLevel) error {
+	checkedProjects := map[string]bool{}
+	for _, t := range tasks {
+		if t.Version == versionID || checkedProjects[t.Project] {
+			continue
+		}
+		if err := checkProjectAccess(ctx, t.Project, permission, access); err != nil {
+			return err
+		}
+		checkedProjects[t.Project] = true
+	}
+	return nil
+}
+
 func checkProjectPermission(ctx context.Context, projectID string, requiredPermission string, permissionInfo evergreen.PermissionLevel) error {
 	usr := mustHaveUser(ctx)
 	if usr.HasPermission(ctx, gimlet.PermissionOpts{
