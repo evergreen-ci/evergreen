@@ -23,16 +23,14 @@ import (
 type StatsCollector struct {
 	logger client.LoggerProducer
 	jasper jasper.Manager
-	// Cmds are host-level diagnostics whose values are fixed by the agent and
-	// never come from task configuration.
+	// Cmds are agent-fixed host diagnostics, never task-controlled.
 	Cmds []string
-	// PSCmd is the task-configurable process-listing command. Because its
-	// value comes from project configuration or a patch-supplied expansion,
-	// it runs inside the task's isolation container when one exists rather
-	// than on the host.
+	// PSCmd is the task-configurable ps command. It runs inside the task's
+	// isolation container when one exists because its value is
+	// author-controlled.
 	PSCmd string
-	// ContainerID, WorkDir, EnvFileHostDir, and ExecUser describe the task's
-	// isolation container and are used only to run PSCmd inside it.
+	// Container fields locate the task's isolation container, used only to
+	// run PSCmd.
 	ContainerID    string
 	WorkDir        string
 	EnvFileHostDir string
@@ -52,9 +50,8 @@ func NewSimpleStatsCollector(logger client.LoggerProducer, jpm jasper.Manager, i
 	}
 }
 
-// setPSCommand records the task-configurable process-listing command along
-// with the isolation container info needed to run it inside the task's
-// container.
+// setPSCommand records the ps command and the isolation container info
+// needed to run it.
 func (sc *StatsCollector) setPSCommand(psCmd string, conf *internal.TaskConfig) {
 	sc.PSCmd = psCmd
 	if conf == nil {
@@ -120,9 +117,8 @@ func (sc *StatsCollector) logStats(ctx context.Context, exp util.Expansions) {
 	}()
 }
 
-// runCollection runs the host diagnostics and the task-configurable ps
-// command once, then logs the outcome. Both commands continue on error so a
-// failing diagnostic never stops the others.
+// runCollection runs the host diagnostics and the ps command once, then logs
+// the outcome.
 func (sc *StatsCollector) runCollection(ctx context.Context, iters int, runStartedAt, startedAt time.Time) {
 	err := sc.runCommands(ctx, sc.Cmds)
 	sc.logCollectionResult(ctx, err, "host stats collector", iters, runStartedAt, startedAt)
@@ -144,11 +140,8 @@ func (sc *StatsCollector) runCommands(ctx context.Context, cmds []string) error 
 		Run(ctx)
 }
 
-// runPSCommand runs the task-configurable process-listing command. When the
-// task runs in an isolation container, the command is wrapped to execute
-// inside the container so that its author-controlled value can never execute
-// on the host. If the wrapping fails, the command is not run at all; there is
-// deliberately no host-side fallback.
+// runPSCommand runs the ps command inside the task's isolation container
+// when one exists. If the wrapping fails, the command is not run.
 func (sc *StatsCollector) runPSCommand(ctx context.Context) error {
 	return sc.jasper.CreateCommand(ctx).
 		ContinueOnError(true).
@@ -165,25 +158,21 @@ func (sc *StatsCollector) runPSCommand(ctx context.Context) error {
 }
 
 // wrapPSOptions rewrites the process options to run inside the task's
-// isolation container, translating the task's ExecUser to the container's
-// exec user. It is a no-op when the task has no isolation container.
+// isolation container. It is a no-op without a container.
 func (sc *StatsCollector) wrapPSOptions(ctx context.Context, opts *options.Create) error {
 	if sc.ContainerID == "" {
 		return nil
 	}
 	if sc.ExecUser != "" {
 		// Prepend the sudo prefix that WrapWithContainer translates into
-		// `docker exec --user`, matching how task commands drop to ExecUser.
-		// This is coupled to how Jasper builds that prefix and how
-		// WrapWithContainer translates it; see agent/util/container.go.
+		// `docker exec --user`; see agent/util/container.go.
 		opts.Args = append([]string{"sudo", "-u", sc.ExecUser}, opts.Args...)
 	}
 	return agentutil.WrapWithContainer(ctx, opts, sc.ContainerID, sc.WorkDir, sc.EnvFileHostDir)
 }
 
-// logCollectionResult logs the outcome of one stats collection iteration. The
-// error message must never wrap a nil error, since some grip error composers
-// dereference the error without a nil guard.
+// logCollectionResult logs the outcome of one collection iteration. Do not
+// wrap a nil error: some grip composers dereference it.
 func (sc *StatsCollector) logCollectionResult(ctx context.Context, err error, name string, iters int, runStartedAt, startedAt time.Time) {
 	fields := message.Fields{
 		"iterations":        iters,

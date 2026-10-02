@@ -19,9 +19,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// capturingManager wraps a mock jasper manager and records the process
-// options for every created process in a race-safe way, so tests can inspect
-// the argv of processes created by the stats collector goroutine.
+// capturingManager records the options of every created process so the
+// stats collector goroutine can be inspected race-free.
 type capturingManager struct {
 	*mock.Manager
 
@@ -33,10 +32,8 @@ func newCapturingManager() *capturingManager {
 	return &capturingManager{Manager: &mock.Manager{}}
 }
 
-// CreateCommand routes every command's default process constructor through
-// CreateProcess below so its options get captured. Constructors registered
-// later by the caller (e.g. the ps command's container wrapping) take
-// precedence over this one.
+// CreateCommand routes the default process constructor through CreateProcess
+// below so its options get captured.
 func (m *capturingManager) CreateCommand(ctx context.Context) *jasper.Command {
 	cmd := m.Manager.CreateCommand(ctx)
 	cmd.ProcConstructor(func(ctx context.Context, opts *options.Create) (jasper.Process, error) {
@@ -60,9 +57,8 @@ func (m *capturingManager) snapshot() []*options.Create {
 	return slices.Clone(m.opts)
 }
 
-// makeStatsTestLogger returns a LoggerProducer whose senders render messages
-// eagerly, reproducing the conditions under which wrapping a nil error in a
-// grip error composer panics.
+// makeStatsTestLogger returns a logger whose senders render messages eagerly,
+// so wrapping a nil error panics.
 func makeStatsTestLogger(t *testing.T) client.LoggerProducer {
 	t.Helper()
 	comm := client.NewMock("")
@@ -102,9 +98,7 @@ func TestStatsCollectorPSCommandRunsInsideContainer(t *testing.T) {
 	assert.Equal(t, []string{"docker", "exec", "-i", "--workdir=/task/workdir", "--user=task-user", "container-id"}, psProc.Args[:6])
 	assert.Equal(t, []string{"sh", "-c", "id > /tmp/proof"}, psProc.Args[len(psProc.Args)-3:])
 
-	// The author-controlled payload must never be handed to the host manager
-	// unwrapped: the only processes that may run outside the container are
-	// the agent-fixed host diagnostics.
+	// The payload must never be handed to the host manager unwrapped.
 	for _, opts := range allProcs {
 		switch opts.Args[0] {
 		case "docker", "uptime", "df":
@@ -137,8 +131,6 @@ func TestStatsCollectorNoContainerRunsPSOnHost(t *testing.T) {
 		}, 10*time.Second, 10*time.Millisecond)
 
 		require.Len(t, psProcs, 1)
-		// Without a container, the ps command runs as the agent user with no
-		// wrapping or sudo prefix, preserving historical behavior.
 		assert.Equal(t, []string{"ps", "-o", "pid"}, psProcs[0].Args)
 	}
 }
@@ -161,8 +153,6 @@ func TestStatsCollectorHostCommandsStayOnHost(t *testing.T) {
 	assert.Eventually(t, func() bool {
 		for _, opts := range jpm.snapshot() {
 			if len(opts.Args) > 0 && opts.Args[0] == "df" {
-				// Host diagnostics are agent-fixed values and are never
-				// wrapped into the container.
 				assert.Equal(t, []string{"df", "-h"}, opts.Args)
 				return true
 			}
@@ -181,8 +171,7 @@ func TestStatsCollectorSuccessfulRunsDoNotKillCollector(t *testing.T) {
 	collector.setPSCommand("ps -o pid", conf)
 	collector.logStats(t.Context(), util.Expansions{})
 
-	// A successful collection must not panic the collector goroutine, so
-	// iterations continue and processes keep getting created.
+	// A successful run must not panic the collector goroutine.
 	assert.Eventually(t, func() bool {
 		return len(jpm.snapshot()) >= 3
 	}, 10*time.Second, 50*time.Millisecond, "expected the collector to keep running across iterations")
