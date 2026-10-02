@@ -62,7 +62,7 @@ func TestComplexity(t *testing.T) {
 	})
 	t.Run("TaskTestsWithoutLimitScoresAsUnbounded", func(t *testing.T) {
 		unbounded := calculate(t, taskTestsQuery, map[string]any{"limitNum": nil})
-		bounded := calculate(t, taskTestsQuery, map[string]any{"limitNum": unboundedTestResultsCount})
+		bounded := calculate(t, taskTestsQuery, map[string]any{"limitNum": defaultTestResultsCount})
 		assert.Equal(t, bounded, unbounded)
 	})
 	t.Run("TaskTestsWithoutOptsExcludesBaseTaskFetch", func(t *testing.T) {
