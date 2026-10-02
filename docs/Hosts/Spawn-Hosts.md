@@ -40,10 +40,6 @@ Only distros backed by a provider that supports dynamically spinning up new host
 
 Navigate to the [spawn hosts page](https://spruce.corp.mongodb.com/spawn/host) and select the "Spawn a host" button.
 
-Evergreen automatically adds cloud ownership and environment tags to EC2 spawn hosts and their launch-time EBS volumes.
-See [Cloud Resource Tagging](../Reference/Cloud-Resource-Tagging.md) for owner selection, environment defaults, and coverage
-of separately created volumes.
-
 ## Spawning a Host From a Task
 
 Alternately, for a task that ran on a distro where spawning is enabled, you will see a "Spawn..." or "Spawn Host" link on its task page.
@@ -59,6 +55,31 @@ Artifacts are placed in /data/mci.
 If your project has [a project setup script defined at the admin level](../Project-Configuration/Project-And-Distro-Settings.md#spawn-host-script-path), you can also check "Use project-specific setup script defined at ..." before creating the spawn host to run that script when the host starts up. You can check if there are errors fetching artifacts or running this script on the host page: `https://spruce.corp.mongodb.com/host/<host_id>`.
 
 EC2 spawn hosts can be stopped/started and modified from the Spawn Host page, or via the command line, which is documented in [Basic Host Usage](../CLI#basic-host-usage) in the Evergreen command line tool documentation.
+
+## Cloud Resource Tagging
+
+The [MongoDB Cloud Tenant Tag Policy](https://wiki.corp.mongodb.com/spaces/SEC/pages/560370899/Cloud+Tag+Policy)
+is the authoritative source for requirements and exceptions. This section summarizes Evergreen's AWS tagging behavior.
+
+For more information, ask in the `#ask-cloud-tagging` Slack channel.
+
+### Required Corporate Tags
+
+| Tag             | Required value                                                                              |
+| --------------- | ------------------------------------------------------------------------------------------- |
+| `mongodb-owner` | A reachable individual or team email address ending in `@mongodb.com`.                      |
+| `mongodb-env`   | One of `dev`, `qa`, `test`, `local`, `poc`, `demo`, `uat`, `sandbox`, `staging`, or `prod`. |
+
+### Automatic AWS Tagging
+
+Evergreen tags EC2 instances and their launch-time EBS volumes, including root volumes, and separately created EBS volumes.
+
+| Default `mongodb-owner`    | Resources                                                                                              |
+| -------------------------- | ------------------------------------------------------------------------------------------------------ |
+| User's email               | Personal spawn hosts, debug hosts, their launch-time EBS volumes, and separately created user volumes. |
+| The Evergreen team's email | CI hosts, hosts spawned by tasks, and their launch-time EBS volumes.                                   |
+
+Evergreen also automatically adds a `mongodb-env` tag to these EC2 instances and EBS volumes.
 
 ## Evergreen CLI on a spawn host
 
