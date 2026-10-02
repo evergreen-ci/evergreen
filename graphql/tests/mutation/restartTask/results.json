@@ -68,6 +68,27 @@
           }
         ]
       }
+    },
+    {
+      "query_file": "success_execution_task_ids.graphql",
+      "result": {
+        "data": {
+          "restartTask": {
+            "id": "task4",
+            "displayStatus": "will-run",
+            "executionTasksFull": [
+              {
+                "id": "execution_task_3",
+                "displayStatus": "failed"
+              },
+              {
+                "id": "execution_task_4",
+                "displayStatus": "will-run"
+              }
+            ]
+          }
+        }
+      }
     }
   ]
 }

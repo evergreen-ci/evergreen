@@ -3392,6 +3392,161 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 	verifyTasksState()
 }
 
+func TestArchiveScopedExecutionTasks(t *testing.T) {
+	ctx := t.Context()
+
+	require.NoError(t, db.ClearCollections(Collection, OldCollection))
+
+	et1 := Task{
+		Id:                    "et1",
+		Status:                evergreen.TaskFailed,
+		Execution:             0,
+		LatestParentExecution: 0,
+		Version:               "v",
+	}
+	require.NoError(t, et1.Insert(ctx))
+	et2 := Task{
+		Id:                    "et2",
+		Status:                evergreen.TaskSucceeded,
+		Execution:             0,
+		LatestParentExecution: 0,
+		Version:               "v",
+	}
+	require.NoError(t, et2.Insert(ctx))
+	dt := Task{
+		Id:                      "dt",
+		Status:                  evergreen.TaskFailed,
+		DisplayOnly:             true,
+		ExecutionTasks:          []string{et1.Id, et2.Id},
+		ExecutionTasksToRestart: []string{et2.Id},
+		Execution:               0,
+		Version:                 "v",
+	}
+	require.NoError(t, dt.Insert(ctx))
+
+	require.NoError(t, dt.Archive(ctx))
+
+	dbDT, err := FindOneId(ctx, dt.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbDT)
+	assert.Equal(t, 1, dbDT.Execution, "display task should be archived to a new execution")
+
+	// Only the scoped execution task should be archived to a new execution,
+	// even though it succeeded.
+	dbET2, err := FindOneIdAndExecution(ctx, et2.Id, 1)
+	require.NoError(t, err)
+	require.NotNil(t, dbET2)
+	assert.Equal(t, 1, dbET2.LatestParentExecution, "scoped execution task's latest parent execution should track the display task")
+	assert.True(t, dbET2.CanReset, "scoped execution task should be markable for reset")
+
+	dbET1, err := FindOneIdAndExecution(ctx, et1.Id, 0)
+	require.NoError(t, err)
+	require.NotNil(t, dbET1)
+	assert.Equal(t, 0, dbET1.Execution, "execution task not in the scoped set should not be restarted")
+	assert.Equal(t, 1, dbET1.LatestParentExecution, "execution task not in the scoped set should still track the display task's latest execution")
+
+	archivedET2, err := FindOneOldId(ctx, MakeOldID(et2.Id, 0))
+	require.NoError(t, err)
+	assert.NotNil(t, archivedET2, "scoped execution task should be archived")
+
+	archivedET1, err := FindOneOldId(ctx, MakeOldID(et1.Id, 0))
+	require.NoError(t, err)
+	assert.Nil(t, archivedET1, "execution task not in the scoped set should not be archived")
+}
+
+func TestSetResetExecutionTasksWhenFinishedMerges(t *testing.T) {
+	ctx := t.Context()
+
+	require.NoError(t, db.Clear(Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.Clear(Collection))
+	})
+
+	execTaskIDs := []string{"et1", "et2", "et3", "et4", "et5"}
+	dt := Task{
+		Id:             "dt",
+		DisplayOnly:    true,
+		ExecutionTasks: execTaskIDs,
+	}
+	require.NoError(t, dt.Insert(ctx))
+
+	// Separate requests for each execution task should be merged into a single
+	// pending reset rather than overwriting each other.
+	for _, id := range execTaskIDs {
+		require.NoError(t, dt.SetResetExecutionTasksWhenFinished(ctx, "caller", "", []string{id}))
+	}
+	// Re-adding an already-pending execution task should not duplicate it.
+	require.NoError(t, dt.SetResetExecutionTasksWhenFinished(ctx, "caller", "", []string{"et1"}))
+
+	dbDT, err := FindOneId(ctx, dt.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbDT)
+	assert.True(t, dbDT.ResetWhenFinished)
+	assert.False(t, dbDT.ResetFailedWhenFinished)
+	assert.ElementsMatch(t, execTaskIDs, dbDT.ExecutionTasksToRestart)
+
+	// A full or failed-only reset should clear any pending scoped set.
+	require.NoError(t, dbDT.SetResetWhenFinished(ctx, "caller", ""))
+	dbDT, err = FindOneId(ctx, dt.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbDT)
+	assert.Empty(t, dbDT.ExecutionTasksToRestart)
+
+	require.NoError(t, dbDT.SetResetExecutionTasksWhenFinished(ctx, "caller", "", execTaskIDs))
+	require.NoError(t, dbDT.SetResetFailedWhenFinished(ctx, "caller", ""))
+	dbDT, err = FindOneId(ctx, dt.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbDT)
+	assert.Empty(t, dbDT.ExecutionTasksToRestart)
+	assert.True(t, dbDT.ResetFailedWhenFinished)
+}
+
+func TestFindExecTasksToReset(t *testing.T) {
+	ctx := t.Context()
+
+	defer func() {
+		require.NoError(t, db.Clear(Collection))
+	}()
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, dt *Task){
+		"ReturnsAllExecutionTasksForFullRestart": func(ctx context.Context, t *testing.T, dt *Task) {
+			ids, err := FindExecTasksToReset(ctx, dt)
+			require.NoError(t, err)
+			assert.ElementsMatch(t, []string{"et1", "et2", "et3"}, ids)
+		},
+		"ReturnsOnlyScopedExecutionTasks": func(ctx context.Context, t *testing.T, dt *Task) {
+			dt.ExecutionTasksToRestart = []string{"et1", "et3"}
+			ids, err := FindExecTasksToReset(ctx, dt)
+			require.NoError(t, err)
+			assert.ElementsMatch(t, []string{"et1", "et3"}, ids)
+		},
+		"ScopedExecutionTasksExcludeTasksNotInDisplayTask": func(ctx context.Context, t *testing.T, dt *Task) {
+			dt.ExecutionTasksToRestart = []string{"et1", "missing"}
+			ids, err := FindExecTasksToReset(ctx, dt)
+			require.NoError(t, err)
+			assert.Equal(t, []string{"et1"}, ids)
+		},
+		"ReturnsOnlyFailedExecutionTasksWhenFailedOnly": func(ctx context.Context, t *testing.T, dt *Task) {
+			dt.ResetFailedWhenFinished = true
+			ids, err := FindExecTasksToReset(ctx, dt)
+			require.NoError(t, err)
+			assert.Equal(t, []string{"et2"}, ids)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			require.NoError(t, db.InsertMany(ctx, Collection,
+				Task{Id: "et1", Status: evergreen.TaskSucceeded, DisplayTaskId: utility.ToStringPtr("dt")},
+				Task{Id: "et2", Status: evergreen.TaskFailed, DisplayTaskId: utility.ToStringPtr("dt")},
+				Task{Id: "et3", Status: evergreen.TaskSucceeded, DisplayTaskId: utility.ToStringPtr("dt")},
+			))
+			dt := &Task{Id: "dt", DisplayOnly: true, ExecutionTasks: []string{"et1", "et2", "et3"}}
+			require.NoError(t, dt.Insert(ctx))
+			tCase(ctx, t, dt)
+		})
+	}
+}
+
 func TestAddParentDisplayTasks(t *testing.T) {
 	ctx := t.Context()
 
