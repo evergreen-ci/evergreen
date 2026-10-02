@@ -17,10 +17,6 @@ Cost information is shown on the task, version, and patch pages in the Evergreen
 
 Once all tasks have finished, the full cost breakdown becomes available on each page, including a link to Honeycomb for a more detailed per-component view. Cost data is also available via the REST API. See [How can I view cost data via the REST API?](#how-can-i-view-cost-data-via-the-rest-api).
 
-For corporate cloud ownership and cost attribution tags, see
-[Cloud Resource Tagging](../Hosts/Spawn-Hosts.md#cloud-resource-tagging). Those tags are separate from the task-level cost
-calculations described here.
-
 ## What cost fields does Evergreen track?
 
 Cost is tracked at the task level and rolls up to the version and patch level as tasks finish.
