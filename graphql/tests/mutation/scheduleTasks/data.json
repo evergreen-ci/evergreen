@@ -180,6 +180,11 @@
       "_id": "evergreen",
       "identifier": "evergreen",
       "display_name": "Evergreen"
+    },
+    {
+      "_id": "spruce",
+      "identifier": "spruce",
+      "display_name": "Spruce"
     }
   ]
 }
