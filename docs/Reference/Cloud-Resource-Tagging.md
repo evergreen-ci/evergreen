@@ -33,7 +33,7 @@ Evergreen tags EC2 instances and their launch-time EBS volumes, including root v
 
 | Resource                             | Default `mongodb-owner`     |
 | ------------------------------------ | --------------------------- |
-| CI hosts and hosts spawned by tasks  | Configured team email.      |
+| CI hosts and hosts spawned by tasks  | The Evergreen team's email.      |
 | Personal spawn hosts and debug hosts | Requesting user's email.    |
 | Launch-time EBS volumes              | Same owner as the instance. |
 | Separately created EBS volumes       | Volume creator's email.     |
