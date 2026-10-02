@@ -40,6 +40,10 @@ Only distros backed by a provider that supports dynamically spinning up new host
 
 Navigate to the [spawn hosts page](https://spruce.corp.mongodb.com/spawn/host) and select the "Spawn a host" button.
 
+Evergreen automatically adds cloud ownership and environment tags to EC2 spawn hosts and their launch-time EBS volumes.
+See [Cloud Resource Tagging](../Reference/Cloud-Resource-Tagging.md) for owner selection, environment defaults, and coverage
+of separately created volumes.
+
 ## Spawning a Host From a Task
 
 Alternately, for a task that ran on a distro where spawning is enabled, you will see a "Spawn..." or "Spawn Host" link on its task page.
