@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"path/filepath"
 	"regexp"
 	"runtime/debug"
 	"slices"
@@ -141,6 +142,7 @@ var projectErrorValidators = []projectValidator{
 	validateDuplicateBVTasks,
 	validateGenerateTasks,
 	validateModuleCloneDepths,
+	checkModulePrefixes,
 }
 
 // Functions used to validate the syntax of project configs representing properties found on the project page.
@@ -1254,10 +1256,37 @@ func checkModules(project *model.Project) ValidationErrors {
 				Message: fmt.Sprintf("module '%s' should have a set repo", module.Name),
 			})
 		}
-
 	}
 
 	return errs
+}
+
+// checkModulePrefixes rejects module prefixes that could escape the source
+// destination directory when a patch is fetched locally.
+func checkModulePrefixes(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
+	for _, module := range project.Modules {
+		if hasPathTraversal(module.Prefix) {
+			errs = append(errs, ValidationError{
+				Level:   Error,
+				Message: fmt.Sprintf("module '%s' prefix '%s' cannot be absolute or contain '..'", module.Name, module.Prefix),
+			})
+		}
+	}
+	return errs
+}
+
+// hasPathTraversal returns true for prefixes that are absolute paths or
+// contain a ".." component, since either could resolve outside the directory
+// a user fetches source into.
+func hasPathTraversal(prefix string) bool {
+	if filepath.IsAbs(prefix) {
+		return true
+	}
+	components := strings.FieldsFunc(prefix, func(r rune) bool {
+		return r == '/' || r == '\\'
+	})
+	return slices.Contains(components, "..")
 }
 
 // Ensures there aren't any duplicate buildvariant names specified in the given
