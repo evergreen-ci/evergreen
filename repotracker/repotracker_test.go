@@ -1340,9 +1340,11 @@ tasks:
 	s.Empty(tasks)
 }
 
-// A write failure after the version insert must abort the whole transaction: a
-// partially-created version (version doc persisted, tasks missing) can never be
-// recovered by the retry loop, which fails on the duplicate version id.
+// The inserts and updates that make up version creation should logically happen
+// as one atomic operation. This verifies that: a write failure partway through
+// must abort the whole transaction, since a partially-created version (version
+// doc persisted, tasks missing) can never be recovered by the retry loop, which
+// fails on the duplicate version id.
 func (s *CreateVersionFromConfigSuite) TestTransactionRollsBackPartialVersionCreation() {
 	configYml := `
 buildvariants:
@@ -1382,7 +1384,7 @@ patch_aliases:
 
 	// None of the version's documents may persist: the failed config insert aborts the
 	// version and build writes too.
-	count, err := db.Count(s.ctx, model.VersionCollection, bson.M{"_id": versionId})
+	count, err := db.Count(s.ctx, model.VersionCollection, bson.M{model.VersionIdKey: versionId})
 	s.NoError(err)
 	s.Zero(count, "version doc should be rolled back")
 	count, err = db.Count(s.ctx, build.Collection, bson.M{build.VersionKey: versionId})
