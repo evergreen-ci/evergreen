@@ -23,4 +23,4 @@ Evergreen tags EC2 instances and their launch-time EBS volumes, including root v
 | Launch-time EBS volumes              | Same owner as the instance. |
 | Separately created EBS volumes       | Volume creator's email.     |
 
-All these resources default to the configured `mongodb-env`, including personal spawn hosts.
+Evergreen also automatically adds a `mongodb-env` tag to these EC2 instances and EBS volumes.
