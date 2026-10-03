@@ -176,7 +176,8 @@ func (g *GithubAppAuth) createInstallationTokenForID(ctx context.Context, instal
 	))
 	defer span.End()
 
-	client, err := getGitHubClientForAuth(g)
+	// GitHub has been observed to transiently return 422 when creating installation tokens.
+	client, err := getGitHubClientForAuth(g, retryConfig{retry422: true})
 	if err != nil {
 		return nil, errors.Wrap(err, "getting GitHub client for token creation")
 	}
