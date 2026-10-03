@@ -79,16 +79,24 @@ func TestSelectTestsSetsTimeout(t *testing.T) {
 	for _, test := range []struct {
 		name             string
 		tests            []string
+		displayTaskName  string
 		expectedEndpoint string
 	}{
 		{
 			name:             "ExplicitTestsShouldSetTimeout",
 			tests:            []string{"test"},
+			displayTaskName:  "display/task",
 			expectedEndpoint: SelectTestsEndpoint,
 		},
 		{
 			name:             "AllKnownTestsShouldSetTimeout",
+			displayTaskName:  "display/task",
 			expectedEndpoint: SelectKnownTestsEndpoint,
+		},
+		{
+			name:             "NoDisplayTaskNameShouldOmitQueryParameter",
+			tests:            []string{"test"},
+			expectedEndpoint: SelectTestsEndpoint,
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -96,6 +104,7 @@ func TestSelectTestsSetsTimeout(t *testing.T) {
 			setTSSURLForTest(t, "http://tss.example.com")
 			startAt := time.Now()
 			var capturedPath string
+			var capturedDisplayTaskName string
 			var capturedBody struct {
 				ProjectID        string `json:"project_id"`
 				BuildVariantName string `json:"build_variant_name"`
@@ -109,6 +118,7 @@ func TestSelectTestsSetsTimeout(t *testing.T) {
 					require.True(t, ok)
 					assert.WithinDuration(t, startAt.Add(testSelectionSelectTimeout), deadline, time.Second)
 					capturedPath = req.URL.Path
+					capturedDisplayTaskName = req.URL.Query().Get("display_task_name")
 					require.NoError(t, json.NewDecoder(req.Body).Decode(&capturedBody))
 					return nil, context.DeadlineExceeded
 				}),
@@ -118,17 +128,19 @@ func TestSelectTestsSetsTimeout(t *testing.T) {
 			})
 
 			selectedTests, err := SelectTests(t.Context(), model.SelectTestsRequest{
-				Project:      "project/name",
-				Requester:    evergreen.PatchVersionRequester,
-				BuildVariant: "build/variant",
-				TaskID:       "task_id",
-				TaskName:     "task/name",
-				Tests:        test.tests,
+				Project:         "project/name",
+				Requester:       evergreen.PatchVersionRequester,
+				BuildVariant:    "build/variant",
+				TaskID:          "task_id",
+				TaskName:        "task/name",
+				DisplayTaskName: test.displayTaskName,
+				Tests:           test.tests,
 			})
 			require.Error(t, err)
 			assert.ErrorIs(t, err, context.DeadlineExceeded)
 			assert.Empty(t, selectedTests)
 			assert.Equal(t, "/api/test_selection/"+test.expectedEndpoint+"/", capturedPath)
+			assert.Equal(t, test.displayTaskName, capturedDisplayTaskName)
 			assert.Equal(t, "project/name", capturedBody.ProjectID)
 			assert.Equal(t, "build/variant", capturedBody.BuildVariantName)
 			assert.Equal(t, "task_id", capturedBody.TaskID)

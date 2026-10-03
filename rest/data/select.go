@@ -114,13 +114,42 @@ func newTestSelectionClient(c *http.Client) *testselection.APIClient {
 	return testselection.NewAPIClient(conf)
 }
 
+// httpClientWithDisplayTaskName returns the shared test selection HTTP client,
+// wrapped to send the display task name as a query parameter when one is set.
+func httpClientWithDisplayTaskName(displayTaskName string) *http.Client {
+	if displayTaskName == "" {
+		return testSelectionHTTPClient
+	}
+	return &http.Client{
+		Transport: displayTaskNameTransport{
+			RoundTripper:    testSelectionHTTPClient.Transport,
+			displayTaskName: displayTaskName,
+		},
+	}
+}
+
+// displayTaskNameTransport appends the display task name query parameter to
+// test selection requests.
+type displayTaskNameTransport struct {
+	http.RoundTripper
+	displayTaskName string
+}
+
+func (t displayTaskNameTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req = req.Clone(req.Context())
+	query := req.URL.Query()
+	query.Set("display_task_name", t.displayTaskName)
+	req.URL.RawQuery = query.Encode()
+	return t.RoundTripper.RoundTrip(req)
+}
+
 // SelectTests uses the test selection service to return a filtered set of tests
 // to run based on the provided SelectTestsRequest. It returns the list of
 // selected tests.
 func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, error) {
 	ctx, cancel := context.WithTimeout(ctx, testSelectionSelectTimeout)
 	defer cancel()
-	c := newTestSelectionClient(testSelectionHTTPClient)
+	c := newTestSelectionClient(httpClientWithDisplayTaskName(req.DisplayTaskName))
 	var strategies []testselection.StrategyEnum
 	for _, s := range req.Strategies {
 		strategies = append(strategies, testselection.StrategyEnum(s))
@@ -165,14 +194,15 @@ func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, e
 	}
 	if err != nil {
 		logTSSError(ctx, err, resp, time.Since(startAt), message.Fields{
-			"message":       "error selecting tests",
-			"endpoint":      endpoint,
-			"project_id":    req.Project,
-			"requester":     req.Requester,
-			"build_variant": req.BuildVariant,
-			"task_id":       req.TaskID,
-			"task_name":     req.TaskName,
-			"test_count":    len(req.Tests),
+			"message":           "error selecting tests",
+			"endpoint":          endpoint,
+			"project_id":        req.Project,
+			"requester":         req.Requester,
+			"build_variant":     req.BuildVariant,
+			"task_id":           req.TaskID,
+			"task_name":         req.TaskName,
+			"display_task_name": req.DisplayTaskName,
+			"test_count":        len(req.Tests),
 		})
 		return nil, wrapTSSError(err)
 	}

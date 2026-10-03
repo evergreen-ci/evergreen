@@ -9,6 +9,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -129,6 +130,16 @@ func TestTestSelectionGet(t *testing.T) {
 			assert.Equal(t, conf.Task.Id, comm.SelectTestsRequest.TaskID)
 			assert.Equal(t, conf.Task.DisplayName, comm.SelectTestsRequest.TaskName)
 			assert.Equal(t, []string{"test1", "test3"}, comm.SelectTestsRequest.Tests)
+			assert.Empty(t, comm.SelectTestsRequest.DisplayTaskName)
+		},
+		"PassesDisplayTaskNameWhenTaskHasDisplayTask": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
+			cmd := &testSelectionGet{OutputFile: "test.json", Tests: []string{"test1"}}
+
+			conf.DisplayTaskInfo = &apimodels.DisplayTaskInfo{ID: "display_task_id", Name: "display_task"}
+			require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
+
+			assert.True(t, comm.SelectTestsCalled)
+			assert.Equal(t, "display_task", comm.SelectTestsRequest.DisplayTaskName)
 		},
 		"PassesTestsToAPI": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
 			cmd := &testSelectionGet{OutputFile: "test.json", Tests: []string{"test1", "test3"}}
