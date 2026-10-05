@@ -1263,6 +1263,8 @@ func (m *ec2Manager) makeVolumeResourceTags(ctx context.Context, volume *host.Vo
 			fallbackReason = "creator_not_found"
 		} else if creator.Email() == "" {
 			fallbackReason = "email_missing"
+		} else if evergreen.ValidateMongoDBEmail(creator.Email()) != nil {
+			fallbackReason = "email_invalid"
 		} else {
 			owner = creator.Email()
 			ownerSource = "creator_email"

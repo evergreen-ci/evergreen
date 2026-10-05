@@ -63,8 +63,13 @@ is the authoritative source for requirements and exceptions.
 
 Evergreen automatically sets the `mongodb-owner` tag on EC2 spawn hosts and volumes:
 
-- [Spawn hosts](https://docs.devprod.prod.corp.mongodb.com/evergreen/Hosts/Spawn-Hosts) use the MongoDB email address associated with your Evergreen user (or default to the Evergreen team's email address if there is no email associated with an Evergreen user).
+- User-created spawn hosts and volumes use the email address associated with your Evergreen user if it is a valid
+  address ending in `@mongodb.com` or `@10gen.com`. Missing or non-compliant addresses, including `@mongodb.org`,
+  default to the configured Evergreen team's email address.
 - Hosts created with [host.create](https://docs.devprod.prod.corp.mongodb.com/evergreen/Project-Configuration/Project-Commands#hostcreate) use the Evergreen team's email address.
+
+The configured Evergreen owner email must also be a valid address ending in `@mongodb.com` or `@10gen.com`. Other
+email domains do not prevent users from using Evergreen or creating spawn hosts and volumes.
 
 ## Evergreen CLI on a spawn host
 

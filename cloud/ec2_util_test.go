@@ -18,6 +18,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
 
 func TestCleanLaunchTemplateName(t *testing.T) {
@@ -369,7 +371,7 @@ func TestMakeTagsIncludesHostNameTag(t *testing.T) {
 		Id:  "i-abc123",
 		Tag: "ht_abc123",
 	}
-	tags := makeTags(h, evergreen.ResourceTagsConfig{})
+	tags := makeTags(t.Context(), h, evergreen.ResourceTagsConfig{})
 
 	var hostNameTagValue string
 	for _, tag := range tags {
@@ -387,14 +389,14 @@ func TestMakeTagsAddsMissingMongoDBResourceTagsForTaskHosts(t *testing.T) {
 		MongoDBEnv:   "prod",
 	}
 	h := &host.Host{InstanceTags: []host.Tag{
-		{Key: evergreen.TagMongoDBOwner, Value: "existing-owner", CanBeModified: false},
+		{Key: evergreen.TagMongoDBOwner, Value: "existing-owner@mongodb.com", CanBeModified: false},
 		{Key: evergreen.TagMongoDBEnv, CanBeModified: false},
 	}}
 	tagsByKey := map[string]host.Tag{}
-	for _, tag := range makeTags(h, resourceTags) {
+	for _, tag := range makeTags(t.Context(), h, resourceTags) {
 		tagsByKey[tag.Key] = tag
 	}
-	assert.Equal(t, "existing-owner", tagsByKey[evergreen.TagMongoDBOwner].Value)
+	assert.Equal(t, "existing-owner@mongodb.com", tagsByKey[evergreen.TagMongoDBOwner].Value)
 	assert.Equal(t, resourceTags.MongoDBEnv, tagsByKey[evergreen.TagMongoDBEnv].Value)
 }
 
@@ -415,6 +417,38 @@ func TestMakeTagsMongoDBOwner(t *testing.T) {
 			h:             &host.Host{UserHost: true},
 			expectedOwner: resourceTags.MongoDBOwner,
 		},
+		"UserSpawnHostWithExternalEmailShouldUseDefaultOwner": {
+			h:             &host.Host{UserHost: true, SpawnOptions: host.SpawnOptions{UserEmail: "user@example.com"}},
+			expectedOwner: resourceTags.MongoDBOwner,
+		},
+		"UserSpawnHostWithLegacyEmailShouldUseUserEmail": {
+			h:             &host.Host{UserHost: true, SpawnOptions: host.SpawnOptions{UserEmail: "user@10gen.com"}},
+			expectedOwner: "user@10gen.com",
+		},
+		"UserSpawnHostWithMongoDBOrgEmailShouldUseDefaultOwner": {
+			h:             &host.Host{UserHost: true, SpawnOptions: host.SpawnOptions{UserEmail: "user@mongodb.org"}},
+			expectedOwner: resourceTags.MongoDBOwner,
+		},
+		"UserSpawnHostWithMalformedEmailShouldUseDefaultOwner": {
+			h:             &host.Host{UserHost: true, SpawnOptions: host.SpawnOptions{UserEmail: "user@@mongodb.com"}},
+			expectedOwner: resourceTags.MongoDBOwner,
+		},
+		"InvalidOwnerTagShouldUseUserEmail": {
+			h: &host.Host{
+				UserHost:     true,
+				SpawnOptions: host.SpawnOptions{UserEmail: "user@mongodb.com"},
+				InstanceTags: []host.Tag{{Key: evergreen.TagMongoDBOwner, Value: "user@example.com", CanBeModified: true}},
+			},
+			expectedOwner: "user@mongodb.com",
+		},
+		"InvalidOwnerTagAndUserEmailShouldUseDefaultOwner": {
+			h: &host.Host{
+				UserHost:     true,
+				SpawnOptions: host.SpawnOptions{UserEmail: "user@example.com"},
+				InstanceTags: []host.Tag{{Key: evergreen.TagMongoDBOwner, Value: "user@example.com", CanBeModified: true}},
+			},
+			expectedOwner: resourceTags.MongoDBOwner,
+		},
 		"TaskSpawnedHostShouldUseDefaultOwner": {
 			h:             &host.Host{UserHost: true, SpawnOptions: host.SpawnOptions{SpawnedByTask: true, UserEmail: "user@mongodb.com"}},
 			expectedOwner: resourceTags.MongoDBOwner,
@@ -422,11 +456,106 @@ func TestMakeTagsMongoDBOwner(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			tagsByKey := map[string]host.Tag{}
-			for _, tag := range makeTags(testCase.h, resourceTags) {
+			for _, tag := range makeTags(t.Context(), testCase.h, resourceTags) {
 				tagsByKey[tag.Key] = tag
 			}
 			assert.Equal(t, testCase.expectedOwner, tagsByKey[evergreen.TagMongoDBOwner].Value)
+			assert.False(t, tagsByKey[evergreen.TagMongoDBOwner].CanBeModified)
 			assert.Equal(t, resourceTags.MongoDBEnv, tagsByKey[evergreen.TagMongoDBEnv].Value)
+		})
+	}
+}
+
+func TestMakeTagsRecordsOwnerFallbackOnSpan(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		host           host.Host
+		expectedSource string
+		expectedReason string
+	}{
+		"MissingEmailShouldRecordFallback": {
+			host:           host.Host{UserHost: true},
+			expectedSource: "configured_owner",
+			expectedReason: "email_missing",
+		},
+		"ExternalEmailShouldRecordFallback": {
+			host:           host.Host{UserHost: true, SpawnOptions: host.SpawnOptions{UserEmail: "user@example.com"}},
+			expectedSource: "configured_owner",
+			expectedReason: "email_invalid",
+		},
+		"MongoDBOrgEmailShouldRecordFallback": {
+			host:           host.Host{UserHost: true, SpawnOptions: host.SpawnOptions{UserEmail: "user@mongodb.org"}},
+			expectedSource: "configured_owner",
+			expectedReason: "email_invalid",
+		},
+		"MongoDBEmailShouldNotRecordFallback": {
+			host:           host.Host{UserHost: true, SpawnOptions: host.SpawnOptions{UserEmail: "user@mongodb.com"}},
+			expectedSource: "creator_email",
+		},
+		"LegacyEmailShouldNotRecordFallback": {
+			host:           host.Host{UserHost: true, SpawnOptions: host.SpawnOptions{UserEmail: "user@10gen.com"}},
+			expectedSource: "creator_email",
+		},
+		"TaskSpawnedHostShouldNotRecordFallback": {
+			host:           host.Host{UserHost: true, SpawnOptions: host.SpawnOptions{SpawnedByTask: true}},
+			expectedSource: "configured_owner",
+		},
+		"TaskHostShouldNotRecordFallback": {
+			expectedSource: "configured_owner",
+		},
+		"ExistingValidOwnerShouldNotRecordFallback": {
+			host: host.Host{UserHost: true, InstanceTags: []host.Tag{
+				{Key: evergreen.TagMongoDBOwner, Value: "owner@mongodb.com"},
+			}},
+			expectedSource: "existing_tag",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			spanRecorder := tracetest.NewSpanRecorder()
+			provider := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(spanRecorder))
+			t.Cleanup(func() {
+				assert.NoError(t, provider.Shutdown(context.WithoutCancel(t.Context())))
+			})
+			ctx, span := provider.Tracer("test").Start(t.Context(), "spawnFleetHost")
+			makeTags(ctx, &testCase.host, evergreen.ResourceTagsConfig{
+				MongoDBOwner: "evergreen@mongodb.com",
+				MongoDBEnv:   "prod",
+			})
+			span.End()
+			spans := spanRecorder.Ended()
+			require.Len(t, spans, 1)
+			attributes := map[string]string{}
+			for _, attribute := range spans[0].Attributes() {
+				attributes[string(attribute.Key)] = attribute.Value.AsString()
+			}
+			assert.Equal(t, testCase.expectedSource, attributes[hostOwnerSourceOtelAttribute])
+			if testCase.expectedReason == "" {
+				assert.NotContains(t, attributes, hostOwnerFallbackReasonOtelAttribute)
+			} else {
+				assert.Equal(t, testCase.expectedReason, attributes[hostOwnerFallbackReasonOtelAttribute])
+			}
+		})
+	}
+}
+
+func TestValidateEC2HostModifyOptionsOwnerEmail(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		tag   host.Tag
+		valid bool
+	}{
+		"MongoDBOwnerShouldPass":    {tag: host.Tag{Key: evergreen.TagMongoDBOwner, Value: "user@mongodb.com"}, valid: true},
+		"LegacyOwnerShouldPass":     {tag: host.Tag{Key: evergreen.TagMongoDBOwner, Value: "user@10gen.com"}, valid: true},
+		"MongoDBOrgOwnerShouldFail": {tag: host.Tag{Key: evergreen.TagMongoDBOwner, Value: "user@mongodb.org"}},
+		"ExternalOwnerShouldFail":   {tag: host.Tag{Key: evergreen.TagMongoDBOwner, Value: "user@example.com"}},
+		"EmptyOwnerShouldFail":      {tag: host.Tag{Key: evergreen.TagMongoDBOwner}},
+		"OtherTagShouldPass":        {tag: host.Tag{Key: "custom", Value: "anything"}, valid: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			err := validateEC2HostModifyOptions(&host.Host{}, host.HostModifyOptions{AddInstanceTags: []host.Tag{testCase.tag}})
+			if testCase.valid {
+				assert.NoError(t, err)
+			} else {
+				assert.ErrorContains(t, err, "validating MongoDB owner tag")
+			}
 		})
 	}
 }
