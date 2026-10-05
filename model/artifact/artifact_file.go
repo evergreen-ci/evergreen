@@ -12,6 +12,9 @@ import (
 	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const Collection = "artifact_files"
@@ -22,6 +25,15 @@ const (
 	Private = "private"
 	None    = "none"
 	Signed  = "signed"
+)
+
+// Sources for the credentials used to presign a file, recorded on presign
+// spans: a role-backed file, credentials resolved from project settings, or
+// the credentials stored on the artifact.
+const (
+	credsSourceNone     = "none"
+	credsSourceResolver = "resolver"
+	credsSourceArtifact = "artifact"
 )
 
 var ValidVisibilities = []string{Public, Private, None, Signed, ""}
@@ -177,10 +189,11 @@ type Credentials struct {
 type CredentialResolver func(ctx context.Context, file File) (*Credentials, error)
 
 // credentialsForPresign prefers resolved credentials over the ones stored on the
-// artifact, and returns none at all for a file uploaded with a role ARN.
-func credentialsForPresign(ctx context.Context, file File, resolver CredentialResolver) Credentials {
+// artifact, and returns none at all for a file uploaded with a role ARN. Along
+// with the credentials it returns the source they came from.
+func credentialsForPresign(ctx context.Context, file File, resolver CredentialResolver) (Credentials, string) {
 	if file.AWSRoleARN != "" {
-		return Credentials{}
+		return Credentials{}, credsSourceNone
 	}
 
 	creds := Credentials{
@@ -190,10 +203,10 @@ func credentialsForPresign(ctx context.Context, file File, resolver CredentialRe
 
 	resolved, err := resolver(ctx, file)
 	if err == nil && resolved != nil {
-		creds = *resolved
+		return *resolved, credsSourceResolver
 	}
 
-	return creds
+	return creds, credsSourceArtifact
 }
 
 // PresignFile generates a presigned S3 URL for the given artifact file.
@@ -210,7 +223,15 @@ func PresignFile(ctx context.Context, file File, resolver CredentialResolver) (s
 		}
 	}
 
-	creds := credentialsForPresign(ctx, file, resolver)
+	ctx, span := tracer.Start(ctx, evergreen.ArtifactPresignOtelSpanName,
+		trace.WithAttributes(
+			attribute.String(evergreen.ArtifactPresignBucketOtelAttribute, file.Bucket),
+			attribute.Int(evergreen.ArtifactPresignDurationSecondsOtelAttribute, int(file.PresignDuration.Seconds())),
+		))
+	defer span.End()
+
+	creds, credsSource := credentialsForPresign(ctx, file, resolver)
+	span.SetAttributes(attribute.String(evergreen.ArtifactPresignCredsSourceOtelAttribute, credsSource))
 
 	var externalID *string
 	if file.ExternalID != "" {
@@ -228,7 +249,13 @@ func PresignFile(ctx context.Context, file File, resolver CredentialResolver) (s
 		AWSRoleARN:            file.AWSRoleARN,
 		ExternalID:            externalID,
 	}
-	return pail.PreSign(ctx, requestParams)
+	url, err := pail.PreSign(ctx, requestParams)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "presigning artifact URL")
+		return "", err
+	}
+	return url, nil
 }
 
 // ValidatePresignDuration checks that a configured duration is supported by S3.

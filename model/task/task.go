@@ -2437,6 +2437,7 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 		t.Secret = newSecret
 		t.HostId = ""
 		t.ExecutionPlatform = ""
+		t.CompletedBy = ""
 		t.Status = evergreen.TaskUndispatched
 		t.DispatchTime = utility.ZeroTime
 		t.StartTime = utility.ZeroTime
@@ -2509,6 +2510,10 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 				HasAnnotationsKey,
 				TaskCostKey,
 				S3UsageKey,
+				// Host dispatch requires that the task has no push-completed
+				// claim, so a restarted push-completed virtual task must drop
+				// its claim to run on a host.
+				CompletedByKey,
 			},
 		},
 		addDisplayStatusCache,
@@ -4932,17 +4937,22 @@ func (t *Task) GetS3ArtifactUsageFromDB(ctx context.Context) (s3usage.ArtifactMe
 	}, nil
 }
 
-// HasValidDistro determines if the task has a valid distro.
-func (t *Task) HasValidDistro(ctx context.Context) bool {
-	// Display tasks do not have distros.
+// DistroErrors returns a "distro not found" message and/or a warning message.
+// Display tasks do not have distros, so they never produce any messages.
+func (t *Task) DistroErrors(ctx context.Context) []string {
 	if t.DisplayOnly {
-		return true
+		return nil
 	}
-	// A task's distro may be referenced either by a distro's ID or by one of
-	// its aliases, so both must be considered valid.
-	hasValid, err := distro.HasAnyByIdOrAlias(ctx, append([]string{t.DistroId}, t.SecondaryDistros...))
-	if err != nil {
-		return false
+	var errs []string
+	for _, distroID := range append([]string{t.DistroId}, t.SecondaryDistros...) {
+		d, _ := distro.FindOneByIdOrAlias(ctx, distroID)
+		if d == nil {
+			errs = append(errs, fmt.Sprintf("%s: %s", distroID, evergreen.DistroNotFoundForTaskError))
+			continue
+		}
+		if warningMsg := d.WarningNoteMessage(); warningMsg != "" {
+			errs = append(errs, warningMsg)
+		}
 	}
-	return hasValid
+	return errs
 }

@@ -42,6 +42,7 @@ input UIConfigInput {
   url: String!
   uiv2Url: String!
   parsleyUrl: String!
+  logUrl: String
   httpListenAddr: String!
   secret: String! @redactSecrets
   defaultProject: String!
@@ -60,6 +61,7 @@ type UIConfig {
   url: String
   uiv2Url: String
   parsleyUrl: String
+  logUrl: String
   httpListenAddr: String
   secret: String @requireAdmin
   defaultProject: String!

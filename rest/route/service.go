@@ -39,8 +39,11 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	requireValidSNSPayload := NewSNSAuthMiddleware()
 	requireTask := NewTaskAuthMiddleware()
 	requireHost := NewHostAuthMiddleware()
+	requireHostSetup := NewHostSetupSecretAuthMiddleware()
 	requireHostReadOnly := NewReadOnlyHostAuthMiddleware()
 	addProject := NewProjectContextMiddleware()
+	addGitHubIntentProcessingError := newGitHubIntentProcessingErrorContextMiddleware()
+	viewGitHubIntentProcessingError := newGitHubIntentProcessingErrorPermissionMiddleware()
 	requireProjectAdmin := NewProjectAdminMiddleware()
 	requireAlertmanager := NewAlertmanagerMiddleware()
 	requireBackstage := newBackstageMiddleware()
@@ -79,6 +82,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/hosts/{host_id}/agent/next_task").Version(2).Get().Wrap(requireHost, rateLimit).RouteHandler(makeHostAgentNextTask(env, opts.TaskDispatcher, opts.TaskAliasDispatcher))
 	app.AddRoute("/hosts/{host_id}/task/{task_id}/end").Version(2).Post().Wrap(requireHost, requireTask, rateLimit).RouteHandler(makeHostAgentEndTask(env))
 	app.AddRoute("/hosts/{host_id}/disable").Version(2).Post().Wrap(requireHost, rateLimit).RouteHandler(makeDisableHostHandler(env))
+	app.AddRoute("/hosts/{host_id}/setup_secret").Version(2).Post().Wrap(requireHost, rateLimit).RouteHandler(makeHostCreateSetupSecret())
+	app.AddRoute("/hosts/{host_id}/exchange_setup_secret").Version(2).Post().Wrap(requireHostSetup, rateLimit).RouteHandler(makeHostExchangeSetupSecret())
 	app.AddRoute("/hosts/{host_id}/is_up").Version(2).Post().Wrap(requireHost, rateLimit).RouteHandler(makeHostIsUpPostHandler(env))
 	app.AddRoute("/hosts/{host_id}/provisioning_options").Version(2).Get().Wrap(requireHost, rateLimit).RouteHandler(makeHostProvisioningOptionsGetHandler(env))
 	app.AddRoute("/hosts/{task_id}/create").Version(2).Post().Wrap(requireTask, rateLimit).RouteHandler(makeHostCreateRouteManager(env))
@@ -148,8 +153,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/builds/{build_id}/annotations").Version(2).Get().Wrap(requireUser, viewAnnotations, rateLimit).RouteHandler(makeFetchAnnotationsByBuild())
 	// degraded_mode is used by Kanopy's alertmanager instance, which is only able to perform basic auth for REST, so it does not pass in user info
 	app.AddRoute("/degraded_mode").Version(2).Post().Wrap(requireAlertmanager, rateLimit).RouteHandler(makeSetDegradedMode())
-	// Do not apply viewDistroSettings middleware, as it requires a specific distro ID.
-	app.AddRoute("/distros").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeDistroRoute())
+	// The handler filters the response because viewDistroSettings requires a specific distro ID.
+	app.AddRoute("/distros").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeDistroRoute(env.RoleManager()))
 	app.AddRoute("/distros/{distro_id}").Version(2).Get().Wrap(requireUser, viewDistroSettings, rateLimit).RouteHandler(makeGetDistroByID())
 	app.AddRoute("/distros/{distro_id}").Version(2).Patch().Wrap(requireUser, editDistroSettings, rateLimit).RouteHandler(makePatchDistroByID())
 	app.AddRoute("/distros/{distro_id}").Version(2).Delete().Wrap(requireUser, removeDistroSettings, rateLimit).RouteHandler(makeDeleteDistroByID())
@@ -160,6 +165,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 
 	app.AddRoute("/hooks/github").Version(2).Post().Wrap(requireValidGithubPayload, rateLimit).RouteHandler(makeGithubHooksRoute(sc, opts.APIQueue, opts.GithubSecret, settings))
 	app.AddRoute("/hooks/aws").Version(2).Post().Wrap(requireValidSNSPayload, rateLimit).RouteHandler(makeEC2SNS(env, opts.APIQueue))
+	app.AddRoute("/github/intent-processing-errors/{error_id}").Version(2).Get().Wrap(requireUser, addGitHubIntentProcessingError, viewGitHubIntentProcessingError, rateLimit).RouteHandler(makeGitHubIntentProcessingError())
 
 	app.AddRoute("/host/filter").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeFetchHostFilter())
 	app.AddRoute("/host/start_processes").Version(2).Post().Wrap(requireUser, rateLimit).RouteHandler(makeHostStartProcesses(env))

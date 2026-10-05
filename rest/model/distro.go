@@ -427,6 +427,7 @@ type APIDistro struct {
 	IcecreamSettings      APIIceCreamSettings      `json:"icecream_settings"`
 	IsVirtualWorkstation  bool                     `json:"is_virtual_workstation"`
 	IsCluster             bool                     `json:"is_cluster"`
+	IsIaCManaged          bool                     `json:"is_iac_managed"`
 	Note                  *string                  `json:"note" extensions:"!x-nullable"`
 	WarningNote           *string                  `json:"warning_note" extensions:"!x-nullable"`
 	ValidProjects         []*string                `json:"valid_projects" extensions:"x-nullable"`
@@ -498,6 +499,7 @@ func (apiDistro *APIDistro) BuildFromService(d distro.Distro) {
 	apiDistro.IcecreamSettings = icecreamSettings
 	apiDistro.IsVirtualWorkstation = d.IsVirtualWorkstation
 	apiDistro.IsCluster = d.IsCluster
+	apiDistro.IsIaCManaged = d.IsIaCManaged
 
 	bootstrapSettings := APIBootstrapSettings{}
 	bootstrapSettings.BuildFromService(d.BootstrapSettings)
@@ -557,6 +559,7 @@ func (apiDistro *APIDistro) ToService() *distro.Distro {
 
 	d.IsVirtualWorkstation = apiDistro.IsVirtualWorkstation
 	d.IsCluster = apiDistro.IsCluster
+	d.IsIaCManaged = apiDistro.IsIaCManaged
 	d.CostData = apiDistro.CostData.ToService()
 
 	if apiDistro.TaskHostOverrides != nil {

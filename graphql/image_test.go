@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -183,6 +184,16 @@ func TestDistros(t *testing.T) {
 		AdminOnly: true,
 	}
 	require.NoError(t, d4.Insert(ctx))
+	d5 := &distro.Distro{
+		Id:      "ubuntu1604-restricted",
+		ImageID: "ubuntu1604",
+		Setup:   "restricted secret",
+	}
+	require.NoError(t, d5.Insert(ctx))
+	for _, id := range []string{d1.Id, d2.Id, d4.Id} {
+		require.NoError(t, evergreen.GetEnvironment().RoleManager().AddResourceToScope(ctx, evergreen.AllDistrosScope, id))
+	}
+	require.NoError(t, usr.AddRole(ctx, evergreen.SuperUserDistroAccessRole))
 	imageID := "ubuntu1604"
 	image := model.APIImage{
 		ID: &imageID,

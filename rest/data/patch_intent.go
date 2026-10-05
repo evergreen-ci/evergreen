@@ -15,7 +15,7 @@ import (
 )
 
 // AddPRPatchIntent inserts the intent and adds it to the queue if PR testing is enabled for the branch.
-func AddPRPatchIntent(ctx context.Context, intent patch.Intent, queue amboy.Queue) error {
+func AddPRPatchIntent(ctx context.Context, intent patch.Intent, projectID string, queue amboy.Queue) error {
 	if err := intent.Insert(ctx); err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":   "couldn't insert patch intent",
@@ -29,7 +29,7 @@ func AddPRPatchIntent(ctx context.Context, intent patch.Intent, queue amboy.Queu
 		}
 	}
 
-	job := units.NewPatchIntentProcessor(evergreen.GetEnvironment(), mgobson.NewObjectId(), intent)
+	job := units.NewGitHubPatchIntentProcessor(evergreen.GetEnvironment(), mgobson.NewObjectId(), intent, projectID)
 	if err := queue.Put(contextForQueuedJob(ctx), job); err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"source":    "GitHub hook",
@@ -52,7 +52,7 @@ func AddPRPatchIntent(ctx context.Context, intent patch.Intent, queue amboy.Queu
 	return nil
 }
 
-func AddGithubMergeIntent(ctx context.Context, intent patch.Intent, queue amboy.Queue) error {
+func AddGithubMergeIntent(ctx context.Context, intent patch.Intent, projectID string, queue amboy.Queue) error {
 	if err := intent.Insert(ctx); err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":   "couldn't insert GitHub merge group intent",
@@ -66,7 +66,7 @@ func AddGithubMergeIntent(ctx context.Context, intent patch.Intent, queue amboy.
 		}
 	}
 
-	job := units.NewPatchIntentProcessor(evergreen.GetEnvironment(), mgobson.NewObjectId(), intent)
+	job := units.NewGitHubPatchIntentProcessor(evergreen.GetEnvironment(), mgobson.NewObjectId(), intent, projectID)
 	if err := queue.Put(contextForQueuedJob(ctx), job); err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"source":    "GitHub hook",

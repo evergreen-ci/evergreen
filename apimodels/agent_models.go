@@ -222,6 +222,18 @@ type EndTaskResponse struct {
 	ShouldExit bool `json:"should_exit,omitempty"`
 }
 
+// ExchangeSetupSecretResponse is what is returned when a host process
+// exchanges its single-use setup secret for the host secret.
+type ExchangeSetupSecretResponse struct {
+	HostSecret string `json:"host_secret"`
+}
+
+// CreateSetupSecretResponse is what is returned when a new setup secret is
+// created for a host.
+type CreateSetupSecretResponse struct {
+	SetupSecret string `json:"setup_secret"`
+}
+
 type CreateHost struct {
 	// agent-controlled settings
 	NumHosts            string `mapstructure:"num_hosts" json:"num_hosts" yaml:"num_hosts" plugin:"expand"`

@@ -174,8 +174,9 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	}
 	s.NoError(d.Insert(ctx))
 	testUser := &user.DBUser{
-		Id:     testUserID,
-		APIKey: testUserAPIKey,
+		Id:           testUserID,
+		APIKey:       testUserAPIKey,
+		EmailAddress: "test.user@mongodb.com",
 		Settings: user.UserSettings{
 			Timezone: "Asia/Macau",
 		},
@@ -203,6 +204,12 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 			s.NoError(ec2Settings.FromDistroSettings(foundHost.Distro, ""))
 			s.Equal(ec2Settings.UserData, options.UserData)
 
+		},
+		"IntentHostStoresUserEmail": func(t *testing.T, options *restmodel.HostRequestOptions) {
+			intentHost, err := NewIntentHost(ctx, options, testUser, env)
+			s.Require().NoError(err)
+			s.Require().NotNil(intentHost)
+			s.Equal("test.user@mongodb.com", intentHost.SpawnOptions.UserEmail)
 		},
 		"UnexpirableIntentHostSetsDefaultSleepSchedule": func(t *testing.T, options *restmodel.HostRequestOptions) {
 			options.NoExpiration = true

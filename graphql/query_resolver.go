@@ -191,7 +191,6 @@ func (r *queryResolver) DistroEvents(ctx context.Context, opts DistroEventsInput
 // Distros is the resolver for the distros field.
 func (r *queryResolver) Distros(ctx context.Context, onlySpawnable bool) ([]*restModel.APIDistro, error) {
 	usr := mustHaveUser(ctx)
-	apiDistros := []*restModel.APIDistro{}
 
 	var distros []distro.Distro
 	if onlySpawnable {
@@ -208,17 +207,9 @@ func (r *queryResolver) Distros(ctx context.Context, onlySpawnable bool) ([]*res
 		distros = d
 	}
 
-	userHasDistroCreatePermission := usr.HasDistroCreatePermission(ctx)
-
-	for _, d := range distros {
-		// Omit admin-only distros if user lacks permissions
-		if d.AdminOnly && !userHasDistroCreatePermission {
-			continue
-		}
-
-		apiDistro := restModel.APIDistro{}
-		apiDistro.BuildFromService(d)
-		apiDistros = append(apiDistros, &apiDistro)
+	apiDistros, err := r.buildViewableAPIDistros(ctx, usr, distros)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	return apiDistros, nil
 }
@@ -677,6 +668,9 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, ta
 			apiSamplesByTaskID[o.Id] = apiSamples[i]
 		}
 		allTasks = append(allTasks, tasks...)
+	}
+	if err := checkChildPatchTasksAccess(ctx, versionID, dbTasks, ProjectPermissionTasks, AccessLevelView); err != nil {
+		return nil, err
 	}
 
 	if len(allTasks) > 0 {

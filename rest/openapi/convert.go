@@ -31,6 +31,8 @@ func Convert(swaggerSpec []byte) ([]byte, error) {
 		return nil, errors.Wrap(err, "converting Swagger 2.0 spec to OpenAPI 3")
 	}
 
+	addOAuthSecurity(openapiSpec)
+
 	if err := validate(openapiSpec); err != nil {
 		return nil, err
 	}
@@ -41,6 +43,38 @@ func Convert(swaggerSpec []byte) ([]byte, error) {
 	}
 
 	return append(converted, '\n'), nil
+}
+
+const oauthSecuritySchemeName = "OAuth"
+
+// addOAuthSecurity documents OAuth bearer tokens as an alternative to API keys
+// on every authenticated operation. It's added here rather than with swaggo
+// annotations because Swagger 2.0 can't express HTTP bearer authentication.
+func addOAuthSecurity(spec *openapi3.T) {
+	if spec.Components == nil {
+		spec.Components = &openapi3.Components{}
+	}
+	if spec.Components.SecuritySchemes == nil {
+		spec.Components.SecuritySchemes = openapi3.SecuritySchemes{}
+	}
+	spec.Components.SecuritySchemes[oauthSecuritySchemeName] = &openapi3.SecuritySchemeRef{
+		Value: openapi3.NewSecurityScheme().
+			WithType("http").
+			WithScheme("bearer").
+			WithDescription("An OAuth token for human users, from `evergreen client get-oauth-token`. Only valid for evergreen.corp.mongodb.com. See https://docs.devprod.prod.corp.mongodb.com/evergreen/API/Authentication/"),
+	}
+
+	if spec.Paths == nil {
+		return
+	}
+	for _, pathItem := range spec.Paths.Map() {
+		for _, op := range pathItem.Operations() {
+			if op.Security == nil || len(*op.Security) == 0 {
+				continue
+			}
+			*op.Security = append(*op.Security, openapi3.NewSecurityRequirement().Authenticate(oauthSecuritySchemeName))
+		}
+	}
 }
 
 func validate(spec *openapi3.T) error {

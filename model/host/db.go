@@ -33,6 +33,7 @@ var (
 	IdKey                                  = bsonutil.MustHaveTag(Host{}, "Id")
 	DNSKey                                 = bsonutil.MustHaveTag(Host{}, "Host")
 	SecretKey                              = bsonutil.MustHaveTag(Host{}, "Secret")
+	SetupSecretKey                         = bsonutil.MustHaveTag(Host{}, "SetupSecret")
 	UserKey                                = bsonutil.MustHaveTag(Host{}, "User")
 	ServicePasswordKey                     = bsonutil.MustHaveTag(Host{}, "ServicePassword")
 	TagKey                                 = bsonutil.MustHaveTag(Host{}, "Tag")

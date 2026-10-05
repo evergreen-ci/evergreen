@@ -90,6 +90,7 @@ type Task {
   canSchedule: Boolean!
   canSetPriority: Boolean!
   canUnschedule: Boolean!
+  completedBy: String
   config: TaskConfig
   createTime: Time
   dependsOn: [Dependency!]
@@ -129,6 +130,7 @@ type Task {
   ingestTime: Time
   isAutomaticRestart: Boolean!
   isPerfPluginEnabled: Boolean!
+  isVirtual: Boolean!
   latestExecution: Int!
   logs: TaskLogLinks!
   minQueuePosition: Int!

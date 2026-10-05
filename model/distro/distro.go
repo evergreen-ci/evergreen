@@ -59,6 +59,8 @@ type Distro struct {
 	HomeVolumeSettings    HomeVolumeSettings    `bson:"home_volume_settings" json:"home_volume_settings" mapstructure:"home_volume_settings"`
 	IceCreamSettings      IceCreamSettings      `bson:"icecream_settings,omitempty" json:"icecream_settings" mapstructure:"icecream_settings,omitempty"`
 	Mountpoints           []string              `bson:"mountpoints,omitempty" json:"mountpoints,omitempty" mapstructure:"mountpoints,omitempty"`
+	// IsIaCManaged is a bool that indicates whether the distro settings is managed by code on a Github repo
+	IsIaCManaged bool `bson:"is_iac_managed,omitempty" json:"is_iac_managed,omitempty" mapstructure:"is_iac_managed,omitempty"`
 	// SingleTaskDistro is a bool that indicates whether the hosts with this distro will only be allowed to run one task.
 	SingleTaskDistro bool `bson:"single_task_distro,omitempty" json:"single_task_distro,omitempty" mapstructure:"single_task_distro,omitempty"`
 	// ImageID is not equivalent to AMI. It is the identifier of the base image for the distro.
@@ -512,6 +514,19 @@ func (d *Distro) Platform() (string, string) {
 
 func (d *Distro) IsEphemeral() bool {
 	return utility.StringSliceContains(evergreen.ProviderSpawnable, d.Provider)
+}
+
+// WarningNoteMessage returns the distro's warning note
+func (d *Distro) WarningNoteMessage() string {
+	if d.WarningNote == "" {
+		return ""
+	}
+	msg := d.Id
+	if len(d.Aliases) > 0 {
+		msg += fmt.Sprintf(" (alias: %s)", strings.Join(d.Aliases, ", "))
+	}
+	msg += ": " + d.WarningNote
+	return msg
 }
 
 func (d *Distro) BinaryName() string {

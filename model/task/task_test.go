@@ -4825,6 +4825,7 @@ func TestReset(t *testing.T) {
 			HasAnnotations:             true,
 			AgentVersion:               "a1",
 			HostId:                     "h",
+			CompletedBy:                "runner_task",
 			HostCreateDetails:          []HostCreateDetail{{HostId: "h"}},
 			NumNextTaskDispatches:      3,
 			NumQuarantinedTestsSkipped: 2,
@@ -4851,6 +4852,8 @@ func TestReset(t *testing.T) {
 		assert.Empty(t, dbTask.Details)
 		assert.Zero(t, dbTask.ExecutionPlatform)
 		assert.Zero(t, t0.ExecutionPlatform)
+		assert.Empty(t, dbTask.CompletedBy)
+		assert.Empty(t, t0.CompletedBy)
 		assert.True(t, dbTask.IsHostDispatchable())
 		assert.Zero(t, dbTask.NumNextTaskDispatches)
 		assert.Zero(t, dbTask.NumQuarantinedTestsSkipped)
@@ -5739,7 +5742,7 @@ func TestCalculateS3PutCostsUsesArtifactPutRequestsAfterIncrementFilter(t *testi
 	assert.InDelta(t, 5*s3usage.S3PutRequestCost, tk.TaskCost.OnDemandS3ArtifactPutCost, 1e-12)
 }
 
-func TestHasValidDistro(t *testing.T) {
+func TestDistroErrors(t *testing.T) {
 	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(Collection, distro.Collection))
 
@@ -5749,12 +5752,18 @@ func TestHasValidDistro(t *testing.T) {
 	}
 	require.NoError(t, validDistro.Insert(ctx))
 
+	warningDistro := distro.Distro{
+		Id:          "warning-distro",
+		WarningNote: "being deprecated",
+	}
+	require.NoError(t, warningDistro.Insert(ctx))
+
 	t.Run("TaskWithValidPrimaryDistro", func(t *testing.T) {
 		task := &Task{
 			Id:       "task-with-valid-distro",
 			DistroId: validDistro.Id,
 		}
-		assert.Equal(t, true, task.HasValidDistro(ctx))
+		assert.Empty(t, task.DistroErrors(ctx))
 	})
 
 	t.Run("TaskWithPrimaryDistroReferencedByAlias", func(t *testing.T) {
@@ -5762,7 +5771,7 @@ func TestHasValidDistro(t *testing.T) {
 			Id:       "task-with-distro-alias",
 			DistroId: "valid-distro-alias",
 		}
-		assert.Equal(t, true, task.HasValidDistro(ctx))
+		assert.Empty(t, task.DistroErrors(ctx))
 	})
 
 	t.Run("TaskWithSecondaryDistroReferencedByAlias", func(t *testing.T) {
@@ -5771,7 +5780,7 @@ func TestHasValidDistro(t *testing.T) {
 			DistroId:         "nonexistent-distro",
 			SecondaryDistros: []string{"valid-distro-alias"},
 		}
-		assert.Equal(t, true, task.HasValidDistro(ctx))
+		assert.Equal(t, []string{fmt.Sprintf("nonexistent-distro: %s", evergreen.DistroNotFoundForTaskError)}, task.DistroErrors(ctx))
 	})
 
 	t.Run("TaskWithInvalidPrimaryDistroButValidSecondaryDistro", func(t *testing.T) {
@@ -5780,7 +5789,34 @@ func TestHasValidDistro(t *testing.T) {
 			DistroId:         "nonexistent-distro",
 			SecondaryDistros: []string{"nonexistent-distro-2", validDistro.Id},
 		}
-		assert.Equal(t, true, task.HasValidDistro(ctx))
+		assert.Equal(t, []string{
+			fmt.Sprintf("nonexistent-distro: %s", evergreen.DistroNotFoundForTaskError),
+			fmt.Sprintf("nonexistent-distro-2: %s", evergreen.DistroNotFoundForTaskError),
+		}, task.DistroErrors(ctx))
+	})
+
+	t.Run("TaskWithInvalidPrimaryDistroAndSecondaryDistroWithWarning", func(t *testing.T) {
+		task := &Task{
+			Id:               "task-with-warning-secondary",
+			DistroId:         "nonexistent-distro",
+			SecondaryDistros: []string{warningDistro.Id},
+		}
+		assert.Equal(t, []string{
+			fmt.Sprintf("nonexistent-distro: %s", evergreen.DistroNotFoundForTaskError),
+			warningDistro.WarningNoteMessage(),
+		}, task.DistroErrors(ctx))
+	})
+
+	t.Run("TaskWithValidPrimaryDistroAndSecondaryDistrosWithWarningAndNonexistent", func(t *testing.T) {
+		task := &Task{
+			Id:               "task-with-warning-and-nonexistent-secondary",
+			DistroId:         validDistro.Id,
+			SecondaryDistros: []string{warningDistro.Id, "nonexistent-distro"},
+		}
+		assert.Equal(t, []string{
+			warningDistro.WarningNoteMessage(),
+			fmt.Sprintf("nonexistent-distro: %s", evergreen.DistroNotFoundForTaskError),
+		}, task.DistroErrors(ctx))
 	})
 
 	t.Run("TaskWithNoValidDistros", func(t *testing.T) {
@@ -5789,16 +5825,20 @@ func TestHasValidDistro(t *testing.T) {
 			DistroId:         "nonexistent-distro",
 			SecondaryDistros: []string{"nonexistent-distro-2", "nonexistent-distro-3"},
 		}
-		assert.Equal(t, false, task.HasValidDistro(ctx))
+		assert.Equal(t, []string{
+			fmt.Sprintf("nonexistent-distro: %s", evergreen.DistroNotFoundForTaskError),
+			fmt.Sprintf("nonexistent-distro-2: %s", evergreen.DistroNotFoundForTaskError),
+			fmt.Sprintf("nonexistent-distro-3: %s", evergreen.DistroNotFoundForTaskError),
+		}, task.DistroErrors(ctx))
 	})
 
-	t.Run("DisplayTaskReturnsTrue", func(t *testing.T) {
+	t.Run("DisplayTaskReturnsNoErrors", func(t *testing.T) {
 		task := &Task{
 			Id:          "display-task",
 			DisplayOnly: true,
 			DistroId:    "",
 		}
-		assert.True(t, task.HasValidDistro(ctx))
+		assert.Empty(t, task.DistroErrors(ctx))
 	})
 }
 

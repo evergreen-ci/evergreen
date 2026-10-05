@@ -1160,6 +1160,48 @@ func TestViewableProjectSettings(t *testing.T) {
 	assert.NotContains(t, projects, "other")
 }
 
+func TestViewableDistroSettingsIncludesOnlyDistrosWithSufficientPermission(t *testing.T) {
+	ctx := t.Context()
+	env := testutil.NewEnvironment(ctx, t)
+	rm := env.RoleManager()
+	require.NoError(t, db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection))
+
+	tests := []struct {
+		id          string
+		permissions gimlet.Permissions
+		viewable    bool
+	}{
+		{id: "view", permissions: gimlet.Permissions{evergreen.PermissionDistroSettings: evergreen.DistroSettingsView.Value}, viewable: true},
+		{id: "edit", permissions: gimlet.Permissions{evergreen.PermissionDistroSettings: evergreen.DistroSettingsEdit.Value}, viewable: true},
+		{id: "admin", permissions: gimlet.Permissions{evergreen.PermissionDistroSettings: evergreen.DistroSettingsAdmin.Value}, viewable: true},
+		{id: "none", permissions: gimlet.Permissions{evergreen.PermissionDistroSettings: evergreen.DistroSettingsNone.Value}},
+		{id: "host-only", permissions: gimlet.Permissions{evergreen.PermissionHosts: evergreen.HostsView.Value}},
+	}
+
+	roles := make([]string, 0, len(tests))
+	expected := []string{}
+	for _, test := range tests {
+		scopeID := test.id + "_scope"
+		roleID := test.id + "_role"
+		require.NoError(t, rm.AddScope(ctx, gimlet.Scope{ID: scopeID, Resources: []string{test.id}, Type: evergreen.DistroResourceType}))
+		require.NoError(t, rm.UpdateRole(ctx, gimlet.Role{ID: roleID, Scope: scopeID, Permissions: test.permissions}))
+		roles = append(roles, roleID)
+		if test.viewable {
+			expected = append(expected, test.id)
+		}
+	}
+
+	usr := DBUser{SystemRoles: roles}
+	viewableDistros, err := usr.GetViewableDistroSettings(ctx, rm)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, expected, viewableDistros)
+
+	viewableDistros, err = (&DBUser{}).GetViewableDistroSettings(ctx, rm)
+	require.NoError(t, err)
+	assert.NotNil(t, viewableDistros)
+	assert.Empty(t, viewableDistros)
+}
+
 func TestUpdateBetaFeatures(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 

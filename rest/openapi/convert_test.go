@@ -125,3 +125,76 @@ func TestConvertMalformedSpecShouldError(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "parsing Swagger 2.0 spec")
 }
+
+// authenticatedSwaggerSpec returns a spec with one operation that requires API
+// keys and one that requires no authentication.
+func authenticatedSwaggerSpec(t *testing.T) []byte {
+	var spec map[string]any
+	require.NoError(t, json.Unmarshal(swaggerSpec(t, defaultSchemas()), &spec))
+
+	spec["securityDefinitions"] = map[string]any{
+		"Api-User": map[string]any{"type": "apiKey", "in": "header", "name": "Api-User"},
+		"Api-Key":  map[string]any{"type": "apiKey", "in": "header", "name": "Api-Key"},
+	}
+	paths := spec["paths"].(map[string]any)
+	paths["/tasks/{task_id}"].(map[string]any)["get"].(map[string]any)["security"] = []any{
+		map[string]any{"Api-User": []any{}, "Api-Key": []any{}},
+	}
+	paths["/status"] = map[string]any{
+		"get": map[string]any{
+			"summary":   "Fetch status",
+			"responses": map[string]any{"200": map[string]any{"description": "OK"}},
+		},
+	}
+
+	out, err := json.Marshal(spec)
+	require.NoError(t, err)
+	return out
+}
+
+type convertedSecuritySpec struct {
+	Paths map[string]map[string]struct {
+		Security []map[string][]string `json:"security"`
+	} `json:"paths"`
+	Components struct {
+		SecuritySchemes map[string]map[string]any `json:"securitySchemes"`
+	} `json:"components"`
+}
+
+func TestConvertAddsOAuthBearerSecurityScheme(t *testing.T) {
+	converted, err := Convert(authenticatedSwaggerSpec(t))
+	require.NoError(t, err)
+
+	var spec convertedSecuritySpec
+	require.NoError(t, json.Unmarshal(converted, &spec))
+
+	require.Contains(t, spec.Components.SecuritySchemes, "OAuth")
+	assert.Equal(t, "http", spec.Components.SecuritySchemes["OAuth"]["type"])
+	assert.Equal(t, "bearer", spec.Components.SecuritySchemes["OAuth"]["scheme"])
+	assert.Contains(t, spec.Components.SecuritySchemes, "Api-User")
+	assert.Contains(t, spec.Components.SecuritySchemes, "Api-Key")
+}
+
+func TestConvertAuthenticatedOperationShouldAcceptAPIKeysOrOAuth(t *testing.T) {
+	converted, err := Convert(authenticatedSwaggerSpec(t))
+	require.NoError(t, err)
+
+	var spec convertedSecuritySpec
+	require.NoError(t, json.Unmarshal(converted, &spec))
+
+	assert.Equal(t, []map[string][]string{
+		{"Api-User": {}, "Api-Key": {}},
+		{"OAuth": {}},
+	}, spec.Paths["/tasks/{task_id}"]["get"].Security)
+}
+
+func TestConvertUnauthenticatedOperationShouldStayUnauthenticated(t *testing.T) {
+	converted, err := Convert(authenticatedSwaggerSpec(t))
+	require.NoError(t, err)
+
+	var spec convertedSecuritySpec
+	require.NoError(t, json.Unmarshal(converted, &spec))
+
+	require.Contains(t, spec.Paths, "/status")
+	assert.Empty(t, spec.Paths["/status"]["get"].Security)
+}
