@@ -33,7 +33,7 @@ func rootMkdirAll(root *os.Root, dir string) error {
 		return nil
 	}
 	accumulated := ""
-	for _, component := range strings.Split(filepath.ToSlash(dir), "/") {
+	for component := range strings.SplitSeq(filepath.ToSlash(dir), "/") {
 		if component == "" || component == "." {
 			continue
 		}
@@ -54,7 +54,7 @@ func verifyBoundedAncestors(root *os.Root, rel string) error {
 		return nil
 	}
 	accumulated := ""
-	for _, component := range strings.Split(filepath.ToSlash(dir), "/") {
+	for component := range strings.SplitSeq(filepath.ToSlash(dir), "/") {
 		if component == "" || component == "." {
 			continue
 		}
