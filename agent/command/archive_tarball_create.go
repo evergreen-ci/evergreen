@@ -90,6 +90,15 @@ func (c *tarballCreate) Execute(ctx context.Context,
 	}
 	SetWorkdirBoundaryAttribute(ctx, conf, c.Target, c.SourceDir)
 
+	// Isolated tasks share the work directory with the host agent, so both the
+	// archive target and the source tree must stay inside it.
+	if err := containToWorkdir(conf, "source directory", c.SourceDir); err != nil {
+		return err
+	}
+	if err := containToWorkdir(conf, "archive target", c.Target); err != nil {
+		return err
+	}
+
 	errChan := make(chan error)
 	filesArchived := -1
 	go func() {
@@ -102,7 +111,7 @@ func (c *tarballCreate) Execute(ctx context.Context,
 			}
 		}()
 		var err error
-		filesArchived, err = c.makeArchive(ctx, logger.Task(), c.Verbose)
+		filesArchived, err = c.makeArchive(ctx, conf, logger.Task(), c.Verbose)
 		select {
 		case errChan <- errors.WithStack(err):
 			return
@@ -157,7 +166,7 @@ const thresholdSizeForParallelGzipCompression = 1024 * 1024
 
 // Build the archive.
 // Returns the number of files included in the archive (0 means empty archive).
-func (c *tarballCreate) makeArchive(ctx context.Context, logger grip.Journaler, verbose bool) (int, error) {
+func (c *tarballCreate) makeArchive(ctx context.Context, conf *internal.TaskConfig, logger grip.Journaler, verbose bool) (int, error) {
 	pathsToAdd, totalSize, err := findArchiveContents(ctx, c.SourceDir, c.Include, []string{})
 	if err != nil {
 		return 0, errors.Wrap(err, "getting archive contents")
@@ -174,6 +183,17 @@ func (c *tarballCreate) makeArchive(ctx context.Context, logger grip.Journaler, 
 		logger.Error(ctx, f.Close())
 	}()
 
+	var root *os.Root
+	if conf != nil && conf.ContainerIsolationEnabled() { // Bound file opens to the source directory so a symlink planted by an
+		// isolated task cannot pack host files outside the work directory into
+		// the archive.
+		root, err = os.OpenRoot(c.SourceDir)
+		if err != nil {
+			return -1, errors.Wrapf(err, "opening source directory '%s'", c.SourceDir)
+		}
+		defer root.Close()
+	}
+
 	// Build the archive
 	out, err := buildArchive(ctx, buildArchiveOptions{
 		tarWriter:        tarWriter,
@@ -183,6 +203,7 @@ func (c *tarballCreate) makeArchive(ctx context.Context, logger grip.Journaler, 
 		logger:           logger,
 		verbose:          verbose,
 		preserveSymlinks: false,
+		root:             root,
 	})
 
 	return out, errors.WithStack(err)

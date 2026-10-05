@@ -119,13 +119,13 @@ func TestCacheArchiveRoundTrip(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(nested, "lib.txt"), []byte("library"), 0644))
 
 	archivePath := filepath.Join(t.TempDir(), "cache.tgz")
-	require.NoError(t, makeCacheArchive(ctx, srcDir, []string{"top.txt", "deps"}, archivePath, logger, false))
+	require.NoError(t, makeCacheArchive(ctx, srcDir, []string{"top.txt", "deps"}, archivePath, logger, false, nil))
 
 	destDir := t.TempDir()
 	archive, err := os.Open(archivePath)
 	require.NoError(t, err)
 	t.Cleanup(func() { assert.NoError(t, archive.Close()) })
-	require.NoError(t, extractTarball(ctx, archive, destDir, nil, false))
+	require.NoError(t, extractTarball(ctx, archive, destDir, nil, false, nil))
 
 	top, err := os.ReadFile(filepath.Join(destDir, "top.txt"))
 	require.NoError(t, err)
@@ -148,13 +148,13 @@ func TestCacheArchiveRoundTripPreservesSymlinks(t *testing.T) {
 	require.NoError(t, os.Symlink("real.txt", filepath.Join(srcDir, "link.txt")))
 
 	archivePath := filepath.Join(t.TempDir(), "cache.tgz")
-	require.NoError(t, makeCacheArchive(ctx, srcDir, []string{"real.txt", "link.txt"}, archivePath, logger, true))
+	require.NoError(t, makeCacheArchive(ctx, srcDir, []string{"real.txt", "link.txt"}, archivePath, logger, true, nil))
 
 	destDir := t.TempDir()
 	archive, err := os.Open(archivePath)
 	require.NoError(t, err)
 	t.Cleanup(func() { assert.NoError(t, archive.Close()) })
-	require.NoError(t, extractTarball(ctx, archive, destDir, nil, true))
+	require.NoError(t, extractTarball(ctx, archive, destDir, nil, true, nil))
 
 	info, err := os.Lstat(filepath.Join(destDir, "link.txt"))
 	require.NoError(t, err)
@@ -170,7 +170,7 @@ func TestMakeCacheArchiveMissingPathErrors(t *testing.T) {
 	srcDir := t.TempDir()
 	archivePath := filepath.Join(t.TempDir(), "cache.tgz")
 
-	err := makeCacheArchive(t.Context(), srcDir, []string{"missing-dir"}, archivePath, logger, false)
+	err := makeCacheArchive(t.Context(), srcDir, []string{"missing-dir"}, archivePath, logger, false, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "missing-dir")
 }

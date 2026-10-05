@@ -131,7 +131,7 @@ func TestArchiveExtract(t *testing.T) {
 		defer f.Close()
 		defer gz.Close()
 
-		err = extractTarballArchive(ctx, tarReader, outputDir, []string{}, false)
+		err = extractTarballArchive(ctx, tarReader, outputDir, []string{}, false, nil)
 		So(err, ShouldBeNil)
 
 		Convey("extracted data should match the archive contents", func() {
@@ -435,7 +435,7 @@ func TestExtractTarballPreserveSymlinks(t *testing.T) {
 		t.Cleanup(func() { assert.NoError(t, f.Close()) })
 
 		destDir := t.TempDir()
-		require.NoError(t, extractTarball(ctx, f, destDir, nil, true))
+		require.NoError(t, extractTarball(ctx, f, destDir, nil, true, nil))
 
 		link := filepath.Join(destDir, ".bin", "tsc")
 		target, err := os.Readlink(link)
@@ -458,13 +458,13 @@ func TestExtractTarballPreserveSymlinks(t *testing.T) {
 		t.Cleanup(func() { assert.NoError(t, f.Close()) })
 
 		destDir := t.TempDir()
-		require.NoError(t, extractTarball(ctx, f, destDir, nil, true))
+		require.NoError(t, extractTarball(ctx, f, destDir, nil, true, nil))
 
 		// A second extraction into the already-populated tree must overwrite
 		// the existing symlink rather than fail with EEXIST.
 		_, err = f.Seek(0, io.SeekStart)
 		require.NoError(t, err)
-		require.NoError(t, extractTarball(ctx, f, destDir, nil, true))
+		require.NoError(t, extractTarball(ctx, f, destDir, nil, true, nil))
 
 		target, err := os.Readlink(filepath.Join(destDir, "link.txt"))
 		require.NoError(t, err)
@@ -483,7 +483,7 @@ func TestExtractTarballPreserveSymlinks(t *testing.T) {
 
 		destDir := t.TempDir()
 		require.NoError(t, os.WriteFile(filepath.Join(destDir, "link.txt"), []byte("stale"), 0644))
-		require.NoError(t, extractTarball(ctx, f, destDir, nil, true))
+		require.NoError(t, extractTarball(ctx, f, destDir, nil, true, nil))
 
 		target, err := os.Readlink(filepath.Join(destDir, "link.txt"))
 		require.NoError(t, err)
@@ -506,7 +506,7 @@ func TestExtractTarballPreserveSymlinks(t *testing.T) {
 		require.NoError(t, os.MkdirAll(filepath.Join(destDir, "link.txt"), 0755))
 		require.NoError(t, os.WriteFile(filepath.Join(destDir, "link.txt", "keep.txt"), []byte("keep"), 0644))
 
-		require.Error(t, extractTarball(ctx, f, destDir, nil, true))
+		require.Error(t, extractTarball(ctx, f, destDir, nil, true, nil))
 
 		kept, err := os.ReadFile(filepath.Join(destDir, "link.txt", "keep.txt"))
 		require.NoError(t, err)
@@ -521,7 +521,7 @@ func TestExtractTarballPreserveSymlinks(t *testing.T) {
 		require.NoError(t, err)
 		t.Cleanup(func() { assert.NoError(t, f.Close()) })
 
-		err = extractTarball(ctx, f, t.TempDir(), nil, true)
+		err = extractTarball(ctx, f, t.TempDir(), nil, true, nil)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "outside the root path")
 	})
@@ -534,7 +534,7 @@ func TestExtractTarballPreserveSymlinks(t *testing.T) {
 		require.NoError(t, err)
 		t.Cleanup(func() { assert.NoError(t, f.Close()) })
 
-		err = extractTarball(ctx, f, t.TempDir(), nil, true)
+		err = extractTarball(ctx, f, t.TempDir(), nil, true, nil)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "absolute")
 	})
@@ -587,7 +587,7 @@ func TestBuildArchiveRoundTrip(t *testing.T) {
 				outputDir := t.TempDir()
 				f2, gz2, tarReader, err := tarGzReader(outputFile.Name())
 				require.NoError(t, err)
-				err = extractTarballArchive(context.Background(), tarReader, outputDir, []string{}, false)
+				err = extractTarballArchive(context.Background(), tarReader, outputDir, []string{}, false, nil)
 				defer f2.Close()
 				defer gz2.Close()
 				So(err, ShouldBeNil)
