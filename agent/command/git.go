@@ -607,7 +607,7 @@ func (c *gitFetchProject) cloneSource(ctx context.Context, comm client.Communica
 // be derived at all. The timeout resolves through the same shared logic the
 // agent's exec timeout watcher uses.
 func sourceCacheSaveBudget(conf *internal.TaskConfig) (time.Duration, bool) {
-	if conf.Task.StartTime.IsZero() {
+	if utility.IsZeroTime(conf.Task.StartTime) {
 		return 0, false
 	}
 	timeout := conf.ResolveExecTimeout()

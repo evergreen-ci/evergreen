@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
@@ -655,6 +656,15 @@ func TestSourceCacheSaveBudgetFollowsTheExecTimeoutPrecedence(t *testing.T) {
 
 	t.Run("UnknownWithoutAStartTime", func(t *testing.T) {
 		conf := sourceCacheTestConfig()
+		_, known := sourceCacheSaveBudget(conf)
+		assert.False(t, known)
+	})
+
+	t.Run("UnknownWithEpochSentinelStartTime", func(t *testing.T) {
+		// The agent fetches the task document before the task starts, so its
+		// start time is the epoch sentinel rather than Go's zero time.
+		conf := sourceCacheTestConfig()
+		conf.Task.StartTime = utility.ZeroTime
 		_, known := sourceCacheSaveBudget(conf)
 		assert.False(t, known)
 	})
