@@ -91,7 +91,7 @@ type VirtualTaskArtifact struct {
 
 // CompleteVirtualTasksResponse contains the per-task outcomes of a push completion.
 type CompleteVirtualTasksResponse struct {
-	Results []VirtualTaskCompletionResult `json:"results"`
+	Results []VirtualTaskCompletionResult `json:"results" extensions:"x-nullable"`
 }
 
 const (
