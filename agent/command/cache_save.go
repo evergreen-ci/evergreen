@@ -82,7 +82,18 @@ func (c *cacheSave) Execute(ctx context.Context, comm client.Communicator, logge
 	logger.Task().Infof(ctx, "cache.save: computed cache key '%s'.", key)
 	logger.Task().Infof(ctx, "cache.save: bundling paths %s into '%s'.", c.Paths, localPath)
 
-	if err := makeCacheArchive(ctx, conf.WorkDir, c.Paths, localPath, logger.Task(), c.PreserveSymlinks); err != nil {
+	var root *os.Root
+	if conf.ContainerIsolationEnabled() {
+		// Bound file reads to the work directory so planted symlinks cannot
+		// pack host files outside it into the cache archive.
+		root, err = os.OpenRoot(conf.WorkDir)
+		if err != nil {
+			return errors.Wrap(err, "opening work directory")
+		}
+		defer root.Close()
+	}
+
+	if err := makeCacheArchive(ctx, conf.WorkDir, c.Paths, localPath, logger.Task(), c.PreserveSymlinks, root); err != nil {
 		return errors.Wrap(err, "creating cache archive")
 	}
 

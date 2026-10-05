@@ -123,7 +123,7 @@ func (c *cacheRestore) Execute(ctx context.Context, comm client.Communicator, lo
 		return nil
 	}
 
-	if err := c.extract(ctx, localPath, conf.WorkDir); err != nil {
+	if err := c.extract(ctx, localPath, conf.WorkDir, conf.ContainerIsolationEnabled()); err != nil {
 		return errors.Wrap(err, "extracting cache archive")
 	}
 
@@ -169,12 +169,26 @@ func classifyCacheDownloadErr(err error) cacheDownloadOutcome {
 	return cacheDownloadRetry
 }
 
-func (c *cacheRestore) extract(ctx context.Context, archivePath, dest string) error {
+func (c *cacheRestore) extract(ctx context.Context, archivePath, dest string, isolated bool) error {
 	f, err := os.Open(archivePath)
 	if err != nil {
 		return errors.Wrapf(err, "opening cache archive '%s'", archivePath)
 	}
 	defer f.Close()
 
-	return errors.Wrap(extractTarball(ctx, f, dest, []string{}, c.PreserveSymlinks), "extracting tarball")
+	var root *os.Root
+	if isolated {
+		// Bound extraction to the destination so planted symlinks in the work
+		// directory cannot redirect writes outside it.
+		if err := os.MkdirAll(dest, 0755); err != nil {
+			return errors.Wrapf(err, "creating destination directory '%s'", dest)
+		}
+		root, err = os.OpenRoot(dest)
+		if err != nil {
+			return errors.Wrapf(err, "opening destination directory '%s'", dest)
+		}
+		defer root.Close()
+	}
+
+	return errors.Wrap(extractTarball(ctx, f, dest, []string{}, c.PreserveSymlinks, root), "extracting tarball")
 }

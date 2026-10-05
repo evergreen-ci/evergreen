@@ -283,7 +283,7 @@ func TestSourceCacheArchiveRestoresIntoADifferentDirectory(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(producer.projectDir(), "subdir", "nested.txt"), []byte("nested"), 0644))
 
 	archive := filepath.Join(t.TempDir(), "source"+cacheArchiveSuffix)
-	require.NoError(t, makeCacheArchive(ctx, producer.projectDir(), []string{producer.projectDir()}, archive, logger, true))
+	require.NoError(t, makeCacheArchive(ctx, producer.projectDir(), []string{producer.projectDir()}, archive, logger, true, nil))
 
 	consumerWorkDir := t.TempDir()
 	consumer := &sourceCache{workDir: consumerWorkDir, dir: "other"}
@@ -291,7 +291,7 @@ func TestSourceCacheArchiveRestoresIntoADifferentDirectory(t *testing.T) {
 	f, err := os.Open(archive)
 	require.NoError(t, err)
 	t.Cleanup(func() { assert.NoError(t, f.Close()) })
-	require.NoError(t, extractTarball(ctx, f, consumer.projectDir(), []string{}, true))
+	require.NoError(t, extractTarball(ctx, f, consumer.projectDir(), []string{}, true, nil))
 
 	top, err := os.ReadFile(filepath.Join(consumer.projectDir(), "top.txt"))
 	require.NoError(t, err)
@@ -577,7 +577,7 @@ func TestSourceCacheExtractMarksAnUndecodableArtifactCorrupt(t *testing.T) {
 		require.NoError(t, os.MkdirAll(producer.projectDir(), 0755))
 		require.NoError(t, os.WriteFile(filepath.Join(producer.projectDir(), "top.txt"), []byte("top"), 0644))
 		archive := filepath.Join(t.TempDir(), "source"+cacheArchiveSuffix)
-		require.NoError(t, makeCacheArchive(ctx, producer.projectDir(), []string{producer.projectDir()}, archive, logger, true))
+		require.NoError(t, makeCacheArchive(ctx, producer.projectDir(), []string{producer.projectDir()}, archive, logger, true, nil))
 		f, err := os.Open(archive)
 		require.NoError(t, err)
 		t.Cleanup(func() { assert.NoError(t, f.Close()) })

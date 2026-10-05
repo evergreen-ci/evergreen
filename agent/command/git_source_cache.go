@@ -101,6 +101,10 @@ type sourceCache struct {
 
 	// corruptRemoteKey is set when restore extracts a corrupt artifact; save heals it.
 	corruptRemoteKey string
+
+	// isolated bounds cache file operations to the project directory for
+	// container-isolated tasks.
+	isolated bool
 }
 
 // newSourceCache returns the source cache for this run, or a nil cache and the
@@ -136,6 +140,7 @@ func newSourceCache(ctx context.Context, comm client.Communicator, conf *interna
 		branch:            opts.branch,
 		cloneDepth:        opts.cloneDepth,
 		recurseSubmodules: opts.recurseSubmodules,
+		isolated:          conf.ContainerIsolationEnabled(),
 	}
 
 	// The app server alone resolves the restore and save keys, so a drift here
@@ -276,7 +281,21 @@ func (sc *sourceCache) restore(ctx context.Context, comm client.Communicator, lo
 
 // extractArchive unpacks a downloaded artifact into the project directory.
 func (sc *sourceCache) extractArchive(ctx context.Context, r io.Reader, remoteKey string) error {
-	if err := extractTarball(ctx, r, sc.projectDir(), []string{}, true); err != nil {
+	var root *os.Root
+	if sc.isolated {
+		// Bound extraction to the project directory so planted symlinks in the
+		// work directory cannot redirect writes outside it.
+		if err := os.MkdirAll(sc.projectDir(), 0755); err != nil {
+			return errors.Wrapf(err, "creating project directory '%s'", sc.dir)
+		}
+		var err error
+		root, err = os.OpenRoot(sc.projectDir())
+		if err != nil {
+			return errors.Wrapf(err, "opening project directory '%s'", sc.dir)
+		}
+		defer root.Close()
+	}
+	if err := extractTarball(ctx, r, sc.projectDir(), []string{}, true, root); err != nil {
 		sc.corruptRemoteKey = remoteKey
 		return errors.Wrap(err, "extracting source cache archive")
 	}
@@ -299,7 +318,17 @@ func (sc *sourceCache) save(ctx context.Context, comm client.Communicator, logge
 	}()
 
 	start := time.Now()
-	if err := makeCacheArchive(ctx, sc.projectDir(), []string{sc.projectDir()}, localPath, logger.Task(), true); err != nil {
+	var root *os.Root
+	if sc.isolated {
+		// Bound file reads to the project directory so planted symlinks cannot
+		// pack host files outside it into the cache archive.
+		root, err = os.OpenRoot(sc.projectDir())
+		if err != nil {
+			return false, errors.Wrapf(err, "opening project directory '%s'", sc.dir)
+		}
+		defer root.Close()
+	}
+	if err := makeCacheArchive(ctx, sc.projectDir(), []string{sc.projectDir()}, localPath, logger.Task(), true, root); err != nil {
 		return false, errors.Wrap(err, "creating source cache archive")
 	}
 	setSourceCacheSpanDuration(ctx, sourceCacheArchiveDurationAttribute, time.Since(start))
