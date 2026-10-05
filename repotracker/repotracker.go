@@ -1093,65 +1093,65 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		if utility.IsZeroTime(v.IngestTime) {
 			v.IngestTime = time.Now()
 		}
-		_, err = database.Collection(model.VersionCollection).InsertOne(ctx, v)
+		_, err = database.Collection(model.VersionCollection).InsertOne(sessCtx, v)
 		if err != nil {
 			grip.Notice(ctx, message.WrapError(err, message.Fields{
 				"message": "aborting transaction",
 				"cause":   "can't insert version",
 				"version": v.Id,
 			}))
-			if abortErr := sessCtx.AbortTransaction(ctx); abortErr != nil {
+			if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
 				return errors.Wrap(abortErr, "aborting transaction")
 			}
 			return errors.Wrapf(err, "inserting version '%s'", v.Id)
 		}
 		if projectInfo.Config != nil {
-			_, err = database.Collection(model.ProjectConfigCollection).InsertOne(ctx, projectInfo.Config)
+			_, err = database.Collection(model.ProjectConfigCollection).InsertOne(sessCtx, projectInfo.Config)
 			if err != nil {
 				grip.Notice(ctx, message.WrapError(err, message.Fields{
 					"message": "aborting transaction",
 					"cause":   "can't insert project config",
 					"version": v.Id,
 				}))
-				if abortErr := sessCtx.AbortTransaction(ctx); abortErr != nil {
+				if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
 					return errors.Wrap(abortErr, "aborting transaction")
 				}
 				return errors.Wrapf(err, "inserting project config '%s'", v.Id)
 			}
 		}
-		_, err = database.Collection(build.Collection).InsertMany(ctx, buildsToCreate)
+		_, err = database.Collection(build.Collection).InsertMany(sessCtx, buildsToCreate)
 		if err != nil {
 			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "aborting transaction",
 				"cause":   "can't insert builds",
 				"version": v.Id,
 			}))
-			if abortErr := sessCtx.AbortTransaction(ctx); abortErr != nil {
+			if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
 				return errors.Wrap(abortErr, "aborting transaction")
 			}
 
 			return errors.Wrap(err, "inserting builds")
 		}
-		err = tasksToCreate.InsertUnordered(ctx)
+		err = tasksToCreate.InsertUnordered(sessCtx)
 		if err != nil {
 			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "aborting transaction",
 				"cause":   "can't insert tasks",
 				"version": v.Id,
 			}))
-			if abortErr := sessCtx.AbortTransaction(ctx); abortErr != nil {
+			if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
 				return errors.Wrap(abortErr, "aborting transaction")
 			}
 			return errors.Wrap(err, "inserting tasks")
 		}
-		err = sessCtx.CommitTransaction(ctx)
+		err = sessCtx.CommitTransaction(sessCtx)
 		if err != nil {
 			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "aborting transaction",
 				"cause":   "unable to commit transaction",
 				"version": v.Id,
 			}))
-			if abortErr := sessCtx.AbortTransaction(ctx); abortErr != nil {
+			if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
 				return errors.Wrap(abortErr, "aborting transaction")
 			}
 

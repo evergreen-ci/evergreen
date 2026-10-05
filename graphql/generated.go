@@ -489,6 +489,7 @@ type ComplexityRoot struct {
 		IcecreamSettings      func(childComplexity int) int
 		ImageID               func(childComplexity int) int
 		IsCluster             func(childComplexity int) int
+		IsIaCManaged          func(childComplexity int) int
 		IsVirtualWorkstation  func(childComplexity int) int
 		IsWindows             func(childComplexity int) int
 		Mountpoints           func(childComplexity int) int
@@ -1887,6 +1888,7 @@ type ComplexityRoot struct {
 		CanSchedule                  func(childComplexity int) int
 		CanSetPriority               func(childComplexity int) int
 		CanUnschedule                func(childComplexity int) int
+		CompletedBy                  func(childComplexity int) int
 		Config                       func(childComplexity int) int
 		CreateTime                   func(childComplexity int) int
 		DependsOn                    func(childComplexity int) int
@@ -1920,6 +1922,7 @@ type ComplexityRoot struct {
 		InvalidatedByUpstream        func(childComplexity int) int
 		IsAutomaticRestart           func(childComplexity int) int
 		IsPerfPluginEnabled          func(childComplexity int) int
+		IsVirtual                    func(childComplexity int) int
 		LatestExecution              func(childComplexity int) int
 		Logs                         func(childComplexity int) int
 		MinQueuePosition             func(childComplexity int) int
@@ -2747,6 +2750,7 @@ type TaskResolver interface {
 	CanSchedule(ctx context.Context, obj *model.APITask) (bool, error)
 	CanSetPriority(ctx context.Context, obj *model.APITask) (bool, error)
 	CanUnschedule(ctx context.Context, obj *model.APITask) (bool, error)
+
 	Config(ctx context.Context, obj *model.APITask) (*model1.BuildVariantTaskUnit, error)
 
 	DependsOn(ctx context.Context, obj *model.APITask) ([]*Dependency, error)
@@ -2771,6 +2775,7 @@ type TaskResolver interface {
 	ImageID(ctx context.Context, obj *model.APITask) (string, error)
 
 	IsPerfPluginEnabled(ctx context.Context, obj *model.APITask) (bool, error)
+
 	LatestExecution(ctx context.Context, obj *model.APITask) (int, error)
 
 	MinQueuePosition(ctx context.Context, obj *model.APITask) (int, error)
@@ -4481,6 +4486,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Distro.IsCluster(childComplexity), true
+	case "Distro.isIaCManaged":
+		if e.complexity.Distro.IsIaCManaged == nil {
+			break
+		}
+
+		return e.complexity.Distro.IsIaCManaged(childComplexity), true
 	case "Distro.isVirtualWorkStation":
 		if e.complexity.Distro.IsVirtualWorkstation == nil {
 			break
@@ -10667,6 +10678,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Task.CanUnschedule(childComplexity), true
+	case "Task.completedBy":
+		if e.complexity.Task.CompletedBy == nil {
+			break
+		}
+
+		return e.complexity.Task.CompletedBy(childComplexity), true
 	case "Task.config":
 		if e.complexity.Task.Config == nil {
 			break
@@ -10870,6 +10887,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Task.IsPerfPluginEnabled(childComplexity), true
+	case "Task.isVirtual":
+		if e.complexity.Task.IsVirtual == nil {
+			break
+		}
+
+		return e.complexity.Task.IsVirtual(childComplexity), true
 	case "Task.latestExecution":
 		if e.complexity.Task.LatestExecution == nil {
 			break
@@ -20568,6 +20591,8 @@ func (ec *executionContext) fieldContext_AdminTasksToRestartPayload_tasksToResta
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -20630,6 +20655,8 @@ func (ec *executionContext) fieldContext_AdminTasksToRestartPayload_tasksToResta
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -25954,6 +25981,35 @@ func (ec *executionContext) fieldContext_Distro_isCluster(_ context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _Distro_isIaCManaged(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Distro_isIaCManaged,
+		func(ctx context.Context) (any, error) {
+			return obj.IsIaCManaged, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Distro_isIaCManaged(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Distro",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Distro_isWindows(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -29340,6 +29396,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -29402,6 +29460,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -30272,6 +30332,8 @@ func (ec *executionContext) fieldContext_Host_distro(_ context.Context, field gr
 				return ec.fieldContext_Distro_imageId(ctx, field)
 			case "isCluster":
 				return ec.fieldContext_Distro_isCluster(ctx, field)
+			case "isIaCManaged":
+				return ec.fieldContext_Distro_isIaCManaged(ctx, field)
 			case "isWindows":
 				return ec.fieldContext_Distro_isWindows(ctx, field)
 			case "isVirtualWorkStation":
@@ -32776,6 +32838,8 @@ func (ec *executionContext) fieldContext_Image_distros(_ context.Context, field 
 				return ec.fieldContext_Distro_imageId(ctx, field)
 			case "isCluster":
 				return ec.fieldContext_Distro_isCluster(ctx, field)
+			case "isIaCManaged":
+				return ec.fieldContext_Distro_isIaCManaged(ctx, field)
 			case "isWindows":
 				return ec.fieldContext_Distro_isWindows(ctx, field)
 			case "isVirtualWorkStation":
@@ -33020,6 +33084,8 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -33082,6 +33148,8 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -39148,6 +39216,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -39210,6 +39280,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -39379,6 +39451,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -39441,6 +39515,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -39610,6 +39686,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -39672,6 +39750,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -39841,6 +39921,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -39903,6 +39985,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -40072,6 +40156,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -40134,6 +40220,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -40303,6 +40391,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriorities(ctx context.
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -40365,6 +40455,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriorities(ctx context.
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -40534,6 +40626,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -40596,6 +40690,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -40903,6 +40999,8 @@ func (ec *executionContext) fieldContext_Mutation_quarantineTask(ctx context.Con
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -40965,6 +41063,8 @@ func (ec *executionContext) fieldContext_Mutation_quarantineTask(ctx context.Con
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -41134,6 +41234,8 @@ func (ec *executionContext) fieldContext_Mutation_unquarantineTask(ctx context.C
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -41196,6 +41298,8 @@ func (ec *executionContext) fieldContext_Mutation_unquarantineTask(ctx context.C
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -42287,6 +42391,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -42349,6 +42455,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -52090,6 +52198,8 @@ func (ec *executionContext) fieldContext_Query_distro(ctx context.Context, field
 				return ec.fieldContext_Distro_imageId(ctx, field)
 			case "isCluster":
 				return ec.fieldContext_Distro_isCluster(ctx, field)
+			case "isIaCManaged":
+				return ec.fieldContext_Distro_isIaCManaged(ctx, field)
 			case "isWindows":
 				return ec.fieldContext_Distro_isWindows(ctx, field)
 			case "isVirtualWorkStation":
@@ -52260,6 +52370,8 @@ func (ec *executionContext) fieldContext_Query_distros(ctx context.Context, fiel
 				return ec.fieldContext_Distro_imageId(ctx, field)
 			case "isCluster":
 				return ec.fieldContext_Distro_isCluster(ctx, field)
+			case "isIaCManaged":
+				return ec.fieldContext_Distro_isIaCManaged(ctx, field)
 			case "isWindows":
 				return ec.fieldContext_Distro_isWindows(ctx, field)
 			case "isVirtualWorkStation":
@@ -53409,6 +53521,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -53471,6 +53585,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -53640,6 +53756,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -53702,6 +53820,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -58449,6 +58569,8 @@ func (ec *executionContext) fieldContext_SaveDistroPayload_distro(_ context.Cont
 				return ec.fieldContext_Distro_imageId(ctx, field)
 			case "isCluster":
 				return ec.fieldContext_Distro_isCluster(ctx, field)
+			case "isIaCManaged":
+				return ec.fieldContext_Distro_isIaCManaged(ctx, field)
 			case "isWindows":
 				return ec.fieldContext_Distro_isWindows(ctx, field)
 			case "isVirtualWorkStation":
@@ -61760,6 +61882,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -61822,6 +61946,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -62373,6 +62499,35 @@ func (ec *executionContext) fieldContext_Task_canUnschedule(_ context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _Task_completedBy(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Task_completedBy,
+		func(ctx context.Context) (any, error) {
+			return obj.CompletedBy, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Task_completedBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Task_config(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -62757,6 +62912,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -62819,6 +62976,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -63194,6 +63353,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(ctx context.Con
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -63256,6 +63417,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(ctx context.Con
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -63633,6 +63796,8 @@ func (ec *executionContext) fieldContext_Task_generator(_ context.Context, field
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -63695,6 +63860,8 @@ func (ec *executionContext) fieldContext_Task_generator(_ context.Context, field
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -63954,6 +64121,35 @@ func (ec *executionContext) fieldContext_Task_isPerfPluginEnabled(_ context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Task_isVirtual(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Task_isVirtual,
+		func(ctx context.Context) (any, error) {
+			return obj.IsVirtual, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Task_isVirtual(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Task_latestExecution(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -64123,6 +64319,8 @@ func (ec *executionContext) fieldContext_Task_nextTask(_ context.Context, field 
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -64185,6 +64383,8 @@ func (ec *executionContext) fieldContext_Task_nextTask(_ context.Context, field 
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -64342,6 +64542,8 @@ func (ec *executionContext) fieldContext_Task_nextTaskCompleted(_ context.Contex
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -64404,6 +64606,8 @@ func (ec *executionContext) fieldContext_Task_nextTaskCompleted(_ context.Contex
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -64561,6 +64765,8 @@ func (ec *executionContext) fieldContext_Task_nextTaskFailing(_ context.Context,
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -64623,6 +64829,8 @@ func (ec *executionContext) fieldContext_Task_nextTaskFailing(_ context.Context,
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -64780,6 +64988,8 @@ func (ec *executionContext) fieldContext_Task_nextTaskPassing(_ context.Context,
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -64842,6 +65052,8 @@ func (ec *executionContext) fieldContext_Task_nextTaskPassing(_ context.Context,
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -65171,6 +65383,8 @@ func (ec *executionContext) fieldContext_Task_prevTask(_ context.Context, field 
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -65233,6 +65447,8 @@ func (ec *executionContext) fieldContext_Task_prevTask(_ context.Context, field 
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -65391,6 +65607,8 @@ func (ec *executionContext) fieldContext_Task_prevTaskCompleted(ctx context.Cont
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -65453,6 +65671,8 @@ func (ec *executionContext) fieldContext_Task_prevTaskCompleted(ctx context.Cont
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -65621,6 +65841,8 @@ func (ec *executionContext) fieldContext_Task_prevTaskFailing(_ context.Context,
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -65683,6 +65905,8 @@ func (ec *executionContext) fieldContext_Task_prevTaskFailing(_ context.Context,
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -65840,6 +66064,8 @@ func (ec *executionContext) fieldContext_Task_prevTaskPassing(_ context.Context,
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -65902,6 +66128,8 @@ func (ec *executionContext) fieldContext_Task_prevTaskPassing(_ context.Context,
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -68827,6 +69055,8 @@ func (ec *executionContext) fieldContext_TaskHistory_tasks(_ context.Context, fi
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -68889,6 +69119,8 @@ func (ec *executionContext) fieldContext_TaskHistory_tasks(_ context.Context, fi
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -73676,6 +73908,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -73738,6 +73972,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -77280,6 +77516,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "completedBy":
+				return ec.fieldContext_Task_completedBy(ctx, field)
 			case "config":
 				return ec.fieldContext_Task_config(ctx, field)
 			case "createTime":
@@ -77342,6 +77580,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "isVirtual":
+				return ec.fieldContext_Task_isVirtual(ctx, field)
 			case "latestExecution":
 				return ec.fieldContext_Task_latestExecution(ctx, field)
 			case "logs":
@@ -83198,7 +83438,11 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj a
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"adminOnly", "aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "execUser", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "costData", "imageId", "isCluster", "isVirtualWorkStation", "mountpoints", "name", "note", "plannerSettings", "provider", "providerAccount", "providerSettingsList", "setup", "setupAsSudo", "singleTaskDistro", "sshOptions", "taskHostOverrides", "user", "userSpawnAllowed", "validProjects", "warningNote", "workDir"}
+	if _, present := asMap["isIaCManaged"]; !present {
+		asMap["isIaCManaged"] = false
+	}
+
+	fieldsInOrder := [...]string{"adminOnly", "aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "execUser", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "costData", "imageId", "isCluster", "isIaCManaged", "isVirtualWorkStation", "mountpoints", "name", "note", "plannerSettings", "provider", "providerAccount", "providerSettingsList", "setup", "setupAsSudo", "singleTaskDistro", "sshOptions", "taskHostOverrides", "user", "userSpawnAllowed", "validProjects", "warningNote", "workDir"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -83331,6 +83575,13 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj a
 				return it, err
 			}
 			it.IsCluster = data
+		case "isIaCManaged":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isIaCManaged"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IsIaCManaged = data
 		case "isVirtualWorkStation":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isVirtualWorkStation"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)
@@ -94716,6 +94967,11 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "isCluster":
 			out.Values[i] = ec._Distro_isCluster(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "isIaCManaged":
+			out.Values[i] = ec._Distro_isIaCManaged(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
@@ -106989,6 +107245,8 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "completedBy":
+			out.Values[i] = ec._Task_completedBy(ctx, field, obj)
 		case "config":
 			field := field
 
@@ -107518,6 +107776,11 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "isVirtual":
+			out.Values[i] = ec._Task_isVirtual(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "latestExecution":
 			field := field
 

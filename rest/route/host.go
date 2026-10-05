@@ -443,6 +443,66 @@ func (rh *hostProvisioningOptionsGetHandler) Run(ctx context.Context) gimlet.Res
 	})
 }
 
+// POST /hosts/{host_id}/exchange_setup_secret
+type hostExchangeSetupSecretHandler struct {
+	setupSecret string
+}
+
+func makeHostExchangeSetupSecret() gimlet.RouteHandler {
+	return &hostExchangeSetupSecretHandler{}
+}
+
+func (rh *hostExchangeSetupSecretHandler) Factory() gimlet.RouteHandler {
+	return &hostExchangeSetupSecretHandler{}
+}
+
+func (rh *hostExchangeSetupSecretHandler) Parse(_ context.Context, r *http.Request) error {
+	rh.setupSecret = r.Header.Get(evergreen.SetupSecretHeader)
+	return nil
+}
+
+func (rh *hostExchangeSetupSecretHandler) Run(ctx context.Context) gimlet.Responder {
+	h := MustHaveHost(ctx)
+	secret, err := host.ExchangeSetupSecret(ctx, h.Id, rh.setupSecret)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "exchanging setup secret for host '%s'", h.Id))
+	}
+	if secret == nil {
+		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    fmt.Sprintf("invalid setup secret for host '%s'", h.Id),
+		})
+	}
+
+	return gimlet.NewJSONResponse(apimodels.ExchangeSetupSecretResponse{
+		HostSecret: utility.FromStringPtr(secret),
+	})
+}
+
+// POST /hosts/{host_id}/setup_secret
+type hostCreateSetupSecretHandler struct{}
+
+func makeHostCreateSetupSecret() gimlet.RouteHandler {
+	return &hostCreateSetupSecretHandler{}
+}
+
+func (rh *hostCreateSetupSecretHandler) Factory() gimlet.RouteHandler {
+	return &hostCreateSetupSecretHandler{}
+}
+
+func (*hostCreateSetupSecretHandler) Parse(_ context.Context, _ *http.Request) error { return nil }
+
+func (rh *hostCreateSetupSecretHandler) Run(ctx context.Context) gimlet.Responder {
+	h := MustHaveHost(ctx)
+	if err := h.CreateSetupSecret(ctx); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating setup secret for host '%s'", h.Id))
+	}
+
+	return gimlet.NewJSONResponse(apimodels.CreateSetupSecretResponse{
+		SetupSecret: h.SetupSecret,
+	})
+}
+
 // POST /hosts/{host_id}/is_up
 
 type hostIsUpPostHandler struct {

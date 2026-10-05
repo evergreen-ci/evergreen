@@ -332,11 +332,8 @@ func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context) error {
 // startAgentMonitor starts the agent monitor on the host through the host's
 // Jasper service.
 func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, settings *evergreen.Settings) error {
-	// Generate the host secret if none exists.
-	if j.host.Secret == "" {
-		if err := j.host.CreateSecret(ctx, false); err != nil {
-			return errors.Wrapf(err, "creating secret for host '%s'", j.host.Id)
-		}
+	if err := j.host.EnsureSecrets(ctx); err != nil {
+		return errors.Wrapf(err, "creating secrets for host '%s'", j.host.Id)
 	}
 
 	grip.Info(ctx, j.deployMessage())

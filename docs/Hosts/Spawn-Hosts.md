@@ -56,6 +56,16 @@ If your project has [a project setup script defined at the admin level](../Proje
 
 EC2 spawn hosts can be stopped/started and modified from the Spawn Host page, or via the command line, which is documented in [Basic Host Usage](../CLI#basic-host-usage) in the Evergreen command line tool documentation.
 
+## Cloud Resource Tagging
+
+The [MongoDB Cloud Tenant Tag Policy](https://wiki.corp.mongodb.com/spaces/SEC/pages/560370899/Cloud+Tag+Policy)
+is the authoritative source for requirements and exceptions.
+
+Evergreen automatically sets the `mongodb-owner` tag on EC2 spawn hosts and volumes:
+
+- [Spawn hosts](https://docs.devprod.prod.corp.mongodb.com/evergreen/Hosts/Spawn-Hosts) use the MongoDB email address associated with your Evergreen user (or default to the Evergreen team's email address if there is no email associated with an Evergreen user).
+- Hosts created with [host.create](https://docs.devprod.prod.corp.mongodb.com/evergreen/Project-Configuration/Project-Commands#hostcreate) use the Evergreen team's email address.
+
 ## Evergreen CLI on a spawn host
 
 If you're having trouble authenticating on your spawn host, please make sure the following setting is set:

@@ -136,6 +136,8 @@ type APITask struct {
 	HasAnnotations       bool            `json:"has_annotations"`
 	IsAutomaticRestart   bool            `json:"is_automatic_restart"`
 	TestSelectionEnabled bool            `json:"test_selection_enabled"`
+	IsVirtual            bool            `json:"is_virtual"`
+	CompletedBy          *string         `json:"completed_by,omitempty"`
 	// These fields are used by graphql gen, but do not need to be exposed
 	// via Evergreen's user-facing API.
 	OverrideDependencies         bool `json:"-"`
@@ -400,6 +402,11 @@ func (at *APITask) buildTask(t *task.Task) error {
 		IsAutomaticRestart:           t.IsAutomaticRestart,
 		TestSelectionEnabled:         t.TestSelectionEnabled,
 		QuarantinedTestsSkippedCount: t.NumQuarantinedTestsSkipped,
+		IsVirtual:                    t.IsVirtual,
+	}
+
+	if t.CompletedBy != "" {
+		at.CompletedBy = utility.ToStringPtr(t.CompletedBy)
 	}
 
 	if t.BaseTask.Id != "" {
@@ -611,6 +618,8 @@ func (at *APITask) ToService() (*task.Task, error) {
 		HasAnnotations:             at.HasAnnotations,
 		TestSelectionEnabled:       at.TestSelectionEnabled,
 		NumQuarantinedTestsSkipped: at.QuarantinedTestsSkippedCount,
+		IsVirtual:                  at.IsVirtual,
+		CompletedBy:                utility.FromStringPtr(at.CompletedBy),
 	}
 
 	if at.TaskCost != nil {

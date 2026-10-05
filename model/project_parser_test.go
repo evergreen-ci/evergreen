@@ -3797,10 +3797,183 @@ b:
 	var node yaml.Node
 	require.NoError(t, yaml.Unmarshal([]byte(yml), &node))
 
-	entries := collectAnchors(&node)
+	entries, err := collectAnchors(&node)
+	require.NoError(t, err)
 	require.Len(t, entries, 2)
 	assert.Equal(t, "first", entries[0].name)
 	assert.Equal(t, "second", entries[1].name)
+}
+
+// TestCollectAnchorsExpansionBombErrors verifies the node limit guard: a
+// chain of anchors that each reference the previous one twice doubles the
+// expanded size per level, so expansion must be aborted rather than exhausting
+// memory.
+func TestCollectAnchorsExpansionBombErrors(t *testing.T) {
+	yml := "a0: &a0 [x, x]\n"
+	for i := 1; i < 20; i++ {
+		yml += fmt.Sprintf("a%d: &a%d [*a%d, *a%d]\n", i, i, i-1, i-1)
+	}
+	var node yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yml), &node))
+
+	_, err := collectAnchors(&node)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "exceeded the maximum")
+
+	// The file must still parse via fallback, with the reason in decodeErr.
+	pp, decodeErr, err := createIntermediateProject([]byte(yml), false, &anchorRegistry{})
+	require.NoError(t, err)
+	require.NotNil(t, pp)
+	require.Error(t, decodeErr)
+	assert.Contains(t, decodeErr.Error(), "exceeded the maximum")
+}
+
+func TestExpandAliases(t *testing.T) {
+	t.Run("NilReturnsNil", func(t *testing.T) {
+		nodeLimit := maxAnchorExpansionNodes
+		expanded, err := expandAliases(nil, &nodeLimit)
+		require.NoError(t, err)
+		assert.Nil(t, expanded)
+	})
+
+	// Covers the no-Content path: a scalar has no children, so only the node
+	// itself is copied.
+	t.Run("ScalarCopiedWithAnchorStripped", func(t *testing.T) {
+		original := &yaml.Node{Kind: yaml.ScalarNode, Value: "blue", Anchor: "anchor-a"}
+
+		nodeLimit := maxAnchorExpansionNodes
+		expanded, err := expandAliases(original, &nodeLimit)
+		require.NoError(t, err)
+		require.NotNil(t, expanded)
+		assert.NotSame(t, original, expanded)
+		assert.Equal(t, "blue", expanded.Value)
+		assert.Empty(t, expanded.Anchor)
+		assert.Empty(t, expanded.Content)
+		assert.Equal(t, "anchor-a", original.Anchor, "original must not be modified")
+	})
+
+	// Covers the alias-recursion path: expanding an AliasNode returns an
+	// expanded copy of its target.
+	t.Run("AliasNodeReplacedByTargetValue", func(t *testing.T) {
+		yml := `
+a: &anchor-a blue
+b: *anchor-a
+`
+		var node yaml.Node
+		require.NoError(t, yaml.Unmarshal([]byte(yml), &node))
+		// node -> document -> mapping; Content is [key-a, val-a, key-b, val-b].
+		mapping := node.Content[0]
+		require.Len(t, mapping.Content, 4)
+		alias := mapping.Content[3]
+		require.Equal(t, yaml.AliasNode, alias.Kind)
+
+		nodeLimit := maxAnchorExpansionNodes
+		expanded, err := expandAliases(alias, &nodeLimit)
+		require.NoError(t, err)
+		require.NotNil(t, expanded)
+		assert.Equal(t, yaml.ScalarNode, expanded.Kind)
+		assert.Equal(t, "blue", expanded.Value)
+		assert.Empty(t, expanded.Anchor, "the target's anchor name must be stripped from the copy")
+	})
+
+	// Covers the Content recursion path with multiple children: the mapping's
+	// keys are copied as-is and its alias value is replaced inline with the
+	// referenced value.
+	t.Run("MappingWithAliasChildExpandedInline", func(t *testing.T) {
+		yml := `
+a: &anchor-a blue
+b: &anchor-b
+  color: *anchor-a
+  size: large
+`
+		var node yaml.Node
+		require.NoError(t, yaml.Unmarshal([]byte(yml), &node))
+		mapping := node.Content[0]
+		require.Len(t, mapping.Content, 4)
+		anchorB := mapping.Content[3]
+		require.Equal(t, "anchor-b", anchorB.Anchor)
+		require.Len(t, anchorB.Content, 4)
+
+		nodeLimit := maxAnchorExpansionNodes
+		expanded, err := expandAliases(anchorB, &nodeLimit)
+		require.NoError(t, err)
+		require.NotNil(t, expanded)
+		assert.Empty(t, expanded.Anchor)
+		require.Len(t, expanded.Content, 4)
+
+		// color: *anchor-a becomes color: blue with no alias or anchor remaining.
+		assert.Equal(t, "color", expanded.Content[0].Value)
+		assert.Equal(t, yaml.ScalarNode, expanded.Content[1].Kind)
+		assert.Equal(t, "blue", expanded.Content[1].Value)
+		assert.Empty(t, expanded.Content[1].Anchor)
+		assert.Equal(t, "size", expanded.Content[2].Value)
+		assert.Equal(t, "large", expanded.Content[3].Value)
+
+		// The copy must be independent: the original still holds the alias.
+		assert.Equal(t, yaml.AliasNode, anchorB.Content[1].Kind)
+	})
+
+	// Covers multi-level chains: anchor-c references anchor-b, which references
+	// anchor-a. The expanded copy must bottom out in real scalar values with no
+	// alias nodes or anchor names anywhere in the tree.
+	t.Run("ChainedAliasesExpandRecursively", func(t *testing.T) {
+		yml := `
+a: &anchor-a blue
+b: &anchor-b
+  color: *anchor-a
+c: &anchor-c
+  inner: *anchor-b
+`
+		var node yaml.Node
+		require.NoError(t, yaml.Unmarshal([]byte(yml), &node))
+		mapping := node.Content[0]
+		require.Len(t, mapping.Content, 6)
+		anchorC := mapping.Content[5]
+		require.Equal(t, "anchor-c", anchorC.Anchor)
+
+		nodeLimit := maxAnchorExpansionNodes
+		expanded, err := expandAliases(anchorC, &nodeLimit)
+		require.NoError(t, err)
+		require.NotNil(t, expanded)
+
+		// expanded is {inner: {color: blue}}.
+		require.Len(t, expanded.Content, 2)
+		assert.Equal(t, "inner", expanded.Content[0].Value)
+		inner := expanded.Content[1]
+		require.Equal(t, yaml.MappingNode, inner.Kind)
+		require.Len(t, inner.Content, 2)
+		assert.Equal(t, "color", inner.Content[0].Value)
+		assert.Equal(t, yaml.ScalarNode, inner.Content[1].Kind)
+		assert.Equal(t, "blue", inner.Content[1].Value)
+
+		var checkClean func(n *yaml.Node)
+		checkClean = func(n *yaml.Node) {
+			assert.NotEqual(t, yaml.AliasNode, n.Kind, "no alias nodes may remain")
+			assert.Empty(t, n.Anchor, "no anchor names may remain")
+			for _, child := range n.Content {
+				checkClean(child)
+			}
+		}
+		checkClean(expanded)
+	})
+
+	t.Run("ExhaustedNodeLimitErrors", func(t *testing.T) {
+		yml := `
+a: &anchor-a
+  color: blue
+  size: large
+`
+		var node yaml.Node
+		require.NoError(t, yaml.Unmarshal([]byte(yml), &node))
+		anchorA := node.Content[0].Content[1]
+		require.Equal(t, "anchor-a", anchorA.Anchor)
+
+		// The anchor's subtree has 5 nodes (mapping + 4 scalars).
+		nodeLimit := 3
+		_, err := expandAliases(anchorA, &nodeLimit)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "exceeded the maximum")
+	})
 }
 
 // TestBuildAnchorPreambleProducesValidYAML verifies that buildAnchorPreamble
@@ -3817,7 +3990,8 @@ steps:
 `
 	var node yaml.Node
 	require.NoError(t, yaml.Unmarshal([]byte(src), &node))
-	anchors := collectAnchors(&node)
+	anchors, err := collectAnchors(&node)
+	require.NoError(t, err)
 	require.Len(t, anchors, 2)
 
 	registry := &anchorRegistry{entries: anchors}
@@ -3840,6 +4014,25 @@ tasks:
 	combined := append(preamble, []byte(snippet)...)
 	var combinedNode yaml.Node
 	require.NoError(t, yaml.Unmarshal(combined, &combinedNode), "combined preamble+snippet should parse without unknown-anchor errors")
+}
+
+// TestBuildAnchorPreambleOversizedErrors verifies the preamble size cap: a
+// registry whose serialized form exceeds maxAnchorPreambleBytes must error so
+// the caller falls back to parsing without the preamble.
+func TestBuildAnchorPreambleOversizedErrors(t *testing.T) {
+	registry := &anchorRegistry{
+		entries: []anchorEntry{
+			{name: "huge", node: &yaml.Node{
+				Kind:   yaml.ScalarNode,
+				Anchor: "huge",
+				Value:  strings.Repeat("x", maxAnchorPreambleBytes+1),
+			}},
+		},
+	}
+
+	_, err := buildAnchorPreamble(registry)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "exceeds the maximum")
 }
 
 // TestBasicCrossFileAnchor verifies that an anchor defined in the main project
@@ -4010,25 +4203,70 @@ tasks:
 	assert.Equal(t, "git.get_project", tasksByName["third-task"].Commands[0].Command)
 }
 
+// TestRedefinedAnchorDoesNotChangeAnchorsThatReferencedIt verifies
+// resolve-at-definition-time semantics: an anchor that references another
+// anchor captures its value at definition, and a later redefinition of the
+// referenced anchor does not retroactively change it.
+//
+//	file_a.yml: defines &anchor-a as blue.
+//	file_b.yml: defines &anchor-b referencing *anchor-a (captures blue).
+//	file_c.yml: redefines &anchor-a as red.
+//	file_d.yml: *anchor-a resolves to red; *anchor-b still contains blue.
+func TestRedefinedAnchorDoesNotChangeAnchorsThatReferencedIt(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes("", "file_a.yml", "file_b.yml", "file_c.yml", "file_d.yml")
+
+	fileA := `
+variables:
+- &anchor-a blue
+`
+	fileB := `
+variables:
+- &anchor-b
+  baked_color: *anchor-a
+tasks:
+- name: task-b
+  commands:
+  - command: shell.exec
+`
+	fileC := `
+variables:
+- &anchor-a red
+`
+	fileD := `
+buildvariants:
+- name: my-variant
+  display_name: My Variant
+  expansions:
+    <<: *anchor-b
+    direct_color: *anchor-a
+  tasks:
+  - name: task-b
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		moduleIncludeOpts(t,
+			moduleInclude("file_a.yml", fileA),
+			moduleInclude("file_b.yml", fileB),
+			moduleInclude("file_c.yml", fileC),
+			moduleInclude("file_d.yml", fileD),
+		), "proj", proj)
+	require.NoError(t, err)
+	require.Len(t, proj.BuildVariants, 1)
+	assert.Equal(t, "red", proj.BuildVariants[0].Expansions["direct_color"], "direct alias use should resolve to the latest definition")
+	assert.Equal(t, "blue", proj.BuildVariants[0].Expansions["baked_color"], "anchor that referenced the old value should keep it")
+}
+
 // TestAnchorRedefinedWithAliasDependencyDoesNotError is a regression test for a
-// production bug where a project failed to load with "unknown anchor" errors.
+// bug where redefining an anchor that introduces a new alias dependency caused
+// the preamble for subsequent files to fail to parse with "unknown anchor" errors.
 //
-// The failure pattern requires three files:
-//  1. first.yml defines &template-expansions with a plain string value (no aliases).
-//  2. second.yml defines &compile-dependency (a mapping) that contains a nested
-//     scalar anchor &compile-variant. It also redefines &template-expansions,
-//     replacing the plain string with an alias: compile_variant: *compile-variant.
-//  3. third.yml need not reference these anchors at all; the bug fires when
-//     building the preamble injected before third.yml is parsed.
-//
-// Before the fix, upsert updated the registry entry for &template-expansions
-// in-place, so it stayed at its original index K. The new entries
-// &compile-dependency and &compile-variant were appended after K. When the
-// preamble was marshaled, &template-expansions appeared before &compile-variant,
-// causing the re-parse to fail with "unknown anchor 'compile-variant' referenced".
-//
-// After the fix, when an anchor is redefined, the old entry is removed and the
-// new one is appended at the end, so all dependencies always precede their users.
+// The failure pattern:
+//  1. first.yml defines &task-template with no alias dependencies.
+//  2. second.yml introduces &compile-script (a nested scalar anchor) and redefines
+//     &task-template so its value now references *compile-script.
+//  3. Building the preamble for third.yml must not produce a forward reference.
+//     Since aliases are expanded at collection time, the redefined &task-template
+//     stores compile-script's value inline and no ordering issue is possible.
 func TestAnchorRedefinedWithAliasDependencyDoesNotError(t *testing.T) {
 	mainYAML := mainYAMLWithModuleIncludes("", "first.yml", "second.yml", "third.yml")
 
@@ -4081,37 +4319,99 @@ tasks:
 	require.NoError(t, err, "preamble ordering bug: anchor redefined with alias dependency should not produce unknown-anchor error")
 }
 
+// TestSameAnchorDefinedInTwoIncludeFilesDoesNotBreakSubsequentFiles is a
+// regression test for a bug where two include files both define the same
+// anchor, and a fourth file needs an unrelated anchor from the first file.
+// The redefinition used to corrupt the preamble ordering, making the fourth
+// file fail with "unknown anchor".
+func TestSameAnchorDefinedInTwoIncludeFilesDoesNotBreakSubsequentFiles(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes("", "shared.yml", "tasks_a.yml", "tasks_b.yml", "variants.yml")
+
+	// shared.yml defines &anchor-a, which variants.yml will need.
+	sharedYAML := `
+variables:
+- &anchor-a
+  flag: value-a
+`
+	// tasks_a.yml defines &anchor-b and a task that uses it.
+	tasksAYAML := `
+variables:
+- &anchor-b
+  num_files: 15
+tasks:
+- name: task-a
+  commands:
+  - command: shell.exec
+    vars:
+      <<: *anchor-b
+`
+	// tasks_b.yml redefines &anchor-b (identical content, duplicated across files).
+	tasksBYAML := `
+variables:
+- &anchor-b
+  num_files: 15
+tasks:
+- name: task-b
+  commands:
+  - command: shell.exec
+    vars:
+      <<: *anchor-b
+`
+	// variants.yml uses *anchor-a from shared.yml. Before the fix, the preamble
+	// built for this file had a forward reference due to &anchor-b being moved
+	// to the end of the registry past entries that referenced it. The YAML
+	// parser rejected the preamble, so *anchor-a was never in scope.
+	variantsYAML := `
+buildvariants:
+- name: my-variant
+  display_name: My Variant
+  expansions:
+    <<: *anchor-a
+  tasks:
+  - name: task-a
+  - name: task-b
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		moduleIncludeOpts(t,
+			moduleInclude("shared.yml", sharedYAML),
+			moduleInclude("tasks_a.yml", tasksAYAML),
+			moduleInclude("tasks_b.yml", tasksBYAML),
+			moduleInclude("variants.yml", variantsYAML),
+		), "proj", proj)
+	require.NoError(t, err)
+	require.Len(t, proj.BuildVariants, 1)
+	assert.Equal(t, "value-a", proj.BuildVariants[0].Expansions["flag"])
+}
+
 // TestAnchorPreambleFailureFallsBack verifies that if the anchor preamble itself is
 // invalid (alias-before-definition ordering), createIntermediateProject falls back to
 // parsing without the preamble rather than propagating the error. This guards against
 // any future preamble-construction bugs breaking projects that don't use cross-file anchors.
 func TestAnchorPreambleFailureFallsBack(t *testing.T) {
-	// Build a registry with broken ordering: entry 0 is a mapping that contains
-	// *my-anchor (an AliasNode), but entry 1 is the node that defines &my-anchor.
-	// Marshaling this produces alias-before-definition in the preamble YAML.
-	scalarNode := &yaml.Node{Kind: yaml.ScalarNode, Value: "hello", Anchor: "my-anchor"}
-	aliasNode := &yaml.Node{Kind: yaml.AliasNode, Value: "my-anchor", Alias: scalarNode}
-	mappingNode := &yaml.Node{
-		Kind:   yaml.MappingNode,
-		Anchor: "my-template",
-		Content: []*yaml.Node{
-			{Kind: yaml.ScalarNode, Value: "key"},
-			aliasNode,
-		},
-	}
+	// Manually construct a registry entry containing an alias to an anchor that
+	// isn't defined in the preamble. collectAnchors can't produce this state
+	// (it expands aliases at collection time), but the fallback must still
+	// protect against future preamble-construction bugs.
 	registry := &anchorRegistry{
 		entries: []anchorEntry{
-			{name: "my-template", node: mappingNode},
-			{name: "my-anchor", node: scalarNode},
+			{name: "broken", node: &yaml.Node{
+				Kind:   yaml.MappingNode,
+				Anchor: "broken",
+				Content: []*yaml.Node{
+					{Kind: yaml.ScalarNode, Value: "key"},
+					{Kind: yaml.AliasNode, Value: "missing", Alias: &yaml.Node{Kind: yaml.ScalarNode, Value: "x", Anchor: "missing"}},
+				},
+			}},
 		},
 	}
 
-	// Confirm the preamble is invalid on re-parse (alias appears before its definition).
+	// Confirm the preamble is invalid on re-parse (unknown anchor reference).
 	preamble, err := buildAnchorPreamble(registry)
 	require.NoError(t, err)
 	var preambleNode yaml.Node
 	require.Error(t, yaml.NewDecoder(bytes.NewReader(preamble)).Decode(&preambleNode),
-		"preamble should fail to parse due to alias-before-definition")
+		"preamble should fail to parse due to alias referencing an undefined anchor")
 
 	// createIntermediateProject should fall back to parsing without the preamble.
 	simpleYAML := []byte("tasks:\n- name: my-task\n  commands:\n  - command: shell.exec\n")

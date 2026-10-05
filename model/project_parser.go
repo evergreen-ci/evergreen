@@ -1787,7 +1787,9 @@ func decodeWithAnchors(parseBytes []byte, unmarshalStrict bool, anchorRegistry *
 		}
 	}
 
-	anchorRegistry.mergeAnchorsFrom(&node)
+	if err := anchorRegistry.mergeAnchorsFrom(&node); err != nil {
+		return nil, errors.Wrap(err, "collecting YAML anchors")
+	}
 
 	if p.Functions == nil {
 		p.Functions = map[string]*YAMLCommandSet{}
