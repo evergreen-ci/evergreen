@@ -90,8 +90,7 @@ func (c *tarballCreate) Execute(ctx context.Context,
 	}
 	SetWorkdirBoundaryAttribute(ctx, conf, c.Target, c.SourceDir)
 
-	// Isolated tasks share the work directory with the host agent, so both the
-	// archive target and the source tree must stay inside it.
+	// Isolated task paths must stay inside the work directory.
 	if err := containToWorkdir(conf, "source directory", c.SourceDir); err != nil {
 		return err
 	}
@@ -184,9 +183,7 @@ func (c *tarballCreate) makeArchive(ctx context.Context, conf *internal.TaskConf
 	}()
 
 	var root *os.Root
-	if conf != nil && conf.ContainerIsolationEnabled() { // Bound file opens to the source directory so a symlink planted by an
-		// isolated task cannot pack host files outside the work directory into
-		// the archive.
+	if conf != nil && conf.ContainerIsolationEnabled() {
 		root, err = os.OpenRoot(c.SourceDir)
 		if err != nil {
 			return -1, errors.Wrapf(err, "opening source directory '%s'", c.SourceDir)

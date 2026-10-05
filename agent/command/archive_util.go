@@ -78,8 +78,7 @@ type buildArchiveOptions struct {
 	// targets); otherwise they are dereferenced and the target's contents are
 	// stored at the symlink's path.
 	preserveSymlinks bool
-	// root, when non-nil, bounds file opens to rootPath so a symlink planted
-	// by a container-isolated task cannot make the host read files outside it.
+	// root, when non-nil, bounds file opens to rootPath for isolated tasks.
 	root *os.Root
 }
 
@@ -91,8 +90,6 @@ func buildArchive(ctx context.Context, opts buildArchiveOptions) (int, error) {
 	pathsToAdd, excludes := opts.paths, opts.excludes
 	verbose, preserveSymlinks := opts.verbose, opts.preserveSymlinks
 
-	// relToRoot converts an absolute path under rootPath to a root-relative
-	// name for os.Root operations.
 	relToRoot := func(p string) (string, error) {
 		return filepath.Rel(rootPath, p)
 	}
@@ -113,9 +110,7 @@ FileLoop:
 		// here and archived as a symlink entry below.
 		if file.info.Mode()&os.ModeSymlink > 0 && !preserveSymlinks {
 			if opts.root != nil {
-				// Bounded dereference: only links resolving inside rootPath are
-				// followed, so host files outside the work directory cannot be
-				// packed into the archive.
+				// Only follow links resolving inside rootPath.
 				relPath, err := relToRoot(file.path)
 				if err != nil {
 					logger.Warningf(ctx, "Could not resolve symlink '%s' within the archive root, ignoring.", file.path)
@@ -275,8 +270,7 @@ func extractTarball(ctx context.Context, reader io.Reader, rootPath string, excl
 // preserveSymlinks is true, symlink entries are recreated with their original
 // (possibly relative) targets, validated to stay within rootPath; otherwise
 // symlink targets are interpreted relative to rootPath. When root is non-nil,
-// all extraction writes are bounded to rootPath so a symlink planted in the
-// destination cannot redirect writes outside it.
+// extraction writes are bounded to rootPath.
 func extractTarballArchive(ctx context.Context, tarReader *tar.Reader, rootPath string, excludes []string, preserveSymlinks bool, root *os.Root) error {
 	// Link files and symlink files are extracted after all other files are extracted.
 	linkFiles := []func() error{}
@@ -309,8 +303,6 @@ tarReaderLoop:
 
 		namePath := filepath.Join(rootPath, name)
 		linkNamePath := filepath.Join(rootPath, linkname)
-		// Relative names for os.Root operations, which resolve every component
-		// against the root so planted destination symlinks cannot escape it.
 		nameRel := name
 		if root != nil {
 			nameRel = filepath.ToSlash(name)
@@ -443,9 +435,7 @@ func writeFileWithContentsAndPermission(ctx context.Context, path string, conten
 }
 
 // rootWriteFileWithContentsAndPermission is the os.Root-bounded equivalent of
-// writeFileWithContentsAndPermission. The root resolves every path component
-// itself, so a symlink planted in a destination directory cannot redirect the
-// write outside the root.
+// writeFileWithContentsAndPermission.
 func rootWriteFileWithContentsAndPermission(ctx context.Context, root *os.Root, name string, contents io.Reader, mode fs.FileMode) error {
 	f, err := root.OpenFile(name, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
 	if err != nil {

@@ -135,9 +135,7 @@ type BackgroundFailure struct {
 func (b BackgroundFailure) Error() string { return b.Err.Error() }
 
 // ContainerIsolationEnabled reports whether the task's distro runs tasks in an
-// isolation container. Isolated tasks share the work directory with the host
-// agent, so host-side file processing must confine itself to the work
-// directory.
+// isolation container.
 func (t *TaskConfig) ContainerIsolationEnabled() bool {
 	return t != nil && t.Distro != nil && t.Distro.ContainerIsolation != nil
 }

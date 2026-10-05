@@ -52,9 +52,8 @@ func (e *tarballExtract) Execute(ctx context.Context,
 	archivePath := GetWorkingDirectory(conf, e.ArchivePath)
 	SetWorkdirBoundaryAttribute(ctx, conf, e.TargetDirectory, e.ArchivePath)
 
-	// Isolated tasks share the work directory with the host agent, so their
-	// paths must stay inside it and extraction must be bounded to the
-	// destination to stop planted symlinks from writing outside it.
+	// Isolated task paths must stay inside the work directory; extraction is
+	// bounded to the destination.
 	if err := containToWorkdir(conf, "archive path", archivePath); err != nil {
 		return err
 	}
