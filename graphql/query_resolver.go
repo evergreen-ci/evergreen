@@ -669,6 +669,9 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, ta
 		}
 		allTasks = append(allTasks, tasks...)
 	}
+	if err := checkChildPatchTasksAccess(ctx, versionID, dbTasks, ProjectPermissionTasks, AccessLevelView); err != nil {
+		return nil, err
+	}
 
 	if len(allTasks) > 0 {
 		samples, err := task.GetFailedTestSamples(ctx, evergreen.GetEnvironment(), allTasks, failingTests)

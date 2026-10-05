@@ -1,0 +1,6 @@
+mutation {
+    scheduleTasks(taskIds: ["child_task"], versionId: "parent_version") {
+      id
+      activated
+    }
+}

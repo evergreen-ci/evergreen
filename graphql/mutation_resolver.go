@@ -1190,6 +1190,9 @@ func (r *mutationResolver) ScheduleTasks(ctx context.Context, versionID string, 
 			return nil, InputValidationError.Send(ctx, fmt.Sprintf("task '%s' does not belong to version '%s'", t.Id, versionID))
 		}
 	}
+	if err := checkChildPatchTasksAccess(ctx, versionID, dbTasks, ProjectPermissionTasks, AccessLevelEdit); err != nil {
+		return nil, err
+	}
 
 	scheduledTasks := []*restModel.APITask{}
 	scheduled, err := setManyTasksScheduled(ctx, r.sc.GetURL(), true, taskIds...)
