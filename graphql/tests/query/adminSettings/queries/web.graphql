@@ -24,6 +24,7 @@ query Web {
       url
       uiv2Url
       parsleyUrl
+      logUrl
       httpListenAddr
       secret
       defaultProject
