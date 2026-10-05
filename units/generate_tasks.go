@@ -310,6 +310,15 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	}
 	outcome, counts, err := func() (generateTasksOutcome, model.GenerateTasksCounts, error) {
 		defer release()
+		currentTask, err := task.FindOneId(ctx, j.TaskID)
+		if err != nil {
+			return outcomeError, model.GenerateTasksCounts{}, errors.Wrapf(err, "finding task '%s'", j.TaskID)
+		}
+		if currentTask == nil {
+			return outcomeError, model.GenerateTasksCounts{}, errors.Errorf("task '%s' not found", j.TaskID)
+		}
+		t = currentTask
+		span.SetAttributes(generateTasksSpanAttributes(t)...)
 		return j.generate(ctx, t)
 	}()
 	shouldNoop := adb.ResultsNotFound(err) || db.IsDuplicateKey(err)

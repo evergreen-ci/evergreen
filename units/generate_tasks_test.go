@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -21,8 +22,11 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.opentelemetry.io/otel/attribute"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var sampleBaseProject = `
@@ -486,6 +490,79 @@ func TestAcquireGenerateTasksExecutionSlotHonorsLimitAndContext(t *testing.T) {
 	release, _, err = acquireGenerateTasksExecutionSlot(t.Context(), slots)
 	require.NoError(t, err)
 	release()
+}
+
+type generateTasksTaskLoadedSpan struct {
+	trace.Span
+	loaded chan struct{}
+	once   sync.Once
+}
+
+func (span *generateTasksTaskLoadedSpan) SetAttributes(attributes ...attribute.KeyValue) {
+	span.Span.SetAttributes(attributes...)
+	for _, value := range attributes {
+		if string(value.Key) == hasGeneratedTasksOtelAttribute {
+			span.once.Do(func() { close(span.loaded) })
+		}
+	}
+}
+
+func TestGenerateTasksStoppedDuringSlotWaitShouldNoop(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	t.Cleanup(cancel)
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+	require.NoError(t, db.ClearCollections(task.Collection))
+	t.Cleanup(func() { require.NoError(t, db.ClearCollections(task.Collection)) })
+	generator := task.Task{
+		Id:      "stopped_generator",
+		Version: "missing_version",
+		Status:  evergreen.TaskStarted,
+	}
+	require.NoError(t, generator.Insert(ctx))
+
+	release, _, err := acquireGenerateTasksExecutionSlot(ctx, generateTasksExecutionSlots)
+	require.NoError(t, err)
+	releaseSlot := sync.OnceFunc(release)
+	t.Cleanup(releaseSlot)
+	provider := sdktrace.NewTracerProvider()
+	t.Cleanup(func() { require.NoError(t, provider.Shutdown(t.Context())) })
+	ctx, rootSpan := provider.Tracer("test").Start(ctx, "generate-tasks")
+	t.Cleanup(func() { rootSpan.End() })
+	span := &generateTasksTaskLoadedSpan{Span: rootSpan, loaded: make(chan struct{})}
+	ctx = trace.ContextWithSpan(ctx, span)
+	generatorJob := NewGenerateTasksJob(env, generator.Version, generator.Id, "1")
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		generatorJob.Run(ctx)
+	}()
+	t.Cleanup(func() {
+		cancel()
+		releaseSlot()
+		<-done
+	})
+	select {
+	case <-span.loaded:
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
+	require.NoError(t, task.UpdateOne(ctx, bson.M{task.IdKey: generator.Id}, bson.M{
+		"$set": bson.M{task.StatusKey: evergreen.TaskFailed},
+	}))
+	releaseSlot()
+	select {
+	case <-done:
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
+	require.NoError(t, generatorJob.Error())
+	dbTask, err := task.FindOneId(ctx, generator.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbTask)
+	assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
+	assert.Empty(t, dbTask.GenerateTasksError)
+	assert.Empty(t, generateTasksExecutionSlots)
 }
 
 func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
