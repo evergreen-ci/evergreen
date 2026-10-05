@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -51,14 +52,19 @@ type testLogDirectoryHandler struct {
 	createSender func(context.Context, string, int) (send.Sender, error)
 	sequenceSize int64
 	logFileCount int
+	// isolated, when true, bounds the directory walk and file opens to dir so
+	// a symlink planted by a container-isolated task cannot make the host read
+	// files outside it.
+	isolated bool
 }
 
 // newTestLogDirectoryHandler returns a new test log directory handler for the
 // specified task.
 func newTestLogDirectoryHandler(dir string, logger client.LoggerProducer, handlerOpts directoryHandlerOpts) directoryHandler {
 	h := &testLogDirectoryHandler{
-		dir:    dir,
-		logger: logger,
+		dir:      dir,
+		logger:   logger,
+		isolated: handlerOpts.isolated,
 	}
 	// This flag exists to improve the performance of test log ingestion.
 	handlerOpts.redactorOpts.PreloadRedactions = true
@@ -85,7 +91,17 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 		h.sequenceSize = defaultTestLogSequenceSize
 	}
 
-	h.getSpecFile(ctx)
+	var root *os.Root
+	if h.isolated {
+		var err error
+		root, err = os.OpenRoot(h.dir)
+		if err != nil {
+			return errors.Wrapf(err, "opening test log directory '%s'", h.dir)
+		}
+		defer root.Close()
+	}
+
+	h.getSpecFile(ctx, root)
 
 	type fileChunk struct {
 		path     string
@@ -94,10 +110,15 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 		limit    int64
 	}
 	var fileChunks []fileChunk
-	ignore := filepath.Join(h.dir, testLogSpecFilename)
+	ignore := testLogSpecFilename
+	if root == nil {
+		ignore = filepath.Join(h.dir, testLogSpecFilename)
+	}
 	fileSizes := []int64{}
 	filesOverTenMB := 0
-	err := filepath.WalkDir(h.dir, func(path string, info fs.DirEntry, err error) error {
+	// walkfn normalizes between an os.Root-bounded walk (relative paths) and a
+	// plain walk of the directory (absolute paths).
+	walkfn := func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
 			h.logger.Execution().Warning(ctx, errors.Wrap(err, "walking test log directory"))
 			return nil
@@ -120,9 +141,17 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 
 		// fs.DirEntry.Info() is lstat-backed, so symlinks report the link's own size rather than the target file's.
 		if info.Type()&fs.ModeSymlink != 0 {
-			targetInfo, err := os.Stat(path)
-			if err != nil {
-				h.logger.Task().Warning(ctx, errors.Wrapf(err, "getting test log symlink target info for '%s'", path))
+			var targetInfo fs.FileInfo
+			var statErr error
+			if root != nil {
+				// os.Root refuses to resolve symlinks pointing outside the
+				// directory, so escaping links fail here and are skipped.
+				targetInfo, statErr = root.Stat(path)
+			} else {
+				targetInfo, statErr = os.Stat(path)
+			}
+			if statErr != nil {
+				h.logger.Task().Warning(ctx, errors.Wrapf(statErr, "getting test log symlink target info for '%s'", path))
 				return nil
 			}
 			if targetInfo.IsDir() {
@@ -156,7 +185,14 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 		}
 
 		return nil
-	})
+	}
+
+	var err error
+	if root != nil {
+		err = fs.WalkDir(root.FS(), ".", walkfn)
+	} else {
+		err = filepath.WalkDir(h.dir, walkfn)
+	}
 
 	work := make(chan fileChunk, len(fileChunks))
 	for _, chunk := range fileChunks {
@@ -181,7 +217,7 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 					return
 				}
 
-				h.ingest(ctx, chunk.path, chunk.sequence, chunk.offset, chunk.limit)
+				h.ingest(ctx, root, chunk.path, chunk.sequence, chunk.offset, chunk.limit)
 
 				// In some intense-workflows, log uploading can starve other goroutines, so yield routinely
 				// to allow other goroutines to run.
@@ -203,8 +239,21 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 // reason, an error is logged and the handler uses the default spec.
 //
 // Called once per task run before sweeping the directory for test log files.
-func (h *testLogDirectoryHandler) getSpecFile(ctx context.Context) {
-	data, err := os.ReadFile(filepath.Join(h.dir, testLogSpecFilename))
+// When root is non-nil, the spec file is read through it.
+func (h *testLogDirectoryHandler) getSpecFile(ctx context.Context, root *os.Root) {
+	var data []byte
+	var err error
+	if root != nil {
+		f, openErr := root.Open(testLogSpecFilename)
+		if openErr == nil {
+			data, err = io.ReadAll(f)
+			grip.Error(ctx, errors.Wrap(f.Close(), "closing test log spec file"))
+		} else {
+			err = openErr
+		}
+	} else {
+		data, err = os.ReadFile(filepath.Join(h.dir, testLogSpecFilename))
+	}
 	if err != nil {
 		h.logger.Task().Warning(ctx, errors.Wrap(err, "reading test log spec; falling back to default spec"))
 		return
@@ -219,21 +268,31 @@ func (h *testLogDirectoryHandler) getSpecFile(ctx context.Context) {
 	}
 }
 
-// ingest reads and ships a test log file.
-func (h *testLogDirectoryHandler) ingest(ctx context.Context, path string, sequence int, offset, limit int64) {
+// ingest reads and ships a test log file. When root is non-nil, the file is
+// opened through it so symlinked paths cannot escape the test log directory.
+func (h *testLogDirectoryHandler) ingest(ctx context.Context, root *os.Root, path string, sequence int, offset, limit int64) {
 	h.logger.Task().Infof(ctx, "new test log file '%s' found, initiating automated ingestion", path)
 
 	// The persisted log path should be relative to the reserved directory
 	// and contain only slash ('/') separators.
-	logPath, err := filepath.Rel(h.dir, path)
-	if err != nil {
-		h.logger.Task().Error(ctx, errors.Wrapf(err, "getting relative path for test log file '%s'", path))
-		return
+	logPath := filepath.ToSlash(path)
+	if root == nil {
+		rel, err := filepath.Rel(h.dir, path)
+		if err != nil {
+			h.logger.Task().Error(ctx, errors.Wrapf(err, "getting relative path for test log file '%s'", path))
+			return
+		}
+		logPath = filepath.ToSlash(rel)
 	}
-	logPath = filepath.ToSlash(logPath)
 	h.logger.Task().Infof(ctx, "storing test log file '%s' as '%s'", path, logPath)
 
-	f, err := os.Open(path)
+	var f *os.File
+	var err error
+	if root != nil {
+		f, err = root.Open(path)
+	} else {
+		f, err = os.Open(path)
+	}
 	if err != nil {
 		h.logger.Task().Error(ctx, errors.Wrapf(err, "opening test log file '%s'", path))
 		return
