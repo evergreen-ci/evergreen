@@ -58,6 +58,7 @@ func TestSpawnEC2InstanceFleet(t *testing.T) {
 	testConfig.SSH.TaskHostKey.Name = "evergreen-task-hosts"
 
 	testutil.ConfigureIntegrationTest(t, testConfig)
+	// SpawnHost applies these tags to the EC2 instance and its EBS volumes at creation.
 	testConfig.Providers.AWS.ResourceTags = evergreen.ResourceTagsConfig{
 		MongoDBOwner: "evergreen@mongodb.com",
 		MongoDBEnv:   "test",
