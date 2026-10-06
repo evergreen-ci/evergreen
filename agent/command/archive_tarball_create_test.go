@@ -144,7 +144,7 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 				So(cmd.SourceDir, ShouldEqual, testDataDir)
 				So(cmd.Include, ShouldResemble, []string{"targz_me/dir1/**"})
 				So(cmd.ExcludeFiles, ShouldResemble, []string{"*.pdb"})
-				numFound, err := cmd.makeArchive(t.Context(), logger.Task(), false)
+				numFound, err := cmd.makeArchive(t.Context(), nil, logger.Task(), false)
 				So(err, ShouldBeNil)
 				So(numFound, ShouldEqual, 3)
 
@@ -198,7 +198,7 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 				}
 
 				So(cmd.ParseParams(params), ShouldBeNil)
-				numFound, err := cmd.makeArchive(t.Context(), logger.Task(), false)
+				numFound, err := cmd.makeArchive(t.Context(), nil, logger.Task(), false)
 				So(err, ShouldBeNil)
 				So(numFound, ShouldEqual, 2)
 
@@ -212,7 +212,7 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 				defer f.Close()
 				defer gz.Close()
 
-				So(extractTarballArchive(t.Context(), tarReader, outputDir, []string{}, false), ShouldBeNil)
+				So(extractTarballArchive(t.Context(), tarReader, outputDir, []string{}, false, nil), ShouldBeNil)
 				assert.DirExists(t, filepath.Join(outputDir, "dir1"))
 				assert.DirExists(t, filepath.Join(outputDir, "dir1", "dir2"))
 			})
@@ -236,7 +236,7 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 				}
 
 				So(cmd.ParseParams(params), ShouldBeNil)
-				numFound, err := cmd.makeArchive(t.Context(), logger.Task(), false)
+				numFound, err := cmd.makeArchive(t.Context(), nil, logger.Task(), false)
 				So(err, ShouldBeNil)
 				So(numFound, ShouldEqual, 1)
 

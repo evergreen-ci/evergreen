@@ -347,8 +347,8 @@ func cacheHitExpansionName(name string) string {
 // gzipped tarball at target. It reuses the same archive helpers as
 // archive.targz_pack. A path that does not exist on disk is an error. When
 // preserveSymlinks is true, symlinks are archived as symlinks rather than
-// dereferenced.
-func makeCacheArchive(ctx context.Context, workDir string, paths []string, target string, logger grip.Journaler, preserveSymlinks bool) error {
+// dereferenced. When root is non-nil, file reads are bounded to workDir.
+func makeCacheArchive(ctx context.Context, workDir string, paths []string, target string, logger grip.Journaler, preserveSymlinks bool, root *os.Root) error {
 	contents, totalSize, err := gatherCacheContents(workDir, paths)
 	if err != nil {
 		return err
@@ -371,6 +371,7 @@ func makeCacheArchive(ctx context.Context, workDir string, paths []string, targe
 		paths:            contents,
 		logger:           logger,
 		preserveSymlinks: preserveSymlinks,
+		root:             root,
 	})
 	return errors.Wrap(err, "building cache archive")
 }

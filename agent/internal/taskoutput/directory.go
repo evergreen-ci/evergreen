@@ -46,8 +46,11 @@ type Directory struct {
 
 // DirectoryOpts is an options struct passed into directory initialization.
 type DirectoryOpts struct {
-	Root         string
-	Tsk          *task.Task
+	Root string
+	Tsk  *task.Task
+	// Isolated bounds file access to the output directory for container-
+	// isolated tasks, which share the work directory with the host agent.
+	Isolated     bool
 	RedactorOpts redactor.RedactionOptions
 	Logger       client.LoggerProducer
 	TraceClient  otlptrace.Client
@@ -63,6 +66,7 @@ func NewDirectory(opts DirectoryOpts) *Directory {
 		output:       opts.Tsk.TaskOutputInfo,
 		traceClient:  opts.TraceClient,
 		s3Usage:      opts.S3Usage,
+		isolated:     opts.Isolated,
 	}
 	root := filepath.Join(opts.Root, "build")
 	handlers := map[string]directoryHandler{}
@@ -125,6 +129,7 @@ type directoryHandlerOpts struct {
 	redactorOpts redactor.RedactionOptions
 	traceClient  otlptrace.Client
 	s3Usage      *s3usage.S3Usage
+	isolated     bool
 }
 
 // directoryHandlerFactory abstracts the creation of a directory handler.

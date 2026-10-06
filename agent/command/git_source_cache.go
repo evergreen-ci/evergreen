@@ -276,7 +276,7 @@ func (sc *sourceCache) restore(ctx context.Context, comm client.Communicator, lo
 
 // extractArchive unpacks a downloaded artifact into the project directory.
 func (sc *sourceCache) extractArchive(ctx context.Context, r io.Reader, remoteKey string) error {
-	if err := extractTarball(ctx, r, sc.projectDir(), []string{}, true); err != nil {
+	if err := extractTarball(ctx, r, sc.projectDir(), []string{}, true, nil); err != nil {
 		sc.corruptRemoteKey = remoteKey
 		return errors.Wrap(err, "extracting source cache archive")
 	}
@@ -299,7 +299,7 @@ func (sc *sourceCache) save(ctx context.Context, comm client.Communicator, logge
 	}()
 
 	start := time.Now()
-	if err := makeCacheArchive(ctx, sc.projectDir(), []string{sc.projectDir()}, localPath, logger.Task(), true); err != nil {
+	if err := makeCacheArchive(ctx, sc.projectDir(), []string{sc.projectDir()}, localPath, logger.Task(), true, nil); err != nil {
 		return false, errors.Wrap(err, "creating source cache archive")
 	}
 	setSourceCacheSpanDuration(ctx, sourceCacheArchiveDurationAttribute, time.Since(start))

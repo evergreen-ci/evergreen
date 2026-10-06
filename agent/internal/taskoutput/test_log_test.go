@@ -276,6 +276,54 @@ func TestTestLogDirectoryHandlerSymlink(t *testing.T) {
 		})
 		assert.True(t, sawWarning, "expected a warning explaining the directory symlink was skipped")
 	})
+
+	t.Run("IsolatedEscapingSymlinkSkipped", func(t *testing.T) {
+		tsk, h := setupTestTestLogDirectoryHandler(t, comm, redactor.RedactionOptions{}, 32)
+		h.isolated = true
+
+		// A host-only file outside the test log directory that a
+		// container-isolated task cannot read but the host agent can.
+		hostOnly := filepath.Join(t.TempDir(), "host-only.log")
+		require.NoError(t, os.WriteFile(hostOnly, []byte("HOST-ONLY-SECRET\n"), 0600))
+		require.NoError(t, os.Symlink(hostOnly, filepath.Join(h.dir, "host-leak.log")))
+
+		require.NoError(t, h.run(ctx))
+
+		it, err := tsk.GetTestLogs(ctx, task.TestLogGetOptions{LogPaths: []string{"host-leak.log"}})
+		require.NoError(t, err)
+		t.Cleanup(func() { assert.NoError(t, it.Close()) })
+		assert.False(t, it.Next(), "escaping symlink should not be ingested for isolated tasks")
+		require.NoError(t, it.Err())
+
+		sawWarning := slices.ContainsFunc(comm.GetTaskLogs(tsk.Id), func(line log.LogLine) bool {
+			return line.Priority == level.Warning && strings.Contains(line.Data, "host-leak.log")
+		})
+		assert.True(t, sawWarning, "expected a warning explaining the escaping symlink was skipped")
+	})
+
+	t.Run("IsolatedInternalSymlinkIngested", func(t *testing.T) {
+		tsk, h := setupTestTestLogDirectoryHandler(t, comm, redactor.RedactionOptions{}, 32)
+		h.isolated = true
+
+		// Symlinks that resolve inside the test log directory still work.
+		// Relative targets are required: os.Root refuses absolute symlink
+		// targets, which is what stops links escaping to host files.
+		inputLines := []string{"internal line 1", "internal line 2"}
+		require.NoError(t, os.WriteFile(filepath.Join(h.dir, "real.log"), []byte(strings.Join(inputLines, "\n")+"\n"), 0777))
+		require.NoError(t, os.Symlink("real.log", filepath.Join(h.dir, "internal-link.log")))
+
+		require.NoError(t, h.run(ctx))
+
+		it, err := tsk.GetTestLogs(ctx, task.TestLogGetOptions{LogPaths: []string{"internal-link.log"}})
+		require.NoError(t, err)
+		t.Cleanup(func() { assert.NoError(t, it.Close()) })
+		var persistedLines []string
+		for it.Next() {
+			persistedLines = append(persistedLines, it.Item().Data)
+		}
+		require.NoError(t, it.Err())
+		assert.Equal(t, inputLines, persistedLines)
+	})
 }
 
 func TestTestLogDirectoryHandlerGetSpecFile(t *testing.T) {
