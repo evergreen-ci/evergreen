@@ -1780,19 +1780,16 @@ func decodeWithAnchors(parseBytes []byte, unmarshalStrict bool, anchorRegistry *
 			return nil, errors.Wrap(err, "unmarshalling parser project from YAML")
 		}
 		p = strictProjectWithVariables.ParserProject
-		if !strictProjectWithVariables.ProjectConfigFields.isEmpty() {
-			p.projectConfigFields = &strictProjectWithVariables.ProjectConfigFields
-		}
 	} else {
 		if err := node.Decode(&p); err != nil {
 			yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
 			return nil, errors.Wrap(yamlErr, "unmarshalling parser project from YAML")
 		}
-		// The unexported projectConfigFields cannot be populated by node.Decode,
-		// so set them separately, matching standardUnmarshal.
-		if err := p.setProjectConfigFields(parseBytes); err != nil {
-			return nil, err
-		}
+	}
+	// The unexported projectConfigFields are not populated by the decodes above,
+	// so always set them from the raw bytes, matching standardUnmarshal.
+	if err := p.setProjectConfigFields(parseBytes); err != nil {
+		return nil, err
 	}
 
 	if err := anchorRegistry.mergeAnchorsFrom(&node); err != nil {
