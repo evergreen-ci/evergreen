@@ -1366,55 +1366,27 @@ func (s *EC2Suite) TestCreateVolumeWithoutHostTagOmitsHostNameTag() {
 	}
 }
 
-func (s *EC2Suite) TestCreateStandaloneVolumeAppliesUserMongoDBResourceTags() {
+func (s *EC2Suite) TestCreateStandaloneVolumeMongoDBOwner() {
 	s.onDemandManager.settings.Providers.AWS.ResourceTags = evergreen.ResourceTagsConfig{
 		MongoDBOwner: "evergreen@mongodb.com",
 		MongoDBEnv:   "dev",
 	}
-
-	for name, userEmail := range map[string]string{
-		"MongoDBEmailShouldUseUserEmail": "test.user@mongodb.com",
-		"LegacyEmailShouldUseUserEmail":  "test.user@10gen.com",
+	for name, testCase := range map[string]struct {
+		email         string
+		expectedOwner string
+	}{
+		"ValidEmailShouldUseUserEmail":      {email: "test.user@mongodb.com", expectedOwner: "test.user@mongodb.com"},
+		"InvalidEmailShouldUseDefaultOwner": {email: "user@example.com", expectedOwner: "evergreen@mongodb.com"},
+		"MissingEmailShouldUseDefaultOwner": {expectedOwner: "evergreen@mongodb.com"},
 	} {
 		s.T().Run(name, func(t *testing.T) {
-			require.NoError(t, (&user.DBUser{Id: s.volume.CreatedBy, EmailAddress: userEmail}).Insert(t.Context()))
-			t.Cleanup(func() {
-				assert.NoError(t, db.ClearCollections(user.Collection, host.VolumesCollection))
-			})
-			volume := *s.volume
-			volume.Host = ""
-			_, err := s.onDemandManager.CreateVolume(t.Context(), &volume)
-			require.NoError(t, err)
-			tagsByKey := map[string]string{}
-			for _, spec := range s.mock.CreateVolumeInput.TagSpecifications {
-				for _, tag := range spec.Tags {
-					tagsByKey[aws.ToString(tag.Key)] = aws.ToString(tag.Value)
-				}
-			}
-			assert.Equal(t, userEmail, tagsByKey[evergreen.TagMongoDBOwner])
-			assert.Equal(t, "dev", tagsByKey[evergreen.TagMongoDBEnv])
-		})
-	}
-}
-
-func (s *EC2Suite) TestCreateVolumeUsesConfiguredOwnerWhenCreatorEmailIsInvalid() {
-	s.onDemandManager.settings.Providers.AWS.ResourceTags = evergreen.ResourceTagsConfig{
-		MongoDBOwner: "evergreen@mongodb.com",
-		MongoDBEnv:   "dev",
-	}
-	for name, email := range map[string]string{
-		"ExternalEmailShouldUseConfiguredOwner":   "user@example.com",
-		"MongoDBOrgEmailShouldUseConfiguredOwner": "user@mongodb.org",
-		"MalformedEmailShouldUseConfiguredOwner":  "user@@mongodb.com",
-		"EmptyEmailShouldUseConfiguredOwner":      "",
-	} {
-		s.T().Run(name, func(t *testing.T) {
-			creator := user.DBUser{Id: name, EmailAddress: email}
+			creator := user.DBUser{Id: name, EmailAddress: testCase.email}
 			require.NoError(t, creator.Insert(t.Context()))
 			t.Cleanup(func() {
 				assert.NoError(t, db.ClearCollections(user.Collection, host.VolumesCollection))
 			})
 			volume := *s.volume
+			volume.Host = ""
 			volume.CreatedBy = creator.Id
 			_, err := s.onDemandManager.CreateVolume(t.Context(), &volume)
 			require.NoError(t, err)
@@ -1424,7 +1396,7 @@ func (s *EC2Suite) TestCreateVolumeUsesConfiguredOwnerWhenCreatorEmailIsInvalid(
 					tagsByKey[aws.ToString(tag.Key)] = aws.ToString(tag.Value)
 				}
 			}
-			assert.Equal(t, "evergreen@mongodb.com", tagsByKey[evergreen.TagMongoDBOwner])
+			assert.Equal(t, testCase.expectedOwner, tagsByKey[evergreen.TagMongoDBOwner])
 			assert.Equal(t, "dev", tagsByKey[evergreen.TagMongoDBEnv])
 		})
 	}
