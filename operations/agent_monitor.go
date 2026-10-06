@@ -460,13 +460,9 @@ func (m *monitor) createAgentProcess(ctx context.Context, retry utility.RetryOpt
 	// environment.
 	setupSecret, err := m.comm.CreateSetupSecret(ctx)
 	if err != nil {
-		grip.Warning(ctx, message.WrapError(err, message.Fields{
-			"message": "agent will fall back to its environment's host secret because minting a setup secret failed",
-			"host_id": m.hostID,
-		}))
-	} else {
-		env[evergreen.SetupSecretEnvVar] = setupSecret
+		return nil, errors.Wrap(err, "creating setup secret for agent")
 	}
+	env[evergreen.SetupSecretEnvVar] = setupSecret
 
 	var proc jasper.Process
 
