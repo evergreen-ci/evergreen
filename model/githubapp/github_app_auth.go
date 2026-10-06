@@ -18,6 +18,7 @@ const (
 	githubAppErrorAttribute      = "evergreen.githubapp.error"
 	githubAppMethodAttribute     = "evergreen.githubapp.method"
 	githubAppStatusCodeAttribute = "evergreen.githubapp.status_code"
+	githubAppRetriesAttribute    = "evergreen.githubapp.retries"
 )
 
 // GithubAppAuth holds the appId and privateKey for the github app associated with the project.
@@ -176,7 +177,9 @@ func (g *GithubAppAuth) createInstallationTokenForID(ctx context.Context, instal
 	))
 	defer span.End()
 
-	client, err := getGitHubClientForAuth(g)
+	// GitHub has been observed to transiently return 422 "unavailable" when
+	// creating installation tokens.
+	client, err := getGitHubClientForAuth(g, retryConfig{retry422: true})
 	if err != nil {
 		return nil, errors.Wrap(err, "getting GitHub client for token creation")
 	}
