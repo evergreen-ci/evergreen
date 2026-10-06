@@ -18,6 +18,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/attribute"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
@@ -406,10 +407,11 @@ func TestMakeTagsMongoDBOwner(t *testing.T) {
 		MongoDBEnv:   "prod",
 	}
 	for name, testCase := range map[string]struct {
-		h              host.Host
-		expectedOwner  string
-		expectedSource string
-		expectedReason string
+		h                        host.Host
+		expectedOwner            string
+		expectedSource           string
+		expectedReason           string
+		expectedOwnerTagReplaced bool
 	}{
 		"UserSpawnHostShouldUseUserEmail": {
 			h:              host.Host{UserHost: true, SpawnOptions: host.SpawnOptions{UserEmail: "user@mongodb.com"}},
@@ -434,8 +436,9 @@ func TestMakeTagsMongoDBOwner(t *testing.T) {
 				SpawnOptions: host.SpawnOptions{UserEmail: "user@mongodb.com"},
 				InstanceTags: []host.Tag{{Key: evergreen.TagMongoDBOwner, Value: "user@example.com", CanBeModified: true}},
 			},
-			expectedOwner:  "user@mongodb.com",
-			expectedSource: "creator_email",
+			expectedOwner:            "user@mongodb.com",
+			expectedSource:           "creator_email",
+			expectedOwnerTagReplaced: true,
 		},
 		"InvalidOwnerTagAndUserEmailShouldUseDefaultOwner": {
 			h: host.Host{
@@ -443,9 +446,10 @@ func TestMakeTagsMongoDBOwner(t *testing.T) {
 				SpawnOptions: host.SpawnOptions{UserEmail: "user@example.com"},
 				InstanceTags: []host.Tag{{Key: evergreen.TagMongoDBOwner, Value: "user@example.com", CanBeModified: true}},
 			},
-			expectedOwner:  resourceTags.MongoDBOwner,
-			expectedSource: "configured_owner",
-			expectedReason: "email_invalid",
+			expectedOwner:            resourceTags.MongoDBOwner,
+			expectedSource:           "configured_owner",
+			expectedReason:           "email_invalid",
+			expectedOwnerTagReplaced: true,
 		},
 		"ExistingValidOwnerShouldOverrideMissingUserEmail": {
 			h: host.Host{UserHost: true, InstanceTags: []host.Tag{
@@ -482,15 +486,17 @@ func TestMakeTagsMongoDBOwner(t *testing.T) {
 
 			spans := spanRecorder.Ended()
 			require.Len(t, spans, 1)
-			attributes := map[string]string{}
+			attributes := map[string]attribute.Value{}
 			for _, attribute := range spans[0].Attributes() {
-				attributes[string(attribute.Key)] = attribute.Value.AsString()
+				attributes[string(attribute.Key)] = attribute.Value
 			}
-			assert.Equal(t, testCase.expectedSource, attributes[hostOwnerSourceOtelAttribute])
+			assert.Equal(t, testCase.expectedSource, attributes[hostOwnerSourceOtelAttribute].AsString())
+			require.Contains(t, attributes, hostOwnerTagReplacedOtelAttribute)
+			assert.Equal(t, attribute.BoolValue(testCase.expectedOwnerTagReplaced), attributes[hostOwnerTagReplacedOtelAttribute])
 			if testCase.expectedReason == "" {
 				assert.NotContains(t, attributes, hostOwnerFallbackReasonOtelAttribute)
 			} else {
-				assert.Equal(t, testCase.expectedReason, attributes[hostOwnerFallbackReasonOtelAttribute])
+				assert.Equal(t, testCase.expectedReason, attributes[hostOwnerFallbackReasonOtelAttribute].AsString())
 			}
 		})
 	}

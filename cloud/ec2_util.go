@@ -34,6 +34,7 @@ import (
 const (
 	hostOwnerSourceOtelAttribute         = "evergreen.host.owner_source"
 	hostOwnerFallbackReasonOtelAttribute = "evergreen.host.owner_fallback_reason"
+	hostOwnerTagReplacedOtelAttribute    = "evergreen.host.owner_tag_replaced"
 
 	EC2ErrorNotFound        = "InvalidInstanceID.NotFound"
 	EC2DuplicateKeyPair     = "InvalidKeyPair.Duplicate"
@@ -204,6 +205,7 @@ func makeTags(ctx context.Context, intentHost *host.Host, resourceTags evergreen
 	owner := resourceTags.MongoDBOwner
 	ownerSource := "configured_owner"
 	fallbackReason := ""
+	ownerTagReplaced := false
 	if intentHost.UserHost && !intentHost.SpawnOptions.SpawnedByTask {
 		if intentHost.SpawnOptions.UserEmail == "" {
 			fallbackReason = "email_missing"
@@ -220,6 +222,7 @@ func makeTags(ctx context.Context, intentHost *host.Host, resourceTags evergreen
 		}
 		if evergreen.ValidateMongoDBEmail(tag.Value) != nil {
 			intentHost.InstanceTags[index] = host.Tag{Key: evergreen.TagMongoDBOwner, Value: owner, CanBeModified: false}
+			ownerTagReplaced = true
 		} else {
 			owner = tag.Value
 			ownerSource = "existing_tag"
@@ -230,7 +233,10 @@ func makeTags(ctx context.Context, intentHost *host.Host, resourceTags evergreen
 		ownerSource = "missing"
 	}
 	span := trace.SpanFromContext(ctx)
-	span.SetAttributes(attribute.String(hostOwnerSourceOtelAttribute, ownerSource))
+	span.SetAttributes(
+		attribute.String(hostOwnerSourceOtelAttribute, ownerSource),
+		attribute.Bool(hostOwnerTagReplacedOtelAttribute, ownerTagReplaced),
+	)
 	if fallbackReason != "" {
 		span.SetAttributes(attribute.String(hostOwnerFallbackReasonOtelAttribute, fallbackReason))
 	}
