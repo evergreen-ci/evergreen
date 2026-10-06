@@ -487,6 +487,9 @@ func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITa
 
 // Files is the resolver for the files field.
 func (r *taskResolver) Files(ctx context.Context, obj *restModel.APITask) (*TaskFiles, error) {
+	if err := checkProjectAccess(ctx, utility.FromStringPtr(obj.ProjectId), ProjectPermissionTasks, AccessLevelView); err != nil {
+		return nil, err
+	}
 	emptyTaskFiles := TaskFiles{
 		FileCount:    0,
 		GroupedFiles: []*GroupedFiles{},
