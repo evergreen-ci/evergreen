@@ -787,15 +787,12 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 		launchTemplate.UserData = &userData
 	}
 
-	launchTemplateTags := []host.Tag{{Key: evergreen.TagDistro, Value: h.Distro.Id}}
-	resourceTags := m.settings.Providers.AWS.ResourceTags
-	launchTemplateTags = append(launchTemplateTags, makeMongoDBResourceTags(resourceTags.MongoDBOwner, resourceTags.MongoDBEnv)...)
 	_, err = m.client.CreateLaunchTemplate(ctx, &ec2.CreateLaunchTemplateInput{
 		LaunchTemplateData: launchTemplate,
 		LaunchTemplateName: aws.String(cleanLaunchTemplateName(h.Tag)),
 		TagSpecifications: []types.TagSpecification{{
 			ResourceType: types.ResourceTypeLaunchTemplate,
-			Tags:         hostToEC2Tags(launchTemplateTags)},
+			Tags:         []types.Tag{{Key: aws.String(evergreen.TagDistro), Value: aws.String(h.Distro.Id)}}},
 		},
 	})
 	if err != nil {
