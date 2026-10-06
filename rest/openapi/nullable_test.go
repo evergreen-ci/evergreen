@@ -353,7 +353,7 @@ func (l *sourceLoader) canBeNull(expr ast.Expr, currentPath string) bool {
 }
 
 func declaresNullability(tag reflect.StructTag) bool {
-	for _, ext := range strings.Split(tag.Get("extensions"), ",") {
+	for ext := range strings.SplitSeq(tag.Get("extensions"), ",") {
 		if ext == "x-nullable" || ext == "!x-nullable" {
 			return true
 		}
