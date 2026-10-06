@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"os"
+	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -51,18 +52,64 @@ func (e *tarballExtract) Execute(ctx context.Context,
 	archivePath := GetWorkingDirectory(conf, e.ArchivePath)
 	SetWorkdirBoundaryAttribute(ctx, conf, e.TargetDirectory, e.ArchivePath)
 
-	archive, err := os.Open(archivePath)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return errors.Errorf("archive '%s' does not exist", archivePath)
-		}
-		return errors.Wrapf(err, "reading file '%s'", archivePath)
+	// Isolated task paths must stay inside the work directory; extraction is
+	// bounded to the destination.
+	if err := containToWorkdir(conf, "archive path", archivePath); err != nil {
+		return err
 	}
-	defer func() {
-		logger.Task().Notice(ctx, errors.Wrapf(archive.Close(), "closing file '%s'", archivePath))
-	}()
+	if err := containToWorkdir(conf, "destination", destinationPath); err != nil {
+		return err
+	}
 
-	if err := extractTarball(ctx, archive, destinationPath, e.ExcludeFiles, false); err != nil {
+	var (
+		archive     *os.File
+		extractRoot *os.Root
+	)
+	if conf.ContainerIsolationEnabled() {
+		workRoot, err := os.OpenRoot(conf.WorkDir)
+		if err != nil {
+			return errors.Wrap(err, "opening work directory")
+		}
+		defer workRoot.Close()
+
+		archiveRel, err := filepath.Rel(filepath.Clean(conf.WorkDir), filepath.Clean(archivePath))
+		if err != nil {
+			return errors.Wrapf(err, "resolving archive '%s' within the work directory", archivePath)
+		}
+		archive, err = workRoot.Open(filepath.ToSlash(archiveRel))
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return errors.Errorf("archive '%s' does not exist", archivePath)
+			}
+			return errors.Wrapf(err, "reading file '%s'", archivePath)
+		}
+		defer func() {
+			logger.Task().Notice(ctx, errors.Wrapf(archive.Close(), "closing file '%s'", archivePath))
+		}()
+
+		if err := os.MkdirAll(destinationPath, 0755); err != nil {
+			return errors.Wrapf(err, "creating destination directory '%s'", destinationPath)
+		}
+		extractRoot, err = os.OpenRoot(destinationPath)
+		if err != nil {
+			return errors.Wrapf(err, "opening destination directory '%s'", destinationPath)
+		}
+		defer extractRoot.Close()
+	} else {
+		var err error
+		archive, err = os.Open(archivePath)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return errors.Errorf("archive '%s' does not exist", archivePath)
+			}
+			return errors.Wrapf(err, "reading file '%s'", archivePath)
+		}
+		defer func() {
+			logger.Task().Notice(ctx, errors.Wrapf(archive.Close(), "closing file '%s'", archivePath))
+		}()
+	}
+
+	if err := extractTarball(ctx, archive, destinationPath, e.ExcludeFiles, false, extractRoot); err != nil {
 		return errors.Wrapf(err, "extracting file '%s'", archivePath)
 	}
 

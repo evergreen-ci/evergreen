@@ -134,6 +134,12 @@ type BackgroundFailure struct {
 
 func (b BackgroundFailure) Error() string { return b.Err.Error() }
 
+// ContainerIsolationEnabled reports whether the task's distro runs tasks in an
+// isolation container.
+func (t *TaskConfig) ContainerIsolationEnabled() bool {
+	return t != nil && t.Distro != nil && t.Distro.ContainerIsolation != nil
+}
+
 // CommandCleanup is a cleanup function associated with a command. As a command
 // block is executed, the cleanup function(s) are added to the TaskConfig. When
 // the command block is finished, the cleanup function(s) are collected by the

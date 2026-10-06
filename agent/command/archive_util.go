@@ -78,6 +78,8 @@ type buildArchiveOptions struct {
 	// targets); otherwise they are dereferenced and the target's contents are
 	// stored at the symlink's path.
 	preserveSymlinks bool
+	// root, when non-nil, bounds file opens to rootPath for isolated tasks.
+	root *os.Root
 }
 
 // buildArchive reads the rootPath directory into the tar.Writer,
@@ -87,6 +89,10 @@ func buildArchive(ctx context.Context, opts buildArchiveOptions) (int, error) {
 	tarWriter, rootPath, logger := opts.tarWriter, opts.rootPath, opts.logger
 	pathsToAdd, excludes := opts.paths, opts.excludes
 	verbose, preserveSymlinks := opts.verbose, opts.preserveSymlinks
+
+	relToRoot := func(p string) (string, error) {
+		return filepath.Rel(rootPath, p)
+	}
 
 	numFilesArchived := 0
 	processed := map[string]bool{}
@@ -103,21 +109,37 @@ FileLoop:
 		// the symlink. When preserveSymlinks is true, the symlink is left alone
 		// here and archived as a symlink entry below.
 		if file.info.Mode()&os.ModeSymlink > 0 && !preserveSymlinks {
-			symlinkPath, err := filepath.EvalSymlinks(file.path)
-			if err != nil {
-				logger.Warningf(ctx, "Could not follow symlink '%s', ignoring.", file.path)
-				continue
-			} else {
-				logger.Infof(ctx, "Following symlink '%s', got path '%s'.", file.path, symlinkPath)
-				symlinkFileInfo, err := os.Stat(symlinkPath)
+			if opts.root != nil {
+				// Only follow links resolving inside rootPath.
+				relPath, err := relToRoot(file.path)
 				if err != nil {
-					logger.Warningf(ctx, "Failed to get underlying file for symlink '%s', ignoring.", file.path)
+					logger.Warningf(ctx, "Could not resolve symlink '%s' within the archive root, ignoring.", file.path)
 					continue
 				}
-
+				targetInfo, err := opts.root.Stat(relPath)
+				if err != nil {
+					logger.Warningf(ctx, "Could not follow symlink '%s' within the archive root, ignoring.", file.path)
+					continue
+				}
 				intarball = strings.Replace(file.path, "\\", "/", -1)
-				file.path = symlinkPath
-				file.info = symlinkFileInfo
+				file.info = targetInfo
+			} else {
+				symlinkPath, err := filepath.EvalSymlinks(file.path)
+				if err != nil {
+					logger.Warningf(ctx, "Could not follow symlink '%s', ignoring.", file.path)
+					continue
+				} else {
+					logger.Infof(ctx, "Following symlink '%s', got path '%s'.", file.path, symlinkPath)
+					symlinkFileInfo, err := os.Stat(symlinkPath)
+					if err != nil {
+						logger.Warningf(ctx, "Failed to get underlying file for symlink '%s', ignoring.", file.path)
+						continue
+					}
+
+					intarball = strings.Replace(file.path, "\\", "/", -1)
+					file.path = symlinkPath
+					file.info = symlinkFileInfo
+				}
 			}
 		} else {
 			intarball = strings.Replace(file.path, "\\", "/", -1)
@@ -197,7 +219,16 @@ FileLoop:
 			return numFilesArchived, errors.Wrapf(err, "writing tarball header for file '%s'", intarball)
 		}
 
-		in, err := os.Open(file.path)
+		var in *os.File
+		if opts.root != nil {
+			relPath, relErr := relToRoot(file.path)
+			if relErr != nil {
+				return numFilesArchived, errors.Wrapf(relErr, "resolving file '%s' within the archive root", file.path)
+			}
+			in, err = opts.root.Open(relPath)
+		} else {
+			in, err = os.Open(file.path)
+		}
 		if err != nil {
 			return numFilesArchived, errors.Wrapf(err, "opening file '%s'", file.path)
 		}
@@ -219,7 +250,7 @@ FileLoop:
 	return numFilesArchived, nil
 }
 
-func extractTarball(ctx context.Context, reader io.Reader, rootPath string, excludes []string, preserveSymlinks bool) error {
+func extractTarball(ctx context.Context, reader io.Reader, rootPath string, excludes []string, preserveSymlinks bool, root *os.Root) error {
 	// wrap the reader in a gzip reader and a tar reader
 	gzipReader, err := pgzip.NewReader(reader)
 	if err != nil {
@@ -227,7 +258,7 @@ func extractTarball(ctx context.Context, reader io.Reader, rootPath string, excl
 	}
 
 	tarReader := tar.NewReader(gzipReader)
-	err = extractTarballArchive(ctx, tarReader, rootPath, excludes, preserveSymlinks)
+	err = extractTarballArchive(ctx, tarReader, rootPath, excludes, preserveSymlinks, root)
 	if err != nil {
 		return errors.Wrapf(err, "extracting path '%s'", rootPath)
 	}
@@ -238,8 +269,9 @@ func extractTarball(ctx context.Context, reader io.Reader, rootPath string, excl
 // extractTarballArchive unpacks the tar.Reader into rootPath. When
 // preserveSymlinks is true, symlink entries are recreated with their original
 // (possibly relative) targets, validated to stay within rootPath; otherwise
-// symlink targets are interpreted relative to rootPath.
-func extractTarballArchive(ctx context.Context, tarReader *tar.Reader, rootPath string, excludes []string, preserveSymlinks bool) error {
+// symlink targets are interpreted relative to rootPath. When root is non-nil,
+// extraction writes are bounded to rootPath.
+func extractTarballArchive(ctx context.Context, tarReader *tar.Reader, rootPath string, excludes []string, preserveSymlinks bool, root *os.Root) error {
 	// Link files and symlink files are extracted after all other files are extracted.
 	linkFiles := []func() error{}
 tarReaderLoop:
@@ -271,6 +303,10 @@ tarReaderLoop:
 
 		namePath := filepath.Join(rootPath, name)
 		linkNamePath := filepath.Join(rootPath, linkname)
+		nameRel := name
+		if root != nil {
+			nameRel = filepath.ToSlash(name)
+		}
 
 		if linkname != "" {
 			// A preserved symlink keeps its raw (possibly relative) target, which
@@ -295,12 +331,24 @@ tarReaderLoop:
 		switch hdr.Typeflag {
 		case tar.TypeDir:
 			// Tar entry for a directory.
-			if err = os.MkdirAll(namePath, 0755); err != nil {
+			if root != nil {
+				if err = rootMkdirAll(root, nameRel); err != nil {
+					return err
+				}
+			} else if err = os.MkdirAll(namePath, 0755); err != nil {
 				return errors.WithStack(err)
 			}
 		case tar.TypeLink:
 			// Tar entry for a hard link.
 			linkFiles = append(linkFiles, func() error {
+				if root != nil {
+					if err := verifyBoundedAncestors(root, nameRel); err != nil {
+						return err
+					}
+					if _, err := root.Stat(filepath.ToSlash(linkname)); err != nil {
+						return errors.Wrapf(err, "hard link target '%s' does not resolve inside the root", linkname)
+					}
+				}
 				return os.Link(linkNamePath, namePath)
 			})
 		case tar.TypeSymlink:
@@ -310,6 +358,17 @@ tarReaderLoop:
 				// (e.g. an NPM node_modules/.bin entry) are preserved verbatim.
 				rawLinkname := linkname
 				linkFiles = append(linkFiles, func() error {
+					if root != nil {
+						// os.Root cannot create symlinks, so verify the
+						// destination parents resolve inside the root first.
+						if err := verifyBoundedAncestors(root, nameRel); err != nil {
+							return err
+						}
+						if err := root.Remove(nameRel); err != nil && !os.IsNotExist(err) {
+							return errors.Wrapf(err, "removing existing entry '%s'", namePath)
+						}
+						return os.Symlink(rawLinkname, namePath)
+					}
 					if err := os.MkdirAll(filepath.Dir(namePath), 0755); err != nil {
 						return errors.Wrapf(err, "creating directory '%s'", filepath.Dir(namePath))
 					}
@@ -326,19 +385,32 @@ tarReaderLoop:
 				})
 			} else {
 				linkFiles = append(linkFiles, func() error {
+					if root != nil {
+						if err := verifyBoundedAncestors(root, nameRel); err != nil {
+							return err
+						}
+					}
 					return os.Symlink(linkNamePath, namePath)
 				})
 			}
 		case tar.TypeReg, tar.TypeRegA:
 			// Tar entry for a regular file.
 			// First, ensure the file's parent directory exists.
-			if err = os.MkdirAll(filepath.Dir(namePath), 0755); err != nil {
-				return errors.WithStack(err)
-			}
+			if root != nil {
+				if err = rootMkdirAll(root, filepath.ToSlash(filepath.Dir(nameRel))); err != nil {
+					return err
+				}
+				if err = rootWriteFileWithContentsAndPermission(ctx, root, nameRel, tarReader, os.FileMode(hdr.Mode)); err != nil {
+					return err
+				}
+			} else {
+				if err = os.MkdirAll(filepath.Dir(namePath), 0755); err != nil {
+					return errors.WithStack(err)
+				}
 
-			err := writeFileWithContentsAndPermission(ctx, namePath, tarReader, os.FileMode(hdr.Mode))
-			if err != nil {
-				return err
+				if err := writeFileWithContentsAndPermission(ctx, namePath, tarReader, os.FileMode(hdr.Mode)); err != nil {
+					return err
+				}
 			}
 		default:
 			return errors.Errorf("unknown file type '%c' in archive", hdr.Typeflag)
@@ -360,6 +432,24 @@ func writeFileWithContentsAndPermission(ctx context.Context, path string, conten
 	}
 
 	return errors.Wrapf(os.Chmod(f.Name(), mode), "changing file '%s' mode to %d", f.Name(), mode)
+}
+
+// rootWriteFileWithContentsAndPermission is the os.Root-bounded equivalent of
+// writeFileWithContentsAndPermission.
+func rootWriteFileWithContentsAndPermission(ctx context.Context, root *os.Root, name string, contents io.Reader, mode fs.FileMode) error {
+	f, err := root.OpenFile(name, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	defer func() {
+		grip.Error(ctx, errors.Wrapf(f.Close(), "closing file '%s'", name))
+	}()
+
+	if _, err = io.Copy(f, contents); err != nil {
+		return errors.Wrap(err, "copying tar contents to local file")
+	}
+
+	return errors.Wrapf(f.Chmod(mode), "changing file '%s' mode to %d", name, mode)
 }
 
 // tarGzWriter returns a file, gzip writer, and tarWriter for the path.
