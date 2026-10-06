@@ -47,7 +47,7 @@ func TestProjectAdminOperationNameDoesNotBypassTargetAuthorization(t *testing.T)
 	require.NoError(t, err)
 	require.NoError(t, model.UpdateLastRevision(t.Context(), unauthorizedProject.Id, originalRevision))
 
-	srv := handler.NewDefaultServer(NewExecutableSchema(New("/graphql")))
+	srv := handler.NewDefaultServer(NewExecutableSchema(NewResolverConfig()))
 	runMutationAndAssertUnauthorized := func(t *testing.T, query string, variables map[string]any) {
 		payload, err := json.Marshal(map[string]any{
 			"operationName": "CreateProject",

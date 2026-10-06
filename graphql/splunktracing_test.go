@@ -78,7 +78,7 @@ type capturedOutput struct {
 }
 
 func TestGraphQLComplexityLogging(t *testing.T) {
-	schema := NewExecutableSchema(New(""))
+	schema := NewExecutableSchema(NewResolverConfig())
 
 	parseOp := func(t *testing.T, queryStr string) *ast.OperationDefinition {
 		doc, gqlErrs := gqlparser.LoadQueryWithRules(schema.Schema(), queryStr, rules.NewDefaultRules())

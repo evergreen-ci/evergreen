@@ -8,6 +8,7 @@
     {
       "_id": "ui",
       "url": "http://localhost",
+      "log_url": "http://localhost:9090",
       "uiv2_url": "http://spruce.localhost"
     },
     {

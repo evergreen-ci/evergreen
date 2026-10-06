@@ -93,7 +93,7 @@ func populateMainlineCommits(t *testing.T) {
 func TestMainlineCommits(t *testing.T) {
 	setupPermissions(t)
 	populateMainlineCommits(t)
-	config := New("/graphql")
+	config := NewResolverConfig()
 	assert.NotNil(t, config)
 	ctx := getContext(t)
 
@@ -185,7 +185,7 @@ func TestMainlineCommits(t *testing.T) {
 }
 
 func TestImages(t *testing.T) {
-	config := New("/graphql")
+	config := NewResolverConfig()
 	ctx := getContext(t)
 	testConfig := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, testConfig)
@@ -196,7 +196,7 @@ func TestImages(t *testing.T) {
 }
 
 func TestImage(t *testing.T) {
-	config := New("/graphql")
+	config := NewResolverConfig()
 	ctx := getContext(t)
 	testConfig := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, testConfig)
@@ -209,7 +209,7 @@ func TestImage(t *testing.T) {
 func TestDistrosReturnsOnlyDistrosWithViewPermission(t *testing.T) {
 	setupPermissions(t)
 	require.NoError(t, db.ClearCollections(distro.Collection, user.Collection))
-	config := New("/graphql")
+	config := NewResolverConfig()
 	ctx := getContext(t)
 	usr := mustHaveUser(ctx)
 

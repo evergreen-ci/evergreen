@@ -36,7 +36,7 @@ func TestRequireProjectAccess(t *testing.T) {
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
 	const refreshToken = "refresh_token"
-	config := New("/graphql")
+	config := NewResolverConfig()
 	require.NotNil(t, config)
 
 	usr, err := user.GetOrCreateUser(t.Context(), testUser, "User Name", email, accessToken, refreshToken, []string{})
@@ -78,7 +78,7 @@ func TestRequireProjectAccess(t *testing.T) {
 
 func TestRequireProjectAccessForSettings(t *testing.T) {
 	setupPermissions(t)
-	config := New("/graphql")
+	config := NewResolverConfig()
 	require.NotNil(t, config)
 
 	usr, err := setupUser(t)
@@ -190,7 +190,7 @@ func TestRequireProjectAccessForTasks(t *testing.T) {
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
 	const refreshToken = "refresh_token"
-	config := New("/graphql")
+	config := NewResolverConfig()
 	require.NotNil(t, config)
 	obj := any(map[string]any{"taskId": task.Id})
 
@@ -320,7 +320,7 @@ func TestRequireProjectAccessForAnnotations(t *testing.T) {
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
 	const refreshToken = "refresh_token"
-	config := New("/graphql")
+	config := NewResolverConfig()
 	require.NotNil(t, config)
 	obj := any(map[string]any{"taskId": task.Id})
 
@@ -414,7 +414,7 @@ func TestRequireProjectAccessForPatches(t *testing.T) {
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
 	const refreshToken = "refresh_token"
-	config := New("/graphql")
+	config := NewResolverConfig()
 	require.NotNil(t, config)
 	obj := any(map[string]any{"patchId": patch.Id.Hex()})
 
@@ -502,7 +502,7 @@ func TestRequireProjectAccessForLogs(t *testing.T) {
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
 	const refreshToken = "refresh_token"
-	config := New("/graphql")
+	config := NewResolverConfig()
 	require.NotNil(t, config)
 	obj := any(map[string]any{"projectId": project.Id})
 
@@ -545,7 +545,7 @@ func TestRequireProjectAccessForLogs(t *testing.T) {
 
 func TestRequireRepoAccess(t *testing.T) {
 	setupPermissions(t)
-	config := New("/graphql")
+	config := NewResolverConfig()
 	require.NotNil(t, config)
 
 	usr, err := setupUser(t)
