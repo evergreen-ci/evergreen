@@ -25,8 +25,8 @@ import (
 )
 
 // Handler returns a gimlet http handler func used as the gql route handler
-func Handler(apiURL string, allowMutations bool, env evergreen.Environment) func(w http.ResponseWriter, r *http.Request) {
-	schema := NewExecutableSchema(New(apiURL))
+func Handler(allowMutations bool, env evergreen.Environment) func(w http.ResponseWriter, r *http.Request) {
+	schema := NewExecutableSchema(NewResolverConfig())
 	srv := handler.New(schema)
 
 	srv.AddTransport(transport.Websocket{
