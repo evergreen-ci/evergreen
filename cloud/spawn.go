@@ -33,6 +33,7 @@ type SpawnOptions struct {
 	DistroId              string
 	Userdata              string
 	UserName              string
+	UserEmail             string
 	PublicKey             string
 	ProvisionOptions      *host.ProvisionOptions
 	UseProjectSetupScript bool
@@ -231,6 +232,7 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 	if intentHost == nil { // theoretically this should not happen
 		return nil, errors.New("could not create new intent host")
 	}
+	intentHost.SpawnOptions.UserEmail = so.UserEmail
 	return intentHost, nil
 }
 

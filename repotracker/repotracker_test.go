@@ -1340,6 +1340,61 @@ tasks:
 	s.Empty(tasks)
 }
 
+// The inserts and updates that make up version creation should logically happen
+// as one atomic operation. This verifies that: a write failure partway through
+// must abort the whole transaction, since a partially-created version (version
+// doc persisted, tasks missing) can never be recovered by the retry loop, which
+// fails on the duplicate version id.
+func (s *CreateVersionFromConfigSuite) TestTransactionRollsBackPartialVersionCreation() {
+	configYml := `
+buildvariants:
+- name: bv
+  display_name: "bv_display"
+  run_on: d
+  tasks:
+  - name: task1
+  - name: task2
+tasks:
+- name: task1
+- name: task2
+patch_aliases:
+- alias: pa
+  variant: bv
+  task: task1
+`
+	p := &model.Project{}
+	pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
+	s.NoError(err)
+	s.NotNil(pp)
+	s.NoError(db.ClearCollections(model.ProjectConfigCollection))
+	// Poison the project-config insert (the write immediately after the version insert)
+	// with a duplicate _id so the transaction fails after the version doc was written.
+	versionId := makeVersionId(s.ref.Identifier, s.rev.Revision)
+	poisonConfig := &model.ProjectConfig{Id: versionId}
+	s.NoError(poisonConfig.Insert(s.ctx))
+
+	projectInfo := &model.ProjectInfo{
+		Ref:                 s.ref,
+		IntermediateProject: pp,
+		Project:             p,
+		Config:              &model.ProjectConfig{},
+	}
+	_, err = CreateVersionFromConfig(s.ctx, projectInfo, model.VersionMetadata{Revision: *s.rev, SourceVersion: s.sourceVersion}, false, nil)
+	s.Error(err)
+
+	// None of the version's documents may persist: the failed config insert aborts the
+	// version and build writes too.
+	count, err := db.Count(s.ctx, model.VersionCollection, bson.M{model.VersionIdKey: versionId})
+	s.NoError(err)
+	s.Zero(count, "version doc should be rolled back")
+	count, err = db.Count(s.ctx, build.Collection, bson.M{build.VersionKey: versionId})
+	s.NoError(err)
+	s.Zero(count, "build docs should be rolled back")
+	count, err = db.Count(s.ctx, task.Collection, bson.M{task.VersionKey: versionId})
+	s.NoError(err)
+	s.Zero(count, "task docs should be rolled back")
+}
+
 func (s *CreateVersionFromConfigSuite) TestWithTaskBatchTime() {
 	configYml := `
 buildvariants:

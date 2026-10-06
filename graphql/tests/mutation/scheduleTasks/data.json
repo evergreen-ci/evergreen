@@ -51,6 +51,23 @@
       "execution_tasks": ["exec1"],
       "generate_task": false,
       "generated_by": "something"
+    },
+    {
+      "_id": "child_task",
+      "create_time": {
+        "$date": "2018-01-11T00:01:36.796Z"
+      },
+      "version": "child_version",
+      "parent_patch_id": "parent_version",
+      "branch": "evergreen",
+      "activated": false,
+      "build_id": "child_build",
+      "distro": "distro",
+      "build_variant": "variant",
+      "display_name": "child task",
+      "execution": 0,
+      "r": "patch_request",
+      "status": "undispatched"
     }
   ],
   "versions": [
@@ -72,6 +89,22 @@
     },
     {
       "_id": "no_permissions",
+      "activated": false,
+      "create_time": {
+        "$date": "2018-01-11T00:01:36.796Z"
+      },
+      "identifier": "evergreen"
+    },
+    {
+      "_id": "parent_version",
+      "activated": false,
+      "create_time": {
+        "$date": "2018-01-11T00:01:36.796Z"
+      },
+      "identifier": "spruce"
+    },
+    {
+      "_id": "child_version",
       "activated": false,
       "create_time": {
         "$date": "2018-01-11T00:01:36.796Z"
@@ -120,6 +153,21 @@
       "predicted_makespan": 0,
       "actual_makespan": 0,
       "r": "ad_hoc"
+    },
+    {
+      "_id": "child_build",
+      "version": "child_version",
+      "branch": "evergreen",
+      "build_variant": "variant",
+      "status": "created",
+      "activated": false,
+      "tasks": [
+        {
+          "id": "child_task",
+          "a": false
+        }
+      ],
+      "r": "patch_request"
     }
   ],
   "project_ref": [
@@ -132,6 +180,11 @@
       "_id": "evergreen",
       "identifier": "evergreen",
       "display_name": "Evergreen"
+    },
+    {
+      "_id": "spruce",
+      "identifier": "spruce",
+      "display_name": "Spruce"
     }
   ]
 }

@@ -185,13 +185,14 @@ buildvariants:
 		pp.Id = "v1"
 		assert.NoError(t, pp.Insert(t.Context()))
 
-		assert.NoError(t, CreateHostsFromTask(ctx, env, &t1, user.DBUser{Id: "me"}, ""))
+		assert.NoError(t, CreateHostsFromTask(ctx, env, &t1, user.DBUser{Id: "me", EmailAddress: "me@mongodb.com"}, ""))
 		createdHosts, err := host.Find(ctx, bson.M{host.StartedByKey: "me"})
 		assert.NoError(t, err)
 		assert.Len(t, createdHosts, 3)
 		for _, h := range createdHosts {
 			assert.Equal(t, "me", h.StartedBy)
 			assert.True(t, h.UserHost)
+			assert.Equal(t, "me@mongodb.com", h.SpawnOptions.UserEmail)
 			assert.Equal(t, t1.Id, h.ProvisionOptions.TaskId)
 			assert.Len(t, h.Distro.ProviderSettingsList, 1)
 			ec2Settings := &cloud.EC2ProviderSettings{}

@@ -255,8 +255,9 @@ const (
 	AgentMonitorTag = "agent-monitor"
 	HostFetchTag    = "host-fetch"
 
-	HostIDEnvVar     = "HOST_ID"
-	HostSecretEnvVar = "HOST_SECRET"
+	HostIDEnvVar      = "HOST_ID"
+	HostSecretEnvVar  = "HOST_SECRET"
+	SetupSecretEnvVar = "SETUP_SECRET"
 
 	DegradedLoggingPercent = 10
 
@@ -303,6 +304,8 @@ const (
 	TagTaskExecution     = "task-execution"
 	TagBuildID           = "build-id"
 	TagProject           = "project"
+	TagMongoDBOwner      = "mongodb-owner"
+	TagMongoDBEnv        = "mongodb-env"
 
 	FinderVersionLegacy    = "legacy"
 	FinderVersionParallel  = "parallel"
@@ -657,6 +660,15 @@ const (
 	HTTPClientAuthOtelAttribute  = "evergreen.http.client_auth"
 	HTTPCLIVersionOtelAttribute  = "evergreen.http.cli_version"
 	HTTPUserOnlyAPIOtelAttribute = "evergreen.http.user.only_api"
+
+	// artifact presigning otel span names and attributes
+	ArtifactPresignOtelSpanName                 = "artifact.presign"
+	ArtifactSignOtelSpanName                    = "artifact.sign"
+	ArtifactCredentialsLoadOtelSpanName         = "artifact.credentials.load"
+	ArtifactPresignBucketOtelAttribute          = "evergreen.artifact.presign.bucket"
+	ArtifactPresignDurationSecondsOtelAttribute = "evergreen.artifact.presign.duration_seconds"
+	ArtifactPresignCredsSourceOtelAttribute     = "evergreen.artifact.presign.creds_source"
+	ArtifactSignStatusCodeOtelAttribute         = "evergreen.artifact.sign.status_code"
 )
 
 const (
@@ -685,6 +697,7 @@ const (
 	TaskSecretHeader     = "Task-Secret"
 	HostHeader           = "Host-Id"
 	HostSecretHeader     = "Host-Secret"
+	SetupSecretHeader    = "Setup-Secret"
 	ContentTypeHeader    = "Content-Type"
 	ContentTypeValue     = "application/json"
 	ContentLengthHeader  = "Content-Length"
