@@ -470,8 +470,8 @@ func TestUploadLaunchTemplate(t *testing.T) {
 		for _, tag := range mockClient.CreateLaunchTemplateInput.TagSpecifications[0].Tags {
 			launchTemplateTagsByKey[aws.ToString(tag.Key)] = aws.ToString(tag.Value)
 		}
-		assert.NotContains(t, launchTemplateTagsByKey, evergreen.TagMongoDBOwner)
-		assert.NotContains(t, launchTemplateTagsByKey, evergreen.TagMongoDBEnv)
+		assert.Equal(t, resourceTags.MongoDBOwner, launchTemplateTagsByKey[evergreen.TagMongoDBOwner])
+		assert.Equal(t, resourceTags.MongoDBEnv, launchTemplateTagsByKey[evergreen.TagMongoDBEnv])
 	})
 
 	t.Run("UploadNew", func(t *testing.T) {
