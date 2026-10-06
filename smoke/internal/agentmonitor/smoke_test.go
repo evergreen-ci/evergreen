@@ -79,7 +79,7 @@ func startAgentMonitor(ctx context.Context, t *testing.T, params smokeTestParams
 		"start-evergreen",
 		"--monitor",
 		fmt.Sprintf("--host_id=%s", params.HostID),
-		fmt.Sprintf("--host_secret=%s", params.HostSecret),
+		fmt.Sprintf("--setup_secret=%s", params.SetupSecret),
 		fmt.Sprintf("--distro=%s", params.distroID),
 		fmt.Sprintf("--api_server=%s", params.AppServerURL),
 		fmt.Sprintf("--binary=%s", params.CLIPath),
