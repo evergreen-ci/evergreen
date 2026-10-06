@@ -559,6 +559,9 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 		Tsk:         &tc.taskConfig.Task,
 		Logger:      tc.logger,
 		TraceClient: traceClient,
+		// Container-isolated tasks share the work directory with the host
+		// agent, so task output ingestion must confine itself to it.
+		Isolated: tc.taskConfig.ContainerIsolationEnabled(),
 		RedactorOpts: redactor.RedactionOptions{
 			Expansions:         tc.taskConfig.NewExpansions,
 			Redacted:           tc.taskConfig.Redacted,
