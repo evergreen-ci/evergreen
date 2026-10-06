@@ -24,6 +24,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -153,6 +154,7 @@ func githubClientShouldRetry(conf retryConfig) utility.HTTPRetryFunction {
 		_, span := tracer.Start(req.Context(), op)
 		defer span.End()
 
+		trace.SpanFromContext(req.Context()).SetAttributes(attribute.Int(githubAppRetriesAttribute, index))
 		span.SetAttributes(attribute.Int(githubAppAttemptAttribute, index))
 		span.SetAttributes(attribute.String(githubAppURLAttribute, req.URL.String()))
 		span.SetAttributes(attribute.String(githubAppMethodAttribute, req.Method))
@@ -213,10 +215,12 @@ func githubClientShouldRetry(conf retryConfig) utility.HTTPRetryFunction {
 		}
 
 		if conf.retry422 && resp.StatusCode == http.StatusUnprocessableEntity && index < GitHubMaxRetries {
-			grip.Warning(req.Context(), makeLogMsg(map[string]any{
+			// CheckResponse parses GitHub's error message from the body and
+			// restores the body so that the GitHub client can still read it.
+			grip.Warning(req.Context(), message.WrapError(github.CheckResponse(resp), makeLogMsg(map[string]any{
 				"message":     "retrying GitHub app endpoint after unprocessable entity response",
 				"status_code": resp.StatusCode,
-			}))
+			})))
 			return true
 		}
 
