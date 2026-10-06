@@ -7,6 +7,12 @@ import (
 	"github.com/pkg/errors"
 )
 
+// TODO (DEVPROD-44540): Move the allowed MongoDB owner email domains to admin settings.
+const (
+	mongoDBOwnerEmailSuffix       = "@mongodb.com"
+	legacyMongoDBOwnerEmailSuffix = "@10gen.com"
+)
+
 const (
 	MongoDBEnvironmentProd    = "prod"
 	MongoDBEnvironmentStaging = "staging"
@@ -55,8 +61,8 @@ func (c *ResourceTagsConfig) Validate() error {
 // ValidateMongoDBEmail checks that an email is a bare address on an approved MongoDB domain.
 func ValidateMongoDBEmail(email string) error {
 	parsed, err := mail.ParseAddress(email)
-	if err != nil || parsed.Address != email || (!strings.HasSuffix(email, "@mongodb.com") && !strings.HasSuffix(email, "@10gen.com")) {
-		return errors.New("email must be a valid address ending in @mongodb.com or @10gen.com")
+	if err != nil || parsed.Address != email || (!strings.HasSuffix(email, mongoDBOwnerEmailSuffix) && !strings.HasSuffix(email, legacyMongoDBOwnerEmailSuffix)) {
+		return errors.Errorf("email must be a valid address ending in %s or %s", mongoDBOwnerEmailSuffix, legacyMongoDBOwnerEmailSuffix)
 	}
 	return nil
 }
