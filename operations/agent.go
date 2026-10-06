@@ -168,6 +168,7 @@ func Agent() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "exchanging setup secret for host secret")
 			}
+			comm.SetHostSecret(hostSecret)
 
 			opts := agent.Options{
 				HostID:                       hostID,
