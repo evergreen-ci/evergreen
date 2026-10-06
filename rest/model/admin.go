@@ -1491,6 +1491,7 @@ func (a *APIOwnerRepo) ToService() (any, error) {
 }
 
 type APIProjectCreationConfig struct {
+	// TotalProjectLimit is deprecated and no longer enforced.
 	TotalProjectLimit int            `json:"total_project_limit"`
 	RepoProjectLimit  int            `json:"repo_project_limit"`
 	RepoExceptions    []APIOwnerRepo `json:"repo_exceptions"`
