@@ -33,6 +33,13 @@ func setupComplexityRateLimitEnv(t *testing.T, cfg evergreen.RateLimitConfig) *m
 	return env
 }
 
+func newTestComplexityRateLimit(t *testing.T, env *mock.Environment, schema graphql.ExecutableSchema) *ComplexityRateLimit {
+	ext, err := NewComplexityRateLimit(env)
+	require.NoError(t, err)
+	require.NoError(t, ext.Validate(schema))
+	return ext
+}
+
 func parseQuery(t *testing.T, schema graphql.ExecutableSchema, queryStr string) *ast.OperationDefinition {
 	doc, gqlErrs := gqlparser.LoadQueryWithRules(schema.Schema(), queryStr, rules.NewDefaultRules())
 	require.Empty(t, gqlErrs)
@@ -46,7 +53,7 @@ func TestComplexityRateLimitUnderBudgetPasses(t *testing.T) {
 		GraphQLComplexityBurst:   10000,
 	})
 	schema := NewExecutableSchema(New(""))
-	ext := NewComplexityRateLimit(env, schema)
+	ext := newTestComplexityRateLimit(t, env, schema)
 
 	op := parseQuery(t, schema, userSettingsQuery)
 	opCtx := &graphql.OperationContext{
@@ -66,7 +73,7 @@ func TestComplexityRateLimitExceedsBudgetRejects(t *testing.T) {
 		GraphQLComplexityBurst:   5,
 	})
 	schema := NewExecutableSchema(New(""))
-	ext := NewComplexityRateLimit(env, schema)
+	ext := newTestComplexityRateLimit(t, env, schema)
 
 	op := parseQuery(t, schema, hostEventsQuery)
 	opCtx := &graphql.OperationContext{
@@ -88,7 +95,7 @@ func TestComplexityRateLimitExemptUserPassesThrough(t *testing.T) {
 		ExemptUserIDs:            []string{"exempt_user"},
 	})
 	schema := NewExecutableSchema(New(""))
-	ext := NewComplexityRateLimit(env, schema)
+	ext := newTestComplexityRateLimit(t, env, schema)
 
 	op := parseQuery(t, schema, hostEventsQuery)
 	opCtx := &graphql.OperationContext{
@@ -109,7 +116,7 @@ func TestComplexityRateLimitElevatedUserGetsDoubleBudget(t *testing.T) {
 		ElevatedUserIDs:          []string{"elevated_user"},
 	})
 	schema := NewExecutableSchema(New(""))
-	ext := NewComplexityRateLimit(env, schema)
+	ext := newTestComplexityRateLimit(t, env, schema)
 
 	op := parseQuery(t, schema, hostEventsQuery)
 	opCtx := &graphql.OperationContext{
@@ -134,7 +141,7 @@ func TestComplexityRateLimitUsesExistingComplexityStats(t *testing.T) {
 		GraphQLComplexityBurst:   100,
 	})
 	schema := NewExecutableSchema(New(""))
-	ext := NewComplexityRateLimit(env, schema)
+	ext := newTestComplexityRateLimit(t, env, schema)
 
 	op := parseQuery(t, schema, userSettingsQuery)
 	opCtx := &graphql.OperationContext{
@@ -148,4 +155,12 @@ func TestComplexityRateLimitUsesExistingComplexityStats(t *testing.T) {
 	gqlErr := ext.MutateOperationContext(ctx, opCtx)
 	require.NotNil(t, gqlErr)
 	assert.Contains(t, gqlErr.Message, "score 1000")
+}
+
+func TestNewComplexityRateLimitNilRedisErrors(t *testing.T) {
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(t.Context()))
+
+	_, err := NewComplexityRateLimit(env)
+	assert.Error(t, err)
 }

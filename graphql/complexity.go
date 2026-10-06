@@ -10,20 +10,20 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/ratelimit"
-	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 const errComplexityRateLimit = "COMPLEXITY_RATE_LIMIT_EXCEEDED"
 
 // ComplexityRateLimit is a gqlgen extension that enforces a per-user
-// cumulative complexity budget per hour. Each query's static complexity
-// score is charged against the user's budget via a Redis token bucket.
+// cumulative complexity budget per hour.
 type ComplexityRateLimit struct {
-	env    evergreen.Environment
-	schema graphql.ExecutableSchema
+	env     evergreen.Environment
+	limiter *ratelimit.Limiter
+	schema  graphql.ExecutableSchema
 }
 
 var _ interface {
@@ -31,8 +31,14 @@ var _ interface {
 	graphql.HandlerExtension
 } = &ComplexityRateLimit{}
 
-func NewComplexityRateLimit(env evergreen.Environment, schema graphql.ExecutableSchema) *ComplexityRateLimit {
-	return &ComplexityRateLimit{env: env, schema: schema}
+// NewComplexityRateLimit returns a complexity rate limiter backed by the
+// environment's Redis client.
+func NewComplexityRateLimit(env evergreen.Environment) (*ComplexityRateLimit, error) {
+	limiter, err := ratelimit.NewRateLimiter(env.RedisClient())
+	if err != nil {
+		return nil, errors.Wrap(err, "creating rate limiter")
+	}
+	return &ComplexityRateLimit{env: env, limiter: limiter}, nil
 }
 
 func (*ComplexityRateLimit) ExtensionName() string {
@@ -45,11 +51,6 @@ func (c *ComplexityRateLimit) Validate(schema graphql.ExecutableSchema) error {
 }
 
 func (c *ComplexityRateLimit) MutateOperationContext(ctx context.Context, opCtx *graphql.OperationContext) *gqlerror.Error {
-	u := gimlet.GetUser(ctx)
-	if u == nil {
-		return nil
-	}
-
 	score := c.complexityScore(ctx, opCtx)
 	if score <= 0 {
 		return nil
@@ -62,24 +63,13 @@ func (c *ComplexityRateLimit) MutateOperationContext(ctx context.Context, opCtx 
 		return nil
 	}
 
-	username := u.Username()
-	elevated := slices.Contains(cfg.ElevatedUserIDs, username)
-	if elevated {
+	username := mustHaveUser(ctx).Username()
+	if slices.Contains(cfg.ElevatedUserIDs, username) {
 		perHour *= 2
 		burst *= 2
 	}
-	exempt := slices.Contains(cfg.ExemptUserIDs, username)
 
-	limiter, err := ratelimit.NewRateLimiter(c.env.RedisClient())
-	if err != nil {
-		grip.Error(ctx, message.WrapError(err, message.Fields{
-			"message": "initializing complexity rate limiter",
-			"user":    username,
-		}))
-		return nil
-	}
-
-	res, err := limiter.AllowN(ctx, username, evergreen.RateLimitSurfaceComplexity, perHour, burst, score)
+	res, err := c.limiter.AllowN(ctx, username, evergreen.RateLimitSurfaceComplexity, perHour, burst, score)
 	if err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "checking complexity rate limit",
@@ -88,26 +78,29 @@ func (c *ComplexityRateLimit) MutateOperationContext(ctx context.Context, opCtx 
 		}))
 		return nil
 	}
-	if res == nil {
+	if res == nil || res.Allowed > 0 {
+		return nil
+	}
+	// Exempt users still consume from their bucket so their usage is tracked,
+	// but they are never rejected.
+	if slices.Contains(cfg.ExemptUserIDs, username) {
 		return nil
 	}
 
-	if res.Allowed == 0 && !exempt {
-		grip.Warning(ctx, message.Fields{
-			"message":     "complexity rate limit exceeded, rejecting query",
-			"user":        username,
-			"score":       score,
-			"remaining":   res.Remaining,
-			"retry_after": res.RetryAfter.Seconds(),
-		})
-		gqlErr := gqlerror.Errorf("complexity rate limit exceeded (score %d)", score)
-		errcode.Set(gqlErr, errComplexityRateLimit)
-		return gqlErr
-	}
-
-	return nil
+	grip.Warning(ctx, message.Fields{
+		"message":     "complexity rate limit exceeded, rejecting query",
+		"user":        username,
+		"score":       score,
+		"remaining":   res.Remaining,
+		"retry_after": res.RetryAfter.Seconds(),
+	})
+	gqlErr := gqlerror.Errorf("complexity rate limit exceeded (score %d)", score)
+	errcode.Set(gqlErr, errComplexityRateLimit)
+	return gqlErr
 }
 
+// complexityScore reuses the score already computed by the per-query
+// complexity limiter, and only computes it itself when that limiter is off.
 func (c *ComplexityRateLimit) complexityScore(ctx context.Context, opCtx *graphql.OperationContext) int {
 	if stats := extension.GetComplexityStats(ctx); stats != nil {
 		return stats.Complexity
