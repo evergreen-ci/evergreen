@@ -25,7 +25,7 @@ import (
 
 const (
 	generateTasksJobName          = "generate-tasks"
-	generateTasksConcurrencyLimit = 1
+	generateTasksConcurrencyLimit = 3
 	// hasGeneratedTasksOtelAttribute uses a hyphenated legacy key; renaming it would break
 	// existing Honeycomb queries, so new attributes below use the underscore namespace instead.
 	hasGeneratedTasksOtelAttribute = "evergreen.generate-tasks.has_generated_tasks"

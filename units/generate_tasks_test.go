@@ -471,6 +471,44 @@ var sampleGeneratedProject3 = []string{`
 }
 `}
 
+func fillGenerateTasksExecutionSlots(t *testing.T) func() {
+	t.Helper()
+	var releaseSlots []func()
+	for len(generateTasksExecutionSlots) < cap(generateTasksExecutionSlots) {
+		release, waited, err := acquireGenerateTasksExecutionSlot(t.Context(), generateTasksExecutionSlots)
+		require.NoError(t, err)
+		assert.Zero(t, waited)
+		releaseSlot := sync.OnceFunc(release)
+		t.Cleanup(releaseSlot)
+		releaseSlots = append(releaseSlots, releaseSlot)
+	}
+	return func() {
+		for _, release := range releaseSlots {
+			release()
+		}
+	}
+}
+
+func TestGenerateTasksExecutionSlotsAllowThreeJobsAndBlockFourth(t *testing.T) {
+	require.Equal(t, 3, cap(generateTasksExecutionSlots))
+	releaseSlots := fillGenerateTasksExecutionSlots(t)
+	assert.Len(t, generateTasksExecutionSlots, 3)
+
+	canceledCtx, cancel := context.WithCancel(t.Context())
+	cancel()
+	release, _, err := acquireGenerateTasksExecutionSlot(canceledCtx, generateTasksExecutionSlots)
+	require.ErrorIs(t, err, context.Canceled)
+	assert.Nil(t, release)
+	assert.Len(t, generateTasksExecutionSlots, 3)
+
+	releaseSlots()
+	assert.Empty(t, generateTasksExecutionSlots)
+	release, waited, err := acquireGenerateTasksExecutionSlot(t.Context(), generateTasksExecutionSlots)
+	require.NoError(t, err)
+	assert.Zero(t, waited)
+	release()
+}
+
 func TestAcquireGenerateTasksExecutionSlotHonorsLimitAndContext(t *testing.T) {
 	slots := make(chan struct{}, 1)
 	release, waited, err := acquireGenerateTasksExecutionSlot(t.Context(), slots)
@@ -521,10 +559,7 @@ func TestGenerateTasksStoppedDuringSlotWaitShouldNoop(t *testing.T) {
 	}
 	require.NoError(t, generator.Insert(ctx))
 
-	release, _, err := acquireGenerateTasksExecutionSlot(ctx, generateTasksExecutionSlots)
-	require.NoError(t, err)
-	releaseSlot := sync.OnceFunc(release)
-	t.Cleanup(releaseSlot)
+	releaseSlots := fillGenerateTasksExecutionSlots(t)
 	provider := sdktrace.NewTracerProvider()
 	t.Cleanup(func() { require.NoError(t, provider.Shutdown(t.Context())) })
 	ctx, rootSpan := provider.Tracer("test").Start(ctx, "generate-tasks")
@@ -539,7 +574,7 @@ func TestGenerateTasksStoppedDuringSlotWaitShouldNoop(t *testing.T) {
 	}()
 	t.Cleanup(func() {
 		cancel()
-		releaseSlot()
+		releaseSlots()
 		<-done
 	})
 	select {
@@ -550,7 +585,7 @@ func TestGenerateTasksStoppedDuringSlotWaitShouldNoop(t *testing.T) {
 	require.NoError(t, task.UpdateOne(ctx, bson.M{task.IdKey: generator.Id}, bson.M{
 		"$set": bson.M{task.StatusKey: evergreen.TaskFailed},
 	}))
-	releaseSlot()
+	releaseSlots()
 	select {
 	case <-done:
 	case <-ctx.Done():
