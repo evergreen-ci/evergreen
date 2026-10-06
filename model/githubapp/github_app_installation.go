@@ -24,6 +24,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -97,6 +98,11 @@ func (h *GitHubAppInstallation) Upsert(ctx context.Context) error {
 	return err
 }
 
+// retryConfig customizes retry behavior for GitHub app API calls.
+type retryConfig struct {
+	retry422 bool
+}
+
 // GitHubClient adds a Close method to the GitHub client that
 // puts the underlying HTTP client back into the pool.
 type GitHubClient struct {
@@ -116,14 +122,14 @@ func (g *GitHubClient) Close() {
 // getGitHubClientForAuth returns a GitHub client with the GitHub app's private key.
 // This function cannot be moved to thirdparty because it is needed to set up the environment.
 // Couple this with a defered call with Close() to clean up the client.
-func getGitHubClientForAuth(authFields *GithubAppAuth) (*GitHubClient, error) {
+func getGitHubClientForAuth(authFields *GithubAppAuth, conf retryConfig) (*GitHubClient, error) {
 	key, err := jwt.ParseRSAPrivateKeyFromPEM(authFields.PrivateKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing private key")
 	}
 
 	itr := ghinstallation.NewAppsTransportFromPrivateKey(otelhttp.NewTransport(utility.DefaultTransport()), authFields.AppID, key)
-	httpClient := utility.GetCustomHTTPRetryableClientWithTransport(itr, githubClientShouldRetry(), utility.RetryHTTPDelay(utility.RetryOptions{
+	httpClient := utility.GetCustomHTTPRetryableClientWithTransport(itr, githubClientShouldRetry(conf), utility.RetryHTTPDelay(utility.RetryOptions{
 		MinDelay:    GitHubRetryMinDelay,
 		MaxDelay:    GitHubRetryMaxDelay,
 		MaxAttempts: GitHubMaxRetries + 1,
@@ -134,7 +140,7 @@ func getGitHubClientForAuth(authFields *GithubAppAuth) (*GitHubClient, error) {
 	return &wrappedClient, nil
 }
 
-func githubClientShouldRetry() utility.HTTPRetryFunction {
+func githubClientShouldRetry(conf retryConfig) utility.HTTPRetryFunction {
 	defaultRetryableStatuses := utility.NewDefaultHTTPRetryConf().Statuses
 	// The GitHub API returns 403 Forbidden when a secondary rate limit is
 	// exceeded. This should ideally be covered already by checking for
@@ -148,6 +154,7 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 		_, span := tracer.Start(req.Context(), op)
 		defer span.End()
 
+		trace.SpanFromContext(req.Context()).SetAttributes(attribute.Int(githubAppRetriesAttribute, index))
 		span.SetAttributes(attribute.Int(githubAppAttemptAttribute, index))
 		span.SetAttributes(attribute.String(githubAppURLAttribute, req.URL.String()))
 		span.SetAttributes(attribute.String(githubAppMethodAttribute, req.Method))
@@ -207,6 +214,16 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 			return true
 		}
 
+		if conf.retry422 && resp.StatusCode == http.StatusUnprocessableEntity && index < GitHubMaxRetries {
+			// CheckResponse parses GitHub's error message from the body and
+			// restores the body so that the GitHub client can still read it.
+			grip.Warning(req.Context(), message.WrapError(github.CheckResponse(resp), makeLogMsg(map[string]any{
+				"message":     "retrying GitHub app endpoint after unprocessable entity response",
+				"status_code": resp.StatusCode,
+			})))
+			return true
+		}
+
 		grip.ErrorWhen(req.Context(), resp.StatusCode >= http.StatusBadRequest, makeLogMsg(map[string]any{
 			"message":     "GitHub app endpoint returned response but is not retryable",
 			"status_code": resp.StatusCode,
@@ -219,7 +236,7 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 // getInstallationIDFromGitHub returns an installation ID from GitHub given an owner and a repo.
 // This function cannot be moved to thirdparty because it is needed to set up the environment.
 func getInstallationIDFromGitHub(ctx context.Context, authFields *GithubAppAuth, owner, repo string) (int64, error) {
-	client, err := getGitHubClientForAuth(authFields)
+	client, err := getGitHubClientForAuth(authFields, retryConfig{})
 	if err != nil {
 		return 0, errors.Wrap(err, "getting GitHub client to get the installation ID")
 	}
