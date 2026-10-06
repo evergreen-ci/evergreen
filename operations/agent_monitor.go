@@ -178,16 +178,9 @@ func agentMonitor() cli.Command {
 			hostID := c.Parent().String(agentHostIDFlagName)
 			comm.SetHostID(hostID)
 
-			hostSecret := c.Parent().String(agentHostSecretFlagName)
-			// If a setup secret is provided, exchange it for the host secret.
-			// Fall back to the host secret when available so that a transient
-			// exchange failure does not fail the agent monitor.
-			if setupSecret := c.Parent().String(agentHostSetupSecretFlagName); setupSecret != "" {
-				exchanged, err := comm.ExchangeSetupSecret(ctx, setupSecret)
-				if err != nil {
-					return errors.Wrap(err, "exchanging setup secret for host secret")
-				}
-				hostSecret = exchanged
+			hostSecret, err := comm.ExchangeSetupSecret(ctx, c.Parent().String(agentHostSetupSecretFlagName))
+			if err != nil {
+				return errors.Wrap(err, "exchanging setup secret for host secret")
 			}
 			comm.SetHostSecret(hostSecret)
 
