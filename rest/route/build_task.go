@@ -3,6 +3,7 @@ package route
 import (
 	"cmp"
 	"context"
+	"fmt"
 	"net/http"
 	"slices"
 
@@ -44,7 +45,7 @@ func makeFetchTasksByBuild(parsleyURL string) gimlet.RouteHandler {
 //	@Security		Api-User || Api-Key
 //	@Param			build_id				path	string	true	"the build ID"
 //	@Param			start_at				query	string	false	"The identifier of the task to start at in the pagination"
-//	@Param			limit					query	int		false	"The number of tasks to be returned per page of pagination. Defaults to 100"
+//	@Param			limit					query	int		false	"The number of tasks to be returned per page of pagination. Defaults to 100 and cannot exceed 100"
 //	@Param			fetch_all_executions	query	boolean	false	"Fetches previous executions of tasks if they are available"
 //	@Param			fetch_parent_ids		query	boolean	false	"Fetches the parent display task ID for each returned execution task"
 //	@Success		200						{array}	model.APITask
@@ -69,6 +70,12 @@ func (tbh *tasksByBuildHandler) Parse(ctx context.Context, r *http.Request) erro
 	tbh.limit, err = getLimit(vals)
 	if err != nil {
 		return errors.Wrap(err, "getting limit")
+	}
+	if tbh.limit > defaultLimit {
+		return gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("limit must not exceed %d", defaultLimit),
+			StatusCode: http.StatusBadRequest,
+		}
 	}
 
 	tbh.fetchAllExecutions = vals.Get("fetch_all_executions") == "true"
