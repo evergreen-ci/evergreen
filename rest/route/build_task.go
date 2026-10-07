@@ -15,6 +15,8 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -45,7 +47,7 @@ func makeFetchTasksByBuild(parsleyURL string) gimlet.RouteHandler {
 //	@Security		Api-User || Api-Key
 //	@Param			build_id				path	string	true	"the build ID"
 //	@Param			start_at				query	string	false	"The identifier of the task to start at in the pagination"
-//	@Param			limit					query	int		false	"The number of tasks to be returned per page of pagination. Defaults to 100 and cannot exceed 100"
+//	@Param			limit					query	int		false	"The number of tasks to be returned per page of pagination. Defaults to 100"
 //	@Param			fetch_all_executions	query	boolean	false	"Fetches previous executions of tasks if they are available"
 //	@Param			fetch_parent_ids		query	boolean	false	"Fetches the parent display task ID for each returned execution task"
 //	@Success		200						{array}	model.APITask
@@ -71,15 +73,19 @@ func (tbh *tasksByBuildHandler) Parse(ctx context.Context, r *http.Request) erro
 	if err != nil {
 		return errors.Wrap(err, "getting limit")
 	}
-	if tbh.limit > defaultLimit {
-		return gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("limit must not exceed %d", defaultLimit),
-			StatusCode: http.StatusBadRequest,
-		}
-	}
 
 	tbh.fetchAllExecutions = vals.Get("fetch_all_executions") == "true"
 	tbh.fetchParentIds = vals.Get("fetch_parent_ids") == "true"
+
+	// TODO DEVPROD-43462: Remove this log and actually cap limit after monitoring usage.
+	if tbh.limit > defaultLimit {
+		grip.Debug(ctx, message.Fields{
+			"message":  fmt.Sprintf("limit exceeded %d", defaultLimit),
+			"route":    "/builds/{build_id}/tasks",
+			"limit":    tbh.limit,
+			"build_id": tbh.buildId,
+		})
+	}
 
 	return nil
 }
