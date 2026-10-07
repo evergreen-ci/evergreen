@@ -7,13 +7,13 @@ import (
 
 type APIParsleyFilter struct {
 	// Description is a description for the filter.
-	Description *string `json:"description"`
+	Description *string `json:"description" extensions:"!x-nullable"`
 	// Expression is a regular expression representing the filter.
-	Expression *string `json:"expression"`
+	Expression *string `json:"expression" extensions:"!x-nullable"`
 	// CaseSensitive indicates whether the filter is case sensitive.
-	CaseSensitive *bool `json:"case_sensitive"`
+	CaseSensitive *bool `json:"case_sensitive" extensions:"!x-nullable"`
 	// ExactMatch indicates whether the filter must be an exact match.
-	ExactMatch *bool `json:"exact_match"`
+	ExactMatch *bool `json:"exact_match" extensions:"!x-nullable"`
 }
 
 func (t *APIParsleyFilter) ToService() parsley.Filter {

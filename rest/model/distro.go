@@ -12,7 +12,7 @@ import (
 // APIPlannerSettings is the model to be returned by the API whenever distro.PlannerSettings are fetched
 
 type APIPlannerSettings struct {
-	Version                   *string     `json:"version"`
+	Version                   *string     `json:"version" extensions:"!x-nullable"`
 	TargetTime                APIDuration `json:"target_time"`
 	MergeQueueTargetTime      APIDuration `json:"merge_queue_target_time"`
 	GroupVersions             bool        `json:"group_versions"`
@@ -69,13 +69,13 @@ func (s *APIPlannerSettings) ToService() distro.PlannerSettings {
 // APIHostAllocatorSettings is the model to be returned by the API whenever distro.HostAllocatorSettings are fetched
 
 type APIHostAllocatorSettings struct {
-	Version                *string     `json:"version"`
+	Version                *string     `json:"version" extensions:"!x-nullable"`
 	MinimumHosts           int         `json:"minimum_hosts"`
 	MaximumHosts           int         `json:"maximum_hosts"`
 	AutoTuneMaximumHosts   bool        `json:"auto_tune_maximum_hosts"`
-	RoundingRule           *string     `json:"rounding_rule"`
-	FeedbackRule           *string     `json:"feedback_rule"`
-	HostsOverallocatedRule *string     `json:"hosts_overallocated_rule"`
+	RoundingRule           *string     `json:"rounding_rule" extensions:"!x-nullable"`
+	FeedbackRule           *string     `json:"feedback_rule" extensions:"!x-nullable"`
+	HostsOverallocatedRule *string     `json:"hosts_overallocated_rule" extensions:"!x-nullable"`
 	AcceptableHostIdleTime APIDuration `json:"acceptable_host_idle_time"`
 	FutureHostFraction     float64     `json:"future_host_fraction"`
 }
@@ -122,7 +122,7 @@ func (s *APIHostAllocatorSettings) ToService() distro.HostAllocatorSettings {
 // APIFinderSettings is the model to be returned by the API whenever distro.FinderSettings are fetched
 
 type APIFinderSettings struct {
-	Version *string `json:"version"`
+	Version *string `json:"version" extensions:"!x-nullable"`
 }
 
 // BuildFromService converts from service level distro.FinderSettings to an APIFinderSettings
@@ -151,7 +151,7 @@ func (s *APIFinderSettings) ToService() distro.FinderSettings {
 // APIDispatcherSettings is the model to be returned by the API whenever distro.DispatcherSettings are fetched
 
 type APIDispatcherSettings struct {
-	Version *string `json:"version"`
+	Version *string `json:"version" extensions:"!x-nullable"`
 }
 
 // BuildFromService converts from service level distro.DispatcherSettings to an APIDispatcherSettings
@@ -176,18 +176,18 @@ func (s *APIDispatcherSettings) ToService() distro.DispatcherSettings {
 // APIBootstrapSettings is the model to be returned by the API whenever distro.BootstrapSettings are fetched
 
 type APIBootstrapSettings struct {
-	Method                *string                        `json:"method"`
-	Communication         *string                        `json:"communication"`
-	ClientDir             *string                        `json:"client_dir"`
-	JasperBinaryDir       *string                        `json:"jasper_binary_dir"`
-	JasperCredentialsPath *string                        `json:"jasper_credentials_path"`
-	ServiceUser           *string                        `json:"service_user"`
-	ShellPath             *string                        `json:"shell_path"`
-	RootDir               *string                        `json:"root_dir"`
-	Env                   []APIEnvVar                    `json:"env"`
+	Method                *string                        `json:"method" extensions:"!x-nullable"`
+	Communication         *string                        `json:"communication" extensions:"!x-nullable"`
+	ClientDir             *string                        `json:"client_dir" extensions:"!x-nullable"`
+	JasperBinaryDir       *string                        `json:"jasper_binary_dir" extensions:"!x-nullable"`
+	JasperCredentialsPath *string                        `json:"jasper_credentials_path" extensions:"!x-nullable"`
+	ServiceUser           *string                        `json:"service_user" extensions:"!x-nullable"`
+	ShellPath             *string                        `json:"shell_path" extensions:"!x-nullable"`
+	RootDir               *string                        `json:"root_dir" extensions:"!x-nullable"`
+	Env                   []APIEnvVar                    `json:"env" extensions:"x-nullable"`
 	ResourceLimits        APIResourceLimits              `json:"resource_limits"`
-	PreconditionScripts   []APIPreconditionScript        `json:"precondition_scripts"`
-	ContainerIsolation    *APIContainerIsolationSettings `json:"container_isolation"`
+	PreconditionScripts   []APIPreconditionScript        `json:"precondition_scripts" extensions:"x-nullable"`
+	ContainerIsolation    *APIContainerIsolationSettings `json:"container_isolation" extensions:"!x-nullable"`
 }
 
 // APIContainerIsolationSettings is the API model for per-task container
@@ -226,8 +226,8 @@ func (s *APIContainerIsolationSettings) ToService() distro.ContainerIsolationSet
 }
 
 type APIEnvVar struct {
-	Key   *string `json:"key"`
-	Value *string `json:"value"`
+	Key   *string `json:"key" extensions:"!x-nullable"`
+	Value *string `json:"value" extensions:"!x-nullable"`
 }
 
 // BuildFromService converts a service level distro.EnvVar to an APIEnvVar
@@ -255,8 +255,8 @@ type APIResourceLimits struct {
 // APIPreconditionScript is the model used by the API to represent a
 // distro.PreconditionScript.
 type APIPreconditionScript struct {
-	Path   *string `json:"path"`
-	Script *string `json:"script"`
+	Path   *string `json:"path" extensions:"!x-nullable"`
+	Script *string `json:"script" extensions:"!x-nullable"`
 }
 
 // BuildFromService converts a service-level distro.PreconditionScript to an
@@ -348,7 +348,7 @@ func (s *APIBootstrapSettings) ToService() distro.BootstrapSettings {
 }
 
 type APIHomeVolumeSettings struct {
-	FormatCommand *string `json:"format_command"`
+	FormatCommand *string `json:"format_command" extensions:"!x-nullable"`
 }
 
 func (s *APIHomeVolumeSettings) BuildFromService(settings distro.HomeVolumeSettings) {
@@ -362,8 +362,8 @@ func (s *APIHomeVolumeSettings) ToService() distro.HomeVolumeSettings {
 }
 
 type APIIceCreamSettings struct {
-	SchedulerHost *string `json:"scheduler_host"`
-	ConfigPath    *string `json:"config_path"`
+	SchedulerHost *string `json:"scheduler_host" extensions:"!x-nullable"`
+	ConfigPath    *string `json:"config_path" extensions:"!x-nullable"`
 }
 
 func (s *APIIceCreamSettings) BuildFromService(settings distro.IceCreamSettings) {
@@ -400,24 +400,24 @@ func (s *APICostData) ToService() distro.CostData {
 // APIDistro is the model to be returned by the API whenever distros are fetched
 
 type APIDistro struct {
-	Name                  *string                  `json:"name"`
+	Name                  *string                  `json:"name" extensions:"!x-nullable"`
 	AdminOnly             bool                     `json:"admin_only"`
-	Aliases               []string                 `json:"aliases"`
+	Aliases               []string                 `json:"aliases" extensions:"x-nullable"`
 	UserSpawnAllowed      bool                     `json:"user_spawn_allowed"`
-	Provider              *string                  `json:"provider"`
-	ProviderSettingsList  []*birch.Document        `json:"provider_settings" swaggertype:"object"`
-	ProviderAccount       *string                  `json:"provider_account"`
-	Arch                  *string                  `json:"arch"`
-	WorkDir               *string                  `json:"work_dir"`
+	Provider              *string                  `json:"provider" extensions:"!x-nullable"`
+	ProviderSettingsList  []*birch.Document        `json:"provider_settings" swaggertype:"object" extensions:"x-nullable"`
+	ProviderAccount       *string                  `json:"provider_account" extensions:"!x-nullable"`
+	Arch                  *string                  `json:"arch" extensions:"!x-nullable"`
+	WorkDir               *string                  `json:"work_dir" extensions:"!x-nullable"`
 	SetupAsSudo           bool                     `json:"setup_as_sudo"`
-	Setup                 *string                  `json:"setup"`
-	User                  *string                  `json:"user"`
+	Setup                 *string                  `json:"setup" extensions:"!x-nullable"`
+	User                  *string                  `json:"user" extensions:"!x-nullable"`
 	BootstrapSettings     APIBootstrapSettings     `json:"bootstrap_settings"`
-	SSHOptions            []string                 `json:"ssh_options"`
-	AuthorizedKeysFile    *string                  `json:"authorized_keys_file"`
-	Expansions            []APIExpansion           `json:"expansions"`
+	SSHOptions            []string                 `json:"ssh_options" extensions:"x-nullable"`
+	AuthorizedKeysFile    *string                  `json:"authorized_keys_file" extensions:"!x-nullable"`
+	Expansions            []APIExpansion           `json:"expansions" extensions:"x-nullable"`
 	Disabled              bool                     `json:"disabled"`
-	ContainerPool         *string                  `json:"container_pool"`
+	ContainerPool         *string                  `json:"container_pool" extensions:"!x-nullable"`
 	FinderSettings        APIFinderSettings        `json:"finder_settings"`
 	PlannerSettings       APIPlannerSettings       `json:"planner_settings"`
 	DispatcherSettings    APIDispatcherSettings    `json:"dispatcher_settings"`
@@ -428,15 +428,15 @@ type APIDistro struct {
 	IsVirtualWorkstation  bool                     `json:"is_virtual_workstation"`
 	IsCluster             bool                     `json:"is_cluster"`
 	IsIaCManaged          bool                     `json:"is_iac_managed"`
-	Note                  *string                  `json:"note"`
-	WarningNote           *string                  `json:"warning_note"`
-	ValidProjects         []*string                `json:"valid_projects"`
-	Mountpoints           []string                 `json:"mountpoints"`
+	Note                  *string                  `json:"note" extensions:"!x-nullable"`
+	WarningNote           *string                  `json:"warning_note" extensions:"!x-nullable"`
+	ValidProjects         []*string                `json:"valid_projects" extensions:"x-nullable"`
+	Mountpoints           []string                 `json:"mountpoints" extensions:"x-nullable"`
 	SingleTaskDistro      bool                     `json:"single_task_distro"`
-	ImageID               *string                  `json:"image_id"`
-	ExecUser              *string                  `json:"exec_user"`
+	ImageID               *string                  `json:"image_id" extensions:"!x-nullable"`
+	ExecUser              *string                  `json:"exec_user" extensions:"!x-nullable"`
 	CostData              APICostData              `json:"cost_data"`
-	TaskHostOverrides     *APITaskHostOverrides    `json:"task_host_overrides"`
+	TaskHostOverrides     *APITaskHostOverrides    `json:"task_host_overrides" extensions:"x-nullable"`
 }
 
 // BuildFromService converts from service level distro.Distro to an APIDistro
@@ -572,10 +572,10 @@ func (apiDistro *APIDistro) ToService() *distro.Distro {
 
 // APITaskHostOverrides is the API model for distro.TaskHostOverrides.
 type APITaskHostOverrides struct {
-	ProviderAccount              *string  `json:"provider_account"`
-	IAMInstanceProfileARN        *string  `json:"iam_instance_profile_arn"`
-	SecurityGroupIDs             []string `json:"security_group_ids"`
-	SubnetID                     *string  `json:"subnet_id"`
+	ProviderAccount              *string  `json:"provider_account" extensions:"!x-nullable"`
+	IAMInstanceProfileARN        *string  `json:"iam_instance_profile_arn" extensions:"!x-nullable"`
+	SecurityGroupIDs             []string `json:"security_group_ids" extensions:"x-nullable"`
+	SubnetID                     *string  `json:"subnet_id" extensions:"!x-nullable"`
 	DoNotAssignPublicIPv4Address bool     `json:"do_not_assign_public_ipv4_address"`
 }
 
@@ -599,8 +599,8 @@ func (a *APITaskHostOverrides) ToService() distro.TaskHostOverrides {
 
 // APIExpansion is derived from a service layer distro.Expansion
 type APIExpansion struct {
-	Key   *string `json:"key"`
-	Value *string `json:"value"`
+	Key   *string `json:"key" extensions:"!x-nullable"`
+	Value *string `json:"value" extensions:"!x-nullable"`
 }
 
 // BuildFromService converts a service level distro.Expansion to an APIExpansion

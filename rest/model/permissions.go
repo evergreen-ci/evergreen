@@ -5,14 +5,14 @@ import (
 )
 
 type APIPermissions struct {
-	ProjectPermissions []APIPermission `json:"projectPermissions"`
-	DistroPermissions  []APIPermission `json:"distroPermissions"`
+	ProjectPermissions []APIPermission `json:"projectPermissions" extensions:"!x-nullable"`
+	DistroPermissions  []APIPermission `json:"distroPermissions" extensions:"!x-nullable"`
 }
 
 type APIPermission struct {
 	Key    string                      `json:"key"`
 	Name   string                      `json:"name"`
-	Levels []evergreen.PermissionLevel `json:"levels"`
+	Levels []evergreen.PermissionLevel `json:"levels" extensions:"!x-nullable"`
 }
 
 // APIPermissionLevel describes a single permission level within a category.
@@ -24,7 +24,7 @@ type APIPermissionLevel struct {
 // APIAvailablePermissions wraps the system-wide permission levels with a note clarifying their scope.
 type APIAvailablePermissions struct {
 	Note        string                          `json:"note"`
-	Permissions map[string][]APIPermissionLevel `json:"permissions"`
+	Permissions map[string][]APIPermissionLevel `json:"permissions" extensions:"!x-nullable"`
 }
 
 // APIUserProjectPermissions is the response for GET /users/{user_id}/permission-details.
@@ -41,12 +41,12 @@ type APIProjectPermissionSummary struct {
 	ProjectID         string              `json:"project_id"`
 	ProjectIdentifier string              `json:"project_identifier"`
 	IsRepo            bool                `json:"is_repo"`
-	Permissions       map[string][]string `json:"permissions"`
+	Permissions       map[string][]string `json:"permissions" extensions:"!x-nullable"`
 }
 
 // APIDistroPermissionSummary lists the granted permissions for one distro, grouped by category.
 // Categories with no access are omitted.
 type APIDistroPermissionSummary struct {
 	DistroID    string              `json:"distro_id"`
-	Permissions map[string][]string `json:"permissions"`
+	Permissions map[string][]string `json:"permissions" extensions:"!x-nullable"`
 }

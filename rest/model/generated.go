@@ -8,12 +8,12 @@ import (
 )
 
 type APIBaseTaskInfo struct {
-	Id     *string `json:"id"`
-	Status *string `json:"status"`
+	Id     *string `json:"id" extensions:"x-nullable"`
+	Status *string `json:"status" extensions:"x-nullable"`
 }
 type APIDisplayTask struct {
-	Name           *string  `json:"name"`
-	ExecutionTasks []string `json:"execution_tasks"`
+	Name           *string  `json:"name" extensions:"!x-nullable"`
+	ExecutionTasks []string `json:"execution_tasks" extensions:"!x-nullable"`
 }
 type APIModule struct {
 	Module *string `json:"module"`

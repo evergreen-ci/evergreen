@@ -1204,8 +1204,8 @@ func (a *APIOAuthConfig) ToService() (any, error) {
 
 // APIBanner is a public structure representing the banner part of the admin settings
 type APIBanner struct {
-	Text  *string `json:"banner"`
-	Theme *string `json:"theme"`
+	Text  *string `json:"banner" extensions:"x-nullable"`
+	Theme *string `json:"theme" extensions:"x-nullable"`
 }
 
 // APIUiV2URL is a public structure representing the new UI url (e.g. Spruce)
@@ -3065,47 +3065,47 @@ func (c *APIGitHubCheckRunConfig) ToService() (any, error) {
 type APITaskLimitsConfig struct {
 	// MaxTasksPerVersion is the maximum number of tasks that a single version
 	// can have.
-	MaxTasksPerVersion *int `json:"max_tasks_per_version"`
+	MaxTasksPerVersion *int `json:"max_tasks_per_version" extensions:"!x-nullable"`
 	// MaxIncludesPerVersion is the maximum number of includes that a single
 	// version can have.
-	MaxIncludesPerVersion *int `json:"max_includes_per_version"`
+	MaxIncludesPerVersion *int `json:"max_includes_per_version" extensions:"!x-nullable"`
 	// MaxHourlyPatchTasks is the maximum number of patch tasks a single user can
 	// schedule per hour.
-	MaxHourlyPatchTasks *int `json:"max_hourly_patch_tasks"`
+	MaxHourlyPatchTasks *int `json:"max_hourly_patch_tasks" extensions:"!x-nullable"`
 	// MaxPendingGeneratedTasks is the maximum number of tasks that can be created
 	// by all generated task at once.
-	MaxPendingGeneratedTasks *int `json:"max_pending_generated_tasks"`
+	MaxPendingGeneratedTasks *int `json:"max_pending_generated_tasks" extensions:"!x-nullable"`
 	// MaxGenerateTaskJSONSize is the maximum size of a JSON file in MB that can be specified in the GenerateTasks command.
-	MaxGenerateTaskJSONSize *int `json:"max_generate_task_json_size"`
+	MaxGenerateTaskJSONSize *int `json:"max_generate_task_json_size" extensions:"!x-nullable"`
 	// MaxConcurrentLargeParserProjectTasks is the maximum number of tasks with parser projects stored in S3 that can be running at once.
-	MaxConcurrentLargeParserProjectTasks *int `json:"max_concurrent_large_parser_project_tasks"`
+	MaxConcurrentLargeParserProjectTasks *int `json:"max_concurrent_large_parser_project_tasks" extensions:"!x-nullable"`
 	// MaxDegradedModeConcurrentLargeParserProjectTasks is the maximum number of tasks with parser projects stored in S3 that can be running at once during CPU degraded mode.
-	MaxDegradedModeConcurrentLargeParserProjectTasks *int `json:"max_degraded_mode_concurrent_large_parser_project_tasks"`
+	MaxDegradedModeConcurrentLargeParserProjectTasks *int `json:"max_degraded_mode_concurrent_large_parser_project_tasks" extensions:"!x-nullable"`
 	// MaxDegradedModeParserProjectSize is the maximum parser project size in MB during CPU degraded mode.
-	MaxDegradedModeParserProjectSize *int `json:"max_degraded_mode_parser_project_size"`
+	MaxDegradedModeParserProjectSize *int `json:"max_degraded_mode_parser_project_size" extensions:"!x-nullable"`
 	// MaxParserProjectSize is the maximum allowed size in MB for parser projects that are stored in S3.
-	MaxParserProjectSize *int `json:"max_parser_project_size"`
+	MaxParserProjectSize *int `json:"max_parser_project_size" extensions:"!x-nullable"`
 	// MaxExecTimeoutSecs is the maximum number of seconds a task can run and set their timeout to.
-	MaxExecTimeoutSecs *int `json:"max_exec_timeout_secs"`
+	MaxExecTimeoutSecs *int `json:"max_exec_timeout_secs" extensions:"!x-nullable"`
 	// MaxTaskExecution is the maximum task (zero based) execution number.
-	MaxTaskExecution *int `json:"max_task_execution"`
+	MaxTaskExecution *int `json:"max_task_execution" extensions:"!x-nullable"`
 	// MaxDailyAutomaticRestarts is the maximum number of times a project can automatically restart a task within a 24-hour period.
-	MaxDailyAutomaticRestarts *int `json:"max_daily_automatic_restarts"`
+	MaxDailyAutomaticRestarts *int `json:"max_daily_automatic_restarts" extensions:"!x-nullable"`
 	// MaxScheduledTasksPerDistro is the cap for the number of max tasks materialized into a distro's queue doc per pass.
-	MaxScheduledTasksPerDistro *int `json:"max_scheduled_tasks_per_distro"`
+	MaxScheduledTasksPerDistro *int `json:"max_scheduled_tasks_per_distro" extensions:"!x-nullable"`
 	// TaskQueueAutoUnscheduleThreshold is the planned distro queue length at which the scheduler unschedules every patch task in the queue.
-	TaskQueueAutoUnscheduleThreshold *int `json:"task_queue_auto_unschedule_threshold"`
+	TaskQueueAutoUnscheduleThreshold *int `json:"task_queue_auto_unschedule_threshold" extensions:"!x-nullable"`
 	// HourlyPatchTaskOverrides sets a separate hourly patch task scheduling limit for individual projects or repos.
-	HourlyPatchTaskOverrides []APIHourlyPatchTaskOverride `json:"hourly_patch_task_overrides"`
+	HourlyPatchTaskOverrides []APIHourlyPatchTaskOverride `json:"hourly_patch_task_overrides" extensions:"!x-nullable"`
 }
 
 // APIHourlyPatchTaskOverride is a per-project or per-repo override to the
 // hourly per-user patch task scheduling limit.
 type APIHourlyPatchTaskOverride struct {
 	// ProjectOrRepoID is the ID of the branch project or repo the override applies to.
-	ProjectOrRepoID *string `json:"project_or_repo_id"`
+	ProjectOrRepoID *string `json:"project_or_repo_id" extensions:"!x-nullable"`
 	// MaxHourlyPatchTasks is the maximum number of patch tasks a single user can schedule per hour in the target project or repo.
-	MaxHourlyPatchTasks *int `json:"max_hourly_patch_tasks"`
+	MaxHourlyPatchTasks *int `json:"max_hourly_patch_tasks" extensions:"!x-nullable"`
 }
 
 func (o *APIHourlyPatchTaskOverride) BuildFromService(h evergreen.HourlyPatchTaskOverride) {

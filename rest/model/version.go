@@ -14,51 +14,51 @@ import (
 
 // APIVersion is the model to be returned by the API whenever versions are fetched.
 type APIVersion struct {
-	Id *string `json:"version_id"`
+	Id *string `json:"version_id" extensions:"!x-nullable"`
 	// Time that the version was first created
-	CreateTime *time.Time `json:"create_time"`
+	CreateTime *time.Time `json:"create_time" extensions:"x-nullable"`
 	// Time at which the version document was persisted in Evergreen. Will be null for versions created before this field was added.
 	IngestTime *time.Time `json:"ingest_time,omitempty"`
 	// Time at which tasks associated with this version started running
-	StartTime *time.Time `json:"start_time"`
+	StartTime *time.Time `json:"start_time" extensions:"x-nullable"`
 	// Time at which tasks associated with this version finished running
-	FinishTime *time.Time `json:"finish_time"`
+	FinishTime *time.Time `json:"finish_time" extensions:"x-nullable"`
 	// The version control identifier
-	Revision          *string `json:"revision"`
+	Revision          *string `json:"revision" extensions:"!x-nullable"`
 	Order             int     `json:"order"`
-	Project           *string `json:"project"`
-	ProjectIdentifier *string `json:"project_identifier"`
+	Project           *string `json:"project" extensions:"!x-nullable"`
+	ProjectIdentifier *string `json:"project_identifier" extensions:"x-nullable"`
 	// Author of the version
-	Author *string `json:"author"`
+	Author *string `json:"author" extensions:"!x-nullable"`
 	// Author ID is the Evergreen user ID associated with the version.
-	AuthorID *string `json:"author_id"`
+	AuthorID *string `json:"author_id" extensions:"!x-nullable"`
 	// Email of the author of the version
-	AuthorEmail *string `json:"author_email"`
+	AuthorEmail *string `json:"author_email" extensions:"!x-nullable"`
 	// Message left with the commit
-	Message *string `json:"message"`
+	Message *string `json:"message" extensions:"!x-nullable"`
 	// The status of the version (possible values are "created", "started", "success", or "failed")
-	Status *string `json:"status"`
+	Status *string `json:"status" extensions:"!x-nullable"`
 	// The github repository where the commit was made
-	Repo *string `json:"repo"`
+	Repo *string `json:"repo" extensions:"!x-nullable"`
 	// The version control branch where the commit was made
-	Branch     *string        `json:"branch"`
-	Parameters []APIParameter `json:"parameters"`
+	Branch     *string        `json:"branch" extensions:"!x-nullable"`
+	Parameters []APIParameter `json:"parameters" extensions:"x-nullable"`
 	// List of documents of the associated build variant and the build id
-	BuildVariantStatus []buildDetail `json:"build_variants_status"`
+	BuildVariantStatus []buildDetail `json:"build_variants_status" extensions:"x-nullable"`
 	// Version created by one of "patch_request", "github_pull_request",
 	// "gitter_request" (caused by git commit, aka the repotracker requester),
 	// "trigger_request" (Project Trigger versions) , "github_merge_request" (GitHub merge queue), "ad_hoc" (periodic builds)
-	Requester *string   `json:"requester"`
-	Errors    []*string `json:"errors"`
+	Requester *string   `json:"requester" extensions:"!x-nullable"`
+	Errors    []*string `json:"errors" extensions:"x-nullable"`
 	// Will be null for versions created before this field was added.
-	Activated *bool `json:"activated"`
-	Aborted   *bool `json:"aborted"`
+	Activated *bool `json:"activated" extensions:"x-nullable"`
+	Aborted   *bool `json:"aborted" extensions:"!x-nullable"`
 	// The git tag that triggered this version, if any.
-	TriggeredGitTag *APIGitTag `json:"triggered_by_git_tag"`
+	TriggeredGitTag *APIGitTag `json:"triggered_by_git_tag" extensions:"x-nullable"`
 	// Git tags that were pushed to this version.
-	GitTags []APIGitTag `json:"git_tags"`
+	GitTags []APIGitTag `json:"git_tags" extensions:"x-nullable"`
 	// Indicates if the version was ignored due to only making changes to ignored files.
-	Ignored *bool `json:"ignored"`
+	Ignored *bool `json:"ignored" extensions:"!x-nullable"`
 	// Aggregated actual cost of all tasks in the version
 	Cost *cost.Cost `json:"cost,omitempty"`
 	// Aggregated predicted cost of all tasks in the version
@@ -81,13 +81,13 @@ type APIVersionS3LogUsage struct {
 }
 
 type APIGitTag struct {
-	Tag    *string `json:"tag"`
-	Pusher *string `json:"pusher"`
+	Tag    *string `json:"tag" extensions:"!x-nullable"`
+	Pusher *string `json:"pusher" extensions:"!x-nullable"`
 }
 
 type buildDetail struct {
-	BuildVariant *string `json:"build_variant"`
-	BuildId      *string `json:"build_id"`
+	BuildVariant *string `json:"build_variant" extensions:"!x-nullable"`
+	BuildId      *string `json:"build_id" extensions:"!x-nullable"`
 }
 
 // BuildFromService converts from service level structs to an APIVersion.

@@ -15,44 +15,44 @@ import (
 // APIHost is the model to be returned by the API whenever hosts are fetched.
 type APIHost struct {
 	// Unique identifier of a specific host
-	Id                *string `json:"host_id"`
-	HostURL           *string `json:"host_url"`
-	PersistentDNSName *string `json:"persistent_dns_name"`
-	Tag               *string `json:"tag"`
+	Id                *string `json:"host_id" extensions:"!x-nullable"`
+	HostURL           *string `json:"host_url" extensions:"!x-nullable"`
+	PersistentDNSName *string `json:"persistent_dns_name" extensions:"!x-nullable"`
+	Tag               *string `json:"tag" extensions:"!x-nullable"`
 	// Object containing information about the distro type of this host
 	Distro      DistroInfo `json:"distro"`
 	Provisioned bool       `json:"provisioned"`
 	// Name of the process or user that started this host
-	StartedBy *string `json:"started_by"`
+	StartedBy *string `json:"started_by" extensions:"!x-nullable"`
 	// The instance type requested for the provider, primarily used for ec2 dynamic hosts
-	Provider *string `json:"host_type"`
+	Provider *string `json:"host_type" extensions:"!x-nullable"`
 	// The user associated with this host. Set if this host was spawned for a specific user
-	User *string `json:"user"`
+	User *string `json:"user" extensions:"!x-nullable"`
 	// The current state of the host
-	Status *string `json:"status"`
+	Status *string `json:"status" extensions:"!x-nullable"`
 	// Object containing information about the task the host is currently running
 	RunningTask           TaskInfo    `json:"running_task"`
 	UserHost              bool        `json:"user_host"`
 	NoExpiration          bool        `json:"no_expiration"`
-	InstanceTags          []host.Tag  `json:"instance_tags"`
-	InstanceType          *string     `json:"instance_type"`
-	AvailabilityZone      *string     `json:"zone"`
-	DisplayName           *string     `json:"display_name"`
-	HomeVolumeID          *string     `json:"home_volume_id"`
+	InstanceTags          []host.Tag  `json:"instance_tags" extensions:"x-nullable"`
+	InstanceType          *string     `json:"instance_type" extensions:"!x-nullable"`
+	AvailabilityZone      *string     `json:"zone" extensions:"!x-nullable"`
+	DisplayName           *string     `json:"display_name" extensions:"!x-nullable"`
+	HomeVolumeID          *string     `json:"home_volume_id" extensions:"!x-nullable"`
 	LastCommunicationTime time.Time   `json:"last_communication"`
 	TotalIdleTime         APIDuration `json:"total_idle_time"`
-	CreationTime          *time.Time  `json:"creation_time"`
-	Expiration            *time.Time  `json:"expiration_time"`
-	AttachedVolumeIDs     []string    `json:"attached_volume_ids"`
+	CreationTime          *time.Time  `json:"creation_time" extensions:"x-nullable"`
+	Expiration            *time.Time  `json:"expiration_time" extensions:"x-nullable"`
+	AttachedVolumeIDs     []string    `json:"attached_volume_ids" extensions:"!x-nullable"`
 	// Contains options for spawn hosts.
 	ProvisionOptions APIProvisionOptions `json:"provision_options"`
-	NeedsReprovision *string             `json:"needs_reprovision"`
+	NeedsReprovision *string             `json:"needs_reprovision" extensions:"!x-nullable"`
 }
 
 // APIProvisionOptions contains options for spawn hosts.
 type APIProvisionOptions struct {
 	// ID of the task that the host was spawned from.
-	TaskID *string `json:"task_id"`
+	TaskID *string `json:"task_id" extensions:"!x-nullable"`
 }
 
 func (apiOpts *APIProvisionOptions) BuildFromService(opts host.ProvisionOptions) {
@@ -86,29 +86,29 @@ type HostRequestOptions struct {
 
 type DistroInfo struct {
 	// Unique Identifier of this distro. Can be used to fetch more informaiton about this distro
-	Id *string `json:"distro_id"`
+	Id *string `json:"distro_id" extensions:"!x-nullable"`
 	// The service which provides this type of machine
-	Provider             *string `json:"provider"`
-	ImageId              *string `json:"image_id"`
-	WorkDir              *string `json:"work_dir"`
+	Provider             *string `json:"provider" extensions:"!x-nullable"`
+	ImageId              *string `json:"image_id" extensions:"!x-nullable"`
+	WorkDir              *string `json:"work_dir" extensions:"!x-nullable"`
 	IsVirtualWorkstation bool    `json:"is_virtual_workstation"`
-	User                 *string `json:"user"`
+	User                 *string `json:"user" extensions:"!x-nullable"`
 	IsWindows            bool    `json:"is_windows"`
-	BootstrapMethod      *string `json:"bootstrap_method"`
+	BootstrapMethod      *string `json:"bootstrap_method" extensions:"!x-nullable"`
 }
 
 type TaskInfo struct {
 	// Unique Identifier of this task. Can be used to fetch more informaiton about this task
-	Id *string `json:"task_id"`
+	Id *string `json:"task_id" extensions:"x-nullable"`
 	// The name of this task
-	Name *string `json:"name"`
+	Name *string `json:"name" extensions:"x-nullable"`
 	// Time that this task was dispatched to this host
-	DispatchTime *time.Time `json:"dispatch_time"`
+	DispatchTime *time.Time `json:"dispatch_time" extensions:"x-nullable"`
 	// Unique identifier for the version of the project that this task is run as part of
-	VersionId *string `json:"version_id"`
+	VersionId *string `json:"version_id" extensions:"x-nullable"`
 	// Unique identifier for the build of the project that this task is run as part of
-	BuildId   *string    `json:"build_id"`
-	StartTime *time.Time `json:"start_time"`
+	BuildId   *string    `json:"build_id" extensions:"x-nullable"`
+	StartTime *time.Time `json:"start_time" extensions:"x-nullable"`
 }
 
 // BuildFromService converts from service level structs to an APIHost. If a task is given,
@@ -290,8 +290,8 @@ type APIHostParams struct {
 }
 
 type APIOffboardUserResults struct {
-	TerminatedHosts   []string `json:"terminated_hosts"`
-	TerminatedVolumes []string `json:"terminated_volumes"`
+	TerminatedHosts   []string `json:"terminated_hosts" extensions:"!x-nullable"`
+	TerminatedVolumes []string `json:"terminated_volumes" extensions:"!x-nullable"`
 }
 
 // APIHostProvisioningOptions represents the script to provision a host.

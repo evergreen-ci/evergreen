@@ -7,27 +7,27 @@ import (
 )
 
 type APISelector struct {
-	Type *string `json:"type"`
-	Data *string `json:"data"`
+	Type *string `json:"type" extensions:"!x-nullable"`
+	Data *string `json:"data" extensions:"!x-nullable"`
 }
 
 type APISubscription struct {
 	// Identifier for the subscription.
-	ID *string `json:"id"`
+	ID *string `json:"id" extensions:"!x-nullable"`
 	// Type of resource to subscribe to.
-	ResourceType *string `json:"resource_type"`
+	ResourceType *string `json:"resource_type" extensions:"!x-nullable"`
 	// Type of trigger for the subscription.
-	Trigger *string `json:"trigger"`
+	Trigger *string `json:"trigger" extensions:"!x-nullable"`
 	// List of resource selectors.
-	Selectors []APISelector `json:"selectors"`
+	Selectors []APISelector `json:"selectors" extensions:"!x-nullable"`
 	// List of resource regex selectors.
-	RegexSelectors []APISelector `json:"regex_selectors"`
+	RegexSelectors []APISelector `json:"regex_selectors" extensions:"!x-nullable"`
 	// Options for the subscriber.
 	Subscriber APISubscriber `json:"subscriber"`
 	// Type of subscription owner.
-	OwnerType *string `json:"owner_type"`
+	OwnerType *string `json:"owner_type" extensions:"!x-nullable"`
 	// The subscription owner.
-	Owner *string `json:"owner"`
+	Owner *string `json:"owner" extensions:"!x-nullable"`
 	// Data for the particular condition that triggers the subscription.
 	TriggerData map[string]string `json:"trigger_data,omitempty"`
 }

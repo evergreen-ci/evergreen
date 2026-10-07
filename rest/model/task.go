@@ -26,59 +26,59 @@ const (
 // APITask is the model to be returned by the API whenever tasks are fetched.
 type APITask struct {
 	// Unique identifier of this task
-	Id                *string `json:"task_id"`
-	ProjectId         *string `json:"project_id"`
-	ProjectIdentifier *string `json:"project_identifier"`
+	Id                *string `json:"task_id" extensions:"!x-nullable"`
+	ProjectId         *string `json:"project_id" extensions:"!x-nullable"`
+	ProjectIdentifier *string `json:"project_identifier" extensions:"x-nullable"`
 	// Time that this task was first created
-	CreateTime *time.Time `json:"create_time"`
+	CreateTime *time.Time `json:"create_time" extensions:"x-nullable"`
 	// Time that this time was dispatched
-	DispatchTime *time.Time `json:"dispatch_time"`
+	DispatchTime *time.Time `json:"dispatch_time" extensions:"x-nullable"`
 	// Time that this task is scheduled to begin
-	ScheduledTime *time.Time `json:"scheduled_time"`
+	ScheduledTime *time.Time `json:"scheduled_time" extensions:"x-nullable"`
 	// Time that this task began execution
-	StartTime *time.Time `json:"start_time"`
+	StartTime *time.Time `json:"start_time" extensions:"x-nullable"`
 	// Time that this task finished execution
-	FinishTime    *time.Time `json:"finish_time"`
-	IngestTime    *time.Time `json:"ingest_time"`
-	ActivatedTime *time.Time `json:"activated_time"`
+	FinishTime    *time.Time `json:"finish_time" extensions:"x-nullable"`
+	IngestTime    *time.Time `json:"ingest_time" extensions:"x-nullable"`
+	ActivatedTime *time.Time `json:"activated_time" extensions:"x-nullable"`
 	// An identifier of this task by its project and commit hash
-	Version *string `json:"version_id"`
+	Version *string `json:"version_id" extensions:"!x-nullable"`
 	// The version control identifier associated with this task
-	Revision *string `json:"revision"`
+	Revision *string `json:"revision" extensions:"!x-nullable"`
 	// The priority of this task to be run
 	Priority int64 `json:"priority"`
 	// Whether the task is currently active
 	Activated bool `json:"activated"`
 	// The information, if any, about stepback
-	StepbackInfo *APIStepbackInfo `json:"stepback_info"`
+	StepbackInfo *APIStepbackInfo `json:"stepback_info" extensions:"x-nullable"`
 	// Identifier of the process or user that activated this task
-	ActivatedBy *string `json:"activated_by"`
+	ActivatedBy *string `json:"activated_by" extensions:"!x-nullable"`
 	// Identifier of the build that this task is part of
-	BuildId *string `json:"build_id"`
+	BuildId *string `json:"build_id" extensions:"!x-nullable"`
 	// Identifier of the distro that this task runs on
-	DistroId *string `json:"distro_id"`
+	DistroId *string `json:"distro_id" extensions:"!x-nullable"`
 	// Name of the buildvariant that this task runs on
-	BuildVariant            *string `json:"build_variant"`
-	BuildVariantDisplayName *string `json:"build_variant_display_name"`
+	BuildVariant            *string `json:"build_variant" extensions:"!x-nullable"`
+	BuildVariantDisplayName *string `json:"build_variant_display_name" extensions:"!x-nullable"`
 	// List of task_ids of task that this task depends on before beginning
-	DependsOn []APIDependency `json:"depends_on"`
+	DependsOn []APIDependency `json:"depends_on" extensions:"x-nullable"`
 	// Name of this task displayed in the UI
-	DisplayName *string `json:"display_name"`
+	DisplayName *string `json:"display_name" extensions:"!x-nullable"`
 	// The ID of the host this task ran or is running on
-	HostId *string `json:"host_id"`
+	HostId *string `json:"host_id" extensions:"!x-nullable"`
 	// The number of the execution of this particular task
 	Execution int `json:"execution"`
 	// The execution environment that the task ran in (possible values are
 	// "host" and "container"). Empty is treated as "host" for tasks that
 	// predate this field.
-	ExecutionPlatform *string `json:"execution_platform"`
+	ExecutionPlatform *string `json:"execution_platform" extensions:"!x-nullable"`
 	// For mainline commits, represents the position in the commit history of
 	// commit this task is associated with. For patches, this represents the
 	// number of total patches submitted by the user.
 	Order int `json:"order"`
 	// The current status of this task (possible values are "undispatched",
 	// "dispatched", "started", "success", and "failed")
-	Status *string `json:"status"`
+	Status *string `json:"status" extensions:"!x-nullable"`
 	// The status of this task that is displayed in the UI (possible values are
 	// "will-run", "unscheduled", "blocked", "dispatched", "started", "success",
 	// "failed", "aborted", "system-failed", "system-unresponsive",
@@ -86,7 +86,7 @@ type APITask struct {
 	// Populated from the task's DisplayStatusCache field in the DB. The BSON field
 	// name differs (display_status_cache vs display_status) to avoid breaking existing
 	// workflows; do not change the BSON tag.
-	DisplayStatus *string `json:"display_status"`
+	DisplayStatus *string `json:"display_status" extensions:"!x-nullable"`
 	// Object containing additional information about the status
 	Details ApiTaskEndDetail `json:"status_details"`
 	// Object containing raw and event logs for this task
@@ -110,7 +110,7 @@ type APITask struct {
 	GenerateTask       bool      `json:"generate_task"`
 	GeneratedBy        string    `json:"generated_by"`
 	// The list of artifacts associated with the task.
-	Artifacts   []APIFile `json:"artifacts"`
+	Artifacts   []APIFile `json:"artifacts" extensions:"x-nullable"`
 	DisplayOnly bool      `json:"display_only"`
 	// The ID of the task's parent display task, if requested and available
 	ParentTaskId   string    `json:"parent_task_id"`
@@ -125,11 +125,11 @@ type APITask struct {
 	// "gitter_request" (caused by git commit, aka the repotracker requester),
 	// "trigger_request" (Project Trigger versions) , "merge_test" (commit queue
 	// patches), "ad_hoc" (periodic builds)
-	Requester            *string         `json:"requester"`
-	TestResults          []APITest       `json:"test_results"`
+	Requester            *string         `json:"requester" extensions:"!x-nullable"`
+	TestResults          []APITest       `json:"test_results" extensions:"x-nullable"`
 	Aborted              bool            `json:"aborted"`
 	AbortInfo            APIAbortInfo    `json:"abort_info"`
-	AMI                  *string         `json:"ami"`
+	AMI                  *string         `json:"ami" extensions:"x-nullable"`
 	MustHaveResults      bool            `json:"must_have_test_results"`
 	BaseTask             APIBaseTaskInfo `json:"base_task"`
 	ResetWhenFinished    bool            `json:"reset_when_finished"`
@@ -163,39 +163,39 @@ type APIAbortInfo struct {
 
 type LogLinks struct {
 	// Link to logs containing merged copy of all other logs
-	AllLogLink *string `json:"all_log"`
+	AllLogLink *string `json:"all_log" extensions:"x-nullable"`
 	// Link to logs created by the task execution
-	TaskLogLink *string `json:"task_log"`
+	TaskLogLink *string `json:"task_log" extensions:"x-nullable"`
 	// Link to logs created by the agent process
-	AgentLogLink *string `json:"agent_log"`
+	AgentLogLink *string `json:"agent_log" extensions:"x-nullable"`
 	// Link to logs created by the machine running the task
-	SystemLogLink *string `json:"system_log"`
+	SystemLogLink *string `json:"system_log" extensions:"x-nullable"`
 }
 
 type ApiTaskEndDetail struct {
 	// The status of the completed task.
-	Status *string `json:"status"`
+	Status *string `json:"status" extensions:"!x-nullable"`
 	// The method by which the task failed.
-	Type *string `json:"type"`
+	Type *string `json:"type" extensions:"!x-nullable"`
 	// Description of the final status of this task.
-	Description *string `json:"desc"`
+	Description *string `json:"desc" extensions:"!x-nullable"`
 	// Command which indiciates the task failure.
-	FailingCommand *string `json:"failing_command"`
+	FailingCommand *string `json:"failing_command" extensions:"!x-nullable"`
 	// PostErrored is true when the post command errored.
 	PostErrored bool `json:"post_errored"`
 	// FailureMetadataTags contains the metadata tags associated with the
 	// command that caused the task to fail. These are not set if the task
 	// succeeded.
-	FailureMetadataTags []string `json:"failure_metadata_tags"`
+	FailureMetadataTags []string `json:"failure_metadata_tags" extensions:"x-nullable"`
 	// OtherFailingCommands contain information about commands that failed but
 	// did not cause the task to fail.
 	OtherFailingCommands []APIFailingCommand `json:"other_failing_commands,omitempty"`
 	// Whether this task ended in a timeout.
 	TimedOut            bool                      `json:"timed_out"`
-	TimeoutType         *string                   `json:"timeout_type"`
+	TimeoutType         *string                   `json:"timeout_type" extensions:"!x-nullable"`
 	OOMTracker          APIOomTrackerInfo         `json:"oom_tracker_info"`
-	TraceID             *string                   `json:"trace_id"`
-	DiskDevices         []string                  `json:"disk_devices"`
+	TraceID             *string                   `json:"trace_id" extensions:"!x-nullable"`
+	DiskDevices         []string                  `json:"disk_devices" extensions:"x-nullable"`
 	ResourceConstraints APIResourceConstraintInfo `json:"resource_constraints"`
 }
 
@@ -277,7 +277,7 @@ func (afc *APIFailingCommand) ToService() apimodels.FailingCommand {
 
 type APIOomTrackerInfo struct {
 	Detected bool  `json:"detected"`
-	Pids     []int `json:"pids"`
+	Pids     []int `json:"pids" extensions:"x-nullable"`
 }
 
 func (at *APIOomTrackerInfo) BuildFromService(t *apimodels.OOMTrackerInfo) {

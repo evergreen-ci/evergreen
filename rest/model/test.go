@@ -12,22 +12,22 @@ import (
 // APITest contains the data to be returned whenever a test is used in the
 // API.
 type APITest struct {
-	ID *string `json:"test_id"`
+	ID *string `json:"test_id" extensions:"!x-nullable"`
 	// Identifier of the task this test is a part of
-	TaskID    *string `json:"task_id"`
+	TaskID    *string `json:"task_id" extensions:"!x-nullable"`
 	Execution int     `json:"execution"`
 	// Execution status of the test
-	Status     *string `json:"status"`
+	Status     *string `json:"status" extensions:"!x-nullable"`
 	BaseStatus *string `json:"base_status,omitempty"`
 	// Name of the test file that this test was run in
-	TestFile *string `json:"test_file"`
+	TestFile *string `json:"test_file" extensions:"!x-nullable"`
 	GroupID  *string `json:"group_id,omitempty"`
 	// Object containing information about the logs for this test
 	Logs TestLogs `json:"logs"`
 	// Time that this test began execution
-	StartTime *time.Time `json:"start_time"`
+	StartTime *time.Time `json:"start_time" extensions:"!x-nullable"`
 	// Time that this test stopped execution
-	EndTime  *time.Time `json:"end_time"`
+	EndTime  *time.Time `json:"end_time" extensions:"!x-nullable"`
 	Duration float64    `json:"duration"`
 	// The exit code of the process that ran this test
 	ExitCode int `json:"-"`
@@ -39,15 +39,15 @@ type APITest struct {
 // written out as part of an APITest.
 type TestLogs struct {
 	// URL where the log can be fetched
-	URL *string `json:"url"`
+	URL *string `json:"url" extensions:"!x-nullable"`
 	// URL of the unprocessed version of the logs file for this test
-	URLRaw     *string `json:"url_raw"`
+	URLRaw     *string `json:"url_raw" extensions:"!x-nullable"`
 	URLParsley *string `json:"url_parsley,omitempty"`
 	// Line number in the log file corresponding to information about this test
 	LineNum int `json:"line_num"`
 	// Test name as represented in the logging backend
-	TestName      *string `json:"log_test_name"`
-	RenderingType *string `json:"rendering_type"`
+	TestName      *string `json:"log_test_name" extensions:"!x-nullable"`
+	RenderingType *string `json:"rendering_type" extensions:"x-nullable"`
 	Version       int32   `json:"version"`
 	// Logs to merge (used for resmoke test results that have multiple log files).
 	LogsToMerge []string `json:"logs_to_merge,omitempty"`

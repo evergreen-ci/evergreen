@@ -49,11 +49,11 @@ type APIGithubAppAuth struct {
 
 type APIProjectVars struct {
 	// Regular project variable names and their values.
-	Vars map[string]string `json:"vars"`
+	Vars map[string]string `json:"vars" extensions:"x-nullable"`
 	// Private variable names.
-	PrivateVars map[string]bool `json:"private_vars"`
+	PrivateVars map[string]bool `json:"private_vars" extensions:"x-nullable"`
 	// Admin-only variable names.
-	AdminOnlyVars map[string]bool `json:"admin_only_vars"`
+	AdminOnlyVars map[string]bool `json:"admin_only_vars" extensions:"x-nullable"`
 	// Descriptions for project variables.
 	VarsDescriptions map[string]string `json:"vars_descriptions,omitempty"`
 	// Names of project variables to delete.
@@ -66,17 +66,17 @@ type APIProjectVars struct {
 
 type APIProjectAlias struct {
 	// Name of the alias.
-	Alias *string `json:"alias"`
+	Alias *string `json:"alias" extensions:"!x-nullable"`
 	// Regex for matching git tags to run git tag versions.
-	GitTag *string `json:"git_tag"`
+	GitTag *string `json:"git_tag" extensions:"!x-nullable"`
 	// Regex for build variants to match.
-	Variant *string `json:"variant"`
+	Variant *string `json:"variant" extensions:"!x-nullable"`
 	// Human-friendly description for the alias.
-	Description *string `json:"description"`
+	Description *string `json:"description" extensions:"!x-nullable"`
 	// Regex for tasks to match.
-	Task *string `json:"task"`
+	Task *string `json:"task" extensions:"!x-nullable"`
 	// Path to project config file to use.
-	RemotePath *string `json:"remote_path"`
+	RemotePath *string `json:"remote_path" extensions:"!x-nullable"`
 	// Build variant tags selectors to match.
 	VariantTags []*string `json:"variant_tags,omitempty"`
 	// Task tag selectors to match.

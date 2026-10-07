@@ -19,47 +19,47 @@ import (
 // APIPatch is the model to be returned by the API whenever patches are fetched.
 type APIPatch struct {
 	// Unique identifier of a specific patch
-	Id *string `json:"patch_id"`
+	Id *string `json:"patch_id" extensions:"!x-nullable"`
 	// Description of the patch
-	Description *string `json:"description"`
+	Description *string `json:"description" extensions:"!x-nullable"`
 	// Immutable ID for the project
-	ProjectId *string `json:"project_id"`
+	ProjectId *string `json:"project_id" extensions:"!x-nullable"`
 	// Deprecated -- this is equivalent to project_id, and shouldn't be used.
-	LegacyProjectId *string `json:"branch"`
+	LegacyProjectId *string `json:"branch" extensions:"!x-nullable"`
 	// Identifier for the project
-	ProjectIdentifier *string `json:"project_identifier"`
+	ProjectIdentifier *string `json:"project_identifier" extensions:"x-nullable"`
 
 	// The branch on which the patch was initiated.
-	Branch *string `json:"branch_name"`
+	Branch *string `json:"branch_name" extensions:"!x-nullable"`
 	// Hash of commit off which the patch was initiated
-	Githash *string `json:"git_hash"`
+	Githash *string `json:"git_hash" extensions:"!x-nullable"`
 	// Incrementing counter of user's patches
 	PatchNumber int  `json:"patch_number"`
 	Hidden      bool `json:"hidden"`
 	// Author of the patch
-	Author  *string `json:"author"`
-	Version *string `json:"version"`
+	Author  *string `json:"author" extensions:"!x-nullable"`
+	Version *string `json:"version" extensions:"!x-nullable"`
 	// Aggregated actual cost of the patch's version (empty until the patch is finalized to a version with cost data).
 	Cost *cost.Cost `json:"cost,omitempty"`
 	// Aggregated predicted cost of the patch's version.
 	PredictedCost *cost.Cost `json:"predicted_cost,omitempty"`
 	// Status of patch (possible values are "created", "started", "success", or "failed")
-	Status *string `json:"status"`
+	Status *string `json:"status" extensions:"!x-nullable"`
 	// Time patch was created
-	CreateTime *time.Time `json:"create_time"`
+	CreateTime *time.Time `json:"create_time" extensions:"!x-nullable"`
 	// Time the patch document was first persisted in Evergreen
 	IngestTime *time.Time `json:"ingest_time,omitempty"`
 	// Time patch started to run
-	StartTime *time.Time `json:"start_time"`
+	StartTime *time.Time `json:"start_time" extensions:"x-nullable"`
 	// Time at patch completion
-	FinishTime *time.Time `json:"finish_time"`
+	FinishTime *time.Time `json:"finish_time" extensions:"x-nullable"`
 	// List of identifiers of builds to run for this patch
-	Variants []*string `json:"builds"`
+	Variants []*string `json:"builds" extensions:"!x-nullable"`
 	// List of identifiers of tasks used in this patch
-	Tasks           []*string         `json:"tasks"`
-	DownstreamTasks []DownstreamTasks `json:"downstream_tasks"`
+	Tasks           []*string         `json:"tasks" extensions:"!x-nullable"`
+	DownstreamTasks []DownstreamTasks `json:"downstream_tasks" extensions:"x-nullable"`
 	// List of documents of available tasks and associated build variant
-	VariantsTasks []VariantTask `json:"variants_tasks"`
+	VariantsTasks []VariantTask `json:"variants_tasks" extensions:"!x-nullable"`
 	// Whether the patch has been finalized and activated
 	Activated bool `json:"activated"`
 	// InvalidatedByUpstream is whether the patch was invalidated because an item ahead of it in the merge queue failed.
@@ -69,13 +69,13 @@ type APIPatch struct {
 	Aliases               []string                 `json:"aliases,omitempty"`
 	GithubPatchData       APIGithubPatch           `json:"github_patch_data"`
 	GithubMergeData       APIGithubMergeGroup      `json:"github_merge_data"`
-	ModuleCodeChanges     []patch.ModuleCodeChange `json:"module_code_changes"`
-	Parameters            []APIParameter           `json:"parameters"`
+	ModuleCodeChanges     []patch.ModuleCodeChange `json:"module_code_changes" extensions:"x-nullable"`
+	Parameters            []APIParameter           `json:"parameters" extensions:"x-nullable"`
 	ProjectStorageMethod  *string                  `json:"project_storage_method,omitempty"`
-	ChildPatches          []APIPatch               `json:"child_patches"`
+	ChildPatches          []APIPatch               `json:"child_patches" extensions:"x-nullable"`
 	ChildPatchAliases     []APIChildPatchAlias     `json:"child_patch_aliases,omitempty"`
-	Requester             *string                  `json:"requester"`
-	MergedFrom            *string                  `json:"merged_from"`
+	Requester             *string                  `json:"requester" extensions:"!x-nullable"`
+	MergedFrom            *string                  `json:"merged_from" extensions:"!x-nullable"`
 	// GitInfo contains metadata about the author's local git environment for CLI patches.
 	GitInfo *APIGitMetadata `json:"git_info,omitempty"`
 
@@ -84,9 +84,9 @@ type APIPatch struct {
 }
 
 type DownstreamTasks struct {
-	Project      *string       `json:"project"`
-	Tasks        []*string     `json:"tasks"`
-	VariantTasks []VariantTask `json:"variant_tasks"`
+	Project      *string       `json:"project" extensions:"!x-nullable"`
+	Tasks        []*string     `json:"tasks" extensions:"x-nullable"`
+	VariantTasks []VariantTask `json:"variant_tasks" extensions:"!x-nullable"`
 }
 
 type ChildPatch struct {
@@ -97,19 +97,19 @@ type ChildPatch struct {
 
 type VariantTask struct {
 	// Name of build variant
-	Name *string `json:"name"`
+	Name *string `json:"name" extensions:"!x-nullable"`
 	// All tasks available to run on this build variant
-	Tasks []*string `json:"tasks"`
+	Tasks []*string `json:"tasks" extensions:"!x-nullable"`
 }
 
 type APIChildPatchAlias struct {
-	Alias   *string `json:"alias"`
-	PatchID *string `json:"patch_id"`
+	Alias   *string `json:"alias" extensions:"!x-nullable"`
+	PatchID *string `json:"patch_id" extensions:"!x-nullable"`
 }
 
 type APIParameter struct {
-	Key   *string `json:"key"`
-	Value *string `json:"value"`
+	Key   *string `json:"key" extensions:"!x-nullable"`
+	Value *string `json:"value" extensions:"!x-nullable"`
 }
 
 // APIRawPatch contains a patch diff along with its module diffs.
@@ -117,7 +117,7 @@ type APIRawPatch struct {
 	// The main patch
 	Patch APIRawModule `json:"patch"`
 	// The list of module diffs
-	RawModules []APIRawModule `json:"raw_modules"`
+	RawModules []APIRawModule `json:"raw_modules" extensions:"x-nullable"`
 	// LocalModuleIncludes contains module config file overrides from the source patch.
 	LocalModuleIncludes []APILocalModuleInclude `json:"local_module_includes,omitempty"`
 }
@@ -544,8 +544,8 @@ func (apiPatch *APIPatch) ToService() (patch.Patch, error) {
 
 // APIGitMetadata is the REST API model for patch.GitMetadata.
 type APIGitMetadata struct {
-	Username      *string `json:"username"`
-	Email         *string `json:"email"`
+	Username      *string `json:"username" extensions:"!x-nullable"`
+	Email         *string `json:"email" extensions:"!x-nullable"`
 	GitVersion    *string `json:"git_version,omitempty"`
 	LocalBranch   *string `json:"local_branch,omitempty"`
 	LocalHeadHash *string `json:"local_head_hash,omitempty"`
@@ -576,13 +576,13 @@ func (g *APIGitMetadata) ToService() patch.GitMetadata {
 
 type APIGithubPatch struct {
 	PRNumber   int     `json:"pr_number"`
-	BaseOwner  *string `json:"base_owner"`
-	BaseRepo   *string `json:"base_repo"`
-	HeadOwner  *string `json:"head_owner"`
-	HeadRepo   *string `json:"head_repo"`
-	HeadBranch *string `json:"head_branch"`
-	HeadHash   *string `json:"head_hash"`
-	Author     *string `json:"author"`
+	BaseOwner  *string `json:"base_owner" extensions:"!x-nullable"`
+	BaseRepo   *string `json:"base_repo" extensions:"!x-nullable"`
+	HeadOwner  *string `json:"head_owner" extensions:"!x-nullable"`
+	HeadRepo   *string `json:"head_repo" extensions:"!x-nullable"`
+	HeadBranch *string `json:"head_branch" extensions:"!x-nullable"`
+	HeadHash   *string `json:"head_hash" extensions:"!x-nullable"`
+	Author     *string `json:"author" extensions:"!x-nullable"`
 }
 
 // BuildFromService converts from service level structs to an APIPatch
@@ -613,16 +613,16 @@ func (g *APIGithubPatch) ToService() thirdparty.GithubPatch {
 
 // APIGithubMergeGroup is the REST API model for thirdparty.GithubMergeGroup.
 type APIGithubMergeGroup struct {
-	Org                   *string    `json:"org"`
-	Repo                  *string    `json:"repo"`
-	BaseBranch            *string    `json:"base_branch"`
-	HeadBranch            *string    `json:"head_branch"`
-	HeadSHA               *string    `json:"head_sha"`
-	BaseSHA               *string    `json:"base_sha"`
-	HeadCommit            *string    `json:"head_commit"`
-	HeadCommitDate        *time.Time `json:"head_commit_date"`
-	RemovedFromQueueAt    *time.Time `json:"removed_from_queue_at"`
-	RemovalReason         *string    `json:"removal_reason"`
+	Org                   *string    `json:"org" extensions:"!x-nullable"`
+	Repo                  *string    `json:"repo" extensions:"!x-nullable"`
+	BaseBranch            *string    `json:"base_branch" extensions:"!x-nullable"`
+	HeadBranch            *string    `json:"head_branch" extensions:"!x-nullable"`
+	HeadSHA               *string    `json:"head_sha" extensions:"!x-nullable"`
+	BaseSHA               *string    `json:"base_sha" extensions:"!x-nullable"`
+	HeadCommit            *string    `json:"head_commit" extensions:"!x-nullable"`
+	HeadCommitDate        *time.Time `json:"head_commit_date" extensions:"x-nullable"`
+	RemovedFromQueueAt    *time.Time `json:"removed_from_queue_at" extensions:"x-nullable"`
+	RemovalReason         *string    `json:"removal_reason" extensions:"!x-nullable"`
 	GitRefNotFound        bool       `json:"git_ref_not_found"`
 	InvalidatedByUpstream bool       `json:"invalidated_by_upstream"`
 }
