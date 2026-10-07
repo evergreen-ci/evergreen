@@ -143,7 +143,7 @@ func (sc *StatsCollector) runCommands(ctx context.Context, cmds []string) error 
 // runPSCommand runs the ps command inside the task's isolation container
 // when one exists. If the wrapping fails, the command is not run.
 func (sc *StatsCollector) runPSCommand(ctx context.Context) error {
-	return sc.jasper.CreateCommand(ctx).
+	cmd := sc.jasper.CreateCommand(ctx).
 		ContinueOnError(true).
 		SetOutputSender(level.Info, sc.logger.System().GetSender()).
 		SetErrorSender(level.Error, sc.logger.System().GetSender()).
@@ -153,8 +153,11 @@ func (sc *StatsCollector) runPSCommand(ctx context.Context) error {
 			}
 			return sc.jasper.CreateProcess(pctx, opts)
 		}).
-		Append(sc.PSCmd).
-		Run(ctx)
+		Append(sc.PSCmd)
+	if sc.ContainerID != "" && sc.ExecUser != "" {
+		cmd.SudoAs(sc.ExecUser)
+	}
+	return cmd.Run(ctx)
 }
 
 // wrapPSOptions rewrites the process options to run inside the task's
@@ -163,16 +166,12 @@ func (sc *StatsCollector) wrapPSOptions(ctx context.Context, opts *options.Creat
 	if sc.ContainerID == "" {
 		return nil
 	}
-	if sc.ExecUser != "" {
-		// Prepend the sudo prefix that WrapWithContainer translates into
-		// `docker exec --user`; see agent/util/container.go.
-		opts.Args = append([]string{"sudo", "-u", sc.ExecUser}, opts.Args...)
-	}
 	return agentutil.WrapWithContainer(ctx, opts, sc.ContainerID, sc.WorkDir, sc.EnvFileHostDir)
 }
 
-// logCollectionResult logs the outcome of one collection iteration. Do not
-// wrap a nil error: some grip composers dereference it.
+// logCollectionResult logs the outcome of one collection iteration. The error
+// branch must only log non-nil errors, since a wrapped nil error is dropped
+// by grip before rendering.
 func (sc *StatsCollector) logCollectionResult(ctx context.Context, err error, name string, iters int, runStartedAt, startedAt time.Time) {
 	fields := message.Fields{
 		"iterations":        iters,

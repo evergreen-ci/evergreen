@@ -57,8 +57,8 @@ func (m *capturingManager) snapshot() []*options.Create {
 	return slices.Clone(m.opts)
 }
 
-// makeStatsTestLogger returns a logger whose senders render messages eagerly,
-// so wrapping a nil error panics.
+// makeStatsTestLogger returns a logger for inspecting the collector's log
+// output.
 func makeStatsTestLogger(t *testing.T) client.LoggerProducer {
 	t.Helper()
 	comm := client.NewMock("")
@@ -171,7 +171,7 @@ func TestStatsCollectorSuccessfulRunsDoNotKillCollector(t *testing.T) {
 	collector.setPSCommand("ps -o pid", conf)
 	collector.logStats(t.Context(), util.Expansions{})
 
-	// A successful run must not panic the collector goroutine.
+	// A successful run must not stop the collector from iterating.
 	assert.Eventually(t, func() bool {
 		return len(jpm.snapshot()) >= 3
 	}, 10*time.Second, 50*time.Millisecond, "expected the collector to keep running across iterations")
