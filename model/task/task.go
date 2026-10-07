@@ -2261,9 +2261,10 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 		ExecutionPlatformKey:  t.ExecutionPlatform,
 	}
 	if t.CompletedBy != "" {
-		// A push-completed task is activated as it finishes so that it can render
-		// correctly in the UI. Doing this at the end of the task so that the
-		// scheduler never sees an activated task that's waiting on a push completion.
+		// A push-completed task is activated as it finishes because the UI hides
+		// tasks that were never activated. Doing this at the end of the task so
+		// that the scheduler never sees an activated task that's waiting on a
+		// push completion.
 		t.Activated = true
 		if utility.IsZeroTime(t.ActivatedTime) {
 			t.ActivatedTime = finishTime
