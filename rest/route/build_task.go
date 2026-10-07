@@ -84,6 +84,7 @@ func (tbh *tasksByBuildHandler) Parse(ctx context.Context, r *http.Request) erro
 			"route":    "/builds/{build_id}/tasks",
 			"limit":    tbh.limit,
 			"build_id": tbh.buildId,
+			"user_id":  gimlet.GetUser(ctx).Username(),
 		})
 	}
 
