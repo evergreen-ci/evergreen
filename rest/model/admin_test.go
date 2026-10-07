@@ -928,16 +928,18 @@ func TestAPIRateLimitConfig(t *testing.T) {
 	t.Run("BuildFromService", func(t *testing.T) {
 		t.Run("RoundTrip", func(t *testing.T) {
 			svc := evergreen.RateLimitConfig{
-				RESTUserPerHour:        100,
-				RESTUserBurst:          10,
-				RESTServicePerHour:     200,
-				RESTServiceBurst:       20,
-				GraphQLUserPerHour:     300,
-				GraphQLUserBurst:       30,
-				GraphQLServicePerHour:  400,
-				GraphQLServiceBurst:    40,
-				GraphQLComplexityLimit: 1000,
-				ElevatedUserIDs:        []string{"user1", "user2"},
+				RESTUserPerHour:          100,
+				RESTUserBurst:            10,
+				RESTServicePerHour:       200,
+				RESTServiceBurst:         20,
+				GraphQLUserPerHour:       300,
+				GraphQLUserBurst:         30,
+				GraphQLServicePerHour:    400,
+				GraphQLServiceBurst:      40,
+				GraphQLComplexityLimit:   1000,
+				GraphQLComplexityPerHour: 5000,
+				GraphQLComplexityBurst:   5000,
+				ElevatedUserIDs:          []string{"user1", "user2"},
 			}
 			api := APIRateLimitConfig{}
 			require.NoError(t, api.BuildFromService(svc))
@@ -950,6 +952,8 @@ func TestAPIRateLimitConfig(t *testing.T) {
 			assert.Equal(t, 400, api.GraphQLServicePerHour)
 			assert.Equal(t, 40, api.GraphQLServiceBurst)
 			assert.Equal(t, 1000, api.GraphQLComplexityLimit)
+			assert.Equal(t, 5000, api.GraphQLComplexityPerHour)
+			assert.Equal(t, 5000, api.GraphQLComplexityBurst)
 			assert.Equal(t, []string{"user1", "user2"}, api.ElevatedUserIDs)
 		})
 
@@ -959,6 +963,8 @@ func TestAPIRateLimitConfig(t *testing.T) {
 			require.NoError(t, api.BuildFromService(svc))
 			assert.Equal(t, 0, api.RESTUserPerHour)
 			assert.Equal(t, 0, api.GraphQLComplexityLimit)
+			assert.Equal(t, 0, api.GraphQLComplexityPerHour)
+			assert.Equal(t, 0, api.GraphQLComplexityBurst)
 			assert.Nil(t, api.ElevatedUserIDs)
 		})
 	})
@@ -966,16 +972,18 @@ func TestAPIRateLimitConfig(t *testing.T) {
 	t.Run("ToService", func(t *testing.T) {
 		t.Run("RoundTrip", func(t *testing.T) {
 			api := APIRateLimitConfig{
-				RESTUserPerHour:        100,
-				RESTUserBurst:          10,
-				RESTServicePerHour:     200,
-				RESTServiceBurst:       20,
-				GraphQLUserPerHour:     300,
-				GraphQLUserBurst:       30,
-				GraphQLServicePerHour:  400,
-				GraphQLServiceBurst:    40,
-				GraphQLComplexityLimit: 1000,
-				ElevatedUserIDs:        []string{"user1", "user2"},
+				RESTUserPerHour:          100,
+				RESTUserBurst:            10,
+				RESTServicePerHour:       200,
+				RESTServiceBurst:         20,
+				GraphQLUserPerHour:       300,
+				GraphQLUserBurst:         30,
+				GraphQLServicePerHour:    400,
+				GraphQLServiceBurst:      40,
+				GraphQLComplexityLimit:   1000,
+				GraphQLComplexityPerHour: 5000,
+				GraphQLComplexityBurst:   5000,
+				ElevatedUserIDs:          []string{"user1", "user2"},
 			}
 			svcIface, err := api.ToService()
 			require.NoError(t, err)
@@ -989,6 +997,8 @@ func TestAPIRateLimitConfig(t *testing.T) {
 			assert.Equal(t, 400, svc.GraphQLServicePerHour)
 			assert.Equal(t, 40, svc.GraphQLServiceBurst)
 			assert.Equal(t, 1000, svc.GraphQLComplexityLimit)
+			assert.Equal(t, 5000, svc.GraphQLComplexityPerHour)
+			assert.Equal(t, 5000, svc.GraphQLComplexityBurst)
 			assert.Equal(t, []string{"user1", "user2"}, svc.ElevatedUserIDs)
 		})
 	})
