@@ -57,6 +57,35 @@
           }
         ]
       }
+    },
+    {
+      "query_file": "child_patch_task_no_permissions.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "task 'child_task' belongs to a child patch in project 'evergreen', which requires 'edit tasks' permission on that project",
+            "path": ["scheduleTasks"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "child_patch_task.graphql",
+      "result": {
+        "data": {
+          "scheduleTasks": [
+            {
+              "id": "child_task",
+              "activated": true
+            }
+          ]
+        }
+      }
     }
   ]
 }

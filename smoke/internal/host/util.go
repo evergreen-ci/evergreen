@@ -24,7 +24,7 @@ import (
 type SmokeTestParams struct {
 	internal.APIParams
 	HostID        string
-	HostSecret    string
+	SetupSecret   string
 	CLIConfigPath string
 	ProjectID     string
 	BVName        string
@@ -42,9 +42,9 @@ func GetSmokeTestParamsFromEnv(t *testing.T) SmokeTestParams {
 		hostID = "localhost"
 	}
 
-	hostSecret := os.Getenv("HOST_SECRET")
-	if hostSecret == "" {
-		hostSecret = "de249183582947721fdfb2ea1796574b"
+	setupSecret := os.Getenv("SETUP_SECRET")
+	if setupSecret == "" {
+		setupSecret = "8f4e2d0c6a8b4f2e6d0c8a4e2f6b0d9c"
 	}
 
 	cliConfigPath := os.Getenv("CLI_CONFIG_PATH")
@@ -65,7 +65,7 @@ func GetSmokeTestParamsFromEnv(t *testing.T) SmokeTestParams {
 	return SmokeTestParams{
 		APIParams:     internal.GetAPIParamsFromEnv(t, evgHome),
 		HostID:        hostID,
-		HostSecret:    hostSecret,
+		SetupSecret:   setupSecret,
 		ProjectID:     projectID,
 		BVName:        bvName,
 		CLIConfigPath: cliConfigPath,

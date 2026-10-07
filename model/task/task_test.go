@@ -1218,6 +1218,27 @@ func TestMarkEnd(t *testing.T) {
 		assert.True(t, dbTask.TaskCost.IsZero())
 	})
 
+	t.Run("PushCompletedTaskIsActivated", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+		now := utility.BSONTime(time.Now())
+		tsk := Task{
+			Id:          "push_completed_task",
+			Status:      evergreen.TaskUndispatched,
+			IsVirtual:   true,
+			CompletedBy: "runner_task",
+			StartTime:   now,
+		}
+		require.NoError(t, tsk.Insert(ctx))
+
+		require.NoError(t, tsk.MarkEnd(ctx, now, &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}))
+
+		dbTask, err := FindOneId(ctx, tsk.Id)
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		assert.True(t, dbTask.Activated)
+		assert.True(t, now.Equal(dbTask.ActivatedTime))
+	})
+
 	t.Run("EstimatedStartTimeForTaskThatNeverStarted", func(t *testing.T) {
 		finishTime := utility.BSONTime(time.Now())
 		for tName, tCase := range map[string]struct {

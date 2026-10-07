@@ -2,6 +2,8 @@ package githubapp
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -270,4 +272,28 @@ func TestCreateCacheID(t *testing.T) {
 			assert.Equal(t, tc.expected, result)
 		})
 	}
+}
+
+func TestGithubClientShouldRetry(t *testing.T) {
+	makeRequest := func() *http.Request {
+		return httptest.NewRequest(http.MethodPost, "https://api.github.com/app/installations/1/access_tokens", nil)
+	}
+
+	t.Run("UnprocessableEntityWithOptInRetries", func(t *testing.T) {
+		retryFn := githubClientShouldRetry(retryConfig{retry422: true})
+		resp := &http.Response{StatusCode: http.StatusUnprocessableEntity, Body: http.NoBody}
+		assert.True(t, retryFn(0, makeRequest(), resp, nil))
+	})
+
+	t.Run("UnprocessableEntityWithOptInStopsAfterMaxRetries", func(t *testing.T) {
+		retryFn := githubClientShouldRetry(retryConfig{retry422: true})
+		resp := &http.Response{StatusCode: http.StatusUnprocessableEntity, Body: http.NoBody}
+		assert.False(t, retryFn(GitHubMaxRetries, makeRequest(), resp, nil))
+	})
+
+	t.Run("UnprocessableEntityWithoutOptInDoesNotRetry", func(t *testing.T) {
+		retryFn := githubClientShouldRetry(retryConfig{})
+		resp := &http.Response{StatusCode: http.StatusUnprocessableEntity, Body: http.NoBody}
+		assert.False(t, retryFn(0, makeRequest(), resp, nil))
+	})
 }

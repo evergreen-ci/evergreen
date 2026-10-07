@@ -178,20 +178,9 @@ func agentMonitor() cli.Command {
 			hostID := c.Parent().String(agentHostIDFlagName)
 			comm.SetHostID(hostID)
 
-			hostSecret := c.Parent().String(agentHostSecretFlagName)
-			// If a setup secret is provided, exchange it for the host secret.
-			// Fall back to the host secret when available so that a transient
-			// exchange failure does not fail the agent monitor.
-			if setupSecret := c.Parent().String(agentHostSetupSecretFlagName); setupSecret != "" {
-				exchanged, err := comm.ExchangeSetupSecret(ctx, setupSecret)
-				if err != nil {
-					grip.Error(ctx, message.WrapError(err, message.Fields{
-						"message": "falling back to the host secret because the setup secret exchange failed",
-						"host_id": hostID,
-					}))
-				} else {
-					hostSecret = exchanged
-				}
+			hostSecret, err := comm.ExchangeSetupSecret(ctx, c.Parent().String(agentHostSetupSecretFlagName))
+			if err != nil {
+				return errors.Wrap(err, "exchanging setup secret for host secret")
 			}
 			comm.SetHostSecret(hostSecret)
 
@@ -471,13 +460,9 @@ func (m *monitor) createAgentProcess(ctx context.Context, retry utility.RetryOpt
 	// environment.
 	setupSecret, err := m.comm.CreateSetupSecret(ctx)
 	if err != nil {
-		grip.Warning(ctx, message.WrapError(err, message.Fields{
-			"message": "agent will fall back to its environment's host secret because minting a setup secret failed",
-			"host_id": m.hostID,
-		}))
-	} else {
-		env[evergreen.SetupSecretEnvVar] = setupSecret
+		return nil, errors.Wrap(err, "creating setup secret for agent")
 	}
+	env[evergreen.SetupSecretEnvVar] = setupSecret
 
 	var proc jasper.Process
 

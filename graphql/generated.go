@@ -1520,17 +1520,19 @@ type ComplexityRoot struct {
 	}
 
 	RateLimitConfig struct {
-		ElevatedUserIDs        func(childComplexity int) int
-		ExemptUserIDs          func(childComplexity int) int
-		GraphQLComplexityLimit func(childComplexity int) int
-		GraphQLServiceBurst    func(childComplexity int) int
-		GraphQLServicePerHour  func(childComplexity int) int
-		GraphQLUserBurst       func(childComplexity int) int
-		GraphQLUserPerHour     func(childComplexity int) int
-		RESTServiceBurst       func(childComplexity int) int
-		RESTServicePerHour     func(childComplexity int) int
-		RESTUserBurst          func(childComplexity int) int
-		RESTUserPerHour        func(childComplexity int) int
+		ElevatedUserIDs          func(childComplexity int) int
+		ExemptUserIDs            func(childComplexity int) int
+		GraphQLComplexityBurst   func(childComplexity int) int
+		GraphQLComplexityLimit   func(childComplexity int) int
+		GraphQLComplexityPerHour func(childComplexity int) int
+		GraphQLServiceBurst      func(childComplexity int) int
+		GraphQLServicePerHour    func(childComplexity int) int
+		GraphQLUserBurst         func(childComplexity int) int
+		GraphQLUserPerHour       func(childComplexity int) int
+		RESTServiceBurst         func(childComplexity int) int
+		RESTServicePerHour       func(childComplexity int) int
+		RESTUserBurst            func(childComplexity int) int
+		RESTUserPerHour          func(childComplexity int) int
 	}
 
 	RefreshGitHubStatusesPayload struct {
@@ -2265,6 +2267,7 @@ type ComplexityRoot struct {
 		DefaultProject            func(childComplexity int) int
 		FileStreamingContentTypes func(childComplexity int) int
 		HttpListenAddr            func(childComplexity int) int
+		LogUrl                    func(childComplexity int) int
 		LoginDomain               func(childComplexity int) int
 		ParsleyUrl                func(childComplexity int) int
 		Secret                    func(childComplexity int) int
@@ -9246,12 +9249,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RateLimitConfig.ExemptUserIDs(childComplexity), true
+	case "RateLimitConfig.graphqlComplexityBurst":
+		if e.complexity.RateLimitConfig.GraphQLComplexityBurst == nil {
+			break
+		}
+
+		return e.complexity.RateLimitConfig.GraphQLComplexityBurst(childComplexity), true
 	case "RateLimitConfig.graphqlComplexityLimit":
 		if e.complexity.RateLimitConfig.GraphQLComplexityLimit == nil {
 			break
 		}
 
 		return e.complexity.RateLimitConfig.GraphQLComplexityLimit(childComplexity), true
+	case "RateLimitConfig.graphqlComplexityPerHour":
+		if e.complexity.RateLimitConfig.GraphQLComplexityPerHour == nil {
+			break
+		}
+
+		return e.complexity.RateLimitConfig.GraphQLComplexityPerHour(childComplexity), true
 	case "RateLimitConfig.graphqlServiceBurst":
 		if e.complexity.RateLimitConfig.GraphQLServiceBurst == nil {
 			break
@@ -12342,6 +12357,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UIConfig.HttpListenAddr(childComplexity), true
+	case "UIConfig.logUrl":
+		if e.complexity.UIConfig.LogUrl == nil {
+			break
+		}
+
+		return e.complexity.UIConfig.LogUrl(childComplexity), true
 	case "UIConfig.loginDomain":
 		if e.complexity.UIConfig.LoginDomain == nil {
 			break
@@ -19765,8 +19786,12 @@ func (ec *executionContext) fieldContext_AdminSettings_rateLimit(_ context.Conte
 				return ec.fieldContext_RateLimitConfig_elevatedUserIds(ctx, field)
 			case "exemptUserIds":
 				return ec.fieldContext_RateLimitConfig_exemptUserIds(ctx, field)
+			case "graphqlComplexityBurst":
+				return ec.fieldContext_RateLimitConfig_graphqlComplexityBurst(ctx, field)
 			case "graphqlComplexityLimit":
 				return ec.fieldContext_RateLimitConfig_graphqlComplexityLimit(ctx, field)
+			case "graphqlComplexityPerHour":
+				return ec.fieldContext_RateLimitConfig_graphqlComplexityPerHour(ctx, field)
 			case "graphqlServiceBurst":
 				return ec.fieldContext_RateLimitConfig_graphqlServiceBurst(ctx, field)
 			case "graphqlServicePerHour":
@@ -20450,6 +20475,8 @@ func (ec *executionContext) fieldContext_AdminSettings_ui(_ context.Context, fie
 				return ec.fieldContext_UIConfig_uiv2Url(ctx, field)
 			case "parsleyUrl":
 				return ec.fieldContext_UIConfig_parsleyUrl(ctx, field)
+			case "logUrl":
+				return ec.fieldContext_UIConfig_logUrl(ctx, field)
 			case "httpListenAddr":
 				return ec.fieldContext_UIConfig_httpListenAddr(ctx, field)
 			case "secret":
@@ -54817,6 +54844,35 @@ func (ec *executionContext) fieldContext_RateLimitConfig_exemptUserIds(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _RateLimitConfig_graphqlComplexityBurst(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RateLimitConfig_graphqlComplexityBurst,
+		func(ctx context.Context) (any, error) {
+			return obj.GraphQLComplexityBurst, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RateLimitConfig_graphqlComplexityBurst(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RateLimitConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RateLimitConfig_graphqlComplexityLimit(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -54834,6 +54890,35 @@ func (ec *executionContext) _RateLimitConfig_graphqlComplexityLimit(ctx context.
 }
 
 func (ec *executionContext) fieldContext_RateLimitConfig_graphqlComplexityLimit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RateLimitConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RateLimitConfig_graphqlComplexityPerHour(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RateLimitConfig_graphqlComplexityPerHour,
+		func(ctx context.Context) (any, error) {
+			return obj.GraphQLComplexityPerHour, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RateLimitConfig_graphqlComplexityPerHour(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RateLimitConfig",
 		Field:      field,
@@ -60930,6 +61015,8 @@ func (ec *executionContext) fieldContext_SpruceConfig_ui(_ context.Context, fiel
 				return ec.fieldContext_UIConfig_uiv2Url(ctx, field)
 			case "parsleyUrl":
 				return ec.fieldContext_UIConfig_parsleyUrl(ctx, field)
+			case "logUrl":
+				return ec.fieldContext_UIConfig_logUrl(ctx, field)
 			case "httpListenAddr":
 				return ec.fieldContext_UIConfig_httpListenAddr(ctx, field)
 			case "secret":
@@ -73290,6 +73377,35 @@ func (ec *executionContext) _UIConfig_parsleyUrl(ctx context.Context, field grap
 }
 
 func (ec *executionContext) fieldContext_UIConfig_parsleyUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UIConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UIConfig_logUrl(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UIConfig_logUrl,
+		func(ctx context.Context) (any, error) {
+			return obj.LogUrl, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_UIConfig_logUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "UIConfig",
 		Field:      field,
@@ -87852,7 +87968,7 @@ func (ec *executionContext) unmarshalInputRateLimitConfigInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"elevatedUserIds", "exemptUserIds", "graphqlComplexityLimit", "graphqlServiceBurst", "graphqlServicePerHour", "graphqlUserBurst", "graphqlUserPerHour", "restServiceBurst", "restServicePerHour", "restUserBurst", "restUserPerHour"}
+	fieldsInOrder := [...]string{"elevatedUserIds", "exemptUserIds", "graphqlComplexityBurst", "graphqlComplexityLimit", "graphqlComplexityPerHour", "graphqlServiceBurst", "graphqlServicePerHour", "graphqlUserBurst", "graphqlUserPerHour", "restServiceBurst", "restServicePerHour", "restUserBurst", "restUserPerHour"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -87873,6 +87989,13 @@ func (ec *executionContext) unmarshalInputRateLimitConfigInput(ctx context.Conte
 				return it, err
 			}
 			it.ExemptUserIDs = data
+		case "graphqlComplexityBurst":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("graphqlComplexityBurst"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GraphQLComplexityBurst = data
 		case "graphqlComplexityLimit":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("graphqlComplexityLimit"))
 			data, err := ec.unmarshalNInt2int(ctx, v)
@@ -87880,6 +88003,13 @@ func (ec *executionContext) unmarshalInputRateLimitConfigInput(ctx context.Conte
 				return it, err
 			}
 			it.GraphQLComplexityLimit = data
+		case "graphqlComplexityPerHour":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("graphqlComplexityPerHour"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GraphQLComplexityPerHour = data
 		case "graphqlServiceBurst":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("graphqlServiceBurst"))
 			data, err := ec.unmarshalNInt2int(ctx, v)
@@ -91343,7 +91473,7 @@ func (ec *executionContext) unmarshalInputUIConfigInput(ctx context.Context, obj
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"url", "uiv2Url", "parsleyUrl", "httpListenAddr", "secret", "defaultProject", "corsOrigins", "fileStreamingContentTypes", "loginDomain", "userVoice", "csrfKey", "cacheTemplates", "stagingEnvironment", "betaFeatures"}
+	fieldsInOrder := [...]string{"url", "uiv2Url", "parsleyUrl", "logUrl", "httpListenAddr", "secret", "defaultProject", "corsOrigins", "fileStreamingContentTypes", "loginDomain", "userVoice", "csrfKey", "cacheTemplates", "stagingEnvironment", "betaFeatures"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -91371,6 +91501,13 @@ func (ec *executionContext) unmarshalInputUIConfigInput(ctx context.Context, obj
 				return it, err
 			}
 			it.ParsleyUrl = data
+		case "logUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("logUrl"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LogUrl = data
 		case "httpListenAddr":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("httpListenAddr"))
 			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
@@ -104102,8 +104239,12 @@ func (ec *executionContext) _RateLimitConfig(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._RateLimitConfig_elevatedUserIds(ctx, field, obj)
 		case "exemptUserIds":
 			out.Values[i] = ec._RateLimitConfig_exemptUserIds(ctx, field, obj)
+		case "graphqlComplexityBurst":
+			out.Values[i] = ec._RateLimitConfig_graphqlComplexityBurst(ctx, field, obj)
 		case "graphqlComplexityLimit":
 			out.Values[i] = ec._RateLimitConfig_graphqlComplexityLimit(ctx, field, obj)
+		case "graphqlComplexityPerHour":
+			out.Values[i] = ec._RateLimitConfig_graphqlComplexityPerHour(ctx, field, obj)
 		case "graphqlServiceBurst":
 			out.Values[i] = ec._RateLimitConfig_graphqlServiceBurst(ctx, field, obj)
 		case "graphqlServicePerHour":
@@ -110750,6 +110891,8 @@ func (ec *executionContext) _UIConfig(ctx context.Context, sel ast.SelectionSet,
 			out.Values[i] = ec._UIConfig_uiv2Url(ctx, field, obj)
 		case "parsleyUrl":
 			out.Values[i] = ec._UIConfig_parsleyUrl(ctx, field, obj)
+		case "logUrl":
+			out.Values[i] = ec._UIConfig_logUrl(ctx, field, obj)
 		case "httpListenAddr":
 			out.Values[i] = ec._UIConfig_httpListenAddr(ctx, field, obj)
 		case "secret":

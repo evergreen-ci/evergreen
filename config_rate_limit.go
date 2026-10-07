@@ -22,9 +22,12 @@ type RateLimitConfig struct {
 	GraphQLServicePerHour int `bson:"graphql_service_per_hour" json:"graphql_service_per_hour" yaml:"graphql_service_per_hour"`
 	GraphQLServiceBurst   int `bson:"graphql_service_burst" json:"graphql_service_burst" yaml:"graphql_service_burst"`
 
-	GraphQLComplexityLimit int      `bson:"graphql_complexity_limit" json:"graphql_complexity_limit" yaml:"graphql_complexity_limit"`
-	ElevatedUserIDs        []string `bson:"elevated_user_ids" json:"elevated_user_ids" yaml:"elevated_user_ids"`
-	ExemptUserIDs          []string `bson:"exempt_user_ids" json:"exempt_user_ids" yaml:"exempt_user_ids"`
+	GraphQLComplexityLimit   int `bson:"graphql_complexity_limit" json:"graphql_complexity_limit" yaml:"graphql_complexity_limit"`
+	GraphQLComplexityPerHour int `bson:"graphql_complexity_per_hour" json:"graphql_complexity_per_hour" yaml:"graphql_complexity_per_hour"`
+	GraphQLComplexityBurst   int `bson:"graphql_complexity_burst" json:"graphql_complexity_burst" yaml:"graphql_complexity_burst"`
+
+	ElevatedUserIDs []string `bson:"elevated_user_ids" json:"elevated_user_ids" yaml:"elevated_user_ids"`
+	ExemptUserIDs   []string `bson:"exempt_user_ids" json:"exempt_user_ids" yaml:"exempt_user_ids"`
 }
 
 func (c *RateLimitConfig) SectionId() string { return "rate_limit" }
@@ -43,6 +46,8 @@ var (
 	rateLimitGraphQLServicePerHourKey = bsonutil.MustHaveTag(RateLimitConfig{}, "GraphQLServicePerHour")
 	rateLimitGraphQLServiceBurstKey   = bsonutil.MustHaveTag(RateLimitConfig{}, "GraphQLServiceBurst")
 	rateLimitComplexityLimitKey       = bsonutil.MustHaveTag(RateLimitConfig{}, "GraphQLComplexityLimit")
+	rateLimitComplexityPerHourKey     = bsonutil.MustHaveTag(RateLimitConfig{}, "GraphQLComplexityPerHour")
+	rateLimitComplexityBurstKey       = bsonutil.MustHaveTag(RateLimitConfig{}, "GraphQLComplexityBurst")
 	rateLimitElevatedUserIDsKey       = bsonutil.MustHaveTag(RateLimitConfig{}, "ElevatedUserIDs")
 	rateLimitExemptUserIDsKey         = bsonutil.MustHaveTag(RateLimitConfig{}, "ExemptUserIDs")
 )
@@ -59,6 +64,8 @@ func (c *RateLimitConfig) Set(ctx context.Context) error {
 			rateLimitGraphQLServicePerHourKey: c.GraphQLServicePerHour,
 			rateLimitGraphQLServiceBurstKey:   c.GraphQLServiceBurst,
 			rateLimitComplexityLimitKey:       c.GraphQLComplexityLimit,
+			rateLimitComplexityPerHourKey:     c.GraphQLComplexityPerHour,
+			rateLimitComplexityBurstKey:       c.GraphQLComplexityBurst,
 			rateLimitElevatedUserIDsKey:       c.ElevatedUserIDs,
 			rateLimitExemptUserIDsKey:         c.ExemptUserIDs,
 		}}), "updating config section '%s'", c.SectionId(),
@@ -71,6 +78,7 @@ func (c *RateLimitConfig) ValidateAndDefault() error {
 	validateRateLimitPair(c.RESTServicePerHour, c.RESTServiceBurst, "REST service", catcher)
 	validateRateLimitPair(c.GraphQLUserPerHour, c.GraphQLUserBurst, "GraphQL user", catcher)
 	validateRateLimitPair(c.GraphQLServicePerHour, c.GraphQLServiceBurst, "GraphQL service", catcher)
+	validateRateLimitPair(c.GraphQLComplexityPerHour, c.GraphQLComplexityBurst, "GraphQL complexity", catcher)
 	if c.GraphQLComplexityLimit < 0 {
 		catcher.New("GraphQL complexity limit must be non-negative")
 	}
