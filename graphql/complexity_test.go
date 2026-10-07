@@ -52,7 +52,7 @@ func TestComplexityRateLimitUnderBudgetPasses(t *testing.T) {
 		GraphQLComplexityPerHour: 10000,
 		GraphQLComplexityBurst:   10000,
 	})
-	schema := NewExecutableSchema(New(""))
+	schema := NewExecutableSchema(NewConfig())
 	ext := newTestComplexityRateLimit(t, env, schema)
 
 	op := parseQuery(t, schema, userSettingsQuery)
@@ -72,7 +72,7 @@ func TestComplexityRateLimitExceedsBudgetRejects(t *testing.T) {
 		GraphQLComplexityPerHour: 5,
 		GraphQLComplexityBurst:   5,
 	})
-	schema := NewExecutableSchema(New(""))
+	schema := NewExecutableSchema(NewConfig())
 	ext := newTestComplexityRateLimit(t, env, schema)
 
 	op := parseQuery(t, schema, hostEventsQuery)
@@ -94,7 +94,7 @@ func TestComplexityRateLimitExemptUserPassesThrough(t *testing.T) {
 		GraphQLComplexityBurst:   1,
 		ExemptUserIDs:            []string{"exempt_user"},
 	})
-	schema := NewExecutableSchema(New(""))
+	schema := NewExecutableSchema(NewConfig())
 	ext := newTestComplexityRateLimit(t, env, schema)
 
 	op := parseQuery(t, schema, hostEventsQuery)
@@ -115,7 +115,7 @@ func TestComplexityRateLimitElevatedUserGetsDoubleBudget(t *testing.T) {
 		GraphQLComplexityBurst:   15,
 		ElevatedUserIDs:          []string{"elevated_user"},
 	})
-	schema := NewExecutableSchema(New(""))
+	schema := NewExecutableSchema(NewConfig())
 	ext := newTestComplexityRateLimit(t, env, schema)
 
 	op := parseQuery(t, schema, hostEventsQuery)
@@ -140,7 +140,7 @@ func TestComplexityRateLimitUsesExistingComplexityStats(t *testing.T) {
 		GraphQLComplexityPerHour: 100,
 		GraphQLComplexityBurst:   100,
 	})
-	schema := NewExecutableSchema(New(""))
+	schema := NewExecutableSchema(NewConfig())
 	ext := newTestComplexityRateLimit(t, env, schema)
 
 	op := parseQuery(t, schema, userSettingsQuery)
