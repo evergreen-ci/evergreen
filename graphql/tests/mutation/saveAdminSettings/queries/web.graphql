@@ -9,7 +9,9 @@ mutation {
       rateLimit: {
         elevatedUserIds: ["user1", "user2"]
         exemptUserIds: ["user3"]
+        graphqlComplexityBurst: 500
         graphqlComplexityLimit: 1000
+        graphqlComplexityPerHour: 5000
         graphqlServiceBurst: 40
         graphqlServicePerHour: 400
         graphqlUserBurst: 30
@@ -46,7 +48,9 @@ mutation {
     rateLimit {
       elevatedUserIds
       exemptUserIds
+      graphqlComplexityBurst
       graphqlComplexityLimit
+      graphqlComplexityPerHour
       graphqlServiceBurst
       graphqlServicePerHour
       graphqlUserBurst

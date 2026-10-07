@@ -76,6 +76,19 @@ func Handler(allowMutations bool, env evergreen.Environment) func(w http.Respons
 		srv.Use(extension.FixedComplexityLimit(complexityLimit))
 	}
 
+	// This must be registered after the per-query complexity limiter so that it
+	// can reuse the complexity score that limiter computes.
+	if flags != nil && !flags.GraphQLComplexityRateLimiterDisabled && env.Settings().RateLimit.GraphQLComplexityPerHour > 0 {
+		complexityRateLimit, err := NewComplexityRateLimit(env)
+		if err != nil {
+			grip.Error(ctx, message.WrapError(err, message.Fields{
+				"message": "creating GraphQL complexity rate limiter, defaulting to disabled",
+			}))
+		} else {
+			srv.Use(complexityRateLimit)
+		}
+	}
+
 	// Log graphql requests to splunk
 	srv.Use(MakeSplunkTracing(schema))
 

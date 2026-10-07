@@ -83,6 +83,8 @@ func TestCompleteVirtualTasks(t *testing.T) {
 			assert.Equal(t, runnerTaskID, vt.CompletedBy)
 			assert.True(t, vt.StartTime.Equal(vt.FinishTime), "a push-completed task should have no duration of its own")
 			assert.Zero(t, vt.TimeTaken)
+			assert.True(t, vt.Activated)
+			assert.False(t, utility.IsZeroTime(vt.ActivatedTime))
 			assert.Empty(t, vt.ActivatedBy)
 			assert.Empty(t, vt.HostId)
 			require.NotNil(t, vt.Details.ExternalExecutionMetadata)

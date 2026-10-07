@@ -256,7 +256,6 @@ const (
 	HostFetchTag    = "host-fetch"
 
 	HostIDEnvVar      = "HOST_ID"
-	HostSecretEnvVar  = "HOST_SECRET"
 	SetupSecretEnvVar = "SETUP_SECRET"
 
 	DegradedLoggingPercent = 10
