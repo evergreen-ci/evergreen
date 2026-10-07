@@ -21,7 +21,7 @@ import (
 
 type Resolver struct{}
 
-func NewResolverConfig() Config {
+func NewConfig() Config {
 	c := Config{
 		Resolvers: &Resolver{},
 	}

@@ -73,7 +73,7 @@ func TestAttachProjectToNewRepoRequiresTargetRepoAdmin(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req = req.WithContext(gimlet.AttachUser(req.Context(), usr))
 	recorder := httptest.NewRecorder()
-	handler.NewDefaultServer(NewExecutableSchema(NewResolverConfig())).ServeHTTP(recorder, req)
+	handler.NewDefaultServer(NewExecutableSchema(NewConfig())).ServeHTTP(recorder, req)
 
 	require.Equal(t, http.StatusOK, recorder.Code)
 	var response struct {
@@ -123,7 +123,7 @@ func TestAttachProjectToNewRepoRequiresTargetRepoAdmin(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req = req.WithContext(gimlet.AttachUser(req.Context(), usr))
 	recorder = httptest.NewRecorder()
-	handler.NewDefaultServer(NewExecutableSchema(NewResolverConfig())).ServeHTTP(recorder, req)
+	handler.NewDefaultServer(NewExecutableSchema(NewConfig())).ServeHTTP(recorder, req)
 
 	require.Equal(t, http.StatusOK, recorder.Code)
 	response.Errors = nil

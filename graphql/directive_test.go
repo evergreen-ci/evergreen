@@ -342,7 +342,7 @@ func TestRequireHostAccess(t *testing.T) {
 				},
 			}
 			assert.NoError(t, h2.Insert(ctx))
-			config := NewResolverConfig()
+			config := NewConfig()
 			assert.NotNil(t, config)
 			next := func(rctx context.Context) (any, error) {
 				return nil, nil
@@ -367,7 +367,7 @@ func TestRequireDistroAccess(t *testing.T) {
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
 	const refreshToken = "refresh_token"
-	config := NewResolverConfig()
+	config := NewConfig()
 	require.NotNil(t, config)
 	ctx := context.Background()
 	obj := any(nil)
@@ -513,7 +513,7 @@ func TestRequireProjectCreate(t *testing.T) {
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
 	const refreshToken = "refresh_token"
-	config := NewResolverConfig()
+	config := NewConfig()
 	require.NotNil(t, config)
 	ctx := context.Background()
 
@@ -576,7 +576,7 @@ func setupUser(t *testing.T) (*user.DBUser, error) {
 
 func TestRequireProjectSettingsAccess(t *testing.T) {
 	setupPermissions(t)
-	config := NewResolverConfig()
+	config := NewConfig()
 	require.NotNil(t, config)
 	ctx := context.Background()
 
@@ -799,7 +799,7 @@ func TestRequirePatchOwner(t *testing.T) {
 				Author:  "not_test_user",
 			}
 			assert.NoError(t, p3.Insert(t.Context()))
-			config := NewResolverConfig()
+			config := NewConfig()
 			assert.NotNil(t, config)
 			next := func(rctx context.Context) (any, error) {
 				return nil, nil
@@ -849,7 +849,7 @@ func TestRequireAdmin(t *testing.T) {
 		ctx = gimlet.AttachUser(ctx, usr)
 		require.NotNil(t, ctx)
 
-		config := NewResolverConfig()
+		config := NewConfig()
 		require.NotNil(t, config)
 
 		nextCalled := false
@@ -935,7 +935,7 @@ func TestRequireVolumeAccess(t *testing.T) {
 				CreatedBy: "mci_admin",
 			}
 			assert.NoError(t, v2.Insert(ctx))
-			config := NewResolverConfig()
+			config := NewConfig()
 			assert.NotNil(t, config)
 			next := func(rctx context.Context) (any, error) {
 				return nil, nil

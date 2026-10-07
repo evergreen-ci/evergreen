@@ -23,7 +23,7 @@ func init() {
 }
 
 func TestOperatingSystem(t *testing.T) {
-	config := NewResolverConfig()
+	config := NewConfig()
 	ctx := getContext(t)
 	testConfig := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, testConfig)
@@ -47,7 +47,7 @@ func TestOperatingSystem(t *testing.T) {
 }
 
 func TestPackages(t *testing.T) {
-	config := NewResolverConfig()
+	config := NewConfig()
 	ctx := getContext(t)
 	testConfig := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, testConfig)
@@ -70,7 +70,7 @@ func TestPackages(t *testing.T) {
 }
 
 func TestToolchains(t *testing.T) {
-	config := NewResolverConfig()
+	config := NewConfig()
 	ctx := getContext(t)
 	testConfig := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, testConfig)
@@ -94,7 +94,7 @@ func TestToolchains(t *testing.T) {
 }
 
 func TestFiles(t *testing.T) {
-	config := NewResolverConfig()
+	config := NewConfig()
 	ctx := getContext(t)
 	testConfig := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, testConfig)
@@ -116,7 +116,7 @@ func TestFiles(t *testing.T) {
 }
 
 func TestEvents(t *testing.T) {
-	config := NewResolverConfig()
+	config := NewConfig()
 	ctx := getContext(t)
 	testConfig := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, testConfig)
@@ -151,7 +151,7 @@ func TestEvents(t *testing.T) {
 func TestDistros(t *testing.T) {
 	setupPermissions(t)
 	require.NoError(t, db.ClearCollections(distro.Collection), "unable to clear distro collection")
-	config := NewResolverConfig()
+	config := NewConfig()
 	ctx := getContext(t)
 
 	usr, err := user.GetOrCreateUser(t.Context(), testUser, "User Name", "testuser@mongodb.com", "access_token", "refresh_token", []string{})
@@ -221,7 +221,7 @@ func TestLatestTask(t *testing.T) {
 	setupPermissions(t)
 	require.NoError(t, db.ClearCollections(distro.Collection, task.Collection),
 		"unable to clear distro and task collections")
-	config := NewResolverConfig()
+	config := NewConfig()
 	ctx := getContext(t)
 	testConfig := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, testConfig)
