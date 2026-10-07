@@ -26,7 +26,6 @@ const containerImagePullTimeout = 15 * time.Minute
 func hostProvision() cli.Command {
 	const (
 		hostIDFlagName          = "host_id"
-		hostSecretFlagName      = "host_secret"
 		hostSetupSecretFlagName = "setup_secret"
 		cloudProviderFlagName   = "provider"
 		workingDirFlagName      = "working_dir"
@@ -40,10 +39,6 @@ func hostProvision() cli.Command {
 			cli.StringFlag{
 				Name:  hostIDFlagName,
 				Usage: "the host ID",
-			},
-			cli.StringFlag{
-				Name:  hostSecretFlagName,
-				Usage: "the host secret",
 			},
 			cli.StringFlag{
 				Name:   hostSetupSecretFlagName,
@@ -71,7 +66,7 @@ func hostProvision() cli.Command {
 			requireStringFlag(hostIDFlagName),
 			requireStringFlag(apiServerURLFlagName),
 			requireStringFlag(shellPathFlagName),
-			requireAtLeastOneFlag(hostSecretFlagName, hostSetupSecretFlagName),
+			requireStringFlag(hostSetupSecretFlagName),
 		),
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
@@ -86,20 +81,9 @@ func hostProvision() cli.Command {
 			hostID := c.String(hostIDFlagName)
 			comm.SetHostID(hostID)
 
-			hostSecret := c.String(hostSecretFlagName)
-			// If a setup secret is provided, exchange it for the host secret.
-			// Fall back to the host secret when available so that a transient
-			// exchange failure does not fail provisioning.
-			if setupSecret := c.String(hostSetupSecretFlagName); setupSecret != "" {
-				exchanged, err := comm.ExchangeSetupSecret(ctx, setupSecret)
-				if err != nil {
-					grip.Warning(ctx, message.WrapError(err, message.Fields{
-						"message": "falling back to the host secret because the setup secret exchange failed",
-						"host_id": hostID,
-					}))
-				} else {
-					hostSecret = exchanged
-				}
+			hostSecret, err := comm.ExchangeSetupSecret(ctx, c.String(hostSetupSecretFlagName))
+			if err != nil {
+				return errors.Wrap(err, "exchanging setup secret for host secret")
 			}
 			comm.SetHostSecret(hostSecret)
 

@@ -27,9 +27,15 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
+	hostOwnerSourceOtelAttribute         = "evergreen.host.owner_source"
+	hostOwnerFallbackReasonOtelAttribute = "evergreen.host.owner_fallback_reason"
+	hostOwnerTagReplacedOtelAttribute    = "evergreen.host.owner_tag_replaced"
+
 	EC2ErrorNotFound        = "InvalidInstanceID.NotFound"
 	EC2DuplicateKeyPair     = "InvalidKeyPair.Duplicate"
 	EC2InsufficientCapacity = "InsufficientInstanceCapacity"
@@ -126,7 +132,7 @@ func expireInDays(numDays int) string {
 
 // makeTags populates a slice of tags based on a host object, which contain keys
 // for the user, owner, hostname, and if it's a spawnhost or not.
-func makeTags(intentHost *host.Host, resourceTags evergreen.ResourceTagsConfig) []host.Tag {
+func makeTags(ctx context.Context, intentHost *host.Host, resourceTags evergreen.ResourceTagsConfig) []host.Tag {
 	// get requester host name
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -197,8 +203,42 @@ func makeTags(intentHost *host.Host, resourceTags evergreen.ResourceTagsConfig) 
 	// Task-spawned hosts are owned by Evergreen rather than the user who
 	// triggered the task, so only user spawn hosts are owned by the user.
 	owner := resourceTags.MongoDBOwner
-	if intentHost.UserHost && !intentHost.SpawnOptions.SpawnedByTask && intentHost.SpawnOptions.UserEmail != "" {
-		owner = intentHost.SpawnOptions.UserEmail
+	ownerSource := "configured_owner"
+	fallbackReason := ""
+	ownerTagReplaced := false
+	if intentHost.UserHost && !intentHost.SpawnOptions.SpawnedByTask {
+		if intentHost.SpawnOptions.UserEmail == "" {
+			fallbackReason = "email_missing"
+		} else if evergreen.ValidateMongoDBEmail(intentHost.SpawnOptions.UserEmail) != nil {
+			fallbackReason = "email_invalid"
+		} else {
+			owner = intentHost.SpawnOptions.UserEmail
+			ownerSource = "creator_email"
+		}
+	}
+	for index, tag := range intentHost.InstanceTags {
+		if tag.Key != evergreen.TagMongoDBOwner {
+			continue
+		}
+		if evergreen.ValidateMongoDBEmail(tag.Value) != nil {
+			intentHost.InstanceTags[index] = host.Tag{Key: evergreen.TagMongoDBOwner, Value: owner, CanBeModified: false}
+			ownerTagReplaced = true
+		} else {
+			owner = tag.Value
+			ownerSource = "existing_tag"
+			fallbackReason = ""
+		}
+	}
+	if owner == "" {
+		ownerSource = "missing"
+	}
+	span := trace.SpanFromContext(ctx)
+	span.SetAttributes(
+		attribute.String(hostOwnerSourceOtelAttribute, ownerSource),
+		attribute.Bool(hostOwnerTagReplacedOtelAttribute, ownerTagReplaced),
+	)
+	if fallbackReason != "" {
+		span.SetAttributes(attribute.String(hostOwnerFallbackReasonOtelAttribute, fallbackReason))
 	}
 
 	// Add Evergreen-generated tags to host object
@@ -699,6 +739,11 @@ func getEC2ManagerOptionsFromSettings(d distro.Distro, settings *EC2ProviderSett
 func validateEC2HostModifyOptions(h *host.Host, opts host.HostModifyOptions) error {
 	catcher := grip.NewBasicCatcher()
 	catcher.NewWhen(opts.InstanceType != "" && h.Status != evergreen.HostStopped, "host must be stopped to modify instance type")
+	for _, tag := range opts.AddInstanceTags {
+		if tag.Key == evergreen.TagMongoDBOwner {
+			catcher.Wrap(evergreen.ValidateMongoDBEmail(tag.Value), "validating MongoDB owner tag")
+		}
+	}
 	if opts.NewName != "" {
 		catcher.Wrap(host.ValidateDisplayName(opts.NewName), "invalid display name")
 	}
