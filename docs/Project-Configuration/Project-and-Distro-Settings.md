@@ -118,6 +118,13 @@ task failed by activating previous commits as needed.
 Admins can enable Stepback Bisection which recursively divides the commits
 in half to reduce the tasks taken from O(n) to O(logn).
 
+#### Virtual Tasks
+
+Project admins can enable virtual tasks to allow tasks in the project to be defined as
+[virtual tasks](Virtual-Tasks). A virtual task can have its results pushed by
+another task in the version instead of running on a host. If virtual tasks are
+disabled, any tasks defined as virtual are not created.
+
 #### Repotracker Settings
 
 By default, Evergreen creates mainline commits (also known as waterfall versions or
