@@ -105,9 +105,5 @@ func (c *ComplexityRateLimit) complexityScore(ctx context.Context, opCtx *graphq
 	if stats := extension.GetComplexityStats(ctx); stats != nil {
 		return stats.Complexity
 	}
-	op := opCtx.Doc.Operations.ForName(opCtx.OperationName)
-	if op == nil {
-		return 0
-	}
-	return complexity.Calculate(ctx, c.schema, op, opCtx.Variables)
+	return complexity.Calculate(ctx, c.schema, opCtx.Operation, opCtx.Variables)
 }
