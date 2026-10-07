@@ -58,6 +58,11 @@ func TestSpawnEC2InstanceFleet(t *testing.T) {
 	testConfig.SSH.TaskHostKey.Name = "evergreen-task-hosts"
 
 	testutil.ConfigureIntegrationTest(t, testConfig)
+	// SpawnHost applies these tags to the EC2 instance and its EBS volumes at creation.
+	testConfig.Providers.AWS.ResourceTags = evergreen.ResourceTagsConfig{
+		MongoDBOwner: "evergreen@mongodb.com",
+		MongoDBEnv:   "test",
+	}
 	// ec2FleetManager.makeOverrides requires at least one subnet in the global
 	// AWS settings. Populate it with the distro's subnet so the fleet manager
 	// can resolve overrides without error.

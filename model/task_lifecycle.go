@@ -1035,6 +1035,17 @@ func logTaskEndStats(ctx context.Context, t *task.Task) error {
 		msg["project_identifier"] = pRef.Identifier
 	}
 
+	if t.IsVirtual {
+		msg["is_virtual"] = true
+	}
+	if t.CompletedBy != "" {
+		msg["completed_by"] = t.CompletedBy
+	}
+	if md := t.Details.ExternalExecutionMetadata; md != nil {
+		msg["engflow_invocation_id"] = md.EngFlowInvocationID
+		msg["shard_id"] = md.ShardID
+	}
+
 	isHostMode := t.IsHostTask()
 	// A task will not have a host ID if it's a push-completed virtual task.
 	isPushCompletedTask := t.IsVirtual && t.CompletedBy != ""

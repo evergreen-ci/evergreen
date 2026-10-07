@@ -372,7 +372,7 @@ func StartAppServer(ctx context.Context, t *testing.T, params APIParams) jasper.
 }
 
 // StartAgent starts the smoke test agent with the given host ID and secret.
-func StartAgent(ctx context.Context, t *testing.T, params APIParams, hostID, hostSecret string) jasper.Process {
+func StartAgent(ctx context.Context, t *testing.T, params APIParams, hostID, setupSecret string) jasper.Process {
 	grip.Info(ctx, "Starting smoke test agent.")
 
 	agentCmd, err := SmokeRunBinary(ctx,
@@ -385,7 +385,7 @@ func StartAgent(ctx context.Context, t *testing.T, params APIParams, hostID, hos
 		"start-evergreen",
 		"--agent",
 		fmt.Sprintf("--host_id=%s", hostID),
-		fmt.Sprintf("--host_secret=%s", hostSecret),
+		fmt.Sprintf("--setup_secret=%s", setupSecret),
 		fmt.Sprintf("--api_server=%s", params.AppServerURL),
 		fmt.Sprintf("--binary=%s", params.CLIPath),
 	)
