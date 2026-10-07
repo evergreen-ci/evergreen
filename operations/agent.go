@@ -29,7 +29,6 @@ const (
 	agentAPIServerURLFlagName            = "api_server"
 	agentCloudProviderFlagName           = "provider"
 	agentHostIDFlagName                  = "host_id"
-	agentHostSecretFlagName              = "host_secret"
 	agentHostSetupSecretFlagName         = "setup_secret"
 	singleTaskDistroFlagName             = "single_task_distro"
 	containerRetainOnFailureSecsFlagName = "container_retain_on_failure_secs"
@@ -59,11 +58,6 @@ func Agent() cli.Command {
 				Name:   agentHostIDFlagName,
 				Usage:  "the ID of the host the agent is running on",
 				EnvVar: evergreen.HostIDEnvVar,
-			},
-			cli.StringFlag{
-				Name:   agentHostSecretFlagName,
-				Usage:  "secret for the current host",
-				EnvVar: evergreen.HostSecretEnvVar,
 			},
 			cli.StringFlag{
 				Name:   agentHostSetupSecretFlagName,
@@ -141,7 +135,7 @@ func Agent() cli.Command {
 				switch mode {
 				case string(globals.HostMode):
 					catcher.Add(requireStringFlag(agentHostIDFlagName)(c))
-					catcher.Add(requireAtLeastOneFlag(agentHostSecretFlagName, agentHostSetupSecretFlagName)(c))
+					catcher.Add(requireStringFlag(agentHostSetupSecretFlagName)(c))
 				default:
 					return errors.Errorf("invalid mode '%s'", mode)
 				}
@@ -163,24 +157,18 @@ func Agent() cli.Command {
 
 			hostID := c.String(agentHostIDFlagName)
 
-			hostSecret := c.String(agentHostSecretFlagName)
-			// If a setup secret is provided, exchange it for the host secret.
-			// Fall back to the host secret when available so that a transient
-			// exchange failure does not fail the agent.
-			if setupSecret := c.String(agentHostSetupSecretFlagName); setupSecret != "" {
-				comm, err := client.NewCommunicator(c.String(agentAPIServerURLFlagName))
-				if err != nil {
-					return errors.Wrap(err, "initializing client to retrieve host secret")
-				}
-				defer comm.Close()
-				comm.SetHostID(hostID)
-
-				exchanged, err := comm.ExchangeSetupSecret(ctx, setupSecret)
-				if err != nil {
-					return errors.Wrap(err, "exchanging setup secret for host secret")
-				}
-				hostSecret = exchanged
+			comm, err := client.NewCommunicator(c.String(agentAPIServerURLFlagName))
+			if err != nil {
+				return errors.Wrap(err, "initializing client to retrieve host secret")
 			}
+			defer comm.Close()
+			comm.SetHostID(hostID)
+
+			hostSecret, err := comm.ExchangeSetupSecret(ctx, c.String(agentHostSetupSecretFlagName))
+			if err != nil {
+				return errors.Wrap(err, "exchanging setup secret for host secret")
+			}
+			comm.SetHostSecret(hostSecret)
 
 			opts := agent.Options{
 				HostID:                       hostID,
@@ -203,9 +191,6 @@ func Agent() cli.Command {
 			// subprocesses (e.g. shell.exec).
 			if err := os.Unsetenv(evergreen.HostIDEnvVar); err != nil {
 				return errors.Wrapf(err, "unsetting '%s' env var", evergreen.HostIDEnvVar)
-			}
-			if err := os.Unsetenv(evergreen.HostSecretEnvVar); err != nil {
-				return errors.Wrapf(err, "unsetting '%s' env var", evergreen.HostSecretEnvVar)
 			}
 			if err := os.Unsetenv(evergreen.SetupSecretEnvVar); err != nil {
 				return errors.Wrapf(err, "unsetting '%s' env var", evergreen.SetupSecretEnvVar)
