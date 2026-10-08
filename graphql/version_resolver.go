@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/graphql/loaders"
@@ -656,6 +657,15 @@ func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *model.Versio
 	}
 
 	opts := getWaterfallFilterOptionsFromContext(ctx)
+	for _, field := range graphql.CollectFieldsCtx(ctx, []string{"WaterfallBuild"}) {
+		if field.Name == "tasks" {
+			for _, taskField := range graphql.CollectFields(graphql.GetOperationContext(ctx), field.Selections, []string{"WaterfallTask"}) {
+				if taskField.Name == "tags" {
+					opts.IncludeTaskTags = true
+				}
+			}
+		}
+	}
 	builds, err := model.GetVersionBuilds(ctx, *obj, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variants for version '%s': %s", obj.Id, err.Error()))

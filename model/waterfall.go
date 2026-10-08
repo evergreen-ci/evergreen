@@ -24,10 +24,11 @@ const (
 )
 
 type WaterfallTask struct {
-	Id                 string `bson:"_id" json:"_id"`
-	DisplayName        string `bson:"display_name" json:"display_name"`
-	DisplayStatusCache string `bson:"display_status_cache" json:"display_status_cache"`
-	Execution          int    `bson:"execution" json:"execution"`
+	Id                 string   `bson:"_id" json:"_id"`
+	DisplayName        string   `bson:"display_name" json:"display_name"`
+	DisplayStatusCache string   `bson:"display_status_cache" json:"display_status_cache"`
+	Execution          int      `bson:"execution" json:"execution"`
+	Tags               []string `bson:"tags" json:"tags"`
 }
 
 type WaterfallBuild struct {
@@ -54,6 +55,8 @@ type WaterfallOptions struct {
 	Requesters           []string `bson:"-" json:"-"`
 	Statuses             []string `bson:"-" json:"-"`
 	Tasks                []string `bson:"-" json:"-"`
+	TaskTags             []string `bson:"-" json:"-"`
+	IncludeTaskTags      bool     `bson:"-" json:"-"`
 	TaskCaseSensitive    bool     `bson:"-" json:"-"`
 	Variants             []string `bson:"-" json:"-"`
 	VariantCaseSensitive bool     `bson:"-" json:"-"`
@@ -134,8 +137,8 @@ func getBuildVariantFilterPipeline(variants []string, caseSensitive bool, match 
 	return pipeline, nil
 }
 
-// GetActiveVersionsByTaskFilters returns limit versions that satisfy a task name or status filter. It also applies any requester and build variant filters.
-// If neither of these filters is specified, use GetActiveWaterfallVersions: it's faster.
+// GetActiveVersionsByTaskFilters returns limit versions that satisfy task name, tag, or status filters. It also applies any requester and build variant filters.
+// If none of these filters is specified, use GetActiveWaterfallVersions: it's faster.
 func GetActiveVersionsByTaskFilters(ctx context.Context, projectId string, opts WaterfallOptions, searchOffset int) ([]Version, error) {
 	ctx = utility.ContextWithAppendedAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetActiveVersionsByTaskFilters")})
 
@@ -163,9 +166,36 @@ func GetActiveVersionsByTaskFilters(ctx context.Context, projectId string, opts 
 	}
 	match[task.RevisionOrderNumberKey] = revisionFilter
 
+	var pipeline []bson.M
+	if len(opts.TaskTags) > 0 {
+		// Match tags on execution tasks, then apply the other filters to the task shown on the waterfall.
+		delete(match, task.ActivatedKey)
+		match[task.TagsKey] = bson.M{"$in": opts.TaskTags}
+		pipeline = []bson.M{
+			{"$match": match},
+			{"$lookup": bson.M{
+				"from":         task.Collection,
+				"localField":   task.DisplayTaskIdKey,
+				"foreignField": task.IdKey,
+				"pipeline": []bson.M{{"$project": bson.M{
+					task.ActivatedKey:               1,
+					task.DisplayNameKey:             1,
+					task.DisplayStatusCacheKey:      1,
+					task.BuildVariantKey:            1,
+					task.BuildVariantDisplayNameKey: 1,
+					task.VersionKey:                 1,
+					task.RevisionOrderNumberKey:     1,
+				}}},
+				"as": "displayTask",
+			}},
+			{"$replaceRoot": bson.M{"newRoot": bson.M{"$ifNull": bson.A{
+				bson.M{"$arrayElemAt": bson.A{"$displayTask", 0}}, "$$ROOT",
+			}}}},
+		}
+		match = bson.M{task.ActivatedKey: true}
+	}
 	addWaterfallTaskFilters(match, opts)
-
-	pipeline := []bson.M{{"$match": match}}
+	pipeline = append(pipeline, bson.M{"$match": match})
 
 	pipeline = append(pipeline, bson.M{
 		"$group": bson.M{
@@ -362,27 +392,48 @@ func GetVersionBuilds(ctx context.Context, version Version, opts WaterfallOption
 
 	addWaterfallTaskFilters(match, opts)
 
-	pipeline := []bson.M{
-		{"$match": match},
-		{
-			"$project": bson.M{
-				task.IdKey:                 1,
-				task.DisplayNameKey:        1,
-				task.DisplayStatusCacheKey: 1,
-				task.ExecutionKey:          1,
-				task.BuildIdKey:            1,
-			},
-		},
+	taskProjection := bson.M{
+		task.IdKey:                 1,
+		task.DisplayNameKey:        1,
+		task.DisplayStatusCacheKey: 1,
+		task.ExecutionKey:          1,
+		task.BuildIdKey:            1,
+	}
+	taskFields := bson.M{
+		"_id":                  "$" + task.IdKey,
+		"display_name":         "$" + task.DisplayNameKey,
+		"display_status_cache": "$" + task.DisplayStatusCacheKey,
+		"execution":            "$" + task.ExecutionKey,
+	}
+	pipeline := []bson.M{{"$match": match}}
+	if opts.IncludeTaskTags || len(opts.TaskTags) > 0 {
+		taskProjection[task.TagsKey] = 1
+		taskFields["tags"] = "$" + task.TagsKey
+		pipeline = append(pipeline,
+			bson.M{"$lookup": bson.M{
+				"from":         task.Collection,
+				"localField":   task.ExecutionTasksKey,
+				"foreignField": task.IdKey,
+				"pipeline":     []bson.M{{"$project": bson.M{task.TagsKey: 1}}},
+				"as":           "executionTaskTags",
+			}},
+			bson.M{"$set": bson.M{task.TagsKey: bson.M{"$reduce": bson.M{
+				"input":        "$executionTaskTags",
+				"initialValue": bson.M{"$ifNull": bson.A{"$" + task.TagsKey, bson.A{}}},
+				"in":           bson.M{"$setUnion": bson.A{"$$value", bson.M{"$ifNull": bson.A{"$$this." + task.TagsKey, bson.A{}}}}},
+			}}}},
+		)
+	}
+	if len(opts.TaskTags) > 0 {
+		pipeline = append(pipeline, bson.M{"$match": bson.M{task.TagsKey: bson.M{"$in": opts.TaskTags}}})
+	}
+	pipeline = append(pipeline, []bson.M{
+		{"$project": taskProjection},
 		{
 			"$group": bson.M{
 				"_id": "$" + task.BuildIdKey,
 				"tasks": bson.M{
-					"$push": bson.M{
-						"_id":                  "$" + task.IdKey,
-						"display_name":         "$" + task.DisplayNameKey,
-						"display_status_cache": "$" + task.DisplayStatusCacheKey,
-						"execution":            "$" + task.ExecutionKey,
-					},
+					"$push": taskFields,
 				},
 			},
 		},
@@ -405,7 +456,7 @@ func GetVersionBuilds(ctx context.Context, version Version, opts WaterfallOption
 			},
 		},
 		{"$unwind": "$build"},
-	}
+	}...)
 	if opts.OmitInactiveBuilds {
 		pipeline = append(pipeline, bson.M{"$match": bson.M{"build." + build.ActivatedKey: true}})
 	}

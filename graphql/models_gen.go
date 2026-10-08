@@ -786,6 +786,8 @@ type WaterfallOptions struct {
 	Revision           *string  `json:"revision,omitempty"`
 	Statuses           []string `json:"statuses,omitempty"`
 	Tasks              []string `json:"tasks,omitempty"`
+	// Match any of these exact, case-sensitive task tags. Display tasks match tags on any execution task.
+	TaskTags []string `json:"taskTags,omitempty"`
 	// Toggle case sensitivity when matching on task names. Note that if false, performance will be slower.
 	TaskCaseSensitive *bool    `json:"taskCaseSensitive,omitempty"`
 	Variants          []string `json:"variants,omitempty"`
