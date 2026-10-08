@@ -1,6 +1,8 @@
 package model
 
 import (
+	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -542,4 +544,131 @@ func TestInactiveGeneratedRootMarksDepsInactive(t *testing.T) {
 		result := di.inactiveGeneratedRootMarksDepsInactive(TVPair{Variant: "bv1", TaskName: "my_task"})
 		assert.True(t, result)
 	})
+}
+
+func TestIncludeDependenciesWithGeneratedSharedPrerequisitesPreservesActivation(t *testing.T) {
+	for _, rootOrder := range []struct {
+		name  string
+		roots []string
+	}{
+		{name: "ActiveRootFirst", roots: []string{"active", "inactive1", "inactive2"}},
+		{name: "InactiveRootsFirst", roots: []string{"inactive1", "inactive2", "active"}},
+	} {
+		t.Run(rootOrder.name, func(t *testing.T) {
+			pp := &ParserProject{
+				Tasks: []parserTask{
+					{Name: "active", DependsOn: parserDependencies{{TaskSelector: taskSelector{Name: "shared", Variant: &variantSelector{StringSelector: "deps"}}}}},
+					{Name: "inactive1", DependsOn: parserDependencies{{TaskSelector: taskSelector{Name: "shared", Variant: &variantSelector{StringSelector: "deps"}}}}},
+					{Name: "inactive2", DependsOn: parserDependencies{{TaskSelector: taskSelector{Name: "shared", Variant: &variantSelector{StringSelector: "deps"}}}}},
+					{Name: "shared", DependsOn: parserDependencies{{TaskSelector: taskSelector{Name: "leaf"}}}},
+					{Name: "leaf", DependsOn: parserDependencies{{TaskSelector: taskSelector{Name: "shared"}}}},
+				},
+				BuildVariants: []parserBV{
+					{Name: "roots", Tasks: []parserBVTaskUnit{{Name: "active"}, {Name: "inactive1", Activate: utility.FalsePtr()}, {Name: "inactive2", Activate: utility.FalsePtr()}}},
+					{Name: "deps", Tasks: []parserBVTaskUnit{{Name: "shared"}, {Name: "leaf"}}},
+				},
+			}
+			p, err := TranslateProject(t.Context(), pp)
+			require.NoError(t, err)
+			activationInfo := newSpecificActivationInfo()
+			activationInfo.activationTasks["roots"] = []string{"inactive1", "inactive2"}
+			var roots []TVPair
+			for _, name := range rootOrder.roots {
+				roots = append(roots, TVPair{Variant: "roots", TaskName: name})
+			}
+			pairs, err := IncludeDependenciesWithGenerated(p, roots, evergreen.RepotrackerVersionRequester, "", &activationInfo, pp.BuildVariants[:1])
+			require.NoError(t, err)
+			assert.ElementsMatch(t, append(slices.Clone(roots), TVPair{Variant: "deps", TaskName: "shared"}, TVPair{Variant: "deps", TaskName: "leaf"}), pairs)
+			assert.ElementsMatch(t, []string{"shared", "leaf"}, activationInfo.activationTasks["deps"])
+			assert.ElementsMatch(t, []string{"inactive1", "inactive2"}, activationInfo.activationTasks["roots"])
+		})
+	}
+}
+
+func TestIncludeDependenciesWithGeneratedPreservesSchedulingFilters(t *testing.T) {
+	pp := &ParserProject{
+		Tasks: []parserTask{
+			{Name: "root", DependsOn: parserDependencies{{TaskSelector: taskSelector{Name: AllDependencies, Variant: &variantSelector{StringSelector: "deps"}}}}},
+			{Name: "first"},
+			{Name: "last", DependsOn: parserDependencies{{TaskSelector: taskSelector{Name: "leaf"}}}},
+			{Name: "leaf"},
+			{Name: "disabled", Disable: utility.TruePtr()},
+			{Name: "patchOnly", PatchOnly: utility.TruePtr()},
+			{Name: "otherBranch", AllowedBranches: []string{"other"}},
+		},
+		TaskGroups: []parserTaskGroup{{Name: "group", Tasks: []string{"first", "last"}, MaxHosts: 1}},
+		BuildVariants: []parserBV{
+			{Name: "roots", Tasks: []parserBVTaskUnit{{Name: "root", Activate: utility.FalsePtr()}}},
+			{Name: "deps", Tasks: []parserBVTaskUnit{{Name: "group"}, {Name: "leaf"}, {Name: "disabled"}, {Name: "patchOnly"}, {Name: "otherBranch"}}},
+		},
+	}
+	p, err := TranslateProject(t.Context(), pp)
+	require.NoError(t, err)
+	activationInfo := newSpecificActivationInfo()
+	activationInfo.activationTasks["roots"] = []string{"root"}
+	pairs, err := IncludeDependenciesWithGenerated(p, []TVPair{{Variant: "roots", TaskName: "root"}}, evergreen.RepotrackerVersionRequester, "main", &activationInfo, pp.BuildVariants[:1])
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []TVPair{
+		{Variant: "deps", TaskName: "first"},
+		{Variant: "deps", TaskName: "last"},
+		{Variant: "deps", TaskName: "leaf"},
+	}, pairs)
+	assert.True(t, activationInfo.taskHasSpecificActivation("deps", "leaf"))
+}
+
+func TestDependencyIncluderReuseReflectsProjectChanges(t *testing.T) {
+	pp := &ParserProject{
+		Tasks: []parserTask{
+			{Name: "root", DependsOn: parserDependencies{{TaskSelector: taskSelector{Name: "shared"}}}},
+			{Name: "shared"},
+			{Name: "leaf"},
+		},
+		BuildVariants: []parserBV{{Name: "bv", Tasks: []parserBVTaskUnit{{Name: "root", Activate: utility.FalsePtr()}, {Name: "shared"}, {Name: "leaf"}}}},
+	}
+	p, err := TranslateProject(t.Context(), pp)
+	require.NoError(t, err)
+	di := &dependencyIncluder{Project: p, requester: evergreen.RepotrackerVersionRequester}
+	activationInfo := newSpecificActivationInfo()
+	activationInfo.activationTasks["bv"] = []string{"root"}
+	_, err = di.include([]TVPair{{Variant: "bv", TaskName: "root"}}, &activationInfo, pp.BuildVariants)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"root", "shared"}, activationInfo.activationTasks["bv"])
+
+	p.BuildVariants[0].Tasks[1].DependsOn = []TaskUnitDependency{{Name: "leaf"}}
+	activationInfo = newSpecificActivationInfo()
+	activationInfo.activationTasks["bv"] = []string{"root"}
+	_, err = di.include([]TVPair{{Variant: "bv", TaskName: "root"}}, &activationInfo, pp.BuildVariants)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"root", "shared", "leaf"}, activationInfo.activationTasks["bv"])
+}
+
+func BenchmarkIncludeDependenciesWithGeneratedInactive(b *testing.B) {
+	for _, taskCount := range []int{200, 700} {
+		b.Run(fmt.Sprintf("Tasks%d", taskCount), func(b *testing.B) {
+			pp := &ParserProject{BuildVariants: []parserBV{{Name: "bv", Activate: utility.FalsePtr()}}}
+			var roots []TVPair
+			for i := range taskCount {
+				name := fmt.Sprintf("task%d", i)
+				pt := parserTask{Name: name}
+				for j := max(0, i-10); j < i; j++ {
+					pt.DependsOn = append(pt.DependsOn, parserDependency{TaskSelector: taskSelector{Name: fmt.Sprintf("task%d", j)}})
+				}
+				pp.Tasks = append(pp.Tasks, pt)
+				pp.BuildVariants[0].Tasks = append(pp.BuildVariants[0].Tasks, parserBVTaskUnit{Name: name})
+				roots = append(roots, TVPair{Variant: "bv", TaskName: name})
+			}
+			p, err := TranslateProject(b.Context(), pp)
+			require.NoError(b, err)
+			b.ReportAllocs()
+			b.ResetTimer()
+			for b.Loop() {
+				activationInfo := newSpecificActivationInfo()
+				activationInfo.activationVariants = []string{"bv"}
+				pairs, err := IncludeDependenciesWithGenerated(p, roots, evergreen.RepotrackerVersionRequester, "", &activationInfo, pp.BuildVariants)
+				if err != nil || len(pairs) != taskCount {
+					b.Fatalf("expected %d tasks, got %d: %v", taskCount, len(pairs), err)
+				}
+			}
+		})
+	}
 }
