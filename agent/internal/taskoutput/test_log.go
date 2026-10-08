@@ -42,6 +42,21 @@ func AppendTestLog(ctx context.Context, tsk *task.Task, redactionOpts redactor.R
 	return errors.Wrapf(sender.Close(), "closing Evergreen logger for test result '%s'", testLog.Name)
 }
 
+// AppendTestLogForOutput appends log lines to the specified test log using the
+// provided test log output rather than resolving it from the task. This is used
+// to append logs on behalf of a task that has not run (e.g. a virtual task).
+// Safe for concurrent use with a shared, Init'd s3Usage.
+func AppendTestLogForOutput(ctx context.Context, tsk task.Task, output task.TestLogOutput, redactionOpts redactor.RedactionOptions, testLog *testlog.TestLog, s3Usage *s3usage.S3Usage) error {
+	sender, err := task.NewTestLogSenderForOutput(ctx, tsk, output, task.EvergreenSenderOptions{S3Usage: s3Usage}, testLog.Name, 0)
+	if err != nil {
+		return errors.Wrapf(err, "creating Evergreen logger for test log '%s'", testLog.Name)
+	}
+	sender = redactor.NewRedactingSender(sender, redactionOpts)
+	sender.Send(ctx, message.ConvertToComposer(level.Info, strings.Join(testLog.Lines, "\n")))
+
+	return errors.Wrapf(sender.Close(), "closing Evergreen logger for test result '%s'", testLog.Name)
+}
+
 // testLogDirectoryHandler implements automatic task output handling for the
 // reserved test log directory.
 type testLogDirectoryHandler struct {
