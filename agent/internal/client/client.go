@@ -812,6 +812,26 @@ func (c *baseCommunicator) CompleteVirtualTasks(ctx context.Context, td TaskData
 	return &result, nil
 }
 
+func (c *baseCommunicator) PrepareVirtualTasks(ctx context.Context, td TaskData, preparations []apimodels.VirtualTaskPreparation) (*apimodels.PrepareVirtualTasksResponse, error) {
+	info := requestInfo{
+		method:   http.MethodPost,
+		taskData: &td,
+	}
+	info.setTaskPathSuffix("virtual_tasks/prepare")
+	req := apimodels.PrepareVirtualTasksRequest{Tasks: preparations}
+	resp, err := c.retryRequest(ctx, info, &req)
+	if err != nil {
+		return nil, util.RespError(resp, errors.Wrap(err, "preparing virtual tasks").Error())
+	}
+	defer resp.Body.Close()
+
+	var result apimodels.PrepareVirtualTasksResponse
+	if err := utility.ReadJSON(resp.Body, &result); err != nil {
+		return nil, errors.Wrap(err, "reading virtual task preparation response")
+	}
+	return &result, nil
+}
+
 // CreateHost requests a new host be created
 func (c *baseCommunicator) CreateHost(ctx context.Context, td TaskData, options apimodels.CreateHost) ([]string, error) {
 	info := requestInfo{

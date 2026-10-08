@@ -94,6 +94,39 @@ type CompleteVirtualTasksResponse struct {
 	Results []VirtualTaskCompletionResult `json:"results"`
 }
 
+// PrepareVirtualTasksRequest is the request body for preparing (validating and
+// locking) a batch of virtual tasks before their test results are uploaded.
+type PrepareVirtualTasksRequest struct {
+	Tasks []VirtualTaskPreparation `json:"tasks"`
+}
+
+// VirtualTaskPreparation identifies a virtual task to prepare for test result
+// upload.
+type VirtualTaskPreparation struct {
+	TaskID    string `json:"task_id"`
+	Execution int    `json:"execution"`
+}
+
+// PrepareVirtualTasksResponse contains the per-task outcomes of a preparation.
+type PrepareVirtualTasksResponse struct {
+	Results []VirtualTaskPreparationResult `json:"results"`
+}
+
+// VirtualTaskPreparationResult is the outcome of preparing a single virtual
+// task.
+type VirtualTaskPreparationResult struct {
+	TaskID  string `json:"task_id"`
+	Outcome string `json:"outcome"`
+	Reason  string `json:"reason,omitempty"`
+	// TestResultsInfo is set only when the task is ready for test result
+	// upload. It is nil when the preparation no-ops (e.g. the task is already
+	// finished or running).
+	TestResultsInfo *testresult.TestResultsInfo `json:"test_results_info,omitempty"`
+	// TaskCreateTime is the virtual task's creation time, used when building the
+	// uploaded test results.
+	TaskCreateTime time.Time `json:"task_create_time,omitzero"`
+}
+
 const (
 	VirtualTaskCompletionOutcomeSuccess = "success"
 	VirtualTaskCompletionOutcomeFailed  = "failed"

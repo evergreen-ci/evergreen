@@ -111,6 +111,10 @@ type SharedCommunicator interface {
 	// CompleteVirtualTasks push-completes a batch of virtual tasks.
 	CompleteVirtualTasks(context.Context, TaskData, []apimodels.VirtualTaskCompletion) (*apimodels.CompleteVirtualTasksResponse, error)
 
+	// PrepareVirtualTasks validates and locks a batch of virtual tasks before
+	// their test results are uploaded.
+	PrepareVirtualTasks(context.Context, TaskData, []apimodels.VirtualTaskPreparation) (*apimodels.PrepareVirtualTasksResponse, error)
+
 	// Spawn-hosts for tasks methods
 	CreateHost(context.Context, TaskData, apimodels.CreateHost) ([]string, error)
 	ListHosts(context.Context, TaskData) (restmodel.HostListResults, error)
