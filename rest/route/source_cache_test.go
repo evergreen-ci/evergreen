@@ -1,6 +1,7 @@
 package route
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"testing"
@@ -87,6 +88,7 @@ func TestSourceCacheCredentialsRun(t *testing.T) {
 		insertPatchDoc  func(t *testing.T, versionID string)
 		owner, repo     string
 		sourceCacheMode model.SourceCacheMode
+		setFlag         bool
 		expectedStatus  int
 		wantRestoreKeys [][2]string
 	}{
@@ -97,6 +99,13 @@ func TestSourceCacheCredentialsRun(t *testing.T) {
 			insertTask: true, owner: "some-org", repo: "some-repo",
 			sourceCacheMode: model.SourceCacheModeDisabled,
 			expectedStatus:  http.StatusConflict,
+		},
+		"FlagOverridesDisabledProjectMode": {
+			insertTask: true, revision: "abc123", owner: "some-org", repo: "some-repo",
+			sourceCacheMode: model.SourceCacheModeDisabled,
+			setFlag:         true,
+			expectedStatus:  http.StatusOK,
+			wantRestoreKeys: [][2]string{{"base", "abc123"}},
 		},
 		"BucketWithNoRoleIsRefused": {
 			mutateSettings: func(s *evergreen.Settings) { s.Buckets.SourceCacheBucket.RoleARN = "" },
@@ -188,6 +197,14 @@ func TestSourceCacheCredentialsRun(t *testing.T) {
 				tCase.mutateSettings(settings)
 			}
 			handler := setupSourceCacheCredentialsHandler(t, settings)
+			if tCase.setFlag {
+				flags := evergreen.ServiceFlags{SourceCacheAllProjectsEnabled: true}
+				require.NoError(t, flags.Set(t.Context()))
+				// t.Context is canceled before cleanups run, so reset the flag with a fresh context.
+				t.Cleanup(func() {
+					require.NoError(t, (&evergreen.ServiceFlags{}).Set(context.Background()))
+				})
+			}
 			if tCase.insertTask {
 				requester := tCase.requester
 				if requester == "" {

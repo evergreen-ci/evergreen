@@ -103,6 +103,38 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			require.True(t, ok)
 			assert.Zero(t, data.SourceCacheBucket)
 		},
+		"RunReturnsSourceCacheBucketWhenFlagOverridesProjectSetting": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
+			rh.settings.Buckets.SourceCacheBucket = evergreen.BucketConfig{Name: "source-cache"}
+			flags := evergreen.ServiceFlags{SourceCacheAllProjectsEnabled: true}
+			require.NoError(t, flags.Set(ctx))
+			// t.Context is canceled before cleanups run, so reset the flag with a fresh context.
+			t.Cleanup(func() {
+				require.NoError(t, (&evergreen.ServiceFlags{}).Set(context.Background()))
+			})
+			rh.taskID = "t1"
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			data, ok := resp.Data().(apimodels.ExpansionsAndVars)
+			require.True(t, ok)
+			assert.Equal(t, "source-cache", data.SourceCacheBucket.Name)
+		},
+		"RunReturnsSourceCacheBucketForPatchWhenFlagOverridesProjectSetting": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
+			rh.settings.Buckets.SourceCacheBucket = evergreen.BucketConfig{Name: "source-cache"}
+			require.NoError(t, db.Update(ctx, model.ProjectRefCollection, mgobson.M{model.ProjectRefIdKey: "p1"}, mgobson.M{"$set": mgobson.M{model.ProjectRefSourceCacheModeKey: model.SourceCacheModeDisabled}}))
+			require.NoError(t, db.Update(ctx, task.Collection, mgobson.M{task.IdKey: "t1"}, mgobson.M{"$set": mgobson.M{task.RequesterKey: evergreen.PatchVersionRequester}}))
+			flags := evergreen.ServiceFlags{SourceCacheAllProjectsEnabled: true}
+			require.NoError(t, flags.Set(ctx))
+			// t.Context is canceled before cleanups run, so reset the flag with a fresh context.
+			t.Cleanup(func() {
+				require.NoError(t, (&evergreen.ServiceFlags{}).Set(context.Background()))
+			})
+			rh.taskID = "t1"
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			data, ok := resp.Data().(apimodels.ExpansionsAndVars)
+			require.True(t, ok)
+			assert.Equal(t, "source-cache", data.SourceCacheBucket.Name)
+		},
 		"RunSucceedsWithHostDistroExpansions": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
 			rh.taskID = "t1"
 			rh.hostID = "host_id"
