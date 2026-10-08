@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -55,6 +56,109 @@ func TestTestSelectionGet(t *testing.T) {
 	})
 
 	for tName, tCase := range map[string]func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer){
+		"BypassRestoresOnlyCandidates": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
+			conf.Expansions.Put("test_selection_bypass_quarantine", `["test2","outside","test2"]`)
+			comm.SelectTestsResponse = []string{"test1", "outside"}
+			cmd := &testSelectionGet{OutputFile: "test.json", Tests: []string{"test2", "test1", "test4"}}
+			require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
+			var output testSelectionOutputFile
+			require.NoError(t, utility.ReadJSONFile(cmd.OutputFile, &output))
+			assert.Equal(t, []testOutput{{Name: "test2"}, {Name: "test1"}}, output.Tests)
+			assert.Equal(t, cmd.Tests, comm.SelectTestsRequest.Tests)
+		},
+		"BypassFromTestsFileRestoresOnlyCandidates": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
+			conf.Expansions.Put("test_selection_bypass_quarantine", `["test2","outside"]`)
+			comm.SelectTestsResponse = []string{"test1", "outside"}
+			inputFile := filepath.Join(conf.WorkDir, "input_tests.json")
+			require.NoError(t, utility.WriteJSONFile(inputFile, testSelectionInputFile{Tests: []string{"test2", "test1", "test4"}}))
+			cmd := &testSelectionGet{OutputFile: "test.json", TestsFile: inputFile}
+			require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
+			var output testSelectionOutputFile
+			require.NoError(t, utility.ReadJSONFile(cmd.OutputFile, &output))
+			assert.Equal(t, []testOutput{{Name: "test2"}, {Name: "test1"}}, output.Tests)
+			assert.Equal(t, []string{"test2", "test1", "test4"}, comm.SelectTestsRequest.Tests)
+		},
+		"NonemptyBypassWithoutCandidatesErrors": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
+			conf.Expansions.Put("test_selection_bypass_quarantine", `["test2"]`)
+			cmd := &testSelectionGet{OutputFile: "test.json"}
+			require.ErrorContains(t, cmd.Execute(t.Context(), comm, logger, conf), "requires nonempty tests or tests_file candidates")
+			assert.False(t, comm.SelectTestsCalled)
+		},
+		"EmptyBypassPreservesKnownTestsMode": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
+			conf.Expansions.Put("test_selection_bypass_quarantine", ` [] `)
+			cmd := &testSelectionGet{OutputFile: "test.json"}
+			require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
+			var output testSelectionOutputFile
+			require.NoError(t, utility.ReadJSONFile(cmd.OutputFile, &output))
+			assert.Equal(t, []testOutput{{Name: "test1"}, {Name: "test3"}}, output.Tests)
+			assert.True(t, comm.SelectTestsCalled)
+		},
+		"MalformedBypassErrorsBeforeSelection": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
+			for name, raw := range map[string]string{
+				"InvalidJSON": "broken", "Null": "null", "Object": "{}", "String": `"test2"`,
+				"NumberElement": "[1]", "NullElement": "[null]", "EmptyElement": `[""]`,
+			} {
+				t.Run(name, func(t *testing.T) {
+					conf.Expansions.Put("test_selection_bypass_quarantine", raw)
+					cmd := &testSelectionGet{OutputFile: "test.json", Tests: []string{"test2"}}
+					require.ErrorContains(t, cmd.Execute(t.Context(), comm, logger, conf), "test_selection_bypass_quarantine")
+					assert.False(t, comm.SelectTestsCalled)
+				})
+			}
+		},
+		"MainlineIgnoresMalformedBypass": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
+			conf.Task.Requester = evergreen.RepotrackerVersionRequester
+			conf.ProjectRef.TestSelection.DefaultEnabled = utility.TruePtr()
+			conf.ProjectRef.TestSelection.MainlineDefaultEnabled = utility.TruePtr()
+			conf.Expansions.Put("test_selection_bypass_quarantine", "broken")
+			cmd := &testSelectionGet{OutputFile: "test.json", Tests: []string{"test1"}}
+			require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
+			var output testSelectionOutputFile
+			require.NoError(t, utility.ReadJSONFile(cmd.OutputFile, &output))
+			assert.Equal(t, []testOutput{{Name: "test1"}, {Name: "test3"}}, output.Tests)
+			assert.True(t, comm.SelectTestsCalled)
+		},
+		"DisabledSelectionAndUsageNoopIgnoreMalformedBypass": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
+			conf.Expansions.Put("test_selection_bypass_quarantine", "broken")
+			for _, name := range []string{"Disabled", "ZeroUsage", "SampledNoop"} {
+				t.Run(name, func(t *testing.T) {
+					conf.ProjectRef.TestSelection.Allowed = utility.ToBoolPtr(name != "Disabled")
+					cmd := &testSelectionGet{OutputFile: "test.json"}
+					if name == "ZeroUsage" {
+						cmd.UsageRate = "0"
+					} else if name == "SampledNoop" {
+						cmd.UsageRate = "1"
+					}
+					require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
+					var output testSelectionOutputFile
+					require.NoError(t, utility.ReadJSONFile(cmd.OutputFile, &output))
+					assert.Empty(t, output.Tests)
+					assert.False(t, comm.SelectTestsCalled)
+				})
+			}
+		},
+		"APIErrorStillErrorsWithBypass": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
+			conf.Expansions.Put("test_selection_bypass_quarantine", `["test2"]`)
+			comm.SelectTestsError = errors.New("selection error")
+			cmd := &testSelectionGet{OutputFile: "test.json", Tests: []string{"test2"}}
+			require.ErrorContains(t, cmd.Execute(t.Context(), comm, logger, conf), "calling test selection API: selection error")
+			assert.True(t, comm.SelectTestsCalled)
+		},
+		"BypassPreservesExactNamesAndCandidateDuplicates": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
+			names := []string{"a,b.js", "a b.js", `a"b.js`, `a\b.js`, "a=b.js", "$(name).js", " "}
+			raw, err := json.Marshal(names)
+			require.NoError(t, err)
+			conf.Expansions.Put("test_selection_bypass_quarantine", string(raw))
+			comm.SelectTestsResponse = nil
+			cmd := &testSelectionGet{OutputFile: "test.json", Tests: append(names, "a,b.js", "not-selected")}
+			require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
+			var output testSelectionOutputFile
+			require.NoError(t, utility.ReadJSONFile(cmd.OutputFile, &output))
+			assert.Equal(t, []testOutput{
+				{Name: "a,b.js"}, {Name: "a b.js"}, {Name: `a"b.js`}, {Name: `a\b.js`},
+				{Name: "a=b.js"}, {Name: "$(name).js"}, {Name: " "}, {Name: "a,b.js"},
+			}, output.Tests)
+		},
 		"SkipsWhenTestSelectionNotAllowed": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
 			cmd := &testSelectionGet{OutputFile: "test.json"}
 
@@ -207,6 +311,7 @@ func TestTestSelectionGet(t *testing.T) {
 			}
 			tmpDir := t.TempDir()
 			conf.WorkDir = tmpDir
+			conf.Expansions = *util.NewExpansions(map[string]string{})
 			f, err := os.Create(filepath.Join(tmpDir, "test.json"))
 			require.NoError(t, err)
 			require.NoError(t, f.Close())
