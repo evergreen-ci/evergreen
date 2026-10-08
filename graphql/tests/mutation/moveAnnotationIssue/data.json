@@ -35,26 +35,12 @@
           "source": {
             "author": "chaya.malik"
           }
-        },
-        {
-          "url": "https://link.com",
-          "issue_key": "EVG-1213",
-          "source": {
-            "author": "chaya.malik"
-          }
         }
       ],
       "suspected_issues": [
         {
           "url": "https://link.com",
           "issue_key": "EVG-2121",
-          "source": {
-            "author": "annie.black"
-          }
-        },
-        {
-          "url": "https://link.com",
-          "issue_key": "EVG-2122",
           "source": {
             "author": "annie.black"
           }

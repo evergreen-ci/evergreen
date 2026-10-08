@@ -90,31 +90,14 @@ func (r *mutationResolver) EditAnnotationNote(ctx context.Context, taskID string
 }
 
 // MoveAnnotationIssue is the resolver for the moveAnnotationIssue field.
-func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, taskID *string, execution *int, apiIssue *restModel.APIIssueLink, isIssue *bool, opts *MoveAnnotationIssueOptions) (bool, error) {
-	var taskId string
-	var taskExecution int
-	var issueKey string
-	var isIssueBool bool
-
-	// TODO DEVPROD-41746: Delete this workaround once deprecated fields are removed.
-	if opts != nil {
-		taskId = opts.TaskID
-		taskExecution = opts.Execution
-		issueKey = opts.IssueKey
-		isIssueBool = opts.IsIssue
-	} else {
-		taskId = utility.FromStringPtr(taskID)
-		taskExecution = utility.FromIntPtr(execution)
-		issueKey = utility.FromStringPtr(apiIssue.IssueKey)
-		isIssueBool = utility.FromBoolPtr(isIssue)
-	}
-
-	if err := annotationPermissionHelper(ctx, taskId, utility.ToIntPtr(taskExecution)); err != nil {
+func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
+	err := annotationPermissionHelper(ctx, taskID, utility.ToIntPtr(execution))
+	if err != nil {
 		return false, err
 	}
 	usr := mustHaveUser(ctx)
-
-	if err := task.MoveAnnotationIssueByKey(ctx, taskId, taskExecution, issueKey, isIssueBool, usr.Username()); err != nil {
+	issueKey := utility.FromStringPtr(apiIssue.IssueKey)
+	if err := task.MoveAnnotationIssueByKey(ctx, taskID, execution, issueKey, isIssue, usr.Username()); err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("moving annotation issue: %s", err.Error()))
 	}
 	return true, nil

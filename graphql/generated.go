@@ -1034,7 +1034,7 @@ type ComplexityRoot struct {
 		EditSpawnHost                 func(childComplexity int, spawnHost *EditSpawnHostInput) int
 		ForceRepotrackerRun           func(childComplexity int, projectID string) int
 		MigrateVolume                 func(childComplexity int, volumeID string, spawnHostInput *SpawnHostInput) int
-		MoveAnnotationIssue           func(childComplexity int, taskID *string, execution *int, apiIssue *model.APIIssueLink, isIssue *bool, opts *MoveAnnotationIssueOptions) int
+		MoveAnnotationIssue           func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
 		OverrideTaskDependencies      func(childComplexity int, taskID string) int
 		PromoteVarsToRepo             func(childComplexity int, opts PromoteVarsToRepoInput) int
 		QuarantineTask                func(childComplexity int, opts QuarantineTaskInput) int
@@ -2543,7 +2543,7 @@ type MutationResolver interface {
 	BbCreateTicket(ctx context.Context, taskID string, execution *int) (bool, error)
 	AddAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	EditAnnotationNote(ctx context.Context, taskID string, execution int, originalMessage string, newMessage string) (bool, error)
-	MoveAnnotationIssue(ctx context.Context, taskID *string, execution *int, apiIssue *model.APIIssueLink, isIssue *bool, opts *MoveAnnotationIssueOptions) (bool, error)
+	MoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	RemoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	SetAnnotationMetadataLinks(ctx context.Context, taskID string, execution int, metadataLinks []*model.APIMetadataLink) (bool, error)
 	SaveAdminSettings(ctx context.Context, adminSettings model.APIAdminSettings) (*model.APIAdminSettings, error)
@@ -6677,7 +6677,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.MoveAnnotationIssue(childComplexity, args["taskId"].(*string), args["execution"].(*int), args["apiIssue"].(*model.APIIssueLink), args["isIssue"].(*bool), args["opts"].(*MoveAnnotationIssueOptions)), true
+		return e.complexity.Mutation.MoveAnnotationIssue(childComplexity, args["taskId"].(string), args["execution"].(int), args["apiIssue"].(model.APIIssueLink), args["isIssue"].(bool)), true
 	case "Mutation.overrideTaskDependencies":
 		if e.complexity.Mutation.OverrideTaskDependencies == nil {
 			break
@@ -13366,7 +13366,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputLoggerConfigInput,
 		ec.unmarshalInputMainlineCommitsOptions,
 		ec.unmarshalInputMetadataLinkInput,
-		ec.unmarshalInputMoveAnnotationIssueOptions,
 		ec.unmarshalInputMoveProjectInput,
 		ec.unmarshalInputMultiAuthConfigInput,
 		ec.unmarshalInputNaiveAuthConfigInput,
@@ -14543,31 +14542,26 @@ func (ec *executionContext) field_Mutation_migrateVolume_argsVolumeID(
 func (ec *executionContext) field_Mutation_moveAnnotationIssue_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "taskId", ec.unmarshalOString2ᚖstring)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "taskId", ec.unmarshalNString2string)
 	if err != nil {
 		return nil, err
 	}
 	args["taskId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "execution", ec.unmarshalOInt2ᚖint)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "execution", ec.unmarshalNInt2int)
 	if err != nil {
 		return nil, err
 	}
 	args["execution"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "apiIssue", ec.unmarshalOIssueLinkInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink)
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "apiIssue", ec.unmarshalNIssueLinkInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink)
 	if err != nil {
 		return nil, err
 	}
 	args["apiIssue"] = arg2
-	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "isIssue", ec.unmarshalOBoolean2ᚖbool)
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "isIssue", ec.unmarshalNBoolean2bool)
 	if err != nil {
 		return nil, err
 	}
 	args["isIssue"] = arg3
-	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "opts", ec.unmarshalOMoveAnnotationIssueOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMoveAnnotationIssueOptions)
-	if err != nil {
-		return nil, err
-	}
-	args["opts"] = arg4
 	return args, nil
 }
 
@@ -36538,7 +36532,7 @@ func (ec *executionContext) _Mutation_moveAnnotationIssue(ctx context.Context, f
 		ec.fieldContext_Mutation_moveAnnotationIssue,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().MoveAnnotationIssue(ctx, fc.Args["taskId"].(*string), fc.Args["execution"].(*int), fc.Args["apiIssue"].(*model.APIIssueLink), fc.Args["isIssue"].(*bool), fc.Args["opts"].(*MoveAnnotationIssueOptions))
+			return ec.resolvers.Mutation().MoveAnnotationIssue(ctx, fc.Args["taskId"].(string), fc.Args["execution"].(int), fc.Args["apiIssue"].(model.APIIssueLink), fc.Args["isIssue"].(bool))
 		},
 		nil,
 		ec.marshalNBoolean2bool,
@@ -85604,54 +85598,6 @@ func (ec *executionContext) unmarshalInputMetadataLinkInput(ctx context.Context,
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputMoveAnnotationIssueOptions(ctx context.Context, obj any) (MoveAnnotationIssueOptions, error) {
-	var it MoveAnnotationIssueOptions
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"taskId", "execution", "issueKey", "isIssue"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "taskId":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TaskID = data
-		case "execution":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("execution"))
-			data, err := ec.unmarshalNInt2int(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Execution = data
-		case "issueKey":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("issueKey"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.IssueKey = data
-		case "isIssue":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isIssue"))
-			data, err := ec.unmarshalNBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.IsIssue = data
-		}
-	}
-
-	return it, nil
-}
-
 func (ec *executionContext) unmarshalInputMoveProjectInput(ctx context.Context, obj any) (MoveProjectInput, error) {
 	var it MoveProjectInput
 	asMap := map[string]any{}
@@ -121642,14 +121588,6 @@ func (ec *executionContext) marshalOIssueLink2ᚕgithubᚗcomᚋevergreenᚑci�
 	return ret
 }
 
-func (ec *executionContext) unmarshalOIssueLinkInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx context.Context, v any) (*model.APIIssueLink, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputIssueLinkInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
 func (ec *executionContext) marshalOJiraConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIJiraConfig) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -121863,14 +121801,6 @@ var (
 		evergreen.MongoDBEnvironmentSandbox: "SANDBOX",
 	}
 )
-
-func (ec *executionContext) unmarshalOMoveAnnotationIssueOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMoveAnnotationIssueOptions(ctx context.Context, v any) (*MoveAnnotationIssueOptions, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputMoveAnnotationIssueOptions(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
 
 func (ec *executionContext) marshalOMultiAuthConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIMultiAuthConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIMultiAuthConfig) graphql.Marshaler {
 	if v == nil {

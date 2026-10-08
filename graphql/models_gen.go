@@ -313,13 +313,6 @@ type Manifest struct {
 	Revision        string            `json:"revision"`
 }
 
-type MoveAnnotationIssueOptions struct {
-	TaskID    string `json:"taskId"`
-	Execution int    `json:"execution"`
-	IssueKey  string `json:"issueKey"`
-	IsIssue   bool   `json:"isIssue"`
-}
-
 // MoveProjectInput is the input to the attachProjectToNewRepo mutation.
 // It contains information used to move a project to a a new owner and repo.
 type MoveProjectInput struct {

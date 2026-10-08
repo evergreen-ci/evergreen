@@ -17,12 +17,11 @@ type Mutation {
     originalMessage: String!
     newMessage: String!
   ): Boolean!
-  moveAnnotationIssue( # Permissions are checked in the resolver.
-    taskId: String @deprecated(reason: "use opts.taskId instead")
-    execution: Int @deprecated(reason: "use opts.execution instead")
-    apiIssue: IssueLinkInput @deprecated(reason: "use opts.issueKey instead")
-    isIssue: Boolean @deprecated(reason: "use opts.isIssue instead")
-    opts: MoveAnnotationIssueOptions
+  moveAnnotationIssue(
+    taskId: String! # Permissions are checked in the resolver.
+    execution: Int!
+    apiIssue: IssueLinkInput!
+    isIssue: Boolean!
   ): Boolean!
   removeAnnotationIssue(
     taskId: String! # Permissions are checked in the resolver.
