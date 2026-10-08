@@ -4,10 +4,13 @@ import (
 	"net/http"
 	"strconv"
 
+	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 )
@@ -95,12 +98,48 @@ func artifactSignHandler() http.HandlerFunc {
 			return
 		}
 
-		presignedURL, err := artifact.PresignFile(ctx, *found, model.NewArtifactCredentialResolver(taskID))
+		resolver := model.NewArtifactCredentialResolver(taskID)
+
+		// A presigned S3 URL is only valid for the method it was signed for, so
+		// redirecting a HEAD request to a presigned GET URL would fail. Answer
+		// HEAD requests directly with the object's metadata instead.
+		if r.Method == http.MethodHead {
+			head, err := artifact.HeadFile(ctx, *found, resolver)
+			if err != nil {
+				var notFound *s3types.NotFound
+				if errors.As(err, &notFound) {
+					writeErr(w, http.StatusNotFound, "artifact object not found")
+					return
+				}
+				writeErr(w, http.StatusInternalServerError, "fetching artifact metadata")
+				return
+			}
+			writeHeadObjectHeaders(w, head)
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		presignedURL, err := artifact.PresignFile(ctx, *found, resolver)
 		if err != nil {
 			writeErr(w, http.StatusInternalServerError, "presigning artifact URL")
 			return
 		}
 
 		http.Redirect(w, r, presignedURL, http.StatusTemporaryRedirect)
+	}
+}
+
+func writeHeadObjectHeaders(w http.ResponseWriter, head *awss3.HeadObjectOutput) {
+	if head.ContentLength != nil {
+		w.Header().Set("Content-Length", strconv.FormatInt(*head.ContentLength, 10))
+	}
+	if head.ContentType != nil {
+		w.Header().Set("Content-Type", *head.ContentType)
+	}
+	if head.ETag != nil {
+		w.Header().Set("ETag", *head.ETag)
+	}
+	if head.LastModified != nil {
+		w.Header().Set("Last-Modified", head.LastModified.UTC().Format(http.TimeFormat))
 	}
 }

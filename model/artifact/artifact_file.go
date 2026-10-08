@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/grip"
@@ -146,10 +147,19 @@ func StripHiddenFiles(ctx context.Context, files []File, hasUser bool, resolver 
 	return publicFiles, nil
 }
 
-func lazySignURL(baseURL, taskID string, execution int, fileName string, appSecret []byte) string {
-	token, expiry := GenerateSignToken(appSecret, taskID, execution, fileName)
+// signURLLifetime returns how long a lazy sign URL for the file stays valid,
+// which matches how long an eagerly presigned URL for it would last.
+func signURLLifetime(file File) time.Duration {
+	if file.PresignDuration != 0 {
+		return file.PresignDuration
+	}
+	return pail.PresignExpireTime
+}
+
+func lazySignURL(baseURL, taskID string, execution int, file File, appSecret []byte) string {
+	token, expiry := GenerateSignToken(appSecret, taskID, execution, file.Name, signURLLifetime(file))
 	return fmt.Sprintf("%s/rest/v2/tasks/%s/artifact/sign?execution=%d&name=%s&token=%s&exp=%d",
-		baseURL, url.PathEscape(taskID), execution, url.QueryEscape(fileName), url.QueryEscape(token), expiry)
+		baseURL, url.PathEscape(taskID), execution, url.QueryEscape(file.Name), url.QueryEscape(token), expiry)
 }
 
 // StripHiddenFilesLazy filters files by visibility and replaces signed file
@@ -164,7 +174,7 @@ func StripHiddenFilesLazy(files []File, hasUser bool, baseURL string, taskID str
 		case (file.Visibility == Private || file.Visibility == Signed) && !hasUser:
 			continue
 		case file.Visibility == Signed && hasUser:
-			file.Link = lazySignURL(baseURL, taskID, execution, file.Name, appSecret)
+			file.Link = lazySignURL(baseURL, taskID, execution, file, appSecret)
 			publicFiles = append(publicFiles, file)
 		default:
 			publicFiles = append(publicFiles, file)
@@ -230,8 +240,30 @@ func PresignFile(ctx context.Context, file File, resolver CredentialResolver) (s
 		))
 	defer span.End()
 
-	creds, credsSource := credentialsForPresign(ctx, file, resolver)
+	requestParams, credsSource := s3RequestParams(ctx, file, resolver)
 	span.SetAttributes(attribute.String(evergreen.ArtifactPresignCredsSourceOtelAttribute, credsSource))
+
+	url, err := pail.PreSign(ctx, requestParams)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "presigning artifact URL")
+		return "", err
+	}
+	return url, nil
+}
+
+// HeadFile fetches the S3 object metadata for the given artifact file using
+// the same credentials that PresignFile would use.
+func HeadFile(ctx context.Context, file File, resolver CredentialResolver) (*s3.HeadObjectOutput, error) {
+	if err := file.validate(); err != nil {
+		return nil, errors.Wrap(err, "file validation failed")
+	}
+	requestParams, _ := s3RequestParams(ctx, file, resolver)
+	return pail.GetHeadObject(ctx, requestParams)
+}
+
+func s3RequestParams(ctx context.Context, file File, resolver CredentialResolver) (pail.PreSignRequestParams, string) {
+	creds, credsSource := credentialsForPresign(ctx, file, resolver)
 
 	var externalID *string
 	if file.ExternalID != "" {
@@ -239,7 +271,7 @@ func PresignFile(ctx context.Context, file File, resolver CredentialResolver) (s
 	}
 
 	// The expiry window also serves as pail's minimum remaining lifetime for reusing assumed-role credentials, so it must be well below the 15m STS credential duration for the cache to be effective.
-	requestParams := pail.PreSignRequestParams{
+	return pail.PreSignRequestParams{
 		Bucket:                file.Bucket,
 		FileKey:               file.FileKey,
 		SignatureExpiryWindow: evergreen.PresignCredentialsLifetime,
@@ -248,14 +280,7 @@ func PresignFile(ctx context.Context, file File, resolver CredentialResolver) (s
 		AWSSecret:             creds.AWSSecret,
 		AWSRoleARN:            file.AWSRoleARN,
 		ExternalID:            externalID,
-	}
-	url, err := pail.PreSign(ctx, requestParams)
-	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "presigning artifact URL")
-		return "", err
-	}
-	return url, nil
+	}, credsSource
 }
 
 // ValidatePresignDuration checks that a configured duration is supported by S3.

@@ -3,6 +3,7 @@ package artifact
 import (
 	"context"
 	"net/url"
+	"strconv"
 	"testing"
 	"time"
 
@@ -273,22 +274,42 @@ func TestLooksAlreadyEscaped(t *testing.T) {
 func TestLazySignURL(t *testing.T) {
 	secret := []byte("test-secret")
 	t.Run("ContainsTokenAndExpiry", func(t *testing.T) {
-		result := lazySignURL("https://evergreen.example.com", "task123", 0, "coverage.html", secret)
+		result := lazySignURL("https://evergreen.example.com", "task123", 0, File{Name: "coverage.html"}, secret)
 		assert.Contains(t, result, "https://evergreen.example.com/rest/v2/tasks/task123/artifact/sign?execution=0&name=coverage.html&token=")
 		assert.Contains(t, result, "&exp=")
 	})
 	t.Run("SpecialCharsInFileName", func(t *testing.T) {
-		result := lazySignURL("https://evergreen.example.com", "task123", 2, "file with spaces & symbols.tar.gz", secret)
+		result := lazySignURL("https://evergreen.example.com", "task123", 2, File{Name: "file with spaces & symbols.tar.gz"}, secret)
 		assert.Contains(t, result, "name=file+with+spaces+%26+symbols.tar.gz")
 		assert.Contains(t, result, "&token=")
 		assert.Contains(t, result, "&exp=")
 	})
 	t.Run("SpecialCharsInTaskID", func(t *testing.T) {
-		result := lazySignURL("https://evergreen.example.com", "task/with/slashes", 1, "report.html", secret)
+		result := lazySignURL("https://evergreen.example.com", "task/with/slashes", 1, File{Name: "report.html"}, secret)
 		assert.Contains(t, result, "tasks/task%2Fwith%2Fslashes/artifact/sign")
 		assert.Contains(t, result, "&token=")
 		assert.Contains(t, result, "&exp=")
 	})
+}
+
+func TestSignURLLifetime(t *testing.T) {
+	t.Run("DefaultsToEagerPresignLifetime", func(t *testing.T) {
+		assert.Equal(t, 24*time.Hour, signURLLifetime(File{Name: "file"}))
+	})
+	t.Run("UsesFilePresignDuration", func(t *testing.T) {
+		assert.Equal(t, 72*time.Hour, signURLLifetime(File{Name: "file", PresignDuration: 72 * time.Hour}))
+	})
+}
+
+func TestLazySignURLExpiry(t *testing.T) {
+	before := time.Now()
+	link := lazySignURL("https://evergreen.example.com", "task123", 0, File{Name: "file", PresignDuration: 48 * time.Hour}, []byte("test-secret"))
+	parsed, err := url.Parse(link)
+	require.NoError(t, err)
+	exp, err := strconv.ParseInt(parsed.Query().Get("exp"), 10, 64)
+	require.NoError(t, err)
+	assert.GreaterOrEqual(t, exp, before.Add(48*time.Hour).Unix())
+	assert.LessOrEqual(t, exp, time.Now().Add(48*time.Hour).Unix())
 }
 
 func TestStripHiddenFilesLazy(t *testing.T) {
