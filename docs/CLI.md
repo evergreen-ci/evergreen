@@ -145,6 +145,33 @@ evergreen patch -v my-variant --rt .* --tsv '^my-variant$' --tst '.*' --test-sel
 
 Note that for test selection to be used in the patch, your project must first have [the test selection feature enabled at the project level](../Project-Configuration/Project-and-Distro-Settings#test_selection_settings).
 
+### Scoped quarantine bypass
+
+Use the existing `--param` option to request specific tests in a patch without changing global quarantine:
+
+```bash
+evergreen patch \
+  --param 'test_selection_bypass_quarantine=["jstests/core/example.js","jstests/core/another.js"]'
+```
+
+Supply your usual project, variant, and task arguments. The value is a JSON array of nonempty test-name strings.
+Names match exactly, without trimming, path normalization, or glob expansion. Missing or empty values and `[]` do
+not change selection; invalid values fail when consumed by active selection, not necessarily at patch submission.
+
+The consuming project must support this parameter, either through
+[`test_selection.get`](Project-Configuration/Project-Commands#test_selectionget) or its own test selection integration.
+Direct `/rest/v2/select/tests` callers do not automatically honor it. For matching candidates, the bypass overrides
+all test selection strategies, not just quarantine. It cannot schedule tasks, add tests outside the caller's candidates,
+or override suite/tag exclusions. It does not enable disabled selection or apply to mainline runs.
+
+TSS metrics and Evergreen's quarantined-skipped snapshots describe the response before the caller applies the bypass,
+so a snapshot may still list a restored test. Existing parameter precedence and inheritance are unchanged; downstream
+patches require explicit forwarding. Avoid project-wide defaults or downstream forwarding when patch-local scope is intended.
+
+Future project consumers can expose the identical lowercase JSON environment value with
+`include_expansions_in_env: [test_selection_bypass_quarantine]` in `shell.exec` or `subprocess.exec`.
+This alone does not implement bypass behavior or forward the value into containers or remote execution.
+
 ## Working Tree Changes
 
 By default patches will include only committed changes, not changes in Git's working tree or index. To include changes from the working tree use the `--uncommitted, -u` flag or set a default by inserting `patch_uncommitted_changes: true` in the `~/.evergreen.yml` file.
