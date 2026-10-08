@@ -181,6 +181,7 @@ func TestAddEdgeToGraph(t *testing.T) {
 		g.addEdgeToGraph(DependencyEdge{From: tasks[1].ToTaskNode(), To: tasks[2].ToTaskNode()})
 		assert.Equal(t, 1, g.graph.Edges().Len())
 		assert.Len(t, g.edgesToDependencies, 1)
+		assert.Equal(t, 1, g.graph.Lines(g.tasksToNodes[tasks[1].ToTaskNode()].ID(), g.tasksToNodes[tasks[2].ToTaskNode()].ID()).Len())
 	})
 
 	t.Run("EdgeToMissingNode", func(t *testing.T) {
@@ -207,6 +208,78 @@ func TestAddEdgeToGraph(t *testing.T) {
 		assert.True(t, g.graph.HasEdgeFromTo(g.tasksToNodes[tasks[1].ToTaskNode()].ID(), g.tasksToNodes[tasks[0].ToTaskNode()].ID()))
 		assert.Len(t, g.edgesToDependencies, 3)
 	})
+}
+
+func TestRepeatedDependencyEdgesPreserveStatusAndGraphBehavior(t *testing.T) {
+	for _, testCase := range []struct {
+		name       string
+		transposed bool
+		selfLoop   bool
+	}{
+		{name: "NormalGraph"},
+		{name: "TransposedGraph", transposed: true},
+		{name: "SelfLoop", selfLoop: true},
+		{name: "TransposedSelfLoop", transposed: true, selfLoop: true},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			dependencyGraph := NewDependencyGraph(testCase.transposed)
+			dependent := TaskNode{ID: "dependent"}
+			dependency := TaskNode{ID: "dependency"}
+			if testCase.selfLoop {
+				dependency = dependent
+			}
+			dependencyGraph.AddTaskNode(dependent)
+			dependencyGraph.AddTaskNode(dependency)
+			dependencyGraph.AddEdge(dependent, dependency, evergreen.TaskSucceeded)
+			originalSort, err := dependencyGraph.TopologicalStableSort()
+			require.NoError(t, err)
+
+			fromTask, toTask := dependent, dependency
+			if testCase.transposed {
+				fromTask, toTask = dependency, dependent
+			}
+			for _, status := range []string{evergreen.TaskSucceeded, evergreen.TaskFailed, ""} {
+				dependencyGraph.AddEdge(dependent, dependency, status)
+				edge := dependencyGraph.GetDependencyEdge(fromTask, toTask)
+				require.NotNil(t, edge)
+				assert.Equal(t, status, edge.Status)
+				assert.Equal(t, 1, dependencyGraph.graph.Lines(dependencyGraph.tasksToNodes[fromTask].ID(), dependencyGraph.tasksToNodes[toTask].ID()).Len())
+				assert.Len(t, dependencyGraph.edgesToDependencies, 1)
+				assert.Equal(t, []DependencyEdge{*edge}, dependencyGraph.EdgesIntoTask(toTask))
+				assert.True(t, dependencyGraph.DepthFirstSearch(fromTask, toTask, nil))
+			}
+
+			sortedTasks, err := dependencyGraph.TopologicalStableSort()
+			require.NoError(t, err)
+			assert.Equal(t, originalSort, sortedTasks)
+			if testCase.selfLoop {
+				assert.Equal(t, DependencyCycles{{dependent, dependent}}, dependencyGraph.Cycles())
+			} else {
+				assert.Empty(t, dependencyGraph.Cycles())
+				dependencyGraph.AddEdge(dependency, dependent, "")
+				dependencyGraph.AddEdge(dependency, dependent, "")
+				cycles := dependencyGraph.Cycles()
+				require.Len(t, cycles, 1)
+				assert.ElementsMatch(t, []TaskNode{dependent, dependency}, cycles[0])
+				assert.Len(t, dependencyGraph.edgesToDependencies, 2)
+				assert.Equal(t, 1, dependencyGraph.graph.Lines(dependencyGraph.tasksToNodes[toTask].ID(), dependencyGraph.tasksToNodes[fromTask].ID()).Len())
+			}
+		})
+	}
+}
+
+func BenchmarkDependencyGraphRepeatedEdgeInsertion(benchmark *testing.B) {
+	dependent := TaskNode{ID: "dependent"}
+	dependency := TaskNode{ID: "dependency"}
+	benchmark.ReportAllocs()
+	for range benchmark.N {
+		dependencyGraph := NewDependencyGraph(false)
+		dependencyGraph.AddTaskNode(dependent)
+		dependencyGraph.AddTaskNode(dependency)
+		for range 1000 {
+			dependencyGraph.AddEdge(dependent, dependency, evergreen.TaskSucceeded)
+		}
+	}
 }
 
 func TestGetDependencyEdge(t *testing.T) {

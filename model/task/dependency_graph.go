@@ -143,9 +143,12 @@ func (g *DependencyGraph) addEdgeToGraph(edge DependencyEdge) {
 		return
 	}
 
-	line := g.graph.NewLine(fromNode, toNode)
-	g.graph.SetLine(line)
-	g.edgesToDependencies[edgeKey{from: edge.From, to: edge.To}] = edge
+	key := edgeKey{from: edge.From, to: edge.To}
+	if _, exists := g.edgesToDependencies[key]; !exists {
+		line := g.graph.NewLine(fromNode, toNode)
+		g.graph.SetLine(line)
+	}
+	g.edgesToDependencies[key] = edge
 }
 
 // EdgesIntoTask returns all the edges that point to t.

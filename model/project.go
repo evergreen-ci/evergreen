@@ -2282,9 +2282,9 @@ func (p *Project) DependencyGraph() task.DependencyGraph {
 	for _, t := range tasks {
 		g.AddTaskNode(t.toTaskNode())
 	}
-	for _, dependencyEdge := range dependenciesForTaskUnit(tasks, p) {
+	forEachDependencyForTaskUnit(tasks, p, func(dependencyEdge task.DependencyEdge) {
 		g.AddEdge(dependencyEdge.From, dependencyEdge.To, dependencyEdge.Status)
-	}
+	})
 
 	return g
 
@@ -2293,8 +2293,15 @@ func (p *Project) DependencyGraph() task.DependencyGraph {
 // dependenciesForTaskUnit returns a slice of dependencies between tasks in the project.
 func dependenciesForTaskUnit(taskUnits []BuildVariantTaskUnit, p *Project) []task.DependencyEdge {
 	var dependencies []task.DependencyEdge
+	forEachDependencyForTaskUnit(taskUnits, p, func(dependency task.DependencyEdge) {
+		dependencies = append(dependencies, dependency)
+	})
+	return dependencies
+}
+
+func forEachDependencyForTaskUnit(taskUnits []BuildVariantTaskUnit, project *Project, visit func(task.DependencyEdge)) {
 	for _, dependentTask := range taskUnits {
-		p.addImplicitTaskGroupDependency(&dependentTask)
+		project.addImplicitTaskGroupDependency(&dependentTask)
 		for _, dep := range dependentTask.DependsOn {
 			// Use the current variant if none is specified.
 			if dep.Variant == "" {
@@ -2305,7 +2312,7 @@ func dependenciesForTaskUnit(taskUnits []BuildVariantTaskUnit, p *Project) []tas
 				if dependedOnTask.ToTVPair() != dependentTask.ToTVPair() &&
 					(dep.Variant == AllVariants || dependedOnTask.Variant == dep.Variant) &&
 					(dep.Name == AllDependencies || dependedOnTask.Name == dep.Name) {
-					dependencies = append(dependencies, task.DependencyEdge{
+					visit(task.DependencyEdge{
 						Status: dep.Status,
 						From:   dependentTask.toTaskNode(),
 						To:     dependedOnTask.toTaskNode(),
@@ -2314,8 +2321,6 @@ func dependenciesForTaskUnit(taskUnits []BuildVariantTaskUnit, p *Project) []tas
 			}
 		}
 	}
-
-	return dependencies
 }
 
 // FetchVersionsBuildsAndTasks is a helper function to fetch a group of versions and their associated builds and tasks.

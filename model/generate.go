@@ -568,11 +568,11 @@ func addTasksToGraph(tasks TVPairSet, graph task.DependencyGraph, p *Project, ta
 		}
 	}
 
-	for _, dep := range dependenciesForTaskUnit(bvts, p) {
+	forEachDependencyForTaskUnit(bvts, p, func(dep task.DependencyEdge) {
 		dep.From.ID = taskIDs.ExecutionTasks.GetId(dep.From.Variant, dep.From.Name)
 		dep.To.ID = taskIDs.ExecutionTasks.GetId(dep.To.Variant, dep.To.Name)
 		graph.AddEdge(dep.From, dep.To, dep.Status)
-	}
+	})
 
 	return graph
 }

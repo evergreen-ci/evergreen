@@ -3036,9 +3036,74 @@ func TestDependenciesForTaskUnit(t *testing.T) {
 				project = &Project{}
 			}
 			dependencies := dependenciesForTaskUnit(testCase.taskUnits, project)
+			var visitedDependencies []task.DependencyEdge
+			forEachDependencyForTaskUnit(testCase.taskUnits, project, func(dependency task.DependencyEdge) {
+				visitedDependencies = append(visitedDependencies, dependency)
+			})
+			assert.ElementsMatch(t, testCase.expectedDependencies, visitedDependencies)
 			assert.Len(t, dependencies, len(testCase.expectedDependencies))
 			for _, expectedDep := range testCase.expectedDependencies {
 				assert.Contains(t, dependencies, expectedDep)
+			}
+		})
+	}
+}
+
+func TestDependencyVisitorPreservesOrderAndStatuses(t *testing.T) {
+	taskUnits := []BuildVariantTaskUnit{
+		{Name: "setup", Variant: "ubuntu"},
+		{Name: "setup", Variant: "rhel"},
+		{Name: "compile", Variant: "ubuntu", DependsOn: []TaskUnitDependency{
+			{Name: "setup", Variant: AllVariants, Status: evergreen.TaskSucceeded},
+			{Name: "setup", Status: evergreen.TaskFailed},
+			{Name: "setup"},
+		}},
+	}
+	compile := task.TaskNode{Name: "compile", Variant: "ubuntu"}
+	expected := []task.DependencyEdge{
+		{From: compile, To: task.TaskNode{Name: "setup", Variant: "ubuntu"}, Status: evergreen.TaskSucceeded},
+		{From: compile, To: task.TaskNode{Name: "setup", Variant: "rhel"}, Status: evergreen.TaskSucceeded},
+		{From: compile, To: task.TaskNode{Name: "setup", Variant: "ubuntu"}, Status: evergreen.TaskFailed},
+		{From: compile, To: task.TaskNode{Name: "setup", Variant: "ubuntu"}},
+	}
+	var dependencies []task.DependencyEdge
+	forEachDependencyForTaskUnit(taskUnits, &Project{}, func(dependency task.DependencyEdge) {
+		dependencies = append(dependencies, dependency)
+	})
+	assert.Equal(t, expected, dependencies)
+}
+
+func BenchmarkProjectDependencyGraphConstruction(benchmark *testing.B) {
+	const numTasks = 250
+	taskUnits := make([]BuildVariantTaskUnit, numTasks)
+	project := &Project{}
+	for taskIndex := range taskUnits {
+		taskUnits[taskIndex] = BuildVariantTaskUnit{
+			Name:    fmt.Sprintf("task-%d", taskIndex),
+			Variant: "ubuntu",
+			DependsOn: []TaskUnitDependency{{
+				Name: AllDependencies,
+			}},
+		}
+	}
+	for _, method := range []string{"Buffered", "Direct"} {
+		benchmark.Run(method, func(benchmark *testing.B) {
+			benchmark.ReportAllocs()
+			for range benchmark.N {
+				dependencyGraph := task.NewDependencyGraph(false)
+				for _, taskUnit := range taskUnits {
+					dependencyGraph.AddTaskNode(taskUnit.toTaskNode())
+				}
+				addEdge := func(dependency task.DependencyEdge) {
+					dependencyGraph.AddEdge(dependency.From, dependency.To, dependency.Status)
+				}
+				if method == "Buffered" {
+					for _, dependency := range dependenciesForTaskUnit(taskUnits, project) {
+						addEdge(dependency)
+					}
+				} else {
+					forEachDependencyForTaskUnit(taskUnits, project, addEdge)
+				}
 			}
 		})
 	}
