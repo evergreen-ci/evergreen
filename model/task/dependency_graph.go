@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"gonum.org/v1/gonum/graph"
-	"gonum.org/v1/gonum/graph/multi"
+	"gonum.org/v1/gonum/graph/iterator"
 	"gonum.org/v1/gonum/graph/topo"
 	"gonum.org/v1/gonum/graph/traverse"
 )
@@ -15,11 +15,8 @@ import (
 // DependencyGraph models task dependency relationships as a directed graph.
 // Use NewDependencyGraph to initialize a new DependencyGraph.
 type DependencyGraph struct {
-	transposed          bool
-	graph               *multi.DirectedGraph
-	tasksToNodes        map[TaskNode]graph.Node
-	nodesToTasks        map[graph.Node]TaskNode
-	edgesToDependencies map[edgeKey]DependencyEdge
+	transposed bool
+	graph      *compactDependencyGraph
 }
 
 // NewDependencyGraph returns an initialized DependencyGraph.
@@ -28,17 +25,100 @@ type DependencyGraph struct {
 // If transposed is true, edges point from depended on tasks to the tasks that depend on them.
 func NewDependencyGraph(transposed bool) DependencyGraph {
 	return DependencyGraph{
-		transposed:          transposed,
-		graph:               multi.NewDirectedGraph(),
-		tasksToNodes:        make(map[TaskNode]graph.Node),
-		nodesToTasks:        make(map[graph.Node]TaskNode),
-		edgesToDependencies: make(map[edgeKey]DependencyEdge),
+		transposed: transposed,
+		graph: &compactDependencyGraph{
+			tasksToNodes: make(map[TaskNode]compactNode),
+			statuses:     make(map[edgeKey]string),
+		},
 	}
 }
 
+type compactNode int64
+
+func (node compactNode) ID() int64 { return int64(node) }
+
 type edgeKey struct {
-	from TaskNode
-	to   TaskNode
+	from compactNode
+	to   compactNode
+}
+
+type compactEdge struct {
+	from graph.Node
+	to   graph.Node
+}
+
+func (edge compactEdge) From() graph.Node { return edge.from }
+
+func (edge compactEdge) To() graph.Node { return edge.to }
+
+func (edge compactEdge) ReversedEdge() graph.Edge { return compactEdge{from: edge.to, to: edge.from} }
+
+type compactDependencyGraph struct {
+	tasksToNodes map[TaskNode]compactNode
+	nodesToTasks []TaskNode
+	nodes        []graph.Node
+	outgoing     [][]compactNode
+	incoming     [][]compactNode
+	statuses     map[edgeKey]string
+}
+
+var _ graph.Directed = (*compactDependencyGraph)(nil)
+
+func (g *compactDependencyGraph) Node(id int64) graph.Node {
+	if id < 0 || id >= int64(len(g.nodesToTasks)) {
+		return nil
+	}
+	return g.nodes[id]
+}
+
+func (g *compactDependencyGraph) Nodes() graph.Nodes {
+	return iterator.NewImplicitNodes(0, len(g.nodesToTasks), func(id int) graph.Node {
+		return g.nodes[id]
+	})
+}
+
+func (g *compactDependencyGraph) From(id int64) graph.Nodes {
+	if id < 0 || id >= int64(len(g.outgoing)) {
+		return graph.Empty
+	}
+	nodes := g.outgoing[id]
+	return iterator.NewImplicitNodes(0, len(nodes), func(index int) graph.Node {
+		return g.nodes[nodes[index]]
+	})
+}
+
+func (g *compactDependencyGraph) To(id int64) graph.Nodes {
+	if id < 0 || id >= int64(len(g.incoming)) {
+		return graph.Empty
+	}
+	nodes := g.incoming[id]
+	return iterator.NewImplicitNodes(0, len(nodes), func(index int) graph.Node {
+		return g.nodes[nodes[index]]
+	})
+}
+
+func (g *compactDependencyGraph) HasEdgeFromTo(from, to int64) bool {
+	_, exists := g.statuses[edgeKey{from: compactNode(from), to: compactNode(to)}]
+	return exists
+}
+
+func (g *compactDependencyGraph) HasEdgeBetween(from, to int64) bool {
+	return g.HasEdgeFromTo(from, to) || g.HasEdgeFromTo(to, from)
+}
+
+func (g *compactDependencyGraph) Edge(from, to int64) graph.Edge {
+	if !g.HasEdgeFromTo(from, to) {
+		return nil
+	}
+	return compactEdge{from: g.nodes[from], to: g.nodes[to]}
+}
+
+func (g *compactDependencyGraph) dependencyEdge(key edgeKey) DependencyEdge {
+	return DependencyEdge{
+		From:   g.nodesToTasks[key.from],
+		To:     g.nodesToTasks[key.to],
+		Status: g.statuses[key],
+	}
 }
 
 // DependencyEdge is a representation of a dependency in the graph.
@@ -105,24 +185,23 @@ func (g *DependencyGraph) buildFromTasks(tasks []Task) {
 
 // Nodes returns a slice of all the task nodes in the graph.
 func (g *DependencyGraph) Nodes() []TaskNode {
-	tNodes := make([]TaskNode, 0, len(g.tasksToNodes))
-	for tNode := range g.tasksToNodes {
-		tNodes = append(tNodes, tNode)
-	}
-
+	tNodes := make([]TaskNode, len(g.graph.nodesToTasks))
+	copy(tNodes, g.graph.nodesToTasks)
 	return tNodes
 }
 
 // AddTaskNode adds a node to the graph.
 func (g *DependencyGraph) AddTaskNode(tNode TaskNode) {
-	if _, ok := g.tasksToNodes[tNode]; ok {
+	if _, ok := g.graph.tasksToNodes[tNode]; ok {
 		return
 	}
 
-	node := g.graph.NewNode()
-	g.graph.AddNode(node)
-	g.tasksToNodes[tNode] = node
-	g.nodesToTasks[node] = tNode
+	node := compactNode(len(g.graph.nodesToTasks))
+	g.graph.tasksToNodes[tNode] = node
+	g.graph.nodesToTasks = append(g.graph.nodesToTasks, tNode)
+	g.graph.nodes = append(g.graph.nodes, node)
+	g.graph.outgoing = append(g.graph.outgoing, nil)
+	g.graph.incoming = append(g.graph.incoming, nil)
 }
 
 // AddEdge adds an edge between tasks in the graph.
@@ -137,33 +216,32 @@ func (g *DependencyGraph) AddEdge(dependentTask, dependedOnTask TaskNode, status
 }
 
 func (g *DependencyGraph) addEdgeToGraph(edge DependencyEdge) {
-	fromNode, fromExists := g.tasksToNodes[edge.From]
-	toNode, toExists := g.tasksToNodes[edge.To]
+	fromNode, fromExists := g.graph.tasksToNodes[edge.From]
+	toNode, toExists := g.graph.tasksToNodes[edge.To]
 	if !(fromExists && toExists) {
 		return
 	}
 
-	key := edgeKey{from: edge.From, to: edge.To}
-	if _, exists := g.edgesToDependencies[key]; !exists {
-		line := g.graph.NewLine(fromNode, toNode)
-		g.graph.SetLine(line)
+	key := edgeKey{from: fromNode, to: toNode}
+	if _, exists := g.graph.statuses[key]; !exists {
+		g.graph.outgoing[fromNode] = append(g.graph.outgoing[fromNode], toNode)
+		g.graph.incoming[toNode] = append(g.graph.incoming[toNode], fromNode)
 	}
-	g.edgesToDependencies[key] = edge
+	g.graph.statuses[key] = edge.Status
 }
 
 // EdgesIntoTask returns all the edges that point to t.
 // For a regular graph these edges are tasks that directly depend on t.
 // If the graph is transposed these edges are tasks t directly depends on.
 func (g *DependencyGraph) EdgesIntoTask(t TaskNode) []DependencyEdge {
-	node := g.tasksToNodes[t]
-	if node == nil {
+	node, exists := g.graph.tasksToNodes[t]
+	if !exists || len(g.graph.incoming[node]) == 0 {
 		return nil
 	}
 
-	var edges []DependencyEdge
-	nodes := g.graph.To(node.ID())
-	for nodes.Next() {
-		edges = append(edges, g.edgesToDependencies[edgeKey{from: g.nodesToTasks[nodes.Node()], to: t}])
+	edges := make([]DependencyEdge, 0, len(g.graph.incoming[node]))
+	for _, from := range g.graph.incoming[node] {
+		edges = append(edges, g.graph.dependencyEdge(edgeKey{from: from, to: node}))
 	}
 
 	return edges
@@ -172,11 +250,16 @@ func (g *DependencyGraph) EdgesIntoTask(t TaskNode) []DependencyEdge {
 // GetDependencyEdge returns a pointer to the edge from fromNode to toNode.
 // If the edge doesn't exist it returns nil.
 func (g *DependencyGraph) GetDependencyEdge(fromTask, toTask TaskNode) *DependencyEdge {
-	depEdge, ok := g.edgesToDependencies[edgeKey{from: fromTask, to: toTask}]
-	if !ok {
+	from, fromExists := g.graph.tasksToNodes[fromTask]
+	to, toExists := g.graph.tasksToNodes[toTask]
+	if !fromExists || !toExists {
 		return nil
 	}
-
+	key := edgeKey{from: from, to: to}
+	if _, exists := g.graph.statuses[key]; !exists {
+		return nil
+	}
+	depEdge := g.graph.dependencyEdge(key)
 	return &depEdge
 }
 
@@ -205,12 +288,12 @@ func (g *DependencyGraph) Cycles() DependencyCycles {
 	for _, scc := range stronglyConnectedComponents {
 		if len(scc) == 1 {
 			if g.graph.HasEdgeBetween(scc[0].ID(), scc[0].ID()) {
-				cycles = append(cycles, []TaskNode{g.nodesToTasks[scc[0]], g.nodesToTasks[scc[0]]})
+				cycles = append(cycles, []TaskNode{g.graph.nodesToTasks[scc[0].ID()], g.graph.nodesToTasks[scc[0].ID()]})
 			}
 		} else {
 			var cycle []TaskNode
 			for _, node := range scc {
-				taskInCycle := g.nodesToTasks[node]
+				taskInCycle := g.graph.nodesToTasks[node.ID()]
 				cycle = append(cycle, taskInCycle)
 			}
 			cycles = append(cycles, cycle)
@@ -223,8 +306,8 @@ func (g *DependencyGraph) Cycles() DependencyCycles {
 // DepthFirstSearch begins a DFS from start and returns whether target is reachable.
 // If traverseEdge is not nil an edge is only traversed if traverseEdge returns true on that edge.
 func (g *DependencyGraph) DepthFirstSearch(start, target TaskNode, traverseEdge func(edge DependencyEdge) bool) bool {
-	_, startExists := g.tasksToNodes[start]
-	_, targetExists := g.tasksToNodes[target]
+	startNode, startExists := g.graph.tasksToNodes[start]
+	targetNode, targetExists := g.graph.tasksToNodes[target]
 	if !(startExists && targetExists) {
 		return false
 	}
@@ -235,15 +318,13 @@ func (g *DependencyGraph) DepthFirstSearch(start, target TaskNode, traverseEdge 
 				return true
 			}
 
-			from := g.nodesToTasks[e.From()]
-			to := g.nodesToTasks[e.To()]
-			edge := g.edgesToDependencies[edgeKey{from: from, to: to}]
+			edge := g.graph.dependencyEdge(edgeKey{from: compactNode(e.From().ID()), to: compactNode(e.To().ID())})
 
 			return traverseEdge(edge)
 		},
 	}
 
-	return traversal.Walk(g.graph, g.tasksToNodes[start], func(n graph.Node) bool { return g.nodesToTasks[n] == target }) != nil
+	return traversal.Walk(g.graph, g.graph.nodes[startNode], func(n graph.Node) bool { return n.ID() == targetNode.ID() }) != nil
 }
 
 // TopologicalStableSort sorts the nodes in the graph topologically. It is stable in the sense that when a topological ordering
@@ -263,7 +344,7 @@ func (g *DependencyGraph) TopologicalStableSort() ([]TaskNode, error) {
 	sortedTasks := make([]TaskNode, 0, len(sortedNodes))
 	for _, node := range sortedNodes {
 		if node != nil {
-			sortedTasks = append(sortedTasks, g.nodesToTasks[node])
+			sortedTasks = append(sortedTasks, g.graph.nodesToTasks[node.ID()])
 		}
 	}
 
