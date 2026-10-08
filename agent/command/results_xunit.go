@@ -173,70 +173,9 @@ func parseXMLFile(ctx context.Context, filePath string) parseXMLFileResult {
 func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal.TaskConfig,
 	logger client.LoggerProducer, comm client.Communicator) error {
 
-	reportFilePaths, err := getFilePaths(conf.WorkDir, c.Files)
+	cumulative, err := parseXUnitResults(ctx, parseOptionsForTask(conf), logger, c.Files)
 	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	// Parse XML files in parallel using a worker pool.
-	jobs := make(chan string, len(reportFilePaths))
-	results := make(chan parseXMLFileResult, len(reportFilePaths))
-
-	for i := 0; i < runtime.GOMAXPROCS(0); i++ {
-		go func() {
-			for filePath := range jobs {
-				select {
-				case <-ctx.Done():
-					return
-				case results <- parseXMLFile(ctx, filePath):
-				}
-			}
-		}()
-	}
-
-	for _, path := range reportFilePaths {
-		select {
-		case <-ctx.Done():
-			close(jobs)
-			return errors.Wrap(ctx.Err(), "canceled while queuing files for parsing")
-		case jobs <- path:
-		}
-	}
-	close(jobs)
-
-	// Collect parse results and build cumulative test cases.
-	cumulative := testcaseAccumulator{
-		tests:           []testresult.TestResult{},
-		logs:            []*testlog.TestLog{},
-		logIdxToTestIdx: []int{},
-	}
-	var numInvalid int
-	catcher := grip.NewBasicCatcher()
-	for range reportFilePaths {
-		select {
-		case <-ctx.Done():
-			return errors.Wrap(ctx.Err(), "canceled while collecting parse results")
-		case result := <-results:
-			if result.err != nil {
-				catcher.Add(result.err)
-				continue
-			}
-			if result.invalid {
-				numInvalid++
-				logger.Task().Infof(ctx, "Result file '%s' does not exist or is a directory.", result.filePath)
-				continue
-			}
-			for idx, suite := range result.suites {
-				cumulative = addTestCasesForSuite(ctx, suite, idx, conf, cumulative, logger)
-			}
-		}
-	}
-
-	if catcher.HasErrors() {
-		return catcher.Resolve()
-	}
-	if len(reportFilePaths) == numInvalid {
-		return errors.New("all given file paths do not exist or are directories")
+		return err
 	}
 
 	// Upload test logs in parallel using a worker pool.
@@ -259,7 +198,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 		func(item *indexedLog) error {
 			err := taskoutput.AppendTestLog(ctx, &conf.Task, opts, item.log, conf.S3Usage)
 			if err == nil {
-				cumulative.tests[cumulative.logIdxToTestIdx[item.idx]].LineNum = 1
+				cumulative.markLogUploaded(item.idx)
 			}
 			return err
 		},
@@ -275,13 +214,91 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 	return nil
 }
 
+// parseXUnitResults parses all of the given xunit XML files (globs relative to
+// the working directory) into test results and their associated logs.
+func parseXUnitResults(ctx context.Context, opts testResultParseOptions, logger client.LoggerProducer, files []string) (testcaseAccumulator, error) {
+	reportFilePaths, err := getFilePaths(opts.WorkDir, files)
+	if err != nil {
+		return testcaseAccumulator{}, errors.WithStack(err)
+	}
+
+	// Parse XML files in parallel using a worker pool.
+	jobs := make(chan string, len(reportFilePaths))
+	results := make(chan parseXMLFileResult, len(reportFilePaths))
+
+	for i := 0; i < runtime.GOMAXPROCS(0); i++ {
+		go func() {
+			for filePath := range jobs {
+				select {
+				case <-ctx.Done():
+					return
+				case results <- parseXMLFile(ctx, filePath):
+				}
+			}
+		}()
+	}
+
+	for _, path := range reportFilePaths {
+		select {
+		case <-ctx.Done():
+			close(jobs)
+			return testcaseAccumulator{}, errors.Wrap(ctx.Err(), "canceled while queuing files for parsing")
+		case jobs <- path:
+		}
+	}
+	close(jobs)
+
+	// Collect parse results and build cumulative test cases.
+	cumulative := testcaseAccumulator{
+		tests:           []testresult.TestResult{},
+		logs:            []*testlog.TestLog{},
+		logIdxToTestIdx: []int{},
+	}
+	var numInvalid int
+	catcher := grip.NewBasicCatcher()
+	for range reportFilePaths {
+		select {
+		case <-ctx.Done():
+			return testcaseAccumulator{}, errors.Wrap(ctx.Err(), "canceled while collecting parse results")
+		case result := <-results:
+			if result.err != nil {
+				catcher.Add(result.err)
+				continue
+			}
+			if result.invalid {
+				numInvalid++
+				logger.Task().Infof(ctx, "Result file '%s' does not exist or is a directory.", result.filePath)
+				continue
+			}
+			for idx, suite := range result.suites {
+				cumulative = addTestCasesForSuite(ctx, suite, idx, opts, cumulative, logger)
+			}
+		}
+	}
+
+	if catcher.HasErrors() {
+		return testcaseAccumulator{}, catcher.Resolve()
+	}
+	if len(reportFilePaths) == numInvalid {
+		return testcaseAccumulator{}, errors.New("all given file paths do not exist or are directories")
+	}
+
+	return cumulative, nil
+}
+
 type testcaseAccumulator struct {
 	tests           []testresult.TestResult
 	logs            []*testlog.TestLog
 	logIdxToTestIdx []int
 }
 
-func addTestCasesForSuite(ctx context.Context, suite testSuite, idx int, conf *internal.TaskConfig, cumulative testcaseAccumulator, logger client.LoggerProducer) testcaseAccumulator {
+// markLogUploaded records that the log at logIdx was uploaded, marking its test
+// result as having a log.
+func (a testcaseAccumulator) markLogUploaded(logIdx int) {
+	a.tests[a.logIdxToTestIdx[logIdx]].LineNum = 1
+}
+
+func addTestCasesForSuite(ctx context.Context, suite testSuite, idx int, opts testResultParseOptions, cumulative testcaseAccumulator, logger client.LoggerProducer) testcaseAccumulator {
 	if len(suite.TestCases) == 0 && suite.Error != nil {
 		// if no test cases but an error, generate a default test case
 		tc := testCase{
@@ -296,7 +313,7 @@ func addTestCasesForSuite(ctx context.Context, suite testSuite, idx int, conf *i
 	}
 	for _, tc := range suite.TestCases {
 		// logs are only created when a test case does not succeed
-		test, log := tc.toModelTestResultAndLog(ctx, conf, logger)
+		test, log := tc.toModelTestResultAndLog(ctx, opts, logger)
 		if log != nil {
 			if systemLogs := constructSystemLogs(suite.SysOut, suite.SysErr); len(systemLogs) > 0 {
 				log.Lines = append(log.Lines, systemLogs...)
@@ -307,7 +324,7 @@ func addTestCasesForSuite(ctx context.Context, suite testSuite, idx int, conf *i
 		cumulative.tests = append(cumulative.tests, test)
 	}
 	if suite.NestedSuites != nil {
-		cumulative = addTestCasesForSuite(ctx, *suite.NestedSuites, idx, conf, cumulative, logger)
+		cumulative = addTestCasesForSuite(ctx, *suite.NestedSuites, idx, opts, cumulative, logger)
 	}
 	return cumulative
 }

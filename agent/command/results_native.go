@@ -3,7 +3,6 @@ package command
 import (
 	"context"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
@@ -58,7 +57,7 @@ func (t nativeTestResult) convertToService() testresult.TestResult {
 	}
 }
 
-// attachResults is used to attach MCI test results in json
+// attachResults is used to attach Evergreen native test results in JSON
 // format to the task page.
 type attachResults struct {
 	// FileLoc describes the relative path of the file to be sent.
@@ -100,21 +99,30 @@ func (c *attachResults) Execute(ctx context.Context, comm client.Communicator, l
 		return errors.Wrap(err, "applying expansions")
 	}
 
-	reportFileLoc := c.FileLoc
-	if !filepath.IsAbs(c.FileLoc) {
-		reportFileLoc = GetWorkingDirectory(conf, c.FileLoc)
-	}
 	SetWorkdirBoundaryAttribute(ctx, conf, c.FileLoc)
+
+	testLogs, results, err := parseNativeResults(parseOptionsForTask(conf), c.FileLoc)
+	if err != nil {
+		return err
+	}
+
+	return sendTestLogsAndResults(ctx, comm, logger, conf, testLogs, results)
+}
+
+// parseNativeResults reads an Evergreen native JSON test results file and
+// returns the test logs and results it contains.
+func parseNativeResults(opts testResultParseOptions, fileLoc string) ([]testlog.TestLog, []testresult.TestResult, error) {
+	reportFileLoc := resolveWorkingDirectory(opts.WorkDir, fileLoc)
 
 	reportFile, err := os.Open(reportFileLoc)
 	if err != nil {
-		return errors.Wrapf(err, "opening report file '%s'", reportFileLoc)
+		return nil, nil, errors.Wrapf(err, "opening report file '%s'", reportFileLoc)
 	}
 	defer reportFile.Close()
 
 	var nativeResults nativeTestResults
 	if err = utility.ReadJSON(reportFile, &nativeResults); err != nil {
-		return errors.Wrapf(err, "reading report file '%s'", reportFileLoc)
+		return nil, nil, errors.Wrapf(err, "reading report file '%s'", reportFileLoc)
 	}
 
 	var testLogs []testlog.TestLog
@@ -125,13 +133,13 @@ func (c *attachResults) Execute(ctx context.Context, comm client.Communicator, l
 				// unique string since there may be duplicate
 				// log paths if there are duplicate test names.
 				Name:          utility.RandomString(),
-				Task:          conf.Task.Id,
-				TaskExecution: conf.Task.Execution,
+				Task:          opts.TaskID,
+				TaskExecution: opts.TaskExecution,
 				Lines:         strings.Split(res.LogRaw, "\n"),
 			})
 			nativeResults.Results[i].LogInfo = &testresult.TestLogInfo{LogName: testLogs[len(testLogs)-1].Name}
 		}
 	}
 
-	return sendTestLogsAndResults(ctx, comm, logger, conf, testLogs, nativeResults.convertToService())
+	return testLogs, nativeResults.convertToService(), nil
 }
