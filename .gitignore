@@ -65,7 +65,8 @@ evergreen
 
 # Agent related files
 CLAUDE.local.md
-.claude/
+.claude/*
+!.claude/skills/
 
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/
