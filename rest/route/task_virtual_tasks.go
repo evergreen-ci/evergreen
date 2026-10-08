@@ -333,7 +333,7 @@ func makePrepareVirtualTasks(env evergreen.Environment) gimlet.RouteHandler {
 //	@Tags			tasks
 //	@Router			/task/{task_id}/virtual_tasks/prepare [post]
 //	@Security		Api-User || Api-Key
-//	@Param			task_id		path		string								true	"the runner task ID"
+//	@Param			task_id		path		string									true	"the runner task ID"
 //	@Param			{object}	body		apimodels.PrepareVirtualTasksRequest	true	"virtual tasks to prepare"
 //	@Success		200			{object}	apimodels.PrepareVirtualTasksResponse
 func (h *prepareVirtualTasksHandler) Factory() gimlet.RouteHandler {
