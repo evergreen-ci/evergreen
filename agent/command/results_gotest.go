@@ -157,8 +157,8 @@ func parseTestOutput(ctx context.Context, opts testResultParseOptions, report io
 	logLines := parser.Logs()
 	logs := testlog.TestLog{
 		Name:          suiteName,
-		Task:          opts.TaskID,
-		TaskExecution: opts.TaskExecution,
+		Task:          opts.taskID,
+		TaskExecution: opts.taskExecution,
 		Lines:         logLines,
 	}
 

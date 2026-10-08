@@ -22,23 +22,19 @@ import (
 	"github.com/pkg/errors"
 )
 
-// testResultParseOptions describes the task run that parsed test results belong
-// to and the directory that result file paths are resolved against. It is the
-// minimal information the test result parsers need, so results can be parsed on
-// behalf of a task other than the one that is currently running (e.g. a virtual
-// task).
+// testResultParseOptions are options for parsing test results.
 type testResultParseOptions struct {
-	WorkDir       string
-	TaskID        string
-	TaskExecution int
+	workDir       string
+	taskID        string
+	taskExecution int
 }
 
 // parseOptionsForTask returns the parse options for the currently running task.
 func parseOptionsForTask(conf *internal.TaskConfig) testResultParseOptions {
 	return testResultParseOptions{
-		WorkDir:       conf.WorkDir,
-		TaskID:        conf.Task.Id,
-		TaskExecution: conf.Task.Execution,
+		workDir:       conf.WorkDir,
+		taskID:        conf.Task.Id,
+		taskExecution: conf.Task.Execution,
 	}
 }
 

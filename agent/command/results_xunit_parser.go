@@ -250,8 +250,8 @@ func (tc testCase) toModelTestResultAndLog(ctx context.Context, opts testResultP
 		// unique string since there may be duplicate file
 		// names if there are duplicate test names.
 		log.Name = utility.RandomString()
-		log.Task = opts.TaskID
-		log.TaskExecution = opts.TaskExecution
+		log.Task = opts.taskID
+		log.TaskExecution = opts.taskExecution
 		res.LogInfo = &testresult.TestLogInfo{LogName: log.Name}
 	}
 

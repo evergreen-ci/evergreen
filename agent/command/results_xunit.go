@@ -217,7 +217,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 // parseXUnitResults parses all of the given xunit XML files (globs relative to
 // the working directory) into test results and their associated logs.
 func parseXUnitResults(ctx context.Context, opts testResultParseOptions, logger client.LoggerProducer, files []string) (testcaseAccumulator, error) {
-	reportFilePaths, err := getFilePaths(opts.WorkDir, files)
+	reportFilePaths, err := getFilePaths(opts.workDir, files)
 	if err != nil {
 		return testcaseAccumulator{}, errors.WithStack(err)
 	}

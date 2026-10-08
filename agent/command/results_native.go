@@ -112,7 +112,7 @@ func (c *attachResults) Execute(ctx context.Context, comm client.Communicator, l
 // parseNativeResults reads an Evergreen native JSON test results file and
 // returns the test logs and results it contains.
 func parseNativeResults(opts testResultParseOptions, fileLoc string) ([]testlog.TestLog, []testresult.TestResult, error) {
-	reportFileLoc := resolveWorkingDirectory(opts.WorkDir, fileLoc)
+	reportFileLoc := resolveWorkingDirectory(opts.workDir, fileLoc)
 
 	reportFile, err := os.Open(reportFileLoc)
 	if err != nil {
@@ -133,8 +133,8 @@ func parseNativeResults(opts testResultParseOptions, fileLoc string) ([]testlog.
 				// unique string since there may be duplicate
 				// log paths if there are duplicate test names.
 				Name:          utility.RandomString(),
-				Task:          opts.TaskID,
-				TaskExecution: opts.TaskExecution,
+				Task:          opts.taskID,
+				TaskExecution: opts.taskExecution,
 				Lines:         strings.Split(res.LogRaw, "\n"),
 			})
 			nativeResults.Results[i].LogInfo = &testresult.TestLogInfo{LogName: testLogs[len(testLogs)-1].Name}
