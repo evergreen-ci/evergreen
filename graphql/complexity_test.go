@@ -1,7 +1,6 @@
 package graphql
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/99designs/gqlgen/complexity"
@@ -167,60 +166,66 @@ func TestNewComplexityRateLimitNilRedisErrors(t *testing.T) {
 	assert.Error(t, err)
 }
 
-const taskTestsQuery = `
-query TaskTests($limitNum: Int) {
-  task(taskId: "t", execution: 0) {
-    id
-    tests(opts: { limit: $limitNum, statuses: [], testName: "" }) {
-      filteredTestCount
-      testResults {
-        id
-        status
-        testFile
-        logs {
-          urlParsley
-        }
-      }
-      totalTestCount
-    }
-  }
-}`
+func TestTaskTestsComplexity(t *testing.T) {
+	const taskTestsQuery = `
+	query TaskTests($limitNum: Int) {
+	  task(taskId: "t", execution: 0) {
+	    id
+	    tests(opts: { limit: $limitNum, statuses: [], testName: "" }) {
+	      filteredTestCount
+	      testResults {
+	        id
+	        status
+	        testFile
+	        logs {
+	          urlParsley
+	        }
+	      }
+	      totalTestCount
+	    }
+	  }
+	}`
+	const taskTestsNoOptsQuery = `
+	query {
+	  task(taskId: "t", execution: 0) {
+	    tests {
+	      testResults {
+	        id
+	      }
+	    }
+	  }
+	}`
+	const taskTestsEmptyOptsQuery = `
+	query {
+	  task(taskId: "t", execution: 0) {
+	    tests(opts: {}) {
+	      testResults {
+	        id
+	      }
+	    }
+	  }
+	}`
 
-const taskTestsNoOptsQuery = `
-query {
-  task(taskId: "t", execution: 0) {
-    tests {
-      testResults {
-        id
-      }
-    }
-  }
-}`
+	schema := NewExecutableSchema(NewConfig())
 
-func TestComplexity(t *testing.T) {
-	schema := NewExecutableSchema(New(""))
-
-	calculate := func(t *testing.T, query string, vars map[string]any) int {
-		doc, gqlErrs := gqlparser.LoadQueryWithRules(schema.Schema(), query, rules.NewDefaultRules())
-		require.Empty(t, gqlErrs)
-		require.Len(t, doc.Operations, 1)
-		return complexity.Calculate(t.Context(), schema, doc.Operations[0], vars)
+	calculateComplexity := func(t *testing.T, query string, vars map[string]any) int {
+		return complexity.Calculate(t.Context(), schema, parseQuery(t, schema, query), vars)
 	}
 
-	t.Run("TaskTestsIncludesFetchCost", func(t *testing.T) {
-		score := calculate(t, taskTestsQuery, map[string]any{"limitNum": 1})
+	t.Run("IncludesFetchCost", func(t *testing.T) {
+		score := calculateComplexity(t, taskTestsQuery, map[string]any{"limitNum": 1})
 		assert.Greater(t, score, 2*testResultsFetchComplexity)
 	})
-	t.Run("TaskTestsDoesNotScaleWithLimit", func(t *testing.T) {
-		unbounded := calculate(t, taskTestsQuery, map[string]any{"limitNum": nil})
-		small := calculate(t, taskTestsQuery, map[string]any{"limitNum": 10})
-		large := calculate(t, taskTestsQuery, map[string]any{"limitNum": 100})
+	t.Run("DoesNotScaleWithLimit", func(t *testing.T) {
+		unbounded := calculateComplexity(t, taskTestsQuery, map[string]any{"limitNum": nil})
+		small := calculateComplexity(t, taskTestsQuery, map[string]any{"limitNum": 10})
+		large := calculateComplexity(t, taskTestsQuery, map[string]any{"limitNum": 100})
 		assert.Equal(t, small, large)
 		assert.Equal(t, unbounded, large)
 	})
-	t.Run("TaskTestsWithoutOptsExcludesBaseTaskFetch", func(t *testing.T) {
-		withoutOpts := calculate(t, taskTestsNoOptsQuery, nil)
-		withOpts := calculate(t, strings.Replace(taskTestsNoOptsQuery, "tests {", "tests(opts: {}) {", 1), nil)
+	t.Run("WithoutOptsExcludesBaseTaskFetch", func(t *testing.T) {
+		withoutOpts := calculateComplexity(t, taskTestsNoOptsQuery, nil)
+		withOpts := calculateComplexity(t, taskTestsEmptyOptsQuery, nil)
 		assert.Equal(t, testResultsFetchComplexity, withOpts-withoutOpts)
 	})
 }
