@@ -1670,7 +1670,7 @@ func buildQuarantineMutationResponse(ctx context.Context, t *task.Task, testName
 	apiTest := &restModel.APITest{}
 	settings := evergreen.GetEnvironment().Settings()
 	apiTestArgs := &restModel.APITestArgs{
-		EvergreenBaseURL: settings.Api.URL,
+		EvergreenBaseURL: settings.Ui.LogUrl,
 		ParsleyLogURL:    settings.Ui.ParsleyUrl,
 	}
 	if err = apiTest.BuildFromService(tr.TaskID, nil); err != nil {
