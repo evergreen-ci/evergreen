@@ -1,6 +1,6 @@
 # Outbound Requests (SSRF)
 
-Evergreen runs inside a cloud network with instance metadata services, internal admin ports, and private services. Any server-side fetch of a URL that a user, task, or project can influence must assume the URL targets those.
+Server-side code runs on networks that can reach instance metadata services and private services. Any server-side fetch of a URL that a user, task, or project can influence must assume the URL targets those.
 
 Sources of such URLs include anything stored in or returned from user, task, or project data, and redirects returned by any of these.
 

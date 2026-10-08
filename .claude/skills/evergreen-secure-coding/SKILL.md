@@ -7,7 +7,7 @@ description: Use when writing, changing, or reviewing Evergreen Go code that add
 
 ## Overview
 
-Evergreen's security bugs cluster into a small set of repeat mistakes: an operation guarded on one surface but not its twins, authorization checked against a different object than the one acted on, caller-controlled data reaching a shell, URL, path, or template, and secrets expanded or returned where the caller can read them. This skill turns those mistakes into invariants and gives the Evergreen helper to use for each.
+This skill lists the security invariants for Evergreen code and the existing Evergreen helper to use for each: authorization on every surface that reaches an operation, authorizing the exact object acted on, keeping caller-controlled data out of shells, URLs, paths, and templates, and keeping secrets out of anything the caller can read.
 
 **Core principle:** authorize the exact object you act on, on every surface that can reach it, before you act.
 
@@ -21,7 +21,7 @@ Whenever you add, change, or fix a check for an operation:
 2. Find every caller of it from a request path: `rg` for the model function plus its REST, `service/`, and GraphQL wrappers.
 3. Give each caller the same check, in the same PR. List the surfaces you checked in the PR description.
 
-"The ticket only names one route" and "the others can be a follow-up" are not acceptable reasons to stop. An incomplete fix is a new bug report.
+"The ticket only names one route" and "the others can be a follow-up" are not acceptable reasons to stop. A check that covers only some surfaces leaves the operation unprotected.
 
 ## Quick Reference
 

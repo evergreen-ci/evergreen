@@ -1,6 +1,6 @@
 # Authorization
 
-Authorization bugs are the largest class of Evergreen security issues. Nearly all are omissions: a check exists somewhere but not on the path being added or changed.
+Every request path that reads or changes an object needs its own authorization check. A check on a related path does not protect the one you are adding or changing.
 
 ## Surfaces and where checks live
 
