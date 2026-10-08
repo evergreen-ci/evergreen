@@ -117,21 +117,6 @@ func TestArtifactSignHandler(t *testing.T) {
 		handler.ServeHTTP(rr, req)
 		assert.Equal(t, http.StatusInternalServerError, rr.Code)
 	})
-	t.Run("HeadWithExpiredTokenIsUnauthorized", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodHead, fmt.Sprintf("/tasks/task1/artifact/sign?execution=0&name=signed_report&token=%s&exp=%d", validToken, 1000000000), nil)
-		req = gimlet.SetURLVars(req, map[string]string{"task_id": "task1"})
-		rr := httptest.NewRecorder()
-		handler.ServeHTTP(rr, req)
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
-	})
-	t.Run("HeadOnNotSignedFileIsBadRequest", func(t *testing.T) {
-		token, expiry := artifact.GenerateSignToken([]byte(testSecret), "task1", 0, "public_file", time.Hour)
-		req, _ := http.NewRequest(http.MethodHead, fmt.Sprintf("/tasks/task1/artifact/sign?execution=0&name=public_file&token=%s&exp=%d", token, expiry), nil)
-		req = gimlet.SetURLVars(req, map[string]string{"task_id": "task1"})
-		rr := httptest.NewRecorder()
-		handler.ServeHTTP(rr, req)
-		assert.Equal(t, http.StatusBadRequest, rr.Code)
-	})
 	t.Run("SignedFileRedirects", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("/tasks/task1/artifact/sign?execution=0&name=signed_report&token=%s&exp=%d", validToken, validExpiry), nil)
 		req = gimlet.SetURLVars(req, map[string]string{"task_id": "task1"})

@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/grip"
@@ -240,30 +239,8 @@ func PresignFile(ctx context.Context, file File, resolver CredentialResolver) (s
 		))
 	defer span.End()
 
-	requestParams, credsSource := s3RequestParams(ctx, file, resolver)
-	span.SetAttributes(attribute.String(evergreen.ArtifactPresignCredsSourceOtelAttribute, credsSource))
-
-	url, err := pail.PreSign(ctx, requestParams)
-	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "presigning artifact URL")
-		return "", err
-	}
-	return url, nil
-}
-
-// HeadFile fetches the S3 object metadata for the given artifact file using
-// the same credentials that PresignFile would use.
-func HeadFile(ctx context.Context, file File, resolver CredentialResolver) (*s3.HeadObjectOutput, error) {
-	if err := file.validate(); err != nil {
-		return nil, errors.Wrap(err, "file validation failed")
-	}
-	requestParams, _ := s3RequestParams(ctx, file, resolver)
-	return pail.GetHeadObject(ctx, requestParams)
-}
-
-func s3RequestParams(ctx context.Context, file File, resolver CredentialResolver) (pail.PreSignRequestParams, string) {
 	creds, credsSource := credentialsForPresign(ctx, file, resolver)
+	span.SetAttributes(attribute.String(evergreen.ArtifactPresignCredsSourceOtelAttribute, credsSource))
 
 	var externalID *string
 	if file.ExternalID != "" {
@@ -271,7 +248,7 @@ func s3RequestParams(ctx context.Context, file File, resolver CredentialResolver
 	}
 
 	// The expiry window also serves as pail's minimum remaining lifetime for reusing assumed-role credentials, so it must be well below the 15m STS credential duration for the cache to be effective.
-	return pail.PreSignRequestParams{
+	requestParams := pail.PreSignRequestParams{
 		Bucket:                file.Bucket,
 		FileKey:               file.FileKey,
 		SignatureExpiryWindow: evergreen.PresignCredentialsLifetime,
@@ -280,7 +257,14 @@ func s3RequestParams(ctx context.Context, file File, resolver CredentialResolver
 		AWSSecret:             creds.AWSSecret,
 		AWSRoleARN:            file.AWSRoleARN,
 		ExternalID:            externalID,
-	}, credsSource
+	}
+	url, err := pail.PreSign(ctx, requestParams)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "presigning artifact URL")
+		return "", err
+	}
+	return url, nil
 }
 
 // ValidatePresignDuration checks that a configured duration is supported by S3.
