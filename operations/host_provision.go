@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
@@ -24,12 +25,12 @@ const containerImagePullTimeout = 15 * time.Minute
 
 func hostProvision() cli.Command {
 	const (
-		hostIDFlagName        = "host_id"
-		hostSecretFlagName    = "host_secret"
-		cloudProviderFlagName = "provider"
-		workingDirFlagName    = "working_dir"
-		apiServerURLFlagName  = "api_server"
-		shellPathFlagName     = "shell_path"
+		hostIDFlagName          = "host_id"
+		hostSetupSecretFlagName = "setup_secret"
+		cloudProviderFlagName   = "provider"
+		workingDirFlagName      = "working_dir"
+		apiServerURLFlagName    = "api_server"
+		shellPathFlagName       = "shell_path"
 	)
 	return cli.Command{
 		Name:  "provision",
@@ -40,8 +41,9 @@ func hostProvision() cli.Command {
 				Usage: "the host ID",
 			},
 			cli.StringFlag{
-				Name:  hostSecretFlagName,
-				Usage: "the host secret",
+				Name:   hostSetupSecretFlagName,
+				Usage:  "the single-use host setup secret to exchange for the host secret",
+				EnvVar: evergreen.SetupSecretEnvVar,
 			},
 			cli.StringFlag{
 				Name:  cloudProviderFlagName,
@@ -62,9 +64,9 @@ func hostProvision() cli.Command {
 		},
 		Before: mergeBeforeFuncs(
 			requireStringFlag(hostIDFlagName),
-			requireStringFlag(hostSecretFlagName),
 			requireStringFlag(apiServerURLFlagName),
 			requireStringFlag(shellPathFlagName),
+			requireStringFlag(hostSetupSecretFlagName),
 		),
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
@@ -77,8 +79,12 @@ func hostProvision() cli.Command {
 			defer comm.Close()
 
 			hostID := c.String(hostIDFlagName)
-			hostSecret := c.String(hostSecretFlagName)
 			comm.SetHostID(hostID)
+
+			hostSecret, err := comm.ExchangeSetupSecret(ctx, c.String(hostSetupSecretFlagName))
+			if err != nil {
+				return errors.Wrap(err, "exchanging setup secret for host secret")
+			}
 			comm.SetHostSecret(hostSecret)
 
 			cloudProvider := c.String(cloudProviderFlagName)

@@ -42,7 +42,8 @@ func (r *versionResolver) BuildVariants(ctx context.Context, obj *model.Version,
 	if evergreen.IsPatchRequester(obj.Requester) && !utility.FromBoolPtr(obj.Activated) {
 		return nil, nil
 	}
-	groupedBuildVariants, err := generateBuildVariants(ctx, obj.Id, options, obj.Requester, r.sc.GetURL())
+	logURL := evergreen.GetEnvironment().Settings().Ui.LogUrl
+	groupedBuildVariants, err := generateBuildVariants(ctx, obj.Id, options, obj.Requester, logURL)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("generating build variants for version '%s': %s", obj.Id, err.Error()))
 	}
@@ -374,6 +375,9 @@ func (r *versionResolver) TaskQuarantinedTestsSample(ctx context.Context, obj *m
 			addResultTask(dbTask)
 		}
 	}
+	if err := checkChildPatchTasksAccess(ctx, versionID, dbTasks, ProjectPermissionTasks, AccessLevelView); err != nil {
+		return nil, err
+	}
 
 	if len(execTaskIDs) > 0 {
 		query := task.ByIds(execTaskIDs)
@@ -423,6 +427,9 @@ func (r *versionResolver) TaskQuarantinedTestsSample(ctx context.Context, obj *m
 
 // Tasks is the resolver for the tasks field.
 func (r *versionResolver) Tasks(ctx context.Context, obj *model.Version, options TaskFilterOptions) (*VersionTasks, error) {
+	if err := checkProjectAccess(ctx, obj.Identifier, ProjectPermissionTasks, AccessLevelView); err != nil {
+		return nil, err
+	}
 	versionID := obj.Id
 	includeNeverActivatedTasks := false
 	if options.IncludeNeverActivatedTasks != nil {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -814,13 +815,10 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 
 func getAPIProjectRef(ctx context.Context, projectId *string) (*restModel.APIProjectRef, error) {
 	// If project ID is the only field requested we can return it without a database call.
-	if graphql.HasOperationContext(ctx) {
-		requestedFields := graphql.CollectAllFields(ctx)
-		if len(requestedFields) == 1 && requestedFields[0] == "id" {
-			return &restModel.APIProjectRef{
-				Id: projectId,
-			}, nil
-		}
+	if !requiresDBRead(ctx, []string{"id"}) {
+		return &restModel.APIProjectRef{
+			Id: projectId,
+		}, nil
 	}
 
 	projectRef, err := loaders.GetProject(ctx, utility.FromStringPtr(projectId))
@@ -1209,6 +1207,27 @@ func checkProjectAccess(ctx context.Context, projectID string, permission Projec
 		return InputValidationError.Send(ctx, fmt.Sprintf("invalid permission and access level configuration: %s", err.Error()))
 	}
 	return checkProjectPermission(ctx, projectID, requiredPermission, permissionInfo)
+}
+
+// checkChildPatchTasksAccess checks that the user has the given access on the project of every task that belongs
+// to a child patch of the version rather than to the version itself.
+func checkChildPatchTasksAccess(ctx context.Context, versionID string, tasks []task.Task, permission ProjectPermission, access AccessLevel) error {
+	checkedProjects := map[string]bool{}
+	for _, t := range tasks {
+		if t.Version == versionID || checkedProjects[t.Project] {
+			continue
+		}
+		if err := checkProjectAccess(ctx, t.Project, permission, access); err != nil {
+			projectName := t.Project
+			if identifier, identifierErr := model.GetIdentifierForProject(ctx, t.Project); identifierErr == nil && identifier != "" {
+				projectName = identifier
+			}
+			_, permissionInfo, _ := getProjectPermissionLevel(permission, access)
+			return Forbidden.Send(ctx, fmt.Sprintf("task '%s' belongs to a child patch in project '%s', which requires '%s' permission on that project", t.Id, projectName, strings.ToLower(permissionInfo.Description)))
+		}
+		checkedProjects[t.Project] = true
+	}
+	return nil
 }
 
 func checkProjectPermission(ctx context.Context, projectID string, requiredPermission string, permissionInfo evergreen.PermissionLevel) error {
@@ -1651,7 +1670,7 @@ func buildQuarantineMutationResponse(ctx context.Context, t *task.Task, testName
 	apiTest := &restModel.APITest{}
 	settings := evergreen.GetEnvironment().Settings()
 	apiTestArgs := &restModel.APITestArgs{
-		EvergreenBaseURL: settings.Api.URL,
+		EvergreenBaseURL: settings.Ui.LogUrl,
 		ParsleyLogURL:    settings.Ui.ParsleyUrl,
 	}
 	if err = apiTest.BuildFromService(tr.TaskID, nil); err != nil {
@@ -1702,4 +1721,20 @@ func redactParameters(ctx context.Context, projectId string, parameters []patch.
 		res = append(res, redactedParam)
 	}
 	return res, nil
+}
+
+// Given a slice of fields that are accessible via parent object, determine if a query requests any fields besides these or GraphQL util __typename.
+func requiresDBRead(ctx context.Context, availableFields []string) bool {
+	availableFields = append(availableFields, "__typename")
+
+	if graphql.HasOperationContext(ctx) {
+		requestedFields := graphql.CollectAllFields(ctx)
+
+		for _, field := range requestedFields {
+			if !slices.Contains(availableFields, field) {
+				return true
+			}
+		}
+	}
+	return false
 }

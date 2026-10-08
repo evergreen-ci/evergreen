@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen/model/host"
 )
 
@@ -15,8 +14,7 @@ func (r *volumeResolver) Host(ctx context.Context, obj *host.Volume) (*host.Host
 	}
 
 	// If only id is requested, we can return it without a database call.
-	requestedFields := graphql.CollectAllFields(ctx)
-	if len(requestedFields) == 1 && requestedFields[0] == "id" {
+	if !requiresDBRead(ctx, []string{"id"}) {
 		return &host.Host{Id: obj.Host}, nil
 	}
 

@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/globals"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
+	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -28,7 +29,7 @@ const (
 	agentAPIServerURLFlagName            = "api_server"
 	agentCloudProviderFlagName           = "provider"
 	agentHostIDFlagName                  = "host_id"
-	agentHostSecretFlagName              = "host_secret"
+	agentHostSetupSecretFlagName         = "setup_secret"
 	singleTaskDistroFlagName             = "single_task_distro"
 	containerRetainOnFailureSecsFlagName = "container_retain_on_failure_secs"
 	compatClientPathFlagName             = "compat_client_path"
@@ -55,13 +56,13 @@ func Agent() cli.Command {
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:   agentHostIDFlagName,
-				Usage:  "the ID of the host the agent is running on (applies only to host mode)",
+				Usage:  "the ID of the host the agent is running on",
 				EnvVar: evergreen.HostIDEnvVar,
 			},
 			cli.StringFlag{
-				Name:   agentHostSecretFlagName,
-				Usage:  "secret for the current host (applies only to host mode)",
-				EnvVar: evergreen.HostSecretEnvVar,
+				Name:   agentHostSetupSecretFlagName,
+				Usage:  "the single-use host setup secret to exchange for the host secret",
+				EnvVar: evergreen.SetupSecretEnvVar,
 			},
 			cli.StringFlag{
 				Name:  agentAPIServerURLFlagName,
@@ -134,7 +135,7 @@ func Agent() cli.Command {
 				switch mode {
 				case string(globals.HostMode):
 					catcher.Add(requireStringFlag(agentHostIDFlagName)(c))
-					catcher.Add(requireStringFlag(agentHostSecretFlagName)(c))
+					catcher.Add(requireStringFlag(agentHostSetupSecretFlagName)(c))
 				default:
 					return errors.Errorf("invalid mode '%s'", mode)
 				}
@@ -151,9 +152,27 @@ func Agent() cli.Command {
 				return nil
 			}
 
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			hostID := c.String(agentHostIDFlagName)
+
+			comm, err := client.NewCommunicator(c.String(agentAPIServerURLFlagName))
+			if err != nil {
+				return errors.Wrap(err, "initializing client to retrieve host secret")
+			}
+			defer comm.Close()
+			comm.SetHostID(hostID)
+
+			hostSecret, err := comm.ExchangeSetupSecret(ctx, c.String(agentHostSetupSecretFlagName))
+			if err != nil {
+				return errors.Wrap(err, "exchanging setup secret for host secret")
+			}
+			comm.SetHostSecret(hostSecret)
+
 			opts := agent.Options{
-				HostID:                       c.String(agentHostIDFlagName),
-				HostSecret:                   c.String(agentHostSecretFlagName),
+				HostID:                       hostID,
+				HostSecret:                   hostSecret,
 				Mode:                         globals.Mode(c.String(modeFlagName)),
 				StatusPort:                   c.Int(statusPortFlagName),
 				LogPrefix:                    c.String(logPrefixFlagName),
@@ -173,16 +192,13 @@ func Agent() cli.Command {
 			if err := os.Unsetenv(evergreen.HostIDEnvVar); err != nil {
 				return errors.Wrapf(err, "unsetting '%s' env var", evergreen.HostIDEnvVar)
 			}
-			if err := os.Unsetenv(evergreen.HostSecretEnvVar); err != nil {
-				return errors.Wrapf(err, "unsetting '%s' env var", evergreen.HostSecretEnvVar)
+			if err := os.Unsetenv(evergreen.SetupSecretEnvVar); err != nil {
+				return errors.Wrapf(err, "unsetting '%s' env var", evergreen.SetupSecretEnvVar)
 			}
 
 			if err := os.MkdirAll(opts.WorkingDirectory, 0777); err != nil {
 				return errors.Wrapf(err, "creating working directory '%s'", opts.WorkingDirectory)
 			}
-
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
 
 			grip.Info(ctx, message.Fields{
 				"message":            "starting agent",

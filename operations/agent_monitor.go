@@ -166,17 +166,22 @@ func agentMonitor() cli.Command {
 			},
 		),
 		Action: func(c *cli.Context) error {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			apiServerURL := c.Parent().String(agentAPIServerURLFlagName)
-			hostID := c.Parent().String(agentHostIDFlagName)
-			hostSecret := c.Parent().String(agentHostSecretFlagName)
-			if hostID == "" || hostSecret == "" {
-				return errors.New("host ID and host secret must be set")
-			}
 			comm, err := client.NewCommunicator(apiServerURL)
 			if err != nil {
 				return errors.Wrap(err, "initializing communicator")
 			}
+
+			hostID := c.Parent().String(agentHostIDFlagName)
 			comm.SetHostID(hostID)
+
+			hostSecret, err := comm.ExchangeSetupSecret(ctx, c.Parent().String(agentHostSetupSecretFlagName))
+			if err != nil {
+				return errors.Wrap(err, "exchanging setup secret for host secret")
+			}
 			comm.SetHostSecret(hostSecret)
 
 			m := &monitor{
@@ -208,8 +213,6 @@ func agentMonitor() cli.Command {
 				return errors.Wrapf(err, "listening on port %d", m.port)
 			}
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
 			go handleMonitorSignals(ctx, cancel)
 
 			if err := m.setupJasperConnection(ctx, agentMonitorDefaultRetryOptions()); err != nil {
@@ -452,8 +455,16 @@ func (m *monitor) createAgentProcess(ctx context.Context, retry utility.RetryOpt
 		env[keyVal[0]] = keyVal[1]
 	}
 
+	// Give the agent a fresh setup secret to exchange for the host secret, so
+	// the host secret itself does not need to be passed through the agent's
+	// environment.
+	setupSecret, err := m.comm.CreateSetupSecret(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating setup secret for agent")
+	}
+	env[evergreen.SetupSecretEnvVar] = setupSecret
+
 	var proc jasper.Process
-	var err error
 
 	if err = utility.Retry(ctx, func() (bool, error) {
 		cmd := m.jasperClient.CreateCommand(ctx).

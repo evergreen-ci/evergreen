@@ -52,6 +52,10 @@ func (r *patchResolver) ChildPatches(ctx context.Context, obj *patch.Patch) ([]*
 		if p == nil {
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("child patch '%s' not found", pId))
 		}
+		// Only include child patches whose project the caller has permission to view.
+		if err := checkProjectAccess(ctx, p.Project, ProjectPermissionTasks, AccessLevelView); err != nil {
+			continue
+		}
 		result = append(result, p)
 	}
 	return result, nil
@@ -245,16 +249,15 @@ func (r *patchResolver) ProjectMetadata(ctx context.Context, obj *patch.Patch) (
 
 // User is the resolver for the user field.
 func (r *patchResolver) User(ctx context.Context, obj *patch.Patch) (*user.DBUser, error) {
-	// If only id is requested, we can return it without a database call.
-	requestedFields := graphql.CollectAllFields(ctx)
-	if len(requestedFields) == 1 && requestedFields[0] == "id" {
-		return &user.DBUser{Id: obj.Author}, nil
-	}
-
 	authorId := obj.Author
 	currentUser := mustHaveUser(ctx)
 	if currentUser.Id == authorId {
 		return currentUser, nil
+	}
+
+	// If only id is requested, we can return it without a database call.
+	if !requiresDBRead(ctx, []string{"id"}) {
+		return &user.DBUser{Id: obj.Author}, nil
 	}
 
 	dbUser, err := loaders.GetUser(ctx, authorId)
@@ -282,6 +285,9 @@ func (r *patchResolver) VariantsTasks(ctx context.Context, obj *patch.Patch) ([]
 
 // Version is the resolver for the version field.
 func (r *patchResolver) Version(ctx context.Context, obj *patch.Patch) (*model.Version, error) {
+	if err := checkProjectAccess(ctx, obj.Project, ProjectPermissionTasks, AccessLevelView); err != nil {
+		return nil, err
+	}
 	versionID := obj.Version
 	if versionID == "" {
 		return nil, nil

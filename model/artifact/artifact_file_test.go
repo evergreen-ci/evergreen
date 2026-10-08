@@ -337,30 +337,34 @@ func TestCredentialsForPresign(t *testing.T) {
 	}
 
 	for name, testCase := range map[string]struct {
-		file     File
-		resolver CredentialResolver
-		expected Credentials
+		file           File
+		resolver       CredentialResolver
+		expected       Credentials
+		expectedSource string
 	}{
 		"ResolvedKeyAndSecretWinOverStored": {
 			file: storedFile,
 			resolver: func(context.Context, File) (*Credentials, error) {
 				return &Credentials{AWSKey: "AKIAFAKELIVEKEY", AWSSecret: "fake-live-secret"}, nil
 			},
-			expected: Credentials{AWSKey: "AKIAFAKELIVEKEY", AWSSecret: "fake-live-secret"},
+			expected:       Credentials{AWSKey: "AKIAFAKELIVEKEY", AWSSecret: "fake-live-secret"},
+			expectedSource: credsSourceResolver,
 		},
 		"NoResolutionFallsBackToStored": {
 			file: storedFile,
 			resolver: func(context.Context, File) (*Credentials, error) {
 				return nil, nil
 			},
-			expected: Credentials{AWSKey: "AKIAFAKESTOREDKEY", AWSSecret: "fake-stored-secret"},
+			expected:       Credentials{AWSKey: "AKIAFAKESTOREDKEY", AWSSecret: "fake-stored-secret"},
+			expectedSource: credsSourceArtifact,
 		},
 		"ResolutionErrorFallsBackToStoredInsteadOfFailing": {
 			file: storedFile,
 			resolver: func(context.Context, File) (*Credentials, error) {
 				return nil, errors.New("parameter store is down")
 			},
-			expected: Credentials{AWSKey: "AKIAFAKESTOREDKEY", AWSSecret: "fake-stored-secret"},
+			expected:       Credentials{AWSKey: "AKIAFAKESTOREDKEY", AWSSecret: "fake-stored-secret"},
+			expectedSource: credsSourceArtifact,
 		},
 		// A role ARN on the artifact must suppress the key pair, including a
 		// resolved one, so that presigning goes through STS.
@@ -375,11 +379,14 @@ func TestCredentialsForPresign(t *testing.T) {
 			resolver: func(context.Context, File) (*Credentials, error) {
 				return &Credentials{AWSKey: "AKIAFAKELIVEKEY", AWSSecret: "fake-live-secret"}, nil
 			},
-			expected: Credentials{},
+			expected:       Credentials{},
+			expectedSource: credsSourceNone,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, testCase.expected, credentialsForPresign(t.Context(), testCase.file, testCase.resolver))
+			creds, source := credentialsForPresign(t.Context(), testCase.file, testCase.resolver)
+			assert.Equal(t, testCase.expected, creds)
+			assert.Equal(t, testCase.expectedSource, source)
 		})
 	}
 }

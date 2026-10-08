@@ -69,6 +69,12 @@ which allows grouping tasks to limit whether [those tasks should run on
 patches/git
 tags/etc.](#controlling-when-tasks-and-variants-run)
 
+Set `virtual: true` to mark a task as a [virtual task](Virtual-Tasks). A virtual
+task has the option to run or be push-completed by a runner task
+rather than running on a host. A virtual task is inactive by default. It
+supports most of the same configuration options as a regular task, see [more
+detailed docs](Virtual-Tasks) for differences.
+
 #### Commands
 
 Commands are the building blocks of tasks. They do things like clone a
@@ -389,9 +395,18 @@ tasks:
       - *common-setup
 ```
 
-If two files define an anchor with the same name, the later file's definition takes precedence for files processed after it. Within each file, anchors behave according to standard YAML rules.
+If two files define an anchor with the same name, the later file's definition takes precedence for files processed after it. The redefinition is not retroactive: an anchor defined earlier that referenced the old value keeps it. Within each file, anchors behave according to standard YAML rules.
 
 > **Note:** `_evg_anchors` is a reserved key used internally by Evergreen when processing cross-file anchors. Do not use it as a key in your project YAML.
+
+##### Best Practices
+
+Anchors defined in any file are carried forward and re-processed when parsing
+every subsequent include file. For best performance, prefer flat anchors over
+anchors built from other anchors: when an anchor references another anchor, the
+referenced value is copied into it, so chained anchors (or one large anchor
+referenced by many others) multiply the amount of YAML processed for each later
+include file.
 
 #### Limitations and Alternatives
 
@@ -1347,6 +1362,8 @@ There will also be a log in the Agent logs that looks similar to the following:
 ### Process Diagnostics: ps
 
 You can enable process logging by setting the `ps` field at multiple configuration levels. The specified command will run every 60 seconds during task execution to log process information.
+
+When a task runs in an isolation container, the `ps` command runs inside the task's container rather than on the host, since its value is task author-controlled. This means it only shows the container's processes, not the host's. Diagnostics such as `uptime` and `df` continue to run on the host.
 
 To disable process logging, either omit the `ps` field or set it to an empty string.
 

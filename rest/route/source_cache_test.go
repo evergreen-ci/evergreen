@@ -402,3 +402,97 @@ func TestSourceCachePlan(t *testing.T) {
 		})
 	}
 }
+
+// TestSourceCachePlanStackedPRsKeyOnDistinctHeads verifies that two stacked PRs
+// that test different code resolve to different source cache artifacts, so the
+// cache can never serve one PR's tree from another PR's saved source.
+func TestSourceCachePlanStackedPRsKeyOnDistinctHeads(t *testing.T) {
+	require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, patch.Collection))
+
+	const baseVersionID = "5bedc62ee4055d31f0340b1d"
+	const upstackVersionID = "6b2d0c2c4055d31f0340b1ed"
+	const baseHead = sourceCachePRHeadHash
+	const upstackHead = "0000aaaa1111bbbb2222cccc3333dddd4444eeee"
+
+	// The base PR and the upstack PR are ordinary PRs; each patch carries its own head.
+	basePatch := patch.Patch{
+		Id:              mgobson.ObjectIdHex(baseVersionID),
+		GithubPatchData: thirdparty.GithubPatch{HeadHash: baseHead},
+	}
+	require.NoError(t, basePatch.Insert(t.Context()))
+	upstackPatch := patch.Patch{
+		Id:              mgobson.ObjectIdHex(upstackVersionID),
+		GithubPatchData: thirdparty.GithubPatch{HeadHash: upstackHead},
+	}
+	require.NoError(t, upstackPatch.Insert(t.Context()))
+
+	baseTask := &task.Task{
+		Id:        sourceCacheTaskID + "_base",
+		Requester: evergreen.GithubPRRequester,
+		Version:   baseVersionID,
+		Revision:  baseHead,
+	}
+	upstackTask := &task.Task{
+		Id:        sourceCacheTaskID + "_up",
+		Requester: evergreen.GithubPRRequester,
+		Version:   upstackVersionID,
+		Revision:  upstackHead,
+	}
+	pRef := &model.ProjectRef{
+		Id:    sourceCacheProjectID,
+		Owner: "some-org",
+		Repo:  "some-repo",
+	}
+	req := apimodels.SourceCacheCredentialsRequest{Branch: "main", CloneDepth: 1000}
+
+	basePlan, err := buildSourceCachePlan(t.Context(), baseTask, pRef, req)
+	require.NoError(t, err)
+	upstackPlan, err := buildSourceCachePlan(t.Context(), upstackTask, pRef, req)
+	require.NoError(t, err)
+
+	// Each PR keys on its own head, so different code resolves to a different object.
+	_, upstackRevision := sourceCachePlanKeyParts(upstackPlan.saveKey.Key)
+	assert.Equal(t, upstackHead, upstackRevision)
+	assert.NotEqual(t, basePlan.saveKey.Key, upstackPlan.saveKey.Key)
+}
+
+// TestSourceCachePlanParentCheckoutKeysOnTheParentHead verifies that a task checked
+// out from a parent PR keys its artifact on the parent head. Its git.get_project
+// checks out the parent's ref and its tree is exactly the parent's tree, so the
+// parent head is the content-address for the artifact it would save.
+func TestSourceCachePlanParentCheckoutKeysOnTheParentHead(t *testing.T) {
+	require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, patch.Collection))
+
+	const upstackVersionID = "6b2d0c2c4055d31f0340b1ed"
+	const parentHead = sourceCachePRHeadHash
+	const upstackHead = "0000aaaa1111bbbb2222cccc3333dddd4444eeee"
+
+	upstackPatch := patch.Patch{
+		Id: mgobson.ObjectIdHex(upstackVersionID),
+		GitHubParentPRCheckout: &patch.GitHubParentPRCheckout{
+			PRNumber:  2,
+			HeadHash:  parentHead,
+			ForSource: true,
+		},
+	}
+	require.NoError(t, upstackPatch.Insert(t.Context()))
+
+	tsk := &task.Task{
+		Id:        sourceCacheTaskID + "_up",
+		Requester: evergreen.GithubPRRequester,
+		Version:   upstackVersionID,
+		Revision:  upstackHead,
+	}
+	pRef := &model.ProjectRef{
+		Id:    sourceCacheProjectID,
+		Owner: "some-org",
+		Repo:  "some-repo",
+	}
+
+	plan, err := buildSourceCachePlan(t.Context(), tsk, pRef, apimodels.SourceCacheCredentialsRequest{Branch: "main", CloneDepth: 1000})
+	require.NoError(t, err)
+
+	// The saved tree is the parent's, so the artifact is keyed on the parent head.
+	_, saveRevision := sourceCachePlanKeyParts(plan.saveKey.Key)
+	assert.Equal(t, parentHead, saveRevision)
+}
