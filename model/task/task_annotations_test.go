@@ -84,76 +84,125 @@ func TestRemoveIssueFromAnnotation(t *testing.T) {
 	assert.Equal(t, evergreen.TaskFailed, dbTask.DisplayStatusCache)
 }
 
-func TestMoveIssueToSuspectedIssue(t *testing.T) {
-	ctx := t.Context()
+func TestMoveAnnotationIssueByKey(t *testing.T) {
+	t.Run("MoveIssueToSuspectedIssue", func(t *testing.T) {
+		ctx := t.Context()
+		require.NoError(t, db.ClearCollections(annotations.Collection, Collection))
 
-	issue1 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &annotations.Source{Author: "this will be overridden"}}
-	issue2 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-2345", Source: &annotations.Source{Author: "evergreen user"}}
-	issue3 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-3456", Source: &annotations.Source{Author: "different user"}}
-	assert.NoError(t, db.ClearCollections(annotations.Collection, Collection))
-	a := annotations.TaskAnnotation{TaskId: "t1", Issues: []annotations.IssueLink{issue1, issue2}, SuspectedIssues: []annotations.IssueLink{issue3}}
-	assert.NoError(t, a.Upsert(t.Context()))
-	task := Task{Id: "t1", HasAnnotations: true}
-	assert.NoError(t, task.Insert(t.Context()))
+		issue1 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &annotations.Source{Author: "this will be overridden"}}
+		issue2 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-2345", Source: &annotations.Source{Author: "evergreen user"}}
+		issue3 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-3456", Source: &annotations.Source{Author: "different user"}}
+		a := annotations.TaskAnnotation{
+			TaskId:          "t1",
+			Issues:          []annotations.IssueLink{issue1, issue2},
+			SuspectedIssues: []annotations.IssueLink{issue3},
+		}
+		require.NoError(t, a.Upsert(ctx))
+		task := Task{Id: "t1", HasAnnotations: true, Status: evergreen.TaskFailed, DisplayStatusCache: evergreen.TaskKnownIssue}
+		require.NoError(t, task.Insert(ctx))
 
-	assert.NoError(t, MoveIssueToSuspectedIssue(ctx, a.TaskId, a.TaskExecution, issue1, "someone new"))
-	annotationFromDB, err := annotations.FindOneByTaskIdAndExecution(t.Context(), a.TaskId, a.TaskExecution)
-	assert.NoError(t, err)
-	assert.NotNil(t, annotationFromDB)
-	// Task should still have annotations key set after first issue is removed
-	assert.Len(t, annotationFromDB.Issues, 1)
-	assert.Equal(t, "evergreen user", annotationFromDB.Issues[0].Source.Author)
-	require.Len(t, annotationFromDB.SuspectedIssues, 2)
-	assert.Equal(t, "different user", annotationFromDB.SuspectedIssues[0].Source.Author)
-	assert.Equal(t, "someone new", annotationFromDB.SuspectedIssues[1].Source.Author)
-	dbTask, err := FindOneId(ctx, "t1")
-	require.NoError(t, err)
-	require.NotNil(t, dbTask)
-	assert.True(t, dbTask.HasAnnotations)
+		// Moving first issue: task should still have annotations since one issue remains.
+		require.NoError(t, MoveAnnotationIssueByKey(ctx, a.TaskId, a.TaskExecution, "EVG-1234", true, "someone new"))
+		annotationFromDB, err := annotations.FindOneByTaskIdAndExecution(ctx, a.TaskId, a.TaskExecution)
+		require.NoError(t, err)
+		require.NotNil(t, annotationFromDB)
+		assert.Len(t, annotationFromDB.Issues, 1)
+		assert.Equal(t, "evergreen user", annotationFromDB.Issues[0].Source.Author)
+		require.Len(t, annotationFromDB.SuspectedIssues, 2)
+		assert.Equal(t, "different user", annotationFromDB.SuspectedIssues[0].Source.Author)
+		assert.Equal(t, "someone new", annotationFromDB.SuspectedIssues[1].Source.Author)
 
-	// Removing the second issue should mark the task as no longer having annotations
-	assert.NoError(t, MoveIssueToSuspectedIssue(ctx, a.TaskId, a.TaskExecution, issue2, "someone else new"))
-	annotationFromDB, err = annotations.FindOneByTaskIdAndExecution(t.Context(), a.TaskId, a.TaskExecution)
-	assert.NoError(t, err)
-	assert.NotNil(t, annotationFromDB)
-	assert.Empty(t, annotationFromDB.Issues)
-	require.Len(t, annotationFromDB.SuspectedIssues, 3)
-	assert.Equal(t, "different user", annotationFromDB.SuspectedIssues[0].Source.Author)
-	assert.Equal(t, "someone new", annotationFromDB.SuspectedIssues[1].Source.Author)
-	assert.Equal(t, "someone else new", annotationFromDB.SuspectedIssues[2].Source.Author)
-	dbTask, err = FindOneId(ctx, "t1")
-	require.NoError(t, err)
-	require.NotNil(t, dbTask)
-	assert.False(t, dbTask.HasAnnotations)
-}
+		dbTask, err := FindOneId(ctx, "t1")
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		assert.True(t, dbTask.HasAnnotations)
+		assert.Equal(t, evergreen.TaskKnownIssue, dbTask.DisplayStatusCache)
 
-func TestMoveSuspectedIssueToIssue(t *testing.T) {
-	ctx := t.Context()
+		// Moving the last issue should mark the task as no longer having annotations.
+		require.NoError(t, MoveAnnotationIssueByKey(ctx, a.TaskId, a.TaskExecution, "EVG-2345", true, "someone else new"))
+		annotationFromDB, err = annotations.FindOneByTaskIdAndExecution(ctx, a.TaskId, a.TaskExecution)
+		require.NoError(t, err)
+		require.NotNil(t, annotationFromDB)
+		assert.Empty(t, annotationFromDB.Issues)
+		require.Len(t, annotationFromDB.SuspectedIssues, 3)
+		assert.Equal(t, "different user", annotationFromDB.SuspectedIssues[0].Source.Author)
+		assert.Equal(t, "someone new", annotationFromDB.SuspectedIssues[1].Source.Author)
+		assert.Equal(t, "someone else new", annotationFromDB.SuspectedIssues[2].Source.Author)
 
-	issue1 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &annotations.Source{Author: "this will be overridden"}}
-	issue2 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-2345", Source: &annotations.Source{Author: "evergreen user"}}
-	issue3 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-3456", Source: &annotations.Source{Author: "different user"}}
+		dbTask, err = FindOneId(ctx, "t1")
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		assert.False(t, dbTask.HasAnnotations)
+		assert.Equal(t, evergreen.TaskFailed, dbTask.DisplayStatusCache)
+	})
 
-	assert.NoError(t, db.ClearCollections(annotations.Collection, Collection))
-	task := Task{Id: "t1"}
-	assert.NoError(t, task.Insert(t.Context()))
-	a := annotations.TaskAnnotation{TaskId: "t1", SuspectedIssues: []annotations.IssueLink{issue1, issue2}, Issues: []annotations.IssueLink{issue3}}
-	assert.NoError(t, a.Upsert(t.Context()))
+	t.Run("MoveSuspectedIssueToIssue", func(t *testing.T) {
+		ctx := t.Context()
+		require.NoError(t, db.ClearCollections(annotations.Collection, Collection))
 
-	assert.NoError(t, MoveSuspectedIssueToIssue(ctx, a.TaskId, a.TaskExecution, issue1, "someone new"))
-	annotationFromDB, err := annotations.FindOneByTaskIdAndExecution(t.Context(), "t1", 0)
-	assert.NoError(t, err)
-	assert.NotNil(t, annotationFromDB)
-	assert.Len(t, annotationFromDB.SuspectedIssues, 1)
-	assert.Equal(t, "evergreen user", annotationFromDB.SuspectedIssues[0].Source.Author)
-	require.Len(t, annotationFromDB.Issues, 2)
-	assert.Equal(t, "different user", annotationFromDB.Issues[0].Source.Author)
-	assert.Equal(t, "someone new", annotationFromDB.Issues[1].Source.Author)
-	dbTask, err := FindOneId(ctx, "t1")
-	require.NoError(t, err)
-	require.NotNil(t, dbTask)
-	assert.True(t, dbTask.HasAnnotations)
-	assert.Equal(t, evergreen.TaskKnownIssue, dbTask.DisplayStatusCache)
+		issue1 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &annotations.Source{Author: "this will be overridden"}}
+		issue2 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-2345", Source: &annotations.Source{Author: "evergreen user"}}
+		issue3 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-3456", Source: &annotations.Source{Author: "different user"}}
+		a := annotations.TaskAnnotation{TaskId: "t1", SuspectedIssues: []annotations.IssueLink{issue1, issue2, issue3}, Issues: []annotations.IssueLink{}}
+		require.NoError(t, a.Upsert(ctx))
+		task := Task{Id: "t1", HasAnnotations: false, Status: evergreen.TaskFailed, DisplayStatusCache: evergreen.TaskFailed}
+		require.NoError(t, task.Insert(ctx))
+
+		// Moving suspected issue to issue should mark the task as having annotations.
+		require.NoError(t, MoveAnnotationIssueByKey(ctx, a.TaskId, a.TaskExecution, "EVG-1234", false, "someone new"))
+		annotationFromDB, err := annotations.FindOneByTaskIdAndExecution(ctx, "t1", 0)
+		require.NoError(t, err)
+		require.NotNil(t, annotationFromDB)
+		assert.Len(t, annotationFromDB.SuspectedIssues, 2)
+		assert.Equal(t, "evergreen user", annotationFromDB.SuspectedIssues[0].Source.Author)
+		assert.Equal(t, "different user", annotationFromDB.SuspectedIssues[1].Source.Author)
+		require.Len(t, annotationFromDB.Issues, 1)
+		assert.Equal(t, "someone new", annotationFromDB.Issues[0].Source.Author)
+
+		dbTask, err := FindOneId(ctx, "t1")
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		assert.True(t, dbTask.HasAnnotations)
+		assert.Equal(t, evergreen.TaskKnownIssue, dbTask.DisplayStatusCache)
+	})
+
+	t.Run("IssueKeyNotFoundShouldError", func(t *testing.T) {
+		ctx := t.Context()
+		require.NoError(t, db.ClearCollections(annotations.Collection, Collection))
+		a := annotations.TaskAnnotation{TaskId: "t1", Issues: []annotations.IssueLink{
+			{URL: "https://issuelink.com", IssueKey: "EVG-1234"},
+		}}
+		require.NoError(t, a.Upsert(ctx))
+		assert.Error(t, MoveAnnotationIssueByKey(ctx, "t1", 0, "EVG-9999", true, "user"))
+	})
+
+	t.Run("ShouldNotOverwriteOtherFields", func(t *testing.T) {
+		ctx := t.Context()
+		require.NoError(t, db.ClearCollections(annotations.Collection, Collection))
+
+		original := annotations.IssueLink{
+			URL:             "https://issuelink.com",
+			IssueKey:        "EVG-1234",
+			ConfidenceScore: 95.5,
+			Source:          &annotations.Source{Author: "original"},
+		}
+		a := annotations.TaskAnnotation{TaskId: "t1", SuspectedIssues: []annotations.IssueLink{}, Issues: []annotations.IssueLink{original}}
+		require.NoError(t, a.Upsert(ctx))
+		task := Task{Id: "t1", HasAnnotations: true, Status: evergreen.TaskFailed}
+		require.NoError(t, task.Insert(ctx))
+
+		require.NoError(t, MoveAnnotationIssueByKey(ctx, "t1", 0, "EVG-1234", true, "mover"))
+		annotationFromDB, err := annotations.FindOneByTaskIdAndExecution(ctx, "t1", 0)
+		require.NoError(t, err)
+		require.NotNil(t, annotationFromDB)
+		require.Len(t, annotationFromDB.SuspectedIssues, 1)
+
+		moved := annotationFromDB.SuspectedIssues[0]
+		assert.Equal(t, original.URL, moved.URL)
+		assert.Equal(t, original.IssueKey, moved.IssueKey)
+		assert.Equal(t, original.ConfidenceScore, moved.ConfidenceScore)
+		assert.Equal(t, "mover", moved.Source.Author)
+	})
 }
 
 func TestPatchIssue(t *testing.T) {

@@ -1,3 +1,12 @@
+###### INPUTS ######
+
+input MoveAnnotationIssueOptions {
+  taskId: String!
+  execution: Int!
+  issueKey: String!
+  isIssue: Boolean!
+}
+
 ###### TYPES ######
 """
 Annotation models the metadata that a user can add to a task.

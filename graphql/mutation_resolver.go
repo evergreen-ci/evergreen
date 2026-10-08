@@ -90,22 +90,32 @@ func (r *mutationResolver) EditAnnotationNote(ctx context.Context, taskID string
 }
 
 // MoveAnnotationIssue is the resolver for the moveAnnotationIssue field.
-func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
-	err := annotationPermissionHelper(ctx, taskID, utility.ToIntPtr(execution))
-	if err != nil {
+func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, taskID *string, execution *int, apiIssue *restModel.APIIssueLink, isIssue *bool, opts *MoveAnnotationIssueOptions) (bool, error) {
+	var taskId string
+	var taskExecution int
+	var issueKey string
+	var isIssueBool bool
+
+	// TODO DEVPROD-41746: Delete this workaround once deprecated fields are removed.
+	if opts != nil {
+		taskId = opts.TaskID
+		taskExecution = opts.Execution
+		issueKey = opts.IssueKey
+		isIssueBool = opts.IsIssue
+	} else {
+		taskId = utility.FromStringPtr(taskID)
+		taskExecution = utility.FromIntPtr(execution)
+		issueKey = utility.FromStringPtr(apiIssue.IssueKey)
+		isIssueBool = utility.FromBoolPtr(isIssue)
+	}
+
+	if err := annotationPermissionHelper(ctx, taskId, utility.ToIntPtr(taskExecution)); err != nil {
 		return false, err
 	}
 	usr := mustHaveUser(ctx)
-	issue := restModel.APIIssueLinkToService(apiIssue)
-	if isIssue {
-		if err := task.MoveIssueToSuspectedIssue(ctx, taskID, execution, *issue, usr.Username()); err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("moving issue to suspected issues: %s", err.Error()))
-		}
-		return true, nil
-	}
 
-	if err := task.MoveSuspectedIssueToIssue(ctx, taskID, execution, *issue, usr.Username()); err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("moving suspected issue to issues: %s", err.Error()))
+	if err := task.MoveAnnotationIssueByKey(ctx, taskId, taskExecution, issueKey, isIssueBool, usr.Username()); err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("moving annotation issue: %s", err.Error()))
 	}
 	return true, nil
 }
