@@ -485,7 +485,7 @@ func TestFindAllMergedEnabledTrackedProjectRefs(t *testing.T) {
 	})
 }
 
-func TestGetNumberOfEnabledProjects(t *testing.T) {
+func TestGetNumberOfEnabledProjectsForOwnerRepo(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
 
 	enabled1 := &ProjectRef{
@@ -517,12 +517,35 @@ func TestGetNumberOfEnabledProjects(t *testing.T) {
 	}
 	assert.NoError(t, disabled2.Insert(t.Context()))
 
-	enabledProjects, err := GetNumberOfEnabledProjects(t.Context())
-	assert.NoError(t, err)
-	assert.Equal(t, 2, enabledProjects)
 	enabledProjectsOwnerRepo, err := GetNumberOfEnabledProjectsForOwnerRepo(t.Context(), enabled2.Owner, enabled2.Repo)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, enabledProjectsOwnerRepo)
+}
+
+func TestValidateEnabledProjectsLimitIgnoresTotalLimitForNewRepo(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+	require.NoError(t, (&ProjectRef{
+		Id:      "existing",
+		Owner:   "mongodb",
+		Repo:    "existing_repo",
+		Enabled: true,
+	}).Insert(t.Context()))
+
+	settings := evergreen.Settings{
+		ProjectCreation: evergreen.ProjectCreationConfig{
+			TotalProjectLimit: 1,
+			RepoProjectLimit:  1,
+		},
+	}
+	newProject := &ProjectRef{
+		Owner:   "mongodb",
+		Repo:    "new_repo",
+		Enabled: true,
+	}
+
+	statusCode, err := ValidateEnabledProjectsLimit(t.Context(), &settings, nil, newProject)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, statusCode)
 }
 
 func TestValidateEnabledProjectsLimit(t *testing.T) {
@@ -578,7 +601,6 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 	assert.NoError(t, disableRepo.Replace(t.Context()))
 
 	var settings evergreen.Settings
-	settings.ProjectCreation.TotalProjectLimit = 4
 	settings.ProjectCreation.RepoProjectLimit = 1
 	settings.ProjectCreation.RepoExceptions = []evergreen.OwnerRepo{
 		{
@@ -639,13 +661,13 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, http.StatusBadRequest, statusCode)
 
-	// Total project limit cannot be exceeded. Even with the exception.
-	settings.ProjectCreation.TotalProjectLimit = 2
-	original, err = FindMergedProjectRef(t.Context(), exception.Id, "", false)
+	// Should not error when the repo project limit is unset.
+	settings.ProjectCreation.RepoProjectLimit = 0
+	original, err = FindMergedProjectRef(t.Context(), notException.Id, "", false)
 	assert.NoError(t, err)
-	statusCode, err = ValidateEnabledProjectsLimit(t.Context(), &settings, original, exception)
-	assert.Error(t, err)
-	assert.Equal(t, http.StatusBadRequest, statusCode)
+	statusCode, err = ValidateEnabledProjectsLimit(t.Context(), &settings, original, notException)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, statusCode)
 }
 
 func TestGetBatchTimeDoesNotExceedMaxBatchTime(t *testing.T) {

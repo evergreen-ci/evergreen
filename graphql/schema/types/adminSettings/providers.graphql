@@ -145,13 +145,13 @@ type PersistentDNSConfig {
 }
 
 input ProjectCreationConfigInput {
-  totalProjectLimit: Int
+  totalProjectLimit: Int @deprecated(reason: "The total project limit is no longer enforced")
   repoProjectLimit: Int
   repoExceptions: [OwnerRepoInput!]!
 }
 
 type ProjectCreationConfig {
-  totalProjectLimit: Int
+  totalProjectLimit: Int @deprecated(reason: "The total project limit is no longer enforced")
   repoProjectLimit: Int
   repoExceptions: [OwnerRepo!]!
 }
