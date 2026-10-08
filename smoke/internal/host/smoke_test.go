@@ -28,7 +28,7 @@ func TestSmokeHostTask(t *testing.T) {
 		}
 	}()
 
-	agentCmd := internal.StartAgent(ctx, t, params.APIParams, params.HostID, params.HostSecret)
+	agentCmd := internal.StartAgent(ctx, t, params.APIParams, params.HostID, params.SetupSecret)
 	defer func() {
 		if agentCmd != nil {
 			grip.Error(ctx, errors.Wrap(agentCmd.Signal(ctx, syscall.SIGTERM), "stopping agent after test completion"))

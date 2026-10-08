@@ -1330,7 +1330,7 @@ func TestGenerateFetchProvisioningScriptUserData(t *testing.T) {
 				"/home/user/evergreen_agent_monitor host provision",
 				"--api_server=https://example.com",
 				"--host_id=host_id",
-				"--host_secret=host_secret",
+				"--setup_secret=setup_secret",
 				"--working_dir=/jasper_binary_dir",
 				"--shell_path=/bin/bash",
 			}
@@ -1356,7 +1356,7 @@ func TestGenerateFetchProvisioningScriptUserData(t *testing.T) {
 				"/home/user/evergreen_agent_monitor.exe host provision",
 				"--api_server=https://example.com",
 				"--host_id=host_id",
-				"--host_secret=host_secret",
+				"--setup_secret=setup_secret",
 				"--working_dir=/jasper_binary_dir",
 				"--shell_path=/bin/bash",
 			}
@@ -1381,8 +1381,9 @@ func TestGenerateFetchProvisioningScriptUserData(t *testing.T) {
 					},
 					User: "user",
 				},
-				Secret: "host_secret",
-				User:   "user",
+				Secret:      "host_secret",
+				SetupSecret: "setup_secret",
+				User:        "user",
 			}
 			require.NoError(t, h.Insert(ctx))
 

@@ -551,17 +551,19 @@ func (a *APIapiConfig) ToService() (any, error) {
 }
 
 type APIRateLimitConfig struct {
-	RESTUserPerHour        int      `json:"rest_user_per_hour"`
-	RESTUserBurst          int      `json:"rest_user_burst"`
-	RESTServicePerHour     int      `json:"rest_service_per_hour"`
-	RESTServiceBurst       int      `json:"rest_service_burst"`
-	GraphQLUserPerHour     int      `json:"graphql_user_per_hour"`
-	GraphQLUserBurst       int      `json:"graphql_user_burst"`
-	GraphQLServicePerHour  int      `json:"graphql_service_per_hour"`
-	GraphQLServiceBurst    int      `json:"graphql_service_burst"`
-	GraphQLComplexityLimit int      `json:"graphql_complexity_limit"`
-	ElevatedUserIDs        []string `json:"elevated_user_ids"`
-	ExemptUserIDs          []string `json:"exempt_user_ids"`
+	RESTUserPerHour          int      `json:"rest_user_per_hour"`
+	RESTUserBurst            int      `json:"rest_user_burst"`
+	RESTServicePerHour       int      `json:"rest_service_per_hour"`
+	RESTServiceBurst         int      `json:"rest_service_burst"`
+	GraphQLUserPerHour       int      `json:"graphql_user_per_hour"`
+	GraphQLUserBurst         int      `json:"graphql_user_burst"`
+	GraphQLServicePerHour    int      `json:"graphql_service_per_hour"`
+	GraphQLServiceBurst      int      `json:"graphql_service_burst"`
+	GraphQLComplexityLimit   int      `json:"graphql_complexity_limit"`
+	GraphQLComplexityPerHour int      `json:"graphql_complexity_per_hour"`
+	GraphQLComplexityBurst   int      `json:"graphql_complexity_burst"`
+	ElevatedUserIDs          []string `json:"elevated_user_ids"`
+	ExemptUserIDs            []string `json:"exempt_user_ids"`
 }
 
 func (a *APIRateLimitConfig) BuildFromService(h any) error {
@@ -576,6 +578,8 @@ func (a *APIRateLimitConfig) BuildFromService(h any) error {
 		a.GraphQLServicePerHour = v.GraphQLServicePerHour
 		a.GraphQLServiceBurst = v.GraphQLServiceBurst
 		a.GraphQLComplexityLimit = v.GraphQLComplexityLimit
+		a.GraphQLComplexityPerHour = v.GraphQLComplexityPerHour
+		a.GraphQLComplexityBurst = v.GraphQLComplexityBurst
 		a.ElevatedUserIDs = v.ElevatedUserIDs
 		a.ExemptUserIDs = v.ExemptUserIDs
 	default:
@@ -586,17 +590,19 @@ func (a *APIRateLimitConfig) BuildFromService(h any) error {
 
 func (a *APIRateLimitConfig) ToService() (any, error) {
 	return evergreen.RateLimitConfig{
-		RESTUserPerHour:        a.RESTUserPerHour,
-		RESTUserBurst:          a.RESTUserBurst,
-		RESTServicePerHour:     a.RESTServicePerHour,
-		RESTServiceBurst:       a.RESTServiceBurst,
-		GraphQLUserPerHour:     a.GraphQLUserPerHour,
-		GraphQLUserBurst:       a.GraphQLUserBurst,
-		GraphQLServicePerHour:  a.GraphQLServicePerHour,
-		GraphQLServiceBurst:    a.GraphQLServiceBurst,
-		GraphQLComplexityLimit: a.GraphQLComplexityLimit,
-		ElevatedUserIDs:        a.ElevatedUserIDs,
-		ExemptUserIDs:          a.ExemptUserIDs,
+		RESTUserPerHour:          a.RESTUserPerHour,
+		RESTUserBurst:            a.RESTUserBurst,
+		RESTServicePerHour:       a.RESTServicePerHour,
+		RESTServiceBurst:         a.RESTServiceBurst,
+		GraphQLUserPerHour:       a.GraphQLUserPerHour,
+		GraphQLUserBurst:         a.GraphQLUserBurst,
+		GraphQLServicePerHour:    a.GraphQLServicePerHour,
+		GraphQLServiceBurst:      a.GraphQLServiceBurst,
+		GraphQLComplexityLimit:   a.GraphQLComplexityLimit,
+		GraphQLComplexityPerHour: a.GraphQLComplexityPerHour,
+		GraphQLComplexityBurst:   a.GraphQLComplexityBurst,
+		ElevatedUserIDs:          a.ElevatedUserIDs,
+		ExemptUserIDs:            a.ExemptUserIDs,
 	}, nil
 }
 
@@ -2176,8 +2182,9 @@ type APIServiceFlags struct {
 	SecondaryReadsDisabled       bool `json:"secondary_reads_disabled"`
 
 	// Rate Limiting Flags
-	APIRateLimiterDisabled           bool `json:"api_rate_limiter_disabled"`
-	GraphQLComplexityLimiterDisabled bool `json:"graphql_complexity_limiter_disabled"`
+	APIRateLimiterDisabled               bool `json:"api_rate_limiter_disabled"`
+	GraphQLComplexityLimiterDisabled     bool `json:"graphql_complexity_limiter_disabled"`
+	GraphQLComplexityRateLimiterDisabled bool `json:"graphql_complexity_rate_limiter_disabled"`
 
 	TaskQueueAutoUnscheduleDisabled bool `json:"task_queue_auto_unschedule_disabled"`
 	VirtualTasksDisabled            bool `json:"virtual_tasks_disabled"`
@@ -2470,6 +2477,7 @@ type APIUIConfig struct {
 	Url                       *string         `json:"url"`
 	UIv2Url                   *string         `json:"uiv2_url"`
 	ParsleyUrl                *string         `json:"parsley_url"`
+	LogUrl                    *string         `json:"log_url"`
 	HttpListenAddr            *string         `json:"http_listen_addr"`
 	Secret                    *string         `json:"secret"`
 	DefaultProject            *string         `json:"default_project"`
@@ -2489,6 +2497,7 @@ func (a *APIUIConfig) BuildFromService(h any) error {
 		a.Url = utility.ToStringPtr(v.Url)
 		a.UIv2Url = utility.ToStringPtr(v.UIv2Url)
 		a.ParsleyUrl = utility.ToStringPtr(v.ParsleyUrl)
+		a.LogUrl = utility.ToStringPtr(v.LogUrl)
 		a.HttpListenAddr = utility.ToStringPtr(v.HttpListenAddr)
 		a.Secret = utility.ToStringPtr(v.Secret)
 		a.DefaultProject = utility.ToStringPtr(v.DefaultProject)
@@ -2514,6 +2523,7 @@ func (a *APIUIConfig) ToService() (any, error) {
 		Url:                       utility.FromStringPtr(a.Url),
 		UIv2Url:                   utility.FromStringPtr(a.UIv2Url),
 		ParsleyUrl:                utility.FromStringPtr(a.ParsleyUrl),
+		LogUrl:                    utility.FromStringPtr(a.LogUrl),
 		HttpListenAddr:            utility.FromStringPtr(a.HttpListenAddr),
 		Secret:                    utility.FromStringPtr(a.Secret),
 		DefaultProject:            utility.FromStringPtr(a.DefaultProject),
@@ -2643,6 +2653,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.LiveArtifactCredentialsDisabled = v.LiveArtifactCredentialsDisabled
 		as.APIRateLimiterDisabled = v.APIRateLimiterDisabled
 		as.GraphQLComplexityLimiterDisabled = v.GraphQLComplexityLimiterDisabled
+		as.GraphQLComplexityRateLimiterDisabled = v.GraphQLComplexityRateLimiterDisabled
 		as.TaskQueueAutoUnscheduleDisabled = v.TaskQueueAutoUnscheduleDisabled
 		as.VirtualTasksDisabled = v.VirtualTasksDisabled
 	default:
@@ -2654,53 +2665,54 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 // ToService returns a service model from an API model
 func (as *APIServiceFlags) ToService() (any, error) {
 	return evergreen.ServiceFlags{
-		TaskDispatchDisabled:               as.TaskDispatchDisabled,
-		HostInitDisabled:                   as.HostInitDisabled,
-		LargeParserProjectsDisabled:        as.LargeParserProjectsDisabled,
-		CrossFileYAMLAnchorsEnabled:        as.CrossFileYAMLAnchorsEnabled,
-		MonitorDisabled:                    as.MonitorDisabled,
-		MergeQueueRecoveryEnabled:          as.MergeQueueRecoveryEnabled,
-		AlertsDisabled:                     as.AlertsDisabled,
-		AgentStartDisabled:                 as.AgentStartDisabled,
-		RepotrackerDisabled:                as.RepotrackerDisabled,
-		SchedulerDisabled:                  as.SchedulerDisabled,
-		CheckBlockedTasksDisabled:          as.CheckBlockedTasksDisabled,
-		GithubPRTestingDisabled:            as.GithubPRTestingDisabled,
-		CLIUpdatesDisabled:                 as.CLIUpdatesDisabled,
-		EventProcessingDisabled:            as.EventProcessingDisabled,
-		JIRANotificationsDisabled:          as.JIRANotificationsDisabled,
-		SlackNotificationsDisabled:         as.SlackNotificationsDisabled,
-		EmailNotificationsDisabled:         as.EmailNotificationsDisabled,
-		WebhookNotificationsDisabled:       as.WebhookNotificationsDisabled,
-		GithubStatusAPIDisabled:            as.GithubStatusAPIDisabled,
-		SecondaryReadsDisabled:             as.SecondaryReadsDisabled,
-		BackgroundStatsDisabled:            as.BackgroundStatsDisabled,
-		TaskLoggingDisabled:                as.TaskLoggingDisabled,
-		CacheStatsJobDisabled:              as.CacheStatsJobDisabled,
-		CacheStatsEndpointDisabled:         as.CacheStatsEndpointDisabled,
-		TaskReliabilityDisabled:            as.TaskReliabilityDisabled,
-		HostAllocatorDisabled:              as.HostAllocatorDisabled,
-		BackgroundReauthDisabled:           as.BackgroundReauthDisabled,
-		CloudCleanupDisabled:               as.CloudCleanupDisabled,
-		SleepScheduleDisabled:              as.SleepScheduleDisabled,
-		SystemFailedTaskRestartDisabled:    as.SystemFailedTaskRestartDisabled,
-		CPUDegradedModeDisabled:            as.DegradedModeDisabled,
-		ElasticIPsDisabled:                 as.ElasticIPsDisabled,
-		ReleaseModeDisabled:                as.ReleaseModeDisabled,
-		LegacyUIAdminPageDisabled:          as.LegacyUIAdminPageDisabled,
-		DebugSpawnHostDisabled:             as.DebugSpawnHostDisabled,
-		S3LifecycleSyncDisabled:            as.S3LifecycleSyncDisabled,
-		UseMergeQueuePathFilteringDisabled: as.UseMergeQueuePathFilteringDisabled,
-		PSLoggingDisabled:                  as.PSLoggingDisabled,
-		PodDiagnosticsDisabled:             as.PodDiagnosticsDisabled,
-		RetryFailedLogMoveEnabled:          as.RetryFailedLogMoveEnabled,
-		ProjectTranslationCacheEnabled:     as.ProjectTranslationCacheEnabled,
-		ContainerIsolationEnabled:          as.ContainerIsolationEnabled,
-		LiveArtifactCredentialsDisabled:    as.LiveArtifactCredentialsDisabled,
-		APIRateLimiterDisabled:             as.APIRateLimiterDisabled,
-		GraphQLComplexityLimiterDisabled:   as.GraphQLComplexityLimiterDisabled,
-		TaskQueueAutoUnscheduleDisabled:    as.TaskQueueAutoUnscheduleDisabled,
-		VirtualTasksDisabled:               as.VirtualTasksDisabled,
+		TaskDispatchDisabled:                 as.TaskDispatchDisabled,
+		HostInitDisabled:                     as.HostInitDisabled,
+		LargeParserProjectsDisabled:          as.LargeParserProjectsDisabled,
+		CrossFileYAMLAnchorsEnabled:          as.CrossFileYAMLAnchorsEnabled,
+		MonitorDisabled:                      as.MonitorDisabled,
+		MergeQueueRecoveryEnabled:            as.MergeQueueRecoveryEnabled,
+		AlertsDisabled:                       as.AlertsDisabled,
+		AgentStartDisabled:                   as.AgentStartDisabled,
+		RepotrackerDisabled:                  as.RepotrackerDisabled,
+		SchedulerDisabled:                    as.SchedulerDisabled,
+		CheckBlockedTasksDisabled:            as.CheckBlockedTasksDisabled,
+		GithubPRTestingDisabled:              as.GithubPRTestingDisabled,
+		CLIUpdatesDisabled:                   as.CLIUpdatesDisabled,
+		EventProcessingDisabled:              as.EventProcessingDisabled,
+		JIRANotificationsDisabled:            as.JIRANotificationsDisabled,
+		SlackNotificationsDisabled:           as.SlackNotificationsDisabled,
+		EmailNotificationsDisabled:           as.EmailNotificationsDisabled,
+		WebhookNotificationsDisabled:         as.WebhookNotificationsDisabled,
+		GithubStatusAPIDisabled:              as.GithubStatusAPIDisabled,
+		SecondaryReadsDisabled:               as.SecondaryReadsDisabled,
+		BackgroundStatsDisabled:              as.BackgroundStatsDisabled,
+		TaskLoggingDisabled:                  as.TaskLoggingDisabled,
+		CacheStatsJobDisabled:                as.CacheStatsJobDisabled,
+		CacheStatsEndpointDisabled:           as.CacheStatsEndpointDisabled,
+		TaskReliabilityDisabled:              as.TaskReliabilityDisabled,
+		HostAllocatorDisabled:                as.HostAllocatorDisabled,
+		BackgroundReauthDisabled:             as.BackgroundReauthDisabled,
+		CloudCleanupDisabled:                 as.CloudCleanupDisabled,
+		SleepScheduleDisabled:                as.SleepScheduleDisabled,
+		SystemFailedTaskRestartDisabled:      as.SystemFailedTaskRestartDisabled,
+		CPUDegradedModeDisabled:              as.DegradedModeDisabled,
+		ElasticIPsDisabled:                   as.ElasticIPsDisabled,
+		ReleaseModeDisabled:                  as.ReleaseModeDisabled,
+		LegacyUIAdminPageDisabled:            as.LegacyUIAdminPageDisabled,
+		DebugSpawnHostDisabled:               as.DebugSpawnHostDisabled,
+		S3LifecycleSyncDisabled:              as.S3LifecycleSyncDisabled,
+		UseMergeQueuePathFilteringDisabled:   as.UseMergeQueuePathFilteringDisabled,
+		PSLoggingDisabled:                    as.PSLoggingDisabled,
+		PodDiagnosticsDisabled:               as.PodDiagnosticsDisabled,
+		RetryFailedLogMoveEnabled:            as.RetryFailedLogMoveEnabled,
+		ProjectTranslationCacheEnabled:       as.ProjectTranslationCacheEnabled,
+		ContainerIsolationEnabled:            as.ContainerIsolationEnabled,
+		LiveArtifactCredentialsDisabled:      as.LiveArtifactCredentialsDisabled,
+		APIRateLimiterDisabled:               as.APIRateLimiterDisabled,
+		GraphQLComplexityLimiterDisabled:     as.GraphQLComplexityLimiterDisabled,
+		GraphQLComplexityRateLimiterDisabled: as.GraphQLComplexityRateLimiterDisabled,
+		TaskQueueAutoUnscheduleDisabled:      as.TaskQueueAutoUnscheduleDisabled,
+		VirtualTasksDisabled:                 as.VirtualTasksDisabled,
 	}, nil
 }
 

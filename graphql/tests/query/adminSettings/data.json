@@ -271,6 +271,7 @@
       "_id": "ui",
       "default_project": "evergreen",
       "url": "http://localhost:9090",
+      "log_url": "http://localhost:9090",
       "http_listen_addr": ":9090",
       "secret": "this is a secret",
       "cors_origins": [
@@ -286,6 +287,7 @@
       "userVoice": "https://uservoice.com",
       "uiv2_url": "http://localhost:3000",
       "parsley_url": "http://localhost:4173",
+      "log_url": "http://localhost:9090",
       "beta_features": {
         "spruce_waterfall_enabled": true
       },
