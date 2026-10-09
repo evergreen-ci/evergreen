@@ -12,7 +12,6 @@ type dependencyIncluder struct {
 	branch                  string
 	included                map[TVPair]bool
 	deactivateGeneratedDeps map[TVPair]bool
-	inactiveDepsExpanded    map[TVPair]bool
 	taskUnits               map[TVPair]*BuildVariantTaskUnit
 	buildVariants           map[string]*BuildVariant
 }
@@ -43,7 +42,6 @@ func IncludeDependenciesWithGenerated(project *Project, tvpairs []TVPair, reques
 func (di *dependencyIncluder) include(initialDeps []TVPair, activationInfo *specificActivationInfo, generatedVariants []parserBV) ([]TVPair, error) {
 	di.included = map[TVPair]bool{}
 	di.deactivateGeneratedDeps = map[TVPair]bool{}
-	di.inactiveDepsExpanded = map[TVPair]bool{}
 	di.taskUnits = map[TVPair]*BuildVariantTaskUnit{}
 	di.buildVariants = map[string]*BuildVariant{}
 	warnings := grip.NewBasicCatcher()
@@ -233,7 +231,6 @@ func (di *dependencyIncluder) updateDeactivationMap(pair TVPair, pairSpecifiesAc
 	// Inactive wins: never downgrade true to false; never recurse with false or we would
 	// clear transitive batchtime/cron dependencies that must stay inactive.
 	if pairSpecifiesActivation {
-		di.deactivateGeneratedDeps[pair] = true
 		di.recursivelyUpdateDeactivationMap(pair)
 		return
 	}
@@ -245,17 +242,16 @@ func (di *dependencyIncluder) updateDeactivationMap(pair TVPair, pairSpecifiesAc
 // recursivelyUpdateDeactivationMap marks all transitive dependencies inactive for
 // generate.tasks (they inherit the inactive root); only the inactive case recurses.
 func (di *dependencyIncluder) recursivelyUpdateDeactivationMap(pair TVPair) {
-	// Inactivity only propagates from false to true, so shared prerequisites need
-	// to be expanded once across all inactive roots in this inclusion run.
-	if di.inactiveDepsExpanded[pair] {
+	// Marking a task inactive also records that its dependencies are being expanded,
+	// so shared prerequisites only need to be visited once. Mark before recursing to handle cycles.
+	if di.deactivateGeneratedDeps[pair] {
 		return
 	}
-	di.inactiveDepsExpanded[pair] = true
+	di.deactivateGeneratedDeps[pair] = true
 	bvt := di.findTaskForVariant(pair.TaskName, pair.Variant)
 	if bvt != nil {
 		deps := di.expandDependencies(pair, bvt.DependsOn)
 		for _, dep := range deps {
-			di.deactivateGeneratedDeps[dep] = true
 			di.recursivelyUpdateDeactivationMap(dep)
 		}
 	}
