@@ -4384,6 +4384,46 @@ buildvariants:
 	assert.Equal(t, "value-a", proj.BuildVariants[0].Expansions["flag"])
 }
 
+// TestAnchorPathPreservesProjectConfigFields verifies that project config
+// fields (e.g. github_pr_aliases) defined in the main config file survive the
+// cross-file anchor parse path. The anchor path decodes via yaml.Node, which
+// cannot populate the unexported projectConfigFields, so they must be set
+// separately. Regression test for a production break: PR patch creation failed
+// with "alias '__github' could not be found" because the main file's
+// github_pr_aliases were silently dropped when the anchors flag was enabled.
+func TestAnchorPathPreservesProjectConfigFields(t *testing.T) {
+	for _, strict := range []bool{false, true} {
+		mainYAML := mainYAMLWithModuleIncludes(`
+github_pr_aliases:
+- alias: __github
+  variant: linux-64
+  task: my-task
+tasks:
+- name: my-task
+  commands:
+  - &shared-step
+    command: shell.exec
+`, "include.yml")
+
+		includeYAML := `
+tasks:
+- name: include-task
+  commands:
+  - *shared-step
+`
+		opts := moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML))
+		opts.UnmarshalStrict = strict
+
+		pp, err := LoadProjectInto(t.Context(), []byte(mainYAML), opts, "proj", &Project{})
+		require.NoError(t, err)
+
+		pc := pp.MergedProjectConfig("proj")
+		require.NotNil(t, pc, "merged project config should not be nil (strict=%t)", strict)
+		require.Len(t, pc.GitHubPRAliases, 1, "github_pr_aliases from the main file must survive (strict=%t)", strict)
+		assert.Equal(t, "__github", pc.GitHubPRAliases[0].Alias)
+	}
+}
+
 // TestAnchorPreambleFailureFallsBack verifies that if the anchor preamble itself is
 // invalid (alias-before-definition ordering), createIntermediateProject falls back to
 // parsing without the preamble rather than propagating the error. This guards against
