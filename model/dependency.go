@@ -12,8 +12,8 @@ type dependencyIncluder struct {
 	branch                  string
 	included                map[TVPair]bool
 	deactivateGeneratedDeps map[TVPair]bool
-	taskUnits               map[TVPair]*BuildVariantTaskUnit
-	buildVariants           map[string]*BuildVariant
+	taskConfigCache         map[TVPair]*BuildVariantTaskUnit
+	buildVariantConfigCache map[string]*BuildVariant
 }
 
 // IncludeDependencies takes a project and a slice of variant/task pairs names
@@ -42,8 +42,8 @@ func IncludeDependenciesWithGenerated(project *Project, tvpairs []TVPair, reques
 func (di *dependencyIncluder) include(initialDeps []TVPair, activationInfo *specificActivationInfo, generatedVariants []parserBV) ([]TVPair, error) {
 	di.included = map[TVPair]bool{}
 	di.deactivateGeneratedDeps = map[TVPair]bool{}
-	di.taskUnits = map[TVPair]*BuildVariantTaskUnit{}
-	di.buildVariants = map[string]*BuildVariant{}
+	di.taskConfigCache = map[TVPair]*BuildVariantTaskUnit{}
+	di.buildVariantConfigCache = map[string]*BuildVariant{}
 	warnings := grip.NewBasicCatcher()
 	// handle each pairing, recursively adding and pruning based
 	// on the task's dependencies
@@ -125,7 +125,7 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 
 	// we must load the BuildVariantTaskUnit for the task/variant pair,
 	// since it contains the full scope of dependency information
-	bvt := di.findTaskForVariant(pair.TaskName, pair.Variant)
+	bvt := di.findTaskConfigForVariant(pair.TaskName, pair.Variant)
 	if bvt == nil {
 		di.included[pair] = false
 		return false, errors.Errorf("task '%s' does not exist in project '%s' for variant '%s'", pair.TaskName,
@@ -196,11 +196,11 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 // tasks should inherit inactive; batchtime-style inactivity must not pull
 // prerequisites into deactivateGeneratedDeps or normal deps would never activate.
 func (di *dependencyIncluder) inactiveGeneratedRootMarksDepsInactive(pair TVPair) bool {
-	bvt := di.findTaskForVariant(pair.TaskName, pair.Variant)
+	bvt := di.findTaskConfigForVariant(pair.TaskName, pair.Variant)
 	if bvt == nil {
 		return false
 	}
-	bv := di.findBuildVariant(pair.Variant)
+	bv := di.findBuildVariantConfig(pair.Variant)
 
 	// activate: false takes precedence over cron/batchtime, so propagate
 	// inactivity to dependencies
@@ -231,7 +231,7 @@ func (di *dependencyIncluder) updateDeactivationMap(pair TVPair, pairSpecifiesAc
 	// Inactive wins: never downgrade true to false; never recurse with false or we would
 	// clear transitive batchtime/cron dependencies that must stay inactive.
 	if pairSpecifiesActivation {
-		di.recursivelyUpdateDeactivationMap(pair)
+		di.recordTaskAndDependenciesInactive(pair)
 		return
 	}
 	if _, ok := di.deactivateGeneratedDeps[pair]; !ok {
@@ -239,20 +239,20 @@ func (di *dependencyIncluder) updateDeactivationMap(pair TVPair, pairSpecifiesAc
 	}
 }
 
-// recursivelyUpdateDeactivationMap marks all transitive dependencies inactive for
+// recordTaskAndDependenciesInactive marks all transitive dependencies inactive for
 // generate.tasks (they inherit the inactive root); only the inactive case recurses.
-func (di *dependencyIncluder) recursivelyUpdateDeactivationMap(pair TVPair) {
+func (di *dependencyIncluder) recordTaskAndDependenciesInactive(pair TVPair) {
 	// Marking a task inactive also records that its dependencies are being expanded,
 	// so shared prerequisites only need to be visited once. Mark before recursing to handle cycles.
 	if di.deactivateGeneratedDeps[pair] {
 		return
 	}
 	di.deactivateGeneratedDeps[pair] = true
-	bvt := di.findTaskForVariant(pair.TaskName, pair.Variant)
+	bvt := di.findTaskConfigForVariant(pair.TaskName, pair.Variant)
 	if bvt != nil {
 		deps := di.expandDependencies(pair, bvt.DependsOn)
 		for _, dep := range deps {
-			di.recursivelyUpdateDeactivationMap(dep)
+			di.recordTaskAndDependenciesInactive(dep)
 		}
 	}
 }
@@ -274,7 +274,7 @@ func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskUnit
 					if t.Name == pair.TaskName && v.Name == pair.Variant {
 						continue
 					}
-					projectTask := di.findTaskForVariant(t.Name, v.Name)
+					projectTask := di.findTaskConfigForVariant(t.Name, v.Name)
 					if projectTask != nil {
 						if projectTask.IsDisabled() || projectTask.SkipOnRequester(di.requester) {
 							continue
@@ -301,7 +301,7 @@ func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskUnit
 						continue
 					}
 
-					projectTask := di.findTaskForVariant(t.Name, v.Name)
+					projectTask := di.findTaskConfigForVariant(t.Name, v.Name)
 					if projectTask != nil {
 						if projectTask.IsDisabled() || projectTask.SkipOnRequester(di.requester) {
 							continue
@@ -322,13 +322,13 @@ func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskUnit
 			if v == "" {
 				v = pair.Variant
 			}
-			variant := di.findBuildVariant(v)
+			variant := di.findBuildVariantConfig(v)
 			if variant != nil {
 				for _, t := range variant.Tasks {
 					if t.Name == pair.TaskName && variant.Name == pair.Variant {
 						continue
 					}
-					projectTask := di.findTaskForVariant(t.Name, v)
+					projectTask := di.findTaskConfigForVariant(t.Name, v)
 					if projectTask != nil {
 						if projectTask.IsDisabled() || projectTask.SkipOnRequester(di.requester) {
 							continue
@@ -346,7 +346,7 @@ func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskUnit
 			if v == "" {
 				v = pair.Variant
 			}
-			projectTask := di.findTaskForVariant(d.Name, v)
+			projectTask := di.findTaskConfigForVariant(d.Name, v)
 			if projectTask != nil && !projectTask.IsDisabled() {
 				deps = append(deps, TVPair{TaskName: d.Name, Variant: v})
 			}
@@ -355,28 +355,28 @@ func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskUnit
 	return deps
 }
 
-func (di *dependencyIncluder) findTaskForVariant(name, variant string) *BuildVariantTaskUnit {
+func (di *dependencyIncluder) findTaskConfigForVariant(name, variant string) *BuildVariantTaskUnit {
 	pair := TVPair{TaskName: name, Variant: variant}
-	if bvt, ok := di.taskUnits[pair]; ok {
+	if bvt, ok := di.taskConfigCache[pair]; ok {
 		return bvt
 	}
 	bvt := di.Project.FindTaskForVariant(name, variant)
-	if di.taskUnits == nil {
-		di.taskUnits = map[TVPair]*BuildVariantTaskUnit{}
+	if di.taskConfigCache == nil {
+		di.taskConfigCache = map[TVPair]*BuildVariantTaskUnit{}
 	}
-	di.taskUnits[pair] = bvt
+	di.taskConfigCache[pair] = bvt
 	return bvt
 }
 
-func (di *dependencyIncluder) findBuildVariant(name string) *BuildVariant {
-	if bv, ok := di.buildVariants[name]; ok {
+func (di *dependencyIncluder) findBuildVariantConfig(name string) *BuildVariant {
+	if bv, ok := di.buildVariantConfigCache[name]; ok {
 		return bv
 	}
 	bv := di.Project.FindBuildVariant(name)
-	if di.buildVariants == nil {
-		di.buildVariants = map[string]*BuildVariant{}
+	if di.buildVariantConfigCache == nil {
+		di.buildVariantConfigCache = map[string]*BuildVariant{}
 	}
-	di.buildVariants[name] = bv
+	di.buildVariantConfigCache[name] = bv
 	return bv
 }
 
