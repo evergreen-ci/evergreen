@@ -1487,12 +1487,15 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 		tgMap[tg.Name] = tg
 	}
 
-	for _, bvt := range bv.Tasks {
+	for i := range bv.Tasks {
+		bvt := &bv.Tasks[i]
 		if bvt.Name == task {
 			if projectTask := p.FindProjectTask(task); projectTask != nil {
-				return &bvt
+				bvtCopy := *bvt
+				return &bvtCopy
 			} else if _, exists := tgMap[task]; exists {
-				return &bvt
+				bvtCopy := *bvt
+				return &bvtCopy
 			}
 		}
 		if tg, ok := tgMap[bvt.Name]; ok {
@@ -1500,8 +1503,9 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 				// task group tasks need to be repopulated from the task list
 				// Note that the build variant task unit retains the task
 				// group's name.
-				bvt.Populate(*p.FindProjectTask(task), *bv)
-				return &bvt
+				bvtCopy := *bvt
+				bvtCopy.Populate(*p.FindProjectTask(task), *bv)
+				return &bvtCopy
 			}
 		}
 	}
@@ -1558,9 +1562,10 @@ func (p *Project) addImplicitTaskGroupDependency(bvt *BuildVariantTaskUnit) {
 }
 
 func (p *Project) FindBuildVariant(build string) *BuildVariant {
-	for _, b := range p.BuildVariants {
-		if b.Name == build {
-			return &b
+	for i := range p.BuildVariants {
+		if p.BuildVariants[i].Name == build {
+			bv := p.BuildVariants[i]
+			return &bv
 		}
 	}
 	return nil
