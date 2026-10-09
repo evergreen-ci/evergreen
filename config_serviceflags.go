@@ -56,6 +56,9 @@ type ServiceFlags struct {
 	// every distro runs in host mode regardless of its container isolation
 	// configuration.
 	ContainerIsolationEnabled bool `bson:"container_isolation_enabled" json:"container_isolation_enabled"`
+	// SourceCacheAllProjectsEnabled is a fleet-wide flag that forces the source
+	// cache on for all projects, overriding each project's source_cache_mode.
+	SourceCacheAllProjectsEnabled bool `bson:"source_cache_all_projects_enabled" json:"source_cache_all_projects_enabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -127,6 +130,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			graphqlComplexityLimiterDisabledKey:     c.GraphQLComplexityLimiterDisabled,
 			graphqlComplexityRateLimiterDisabledKey: c.GraphQLComplexityRateLimiterDisabled,
 			containerIsolationEnabledKey:            c.ContainerIsolationEnabled,
+			sourceCacheAllProjectsEnabledKey:        c.SourceCacheAllProjectsEnabled,
 			liveArtifactCredentialsDisabledKey:      c.LiveArtifactCredentialsDisabled,
 			taskQueueAutoUnscheduleDisabledKey:      c.TaskQueueAutoUnscheduleDisabled,
 			virtualTasksDisabledKey:                 c.VirtualTasksDisabled,

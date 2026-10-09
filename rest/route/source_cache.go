@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -23,6 +24,19 @@ import (
 
 // sourceCacheNamespaceAttribute names the source cache namespace a task resolves to.
 const sourceCacheNamespaceAttribute = "evergreen.command.git_get_project.source_cache.namespace"
+
+// sourceCacheEnabledForTask reports whether the task may use the source cache:
+// all projects when SourceCacheAllProjectsEnabled is set, else the project's
+// own source_cache_mode.
+func sourceCacheEnabledForTask(ctx context.Context, pRef *model.ProjectRef, t *task.Task) (bool, *evergreen.ServiceFlags) {
+	projectEnabled := model.SourceCacheEnabled(pRef.GetSourceCacheMode(), t.IsPatchRequest())
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		grip.Error(ctx, errors.Wrap(err, "getting service flags"))
+		return projectEnabled, nil
+	}
+	return projectEnabled || flags.SourceCacheAllProjectsEnabled, flags
+}
 
 // POST /rest/v2/task/{task_id}/source_cache/credentials
 //
@@ -82,7 +96,7 @@ func (h *sourceCacheCredentials) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("project '%s' not found for task '%s'", t.Project, h.taskID),
 		})
 	}
-	if !model.SourceCacheEnabled(pRef.GetSourceCacheMode(), t.IsPatchRequest()) {
+	if enabled, _ := sourceCacheEnabledForTask(ctx, pRef, t); !enabled {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusConflict,
 			Message:    fmt.Sprintf("source cache is disabled for project '%s'", t.Project),
