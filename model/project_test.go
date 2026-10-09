@@ -148,6 +148,64 @@ func TestFindProject(t *testing.T) {
 
 }
 
+func TestFindTaskForVariantReturnsCopyWithoutMutatingProject(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		taskName string
+		unitName string
+	}{
+		{name: "StandaloneTask", taskName: "standalone", unitName: "standalone"},
+		{name: "TaskGroup", taskName: "group", unitName: "group"},
+		{name: "TaskGroupMember", taskName: "member", unitName: "group"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			p := &Project{
+				Tasks: []ProjectTask{
+					{Name: "standalone"},
+					{Name: "member", Patchable: utility.FalsePtr()},
+				},
+				TaskGroups: []TaskGroup{{Name: "group", Tasks: []string{"member"}}},
+				BuildVariants: []BuildVariant{{
+					Name:      "bv",
+					Patchable: utility.TruePtr(),
+					Tasks: []BuildVariantTaskUnit{
+						{Name: "standalone"},
+						{Name: "group", PatchOnly: utility.TruePtr()},
+					},
+				}},
+			}
+
+			bvt := p.FindTaskForVariant(test.taskName, "bv")
+			require.NotNil(t, bvt)
+			assert.Equal(t, test.unitName, bvt.Name)
+			if test.taskName == "member" {
+				assert.Equal(t, utility.FalsePtr(), bvt.Patchable)
+				assert.Equal(t, utility.TruePtr(), bvt.PatchOnly)
+			}
+			assert.Nil(t, p.BuildVariants[0].Tasks[1].Patchable)
+
+			bvt.Name = "changed"
+			bvt.Disable = utility.TruePtr()
+			unchanged := p.FindTaskForVariant(test.taskName, "bv")
+			require.NotNil(t, unchanged)
+			assert.Equal(t, test.unitName, unchanged.Name)
+			assert.Nil(t, unchanged.Disable)
+		})
+	}
+}
+
+func TestFindBuildVariantReturnsCopyWithoutMutatingProject(t *testing.T) {
+	p := &Project{BuildVariants: []BuildVariant{{Name: "first"}, {Name: "last"}}}
+	bv := p.FindBuildVariant("last")
+	require.NotNil(t, bv)
+	assert.Equal(t, "last", bv.Name)
+	bv.Name = "changed"
+	bv.Activate = utility.FalsePtr()
+	assert.Equal(t, "last", p.BuildVariants[1].Name)
+	assert.Nil(t, p.BuildVariants[1].Activate)
+	assert.Nil(t, p.FindBuildVariant("missing"))
+}
+
 func TestFindTaskGroupForTask(t *testing.T) {
 	parserProject := &ParserProject{
 		Tasks: []parserTask{
