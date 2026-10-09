@@ -3044,6 +3044,38 @@ func TestDependenciesForTaskUnit(t *testing.T) {
 	}
 }
 
+func TestDependenciesForSelectedTaskUnitsOnlyBuildsEdgesForSelection(t *testing.T) {
+	taskUnits := []BuildVariantTaskUnit{
+		{Name: "dependency", Variant: "ubuntu"},
+		{Name: "first", Variant: "ubuntu", DependsOn: []TaskUnitDependency{{Name: "dependency"}}},
+		{Name: "second", Variant: "ubuntu", DependsOn: []TaskUnitDependency{{Name: "dependency"}}},
+	}
+	selected := map[TVPair]struct{}{{Variant: "ubuntu", TaskName: "second"}: {}}
+
+	dependencies := dependenciesForSelectedTaskUnits(taskUnits, selected, &Project{})
+
+	require.Equal(t, []task.DependencyEdge{{
+		From: task.TaskNode{Name: "second", Variant: "ubuntu"},
+		To:   task.TaskNode{Name: "dependency", Variant: "ubuntu"},
+	}}, dependencies)
+}
+
+func BenchmarkDependenciesForTaskUnitWithLargeProject(b *testing.B) {
+	const numTasks = 50_000
+	taskUnits := make([]BuildVariantTaskUnit, numTasks)
+	for i := range taskUnits {
+		taskUnits[i] = BuildVariantTaskUnit{Name: fmt.Sprintf("task-%d", i), Variant: "ubuntu"}
+		if i > 0 {
+			taskUnits[i].DependsOn = []TaskUnitDependency{{Name: fmt.Sprintf("task-%d", i-1)}}
+		}
+	}
+
+	b.ResetTimer()
+	for range b.N {
+		dependenciesForTaskUnit(taskUnits, &Project{})
+	}
+}
+
 func TestGetVariantsAndTasksFromPatchProject(t *testing.T) {
 	ctx := t.Context()
 
