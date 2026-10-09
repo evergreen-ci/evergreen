@@ -94,7 +94,7 @@ func (c *goTestResults) Execute(ctx context.Context,
 	}
 
 	// parse all of the files
-	logs, results, malformed, err := parseTestOutputFiles(ctx, logger, conf, outputFiles)
+	logs, results, malformed, err := parseTestOutputFiles(ctx, logger, parseOptionsForTask(conf), outputFiles)
 	if err != nil {
 		return errors.Wrap(err, "parsing output results")
 	}
@@ -144,7 +144,7 @@ func globFiles(patterns ...string) ([]string, error) {
 
 // parseTestOutput parses the test results and logs from a single output source. It also returns any
 // malformed test end lines it encountered.
-func parseTestOutput(ctx context.Context, conf *internal.TaskConfig, report io.Reader, suiteName string) (testlog.TestLog, []testresult.TestResult, []malformedLine, error) {
+func parseTestOutput(ctx context.Context, opts testResultParseOptions, report io.Reader, suiteName string) (testlog.TestLog, []testresult.TestResult, []malformedLine, error) {
 	parser := &goTestParser{}
 	if err := parser.Parse(report); err != nil {
 		return testlog.TestLog{}, nil, nil, errors.Wrap(err, "parsing file")
@@ -157,8 +157,8 @@ func parseTestOutput(ctx context.Context, conf *internal.TaskConfig, report io.R
 	logLines := parser.Logs()
 	logs := testlog.TestLog{
 		Name:          suiteName,
-		Task:          conf.Task.Id,
-		TaskExecution: conf.Task.Execution,
+		Task:          opts.taskID,
+		TaskExecution: opts.taskExecution,
 		Lines:         logLines,
 	}
 
@@ -167,7 +167,7 @@ func parseTestOutput(ctx context.Context, conf *internal.TaskConfig, report io.R
 
 // parseTestOutputFiles parses all of the files that are passed in, and returns the test logs and
 // test results found within, plus a description of each malformed test end line encountered.
-func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer, conf *internal.TaskConfig, outputFiles []string) ([]testlog.TestLog, []testresult.TestResult, []string, error) {
+func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer, opts testResultParseOptions, outputFiles []string) ([]testlog.TestLog, []testresult.TestResult, []string, error) {
 	var (
 		allResults []testresult.TestResult
 		logs       []testlog.TestLog
@@ -189,7 +189,7 @@ func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer, con
 		}
 		defer fileReader.Close() //nolint: evg-lint
 
-		log, results, malformedLines, err := parseTestOutput(ctx, conf, fileReader, suiteName)
+		log, results, malformedLines, err := parseTestOutput(ctx, opts, fileReader, suiteName)
 		if err != nil {
 			logger.Task().Error(ctx, errors.Wrapf(err, "parsing file '%s'", outputFile))
 			continue
