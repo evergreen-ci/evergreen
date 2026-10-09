@@ -12,56 +12,56 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// MoveIssueToSuspectedIssue removes an issue from an existing annotation and adds it to its suspected issues,
-// and unsets its associated task document as having annotations if this was the last issue removed from the
-// annotation.
-func MoveIssueToSuspectedIssue(ctx context.Context, taskId string, taskExecution int, issue annotations.IssueLink, username string) error {
-	newIssue := issue
-	newIssue.Source = &annotations.Source{Requester: annotations.UIRequester, Author: username, Time: time.Now()}
-	q := annotations.ByTaskIdAndExecution(taskId, taskExecution)
-	q[bsonutil.GetDottedKeyName(annotations.IssuesKey, annotations.IssueLinkIssueKey)] = issue.IssueKey
-	annotation := &annotations.TaskAnnotation{}
-	_, err := db.FindAndModify(ctx,
-		annotations.Collection,
-		q,
-		nil,
-		adb.Change{
-			Update: bson.M{
-				"$pull": bson.M{annotations.IssuesKey: bson.M{annotations.IssueLinkIssueKey: issue.IssueKey}},
-				"$push": bson.M{annotations.SuspectedIssuesKey: newIssue},
-			},
-			ReturnNew: true,
-		},
-		annotation,
-	)
+// MoveAnnotationIssueByKey moves an annotation issue between the issues and suspected issues
+// lists by looking up the stored issue by its key.
+// If isIssue is true, the issue is moved from issues to suspected issues; otherwise, from
+// suspected issues to issues.
+func MoveAnnotationIssueByKey(ctx context.Context, taskID string, taskExecution int, issueKey string, isIssue bool, username string) error {
+	annotation, err := annotations.FindOneByTaskIdAndExecution(ctx, taskID, taskExecution)
 	if err != nil {
-		return errors.Wrapf(err, "finding and modifying task annotation for execution %d of task '%s'", taskExecution, taskId)
+		return errors.Wrapf(err, "finding annotation for execution %d of task '%s'", taskExecution, taskID)
 	}
-	if len(annotation.Issues) == 0 {
-		return UpdateHasAnnotations(ctx, taskId, taskExecution, false)
+	if annotation == nil {
+		return errors.Errorf("annotation for execution %d of task '%s' not found", taskExecution, taskID)
 	}
-	return nil
-}
 
-// MoveSuspectedIssueToIssue removes a suspected issue from an existing annotation and adds it to its issues,
-// and marks its associated task document as having annotations.
-func MoveSuspectedIssueToIssue(ctx context.Context, taskId string, taskExecution int, issue annotations.IssueLink, username string) error {
-	newIssue := issue
-	newIssue.Source = &annotations.Source{Requester: annotations.UIRequester, Author: username, Time: time.Now()}
-	q := annotations.ByTaskIdAndExecution(taskId, taskExecution)
-	q[bsonutil.GetDottedKeyName(annotations.SuspectedIssuesKey, annotations.IssueLinkIssueKey)] = issue.IssueKey
-	if err := db.Update(
-		ctx,
-		annotations.Collection,
-		q,
-		bson.M{
-			"$pull": bson.M{annotations.SuspectedIssuesKey: bson.M{annotations.IssueLinkIssueKey: issue.IssueKey}},
-			"$push": bson.M{annotations.IssuesKey: newIssue},
-		},
-	); err != nil {
-		return err
+	// Determine source and destination fields based on direction.
+	var srcKey, destKey string
+	var srcList []annotations.IssueLink
+	if isIssue {
+		srcKey = annotations.IssuesKey
+		destKey = annotations.SuspectedIssuesKey
+		srcList = annotation.Issues
+	} else {
+		srcKey = annotations.SuspectedIssuesKey
+		destKey = annotations.IssuesKey
+		srcList = annotation.SuspectedIssues
 	}
-	return UpdateHasAnnotations(ctx, taskId, taskExecution, true)
+
+	var found annotations.IssueLink
+	for _, issue := range srcList {
+		if issue.IssueKey == issueKey {
+			found = issue
+			break
+		}
+	}
+	if found.IssueKey == "" {
+		return errors.Errorf("issue with key '%s' not found in %s for execution %d of task '%s'", issueKey, srcKey, taskExecution, taskID)
+	}
+	found.Source = &annotations.Source{Requester: annotations.UIRequester, Author: username, Time: time.Now()}
+
+	query := annotations.ByTaskIdAndExecution(taskID, taskExecution)
+	query[bsonutil.GetDottedKeyName(srcKey, annotations.IssueLinkIssueKey)] = issueKey
+	if err := db.Update(ctx, annotations.Collection, query, bson.M{
+		"$pull": bson.M{srcKey: bson.M{annotations.IssueLinkIssueKey: issueKey}},
+		"$push": bson.M{destKey: found},
+	}); err != nil {
+		return errors.Wrapf(err, "moving annotation issue for execution %d of task '%s'", taskExecution, taskID)
+	}
+
+	// We need to update the cached task hasAnnotation field if the move affects the issues array.
+	hasIssues := !isIssue || len(annotation.Issues) > 1
+	return UpdateHasAnnotations(ctx, taskID, taskExecution, hasIssues)
 }
 
 // AddIssueToAnnotation adds an issue onto an existing annotation and marks its associated task document

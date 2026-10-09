@@ -96,16 +96,9 @@ func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, taskID strin
 		return false, err
 	}
 	usr := mustHaveUser(ctx)
-	issue := restModel.APIIssueLinkToService(apiIssue)
-	if isIssue {
-		if err := task.MoveIssueToSuspectedIssue(ctx, taskID, execution, *issue, usr.Username()); err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("moving issue to suspected issues: %s", err.Error()))
-		}
-		return true, nil
-	}
-
-	if err := task.MoveSuspectedIssueToIssue(ctx, taskID, execution, *issue, usr.Username()); err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("moving suspected issue to issues: %s", err.Error()))
+	issueKey := utility.FromStringPtr(apiIssue.IssueKey)
+	if err := task.MoveAnnotationIssueByKey(ctx, taskID, execution, issueKey, isIssue, usr.Username()); err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("moving annotation issue: %s", err.Error()))
 	}
 	return true, nil
 }
