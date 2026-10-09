@@ -17,11 +17,14 @@ import (
 	"github.com/pkg/errors"
 )
 
+const presignLazy = "lazy"
+
 type tasksByBuildHandler struct {
 	buildId            string
 	status             string
 	fetchAllExecutions bool
 	fetchParentIds     bool
+	lazyPresign        bool
 	limit              int
 	key                string
 
@@ -47,6 +50,7 @@ func makeFetchTasksByBuild(parsleyURL string) gimlet.RouteHandler {
 //	@Param			limit					query	int		false	"The number of tasks to be returned per page of pagination. Defaults to 100"
 //	@Param			fetch_all_executions	query	boolean	false	"Fetches previous executions of tasks if they are available"
 //	@Param			fetch_parent_ids		query	boolean	false	"Fetches the parent display task ID for each returned execution task"
+//	@Param			presign					query	string	false	"Set to 'lazy' to return signed artifact links as Evergreen redirect URLs that are presigned when requested, instead of presigning them up front. Defaults to presigning up front."
 //	@Success		200						{array}	model.APITask
 func (tbh *tasksByBuildHandler) Factory() gimlet.RouteHandler {
 	return &tasksByBuildHandler{
@@ -73,6 +77,14 @@ func (tbh *tasksByBuildHandler) Parse(ctx context.Context, r *http.Request) erro
 
 	tbh.fetchAllExecutions = vals.Get("fetch_all_executions") == "true"
 	tbh.fetchParentIds = vals.Get("fetch_parent_ids") == "true"
+
+	switch presign := vals.Get("presign"); presign {
+	case "":
+	case presignLazy:
+		tbh.lazyPresign = true
+	default:
+		return errors.Errorf("invalid presign value '%s'; the only supported value is '%s'", presign, presignLazy)
+	}
 
 	return nil
 }
@@ -133,10 +145,11 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 	projectIdentifier, foundProjectIdentifier := getProjectIdentifierForTasks(ctx, tasks)
 
 	prevExecArgs := &model.APITaskArgs{
-		IncludeArtifacts: true,
-		ArtifactsCache:   artifactsCache,
-		LogURL:           GetURL(ctx),
-		ParsleyLogURL:    tbh.parsleyURL,
+		IncludeArtifacts:     true,
+		ArtifactsCache:       artifactsCache,
+		LogURL:               GetURL(ctx),
+		ParsleyLogURL:        tbh.parsleyURL,
+		LazyPresignArtifacts: tbh.lazyPresign,
 	}
 	if !foundProjectIdentifier {
 		prevExecArgs.IncludeProjectIdentifier = true
@@ -146,10 +159,11 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 		taskModel := &model.APITask{}
 
 		if err = taskModel.BuildFromService(ctx, &tasks[i], &model.APITaskArgs{
-			IncludeArtifacts: true,
-			ArtifactsCache:   artifactsCache,
-			LogURL:           GetURL(ctx),
-			ParsleyLogURL:    tbh.parsleyURL,
+			IncludeArtifacts:     true,
+			ArtifactsCache:       artifactsCache,
+			LogURL:               GetURL(ctx),
+			ParsleyLogURL:        tbh.parsleyURL,
+			LazyPresignArtifacts: tbh.lazyPresign,
 		}); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting task '%s' to API model", tasks[i].Id))
 		}

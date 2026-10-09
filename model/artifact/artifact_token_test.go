@@ -15,12 +15,12 @@ func TestGenerateAndValidateSignToken(t *testing.T) {
 	fileName := "report.html"
 
 	t.Run("ValidToken", func(t *testing.T) {
-		token, expiry := GenerateSignToken(secret, taskID, execution, fileName)
+		token, expiry := GenerateSignToken(secret, taskID, execution, fileName, time.Hour)
 		assert.True(t, ValidateSignToken(secret, taskID, execution, fileName, token, strconv.FormatInt(expiry, 10)))
 	})
 
 	t.Run("WrongSecret", func(t *testing.T) {
-		token, expiry := GenerateSignToken(secret, taskID, execution, fileName)
+		token, expiry := GenerateSignToken(secret, taskID, execution, fileName, time.Hour)
 		assert.False(t, ValidateSignToken([]byte("wrong-secret"), taskID, execution, fileName, token, strconv.FormatInt(expiry, 10)))
 	})
 
@@ -31,8 +31,16 @@ func TestGenerateAndValidateSignToken(t *testing.T) {
 		assert.False(t, ValidateSignToken(secret, taskID, execution, fileName, expiredToken, strconv.FormatInt(pastExpiry, 10)))
 	})
 
+	t.Run("ExpiryReflectsRequestedLifetime", func(t *testing.T) {
+		before := time.Now()
+		token, expiry := GenerateSignToken(secret, taskID, execution, fileName, 24*time.Hour)
+		assert.GreaterOrEqual(t, expiry, before.Add(24*time.Hour).Unix())
+		assert.LessOrEqual(t, expiry, time.Now().Add(24*time.Hour).Unix())
+		assert.True(t, ValidateSignToken(secret, taskID, execution, fileName, token, strconv.FormatInt(expiry, 10)))
+	})
+
 	t.Run("EmptySecretRejectsForgedToken", func(t *testing.T) {
-		token, expiry := GenerateSignToken(nil, taskID, execution, fileName)
+		token, expiry := GenerateSignToken(nil, taskID, execution, fileName, time.Hour)
 		assert.False(t, ValidateSignToken(nil, taskID, execution, fileName, token, strconv.FormatInt(expiry, 10)))
 		assert.False(t, ValidateSignToken([]byte(""), taskID, execution, fileName, token, strconv.FormatInt(expiry, 10)))
 	})

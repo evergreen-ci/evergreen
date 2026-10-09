@@ -493,6 +493,7 @@ type APITaskArgs struct {
 	LogURL                   string
 	ParsleyLogURL            string
 	ArtifactsCache           map[artifact.TaskIDAndExecution][]artifact.Entry
+	LazyPresignArtifacts     bool
 }
 
 // BuildFromService converts from a service level task by loading the data
@@ -534,7 +535,7 @@ func (at *APITask) BuildFromService(ctx context.Context, t *task.Task, args *API
 		}
 	}
 	if args.IncludeArtifacts {
-		if err := at.getArtifacts(ctx, args.LogURL, args.ArtifactsCache); err != nil {
+		if err := at.getArtifacts(ctx, args.ArtifactsCache, args.LogURL, args.LazyPresignArtifacts); err != nil {
 			return errors.Wrap(err, "getting artifacts")
 		}
 	}
@@ -679,7 +680,7 @@ func (at *APITask) ToService() (*task.Task, error) {
 
 // getArtifacts batch fetches artifacts for all tasks. If the prefetched artifacts are passed in, we can guarantee
 // that all needed artifacts are in the cache.
-func (at *APITask) getArtifacts(ctx context.Context, baseURL string, prefetched map[artifact.TaskIDAndExecution][]artifact.Entry) error {
+func (at *APITask) getArtifacts(ctx context.Context, prefetched map[artifact.TaskIDAndExecution][]artifact.Entry, baseURL string, lazyPresign bool) error {
 	var err error
 	var entries []artifact.Entry
 	switch {
@@ -705,9 +706,10 @@ func (at *APITask) getArtifacts(ctx context.Context, baseURL string, prefetched 
 	}
 	env := evergreen.GetEnvironment()
 	artifactSignSecret := []byte(env.Settings().ArtifactSignSecret)
+	useLazyPresign := lazyPresign && baseURL != "" && len(artifactSignSecret) > 0
 	for _, entry := range entries {
 		var strippedFiles []artifact.File
-		if baseURL != "" && len(artifactSignSecret) > 0 {
+		if useLazyPresign {
 			strippedFiles = artifact.StripHiddenFilesLazy(entry.Files, true, baseURL, entry.TaskId, entry.Execution, artifactSignSecret)
 		} else {
 			strippedFiles, err = artifact.StripHiddenFiles(ctx, entry.Files, true, model.NewArtifactCredentialResolver(entry.TaskId))
