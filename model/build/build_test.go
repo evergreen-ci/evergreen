@@ -399,3 +399,22 @@ func TestGetPRNotificationDescription(t *testing.T) {
 		assert.Equal(t, "tasks are running", b.GetPRNotificationDescription(t.Context(), tasks))
 	})
 }
+
+func TestIsDormant(t *testing.T) {
+	t.Run("CreatedAndUnactivatedIsDormant", func(t *testing.T) {
+		b := &Build{Status: evergreen.BuildCreated, Activated: false}
+		assert.True(t, b.IsDormant())
+	})
+	t.Run("CreatedButActivatedIsNotDormant", func(t *testing.T) {
+		b := &Build{Status: evergreen.BuildCreated, Activated: true}
+		assert.False(t, b.IsDormant())
+	})
+	t.Run("StartedBuildIsNotDormant", func(t *testing.T) {
+		b := &Build{Status: evergreen.BuildStarted, Activated: true}
+		assert.False(t, b.IsDormant())
+	})
+	t.Run("FinishedBuildIsNotDormant", func(t *testing.T) {
+		b := &Build{Status: evergreen.BuildSucceeded, Activated: true}
+		assert.False(t, b.IsDormant())
+	})
+}

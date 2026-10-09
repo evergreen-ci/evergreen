@@ -482,6 +482,86 @@ func (s *githubStatusRefreshSuite) TestStatusFailed() {
 	s.Equal(message.GithubStateFailure, status.State)
 }
 
+func (s *githubStatusRefreshSuite) TestSkipsDormantBuilds() {
+	startTime := time.Now()
+	dormantBuild := build.Build{
+		Id:           "b-dormant",
+		BuildVariant: "myDormantBuild",
+		Version:      s.patchDoc.Version,
+		Status:       evergreen.BuildCreated,
+		Activated:    false,
+	}
+	s.NoError(dormantBuild.Insert(s.ctx))
+	activeBuild := build.Build{
+		Id:           "b-active",
+		BuildVariant: "myBuild",
+		Version:      s.patchDoc.Version,
+		Status:       evergreen.BuildSucceeded,
+		StartTime:    startTime,
+		FinishTime:   startTime.Add(time.Minute),
+	}
+	s.NoError(activeBuild.Insert(s.ctx))
+	tsk := task.Task{
+		Id:      "t1",
+		Version: s.patchDoc.Version,
+		BuildId: activeBuild.Id,
+		Status:  evergreen.TaskSucceeded,
+	}
+	s.NoError(tsk.Insert(s.ctx))
+	s.patchDoc.Status = evergreen.VersionSucceeded
+
+	job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
+	s.Require().NotNil(job)
+	s.Require().True(ok)
+	s.Require().NotNil(job.patch)
+	job.env = s.env
+	job.Run(s.ctx)
+	s.NoError(job.Error())
+
+	// Patch status
+	status := s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal("evergreen", status.Context)
+	s.Equal(message.GithubStateSuccess, status.State)
+
+	// Build status for the active build; the dormant build sends nothing.
+	status = s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal(fmt.Sprintf("https://example.com/build/%s", activeBuild.Id), status.URL)
+	s.Equal("evergreen/myBuild", status.Context)
+	s.Equal(message.GithubStateSuccess, status.State)
+
+	_, ok = s.env.InternalSender.GetMessageSafe()
+	s.False(ok, "no status should be sent for a dormant build")
+}
+
+func (s *githubStatusRefreshSuite) TestStatusPendingForCreatedButActivatedBuild() {
+	b := build.Build{
+		Id:           "b1",
+		BuildVariant: "myBuild",
+		Version:      s.patchDoc.Version,
+		Status:       evergreen.BuildCreated,
+		Activated:    true,
+	}
+	s.NoError(b.Insert(s.ctx))
+
+	job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
+	s.Require().NotNil(job)
+	s.Require().True(ok)
+	s.Require().NotNil(job.patch)
+	job.env = s.env
+	job.Run(s.ctx)
+	s.False(job.HasErrors())
+
+	// Patch status
+	status := s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal("evergreen", status.Context)
+	s.Equal(message.GithubStatePending, status.State)
+
+	// Build status: scheduled but not yet started is still pending.
+	status = s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal("evergreen/myBuild", status.Context)
+	s.Equal(message.GithubStatePending, status.State)
+}
+
 func (s *githubStatusRefreshSuite) getAndValidateStatus(sender *send.InternalSender) *message.GithubStatus {
 	msg, ok := sender.GetMessageSafe()
 	s.Require().True(ok)
