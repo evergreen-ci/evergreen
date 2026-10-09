@@ -456,7 +456,10 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 	if githubUser == nil {
 		return errors.Errorf("user with GitHub ID '%d' not found", uid)
 	}
-	if err := model.ResetTaskOrDisplayTask(ctx, gh.settings, taskToRestart, githubUser.Id, evergreen.GithubCheckRun, false, nil); err != nil {
+	if err := model.ResetTaskOrDisplayTask(ctx, gh.settings, taskToRestart, model.ResetTaskOptions{
+		User:   githubUser.Id,
+		Origin: evergreen.GithubCheckRun,
+	}); err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"source":  "GitHub hook",
 			"msg_id":  gh.msgID,

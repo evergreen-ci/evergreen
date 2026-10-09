@@ -91,7 +91,7 @@ type Mutation {
   # task
   abortTask(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): Task!
   overrideTaskDependencies(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): Task!
-  restartTask(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT), failedOnly: Boolean!): Task!
+  restartTask(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT), failedOnly: Boolean!, executionTaskIds: [String!]): Task!
   scheduleTasks(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), taskIds: [String!]!): [Task!]!
   setTaskPriority(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT), priority: Int!): Task!
   setTaskPriorities(taskPriorities: [TaskPriority!]!): [Task!]! # Has directive on TaskPriority.
