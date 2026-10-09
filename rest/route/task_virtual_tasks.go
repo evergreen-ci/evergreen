@@ -326,16 +326,6 @@ func makePrepareVirtualTasks(env evergreen.Environment) gimlet.RouteHandler {
 	return &prepareVirtualTasksHandler{env: env}
 }
 
-// Factory creates an instance of the handler.
-//
-//	@Summary		Prepare virtual tasks for test result upload
-//	@Description	Validates and locks a batch of virtual tasks so their test results can be uploaded before push-completion. The task_id in the URL identifies the runner task. The route accepts task auth or service user auth (must have task admin permissions). It returns the test results info the runner needs to upload each task's results. Tasks that are already finished, already running, or whose execution number does not match will no-op.
-//	@Tags			tasks
-//	@Router			/task/{task_id}/virtual_tasks/prepare [post]
-//	@Security		Api-User || Api-Key
-//	@Param			task_id		path		string									true	"the runner task ID"
-//	@Param			{object}	body		apimodels.PrepareVirtualTasksRequest	true	"virtual tasks to prepare"
-//	@Success		200			{object}	apimodels.PrepareVirtualTasksResponse
 func (h *prepareVirtualTasksHandler) Factory() gimlet.RouteHandler {
 	return &prepareVirtualTasksHandler{env: h.env}
 }
@@ -376,11 +366,7 @@ func (h *prepareVirtualTasksHandler) Run(ctx context.Context) gimlet.Responder {
 		response.Results = append(response.Results, result)
 	}
 
-	responder := gimlet.NewJSONResponse(response)
-	if err := responder.SetStatus(http.StatusOK); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting response status"))
-	}
-	return responder
+	return gimlet.NewJSONResponse(response)
 }
 
 // prepareTask validates and locks a single virtual task so the runner can
