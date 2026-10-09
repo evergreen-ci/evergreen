@@ -67,8 +67,8 @@ func TestProcessVirtualTaskTestResultFiles(t *testing.T) {
 		{TestFile: "test2", Status: evergreen.TestFailedStatus, LogRaw: "some log"},
 	}}))
 
-	createdAt := time.Now().UTC().Round(time.Millisecond)
-	stats, err := processVirtualTaskTestResultFiles(ctx, conf, logger, info, time.Now(), createdAt, []virtualTaskTestResultFile{
+	testResultsCreatedAt := time.Now().UTC().Round(time.Millisecond)
+	stats, err := processVirtualTaskTestResultFiles(ctx, conf, logger, info, time.Now(), testResultsCreatedAt, []virtualTaskTestResultFileGroup{
 		{Type: virtualTestResultTypeNative, Files: []string{"results.json"}},
 	})
 	require.NoError(t, err)
@@ -76,11 +76,11 @@ func TestProcessVirtualTaskTestResultFiles(t *testing.T) {
 	assert.Equal(t, 2, stats.Stats.TotalCount)
 	assert.Equal(t, 1, stats.Stats.FailedCount)
 	assert.Equal(t, []string{"test2"}, stats.FailedSample)
-	assert.True(t, createdAt.Equal(stats.CreatedAt))
+	assert.True(t, testResultsCreatedAt.Equal(stats.CreatedAt))
 
 	bucket, err := conf.Task.TaskOutputInfo.TestResults.GetBucket(ctx, conf.TaskOutput)
 	require.NoError(t, err)
-	r, err := bucket.Get(ctx, testresult.PartitionKey(createdAt, info.Project, info.ID()))
+	r, err := bucket.Get(ctx, testresult.PartitionKey(testResultsCreatedAt, info.Project, info.ID()))
 	require.NoError(t, err, "the test results should be uploaded to the expected partition")
 	require.NoError(t, r.Close())
 }
@@ -96,7 +96,7 @@ func TestParseVirtualTaskTestResultFileUnknownTypeShouldError(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { assert.NoError(t, logger.Close()) })
 
-	_, _, err = parseVirtualTaskTestResultFile(ctx, parseOptionsForTask(conf), logger, virtualTaskTestResultFile{
+	_, _, err = parseVirtualTaskTestResultFileGroup(ctx, parseOptionsForTask(conf), logger, virtualTaskTestResultFileGroup{
 		Type:  "bogus",
 		Files: []string{"results.json"},
 	})

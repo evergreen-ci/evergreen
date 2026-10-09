@@ -23,9 +23,8 @@ const (
 	virtualTestResultTypeXUnit  = "xunit"
 )
 
-// parseOptionsForVirtualTask returns the parse options for the virtual task
-// identified by info. The virtual task is in the same project as the runner, so
-// result file paths resolve against the runner's working directory.
+// parseOptionsForVirtualTask returns the test result parsing options for the
+// virtual task identified by info.
 func parseOptionsForVirtualTask(conf *internal.TaskConfig, info testresult.TestResultsInfo) testResultParseOptions {
 	return testResultParseOptions{
 		workDir:       conf.WorkDir,
@@ -34,14 +33,14 @@ func parseOptionsForVirtualTask(conf *internal.TaskConfig, info testresult.TestR
 	}
 }
 
-// processVirtualTaskTestResultFiles parses the given test result file specs,
+// processVirtualTaskTestResultFiles parses the given test result file groups,
 // uploads the test logs and test results to S3 on behalf of the virtual task
 // identified by info, and returns the test result metadata to push to the
 // completion route.
-func processVirtualTaskTestResultFiles(ctx context.Context, conf *internal.TaskConfig, logger client.LoggerProducer, info testresult.TestResultsInfo, createTime, createdAt time.Time, specs []virtualTaskTestResultFile) (*apimodels.VirtualTaskTestResults, error) {
+func processVirtualTaskTestResultFiles(ctx context.Context, conf *internal.TaskConfig, logger client.LoggerProducer, info testresult.TestResultsInfo, taskCreatedAt, testResultsCreatedAt time.Time, groups []virtualTaskTestResultFileGroup) (*apimodels.VirtualTaskTestResults, error) {
 	parseOpts := parseOptionsForVirtualTask(conf, info)
 
-	logs, results, err := parseVirtualTaskTestResultFiles(ctx, parseOpts, logger, specs)
+	logs, results, err := parseVirtualTaskTestResultFileGroups(ctx, parseOpts, logger, groups)
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing test result files")
 	}
@@ -53,20 +52,20 @@ func processVirtualTaskTestResultFiles(ctx context.Context, conf *internal.TaskC
 		return nil, errors.Wrap(err, "uploading test logs")
 	}
 
-	return uploadVirtualTaskTestResults(ctx, conf, info, createTime, createdAt, results)
+	return uploadVirtualTaskTestResults(ctx, conf, info, taskCreatedAt, testResultsCreatedAt, results)
 }
 
-// parseVirtualTaskTestResultFiles parses each spec into test logs and results.
-func parseVirtualTaskTestResultFiles(ctx context.Context, opts testResultParseOptions, logger client.LoggerProducer, specs []virtualTaskTestResultFile) ([]testlog.TestLog, []testresult.TestResult, error) {
+// parseVirtualTaskTestResultFileGroups parses all test result file group into test logs and results.
+func parseVirtualTaskTestResultFileGroups(ctx context.Context, opts testResultParseOptions, logger client.LoggerProducer, groups []virtualTaskTestResultFileGroup) ([]testlog.TestLog, []testresult.TestResult, error) {
 	var (
 		allLogs    []testlog.TestLog
 		allResults []testresult.TestResult
 	)
 	catcher := grip.NewBasicCatcher()
-	for _, spec := range specs {
-		logs, results, err := parseVirtualTaskTestResultFile(ctx, opts, logger, spec)
+	for _, group := range groups {
+		logs, results, err := parseVirtualTaskTestResultFileGroup(ctx, opts, logger, group)
 		if err != nil {
-			catcher.Wrapf(err, "parsing '%s' test results", spec.Type)
+			catcher.Wrapf(err, "parsing '%s' test results", group.Type)
 			continue
 		}
 		allLogs = append(allLogs, logs...)
@@ -78,18 +77,20 @@ func parseVirtualTaskTestResultFiles(ctx context.Context, opts testResultParseOp
 	return allLogs, allResults, nil
 }
 
-func parseVirtualTaskTestResultFile(ctx context.Context, opts testResultParseOptions, logger client.LoggerProducer, spec virtualTaskTestResultFile) ([]testlog.TestLog, []testresult.TestResult, error) {
-	if len(spec.Files) == 0 {
+// parseVirtualTaskTestResultFileGroup parses test results and test logs
+// from a group of files of a given test result format.
+func parseVirtualTaskTestResultFileGroup(ctx context.Context, opts testResultParseOptions, logger client.LoggerProducer, fileGroup virtualTaskTestResultFileGroup) ([]testlog.TestLog, []testresult.TestResult, error) {
+	if len(fileGroup.Files) == 0 {
 		return nil, nil, errors.New("must specify at least one file")
 	}
 
-	switch spec.Type {
+	switch fileGroup.Type {
 	case virtualTestResultTypeNative:
 		var (
 			logs    []testlog.TestLog
 			results []testresult.TestResult
 		)
-		for _, file := range spec.Files {
+		for _, file := range fileGroup.Files {
 			fileLogs, fileResults, err := parseNativeResults(opts, file)
 			if err != nil {
 				return nil, nil, err
@@ -99,8 +100,8 @@ func parseVirtualTaskTestResultFile(ctx context.Context, opts testResultParseOpt
 		}
 		return logs, results, nil
 	case virtualTestResultTypeGo:
-		patterns := make([]string, len(spec.Files))
-		for i, file := range spec.Files {
+		patterns := make([]string, len(fileGroup.Files))
+		for i, file := range fileGroup.Files {
 			patterns[i] = resolveWorkingDirectory(opts.workDir, file)
 		}
 		files, err := globFiles(patterns...)
@@ -110,17 +111,12 @@ func parseVirtualTaskTestResultFile(ctx context.Context, opts testResultParseOpt
 		if len(files) == 0 {
 			return nil, nil, errors.New("no files found to be parsed")
 		}
-		logs, results, _, err := parseTestOutputFiles(ctx, logger, opts, files)
+		logs, results, _, err := parseGotestOutputFiles(ctx, logger, opts, files)
 		return logs, results, err
 	case virtualTestResultTypeXUnit:
-		cumulative, err := parseXUnitResults(ctx, opts, logger, spec.Files)
+		cumulative, err := parseXUnitResults(ctx, opts, logger, fileGroup.Files)
 		if err != nil {
 			return nil, nil, err
-		}
-		// The test results are only committed if their logs upload successfully,
-		// so mark the logs as uploaded up front.
-		for logIdx := range cumulative.logs {
-			cumulative.markLogUploaded(logIdx)
 		}
 		logs := make([]testlog.TestLog, len(cumulative.logs))
 		for i, log := range cumulative.logs {
@@ -128,7 +124,7 @@ func parseVirtualTaskTestResultFile(ctx context.Context, opts testResultParseOpt
 		}
 		return logs, cumulative.tests, nil
 	default:
-		return nil, nil, errors.Errorf("unrecognized test result type '%s'", spec.Type)
+		return nil, nil, errors.Errorf("unrecognized test result type '%s'", fileGroup.Type)
 	}
 }
 
@@ -142,7 +138,7 @@ func uploadVirtualTaskTestLogs(ctx context.Context, conf *internal.TaskConfig, l
 	if output == nil {
 		return errors.New("runner task output info is not set")
 	}
-	vtask := task.Task{
+	vTask := task.Task{
 		Id:        info.TaskID,
 		Execution: info.Execution,
 		Project:   info.Project,
@@ -156,7 +152,7 @@ func uploadVirtualTaskTestLogs(ctx context.Context, conf *internal.TaskConfig, l
 
 	succeeded, err := agentutil.ParallelWorkerExec(ctx, "sending test log", logs, logger.Task(),
 		func(log *testlog.TestLog) error {
-			return taskoutput.AppendTestLogForOutput(ctx, vtask, output.TestLogs, opts, log, conf.S3Usage)
+			return errors.Wrapf(taskoutput.AppendTestLogForOutput(ctx, vTask, output.TestLogs, opts, log, conf.S3Usage), "uploading test log for virtual task '%s'", vTask.Id)
 		},
 	)
 	if err != nil {
@@ -169,7 +165,7 @@ func uploadVirtualTaskTestLogs(ctx context.Context, conf *internal.TaskConfig, l
 
 // uploadVirtualTaskTestResults uploads the test results in parquet format on
 // behalf of the virtual task identified by info and returns their metadata.
-func uploadVirtualTaskTestResults(ctx context.Context, conf *internal.TaskConfig, info testresult.TestResultsInfo, createTime, createdAt time.Time, results []testresult.TestResult) (*apimodels.VirtualTaskTestResults, error) {
+func uploadVirtualTaskTestResults(ctx context.Context, conf *internal.TaskConfig, info testresult.TestResultsInfo, taskCreatedAt, testResultsCreatedAt time.Time, results []testresult.TestResult) (*apimodels.VirtualTaskTestResults, error) {
 	output := conf.Task.TaskOutputInfo
 	if output == nil {
 		return nil, errors.New("runner task output info is not set")
@@ -180,9 +176,8 @@ func uploadVirtualTaskTestResults(ctx context.Context, conf *internal.TaskConfig
 		return nil, errors.New("invalid test results version")
 	}
 
-	vtask := task.Task{CreateTime: createTime}
-	newResults := makeTestResults(&vtask, results)
-	if err := uploadTestResultsParquet(ctx, conf.TaskOutput, *output, info, createdAt, newResults); err != nil {
+	newResults := makeTestResults(taskCreatedAt, results)
+	if err := uploadTestResultsParquet(ctx, conf.TaskOutput, *output, info, testResultsCreatedAt, newResults); err != nil {
 		return nil, errors.Wrap(err, "uploading parquet test results")
 	}
 
@@ -193,6 +188,6 @@ func uploadVirtualTaskTestResults(ctx context.Context, conf *internal.TaskConfig
 			FailedCount: failedCount,
 		},
 		FailedSample: failedTests,
-		CreatedAt:    createdAt,
+		CreatedAt:    testResultsCreatedAt,
 	}, nil
 }

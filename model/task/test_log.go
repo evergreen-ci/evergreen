@@ -59,10 +59,7 @@ func NewTestLogSender(ctx context.Context, task Task, senderOpts EvergreenSender
 }
 
 // NewTestLogSenderForOutput returns a new test log sender for the given task run
-// using the provided test log output. Unlike NewTestLogSender, the output is
-// supplied by the caller rather than resolved from the task, which is useful
-// when appending logs on behalf of a task that has not run (e.g. a virtual
-// task).
+// using the provided test log output.
 func NewTestLogSenderForOutput(ctx context.Context, task Task, output TestLogOutput, senderOpts EvergreenSenderOptions, logPath string, sequence int) (send.Sender, error) {
 	svc, err := getTestLogService(ctx, output)
 	if err != nil {

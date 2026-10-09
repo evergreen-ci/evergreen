@@ -37,12 +37,12 @@ type virtualTaskCompletionFile struct {
 // virtualTaskTestResultsFile describes the test result files to parse and upload
 // for a virtual task.
 type virtualTaskTestResultsFile struct {
-	Files     []virtualTaskTestResultFile `json:"files"`
-	CreatedAt time.Time                   `json:"created_at,omitempty"`
+	Files     []virtualTaskTestResultFileGroup `json:"files"`
+	CreatedAt time.Time                        `json:"created_at,omitempty"`
 }
 
-// virtualTaskTestResultFile is a group of files of a single test result type.
-type virtualTaskTestResultFile struct {
+// virtualTaskTestResultFileGroup is a group of files of a single test result type.
+type virtualTaskTestResultFileGroup struct {
 	Type  string   `json:"type"`
 	Files []string `json:"files"`
 }
@@ -61,13 +61,16 @@ func (tr virtualTaskTestResultsFile) validate() error {
 	return catcher.Resolve()
 }
 
-func (e virtualTaskCompletionFile) toCompletion() apimodels.VirtualTaskCompletion {
+// toCompletion converts a virtual task's completion file data to the API model
+// for push-completing the task.
+func (e virtualTaskCompletionFile) toCompletion(tr *apimodels.VirtualTaskTestResults) apimodels.VirtualTaskCompletion {
 	return apimodels.VirtualTaskCompletion{
 		TaskID:           e.TaskID,
 		Execution:        e.Execution,
 		Status:           e.Status,
 		Artifacts:        e.Artifacts,
 		ExternalMetadata: e.ExternalMetadata,
+		TestResults:      tr,
 	}
 }
 
@@ -133,9 +136,9 @@ func (c *completeVirtualTasks) Execute(ctx context.Context, comm client.Communic
 	logger.Task().Infof(ctx, "Completing %d virtual task(s).", len(entries))
 
 	completions, err := buildVirtualTaskCompletions(ctx, comm, logger, conf, entries)
-	catcher.Add(err)
+	catcher.Wrap(err, "building virtual task completions")
 	if len(completions) > 0 {
-		catcher.Add(completeVirtualTaskBatches(ctx, comm, logger, conf, completions))
+		catcher.Wrap(completeVirtualTaskBatches(ctx, comm, logger, conf, completions), "push-completing virtual tasks")
 	}
 
 	return errors.WithStack(catcher.Resolve())
@@ -158,15 +161,15 @@ func buildVirtualTaskCompletions(ctx context.Context, comm client.Communicator, 
 }
 
 // partitionCompletions splits entries into completions that have no test
-// results to upload and those with test results to upload. Entries with invalid
-// or duplicate test result specs are dropped and reported as errors.
+// results to upload and those with test results to upload. Tasks that are
+// duplicate or contain invalid test results are dropped and reported as errors.
 func partitionCompletions(entries []virtualTaskCompletionFile) (withoutTestResults []apimodels.VirtualTaskCompletion, withTestResults []virtualTaskCompletionFile, err error) {
 	catcher := grip.NewBasicCatcher()
 	withoutTestResults = make([]apimodels.VirtualTaskCompletion, 0, len(entries))
 	seenTestResults := map[string]bool{}
 	for _, entry := range entries {
 		if entry.TestResults == nil {
-			withoutTestResults = append(withoutTestResults, entry.toCompletion())
+			withoutTestResults = append(withoutTestResults, entry.toCompletion(nil))
 			continue
 		}
 		if err := entry.TestResults.validate(); err != nil {
@@ -194,17 +197,15 @@ func uploadTestResultsForCompletions(ctx context.Context, comm client.Communicat
 
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	prepared, err := prepareVirtualTasks(ctx, comm, td, logger, entries)
-	catcher.Add(err)
+	catcher.Wrap(err, "preparing virtual tasks for test result upload")
 
 	completions := make([]apimodels.VirtualTaskCompletion, 0, len(entries))
 	for _, entry := range entries {
 		prep, ok := prepared[entry.TaskID]
 		if !ok {
-			// The task failed to prepare, so it was not locked to avoid
-			// potentially running the virtual task, and cannot have its test
-			// results pushed. The error was already recorded by
-			// prepareVirtualTasks.
-			logger.Task().Warningf(ctx, "Skipping test results for virtual task '%s' that could not be prepared for upload", entry.TaskID)
+			// The task could not be prepared for uploading test results, so it
+			// cannot have its test results safely pushed.
+			logger.Task().Warningf(ctx, "Skipping test results for virtual task '%s' because it could not be prepared for upload", entry.TaskID)
 			continue
 		}
 		if prep.Reason != "" {
@@ -214,7 +215,7 @@ func uploadTestResultsForCompletions(ctx context.Context, comm client.Communicat
 
 		completion, err := uploadEntryTestResults(ctx, logger, conf, entry, prep)
 		if err != nil {
-			logger.Task().Errorf(ctx, "Virtual task '%s' test result upload failed: %s", entry.TaskID, err)
+			logger.Task().Errorf(ctx, "Test result upload for virtual task '%s' failed: %s", entry.TaskID, err)
 			catcher.Errorf("virtual task '%s': %s", entry.TaskID, err)
 			continue
 		}
@@ -223,30 +224,33 @@ func uploadTestResultsForCompletions(ctx context.Context, comm client.Communicat
 	return completions, catcher.Resolve()
 }
 
-// uploadEntryTestResults uploads the test results for a single prepared virtual
-// task and returns its completion.
+// uploadEntryTestResults uploads the test results for a virtual task and
+// returns its push-completion data, including test result stats.
 func uploadEntryTestResults(ctx context.Context, logger client.LoggerProducer, conf *internal.TaskConfig, entry virtualTaskCompletionFile, prep apimodels.VirtualTaskPreparationResult) (*apimodels.VirtualTaskCompletion, error) {
-	createdAt := entry.TestResults.CreatedAt
-	if createdAt.IsZero() {
-		createdAt = time.Now()
+	testResultsCreatedAt := entry.TestResults.CreatedAt
+	if utility.IsZeroTime(testResultsCreatedAt) {
+		testResultsCreatedAt = time.Now()
 	}
-	stats, err := processVirtualTaskTestResultFiles(ctx, conf, logger, *prep.TestResultsInfo, prep.TaskCreateTime, createdAt, entry.TestResults.Files)
+	stats, err := processVirtualTaskTestResultFiles(ctx, conf, logger, *prep.TestResultsInfo, prep.TaskCreateTime, testResultsCreatedAt, entry.TestResults.Files)
 	if err != nil {
 		return nil, err
 	}
 
-	completion := entry.toCompletion()
-	completion.TestResults = stats
+	completion := entry.toCompletion(stats)
 	return &completion, nil
 }
 
 // prepareVirtualTasks prepares a virtual task to upload test results by
-// validating and locking the given virtual tasks. It returns the prepared
-// virtual tasks and their task info.
+// validating and locking the given virtual tasks. If the preparation succeeds
+// and the task is ready to have test results uploaded, it returns all the
+// prepared virtual tasks and their task info.
 func prepareVirtualTasks(ctx context.Context, comm client.Communicator, td client.TaskData, logger client.LoggerProducer, entries []virtualTaskCompletionFile) (map[string]apimodels.VirtualTaskPreparationResult, error) {
 	preparations := make([]apimodels.VirtualTaskPreparation, len(entries))
 	for i, entry := range entries {
-		preparations[i] = apimodels.VirtualTaskPreparation{TaskID: entry.TaskID, Execution: entry.Execution}
+		preparations[i] = apimodels.VirtualTaskPreparation{
+			TaskID:    entry.TaskID,
+			Execution: entry.Execution,
+		}
 	}
 
 	catcher := grip.NewBasicCatcher()
@@ -257,7 +261,7 @@ func prepareVirtualTasks(ctx context.Context, comm client.Communicator, td clien
 
 		resp, err := comm.PrepareVirtualTasks(ctx, td, batch)
 		if err != nil {
-			catcher.Wrapf(err, "preparing virtual tasks (batch starting at %d)", i)
+			catcher.Wrapf(err, "preparing virtual tasks (batch between indexes %d-%d)", i, end)
 			continue
 		}
 		for _, result := range resp.Results {
@@ -266,10 +270,6 @@ func prepareVirtualTasks(ctx context.Context, comm client.Communicator, td clien
 				logger.Task().Errorf(ctx, "Virtual task '%s' preparation failed: %s", result.TaskID, result.Reason)
 				catcher.Errorf("virtual task '%s': %s", result.TaskID, result.Reason)
 			case apimodels.VirtualTaskCompletionOutcomeSuccess:
-				if result.Reason == "" && result.TestResultsInfo == nil {
-					catcher.Errorf("virtual task '%s': preparation did not return test results info", result.TaskID)
-					continue
-				}
 				prepared[result.TaskID] = result
 			default:
 				catcher.Errorf("virtual task '%s': unrecognized preparation outcome '%s'", result.TaskID, result.Outcome)
@@ -289,7 +289,7 @@ func completeVirtualTaskBatches(ctx context.Context, comm client.Communicator, l
 
 		resp, err := comm.CompleteVirtualTasks(ctx, td, batch)
 		if err != nil {
-			catcher.Wrapf(err, "completing virtual tasks (batch starting at %d)", i)
+			catcher.Wrapf(err, "completing virtual tasks (batch between indexes %d-%d)", i, end)
 			continue
 		}
 
@@ -298,7 +298,7 @@ func completeVirtualTaskBatches(ctx context.Context, comm client.Communicator, l
 				logger.Task().Errorf(ctx, "Virtual task '%s' completion failed: %s", result.TaskID, result.Reason)
 				catcher.Errorf("virtual task '%s': %s", result.TaskID, result.Reason)
 			} else if result.Reason != "" {
-				logger.Task().Infof(ctx, "Virtual task '%s' already completed successfully, no-opping: %s", result.TaskID, result.Reason)
+				logger.Task().Infof(ctx, "Skipping push-completion for virtual task '%s', no-opping: %s", result.TaskID, result.Reason)
 			} else {
 				logger.Task().Infof(ctx, "Virtual task '%s' completed successfully.", result.TaskID)
 			}

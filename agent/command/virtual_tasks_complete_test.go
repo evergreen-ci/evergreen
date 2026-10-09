@@ -146,7 +146,7 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 					Execution: 0,
 					Status:    "succeeded",
 					TestResults: &virtualTaskTestResultsFile{
-						Files: []virtualTaskTestResultFile{{Type: virtualTestResultTypeNative, Files: []string{"native.json"}}},
+						Files: []virtualTaskTestResultFileGroup{{Type: virtualTestResultTypeNative, Files: []string{"native.json"}}},
 					},
 				},
 			}))
@@ -169,7 +169,7 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 					TaskID:      "task1",
 					Execution:   0,
 					Status:      "succeeded",
-					TestResults: &virtualTaskTestResultsFile{Files: []virtualTaskTestResultFile{{Type: virtualTestResultTypeNative, Files: []string{"native.json"}}}},
+					TestResults: &virtualTaskTestResultsFile{Files: []virtualTaskTestResultFileGroup{{Type: virtualTestResultTypeNative, Files: []string{"native.json"}}}},
 				},
 			}))
 
@@ -188,7 +188,7 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 					TaskID:      "task1",
 					Execution:   0,
 					Status:      "succeeded",
-					TestResults: &virtualTaskTestResultsFile{Files: []virtualTaskTestResultFile{{Type: virtualTestResultTypeNative, Files: []string{"native.json"}}}},
+					TestResults: &virtualTaskTestResultsFile{Files: []virtualTaskTestResultFileGroup{{Type: virtualTestResultTypeNative, Files: []string{"native.json"}}}},
 				},
 			}))
 
@@ -202,8 +202,8 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 				{TestFile: "test1", Status: evergreen.TestSucceededStatus},
 			}}))
 			require.NoError(t, utility.WriteJSONFile(filepath.Join(conf.WorkDir, "results.json"), []virtualTaskCompletionFile{
-				{TaskID: "task1", Execution: 0, Status: "succeeded", TestResults: &virtualTaskTestResultsFile{Files: []virtualTaskTestResultFile{{Type: virtualTestResultTypeNative, Files: []string{"native.json"}}}}},
-				{TaskID: "task1", Execution: 0, Status: "succeeded", TestResults: &virtualTaskTestResultsFile{Files: []virtualTaskTestResultFile{{Type: virtualTestResultTypeNative, Files: []string{"native.json"}}}}},
+				{TaskID: "task1", Execution: 0, Status: "succeeded", TestResults: &virtualTaskTestResultsFile{Files: []virtualTaskTestResultFileGroup{{Type: virtualTestResultTypeNative, Files: []string{"native.json"}}}}},
+				{TaskID: "task1", Execution: 0, Status: "succeeded", TestResults: &virtualTaskTestResultsFile{Files: []virtualTaskTestResultFileGroup{{Type: virtualTestResultTypeNative, Files: []string{"native.json"}}}}},
 			}))
 
 			cmd := &completeVirtualTasks{Files: []string{"results.json"}}
@@ -220,7 +220,7 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 					TaskID:      "task1",
 					Execution:   0,
 					Status:      "succeeded",
-					TestResults: &virtualTaskTestResultsFile{Files: []virtualTaskTestResultFile{{Type: virtualTestResultTypeNative, Files: []string{"native.json"}}}},
+					TestResults: &virtualTaskTestResultsFile{Files: []virtualTaskTestResultFileGroup{{Type: virtualTestResultTypeNative, Files: []string{"native.json"}}}},
 				},
 			}))
 
@@ -236,7 +236,7 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 					TaskID:      "task1",
 					Execution:   0,
 					Status:      "succeeded",
-					TestResults: &virtualTaskTestResultsFile{Files: []virtualTaskTestResultFile{{Type: "bogus", Files: []string{"native.json"}}}},
+					TestResults: &virtualTaskTestResultsFile{Files: []virtualTaskTestResultFileGroup{{Type: "bogus", Files: []string{"native.json"}}}},
 				},
 			}))
 
