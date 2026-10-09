@@ -2021,18 +2021,18 @@ Note: CLI tools that run on Evergreen (such as DSI) might also have their own ti
 
 ## virtual_tasks.complete
 
-This command push-completes [virtual tasks](Virtual-Tasks) by submitting their
-final results to Evergreen.
+This command uploads test results and push-completes [virtual
+tasks](Virtual-Tasks) by submitting their final results to Evergreen.
 
-- If a virtual task is already finished or already running, the push-completion
-  will no-op.
+- If a virtual task is already finished or already running, the command will
+  no-op for that task.
 - If the `execution` does not match the virtual task's current execution, the
-  push-completion will no-op.
+  command will no-op for that task.
 - If a task is not virtual or is not in the same version as the runner, the
-  push-completion will fail.
+  command will fail.
 
-If any task fails to be push-completed, the command will fail and log errors for
-the failed tasks.
+If any task fails to upload test results or push-completed, the command will
+fail and log errors for the failed tasks.
 
 ```yaml
 - command: virtual_tasks.complete
@@ -2062,8 +2062,11 @@ example:
     "execution": 0,
     "status": "success",
     "test_results": {
-      "stats": { "total_count": 42, "failed_count": 1 },
-      "failed_sample": ["test_name_1"],
+      "files": [
+        { "type": "go", "files": ["output/*.suite"] },
+        { "type": "xunit", "files": ["results/*.xml"] },
+        { "type": "native", "files": ["results.json"] }
+      ],
       "created_at": "2026-08-12T12:00:00Z"
     },
     "artifacts": [
@@ -2084,11 +2087,17 @@ Fields:
 - `execution`: the execution number the completion applies to. Must match the
   virtual task's current execution number, otherwise the completion no-ops.
 - `status`: the final task status. Must be `success` or `failed`.
-- `test_results`: optional test result metadata to attach to the task.
-  - `stats`: test result counts. `total_count` and `failed_count` must be
-    non-negative.
-  - `failed_sample`: optional list of failed test names.
-  - `created_at`: timestamp the test results were generated.
+- `test_results`: optional test results to attach to the task. The command will
+  and parse and upload the test results for the virtual task as well as compute
+  test result stats.
+  - `files`: the groups of test result files to parse. Each group has a `type`
+    and a list of `files` (gitignore globs relative to the task's working
+    directory). The supported types match the standalone test result commands:
+    - `native`: Evergreen's native JSON format (see [attach.results](#attachresults)).
+    - `go`: `go test` output (see [gotest.parse_files](#gotestparse_files)).
+    - `xunit`: xUnit XML (see [attach.xunit_results](#attachxunit_results)).
+  - `created_at`: optional timestamp the test results were generated. Defaults
+    to the current time.
 - `artifacts`: optional list of artifact files to attach. Each artifact
   requires a `name` and `url`; `visibility` is optional and must be a valid
   artifact visibility if set (see [s3.put](#s3put) for visibility options and behavior).

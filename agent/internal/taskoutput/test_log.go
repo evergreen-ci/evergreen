@@ -36,6 +36,25 @@ func AppendTestLog(ctx context.Context, tsk *task.Task, redactionOpts redactor.R
 	if err != nil {
 		return errors.Wrapf(err, "creating Evergreen logger for test log '%s'", testLog.Name)
 	}
+	return sendTestLog(ctx, sender, redactionOpts, testLog)
+}
+
+// AppendTestLogForOutput appends log lines to the specified test log using the
+// provided test log output rather than resolving it from the task. This is
+// analogous to AppendTestLog but is meant to append logs on behalf of a task
+// that has not run (e.g. a virtual task). Safe for concurrent use with a
+// shared, Init'd s3Usage.
+func AppendTestLogForOutput(ctx context.Context, tsk task.Task, output task.TestLogOutput, redactionOpts redactor.RedactionOptions, testLog *testlog.TestLog, s3Usage *s3usage.S3Usage) error {
+	sender, err := task.NewTestLogSenderForOutput(ctx, tsk, output, task.EvergreenSenderOptions{S3Usage: s3Usage}, testLog.Name, 0)
+	if err != nil {
+		return errors.Wrapf(err, "creating Evergreen logger for test log '%s'", testLog.Name)
+	}
+	return sendTestLog(ctx, sender, redactionOpts, testLog)
+}
+
+// sendTestLog redacts the test log's lines, writes them to the sender, and closes
+// the sender.
+func sendTestLog(ctx context.Context, sender send.Sender, redactionOpts redactor.RedactionOptions, testLog *testlog.TestLog) error {
 	sender = redactor.NewRedactingSender(sender, redactionOpts)
 	sender.Send(ctx, message.ConvertToComposer(level.Info, strings.Join(testLog.Lines, "\n")))
 
