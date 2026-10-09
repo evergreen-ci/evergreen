@@ -439,17 +439,13 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 		return nil
 	}
 
-	if s3pc.isPrivate(s3pc.Visibility) {
-		logger.Task().Infof(ctx, "Putting private files into S3.")
+	if s3pc.isMulti() {
+		logger.Task().Infof(ctx, "Putting files matching filter '%s' into path '%s' in S3 bucket '%s'.",
+			s3pc.LocalFilesIncludeFilter, s3pc.RemoteFile, s3pc.Bucket)
+	} else if s3pc.isPublic() {
+		logger.Task().Infof(ctx, "Putting local file '%s' into path '%s/%s' (%s).", s3pc.LocalFile, s3pc.Bucket, s3pc.RemoteFile, agentutil.S3DefaultURL(s3pc.Bucket, s3pc.RemoteFile))
 	} else {
-		if s3pc.isMulti() {
-			logger.Task().Infof(ctx, "Putting files matching filter '%s' into path '%s' in S3 bucket '%s'.",
-				s3pc.LocalFilesIncludeFilter, s3pc.RemoteFile, s3pc.Bucket)
-		} else if s3pc.isPublic() {
-			logger.Task().Infof(ctx, "Putting local file '%s' into path '%s/%s' (%s).", s3pc.LocalFile, s3pc.Bucket, s3pc.RemoteFile, agentutil.S3DefaultURL(s3pc.Bucket, s3pc.RemoteFile))
-		} else {
-			logger.Task().Infof(ctx, "Putting local file '%s' into '%s/%s'.", s3pc.LocalFile, s3pc.Bucket, s3pc.RemoteFile)
-		}
+		logger.Task().Infof(ctx, "Putting local file '%s' into '%s/%s'.", s3pc.LocalFile, s3pc.Bucket, s3pc.RemoteFile)
 	}
 
 	errChan := make(chan error)
@@ -493,13 +489,9 @@ func (s3pc *s3put) putWithRetry(ctx context.Context, comm client.Communicator, l
 
 retryLoop:
 	for i := 1; i <= maxS3OpAttempts; i++ {
-		if s3pc.isPrivate(s3pc.Visibility) {
-			logger.Task().Infof(ctx, "Performing S3 put of a private file.")
-		} else {
-			logger.Task().Infof(ctx, "Performing S3 put to file '%s' in bucket '%s' (attempt %d of %d).",
-				s3pc.RemoteFile, s3pc.Bucket,
-				i, maxS3OpAttempts)
-		}
+		logger.Task().Infof(ctx, "Performing S3 put to file '%s' in bucket '%s' (attempt %d of %d).",
+			s3pc.RemoteFile, s3pc.Bucket,
+			i, maxS3OpAttempts)
 
 		select {
 		case <-ctx.Done():
@@ -737,13 +729,6 @@ func (s3pc *s3put) createPailBucket(ctx context.Context, comm client.Communicato
 	bucket, err := pail.NewS3MultiPartBucketWithHTTPClient(ctx, httpClient, opts)
 	s3pc.bucket = bucket
 	return err
-}
-
-func (s3pc *s3put) isPrivate(visibility string) bool {
-	if visibility == artifact.Signed || visibility == artifact.Private || visibility == artifact.None {
-		return true
-	}
-	return false
 }
 
 func (s3pc *s3put) isPublic() bool {
