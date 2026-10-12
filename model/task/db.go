@@ -547,10 +547,12 @@ func ByCommit(revision, buildVariant, displayName, project, requester string) bs
 	}
 }
 
-// ByPreviousCommit creates a query on Evergreen as the requester on a previous revision with the same buildVariant, displayName and project
-func ByPreviousCommit(buildVariant, displayName, project, requester string, order int) bson.M {
+// ByPreviousCommit creates a query for tasks on a previous revision with the same buildVariant, displayName and project.
+func ByPreviousCommit(buildVariant, displayName, project string, order int) bson.M {
 	return bson.M{
-		RequesterKey:           requester,
+		RequesterKey: bson.M{
+			"$in": evergreen.SystemVersionRequesterTypes,
+		},
 		BuildVariantKey:        buildVariant,
 		DisplayNameKey:         displayName,
 		ProjectKey:             project,

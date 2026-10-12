@@ -887,7 +887,7 @@ func (t *Task) FindTaskOnBaseCommit(ctx context.Context) (*Task, error) {
 }
 
 func (t *Task) FindTaskOnPreviousCommit(ctx context.Context) (*Task, error) {
-	return FindOne(ctx, db.Query(ByPreviousCommit(t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester, t.RevisionOrderNumber)).Sort([]string{"-" + RevisionOrderNumberKey}))
+	return FindOne(ctx, db.Query(ByPreviousCommit(t.BuildVariant, t.DisplayName, t.Project, t.RevisionOrderNumber)).Sort([]string{"-" + RevisionOrderNumberKey}))
 }
 
 // Find the previously completed task for the same project +

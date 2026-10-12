@@ -4059,12 +4059,11 @@ func TestFindTaskOnPreviousCommit(t *testing.T) {
 	}
 	assert.NoError(t, db.Insert(t.Context(), Collection, t4))
 
-	// Should fetch the latest mainline commit task and should not consider non gitter tasks
 	task, err = t4.FindTaskOnPreviousCommit(ctx)
 	assert.NoError(t, err)
 	require.NotNil(t, task)
-	assert.Equal(t, t2.Id, task.Id)
-	assert.Equal(t, t2.Version, task.Version)
+	assert.Equal(t, t3.Id, task.Id)
+	assert.Equal(t, t3.Version, task.Version)
 }
 
 type TaskConnectorFetchByIdSuite struct {
