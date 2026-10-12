@@ -46,8 +46,8 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 		},
 		"SingleFileSuccess": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
 			completions := []apimodels.VirtualTaskCompletion{
-				{TaskID: "task1", Execution: 0, Status: "succeeded"},
-				{TaskID: "task2", Execution: 0, Status: "failed"},
+				{TaskID: "task1", Execution: 0, Status: evergreen.TaskSucceeded},
+				{TaskID: "task2", Execution: 0, Status: evergreen.TaskFailed},
 			}
 			path := filepath.Join(conf.WorkDir, "results.json")
 			require.NoError(t, utility.WriteJSONFile(path, completions))
@@ -62,11 +62,11 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 		"MultipleFilesAggregated": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
 			require.NoError(t, utility.WriteJSONFile(
 				filepath.Join(conf.WorkDir, "results1.json"),
-				[]apimodels.VirtualTaskCompletion{{TaskID: "task1", Execution: 0, Status: "succeeded"}},
+				[]apimodels.VirtualTaskCompletion{{TaskID: "task1", Execution: 0, Status: evergreen.TaskSucceeded}},
 			))
 			require.NoError(t, utility.WriteJSONFile(
 				filepath.Join(conf.WorkDir, "results2.json"),
-				[]apimodels.VirtualTaskCompletion{{TaskID: "task2", Execution: 0, Status: "succeeded"}},
+				[]apimodels.VirtualTaskCompletion{{TaskID: "task2", Execution: 0, Status: evergreen.TaskSucceeded}},
 			))
 
 			cmd := &completeVirtualTasks{Files: []string{"results1.json", "results2.json"}}
@@ -77,7 +77,7 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 		"BatchesOver100": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
 			completions := make([]apimodels.VirtualTaskCompletion, 150)
 			for i := range completions {
-				completions[i] = apimodels.VirtualTaskCompletion{TaskID: "task", Execution: 0, Status: "succeeded"}
+				completions[i] = apimodels.VirtualTaskCompletion{TaskID: "task", Execution: 0, Status: evergreen.TaskSucceeded}
 			}
 			require.NoError(t, utility.WriteJSONFile(filepath.Join(conf.WorkDir, "results.json"), completions))
 
@@ -90,7 +90,7 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 		"APIFailureReturnsError": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
 			require.NoError(t, utility.WriteJSONFile(
 				filepath.Join(conf.WorkDir, "results.json"),
-				[]apimodels.VirtualTaskCompletion{{TaskID: "task1", Execution: 0, Status: "succeeded"}},
+				[]apimodels.VirtualTaskCompletion{{TaskID: "task1", Execution: 0, Status: evergreen.TaskSucceeded}},
 			))
 			comm.CompleteVirtualTasksShouldFail = true
 
@@ -101,8 +101,8 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 			require.NoError(t, utility.WriteJSONFile(
 				filepath.Join(conf.WorkDir, "results.json"),
 				[]apimodels.VirtualTaskCompletion{
-					{TaskID: "task1", Execution: 0, Status: "succeeded"},
-					{TaskID: "task2", Execution: 0, Status: "succeeded"},
+					{TaskID: "task1", Execution: 0, Status: evergreen.TaskSucceeded},
+					{TaskID: "task2", Execution: 0, Status: evergreen.TaskSucceeded},
 				},
 			))
 			comm.CompleteVirtualTasksResponse = &apimodels.CompleteVirtualTasksResponse{
@@ -135,7 +135,7 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 
 			assert.Empty(t, comm.CompleteVirtualTasksCompletions)
 		},
-		"TestResultsUploadedAndCompleted": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
+		"TestResultsUploadedAndTaskPushCompletedWithStats": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
 			conf.Task.TaskOutputInfo = agentutil.InitializeTaskOutput(t)
 			require.NoError(t, utility.WriteJSONFile(filepath.Join(conf.WorkDir, "native.json"), nativeTestResults{Results: []nativeTestResult{
 				{TestFile: "test1", Status: evergreen.TestSucceededStatus},
@@ -144,9 +144,14 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 				{
 					TaskID:    "task1",
 					Execution: 0,
-					Status:    "succeeded",
+					Status:    evergreen.TaskSucceeded,
 					TestResults: &virtualTaskTestResultsFile{
-						Files: []virtualTaskTestResultFileGroup{{Type: virtualTestResultTypeNative, Files: []string{"native.json"}}},
+						Files: []virtualTaskTestResultFileGroup{
+							{
+								Type:  virtualTestResultTypeNative,
+								Files: []string{"native.json"},
+							},
+						},
 					},
 				},
 			}))
@@ -166,10 +171,17 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 			}}
 			require.NoError(t, utility.WriteJSONFile(filepath.Join(conf.WorkDir, "results.json"), []virtualTaskCompletionFile{
 				{
-					TaskID:      "task1",
-					Execution:   0,
-					Status:      "succeeded",
-					TestResults: &virtualTaskTestResultsFile{Files: []virtualTaskTestResultFileGroup{{Type: virtualTestResultTypeNative, Files: []string{"native.json"}}}},
+					TaskID:    "task1",
+					Execution: 0,
+					Status:    evergreen.TaskSucceeded,
+					TestResults: &virtualTaskTestResultsFile{
+						Files: []virtualTaskTestResultFileGroup{
+							{
+								Type:  virtualTestResultTypeNative,
+								Files: []string{"native.json"},
+							},
+						},
+					},
 				},
 			}))
 
@@ -177,6 +189,7 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 			err := cmd.Execute(ctx, comm, logger, conf)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "task1")
+			assert.Equal(t, 1, comm.PrepareVirtualTasksCallCount)
 			assert.Zero(t, comm.CompleteVirtualTasksCallCount)
 		},
 		"PrepareNoopSkipsUploadAndCompletion": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
@@ -185,15 +198,23 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 			}}
 			require.NoError(t, utility.WriteJSONFile(filepath.Join(conf.WorkDir, "results.json"), []virtualTaskCompletionFile{
 				{
-					TaskID:      "task1",
-					Execution:   0,
-					Status:      "succeeded",
-					TestResults: &virtualTaskTestResultsFile{Files: []virtualTaskTestResultFileGroup{{Type: virtualTestResultTypeNative, Files: []string{"native.json"}}}},
+					TaskID:    "task1",
+					Execution: 0,
+					Status:    evergreen.TaskSucceeded,
+					TestResults: &virtualTaskTestResultsFile{
+						Files: []virtualTaskTestResultFileGroup{
+							{
+								Type:  virtualTestResultTypeNative,
+								Files: []string{"native.json"},
+							},
+						},
+					},
 				},
 			}))
 
 			cmd := &completeVirtualTasks{Files: []string{"results.json"}}
 			require.NoError(t, cmd.Execute(ctx, comm, logger, conf))
+			assert.Equal(t, 1, comm.PrepareVirtualTasksCallCount)
 			assert.Zero(t, comm.CompleteVirtualTasksCallCount)
 		},
 		"DuplicateTestResultTaskIDsError": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
@@ -202,14 +223,39 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 				{TestFile: "test1", Status: evergreen.TestSucceededStatus},
 			}}))
 			require.NoError(t, utility.WriteJSONFile(filepath.Join(conf.WorkDir, "results.json"), []virtualTaskCompletionFile{
-				{TaskID: "task1", Execution: 0, Status: "succeeded", TestResults: &virtualTaskTestResultsFile{Files: []virtualTaskTestResultFileGroup{{Type: virtualTestResultTypeNative, Files: []string{"native.json"}}}}},
-				{TaskID: "task1", Execution: 0, Status: "succeeded", TestResults: &virtualTaskTestResultsFile{Files: []virtualTaskTestResultFileGroup{{Type: virtualTestResultTypeNative, Files: []string{"native.json"}}}}},
+				{
+					TaskID:    "task1",
+					Execution: 0,
+					Status:    evergreen.TaskSucceeded,
+					TestResults: &virtualTaskTestResultsFile{
+						Files: []virtualTaskTestResultFileGroup{
+							{
+								Type:  virtualTestResultTypeNative,
+								Files: []string{"native.json"},
+							},
+						},
+					},
+				},
+				{
+					TaskID:    "task1",
+					Execution: 0,
+					Status:    evergreen.TaskSucceeded,
+					TestResults: &virtualTaskTestResultsFile{
+						Files: []virtualTaskTestResultFileGroup{
+							{
+								Type:  virtualTestResultTypeNative,
+								Files: []string{"native.json"},
+							},
+						},
+					},
+				},
 			}))
 
 			cmd := &completeVirtualTasks{Files: []string{"results.json"}}
 			err := cmd.Execute(ctx, comm, logger, conf)
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "more than once")
+			assert.Error(t, err)
+			assert.Equal(t, 1, comm.PrepareVirtualTasksCallCount)
+			assert.Equal(t, 1, comm.CompleteVirtualTasksCallCount)
 		},
 		"TestResultsUploadFailureSkipsTaskAndErrors": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
 			require.NoError(t, utility.WriteJSONFile(filepath.Join(conf.WorkDir, "native.json"), nativeTestResults{Results: []nativeTestResult{
@@ -217,10 +263,12 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 			}}))
 			require.NoError(t, utility.WriteJSONFile(filepath.Join(conf.WorkDir, "results.json"), []virtualTaskCompletionFile{
 				{
-					TaskID:      "task1",
-					Execution:   0,
-					Status:      "succeeded",
-					TestResults: &virtualTaskTestResultsFile{Files: []virtualTaskTestResultFileGroup{{Type: virtualTestResultTypeNative, Files: []string{"native.json"}}}},
+					TaskID:    "task1",
+					Execution: 0,
+					Status:    evergreen.TaskSucceeded,
+					TestResults: &virtualTaskTestResultsFile{Files: []virtualTaskTestResultFileGroup{
+						{Type: virtualTestResultTypeNative, Files: []string{"native.json"}},
+					}},
 				},
 			}))
 
@@ -228,6 +276,7 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 			err := cmd.Execute(ctx, comm, logger, conf)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "task1")
+			assert.Equal(t, 1, comm.PrepareVirtualTasksCallCount)
 			assert.Zero(t, comm.CompleteVirtualTasksCallCount)
 		},
 		"InvalidTestResultTypeErrorsWithoutPreparing": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
@@ -235,7 +284,7 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 				{
 					TaskID:      "task1",
 					Execution:   0,
-					Status:      "succeeded",
+					Status:      evergreen.TaskSucceeded,
 					TestResults: &virtualTaskTestResultsFile{Files: []virtualTaskTestResultFileGroup{{Type: "bogus", Files: []string{"native.json"}}}},
 				},
 			}))
@@ -245,6 +294,7 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "unrecognized test result type")
 			assert.Zero(t, comm.PrepareVirtualTasksCallCount)
+			assert.Zero(t, comm.CompleteVirtualTasksCallCount)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
