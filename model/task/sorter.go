@@ -2,12 +2,12 @@ package task
 
 import (
 	"context"
+	"errors"
 	"slices"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/cost"
-	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.opentelemetry.io/otel/attribute"
@@ -54,7 +54,7 @@ func (t Tasks) InsertUnordered(ctx context.Context) error {
 }
 
 func (t Tasks) insertUnordered(ctx context.Context, collection taskInserter) error {
-	var writeErrors mongo.BulkWriteException
+	var combinedErrors mongo.BulkWriteException
 	for start := 0; start < len(t); start += taskInsertBatchSize {
 		end := min(start+taskInsertBatchSize, len(t))
 		// Bound BSON and tracing buffers while retaining tasks for dependency counts.
@@ -69,19 +69,19 @@ func (t Tasks) insertUnordered(ctx context.Context, collection taskInserter) err
 		// Unordered writes still attempt later batches after document-level errors.
 		for _, writeError := range batchErrors.WriteErrors {
 			writeError.Index += start
-			writeErrors.WriteErrors = append(writeErrors.WriteErrors, writeError)
+			combinedErrors.WriteErrors = append(combinedErrors.WriteErrors, writeError)
 		}
 		if batchErrors.WriteConcernError != nil {
-			writeErrors.WriteConcernError = batchErrors.WriteConcernError
+			combinedErrors.WriteConcernError = batchErrors.WriteConcernError
 		}
 		for _, label := range batchErrors.Labels {
-			if !slices.Contains(writeErrors.Labels, label) {
-				writeErrors.Labels = append(writeErrors.Labels, label)
+			if !slices.Contains(combinedErrors.Labels, label) {
+				combinedErrors.Labels = append(combinedErrors.Labels, label)
 			}
 		}
 	}
-	if len(writeErrors.WriteErrors) > 0 || writeErrors.WriteConcernError != nil {
-		return writeErrors
+	if len(combinedErrors.WriteErrors) > 0 || combinedErrors.WriteConcernError != nil {
+		return combinedErrors
 	}
 	return nil
 }
