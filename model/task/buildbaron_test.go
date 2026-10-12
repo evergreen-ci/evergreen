@@ -41,7 +41,7 @@ func TestTaskToJQL(t *testing.T) {
 		}
 		tsk.DisplayName = "test_task"
 		jql := tsk.GetJQL([]string{"PRJ"})
-		expectedJQL := fmt.Sprintf(jqlBFQuery, "PRJ", `text~"\"GSSAPI_Auth.Test.js\"")`)
+		expectedJQL := fmt.Sprintf(jqlBFQuery, "PRJ", `text~"\"GSSAPI_Auth.Test.js\""`)
 		So(jql, ShouldEqual, expectedJQL)
 	})
 
@@ -53,7 +53,7 @@ func TestTaskToJQL(t *testing.T) {
 		}
 		tsk.DisplayName = "test_task"
 		jql := tsk.GetJQL([]string{"PRJ"})
-		expectedJQL := fmt.Sprintf(jqlBFQuery, "PRJ", `text~"\"Test\\-Name_With.Special\\-Chars\"")`)
+		expectedJQL := fmt.Sprintf(jqlBFQuery, "PRJ", `text~"\"Test\\-Name_With.Special\\-Chars\""`)
 		So(jql, ShouldEqual, expectedJQL)
 	})
 
@@ -65,7 +65,7 @@ func TestTaskToJQL(t *testing.T) {
 		}
 		tsk.DisplayName = "test_task"
 		jql := tsk.GetJQL([]string{"PRJ"})
-		expectedJQL := fmt.Sprintf(jqlBFQuery, "PRJ", `text~"\"legacy_test.js\"")`)
+		expectedJQL := fmt.Sprintf(jqlBFQuery, "PRJ", `text~"\"legacy_test.js\""`)
 		So(jql, ShouldEqual, expectedJQL)
 	})
 }
