@@ -21,6 +21,134 @@ import (
 
 const maxVirtualTaskCompletionBatchSize = 100
 
+// resolveVirtualTaskRunner validates that virtual tasks are enabled and resolves
+// the runner task and its project, checking that the caller is authorized to
+// push-complete virtual tasks for it. A non-nil responder means that there's an
+// error and the request should fail.
+func resolveVirtualTaskRunner(ctx context.Context, taskID string) (*task.Task, gimlet.Responder) {
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return nil, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting service flags"))
+	}
+	if flags.VirtualTasksDisabled {
+		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusServiceUnavailable,
+			Message:    "virtual tasks are disabled",
+		})
+	}
+
+	// For task auth, the authenticated task is the runner. For user auth
+	// (service users), the URL task ID identifies the runner on whose behalf
+	// the user is pushing results.
+	runner := GetTask(ctx)
+	if runner == nil {
+		runner, err = task.FindOneId(ctx, taskID)
+		if err != nil {
+			return nil, gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", taskID))
+		}
+		if runner == nil {
+			return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("task '%s' not found", taskID),
+			})
+		}
+	}
+
+	pRef, err := model.FindMergedProjectRef(ctx, runner.Project, runner.Version, false)
+	if err != nil {
+		return nil, gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s'", runner.Project))
+	}
+	if pRef == nil {
+		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("project '%s' not found", runner.Project),
+		})
+	}
+	if !pRef.IsVirtualTasksEnabled() {
+		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusForbidden,
+			Message:    fmt.Sprintf("virtual tasks are not enabled for project '%s'", pRef.Identifier),
+		})
+	}
+
+	// Task-authenticated requests have no user attached.
+	if usr := gimlet.GetUser(ctx); usr != nil {
+		if !usr.HasPermission(ctx, gimlet.PermissionOpts{
+			Resource:      runner.Project,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionTasks,
+			RequiredLevel: evergreen.TasksAdmin.Value,
+		}) {
+			return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusForbidden,
+				Message:    fmt.Sprintf("user '%s' does not have permission to complete virtual tasks in project '%s'", usr.Username(), pRef.Identifier),
+			})
+		}
+	}
+
+	return runner, nil
+}
+
+// validateVirtualTaskTarget checks that the virtual task can be push-completed
+// by the runner. A non-empty reason means the completion should no-op; a
+// non-nil error is a hard failure.
+func validateVirtualTaskTarget(ctx context.Context, runner *task.Task, taskID string, execution int) (*task.Task, string, error) {
+	vt, err := task.FindOneId(ctx, taskID)
+	if err != nil {
+		return nil, "", errors.Wrap(err, "finding task")
+	}
+	if vt == nil {
+		return nil, "", errors.New("task not found")
+	}
+	if !vt.IsVirtual {
+		return nil, "", errors.New("task is not a virtual task")
+	}
+	if vt.Version != runner.Version {
+		return nil, "", errors.Errorf("task does not belong to the same version as task '%s'", runner.Id)
+	}
+	if vt.Execution != execution {
+		return nil, fmt.Sprintf("completion is for execution %d but the task is on execution %d", execution, vt.Execution), nil
+	}
+	if vt.IsFinished() {
+		return nil, "task is already finished", nil
+	}
+	if vt.Status != evergreen.TaskUndispatched {
+		return nil, "task is already running", nil
+	}
+	return vt, "", nil
+}
+
+// claimVirtualTask locks the virtual task for the runner so it is not
+// dispatchable. A non-empty reason means the virtual task is already claimed by
+// another runner and the completion should no-op.
+func claimVirtualTask(ctx context.Context, runner *task.Task, vt *task.Task) (string, error) {
+	if vt.CompletedBy != "" && vt.CompletedBy != runner.Id {
+		return fmt.Sprintf("task is already being completed by task '%s'", vt.CompletedBy), nil
+	}
+
+	// Claim the task before dequeueing it. SetCompletedBy only matches while
+	// the task is undispatched, so a task that was just dispatched no-ops here.
+	if vt.CompletedBy == "" {
+		if err := vt.SetCompletedBy(ctx, runner.Id); err != nil {
+			if adb.ResultsNotFound(err) {
+				return "task is no longer waiting to be dispatched", nil
+			}
+			return "", errors.Wrap(err, "setting completing task")
+		}
+	}
+
+	if vt.Activated {
+		// The task no longer needs to run on a host now that its results are
+		// available.
+		grip.Warning(ctx, message.WrapError(model.DequeueTask(ctx, vt.Id, vt.DistroId), message.Fields{
+			"message": "dequeueing virtual task for push completion",
+			"task_id": vt.Id,
+			"distro":  vt.DistroId,
+		}))
+	}
+	return "", nil
+}
+
 // POST /task/{task_id}/virtual_tasks/complete
 type completeVirtualTasksHandler struct {
 	env    evergreen.Environment
@@ -63,67 +191,12 @@ func (h *completeVirtualTasksHandler) Parse(ctx context.Context, r *http.Request
 }
 
 func (h *completeVirtualTasksHandler) Run(ctx context.Context) gimlet.Responder {
-	flags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting service flags"))
-	}
-	if flags.VirtualTasksDisabled {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusServiceUnavailable,
-			Message:    "virtual tasks are disabled",
-		})
+	runner, errResp := resolveVirtualTaskRunner(ctx, h.taskID)
+	if errResp != nil {
+		return errResp
 	}
 
-	// For task auth, the authenticated task is the runner. For user auth
-	// (service users), the URL task ID identifies the runner on whose behalf
-	// the user is pushing results.
-	runner := GetTask(ctx)
-	if runner == nil {
-		runner, err = task.FindOneId(ctx, h.taskID)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
-		}
-		if runner == nil {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusNotFound,
-				Message:    fmt.Sprintf("task '%s' not found", h.taskID),
-			})
-		}
-	}
-
-	pRef, err := model.FindMergedProjectRef(ctx, runner.Project, runner.Version, false)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s'", runner.Project))
-	}
-	if pRef == nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("project '%s' not found", runner.Project),
-		})
-	}
-	if !pRef.IsVirtualTasksEnabled() {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusForbidden,
-			Message:    fmt.Sprintf("virtual tasks are not enabled for project '%s'", pRef.Identifier),
-		})
-	}
-
-	// Task-authenticated requests have no user attached.
-	if usr := gimlet.GetUser(ctx); usr != nil {
-		if !usr.HasPermission(ctx, gimlet.PermissionOpts{
-			Resource:      runner.Project,
-			ResourceType:  evergreen.ProjectResourceType,
-			Permission:    evergreen.PermissionTasks,
-			RequiredLevel: evergreen.TasksAdmin.Value,
-		}) {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusForbidden,
-				Message:    fmt.Sprintf("user '%s' does not have permission to complete virtual tasks in project '%s'", usr.Username(), pRef.Identifier),
-			})
-		}
-	}
-
-	resp := apimodels.CompleteVirtualTasksResponse{}
+	response := apimodels.CompleteVirtualTasksResponse{}
 	for _, completion := range h.body.Tasks {
 		result := h.completeTask(ctx, runner, completion)
 		grip.Info(ctx, message.Fields{
@@ -134,11 +207,11 @@ func (h *completeVirtualTasksHandler) Run(ctx context.Context) gimlet.Responder 
 			"reason":    result.Reason,
 			"execution": completion.Execution,
 		})
-		resp.Results = append(resp.Results, result)
+		response.Results = append(response.Results, result)
 	}
 
-	responder := gimlet.NewJSONResponse(resp)
-	if err = responder.SetStatus(http.StatusCreated); err != nil {
+	responder := gimlet.NewJSONResponse(response)
+	if err := responder.SetStatus(http.StatusCreated); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting response status"))
 	}
 	return responder
@@ -183,47 +256,18 @@ func (h *completeVirtualTasksHandler) completeTask(ctx context.Context, runner *
 		})
 	}
 
-	vt, err := task.FindOneId(ctx, completion.TaskID)
+	vt, reason, err := validateVirtualTaskTarget(ctx, runner, completion.TaskID, completion.Execution)
 	if err != nil {
-		return failed(errors.Wrap(err, "finding task").Error())
+		return failed(err.Error())
 	}
-	if vt == nil {
-		return failed("task not found")
-	}
-	if !vt.IsVirtual {
-		return failed("task is not a virtual task")
-	}
-	if vt.Version != runner.Version {
-		return failed(fmt.Sprintf("task does not belong to the same version as task '%s'", runner.Id))
+	if reason != "" {
+		return successNoop(reason)
 	}
 
-	if vt.Execution != completion.Execution {
-		return successNoop(fmt.Sprintf("completion is for execution %d but the task is on execution %d", completion.Execution, vt.Execution))
-	}
-	if vt.IsFinished() {
-		return successNoop("task is already finished")
-	}
-	if vt.Status != evergreen.TaskUndispatched {
-		return successNoop("task is already running")
-	}
-
-	// Claim the task before dequeueing it. SetCompletedBy only matches while
-	// the task is undispatched, so a task that was just dispatched no-ops here.
-	if err = vt.SetCompletedBy(ctx, runner.Id); err != nil {
-		if adb.ResultsNotFound(err) {
-			return successNoop("task is no longer waiting to be dispatched")
-		}
-		return failed(errors.Wrap(err, "setting completing task").Error())
-	}
-
-	if vt.Activated {
-		// The task no longer needs to run on a host now that its results are
-		// available.
-		grip.Warning(ctx, message.WrapError(model.DequeueTask(ctx, vt.Id, vt.DistroId), message.Fields{
-			"message": "dequeueing virtual task for push completion",
-			"task_id": vt.Id,
-			"distro":  vt.DistroId,
-		}))
+	if reason, err = claimVirtualTask(ctx, runner, vt); err != nil {
+		return failed(err.Error())
+	} else if reason != "" {
+		return successNoop(reason)
 	}
 
 	// A push-completed task never dispatched, so its output info must be set
@@ -268,5 +312,120 @@ func (h *completeVirtualTasksHandler) completeTask(ctx context.Context, runner *
 	return apimodels.VirtualTaskCompletionResult{
 		TaskID:  completion.TaskID,
 		Outcome: apimodels.VirtualTaskCompletionOutcomeSuccess,
+	}
+}
+
+// POST /task/{task_id}/virtual_tasks/prepare
+type prepareVirtualTasksHandler struct {
+	env    evergreen.Environment
+	taskID string
+	body   apimodels.PrepareVirtualTasksRequest
+}
+
+func makePrepareVirtualTasks(env evergreen.Environment) gimlet.RouteHandler {
+	return &prepareVirtualTasksHandler{env: env}
+}
+
+// Factory creates an instance of the handler.
+//
+//	@Summary		Prepare virtual tasks for test result upload
+//	@Description	Validates and locks a batch of virtual tasks so their test results can be uploaded before push-completion. The task_id in the URL identifies the runner task. The route accepts task auth or service user auth (must have task admin permissions). It returns the test results info the runner needs to upload each task's results. Tasks that are already finished, already running, or whose execution number does not match will no-op.
+//	@Tags			tasks
+//	@Router			/task/{task_id}/virtual_tasks/prepare [post]
+//	@Security		Api-User || Api-Key
+//	@Param			task_id		path		string									true	"the runner task ID"
+//	@Param			{object}	body		apimodels.PrepareVirtualTasksRequest	true	"virtual tasks to prepare"
+//	@Success		200			{object}	apimodels.PrepareVirtualTasksResponse
+func (h *prepareVirtualTasksHandler) Factory() gimlet.RouteHandler {
+	return &prepareVirtualTasksHandler{env: h.env}
+}
+
+func (h *prepareVirtualTasksHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	if err := utility.ReadJSON(r.Body, &h.body); err != nil {
+		return errors.Wrapf(err, "reading virtual task preparations for task '%s'", h.taskID)
+	}
+	if len(h.body.Tasks) == 0 {
+		return errors.New("must specify at least one task to prepare")
+	}
+	if len(h.body.Tasks) > maxVirtualTaskCompletionBatchSize {
+		return errors.Errorf("batch size %d exceeds the maximum of %d", len(h.body.Tasks), maxVirtualTaskCompletionBatchSize)
+	}
+	return nil
+}
+
+func (h *prepareVirtualTasksHandler) Run(ctx context.Context) gimlet.Responder {
+	runner, errResp := resolveVirtualTaskRunner(ctx, h.taskID)
+	if errResp != nil {
+		return errResp
+	}
+
+	response := apimodels.PrepareVirtualTasksResponse{}
+	for _, prep := range h.body.Tasks {
+		result := h.prepareTask(ctx, runner, prep)
+		grip.Info(ctx, message.Fields{
+			"message":   "virtual task preparation",
+			"runner":    runner.Id,
+			"task_id":   prep.TaskID,
+			"outcome":   result.Outcome,
+			"reason":    result.Reason,
+			"execution": prep.Execution,
+		})
+		response.Results = append(response.Results, result)
+	}
+
+	responder := gimlet.NewJSONResponse(response)
+	if err := responder.SetStatus(http.StatusOK); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting response status"))
+	}
+	return responder
+}
+
+// prepareTask validates and locks a single virtual task so the runner can
+// safely upload its test results before push-completing it. This prevents the
+// virtual task from potentially being dispatched.
+func (h *prepareVirtualTasksHandler) prepareTask(ctx context.Context, runner *task.Task, prep apimodels.VirtualTaskPreparation) apimodels.VirtualTaskPreparationResult {
+	failed := func(reason string) apimodels.VirtualTaskPreparationResult {
+		return apimodels.VirtualTaskPreparationResult{
+			TaskID:  prep.TaskID,
+			Outcome: apimodels.VirtualTaskCompletionOutcomeFailed,
+			Reason:  reason,
+		}
+	}
+	// No-ops return success so that runners don't retry idempotent pushes.
+	successNoop := func(reason string) apimodels.VirtualTaskPreparationResult {
+		return apimodels.VirtualTaskPreparationResult{
+			TaskID:  prep.TaskID,
+			Outcome: apimodels.VirtualTaskCompletionOutcomeSuccess,
+			Reason:  reason,
+		}
+	}
+
+	vt, reason, err := validateVirtualTaskTarget(ctx, runner, prep.TaskID, prep.Execution)
+	if err != nil {
+		return failed(err.Error())
+	}
+	if reason != "" {
+		return successNoop(reason)
+	}
+
+	if reason, err = claimVirtualTask(ctx, runner, vt); err != nil {
+		return failed(err.Error())
+	} else if reason != "" {
+		return successNoop(reason)
+	}
+
+	info, err := task.MakeTestResultsInfo(ctx, vt)
+	if err != nil {
+		return failed(errors.Wrap(err, "making test results info").Error())
+	}
+
+	return apimodels.VirtualTaskPreparationResult{
+		TaskID:          prep.TaskID,
+		Outcome:         apimodels.VirtualTaskCompletionOutcomeSuccess,
+		TestResultsInfo: &info,
+		TaskCreateTime:  vt.CreateTime,
 	}
 }

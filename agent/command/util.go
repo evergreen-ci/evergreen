@@ -70,10 +70,16 @@ func expandModulePrefix(ctx context.Context, conf *internal.TaskConfig, module, 
 //
 // We use this because B might be absolute.
 func GetWorkingDirectory(conf *internal.TaskConfig, path string) string {
+	return resolveWorkingDirectory(conf.WorkDir, path)
+}
+
+// resolveWorkingDirectory resolves a path against the given working directory,
+// returning the path as-is if it is already absolute.
+func resolveWorkingDirectory(workDir, path string) string {
 	if filepath.IsAbs(path) {
 		return path
 	}
-	return filepath.Join(conf.WorkDir, path)
+	return filepath.Join(workDir, path)
 }
 
 // workdirBoundaryViolationAttribute records whether a command's resolved path
