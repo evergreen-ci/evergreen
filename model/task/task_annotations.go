@@ -59,7 +59,7 @@ func MoveAnnotationIssueByKey(ctx context.Context, taskID string, taskExecution 
 		return errors.Wrapf(err, "moving annotation issue for execution %d of task '%s'", taskExecution, taskID)
 	}
 
-	// We need to update the cached task hasAnnotation field if the move affects the issues array.
+	// We need to update the cached task.hasAnnotations field if the move affects the issues array.
 	hasIssues := !isIssue || len(annotation.Issues) > 1
 	return UpdateHasAnnotations(ctx, taskID, taskExecution, hasIssues)
 }
