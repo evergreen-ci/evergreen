@@ -3,6 +3,7 @@ package graphql
 import (
 	"testing"
 
+	"github.com/99designs/gqlgen/complexity"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/alicebob/miniredis/v2"
@@ -163,4 +164,68 @@ func TestNewComplexityRateLimitNilRedisErrors(t *testing.T) {
 
 	_, err := NewComplexityRateLimit(env)
 	assert.Error(t, err)
+}
+
+func TestTaskTestsComplexity(t *testing.T) {
+	const taskTestsQuery = `
+	query TaskTests($limitNum: Int) {
+	  task(taskId: "t", execution: 0) {
+	    id
+	    tests(opts: { limit: $limitNum, statuses: [], testName: "" }) {
+	      filteredTestCount
+	      testResults {
+	        id
+	        status
+	        testFile
+	        logs {
+	          urlParsley
+	        }
+	      }
+	      totalTestCount
+	    }
+	  }
+	}`
+	const taskTestsNoOptsQuery = `
+	query {
+	  task(taskId: "t", execution: 0) {
+	    tests {
+	      testResults {
+	        id
+	      }
+	    }
+	  }
+	}`
+	const taskTestsEmptyOptsQuery = `
+	query {
+	  task(taskId: "t", execution: 0) {
+	    tests(opts: {}) {
+	      testResults {
+	        id
+	      }
+	    }
+	  }
+	}`
+
+	schema := NewExecutableSchema(NewConfig())
+
+	calculateComplexity := func(t *testing.T, query string, vars map[string]any) int {
+		return complexity.Calculate(t.Context(), schema, parseQuery(t, schema, query), vars)
+	}
+
+	t.Run("IncludesFetchCost", func(t *testing.T) {
+		score := calculateComplexity(t, taskTestsQuery, map[string]any{"limitNum": 1})
+		assert.Greater(t, score, 2*testResultsFetchComplexity)
+	})
+	t.Run("DoesNotScaleWithLimit", func(t *testing.T) {
+		unbounded := calculateComplexity(t, taskTestsQuery, map[string]any{"limitNum": nil})
+		small := calculateComplexity(t, taskTestsQuery, map[string]any{"limitNum": 10})
+		large := calculateComplexity(t, taskTestsQuery, map[string]any{"limitNum": 100})
+		assert.Equal(t, small, large)
+		assert.Equal(t, unbounded, large)
+	})
+	t.Run("WithoutOptsExcludesBaseTaskFetch", func(t *testing.T) {
+		withoutOpts := calculateComplexity(t, taskTestsNoOptsQuery, nil)
+		withOpts := calculateComplexity(t, taskTestsEmptyOptsQuery, nil)
+		assert.Equal(t, testResultsFetchComplexity, withOpts-withoutOpts)
+	})
 }

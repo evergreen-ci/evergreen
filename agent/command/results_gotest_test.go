@@ -171,7 +171,7 @@ func TestParseTestOutputFilesMalformedOutput(t *testing.T) {
 PASS
 `)
 
-		_, results, malformed, err := parseTestOutputFiles(ctx, logger, conf, []string{file})
+		_, results, malformed, err := parseTestOutputFiles(ctx, logger, parseOptionsForTask(conf), []string{file})
 		require.NoError(t, err)
 		require.Len(t, malformed, 1)
 		assert.Contains(t, malformed[0], "0_malformed.suite")
@@ -189,7 +189,7 @@ PASS
 PASS
 `)
 
-		_, _, malformed, err := parseTestOutputFiles(ctx, logger, conf, []string{file})
+		_, _, malformed, err := parseTestOutputFiles(ctx, logger, parseOptionsForTask(conf), []string{file})
 		require.NoError(t, err)
 		assert.Empty(t, malformed)
 	})

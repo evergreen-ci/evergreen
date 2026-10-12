@@ -16,6 +16,9 @@ import (
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
+// testResultsFetchComplexity is the complexity cost of downloading a task's
+// full set of test results.
+const testResultsFetchComplexity = 5
 const errComplexityRateLimit = "COMPLEXITY_RATE_LIMIT_EXCEEDED"
 
 // ComplexityRateLimit is a gqlgen extension that enforces a per-user
@@ -106,4 +109,16 @@ func (c *ComplexityRateLimit) complexityScore(ctx context.Context, opCtx *graphq
 		return stats.Complexity
 	}
 	return complexity.Calculate(ctx, c.schema, opCtx.Operation, opCtx.Variables)
+}
+
+// setComplexityFuncs registers custom complexity calculations for fields
+// whose cost is not reflected by gqlgen's default of one point per field.
+func setComplexityFuncs(c *Config) {
+	c.Complexity.Task.Tests = func(childComplexity int, opts *TestFilterOptions) int {
+		if opts == nil {
+			return testResultsFetchComplexity + childComplexity
+		}
+		// Non-nil filter options mean the base task test results are also getting downloaded.
+		return 2*testResultsFetchComplexity + childComplexity
+	}
 }

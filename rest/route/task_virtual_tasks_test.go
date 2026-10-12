@@ -159,6 +159,36 @@ func TestCompleteVirtualTasks(t *testing.T) {
 			require.NoError(t, err)
 			assert.Zero(t, dbQueue.Length())
 		},
+		"AlreadyClaimedBySameRunnerProceeds": func(ctx context.Context, t *testing.T, h *completeVirtualTasksHandler, env evergreen.Environment) {
+			require.NoError(t, task.UpdateOne(ctx, task.ById(virtualTaskID), bson.M{
+				"$set": bson.M{task.CompletedByKey: runnerTaskID},
+			}))
+			h.body = apimodels.CompleteVirtualTasksRequest{Tasks: []apimodels.VirtualTaskCompletion{successfulCompletion()}}
+
+			results := requireResults(t, h.Run(ctx), 1)
+			assert.Equal(t, apimodels.VirtualTaskCompletionOutcomeSuccess, results[0].Outcome)
+			assert.Empty(t, results[0].Reason)
+
+			vt, err := task.FindOneId(ctx, virtualTaskID)
+			require.NoError(t, err)
+			require.NotNil(t, vt)
+			assert.Equal(t, evergreen.TaskSucceeded, vt.Status)
+		},
+		"ClaimedByOtherRunnerNoOps": func(ctx context.Context, t *testing.T, h *completeVirtualTasksHandler, env evergreen.Environment) {
+			require.NoError(t, task.UpdateOne(ctx, task.ById(virtualTaskID), bson.M{
+				"$set": bson.M{task.CompletedByKey: "other_runner"},
+			}))
+			h.body = apimodels.CompleteVirtualTasksRequest{Tasks: []apimodels.VirtualTaskCompletion{successfulCompletion()}}
+
+			results := requireResults(t, h.Run(ctx), 1)
+			assert.Equal(t, apimodels.VirtualTaskCompletionOutcomeSuccess, results[0].Outcome)
+			assert.Contains(t, results[0].Reason, "other_runner")
+
+			vt, err := task.FindOneId(ctx, virtualTaskID)
+			require.NoError(t, err)
+			require.NotNil(t, vt)
+			assert.Equal(t, evergreen.TaskUndispatched, vt.Status)
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			ctx := t.Context()
@@ -221,6 +251,185 @@ func TestCompleteVirtualTasks(t *testing.T) {
 			require.NoError(t, virtualTask.Insert(ctx))
 
 			h, ok := makeCompleteVirtualTasks(env).(*completeVirtualTasksHandler)
+			require.True(t, ok)
+			h.taskID = runnerTaskID
+			ctx = context.WithValue(ctx, model.ApiTaskKey, &runnerTask)
+			tCase(ctx, t, h, env)
+		})
+	}
+}
+
+func TestPrepareVirtualTasks(t *testing.T) {
+	const (
+		projectID     = "virtual_project"
+		versionID     = "virtual_version"
+		buildID       = "virtual_build"
+		runnerTaskID  = "runner_task"
+		virtualTaskID = "virtual_task"
+		distroID      = "virtual_distro"
+	)
+
+	requireResults := func(t *testing.T, resp gimlet.Responder, numResults int) []apimodels.VirtualTaskPreparationResult {
+		require.NotNil(t, resp)
+		require.Equal(t, http.StatusOK, resp.Status())
+		data, ok := resp.Data().(apimodels.PrepareVirtualTasksResponse)
+		require.True(t, ok)
+		require.Len(t, data.Results, numResults)
+		return data.Results
+	}
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, h *prepareVirtualTasksHandler, env evergreen.Environment){
+		"PreparesAndLocksVirtualTask": func(ctx context.Context, t *testing.T, h *prepareVirtualTasksHandler, env evergreen.Environment) {
+			h.body = apimodels.PrepareVirtualTasksRequest{Tasks: []apimodels.VirtualTaskPreparation{{TaskID: virtualTaskID}}}
+
+			results := requireResults(t, h.Run(ctx), 1)
+			assert.Equal(t, apimodels.VirtualTaskCompletionOutcomeSuccess, results[0].Outcome)
+			assert.Empty(t, results[0].Reason)
+			require.NotNil(t, results[0].TestResultsInfo)
+			assert.Equal(t, virtualTaskID, results[0].TestResultsInfo.TaskID)
+			assert.Equal(t, "virtual_task_display_name", results[0].TestResultsInfo.TaskName)
+
+			vt, err := task.FindOneId(ctx, virtualTaskID)
+			require.NoError(t, err)
+			require.NotNil(t, vt)
+			assert.Equal(t, runnerTaskID, vt.CompletedBy)
+			assert.Equal(t, evergreen.TaskUndispatched, vt.Status)
+		},
+		"AlreadyPreparedBySameRunnerIsIdempotent": func(ctx context.Context, t *testing.T, h *prepareVirtualTasksHandler, env evergreen.Environment) {
+			require.NoError(t, task.UpdateOne(ctx, task.ById(virtualTaskID), bson.M{
+				"$set": bson.M{task.CompletedByKey: runnerTaskID},
+			}))
+			h.body = apimodels.PrepareVirtualTasksRequest{Tasks: []apimodels.VirtualTaskPreparation{{TaskID: virtualTaskID}}}
+
+			results := requireResults(t, h.Run(ctx), 1)
+			assert.Equal(t, apimodels.VirtualTaskCompletionOutcomeSuccess, results[0].Outcome)
+			assert.Empty(t, results[0].Reason)
+			assert.NotNil(t, results[0].TestResultsInfo)
+		},
+		"ClaimedByOtherRunnerNoOps": func(ctx context.Context, t *testing.T, h *prepareVirtualTasksHandler, env evergreen.Environment) {
+			require.NoError(t, task.UpdateOne(ctx, task.ById(virtualTaskID), bson.M{
+				"$set": bson.M{task.CompletedByKey: "other_runner"},
+			}))
+			h.body = apimodels.PrepareVirtualTasksRequest{Tasks: []apimodels.VirtualTaskPreparation{{TaskID: virtualTaskID}}}
+
+			results := requireResults(t, h.Run(ctx), 1)
+			assert.Equal(t, apimodels.VirtualTaskCompletionOutcomeSuccess, results[0].Outcome)
+			assert.Contains(t, results[0].Reason, "other_runner")
+			assert.Nil(t, results[0].TestResultsInfo)
+		},
+		"RunningTaskNoOps": func(ctx context.Context, t *testing.T, h *prepareVirtualTasksHandler, env evergreen.Environment) {
+			require.NoError(t, task.UpdateOne(ctx, task.ById(virtualTaskID), bson.M{
+				"$set": bson.M{task.StatusKey: evergreen.TaskStarted},
+			}))
+			h.body = apimodels.PrepareVirtualTasksRequest{Tasks: []apimodels.VirtualTaskPreparation{{TaskID: virtualTaskID}}}
+
+			results := requireResults(t, h.Run(ctx), 1)
+			assert.Equal(t, apimodels.VirtualTaskCompletionOutcomeSuccess, results[0].Outcome)
+			assert.Contains(t, results[0].Reason, "already running")
+			assert.Nil(t, results[0].TestResultsInfo)
+		},
+		"FinishedTaskNoOps": func(ctx context.Context, t *testing.T, h *prepareVirtualTasksHandler, env evergreen.Environment) {
+			require.NoError(t, task.UpdateOne(ctx, task.ById(virtualTaskID), bson.M{
+				"$set": bson.M{task.StatusKey: evergreen.TaskSucceeded},
+			}))
+			h.body = apimodels.PrepareVirtualTasksRequest{Tasks: []apimodels.VirtualTaskPreparation{{TaskID: virtualTaskID}}}
+
+			results := requireResults(t, h.Run(ctx), 1)
+			assert.Equal(t, apimodels.VirtualTaskCompletionOutcomeSuccess, results[0].Outcome)
+			assert.Contains(t, results[0].Reason, "already finished")
+			assert.Nil(t, results[0].TestResultsInfo)
+		},
+		"NonVirtualTaskFails": func(ctx context.Context, t *testing.T, h *prepareVirtualTasksHandler, env evergreen.Environment) {
+			h.body = apimodels.PrepareVirtualTasksRequest{Tasks: []apimodels.VirtualTaskPreparation{{TaskID: runnerTaskID}}}
+
+			results := requireResults(t, h.Run(ctx), 1)
+			assert.Equal(t, apimodels.VirtualTaskCompletionOutcomeFailed, results[0].Outcome)
+			assert.Contains(t, results[0].Reason, "not a virtual task")
+		},
+		"WrongVersionFails": func(ctx context.Context, t *testing.T, h *prepareVirtualTasksHandler, env evergreen.Environment) {
+			otherTask := task.Task{
+				Id:        "other_virtual_task",
+				Status:    evergreen.TaskUndispatched,
+				IsVirtual: true,
+				Project:   projectID,
+				Version:   "other_version",
+			}
+			require.NoError(t, otherTask.Insert(ctx))
+			h.body = apimodels.PrepareVirtualTasksRequest{Tasks: []apimodels.VirtualTaskPreparation{{TaskID: otherTask.Id}}}
+
+			results := requireResults(t, h.Run(ctx), 1)
+			assert.Equal(t, apimodels.VirtualTaskCompletionOutcomeFailed, results[0].Outcome)
+			assert.Contains(t, results[0].Reason, "same version")
+		},
+		"TaskNotFoundFails": func(ctx context.Context, t *testing.T, h *prepareVirtualTasksHandler, env evergreen.Environment) {
+			h.body = apimodels.PrepareVirtualTasksRequest{Tasks: []apimodels.VirtualTaskPreparation{{TaskID: "nonexistent"}}}
+
+			results := requireResults(t, h.Run(ctx), 1)
+			assert.Equal(t, apimodels.VirtualTaskCompletionOutcomeFailed, results[0].Outcome)
+			assert.Contains(t, results[0].Reason, "not found")
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx := t.Context()
+
+			colls := []string{task.Collection, build.Collection, model.VersionCollection, model.ParserProjectCollection, model.ProjectRefCollection, model.TaskQueuesCollection, artifact.Collection, event.EventCollection, evergreen.ScopeCollection, evergreen.RoleCollection}
+			require.NoError(t, db.ClearCollections(colls...))
+			t.Cleanup(func() {
+				assert.NoError(t, db.ClearCollections(colls...))
+			})
+
+			env := testutil.NewEnvironment(ctx, t)
+			require.NoError(t, task.ClearTestResults(ctx, env))
+			t.Cleanup(func() {
+				assert.NoError(t, task.ClearTestResults(context.Background(), env))
+			})
+
+			require.NoError(t, evergreen.SetServiceFlags(ctx, evergreen.ServiceFlags{}))
+
+			pRef := model.ProjectRef{
+				Id:                  projectID,
+				Identifier:          "virtual-project",
+				Enabled:             true,
+				VirtualTasksEnabled: utility.TruePtr(),
+			}
+			require.NoError(t, pRef.Insert(ctx))
+			parserProj := model.ParserProject{Id: versionID}
+			require.NoError(t, parserProj.Insert(ctx))
+			testVersion := model.Version{Id: versionID, Branch: projectID}
+			require.NoError(t, testVersion.Insert(ctx))
+			testBuild := build.Build{Id: buildID, Project: projectID, Version: versionID}
+			require.NoError(t, testBuild.Insert(ctx))
+
+			runnerTask := task.Task{
+				Id:                runnerTaskID,
+				Status:            evergreen.TaskStarted,
+				Activated:         true,
+				ExecutionPlatform: task.ExecutionPlatformHost,
+				HostId:            "runner_host",
+				Project:           projectID,
+				BuildId:           buildID,
+				Version:           versionID,
+				Requester:         evergreen.PatchVersionRequester,
+			}
+			require.NoError(t, runnerTask.Insert(ctx))
+			virtualTask := task.Task{
+				Id:                virtualTaskID,
+				DisplayName:       "virtual_task_display_name",
+				Status:            evergreen.TaskUndispatched,
+				Activated:         false,
+				IsVirtual:         true,
+				ExecutionPlatform: task.ExecutionPlatformHost,
+				Project:           projectID,
+				BuildVariant:      "bv",
+				BuildId:           buildID,
+				Version:           versionID,
+				DistroId:          distroID,
+				CreateTime:        time.Now(),
+				Requester:         evergreen.PatchVersionRequester,
+			}
+			require.NoError(t, virtualTask.Insert(ctx))
+
+			h, ok := makePrepareVirtualTasks(env).(*prepareVirtualTasksHandler)
 			require.True(t, ok)
 			h.taskID = runnerTaskID
 			ctx = context.WithValue(ctx, model.ApiTaskKey, &runnerTask)

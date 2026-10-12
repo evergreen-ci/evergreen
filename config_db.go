@@ -104,6 +104,7 @@ var (
 	graphqlComplexityRateLimiterDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "GraphQLComplexityRateLimiterDisabled")
 	liveArtifactCredentialsDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "LiveArtifactCredentialsDisabled")
 	containerIsolationEnabledKey            = bsonutil.MustHaveTag(ServiceFlags{}, "ContainerIsolationEnabled")
+	sourceCacheAllProjectsEnabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "SourceCacheAllProjectsEnabled")
 	taskQueueAutoUnscheduleDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "TaskQueueAutoUnscheduleDisabled")
 	virtualTasksDisabledKey                 = bsonutil.MustHaveTag(ServiceFlags{}, "VirtualTasksDisabled")
 
