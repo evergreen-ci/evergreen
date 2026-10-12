@@ -35,8 +35,7 @@ func parseOptionsForVirtualTask(conf *internal.TaskConfig, info testresult.TestR
 
 // processVirtualTaskTestResultFiles parses the given test result file groups,
 // uploads the test logs and test results to S3 on behalf of the virtual task
-// identified by info, and returns the test result metadata to push to the
-// completion route.
+// identified by info, and returns the test result metadata.
 func processVirtualTaskTestResultFiles(ctx context.Context, conf *internal.TaskConfig, logger client.LoggerProducer, info testresult.TestResultsInfo, taskCreatedAt, testResultsCreatedAt time.Time, groups []virtualTaskTestResultFileGroup) (*apimodels.VirtualTaskTestResults, error) {
 	parseOpts := parseOptionsForVirtualTask(conf, info)
 
@@ -176,6 +175,10 @@ func uploadVirtualTaskTestResults(ctx context.Context, conf *internal.TaskConfig
 		return nil, errors.New("invalid test results version")
 	}
 
+	// This is being called with AWS information from the runner task (e.g.
+	// credentials, S3 bucket, S3 prefix) but using the virtual task's info (e.g.
+	// task ID, build). That sharing is okay because the AWS information is not
+	// task-specific.
 	newResults := makeTestResults(taskCreatedAt, results)
 	if err := uploadTestResultsParquet(ctx, conf.TaskOutput, *output, info, testResultsCreatedAt, newResults); err != nil {
 		return nil, errors.Wrap(err, "uploading parquet test results")

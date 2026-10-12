@@ -2031,7 +2031,7 @@ tasks](Virtual-Tasks) by submitting their final results to Evergreen.
 - If a task is not virtual or is not in the same version as the runner, the
   command will fail.
 
-If any task fails to upload test results or push-completed, the command will
+If any task fails to upload test results or push-complete, the command will
 fail and log errors for the failed tasks.
 
 ```yaml
