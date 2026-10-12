@@ -2,15 +2,24 @@ package task
 
 import (
 	"context"
+	"slices"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/cost"
+	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.opentelemetry.io/otel/attribute"
 )
 
 type Tasks []*Task
+
+const taskInsertBatchSize = 500
+
+type taskInserter interface {
+	InsertMany(context.Context, []any, ...*options.InsertManyOptions) (*mongo.InsertManyResult, error)
+}
 
 func (t Tasks) Len() int           { return len(t) }
 func (t Tasks) Swap(i, j int)      { t[i], t[j] = t[j], t[i] }
@@ -41,8 +50,40 @@ func (t Tasks) InsertUnordered(ctx context.Context) error {
 	if t.Len() == 0 {
 		return nil
 	}
-	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertMany(ctx, t.getPayload(), options.InsertMany().SetOrdered(false))
-	return err
+	return t.insertUnordered(ctx, evergreen.GetEnvironment().DB().Collection(Collection))
+}
+
+func (t Tasks) insertUnordered(ctx context.Context, collection taskInserter) error {
+	var writeErrors mongo.BulkWriteException
+	for start := 0; start < len(t); start += taskInsertBatchSize {
+		end := min(start+taskInsertBatchSize, len(t))
+		// Bound BSON and tracing buffers while retaining tasks for dependency counts.
+		_, err := collection.InsertMany(ctx, t[start:end].getPayload(), options.InsertMany().SetOrdered(false))
+		if err == nil {
+			continue
+		}
+		var batchErrors mongo.BulkWriteException
+		if !errors.As(err, &batchErrors) {
+			return err
+		}
+		// Unordered writes still attempt later batches after document-level errors.
+		for _, writeError := range batchErrors.WriteErrors {
+			writeError.Index += start
+			writeErrors.WriteErrors = append(writeErrors.WriteErrors, writeError)
+		}
+		if batchErrors.WriteConcernError != nil {
+			writeErrors.WriteConcernError = batchErrors.WriteConcernError
+		}
+		for _, label := range batchErrors.Labels {
+			if !slices.Contains(writeErrors.Labels, label) {
+				writeErrors.Labels = append(writeErrors.Labels, label)
+			}
+		}
+	}
+	if len(writeErrors.WriteErrors) > 0 || writeErrors.WriteConcernError != nil {
+		return writeErrors
+	}
+	return nil
 }
 
 // InsertUnorderedWithPredictions inserts tasks with predicted costs applied without modifying the input tasks.

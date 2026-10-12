@@ -422,10 +422,16 @@ func getCollectionName(command bson.Raw) (string, error) {
 	return v.StringValue(), nil
 }
 
+const maxMongoCommandTraceBytes = 64 * 1024
+
 // redactSensitiveCollections satisfies the apm.CommandTransformer interface.
-// Returns nil when the command is a CRUD command on a sensitive collection
-// or if we can't determine the collection the command is on.
+// Returns nil for sensitive collections, oversized commands, or commands whose
+// collection cannot be determined.
 func redactSensitiveCollections(command bson.Raw) bson.Raw {
+	// Skip large command bodies before the monitor creates multiple JSON copies.
+	if len(command) > maxMongoCommandTraceBytes {
+		return nil
+	}
 	collectionName, err := getCollectionName(command)
 	if err != nil || utility.StringSliceContains(sensitiveCollections, collectionName) {
 		return nil

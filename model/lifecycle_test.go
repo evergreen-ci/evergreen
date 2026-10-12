@@ -2415,6 +2415,25 @@ func TestSortTasks(t *testing.T) {
 	})
 }
 
+func TestSortTasksShouldPreserveInputAndCopyTaskValues(t *testing.T) {
+	tasks := []task.Task{
+		{Id: "idA", DisplayName: "A", Priority: 1, DependsOn: []task.Dependency{{TaskId: "idB"}}},
+		{Id: "idB", DisplayName: "B", Priority: 2, DependsOn: []task.Dependency{{TaskId: "idC"}}},
+		{Id: "idC", DisplayName: "C", Priority: 3, DependsOn: []task.Dependency{{TaskId: "external"}}},
+		{Id: "idD", DisplayName: "D", Priority: 4},
+	}
+	original := append([]task.Task(nil), tasks...)
+	expected := []task.Task{tasks[3], tasks[2], tasks[1], tasks[0]}
+
+	sortedTasks, err := sortTasks(tasks)
+	require.NoError(t, err)
+	require.Equal(t, expected, sortedTasks)
+	require.Equal(t, original, tasks)
+
+	sortedTasks[0].Priority = 100
+	require.Equal(t, original, tasks)
+}
+
 func TestSortTasksCycleShouldReturnError(t *testing.T) {
 	tasks := []task.Task{
 		{

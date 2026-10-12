@@ -1395,14 +1395,16 @@ func createDisplayTask(id string, creationInfo TaskCreationInfo, displayName str
 func sortTasks(tasks []task.Task) ([]task.Task, error) {
 	// Separate out tasks with cross-variant dependencies
 	taskPresent := make(map[string]bool)
-	for _, task := range tasks {
+	for i := range tasks {
+		task := &tasks[i]
 		taskPresent[task.Id] = true
 	}
 	// depMap is a map from a task ID to the tasks that depend on it
-	depMap := make(map[string][]task.Task)
+	depMap := make(map[string][]*task.Task)
 	// crossVariantTasks will contain all tasks with cross-variant dependencies
-	crossVariantTasks := make(map[string]task.Task)
-	for _, task := range tasks {
+	crossVariantTasks := make(map[string]*task.Task)
+	for i := range tasks {
+		task := &tasks[i]
 		for _, dep := range task.DependsOn {
 			if taskPresent[dep.TaskId] {
 				depMap[dep.TaskId] = append(depMap[dep.TaskId], task)
@@ -1417,8 +1419,9 @@ func sortTasks(tasks []task.Task) ([]task.Task, error) {
 		}
 	}
 	// normalTasks will contain all tasks with no cross-variant dependencies
-	normalTasks := make(map[string]task.Task)
-	for _, t := range tasks {
+	normalTasks := make(map[string]*task.Task)
+	for i := range tasks {
+		t := &tasks[i]
 		if _, ok := crossVariantTasks[t.Id]; !ok {
 			normalTasks[t.Id] = t
 		}
@@ -1439,12 +1442,17 @@ func sortTasks(tasks []task.Task) ([]task.Task, error) {
 	if err != nil {
 		return nil, err
 	}
-	return append(sortedTasks, crossVariantSortedTasks...), nil
+	sortedTasks = append(sortedTasks, crossVariantSortedTasks...)
+	result := make([]task.Task, len(sortedTasks))
+	for i, task := range sortedTasks {
+		result[i] = *task
+	}
+	return result, nil
 }
 
 // addDepChildren recursively adds task and all tasks depending on it to tasks
 // depMap is a map from a task ID to the tasks that depend on it
-func addDepChildren(task task.Task, tasks map[string]task.Task, depMap map[string][]task.Task) {
+func addDepChildren(task *task.Task, tasks map[string]*task.Task, depMap map[string][]*task.Task) {
 	if _, ok := tasks[task.Id]; !ok {
 		tasks[task.Id] = task
 		for _, dep := range depMap[task.Id] {
@@ -1455,12 +1463,12 @@ func addDepChildren(task task.Task, tasks map[string]task.Task, depMap map[strin
 
 // sortTasksHelper sorts the tasks, assuming they all have cross-variant dependencies, or none have
 // cross-variant dependencies
-func sortTasksHelper(tasks map[string]task.Task, idToDisplayName map[string]string) ([]task.Task, error) {
+func sortTasksHelper(tasks map[string]*task.Task, idToDisplayName map[string]string) ([]*task.Task, error) {
 	layers, err := layerTasks(tasks)
 	if err != nil {
 		return nil, err
 	}
-	sortedTasks := make([]task.Task, 0, len(tasks))
+	sortedTasks := make([]*task.Task, 0, len(tasks))
 	for _, layer := range layers {
 		sortedTasks = append(sortedTasks, sortLayer(layer, idToDisplayName)...)
 	}
@@ -1470,11 +1478,11 @@ func sortTasksHelper(tasks map[string]task.Task, idToDisplayName map[string]stri
 // layerTasks sorts the tasks into layers
 // Layer n contains all tasks whose dependencies are contained in layers 0 through n-1, or are not
 // included in tasks (for tasks with cross-variant dependencies)
-func layerTasks(tasks map[string]task.Task) ([][]task.Task, error) {
-	layers := make([][]task.Task, 0)
+func layerTasks(tasks map[string]*task.Task) ([][]*task.Task, error) {
+	layers := make([][]*task.Task, 0)
 	for len(tasks) > 0 {
 		// Create a new layer
-		layer := make([]task.Task, 0)
+		layer := make([]*task.Task, 0)
 		for _, task := range tasks {
 			// Check if all dependencies are included in previous layers (or were not in tasks)
 			if allDepsProcessed(task, tasks) {
@@ -1495,7 +1503,7 @@ func layerTasks(tasks map[string]task.Task) ([][]task.Task, error) {
 }
 
 // allDepsProcessed checks whether any dependencies of task are in unprocessedTasks
-func allDepsProcessed(task task.Task, unprocessedTasks map[string]task.Task) bool {
+func allDepsProcessed(task *task.Task, unprocessedTasks map[string]*task.Task) bool {
 	for _, dep := range task.DependsOn {
 		if _, unprocessed := unprocessedTasks[dep.TaskId]; unprocessed {
 			return false
@@ -1505,9 +1513,9 @@ func allDepsProcessed(task task.Task, unprocessedTasks map[string]task.Task) boo
 }
 
 // sortLayer groups tasks by common dependencies, sorting alphabetically within each group
-func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task {
+func sortLayer(layer []*task.Task, idToDisplayName map[string]string) []*task.Task {
 	sortKeys := make([]string, 0, len(layer))
-	sortKeyToTask := make(map[string]task.Task)
+	sortKeyToTask := make(map[string]*task.Task)
 	for _, t := range layer {
 		// Construct a key to sort by, consisting of all dependency names, sorted alphabetically,
 		// followed by the task name
@@ -1527,7 +1535,7 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 		sortKeyToTask[sortKey] = t
 	}
 	sort.Strings(sortKeys)
-	sortedLayer := make([]task.Task, 0, len(layer))
+	sortedLayer := make([]*task.Task, 0, len(layer))
 	for _, sortKey := range sortKeys {
 		sortedLayer = append(sortedLayer, sortKeyToTask[sortKey])
 	}
