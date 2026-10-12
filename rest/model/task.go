@@ -16,6 +16,8 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -707,6 +709,9 @@ func (at *APITask) getArtifacts(ctx context.Context, prefetched map[artifact.Tas
 	env := evergreen.GetEnvironment()
 	artifactSignSecret := []byte(env.Settings().ArtifactSignSecret)
 	useLazyPresign := lazyPresign && baseURL != "" && len(artifactSignSecret) > 0
+	if lazyPresign {
+		recordPresignMode(ctx, baseURL, artifactSignSecret)
+	}
 	for _, entry := range entries {
 		var strippedFiles []artifact.File
 		if useLazyPresign {
@@ -726,6 +731,34 @@ func (at *APITask) getArtifacts(ctx context.Context, prefetched map[artifact.Tas
 	}
 
 	return nil
+}
+
+const (
+	presignModeLazy  = "lazy"
+	presignModeEager = "eager"
+
+	presignFallbackNoBaseURL = "no_base_url"
+	presignFallbackNoSecret  = "no_sign_secret"
+)
+
+func recordPresignMode(ctx context.Context, baseURL string, artifactSignSecret []byte) {
+	var fallbackReason string
+	switch {
+	case baseURL == "":
+		fallbackReason = presignFallbackNoBaseURL
+	case len(artifactSignSecret) == 0:
+		fallbackReason = presignFallbackNoSecret
+	}
+
+	span := trace.SpanFromContext(ctx)
+	if fallbackReason == "" {
+		span.SetAttributes(attribute.String(evergreen.ArtifactPresignModeOtelAttribute, presignModeLazy))
+		return
+	}
+	span.SetAttributes(
+		attribute.String(evergreen.ArtifactPresignModeOtelAttribute, presignModeEager),
+		attribute.String(evergreen.ArtifactPresignFallbackReasonOtelAttribute, fallbackReason),
+	)
 }
 
 type APIDependency struct {

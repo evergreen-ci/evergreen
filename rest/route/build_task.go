@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"slices"
 
+	"github.com/evergreen-ci/evergreen"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -15,9 +16,14 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
-const presignLazy = "lazy"
+const (
+	presignLazy  = "lazy"
+	presignEager = "eager"
+)
 
 type tasksByBuildHandler struct {
 	buildId            string
@@ -78,13 +84,16 @@ func (tbh *tasksByBuildHandler) Parse(ctx context.Context, r *http.Request) erro
 	tbh.fetchAllExecutions = vals.Get("fetch_all_executions") == "true"
 	tbh.fetchParentIds = vals.Get("fetch_parent_ids") == "true"
 
+	requestedMode := presignEager
 	switch presign := vals.Get("presign"); presign {
 	case "":
 	case presignLazy:
 		tbh.lazyPresign = true
+		requestedMode = presignLazy
 	default:
 		return errors.Errorf("invalid presign value '%s'; the only supported value is '%s'", presign, presignLazy)
 	}
+	trace.SpanFromContext(ctx).SetAttributes(attribute.String(evergreen.ArtifactPresignRequestedModeOtelAttribute, requestedMode))
 
 	return nil
 }
