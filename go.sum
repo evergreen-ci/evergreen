@@ -181,6 +181,8 @@ github.com/evergreen-ci/shrub v0.0.0-20251017154811-4d3ed1599154 h1:YO1VY9Qj68Kj
 github.com/evergreen-ci/shrub v0.0.0-20251017154811-4d3ed1599154/go.mod h1:nDQB46oIkI/BmvuNKkHdJekvXuGm8lvfUBcbbjekMZM=
 github.com/evergreen-ci/test-selection-client v0.0.0-20260812193714-c140c9414f6f h1:TeFLYJ4fbgDthiF3fESdnwhWPqqEfjKG9PsmkXvJArI=
 github.com/evergreen-ci/test-selection-client v0.0.0-20260812193714-c140c9414f6f/go.mod h1:0iD20pmczefJcyBCIuYuwfq9J3cqWOM5v61znyqcAwY=
+github.com/evergreen-ci/test-selection-client v0.0.0-20261012175355-ceae32d48406 h1:Jy3hPqBPoo6OJ/vcahzRFP63KdNSieP3+97I1GnLOkk=
+github.com/evergreen-ci/test-selection-client v0.0.0-20261012175355-ceae32d48406/go.mod h1:0iD20pmczefJcyBCIuYuwfq9J3cqWOM5v61znyqcAwY=
 github.com/evergreen-ci/utility v0.0.0-20260727185913-06cd8a26cd5e h1:9Ad/RzvKJLRjI4epzBTCx3+nEZS1dyNwDAmMQ01mtyU=
 github.com/evergreen-ci/utility v0.0.0-20260727185913-06cd8a26cd5e/go.mod h1:A03U7o6F4PDMNz+lD9mktDgy53wWJHgfR6Bk1fndBJc=
 github.com/fatih/structs v1.1.0 h1:Q7juDM0QtcnhCpeyLGQKyg4TOIghuNXrkL32pHAUMxo=
