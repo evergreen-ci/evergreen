@@ -1,6 +1,7 @@
 package units
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -74,4 +75,18 @@ func TestGetMostRecentlyAddedDevice(t *testing.T) {
 	assert.Equal(t, "fee4e1cc-1b86-4cee-8dd3-96f52f5b3ecb", devices[len(devices)-1].UUID)
 	assert.Equal(t, "xfs", devices[len(devices)-1].FSType)
 	assert.Equal(t, "/user_home", devices[len(devices)-1].MountPoint)
+}
+
+func TestExpandScript(t *testing.T) {
+	settings := &evergreen.Settings{
+		Expansions: map[string]string{
+			evergreen.GithubAppPrivateKey: "private-key",
+			"other_expansion":             "other-value",
+		},
+	}
+
+	script, err := expandScript(fmt.Sprintf("echo ${%s} ${other_expansion}", evergreen.GithubAppPrivateKey), settings)
+	require.NoError(t, err)
+	assert.NotContains(t, script, "private-key")
+	assert.Contains(t, script, "other-value")
 }

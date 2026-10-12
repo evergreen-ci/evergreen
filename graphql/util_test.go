@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	gqlgen "github.com/99designs/gqlgen/graphql"
@@ -637,5 +638,18 @@ func TestGetHostRequestOptionsDebugValidation(t *testing.T) {
 		assert.NoError(t, err)
 		require.NotNil(t, options)
 		assert.False(t, options.IsDebug, "IsDebug should default to false")
+	})
+}
+
+func TestVerifyPublicKey(t *testing.T) {
+	validKey := "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF8G5JYHL886OKVr2uzi1a9Cc5I2KdJCRc0sNjA7398C user@host"
+
+	t.Run("AcceptsValidKey", func(t *testing.T) {
+		err := verifyPublicKey(t.Context(), PublicKeyInput{Name: "key", Key: validKey})
+		assert.NoError(t, err)
+	})
+	t.Run("RejectsExpansionSyntaxInComment", func(t *testing.T) {
+		err := verifyPublicKey(t.Context(), PublicKeyInput{Name: "key", Key: fmt.Sprintf("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF8G5JYHL886OKVr2uzi1a9Cc5I2KdJCRc0sNjA7398C ${%s}", evergreen.GithubAppPrivateKey)})
+		require.Error(t, err)
 	})
 }

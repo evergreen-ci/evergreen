@@ -153,6 +153,25 @@ func TestGetSSHOptions(t *testing.T) {
 	}
 }
 
+func TestSetupScriptCommands(t *testing.T) {
+	h := &Host{
+		Distro: distro.Distro{
+			Setup: "#!/bin/bash\necho ${github_app_key} ${other_expansion}",
+		},
+	}
+	settings := &evergreen.Settings{
+		Expansions: map[string]string{
+			evergreen.GithubAppPrivateKey: "private-key",
+			"other_expansion":             "other-value",
+		},
+	}
+
+	script, err := h.setupScriptCommands(settings)
+	require.NoError(t, err)
+	assert.NotContains(t, script, "private-key")
+	assert.Contains(t, script, "other-value")
+}
+
 func TestJasperCommands(t *testing.T) {
 	ctx := t.Context()
 

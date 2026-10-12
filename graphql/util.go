@@ -452,6 +452,9 @@ func verifyPublicKey(ctx context.Context, publicKey PublicKeyInput) error {
 	if publicKey.Name == "" {
 		return InputValidationError.Send(ctx, "public key name cannot be empty")
 	}
+	if strings.Contains(publicKey.Key, "${") {
+		return InputValidationError.Send(ctx, "public key must not contain expansion syntax (e.g. ${example})")
+	}
 	_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(publicKey.Key))
 	if err != nil {
 		return InputValidationError.Send(ctx, fmt.Sprintf("provided public key is invalid: %s", err.Error()))
