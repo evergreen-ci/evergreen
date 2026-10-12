@@ -257,7 +257,7 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 			assert.Equal(t, 1, comm.PrepareVirtualTasksCallCount)
 			assert.Equal(t, 1, comm.CompleteVirtualTasksCallCount)
 		},
-		"TestResultsUploadFailureSkipsTaskAndErrors": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
+		"TestResultsUploadFailureStillCompletesAndErrors": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
 			require.NoError(t, utility.WriteJSONFile(filepath.Join(conf.WorkDir, "native.json"), nativeTestResults{Results: []nativeTestResult{
 				{TestFile: "test1", Status: evergreen.TestSucceededStatus},
 			}}))
@@ -277,7 +277,9 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "task1")
 			assert.Equal(t, 1, comm.PrepareVirtualTasksCallCount)
-			assert.Zero(t, comm.CompleteVirtualTasksCallCount)
+			assert.Equal(t, 1, comm.CompleteVirtualTasksCallCount)
+			require.Len(t, comm.CompleteVirtualTasksCompletions, 1)
+			assert.Nil(t, comm.CompleteVirtualTasksCompletions[0].TestResults)
 		},
 		"InvalidTestResultTypeErrorsWithoutPreparing": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
 			require.NoError(t, utility.WriteJSONFile(filepath.Join(conf.WorkDir, "results.json"), []virtualTaskCompletionFile{

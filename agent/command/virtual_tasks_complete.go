@@ -119,7 +119,7 @@ func (c *completeVirtualTasks) Execute(ctx context.Context, comm client.Communic
 		}
 		fileEntries, err := readVirtualTaskCompletionsFile(conf, fn)
 		if err != nil {
-			catcher.Add(err)
+			catcher.Wrap(err, "reading virtual task completions files")
 			continue
 		}
 		entries = append(entries, fileEntries...)
@@ -135,29 +135,36 @@ func (c *completeVirtualTasks) Execute(ctx context.Context, comm client.Communic
 
 	logger.Task().Infof(ctx, "Completing %d virtual task(s).", len(entries))
 
-	completions, err := buildVirtualTaskCompletions(ctx, comm, logger, conf, entries)
-	catcher.Wrap(err, "building virtual task completions")
-	if len(completions) > 0 {
-		catcher.Wrap(completeVirtualTaskBatches(ctx, comm, logger, conf, completions), "push-completing virtual tasks")
-	}
+	catcher.Wrap(processVirtualTaskCompletions(ctx, comm, logger, conf, entries), "processing virtual task completions")
 
 	return errors.WithStack(catcher.Resolve())
 }
 
-// buildVirtualTaskCompletions builds the completions to push for the given
-// entries, uploading test results first for the entries that specify them. Tasks
-// that fail to prepare or upload are logged and skipped so the remaining tasks
-// can still be completed.
-func buildVirtualTaskCompletions(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, entries []virtualTaskCompletionFile) ([]apimodels.VirtualTaskCompletion, error) {
+// processVirtualTaskCompletions uploads test results and push-completes the
+// provided virtual task completion entries.
+func processVirtualTaskCompletions(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, entries []virtualTaskCompletionFile) error {
 	catcher := grip.NewBasicCatcher()
 
 	withoutTestResults, withTestResults, err := partitionCompletions(entries)
 	catcher.Wrap(err, "partitioning virtual task completions")
 
-	uploaded, err := uploadTestResultsForCompletions(ctx, comm, logger, conf, withTestResults)
-	catcher.Wrap(err, "uploading virtual task test results")
+	if len(withoutTestResults) > 0 {
+		catcher.Wrap(completeVirtualTaskBatches(ctx, comm, logger, conf, withoutTestResults), "push-completing virtual tasks without test results")
+	}
 
-	return append(withoutTestResults, uploaded...), catcher.Resolve()
+	for i := 0; i < len(withTestResults); i += maxCompletionBatchSize {
+		end := min(i+maxCompletionBatchSize, len(withTestResults))
+		batch := withTestResults[i:end]
+
+		completions, err := uploadTestResultsForCompletions(ctx, comm, logger, conf, batch)
+		catcher.Wrapf(err, "uploading test results for virtual tasks (batch between indexes %d-%d)", i, end)
+
+		if len(completions) > 0 {
+			catcher.Wrapf(completeVirtualTaskBatches(ctx, comm, logger, conf, completions), "push-completing virtual tasks with test results (batch between indexes %d-%d)", i, end)
+		}
+	}
+
+	return catcher.Resolve()
 }
 
 // partitionCompletions splits entries into completions that have no test
@@ -217,6 +224,12 @@ func uploadTestResultsForCompletions(ctx context.Context, comm client.Communicat
 		if err != nil {
 			logger.Task().Errorf(ctx, "Test result upload for virtual task '%s' failed: %s", entry.TaskID, err)
 			catcher.Errorf("virtual task '%s': %s", entry.TaskID, err)
+			// Populate the push-completion data for the task with its declared
+			// status even if the upload failed. This avoids leaving the task
+			// stuck in an intermediate state where the virtual task has
+			// CompletedBy set but no finished state. Its test logs and results
+			// will be incomplete.
+			completions = append(completions, entry.toCompletion(nil))
 			continue
 		}
 		completions = append(completions, *completion)

@@ -131,7 +131,7 @@ func claimVirtualTask(ctx context.Context, runner *task.Task, vt *task.Task) (st
 	if vt.CompletedBy == "" {
 		if err := vt.SetCompletedBy(ctx, runner.Id); err != nil {
 			if adb.ResultsNotFound(err) {
-				return "task is no longer waiting to be dispatched", nil
+				return "task is no longer waiting to be dispatched or is already being push-completed by another task", nil
 			}
 			return "", errors.Wrap(err, "setting completing task")
 		}
@@ -270,9 +270,13 @@ func (h *completeVirtualTasksHandler) completeTask(ctx context.Context, runner *
 		return successNoop(reason)
 	}
 
-	// A push-completed task never dispatched, so its output info must be set
-	// here for the pushed results to be locatable.
-	vt.TaskOutputInfo = task.InitializeTaskOutput(h.env, vt.Project)
+	// Task output is typically initialized when a task is dispatched, but
+	// virtual tasks are never dispatched. Instead, virtual tasks share the
+	// runner's task output for test logs/results.
+	if runner.TaskOutputInfo == nil {
+		return failed(fmt.Sprintf("runner task '%s' has not initialized its task output", runner.Id))
+	}
+	vt.TaskOutputInfo = runner.TaskOutputInfo
 
 	if tr := completion.TestResults; tr != nil {
 		if err = task.AppendVirtualTestResultMetadata(ctx, vt, h.env, tr.FailedSample, tr.Stats.FailedCount, tr.Stats.TotalCount, tr.CreatedAt); err != nil {
