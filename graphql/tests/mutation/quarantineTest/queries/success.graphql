@@ -1,5 +1,5 @@
 mutation {
-  quarantineTest(opts: { taskId: "quarantine_target", testName: "TestFoo" }) {
+  quarantineTest(opts: { taskId: "quarantine_target", testName: "TestFoo", comment: "" }) {
     id
     taskId
     testFile

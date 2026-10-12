@@ -1242,12 +1242,12 @@ func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*
 
 // QuarantineTest is the resolver for the quarantineTest field.
 func (r *mutationResolver) QuarantineTest(ctx context.Context, opts QuarantineTestInput) (*restModel.APITest, error) {
-	return setTestQuarantineState(ctx, opts.TaskID, opts.TestName, true)
+	return setTestQuarantineState(ctx, opts.TaskID, opts.TestName, utility.FromStringPtr(opts.Comment), true)
 }
 
 // UnquarantineTest is the resolver for the unquarantineTest field.
 func (r *mutationResolver) UnquarantineTest(ctx context.Context, opts UnquarantineTestInput) (*restModel.APITest, error) {
-	return setTestQuarantineState(ctx, opts.TaskID, opts.TestName, false)
+	return setTestQuarantineState(ctx, opts.TaskID, opts.TestName, "", false)
 }
 
 // QuarantineTask is the resolver for the quarantineTask field.

@@ -1561,7 +1561,7 @@ func getWaterfallFilterOptionsFromContext(ctx context.Context) model.WaterfallOp
 
 // setTestQuarantineState updates the quarantine state for testName on the
 // given task.
-func setTestQuarantineState(ctx context.Context, taskID, testName string, isManuallyQuarantined bool) (*restModel.APITest, error) {
+func setTestQuarantineState(ctx context.Context, taskID, testName, comment string, isManuallyQuarantined bool) (*restModel.APITest, error) {
 	t, err := task.FindOneId(ctx, taskID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
@@ -1572,7 +1572,8 @@ func setTestQuarantineState(ctx context.Context, taskID, testName string, isManu
 	if t.DisplayOnly {
 		return nil, InputValidationError.Send(ctx, "cannot modify test quarantine state on display tasks, select an execution task instead")
 	}
-	if err = data.SetTestQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, testName, isManuallyQuarantined); err != nil {
+	usr := mustHaveUser(ctx)
+	if err = data.SetTestQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, testName, taskID, usr.Username(), comment, isManuallyQuarantined); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting quarantine state to '%t' for test '%s' on task '%s' on build variant '%s' on project '%s': %s", isManuallyQuarantined, testName, taskID, t.BuildVariant, t.Project, err.Error()))
 	}
 	return buildQuarantineMutationResponse(ctx, t, testName, isManuallyQuarantined)
