@@ -134,9 +134,3 @@ func (tc *taskContext) uploadEntryTestResults(ctx context.Context, prep apimodel
 	result.TestResults = stats
 	return result
 }
-
-func writeAgentHandlerError(w http.ResponseWriter, status int, err error) {
-	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(status)
-	_, _ = w.Write([]byte(err.Error()))
-}
