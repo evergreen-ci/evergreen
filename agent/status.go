@@ -37,6 +37,7 @@ func (a *Agent) startStatusServer(ctx context.Context, port int) error {
 	app.AddRoute("/status").Handler(a.statusHandler()).Get()
 	app.AddRoute("/failure_metadata_tag").Handler(a.addMetadataTagHandler).Post()
 	app.AddRoute("/task_status").Handler(a.endTaskHandler).Post()
+	app.AddRoute("/virtual_tasks/test_results").Handler(a.uploadVirtualTaskTestResultsHandler).Post()
 	app.AddRoute("/oom/clear").Handler(http.RedirectHandler("/jasper/v1/list/oom", http.StatusMovedPermanently).ServeHTTP).Delete()
 	app.AddRoute("/oom/check").Handler(http.RedirectHandler("/jasper/v1/list/oom", http.StatusMovedPermanently).ServeHTTP).Get()
 
@@ -49,10 +50,13 @@ func (a *Agent) startStatusServer(ctx context.Context, port int) error {
 	}
 
 	srv := &http.Server{
-		Addr:         fmt.Sprintf("127.0.0.1:%d", port),
-		Handler:      handler,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		Addr:        fmt.Sprintf("127.0.0.1:%d", port),
+		Handler:     handler,
+		ReadTimeout: 10 * time.Second,
+		// Virtual task test result uploads can be slow and can queue if there's
+		// many incoming requests, so the write timeout must be generous enough
+		// to accommodate them.
+		WriteTimeout: 5 * time.Minute,
 	}
 	grip.Infoln(ctx, "Starting status server on address:", srv.Addr)
 

@@ -68,7 +68,7 @@ func TestProcessVirtualTaskTestResultFiles(t *testing.T) {
 	}}))
 
 	testResultsCreatedAt := time.Now().UTC().Round(time.Millisecond)
-	stats, err := processVirtualTaskTestResultFiles(ctx, conf, logger, info, time.Now(), testResultsCreatedAt, []virtualTaskTestResultFileGroup{
+	stats, err := ProcessVirtualTaskTestResultFiles(ctx, conf, logger, info, time.Now(), testResultsCreatedAt, []VirtualTaskTestResultFileGroup{
 		{Type: virtualTestResultTypeNative, Files: []string{"results.json"}},
 	})
 	require.NoError(t, err)
@@ -96,7 +96,7 @@ func TestParseVirtualTaskTestResultFileUnknownTypeShouldError(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { assert.NoError(t, logger.Close()) })
 
-	_, _, err = parseVirtualTaskTestResultFileGroup(ctx, parseOptionsForTask(conf), logger, virtualTaskTestResultFileGroup{
+	_, _, err = parseVirtualTaskTestResultFileGroup(ctx, parseOptionsForTask(conf), logger, VirtualTaskTestResultFileGroup{
 		Type:  "bogus",
 		Files: []string{"results.json"},
 	})

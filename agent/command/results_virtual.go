@@ -33,10 +33,10 @@ func parseOptionsForVirtualTask(conf *internal.TaskConfig, info testresult.TestR
 	}
 }
 
-// processVirtualTaskTestResultFiles parses the given test result file groups,
+// ProcessVirtualTaskTestResultFiles parses the given test result file groups,
 // uploads the test logs and test results to S3 on behalf of the virtual task
 // identified by info, and returns the test result metadata.
-func processVirtualTaskTestResultFiles(ctx context.Context, conf *internal.TaskConfig, logger client.LoggerProducer, info testresult.TestResultsInfo, taskCreatedAt, testResultsCreatedAt time.Time, groups []virtualTaskTestResultFileGroup) (*apimodels.VirtualTaskTestResults, error) {
+func ProcessVirtualTaskTestResultFiles(ctx context.Context, conf *internal.TaskConfig, logger client.LoggerProducer, info testresult.TestResultsInfo, taskCreatedAt, testResultsCreatedAt time.Time, groups []VirtualTaskTestResultFileGroup) (*apimodels.VirtualTaskTestResults, error) {
 	parseOpts := parseOptionsForVirtualTask(conf, info)
 
 	logs, results, err := parseVirtualTaskTestResultFileGroups(ctx, parseOpts, logger, groups)
@@ -55,7 +55,7 @@ func processVirtualTaskTestResultFiles(ctx context.Context, conf *internal.TaskC
 }
 
 // parseVirtualTaskTestResultFileGroups parses all test result file group into test logs and results.
-func parseVirtualTaskTestResultFileGroups(ctx context.Context, opts testResultParseOptions, logger client.LoggerProducer, groups []virtualTaskTestResultFileGroup) ([]testlog.TestLog, []testresult.TestResult, error) {
+func parseVirtualTaskTestResultFileGroups(ctx context.Context, opts testResultParseOptions, logger client.LoggerProducer, groups []VirtualTaskTestResultFileGroup) ([]testlog.TestLog, []testresult.TestResult, error) {
 	var (
 		allLogs    []testlog.TestLog
 		allResults []testresult.TestResult
@@ -78,7 +78,7 @@ func parseVirtualTaskTestResultFileGroups(ctx context.Context, opts testResultPa
 
 // parseVirtualTaskTestResultFileGroup parses test results and test logs
 // from a group of files of a given test result format.
-func parseVirtualTaskTestResultFileGroup(ctx context.Context, opts testResultParseOptions, logger client.LoggerProducer, fileGroup virtualTaskTestResultFileGroup) ([]testlog.TestLog, []testresult.TestResult, error) {
+func parseVirtualTaskTestResultFileGroup(ctx context.Context, opts testResultParseOptions, logger client.LoggerProducer, fileGroup VirtualTaskTestResultFileGroup) ([]testlog.TestLog, []testresult.TestResult, error) {
 	if len(fileGroup.Files) == 0 {
 		return nil, nil, errors.New("must specify at least one file")
 	}

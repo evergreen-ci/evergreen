@@ -29,25 +29,32 @@ type virtualTaskCompletionFile struct {
 	TaskID           string                               `json:"task_id"`
 	Execution        int                                  `json:"execution"`
 	Status           string                               `json:"status"`
-	TestResults      *virtualTaskTestResultsFile          `json:"test_results,omitempty"`
+	TestResults      *VirtualTaskTestResultsInput         `json:"test_results,omitempty"`
 	Artifacts        []apimodels.VirtualTaskArtifact      `json:"artifacts,omitempty"`
 	ExternalMetadata *apimodels.ExternalExecutionMetadata `json:"external_metadata,omitempty"`
 }
 
-// virtualTaskTestResultsFile describes the test result files to parse and upload
+// VirtualTaskTestResultsInput describes the test result files to parse and upload
 // for a virtual task.
-type virtualTaskTestResultsFile struct {
-	Files     []virtualTaskTestResultFileGroup `json:"files"`
-	CreatedAt time.Time                        `json:"created_at,omitempty"`
+type VirtualTaskTestResultsInput struct {
+	Files     []VirtualTaskTestResultFileGroup `json:"files"`
+	CreatedAt time.Time                        `json:"created_at,omitzero"`
 }
 
-// virtualTaskTestResultFileGroup is a group of files of a single test result type.
-type virtualTaskTestResultFileGroup struct {
+func (tr VirtualTaskTestResultsInput) GetCreatedAt() time.Time {
+	if !utility.IsZeroTime(tr.CreatedAt) {
+		return tr.CreatedAt
+	}
+	return time.Now()
+}
+
+// VirtualTaskTestResultFileGroup is a group of files of a single test result type.
+type VirtualTaskTestResultFileGroup struct {
 	Type  string   `json:"type"`
 	Files []string `json:"files"`
 }
 
-func (tr virtualTaskTestResultsFile) validate() error {
+func (tr VirtualTaskTestResultsInput) validate() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.NewWhen(len(tr.Files) == 0, "test_results must specify at least one file group")
 	for _, group := range tr.Files {
@@ -240,11 +247,8 @@ func uploadTestResultsForCompletions(ctx context.Context, comm client.Communicat
 // uploadEntryTestResults uploads the test results for a virtual task and
 // returns its push-completion data, including test result stats.
 func uploadEntryTestResults(ctx context.Context, logger client.LoggerProducer, conf *internal.TaskConfig, entry virtualTaskCompletionFile, prep apimodels.VirtualTaskPreparationResult) (*apimodels.VirtualTaskCompletion, error) {
-	testResultsCreatedAt := entry.TestResults.CreatedAt
-	if utility.IsZeroTime(testResultsCreatedAt) {
-		testResultsCreatedAt = time.Now()
-	}
-	stats, err := processVirtualTaskTestResultFiles(ctx, conf, logger, *prep.TestResultsInfo, prep.TaskCreateTime, testResultsCreatedAt, entry.TestResults.Files)
+	testResultsCreatedAt := entry.TestResults.GetCreatedAt()
+	stats, err := ProcessVirtualTaskTestResultFiles(ctx, conf, logger, *prep.TestResultsInfo, prep.TaskCreateTime, testResultsCreatedAt, entry.TestResults.Files)
 	if err != nil {
 		return nil, err
 	}
