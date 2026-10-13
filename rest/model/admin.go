@@ -3209,7 +3209,7 @@ type APIResourceTagsConfig struct {
 func (a *APIResourceTagsConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.ResourceTagsConfig:
-		a.MongoDBOwnerEmailDomains = v.OwnerEmailDomains()
+		a.MongoDBOwnerEmailDomains = v.AllowedOwnerEmailDomains()
 		a.MongoDBEnv = nil
 		if v.MongoDBEnv != "" {
 			a.MongoDBEnv = utility.ToStringPtr(v.MongoDBEnv)

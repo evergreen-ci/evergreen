@@ -202,7 +202,7 @@ func makeTags(ctx context.Context, intentHost *host.Host, resourceTags evergreen
 	}
 	// Task-spawned hosts are owned by Evergreen rather than the user who
 	// triggered the task, so only user spawn hosts are owned by the user.
-	owner := resourceTags.OwnerEmail()
+	owner := resourceTags.FallbackOwnerEmail()
 	ownerSource := "configured_owner"
 	if resourceTags.MongoDBOwner == "" {
 		ownerSource = "default_owner"
@@ -736,21 +736,21 @@ func getEC2ManagerOptionsFromSettings(d distro.Distro, settings *EC2ProviderSett
 	}
 }
 
-func getResourceTagSettings(ctx context.Context, fallback evergreen.ResourceTagsConfig) evergreen.ResourceTagsConfig {
+func loadResourceTagSettings(ctx context.Context, cachedSettings evergreen.ResourceTagsConfig) evergreen.ResourceTagsConfig {
 	var providers evergreen.CloudProviders
 	if err := providers.Get(ctx); err != nil {
 		grip.Warning(ctx, message.WrapError(err, "getting resource tag settings, using cached settings"))
-		return fallback
+		return cachedSettings
 	}
 	return providers.AWS.ResourceTags
 }
 
-func validateEC2HostModifyOptions(h *host.Host, opts host.HostModifyOptions, resourceTags evergreen.ResourceTagsConfig) error {
+func validateEC2HostModifyOptions(h *host.Host, opts host.HostModifyOptions, resourceTagSettings evergreen.ResourceTagsConfig) error {
 	catcher := grip.NewBasicCatcher()
 	catcher.NewWhen(opts.InstanceType != "" && h.Status != evergreen.HostStopped, "host must be stopped to modify instance type")
 	for _, tag := range opts.AddInstanceTags {
 		if tag.Key == evergreen.TagMongoDBOwner {
-			catcher.Wrap(resourceTags.ValidateOwnerEmail(tag.Value), "validating MongoDB owner tag")
+			catcher.Wrap(resourceTagSettings.ValidateOwnerEmail(tag.Value), "validating MongoDB owner tag")
 		}
 	}
 	if opts.NewName != "" {

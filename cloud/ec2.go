@@ -487,15 +487,15 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 		return errors.Wrap(err, "creating client")
 	}
 
-	resourceTags := m.settings.Providers.AWS.ResourceTags
+	resourceTagSettings := m.settings.Providers.AWS.ResourceTags
 	for _, tag := range opts.AddInstanceTags {
 		if tag.Key == evergreen.TagMongoDBOwner {
-			resourceTags = getResourceTagSettings(ctx, resourceTags)
+			resourceTagSettings = loadResourceTagSettings(ctx, resourceTagSettings)
 			break
 		}
 	}
 	// Validate modify options for user errors that should prevent all modifications.
-	if err := validateEC2HostModifyOptions(h, opts, resourceTags); err != nil {
+	if err := validateEC2HostModifyOptions(h, opts, resourceTagSettings); err != nil {
 		return errors.Wrap(err, "validating EC2 host modify options")
 	}
 
@@ -1044,7 +1044,7 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 		return nil, errors.Wrap(err, "creating client")
 	}
 
-	resourceTagSettings := getResourceTagSettings(ctx, m.settings.Providers.AWS.ResourceTags)
+	resourceTagSettings := loadResourceTagSettings(ctx, m.settings.Providers.AWS.ResourceTags)
 
 	volume.Expiration = time.Now().Add(evergreen.DefaultSpawnHostExpiration)
 	volumeTags := []types.Tag{
@@ -1258,7 +1258,7 @@ func (m *ec2Manager) makeVolumeResourceTags(ctx context.Context, volume *host.Vo
 	ctx, span := tracer.Start(ctx, "makeVolumeResourceTags")
 	defer span.End()
 
-	owner := resourceTagSettings.OwnerEmail()
+	owner := resourceTagSettings.FallbackOwnerEmail()
 	ownerSource := "configured_owner"
 	if resourceTagSettings.MongoDBOwner == "" {
 		ownerSource = "default_owner"

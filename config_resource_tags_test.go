@@ -110,12 +110,12 @@ func TestValidateMongoDBEmail(t *testing.T) {
 	}
 }
 
-func TestResourceTagsOwnerEmailDomains(t *testing.T) {
-	t.Run("UnsetDomainsUseDefaults", func(t *testing.T) {
+func TestResourceTagsConfigValidatesOwnerEmailDomains(t *testing.T) {
+	t.Run("UnsetDomainsShouldUseDefaults", func(t *testing.T) {
 		config := ResourceTagsConfig{}
 		assert.NoError(t, config.ValidateAndDefault())
 		assert.Equal(t, []string{"mongodb.com", "10gen.com"}, config.MongoDBOwnerEmailDomains)
-		domains := config.OwnerEmailDomains()
+		domains := config.AllowedOwnerEmailDomains()
 		domains[0] = "example.com"
 		assert.NoError(t, config.ValidateOwnerEmail("user@mongodb.com"))
 	})
@@ -150,7 +150,7 @@ func TestResourceTagsOwnerEmailDomains(t *testing.T) {
 			}
 		})
 	}
-	t.Run("ConfiguredListReplacesDefaults", func(t *testing.T) {
+	t.Run("ConfiguredDomainsShouldReplaceDefaults", func(t *testing.T) {
 		config := ResourceTagsConfig{MongoDBOwnerEmailDomains: []string{"example.com"}}
 		assert.NoError(t, config.ValidateOwnerEmail("user@example.com"))
 		assert.Error(t, config.ValidateOwnerEmail("\"user@alias\"@example.com"))

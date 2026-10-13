@@ -1423,7 +1423,7 @@ func (s *EC2Suite) TestMakeVolumeResourceTagsUsesConfiguredOwnerWhenCreatorLooku
 	}, tags)
 
 	s.onDemandManager.settings.Providers.AWS.ResourceTags = evergreen.ResourceTagsConfig{}
-	s.Equal([]host.Tag{{Key: evergreen.TagMongoDBOwner, Value: evergreen.DefaultMongoDBOwner}},
+	s.Equal([]host.Tag{{Key: evergreen.TagMongoDBOwner, Value: evergreen.DefaultMongoDBOwnerEmail}},
 		s.onDemandManager.makeVolumeResourceTags(ctx, s.volume, s.onDemandManager.settings.Providers.AWS.ResourceTags))
 }
 
@@ -1565,13 +1565,13 @@ func (s *EC2Suite) TestModifyVolumeName() {
 }
 
 func (s *EC2Suite) TestOwnerEmailDomainsUpdateExistingManager() {
-	providers := evergreen.CloudProviders{}
-	s.Require().NoError(providers.Get(s.ctx))
-	s.T().Cleanup(func() { assert.NoError(s.T(), providers.Set(context.WithoutCancel(s.T().Context()))) })
-	config := evergreen.CloudProviders{AWS: evergreen.AWSConfig{ResourceTags: evergreen.ResourceTagsConfig{
+	originalProviders := evergreen.CloudProviders{}
+	s.Require().NoError(originalProviders.Get(s.ctx))
+	s.T().Cleanup(func() { assert.NoError(s.T(), originalProviders.Set(context.WithoutCancel(s.T().Context()))) })
+	updatedProviders := evergreen.CloudProviders{AWS: evergreen.AWSConfig{ResourceTags: evergreen.ResourceTagsConfig{
 		MongoDBOwner: "team@example.com", MongoDBOwnerEmailDomains: []string{"example.com"},
 	}}}
-	s.Require().NoError(config.Set(s.ctx))
+	s.Require().NoError(updatedProviders.Set(s.ctx))
 	s.Require().NoError(s.h.Insert(s.ctx))
 	s.NoError(s.onDemandManager.ModifyHost(s.ctx, s.h, host.HostModifyOptions{AddInstanceTags: []host.Tag{{Key: evergreen.TagMongoDBOwner, Value: "user@example.com"}}}))
 	s.Error(s.onDemandManager.ModifyHost(s.ctx, s.h, host.HostModifyOptions{AddInstanceTags: []host.Tag{{Key: evergreen.TagMongoDBOwner, Value: "user@mongodb.com"}}}))
@@ -1581,13 +1581,13 @@ func (s *EC2Suite) TestOwnerEmailDomainsUpdateExistingManager() {
 	s.volume.Host = ""
 	_, err := s.onDemandManager.CreateVolume(s.ctx, s.volume)
 	s.Require().NoError(err)
-	owner := ""
+	volumeOwnerEmail := ""
 	for _, spec := range s.mock.CreateVolumeInput.TagSpecifications {
 		for _, tag := range spec.Tags {
 			if aws.ToString(tag.Key) == evergreen.TagMongoDBOwner {
-				owner = aws.ToString(tag.Value)
+				volumeOwnerEmail = aws.ToString(tag.Value)
 			}
 		}
 	}
-	s.Equal("user@example.com", owner)
+	s.Equal("user@example.com", volumeOwnerEmail)
 }

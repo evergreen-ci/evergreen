@@ -669,60 +669,60 @@ func TestTerminatePreexistingInstance(t *testing.T) {
 }
 
 func TestMakeTagsUsesConfiguredEmailDomains(t *testing.T) {
-	config := evergreen.ResourceTagsConfig{MongoDBOwner: "team@example.com", MongoDBOwnerEmailDomains: []string{"example.com"}}
+	resourceTagSettings := evergreen.ResourceTagsConfig{MongoDBOwner: "team@example.com", MongoDBOwnerEmailDomains: []string{"example.com"}}
 	for name, testCase := range map[string]struct {
-		h     host.Host
-		owner string
+		h             host.Host
+		expectedOwner string
 	}{
-		"AllowedCreatorShouldOwnHost":           {h: host.Host{UserHost: true, SpawnOptions: host.SpawnOptions{UserEmail: "user@example.com"}}, owner: "user@example.com"},
-		"RemovedDomainShouldUseFallback":        {h: host.Host{UserHost: true, SpawnOptions: host.SpawnOptions{UserEmail: "user@mongodb.com"}}, owner: "team@example.com"},
-		"AllowedExistingTagShouldBePreserved":   {h: host.Host{InstanceTags: []host.Tag{{Key: evergreen.TagMongoDBOwner, Value: "owner@example.com"}}}, owner: "owner@example.com"},
-		"RemovedExistingDomainShouldBeReplaced": {h: host.Host{InstanceTags: []host.Tag{{Key: evergreen.TagMongoDBOwner, Value: "owner@mongodb.com"}}}, owner: "team@example.com"},
+		"AllowedCreatorShouldOwnHost":           {h: host.Host{UserHost: true, SpawnOptions: host.SpawnOptions{UserEmail: "user@example.com"}}, expectedOwner: "user@example.com"},
+		"RemovedDomainShouldUseFallback":        {h: host.Host{UserHost: true, SpawnOptions: host.SpawnOptions{UserEmail: "user@mongodb.com"}}, expectedOwner: "team@example.com"},
+		"AllowedExistingTagShouldBePreserved":   {h: host.Host{InstanceTags: []host.Tag{{Key: evergreen.TagMongoDBOwner, Value: "owner@example.com"}}}, expectedOwner: "owner@example.com"},
+		"RemovedExistingDomainShouldBeReplaced": {h: host.Host{InstanceTags: []host.Tag{{Key: evergreen.TagMongoDBOwner, Value: "owner@mongodb.com"}}}, expectedOwner: "team@example.com"},
 	} {
 		t.Run(name, func(t *testing.T) {
-			tags := makeTags(t.Context(), &testCase.h, config)
+			tags := makeTags(t.Context(), &testCase.h, resourceTagSettings)
 			for _, tag := range tags {
 				if tag.Key == evergreen.TagMongoDBOwner {
-					assert.Equal(t, testCase.owner, tag.Value)
+					assert.Equal(t, testCase.expectedOwner, tag.Value)
 					return
 				}
 			}
 			t.Fatal("missing owner tag")
 		})
 	}
-	assert.NoError(t, validateEC2HostModifyOptions(&host.Host{}, host.HostModifyOptions{AddInstanceTags: []host.Tag{{Key: evergreen.TagMongoDBOwner, Value: "user@example.com"}}}, config))
-	assert.Error(t, validateEC2HostModifyOptions(&host.Host{}, host.HostModifyOptions{AddInstanceTags: []host.Tag{{Key: evergreen.TagMongoDBOwner, Value: "user@mongodb.com"}}}, config))
+	assert.NoError(t, validateEC2HostModifyOptions(&host.Host{}, host.HostModifyOptions{AddInstanceTags: []host.Tag{{Key: evergreen.TagMongoDBOwner, Value: "user@example.com"}}}, resourceTagSettings))
+	assert.Error(t, validateEC2HostModifyOptions(&host.Host{}, host.HostModifyOptions{AddInstanceTags: []host.Tag{{Key: evergreen.TagMongoDBOwner, Value: "user@mongodb.com"}}}, resourceTagSettings))
 }
 
 func TestResourceTagSettingsLookupErrorShouldUseCachedSettings(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	config := evergreen.ResourceTagsConfig{
+	cachedSettings := evergreen.ResourceTagsConfig{
 		MongoDBOwner:             "team@example.com",
 		MongoDBOwnerEmailDomains: []string{"example.com"},
 	}
-	settings := getResourceTagSettings(ctx, config)
-	assert.Equal(t, config, settings)
-	assert.NoError(t, settings.ValidateOwnerEmail("user@example.com"))
-	assert.Error(t, settings.ValidateOwnerEmail("user@mongodb.com"))
+	resourceTagSettings := loadResourceTagSettings(ctx, cachedSettings)
+	assert.Equal(t, cachedSettings, resourceTagSettings)
+	assert.NoError(t, resourceTagSettings.ValidateOwnerEmail("user@example.com"))
+	assert.Error(t, resourceTagSettings.ValidateOwnerEmail("user@mongodb.com"))
 }
 
 func TestMakeTagsMissingOwnerShouldUseUserEmailOrDefault(t *testing.T) {
 	for name, testCase := range map[string]struct {
-		email string
-		owner string
+		userEmail     string
+		expectedOwner string
 	}{
-		"MissingEmailShouldUseEvergreenOwner": {owner: evergreen.DefaultMongoDBOwner},
-		"InvalidEmailShouldUseEvergreenOwner": {email: "invalid", owner: evergreen.DefaultMongoDBOwner},
-		"ValidEmailShouldUseUserOwner":        {email: "user@mongodb.com", owner: "user@mongodb.com"},
+		"MissingEmailShouldUseEvergreenOwner": {expectedOwner: evergreen.DefaultMongoDBOwnerEmail},
+		"InvalidEmailShouldUseEvergreenOwner": {userEmail: "invalid", expectedOwner: evergreen.DefaultMongoDBOwnerEmail},
+		"ValidEmailShouldUseUserOwner":        {userEmail: "user@mongodb.com", expectedOwner: "user@mongodb.com"},
 	} {
 		t.Run(name, func(t *testing.T) {
-			h := host.Host{UserHost: true, SpawnOptions: host.SpawnOptions{UserEmail: testCase.email}}
+			h := host.Host{UserHost: true, SpawnOptions: host.SpawnOptions{UserEmail: testCase.userEmail}}
 			tags := map[string]host.Tag{}
 			for _, tag := range makeTags(t.Context(), &h, evergreen.ResourceTagsConfig{}) {
 				tags[tag.Key] = tag
 			}
-			assert.Equal(t, testCase.owner, tags[evergreen.TagMongoDBOwner].Value)
+			assert.Equal(t, testCase.expectedOwner, tags[evergreen.TagMongoDBOwner].Value)
 			assert.False(t, tags[evergreen.TagMongoDBOwner].CanBeModified)
 		})
 	}

@@ -1074,7 +1074,7 @@ func TestAPIResourceTagsConfigEmailDomains(t *testing.T) {
 			require.True(t, ok)
 			assert.Equal(t, domains, config.MongoDBOwnerEmailDomains)
 			require.NoError(t, apiConfig.BuildFromService(config))
-			assert.Equal(t, config.OwnerEmailDomains(), apiConfig.MongoDBOwnerEmailDomains)
+			assert.Equal(t, config.AllowedOwnerEmailDomains(), apiConfig.MongoDBOwnerEmailDomains)
 		})
 	}
 }

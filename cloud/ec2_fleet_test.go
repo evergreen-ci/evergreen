@@ -365,24 +365,24 @@ func TestFleet(t *testing.T) {
 			assert.Equal(t, "public_dns_name", dnsName)
 		},
 		"SpawnFleetHostUsesUpdatedEmailDomains": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
-			providers := evergreen.CloudProviders{}
-			require.NoError(t, providers.Get(ctx))
-			t.Cleanup(func() { assert.NoError(t, providers.Set(context.WithoutCancel(t.Context()))) })
-			updated := providers
-			updated.AWS.ResourceTags = evergreen.ResourceTagsConfig{MongoDBOwner: "team@example.com", MongoDBOwnerEmailDomains: []string{"example.com"}}
-			require.NoError(t, updated.Set(ctx))
+			originalProviders := evergreen.CloudProviders{}
+			require.NoError(t, originalProviders.Get(ctx))
+			t.Cleanup(func() { assert.NoError(t, originalProviders.Set(context.WithoutCancel(t.Context()))) })
+			updatedProviders := originalProviders
+			updatedProviders.AWS.ResourceTags = evergreen.ResourceTagsConfig{MongoDBOwner: "team@example.com", MongoDBOwnerEmailDomains: []string{"example.com"}}
+			require.NoError(t, updatedProviders.Set(ctx))
 			h.UserHost = true
 			h.SpawnOptions.UserEmail = "user@example.com"
 			require.NoError(t, m.spawnFleetHost(ctx, h, &EC2ProviderSettings{}))
 			require.Len(t, client.CreateLaunchTemplateInput.LaunchTemplateData.TagSpecifications, 2)
 			for _, spec := range client.CreateLaunchTemplateInput.LaunchTemplateData.TagSpecifications {
-				owner := ""
+				resourceOwnerEmail := ""
 				for _, tag := range spec.Tags {
 					if aws.ToString(tag.Key) == evergreen.TagMongoDBOwner {
-						owner = aws.ToString(tag.Value)
+						resourceOwnerEmail = aws.ToString(tag.Value)
 					}
 				}
-				assert.Equal(t, "user@example.com", owner)
+				assert.Equal(t, "user@example.com", resourceOwnerEmail)
 			}
 		},
 		"SpawnFleetHost": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {

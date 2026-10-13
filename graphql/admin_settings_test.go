@@ -67,36 +67,36 @@ func TestSaveAdminSettingsOwnerEmailDomains(t *testing.T) {
 	settings.Providers.AWS.ResourceTags = evergreen.ResourceTagsConfig{MongoDBOwner: "team@mongodb.com"}
 	require.NoError(t, evergreen.UpdateConfig(ctx, settings))
 	resolver := &mutationResolver{&Resolver{}}
-	saveTags := func(tags *restModel.APIResourceTagsConfig) (*restModel.APIAdminSettings, error) {
+	saveResourceTagSettings := func(resourceTagSettings *restModel.APIResourceTagsConfig) (*restModel.APIAdminSettings, error) {
 		return resolver.SaveAdminSettings(ctx, restModel.APIAdminSettings{
-			Providers: &restModel.APICloudProviders{AWS: &restModel.APIAWSConfig{ResourceTags: tags}},
+			Providers: &restModel.APICloudProviders{AWS: &restModel.APIAWSConfig{ResourceTags: resourceTagSettings}},
 		})
 	}
-	updated, err := saveTags(&restModel.APIResourceTagsConfig{
+	updatedSettings, err := saveResourceTagSettings(&restModel.APIResourceTagsConfig{
 		MongoDBOwner:             utility.ToStringPtr("team@example.com"),
 		MongoDBOwnerEmailDomains: []string{"example.com"},
 	})
 	require.NoError(t, err)
-	require.Equal(t, []string{"example.com"}, updated.Providers.AWS.ResourceTags.MongoDBOwnerEmailDomains)
-	_, err = saveTags(&restModel.APIResourceTagsConfig{MongoDBEnv: utility.ToStringPtr("dev")})
+	require.Equal(t, []string{"example.com"}, updatedSettings.Providers.AWS.ResourceTags.MongoDBOwnerEmailDomains)
+	_, err = saveResourceTagSettings(&restModel.APIResourceTagsConfig{MongoDBEnv: utility.ToStringPtr("dev")})
 	require.NoError(t, err)
 	_, err = resolver.SaveAdminSettings(ctx, restModel.APIAdminSettings{Banner: utility.ToStringPtr("Updated banner")})
 	require.NoError(t, err)
-	persisted, err := evergreen.GetConfig(ctx)
+	persistedSettings, err := evergreen.GetConfig(ctx)
 	require.NoError(t, err)
-	require.Equal(t, []string{"example.com"}, persisted.Providers.AWS.ResourceTags.MongoDBOwnerEmailDomains)
+	require.Equal(t, []string{"example.com"}, persistedSettings.Providers.AWS.ResourceTags.MongoDBOwnerEmailDomains)
 	for name, domains := range map[string][]string{
 		"EmptyDomains":       {},
 		"MalformedDomains":   {"@example.com"},
 		"RemovedOwnerDomain": {"mongodb.com"},
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, err := saveTags(&restModel.APIResourceTagsConfig{MongoDBOwnerEmailDomains: domains})
+			_, err := saveResourceTagSettings(&restModel.APIResourceTagsConfig{MongoDBOwnerEmailDomains: domains})
 			require.Error(t, err)
-			persisted, err := evergreen.GetConfig(ctx)
+			persistedSettings, err := evergreen.GetConfig(ctx)
 			require.NoError(t, err)
-			require.Equal(t, []string{"example.com"}, persisted.Providers.AWS.ResourceTags.MongoDBOwnerEmailDomains)
-			require.Equal(t, "team@example.com", persisted.Providers.AWS.ResourceTags.MongoDBOwner)
+			require.Equal(t, []string{"example.com"}, persistedSettings.Providers.AWS.ResourceTags.MongoDBOwnerEmailDomains)
+			require.Equal(t, "team@example.com", persistedSettings.Providers.AWS.ResourceTags.MongoDBOwner)
 		})
 	}
 }

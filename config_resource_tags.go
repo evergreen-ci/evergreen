@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const DefaultMongoDBOwner = "evergreen@mongodb.com"
+const DefaultMongoDBOwnerEmail = "evergreen@mongodb.com"
 
 const (
 	MongoDBEnvironmentProd    = "prod"
@@ -45,16 +45,16 @@ type ResourceTagsConfig struct {
 	MongoDBOwnerEmailDomains []string `yaml:"mongodb_owner_email_domains" bson:"mongodb_owner_email_domains" json:"mongodb_owner_email_domains"`
 }
 
-// OwnerEmail returns the configured fallback owner, or Evergreen's address when unset.
-func (c ResourceTagsConfig) OwnerEmail() string {
+// FallbackOwnerEmail returns the configured fallback owner, or Evergreen's address when unset.
+func (c ResourceTagsConfig) FallbackOwnerEmail() string {
 	if c.MongoDBOwner == "" {
-		return DefaultMongoDBOwner
+		return DefaultMongoDBOwnerEmail
 	}
 	return c.MongoDBOwner
 }
 
-// OwnerEmailDomains returns the configured domains, or defaults for older settings.
-func (c ResourceTagsConfig) OwnerEmailDomains() []string {
+// AllowedOwnerEmailDomains returns the configured domains, or defaults for older settings.
+func (c ResourceTagsConfig) AllowedOwnerEmailDomains() []string {
 	if c.MongoDBOwnerEmailDomains == nil {
 		return []string{"mongodb.com", "10gen.com"}
 	}
@@ -62,19 +62,19 @@ func (c ResourceTagsConfig) OwnerEmailDomains() []string {
 }
 
 func (c *ResourceTagsConfig) Validate() error {
-	domains := c.OwnerEmailDomains()
-	if len(domains) == 0 {
+	allowedDomains := c.AllowedOwnerEmailDomains()
+	if len(allowedDomains) == 0 {
 		return errors.New("MongoDB owner email domains must not be empty")
 	}
-	seen := map[string]bool{}
-	for _, domain := range domains {
+	seenDomains := map[string]bool{}
+	for _, domain := range allowedDomains {
 		if len(domain) > 253 || !mongoDBOwnerEmailDomainPattern.MatchString(domain) {
 			return errors.Errorf("invalid MongoDB owner email domain '%s': use a lowercase domain without @ or wildcards", domain)
 		}
-		if seen[domain] {
+		if seenDomains[domain] {
 			return errors.Errorf("duplicate MongoDB owner email domain '%s'", domain)
 		}
-		seen[domain] = true
+		seenDomains[domain] = true
 	}
 
 	if c.MongoDBEnv != "" {
@@ -95,19 +95,19 @@ func (c *ResourceTagsConfig) ValidateAndDefault() error {
 	if err := c.Validate(); err != nil {
 		return err
 	}
-	c.MongoDBOwnerEmailDomains = c.OwnerEmailDomains()
+	c.MongoDBOwnerEmailDomains = c.AllowedOwnerEmailDomains()
 	return nil
 }
 
 // ValidateOwnerEmail checks that an email is a bare address on an allowed domain.
 func (c ResourceTagsConfig) ValidateOwnerEmail(email string) error {
-	domains := c.OwnerEmailDomains()
-	parsed, err := mail.ParseAddress(email)
-	if err == nil && parsed.Address == email {
-		domain := email[strings.LastIndex(email, "@")+1:]
-		if slices.Contains(domains, domain) {
+	allowedDomains := c.AllowedOwnerEmailDomains()
+	parsedAddress, err := mail.ParseAddress(email)
+	if err == nil && parsedAddress.Address == email {
+		emailDomain := email[strings.LastIndex(email, "@")+1:]
+		if slices.Contains(allowedDomains, emailDomain) {
 			return nil
 		}
 	}
-	return errors.Errorf("email must be a valid address on an allowed domain: %s", strings.Join(domains, ", "))
+	return errors.Errorf("email must be a valid address on an allowed domain: %s", strings.Join(allowedDomains, ", "))
 }
