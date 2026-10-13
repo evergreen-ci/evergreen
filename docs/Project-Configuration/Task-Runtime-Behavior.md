@@ -342,19 +342,19 @@ callers that want to upload test results for virtual tasks programmatically inst
 The request body is a JSON object with a `tasks` array, one entry per virtual
 task:
 
-| Name         | Type   | Description                                                                                                                                                                                                        |
-| ------------ | ------ | ------------------------------------------------------------------------                                                                                                                                           |
-| task_id      | string | Required. The Evergreen task ID of the virtual task.                                                                                                                                                               |
-| execution    | int    | Required. The execution number the test results apply to.                                                                                                                                                          |
+| Name         | Type   | Description                                                                                                                                                                                            |
+| ------------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| task_id      | string | Required. The Evergreen task ID of the virtual task.                                                                                                                                                   |
+| execution    | int    | Required. The execution number the test results apply to.                                                                                                                                              |
 | test_results | object | Required. The test result files to parse and upload. This has the same schema as the [the `test_results` field of a `virtual_tasks.complete`](Project-Commands#virtual_taskscomplete) completion file. |
 
 The response contains one result per virtual task:
 
-| Name         | Type   | Description                                                                                                                                                     |
-| ------------ | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| task_id      | string | The Evergreen task ID of the virtual task.                                                                                                                      |
-| test_results | object | Set on success. The uploaded test results' metadata: `stats` (`total_count` and `failed_count`), `failed_sample`, and `created_at`.                             |
-| error        | string | Set if the task's test results could not be uploaded.                                                                                                           |
+| Name         | Type   | Description                                                                                                                         |
+| ------------ | ------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| task_id      | string | The Evergreen task ID of the virtual task.                                                                                          |
+| test_results | object | Set on success. The uploaded test results' metadata: `stats` (`total_count` and `failed_count`), `failed_sample`, and `created_at`. |
+| error        | string | Set if the task's test results could not be uploaded.                                                                               |
 
 Example in a command:
 
