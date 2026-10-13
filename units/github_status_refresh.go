@@ -201,6 +201,18 @@ func (j *githubStatusRefreshJob) sendBuildStatuses(ctx context.Context) {
 		Ref:   j.patch.GithubPatchData.HeadHash,
 	}
 	for _, b := range j.builds {
+		// Dormant builds were never scheduled, so nothing will ever run for
+		// them and no status could ever resolve; report nothing for them.
+		if b.IsDormant() {
+			grip.Info(ctx, message.Fields{
+				"job":     j.Name,
+				"message": "skipping dormant build when sending GitHub statuses",
+				"build":   b.Id,
+				"variant": b.BuildVariant,
+				"patch":   j.FetchID,
+			})
+			continue
+		}
 		status.Context = fmt.Sprintf("%s/%s", thirdparty.GithubStatusDefaultContext, b.BuildVariant)
 		status.URL = b.GetURL(j.urlBase)
 

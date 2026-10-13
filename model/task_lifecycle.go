@@ -1479,6 +1479,16 @@ func checkUpdateBuildPRStatusPending(ctx context.Context, b *build.Build) error 
 	if !evergreen.IsGitHubPatchRequester(b.Requester) {
 		return nil
 	}
+	// A dormant build has nothing running or scheduled; a pending status would
+	// never resolve.
+	if b.IsDormant() {
+		span.SetAttributes(
+			attribute.String(evergreen.BuildIDOtelAttribute, b.Id),
+			attribute.String(evergreen.BuildNameOtelAttribute, b.BuildVariant),
+			attribute.Bool("evergreen.build.dormant_skip", true),
+		)
+		return nil
+	}
 	p, err := patch.FindOneId(ctx, b.Version)
 	if err != nil {
 		return errors.Wrapf(err, "finding patch '%s'", b.Version)
