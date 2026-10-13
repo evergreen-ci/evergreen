@@ -533,6 +533,30 @@ func (s *githubStatusRefreshSuite) TestSkipsDormantBuilds() {
 	s.False(ok, "no status should be sent for a dormant build")
 }
 
+func (s *githubStatusRefreshSuite) TestStatusPendingForDeactivatedAfterRunningBuild() {
+	// A build that was activated may have already reported a status, so it gets
+	// an update rather than being skipped, even after being deactivated.
+	b := build.Build{
+		Id:            "b1",
+		BuildVariant:  "myBuild",
+		Version:       s.patchDoc.Version,
+		Status:        evergreen.BuildCreated,
+		ActivatedTime: time.Now(),
+	}
+	s.NoError(b.Insert(s.ctx))
+
+	job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
+	s.Require().True(ok)
+	job.env = s.env
+	job.Run(s.ctx)
+	s.False(job.HasErrors())
+
+	s.getAndValidateStatus(s.env.InternalSender) // patch status
+	status := s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal("evergreen/myBuild", status.Context)
+	s.Equal(message.GithubStatePending, status.State)
+}
+
 func (s *githubStatusRefreshSuite) TestStatusPendingForCreatedButActivatedBuild() {
 	b := build.Build{
 		Id:           "b1",

@@ -413,6 +413,10 @@ func TestIsDormant(t *testing.T) {
 		b := &Build{Status: evergreen.BuildStarted, Activated: true}
 		assert.False(t, b.IsDormant())
 	})
+	t.Run("DeactivatedAfterRunningIsNotDormant", func(t *testing.T) {
+		b := &Build{Status: evergreen.BuildCreated, Activated: false, ActivatedTime: time.Now()}
+		assert.False(t, b.IsDormant())
+	})
 	t.Run("FinishedBuildIsNotDormant", func(t *testing.T) {
 		b := &Build{Status: evergreen.BuildSucceeded, Activated: true}
 		assert.False(t, b.IsDormant())

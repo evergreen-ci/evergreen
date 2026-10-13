@@ -200,12 +200,17 @@ func (j *githubStatusRefreshJob) sendBuildStatuses(ctx context.Context) {
 		Repo:  j.patch.GithubPatchData.BaseRepo,
 		Ref:   j.patch.GithubPatchData.HeadHash,
 	}
-	dormantSkipped := 0
 	for _, b := range j.builds {
 		// Dormant builds were never scheduled, so nothing will ever run for
 		// them and no status could ever resolve; report nothing for them.
 		if b.IsDormant() {
-			dormantSkipped++
+			grip.Info(ctx, message.Fields{
+				"job":     j.Name,
+				"message": "skipping dormant build when sending GitHub statuses",
+				"build":   b.Id,
+				"variant": b.BuildVariant,
+				"patch":   j.FetchID,
+			})
 			continue
 		}
 		status.Context = fmt.Sprintf("%s/%s", thirdparty.GithubStatusDefaultContext, b.BuildVariant)
@@ -229,15 +234,6 @@ func (j *githubStatusRefreshJob) sendBuildStatuses(ctx context.Context) {
 		status.Description = b.GetPRNotificationDescription(ctx, tasks)
 
 		j.sendStatus(ctx, status)
-	}
-
-	if dormantSkipped > 0 {
-		grip.Info(ctx, message.Fields{
-			"job":      j.Name,
-			"message":  "skipped dormant builds when sending GitHub statuses",
-			"patch_id": j.FetchID,
-			"count":    dormantSkipped,
-		})
 	}
 }
 
