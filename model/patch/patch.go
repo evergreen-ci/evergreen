@@ -526,8 +526,8 @@ type ModuleCodeChange struct {
 	BranchName     string
 	HTMLLink       string
 	RawLink        string
-	CommitMessages []string
-	FileDiffs      []FileDiff
+	CommitMessages []string   `extensions:"x-nullable"`
+	FileDiffs      []FileDiff `extensions:"x-nullable"`
 }
 
 // FileDiff represents a single file diff in a module code change.

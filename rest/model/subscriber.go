@@ -14,7 +14,7 @@ import (
 )
 
 type APISubscriber struct {
-	Type *string `json:"type"`
+	Type *string `json:"type" extensions:"!x-nullable"`
 	// Target can be either a slice or a string. However, since swaggo does not
 	// support the OpenAPI `oneOf` keyword, we set `swaggerignore` and document
 	// the field manually in the "Fetch all projects" endpoint.

@@ -17,16 +17,16 @@ import (
 
 type APIDBUser struct {
 	BetaFeatures APIBetaFeatures `json:"beta_features"`
-	DisplayName  *string         `json:"display_name"`
-	EmailAddress *string         `json:"email_address"`
+	DisplayName  *string         `json:"display_name" extensions:"!x-nullable"`
+	EmailAddress *string         `json:"email_address" extensions:"!x-nullable"`
 	// will be set to true if the user represents a service user
 	OnlyApi                   bool               `json:"only_api"`
-	Roles                     []string           `json:"roles"`
+	Roles                     []string           `json:"roles" extensions:"x-nullable"`
 	HasTokenExchangePending   bool               `json:"has_token_exchange_pending"`
-	TokenAccessTokenExpiresAt *time.Time         `json:"token_access_token_expires_at"`
-	ParsleyFilters            []APIParsleyFilter `json:"parsley_filters"`
+	TokenAccessTokenExpiresAt *time.Time         `json:"token_access_token_expires_at" extensions:"x-nullable"`
+	ParsleyFilters            []APIParsleyFilter `json:"parsley_filters" extensions:"!x-nullable"`
 	Settings                  APIUserSettings    `json:"settings"`
-	UserID                    *string            `json:"user_id"`
+	UserID                    *string            `json:"user_id" extensions:"!x-nullable"`
 }
 
 // BuildFromService converts a service layer user.DBUser to an APIDBUser.
@@ -90,8 +90,8 @@ func (s *APIDBUser) ToService() (*user.DBUser, error) {
 }
 
 type APIPubKey struct {
-	Name *string `json:"name"`
-	Key  *string `json:"key"`
+	Name *string `json:"name" extensions:"!x-nullable"`
+	Key  *string `json:"key" extensions:"!x-nullable"`
 }
 
 // BuildFromService converts from service level structs to an APIPubKey.
@@ -101,20 +101,20 @@ func (pk *APIPubKey) BuildFromService(in user.PubKey) {
 }
 
 type APIUserSettings struct {
-	Timezone         *string                     `json:"timezone"`
-	Region           *string                     `json:"region"`
-	UseSpruceOptions *APIUseSpruceOptions        `json:"use_spruce_options"`
-	GithubUser       *APIGithubUser              `json:"github_user"`
-	SlackUsername    *string                     `json:"slack_username"`
-	SlackMemberId    *string                     `json:"slack_member_id"`
-	Notifications    *APINotificationPreferences `json:"notifications"`
-	SpruceFeedback   *APIFeedbackSubmission      `json:"spruce_feedback"`
-	DateFormat       *string                     `json:"date_format"`
-	TimeFormat       *string                     `json:"time_format"`
+	Timezone         *string                     `json:"timezone" extensions:"!x-nullable"`
+	Region           *string                     `json:"region" extensions:"!x-nullable"`
+	UseSpruceOptions *APIUseSpruceOptions        `json:"use_spruce_options" extensions:"!x-nullable"`
+	GithubUser       *APIGithubUser              `json:"github_user" extensions:"!x-nullable"`
+	SlackUsername    *string                     `json:"slack_username" extensions:"!x-nullable"`
+	SlackMemberId    *string                     `json:"slack_member_id" extensions:"!x-nullable"`
+	Notifications    *APINotificationPreferences `json:"notifications" extensions:"!x-nullable"`
+	SpruceFeedback   *APIFeedbackSubmission      `json:"spruce_feedback" extensions:"x-nullable"`
+	DateFormat       *string                     `json:"date_format" extensions:"!x-nullable"`
+	TimeFormat       *string                     `json:"time_format" extensions:"!x-nullable"`
 }
 
 type APIUseSpruceOptions struct {
-	SpruceV1 *bool `json:"spruce_v1" bson:"spruce_v1,omitempty"`
+	SpruceV1 *bool `json:"spruce_v1" bson:"spruce_v1,omitempty" extensions:"!x-nullable"`
 }
 
 func (s *APIUserSettings) BuildFromService(settings user.UserSettings) {
@@ -179,15 +179,15 @@ func (g *APIGithubUser) ToService() user.GithubUser {
 }
 
 type APINotificationPreferences struct {
-	BuildBreak            *string `json:"build_break"`
+	BuildBreak            *string `json:"build_break" extensions:"!x-nullable"`
 	BuildBreakID          *string `json:"build_break_id,omitempty"`
-	PatchFinish           *string `json:"patch_finish"`
+	PatchFinish           *string `json:"patch_finish" extensions:"!x-nullable"`
 	PatchFinishID         *string `json:"patch_finish_id,omitempty"`
-	PatchFirstFailure     *string `json:"patch_first_failure"`
+	PatchFirstFailure     *string `json:"patch_first_failure" extensions:"!x-nullable"`
 	PatchFirstFailureID   *string `json:"patch_first_failure_id,omitempty"`
-	SpawnHostExpiration   *string `json:"spawn_host_expiration"`
+	SpawnHostExpiration   *string `json:"spawn_host_expiration" extensions:"!x-nullable"`
 	SpawnHostExpirationID *string `json:"spawn_host_expiration_id,omitempty"`
-	SpawnHostOutcome      *string `json:"spawn_host_outcome"`
+	SpawnHostOutcome      *string `json:"spawn_host_outcome" extensions:"!x-nullable"`
 	SpawnHostOutcomeID    *string `json:"spawn_host_outcome_id,omitempty"`
 }
 
@@ -265,10 +265,10 @@ func applyUserChanges(current user.UserSettings, changes APIUserSettings) APIUse
 }
 
 type APIFeedbackSubmission struct {
-	Type        *string             `json:"type"`
-	User        *string             `json:"user"`
-	SubmittedAt *time.Time          `json:"submitted_at"`
-	Questions   []APIQuestionAnswer `json:"questions"`
+	Type        *string             `json:"type" extensions:"x-nullable"`
+	User        *string             `json:"user" extensions:"x-nullable"`
+	SubmittedAt *time.Time          `json:"submitted_at" extensions:"x-nullable"`
+	Questions   []APIQuestionAnswer `json:"questions" extensions:"x-nullable"`
 }
 
 func (a *APIFeedbackSubmission) ToService() (model.FeedbackSubmission, error) {
@@ -288,9 +288,9 @@ func (a *APIFeedbackSubmission) ToService() (model.FeedbackSubmission, error) {
 }
 
 type APIQuestionAnswer struct {
-	ID     *string `json:"id"`
-	Prompt *string `json:"prompt"`
-	Answer *string `json:"answer"`
+	ID     *string `json:"id" extensions:"x-nullable"`
+	Prompt *string `json:"prompt" extensions:"x-nullable"`
+	Answer *string `json:"answer" extensions:"x-nullable"`
 }
 
 func (a *APIQuestionAnswer) ToService() model.QuestionAnswer {
