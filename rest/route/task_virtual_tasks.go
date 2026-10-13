@@ -131,7 +131,7 @@ func claimVirtualTask(ctx context.Context, runner *task.Task, vt *task.Task) (st
 	if vt.CompletedBy == "" {
 		if err := vt.SetCompletedBy(ctx, runner.Id); err != nil {
 			if adb.ResultsNotFound(err) {
-				return "task is no longer waiting to be dispatched", nil
+				return "task is no longer waiting to be dispatched or is already being push-completed by another task", nil
 			}
 			return "", errors.Wrap(err, "setting completing task")
 		}
@@ -270,9 +270,13 @@ func (h *completeVirtualTasksHandler) completeTask(ctx context.Context, runner *
 		return successNoop(reason)
 	}
 
-	// A push-completed task never dispatched, so its output info must be set
-	// here for the pushed results to be locatable.
-	vt.TaskOutputInfo = task.InitializeTaskOutput(h.env, vt.Project)
+	// Task output is typically initialized when a task is dispatched, but
+	// virtual tasks are never dispatched. Instead, virtual tasks share the
+	// runner's task output for test logs/results.
+	if runner.TaskOutputInfo == nil {
+		return failed(fmt.Sprintf("runner task '%s' has not initialized its task output", runner.Id))
+	}
+	vt.TaskOutputInfo = runner.TaskOutputInfo
 
 	if tr := completion.TestResults; tr != nil {
 		if err = task.AppendVirtualTestResultMetadata(ctx, vt, h.env, tr.FailedSample, tr.Stats.FailedCount, tr.Stats.TotalCount, tr.CreatedAt); err != nil {
@@ -326,16 +330,6 @@ func makePrepareVirtualTasks(env evergreen.Environment) gimlet.RouteHandler {
 	return &prepareVirtualTasksHandler{env: env}
 }
 
-// Factory creates an instance of the handler.
-//
-//	@Summary		Prepare virtual tasks for test result upload
-//	@Description	Validates and locks a batch of virtual tasks so their test results can be uploaded before push-completion. The task_id in the URL identifies the runner task. The route accepts task auth or service user auth (must have task admin permissions). It returns the test results info the runner needs to upload each task's results. Tasks that are already finished, already running, or whose execution number does not match will no-op.
-//	@Tags			tasks
-//	@Router			/task/{task_id}/virtual_tasks/prepare [post]
-//	@Security		Api-User || Api-Key
-//	@Param			task_id		path		string									true	"the runner task ID"
-//	@Param			{object}	body		apimodels.PrepareVirtualTasksRequest	true	"virtual tasks to prepare"
-//	@Success		200			{object}	apimodels.PrepareVirtualTasksResponse
 func (h *prepareVirtualTasksHandler) Factory() gimlet.RouteHandler {
 	return &prepareVirtualTasksHandler{env: h.env}
 }
@@ -376,11 +370,7 @@ func (h *prepareVirtualTasksHandler) Run(ctx context.Context) gimlet.Responder {
 		response.Results = append(response.Results, result)
 	}
 
-	responder := gimlet.NewJSONResponse(response)
-	if err := responder.SetStatus(http.StatusOK); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting response status"))
-	}
-	return responder
+	return gimlet.NewJSONResponse(response)
 }
 
 // prepareTask validates and locks a single virtual task so the runner can

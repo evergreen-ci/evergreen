@@ -231,6 +231,7 @@ func TestCompleteVirtualTasks(t *testing.T) {
 				BuildId:           buildID,
 				Version:           versionID,
 				Requester:         evergreen.PatchVersionRequester,
+				TaskOutputInfo:    task.InitializeTaskOutput(env, projectID),
 			}
 			require.NoError(t, runnerTask.Insert(ctx))
 			virtualTask := task.Task{
@@ -410,6 +411,7 @@ func TestPrepareVirtualTasks(t *testing.T) {
 				BuildId:           buildID,
 				Version:           versionID,
 				Requester:         evergreen.PatchVersionRequester,
+				TaskOutputInfo:    task.InitializeTaskOutput(env, projectID),
 			}
 			require.NoError(t, runnerTask.Insert(ctx))
 			virtualTask := task.Task{
