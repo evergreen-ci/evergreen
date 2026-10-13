@@ -1066,10 +1066,10 @@ func (p *ProjectRef) DetachFromRepo(ctx context.Context, u *user.DBUser) error {
 // trying to attach a project to.
 var ErrRepoRefUnauthorized = errors.New("user is not an admin of the repo")
 
-// checkExistingRepoRefAdmin verifies that the user is allowed to attach the project to the repo ref
+// CheckExistingRepoRefAdmin verifies that the user is allowed to attach the project to the repo ref
 // matching the project's current owner/repo. If no such repo ref exists yet, there is nothing to
 // authorize against, since the user will become its admin.
-func (p *ProjectRef) checkExistingRepoRefAdmin(ctx context.Context, u *user.DBUser) error {
+func (p *ProjectRef) CheckExistingRepoRefAdmin(ctx context.Context, u *user.DBUser) error {
 	repoRef, err := FindRepoRefByOwnerAndRepo(ctx, p.Owner, p.Repo)
 	if err != nil {
 		return errors.Wrapf(err, "finding repo ref for '%s/%s'", p.Owner, p.Repo)
@@ -1093,7 +1093,7 @@ func (p *ProjectRef) checkExistingRepoRefAdmin(ctx context.Context, u *user.DBUs
 // Any values that previously were unset will now use the repo value, unless this would introduce
 // a GitHub project conflict. If no repo ref currently exists, the user attaching it will be added as the repo ref admin.
 func (p *ProjectRef) AttachToRepo(ctx context.Context, u *user.DBUser) error {
-	if err := p.checkExistingRepoRefAdmin(ctx, u); err != nil {
+	if err := p.CheckExistingRepoRefAdmin(ctx, u); err != nil {
 		return err
 	}
 
@@ -1132,7 +1132,7 @@ func (p *ProjectRef) AttachToRepo(ctx context.Context, u *user.DBUser) error {
 func (p *ProjectRef) AttachToNewRepo(ctx context.Context, u *user.DBUser) error {
 	// Moving to a repo that already has a repo ref requires the same authorization as AttachToRepo.
 	if p.UseRepoSettings() {
-		if err := p.checkExistingRepoRefAdmin(ctx, u); err != nil {
+		if err := p.CheckExistingRepoRefAdmin(ctx, u); err != nil {
 			return err
 		}
 	}
