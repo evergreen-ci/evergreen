@@ -4387,10 +4387,7 @@ buildvariants:
 // TestAnchorPathPreservesProjectConfigFields verifies that project config
 // fields (e.g. github_pr_aliases) defined in the main config file survive the
 // cross-file anchor parse path. The anchor path decodes via yaml.Node, which
-// cannot populate the unexported projectConfigFields, so they must be set
-// separately. Regression test for a production break: PR patch creation failed
-// with "alias '__github' could not be found" because the main file's
-// github_pr_aliases were silently dropped when the anchors flag was enabled.
+// cannot populate the unexported projectConfigFields, so they must be set separately.
 func TestAnchorPathPreservesProjectConfigFields(t *testing.T) {
 	for _, strict := range []bool{false, true} {
 		mainYAML := mainYAMLWithModuleIncludes(`
@@ -4420,7 +4417,7 @@ tasks:
 		pc := pp.MergedProjectConfig("proj")
 		require.NotNil(t, pc, "merged project config should not be nil (strict=%t)", strict)
 		require.Len(t, pc.GitHubPRAliases, 1, "github_pr_aliases from the main file must survive (strict=%t)", strict)
-		assert.Equal(t, "__github", pc.GitHubPRAliases[0].Alias)
+		assert.Equal(t, evergreen.GithubPRAlias, pc.GitHubPRAliases[0].Alias)
 	}
 }
 
