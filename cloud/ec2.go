@@ -490,11 +490,7 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 	resourceTags := m.settings.Providers.AWS.ResourceTags
 	for _, tag := range opts.AddInstanceTags {
 		if tag.Key == evergreen.TagMongoDBOwner {
-			providers := evergreen.CloudProviders{}
-			if err := providers.GetWithFallback(ctx, m.settings.Providers); err != nil {
-				return errors.Wrap(err, "getting resource tag settings")
-			}
-			resourceTags = providers.AWS.ResourceTags
+			resourceTags = getResourceTagSettings(ctx, resourceTags)
 			break
 		}
 	}
@@ -1048,17 +1044,14 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 		return nil, errors.Wrap(err, "creating client")
 	}
 
-	providers := evergreen.CloudProviders{}
-	if err := providers.GetWithFallback(ctx, m.settings.Providers); err != nil {
-		return nil, errors.Wrap(err, "getting resource tag settings")
-	}
+	resourceTagSettings := getResourceTagSettings(ctx, m.settings.Providers.AWS.ResourceTags)
 
 	volume.Expiration = time.Now().Add(evergreen.DefaultSpawnHostExpiration)
 	volumeTags := []types.Tag{
 		{Key: aws.String(evergreen.TagOwner), Value: aws.String(volume.CreatedBy)},
 		{Key: aws.String(evergreen.TagExpireOn), Value: aws.String(expireInDays(evergreen.SpawnHostExpireDays))},
 	}
-	resourceTags := m.makeVolumeResourceTags(ctx, volume, providers.AWS.ResourceTags)
+	resourceTags := m.makeVolumeResourceTags(ctx, volume, resourceTagSettings)
 	volumeTags = append(volumeTags, hostToEC2Tags(resourceTags)...)
 	if volume.Host != "" {
 		volumeTags = append(volumeTags, types.Tag{Key: aws.String(evergreen.TagHostName), Value: aws.String(volume.Host)})

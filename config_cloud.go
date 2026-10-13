@@ -26,21 +26,6 @@ func (c *CloudProviders) Get(ctx context.Context) error {
 	return getConfigSection(ctx, c)
 }
 
-// GetWithFallback loads persisted providers, or uses fallback when the section is absent.
-func (c *CloudProviders) GetWithFallback(ctx context.Context, fallback CloudProviders) error {
-	var providers CloudProviders
-	found, err := getConfigSectionIfExists(ctx, &providers)
-	if err != nil {
-		return err
-	}
-	if found {
-		*c = providers
-	} else {
-		*c = fallback
-	}
-	return nil
-}
-
 func (c *CloudProviders) Set(ctx context.Context) error {
 	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
 		"$set": bson.M{

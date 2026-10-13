@@ -678,13 +678,14 @@ func (m *ec2FleetManager) spawnFleetHost(ctx context.Context, h *host.Host, ec2S
 	ctx, span := tracer.Start(ctx, "spawnFleetHost")
 	defer span.End()
 
-	providers := evergreen.CloudProviders{}
-	if err := providers.GetWithFallback(ctx, m.settings.Providers); err != nil {
-		return errors.Wrap(err, "getting cloud provider settings")
-	}
-	settings := &evergreen.Settings{Providers: providers}
 	if err := terminatePreexistingInstance(ctx, m.client, h.Id); err != nil {
 		return errors.Wrap(err, "terminating pre-existing instance from prior attempt")
+	}
+
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		grip.Warning(ctx, message.WrapError(err, "getting admin settings, using cached settings"))
+		settings = m.settings
 	}
 	useElasticIP := shouldAssignPublicIPv4Address(h, ec2Settings) && canUseElasticIP(settings, ec2Settings, m.account, h)
 	if useElasticIP && h.IPAllocationID == "" {

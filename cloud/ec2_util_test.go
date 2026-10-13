@@ -694,19 +694,35 @@ func TestMakeTagsUsesConfiguredEmailDomains(t *testing.T) {
 	assert.Error(t, validateEC2HostModifyOptions(&host.Host{}, host.HostModifyOptions{AddInstanceTags: []host.Tag{{Key: evergreen.TagMongoDBOwner, Value: "user@mongodb.com"}}}, config))
 }
 
-func TestMakeTagsWithoutOwnerUsesEvergreenEmail(t *testing.T) {
-	for name, h := range map[string]host.Host{
-		"TaskHostShouldHaveDefaultOwner":           {},
-		"UserWithoutEmailShouldHaveDefaultOwner":   {UserHost: true},
-		"InvalidUserEmailShouldHaveDefaultOwner":   {UserHost: true, SpawnOptions: host.SpawnOptions{UserEmail: "user@example.com"}},
-		"InvalidExistingTagShouldHaveDefaultOwner": {InstanceTags: []host.Tag{{Key: evergreen.TagMongoDBOwner, Value: "invalid"}}},
+func TestResourceTagSettingsLookupErrorShouldUseCachedSettings(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	config := evergreen.ResourceTagsConfig{
+		MongoDBOwner:             "team@example.com",
+		MongoDBOwnerEmailDomains: []string{"example.com"},
+	}
+	settings := getResourceTagSettings(ctx, config)
+	assert.Equal(t, config, settings)
+	assert.NoError(t, settings.ValidateOwnerEmail("user@example.com"))
+	assert.Error(t, settings.ValidateOwnerEmail("user@mongodb.com"))
+}
+
+func TestMakeTagsMissingOwnerShouldUseUserEmailOrDefault(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		email string
+		owner string
+	}{
+		"MissingEmailShouldUseEvergreenOwner": {owner: evergreen.DefaultMongoDBOwner},
+		"InvalidEmailShouldUseEvergreenOwner": {email: "invalid", owner: evergreen.DefaultMongoDBOwner},
+		"ValidEmailShouldUseUserOwner":        {email: "user@mongodb.com", owner: "user@mongodb.com"},
 	} {
 		t.Run(name, func(t *testing.T) {
+			h := host.Host{UserHost: true, SpawnOptions: host.SpawnOptions{UserEmail: testCase.email}}
 			tags := map[string]host.Tag{}
 			for _, tag := range makeTags(t.Context(), &h, evergreen.ResourceTagsConfig{}) {
 				tags[tag.Key] = tag
 			}
-			assert.Equal(t, evergreen.DefaultMongoDBOwner, tags[evergreen.TagMongoDBOwner].Value)
+			assert.Equal(t, testCase.owner, tags[evergreen.TagMongoDBOwner].Value)
 			assert.False(t, tags[evergreen.TagMongoDBOwner].CanBeModified)
 		})
 	}

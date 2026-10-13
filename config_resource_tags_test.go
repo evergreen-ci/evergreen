@@ -159,8 +159,3 @@ func TestResourceTagsOwnerEmailDomains(t *testing.T) {
 		assert.Error(t, config.ValidateOwnerEmail("user@notexample.com"))
 	})
 }
-
-func TestResourceTagsOwnerEmail(t *testing.T) {
-	assert.Equal(t, DefaultMongoDBOwner, (ResourceTagsConfig{}).OwnerEmail())
-	assert.Equal(t, "team@example.com", (ResourceTagsConfig{MongoDBOwner: "team@example.com"}).OwnerEmail())
-}

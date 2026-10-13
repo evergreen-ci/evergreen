@@ -736,6 +736,15 @@ func getEC2ManagerOptionsFromSettings(d distro.Distro, settings *EC2ProviderSett
 	}
 }
 
+func getResourceTagSettings(ctx context.Context, fallback evergreen.ResourceTagsConfig) evergreen.ResourceTagsConfig {
+	var providers evergreen.CloudProviders
+	if err := providers.Get(ctx); err != nil {
+		grip.Warning(ctx, message.WrapError(err, "getting resource tag settings, using cached settings"))
+		return fallback
+	}
+	return providers.AWS.ResourceTags
+}
+
 func validateEC2HostModifyOptions(h *host.Host, opts host.HostModifyOptions, resourceTags evergreen.ResourceTagsConfig) error {
 	catcher := grip.NewBasicCatcher()
 	catcher.NewWhen(opts.InstanceType != "" && h.Status != evergreen.HostStopped, "host must be stopped to modify instance type")

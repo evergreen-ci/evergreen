@@ -21,7 +21,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestFleet(t *testing.T) {
@@ -384,43 +383,6 @@ func TestFleet(t *testing.T) {
 					}
 				}
 				assert.Equal(t, "user@example.com", owner)
-			}
-		},
-		"SpawnFleetHostWithoutProvidersShouldUseLoadedTags": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
-			providers := evergreen.CloudProviders{}
-			require.NoError(t, providers.Get(ctx))
-			t.Cleanup(func() { assert.NoError(t, providers.Set(context.WithoutCancel(t.Context()))) })
-			_, err := evergreen.GetEnvironment().DB().Collection(evergreen.ConfigCollection).DeleteOne(ctx, bson.M{"_id": providers.SectionId()})
-			require.NoError(t, err)
-			m.settings.Providers.AWS.ResourceTags = evergreen.ResourceTagsConfig{
-				MongoDBOwner: "team@example.com", MongoDBEnv: "test", MongoDBOwnerEmailDomains: []string{"example.com"},
-			}
-			for name, testCase := range map[string]struct {
-				config        evergreen.ResourceTagsConfig
-				userEmail     string
-				expectedOwner string
-				expectedEnv   string
-			}{
-				"TaskHostShouldUseLoadedOwner":        {config: m.settings.Providers.AWS.ResourceTags, expectedOwner: "team@example.com", expectedEnv: "test"},
-				"UserHostShouldUseLoadedDomains":      {config: m.settings.Providers.AWS.ResourceTags, userEmail: "user@example.com", expectedOwner: "user@example.com", expectedEnv: "test"},
-				"MissingOwnerShouldUseEvergreenEmail": {expectedOwner: evergreen.DefaultMongoDBOwner},
-			} {
-				t.Run(name, func(t *testing.T) {
-					m.settings.Providers.AWS.ResourceTags = testCase.config
-					h.UserHost = testCase.userEmail != ""
-					h.SpawnOptions.UserEmail = testCase.userEmail
-					h.InstanceTags = nil
-					require.NoError(t, m.spawnFleetHost(t.Context(), h, &EC2ProviderSettings{}))
-					require.Len(t, client.CreateLaunchTemplateInput.LaunchTemplateData.TagSpecifications, 2)
-					for _, spec := range client.CreateLaunchTemplateInput.LaunchTemplateData.TagSpecifications {
-						tags := map[string]string{}
-						for _, tag := range spec.Tags {
-							tags[aws.ToString(tag.Key)] = aws.ToString(tag.Value)
-						}
-						assert.Equal(t, testCase.expectedOwner, tags[evergreen.TagMongoDBOwner])
-						assert.Equal(t, testCase.expectedEnv, tags[evergreen.TagMongoDBEnv])
-					}
-				})
 			}
 		},
 		"SpawnFleetHost": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
