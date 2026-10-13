@@ -63,8 +63,8 @@ func (s *testResultService) AppendQuarantinedTests(ctx context.Context, record t
 	return errors.Wrap(err, "appending quarantined tests to DB test results")
 }
 
-func (s *testResultService) GetTaskTestResultsStats(ctx context.Context, taskOpts []Task) (testresult.TaskTestResultsStats, error) {
-	allTaskResults, err := s.Get(ctx, taskOpts, GetTaskTestResultsOptions{Fields: []string{testresult.StatsKey}})
+func (s *testResultService) GetTaskTestResultsStats(ctx context.Context, tasks []Task) (testresult.TaskTestResultsStats, error) {
+	allTaskResults, err := s.Get(ctx, tasks, GetTaskTestResultsOptions{Fields: []string{testresult.StatsKey}})
 	if err != nil {
 		return testresult.TaskTestResultsStats{}, errors.Wrap(err, "getting test results")
 	}
@@ -80,17 +80,17 @@ func (s *testResultService) GetTaskTestResultsStats(ctx context.Context, taskOpt
 
 // Get fetches the unmerged test results metadata for the given tasks from the cedar DB
 // and downloads the associated test results from s3.
-func (s *testResultService) Get(ctx context.Context, taskOpts []Task, getOpts GetTaskTestResultsOptions) ([]testresult.TaskTestResults, error) {
+func (s *testResultService) Get(ctx context.Context, tasks []Task, getOpts GetTaskTestResultsOptions) ([]testresult.TaskTestResults, error) {
 	ctx, span := tracer.Start(ctx, "test-result-service-get")
 	defer span.End()
-	span.SetAttributes(attribute.Int(testResultsTaskCountOtelAttribute, len(taskOpts)))
+	span.SetAttributes(attribute.Int(testResultsTaskCountOtelAttribute, len(tasks)))
 
 	var filter bson.M
-	if len(taskOpts) == 1 {
-		filter = ByTaskIDAndExecution(taskOpts[0].Id, taskOpts[0].Execution)
+	if len(tasks) == 1 {
+		filter = ByTaskIDAndExecution(tasks[0].Id, tasks[0].Execution)
 	} else {
-		findQueries := make([]bson.M, len(taskOpts))
-		for i, taskOpt := range taskOpts {
+		findQueries := make([]bson.M, len(tasks))
+		for i, taskOpt := range tasks {
 			findQueries[i] = ByTaskIDAndExecution(taskOpt.Id, taskOpt.Execution)
 		}
 		filter = bson.M{"$or": findQueries}
