@@ -54,11 +54,16 @@ func (t Tasks) InsertUnordered(ctx context.Context) error {
 }
 
 func (t Tasks) insertUnordered(ctx context.Context, collection taskInserter) error {
+	// Unordered writes still attempt later batches after document-level errors.
+	return t.insertUnorderedBatches(ctx, collection, Tasks.getPayload, true)
+}
+
+func (t Tasks) insertUnorderedBatches(ctx context.Context, collection taskInserter, getPayload func(Tasks) []any, continueOnWriteError bool) error {
 	var combinedErrors mongo.BulkWriteException
 	for start := 0; start < len(t); start += taskInsertBatchSize {
 		end := min(start+taskInsertBatchSize, len(t))
 		// Insert smaller batches to reduce memory spikes when preparing MongoDB writes and Honeycomb traces.
-		_, err := collection.InsertMany(ctx, t[start:end].getPayload(), options.InsertMany().SetOrdered(false))
+		_, err := collection.InsertMany(ctx, getPayload(t[start:end]), options.InsertMany().SetOrdered(false))
 		if err == nil {
 			continue
 		}
@@ -66,7 +71,6 @@ func (t Tasks) insertUnordered(ctx context.Context, collection taskInserter) err
 		if !errors.As(err, &batchErrors) {
 			return err
 		}
-		// Unordered writes still attempt later batches after document-level errors.
 		for _, writeError := range batchErrors.WriteErrors {
 			writeError.Index += start
 			combinedErrors.WriteErrors = append(combinedErrors.WriteErrors, writeError)
@@ -78,6 +82,9 @@ func (t Tasks) insertUnordered(ctx context.Context, collection taskInserter) err
 			if !slices.Contains(combinedErrors.Labels, label) {
 				combinedErrors.Labels = append(combinedErrors.Labels, label)
 			}
+		}
+		if !continueOnWriteError {
+			return combinedErrors
 		}
 	}
 	if len(combinedErrors.WriteErrors) > 0 || combinedErrors.WriteConcernError != nil {
@@ -96,20 +103,22 @@ func (t Tasks) InsertUnorderedWithPredictions(ctx context.Context, predictions m
 	defer span.End()
 	span.SetAttributes(attribute.Int(evergreen.PatchNumTasksOtelAttribute, len(t)))
 
-	// Create payload with predictions applied to copies
-	_, payloadSpan := tracer.Start(ctx, "build-task-payload")
-	payload := make([]any, len(t))
-	for idx := range t {
-		taskCopy := *t[idx] // Make a copy to avoid modifying the original
-		if predictedCost, ok := predictions[taskCopy.Id]; ok && !predictedCost.IsZero() {
-			taskCopy.PredictedTaskCost = predictedCost
+	getPayload := func(batch Tasks) []any {
+		_, payloadSpan := tracer.Start(ctx, "build-task-payload")
+		defer payloadSpan.End()
+		payload := make([]any, len(batch))
+		for idx := range batch {
+			taskCopy := *batch[idx]
+			if predictedCost, ok := predictions[taskCopy.Id]; ok && !predictedCost.IsZero() {
+				taskCopy.PredictedTaskCost = predictedCost
+			}
+			payload[idx] = &taskCopy
 		}
-		payload[idx] = any(&taskCopy)
+		return payload
 	}
-	payloadSpan.End()
 
-	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertMany(ctx, payload, options.InsertMany().SetOrdered(false))
-	return err
+	// Patch creation runs in a transaction; later writes could mask the error that aborted it.
+	return t.insertUnorderedBatches(ctx, evergreen.GetEnvironment().DB().Collection(Collection), getPayload, false)
 }
 
 // ByPriority sorts execution tasks within a parent display task according to
