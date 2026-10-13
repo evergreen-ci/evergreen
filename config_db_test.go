@@ -244,3 +244,70 @@ func TestOverrideConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestCloudProvidersGetWithFallback(t *testing.T) {
+	ctx := t.Context()
+	env, ok := GetEnvironment().(*envState)
+	require.True(t, ok)
+	originalSharedClient := env.sharedDBClient
+	env.sharedDBClient = env.client
+	collection := env.DB().Collection(ConfigCollection)
+	filter := bson.M{"_id": bson.M{"$in": []string{"providers", overridesSectionID}}}
+	cursor, err := collection.Find(ctx, filter)
+	require.NoError(t, err)
+	var originalDocs []bson.Raw
+	require.NoError(t, cursor.All(ctx, &originalDocs))
+	t.Cleanup(func() {
+		defer func() { env.sharedDBClient = originalSharedClient }()
+		cleanupCtx := context.WithoutCancel(t.Context())
+		_, err := collection.DeleteMany(cleanupCtx, filter)
+		assert.NoError(t, err)
+		for _, doc := range originalDocs {
+			_, err := collection.InsertOne(cleanupCtx, doc)
+			assert.NoError(t, err)
+		}
+	})
+	fallback := CloudProviders{AWS: AWSConfig{ResourceTags: ResourceTagsConfig{
+		MongoDBOwner: "team@example.com", MongoDBEnv: "test", MongoDBOwnerEmailDomains: []string{"example.com"},
+	}}}
+	persisted := CloudProviders{AWS: AWSConfig{ResourceTags: ResourceTagsConfig{
+		MongoDBOwner: "team@mongodb.com", MongoDBEnv: "prod", MongoDBOwnerEmailDomains: []string{"mongodb.com"},
+	}}}
+	for name, testCase := range map[string]struct {
+		persisted *CloudProviders
+		overrides []Override
+		expected  CloudProviders
+	}{
+		"MissingProvidersShouldUseLoadedSettings":            {expected: fallback},
+		"PersistedProvidersShouldReplaceLoadedSettings":      {persisted: &persisted, expected: persisted},
+		"EmptyPersistedProvidersShouldReplaceLoadedSettings": {persisted: &CloudProviders{}, expected: CloudProviders{}},
+		"PersistedProvidersShouldApplyOverrides": {
+			persisted: &persisted,
+			overrides: []Override{{SectionID: "providers", Field: "aws.resource_tags.mongodb_env", Value: "dev"}},
+			expected: CloudProviders{AWS: AWSConfig{ResourceTags: ResourceTagsConfig{
+				MongoDBOwner: "team@mongodb.com", MongoDBEnv: "dev", MongoDBOwnerEmailDomains: []string{"mongodb.com"},
+			}}},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := collection.DeleteMany(t.Context(), filter)
+			require.NoError(t, err)
+			if testCase.persisted != nil {
+				require.NoError(t, testCase.persisted.Set(t.Context()))
+			}
+			if testCase.overrides != nil {
+				overrides := OverridesConfig{Overrides: testCase.overrides}
+				require.NoError(t, overrides.Set(t.Context()))
+			}
+			var providers CloudProviders
+			require.NoError(t, providers.GetWithFallback(t.Context(), fallback))
+			assert.Equal(t, testCase.expected, providers)
+		})
+	}
+	t.Run("DatabaseErrorShouldBeReturned", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+		var providers CloudProviders
+		assert.Error(t, providers.GetWithFallback(ctx, fallback))
+	})
+}

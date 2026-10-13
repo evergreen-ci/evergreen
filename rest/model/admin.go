@@ -3201,13 +3201,15 @@ type APIRuntimeEnvironmentsConfig struct {
 }
 
 type APIResourceTagsConfig struct {
-	MongoDBEnv   *string `json:"mongodb_env"`
-	MongoDBOwner *string `json:"mongodb_owner"`
+	MongoDBEnv               *string  `json:"mongodb_env"`
+	MongoDBOwner             *string  `json:"mongodb_owner"`
+	MongoDBOwnerEmailDomains []string `json:"mongodb_owner_email_domains"`
 }
 
 func (a *APIResourceTagsConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.ResourceTagsConfig:
+		a.MongoDBOwnerEmailDomains = v.OwnerEmailDomains()
 		a.MongoDBEnv = nil
 		if v.MongoDBEnv != "" {
 			a.MongoDBEnv = utility.ToStringPtr(v.MongoDBEnv)
@@ -3224,8 +3226,9 @@ func (a *APIResourceTagsConfig) BuildFromService(h any) error {
 
 func (a *APIResourceTagsConfig) ToService() (any, error) {
 	return evergreen.ResourceTagsConfig{
-		MongoDBEnv:   utility.FromStringPtr(a.MongoDBEnv),
-		MongoDBOwner: utility.FromStringPtr(a.MongoDBOwner),
+		MongoDBEnv:               utility.FromStringPtr(a.MongoDBEnv),
+		MongoDBOwner:             utility.FromStringPtr(a.MongoDBOwner),
+		MongoDBOwnerEmailDomains: a.MongoDBOwnerEmailDomains,
 	}, nil
 }
 

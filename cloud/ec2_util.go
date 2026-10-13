@@ -202,14 +202,17 @@ func makeTags(ctx context.Context, intentHost *host.Host, resourceTags evergreen
 	}
 	// Task-spawned hosts are owned by Evergreen rather than the user who
 	// triggered the task, so only user spawn hosts are owned by the user.
-	owner := resourceTags.MongoDBOwner
+	owner := resourceTags.OwnerEmail()
 	ownerSource := "configured_owner"
+	if resourceTags.MongoDBOwner == "" {
+		ownerSource = "default_owner"
+	}
 	fallbackReason := ""
 	ownerTagReplaced := false
 	if intentHost.UserHost && !intentHost.SpawnOptions.SpawnedByTask {
 		if intentHost.SpawnOptions.UserEmail == "" {
 			fallbackReason = "email_missing"
-		} else if evergreen.ValidateMongoDBEmail(intentHost.SpawnOptions.UserEmail) != nil {
+		} else if resourceTags.ValidateOwnerEmail(intentHost.SpawnOptions.UserEmail) != nil {
 			fallbackReason = "email_invalid"
 		} else {
 			owner = intentHost.SpawnOptions.UserEmail
@@ -220,7 +223,7 @@ func makeTags(ctx context.Context, intentHost *host.Host, resourceTags evergreen
 		if tag.Key != evergreen.TagMongoDBOwner {
 			continue
 		}
-		if evergreen.ValidateMongoDBEmail(tag.Value) != nil {
+		if resourceTags.ValidateOwnerEmail(tag.Value) != nil {
 			intentHost.InstanceTags[index] = host.Tag{Key: evergreen.TagMongoDBOwner, Value: owner, CanBeModified: false}
 			ownerTagReplaced = true
 		} else {
@@ -228,9 +231,6 @@ func makeTags(ctx context.Context, intentHost *host.Host, resourceTags evergreen
 			ownerSource = "existing_tag"
 			fallbackReason = ""
 		}
-	}
-	if owner == "" {
-		ownerSource = "missing"
 	}
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(
@@ -736,12 +736,12 @@ func getEC2ManagerOptionsFromSettings(d distro.Distro, settings *EC2ProviderSett
 	}
 }
 
-func validateEC2HostModifyOptions(h *host.Host, opts host.HostModifyOptions) error {
+func validateEC2HostModifyOptions(h *host.Host, opts host.HostModifyOptions, resourceTags evergreen.ResourceTagsConfig) error {
 	catcher := grip.NewBasicCatcher()
 	catcher.NewWhen(opts.InstanceType != "" && h.Status != evergreen.HostStopped, "host must be stopped to modify instance type")
 	for _, tag := range opts.AddInstanceTags {
 		if tag.Key == evergreen.TagMongoDBOwner {
-			catcher.Wrap(evergreen.ValidateMongoDBEmail(tag.Value), "validating MongoDB owner tag")
+			catcher.Wrap(resourceTags.ValidateOwnerEmail(tag.Value), "validating MongoDB owner tag")
 		}
 	}
 	if opts.NewName != "" {

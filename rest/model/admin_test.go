@@ -260,6 +260,7 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(len(testSettings.AuthConfig.Github.Users), len(dbSettings.AuthConfig.Github.Users))
 	assert.EqualValues(testSettings.AuthConfig.Multi.ReadWrite[0], dbSettings.AuthConfig.Multi.ReadWrite[0])
 	assert.EqualValues(testSettings.AuthConfig.Kanopy.Issuer, dbSettings.AuthConfig.Kanopy.Issuer)
+	require.NoError(testSettings.Providers.AWS.ResourceTags.ValidateAndDefault())
 	assert.EqualValues(testSettings.Providers.AWS.ResourceTags, dbSettings.Providers.AWS.ResourceTags)
 	assert.Equal(testSettings.Buckets.LogBucket.Name, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Name))
 	assert.EqualValues(testSettings.Buckets.LogBucket.Type, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Type))
@@ -1057,4 +1058,23 @@ func TestAPITaskLimitsConfigHourlyPatchTaskOverrides(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, roundTripped.(evergreen.TaskLimitsConfig).HourlyPatchTaskOverrides)
 	})
+}
+
+func TestAPIResourceTagsConfigEmailDomains(t *testing.T) {
+	for name, domains := range map[string][]string{
+		"OmittedDomains": nil,
+		"EmptyDomains":   {},
+		"CustomDomains":  {"example.com"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			apiConfig := APIResourceTagsConfig{MongoDBOwnerEmailDomains: domains}
+			service, err := apiConfig.ToService()
+			require.NoError(t, err)
+			config, ok := service.(evergreen.ResourceTagsConfig)
+			require.True(t, ok)
+			assert.Equal(t, domains, config.MongoDBOwnerEmailDomains)
+			require.NoError(t, apiConfig.BuildFromService(config))
+			assert.Equal(t, config.OwnerEmailDomains(), apiConfig.MongoDBOwnerEmailDomains)
+		})
+	}
 }

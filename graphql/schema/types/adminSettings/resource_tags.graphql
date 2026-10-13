@@ -14,9 +14,11 @@ enum MongoDBEnvironment {
 input ResourceTagsConfigInput {
   mongodbEnv: MongoDBEnvironment
   mongodbOwner: String
+  mongodbOwnerEmailDomains: [String!]
 }
 
 type ResourceTagsConfig {
   mongodbEnv: MongoDBEnvironment
   mongodbOwner: String
+  mongodbOwnerEmailDomains: [String!]!
 }

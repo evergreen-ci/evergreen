@@ -18,6 +18,8 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/level"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -105,6 +107,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.NoError(err)
 	savedSettings, err := SetEvergreenSettings(ctx, restSettings, oldSettings, u, true)
 	s.Require().NoError(err)
+	s.Require().NoError(testSettings.Providers.AWS.ResourceTags.ValidateAndDefault())
 	s.Equal(testSettings.Providers.AWS.ResourceTags, savedSettings.Providers.AWS.ResourceTags)
 
 	// read the settings and spot check values
@@ -487,4 +490,35 @@ func (s *AdminDataSuite) TestGetBanner() {
 	s.NoError(err)
 	s.Equal("banner text", text)
 	s.Equal(string(evergreen.Important), theme)
+}
+
+func TestSetEvergreenSettingsPreservesOwnerEmailDomains(t *testing.T) {
+	settings := testutil.MockConfig()
+	settings.Providers.AWS.ResourceTags = evergreen.ResourceTagsConfig{
+		MongoDBOwner:             "team@example.com",
+		MongoDBOwnerEmailDomains: []string{"example.com"},
+	}
+	for name, changes := range map[string]restModel.APIAdminSettings{
+		"UnrelatedSave": {Banner: utility.ToStringPtr("Updated banner")},
+		"PartialResourceTagSave": {Providers: &restModel.APICloudProviders{AWS: &restModel.APIAWSConfig{
+			ResourceTags: &restModel.APIResourceTagsConfig{MongoDBEnv: utility.ToStringPtr("dev")},
+		}}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			updated, err := SetEvergreenSettings(t.Context(), &changes, settings, &user.DBUser{}, false)
+			if !assert.NoError(t, err) {
+				return
+			}
+			assert.Equal(t, []string{"example.com"}, updated.Providers.AWS.ResourceTags.MongoDBOwnerEmailDomains)
+			assert.Equal(t, "team@example.com", updated.Providers.AWS.ResourceTags.MongoDBOwner)
+		})
+	}
+	changes := restModel.APIAdminSettings{Providers: &restModel.APICloudProviders{AWS: &restModel.APIAWSConfig{
+		ResourceTags: &restModel.APIResourceTagsConfig{MongoDBOwnerEmailDomains: []string{}},
+	}}}
+	updated, err := SetEvergreenSettings(t.Context(), &changes, settings, &user.DBUser{}, false)
+	require.NoError(t, err)
+	require.NotNil(t, updated.Providers.AWS.ResourceTags.MongoDBOwnerEmailDomains)
+	assert.Empty(t, updated.Providers.AWS.ResourceTags.MongoDBOwnerEmailDomains)
+	assert.Error(t, updated.Validate())
 }

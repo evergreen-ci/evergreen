@@ -513,7 +513,7 @@ func TestValidateEC2HostModifyOptionsOwnerEmail(t *testing.T) {
 		"OtherTagShouldPass":      {tag: host.Tag{Key: "custom", Value: "anything"}, valid: true},
 	} {
 		t.Run(name, func(t *testing.T) {
-			err := validateEC2HostModifyOptions(&host.Host{}, host.HostModifyOptions{AddInstanceTags: []host.Tag{testCase.tag}})
+			err := validateEC2HostModifyOptions(&host.Host{}, host.HostModifyOptions{AddInstanceTags: []host.Tag{testCase.tag}}, evergreen.ResourceTagsConfig{})
 			if testCase.valid {
 				assert.NoError(t, err)
 			} else {
@@ -666,4 +666,48 @@ func TestTerminatePreexistingInstance(t *testing.T) {
 		assert.NotContains(t, stateFilter.Values, string(types.InstanceStateNameShuttingDown))
 		assert.Contains(t, stateFilter.Values, string(types.InstanceStateNameRunning))
 	})
+}
+
+func TestMakeTagsUsesConfiguredEmailDomains(t *testing.T) {
+	config := evergreen.ResourceTagsConfig{MongoDBOwner: "team@example.com", MongoDBOwnerEmailDomains: []string{"example.com"}}
+	for name, testCase := range map[string]struct {
+		h     host.Host
+		owner string
+	}{
+		"AllowedCreatorShouldOwnHost":           {h: host.Host{UserHost: true, SpawnOptions: host.SpawnOptions{UserEmail: "user@example.com"}}, owner: "user@example.com"},
+		"RemovedDomainShouldUseFallback":        {h: host.Host{UserHost: true, SpawnOptions: host.SpawnOptions{UserEmail: "user@mongodb.com"}}, owner: "team@example.com"},
+		"AllowedExistingTagShouldBePreserved":   {h: host.Host{InstanceTags: []host.Tag{{Key: evergreen.TagMongoDBOwner, Value: "owner@example.com"}}}, owner: "owner@example.com"},
+		"RemovedExistingDomainShouldBeReplaced": {h: host.Host{InstanceTags: []host.Tag{{Key: evergreen.TagMongoDBOwner, Value: "owner@mongodb.com"}}}, owner: "team@example.com"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			tags := makeTags(t.Context(), &testCase.h, config)
+			for _, tag := range tags {
+				if tag.Key == evergreen.TagMongoDBOwner {
+					assert.Equal(t, testCase.owner, tag.Value)
+					return
+				}
+			}
+			t.Fatal("missing owner tag")
+		})
+	}
+	assert.NoError(t, validateEC2HostModifyOptions(&host.Host{}, host.HostModifyOptions{AddInstanceTags: []host.Tag{{Key: evergreen.TagMongoDBOwner, Value: "user@example.com"}}}, config))
+	assert.Error(t, validateEC2HostModifyOptions(&host.Host{}, host.HostModifyOptions{AddInstanceTags: []host.Tag{{Key: evergreen.TagMongoDBOwner, Value: "user@mongodb.com"}}}, config))
+}
+
+func TestMakeTagsWithoutOwnerUsesEvergreenEmail(t *testing.T) {
+	for name, h := range map[string]host.Host{
+		"TaskHostShouldHaveDefaultOwner":           {},
+		"UserWithoutEmailShouldHaveDefaultOwner":   {UserHost: true},
+		"InvalidUserEmailShouldHaveDefaultOwner":   {UserHost: true, SpawnOptions: host.SpawnOptions{UserEmail: "user@example.com"}},
+		"InvalidExistingTagShouldHaveDefaultOwner": {InstanceTags: []host.Tag{{Key: evergreen.TagMongoDBOwner, Value: "invalid"}}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			tags := map[string]host.Tag{}
+			for _, tag := range makeTags(t.Context(), &h, evergreen.ResourceTagsConfig{}) {
+				tags[tag.Key] = tag
+			}
+			assert.Equal(t, evergreen.DefaultMongoDBOwner, tags[evergreen.TagMongoDBOwner].Value)
+			assert.False(t, tags[evergreen.TagMongoDBOwner].CanBeModified)
+		})
+	}
 }

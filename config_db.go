@@ -256,6 +256,18 @@ func replaceOverridesConfigSection(sections []bson.Raw, overrides bson.Raw) ([]b
 // overrides from the [OverridesConfig] section in the [DB] database will be applied.
 // If a document is missing the value of its section is reset to its zero value.
 func getConfigSection(ctx context.Context, section ConfigSection) error {
+	found, err := getConfigSectionIfExists(ctx, section)
+	if err != nil {
+		return err
+	}
+	if !found {
+		reflect.ValueOf(section).Elem().Set(reflect.New(reflect.ValueOf(section).Elem().Type()).Elem())
+	}
+	return nil
+}
+
+// getConfigSectionIfExists loads a section with overrides and reports whether it exists.
+func getConfigSectionIfExists(ctx context.Context, section ConfigSection) (bool, error) {
 	db := GetEnvironment().DB()
 	if sharedDB := GetEnvironment().SharedDB(); sharedDB != nil {
 		db = sharedDB
@@ -263,33 +275,31 @@ func getConfigSection(ctx context.Context, section ConfigSection) error {
 	res := db.Collection(ConfigCollection).FindOne(ctx, byId(section.SectionId()))
 	if err := res.Err(); err != nil {
 		if err != mongo.ErrNoDocuments {
-			return errors.Wrapf(err, "getting config section '%s'", section.SectionId())
+			return false, errors.Wrapf(err, "getting config section '%s'", section.SectionId())
 		}
-		// Reset the section to its zero value.
-		reflect.ValueOf(section).Elem().Set(reflect.New(reflect.ValueOf(section).Elem().Type()).Elem())
-		return nil
+		return false, nil
 	}
 
 	raw, err := res.Raw()
 	if err != nil {
-		return errors.Wrap(err, "getting raw result")
+		return false, errors.Wrap(err, "getting raw result")
 	}
 	if GetEnvironment().SharedDB() != nil {
 		overridden, err := overrideConfig(ctx, []bson.Raw{raw}, true)
 		if err != nil {
-			return errors.Wrap(err, "overriding configuration section")
+			return false, errors.Wrap(err, "overriding configuration section")
 		}
 		if len(overridden) != 1 {
-			return errors.Errorf("overridden config had unexpected length %d", len(overridden))
+			return false, errors.Errorf("overridden config had unexpected length %d", len(overridden))
 		}
 		raw = overridden[0]
 	}
 
 	if err := bson.Unmarshal(raw, section); err != nil {
-		return errors.Wrapf(err, "unmarshalling config section '%s'", section.SectionId())
+		return false, errors.Wrapf(err, "unmarshalling config section '%s'", section.SectionId())
 	}
 
-	return nil
+	return true, nil
 }
 
 // setConfigSection applies [update] to the specified configuration section. If there's a shared

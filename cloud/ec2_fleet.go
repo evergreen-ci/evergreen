@@ -678,13 +678,13 @@ func (m *ec2FleetManager) spawnFleetHost(ctx context.Context, h *host.Host, ec2S
 	ctx, span := tracer.Start(ctx, "spawnFleetHost")
 	defer span.End()
 
+	providers := evergreen.CloudProviders{}
+	if err := providers.GetWithFallback(ctx, m.settings.Providers); err != nil {
+		return errors.Wrap(err, "getting cloud provider settings")
+	}
+	settings := &evergreen.Settings{Providers: providers}
 	if err := terminatePreexistingInstance(ctx, m.client, h.Id); err != nil {
 		return errors.Wrap(err, "terminating pre-existing instance from prior attempt")
-	}
-
-	settings, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		return errors.Wrap(err, "getting admin settings")
 	}
 	useElasticIP := shouldAssignPublicIPv4Address(h, ec2Settings) && canUseElasticIP(settings, ec2Settings, m.account, h)
 	if useElasticIP && h.IPAllocationID == "" {
@@ -703,7 +703,7 @@ func (m *ec2FleetManager) spawnFleetHost(ctx context.Context, h *host.Host, ec2S
 		}))
 	}
 
-	if err := m.uploadLaunchTemplate(ctx, h, ec2Settings); err != nil {
+	if err := m.uploadLaunchTemplate(ctx, h, ec2Settings, settings.Providers.AWS.ResourceTags); err != nil {
 		return errors.Wrapf(err, "uploading launch template for host '%s'", h.Id)
 	}
 
@@ -716,7 +716,7 @@ func (m *ec2FleetManager) spawnFleetHost(ctx context.Context, h *host.Host, ec2S
 	return nil
 }
 
-func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings) error {
+func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, resourceTags evergreen.ResourceTagsConfig) error {
 	blockDevices, err := makeBlockDeviceMappingsTemplate(ec2Settings.MountPoints)
 	if err != nil {
 		return errors.Wrap(err, "making block device mappings")
@@ -726,7 +726,7 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 		ImageId:             aws.String(ec2Settings.AMI),
 		InstanceType:        types.InstanceType(ec2Settings.InstanceType),
 		BlockDeviceMappings: blockDevices,
-		TagSpecifications:   makeTagTemplate(makeTags(ctx, h, m.settings.Providers.AWS.ResourceTags)),
+		TagSpecifications:   makeTagTemplate(makeTags(ctx, h, resourceTags)),
 	}
 	if ec2Settings.EnableNestedVirtualization {
 		launchTemplate.CpuOptions = &types.LaunchTemplateCpuOptionsRequest{

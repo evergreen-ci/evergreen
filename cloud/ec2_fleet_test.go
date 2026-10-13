@@ -21,6 +21,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestFleet(t *testing.T) {
@@ -364,6 +365,64 @@ func TestFleet(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, "public_dns_name", dnsName)
 		},
+		"SpawnFleetHostUsesUpdatedEmailDomains": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
+			providers := evergreen.CloudProviders{}
+			require.NoError(t, providers.Get(ctx))
+			t.Cleanup(func() { assert.NoError(t, providers.Set(context.WithoutCancel(t.Context()))) })
+			updated := providers
+			updated.AWS.ResourceTags = evergreen.ResourceTagsConfig{MongoDBOwner: "team@example.com", MongoDBOwnerEmailDomains: []string{"example.com"}}
+			require.NoError(t, updated.Set(ctx))
+			h.UserHost = true
+			h.SpawnOptions.UserEmail = "user@example.com"
+			require.NoError(t, m.spawnFleetHost(ctx, h, &EC2ProviderSettings{}))
+			require.Len(t, client.CreateLaunchTemplateInput.LaunchTemplateData.TagSpecifications, 2)
+			for _, spec := range client.CreateLaunchTemplateInput.LaunchTemplateData.TagSpecifications {
+				owner := ""
+				for _, tag := range spec.Tags {
+					if aws.ToString(tag.Key) == evergreen.TagMongoDBOwner {
+						owner = aws.ToString(tag.Value)
+					}
+				}
+				assert.Equal(t, "user@example.com", owner)
+			}
+		},
+		"SpawnFleetHostWithoutProvidersShouldUseLoadedTags": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
+			providers := evergreen.CloudProviders{}
+			require.NoError(t, providers.Get(ctx))
+			t.Cleanup(func() { assert.NoError(t, providers.Set(context.WithoutCancel(t.Context()))) })
+			_, err := evergreen.GetEnvironment().DB().Collection(evergreen.ConfigCollection).DeleteOne(ctx, bson.M{"_id": providers.SectionId()})
+			require.NoError(t, err)
+			m.settings.Providers.AWS.ResourceTags = evergreen.ResourceTagsConfig{
+				MongoDBOwner: "team@example.com", MongoDBEnv: "test", MongoDBOwnerEmailDomains: []string{"example.com"},
+			}
+			for name, testCase := range map[string]struct {
+				config        evergreen.ResourceTagsConfig
+				userEmail     string
+				expectedOwner string
+				expectedEnv   string
+			}{
+				"TaskHostShouldUseLoadedOwner":        {config: m.settings.Providers.AWS.ResourceTags, expectedOwner: "team@example.com", expectedEnv: "test"},
+				"UserHostShouldUseLoadedDomains":      {config: m.settings.Providers.AWS.ResourceTags, userEmail: "user@example.com", expectedOwner: "user@example.com", expectedEnv: "test"},
+				"MissingOwnerShouldUseEvergreenEmail": {expectedOwner: evergreen.DefaultMongoDBOwner},
+			} {
+				t.Run(name, func(t *testing.T) {
+					m.settings.Providers.AWS.ResourceTags = testCase.config
+					h.UserHost = testCase.userEmail != ""
+					h.SpawnOptions.UserEmail = testCase.userEmail
+					h.InstanceTags = nil
+					require.NoError(t, m.spawnFleetHost(t.Context(), h, &EC2ProviderSettings{}))
+					require.Len(t, client.CreateLaunchTemplateInput.LaunchTemplateData.TagSpecifications, 2)
+					for _, spec := range client.CreateLaunchTemplateInput.LaunchTemplateData.TagSpecifications {
+						tags := map[string]string{}
+						for _, tag := range spec.Tags {
+							tags[aws.ToString(tag.Key)] = aws.ToString(tag.Value)
+						}
+						assert.Equal(t, testCase.expectedOwner, tags[evergreen.TagMongoDBOwner])
+						assert.Equal(t, testCase.expectedEnv, tags[evergreen.TagMongoDBEnv])
+					}
+				})
+			}
+		},
 		"SpawnFleetHost": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
 			assert.NoError(t, m.spawnFleetHost(ctx, &host.Host{Tag: "ht_1"}, &EC2ProviderSettings{}))
 
@@ -447,7 +506,7 @@ func TestUploadLaunchTemplate(t *testing.T) {
 				},
 			},
 		}
-		require.NoError(t, m.uploadLaunchTemplate(t.Context(), &host.Host{Tag: "ht_0"}, &EC2ProviderSettings{AMI: "ami"}))
+		require.NoError(t, m.uploadLaunchTemplate(t.Context(), &host.Host{Tag: "ht_0"}, &EC2ProviderSettings{AMI: "ami"}, m.settings.Providers.AWS.ResourceTags))
 
 		mockClient := m.client.(*awsClientMock)
 		tagSpecifications := mockClient.CreateLaunchTemplateInput.LaunchTemplateData.TagSpecifications
@@ -481,7 +540,7 @@ func TestUploadLaunchTemplate(t *testing.T) {
 			},
 			settings: &evergreen.Settings{},
 		}
-		assert.NoError(t, m.uploadLaunchTemplate(t.Context(), &host.Host{Tag: "ht_0"}, &EC2ProviderSettings{AMI: "ami"}))
+		assert.NoError(t, m.uploadLaunchTemplate(t.Context(), &host.Host{Tag: "ht_0"}, &EC2ProviderSettings{AMI: "ami"}, m.settings.Providers.AWS.ResourceTags))
 
 		mockClient := m.client.(*awsClientMock)
 		assert.Equal(t, "ami", *mockClient.CreateLaunchTemplateInput.LaunchTemplateData.ImageId)
@@ -499,7 +558,7 @@ func TestUploadLaunchTemplate(t *testing.T) {
 				"other_expansion":             "other-value",
 			}},
 		}
-		assert.NoError(t, m.uploadLaunchTemplate(t.Context(), &host.Host{Tag: "ht_0"}, &EC2ProviderSettings{AMI: "ami", UserData: "#!/bin/bash\necho ${github_app_key} ${other_expansion}"}))
+		assert.NoError(t, m.uploadLaunchTemplate(t.Context(), &host.Host{Tag: "ht_0"}, &EC2ProviderSettings{AMI: "ami", UserData: "#!/bin/bash\necho ${github_app_key} ${other_expansion}"}, m.settings.Providers.AWS.ResourceTags))
 
 		mockClient := m.client.(*awsClientMock)
 		require.NotNil(t, mockClient.CreateLaunchTemplateInput.LaunchTemplateData.UserData)
@@ -517,7 +576,7 @@ func TestUploadLaunchTemplate(t *testing.T) {
 			},
 			settings: &evergreen.Settings{},
 		}
-		assert.NoError(t, m.uploadLaunchTemplate(t.Context(), &host.Host{Tag: "ht_0"}, &EC2ProviderSettings{AMI: "ami", EnableNestedVirtualization: true}))
+		assert.NoError(t, m.uploadLaunchTemplate(t.Context(), &host.Host{Tag: "ht_0"}, &EC2ProviderSettings{AMI: "ami", EnableNestedVirtualization: true}, m.settings.Providers.AWS.ResourceTags))
 
 		mockClient := m.client.(*awsClientMock)
 		require.NotNil(t, mockClient.CreateLaunchTemplateInput.LaunchTemplateData.CpuOptions)
@@ -531,8 +590,8 @@ func TestUploadLaunchTemplate(t *testing.T) {
 			},
 			settings: &evergreen.Settings{},
 		}
-		assert.NoError(t, m.uploadLaunchTemplate(t.Context(), &host.Host{Tag: "ht_0"}, &EC2ProviderSettings{}))
-		assert.NoError(t, m.uploadLaunchTemplate(t.Context(), &host.Host{Tag: "ht_0"}, &EC2ProviderSettings{}))
+		assert.NoError(t, m.uploadLaunchTemplate(t.Context(), &host.Host{Tag: "ht_0"}, &EC2ProviderSettings{}, m.settings.Providers.AWS.ResourceTags))
+		assert.NoError(t, m.uploadLaunchTemplate(t.Context(), &host.Host{Tag: "ht_0"}, &EC2ProviderSettings{}, m.settings.Providers.AWS.ResourceTags))
 	})
 
 	t.Run("InvalidName", func(t *testing.T) {
@@ -542,7 +601,7 @@ func TestUploadLaunchTemplate(t *testing.T) {
 			},
 			settings: &evergreen.Settings{},
 		}
-		assert.NoError(t, m.uploadLaunchTemplate(t.Context(), &host.Host{Tag: "ht*1"}, &EC2ProviderSettings{}))
+		assert.NoError(t, m.uploadLaunchTemplate(t.Context(), &host.Host{Tag: "ht*1"}, &EC2ProviderSettings{}, m.settings.Providers.AWS.ResourceTags))
 		mockClient := m.client.(*awsClientMock)
 		assert.Equal(t, "ht1", *mockClient.CreateLaunchTemplateInput.LaunchTemplateName)
 	})

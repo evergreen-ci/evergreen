@@ -1367,10 +1367,14 @@ func (s *EC2Suite) TestCreateVolumeWithoutHostTagOmitsHostNameTag() {
 }
 
 func (s *EC2Suite) TestCreateStandaloneVolumeMongoDBOwner() {
+	providers := evergreen.CloudProviders{}
+	s.Require().NoError(providers.Get(s.ctx))
+	s.T().Cleanup(func() { assert.NoError(s.T(), providers.Set(context.WithoutCancel(s.T().Context()))) })
 	s.onDemandManager.settings.Providers.AWS.ResourceTags = evergreen.ResourceTagsConfig{
 		MongoDBOwner: "evergreen@mongodb.com",
 		MongoDBEnv:   "dev",
 	}
+	s.Require().NoError(s.onDemandManager.settings.Providers.Set(s.ctx))
 	for name, testCase := range map[string]struct {
 		email         string
 		expectedOwner string
@@ -1412,14 +1416,15 @@ func (s *EC2Suite) TestMakeVolumeResourceTagsUsesConfiguredOwnerWhenCreatorLooku
 		MongoDBOwner: "evergreen@mongodb.com",
 		MongoDBEnv:   "prod",
 	}
-	tags := s.onDemandManager.makeVolumeResourceTags(ctx, s.volume)
+	tags := s.onDemandManager.makeVolumeResourceTags(ctx, s.volume, s.onDemandManager.settings.Providers.AWS.ResourceTags)
 	s.Equal([]host.Tag{
 		{Key: evergreen.TagMongoDBOwner, Value: "evergreen@mongodb.com"},
 		{Key: evergreen.TagMongoDBEnv, Value: "prod"},
 	}, tags)
 
 	s.onDemandManager.settings.Providers.AWS.ResourceTags = evergreen.ResourceTagsConfig{}
-	s.Empty(s.onDemandManager.makeVolumeResourceTags(ctx, s.volume))
+	s.Equal([]host.Tag{{Key: evergreen.TagMongoDBOwner, Value: evergreen.DefaultMongoDBOwner}},
+		s.onDemandManager.makeVolumeResourceTags(ctx, s.volume, s.onDemandManager.settings.Providers.AWS.ResourceTags))
 }
 
 func (s *EC2Suite) TestDeleteVolume() {
@@ -1557,4 +1562,80 @@ func (s *EC2Suite) TestModifyVolumeName() {
 	vol, err := host.FindVolumeByID(s.ctx, s.volume.ID)
 	s.NoError(err)
 	s.Equal("Some new thang", vol.DisplayName)
+}
+
+func (s *EC2Suite) TestOwnerEmailDomainsUpdateExistingManager() {
+	providers := evergreen.CloudProviders{}
+	s.Require().NoError(providers.Get(s.ctx))
+	s.T().Cleanup(func() { assert.NoError(s.T(), providers.Set(context.WithoutCancel(s.T().Context()))) })
+	config := evergreen.CloudProviders{AWS: evergreen.AWSConfig{ResourceTags: evergreen.ResourceTagsConfig{
+		MongoDBOwner: "team@example.com", MongoDBOwnerEmailDomains: []string{"example.com"},
+	}}}
+	s.Require().NoError(config.Set(s.ctx))
+	s.Require().NoError(s.h.Insert(s.ctx))
+	s.NoError(s.onDemandManager.ModifyHost(s.ctx, s.h, host.HostModifyOptions{AddInstanceTags: []host.Tag{{Key: evergreen.TagMongoDBOwner, Value: "user@example.com"}}}))
+	s.Error(s.onDemandManager.ModifyHost(s.ctx, s.h, host.HostModifyOptions{AddInstanceTags: []host.Tag{{Key: evergreen.TagMongoDBOwner, Value: "user@mongodb.com"}}}))
+	creator := user.DBUser{Id: "custom-domain-creator", EmailAddress: "user@example.com"}
+	s.Require().NoError(creator.Insert(s.ctx))
+	s.volume.CreatedBy = creator.Id
+	s.volume.Host = ""
+	_, err := s.onDemandManager.CreateVolume(s.ctx, s.volume)
+	s.Require().NoError(err)
+	owner := ""
+	for _, spec := range s.mock.CreateVolumeInput.TagSpecifications {
+		for _, tag := range spec.Tags {
+			if aws.ToString(tag.Key) == evergreen.TagMongoDBOwner {
+				owner = aws.ToString(tag.Value)
+			}
+		}
+	}
+	s.Equal("user@example.com", owner)
+}
+
+func (s *EC2Suite) TestMissingProvidersUseLoadedResourceTags() {
+	providers := evergreen.CloudProviders{}
+	s.Require().NoError(providers.Get(s.ctx))
+	s.T().Cleanup(func() { assert.NoError(s.T(), providers.Set(context.WithoutCancel(s.T().Context()))) })
+	_, err := evergreen.GetEnvironment().DB().Collection(evergreen.ConfigCollection).DeleteOne(s.ctx, bson.M{"_id": providers.SectionId()})
+	s.Require().NoError(err)
+	s.onDemandManager.settings.Providers.AWS.ResourceTags = evergreen.ResourceTagsConfig{
+		MongoDBOwner: "team@example.com", MongoDBEnv: "test", MongoDBOwnerEmailDomains: []string{"example.com"},
+	}
+	s.Require().NoError(s.h.Insert(s.ctx))
+	s.NoError(s.onDemandManager.ModifyHost(s.ctx, s.h, host.HostModifyOptions{AddInstanceTags: []host.Tag{{Key: evergreen.TagMongoDBOwner, Value: "user@example.com"}}}))
+	s.Error(s.onDemandManager.ModifyHost(s.ctx, s.h, host.HostModifyOptions{AddInstanceTags: []host.Tag{{Key: evergreen.TagMongoDBOwner, Value: "user@mongodb.com"}}}))
+	for name, testCase := range map[string]struct {
+		config        evergreen.ResourceTagsConfig
+		email         string
+		expectedOwner string
+		expectedEnv   string
+	}{
+		"MissingCreatorShouldUseLoadedOwner": {
+			config: s.onDemandManager.settings.Providers.AWS.ResourceTags, expectedOwner: "team@example.com", expectedEnv: "test",
+		},
+		"AllowedCreatorShouldUseLoadedDomains": {
+			config: s.onDemandManager.settings.Providers.AWS.ResourceTags, email: "user@example.com", expectedOwner: "user@example.com", expectedEnv: "test",
+		},
+		"MissingOwnerShouldUseEvergreenEmail": {expectedOwner: evergreen.DefaultMongoDBOwner},
+	} {
+		s.T().Run(name, func(t *testing.T) {
+			s.onDemandManager.settings.Providers.AWS.ResourceTags = testCase.config
+			creator := user.DBUser{Id: name, EmailAddress: testCase.email}
+			require.NoError(t, creator.Insert(t.Context()))
+			volume := *s.volume
+			volume.Host = ""
+			volume.CreatedBy = creator.Id
+			_, err := s.onDemandManager.CreateVolume(t.Context(), &volume)
+			require.NoError(t, err)
+			t.Cleanup(func() { assert.NoError(t, db.Clear(host.VolumesCollection)) })
+			tags := map[string]string{}
+			for _, spec := range s.mock.CreateVolumeInput.TagSpecifications {
+				for _, tag := range spec.Tags {
+					tags[aws.ToString(tag.Key)] = aws.ToString(tag.Value)
+				}
+			}
+			assert.Equal(t, testCase.expectedOwner, tags[evergreen.TagMongoDBOwner])
+			assert.Equal(t, testCase.expectedEnv, tags[evergreen.TagMongoDBEnv])
+		})
+	}
 }

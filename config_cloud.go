@@ -26,6 +26,21 @@ func (c *CloudProviders) Get(ctx context.Context) error {
 	return getConfigSection(ctx, c)
 }
 
+// GetWithFallback loads persisted providers, or uses fallback when the section is absent.
+func (c *CloudProviders) GetWithFallback(ctx context.Context, fallback CloudProviders) error {
+	var providers CloudProviders
+	found, err := getConfigSectionIfExists(ctx, &providers)
+	if err != nil {
+		return err
+	}
+	if found {
+		*c = providers
+	} else {
+		*c = fallback
+	}
+	return nil
+}
+
 func (c *CloudProviders) Set(ctx context.Context) error {
 	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
 		"$set": bson.M{
@@ -40,7 +55,7 @@ func (c *CloudProviders) ValidateAndDefault() error {
 	for i, m := range c.AWS.AccountRoles {
 		catcher.Wrapf(m.Validate(), "invalid account role mapping at index %d", i)
 	}
-	catcher.Wrap(c.AWS.ResourceTags.Validate(), "invalid AWS resource tags")
+	catcher.Wrap(c.AWS.ResourceTags.ValidateAndDefault(), "invalid AWS resource tags")
 	catcher.NewWhen(c.AWS.SubnetTagName == "" && c.AWS.SubnetTagValue != "", "must specify a subnet tag name if a subnet tag value is set")
 	catcher.NewWhen(c.AWS.SubnetTagName != "" && c.AWS.SubnetTagValue == "", "must specify a subnet tag value if a subnet tag name is set")
 	return catcher.Resolve()

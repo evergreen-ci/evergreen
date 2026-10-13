@@ -1654,8 +1654,9 @@ type ComplexityRoot struct {
 	}
 
 	ResourceTagsConfig struct {
-		MongoDBEnv   func(childComplexity int) int
-		MongoDBOwner func(childComplexity int) int
+		MongoDBEnv               func(childComplexity int) int
+		MongoDBOwner             func(childComplexity int) int
+		MongoDBOwnerEmailDomains func(childComplexity int) int
 	}
 
 	RestartAdminTasksPayload struct {
@@ -9832,6 +9833,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ResourceTagsConfig.MongoDBOwner(childComplexity), true
+	case "ResourceTagsConfig.mongodbOwnerEmailDomains":
+		if e.complexity.ResourceTagsConfig.MongoDBOwnerEmailDomains == nil {
+			break
+		}
+
+		return e.complexity.ResourceTagsConfig.MongoDBOwnerEmailDomains(childComplexity), true
 
 	case "RestartAdminTasksPayload.numRestartedTasks":
 		if e.complexity.RestartAdminTasksPayload.NumRestartedTasks == nil {
@@ -17547,6 +17554,8 @@ func (ec *executionContext) fieldContext_AWSConfig_resourceTags(_ context.Contex
 				return ec.fieldContext_ResourceTagsConfig_mongodbEnv(ctx, field)
 			case "mongodbOwner":
 				return ec.fieldContext_ResourceTagsConfig_mongodbOwner(ctx, field)
+			case "mongodbOwnerEmailDomains":
+				return ec.fieldContext_ResourceTagsConfig_mongodbOwnerEmailDomains(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ResourceTagsConfig", field.Name)
 		},
@@ -57890,6 +57899,35 @@ func (ec *executionContext) fieldContext_ResourceTagsConfig_mongodbOwner(_ conte
 	return fc, nil
 }
 
+func (ec *executionContext) _ResourceTagsConfig_mongodbOwnerEmailDomains(ctx context.Context, field graphql.CollectedField, obj *model.APIResourceTagsConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ResourceTagsConfig_mongodbOwnerEmailDomains,
+		func(ctx context.Context) (any, error) {
+			return obj.MongoDBOwnerEmailDomains, nil
+		},
+		nil,
+		ec.marshalNString2ᚕstringᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ResourceTagsConfig_mongodbOwnerEmailDomains(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ResourceTagsConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RestartAdminTasksPayload_numRestartedTasks(ctx context.Context, field graphql.CollectedField, obj *RestartAdminTasksPayload) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -88808,7 +88846,7 @@ func (ec *executionContext) unmarshalInputResourceTagsConfigInput(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"mongodbEnv", "mongodbOwner"}
+	fieldsInOrder := [...]string{"mongodbEnv", "mongodbOwner", "mongodbOwnerEmailDomains"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -88829,6 +88867,13 @@ func (ec *executionContext) unmarshalInputResourceTagsConfigInput(ctx context.Co
 				return it, err
 			}
 			it.MongoDBOwner = data
+		case "mongodbOwnerEmailDomains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mongodbOwnerEmailDomains"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MongoDBOwnerEmailDomains = data
 		}
 	}
 
@@ -105222,6 +105267,11 @@ func (ec *executionContext) _ResourceTagsConfig(ctx context.Context, sel ast.Sel
 			out.Values[i] = ec._ResourceTagsConfig_mongodbEnv(ctx, field, obj)
 		case "mongodbOwner":
 			out.Values[i] = ec._ResourceTagsConfig_mongodbOwner(ctx, field, obj)
+		case "mongodbOwnerEmailDomains":
+			out.Values[i] = ec._ResourceTagsConfig_mongodbOwnerEmailDomains(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

@@ -100,12 +100,67 @@ func TestValidateMongoDBEmail(t *testing.T) {
 		"MultipleAtSignsShouldFail":    {email: "user@@mongodb.com"},
 	} {
 		t.Run(name, func(t *testing.T) {
-			err := ValidateMongoDBEmail(testCase.email)
+			err := (ResourceTagsConfig{}).ValidateOwnerEmail(testCase.email)
 			if testCase.valid {
 				assert.NoError(t, err)
 			} else {
-				assert.ErrorContains(t, err, "@mongodb.com")
+				assert.ErrorContains(t, err, "mongodb.com")
 			}
 		})
 	}
+}
+
+func TestResourceTagsOwnerEmailDomains(t *testing.T) {
+	t.Run("UnsetDomainsUseDefaults", func(t *testing.T) {
+		config := ResourceTagsConfig{}
+		assert.NoError(t, config.ValidateAndDefault())
+		assert.Equal(t, []string{"mongodb.com", "10gen.com"}, config.MongoDBOwnerEmailDomains)
+		domains := config.OwnerEmailDomains()
+		domains[0] = "example.com"
+		assert.NoError(t, config.ValidateOwnerEmail("user@mongodb.com"))
+	})
+	for name, testCase := range map[string]struct {
+		domains []string
+		owner   string
+		valid   bool
+	}{
+		"CustomDomainShouldPass":       {domains: []string{"example.com"}, owner: "team@example.com", valid: true},
+		"ExplicitSubdomainShouldPass":  {domains: []string{"sub.mongodb.com"}, owner: "team@sub.mongodb.com", valid: true},
+		"EmptyListShouldFail":          {domains: []string{}},
+		"EmptyDomainShouldFail":        {domains: []string{""}},
+		"DuplicateDomainShouldFail":    {domains: []string{"mongodb.com", "mongodb.com"}},
+		"AtPrefixShouldFail":           {domains: []string{"@mongodb.com"}},
+		"WildcardShouldFail":           {domains: []string{"*.mongodb.com"}},
+		"UppercaseShouldFail":          {domains: []string{"MONGODB.COM"}},
+		"WhitespaceShouldFail":         {domains: []string{"mongodb.com "}},
+		"URLShouldFail":                {domains: []string{"https://mongodb.com"}},
+		"EmptyLabelShouldFail":         {domains: []string{"sub..mongodb.com"}},
+		"LeadingHyphenShouldFail":      {domains: []string{"-mongodb.com"}},
+		"TrailingHyphenShouldFail":     {domains: []string{"mongodb-.com"}},
+		"SingleLabelShouldFail":        {domains: []string{"mongodb"}},
+		"RemovedOwnerDomainShouldFail": {domains: []string{"example.com"}, owner: "team@mongodb.com"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			config := ResourceTagsConfig{MongoDBOwnerEmailDomains: testCase.domains, MongoDBOwner: testCase.owner}
+			err := config.ValidateAndDefault()
+			if testCase.valid {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+			}
+		})
+	}
+	t.Run("ConfiguredListReplacesDefaults", func(t *testing.T) {
+		config := ResourceTagsConfig{MongoDBOwnerEmailDomains: []string{"example.com"}}
+		assert.NoError(t, config.ValidateOwnerEmail("user@example.com"))
+		assert.Error(t, config.ValidateOwnerEmail("\"user@alias\"@example.com"))
+		assert.Error(t, config.ValidateOwnerEmail("user@mongodb.com"))
+		assert.Error(t, config.ValidateOwnerEmail("user@sub.example.com"))
+		assert.Error(t, config.ValidateOwnerEmail("user@notexample.com"))
+	})
+}
+
+func TestResourceTagsOwnerEmail(t *testing.T) {
+	assert.Equal(t, DefaultMongoDBOwner, (ResourceTagsConfig{}).OwnerEmail())
+	assert.Equal(t, "team@example.com", (ResourceTagsConfig{MongoDBOwner: "team@example.com"}).OwnerEmail())
 }

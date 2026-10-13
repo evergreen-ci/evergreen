@@ -487,8 +487,19 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 		return errors.Wrap(err, "creating client")
 	}
 
-	// Validate modify options for user errors that should prevent all modifications
-	if err := validateEC2HostModifyOptions(h, opts); err != nil {
+	resourceTags := m.settings.Providers.AWS.ResourceTags
+	for _, tag := range opts.AddInstanceTags {
+		if tag.Key == evergreen.TagMongoDBOwner {
+			providers := evergreen.CloudProviders{}
+			if err := providers.GetWithFallback(ctx, m.settings.Providers); err != nil {
+				return errors.Wrap(err, "getting resource tag settings")
+			}
+			resourceTags = providers.AWS.ResourceTags
+			break
+		}
+	}
+	// Validate modify options for user errors that should prevent all modifications.
+	if err := validateEC2HostModifyOptions(h, opts, resourceTags); err != nil {
 		return errors.Wrap(err, "validating EC2 host modify options")
 	}
 
@@ -1037,12 +1048,17 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 		return nil, errors.Wrap(err, "creating client")
 	}
 
+	providers := evergreen.CloudProviders{}
+	if err := providers.GetWithFallback(ctx, m.settings.Providers); err != nil {
+		return nil, errors.Wrap(err, "getting resource tag settings")
+	}
+
 	volume.Expiration = time.Now().Add(evergreen.DefaultSpawnHostExpiration)
 	volumeTags := []types.Tag{
 		{Key: aws.String(evergreen.TagOwner), Value: aws.String(volume.CreatedBy)},
 		{Key: aws.String(evergreen.TagExpireOn), Value: aws.String(expireInDays(evergreen.SpawnHostExpireDays))},
 	}
-	resourceTags := m.makeVolumeResourceTags(ctx, volume)
+	resourceTags := m.makeVolumeResourceTags(ctx, volume, providers.AWS.ResourceTags)
 	volumeTags = append(volumeTags, hostToEC2Tags(resourceTags)...)
 	if volume.Host != "" {
 		volumeTags = append(volumeTags, types.Tag{Key: aws.String(evergreen.TagHostName), Value: aws.String(volume.Host)})
@@ -1245,13 +1261,15 @@ func (m *ec2Manager) Cleanup(context.Context) error {
 }
 
 // makeVolumeResourceTags returns the MongoDB resource tags for a volume.
-func (m *ec2Manager) makeVolumeResourceTags(ctx context.Context, volume *host.Volume) []host.Tag {
+func (m *ec2Manager) makeVolumeResourceTags(ctx context.Context, volume *host.Volume, resourceTagSettings evergreen.ResourceTagsConfig) []host.Tag {
 	ctx, span := tracer.Start(ctx, "makeVolumeResourceTags")
 	defer span.End()
 
-	resourceTagSettings := m.settings.Providers.AWS.ResourceTags
-	owner := resourceTagSettings.MongoDBOwner
+	owner := resourceTagSettings.OwnerEmail()
 	ownerSource := "configured_owner"
+	if resourceTagSettings.MongoDBOwner == "" {
+		ownerSource = "default_owner"
+	}
 	fallbackReason := "missing_creator_id"
 	if volume.CreatedBy != "" {
 		creator, err := user.FindOneById(ctx, volume.CreatedBy)
@@ -1263,16 +1281,13 @@ func (m *ec2Manager) makeVolumeResourceTags(ctx context.Context, volume *host.Vo
 			fallbackReason = "creator_not_found"
 		} else if creator.Email() == "" {
 			fallbackReason = "email_missing"
-		} else if evergreen.ValidateMongoDBEmail(creator.Email()) != nil {
+		} else if resourceTagSettings.ValidateOwnerEmail(creator.Email()) != nil {
 			fallbackReason = "email_invalid"
 		} else {
 			owner = creator.Email()
 			ownerSource = "creator_email"
 			fallbackReason = ""
 		}
-	}
-	if owner == "" {
-		ownerSource = "missing"
 	}
 	span.SetAttributes(attribute.String(volumeOwnerSourceOtelAttribute, ownerSource))
 	if fallbackReason != "" {
