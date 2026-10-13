@@ -90,8 +90,8 @@ func (s *testResultService) Get(ctx context.Context, tasks []Task, getOpts GetTa
 		filter = ByTaskIDAndExecution(tasks[0].Id, tasks[0].Execution)
 	} else {
 		findQueries := make([]bson.M, len(tasks))
-		for i, taskOpt := range tasks {
-			findQueries[i] = ByTaskIDAndExecution(taskOpt.Id, taskOpt.Execution)
+		for i, t := range tasks {
+			findQueries[i] = ByTaskIDAndExecution(t.Id, t.Execution)
 		}
 		filter = bson.M{"$or": findQueries}
 	}
