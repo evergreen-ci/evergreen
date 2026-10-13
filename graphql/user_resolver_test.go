@@ -43,7 +43,7 @@ func TestUserSubscriptionsPermissions(t *testing.T) {
 		Permissions: gimlet.Permissions{evergreen.PermissionAdminSettings: evergreen.AdminSettingsEdit.Value},
 	}))
 
-	config := New("/graphql")
+	config := NewConfig()
 	obj := &user.DBUser{Id: targetUser}
 
 	for name, testCase := range map[string]struct {

@@ -594,8 +594,8 @@ func (r *queryResolver) MyVolumes(ctx context.Context) ([]*host.Volume, error) {
 
 // Task is the resolver for the task field.
 func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int) (*restModel.APITask, error) {
-	settings := evergreen.GetEnvironment().Settings()
-	return getTask(ctx, taskID, execution, settings.Ui.Url)
+	logURL := evergreen.GetEnvironment().Settings().Ui.LogUrl
+	return getTask(ctx, taskID, execution, logURL)
 }
 
 // TaskAllExecutions is the resolver for the taskAllExecutions field.
@@ -616,16 +616,17 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 		return oldTasks[i].Execution < oldTasks[j].Execution
 	})
 
+	logURL := evergreen.GetEnvironment().Settings().Ui.LogUrl
 	allTasks := make([]*restModel.APITask, 0, len(oldTasks)+1)
 	for _, oldTask := range oldTasks {
 		var apiTask *restModel.APITask
-		apiTask, err = getAPITaskFromTask(ctx, r.sc.GetURL(), oldTask)
+		apiTask, err = getAPITaskFromTask(ctx, logURL, oldTask)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' with execution %d to APITask", taskID, oldTask.Execution))
 		}
 		allTasks = append(allTasks, apiTask)
 	}
-	apiTask, err := getAPITaskFromTask(ctx, r.sc.GetURL(), *latestTask)
+	apiTask, err := getAPITaskFromTask(ctx, logURL, *latestTask)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting latest execution of task '%s' to APITask", taskID))
 	}

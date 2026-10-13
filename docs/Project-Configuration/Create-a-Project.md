@@ -37,8 +37,6 @@ If you do not see the `New Project` button on the [project settings page](https:
 
 ## Project Limitations
 
-Because Evergreen can only support so many projects, there are limitations to the number of projects that could be enabled.
-There is a total project limit, the total number of projects that Evergreen is currently willing to support,
-and a project per repo limit, a limit to the number of enabled projects that share the same GitHub owner and repo.
+There is a limit to the number of enabled projects that share the same GitHub owner and repo.
 
 If your GitHub owner and repo needs more than the allotted number of projects, create a Jira ticket and request to override the repo limit.

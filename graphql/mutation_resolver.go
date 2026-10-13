@@ -96,16 +96,9 @@ func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, taskID strin
 		return false, err
 	}
 	usr := mustHaveUser(ctx)
-	issue := restModel.APIIssueLinkToService(apiIssue)
-	if isIssue {
-		if err := task.MoveIssueToSuspectedIssue(ctx, taskID, execution, *issue, usr.Username()); err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("moving issue to suspected issues: %s", err.Error()))
-		}
-		return true, nil
-	}
-
-	if err := task.MoveSuspectedIssueToIssue(ctx, taskID, execution, *issue, usr.Username()); err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("moving suspected issue to issues: %s", err.Error()))
+	issueKey := utility.FromStringPtr(apiIssue.IssueKey)
+	if err := task.MoveAnnotationIssueByKey(ctx, taskID, execution, issueKey, isIssue, usr.Username()); err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("moving annotation issue: %s", err.Error()))
 	}
 	return true, nil
 }
@@ -1131,7 +1124,8 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
 	}
-	apiTask, err := getAPITaskFromTask(ctx, r.sc.GetURL(), *t)
+	logURL := evergreen.GetEnvironment().Settings().Ui.LogUrl
+	apiTask, err := getAPITaskFromTask(ctx, logURL, *t)
 	return apiTask, err
 }
 
@@ -1148,7 +1142,8 @@ func (r *mutationResolver) OverrideTaskDependencies(ctx context.Context, taskID 
 	if err = t.SetOverrideDependencies(ctx, currentUser.Username()); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("overriding dependencies for task '%s': %s", taskID, err.Error()))
 	}
-	return getAPITaskFromTask(ctx, r.sc.GetURL(), *t)
+	logURL := evergreen.GetEnvironment().Settings().Ui.LogUrl
+	return getAPITaskFromTask(ctx, logURL, *t)
 }
 
 // RestartTask is the resolver for the restartTask field.
@@ -1175,7 +1170,8 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string, faile
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
 	}
-	apiTask, err := getAPITaskFromTask(ctx, r.sc.GetURL(), *t)
+	logURL := evergreen.GetEnvironment().Settings().Ui.LogUrl
+	apiTask, err := getAPITaskFromTask(ctx, logURL, *t)
 	return apiTask, err
 }
 
@@ -1194,8 +1190,9 @@ func (r *mutationResolver) ScheduleTasks(ctx context.Context, versionID string, 
 		return nil, err
 	}
 
+	logURL := evergreen.GetEnvironment().Settings().Ui.LogUrl
 	scheduledTasks := []*restModel.APITask{}
-	scheduled, err := setManyTasksScheduled(ctx, r.sc.GetURL(), true, taskIds...)
+	scheduled, err := setManyTasksScheduled(ctx, logURL, true, taskIds...)
 	if err != nil {
 		return scheduledTasks, InternalServerError.Send(ctx, fmt.Sprintf("scheduling tasks: %s", err.Error()))
 	}
@@ -1205,14 +1202,16 @@ func (r *mutationResolver) ScheduleTasks(ctx context.Context, versionID string, 
 
 // SetTaskPriority is the resolver for the setTaskPriority field.
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
-	return setSingleTaskPriority(ctx, r.sc.GetURL(), taskID, priority)
+	logURL := evergreen.GetEnvironment().Settings().Ui.LogUrl
+	return setSingleTaskPriority(ctx, logURL, taskID, priority)
 }
 
 // SetTaskPriorities is the resolver for the setTaskPriorities field.
 func (r *mutationResolver) SetTaskPriorities(ctx context.Context, taskPriorities []*TaskPriority) ([]*restModel.APITask, error) {
+	logURL := evergreen.GetEnvironment().Settings().Ui.LogUrl
 	tasks := []*restModel.APITask{}
 	for _, t := range taskPriorities {
-		tsk, err := setSingleTaskPriority(ctx, r.sc.GetURL(), t.TaskID, t.Priority)
+		tsk, err := setSingleTaskPriority(ctx, logURL, t.TaskID, t.Priority)
 		if err != nil {
 			return nil, err
 		}
@@ -1223,7 +1222,8 @@ func (r *mutationResolver) SetTaskPriorities(ctx context.Context, taskPriorities
 
 // UnscheduleTask is the resolver for the unscheduleTask field.
 func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
-	scheduled, err := setManyTasksScheduled(ctx, r.sc.GetURL(), false, taskID)
+	logURL := evergreen.GetEnvironment().Settings().Ui.LogUrl
+	scheduled, err := setManyTasksScheduled(ctx, logURL, false, taskID)
 	if err != nil {
 		return nil, err
 	}
@@ -1577,7 +1577,8 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, ve
 	for taskId := range tasksToSchedule {
 		taskIDs = append(taskIDs, taskId)
 	}
-	scheduled, err := setManyTasksScheduled(ctx, r.sc.GetURL(), true, taskIDs...)
+	logURL := evergreen.GetEnvironment().Settings().Ui.LogUrl
+	scheduled, err := setManyTasksScheduled(ctx, logURL, true, taskIDs...)
 	if err != nil {
 		return nil, err
 	}

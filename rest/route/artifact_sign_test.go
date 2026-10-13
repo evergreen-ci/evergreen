@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -45,7 +46,7 @@ func TestArtifactSignHandler(t *testing.T) {
 
 	handler := artifactSignHandler()
 
-	validToken, validExpiry := artifact.GenerateSignToken([]byte(testSecret), "task1", 0, "signed_report")
+	validToken, validExpiry := artifact.GenerateSignToken([]byte(testSecret), "task1", 0, "signed_report", time.Hour)
 
 	t.Run("MissingTaskID", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("/tasks//artifact/sign?execution=0&name=signed_report&token=%s&exp=%d", validToken, validExpiry), nil)
@@ -90,7 +91,7 @@ func TestArtifactSignHandler(t *testing.T) {
 		assert.Equal(t, http.StatusUnauthorized, rr.Code)
 	})
 	t.Run("FileNotFound", func(t *testing.T) {
-		token, expiry := artifact.GenerateSignToken([]byte(testSecret), "task1", 0, "nonexistent")
+		token, expiry := artifact.GenerateSignToken([]byte(testSecret), "task1", 0, "nonexistent", time.Hour)
 		req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("/tasks/task1/artifact/sign?execution=0&name=nonexistent&token=%s&exp=%d", token, expiry), nil)
 		req = gimlet.SetURLVars(req, map[string]string{"task_id": "task1"})
 		rr := httptest.NewRecorder()
@@ -98,7 +99,7 @@ func TestArtifactSignHandler(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, rr.Code)
 	})
 	t.Run("NotSignedFile", func(t *testing.T) {
-		token, expiry := artifact.GenerateSignToken([]byte(testSecret), "task1", 0, "public_file")
+		token, expiry := artifact.GenerateSignToken([]byte(testSecret), "task1", 0, "public_file", time.Hour)
 		req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("/tasks/task1/artifact/sign?execution=0&name=public_file&token=%s&exp=%d", token, expiry), nil)
 		req = gimlet.SetURLVars(req, map[string]string{"task_id": "task1"})
 		rr := httptest.NewRecorder()
@@ -109,7 +110,7 @@ func TestArtifactSignHandler(t *testing.T) {
 		settings := evergreen.GetEnvironment().Settings()
 		defer func() { settings.ArtifactSignSecret = testSecret }()
 		settings.ArtifactSignSecret = ""
-		forgedToken, forgedExpiry := artifact.GenerateSignToken(nil, "task1", 0, "signed_report")
+		forgedToken, forgedExpiry := artifact.GenerateSignToken(nil, "task1", 0, "signed_report", time.Hour)
 		req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("/tasks/task1/artifact/sign?execution=0&name=signed_report&token=%s&exp=%d", forgedToken, forgedExpiry), nil)
 		req = gimlet.SetURLVars(req, map[string]string{"task_id": "task1"})
 		rr := httptest.NewRecorder()

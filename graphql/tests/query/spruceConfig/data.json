@@ -4,11 +4,10 @@
       "_id": "ui",
       "default_project": "evergreen",
       "url": "localhost:9090",
+      "log_url": "http://localhost:9090",
       "http_listen_addr": ":9090",
       "secret": "this is a secret",
-      "cors_origins": [
-        "http://localhost:3000"
-      ],
+      "cors_origins": ["http://localhost:3000"],
       "userVoice": "https://uservoice.com",
       "cache_templates": false,
       "csrf_key": "",
@@ -58,24 +57,13 @@
       "project_tasks_pairs": [
         {
           "project_id": "evergreen",
-          "allowed_tasks": [
-            "compile",
-            "test"
-          ],
-          "allowed_bvs": [
-            "ubuntu1604",
-            "windows"
-          ]
+          "allowed_tasks": ["compile", "test"],
+          "allowed_bvs": ["ubuntu1604", "windows"]
         },
         {
           "project_id": "spruce",
-          "allowed_tasks": [
-            "lint",
-            "storybook"
-          ],
-          "allowed_bvs": [
-            "macOS"
-          ]
+          "allowed_tasks": ["lint", "storybook"],
+          "allowed_bvs": ["macOS"]
         }
       ]
     },

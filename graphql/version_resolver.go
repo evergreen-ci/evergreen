@@ -42,7 +42,8 @@ func (r *versionResolver) BuildVariants(ctx context.Context, obj *model.Version,
 	if evergreen.IsPatchRequester(obj.Requester) && !utility.FromBoolPtr(obj.Activated) {
 		return nil, nil
 	}
-	groupedBuildVariants, err := generateBuildVariants(ctx, obj.Id, options, obj.Requester, r.sc.GetURL())
+	logURL := evergreen.GetEnvironment().Settings().Ui.LogUrl
+	groupedBuildVariants, err := generateBuildVariants(ctx, obj.Id, options, obj.Requester, logURL)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("generating build variants for version '%s': %s", obj.Id, err.Error()))
 	}

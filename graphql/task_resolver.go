@@ -908,7 +908,7 @@ func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *
 	apiResults := make([]*restModel.APITest, len(taskResults.Results))
 	settings := evergreen.GetEnvironment().Settings()
 	apiTestArgs := &restModel.APITestArgs{
-		EvergreenBaseURL: settings.Api.URL,
+		EvergreenBaseURL: settings.Ui.LogUrl,
 		ParsleyLogURL:    settings.Ui.ParsleyUrl,
 	}
 	for i, t := range taskResults.Results {

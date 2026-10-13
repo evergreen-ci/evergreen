@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -196,7 +195,7 @@ func parseTestSuitesStreaming(ctx context.Context, decoder *xml.Decoder) ([]test
 // toModelTestResultAndLog converts an XUnit test case into a test result and
 // test log. Logs are only generated if the test case did not succeed (this is
 // part of the XUnit XML file design).
-func (tc testCase) toModelTestResultAndLog(ctx context.Context, conf *internal.TaskConfig, logger client.LoggerProducer) (testresult.TestResult, *testlog.TestLog) {
+func (tc testCase) toModelTestResultAndLog(ctx context.Context, opts testResultParseOptions, logger client.LoggerProducer) (testresult.TestResult, *testlog.TestLog) {
 
 	res := testresult.TestResult{}
 	var log *testlog.TestLog
@@ -251,8 +250,8 @@ func (tc testCase) toModelTestResultAndLog(ctx context.Context, conf *internal.T
 		// unique string since there may be duplicate file
 		// names if there are duplicate test names.
 		log.Name = utility.RandomString()
-		log.Task = conf.Task.Id
-		log.TaskExecution = conf.Task.Execution
+		log.Task = opts.taskID
+		log.TaskExecution = opts.taskExecution
 		res.LogInfo = &testresult.TestLogInfo{LogName: log.Name}
 	}
 

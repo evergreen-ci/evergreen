@@ -19,17 +19,13 @@ import (
 	"github.com/evergreen-ci/utility"
 )
 
-type Resolver struct {
-	sc data.Connector
-}
+type Resolver struct{}
 
-func New(apiURL string) Config {
-	dbConnector := &data.DBConnector{URL: apiURL}
+func NewConfig() Config {
 	c := Config{
-		Resolvers: &Resolver{
-			sc: dbConnector,
-		},
+		Resolvers: &Resolver{},
 	}
+	setComplexityFuncs(&c)
 	c.Directives.RequirePatchOwner = func(ctx context.Context, obj any, next graphql.Resolver) (any, error) {
 		user := mustHaveUser(ctx)
 		args, isStringMap := obj.(map[string]any)

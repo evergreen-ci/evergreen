@@ -22,6 +22,22 @@ import (
 	"github.com/pkg/errors"
 )
 
+// testResultParseOptions are options for parsing test results.
+type testResultParseOptions struct {
+	workDir       string
+	taskID        string
+	taskExecution int
+}
+
+// parseOptionsForTask returns the parse options for the currently running task.
+func parseOptionsForTask(conf *internal.TaskConfig) testResultParseOptions {
+	return testResultParseOptions{
+		workDir:       conf.WorkDir,
+		taskID:        conf.Task.Id,
+		taskExecution: conf.Task.Execution,
+	}
+}
+
 // sendTestResults sends the test results to the backend results service.
 func sendTestResults(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, results []testresult.TestResult) error {
 	if len(results) == 0 {
@@ -101,10 +117,10 @@ const (
 )
 
 func uploadTestResults(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, results []testresult.TestResult, td client.TaskData, output *task.TaskOutput) (bool, error) {
-	createdAt := conf.TestResultsCreatedAt
-	if createdAt.IsZero() {
-		createdAt = time.Now()
-		conf.TestResultsCreatedAt = createdAt
+	testResultsCreatedAt := conf.TestResultsCreatedAt
+	if testResultsCreatedAt.IsZero() {
+		testResultsCreatedAt = time.Now()
+		conf.TestResultsCreatedAt = testResultsCreatedAt
 	}
 	if time.Since(conf.TestResultsCreatedAt) > maxTestResultsInterval {
 		err := errors.Errorf("Cannot append test results more than %s after the first upload. Consider uploading all test results at the end of the task. (DEVPROD-32331)", maxTestResultsInterval)
@@ -112,12 +128,14 @@ func uploadTestResults(ctx context.Context, comm client.Communicator, conf *inte
 		return false, err
 	}
 	info := makeTestResultsInfo(conf.Task, conf.DisplayTaskInfo)
-	newResults := makeTestResults(&conf.Task, results)
-	key := testresult.PartitionKey(createdAt, info.Project, info.ID())
+	newResults := makeTestResults(conf.Task.CreateTime, results)
 
+	// A task run's test results can be attached by multiple commands, all of
+	// which must land in the same parquet object, so append to any results
+	// already uploaded for this run.
 	tr := &testresult.DbTaskTestResults{
 		ID:        info.ID(),
-		CreatedAt: createdAt,
+		CreatedAt: testResultsCreatedAt,
 		Info:      info,
 	}
 	allResults, err := output.TestResults.DownloadParquet(ctx, conf.TaskOutput, tr)
@@ -126,20 +144,11 @@ func uploadTestResults(ctx context.Context, comm client.Communicator, conf *inte
 	}
 	allResults = append(allResults, newResults...)
 
-	if err = uploadParquet(ctx, conf.TaskOutput, *output, convertToParquet(allResults, info, createdAt), key); err != nil {
+	if err = uploadTestResultsParquet(ctx, conf.TaskOutput, *output, info, testResultsCreatedAt, allResults); err != nil {
 		return false, errors.Wrap(err, "uploading parquet test results")
 	}
 
-	var failedCount int
-	var failedTests []string
-	for _, result := range allResults {
-		if result.Status == evergreen.TestFailedStatus {
-			if len(failedTests) < failedTestsSampleSize {
-				failedTests = append(failedTests, result.GetDisplayTestName())
-			}
-			failedCount++
-		}
-	}
+	failedCount, failedTests := computeTestResultsStats(allResults)
 	tr.Stats = testresult.TaskTestResultsStats{
 		FailedCount: failedCount,
 		TotalCount:  len(allResults),
@@ -152,18 +161,34 @@ func uploadTestResults(ctx context.Context, comm client.Communicator, conf *inte
 	return tr.Stats.FailedCount > 0, nil
 }
 
-func uploadParquet(ctx context.Context, credentials evergreen.S3Credentials, output task.TaskOutput, results *testresult.ParquetTestResults, key string) error {
+// uploadTestResultsParquet writes the test results to the parquet object for the
+// task run described by info.
+func uploadTestResultsParquet(ctx context.Context, credentials evergreen.S3Credentials, output task.TaskOutput, info testresult.TestResultsInfo, testResultsCreatedAt time.Time, results []testresult.TestResult) error {
 	bucket, err := output.TestResults.GetBucket(ctx, credentials)
 	if err != nil {
 		return err
 	}
-	w, err := bucket.Writer(ctx, key)
+	w, err := bucket.Writer(ctx, testresult.PartitionKey(testResultsCreatedAt, info.Project, info.ID()))
 	if err != nil {
 		return errors.Wrap(err, "creating Presto bucket writer")
 	}
 	defer w.Close()
 
-	return errors.Wrap(parquet.Write(w, []testresult.ParquetTestResults{*results}), "writing Parquet test results")
+	return errors.Wrap(parquet.Write(w, []testresult.ParquetTestResults{*convertToParquet(results, info, testResultsCreatedAt)}), "writing Parquet test results")
+}
+
+// computeTestResultsStats returns the number of failed tests and a sample of
+// their display names.
+func computeTestResultsStats(results []testresult.TestResult) (failedCount int, failedSample []string) {
+	for _, result := range results {
+		if result.Status == evergreen.TestFailedStatus {
+			if len(failedSample) < failedTestsSampleSize {
+				failedSample = append(failedSample, result.GetDisplayTestName())
+			}
+			failedCount++
+		}
+	}
+	return failedCount, failedSample
 }
 
 func makeTestResultsInfo(t task.Task, displayTaskInfo *apimodels.DisplayTaskInfo) testresult.TestResultsInfo {
@@ -181,7 +206,7 @@ func makeTestResultsInfo(t task.Task, displayTaskInfo *apimodels.DisplayTaskInfo
 	}
 }
 
-func convertToParquet(results []testresult.TestResult, info testresult.TestResultsInfo, createdAt time.Time) *testresult.ParquetTestResults {
+func convertToParquet(results []testresult.TestResult, info testresult.TestResultsInfo, testResultsCreatedAt time.Time) *testresult.ParquetTestResults {
 	convertedResults := make([]testresult.ParquetTestResult, len(results))
 	for i, result := range results {
 		convertedResults[i] = createParquetTestResult(result)
@@ -194,7 +219,7 @@ func convertToParquet(results []testresult.TestResult, info testresult.TestResul
 		TaskID:    info.TaskID,
 		Execution: int32(info.Execution),
 		Requester: info.Requester,
-		CreatedAt: createdAt.UTC(),
+		CreatedAt: testResultsCreatedAt.UTC(),
 		Results:   convertedResults,
 	}
 	if info.DisplayTaskName != "" {
@@ -236,7 +261,7 @@ func createParquetTestResult(t testresult.TestResult) testresult.ParquetTestResu
 	return result
 }
 
-func makeTestResults(t *task.Task, results []testresult.TestResult) []testresult.TestResult {
+func makeTestResults(taskCreatedAt time.Time, results []testresult.TestResult) []testresult.TestResult {
 	var newResults []testresult.TestResult
 	for _, r := range results {
 		if r.DisplayTestName == "" {
@@ -265,7 +290,7 @@ func makeTestResults(t *task.Task, results []testresult.TestResult) []testresult
 			LogURL:          r.LogURL,
 			RawLogURL:       r.RawLogURL,
 			LineNum:         r.LineNum,
-			TaskCreateTime:  t.CreateTime,
+			TaskCreateTime:  taskCreatedAt,
 			TestStartTime:   r.TestStartTime,
 			TestEndTime:     r.TestEndTime,
 		})

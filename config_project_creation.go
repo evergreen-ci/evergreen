@@ -14,13 +14,14 @@ type OwnerRepo struct {
 }
 
 type ProjectCreationConfig struct {
-	// TotalProjectLimit is the total number of projects that Evergreen is willing to support
+	// TotalProjectLimit is deprecated and no longer enforced. It is only kept so that existing clients that still
+	// send or request it continue to work.
 	TotalProjectLimit int `bson:"total_project_limit" json:"total_project_limit" yaml:"total_project_limit"`
 
 	// RepoProjectLimit is the number of projects that Evergreen will allow each repo to have
 	RepoProjectLimit int `bson:"repo_project_limit" json:"repo_project_limit" yaml:"repo_project_limit"`
 
-	// RepoExceptions is a list of repos that can override the default repo-project limit but not the total project limit
+	// RepoExceptions is a list of repos that can override the default repo-project limit
 	RepoExceptions []OwnerRepo `bson:"repo_exceptions,omitempty" json:"repo_exceptions" yaml:"repo_exceptions"`
 }
 

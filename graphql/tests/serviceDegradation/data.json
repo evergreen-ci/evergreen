@@ -1,63 +1,62 @@
 {
-    "admin": [
-        {
-            "_id": "ui",
-            "default_project": "evergreen",
-            "url": "localhost:9090",
-            "http_listen_addr": ":9090",
-            "secret": "this is a secret",
-            "cors_origins": [
-                "http://localhost:3000"
-            ],
-            "userVoice": "https://uservoice.com",
-            "cache_templates": false,
-            "csrf_key": "",
-            "help_url": "",
-            "login_domain": "",
-            "uiv2_url": ""
-        },
-        {
-            "_id": "global",
-            "disabled_gql_queries": ["DisabledQuery", "AnotherDisabledQuery"],
-            "api": {"url": "localhost:9090"},
-            "configdir": "../config",
-            "domain_name": "localhost",
-            "banner": "This is an important notification",
-            "banner_theme": "important",
-            "commit_queue": {
-                "merge_task_distro": "",
-                "committer_name": "",
-                "committer_email": ""
-            },
-            "credentials": {},
-            "credentials_new": null,
-            "expansions": {},
-            "expansions_new": null,
-            "github_orgs": null,
-            "github_pr_creator_org": "",
-            "keys_new": null,
-            "log_path": "LOCAL",
-            "plugins": {},
-            "plugins_new": null,
-            "pprof_port": "",
-            "spawnhost": {
-                "unexpirable_hosts_per_user": 0,
-                "unexpirable_volumes_per_user": 0,
-                "spawn_hosts_per_user": 0
-            },
-            "splunk": {
-                "url": "",
-                "token": "",
-                "channel": ""
-            },
-            "ssh_key_directory": "",
-            "ssh_key_pairs": []
-        },
-        {
-            "_id": "jira",
-            "default_project": "",
-            "host": "jira.mongodb.org",
-            "personal_access_token": "token"
-        }
-    ]
+  "admin": [
+    {
+      "_id": "ui",
+      "default_project": "evergreen",
+      "url": "localhost:9090",
+      "log_url": "http://localhost:9090",
+      "http_listen_addr": ":9090",
+      "secret": "this is a secret",
+      "cors_origins": ["http://localhost:3000"],
+      "userVoice": "https://uservoice.com",
+      "cache_templates": false,
+      "csrf_key": "",
+      "help_url": "",
+      "login_domain": "",
+      "uiv2_url": ""
+    },
+    {
+      "_id": "global",
+      "disabled_gql_queries": ["DisabledQuery", "AnotherDisabledQuery"],
+      "api": { "url": "localhost:9090" },
+      "configdir": "../config",
+      "domain_name": "localhost",
+      "banner": "This is an important notification",
+      "banner_theme": "important",
+      "commit_queue": {
+        "merge_task_distro": "",
+        "committer_name": "",
+        "committer_email": ""
+      },
+      "credentials": {},
+      "credentials_new": null,
+      "expansions": {},
+      "expansions_new": null,
+      "github_orgs": null,
+      "github_pr_creator_org": "",
+      "keys_new": null,
+      "log_path": "LOCAL",
+      "plugins": {},
+      "plugins_new": null,
+      "pprof_port": "",
+      "spawnhost": {
+        "unexpirable_hosts_per_user": 0,
+        "unexpirable_volumes_per_user": 0,
+        "spawn_hosts_per_user": 0
+      },
+      "splunk": {
+        "url": "",
+        "token": "",
+        "channel": ""
+      },
+      "ssh_key_directory": "",
+      "ssh_key_pairs": []
+    },
+    {
+      "_id": "jira",
+      "default_project": "",
+      "host": "jira.mongodb.org",
+      "personal_access_token": "token"
+    }
+  ]
 }

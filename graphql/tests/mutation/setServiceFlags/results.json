@@ -59,6 +59,7 @@
             { "name": "task_queue_auto_unschedule_disabled", "enabled": false },
             { "name": "live_artifact_credentials_disabled", "enabled": false },
             { "name": "container_isolation_enabled", "enabled": false },
+            { "name": "source_cache_all_projects_enabled", "enabled": false },
             { "name": "event_processing_disabled", "enabled": false },
             { "name": "jira_notifications_disabled", "enabled": false },
             { "name": "slack_notifications_disabled", "enabled": false },

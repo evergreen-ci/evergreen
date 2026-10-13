@@ -833,17 +833,19 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 	// Set up the system stats collector.
 	statsCmds := []string{"uptime", "df -h"}
 
-	// Add ps command if configured in YAML or expansion (for backward compatibility) when default ps logging is not disabled.
-	if psCmd := tc.getPSCommand(); psCmd != "" {
-		statsCmds = append(statsCmds, psCmd)
-	}
-
 	statsCollector := NewSimpleStatsCollector(
 		tc.logger,
 		a.jasper,
 		globals.DefaultStatsInterval,
 		statsCmds...,
 	)
+	// The ps command is author-controlled project configuration or a
+	// patch-supplied expansion, so the collector runs it inside the task's
+	// isolation container when one exists rather than on the host, matching
+	// how task commands are isolated.
+	if psCmd := tc.getPSCommand(); psCmd != "" {
+		statsCollector.setPSCommand(psCmd, tc.taskConfig)
+	}
 	// Running the `df` command on Unix systems displays inode
 	// statistics without the `-i` flag by default. However, we need
 	// to pass the flag explicitly for Linux, hence the conditional.

@@ -271,6 +271,7 @@
       "_id": "ui",
       "default_project": "evergreen",
       "url": "http://localhost:9090",
+      "log_url": "http://localhost:9090",
       "http_listen_addr": ":9090",
       "secret": "this is a secret",
       "cors_origins": [

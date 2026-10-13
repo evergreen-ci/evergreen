@@ -2178,9 +2178,10 @@ func DeactivateDependencies(ctx context.Context, tasks []string, caller string) 
 func (t *Task) SetCompletedBy(ctx context.Context, completedBy string) error {
 	if err := UpdateOne(ctx,
 		bson.M{
-			IdKey:        t.Id,
-			ExecutionKey: t.Execution,
-			StatusKey:    evergreen.TaskUndispatched,
+			IdKey:          t.Id,
+			ExecutionKey:   t.Execution,
+			StatusKey:      evergreen.TaskUndispatched,
+			CompletedByKey: bson.M{"$exists": false},
 		},
 		bson.M{"$set": bson.M{CompletedByKey: completedBy}},
 	); err != nil {
@@ -3794,13 +3795,13 @@ func (t *Task) GetJQL(searchProjects []string) string {
 		if testResult.Status == evergreen.TestFailedStatus {
 			testName := testResult.GetDisplayTestName()
 			fileParts := eitherSlash.Split(testName, -1)
-			jqlParts = append(jqlParts, fmt.Sprintf("text~\"%v\"", util.EscapeJQLReservedChars(fileParts[len(fileParts)-1])))
+			jqlParts = append(jqlParts, fmt.Sprintf("text~\"\\\"%v\\\"\"", util.EscapeJQLReservedChars(fileParts[len(fileParts)-1])))
 		}
 	}
 	if jqlParts != nil {
 		jqlClause = strings.Join(jqlParts, " or ")
 	} else {
-		jqlClause = fmt.Sprintf("text~\"%v\"", util.EscapeJQLReservedChars(t.DisplayName))
+		jqlClause = fmt.Sprintf("text~\"\\\"%v\\\"\"", util.EscapeJQLReservedChars(t.DisplayName))
 	}
 
 	return fmt.Sprintf(jqlBFQuery, strings.Join(searchProjects, ", "), jqlClause)
