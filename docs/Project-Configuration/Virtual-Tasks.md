@@ -64,10 +64,19 @@ The runner pushes results for virtual tasks using the
 The runner can push a task's status, test results, artifacts, and external
 execution metadata.
 
-### Push-Completing a Virtual Task Through the REST API
+### Push-Completing a Virtual Task Programmatically
 
-As an alternative to the `virtual_tasks.complete` command, the push-completion
-API route can be called directly by a user that has task admin permissions.
+As an alternative to the `virtual_tasks.complete` command, uploading test
+results and push-completion can be done programmatically.
+
+To upload a virtual task's test results programmatically, you can send test
+results to the runner's local status server endpoint, which uploads the results
+and returns the test result stats. See [Uploading Virtual Task Test
+Results](Task-Runtime-Behavior#uploading-virtual-task-test-results).
+
+Once any test results have been uploaded for a virtual task, the task can be
+push-completed directly by a user that has task admin permissions by making a
+request to the Evergreen application:
 
 ```txt
 POST /rest/v2/task/{runner_task_id}/virtual_tasks/complete

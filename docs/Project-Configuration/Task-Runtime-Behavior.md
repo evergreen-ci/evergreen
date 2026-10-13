@@ -329,3 +329,61 @@ Example in a command:
     script: |
       curl -d '{"add_failure_metadata_tags": ["failure_tag"]}' -H "Content-Type: application/json" -X POST localhost:2285/failure_metadata_tag
 ```
+
+### Uploading Virtual Task Test Results
+
+The following endpoint lets a task upload test results on behalf of
+[virtual tasks](Virtual-Tasks). This is intended for
+callers that want to upload test results for virtual tasks programmatically instead of using [the
+`virtual_tasks.complete` command](Project-Commands#virtual_taskscomplete)
+
+    POST localhost:2285/virtual_tasks/test_results
+
+The request body is a JSON object with a `tasks` array, one entry per virtual
+task:
+
+| Name         | Type   | Description                                                                                                                                                                                                        |
+| ------------ | ------ | ------------------------------------------------------------------------                                                                                                                                           |
+| task_id      | string | Required. The Evergreen task ID of the virtual task.                                                                                                                                                               |
+| execution    | int    | Required. The execution number the test results apply to.                                                                                                                                                          |
+| test_results | object | Required. The test result files to parse and upload. This has the same schema as the [the `test_results` field of a `virtual_tasks.complete`](Project-Commands#virtual_taskscomplete) completion file. |
+
+The response contains one result per virtual task:
+
+| Name         | Type   | Description                                                                                                                                                     |
+| ------------ | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| task_id      | string | The Evergreen task ID of the virtual task.                                                                                                                      |
+| test_results | object | Set on success. The uploaded test results' metadata: `stats` (`total_count` and `failed_count`), `failed_sample`, and `created_at`.                             |
+| error        | string | Set if the task's test results could not be uploaded.                                                                                                           |
+
+Example in a command:
+
+```yaml
+- command: shell.exec
+  params:
+    shell: bash
+    script: |
+      curl -d '{"tasks": [
+      {
+        "task_id": "my_virtual_task_id",
+        "execution": 0,
+        "test_results": {
+            "files": [{"type": "xunit", "files": ["results/*.xml"]}]
+        }
+      }]}' -H "Content-Type: application/json" -X POST localhost:2285/virtual_tasks/test_results
+```
+
+Some notes to keep in mind:
+
+* All of a virtual task's test results must be provided in a single request; they cannot be appended to any previously
+  uploaded results.
+* Because tasks can have a mixed of successes/errors within a single request, callers should refer to the `error` field
+  to determine if there's any errors uploading test results for individual tasks instead of relying on the status code.
+* Callers are expected to [push-complete](Virtual-Tasks#push-completing-a-virtual-task-through-the-rest-api) each
+  virtual task itself after uploading the test results to set the final status. During push-completion, callers should
+  pass the returned `test_results` response as the push-completion's `test_results`.
+* It's generally best practice to upload test results _before_ push-completing the virtual task. That way, test results
+  are available immediately when the task is in a finished state.
+* To manage load, this route may be throttled if too many test result upload requests are made concurrently while the
+  task is running. The route should ultimately still run and return a result, but it may take longer for the request to
+  process if there's a burst of many simultaneous uploads.
