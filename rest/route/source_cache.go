@@ -38,6 +38,9 @@ func sourceCacheEnabledForTask(ctx context.Context, pRef *model.ProjectRef, t *t
 	return projectEnabled || flags.SourceCacheAllProjectsEnabled, flags
 }
 
+// sourceCacheClaimedAttribute records whether a save claim granted the task the right to produce the artifact.
+const sourceCacheClaimedAttribute = "evergreen.command.git_get_project.source_cache.claimed"
+
 // POST /rest/v2/task/{task_id}/source_cache/credentials
 //
 // Returns source cache credentials scoped server-side to the task's own repo
@@ -159,6 +162,145 @@ func (h *sourceCacheCredentials) Run(ctx context.Context) gimlet.Responder {
 		RestoreKeys: plan.restoreKeys,
 		SaveKey:     plan.saveKey,
 	})
+}
+
+// POST /rest/v2/task/{task_id}/source_cache/claim
+//
+// Atomically claims the right to save the task's source cache artifact; a claim the producer does not renew expires so a dead producer cannot block a key.
+type sourceCacheClaim struct {
+	taskID string
+	req    apimodels.SourceCacheCredentialsRequest
+
+	settings *evergreen.Settings
+}
+
+func makeSourceCacheClaim(settings *evergreen.Settings) gimlet.RouteHandler {
+	return &sourceCacheClaim{settings: settings}
+}
+
+func (h *sourceCacheClaim) Factory() gimlet.RouteHandler {
+	return &sourceCacheClaim{settings: h.settings}
+}
+
+func (h *sourceCacheClaim) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return errors.Wrap(err, "reading request body")
+	}
+	return errors.Wrap(json.Unmarshal(body, &h.req), "reading source cache claim request")
+}
+
+func (h *sourceCacheClaim) Run(ctx context.Context) gimlet.Responder {
+	ctx, span := tracer.Start(ctx, "source-cache-claim")
+	defer span.End()
+
+	claimID, plan, errResp := h.resolveClaimID(ctx)
+	if errResp != nil {
+		return errResp
+	}
+
+	claimed, err := model.ClaimSourceCacheSave(ctx, claimID, h.taskID, evergreen.SourceCacheClaimTTL)
+	trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(sourceCacheClaimedAttribute, claimed))
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "claiming the source cache save for '%s'", claimID))
+	}
+
+	return gimlet.NewJSONResponse(apimodels.SourceCacheClaimResponse{
+		Key:     plan.saveKey.Key,
+		Claimed: claimed,
+	})
+}
+
+// resolveClaimID returns the claim ID and plan for the task; a non-nil responder is the error response.
+func (h *sourceCacheClaim) resolveClaimID(ctx context.Context) (string, *sourceCachePlan, gimlet.Responder) {
+	t, err := task.FindOneId(ctx, h.taskID)
+	if err != nil {
+		return "", nil, gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+	}
+	if t == nil {
+		return "", nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
+	}
+
+	pRef, err := model.GetProjectRefForTask(ctx, h.taskID)
+	if err != nil {
+		return "", nil, gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting project for task '%s'", h.taskID))
+	}
+	if pRef == nil {
+		return "", nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("project '%s' not found for task '%s'", t.Project, h.taskID),
+		})
+	}
+	if enabled, _ := sourceCacheEnabledForTask(ctx, pRef, t); !enabled {
+		return "", nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusConflict,
+			Message:    fmt.Sprintf("source cache is disabled for project '%s'", t.Project),
+		})
+	}
+
+	bucket := h.settings.Buckets.SourceCacheBucket
+	if bucket.Name == "" {
+		return "", nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusConflict,
+			Message:    fmt.Sprintf("no source cache bucket is configured for project '%s'", t.Project),
+		})
+	}
+	if pRef.Owner == "" || pRef.Repo == "" {
+		return "", nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusConflict,
+			Message:    fmt.Sprintf("project '%s' has no owner and repo to scope source cache claims to", t.Project),
+		})
+	}
+	if err := validateSourceCacheRepoComponents(pRef.Owner, pRef.Repo); err != nil {
+		return "", nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusConflict,
+			Message:    fmt.Sprintf("project '%s' has an owner or repo that cannot key a source cache claim: %s", t.Project, err),
+		})
+	}
+
+	plan, err := buildSourceCachePlan(ctx, t, pRef, h.req)
+	if err != nil {
+		return "", nil, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "computing the source cache plan"))
+	}
+	return evergreen.SourceCacheClaimID(bucket.Name, plan.saveKey.Key), plan, nil
+}
+
+// DELETE /rest/v2/task/{task_id}/source_cache/claim
+//
+// Releases a claim the task holds so the next producer can save immediately.
+type sourceCacheClaimRelease struct {
+	sourceCacheClaim
+}
+
+func makeSourceCacheClaimRelease(settings *evergreen.Settings) gimlet.RouteHandler {
+	return &sourceCacheClaimRelease{sourceCacheClaim{settings: settings}}
+}
+
+func (h *sourceCacheClaimRelease) Factory() gimlet.RouteHandler {
+	return &sourceCacheClaimRelease{sourceCacheClaim{settings: h.settings}}
+}
+
+func (h *sourceCacheClaimRelease) Run(ctx context.Context) gimlet.Responder {
+	ctx, span := tracer.Start(ctx, "source-cache-claim-release")
+	defer span.End()
+
+	claimID, _, errResp := h.resolveClaimID(ctx)
+	if errResp != nil {
+		return errResp
+	}
+
+	released, err := model.ReleaseSourceCacheSave(ctx, claimID, h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "releasing the source cache save for '%s'", claimID))
+	}
+
+	return gimlet.NewJSONResponse(apimodels.SourceCacheReleaseResponse{Released: released})
 }
 
 // sourceCacheRepoComponentRegexp matches the characters safe to interpolate into an IAM resource ARN.

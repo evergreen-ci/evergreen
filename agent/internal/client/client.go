@@ -1112,6 +1112,42 @@ func (c *baseCommunicator) SourceCacheCredentials(ctx context.Context, td TaskDa
 	return &creds, nil
 }
 
+func (c *baseCommunicator) ClaimSourceCacheSave(ctx context.Context, td TaskData, request apimodels.SourceCacheCredentialsRequest) (*apimodels.SourceCacheClaimResponse, error) {
+	var claim apimodels.SourceCacheClaimResponse
+	if err := c.sourceCacheClaimRequest(ctx, td, http.MethodPost, "claiming", request, &claim); err != nil {
+		return nil, err
+	}
+	return &claim, nil
+}
+
+func (c *baseCommunicator) ReleaseSourceCacheSave(ctx context.Context, td TaskData, request apimodels.SourceCacheCredentialsRequest) error {
+	return c.sourceCacheClaimRequest(ctx, td, http.MethodDelete, "releasing", request, nil)
+}
+
+// sourceCacheClaimRequest runs the claim or release request for the save right; out may be nil when only the status code matters.
+func (c *baseCommunicator) sourceCacheClaimRequest(ctx context.Context, td TaskData, method, action string, request apimodels.SourceCacheCredentialsRequest, out any) error {
+	info := requestInfo{
+		method:   method,
+		taskData: &td,
+	}
+	info.setTaskPathSuffix("source_cache/claim")
+	resp, err := c.retryRequest(ctx, info, &request)
+	if err != nil {
+		return util.RespError(resp, errors.Wrapf(err, "%s source cache save", action).Error())
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return util.RespError(resp, action+" source cache save")
+	}
+	if out == nil {
+		return nil
+	}
+	if err := utility.ReadJSON(resp.Body, out); err != nil {
+		return errors.Wrapf(err, "reading %s source cache save response", action)
+	}
+	return nil
+}
+
 func (c *baseCommunicator) S3Credentials(ctx context.Context, td TaskData, bucket string) (*apimodels.AWSCredentials, error) {
 	info := requestInfo{
 		method:   http.MethodPost,
