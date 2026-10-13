@@ -1268,8 +1268,23 @@ func TestDeleteProject(t *testing.T) {
 		evergreen.ScopeCollection,
 		user.Collection,
 	))
+	// Attaching to an existing repo ref requires the repo admin role, which a
+	// user attaching to their own repo would hold.
+	rm := testutil.NewEnvironment(ctx, t).RoleManager()
+	assert.NoError(t, rm.AddScope(ctx, gimlet.Scope{
+		ID:        serviceModel.GetRepoAdminScope("repo_ref"),
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"repo_ref"},
+	}))
+	assert.NoError(t, rm.UpdateRole(ctx, gimlet.Role{
+		ID:          serviceModel.GetRepoAdminRole("repo_ref"),
+		Scope:       serviceModel.GetRepoAdminScope("repo_ref"),
+		Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value},
+	}))
+
 	u := user.DBUser{
-		Id: "me",
+		Id:          "me",
+		SystemRoles: []string{serviceModel.GetRepoAdminRole("repo_ref")},
 	}
 	require.NoError(t, u.Insert(t.Context()))
 
