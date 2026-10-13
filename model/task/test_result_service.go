@@ -17,8 +17,6 @@ import (
 )
 
 const (
-	testResultsTaskCountOtelAttribute     = "evergreen.test_results.task_count"
-	testResultsResultCountOtelAttribute   = "evergreen.test_results.result_count"
 	testResultsDownloadCountOtelAttribute = "evergreen.test_results.download_count"
 	testResultsTaskIDOtelAttribute        = "evergreen.test_results.task_id"
 	testResultsExecutionOtelAttribute     = "evergreen.test_results.execution"
@@ -81,10 +79,6 @@ func (s *testResultService) GetTaskTestResultsStats(ctx context.Context, tasks [
 // Get fetches the unmerged test results metadata for the given tasks from the cedar DB
 // and downloads the associated test results from s3.
 func (s *testResultService) Get(ctx context.Context, tasks []Task, getOpts GetTaskTestResultsOptions) ([]testresult.TaskTestResults, error) {
-	ctx, span := tracer.Start(ctx, "test-result-service-get")
-	defer span.End()
-	span.SetAttributes(attribute.Int(testResultsTaskCountOtelAttribute, len(tasks)))
-
 	var filter bson.M
 	if len(tasks) == 1 {
 		filter = ByTaskIDAndExecution(tasks[0].Id, tasks[0].Execution)
@@ -118,18 +112,13 @@ func (s *testResultService) Get(ctx context.Context, tasks []Task, getOpts GetTa
 	}
 
 	var allDBTaskResults []testresult.DbTaskTestResults
-	findCtx, findSpan := tracer.Start(ctx, "test-result-service-find-metadata")
-	cur, err := s.env.CedarDB().Collection(testresult.Collection).Find(findCtx, filter, opts)
+	cur, err := s.env.CedarDB().Collection(testresult.Collection).Find(ctx, filter, opts)
 	if err != nil {
-		findSpan.End()
 		return nil, errors.Wrap(err, "finding DB test results")
 	}
-	if err = cur.All(findCtx, &allDBTaskResults); err != nil {
-		findSpan.End()
+	if err = cur.All(ctx, &allDBTaskResults); err != nil {
 		return nil, errors.Wrap(err, "reading DB test results")
 	}
-	findSpan.SetAttributes(attribute.Int(testResultsResultCountOtelAttribute, len(allDBTaskResults)))
-	findSpan.End()
 	allTaskResults := make([]testresult.TaskTestResults, len(allDBTaskResults))
 
 	// The fields option will have a non-zero length if this request is coming from GetTaskTestResultsStats,
