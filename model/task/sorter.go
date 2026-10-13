@@ -57,7 +57,7 @@ func (t Tasks) insertUnordered(ctx context.Context, collection taskInserter) err
 	var combinedErrors mongo.BulkWriteException
 	for start := 0; start < len(t); start += taskInsertBatchSize {
 		end := min(start+taskInsertBatchSize, len(t))
-		// Bound BSON and tracing buffers while retaining tasks for dependency counts.
+		// Insert smaller batches to reduce memory spikes when preparing MongoDB writes and Honeycomb traces.
 		_, err := collection.InsertMany(ctx, t[start:end].getPayload(), options.InsertMany().SetOrdered(false))
 		if err == nil {
 			continue

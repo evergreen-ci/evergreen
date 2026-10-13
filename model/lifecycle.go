@@ -480,12 +480,12 @@ func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, ver
 }
 
 func CreateTasksCache(tasks []task.Task) ([]build.TaskCache, error) {
-	tasks, err := sortTasks(tasks)
+	sortedTasks, err := sortTasks(tasks)
 	if err != nil {
 		return nil, errors.Wrap(err, "sorting tasks for cache")
 	}
-	cache := make([]build.TaskCache, 0, len(tasks))
-	for _, task := range tasks {
+	cache := make([]build.TaskCache, 0, len(sortedTasks))
+	for _, task := range sortedTasks {
 		if task.DisplayTask == nil {
 			cache = append(cache, build.TaskCache{Id: task.Id})
 		}
@@ -1392,7 +1392,8 @@ func createDisplayTask(id string, creationInfo TaskCreationInfo, displayName str
 // sortTasks topologically sorts the tasks by dependency, grouping tasks with common dependencies,
 // and alphabetically sorting within groups.
 // All tasks with cross-variant dependencies are at the far right.
-func sortTasks(tasks []task.Task) ([]task.Task, error) {
+// The sorted tasks reference the input slice without modifying its order.
+func sortTasks(tasks []task.Task) ([]*task.Task, error) {
 	// Separate out tasks with cross-variant dependencies
 	taskPresent := make(map[string]bool)
 	for i := range tasks {
@@ -1442,12 +1443,7 @@ func sortTasks(tasks []task.Task) ([]task.Task, error) {
 	if err != nil {
 		return nil, err
 	}
-	sortedTasks = append(sortedTasks, crossVariantSortedTasks...)
-	result := make([]task.Task, len(sortedTasks))
-	for i, task := range sortedTasks {
-		result[i] = *task
-	}
-	return result, nil
+	return append(sortedTasks, crossVariantSortedTasks...), nil
 }
 
 // addDepChildren recursively adds task and all tasks depending on it to tasks
