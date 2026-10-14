@@ -265,7 +265,8 @@ func (m *mockManager) getOrDefaultInstanceStatus(ctx context.Context, hostID str
 }
 
 // GetRunningInstanceData returns the instance ID and cloud provider data of the
-// running mock instance for the host.
+// running mock instance for the host. Unlike EC2, intent hosts are looked up by
+// host ID rather than by tag.
 func (m *mockManager) GetRunningInstanceData(ctx context.Context, h *host.Host) (string, *host.CloudProviderData, error) {
 	m.mutex.RLock()
 	instance, ok := m.Instances[h.Id]

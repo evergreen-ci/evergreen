@@ -255,6 +255,7 @@ func TestFleet(t *testing.T) {
 		},
 		"GetRunningInstanceDataLooksUpIntentHostByRunningTaggedInstance": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
 			h.Id = "evg-12345"
+			h.Distro.Id = "distro_id"
 			client.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{
 				Reservations: []types.Reservation{{Instances: []types.Instance{runningInstance("i-12345")}}},
 			}
@@ -267,15 +268,37 @@ func TestFleet(t *testing.T) {
 
 			require.NotNil(t, client.DescribeInstancesInput)
 			assert.Empty(t, client.DescribeInstancesInput.InstanceIds)
-			require.Len(t, client.DescribeInstancesInput.Filters, 2)
-			assert.Equal(t, "tag:"+evergreen.TagName, utility.FromStringPtr(client.DescribeInstancesInput.Filters[0].Name))
-			assert.Equal(t, []string{h.Id}, client.DescribeInstancesInput.Filters[0].Values)
-			assert.Equal(t, "instance-state-name", utility.FromStringPtr(client.DescribeInstancesInput.Filters[1].Name))
-			assert.Equal(t, []string{string(types.InstanceStateNameRunning)}, client.DescribeInstancesInput.Filters[1].Values)
+			filters := map[string][]string{}
+			for _, f := range client.DescribeInstancesInput.Filters {
+				filters[utility.FromStringPtr(f.Name)] = f.Values
+			}
+			assert.Equal(t, map[string][]string{
+				"tag:" + evergreen.TagName:   {h.Id},
+				"tag:" + evergreen.TagDistro: {h.Distro.Id},
+				"instance-state-name":        {string(types.InstanceStateNameRunning)},
+			}, filters)
 		},
 		"GetRunningInstanceDataErrorsForNonRunningInstance": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
 			instance := runningInstance(h.Id)
 			instance.State = &types.InstanceState{Name: types.InstanceStateNameStopped}
+			client.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{
+				Reservations: []types.Reservation{{Instances: []types.Instance{instance}}},
+			}
+
+			_, data, err := m.GetRunningInstanceData(ctx, h)
+			assert.Error(t, err)
+			assert.Nil(t, data)
+		},
+		"GetRunningInstanceDataErrorsWhenDescribeInstancesFails": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
+			client.DescribeInstancesError = errors.New("AWS API error")
+
+			_, data, err := m.GetRunningInstanceData(ctx, h)
+			assert.Error(t, err)
+			assert.Nil(t, data)
+		},
+		"GetRunningInstanceDataErrorsForInstanceMissingRequiredData": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
+			instance := runningInstance(h.Id)
+			instance.PublicDnsName = nil
 			client.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{
 				Reservations: []types.Reservation{{Instances: []types.Instance{instance}}},
 			}

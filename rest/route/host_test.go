@@ -1182,6 +1182,31 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			assert.Equal(t, evergreen.HostStarting, realHost.Status, "intent host should be converted to real host when it's up")
 			assert.False(t, realHost.NeedsNewAgentMonitor)
 			assert.Equal(t, providerData.PublicDNS, realHost.Host)
+			assert.Equal(t, providerData.Zone, realHost.Zone)
+			assert.Equal(t, providerData.PublicIPv4, realHost.PublicIPv4)
+			assert.Equal(t, providerData.PrivateIPv4, realHost.IPv4)
+			assert.Equal(t, providerData.IPv6, realHost.IP)
+		},
+		"ConvertsIntentHostWithoutClaimedInstanceIDUsingProviderInstanceID": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, mockCloud cloud.MockProvider) {
+			require.NoError(t, h.Insert(ctx))
+			instanceID := generateFakeEC2InstanceID()
+			mockCloud.Set(h.Id, cloud.MockInstance{Status: cloud.StatusRunning, InstanceID: instanceID, CloudProviderData: providerData})
+
+			rh.params = host.HostMetadataOptions{}
+			rh.hostID = h.Id
+			resp := rh.Run(ctx)
+
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			dbIntentHost, err := host.FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			assert.Zero(t, dbIntentHost)
+
+			realHost, err := host.FindOneId(ctx, instanceID)
+			require.NoError(t, err)
+			require.NotZero(t, realHost)
+			assert.Equal(t, evergreen.HostStarting, realHost.Status)
 		},
 		"ConvertsFailedIntentHostToDecommissionedRealHostUsingProviderInstanceID": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, mockCloud cloud.MockProvider) {
 			h.Status = evergreen.HostBuildingFailed
@@ -1229,7 +1254,7 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			resp := rh.Run(ctx)
 
 			require.NotZero(t, resp)
-			assert.Equal(t, http.StatusInternalServerError, resp.Status())
+			assert.Equal(t, http.StatusBadRequest, resp.Status())
 
 			dbIntentHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
@@ -1321,6 +1346,37 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			assert.Empty(t, dbHost.Host)
 			assert.Empty(t, dbHost.Volumes)
 		},
+		"UnprovisionedTaskHostShouldNotStoreClaimedMetadataPointingAtAnotherHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, mockCloud cloud.MockProvider) {
+			victim := host.Host{Id: generateFakeEC2InstanceID(), Host: "victim-hostname", Status: evergreen.HostRunning}
+			require.NoError(t, victim.Insert(ctx))
+
+			instanceID := generateFakeEC2InstanceID()
+			h.Id = instanceID
+			h.Status = evergreen.HostStarting
+			h.StartedBy = evergreen.User
+			require.NoError(t, h.Insert(ctx))
+			mockCloud.Set(h.Id, cloud.MockInstance{Status: cloud.StatusRunning, CloudProviderData: providerData})
+
+			claimed := forgedData
+			claimed.PublicDNS = victim.Host
+			rh.params = host.HostMetadataOptions{
+				CloudProviderData: claimed,
+				EC2InstanceID:     instanceID,
+			}
+			rh.hostID = instanceID
+
+			resp := rh.Run(ctx)
+
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			dbHost, err := host.FindOneId(ctx, instanceID)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, providerData.PublicDNS, dbHost.Host)
+			assert.NotEqual(t, victim.Host, dbHost.Host)
+			assert.Equal(t, providerData.Volumes, dbHost.Volumes)
+		},
 		"SpawnHostWithClaimedMetadataShouldNotChangeHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, mockCloud cloud.MockProvider) {
 			instanceID := generateFakeEC2InstanceID()
 			h.Id = instanceID
@@ -1353,7 +1409,7 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			assert.Empty(t, dbHost.IP)
 			assert.Empty(t, dbHost.Volumes)
 		},
-		"DoesNotUnsetExistingHostnameIfHostnameNotProvided": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, mockCloud cloud.MockProvider) {
+		"NonIntentHostWithoutClaimedMetadataShouldRetainHostname": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, mockCloud cloud.MockProvider) {
 			instanceID := generateFakeEC2InstanceID()
 			h.Id = instanceID
 			h.Host = "hostname"

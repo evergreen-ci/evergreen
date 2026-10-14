@@ -664,11 +664,7 @@ func (c *awsClientImpl) GetInstanceInfo(ctx context.Context, id string) (*types.
 	if host.IsIntentHostId(id) {
 		// The host's cloud instance ID was never recorded, so look up the
 		// instance using the name tag, which is always set to the intent host ID before launch.
-		input = &ec2.DescribeInstancesInput{
-			Filters: []types.Filter{
-				{Name: aws.String("tag:" + evergreen.TagName), Values: []string{id}},
-			},
-		}
+		input = &ec2.DescribeInstancesInput{Filters: intentHostInstanceFilters(id)}
 	} else {
 		input = &ec2.DescribeInstancesInput{InstanceIds: []string{id}}
 	}

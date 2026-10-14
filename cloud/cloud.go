@@ -125,9 +125,14 @@ type InstanceDataManager interface {
 	GetRunningInstanceData(ctx context.Context, h *host.Host) (string, *host.CloudProviderData, error)
 }
 
-// IsInstanceDataProvider returns whether the cloud provider's manager is an
+var (
+	_ InstanceDataManager = &ec2FleetManager{}
+	_ InstanceDataManager = &mockManager{}
+)
+
+// SupportsInstanceData returns whether the cloud provider's manager is an
 // InstanceDataManager.
-func IsInstanceDataProvider(provider string) bool {
+func SupportsInstanceData(provider string) bool {
 	return evergreen.IsEc2Provider(provider) || provider == evergreen.ProviderNameMock
 }
 

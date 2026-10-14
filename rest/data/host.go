@@ -350,11 +350,18 @@ func makeSpawnOptions(options *restmodel.HostRequestOptions, user *user.DBUser) 
 	return &spawnOptions, nil
 }
 
-// PostHostIsUp indicates to the app server that a host is up. The host's cloud
-// instance ID and cloud provider data are looked up from the cloud provider
-// rather than taken from params, because the host is not trusted to report
-// its own network identity.
-func PostHostIsUp(ctx context.Context, env evergreen.Environment, hostID string, params host.HostMetadataOptions) (*restmodel.APIHost, error) {
+// errInstanceIDMismatch indicates that an intent host reported an instance ID
+// that does not match the one from its cloud provider.
+var errInstanceIDMismatch = errors.New("reported instance ID does not match cloud provider instance ID")
+
+// cloudProviderLookupTimeout bounds how long the host is up request waits on
+// the cloud provider.
+const cloudProviderLookupTimeout = 30 * time.Second
+
+// PostHostIsUp indicates to the app server that a host is up. The host's
+// instance ID and cloud provider data always come from the cloud provider;
+// claimedInstanceID is only used to detect a mismatch.
+func PostHostIsUp(ctx context.Context, env evergreen.Environment, hostID, claimedInstanceID string) (*restmodel.APIHost, error) {
 	h, err := host.FindOneByIdOrTag(ctx, hostID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
@@ -369,9 +376,13 @@ func PostHostIsUp(ctx context.Context, env evergreen.Environment, hostID string,
 		}
 	}
 
-	if err := updateHostFromCloudProvider(ctx, env, h, params.EC2InstanceID); err != nil {
+	if err := updateHostFromCloudProvider(ctx, env, h, claimedInstanceID); err != nil {
+		statusCode := http.StatusInternalServerError
+		if errors.Is(err, errInstanceIDMismatch) {
+			statusCode = http.StatusBadRequest
+		}
 		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
+			StatusCode: statusCode,
 			Message:    errors.Wrap(err, "updating host from cloud provider").Error(),
 		}
 	}
@@ -395,24 +406,23 @@ func PostHostIsUp(ctx context.Context, env evergreen.Environment, hostID string,
 }
 
 // updateHostFromCloudProvider fixes intent hosts that are already running and
-// caches cloud provider data for task hosts that are not provisioned yet. The
-// cloud provider is only queried if one of those is needed.
+// caches cloud provider data for task hosts that are not provisioned yet.
 func updateHostFromCloudProvider(ctx context.Context, env evergreen.Environment, h *host.Host, claimedInstanceID string) error {
-	if !cloud.IsInstanceDataProvider(h.Distro.Provider) {
+	if !cloud.SupportsInstanceData(h.Distro.Provider) {
 		return nil
 	}
 
 	isIntentHost := host.IsIntentHostId(h.Id)
-	// Caching the cloud provider data here is an optimization that lets task
-	// hosts skip waiting for the cloud host ready job to poll for it. The host
-	// only reports an instance ID when it first starts provisioning, so
-	// this avoids querying the cloud provider on every agent monitor check.
+	// Agent monitor health checks don't send an instance ID, so this skips the
+	// provider call for them.
 	needsCloudProviderData := h.StartedBy == evergreen.User && !h.Provisioned && claimedInstanceID != ""
 	if !isIntentHost && !needsCloudProviderData {
 		return nil
 	}
 
-	instanceID, data, err := getRunningInstanceData(ctx, env, h)
+	lookupCtx, cancel := context.WithTimeout(ctx, cloudProviderLookupTimeout)
+	defer cancel()
+	instanceID, data, err := getRunningInstanceData(lookupCtx, env, h)
 	if err != nil {
 		if isIntentHost {
 			return errors.Wrap(err, "getting running instance data for intent host")
@@ -427,12 +437,14 @@ func updateHostFromCloudProvider(ctx context.Context, env evergreen.Environment,
 		return nil
 	}
 	if isIntentHost {
+		// This replaces h.Id with the real instance ID, so the metadata below
+		// is written to the real host.
 		if err := fixProvisioningIntentHost(ctx, env, h, instanceID, claimedInstanceID); err != nil {
 			return errors.Wrap(err, "fixing intent host")
 		}
 	}
 
-	if needsCloudProviderData {
+	if needsCloudProviderData && h.Status != evergreen.HostDecommissioned {
 		return errors.Wrap(h.SetEC2Metadata(ctx, host.HostMetadataOptions{CloudProviderData: *data}), "setting host metadata")
 	}
 
@@ -460,8 +472,7 @@ func getRunningInstanceData(ctx context.Context, env evergreen.Environment, h *h
 // fixProvisioningIntentHost fixes a special case in which Evergreen believes a
 // host is still an intent host but the host is already running and trying to
 // provision in preparation to run tasks. instanceID must come from the cloud
-// provider; claimedInstanceID is the instance ID reported by the host itself,
-// which is only used to detect a mismatch.
+// provider; claimedInstanceID is only used to detect a mismatch.
 func fixProvisioningIntentHost(ctx context.Context, env evergreen.Environment, h *host.Host, instanceID, claimedInstanceID string) error {
 	if claimedInstanceID != "" && claimedInstanceID != instanceID {
 		grip.Warning(ctx, message.Fields{
@@ -472,7 +483,7 @@ func fixProvisioningIntentHost(ctx context.Context, env evergreen.Environment, h
 			"host_status":         h.Status,
 			"distro":              h.Distro.Id,
 		})
-		return errors.Errorf("intent host '%s' reported instance ID '%s', but its cloud provider instance ID is '%s'", h.Id, claimedInstanceID, instanceID)
+		return errInstanceIDMismatch
 	}
 
 	switch h.Status {
