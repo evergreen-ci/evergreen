@@ -79,6 +79,8 @@ func TestSSRFDialControl(t *testing.T) {
 		{"IPv6LoopbackBlocked", "[::1]:80", true},
 		{"IPv6MetadataBlocked", "[fd00:ec2::254]:80", true},
 		{"PrivateIPv4Blocked", "10.0.0.1:80", true},
+		{"IPv4MappedPrivateBlocked", "[::ffff:10.0.0.1]:80", true},
+		{"NAT64EmbeddedPrivateBlocked", "[64:ff9b::a00:1]:80", true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

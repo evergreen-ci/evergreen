@@ -273,13 +273,3 @@ func webhookDialContext(resolver webhookResolver) func(context.Context, string, 
 func validateWebhookRedirect(req *http.Request, _ []*http.Request) error {
 	return ValidateWebhookURL(req.URL.String())
 }
-
-// carrierGradeNATPrefix is not covered by netip.Addr.IsPrivate but is commonly used for internal networks.
-var carrierGradeNATPrefix = netip.MustParsePrefix("100.64.0.0/10")
-
-// IsBlockedInternalIP reports whether an address is internal and must not be reached by requests to
-// user-controlled URLs. Validation and dialing should both use it so they share the same policy.
-func IsBlockedInternalIP(ip netip.Addr) bool {
-	ip = ip.Unmap()
-	return !ip.IsValid() || ip.IsUnspecified() || ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsPrivate() || ip.IsMulticast() || carrierGradeNATPrefix.Contains(ip)
-}

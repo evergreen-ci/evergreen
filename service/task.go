@@ -313,7 +313,7 @@ func validateArtifactURL(ctx context.Context, raw string) error {
 	}
 
 	// Block literal IP addresses entirely
-	if ip := net.ParseIP(host); ip != nil {
+	if _, err := netip.ParseAddr(host); err == nil {
 		return errors.New("literal IP hosts are not allowed")
 	}
 
@@ -353,9 +353,9 @@ const maxArtifactRedirects = 10
 
 var artifactHTTPClient = utility.WithOTelTracing(&http.Client{
 	Transport: &http.Transport{
-		// http.Get uses http.DefaultTransport under the hood, which includes
-		// http.ProxyFromEnvironment, so adding here for parity.
-		Proxy: http.ProxyFromEnvironment,
+		// Proxy must be nil because it would dial the artifact host
+		// itself, bypassing ssrfDialControl.
+		Proxy: nil,
 		DialContext: (&net.Dialer{
 			ControlContext: ssrfDialControl,
 		}).DialContext,
