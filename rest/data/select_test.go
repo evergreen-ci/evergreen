@@ -336,6 +336,9 @@ func TestSetTestQuarantined(t *testing.T) {
 		TaskName              string   `json:"task_name"`
 		TestNames             []string `json:"test_names"`
 		IsManuallyQuarantined bool     `json:"is_manually_quarantined"`
+		TaskID                string   `json:"task_id"`
+		User                  string   `json:"user"`
+		Comment               string   `json:"comment"`
 	}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		capturedPath = r.URL.Path
@@ -346,13 +349,16 @@ func TestSetTestQuarantined(t *testing.T) {
 	t.Cleanup(srv.Close)
 	setTSSURLForTest(t, srv.URL)
 
-	require.NoError(t, SetTestQuarantined(t.Context(), "my/project", "ubuntu/2204", "my/task", "test/name", true))
+	require.NoError(t, SetTestQuarantined(t.Context(), "my/project", "ubuntu/2204", "my/task", "test/name", "task_id", "user", "comment", true))
 	assert.Equal(t, "/api/test_selection/transition_tests/", capturedPath)
 	assert.Equal(t, "my/project", capturedBody.ProjectID)
 	assert.Equal(t, "ubuntu/2204", capturedBody.BuildVariantName)
 	assert.Equal(t, "my/task", capturedBody.TaskName)
 	assert.Equal(t, []string{"test/name"}, capturedBody.TestNames)
 	assert.True(t, capturedBody.IsManuallyQuarantined)
+	assert.Equal(t, "task_id", capturedBody.TaskID)
+	assert.Equal(t, "user", capturedBody.User)
+	assert.Equal(t, "comment", capturedBody.Comment)
 }
 
 func TestSetTaskQuarantined(t *testing.T) {

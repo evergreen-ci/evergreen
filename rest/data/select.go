@@ -282,7 +282,7 @@ func findQuarantinedSkippedTests(ctx context.Context, req model.SelectTestsReque
 
 // SetTestQuarantined marks the test as quarantined or unquarantined in the test
 // selection service.
-func SetTestQuarantined(ctx context.Context, projectID, bvName, taskName, testName string, isManuallyQuarantined bool) error {
+func SetTestQuarantined(ctx context.Context, projectID, bvName, taskName, testName, taskID, username, comment string, isManuallyQuarantined bool) error {
 	ctx, cancel := context.WithTimeout(ctx, testSelectionWriteTimeout)
 	defer cancel()
 	c := newTestSelectionClient(testSelectionHTTPClient)
@@ -295,6 +295,9 @@ func SetTestQuarantined(ctx context.Context, projectID, bvName, taskName, testNa
 		[]string{testName},
 		isManuallyQuarantined,
 	)
+	reqBody.SetTaskId(taskID)
+	reqBody.SetUser(username)
+	reqBody.SetComment(comment)
 	_, resp, err := c.StateTransitionAPI.MarkTestsAsManuallyQuarantinedDataInBodyApiTestSelectionTransitionTestsPost(ctx).
 		BodyMarkTestsAsManuallyQuarantinedDataInBodyApiTestSelectionTransitionTestsPost(*reqBody).
 		Execute()
@@ -309,6 +312,7 @@ func SetTestQuarantined(ctx context.Context, projectID, bvName, taskName, testNa
 			"build_variant": bvName,
 			"task_name":     taskName,
 			"test_name":     testName,
+			"task_id":       taskID,
 		})
 	}
 	return wrapTSSError(err)

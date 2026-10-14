@@ -87850,7 +87850,7 @@ func (ec *executionContext) unmarshalInputQuarantineTestInput(ctx context.Contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"taskId", "testName"}
+	fieldsInOrder := [...]string{"taskId", "testName", "comment"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -87896,6 +87896,13 @@ func (ec *executionContext) unmarshalInputQuarantineTestInput(ctx context.Contex
 				return it, err
 			}
 			it.TestName = data
+		case "comment":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("comment"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Comment = data
 		}
 	}
 
