@@ -9,21 +9,21 @@ import (
 // APIVariantQuarantineStatus represents the manual-quarantine status for every
 // known test of every known task in a build variant.
 type APIVariantQuarantineStatus struct {
-	ProjectIdentifier *string                  `json:"project_identifier"`
-	BuildVariant      *string                  `json:"build_variant"`
-	Tasks             []APITaskQuarantineEntry `json:"tasks"`
+	ProjectIdentifier *string                  `json:"project_identifier" extensions:"!x-nullable"`
+	BuildVariant      *string                  `json:"build_variant" extensions:"!x-nullable"`
+	Tasks             []APITaskQuarantineEntry `json:"tasks" extensions:"!x-nullable"`
 }
 
 // APITaskQuarantineEntry is the per-task quarantine view within a build
 // variant.
 type APITaskQuarantineEntry struct {
-	TaskName *string                  `json:"task_name"`
-	Tests    []APITestQuarantineEntry `json:"tests"`
+	TaskName *string                  `json:"task_name" extensions:"!x-nullable"`
+	Tests    []APITestQuarantineEntry `json:"tests" extensions:"!x-nullable"`
 }
 
 // APITestQuarantineEntry is the per-test quarantine view within a task.
 type APITestQuarantineEntry struct {
-	TestName              *string `json:"test_name"`
+	TestName              *string `json:"test_name" extensions:"!x-nullable"`
 	IsManuallyQuarantined bool    `json:"is_manually_quarantined"`
 }
 

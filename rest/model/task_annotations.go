@@ -17,11 +17,11 @@ import (
 )
 
 type APITaskAnnotation struct {
-	Id *string `bson:"_id" json:"id"`
+	Id *string `bson:"_id" json:"id" extensions:"!x-nullable"`
 	// Identifier of the task that this annotation is for
-	TaskId *string `bson:"task_id" json:"task_id"`
+	TaskId *string `bson:"task_id" json:"task_id" extensions:"!x-nullable"`
 	// The number of the execution of the task that the annotation is for
-	TaskExecution *int `bson:"task_execution" json:"task_execution"`
+	TaskExecution *int `bson:"task_execution" json:"task_execution" extensions:"!x-nullable"`
 	// Structured data about the task. Since this is user-given json data, the structure can differ between annotations
 	Metadata *birch.Document `bson:"metadata,omitempty" json:"metadata,omitempty" swaggertype:"object"`
 	// Comment about the task failure
@@ -51,7 +51,7 @@ type APISource struct {
 }
 type APIIssueLink struct {
 	// The url of the ticket
-	URL *string `bson:"url" json:"url"`
+	URL *string `bson:"url" json:"url" extensions:"!x-nullable"`
 	// Text to be displayed
 	IssueKey *string `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
 	// The source of the edit
@@ -61,9 +61,9 @@ type APIIssueLink struct {
 }
 type APIMetadataLink struct {
 	// The url of the link
-	URL *string `bson:"url" json:"url"`
+	URL *string `bson:"url" json:"url" extensions:"!x-nullable"`
 	// Text to be displayed
-	Text *string `bson:"text" json:"text"`
+	Text *string `bson:"text" json:"text" extensions:"!x-nullable"`
 	// The source of the edit
 	Source *APISource `bson:"source,omitempty" json:"source,omitempty"`
 }

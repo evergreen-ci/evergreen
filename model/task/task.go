@@ -887,7 +887,7 @@ func (t *Task) FindTaskOnBaseCommit(ctx context.Context) (*Task, error) {
 }
 
 func (t *Task) FindTaskOnPreviousCommit(ctx context.Context) (*Task, error) {
-	return FindOne(ctx, db.Query(ByPreviousCommit(t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester, t.RevisionOrderNumber)).Sort([]string{"-" + RevisionOrderNumberKey}))
+	return FindOne(ctx, db.Query(ByPreviousCommit(t.BuildVariant, t.DisplayName, t.Project, t.RevisionOrderNumber)).Sort([]string{"-" + RevisionOrderNumberKey}))
 }
 
 // Find the previously completed task for the same project +
@@ -3809,13 +3809,13 @@ func (t *Task) GetJQL(searchProjects []string) string {
 		if testResult.Status == evergreen.TestFailedStatus {
 			testName := testResult.GetDisplayTestName()
 			fileParts := eitherSlash.Split(testName, -1)
-			jqlParts = append(jqlParts, fmt.Sprintf("text~\"%v\"", util.EscapeJQLReservedChars(fileParts[len(fileParts)-1])))
+			jqlParts = append(jqlParts, fmt.Sprintf("text~\"\\\"%v\\\"\"", util.EscapeJQLReservedChars(fileParts[len(fileParts)-1])))
 		}
 	}
 	if jqlParts != nil {
 		jqlClause = strings.Join(jqlParts, " or ")
 	} else {
-		jqlClause = fmt.Sprintf("text~\"%v\"", util.EscapeJQLReservedChars(t.DisplayName))
+		jqlClause = fmt.Sprintf("text~\"\\\"%v\\\"\"", util.EscapeJQLReservedChars(t.DisplayName))
 	}
 
 	return fmt.Sprintf(jqlBFQuery, strings.Join(searchProjects, ", "), jqlClause)

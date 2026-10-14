@@ -499,7 +499,7 @@ type swaggerPermissionSummary struct {
 	//   values in the keys are objects representing the permissions that the user
 	//   has for that resource, identical to the format of the permissions field in
 	//   the POST /users/\<user_id\>/permissions API.
-	Permissions swaggerPermissionsForResources `json:"permissions"`
+	Permissions swaggerPermissionsForResources `json:"permissions" extensions:"x-nullable"`
 }
 
 //lint:ignore U1000 Swagger-only type, included because this API route returns an external type
@@ -994,7 +994,7 @@ func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
 }
 
 type UsersWithRoleResponse struct {
-	Users []*string `json:"users"`
+	Users []*string `json:"users" extensions:"!x-nullable"`
 }
 
 type usersWithRoleGetHandler struct {

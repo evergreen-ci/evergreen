@@ -77,7 +77,7 @@ type BucketFileMetrics struct {
 	AWSRoleARN string `bson:"aws_role_arn,omitempty" json:"aws_role_arn,omitempty"`
 	// AWSAccountID is the owning account, resolved by the agent when AWSRoleARN is empty.
 	AWSAccountID string      `bson:"aws_account_id,omitempty" json:"aws_account_id,omitempty"`
-	Files        []FileBytes `bson:"files" json:"files"`
+	Files        []FileBytes `bson:"files" json:"files" extensions:"x-nullable"`
 }
 
 // FileBytes tracks bytes uploaded for a single S3 file key.

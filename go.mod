@@ -10,7 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.16
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.302.0
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.41.7
-	github.com/aws/smithy-go v1.28.1
+	github.com/aws/smithy-go v1.28.2
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/docker/go-connections v0.8.1
@@ -245,7 +245,7 @@ require (
 	github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431 // indirect
 	github.com/pquerna/cachecontrol v0.2.0 // indirect
 	github.com/sosodev/duration v1.3.1 // indirect
-	go.mongodb.org/mongo-driver v1.17.9
+	go.mongodb.org/mongo-driver v1.17.10
 	go.step.sm/crypto v0.31.0 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
 )

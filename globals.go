@@ -668,6 +668,9 @@ const (
 	ArtifactPresignDurationSecondsOtelAttribute = "evergreen.artifact.presign.duration_seconds"
 	ArtifactPresignCredsSourceOtelAttribute     = "evergreen.artifact.presign.creds_source"
 	ArtifactSignStatusCodeOtelAttribute         = "evergreen.artifact.sign.status_code"
+	ArtifactPresignRequestedModeOtelAttribute   = "evergreen.artifact.presign.requested_mode"
+	ArtifactPresignModeOtelAttribute            = "evergreen.artifact.presign.mode"
+	ArtifactPresignFallbackReasonOtelAttribute  = "evergreen.artifact.presign.fallback_reason"
 )
 
 const (
