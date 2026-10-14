@@ -17,10 +17,10 @@ func (a *APICLIUpdate) BuildFromService(c evergreen.ClientConfig) {
 type APIClientConfig struct {
 	ClientBinaries   []APIClientBinary `json:"client_binaries,omitempty"`
 	S3ClientBinaries []APIClientBinary `json:"s3_client_binaries,omitempty"`
-	LatestRevision   *string           `json:"latest_revision"`
+	LatestRevision   *string           `json:"latest_revision" extensions:"!x-nullable"`
 	// This field's struct tag is different from the service layer to maintain
 	// backward compatibility with existing clients. See DEVPROD-25015.
-	OldestAllowedCLIVersion *string `json:"minimum_supported_cli_version"`
+	OldestAllowedCLIVersion *string `json:"minimum_supported_cli_version" extensions:"!x-nullable"`
 }
 
 func (a *APIClientConfig) BuildFromService(c evergreen.ClientConfig) {
@@ -46,10 +46,10 @@ func (a *APIClientConfig) ToService() evergreen.ClientConfig {
 }
 
 type APIClientBinary struct {
-	Arch        *string `json:"arch"`
-	OS          *string `json:"os"`
-	URL         *string `json:"url"`
-	DisplayName *string `json:"display_name"`
+	Arch        *string `json:"arch" extensions:"!x-nullable"`
+	OS          *string `json:"os" extensions:"!x-nullable"`
+	URL         *string `json:"url" extensions:"!x-nullable"`
+	DisplayName *string `json:"display_name" extensions:"!x-nullable"`
 }
 
 func (a *APIClientBinary) BuildFromService(b evergreen.ClientBinary) {

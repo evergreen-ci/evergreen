@@ -530,10 +530,10 @@ type versionManifestProofGetHandler struct {
 }
 
 type versionManifestProofResponse struct {
-	BeforePrevious *versionManifestProofVersion  `json:"before_previous"`
-	Previous       *versionManifestProofSnapshot `json:"previous"`
-	Current        *versionManifestProofSnapshot `json:"current"`
-	Next           *versionManifestProofSnapshot `json:"next"`
+	BeforePrevious *versionManifestProofVersion  `json:"before_previous" extensions:"x-nullable"`
+	Previous       *versionManifestProofSnapshot `json:"previous" extensions:"x-nullable"`
+	Current        *versionManifestProofSnapshot `json:"current" extensions:"!x-nullable"`
+	Next           *versionManifestProofSnapshot `json:"next" extensions:"x-nullable"`
 }
 
 type versionManifestProofSnapshot struct {
@@ -547,7 +547,7 @@ type versionManifestProofSnapshot struct {
 	ProjectRevisionChanged bool                         `json:"project_revision_changed"`
 	HasComparison          bool                         `json:"has_comparison"`
 	ManifestFound          bool                         `json:"manifest_found"`
-	Modules                []versionManifestProofModule `json:"modules"`
+	Modules                []versionManifestProofModule `json:"modules" extensions:"!x-nullable"`
 }
 
 type versionManifestProofVersion struct {
@@ -561,12 +561,12 @@ type versionManifestProofVersion struct {
 }
 
 type versionManifestProofModule struct {
-	Name     *string `json:"name"`
-	Owner    *string `json:"owner"`
-	Repo     *string `json:"repo"`
-	Branch   *string `json:"branch"`
-	Revision *string `json:"revision"`
-	URL      *string `json:"url"`
+	Name     *string `json:"name" extensions:"!x-nullable"`
+	Owner    *string `json:"owner" extensions:"!x-nullable"`
+	Repo     *string `json:"repo" extensions:"!x-nullable"`
+	Branch   *string `json:"branch" extensions:"!x-nullable"`
+	Revision *string `json:"revision" extensions:"!x-nullable"`
+	URL      *string `json:"url" extensions:"!x-nullable"`
 	Changed  bool    `json:"changed"`
 }
 
@@ -670,11 +670,11 @@ type versionManifestProofHistoryGetHandler struct {
 }
 
 type versionManifestProofHistoryResponse struct {
-	Versions []versionManifestProofHistoryItem `json:"versions"`
+	Versions []versionManifestProofHistoryItem `json:"versions" extensions:"!x-nullable"`
 }
 
 type versionManifestProofHistoryItem struct {
-	Version                *versionManifestProofSnapshot `json:"version"`
+	Version                *versionManifestProofSnapshot `json:"version" extensions:"!x-nullable"`
 	OnlyOneRevisionChanged bool                          `json:"only_one_revision_changed"`
 	ChangedRevisionCount   int                           `json:"changed_revision_count"`
 	// ModulesChanged is true when a module was added or removed between this

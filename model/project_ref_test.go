@@ -1238,6 +1238,23 @@ func checkRepoAttachmentEventLog(t *testing.T, project ProjectRef, attachmentTyp
 	assert.Equal(t, attachmentType, events[0].EventType)
 }
 
+// addProjectSettingsEditRole creates the project admin role and scope for a project,
+// granting settings edit permission as a real project admin would hold.
+func addProjectSettingsEditRole(t *testing.T, ctx context.Context, rm gimlet.RoleManager, projectID string) {
+	t.Helper()
+	scopeID := fmt.Sprintf("project_%s", projectID)
+	require.NoError(t, rm.AddScope(ctx, gimlet.Scope{
+		ID:        scopeID,
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{projectID},
+	}))
+	require.NoError(t, rm.UpdateRole(ctx, gimlet.Role{
+		ID:          GetProjectAdminRole(projectID),
+		Scope:       scopeID,
+		Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value},
+	}))
+}
+
 func TestAttachToRepo(t *testing.T) {
 	ctx := t.Context()
 
@@ -1270,7 +1287,11 @@ func TestAttachToRepo(t *testing.T) {
 	}
 	assert.NoError(t, installation.Upsert(ctx))
 
-	u := &user.DBUser{Id: "me"}
+	// The project admin role for the enabled project being attached, as granted
+	// by Add to a real project admin.
+	rm := testutil.NewEnvironment(ctx, t).RoleManager()
+	addProjectSettingsEditRole(t, ctx, rm, pRef.Id)
+	u := &user.DBUser{Id: "me", SystemRoles: []string{GetProjectAdminRole(pRef.Id)}}
 	assert.NoError(t, u.Insert(t.Context()))
 	// No repo exists, but one should be created.
 	assert.NoError(t, pRef.AttachToRepo(ctx, u))
@@ -2273,13 +2294,13 @@ func TestSetGithubAppCredentials(t *testing.T) {
 
 func TestCreateNewRepoRef(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, user.Collection,
-		evergreen.ScopeCollection, ProjectVarsCollection, fakeparameter.Collection, ProjectAliasCollection, githubapp.GitHubAppCollection))
+		evergreen.ScopeCollection, evergreen.RoleCollection, ProjectVarsCollection, fakeparameter.Collection, ProjectAliasCollection, githubapp.GitHubAppCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 	ctx := t.Context()
 	doc1 := &ProjectRef{
 		Id:                   "id1",
-		Owner:                "mongodb",
+		Owner:                "evergreen-ci",
 		Repo:                 "mongo",
 		Branch:               "mci",
 		Enabled:              true,
@@ -2293,7 +2314,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	doc2 := &ProjectRef{
 		Id:                   "id2",
 		Identifier:           "identifier",
-		Owner:                "mongodb",
+		Owner:                "evergreen-ci",
 		Repo:                 "mongo",
 		Branch:               "mci2",
 		Enabled:              true,
@@ -2307,7 +2328,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.NoError(t, doc2.Insert(t.Context()))
 	doc3 := &ProjectRef{
 		Id:      "id3",
-		Owner:   "mongodb",
+		Owner:   "evergreen-ci",
 		Repo:    "mongo",
 		Branch:  "mci2",
 		Enabled: false,
@@ -2315,7 +2336,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.NoError(t, doc3.Insert(t.Context()))
 
 	installation := githubapp.GitHubAppInstallation{
-		Owner:          "mongodb",
+		Owner:          "evergreen-ci",
 		Repo:           "mongo",
 		AppID:          1234,
 		InstallationID: 5678,
@@ -2404,7 +2425,12 @@ func TestCreateNewRepoRef(t *testing.T) {
 	for _, a := range projectAliases {
 		assert.NoError(t, a.Upsert(t.Context()))
 	}
-	u := user.DBUser{Id: "me"}
+	// Creating a repo ref inherits existing enabled projects' settings, so the
+	// user must have project settings edit permission on one of them.
+	env := testutil.NewEnvironment(ctx, t)
+	rm := env.RoleManager()
+	addProjectSettingsEditRole(t, ctx, rm, doc1.Id)
+	u := user.DBUser{Id: "me", SystemRoles: []string{GetProjectAdminRole(doc1.Id)}}
 	assert.NoError(t, u.Insert(t.Context()))
 
 	// This will create the new repo ref
@@ -2415,7 +2441,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, repoRef)
 
-	assert.Equal(t, "mongodb", repoRef.Owner)
+	assert.Equal(t, "evergreen-ci", repoRef.Owner)
 	assert.Equal(t, "mongo", repoRef.Repo)
 	assert.Empty(t, repoRef.Branch)
 	assert.True(t, repoRef.IsPRTestingEnabled())
@@ -2460,15 +2486,80 @@ func TestCreateNewRepoRef(t *testing.T) {
 		}
 	}
 
-	env := testutil.NewEnvironment(ctx, t)
 	// verify that both the project and repo are part of the scope
-	rm := env.RoleManager()
 	scope, err := rm.GetScope(context.TODO(), GetRepoAdminScope(repoRef.Id))
 	assert.NoError(t, err)
 	assert.NotNil(t, scope)
 	assert.Contains(t, scope.Resources, repoRef.Id)
 	assert.Contains(t, scope.Resources, doc2.Id)
 	assert.NotContains(t, scope.Resources, doc1.Id)
+}
+
+// TestCreateNewRepoRefPermissions checks the authorization required to create a
+// repo ref when enabled projects already exist for the target owner/repo.
+func TestCreateNewRepoRefPermissions(t *testing.T) {
+	setup := func(t *testing.T, userRoles ...string) (ProjectRef, *user.DBUser) {
+		ctx := t.Context()
+		require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ProjectVarsCollection, fakeparameter.Collection,
+			evergreen.ScopeCollection, evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection, event.EventCollection, githubapp.GitHubAppCollection))
+		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
+
+		victimProject := ProjectRef{
+			Id:         "victimProject",
+			Owner:      "evergreen-ci",
+			Repo:       "victim-repo",
+			Branch:     "main",
+			Enabled:    true,
+			Admins:     []string{"victimAdmin"},
+			RemotePath: "evergreen.yml",
+		}
+		require.NoError(t, victimProject.Insert(ctx))
+		victimVars := ProjectVars{
+			Id: victimProject.Id,
+			Vars: map[string]string{
+				"public":   "value",
+				"password": "hunter2",
+			},
+			PrivateVars: map[string]bool{"password": true},
+		}
+		require.NoError(t, victimVars.Insert(ctx))
+
+		pRef := ProjectRef{
+			Id:     "attackerProject",
+			Owner:  "evergreen-ci",
+			Repo:   "victim-repo",
+			Branch: "main",
+		}
+		u := &user.DBUser{Id: "attacker", SystemRoles: userRoles}
+		require.NoError(t, u.Insert(ctx))
+		return pRef, u
+	}
+
+	t.Run("ForeignRepoRefCreationWithoutPermissionErrors", func(t *testing.T) {
+		pRef, u := setup(t)
+
+		err := pRef.AddToRepoScope(t.Context(), u)
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, ErrRepoRefUnauthorized), "expected an authorization error, got '%s'", err)
+
+		repoRef, err := FindRepoRefByOwnerAndRepo(t.Context(), pRef.Owner, pRef.Repo)
+		require.NoError(t, err)
+		assert.Nil(t, repoRef)
+	})
+
+	t.Run("AuthorizedRepoRefCreationSucceeds", func(t *testing.T) {
+		pRef, attacker := setup(t, GetProjectAdminRole("victimProject"))
+
+		rm := testutil.NewEnvironment(t.Context(), t).RoleManager()
+		addProjectSettingsEditRole(t, t.Context(), rm, "victimProject")
+
+		require.NoError(t, pRef.AddToRepoScope(t.Context(), attacker))
+
+		repoRef, err := FindOneRepoRef(t.Context(), pRef.RepoRefId)
+		require.NoError(t, err)
+		require.NotNil(t, repoRef)
+		assert.Equal(t, []string{"attacker"}, repoRef.Admins)
+	})
 }
 
 func TestGithubPermissionGroups(t *testing.T) {

@@ -94,6 +94,14 @@ func (b *Build) IsFinished() bool {
 	return evergreen.IsFinishedBuildStatus(b.Status)
 }
 
+// IsDormant returns whether the build was created but never activated, meaning
+// it will never run unless it is activated later. A build that was activated
+// and later deactivated is not dormant, since it may have already reported a
+// status that should be updated rather than skipped.
+func (b *Build) IsDormant() bool {
+	return b.Status == evergreen.BuildCreated && !b.Activated && b.ActivatedTime.IsZero()
+}
+
 // FindBuildOnBaseCommit returns the build that a patch build is based on.
 func (b *Build) FindBuildOnBaseCommit(ctx context.Context) (*Build, error) {
 	return FindOne(ctx, ByRevisionAndVariant(b.Revision, b.BuildVariant))
