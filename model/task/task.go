@@ -3606,6 +3606,20 @@ func (t *Task) GetDisplayTask(ctx context.Context) (*Task, error) {
 	return dt, nil
 }
 
+// GetDisplayTaskName returns the name of the display task that contains the
+// task, or the empty string if the task is not an execution task of a display
+// task.
+func (t *Task) GetDisplayTaskName(ctx context.Context) (string, error) {
+	dt, err := t.GetDisplayTask(ctx)
+	if err != nil {
+		return "", errors.Wrap(err, "getting display task")
+	}
+	if dt == nil {
+		return "", nil
+	}
+	return dt.DisplayName, nil
+}
+
 // GetAllDependencies returns all the dependencies the tasks in taskIDs rely on
 func GetAllDependencies(ctx context.Context, taskIDs []string, taskMap map[string]*Task) ([]Dependency, error) {
 	// fill in the gaps in taskMap
