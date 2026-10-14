@@ -37,6 +37,7 @@ func (a *Agent) startStatusServer(ctx context.Context, port int) error {
 	app.AddRoute("/status").Handler(a.statusHandler()).Get()
 	app.AddRoute("/failure_metadata_tag").Handler(a.addMetadataTagHandler).Post()
 	app.AddRoute("/task_status").Handler(a.endTaskHandler).Post()
+	app.AddRoute("/virtual_tasks/test_results").Handler(a.uploadVirtualTaskTestResultsHandler).Post()
 	app.AddRoute("/oom/clear").Handler(http.RedirectHandler("/jasper/v1/list/oom", http.StatusMovedPermanently).ServeHTTP).Delete()
 	app.AddRoute("/oom/check").Handler(http.RedirectHandler("/jasper/v1/list/oom", http.StatusMovedPermanently).ServeHTTP).Get()
 
@@ -49,10 +50,13 @@ func (a *Agent) startStatusServer(ctx context.Context, port int) error {
 	}
 
 	srv := &http.Server{
-		Addr:         fmt.Sprintf("127.0.0.1:%d", port),
-		Handler:      handler,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		Addr:        fmt.Sprintf("127.0.0.1:%d", port),
+		Handler:     handler,
+		ReadTimeout: 10 * time.Second,
+		// Virtual task test result uploads can be slow and can queue if there's
+		// many incoming requests, so the write timeout must be generous enough
+		// to accommodate them.
+		WriteTimeout: 5 * time.Minute,
 	}
 	grip.Infoln(ctx, "Starting status server on address:", srv.Addr)
 
@@ -123,17 +127,13 @@ type triggerAddMetadataTagResp struct {
 func (a *Agent) endTaskHandler(w http.ResponseWriter, r *http.Request) {
 	payload, err := io.ReadAll(r.Body)
 	if err != nil {
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte(errors.Wrap(err, "reading end task request body").Error()))
+		writeAgentHandlerError(w, http.StatusInternalServerError, errors.Wrap(err, "reading end task request body"))
 		return
 	}
 
 	resp := triggerEndTaskResp{}
 	if err := json.Unmarshal(payload, &resp); err != nil {
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(errors.Wrap(err, "unmarshalling end task request body as JSON").Error()))
+		writeAgentHandlerError(w, http.StatusBadRequest, errors.Wrap(err, "unmarshalling end task request body as JSON"))
 		return
 	}
 
@@ -142,9 +142,7 @@ func (a *Agent) endTaskHandler(w http.ResponseWriter, r *http.Request) {
 	a.setEndTaskRespMutex.RUnlock()
 
 	if setEndTaskResp == nil {
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte(errors.Errorf("programmatic error: end task response setter is undefined").Error()))
+		writeAgentHandlerError(w, http.StatusInternalServerError, errors.New("programmatic error: end task response setter is undefined"))
 		return
 	}
 
@@ -174,17 +172,13 @@ func buildResponse(opts Options) statusResponse {
 func (a *Agent) addMetadataTagHandler(w http.ResponseWriter, r *http.Request) {
 	payload, err := io.ReadAll(r.Body)
 	if err != nil {
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte(errors.Wrap(err, "reading add metadata tag request body").Error()))
+		writeAgentHandlerError(w, http.StatusInternalServerError, errors.Wrap(err, "reading add metadata tag request body"))
 		return
 	}
 
 	resp := triggerAddMetadataTagResp{}
 	if err := json.Unmarshal(payload, &resp); err != nil {
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(errors.Wrap(err, "unmarshalling add metadata tag request body as JSON").Error()))
+		writeAgentHandlerError(w, http.StatusBadRequest, errors.Wrap(err, "unmarshalling add metadata tag request body as JSON"))
 		return
 	}
 
@@ -193,11 +187,17 @@ func (a *Agent) addMetadataTagHandler(w http.ResponseWriter, r *http.Request) {
 	a.addMetadataTagMutex.RUnlock()
 
 	if addMetadataTag == nil {
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte(errors.Errorf("programmatic error: add metadata tag response setter is undefined").Error()))
+		writeAgentHandlerError(w, http.StatusInternalServerError, errors.New("programmatic error: add metadata tag response setter is undefined"))
 		return
 	}
 
 	addMetadataTag(&resp)
+}
+
+// writeAgentHandlerError writes a plain-text error response with the given
+// status code for a local status server handler.
+func writeAgentHandlerError(w http.ResponseWriter, status int, err error) {
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(status)
+	_, _ = w.Write([]byte(err.Error()))
 }

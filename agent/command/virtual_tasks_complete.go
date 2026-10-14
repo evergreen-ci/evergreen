@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -14,8 +15,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
-
-const maxCompletionBatchSize = 100
 
 type completeVirtualTasks struct {
 	Files    []string `mapstructure:"files" plugin:"expand"`
@@ -29,25 +28,34 @@ type virtualTaskCompletionFile struct {
 	TaskID           string                               `json:"task_id"`
 	Execution        int                                  `json:"execution"`
 	Status           string                               `json:"status"`
-	TestResults      *virtualTaskTestResultsFile          `json:"test_results,omitempty"`
+	TestResults      *VirtualTaskTestResultsInput         `json:"test_results,omitempty"`
 	Artifacts        []apimodels.VirtualTaskArtifact      `json:"artifacts,omitempty"`
 	ExternalMetadata *apimodels.ExternalExecutionMetadata `json:"external_metadata,omitempty"`
 }
 
-// virtualTaskTestResultsFile describes the test result files to parse and upload
+// VirtualTaskTestResultsInput describes the test result files to parse and upload
 // for a virtual task.
-type virtualTaskTestResultsFile struct {
-	Files     []virtualTaskTestResultFileGroup `json:"files"`
-	CreatedAt time.Time                        `json:"created_at,omitempty"`
+type VirtualTaskTestResultsInput struct {
+	Files     []VirtualTaskTestResultFileGroup `json:"files"`
+	CreatedAt time.Time                        `json:"created_at,omitzero"`
 }
 
-// virtualTaskTestResultFileGroup is a group of files of a single test result type.
-type virtualTaskTestResultFileGroup struct {
+// GetCreatedAt returns the time the test results were created.
+func (tr VirtualTaskTestResultsInput) GetCreatedAt() time.Time {
+	if !utility.IsZeroTime(tr.CreatedAt) {
+		return tr.CreatedAt
+	}
+	return time.Now()
+}
+
+// VirtualTaskTestResultFileGroup is a group of files of a single test result type.
+type VirtualTaskTestResultFileGroup struct {
 	Type  string   `json:"type"`
 	Files []string `json:"files"`
 }
 
-func (tr virtualTaskTestResultsFile) validate() error {
+// Validate checks that the test results input is well-formed.
+func (tr VirtualTaskTestResultsInput) Validate() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.NewWhen(len(tr.Files) == 0, "test_results must specify at least one file group")
 	for _, group := range tr.Files {
@@ -152,8 +160,8 @@ func processVirtualTaskCompletions(ctx context.Context, comm client.Communicator
 		catcher.Wrap(completeVirtualTaskBatches(ctx, comm, logger, conf, withoutTestResults), "push-completing virtual tasks without test results")
 	}
 
-	for i := 0; i < len(withTestResults); i += maxCompletionBatchSize {
-		end := min(i+maxCompletionBatchSize, len(withTestResults))
+	for i := 0; i < len(withTestResults); i += evergreen.MaxVirtualTaskBatchSize {
+		end := min(i+evergreen.MaxVirtualTaskBatchSize, len(withTestResults))
 		batch := withTestResults[i:end]
 
 		completions, err := uploadTestResultsForCompletions(ctx, comm, logger, conf, batch)
@@ -179,7 +187,7 @@ func partitionCompletions(entries []virtualTaskCompletionFile) (withoutTestResul
 			withoutTestResults = append(withoutTestResults, entry.toCompletion(nil))
 			continue
 		}
-		if err := entry.TestResults.validate(); err != nil {
+		if err := entry.TestResults.Validate(); err != nil {
 			catcher.Wrapf(err, "virtual task '%s'", entry.TaskID)
 			continue
 		}
@@ -240,11 +248,8 @@ func uploadTestResultsForCompletions(ctx context.Context, comm client.Communicat
 // uploadEntryTestResults uploads the test results for a virtual task and
 // returns its push-completion data, including test result stats.
 func uploadEntryTestResults(ctx context.Context, logger client.LoggerProducer, conf *internal.TaskConfig, entry virtualTaskCompletionFile, prep apimodels.VirtualTaskPreparationResult) (*apimodels.VirtualTaskCompletion, error) {
-	testResultsCreatedAt := entry.TestResults.CreatedAt
-	if utility.IsZeroTime(testResultsCreatedAt) {
-		testResultsCreatedAt = time.Now()
-	}
-	stats, err := processVirtualTaskTestResultFiles(ctx, conf, logger, *prep.TestResultsInfo, prep.TaskCreateTime, testResultsCreatedAt, entry.TestResults.Files)
+	testResultsCreatedAt := entry.TestResults.GetCreatedAt()
+	stats, err := ProcessVirtualTaskTestResultFiles(ctx, conf, logger, *prep.TestResultsInfo, prep.TaskCreateTime, testResultsCreatedAt, entry.TestResults.Files)
 	if err != nil {
 		return nil, err
 	}
@@ -268,8 +273,8 @@ func prepareVirtualTasks(ctx context.Context, comm client.Communicator, td clien
 
 	catcher := grip.NewBasicCatcher()
 	prepared := map[string]apimodels.VirtualTaskPreparationResult{}
-	for i := 0; i < len(preparations); i += maxCompletionBatchSize {
-		end := min(i+maxCompletionBatchSize, len(preparations))
+	for i := 0; i < len(preparations); i += evergreen.MaxVirtualTaskBatchSize {
+		end := min(i+evergreen.MaxVirtualTaskBatchSize, len(preparations))
 		batch := preparations[i:end]
 
 		resp, err := comm.PrepareVirtualTasks(ctx, td, batch)
@@ -296,8 +301,8 @@ func prepareVirtualTasks(ctx context.Context, comm client.Communicator, td clien
 func completeVirtualTaskBatches(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, completions []apimodels.VirtualTaskCompletion) error {
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	catcher := grip.NewBasicCatcher()
-	for i := 0; i < len(completions); i += maxCompletionBatchSize {
-		end := min(i+maxCompletionBatchSize, len(completions))
+	for i := 0; i < len(completions); i += evergreen.MaxVirtualTaskBatchSize {
+		end := min(i+evergreen.MaxVirtualTaskBatchSize, len(completions))
 		batch := completions[i:end]
 
 		resp, err := comm.CompleteVirtualTasks(ctx, td, batch)
