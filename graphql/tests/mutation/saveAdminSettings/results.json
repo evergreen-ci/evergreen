@@ -416,7 +416,6 @@
               "traceUrlTemplate": "https://tracing.example.com/trace?trace_id=%s"
             },
             "projectCreation": {
-              "totalProjectLimit": 100,
               "repoProjectLimit": 50,
               "repoExceptions": [
                 {

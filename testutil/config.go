@@ -315,8 +315,7 @@ func MockConfig() *evergreen.Settings {
 		Plugins:   map[string]map[string]any{"k4": {"k5": "v5"}},
 		PprofPort: "port",
 		ProjectCreation: evergreen.ProjectCreationConfig{
-			TotalProjectLimit: 400,
-			RepoProjectLimit:  10,
+			RepoProjectLimit: 10,
 			RepoExceptions: []evergreen.OwnerRepo{
 				{
 					Owner: "owner",
