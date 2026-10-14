@@ -342,10 +342,10 @@ callers that want to upload test results for virtual tasks programmatically inst
 The request body is a JSON object with a `tasks` array, one entry per virtual
 task:
 
-| Name         | Type   | Description                                                                                                                                                                                            |
-| ------------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| task_id      | string | Required. The Evergreen task ID of the virtual task.                                                                                                                                                   |
-| execution    | int    | Required. The execution number the test results apply to.                                                                                                                                              |
+| Name         | Type   | Description                                                                                                                                                                                        |
+| ------------ | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| task_id      | string | Required. The Evergreen task ID of the virtual task.                                                                                                                                               |
+| execution    | int    | Required. The execution number the test results apply to.                                                                                                                                          |
 | test_results | object | Required. The test result files to parse and upload. This has the same schema as [the `test_results` field of a `virtual_tasks.complete`](Project-Commands#virtual_taskscomplete) completion file. |
 
 The response contains one result per virtual task:
