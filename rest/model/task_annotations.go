@@ -125,7 +125,7 @@ func APIIssueLinkBuildFromService(t annotations.IssueLink) *APIIssueLink {
 	m.URL = StringStringPtr(t.URL)
 	m.IssueKey = StringStringPtr(t.IssueKey)
 	m.Source = APISourceBuildFromService(t.Source)
-	m.ConfidenceScore = utility.ToFloat64Ptr(t.ConfidenceScore)
+	m.ConfidenceScore = t.ConfidenceScore
 	return &m
 }
 
@@ -136,7 +136,7 @@ func APIIssueLinkToService(m APIIssueLink) *annotations.IssueLink {
 	out.URL = StringPtrString(m.URL)
 	out.IssueKey = StringPtrString(m.IssueKey)
 	out.Source = APISourceToService(m.Source)
-	out.ConfidenceScore = utility.FromFloat64Ptr(m.ConfidenceScore)
+	out.ConfidenceScore = m.ConfidenceScore
 	return out
 }
 
@@ -277,9 +277,8 @@ func ValidateIssues(issues []APIIssueLink) error {
 	catcher := grip.NewBasicCatcher()
 	for _, issue := range issues {
 		catcher.Add(util.CheckURL(utility.FromStringPtr(issue.URL)))
-		score := utility.FromFloat64Ptr(issue.ConfidenceScore)
-		if score < 0 || score > 100 {
-			catcher.Errorf("confidence score '%f' must be between 0 and 100", score)
+		if issue.ConfidenceScore != nil && (*issue.ConfidenceScore < 0 || *issue.ConfidenceScore > 100) {
+			catcher.Errorf("confidence score '%f' must be between 0 and 100", *issue.ConfidenceScore)
 		}
 	}
 	return catcher.Resolve()
