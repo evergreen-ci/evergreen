@@ -18,8 +18,6 @@ import (
 
 const (
 	testResultsDownloadCountOtelAttribute = "evergreen.test_results.download_count"
-	testResultsTaskIDOtelAttribute        = "evergreen.test_results.task_id"
-	testResultsExecutionOtelAttribute     = "evergreen.test_results.execution"
 )
 
 // testResultService implements a test result service where test results are stored in s3 with relevant test
@@ -194,8 +192,8 @@ func download(ctx context.Context, config *evergreen.Settings, t *testresult.DbT
 	ctx, span := tracer.Start(ctx, "test-result-service-download-parquet")
 	defer span.End()
 	span.SetAttributes(
-		attribute.String(testResultsTaskIDOtelAttribute, t.Info.TaskID),
-		attribute.Int(testResultsExecutionOtelAttribute, t.Info.Execution),
+		attribute.String(evergreen.TaskIDOtelAttribute, t.Info.TaskID),
+		attribute.Int(evergreen.TaskExecutionOtelAttribute, t.Info.Execution),
 	)
 
 	dbTask, err := FindOneIdAndExecution(ctx, t.Info.TaskID, t.Info.Execution)
