@@ -381,61 +381,15 @@ func TestRepoPatchByID(t *testing.T) {
 		assert.Equal(t, event.EventTypeProjectModified, events[0].EventType)
 	})
 
-	t.Run("CannotRetargetToUnauthorizedRepo", func(t *testing.T) {
-		unauthorizedRepoRef := model.RepoRef{ProjectRef: model.ProjectRef{
-			Id:    "other-repo",
-			Owner: "evergreen-ci",
-			Repo:  "other-repo",
-		}}
-		require.NoError(t, unauthorizedRepoRef.Replace(t.Context()))
-
+	t.Run("CannotRetargetToDifferentRepo", func(t *testing.T) {
 		resp := makeRequest(t, `{"owner_name": "evergreen-ci", "repo_name": "other-repo"}`)
 		require.NotNil(t, resp)
-		assert.Equal(t, http.StatusUnauthorized, resp.Status())
+		assert.Equal(t, http.StatusBadRequest, resp.Status())
 
 		updated, err := model.FindOneRepoRef(t.Context(), "my-repo")
 		require.NoError(t, err)
 		require.NotNil(t, updated)
 		assert.Equal(t, "evergreen-ci", updated.Owner)
 		assert.Equal(t, "evergreen", updated.Repo)
-	})
-
-	t.Run("CanRetargetToAuthorizedRepo", func(t *testing.T) {
-		authorizedRepoRef := model.RepoRef{ProjectRef: model.ProjectRef{
-			Id:    "other-repo-authorized",
-			Owner: "evergreen-ci",
-			Repo:  "other-repo-authorized",
-		}}
-		require.NoError(t, authorizedRepoRef.Replace(t.Context()))
-
-		authorizedRepoScope := gimlet.Scope{
-			ID:        model.GetRepoAdminScope(authorizedRepoRef.Id),
-			Type:      evergreen.ProjectResourceType,
-			Resources: []string{authorizedRepoRef.Id},
-		}
-		require.NoError(t, rm.AddScope(t.Context(), authorizedRepoScope))
-
-		authorizedRepoRole := gimlet.Role{
-			ID:    model.GetRepoAdminRole(authorizedRepoRef.Id),
-			Scope: authorizedRepoScope.ID,
-			Permissions: gimlet.Permissions{
-				evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
-			},
-		}
-		require.NoError(t, rm.UpdateRole(t.Context(), authorizedRepoRole))
-
-		dbUser, err := user.FindOneById(t.Context(), "me")
-		require.NoError(t, err)
-		require.NoError(t, dbUser.AddRole(t.Context(), authorizedRepoRole.ID))
-
-		resp := makeRequest(t, `{"owner_name": "evergreen-ci", "repo_name": "other-repo-authorized"}`)
-		require.NotNil(t, resp)
-		require.Equal(t, http.StatusOK, resp.Status())
-
-		updated, err := model.FindOneRepoRef(t.Context(), "my-repo")
-		require.NoError(t, err)
-		require.NotNil(t, updated)
-		assert.Equal(t, "evergreen-ci", updated.Owner)
-		assert.Equal(t, "other-repo-authorized", updated.Repo)
 	})
 }
