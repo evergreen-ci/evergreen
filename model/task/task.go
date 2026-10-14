@@ -4608,7 +4608,7 @@ func (t *Task) SaveS3Usage(ctx context.Context, logLookup, artifactLookup bucket
 		bsonutil.GetDottedKeyName(TaskCostKey, cost.AdjustedS3LogStorageCostKey):      t.TaskCost.AdjustedS3LogStorageCost,
 	}
 
-	return updateOneByIdAndExecution(ctx, t.Id, t.Execution, bson.M{"$set": setFields})
+	return UpdateOne(ctx, bson.M{"_id": t.Id}, bson.M{"$set": setFields})
 }
 
 // setS3LogStorageCosts calculates and sets the task's S3 log storage cost using lifecycle rules for the log bucket.

@@ -2645,13 +2645,8 @@ func logTaskAlreadyHandled(ctx context.Context, t *task.Task) {
 	})
 }
 
-// crashPathS3LogListTimeout bounds how long it can take to list a task's logs
-// in S3, which can be slow.
-const crashPathS3LogListTimeout = 2 * time.Minute
-
 // saveAndTrackCrashPathS3Cost reconstructs log S3 usage and records costs for a task that died
 // without reaching teardown. Errors are logged but do not block task cleanup.
-// Because it's slow, it should only be called after the task's status is written.
 func saveAndTrackCrashPathS3Cost(ctx context.Context, t *task.Task) {
 	bucketsConfig := &evergreen.BucketsConfig{}
 	if err := bucketsConfig.Get(ctx); err != nil {
@@ -2689,10 +2684,7 @@ func saveAndTrackCrashPathS3Cost(ctx context.Context, t *task.Task) {
 		t.S3Usage.Artifacts = artifactUsage
 	}
 
-	listCtx, cancel := context.WithTimeout(ctx, crashPathS3LogListTimeout)
-	logUsage, err := t.GetS3LogUsageFromS3(listCtx)
-	cancel()
-	if err != nil {
+	if logUsage, err := t.GetS3LogUsageFromS3(ctx); err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "getting S3 log usage for crash-path task",
 			"task_id": t.Id,
@@ -2735,6 +2727,8 @@ func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settin
 		return nil
 	}
 
+	saveAndTrackCrashPathS3Cost(ctx, t)
+
 	unschedulableTask := time.Since(t.ActivatedTime) > task.UnschedulableThreshold
 
 	// Mark the task as finished (without restarting) if restarts are disabled, or the task isn't on its first execution.
@@ -2756,11 +2750,7 @@ func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settin
 				}
 			}
 		}
-		if err := markEndIfUnchanged(ctx, settings, t, evergreen.MonitorPackage, t.EstimatedFinishTime(time.Now()), &failureDetails); err != nil {
-			return err
-		}
-		saveAndTrackCrashPathS3Cost(ctx, t)
-		return nil
+		return markEndIfUnchanged(ctx, settings, t, evergreen.MonitorPackage, t.EstimatedFinishTime(time.Now()), &failureDetails)
 	}
 
 	if err := t.MarkSystemFailedIfUnchanged(ctx, description); err != nil {
@@ -2773,9 +2763,7 @@ func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settin
 		return errors.Wrap(err, "logging task end stats")
 	}
 
-	resetErr := ResetTaskOrDisplayTask(ctx, settings, t, evergreen.User, evergreen.MonitorPackage, true, &t.Details)
-	saveAndTrackCrashPathS3Cost(ctx, t)
-	return errors.Wrap(resetErr, "resetting task")
+	return errors.Wrap(ResetTaskOrDisplayTask(ctx, settings, t, evergreen.User, evergreen.MonitorPackage, true, &t.Details), "resetting task")
 }
 
 // ResetTaskOrDisplayTask is a wrapper for TryResetTask that handles execution and display tasks that are restarted
