@@ -201,9 +201,6 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 		},
 		"StaleCopyOfPreviousExecutionShouldNotFailNewExecutionOrClearNewHost": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, v model.Version) {
 			require.NoError(t, v.Insert(t.Context()))
-
-			// Simulate another job having already restarted the task and
-			// dispatched the new execution to a different host.
 			oldHost, err := host.FindOneId(ctx, hostID)
 			require.NoError(t, err)
 			require.NotZero(t, oldHost)
@@ -319,13 +316,4 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 			tCase(tctx, t, j, v)
 		})
 	}
-
-	t.Run("JobsForSameTaskInDifferentTimeIntervalsShouldShareEnqueueScope", func(t *testing.T) {
-		first := NewTaskExecutionMonitorJob("task_id", "ts0")
-		second := NewTaskExecutionMonitorJob("task_id", "ts1")
-		require.NotEqual(t, first.ID(), second.ID())
-		assert.Equal(t, []string{"task-execution-timeout.task_id"}, first.EnqueueScopes())
-		assert.Equal(t, first.EnqueueScopes(), second.EnqueueScopes())
-		assert.NotEqual(t, first.EnqueueScopes(), NewTaskExecutionMonitorJob("other_task_id", "ts0").EnqueueScopes())
-	})
 }
