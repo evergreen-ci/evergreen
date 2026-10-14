@@ -938,7 +938,7 @@ func (p *ProjectRef) AddToRepoScope(ctx context.Context, u *user.DBUser) error {
 			if err := p.checkCanCreateNewRepoRef(ctx, u); err != nil {
 				return err
 			}
-		} else if err := p.CheckRepoRefAdmin(ctx, u, repoRef); err != nil {
+		} else if err := p.checkRepoRefAdmin(ctx, u, repoRef); err != nil {
 			return err
 		}
 	}
@@ -1075,8 +1075,8 @@ func (p *ProjectRef) DetachFromRepo(ctx context.Context, u *user.DBUser) error {
 // trying to attach a project to.
 var ErrRepoRefUnauthorized = errors.New("user is not an admin of the repo")
 
-// CheckRepoRefAdmin verifies that the user is allowed to attach the project to the given repo ref.
-func (p *ProjectRef) CheckRepoRefAdmin(ctx context.Context, u *user.DBUser, repoRef *RepoRef) error {
+// checkRepoRefAdmin verifies that the user is allowed to attach the project to the given repo ref.
+func (p *ProjectRef) checkRepoRefAdmin(ctx context.Context, u *user.DBUser, repoRef *RepoRef) error {
 	if repoRef == nil {
 		return nil
 	}
@@ -1164,7 +1164,7 @@ func (p *ProjectRef) AttachToNewRepo(ctx context.Context, u *user.DBUser) error 
 		if err != nil {
 			return errors.Wrapf(err, "finding repo ref for '%s/%s'", p.Owner, p.Repo)
 		}
-		if err := p.CheckRepoRefAdmin(ctx, u, repoRef); err != nil {
+		if err := p.checkRepoRefAdmin(ctx, u, repoRef); err != nil {
 			return err
 		}
 	}
