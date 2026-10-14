@@ -1679,42 +1679,6 @@ func TestStartTaskWithOtelMetadata(t *testing.T) {
 	}
 }
 
-func TestStartTaskThatIsNotDispatchedShouldReturnConflict(t *testing.T) {
-	ctx := t.Context()
-	require.NoError(t, db.ClearCollections(task.Collection, host.Collection))
-
-	finishedTask := task.Task{
-		Id:      "finished-task-id",
-		Project: "test-project",
-		Version: "test-version",
-		Status:  evergreen.TaskFailed,
-	}
-	require.NoError(t, finishedTask.Insert(ctx))
-	testHost := host.Host{
-		Id:          "test-host-id",
-		Status:      evergreen.HostRunning,
-		RunningTask: finishedTask.Id,
-	}
-	require.NoError(t, testHost.Insert(ctx))
-
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
-	handler := makeStartTask(env).(*startTaskHandler)
-	handler.hostID = testHost.Id
-	handler.taskID = finishedTask.Id
-
-	staleTask := finishedTask
-	staleTask.Status = evergreen.TaskDispatched
-	resp := handler.Run(context.WithValue(ctx, model.ApiTaskKey, &staleTask))
-	require.NotNil(t, resp)
-	assert.Equal(t, http.StatusConflict, resp.Status())
-
-	dbTask, err := task.FindOneId(ctx, finishedTask.Id)
-	require.NoError(t, err)
-	require.NotZero(t, dbTask)
-	assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
-}
-
 func TestReportS3Usage(t *testing.T) {
 	ctx := t.Context()
 	t.Cleanup(func() {

@@ -1426,9 +1426,8 @@ func (t *Task) MarkSystemFailed(ctx context.Context, description string) error {
 	return t.markSystemFailed(ctx, description, false)
 }
 
-// MarkSystemFailedIfUnchanged is the same as MarkSystemFailed, except that it
-// only updates the task if its status and host in the DB still match the
-// in-memory task. If they don't, it returns a not found error.
+// MarkSystemFailedIfUnchanged is the same as MarkSystemFailed, but only
+// updates the task if its status and host haven't changed since it was read.
 func (t *Task) MarkSystemFailedIfUnchanged(ctx context.Context, description string) error {
 	return t.markSystemFailed(ctx, description, true)
 }
@@ -2208,16 +2207,13 @@ func (t *Task) SetCompletedBy(ctx context.Context, completedBy string) error {
 }
 
 // MarkEnd handles the Task updates associated with ending a task. If the task
-// never reported that it started, its start time is estimated. The update only
-// applies to the task's current execution; if the task has moved on to a
-// different execution, it returns a not found error.
+// never reported that it started, its start time is estimated.
 func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimodels.TaskEndDetail) error {
 	return t.markEnd(ctx, finishTime, detail, false)
 }
 
-// MarkEndIfUnchanged is the same as MarkEnd, except that it only updates the
-// task if its status and host in the DB still match the in-memory task. If
-// they don't, it returns a not found error.
+// MarkEndIfUnchanged is the same as MarkEnd, but only updates the task if its
+// status and host haven't changed since it was read.
 func (t *Task) MarkEndIfUnchanged(ctx context.Context, finishTime time.Time, detail *apimodels.TaskEndDetail) error {
 	return t.markEnd(ctx, finishTime, detail, true)
 }
@@ -2308,10 +2304,8 @@ func (t *Task) markEnd(ctx context.Context, finishTime time.Time, detail *apimod
 	return UpdateOne(ctx, query, bson.M{"$set": setFields})
 }
 
-// currentExecutionQuery returns a query that matches the task's in-memory
-// execution. If requireUnchanged is set, it also has to match the task's
-// in-memory status and host, which is useful when the in-memory task may be
-// stale.
+// currentExecutionQuery matches the task's execution and, if requireUnchanged
+// is set, its status and host.
 func (t *Task) currentExecutionQuery(requireUnchanged bool) bson.M {
 	query := bson.M{
 		IdKey:        t.Id,
@@ -2756,8 +2750,7 @@ func getRecursiveDependenciesDownHelper(ctx context.Context, tasks []string, tas
 }
 
 // MarkStart updates the task's start time and sets the status to started. The
-// task can only start if its current execution is dispatched; otherwise, it
-// returns a not found error.
+// task must be dispatched.
 func (t *Task) MarkStart(ctx context.Context, startTime time.Time) error {
 	// record the start time in the in-memory task
 	t.StartTime = startTime
@@ -2782,9 +2775,8 @@ func (t *Task) MarkStart(ctx context.Context, startTime time.Time) error {
 	)
 }
 
-// MarkUnscheduled marks the task as undispatched and updates it in the
-// database. It only updates the task if its execution, status, and host in the
-// DB still match the in-memory task; otherwise, it returns a not found error.
+// MarkUnscheduled marks the task as undispatched if it hasn't changed since it
+// was read.
 func (t *Task) MarkUnscheduled(ctx context.Context) error {
 	query := t.currentExecutionQuery(true)
 	t.Status = evergreen.TaskUndispatched

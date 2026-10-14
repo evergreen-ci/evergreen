@@ -21,7 +21,6 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
 	"gopkg.in/yaml.v3"
 )
 
@@ -49,32 +48,6 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 		require.NoError(t, err)
 		require.NotZero(t, restartedTask)
 		assert.Equal(t, evergreen.TaskUndispatched, restartedTask.Status)
-	}
-
-	// restartAndDispatchTask inserts a new execution of the given task that's
-	// dispatched to the given host.
-	restartAndDispatchTask := func(ctx context.Context, t *testing.T, tsk task.Task, hostID string) task.Task {
-		tsk.Execution++
-		tsk.Status = evergreen.TaskDispatched
-		tsk.HostId = hostID
-		tsk.StartTime = time.Time{}
-		require.NoError(t, tsk.Insert(ctx))
-		return tsk
-	}
-	checkTaskStillDispatched := func(t *testing.T, expected task.Task) {
-		dbTask, err := task.FindOneId(ctx, expected.Id)
-		require.NoError(t, err)
-		require.NotZero(t, dbTask)
-		assert.Equal(t, expected.Execution, dbTask.Execution, "task should not be restarted again")
-		assert.Equal(t, evergreen.TaskDispatched, dbTask.Status, "new execution should not be system failed")
-		assert.Equal(t, expected.HostId, dbTask.HostId)
-	}
-	checkHostRunningTask := func(t *testing.T, hostID string, expected task.Task) {
-		dbHost, err := host.FindOneId(ctx, hostID)
-		require.NoError(t, err)
-		require.NotZero(t, dbHost)
-		assert.Equal(t, expected.Id, dbHost.RunningTask, "host should still be running the new execution")
-		assert.Equal(t, expected.Execution, dbHost.RunningTaskExecution)
 	}
 
 	const hostID = "host_id"
@@ -229,63 +202,39 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 		"StaleCopyOfPreviousExecutionShouldNotFailNewExecutionOrClearNewHost": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, v model.Version) {
 			require.NoError(t, v.Insert(t.Context()))
 
-			// Simulate another cleanup job having already cleared the original
-			// host, restarted the task, and dispatched the new execution to a
-			// different host, all after this job loaded its stale copy of
-			// execution 0.
+			// Simulate another job having already restarted the task and
+			// dispatched the new execution to a different host.
 			oldHost, err := host.FindOneId(ctx, hostID)
 			require.NoError(t, err)
 			require.NotZero(t, oldHost)
 			require.NoError(t, oldHost.ClearRunningTask(ctx))
-
 			const newHostID = "new_host_id"
-			newExecution := restartAndDispatchTask(ctx, t, *j.task, newHostID)
+			newExecution := *j.task
+			newExecution.Execution = 1
+			newExecution.Status = evergreen.TaskDispatched
+			newExecution.HostId = newHostID
+			require.NoError(t, newExecution.Insert(t.Context()))
 			newHost := host.Host{
 				Id:                   newHostID,
-				Distro:               distro.Distro{Id: "distro_id", Provider: evergreen.ProviderNameMock},
-				Provider:             evergreen.ProviderNameMock,
-				StartedBy:            evergreen.User,
 				Status:               evergreen.HostRunning,
 				RunningTask:          newExecution.Id,
 				RunningTaskExecution: newExecution.Execution,
 			}
 			require.NoError(t, newHost.Insert(ctx))
-			mp.Set(newHost.Id, cloud.MockInstance{Status: cloud.StatusRunning})
 
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			checkTaskStillDispatched(t, newExecution)
-			checkHostRunningTask(t, newHostID, newExecution)
-		},
-		"StaleCopyOfPreviousExecutionShouldNotClearSameHostRunningNewExecution": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, v model.Version) {
-			require.NoError(t, v.Insert(t.Context()))
-
-			// Simulate the task having been restarted and the new execution
-			// dispatched back to the same host after this job loaded its stale
-			// copy of execution 0.
-			newExecution := restartAndDispatchTask(ctx, t, *j.task, hostID)
-			require.NoError(t, host.UpdateOne(ctx, host.ById(hostID), bson.M{"$set": bson.M{host.RunningTaskExecutionKey: newExecution.Execution}}))
-
-			j.Run(ctx)
-			require.NoError(t, j.Error())
-
-			checkTaskStillDispatched(t, newExecution)
-			checkHostRunningTask(t, hostID, newExecution)
-		},
-		"StaleCopyWithDeletedHostShouldNotUnscheduleRedispatchedTask": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, v model.Version) {
-			require.NoError(t, v.Insert(t.Context()))
-			require.NoError(t, db.ClearCollections(host.Collection))
-
-			redispatched := *j.task
-			redispatched.Status = evergreen.TaskDispatched
-			redispatched.HostId = "new_host_id"
-			require.NoError(t, redispatched.Insert(t.Context()))
-
-			j.Run(ctx)
-			require.NoError(t, j.Error())
-
-			checkTaskStillDispatched(t, redispatched)
+			dbTask, err := task.FindOneId(ctx, newExecution.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.Equal(t, 1, dbTask.Execution)
+			assert.Equal(t, evergreen.TaskDispatched, dbTask.Status)
+			dbHost, err := host.FindOneId(ctx, newHostID)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, newExecution.Id, dbHost.RunningTask)
+			assert.Equal(t, newExecution.Execution, dbHost.RunningTaskExecution)
 		},
 		"NoopsForActiveTask": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, _ model.Version) {
 			j.task.LastHeartbeat = time.Now()

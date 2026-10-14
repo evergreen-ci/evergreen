@@ -812,9 +812,8 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	return markEnd(ctx, settings, t, caller, finishTime, detail, false)
 }
 
-// markEndIfUnchanged is the same as MarkEnd, except that it only finishes the
-// task if it hasn't changed since it was read. If it has, this returns
-// ErrTaskStateChanged.
+// markEndIfUnchanged is the same as MarkEnd, but returns ErrTaskStateChanged
+// if the task changed since it was read.
 func markEndIfUnchanged(ctx context.Context, settings *evergreen.Settings, t *task.Task, caller string,
 	finishTime time.Time, detail *apimodels.TaskEndDetail) error {
 	return markEnd(ctx, settings, t, caller, finishTime, detail, true)
@@ -2266,9 +2265,8 @@ func UpdateVersionAndPatchStatusForBuilds(ctx context.Context, buildIds []string
 }
 
 // MarkStart updates the task, build, version and if necessary, patch documents
-// with the task start time. Only a dispatched task can be started; if the task
-// is not dispatched, this returns ErrTaskStateChanged. If the task is already
-// started, it only updates the build, version, patch, and display task.
+// with the task start time. It returns ErrTaskStateChanged if the task isn't
+// dispatched or already started.
 func MarkStart(ctx context.Context, t *task.Task, updates *StatusChanges) error {
 	var err error
 
@@ -2634,11 +2632,9 @@ func FixStaleTask(ctx context.Context, settings *evergreen.Settings, t *task.Tas
 	return nil
 }
 
-// logTaskAlreadyHandled logs that a task wasn't cleaned up because it changed
-// after it was read (e.g. another job already cleaned it up).
 func logTaskAlreadyHandled(ctx context.Context, t *task.Task) {
 	grip.Info(ctx, message.Fields{
-		"message":   "not cleaning up task because it changed since it was read",
+		"message":   "skipping cleanup because task changed since it was read",
 		"task":      t.Id,
 		"execution": t.Execution,
 		"host_id":   t.HostId,
@@ -2714,14 +2710,13 @@ func finishStaleAbortedTask(ctx context.Context, settings *evergreen.Settings, t
 	return nil
 }
 
-// ErrTaskStateChanged indicates that a task wasn't updated because it changed
-// after it was read.
+// ErrTaskStateChanged means a task wasn't updated because it changed since it
+// was read.
 var ErrTaskStateChanged = errors.New("task changed since it was read")
 
 // endAndResetSystemFailedTask finishes and resets a task that has encountered a system failure
 // such as being stranded on a terminated host/container or failing to send a
-// heartbeat. If the task changed since it was read, this returns
-// ErrTaskStateChanged.
+// heartbeat.
 func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settings, t *task.Task, description string) error {
 	if t.IsFinished() {
 		return nil

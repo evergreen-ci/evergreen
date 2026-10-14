@@ -1272,7 +1272,7 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 		if errors.Is(err, model.ErrTaskStateChanged) {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusConflict,
-				Message:    fmt.Sprintf("task '%s' execution %d cannot be started because it is not dispatched", t.Id, t.Execution),
+				Message:    fmt.Sprintf("task '%s' execution %d is not dispatched", t.Id, t.Execution),
 			})
 		}
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "marking task '%s' started", t.Id))

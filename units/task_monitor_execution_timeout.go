@@ -62,7 +62,6 @@ func NewTaskExecutionMonitorJob(taskID string, ts string) amboy.Job {
 	j := makeTaskExecutionTimeoutMonitorJob()
 	j.Task = taskID
 	j.SetID(fmt.Sprintf("%s.%s.%s", taskExecutionTimeoutJobName, taskID, ts))
-	// Only one job can clean up a task at a time, even across time intervals.
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", taskExecutionTimeoutJobName, taskID)})
 	j.SetEnqueueAllScopes(true)
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
@@ -165,7 +164,6 @@ func (j *taskExecutionTimeoutJob) cleanUpTimedOutTask(ctx context.Context) error
 		return errors.WithStack(err)
 	}
 
-	// The host may already be running a newer execution of this task.
 	if host.RunningTask == j.task.Id && host.RunningTaskExecution == j.task.Execution {
 		// Check if the host was externally terminated before clearing the
 		// host's running task. When the running task is cleared on the host, an

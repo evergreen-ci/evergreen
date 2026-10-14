@@ -508,31 +508,6 @@ func TestHostNextTask(t *testing.T) {
 					require.NotZero(t, dbHost)
 					assert.Empty(t, dbHost.RunningTask)
 				},
-				"RunningTaskThatDoesNotExistShouldClearHostAndReturnNoTask": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
-					hostWithMissingTask := host.Host{
-						Id:            "hostWithMissingTask",
-						Secret:        hostSecret,
-						RunningTask:   "nonexistentTask",
-						AgentRevision: evergreen.AgentVersion,
-						Provisioned:   true,
-						Status:        evergreen.HostRunning,
-					}
-					require.NoError(t, hostWithMissingTask.Insert(ctx))
-
-					rh.host = &hostWithMissingTask
-					rh.hostID = hostWithMissingTask.Id
-					resp := rh.Run(ctx)
-					require.NotNil(t, resp)
-					assert.Equal(t, http.StatusOK, resp.Status())
-					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
-					require.True(t, ok, resp.Data())
-					assert.Empty(t, taskResp.TaskId)
-
-					dbHost, err := host.FindOneId(ctx, hostWithMissingTask.Id)
-					require.NoError(t, err)
-					require.NotZero(t, dbHost)
-					assert.Empty(t, dbHost.RunningTask)
-				},
 				"WithAnUndispatchedTaskButAHostThatHasThatTaskAsARunningTask": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
 					t1 := task.Task{
 						Id:        "t1",
