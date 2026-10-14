@@ -228,7 +228,9 @@ func TestRepoPatchByID(t *testing.T) {
 	makeRequest := func(t *testing.T, jsonBody string) gimlet.Responder {
 		t.Helper()
 		h := makePatchRepoByID(settings).(*repoIDPatchHandler)
-		ctx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "me"})
+		dbUser, err := user.FindOneById(t.Context(), "me")
+		require.NoError(t, err)
+		ctx := gimlet.AttachUser(t.Context(), dbUser)
 		req, err := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/repos/my-repo", bytes.NewBufferString(jsonBody))
 		require.NoError(t, err)
 		req = gimlet.SetURLVars(req, map[string]string{"repo_id": "my-repo"})
@@ -377,5 +379,17 @@ func TestRepoPatchByID(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, events, 1)
 		assert.Equal(t, event.EventTypeProjectModified, events[0].EventType)
+	})
+
+	t.Run("CannotRetargetToDifferentRepo", func(t *testing.T) {
+		resp := makeRequest(t, `{"owner_name": "evergreen-ci", "repo_name": "other-repo"}`)
+		require.NotNil(t, resp)
+		assert.Equal(t, http.StatusBadRequest, resp.Status())
+
+		updated, err := model.FindOneRepoRef(t.Context(), "my-repo")
+		require.NoError(t, err)
+		require.NotNil(t, updated)
+		assert.Equal(t, "evergreen-ci", updated.Owner)
+		assert.Equal(t, "evergreen", updated.Repo)
 	})
 }

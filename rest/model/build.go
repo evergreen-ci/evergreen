@@ -23,30 +23,30 @@ var (
 
 // APIBuild is the model to be returned by the API whenever builds are fetched.
 type APIBuild struct {
-	Id *string `json:"_id"`
+	Id *string `json:"_id" extensions:"!x-nullable"`
 	// The identifier of the project this build represents
-	ProjectId         *string `json:"project_id"`
-	ProjectIdentifier *string `json:"project_identifier"`
+	ProjectId         *string `json:"project_id" extensions:"!x-nullable"`
+	ProjectIdentifier *string `json:"project_identifier" extensions:"x-nullable"`
 	// Time at which build was created
-	CreateTime *time.Time `json:"create_time"`
+	CreateTime *time.Time `json:"create_time" extensions:"x-nullable"`
 	// Time at which build started running tasks
-	StartTime *time.Time `json:"start_time"`
+	StartTime *time.Time `json:"start_time" extensions:"x-nullable"`
 	// Time at which build finished running all tasks
-	FinishTime *time.Time `json:"finish_time"`
+	FinishTime *time.Time `json:"finish_time" extensions:"x-nullable"`
 	// The version this build is running tasks for
-	Version *string `json:"version"`
+	Version *string `json:"version" extensions:"!x-nullable"`
 	// Hash of the revision on which this build is running
-	Revision *string `json:"git_hash"`
+	Revision *string `json:"git_hash" extensions:"!x-nullable"`
 	// Build distro and architecture information
-	BuildVariant *string `json:"build_variant"`
+	BuildVariant *string `json:"build_variant" extensions:"!x-nullable"`
 	// The status of the build (possible values are "created", "started", "success", or "failed")
-	Status *string `json:"status"`
+	Status *string `json:"status" extensions:"!x-nullable"`
 	// Whether this build was manually initiated
 	Activated bool `json:"activated"`
 	// Who initiated the build
-	ActivatedBy *string `json:"activated_by"`
+	ActivatedBy *string `json:"activated_by" extensions:"!x-nullable"`
 	// When the build was initiated
-	ActivatedTime *time.Time `json:"activated_time"`
+	ActivatedTime *time.Time `json:"activated_time" extensions:"x-nullable"`
 	// Incrementing counter of project's builds
 	RevisionOrderNumber int `json:"order"`
 	// Contains a subset of information about tasks for the build; this is not
@@ -54,19 +54,19 @@ type APIBuild struct {
 	// exception).
 	TaskCache []APITaskCache `json:"task_cache,omitempty"`
 	// Tasks is the build's task cache with just the names
-	Tasks []string `json:"tasks"`
+	Tasks []string `json:"tasks" extensions:"x-nullable"`
 	// List of tags defined for the build variant, if any
 	Tags []*string `json:"tags,omitempty"`
 	// How long the build took to complete all tasks
 	TimeTaken APIDuration `json:"time_taken_ms"`
 	// Displayed title of the build showing version and variant running
-	DisplayName *string `json:"display_name"`
+	DisplayName *string `json:"display_name" extensions:"!x-nullable"`
 	// Predicted makespan by the scheduler prior to execution
 	PredictedMakespan APIDuration `json:"predicted_makespan_ms"`
 	// Actual makespan measured during execution
 	ActualMakespan APIDuration `json:"actual_makespan_ms"`
 	// The source of the patch, a commit or a patch
-	Origin *string `json:"origin"`
+	Origin *string `json:"origin" extensions:"!x-nullable"`
 	// Contains aggregated data about the statuses of tasks in this build. The
 	// keys of this object are statuses and the values are the number of tasks
 	// within this build in that status. Note that this field provides data that
@@ -182,7 +182,7 @@ type APITaskCache struct {
 	DisplayName     string                  `json:"display_name"`
 	Status          string                  `json:"status"`
 	StatusDetails   apimodels.TaskEndDetail `json:"task_end_details"`
-	StartTime       *time.Time              `json:"start_time"`
+	StartTime       *time.Time              `json:"start_time" extensions:"x-nullable"`
 	TimeTaken       time.Duration           `json:"time_taken" swaggertype:"primitive,integer"`
 	TimeTakenMS     APIDuration             `json:"time_taken_ms"`
 	Activated       bool                    `json:"activated"`
@@ -190,9 +190,9 @@ type APITaskCache struct {
 }
 
 type APIVariantTasks struct {
-	Variant      *string
-	Tasks        []string
-	DisplayTasks []APIDisplayTask
+	Variant      *string          `extensions:"!x-nullable"`
+	Tasks        []string         `extensions:"x-nullable"`
+	DisplayTasks []APIDisplayTask `extensions:"x-nullable"`
 }
 
 func APIVariantTasksBuildFromService(v patch.VariantTasks) APIVariantTasks {

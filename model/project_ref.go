@@ -933,6 +933,15 @@ func (p *ProjectRef) AddToRepoScope(ctx context.Context, u *user.DBUser) error {
 	if err != nil {
 		return errors.Wrapf(err, "finding repo ref '%s'", p.RepoRefId)
 	}
+	if u != nil {
+		if repoRef == nil {
+			if err := p.checkCanCreateNewRepoRef(ctx, u); err != nil {
+				return err
+			}
+		} else if err := p.checkRepoRefAdmin(ctx, u, repoRef); err != nil {
+			return err
+		}
+	}
 	if repoRef == nil {
 		repoRef, err = p.createNewRepoRef(ctx, u)
 		if err != nil {
@@ -1066,14 +1075,8 @@ func (p *ProjectRef) DetachFromRepo(ctx context.Context, u *user.DBUser) error {
 // trying to attach a project to.
 var ErrRepoRefUnauthorized = errors.New("user is not an admin of the repo")
 
-// checkExistingRepoRefAdmin verifies that the user is allowed to attach the project to the repo ref
-// matching the project's current owner/repo. If no such repo ref exists yet, there is nothing to
-// authorize against, since the user will become its admin.
-func (p *ProjectRef) checkExistingRepoRefAdmin(ctx context.Context, u *user.DBUser) error {
-	repoRef, err := FindRepoRefByOwnerAndRepo(ctx, p.Owner, p.Repo)
-	if err != nil {
-		return errors.Wrapf(err, "finding repo ref for '%s/%s'", p.Owner, p.Repo)
-	}
+// checkRepoRefAdmin verifies that the user is allowed to attach the project to the given repo ref.
+func (p *ProjectRef) checkRepoRefAdmin(ctx context.Context, u *user.DBUser, repoRef *RepoRef) error {
 	if repoRef == nil {
 		return nil
 	}
@@ -1089,14 +1092,38 @@ func (p *ProjectRef) checkExistingRepoRefAdmin(ctx context.Context, u *user.DBUs
 	return nil
 }
 
+// checkCanCreateNewRepoRef verifies that the user is allowed to create a new repo
+// ref for the project's owner/repo.
+func (p *ProjectRef) checkCanCreateNewRepoRef(ctx context.Context, u *user.DBUser) error {
+	allowedOrgs := evergreen.GetEnvironment().Settings().GithubOrgs
+	if err := p.ValidateOwnerAndRepo(allowedOrgs); err != nil {
+		return errors.Wrap(err, "validating owner and repo")
+	}
+	allEnabledProjects, err := FindMergedEnabledProjectRefsByOwnerAndRepo(ctx, p.Owner, p.Repo)
+	if err != nil {
+		return errors.Wrap(err, "finding all enabled projects")
+	}
+	if len(allEnabledProjects) == 0 {
+		return nil
+	}
+	for _, project := range allEnabledProjects {
+		if u.HasPermission(ctx, gimlet.PermissionOpts{
+			Resource:      project.Id,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionProjectSettings,
+			RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+		}) {
+			return nil
+		}
+	}
+	return errors.Wrapf(ErrRepoRefUnauthorized, "user '%s' cannot create a repo ref for '%s/%s' because they do not have project settings edit permission on any of its existing enabled projects", u.Id, p.Owner, p.Repo)
+}
+
 // AttachToRepo adds the branch to the relevant repo scopes, and updates the project to point to the repo.
 // Any values that previously were unset will now use the repo value, unless this would introduce
 // a GitHub project conflict. If no repo ref currently exists, the user attaching it will be added as the repo ref admin.
 func (p *ProjectRef) AttachToRepo(ctx context.Context, u *user.DBUser) error {
-	if err := p.checkExistingRepoRefAdmin(ctx, u); err != nil {
-		return err
-	}
-
+	// AddToRepoScope below authorizes the attach and creates the repo ref if needed.
 	// Before allowing a project to attach to a repo, verify that this is a valid GitHub organization.
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
@@ -1130,9 +1157,14 @@ func (p *ProjectRef) AttachToRepo(ctx context.Context, u *user.DBUser) error {
 // updates the project to point to the new repo. Any Github project conflicts are disabled.
 // If no repo ref currently exists for the new repo, the user attaching it will be added as the repo ref admin.
 func (p *ProjectRef) AttachToNewRepo(ctx context.Context, u *user.DBUser) error {
-	// Moving to a repo that already has a repo ref requires the same authorization as AttachToRepo.
+	// Moving to a repo that already has a repo ref requires the same authorization as
+	// AttachToRepo. This must run before detaching from the old repo scope below.
 	if p.UseRepoSettings() {
-		if err := p.checkExistingRepoRefAdmin(ctx, u); err != nil {
+		repoRef, err := FindRepoRefByOwnerAndRepo(ctx, p.Owner, p.Repo)
+		if err != nil {
+			return errors.Wrapf(err, "finding repo ref for '%s/%s'", p.Owner, p.Repo)
+		}
+		if err := p.checkRepoRefAdmin(ctx, u, repoRef); err != nil {
 			return err
 		}
 	}

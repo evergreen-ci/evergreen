@@ -887,7 +887,7 @@ func (t *Task) FindTaskOnBaseCommit(ctx context.Context) (*Task, error) {
 }
 
 func (t *Task) FindTaskOnPreviousCommit(ctx context.Context) (*Task, error) {
-	return FindOne(ctx, db.Query(ByPreviousCommit(t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester, t.RevisionOrderNumber)).Sort([]string{"-" + RevisionOrderNumberKey}))
+	return FindOne(ctx, db.Query(ByPreviousCommit(t.BuildVariant, t.DisplayName, t.Project, t.RevisionOrderNumber)).Sort([]string{"-" + RevisionOrderNumberKey}))
 }
 
 // Find the previously completed task for the same project +
@@ -3606,6 +3606,20 @@ func (t *Task) GetDisplayTask(ctx context.Context) (*Task, error) {
 	return dt, nil
 }
 
+// GetDisplayTaskName returns the name of the display task that contains the
+// task, or the empty string if the task is not an execution task of a display
+// task.
+func (t *Task) GetDisplayTaskName(ctx context.Context) (string, error) {
+	dt, err := t.GetDisplayTask(ctx)
+	if err != nil {
+		return "", errors.Wrap(err, "getting display task")
+	}
+	if dt == nil {
+		return "", nil
+	}
+	return dt.DisplayName, nil
+}
+
 // GetAllDependencies returns all the dependencies the tasks in taskIDs rely on
 func GetAllDependencies(ctx context.Context, taskIDs []string, taskMap map[string]*Task) ([]Dependency, error) {
 	// fill in the gaps in taskMap
@@ -3795,13 +3809,13 @@ func (t *Task) GetJQL(searchProjects []string) string {
 		if testResult.Status == evergreen.TestFailedStatus {
 			testName := testResult.GetDisplayTestName()
 			fileParts := eitherSlash.Split(testName, -1)
-			jqlParts = append(jqlParts, fmt.Sprintf("text~\"%v\"", util.EscapeJQLReservedChars(fileParts[len(fileParts)-1])))
+			jqlParts = append(jqlParts, fmt.Sprintf("text~\"\\\"%v\\\"\"", util.EscapeJQLReservedChars(fileParts[len(fileParts)-1])))
 		}
 	}
 	if jqlParts != nil {
 		jqlClause = strings.Join(jqlParts, " or ")
 	} else {
-		jqlClause = fmt.Sprintf("text~\"%v\"", util.EscapeJQLReservedChars(t.DisplayName))
+		jqlClause = fmt.Sprintf("text~\"\\\"%v\\\"\"", util.EscapeJQLReservedChars(t.DisplayName))
 	}
 
 	return fmt.Sprintf(jqlBFQuery, strings.Join(searchProjects, ", "), jqlClause)

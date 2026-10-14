@@ -6,12 +6,12 @@ import (
 )
 
 type APIManifest struct {
-	Id          *string             `json:"id"`
-	Revision    *string             `json:"revision"`
-	ProjectName *string             `json:"project"`
-	Branch      *string             `json:"branch"`
+	Id          *string             `json:"id" extensions:"!x-nullable"`
+	Revision    *string             `json:"revision" extensions:"!x-nullable"`
+	ProjectName *string             `json:"project" extensions:"!x-nullable"`
+	Branch      *string             `json:"branch" extensions:"!x-nullable"`
 	IsBase      bool                `json:"is_base"`
-	Modules     []APIManifestModule `json:"modules"`
+	Modules     []APIManifestModule `json:"modules" extensions:"x-nullable"`
 }
 
 func (m *APIManifest) BuildFromService(mfst *manifest.Manifest) {
@@ -28,12 +28,12 @@ func (m *APIManifest) BuildFromService(mfst *manifest.Manifest) {
 }
 
 type APIManifestModule struct {
-	Name     *string `json:"name"`
-	Owner    *string `json:"owner"`
-	Repo     *string `json:"repo"`
-	Branch   *string `json:"branch"`
-	Revision *string `json:"revision"`
-	URL      *string `json:"url"`
+	Name     *string `json:"name" extensions:"!x-nullable"`
+	Owner    *string `json:"owner" extensions:"!x-nullable"`
+	Repo     *string `json:"repo" extensions:"!x-nullable"`
+	Branch   *string `json:"branch" extensions:"!x-nullable"`
+	Revision *string `json:"revision" extensions:"!x-nullable"`
+	URL      *string `json:"url" extensions:"!x-nullable"`
 }
 
 func (m *APIManifestModule) BuildFromService(modName string, mod *manifest.Module) {

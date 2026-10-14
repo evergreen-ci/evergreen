@@ -1572,7 +1572,11 @@ func setTestQuarantineState(ctx context.Context, taskID, testName string, isManu
 	if t.DisplayOnly {
 		return nil, InputValidationError.Send(ctx, "cannot modify test quarantine state on display tasks, select an execution task instead")
 	}
-	if err = data.SetTestQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, testName, isManuallyQuarantined); err != nil {
+	displayTaskName, err := t.GetDisplayTaskName(ctx)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching display task name for task '%s': %s", taskID, err.Error()))
+	}
+	if err = data.SetTestQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, displayTaskName, testName, isManuallyQuarantined); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting quarantine state to '%t' for test '%s' on task '%s' on build variant '%s' on project '%s': %s", isManuallyQuarantined, testName, taskID, t.BuildVariant, t.Project, err.Error()))
 	}
 	return buildQuarantineMutationResponse(ctx, t, testName, isManuallyQuarantined)
@@ -1591,7 +1595,11 @@ func setTaskQuarantineState(ctx context.Context, taskID string, isManuallyQuaran
 	if t.DisplayOnly {
 		return nil, InputValidationError.Send(ctx, fmt.Sprintf("cannot modify quarantine state on display task '%s', select an execution task instead", taskID))
 	}
-	if err = data.SetTaskQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, isManuallyQuarantined); err != nil {
+	displayTaskName, err := t.GetDisplayTaskName(ctx)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching display task name for task '%s': %s", taskID, err.Error()))
+	}
+	if err = data.SetTaskQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, displayTaskName, isManuallyQuarantined); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting quarantine state to '%t' for task '%s' on build variant '%s' on project '%s': %s", isManuallyQuarantined, taskID, t.BuildVariant, t.Project, err.Error()))
 	}
 	usr := mustHaveUser(ctx)

@@ -143,6 +143,9 @@ func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, e
 			req.TaskName,
 		)
 		reqBody.SetStrategies(strategies)
+		if req.DisplayTaskName != "" {
+			reqBody.SetDisplayTaskName(req.DisplayTaskName)
+		}
 		selectedTestPtrs, resp, err = c.TestSelectionAPI.SelectAllKnownTestsOfATaskWithDataInBodyApiTestSelectionSelectKnownTestsPost(ctx).
 			BodySelectAllKnownTestsOfATaskWithDataInBodyApiTestSelectionSelectKnownTestsPost(*reqBody).
 			Execute()
@@ -156,6 +159,9 @@ func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, e
 			req.Tests,
 		)
 		reqBody.SetStrategies(strategies)
+		if req.DisplayTaskName != "" {
+			reqBody.SetDisplayTaskName(req.DisplayTaskName)
+		}
 		selectedTestPtrs, resp, err = c.TestSelectionAPI.SelectTestsWithDataInBodyApiTestSelectionSelectTestsPost(ctx).
 			BodySelectTestsWithDataInBodyApiTestSelectionSelectTestsPost(*reqBody).
 			Execute()
@@ -165,14 +171,15 @@ func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, e
 	}
 	if err != nil {
 		logTSSError(ctx, err, resp, time.Since(startAt), message.Fields{
-			"message":       "error selecting tests",
-			"endpoint":      endpoint,
-			"project_id":    req.Project,
-			"requester":     req.Requester,
-			"build_variant": req.BuildVariant,
-			"task_id":       req.TaskID,
-			"task_name":     req.TaskName,
-			"test_count":    len(req.Tests),
+			"message":           "error selecting tests",
+			"endpoint":          endpoint,
+			"project_id":        req.Project,
+			"requester":         req.Requester,
+			"build_variant":     req.BuildVariant,
+			"task_id":           req.TaskID,
+			"task_name":         req.TaskName,
+			"display_task_name": req.DisplayTaskName,
+			"test_count":        len(req.Tests),
 		})
 		return nil, wrapTSSError(err)
 	}
@@ -248,7 +255,7 @@ func findQuarantinedSkippedTests(ctx context.Context, req model.SelectTestsReque
 		if len(skipped) == 0 {
 			return nil, nil
 		}
-		statuses, err := GetTestsQuarantineStatus(ctx, req.Project, req.BuildVariant, req.TaskName, skipped)
+		statuses, err := GetTestsQuarantineStatus(ctx, req.Project, req.BuildVariant, req.TaskName, req.DisplayTaskName, skipped)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting quarantine status for skipped tests")
 		}
@@ -281,8 +288,9 @@ func findQuarantinedSkippedTests(ctx context.Context, req model.SelectTestsReque
 }
 
 // SetTestQuarantined marks the test as quarantined or unquarantined in the test
-// selection service.
-func SetTestQuarantined(ctx context.Context, projectID, bvName, taskName, testName string, isManuallyQuarantined bool) error {
+// selection service. displayTaskName is the name of the display task that
+// contains the task, if any.
+func SetTestQuarantined(ctx context.Context, projectID, bvName, taskName, displayTaskName, testName string, isManuallyQuarantined bool) error {
 	ctx, cancel := context.WithTimeout(ctx, testSelectionWriteTimeout)
 	defer cancel()
 	c := newTestSelectionClient(testSelectionHTTPClient)
@@ -295,6 +303,9 @@ func SetTestQuarantined(ctx context.Context, projectID, bvName, taskName, testNa
 		[]string{testName},
 		isManuallyQuarantined,
 	)
+	if displayTaskName != "" {
+		reqBody.SetDisplayTaskName(displayTaskName)
+	}
 	_, resp, err := c.StateTransitionAPI.MarkTestsAsManuallyQuarantinedDataInBodyApiTestSelectionTransitionTestsPost(ctx).
 		BodyMarkTestsAsManuallyQuarantinedDataInBodyApiTestSelectionTransitionTestsPost(*reqBody).
 		Execute()
@@ -303,12 +314,13 @@ func SetTestQuarantined(ctx context.Context, projectID, bvName, taskName, testNa
 	}
 	if err != nil {
 		logTSSError(ctx, err, resp, time.Since(startAt), message.Fields{
-			"message":       "error setting test quarantine status",
-			"endpoint":      TransitionTestsEndpoint,
-			"project_id":    projectID,
-			"build_variant": bvName,
-			"task_name":     taskName,
-			"test_name":     testName,
+			"message":           "error setting test quarantine status",
+			"endpoint":          TransitionTestsEndpoint,
+			"project_id":        projectID,
+			"build_variant":     bvName,
+			"task_name":         taskName,
+			"display_task_name": displayTaskName,
+			"test_name":         testName,
 		})
 	}
 	return wrapTSSError(err)
@@ -316,8 +328,9 @@ func SetTestQuarantined(ctx context.Context, projectID, bvName, taskName, testNa
 
 // GetTestsQuarantineStatus returns a map from each input test name to its
 // quarantine status. Tests absent from the test selection service response
-// are populated as false.
-func GetTestsQuarantineStatus(ctx context.Context, projectID, bvName, taskName string, testNames []string) (testToQuarantineStatus map[string]bool, err error) {
+// are populated as false. displayTaskName is the name of the display task that
+// contains the task, if any.
+func GetTestsQuarantineStatus(ctx context.Context, projectID, bvName, taskName, displayTaskName string, testNames []string) (testToQuarantineStatus map[string]bool, err error) {
 	testToQuarantineStatus = make(map[string]bool, len(testNames))
 	for _, name := range testNames {
 		testToQuarantineStatus[name] = false
@@ -331,6 +344,9 @@ func GetTestsQuarantineStatus(ctx context.Context, projectID, bvName, taskName s
 
 	startAt := time.Now()
 	reqBody := testselection.NewBodyGetTestsStateDataInBodyApiTestSelectionGetTestsStatePost(projectID, bvName, taskName, testNames)
+	if displayTaskName != "" {
+		reqBody.SetDisplayTaskName(displayTaskName)
+	}
 	result, resp, err := c.StateTransitionAPI.GetTestsStateDataInBodyApiTestSelectionGetTestsStatePost(ctx).
 		BodyGetTestsStateDataInBodyApiTestSelectionGetTestsStatePost(*reqBody).
 		Execute()
@@ -342,24 +358,26 @@ func GetTestsQuarantineStatus(ctx context.Context, projectID, bvName, taskName s
 			return testToQuarantineStatus, nil
 		}
 		logTSSError(ctx, err, resp, time.Since(startAt), message.Fields{
-			"message":       "error getting tests quarantine status; continuing with default statuses",
-			"endpoint":      GetTestsStateEndpoint,
-			"project_id":    projectID,
-			"build_variant": bvName,
-			"task_name":     taskName,
-			"test_count":    len(testNames),
+			"message":           "error getting tests quarantine status; continuing with default statuses",
+			"endpoint":          GetTestsStateEndpoint,
+			"project_id":        projectID,
+			"build_variant":     bvName,
+			"task_name":         taskName,
+			"display_task_name": displayTaskName,
+			"test_count":        len(testNames),
 		})
 		return testToQuarantineStatus, nil
 	}
 	if result == nil {
 		grip.Error(ctx, message.Fields{
-			"message":       "nil response from test selection service; continuing with default statuses",
-			"endpoint":      GetTestsStateEndpoint,
-			"project_id":    projectID,
-			"build_variant": bvName,
-			"task_name":     taskName,
-			"duration_ms":   time.Since(startAt).Milliseconds(),
-			"test_count":    len(testNames),
+			"message":           "nil response from test selection service; continuing with default statuses",
+			"endpoint":          GetTestsStateEndpoint,
+			"project_id":        projectID,
+			"build_variant":     bvName,
+			"task_name":         taskName,
+			"display_task_name": displayTaskName,
+			"duration_ms":       time.Since(startAt).Milliseconds(),
+			"test_count":        len(testNames),
 		})
 		return testToQuarantineStatus, nil
 	}
@@ -375,8 +393,9 @@ func GetTestsQuarantineStatus(ctx context.Context, projectID, bvName, taskName s
 }
 
 // SetTaskQuarantined marks all known tests of a task as manually quarantined
-// (or unquarantines them) in the test selection service.
-func SetTaskQuarantined(ctx context.Context, projectID, bvName, taskName string, isManuallyQuarantined bool) error {
+// (or unquarantines them) in the test selection service. displayTaskName is the
+// name of the display task that contains the task, if any.
+func SetTaskQuarantined(ctx context.Context, projectID, bvName, taskName, displayTaskName string, isManuallyQuarantined bool) error {
 	ctx, cancel := context.WithTimeout(ctx, testSelectionWriteTimeout)
 	defer cancel()
 	c := newTestSelectionClient(testSelectionHTTPClient)
@@ -388,6 +407,9 @@ func SetTaskQuarantined(ctx context.Context, projectID, bvName, taskName string,
 		taskName,
 		isManuallyQuarantined,
 	)
+	if displayTaskName != "" {
+		reqBody.SetDisplayTaskName(displayTaskName)
+	}
 	_, resp, err := c.StateTransitionAPI.MarkTaskAsManuallyQuarantinedDataInBodyApiTestSelectionTransitionTaskPost(ctx).
 		BodyMarkTaskAsManuallyQuarantinedDataInBodyApiTestSelectionTransitionTaskPost(*reqBody).
 		Execute()
@@ -396,11 +418,12 @@ func SetTaskQuarantined(ctx context.Context, projectID, bvName, taskName string,
 	}
 	if err != nil {
 		logTSSError(ctx, err, resp, time.Since(startAt), message.Fields{
-			"message":       "error setting task quarantine status",
-			"endpoint":      TransitionTaskEndpoint,
-			"project_id":    projectID,
-			"build_variant": bvName,
-			"task_name":     taskName,
+			"message":           "error setting task quarantine status",
+			"endpoint":          TransitionTaskEndpoint,
+			"project_id":        projectID,
+			"build_variant":     bvName,
+			"task_name":         taskName,
+			"display_task_name": displayTaskName,
 		})
 	}
 	return wrapTSSError(err)
@@ -496,13 +519,17 @@ func DecorateQuarantineStatus(ctx context.Context, t *task.Task, results []testr
 	ctx, cancel := context.WithTimeout(ctx, testSelectionDecorationTimeout)
 	defer cancel()
 	if t.DisplayOnly {
-		return decorateDisplayTaskQuarantineStatus(ctx, t.Id, results)
+		return decorateDisplayTaskQuarantineStatus(ctx, t.Id, t.DisplayName, results)
+	}
+	displayTaskName, err := t.GetDisplayTaskName(ctx)
+	if err != nil {
+		return errors.Wrap(err, "fetching display task name")
 	}
 	testNames := make([]string, 0, len(results))
 	for _, r := range results {
 		testNames = append(testNames, r.GetDisplayTestName())
 	}
-	statuses, err := GetTestsQuarantineStatus(ctx, t.Project, t.BuildVariant, t.DisplayName, testNames)
+	statuses, err := GetTestsQuarantineStatus(ctx, t.Project, t.BuildVariant, t.DisplayName, displayTaskName, testNames)
 	if err != nil {
 		return errors.Wrap(err, "fetching test quarantine statuses")
 	}
@@ -516,7 +543,7 @@ func DecorateQuarantineStatus(ctx context.Context, t *task.Task, results []testr
 // and fetches quarantine status once per execution task. Execution tasks
 // without test selection enabled, and tests whose execution task can't be
 // loaded, are left with the default IsManuallyQuarantined value.
-func decorateDisplayTaskQuarantineStatus(ctx context.Context, displayTaskID string, results []testresult.TestResult) error {
+func decorateDisplayTaskQuarantineStatus(ctx context.Context, displayTaskID, displayTaskName string, results []testresult.TestResult) error {
 	resultIndicesByExecTaskID := map[string][]int{}
 	for i, r := range results {
 		if r.TaskID == "" {
@@ -561,7 +588,7 @@ func decorateDisplayTaskQuarantineStatus(ctx context.Context, displayTaskID stri
 			for _, i := range indices {
 				testNames = append(testNames, results[i].GetDisplayTestName())
 			}
-			statuses, err := GetTestsQuarantineStatus(ctx, execTask.Project, execTask.BuildVariant, execTask.DisplayName, testNames)
+			statuses, err := GetTestsQuarantineStatus(ctx, execTask.Project, execTask.BuildVariant, execTask.DisplayName, displayTaskName, testNames)
 			if err != nil {
 				return errors.Wrapf(err, "fetching test quarantine statuses for execution task '%s'", execTask.Id)
 			}

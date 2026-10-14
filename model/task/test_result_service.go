@@ -13,6 +13,11 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/otel/attribute"
+)
+
+const (
+	testResultsDownloadCountOtelAttribute = "evergreen.test_results.download_count"
 )
 
 // testResultService implements a test result service where test results are stored in s3 with relevant test
@@ -54,8 +59,8 @@ func (s *testResultService) AppendQuarantinedTests(ctx context.Context, record t
 	return errors.Wrap(err, "appending quarantined tests to DB test results")
 }
 
-func (s *testResultService) GetTaskTestResultsStats(ctx context.Context, taskOpts []Task) (testresult.TaskTestResultsStats, error) {
-	allTaskResults, err := s.Get(ctx, taskOpts, GetTaskTestResultsOptions{Fields: []string{testresult.StatsKey}})
+func (s *testResultService) GetTaskTestResultsStats(ctx context.Context, tasks []Task) (testresult.TaskTestResultsStats, error) {
+	allTaskResults, err := s.Get(ctx, tasks, GetTaskTestResultsOptions{Fields: []string{testresult.StatsKey}})
 	if err != nil {
 		return testresult.TaskTestResultsStats{}, errors.Wrap(err, "getting test results")
 	}
@@ -71,14 +76,14 @@ func (s *testResultService) GetTaskTestResultsStats(ctx context.Context, taskOpt
 
 // Get fetches the unmerged test results metadata for the given tasks from the cedar DB
 // and downloads the associated test results from s3.
-func (s *testResultService) Get(ctx context.Context, taskOpts []Task, getOpts GetTaskTestResultsOptions) ([]testresult.TaskTestResults, error) {
+func (s *testResultService) Get(ctx context.Context, tasks []Task, getOpts GetTaskTestResultsOptions) ([]testresult.TaskTestResults, error) {
 	var filter bson.M
-	if len(taskOpts) == 1 {
-		filter = ByTaskIDAndExecution(taskOpts[0].Id, taskOpts[0].Execution)
+	if len(tasks) == 1 {
+		filter = ByTaskIDAndExecution(tasks[0].Id, tasks[0].Execution)
 	} else {
-		findQueries := make([]bson.M, len(taskOpts))
-		for i, taskOpt := range taskOpts {
-			findQueries[i] = ByTaskIDAndExecution(taskOpt.Id, taskOpt.Execution)
+		findQueries := make([]bson.M, len(tasks))
+		for i, t := range tasks {
+			findQueries[i] = ByTaskIDAndExecution(t.Id, t.Execution)
 		}
 		filter = bson.M{"$or": findQueries}
 	}
@@ -135,13 +140,16 @@ func (s *testResultService) Get(ctx context.Context, taskOpts []Task, getOpts Ge
 			return nil, errors.Wrap(err, "retrieving config")
 		}
 
+		downloadCtx, downloadSpan := tracer.Start(ctx, "test-result-service-download-s3")
+		downloadSpan.SetAttributes(attribute.Int(testResultsDownloadCountOtelAttribute, len(allDBTaskResults)))
 		var wg sync.WaitGroup
 		catcher := grip.NewBasicCatcher()
 		for i := 0; i < runtime.GOMAXPROCS(0); i++ {
 			wg.Add(1)
-			go workerDownload(ctx, toDownload, config, catcher, &wg)
+			go workerDownload(downloadCtx, toDownload, config, catcher, &wg)
 		}
 		wg.Wait()
+		downloadSpan.End()
 		if catcher.HasErrors() {
 			return nil, catcher.Resolve()
 		}
@@ -181,6 +189,13 @@ func workerDownload(ctx context.Context, toDownload <-chan *testresult.DbTaskTes
 // download returns a TestResult slice with the corresponding Results stored in
 // the offline blob storage.
 func download(ctx context.Context, config *evergreen.Settings, t *testresult.DbTaskTestResults) ([]testresult.TestResult, error) {
+	ctx, span := tracer.Start(ctx, "test-result-service-download-parquet")
+	defer span.End()
+	span.SetAttributes(
+		attribute.String(evergreen.TaskIDOtelAttribute, t.Info.TaskID),
+		attribute.Int(evergreen.TaskExecutionOtelAttribute, t.Info.Execution),
+	)
+
 	dbTask, err := FindOneIdAndExecution(ctx, t.Info.TaskID, t.Info.Execution)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding task '%s'", t.Info.TaskID)
@@ -193,7 +208,7 @@ func download(ctx context.Context, config *evergreen.Settings, t *testresult.DbT
 		return nil, nil
 	}
 	// This is required for backward compatibility for tasks that uploaded their
-	// test results to cedar and do not have s3 info directly on their task ouptut struct.
+	// test results to cedar and do not have s3 info directly on their task output struct.
 	if outputInfo.TestResults.Version == TestResultServiceCedar {
 		outputInfo.TestResults.BucketConfig = config.Buckets.TestResultsBucket
 	}
