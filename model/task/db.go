@@ -1422,7 +1422,7 @@ func FindStuckDispatching(ctx context.Context) ([]Task, error) {
 // then restarted, this will not return the virtual task because the runner's
 // latest execution might still push-complete the virtual task.
 func FindStrandedVirtualTasks(ctx context.Context) ([]Task, error) {
-	notPushCompletedYet, err := FindAll(ctx, db.Query(bson.M{
+	awaitingPushCompletion, err := FindAll(ctx, db.Query(bson.M{
 		IsVirtualKey:   true,
 		CompletedByKey: bson.M{"$exists": true},
 		StatusKey:      evergreen.TaskUndispatched,
@@ -1433,12 +1433,12 @@ func FindStrandedVirtualTasks(ctx context.Context) ([]Task, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "finding virtual tasks awaiting push-completion")
 	}
-	if len(notPushCompletedYet) == 0 {
+	if len(awaitingPushCompletion) == 0 {
 		return nil, nil
 	}
 
-	runnerTaskIDs := make([]string, 0, len(notPushCompletedYet))
-	for _, t := range notPushCompletedYet {
+	runnerTaskIDs := make([]string, 0, len(awaitingPushCompletion))
+	for _, t := range awaitingPushCompletion {
 		runnerTaskIDs = append(runnerTaskIDs, t.CompletedBy)
 	}
 	runners, err := FindAll(ctx, db.Query(bson.M{IdKey: bson.M{"$in": runnerTaskIDs}}).WithFields(IdKey, StatusKey))
@@ -1459,7 +1459,7 @@ func FindStrandedVirtualTasks(ctx context.Context) ([]Task, error) {
 	// already finished are stranded because the runner is not going to
 	// push-complete them.
 	var stranded []Task
-	for _, t := range notPushCompletedYet {
+	for _, t := range awaitingPushCompletion {
 		if finishedRunners[t.CompletedBy] {
 			stranded = append(stranded, t)
 		}
