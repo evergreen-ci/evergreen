@@ -1422,11 +1422,10 @@ func FindStuckDispatching(ctx context.Context) ([]Task, error) {
 // then restarted, this will not return the virtual task because the runner's
 // latest execution might still push-complete the virtual task.
 func FindStrandedVirtualTasks(ctx context.Context) ([]Task, error) {
-	finishedStatuses := append([]string{evergreen.TaskSucceeded}, evergreen.TaskFailureStatuses...)
 	notPushCompletedYet, err := FindAll(ctx, db.Query(bson.M{
 		IsVirtualKey:   true,
 		CompletedByKey: bson.M{"$exists": true},
-		StatusKey:      bson.M{"$nin": finishedStatuses},
+		StatusKey:      evergreen.TaskUndispatched,
 	}))
 	if adb.ResultsNotFound(err) {
 		return nil, nil
