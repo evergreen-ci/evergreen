@@ -1,6 +1,6 @@
 module github.com/evergreen-ci/evergreen
 
-go 1.24.9
+go 1.25
 
 require (
 	github.com/99designs/gqlgen v0.17.86
@@ -114,8 +114,8 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.3 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/jtolds/gls v4.20.0+incompatible // indirect
-	github.com/klauspost/compress v1.18.3 // indirect
-	github.com/klauspost/pgzip v1.2.6
+	github.com/klauspost/compress v1.20.1 // indirect
+	github.com/klauspost/pgzip v1.2.7
 	github.com/lestrrat-go/blackmagic v1.0.4 // indirect
 	github.com/lestrrat-go/httpcc v1.0.1 // indirect
 	github.com/lestrrat-go/iter v1.0.2 // indirect
