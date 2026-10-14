@@ -1164,11 +1164,9 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting running task '%s' execution '%d'", h.RunningTask, h.RunningTaskExecution))
 	}
-	// FindOneIdAndExecution falls back to archived task executions, but an
-	// archived execution can never run again, so it's treated the same as if
-	// the task doesn't exist. Otherwise, the host would be stuck on the
-	// archived execution forever.
-	if t == nil || t.Archived || t.OldTaskId != "" {
+	// An archived execution can never run again, so the host has to move on
+	// to a new task.
+	if t == nil || t.Archived {
 		reason := "it does not exist"
 		if t != nil {
 			reason = "it is archived"
@@ -1178,7 +1176,6 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 			grip.Error(ctx, message.WrapError(err, getMessage("could not clear host's invalid running task")))
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
-		// Return no task so the agent asks for a new one.
 		return gimlet.NewJSONResponse(response)
 	}
 

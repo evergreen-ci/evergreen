@@ -474,24 +474,15 @@ func TestHostNextTask(t *testing.T) {
 				"RunningTaskThatIsArchivedShouldClearHostAndReturnNoTask": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
 					const archivedTaskID = "archivedTask"
 					archivedExecution := task.Task{
-						Id:                    task.MakeOldID(archivedTaskID, 1),
-						OldTaskId:             archivedTaskID,
-						Archived:              true,
-						Execution:             1,
-						Status:                evergreen.TaskFailed,
-						Activated:             true,
-						BuildId:               "anotherBuild",
-						NumNextTaskDispatches: 2,
-					}
-					require.NoError(t, db.Insert(ctx, task.OldCollection, archivedExecution))
-					latestExecution := task.Task{
-						Id:        archivedTaskID,
-						Execution: 2,
-						Status:    evergreen.TaskUndispatched,
+						Id:        task.MakeOldID(archivedTaskID, 1),
+						OldTaskId: archivedTaskID,
+						Archived:  true,
+						Execution: 1,
+						Status:    evergreen.TaskFailed,
 						Activated: true,
 						BuildId:   "anotherBuild",
 					}
-					require.NoError(t, latestExecution.Insert(ctx))
+					require.NoError(t, db.Insert(ctx, task.OldCollection, archivedExecution))
 					hostWithArchivedTask := host.Host{
 						Id:                   "hostWithArchivedTask",
 						Secret:               hostSecret,
@@ -516,12 +507,31 @@ func TestHostNextTask(t *testing.T) {
 					require.NoError(t, err)
 					require.NotZero(t, dbHost)
 					assert.Empty(t, dbHost.RunningTask)
-					assert.Zero(t, dbHost.RunningTaskExecution)
+				},
+				"RunningTaskThatDoesNotExistShouldClearHostAndReturnNoTask": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
+					hostWithMissingTask := host.Host{
+						Id:            "hostWithMissingTask",
+						Secret:        hostSecret,
+						RunningTask:   "nonexistentTask",
+						AgentRevision: evergreen.AgentVersion,
+						Provisioned:   true,
+						Status:        evergreen.HostRunning,
+					}
+					require.NoError(t, hostWithMissingTask.Insert(ctx))
 
-					dbLatestExecution, err := task.FindOneId(ctx, archivedTaskID)
+					rh.host = &hostWithMissingTask
+					rh.hostID = hostWithMissingTask.Id
+					resp := rh.Run(ctx)
+					require.NotNil(t, resp)
+					assert.Equal(t, http.StatusOK, resp.Status())
+					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
+					require.True(t, ok, resp.Data())
+					assert.Empty(t, taskResp.TaskId)
+
+					dbHost, err := host.FindOneId(ctx, hostWithMissingTask.Id)
 					require.NoError(t, err)
-					require.NotZero(t, dbLatestExecution)
-					assert.Equal(t, evergreen.TaskUndispatched, dbLatestExecution.Status, "latest execution should not be dispatched to the host")
+					require.NotZero(t, dbHost)
+					assert.Empty(t, dbHost.RunningTask)
 				},
 				"WithAnUndispatchedTaskButAHostThatHasThatTaskAsARunningTask": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
 					t1 := task.Task{

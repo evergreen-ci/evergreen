@@ -1423,19 +1423,22 @@ func (t *Task) EstimatedFinishTime(now time.Time) time.Time {
 }
 
 func (t *Task) MarkSystemFailed(ctx context.Context, description string) error {
-	return t.MarkSystemFailedIfStatus(ctx, description, nil)
+	return t.markSystemFailed(ctx, description, false)
 }
 
-// MarkSystemFailedIfStatus is the same as MarkSystemFailed, except that it only
-// updates the task if its current status in the DB is one of the given
-// statuses. If no statuses are given, the status is not checked. If the task
-// does not match, it returns a not found error.
-func (t *Task) MarkSystemFailedIfStatus(ctx context.Context, description string, statuses []string) error {
+// MarkSystemFailedIfUnchanged is the same as MarkSystemFailed, except that it
+// only updates the task if its status and host in the DB still match the
+// in-memory task. If they don't, it returns a not found error.
+func (t *Task) MarkSystemFailedIfUnchanged(ctx context.Context, description string) error {
+	return t.markSystemFailed(ctx, description, true)
+}
+
+func (t *Task) markSystemFailed(ctx context.Context, description string, requireUnchanged bool) error {
 	prevStatus := t.Status
 	t.FinishTime = t.EstimatedFinishTime(time.Now())
 	t.Details = GetSystemFailureDetails(description)
 
-	if err := t.MarkEndIfStatus(ctx, t.FinishTime, &t.Details, statuses); err != nil {
+	if err := t.markEnd(ctx, t.FinishTime, &t.Details, requireUnchanged); err != nil {
 		return err
 	}
 
@@ -2209,14 +2212,19 @@ func (t *Task) SetCompletedBy(ctx context.Context, completedBy string) error {
 // applies to the task's current execution; if the task has moved on to a
 // different execution, it returns a not found error.
 func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimodels.TaskEndDetail) error {
-	return t.MarkEndIfStatus(ctx, finishTime, detail, nil)
+	return t.markEnd(ctx, finishTime, detail, false)
 }
 
-// MarkEndIfStatus is the same as MarkEnd, except that it only updates the task
-// if its current status in the DB is one of the given statuses. If no statuses
-// are given, the status is not checked. If the task does not match, it returns
-// a not found error.
-func (t *Task) MarkEndIfStatus(ctx context.Context, finishTime time.Time, detail *apimodels.TaskEndDetail, statuses []string) error {
+// MarkEndIfUnchanged is the same as MarkEnd, except that it only updates the
+// task if its status and host in the DB still match the in-memory task. If
+// they don't, it returns a not found error.
+func (t *Task) MarkEndIfUnchanged(ctx context.Context, finishTime time.Time, detail *apimodels.TaskEndDetail) error {
+	return t.markEnd(ctx, finishTime, detail, true)
+}
+
+func (t *Task) markEnd(ctx context.Context, finishTime time.Time, detail *apimodels.TaskEndDetail, requireUnchanged bool) error {
+	query := t.currentExecutionQuery(requireUnchanged)
+
 	if utility.IsZeroTime(t.StartTime) {
 		timedOutStart := finishTime.Add(-2 * time.Hour)
 		if !utility.IsZeroTime(t.DispatchTime) {
@@ -2297,14 +2305,25 @@ func (t *Task) MarkEndIfStatus(ctx context.Context, finishTime time.Time, detail
 		setFields[ActivatedTimeKey] = t.ActivatedTime
 	}
 	ec2EBSSetFields(TaskCostKey, t.TaskCost, setFields)
+	return UpdateOne(ctx, query, bson.M{"$set": setFields})
+}
+
+// currentExecutionQuery returns a query that matches the task's in-memory
+// execution. If requireUnchanged is set, it also has to match the task's
+// in-memory status and host, which is useful when the in-memory task may be
+// stale.
+func (t *Task) currentExecutionQuery(requireUnchanged bool) bson.M {
 	query := bson.M{
 		IdKey:        t.Id,
 		ExecutionKey: t.Execution,
 	}
-	if len(statuses) > 0 {
-		query[StatusKey] = bson.M{"$in": statuses}
+	if requireUnchanged {
+		query[StatusKey] = t.Status
+		if t.HostId != "" {
+			query[HostIdKey] = t.HostId
+		}
 	}
-	return UpdateOne(ctx, query, bson.M{"$set": setFields})
+	return query
 }
 
 // GetDisplayStatus finds and sets DisplayStatus to the task. It should reflect
@@ -2763,15 +2782,16 @@ func (t *Task) MarkStart(ctx context.Context, startTime time.Time) error {
 	)
 }
 
-// MarkUnscheduled marks the task as undispatched and updates it in the database
+// MarkUnscheduled marks the task as undispatched and updates it in the
+// database. It only updates the task if its execution, status, and host in the
+// DB still match the in-memory task; otherwise, it returns a not found error.
 func (t *Task) MarkUnscheduled(ctx context.Context) error {
+	query := t.currentExecutionQuery(true)
 	t.Status = evergreen.TaskUndispatched
 	t.DisplayStatusCache = t.DetermineDisplayStatus()
 	return UpdateOne(
 		ctx,
-		bson.M{
-			IdKey: t.Id,
-		},
+		query,
 		bson.M{
 			"$set": bson.M{
 				StatusKey:             evergreen.TaskUndispatched,
@@ -4588,9 +4608,6 @@ func (t *Task) SaveS3Usage(ctx context.Context, logLookup, artifactLookup bucket
 		bsonutil.GetDottedKeyName(TaskCostKey, cost.AdjustedS3LogStorageCostKey):      t.TaskCost.AdjustedS3LogStorageCost,
 	}
 
-	// The task may have been archived by the time its S3 usage is saved (e.g.
-	// a crashed task that was restarted), so this has to update the specific
-	// execution rather than whatever execution is current.
 	return updateOneByIdAndExecution(ctx, t.Id, t.Execution, bson.M{"$set": setFields})
 }
 

@@ -32,7 +32,6 @@ import (
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -1270,10 +1269,7 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 
 	updates := model.StatusChanges{}
 	if err = model.MarkStart(ctx, t, &updates); err != nil {
-		if adb.ResultsNotFound(err) {
-			// The task can only start if it's dispatched, so a late request to
-			// start a task that's already moved on (e.g. it's finished) is
-			// rejected.
+		if errors.Is(err, model.ErrTaskStateChanged) {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusConflict,
 				Message:    fmt.Sprintf("task '%s' execution %d cannot be started because it is not dispatched", t.Id, t.Execution),

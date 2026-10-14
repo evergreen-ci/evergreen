@@ -25,7 +25,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	. "github.com/smartystreets/goconvey/convey"
@@ -1668,6 +1667,10 @@ func TestUpdateBuildAndVersionStatusForTaskAbort(t *testing.T) {
 
 	// restart aborted task
 	assert.NoError(t, testTask.Archive(ctx))
+	restartedTask, err := task.FindOneId(ctx, testTask.Id)
+	require.NoError(t, err)
+	require.NotZero(t, restartedTask)
+	testTask = *restartedTask
 	assert.NoError(t, testTask.MarkUnscheduled(ctx))
 	assert.NoError(t, UpdateBuildAndVersionStatusForTask(ctx, &testTask))
 	dbBuild1, err = build.FindOneId(t.Context(), b1.Id)
@@ -3047,25 +3050,20 @@ func TestMarkStart(t *testing.T) {
 	t.Run("LateStartForFinishedExecutionShouldNotRestartIt", func(t *testing.T) {
 		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
 		finishedTask := task.Task{
-			Id:         "finishedTask",
-			Execution:  0,
-			Activated:  true,
-			BuildId:    "build",
-			Version:    "version",
-			Status:     evergreen.TaskFailed,
-			FinishTime: time.Now(),
-			Details:    task.GetSystemFailureDetails(evergreen.TaskDescriptionHeartbeat),
+			Id:        "finishedTask",
+			Activated: true,
+			BuildId:   "build",
+			Version:   "version",
+			Status:    evergreen.TaskFailed,
 		}
 		require.NoError(t, finishedTask.Insert(t.Context()))
 
-		// Simulate the agent's late start request for the execution it was
-		// dispatched, which still has an in-memory status of dispatched.
 		staleTask := finishedTask
 		staleTask.Status = evergreen.TaskDispatched
-		err := MarkStart(ctx, &staleTask, &StatusChanges{})
-		assert.True(t, adb.ResultsNotFound(err), "late start should not match the finished task")
+		err := MarkStart(t.Context(), &staleTask, &StatusChanges{})
+		assert.ErrorIs(t, err, ErrTaskStateChanged)
 
-		dbTask, err := task.FindOneId(ctx, finishedTask.Id)
+		dbTask, err := task.FindOneId(t.Context(), finishedTask.Id)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
 		assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
@@ -3080,43 +3078,53 @@ func TestMarkStart(t *testing.T) {
 			BuildId:   "build",
 			Version:   "version",
 			Status:    evergreen.TaskDispatched,
-			HostId:    "newHost",
 		}
 		require.NoError(t, newExecution.Insert(t.Context()))
 
 		staleTask := newExecution
 		staleTask.Execution = 0
-		staleTask.HostId = "oldHost"
-		err := MarkStart(ctx, &staleTask, &StatusChanges{})
-		assert.True(t, adb.ResultsNotFound(err), "late start should not match a different execution")
+		err := MarkStart(t.Context(), &staleTask, &StatusChanges{})
+		assert.ErrorIs(t, err, ErrTaskStateChanged)
 
-		dbTask, err := task.FindOneId(ctx, newExecution.Id)
+		dbTask, err := task.FindOneId(t.Context(), newExecution.Id)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
 		assert.Equal(t, evergreen.TaskDispatched, dbTask.Status)
 		assert.True(t, utility.IsZeroTime(dbTask.StartTime))
 	})
 
-	t.Run("RepeatedStartForStartedTaskShouldSucceedWithoutUpdatingStartTime", func(t *testing.T) {
+	t.Run("RetriedStartForStartedTaskShouldStillMarkBuildAndVersionStarted", func(t *testing.T) {
 		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
+		b := build.Build{Id: "build", Status: evergreen.BuildCreated, Version: "version"}
+		require.NoError(t, b.Insert(t.Context()))
+		v := Version{Id: "version", Status: evergreen.VersionCreated}
+		require.NoError(t, v.Insert(t.Context()))
 		startTime := time.Now().Add(-time.Minute).Round(time.Millisecond)
 		startedTask := task.Task{
 			Id:        "startedTask",
 			Activated: true,
-			BuildId:   "build",
-			Version:   "version",
+			BuildId:   b.Id,
+			Version:   v.Id,
 			Status:    evergreen.TaskStarted,
 			StartTime: startTime,
 		}
 		require.NoError(t, startedTask.Insert(t.Context()))
 
-		require.NoError(t, MarkStart(ctx, &startedTask, &StatusChanges{}))
+		require.NoError(t, MarkStart(t.Context(), &startedTask, &StatusChanges{}))
 
-		dbTask, err := task.FindOneId(ctx, startedTask.Id)
+		dbTask, err := task.FindOneId(t.Context(), startedTask.Id)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
 		assert.Equal(t, evergreen.TaskStarted, dbTask.Status)
 		assert.WithinDuration(t, startTime, dbTask.StartTime, 0)
+		dbBuild, err := build.FindOneId(t.Context(), b.Id)
+		require.NoError(t, err)
+		require.NotZero(t, dbBuild)
+		assert.Equal(t, evergreen.BuildStarted, dbBuild.Status)
+		dbVersion, err := VersionFindOneId(t.Context(), v.Id)
+		require.NoError(t, err)
+		require.NotZero(t, dbVersion)
+		assert.Equal(t, evergreen.VersionStarted, dbVersion.Status)
 	})
 }
 
@@ -4513,6 +4521,32 @@ func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
 	assert.Equal("system", runningTask.Details.Type)
 }
 
+func TestEndAndResetSystemFailedTaskWithStaleTaskShouldNotUpdateTask(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
+	tsk := task.Task{
+		Id:            "t",
+		Status:        evergreen.TaskDispatched,
+		Activated:     true,
+		ActivatedTime: time.Now(),
+		HostId:        "h2",
+	}
+	require.NoError(t, tsk.Insert(ctx))
+	staleTask := tsk
+	staleTask.Status = evergreen.TaskStarted
+	staleTask.HostId = "h1"
+
+	err := endAndResetSystemFailedTask(ctx, testutil.TestConfig(), &staleTask, evergreen.TaskDescriptionStranded)
+	assert.ErrorIs(t, err, ErrTaskStateChanged)
+
+	dbTask, err := task.FindOneId(ctx, tsk.Id)
+	require.NoError(t, err)
+	require.NotZero(t, dbTask)
+	assert.Equal(t, 0, dbTask.Execution)
+	assert.Equal(t, evergreen.TaskDispatched, dbTask.Status)
+	assert.Equal(t, "h2", dbTask.HostId)
+}
+
 func TestClearAndResetStrandedHostTaskFailedOnly(t *testing.T) {
 	ctx := t.Context()
 
@@ -4781,6 +4815,34 @@ func TestResetStaleTask(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbOtherExecTask)
 			assert.Equal(t, evergreen.TaskStarted, dbOtherExecTask.Status, "other execution task should still be running")
+		},
+		"StaleAbortedTaskThatAlreadyFinishedShouldNotBeUpdated": func(t *testing.T, tsk task.Task) {
+			tsk.Aborted = true
+			finished := tsk
+			finished.Status = evergreen.TaskSucceeded
+			require.NoError(t, finished.Insert(t.Context()))
+
+			require.NoError(t, FixStaleTask(t.Context(), settings, &tsk))
+
+			dbTask, err := task.FindOneId(t.Context(), tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.Equal(t, evergreen.TaskSucceeded, dbTask.Status)
+		},
+		"StaleTaskRedispatchedToDifferentHostShouldNotBeFailed": func(t *testing.T, tsk task.Task) {
+			redispatched := tsk
+			redispatched.Status = evergreen.TaskDispatched
+			redispatched.HostId = "other_host"
+			require.NoError(t, redispatched.Insert(t.Context()))
+
+			require.NoError(t, FixStaleTask(t.Context(), settings, &tsk))
+
+			dbTask, err := task.FindOneId(t.Context(), tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.Equal(t, 0, dbTask.Execution)
+			assert.Equal(t, evergreen.TaskDispatched, dbTask.Status)
+			assert.Equal(t, "other_host", dbTask.HostId)
 		},
 		"FailsStaleTaskThatHitsUnschedulableThresholdWithoutRestartingIt": func(t *testing.T, tsk task.Task) {
 			tsk.ActivatedTime = time.Now().Add(-10 * task.UnschedulableThreshold)

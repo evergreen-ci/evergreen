@@ -19,8 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/pool"
-	"github.com/mongodb/amboy/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
@@ -275,6 +273,20 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 			checkTaskStillDispatched(t, newExecution)
 			checkHostRunningTask(t, hostID, newExecution)
 		},
+		"StaleCopyWithDeletedHostShouldNotUnscheduleRedispatchedTask": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, v model.Version) {
+			require.NoError(t, v.Insert(t.Context()))
+			require.NoError(t, db.ClearCollections(host.Collection))
+
+			redispatched := *j.task
+			redispatched.Status = evergreen.TaskDispatched
+			redispatched.HostId = "new_host_id"
+			require.NoError(t, redispatched.Insert(t.Context()))
+
+			j.Run(ctx)
+			require.NoError(t, j.Error())
+
+			checkTaskStillDispatched(t, redispatched)
+		},
 		"NoopsForActiveTask": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, _ model.Version) {
 			j.task.LastHeartbeat = time.Now()
 			require.NoError(t, j.task.Insert(t.Context()))
@@ -359,31 +371,12 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 		})
 	}
 
-	t.Run("SecondJobForSameTaskInDifferentTimeIntervalShouldBeRejectedWhileFirstIsHeld", func(t *testing.T) {
-		ctx := t.Context()
-		// The queue has no workers so that the first job keeps holding its
-		// scope.
-		q := queue.NewLocalLimitedSize(1, 10)
-		runner := pool.NewNoop()
-		require.NoError(t, runner.SetQueue(q))
-		require.NoError(t, q.SetRunner(runner))
-		require.NoError(t, q.Start(ctx))
-
+	t.Run("JobsForSameTaskInDifferentTimeIntervalsShouldShareEnqueueScope", func(t *testing.T) {
 		first := NewTaskExecutionMonitorJob("task_id", "ts0")
-		require.NoError(t, amboy.EnqueueUniqueJob(ctx, q, first))
-
 		second := NewTaskExecutionMonitorJob("task_id", "ts1")
 		require.NotEqual(t, first.ID(), second.ID())
-		err := q.Put(ctx, second)
-		assert.True(t, amboy.IsDuplicateJobScopeError(err), "second job should conflict on the task scope")
-		assert.NoError(t, amboy.EnqueueUniqueJob(ctx, q, second), "duplicate scope should be silently dropped")
-
-		_, ok := q.Get(ctx, second.ID())
-		assert.False(t, ok, "second job should not be enqueued")
-		_, ok = q.Get(ctx, first.ID())
-		assert.True(t, ok, "first job should still be enqueued")
-
-		otherTask := NewTaskExecutionMonitorJob("other_task_id", "ts1")
-		assert.NoError(t, q.Put(ctx, otherTask), "job for a different task should not conflict")
+		assert.Equal(t, []string{"task-execution-timeout.task_id"}, first.EnqueueScopes())
+		assert.Equal(t, first.EnqueueScopes(), second.EnqueueScopes())
+		assert.NotEqual(t, first.EnqueueScopes(), NewTaskExecutionMonitorJob("other_task_id", "ts0").EnqueueScopes())
 	})
 }
