@@ -1627,7 +1627,7 @@ func TestStartTaskWithOtelMetadata(t *testing.T) {
 				Id:      "test-task-id",
 				Project: "test-project",
 				Version: "test-version",
-				Status:  evergreen.TaskUndispatched,
+				Status:  evergreen.TaskDispatched,
 			}
 			require.NoError(t, testTask.Insert(ctx))
 

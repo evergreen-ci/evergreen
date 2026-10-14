@@ -809,6 +809,14 @@ func doBisectStepbackForGeneratedTask(ctx context.Context, generator *task.Task,
 // MarkEnd updates the task as being finished, performs a stepback if necessary, and updates the build status.
 func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, caller string,
 	finishTime time.Time, detail *apimodels.TaskEndDetail) error {
+	return markEnd(ctx, settings, t, caller, finishTime, detail, nil)
+}
+
+// markEnd is the same as MarkEnd, except that if any required statuses are
+// given, it only finishes the task if its current status is one of them. If it
+// isn't, this returns errTaskStateChanged.
+func markEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, caller string,
+	finishTime time.Time, detail *apimodels.TaskEndDetail, requiredStatuses []string) error {
 	ctx, span := tracer.Start(ctx, "mark-end")
 	defer span.End()
 	catcher := grip.NewBasicCatcher()
@@ -837,7 +845,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	}
 
 	startPhaseAt := time.Now()
-	err := t.MarkEnd(ctx, finishTime, &detailsCopy)
+	err := t.MarkEndIfStatus(ctx, finishTime, &detailsCopy, requiredStatuses)
 
 	grip.NoticeWhen(ctx, time.Since(startPhaseAt) > slowThreshold, message.Fields{
 		"message":       "slow operation",
@@ -864,6 +872,9 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 
 	// If the error is from marking the task as finished, we want to
 	// return early as every functionality depends on this succeeding.
+	if len(requiredStatuses) > 0 && adb.ResultsNotFound(err) {
+		return errTaskStateChanged
+	}
 	if err != nil {
 		return errors.Wrapf(err, "marking task '%s' finished", t.Id)
 	}
@@ -2244,9 +2255,17 @@ func UpdateVersionAndPatchStatusForBuilds(ctx context.Context, buildIds []string
 	return nil
 }
 
-// MarkStart updates the task, build, version and if necessary, patch documents with the task start time
+// MarkStart updates the task, build, version and if necessary, patch documents
+// with the task start time. Only a dispatched task can be started. If the task
+// is already started, this is a no-op so that a retried start request
+// succeeds. If the task is in any other state (e.g. it already finished), this
+// returns a not found error.
 func MarkStart(ctx context.Context, t *task.Task, updates *StatusChanges) error {
 	var err error
+
+	if t.Status == evergreen.TaskStarted {
+		return nil
+	}
 
 	startTime := time.Now().Round(time.Millisecond)
 
@@ -2538,7 +2557,16 @@ func ClearAndResetStrandedHostTask(ctx context.Context, settings *evergreen.Sett
 		return errors.Wrapf(err, "clearing running task from host '%s'", h.Id)
 	}
 
-	if err := endAndResetSystemFailedTask(ctx, settings, t, evergreen.TaskDescriptionStranded); err != nil {
+	if err := endAndResetSystemFailedTask(ctx, settings, t, evergreen.TaskDescriptionStranded, evergreen.TaskUncompletedStatuses); err != nil {
+		if errors.Is(err, errTaskStateChanged) {
+			grip.Info(ctx, message.Fields{
+				"message":   "not resetting stranded task because it changed since it was read",
+				"task":      t.Id,
+				"execution": t.Execution,
+				"host_id":   h.Id,
+			})
+			return nil
+		}
 		return errors.Wrapf(err, "resetting stranded task '%s'", t.Id)
 	}
 
@@ -2563,11 +2591,19 @@ func FixStaleTask(ctx context.Context, settings *evergreen.Settings, t *task.Tas
 	if t.Aborted {
 		failureDesc = evergreen.TaskDescriptionAborted
 		if err := finishStaleAbortedTask(ctx, settings, t); err != nil {
+			if errors.Is(err, errTaskStateChanged) {
+				logStaleTaskAlreadyHandled(ctx, t)
+				return nil
+			}
 			return errors.Wrapf(err, "finishing stale aborted task '%s'", t.Id)
 		}
 		saveAndTrackCrashPathS3Cost(ctx, t)
 	} else {
-		if err := endAndResetSystemFailedTask(ctx, settings, t, failureDesc); err != nil {
+		if err := endAndResetSystemFailedTask(ctx, settings, t, failureDesc, evergreen.TaskInProgressStatuses); err != nil {
+			if errors.Is(err, errTaskStateChanged) {
+				logStaleTaskAlreadyHandled(ctx, t)
+				return nil
+			}
 			if !t.IsPartOfDisplay(ctx) {
 				return errors.Wrap(err, "resetting heartbeat task")
 			}
@@ -2593,9 +2629,31 @@ func FixStaleTask(ctx context.Context, settings *evergreen.Settings, t *task.Tas
 	return nil
 }
 
+// logStaleTaskAlreadyHandled logs that a stale task could not be fixed because
+// the task was already finished or restarted by something else in the
+// meantime. This is expected if the stale task is cleaned up concurrently.
+func logStaleTaskAlreadyHandled(ctx context.Context, t *task.Task) {
+	grip.Info(ctx, message.Fields{
+		"message":   "not fixing stale task because its execution is no longer in progress",
+		"task":      t.Id,
+		"execution": t.Execution,
+	})
+}
+
+// crashPathS3CostTimeout bounds how long it can take to calculate S3 costs for
+// a task that died without reaching teardown. Listing a task's logs in S3 can
+// be slow, so this prevents it from indefinitely holding up task cleanup.
+const crashPathS3CostTimeout = 2 * time.Minute
+
 // saveAndTrackCrashPathS3Cost reconstructs log S3 usage and records costs for a task that died
 // without reaching teardown. Errors are logged but do not block task cleanup.
+// It must only be called after the task's final status has been written
+// because it's slow. Otherwise, the task could change while the S3 cost is
+// being calculated, so the task status update could apply to the wrong state.
 func saveAndTrackCrashPathS3Cost(ctx context.Context, t *task.Task) {
+	ctx, cancel := context.WithTimeout(ctx, crashPathS3CostTimeout)
+	defer cancel()
+
 	bucketsConfig := &evergreen.BucketsConfig{}
 	if err := bucketsConfig.Get(ctx); err != nil {
 		grip.Debug(ctx, message.WrapError(err, message.Fields{
@@ -2656,21 +2714,30 @@ func finishStaleAbortedTask(ctx context.Context, settings *evergreen.Settings, t
 		Type:        evergreen.CommandTypeSystem,
 		Description: evergreen.TaskDescriptionAborted,
 	}
-	if err := MarkEnd(ctx, settings, t, evergreen.APIServerTaskActivator, t.EstimatedFinishTime(time.Now()), failureDetails); err != nil {
+	if err := markEnd(ctx, settings, t, evergreen.APIServerTaskActivator, t.EstimatedFinishTime(time.Now()), failureDetails, evergreen.TaskInProgressStatuses); err != nil {
+		if errors.Is(err, errTaskStateChanged) {
+			return err
+		}
 		return errors.Wrapf(err, "calling mark finish on task '%s'", t.Id)
 	}
 	return nil
 }
 
+// errTaskStateChanged indicates that a task could not be updated because, by
+// the time it was written, its execution or status no longer matched the
+// in-memory copy of the task. This can happen if the caller is holding a stale
+// copy of a task that has since finished or restarted.
+var errTaskStateChanged = errors.New("task execution or status changed")
+
 // endAndResetSystemFailedTask finishes and resets a task that has encountered a system failure
 // such as being stranded on a terminated host/container or failing to send a
-// heartbeat.
-func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settings, t *task.Task, description string) error {
+// heartbeat. The given task may be stale, so the system failure only applies if
+// the task is still on the same execution and has one of the required
+// statuses. If it doesn't, this returns errTaskStateChanged.
+func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settings, t *task.Task, description string, requiredStatuses []string) error {
 	if t.IsFinished() {
 		return nil
 	}
-
-	saveAndTrackCrashPathS3Cost(ctx, t)
 
 	unschedulableTask := time.Since(t.ActivatedTime) > task.UnschedulableThreshold
 
@@ -2693,17 +2760,26 @@ func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settin
 				}
 			}
 		}
-		return errors.WithStack(MarkEnd(ctx, settings, t, evergreen.MonitorPackage, t.EstimatedFinishTime(time.Now()), &failureDetails))
+		if err := markEnd(ctx, settings, t, evergreen.MonitorPackage, t.EstimatedFinishTime(time.Now()), &failureDetails, requiredStatuses); err != nil {
+			return err
+		}
+		saveAndTrackCrashPathS3Cost(ctx, t)
+		return nil
 	}
 
-	if err := t.MarkSystemFailed(ctx, description); err != nil {
+	if err := t.MarkSystemFailedIfStatus(ctx, description, requiredStatuses); err != nil {
+		if adb.ResultsNotFound(err) {
+			return errTaskStateChanged
+		}
 		return errors.Wrap(err, "marking task as system failed")
 	}
 	if err := logTaskEndStats(ctx, t); err != nil {
 		return errors.Wrap(err, "logging task end stats")
 	}
 
-	return errors.Wrap(ResetTaskOrDisplayTask(ctx, settings, t, evergreen.User, evergreen.MonitorPackage, true, &t.Details), "resetting task")
+	resetErr := ResetTaskOrDisplayTask(ctx, settings, t, evergreen.User, evergreen.MonitorPackage, true, &t.Details)
+	saveAndTrackCrashPathS3Cost(ctx, t)
+	return errors.Wrap(resetErr, "resetting task")
 }
 
 // ResetTaskOrDisplayTask is a wrapper for TryResetTask that handles execution and display tasks that are restarted

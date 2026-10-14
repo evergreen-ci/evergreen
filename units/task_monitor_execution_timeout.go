@@ -23,6 +23,7 @@ const (
 	taskExecutionTimeoutJobName           = "task-execution-timeout"
 	taskExecutionTimeoutPopulationJobName = "task-execution-timeout-populate"
 	maxTaskExecutionTimeoutAttempts       = 10
+	taskExecutionTimeoutMaxTime           = 10 * time.Minute
 )
 
 func init() {
@@ -61,11 +62,19 @@ func NewTaskExecutionMonitorJob(taskID string, ts string) amboy.Job {
 	j := makeTaskExecutionTimeoutMonitorJob()
 	j.Task = taskID
 	j.SetID(fmt.Sprintf("%s.%s.%s", taskExecutionTimeoutJobName, taskID, ts))
-	j.SetEnqueueScopes(fmt.Sprintf("%s.%s", taskExecutionTimeoutJobName, taskID))
+	// The scope is applied on enqueue so that at most one job can clean up a
+	// given task at a time, even if they're created in different time
+	// intervals. Retries keep holding the scope until the job either succeeds
+	// or runs out of attempts.
+	j.SetScopes([]string{fmt.Sprintf("%s.%s", taskExecutionTimeoutJobName, taskID)})
+	j.SetEnqueueAllScopes(true)
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
 		MaxAttempts: utility.ToIntPtr(maxTaskExecutionTimeoutAttempts),
 		WaitUntil:   utility.ToTimeDurationPtr(time.Minute),
+	})
+	j.UpdateTimeInfo(amboy.JobTimeInfo{
+		MaxTime: taskExecutionTimeoutMaxTime,
 	})
 	return j
 }
@@ -158,7 +167,10 @@ func (j *taskExecutionTimeoutJob) cleanUpTimedOutTask(ctx context.Context) error
 		return errors.WithStack(j.task.MarkUnscheduled(ctx))
 	}
 
-	if host.RunningTask == j.task.Id {
+	// The host may have moved on to a newer execution of this task (e.g. if
+	// the task was restarted after this job loaded it), in which case the host
+	// is running a different execution and must be left alone.
+	if host.RunningTask == j.task.Id && host.RunningTaskExecution == j.task.Execution {
 		// Check if the host was externally terminated before clearing the
 		// host's running task. When the running task is cleared on the host, an
 		// agent or agent monitor deploy might run, which updates the LCT and

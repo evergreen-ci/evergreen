@@ -19,8 +19,11 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/pool"
+	"github.com/mongodb/amboy/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 	"gopkg.in/yaml.v3"
 )
 
@@ -48,6 +51,32 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 		require.NoError(t, err)
 		require.NotZero(t, restartedTask)
 		assert.Equal(t, evergreen.TaskUndispatched, restartedTask.Status)
+	}
+
+	// restartAndDispatchTask inserts a new execution of the given task that's
+	// dispatched to the given host.
+	restartAndDispatchTask := func(ctx context.Context, t *testing.T, tsk task.Task, hostID string) task.Task {
+		tsk.Execution++
+		tsk.Status = evergreen.TaskDispatched
+		tsk.HostId = hostID
+		tsk.StartTime = time.Time{}
+		require.NoError(t, tsk.Insert(ctx))
+		return tsk
+	}
+	checkTaskStillDispatched := func(t *testing.T, expected task.Task) {
+		dbTask, err := task.FindOneId(ctx, expected.Id)
+		require.NoError(t, err)
+		require.NotZero(t, dbTask)
+		assert.Equal(t, expected.Execution, dbTask.Execution, "task should not be restarted again")
+		assert.Equal(t, evergreen.TaskDispatched, dbTask.Status, "new execution should not be system failed")
+		assert.Equal(t, expected.HostId, dbTask.HostId)
+	}
+	checkHostRunningTask := func(t *testing.T, hostID string, expected task.Task) {
+		dbHost, err := host.FindOneId(ctx, hostID)
+		require.NoError(t, err)
+		require.NotZero(t, dbHost)
+		assert.Equal(t, expected.Id, dbHost.RunningTask, "host should still be running the new execution")
+		assert.Equal(t, expected.Execution, dbHost.RunningTaskExecution)
 	}
 
 	const hostID = "host_id"
@@ -199,6 +228,53 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 
 			checkTaskRestarted(t, j.task.Id, 0, evergreen.TaskDescriptionStranded)
 		},
+		"StaleCopyOfPreviousExecutionShouldNotFailNewExecutionOrClearNewHost": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, v model.Version) {
+			require.NoError(t, v.Insert(t.Context()))
+
+			// Simulate another cleanup job having already cleared the original
+			// host, restarted the task, and dispatched the new execution to a
+			// different host, all after this job loaded its stale copy of
+			// execution 0.
+			oldHost, err := host.FindOneId(ctx, hostID)
+			require.NoError(t, err)
+			require.NotZero(t, oldHost)
+			require.NoError(t, oldHost.ClearRunningTask(ctx))
+
+			const newHostID = "new_host_id"
+			newExecution := restartAndDispatchTask(ctx, t, *j.task, newHostID)
+			newHost := host.Host{
+				Id:                   newHostID,
+				Distro:               distro.Distro{Id: "distro_id", Provider: evergreen.ProviderNameMock},
+				Provider:             evergreen.ProviderNameMock,
+				StartedBy:            evergreen.User,
+				Status:               evergreen.HostRunning,
+				RunningTask:          newExecution.Id,
+				RunningTaskExecution: newExecution.Execution,
+			}
+			require.NoError(t, newHost.Insert(ctx))
+			mp.Set(newHost.Id, cloud.MockInstance{Status: cloud.StatusRunning})
+
+			j.Run(ctx)
+			require.NoError(t, j.Error())
+
+			checkTaskStillDispatched(t, newExecution)
+			checkHostRunningTask(t, newHostID, newExecution)
+		},
+		"StaleCopyOfPreviousExecutionShouldNotClearSameHostRunningNewExecution": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, v model.Version) {
+			require.NoError(t, v.Insert(t.Context()))
+
+			// Simulate the task having been restarted and the new execution
+			// dispatched back to the same host after this job loaded its stale
+			// copy of execution 0.
+			newExecution := restartAndDispatchTask(ctx, t, *j.task, hostID)
+			require.NoError(t, host.UpdateOne(ctx, host.ById(hostID), bson.M{"$set": bson.M{host.RunningTaskExecutionKey: newExecution.Execution}}))
+
+			j.Run(ctx)
+			require.NoError(t, j.Error())
+
+			checkTaskStillDispatched(t, newExecution)
+			checkHostRunningTask(t, hostID, newExecution)
+		},
 		"NoopsForActiveTask": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, _ model.Version) {
 			j.task.LastHeartbeat = time.Now()
 			require.NoError(t, j.task.Insert(t.Context()))
@@ -282,4 +358,32 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 			tCase(tctx, t, j, v)
 		})
 	}
+
+	t.Run("SecondJobForSameTaskInDifferentTimeIntervalShouldBeRejectedWhileFirstIsHeld", func(t *testing.T) {
+		ctx := t.Context()
+		// The queue has no workers so that the first job keeps holding its
+		// scope.
+		q := queue.NewLocalLimitedSize(1, 10)
+		runner := pool.NewNoop()
+		require.NoError(t, runner.SetQueue(q))
+		require.NoError(t, q.SetRunner(runner))
+		require.NoError(t, q.Start(ctx))
+
+		first := NewTaskExecutionMonitorJob("task_id", "ts0")
+		require.NoError(t, amboy.EnqueueUniqueJob(ctx, q, first))
+
+		second := NewTaskExecutionMonitorJob("task_id", "ts1")
+		require.NotEqual(t, first.ID(), second.ID())
+		err := q.Put(ctx, second)
+		assert.True(t, amboy.IsDuplicateJobScopeError(err), "second job should conflict on the task scope")
+		assert.NoError(t, amboy.EnqueueUniqueJob(ctx, q, second), "duplicate scope should be silently dropped")
+
+		_, ok := q.Get(ctx, second.ID())
+		assert.False(t, ok, "second job should not be enqueued")
+		_, ok = q.Get(ctx, first.ID())
+		assert.True(t, ok, "first job should still be enqueued")
+
+		otherTask := NewTaskExecutionMonitorJob("other_task_id", "ts1")
+		assert.NoError(t, q.Put(ctx, otherTask), "job for a different task should not conflict")
+	})
 }

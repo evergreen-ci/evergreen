@@ -25,6 +25,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	. "github.com/smartystreets/goconvey/convey"
@@ -2840,7 +2841,7 @@ func TestTryResetTaskWithTaskGroup(t *testing.T) {
 			runningTask := &task.Task{
 				Id:                "say-hi-123",
 				DisplayName:       "say-hi",
-				Status:            evergreen.TaskStarted,
+				Status:            evergreen.TaskDispatched,
 				Activated:         true,
 				ActivatedTime:     time.Now(),
 				BuildId:           "b",
@@ -2977,7 +2978,7 @@ func TestMarkStart(t *testing.T) {
 			Activated:   true,
 			BuildId:     b.Id,
 			Project:     "sample",
-			Status:      evergreen.TaskUndispatched,
+			Status:      evergreen.TaskDispatched,
 			Version:     b.Version,
 		}
 		So(b.Insert(t.Context()), ShouldBeNil)
@@ -3030,7 +3031,7 @@ func TestMarkStart(t *testing.T) {
 			Activated: true,
 			BuildId:   b.Id,
 			Version:   v.Id,
-			Status:    evergreen.TaskUndispatched,
+			Status:    evergreen.TaskDispatched,
 		}
 		So(t1.Insert(t.Context()), ShouldBeNil)
 
@@ -3041,6 +3042,81 @@ func TestMarkStart(t *testing.T) {
 		dtFromDb, err := task.FindOne(ctx, db.Query(task.ById(dt.Id)))
 		So(err, ShouldBeNil)
 		So(dtFromDb.Status, ShouldEqual, evergreen.TaskStarted)
+	})
+
+	t.Run("LateStartForFinishedExecutionShouldNotRestartIt", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
+		finishedTask := task.Task{
+			Id:         "finishedTask",
+			Execution:  0,
+			Activated:  true,
+			BuildId:    "build",
+			Version:    "version",
+			Status:     evergreen.TaskFailed,
+			FinishTime: time.Now(),
+			Details:    task.GetSystemFailureDetails(evergreen.TaskDescriptionHeartbeat),
+		}
+		require.NoError(t, finishedTask.Insert(t.Context()))
+
+		// Simulate the agent's late start request for the execution it was
+		// dispatched, which still has an in-memory status of dispatched.
+		staleTask := finishedTask
+		staleTask.Status = evergreen.TaskDispatched
+		err := MarkStart(ctx, &staleTask, &StatusChanges{})
+		assert.True(t, adb.ResultsNotFound(err), "late start should not match the finished task")
+
+		dbTask, err := task.FindOneId(ctx, finishedTask.Id)
+		require.NoError(t, err)
+		require.NotZero(t, dbTask)
+		assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
+	})
+
+	t.Run("LateStartForPreviousExecutionShouldNotStartNewExecution", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
+		newExecution := task.Task{
+			Id:        "restartedTask",
+			Execution: 1,
+			Activated: true,
+			BuildId:   "build",
+			Version:   "version",
+			Status:    evergreen.TaskDispatched,
+			HostId:    "newHost",
+		}
+		require.NoError(t, newExecution.Insert(t.Context()))
+
+		staleTask := newExecution
+		staleTask.Execution = 0
+		staleTask.HostId = "oldHost"
+		err := MarkStart(ctx, &staleTask, &StatusChanges{})
+		assert.True(t, adb.ResultsNotFound(err), "late start should not match a different execution")
+
+		dbTask, err := task.FindOneId(ctx, newExecution.Id)
+		require.NoError(t, err)
+		require.NotZero(t, dbTask)
+		assert.Equal(t, evergreen.TaskDispatched, dbTask.Status)
+		assert.True(t, utility.IsZeroTime(dbTask.StartTime))
+	})
+
+	t.Run("RepeatedStartForStartedTaskShouldSucceedWithoutUpdatingStartTime", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
+		startTime := time.Now().Add(-time.Minute).Round(time.Millisecond)
+		startedTask := task.Task{
+			Id:        "startedTask",
+			Activated: true,
+			BuildId:   "build",
+			Version:   "version",
+			Status:    evergreen.TaskStarted,
+			StartTime: startTime,
+		}
+		require.NoError(t, startedTask.Insert(t.Context()))
+
+		require.NoError(t, MarkStart(ctx, &startedTask, &StatusChanges{}))
+
+		dbTask, err := task.FindOneId(ctx, startedTask.Id)
+		require.NoError(t, err)
+		require.NotZero(t, dbTask)
+		assert.Equal(t, evergreen.TaskStarted, dbTask.Status)
+		assert.WithinDuration(t, startTime, dbTask.StartTime, 0)
 	})
 }
 
@@ -5180,10 +5256,13 @@ func TestDisplayTaskUpdatesAreConcurrencySafe(t *testing.T) {
 			return
 		}
 
-		if err := et1.MarkStart(ctx, time.Now()); err != nil {
+		// Flip the task back to running so that the display task sees
+		// conflicting statuses.
+		if err := task.UpdateOne(ctx, bson.M{task.IdKey: et1.Id}, bson.M{"$set": bson.M{task.StatusKey: evergreen.TaskStarted}}); err != nil {
 			errs <- err
 			return
 		}
+		et1.Status = evergreen.TaskStarted
 
 		if err := et1.MarkEnd(ctx, time.Now(), &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}); err != nil {
 			errs <- err

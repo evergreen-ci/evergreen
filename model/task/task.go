@@ -1423,8 +1423,21 @@ func (t *Task) EstimatedFinishTime(now time.Time) time.Time {
 }
 
 func (t *Task) MarkSystemFailed(ctx context.Context, description string) error {
+	return t.MarkSystemFailedIfStatus(ctx, description, nil)
+}
+
+// MarkSystemFailedIfStatus is the same as MarkSystemFailed, except that it only
+// updates the task if its current status in the DB is one of the given
+// statuses. If no statuses are given, the status is not checked. If the task
+// does not match, it returns a not found error.
+func (t *Task) MarkSystemFailedIfStatus(ctx context.Context, description string, statuses []string) error {
+	prevStatus := t.Status
 	t.FinishTime = t.EstimatedFinishTime(time.Now())
 	t.Details = GetSystemFailureDetails(description)
+
+	if err := t.MarkEndIfStatus(ctx, t.FinishTime, &t.Details, statuses); err != nil {
+		return err
+	}
 
 	switch t.ExecutionPlatform {
 	case ExecutionPlatformHost:
@@ -1437,13 +1450,13 @@ func (t *Task) MarkSystemFailed(ctx context.Context, description string) error {
 		"included_on":        evergreen.ContainerHealthDashboard,
 		"task_id":            t.Id,
 		"execution":          t.Execution,
-		"status":             t.Status,
+		"status":             prevStatus,
 		"host_id":            t.HostId,
 		"description":        description,
 		"execution_platform": t.ExecutionPlatform,
 	})
 
-	return t.MarkEnd(ctx, t.FinishTime, &t.Details)
+	return nil
 }
 
 // GetSystemFailureDetails returns a task's end details based on an input description.
@@ -2192,8 +2205,18 @@ func (t *Task) SetCompletedBy(ctx context.Context, completedBy string) error {
 }
 
 // MarkEnd handles the Task updates associated with ending a task. If the task
-// never reported that it started, its start time is estimated.
+// never reported that it started, its start time is estimated. The update only
+// applies to the task's current execution; if the task has moved on to a
+// different execution, it returns a not found error.
 func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimodels.TaskEndDetail) error {
+	return t.MarkEndIfStatus(ctx, finishTime, detail, nil)
+}
+
+// MarkEndIfStatus is the same as MarkEnd, except that it only updates the task
+// if its current status in the DB is one of the given statuses. If no statuses
+// are given, the status is not checked. If the task does not match, it returns
+// a not found error.
+func (t *Task) MarkEndIfStatus(ctx context.Context, finishTime time.Time, detail *apimodels.TaskEndDetail, statuses []string) error {
 	if utility.IsZeroTime(t.StartTime) {
 		timedOutStart := finishTime.Add(-2 * time.Hour)
 		if !utility.IsZeroTime(t.DispatchTime) {
@@ -2274,7 +2297,14 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 		setFields[ActivatedTimeKey] = t.ActivatedTime
 	}
 	ec2EBSSetFields(TaskCostKey, t.TaskCost, setFields)
-	return UpdateOne(ctx, bson.M{IdKey: t.Id}, bson.M{"$set": setFields})
+	query := bson.M{
+		IdKey:        t.Id,
+		ExecutionKey: t.Execution,
+	}
+	if len(statuses) > 0 {
+		query[StatusKey] = bson.M{"$in": statuses}
+	}
+	return UpdateOne(ctx, query, bson.M{"$set": setFields})
 }
 
 // GetDisplayStatus finds and sets DisplayStatus to the task. It should reflect
@@ -2706,7 +2736,9 @@ func getRecursiveDependenciesDownHelper(ctx context.Context, tasks []string, tas
 	return append(newDeps, recurseTasks...), nil
 }
 
-// MarkStart updates the task's start time and sets the status to started
+// MarkStart updates the task's start time and sets the status to started. The
+// task can only start if its current execution is dispatched; otherwise, it
+// returns a not found error.
 func (t *Task) MarkStart(ctx context.Context, startTime time.Time) error {
 	// record the start time in the in-memory task
 	t.StartTime = startTime
@@ -2716,7 +2748,9 @@ func (t *Task) MarkStart(ctx context.Context, startTime time.Time) error {
 	return UpdateOne(
 		ctx,
 		bson.M{
-			IdKey: t.Id,
+			IdKey:        t.Id,
+			ExecutionKey: t.Execution,
+			StatusKey:    evergreen.TaskDispatched,
 		},
 		bson.M{
 			"$set": bson.M{
@@ -4554,7 +4588,10 @@ func (t *Task) SaveS3Usage(ctx context.Context, logLookup, artifactLookup bucket
 		bsonutil.GetDottedKeyName(TaskCostKey, cost.AdjustedS3LogStorageCostKey):      t.TaskCost.AdjustedS3LogStorageCost,
 	}
 
-	return UpdateOne(ctx, bson.M{"_id": t.Id}, bson.M{"$set": setFields})
+	// The task may have been archived by the time its S3 usage is saved (e.g.
+	// a crashed task that was restarted), so this has to update the specific
+	// execution rather than whatever execution is current.
+	return updateOneByIdAndExecution(ctx, t.Id, t.Execution, bson.M{"$set": setFields})
 }
 
 // setS3LogStorageCosts calculates and sets the task's S3 log storage cost using lifecycle rules for the log bucket.
