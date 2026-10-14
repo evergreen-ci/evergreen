@@ -827,6 +827,135 @@ func TestFindByStaleRunningTask(t *testing.T) {
 	}
 }
 
+func TestFindStrandedVirtualTasks(t *testing.T) {
+	for tName, tCase := range map[string]func(t *testing.T){
+		"ReturnsVirtualTaskLockedByFinishedRunner": func(t *testing.T) {
+			runner := Task{
+				Id:     "runner",
+				Status: evergreen.TaskFailed,
+			}
+			vt := Task{
+				Id:          "virtual",
+				IsVirtual:   true,
+				CompletedBy: runner.Id,
+				Status:      evergreen.TaskUndispatched,
+			}
+			require.NoError(t, db.InsertMany(t.Context(), Collection, runner, vt))
+
+			stranded, err := FindStrandedVirtualTasks(t.Context())
+			require.NoError(t, err)
+			require.Len(t, stranded, 1)
+			assert.Equal(t, vt.Id, stranded[0].Id)
+		},
+		"IgnoresVirtualTaskLockedByUnfinishedRunner": func(t *testing.T) {
+			runner := Task{
+				Id:     "runner",
+				Status: evergreen.TaskStarted,
+			}
+			vt := Task{
+				Id:          "virtual",
+				IsVirtual:   true,
+				CompletedBy: runner.Id,
+				Status:      evergreen.TaskUndispatched,
+			}
+			require.NoError(t, db.InsertMany(t.Context(), Collection, runner, vt))
+
+			stranded, err := FindStrandedVirtualTasks(t.Context())
+			require.NoError(t, err)
+			assert.Empty(t, stranded)
+		},
+		"IgnoresFinishedVirtualTask": func(t *testing.T) {
+			runner := Task{
+				Id:     "runner",
+				Status: evergreen.TaskFailed,
+			}
+			vt := Task{
+				Id:          "virtual",
+				IsVirtual:   true,
+				CompletedBy: runner.Id,
+				Status:      evergreen.TaskSucceeded,
+			}
+			require.NoError(t, db.InsertMany(t.Context(), Collection, runner, vt))
+
+			stranded, err := FindStrandedVirtualTasks(t.Context())
+			require.NoError(t, err)
+			assert.Empty(t, stranded)
+		},
+		"IgnoresNonVirtualTask": func(t *testing.T) {
+			runner := Task{
+				Id:     "runner",
+				Status: evergreen.TaskFailed,
+			}
+			tsk := Task{
+				Id:          "task",
+				CompletedBy: runner.Id,
+				Status:      evergreen.TaskUndispatched,
+			}
+			require.NoError(t, db.InsertMany(t.Context(), Collection, runner, tsk))
+
+			stranded, err := FindStrandedVirtualTasks(t.Context())
+			require.NoError(t, err)
+			assert.Empty(t, stranded)
+		},
+		"IgnoresVirtualTaskWithoutCompletedByLock": func(t *testing.T) {
+			vt := Task{
+				Id:        "virtual",
+				IsVirtual: true,
+				Status:    evergreen.TaskUndispatched,
+			}
+			require.NoError(t, vt.Insert(t.Context()))
+
+			stranded, err := FindStrandedVirtualTasks(t.Context())
+			require.NoError(t, err)
+			assert.Empty(t, stranded)
+		},
+		"IgnoresVirtualTaskWithMissingRunner": func(t *testing.T) {
+			vt := Task{
+				Id:          "virtual",
+				IsVirtual:   true,
+				CompletedBy: "nonexistent",
+				Status:      evergreen.TaskUndispatched,
+			}
+			require.NoError(t, vt.Insert(t.Context()))
+
+			stranded, err := FindStrandedVirtualTasks(t.Context())
+			require.NoError(t, err)
+			assert.Empty(t, stranded)
+		},
+		"ReturnsMultipleStrandedVirtualTasks": func(t *testing.T) {
+			runner := Task{Id: "runner", Status: evergreen.TaskFailed}
+			vt0 := Task{
+				Id:          "virtual0",
+				IsVirtual:   true,
+				CompletedBy: runner.Id,
+				Status:      evergreen.TaskUndispatched,
+			}
+			vt1 := Task{
+				Id:          "virtual1",
+				IsVirtual:   true,
+				CompletedBy: runner.Id,
+				Status:      evergreen.TaskUndispatched,
+			}
+			require.NoError(t, db.InsertMany(t.Context(), Collection, runner, vt0, vt1))
+
+			stranded, err := FindStrandedVirtualTasks(t.Context())
+			require.NoError(t, err)
+			require.Len(t, stranded, 2)
+			for _, vt := range stranded {
+				assert.True(t, utility.StringSliceContains([]string{vt0.Id, vt1.Id}, vt.Id))
+			}
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection))
+			t.Cleanup(func() {
+				assert.NoError(t, db.ClearCollections(Collection))
+			})
+			tCase(t)
+		})
+	}
+}
+
 func TestGetTasksByVersionExecTasks(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 	// test that we can handle the different kinds of tasks

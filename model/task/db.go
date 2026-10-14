@@ -1410,6 +1410,64 @@ func FindStuckDispatching(ctx context.Context) ([]Task, error) {
 	return tasks, nil
 }
 
+// FindStrandedVirtualTasks returns virtual tasks that are awaiting
+// push-completion by a runner task but cannot be push-completed because the
+// runner is already finished.
+//
+// This has some known limitations in edge cases around detecting restarted
+// runner tasks. Virtual tasks don't record the runner's execution that intended
+// to push-complete it, which can create ambiguity in whether the runner is
+// really finished with that virtual task execution or not.
+// For example, if a runner is aborted (leaving the virtual task stranded) and
+// then restarted, this will not return the virtual task because the runner's
+// latest execution might still push-complete the virtual task.
+func FindStrandedVirtualTasks(ctx context.Context) ([]Task, error) {
+	finishedStatuses := append([]string{evergreen.TaskSucceeded}, evergreen.TaskFailureStatuses...)
+	notPushCompletedYet, err := FindAll(ctx, db.Query(bson.M{
+		IsVirtualKey:   true,
+		CompletedByKey: bson.M{"$exists": true},
+		StatusKey:      bson.M{"$nin": finishedStatuses},
+	}))
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "finding virtual tasks awaiting push-completion")
+	}
+	if len(notPushCompletedYet) == 0 {
+		return nil, nil
+	}
+
+	runnerTaskIDs := make([]string, 0, len(notPushCompletedYet))
+	for _, t := range notPushCompletedYet {
+		runnerTaskIDs = append(runnerTaskIDs, t.CompletedBy)
+	}
+	runners, err := FindAll(ctx, db.Query(bson.M{IdKey: bson.M{"$in": runnerTaskIDs}}).WithFields(IdKey, StatusKey))
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "finding runner tasks that are push-completing virtual tasks")
+	}
+	finishedRunners := map[string]bool{}
+	for _, r := range runners {
+		if r.IsFinished() {
+			finishedRunners[r.Id] = true
+		}
+	}
+
+	// Virtual tasks that are awaiting push-completion but their runner task is
+	// already finished are stranded because the runner is not going to
+	// push-complete them.
+	var stranded []Task
+	for _, t := range notPushCompletedYet {
+		if finishedRunners[t.CompletedBy] {
+			stranded = append(stranded, t)
+		}
+	}
+	return stranded, nil
+}
+
 // FindAllTaskIDsFromVersion returns a list of task IDs associated with a version.
 func FindAllTaskIDsFromVersion(ctx context.Context, versionId string) ([]string, error) {
 	q := db.Query(ByVersion(versionId)).WithFields(IdKey)
