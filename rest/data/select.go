@@ -269,13 +269,7 @@ func findQuarantinedSkippedTests(ctx context.Context, req model.SelectTestsReque
 		if err != nil {
 			return nil, errors.Wrap(err, "getting variant quarantine status")
 		}
-		// TSS keys quarantine state by the display task name when the task is
-		// part of a display task, so look up by the same effective name.
-		effectiveTaskName := req.TaskName
-		if req.DisplayTaskName != "" {
-			effectiveTaskName = req.DisplayTaskName
-		}
-		for name, isQuarantined := range variantState[effectiveTaskName] {
+		for name, isQuarantined := range variantState[req.TaskName] {
 			if isQuarantined && !selected[name] {
 				quarantinedNames = append(quarantinedNames, name)
 			}
