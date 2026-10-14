@@ -36,6 +36,12 @@ type MockInstance struct {
 	Tags               []host.Tag
 	Type               string
 	BlockDevices       []string
+	// InstanceID is the cloud instance ID backing the host. If empty, the host
+	// ID is used as the instance ID.
+	InstanceID string
+	// CloudProviderData is the instance data returned by
+	// GetRunningInstanceData.
+	CloudProviderData host.CloudProviderData
 }
 
 type MockVolume struct {
@@ -256,6 +262,26 @@ func (m *mockManager) getOrDefaultInstanceStatus(ctx context.Context, hostID str
 		return StatusNonExistent
 	}
 	return instance.Status
+}
+
+// GetRunningInstanceData returns the instance ID and cloud provider data of the
+// running mock instance for the host.
+func (m *mockManager) GetRunningInstanceData(ctx context.Context, h *host.Host) (string, *host.CloudProviderData, error) {
+	m.mutex.RLock()
+	instance, ok := m.Instances[h.Id]
+	m.mutex.RUnlock()
+	if !ok {
+		return "", nil, errors.Errorf("instance for host '%s' not found", h.Id)
+	}
+	if instance.Status != StatusRunning {
+		return "", nil, errors.Errorf("instance for host '%s' is in state '%s', not running", h.Id, instance.Status)
+	}
+	instanceID := instance.InstanceID
+	if instanceID == "" {
+		instanceID = h.Id
+	}
+	data := instance.CloudProviderData
+	return instanceID, &data, nil
 }
 
 // get instance DNS

@@ -240,6 +240,71 @@ func TestFleet(t *testing.T) {
 			assert.Equal(t, "vol-12345", dbHost.Volumes[0].VolumeID)
 			assert.Equal(t, "/dev/sda1", dbHost.Volumes[0].DeviceName)
 		},
+		"GetRunningInstanceDataReturnsProviderDataForInstanceID": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
+			instanceID, data, err := m.GetRunningInstanceData(ctx, h)
+			require.NoError(t, err)
+			require.NotNil(t, data)
+			assert.Equal(t, h.Id, instanceID)
+			assert.Equal(t, "public_dns_name", data.PublicDNS)
+			assert.Equal(t, MockIPV4, data.PrivateIPv4)
+			assert.Equal(t, MockIPV6, data.IPv6)
+
+			require.NotNil(t, client.DescribeInstancesInput)
+			assert.Equal(t, []string{h.Id}, client.DescribeInstancesInput.InstanceIds)
+			assert.Empty(t, client.DescribeInstancesInput.Filters)
+		},
+		"GetRunningInstanceDataLooksUpIntentHostByRunningTaggedInstance": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
+			h.Id = "evg-12345"
+			client.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{
+				Reservations: []types.Reservation{{Instances: []types.Instance{runningInstance("i-12345")}}},
+			}
+
+			instanceID, data, err := m.GetRunningInstanceData(ctx, h)
+			require.NoError(t, err)
+			require.NotNil(t, data)
+			assert.Equal(t, "i-12345", instanceID)
+			assert.Equal(t, "public_dns_name", data.PublicDNS)
+
+			require.NotNil(t, client.DescribeInstancesInput)
+			assert.Empty(t, client.DescribeInstancesInput.InstanceIds)
+			require.Len(t, client.DescribeInstancesInput.Filters, 2)
+			assert.Equal(t, "tag:"+evergreen.TagName, utility.FromStringPtr(client.DescribeInstancesInput.Filters[0].Name))
+			assert.Equal(t, []string{h.Id}, client.DescribeInstancesInput.Filters[0].Values)
+			assert.Equal(t, "instance-state-name", utility.FromStringPtr(client.DescribeInstancesInput.Filters[1].Name))
+			assert.Equal(t, []string{string(types.InstanceStateNameRunning)}, client.DescribeInstancesInput.Filters[1].Values)
+		},
+		"GetRunningInstanceDataErrorsForNonRunningInstance": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
+			instance := runningInstance(h.Id)
+			instance.State = &types.InstanceState{Name: types.InstanceStateNameStopped}
+			client.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{
+				Reservations: []types.Reservation{{Instances: []types.Instance{instance}}},
+			}
+
+			_, data, err := m.GetRunningInstanceData(ctx, h)
+			assert.Error(t, err)
+			assert.Nil(t, data)
+		},
+		"GetRunningInstanceDataErrorsForNoInstances": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
+			h.Id = "evg-12345"
+			client.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{}
+
+			_, data, err := m.GetRunningInstanceData(ctx, h)
+			assert.Error(t, err)
+			assert.Nil(t, data)
+		},
+		"GetRunningInstanceDataErrorsForMultipleInstances": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
+			h.Id = "evg-12345"
+			client.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{
+				Reservations: []types.Reservation{
+					{Instances: []types.Instance{runningInstance("i-12345")}},
+					{Instances: []types.Instance{runningInstance("i-67890")}},
+				},
+			}
+
+			_, data, err := m.GetRunningInstanceData(ctx, h)
+			assert.Error(t, err)
+			assert.Nil(t, data)
+		},
 		"GetInstanceInformation": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
 			info, err := m.GetInstanceState(ctx, h)
 			assert.NoError(t, err)
@@ -983,4 +1048,19 @@ func TestInstanceTypeAZCache(t *testing.T) {
 	azsWithInstanceType, err = cache.subnetsWithInstanceType(t.Context(), settings, defaultRegionClient, instanceTypeCacheKey{instanceType: "not_supported", region: evergreen.DefaultEC2Region})
 	assert.NoError(t, err)
 	assert.Empty(t, azsWithInstanceType)
+}
+
+// runningInstance returns a running EC2 instance with all the data required to
+// make its cloud provider data.
+func runningInstance(instanceID string) types.Instance {
+	return types.Instance{
+		InstanceId: aws.String(instanceID),
+		State:      &types.InstanceState{Name: types.InstanceStateNameRunning},
+		LaunchTime: aws.Time(time.Now()),
+		Placement: &types.Placement{
+			AvailabilityZone: aws.String("us-east-1a"),
+		},
+		PublicDnsName:    aws.String("public_dns_name"),
+		PrivateIpAddress: aws.String(MockIPV4),
+	}
 }

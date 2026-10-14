@@ -393,6 +393,54 @@ func (m *ec2FleetManager) GetInstanceState(ctx context.Context, h *host.Host) (C
 	return info, nil
 }
 
+// GetRunningInstanceData returns the instance ID and cloud provider data of the
+// running EC2 instance backing the host.
+func (m *ec2FleetManager) GetRunningInstanceData(ctx context.Context, h *host.Host) (string, *host.CloudProviderData, error) {
+	if err := m.setupClient(ctx); err != nil {
+		return "", nil, errors.Wrap(err, "creating client")
+	}
+
+	input := &ec2.DescribeInstancesInput{InstanceIds: []string{h.Id}}
+	if host.IsIntentHostId(h.Id) {
+		// The instance ID is not known yet, so look it up by the name tag,
+		// which is set to the intent host ID before launch. Filter to running
+		// instances because a previous attempt to launch the same intent host
+		// may have left behind terminated instances with the same tag.
+		input = &ec2.DescribeInstancesInput{
+			Filters: []types.Filter{
+				{Name: aws.String("tag:" + evergreen.TagName), Values: []string{h.Id}},
+				{Name: aws.String("instance-state-name"), Values: []string{string(types.InstanceStateNameRunning)}},
+			},
+		}
+	}
+	out, err := m.client.DescribeInstances(ctx, input)
+	if err != nil {
+		return "", nil, errors.Wrap(err, "describing instances")
+	}
+	if err := validateEc2DescribeInstancesOutput(out); err != nil {
+		return "", nil, errors.Wrap(err, "invalid describe instances response")
+	}
+
+	var instances []types.Instance
+	for _, reservation := range out.Reservations {
+		instances = append(instances, reservation.Instances...)
+	}
+	if len(instances) != 1 {
+		return "", nil, errors.Errorf("expected exactly one instance for host '%s' but found %d", h.Id, len(instances))
+	}
+	instance := instances[0]
+	if status := ec2StateToEvergreenStatus(ctx, instance.State); status != StatusRunning {
+		return "", nil, errors.Errorf("instance for host '%s' is in state '%s', not running", h.Id, status)
+	}
+
+	data, err := makeCloudProviderData(&instance)
+	if err != nil {
+		return "", nil, errors.Wrapf(err, "making cloud provider data for host '%s'", h.Id)
+	}
+
+	return utility.FromStringPtr(instance.InstanceId), data, nil
+}
+
 func (m *ec2FleetManager) CheckInstanceType(ctx context.Context, instanceType string) error {
 	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
