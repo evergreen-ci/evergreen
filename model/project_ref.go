@@ -933,11 +933,8 @@ func (p *ProjectRef) AddToRepoScope(ctx context.Context, u *user.DBUser) error {
 	if err != nil {
 		return errors.Wrapf(err, "finding repo ref '%s'", p.RepoRefId)
 	}
-	// System-internal flows (e.g. repotracker) may create projects with no user, and are trusted.
 	if u != nil {
 		if repoRef == nil {
-			// Creating a repo ref inherits the settings, variables, and admins of any
-			// existing enabled projects, so the caller must be authorized first.
 			if err := p.checkCanCreateNewRepoRef(ctx, u); err != nil {
 				return err
 			}
@@ -1079,7 +1076,6 @@ func (p *ProjectRef) DetachFromRepo(ctx context.Context, u *user.DBUser) error {
 var ErrRepoRefUnauthorized = errors.New("user is not an admin of the repo")
 
 // checkRepoRefAdmin verifies that the user is allowed to attach the project to the given repo ref.
-// A nil repo ref (none exists yet) requires no authorization, since the user will become its admin.
 func (p *ProjectRef) checkRepoRefAdmin(ctx context.Context, u *user.DBUser, repoRef *RepoRef) error {
 	if repoRef == nil {
 		return nil
@@ -1097,12 +1093,7 @@ func (p *ProjectRef) checkRepoRefAdmin(ctx context.Context, u *user.DBUser, repo
 }
 
 // checkCanCreateNewRepoRef verifies that the user is allowed to create a new repo
-// ref for the project's owner/repo. Creating a repo ref inherits the settings,
-// variables, and admins of any existing enabled projects, so the user must have
-// project settings edit permission on at least one of those projects, unless
-// there are no such projects (in which case there is nothing to inherit). The
-// owner/repo is also validated against the allowed GitHub orgs, as with attaching
-// to an existing repo.
+// ref for the project's owner/repo.
 func (p *ProjectRef) checkCanCreateNewRepoRef(ctx context.Context, u *user.DBUser) error {
 	allowedOrgs := evergreen.GetEnvironment().Settings().GithubOrgs
 	if err := p.ValidateOwnerAndRepo(allowedOrgs); err != nil {

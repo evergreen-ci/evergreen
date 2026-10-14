@@ -2504,8 +2504,6 @@ func TestCreateNewRepoRefPermissions(t *testing.T) {
 			evergreen.ScopeCollection, evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection, event.EventCollection, githubapp.GitHubAppCollection))
 		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
-		// A victim has an enabled project (with private variables) for the target
-		// owner/repo, but no repo ref exists for it yet.
 		victimProject := ProjectRef{
 			Id:         "victimProject",
 			Owner:      "evergreen-ci",
@@ -2544,7 +2542,6 @@ func TestCreateNewRepoRefPermissions(t *testing.T) {
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, ErrRepoRefUnauthorized), "expected an authorization error, got '%s'", err)
 
-		// No repo ref may be created for the victim's owner/repo.
 		repoRef, err := FindRepoRefByOwnerAndRepo(t.Context(), pRef.Owner, pRef.Repo)
 		require.NoError(t, err)
 		assert.Nil(t, repoRef)
@@ -2561,7 +2558,6 @@ func TestCreateNewRepoRefPermissions(t *testing.T) {
 		repoRef, err := FindOneRepoRef(t.Context(), pRef.RepoRefId)
 		require.NoError(t, err)
 		require.NotNil(t, repoRef)
-		// The creator becomes the sole admin of the new repo ref.
 		assert.Equal(t, []string{"attacker"}, repoRef.Admins)
 	})
 }
