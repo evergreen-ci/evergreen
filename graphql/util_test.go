@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vektah/gqlparser/v2/ast"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 func init() {
@@ -675,14 +676,8 @@ func TestGetHostRequestOptionsTaskPermissions(t *testing.T) {
 	})
 
 	t.Run("TaskViewPermissionShouldAllowDebugHostOptions", func(t *testing.T) {
-		roleManager := evergreen.GetEnvironment().RoleManager()
-		require.NoError(t, roleManager.UpdateRole(ctx, gimlet.Role{
-			ID:          "view_tasks",
-			Scope:       "project_scope",
-			Permissions: map[string]int{evergreen.PermissionTasks: evergreen.TasksView.Value},
-		}))
-		require.NoError(t, usr.AddRole(ctx, "view_tasks"))
-		t.Cleanup(func() { require.NoError(t, usr.RemoveRole(ctx, "view_tasks")) })
+		require.NoError(t, usr.AddRole(ctx, "view_task"))
+		t.Cleanup(func() { require.NoError(t, usr.RemoveRole(ctx, "view_task")) })
 
 		options, err := getHostRequestOptions(ctx, usr, &SpawnHostInput{
 			DistroID:              d.Id,
@@ -707,5 +702,32 @@ func TestGetHostRequestOptionsTaskPermissions(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, options)
 		assert.Empty(t, options.TaskID)
+	})
+}
+
+func TestGetHostRequestOptionsTaskLookup(t *testing.T) {
+	require.NoError(t, db.Clear(task.Collection))
+	usr := &user.DBUser{Id: "test_user"}
+	input := &SpawnHostInput{TaskID: utility.ToStringPtr("missing-task")}
+
+	t.Run("MissingTaskShouldReturnResourceNotFound", func(t *testing.T) {
+		options, err := getHostRequestOptions(t.Context(), usr, input)
+		require.EqualError(t, err, "input: task 'missing-task' not found")
+		assert.Nil(t, options)
+		var gqlErr *gqlerror.Error
+		require.ErrorAs(t, err, &gqlErr)
+		assert.Equal(t, ResourceNotFound, gqlErr.Extensions["code"])
+	})
+
+	t.Run("CanceledLookupShouldReturnInternalServerErrorWithCause", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+		options, err := getHostRequestOptions(ctx, usr, input)
+		require.Error(t, err)
+		assert.Nil(t, options)
+		assert.ErrorIs(t, err, context.Canceled)
+		var gqlErr *gqlerror.Error
+		require.ErrorAs(t, err, &gqlErr)
+		assert.Equal(t, InternalServerError, gqlErr.Extensions["code"])
 	})
 }
