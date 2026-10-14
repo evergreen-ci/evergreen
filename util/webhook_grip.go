@@ -218,7 +218,7 @@ func ValidateWebhookURL(raw string) error {
 	if u.User != nil {
 		return errors.New("webhook URL cannot contain user info")
 	}
-	if ip, err := netip.ParseAddr(u.Hostname()); err == nil && isBlockedWebhookIP(ip) {
+	if ip, err := netip.ParseAddr(u.Hostname()); err == nil && IsBlockedInternalIP(ip) {
 		return errors.Errorf("webhook URL cannot use blocked address %s", ip)
 	}
 
@@ -251,7 +251,7 @@ func webhookDialContext(resolver webhookResolver) func(context.Context, string, 
 			return nil, errors.Errorf("webhook destination %s did not resolve", host)
 		}
 		for _, ip := range ips {
-			if isBlockedWebhookIP(ip) {
+			if IsBlockedInternalIP(ip) {
 				return nil, errors.Errorf("webhook destination %s resolves to blocked address %s", host, ip)
 			}
 		}
@@ -274,8 +274,12 @@ func validateWebhookRedirect(req *http.Request, _ []*http.Request) error {
 	return ValidateWebhookURL(req.URL.String())
 }
 
-// isBlockedWebhookIP keeps validation and dialing on the same internal-address policy.
-func isBlockedWebhookIP(ip netip.Addr) bool {
+// carrierGradeNATPrefix is not covered by netip.Addr.IsPrivate but is commonly used for internal networks.
+var carrierGradeNATPrefix = netip.MustParsePrefix("100.64.0.0/10")
+
+// IsBlockedInternalIP reports whether an address is internal and must not be reached by requests to
+// user-controlled URLs. Validation and dialing should both use it so they share the same policy.
+func IsBlockedInternalIP(ip netip.Addr) bool {
 	ip = ip.Unmap()
-	return !ip.IsValid() || ip.IsUnspecified() || ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsPrivate() || ip.IsMulticast()
+	return !ip.IsValid() || ip.IsUnspecified() || ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsPrivate() || ip.IsMulticast() || carrierGradeNATPrefix.Contains(ip)
 }
