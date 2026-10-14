@@ -737,6 +737,16 @@ func bbGetCreatedTicketsPointers(ctx context.Context, taskId string) ([]*thirdpa
 
 // getHostRequestOptions validates and transforms user-specified spawn host input
 func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput *SpawnHostInput) (*restModel.HostRequestOptions, error) {
+	if taskID := utility.FromStringPtr(spawnHostInput.TaskID); taskID != "" {
+		projectID, err := task.FindProjectForTask(ctx, taskID)
+		if err != nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
+		}
+		if err := checkProjectAccess(ctx, projectID, ProjectPermissionTasks, AccessLevelView); err != nil {
+			return nil, err
+		}
+	}
+
 	if spawnHostInput.SavePublicKey {
 		if err := savePublicKey(ctx, *spawnHostInput.PublicKey); err != nil {
 			return nil, err

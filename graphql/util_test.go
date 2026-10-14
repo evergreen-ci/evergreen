@@ -639,3 +639,73 @@ func TestGetHostRequestOptionsDebugValidation(t *testing.T) {
 		assert.False(t, options.IsDebug, "IsDebug should default to false")
 	})
 }
+
+func TestGetHostRequestOptionsTaskPermissions(t *testing.T) {
+	setupPermissions(t)
+	usr, err := setupUser(t)
+	require.NoError(t, err)
+	ctx := gimlet.AttachUser(t.Context(), usr)
+
+	d := distro.Distro{Id: "test-distro"}
+	require.NoError(t, d.Insert(ctx))
+	tsk := task.Task{Id: "task-id", Project: "project_id"}
+	require.NoError(t, tsk.Insert(ctx))
+
+	t.Run("UnauthorizedTaskShouldRejectBothMutationsBeforeSavingKeyOrReplayingHosts", func(t *testing.T) {
+		input := &SpawnHostInput{
+			DistroID:                d.Id,
+			TaskID:                  &tsk.Id,
+			PublicKey:               &PublicKeyInput{Name: "test-key", Key: "ssh-rsa test"},
+			SavePublicKey:           true,
+			IsDebug:                 utility.TruePtr(),
+			UseProjectSetupScript:   utility.TruePtr(),
+			SpawnHostsStartedByTask: utility.TruePtr(),
+		}
+		resolver := mutationResolver{&Resolver{}}
+		h, err := resolver.SpawnHost(ctx, input)
+		require.ErrorContains(t, err, "does not have permission to 'view tasks'")
+		assert.Nil(t, h)
+		migrated, err := resolver.MigrateVolume(ctx, "volume-id", input)
+		require.ErrorContains(t, err, "does not have permission to 'view tasks'")
+		assert.False(t, migrated)
+		storedUser, err := user.FindOneById(ctx, usr.Id)
+		require.NoError(t, err)
+		require.NotNil(t, storedUser)
+		assert.Empty(t, storedUser.PubKeys)
+	})
+
+	t.Run("TaskViewPermissionShouldAllowDebugHostOptions", func(t *testing.T) {
+		roleManager := evergreen.GetEnvironment().RoleManager()
+		require.NoError(t, roleManager.UpdateRole(ctx, gimlet.Role{
+			ID:          "view_tasks",
+			Scope:       "project_scope",
+			Permissions: map[string]int{evergreen.PermissionTasks: evergreen.TasksView.Value},
+		}))
+		require.NoError(t, usr.AddRole(ctx, "view_tasks"))
+		t.Cleanup(func() { require.NoError(t, usr.RemoveRole(ctx, "view_tasks")) })
+
+		options, err := getHostRequestOptions(ctx, usr, &SpawnHostInput{
+			DistroID:              d.Id,
+			TaskID:                &tsk.Id,
+			PublicKey:             &PublicKeyInput{Name: "test-key", Key: "ssh-rsa test"},
+			IsDebug:               utility.TruePtr(),
+			UseProjectSetupScript: utility.TruePtr(),
+		})
+		require.NoError(t, err)
+		require.NotNil(t, options)
+		assert.Equal(t, tsk.Id, options.TaskID)
+		assert.True(t, options.IsDebug)
+		assert.True(t, options.UseProjectSetupScript)
+	})
+
+	t.Run("EmptyTaskIDShouldNotRequireProjectPermission", func(t *testing.T) {
+		options, err := getHostRequestOptions(ctx, usr, &SpawnHostInput{
+			DistroID:  d.Id,
+			TaskID:    utility.ToStringPtr(""),
+			PublicKey: &PublicKeyInput{Name: "test-key", Key: "ssh-rsa test"},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, options)
+		assert.Empty(t, options.TaskID)
+	})
+}
