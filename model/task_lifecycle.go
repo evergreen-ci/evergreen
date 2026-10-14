@@ -2706,8 +2706,8 @@ func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settin
 	return errors.Wrap(ResetTaskOrDisplayTask(ctx, settings, t, evergreen.User, evergreen.MonitorPackage, true, &t.Details), "resetting task")
 }
 
-// FixStrandedVirtualTask marks a virtual task as system-failed if the runner
-// task that claimed it has finished without push-completing it.
+// FixStrandedVirtualTask marks a virtual task as system-failed if it's awaiting
+// push-completion but its runner is already finished.
 // This intentionally doesn't restart the task because that would actually run
 // the virtual task. Virtual tasks are not meant to actually run unless the user
 // explicitly requests it.
