@@ -183,7 +183,11 @@ func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// If the owner/repo is being changed, verify the user is an admin of the destination repo.
 	if h.newRepoRef.Owner != h.originalRepoRef.Owner || h.newRepoRef.Repo != h.originalRepoRef.Repo {
-		if err := h.newRepoRef.CheckExistingRepoRefAdmin(ctx, h.user); err != nil {
+		destRepoRef, err := dbModel.FindRepoRefByOwnerAndRepo(ctx, h.newRepoRef.Owner, h.newRepoRef.Repo)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding destination repo '%s/%s'", h.newRepoRef.Owner, h.newRepoRef.Repo))
+		}
+		if err := h.newRepoRef.CheckRepoRefAdmin(ctx, h.user, destRepoRef); err != nil {
 			if errors.Is(err, dbModel.ErrRepoRefUnauthorized) {
 				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					StatusCode: http.StatusUnauthorized,
