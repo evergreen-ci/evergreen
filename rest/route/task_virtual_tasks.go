@@ -19,8 +19,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const maxVirtualTaskCompletionBatchSize = 100
-
 // resolveVirtualTaskRunner validates that virtual tasks are enabled and resolves
 // the runner task and its project, checking that the caller is authorized to
 // push-complete virtual tasks for it. A non-nil responder means that there's an
@@ -184,8 +182,8 @@ func (h *completeVirtualTasksHandler) Parse(ctx context.Context, r *http.Request
 	if len(h.body.Tasks) == 0 {
 		return errors.New("must specify at least one task to complete")
 	}
-	if len(h.body.Tasks) > maxVirtualTaskCompletionBatchSize {
-		return errors.Errorf("batch size %d exceeds the maximum of %d", len(h.body.Tasks), maxVirtualTaskCompletionBatchSize)
+	if len(h.body.Tasks) > evergreen.MaxVirtualTaskBatchSize {
+		return errors.Errorf("batch size %d exceeds the maximum of %d", len(h.body.Tasks), evergreen.MaxVirtualTaskBatchSize)
 	}
 	return nil
 }
@@ -344,8 +342,8 @@ func (h *prepareVirtualTasksHandler) Parse(ctx context.Context, r *http.Request)
 	if len(h.body.Tasks) == 0 {
 		return errors.New("must specify at least one task to prepare")
 	}
-	if len(h.body.Tasks) > maxVirtualTaskCompletionBatchSize {
-		return errors.Errorf("batch size %d exceeds the maximum of %d", len(h.body.Tasks), maxVirtualTaskCompletionBatchSize)
+	if len(h.body.Tasks) > evergreen.MaxVirtualTaskBatchSize {
+		return errors.Errorf("batch size %d exceeds the maximum of %d", len(h.body.Tasks), evergreen.MaxVirtualTaskBatchSize)
 	}
 	return nil
 }

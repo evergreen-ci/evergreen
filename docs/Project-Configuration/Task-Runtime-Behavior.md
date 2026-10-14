@@ -377,14 +377,13 @@ Some notes to keep in mind:
 
 - All of a virtual task's test results must be provided in a single request; they cannot be appended to any previously
   uploaded results.
-- Because tasks can have a mixed of successes/errors within a single request, callers should refer to the `error` field
+- Because tasks can have a mix of successes/errors within a single request, callers should refer to the `error` field
   to determine if there's any errors uploading test results for individual tasks instead of relying solely on a 200
   status code.
 - Callers are expected to [push-complete](Virtual-Tasks#push-completing-a-virtual-task-through-the-rest-api) each
   virtual task itself after uploading the test results to set the final status. During push-completion, callers should
   pass the returned `test_results` response as the push-completion's `test_results`.
-- It's generally best practice to upload test results _before_ push-completing the virtual task. That way, test results
-  are available immediately when the task is in a finished state.
+- Test results must be uploaded _before_ push-completing the virtual task.
 - To manage load, this route may be throttled if too many test result upload requests are made concurrently while the
   task is running. The route should ultimately still run and return a result, but it may take longer for the request to
   process if there's a burst of many simultaneous uploads.

@@ -32,6 +32,19 @@ func TestUploadVirtualTaskTestResultsHandler(t *testing.T) {
 			a.uploadVirtualTaskTestResultsHandler(rec, req)
 			assert.Equal(t, http.StatusBadRequest, rec.Code)
 		},
+		"EmptyTasksErrors": func(ctx context.Context, t *testing.T, a *Agent) {
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPost, "/virtual_tasks/test_results", bytes.NewReader([]byte(`{"tasks":[]}`)))
+			a.uploadVirtualTaskTestResultsHandler(rec, req)
+			assert.Equal(t, http.StatusBadRequest, rec.Code)
+		},
+		"InvalidTestResultsErrors": func(ctx context.Context, t *testing.T, a *Agent) {
+			rec := httptest.NewRecorder()
+			body := `{"tasks":[{"task_id":"virtual_task","execution":0,"test_results":{"files":[{"type":"bogus","files":["results.json"]}]}}]}`
+			req := httptest.NewRequest(http.MethodPost, "/virtual_tasks/test_results", bytes.NewReader([]byte(body)))
+			a.uploadVirtualTaskTestResultsHandler(rec, req)
+			assert.Equal(t, http.StatusBadRequest, rec.Code)
+		},
 		"SuccessReturnsStats": func(ctx context.Context, t *testing.T, a *Agent) {
 			a.uploadVirtualTaskTestResults = func(ctx context.Context, req virtualTaskTestResultsRequest) (*virtualTaskTestResultsResponse, error) {
 				require.Len(t, req.Tasks, 1)
@@ -88,10 +101,6 @@ func TestTaskContextUploadVirtualTaskTestResults(t *testing.T) {
 	}}
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, tc *taskContext, comm *client.Mock){
-		"EmptyTasksErrors": func(ctx context.Context, t *testing.T, tc *taskContext, comm *client.Mock) {
-			_, err := tc.uploadVirtualTaskTestResults(ctx, comm, virtualTaskTestResultsRequest{})
-			assert.ErrorContains(t, err, "at least one virtual task")
-		},
 		"PrepareFailureReportsPerTaskError": func(ctx context.Context, t *testing.T, tc *taskContext, comm *client.Mock) {
 			comm.PrepareVirtualTasksResponse = &apimodels.PrepareVirtualTasksResponse{Results: []apimodels.VirtualTaskPreparationResult{
 				{TaskID: "virtual_task", Outcome: apimodels.VirtualTaskCompletionOutcomeFailed, Reason: "task is not a virtual task"},

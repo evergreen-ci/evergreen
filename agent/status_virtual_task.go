@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -54,6 +55,16 @@ func (a *Agent) uploadVirtualTaskTestResultsHandler(w http.ResponseWriter, r *ht
 		return
 	}
 
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(len(req.Tasks) == 0, "must specify at least one virtual task")
+	for _, task := range req.Tasks {
+		catcher.Wrapf(task.TestResults.Validate(), "virtual task '%s'", task.TaskID)
+	}
+	if catcher.HasErrors() {
+		writeAgentHandlerError(w, http.StatusBadRequest, errors.Wrap(catcher.Resolve(), "validating virtual task test results"))
+		return
+	}
+
 	a.uploadVirtualTaskTestResultsMutex.RLock()
 	upload := a.uploadVirtualTaskTestResults
 	a.uploadVirtualTaskTestResultsMutex.RUnlock()
@@ -89,21 +100,23 @@ func (a *Agent) uploadVirtualTaskTestResultsHandler(w http.ResponseWriter, r *ht
 // outcomes. A failure to upload an individual task's results is reported in that
 // task's result rather than failing the whole request.
 func (tc *taskContext) uploadVirtualTaskTestResults(ctx context.Context, comm client.Communicator, req virtualTaskTestResultsRequest) (*virtualTaskTestResultsResponse, error) {
-	if len(req.Tasks) == 0 {
-		return nil, errors.New("must specify at least one virtual task")
-	}
+	prepared := make(map[string]apimodels.VirtualTaskPreparationResult, len(req.Tasks))
+	for i := 0; i < len(req.Tasks); i += evergreen.MaxVirtualTaskBatchSize {
+		end := min(i+evergreen.MaxVirtualTaskBatchSize, len(req.Tasks))
+		batch := req.Tasks[i:end]
 
-	preparations := make([]apimodels.VirtualTaskPreparation, len(req.Tasks))
-	for i, task := range req.Tasks {
-		preparations[i] = apimodels.VirtualTaskPreparation{TaskID: task.TaskID, Execution: task.Execution}
-	}
-	prep, err := comm.PrepareVirtualTasks(ctx, tc.task, preparations)
-	if err != nil {
-		return nil, errors.Wrap(err, "preparing virtual tasks for test result upload")
-	}
-	prepared := make(map[string]apimodels.VirtualTaskPreparationResult, len(prep.Results))
-	for _, result := range prep.Results {
-		prepared[result.TaskID] = result
+		preparations := make([]apimodels.VirtualTaskPreparation, len(batch))
+		for j, task := range batch {
+			preparations[j] = apimodels.VirtualTaskPreparation{TaskID: task.TaskID, Execution: task.Execution}
+		}
+
+		prep, err := comm.PrepareVirtualTasks(ctx, tc.task, preparations)
+		if err != nil {
+			return nil, errors.Wrapf(err, "preparing virtual tasks (batch between indexes %d-%d)", i, end)
+		}
+		for _, result := range prep.Results {
+			prepared[result.TaskID] = result
+		}
 	}
 
 	resp := &virtualTaskTestResultsResponse{Results: make([]virtualTaskTestResultsResult, 0, len(req.Tasks))}

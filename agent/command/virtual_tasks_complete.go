@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -14,8 +15,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
-
-const maxCompletionBatchSize = 100
 
 type completeVirtualTasks struct {
 	Files    []string `mapstructure:"files" plugin:"expand"`
@@ -41,6 +40,7 @@ type VirtualTaskTestResultsInput struct {
 	CreatedAt time.Time                        `json:"created_at,omitzero"`
 }
 
+// GetCreatedAt returns the time the test results were created.
 func (tr VirtualTaskTestResultsInput) GetCreatedAt() time.Time {
 	if !utility.IsZeroTime(tr.CreatedAt) {
 		return tr.CreatedAt
@@ -54,7 +54,8 @@ type VirtualTaskTestResultFileGroup struct {
 	Files []string `json:"files"`
 }
 
-func (tr VirtualTaskTestResultsInput) validate() error {
+// Validate checks that the test results input is well-formed.
+func (tr VirtualTaskTestResultsInput) Validate() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.NewWhen(len(tr.Files) == 0, "test_results must specify at least one file group")
 	for _, group := range tr.Files {
@@ -159,8 +160,8 @@ func processVirtualTaskCompletions(ctx context.Context, comm client.Communicator
 		catcher.Wrap(completeVirtualTaskBatches(ctx, comm, logger, conf, withoutTestResults), "push-completing virtual tasks without test results")
 	}
 
-	for i := 0; i < len(withTestResults); i += maxCompletionBatchSize {
-		end := min(i+maxCompletionBatchSize, len(withTestResults))
+	for i := 0; i < len(withTestResults); i += evergreen.MaxVirtualTaskBatchSize {
+		end := min(i+evergreen.MaxVirtualTaskBatchSize, len(withTestResults))
 		batch := withTestResults[i:end]
 
 		completions, err := uploadTestResultsForCompletions(ctx, comm, logger, conf, batch)
@@ -186,7 +187,7 @@ func partitionCompletions(entries []virtualTaskCompletionFile) (withoutTestResul
 			withoutTestResults = append(withoutTestResults, entry.toCompletion(nil))
 			continue
 		}
-		if err := entry.TestResults.validate(); err != nil {
+		if err := entry.TestResults.Validate(); err != nil {
 			catcher.Wrapf(err, "virtual task '%s'", entry.TaskID)
 			continue
 		}
@@ -272,8 +273,8 @@ func prepareVirtualTasks(ctx context.Context, comm client.Communicator, td clien
 
 	catcher := grip.NewBasicCatcher()
 	prepared := map[string]apimodels.VirtualTaskPreparationResult{}
-	for i := 0; i < len(preparations); i += maxCompletionBatchSize {
-		end := min(i+maxCompletionBatchSize, len(preparations))
+	for i := 0; i < len(preparations); i += evergreen.MaxVirtualTaskBatchSize {
+		end := min(i+evergreen.MaxVirtualTaskBatchSize, len(preparations))
 		batch := preparations[i:end]
 
 		resp, err := comm.PrepareVirtualTasks(ctx, td, batch)
@@ -300,8 +301,8 @@ func prepareVirtualTasks(ctx context.Context, comm client.Communicator, td clien
 func completeVirtualTaskBatches(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, completions []apimodels.VirtualTaskCompletion) error {
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	catcher := grip.NewBasicCatcher()
-	for i := 0; i < len(completions); i += maxCompletionBatchSize {
-		end := min(i+maxCompletionBatchSize, len(completions))
+	for i := 0; i < len(completions); i += evergreen.MaxVirtualTaskBatchSize {
+		end := min(i+evergreen.MaxVirtualTaskBatchSize, len(completions))
 		batch := completions[i:end]
 
 		resp, err := comm.CompleteVirtualTasks(ctx, td, batch)
