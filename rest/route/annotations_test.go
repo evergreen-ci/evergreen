@@ -275,7 +275,9 @@ func TestAnnotationByTaskGetHandlerRun(t *testing.T) {
 			TaskExecution: 1,
 			Note:          &annotations.Note{Message: "task-1-note_1"},
 			Issues: []annotations.IssueLink{
-				{ConfidenceScore: 12.34},
+				{ConfidenceScore: utility.ToFloat64Ptr(12.34)},
+				// Created tickets have no confidence score, which must stay nil rather than becoming 0.
+				{},
 			},
 		},
 		{
@@ -300,9 +302,10 @@ func TestAnnotationByTaskGetHandlerRun(t *testing.T) {
 	assert.Equal(t, 1, *apiAnnotations[0].TaskExecution)
 	assert.Equal(t, "task-1", utility.FromStringPtr(apiAnnotations[0].TaskId))
 	assert.Equal(t, "task-1-note_1", utility.FromStringPtr(apiAnnotations[0].Note.Message))
-	require.Len(t, apiAnnotations[0].Issues, 1)
+	require.Len(t, apiAnnotations[0].Issues, 2)
 	//nolint:testifylint // We expect it to be exactly equal.
-	assert.Equal(t, float64(12.34), utility.FromFloat64Ptr(apiAnnotations[0].Issues[0].ConfidenceScore))
+	assert.Equal(t, utility.ToFloat64Ptr(12.34), apiAnnotations[0].Issues[0].ConfidenceScore)
+	assert.Nil(t, apiAnnotations[0].Issues[1].ConfidenceScore)
 
 	// get the latest execution : 0
 	h.taskId = "task-2"
@@ -694,9 +697,9 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	assert.Equal(t, "api", annotation.Issues[0].Source.Requester)
 	assert.Len(t, annotation.Issues, 2)
 	//nolint:testifylint // We expect it to be exactly equal.
-	assert.Equal(t, float64(12.34), annotation.Issues[0].ConfidenceScore)
+	assert.Equal(t, utility.ToFloat64Ptr(12.34), annotation.Issues[0].ConfidenceScore)
 	//nolint:testifylint // We expect it to be exactly equal.
-	assert.Equal(t, float64(56.78), annotation.Issues[1].ConfidenceScore)
+	assert.Equal(t, utility.ToFloat64Ptr(56.78), annotation.Issues[1].ConfidenceScore)
 
 	//test update
 	h.annotation = &restModel.APITaskAnnotation{
@@ -729,9 +732,9 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	assert.Equal(t, "some key 0", annotation.Issues[0].IssueKey)
 	assert.Len(t, annotation.Issues, 2)
 	//nolint:testifylint // We expect it to be exactly equal.
-	assert.Equal(t, float64(87.65), annotation.Issues[0].ConfidenceScore)
+	assert.Equal(t, utility.ToFloat64Ptr(87.65), annotation.Issues[0].ConfidenceScore)
 	//nolint:testifylint // We expect it to be exactly equal.
-	assert.Equal(t, float64(43.21), annotation.Issues[1].ConfidenceScore)
+	assert.Equal(t, utility.ToFloat64Ptr(43.21), annotation.Issues[1].ConfidenceScore)
 
 	//test that it can update old executions
 	h.annotation = &restModel.APITaskAnnotation{
