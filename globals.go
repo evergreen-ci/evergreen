@@ -387,6 +387,10 @@ const (
 	// HighExecTimeoutThreshold is the exec timeout duration above which a task
 	// has an unusually long timeout and warrants alerting.
 	HighExecTimeoutThreshold = 72 * time.Hour
+
+	// MaxVirtualTaskBatchSize is the maximum number of virtual tasks that can be
+	// prepared or push-completed in a single request.
+	MaxVirtualTaskBatchSize = 100
 )
 
 var TestFailureStatuses = []string{

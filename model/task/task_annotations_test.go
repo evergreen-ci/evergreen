@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/annotations"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,7 +18,7 @@ func TestAddIssueToAnnotation(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(annotations.Collection, Collection))
 	task := Task{Id: "t1"}
 	assert.NoError(t, task.Insert(t.Context()))
-	issue := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", ConfidenceScore: float64(91.23)}
+	issue := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", ConfidenceScore: utility.ToFloat64Ptr(91.23)}
 	assert.NoError(t, AddIssueToAnnotation(ctx, "t1", 0, issue, "annie.black"))
 
 	annotation, err := annotations.FindOneByTaskIdAndExecution(t.Context(), "t1", 0)
@@ -29,7 +30,7 @@ func TestAddIssueToAnnotation(t *testing.T) {
 	assert.Equal(t, annotations.UIRequester, annotation.Issues[0].Source.Requester)
 	assert.Equal(t, "annie.black", annotation.Issues[0].Source.Author)
 	//nolint:testifylint // We expect it to be exactly equal.
-	assert.Equal(t, float64(91.23), annotation.Issues[0].ConfidenceScore)
+	assert.Equal(t, utility.ToFloat64Ptr(91.23), annotation.Issues[0].ConfidenceScore)
 
 	assert.NoError(t, AddIssueToAnnotation(ctx, "t1", 0, issue, "not.annie.black"))
 	annotation, err = annotations.FindOneByTaskIdAndExecution(t.Context(), "t1", 0)
@@ -38,7 +39,7 @@ func TestAddIssueToAnnotation(t *testing.T) {
 	assert.Len(t, annotation.Issues, 2)
 	assert.NotNil(t, annotation.Issues[1].Source)
 	//nolint:testifylint // We expect it to be exactly equal.
-	assert.Equal(t, float64(91.23), annotation.Issues[0].ConfidenceScore)
+	assert.Equal(t, utility.ToFloat64Ptr(91.23), annotation.Issues[0].ConfidenceScore)
 	assert.Equal(t, "not.annie.black", annotation.Issues[1].Source.Author)
 	dbTask, err := FindOneId(ctx, "t1")
 	require.NoError(t, err)
@@ -183,7 +184,7 @@ func TestMoveAnnotationIssueByKey(t *testing.T) {
 		original := annotations.IssueLink{
 			URL:             "https://issuelink.com",
 			IssueKey:        "EVG-1234",
-			ConfidenceScore: 95.5,
+			ConfidenceScore: utility.ToFloat64Ptr(95.5),
 			Source:          &annotations.Source{Author: "original"},
 		}
 		a := annotations.TaskAnnotation{TaskId: "t1", SuspectedIssues: []annotations.IssueLink{}, Issues: []annotations.IssueLink{original}}
@@ -211,7 +212,7 @@ func TestPatchIssue(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(annotations.Collection, Collection))
 	t1 := Task{Id: "t1"}
 	assert.NoError(t, t1.Insert(t.Context()))
-	issue1 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", ConfidenceScore: float64(91.23)}
+	issue1 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", ConfidenceScore: utility.ToFloat64Ptr(91.23)}
 	assert.NoError(t, AddIssueToAnnotation(ctx, "t1", 0, issue1, "bynn.lee"))
 	issue2 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-2345"}
 	a := annotations.TaskAnnotation{TaskId: "t1", TaskExecution: 0, SuspectedIssues: []annotations.IssueLink{issue2}}
@@ -227,7 +228,7 @@ func TestPatchIssue(t *testing.T) {
 	assert.Equal(t, "bynn.lee", annotation.Issues[0].Source.Author)
 	assert.Equal(t, "EVG-1234", annotation.Issues[0].IssueKey)
 	//nolint:testifylint // We expect it to be exactly equal.
-	assert.Equal(t, float64(91.23), annotation.Issues[0].ConfidenceScore)
+	assert.Equal(t, utility.ToFloat64Ptr(91.23), annotation.Issues[0].ConfidenceScore)
 	assert.Len(t, annotation.SuspectedIssues, 1)
 	assert.NotNil(t, annotation.SuspectedIssues[0].Source)
 	assert.Equal(t, annotations.APIRequester, annotation.SuspectedIssues[0].Source.Requester)
