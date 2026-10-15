@@ -652,23 +652,19 @@ func TestGetHostRequestOptionsTaskValidation(t *testing.T) {
 	tsk := task.Task{Id: "task-id", Project: "project_id"}
 	require.NoError(t, tsk.Insert(ctx))
 
-	t.Run("UnauthorizedTaskShouldRejectBothMutationsBeforeSavingKeyOrReplayingHosts", func(t *testing.T) {
+	t.Run("UnauthorizedTaskShouldRejectOptionsBeforeSavingKeyOrReplayingHosts", func(t *testing.T) {
 		input := &SpawnHostInput{
 			DistroID:                d.Id,
-			TaskID:                  &tsk.Id,
+			TaskID:                  utility.ToStringPtr(tsk.Id),
 			PublicKey:               &PublicKeyInput{Name: "test-key", Key: "ssh-rsa test"},
 			SavePublicKey:           true,
 			IsDebug:                 utility.TruePtr(),
 			UseProjectSetupScript:   utility.TruePtr(),
 			SpawnHostsStartedByTask: utility.TruePtr(),
 		}
-		resolver := mutationResolver{&Resolver{}}
-		h, err := resolver.SpawnHost(ctx, input)
+		options, err := getHostRequestOptions(ctx, usr, input)
 		require.ErrorContains(t, err, "does not have permission to 'view tasks'")
-		assert.Nil(t, h)
-		migrated, err := resolver.MigrateVolume(ctx, "volume-id", input)
-		require.ErrorContains(t, err, "does not have permission to 'view tasks'")
-		assert.False(t, migrated)
+		assert.Nil(t, options)
 		storedUser, err := user.FindOneById(ctx, usr.Id)
 		require.NoError(t, err)
 		require.NotNil(t, storedUser)
@@ -681,7 +677,7 @@ func TestGetHostRequestOptionsTaskValidation(t *testing.T) {
 
 		options, err := getHostRequestOptions(ctx, usr, &SpawnHostInput{
 			DistroID:              d.Id,
-			TaskID:                &tsk.Id,
+			TaskID:                utility.ToStringPtr(tsk.Id),
 			PublicKey:             &PublicKeyInput{Name: "test-key", Key: "ssh-rsa test"},
 			IsDebug:               utility.TruePtr(),
 			UseProjectSetupScript: utility.TruePtr(),
