@@ -748,7 +748,7 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 		if t == nil {
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
 		}
-		if err := checkProjectAccess(ctx, t.Project, ProjectPermissionTasks, AccessLevelView); err != nil {
+		if err = checkProjectAccess(ctx, t.Project, ProjectPermissionTasks, AccessLevelView); err != nil {
 			return nil, err
 		}
 	}
