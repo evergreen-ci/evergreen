@@ -355,6 +355,8 @@ func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskUnit
 	return deps
 }
 
+// findTaskConfigForVariant looks up a task's configuration once per dependency
+// inclusion run and reuses the result.
 func (di *dependencyIncluder) findTaskConfigForVariant(name, variant string) *BuildVariantTaskUnit {
 	pair := TVPair{TaskName: name, Variant: variant}
 	if bvt, ok := di.taskConfigCache[pair]; ok {
@@ -368,6 +370,8 @@ func (di *dependencyIncluder) findTaskConfigForVariant(name, variant string) *Bu
 	return bvt
 }
 
+// findBuildVariantConfig looks up a build variant's configuration once per dependency
+// inclusion run and reuses the result.
 func (di *dependencyIncluder) findBuildVariantConfig(name string) *BuildVariant {
 	if bv, ok := di.buildVariantConfigCache[name]; ok {
 		return bv

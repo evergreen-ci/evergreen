@@ -1344,29 +1344,35 @@ func (p *Project) FindTaskGroup(name string) *TaskGroup {
 // that contains the given task.
 func (p *Project) FindTaskGroupForTask(bvName, taskName string) *TaskGroup {
 	// First, map all task groups that contain the given task.
-	tgWithTask := map[string]TaskGroup{}
-	for _, tg := range p.TaskGroups {
-		for _, t := range tg.Tasks {
-			if t == taskName {
-				tgWithTask[tg.Name] = tg
-			}
+	tgWithTask := map[string]*TaskGroup{}
+	for i := range p.TaskGroups {
+		tg := &p.TaskGroups[i]
+		if slices.Contains(tg.Tasks, taskName) {
+			tgWithTask[tg.Name] = tg
 		}
+	}
+	if len(tgWithTask) == 0 {
+		return nil
 	}
 
 	// Second, find the build variant in question.
-	var bv BuildVariant
-	for _, pbv := range p.BuildVariants {
-		if pbv.Name == bvName {
-			bv = pbv
+	var bv *BuildVariant
+	for i := range p.BuildVariants {
+		if p.BuildVariants[i].Name == bvName {
+			bv = &p.BuildVariants[i]
 			break
 		}
 	}
+	if bv == nil {
+		return nil
+	}
 
 	// Third, loop through the build variant's task units.
-	for _, t := range bv.Tasks {
+	for i := range bv.Tasks {
 		// Check if the task group is in the map of task groups with the task.
-		if tg, ok := tgWithTask[t.Name]; ok {
-			return &tg
+		if tg, ok := tgWithTask[bv.Tasks[i].Name]; ok {
+			tgCopy := *tg
+			return &tgCopy
 		}
 	}
 

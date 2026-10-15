@@ -277,6 +277,35 @@ func TestFindTaskGroupForTask(t *testing.T) {
 	})
 }
 
+func TestFindTaskGroupForTaskPreservesVariantOrderAndReturnsCopy(t *testing.T) {
+	p := &Project{
+		TaskGroups: []TaskGroup{
+			{Name: "first", Tasks: []string{"shared"}, MaxHosts: 1},
+			{Name: "second", Tasks: []string{"shared"}, MaxHosts: 2},
+		},
+		BuildVariants: []BuildVariant{
+			{Name: "bv", Tasks: []BuildVariantTaskUnit{{Name: "second"}, {Name: "first"}}},
+		},
+	}
+
+	tg := p.FindTaskGroupForTask("bv", "shared")
+	require.NotNil(t, tg)
+	assert.Equal(t, "second", tg.Name)
+	assert.Equal(t, 2, tg.MaxHosts)
+
+	tg.Name = "changed"
+	tg.MaxHosts = 3
+	assert.Equal(t, "second", p.TaskGroups[1].Name)
+	assert.Equal(t, 2, p.TaskGroups[1].MaxHosts)
+
+	p.BuildVariants[0].Tasks = []BuildVariantTaskUnit{{Name: "first"}, {Name: "second"}}
+	tg = p.FindTaskGroupForTask("bv", "shared")
+	require.NotNil(t, tg)
+	assert.Equal(t, "first", tg.Name)
+	assert.Equal(t, 1, tg.MaxHosts)
+	assert.Nil(t, p.FindTaskGroupForTask("missing", "shared"))
+}
+
 func TestGetVariantMappings(t *testing.T) {
 
 	Convey("With a project", t, func() {
