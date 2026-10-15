@@ -1596,9 +1596,11 @@ func (t *Task) GetTaskOutputSafe() (*TaskOutput, bool) {
 
 	if t.TaskOutputInfo == nil {
 		// Return the zero value for tasks that do not have the task
-		// output metadata saved in the database. This is for backwards
-		// compatibility. We can safely assume version zero for each
-		// task output type.
+		// output metadata saved in the database. This is for two cases:
+		// * Backwards compatibility with old tasks. We can safely assume
+		//   version zero for each task output type.
+		// * Virtual tasks that were not push-completed by the runner task. They
+		//   may have test results but they won't have task logs.
 		return &TaskOutput{}, true
 	}
 
