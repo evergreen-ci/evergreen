@@ -173,8 +173,7 @@ func (c *Settings) Set(ctx context.Context) error {
 }
 
 // expansionsNotAllowedForHosts are global expansion names that must not be expanded into
-// host-facing scripts (user data and setup scripts), because the host's owner can read the
-// expanded output.
+// host-facing scripts (user data and setup scripts).
 var expansionsNotAllowedForHosts = []string{
 	GithubAppPrivateKey,
 }
