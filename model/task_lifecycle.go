@@ -2706,6 +2706,23 @@ func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settin
 	return errors.Wrap(ResetTaskOrDisplayTask(ctx, settings, t, evergreen.User, evergreen.MonitorPackage, true, &t.Details), "resetting task")
 }
 
+// FixStrandedVirtualTask marks a virtual task as system-failed if it's awaiting
+// push-completion but its runner is already finished.
+// This intentionally doesn't restart the task because that would actually run
+// the virtual task. Virtual tasks are not meant to actually run unless the user
+// explicitly requests it.
+func FixStrandedVirtualTask(ctx context.Context, settings *evergreen.Settings, t *task.Task) error {
+	if t.IsFinished() {
+		return nil
+	}
+
+	details := task.GetSystemFailureDetails(evergreen.TaskDescriptionStranded)
+	if err := MarkEnd(ctx, settings, t, evergreen.MonitorPackage, time.Now(), &details); err != nil {
+		return errors.Wrapf(err, "marking stranded virtual task '%s' finished", t.Id)
+	}
+	return nil
+}
+
 // ResetTaskOrDisplayTask is a wrapper for TryResetTask that handles execution and display tasks that are restarted
 // from sources separate from marking the task finished. If an execution task, attempts to restart the display task instead.
 // Marks display tasks as reset when finished and then check if it can be reset immediately.
