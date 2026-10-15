@@ -149,3 +149,26 @@ func TestGetS3LogUsageFromS3(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+func TestGetLogsWithoutBucketConfig(t *testing.T) {
+	// A task run without a log bucket configured, e.g. a stranded virtual
+	// task that was system-failed before its runner push-completed it, has no
+	// readable logs and should not error when reading them.
+	tsk := &Task{
+		Id:      "task-no-bucket",
+		Project: "proj",
+		Status:  evergreen.TaskFailed,
+	}
+
+	t.Run("TaskLogsReturnIteratorWithNoItems", func(t *testing.T) {
+		it, err := tsk.GetTaskLogs(t.Context(), TaskLogGetOptions{LogType: TaskLogTypeAll})
+		require.NoError(t, err)
+		assert.False(t, it.Next())
+	})
+
+	t.Run("TestLogsReturnIteratorWithNoItems", func(t *testing.T) {
+		it, err := tsk.GetTestLogs(t.Context(), TestLogGetOptions{LogPaths: []string{"test.log"}})
+		require.NoError(t, err)
+		assert.False(t, it.Next())
+	})
+}

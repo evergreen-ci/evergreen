@@ -1383,6 +1383,44 @@ func TestIsUnfinishedSystemUnresponsive(t *testing.T) {
 	assert.False(t, task.IsUnfinishedSystemUnresponsive(), "finished restarting")
 }
 
+func TestGetTaskOutputSafe(t *testing.T) {
+	output := &TaskOutput{
+		TaskLogs: TaskLogOutput{Version: TestResultServiceEvergreen},
+	}
+
+	t.Run("TaskWithTaskOutputInfoIsSafe", func(t *testing.T) {
+		tsk := Task{
+			Status:         evergreen.TaskStarted,
+			TaskOutputInfo: output,
+		}
+		actualOutput, ok := tsk.GetTaskOutputSafe()
+		assert.True(t, ok)
+		assert.Equal(t, output, actualOutput)
+	})
+
+	t.Run("UndispatchedTaskIsUnsafe", func(t *testing.T) {
+		tsk := Task{
+			Status: evergreen.TaskUndispatched,
+		}
+		actualOutput, ok := tsk.GetTaskOutputSafe()
+		assert.False(t, ok)
+		assert.Nil(t, actualOutput)
+	})
+
+	t.Run("TaskWithoutTaskOutputInfoFallsBackToEmptyOutput", func(t *testing.T) {
+		// Tasks that ran before task output info was saved in the DB fall
+		// back to the zero value output, e.g. stranded virtual tasks that
+		// were system-failed before their runner push-completed them.
+		tsk := Task{
+			Status: evergreen.TaskFailed,
+		}
+		actualOutput, ok := tsk.GetTaskOutputSafe()
+		assert.True(t, ok)
+		require.NotNil(t, actualOutput)
+		assert.Zero(t, *actualOutput)
+	})
+}
+
 func TestTaskStatusCount(t *testing.T) {
 	assert := assert.New(t)
 	counts := TaskStatusCount{}
