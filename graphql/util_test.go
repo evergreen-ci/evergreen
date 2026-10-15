@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vektah/gqlparser/v2/ast"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 func init() {
@@ -637,5 +638,88 @@ func TestGetHostRequestOptionsDebugValidation(t *testing.T) {
 		assert.NoError(t, err)
 		require.NotNil(t, options)
 		assert.False(t, options.IsDebug, "IsDebug should default to false")
+	})
+}
+
+func TestGetHostRequestOptionsTaskValidation(t *testing.T) {
+	setupPermissions(t)
+	usr, err := setupUser(t)
+	require.NoError(t, err)
+	ctx := gimlet.AttachUser(t.Context(), usr)
+
+	d := distro.Distro{Id: "test-distro"}
+	require.NoError(t, d.Insert(ctx))
+	tsk := task.Task{Id: "task-id", Project: "project_id"}
+	require.NoError(t, tsk.Insert(ctx))
+
+	t.Run("UnauthorizedTaskShouldRejectOptionsBeforeSavingKeyOrReplayingHosts", func(t *testing.T) {
+		input := &SpawnHostInput{
+			DistroID:                d.Id,
+			TaskID:                  utility.ToStringPtr(tsk.Id),
+			PublicKey:               &PublicKeyInput{Name: "test-key", Key: "ssh-rsa test"},
+			SavePublicKey:           true,
+			IsDebug:                 utility.TruePtr(),
+			UseProjectSetupScript:   utility.TruePtr(),
+			SpawnHostsStartedByTask: utility.TruePtr(),
+		}
+		options, err := getHostRequestOptions(ctx, usr, input)
+		require.ErrorContains(t, err, "does not have permission to 'view tasks'")
+		assert.Nil(t, options)
+		storedUser, err := user.FindOneById(ctx, usr.Id)
+		require.NoError(t, err)
+		require.NotNil(t, storedUser)
+		assert.Empty(t, storedUser.PubKeys)
+	})
+
+	t.Run("TaskViewPermissionShouldAllowDebugHostOptions", func(t *testing.T) {
+		require.NoError(t, usr.AddRole(ctx, "view_task"))
+		t.Cleanup(func() { require.NoError(t, usr.RemoveRole(ctx, "view_task")) })
+
+		options, err := getHostRequestOptions(ctx, usr, &SpawnHostInput{
+			DistroID:              d.Id,
+			TaskID:                utility.ToStringPtr(tsk.Id),
+			PublicKey:             &PublicKeyInput{Name: "test-key", Key: "ssh-rsa test"},
+			IsDebug:               utility.TruePtr(),
+			UseProjectSetupScript: utility.TruePtr(),
+		})
+		require.NoError(t, err)
+		require.NotNil(t, options)
+		assert.Equal(t, tsk.Id, options.TaskID)
+		assert.True(t, options.IsDebug)
+		assert.True(t, options.UseProjectSetupScript)
+	})
+
+	t.Run("EmptyTaskIDShouldNotRequireProjectPermission", func(t *testing.T) {
+		options, err := getHostRequestOptions(ctx, usr, &SpawnHostInput{
+			DistroID:  d.Id,
+			TaskID:    utility.ToStringPtr(""),
+			PublicKey: &PublicKeyInput{Name: "test-key", Key: "ssh-rsa test"},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, options)
+		assert.Empty(t, options.TaskID)
+	})
+
+	input := &SpawnHostInput{TaskID: utility.ToStringPtr("missing-task")}
+
+	t.Run("MissingTaskShouldReturnResourceNotFound", func(t *testing.T) {
+		options, err := getHostRequestOptions(t.Context(), usr, input)
+		require.EqualError(t, err, "input: task 'missing-task' not found")
+		assert.Nil(t, options)
+		var gqlErr *gqlerror.Error
+		require.ErrorAs(t, err, &gqlErr)
+		assert.Equal(t, ResourceNotFound, gqlErr.Extensions["code"])
+	})
+
+	t.Run("CanceledLookupShouldReturnInternalServerErrorWithCause", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+		options, err := getHostRequestOptions(ctx, usr, input)
+		require.Error(t, err)
+		assert.Nil(t, options)
+		assert.ErrorIs(t, err, context.Canceled)
+		var gqlErr *gqlerror.Error
+		require.ErrorAs(t, err, &gqlErr)
+		assert.Equal(t, InternalServerError, gqlErr.Extensions["code"])
 	})
 }

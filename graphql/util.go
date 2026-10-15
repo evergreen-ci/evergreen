@@ -737,6 +737,22 @@ func bbGetCreatedTicketsPointers(ctx context.Context, taskId string) ([]*thirdpa
 
 // getHostRequestOptions validates and transforms user-specified spawn host input
 func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput *SpawnHostInput) (*restModel.HostRequestOptions, error) {
+	var t *task.Task
+	taskID := utility.FromStringPtr(spawnHostInput.TaskID)
+	if taskID != "" {
+		var err error
+		t, err = task.FindOneId(ctx, taskID)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", taskID, err.Error()), err)
+		}
+		if t == nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
+		}
+		if err = checkProjectAccess(ctx, t.Project, ProjectPermissionTasks, AccessLevelView); err != nil {
+			return nil, err
+		}
+	}
+
 	if spawnHostInput.SavePublicKey {
 		if err := savePublicKey(ctx, *spawnHostInput.PublicKey); err != nil {
 			return nil, err
@@ -752,6 +768,7 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 
 	options := &restModel.HostRequestOptions{
 		DistroID:             spawnHostInput.DistroID,
+		TaskID:               taskID,
 		Region:               spawnHostInput.Region,
 		KeyName:              spawnHostInput.PublicKey.Key,
 		IsVirtualWorkstation: spawnHostInput.IsVirtualWorkStation,
@@ -768,16 +785,6 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 			DailyStartTime:   spawnHostInput.SleepSchedule.DailyStartTime,
 			DailyStopTime:    spawnHostInput.SleepSchedule.DailyStopTime,
 			TimeZone:         spawnHostInput.SleepSchedule.TimeZone,
-		}
-	}
-
-	// passing an empty string taskId is okay as long as a
-	// taskId is not required by other spawnHostInput parameters
-	var t *task.Task
-	if spawnHostInput.TaskID != nil && *spawnHostInput.TaskID != "" {
-		options.TaskID = *spawnHostInput.TaskID
-		if t, err = task.FindOneId(ctx, *spawnHostInput.TaskID); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", *spawnHostInput.TaskID, err.Error()))
 		}
 	}
 
