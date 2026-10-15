@@ -105,6 +105,8 @@ func TestValidateSSHKey(t *testing.T) {
 	require.NoError(t, evergreen.ValidateSSHKey(ed25519Key))
 	require.NoError(t, evergreen.ValidateSSHKey(ecdsaKey))
 	require.Error(t, evergreen.ValidateSSHKey(invalidKey))
+	require.Error(t, evergreen.ValidateSSHKey("ssh-ed25519 YWJjZA== user ${github_app_key}"))
+	require.Error(t, evergreen.ValidateSSHKey("ssh-ed25519 YWJjZA== user ${other_expansion}"))
 }
 
 // TestTerminateSpawnHostIntentHostSetsTerminationTime verifies termination_time

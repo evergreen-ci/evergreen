@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -150,6 +151,10 @@ func TestKeyValidationFailsWithInvalidKeys(t *testing.T) {
 	err3 := validateKeyValue("ssh-rsa notvalidbase64")
 	assert.Error(err3)
 	assert.Equal("public key contents are invalid", err3.Error())
+
+	err4 := validateKeyValue(fmt.Sprintf("ssh-rsa YWJjZDEyMzQK user ${%s}", evergreen.GithubAppPrivateKey))
+	assert.Error(err4)
+	assert.Contains(err4.Error(), "invalid public key")
 }
 
 func TestKeyValidation(t *testing.T) {

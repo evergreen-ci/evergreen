@@ -172,6 +172,22 @@ func (c *Settings) Set(ctx context.Context) error {
 	)
 }
 
+// expansionsNotAllowedForHosts are global expansion names that must not be expanded into
+// host-facing scripts (user data and setup scripts).
+var expansionsNotAllowedForHosts = []string{
+	GithubAppPrivateKey,
+}
+
+// HostFacingExpansions returns a copy of the global expansions without
+// sensitive entries.
+func (c *Settings) HostFacingExpansions() map[string]string {
+	expansions := util.NewExpansions(c.Expansions)
+	for _, name := range expansionsNotAllowedForHosts {
+		expansions.Remove(name)
+	}
+	return expansions.Map()
+}
+
 func (c *Settings) ValidateAndDefault() error {
 	var err error
 	catcher := grip.NewSimpleCatcher()
