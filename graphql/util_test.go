@@ -641,7 +641,7 @@ func TestGetHostRequestOptionsDebugValidation(t *testing.T) {
 	})
 }
 
-func TestGetHostRequestOptionsTaskPermissions(t *testing.T) {
+func TestGetHostRequestOptionsTaskValidation(t *testing.T) {
 	setupPermissions(t)
 	usr, err := setupUser(t)
 	require.NoError(t, err)
@@ -703,11 +703,7 @@ func TestGetHostRequestOptionsTaskPermissions(t *testing.T) {
 		require.NotNil(t, options)
 		assert.Empty(t, options.TaskID)
 	})
-}
 
-func TestGetHostRequestOptionsTaskLookup(t *testing.T) {
-	require.NoError(t, db.Clear(task.Collection))
-	usr := &user.DBUser{Id: "test_user"}
 	input := &SpawnHostInput{TaskID: utility.ToStringPtr("missing-task")}
 
 	t.Run("MissingTaskShouldReturnResourceNotFound", func(t *testing.T) {
