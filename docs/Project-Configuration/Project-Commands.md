@@ -1957,8 +1957,8 @@ exclusions. API errors remain errors.
 
 The expansion must be a JSON array of nonempty strings. Missing or empty values and `[]` preserve existing behavior.
 Malformed JSON, `null`, non-array values, non-string elements, and empty names fail visibly when active patch selection
-consumes them. Mainline runs and selection/usage-rate no-ops ignore the bypass. A nonempty bypass requires nonempty
-`tests` or `tests_file` candidates; it errors before calling the service in known-tests mode (without candidates).
+consumes them. Mainline runs and selection/usage-rate no-ops ignore the bypass. Without nonempty `tests` or
+`tests_file` candidates, the command preserves the service's known-tests response without applying the bypass.
 There is no additional command parameter: see the [CLI example](../CLI#scoped-quarantine-bypass).
 Existing expansion precedence and parameter inheritance are unchanged; this command does not forward the parameter
 to downstream patches.

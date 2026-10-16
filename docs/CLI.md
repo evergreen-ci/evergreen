@@ -163,6 +163,7 @@ The consuming project must support this parameter, either through
 Direct `/rest/v2/select/tests` callers do not automatically honor it. For matching candidates, the bypass overrides
 all test selection strategies, not just quarantine. It cannot schedule tasks, add tests outside the caller's candidates,
 or override suite/tag exclusions. It does not enable disabled selection or apply to mainline runs.
+When `test_selection.get` has no candidates, it preserves the service's known-tests response without applying the bypass.
 
 TSS metrics and Evergreen's quarantined-skipped snapshots describe the response before the caller applies the bypass,
 so a snapshot may still list a restored test. Existing parameter precedence and inheritance are unchanged; downstream

@@ -81,11 +81,23 @@ func TestTestSelectionGet(t *testing.T) {
 			assert.Equal(t, []testOutput{{Name: "test2"}, {Name: "test1"}}, output.Tests)
 			assert.Equal(t, []string{"test2", "test1", "test4"}, comm.SelectTestsRequest.Tests)
 		},
-		"NonemptyBypassWithoutCandidatesErrors": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
+		"NonemptyBypassWithoutCandidatesPreservesKnownTestsMode": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
 			conf.Expansions.Put("test_selection_bypass_quarantine", `["test2"]`)
-			cmd := &testSelectionGet{OutputFile: "test.json"}
-			require.ErrorContains(t, cmd.Execute(t.Context(), comm, logger, conf), "requires nonempty tests or tests_file candidates")
-			assert.False(t, comm.SelectTestsCalled)
+			for _, name := range []string{"NoTests", "EmptyTestsFile"} {
+				t.Run(name, func(t *testing.T) {
+					cmd := &testSelectionGet{OutputFile: "test.json"}
+					if name == "EmptyTestsFile" {
+						cmd.TestsFile = filepath.Join(conf.WorkDir, "empty_tests.json")
+						require.NoError(t, utility.WriteJSONFile(cmd.TestsFile, testSelectionInputFile{Tests: []string{}}))
+					}
+					require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
+					var output testSelectionOutputFile
+					require.NoError(t, utility.ReadJSONFile(cmd.OutputFile, &output))
+					assert.Equal(t, []testOutput{{Name: "test1"}, {Name: "test3"}}, output.Tests)
+					assert.True(t, comm.SelectTestsCalled)
+					assert.Empty(t, comm.SelectTestsRequest.Tests)
+				})
+			}
 		},
 		"EmptyBypassPreservesKnownTestsMode": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
 			conf.Expansions.Put("test_selection_bypass_quarantine", ` [] `)

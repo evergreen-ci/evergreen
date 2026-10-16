@@ -170,9 +170,6 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 	if err != nil {
 		return err
 	}
-	if len(bypass) > 0 && len(c.Tests) == 0 {
-		return errors.New("test_selection_bypass_quarantine requires nonempty tests or tests_file candidates")
-	}
 
 	// Build the request using task information from TaskConfig.
 	request := model.SelectTestsRequest{
@@ -201,7 +198,7 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 	if err != nil {
 		return errors.Wrap(err, "calling test selection API")
 	}
-	if len(bypass) > 0 {
+	if len(bypass) > 0 && len(c.Tests) > 0 {
 		allowed := make(map[string]bool, len(selectedTests)+len(bypass))
 		for _, name := range selectedTests {
 			allowed[name] = true
