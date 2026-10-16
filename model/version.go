@@ -127,6 +127,12 @@ type Version struct {
 	// TriggerSHA is the SHA of the untracked commit that triggered the downstream version,
 	// this field is only populated for push level triggers.
 	TriggerSHA string `bson:"trigger_sha,omitempty" json:"trigger_sha,omitempty"`
+	// The below fields identify the module whose commit (TriggerSHA) triggered the
+	// downstream version. These fields are only populated for push level triggers.
+	TriggerModule string `bson:"trigger_module,omitempty" json:"trigger_module,omitempty"`
+	TriggerOwner  string `bson:"trigger_owner,omitempty" json:"trigger_owner,omitempty"`
+	TriggerRepo   string `bson:"trigger_repo,omitempty" json:"trigger_repo,omitempty"`
+	TriggerBranch string `bson:"trigger_branch,omitempty" json:"trigger_branch,omitempty"`
 
 	// this is only used for aggregations, and is not stored in the DB
 	Builds []build.Build `bson:"build_variants,omitempty" json:"build_variants,omitempty"`
@@ -652,6 +658,16 @@ type VersionMetadata struct {
 	GitTag              GitTag
 	ChangedFiles        []string
 	IngestTime          time.Time
+	// SourceModule is only set for push level triggers.
+	SourceModule *SourceModule
+}
+
+// SourceModule identifies the module whose commit triggered a downstream version.
+type SourceModule struct {
+	Name   string
+	Owner  string
+	Repo   string
+	Branch string
 }
 
 var (
