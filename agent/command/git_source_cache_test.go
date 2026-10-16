@@ -554,6 +554,76 @@ func TestSourceCacheHealsOnlyTheKeyItWrites(t *testing.T) {
 	})
 }
 
+// newGitWorkDir returns a work directory with the bare repo and origin remote a clone leaves behind, so the pre-save script has a .git tree to scrub.
+func newGitWorkDir(t *testing.T) string {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is not installed")
+	}
+	workDir := t.TempDir()
+	repoDir := filepath.Join(workDir, "src")
+	for _, args := range [][]string{
+		{"init", "--initial-branch=main", repoDir},
+		{"-C", repoDir, "commit", "--allow-empty", "-m", "initial", "--author=t <t@t>"},
+		{"-C", repoDir, "remote", "add", "origin", "https://github.com/some-org/some-repo.git"},
+	} {
+		cmd := exec.CommandContext(t.Context(), "git", args...)
+		cmd.Env = append(cmd.Environ(), "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")
+		require.NoError(t, cmd.Run())
+	}
+	return workDir
+}
+
+func TestSaveSourceCacheClaimsTheSaveBeforeArchiving(t *testing.T) {
+	ctx := t.Context()
+	comm := sourceCacheTestComm()
+	conf := sourceCacheTestConfig()
+	conf.WorkDir = newGitWorkDir(t)
+
+	jpm, err := jasper.NewSynchronizedManager(false)
+	require.NoError(t, err)
+	c := &gitFetchProject{Directory: "src"}
+	c.SetJasperManager(jpm)
+
+	opts := sourceCacheTestOpts()
+	sc, reason := newSourceCache(ctx, comm, conf, c, opts, "linux")
+	require.NotNil(t, sc, reason)
+	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+	require.NoError(t, err)
+
+	t.Run("ClaimDeniedSkipsTheSave", func(t *testing.T) {
+		comm.SourceCacheClaimResponse = &apimodels.SourceCacheClaimResponse{Claimed: false, Key: sc.saveKey.Key}
+
+		produced, err := c.saveSourceCache(ctx, comm, logger, conf, sc, opts)
+		require.NoError(t, err)
+		assert.False(t, produced)
+		assert.Equal(t, 1, comm.SourceCacheClaimCount)
+		assert.Equal(t, opts.cloneDepth, comm.SourceCacheClaimRequest.CloneDepth, "the claim must reuse the clone shape that keys the object")
+
+		_, statErr := os.Stat(filepath.Join(sc.projectDir(), ".git", "hooks"))
+		assert.NoError(t, statErr, "denied claim must not scrub the cloned tree")
+	})
+
+	t.Run("ClaimFailureStillSaves", func(t *testing.T) {
+		comm.SourceCacheClaimErr = errors.New("claim service unavailable")
+
+		produced, err := c.saveSourceCache(ctx, comm, logger, conf, sc, opts)
+		// The save fails without real AWS, but the claim error must not have become a skip.
+		require.Error(t, err)
+		assert.False(t, produced)
+		assert.NotContains(t, err.Error(), "claiming the source cache save")
+	})
+
+	t.Run("FailedSaveReleasesTheClaim", func(t *testing.T) {
+		comm.SourceCacheClaimErr = nil
+		comm.SourceCacheClaimResponse = &apimodels.SourceCacheClaimResponse{Claimed: true, Key: sc.saveKey.Key}
+
+		produced, err := c.saveSourceCache(ctx, comm, logger, conf, sc, opts)
+		require.Error(t, err, "the save fails without real AWS")
+		assert.False(t, produced)
+		assert.Equal(t, 1, comm.SourceCacheReleaseCount, "a failed save must free the key for the next producer")
+	})
+}
+
 func TestSourceCacheExtractMarksAnUndecodableArtifactCorrupt(t *testing.T) {
 	ctx := t.Context()
 	logger := grip.NewJournaler("test")

@@ -59,6 +59,11 @@ var (
 	sourceCacheExtractDurationAttribute  = sourceCacheAttribute("extract_duration_ms")
 	sourceCacheArchiveDurationAttribute  = sourceCacheAttribute("archive_duration_ms")
 	sourceCacheUploadDurationAttribute   = sourceCacheAttribute("upload_duration_ms")
+	sourceCacheClaimDurationAttribute    = sourceCacheAttribute("claim_duration_ms")
+	sourceCacheClaimErrorAttribute       = sourceCacheAttribute("claim_error")
+
+	// sourceCacheClaimDeniedReason distinguishes a denied claim from losing the S3 create-only race at upload time.
+	sourceCacheClaimDeniedReason = "claim_denied_save_in_progress"
 )
 
 func sourceCacheAttribute(name string) string {
