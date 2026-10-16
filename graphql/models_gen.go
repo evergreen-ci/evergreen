@@ -678,6 +678,14 @@ type TestSortOptions struct {
 	Direction SortDirection    `json:"direction"`
 }
 
+type TriggerModule struct {
+	Branch   string `json:"branch"`
+	Name     string `json:"name"`
+	Owner    string `json:"owner"`
+	Repo     string `json:"repo"`
+	Revision string `json:"revision"`
+}
+
 // UnquarantineTaskInput is the input to the unquarantineTask mutation.
 type UnquarantineTaskInput struct {
 	TaskID string `json:"taskId"`

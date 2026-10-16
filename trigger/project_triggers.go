@@ -39,15 +39,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 	}
 
 	projectInfo.Ref = &args.DownstreamProject
-	v, err := repotracker.CreateVersionFromConfig(context.WithoutCancel(ctx), &projectInfo, metadata, false, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "creating version")
-	}
-	if args.SourceVersion != nil {
-		if err = args.SourceVersion.AddSatisfiedTrigger(ctx, args.DefinitionID); err != nil {
-			return nil, err
-		}
-	}
+
 	// Since push triggers have no source version (unlike build and task level triggers), we need to
 	// extract the project ID from the trigger definition's project ID, which is populated in the TriggerID field
 	// for push triggers.
@@ -66,21 +58,34 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 		return nil, errors.Errorf("upstream project '%s' not found", projectID)
 	}
 	moduleList := projectInfo.Project.Modules
-	for i, module := range moduleList {
-		owner, repo, err := module.GetOwnerAndRepo()
-		if err != nil {
-			return nil, errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
+	upstreamModuleIdx, err := findUpstreamModule(moduleList, upstreamProject)
+	if err != nil {
+		return nil, err
+	}
+	if upstreamModuleIdx >= 0 && args.TriggerType == model.ProjectTriggerLevelPush {
+		metadata.SourceModule = &model.SourceModule{
+			Name:   moduleList[upstreamModuleIdx].Name,
+			Owner:  upstreamProject.Owner,
+			Repo:   upstreamProject.Repo,
+			Branch: upstreamProject.Branch,
 		}
+	}
 
-		if owner == upstreamProject.Owner && repo == upstreamProject.Repo && module.Branch == upstreamProject.Branch {
-			if args.TriggerType == model.ProjectTriggerLevelPush {
-				moduleList[i].Ref = metadata.SourceCommit
-			}
-			_, err = model.CreateManifest(ctx, v, moduleList, projectInfo.Ref)
-			if err != nil {
-				return nil, errors.WithStack(err)
-			}
-			break
+	v, err := repotracker.CreateVersionFromConfig(context.WithoutCancel(ctx), &projectInfo, metadata, false, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating version")
+	}
+	if args.SourceVersion != nil {
+		if err = args.SourceVersion.AddSatisfiedTrigger(ctx, args.DefinitionID); err != nil {
+			return nil, err
+		}
+	}
+	if upstreamModuleIdx >= 0 {
+		if args.TriggerType == model.ProjectTriggerLevelPush {
+			moduleList[upstreamModuleIdx].Ref = metadata.SourceCommit
+		}
+		if _, err = model.CreateManifest(ctx, v, moduleList, projectInfo.Ref); err != nil {
+			return nil, errors.WithStack(err)
 		}
 	}
 	err = model.UpdateLastRevision(ctx, v.Identifier, v.Revision)
@@ -92,6 +97,19 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 		return nil, errors.Wrap(err, "adding build break subscriptions")
 	}
 	return v, nil
+}
+
+func findUpstreamModule(modules model.ModuleList, upstreamProject *model.ProjectRef) (int, error) {
+	for i, module := range modules {
+		owner, repo, err := module.GetOwnerAndRepo()
+		if err != nil {
+			return -1, errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
+		}
+		if owner == upstreamProject.Owner && repo == upstreamProject.Repo && module.Branch == upstreamProject.Branch {
+			return i, nil
+		}
+	}
+	return -1, nil
 }
 
 func getMetadataFromArgs(ctx context.Context, args ProcessorArgs) (model.VersionMetadata, error) {
