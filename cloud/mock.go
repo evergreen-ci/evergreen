@@ -36,6 +36,9 @@ type MockInstance struct {
 	Tags               []host.Tag
 	Type               string
 	BlockDevices       []string
+	// InstanceID is the instance ID returned by GetRunningInstanceID. It
+	// defaults to the host ID.
+	InstanceID string
 }
 
 type MockVolume struct {
@@ -256,6 +259,21 @@ func (m *mockManager) getOrDefaultInstanceStatus(ctx context.Context, hostID str
 		return StatusNonExistent
 	}
 	return instance.Status
+}
+
+// GetRunningInstanceID returns the instance ID of the running mock instance for
+// the host.
+func (m *mockManager) GetRunningInstanceID(ctx context.Context, h *host.Host) (string, error) {
+	m.mutex.RLock()
+	instance, ok := m.Instances[h.Id]
+	m.mutex.RUnlock()
+	if !ok || instance.Status != StatusRunning {
+		return "", errors.Errorf("running instance for host '%s' not found", h.Id)
+	}
+	if instance.InstanceID == "" {
+		return h.Id, nil
+	}
+	return instance.InstanceID, nil
 }
 
 // get instance DNS
