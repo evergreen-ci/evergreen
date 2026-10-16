@@ -1366,9 +1366,8 @@ type ComplexityRoot struct {
 	}
 
 	ProjectCreationConfig struct {
-		RepoExceptions    func(childComplexity int) int
-		RepoProjectLimit  func(childComplexity int) int
-		TotalProjectLimit func(childComplexity int) int
+		RepoExceptions   func(childComplexity int) int
+		RepoProjectLimit func(childComplexity int) int
 	}
 
 	ProjectEventLogEntry struct {
@@ -8384,12 +8383,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ProjectCreationConfig.RepoProjectLimit(childComplexity), true
-	case "ProjectCreationConfig.totalProjectLimit":
-		if e.complexity.ProjectCreationConfig.TotalProjectLimit == nil {
-			break
-		}
-
-		return e.complexity.ProjectCreationConfig.TotalProjectLimit(childComplexity), true
 
 	case "ProjectEventLogEntry.after":
 		if e.complexity.ProjectEventLogEntry.After == nil {
@@ -19710,8 +19703,6 @@ func (ec *executionContext) fieldContext_AdminSettings_projectCreation(_ context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "totalProjectLimit":
-				return ec.fieldContext_ProjectCreationConfig_totalProjectLimit(ctx, field)
 			case "repoProjectLimit":
 				return ec.fieldContext_ProjectCreationConfig_repoProjectLimit(ctx, field)
 			case "repoExceptions":
@@ -49119,35 +49110,6 @@ func (ec *executionContext) fieldContext_ProjectBuildVariant_tasks(_ context.Con
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProjectCreationConfig_totalProjectLimit(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectCreationConfig) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ProjectCreationConfig_totalProjectLimit,
-		func(ctx context.Context) (any, error) {
-			return obj.TotalProjectLimit, nil
-		},
-		nil,
-		ec.marshalOInt2int,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ProjectCreationConfig_totalProjectLimit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProjectCreationConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -87034,20 +86996,13 @@ func (ec *executionContext) unmarshalInputProjectCreationConfigInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"totalProjectLimit", "repoProjectLimit", "repoExceptions"}
+	fieldsInOrder := [...]string{"repoProjectLimit", "repoExceptions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "totalProjectLimit":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalProjectLimit"))
-			data, err := ec.unmarshalOInt2int(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TotalProjectLimit = data
 		case "repoProjectLimit":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("repoProjectLimit"))
 			data, err := ec.unmarshalOInt2int(ctx, v)
@@ -102379,8 +102334,6 @@ func (ec *executionContext) _ProjectCreationConfig(ctx context.Context, sel ast.
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("ProjectCreationConfig")
-		case "totalProjectLimit":
-			out.Values[i] = ec._ProjectCreationConfig_totalProjectLimit(ctx, field, obj)
 		case "repoProjectLimit":
 			out.Values[i] = ec._ProjectCreationConfig_repoProjectLimit(ctx, field, obj)
 		case "repoExceptions":

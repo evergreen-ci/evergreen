@@ -522,7 +522,7 @@ func TestGetNumberOfEnabledProjectsForOwnerRepo(t *testing.T) {
 	assert.Equal(t, 1, enabledProjectsOwnerRepo)
 }
 
-func TestValidateEnabledProjectsLimitIgnoresTotalLimitForNewRepo(t *testing.T) {
+func TestValidateEnabledProjectsLimitAllowsNewRepoAtOtherRepoLimit(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
 	require.NoError(t, (&ProjectRef{
 		Id:      "existing",
@@ -533,8 +533,7 @@ func TestValidateEnabledProjectsLimitIgnoresTotalLimitForNewRepo(t *testing.T) {
 
 	settings := evergreen.Settings{
 		ProjectCreation: evergreen.ProjectCreationConfig{
-			TotalProjectLimit: 1,
-			RepoProjectLimit:  1,
+			RepoProjectLimit: 1,
 		},
 	}
 	newProject := &ProjectRef{
