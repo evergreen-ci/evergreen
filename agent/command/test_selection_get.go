@@ -9,6 +9,7 @@ import (
 	"io"
 	"math/rand"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -237,10 +238,8 @@ func getTestSelectionBypass(conf *internal.TaskConfig) ([]string, error) {
 	if bypass == nil {
 		return nil, errors.New("test_selection_bypass_quarantine must be a JSON array of nonempty strings")
 	}
-	for _, name := range bypass {
-		if name == "" {
-			return nil, errors.New("test_selection_bypass_quarantine must contain nonempty strings")
-		}
+	if slices.Contains(bypass, "") {
+		return nil, errors.New("test_selection_bypass_quarantine must contain nonempty strings")
 	}
 	return bypass, nil
 }
