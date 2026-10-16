@@ -91,7 +91,7 @@ func AppendQuarantinedTests(ctx context.Context, t *Task, env evergreen.Environm
 		return 0, nil
 	}
 
-	info, err := makeTestResultsInfo(ctx, t)
+	info, err := MakeTestResultsInfo(ctx, t)
 	if err != nil {
 		return 0, errors.Wrap(err, "making test results info")
 	}
@@ -111,7 +111,7 @@ func AppendVirtualTestResultMetadata(ctx context.Context, t *Task, env evergreen
 	if t.TaskOutputInfo == nil {
 		return errors.New("task output info is not set")
 	}
-	info, err := makeTestResultsInfo(ctx, t)
+	info, err := MakeTestResultsInfo(ctx, t)
 	if err != nil {
 		return errors.Wrap(err, "making test results info")
 	}
@@ -138,10 +138,12 @@ func AppendVirtualTestResultMetadata(ctx context.Context, t *Task, env evergreen
 	return svc.AppendTestResultMetadata(ctx, failedSample, failedCount, totalCount, record)
 }
 
-// makeTestResultsInfo mirrors how the agent constructs test results info when
+// MakeTestResultsInfo mirrors how the agent constructs test results info when
 // attaching test results so that both compute the same record ID for a task
-// run.
-func makeTestResultsInfo(ctx context.Context, t *Task) (testresult.TestResultsInfo, error) {
+// run. The returned info determines the S3 partition key of the test results,
+// so callers uploading results on a task's behalf (e.g. for a virtual task)
+// must use the same info.
+func MakeTestResultsInfo(ctx context.Context, t *Task) (testresult.TestResultsInfo, error) {
 	dt, err := t.GetDisplayTask(ctx)
 	if err != nil {
 		return testresult.TestResultsInfo{}, errors.Wrap(err, "finding display task")

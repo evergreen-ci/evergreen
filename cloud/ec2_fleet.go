@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"maps"
 	"sync"
 	"time"
 
@@ -773,10 +772,7 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 	if ec2Settings.UserData != "" {
 		var expanded string
 		// TODO DEVPROD-42014: Remove expansions.
-		// Manually delete GitHub Key from expansions.
-		expansions := maps.Clone(m.settings.Expansions)
-		delete(expansions, evergreen.GithubAppPrivateKey)
-		expanded, err = expandUserData(ec2Settings.UserData, expansions)
+		expanded, err = expandUserData(ec2Settings.UserData, m.settings.HostFacingExpansions())
 		if err != nil {
 			return errors.Wrap(err, "expanding user data")
 		}

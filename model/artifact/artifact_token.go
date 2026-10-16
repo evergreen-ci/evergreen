@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"strconv"
 	"time"
-
-	"github.com/evergreen-ci/evergreen"
 )
 
 const artifactSignPurpose = "artifact-sign"
@@ -26,11 +24,11 @@ func computeMAC(key []byte, taskID string, execution int, fileName string, expir
 	return hex.EncodeToString(mac.Sum(nil))
 }
 
-// GenerateSignToken creates a token and expiry for an artifact sign URL.
-// The token expires after PresignMinimumValidTime.
-func GenerateSignToken(appSecret []byte, taskID string, execution int, fileName string) (token string, expiry int64) {
+// GenerateSignToken creates a token and expiry for an artifact sign URL. The
+// token expires after validFor.
+func GenerateSignToken(appSecret []byte, taskID string, execution int, fileName string, validFor time.Duration) (token string, expiry int64) {
 	key := deriveKey(appSecret)
-	expiry = time.Now().Add(evergreen.PresignMinimumValidTime).Unix()
+	expiry = time.Now().Add(validFor).Unix()
 	token = computeMAC(key, taskID, execution, fileName, expiry)
 	return token, expiry
 }

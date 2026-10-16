@@ -18,7 +18,7 @@ type Manifest struct {
 	// The branch of the repository.
 	Branch string `json:"branch" bson:"branch"`
 	// Map from the GitHub repository name to the module's information.
-	Modules map[string]*Module `json:"modules" bson:"modules"`
+	Modules map[string]*Module `json:"modules" bson:"modules" extensions:"x-nullable"`
 	// True if the version is a mainline build.
 	IsBase          bool              `json:"is_base" bson:"is_base"`
 	ModuleOverrides map[string]string `json:"module_overrides,omitempty" bson:"-"`

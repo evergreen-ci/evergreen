@@ -25,6 +25,7 @@ func NewConfig() Config {
 	c := Config{
 		Resolvers: &Resolver{},
 	}
+	setComplexityFuncs(&c)
 	c.Directives.RequirePatchOwner = func(ctx context.Context, obj any, next graphql.Resolver) (any, error) {
 		user := mustHaveUser(ctx)
 		args, isStringMap := obj.(map[string]any)

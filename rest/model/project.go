@@ -44,25 +44,25 @@ type ProjectTaskExecutionResp struct {
 
 type APITriggerDefinition struct {
 	// Identifier of project to watch.
-	Project *string `json:"project"`
+	Project *string `json:"project" extensions:"!x-nullable"`
 	// Trigger on build, task, or push.
-	Level *string `json:"level"`
+	Level *string `json:"level" extensions:"!x-nullable"`
 	// Identifier for the definition.
-	DefinitionID *string `json:"definition_id"`
+	DefinitionID *string `json:"definition_id" extensions:"!x-nullable"`
 	// Build variant regex to match.
-	BuildVariantRegex *string `json:"variant_regex"`
+	BuildVariantRegex *string `json:"variant_regex" extensions:"!x-nullable"`
 	// Task regex to match.
-	TaskRegex *string `json:"task_regex"`
+	TaskRegex *string `json:"task_regex" extensions:"!x-nullable"`
 	// Task status to trigger for (or "*" for all).
-	Status *string `json:"status"`
+	Status *string `json:"status" extensions:"!x-nullable"`
 	// Number of days after commit when the trigger cannot run.
-	DateCutoff *int `json:"date_cutoff"`
+	DateCutoff *int `json:"date_cutoff" extensions:"x-nullable"`
 	// Project configuration file for the trigger.
-	ConfigFile *string `json:"config_file"`
+	ConfigFile *string `json:"config_file" extensions:"!x-nullable"`
 	// Alias to run for the trigger.
-	Alias *string `json:"alias"`
+	Alias *string `json:"alias" extensions:"!x-nullable"`
 	// Deactivate downstream versions created by this trigger.
-	UnscheduleDownstreamVersions *bool `json:"unschedule_downstream_versions"`
+	UnscheduleDownstreamVersions *bool `json:"unschedule_downstream_versions" extensions:"!x-nullable"`
 }
 
 func (t *APITriggerDefinition) ToService() model.TriggerDefinition {
@@ -95,13 +95,13 @@ func (t *APITriggerDefinition) BuildFromService(triggerDef model.TriggerDefiniti
 
 type APIPatchTriggerDefinition struct {
 	// Alias to run in the downstream project.
-	Alias *string `json:"alias"`
+	Alias *string `json:"alias" extensions:"!x-nullable"`
 	// ID of the downstream project.
-	ChildProjectId *string `json:"child_project_id"`
+	ChildProjectId *string `json:"child_project_id" extensions:"!x-nullable"`
 	// Identifier of the downstream project.
-	ChildProjectIdentifier *string `json:"child_project_identifier"`
+	ChildProjectIdentifier *string `json:"child_project_identifier" extensions:"!x-nullable"`
 	// List of task specifiers.
-	TaskSpecifiers []APITaskSpecifier `json:"task_specifiers"`
+	TaskSpecifiers []APITaskSpecifier `json:"task_specifiers" extensions:"x-nullable"`
 	// Status for the parent patch to conditionally kick off the child patch.
 	Status *string `json:"status,omitempty"`
 	// Name of the module corresponding to the upstream project in the
@@ -180,13 +180,13 @@ func (t *APITaskSpecifier) ToService() patch.TaskSpecifier {
 
 type APIPeriodicBuildDefinition struct {
 	// Identifier for the periodic build.
-	ID *string `json:"id"`
+	ID *string `json:"id" extensions:"!x-nullable"`
 	// Project config file to use for the periodic build.
-	ConfigFile *string `json:"config_file"`
+	ConfigFile *string `json:"config_file" extensions:"!x-nullable"`
 	// Interval (in hours) between periodic build runs.
-	IntervalHours *int `json:"interval_hours"`
+	IntervalHours *int `json:"interval_hours" extensions:"!x-nullable"`
 	// Cron specification for when to run periodic builds.
-	Cron *string `json:"cron"`
+	Cron *string `json:"cron" extensions:"!x-nullable"`
 	// Alias to run for the periodic build.
 	Alias *string `json:"alias,omitempty"`
 	// Message to display in the version metadata.
@@ -197,11 +197,11 @@ type APIPeriodicBuildDefinition struct {
 
 type APIExternalLink struct {
 	// Display name for the URL.
-	DisplayName *string `json:"display_name"`
+	DisplayName *string `json:"display_name" extensions:"!x-nullable"`
 	// Requester filter for when to display the link.
-	Requesters []*string `json:"requesters"`
+	Requesters []*string `json:"requesters" extensions:"x-nullable"`
 	// URL format to add to the version metadata panel.
-	URLTemplate *string `json:"url_template"`
+	URLTemplate *string `json:"url_template" extensions:"!x-nullable"`
 }
 
 func (t *APIExternalLink) ToService() model.ExternalLink {
@@ -222,7 +222,7 @@ type APIProjectBanner struct {
 	// Banner theme.
 	Theme evergreen.BannerTheme `json:"theme"`
 	// Banner text.
-	Text *string `json:"text"`
+	Text *string `json:"text" extensions:"!x-nullable"`
 }
 
 func (t *APIProjectBanner) ToService() model.ProjectBanner {
@@ -261,11 +261,11 @@ func (bd *APIPeriodicBuildDefinition) BuildFromService(params model.PeriodicBuil
 
 type APICommitQueueParams struct {
 	// Enable/disable the commit queue.
-	Enabled *bool `json:"enabled"`
+	Enabled *bool `json:"enabled" extensions:"x-nullable"`
 	// Method of merging (squash, merge, or rebase).
-	MergeMethod *string `json:"merge_method"`
+	MergeMethod *string `json:"merge_method" extensions:"!x-nullable"`
 	// Message to display when users interact with the commit queue.
-	Message *string `json:"message"`
+	Message *string `json:"message" extensions:"!x-nullable"`
 }
 
 func (cqParams *APICommitQueueParams) BuildFromService(params model.CommitQueueParams) {
@@ -285,11 +285,11 @@ func (cqParams *APICommitQueueParams) ToService() model.CommitQueueParams {
 
 type APIBuildBaronSettings struct {
 	// Jira project where tickets should be created.
-	TicketCreateProject *string `bson:"ticket_create_project" json:"ticket_create_project"`
+	TicketCreateProject *string `bson:"ticket_create_project" json:"ticket_create_project" extensions:"!x-nullable"`
 	// Type of ticket to create.
-	TicketCreateIssueType *string `bson:"ticket_create_issue_type" json:"ticket_create_issue_type"`
+	TicketCreateIssueType *string `bson:"ticket_create_issue_type" json:"ticket_create_issue_type" extensions:"!x-nullable"`
 	// Jira project to search for tickets.
-	TicketSearchProjects []*string `bson:"ticket_search_projects" json:"ticket_search_projects"`
+	TicketSearchProjects []*string `bson:"ticket_search_projects" json:"ticket_search_projects" extensions:"x-nullable"`
 }
 
 func (bb *APIBuildBaronSettings) BuildFromService(def evergreen.BuildBaronSettings) {
@@ -313,9 +313,9 @@ type APITaskAnnotationSettings struct {
 
 type APIWebHook struct {
 	// Webhook endpoint
-	Endpoint *string `bson:"endpoint" json:"endpoint"`
+	Endpoint *string `bson:"endpoint" json:"endpoint" extensions:"x-nullable"`
 	// Webhook secret
-	Secret *string `bson:"secret" json:"secret"`
+	Secret *string `bson:"secret" json:"secret" extensions:"x-nullable"`
 }
 
 func (ta *APITaskAnnotationSettings) ToService() evergreen.AnnotationsSettings {
@@ -353,9 +353,9 @@ func RestoreRedactedFileTicketWebhookSecret(updated *evergreen.AnnotationsSettin
 
 type APIWorkstationConfig struct {
 	// List of setup commands to run.
-	SetupCommands []APIWorkstationSetupCommand `bson:"setup_commands" json:"setup_commands"`
+	SetupCommands []APIWorkstationSetupCommand `bson:"setup_commands" json:"setup_commands" extensions:"x-nullable"`
 	// Git clone the project in the workstation.
-	GitClone *bool `bson:"git_clone" json:"git_clone"`
+	GitClone *bool `bson:"git_clone" json:"git_clone" extensions:"x-nullable"`
 }
 
 type APIRepositoryCredentials struct {
@@ -365,9 +365,9 @@ type APIRepositoryCredentials struct {
 
 type APIWorkstationSetupCommand struct {
 	// Command to run in the workstation.
-	Command *string `bson:"command" json:"command"`
+	Command *string `bson:"command" json:"command" extensions:"!x-nullable"`
 	// Directory where the command runs.
-	Directory *string `bson:"directory" json:"directory"`
+	Directory *string `bson:"directory" json:"directory" extensions:"!x-nullable"`
 }
 
 func (c *APIWorkstationConfig) ToService() model.WorkstationConfig {
@@ -399,9 +399,9 @@ func (c *APIWorkstationConfig) BuildFromService(config model.WorkstationConfig) 
 }
 
 type APIParameterInfo struct {
-	Key         *string `json:"key"`
-	Value       *string `json:"value"`
-	Description *string `json:"description"`
+	Key         *string `json:"key" extensions:"!x-nullable"`
+	Value       *string `json:"value" extensions:"!x-nullable"`
+	Description *string `json:"description" extensions:"!x-nullable"`
 }
 
 func (c *APIParameterInfo) BuildFromService(info model.ParameterInfo) {
@@ -411,9 +411,9 @@ func (c *APIParameterInfo) BuildFromService(info model.ParameterInfo) {
 }
 
 type APIRepositoryErrorDetails struct {
-	Exists            *bool   `json:"exists"`
-	InvalidRevision   *string `json:"invalid_revision"`
-	MergeBaseRevision *string `json:"merge_base_revision"`
+	Exists            *bool   `json:"exists" extensions:"!x-nullable"`
+	InvalidRevision   *string `json:"invalid_revision" extensions:"!x-nullable"`
+	MergeBaseRevision *string `json:"merge_base_revision" extensions:"!x-nullable"`
 }
 
 func (t *APIRepositoryErrorDetails) BuildFromService(h model.RepositoryErrorDetails) {
@@ -424,14 +424,14 @@ func (t *APIRepositoryErrorDetails) BuildFromService(h model.RepositoryErrorDeta
 
 type APIGitHubDynamicTokenPermissionGroup struct {
 	// Name of the GitHub permission group.
-	Name *string `json:"name"`
+	Name *string `json:"name" extensions:"!x-nullable"`
 	// Permissions for the GitHub permission group.
-	Permissions map[string]string `json:"permissions"`
+	Permissions map[string]string `json:"permissions" extensions:"!x-nullable"`
 	// AllPermissions is a flag that indicates that the group has all permissions.
 	// If this is set to true, the Permissions field is ignored.
 	// If this is set to false, the Permissions field is used (and may be
 	// nil, representing no permissions).
-	AllPermissions *bool `json:"all_permissions"`
+	AllPermissions *bool `json:"all_permissions" extensions:"!x-nullable"`
 }
 
 func (p *APIGitHubDynamicTokenPermissionGroup) ToService() (model.GitHubDynamicTokenPermissionGroup, error) {
@@ -483,12 +483,12 @@ func (p *APIGitHubDynamicTokenPermissionGroup) BuildFromService(h model.GitHubDy
 
 type APITestSelectionSettings struct {
 	// Whether or not test selection features can be used.
-	Allowed *bool `json:"allowed,omitzero"`
+	Allowed *bool `json:"allowed,omitzero" extensions:"x-nullable"`
 	// Whether or not test selection is enabled by default for patch tasks.
-	DefaultEnabled *bool `json:"default_enabled,omitzero"`
+	DefaultEnabled *bool `json:"default_enabled,omitzero" extensions:"x-nullable"`
 	// Whether or not test selection is enabled by default for mainline commit
 	// tasks.
-	MainlineDefaultEnabled *bool `json:"mainline_default_enabled,omitzero"`
+	MainlineDefaultEnabled *bool `json:"mainline_default_enabled,omitzero" extensions:"x-nullable"`
 }
 
 func (ts *APITestSelectionSettings) ToService() model.TestSelectionSettings {
@@ -525,42 +525,42 @@ func (to *APITaskOwnershipSettings) BuildFromService(settings model.TaskOwnershi
 }
 
 type APIProjectRef struct {
-	Id *string `json:"id"`
+	Id *string `json:"id" extensions:"!x-nullable"`
 	// GitHub org name.
-	Owner *string `json:"owner_name"`
+	Owner *string `json:"owner_name" extensions:"!x-nullable"`
 	// GitHub repository name.
-	Repo *string `json:"repo_name"`
+	Repo *string `json:"repo_name" extensions:"!x-nullable"`
 	// Name of tracking branch.
-	Branch *string `json:"branch_name"`
+	Branch *string `json:"branch_name" extensions:"!x-nullable"`
 	// Whether evergreen is enabled for this project.
-	Enabled *bool `json:"enabled"`
+	Enabled *bool `json:"enabled" extensions:"!x-nullable"`
 	// Time interval between commits for Evergreen to activate.
 	BatchTime int `json:"batch_time"`
 	// Path to config file in repo.
-	RemotePath *string `json:"remote_path"`
+	RemotePath *string `json:"remote_path" extensions:"!x-nullable"`
 	// Oldest allowed merge base for PR patches
-	OldestAllowedMergeBase *string `json:"oldest_allowed_merge_base"`
+	OldestAllowedMergeBase *string `json:"oldest_allowed_merge_base" extensions:"!x-nullable"`
 	// File path to script that users can run on spawn hosts loaded with task
 	// data.
-	SpawnHostScriptPath *string `json:"spawn_host_script_path"`
+	SpawnHostScriptPath *string `json:"spawn_host_script_path" extensions:"!x-nullable"`
 	// Internal evergreen identifier for project.
-	Identifier *string `json:"identifier"`
+	Identifier *string `json:"identifier" extensions:"!x-nullable"`
 	// Project name displayed to users.
-	DisplayName *string `json:"display_name"`
+	DisplayName *string `json:"display_name" extensions:"!x-nullable"`
 	// List of identifiers of tasks used in this patch.
-	DeactivatePrevious *bool `json:"deactivate_previous"`
+	DeactivatePrevious *bool `json:"deactivate_previous" extensions:"x-nullable"`
 	// Enable GitHub automated pull request testing.
-	PRTestingEnabled *bool `json:"pr_testing_enabled"`
+	PRTestingEnabled *bool `json:"pr_testing_enabled" extensions:"x-nullable"`
 	// Enable GitHub manual pull request testing.
-	ManualPRTestingEnabled *bool `json:"manual_pr_testing_enabled"`
+	ManualPRTestingEnabled *bool `json:"manual_pr_testing_enabled" extensions:"x-nullable"`
 	// Enable testing when git tags are pushed.
-	GitTagVersionsEnabled *bool `json:"git_tag_versions_enabled"`
+	GitTagVersionsEnabled *bool `json:"git_tag_versions_enabled" extensions:"x-nullable"`
 	// Enable GitHub checks.
-	GithubChecksEnabled *bool `json:"github_checks_enabled"`
+	GithubChecksEnabled *bool `json:"github_checks_enabled" extensions:"x-nullable"`
 	// Whether or not to default to using repo settings.
-	UseRepoSettings *bool `json:"use_repo_settings"`
+	UseRepoSettings *bool `json:"use_repo_settings" extensions:"!x-nullable"`
 	// Identifier of the attached repo ref. Cannot be modified by users.
-	RepoRefId *string `json:"repo_ref_id"`
+	RepoRefId *string `json:"repo_ref_id" extensions:"!x-nullable"`
 	// Options for commit queue.
 	CommitQueue APICommitQueueParams `json:"commit_queue"`
 	// Options for task annotations.
@@ -568,80 +568,80 @@ type APIProjectRef struct {
 	// Options for Build Baron.
 	BuildBaronSettings APIBuildBaronSettings `json:"build_baron_settings"`
 	// Enable the performance plugin.
-	PerfEnabled *bool `json:"perf_enabled"`
+	PerfEnabled *bool `json:"perf_enabled" extensions:"x-nullable"`
 	// Source of the AWS credentials used to presign signed artifacts. Not editable
 	// from the project settings UI.
 	ArtifactCredentials APIArtifactCredentialSettings `json:"artifact_credentials"`
 	// Whether or not the project can be seen in the UI. Cannot be modified by
 	// users.
-	Hidden *bool `json:"hidden"`
+	Hidden *bool `json:"hidden" extensions:"x-nullable"`
 	// Disable patching.
-	PatchingDisabled *bool `json:"patching_disabled"`
+	PatchingDisabled *bool `json:"patching_disabled" extensions:"x-nullable"`
 	// Disable the repotracker.
-	RepotrackerDisabled *bool `json:"repotracker_disabled"`
+	RepotrackerDisabled *bool `json:"repotracker_disabled" extensions:"x-nullable"`
 	// Error from the repotracker, if any. Cannot be modified by users.
-	RepotrackerError *APIRepositoryErrorDetails `json:"repotracker_error"`
+	RepotrackerError *APIRepositoryErrorDetails `json:"repotracker_error" extensions:"x-nullable"`
 	// Disable task dispatching.
-	DispatchingDisabled *bool `json:"dispatching_disabled"`
+	DispatchingDisabled *bool `json:"dispatching_disabled" extensions:"x-nullable"`
 	// Disable automatic task activation on the waterfall.
-	WaterfallDisabled *bool `json:"waterfall_disabled"`
+	WaterfallDisabled *bool `json:"waterfall_disabled" extensions:"x-nullable"`
 	// Disable stepback.
-	StepbackDisabled *bool `json:"stepback_disabled"`
+	StepbackDisabled *bool `json:"stepback_disabled" extensions:"x-nullable"`
 	// Enable debug spawn host functionality.
-	DebugSpawnHostsDisabled *bool `json:"debug_spawn_hosts_disabled"`
+	DebugSpawnHostsDisabled *bool `json:"debug_spawn_hosts_disabled" extensions:"x-nullable"`
 	// Use bisect stepback instead of linear.
-	StepbackBisect *bool `json:"stepback_bisect"`
+	StepbackBisect *bool `json:"stepback_bisect" extensions:"x-nullable"`
 	// Enable setting project aliases from version-controlled project configs.
-	VersionControlEnabled *bool `json:"version_control_enabled"`
+	VersionControlEnabled *bool `json:"version_control_enabled" extensions:"x-nullable"`
 	// Disable stats caching.
-	DisabledStatsCache *bool `json:"disabled_stats_cache"`
+	DisabledStatsCache *bool `json:"disabled_stats_cache" extensions:"x-nullable"`
 	// Source cache mode, or nil when unset.
-	SourceCacheMode *model.SourceCacheMode `json:"source_cache_mode"`
+	SourceCacheMode *model.SourceCacheMode `json:"source_cache_mode" extensions:"x-nullable"`
 	// Usernames of project admins. Can be null for some projects (EVG-6598).
-	Admins []*string `json:"admins"`
+	Admins []*string `json:"admins" extensions:"x-nullable"`
 	// Usernames of project admins to remove.
 	DeleteAdmins []*string `json:"delete_admins,omitempty"`
 	// Usernames authorized to submit git tag versions.
-	GitTagAuthorizedUsers []*string `json:"git_tag_authorized_users" bson:"git_tag_authorized_users"`
+	GitTagAuthorizedUsers []*string `json:"git_tag_authorized_users" bson:"git_tag_authorized_users" extensions:"x-nullable"`
 	// Usernames of git tag-authorized users to remove.
 	DeleteGitTagAuthorizedUsers []*string `json:"delete_git_tag_authorized_users,omitempty" bson:"delete_git_tag_authorized_users,omitempty"`
 	// Names of GitHub teams authorized to submit git tag versions.
-	GitTagAuthorizedTeams []*string `json:"git_tag_authorized_teams" bson:"git_tag_authorized_teams"`
+	GitTagAuthorizedTeams []*string `json:"git_tag_authorized_teams" bson:"git_tag_authorized_teams" extensions:"x-nullable"`
 	// Names of GitHub teams authorized to submit git tag versions to remove.
 	DeleteGitTagAuthorizedTeams []*string `json:"delete_git_tag_authorized_teams,omitempty" bson:"delete_git_tag_authorized_teams,omitempty"`
 	// Notify original committer (or admins) when build fails.
-	NotifyOnBuildFailure *bool `json:"notify_on_failure"`
+	NotifyOnBuildFailure *bool `json:"notify_on_failure" extensions:"x-nullable"`
 	// Prevent users from being able to view this project unless explicitly
 	// granted access.
-	Restricted *bool `json:"restricted"`
+	Restricted *bool `json:"restricted" extensions:"x-nullable"`
 	// Only used when modifying projects to change the base revision and run the repotracker.
-	Revision *string `json:"revision"`
+	Revision *string `json:"revision" extensions:"x-nullable"`
 	// List of triggers for the project.
-	Triggers []APITriggerDefinition `json:"triggers"`
+	Triggers []APITriggerDefinition `json:"triggers" extensions:"x-nullable"`
 	// List of GitHub pull request trigger aliases.
-	GithubPRTriggerAliases []*string `json:"github_trigger_aliases"`
+	GithubPRTriggerAliases []*string `json:"github_trigger_aliases" extensions:"x-nullable"`
 	// List of GitHub merge queue trigger aliases.
-	GithubMQTriggerAliases []*string `json:"github_merge_queue_trigger_aliases"`
+	GithubMQTriggerAliases []*string `json:"github_merge_queue_trigger_aliases" extensions:"x-nullable"`
 	// List of patch trigger aliases.
-	PatchTriggerAliases []APIPatchTriggerDefinition `json:"patch_trigger_aliases"`
+	PatchTriggerAliases []APIPatchTriggerDefinition `json:"patch_trigger_aliases" extensions:"x-nullable"`
 	// List of aliases for the project.
-	Aliases []APIProjectAlias `json:"aliases"`
+	Aliases []APIProjectAlias `json:"aliases" extensions:"x-nullable"`
 	// Project variables information
 	Variables APIProjectVars `json:"variables"`
 	// Options for workstations.
 	WorkstationConfig APIWorkstationConfig `json:"workstation_config"`
 	// List of subscriptions for the project.
-	Subscriptions []APISubscription `json:"subscriptions"`
+	Subscriptions []APISubscription `json:"subscriptions" extensions:"x-nullable"`
 	// IDs of subscriptions to delete.
 	DeleteSubscriptions []*string `json:"delete_subscriptions,omitempty"`
 	// List of periodic build definitions.
 	PeriodicBuilds []APIPeriodicBuildDefinition `json:"periodic_builds,omitempty"`
 	// List of external links in the version metadata.
-	ExternalLinks []APIExternalLink `json:"external_links"`
+	ExternalLinks []APIExternalLink `json:"external_links" extensions:"x-nullable"`
 	// Options for banner to display for the project.
 	Banner APIProjectBanner `json:"banner"`
 	// List of custom Parsley filters.
-	ParsleyFilters []APIParsleyFilter `json:"parsley_filters"`
+	ParsleyFilters []APIParsleyFilter `json:"parsley_filters" extensions:"x-nullable"`
 	// Default project health view.
 	ProjectHealthView model.ProjectHealthView `json:"project_health_view"`
 	// List of GitHub permission groups.
@@ -655,7 +655,7 @@ type APIProjectRef struct {
 	// Task ownership settings. This is related to Foliage Web Services (FWS).
 	TaskOwnership APITaskOwnershipSettings `json:"task_ownership,omitempty"`
 	// Whether or not to run every mainline commit version.
-	RunEveryMainlineCommit *bool `json:"run_every_mainline_commit,omitzero"`
+	RunEveryMainlineCommit *bool `json:"run_every_mainline_commit,omitzero" extensions:"x-nullable"`
 }
 
 // sourceCacheModeFromPtr returns the mode, or empty (disabled) when the
@@ -1004,9 +1004,9 @@ type GetProjectTasksOpts struct {
 // credentials. Credentials are variable names, never values.
 type APIArtifactCredentialSettings struct {
 	// Name of the project variable holding the AWS access key ID.
-	AWSKeyVarName *string `json:"aws_key_var_name"`
+	AWSKeyVarName *string `json:"aws_key_var_name" extensions:"!x-nullable"`
 	// Name of the project variable holding the AWS secret access key.
-	AWSSecretVarName *string `json:"aws_secret_var_name"`
+	AWSSecretVarName *string `json:"aws_secret_var_name" extensions:"!x-nullable"`
 }
 
 func (s *APIArtifactCredentialSettings) BuildFromService(settings model.ArtifactCredentialSettings) {

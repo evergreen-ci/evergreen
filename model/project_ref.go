@@ -933,6 +933,15 @@ func (p *ProjectRef) AddToRepoScope(ctx context.Context, u *user.DBUser) error {
 	if err != nil {
 		return errors.Wrapf(err, "finding repo ref '%s'", p.RepoRefId)
 	}
+	if u != nil {
+		if repoRef == nil {
+			if err := p.checkCanCreateNewRepoRef(ctx, u); err != nil {
+				return err
+			}
+		} else if err := p.checkRepoRefAdmin(ctx, u, repoRef); err != nil {
+			return err
+		}
+	}
 	if repoRef == nil {
 		repoRef, err = p.createNewRepoRef(ctx, u)
 		if err != nil {
@@ -1066,14 +1075,8 @@ func (p *ProjectRef) DetachFromRepo(ctx context.Context, u *user.DBUser) error {
 // trying to attach a project to.
 var ErrRepoRefUnauthorized = errors.New("user is not an admin of the repo")
 
-// checkExistingRepoRefAdmin verifies that the user is allowed to attach the project to the repo ref
-// matching the project's current owner/repo. If no such repo ref exists yet, there is nothing to
-// authorize against, since the user will become its admin.
-func (p *ProjectRef) checkExistingRepoRefAdmin(ctx context.Context, u *user.DBUser) error {
-	repoRef, err := FindRepoRefByOwnerAndRepo(ctx, p.Owner, p.Repo)
-	if err != nil {
-		return errors.Wrapf(err, "finding repo ref for '%s/%s'", p.Owner, p.Repo)
-	}
+// checkRepoRefAdmin verifies that the user is allowed to attach the project to the given repo ref.
+func (p *ProjectRef) checkRepoRefAdmin(ctx context.Context, u *user.DBUser, repoRef *RepoRef) error {
 	if repoRef == nil {
 		return nil
 	}
@@ -1089,14 +1092,38 @@ func (p *ProjectRef) checkExistingRepoRefAdmin(ctx context.Context, u *user.DBUs
 	return nil
 }
 
+// checkCanCreateNewRepoRef verifies that the user is allowed to create a new repo
+// ref for the project's owner/repo.
+func (p *ProjectRef) checkCanCreateNewRepoRef(ctx context.Context, u *user.DBUser) error {
+	allowedOrgs := evergreen.GetEnvironment().Settings().GithubOrgs
+	if err := p.ValidateOwnerAndRepo(allowedOrgs); err != nil {
+		return errors.Wrap(err, "validating owner and repo")
+	}
+	allEnabledProjects, err := FindMergedEnabledProjectRefsByOwnerAndRepo(ctx, p.Owner, p.Repo)
+	if err != nil {
+		return errors.Wrap(err, "finding all enabled projects")
+	}
+	if len(allEnabledProjects) == 0 {
+		return nil
+	}
+	for _, project := range allEnabledProjects {
+		if u.HasPermission(ctx, gimlet.PermissionOpts{
+			Resource:      project.Id,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionProjectSettings,
+			RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+		}) {
+			return nil
+		}
+	}
+	return errors.Wrapf(ErrRepoRefUnauthorized, "user '%s' cannot create a repo ref for '%s/%s' because they do not have project settings edit permission on any of its existing enabled projects", u.Id, p.Owner, p.Repo)
+}
+
 // AttachToRepo adds the branch to the relevant repo scopes, and updates the project to point to the repo.
 // Any values that previously were unset will now use the repo value, unless this would introduce
 // a GitHub project conflict. If no repo ref currently exists, the user attaching it will be added as the repo ref admin.
 func (p *ProjectRef) AttachToRepo(ctx context.Context, u *user.DBUser) error {
-	if err := p.checkExistingRepoRefAdmin(ctx, u); err != nil {
-		return err
-	}
-
+	// AddToRepoScope below authorizes the attach and creates the repo ref if needed.
 	// Before allowing a project to attach to a repo, verify that this is a valid GitHub organization.
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
@@ -1130,9 +1157,14 @@ func (p *ProjectRef) AttachToRepo(ctx context.Context, u *user.DBUser) error {
 // updates the project to point to the new repo. Any Github project conflicts are disabled.
 // If no repo ref currently exists for the new repo, the user attaching it will be added as the repo ref admin.
 func (p *ProjectRef) AttachToNewRepo(ctx context.Context, u *user.DBUser) error {
-	// Moving to a repo that already has a repo ref requires the same authorization as AttachToRepo.
+	// Moving to a repo that already has a repo ref requires the same authorization as
+	// AttachToRepo. This must run before detaching from the old repo scope below.
 	if p.UseRepoSettings() {
-		if err := p.checkExistingRepoRefAdmin(ctx, u); err != nil {
+		repoRef, err := FindRepoRefByOwnerAndRepo(ctx, p.Owner, p.Repo)
+		if err != nil {
+			return errors.Wrapf(err, "finding repo ref for '%s/%s'", p.Owner, p.Repo)
+		}
+		if err := p.checkRepoRefAdmin(ctx, u, repoRef); err != nil {
 			return err
 		}
 	}
@@ -1356,29 +1388,16 @@ func mergeProjectRefAfterFetch(ctx context.Context, pRef *ProjectRef, identifier
 	return pRef, nil
 }
 
-// GetNumberOfEnabledProjects returns the current number of enabled projects on evergreen.
-func GetNumberOfEnabledProjects(ctx context.Context) (int, error) {
-	// Empty owner and repo will return all enabled project count.
-	return getNumberOfEnabledProjects(ctx, "", "")
-}
-
 // GetNumberOfEnabledProjectsForOwnerRepo returns the number of enabled projects for a given owner/repo.
 func GetNumberOfEnabledProjectsForOwnerRepo(ctx context.Context, owner, repo string) (int, error) {
 	if owner == "" || repo == "" {
 		return 0, errors.New("owner and repo must be specified")
 	}
-	return getNumberOfEnabledProjects(ctx, owner, repo)
-}
-
-func getNumberOfEnabledProjects(ctx context.Context, owner, repo string) (int, error) {
 	pipeline := []bson.M{
 		{"$match": bson.M{ProjectRefEnabledKey: true}},
+		{"$match": byOwnerAndRepo(owner, repo)},
+		{"$count": "count"},
 	}
-	if owner != "" && repo != "" {
-		// Check owner and repos in project ref or repo ref.
-		pipeline = append(pipeline, bson.M{"$match": byOwnerAndRepo(owner, repo)})
-	}
-	pipeline = append(pipeline, bson.M{"$count": "count"})
 	type Count struct {
 		Count int `bson:"count"`
 	}
@@ -3033,56 +3052,33 @@ func (p *ProjectRef) GetGithubProjectConflicts(ctx context.Context) (GithubProje
 	return res, nil
 }
 
-// shouldValidateTotalProjectLimit will return true if:
-// - we are creating a new project
-// - the original project was disabled
-func shouldValidateTotalProjectLimit(isNewProject bool, originalMergedRef *ProjectRef) bool {
-	return isNewProject || !originalMergedRef.Enabled
-}
-
-// shouldValidateOwnerRepoLimit will return true if:
-// - we are creating a new project
-// - the original project was disabled
-// - the owner or repo has changed
-// - the owner/repo is not part of exception
+// shouldValidateOwnerRepoLimit checks new projects, previously disabled projects, and projects whose owner or repo
+// changed, unless the new owner/repo is exempt from the per-repo limit.
 func shouldValidateOwnerRepoLimit(isNewProject bool, config *evergreen.Settings, originalMergedRef, mergedRefToValidate *ProjectRef) bool {
-	return (shouldValidateTotalProjectLimit(isNewProject, originalMergedRef) ||
+	return (isNewProject || !originalMergedRef.Enabled ||
 		originalMergedRef.Owner != mergedRefToValidate.Owner || originalMergedRef.Repo != mergedRefToValidate.Repo) &&
 		!config.ProjectCreation.IsExceptionToRepoLimit(mergedRefToValidate.Owner, mergedRefToValidate.Repo)
 }
 
-// ValidateEnabledProjectsLimit takes in a the original and new merged project refs and validates project limits,
-// assuming the given project is going to be enabled.
-// Returns a status code and error if we are already at limit with enabled projects.
+// ValidateEnabledProjectsLimit takes the original and new merged project refs and validates the per-repo
+// project limit, assuming the given project is going to be enabled.
+// Returns a status code and error if the project's owner/repo is already at its limit of enabled projects.
 func ValidateEnabledProjectsLimit(ctx context.Context, config *evergreen.Settings, originalMergedRef, mergedRefToValidate *ProjectRef) (int, error) {
-	if config.ProjectCreation.TotalProjectLimit == 0 || config.ProjectCreation.RepoProjectLimit == 0 {
+	if config.ProjectCreation.RepoProjectLimit == 0 {
 		return http.StatusOK, nil
 	}
 
 	isNewProject := originalMergedRef == nil
-	catcher := grip.NewBasicCatcher()
-	if shouldValidateTotalProjectLimit(isNewProject, originalMergedRef) {
-		allEnabledProjects, err := GetNumberOfEnabledProjects(ctx)
-		if err != nil {
-			return http.StatusInternalServerError, errors.Wrap(err, "getting number of enabled projects")
-		}
-		if allEnabledProjects >= config.ProjectCreation.TotalProjectLimit {
-			catcher.Errorf("total enabled project limit of %d reached", config.ProjectCreation.TotalProjectLimit)
-		}
+	if !shouldValidateOwnerRepoLimit(isNewProject, config, originalMergedRef, mergedRefToValidate) {
+		return http.StatusOK, nil
 	}
 
-	if shouldValidateOwnerRepoLimit(isNewProject, config, originalMergedRef, mergedRefToValidate) {
-		enabledOwnerRepoProjects, err := GetNumberOfEnabledProjectsForOwnerRepo(ctx, mergedRefToValidate.Owner, mergedRefToValidate.Repo)
-		if err != nil {
-			return http.StatusInternalServerError, errors.Wrapf(err, "getting number of projects for '%s/%s'", mergedRefToValidate.Owner, mergedRefToValidate.Repo)
-		}
-		if enabledOwnerRepoProjects >= config.ProjectCreation.RepoProjectLimit {
-			catcher.Errorf("enabled project limit of %d reached for '%s/%s'", config.ProjectCreation.RepoProjectLimit, mergedRefToValidate.Owner, mergedRefToValidate.Repo)
-		}
+	enabledOwnerRepoProjects, err := GetNumberOfEnabledProjectsForOwnerRepo(ctx, mergedRefToValidate.Owner, mergedRefToValidate.Repo)
+	if err != nil {
+		return http.StatusInternalServerError, errors.Wrapf(err, "getting number of projects for '%s/%s'", mergedRefToValidate.Owner, mergedRefToValidate.Repo)
 	}
-
-	if catcher.HasErrors() {
-		return http.StatusBadRequest, catcher.Resolve()
+	if enabledOwnerRepoProjects >= config.ProjectCreation.RepoProjectLimit {
+		return http.StatusBadRequest, errors.Errorf("enabled project limit of %d reached for '%s/%s'", config.ProjectCreation.RepoProjectLimit, mergedRefToValidate.Owner, mergedRefToValidate.Repo)
 	}
 	return http.StatusOK, nil
 }

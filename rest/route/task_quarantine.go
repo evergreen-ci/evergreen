@@ -33,7 +33,11 @@ func parseTaskForQuarantine(ctx context.Context) (*task.Task, error) {
 
 func quarantineTask(ctx context.Context, t *task.Task, isManuallyQuarantined bool) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	if err := data.SetTaskQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, isManuallyQuarantined); err != nil {
+	displayTaskName, err := t.GetDisplayTaskName(ctx)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "fetching display task name for task '%s'", t.Id))
+	}
+	if err := data.SetTaskQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, displayTaskName, isManuallyQuarantined); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting quarantine state to '%t' for task '%s'", isManuallyQuarantined, t.Id))
 	}
 	grip.Info(ctx, message.Fields{

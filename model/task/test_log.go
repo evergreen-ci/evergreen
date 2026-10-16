@@ -55,12 +55,18 @@ func NewTestLogSender(ctx context.Context, task Task, senderOpts EvergreenSender
 		return nil, nil
 	}
 
-	svc, err := getTestLogService(ctx, output.TestLogs)
+	return NewTestLogSenderForOutput(ctx, task, output.TestLogs, senderOpts, logPath, sequence)
+}
+
+// NewTestLogSenderForOutput returns a new test log sender for the given task run
+// using the provided test log output.
+func NewTestLogSenderForOutput(ctx context.Context, task Task, output TestLogOutput, senderOpts EvergreenSenderOptions, logPath string, sequence int) (send.Sender, error) {
+	svc, err := getTestLogService(ctx, output)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting log service")
 	}
 
-	logName := getLogNames(task, []string{logPath}, output.TestLogs.ID())[0]
+	logName := getLogNames(task, []string{logPath}, output.ID())[0]
 	senderOpts.appendLines = func(ctx context.Context, lines []log.LogLine) (int64, int, error) {
 		return svc.Append(ctx, logName, sequence, lines)
 	}
@@ -76,6 +82,14 @@ func getTestLogs(ctx context.Context, task Task, getOpts TestLogGetOptions) (log
 	if !ok {
 		// We know there task cannot have task output, likely because
 		// it has not run yet. Return an empty iterator.
+		return log.EmptyIterator(), nil
+	}
+
+	if output.TestLogs.BucketConfig.Type == "" {
+		// This handles an edge case where a virtual task was stranded by a
+		// runner that did not upload test results. If it has no bucket config,
+		// it has no test results anyways, so this is simply to avoid hitting an
+		// error below.
 		return log.EmptyIterator(), nil
 	}
 

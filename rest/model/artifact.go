@@ -11,22 +11,22 @@ import (
 )
 
 type APIAssociatedLink struct {
-	Name *string `json:"name"`
-	Link *string `json:"url"`
+	Name *string `json:"name" extensions:"!x-nullable"`
+	Link *string `json:"url" extensions:"!x-nullable"`
 }
 
 type APIFile struct {
 	// Human-readable name of the file
-	Name *string `json:"name"`
+	Name *string `json:"name" extensions:"!x-nullable"`
 	// Link to the file
-	Link       *string `json:"url"`
-	URLParsley *string `json:"url_parsley"`
+	Link       *string `json:"url" extensions:"!x-nullable"`
+	URLParsley *string `json:"url_parsley" extensions:"x-nullable"`
 	// Determines who can see the file in the UI
-	Visibility *string `json:"visibility"`
+	Visibility *string `json:"visibility" extensions:"!x-nullable"`
 	// When true, these artifacts are excluded from reproduction
 	IgnoreForFetch  bool                `json:"ignore_for_fetch"`
-	ContentType     *string             `json:"content_type"`
-	AssociatedLinks []APIAssociatedLink `json:"associated_links"`
+	ContentType     *string             `json:"content_type" extensions:"!x-nullable"`
+	AssociatedLinks []APIAssociatedLink `json:"associated_links" extensions:"!x-nullable"`
 }
 
 type APIEntry struct {

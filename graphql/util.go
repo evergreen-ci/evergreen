@@ -452,6 +452,9 @@ func verifyPublicKey(ctx context.Context, publicKey PublicKeyInput) error {
 	if publicKey.Name == "" {
 		return InputValidationError.Send(ctx, "public key name cannot be empty")
 	}
+	if strings.Contains(publicKey.Key, "${") {
+		return InputValidationError.Send(ctx, "public key must not contain expansion syntax (e.g. ${example})")
+	}
 	_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(publicKey.Key))
 	if err != nil {
 		return InputValidationError.Send(ctx, fmt.Sprintf("provided public key is invalid: %s", err.Error()))
@@ -737,6 +740,22 @@ func bbGetCreatedTicketsPointers(ctx context.Context, taskId string) ([]*thirdpa
 
 // getHostRequestOptions validates and transforms user-specified spawn host input
 func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput *SpawnHostInput) (*restModel.HostRequestOptions, error) {
+	var t *task.Task
+	taskID := utility.FromStringPtr(spawnHostInput.TaskID)
+	if taskID != "" {
+		var err error
+		t, err = task.FindOneId(ctx, taskID)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", taskID, err.Error()), err)
+		}
+		if t == nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
+		}
+		if err = checkProjectAccess(ctx, t.Project, ProjectPermissionTasks, AccessLevelView); err != nil {
+			return nil, err
+		}
+	}
+
 	if spawnHostInput.SavePublicKey {
 		if err := savePublicKey(ctx, *spawnHostInput.PublicKey); err != nil {
 			return nil, err
@@ -752,6 +771,7 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 
 	options := &restModel.HostRequestOptions{
 		DistroID:             spawnHostInput.DistroID,
+		TaskID:               taskID,
 		Region:               spawnHostInput.Region,
 		KeyName:              spawnHostInput.PublicKey.Key,
 		IsVirtualWorkstation: spawnHostInput.IsVirtualWorkStation,
@@ -768,16 +788,6 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 			DailyStartTime:   spawnHostInput.SleepSchedule.DailyStartTime,
 			DailyStopTime:    spawnHostInput.SleepSchedule.DailyStopTime,
 			TimeZone:         spawnHostInput.SleepSchedule.TimeZone,
-		}
-	}
-
-	// passing an empty string taskId is okay as long as a
-	// taskId is not required by other spawnHostInput parameters
-	var t *task.Task
-	if spawnHostInput.TaskID != nil && *spawnHostInput.TaskID != "" {
-		options.TaskID = *spawnHostInput.TaskID
-		if t, err = task.FindOneId(ctx, *spawnHostInput.TaskID); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", *spawnHostInput.TaskID, err.Error()))
 		}
 	}
 
@@ -1572,7 +1582,11 @@ func setTestQuarantineState(ctx context.Context, taskID, testName string, isManu
 	if t.DisplayOnly {
 		return nil, InputValidationError.Send(ctx, "cannot modify test quarantine state on display tasks, select an execution task instead")
 	}
-	if err = data.SetTestQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, testName, isManuallyQuarantined); err != nil {
+	displayTaskName, err := t.GetDisplayTaskName(ctx)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching display task name for task '%s': %s", taskID, err.Error()))
+	}
+	if err = data.SetTestQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, displayTaskName, testName, isManuallyQuarantined); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting quarantine state to '%t' for test '%s' on task '%s' on build variant '%s' on project '%s': %s", isManuallyQuarantined, testName, taskID, t.BuildVariant, t.Project, err.Error()))
 	}
 	return buildQuarantineMutationResponse(ctx, t, testName, isManuallyQuarantined)
@@ -1591,7 +1605,11 @@ func setTaskQuarantineState(ctx context.Context, taskID string, isManuallyQuaran
 	if t.DisplayOnly {
 		return nil, InputValidationError.Send(ctx, fmt.Sprintf("cannot modify quarantine state on display task '%s', select an execution task instead", taskID))
 	}
-	if err = data.SetTaskQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, isManuallyQuarantined); err != nil {
+	displayTaskName, err := t.GetDisplayTaskName(ctx)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching display task name for task '%s': %s", taskID, err.Error()))
+	}
+	if err = data.SetTaskQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, displayTaskName, isManuallyQuarantined); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting quarantine state to '%t' for task '%s' on build variant '%s' on project '%s': %s", isManuallyQuarantined, taskID, t.BuildVariant, t.Project, err.Error()))
 	}
 	usr := mustHaveUser(ctx)

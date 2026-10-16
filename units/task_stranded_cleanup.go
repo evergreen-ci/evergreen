@@ -22,15 +22,17 @@ const taskStrandedCleanupJobName = "task-stranded-cleanup"
 
 func init() {
 	registry.AddJobType(taskStrandedCleanupJobName, func() amboy.Job {
-		return makeStrandedTaskCleanupJob()
+		return makeStrandedTaskCleanupJob(nil)
 	})
 }
 
 type taskStrandedCleanupJob struct {
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
+
+	env evergreen.Environment
 }
 
-func makeStrandedTaskCleanupJob() *taskStrandedCleanupJob {
+func makeStrandedTaskCleanupJob(env evergreen.Environment) *taskStrandedCleanupJob {
 	j := &taskStrandedCleanupJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
@@ -38,6 +40,7 @@ func makeStrandedTaskCleanupJob() *taskStrandedCleanupJob {
 				Version: 0,
 			},
 		},
+		env: env,
 	}
 	return j
 }
@@ -45,15 +48,21 @@ func makeStrandedTaskCleanupJob() *taskStrandedCleanupJob {
 // NewStrandedTaskCleanupJob returns a job to detect and clean up tasks that:
 // - Have been stranded on hosts that are already terminated.
 // - Have stuck dispatching for too long.
-func NewStrandedTaskCleanupJob(id string) amboy.Job {
-	j := makeStrandedTaskCleanupJob()
+// - Are virtual tasks stranded by a runner that finished without push-completing them.
+func NewStrandedTaskCleanupJob(env evergreen.Environment, id string) amboy.Job {
+	j := makeStrandedTaskCleanupJob(env)
 	j.SetID(fmt.Sprintf("%s.%s", taskStrandedCleanupJobName, id))
 	return j
 }
 
 func (j *taskStrandedCleanupJob) Run(ctx context.Context) {
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
+
 	j.AddError(errors.Wrap(j.fixTasksStrandedOnTerminatedHosts(ctx), "fixing tasks stranded on already-terminated hosts"))
 	j.AddError(errors.Wrap(j.fixTasksStuckDispatching(ctx), "fixing tasks that are stuck dispatching"))
+	j.AddError(errors.Wrap(j.fixStrandedVirtualTasks(ctx), "fixing stranded virtual tasks"))
 }
 
 func (j *taskStrandedCleanupJob) fixTasksStrandedOnTerminatedHosts(ctx context.Context) error {
@@ -74,7 +83,7 @@ func (j *taskStrandedCleanupJob) fixTasksStrandedOnTerminatedHosts(ctx context.C
 		taskIDs = append(taskIDs, h.RunningTask)
 		hostIDs = append(hostIDs, h.Id)
 
-		catcher.Wrapf(model.ClearAndResetStrandedHostTask(ctx, evergreen.GetEnvironment().Settings(), &h), "fixing stranded host task '%s' execution '%d' on host '%s'", h.RunningTask, h.RunningTaskExecution, h.Id)
+		catcher.Wrapf(model.ClearAndResetStrandedHostTask(ctx, j.env.Settings(), &h), "fixing stranded host task '%s' execution '%d' on host '%s'", h.RunningTask, h.RunningTaskExecution, h.Id)
 	}
 
 	grip.Info(ctx, message.Fields{
@@ -108,7 +117,7 @@ func (j *taskStrandedCleanupJob) fixTasksStuckDispatching(ctx context.Context) e
 				Status:      evergreen.TaskFailed,
 				Description: evergreen.TaskDescriptionStranded,
 			}
-			catcher.Wrapf(model.TryResetTask(ctx, evergreen.GetEnvironment().Settings(), t.Id, evergreen.User, j.ID(), details), "resetting task '%s'", t.Id)
+			catcher.Wrapf(model.TryResetTask(ctx, j.env.Settings(), t.Id, evergreen.User, j.ID(), details), "resetting task '%s'", t.Id)
 			tasksReset = append(tasksReset, t)
 		}
 	}
@@ -131,6 +140,34 @@ func (j *taskStrandedCleanupJob) fixTasksStuckDispatching(ctx context.Context) e
 		"op":        j.Type().Name,
 		"num_tasks": len(tasksReset),
 		"tasks":     tasksReset,
+	})
+
+	return catcher.Resolve()
+}
+
+func (j *taskStrandedCleanupJob) fixStrandedVirtualTasks(ctx context.Context) error {
+	tasks, err := task.FindStrandedVirtualTasks(ctx)
+	if err != nil {
+		return errors.Wrap(err, "finding stranded virtual tasks")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	var fixed []string
+	for i := range tasks {
+		t := tasks[i]
+		if err := model.FixStrandedVirtualTask(ctx, j.env.Settings(), &t); err != nil {
+			catcher.Wrapf(err, "fixing stranded virtual task '%s'", t.Id)
+			continue
+		}
+		fixed = append(fixed, t.Id)
+	}
+
+	grip.InfoWhen(ctx, len(fixed) > 0, message.Fields{
+		"message":   "fixed stranded virtual tasks",
+		"job":       j.ID(),
+		"op":        j.Type().Name,
+		"num_tasks": len(fixed),
+		"tasks":     fixed,
 	})
 
 	return catcher.Resolve()

@@ -90,8 +90,8 @@ github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.21 h1:+1Kl1zx6bWi4X7cKi3VYh29
 github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.21/go.mod h1:4vIRDq+CJB2xFAXZ+YgGUTiEft7oAQlhIs71xcSeuVg=
 github.com/aws/aws-sdk-go-v2/service/sts v1.42.1 h1:F/M5Y9I3nwr2IEpshZgh1GeHpOItExNM9L1euNuh/fk=
 github.com/aws/aws-sdk-go-v2/service/sts v1.42.1/go.mod h1:mTNxImtovCOEEuD65mKW7DCsL+2gjEH+RPEAexAzAio=
-github.com/aws/smithy-go v1.28.1 h1:R/nXH00c8qcfCzQVELtRw+eLQWtzv+VAIEFJ1/xxXlQ=
-github.com/aws/smithy-go v1.28.1/go.mod h1:YE2RhdIuDbA5E5bTdciG9KrW3+TiEONeUWCqxX9i1Fc=
+github.com/aws/smithy-go v1.28.2 h1:myhcykQcatTul2B/zITjDk203G7t0awUAs1hVry5Bvg=
+github.com/aws/smithy-go v1.28.2/go.mod h1:YE2RhdIuDbA5E5bTdciG9KrW3+TiEONeUWCqxX9i1Fc=
 github.com/aybabtme/iocontrol v0.0.0-20150809002002-ad15bcfc95a0 h1:0NmehRCgyk5rljDQLKUO+cRJCnduDyn11+zGZIc9Z48=
 github.com/aybabtme/iocontrol v0.0.0-20150809002002-ad15bcfc95a0/go.mod h1:6L7zgvqo0idzI7IO8de6ZC051AfXb5ipkIJ7bIA2tGA=
 github.com/benbjohnson/clock v1.1.0 h1:Q92kusRqC1XV2MjkWETPvjJVqKetz1OzxZB7mHJLju8=
@@ -153,8 +153,8 @@ github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 h1:2tV76y6Q9BB+NE
 github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707/go.mod h1:qssHWj60/X5sZFNxpG4HBPDHVqxNm4DfnCKgrbZOT+s=
 github.com/dsnet/golib v0.0.0-20171103203638-1ea166775780/go.mod h1:Lj+Z9rebOhdfkVLjJ8T6VcRQv3SXugXy999NBtR9aFY=
 github.com/dustin/go-humanize v1.0.0/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
-github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
-github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
+github.com/dustin/go-humanize v1.1.0 h1:dbKTrvD0klcbBV/h4AWJdMuZogJACoMlvWIWZ5b2xWg=
+github.com/dustin/go-humanize v1.1.0/go.mod h1:hc1CvRkJMsgxqjmjMQF3QNRAZBwY8AXBAzKYoSX9sFI=
 github.com/evergreen-ci/aviation v0.0.0-20260326191247-419265529eba h1:+Je9stZefOIAICD6LJZLnXB6MFJFJW2bLZktkx5E78g=
 github.com/evergreen-ci/aviation v0.0.0-20260326191247-419265529eba/go.mod h1:OK+hISDV/xMznP4XXI6KNLpoEzjXWwBKjRlNFfkbwaE=
 github.com/evergreen-ci/baobab v1.0.1-0.20220107150152-03b522479f52 h1:e5fgBYO+zFtcG84TL+1eq6vGg16W4vXYYPEsmfOomwE=
@@ -179,8 +179,8 @@ github.com/evergreen-ci/poplar v0.0.0-20260330180450-c8cf511d1bd6 h1:leuRlgINHoR
 github.com/evergreen-ci/poplar v0.0.0-20260330180450-c8cf511d1bd6/go.mod h1:y7hhmPo+0k+kI8PTEyX9EziG2Um5727LFTu3Pln5gAQ=
 github.com/evergreen-ci/shrub v0.0.0-20251017154811-4d3ed1599154 h1:YO1VY9Qj68KjjRfd6TF8sHEss2kIfnpkUqZyxWAoEI8=
 github.com/evergreen-ci/shrub v0.0.0-20251017154811-4d3ed1599154/go.mod h1:nDQB46oIkI/BmvuNKkHdJekvXuGm8lvfUBcbbjekMZM=
-github.com/evergreen-ci/test-selection-client v0.0.0-20260812193714-c140c9414f6f h1:TeFLYJ4fbgDthiF3fESdnwhWPqqEfjKG9PsmkXvJArI=
-github.com/evergreen-ci/test-selection-client v0.0.0-20260812193714-c140c9414f6f/go.mod h1:0iD20pmczefJcyBCIuYuwfq9J3cqWOM5v61znyqcAwY=
+github.com/evergreen-ci/test-selection-client v0.0.0-20261012175355-ceae32d48406 h1:Jy3hPqBPoo6OJ/vcahzRFP63KdNSieP3+97I1GnLOkk=
+github.com/evergreen-ci/test-selection-client v0.0.0-20261012175355-ceae32d48406/go.mod h1:0iD20pmczefJcyBCIuYuwfq9J3cqWOM5v61znyqcAwY=
 github.com/evergreen-ci/utility v0.0.0-20260727185913-06cd8a26cd5e h1:9Ad/RzvKJLRjI4epzBTCx3+nEZS1dyNwDAmMQ01mtyU=
 github.com/evergreen-ci/utility v0.0.0-20260727185913-06cd8a26cd5e/go.mod h1:A03U7o6F4PDMNz+lD9mktDgy53wWJHgfR6Bk1fndBJc=
 github.com/fatih/structs v1.1.0 h1:Q7juDM0QtcnhCpeyLGQKyg4TOIghuNXrkL32pHAUMxo=
@@ -489,8 +489,8 @@ github.com/yusufpapurcu/wmi v1.2.4 h1:zFUKzehAFReQwLys1b/iSMl+JQGSCSjtVqQn9bBrPo
 github.com/yusufpapurcu/wmi v1.2.4/go.mod h1:SBZ9tNy3G9/m5Oi98Zks0QjeHVDvuK0qfxQmPyzfmi0=
 github.com/zeebo/xxh3 v1.1.0 h1:s7DLGDK45Dyfg7++yxI0khrfwq9661w9EN78eP/UZVs=
 github.com/zeebo/xxh3 v1.1.0/go.mod h1:IisAie1LELR4xhVinxWS5+zf1lA4p0MW4T+w+W07F5s=
-go.mongodb.org/mongo-driver v1.17.9 h1:IexDdCuuNJ3BHrELgBlyaH9p60JXAvdzWR128q+U5tU=
-go.mongodb.org/mongo-driver v1.17.9/go.mod h1:LlOhpH5NUEfhxcAwG0UEkMqwYcc4JU18gtCdGudk/tQ=
+go.mongodb.org/mongo-driver v1.17.10 h1:kdAgQvu8TROXZpSkJQd5wzfaNCCrMbpZyKFtQ6qkPCE=
+go.mongodb.org/mongo-driver v1.17.10/go.mod h1:LlOhpH5NUEfhxcAwG0UEkMqwYcc4JU18gtCdGudk/tQ=
 go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64=
 go.opentelemetry.io/auto/sdk v1.2.1/go.mod h1:KRTj+aOaElaLi+wW1kO/DZRXwkF4C5xPbEe3ZiIhN7Y=
 go.opentelemetry.io/contrib v1.36.0 h1:ZeE8MRl6bAmxcjZeznBfqTe6syNvMKdxdBMzv6fDV94=

@@ -182,6 +182,9 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 		TaskName:     conf.Task.DisplayName,
 		Tests:        c.Tests,
 	}
+	if conf.DisplayTaskInfo != nil {
+		request.DisplayTaskName = conf.DisplayTaskInfo.Name
+	}
 
 	if c.Strategies != "" {
 		trimmedStrategies := strings.TrimSpace(c.Strategies)

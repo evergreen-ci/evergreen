@@ -148,6 +148,14 @@ func getTaskLogs(ctx context.Context, task Task, getOpts TaskLogGetOptions) (log
 		return log.EmptyIterator(), nil
 	}
 
+	if output.TaskLogs.BucketConfig.Type == "" {
+		// This handles an edge case where a virtual task was stranded by a
+		// runner that did not push-complete the task. A push-completed virtual
+		// task has no task logs anyway, so this simply avoids hitting an error
+		// below.
+		return log.EmptyIterator(), nil
+	}
+
 	if err := getOpts.LogType.Validate(false); err != nil {
 		return nil, err
 	}

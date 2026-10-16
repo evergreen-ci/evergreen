@@ -235,7 +235,7 @@ func saveTestResults(t *testing.T, ctx context.Context, testBucket pail.Bucket, 
 func TestMakeTestResultsTruncatesOversizedDisplayTestName(t *testing.T) {
 	longName := strings.Repeat("a", maxDisplayTestNameLength+50)
 
-	results := makeTestResults(&task.Task{}, []testresult.TestResult{
+	results := makeTestResults(time.Time{}, []testresult.TestResult{
 		{TestName: "short", DisplayTestName: "short"},
 		{TestName: "fallback-name"},
 		{TestName: "x", DisplayTestName: longName},

@@ -17,10 +17,13 @@ type SelectTestsRequest struct {
 	TaskID string `json:"task_id"`
 	// TaskName is the Evergreen task name.
 	TaskName string `json:"task_name"`
+	// DisplayTaskName is the display task's name when the task is an execution
+	// task of a display task. It is optional.
+	DisplayTaskName string `json:"display_task_name,omitempty"`
 	// Tests is a list of test names.
-	Tests []string `json:"tests"`
+	Tests []string `json:"tests" extensions:"x-nullable"`
 	// Strategies is the optional list of test selection strategies to use.
-	Strategies []string `json:"strategies"`
+	Strategies []string `json:"strategies" extensions:"x-nullable"`
 }
 
 // UnmarshalJSON accepts either "project_id" (preferred) or "project" (legacy)

@@ -874,7 +874,7 @@ func (h *Host) setupScriptCommands(settings *evergreen.Settings) (string, error)
 		return "", nil
 	}
 
-	expansions := util.NewExpansions(settings.Expansions)
+	expansions := util.NewExpansions(settings.HostFacingExpansions())
 	setupScript, err := expansions.ExpandString(h.Distro.Setup)
 	if err != nil {
 		return "", errors.Wrap(err, "expanding setup script variables")

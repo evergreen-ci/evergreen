@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
@@ -57,6 +58,7 @@ func TestTestSelectionGet(t *testing.T) {
 
 	for tName, tCase := range map[string]func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer){
 		"BypassRestoresOnlyCandidates": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
+			conf.DisplayTaskInfo = &apimodels.DisplayTaskInfo{ID: "display_task_id", Name: "display_task"}
 			conf.Expansions.Put("test_selection_bypass_quarantine", `["test2","outside","test2"]`)
 			comm.SelectTestsResponse = []string{"test1", "outside"}
 			cmd := &testSelectionGet{OutputFile: "test.json", Tests: []string{"test2", "test1", "test4"}}
@@ -65,6 +67,7 @@ func TestTestSelectionGet(t *testing.T) {
 			require.NoError(t, utility.ReadJSONFile(cmd.OutputFile, &output))
 			assert.Equal(t, []testOutput{{Name: "test2"}, {Name: "test1"}}, output.Tests)
 			assert.Equal(t, cmd.Tests, comm.SelectTestsRequest.Tests)
+			assert.Equal(t, "display_task", comm.SelectTestsRequest.DisplayTaskName)
 		},
 		"BypassFromTestsFileRestoresOnlyCandidates": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
 			conf.Expansions.Put("test_selection_bypass_quarantine", `["test2","outside"]`)
@@ -232,7 +235,18 @@ func TestTestSelectionGet(t *testing.T) {
 			assert.Equal(t, conf.Task.BuildVariant, comm.SelectTestsRequest.BuildVariant)
 			assert.Equal(t, conf.Task.Id, comm.SelectTestsRequest.TaskID)
 			assert.Equal(t, conf.Task.DisplayName, comm.SelectTestsRequest.TaskName)
+			assert.Empty(t, comm.SelectTestsRequest.DisplayTaskName)
 			assert.Equal(t, []string{"test1", "test3"}, comm.SelectTestsRequest.Tests)
+		},
+		"PassesDisplayTaskNameWhenTaskIsInDisplayTask": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
+			cmd := &testSelectionGet{OutputFile: "test.json", Tests: []string{"test1"}}
+
+			conf.DisplayTaskInfo = &apimodels.DisplayTaskInfo{ID: "display_task_id", Name: "display_task"}
+
+			require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
+
+			assert.True(t, comm.SelectTestsCalled)
+			assert.Equal(t, "display_task", comm.SelectTestsRequest.DisplayTaskName)
 		},
 		"PassesTestsToAPI": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
 			cmd := &testSelectionGet{OutputFile: "test.json", Tests: []string{"test1", "test3"}}

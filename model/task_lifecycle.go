@@ -1479,6 +1479,16 @@ func checkUpdateBuildPRStatusPending(ctx context.Context, b *build.Build) error 
 	if !evergreen.IsGitHubPatchRequester(b.Requester) {
 		return nil
 	}
+	// A dormant build has nothing running or scheduled; a pending status would
+	// never resolve.
+	if b.IsDormant() {
+		span.SetAttributes(
+			attribute.String(evergreen.BuildIDOtelAttribute, b.Id),
+			attribute.String(evergreen.BuildNameOtelAttribute, b.BuildVariant),
+			attribute.Bool("evergreen.build.dormant_skip", true),
+		)
+		return nil
+	}
 	p, err := patch.FindOneId(ctx, b.Version)
 	if err != nil {
 		return errors.Wrapf(err, "finding patch '%s'", b.Version)
@@ -2694,6 +2704,23 @@ func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settin
 	}
 
 	return errors.Wrap(ResetTaskOrDisplayTask(ctx, settings, t, evergreen.User, evergreen.MonitorPackage, true, &t.Details), "resetting task")
+}
+
+// FixStrandedVirtualTask marks a virtual task as system-failed if it's awaiting
+// push-completion but its runner is already finished.
+// This intentionally doesn't restart the task because that would actually run
+// the virtual task. Virtual tasks are not meant to actually run unless the user
+// explicitly requests it.
+func FixStrandedVirtualTask(ctx context.Context, settings *evergreen.Settings, t *task.Task) error {
+	if t.IsFinished() {
+		return nil
+	}
+
+	details := task.GetSystemFailureDetails(evergreen.TaskDescriptionStranded)
+	if err := MarkEnd(ctx, settings, t, evergreen.MonitorPackage, time.Now(), &details); err != nil {
+		return errors.Wrapf(err, "marking stranded virtual task '%s' finished", t.Id)
+	}
+	return nil
 }
 
 // ResetTaskOrDisplayTask is a wrapper for TryResetTask that handles execution and display tasks that are restarted

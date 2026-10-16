@@ -177,7 +177,7 @@ func TestGetTestsQuarantineStatus(t *testing.T) {
 		srv, hits := newServer(t, nil)
 		setTSSURL(t, srv.URL)
 
-		statuses, err := GetTestsQuarantineStatus(t.Context(), projectID, bvName, taskName, nil)
+		statuses, err := GetTestsQuarantineStatus(t.Context(), projectID, bvName, taskName, "", nil)
 		require.NoError(t, err)
 		assert.Empty(t, statuses)
 		assert.Zero(t, *hits, "no HTTP call should be made for empty input")
@@ -189,6 +189,7 @@ func TestGetTestsQuarantineStatus(t *testing.T) {
 			ProjectID        string   `json:"project_id"`
 			BuildVariantName string   `json:"build_variant_name"`
 			TaskName         string   `json:"task_name"`
+			DisplayTaskName  string   `json:"display_task_name"`
 			TestNames        []string `json:"test_names"`
 		}
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -200,14 +201,30 @@ func TestGetTestsQuarantineStatus(t *testing.T) {
 		t.Cleanup(srv.Close)
 		setTSSURL(t, srv.URL)
 
-		statuses, err := GetTestsQuarantineStatus(t.Context(), "my/project", "ubuntu/2204", "my/task", []string{"test/name"})
+		statuses, err := GetTestsQuarantineStatus(t.Context(), "my/project", "ubuntu/2204", "my/task", "my/display/task", []string{"test/name"})
 		require.NoError(t, err)
 		assert.Equal(t, map[string]bool{"test/name": false}, statuses)
 		assert.Equal(t, "/api/test_selection/get_tests_state/", capturedPath)
 		assert.Equal(t, "my/project", capturedBody.ProjectID)
 		assert.Equal(t, "ubuntu/2204", capturedBody.BuildVariantName)
 		assert.Equal(t, "my/task", capturedBody.TaskName)
+		assert.Equal(t, "my/display/task", capturedBody.DisplayTaskName)
 		assert.Equal(t, []string{"test/name"}, capturedBody.TestNames)
+	})
+
+	t.Run("OmitsDisplayTaskNameWhenNotSet", func(t *testing.T) {
+		var rawBody map[string]any
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&rawBody))
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte("{}"))
+		}))
+		t.Cleanup(srv.Close)
+		setTSSURL(t, srv.URL)
+
+		_, err := GetTestsQuarantineStatus(t.Context(), "my/project", "ubuntu/2204", "my/task", "", []string{"test/name"})
+		require.NoError(t, err)
+		assert.NotContains(t, rawBody, "display_task_name", "display task name should be omitted when there is none")
 	})
 
 	t.Run("StateManuallyQuarantinedReturnsTrue", func(t *testing.T) {
@@ -216,7 +233,7 @@ func TestGetTestsQuarantineStatus(t *testing.T) {
 		})
 		setTSSURL(t, srv.URL)
 
-		statuses, err := GetTestsQuarantineStatus(t.Context(), projectID, bvName, taskName, []string{"test_a"})
+		statuses, err := GetTestsQuarantineStatus(t.Context(), projectID, bvName, taskName, "", []string{"test_a"})
 		require.NoError(t, err)
 		assert.Equal(t, map[string]bool{"test_a": true}, statuses)
 	})
@@ -227,7 +244,7 @@ func TestGetTestsQuarantineStatus(t *testing.T) {
 		})
 		setTSSURL(t, srv.URL)
 
-		statuses, err := GetTestsQuarantineStatus(t.Context(), projectID, bvName, taskName, []string{"test_a"})
+		statuses, err := GetTestsQuarantineStatus(t.Context(), projectID, bvName, taskName, "", []string{"test_a"})
 		require.NoError(t, err)
 		assert.Equal(t, map[string]bool{"test_a": false}, statuses)
 	})
@@ -239,7 +256,7 @@ func TestGetTestsQuarantineStatus(t *testing.T) {
 		})
 		setTSSURL(t, srv.URL)
 
-		statuses, err := GetTestsQuarantineStatus(t.Context(), projectID, bvName, taskName, []string{"test_a"})
+		statuses, err := GetTestsQuarantineStatus(t.Context(), projectID, bvName, taskName, "", []string{"test_a"})
 		require.NoError(t, err)
 		assert.Equal(t, map[string]bool{"test_a": true}, statuses)
 	})
@@ -251,7 +268,7 @@ func TestGetTestsQuarantineStatus(t *testing.T) {
 		})
 		setTSSURL(t, srv.URL)
 
-		statuses, err := GetTestsQuarantineStatus(t.Context(), projectID, bvName, taskName, []string{"test_a"})
+		statuses, err := GetTestsQuarantineStatus(t.Context(), projectID, bvName, taskName, "", []string{"test_a"})
 		require.NoError(t, err)
 		assert.Equal(t, map[string]bool{"test_a": false}, statuses)
 	})
@@ -263,7 +280,7 @@ func TestGetTestsQuarantineStatus(t *testing.T) {
 		})
 		setTSSURL(t, srv.URL)
 
-		statuses, err := GetTestsQuarantineStatus(t.Context(), projectID, bvName, taskName, []string{"test_a"})
+		statuses, err := GetTestsQuarantineStatus(t.Context(), projectID, bvName, taskName, "", []string{"test_a"})
 		require.NoError(t, err)
 		assert.Equal(t, map[string]bool{"test_a": true}, statuses)
 	})
@@ -274,7 +291,7 @@ func TestGetTestsQuarantineStatus(t *testing.T) {
 		})
 		setTSSURL(t, srv.URL)
 
-		statuses, err := GetTestsQuarantineStatus(t.Context(), projectID, bvName, taskName, []string{"test_a", "test_missing"})
+		statuses, err := GetTestsQuarantineStatus(t.Context(), projectID, bvName, taskName, "", []string{"test_a", "test_missing"})
 		require.NoError(t, err)
 		assert.Equal(t, map[string]bool{"test_a": true, "test_missing": false}, statuses)
 	})
@@ -286,7 +303,7 @@ func TestGetTestsQuarantineStatus(t *testing.T) {
 		t.Cleanup(srv.Close)
 		setTSSURL(t, srv.URL)
 
-		statuses, err := GetTestsQuarantineStatus(t.Context(), projectID, bvName, taskName, []string{"test_a"})
+		statuses, err := GetTestsQuarantineStatus(t.Context(), projectID, bvName, taskName, "", []string{"test_a"})
 		require.NoError(t, err)
 		assert.Equal(t, map[string]bool{"test_a": false}, statuses)
 	})
@@ -301,7 +318,7 @@ func TestGetTestsQuarantineStatus(t *testing.T) {
 
 		ctx, cancel := context.WithCancel(t.Context())
 		cancel()
-		statuses, err := GetTestsQuarantineStatus(ctx, projectID, bvName, taskName, []string{"test_a"})
+		statuses, err := GetTestsQuarantineStatus(ctx, projectID, bvName, taskName, "", []string{"test_a"})
 		require.NoError(t, err)
 		assert.Equal(t, map[string]bool{"test_a": false}, statuses)
 	})
@@ -313,7 +330,7 @@ func TestGetTestsQuarantineStatus(t *testing.T) {
 		t.Cleanup(srv.Close)
 		setTSSURL(t, srv.URL)
 
-		statuses, err := GetTestsQuarantineStatus(t.Context(), projectID, bvName, taskName, []string{"test_a"})
+		statuses, err := GetTestsQuarantineStatus(t.Context(), projectID, bvName, taskName, "", []string{"test_a"})
 		require.NoError(t, err)
 		assert.Equal(t, map[string]bool{"test_a": false}, statuses)
 	})
@@ -334,6 +351,7 @@ func TestSetTestQuarantined(t *testing.T) {
 		ProjectID             string   `json:"project_id"`
 		BuildVariantName      string   `json:"build_variant_name"`
 		TaskName              string   `json:"task_name"`
+		DisplayTaskName       string   `json:"display_task_name"`
 		TestNames             []string `json:"test_names"`
 		IsManuallyQuarantined bool     `json:"is_manually_quarantined"`
 	}
@@ -346,11 +364,12 @@ func TestSetTestQuarantined(t *testing.T) {
 	t.Cleanup(srv.Close)
 	setTSSURLForTest(t, srv.URL)
 
-	require.NoError(t, SetTestQuarantined(t.Context(), "my/project", "ubuntu/2204", "my/task", "test/name", true))
+	require.NoError(t, SetTestQuarantined(t.Context(), "my/project", "ubuntu/2204", "my/task", "my/display/task", "test/name", true))
 	assert.Equal(t, "/api/test_selection/transition_tests/", capturedPath)
 	assert.Equal(t, "my/project", capturedBody.ProjectID)
 	assert.Equal(t, "ubuntu/2204", capturedBody.BuildVariantName)
 	assert.Equal(t, "my/task", capturedBody.TaskName)
+	assert.Equal(t, "my/display/task", capturedBody.DisplayTaskName)
 	assert.Equal(t, []string{"test/name"}, capturedBody.TestNames)
 	assert.True(t, capturedBody.IsManuallyQuarantined)
 }
@@ -368,6 +387,7 @@ func TestSetTaskQuarantined(t *testing.T) {
 			ProjectID             string `json:"project_id"`
 			BuildVariantName      string `json:"build_variant_name"`
 			TaskName              string `json:"task_name"`
+			DisplayTaskName       string `json:"display_task_name"`
 			IsManuallyQuarantined bool   `json:"is_manually_quarantined"`
 		}
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -379,11 +399,12 @@ func TestSetTaskQuarantined(t *testing.T) {
 		t.Cleanup(srv.Close)
 		setTSSURLForTest(t, srv.URL)
 
-		require.NoError(t, SetTaskQuarantined(t.Context(), "my/project", "ubuntu/2204", "my/task", true))
+		require.NoError(t, SetTaskQuarantined(t.Context(), "my/project", "ubuntu/2204", "my/task", "my/display/task", true))
 		assert.Equal(t, "/api/test_selection/transition_task/", capturedPath)
 		assert.Equal(t, "my/project", capturedBody.ProjectID)
 		assert.Equal(t, "ubuntu/2204", capturedBody.BuildVariantName)
 		assert.Equal(t, "my/task", capturedBody.TaskName)
+		assert.Equal(t, "my/display/task", capturedBody.DisplayTaskName)
 		assert.True(t, capturedBody.IsManuallyQuarantined)
 	})
 
@@ -394,7 +415,7 @@ func TestSetTaskQuarantined(t *testing.T) {
 		t.Cleanup(srv.Close)
 		setTSSURLForTest(t, srv.URL)
 
-		err := SetTaskQuarantined(t.Context(), projectID, bvName, taskName, true)
+		err := SetTaskQuarantined(t.Context(), projectID, bvName, taskName, "", true)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "forwarding request to test selection service")
 		assert.Contains(t, err.Error(), "boom")

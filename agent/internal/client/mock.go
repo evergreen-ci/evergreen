@@ -117,6 +117,12 @@ type Mock struct {
 	CompleteVirtualTasksCompletions []apimodels.VirtualTaskCompletion
 	CompleteVirtualTasksCallCount   int
 
+	// PrepareVirtualTasks mock fields
+	PrepareVirtualTasksShouldFail   bool
+	PrepareVirtualTasksResponse     *apimodels.PrepareVirtualTasksResponse
+	PrepareVirtualTasksPreparations []apimodels.VirtualTaskPreparation
+	PrepareVirtualTasksCallCount    int
+
 	mu sync.RWMutex
 }
 
@@ -578,6 +584,35 @@ func (c *Mock) CompleteVirtualTasks(ctx context.Context, td TaskData, completion
 		resp.Results = append(resp.Results, apimodels.VirtualTaskCompletionResult{
 			TaskID:  comp.TaskID,
 			Outcome: apimodels.VirtualTaskCompletionOutcomeSuccess,
+		})
+	}
+	return resp, nil
+}
+
+func (c *Mock) PrepareVirtualTasks(ctx context.Context, td TaskData, preparations []apimodels.VirtualTaskPreparation) (*apimodels.PrepareVirtualTasksResponse, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.PrepareVirtualTasksCallCount++
+	c.PrepareVirtualTasksPreparations = append(c.PrepareVirtualTasksPreparations, preparations...)
+
+	if c.PrepareVirtualTasksShouldFail {
+		return nil, errors.New("preparing virtual tasks")
+	}
+
+	if c.PrepareVirtualTasksResponse != nil {
+		return c.PrepareVirtualTasksResponse, nil
+	}
+
+	resp := &apimodels.PrepareVirtualTasksResponse{}
+	for _, prep := range preparations {
+		resp.Results = append(resp.Results, apimodels.VirtualTaskPreparationResult{
+			TaskID:  prep.TaskID,
+			Outcome: apimodels.VirtualTaskCompletionOutcomeSuccess,
+			TestResultsInfo: &testresult.TestResultsInfo{
+				TaskID:    prep.TaskID,
+				Execution: prep.Execution,
+			},
 		})
 	}
 	return resp, nil

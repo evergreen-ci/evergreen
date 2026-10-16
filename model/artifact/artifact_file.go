@@ -146,10 +146,19 @@ func StripHiddenFiles(ctx context.Context, files []File, hasUser bool, resolver 
 	return publicFiles, nil
 }
 
-func lazySignURL(baseURL, taskID string, execution int, fileName string, appSecret []byte) string {
-	token, expiry := GenerateSignToken(appSecret, taskID, execution, fileName)
+// signURLLifetime returns how long a lazy sign URL for the file stays valid,
+// which matches how long an eagerly presigned URL for it would last.
+func signURLLifetime(file File) time.Duration {
+	if file.PresignDuration != 0 {
+		return file.PresignDuration
+	}
+	return pail.PresignExpireTime
+}
+
+func lazySignURL(baseURL, taskID string, execution int, file File, appSecret []byte) string {
+	token, expiry := GenerateSignToken(appSecret, taskID, execution, file.Name, signURLLifetime(file))
 	return fmt.Sprintf("%s/rest/v2/tasks/%s/artifact/sign?execution=%d&name=%s&token=%s&exp=%d",
-		baseURL, url.PathEscape(taskID), execution, url.QueryEscape(fileName), url.QueryEscape(token), expiry)
+		baseURL, url.PathEscape(taskID), execution, url.QueryEscape(file.Name), url.QueryEscape(token), expiry)
 }
 
 // StripHiddenFilesLazy filters files by visibility and replaces signed file
@@ -164,7 +173,7 @@ func StripHiddenFilesLazy(files []File, hasUser bool, baseURL string, taskID str
 		case (file.Visibility == Private || file.Visibility == Signed) && !hasUser:
 			continue
 		case file.Visibility == Signed && hasUser:
-			file.Link = lazySignURL(baseURL, taskID, execution, file.Name, appSecret)
+			file.Link = lazySignURL(baseURL, taskID, execution, file, appSecret)
 			publicFiles = append(publicFiles, file)
 		default:
 			publicFiles = append(publicFiles, file)

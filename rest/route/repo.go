@@ -181,6 +181,14 @@ func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating owner and repo"))
 	}
 
+	// Owner and repo fields are immutable.
+	if h.newRepoRef.Owner != h.originalRepoRef.Owner || h.newRepoRef.Repo != h.originalRepoRef.Repo {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "owner and repo fields are immutable",
+		})
+	}
+
 	before, err := dbModel.GetProjectSettings(ctx, &h.originalRepoRef.ProjectRef)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting original repo settings for repo '%s'", h.repoID))
