@@ -199,6 +199,40 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 
 			checkTaskRestarted(t, j.task.Id, 0, evergreen.TaskDescriptionStranded)
 		},
+		"StaleCopyOfPreviousExecutionShouldNotFailNewExecutionOrClearNewHost": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, v model.Version) {
+			require.NoError(t, v.Insert(t.Context()))
+			oldHost, err := host.FindOneId(ctx, hostID)
+			require.NoError(t, err)
+			require.NotZero(t, oldHost)
+			require.NoError(t, oldHost.ClearRunningTask(ctx))
+			const newHostID = "new_host_id"
+			newExecution := *j.task
+			newExecution.Execution = 1
+			newExecution.Status = evergreen.TaskDispatched
+			newExecution.HostId = newHostID
+			require.NoError(t, newExecution.Insert(t.Context()))
+			newHost := host.Host{
+				Id:                   newHostID,
+				Status:               evergreen.HostRunning,
+				RunningTask:          newExecution.Id,
+				RunningTaskExecution: newExecution.Execution,
+			}
+			require.NoError(t, newHost.Insert(ctx))
+
+			j.Run(ctx)
+			require.NoError(t, j.Error())
+
+			dbTask, err := task.FindOneId(ctx, newExecution.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.Equal(t, 1, dbTask.Execution)
+			assert.Equal(t, evergreen.TaskDispatched, dbTask.Status)
+			dbHost, err := host.FindOneId(ctx, newHostID)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, newExecution.Id, dbHost.RunningTask)
+			assert.Equal(t, newExecution.Execution, dbHost.RunningTaskExecution)
+		},
 		"NoopsForActiveTask": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, _ model.Version) {
 			j.task.LastHeartbeat = time.Now()
 			require.NoError(t, j.task.Insert(t.Context()))

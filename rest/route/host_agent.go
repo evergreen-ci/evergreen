@@ -1164,18 +1164,14 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting running task '%s' execution '%d'", h.RunningTask, h.RunningTaskExecution))
 	}
-	if t == nil {
-		grip.Notice(ctx, getMessage("clearing host's running task because it does not exist"))
-		// Need to store the running task and execution here because
-		// ClearRunningTask will unset them.
-		runningTask := h.RunningTask
-		runningTaskExec := h.RunningTaskExecution
+	// An archived execution can never run again, so the host must move on.
+	if t == nil || t.Archived {
+		grip.Notice(ctx, getMessage("clearing host's running task because it does not exist or is archived"))
 		if err := h.ClearRunningTask(ctx); err != nil {
-			grip.Error(ctx, message.WrapError(err, getMessage("could not clear host's nonexistent running task")))
+			grip.Error(ctx, message.WrapError(err, getMessage("could not clear host's running task")))
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
-		err := errors.Errorf("host's running task '%s' execution '%d' not found", runningTask, runningTaskExec)
-		return gimlet.MakeJSONInternalErrorResponder(err)
+		return gimlet.NewJSONResponse(response)
 	}
 
 	if t.IsStuckTask() {

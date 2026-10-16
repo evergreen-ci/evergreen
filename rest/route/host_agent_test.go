@@ -471,6 +471,43 @@ func TestHostNextTask(t *testing.T) {
 					assert.Equal(t, evergreen.TaskFailed, previouslyStuckTask.Status)
 
 				},
+				"RunningTaskThatIsArchivedShouldClearHostAndReturnNoTask": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
+					const archivedTaskID = "archivedTask"
+					archivedExecution := task.Task{
+						Id:        task.MakeOldID(archivedTaskID, 1),
+						OldTaskId: archivedTaskID,
+						Archived:  true,
+						Execution: 1,
+						Status:    evergreen.TaskFailed,
+						Activated: true,
+						BuildId:   "anotherBuild",
+					}
+					require.NoError(t, db.Insert(ctx, task.OldCollection, archivedExecution))
+					hostWithArchivedTask := host.Host{
+						Id:                   "hostWithArchivedTask",
+						Secret:               hostSecret,
+						RunningTask:          archivedTaskID,
+						RunningTaskExecution: 1,
+						AgentRevision:        evergreen.AgentVersion,
+						Provisioned:          true,
+						Status:               evergreen.HostRunning,
+					}
+					require.NoError(t, hostWithArchivedTask.Insert(ctx))
+
+					rh.host = &hostWithArchivedTask
+					rh.hostID = hostWithArchivedTask.Id
+					resp := rh.Run(ctx)
+					require.NotNil(t, resp)
+					assert.Equal(t, http.StatusOK, resp.Status())
+					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
+					require.True(t, ok, resp.Data())
+					assert.Empty(t, taskResp.TaskId)
+
+					dbHost, err := host.FindOneId(ctx, hostWithArchivedTask.Id)
+					require.NoError(t, err)
+					require.NotZero(t, dbHost)
+					assert.Empty(t, dbHost.RunningTask)
+				},
 				"WithAnUndispatchedTaskButAHostThatHasThatTaskAsARunningTask": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
 					t1 := task.Task{
 						Id:        "t1",
@@ -534,7 +571,7 @@ func TestHostNextTask(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					require.NoError(t, db.ClearCollections(host.Collection, task.Collection))
+					require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection))
 					h2 := host.Host{
 						Id:                   "anotherHost",
 						Secret:               hostSecret,
@@ -584,7 +621,7 @@ func TestHostNextTask(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			ctx := t.Context()
 
-			colls := []string{model.ProjectRefCollection, host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection,
+			colls := []string{model.ProjectRefCollection, host.Collection, task.Collection, task.OldCollection, model.TaskQueuesCollection, build.Collection,
 				evergreen.ConfigCollection, distro.Collection, model.VersionCollection}
 			require.NoError(t, db.ClearCollections(colls...))
 			defer func() {

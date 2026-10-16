@@ -1269,6 +1269,12 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 
 	updates := model.StatusChanges{}
 	if err = model.MarkStart(ctx, t, &updates); err != nil {
+		if errors.Is(err, model.ErrTaskStateChanged) {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusConflict,
+				Message:    fmt.Sprintf("task '%s' execution %d is not dispatched", t.Id, t.Execution),
+			})
+		}
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "marking task '%s' started", t.Id))
 	}
 	model.UpdateOtelMetadata(ctx, t, h.taskStartInfo.DiskDevices, h.taskStartInfo.TraceID)
