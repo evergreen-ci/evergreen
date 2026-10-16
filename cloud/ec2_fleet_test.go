@@ -240,34 +240,18 @@ func TestFleet(t *testing.T) {
 			assert.Equal(t, "vol-12345", dbHost.Volumes[0].VolumeID)
 			assert.Equal(t, "/dev/sda1", dbHost.Volumes[0].DeviceName)
 		},
-		"GetRunningInstanceDataReturnsProviderDataForInstanceID": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
-			instanceID, data, err := m.GetRunningInstanceData(ctx, h)
-			require.NoError(t, err)
-			require.NotNil(t, data)
-			assert.Equal(t, h.Id, instanceID)
-			assert.Equal(t, "public_dns_name", data.PublicDNS)
-			assert.Equal(t, MockIPV4, data.PrivateIPv4)
-			assert.Equal(t, MockIPV6, data.IPv6)
-
-			require.NotNil(t, client.DescribeInstancesInput)
-			assert.Equal(t, []string{h.Id}, client.DescribeInstancesInput.InstanceIds)
-			assert.Empty(t, client.DescribeInstancesInput.Filters)
-		},
-		"GetRunningInstanceDataLooksUpIntentHostByRunningTaggedInstance": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
+		"GetRunningInstanceIDLooksUpIntentHostByRunningTaggedInstance": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
 			h.Id = "evg-12345"
 			h.Distro.Id = "distro_id"
 			client.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{
-				Reservations: []types.Reservation{{Instances: []types.Instance{runningInstance("i-12345")}}},
+				Reservations: []types.Reservation{{Instances: []types.Instance{{InstanceId: aws.String("i-12345")}}}},
 			}
 
-			instanceID, data, err := m.GetRunningInstanceData(ctx, h)
+			instanceID, err := m.GetRunningInstanceID(ctx, h)
 			require.NoError(t, err)
-			require.NotNil(t, data)
 			assert.Equal(t, "i-12345", instanceID)
-			assert.Equal(t, "public_dns_name", data.PublicDNS)
 
 			require.NotNil(t, client.DescribeInstancesInput)
-			assert.Empty(t, client.DescribeInstancesInput.InstanceIds)
 			filters := map[string][]string{}
 			for _, f := range client.DescribeInstancesInput.Filters {
 				filters[utility.FromStringPtr(f.Name)] = f.Values
@@ -278,18 +262,17 @@ func TestFleet(t *testing.T) {
 				"instance-state-name":        {string(types.InstanceStateNameRunning)},
 			}, filters)
 		},
-		"GetRunningInstanceDataErrorsForMultipleInstances": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
+		"GetRunningInstanceIDErrorsForMultipleInstances": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
 			h.Id = "evg-12345"
 			client.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{
 				Reservations: []types.Reservation{
-					{Instances: []types.Instance{runningInstance("i-12345")}},
-					{Instances: []types.Instance{runningInstance("i-67890")}},
+					{Instances: []types.Instance{{InstanceId: aws.String("i-12345")}}},
+					{Instances: []types.Instance{{InstanceId: aws.String("i-67890")}}},
 				},
 			}
 
-			_, data, err := m.GetRunningInstanceData(ctx, h)
+			_, err := m.GetRunningInstanceID(ctx, h)
 			assert.Error(t, err)
-			assert.Nil(t, data)
 		},
 		"GetInstanceInformation": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
 			info, err := m.GetInstanceState(ctx, h)
@@ -1034,19 +1017,4 @@ func TestInstanceTypeAZCache(t *testing.T) {
 	azsWithInstanceType, err = cache.subnetsWithInstanceType(t.Context(), settings, defaultRegionClient, instanceTypeCacheKey{instanceType: "not_supported", region: evergreen.DefaultEC2Region})
 	assert.NoError(t, err)
 	assert.Empty(t, azsWithInstanceType)
-}
-
-// runningInstance returns a running EC2 instance with the minimum data needed to
-// make its cloud provider data.
-func runningInstance(instanceID string) types.Instance {
-	return types.Instance{
-		InstanceId: aws.String(instanceID),
-		State:      &types.InstanceState{Name: types.InstanceStateNameRunning},
-		LaunchTime: aws.Time(time.Now()),
-		Placement: &types.Placement{
-			AvailabilityZone: aws.String("us-east-1a"),
-		},
-		PublicDnsName:    aws.String("public_dns_name"),
-		PrivateIpAddress: aws.String(MockIPV4),
-	}
 }

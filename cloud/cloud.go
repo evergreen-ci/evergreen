@@ -115,22 +115,17 @@ type BatchManager interface {
 	GetInstanceStatuses(context.Context, []host.Host) (map[string]CloudStatus, error)
 }
 
-// InstanceDataManager is a cloud manager that can look up a host's instance
-// data from the cloud provider.
-type InstanceDataManager interface {
-	// GetRunningInstanceData returns the instance ID and data of the single
-	// running instance backing the host.
-	GetRunningInstanceData(ctx context.Context, h *host.Host) (string, *host.CloudProviderData, error)
+// InstanceIDManager is a cloud manager that can look up a host's instance ID
+// from the cloud provider.
+type InstanceIDManager interface {
+	// GetRunningInstanceID returns the instance ID of the single running
+	// instance backing the host.
+	GetRunningInstanceID(ctx context.Context, h *host.Host) (string, error)
 }
 
-var (
-	_ InstanceDataManager = &ec2FleetManager{}
-	_ InstanceDataManager = &mockManager{}
-)
-
-// SupportsInstanceData returns whether the cloud provider's manager is an
-// InstanceDataManager.
-func SupportsInstanceData(provider string) bool {
+// SupportsInstanceID returns whether the cloud provider's manager is an
+// InstanceIDManager.
+func SupportsInstanceID(provider string) bool {
 	return evergreen.IsEc2Provider(provider) || provider == evergreen.ProviderNameMock
 }
 

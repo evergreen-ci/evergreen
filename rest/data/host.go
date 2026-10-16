@@ -352,8 +352,6 @@ func makeSpawnOptions(options *restmodel.HostRequestOptions, user *user.DBUser) 
 
 var errInstanceIDMismatch = errors.New("instance ID does not match cloud provider")
 
-const cloudProviderLookupTimeout = 30 * time.Second
-
 // PostHostIsUp indicates to the app server that a host is up. The metadata in
 // params is only used for task hosts that are not provisioned yet.
 func PostHostIsUp(ctx context.Context, env evergreen.Environment, hostID string, params host.HostMetadataOptions) (*restmodel.APIHost, error) {
@@ -403,58 +401,59 @@ func PostHostIsUp(ctx context.Context, env evergreen.Environment, hostID string,
 // updateHostMetadata fixes intent hosts that are already running and caches
 // metadata for task hosts that are not provisioned yet.
 func updateHostMetadata(ctx context.Context, env evergreen.Environment, h *host.Host, params host.HostMetadataOptions) error {
-	isUnprovisionedTaskHost := h.StartedBy == evergreen.User && !h.Provisioned
+	isTaskHost := h.StartedBy == evergreen.User
 
-	if host.IsIntentHostId(h.Id) {
-		if !cloud.SupportsInstanceData(h.Distro.Provider) {
-			return nil
-		}
-		lookupCtx, cancel := context.WithTimeout(ctx, cloudProviderLookupTimeout)
-		defer cancel()
-		instanceID, data, err := getRunningInstanceData(lookupCtx, env, h)
-		if err != nil {
-			return errors.Wrap(err, "getting running instance data for intent host")
+	if host.IsIntentHostId(h.Id) && cloud.SupportsInstanceID(h.Distro.Provider) {
+		instanceID := params.EC2InstanceID
+		if !isTaskHost {
+			// Users can have root access on non-task hosts (e.g. spawn hosts),
+			// so the instance ID they report can't be trusted.
+			var err error
+			instanceID, err = getRunningInstanceID(ctx, env, h)
+			if err != nil {
+				return errors.Wrap(err, "getting running instance ID for intent host")
+			}
 		}
 		// This replaces h.Id with the real instance ID.
 		if err := fixProvisioningIntentHost(ctx, env, h, instanceID, params.EC2InstanceID); err != nil {
 			return errors.Wrap(err, "fixing intent host")
 		}
-		if isUnprovisionedTaskHost && h.Status != evergreen.HostDecommissioned {
-			return errors.Wrap(h.SetEC2Metadata(ctx, host.HostMetadataOptions{CloudProviderData: *data}), "setting host metadata from cloud provider")
-		}
-		return nil
 	}
 
-	if isUnprovisionedTaskHost {
+	// Task hosts report their metadata from the provisioning script at boot,
+	// before any task code runs and without user access, so it's trusted to
+	// skip waiting for the cloud host ready job to describe the instance.
+	if isTaskHost && !h.Provisioned && h.Status != evergreen.HostDecommissioned {
 		return errors.Wrap(h.SetEC2Metadata(ctx, params), "setting host metadata")
 	}
 
 	return nil
 }
 
-// getRunningInstanceData returns the instance ID and cloud provider data for
-// the host from its cloud provider.
-func getRunningInstanceData(ctx context.Context, env evergreen.Environment, h *host.Host) (string, *host.CloudProviderData, error) {
+// getRunningInstanceID returns the host's instance ID from its cloud provider.
+func getRunningInstanceID(ctx context.Context, env evergreen.Environment, h *host.Host) (string, error) {
 	mgrOpts, err := cloud.GetManagerOptions(ctx, h.Distro)
 	if err != nil {
-		return "", nil, errors.Wrapf(err, "getting cloud manager options for distro '%s'", h.Distro.Id)
+		return "", errors.Wrapf(err, "getting cloud manager options for distro '%s'", h.Distro.Id)
 	}
 	mgr, err := cloud.GetManager(ctx, env, mgrOpts)
 	if err != nil {
-		return "", nil, errors.Wrap(err, "getting cloud manager")
+		return "", errors.Wrap(err, "getting cloud manager")
 	}
-	instanceDataMgr, ok := mgr.(cloud.InstanceDataManager)
+	instanceIDMgr, ok := mgr.(cloud.InstanceIDManager)
 	if !ok {
-		return "", nil, errors.Errorf("cloud manager for provider '%s' cannot get instance data", mgrOpts.Provider)
+		return "", errors.Errorf("cloud manager for provider '%s' cannot get instance ID", mgrOpts.Provider)
 	}
-	return instanceDataMgr.GetRunningInstanceData(ctx, h)
+	return instanceIDMgr.GetRunningInstanceID(ctx, h)
 }
 
 // fixProvisioningIntentHost fixes a special case in which Evergreen believes a
 // host is still an intent host but the host is already running and trying to
-// provision in preparation to run tasks. instanceID must come from the cloud
-// provider.
+// provision in preparation to run tasks.
 func fixProvisioningIntentHost(ctx context.Context, env evergreen.Environment, h *host.Host, instanceID, claimedInstanceID string) error {
+	if instanceID == "" {
+		return errors.New("intent host is up, but it did not provide an EC2 instance ID, which is required")
+	}
 	if claimedInstanceID != "" && claimedInstanceID != instanceID {
 		grip.Warning(ctx, message.Fields{
 			"message":             "intent host reported mismatched instance ID",

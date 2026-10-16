@@ -393,51 +393,40 @@ func (m *ec2FleetManager) GetInstanceState(ctx context.Context, h *host.Host) (C
 	return info, nil
 }
 
-// GetRunningInstanceData returns the instance ID and cloud provider data of the
-// running EC2 instance backing the host.
-func (m *ec2FleetManager) GetRunningInstanceData(ctx context.Context, h *host.Host) (string, *host.CloudProviderData, error) {
+// GetRunningInstanceID returns the instance ID of the running EC2 instance
+// backing the host.
+func (m *ec2FleetManager) GetRunningInstanceID(ctx context.Context, h *host.Host) (string, error) {
+	if !host.IsIntentHostId(h.Id) {
+		return h.Id, nil
+	}
 	if err := m.setupClient(ctx); err != nil {
-		return "", nil, errors.Wrap(err, "creating client")
+		return "", errors.Wrap(err, "creating client")
 	}
 
-	input := &ec2.DescribeInstancesInput{InstanceIds: []string{h.Id}}
-	if host.IsIntentHostId(h.Id) {
-		// Prior launch attempts for the same intent host may have left behind
-		// terminated instances with the same tags.
-		input = &ec2.DescribeInstancesInput{
-			Filters: []types.Filter{
-				{Name: aws.String("tag:" + evergreen.TagName), Values: []string{h.Id}},
-				{Name: aws.String("tag:" + evergreen.TagDistro), Values: []string{h.Distro.Id}},
-				{Name: aws.String("instance-state-name"), Values: []string{string(types.InstanceStateNameRunning)}},
-			},
+	// Prior launch attempts for the same intent host may have left behind
+	// terminated instances with the same tags.
+	out, err := m.client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
+		Filters: []types.Filter{
+			{Name: aws.String("tag:" + evergreen.TagName), Values: []string{h.Id}},
+			{Name: aws.String("tag:" + evergreen.TagDistro), Values: []string{h.Distro.Id}},
+			{Name: aws.String("instance-state-name"), Values: []string{string(types.InstanceStateNameRunning)}},
+		},
+	})
+	if err != nil {
+		return "", errors.Wrap(err, "describing instances")
+	}
+
+	var instanceIDs []string
+	for _, reservation := range out.Reservations {
+		for _, instance := range reservation.Instances {
+			instanceIDs = append(instanceIDs, utility.FromStringPtr(instance.InstanceId))
 		}
 	}
-	out, err := m.client.DescribeInstances(ctx, input)
-	if err != nil {
-		return "", nil, errors.Wrap(err, "describing instances")
-	}
-	if err := validateEc2DescribeInstancesOutput(out); err != nil {
-		return "", nil, errors.Wrap(err, "invalid describe instances response")
+	if len(instanceIDs) != 1 {
+		return "", errors.Errorf("expected exactly one running instance for host '%s' but found %d", h.Id, len(instanceIDs))
 	}
 
-	var instances []types.Instance
-	for _, reservation := range out.Reservations {
-		instances = append(instances, reservation.Instances...)
-	}
-	if len(instances) != 1 {
-		return "", nil, errors.Errorf("expected exactly one instance for host '%s' but found %d", h.Id, len(instances))
-	}
-	instance := instances[0]
-	if status := ec2StateToEvergreenStatus(ctx, instance.State); status != StatusRunning {
-		return "", nil, errors.Errorf("instance for host '%s' is in state '%s', not running", h.Id, status)
-	}
-
-	data, err := makeCloudProviderData(&instance)
-	if err != nil {
-		return "", nil, errors.Wrapf(err, "making cloud provider data for host '%s'", h.Id)
-	}
-
-	return utility.FromStringPtr(instance.InstanceId), data, nil
+	return instanceIDs[0], nil
 }
 
 func (m *ec2FleetManager) CheckInstanceType(ctx context.Context, instanceType string) error {

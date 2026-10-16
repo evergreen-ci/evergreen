@@ -1122,14 +1122,6 @@ func TestHostIsUpPostHandler(t *testing.T) {
 		return "i-" + utility.RandomString()
 	}
 
-	providerData := host.CloudProviderData{
-		PublicDNS:   "provider-hostname",
-		Zone:        "provider-zone",
-		PublicIPv4:  "provider-public-ipv4",
-		PrivateIPv4: "provider-private-ipv4",
-		IPv6:        "provider-ipv6",
-		StartedAt:   time.Now(),
-	}
 	claimedData := host.CloudProviderData{
 		PublicDNS:   "claimed-hostname",
 		Zone:        "claimed-zone",
@@ -1143,11 +1135,10 @@ func TestHostIsUpPostHandler(t *testing.T) {
 	}
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, mockCloud cloud.MockProvider){
-		"ConvertsBuildingIntentHostToStartingRealHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, mockCloud cloud.MockProvider) {
+		"ConvertsBuildingIntentHostToStartingRealHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, _ cloud.MockProvider) {
 			h.StartedBy = evergreen.User
 			require.NoError(t, h.Insert(ctx))
 			instanceID := generateFakeEC2InstanceID()
-			mockCloud.Set(h.Id, cloud.MockInstance{Status: cloud.StatusRunning, InstanceID: instanceID, CloudProviderData: providerData})
 
 			rh.params = host.HostMetadataOptions{
 				CloudProviderData: claimedData,
@@ -1173,13 +1164,13 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			require.NotZero(t, realHost)
 			assert.Equal(t, evergreen.HostStarting, realHost.Status, "intent host should be converted to real host when it's up")
 			assert.False(t, realHost.NeedsNewAgentMonitor)
-			assert.Equal(t, providerData.PublicDNS, realHost.Host)
+			assert.Equal(t, claimedData.PublicDNS, realHost.Host)
 		},
 		"ConvertsFailedIntentHostToDecommissionedRealHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, mockCloud cloud.MockProvider) {
 			h.Status = evergreen.HostBuildingFailed
 			require.NoError(t, h.Insert(ctx))
 			instanceID := generateFakeEC2InstanceID()
-			mockCloud.Set(h.Id, cloud.MockInstance{Status: cloud.StatusRunning, InstanceID: instanceID, CloudProviderData: providerData})
+			mockCloud.Set(h.Id, cloud.MockInstance{Status: cloud.StatusRunning, InstanceID: instanceID})
 
 			rh.params = host.HostMetadataOptions{
 				EC2InstanceID: instanceID,
@@ -1210,7 +1201,7 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			h.Status = evergreen.HostBuildingFailed
 			require.NoError(t, h.Insert(ctx))
 			providerInstanceID := generateFakeEC2InstanceID()
-			mockCloud.Set(h.Id, cloud.MockInstance{Status: cloud.StatusRunning, InstanceID: providerInstanceID, CloudProviderData: providerData})
+			mockCloud.Set(h.Id, cloud.MockInstance{Status: cloud.StatusRunning, InstanceID: providerInstanceID})
 
 			claimedInstanceID := generateFakeEC2InstanceID()
 			rh.params = host.HostMetadataOptions{
