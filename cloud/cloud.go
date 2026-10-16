@@ -115,13 +115,11 @@ type BatchManager interface {
 	GetInstanceStatuses(context.Context, []host.Host) (map[string]CloudStatus, error)
 }
 
-// InstanceDataManager is an interface for cloud providers that can look up a
-// host's instance data directly from the provider.
+// InstanceDataManager is a cloud manager that can look up a host's instance
+// data from the cloud provider.
 type InstanceDataManager interface {
-	// GetRunningInstanceData returns the instance ID and cloud provider data
-	// of the running instance backing the host. Intent hosts are looked up by
-	// their intent host ID tag. It returns an error if the provider does not
-	// have exactly one running instance for the host.
+	// GetRunningInstanceData returns the instance ID and data of the single
+	// running instance backing the host.
 	GetRunningInstanceData(ctx context.Context, h *host.Host) (string, *host.CloudProviderData, error)
 }
 

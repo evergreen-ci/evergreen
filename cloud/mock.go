@@ -36,11 +36,9 @@ type MockInstance struct {
 	Tags               []host.Tag
 	Type               string
 	BlockDevices       []string
-	// InstanceID is the cloud instance ID backing the host. If empty, the host
-	// ID is used as the instance ID.
-	InstanceID string
-	// CloudProviderData is the instance data returned by
-	// GetRunningInstanceData.
+	// InstanceID is the instance ID returned by GetRunningInstanceData. It
+	// defaults to the host ID.
+	InstanceID        string
 	CloudProviderData host.CloudProviderData
 }
 
@@ -264,9 +262,8 @@ func (m *mockManager) getOrDefaultInstanceStatus(ctx context.Context, hostID str
 	return instance.Status
 }
 
-// GetRunningInstanceData returns the instance ID and cloud provider data of the
-// running mock instance for the host. Unlike EC2, intent hosts are looked up by
-// host ID rather than by tag.
+// GetRunningInstanceData returns the instance ID and data of the running mock
+// instance for the host.
 func (m *mockManager) GetRunningInstanceData(ctx context.Context, h *host.Host) (string, *host.CloudProviderData, error) {
 	m.mutex.RLock()
 	instance, ok := m.Instances[h.Id]

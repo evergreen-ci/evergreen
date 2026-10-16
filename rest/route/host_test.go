@@ -1122,35 +1122,28 @@ func TestHostIsUpPostHandler(t *testing.T) {
 		return "i-" + utility.RandomString()
 	}
 
-	// providerData is the instance data that the cloud provider reports.
 	providerData := host.CloudProviderData{
 		PublicDNS:   "provider-hostname",
 		Zone:        "provider-zone",
 		PublicIPv4:  "provider-public-ipv4",
 		PrivateIPv4: "provider-private-ipv4",
 		IPv6:        "provider-ipv6",
-		StartedAt:   time.Now().Round(time.Second),
-		Volumes: []host.VolumeAttachment{{
-			VolumeID:   "provider-vol",
-			DeviceName: "/dev/sda1",
-		}},
+		StartedAt:   time.Now(),
 	}
-	// claimedData is metadata that a host reports about itself.
 	claimedData := host.CloudProviderData{
-		PublicDNS:   "victim-hostname",
-		Zone:        "forged-zone",
-		PublicIPv4:  "forged-public-ipv4",
-		PrivateIPv4: "forged-private-ipv4",
-		IPv6:        "forged-ipv6",
-		StartedAt:   time.Now().Add(-time.Hour),
+		PublicDNS:   "claimed-hostname",
+		Zone:        "claimed-zone",
+		PublicIPv4:  "claimed-public-ipv4",
+		PrivateIPv4: "claimed-private-ipv4",
+		IPv6:        "claimed-ipv6",
+		StartedAt:   time.Now(),
 		Volumes: []host.VolumeAttachment{{
-			VolumeID: "vol-forged",
-			IsHome:   true,
+			VolumeID: "claimed-vol",
 		}},
 	}
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, mockCloud cloud.MockProvider){
-		"ConvertsBuildingIntentHostToStartingRealHostUsingProviderInstanceID": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, mockCloud cloud.MockProvider) {
+		"ConvertsBuildingIntentHostToStartingRealHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, mockCloud cloud.MockProvider) {
 			h.StartedBy = evergreen.User
 			require.NoError(t, h.Insert(ctx))
 			instanceID := generateFakeEC2InstanceID()
@@ -1181,33 +1174,8 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			assert.Equal(t, evergreen.HostStarting, realHost.Status, "intent host should be converted to real host when it's up")
 			assert.False(t, realHost.NeedsNewAgentMonitor)
 			assert.Equal(t, providerData.PublicDNS, realHost.Host)
-			assert.Equal(t, providerData.Zone, realHost.Zone)
-			assert.Equal(t, providerData.PublicIPv4, realHost.PublicIPv4)
-			assert.Equal(t, providerData.PrivateIPv4, realHost.IPv4)
-			assert.Equal(t, providerData.IPv6, realHost.IP)
 		},
-		"ConvertsIntentHostWithoutClaimedInstanceIDUsingProviderInstanceID": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, mockCloud cloud.MockProvider) {
-			require.NoError(t, h.Insert(ctx))
-			instanceID := generateFakeEC2InstanceID()
-			mockCloud.Set(h.Id, cloud.MockInstance{Status: cloud.StatusRunning, InstanceID: instanceID, CloudProviderData: providerData})
-
-			rh.params = host.HostMetadataOptions{}
-			rh.hostID = h.Id
-			resp := rh.Run(ctx)
-
-			require.NotZero(t, resp)
-			assert.Equal(t, http.StatusOK, resp.Status())
-
-			dbIntentHost, err := host.FindOneId(ctx, h.Id)
-			require.NoError(t, err)
-			assert.Zero(t, dbIntentHost)
-
-			realHost, err := host.FindOneId(ctx, instanceID)
-			require.NoError(t, err)
-			require.NotZero(t, realHost)
-			assert.Equal(t, evergreen.HostStarting, realHost.Status)
-		},
-		"ConvertsFailedIntentHostToDecommissionedRealHostUsingProviderInstanceID": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, mockCloud cloud.MockProvider) {
+		"ConvertsFailedIntentHostToDecommissionedRealHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, mockCloud cloud.MockProvider) {
 			h.Status = evergreen.HostBuildingFailed
 			require.NoError(t, h.Insert(ctx))
 			instanceID := generateFakeEC2InstanceID()
@@ -1266,30 +1234,7 @@ func TestHostIsUpPostHandler(t *testing.T) {
 				assert.Zero(t, dbHost)
 			}
 		},
-		"IntentHostWithoutRunningInstanceShouldError": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, mockCloud cloud.MockProvider) {
-			require.NoError(t, h.Insert(ctx))
-
-			instanceID := generateFakeEC2InstanceID()
-			rh.params = host.HostMetadataOptions{
-				EC2InstanceID: instanceID,
-			}
-			rh.hostID = h.Id
-
-			resp := rh.Run(ctx)
-
-			require.NotZero(t, resp)
-			assert.Equal(t, http.StatusInternalServerError, resp.Status())
-
-			dbIntentHost, err := host.FindOneId(ctx, h.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbIntentHost, "intent host should not be replaced")
-			assert.Equal(t, evergreen.HostBuilding, dbIntentHost.Status)
-
-			dbHost, err := host.FindOneId(ctx, instanceID)
-			require.NoError(t, err)
-			assert.Zero(t, dbHost)
-		},
-		"UnprovisionedTaskHostShouldStoreClaimedMetadata": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, _ cloud.MockProvider) {
+		"SetsHostnameForNonIntentHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, _ cloud.MockProvider) {
 			instanceID := generateFakeEC2InstanceID()
 			h.Id = instanceID
 			h.Status = evergreen.HostStarting
@@ -1297,8 +1242,18 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			require.NoError(t, h.Insert(ctx))
 
 			rh.params = host.HostMetadataOptions{
-				CloudProviderData: claimedData,
-				EC2InstanceID:     instanceID,
+				CloudProviderData: host.CloudProviderData{
+					PublicDNS:   "hostname",
+					Zone:        "zone",
+					PublicIPv4:  "ipv4",
+					PrivateIPv4: "private",
+					IPv6:        "ipv6",
+					StartedAt:   time.Now(),
+					Volumes: []host.VolumeAttachment{{
+						VolumeID: "vol1",
+					}},
+				},
+				EC2InstanceID: instanceID,
 			}
 			rh.hostID = instanceID
 
@@ -1306,19 +1261,20 @@ func TestHostIsUpPostHandler(t *testing.T) {
 
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
+			apiHost, ok := resp.Data().(*restmodel.APIHost)
+			require.True(t, ok, resp.Data())
+			require.NotZero(t, apiHost)
+			assert.Equal(t, instanceID, utility.FromStringPtr(apiHost.Id))
+			assert.Equal(t, evergreen.HostStarting, utility.FromStringPtr(apiHost.Status))
 
 			dbHost, err := host.FindOneId(ctx, instanceID)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
-			assert.Equal(t, evergreen.HostStarting, dbHost.Status)
-			assert.True(t, dbHost.Provisioned)
-			assert.Equal(t, claimedData.PublicDNS, dbHost.Host)
-			assert.Equal(t, claimedData.Zone, dbHost.Zone)
-			assert.Equal(t, claimedData.PublicIPv4, dbHost.PublicIPv4)
-			assert.Equal(t, claimedData.PrivateIPv4, dbHost.IPv4)
-			assert.Equal(t, claimedData.IPv6, dbHost.IP)
+			assert.Equal(t, evergreen.HostStarting, dbHost.Status, "host should not be modified if it's not an intent host")
+			assert.False(t, dbHost.NeedsNewAgentMonitor)
+			assert.Equal(t, rh.params.PublicDNS, dbHost.Host)
 		},
-		"ProvisionedTaskHostWithClaimedMetadataShouldNotChangeHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, _ cloud.MockProvider) {
+		"DoesNotSetMetadataForProvisionedTaskHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, _ cloud.MockProvider) {
 			instanceID := generateFakeEC2InstanceID()
 			h.Id = instanceID
 			h.Host = "task-host-hostname"
@@ -1342,42 +1298,13 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, "task-host-hostname", dbHost.Host)
-			assert.Empty(t, dbHost.Zone)
-			assert.Empty(t, dbHost.IPv4)
-			assert.Empty(t, dbHost.Volumes)
 		},
-		"HostCreateHostWithClaimedMetadataShouldNotChangeHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, _ cloud.MockProvider) {
-			instanceID := generateFakeEC2InstanceID()
-			h.Id = instanceID
-			h.Status = evergreen.HostStarting
-			h.StartedBy = "task_id"
-			h.SpawnOptions.SpawnedByTask = true
-			require.NoError(t, h.Insert(ctx))
-
-			rh.params = host.HostMetadataOptions{
-				CloudProviderData: claimedData,
-				EC2InstanceID:     instanceID,
-			}
-			rh.hostID = instanceID
-
-			resp := rh.Run(ctx)
-
-			require.NotZero(t, resp)
-			assert.Equal(t, http.StatusOK, resp.Status())
-
-			dbHost, err := host.FindOneId(ctx, instanceID)
-			require.NoError(t, err)
-			require.NotZero(t, dbHost)
-			assert.False(t, dbHost.Provisioned)
-			assert.Empty(t, dbHost.Host)
-			assert.Empty(t, dbHost.Volumes)
-		},
-		"SpawnHostWithClaimedMetadataShouldNotChangeHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, _ cloud.MockProvider) {
+		"DoesNotSetMetadataForSpawnHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, _ cloud.MockProvider) {
 			instanceID := generateFakeEC2InstanceID()
 			h.Id = instanceID
 			h.Host = "spawn-host-hostname"
 			h.Status = evergreen.HostRunning
-			h.StartedBy = "attacker"
+			h.StartedBy = "user"
 			h.UserHost = true
 			require.NoError(t, h.Insert(ctx))
 
@@ -1396,14 +1323,9 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, "spawn-host-hostname", dbHost.Host)
-			assert.False(t, dbHost.Provisioned)
-			assert.Empty(t, dbHost.Zone)
-			assert.Empty(t, dbHost.PublicIPv4)
-			assert.Empty(t, dbHost.IPv4)
-			assert.Empty(t, dbHost.IP)
 			assert.Empty(t, dbHost.Volumes)
 		},
-		"NonIntentHostWithoutClaimedMetadataShouldRetainHostname": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, _ cloud.MockProvider) {
+		"DoesNotUnsetExistingHostnameIfHostnameNotProvided": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, _ cloud.MockProvider) {
 			instanceID := generateFakeEC2InstanceID()
 			h.Id = instanceID
 			h.Host = "hostname"

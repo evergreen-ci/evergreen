@@ -860,12 +860,13 @@ func isEC2InstanceNotFound(err error) bool {
 func terminatePreexistingInstance(ctx context.Context, client AWSClient, intentHostID string) error {
 	// Exclude shutting-down and terminated states so a prior termination call doesn't hide a newer live instance.
 	resp, err := client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
-		Filters: append(intentHostInstanceFilters(intentHostID),
-			types.Filter{Name: aws.String("instance-state-name"), Values: []string{
+		Filters: []types.Filter{
+			{Name: aws.String("tag:" + evergreen.TagName), Values: []string{intentHostID}},
+			{Name: aws.String("instance-state-name"), Values: []string{
 				string(types.InstanceStateNamePending),
 				string(types.InstanceStateNameRunning),
 			}},
-		),
+		},
 	})
 	if err != nil {
 		return errors.Wrapf(err, "checking for pre-existing cloud instances for host '%s'", intentHostID)
@@ -893,12 +894,6 @@ func terminatePreexistingInstance(ctx context.Context, client AWSClient, intentH
 		return errors.Wrapf(err, "terminating pre-existing instances for host '%s'", intentHostID)
 	}
 	return nil
-}
-
-// intentHostInstanceFilters returns the filters to find instances launched for
-// an intent host, whose name tag is set to the intent host ID before launch.
-func intentHostInstanceFilters(intentHostID string) []types.Filter {
-	return []types.Filter{{Name: aws.String("tag:" + evergreen.TagName), Values: []string{intentHostID}}}
 }
 
 func shouldAssignPublicIPv4Address(h *host.Host, ec2Settings *EC2ProviderSettings) bool {

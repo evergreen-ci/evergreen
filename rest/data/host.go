@@ -350,16 +350,12 @@ func makeSpawnOptions(options *restmodel.HostRequestOptions, user *user.DBUser) 
 	return &spawnOptions, nil
 }
 
-// errInstanceIDMismatch indicates that an intent host reported an instance ID
-// that does not match the one from its cloud provider.
-var errInstanceIDMismatch = errors.New("reported instance ID does not match cloud provider instance ID")
+var errInstanceIDMismatch = errors.New("instance ID does not match cloud provider")
 
-// cloudProviderLookupTimeout bounds how long the host is up request waits on
-// the cloud provider.
 const cloudProviderLookupTimeout = 30 * time.Second
 
-// PostHostIsUp indicates to the app server that a host is up. Metadata params are only
-// used for task hosts that are not provisioned yet, before any task has run on them.
+// PostHostIsUp indicates to the app server that a host is up. The metadata in
+// params is only used for task hosts that are not provisioned yet.
 func PostHostIsUp(ctx context.Context, env evergreen.Environment, hostID string, params host.HostMetadataOptions) (*restmodel.APIHost, error) {
 	h, err := host.FindOneByIdOrTag(ctx, hostID)
 	if err != nil {
@@ -419,8 +415,7 @@ func updateHostMetadata(ctx context.Context, env evergreen.Environment, h *host.
 		if err != nil {
 			return errors.Wrap(err, "getting running instance data for intent host")
 		}
-		// This replaces h.Id with the real instance ID, so the metadata below
-		// is written to the real host.
+		// This replaces h.Id with the real instance ID.
 		if err := fixProvisioningIntentHost(ctx, env, h, instanceID, params.EC2InstanceID); err != nil {
 			return errors.Wrap(err, "fixing intent host")
 		}
@@ -458,11 +453,11 @@ func getRunningInstanceData(ctx context.Context, env evergreen.Environment, h *h
 // fixProvisioningIntentHost fixes a special case in which Evergreen believes a
 // host is still an intent host but the host is already running and trying to
 // provision in preparation to run tasks. instanceID must come from the cloud
-// provider; claimedInstanceID is only used to detect a mismatch.
+// provider.
 func fixProvisioningIntentHost(ctx context.Context, env evergreen.Environment, h *host.Host, instanceID, claimedInstanceID string) error {
 	if claimedInstanceID != "" && claimedInstanceID != instanceID {
 		grip.Warning(ctx, message.Fields{
-			"message":             "intent host reported an instance ID that does not match its cloud provider instance ID",
+			"message":             "intent host reported mismatched instance ID",
 			"host_id":             h.Id,
 			"instance_id":         instanceID,
 			"claimed_instance_id": claimedInstanceID,

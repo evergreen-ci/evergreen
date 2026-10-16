@@ -402,14 +402,14 @@ func (m *ec2FleetManager) GetRunningInstanceData(ctx context.Context, h *host.Ho
 
 	input := &ec2.DescribeInstancesInput{InstanceIds: []string{h.Id}}
 	if host.IsIntentHostId(h.Id) {
-		// Filter to running instances because a previous attempt to launch the
-		// same intent host may have left behind terminated instances with the
-		// same tag.
+		// Prior launch attempts for the same intent host may have left behind
+		// terminated instances with the same tags.
 		input = &ec2.DescribeInstancesInput{
-			Filters: append(intentHostInstanceFilters(h.Id),
-				types.Filter{Name: aws.String("tag:" + evergreen.TagDistro), Values: []string{h.Distro.Id}},
-				types.Filter{Name: aws.String("instance-state-name"), Values: []string{string(types.InstanceStateNameRunning)}},
-			),
+			Filters: []types.Filter{
+				{Name: aws.String("tag:" + evergreen.TagName), Values: []string{h.Id}},
+				{Name: aws.String("tag:" + evergreen.TagDistro), Values: []string{h.Distro.Id}},
+				{Name: aws.String("instance-state-name"), Values: []string{string(types.InstanceStateNameRunning)}},
+			},
 		}
 	}
 	out, err := m.client.DescribeInstances(ctx, input)

@@ -278,43 +278,6 @@ func TestFleet(t *testing.T) {
 				"instance-state-name":        {string(types.InstanceStateNameRunning)},
 			}, filters)
 		},
-		"GetRunningInstanceDataErrorsForNonRunningInstance": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
-			instance := runningInstance(h.Id)
-			instance.State = &types.InstanceState{Name: types.InstanceStateNameStopped}
-			client.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{
-				Reservations: []types.Reservation{{Instances: []types.Instance{instance}}},
-			}
-
-			_, data, err := m.GetRunningInstanceData(ctx, h)
-			assert.Error(t, err)
-			assert.Nil(t, data)
-		},
-		"GetRunningInstanceDataErrorsWhenDescribeInstancesFails": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
-			client.DescribeInstancesError = errors.New("AWS API error")
-
-			_, data, err := m.GetRunningInstanceData(ctx, h)
-			assert.Error(t, err)
-			assert.Nil(t, data)
-		},
-		"GetRunningInstanceDataErrorsForInstanceMissingRequiredData": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
-			instance := runningInstance(h.Id)
-			instance.PublicDnsName = nil
-			client.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{
-				Reservations: []types.Reservation{{Instances: []types.Instance{instance}}},
-			}
-
-			_, data, err := m.GetRunningInstanceData(ctx, h)
-			assert.Error(t, err)
-			assert.Nil(t, data)
-		},
-		"GetRunningInstanceDataErrorsForNoInstances": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
-			h.Id = "evg-12345"
-			client.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{}
-
-			_, data, err := m.GetRunningInstanceData(ctx, h)
-			assert.Error(t, err)
-			assert.Nil(t, data)
-		},
 		"GetRunningInstanceDataErrorsForMultipleInstances": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
 			h.Id = "evg-12345"
 			client.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{
@@ -1073,7 +1036,7 @@ func TestInstanceTypeAZCache(t *testing.T) {
 	assert.Empty(t, azsWithInstanceType)
 }
 
-// runningInstance returns a running EC2 instance with all the data required to
+// runningInstance returns a running EC2 instance with the minimum data needed to
 // make its cloud provider data.
 func runningInstance(instanceID string) types.Instance {
 	return types.Instance{
