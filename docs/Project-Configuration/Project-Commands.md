@@ -1945,6 +1945,23 @@ empty test list to the output file so that no tests are excluded.
 When test selection excludes tests because they are quarantined, Evergreen records those tests on the task so the UI can
 show which tests were skipped due to quarantine. The command may be called multiple times in a task, so
 the recorded tests accumulate across calls and are deduplicated by test name within a single task execution.
+These snapshots and TSS metrics reflect the service's response before caller-side bypass restoration, so they may
+still list a test that the command restores.
+
+For patch requesters (including GitHub pull requests and merge queue patches), the command automatically reads the
+`test_selection_bypass_quarantine` expansion supplied through the existing patch parameter. When nonempty, it unions
+the bypass with a successful service response, then filters the input candidates in their original order. Only exact
+test-name matches are restored, without trimming, path normalization, or glob expansion. Matching candidates override
+all TSS strategies, not just quarantine, without changing global quarantine, scheduling tasks, or expanding suite/tag
+exclusions. API errors remain errors.
+
+The expansion must be a JSON array of nonempty strings. Missing or empty values and `[]` preserve existing behavior.
+Malformed JSON, `null`, non-array values, non-string elements, and empty names fail visibly when active patch selection
+consumes them. Mainline runs and selection/usage-rate no-ops ignore the bypass. Without nonempty `tests` or
+`tests_file` candidates, the command preserves the service's known-tests response without applying the bypass.
+There is no additional command parameter: see the [CLI example](../CLI#scoped-quarantine-bypass).
+Existing expansion precedence and parameter inheritance are unchanged; this command does not forward the parameter
+to downstream patches.
 
 ```yaml
 - command: test_selection.get

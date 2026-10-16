@@ -4,14 +4,17 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math/rand"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -163,6 +166,11 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 		trace.SpanFromContext(ctx).SetAttributes(attribute.Int(testSelectionInputNumTestsAttribute, len(c.Tests)))
 	}
 
+	bypass, err := getTestSelectionBypass(conf)
+	if err != nil {
+		return err
+	}
+
 	// Build the request using task information from TaskConfig.
 	request := model.SelectTestsRequest{
 		Project:      conf.Task.Project,
@@ -190,10 +198,47 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 	if err != nil {
 		return errors.Wrap(err, "calling test selection API")
 	}
+	if len(bypass) > 0 && len(c.Tests) > 0 {
+		allowed := make(map[string]bool, len(selectedTests)+len(bypass))
+		for _, name := range selectedTests {
+			allowed[name] = true
+		}
+		for _, name := range bypass {
+			allowed[name] = true
+		}
+		kept := make([]string, 0, len(c.Tests))
+		for _, name := range c.Tests {
+			if allowed[name] {
+				kept = append(kept, name)
+			}
+		}
+		selectedTests = kept
+	}
 	trace.SpanFromContext(ctx).SetAttributes(attribute.Int(testSelectionNumTestsReturnedAttribute, len(selectedTests)))
 
 	// Write the results to the output file.
 	return c.writeTestList(selectedTests)
+}
+
+func getTestSelectionBypass(conf *internal.TaskConfig) ([]string, error) {
+	if !evergreen.IsPatchRequester(conf.Task.Requester) {
+		return nil, nil
+	}
+	raw := conf.Expansions.Get("test_selection_bypass_quarantine")
+	if raw == "" {
+		return nil, nil
+	}
+	var bypass []string
+	if err := json.Unmarshal([]byte(raw), &bypass); err != nil {
+		return nil, errors.Wrap(err, "parsing test_selection_bypass_quarantine")
+	}
+	if bypass == nil {
+		return nil, errors.New("test_selection_bypass_quarantine must be a JSON array of nonempty strings")
+	}
+	if slices.Contains(bypass, "") {
+		return nil, errors.New("test_selection_bypass_quarantine must contain nonempty strings")
+	}
+	return bypass, nil
 }
 
 // isTestSelectionAllowed checks if test selection may filter tests for the
