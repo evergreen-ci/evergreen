@@ -678,7 +678,6 @@ type TestSortOptions struct {
 	Direction SortDirection    `json:"direction"`
 }
 
-// TriggerModule identifies the module commit that triggered a version.
 type TriggerModule struct {
 	Branch   string `json:"branch"`
 	Name     string `json:"name"`
