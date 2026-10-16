@@ -49,6 +49,8 @@ var (
 	cloneModuleAttribute  = fmt.Sprintf("%s.clone_module", gitGetProjectAttribute)
 	cloneAttemptAttribute = fmt.Sprintf("%s.attempt", gitGetProjectAttribute)
 	cloneErrorAttribute   = fmt.Sprintf("%s.error", gitGetProjectAttribute)
+
+	clonePRFetchModeAttribute = fmt.Sprintf("%s.pr_fetch_mode", gitGetProjectAttribute)
 )
 
 // gitFetchProject is a command that fetches source code from git for the project
@@ -313,6 +315,59 @@ func prCheckoutCommit(conf *internal.TaskConfig) string {
 	return ""
 }
 
+func isFullGitSHA(hash string) bool {
+	if len(hash) != 40 {
+		return false
+	}
+	for _, c := range hash {
+		if !strings.ContainsRune("0123456789abcdefABCDEF", c) {
+			return false
+		}
+	}
+	return true
+}
+
+// PR fetch modes recorded on clone spans to distinguish direct-SHA from legacy pull-ref fetches.
+const (
+	prFetchModeSHA         = "sha"
+	prFetchModePullRef     = "pull_ref"
+	prFetchModeMergeBranch = "merge_branch"
+)
+
+func prFetchModeForHash(hash string) string {
+	if isFullGitSHA(hash) {
+		return prFetchModeSHA
+	}
+	return prFetchModePullRef
+}
+
+func prFetchMode(conf *internal.TaskConfig) string {
+	commitToTest := prCheckoutCommit(conf)
+	if commitToTest == "" {
+		return ""
+	}
+	if conf.Task.Requester == evergreen.GithubMergeRequester {
+		return prFetchModeMergeBranch
+	}
+	return prFetchModeForHash(commitToTest)
+}
+
+func prNumberForCheckout(conf *internal.TaskConfig) int {
+	if conf.GitHubParentPRCheckout != nil && conf.GitHubParentPRCheckout.ForSource {
+		return conf.GitHubParentPRCheckout.PRNumber
+	}
+	return conf.GithubPatchData.PRNumber
+}
+
+// fetchCheckoutResetCommands builds the shared fetch/checkout/reset sequence; fetchRefSpec may carry a ":branch" suffix.
+func fetchCheckoutResetCommands(fetchRefSpec, checkoutRef, resetTarget string) []string {
+	return []string{
+		fmt.Sprintf(`git fetch origin "%s"`, fetchRefSpec),
+		fmt.Sprintf(`git checkout "%s"`, checkoutRef),
+		fmt.Sprintf("git reset --hard %s", resetTarget),
+	}
+}
+
 // prCheckoutCommands returns the commands that check out the ref containing a
 // PR's or merge queue group's changes. They run after a clone, which leaves HEAD
 // at the base revision.
@@ -322,28 +377,26 @@ func prCheckoutCommands(conf *internal.TaskConfig) []string {
 		return nil
 	}
 
-	var suffix, localBranchName, remoteBranchName string
-	if conf.GitHubParentPRCheckout != nil && conf.GitHubParentPRCheckout.ForSource {
-		suffix = "/head"
-		localBranchName = fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
-		remoteBranchName = fmt.Sprintf("pull/%d", conf.GitHubParentPRCheckout.PRNumber)
-	} else if conf.Task.Requester == evergreen.GithubPRRequester {
+	switch prFetchMode(conf) {
+	case prFetchModeMergeBranch:
+		localBranchName := fmt.Sprintf("evg-mg-test-%s", utility.RandomString())
+		// HeadRef looks like "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
+		return fetchCheckoutResetCommands(
+			fmt.Sprintf("%s:%s", conf.GithubMergeData.HeadBranch, localBranchName),
+			localBranchName, commitToTest,
+		)
+	case prFetchModeSHA:
+		// Fetch the full head SHA directly: the refs/pull/N/head ref can hang
+		// for minutes under load.
+		return fetchCheckoutResetCommands(commitToTest, commitToTest, commitToTest)
+	default: // prFetchModePullRef
 		// Github creates a ref called refs/pull/[pr number]/head
 		// that provides the entire tree of changes, including merges
-		suffix = "/head"
-		localBranchName = fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
-		remoteBranchName = fmt.Sprintf("pull/%d", conf.GithubPatchData.PRNumber)
-	} else if conf.Task.Requester == evergreen.GithubMergeRequester {
-		suffix = "" // redundant, included for clarity
-		localBranchName = fmt.Sprintf("evg-mg-test-%s", utility.RandomString())
-		// HeadRef looks like "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
-		remoteBranchName = conf.GithubMergeData.HeadBranch
-	}
-
-	return []string{
-		fmt.Sprintf(`git fetch origin "%s%s:%s"`, remoteBranchName, suffix, localBranchName),
-		fmt.Sprintf(`git checkout "%s"`, localBranchName),
-		fmt.Sprintf("git reset --hard %s", commitToTest),
+		localBranchName := fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
+		return fetchCheckoutResetCommands(
+			fmt.Sprintf("pull/%d/head:%s", prNumberForCheckout(conf), localBranchName),
+			localBranchName, commitToTest,
+		)
 	}
 }
 
@@ -414,12 +467,15 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 
 	if usesPRCheckout {
 		checkout := conf.GitHubParentPRCheckout
-		branchName := fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
-		gitCommands = append(gitCommands, []string{
-			fmt.Sprintf(`git fetch origin "pull/%d/head:%s"`, checkout.PRNumber, branchName),
-			fmt.Sprintf(`git checkout "%s"`, branchName),
-			fmt.Sprintf("git reset --hard %s", checkout.HeadHash),
-		}...)
+		// Fetch the head SHA directly when available to avoid the virtual
+		// pull/N/head ref resolution on GitHub (see prCheckoutCommands).
+		fetchRef, checkoutRef := checkout.HeadHash, checkout.HeadHash
+		if !isFullGitSHA(checkout.HeadHash) {
+			branchName := fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
+			fetchRef = fmt.Sprintf("pull/%d/head:%s", checkout.PRNumber, branchName)
+			checkoutRef = branchName
+		}
+		gitCommands = append(gitCommands, fetchCheckoutResetCommands(fetchRef, checkoutRef, checkout.HeadHash)...)
 	} else {
 		gitCommands = append(gitCommands, fmt.Sprintf("git checkout '%s'", ref))
 	}
@@ -782,12 +838,16 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 		logger.Task().Info(ctx, "Fetching source from git...")
 		logger.Task().Debugf(ctx, "Commands are: %s", fetchScript)
 
-		ctx, span := getTracer().Start(ctx, "clone_source", trace.WithAttributes(
+		attrs := []attribute.KeyValue{
 			attribute.String(cloneOwnerAttribute, opts.owner),
 			attribute.String(cloneRepoAttribute, opts.repo),
 			attribute.String(cloneBranchAttribute, opts.branch),
 			attribute.Int(cloneAttemptAttribute, attempt),
-		))
+		}
+		if mode := prFetchMode(conf); mode != "" {
+			attrs = append(attrs, attribute.String(clonePRFetchModeAttribute, mode))
+		}
+		ctx, span := getTracer().Start(ctx, "clone_source", trace.WithAttributes(attrs...))
 		defer span.End()
 
 		if err = fetchSourceCmd.Run(ctx); err != nil {
@@ -987,13 +1047,18 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 			return err
 		}
 
-		ctx, span := getTracer().Start(ctx, "clone_module", trace.WithAttributes(
+		attrs := []attribute.KeyValue{
 			attribute.String(cloneModuleAttribute, module.Name),
 			attribute.String(cloneOwnerAttribute, opts.owner),
 			attribute.String(cloneRepoAttribute, opts.repo),
 			attribute.String(cloneBranchAttribute, opts.branch),
 			attribute.Int(cloneAttemptAttribute, attempt),
-		))
+		}
+		if moduleUsesGitHubParentPRCheckout(conf, modulePatch) {
+			attrs = append(attrs, attribute.String(clonePRFetchModeAttribute,
+				prFetchModeForHash(conf.GitHubParentPRCheckout.HeadHash)))
+		}
+		ctx, span := getTracer().Start(ctx, "clone_module", trace.WithAttributes(attrs...))
 		defer span.End()
 
 		// This needs to use a thread-safe buffer just in case the context errors
