@@ -358,10 +358,9 @@ var errInstanceIDMismatch = errors.New("reported instance ID does not match clou
 // the cloud provider.
 const cloudProviderLookupTimeout = 30 * time.Second
 
-// PostHostIsUp indicates to the app server that a host is up. The host's
-// instance ID and cloud provider data always come from the cloud provider;
-// claimedInstanceID is only used to detect a mismatch.
-func PostHostIsUp(ctx context.Context, env evergreen.Environment, hostID, claimedInstanceID string) (*restmodel.APIHost, error) {
+// PostHostIsUp indicates to the app server that a host is up. Metadata params are only
+// used for task hosts that are not provisioned yet, before any task has run on them.
+func PostHostIsUp(ctx context.Context, env evergreen.Environment, hostID string, params host.HostMetadataOptions) (*restmodel.APIHost, error) {
 	h, err := host.FindOneByIdOrTag(ctx, hostID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
@@ -376,14 +375,14 @@ func PostHostIsUp(ctx context.Context, env evergreen.Environment, hostID, claime
 		}
 	}
 
-	if err := updateHostFromCloudProvider(ctx, env, h, claimedInstanceID); err != nil {
+	if err := updateHostMetadata(ctx, env, h, params); err != nil {
 		statusCode := http.StatusInternalServerError
 		if errors.Is(err, errInstanceIDMismatch) {
 			statusCode = http.StatusBadRequest
 		}
 		return nil, gimlet.ErrorResponse{
 			StatusCode: statusCode,
-			Message:    errors.Wrap(err, "updating host from cloud provider").Error(),
+			Message:    errors.Wrap(err, "updating host metadata").Error(),
 		}
 	}
 
@@ -405,47 +404,34 @@ func PostHostIsUp(ctx context.Context, env evergreen.Environment, hostID, claime
 	return &apiHost, nil
 }
 
-// updateHostFromCloudProvider fixes intent hosts that are already running and
-// caches cloud provider data for task hosts that are not provisioned yet.
-func updateHostFromCloudProvider(ctx context.Context, env evergreen.Environment, h *host.Host, claimedInstanceID string) error {
-	if !cloud.SupportsInstanceData(h.Distro.Provider) {
-		return nil
-	}
+// updateHostMetadata fixes intent hosts that are already running and caches
+// metadata for task hosts that are not provisioned yet.
+func updateHostMetadata(ctx context.Context, env evergreen.Environment, h *host.Host, params host.HostMetadataOptions) error {
+	isUnprovisionedTaskHost := h.StartedBy == evergreen.User && !h.Provisioned
 
-	isIntentHost := host.IsIntentHostId(h.Id)
-	// Agent monitor health checks don't send an instance ID, so this skips the
-	// provider call for them.
-	needsCloudProviderData := h.StartedBy == evergreen.User && !h.Provisioned && claimedInstanceID != ""
-	if !isIntentHost && !needsCloudProviderData {
-		return nil
-	}
-
-	lookupCtx, cancel := context.WithTimeout(ctx, cloudProviderLookupTimeout)
-	defer cancel()
-	instanceID, data, err := getRunningInstanceData(lookupCtx, env, h)
-	if err != nil {
-		if isIntentHost {
+	if host.IsIntentHostId(h.Id) {
+		if !cloud.SupportsInstanceData(h.Distro.Provider) {
+			return nil
+		}
+		lookupCtx, cancel := context.WithTimeout(ctx, cloudProviderLookupTimeout)
+		defer cancel()
+		instanceID, data, err := getRunningInstanceData(lookupCtx, env, h)
+		if err != nil {
 			return errors.Wrap(err, "getting running instance data for intent host")
 		}
-		// The cloud host ready job will eventually cache the cloud provider
-		// data instead.
-		grip.Warning(ctx, message.WrapError(err, message.Fields{
-			"message": "could not get running instance data for task host",
-			"host_id": h.Id,
-			"distro":  h.Distro.Id,
-		}))
-		return nil
-	}
-	if isIntentHost {
 		// This replaces h.Id with the real instance ID, so the metadata below
 		// is written to the real host.
-		if err := fixProvisioningIntentHost(ctx, env, h, instanceID, claimedInstanceID); err != nil {
+		if err := fixProvisioningIntentHost(ctx, env, h, instanceID, params.EC2InstanceID); err != nil {
 			return errors.Wrap(err, "fixing intent host")
 		}
+		if isUnprovisionedTaskHost && h.Status != evergreen.HostDecommissioned {
+			return errors.Wrap(h.SetEC2Metadata(ctx, host.HostMetadataOptions{CloudProviderData: *data}), "setting host metadata from cloud provider")
+		}
+		return nil
 	}
 
-	if needsCloudProviderData && h.Status != evergreen.HostDecommissioned {
-		return errors.Wrap(h.SetEC2Metadata(ctx, host.HostMetadataOptions{CloudProviderData: *data}), "setting host metadata")
+	if isUnprovisionedTaskHost {
+		return errors.Wrap(h.SetEC2Metadata(ctx, params), "setting host metadata")
 	}
 
 	return nil

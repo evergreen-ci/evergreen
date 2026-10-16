@@ -1135,9 +1135,8 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			DeviceName: "/dev/sda1",
 		}},
 	}
-	// forgedData is metadata that a host claims about itself, which should
-	// never be stored.
-	forgedData := host.CloudProviderData{
+	// claimedData is metadata that a host reports about itself.
+	claimedData := host.CloudProviderData{
 		PublicDNS:   "victim-hostname",
 		Zone:        "forged-zone",
 		PublicIPv4:  "forged-public-ipv4",
@@ -1158,7 +1157,7 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			mockCloud.Set(h.Id, cloud.MockInstance{Status: cloud.StatusRunning, InstanceID: instanceID, CloudProviderData: providerData})
 
 			rh.params = host.HostMetadataOptions{
-				CloudProviderData: forgedData,
+				CloudProviderData: claimedData,
 				EC2InstanceID:     instanceID,
 			}
 			rh.hostID = h.Id
@@ -1290,16 +1289,15 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			require.NoError(t, err)
 			assert.Zero(t, dbHost)
 		},
-		"UnprovisionedTaskHostShouldStoreProviderMetadataNotClaimedMetadata": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, mockCloud cloud.MockProvider) {
+		"UnprovisionedTaskHostShouldStoreClaimedMetadata": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, _ cloud.MockProvider) {
 			instanceID := generateFakeEC2InstanceID()
 			h.Id = instanceID
 			h.Status = evergreen.HostStarting
 			h.StartedBy = evergreen.User
 			require.NoError(t, h.Insert(ctx))
-			mockCloud.Set(h.Id, cloud.MockInstance{Status: cloud.StatusRunning, CloudProviderData: providerData})
 
 			rh.params = host.HostMetadataOptions{
-				CloudProviderData: forgedData,
+				CloudProviderData: claimedData,
 				EC2InstanceID:     instanceID,
 			}
 			rh.hostID = instanceID
@@ -1314,22 +1312,23 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostStarting, dbHost.Status)
 			assert.True(t, dbHost.Provisioned)
-			assert.Equal(t, providerData.PublicDNS, dbHost.Host)
-			assert.Equal(t, providerData.Zone, dbHost.Zone)
-			assert.Equal(t, providerData.PublicIPv4, dbHost.PublicIPv4)
-			assert.Equal(t, providerData.PrivateIPv4, dbHost.IPv4)
-			assert.Equal(t, providerData.IPv6, dbHost.IP)
-			assert.Equal(t, providerData.Volumes, dbHost.Volumes)
+			assert.Equal(t, claimedData.PublicDNS, dbHost.Host)
+			assert.Equal(t, claimedData.Zone, dbHost.Zone)
+			assert.Equal(t, claimedData.PublicIPv4, dbHost.PublicIPv4)
+			assert.Equal(t, claimedData.PrivateIPv4, dbHost.IPv4)
+			assert.Equal(t, claimedData.IPv6, dbHost.IP)
 		},
-		"UnprovisionedTaskHostShouldSucceedWithoutMetadataIfProviderLookupFails": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, mockCloud cloud.MockProvider) {
+		"ProvisionedTaskHostWithClaimedMetadataShouldNotChangeHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, _ cloud.MockProvider) {
 			instanceID := generateFakeEC2InstanceID()
 			h.Id = instanceID
-			h.Status = evergreen.HostStarting
+			h.Host = "task-host-hostname"
+			h.Status = evergreen.HostRunning
 			h.StartedBy = evergreen.User
+			h.Provisioned = true
 			require.NoError(t, h.Insert(ctx))
 
 			rh.params = host.HostMetadataOptions{
-				CloudProviderData: forgedData,
+				CloudProviderData: claimedData,
 				EC2InstanceID:     instanceID,
 			}
 			rh.hostID = instanceID
@@ -1342,42 +1341,38 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			dbHost, err := host.FindOneId(ctx, instanceID)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
-			assert.False(t, dbHost.Provisioned, "cloud host ready job should be left to provision the host")
+			assert.Equal(t, "task-host-hostname", dbHost.Host)
+			assert.Empty(t, dbHost.Zone)
+			assert.Empty(t, dbHost.IPv4)
+			assert.Empty(t, dbHost.Volumes)
+		},
+		"HostCreateHostWithClaimedMetadataShouldNotChangeHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, _ cloud.MockProvider) {
+			instanceID := generateFakeEC2InstanceID()
+			h.Id = instanceID
+			h.Status = evergreen.HostStarting
+			h.StartedBy = "task_id"
+			h.SpawnOptions.SpawnedByTask = true
+			require.NoError(t, h.Insert(ctx))
+
+			rh.params = host.HostMetadataOptions{
+				CloudProviderData: claimedData,
+				EC2InstanceID:     instanceID,
+			}
+			rh.hostID = instanceID
+
+			resp := rh.Run(ctx)
+
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			dbHost, err := host.FindOneId(ctx, instanceID)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.False(t, dbHost.Provisioned)
 			assert.Empty(t, dbHost.Host)
 			assert.Empty(t, dbHost.Volumes)
 		},
-		"UnprovisionedTaskHostShouldNotStoreClaimedMetadataPointingAtAnotherHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, mockCloud cloud.MockProvider) {
-			victim := host.Host{Id: generateFakeEC2InstanceID(), Host: "victim-hostname", Status: evergreen.HostRunning}
-			require.NoError(t, victim.Insert(ctx))
-
-			instanceID := generateFakeEC2InstanceID()
-			h.Id = instanceID
-			h.Status = evergreen.HostStarting
-			h.StartedBy = evergreen.User
-			require.NoError(t, h.Insert(ctx))
-			mockCloud.Set(h.Id, cloud.MockInstance{Status: cloud.StatusRunning, CloudProviderData: providerData})
-
-			claimed := forgedData
-			claimed.PublicDNS = victim.Host
-			rh.params = host.HostMetadataOptions{
-				CloudProviderData: claimed,
-				EC2InstanceID:     instanceID,
-			}
-			rh.hostID = instanceID
-
-			resp := rh.Run(ctx)
-
-			require.NotZero(t, resp)
-			assert.Equal(t, http.StatusOK, resp.Status())
-
-			dbHost, err := host.FindOneId(ctx, instanceID)
-			require.NoError(t, err)
-			require.NotZero(t, dbHost)
-			assert.Equal(t, providerData.PublicDNS, dbHost.Host)
-			assert.NotEqual(t, victim.Host, dbHost.Host)
-			assert.Equal(t, providerData.Volumes, dbHost.Volumes)
-		},
-		"SpawnHostWithClaimedMetadataShouldNotChangeHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, mockCloud cloud.MockProvider) {
+		"SpawnHostWithClaimedMetadataShouldNotChangeHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, _ cloud.MockProvider) {
 			instanceID := generateFakeEC2InstanceID()
 			h.Id = instanceID
 			h.Host = "spawn-host-hostname"
@@ -1385,10 +1380,9 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			h.StartedBy = "attacker"
 			h.UserHost = true
 			require.NoError(t, h.Insert(ctx))
-			mockCloud.Set(h.Id, cloud.MockInstance{Status: cloud.StatusRunning, CloudProviderData: providerData})
 
 			rh.params = host.HostMetadataOptions{
-				CloudProviderData: forgedData,
+				CloudProviderData: claimedData,
 				EC2InstanceID:     instanceID,
 			}
 			rh.hostID = instanceID
@@ -1409,7 +1403,7 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			assert.Empty(t, dbHost.IP)
 			assert.Empty(t, dbHost.Volumes)
 		},
-		"NonIntentHostWithoutClaimedMetadataShouldRetainHostname": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, mockCloud cloud.MockProvider) {
+		"NonIntentHostWithoutClaimedMetadataShouldRetainHostname": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host, _ cloud.MockProvider) {
 			instanceID := generateFakeEC2InstanceID()
 			h.Id = instanceID
 			h.Host = "hostname"

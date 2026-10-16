@@ -530,7 +530,7 @@ func (rh *hostIsUpPostHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (rh *hostIsUpPostHandler) Run(ctx context.Context) gimlet.Responder {
-	apiHost, err := data.PostHostIsUp(ctx, rh.env, rh.hostID, rh.params.EC2InstanceID)
+	apiHost, err := data.PostHostIsUp(ctx, rh.env, rh.hostID, rh.params)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
