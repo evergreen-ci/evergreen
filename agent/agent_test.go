@@ -271,6 +271,57 @@ func (s *AgentSuite) TestTaskWithoutSecret() {
 	s.True(ntr.noTaskToRun)
 }
 
+func (s *AgentSuite) TestExitAfterTaskGroupExitsBeforeStartingSecondTask() {
+	s.a.opts.ExitAfterTaskGroup = true
+	s.a.hasRunTask = true
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     "second_task_id",
+		TaskSecret: "task_secret",
+	}
+
+	ntr, err := s.a.processNextTask(s.ctx, nextTask, s.tc, false)
+
+	s.NoError(err)
+	s.Require().NotNil(ntr)
+	s.True(ntr.shouldExit, "agent running in a used guest should exit instead of starting another task")
+}
+
+func (s *AgentSuite) TestExitAfterTaskGroupRunsFirstTask() {
+	s.a.opts.ExitAfterTaskGroup = true
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     "task_id",
+		TaskSecret: "task_secret",
+	}
+
+	ntr, err := s.a.processNextTask(s.ctx, nextTask, &taskContext{
+		task: client.TaskData{
+			ID:     "task_id",
+			Secret: "task_secret",
+		},
+		oomTracker: &mock.OOMTracker{},
+		logger:     client.NewSingleChannelLogHarness("default", s.a.defaultLogger),
+	}, false)
+
+	s.NoError(err)
+	s.Require().NotNil(ntr)
+	s.False(ntr.shouldExit, "a fresh guest should run the first task it is assigned")
+}
+
+func (s *AgentSuite) TestExitAfterTaskGroupExitsAfterTeardownGroup() {
+	s.a.opts.ExitAfterTaskGroup = true
+	nextTask := &apimodels.NextTaskResponse{
+		ShouldTeardownGroup: true,
+		TaskGroup:           "task_group",
+	}
+
+	ntr, err := s.a.processNextTask(s.ctx, nextTask, s.tc, true)
+
+	s.NoError(err)
+	s.Require().NotNil(ntr)
+	s.True(ntr.shouldExit, "agent running in a microVM should exit after its task group is torn down")
+	s.False(ntr.needTeardownGroup)
+}
+
 func (s *AgentSuite) TestErrorGettingNextTask() {
 	s.mockCommunicator.NextTaskShouldFail = true
 	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)

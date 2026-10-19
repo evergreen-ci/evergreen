@@ -97,6 +97,11 @@ type Agent struct {
 	// retainContainerUntil, when non-zero, causes destroyContainer to skip
 	// removal and leave the container running for on-call inspection.
 	retainContainerUntil time.Time
+
+	// hasRunTask tracks whether the agent has started processing at least one
+	// task. Agents running inside a microVM use this to decide when the guest
+	// state is no longer clean; see ExitAfterTaskGroup.
+	hasRunTask bool
 }
 
 // Options contains startup options for an Agent.
@@ -120,6 +125,12 @@ type Options struct {
 	SendTaskLogsToGlobalSender bool
 	HomeDirectory              string
 	SingleTaskDistro           bool
+	// ExitAfterTaskGroup makes the agent exit after the current task or task
+	// group finishes instead of polling for the next task. This is used by
+	// agents running inside a microVM: exiting terminates the guest so the
+	// monitor can boot a fresh VM whose state no previous task has touched.
+	// Unlike SingleTaskDistro, the host is not disabled.
+	ExitAfterTaskGroup bool
 	// ContainerRetainOnFailureSecs is how long an isolation container is kept
 	// alive after a task failure so on-call can docker exec into it for
 	// post-mortem inspection. Zero disables retention.
@@ -397,6 +408,9 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 				logger: client.NewSingleChannelLogHarness("default", a.defaultLogger),
 			},
 			needTeardownGroup: false,
+			// An agent running inside a microVM is done once its task group is
+			// torn down: the monitor replaces the guest with a fresh one.
+			shouldExit: a.opts.ExitAfterTaskGroup,
 		}, err
 	}
 
@@ -435,6 +449,19 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 		}, nil
 	}
 	shouldSetupGroup, taskDirectory := a.finishPrevTask(ctx, nt, tc)
+
+	// An agent running inside a microVM must not start a new task or task
+	// group in a guest whose state a previous task has already touched. The
+	// incoming task is already assigned to this host; the replacement agent in
+	// a fresh guest retrieves it again from the server. The previous task's
+	// teardown group commands have already run via finishPrevTask.
+	if a.opts.ExitAfterTaskGroup && a.hasRunTask && shouldSetupGroup {
+		return processNextResponse{
+			tc:         tc,
+			shouldExit: true,
+		}, nil
+	}
+	a.hasRunTask = true
 
 	tc, shouldExit, err := a.runTask(ctx, nil, nt, shouldSetupGroup, taskDirectory)
 	if err != nil {

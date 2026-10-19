@@ -68,6 +68,10 @@ type monitor struct {
 	// Args to be forwarded to the agent
 	agentArgs []string
 
+	// microvm, when non-nil, routes the agent through the microVM launcher
+	// instead of starting it as a host process.
+	microvm *microVMSettings
+
 	comm         client.Communicator
 	jasperClient remote.Manager
 }
@@ -207,6 +211,8 @@ func agentMonitor() cli.Command {
 			if err = setupLogging(m); err != nil {
 				return errors.Wrap(err, "setting up logging")
 			}
+
+			m.microvm = loadMicroVMSettings(ctx, microVMConfigPath)
 
 			// Reserve the given port to prevent other monitors from starting.
 			if _, err = net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", m.port)); err != nil {
@@ -447,6 +453,9 @@ func (m *monitor) agentCmdArgs() []string {
 // createAgentProcess attempts to start an agent subprocess.
 func (m *monitor) createAgentProcess(ctx context.Context, retry utility.RetryOptions) (jasper.Process, error) {
 	agentCmdArgs := m.agentCmdArgs()
+	if m.microvm != nil {
+		agentCmdArgs = m.agentCmdArgsForMicroVM()
+	}
 
 	// Copy the monitor's environment to the agent.
 	env := make(map[string]string)
@@ -542,6 +551,9 @@ var errAgentMonitorShouldExit = errors.New("host's agent monitor should exit")
 // runMonitor runs the monitor loop. It fetches the agent, starts it, and
 // repeats when the agent terminates.
 func (m *monitor) run(ctx context.Context) {
+	if m.microvm != nil {
+		m.cleanupOrphanMicroVMs(ctx)
+	}
 	for {
 		if err := utility.Retry(ctx, func() (bool, error) {
 			// Check the host health before actually starting a new agent. If

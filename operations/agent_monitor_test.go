@@ -166,3 +166,71 @@ func TestAgentCmdArgsOmitsUnsetCompatClientPath(t *testing.T) {
 
 	assert.Equal(t, []string{"/path/to/client", "agent"}, m.agentCmdArgs())
 }
+
+func TestAgentCmdArgsForMicroVM(t *testing.T) {
+	for testName, testCase := range map[string]struct {
+		agentArgs []string
+		expected  []string
+	}{
+		"WrapsAgentArgsWithLauncherAndReplacesFileLogging": {
+			agentArgs: []string{"--api_server=http://localhost", "--log_output=file"},
+			expected: []string{
+				"sudo", "-E", "/usr/local/bin/evg-microvm", "run", "--client", "/path/to/client", "--",
+				"/path/to/client",
+				"agent",
+				"--api_server=http://localhost",
+				"--log_output=stdout",
+				"--exit_after_task_group",
+			},
+		},
+		"AddsStdoutLoggingWhenLogOutputIsUnset": {
+			agentArgs: []string{"--api_server=http://localhost"},
+			expected: []string{
+				"sudo", "-E", "/usr/local/bin/evg-microvm", "run", "--client", "/path/to/client", "--",
+				"/path/to/client",
+				"agent",
+				"--api_server=http://localhost",
+				"--log_output=stdout",
+				"--exit_after_task_group",
+			},
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			m := &monitor{
+				clientPath: "/path/to/client",
+				agentArgs:  testCase.agentArgs,
+				microvm:    &microVMSettings{LauncherPath: "/usr/local/bin/evg-microvm"},
+			}
+
+			assert.Equal(t, testCase.expected, m.agentCmdArgsForMicroVM())
+		})
+	}
+}
+
+func TestLoadMicroVMSettings(t *testing.T) {
+	t.Run("MissingFileMeansHostMode", func(t *testing.T) {
+		assert.Nil(t, loadMicroVMSettings(t.Context(), filepath.Join(t.TempDir(), "does-not-exist.json")))
+	})
+	t.Run("ValidFileReturnsSettingsWithDefaultLauncher", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "microvm.json")
+		require.NoError(t, os.WriteFile(path, []byte("{}"), 0644))
+
+		settings := loadMicroVMSettings(t.Context(), path)
+		require.NotNil(t, settings)
+		assert.Equal(t, defaultMicroVMLauncherPath, settings.LauncherPath)
+	})
+	t.Run("ValidFileReturnsConfiguredLauncher", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "microvm.json")
+		require.NoError(t, os.WriteFile(path, []byte(`{"launcher_path": "/opt/evg-microvm"}`), 0644))
+
+		settings := loadMicroVMSettings(t.Context(), path)
+		require.NotNil(t, settings)
+		assert.Equal(t, "/opt/evg-microvm", settings.LauncherPath)
+	})
+	t.Run("MalformedFileFallsBackToHostMode", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "microvm.json")
+		require.NoError(t, os.WriteFile(path, []byte("not json"), 0644))
+
+		assert.Nil(t, loadMicroVMSettings(t.Context(), path))
+	})
+}

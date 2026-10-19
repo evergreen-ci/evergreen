@@ -31,6 +31,7 @@ const (
 	agentHostIDFlagName                  = "host_id"
 	agentHostSetupSecretFlagName         = "setup_secret"
 	singleTaskDistroFlagName             = "single_task_distro"
+	exitAfterTaskGroupFlagName           = "exit_after_task_group"
 	containerRetainOnFailureSecsFlagName = "container_retain_on_failure_secs"
 	compatClientPathFlagName             = "compat_client_path"
 )
@@ -112,6 +113,10 @@ func Agent() cli.Command {
 				Name:  singleTaskDistroFlagName,
 				Usage: "marks the agent as running in single task distro",
 			},
+			cli.BoolFlag{
+				Name:  exitAfterTaskGroupFlagName,
+				Usage: "internal only: exit after the current task or task group finishes instead of polling for the next task; set by the agent monitor for microVM-backed hosts",
+			},
 			cli.IntFlag{
 				Name:  containerRetainOnFailureSecsFlagName,
 				Usage: "seconds to retain the isolation container after a task failure for on-call inspection (0 = destroy immediately, default = 300)",
@@ -182,6 +187,7 @@ func Agent() cli.Command {
 				CloudProvider:                c.String(agentCloudProviderFlagName),
 				SendTaskLogsToGlobalSender:   c.Bool(sendTaskLogsToGlobalSenderFlagName),
 				SingleTaskDistro:             c.Bool(singleTaskDistroFlagName),
+				ExitAfterTaskGroup:           c.Bool(exitAfterTaskGroupFlagName),
 				ContainerRetainOnFailureSecs: c.Int(containerRetainOnFailureSecsFlagName),
 				CompatClientPath:             c.String(compatClientPathFlagName),
 			}
