@@ -536,7 +536,7 @@ func (r *versionResolver) TaskStatusStats(ctx context.Context, obj *model.Versio
 
 // TriggerModule is the resolver for the triggerModule field.
 func (r *versionResolver) TriggerModule(ctx context.Context, obj *model.Version) (*TriggerModule, error) {
-	if obj.TriggerModule == "" {
+	if obj.Requester != evergreen.TriggerRequester || obj.TriggerModule == "" {
 		return nil, nil
 	}
 	return &TriggerModule{
