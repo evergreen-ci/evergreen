@@ -214,8 +214,8 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	// can tell an expected empty response apart from a dispatch problem.
 	ctx = model.NewDispatchSkipsContext(ctx)
 
-	// Totals across both queues, for logging when no task is assigned.
-	var queueLength, numDepsMet int
+	// Queue lengths for logging when no task is assigned.
+	var queueLength, numDepsMet, secondaryQueueLength, secondaryNumDepsMet int
 
 	// Task selection happens in the in-memory dispatcher, so the route only
 	// needs to know how long the DB queue is, not what's in it.
@@ -248,8 +248,8 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 		if secondaryQueueLengths != nil {
-			queueLength += secondaryQueueLengths.Undispatched
-			numDepsMet += secondaryQueueLengths.UndispatchedWithDependenciesMet
+			secondaryQueueLength = secondaryQueueLengths.Undispatched
+			secondaryNumDepsMet = secondaryQueueLengths.UndispatchedWithDependenciesMet
 			nextTask, shouldRunTeardown, err = assignNextAvailableTask(ctx, h.env, secondaryQueueLengths.Undispatched, h.taskAliasDispatcher, h.host, h.details)
 			if err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(err)
@@ -277,28 +277,34 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 
 			// if the task is empty, still send it with a status ok and check it on the other side
 			grip.Info(ctx, message.Fields{
-				"op":                         "next_task",
-				"message":                    "no task to assign to host",
-				"host_id":                    h.host.Id,
-				"distro":                     h.host.Distro.Id,
-				"queue_length":               queueLength,
-				"queue_length_with_deps_met": numDepsMet,
-				"num_skipped_tasks":          numSkips,
+				"op":                                   "next_task",
+				"message":                              "no task to assign to host",
+				"host_id":                              h.host.Id,
+				"distro":                               h.host.Distro.Id,
+				"queue_length":                         queueLength,
+				"queue_length_with_deps_met":           numDepsMet,
+				"secondary_queue_length":               secondaryQueueLength,
+				"secondary_queue_length_with_deps_met": secondaryNumDepsMet,
+				"num_skipped_tasks":                    numSkips,
 			})
 
 			// Every skip is recorded for a valid reason to return an empty
 			// response, so warn when the in-memory queues still contain
 			// dependency-met tasks and the dispatcher recorded no skips at
-			// all, meaning it didn't consider those tasks.
+			// all, meaning it didn't consider those tasks. The secondary queue
+			// is excluded because dispatching never marks its items
+			// dispatched, so its counts include tasks that already ran.
 			if numDepsMet > 0 && numSkips == 0 {
 				grip.WarningWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-					"op":                         "next_task",
-					"message":                    "non-empty queue but no task assigned to host",
-					"host_id":                    h.host.Id,
-					"distro":                     h.host.Distro.Id,
-					"queue_length":               queueLength,
-					"queue_length_with_deps_met": numDepsMet,
-					"agent_task_group":           h.details.TaskGroup,
+					"op":                                   "next_task",
+					"message":                              "non-empty queue but no task assigned to host",
+					"host_id":                              h.host.Id,
+					"distro":                               h.host.Distro.Id,
+					"queue_length":                         queueLength,
+					"queue_length_with_deps_met":           numDepsMet,
+					"secondary_queue_length":               secondaryQueueLength,
+					"secondary_queue_length_with_deps_met": secondaryNumDepsMet,
+					"agent_task_group":                     h.details.TaskGroup,
 				})
 			}
 		}
