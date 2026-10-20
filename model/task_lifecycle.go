@@ -2850,7 +2850,7 @@ func ResetTaskOrDisplayTask(ctx context.Context, settings *evergreen.Settings, t
 		}
 		switch {
 		case len(opts.ExecutionTaskIDs) > 0:
-			if err := taskToReset.SetResetExecutionTasksWhenFinished(ctx, opts.User, repoRefID, opts.ExecutionTaskIDs); err != nil {
+			if err := taskToReset.AddExecutionTasksToResetWhenFinished(ctx, opts.User, repoRefID, opts.ExecutionTaskIDs); err != nil {
 				return errors.Wrap(err, "marking display task to restart execution tasks")
 			}
 		case opts.FailedOnly:

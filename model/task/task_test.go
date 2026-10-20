@@ -3532,10 +3532,10 @@ func TestSetResetExecutionTasksWhenFinishedMerges(t *testing.T) {
 	// Separate requests for each execution task should be merged into a single
 	// pending reset rather than overwriting each other.
 	for _, id := range execTaskIDs {
-		require.NoError(t, dt.SetResetExecutionTasksWhenFinished(ctx, "caller", "", []string{id}))
+		require.NoError(t, dt.AddExecutionTasksToResetWhenFinished(ctx, "caller", "", []string{id}))
 	}
 	// Re-adding an already-pending execution task should not duplicate it.
-	require.NoError(t, dt.SetResetExecutionTasksWhenFinished(ctx, "caller", "", []string{"et1"}))
+	require.NoError(t, dt.AddExecutionTasksToResetWhenFinished(ctx, "caller", "", []string{"et1"}))
 
 	dbDT, err := FindOneId(ctx, dt.Id)
 	require.NoError(t, err)
@@ -3551,7 +3551,7 @@ func TestSetResetExecutionTasksWhenFinishedMerges(t *testing.T) {
 	require.NotNil(t, dbDT)
 	assert.Empty(t, dbDT.ExecutionTasksToRestart)
 
-	require.NoError(t, dbDT.SetResetExecutionTasksWhenFinished(ctx, "caller", "", execTaskIDs))
+	require.NoError(t, dbDT.AddExecutionTasksToResetWhenFinished(ctx, "caller", "", execTaskIDs))
 	require.NoError(t, dbDT.SetResetFailedWhenFinished(ctx, "caller", ""))
 	dbDT, err = FindOneId(ctx, dt.Id)
 	require.NoError(t, err)

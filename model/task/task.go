@@ -3384,14 +3384,14 @@ func (t *Task) SetResetWhenFinished(ctx context.Context, caller, repoRefID strin
 	)
 }
 
-// SetResetExecutionTasksWhenFinished requests that a display task restart only
+// AddExecutionTasksToResetWhenFinished requests that a display task restart only
 // the given execution tasks when it finishes. Unlike SetResetFailedWhenFinished,
 // the listed execution tasks are restarted regardless of whether they failed.
 // If the display task is already marked to reset a set of execution tasks, the
 // given execution tasks are added to that set so that concurrent restart
 // requests for different execution tasks are merged into a single reset rather
 // than overwriting each other.
-func (t *Task) SetResetExecutionTasksWhenFinished(ctx context.Context, caller, repoRefID string, execTaskIDs []string) error {
+func (t *Task) AddExecutionTasksToResetWhenFinished(ctx context.Context, caller, repoRefID string, execTaskIDs []string) error {
 	execTaskIDs = utility.UniqueStrings(execTaskIDs)
 	if len(execTaskIDs) == 0 {
 		return nil
