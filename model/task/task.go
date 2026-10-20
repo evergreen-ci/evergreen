@@ -303,9 +303,8 @@ type Task struct {
 	// exclusive settings.
 	ResetFailedWhenFinished bool `bson:"reset_failed_when_finished,omitempty" json:"reset_failed_when_finished,omitempty"`
 	// ExecutionTasksToRestart, if set on a display task, restricts a
-	// restart-when-finished to only the listed execution tasks. This is used by
-	// the API to restart an individual execution task instead of the whole
-	// display task. Unlike ResetFailedWhenFinished, the listed execution tasks
+	// restart-when-finished to only the listed execution tasks. Unlike
+	// ResetFailedWhenFinished, the listed execution tasks
 	// are restarted regardless of whether they failed.
 	ExecutionTasksToRestart []string `bson:"execution_tasks_to_restart,omitempty" json:"execution_tasks_to_restart,omitempty"`
 	// NumAutomaticRestarts is the number of times the task has been programmatically restarted via a failed agent command.
