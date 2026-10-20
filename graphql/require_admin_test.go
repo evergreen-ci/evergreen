@@ -53,7 +53,6 @@ func TestRequireAdmin(t *testing.T) {
 		ctx = gimlet.AttachUser(ctx, usr)
 		require.NotNil(t, ctx)
 
-
 		nextCalled := false
 		wrappedNext := func(rctx context.Context) (any, error) {
 			nextCalled = true
