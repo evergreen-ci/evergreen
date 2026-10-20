@@ -176,7 +176,6 @@ func TestAgentCmdArgsForMicroVM(t *testing.T) {
 			agentArgs: []string{"--api_server=http://localhost", "--log_output=file"},
 			expected: []string{
 				"sudo", "-E", "/usr/local/bin/evg-microvm", "run", "--client", "/path/to/client", "--",
-				"/path/to/client",
 				"agent",
 				"--api_server=http://localhost",
 				"--log_output=stdout",
@@ -187,7 +186,6 @@ func TestAgentCmdArgsForMicroVM(t *testing.T) {
 			agentArgs: []string{"--api_server=http://localhost"},
 			expected: []string{
 				"sudo", "-E", "/usr/local/bin/evg-microvm", "run", "--client", "/path/to/client", "--",
-				"/path/to/client",
 				"agent",
 				"--api_server=http://localhost",
 				"--log_output=stdout",

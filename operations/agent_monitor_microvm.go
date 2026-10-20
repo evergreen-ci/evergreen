@@ -60,6 +60,12 @@ func loadMicroVMSettings(ctx context.Context, path string) *microVMSettings {
 func (m *monitor) agentCmdArgsForMicroVM() []string {
 	agentCmdArgs := m.agentCmdArgs()
 
+	// The launcher carries the agent binary on its own drive and the guest
+	// bootstrap execs it with these args, so the client path must not be
+	// forwarded; it would be interpreted as the agent's first positional
+	// argument.
+	agentCmdArgs = agentCmdArgs[1:]
+
 	// The agent's file logs die with the microVM, so log to stdout instead;
 	// the launcher captures the VM console on the host.
 	args := make([]string, 0, len(agentCmdArgs)+2)
