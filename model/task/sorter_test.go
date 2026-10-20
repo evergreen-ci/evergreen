@@ -63,7 +63,11 @@ func TestInsertUnorderedShouldBoundBatchesAndPreserveInput(t *testing.T) {
 			start += size
 		}
 		for i, value := range payload {
-			assert.Same(t, tasks[start+i], value)
+			raw, ok := value.(bson.Raw)
+			require.True(t, ok, "batch payload should contain stamped raw documents")
+			id, err := raw.LookupErr("_id")
+			require.NoError(t, err)
+			assert.Equal(t, tasks[start+i].Id, id.StringValue())
 		}
 		sizes = append(sizes, len(payload))
 		return &mongo.InsertManyResult{}, nil

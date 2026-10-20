@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
@@ -14,6 +15,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	bsoncore "go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 )
 
 var (
@@ -87,10 +89,143 @@ func (s *shimFactoryImpl) GetSession(ctx context.Context) (db.Session, db.Databa
 	return session, session.DB(s.db), nil
 }
 
+// lastUpdatedAtCollections are the collections whose documents carry a
+// _last_updated_at field consumed by downstream analytics. Inserts into these
+// collections are stamped on a best-effort basis.
+var lastUpdatedAtCollections = map[string]bool{
+	"builds":    true,
+	"events":    true,
+	"hosts":     true,
+	"old_tasks": true,
+	"patches":   true,
+	"tasks":     true,
+	"versions":  true,
+}
+
+const lastUpdatedAtField = "_last_updated_at"
+
+// withLastUpdatedAt returns item with _last_updated_at set to the current time
+// if collection is a tracked collection, unless item already has the field.
+// It returns item unchanged for other collections or if item cannot be
+// marshaled.
+//
+// It marshals the item once and rebuilds the document from its raw elements,
+// appending the field, so the driver can send the resulting bson.Raw as-is.
+// This avoids the extra decode/re-encode that a bson.D round trip would cost.
+func withLastUpdatedAt(collection string, item any) any {
+	if !lastUpdatedAtCollections[collection] {
+		return item
+	}
+	raw, err := bson.Marshal(item)
+	if err != nil {
+		return item
+	}
+	if _, err := bson.Raw(raw).LookupErr(lastUpdatedAtField); err == nil {
+		return item
+	}
+	elems, err := bson.Raw(raw).Elements()
+	if err != nil {
+		return item
+	}
+	parts := make([][]byte, 0, len(elems)+1)
+	for _, elem := range elems {
+		parts = append(parts, []byte(elem))
+	}
+	parts = append(parts, bsoncore.AppendDateTimeElement(nil, lastUpdatedAtField, time.Now().UnixMilli()))
+	return bson.Raw(bsoncore.BuildDocument(nil, parts...))
+}
+
+// withLastUpdatedAtUpdate returns update with _last_updated_at set to the
+// database server's current time if collection is a tracked collection.
+// It handles operator updates and aggregation-pipeline updates and returns
+// update unchanged for other collections or unrecognized forms.
+func withLastUpdatedAtUpdate(collection string, update any) any {
+	if !lastUpdatedAtCollections[collection] {
+		return update
+	}
+	switch u := update.(type) {
+	case bson.M:
+		if _, ok := u["$currentDate"]; ok {
+			return update
+		}
+		stamped := make(bson.M, len(u)+1)
+		for k, v := range u {
+			stamped[k] = v
+		}
+		stamped["$currentDate"] = bson.M{lastUpdatedAtField: true}
+		return stamped
+	case bson.D:
+		for _, e := range u {
+			if e.Key == "$currentDate" {
+				return update
+			}
+		}
+		stamped := make(bson.D, 0, len(u)+1)
+		stamped = append(stamped, u...)
+		stamped = append(stamped, bson.E{Key: "$currentDate", Value: bson.M{lastUpdatedAtField: true}})
+		return stamped
+	case mongo.Pipeline:
+		stamped := make(mongo.Pipeline, 0, len(u)+1)
+		stamped = append(stamped, u...)
+		stamped = append(stamped, bson.D{{Key: "$set", Value: bson.M{lastUpdatedAtField: "$$NOW"}}})
+		return stamped
+	case []bson.M:
+		stamped := make([]bson.M, 0, len(u)+1)
+		stamped = append(stamped, u...)
+		stamped = append(stamped, bson.M{"$set": bson.M{lastUpdatedAtField: "$$NOW"}})
+		return stamped
+	case []bson.D:
+		stamped := make([]bson.D, 0, len(u)+1)
+		stamped = append(stamped, u...)
+		stamped = append(stamped, bson.D{{Key: "$set", Value: bson.M{lastUpdatedAtField: "$$NOW"}}})
+		return stamped
+	case bson.A:
+		stamped := make(bson.A, 0, len(u)+1)
+		stamped = append(stamped, u...)
+		stamped = append(stamped, bson.M{"$set": bson.M{lastUpdatedAtField: "$$NOW"}})
+		return stamped
+	default:
+		return update
+	}
+}
+
+// StampUpdatedAt returns update with _last_updated_at set to the database
+// server's current time for tracked collections. It is used by packages
+// that issue updates directly against the driver rather than through Update,
+// UpdateAll, UpdateId, or Upsert.
+func StampUpdatedAt(collection string, update any) any {
+	return withLastUpdatedAtUpdate(collection, update)
+}
+
+// StampInsertedAt returns item with _last_updated_at set to the current time for
+// tracked collections. It is used by packages that insert documents directly
+// against the driver rather than through Insert, InsertMany, or
+// InsertManyUnordered.
+func StampInsertedAt(collection string, item any) any {
+	return withLastUpdatedAt(collection, item)
+}
+
+// StampBulkUpdatedAt stamps the update documents in the given bulk write models
+// with _last_updated_at for tracked collections. Update models are modified
+// in place; insert and replace models are left unchanged.
+func StampBulkUpdatedAt(collection string, models []mongo.WriteModel) {
+	if !lastUpdatedAtCollections[collection] {
+		return
+	}
+	for _, m := range models {
+		switch w := m.(type) {
+		case *mongo.UpdateOneModel:
+			w.Update = withLastUpdatedAtUpdate(collection, w.Update)
+		case *mongo.UpdateManyModel:
+			w.Update = withLastUpdatedAtUpdate(collection, w.Update)
+		}
+	}
+}
+
 // Insert inserts the specified item into the specified collection.
 func Insert(ctx context.Context, collection string, item any) error {
 	_, err := evergreen.GetEnvironment().DB().Collection(collection).InsertOne(ctx,
-		item,
+		withLastUpdatedAt(collection, item),
 	)
 	return errors.Wrapf(errors.WithStack(err), "inserting document")
 }
@@ -100,7 +235,7 @@ func Insert(ctx context.Context, collection string, item any) error {
 // where the same client must be used for all operations.
 func InsertWithEnv(ctx context.Context, env evergreen.Environment, collection string, item any) error {
 	_, err := env.DB().Collection(collection).InsertOne(ctx,
-		item,
+		withLastUpdatedAt(collection, item),
 	)
 	return errors.Wrapf(errors.WithStack(err), "inserting document")
 }
@@ -110,8 +245,13 @@ func InsertMany(ctx context.Context, collection string, items ...any) error {
 		return nil
 	}
 
+	stamped := make([]any, len(items))
+	for i, item := range items {
+		stamped[i] = withLastUpdatedAt(collection, item)
+	}
+
 	_, err := evergreen.GetEnvironment().DB().Collection(collection).InsertMany(ctx,
-		items,
+		stamped,
 	)
 	return errors.Wrapf(errors.WithStack(err), "inserting documents")
 }
@@ -121,8 +261,13 @@ func InsertManyUnordered(ctx context.Context, collection string, items ...any) e
 		return nil
 	}
 
+	stamped := make([]any, len(items))
+	for i, item := range items {
+		stamped[i] = withLastUpdatedAt(collection, item)
+	}
+
 	_, err := evergreen.GetEnvironment().DB().Collection(collection).InsertMany(ctx,
-		items,
+		stamped,
 		options.InsertMany().SetOrdered(false),
 	)
 	return errors.Wrapf(errors.WithStack(err), "inserting unordered documents")
@@ -148,7 +293,7 @@ func RemoveAll(ctx context.Context, collection string, query any) error {
 func Update(ctx context.Context, collection string, query any, update any) error {
 	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
 		query,
-		update,
+		withLastUpdatedAtUpdate(collection, update),
 	)
 	if err != nil {
 		return errors.Wrapf(err, "updating task")
@@ -180,7 +325,7 @@ func Replace(ctx context.Context, collection string, query any, replacement any)
 func UpdateAll(ctx context.Context, collection string, query any, update any) (*db.ChangeInfo, error) {
 	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateMany(ctx,
 		query,
-		update,
+		withLastUpdatedAtUpdate(collection, update),
 	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "updating task")
@@ -193,7 +338,7 @@ func UpdateAll(ctx context.Context, collection string, query any, update any) (*
 func UpdateId(ctx context.Context, collection string, id, update any) error {
 	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
 		bson.D{{Key: "_id", Value: id}},
-		update,
+		withLastUpdatedAtUpdate(collection, update),
 	)
 	if err != nil {
 		return errors.Wrapf(err, "updating task")
@@ -210,7 +355,7 @@ func Upsert(ctx context.Context, collection string, query any, update any) (*db.
 	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(
 		ctx,
 		query,
-		update,
+		withLastUpdatedAtUpdate(collection, update),
 		options.Update().SetUpsert(true),
 	)
 	if err != nil {
