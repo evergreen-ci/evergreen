@@ -108,6 +108,13 @@ func (r *RepoRef) addPermissions(ctx context.Context, creator *user.DBUser) erro
 	if err := rm.AddScope(ctx, adminScope); err != nil {
 		return errors.Wrapf(err, "adding scope for repo project '%s'", r.Id)
 	}
+	if err := rm.AddScope(ctx, gimlet.Scope{
+		ID:        GetRepoOnlyScope(r.Id),
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{r.Id},
+	}); err != nil {
+		return errors.Wrap(err, "adding repo-only scope")
+	}
 
 	// will be used to request permissions at the repo level
 	unrestrictedBranchesScope := gimlet.Scope{
@@ -141,7 +148,7 @@ func (r *RepoRef) MakeRestricted(ctx context.Context, branchProjects []ProjectRe
 
 	// if the branch project is now restricted, remove it from the unrestricted scope
 	for _, p := range branchProjects {
-		if !p.IsRestricted() {
+		if p.RepoRefId != r.Id || !p.IsRestricted() {
 			continue
 		}
 		if err := rm.RemoveResourceFromScope(ctx, scopeId, p.Id); err != nil {
@@ -162,7 +169,7 @@ func (r *RepoRef) MakeUnrestricted(ctx context.Context, branchProjects []Project
 	scopeId := GetUnrestrictedBranchProjectsScope(r.Id)
 	// if the branch project is now unrestricted, add it to the unrestricted scopes
 	for _, p := range branchProjects {
-		if p.IsRestricted() {
+		if p.RepoRefId != r.Id || p.IsRestricted() {
 			continue
 		}
 		if err := rm.AddResourceToScope(ctx, scopeId, p.Id); err != nil {

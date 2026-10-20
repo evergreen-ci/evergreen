@@ -973,7 +973,7 @@ func (p *ProjectRef) AddToRepoScope(ctx context.Context, u *user.DBUser) error {
 		return errors.Wrapf(err, "adding resource to repo '%s' admin scope", p.RepoRefId)
 	}
 	// If the branch is unrestricted, add it to this scope so users who requested all-repo permissions have access.
-	if !p.IsRestricted() {
+	if !p.isRestrictedWithRepo(repoRef) {
 		if err := rm.AddResourceToScope(ctx, GetUnrestrictedBranchProjectsScope(p.RepoRefId), p.Id); err != nil {
 			return errors.Wrap(err, "adding resource to unrestricted branches scope")
 		}
@@ -1249,10 +1249,8 @@ func (p *ProjectRef) RemoveFromRepoScope(ctx context.Context) error {
 		return nil
 	}
 	rm := evergreen.GetEnvironment().RoleManager()
-	if !p.IsRestricted() {
-		if err := rm.RemoveResourceFromScope(ctx, GetUnrestrictedBranchProjectsScope(p.RepoRefId), p.Id); err != nil {
-			return errors.Wrap(err, "removing resource from unrestricted branches scope")
-		}
+	if err := rm.RemoveResourceFromScope(ctx, GetUnrestrictedBranchProjectsScope(p.RepoRefId), p.Id); err != nil {
+		return errors.Wrap(err, "removing resource from unrestricted branches scope")
 	}
 	if err := rm.RemoveResourceFromScope(ctx, GetRepoAdminScope(p.RepoRefId), p.Id); err != nil {
 		return errors.Wrapf(err, "removing admin scope from repo '%s'", p.Repo)
@@ -1265,8 +1263,16 @@ func (p *ProjectRef) RemoveFromRepoScope(ctx context.Context) error {
 // gives the inputted creator admin permissions.
 func (p *ProjectRef) addPermissions(ctx context.Context, creator *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
+	restricted := p.IsRestricted()
+	if p.UseRepoSettings() && p.Restricted == nil {
+		repo, err := FindOneRepoRef(ctx, p.RepoRefId)
+		if err != nil {
+			return errors.Wrap(err, "finding inherited access restrictions")
+		}
+		restricted = p.isRestrictedWithRepo(repo)
+	}
 	parentScope := evergreen.UnrestrictedProjectsScope
-	if p.IsRestricted() {
+	if restricted {
 		parentScope = evergreen.RestrictedProjectsScope
 	}
 	if err := rm.AddResourceToScope(ctx, parentScope, p.Id); err != nil {
@@ -2026,8 +2032,16 @@ func filterProjectsByBranch(pRefs []ProjectRef, branch string) []ProjectRef {
 	return res
 }
 
-// UserHasRepoViewPermission returns true if the user has permission to view any branch project settings.
+// UserHasRepoViewPermission returns true if the user can view the repo settings or any attached project's settings.
 func UserHasRepoViewPermission(ctx context.Context, u *user.DBUser, repoRefId string) (bool, error) {
+	if u.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      repoRefId,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsView.Value,
+	}) {
+		return true, nil
+	}
 	projectRefs := []ProjectRef{}
 	err := db.FindAllQ(ctx,
 		ProjectRefCollection,
