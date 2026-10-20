@@ -3584,26 +3584,22 @@ func FindExecTasksToReset(ctx context.Context, t *Task) ([]string, error) {
 // execution tasks are returned. Otherwise, all execution tasks are returned.
 // When onlyCompleted is set, only completed execution tasks are returned.
 func execTasksToRestart(ctx context.Context, t *Task, onlyCompleted bool) ([]Task, error) {
+	if t.IsRestartFailedOnly() {
+		return FindAll(ctx, db.Query(FailedTasksByIds(t.ExecutionTasks)))
+	}
+
+	var execTaskIDs []string
+	if len(t.ExecutionTasksToRestart) > 0 {
+		execTaskIDs = intersectExecTasks(t.ExecutionTasksToRestart, t.ExecutionTasks)
+	} else {
+		execTaskIDs = t.ExecutionTasks
+	}
+
 	var query bson.M
-	switch {
-	case len(t.ExecutionTasksToRestart) > 0:
-		scoped := intersectExecTasks(t.ExecutionTasksToRestart, t.ExecutionTasks)
-		if len(scoped) == 0 {
-			return nil, nil
-		}
-		if onlyCompleted {
-			query = ByIdsAndStatus(scoped, evergreen.TaskCompletedStatuses)
-		} else {
-			query = ByIds(scoped)
-		}
-	case t.IsRestartFailedOnly():
-		query = FailedTasksByIds(t.ExecutionTasks)
-	default:
-		if onlyCompleted {
-			query = ByIdsAndStatus(t.ExecutionTasks, evergreen.TaskCompletedStatuses)
-		} else {
-			query = ByIds(t.ExecutionTasks)
-		}
+	if onlyCompleted {
+		query = ByIdsAndStatus(execTaskIDs, evergreen.TaskCompletedStatuses)
+	} else {
+		query = ByIds(execTaskIDs)
 	}
 	return FindAll(ctx, db.Query(query))
 }
