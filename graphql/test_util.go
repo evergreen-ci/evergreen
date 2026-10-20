@@ -7,14 +7,9 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/require"
 )
-
-func init() {
-	testutil.Setup()
-}
 
 func setupPermissions(t *testing.T) {
 	env := evergreen.GetEnvironment()

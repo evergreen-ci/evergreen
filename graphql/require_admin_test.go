@@ -20,25 +20,25 @@ func TestRequireAdmin(t *testing.T) {
 
 	obj := any(nil)
 
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, config Config, usr *user.DBUser, wrappedNext func(context.Context) (any, error), nextCalled *bool){
-		"SucceedsWhenUserIsAdmin": func(ctx context.Context, t *testing.T, config Config, usr *user.DBUser, wrappedNext func(context.Context) (any, error), nextCalled *bool) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, usr *user.DBUser, wrappedNext func(context.Context) (any, error), nextCalled *bool){
+		"SucceedsWhenUserIsAdmin": func(ctx context.Context, t *testing.T, usr *user.DBUser, wrappedNext func(context.Context) (any, error), nextCalled *bool) {
 			role := "superuser"
 			require.NoError(t, usr.AddRole(ctx, role))
-			res, err := config.Directives.RequireAdmin(ctx, obj, wrappedNext)
+			res, err := RequireAdmin(ctx, obj, wrappedNext)
 			assert.NoError(t, err)
 			assert.Nil(t, res)
 			assert.True(t, utility.FromBoolPtr(nextCalled), "next middleware should be called")
 		},
-		"FailsWhenUserIsNotAdmin": func(ctx context.Context, t *testing.T, config Config, usr *user.DBUser, wrappedNext func(context.Context) (any, error), nextCalled *bool) {
+		"FailsWhenUserIsNotAdmin": func(ctx context.Context, t *testing.T, usr *user.DBUser, wrappedNext func(context.Context) (any, error), nextCalled *bool) {
 			role := "regularuser"
 			require.NoError(t, usr.AddRole(ctx, role))
-			res, err := config.Directives.RequireAdmin(ctx, obj, wrappedNext)
+			res, err := RequireAdmin(ctx, obj, wrappedNext)
 			assert.EqualError(t, err, "input: User 'test_user' lacks required admin permissions", "Expected permission error")
 			assert.Nil(t, res)
 			assert.False(t, utility.FromBoolPtr(nextCalled))
 		},
-		"FailsWhenUserHasNoRoles": func(ctx context.Context, t *testing.T, config Config, usr *user.DBUser, wrappedNext func(context.Context) (any, error), nextCalled *bool) {
-			res, err := config.Directives.RequireAdmin(ctx, obj, wrappedNext)
+		"FailsWhenUserHasNoRoles": func(ctx context.Context, t *testing.T, usr *user.DBUser, wrappedNext func(context.Context) (any, error), nextCalled *bool) {
+			res, err := RequireAdmin(ctx, obj, wrappedNext)
 			assert.EqualError(t, err, "input: User 'test_user' lacks required admin permissions", "Expected permission error")
 			assert.Nil(t, res)
 			assert.False(t, utility.FromBoolPtr(nextCalled))
@@ -53,8 +53,6 @@ func TestRequireAdmin(t *testing.T) {
 		ctx = gimlet.AttachUser(ctx, usr)
 		require.NotNil(t, ctx)
 
-		config := NewConfig()
-		require.NotNil(t, config)
 
 		nextCalled := false
 		wrappedNext := func(rctx context.Context) (any, error) {
@@ -62,7 +60,7 @@ func TestRequireAdmin(t *testing.T) {
 			return nil, nil
 		}
 		t.Run(tName, func(t *testing.T) {
-			tCase(ctx, t, config, usr, wrappedNext, &nextCalled)
+			tCase(ctx, t, usr, wrappedNext, &nextCalled)
 		})
 	}
 }

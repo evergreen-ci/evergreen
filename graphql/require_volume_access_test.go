@@ -17,40 +17,40 @@ func TestRequireVolumeAccess(t *testing.T) {
 		require.NoError(t, db.ClearCollections(host.VolumesCollection, host.Collection, user.Collection),
 			"unable to clear user, volumes, or host collection")
 	}()
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser){
-		"FailsWhenInputIsInvalid": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), usr *user.DBUser){
+		"FailsWhenInputIsInvalid": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), usr *user.DBUser) {
 			obj := any(nil)
-			_, err := config.Directives.RequireVolumeAccess(ctx, obj, next)
+			_, err := RequireVolumeAccess(ctx, obj, next)
 			assert.EqualError(t, err, "input: converting args into map")
 		},
-		"FailsWhenVolumeIdIsNotSpecified": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+		"FailsWhenVolumeIdIsNotSpecified": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), usr *user.DBUser) {
 			obj := any(map[string]any{"volumeId": ""})
-			_, err := config.Directives.RequireVolumeAccess(ctx, obj, next)
+			_, err := RequireVolumeAccess(ctx, obj, next)
 			assert.EqualError(t, err, "input: must specify volume ID")
 		},
-		"FailsWhenVolumeDoesNotExist": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+		"FailsWhenVolumeDoesNotExist": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), usr *user.DBUser) {
 			obj := any(map[string]any{"volumeId": "a-non-existent-volume-id"})
-			_, err := config.Directives.RequireVolumeAccess(ctx, obj, next)
+			_, err := RequireVolumeAccess(ctx, obj, next)
 			assert.EqualError(t, err, "input: volume 'a-non-existent-volume-id' not found")
 		},
-		"FailsWhenUserDoesNotHavePermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+		"FailsWhenUserDoesNotHavePermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), usr *user.DBUser) {
 			obj := any(map[string]any{"volumeId": "vol2"})
-			_, err := config.Directives.RequireVolumeAccess(ctx, obj, next)
+			_, err := RequireVolumeAccess(ctx, obj, next)
 			assert.EqualError(t, err, "input: user 'test_user' does not have permission to access volume 'vol2'")
 		},
-		"SucceedsWhenUserHasPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+		"SucceedsWhenUserHasPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), usr *user.DBUser) {
 			nextCalled := false
 			wrappedNext := func(rctx context.Context) (any, error) {
 				nextCalled = true
 				return nil, nil
 			}
 			obj := any(map[string]any{"volumeId": "vol1"})
-			res, err := config.Directives.RequireVolumeAccess(ctx, obj, wrappedNext)
+			res, err := RequireVolumeAccess(ctx, obj, wrappedNext)
 			assert.NoError(t, err)
 			assert.Nil(t, res)
 			assert.Equal(t, true, nextCalled)
 		},
-		"AdminCanBypassPermissionsCheck": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+		"AdminCanBypassPermissionsCheck": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), usr *user.DBUser) {
 			role := "superuser"
 			require.NoError(t, usr.AddRole(ctx, role))
 			nextCalled := false
@@ -59,7 +59,7 @@ func TestRequireVolumeAccess(t *testing.T) {
 				return nil, nil
 			}
 			obj := any(map[string]any{"volumeId": "vol2"})
-			res, err := config.Directives.RequireVolumeAccess(ctx, obj, wrappedNext)
+			res, err := RequireVolumeAccess(ctx, obj, wrappedNext)
 			assert.NoError(t, err)
 			assert.Nil(t, res)
 			assert.Equal(t, true, nextCalled)
@@ -84,12 +84,10 @@ func TestRequireVolumeAccess(t *testing.T) {
 				CreatedBy: "mci_admin",
 			}
 			assert.NoError(t, v2.Insert(ctx))
-			config := NewConfig()
-			assert.NotNil(t, config)
 			next := func(rctx context.Context) (any, error) {
 				return nil, nil
 			}
-			tCase(ctx, t, next, config, usr)
+			tCase(ctx, t, next, usr)
 		})
 	}
 }

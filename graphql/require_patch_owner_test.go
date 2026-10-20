@@ -20,20 +20,20 @@ func TestRequirePatchOwner(t *testing.T) {
 			"unable to clear projectRef, patch, or user collection")
 
 	}()
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId){
-		"SucceedsWhenUserIsPatchAuthor": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId){
+		"SucceedsWhenUserIsPatchAuthor": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId) {
 			nextCalled := false
 			wrappedNext := func(rctx context.Context) (any, error) {
 				nextCalled = true
 				return nil, nil
 			}
 			obj := map[string]any{"patchIds": []any{patch1Id.Hex()}}
-			res, err := config.Directives.RequirePatchOwner(ctx, obj, wrappedNext)
+			res, err := RequirePatchOwner(ctx, obj, wrappedNext)
 			assert.NoError(t, err)
 			assert.Nil(t, res)
 			assert.Equal(t, true, nextCalled)
 		},
-		"SucceeedsWhenUserIsProjectAdmin": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId) {
+		"SucceeedsWhenUserIsProjectAdmin": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId) {
 			assert.NoError(t, usr.AddRole(ctx, "admin_project"))
 			nextCalled := false
 			wrappedNext := func(rctx context.Context) (any, error) {
@@ -41,13 +41,13 @@ func TestRequirePatchOwner(t *testing.T) {
 				return nil, nil
 			}
 			obj := map[string]any{"patchIds": []any{patch2Id.Hex(), patch3Id.Hex()}}
-			res, err := config.Directives.RequirePatchOwner(ctx, obj, wrappedNext)
+			res, err := RequirePatchOwner(ctx, obj, wrappedNext)
 			assert.NoError(t, err)
 			assert.Nil(t, res)
 			assert.Equal(t, true, nextCalled)
 			assert.NoError(t, usr.RemoveRole(ctx, "admin_project"))
 		},
-		"SucceedsWhenUserIsSuperUser": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId) {
+		"SucceedsWhenUserIsSuperUser": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId) {
 			assert.NoError(t, usr.AddRole(ctx, "superuser"))
 			nextCalled := false
 			wrappedNext := func(rctx context.Context) (any, error) {
@@ -55,13 +55,13 @@ func TestRequirePatchOwner(t *testing.T) {
 				return nil, nil
 			}
 			obj := map[string]any{"patchIds": []any{patch1Id.Hex(), patch2Id.Hex(), patch3Id.Hex()}}
-			res, err := config.Directives.RequirePatchOwner(ctx, obj, wrappedNext)
+			res, err := RequirePatchOwner(ctx, obj, wrappedNext)
 			assert.NoError(t, err)
 			assert.Nil(t, res)
 			assert.Equal(t, true, nextCalled)
 			assert.NoError(t, usr.RemoveRole(ctx, "superuser"))
 		},
-		"SucceedsWhenUserIsPatchAdmin": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId) {
+		"SucceedsWhenUserIsPatchAdmin": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId) {
 			assert.NoError(t, usr.AddRole(ctx, "admin_patch"))
 			nextCalled := false
 			wrappedNext := func(rctx context.Context) (any, error) {
@@ -69,44 +69,44 @@ func TestRequirePatchOwner(t *testing.T) {
 				return nil, nil
 			}
 			obj := map[string]any{"patchIds": []any{patch1Id.Hex(), patch2Id.Hex(), patch3Id.Hex()}}
-			res, err := config.Directives.RequirePatchOwner(ctx, obj, wrappedNext)
+			res, err := RequirePatchOwner(ctx, obj, wrappedNext)
 			assert.NoError(t, err)
 			assert.Nil(t, res)
 			assert.Equal(t, true, nextCalled)
 			assert.NoError(t, usr.RemoveRole(ctx, "admin_patch"))
 		},
-		"FailsWhenUserIsNotASuperuserOrAdminOrAuthor": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId) {
+		"FailsWhenUserIsNotASuperuserOrAdminOrAuthor": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId) {
 			nextCalled := false
 			wrappedNext := func(rctx context.Context) (any, error) {
 				nextCalled = true
 				return nil, nil
 			}
 			obj := map[string]any{"patchIds": []any{patch1Id.Hex(), patch2Id.Hex(), patch3Id.Hex()}}
-			res, err := config.Directives.RequirePatchOwner(ctx, obj, wrappedNext)
+			res, err := RequirePatchOwner(ctx, obj, wrappedNext)
 			assert.EqualError(t, err, "input: user 'test_user' does not have permission to modify patches: '64c13ab08edf48a008793cac, 67e2c49e4ebfe83f00ee5f65'")
 			assert.Nil(t, res)
 			assert.Equal(t, false, nextCalled)
 		},
-		"SucceedsWithPatchIdWhenUserIsAuthor": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId) {
+		"SucceedsWithPatchIdWhenUserIsAuthor": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId) {
 			nextCalled := false
 			wrappedNext := func(rctx context.Context) (any, error) {
 				nextCalled = true
 				return nil, nil
 			}
 			obj := map[string]any{"patchId": patch1Id.Hex()}
-			res, err := config.Directives.RequirePatchOwner(ctx, obj, wrappedNext)
+			res, err := RequirePatchOwner(ctx, obj, wrappedNext)
 			assert.NoError(t, err)
 			assert.Nil(t, res)
 			assert.True(t, nextCalled)
 		},
-		"FailsWithPatchIdWhenUserIsNotOwner": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId) {
+		"FailsWithPatchIdWhenUserIsNotOwner": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId) {
 			nextCalled := false
 			wrappedNext := func(rctx context.Context) (any, error) {
 				nextCalled = true
 				return nil, nil
 			}
 			obj := map[string]any{"patchId": patch2Id.Hex()}
-			res, err := config.Directives.RequirePatchOwner(ctx, obj, wrappedNext)
+			res, err := RequirePatchOwner(ctx, obj, wrappedNext)
 			assert.Error(t, err)
 			assert.Nil(t, res)
 			assert.False(t, nextCalled)
@@ -146,12 +146,10 @@ func TestRequirePatchOwner(t *testing.T) {
 				Author:  "not_test_user",
 			}
 			assert.NoError(t, p3.Insert(t.Context()))
-			config := NewConfig()
-			assert.NotNil(t, config)
 			next := func(rctx context.Context) (any, error) {
 				return nil, nil
 			}
-			tCase(ctx, t, next, config, usr, patch1Id, patch2Id, patch3Id)
+			tCase(ctx, t, next, usr, patch1Id, patch2Id, patch3Id)
 		})
 	}
 }

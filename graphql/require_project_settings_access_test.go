@@ -16,8 +16,6 @@ import (
 
 func TestRequireProjectSettingsAccess(t *testing.T) {
 	setupPermissions(t)
-	config := NewConfig()
-	require.NotNil(t, config)
 	ctx := context.Background()
 
 	pRef := model.ProjectRef{
@@ -58,12 +56,12 @@ func TestRequireProjectSettingsAccess(t *testing.T) {
 	}
 	ctx = graphql.WithFieldContext(ctx, fieldCtx)
 
-	res, err := config.Directives.RequireProjectSettingsAccess(ctx, any(nil), next)
+	res, err := RequireProjectSettingsAccess(ctx, any(nil), next)
 	assert.EqualError(t, err, "input: project not valid")
 	assert.Nil(t, res)
 	assert.Equal(t, 0, callCount)
 
-	res, err = config.Directives.RequireProjectSettingsAccess(ctx, apiProjectSettings, next)
+	res, err = RequireProjectSettingsAccess(ctx, apiProjectSettings, next)
 	assert.EqualError(t, err, "input: project not specified")
 	assert.Nil(t, res)
 	assert.Equal(t, 0, callCount)
@@ -81,13 +79,13 @@ func TestRequireProjectSettingsAccess(t *testing.T) {
 			Id: utility.ToStringPtr("repo_project_id"),
 		},
 	}
-	res, err = config.Directives.RequireProjectSettingsAccess(ctx, validApiProjectSettings, next)
+	res, err = RequireProjectSettingsAccess(ctx, validApiProjectSettings, next)
 	assert.EqualError(t, err, "input: user does not have permission to access the field 'admins' for project with ID 'project_id'")
 	assert.Nil(t, res)
 	assert.Equal(t, 0, callCount)
 
 	// Verify that the user also doesn't have permission to view the repo project
-	res, err = config.Directives.RequireProjectSettingsAccess(ctx, validRepoProjectSettings, next)
+	res, err = RequireProjectSettingsAccess(ctx, validRepoProjectSettings, next)
 	assert.EqualError(t, err, "input: user does not have permission to access the field 'admins' for project with ID 'repo_project_id'")
 	assert.Nil(t, res)
 	assert.Equal(t, 0, callCount)
@@ -95,13 +93,13 @@ func TestRequireProjectSettingsAccess(t *testing.T) {
 	err = usr.AddRole(t.Context(), "view_project")
 	require.NoError(t, err)
 
-	res, err = config.Directives.RequireProjectSettingsAccess(ctx, validApiProjectSettings, next)
+	res, err = RequireProjectSettingsAccess(ctx, validApiProjectSettings, next)
 	assert.NoError(t, err)
 	assert.Nil(t, res)
 	assert.Equal(t, 1, callCount)
 
 	// Verify that the user also has permission to view the repo project
-	res, err = config.Directives.RequireProjectSettingsAccess(ctx, validRepoProjectSettings, next)
+	res, err = RequireProjectSettingsAccess(ctx, validRepoProjectSettings, next)
 	assert.NoError(t, err)
 	assert.Nil(t, res)
 	assert.Equal(t, 2, callCount)

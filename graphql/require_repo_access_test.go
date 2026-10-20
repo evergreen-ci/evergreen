@@ -12,8 +12,6 @@ import (
 
 func TestRequireRepoAccess(t *testing.T) {
 	setupPermissions(t)
-	config := NewConfig()
-	require.NotNil(t, config)
 
 	usr, err := setupUser(t)
 	require.NoError(t, err)
@@ -140,7 +138,7 @@ func TestRequireRepoAccess(t *testing.T) {
 				return nil, nil
 			}
 
-			res, err := config.Directives.RequireRepoAccess(ctx, tc.obj, next, tc.access)
+			res, err := RequireRepoAccess(ctx, tc.obj, next, tc.access)
 			require.Nil(t, res)
 			if tc.expectedErr == "" {
 				require.NoError(t, err)

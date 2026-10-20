@@ -27,8 +27,6 @@ func TestRequireProjectCreate(t *testing.T) {
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
 	const refreshToken = "refresh_token"
-	config := NewConfig()
-	require.NotNil(t, config)
 	ctx := context.Background()
 
 	// callCount keeps track of how many times the function is called
@@ -50,7 +48,7 @@ func TestRequireProjectCreate(t *testing.T) {
 	err = usr.AddRole(t.Context(), "superuser")
 	require.NoError(t, err)
 
-	res, err := config.Directives.RequireProjectCreate(ctx, nil, next)
+	res, err := RequireProjectCreate(ctx, nil, next)
 	assert.NoError(t, err)
 	assert.Nil(t, res)
 	assert.Equal(t, 1, callCount)
@@ -58,14 +56,14 @@ func TestRequireProjectCreate(t *testing.T) {
 	err = usr.RemoveRole(t.Context(), "superuser")
 	require.NoError(t, err)
 
-	res, err = config.Directives.RequireProjectCreate(ctx, nil, next)
+	res, err = RequireProjectCreate(ctx, nil, next)
 	assert.EqualError(t, err, "input: user 'test_user' does not have permission to create projects")
 	assert.Nil(t, res)
 	assert.Equal(t, 1, callCount)
 
 	err = usr.AddRole(t.Context(), "admin_project")
 	require.NoError(t, err)
-	res, err = config.Directives.RequireProjectCreate(ctx, nil, next)
+	res, err = RequireProjectCreate(ctx, nil, next)
 	assert.NoError(t, err)
 	assert.Nil(t, res)
 	assert.Equal(t, 2, callCount)
