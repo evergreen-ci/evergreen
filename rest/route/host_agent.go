@@ -291,9 +291,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 			// Every skip is recorded for a valid reason to return an empty
 			// response, so warn when the in-memory queues still contain
 			// dependency-met tasks and the dispatcher recorded no skips at
-			// all, meaning it didn't consider those tasks. The secondary queue
-			// is excluded because dispatching never marks its items
-			// dispatched, so its counts include tasks that already ran.
+			// all, meaning it didn't consider those tasks.
 			if numDepsMet > 0 && numSkips == 0 {
 				grip.WarningWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 					"op":                                   "next_task",
