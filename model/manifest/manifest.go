@@ -8,8 +8,11 @@ const Collection = "manifest"
 type ModuleSelectionRule string
 
 const (
-	// ModuleSelectionPinnedRef is the module's ref from the YAML or a push trigger.
+	// ModuleSelectionPinnedRef is the module's ref from the YAML.
 	ModuleSelectionPinnedRef ModuleSelectionRule = "pinned_ref"
+	// ModuleSelectionTriggerCommit is the module commit that fired the push
+	// trigger that created the version.
+	ModuleSelectionTriggerCommit ModuleSelectionRule = "trigger_commit"
 	// ModuleSelectionLatestIngested is the newest module commit Evergreen
 	// ingested as of the version's ingest time.
 	ModuleSelectionLatestIngested ModuleSelectionRule = "latest_ingested"

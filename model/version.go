@@ -1021,6 +1021,10 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 		if err != nil {
 			return nil, errors.Wrapf(err, "module '%s'", module.Name)
 		}
+		// Push triggers set the triggering module's ref to the pushed commit.
+		if v.TriggerSHA != "" && module.Ref == v.TriggerSHA {
+			mfstModule.SelectionRule = manifest.ModuleSelectionTriggerCommit
+		}
 
 		modules[module.Name] = mfstModule
 	}

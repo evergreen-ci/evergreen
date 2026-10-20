@@ -494,7 +494,9 @@ module revisions are determined is available in the [git.get_project](Project-Co
 docs.
 
 Each module in the manifest records a `selection_rule` explaining how its revision was chosen:
-- `pinned_ref`: the module's `ref`, either set in the YAML or set by a push-level project trigger from the module's repo.
+- `pinned_ref`: the module's `ref` set in the YAML.
+- `trigger_commit`: the module commit that fired the push-level [project trigger](Project-and-Distro-Settings#project-triggers)
+  that created the version.
 - `latest_ingested`: the latest module commit Evergreen had received at the time the version was created.
 - `github_fallback`: the newest commit on the module branch according to GitHub, used when Evergreen
   hasn't received any commits for the module (or for patches that use `auto_update`).
