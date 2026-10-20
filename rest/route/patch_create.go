@@ -11,6 +11,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/user"
 	restData "github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
@@ -85,6 +86,11 @@ func (h *patchCreateHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
+	author, errResp := resolvePatchAuthor(ctx, usr, pref, h.body.Author)
+	if errResp != nil {
+		return errResp
+	}
+
 	parameters := make([]patch.Parameter, 0, len(h.body.Parameters))
 	for _, p := range h.body.Parameters {
 		parameters = append(parameters, patch.Parameter{Key: p.Key, Value: p.Value})
@@ -92,7 +98,7 @@ func (h *patchCreateHandler) Run(ctx context.Context) gimlet.Responder {
 
 	patchID := mgobson.NewObjectId()
 	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
-		User:                               usr.Id,
+		User:                               author,
 		Project:                            pref.Id,
 		BaseGitHash:                        h.body.BaseGithash,
 		PatchContent:                       h.body.Patch,
@@ -177,4 +183,34 @@ func (h *patchCreateHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting response status"))
 	}
 	return responder
+}
+
+// resolvePatchAuthor returns the user the patch should be attributed to: the
+// caller, or the requested author if the caller has admin patch permissions.
+// Matching the CLI, an author who does not exist falls back to the caller.
+func resolvePatchAuthor(ctx context.Context, usr *user.DBUser, pref *dbModel.ProjectRef, author string) (string, gimlet.Responder) {
+	if author == "" || author == usr.Id {
+		return usr.Id, nil
+	}
+
+	if !usr.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      pref.Id,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionPatches,
+		RequiredLevel: evergreen.PatchSubmitAdmin.Value,
+	}) {
+		return "", gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusForbidden,
+			Message:    "user is not authorized to patch on behalf of other users",
+		})
+	}
+
+	specified, err := user.FindOneById(ctx, author)
+	if err != nil {
+		return "", gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding author '%s'", author))
+	}
+	if specified != nil {
+		return specified.Id, nil
+	}
+	return usr.Id, nil
 }

@@ -33,6 +33,11 @@ type CreatePatchParameter struct {
 type CreatePatchRequest struct {
 	// Description is a human-readable summary of the patch, shown in the UI.
 	Description string `json:"description"`
+	// Author is the Evergreen username to attribute the patch to when creating
+	// it on behalf of someone else. Requires 'Patches: Admin' permission; if
+	// the user does not exist, the patch is attributed to the caller.
+	// Optional.
+	Author string `json:"author"`
 	// BaseGithash is the commit the patch is based on, in the project's
 	// repository. Required.
 	BaseGithash string `json:"base_githash"`

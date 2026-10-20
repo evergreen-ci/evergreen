@@ -133,4 +133,11 @@ func TestPatchCreateRun(t *testing.T) {
 		res := handler.Run(gimlet.AttachUser(ctx, usr))
 		assert.Equal(t, http.StatusBadRequest, res.Status())
 	})
+
+	t.Run("ImpersonationWithoutPermission", func(t *testing.T) {
+		handler.projectID = "enabled_project"
+		handler.body = parseCreatePatchBody(t, `{"base_githash": "abc", "author": "someone_else"}`)
+		res := handler.Run(gimlet.AttachUser(ctx, usr))
+		assert.Equal(t, http.StatusForbidden, res.Status())
+	})
 }
