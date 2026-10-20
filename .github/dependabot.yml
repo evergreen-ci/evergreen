@@ -29,6 +29,7 @@ updates:
       - dependency-name: "golang.org/x/text"
       - dependency-name: "golang.org/x/tools"
       - dependency-name: "google.golang.org/grpc"
+      - dependency-name: "github.com/klauspost/pgzip"
     groups:
       otel-dependencies:
         applies-to: version-updates
