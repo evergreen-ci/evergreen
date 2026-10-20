@@ -2776,12 +2776,12 @@ func ValidateExecutionTasksToRestart(t *task.Task, execTaskIDs []string) error {
 	if !t.DisplayOnly {
 		return errors.Errorf("can only restart individual execution tasks within a display task, but task '%s' is not a display task", t.Id)
 	}
-	execTasks := map[string]bool{}
+	validExecTaskIDs := map[string]bool{}
 	for _, id := range t.ExecutionTasks {
-		execTasks[id] = true
+		validExecTaskIDs[id] = true
 	}
 	for _, id := range execTaskIDs {
-		if !execTasks[id] {
+		if !validExecTaskIDs[id] {
 			return errors.Errorf("execution task '%s' is not part of display task '%s'", id, t.Id)
 		}
 	}
@@ -2848,16 +2848,15 @@ func ResetTaskOrDisplayTask(ctx context.Context, settings *evergreen.Settings, t
 		if err != nil {
 			return errors.Wrap(err, "getting repo for display task to reset")
 		}
-		switch {
-		case len(opts.ExecutionTaskIDs) > 0:
+		if len(opts.ExecutionTaskIDs) > 0 {
 			if err := taskToReset.AddExecutionTasksToResetWhenFinished(ctx, opts.User, repoRefID, opts.ExecutionTaskIDs); err != nil {
 				return errors.Wrap(err, "marking display task to restart execution tasks")
 			}
-		case opts.FailedOnly:
+		} else if opts.FailedOnly {
 			if err := taskToReset.SetResetFailedWhenFinished(ctx, opts.User, repoRefID); err != nil {
 				return errors.Wrap(err, "marking display task for reset")
 			}
-		default:
+		} else {
 			if err := taskToReset.SetResetWhenFinished(ctx, opts.User, repoRefID); err != nil {
 				return errors.Wrap(err, "marking display task for reset")
 			}
