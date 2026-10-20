@@ -494,6 +494,7 @@ module revisions are determined is available in the [git.get_project](Project-Co
 docs.
 
 Each module in the manifest records a `selection_rule` explaining how its revision was chosen:
+
 - `pinned_ref`: the module's `ref` set in the YAML.
 - `trigger_commit`: the module commit that fired the push-level [project trigger](Project-and-Distro-Settings#project-triggers)
   that created the version.
