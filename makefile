@@ -21,17 +21,18 @@ endif
 # end project configuration
 
 # start go runtime settings
-gobin := go
-ifneq (,$(GOROOT))
-gobin := $(GOROOT)/bin/go
+goSDKRoot := $(shell bash scripts/go-sdk.sh path)
+goHostPlatform := $(shell bash scripts/go-sdk.sh platform)
+ifeq (,$(goSDKRoot))
+$(error Could not determine the pinned Go SDK; see scripts/go-sdk-checksums.txt)
 endif
-
-# Some tools shell out to the go binary themselves rather than being invoked via
-# $(gobin), so they need the Go toolchain on the PATH.
-goBinPathPrefix :=
-ifneq (,$(GOROOT))
-goBinPathPrefix := $(GOROOT)/bin:
-endif
+gobin := $(goSDKRoot)/bin/go
+override GOROOT := $(goSDKRoot)
+override GOTOOLCHAIN := local
+override GOENV := off
+# Tools such as golangci-lint, dlv, and swag invoke Go themselves.
+override PATH := $(goSDKRoot)/bin:$(PATH)
+export GOROOT GOTOOLCHAIN GOENV PATH
 
 goCache := $(GOCACHE)
 ifeq (,$(goCache))
@@ -52,7 +53,7 @@ nativeGobin := $(shell cygpath -m $(gobin))
 goCache := $(shell cygpath -m $(goCache))
 goModCache := $(shell cygpath -m $(goModCache))
 lintCache := $(shell cygpath -m $(lintCache))
-export GOROOT := $(shell cygpath -m $(GOROOT))
+override GOROOT := $(shell cygpath -m $(goSDKRoot))
 else
 nativeGobin := $(gobin)
 endif
@@ -82,10 +83,10 @@ $(shell mkdir -p $(buildDir))
 goos := $(GOOS)
 goarch := $(GOARCH)
 ifeq ($(goos),)
-goos := $(shell $(gobin) env GOOS 2> /dev/null)
+goos := $(word 1,$(goHostPlatform))
 endif
 ifeq ($(goarch),)
-goarch := $(shell $(gobin) env GOARCH 2> /dev/null)
+goarch := $(word 2,$(goHostPlatform))
 endif
 
 clientBuildDir := clients
@@ -119,6 +120,16 @@ golangciLintInstallerChecksum := "9e99d38f3213411a1b6175e5b535c72e37c7ed42ccf251
 
 
 # start rules for building services and clients
+go-sdk:
+	@bash scripts/go-sdk.sh install
+test-go-sdk:
+	@bash scripts/test-go-sdk.sh
+phony += go-sdk test-go-sdk
+
+# Rebuild helper binaries when the SDK pin changes, even if their source did not.
+goHelpers := load-smoke-data set-var set-project-var run-linter generate-lint parse-host-file build-cross-compile sign-executable
+$(addprefix $(buildDir)/,$(goHelpers)): go.mod scripts/go-sdk-checksums.txt | go-sdk
+
 ifeq ($(OS),Windows_NT)
 localClientBinary := $(clientBuildDir)/$(goos)_$(goarch)/$(windowsBinaryBasename)
 else
@@ -251,11 +262,11 @@ phony += lint build test coverage coverage-html list-tests
 # end front-ends
 
 # start module management targets
-mod-tidy:
+mod-tidy: | go-sdk
 	$(gobin) mod tidy
-mod-download:
+mod-download: | go-sdk
 	$(gobin) mod download
-verify-mod-tidy:
+verify-mod-tidy: | go-sdk
 	$(gobin) run cmd/verify-mod-tidy/verify-mod-tidy.go -goBin="$(gobin)"
 phony += mod-tidy mod-download verify-mod-tidy
 # end module management targets
@@ -314,7 +325,7 @@ testArgs += -ldflags="$(ldFlags) -X=github.com/evergreen-ci/evergreen/testutil.E
 #  targets to run any tests in the top-level package
 $(buildDir):
 	mkdir -p $@
-$(buildDir)/output.%.test: .FORCE
+$(buildDir)/output.%.test: .FORCE | go-sdk
 	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
 # test-agent-command is special because it requires that the Evergreen binary be compiled to run some of the tests.
 $(buildDir)/output.agent-command.test: cli .FORCE
@@ -322,40 +333,35 @@ $(buildDir)/output.agent-command.test: cli .FORCE
 # Smoke tests are special because they require that the Evergreen binary is compiled and the smoke test data is loaded.
 $(buildDir)/output.smoke-internal-%.test: cli load-smoke-data
 	$(testRunEnv) $(gobin) test $(testArgs) ./smoke/internal/$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
-$(buildDir)/output-dlv.%.test: .FORCE
+$(buildDir)/output-dlv.%.test: .FORCE | go-sdk
 	$(testRunEnv) dlv test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -- $(dlvArgs) 2>&1 | tee $@
-$(buildDir)/output.%.coverage: .FORCE
+$(buildDir)/output.%.coverage: .FORCE | go-sdk
 	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
 	@-[ -f $@ ] && $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 #  targets to generate gotest output from the linter.
-ifneq (go,$(gobin))
-# We have to handle the PATH specially for linting in CI, because if the PATH has a different version of the Go
-# binary in it, the linter won't work properly.
-lintEnvVars := PATH="$(shell dirname $(gobin)):$(PATH)"
-endif
 $(buildDir)/output.%.lint: $(buildDir)/run-linter .FORCE
-	@$(lintEnvVars) ./$< --output=$@ --lintBin=$(buildDir)/golangci-lint -customLinters="$(gobin) run github.com/evergreen-ci/evg-lint/evg-lint -set_exit_status" --lintArgs="--timeout=5m" --packages='$*'
+	@./$< --output=$@ --lintBin=$(buildDir)/golangci-lint -customLinters="$(gobin) run github.com/evergreen-ci/evg-lint/evg-lint -set_exit_status" --lintArgs="--timeout=5m" --packages='$*'
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 	$(gobin) tool cover -html=$< -o $@
 # end test and coverage artifacts
 
 
-gqlgen:
+gqlgen: | go-sdk
 	$(gobin) tool github.com/99designs/gqlgen generate
 	$(gobin) run cmd/gqlgen/generate_secret_fields.go
 
-govul-install:
+govul-install: | go-sdk
 	$(gobin) install golang.org/x/vuln/cmd/govulncheck@v1.1.4
 
 # modernize guards against regressions of the Go modernization from DEVPROD-21825. See scripts/check-modernize.sh.
 modernize:
-	@bash scripts/check-modernize.sh
+	@bash scripts/go-sdk.sh --modernize exec bash scripts/check-modernize.sh
 phony += modernize
 
 swaggo:
 	$(MAKE) swaggo-format swaggo-build swaggo-render
 
-swaggo-install:
+swaggo-install: | go-sdk
 	$(gobin) install github.com/swaggo/swag/cmd/swag@latest
 
 swaggo-format:
@@ -363,13 +369,12 @@ swaggo-format:
 
 # --parseDependency makes swag resolve types from dependencies, which it does by
 # running `go list`, so the Go toolchain has to be on the PATH here.
-swaggo-build: export PATH := $(goBinPathPrefix)$(PATH)
-swaggo-build:
+swaggo-build: | go-sdk
 	swag init -g service/service.go -o $(buildDir) --outputTypes json --parseDependency --parseInternal
 	$(MAKE) swaggo-convert SWAGGER_JSON_FILE=$(buildDir)/swagger.json
 
 # swaggo only generates Swagger 2.0, so convert the generated spec to OpenAPI 3.
-swaggo-convert:
+swaggo-convert: | go-sdk
 	$(gobin) run ./cmd/swagger-to-openapi -input $(SWAGGER_JSON_FILE)
 
 swaggo-render:
