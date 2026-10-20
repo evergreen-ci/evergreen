@@ -6,7 +6,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/netip"
 	"net/url"
 	"strconv"
 	"strings"
@@ -20,9 +19,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -295,6 +295,36 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+var blockedCIDRs = []*net.IPNet{
+	// AWS metadata endpoints
+	mustParseCIDR("169.254.0.0/16"),
+	mustParseCIDR("fe80::/10"),
+	// Loopback endpoints
+	mustParseCIDR("127.0.0.0/8"),
+	mustParseCIDR("::1/128"),
+}
+
+func mustParseCIDR(c string) *net.IPNet {
+	_, n, err := net.ParseCIDR(c)
+	if err != nil {
+		grip.Warning(context.Background(), message.WrapError(err, message.Fields{
+			"message": "failed to parse CIDR",
+			"target":  c,
+		}))
+		return nil
+	}
+	return n
+}
+
+func isBlockedIP(ip net.IP) bool {
+	for _, n := range blockedCIDRs {
+		if n != nil && n.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
 // validateArtifactURL validates that a URL is safe to fetch
 func validateArtifactURL(ctx context.Context, raw string) error {
 	u, err := url.Parse(raw)
@@ -313,18 +343,18 @@ func validateArtifactURL(ctx context.Context, raw string) error {
 	}
 
 	// Block literal IP addresses entirely
-	if _, err := netip.ParseAddr(host); err == nil {
+	if ip := net.ParseIP(host); ip != nil {
 		return errors.New("literal IP hosts are not allowed")
 	}
 
 	// Resolve hostname and check all returned IPs
-	ips, err := net.DefaultResolver.LookupNetIP(ctx, "ip", host)
+	ips, err := net.DefaultResolver.LookupIP(ctx, "ip", host)
 	if err != nil {
 		return errors.Wrap(err, "DNS resolution failed")
 	}
 
 	for _, ip := range ips {
-		if util.IsBlockedInternalIP(ip) {
+		if isBlockedIP(ip) {
 			return errors.Errorf("host %s resolves to blocked address %s", host, ip.String())
 		}
 	}
@@ -339,11 +369,11 @@ func ssrfDialControl(_ context.Context, _ string, address string, _ syscall.RawC
 	if err != nil {
 		return errors.Wrap(err, "parsing dial address")
 	}
-	ip, err := netip.ParseAddr(host)
-	if err != nil {
+	ip := net.ParseIP(host)
+	if ip == nil {
 		return errors.Errorf("invalid IP in dial address: %s", host)
 	}
-	if util.IsBlockedInternalIP(ip) {
+	if isBlockedIP(ip) {
 		return errors.Errorf("connection to blocked address %s", ip)
 	}
 	return nil
@@ -353,9 +383,9 @@ const maxArtifactRedirects = 10
 
 var artifactHTTPClient = utility.WithOTelTracing(&http.Client{
 	Transport: &http.Transport{
-		// Proxy must be nil because it would dial the artifact host
-		// itself, bypassing ssrfDialControl.
-		Proxy: nil,
+		// http.Get uses http.DefaultTransport under the hood, which includes
+		// http.ProxyFromEnvironment, so adding here for parity.
+		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
 			ControlContext: ssrfDialControl,
 		}).DialContext,
