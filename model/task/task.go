@@ -3590,9 +3590,12 @@ func execTasksToRestart(ctx context.Context, t *Task, onlyCompleted bool) ([]Tas
 
 	var execTaskIDs []string
 	if len(t.ExecutionTasksToRestart) > 0 {
-		execTaskIDs = intersectExecTasks(t.ExecutionTasksToRestart, t.ExecutionTasks)
+		execTaskIDs = utility.StringSliceIntersection(t.ExecutionTasks, t.ExecutionTasksToRestart)
 	} else {
 		execTaskIDs = t.ExecutionTasks
+	}
+	if len(execTaskIDs) == 0 {
+		return nil, nil
 	}
 
 	var query bson.M
@@ -3602,22 +3605,6 @@ func execTasksToRestart(ctx context.Context, t *Task, onlyCompleted bool) ([]Tas
 		query = ByIds(execTaskIDs)
 	}
 	return FindAll(ctx, db.Query(query))
-}
-
-// intersectExecTasks returns the IDs in subset that are also in all, preserving
-// the order of subset.
-func intersectExecTasks(subset, all []string) []string {
-	allSet := make(map[string]bool, len(all))
-	for _, id := range all {
-		allSet[id] = true
-	}
-	intersection := make([]string, 0, len(subset))
-	for _, id := range subset {
-		if allSet[id] {
-			intersection = append(intersection, id)
-		}
-	}
-	return intersection
 }
 
 // FindHostSchedulable finds all tasks that can be scheduled for a distro
