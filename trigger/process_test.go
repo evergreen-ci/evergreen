@@ -623,6 +623,10 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	assert.Equal(evergreen.TriggerRequester, dbVersions[0].Requester)
 	assert.Equal(model.ProjectTriggerLevelPush, dbVersions[0].TriggerType)
 	assert.Equal(sampleNewerSHA, dbVersions[0].TriggerSHA)
+	assert.Equal("sample", dbVersions[0].TriggerModule)
+	assert.Equal(uptreamProjectRef.Owner, dbVersions[0].TriggerOwner)
+	assert.Equal(uptreamProjectRef.Repo, dbVersions[0].TriggerRepo)
+	assert.Equal(uptreamProjectRef.Branch, dbVersions[0].TriggerBranch)
 	assert.Equal("upstream", dbVersions[0].TriggerID)
 	assert.True(utility.FromBoolPtr(dbVersions[0].Activated))
 

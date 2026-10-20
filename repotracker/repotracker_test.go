@@ -2057,6 +2057,43 @@ func TestShellVersionFromRevisionGitTags(t *testing.T) {
 	assert.Equal(t, usr.Email(), v.AuthorEmail)
 }
 
+func TestShellVersionFromRevisionTriggerModule(t *testing.T) {
+	require.NoError(t, db.ClearCollections(model.RepositoriesCollection, user.Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(model.RepositoriesCollection, user.Collection))
+	})
+
+	pRef := &model.ProjectRef{
+		Id:         primitive.NewObjectID().Hex(),
+		Identifier: "sys-perf",
+		Owner:      "mongodb",
+		Repo:       "mongo",
+		Branch:     "master",
+	}
+	metadata := model.VersionMetadata{
+		Revision:            model.Revision{Revision: "mainline-sha"},
+		TriggerID:           "dsi",
+		TriggerType:         model.ProjectTriggerLevelPush,
+		TriggerDefinitionID: "def1",
+		SourceCommit:        "module-sha",
+		SourceModule: &model.SourceModule{
+			Name:   "dsi",
+			Owner:  "10gen",
+			Repo:   "dsi",
+			Branch: "main",
+		},
+	}
+
+	v, err := ShellVersionFromRevision(t.Context(), pRef, metadata)
+	require.NoError(t, err)
+	require.NotNil(t, v)
+	assert.Equal(t, "module-sha", v.TriggerSHA)
+	assert.Equal(t, "dsi", v.TriggerModule)
+	assert.Equal(t, "10gen", v.TriggerOwner)
+	assert.Equal(t, "dsi", v.TriggerRepo)
+	assert.Equal(t, "main", v.TriggerBranch)
+}
+
 func TestResolveUserFromMetadata(t *testing.T) {
 	ctx := t.Context()
 
