@@ -39,7 +39,7 @@ func makeCreatePatchHandler(env evergreen.Environment) gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Create a patch
-//	@Description	Creates a patch for the project. The base diff ('patch') and module diffs are optional; a patch with no diffs runs its tasks against the base commit. Module diffs are given inline, so no follow-up calls are needed. To repeat a previous patch's build variant/task definition, set exactly one of 'reuse_last_definition', 'repeat_failed', or 'repeat_patch_id' instead of specifying variants and tasks. Returns the created patch; it is not activated unless 'finalize' is true.
+//	@Description	Creates a patch for the project. The base diff ('patch') and module diffs are optional; a patch with no diffs runs its tasks against the base commit. Module diffs are given inline, so no follow-up calls are needed. To repeat a previous patch's build variant/task definition, set exactly one of 'repeat_last_patch', 'repeat_failed', or 'repeat_patch_id' instead of specifying variants and tasks. Returns the created patch; it is not activated unless 'finalize' is true.
 //	@Tags			patches
 //	@Router			/projects/{project_id}/patches [post]
 //	@Security		Api-User || Api-Key
@@ -110,7 +110,7 @@ func (h *patchCreateHandler) Run(ctx context.Context) gimlet.Responder {
 		Alias:                              h.body.Alias,
 		Aliases:                            h.body.Aliases,
 		TriggerAliases:                     h.body.TriggerAliases,
-		RepeatDefinition:                   h.body.RepeatDefinition,
+		RepeatDefinition:                   h.body.RepeatLastPatch,
 		RepeatFailed:                       h.body.RepeatFailed,
 		RepeatPatchId:                      h.body.RepeatPatchId,
 	})
@@ -135,7 +135,7 @@ func (h *patchCreateHandler) Run(ctx context.Context) gimlet.Responder {
 		"message":    "creating patch",
 		"from":       "rest v2",
 		"patch_id":   patchID,
-		"finalizing": h.body.FinalizeResponse,
+		"finalizing": h.body.Finalize,
 		"variants":   h.body.Variants,
 		"tasks":      h.body.Tasks,
 		"alias":      h.body.Alias,
@@ -161,7 +161,7 @@ func (h *patchCreateHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	if h.body.FinalizeResponse {
+	if h.body.Finalize {
 		if err = restData.SetPatchActivated(ctx, patchID.Hex(), usr.Id, true); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finalizing patch"))
 		}

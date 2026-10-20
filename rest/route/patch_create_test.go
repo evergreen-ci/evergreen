@@ -51,7 +51,7 @@ func TestPatchCreateParseValidation(t *testing.T) {
 		},
 		"MultipleRepeatOptions": {
 			projectID:   "p",
-			body:        `{"base_githash": "abc", "reuse_last_definition": true, "repeat_patch_id": "1234"}`,
+			body:        `{"base_githash": "abc", "repeat_last_patch": true, "repeat_patch_id": "1234"}`,
 			expectedErr: "mutually exclusive",
 		},
 		"EmptyModuleName": {
@@ -72,7 +72,7 @@ func TestPatchCreateParseValidation(t *testing.T) {
 		"FinalizeWithoutTasksOrVariants": {
 			projectID:   "p",
 			body:        `{"base_githash": "abc", "finalize": true}`,
-			expectedErr: "cannot finalize a patch with no tasks or variants",
+			expectedErr: "cannot finalize a patch with no variants",
 		},
 		"ValidRequestWithoutDiff": {
 			projectID: "p",
