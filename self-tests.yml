@@ -423,7 +423,8 @@ functions:
         working_dir: evergreen
         binary: make
         args: ["modernize"]
-        include_expansions_in_env: ["GOROOT", "GOTOOLCHAIN"]
+        # GOTOOLCHAIN is not set here because the modernizer requires go1.26
+        include_expansions_in_env: ["GOROOT"]
         env:
           GOTOOLCHAIN: go1.26.0
           MODERNIZE_GOOS: ${goos}
