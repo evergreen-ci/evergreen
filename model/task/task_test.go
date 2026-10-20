@@ -3513,7 +3513,7 @@ func TestArchiveScopedExecutionTasks(t *testing.T) {
 	assert.Nil(t, archivedET1, "execution task not in the scoped set should not be archived")
 }
 
-func TestSetResetExecutionTasksWhenFinishedMerges(t *testing.T) {
+func TestAddExecutionTasksToResetWhenFinishedMerges(t *testing.T) {
 	ctx := t.Context()
 
 	require.NoError(t, db.Clear(Collection))
