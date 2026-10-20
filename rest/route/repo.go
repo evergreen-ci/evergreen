@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -16,7 +17,33 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
+
+type reposGetHandler struct{}
+
+func (h *reposGetHandler) Factory() gimlet.RouteHandler { return &reposGetHandler{} }
+
+func (h *reposGetHandler) Parse(context.Context, *http.Request) error { return nil }
+
+// Run lists the metadata required to discover repo resources, without settings or secrets.
+//
+// @Summary List repo resources
+// @Tags repos
+// @Router /repos [get]
+// @Security Api-User || Api-Key
+// @Success 200 {array} model.APIRepo
+func (h *reposGetHandler) Run(ctx context.Context) gimlet.Responder {
+	repos := []dbModel.RepoRef{}
+	if err := db.FindAllQ(ctx, dbModel.RepoRefCollection, db.Query(bson.M{}).WithFields(dbModel.RepoRefIdKey, dbModel.RepoRefOwnerKey, dbModel.RepoRefRepoKey, dbModel.RepoRefAdminsKey), &repos); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding repo resources"))
+	}
+	result := []model.APIRepo{}
+	for _, repo := range repos {
+		result = append(result, model.APIRepo{ID: repo.Id, Name: repo.Owner + "/" + repo.Repo, Admins: repo.Admins})
+	}
+	return gimlet.NewJSONResponse(result)
+}
 
 ////////////////////////////////////////////////////////////////////////
 //

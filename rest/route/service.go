@@ -230,6 +230,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/projects/{project_id}/variants/{variant_name}/quarantine_status").Version(2).Get().Wrap(requireUser, addProject, viewTasks, rateLimit).RouteHandler(makeVariantQuarantineStatusHandler())
 	app.AddRoute("/permissions").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(&permissionsGetHandler{})
 	app.AddRoute("/permissions/users").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeGetAllUsersPermissions(env.RoleManager()))
+	app.AddRoute("/repos").Version(2).Get().Wrap(requireUser, editRoles, rateLimit).RouteHandler(&reposGetHandler{})
 	app.AddRoute("/repos/{repo_id}").Version(2).Get().Wrap(requireUser, addProject, viewRepoSettings, rateLimit).RouteHandler(makeGetRepoByID())
 	app.AddRoute("/repos/{repo_id}").Version(2).Patch().Wrap(requireUser, addProject, requireProjectAdmin, editRepoSettings, rateLimit).RouteHandler(makePatchRepoByID(settings))
 	app.AddRoute("/roles").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(acl.NewGetAllRolesHandler(env.RoleManager()))
