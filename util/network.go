@@ -18,7 +18,7 @@ var (
 )
 
 // IsBlockedInternalIP reports whether an address is internal and must not be reached by requests to
-// user-controlled URLs. Validation and dialing should both use it so they share the same policy.
+// user-controlled URLs. This includes carrier-grade NAT addresses, which in-cluster services use.
 func IsBlockedInternalIP(ip netip.Addr) bool {
 	ip = ip.Unmap()
 	if !ip.IsValid() || ip.IsUnspecified() || ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsPrivate() || ip.IsMulticast() {

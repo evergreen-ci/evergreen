@@ -218,7 +218,7 @@ func ValidateWebhookURL(raw string) error {
 	if u.User != nil {
 		return errors.New("webhook URL cannot contain user info")
 	}
-	if ip, err := netip.ParseAddr(u.Hostname()); err == nil && IsBlockedInternalIP(ip) {
+	if ip, err := netip.ParseAddr(u.Hostname()); err == nil && isBlockedWebhookIP(ip) {
 		return errors.Errorf("webhook URL cannot use blocked address %s", ip)
 	}
 
@@ -251,7 +251,7 @@ func webhookDialContext(resolver webhookResolver) func(context.Context, string, 
 			return nil, errors.Errorf("webhook destination %s did not resolve", host)
 		}
 		for _, ip := range ips {
-			if IsBlockedInternalIP(ip) {
+			if isBlockedWebhookIP(ip) {
 				return nil, errors.Errorf("webhook destination %s resolves to blocked address %s", host, ip)
 			}
 		}
@@ -272,4 +272,11 @@ func webhookDialContext(resolver webhookResolver) func(context.Context, string, 
 // validateWebhookRedirect prevents redirects from bypassing destination validation.
 func validateWebhookRedirect(req *http.Request, _ []*http.Request) error {
 	return ValidateWebhookURL(req.URL.String())
+}
+
+// isBlockedWebhookIP is looser than IsBlockedInternalIP because webhooks to in-cluster services (e.g. Build
+// Baron) are an expected use case, and those resolve to carrier-grade NAT addresses.
+func isBlockedWebhookIP(ip netip.Addr) bool {
+	ip = ip.Unmap()
+	return !ip.IsValid() || ip.IsUnspecified() || ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsPrivate() || ip.IsMulticast()
 }
