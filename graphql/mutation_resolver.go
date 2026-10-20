@@ -1150,6 +1150,9 @@ func (r *mutationResolver) OverrideTaskDependencies(ctx context.Context, taskID 
 func (r *mutationResolver) RestartTask(ctx context.Context, taskID string, failedOnly bool, executionTaskIds []string) (*restModel.APITask, error) {
 	usr := mustHaveUser(ctx)
 	username := usr.Username()
+	if failedOnly && len(executionTaskIds) > 0 {
+		return nil, InputValidationError.Send(ctx, "cannot restart only failed execution tasks and a specific set of execution tasks at the same time")
+	}
 	t, err := task.FindOneId(ctx, taskID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
@@ -1159,9 +1162,6 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string, faile
 	}
 	if evergreen.IsGithubMergeQueueRequester(t.Requester) {
 		return nil, InputValidationError.Send(ctx, "Merge queue tasks cannot be manually restarted.")
-	}
-	if failedOnly && len(executionTaskIds) > 0 {
-		return nil, InputValidationError.Send(ctx, "cannot restart only failed execution tasks and a specific set of execution tasks at the same time")
 	}
 	if err := model.ValidateExecutionTasksToRestart(t, executionTaskIds); err != nil {
 		return nil, InputValidationError.Send(ctx, err.Error())
