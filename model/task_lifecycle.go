@@ -2825,14 +2825,9 @@ func FixStrandedVirtualTask(ctx context.Context, settings *evergreen.Settings, t
 // ResetTaskOrDisplayTask is a wrapper for TryResetTask that handles execution and display tasks that are restarted
 // from sources separate from marking the task finished. If an execution task, attempts to restart the display task instead.
 // Marks display tasks as reset when finished and then check if it can be reset immediately. If opts.ExecutionTaskIDs is set,
-// only those execution tasks of the given display task are restarted, regardless of whether they failed.
+// only those execution tasks of the given display task are restarted, regardless of whether they failed. Callers are
+// responsible for validating opts (e.g. with ValidateExecutionTasksToRestart) before calling this.
 func ResetTaskOrDisplayTask(ctx context.Context, settings *evergreen.Settings, t *task.Task, opts ResetTaskOptions) error {
-	if opts.FailedOnly && len(opts.ExecutionTaskIDs) > 0 {
-		return errors.New("cannot restart only failed execution tasks and a specific set of execution tasks at the same time")
-	}
-	if err := ValidateExecutionTasksToRestart(t, opts.ExecutionTaskIDs); err != nil {
-		return err
-	}
 	taskToReset := *t
 	if taskToReset.IsPartOfDisplay(ctx) { // if given an execution task, attempt to restart the full display task
 		dt, err := taskToReset.GetDisplayTask(ctx)

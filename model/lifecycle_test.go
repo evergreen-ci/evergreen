@@ -2861,30 +2861,6 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 				assert.Equal(t, 2, execTask.Execution, "execution task '%s' should align with the display task execution", id)
 			}
 		},
-		"ResettingExecutionTaskNotInDisplayTaskShouldError": func(ctx context.Context, t *testing.T, settings *evergreen.Settings) {
-			dt, err := task.FindOneId(ctx, "displayTask1")
-			assert.NoError(t, err)
-			require.NotNil(t, dt)
-
-			assert.Error(t, ResetTaskOrDisplayTask(ctx, settings, dt, ResetTaskOptions{User: "caller", Origin: evergreen.StepbackTaskActivator, ExecutionTaskIDs: []string{"task7"}}))
-			dt, err = task.FindOneId(ctx, "displayTask1")
-			assert.NoError(t, err)
-			require.NotNil(t, dt)
-			assert.Equal(t, evergreen.TaskFailed, dt.Status, "display task should not reset when scoped execution task is invalid")
-			assert.Equal(t, 0, dt.Execution, "display task should not reset to a new execution")
-		},
-		"ResettingFailedOnlyAndSpecificExecutionTasksShouldError": func(ctx context.Context, t *testing.T, settings *evergreen.Settings) {
-			dt, err := task.FindOneId(ctx, "displayTask1")
-			assert.NoError(t, err)
-			require.NotNil(t, dt)
-
-			assert.Error(t, ResetTaskOrDisplayTask(ctx, settings, dt, ResetTaskOptions{User: "caller", Origin: evergreen.StepbackTaskActivator, FailedOnly: true, ExecutionTaskIDs: []string{"task6"}}))
-			dt, err = task.FindOneId(ctx, "displayTask1")
-			assert.NoError(t, err)
-			require.NotNil(t, dt)
-			assert.Equal(t, evergreen.TaskFailed, dt.Status, "display task should not reset when both restart modes are set")
-			assert.Equal(t, 0, dt.Execution, "display task should not reset to a new execution")
-		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			settings := testutil.TestConfig()
@@ -2893,6 +2869,26 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 			tCase(ctx, t, settings)
 		})
 	}
+}
+
+func TestValidateExecutionTasksToRestart(t *testing.T) {
+	dt := &task.Task{
+		Id:             "dt",
+		DisplayOnly:    true,
+		ExecutionTasks: []string{"et1", "et2"},
+	}
+	t.Run("NoExecutionTasksShouldSucceed", func(t *testing.T) {
+		assert.NoError(t, ValidateExecutionTasksToRestart(dt, nil))
+	})
+	t.Run("ExecutionTasksInDisplayTaskShouldSucceed", func(t *testing.T) {
+		assert.NoError(t, ValidateExecutionTasksToRestart(dt, []string{"et1", "et2"}))
+	})
+	t.Run("ExecutionTaskNotInDisplayTaskShouldError", func(t *testing.T) {
+		assert.Error(t, ValidateExecutionTasksToRestart(dt, []string{"et1", "et3"}))
+	})
+	t.Run("NonDisplayTaskShouldError", func(t *testing.T) {
+		assert.Error(t, ValidateExecutionTasksToRestart(&task.Task{Id: "et1"}, []string{"et1"}))
+	})
 }
 
 func resetTaskData() error {
