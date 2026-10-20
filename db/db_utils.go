@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
 	"testing"
 	"time"
 
@@ -149,9 +150,7 @@ func withLastUpdatedAtUpdate(collection string, update any) any {
 			return update
 		}
 		stamped := make(bson.M, len(u)+1)
-		for k, v := range u {
-			stamped[k] = v
-		}
+		maps.Copy(stamped, u)
 		stamped["$currentDate"] = bson.M{lastUpdatedAtField: true}
 		return stamped
 	case bson.D:
