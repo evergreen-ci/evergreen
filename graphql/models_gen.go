@@ -306,9 +306,11 @@ type MainlineCommitsOptions struct {
 type Manifest struct {
 	ID              string            `json:"id"`
 	Branch          string            `json:"branch"`
+	ChangedModules  []string          `json:"changedModules,omitempty"`
 	IsBase          bool              `json:"isBase"`
 	ModuleOverrides map[string]string `json:"moduleOverrides,omitempty"`
 	Modules         map[string]any    `json:"modules,omitempty"`
+	PreviousVersion *string           `json:"previousVersion,omitempty"`
 	Project         string            `json:"project"`
 	Revision        string            `json:"revision"`
 }

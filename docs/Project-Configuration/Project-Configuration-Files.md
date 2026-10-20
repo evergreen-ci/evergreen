@@ -493,6 +493,17 @@ latest revision available for a module. The full hierarchy of how
 module revisions are determined is available in the [git.get_project](Project-Commands/#module-hash-hierarchy)
 docs.
 
+Each module in the manifest records a `selection_rule` explaining how its revision was chosen:
+- `pinned_ref`: the module's `ref`, either set in the YAML or set by a push-level project trigger from the module's repo.
+- `latest_ingested`: the latest module commit Evergreen had received at the time the version was created.
+- `github_fallback`: the newest commit on the module branch according to GitHub, used when Evergreen
+  hasn't received any commits for the module (or for patches that use `auto_update`).
+- `base_version`: inherited from the base version's manifest.
+
+The manifest also records `previous_version`, the version it was compared against (the previous mainline version, or
+the base version for patches), and `changed_modules`, the modules that were added, removed, or moved to a different
+commit compared to that version.
+
 Module fields support the expansion of variables defined in the [Variables](Project-and-Distro-Settings#variables)
 tab of the Spruce project settings. These fields are expanded at the time of version creation, at which point
 the "Version Manifest" shown in the Spruce UI should show module configurations including the expanded variables.
