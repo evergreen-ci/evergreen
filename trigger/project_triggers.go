@@ -10,6 +10,8 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -62,12 +64,26 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 	if err != nil {
 		return nil, err
 	}
-	if upstreamModuleIdx >= 0 && args.TriggerType == model.ProjectTriggerLevelPush {
-		metadata.SourceModule = &model.SourceModule{
-			Name:   moduleList[upstreamModuleIdx].Name,
-			Owner:  upstreamProject.Owner,
-			Repo:   upstreamProject.Repo,
-			Branch: upstreamProject.Branch,
+	if args.TriggerType == model.ProjectTriggerLevelPush {
+		if upstreamModuleIdx >= 0 {
+			metadata.SourceModule = &model.SourceModule{
+				Name:   moduleList[upstreamModuleIdx].Name,
+				Owner:  upstreamProject.Owner,
+				Repo:   upstreamProject.Repo,
+				Branch: upstreamProject.Branch,
+			}
+		} else {
+			grip.Warning(ctx, message.Fields{
+				"message":               "push trigger upstream project does not match any module in downstream config",
+				"source":                "project-triggers",
+				"downstream_project_id": args.DownstreamProject.Id,
+				"config_file":           args.ConfigFile,
+				"upstream_project_id":   upstreamProject.Id,
+				"upstream_owner":        upstreamProject.Owner,
+				"upstream_repo":         upstreamProject.Repo,
+				"upstream_branch":       upstreamProject.Branch,
+				"upstream_commit":       metadata.SourceCommit,
+			})
 		}
 	}
 
