@@ -13,9 +13,23 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 func TestRequirePatchSubmitAccess(t *testing.T) {
+	t.Run("MalformedPatchIDShouldReturnInputValidationError", func(t *testing.T) {
+		ctx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: testUser})
+		nextCalled := false
+		next := func(context.Context) (any, error) {
+			nextCalled = true
+			return nil, nil
+		}
+		_, err := RequirePatchSubmitAccess(ctx, map[string]any{"patchId": "invalid"}, next)
+		var gqlErr *gqlerror.Error
+		require.ErrorAs(t, err, &gqlErr)
+		assert.Equal(t, InputValidationError, gqlErr.Extensions["code"])
+		assert.False(t, nextCalled)
+	})
 	for testName, testCase := range map[string]struct {
 		roles       []string
 		isPR        bool
