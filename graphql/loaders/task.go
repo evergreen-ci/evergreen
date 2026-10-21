@@ -9,15 +9,12 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/vikstrous/dataloadgen"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 type taskReader struct{}
 
 func (r *taskReader) getTasks(ctx context.Context, taskIDs []string) (map[string]*task.Task, error) {
-	// Mirror task.FindOneId, which projects out the generated JSON to avoid
-	// loading a potentially large field that most callers don't need.
-	query := db.Query(task.ByIds(taskIDs)).Project(bson.M{task.GeneratedJSONAsStringKey: 0})
+	query := db.Query(task.ByIds(taskIDs))
 	tasks, err := task.FindAll(ctx, query)
 	if err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{

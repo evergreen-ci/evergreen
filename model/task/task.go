@@ -322,14 +322,6 @@ type Task struct {
 	GeneratedTasks bool `bson:"generated_tasks,omitempty" json:"generated_tasks,omitempty"`
 	// GeneratedBy, if present, is the ID of the task that generated this task.
 	GeneratedBy string `bson:"generated_by,omitempty" json:"generated_by,omitempty"`
-	// GeneratedJSONAsString is the configuration information to update the
-	// project YAML for generate.tasks. This is only used to store the
-	// configuration if GeneratedJSONStorageMethod is unset or is explicitly set
-	// to "db".
-	//
-	// TODO (DEVPROD-41456): delete this field. Only tasks written before the
-	// switch to S3 still store their generated JSON here.
-	GeneratedJSONAsString GeneratedJSONFiles `bson:"generated_json,omitempty" json:"generated_json,omitempty"`
 	// GeneratedJSONStorageMethod describes how the generated JSON for
 	// generate.tasks is stored for this task before it's merged with the
 	// existing project YAML.
