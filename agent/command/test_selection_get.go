@@ -212,18 +212,21 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 	}
 	trace.SpanFromContext(ctx).SetAttributes(attribute.Int(testSelectionServiceNumTestsReturnedAttribute, len(selectedTests)))
 	if len(bypass) > 0 && len(c.Tests) > 0 {
-		bypassApplied = true
-		allowed := make(map[string]bool, len(selectedTests)+len(bypass))
+		selected := make(map[string]bool, len(selectedTests))
 		for _, name := range selectedTests {
-			allowed[name] = true
+			selected[name] = true
 		}
+		bypassed := make(map[string]bool, len(bypass))
 		for _, name := range bypass {
-			allowed[name] = true
+			bypassed[name] = true
 		}
 		kept := make([]string, 0, len(c.Tests))
 		for _, name := range c.Tests {
-			if allowed[name] {
+			if selected[name] || bypassed[name] {
 				kept = append(kept, name)
+				if !selected[name] {
+					bypassApplied = true
+				}
 			}
 		}
 		selectedTests = kept
