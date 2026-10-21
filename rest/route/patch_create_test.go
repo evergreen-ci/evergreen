@@ -92,7 +92,8 @@ func TestPatchCreateParseValidation(t *testing.T) {
 }
 
 func TestPatchCreateRun(t *testing.T) {
-	ctx := t.Context()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
