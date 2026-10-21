@@ -3573,7 +3573,11 @@ func FindExecTasksToReset(ctx context.Context, t *Task) ([]string, error) {
 		return t.ExecutionTasks, nil
 	}
 
-	execTasks, err := execTasksToRestart(ctx, t, false)
+	query := execTasksToRestartQuery(t, false)
+	if query == nil {
+		return []string{}, nil
+	}
+	execTasks, err := FindWithFields(ctx, query, IdKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "retrieving execution tasks to restart")
 	}
@@ -3585,14 +3589,26 @@ func FindExecTasksToReset(ctx context.Context, t *Task) ([]string, error) {
 }
 
 // execTasksToRestart returns the execution tasks of a display task that should
-// be restarted (or archived) when the display task resets. If the display task
-// has an explicit list of execution tasks to restart, only those are returned.
-// Otherwise, if the display task is only restarting failed tasks, only failed
-// execution tasks are returned. Otherwise, all execution tasks are returned.
-// When onlyCompleted is set, only completed execution tasks are returned.
+// be restarted (or archived) when the display task resets. See
+// execTasksToRestartQuery for which execution tasks are returned.
 func execTasksToRestart(ctx context.Context, t *Task, onlyCompleted bool) ([]Task, error) {
+	query := execTasksToRestartQuery(t, onlyCompleted)
+	if query == nil {
+		return nil, nil
+	}
+	return FindAll(ctx, db.Query(query))
+}
+
+// execTasksToRestartQuery returns the query for the execution tasks of a
+// display task that should be restarted when the display task resets. If the
+// display task is only restarting failed tasks, it matches only failed
+// execution tasks. Otherwise, if the display task has an explicit list of
+// execution tasks to restart, it matches only those. Otherwise, it matches all
+// execution tasks. When onlyCompleted is set, it matches only completed
+// execution tasks. It returns nil if no execution tasks can match.
+func execTasksToRestartQuery(t *Task, onlyCompleted bool) bson.M {
 	if t.IsRestartFailedOnly() {
-		return FindAll(ctx, db.Query(FailedTasksByIds(t.ExecutionTasks)))
+		return FailedTasksByIds(t.ExecutionTasks)
 	}
 
 	var execTaskIDs []string
@@ -3602,16 +3618,13 @@ func execTasksToRestart(ctx context.Context, t *Task, onlyCompleted bool) ([]Tas
 		execTaskIDs = t.ExecutionTasks
 	}
 	if len(execTaskIDs) == 0 {
-		return nil, nil
+		return nil
 	}
 
-	var query bson.M
 	if onlyCompleted {
-		query = ByIdsAndStatus(execTaskIDs, evergreen.TaskCompletedStatuses)
-	} else {
-		query = ByIds(execTaskIDs)
+		return ByIdsAndStatus(execTaskIDs, evergreen.TaskCompletedStatuses)
 	}
-	return FindAll(ctx, db.Query(query))
+	return ByIds(execTaskIDs)
 }
 
 // FindHostSchedulable finds all tasks that can be scheduled for a distro
