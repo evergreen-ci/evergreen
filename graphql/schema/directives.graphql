@@ -80,6 +80,13 @@ requirePatchOwner is used to restrict certain actions to the patch creator, patc
 directive @requirePatchOwner on ARGUMENT_DEFINITION
 
 """
+requirePatchSubmitAccess requires project patch submit permission for configuration and scheduling through schedulePatch.
+Pending GitHub PR patches may be authorized without ownership; other patches require modification access.
+The ownership exception is specific to authorization and scheduling, so this directive should not guard standalone edits.
+"""
+directive @requirePatchSubmitAccess on ARGUMENT_DEFINITION
+
+"""
 requireAdmin is used to restrict certain actions to admins.
 """
 directive @requireAdmin on FIELD_DEFINITION

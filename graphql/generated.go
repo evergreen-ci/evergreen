@@ -104,6 +104,7 @@ type DirectiveRoot struct {
 	RequireDistroAccess          func(ctx context.Context, obj any, next graphql.Resolver, access DistroSettingsAccess) (res any, err error)
 	RequireHostAccess            func(ctx context.Context, obj any, next graphql.Resolver, access HostAccessLevel) (res any, err error)
 	RequirePatchOwner            func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
+	RequirePatchSubmitAccess     func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireProjectAccess         func(ctx context.Context, obj any, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (res any, err error)
 	RequireProjectAccessForList  func(ctx context.Context, obj any, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (res any, err error)
 	RequireProjectCreate         func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
@@ -15218,31 +15219,14 @@ func (ec *executionContext) field_Mutation_schedulePatch_argsPatchID(
 	}
 
 	directive1 := func(ctx context.Context) (any, error) {
-		if ec.directives.RequirePatchOwner == nil {
+		if ec.directives.RequirePatchSubmitAccess == nil {
 			var zeroVal string
-			return zeroVal, errors.New("directive requirePatchOwner is not implemented")
+			return zeroVal, errors.New("directive requirePatchSubmitAccess is not implemented")
 		}
-		return ec.directives.RequirePatchOwner(ctx, rawArgs, directive0)
-	}
-	directive2 := func(ctx context.Context) (any, error) {
-		permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "PATCHES")
-		if err != nil {
-			var zeroVal string
-			return zeroVal, err
-		}
-		access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
-		if err != nil {
-			var zeroVal string
-			return zeroVal, err
-		}
-		if ec.directives.RequireProjectAccess == nil {
-			var zeroVal string
-			return zeroVal, errors.New("directive requireProjectAccess is not implemented")
-		}
-		return ec.directives.RequireProjectAccess(ctx, rawArgs, directive1, permission, access)
+		return ec.directives.RequirePatchSubmitAccess(ctx, rawArgs, directive0)
 	}
 
-	tmp, err := directive2(ctx)
+	tmp, err := directive1(ctx)
 	if err != nil {
 		var zeroVal string
 		return zeroVal, graphql.ErrorOnPath(ctx, err)
