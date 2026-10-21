@@ -1,6 +1,9 @@
 package model
 
 import (
+	"bytes"
+	"strings"
+
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
@@ -166,6 +169,62 @@ func buildAnchorPreamble(registry *anchorRegistry) ([]byte, error) {
 		return nil, errors.Errorf("anchor preamble size %d exceeds the maximum of %d bytes", len(out), maxAnchorPreambleBytes)
 	}
 	return out, nil
+}
+
+// utf8BOM is the UTF-8 byte order mark, which some editors prefix to config
+// files. It is legal only at the start of a byte stream, so it must be
+// stripped before the anchor preamble is prepended; yaml.v3 treats a BOM
+// encountered mid-stream as a document boundary.
+var utf8BOM = []byte("\xef\xbb\xbf")
+
+// stripLeadingDocumentSeparator removes a leading `---` document start marker
+// from the file's bytes, so that concatenating the anchor preamble ahead of it
+// yields a single YAML document. Files whose first line is not exactly `---`
+// (ignoring surrounding whitespace) are returned unchanged.
+func stripLeadingDocumentSeparator(data []byte) []byte {
+	line, rest, found := bytes.Cut(data, []byte("\n"))
+	if !found || strings.TrimSpace(string(line)) != "---" {
+		return data
+	}
+	return rest
+}
+
+// fileStartsAMapping reports whether the file is a single top-level mapping
+// document that the anchor preamble can be safely prepended to, by inspecting
+// the first meaningful line (skipping blank lines, comments, and a UTF-8 BOM).
+// Prepending ahead of anything else loses the file's contents: a sequence is
+// absorbed into the preamble's list, and a `%`-directive line or a `---`
+// separator starts a second document that the single-document decode silently
+// drops. Such files must not get a preamble.
+func fileStartsAMapping(data []byte) bool {
+	data = bytes.TrimPrefix(data, []byte("\xef\xbb\xbf")) // UTF-8 BOM
+	rest := data
+	for len(rest) > 0 {
+		var line []byte
+		var found bool
+		line, rest, found = bytes.Cut(rest, []byte("\n"))
+		trimmed := strings.TrimSpace(string(line))
+		switch {
+		case trimmed == "" || strings.HasPrefix(trimmed, "#"):
+			// Blank line or comment; keep scanning.
+		case strings.HasPrefix(trimmed, "%"):
+			// YAML directive; concatenation is unsafe.
+			return false
+		case trimmed == "---":
+			// Bare document separator; keep scanning (the separator is
+			// stripped later).
+		default:
+			if strings.HasPrefix(trimmed, "---") {
+				// Separator with content on the same line; unsafe.
+				return false
+			}
+			return !strings.HasPrefix(trimmed, "- ") && trimmed != "-"
+		}
+		if !found {
+			break
+		}
+	}
+	return false
 }
 
 // stripEvgAnchorsKey removes the _evg_anchors key and its value from the

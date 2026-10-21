@@ -4421,6 +4421,80 @@ tasks:
 	}
 }
 
+// TestIncludeFileStartingWithDocumentSeparatorIsNotDropped verifies that an
+// include file starting with a `---` document separator keeps its contents
+// when the anchor preamble is prepended. The separator would otherwise start a
+// second YAML document, whose contents the single-document decode silently
+// drops. Regression for a production break: a maintenance include file
+// starting with `---` lost all of its tasks, functions, and variants when the
+// cross-file anchors flag was enabled.
+func TestIncludeFileStartingWithDocumentSeparatorIsNotDropped(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes(`
+tasks:
+- name: main-task
+  commands:
+  - &shared-step
+    command: shell.exec
+`, "include.yml")
+
+	includeYAML := `---
+tasks:
+- name: include-task
+  commands:
+  - *shared-step
+`
+	proj := &Project{}
+	pp, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
+	require.NoError(t, err)
+
+	taskNames := map[string]bool{}
+	for _, task := range pp.Tasks {
+		taskNames[task.Name] = true
+	}
+	assert.True(t, taskNames["main-task"])
+	assert.True(t, taskNames["include-task"], "include file contents must survive the anchor preamble")
+}
+
+// TestAnchorPreambleOnlyPrependedToMappingFiles verifies that include files
+// whose top level is not a plain mapping document keep their contents (or fail
+// loudly) instead of being silently absorbed into the anchor preamble:
+// sequences are absorbed into the preamble's list, and `%`-directives or
+// `---`-prefixed content start a second document that the single-document
+// decode silently drops.
+func TestAnchorPreambleOnlyPrependedToMappingFiles(t *testing.T) {
+	registry := &anchorRegistry{}
+	var anchorNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("anchors:\n- &dummy\n  x: 1\n"), &anchorNode))
+	require.NoError(t, registry.mergeAnchorsFrom(&anchorNode))
+
+	for _, tc := range []struct {
+		name string
+		yml  string
+		// expectedFunctions is the number of functions the file must yield,
+		// or -1 if the file must error (loudly, identically to flag-off).
+		expectedFunctions int
+	}{
+		{name: "MappingStillGetsPreamble", yml: "functions:\n  f:\n    command: shell.exec\n", expectedFunctions: 1},
+		{name: "LeadingSeparatorStripped", yml: "---\nfunctions:\n  f:\n    command: shell.exec\n", expectedFunctions: 1},
+		{name: "CommentsBeforeMapping", yml: "# comment\n\nfunctions:\n  f:\n    command: shell.exec\n", expectedFunctions: 1},
+		{name: "SequenceNotAbsorbed", yml: "- a\n- b\n", expectedFunctions: -1},
+		{name: "DirectiveNotSilentlyDropped", yml: "%YAML 1.2\n---\nfunctions:\n  f:\n    command: shell.exec\n", expectedFunctions: -1},
+		{name: "SeparatorWithContentSameAsFlagOff", yml: "--- {a: b}\n", expectedFunctions: 0},
+		{name: "BOMBeforeMapping", yml: "\uFEFFfunctions:\n  f:\n    command: shell.exec\n", expectedFunctions: 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			pp, _, err := createIntermediateProject([]byte(tc.yml), false, registry)
+			if tc.expectedFunctions < 0 {
+				require.Error(t, err, "file must error loudly rather than lose contents silently")
+				return
+			}
+			require.NoError(t, err)
+			require.Len(t, pp.Functions, tc.expectedFunctions)
+		})
+	}
+}
+
 // TestAnchorPreambleFailureFallsBack verifies that if the anchor preamble itself is
 // invalid (alias-before-definition ordering), createIntermediateProject falls back to
 // parsing without the preamble rather than propagating the error. This guards against

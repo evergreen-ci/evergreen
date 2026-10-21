@@ -1667,11 +1667,16 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts, settings *ever
 func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRegistry *anchorRegistry) (pp *ParserProject, decodeErr error, err error) {
 	if anchorRegistry != nil {
 		var combined []byte
-		if anchorRegistry.Length() > 0 {
+		if anchorRegistry.Length() > 0 && fileStartsAMapping(parseBytes) {
 			var preamble []byte
 			preamble, decodeErr = buildAnchorPreamble(anchorRegistry)
 			if decodeErr == nil {
-				combined = append(preamble, parseBytes...)
+				// The anchor preamble and the file must be a single YAML
+				// document for the preamble's anchors to be in scope. A file
+				// that starts with a `---` document separator would otherwise
+				// become a second document, whose contents are silently
+				// dropped by the single-document decode.
+				combined = append(preamble, stripLeadingDocumentSeparator(bytes.TrimPrefix(parseBytes, utf8BOM))...)
 			}
 		}
 		if decodeErr == nil {
