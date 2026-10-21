@@ -885,6 +885,7 @@ func processIntermediateProjectIncludes(ctx context.Context, intermediateProject
 		ReferencePatchID:          projectOpts.ReferencePatchID,
 		ReferenceManifestID:       projectOpts.ReferenceManifestID,
 		AutoUpdateModuleRevisions: projectOpts.AutoUpdateModuleRevisions,
+		ModuleResolver:            projectOpts.ModuleResolver,
 		IsIncludedFile:            true,
 		LocalIncludeDir:           projectOpts.LocalIncludeDir,
 	}
@@ -968,6 +969,9 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	var revision string
 	if opts != nil {
 		revision = opts.Revision
+		if suffix := opts.ModuleResolver.translationKeySuffix(); suffix != "" {
+			revision = fmt.Sprintf("%s:%s", revision, suffix)
+		}
 	}
 	p, err := loadTranslateProject(ctx, span, intermediateProject, projectID, revision, cacheEnabled)
 	if p != nil {
@@ -1383,6 +1387,9 @@ type GetProjectOpts struct {
 	ReferencePatchID          string
 	ReferenceManifestID       string
 	AutoUpdateModuleRevisions map[string]string
+	// ModuleResolver, if set, determines the module commits that module
+	// includes are read from.
+	ModuleResolver *ModuleResolver
 	// IsIncludedFile indicates whether the file being retrieved is an included
 	// YAML file.
 	IsIncludedFile bool
@@ -1573,6 +1580,18 @@ func getRevisionForRemoteModule(ctx context.Context, mod Module, modName string,
 					return mod.Revision, nil
 				}
 			}
+		}
+	}
+
+	if opts.ModuleResolver != nil {
+		mfstModule, err := opts.ModuleResolver.Resolve(ctx, mod)
+		if err != nil {
+			return "", errors.Wrap(err, "resolving module commit")
+		}
+		// Wiki modules have no resolved commit, so they fall back to the
+		// branch below.
+		if mfstModule.Revision != "" {
+			return mfstModule.Revision, nil
 		}
 	}
 

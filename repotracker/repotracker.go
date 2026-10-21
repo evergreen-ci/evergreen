@@ -53,8 +53,9 @@ type VersionErrors struct {
 // implementations
 type RepoPoller interface {
 	// Fetches the contents of a remote repository's configuration data as at
-	// the given revision.
-	GetRemoteConfig(ctx context.Context, revision string) (model.ProjectInfo, error)
+	// the given revision. If resolver is set, module includes are read from
+	// the module commits it resolves.
+	GetRemoteConfig(ctx context.Context, revision string, resolver *model.ModuleResolver) (model.ProjectInfo, error)
 
 	// Fetches a list of all filepaths modified by a given revision.
 	GetChangedFiles(ctx context.Context, revision string) ([]string, error)
@@ -258,8 +259,15 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			continue
 		}
 
+		// The config and the manifest share one resolver so they agree on module commits.
+		ingestTime := time.Now()
+		resolver := model.NewModuleResolver(ref, model.ModuleResolverOpts{
+			Revision:   revision,
+			Requester:  evergreen.RepotrackerVersionRequester,
+			IngestTime: ingestTime,
+		})
 		var versionErrs *VersionErrors
-		pInfo, err := repoTracker.GetProjectConfig(ctx, revision)
+		pInfo, err := repoTracker.GetProjectConfig(ctx, revision, resolver)
 		if err != nil {
 			// this is an error that implies the file is invalid - create a version and store the error
 			projErr, isProjErr := err.(projectConfigError)
@@ -335,6 +343,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		metadata := model.VersionMetadata{
 			Revision:     rev,
 			ChangedFiles: filenames,
+			IngestTime:   ingestTime,
 		}
 		projectInfo := &model.ProjectInfo{
 			Ref:                 ref,
@@ -379,7 +388,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			}
 		}
 
-		_, err = model.CreateManifest(ctx, v, pInfo.Project.Modules, ref)
+		_, err = model.CreateManifestFromResolver(ctx, v, pInfo.Project.Modules, ref, resolver)
 		if err != nil {
 			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":            "error creating manifest",
@@ -414,9 +423,9 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 // returning a remote config if the project references a remote repository
 // configuration file - via the Id. Otherwise it defaults to the local
 // project file. An erroneous project file may be returned along with an error.
-func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision string) (model.ProjectInfo, error) {
+func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision string, resolver *model.ModuleResolver) (model.ProjectInfo, error) {
 	projectRef := repoTracker.ProjectRef
-	projectInfo, err := repoTracker.GetRemoteConfig(ctx, revision)
+	projectInfo, err := repoTracker.GetRemoteConfig(ctx, revision, resolver)
 	if err != nil {
 		// Create a stub version on API request errors that pertain
 		// to fetching or loading a config.

@@ -134,7 +134,7 @@ func TestMakeDownstreamProjectFromFile(t *testing.T) {
 		Repo:   "evergreen",
 		Branch: "main",
 	}
-	projectInfo, err := makeDownstreamProjectFromFile(t.Context(), ref, "trigger/testdata/downstream_config.yml")
+	projectInfo, err := makeDownstreamProjectFromFile(t.Context(), ref, "trigger/testdata/downstream_config.yml", nil)
 	require.NoError(t, err)
 	require.NotNil(t, projectInfo.Project)
 	require.NotNil(t, projectInfo.IntermediateProject)

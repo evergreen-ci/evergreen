@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/anser/bsonutil"
@@ -976,70 +975,20 @@ func GetVersionsToModify(ctx context.Context, projectName string, opts ModifyVer
 
 // constructManifest will construct a manifest from the given project and version.
 func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, moduleList ModuleList) (*manifest.Manifest, error) {
-	if len(moduleList) == 0 {
-		return nil, nil
-	}
-	newManifest := &manifest.Manifest{
-		Id:          v.Id,
-		Revision:    v.Revision,
-		ProjectName: v.Identifier,
-		Branch:      projectRef.Branch,
-		IsBase:      v.Requester == evergreen.RepotrackerVersionRequester,
-	}
+	return newModuleResolverForVersion(projectRef, v).Manifest(ctx, v, moduleList)
+}
 
-	projVars, err := FindMergedProjectVars(ctx, projectRef.Id)
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting project vars for project '%s'", projectRef.Id)
-	}
-	if projVars != nil {
-		expansions := util.NewExpansions(projVars.Vars)
-		for i := range moduleList {
-			if err = util.ExpandValues(&moduleList[i], expansions); err != nil {
-				return nil, errors.Wrapf(err, "expanding module '%s'", moduleList[i].Name)
-			}
-		}
-	}
-
-	var baseManifest *manifest.Manifest
-	shouldUseBaseRevision := utility.StringSliceContains(evergreen.PatchRequesters, v.Requester) || v.Requester == evergreen.AdHocRequester
-	if shouldUseBaseRevision {
-		baseManifest, err = manifest.FindFromVersion(ctx, v.Id, v.Identifier, v.Revision, v.Requester)
-		if err != nil {
-			return nil, errors.Wrap(err, "getting base manifest")
-		}
-	}
-
-	modules := map[string]*manifest.Module{}
+func newModuleResolverForVersion(projectRef *ProjectRef, v *Version) *ModuleResolver {
 	ingestTime := v.IngestTime
 	if utility.IsZeroTime(ingestTime) {
 		ingestTime = v.CreateTime
 	}
-	for _, module := range moduleList {
-		_, modRepo, err := module.GetOwnerAndRepo()
-		if err != nil {
-			return nil, errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
-		}
-		// GitHub wikis are always cloned at default-branch HEAD. Do not reuse
-		// base manifest pins; every run must resolve via getManifestModule.
-		if shouldUseBaseRevision && !module.AutoUpdate && baseManifest != nil && !IsWikiRepo(modRepo) {
-			if baseModule, ok := baseManifest.Modules[module.Name]; ok {
-				// Use base module revision unless the YAML explicitly specifies a different ref.
-				if module.Ref == "" || module.Ref == baseModule.Revision {
-					modules[module.Name] = baseModule
-					continue
-				}
-			}
-		}
-
-		mfstModule, err := getManifestModule(ctx, projectRef, module, v.Requester, ingestTime)
-		if err != nil {
-			return nil, errors.Wrapf(err, "module '%s'", module.Name)
-		}
-
-		modules[module.Name] = mfstModule
-	}
-	newManifest.Modules = modules
-	return newManifest, nil
+	return NewModuleResolver(projectRef, ModuleResolverOpts{
+		VersionID:  v.Id,
+		Revision:   v.Revision,
+		Requester:  v.Requester,
+		IngestTime: ingestTime,
+	})
 }
 
 func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Module, requester string, ingestTime time.Time) (*manifest.Module, error) {
@@ -1134,7 +1083,12 @@ func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Modul
 
 // CreateManifest inserts a newly constructed manifest into the DB.
 func CreateManifest(ctx context.Context, v *Version, modules ModuleList, projectRef *ProjectRef) (*manifest.Manifest, error) {
-	newManifest, err := constructManifest(ctx, v, projectRef, modules)
+	return CreateManifestFromResolver(ctx, v, modules, projectRef, newModuleResolverForVersion(projectRef, v))
+}
+
+// CreateManifestFromResolver inserts a manifest built from the resolver's module commits.
+func CreateManifestFromResolver(ctx context.Context, v *Version, modules ModuleList, projectRef *ProjectRef, resolver *ModuleResolver) (*manifest.Manifest, error) {
+	newManifest, err := resolver.Manifest(ctx, v, modules)
 	if err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":     "constructing manifest",

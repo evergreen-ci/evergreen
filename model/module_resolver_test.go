@@ -1,0 +1,216 @@
+package model
+
+import (
+	"testing"
+	"time"
+
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/manifest"
+	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestModuleResolver(t *testing.T) {
+	ingestTime := time.Date(2026, time.October, 1, 12, 0, 0, 0, time.UTC)
+	const (
+		olderModuleRevision = "olderModuleRevision"
+		newerModuleRevision = "newerModuleRevision"
+	)
+	projectRef := &ProjectRef{
+		Id:     "resolver-project",
+		Owner:  "evergreen-ci",
+		Repo:   "evergreen",
+		Branch: "main",
+	}
+	module := Module{
+		Name:   "sample",
+		Owner:  "evergreen-ci",
+		Repo:   "sample",
+		Branch: "main",
+	}
+
+	for tName, tCase := range map[string]func(t *testing.T){
+		"ResolveShouldKeepFirstCommitAfterNewerCommitIsIngested": func(t *testing.T) {
+			require.NoError(t, UpsertRepositoryRevision(t.Context(), module.Owner, module.Repo, module.Branch, olderModuleRevision, ingestTime.Add(-time.Minute)))
+			resolver := NewModuleResolver(projectRef, ModuleResolverOpts{
+				Requester:  evergreen.RepotrackerVersionRequester,
+				IngestTime: ingestTime,
+			})
+
+			mod, err := resolver.Resolve(t.Context(), module)
+			require.NoError(t, err)
+			require.NotNil(t, mod)
+			assert.Equal(t, olderModuleRevision, mod.Revision)
+
+			require.NoError(t, UpsertRepositoryRevision(t.Context(), module.Owner, module.Repo, module.Branch, newerModuleRevision, ingestTime))
+
+			v := &Version{Id: "v", Identifier: projectRef.Id, Requester: evergreen.RepotrackerVersionRequester}
+			mfst, err := resolver.Manifest(t.Context(), v, ModuleList{module})
+			require.NoError(t, err)
+			require.NotNil(t, mfst)
+			require.Contains(t, mfst.Modules, module.Name)
+			assert.Equal(t, olderModuleRevision, mfst.Modules[module.Name].Revision, "manifest should use the module commit that was already resolved for the config")
+			assert.True(t, mfst.IsBase)
+			assert.Equal(t, projectRef.Branch, mfst.Branch)
+		},
+		"ResolveShouldExpandModuleFieldsWithProjectVars": func(t *testing.T) {
+			require.NoError(t, (&ProjectVars{Id: projectRef.Id, Vars: map[string]string{"module_branch": "main"}}).Insert(t.Context()))
+			require.NoError(t, UpsertRepositoryRevision(t.Context(), module.Owner, module.Repo, module.Branch, olderModuleRevision, ingestTime))
+			resolver := NewModuleResolver(projectRef, ModuleResolverOpts{
+				Requester:  evergreen.RepotrackerVersionRequester,
+				IngestTime: ingestTime,
+			})
+
+			unexpanded := module
+			unexpanded.Branch = "${module_branch}"
+			mod, err := resolver.Resolve(t.Context(), unexpanded)
+			require.NoError(t, err)
+			require.NotNil(t, mod)
+			assert.Equal(t, "main", mod.Branch)
+			assert.Equal(t, olderModuleRevision, mod.Revision)
+		},
+		"ResolveForPeriodicBuildShouldUseBaseManifestCommit": func(t *testing.T) {
+			require.NoError(t, UpsertRepositoryRevision(t.Context(), module.Owner, module.Repo, module.Branch, newerModuleRevision, ingestTime))
+			baseManifest := manifest.Manifest{
+				Id:          "base-version",
+				Revision:    "base-revision",
+				ProjectName: projectRef.Id,
+				IsBase:      true,
+				Modules: map[string]*manifest.Module{
+					module.Name: {Owner: module.Owner, Repo: module.Repo, Branch: module.Branch, Revision: olderModuleRevision},
+				},
+			}
+			require.NoError(t, baseManifest.Insert(t.Context()))
+			resolver := NewModuleResolver(projectRef, ModuleResolverOpts{
+				Revision:  "base-revision",
+				Requester: evergreen.AdHocRequester,
+			})
+
+			mod, err := resolver.Resolve(t.Context(), module)
+			require.NoError(t, err)
+			require.NotNil(t, mod)
+			assert.Equal(t, olderModuleRevision, mod.Revision)
+		},
+		"GetRevisionForRemoteModuleShouldFallBackToBranchForWiki": func(t *testing.T) {
+			resolver := NewModuleResolver(projectRef, ModuleResolverOpts{Requester: evergreen.RepotrackerVersionRequester})
+			wiki := Module{Name: "wiki", Owner: "evergreen-ci", Repo: "sample.wiki", Branch: "master"}
+
+			revision, err := getRevisionForRemoteModule(t.Context(), wiki, wiki.Name, GetProjectOpts{ModuleResolver: resolver})
+			require.NoError(t, err)
+			assert.Equal(t, wiki.Branch, revision)
+		},
+		"GetRevisionForRemoteModuleShouldUseResolvedCommit": func(t *testing.T) {
+			require.NoError(t, UpsertRepositoryRevision(t.Context(), module.Owner, module.Repo, module.Branch, olderModuleRevision, ingestTime))
+			resolver := NewModuleResolver(projectRef, ModuleResolverOpts{
+				Requester:  evergreen.RepotrackerVersionRequester,
+				IngestTime: ingestTime,
+			})
+
+			revision, err := getRevisionForRemoteModule(t.Context(), module, module.Name, GetProjectOpts{ModuleResolver: resolver})
+			require.NoError(t, err)
+			assert.Equal(t, olderModuleRevision, revision)
+		},
+		"ManifestWithNoModulesShouldBeNil": func(t *testing.T) {
+			resolver := NewModuleResolver(projectRef, ModuleResolverOpts{Requester: evergreen.RepotrackerVersionRequester})
+			mfst, err := resolver.Manifest(t.Context(), &Version{Id: "v"}, nil)
+			require.NoError(t, err)
+			assert.Nil(t, mfst)
+		},
+		"TranslationKeySuffixShouldIdentifyResolvedCommits": func(t *testing.T) {
+			var nilResolver *ModuleResolver
+			assert.Empty(t, nilResolver.translationKeySuffix())
+
+			resolver := NewModuleResolver(projectRef, ModuleResolverOpts{})
+			assert.Empty(t, resolver.translationKeySuffix())
+			resolver.resolved["b"] = &manifest.Module{Revision: "rev-b"}
+			resolver.resolved["a"] = &manifest.Module{Revision: "rev-a"}
+			assert.Equal(t, "a@rev-a,b@rev-b", resolver.translationKeySuffix())
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(ProjectRefCollection, RepositoryRevisionsHistoryCollection, ProjectVarsCollection, manifest.Collection))
+			t.Cleanup(func() {
+				assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepositoryRevisionsHistoryCollection, ProjectVarsCollection, manifest.Collection))
+			})
+			require.NoError(t, projectRef.Insert(t.Context()))
+			tCase(t)
+		})
+	}
+}
+
+func TestModuleIncludeAndManifestUseSameModuleCommit(t *testing.T) {
+	settings := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, settings)
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepositoryRevisionsHistoryCollection, ProjectVarsCollection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepositoryRevisionsHistoryCollection, ProjectVarsCollection))
+	})
+
+	const (
+		commitWithoutModules = "b27779f856b211ffaf97cbc124b7082a20ea8bc0"
+		commitWithModules    = "cf46076567e4949f9fc68e0634139d4ac495c89b"
+	)
+	projectRef := &ProjectRef{
+		Id:         "module-include-project",
+		Identifier: "module-include-project",
+		Owner:      "evergreen-ci",
+		Repo:       "evergreen",
+		Branch:     "main",
+	}
+	require.NoError(t, projectRef.Insert(t.Context()))
+	mainConfig := []byte(`
+modules:
+- name: sample
+  owner: evergreen-ci
+  repo: sample
+  branch: main
+include:
+- filename: evergreen.yml
+  module: sample
+`)
+
+	for _, tc := range []struct {
+		name               string
+		moduleRevision     string
+		expectRenderModule bool
+	}{
+		{name: "IncludeShouldBeReadFromOlderResolvedCommit", moduleRevision: commitWithoutModules},
+		{name: "IncludeShouldBeReadFromNewerResolvedCommit", moduleRevision: commitWithModules, expectRenderModule: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ingestTime := time.Now()
+			require.NoError(t, UpsertRepositoryRevision(t.Context(), "evergreen-ci", "sample", "main", tc.moduleRevision, ingestTime.Add(-time.Minute)))
+			resolver := NewModuleResolver(projectRef, ModuleResolverOpts{
+				Requester:  evergreen.RepotrackerVersionRequester,
+				IngestTime: ingestTime,
+			})
+
+			p := &Project{}
+			pp, err := LoadProjectInto(t.Context(), mainConfig, &GetProjectOpts{
+				Ref:            projectRef,
+				Revision:       "main",
+				ReadFileFrom:   ReadFromGithub,
+				ModuleResolver: resolver,
+			}, projectRef.Id, p)
+			require.NoError(t, err)
+			require.NotNil(t, pp)
+
+			_, err = GetModuleByName(p.Modules, "render-module")
+			if tc.expectRenderModule {
+				assert.NoError(t, err, "config should include modules from the resolved module commit")
+			} else {
+				assert.Error(t, err, "config should not include modules that only exist in newer module commits")
+			}
+			require.NoError(t, UpsertRepositoryRevision(t.Context(), "evergreen-ci", "sample", "main", "88dcc12106a40cb4917f552deab7574ececd9a3e", ingestTime))
+
+			v := &Version{Id: tc.name, Identifier: projectRef.Id, Requester: evergreen.RepotrackerVersionRequester}
+			mfst, err := resolver.Manifest(t.Context(), v, ModuleList{p.Modules[0]})
+			require.NoError(t, err)
+			require.NotNil(t, mfst)
+			require.Contains(t, mfst.Modules, "sample")
+			assert.Equal(t, tc.moduleRevision, mfst.Modules["sample"].Revision)
+		})
+	}
+}

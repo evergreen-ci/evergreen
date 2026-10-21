@@ -165,11 +165,16 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, metadata model.Versio
 	if err != nil {
 		return errors.Wrap(err, "getting config file from GitHub")
 	}
+	resolver := model.NewModuleResolver(j.project, model.ModuleResolverOpts{
+		Revision:  metadata.Revision.Revision,
+		Requester: evergreen.AdHocRequester,
+	})
 	proj := &model.Project{}
 	opts := &model.GetProjectOpts{
-		Ref:          j.project,
-		Revision:     metadata.Revision.Revision,
-		ReadFileFrom: model.ReadFromGithub,
+		Ref:            j.project,
+		Revision:       metadata.Revision.Revision,
+		ReadFileFrom:   model.ReadFromGithub,
+		ModuleResolver: resolver,
 	}
 	svcFlags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
@@ -199,7 +204,7 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, metadata model.Versio
 		return errors.New("no version created")
 	}
 
-	_, err = model.CreateManifest(ctx, v, projectInfo.Project.Modules, projectInfo.Ref)
+	_, err = model.CreateManifestFromResolver(ctx, v, projectInfo.Project.Modules, projectInfo.Ref, resolver)
 	if err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":               "error creating manifest",

@@ -4,7 +4,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -29,18 +31,9 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 		return nil, err
 	}
 
-	// get the downstream config
-	projectInfo := model.ProjectInfo{}
-	if args.ConfigFile != "" {
-		projectInfo, err = makeDownstreamProjectFromFile(ctx, args.DownstreamProject, args.ConfigFile)
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-	} else {
+	if args.ConfigFile == "" {
 		return nil, errors.New("must specify a file to define downstream project config")
 	}
-
-	projectInfo.Ref = &args.DownstreamProject
 
 	// Since push triggers have no source version (unlike build and task level triggers), we need to
 	// extract the project ID from the trigger definition's project ID, which is populated in the TriggerID field
@@ -59,6 +52,32 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 	if upstreamProject == nil {
 		return nil, errors.Errorf("upstream project '%s' not found", projectID)
 	}
+
+	// Set the ingest time up front so the version and its module commits use the same cutoff.
+	if utility.IsZeroTime(metadata.IngestTime) {
+		metadata.IngestTime = time.Now()
+	}
+	resolverOpts := model.ModuleResolverOpts{
+		Revision:   metadata.Revision.Revision,
+		Requester:  evergreen.TriggerRequester,
+		IngestTime: metadata.IngestTime,
+	}
+	if args.TriggerType == model.ProjectTriggerLevelPush {
+		resolverOpts.TriggeringModuleCommit = &manifest.Module{
+			Owner:    upstreamProject.Owner,
+			Repo:     upstreamProject.Repo,
+			Branch:   upstreamProject.Branch,
+			Revision: metadata.SourceCommit,
+		}
+	}
+	resolver := model.NewModuleResolver(&args.DownstreamProject, resolverOpts)
+
+	projectInfo, err := makeDownstreamProjectFromFile(ctx, args.DownstreamProject, args.ConfigFile, resolver)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	projectInfo.Ref = &args.DownstreamProject
+
 	moduleList := projectInfo.Project.Modules
 	upstreamModuleIdx, err := findUpstreamModule(moduleList, upstreamProject)
 	if err != nil {
@@ -96,13 +115,8 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 			return nil, err
 		}
 	}
-	if upstreamModuleIdx >= 0 {
-		if args.TriggerType == model.ProjectTriggerLevelPush {
-			moduleList[upstreamModuleIdx].Ref = metadata.SourceCommit
-		}
-		if _, err = model.CreateManifest(ctx, v, moduleList, projectInfo.Ref); err != nil {
-			return nil, errors.WithStack(err)
-		}
+	if _, err = model.CreateManifestFromResolver(ctx, v, moduleList, projectInfo.Ref, resolver); err != nil {
+		return nil, errors.WithStack(err)
 	}
 	err = model.UpdateLastRevision(ctx, v.Identifier, v.Revision)
 	if err != nil {
@@ -195,12 +209,13 @@ func getMetadataFromArgs(ctx context.Context, args ProcessorArgs) (model.Version
 	return metadata, nil
 }
 
-func makeDownstreamProjectFromFile(ctx context.Context, ref model.ProjectRef, file string) (model.ProjectInfo, error) {
+func makeDownstreamProjectFromFile(ctx context.Context, ref model.ProjectRef, file string, resolver *model.ModuleResolver) (model.ProjectInfo, error) {
 	opts := model.GetProjectOpts{
-		Ref:          &ref,
-		RemotePath:   file,
-		Revision:     ref.Branch,
-		ReadFileFrom: model.ReadFromGithub,
+		Ref:            &ref,
+		RemotePath:     file,
+		Revision:       ref.Branch,
+		ReadFileFrom:   model.ReadFromGithub,
+		ModuleResolver: resolver,
 	}
 	return model.GetProjectFromFile(ctx, opts, nil)
 }

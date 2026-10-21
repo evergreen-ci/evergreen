@@ -59,14 +59,15 @@ func githubCommitToRevision(repoCommit *github.RepositoryCommit) model.Revision 
 
 // GetRemoteConfig fetches the contents of a remote github repository's
 // configuration data as at a given revision
-func (gRepoPoller *GithubRepositoryPoller) GetRemoteConfig(ctx context.Context, projectFileRevision string) (model.ProjectInfo, error) {
+func (gRepoPoller *GithubRepositoryPoller) GetRemoteConfig(ctx context.Context, projectFileRevision string, resolver *model.ModuleResolver) (model.ProjectInfo, error) {
 	// find the project configuration file for the given repository revision
 	projectRef := gRepoPoller.ProjectRef
 	opts := model.GetProjectOpts{
-		Ref:          projectRef,
-		RemotePath:   projectRef.RemotePath,
-		Revision:     projectFileRevision,
-		ReadFileFrom: model.ReadFromGithub,
+		Ref:            projectRef,
+		RemotePath:     projectRef.RemotePath,
+		Revision:       projectFileRevision,
+		ReadFileFrom:   model.ReadFromGithub,
+		ModuleResolver: resolver,
 	}
 	return model.GetProjectFromFile(ctx, opts, gRepoPoller.Settings)
 }
