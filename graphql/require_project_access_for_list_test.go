@@ -23,9 +23,6 @@ func TestRequireProjectAccessForList(t *testing.T) {
 			"unable to clear collections")
 	}()
 
-	config := NewConfig()
-	require.NotNil(t, config)
-
 	setupPermissions(t)
 	usr, err := setupUser(t)
 	require.NoError(t, err)
@@ -75,7 +72,7 @@ func TestRequireProjectAccessForList(t *testing.T) {
 		})
 		t.Run("FailsWithoutPermission", func(t *testing.T) {
 			obj := map[string]any{"versionIds": []any{"version1", "version2"}}
-			_, err := config.Directives.RequireProjectAccessForList(ctx, obj, next, ProjectPermissionTasks, AccessLevelEdit)
+			_, err := RequireProjectAccessForList(ctx, obj, next, ProjectPermissionTasks, AccessLevelEdit)
 			require.Error(t, err)
 			assertGqlErrorCode(t, err, Forbidden)
 		})
