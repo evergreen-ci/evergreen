@@ -304,7 +304,7 @@ func setupUsers(t *testing.T) {
 			AccessToken:  accessToken,
 			RefreshToken: refreshToken,
 		},
-		APIKey:  "patch_submit_api_key",
+		APIKey: "patch_submit_api_key",
 		SystemRoles: []string{
 			evergreen.BasicProjectAccessRole,
 			"project_evergreen_patch_submit",
