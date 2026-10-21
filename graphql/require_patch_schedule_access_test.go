@@ -14,22 +14,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRequirePatchScheduleAccessForbidden(t *testing.T) {
+func TestRequirePatchScheduleAccess(t *testing.T) {
 	for testName, testCase := range map[string]struct {
 		roles       []string
 		isPR        bool
 		isFinalized bool
+		forbidden   bool
 	}{
+		"PatchSubmitShouldAllowAuthorizingPendingPRFromAnotherAuthor": {
+			roles: []string{"edit_patch"},
+			isPR:  true,
+		},
 		"NoRolesShouldForbidPendingPR": {
-			isPR: true,
+			isPR:      true,
+			forbidden: true,
 		},
 		"PatchSubmitShouldForbidReconfiguringFinalizedPRFromAnotherAuthor": {
 			roles:       []string{"edit_patch"},
 			isPR:        true,
 			isFinalized: true,
+			forbidden:   true,
 		},
 		"PatchSubmitShouldForbidSchedulingCLIPatchFromAnotherAuthor": {
-			roles: []string{"edit_patch"},
+			roles:     []string{"edit_patch"},
+			forbidden: true,
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
@@ -55,9 +63,14 @@ func TestRequirePatchScheduleAccessForbidden(t *testing.T) {
 				return nil, nil
 			}
 			_, err := RequirePatchScheduleAccess(ctx, map[string]any{"patchId": p.Id.Hex()}, next)
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "does not have permission")
-			assert.False(t, nextCalled)
+			if testCase.forbidden {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "does not have permission")
+				assert.False(t, nextCalled)
+				return
+			}
+			require.NoError(t, err)
+			assert.True(t, nextCalled)
 		})
 	}
 }

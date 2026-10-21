@@ -43,26 +43,6 @@
           ]
         }
       ]
-    },
-    {
-      "_id": "5e6bb9e23066155a993e0f1b",
-      "tasks": [
-        {
-          "name": "test-graphql"
-        }
-      ],
-      "buildvariants": [
-        {
-          "name": "ubuntu1604",
-          "display_name": "Ubuntu 16.04",
-          "run_on": ["ubuntu1604-test"],
-          "tasks": [
-            {
-              "name": "test-graphql"
-            }
-          ]
-        }
-      ]
     }
   ],
   "patches": [
@@ -114,35 +94,6 @@
       "patch_number": 123,
       "author": "bob.smith",
       "status": "created"
-    },
-    {
-      "_id": {
-        "$oid": "5e6bb9e23066155a993e0f1b"
-      },
-      "desc": "external contributor pull request",
-      "branch": "evergreen",
-      "githash": "25ab18d7ed2775f27be77d8135ddd841c78cfe28",
-      "patch_number": 501,
-      "author": "deactivated_contributor",
-      "status": "created",
-      "build_variants": ["ubuntu1604"],
-      "tasks": ["test-graphql"],
-      "variants_tasks": [
-        {
-          "variant": "ubuntu1604",
-          "tasks": ["test-graphql"],
-          "displaytasks": []
-        }
-      ],
-      "project_storage_method": "db",
-      "github_patch_data": {
-        "pr_number": 1234,
-        "base_owner": "evergreen-ci",
-        "base_repo": "evergreen",
-        "head_owner": "external-contributor",
-        "head_repo": "evergreen"
-      },
-      "activated": false
     }
   ]
 }
