@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"net"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -67,33 +66,6 @@ func TestValidateArtifactURL(t *testing.T) {
 	}
 }
 
-func TestIsBlockedIP(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name    string
-		ip      string
-		blocked bool
-	}{
-		// Blocked IPs
-		{"AWSMetadata", "169.254.169.254", true},
-		{"LocalhostIPv4", "127.0.0.1", true},
-		{"LocalhostIPv6", "::1", true},
-		{"LinkLocalIPv4", "169.254.1.1", true},
-		// Allowed IPs
-		{"GoogleDNS", "8.8.8.8", false},
-		{"CloudflareDNS", "1.1.1.1", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			ip := net.ParseIP(tt.ip)
-			require.NotNil(t, ip)
-			assert.Equal(t, tt.blocked, isBlockedIP(ip))
-		})
-	}
-}
-
 func TestSSRFDialControl(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -105,6 +77,10 @@ func TestSSRFDialControl(t *testing.T) {
 		{"LoopbackBlocked", "127.0.0.1:80", true},
 		{"AWSMetadataBlocked", "169.254.169.254:80", true},
 		{"IPv6LoopbackBlocked", "[::1]:80", true},
+		{"IPv6MetadataBlocked", "[fd00:ec2::254]:80", true},
+		{"PrivateIPv4Blocked", "10.0.0.1:80", true},
+		{"IPv4MappedPrivateBlocked", "[::ffff:10.0.0.1]:80", true},
+		{"NAT64EmbeddedPrivateBlocked", "[64:ff9b::a00:1]:80", true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
