@@ -31,9 +31,9 @@ enum AccessLevel {
 }
 
 """
-requireProjectAccessForList is used to restrict access to the projects of every ID in a list argument.
+requireProjectAccessForTasks is used to restrict access to the projects of every task in the taskIds argument.
 """
-directive @requireProjectAccessForList(
+directive @requireProjectAccessForTasks(
   permission: ProjectPermission!
   access: AccessLevel!
 ) on ARGUMENT_DEFINITION

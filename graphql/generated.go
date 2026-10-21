@@ -106,7 +106,7 @@ type DirectiveRoot struct {
 	RequirePatchOwner            func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequirePatchSubmitAccess     func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireProjectAccess         func(ctx context.Context, obj any, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (res any, err error)
-	RequireProjectAccessForList  func(ctx context.Context, obj any, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (res any, err error)
+	RequireProjectAccessForTasks func(ctx context.Context, obj any, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (res any, err error)
 	RequireProjectCreate         func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireProjectSettingsAccess func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireRepoAccess            func(ctx context.Context, obj any, next graphql.Resolver, access AccessLevel) (res any, err error)
@@ -13704,7 +13704,7 @@ func (ec *executionContext) dir_requireHostAccess_args(ctx context.Context, rawA
 	return args, nil
 }
 
-func (ec *executionContext) dir_requireProjectAccessForList_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+func (ec *executionContext) dir_requireProjectAccessForTasks_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "permission", ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission)
