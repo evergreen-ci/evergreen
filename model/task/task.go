@@ -1423,8 +1423,23 @@ func (t *Task) EstimatedFinishTime(now time.Time) time.Time {
 }
 
 func (t *Task) MarkSystemFailed(ctx context.Context, description string) error {
+	return t.markSystemFailed(ctx, description, false)
+}
+
+// MarkSystemFailedIfUnchanged is the same as MarkSystemFailed, but only
+// updates the task if its status and host haven't changed since it was read.
+func (t *Task) MarkSystemFailedIfUnchanged(ctx context.Context, description string) error {
+	return t.markSystemFailed(ctx, description, true)
+}
+
+func (t *Task) markSystemFailed(ctx context.Context, description string, requireUnchanged bool) error {
+	prevStatus := t.Status
 	t.FinishTime = t.EstimatedFinishTime(time.Now())
 	t.Details = GetSystemFailureDetails(description)
+
+	if err := t.markEnd(ctx, t.FinishTime, &t.Details, requireUnchanged); err != nil {
+		return err
+	}
 
 	switch t.ExecutionPlatform {
 	case ExecutionPlatformHost:
@@ -1437,13 +1452,13 @@ func (t *Task) MarkSystemFailed(ctx context.Context, description string) error {
 		"included_on":        evergreen.ContainerHealthDashboard,
 		"task_id":            t.Id,
 		"execution":          t.Execution,
-		"status":             t.Status,
+		"status":             prevStatus,
 		"host_id":            t.HostId,
 		"description":        description,
 		"execution_platform": t.ExecutionPlatform,
 	})
 
-	return t.MarkEnd(ctx, t.FinishTime, &t.Details)
+	return nil
 }
 
 // GetSystemFailureDetails returns a task's end details based on an input description.
@@ -2196,6 +2211,18 @@ func (t *Task) SetCompletedBy(ctx context.Context, completedBy string) error {
 // MarkEnd handles the Task updates associated with ending a task. If the task
 // never reported that it started, its start time is estimated.
 func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimodels.TaskEndDetail) error {
+	return t.markEnd(ctx, finishTime, detail, false)
+}
+
+// MarkEndIfUnchanged is the same as MarkEnd, but only updates the task if its
+// status and host haven't changed since it was read.
+func (t *Task) MarkEndIfUnchanged(ctx context.Context, finishTime time.Time, detail *apimodels.TaskEndDetail) error {
+	return t.markEnd(ctx, finishTime, detail, true)
+}
+
+func (t *Task) markEnd(ctx context.Context, finishTime time.Time, detail *apimodels.TaskEndDetail, requireUnchanged bool) error {
+	query := t.currentExecutionQuery(requireUnchanged)
+
 	if utility.IsZeroTime(t.StartTime) {
 		timedOutStart := finishTime.Add(-2 * time.Hour)
 		if !utility.IsZeroTime(t.DispatchTime) {
@@ -2276,7 +2303,23 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 		setFields[ActivatedTimeKey] = t.ActivatedTime
 	}
 	ec2EBSSetFields(TaskCostKey, t.TaskCost, setFields)
-	return UpdateOne(ctx, bson.M{IdKey: t.Id}, bson.M{"$set": setFields})
+	return UpdateOne(ctx, query, bson.M{"$set": setFields})
+}
+
+// currentExecutionQuery matches the task's execution and, if requireUnchanged
+// is set, its status and host.
+func (t *Task) currentExecutionQuery(requireUnchanged bool) bson.M {
+	query := bson.M{
+		IdKey:        t.Id,
+		ExecutionKey: t.Execution,
+	}
+	if requireUnchanged {
+		query[StatusKey] = t.Status
+		if t.HostId != "" {
+			query[HostIdKey] = t.HostId
+		}
+	}
+	return query
 }
 
 // GetDisplayStatus finds and sets DisplayStatus to the task. It should reflect
@@ -2708,7 +2751,8 @@ func getRecursiveDependenciesDownHelper(ctx context.Context, tasks []string, tas
 	return append(newDeps, recurseTasks...), nil
 }
 
-// MarkStart updates the task's start time and sets the status to started
+// MarkStart updates the task's start time and sets the status to started. The
+// task must be dispatched.
 func (t *Task) MarkStart(ctx context.Context, startTime time.Time) error {
 	// record the start time in the in-memory task
 	t.StartTime = startTime
@@ -2718,7 +2762,9 @@ func (t *Task) MarkStart(ctx context.Context, startTime time.Time) error {
 	return UpdateOne(
 		ctx,
 		bson.M{
-			IdKey: t.Id,
+			IdKey:        t.Id,
+			ExecutionKey: t.Execution,
+			StatusKey:    evergreen.TaskDispatched,
 		},
 		bson.M{
 			"$set": bson.M{
@@ -2731,15 +2777,15 @@ func (t *Task) MarkStart(ctx context.Context, startTime time.Time) error {
 	)
 }
 
-// MarkUnscheduled marks the task as undispatched and updates it in the database
+// MarkUnscheduled marks the task as undispatched if it hasn't changed since it
+// was read.
 func (t *Task) MarkUnscheduled(ctx context.Context) error {
+	query := t.currentExecutionQuery(true)
 	t.Status = evergreen.TaskUndispatched
 	t.DisplayStatusCache = t.DetermineDisplayStatus()
 	return UpdateOne(
 		ctx,
-		bson.M{
-			IdKey: t.Id,
-		},
+		query,
 		bson.M{
 			"$set": bson.M{
 				StatusKey:             evergreen.TaskUndispatched,

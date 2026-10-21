@@ -179,6 +179,41 @@ func TestVersionBuildFromServiceCost(t *testing.T) {
 	})
 }
 
+func TestVersionBuildFromServiceTriggerModule(t *testing.T) {
+	t.Run("PushTriggeredVersionIncludesTriggerModule", func(t *testing.T) {
+		v := model.Version{
+			Id:            "v-push-triggered",
+			TriggerSHA:    "abc123",
+			TriggerModule: "dsi",
+			TriggerOwner:  "10gen",
+			TriggerRepo:   "dsi",
+			TriggerBranch: "main",
+		}
+
+		apiVersion := &APIVersion{}
+		apiVersion.BuildFromService(t.Context(), v)
+
+		require.NotNil(t, apiVersion.TriggerModule)
+		assert.Equal(t, "dsi", utility.FromStringPtr(apiVersion.TriggerModule.Name))
+		assert.Equal(t, "10gen", utility.FromStringPtr(apiVersion.TriggerModule.Owner))
+		assert.Equal(t, "dsi", utility.FromStringPtr(apiVersion.TriggerModule.Repo))
+		assert.Equal(t, "main", utility.FromStringPtr(apiVersion.TriggerModule.Branch))
+		assert.Equal(t, "abc123", utility.FromStringPtr(apiVersion.TriggerModule.Revision))
+	})
+
+	t.Run("VersionWithoutTriggerModuleHasNilTriggerModule", func(t *testing.T) {
+		v := model.Version{
+			Id:         "v-legacy-push-triggered",
+			TriggerSHA: "abc123",
+		}
+
+		apiVersion := &APIVersion{}
+		apiVersion.BuildFromService(t.Context(), v)
+
+		assert.Nil(t, apiVersion.TriggerModule)
+	})
+}
+
 func TestVersionBuildFromServiceS3Usage(t *testing.T) {
 	t.Run("PopulatedS3UsageIsExposed", func(t *testing.T) {
 		v := model.Version{

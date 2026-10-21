@@ -240,6 +240,40 @@ func TestFleet(t *testing.T) {
 			assert.Equal(t, "vol-12345", dbHost.Volumes[0].VolumeID)
 			assert.Equal(t, "/dev/sda1", dbHost.Volumes[0].DeviceName)
 		},
+		"GetRunningInstanceIDLooksUpIntentHostByRunningTaggedInstance": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
+			h.Id = "evg-12345"
+			h.Distro.Id = "distro_id"
+			client.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{
+				Reservations: []types.Reservation{{Instances: []types.Instance{{InstanceId: aws.String("i-12345")}}}},
+			}
+
+			instanceID, err := m.GetRunningInstanceID(ctx, h)
+			require.NoError(t, err)
+			assert.Equal(t, "i-12345", instanceID)
+
+			require.NotNil(t, client.DescribeInstancesInput)
+			filters := map[string][]string{}
+			for _, f := range client.DescribeInstancesInput.Filters {
+				filters[utility.FromStringPtr(f.Name)] = f.Values
+			}
+			assert.Equal(t, map[string][]string{
+				"tag:" + evergreen.TagName:   {h.Id},
+				"tag:" + evergreen.TagDistro: {h.Distro.Id},
+				"instance-state-name":        {string(types.InstanceStateNameRunning)},
+			}, filters)
+		},
+		"GetRunningInstanceIDErrorsForMultipleInstances": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
+			h.Id = "evg-12345"
+			client.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{
+				Reservations: []types.Reservation{
+					{Instances: []types.Instance{{InstanceId: aws.String("i-12345")}}},
+					{Instances: []types.Instance{{InstanceId: aws.String("i-67890")}}},
+				},
+			}
+
+			_, err := m.GetRunningInstanceID(ctx, h)
+			assert.Error(t, err)
+		},
 		"GetInstanceInformation": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
 			info, err := m.GetInstanceState(ctx, h)
 			assert.NoError(t, err)

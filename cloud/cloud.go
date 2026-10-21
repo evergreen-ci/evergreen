@@ -115,6 +115,20 @@ type BatchManager interface {
 	GetInstanceStatuses(context.Context, []host.Host) (map[string]CloudStatus, error)
 }
 
+// InstanceIDManager is a cloud manager that can look up a host's instance ID
+// from the cloud provider.
+type InstanceIDManager interface {
+	// GetRunningInstanceID returns the instance ID of the single running
+	// instance backing the host.
+	GetRunningInstanceID(ctx context.Context, h *host.Host) (string, error)
+}
+
+// SupportsInstanceID returns whether the cloud provider's manager is an
+// InstanceIDManager.
+func SupportsInstanceID(provider string) bool {
+	return evergreen.IsEc2Provider(provider) || provider == evergreen.ProviderNameMock
+}
+
 // ManagerOpts is a struct containing the fields needed to get a new cloud manager
 // of the proper type.
 type ManagerOpts struct {

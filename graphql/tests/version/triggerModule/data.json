@@ -1,0 +1,49 @@
+{
+  "versions": [
+    {
+      "_id": "spruce_d1c6c0e33ac4d3f5e7b8a5f2e6d1c4b3a2f1e0d9_dsi_trigger",
+      "create_time": {
+        "$date": "2026-10-01T12:00:00Z"
+      },
+      "gitspec": "f4e3d2c1b0a9f8e7d6c5b4a3f2e1d0c9b8a7f6e5",
+      "author": "Test Author",
+      "author_email": "test.author@mongodb.com",
+      "message": "Bump DSI workload timeout",
+      "status": "created",
+      "order": 100,
+      "branch_name": "master",
+      "identifier": "spruce",
+      "r": "trigger_request",
+      "activated": true,
+      "trigger_id": "dsi",
+      "trigger_type": "push",
+      "trigger_sha": "d1c6c0e33ac4d3f5e7b8a5f2e6d1c4b3a2f1e0d9",
+      "trigger_module": "dsi",
+      "trigger_owner": "10gen",
+      "trigger_repo": "dsi",
+      "trigger_branch": "main"
+    },
+    {
+      "_id": "spruce_f4e3d2c1b0a9f8e7d6c5b4a3f2e1d0c9b8a7f6e5",
+      "create_time": {
+        "$date": "2026-10-01T11:00:00Z"
+      },
+      "gitspec": "f4e3d2c1b0a9f8e7d6c5b4a3f2e1d0c9b8a7f6e5",
+      "author": "Test Author",
+      "author_email": "test.author@mongodb.com",
+      "message": "SERVER-12345 Fix a bug",
+      "status": "created",
+      "order": 99,
+      "branch_name": "master",
+      "identifier": "spruce",
+      "r": "gitter_request",
+      "activated": true
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    }
+  ]
+}

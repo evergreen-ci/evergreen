@@ -1,0 +1,8 @@
+query {
+  version(versionId: "spruce_f4e3d2c1b0a9f8e7d6c5b4a3f2e1d0c9b8a7f6e5") {
+    id
+    triggerModule {
+      name
+    }
+  }
+}

@@ -733,6 +733,12 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		if metadata.TriggerType == model.ProjectTriggerLevelPush {
 			revision = metadata.SourceCommit
 			v.TriggerSHA = revision
+			if metadata.SourceModule != nil {
+				v.TriggerModule = metadata.SourceModule.Name
+				v.TriggerOwner = metadata.SourceModule.Owner
+				v.TriggerRepo = metadata.SourceModule.Repo
+				v.TriggerBranch = metadata.SourceModule.Branch
+			}
 		}
 		createTime := metadata.Revision.CreateTime
 		if metadata.SourceVersion != nil {

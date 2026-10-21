@@ -41,6 +41,11 @@ func TestGetManager(t *testing.T) {
 
 }
 
+func TestInstanceIDManagerImplementations(t *testing.T) {
+	assert.Implements(t, (*InstanceIDManager)(nil), &ec2FleetManager{})
+	assert.Implements(t, (*InstanceIDManager)(nil), &mockManager{})
+}
+
 func TestConvertContainerManager(t *testing.T) {
 	assert := assert.New(t)
 

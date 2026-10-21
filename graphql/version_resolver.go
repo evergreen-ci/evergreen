@@ -534,6 +534,20 @@ func (r *versionResolver) TaskStatusStats(ctx context.Context, obj *model.Versio
 	return task.GetTaskStatsByVersion(ctx, obj.Id, includeNeverActivated)
 }
 
+// TriggerModule is the resolver for the triggerModule field.
+func (r *versionResolver) TriggerModule(ctx context.Context, obj *model.Version) (*TriggerModule, error) {
+	if obj.Requester != evergreen.TriggerRequester || obj.TriggerModule == "" {
+		return nil, nil
+	}
+	return &TriggerModule{
+		Branch:   obj.TriggerBranch,
+		Name:     obj.TriggerModule,
+		Owner:    obj.TriggerOwner,
+		Repo:     obj.TriggerRepo,
+		Revision: obj.TriggerSHA,
+	}, nil
+}
+
 // UpstreamProject is the resolver for the upstreamProject field.
 func (r *versionResolver) UpstreamProject(ctx context.Context, obj *model.Version) (*UpstreamProject, error) {
 	if obj.Requester != evergreen.TriggerRequester {
