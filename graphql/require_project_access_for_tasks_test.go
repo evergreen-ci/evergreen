@@ -46,11 +46,17 @@ func TestRequireProjectAccessForTasksList(t *testing.T) {
 		})
 	}
 
-	t.Run("NonexistentTaskShouldReturnNotFound", func(t *testing.T) {
-		obj := map[string]any{"taskIds": []any{"nonexistent"}}
+	t.Run("NonexistentTaskShouldNotBypassPermissionCheckOnExistingTasks", func(t *testing.T) {
+		obj := map[string]any{"taskIds": []any{"nonexistent", "task1"}}
 		_, err := RequireProjectAccessForTasks(ctx, obj, next, ProjectPermissionTasks, AccessLevelEdit)
 		require.Error(t, err)
-		assertGqlErrorCode(t, err, ResourceNotFound)
+		assertGqlErrorCode(t, err, Forbidden)
+	})
+	t.Run("NonexistentTaskShouldBeIgnored", func(t *testing.T) {
+		grantAccess(t)
+		obj := map[string]any{"taskIds": []any{"nonexistent", "task1"}}
+		_, err := RequireProjectAccessForTasks(ctx, obj, next, ProjectPermissionTasks, AccessLevelEdit)
+		assert.NoError(t, err)
 	})
 	t.Run("MissingPermissionOnAnyTaskProjectShouldBeForbidden", func(t *testing.T) {
 		obj := map[string]any{"taskIds": []any{"task1", "task2"}}

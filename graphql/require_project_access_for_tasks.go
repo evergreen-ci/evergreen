@@ -5,7 +5,8 @@ import (
 	"fmt"
 
 	"github.com/99designs/gqlgen/graphql"
-	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 )
 
 // RequireProjectAccessForTasks is similar to RequireProjectAccess, except that it checks the project permissions
@@ -20,24 +21,24 @@ func RequireProjectAccessForTasks(ctx context.Context, obj any, next graphql.Res
 	if !isStringMap {
 		return nil, InternalServerError.Send(ctx, "converting args into map")
 	}
-	taskIDs, ok := args["taskIds"].([]any)
+	rawTaskIDs, ok := args["taskIds"].([]any)
 	if !ok {
 		return nil, InputValidationError.Send(ctx, "must specify 'taskIds'")
 	}
+	taskIDs := make([]string, 0, len(rawTaskIDs))
+	for _, id := range rawTaskIDs {
+		taskIDs = append(taskIDs, id.(string))
+	}
 
-	seenProjectIDs := map[string]bool{}
-	for _, taskID := range taskIDs {
-		projectID, statusCode, err := data.GetProjectIdFromParams(ctx, map[string]string{"taskId": taskID.(string)})
-		if err != nil {
-			return nil, mapHTTPStatusToGqlError(ctx, statusCode, err)
-		}
-		if seenProjectIDs[projectID] {
-			continue
-		}
+	projectIDs, err := task.FindProjectsForTasks(ctx, taskIDs)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding projects for tasks: %s", err.Error()))
+	}
+
+	for _, projectID := range utility.UniqueStrings(projectIDs) {
 		if err = checkProjectPermission(ctx, projectID, requiredPermission, permissionInfo); err != nil {
 			return nil, err
 		}
-		seenProjectIDs[projectID] = true
 	}
 	return next(ctx)
 }
