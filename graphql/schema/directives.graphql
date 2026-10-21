@@ -11,7 +11,10 @@ directive @requireRepoAccess(access: AccessLevel!) on ARGUMENT_DEFINITION
 """
 requireProjectAccess is used to restrict admin, view, and edit access for projects.
 """
-directive @requireProjectAccess(permission: ProjectPermission!, access: AccessLevel!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION | FIELD_DEFINITION
+directive @requireProjectAccess(
+  permission: ProjectPermission!
+  access: AccessLevel!
+) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION | FIELD_DEFINITION
 
 enum ProjectPermission {
   SETTINGS
@@ -28,6 +31,14 @@ enum AccessLevel {
 }
 
 """
+requireProjectAccessForList is used to restrict access to the projects of every ID in a list argument.
+"""
+directive @requireProjectAccessForList(
+  permission: ProjectPermission!
+  access: AccessLevel!
+) on ARGUMENT_DEFINITION
+
+"""
 requireProjectSettingsAccess is used to restrict view access for fields accessed within ProjectSettings (or RepoSettings) structs.
 """
 directive @requireProjectSettingsAccess on FIELD_DEFINITION
@@ -35,7 +46,9 @@ directive @requireProjectSettingsAccess on FIELD_DEFINITION
 """
 requireDistroAccess is used to restrict view, edit, admin, and create access for distros.
 """
-directive @requireDistroAccess(access: DistroSettingsAccess!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
+directive @requireDistroAccess(
+  access: DistroSettingsAccess!
+) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
 
 enum DistroSettingsAccess {
   ADMIN
@@ -47,7 +60,9 @@ enum DistroSettingsAccess {
 """
 requireHostAccess is used to restrict view and edit access for hosts.
 """
-directive @requireHostAccess(access: HostAccessLevel!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
+directive @requireHostAccess(
+  access: HostAccessLevel!
+) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
 
 enum HostAccessLevel {
   EDIT
@@ -67,7 +82,6 @@ directive @requirePatchOwner on ARGUMENT_DEFINITION
 """
 requireAdmin is used to restrict certain actions to admins.
 """
-
 directive @requireAdmin on FIELD_DEFINITION
 
 """
