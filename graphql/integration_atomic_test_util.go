@@ -58,6 +58,8 @@ const (
 	privilegedUser  = "privileged_user"
 	regularUser     = "regular_user"
 	branchAdminUser = "branch_admin_user"
+	// patchSubmitUser can submit patches to the evergreen project but isn't a patch admin.
+	patchSubmitUser = "patch_submit_user"
 )
 
 type AtomicGraphQLState struct {
@@ -293,6 +295,22 @@ func setupUsers(t *testing.T) {
 		},
 	}
 	assert.NoError(t, branchAdminUsr.Insert(t.Context()))
+
+	patchSubmitUsr := user.DBUser{
+		Id:           patchSubmitUser,
+		DispName:     "Patch Submit User",
+		EmailAddress: "patch_submit_user@mongodb.com",
+		LoginCache: user.LoginCache{
+			AccessToken:  accessToken,
+			RefreshToken: refreshToken,
+		},
+		APIKey:  "patch_submit_api_key",
+		SystemRoles: []string{
+			evergreen.BasicProjectAccessRole,
+			"project_evergreen_patch_submit",
+		},
+	}
+	assert.NoError(t, patchSubmitUsr.Insert(t.Context()))
 }
 
 func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
@@ -453,6 +471,14 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 	}
 	err = roleManager.UpdateRole(t.Context(), projectEvergreenRole)
 	require.NoError(t, err)
+
+	projectEvergreenPatchSubmitRole := gimlet.Role{
+		ID:          "project_evergreen_patch_submit",
+		Name:        "evergreen patch submit",
+		Scope:       projectEvergreenScope.ID,
+		Permissions: map[string]int{evergreen.PermissionPatches: evergreen.PatchSubmit.Value},
+	}
+	require.NoError(t, roleManager.UpdateRole(t.Context(), projectEvergreenPatchSubmitRole))
 
 	projectSandboxScope := gimlet.Scope{
 		ID:        "project_sandbox_scope",

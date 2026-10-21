@@ -47,6 +47,19 @@
           }
         ]
       }
+    },
+    {
+      "query_file": "authorize_pending_pr_patch.graphql",
+      "test_user_id": "patch_submit_user",
+      "result": {
+        "data": {
+          "schedulePatch": {
+            "id": "5e6bb9e23066155a993e0f1b",
+            "status": "created",
+            "activated": true
+          }
+        }
+      }
     }
   ]
 }
