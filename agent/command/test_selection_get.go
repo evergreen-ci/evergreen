@@ -32,16 +32,17 @@ const (
 )
 
 var (
-	testSelectionEnabledAttribute          = fmt.Sprintf("%s.enabled", testSelectionGetAttribute)
-	testSelectionCalledAttribute           = fmt.Sprintf("%s.called", testSelectionGetAttribute)
-	testSelectionInputNumTestsAttribute    = fmt.Sprintf("%s.input_num_tests", testSelectionGetAttribute)
-	testSelectionStrategiesAttribute       = fmt.Sprintf("%s.strategies", testSelectionGetAttribute)
-	testSelectionUsageRateAttribute        = fmt.Sprintf("%s.usage_rate", testSelectionGetAttribute)
-	testSelectionNumTestsReturnedAttribute = fmt.Sprintf("%s.num_tests_returned", testSelectionGetAttribute)
-	testSelectionDurationMsAttribute       = fmt.Sprintf("%s.duration_ms", testSelectionGetAttribute)
-	testSelectionBypassRequestedAttribute  = fmt.Sprintf("%s.bypass_requested", testSelectionGetAttribute)
-	testSelectionBypassNameCountAttribute  = fmt.Sprintf("%s.bypass_name_count", testSelectionGetAttribute)
-	testSelectionBypassAppliedAttribute    = fmt.Sprintf("%s.bypass_applied", testSelectionGetAttribute)
+	testSelectionEnabledAttribute                 = fmt.Sprintf("%s.enabled", testSelectionGetAttribute)
+	testSelectionCalledAttribute                  = fmt.Sprintf("%s.called", testSelectionGetAttribute)
+	testSelectionInputNumTestsAttribute           = fmt.Sprintf("%s.input_num_tests", testSelectionGetAttribute)
+	testSelectionStrategiesAttribute              = fmt.Sprintf("%s.strategies", testSelectionGetAttribute)
+	testSelectionUsageRateAttribute               = fmt.Sprintf("%s.usage_rate", testSelectionGetAttribute)
+	testSelectionNumTestsReturnedAttribute        = fmt.Sprintf("%s.num_tests_returned", testSelectionGetAttribute)
+	testSelectionServiceNumTestsReturnedAttribute = fmt.Sprintf("%s.service_num_tests_returned", testSelectionGetAttribute)
+	testSelectionDurationMsAttribute              = fmt.Sprintf("%s.duration_ms", testSelectionGetAttribute)
+	testSelectionBypassRequestedAttribute         = fmt.Sprintf("%s.bypass_requested", testSelectionGetAttribute)
+	testSelectionBypassNameCountAttribute         = fmt.Sprintf("%s.bypass_name_count", testSelectionGetAttribute)
+	testSelectionBypassAppliedAttribute           = fmt.Sprintf("%s.bypass_applied", testSelectionGetAttribute)
 )
 
 type testSelectionInputFile struct {
@@ -209,6 +210,7 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 	if err != nil {
 		return errors.Wrap(err, "calling test selection API")
 	}
+	trace.SpanFromContext(ctx).SetAttributes(attribute.Int(testSelectionServiceNumTestsReturnedAttribute, len(selectedTests)))
 	if len(bypass) > 0 && len(c.Tests) > 0 {
 		bypassApplied = true
 		allowed := make(map[string]bool, len(selectedTests)+len(bypass))
