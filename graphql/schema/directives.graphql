@@ -61,10 +61,14 @@ directive @redactSecrets on INPUT_FIELD_DEFINITION | ARGUMENT_DEFINITION | INPUT
 
 """
 requirePatchOwner is used to restrict certain actions to the patch creator, patch admin, project admin or superuser.
-If allowPendingPRAuthorization is true, GitHub PR patches that are still awaiting authorization are exempt from the ownership
-requirement.
 """
-directive @requirePatchOwner(allowPendingPRAuthorization: Boolean = false) on ARGUMENT_DEFINITION
+directive @requirePatchOwner on ARGUMENT_DEFINITION
+
+"""
+requirePatchEditAccess requires patch ownership or admin access, except that GitHub PR patches awaiting authorization
+may be authorized by anyone. Project permissions are not checked here, so pair it with requireProjectAccess.
+"""
+directive @requirePatchEditAccess on ARGUMENT_DEFINITION
 
 """
 requireAdmin is used to restrict certain actions to admins.
