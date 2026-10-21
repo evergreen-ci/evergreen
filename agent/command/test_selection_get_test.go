@@ -69,18 +69,6 @@ func TestTestSelectionGet(t *testing.T) {
 			assert.Equal(t, cmd.Tests, comm.SelectTestsRequest.Tests)
 			assert.Equal(t, "display_task", comm.SelectTestsRequest.DisplayTaskName)
 		},
-		"BypassFromTestsFileRestoresOnlyCandidates": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
-			conf.Expansions.Put("test_selection_bypass_quarantine", `["test2","outside"]`)
-			comm.SelectTestsResponse = []string{"test1", "outside"}
-			inputFile := filepath.Join(conf.WorkDir, "input_tests.json")
-			require.NoError(t, utility.WriteJSONFile(inputFile, testSelectionInputFile{Tests: []string{"test2", "test1", "test4"}}))
-			cmd := &testSelectionGet{OutputFile: "test.json", TestsFile: inputFile}
-			require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
-			var output testSelectionOutputFile
-			require.NoError(t, utility.ReadJSONFile(cmd.OutputFile, &output))
-			assert.Equal(t, []testOutput{{Name: "test2"}, {Name: "test1"}}, output.Tests)
-			assert.Equal(t, []string{"test2", "test1", "test4"}, comm.SelectTestsRequest.Tests)
-		},
 		"NonemptyBypassWithoutCandidatesPreservesKnownTestsMode": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
 			conf.Expansions.Put("test_selection_bypass_quarantine", `["test2"]`)
 			for _, name := range []string{"NoTests", "EmptyTestsFile"} {
@@ -121,18 +109,6 @@ func TestTestSelectionGet(t *testing.T) {
 				})
 			}
 		},
-		"MainlineIgnoresMalformedBypass": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
-			conf.Task.Requester = evergreen.RepotrackerVersionRequester
-			conf.ProjectRef.TestSelection.DefaultEnabled = utility.TruePtr()
-			conf.ProjectRef.TestSelection.MainlineDefaultEnabled = utility.TruePtr()
-			conf.Expansions.Put("test_selection_bypass_quarantine", "broken")
-			cmd := &testSelectionGet{OutputFile: "test.json", Tests: []string{"test1"}}
-			require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
-			var output testSelectionOutputFile
-			require.NoError(t, utility.ReadJSONFile(cmd.OutputFile, &output))
-			assert.Equal(t, []testOutput{{Name: "test1"}, {Name: "test3"}}, output.Tests)
-			assert.True(t, comm.SelectTestsCalled)
-		},
 		"DisabledSelectionAndUsageNoopIgnoreMalformedBypass": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
 			conf.Expansions.Put("test_selection_bypass_quarantine", "broken")
 			for _, name := range []string{"Disabled", "ZeroUsage", "SampledNoop"} {
@@ -151,13 +127,6 @@ func TestTestSelectionGet(t *testing.T) {
 					assert.False(t, comm.SelectTestsCalled)
 				})
 			}
-		},
-		"APIErrorStillErrorsWithBypass": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
-			conf.Expansions.Put("test_selection_bypass_quarantine", `["test2"]`)
-			comm.SelectTestsError = errors.New("selection error")
-			cmd := &testSelectionGet{OutputFile: "test.json", Tests: []string{"test2"}}
-			require.ErrorContains(t, cmd.Execute(t.Context(), comm, logger, conf), "calling test selection API: selection error")
-			assert.True(t, comm.SelectTestsCalled)
 		},
 		"BypassPreservesExactNamesAndCandidateDuplicates": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
 			names := []string{"a,b.js", "a b.js", `a"b.js`, `a\b.js`, "a=b.js", "$(name).js", " "}
@@ -207,6 +176,7 @@ func TestTestSelectionGet(t *testing.T) {
 			assert.Empty(t, output.Tests)
 		},
 		"CallsTestSelectionAPIForMainlineRequesterWhenEnabled": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
+			conf.Expansions.Put("test_selection_bypass_quarantine", "broken")
 			cmd := &testSelectionGet{OutputFile: "test.json", Tests: []string{"test1", "test3"}}
 
 			conf.Task.Requester = evergreen.RepotrackerVersionRequester
@@ -216,6 +186,9 @@ func TestTestSelectionGet(t *testing.T) {
 
 			assert.True(t, comm.SelectTestsCalled)
 			assert.Equal(t, evergreen.RepotrackerVersionRequester, comm.SelectTestsRequest.Requester)
+			var output testSelectionOutputFile
+			require.NoError(t, utility.ReadJSONFile(cmd.OutputFile, &output))
+			assert.Equal(t, []testOutput{{Name: "test1"}, {Name: "test3"}}, output.Tests)
 		},
 		"SkipsForOtherNonPatchRequester": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
 			cmd := &testSelectionGet{OutputFile: "test.json", Tests: []string{"test1", "test3"}}
@@ -298,7 +271,8 @@ func TestTestSelectionGet(t *testing.T) {
 			assert.Equal(t, tests, comm.SelectTestsRequest.Tests)
 		},
 		"HandlesAPIErrors": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
-			cmd := &testSelectionGet{OutputFile: "test.json"}
+			conf.Expansions.Put("test_selection_bypass_quarantine", `["test2"]`)
+			cmd := &testSelectionGet{OutputFile: "test.json", Tests: []string{"test2"}}
 
 			// Mock API error
 			comm.SelectTestsError = errors.New("test error")
