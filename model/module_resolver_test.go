@@ -118,15 +118,15 @@ func TestModuleResolver(t *testing.T) {
 			require.NoError(t, err)
 			assert.Nil(t, mfst)
 		},
-		"TranslationKeySuffixShouldIdentifyResolvedCommits": func(t *testing.T) {
+		"ResolvedModulesKeyShouldBeSortedByModuleName": func(t *testing.T) {
 			var nilResolver *ModuleResolver
-			assert.Empty(t, nilResolver.translationKeySuffix())
+			assert.Empty(t, nilResolver.resolvedModulesKey())
 
 			resolver := NewModuleResolver(projectRef, ModuleResolverOpts{})
-			assert.Empty(t, resolver.translationKeySuffix())
+			assert.Empty(t, resolver.resolvedModulesKey())
 			resolver.resolved["b"] = &manifest.Module{Revision: "rev-b"}
 			resolver.resolved["a"] = &manifest.Module{Revision: "rev-a"}
-			assert.Equal(t, "a@rev-a,b@rev-b", resolver.translationKeySuffix())
+			assert.Equal(t, "a@rev-a,b@rev-b", resolver.resolvedModulesKey())
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

@@ -969,8 +969,8 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	var revision string
 	if opts != nil {
 		revision = opts.Revision
-		if suffix := opts.ModuleResolver.translationKeySuffix(); suffix != "" {
-			revision = fmt.Sprintf("%s:%s", revision, suffix)
+		if modulesKey := opts.ModuleResolver.resolvedModulesKey(); modulesKey != "" {
+			revision = fmt.Sprintf("%s:%s", revision, modulesKey)
 		}
 	}
 	p, err := loadTranslateProject(ctx, span, intermediateProject, projectID, revision, cacheEnabled)

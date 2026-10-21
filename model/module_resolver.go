@@ -91,9 +91,10 @@ func (r *ModuleResolver) Manifest(ctx context.Context, v *Version, modules Modul
 	return newManifest, nil
 }
 
-// translationKeySuffix identifies the module commits resolved so far, since
-// loads of the same project revision can include files from different ones.
-func (r *ModuleResolver) translationKeySuffix() string {
+// resolvedModulesKey returns the module commits resolved so far as a stable
+// string. Concurrent loads of the same revision share a translated
+// project, so this keeps loads that read module includes from different commits separate.
+func (r *ModuleResolver) resolvedModulesKey() string {
 	if r == nil {
 		return ""
 	}
