@@ -183,6 +183,7 @@ include:
 		{name: "IncludeShouldBeReadFromTriggeringCommit", ingestedRevision: commitWithoutModules, triggeringRevision: commitWithModules, moduleRevision: commitWithModules, expectRenderModule: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(RepositoryRevisionsHistoryCollection))
 			ingestTime := time.Now()
 			require.NoError(t, UpsertRepositoryRevision(t.Context(), "evergreen-ci", "sample", "main", tc.ingestedRevision, ingestTime.Add(-time.Minute)))
 			opts := ModuleResolverOpts{
