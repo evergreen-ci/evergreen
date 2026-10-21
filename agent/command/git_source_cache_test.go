@@ -173,7 +173,7 @@ func TestBuildPostRestoreCommand(t *testing.T) {
 			opts:          cloneOpts{owner: "some-org", repo: "some-repo", token: projectGitHubToken},
 			revision:      "abc123",
 			runPRCheckout: true,
-			wantContains:  []string{authedOrigin, `git fetch origin "` + prHead + `"`, "git reset --hard " + prHead},
+			wantContains:  []string{authedOrigin, `git fetch origin "` + prHead + `:refs/heads/evg-pr-test-`, `git checkout "evg-pr-test-`, "git reset --hard " + prHead},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

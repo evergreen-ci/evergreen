@@ -675,8 +675,8 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForPullRequests() {
 	s.NoError(err)
 	s.Require().Len(cmds, 13)
 	s.True(utility.StringSliceContainsOrderedPrefixSubset(cmds, []string{
-		`git fetch origin "55ca6286e3e4f4fba5d0448333fa99fc5a404a73"`,
-		`git checkout "55ca6286e3e4f4fba5d0448333fa99fc5a404a73"`,
+		`git fetch origin "55ca6286e3e4f4fba5d0448333fa99fc5a404a73:refs/heads/evg-pr-test-`,
+		`git checkout "evg-pr-test-`,
 		"git reset --hard 55ca6286e3e4f4fba5d0448333fa99fc5a404a73",
 		"git log --oneline -n 10",
 	}), cmds)
@@ -881,7 +881,8 @@ func TestBuildSourceCloneCommandChildPatchUsesGitHubParentPRCheckout(t *testing.
 	cmds, err := c.buildSourceCloneCommand(conf, opts)
 	require.NoError(t, err)
 	joined := strings.Join(cmds, "\n")
-	assert.Contains(t, joined, `git fetch origin "55ca6286e3e4f4fba5d0448333fa99fc5a404a73"`)
+	assert.Contains(t, joined, `git fetch origin "55ca6286e3e4f4fba5d0448333fa99fc5a404a73:refs/heads/evg-pr-test-`)
+	assert.Contains(t, joined, `git checkout "evg-pr-test-`)
 	assert.Contains(t, joined, `git reset --hard 55ca6286e3e4f4fba5d0448333fa99fc5a404a73`)
 	assert.NotContains(t, joined, "git reset --hard child-mainline-sha")
 }
@@ -909,7 +910,8 @@ func TestBuildModuleCloneCommandGithubPRHead(t *testing.T) {
 	cmds, err := c.buildModuleCloneCommand(conf, opts, "", &patch.ModulePatch{ModuleName: "module1"})
 	require.NoError(t, err)
 	joined := strings.Join(cmds, "\n")
-	assert.Contains(t, joined, `git fetch origin "55ca6286e3e4f4fba5d0448333fa99fc5a404a73"`)
+	assert.Contains(t, joined, `git fetch origin "55ca6286e3e4f4fba5d0448333fa99fc5a404a73:refs/heads/evg-pr-test-`)
+	assert.Contains(t, joined, `git checkout "evg-pr-test-`)
 	assert.Contains(t, joined, `git reset --hard 55ca6286e3e4f4fba5d0448333fa99fc5a404a73`)
 	assert.NotContains(t, joined, "pull/9001/head")
 	assert.NotContains(t, joined, "/merge:")

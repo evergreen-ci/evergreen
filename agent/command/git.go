@@ -386,9 +386,13 @@ func prCheckoutCommands(conf *internal.TaskConfig) []string {
 			localBranchName, commitToTest,
 		)
 	case prFetchModeSHA:
-		// Fetch the full head SHA directly: the refs/pull/N/head ref can hang
-		// for minutes under load.
-		return fetchCheckoutResetCommands(commitToTest, commitToTest, commitToTest)
+		// Fetch the head SHA directly (the refs/pull/N/head ref can hang for
+		// minutes under load) into a branch so HEAD stays attached.
+		localBranchName := fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
+		return fetchCheckoutResetCommands(
+			fmt.Sprintf("%s:refs/heads/%s", commitToTest, localBranchName),
+			localBranchName, commitToTest,
+		)
 	default: // prFetchModePullRef
 		// Github creates a ref called refs/pull/[pr number]/head
 		// that provides the entire tree of changes, including merges
@@ -469,13 +473,12 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 		checkout := conf.GitHubParentPRCheckout
 		// Fetch the head SHA directly when available to avoid the virtual
 		// pull/N/head ref resolution on GitHub (see prCheckoutCommands).
-		fetchRef, checkoutRef := checkout.HeadHash, checkout.HeadHash
-		if !isFullGitSHA(checkout.HeadHash) {
-			branchName := fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
-			fetchRef = fmt.Sprintf("pull/%d/head:%s", checkout.PRNumber, branchName)
-			checkoutRef = branchName
+		branchName := fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
+		fetchRef := fmt.Sprintf("pull/%d/head:%s", checkout.PRNumber, branchName)
+		if isFullGitSHA(checkout.HeadHash) {
+			fetchRef = fmt.Sprintf("%s:refs/heads/%s", checkout.HeadHash, branchName)
 		}
-		gitCommands = append(gitCommands, fetchCheckoutResetCommands(fetchRef, checkoutRef, checkout.HeadHash)...)
+		gitCommands = append(gitCommands, fetchCheckoutResetCommands(fetchRef, branchName, checkout.HeadHash)...)
 	} else {
 		gitCommands = append(gitCommands, fmt.Sprintf("git checkout '%s'", ref))
 	}
