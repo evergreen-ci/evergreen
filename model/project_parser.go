@@ -1676,7 +1676,7 @@ func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRe
 				// that starts with a `---` document separator would otherwise
 				// become a second document, whose contents are silently
 				// dropped by the single-document decode.
-				combined = append(preamble, stripLeadingDocumentSeparator(bytes.TrimPrefix(parseBytes, utf8BOM))...)
+				combined = append(preamble, normalizeForPreamble(parseBytes)...)
 			}
 		}
 		if decodeErr == nil {

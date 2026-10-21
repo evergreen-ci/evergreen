@@ -177,52 +177,44 @@ func buildAnchorPreamble(registry *anchorRegistry) ([]byte, error) {
 // encountered mid-stream as a document boundary.
 var utf8BOM = []byte("\xef\xbb\xbf")
 
-// stripLeadingDocumentSeparator removes a leading `---` document start marker
-// from the file's bytes, so that concatenating the anchor preamble ahead of it
-// yields a single YAML document. Files whose first line is not exactly `---`
-// (ignoring surrounding whitespace) are returned unchanged.
-func stripLeadingDocumentSeparator(data []byte) []byte {
-	line, rest, found := bytes.Cut(data, []byte("\n"))
-	if !found || strings.TrimSpace(string(line)) != "---" {
-		return data
+// utf8BOM is the UTF-8 byte order mark, which some editors prefix to config
+// files. It is legal only at the start of a byte stream, so it must be
+// stripped before the anchor preamble is prepended; yaml.v3 treats a BOM
+// encountered mid-stream as a document boundary.
+// document containing the preamble's keys followed by the file's mapping.
+func normalizeForPreamble(data []byte) []byte {
+	data = bytes.TrimPrefix(data, utf8BOM)
+	for {
+		line, rest, _ := bytes.Cut(data, []byte("\n"))
+		trimmed := strings.TrimSpace(string(line))
+		isDirective := strings.HasPrefix(trimmed, "%")
+		isSeparator := trimmed != "" && strings.Trim(trimmed, "-") == ""
+		if !isDirective && !isSeparator {
+			break
+		}
+		data = rest
 	}
-	return rest
+	return data
 }
 
-// fileStartsAMapping reports whether the file is a single top-level mapping
-// document that the anchor preamble can be safely prepended to, by inspecting
-// the first meaningful line (skipping blank lines, comments, and a UTF-8 BOM).
-// Prepending ahead of anything else loses the file's contents: a sequence is
-// absorbed into the preamble's list, and a `%`-directive line or a `---`
-// separator starts a second document that the single-document decode silently
-// drops. Such files must not get a preamble.
+// fileStartsAMapping reports whether the file's top level is a mapping. The
+// anchor preamble may only be prepended to mapping documents: prepending it
+// ahead of a top-level sequence would absorb the file's items into the
+// preamble's list, silently losing them.
 func fileStartsAMapping(data []byte) bool {
-	data = bytes.TrimPrefix(data, []byte("\xef\xbb\xbf")) // UTF-8 BOM
-	rest := data
+	rest := normalizeForPreamble(data)
 	for len(rest) > 0 {
 		var line []byte
 		var found bool
 		line, rest, found = bytes.Cut(rest, []byte("\n"))
 		trimmed := strings.TrimSpace(string(line))
-		switch {
-		case trimmed == "" || strings.HasPrefix(trimmed, "#"):
-			// Blank line or comment; keep scanning.
-		case strings.HasPrefix(trimmed, "%"):
-			// YAML directive; concatenation is unsafe.
-			return false
-		case trimmed == "---":
-			// Bare document separator; keep scanning (the separator is
-			// stripped later).
-		default:
-			if strings.HasPrefix(trimmed, "---") {
-				// Separator with content on the same line; unsafe.
-				return false
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			if !found {
+				break
 			}
-			return !strings.HasPrefix(trimmed, "- ") && trimmed != "-"
+			continue
 		}
-		if !found {
-			break
-		}
+		return !strings.HasPrefix(trimmed, "- ") && trimmed != "-" && !strings.HasPrefix(trimmed, "---")
 	}
 	return false
 }
