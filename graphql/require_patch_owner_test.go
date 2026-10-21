@@ -9,7 +9,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -28,7 +30,7 @@ func TestRequirePatchOwner(t *testing.T) {
 				return nil, nil
 			}
 			obj := map[string]any{"patchIds": []any{patch1Id.Hex()}}
-			res, err := RequirePatchOwner(ctx, obj, wrappedNext)
+			res, err := RequirePatchOwner(ctx, obj, wrappedNext, nil)
 			assert.NoError(t, err)
 			assert.Nil(t, res)
 			assert.Equal(t, true, nextCalled)
@@ -41,7 +43,7 @@ func TestRequirePatchOwner(t *testing.T) {
 				return nil, nil
 			}
 			obj := map[string]any{"patchIds": []any{patch2Id.Hex(), patch3Id.Hex()}}
-			res, err := RequirePatchOwner(ctx, obj, wrappedNext)
+			res, err := RequirePatchOwner(ctx, obj, wrappedNext, nil)
 			assert.NoError(t, err)
 			assert.Nil(t, res)
 			assert.Equal(t, true, nextCalled)
@@ -55,7 +57,7 @@ func TestRequirePatchOwner(t *testing.T) {
 				return nil, nil
 			}
 			obj := map[string]any{"patchIds": []any{patch1Id.Hex(), patch2Id.Hex(), patch3Id.Hex()}}
-			res, err := RequirePatchOwner(ctx, obj, wrappedNext)
+			res, err := RequirePatchOwner(ctx, obj, wrappedNext, nil)
 			assert.NoError(t, err)
 			assert.Nil(t, res)
 			assert.Equal(t, true, nextCalled)
@@ -69,7 +71,7 @@ func TestRequirePatchOwner(t *testing.T) {
 				return nil, nil
 			}
 			obj := map[string]any{"patchIds": []any{patch1Id.Hex(), patch2Id.Hex(), patch3Id.Hex()}}
-			res, err := RequirePatchOwner(ctx, obj, wrappedNext)
+			res, err := RequirePatchOwner(ctx, obj, wrappedNext, nil)
 			assert.NoError(t, err)
 			assert.Nil(t, res)
 			assert.Equal(t, true, nextCalled)
@@ -82,7 +84,7 @@ func TestRequirePatchOwner(t *testing.T) {
 				return nil, nil
 			}
 			obj := map[string]any{"patchIds": []any{patch1Id.Hex(), patch2Id.Hex(), patch3Id.Hex()}}
-			res, err := RequirePatchOwner(ctx, obj, wrappedNext)
+			res, err := RequirePatchOwner(ctx, obj, wrappedNext, nil)
 			assert.EqualError(t, err, "input: user 'test_user' does not have permission to modify patches: '64c13ab08edf48a008793cac, 67e2c49e4ebfe83f00ee5f65'")
 			assert.Nil(t, res)
 			assert.Equal(t, false, nextCalled)
@@ -94,7 +96,7 @@ func TestRequirePatchOwner(t *testing.T) {
 				return nil, nil
 			}
 			obj := map[string]any{"patchId": patch1Id.Hex()}
-			res, err := RequirePatchOwner(ctx, obj, wrappedNext)
+			res, err := RequirePatchOwner(ctx, obj, wrappedNext, nil)
 			assert.NoError(t, err)
 			assert.Nil(t, res)
 			assert.True(t, nextCalled)
@@ -106,9 +108,45 @@ func TestRequirePatchOwner(t *testing.T) {
 				return nil, nil
 			}
 			obj := map[string]any{"patchId": patch2Id.Hex()}
-			res, err := RequirePatchOwner(ctx, obj, wrappedNext)
+			res, err := RequirePatchOwner(ctx, obj, wrappedNext, nil)
 			assert.Error(t, err)
 			assert.Nil(t, res)
+			assert.False(t, nextCalled)
+		},
+		"SucceedsWhenAllowingPendingPRAuthorizationAndPatchIsPendingPR": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId) {
+			pendingPR := patch.Patch{Id: bson.NewObjectId(), Project: "project_id", Author: "not_test_user", GithubPatchData: thirdparty.GithubPatch{HeadOwner: "not_test_user"}}
+			require.NoError(t, pendingPR.Insert(ctx))
+			nextCalled := false
+			wrappedNext := func(rctx context.Context) (any, error) {
+				nextCalled = true
+				return nil, nil
+			}
+			_, err := RequirePatchOwner(ctx, map[string]any{"patchId": pendingPR.Id.Hex()}, wrappedNext, utility.ToBoolPtr(true))
+			assert.NoError(t, err)
+			assert.True(t, nextCalled)
+		},
+		"FailsWhenNotAllowingPendingPRAuthorizationAndPatchIsPendingPR": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId) {
+			pendingPR := patch.Patch{Id: bson.NewObjectId(), Project: "project_id", Author: "not_test_user", GithubPatchData: thirdparty.GithubPatch{HeadOwner: "not_test_user"}}
+			require.NoError(t, pendingPR.Insert(ctx))
+			nextCalled := false
+			wrappedNext := func(rctx context.Context) (any, error) {
+				nextCalled = true
+				return nil, nil
+			}
+			_, err := RequirePatchOwner(ctx, map[string]any{"patchId": pendingPR.Id.Hex()}, wrappedNext, nil)
+			assert.Error(t, err)
+			assert.False(t, nextCalled)
+		},
+		"FailsWhenAllowingPendingPRAuthorizationAndPRPatchIsFinalized": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId) {
+			finalizedPR := patch.Patch{Id: bson.NewObjectId(), Project: "project_id", Author: "not_test_user", Version: "version", GithubPatchData: thirdparty.GithubPatch{HeadOwner: "not_test_user"}}
+			require.NoError(t, finalizedPR.Insert(ctx))
+			nextCalled := false
+			wrappedNext := func(rctx context.Context) (any, error) {
+				nextCalled = true
+				return nil, nil
+			}
+			_, err := RequirePatchOwner(ctx, map[string]any{"patchId": finalizedPR.Id.Hex()}, wrappedNext, utility.ToBoolPtr(true))
+			assert.Error(t, err)
 			assert.False(t, nextCalled)
 		},
 	} {

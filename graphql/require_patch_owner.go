@@ -7,9 +7,10 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/utility"
 )
 
-func RequirePatchOwner(ctx context.Context, obj any, next graphql.Resolver) (any, error) {
+func RequirePatchOwner(ctx context.Context, obj any, next graphql.Resolver, allowPendingPRAuthorization *bool) (any, error) {
 	user := mustHaveUser(ctx)
 	args, isStringMap := obj.(map[string]any)
 	if !isStringMap {
@@ -33,7 +34,13 @@ func RequirePatchOwner(ctx context.Context, obj any, next graphql.Resolver) (any
 	}
 
 	forbiddenPatches := []string{}
+	// A pending PR patch may be authorized by any user who passes the project permission check, even if the PR author
+	// is someone else (or no longer has an account).
+	allowPending := utility.FromBoolPtr(allowPendingPRAuthorization)
 	for _, p := range patches {
+		if allowPending && p.IsPendingGithubPRAuthorization() {
+			continue
+		}
 		if !userCanModifyPatch(ctx, user, p) {
 			forbiddenPatches = append(forbiddenPatches, p.Id.Hex())
 		}

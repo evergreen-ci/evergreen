@@ -17,7 +17,6 @@ func NewConfig() Config {
 	}
 	setComplexityFuncs(&c)
 	c.Directives.RequirePatchOwner = RequirePatchOwner
-	c.Directives.RequirePatchScheduleAccess = RequirePatchScheduleAccess
 	c.Directives.RequireHostAccess = RequireHostAccess
 	c.Directives.RequireDistroAccess = RequireDistroAccess
 	c.Directives.RequireProjectCreate = RequireProjectCreate

@@ -103,8 +103,7 @@ type DirectiveRoot struct {
 	RequireAdmin                 func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireDistroAccess          func(ctx context.Context, obj any, next graphql.Resolver, access DistroSettingsAccess) (res any, err error)
 	RequireHostAccess            func(ctx context.Context, obj any, next graphql.Resolver, access HostAccessLevel) (res any, err error)
-	RequirePatchOwner            func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
-	RequirePatchScheduleAccess   func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
+	RequirePatchOwner            func(ctx context.Context, obj any, next graphql.Resolver, allowPendingPRAuthorization *bool) (res any, err error)
 	RequireProjectAccess         func(ctx context.Context, obj any, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (res any, err error)
 	RequireProjectCreate         func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireProjectSettingsAccess func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
@@ -13703,6 +13702,17 @@ func (ec *executionContext) dir_requireHostAccess_args(ctx context.Context, rawA
 	return args, nil
 }
 
+func (ec *executionContext) dir_requirePatchOwner_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "allowPendingPRAuthorization", ec.unmarshalOBoolean2ᚖbool)
+	if err != nil {
+		return nil, err
+	}
+	args["allowPendingPRAuthorization"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) dir_requireProjectAccess_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -15202,14 +15212,36 @@ func (ec *executionContext) field_Mutation_schedulePatch_argsPatchID(
 	}
 
 	directive1 := func(ctx context.Context) (any, error) {
-		if ec.directives.RequirePatchScheduleAccess == nil {
+		allowPendingPRAuthorization, err := ec.unmarshalOBoolean2ᚖbool(ctx, true)
+		if err != nil {
 			var zeroVal string
-			return zeroVal, errors.New("directive requirePatchScheduleAccess is not implemented")
+			return zeroVal, err
 		}
-		return ec.directives.RequirePatchScheduleAccess(ctx, rawArgs, directive0)
+		if ec.directives.RequirePatchOwner == nil {
+			var zeroVal string
+			return zeroVal, errors.New("directive requirePatchOwner is not implemented")
+		}
+		return ec.directives.RequirePatchOwner(ctx, rawArgs, directive0, allowPendingPRAuthorization)
+	}
+	directive2 := func(ctx context.Context) (any, error) {
+		permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "PATCHES")
+		if err != nil {
+			var zeroVal string
+			return zeroVal, err
+		}
+		access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+		if err != nil {
+			var zeroVal string
+			return zeroVal, err
+		}
+		if ec.directives.RequireProjectAccess == nil {
+			var zeroVal string
+			return zeroVal, errors.New("directive requireProjectAccess is not implemented")
+		}
+		return ec.directives.RequireProjectAccess(ctx, rawArgs, directive1, permission, access)
 	}
 
-	tmp, err := directive1(ctx)
+	tmp, err := directive2(ctx)
 	if err != nil {
 		var zeroVal string
 		return zeroVal, graphql.ErrorOnPath(ctx, err)
@@ -15420,11 +15452,16 @@ func (ec *executionContext) field_Mutation_setPatchVisibility_argsPatchIds(
 	}
 
 	directive1 := func(ctx context.Context) (any, error) {
+		allowPendingPRAuthorization, err := ec.unmarshalOBoolean2ᚖbool(ctx, false)
+		if err != nil {
+			var zeroVal []string
+			return zeroVal, err
+		}
 		if ec.directives.RequirePatchOwner == nil {
 			var zeroVal []string
 			return zeroVal, errors.New("directive requirePatchOwner is not implemented")
 		}
-		return ec.directives.RequirePatchOwner(ctx, rawArgs, directive0)
+		return ec.directives.RequirePatchOwner(ctx, rawArgs, directive0, allowPendingPRAuthorization)
 	}
 
 	tmp, err := directive1(ctx)
