@@ -39,6 +39,9 @@ var (
 	testSelectionUsageRateAttribute        = fmt.Sprintf("%s.usage_rate", testSelectionGetAttribute)
 	testSelectionNumTestsReturnedAttribute = fmt.Sprintf("%s.num_tests_returned", testSelectionGetAttribute)
 	testSelectionDurationMsAttribute       = fmt.Sprintf("%s.duration_ms", testSelectionGetAttribute)
+	testSelectionBypassRequestedAttribute  = fmt.Sprintf("%s.bypass_requested", testSelectionGetAttribute)
+	testSelectionBypassNameCountAttribute  = fmt.Sprintf("%s.bypass_name_count", testSelectionGetAttribute)
+	testSelectionBypassAppliedAttribute    = fmt.Sprintf("%s.bypass_applied", testSelectionGetAttribute)
 )
 
 type testSelectionInputFile struct {
@@ -109,8 +112,12 @@ func (c *testSelectionGet) validate() error {
 
 func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	calledAPI := false
+	bypassApplied := false
 	defer func() {
-		trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(testSelectionCalledAttribute, calledAPI))
+		trace.SpanFromContext(ctx).SetAttributes(
+			attribute.Bool(testSelectionCalledAttribute, calledAPI),
+			attribute.Bool(testSelectionBypassAppliedAttribute, bypassApplied),
+		)
 	}()
 
 	if err := util.ExpandValues(c, &conf.Expansions); err != nil {
@@ -170,6 +177,10 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 	if err != nil {
 		return err
 	}
+	trace.SpanFromContext(ctx).SetAttributes(
+		attribute.Bool(testSelectionBypassRequestedAttribute, len(bypass) > 0),
+		attribute.Int(testSelectionBypassNameCountAttribute, len(bypass)),
+	)
 
 	// Build the request using task information from TaskConfig.
 	request := model.SelectTestsRequest{
@@ -199,6 +210,7 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 		return errors.Wrap(err, "calling test selection API")
 	}
 	if len(bypass) > 0 && len(c.Tests) > 0 {
+		bypassApplied = true
 		allowed := make(map[string]bool, len(selectedTests)+len(bypass))
 		for _, name := range selectedTests {
 			allowed[name] = true
