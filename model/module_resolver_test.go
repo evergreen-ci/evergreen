@@ -173,19 +173,27 @@ include:
 
 	for _, tc := range []struct {
 		name               string
+		ingestedRevision   string
+		triggeringRevision string
 		moduleRevision     string
 		expectRenderModule bool
 	}{
-		{name: "IncludeShouldBeReadFromOlderResolvedCommit", moduleRevision: commitWithoutModules},
-		{name: "IncludeShouldBeReadFromNewerResolvedCommit", moduleRevision: commitWithModules, expectRenderModule: true},
+		{name: "IncludeShouldBeReadFromOlderResolvedCommit", ingestedRevision: commitWithoutModules, moduleRevision: commitWithoutModules},
+		{name: "IncludeShouldBeReadFromNewerResolvedCommit", ingestedRevision: commitWithModules, moduleRevision: commitWithModules, expectRenderModule: true},
+		{name: "IncludeShouldBeReadFromTriggeringCommit", ingestedRevision: commitWithoutModules, triggeringRevision: commitWithModules, moduleRevision: commitWithModules, expectRenderModule: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ingestTime := time.Now()
-			require.NoError(t, UpsertRepositoryRevision(t.Context(), "evergreen-ci", "sample", "main", tc.moduleRevision, ingestTime.Add(-time.Minute)))
-			resolver := NewModuleResolver(projectRef, ModuleResolverOpts{
+			require.NoError(t, UpsertRepositoryRevision(t.Context(), "evergreen-ci", "sample", "main", tc.ingestedRevision, ingestTime.Add(-time.Minute)))
+			opts := ModuleResolverOpts{
 				Requester:  evergreen.RepotrackerVersionRequester,
 				IngestTime: ingestTime,
-			})
+			}
+			if tc.triggeringRevision != "" {
+				opts.Requester = evergreen.TriggerRequester
+				opts.TriggeringModuleCommit = &manifest.Module{Owner: "evergreen-ci", Repo: "sample", Branch: "main", Revision: tc.triggeringRevision}
+			}
+			resolver := NewModuleResolver(projectRef, opts)
 
 			p := &Project{}
 			pp, err := LoadProjectInto(t.Context(), mainConfig, &GetProjectOpts{
@@ -205,6 +213,7 @@ include:
 			}
 			require.NoError(t, UpsertRepositoryRevision(t.Context(), "evergreen-ci", "sample", "main", "88dcc12106a40cb4917f552deab7574ececd9a3e", ingestTime))
 
+			require.NotEmpty(t, p.Modules)
 			v := &Version{Id: tc.name, Identifier: projectRef.Id, Requester: evergreen.RepotrackerVersionRequester}
 			mfst, err := resolver.Manifest(t.Context(), v, ModuleList{p.Modules[0]})
 			require.NoError(t, err)

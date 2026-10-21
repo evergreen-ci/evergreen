@@ -169,6 +169,7 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, metadata model.Versio
 		Revision:  metadata.Revision.Revision,
 		Requester: evergreen.AdHocRequester,
 	})
+	metadata.ModuleResolver = resolver
 	proj := &model.Project{}
 	opts := &model.GetProjectOpts{
 		Ref:            j.project,
@@ -204,17 +205,5 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, metadata model.Versio
 		return errors.New("no version created")
 	}
 
-	_, err = model.CreateManifestFromResolver(ctx, v, projectInfo.Project.Modules, projectInfo.Ref, resolver)
-	if err != nil {
-		grip.Error(ctx, message.WrapError(err, message.Fields{
-			"message":               "error creating manifest",
-			"runner":                periodicBuildJobName,
-			"project":               j.project.Id,
-			"project_identifier":    j.project.Identifier,
-			"revision":              metadata.Revision.Revision,
-			"revision_order_number": v.RevisionOrderNumber,
-		}))
-		return errors.Wrap(err, "creating manifest")
-	}
 	return nil
 }

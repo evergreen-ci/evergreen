@@ -966,14 +966,12 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 
 	// Return project even with errors.
 	cacheEnabled := opts != nil && opts.cacheEnabled
-	var revision string
+	var revision, modulesKey string
 	if opts != nil {
 		revision = opts.Revision
-		if modulesKey := opts.ModuleResolver.resolvedModulesKey(); modulesKey != "" {
-			revision = fmt.Sprintf("%s:%s", revision, modulesKey)
-		}
+		modulesKey = opts.ModuleResolver.resolvedModulesKey()
 	}
-	p, err := loadTranslateProject(ctx, span, intermediateProject, projectID, revision, cacheEnabled)
+	p, err := loadTranslateProject(ctx, span, intermediateProject, projectID, revision, modulesKey, cacheEnabled)
 	if p != nil {
 		*project = *p
 	}
@@ -1013,8 +1011,8 @@ func logDecodeErrorWithOpts(ctx context.Context, projectID, filename, caller str
 
 // loadTranslateProject translates the post-merge intermediate project, optionally serving the
 // result from the content-hash translation cache keyed on its content and projectID.
-func loadTranslateProject(ctx context.Context, span trace.Span, intermediateProject *ParserProject, projectID, revision string, cacheEnabled bool) (*Project, error) {
-	return translateAndCache(ctx, span, intermediateProject, projectID, fileTranslationKey(projectID, revision), cacheEnabled)
+func loadTranslateProject(ctx context.Context, span trace.Span, intermediateProject *ParserProject, projectID, revision, modulesKey string, cacheEnabled bool) (*Project, error) {
+	return translateAndCache(ctx, span, intermediateProject, projectID, fileTranslationKey(projectID, revision, modulesKey), cacheEnabled)
 }
 
 // mergeIncludes merges all included files into intermediateProject.
@@ -1025,6 +1023,10 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 	if opts == nil {
 		err := errors.New("trying to open include files with empty options")
 		return errors.Wrapf(err, LoadProjectError)
+	}
+
+	if err := opts.ModuleResolver.resolveIncludedModules(ctx, intermediateProject.Modules, intermediateProject.Include); err != nil {
+		return errors.Wrap(err, "resolving module commits for includes")
 	}
 
 	// Be polite. Don't make more than 10 concurrent requests to GitHub.

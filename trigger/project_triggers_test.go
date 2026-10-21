@@ -95,32 +95,6 @@ func TestGetMetadataFromArgs(t *testing.T) {
 	})
 }
 
-func TestFindUpstreamModule(t *testing.T) {
-	upstreamProject := &model.ProjectRef{
-		Owner:  "10gen",
-		Repo:   "dsi",
-		Branch: "main",
-	}
-
-	t.Run("ModuleMatchingUpstreamRepoAndBranchShouldReturnItsIndex", func(t *testing.T) {
-		modules := model.ModuleList{
-			{Name: "other", Owner: "10gen", Repo: "other", Branch: "main"},
-			{Name: "dsi", Owner: "10gen", Repo: "dsi", Branch: "main"},
-		}
-		idx, err := findUpstreamModule(modules, upstreamProject)
-		require.NoError(t, err)
-		assert.Equal(t, 1, idx)
-	})
-	t.Run("ModuleOnDifferentBranchShouldNotMatch", func(t *testing.T) {
-		modules := model.ModuleList{
-			{Name: "dsi", Owner: "10gen", Repo: "dsi", Branch: "release"},
-		}
-		idx, err := findUpstreamModule(modules, upstreamProject)
-		require.NoError(t, err)
-		assert.Equal(t, -1, idx)
-	})
-}
-
 func TestMakeDownstreamProjectFromFile(t *testing.T) {
 	require.NoError(t, db.ClearCollections(evergreen.ConfigCollection))
 
@@ -134,7 +108,7 @@ func TestMakeDownstreamProjectFromFile(t *testing.T) {
 		Repo:   "evergreen",
 		Branch: "main",
 	}
-	projectInfo, err := makeDownstreamProjectFromFile(t.Context(), ref, "trigger/testdata/downstream_config.yml", nil)
+	projectInfo, err := makeDownstreamProjectFromFile(t.Context(), ref, "trigger/testdata/downstream_config.yml", ref.Branch, nil)
 	require.NoError(t, err)
 	require.NotNil(t, projectInfo.Project)
 	require.NotNil(t, projectInfo.IntermediateProject)

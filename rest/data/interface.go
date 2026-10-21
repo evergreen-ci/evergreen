@@ -16,7 +16,7 @@ type Connector interface {
 	// Get and Set URL provide access to the main url string of the API.
 	GetURL() string
 	SetURL(string)
-	GetProjectFromFile(context.Context, model.ProjectRef, string, *evergreen.Settings) (model.ProjectInfo, error)
+	GetProjectFromFile(context.Context, model.ProjectRef, string, *evergreen.Settings, *model.ModuleResolver) (model.ProjectInfo, error)
 	CreateVersionFromConfig(context.Context, *model.ProjectInfo, model.VersionMetadata) (*model.Version, error)
 	GetGitHubPR(context.Context, string, string, int) (*github.PullRequest, error)
 	AddCommentToPR(context.Context, string, string, int, string) error

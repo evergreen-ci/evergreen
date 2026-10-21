@@ -657,6 +657,9 @@ type VersionMetadata struct {
 	GitTag              GitTag
 	ChangedFiles        []string
 	IngestTime          time.Time
+	// ModuleResolver, if set, is used to create the version's manifest along
+	// with the version.
+	ModuleResolver *ModuleResolver
 	// SourceModule is only set for push level triggers.
 	SourceModule *SourceModule
 }
@@ -1047,7 +1050,7 @@ func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Modul
 				return nil, errors.Wrapf(err, "retrieving git commit for module '%s' on branch '%s'", module.Name, module.Branch)
 			}
 			if len(githubCommits) == 0 {
-				return nil, errors.Errorf("no commits found for module '%s' on branch '%s'", module.Name, module.Branch)
+				return nil, errors.Wrapf(errNoModuleCommits, "module '%s' on branch '%s'", module.Name, module.Branch)
 			}
 			revision = githubCommits[0].GetSHA()
 			url = githubCommits[0].GetURL()
@@ -1083,12 +1086,7 @@ func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Modul
 
 // CreateManifest inserts a newly constructed manifest into the DB.
 func CreateManifest(ctx context.Context, v *Version, modules ModuleList, projectRef *ProjectRef) (*manifest.Manifest, error) {
-	return CreateManifestFromResolver(ctx, v, modules, projectRef, newModuleResolverForVersion(projectRef, v))
-}
-
-// CreateManifestFromResolver inserts a manifest built from the resolver's module commits.
-func CreateManifestFromResolver(ctx context.Context, v *Version, modules ModuleList, projectRef *ProjectRef, resolver *ModuleResolver) (*manifest.Manifest, error) {
-	newManifest, err := resolver.Manifest(ctx, v, modules)
+	newManifest, err := constructManifest(ctx, v, projectRef, modules)
 	if err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":     "constructing manifest",

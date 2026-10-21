@@ -71,22 +71,22 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 		}
 	}
 	resolver := model.NewModuleResolver(&args.DownstreamProject, resolverOpts)
+	metadata.ModuleResolver = resolver
 
-	projectInfo, err := makeDownstreamProjectFromFile(ctx, args.DownstreamProject, args.ConfigFile, resolver)
+	projectInfo, err := makeDownstreamProjectFromFile(ctx, args.DownstreamProject, args.ConfigFile, metadata.Revision.Revision, resolver)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 	projectInfo.Ref = &args.DownstreamProject
 
-	moduleList := projectInfo.Project.Modules
-	upstreamModuleIdx, err := findUpstreamModule(moduleList, upstreamProject)
-	if err != nil {
-		return nil, err
-	}
 	if args.TriggerType == model.ProjectTriggerLevelPush {
-		if upstreamModuleIdx >= 0 {
+		triggeringModule, err := resolver.TriggeringModuleName(ctx, projectInfo.Project.Modules)
+		if err != nil {
+			return nil, errors.Wrap(err, "finding module for triggering commit")
+		}
+		if triggeringModule != "" {
 			metadata.SourceModule = &model.SourceModule{
-				Name:   moduleList[upstreamModuleIdx].Name,
+				Name:   triggeringModule,
 				Owner:  upstreamProject.Owner,
 				Repo:   upstreamProject.Repo,
 				Branch: upstreamProject.Branch,
@@ -115,9 +115,6 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 			return nil, err
 		}
 	}
-	if _, err = model.CreateManifestFromResolver(ctx, v, moduleList, projectInfo.Ref, resolver); err != nil {
-		return nil, errors.WithStack(err)
-	}
 	err = model.UpdateLastRevision(ctx, v.Identifier, v.Revision)
 	if err != nil {
 		return nil, errors.Wrap(err, "updating last revision")
@@ -127,19 +124,6 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 		return nil, errors.Wrap(err, "adding build break subscriptions")
 	}
 	return v, nil
-}
-
-func findUpstreamModule(modules model.ModuleList, upstreamProject *model.ProjectRef) (int, error) {
-	for i, module := range modules {
-		owner, repo, err := module.GetOwnerAndRepo()
-		if err != nil {
-			return -1, errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
-		}
-		if owner == upstreamProject.Owner && repo == upstreamProject.Repo && module.Branch == upstreamProject.Branch {
-			return i, nil
-		}
-	}
-	return -1, nil
 }
 
 func getMetadataFromArgs(ctx context.Context, args ProcessorArgs) (model.VersionMetadata, error) {
@@ -209,11 +193,11 @@ func getMetadataFromArgs(ctx context.Context, args ProcessorArgs) (model.Version
 	return metadata, nil
 }
 
-func makeDownstreamProjectFromFile(ctx context.Context, ref model.ProjectRef, file string, resolver *model.ModuleResolver) (model.ProjectInfo, error) {
+func makeDownstreamProjectFromFile(ctx context.Context, ref model.ProjectRef, file, revision string, resolver *model.ModuleResolver) (model.ProjectInfo, error) {
 	opts := model.GetProjectOpts{
 		Ref:            &ref,
 		RemotePath:     file,
-		Revision:       ref.Branch,
+		Revision:       revision,
 		ReadFileFrom:   model.ReadFromGithub,
 		ModuleResolver: resolver,
 	}

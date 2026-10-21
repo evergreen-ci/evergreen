@@ -1655,7 +1655,13 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 				return nil, errors.Wrap(err, "getting admin settings")
 			}
 		}
-		projectInfo, err = gh.sc.GetProjectFromFile(ctx, pRef, remotePath, gh.settings)
+		metadata.IngestTime = time.Now()
+		metadata.ModuleResolver = model.NewModuleResolver(&pRef, model.ModuleResolverOpts{
+			Revision:   revision.Revision,
+			Requester:  evergreen.GitTagRequester,
+			IngestTime: metadata.IngestTime,
+		})
+		projectInfo, err = gh.sc.GetProjectFromFile(ctx, pRef, remotePath, gh.settings, metadata.ModuleResolver)
 		if err != nil {
 			return nil, errors.Wrap(err, "loading project info from file")
 		}

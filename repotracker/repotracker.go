@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -320,6 +321,17 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			return err
 		}
 
+		if _, err = resolver.ResolveModules(ctx, pInfo.Project.Modules); model.IsModuleLookupError(err) {
+			grip.Error(ctx, message.WrapError(err, message.Fields{
+				"message":            "error resolving module commits",
+				"runner":             RunnerName,
+				"project":            ref.Id,
+				"project_identifier": ref.Identifier,
+				"revision":           revision,
+			}))
+			return err
+		}
+
 		// "Ignore" a version if all changes are to ignored files
 		var ignore bool
 		var filenames []string
@@ -341,9 +353,10 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		}
 
 		metadata := model.VersionMetadata{
-			Revision:     rev,
-			ChangedFiles: filenames,
-			IngestTime:   ingestTime,
+			Revision:       rev,
+			ChangedFiles:   filenames,
+			IngestTime:     ingestTime,
+			ModuleResolver: resolver,
 		}
 		projectInfo := &model.ProjectInfo{
 			Ref:                 ref,
@@ -388,18 +401,6 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			}
 		}
 
-		_, err = model.CreateManifestFromResolver(ctx, v, pInfo.Project.Modules, ref, resolver)
-		if err != nil {
-			grip.Error(ctx, message.WrapError(err, message.Fields{
-				"message":            "error creating manifest",
-				"runner":             RunnerName,
-				"project":            ref.Id,
-				"project_identifier": ref.Identifier,
-				"revision":           revision,
-				"version":            v.Id,
-			}))
-		}
-
 		newestVersion = v
 	}
 	if newestVersion != nil {
@@ -427,6 +428,11 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 	projectRef := repoTracker.ProjectRef
 	projectInfo, err := repoTracker.GetRemoteConfig(ctx, revision, resolver)
 	if err != nil {
+		// Module lookup failures should be retried rather than recorded as
+		// config errors.
+		if model.IsModuleLookupError(err) {
+			return model.ProjectInfo{}, err
+		}
 		// Create a stub version on API request errors that pertain
 		// to fetching or loading a config.
 		_, apiReqErr := errors.Cause(err).(thirdparty.APIRequestError)
@@ -647,6 +653,21 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	}
 	v.Ignored = ignore
 
+	var mfst *manifest.Manifest
+	if metadata.ModuleResolver != nil {
+		mfst, err = metadata.ModuleResolver.Manifest(ctx, v, projectInfo.Project.Modules)
+		if model.IsModuleConfigError(err) {
+			grip.Warning(ctx, message.WrapError(err, message.Fields{
+				"message":    "skipping manifest creation for version with misconfigured module",
+				"version_id": v.Id,
+				"project_id": projectInfo.Ref.Id,
+			}))
+			mfst = nil
+		} else if err != nil {
+			return nil, errors.Wrap(err, "resolving module commits for manifest")
+		}
+	}
+
 	// Compute aliases first to include undefined requested alias in the stub version errors list.
 	var aliases model.ProjectAliases
 	if metadata.Alias == evergreen.GitTagAlias {
@@ -697,12 +718,20 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 			if err = v.Insert(ctx); err != nil {
 				return nil, errors.Wrap(err, "inserting version")
 			}
+			if mfst != nil {
+				_, err = mfst.TryInsert(ctx)
+				grip.Error(ctx, message.WrapError(err, message.Fields{
+					"message":    "inserting manifest for errored version",
+					"version_id": v.Id,
+					"project_id": projectInfo.Ref.Id,
+				}))
+			}
 			return v, nil
 
 		}
 	}
 
-	return v, errors.Wrap(createVersionItems(ctx, v, metadata, projectInfo, aliases), "error creating version items")
+	return v, errors.Wrap(createVersionItems(ctx, v, metadata, projectInfo, aliases, mfst), "error creating version items")
 }
 
 // ShellVersionFromRevision populates a new Version with metadata from a model.Revision.
@@ -881,7 +910,7 @@ func verifyOrderNum(ctx context.Context, revOrderNum int, projectId string) erro
 
 // createVersionItems populates and stores all the tasks and builds for a version according to
 // the given project config.
-func createVersionItems(ctx context.Context, v *model.Version, metadata model.VersionMetadata, projectInfo *model.ProjectInfo, aliases model.ProjectAliases) error {
+func createVersionItems(ctx context.Context, v *model.Version, metadata model.VersionMetadata, projectInfo *model.ProjectInfo, aliases model.ProjectAliases, mfst *manifest.Manifest) error {
 	distroAliases, err := distro.NewDistroAliasesLookupTable(ctx)
 	if err != nil {
 		return errors.WithStack(err)
@@ -1132,6 +1161,20 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 					return errors.Wrap(abortErr, "aborting transaction")
 				}
 				return errors.Wrapf(err, "inserting project config '%s'", v.Id)
+			}
+		}
+		if mfst != nil {
+			_, err = database.Collection(manifest.Collection).InsertOne(sessCtx, mfst)
+			if err != nil {
+				grip.Notice(ctx, message.WrapError(err, message.Fields{
+					"message": "aborting transaction",
+					"cause":   "can't insert manifest",
+					"version": v.Id,
+				}))
+				if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
+					return errors.Wrap(abortErr, "aborting transaction")
+				}
+				return errors.Wrapf(err, "inserting manifest '%s'", v.Id)
 			}
 		}
 		_, err = database.Collection(build.Collection).InsertMany(sessCtx, buildsToCreate)
