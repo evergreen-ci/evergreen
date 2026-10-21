@@ -3,10 +3,10 @@ package graphql
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/utility"
 )
 
 // RequireProjectAccessForTasks is similar to RequireProjectAccess, except that it checks the project permissions
@@ -30,12 +30,15 @@ func RequireProjectAccessForTasks(ctx context.Context, obj any, next graphql.Res
 		taskIDs = append(taskIDs, id.(string))
 	}
 
-	projectIDs, err := task.FindProjectsForTasks(ctx, taskIDs)
+	projectIDs, notFoundTaskIDs, err := task.FindProjectsForTasks(ctx, taskIDs)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding projects for tasks: %s", err.Error()))
 	}
+	if len(notFoundTaskIDs) > 0 {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("tasks not found: '%s'", strings.Join(notFoundTaskIDs, "', '")))
+	}
 
-	for _, projectID := range utility.UniqueStrings(projectIDs) {
+	for _, projectID := range projectIDs {
 		if err = checkProjectPermission(ctx, projectID, requiredPermission, permissionInfo); err != nil {
 			return nil, err
 		}

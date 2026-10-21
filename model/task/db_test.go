@@ -2527,18 +2527,21 @@ func TestFindProjectsForTasks(t *testing.T) {
 	))
 
 	t.Run("TasksInMultipleProjectsShouldReturnDistinctProjects", func(t *testing.T) {
-		projectIDs, err := FindProjectsForTasks(t.Context(), []string{"t1", "t2", "t3"})
+		projectIDs, missing, err := FindProjectsForTasks(t.Context(), []string{"t1", "t2", "t3"})
 		require.NoError(t, err)
+		assert.Empty(t, missing)
 		assert.ElementsMatch(t, []string{"proj-a", "proj-b"}, projectIDs)
 	})
-	t.Run("NonexistentTasksShouldBeIgnored", func(t *testing.T) {
-		projectIDs, err := FindProjectsForTasks(t.Context(), []string{"t1", "nonexistent"})
+	t.Run("NonexistentTasksShouldBeReportedAsMissing", func(t *testing.T) {
+		projectIDs, missing, err := FindProjectsForTasks(t.Context(), []string{"t1", "nonexistent"})
 		require.NoError(t, err)
 		assert.Equal(t, []string{"proj-a"}, projectIDs)
+		assert.Equal(t, []string{"nonexistent"}, missing)
 	})
 	t.Run("NoTaskIDsShouldReturnNothing", func(t *testing.T) {
-		projectIDs, err := FindProjectsForTasks(t.Context(), nil)
+		projectIDs, missing, err := FindProjectsForTasks(t.Context(), nil)
 		require.NoError(t, err)
 		assert.Empty(t, projectIDs)
+		assert.Empty(t, missing)
 	})
 }

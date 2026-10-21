@@ -1737,26 +1737,31 @@ func FindProjectForTask(ctx context.Context, taskID string) (string, error) {
 	return t.Project, nil
 }
 
-// FindProjectsForTasks returns the distinct project IDs of the given tasks using a single query.
-// Task IDs that don't exist are ignored.
-func FindProjectsForTasks(ctx context.Context, taskIDs []string) ([]string, error) {
+// FindProjectsForTasks returns the distinct project IDs of the given tasks using a single query. It also returns the
+// IDs of any tasks that could not be found.
+func FindProjectsForTasks(ctx context.Context, taskIDs []string) ([]string, []string, error) {
 	if len(taskIDs) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 	tasks, err := FindAll(ctx, db.Query(ByIds(taskIDs)).WithFields(ProjectKey))
 	if err != nil {
-		return nil, errors.Wrap(err, "finding tasks")
+		return nil, nil, errors.Wrap(err, "finding tasks")
 	}
 
-	var projectIDs []string
-	seenProjectIDs := map[string]bool{}
+	foundTaskIDs := make(map[string]bool, len(tasks))
+	projectIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
-		if !seenProjectIDs[t.Project] {
-			seenProjectIDs[t.Project] = true
-			projectIDs = append(projectIDs, t.Project)
+		foundTaskIDs[t.Id] = true
+		projectIDs = append(projectIDs, t.Project)
+	}
+
+	notFoundTaskIDs := []string{}
+	for _, id := range taskIDs {
+		if !foundTaskIDs[id] {
+			notFoundTaskIDs = append(notFoundTaskIDs, id)
 		}
 	}
-	return projectIDs, nil
+	return utility.UniqueStrings(projectIDs), notFoundTaskIDs, nil
 }
 
 func FindActivatedByVersionWithoutDisplay(ctx context.Context, versionId string) ([]Task, error) {
