@@ -2793,6 +2793,11 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 			assert.NoError(t, err)
 			require.NotNil(t, unscheduledExecTask)
 			assert.False(t, unscheduledExecTask.Activated, "execution task not in the scoped set should remain unscheduled")
+
+			dbUser, err := user.FindOneById(t.Context(), "caller")
+			assert.NoError(t, err)
+			require.NotNil(t, dbUser)
+			assert.Equal(t, 2, dbUser.NumScheduledPatchTasks, "scheduling limit should only count the restarted execution tasks")
 		},
 		"RestartingExecutionTasksInSeparateRequestsMergesPendingReset": func(ctx context.Context, t *testing.T, settings *evergreen.Settings) {
 			// Remove the unscheduled execution task from the fixture so the

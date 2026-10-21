@@ -3560,6 +3560,67 @@ func TestAddExecutionTasksToResetWhenFinishedMerges(t *testing.T) {
 	assert.True(t, dbDT.ResetFailedWhenFinished)
 }
 
+func TestResetWhenFinishedSchedulingLimit(t *testing.T) {
+	const caller = "caller"
+	execTaskIDs := []string{"et1", "et2", "et3", "et4"}
+
+	setup := func(t *testing.T) *Task {
+		require.NoError(t, db.ClearCollections(Collection, user.Collection))
+		require.NoError(t, (&user.DBUser{Id: caller}).Insert(t.Context()))
+		for _, id := range execTaskIDs {
+			et := Task{
+				Id:        id,
+				Requester: evergreen.PatchVersionRequester,
+				Status:    evergreen.TaskSucceeded,
+				Activated: true,
+			}
+			require.NoError(t, et.Insert(t.Context()))
+		}
+		dt := &Task{
+			Id:             "dt",
+			Requester:      evergreen.PatchVersionRequester,
+			DisplayOnly:    true,
+			ExecutionTasks: execTaskIDs,
+		}
+		require.NoError(t, dt.Insert(t.Context()))
+		return dt
+	}
+	numScheduled := func(t *testing.T) int {
+		dbUser, err := user.FindOneById(t.Context(), caller)
+		require.NoError(t, err)
+		require.NotNil(t, dbUser)
+		return dbUser.NumScheduledPatchTasks
+	}
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(Collection, user.Collection))
+	})
+
+	t.Run("ScopedResetCountsOnlyRequestedExecutionTasks", func(t *testing.T) {
+		dt := setup(t)
+		require.NoError(t, dt.AddExecutionTasksToResetWhenFinished(t.Context(), caller, "", []string{"et1"}))
+		assert.Equal(t, 1, numScheduled(t))
+	})
+	t.Run("MergedScopedResetsCountOnlyNewExecutionTasks", func(t *testing.T) {
+		dt := setup(t)
+		require.NoError(t, dt.AddExecutionTasksToResetWhenFinished(t.Context(), caller, "", []string{"et1"}))
+		require.NoError(t, dt.AddExecutionTasksToResetWhenFinished(t.Context(), caller, "", []string{"et1", "et2"}))
+		require.NoError(t, dt.AddExecutionTasksToResetWhenFinished(t.Context(), caller, "", []string{"et2"}))
+		assert.Equal(t, 2, numScheduled(t))
+	})
+	t.Run("FullResetSupersedingScopedResetCountsOnlyRemainingExecutionTasks", func(t *testing.T) {
+		dt := setup(t)
+		require.NoError(t, dt.AddExecutionTasksToResetWhenFinished(t.Context(), caller, "", []string{"et1"}))
+		require.NoError(t, dt.SetResetWhenFinished(t.Context(), caller, ""))
+		assert.Equal(t, len(execTaskIDs), numScheduled(t))
+	})
+	t.Run("ScopedResetWhileFullResetIsPendingDoesNotCount", func(t *testing.T) {
+		dt := setup(t)
+		require.NoError(t, dt.SetResetWhenFinished(t.Context(), caller, ""))
+		require.NoError(t, dt.AddExecutionTasksToResetWhenFinished(t.Context(), caller, "", []string{"et1"}))
+		assert.Equal(t, len(execTaskIDs), numScheduled(t))
+	})
+}
+
 func TestFindExecTasksToReset(t *testing.T) {
 	ctx := t.Context()
 

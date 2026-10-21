@@ -3361,7 +3361,13 @@ func (t *Task) SetResetWhenFinished(ctx context.Context, caller, repoRefID strin
 	if t.ResetWhenFinished && len(t.ExecutionTasksToRestart) == 0 {
 		return nil
 	}
-	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller, repoRefID, true); err != nil {
+	// Execution tasks in a pending scoped reset were already counted against
+	// the scheduling limit.
+	execTasksToCount := t.ExecutionTasks
+	if len(t.ExecutionTasksToRestart) > 0 {
+		execTasksToCount = utility.GetSetDifference(t.ExecutionTasks, t.ExecutionTasksToRestart)
+	}
+	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller, repoRefID, execTasksToCount, true); err != nil {
 		return errors.Wrapf(err, "updating user '%s' patch task scheduling limit", caller)
 	}
 	t.ResetFailedWhenFinished = false
@@ -3401,13 +3407,11 @@ func (t *Task) AddExecutionTasksToResetWhenFinished(ctx context.Context, caller,
 	if t.ResetWhenFinished && len(t.ExecutionTasksToRestart) == 0 {
 		return nil
 	}
-	// Only update the scheduling limit when the reset isn't already pending,
-	// since the limit is accrued per execution task and merging requests would
-	// otherwise double-count.
-	if !t.ResetWhenFinished || len(t.ExecutionTasksToRestart) == 0 {
-		if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller, repoRefID, true); err != nil {
-			return errors.Wrapf(err, "updating user '%s' patch task scheduling limit", caller)
-		}
+	// Only count execution tasks that aren't already pending so that merged
+	// requests don't double-count against the scheduling limit.
+	newExecTaskIDs := utility.GetSetDifference(execTaskIDs, t.ExecutionTasksToRestart)
+	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller, repoRefID, newExecTaskIDs, true); err != nil {
+		return errors.Wrapf(err, "updating user '%s' patch task scheduling limit", caller)
 	}
 	t.ResetFailedWhenFinished = false
 	t.ResetWhenFinished = true
@@ -3474,7 +3478,7 @@ func (t *Task) SetResetFailedWhenFinished(ctx context.Context, caller, repoRefID
 	if t.ResetFailedWhenFinished {
 		return nil
 	}
-	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller, repoRefID, false); err != nil {
+	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller, repoRefID, t.ExecutionTasks, false); err != nil {
 		return errors.Wrapf(err, "updating user '%s' patch task scheduling limit", caller)
 	}
 	t.ResetWhenFinished = false
@@ -3499,15 +3503,18 @@ func (t *Task) SetResetFailedWhenFinished(ctx context.Context, caller, repoRefID
 
 // updateSchedulingLimitForResetWhenFinished is the same as
 // UpdateSchedulingLimit but only applies if the task is being reset when
-// finished.
-func updateSchedulingLimitForResetWhenFinished(ctx context.Context, t *Task, caller, repoRefID string, countUnscheduled bool) error {
+// finished. For a display task, only the given execution tasks are counted.
+func updateSchedulingLimitForResetWhenFinished(ctx context.Context, t *Task, caller, repoRefID string, execTaskIDs []string, countUnscheduled bool) error {
 	if !(t.Requester == evergreen.PatchVersionRequester || t.Requester == evergreen.GithubPRRequester) || evergreen.IsSystemActivator(caller) {
 		return nil
 	}
 	var tasks []Task
 	var err error
 	if t.DisplayOnly {
-		tasks, err = Find(ctx, ByIds(t.ExecutionTasks))
+		if len(execTaskIDs) == 0 {
+			return nil
+		}
+		tasks, err = Find(ctx, ByIds(execTaskIDs))
 		if err != nil {
 			return errors.Wrapf(err, "finding execution tasks for '%s'", t.Id)
 		}
