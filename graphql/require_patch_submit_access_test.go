@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRequirePatchEditAccess(t *testing.T) {
+func TestRequirePatchSubmitAccess(t *testing.T) {
 	for testName, testCase := range map[string]struct {
 		roles       []string
 		isPR        bool
@@ -66,7 +66,7 @@ func TestRequirePatchEditAccess(t *testing.T) {
 				nextCalled = true
 				return nil, nil
 			}
-			_, err := RequirePatchEditAccess(ctx, map[string]any{"patchId": p.Id.Hex()}, next)
+			_, err := RequirePatchSubmitAccess(ctx, map[string]any{"patchId": p.Id.Hex()}, next)
 			if testCase.forbidden {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), "does not have permission")

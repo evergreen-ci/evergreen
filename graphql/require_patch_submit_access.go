@@ -8,9 +8,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 )
 
-// RequirePatchEditAccess requires the PATCHES edit permission on the patch's project and that the user be the patch
-// owner or an admin. GitHub PR patches awaiting authorization are exempt from the ownership requirement.
-func RequirePatchEditAccess(ctx context.Context, obj any, next graphql.Resolver) (any, error) {
+// RequirePatchSubmitAccess requires project patch submit permission for configuration and scheduling through schedulePatch.
+// Pending GitHub PR patches may be authorized without ownership; other patches require modification access.
+// The ownership exception is specific to authorization and scheduling, so this directive should not guard standalone edits.
+func RequirePatchSubmitAccess(ctx context.Context, obj any, next graphql.Resolver) (any, error) {
 	return RequireProjectAccess(ctx, obj, func(ctx context.Context) (any, error) {
 		usr := mustHaveUser(ctx)
 		args, ok := obj.(map[string]any)
