@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
@@ -25,8 +26,9 @@ func TestRequirePatchEditAccess(t *testing.T) {
 			roles: []string{"edit_patch"},
 			isPR:  true,
 		},
-		"NoRolesShouldAllowAuthorizingPendingPR": {
-			isPR: true,
+		"NoRolesShouldForbidPendingPR": {
+			isPR:      true,
+			forbidden: true,
 		},
 		"PatchSubmitShouldForbidReconfiguringFinalizedPRFromAnotherAuthor": {
 			roles:       []string{"edit_patch"},
@@ -42,10 +44,13 @@ func TestRequirePatchEditAccess(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			setupPermissions(t)
 			t.Cleanup(func() {
-				require.NoError(t, db.ClearCollections(patch.Collection, evergreen.RoleCollection, evergreen.ScopeCollection))
+				require.NoError(t, db.ClearCollections(model.ProjectRefCollection, patch.Collection, evergreen.RoleCollection, evergreen.ScopeCollection))
 			})
 			usr := &user.DBUser{Id: testUser, SystemRoles: testCase.roles}
 			ctx := gimlet.AttachUser(t.Context(), usr)
+
+			projectRef := model.ProjectRef{Id: "project_id", Identifier: "project_identifier"}
+			require.NoError(t, projectRef.Insert(t.Context()))
 
 			p := &patch.Patch{Id: bson.NewObjectId(), Project: "project_id", Author: "other_author"}
 			if testCase.isPR {

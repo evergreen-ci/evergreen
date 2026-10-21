@@ -65,8 +65,8 @@ requirePatchOwner is used to restrict certain actions to the patch creator, patc
 directive @requirePatchOwner on ARGUMENT_DEFINITION
 
 """
-requirePatchEditAccess requires patch ownership or admin access, except that GitHub PR patches awaiting authorization
-may be authorized by anyone. Project permissions are not checked here, so pair it with requireProjectAccess.
+requirePatchEditAccess requires edit access to the project's patches. It also requires patch ownership or admin access,
+except for GitHub PR patches awaiting authorization.
 """
 directive @requirePatchEditAccess on ARGUMENT_DEFINITION
 
