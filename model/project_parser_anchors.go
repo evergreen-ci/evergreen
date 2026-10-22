@@ -171,19 +171,15 @@ func buildAnchorPreamble(registry *anchorRegistry) ([]byte, error) {
 	return out, nil
 }
 
-// utf8BOM is the UTF-8 byte order mark, which some editors prefix to config
-// files. It is legal only at the start of a byte stream, so it must be
-// stripped before the anchor preamble is prepended; yaml.v3 treats a BOM
-// encountered mid-stream as a document boundary.
-var utf8BOM = []byte("\xef\xbb\xbf")
-
-// utf8BOM is the UTF-8 byte order mark, which some editors prefix to config
-// files. It is legal only at the start of a byte stream, so it must be
-// stripped before the anchor preamble is prepended; yaml.v3 treats a BOM
-// encountered mid-stream as a document boundary.
-// document containing the preamble's keys followed by the file's mapping.
+// normalizeForPreamble strips the leading UTF-8 byte-order mark (which some
+// editors prefix to config files), `%`-directive lines, and `---` document
+// separator lines from the file's bytes. The anchor preamble and the file
+// must form a single YAML document for the preamble's anchors to be in
+// scope; a leading BOM or separator would otherwise start a second document
+// whose contents the single-document decode silently drops.
 func normalizeForPreamble(data []byte) []byte {
-	data = bytes.TrimPrefix(data, utf8BOM)
+	const utf8BOM = "\xef\xbb\xbf"
+	data = bytes.TrimPrefix(data, []byte(utf8BOM))
 	for {
 		line, rest, _ := bytes.Cut(data, []byte("\n"))
 		trimmed := strings.TrimSpace(string(line))
