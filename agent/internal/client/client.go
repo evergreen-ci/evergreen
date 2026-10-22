@@ -1112,6 +1112,33 @@ func (c *baseCommunicator) SourceCacheCredentials(ctx context.Context, td TaskDa
 	return &creds, nil
 }
 
+// ClaimSourceCacheSave claims the save right. It retries only briefly because the claim gates the save, so a slow server must fail the save fast instead of stalling the task.
+func (c *baseCommunicator) ClaimSourceCacheSave(ctx context.Context, td TaskData, request apimodels.SourceCacheCredentialsRequest) (*apimodels.SourceCacheClaimResponse, error) {
+	var claim apimodels.SourceCacheClaimResponse
+	info := requestInfo{
+		method:   http.MethodPost,
+		taskData: &td,
+		retry: &utility.RetryOptions{
+			MaxAttempts: 3,
+			MinDelay:    time.Second,
+			MaxDelay:    5 * time.Second,
+		},
+	}
+	info.setTaskPathSuffix("source_cache/claim")
+	resp, err := c.retryRequest(ctx, info, &request)
+	if err != nil {
+		return nil, util.RespError(resp, errors.Wrap(err, "claiming source cache save").Error())
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, util.RespError(resp, "claiming source cache save")
+	}
+	if err := utility.ReadJSON(resp.Body, &claim); err != nil {
+		return nil, errors.Wrap(err, "reading source cache claim response")
+	}
+	return &claim, nil
+}
+
 func (c *baseCommunicator) S3Credentials(ctx context.Context, td TaskData, bucket string) (*apimodels.AWSCredentials, error) {
 	info := requestInfo{
 		method:   http.MethodPost,

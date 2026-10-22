@@ -158,6 +158,9 @@ type SharedCommunicator interface {
 	// SourceCacheCredentials returns source cache credentials scoped by the app
 	// server to the exact restore and save keys for the given clone shape.
 	SourceCacheCredentials(ctx context.Context, td TaskData, request apimodels.SourceCacheCredentialsRequest) (*apimodels.SourceCacheCredentialsResponse, error)
+
+	// ClaimSourceCacheSave claims the right to save the task's source cache artifact without blocking on another task's save.
+	ClaimSourceCacheSave(ctx context.Context, td TaskData, request apimodels.SourceCacheCredentialsRequest) (*apimodels.SourceCacheClaimResponse, error)
 }
 
 // TaskData contains the taskData.ID and taskData.Secret. It must be set for
