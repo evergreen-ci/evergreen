@@ -36,35 +36,20 @@ type ModuleResolver struct {
 	mu sync.Mutex
 	// moduleLocks serializes resolving each module without blocking the
 	// others, since resolving can make slow GitHub requests.
-	moduleLocks  map[string]*sync.Mutex
-	resolved     map[string]*manifest.Module
-	configErrors map[string]error
+	moduleLocks map[string]*sync.Mutex
+	resolved    map[string]*manifest.Module
 }
 
 // errNoModuleCommits means a module's branch had no commits as of the version's
 // ingest time.
 var errNoModuleCommits = errors.New("no commits found")
 
-// moduleConfigError is a problem with how a module is defined, such as a
-// nonexistent branch or ref, as opposed to a failure looking up its commit.
-type moduleConfigError struct{ error }
-
-// Cause lets errors.Cause reach the underlying GitHub error, which the agent's
-// manifest route checks for.
-func (e moduleConfigError) Cause() error  { return e.error }
-func (e moduleConfigError) Unwrap() error { return e.error }
-
 // moduleLookupError is a failure looking up a module's commit that may succeed
-// on retry.
+// on retry. Any other resolution error is a problem with how the module is
+// defined, such as a nonexistent branch or ref.
 type moduleLookupError struct{ error }
 
 func (e moduleLookupError) Unwrap() error { return e.error }
-
-// IsModuleConfigError returns whether resolving a module failed because of
-// how the module is defined.
-func IsModuleConfigError(err error) bool {
-	return errors.As(err, &moduleConfigError{})
-}
 
 // IsModuleLookupError returns whether resolving a module failed in a way that
 // may succeed on retry.
@@ -91,17 +76,16 @@ type ModuleResolverOpts struct {
 // NewModuleResolver returns a resolver for the module commits of a version.
 func NewModuleResolver(projectRef *ProjectRef, opts ModuleResolverOpts) *ModuleResolver {
 	return &ModuleResolver{
-		projectRef:   projectRef,
-		opts:         opts,
-		moduleLocks:  map[string]*sync.Mutex{},
-		resolved:     map[string]*manifest.Module{},
-		configErrors: map[string]error{},
+		projectRef:  projectRef,
+		opts:        opts,
+		moduleLocks: map[string]*sync.Mutex{},
+		resolved:    map[string]*manifest.Module{},
 	}
 }
 
 // Resolve returns the manifest entry for the module, resolving its commit on
-// first use and returning the same result on later calls. Lookup failures
-// aren't cached, so a later call can retry them.
+// first use and returning the same entry on later calls. Failures aren't
+// cached, so a later call can retry.
 func (r *ModuleResolver) Resolve(ctx context.Context, module Module) (*manifest.Module, error) {
 	r.mu.Lock()
 	moduleLock, ok := r.moduleLocks[module.Name]
@@ -115,26 +99,19 @@ func (r *ModuleResolver) Resolve(ctx context.Context, module Module) (*manifest.
 	defer moduleLock.Unlock()
 
 	r.mu.Lock()
-	mod, resolved := r.resolved[module.Name]
-	configErr := r.configErrors[module.Name]
+	mod, ok := r.resolved[module.Name]
 	r.mu.Unlock()
-	if resolved {
+	if ok {
 		return mod, nil
-	}
-	if configErr != nil {
-		return nil, configErr
 	}
 
 	mod, err := r.resolve(ctx, module)
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if IsModuleConfigError(err) {
-		r.configErrors[module.Name] = err
-	}
 	if err != nil {
 		return nil, err
 	}
+	r.mu.Lock()
 	r.resolved[module.Name] = mod
+	r.mu.Unlock()
 	return mod, nil
 }
 
@@ -159,8 +136,8 @@ func (r *ModuleResolver) Manifest(ctx context.Context, v *Version, modules Modul
 }
 
 // ResolveModules resolves the commit of every module in parallel, keyed by
-// module name. If modules fail for different reasons, it prefers returning a
-// lookup failure over a config error so that callers can retry.
+// module name. If any module fails with a lookup error, it returns that error
+// so that callers know to retry.
 func (r *ModuleResolver) ResolveModules(ctx context.Context, modules ModuleList) (map[string]*manifest.Module, error) {
 	if len(modules) == 0 {
 		return nil, nil
@@ -177,7 +154,7 @@ func (r *ModuleResolver) ResolveModules(ctx context.Context, modules ModuleList)
 	}
 	_ = g.Wait()
 
-	var configErr error
+	var firstErr error
 	byName := make(map[string]*manifest.Module, len(modules))
 	for i, module := range modules {
 		if errs[i] == nil {
@@ -185,15 +162,15 @@ func (r *ModuleResolver) ResolveModules(ctx context.Context, modules ModuleList)
 			continue
 		}
 		err := errors.Wrapf(errs[i], "module '%s'", module.Name)
-		if !IsModuleConfigError(err) {
-			return nil, moduleLookupError{err}
+		if IsModuleLookupError(err) {
+			return nil, err
 		}
-		if configErr == nil {
-			configErr = err
+		if firstErr == nil {
+			firstErr = err
 		}
 	}
-	if configErr != nil {
-		return nil, configErr
+	if firstErr != nil {
+		return nil, firstErr
 	}
 	return byName, nil
 }
@@ -230,27 +207,16 @@ func (r *ModuleResolver) resolveIncludedModules(ctx context.Context, modules Mod
 	if r == nil {
 		return nil
 	}
-	var g errgroup.Group
-	g.SetLimit(maxConcurrentModuleResolutions)
-	seen := map[string]bool{}
-	for _, include := range includes {
-		if include.Module == "" || seen[include.Module] {
-			continue
+	var included ModuleList
+	for _, module := range modules {
+		if slices.ContainsFunc(includes, func(include parserInclude) bool { return include.Module == module.Name }) {
+			included = append(included, module)
 		}
-		seen[include.Module] = true
-		module, err := GetModuleByName(modules, include.Module)
-		if err != nil {
-			continue
-		}
-		g.Go(func() error {
-			_, err := r.Resolve(ctx, *module)
-			if err != nil && !IsModuleConfigError(err) {
-				return moduleLookupError{errors.Wrapf(err, "module '%s'", module.Name)}
-			}
-			return nil
-		})
 	}
-	return g.Wait()
+	if _, err := r.ResolveModules(ctx, included); IsModuleLookupError(err) {
+		return err
+	}
+	return nil
 }
 
 // resolvedModulesKey returns the module commits resolved so far as a stable
@@ -289,7 +255,7 @@ func (r *ModuleResolver) init(ctx context.Context) error {
 
 	projVars, err := FindMergedProjectVars(ctx, r.projectRef.Id)
 	if err != nil {
-		return errors.Wrapf(err, "getting project vars for project '%s'", r.projectRef.Id)
+		return moduleLookupError{errors.Wrapf(err, "getting project vars for project '%s'", r.projectRef.Id)}
 	}
 	if projVars != nil {
 		r.expansions = util.NewExpansions(projVars.Vars)
@@ -298,7 +264,7 @@ func (r *ModuleResolver) init(ctx context.Context) error {
 	if r.shouldUseBaseRevision() {
 		r.baseManifest, err = manifest.FindFromVersion(ctx, r.opts.VersionID, r.projectRef.Id, r.opts.Revision, r.opts.Requester)
 		if err != nil {
-			return errors.Wrap(err, "getting base manifest")
+			return moduleLookupError{errors.Wrap(err, "getting base manifest")}
 		}
 	}
 
@@ -311,7 +277,7 @@ func (r *ModuleResolver) expand(module Module) (Module, error) {
 		return module, nil
 	}
 	if err := util.ExpandValues(&module, r.expansions); err != nil {
-		return module, moduleConfigError{errors.Wrapf(err, "expanding module '%s'", module.Name)}
+		return module, errors.Wrapf(err, "expanding module '%s'", module.Name)
 	}
 	return module, nil
 }
@@ -326,7 +292,7 @@ func (r *ModuleResolver) resolve(ctx context.Context, module Module) (*manifest.
 	}
 	owner, repo, err := module.GetOwnerAndRepo()
 	if err != nil {
-		return nil, moduleConfigError{errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)}
+		return nil, errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
 	}
 
 	if r.isTriggeringModule(owner, repo, module.Branch) {
@@ -345,8 +311,8 @@ func (r *ModuleResolver) resolve(ctx context.Context, module Module) (*manifest.
 	}
 
 	mod, err := getManifestModule(ctx, r.projectRef, module, r.opts.Requester, r.opts.IngestTime)
-	if isPermanentModuleLookupFailure(err) {
-		return nil, moduleConfigError{err}
+	if err != nil && !isPermanentModuleLookupFailure(err) {
+		return nil, moduleLookupError{err}
 	}
 	return mod, err
 }
@@ -355,9 +321,6 @@ func (r *ModuleResolver) resolve(ctx context.Context, module Module) (*manifest.
 // lookup in a way that retrying won't fix, such as a nonexistent repo, branch
 // or ref, or a repo the GitHub app isn't installed on.
 func isPermanentModuleLookupFailure(err error) bool {
-	if err == nil {
-		return false
-	}
 	if errors.Is(err, githubapp.ErrGitHubAppNotInstalled) || errors.Is(err, errNoModuleCommits) {
 		return true
 	}

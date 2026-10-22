@@ -321,17 +321,6 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			return err
 		}
 
-		if _, err = resolver.ResolveModules(ctx, pInfo.Project.Modules); model.IsModuleLookupError(err) {
-			grip.Error(ctx, message.WrapError(err, message.Fields{
-				"message":            "error resolving module commits",
-				"runner":             RunnerName,
-				"project":            ref.Id,
-				"project_identifier": ref.Identifier,
-				"revision":           revision,
-			}))
-			return err
-		}
-
 		// "Ignore" a version if all changes are to ignored files
 		var ignore bool
 		var filenames []string
@@ -365,6 +354,17 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			Config:              pInfo.Config,
 		}
 		v, err := CreateVersionFromConfig(ctx, projectInfo, metadata, ignore, versionErrs)
+		if model.IsModuleLookupError(err) {
+			// Stop so the revision is retried on the next run.
+			grip.Error(ctx, message.WrapError(err, message.Fields{
+				"message":            "error resolving module commits",
+				"runner":             RunnerName,
+				"project":            ref.Id,
+				"project_identifier": ref.Identifier,
+				"revision":           revision,
+			}))
+			return err
+		}
 		if err != nil {
 			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":            "error creating version",
@@ -656,16 +656,15 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	var mfst *manifest.Manifest
 	if metadata.ModuleResolver != nil {
 		mfst, err = metadata.ModuleResolver.Manifest(ctx, v, projectInfo.Project.Modules)
-		if model.IsModuleConfigError(err) {
-			grip.Warning(ctx, message.WrapError(err, message.Fields{
-				"message":    "skipping manifest creation for version with misconfigured module",
-				"version_id": v.Id,
-				"project_id": projectInfo.Ref.Id,
-			}))
-			mfst = nil
-		} else if err != nil {
+		if model.IsModuleLookupError(err) {
 			return nil, errors.Wrap(err, "resolving module commits for manifest")
 		}
+		// A misconfigured module shouldn't block creating the version.
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message":    "skipping manifest for version with misconfigured module",
+			"version_id": v.Id,
+			"project_id": projectInfo.Ref.Id,
+		}))
 	}
 
 	// Compute aliases first to include undefined requested alias in the stub version errors list.
