@@ -604,7 +604,7 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 			fallbackReason = errors.Wrap(err, "preparing restored source tree").Error()
 			break
 		}
-		// Its own step so a failed tag fetch is distinguishable in the fallback reason and telemetry.
+		// The tag refresh runs as a separate script so that a failed fetch records its own fallback reason and span attribute.
 		start := time.Now()
 		if err := c.runCommands(ctx, logger, conf, c.buildRefreshTagsCommand()); err != nil {
 			trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(sourceCacheTagRefreshFailedAttribute, true))
