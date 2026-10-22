@@ -66,6 +66,9 @@ func (g *GithubAppAuth) IsGithubAppInstalledOnRepo(ctx context.Context, owner, r
 	if g == nil || g.AppID == 0 || len(g.PrivateKey) == 0 {
 		return false, errors.New("no github app auth provided")
 	}
+	if repo == "" {
+		return false, errors.New("repo must not be empty")
+	}
 
 	installationID, err := getInstallationID(ctx, g, owner, repo)
 	if err != nil {

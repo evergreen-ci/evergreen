@@ -22,16 +22,12 @@ const (
 
 var (
 	githubGenerateTokenOwnerAttribute         = fmt.Sprintf("%s.owner", githubGenerateTokenAttribute)
-	githubGenerateTokenRepoAttribute          = fmt.Sprintf("%s.repo", githubGenerateTokenAttribute)
 	githubGenerateTokenAllPermissionAttribute = fmt.Sprintf("%s.all_permissions", githubGenerateTokenAttribute)
 )
 
 type githubGenerateToken struct {
-	// Owner of the repository. If not provided, the owner of the project is used.
+	// Owner of the GitHub app installation. If not provided, the owner of the project is used.
 	Owner string `mapstructure:"owner" plugin:"expand"`
-
-	// Repo name. If not provided, the repo of the project is used
-	Repo string `mapstructure:"repo" plugin:"expand"`
 
 	// ExpansionName is what the generated token will be saved as.
 	ExpansionName string `mapstructure:"expansion_name" plugin:"expand"`
@@ -97,20 +93,16 @@ func (r *githubGenerateToken) Execute(ctx context.Context, comm client.Communica
 	if r.Owner == "" {
 		r.Owner = conf.ProjectRef.Owner
 	}
-	if r.Repo == "" {
-		r.Repo = conf.ProjectRef.Repo
-	}
 
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
 	trace.SpanFromContext(ctx).SetAttributes(
 		attribute.String(githubGenerateTokenOwnerAttribute, r.Owner),
-		attribute.String(githubGenerateTokenRepoAttribute, r.Repo),
 		attribute.Bool(githubGenerateTokenAllPermissionAttribute, r.Permissions == nil),
 	)
 
-	logger.Task().Infof(ctx, "Requesting a GitHub dynamic access token with owner:%s, repository:%s, permissions:%s", r.Owner, r.Repo, permissionsToString(r.Permissions))
-	token, permissions, err := comm.CreateGitHubDynamicAccessToken(ctx, td, r.Owner, r.Repo, r.Permissions)
+	logger.Task().Infof(ctx, "Requesting a GitHub dynamic access token with owner:%s, permissions:%s", r.Owner, permissionsToString(r.Permissions))
+	token, permissions, err := comm.CreateGitHubDynamicAccessToken(ctx, td, r.Owner, r.Permissions)
 	if err != nil {
 		return errors.Wrap(err, "creating github dynamic access token")
 	}
@@ -128,7 +120,6 @@ func (r *githubGenerateToken) Execute(ctx context.Context, comm client.Communica
 
 		trace.SpanFromContext(ctx).SetAttributes(
 			attribute.String(githubGenerateTokenOwnerAttribute, r.Owner),
-			attribute.String(githubGenerateTokenRepoAttribute, r.Repo),
 			attribute.Bool(githubGenerateTokenAllPermissionAttribute, r.Permissions == nil),
 		)
 		return errors.Wrap(comm.RevokeGitHubDynamicAccessToken(ctx, td, token), "revoking token")

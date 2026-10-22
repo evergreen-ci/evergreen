@@ -64,15 +64,9 @@ func (s *installationSuite) TestUpsert() {
 	installation.Owner = ""
 	err := installation.Upsert(s.ctx)
 	s.Error(err)
-	s.Equal("Owner and repository must not be empty strings", err.Error())
+	s.Equal("Owner must not be an empty string", err.Error())
 
 	installation.Owner = "evergreen-ci"
-	installation.Repo = ""
-	err = installation.Upsert(s.ctx)
-	s.Error(err)
-	s.Equal("Owner and repository must not be empty strings", err.Error())
-
-	installation.Repo = "evergreen"
 	installation.AppID = 0
 	err = installation.Upsert(s.ctx)
 	s.Error(err)
@@ -97,6 +91,13 @@ func (s *installationSuite) TestGetInstallationID() {
 
 	s.NoError(installation.Upsert(s.ctx))
 
+	orgInstallation := GitHubAppInstallation{
+		Owner:          "evergreen-ci",
+		AppID:          1234,
+		InstallationID: 9012,
+	}
+	s.NoError(orgInstallation.Upsert(s.ctx))
+
 	authFields := &GithubAppAuth{
 		AppID: 1234,
 	}
@@ -105,8 +106,9 @@ func (s *installationSuite) TestGetInstallationID() {
 	s.NoError(err)
 	s.Equal(installation.InstallationID, id)
 
-	_, err = getInstallationID(s.ctx, authFields, "evergreen-ci", "")
-	s.Error(err)
+	id, err = getInstallationID(s.ctx, authFields, "evergreen-ci", "")
+	s.NoError(err)
+	s.Equal(orgInstallation.InstallationID, id)
 
 	_, err = getInstallationID(s.ctx, authFields, "", "evergreen")
 	s.Error(err)

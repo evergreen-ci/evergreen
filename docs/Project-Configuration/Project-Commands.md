@@ -1016,8 +1016,7 @@ The github.generate_token command will use the github app saved in your [project
 
 Parameters:
 
-- `owner`: The account owner of the repository. This will be used to find the installation ID for the app that the token will be generated from. This is an optional field that will default to the project's owner.
-- `repo`: The name of the repository without the .git extension. This will be used to find the installation ID for the app that the token will be generated from. This is an optional field that will default to the project's repository.
+- `owner`: The organization the GitHub app is installed on. This will be used to find the installation ID for the app that the token will be generated from. This is an optional field that will default to the project's owner.
 - `expansion_name`: The name for the expansion the token will be saved in.
 - `permissions`: By default, the token will have the full permissions of the GitHub app that it's generated from. If you want the token to have less permissions, specify which permissions it should be restricted to. Permissions can also be restricted in project settings. For more on how to set that up and how it interacts with the permissions defined here, please see [here](Github-Integrations#dynamic-github-access-tokens). For a list of available permission types and levels, please take a look at `properties of permissions` in [the github documentation](https://docs.github.com/en/rest/apps/apps?apiVersion=2022-11-28#create-an-installation-access-token-for-an-app). Expansions cannot be used for this field.
 
@@ -1027,7 +1026,6 @@ For an example of how to generate a token and use that token to clone a reposito
 - command: github.generate_token
   params:
     owner: sample-owner # optional
-    repo: sample-repo # optional
     expansion_name: generated_token
     permissions: # optional
       contents: read
@@ -1037,7 +1035,7 @@ For an example of how to generate a token and use that token to clone a reposito
       git clone https://x-access-token:${generated_token}@github.com/sample-owner/sample-repo.git
 ```
 
-_While an owner and repository is used when generating a token from a github app (the project owner and repository being the default), you cannot rely on the token being restricted to that repository, as it may have the power to access other repositories in the org as well._
+_While an owner is used when generating a token from a github app (the project owner being the default), you cannot rely on the token being restricted to a single repository, as it may have the power to access other repositories in the org as well._
 
 ### Token Lifespan
 

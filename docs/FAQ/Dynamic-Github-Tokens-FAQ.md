@@ -26,7 +26,7 @@ A few things may cause this issue:
 
 - The GitHub app associated with the project does not have permission to clone this repo.
 - The token is being generated with _restricted permissions_. Double check that _both_ the project settings and the command, if they specify restricted permissions, include `contents:read`.
-- In some cases, you may need to specify the owner and repo using the [github.generate_token command](../Project-Configuration/Project-Commands#githubgenerate_token) parameters when generating a token, especially if the repository you want to clone has a different owner than your Evergreen project.
+- In some cases, you may need to specify the owner using the [github.generate_token command](../Project-Configuration/Project-Commands#githubgenerate_token) parameters when generating a token, especially if the repository you want to clone has a different owner than your Evergreen project.
 
 ## Why am I seeing `the intersection of the project setting's requester permissions and provided permissions does not have any permissions to create a token`?
 

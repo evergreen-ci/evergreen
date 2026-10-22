@@ -1339,15 +1339,17 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 
 			assert.ErrorContains(t, handler.Parse(ctx, request), "missing owner")
 		},
-		"ParseErrorsOnEmptyRepo": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
-			url := fmt.Sprintf(route, taskID, owner, "")
-			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(json))
+		"ParseSucceedsWithoutRepo": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
+			url := fmt.Sprintf("/task/%s/github_dynamic_access_token/%s", taskID, owner)
+			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(json))
 			require.NoError(t, err)
 
-			options := map[string]string{"owner": owner, "repo": "", "task_id": taskID}
+			options := map[string]string{"owner": owner, "task_id": taskID}
 			request = gimlet.SetURLVars(request, options)
 
-			assert.ErrorContains(t, handler.Parse(ctx, request), "missing repo")
+			require.NoError(t, handler.Parse(ctx, request))
+			assert.Equal(t, owner, handler.owner)
+			assert.Empty(t, handler.repo)
 		},
 		"ParseErrorsOnEmptyTaskID": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
 			url := fmt.Sprintf(route, "", owner, repo)
