@@ -753,6 +753,10 @@ func (c *Mock) ClaimSourceCacheSave(ctx context.Context, td TaskData, request ap
 	if c.SourceCacheClaimErr != nil {
 		return nil, c.SourceCacheClaimErr
 	}
+	// An unset response claims successfully, which is the common case under test.
+	if c.SourceCacheClaimResponse == nil {
+		return &apimodels.SourceCacheClaimResponse{Claimed: true}, nil
+	}
 	return c.SourceCacheClaimResponse, nil
 }
 

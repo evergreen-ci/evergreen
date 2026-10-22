@@ -573,6 +573,7 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 	}
 	produced, err := c.saveSourceCache(ctx, comm, logger, conf, sc, opts)
 	if errors.Is(err, errSourceCacheClaimDenied) {
+		sc.setSpanOutcome(ctx, sourceCacheMissLostRace, sourceCacheClaimDeniedReason)
 		return nil
 	}
 	if errors.Is(err, errSourceCacheSaveTimeout) {
@@ -630,8 +631,7 @@ func (c *gitFetchProject) saveSourceCache(ctx context.Context, comm client.Commu
 	if claimErr != nil {
 		trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(sourceCacheClaimErrorAttribute, true))
 		logger.Task().Warningf(ctx, "Claiming the source cache save: %s; saving anyway.", claimErr)
-	} else if claim != nil && !claim.Claimed {
-		sc.setSpanOutcome(ctx, sourceCacheMissLostRace, sourceCacheClaimDeniedReason)
+	} else if !claim.Claimed {
 		logger.Task().Infof(ctx, "Another task is already saving the source cache artifact; skipping the save.")
 		return false, errSourceCacheClaimDenied
 	}

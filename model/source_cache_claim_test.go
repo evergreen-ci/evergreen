@@ -1,29 +1,16 @@
 package model
 
 import (
-	"context"
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	adb "github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
 )
-
-func findClaim(ctx context.Context, id string) (*SourceCacheClaim, error) {
-	var claim SourceCacheClaim
-	err := db.FindOneQ(ctx, evergreen.SourceCacheClaimsCollection, db.Query(bson.M{"_id": id}), &claim)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	return &claim, nil
-}
 
 func TestClaimSourceCacheSave(t *testing.T) {
 	ctx := t.Context()
@@ -52,14 +39,14 @@ func TestClaimSourceCacheSave(t *testing.T) {
 		claimed, err := ClaimSourceCacheSave(ctx, "bucket/key-a", "task-1", ttl)
 		require.NoError(t, err)
 		require.True(t, claimed)
-		before, err := findClaim(ctx, "bucket/key-a")
+		before, err := FindSourceCacheClaim(ctx, "bucket/key-a")
 		require.NoError(t, err)
 		require.NotNil(t, before)
 
 		claimed, err = ClaimSourceCacheSave(ctx, "bucket/key-a", "task-1", ttl)
 		require.NoError(t, err)
 		require.True(t, claimed)
-		after, err := findClaim(ctx, "bucket/key-a")
+		after, err := FindSourceCacheClaim(ctx, "bucket/key-a")
 		require.NoError(t, err)
 		require.NotNil(t, after)
 		assert.True(t, after.TS.After(before.TS), "a reclaim must refresh the timestamp so the claim does not expire under an active producer")
@@ -77,7 +64,7 @@ func TestClaimSourceCacheSave(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, claimed)
 
-		claim, err := findClaim(ctx, "bucket/key-c")
+		claim, err := FindSourceCacheClaim(ctx, "bucket/key-c")
 		require.NoError(t, err)
 		require.NotNil(t, claim)
 		assert.Equal(t, "task-2", claim.Owner, "a takeover must store the new owner")
@@ -97,5 +84,31 @@ func TestClaimSourceCacheSave(t *testing.T) {
 		claimed, err = ClaimSourceCacheSave(ctx, "bucket/key-b", "task-2", ttl)
 		require.NoError(t, err)
 		assert.True(t, claimed, "a claim on one key must not block a different key")
+	})
+
+	t.Run("RacingProducersHaveExactlyOneWinner", func(t *testing.T) {
+		require.NoError(t, db.Clear(evergreen.SourceCacheClaimsCollection))
+		const racers = 8
+		claims := make([]bool, racers)
+		errs := make([]error, racers)
+		var wg sync.WaitGroup
+		for i := 0; i < racers; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				claims[i], errs[i] = ClaimSourceCacheSave(ctx, "bucket/key-race", fmt.Sprintf("task-%d", i), ttl)
+			}()
+		}
+		wg.Wait()
+		for i := range racers {
+			require.NoError(t, errs[i])
+		}
+		winners := 0
+		for _, claimed := range claims {
+			if claimed {
+				winners++
+			}
+		}
+		assert.Equal(t, 1, winners, "exactly one racing producer may win the claim")
 	})
 }

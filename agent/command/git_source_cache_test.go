@@ -603,7 +603,11 @@ func TestSaveSourceCacheClaimsTheSaveBeforeArchiving(t *testing.T) {
 		require.ErrorIs(t, err, errSourceCacheClaimDenied)
 		assert.False(t, produced)
 		assert.Equal(t, 1, comm.SourceCacheClaimCount)
-		assert.Equal(t, opts.cloneDepth, comm.SourceCacheClaimRequest.CloneDepth, "the claim must reuse the clone shape that keys the object")
+		assert.Equal(t, apimodels.SourceCacheCredentialsRequest{
+			Branch:            opts.branch,
+			CloneDepth:        opts.cloneDepth,
+			RecurseSubmodules: opts.recurseSubmodules,
+		}, comm.SourceCacheClaimRequest, "the claim must reuse the clone shape that keys the object")
 
 		_, statErr := os.Stat(filepath.Join(sc.projectDir(), ".git", "hooks"))
 		assert.NoError(t, statErr, "denied claim must not scrub the cloned tree")

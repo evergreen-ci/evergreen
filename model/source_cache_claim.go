@@ -24,10 +24,23 @@ type SourceCacheClaim struct {
 	TS    time.Time `bson:"ts"`
 }
 
+// FindSourceCacheClaim returns the claim with the given ID, or nil if there is none.
+func FindSourceCacheClaim(ctx context.Context, claimID string) (*SourceCacheClaim, error) {
+	var claim SourceCacheClaim
+	err := db.FindOneQ(ctx, evergreen.SourceCacheClaimsCollection, db.Query(bson.M{sourceCacheClaimIDKey: claimID}), &claim)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding source cache claim '%s'", claimID)
+	}
+	return &claim, nil
+}
+
 // ClaimSourceCacheSave claims the save right for claimID on behalf of owner; the owner re-claims its own live claim, and a different producer only takes over a claim older than ttl. The upsert is atomic, so racing producers cannot both win.
 func ClaimSourceCacheSave(ctx context.Context, claimID, owner string, ttl time.Duration) (bool, error) {
 	now := time.Now()
-	_, err := db.FindAndModify(ctx, evergreen.SourceCacheClaimsCollection,
+	_, err := db.Upsert(ctx, evergreen.SourceCacheClaimsCollection,
 		bson.M{
 			sourceCacheClaimIDKey: claimID,
 			"$or": []bson.M{
@@ -35,12 +48,8 @@ func ClaimSourceCacheSave(ctx context.Context, claimID, owner string, ttl time.D
 				{sourceCacheClaimTSKey: bson.M{"$lte": now.Add(-ttl)}},
 			},
 		},
-		[]string{},
-		adb.Change{
-			Update:    bson.M{"$set": bson.M{sourceCacheClaimOwnerKey: owner, sourceCacheClaimTSKey: now}},
-			Upsert:    true,
-			ReturnNew: true,
-		}, &SourceCacheClaim{})
+		bson.M{"$set": bson.M{sourceCacheClaimOwnerKey: owner, sourceCacheClaimTSKey: now}},
+	)
 	if err != nil {
 		// A fresh claim held by another producer matches neither branch, so the upsert collides on the key and this producer is denied.
 		if db.IsDuplicateKey(err) {

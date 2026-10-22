@@ -13,9 +13,9 @@ const (
 	// SourceCacheClaimsCollection holds the claims that let only one producer per key save a source cache artifact.
 	SourceCacheClaimsCollection = "source_cache_claims"
 
-	// SourceCacheClaimTTL only bounds a producer that vanished mid-save: the holder releases it on a
-	// failed save, and successful saves take about 25 seconds at p99, so this covers them several
-	// times over; a slower save only costs overlap because uploads are create-only.
+	// SourceCacheClaimTTL only bounds a producer that vanished mid-save: successful saves take
+	// about 25 seconds at p99, so this covers them several times over; a slower save only costs
+	// overlap because uploads are create-only.
 	SourceCacheClaimTTL = 2 * time.Minute
 
 	// SourceCachePrefix is the top-level S3 key prefix for source cache artifacts.

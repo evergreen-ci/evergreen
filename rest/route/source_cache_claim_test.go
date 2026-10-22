@@ -1,7 +1,6 @@
 package route
 
 import (
-	"context"
 	"net/http"
 	"strings"
 	"testing"
@@ -13,10 +12,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
-	adb "github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 const sourceCacheRevision = "abc123"
@@ -25,14 +22,9 @@ const sourceCacheRevision = "abc123"
 const sourceCacheRacerTaskID = "source_cache_racer"
 
 func findStoredClaim(t *testing.T, id string) *model.SourceCacheClaim {
-	ctx := context.Background()
-	var claim model.SourceCacheClaim
-	err := db.FindOneQ(ctx, evergreen.SourceCacheClaimsCollection, db.Query(bson.M{"_id": id}), &claim)
-	if adb.ResultsNotFound(err) {
-		return nil
-	}
+	claim, err := model.FindSourceCacheClaim(t.Context(), id)
 	require.NoError(t, err)
-	return &claim
+	return claim
 }
 
 func newSourceCacheClaimRequest(t *testing.T, taskID string, body string) *http.Request {
