@@ -2681,6 +2681,7 @@ func activateTasks(ctx context.Context, taskIDs []string, caller string, activat
 		}
 
 		if len(writes) > 0 {
+			db.StampBulkUpdatedAt(Collection, writes)
 			_, err := coll.BulkWrite(ctx, writes)
 			if err != nil {
 				return errors.Wrap(err, "bulk updating tasks with new predictions")
@@ -2947,7 +2948,7 @@ func abortAndMarkResetTasks(ctx context.Context, filter bson.M, taskIDs []string
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(
 		ctx,
 		filter,
-		[]bson.M{
+		db.StampUpdatedAt(Collection, []bson.M{
 			{
 				"$set": bson.M{
 					AbortedKey:           true,
@@ -2962,7 +2963,7 @@ func abortAndMarkResetTasks(ctx context.Context, filter bson.M, taskIDs []string
 				},
 			},
 			addDisplayStatusCache,
-		},
+		}),
 	)
 
 	return err
