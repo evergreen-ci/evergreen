@@ -83,9 +83,6 @@ type Mock struct {
 	SourceCacheClaimCount                int
 	SourceCacheClaimErr                  error
 	SourceCacheClaimRequest              apimodels.SourceCacheCredentialsRequest
-	SourceCacheReleaseCount              int
-	SourceCacheReleaseErr                error
-	SourceCacheReleaseRequest            apimodels.SourceCacheCredentialsRequest
 	S3Response                           *apimodels.AWSCredentials
 	SendTaskDetailsShouldFail            bool
 
@@ -757,12 +754,6 @@ func (c *Mock) ClaimSourceCacheSave(ctx context.Context, td TaskData, request ap
 		return nil, c.SourceCacheClaimErr
 	}
 	return c.SourceCacheClaimResponse, nil
-}
-
-func (c *Mock) ReleaseSourceCacheSave(ctx context.Context, td TaskData, request apimodels.SourceCacheCredentialsRequest) error {
-	c.SourceCacheReleaseCount++
-	c.SourceCacheReleaseRequest = request
-	return c.SourceCacheReleaseErr
 }
 
 func (c *Mock) S3Credentials(ctx context.Context, td TaskData, bucket string) (*apimodels.AWSCredentials, error) {

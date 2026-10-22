@@ -1,6 +1,7 @@
 package route
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"testing"
@@ -12,25 +13,65 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
+	adb "github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
-func newSourceCacheClaimRequest(t *testing.T, taskID string) *http.Request {
-	request, err := http.NewRequest(http.MethodPost, "/task/"+taskID+"/source_cache/claim", strings.NewReader(`{}`))
+const sourceCacheRevision = "abc123"
+
+// sourceCacheRacerTaskID is a second task simulating a producer racing the one under test.
+const sourceCacheRacerTaskID = "source_cache_racer"
+
+func findStoredClaim(t *testing.T, id string) *model.SourceCacheClaim {
+	ctx := context.Background()
+	var claim model.SourceCacheClaim
+	err := db.FindOneQ(ctx, evergreen.SourceCacheClaimsCollection, db.Query(bson.M{"_id": id}), &claim)
+	if adb.ResultsNotFound(err) {
+		return nil
+	}
+	require.NoError(t, err)
+	return &claim
+}
+
+func newSourceCacheClaimRequest(t *testing.T, taskID string, body string) *http.Request {
+	request, err := http.NewRequest(http.MethodPost, "/task/"+taskID+"/source_cache/claim", strings.NewReader(body))
 	require.NoError(t, err)
 	request = gimlet.SetURLVars(request, map[string]string{"task_id": taskID})
 	return request
 }
 
-// sourceCacheRacerTaskID is a second task simulating a producer racing the one under test.
-const sourceCacheRacerTaskID = "source_cache_racer"
-
-func newSourceCacheClaimReleaseRequest(t *testing.T) *http.Request {
-	request, err := http.NewRequest(http.MethodDelete, "/task/"+sourceCacheTaskID+"/source_cache/claim", strings.NewReader(`{}`))
-	require.NoError(t, err)
-	request = gimlet.SetURLVars(request, map[string]string{"task_id": sourceCacheTaskID})
-	return request
+func TestSourceCacheClaimParse(t *testing.T) {
+	for tName, tCase := range map[string]struct {
+		taskID    string
+		body      string
+		shouldErr bool
+	}{
+		"ValidBodyParses": {
+			taskID: sourceCacheTaskID,
+			body:   `{}`,
+		},
+		"MissingTaskIDIsAnError": {
+			body:      `{}`,
+			shouldErr: true,
+		},
+		"MalformedBodyIsAnError": {
+			taskID:    sourceCacheTaskID,
+			body:      `{invalid`,
+			shouldErr: true,
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			handler := makeSourceCacheClaim(sourceCacheTestSettings())
+			err := handler.Parse(t.Context(), newSourceCacheClaimRequest(t, tCase.taskID, tCase.body))
+			if tCase.shouldErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestSourceCacheClaimRun(t *testing.T) {
@@ -38,7 +79,6 @@ func TestSourceCacheClaimRun(t *testing.T) {
 		insertTask     bool
 		mode           model.SourceCacheMode
 		preClaim       bool
-		revision       string
 		expectedStatus int
 		wantClaimed    bool
 	}{
@@ -48,13 +88,11 @@ func TestSourceCacheClaimRun(t *testing.T) {
 		"ProjectWithDisabledModeIsRefused": {
 			insertTask:     true,
 			mode:           model.SourceCacheModeDisabled,
-			revision:       "abc123",
 			expectedStatus: http.StatusConflict,
 		},
 		"FirstTaskClaimsTheSave": {
 			insertTask:     true,
 			mode:           model.SourceCacheModeAll,
-			revision:       "abc123",
 			expectedStatus: http.StatusOK,
 			wantClaimed:    true,
 		},
@@ -62,7 +100,6 @@ func TestSourceCacheClaimRun(t *testing.T) {
 			insertTask:     true,
 			mode:           model.SourceCacheModeAll,
 			preClaim:       true,
-			revision:       "abc123",
 			expectedStatus: http.StatusOK,
 			wantClaimed:    false,
 		},
@@ -72,16 +109,16 @@ func TestSourceCacheClaimRun(t *testing.T) {
 			handler, ok := makeSourceCacheClaim(sourceCacheTestSettings()).(*sourceCacheClaim)
 			require.True(t, ok)
 			if tCase.insertTask {
-				insertSourceCacheTask(t, evergreen.RepotrackerVersionRequester, sourceCacheMainlineVersionID, tCase.revision, "some-org", "some-repo", tCase.mode)
+				insertSourceCacheTask(t, evergreen.RepotrackerVersionRequester, sourceCacheMainlineVersionID, sourceCacheRevision, "some-org", "some-repo", tCase.mode)
 			}
-			require.NoError(t, handler.Parse(t.Context(), newSourceCacheClaimRequest(t, sourceCacheTaskID)))
+			require.NoError(t, handler.Parse(t.Context(), newSourceCacheClaimRequest(t, sourceCacheTaskID, `{}`)))
 
 			if tCase.preClaim {
 				// A real racer is a different task, so a claim owned by the task under test would be re-taken by its owner.
-				racer := task.Task{Id: sourceCacheRacerTaskID, Project: sourceCacheProjectID, Requester: evergreen.RepotrackerVersionRequester, Version: sourceCacheMainlineVersionID, Revision: tCase.revision}
+				racer := task.Task{Id: sourceCacheRacerTaskID, Project: sourceCacheProjectID, Requester: evergreen.RepotrackerVersionRequester, Version: sourceCacheMainlineVersionID, Revision: sourceCacheRevision}
 				require.NoError(t, racer.Insert(t.Context()))
 				racerHandler := makeSourceCacheClaim(sourceCacheTestSettings())
-				require.NoError(t, racerHandler.Parse(t.Context(), newSourceCacheClaimRequest(t, sourceCacheRacerTaskID)))
+				require.NoError(t, racerHandler.Parse(t.Context(), newSourceCacheClaimRequest(t, sourceCacheRacerTaskID, `{}`)))
 				preClaimResp := racerHandler.Run(t.Context())
 				require.Equal(t, http.StatusOK, preClaimResp.Status(), preClaimResp.Data())
 			}
@@ -96,33 +133,44 @@ func TestSourceCacheClaimRun(t *testing.T) {
 			require.True(t, ok)
 			assert.Equal(t, tCase.wantClaimed, claim.Claimed)
 			if tCase.wantClaimed {
-				assert.NotEmpty(t, claim.Key)
+				// The claim ID is keyed on the mainline namespace because the test task is not a patch.
+				claimKey := evergreen.SourceCacheClaimID(sourceCacheTestSettings().Buckets.SourceCacheBucket.Name,
+					evergreen.SourceCacheObjectKey("some-org", "some-repo", evergreen.SourceCacheBaseNamespace, "", sourceCacheRevision, 0, false))
+				stored := findStoredClaim(t, claimKey)
+				require.NotNil(t, stored)
+				assert.Equal(t, sourceCacheTaskID, stored.Owner, "the claim must be owned by the task that won it")
 			}
 		})
 	}
 }
 
-func TestSourceCacheClaimReleaseFreesTheClaimedKey(t *testing.T) {
-	ctx := t.Context()
-	require.NoError(t, db.ClearCollections(evergreen.SourceCacheClaimsCollection, task.Collection, model.ProjectRefCollection, patch.Collection))
-	insertSourceCacheTask(t, evergreen.RepotrackerVersionRequester, sourceCacheMainlineVersionID, "abc123", "some-org", "some-repo", model.SourceCacheModeAll)
-
-	claimHandler := makeSourceCacheClaim(sourceCacheTestSettings())
-	require.NoError(t, claimHandler.Parse(ctx, newSourceCacheClaimRequest(t, sourceCacheTaskID)))
-	claimResp := claimHandler.Run(ctx)
-	require.Equal(t, http.StatusOK, claimResp.Status(), claimResp.Data())
-
-	releaseHandler := makeSourceCacheClaimRelease(sourceCacheTestSettings())
-	require.NoError(t, releaseHandler.Parse(ctx, newSourceCacheClaimReleaseRequest(t)))
-	resp := releaseHandler.Run(ctx)
-	require.Equal(t, http.StatusOK, resp.Status(), resp.Data())
-	release, ok := resp.Data().(apimodels.SourceCacheReleaseResponse)
-	require.True(t, ok)
-	assert.True(t, release.Released)
-
-	reclaimResp := claimHandler.Run(ctx)
-	require.Equal(t, http.StatusOK, reclaimResp.Status(), reclaimResp.Data())
-	reclaim, ok := reclaimResp.Data().(apimodels.SourceCacheClaimResponse)
-	require.True(t, ok)
-	assert.True(t, reclaim.Claimed, "a released key must be claimable again")
+func TestSourceCacheClaimResolveConflicts(t *testing.T) {
+	for tName, tCase := range map[string]struct {
+		blankBucket    bool
+		repo           string
+		expectedStatus int
+	}{
+		"NoBucketConfiguredIsRefused": {
+			blankBucket:    true,
+			repo:           "some-repo",
+			expectedStatus: http.StatusConflict,
+		},
+		"NoOwnerAndRepoIsRefused": {
+			repo:           "",
+			expectedStatus: http.StatusConflict,
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, patch.Collection))
+			insertSourceCacheTask(t, evergreen.RepotrackerVersionRequester, sourceCacheMainlineVersionID, sourceCacheRevision, "some-org", tCase.repo, model.SourceCacheModeAll)
+			settings := sourceCacheTestSettings()
+			if tCase.blankBucket {
+				settings.Buckets.SourceCacheBucket.Name = ""
+			}
+			handler := makeSourceCacheClaim(settings)
+			require.NoError(t, handler.Parse(t.Context(), newSourceCacheClaimRequest(t, sourceCacheTaskID, `{}`)))
+			resp := handler.Run(t.Context())
+			assert.Equal(t, tCase.expectedStatus, resp.Status(), resp.Data())
+		})
+	}
 }

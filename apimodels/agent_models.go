@@ -358,14 +358,6 @@ type SourceCacheCredentialsRequest struct {
 type SourceCacheClaimResponse struct {
 	// Claimed is true when this task may archive and upload the artifact.
 	Claimed bool `json:"claimed"`
-	// Key is the object key the claim is for.
-	Key string `json:"key"`
-}
-
-// SourceCacheReleaseResponse reports whether a failed producer's claim was freed.
-type SourceCacheReleaseResponse struct {
-	// Released is true when the claim existed and this task owned it.
-	Released bool `json:"released"`
 }
 
 // SourceCacheRestoreKey is one source cache object a task may restore.

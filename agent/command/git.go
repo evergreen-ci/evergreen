@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -573,6 +572,9 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 		return nil
 	}
 	produced, err := c.saveSourceCache(ctx, comm, logger, conf, sc, opts)
+	if errors.Is(err, errSourceCacheClaimDenied) {
+		return nil
+	}
 	if errors.Is(err, errSourceCacheSaveTimeout) {
 		outcome = sourceCacheSaveTimedOut
 	} else if err != nil {
@@ -622,35 +624,19 @@ func sourceCacheSaveBudget(conf *internal.TaskConfig) (time.Duration, bool) {
 // and puts the task's own authenticated origin URL back for the rest of the run.
 func (c *gitFetchProject) saveSourceCache(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, sc *sourceCache, opts cloneOpts) (bool, error) {
 	// When the app server cannot answer the claim, save anyway; the create-only upload still prevents two producers from writing.
-	claimRequest := apimodels.SourceCacheCredentialsRequest{
-		Branch:            opts.branch,
-		CloneDepth:        opts.cloneDepth,
-		RecurseSubmodules: opts.recurseSubmodules,
-	}
 	claimStart := time.Now()
-	claim, claimErr := comm.ClaimSourceCacheSave(ctx, conf.TaskData(), claimRequest)
+	claim, claimErr := comm.ClaimSourceCacheSave(ctx, conf.TaskData(), sc.claimRequest)
 	setSourceCacheSpanDuration(ctx, sourceCacheClaimDurationAttribute, time.Since(claimStart))
-	heldClaim := claimErr == nil && claim != nil && claim.Claimed
-	// A failed save releases the claim so the next producer can save now instead of waiting out the claim TTL.
-	releaseClaim := func() {
-		if !heldClaim {
-			return
-		}
-		if err := comm.ReleaseSourceCacheSave(ctx, conf.TaskData(), claimRequest); err != nil {
-			logger.Task().Warningf(ctx, "Releasing the source cache save claim: %s", err)
-		}
-	}
 	if claimErr != nil {
 		trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(sourceCacheClaimErrorAttribute, true))
 		logger.Task().Warningf(ctx, "Claiming the source cache save: %s; saving anyway.", claimErr)
 	} else if claim != nil && !claim.Claimed {
-		trace.SpanFromContext(ctx).SetAttributes(attribute.String(sourceCacheReasonAttribute, sourceCacheClaimDeniedReason))
-		logger.Task().Infof(ctx, "Another task is already saving the source cache artifact at '%s'; skipping the save.", claim.Key)
-		return false, nil
+		sc.setSpanOutcome(ctx, sourceCacheMissLostRace, sourceCacheClaimDeniedReason)
+		logger.Task().Infof(ctx, "Another task is already saving the source cache artifact; skipping the save.")
+		return false, errSourceCacheClaimDenied
 	}
 
 	if err := c.runCommands(ctx, logger, conf, c.buildPreSaveCommand(opts)); err != nil {
-		releaseClaim()
 		return false, errors.Wrap(err, "scrubbing source tree before saving")
 	}
 	budget, known := sourceCacheSaveBudget(conf)
@@ -665,7 +651,6 @@ func (c *gitFetchProject) saveSourceCache(ctx context.Context, comm client.Commu
 		// it. The post-save command still runs to restore the origin URL the
 		// rest of the task needs, even though the save was abandoned.
 		logger.Task().Warningf(ctx, "Aborting the source cache save after %s: %s", budget, saveErr)
-		releaseClaim()
 		if postErr := c.runCommands(ctx, logger, conf, c.buildPostSaveCommand(opts)); postErr != nil {
 			return produced, errors.Wrap(postErr, "restoring origin URL after saving")
 		}
@@ -674,9 +659,6 @@ func (c *gitFetchProject) saveSourceCache(ctx context.Context, comm client.Commu
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(saveErr)
 	catcher.Wrap(c.runCommands(ctx, logger, conf, c.buildPostSaveCommand(opts)), "restoring origin URL after saving")
-	if saveErr != nil {
-		releaseClaim()
-	}
 	return produced, catcher.Resolve()
 }
 

@@ -161,9 +161,6 @@ type SharedCommunicator interface {
 
 	// ClaimSourceCacheSave claims the right to save the task's source cache artifact without blocking on another task's save.
 	ClaimSourceCacheSave(ctx context.Context, td TaskData, request apimodels.SourceCacheCredentialsRequest) (*apimodels.SourceCacheClaimResponse, error)
-
-	// ReleaseSourceCacheSave frees a claim this task holds so another producer can save after a failed attempt.
-	ReleaseSourceCacheSave(ctx context.Context, td TaskData, request apimodels.SourceCacheCredentialsRequest) error
 }
 
 // TaskData contains the taskData.ID and taskData.Secret. It must be set for

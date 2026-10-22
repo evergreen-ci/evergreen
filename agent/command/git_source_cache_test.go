@@ -575,26 +575,32 @@ func newGitWorkDir(t *testing.T) string {
 
 func TestSaveSourceCacheClaimsTheSaveBeforeArchiving(t *testing.T) {
 	ctx := t.Context()
-	comm := sourceCacheTestComm()
-	conf := sourceCacheTestConfig()
-	conf.WorkDir = newGitWorkDir(t)
-
-	jpm, err := jasper.NewSynchronizedManager(false)
-	require.NoError(t, err)
-	c := &gitFetchProject{Directory: "src"}
-	c.SetJasperManager(jpm)
-
 	opts := sourceCacheTestOpts()
-	sc, reason := newSourceCache(ctx, comm, conf, c, opts, "linux")
-	require.NotNil(t, sc, reason)
-	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
-	require.NoError(t, err)
+
+	// newSaveCache isolates each subtest's comm, config, cache, and logger so no subtest depends on another's claim state.
+	newSaveCache := func(t *testing.T) (*client.Mock, *internal.TaskConfig, *gitFetchProject, *sourceCache, client.LoggerProducer) {
+		comm := sourceCacheTestComm()
+		conf := sourceCacheTestConfig()
+		conf.WorkDir = newGitWorkDir(t)
+
+		jpm, err := jasper.NewSynchronizedManager(false)
+		require.NoError(t, err)
+		c := &gitFetchProject{Directory: "src"}
+		c.SetJasperManager(jpm)
+
+		sc, reason := newSourceCache(ctx, comm, conf, c, opts, "linux")
+		require.NotNil(t, sc, reason)
+		logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+		require.NoError(t, err)
+		return comm, conf, c, sc, logger
+	}
 
 	t.Run("ClaimDeniedSkipsTheSave", func(t *testing.T) {
-		comm.SourceCacheClaimResponse = &apimodels.SourceCacheClaimResponse{Claimed: false, Key: sc.saveKey.Key}
+		comm, conf, c, sc, logger := newSaveCache(t)
+		comm.SourceCacheClaimResponse = &apimodels.SourceCacheClaimResponse{Claimed: false}
 
 		produced, err := c.saveSourceCache(ctx, comm, logger, conf, sc, opts)
-		require.NoError(t, err)
+		require.ErrorIs(t, err, errSourceCacheClaimDenied)
 		assert.False(t, produced)
 		assert.Equal(t, 1, comm.SourceCacheClaimCount)
 		assert.Equal(t, opts.cloneDepth, comm.SourceCacheClaimRequest.CloneDepth, "the claim must reuse the clone shape that keys the object")
@@ -604,23 +610,14 @@ func TestSaveSourceCacheClaimsTheSaveBeforeArchiving(t *testing.T) {
 	})
 
 	t.Run("ClaimFailureStillSaves", func(t *testing.T) {
+		comm, conf, c, sc, logger := newSaveCache(t)
 		comm.SourceCacheClaimErr = errors.New("claim service unavailable")
 
 		produced, err := c.saveSourceCache(ctx, comm, logger, conf, sc, opts)
-		// The save fails without real AWS, but the claim error must not have become a skip.
+		// The save fails without real AWS, but the claim error must not have become a skip or surfaced itself.
 		require.Error(t, err)
 		assert.False(t, produced)
-		assert.NotContains(t, err.Error(), "claiming the source cache save")
-	})
-
-	t.Run("FailedSaveReleasesTheClaim", func(t *testing.T) {
-		comm.SourceCacheClaimErr = nil
-		comm.SourceCacheClaimResponse = &apimodels.SourceCacheClaimResponse{Claimed: true, Key: sc.saveKey.Key}
-
-		produced, err := c.saveSourceCache(ctx, comm, logger, conf, sc, opts)
-		require.Error(t, err, "the save fails without real AWS")
-		assert.False(t, produced)
-		assert.Equal(t, 1, comm.SourceCacheReleaseCount, "a failed save must free the key for the next producer")
+		assert.NotContains(t, err.Error(), "claim service unavailable")
 	})
 }
 

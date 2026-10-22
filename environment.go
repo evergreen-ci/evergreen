@@ -36,7 +36,6 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 	"go.opentelemetry.io/otel"
@@ -300,7 +299,6 @@ func NewEnvironment(ctx context.Context, confPath, versionID, clientS3Bucket str
 	catcher.Add(e.initCedarDB(ctx, tracer))
 	catcher.Add(e.initJasper(ctx, tracer))
 	catcher.Add(e.initDepot(ctx, tracer))
-	catcher.Add(e.initSourceCacheClaims(ctx, tracer))
 	catcher.Add(e.initThirdPartySenders(ctx, tracer))
 	catcher.Add(e.initClientConfig(ctx, versionID, clientS3Bucket, e.settings.OldestAllowedCLIVersion, tracer))
 	catcher.Add(e.createLocalQueue(ctx, tracer))
@@ -1055,31 +1053,6 @@ func (e *envState) initDepot(ctx context.Context, tracer trace.Tracer) error {
 		return errors.Wrapf(err, "bootstrapping collection '%s'", CredentialsCollection)
 	}
 
-	return nil
-}
-
-func (e *envState) initSourceCacheClaims(ctx context.Context, tracer trace.Tracer) error {
-	ctx, span := tracer.Start(ctx, "InitSourceCacheClaims")
-	defer span.End()
-
-	// The claims collection lives in the Evergreen DB, so non-server processes
-	// without one (such as an agent) have nothing to set up here.
-	if e.client == nil || e.dbName == "" {
-		return nil
-	}
-
-	// Expire unrenewed claims so a dead producer cannot block a key; a missing TTL index is not worth failing boot over, since stale claims are freed by the takeover path anyway.
-	index := mongo.IndexModel{
-		Keys: bson.D{
-			{Key: "ts", Value: 1},
-		},
-		Options: options.Index().SetExpireAfterSeconds(int32(SourceCacheClaimTTL.Seconds())),
-	}
-	if _, err := e.client.Database(e.dbName).Collection(SourceCacheClaimsCollection).Indexes().CreateOne(ctx, index); err != nil {
-		grip.Warning(ctx, message.WrapError(err, message.Fields{
-			"message": "ensuring the source cache claims TTL index",
-		}))
-	}
 	return nil
 }
 
