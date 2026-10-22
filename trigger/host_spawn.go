@@ -3,6 +3,7 @@ package trigger
 import (
 	"context"
 	"fmt"
+	"html"
 	"strconv"
 	"strings"
 
@@ -384,7 +385,7 @@ func (t *spawnHostSetupScriptTriggers) emailPayload(spawnHostScriptPath, result,
 
 	</body>
 	</html>
-	`, spawnHostScriptPath, hostURL, hostID, result, url)
+	`, html.EscapeString(spawnHostScriptPath), hostURL, hostID, result, url)
 
 	return &message.Email{
 		Subject:           subject,
