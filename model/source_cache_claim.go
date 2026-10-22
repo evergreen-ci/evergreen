@@ -24,19 +24,10 @@ type SourceCacheClaim struct {
 	TS    time.Time `bson:"ts"`
 }
 
-// ClaimSourceCacheSave claims the save right for claimID on behalf of owner; the owner re-claims its own live claim, and a different producer only takes over a claim older than ttl.
+// ClaimSourceCacheSave claims the save right for claimID on behalf of owner; the owner re-claims its own live claim, and a different producer only takes over a claim older than ttl. The upsert is atomic, so racing producers cannot both win.
 func ClaimSourceCacheSave(ctx context.Context, claimID, owner string, ttl time.Duration) (bool, error) {
 	now := time.Now()
-	err := db.Insert(ctx, evergreen.SourceCacheClaimsCollection, SourceCacheClaim{ID: claimID, Owner: owner, TS: now})
-	if err == nil {
-		return true, nil
-	}
-	if !db.IsDuplicateKey(err) {
-		return false, errors.Wrapf(err, "claiming source cache save for '%s'", claimID)
-	}
-
-	var claim SourceCacheClaim
-	changeInfo, err := db.FindAndModify(ctx, evergreen.SourceCacheClaimsCollection,
+	_, err := db.FindAndModify(ctx, evergreen.SourceCacheClaimsCollection,
 		bson.M{
 			sourceCacheClaimIDKey: claimID,
 			"$or": []bson.M{
@@ -47,24 +38,15 @@ func ClaimSourceCacheSave(ctx context.Context, claimID, owner string, ttl time.D
 		[]string{},
 		adb.Change{
 			Update:    bson.M{"$set": bson.M{sourceCacheClaimOwnerKey: owner, sourceCacheClaimTSKey: now}},
+			Upsert:    true,
 			ReturnNew: true,
-		}, &claim)
+		}, &SourceCacheClaim{})
 	if err != nil {
-		// A fresh claim held by another producer matches neither branch.
-		if adb.ResultsNotFound(err) {
+		// A fresh claim held by another producer matches neither branch, so the upsert collides on the key and this producer is denied.
+		if db.IsDuplicateKey(err) {
 			return false, nil
 		}
-		return false, errors.Wrapf(err, "taking over source cache claim for '%s'", claimID)
+		return false, errors.Wrapf(err, "claiming source cache save for '%s'", claimID)
 	}
-	return changeInfo != nil && changeInfo.Updated > 0, nil
-}
-
-// ReleaseSourceCacheSave deletes the claim for claimID when owner holds it and reports whether a claim was deleted.
-func ReleaseSourceCacheSave(ctx context.Context, claimID, owner string) (bool, error) {
-	res, err := evergreen.GetEnvironment().DB().Collection(evergreen.SourceCacheClaimsCollection).DeleteOne(ctx,
-		bson.M{sourceCacheClaimIDKey: claimID, sourceCacheClaimOwnerKey: owner})
-	if err != nil {
-		return false, errors.Wrapf(err, "releasing source cache claim for '%s'", claimID)
-	}
-	return res.DeletedCount > 0, nil
+	return true, nil
 }
