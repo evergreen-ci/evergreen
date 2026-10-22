@@ -1671,11 +1671,6 @@ func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRe
 			var preamble []byte
 			preamble, decodeErr = buildAnchorPreamble(anchorRegistry)
 			if decodeErr == nil {
-				// The anchor preamble and the file must be a single YAML
-				// document for the preamble's anchors to be in scope. A file
-				// that starts with a `---` document separator would otherwise
-				// become a second document, whose contents are silently
-				// dropped by the single-document decode.
 				combined = append(preamble, normalizeForPreamble(parseBytes)...)
 			}
 		}
