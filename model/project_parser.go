@@ -1025,10 +1025,6 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 		return errors.Wrapf(err, LoadProjectError)
 	}
 
-	if err := opts.ModuleResolver.resolveIncludedModules(ctx, intermediateProject.Modules, intermediateProject.Include); err != nil {
-		return errors.Wrap(err, "resolving module commits for includes")
-	}
-
 	// Be polite. Don't make more than 10 concurrent requests to GitHub.
 	const maxWorkers = 10
 	workers := util.Min(maxWorkers, len(intermediateProject.Include))

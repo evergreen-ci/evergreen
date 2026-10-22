@@ -354,17 +354,6 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			Config:              pInfo.Config,
 		}
 		v, err := CreateVersionFromConfig(ctx, projectInfo, metadata, ignore, versionErrs)
-		if model.IsModuleLookupError(err) {
-			// Stop so the revision is retried on the next run.
-			grip.Error(ctx, message.WrapError(err, message.Fields{
-				"message":            "error resolving module commits",
-				"runner":             RunnerName,
-				"project":            ref.Id,
-				"project_identifier": ref.Identifier,
-				"revision":           revision,
-			}))
-			return err
-		}
 		if err != nil {
 			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":            "error creating version",
@@ -428,11 +417,6 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 	projectRef := repoTracker.ProjectRef
 	projectInfo, err := repoTracker.GetRemoteConfig(ctx, revision, resolver)
 	if err != nil {
-		// Module lookup failures should be retried rather than recorded as
-		// config errors.
-		if model.IsModuleLookupError(err) {
-			return model.ProjectInfo{}, err
-		}
 		// Create a stub version on API request errors that pertain
 		// to fetching or loading a config.
 		_, apiReqErr := errors.Cause(err).(thirdparty.APIRequestError)
@@ -656,12 +640,9 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	var mfst *manifest.Manifest
 	if metadata.ModuleResolver != nil {
 		mfst, err = metadata.ModuleResolver.Manifest(ctx, v, projectInfo.Project.Modules)
-		if model.IsModuleLookupError(err) {
-			return nil, errors.Wrap(err, "resolving module commits for manifest")
-		}
-		// A misconfigured module shouldn't block creating the version.
-		grip.Warning(ctx, message.WrapError(err, message.Fields{
-			"message":    "skipping manifest for version with misconfigured module",
+		// Failing to resolve modules shouldn't block creating the version.
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message":    "resolving module commits for manifest",
 			"version_id": v.Id,
 			"project_id": projectInfo.Ref.Id,
 		}))

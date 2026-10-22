@@ -310,13 +310,12 @@ func getRequesterFromAlias(alias string) string {
 	return evergreen.PatchVersionRequester
 }
 
-func (pc *DBProjectConnector) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string, settings *evergreen.Settings, resolver *model.ModuleResolver) (model.ProjectInfo, error) {
+func (pc *DBProjectConnector) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string, settings *evergreen.Settings) (model.ProjectInfo, error) {
 	opts := model.GetProjectOpts{
-		Ref:            &pRef,
-		Revision:       pRef.Branch,
-		RemotePath:     file,
-		ReadFileFrom:   model.ReadFromGithub,
-		ModuleResolver: resolver,
+		Ref:          &pRef,
+		Revision:     pRef.Branch,
+		RemotePath:   file,
+		ReadFileFrom: model.ReadFromGithub,
 	}
 	return model.GetProjectFromFile(ctx, opts, settings)
 }

@@ -1050,7 +1050,7 @@ func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Modul
 				return nil, errors.Wrapf(err, "retrieving git commit for module '%s' on branch '%s'", module.Name, module.Branch)
 			}
 			if len(githubCommits) == 0 {
-				return nil, errors.Wrapf(errNoModuleCommits, "module '%s' on branch '%s'", module.Name, module.Branch)
+				return nil, errors.Errorf("no commits found for module '%s' on branch '%s'", module.Name, module.Branch)
 			}
 			revision = githubCommits[0].GetSHA()
 			url = githubCommits[0].GetURL()
