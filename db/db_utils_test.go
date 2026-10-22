@@ -527,4 +527,22 @@ func TestWithLastUpdatedAtUpdate(t *testing.T) {
 		require.Len(t, out, 2)
 		assert.Equal(t, bson.M{"$set": bson.M{lastUpdatedAtField: "$$NOW"}}, out[1])
 	})
+	t.Run("EmptyUpdateShouldBeUnchanged", func(t *testing.T) {
+		for name, update := range map[string]any{
+			"EmptyBSONM":       bson.M{},
+			"EmptyBSOND":       bson.D{},
+			"EmptySetBSONM":    bson.M{"$set": bson.M{}},
+			"EmptySetBSOND":    bson.D{{Key: "$set", Value: bson.D{}}},
+			"EmptySetAndUnset": bson.M{"$set": bson.M{}, "$unset": bson.M{}},
+			"EmptyPipeline":    []bson.M{},
+		} {
+			t.Run(name, func(t *testing.T) {
+				assert.Equal(t, update, withLastUpdatedAtUpdate("tasks", update))
+			})
+		}
+	})
+	t.Run("PartiallyEmptyUpdateShouldAddCurrentDate", func(t *testing.T) {
+		out := withLastUpdatedAtUpdate("tasks", bson.M{"$set": bson.M{}, "$unset": bson.M{"a": 1}})
+		assert.Equal(t, bson.M{"$set": bson.M{}, "$unset": bson.M{"a": 1}, "$currentDate": currentDate}, out)
+	})
 }

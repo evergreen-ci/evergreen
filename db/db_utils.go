@@ -113,6 +113,12 @@ const lastUpdatedAtField = "_last_updated_at"
 // It marshals the item once and rebuilds the document from its raw elements,
 // appending the field, so the driver can send the resulting bson.Raw as-is.
 // This avoids the extra decode/re-encode that a bson.D round trip would cost.
+//
+// Unlike updates, inserts are stamped with the app server's clock rather than
+// the database server's clock because plain inserts cannot evaluate
+// $currentDate or $$NOW. Using the server clock would require turning every
+// insert into an upsert or adding a follow-up update, which changes write
+// semantics and costs an extra round trip.
 func withLastUpdatedAt(collection string, item any) any {
 	if !lastUpdatedAtCollections[collection] {
 		return item
@@ -139,9 +145,17 @@ func withLastUpdatedAt(collection string, item any) any {
 // withLastUpdatedAtUpdate returns update with _last_updated_at set to the
 // database server's current time if collection is a tracked collection.
 // It handles operator updates and aggregation-pipeline updates and returns
-// update unchanged for other collections or unrecognized forms.
+// update unchanged for other collections, unrecognized forms, or updates with
+// no operations, so that stamping does not turn an empty update into a write.
+//
+// Updates use the database server's clock ($currentDate or $$NOW) rather than
+// the app server's clock so that concurrent writers across app servers agree
+// on ordering regardless of clock skew between hosts.
 func withLastUpdatedAtUpdate(collection string, update any) any {
 	if !lastUpdatedAtCollections[collection] {
+		return update
+	}
+	if isEmptyUpdate(update) {
 		return update
 	}
 	switch u := update.(type) {
@@ -185,6 +199,53 @@ func withLastUpdatedAtUpdate(collection string, update any) any {
 		return stamped
 	default:
 		return update
+	}
+}
+
+// isEmptyUpdate returns true if update is a recognized update form that
+// contains no operations, such as an empty document, an empty pipeline, or an
+// operator update whose operators all have empty operands (e.g. {$set: {}}).
+func isEmptyUpdate(update any) bool {
+	switch u := update.(type) {
+	case bson.M:
+		for _, operand := range u {
+			if !isEmptyOperand(operand) {
+				return false
+			}
+		}
+		return true
+	case bson.D:
+		for _, e := range u {
+			if !isEmptyOperand(e.Value) {
+				return false
+			}
+		}
+		return true
+	case mongo.Pipeline:
+		return len(u) == 0
+	case []bson.M:
+		return len(u) == 0
+	case []bson.D:
+		return len(u) == 0
+	case bson.A:
+		return len(u) == 0
+	default:
+		return false
+	}
+}
+
+// isEmptyOperand returns true if operand is an empty document. Operands of
+// other types are conservatively treated as non-empty.
+func isEmptyOperand(operand any) bool {
+	switch o := operand.(type) {
+	case bson.M:
+		return len(o) == 0
+	case bson.D:
+		return len(o) == 0
+	case map[string]any:
+		return len(o) == 0
+	default:
+		return false
 	}
 }
 
