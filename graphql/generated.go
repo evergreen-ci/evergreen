@@ -104,6 +104,7 @@ type DirectiveRoot struct {
 	RequireDistroAccess          func(ctx context.Context, obj any, next graphql.Resolver, access DistroSettingsAccess) (res any, err error)
 	RequireHostAccess            func(ctx context.Context, obj any, next graphql.Resolver, access HostAccessLevel) (res any, err error)
 	RequirePatchOwner            func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
+	RequirePatchSubmitAccess     func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireProjectAccess         func(ctx context.Context, obj any, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (res any, err error)
 	RequireProjectCreate         func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireProjectSettingsAccess func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
@@ -1048,7 +1049,7 @@ type ComplexityRoot struct {
 		ReprovisionToNew              func(childComplexity int, hostIds []string) int
 		RestartAdminTasks             func(childComplexity int, opts model1.RestartOptions) int
 		RestartJasper                 func(childComplexity int, hostIds []string) int
-		RestartTask                   func(childComplexity int, taskID string, failedOnly bool) int
+		RestartTask                   func(childComplexity int, taskID string, failedOnly bool, executionTaskIds []string) int
 		RestartVersions               func(childComplexity int, versionID string, abort bool, versionsToRestart []*model1.VersionToRestart) int
 		SaveAdminSettings             func(childComplexity int, adminSettings model.APIAdminSettings) int
 		SaveDistro                    func(childComplexity int, opts SaveDistroInput) int
@@ -2592,7 +2593,7 @@ type MutationResolver interface {
 	UpdateVolume(ctx context.Context, updateVolumeInput UpdateVolumeInput) (bool, error)
 	AbortTask(ctx context.Context, taskID string) (*model.APITask, error)
 	OverrideTaskDependencies(ctx context.Context, taskID string) (*model.APITask, error)
-	RestartTask(ctx context.Context, taskID string, failedOnly bool) (*model.APITask, error)
+	RestartTask(ctx context.Context, taskID string, failedOnly bool, executionTaskIds []string) (*model.APITask, error)
 	ScheduleTasks(ctx context.Context, versionID string, taskIds []string) ([]*model.APITask, error)
 	SetTaskPriority(ctx context.Context, taskID string, priority int) (*model.APITask, error)
 	SetTaskPriorities(ctx context.Context, taskPriorities []*TaskPriority) ([]*model.APITask, error)
@@ -6841,7 +6842,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.RestartTask(childComplexity, args["taskId"].(string), args["failedOnly"].(bool)), true
+		return e.complexity.Mutation.RestartTask(childComplexity, args["taskId"].(string), args["failedOnly"].(bool), args["executionTaskIds"].([]string)), true
 	case "Mutation.restartVersions":
 		if e.complexity.Mutation.RestartVersions == nil {
 			break
@@ -14974,6 +14975,11 @@ func (ec *executionContext) field_Mutation_restartTask_args(ctx context.Context,
 		return nil, err
 	}
 	args["failedOnly"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "executionTaskIds", ec.unmarshalOString2ᚕstringᚄ)
+	if err != nil {
+		return nil, err
+	}
+	args["executionTaskIds"] = arg2
 	return args, nil
 }
 
@@ -15201,31 +15207,14 @@ func (ec *executionContext) field_Mutation_schedulePatch_argsPatchID(
 	}
 
 	directive1 := func(ctx context.Context) (any, error) {
-		if ec.directives.RequirePatchOwner == nil {
+		if ec.directives.RequirePatchSubmitAccess == nil {
 			var zeroVal string
-			return zeroVal, errors.New("directive requirePatchOwner is not implemented")
+			return zeroVal, errors.New("directive requirePatchSubmitAccess is not implemented")
 		}
-		return ec.directives.RequirePatchOwner(ctx, rawArgs, directive0)
-	}
-	directive2 := func(ctx context.Context) (any, error) {
-		permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "PATCHES")
-		if err != nil {
-			var zeroVal string
-			return zeroVal, err
-		}
-		access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
-		if err != nil {
-			var zeroVal string
-			return zeroVal, err
-		}
-		if ec.directives.RequireProjectAccess == nil {
-			var zeroVal string
-			return zeroVal, errors.New("directive requireProjectAccess is not implemented")
-		}
-		return ec.directives.RequireProjectAccess(ctx, rawArgs, directive1, permission, access)
+		return ec.directives.RequirePatchSubmitAccess(ctx, rawArgs, directive0)
 	}
 
-	tmp, err := directive2(ctx)
+	tmp, err := directive1(ctx)
 	if err != nil {
 		var zeroVal string
 		return zeroVal, graphql.ErrorOnPath(ctx, err)
@@ -39690,7 +39679,7 @@ func (ec *executionContext) _Mutation_restartTask(ctx context.Context, field gra
 		ec.fieldContext_Mutation_restartTask,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().RestartTask(ctx, fc.Args["taskId"].(string), fc.Args["failedOnly"].(bool))
+			return ec.resolvers.Mutation().RestartTask(ctx, fc.Args["taskId"].(string), fc.Args["failedOnly"].(bool), fc.Args["executionTaskIds"].([]string))
 		},
 		nil,
 		ec.marshalNTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask,

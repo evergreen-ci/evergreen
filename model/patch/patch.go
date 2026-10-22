@@ -732,6 +732,12 @@ func (p *Patch) IsGithubPRPatch() bool {
 	return p.GithubPatchData.HeadOwner != ""
 }
 
+// IsPendingGithubPRAuthorization returns true if this is a GitHub PR patch that has not been finalized into a
+// version yet, meaning it is still waiting for someone to authorize it.
+func (p *Patch) IsPendingGithubPRAuthorization() bool {
+	return p.IsGithubPRPatch() && p.Version == ""
+}
+
 // IsMergeQueuePatch returns true if the the patch is part of GitHub's merge queue.
 func (p *Patch) IsMergeQueuePatch() bool {
 	return p.Alias == evergreen.CommitQueueAlias || p.GithubMergeData.HeadSHA != ""

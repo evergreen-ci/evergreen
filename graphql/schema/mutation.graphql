@@ -59,7 +59,7 @@ type Mutation {
   setPatchVisibility takes a list of patch ids and a boolean to set the visibility on the my patches queries
   """
   setPatchVisibility(patchIds: [String!]! @requirePatchOwner, hidden: Boolean!): [Patch!]! # Permissions are checked in the resolver.
-  schedulePatch(patchId: String! @requirePatchOwner @requireProjectAccess(permission: PATCHES, access: EDIT), configure: PatchConfigure!): Patch!
+  schedulePatch(patchId: String! @requirePatchSubmitAccess, configure: PatchConfigure!): Patch!
 
   # project
   attachProjectToNewRepo(project: MoveProjectInput!): Project! # Has directive on MoveProjectInput.
@@ -91,7 +91,7 @@ type Mutation {
   # task
   abortTask(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): Task!
   overrideTaskDependencies(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): Task!
-  restartTask(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT), failedOnly: Boolean!): Task!
+  restartTask(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT), failedOnly: Boolean!, executionTaskIds: [String!]): Task!
   scheduleTasks(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), taskIds: [String!]!): [Task!]!
   setTaskPriority(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT), priority: Int!): Task!
   setTaskPriorities(taskPriorities: [TaskPriority!]!): [Task!]! # Has directive on TaskPriority.
