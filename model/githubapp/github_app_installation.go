@@ -74,7 +74,13 @@ func getInstallationID(ctx context.Context, authFields *GithubAppAuth, owner, re
 	}
 
 	if err := cachedInstallation.Upsert(ctx); err != nil {
-		return 0, errors.Wrapf(err, "caching installation id for '%s/%s'", owner, repo)
+		// Caching is an optimization, so failing to cache should not fail the lookup.
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message": "caching GitHub app installation ID",
+			"owner":   owner,
+			"repo":    repo,
+			"app_id":  authFields.AppID,
+		}))
 	}
 
 	return installationID, nil
@@ -83,7 +89,7 @@ func getInstallationID(ctx context.Context, authFields *GithubAppAuth, owner, re
 
 // Upsert updates the installation information in the database.
 func (h *GitHubAppInstallation) Upsert(ctx context.Context) error {
-	if err := validateOwnerRepo(h.AppID, h.Owner, h.Repo); err != nil {
+	if err := validateOwner(h.AppID, h.Owner); err != nil {
 		return err
 	}
 
@@ -233,7 +239,8 @@ func githubClientShouldRetry(conf retryConfig) utility.HTTPRetryFunction {
 	}
 }
 
-// getInstallationIDFromGitHub returns an installation ID from GitHub given an owner and a repo.
+// getInstallationIDFromGitHub returns an installation ID from GitHub given an
+// owner and a repo. If the repo is empty, it returns the organization's installation.
 // This function cannot be moved to thirdparty because it is needed to set up the environment.
 func getInstallationIDFromGitHub(ctx context.Context, authFields *GithubAppAuth, owner, repo string) (int64, error) {
 	client, err := getGitHubClientForAuth(authFields, retryConfig{})
@@ -242,7 +249,13 @@ func getInstallationIDFromGitHub(ctx context.Context, authFields *GithubAppAuth,
 	}
 	defer client.Close()
 
-	installation, resp, err := client.Apps.FindRepositoryInstallation(ctx, owner, repo)
+	var installation *github.Installation
+	var resp *github.Response
+	if repo != "" {
+		installation, resp, err = client.Apps.FindRepositoryInstallation(ctx, owner, repo)
+	} else {
+		installation, resp, err = client.Apps.FindOrganizationInstallation(ctx, owner)
+	}
 	if err != nil {
 		if resp != nil {
 			defer resp.Body.Close()

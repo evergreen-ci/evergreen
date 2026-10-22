@@ -132,10 +132,11 @@ type SharedCommunicator interface {
 	// If refresh in true, the function creates a new token and replaces the one the app server has cached.
 	CreateInstallationTokenForClone(ctx context.Context, td TaskData, owner, repo string, refresh bool) (string, error)
 
-	// CreateGitHubDynamicAccessToken creates a dynamic access token using the task's project's GitHub app.
+	// CreateGitHubDynamicAccessToken creates a dynamic access token using the task's project's GitHub app
+	// installation for the given owner.
 	// It intersects the permissions requested with the permissions set in the project settings for the requester
 	// the task is running for.
-	CreateGitHubDynamicAccessToken(ctx context.Context, td TaskData, owner, repo string, permissions *github.InstallationPermissions) (string, *github.InstallationPermissions, error)
+	CreateGitHubDynamicAccessToken(ctx context.Context, td TaskData, owner string, permissions *github.InstallationPermissions) (string, *github.InstallationPermissions, error)
 
 	// RevokeGitHubDynamicAccessToken revokes a dynamic access token.
 	RevokeGitHubDynamicAccessToken(ctx context.Context, td TaskData, token string) error

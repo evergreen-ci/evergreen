@@ -980,19 +980,19 @@ func (c *baseCommunicator) CreateInstallationTokenForClone(ctx context.Context, 
 	return token.Token, nil
 }
 
-func (c *baseCommunicator) CreateGitHubDynamicAccessToken(ctx context.Context, td TaskData, owner, repo string, permissions *github.InstallationPermissions) (string, *github.InstallationPermissions, error) {
+func (c *baseCommunicator) CreateGitHubDynamicAccessToken(ctx context.Context, td TaskData, owner string, permissions *github.InstallationPermissions) (string, *github.InstallationPermissions, error) {
 	info := requestInfo{
 		method:   http.MethodPost,
-		path:     fmt.Sprintf("task/%s/github_dynamic_access_token/%s/%s", td.ID, owner, repo),
+		path:     fmt.Sprintf("task/%s/github_dynamic_access_token/%s", td.ID, owner),
 		taskData: &td,
 	}
 	resp, err := c.retryRequest(ctx, info, permissions)
 	if err != nil {
-		return "", nil, errors.Wrapf(err, "creating github dynamic access token for '%s/%s'", owner, repo)
+		return "", nil, errors.Wrapf(err, "creating github dynamic access token for '%s'", owner)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", nil, util.RespErrorf(resp, "creating github dynamic access token for '%s/%s'", owner, repo)
+		return "", nil, util.RespErrorf(resp, "creating github dynamic access token for '%s'", owner)
 	}
 	r := apimodels.Token{}
 	if err := utility.ReadJSON(resp.Body, &r); err != nil {

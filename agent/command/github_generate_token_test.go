@@ -120,15 +120,13 @@ func TestGitHubGenerateTokenExecute(t *testing.T) {
 			assert.Equal(t, "github.generate_token", cleanup.Command)
 			assert.NoError(t, cleanup.Run(ctx))
 		},
-		"SucceedsWithEmptyOwnerAndRepoAndCreatesToken": func(ctx context.Context, t *testing.T, cmd *githubGenerateToken, client *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
+		"SucceedsWithEmptyOwnerAndCreatesToken": func(ctx context.Context, t *testing.T, cmd *githubGenerateToken, client *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
 			client.CreateGitHubDynamicAccessTokenResult = "token!"
 			cmd.Owner = ""
-			cmd.Repo = ""
 			require.NoError(t, cmd.Execute(ctx, client, logger, conf))
 			assert.Equal(t, "token!", conf.NewExpansions.Get(cmd.ExpansionName))
 			assert.Contains(t, conf.NewExpansions.GetRedacted(), agentutil.RedactInfo{Key: cmd.ExpansionName, Value: "token!"})
 			assert.Equal(t, "new_owner", cmd.Owner)
-			assert.Equal(t, "new_repo", cmd.Repo)
 
 			require.Len(t, conf.CommandCleanups, 1)
 			cleanup := conf.CommandCleanups[0]
@@ -146,7 +144,6 @@ func TestGitHubGenerateTokenExecute(t *testing.T) {
 
 			cmd := &githubGenerateToken{
 				Owner:         "owner",
-				Repo:          "repo",
 				ExpansionName: "expansion_name",
 			}
 			cmd.SetFullDisplayName("github.generate_token")

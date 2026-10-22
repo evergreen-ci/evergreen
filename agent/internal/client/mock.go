@@ -660,7 +660,7 @@ func (c *Mock) GetCreateInstallationTokenRefresh() []bool {
 	return slices.Clone(c.CreateInstallationTokenRefresh)
 }
 
-func (c *Mock) CreateGitHubDynamicAccessToken(ctx context.Context, td TaskData, owner, repo string, permissions *github.InstallationPermissions) (string, *github.InstallationPermissions, error) {
+func (c *Mock) CreateGitHubDynamicAccessToken(ctx context.Context, td TaskData, owner string, permissions *github.InstallationPermissions) (string, *github.InstallationPermissions, error) {
 	if c.CreateGitHubDynamicAccessTokenFail {
 		return "", nil, errors.New("failed to create token")
 	}

@@ -113,6 +113,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/task/{task_id}/github_dynamic_access_token").Version(2).Delete().Wrap(requireUserOrTask, rateLimit).RouteHandler(makeRevokeGitHubDynamicAccessToken(env))
 	app.AddRoute("/task/{task_id}/installation_token/{owner}/{repo}").Version(2).Get().Wrap(requireUserOrTask, rateLimit).RouteHandler(makeCreateInstallationToken(env))
 	app.AddRoute("/task/{task_id}/github_dynamic_access_token/{owner}/{repo}").Version(2).Post().Wrap(requireUserOrTask, rateLimit).RouteHandler(makeCreateGitHubDynamicAccessToken(env))
+	app.AddRoute("/task/{task_id}/github_dynamic_access_token/{owner}").Version(2).Post().Wrap(requireUserOrTask, rateLimit).RouteHandler(makeCreateGitHubDynamicAccessToken(env))
 	app.AddRoute("/task/{task_id}/keyval/inc").Version(2).Post().Wrap(requireTask, rateLimit).RouteHandler(makeKeyvalPluginInc())
 	app.AddRoute("/task/{task_id}/manifest/load").Version(2).Get().Wrap(requireUserOrTask, rateLimit).RouteHandler(makeManifestLoad(settings))
 	app.AddRoute("/task/{task_id}/update_push_status").Version(2).Post().Wrap(requireTask, rateLimit).RouteHandler(makeUpdatePushStatus())
