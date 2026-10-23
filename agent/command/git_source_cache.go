@@ -66,6 +66,8 @@ var (
 	sourceCacheTagFetchDurationAttribute   = sourceCacheAttribute("tag_fetch_duration_ms")
 	sourceCacheTagRefreshFailedAttribute   = sourceCacheAttribute("tag_refresh_failed")
 	sourceCacheTagRefreshTimedOutAttribute = sourceCacheAttribute("tag_refresh_timed_out")
+	sourceCacheTagTriggeredAttribute       = sourceCacheAttribute("tag_triggered")
+	sourceCacheTagRefreshAttemptsAttribute = sourceCacheAttribute("tag_refresh_attempts")
 )
 
 func sourceCacheAttribute(name string) string {

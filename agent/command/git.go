@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -604,7 +606,11 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 			fallbackReason = errors.Wrap(err, "preparing restored source tree").Error()
 			break
 		}
-		c.refreshTagsOnRestoredSource(ctx, logger, conf, restoreKey.Revision)
+		// A tag-triggered build cannot describe itself without the tag, so only it falls back to a clone.
+		if err := c.refreshTagsOnRestoredSource(ctx, logger, conf, restoreKey); err != nil {
+			fallbackReason = err.Error()
+			break
+		}
 		logger.Task().Infof(ctx, "Restored source from the cache for revision '%s'.", restoreKey.Revision)
 		trace.SpanFromContext(ctx).SetAttributes(attribute.String(sourceCacheRestoredRevisionAttribute, restoreKey.Revision))
 		sc.setSpanOutcome(ctx, sourceCacheHit, "")
@@ -720,41 +726,70 @@ func (c *gitFetchProject) buildPostRestoreCommand(conf *internal.TaskConfig, opt
 	return append(cmds, "git log --oneline -n 10")
 }
 
+// gitRevisionRegexp restricts revisions interpolated into tag refresh shell scripts to git commit SHAs.
+var gitRevisionRegexp = regexp.MustCompile("^[0-9a-f]{40}$")
+
 // refreshTagsOnRestoredSource fetches tags pushed after the producer archived
-// that point at the restored revision. Bounded and non-fatal: the restore
-// already succeeded, and falling back to a clone would discard it.
-func (c *gitFetchProject) refreshTagsOnRestoredSource(ctx context.Context, logger client.LoggerProducer, conf *internal.TaskConfig, revision string) {
+// that point at the restored revision. Bounded and non-fatal except on a
+// tag-triggered build, whose restored tree is useless without the tag.
+func (c *gitFetchProject) refreshTagsOnRestoredSource(ctx context.Context, logger client.LoggerProducer, conf *internal.TaskConfig, restoreKey apimodels.SourceCacheRestoreKey) error {
+	trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(sourceCacheTagTriggeredAttribute, restoreKey.TagTriggered))
 	ctx, cancel := context.WithTimeout(ctx, sourceCacheTagRefreshTimeout)
 	defer cancel()
 	start := time.Now()
-	err := c.runCommands(ctx, logger, conf, c.buildRefreshTagsCommand(revision))
+	attempts := 0
+	var err error
+	// The revision is interpolated into a quoted shell program, so only a git commit SHA may reach it.
+	if !gitRevisionRegexp.MatchString(restoreKey.Revision) {
+		err = errors.Errorf("revision '%s' is not a git commit SHA", restoreKey.Revision)
+	} else {
+		// One retry rides the remaining timeout, so a transient ls-remote blip does not cost a tag-triggered build its restored tree.
+		for attempts < 2 {
+			attempts++
+			err = c.runCommands(ctx, logger, conf, c.buildRefreshTagsCommand(restoreKey.Revision, restoreKey.TagTriggered))
+			if err == nil {
+				break
+			}
+		}
+	}
 	// Timed on failure too, since those are the runs most worth comparing.
 	setSourceCacheSpanDuration(ctx, sourceCacheTagFetchDurationAttribute, time.Since(start))
-	if err != nil {
-		trace.SpanFromContext(ctx).SetAttributes(
-			attribute.Bool(sourceCacheTagRefreshFailedAttribute, true),
-			// Task cancellation surfaces as context.Canceled, so only the local deadline lands here.
-			attribute.Bool(sourceCacheTagRefreshTimedOutAttribute, errors.Is(ctx.Err(), context.DeadlineExceeded)),
-			attribute.String(sourceCacheReasonAttribute, err.Error()),
-		)
-		logger.Task().Warningf(ctx, "Refreshing tags on the restored source tree: %s", err)
+	trace.SpanFromContext(ctx).SetAttributes(attribute.Int(sourceCacheTagRefreshAttemptsAttribute, attempts))
+	if err == nil {
+		return nil
 	}
+	trace.SpanFromContext(ctx).SetAttributes(
+		attribute.Bool(sourceCacheTagRefreshFailedAttribute, true),
+		// Task cancellation surfaces as context.Canceled, so only the local deadline lands here.
+		attribute.Bool(sourceCacheTagRefreshTimedOutAttribute, errors.Is(ctx.Err(), context.DeadlineExceeded)),
+		attribute.String(sourceCacheReasonAttribute, err.Error()),
+	)
+	logger.Task().Warningf(ctx, "Refreshing tags on the restored source tree: %s", err)
+	if !restoreKey.TagTriggered {
+		return nil
+	}
+	return errors.Wrap(err, "refreshing tags on a tag-triggered build")
 }
 
 // buildRefreshTagsCommand refreshes tags pushed after the producer archived, so
 // git describe --tags sees the tag that triggered the build. ls-remote lists
 // refs without downloading objects, so the fetch stays scoped to tags that peel
-// to the revision rather than unshallowing every tag's history on a shallow
-// clone.
-func (c *gitFetchProject) buildRefreshTagsCommand(revision string) []string {
+// to the revision rather than unshallowing every tag's history on a shallow clone.
+// failOnNoMatch treats an empty match as a failure, so a tag-triggered build
+// cannot pass on a tree that will not describe.
+func (c *gitFetchProject) buildRefreshTagsCommand(revision string, failOnNoMatch bool) []string {
 	// Annotated tags list both the tag object and a "^{}" line holding the
 	// peeled commit, so match on either and report the plain tag name.
 	// Refspecs are printed as tag:tag so the fetch overwrites stale local tags.
 	listTags := fmt.Sprintf(`git ls-remote origin 'refs/tags/*' | awk -v rev='%s' '$1 == rev { tag = $2; if (substr(tag, length(tag) - 2) == "^{}") tag = substr(tag, 1, length(tag) - 3); print tag ":" tag }' | sort -u`, revision)
+	noMatchExit := 0
+	if failOnNoMatch {
+		noMatchExit = 1
+	}
 	return c.scriptInProjectDir(
 		`set -o pipefail`,
 		fmt.Sprintf(`matching=$(%s) || exit 1`, listTags),
-		`[ -n "$matching" ] || exit 0`,
+		fmt.Sprintf(`[ -n "$matching" ] || exit %d`, noMatchExit),
 		`git fetch origin --force --no-recurse-submodules $matching`,
 	)
 }
