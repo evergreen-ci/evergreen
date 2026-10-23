@@ -604,14 +604,7 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 			fallbackReason = errors.Wrap(err, "preparing restored source tree").Error()
 			break
 		}
-		// The tag refresh runs as a separate script so that a failed fetch records its own fallback reason and span attribute.
-		start := time.Now()
-		if err := c.runCommands(ctx, logger, conf, c.buildRefreshTagsCommand()); err != nil {
-			trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(sourceCacheTagRefreshFailedAttribute, true))
-			fallbackReason = errors.Wrap(err, "refreshing tags").Error()
-			break
-		}
-		setSourceCacheSpanDuration(ctx, sourceCacheTagFetchDurationAttribute, time.Since(start))
+		c.refreshTagsOnRestoredSource(ctx, logger, conf, restoreKey.Revision)
 		logger.Task().Infof(ctx, "Restored source from the cache for revision '%s'.", restoreKey.Revision)
 		trace.SpanFromContext(ctx).SetAttributes(attribute.String(sourceCacheRestoredRevisionAttribute, restoreKey.Revision))
 		sc.setSpanOutcome(ctx, sourceCacheHit, "")
@@ -727,11 +720,43 @@ func (c *gitFetchProject) buildPostRestoreCommand(conf *internal.TaskConfig, opt
 	return append(cmds, "git log --oneline -n 10")
 }
 
+// refreshTagsOnRestoredSource fetches tags pushed after the producer archived
+// that point at the restored revision. Bounded and non-fatal: the restore
+// already succeeded, and falling back to a clone would discard it.
+func (c *gitFetchProject) refreshTagsOnRestoredSource(ctx context.Context, logger client.LoggerProducer, conf *internal.TaskConfig, revision string) {
+	ctx, cancel := context.WithTimeout(ctx, sourceCacheTagRefreshTimeout)
+	defer cancel()
+	start := time.Now()
+	err := c.runCommands(ctx, logger, conf, c.buildRefreshTagsCommand(revision))
+	// Timed on failure too, since those are the runs most worth comparing.
+	setSourceCacheSpanDuration(ctx, sourceCacheTagFetchDurationAttribute, time.Since(start))
+	if err != nil {
+		trace.SpanFromContext(ctx).SetAttributes(
+			attribute.Bool(sourceCacheTagRefreshFailedAttribute, true),
+			// Task cancellation surfaces as context.Canceled, so only the local deadline lands here.
+			attribute.Bool(sourceCacheTagRefreshTimedOutAttribute, errors.Is(ctx.Err(), context.DeadlineExceeded)),
+			attribute.String(sourceCacheReasonAttribute, err.Error()),
+		)
+		logger.Task().Warningf(ctx, "Refreshing tags on the restored source tree: %s", err)
+	}
+}
+
 // buildRefreshTagsCommand refreshes tags pushed after the producer archived, so
-// git describe --tags sees the tag that triggered the build; the explicit refspec
-// keeps the fetch to tag refs rather than every branch's objects.
-func (c *gitFetchProject) buildRefreshTagsCommand() []string {
-	return c.scriptInProjectDir(`git fetch origin --force --no-recurse-submodules "refs/tags/*:refs/tags/*"`)
+// git describe --tags sees the tag that triggered the build. ls-remote lists
+// refs without downloading objects, so the fetch stays scoped to tags that peel
+// to the revision rather than unshallowing every tag's history on a shallow
+// clone.
+func (c *gitFetchProject) buildRefreshTagsCommand(revision string) []string {
+	// Annotated tags list both the tag object and a "^{}" line holding the
+	// peeled commit, so match on either and report the plain tag name.
+	// Refspecs are printed as tag:tag so the fetch overwrites stale local tags.
+	listTags := fmt.Sprintf(`git ls-remote origin 'refs/tags/*' | awk -v rev='%s' '$1 == rev { tag = $2; if (substr(tag, length(tag) - 2) == "^{}") tag = substr(tag, 1, length(tag) - 3); print tag ":" tag }' | sort -u`, revision)
+	return c.scriptInProjectDir(
+		`set -o pipefail`,
+		fmt.Sprintf(`matching=$(%s) || exit 1`, listTags),
+		`[ -n "$matching" ] || exit 0`,
+		`git fetch origin --force --no-recurse-submodules $matching`,
+	)
 }
 
 // buildPreSaveCommand returns the script run before archiving the cloned tree.
