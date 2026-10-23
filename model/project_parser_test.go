@@ -4449,11 +4449,6 @@ tasks:
 	assert.True(t, taskNames["include-task"], "include file contents must survive the anchor preamble")
 }
 
-// TestAnchorPreambleNormalization verifies that the anchor preamble joins the
-// file into a single YAML document across leading byte-order marks, comments,
-// `%`-directives, and `---` separators — and that files it cannot join with
-// (e.g. a top-level sequence) fail loudly via the fallback instead of losing
-// contents silently.
 func TestAnchorPreambleNormalization(t *testing.T) {
 	registry := &anchorRegistry{}
 	var anchorNode yaml.Node

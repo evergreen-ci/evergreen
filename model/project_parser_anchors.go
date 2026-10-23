@@ -171,14 +171,8 @@ func buildAnchorPreamble(registry *anchorRegistry) ([]byte, error) {
 	return out, nil
 }
 
-// normalizeForPreamble strips the leading UTF-8 byte-order mark (which some
-// editors prefix to config files), `%`-directive lines, and `---` document
-// separator markers from the file's bytes. The anchor preamble and the file
-// must form a single YAML document for the preamble's anchors to be in
-// scope; a leading BOM or separator would otherwise start a second document
-// whose contents the single-document decode silently drops. Anything that
-// cannot join cleanly (e.g. a top-level sequence) makes the combined parse
-// error loudly, falling back to parsing the file alone.
+// normalizeForPreamble strips the leading UTF-8 byte-order mark (which some editors prefix to config files), `%`-directive lines,
+// and `---` document separator markers from the file's bytes, to avoid starting second yaml document, as we would silently drop those lines.
 func normalizeForPreamble(data []byte) []byte {
 	const utf8BOM = "\xef\xbb\xbf"
 	data = bytes.TrimPrefix(data, []byte(utf8BOM))
