@@ -1075,6 +1075,31 @@ func TestConstructManifestRecordsSelectionRulesAndChangedModules(t *testing.T) {
 		assert.Empty(t, m.ChangedModules)
 	})
 
+	t.Run("PreviousVersionWithoutAnyManifestShouldSkipComparison", func(t *testing.T) {
+		v5 := &Version{
+			Id:                  mgobson.NewObjectId().Hex(),
+			Identifier:          pRef.Id,
+			Revision:            "r5",
+			Requester:           evergreen.RepotrackerVersionRequester,
+			RevisionOrderNumber: 5,
+			IngestTime:          secondIngest,
+		}
+		require.NoError(t, v5.Insert(ctx))
+		v6 := &Version{
+			Id:                  mgobson.NewObjectId().Hex(),
+			Identifier:          pRef.Id,
+			Revision:            "r6",
+			Requester:           evergreen.RepotrackerVersionRequester,
+			RevisionOrderNumber: 6,
+			IngestTime:          secondIngest,
+		}
+		m, err := constructManifest(ctx, v6, pRef, modules)
+		require.NoError(t, err)
+		require.NotNil(t, m)
+		assert.Empty(t, m.PreviousVersionID)
+		assert.Empty(t, m.ChangedModules)
+	})
+
 	t.Run("PatchShouldInheritFromBaseVersionWithoutChanges", func(t *testing.T) {
 		p := &patch.Patch{Id: mgobson.NewObjectId(), Project: pRef.Id, Githash: v2.Revision}
 		require.NoError(t, p.Insert(ctx))

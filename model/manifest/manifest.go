@@ -44,7 +44,8 @@ type Manifest struct {
 	IsBase bool `json:"is_base" bson:"is_base"`
 	// PreviousVersionID is the version ChangedModules is relative to. It's the
 	// base version for patches, and the version before this one on the
-	// waterfall otherwise.
+	// waterfall otherwise. Empty if that version had no manifest to compare
+	// against, in which case ChangedModules is also empty.
 	PreviousVersionID string `json:"previous_version_id,omitempty" bson:"previous_version_id,omitempty"`
 	// ChangedModules are the modules added, removed, or moved to a different
 	// commit since PreviousVersionID.

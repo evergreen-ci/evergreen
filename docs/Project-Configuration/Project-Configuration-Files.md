@@ -506,7 +506,8 @@ Each module in the manifest records a `selection_rule` explaining how its revisi
 The manifest also records `changed_modules`, the modules that were added, removed, or moved to a different commit
 compared to the version in `previous_version_id`. For patches, that's the base version. Otherwise, it's the previous
 version on the waterfall (including trigger, git tag, and periodic build versions), the same one Spruce links to as
-the previous version.
+the previous version. If that version doesn't have a manifest yet when this one is created, the comparison is skipped
+and neither field is set, so an empty `changed_modules` only means nothing changed when `previous_version_id` is set.
 
 Module fields support the expansion of variables defined in the [Variables](Project-and-Distro-Settings#variables)
 tab of the Spruce project settings. These fields are expanded at the time of version creation, at which point
