@@ -162,6 +162,9 @@ input TestSelectionSettingsInput {
 input TaskOwnershipSettingsInput {
   defaultMothraTeam: String
   defaultMothraTeamForBreakingCommit: String
+  tagValidationPrefix: String
+  trackTagValidation: Boolean
+  blockOnTagValidation: Boolean
 }
 
 input WorkstationSetupCommandInput {
@@ -365,6 +368,9 @@ type TestSelectionSettings {
 type TaskOwnershipSettings {
   defaultMothraTeam: String
   defaultMothraTeamForBreakingCommit: String
+  tagValidationPrefix: String
+  trackTagValidation: Boolean
+  blockOnTagValidation: Boolean
 }
 
 """

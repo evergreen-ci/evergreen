@@ -483,6 +483,11 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		if mergedSection.IsTestSelectionMainlineDefaultEnabled() && !mergedSection.IsTestSelectionDefaultEnabled() {
 			return nil, errors.New("test selection cannot be enabled for mainline commits without also being enabled for patches")
 		}
+	case model.ProjectPageTaskOwnershipAndFoliageSection:
+		if mergedSection.TaskOwnership.TagValidationPrefix == "" &&
+			(utility.FromBoolPtr(mergedSection.TaskOwnership.TrackTagValidation) || utility.FromBoolPtr(mergedSection.TaskOwnership.BlockOnTagValidation)) {
+			return nil, errors.New("task ownership tag validation prefix must be set when tracking or blocking tasks missing the tag validation prefix")
+		}
 	// This section does not support repo-level at this time.
 	case model.ProjectPageGithubAppSettingsSection:
 		mergedSection.Id = mergedBeforeRef.Id
