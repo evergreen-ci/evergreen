@@ -8,6 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 )
 
+// RequireVolumeAccess restricts access to the volume given by the volumeId argument.
+// The check is skipped when no volume ID is provided.
 func RequireVolumeAccess(ctx context.Context, obj any, next graphql.Resolver) (any, error) {
 	args, isStringMap := obj.(map[string]any)
 	if !isStringMap {
