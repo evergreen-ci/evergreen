@@ -281,7 +281,10 @@ func TestPostRestoreCommandFetchesTagsSavedAfterTheArchive(t *testing.T) {
 		{"-C", repoDir, "tag", "-a", "v1.0.0", "-m", "release", revision},
 		{"-C", repoDir, "push", originPath, "v1.0.0"},
 	} {
-		require.NoError(t, exec.CommandContext(ctx, "git", args...).Run())
+		// The tag needs an authoring identity, which CI hosts have no gitconfig for.
+		cmd := exec.CommandContext(ctx, "git", args...)
+		cmd.Env = append(cmd.Environ(), "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")
+		require.NoError(t, cmd.Run())
 	}
 
 	consumerWorkDir := t.TempDir()
