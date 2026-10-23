@@ -570,7 +570,7 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 		return err
 	}
 
-	// A cache hit on the merge SHA never contacts GitHub, so nothing else would notice a deleted ref.
+	// A cache hit on the merge SHA never fetches its own ref, so nothing else would notice a deleted ref.
 	deleted, err := mergeQueueRefDeleted(ctx, comm, conf, c.Token, opts)
 	if err != nil {
 		// The clone's own check is still a backstop for an inconclusive answer.
@@ -604,6 +604,14 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 			fallbackReason = errors.Wrap(err, "preparing restored source tree").Error()
 			break
 		}
+		// The tag refresh runs as a separate script so that a failed fetch records its own fallback reason and span attribute.
+		start := time.Now()
+		if err := c.runCommands(ctx, logger, conf, c.buildRefreshTagsCommand()); err != nil {
+			trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(sourceCacheTagRefreshFailedAttribute, true))
+			fallbackReason = errors.Wrap(err, "refreshing tags").Error()
+			break
+		}
+		setSourceCacheSpanDuration(ctx, sourceCacheTagFetchDurationAttribute, time.Since(start))
 		logger.Task().Infof(ctx, "Restored source from the cache for revision '%s'.", restoreKey.Revision)
 		trace.SpanFromContext(ctx).SetAttributes(attribute.String(sourceCacheRestoredRevisionAttribute, restoreKey.Revision))
 		sc.setSpanOutcome(ctx, sourceCacheHit, "")
@@ -717,6 +725,13 @@ func (c *gitFetchProject) buildPostRestoreCommand(conf *internal.TaskConfig, opt
 		cmds = append(cmds, prCheckoutCommands(conf)...)
 	}
 	return append(cmds, "git log --oneline -n 10")
+}
+
+// buildRefreshTagsCommand refreshes tags pushed after the producer archived, so
+// git describe --tags sees the tag that triggered the build; the explicit refspec
+// keeps the fetch to tag refs rather than every branch's objects.
+func (c *gitFetchProject) buildRefreshTagsCommand() []string {
+	return c.scriptInProjectDir(`git fetch origin --force --no-recurse-submodules "refs/tags/*:refs/tags/*"`)
 }
 
 // buildPreSaveCommand returns the script run before archiving the cloned tree.
