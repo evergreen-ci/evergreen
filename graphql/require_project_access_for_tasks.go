@@ -27,7 +27,11 @@ func RequireProjectAccessForTasks(ctx context.Context, obj any, next graphql.Res
 	}
 	taskIDs := make([]string, 0, len(rawTaskIDs))
 	for _, id := range rawTaskIDs {
-		taskIDs = append(taskIDs, id.(string))
+		tId, ok := id.(string)
+		if !ok {
+			return nil, InputValidationError.Send(ctx, "taskIds must be strings")
+		}
+		taskIDs = append(taskIDs, tId)
 	}
 
 	projectIDs, notFoundTaskIDs, err := task.FindProjectsForTasks(ctx, taskIDs)

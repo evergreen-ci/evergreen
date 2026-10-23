@@ -51,6 +51,7 @@ func TestRequireProjectAccessForTasksList(t *testing.T) {
 		_, err := RequireProjectAccessForTasks(ctx, obj, next, ProjectPermissionTasks, AccessLevelEdit)
 		require.Error(t, err)
 		assertGqlErrorCode(t, err, ResourceNotFound)
+		assert.EqualError(t, err, "input: tasks not found: 'nonexistent'")
 	})
 	t.Run("NonexistentTaskAmongExistingTasksShouldReturnNotFound", func(t *testing.T) {
 		grantAccess(t)
@@ -58,12 +59,14 @@ func TestRequireProjectAccessForTasksList(t *testing.T) {
 		_, err := RequireProjectAccessForTasks(ctx, obj, next, ProjectPermissionTasks, AccessLevelEdit)
 		require.Error(t, err)
 		assertGqlErrorCode(t, err, ResourceNotFound)
+		assert.EqualError(t, err, "input: tasks not found: 'nonexistent'")
 	})
 	t.Run("MissingPermissionOnAnyTaskProjectShouldBeForbidden", func(t *testing.T) {
 		obj := map[string]any{"taskIds": []any{"task1", "task2"}}
 		_, err := RequireProjectAccessForTasks(ctx, obj, next, ProjectPermissionTasks, AccessLevelEdit)
 		require.Error(t, err)
 		assertGqlErrorCode(t, err, Forbidden)
+		assert.EqualError(t, err, "input: user 'test_user' does not have permission to 'edit tasks' for the project 'project_id'")
 	})
 	t.Run("PermissionOnAllTaskProjectsShouldSucceed", func(t *testing.T) {
 		grantAccess(t)
@@ -81,6 +84,13 @@ func TestRequireProjectAccessForTasksList(t *testing.T) {
 		_, err := RequireProjectAccessForTasks(ctx, map[string]any{"versionId": "version1"}, next, ProjectPermissionTasks, AccessLevelEdit)
 		require.Error(t, err)
 		assertGqlErrorCode(t, err, InputValidationError)
+		assert.EqualError(t, err, "input: must specify 'taskIds'")
+	})
+	t.Run("InvalidTaskIDsShouldReturnInputValidationError", func(t *testing.T) {
+		_, err := RequireProjectAccessForTasks(ctx, map[string]any{"taskIds": []any{123}}, next, ProjectPermissionTasks, AccessLevelEdit)
+		require.Error(t, err)
+		assertGqlErrorCode(t, err, InputValidationError)
+		assert.EqualError(t, err, "input: taskIds must be strings")
 	})
 }
 
