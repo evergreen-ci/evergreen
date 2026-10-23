@@ -4465,6 +4465,8 @@ func TestAnchorPreambleNormalization(t *testing.T) {
 		{name: "MappingStillGetsPreamble", yml: "functions:\n  f:\n    command: shell.exec\n", expectedFunctions: 1},
 		{name: "LeadingSeparatorStripped", yml: "---\nfunctions:\n  f:\n    command: shell.exec\n", expectedFunctions: 1},
 		{name: "CommentsBeforeMapping", yml: "# comment\n\nfunctions:\n  f:\n    command: shell.exec\n", expectedFunctions: 1},
+		{name: "CommentThenSeparator", yml: "# license header\n---\nfunctions:\n  f:\n    command: shell.exec\n", expectedFunctions: 1},
+		{name: "BlankLineThenSeparator", yml: "\n\n---\nfunctions:\n  f:\n    command: shell.exec\n", expectedFunctions: 1},
 		{name: "SequenceNotAbsorbed", yml: "- a\n- b\n", expectedFunctions: -1},
 		{name: "DirectiveStrippedAndStillGetsPreamble", yml: "%YAML 1.2\n---\nfunctions:\n  f:\n    command: shell.exec\n", expectedFunctions: 1},
 		{name: "SeparatorWithContentSameAsFlagOff", yml: "--- {a: b}\n", expectedFunctions: 0},

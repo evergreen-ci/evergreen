@@ -172,21 +172,24 @@ func buildAnchorPreamble(registry *anchorRegistry) ([]byte, error) {
 }
 
 // normalizeForPreamble strips the leading UTF-8 byte-order mark (which some editors prefix to config files), `%`-directive lines,
-// and `---` document separator markers from the file's bytes, to avoid starting second yaml document, as we would silently drop those lines.
+// comments, blank lines, and `---` document separator markers from the file's bytes, up to the first line of real content.
+// This keeps the preamble and the file in a single YAML document (a second document would get silently dropped).
 func normalizeForPreamble(data []byte) []byte {
 	const utf8BOM = "\xef\xbb\xbf"
 	data = bytes.TrimPrefix(data, []byte(utf8BOM))
-	for {
-		line, rest, _ := bytes.Cut(data, []byte("\n"))
+	// Strip everything that isn't content until the first real content line
+	for i := 0; i < len(data); {
+		line, _, _ := bytes.Cut(data[i:], []byte("\n"))
 		trimmed := strings.TrimSpace(string(line))
 		isDirective := strings.HasPrefix(trimmed, "%")
-		isSeparator := trimmed != "" && strings.Trim(trimmed, "-") == ""
-		if !isDirective && !isSeparator {
-			break
+		isSeparator := strings.Trim(trimmed, "-") == ""
+		isComment := strings.HasPrefix(trimmed, "#")
+		if !isDirective && !isSeparator && !isComment {
+			return data[i:]
 		}
-		data = rest
+		i += len(line) + 1 // skip the line and its newline
 	}
-	return data
+	return nil
 }
 
 // stripEvgAnchorsKey removes the _evg_anchors key and its value from the
