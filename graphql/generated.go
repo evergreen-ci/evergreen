@@ -982,13 +982,15 @@ type ComplexityRoot struct {
 	}
 
 	Manifest struct {
-		Branch          func(childComplexity int) int
-		ID              func(childComplexity int) int
-		IsBase          func(childComplexity int) int
-		ModuleOverrides func(childComplexity int) int
-		Modules         func(childComplexity int) int
-		Project         func(childComplexity int) int
-		Revision        func(childComplexity int) int
+		Branch            func(childComplexity int) int
+		ChangedModules    func(childComplexity int) int
+		ID                func(childComplexity int) int
+		IsBase            func(childComplexity int) int
+		ModuleOverrides   func(childComplexity int) int
+		Modules           func(childComplexity int) int
+		PreviousVersionID func(childComplexity int) int
+		Project           func(childComplexity int) int
+		Revision          func(childComplexity int) int
 	}
 
 	MetadataLink struct {
@@ -6314,6 +6316,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Manifest.Branch(childComplexity), true
+	case "Manifest.changedModules":
+		if e.complexity.Manifest.ChangedModules == nil {
+			break
+		}
+
+		return e.complexity.Manifest.ChangedModules(childComplexity), true
 	case "Manifest.id":
 		if e.complexity.Manifest.ID == nil {
 			break
@@ -6338,6 +6346,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Manifest.Modules(childComplexity), true
+	case "Manifest.previousVersionId":
+		if e.complexity.Manifest.PreviousVersionID == nil {
+			break
+		}
+
+		return e.complexity.Manifest.PreviousVersionID(childComplexity), true
 	case "Manifest.project":
 		if e.complexity.Manifest.Project == nil {
 			break
@@ -36015,6 +36029,35 @@ func (ec *executionContext) fieldContext_Manifest_branch(_ context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _Manifest_changedModules(ctx context.Context, field graphql.CollectedField, obj *Manifest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Manifest_changedModules,
+		func(ctx context.Context) (any, error) {
+			return obj.ChangedModules, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Manifest_changedModules(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Manifest",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Manifest_isBase(ctx context.Context, field graphql.CollectedField, obj *Manifest) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -36097,6 +36140,35 @@ func (ec *executionContext) fieldContext_Manifest_modules(_ context.Context, fie
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Map does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Manifest_previousVersionId(ctx context.Context, field graphql.CollectedField, obj *Manifest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Manifest_previousVersionId,
+		func(ctx context.Context) (any, error) {
+			return obj.PreviousVersionID, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Manifest_previousVersionId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Manifest",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -76493,12 +76565,16 @@ func (ec *executionContext) fieldContext_Version_manifest(_ context.Context, fie
 				return ec.fieldContext_Manifest_id(ctx, field)
 			case "branch":
 				return ec.fieldContext_Manifest_branch(ctx, field)
+			case "changedModules":
+				return ec.fieldContext_Manifest_changedModules(ctx, field)
 			case "isBase":
 				return ec.fieldContext_Manifest_isBase(ctx, field)
 			case "moduleOverrides":
 				return ec.fieldContext_Manifest_moduleOverrides(ctx, field)
 			case "modules":
 				return ec.fieldContext_Manifest_modules(ctx, field)
+			case "previousVersionId":
+				return ec.fieldContext_Manifest_previousVersionId(ctx, field)
 			case "project":
 				return ec.fieldContext_Manifest_project(ctx, field)
 			case "revision":
@@ -99437,6 +99513,8 @@ func (ec *executionContext) _Manifest(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "changedModules":
+			out.Values[i] = ec._Manifest_changedModules(ctx, field, obj)
 		case "isBase":
 			out.Values[i] = ec._Manifest_isBase(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -99446,6 +99524,8 @@ func (ec *executionContext) _Manifest(ctx context.Context, sel ast.SelectionSet,
 			out.Values[i] = ec._Manifest_moduleOverrides(ctx, field, obj)
 		case "modules":
 			out.Values[i] = ec._Manifest_modules(ctx, field, obj)
+		case "previousVersionId":
+			out.Values[i] = ec._Manifest_previousVersionId(ctx, field, obj)
 		case "project":
 			out.Values[i] = ec._Manifest_project(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
