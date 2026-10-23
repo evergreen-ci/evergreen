@@ -4421,13 +4421,6 @@ tasks:
 	}
 }
 
-// TestIncludeFileStartingWithDocumentSeparatorIsNotDropped verifies that an
-// include file starting with a `---` document separator keeps its contents
-// when the anchor preamble is prepended. The separator would otherwise start a
-// second YAML document, whose contents the single-document decode silently
-// drops. Regression for a production break: a maintenance include file
-// starting with `---` lost all of its tasks, functions, and variants when the
-// cross-file anchors flag was enabled.
 func TestIncludeFileStartingWithDocumentSeparatorIsNotDropped(t *testing.T) {
 	mainYAML := mainYAMLWithModuleIncludes(`
 tasks:
@@ -4456,13 +4449,12 @@ tasks:
 	assert.True(t, taskNames["include-task"], "include file contents must survive the anchor preamble")
 }
 
-// TestAnchorPreambleOnlyPrependedToMappingFiles verifies that include files
-// whose top level is not a plain mapping document keep their contents (or fail
-// loudly) instead of being silently absorbed into the anchor preamble:
-// sequences are absorbed into the preamble's list, and `%`-directives or
-// `---`-prefixed content start a second document that the single-document
-// decode silently drops.
-func TestAnchorPreambleOnlyPrependedToMappingFiles(t *testing.T) {
+// TestAnchorPreambleNormalization verifies that the anchor preamble joins the
+// file into a single YAML document across leading byte-order marks, comments,
+// `%`-directives, and `---` separators — and that files it cannot join with
+// (e.g. a top-level sequence) fail loudly via the fallback instead of losing
+// contents silently.
+func TestAnchorPreambleNormalization(t *testing.T) {
 	registry := &anchorRegistry{}
 	var anchorNode yaml.Node
 	require.NoError(t, yaml.Unmarshal([]byte("anchors:\n- &dummy\n  x: 1\n"), &anchorNode))

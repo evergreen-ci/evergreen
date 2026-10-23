@@ -173,10 +173,12 @@ func buildAnchorPreamble(registry *anchorRegistry) ([]byte, error) {
 
 // normalizeForPreamble strips the leading UTF-8 byte-order mark (which some
 // editors prefix to config files), `%`-directive lines, and `---` document
-// separator lines from the file's bytes. The anchor preamble and the file
+// separator markers from the file's bytes. The anchor preamble and the file
 // must form a single YAML document for the preamble's anchors to be in
 // scope; a leading BOM or separator would otherwise start a second document
-// whose contents the single-document decode silently drops.
+// whose contents the single-document decode silently drops. Anything that
+// cannot join cleanly (e.g. a top-level sequence) makes the combined parse
+// error loudly, falling back to parsing the file alone.
 func normalizeForPreamble(data []byte) []byte {
 	const utf8BOM = "\xef\xbb\xbf"
 	data = bytes.TrimPrefix(data, []byte(utf8BOM))
@@ -191,28 +193,6 @@ func normalizeForPreamble(data []byte) []byte {
 		data = rest
 	}
 	return data
-}
-
-// fileStartsAMapping reports whether the file's top level is a mapping. The
-// anchor preamble may only be prepended to mapping documents: prepending it
-// ahead of a top-level sequence would absorb the file's items into the
-// preamble's list, silently losing them.
-func fileStartsAMapping(data []byte) bool {
-	rest := normalizeForPreamble(data)
-	for len(rest) > 0 {
-		var line []byte
-		var found bool
-		line, rest, found = bytes.Cut(rest, []byte("\n"))
-		trimmed := strings.TrimSpace(string(line))
-		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
-			if !found {
-				break
-			}
-			continue
-		}
-		return !strings.HasPrefix(trimmed, "- ") && trimmed != "-" && !strings.HasPrefix(trimmed, "---")
-	}
-	return false
 }
 
 // stripEvgAnchorsKey removes the _evg_anchors key and its value from the

@@ -1667,7 +1667,7 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts, settings *ever
 func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRegistry *anchorRegistry) (pp *ParserProject, decodeErr error, err error) {
 	if anchorRegistry != nil {
 		var combined []byte
-		if anchorRegistry.Length() > 0 && fileStartsAMapping(parseBytes) {
+		if anchorRegistry.Length() > 0 {
 			var preamble []byte
 			preamble, decodeErr = buildAnchorPreamble(anchorRegistry)
 			if decodeErr == nil {
