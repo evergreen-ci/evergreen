@@ -308,7 +308,7 @@ func TestPostRestoreCommandFetchesTagsSavedAfterTheArchive(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, c.runCommands(ctx, taskLogger, conf, c.buildPostRestoreCommand(conf, cloneOpts{owner: "some-org", repo: "some-repo"}, revision, false)))
-	require.NoError(t, c.runCommands(ctx, taskLogger, conf, c.buildRefreshTagsCommand()))
+	require.NoError(t, c.runCommands(ctx, taskLogger, conf, c.buildRefreshTagsCommand(revision)))
 
 	describe, err := exec.CommandContext(ctx, "git", "-C", consumerDir, "describe", "--tags").Output()
 	require.NoError(t, err)
@@ -317,8 +317,10 @@ func TestPostRestoreCommandFetchesTagsSavedAfterTheArchive(t *testing.T) {
 
 func TestBuildRefreshTagsCommand(t *testing.T) {
 	c := &gitFetchProject{Directory: "src"}
-	joined := strings.Join(c.buildRefreshTagsCommand(), "\n")
-	assert.Contains(t, joined, `git fetch origin --force --no-recurse-submodules "refs/tags/*:refs/tags/*"`)
+	joined := strings.Join(c.buildRefreshTagsCommand("abc123"), "\n")
+	assert.Contains(t, joined, `git ls-remote origin 'refs/tags/*'`)
+	assert.Contains(t, joined, `-v rev='abc123'`)
+	assert.Contains(t, joined, `git fetch origin --force --no-recurse-submodules $matching`)
 }
 
 func TestSourceCacheSpanDurationsAreNumericMilliseconds(t *testing.T) {
