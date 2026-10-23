@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -87,37 +86,4 @@ func (h *adminEventsGet) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(catcher.Resolve())
 	}
 	return resp
-}
-
-func makeRevertRouteManager() gimlet.RouteHandler {
-	return &revertHandler{}
-}
-
-type revertHandler struct {
-	GUID string `json:"guid"`
-}
-
-func (h *revertHandler) Factory() gimlet.RouteHandler { return &revertHandler{} }
-
-func (h *revertHandler) Parse(ctx context.Context, r *http.Request) error {
-	if err := gimlet.GetJSON(r.Body, h); err != nil {
-		return errors.WithStack(err)
-	}
-
-	if h.GUID == "" {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "GUID to revert to must be specified",
-		}
-	}
-	return nil
-}
-
-func (h *revertHandler) Run(ctx context.Context) gimlet.Responder {
-	u := MustHaveUser(ctx)
-	err := event.RevertConfig(ctx, h.GUID, u.Username())
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(err)
-	}
-	return gimlet.NewJSONResponse(struct{}{})
 }
