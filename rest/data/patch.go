@@ -8,11 +8,13 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/v70/github"
@@ -151,6 +153,41 @@ func SetPatchActivated(ctx context.Context, patchId string, user string, activat
 	}
 
 	return model.SetVersionActivation(ctx, patchId, activated, user)
+}
+
+// UpdatePatchModule stores a module diff in GridFS and attaches it to the
+// patch, replacing any existing diff for the module.
+func UpdatePatchModule(ctx context.Context, patchId, moduleName, githash, patchContent string) error {
+	p, err := patch.FindOneId(ctx, patchId)
+	if err != nil {
+		return err
+	}
+	if p == nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("patch '%s' not found", patchId),
+		}
+	}
+
+	summaries, err := thirdparty.GetPatchSummaries(ctx, patchContent)
+	if err != nil {
+		return err
+	}
+
+	// write the patch content into a GridFS file under a new ObjectId.
+	patchFileId := mgobson.NewObjectId().Hex()
+	if err = db.WriteGridFile(ctx, patch.GridFSPrefix, patchFileId, strings.NewReader(patchContent)); err != nil {
+		return errors.Wrap(err, "writing patch file to db")
+	}
+
+	return p.UpdateModulePatch(ctx, patch.ModulePatch{
+		ModuleName: moduleName,
+		Githash:    githash,
+		PatchSet: patch.PatchSet{
+			PatchFileId: patchFileId,
+			Summary:     summaries,
+		},
+	})
 }
 
 // SetMergeQueueGitRefNotFound marks a merge queue patch's GitRefNotFound field.
