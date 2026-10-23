@@ -145,7 +145,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) (generate
 	// config has already been modified. We do this again in `handleError` to reduce the chances
 	// of this race as close to zero as possible.
 	taskId := t.Id
-	t, err = task.FindOneIdWithGeneratedJSON(ctx, taskId)
+	t, err = task.FindOneId(ctx, taskId)
 	if err != nil {
 		return outcomeError, model.GenerateTasksCounts{}, errors.Wrapf(err, "finding task '%s'", taskId)
 	}
