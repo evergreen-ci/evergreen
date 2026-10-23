@@ -47,13 +47,13 @@ func makeFetchTasksByBuild(parsleyURL string) gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary		List tasks by build
-//	@Description	List all tasks within a specific build.
+//	@Description	List all tasks within a specific build. Performance is not guaranteed for limit values exceeding 100; with such limits, this route may respond slowly or not at all. Prefer smaller pages and paginate with start_at.
 //	@Tags			tasks
 //	@Router			/builds/{build_id}/tasks [get]
 //	@Security		Api-User || Api-Key
 //	@Param			build_id				path	string	true	"the build ID"
 //	@Param			start_at				query	string	false	"The identifier of the task to start at in the pagination"
-//	@Param			limit					query	int		false	"The number of tasks to be returned per page of pagination. Defaults to 100"
+//	@Param			limit					query	int		false	"The number of tasks to be returned per page of pagination. Defaults to 100. Values exceeding 100 may cause the request to respond slowly or not return at all, and we cannot guarantee performance at such levels."
 //	@Param			fetch_all_executions	query	boolean	false	"Fetches previous executions of tasks if they are available"
 //	@Param			fetch_parent_ids		query	boolean	false	"Fetches the parent display task ID for each returned execution task"
 //	@Param			presign					query	string	false	"Set to 'lazy' to return signed artifact links as Evergreen redirect URLs that are presigned when requested, instead of presigning them up front. Defaults to presigning up front."
