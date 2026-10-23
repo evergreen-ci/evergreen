@@ -1138,7 +1138,7 @@ tasks:
 		Requester:           evergreen.RepotrackerVersionRequester,
 	}
 
-	s.Require().NoError(createVersionItems(s.ctx, v, model.VersionMetadata{Revision: *s.rev}, projectInfo, nil))
+	s.Require().NoError(createVersionItems(s.ctx, v, model.VersionMetadata{Revision: *s.rev}, projectInfo, nil, nil))
 	dbTasks, err := task.Find(s.ctx, task.ByVersion(v.Id))
 	s.Require().NoError(err)
 	s.Require().Len(dbTasks, 1)
@@ -1521,7 +1521,7 @@ tasks:
 				Branch:              "main",
 				Requester:           requester,
 			}
-			s.NoError(createVersionItems(s.ctx, v, metadata, projectInfo, nil))
+			s.NoError(createVersionItems(s.ctx, v, metadata, projectInfo, nil, nil))
 			tasks, err := task.FindAllTaskIDsFromVersion(s.ctx, v.Id)
 			s.NoError(err)
 			s.Len(tasks, 4)
@@ -2375,7 +2375,7 @@ tasks:
 				Requester:           evergreen.RepotrackerVersionRequester,
 			}
 
-			err = createVersionItems(ctx, v, tc.metadata, projectInfo, nil)
+			err = createVersionItems(ctx, v, tc.metadata, projectInfo, nil, nil)
 			require.NoError(t, err)
 
 			ignoredVariants := []string{}
