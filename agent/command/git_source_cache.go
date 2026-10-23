@@ -59,6 +59,9 @@ var (
 	sourceCacheExtractDurationAttribute  = sourceCacheAttribute("extract_duration_ms")
 	sourceCacheArchiveDurationAttribute  = sourceCacheAttribute("archive_duration_ms")
 	sourceCacheUploadDurationAttribute   = sourceCacheAttribute("upload_duration_ms")
+
+	sourceCacheTagFetchDurationAttribute = sourceCacheAttribute("tag_fetch_duration_ms")
+	sourceCacheTagRefreshFailedAttribute = sourceCacheAttribute("tag_refresh_failed")
 )
 
 func sourceCacheAttribute(name string) string {

@@ -173,7 +173,7 @@ func TestBuildPostRestoreCommand(t *testing.T) {
 			opts:          cloneOpts{owner: "some-org", repo: "some-repo", token: projectGitHubToken},
 			revision:      "abc123",
 			runPRCheckout: true,
-			wantContains:  []string{authedOrigin, `git fetch origin "` + prHead + `"`, "git reset --hard " + prHead},
+			wantContains:  []string{authedOrigin, `git fetch origin "` + prHead + `:refs/heads/evg-pr-test-`, `git checkout "evg-pr-test-`, "git reset --hard " + prHead},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -196,26 +196,39 @@ func TestBuildPreSaveCommandScrubsHooksAndToken(t *testing.T) {
 	assert.NotContains(t, joined, projectGitHubToken)
 }
 
-// TestPostRestoreCommandFailsOnWrongRevision verifies a restored tree at the wrong revision is rejected.
-func TestPostRestoreCommandFailsOnWrongRevision(t *testing.T) {
+// newRepoWithLocalOrigin builds a repo whose fake GitHub origin is rewritten to a
+// local bare remote via insteadOf, keeping the post-restore scripts that fetch
+// from origin hermetic.
+func newRepoWithLocalOrigin(t *testing.T) (workDir, originPath string) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git is not installed")
 	}
-	ctx := t.Context()
-
-	workDir := t.TempDir()
+	workDir = t.TempDir()
+	originPath = filepath.Join(workDir, "origin.git")
 	repoDir := filepath.Join(workDir, "src")
 	for _, args := range [][]string{
+		{"init", "--bare", originPath},
 		{"init", "--initial-branch=main", repoDir},
 		{"-C", repoDir, "commit", "--allow-empty", "-m", "initial", "--author=t <t@t>"},
 		// A restored tree always came from a clone, so it always has an origin
 		// for the post-restore script to point back at the task's own URL.
 		{"-C", repoDir, "remote", "add", "origin", "https://github.com/some-org/some-repo.git"},
+		{"-C", repoDir, "push", originPath, "main"},
+		{"-C", repoDir, "config", "url.file://" + originPath + ".insteadOf", "https://github.com/some-org/some-repo.git"},
 	} {
-		cmd := exec.CommandContext(ctx, "git", args...)
+		cmd := exec.CommandContext(t.Context(), "git", args...)
 		cmd.Env = append(cmd.Environ(), "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")
 		require.NoError(t, cmd.Run())
 	}
+	return workDir, originPath
+}
+
+// TestPostRestoreCommandFailsOnWrongRevision verifies a restored tree at the wrong revision is rejected.
+func TestPostRestoreCommandFailsOnWrongRevision(t *testing.T) {
+	ctx := t.Context()
+
+	workDir, _ := newRepoWithLocalOrigin(t)
+	repoDir := filepath.Join(workDir, "src")
 
 	jpm, err := jasper.NewSynchronizedManager(false)
 	require.NoError(t, err)
@@ -247,6 +260,65 @@ func TestPostRestoreCommandFailsOnWrongRevision(t *testing.T) {
 	headAfter, err := exec.CommandContext(ctx, "git", "-C", repoDir, "rev-parse", "HEAD").Output()
 	require.NoError(t, err)
 	assert.Equal(t, conf.Task.Revision, strings.TrimSpace(string(headAfter)))
+}
+
+// A tag pushed after the archive was saved must still reach the restored tree, since git describe --tags is the consumer.
+func TestPostRestoreCommandFetchesTagsSavedAfterTheArchive(t *testing.T) {
+	ctx := t.Context()
+	logger := grip.NewJournaler("test")
+
+	workDir, originPath := newRepoWithLocalOrigin(t)
+	repoDir := filepath.Join(workDir, "src")
+	revisionBytes, err := exec.CommandContext(ctx, "git", "-C", repoDir, "rev-parse", "HEAD").Output()
+	require.NoError(t, err)
+	revision := strings.TrimSpace(string(revisionBytes))
+
+	// The producer archives its tree before the tag exists, the way a pre-tag
+	// mainline build populates the cache for the release commit.
+	archive := filepath.Join(t.TempDir(), "source"+cacheArchiveSuffix)
+	require.NoError(t, makeCacheArchive(ctx, repoDir, []string{repoDir}, archive, logger, true))
+	for _, args := range [][]string{
+		{"-C", repoDir, "tag", "-a", "v1.0.0", "-m", "release", revision},
+		{"-C", repoDir, "push", originPath, "v1.0.0"},
+	} {
+		// The tag needs an authoring identity, which CI hosts have no gitconfig for.
+		cmd := exec.CommandContext(ctx, "git", args...)
+		cmd.Env = append(cmd.Environ(), "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")
+		require.NoError(t, cmd.Run())
+	}
+
+	consumerWorkDir := t.TempDir()
+	consumerDir := filepath.Join(consumerWorkDir, "src")
+	require.NoError(t, os.MkdirAll(consumerDir, 0755))
+	f, err := os.Open(archive)
+	require.NoError(t, err)
+	t.Cleanup(func() { assert.NoError(t, f.Close()) })
+	require.NoError(t, extractTarball(ctx, f, consumerDir, []string{}, true))
+	// The extracted config keeps the producer's insteadOf rewrite, so origin
+	// resolves to the local bare remote.
+
+	jpm, err := jasper.NewSynchronizedManager(false)
+	require.NoError(t, err)
+	c := &gitFetchProject{Directory: "src"}
+	c.SetJasperManager(jpm)
+	comm := client.NewMock("http://localhost.com")
+	conf := sourceCacheTestConfig()
+	conf.WorkDir = consumerWorkDir
+	taskLogger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+	require.NoError(t, err)
+
+	require.NoError(t, c.runCommands(ctx, taskLogger, conf, c.buildPostRestoreCommand(conf, cloneOpts{owner: "some-org", repo: "some-repo"}, revision, false)))
+	require.NoError(t, c.runCommands(ctx, taskLogger, conf, c.buildRefreshTagsCommand()))
+
+	describe, err := exec.CommandContext(ctx, "git", "-C", consumerDir, "describe", "--tags").Output()
+	require.NoError(t, err)
+	assert.Equal(t, "v1.0.0", strings.TrimSpace(string(describe)))
+}
+
+func TestBuildRefreshTagsCommand(t *testing.T) {
+	c := &gitFetchProject{Directory: "src"}
+	joined := strings.Join(c.buildRefreshTagsCommand(), "\n")
+	assert.Contains(t, joined, `git fetch origin --force --no-recurse-submodules "refs/tags/*:refs/tags/*"`)
 }
 
 func TestSourceCacheSpanDurationsAreNumericMilliseconds(t *testing.T) {

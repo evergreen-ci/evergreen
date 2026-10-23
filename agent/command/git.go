@@ -386,9 +386,13 @@ func prCheckoutCommands(conf *internal.TaskConfig) []string {
 			localBranchName, commitToTest,
 		)
 	case prFetchModeSHA:
-		// Fetch the full head SHA directly: the refs/pull/N/head ref can hang
-		// for minutes under load.
-		return fetchCheckoutResetCommands(commitToTest, commitToTest, commitToTest)
+		// Fetch the head SHA directly (the refs/pull/N/head ref can hang for
+		// minutes under load) into a branch so HEAD stays attached.
+		localBranchName := fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
+		return fetchCheckoutResetCommands(
+			fmt.Sprintf("%s:refs/heads/%s", commitToTest, localBranchName),
+			localBranchName, commitToTest,
+		)
 	default: // prFetchModePullRef
 		// Github creates a ref called refs/pull/[pr number]/head
 		// that provides the entire tree of changes, including merges
@@ -469,13 +473,12 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 		checkout := conf.GitHubParentPRCheckout
 		// Fetch the head SHA directly when available to avoid the virtual
 		// pull/N/head ref resolution on GitHub (see prCheckoutCommands).
-		fetchRef, checkoutRef := checkout.HeadHash, checkout.HeadHash
-		if !isFullGitSHA(checkout.HeadHash) {
-			branchName := fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
-			fetchRef = fmt.Sprintf("pull/%d/head:%s", checkout.PRNumber, branchName)
-			checkoutRef = branchName
+		branchName := fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
+		fetchRef := fmt.Sprintf("pull/%d/head:%s", checkout.PRNumber, branchName)
+		if isFullGitSHA(checkout.HeadHash) {
+			fetchRef = fmt.Sprintf("%s:refs/heads/%s", checkout.HeadHash, branchName)
 		}
-		gitCommands = append(gitCommands, fetchCheckoutResetCommands(fetchRef, checkoutRef, checkout.HeadHash)...)
+		gitCommands = append(gitCommands, fetchCheckoutResetCommands(fetchRef, branchName, checkout.HeadHash)...)
 	} else {
 		gitCommands = append(gitCommands, fmt.Sprintf("git checkout '%s'", ref))
 	}
@@ -567,7 +570,7 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 		return err
 	}
 
-	// A cache hit on the merge SHA never contacts GitHub, so nothing else would notice a deleted ref.
+	// A cache hit on the merge SHA never fetches its own ref, so nothing else would notice a deleted ref.
 	deleted, err := mergeQueueRefDeleted(ctx, comm, conf, c.Token, opts)
 	if err != nil {
 		// The clone's own check is still a backstop for an inconclusive answer.
@@ -601,6 +604,14 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 			fallbackReason = errors.Wrap(err, "preparing restored source tree").Error()
 			break
 		}
+		// The tag refresh runs as a separate script so that a failed fetch records its own fallback reason and span attribute.
+		start := time.Now()
+		if err := c.runCommands(ctx, logger, conf, c.buildRefreshTagsCommand()); err != nil {
+			trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(sourceCacheTagRefreshFailedAttribute, true))
+			fallbackReason = errors.Wrap(err, "refreshing tags").Error()
+			break
+		}
+		setSourceCacheSpanDuration(ctx, sourceCacheTagFetchDurationAttribute, time.Since(start))
 		logger.Task().Infof(ctx, "Restored source from the cache for revision '%s'.", restoreKey.Revision)
 		trace.SpanFromContext(ctx).SetAttributes(attribute.String(sourceCacheRestoredRevisionAttribute, restoreKey.Revision))
 		sc.setSpanOutcome(ctx, sourceCacheHit, "")
@@ -714,6 +725,13 @@ func (c *gitFetchProject) buildPostRestoreCommand(conf *internal.TaskConfig, opt
 		cmds = append(cmds, prCheckoutCommands(conf)...)
 	}
 	return append(cmds, "git log --oneline -n 10")
+}
+
+// buildRefreshTagsCommand refreshes tags pushed after the producer archived, so
+// git describe --tags sees the tag that triggered the build; the explicit refspec
+// keeps the fetch to tag refs rather than every branch's objects.
+func (c *gitFetchProject) buildRefreshTagsCommand() []string {
+	return c.scriptInProjectDir(`git fetch origin --force --no-recurse-submodules "refs/tags/*:refs/tags/*"`)
 }
 
 // buildPreSaveCommand returns the script run before archiving the cloned tree.

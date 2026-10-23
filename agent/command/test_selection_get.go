@@ -4,14 +4,17 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math/rand"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -29,13 +32,17 @@ const (
 )
 
 var (
-	testSelectionEnabledAttribute          = fmt.Sprintf("%s.enabled", testSelectionGetAttribute)
-	testSelectionCalledAttribute           = fmt.Sprintf("%s.called", testSelectionGetAttribute)
-	testSelectionInputNumTestsAttribute    = fmt.Sprintf("%s.input_num_tests", testSelectionGetAttribute)
-	testSelectionStrategiesAttribute       = fmt.Sprintf("%s.strategies", testSelectionGetAttribute)
-	testSelectionUsageRateAttribute        = fmt.Sprintf("%s.usage_rate", testSelectionGetAttribute)
-	testSelectionNumTestsReturnedAttribute = fmt.Sprintf("%s.num_tests_returned", testSelectionGetAttribute)
-	testSelectionDurationMsAttribute       = fmt.Sprintf("%s.duration_ms", testSelectionGetAttribute)
+	testSelectionEnabledAttribute                 = fmt.Sprintf("%s.enabled", testSelectionGetAttribute)
+	testSelectionCalledAttribute                  = fmt.Sprintf("%s.called", testSelectionGetAttribute)
+	testSelectionInputNumTestsAttribute           = fmt.Sprintf("%s.input_num_tests", testSelectionGetAttribute)
+	testSelectionStrategiesAttribute              = fmt.Sprintf("%s.strategies", testSelectionGetAttribute)
+	testSelectionUsageRateAttribute               = fmt.Sprintf("%s.usage_rate", testSelectionGetAttribute)
+	testSelectionNumTestsReturnedAttribute        = fmt.Sprintf("%s.num_tests_returned", testSelectionGetAttribute)
+	testSelectionServiceNumTestsReturnedAttribute = fmt.Sprintf("%s.service_num_tests_returned", testSelectionGetAttribute)
+	testSelectionDurationMsAttribute              = fmt.Sprintf("%s.duration_ms", testSelectionGetAttribute)
+	testSelectionBypassRequestedAttribute         = fmt.Sprintf("%s.bypass_requested", testSelectionGetAttribute)
+	testSelectionBypassNameCountAttribute         = fmt.Sprintf("%s.bypass_name_count", testSelectionGetAttribute)
+	testSelectionBypassAppliedAttribute           = fmt.Sprintf("%s.bypass_applied", testSelectionGetAttribute)
 )
 
 type testSelectionInputFile struct {
@@ -106,8 +113,12 @@ func (c *testSelectionGet) validate() error {
 
 func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	calledAPI := false
+	bypassApplied := false
 	defer func() {
-		trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(testSelectionCalledAttribute, calledAPI))
+		trace.SpanFromContext(ctx).SetAttributes(
+			attribute.Bool(testSelectionCalledAttribute, calledAPI),
+			attribute.Bool(testSelectionBypassAppliedAttribute, bypassApplied),
+		)
 	}()
 
 	if err := util.ExpandValues(c, &conf.Expansions); err != nil {
@@ -163,6 +174,15 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 		trace.SpanFromContext(ctx).SetAttributes(attribute.Int(testSelectionInputNumTestsAttribute, len(c.Tests)))
 	}
 
+	bypass, err := getTestSelectionBypass(conf)
+	if err != nil {
+		return err
+	}
+	trace.SpanFromContext(ctx).SetAttributes(
+		attribute.Bool(testSelectionBypassRequestedAttribute, len(bypass) > 0),
+		attribute.Int(testSelectionBypassNameCountAttribute, len(bypass)),
+	)
+
 	// Build the request using task information from TaskConfig.
 	request := model.SelectTestsRequest{
 		Project:      conf.Task.Project,
@@ -190,10 +210,52 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 	if err != nil {
 		return errors.Wrap(err, "calling test selection API")
 	}
+	trace.SpanFromContext(ctx).SetAttributes(attribute.Int(testSelectionServiceNumTestsReturnedAttribute, len(selectedTests)))
+	if len(bypass) > 0 && len(c.Tests) > 0 {
+		selected := make(map[string]bool, len(selectedTests))
+		for _, name := range selectedTests {
+			selected[name] = true
+		}
+		bypassed := make(map[string]bool, len(bypass))
+		for _, name := range bypass {
+			bypassed[name] = true
+		}
+		kept := make([]string, 0, len(c.Tests))
+		for _, name := range c.Tests {
+			if selected[name] || bypassed[name] {
+				kept = append(kept, name)
+				if !selected[name] {
+					bypassApplied = true
+				}
+			}
+		}
+		selectedTests = kept
+	}
 	trace.SpanFromContext(ctx).SetAttributes(attribute.Int(testSelectionNumTestsReturnedAttribute, len(selectedTests)))
 
 	// Write the results to the output file.
 	return c.writeTestList(selectedTests)
+}
+
+func getTestSelectionBypass(conf *internal.TaskConfig) ([]string, error) {
+	if !evergreen.IsPatchRequester(conf.Task.Requester) {
+		return nil, nil
+	}
+	raw := conf.Expansions.Get("test_selection_bypass_quarantine")
+	if raw == "" {
+		return nil, nil
+	}
+	var bypass []string
+	if err := json.Unmarshal([]byte(raw), &bypass); err != nil {
+		return nil, errors.Wrap(err, "parsing test_selection_bypass_quarantine")
+	}
+	if bypass == nil {
+		return nil, errors.New("test_selection_bypass_quarantine must be a JSON array of nonempty strings")
+	}
+	if slices.Contains(bypass, "") {
+		return nil, errors.New("test_selection_bypass_quarantine must contain nonempty strings")
+	}
+	return bypass, nil
 }
 
 // isTestSelectionAllowed checks if test selection may filter tests for the

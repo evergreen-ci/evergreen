@@ -11,15 +11,12 @@ import (
 	"github.com/pkg/errors"
 )
 
-// generatedJSONS3Storage implements the GeneratedJSONFileStorage interface to
-// access generated JSON files stored in S3.
+// generatedJSONS3Storage accesses generated JSON files stored in S3.
 type generatedJSONS3Storage struct {
 	bucket pail.Bucket
 }
 
-// newGeneratedJSONS3Storage sets up access to generated JSON files stored in
-// S3. If this returns a non-nil GeneratedJSONFileStorage, callers are expected
-// to call Close when they are finished with it.
+// newGeneratedJSONS3Storage sets up access to generated JSON files stored in S3.
 func newGeneratedJSONS3Storage(ctx context.Context, ppConf evergreen.ParserProjectS3Config) (*generatedJSONS3Storage, error) {
 	b, err := pail.NewS3MultiPartBucket(ctx, pail.S3Options{
 		Name:   ppConf.Bucket,

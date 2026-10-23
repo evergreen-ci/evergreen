@@ -302,6 +302,11 @@ type Task struct {
 	// they're currently running. This and ResetWhenFinished are mutually
 	// exclusive settings.
 	ResetFailedWhenFinished bool `bson:"reset_failed_when_finished,omitempty" json:"reset_failed_when_finished,omitempty"`
+	// ExecutionTasksToRestart, if set on a display task, restricts a
+	// restart-when-finished to only the listed execution tasks. Unlike
+	// ResetFailedWhenFinished, the listed execution tasks
+	// are restarted regardless of whether they failed.
+	ExecutionTasksToRestart []string `bson:"execution_tasks_to_restart,omitempty" json:"execution_tasks_to_restart,omitempty"`
 	// NumAutomaticRestarts is the number of times the task has been programmatically restarted via a failed agent command.
 	NumAutomaticRestarts int `bson:"num_automatic_restarts,omitempty" json:"num_automatic_restarts,omitempty"`
 	// IsAutomaticRestart indicates that the task was restarted via a failing agent command that was set to retry on failure.
@@ -322,17 +327,7 @@ type Task struct {
 	GeneratedTasks bool `bson:"generated_tasks,omitempty" json:"generated_tasks,omitempty"`
 	// GeneratedBy, if present, is the ID of the task that generated this task.
 	GeneratedBy string `bson:"generated_by,omitempty" json:"generated_by,omitempty"`
-	// GeneratedJSONAsString is the configuration information to update the
-	// project YAML for generate.tasks. This is only used to store the
-	// configuration if GeneratedJSONStorageMethod is unset or is explicitly set
-	// to "db".
-	//
-	// TODO (DEVPROD-41456): delete this field. Only tasks written before the
-	// switch to S3 still store their generated JSON here.
-	GeneratedJSONAsString GeneratedJSONFiles `bson:"generated_json,omitempty" json:"generated_json,omitempty"`
-	// GeneratedJSONStorageMethod describes how the generated JSON for
-	// generate.tasks is stored for this task before it's merged with the
-	// existing project YAML.
+	// GeneratedJSONStorageMethod now indicates if the generated JSON has been stored in S3 or not.
 	GeneratedJSONStorageMethod evergreen.ParserProjectStorageMethod `bson:"generated_json_storage_method,omitempty" json:"generated_json_storage_method,omitempty"`
 	// GenerateTasksError any encountered while generating tasks.
 	GenerateTasksError string `bson:"generate_error,omitempty" json:"generate_error,omitempty"`
@@ -954,7 +949,7 @@ func (t *Task) MarkAsHostDispatched(ctx context.Context, hostID, distroID, agent
 // push-completed.
 func (t *Task) MarkAsHostDispatchedWithEnv(ctx context.Context, env evergreen.Environment, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
 	doUpdate := func(update []bson.M) error {
-		res, err := env.DB().Collection(Collection).UpdateOne(ctx, hostDispatchQuery(t.Id), update)
+		res, err := env.DB().Collection(Collection).UpdateOne(ctx, hostDispatchQuery(t.Id), db.StampUpdatedAt(Collection, update))
 		if err != nil {
 			return err
 		}
@@ -1983,6 +1978,7 @@ func activateDeactivatedDependencies(ctx context.Context, tasksToActivate map[st
 		}
 
 		if len(writes) > 0 {
+			db.StampBulkUpdatedAt(Collection, writes)
 			_, err := coll.BulkWrite(ctx, writes)
 			if err != nil {
 				return errors.Wrap(err, "bulk updating dependent tasks with new predictions")
@@ -2476,6 +2472,7 @@ func ResetTasks(ctx context.Context, tasks []Task, caller string) error {
 	}
 
 	if len(writes) > 0 {
+		db.StampBulkUpdatedAt(Collection, writes)
 		_, err := coll.BulkWrite(ctx, writes)
 		if err != nil {
 			return errors.Wrap(err, "bulk resetting tasks")
@@ -2512,6 +2509,7 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 		t.NumQuarantinedTestsSkipped = 0
 		t.ResetWhenFinished = false
 		t.ResetFailedWhenFinished = false
+		t.ExecutionTasksToRestart = nil
 		t.AgentVersion = ""
 		t.HostCreateDetails = []HostCreateDetail{}
 		t.OverrideDependencies = false
@@ -2559,6 +2557,7 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 				ResetWhenFinishedKey,
 				IsAutomaticRestartKey,
 				ResetFailedWhenFinishedKey,
+				ExecutionTasksToRestartKey,
 				AgentVersionKey,
 				HostIdKey,
 				ExecutionPlatformKey,
@@ -3114,15 +3113,7 @@ func ArchiveMany(ctx context.Context, tasks []Task) error {
 		allTaskIds = append(allTaskIds, t.Id)
 		archivedTasks = append(archivedTasks, t.makeArchivedTask())
 		if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
-			var execTasks []Task
-			var err error
-
-			if t.IsRestartFailedOnly() {
-				execTasks, err = Find(ctx, FailedTasksByIds(t.ExecutionTasks))
-			} else {
-				execTasks, err = FindAll(ctx, db.Query(ByIdsAndStatus(t.ExecutionTasks, evergreen.TaskCompletedStatuses)))
-			}
-
+			execTasks, err := execTasksToRestart(ctx, &t, true)
 			if err != nil {
 				return errors.Wrapf(err, "finding execution tasks for display task '%s'", t.Id)
 			}
@@ -3178,8 +3169,7 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 	txFunc := func(ctx mongo.SessionContext) (any, error) {
 		var err error
 		if len(archivedTasks) > 0 {
-			oldTaskColl := evergreen.GetEnvironment().DB().Collection(OldCollection)
-			_, err = oldTaskColl.InsertMany(ctx, archivedTasks)
+			err = db.InsertMany(ctx, OldCollection, archivedTasks...)
 			if err != nil {
 				return nil, errors.Wrap(err, "archiving tasks")
 			}
@@ -3198,11 +3188,11 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 						},
 					},
 				},
-				[]bson.M{
+				db.StampUpdatedAt(Collection, []bson.M{
 					updateDisplayTasksAndTasksSet,
 					updateDisplayTasksAndTasksUnset,
 					addDisplayStatusCache,
-				},
+				}),
 			)
 			if err != nil {
 				return nil, errors.Wrap(err, "archiving tasks")
@@ -3211,14 +3201,14 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 		if len(execTaskIds) > 0 {
 			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx,
 				bson.M{IdKey: bson.M{"$in": execTaskIds}}, // Query all execution tasks
-				bson.A{ // Pipeline
+				db.StampUpdatedAt(Collection, bson.A{ // Pipeline
 					bson.M{"$set": bson.M{ // Sets LatestParentExecution (LPE) = LPE + 1
 						LatestParentExecutionKey: bson.M{"$add": bson.A{
 							"$" + LatestParentExecutionKey, 1,
 						}},
 					}},
 					addDisplayStatusCache,
-				})
+				}))
 
 			if err != nil {
 				return nil, errors.Wrap(err, "updating latest parent executions")
@@ -3227,7 +3217,7 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 			// Call to update all tasks that are actually restarting
 			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx,
 				bson.M{IdKey: bson.M{"$in": toRestartExecTaskIds}}, // Query all archiving/restarting execution tasks
-				bson.A{ // Pipeline
+				db.StampUpdatedAt(Collection, bson.A{ // Pipeline
 					bson.M{"$set": bson.M{ // Execution = LPE
 						ExecutionKey: "$" + LatestParentExecutionKey,
 						CanResetKey:  true,
@@ -3238,7 +3228,7 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 						OverrideDependenciesKey,
 					}},
 					addDisplayStatusCache,
-				})
+				}))
 
 			return nil, errors.Wrap(err, "updating restarting exec tasks")
 		}
@@ -3356,14 +3346,67 @@ func (t *Task) GetTestResultsTasks(ctx context.Context) ([]Task, error) {
 // SetResetWhenFinished requests that a display task or single-host task group
 // reset itself when finished. Will mark itself as system failed.
 func (t *Task) SetResetWhenFinished(ctx context.Context, caller, repoRefID string) error {
-	if t.ResetWhenFinished {
+	// If a full reset is already pending, this is a no-op. A pending scoped
+	// reset is superseded below because a full reset restarts every execution
+	// task.
+	if t.ResetWhenFinished && len(t.ExecutionTasksToRestart) == 0 {
 		return nil
 	}
-	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller, repoRefID, true); err != nil {
+	// Execution tasks in a pending scoped reset were already counted against
+	// the scheduling limit.
+	execTasksToCount := t.ExecutionTasks
+	if len(t.ExecutionTasksToRestart) > 0 {
+		execTasksToCount = utility.GetSetDifference(t.ExecutionTasks, t.ExecutionTasksToRestart)
+	}
+	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller, repoRefID, execTasksToCount, true); err != nil {
 		return errors.Wrapf(err, "updating user '%s' patch task scheduling limit", caller)
 	}
 	t.ResetFailedWhenFinished = false
 	t.ResetWhenFinished = true
+	t.ExecutionTasksToRestart = nil
+	return UpdateOne(
+		ctx,
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$unset": bson.M{
+				ResetFailedWhenFinishedKey: 1,
+				ExecutionTasksToRestartKey: 1,
+			},
+			"$set": bson.M{
+				ResetWhenFinishedKey: true,
+			},
+		},
+	)
+}
+
+// AddExecutionTasksToResetWhenFinished requests that a display task restart only
+// the given execution tasks when it finishes. Unlike SetResetFailedWhenFinished,
+// the listed execution tasks are restarted regardless of whether they failed.
+// If the display task is already marked to reset a set of execution tasks, the
+// given execution tasks are added to that set so that concurrent restart
+// requests for different execution tasks are merged into a single reset rather
+// than overwriting each other.
+func (t *Task) AddExecutionTasksToResetWhenFinished(ctx context.Context, caller, repoRefID string, execTaskIDs []string) error {
+	execTaskIDs = utility.UniqueStrings(execTaskIDs)
+	if len(execTaskIDs) == 0 {
+		return nil
+	}
+	// If a full reset is already pending, every execution task is already going
+	// to restart, so there's nothing to scope.
+	if t.ResetWhenFinished && len(t.ExecutionTasksToRestart) == 0 {
+		return nil
+	}
+	// Only count execution tasks that aren't already pending so that merged
+	// requests don't double-count against the scheduling limit.
+	newExecTaskIDs := utility.GetSetDifference(execTaskIDs, t.ExecutionTasksToRestart)
+	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller, repoRefID, newExecTaskIDs, true); err != nil {
+		return errors.Wrapf(err, "updating user '%s' patch task scheduling limit", caller)
+	}
+	t.ResetFailedWhenFinished = false
+	t.ResetWhenFinished = true
+	t.ExecutionTasksToRestart = utility.UniqueStrings(append(t.ExecutionTasksToRestart, execTaskIDs...))
 	return UpdateOne(
 		ctx,
 		bson.M{
@@ -3375,6 +3418,11 @@ func (t *Task) SetResetWhenFinished(ctx context.Context, caller, repoRefID strin
 			},
 			"$set": bson.M{
 				ResetWhenFinishedKey: true,
+			},
+			// Use $addToSet so that concurrent requests for different execution
+			// tasks don't clobber each other's pending restart set.
+			"$addToSet": bson.M{
+				ExecutionTasksToRestartKey: bson.M{"$each": execTaskIDs},
 			},
 		},
 	)
@@ -3401,6 +3449,7 @@ func (t *Task) SetResetWhenFinishedWithInc(ctx context.Context) error {
 		bson.M{
 			"$unset": bson.M{
 				ResetFailedWhenFinishedKey: 1,
+				ExecutionTasksToRestartKey: 1,
 			},
 			"$set": bson.M{
 				ResetWhenFinishedKey:  true,
@@ -3420,11 +3469,12 @@ func (t *Task) SetResetFailedWhenFinished(ctx context.Context, caller, repoRefID
 	if t.ResetFailedWhenFinished {
 		return nil
 	}
-	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller, repoRefID, false); err != nil {
+	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller, repoRefID, t.ExecutionTasks, false); err != nil {
 		return errors.Wrapf(err, "updating user '%s' patch task scheduling limit", caller)
 	}
 	t.ResetWhenFinished = false
 	t.ResetFailedWhenFinished = true
+	t.ExecutionTasksToRestart = nil
 	return UpdateOne(
 		ctx,
 		bson.M{
@@ -3432,7 +3482,8 @@ func (t *Task) SetResetFailedWhenFinished(ctx context.Context, caller, repoRefID
 		},
 		bson.M{
 			"$unset": bson.M{
-				ResetWhenFinishedKey: 1,
+				ResetWhenFinishedKey:       1,
+				ExecutionTasksToRestartKey: 1,
 			},
 			"$set": bson.M{
 				ResetFailedWhenFinishedKey: true,
@@ -3443,15 +3494,18 @@ func (t *Task) SetResetFailedWhenFinished(ctx context.Context, caller, repoRefID
 
 // updateSchedulingLimitForResetWhenFinished is the same as
 // UpdateSchedulingLimit but only applies if the task is being reset when
-// finished.
-func updateSchedulingLimitForResetWhenFinished(ctx context.Context, t *Task, caller, repoRefID string, countUnscheduled bool) error {
+// finished. For a display task, only the given execution tasks are counted.
+func updateSchedulingLimitForResetWhenFinished(ctx context.Context, t *Task, caller, repoRefID string, execTaskIDs []string, countUnscheduled bool) error {
 	if !(t.Requester == evergreen.PatchVersionRequester || t.Requester == evergreen.GithubPRRequester) || evergreen.IsSystemActivator(caller) {
 		return nil
 	}
 	var tasks []Task
 	var err error
 	if t.DisplayOnly {
-		tasks, err = Find(ctx, ByIds(t.ExecutionTasks))
+		if len(execTaskIDs) == 0 {
+			return nil
+		}
+		tasks, err = Find(ctx, ByIds(execTaskIDs))
 		if err != nil {
 			return errors.Wrapf(err, "finding execution tasks for '%s'", t.Id)
 		}
@@ -3506,19 +3560,62 @@ func CheckUsersPatchTaskLimit(ctx context.Context, requester, username, repoRefI
 }
 
 func FindExecTasksToReset(ctx context.Context, t *Task) ([]string, error) {
-	if !t.IsRestartFailedOnly() {
+	if len(t.ExecutionTasksToRestart) == 0 && !t.IsRestartFailedOnly() {
 		return t.ExecutionTasks, nil
 	}
 
-	failedExecTasks, err := FindWithFields(ctx, FailedTasksByIds(t.ExecutionTasks), IdKey)
+	query := execTasksToRestartQuery(t, false)
+	if query == nil {
+		return []string{}, nil
+	}
+	execTasks, err := FindWithFields(ctx, query, IdKey)
 	if err != nil {
-		return nil, errors.Wrap(err, "retrieving failed execution tasks")
+		return nil, errors.Wrap(err, "retrieving execution tasks to restart")
 	}
-	failedExecTaskIds := []string{}
-	for _, et := range failedExecTasks {
-		failedExecTaskIds = append(failedExecTaskIds, et.Id)
+	execTaskIDs := []string{}
+	for _, et := range execTasks {
+		execTaskIDs = append(execTaskIDs, et.Id)
 	}
-	return failedExecTaskIds, nil
+	return execTaskIDs, nil
+}
+
+// execTasksToRestart returns the execution tasks of a display task that should
+// be restarted (or archived) when the display task resets. See
+// execTasksToRestartQuery for which execution tasks are returned.
+func execTasksToRestart(ctx context.Context, t *Task, onlyCompleted bool) ([]Task, error) {
+	query := execTasksToRestartQuery(t, onlyCompleted)
+	if query == nil {
+		return nil, nil
+	}
+	return FindAll(ctx, db.Query(query))
+}
+
+// execTasksToRestartQuery returns the query for the execution tasks of a
+// display task that should be restarted when the display task resets. If the
+// display task is only restarting failed tasks, it matches only failed
+// execution tasks. Otherwise, if the display task has an explicit list of
+// execution tasks to restart, it matches only those. Otherwise, it matches all
+// execution tasks. When onlyCompleted is set, it matches only completed
+// execution tasks. It returns nil if no execution tasks can match.
+func execTasksToRestartQuery(t *Task, onlyCompleted bool) bson.M {
+	if t.IsRestartFailedOnly() {
+		return FailedTasksByIds(t.ExecutionTasks)
+	}
+
+	var execTaskIDs []string
+	if len(t.ExecutionTasksToRestart) > 0 {
+		execTaskIDs = utility.StringSliceIntersection(t.ExecutionTasks, t.ExecutionTasksToRestart)
+	} else {
+		execTaskIDs = t.ExecutionTasks
+	}
+	if len(execTaskIDs) == 0 {
+		return nil
+	}
+
+	if onlyCompleted {
+		return ByIdsAndStatus(execTaskIDs, evergreen.TaskCompletedStatuses)
+	}
+	return ByIds(execTaskIDs)
 }
 
 // FindHostSchedulable finds all tasks that can be scheduled for a distro

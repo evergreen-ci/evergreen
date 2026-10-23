@@ -45,9 +45,7 @@ type Communicator interface {
 	IsServiceUser(context.Context, string) (bool, error)
 	RestartRecentTasks(context.Context, time.Time, time.Time) error
 	GetSettings(context.Context) (*evergreen.Settings, error)
-	UpdateSettings(context.Context, *restmodel.APIAdminSettings) (*restmodel.APIAdminSettings, error)
 	GetEvents(context.Context, time.Time, int) ([]any, error)
-	RevertSettings(context.Context, string) error
 	GetServiceUsers(ctx context.Context) ([]restmodel.APIDBUser, error)
 	UpdateServiceUser(context.Context, string, string, []string) error
 	DeleteServiceUser(context.Context, string) error

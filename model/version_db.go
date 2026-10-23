@@ -405,7 +405,8 @@ func ActivateVersions(ctx context.Context, versionIds []string) error {
 		ctx,
 		VersionCollection,
 		bson.M{
-			VersionIdKey: bson.M{"$in": versionIds},
+			VersionIdKey:        bson.M{"$in": versionIds},
+			VersionActivatedKey: bson.M{"$ne": true},
 		},
 		bson.M{
 			"$set": bson.M{

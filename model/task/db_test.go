@@ -414,55 +414,33 @@ func TestFindOneIdOldOrNew(t *testing.T) {
 func TestFindOneId(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 
-	taskWithGeneratedJSON := Task{
-		Id:                    "task_with_generated_json",
-		Status:                evergreen.TaskSucceeded,
-		GeneratedJSONAsString: GeneratedJSONFiles{"large_json_1", "large_json_2", "large_json_3"},
+	taskToFind := Task{
+		Id:     "task_to_find",
+		Status: evergreen.TaskSucceeded,
 	}
-	require.NoError(t, taskWithGeneratedJSON.Insert(t.Context()))
+	require.NoError(t, taskToFind.Insert(t.Context()))
 
-	dbTask, err := FindOneId(t.Context(), taskWithGeneratedJSON.Id)
+	dbTask, err := FindOneId(t.Context(), taskToFind.Id)
 	require.NoError(t, err)
 	require.NotNil(t, dbTask)
-	assert.Equal(t, taskWithGeneratedJSON.Id, dbTask.Id)
-	assert.Equal(t, taskWithGeneratedJSON.Status, dbTask.Status)
-	assert.Nil(t, dbTask.GeneratedJSONAsString)
-}
-
-func TestFindOneIdWithGeneratedJSON(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection))
-
-	taskWithGeneratedJSON := Task{
-		Id:                    "task_with_generated_json",
-		Status:                evergreen.TaskSucceeded,
-		GeneratedJSONAsString: GeneratedJSONFiles{"large_json_1", "large_json_2", "large_json_3"},
-	}
-	require.NoError(t, taskWithGeneratedJSON.Insert(t.Context()))
-
-	dbTask, err := FindOneIdWithGeneratedJSON(t.Context(), taskWithGeneratedJSON.Id)
-	require.NoError(t, err)
-	require.NotNil(t, dbTask)
-	assert.Equal(t, taskWithGeneratedJSON.Id, dbTask.Id)
-	assert.Equal(t, taskWithGeneratedJSON.Status, dbTask.Status)
-	assert.Equal(t, taskWithGeneratedJSON.GeneratedJSONAsString, dbTask.GeneratedJSONAsString)
+	assert.Equal(t, taskToFind.Id, dbTask.Id)
+	assert.Equal(t, taskToFind.Status, dbTask.Status)
 }
 
 func TestFind(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 
-	taskWithGeneratedJSON := Task{
-		Id:                    "task_with_generated_json",
-		Status:                evergreen.TaskSucceeded,
-		GeneratedJSONAsString: GeneratedJSONFiles{"large_json_1", "large_json_2", "large_json_3"},
+	taskToFind := Task{
+		Id:     "task_to_find",
+		Status: evergreen.TaskSucceeded,
 	}
-	require.NoError(t, taskWithGeneratedJSON.Insert(t.Context()))
+	require.NoError(t, taskToFind.Insert(t.Context()))
 
-	tasks, err := Find(t.Context(), bson.M{IdKey: taskWithGeneratedJSON.Id})
+	tasks, err := Find(t.Context(), bson.M{IdKey: taskToFind.Id})
 	require.NoError(t, err)
 	require.Len(t, tasks, 1)
-	assert.Equal(t, taskWithGeneratedJSON.Id, tasks[0].Id)
-	assert.Equal(t, taskWithGeneratedJSON.Status, tasks[0].Status)
-	assert.Nil(t, tasks[0].GeneratedJSONAsString)
+	assert.Equal(t, taskToFind.Id, tasks[0].Id)
+	assert.Equal(t, taskToFind.Status, tasks[0].Status)
 }
 
 func TestAddHostCreateDetails(t *testing.T) {

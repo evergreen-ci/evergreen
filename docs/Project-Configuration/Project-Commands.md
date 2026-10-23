@@ -1946,6 +1946,14 @@ When test selection excludes tests because they are quarantined, Evergreen recor
 show which tests were skipped due to quarantine. The command may be called multiple times in a task, so
 the recorded tests accumulate across calls and are deduplicated by test name within a single task execution.
 
+For patches, set `test_selection_bypass_quarantine` to a JSON array of nonempty test names using the
+[CLI patch parameter](../CLI#scoped-quarantine-bypass). Exact matches in `tests` or `tests_file` are restored after
+successful selection, overriding all selection strategies, not just quarantine. This does not change global
+quarantine, schedule tasks, or override suite/tag exclusions.
+
+Missing or empty values and `[]` have no effect; invalid values fail active patch selection. Mainline and
+selection no-ops ignore the parameter.
+
 ```yaml
 - command: test_selection.get
   params:
