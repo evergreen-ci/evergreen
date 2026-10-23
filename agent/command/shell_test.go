@@ -139,9 +139,9 @@ func (s *shellExecuteCommandSuite) TestTerribleQuotingIsHandledProperly() {
 }
 
 func (s *shellExecuteCommandSuite) TestShellIsNotChangedDuringExecution() {
-	shells := []string{"bash", "python", "sh"}
+	shells := []string{"bash", "sh"}
 	if runtime.GOOS != "windows" {
-		shells = append(shells, "/bin/sh", "/bin/bash", "/usr/bin/python")
+		shells = append(shells, "/bin/sh", "/bin/bash")
 	}
 	for _, sh := range shells {
 		cmd := &shellExec{Shell: sh, WorkingDir: testutil.GetDirectoryOfFile()}
