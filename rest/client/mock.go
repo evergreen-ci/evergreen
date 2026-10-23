@@ -177,13 +177,9 @@ func (c *Mock) GetServiceFlags(ctx context.Context) (*model.APIServiceFlagsRespo
 
 func (c *Mock) RestartRecentTasks(ctx context.Context, starAt, endAt time.Time) error { return nil }
 func (c *Mock) GetSettings(ctx context.Context) (*evergreen.Settings, error)          { return nil, nil }
-func (c *Mock) UpdateSettings(ctx context.Context, update *model.APIAdminSettings) (*model.APIAdminSettings, error) {
-	return nil, nil
-}
 func (c *Mock) GetEvents(ctx context.Context, ts time.Time, limit int) ([]any, error) {
 	return nil, nil
 }
-func (c *Mock) RevertSettings(ctx context.Context, guid string) error { return nil }
 
 func (c *Mock) GetDistrosList(ctx context.Context) ([]model.APIDistro, error) {
 	mockDistros := []model.APIDistro{
