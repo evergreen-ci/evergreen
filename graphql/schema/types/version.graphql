@@ -141,7 +141,7 @@ type Manifest {
   isBase: Boolean!
   moduleOverrides: StringMap
   modules: Map
-  previousVersion: String
+  previousVersionId: String
   project: String!
   revision: String!
 }

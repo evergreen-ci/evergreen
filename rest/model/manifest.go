@@ -6,14 +6,14 @@ import (
 )
 
 type APIManifest struct {
-	Id              *string             `json:"id" extensions:"!x-nullable"`
-	Revision        *string             `json:"revision" extensions:"!x-nullable"`
-	ProjectName     *string             `json:"project" extensions:"!x-nullable"`
-	Branch          *string             `json:"branch" extensions:"!x-nullable"`
-	IsBase          bool                `json:"is_base"`
-	Modules         []APIManifestModule `json:"modules" extensions:"x-nullable"`
-	PreviousVersion *string             `json:"previous_version,omitempty"`
-	ChangedModules  []string            `json:"changed_modules,omitempty"`
+	Id                *string             `json:"id" extensions:"!x-nullable"`
+	Revision          *string             `json:"revision" extensions:"!x-nullable"`
+	ProjectName       *string             `json:"project" extensions:"!x-nullable"`
+	Branch            *string             `json:"branch" extensions:"!x-nullable"`
+	IsBase            bool                `json:"is_base"`
+	Modules           []APIManifestModule `json:"modules" extensions:"x-nullable"`
+	PreviousVersionID *string             `json:"previous_version_id,omitempty"`
+	ChangedModules    []string            `json:"changed_modules,omitempty"`
 }
 
 func (m *APIManifest) BuildFromService(mfst *manifest.Manifest) {
@@ -22,8 +22,8 @@ func (m *APIManifest) BuildFromService(mfst *manifest.Manifest) {
 	m.ProjectName = utility.ToStringPtr(mfst.ProjectName)
 	m.Branch = utility.ToStringPtr(mfst.Branch)
 	m.IsBase = mfst.IsBase
-	if mfst.PreviousVersion != "" {
-		m.PreviousVersion = utility.ToStringPtr(mfst.PreviousVersion)
+	if mfst.PreviousVersionID != "" {
+		m.PreviousVersionID = utility.ToStringPtr(mfst.PreviousVersionID)
 	}
 	m.ChangedModules = mfst.ChangedModules
 	for modName, mod := range mfst.Modules {

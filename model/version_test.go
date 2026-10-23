@@ -1016,7 +1016,7 @@ func TestConstructManifestRecordsSelectionRulesAndChangedModules(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, m1)
 	t.Run("FirstVersionShouldHaveNoPreviousVersion", func(t *testing.T) {
-		assert.Empty(t, m1.PreviousVersion)
+		assert.Empty(t, m1.PreviousVersionID)
 		assert.Empty(t, m1.ChangedModules)
 	})
 
@@ -1039,7 +1039,7 @@ func TestConstructManifestRecordsSelectionRulesAndChangedModules(t *testing.T) {
 		assert.Equal(t, manifest.ModuleSelectionLatestIngested, m2.Modules["mod_a"].SelectionRule)
 		assert.Equal(t, "b2", m2.Modules["mod_b"].Revision)
 		assert.Equal(t, manifest.ModuleSelectionLatestIngested, m2.Modules["mod_b"].SelectionRule)
-		assert.Equal(t, v1.Id, m2.PreviousVersion)
+		assert.Equal(t, v1.Id, m2.PreviousVersionID)
 		assert.Equal(t, []string{"mod_b"}, m2.ChangedModules)
 
 		dbManifest, err := manifest.FindOne(ctx, manifest.ById(v2.Id))
@@ -1047,8 +1047,32 @@ func TestConstructManifestRecordsSelectionRulesAndChangedModules(t *testing.T) {
 		require.NotNil(t, dbManifest)
 		require.Contains(t, dbManifest.Modules, "mod_b")
 		assert.Equal(t, manifest.ModuleSelectionLatestIngested, dbManifest.Modules["mod_b"].SelectionRule)
-		assert.Equal(t, v1.Id, dbManifest.PreviousVersion)
+		assert.Equal(t, v1.Id, dbManifest.PreviousVersionID)
 		assert.Equal(t, []string{"mod_b"}, dbManifest.ChangedModules)
+	})
+
+	t.Run("PreviousVersionWithoutManifestShouldFallBackToBaseManifest", func(t *testing.T) {
+		gitTagVersion := &Version{
+			Id:                  mgobson.NewObjectId().Hex(),
+			Identifier:          pRef.Id,
+			Revision:            v2.Revision,
+			Requester:           evergreen.GitTagRequester,
+			RevisionOrderNumber: 3,
+		}
+		require.NoError(t, gitTagVersion.Insert(ctx))
+		v4 := &Version{
+			Id:                  mgobson.NewObjectId().Hex(),
+			Identifier:          pRef.Id,
+			Revision:            "r4",
+			Requester:           evergreen.RepotrackerVersionRequester,
+			RevisionOrderNumber: 4,
+			IngestTime:          secondIngest,
+		}
+		m, err := constructManifest(ctx, v4, pRef, modules)
+		require.NoError(t, err)
+		require.NotNil(t, m)
+		assert.Equal(t, gitTagVersion.Id, m.PreviousVersionID)
+		assert.Empty(t, m.ChangedModules)
 	})
 
 	t.Run("PatchShouldInheritFromBaseVersionWithoutChanges", func(t *testing.T) {
@@ -1066,7 +1090,7 @@ func TestConstructManifestRecordsSelectionRulesAndChangedModules(t *testing.T) {
 		require.Contains(t, m.Modules, "mod_b")
 		assert.Equal(t, "b2", m.Modules["mod_b"].Revision)
 		assert.Equal(t, manifest.ModuleSelectionBaseVersion, m.Modules["mod_b"].SelectionRule)
-		assert.Equal(t, v2.Id, m.PreviousVersion)
+		assert.Equal(t, v2.Id, m.PreviousVersionID)
 		assert.Empty(t, m.ChangedModules)
 	})
 }

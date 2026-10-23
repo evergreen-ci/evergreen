@@ -499,13 +499,14 @@ Each module in the manifest records a `selection_rule` explaining how its revisi
 - `trigger_commit`: the module commit that fired the push-level [project trigger](Project-and-Distro-Settings#project-triggers)
   that created the version.
 - `latest_ingested`: the latest module commit Evergreen had received at the time the version was created.
-- `github_fallback`: the newest commit on the module branch according to GitHub, used when Evergreen
-  hasn't received any commits for the module (or for patches that use `auto_update`).
+- `github_fallback`: the newest commit on the module branch according to GitHub. This is used when Evergreen hasn't
+  received a push for the module branch before the version was created, and for patches that use `auto_update`.
 - `base_version`: inherited from the base version's manifest.
 
-The manifest also records `previous_version`, the version it was compared against (the previous mainline version, or
-the base version for patches), and `changed_modules`, the modules that were added, removed, or moved to a different
-commit compared to that version.
+The manifest also records `changed_modules`, the modules that were added, removed, or moved to a different commit
+compared to the version in `previous_version_id`. For patches, that's the base version. Otherwise, it's the previous
+version on the waterfall (including trigger, git tag, and periodic build versions), the same one Spruce links to as
+the previous version.
 
 Module fields support the expansion of variables defined in the [Variables](Project-and-Distro-Settings#variables)
 tab of the Spruce project settings. These fields are expanded at the time of version creation, at which point

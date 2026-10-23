@@ -42,11 +42,12 @@ type Manifest struct {
 	Modules map[string]*Module `json:"modules" bson:"modules" extensions:"x-nullable"`
 	// True if the version is a mainline build.
 	IsBase bool `json:"is_base" bson:"is_base"`
-	// PreviousVersion is the version ChangedModules is relative to. It is the base
-	// version for patches, and the previous revision order number otherwise.
-	PreviousVersion string `json:"previous_version,omitempty" bson:"previous_version,omitempty"`
+	// PreviousVersionID is the version ChangedModules is relative to. It's the
+	// base version for patches, and the version before this one on the
+	// waterfall otherwise.
+	PreviousVersionID string `json:"previous_version_id,omitempty" bson:"previous_version_id,omitempty"`
 	// ChangedModules are the modules added, removed, or moved to a different
-	// commit since PreviousVersion.
+	// commit since PreviousVersionID.
 	ChangedModules  []string          `json:"changed_modules,omitempty" bson:"changed_modules,omitempty"`
 	ModuleOverrides map[string]string `json:"module_overrides,omitempty" bson:"-"`
 }

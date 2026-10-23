@@ -1030,35 +1030,66 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 	}
 	newManifest.Modules = modules
 
-	// Periodic builds inherit from their base version but are on the
-	// waterfall, so they're compared to the version before them.
-	prevManifest := baseManifest
-	if !evergreen.IsPatchRequester(v.Requester) {
-		prevManifest, err = findPreviousSystemVersionManifest(ctx, v)
-		if err != nil {
-			return nil, errors.Wrap(err, "getting previous version's manifest")
-		}
-	}
-	if prevManifest != nil && prevManifest.Id != v.Id {
-		newManifest.PreviousVersion = prevManifest.Id
-		newManifest.ChangedModules = newManifest.GetChangedModules(prevManifest)
-	}
+	setChangedModules(ctx, v, newManifest, baseManifest)
 
 	return newManifest, nil
 }
 
-func findPreviousSystemVersionManifest(ctx context.Context, v *Version) (*manifest.Manifest, error) {
-	if v.RevisionOrderNumber <= 0 {
-		return nil, nil
+// setChangedModules records which modules changed compared to the version's
+// base version for patches.
+func setChangedModules(ctx context.Context, v *Version, newManifest, baseManifest *manifest.Manifest) {
+	prevVersionID := ""
+	prevManifest := baseManifest
+	if baseManifest != nil {
+		prevVersionID = baseManifest.Id
 	}
-	prev, err := VersionFindOne(ctx, VersionBySystemRequesterOrdered(v.Identifier, v.RevisionOrderNumber).WithFields(VersionIdKey))
+	// Periodic builds inherit from their base version but are on the
+	// waterfall, so they're compared to the version before them.
+	if !evergreen.IsPatchRequester(v.Requester) {
+		prev, prevMfst, err := findPreviousSystemVersionManifest(ctx, v)
+		if err != nil {
+			grip.Error(ctx, message.WrapError(err, message.Fields{
+				"message":    "finding previous version's manifest to determine changed modules",
+				"source":     "manifest-creation",
+				"version_id": v.Id,
+				"project_id": v.Identifier,
+			}))
+			return
+		}
+		prevManifest = prevMfst
+		if prev != nil {
+			prevVersionID = prev.Id
+		}
+	}
+	// FindFromVersion returns the version's own manifest if it's being recreated.
+	if prevManifest == nil || prevManifest.Id == v.Id {
+		return
+	}
+	newManifest.PreviousVersionID = prevVersionID
+	newManifest.ChangedModules = newManifest.GetChangedModules(prevManifest)
+}
+
+// findPreviousSystemVersionManifest returns the prior version on the
+// waterfall and its manifest. If that version doesn't have its own manifest
+// (e.g. git tag versions), this falls back to the manifest of the mainline
+// version at the same revision.
+func findPreviousSystemVersionManifest(ctx context.Context, v *Version) (*Version, *manifest.Manifest, error) {
+	if v.RevisionOrderNumber <= 0 {
+		return nil, nil, nil
+	}
+	prev, err := VersionFindOne(ctx, VersionBySystemRequesterOrdered(v.Identifier, v.RevisionOrderNumber).
+		WithFields(VersionIdKey, VersionIdentifierKey, VersionRevisionKey, VersionRequesterKey))
 	if err != nil {
-		return nil, errors.Wrap(err, "finding previous version")
+		return nil, nil, errors.Wrap(err, "finding previous version")
 	}
 	if prev == nil {
-		return nil, nil
+		return nil, nil, nil
 	}
-	return manifest.FindOne(ctx, manifest.ById(prev.Id))
+	prevManifest, err := manifest.FindFromVersion(ctx, prev.Id, prev.Identifier, prev.Revision, prev.Requester)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "finding manifest for previous version '%s'", prev.Id)
+	}
+	return prev, prevManifest, nil
 }
 
 func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Module, requester string, ingestTime time.Time) (*manifest.Module, error) {
