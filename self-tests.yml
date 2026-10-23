@@ -1057,7 +1057,7 @@ buildvariants:
     display_name: OSX
     batchtime: 2880
     run_on:
-      - macos-1100-arm64
+      - macos-14-arm64
     expansions:
       GOROOT: /opt/golang/go1.26
       GOTOOLCHAIN: go1.24.13
