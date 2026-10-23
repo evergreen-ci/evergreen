@@ -40,7 +40,7 @@ func makeCreatePatchHandler(env evergreen.Environment) gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Create a patch
-//	@Description	Creates a patch for the project. The base diff ('patch') and module diffs are optional; a patch with no diffs runs its tasks against the base commit. Module diffs are given inline, so no follow-up calls are needed. To repeat a previous patch's build variant/task definition, set exactly one of 'repeat_last_patch', 'repeat_failed', or 'repeat_patch_id' instead of specifying variants and tasks. Returns the created patch; it is not activated unless 'finalize' is true.
+//	@Description	Creates a patch for the project. The base diff ('patch') and module diffs are optional; a patch with no diffs runs its tasks against the base commit. Module diffs are given inline, so no follow-up calls are needed. To repeat a previous patch's build variant/task definition, set exactly one of 'repeat_last_patch', 'repeat_failed', or 'repeat_patch_id' instead of specifying variants and tasks. Returns the created patch; it is not activated unless 'finalize' is true. Patch creation runs synchronously and can take time, so clients should use a generous request timeout and must not blindly retry: a retried request that already succeeded creates a duplicate patch.
 //	@Tags			patches
 //	@Router			/projects/{project_id}/patches [post]
 //	@Security		Api-User || Api-Key
@@ -159,8 +159,28 @@ func (h *patchCreateHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "processing patch"))
 	}
 
-	// Module diffs are applied after the patch doc exists; they must be in
-	// place before finalization so the version picks them up.
+	if len(h.body.Modules) > 0 || h.body.Finalize {
+		patchDoc, err := patch.FindOneId(ctx, patchID.Hex())
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patch '%s'", patchID.Hex()))
+		}
+		if patchDoc == nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("patch '%s' not found after processing", patchID.Hex()))
+		}
+
+		// Activating a patch whose definition resolved to no tasks or variants would create a version with nothing to run.
+		if h.body.Finalize && len(patchDoc.VariantsTasks) == 0 {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    "patch has no build variants or tasks",
+			})
+		}
+
+		if errResp := validateModulesExist(ctx, h.env, patchDoc, h.body.Modules); errResp != nil {
+			return errResp
+		}
+	}
+
 	for _, m := range h.body.Modules {
 		if err = restData.UpdatePatchModule(ctx, patchID.Hex(), m.ModuleName, m.Githash, m.Patch); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding diff for module '%s'", m.ModuleName))
@@ -183,6 +203,27 @@ func (h *patchCreateHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting response status"))
 	}
 	return responder
+}
+
+// validateModulesExist rejects unknown module names with a 400 so they block creation instead of silently attaching a
+// diff no build can use.
+func validateModulesExist(ctx context.Context, env evergreen.Environment, patchDoc *patch.Patch, modules []apimodels.CreatePatchModule) gimlet.Responder {
+	if len(modules) == 0 {
+		return nil
+	}
+	patchedProject, _, err := dbModel.GetPatchedProject(ctx, env.Settings(), patchDoc)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting patched project to validate modules"))
+	}
+	for _, m := range modules {
+		if _, err = patchedProject.GetModuleByName(m.ModuleName); err != nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    errors.Wrapf(err, "module '%s'", m.ModuleName).Error(),
+			})
+		}
+	}
+	return nil
 }
 
 // resolvePatchAuthor returns the user the patch should be attributed to: the
