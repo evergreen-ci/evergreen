@@ -308,7 +308,7 @@ func TestPostRestoreCommandFetchesTagsSavedAfterTheArchive(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, c.runCommands(ctx, taskLogger, conf, c.buildPostRestoreCommand(conf, cloneOpts{owner: "some-org", repo: "some-repo"}, revision, false)))
-	require.NoError(t, c.runCommands(ctx, taskLogger, conf, c.buildRefreshTagsCommand(revision)))
+	require.NoError(t, c.runCommands(ctx, taskLogger, conf, c.buildRefreshTagsCommand(revision, false)))
 
 	describe, err := exec.CommandContext(ctx, "git", "-C", consumerDir, "describe", "--tags").Output()
 	require.NoError(t, err)
@@ -317,10 +317,80 @@ func TestPostRestoreCommandFetchesTagsSavedAfterTheArchive(t *testing.T) {
 
 func TestBuildRefreshTagsCommand(t *testing.T) {
 	c := &gitFetchProject{Directory: "src"}
-	joined := strings.Join(c.buildRefreshTagsCommand("abc123"), "\n")
+	joined := strings.Join(c.buildRefreshTagsCommand("abc123", false), "\n")
 	assert.Contains(t, joined, `git ls-remote origin 'refs/tags/*'`)
 	assert.Contains(t, joined, `-v rev='abc123'`)
 	assert.Contains(t, joined, `git fetch origin --force --no-recurse-submodules $matching`)
+	assert.Contains(t, joined, `[ -n "$matching" ] || exit 0`)
+	assert.Contains(t, strings.Join(c.buildRefreshTagsCommand("abc123", true), "\n"), `[ -n "$matching" ] || exit 1`)
+}
+
+// TestRefreshTagsOnRestoredSourceFallsBackToCloneOnlyForTagTriggered runs the
+// refresh against an unreachable origin, since only a tag-triggered build is
+// allowed to fall back to a clone when the refresh fails.
+func TestRefreshTagsOnRestoredSourceFallsBackToCloneOnlyForTagTriggered(t *testing.T) {
+	ctx := t.Context()
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is not installed")
+	}
+
+	workDir := t.TempDir()
+	repoDir := filepath.Join(workDir, "src")
+	for _, args := range [][]string{
+		{"init", "--initial-branch=main", repoDir},
+		{"-C", repoDir, "commit", "--allow-empty", "-m", "initial", "--author=t <t@t>"},
+		{"-C", repoDir, "remote", "add", "origin", filepath.Join(workDir, "no-such-origin.git")},
+	} {
+		cmd := exec.CommandContext(ctx, "git", args...)
+		cmd.Env = append(cmd.Environ(), "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")
+		require.NoError(t, cmd.Run())
+	}
+
+	jpm, err := jasper.NewSynchronizedManager(false)
+	require.NoError(t, err)
+	c := &gitFetchProject{Directory: "src"}
+	c.SetJasperManager(jpm)
+	comm := client.NewMock("http://localhost.com")
+	conf := sourceCacheTestConfig()
+	conf.WorkDir = workDir
+	taskLogger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+	require.NoError(t, err)
+
+	restoreKey := apimodels.SourceCacheRestoreKey{Revision: "0123456789abcdef0123456789abcdef01234567"}
+	assert.NoError(t, c.refreshTagsOnRestoredSource(ctx, taskLogger, conf, restoreKey), "any other build keeps the restored tree on a failed refresh")
+	restoreKey.TagTriggered = true
+	assert.Error(t, c.refreshTagsOnRestoredSource(ctx, taskLogger, conf, restoreKey), "a tag-triggered build falls back to a clone")
+
+	// A revision that is not a git SHA never reaches the shell script, so it takes the failure path too.
+	restoreKey = apimodels.SourceCacheRestoreKey{Revision: "abc'123"}
+	assert.NoError(t, c.refreshTagsOnRestoredSource(ctx, taskLogger, conf, restoreKey), "a non-SHA revision keeps a non-tag-triggered build's tree")
+	restoreKey.TagTriggered = true
+	assert.Error(t, c.refreshTagsOnRestoredSource(ctx, taskLogger, conf, restoreKey), "a non-SHA revision falls back to a clone")
+}
+
+// TestRefreshTagsOnRestoredSourceFailsWhenNoTagPeelsToTheRevision verifies a
+// tag-triggered build does not mistake an empty tag match for a refreshed tree;
+// any other build exits cleanly and keeps the restored tree.
+func TestRefreshTagsOnRestoredSourceFailsWhenNoTagPeelsToTheRevision(t *testing.T) {
+	ctx := t.Context()
+
+	// The local origin serves no tag, so ls-remote succeeds but matches nothing.
+	workDir, _ := newRepoWithLocalOrigin(t)
+
+	jpm, err := jasper.NewSynchronizedManager(false)
+	require.NoError(t, err)
+	c := &gitFetchProject{Directory: "src"}
+	c.SetJasperManager(jpm)
+	comm := client.NewMock("http://localhost.com")
+	conf := sourceCacheTestConfig()
+	conf.WorkDir = workDir
+	taskLogger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+	require.NoError(t, err)
+
+	restoreKey := apimodels.SourceCacheRestoreKey{Revision: "0123456789abcdef0123456789abcdef01234567"}
+	assert.NoError(t, c.refreshTagsOnRestoredSource(ctx, taskLogger, conf, restoreKey), "any other build treats an empty match as a clean no-op")
+	restoreKey.TagTriggered = true
+	assert.Error(t, c.refreshTagsOnRestoredSource(ctx, taskLogger, conf, restoreKey), "a tag-triggered build falls back to a clone on an empty match")
 }
 
 func TestSourceCacheSpanDurationsAreNumericMilliseconds(t *testing.T) {
