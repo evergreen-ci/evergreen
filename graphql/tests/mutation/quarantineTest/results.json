@@ -31,6 +31,32 @@
       }
     },
     {
+      "query_file": "invalid_jira_ticket.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "'not a ticket' is not a valid Jira ticket key, expected a key like 'BF-123'",
+            "path": ["quarantineTest"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "success_with_details.graphql",
+      "result": {
+        "data": {
+          "quarantineTest": {
+            "id": "TestFoo",
+            "isManuallyQuarantined": true
+          }
+        }
+      }
+    },
+    {
       "query_file": "success.graphql",
       "result": {
         "data": {

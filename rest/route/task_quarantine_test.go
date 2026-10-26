@@ -42,7 +42,7 @@ func TestTaskQuarantineExecutionTaskSucceeds(t *testing.T) {
 	tsk := &task.Task{Id: "execution_task", Project: "p1", BuildVariant: "ubuntu", DisplayName: "my_task"}
 	ctx := ctxWithTask(tsk)
 
-	h := makeTaskQuarantineHandler()
+	h := makeTaskQuarantineHandler(evergreen.GetEnvironment())
 	require.NoError(t, h.Parse(ctx, nil))
 	res := h.Run(ctx)
 
@@ -58,7 +58,7 @@ func TestTaskQuarantineDisplayTaskIsRejected(t *testing.T) {
 	tsk := &task.Task{Id: "display_task", Project: "p1", BuildVariant: "ubuntu", DisplayName: "display", DisplayOnly: true}
 	ctx := ctxWithTask(tsk)
 
-	h := makeTaskQuarantineHandler()
+	h := makeTaskQuarantineHandler(evergreen.GetEnvironment())
 	err := h.Parse(ctx, nil)
 	require.Error(t, err)
 	resp, ok := err.(gimlet.ErrorResponse)
@@ -70,7 +70,7 @@ func TestTaskQuarantineDisplayTaskIsRejected(t *testing.T) {
 func TestTaskQuarantineParseRequiresTaskInContext(t *testing.T) {
 	ctx := context.WithValue(context.Background(), RequestContext, &serviceModel.Context{Task: nil})
 
-	h := makeTaskQuarantineHandler()
+	h := makeTaskQuarantineHandler(evergreen.GetEnvironment())
 	err := h.Parse(ctx, nil)
 	require.Error(t, err)
 	resp, ok := err.(gimlet.ErrorResponse)
@@ -92,7 +92,7 @@ func TestTaskQuarantineTSSFailurePropagates(t *testing.T) {
 	tsk := &task.Task{Id: "execution_task", Project: "p1", BuildVariant: "ubuntu", DisplayName: "my_task"}
 	ctx := ctxWithTask(tsk)
 
-	h := makeTaskQuarantineHandler()
+	h := makeTaskQuarantineHandler(evergreen.GetEnvironment())
 	require.NoError(t, h.Parse(ctx, nil))
 	res := h.Run(ctx)
 
