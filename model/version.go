@@ -978,20 +978,17 @@ func GetVersionsToModify(ctx context.Context, projectName string, opts ModifyVer
 
 // constructManifest will construct a manifest from the given project and version.
 func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, moduleList ModuleList) (*manifest.Manifest, error) {
-	return newModuleResolverForVersion(projectRef, v).Manifest(ctx, v, moduleList)
-}
-
-func newModuleResolverForVersion(projectRef *ProjectRef, v *Version) *ModuleResolver {
 	ingestTime := v.IngestTime
 	if utility.IsZeroTime(ingestTime) {
 		ingestTime = v.CreateTime
 	}
-	return NewModuleResolver(projectRef, ModuleResolverOpts{
+	resolver := NewModuleResolver(projectRef, ModuleResolverOpts{
 		VersionID:  v.Id,
 		Revision:   v.Revision,
 		Requester:  v.Requester,
 		IngestTime: ingestTime,
 	})
+	return resolver.Manifest(ctx, v, moduleList)
 }
 
 func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Module, requester string, ingestTime time.Time) (*manifest.Module, error) {

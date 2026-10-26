@@ -640,7 +640,9 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	var mfst *manifest.Manifest
 	if metadata.ModuleResolver != nil {
 		mfst, err = metadata.ModuleResolver.Manifest(ctx, v, projectInfo.Project.Modules)
-		// Failing to resolve modules shouldn't block creating the version.
+		// Don't fail version creation, since callers like the repotracker
+		// skip a revision whose version fails to be created. The agent
+		// will build the manifest later if it's missing.
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":    "resolving module commits for manifest",
 			"version_id": v.Id,
@@ -1146,7 +1148,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		if mfst != nil {
 			_, err = database.Collection(manifest.Collection).InsertOne(sessCtx, mfst)
 			if err != nil {
-				grip.Notice(ctx, message.WrapError(err, message.Fields{
+				grip.Error(ctx, message.WrapError(err, message.Fields{
 					"message": "aborting transaction",
 					"cause":   "can't insert manifest",
 					"version": v.Id,

@@ -1586,8 +1586,8 @@ func getRevisionForRemoteModule(ctx context.Context, mod Module, modName string,
 		if err != nil {
 			return "", errors.Wrap(err, "resolving module commit")
 		}
-		// Wiki modules have no resolved commit, so they fall back to the
-		// branch below.
+		// Wiki modules are always cloned at the branch HEAD, so they have no
+		// resolved commit and fall back to the branch below.
 		if mfstModule.Revision != "" {
 			return mfstModule.Revision, nil
 		}
