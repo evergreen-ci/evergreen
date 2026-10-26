@@ -88189,7 +88189,7 @@ func (ec *executionContext) unmarshalInputQuarantineTaskInput(ctx context.Contex
 					var zeroVal string
 					return zeroVal, err
 				}
-				access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "QUARANTINE")
+				access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT_AND_QUARANTINE")
 				if err != nil {
 					var zeroVal string
 					return zeroVal, err
@@ -88241,7 +88241,7 @@ func (ec *executionContext) unmarshalInputQuarantineTestInput(ctx context.Contex
 					var zeroVal string
 					return zeroVal, err
 				}
-				access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "QUARANTINE")
+				access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT_AND_QUARANTINE")
 				if err != nil {
 					var zeroVal string
 					return zeroVal, err
@@ -88300,7 +88300,7 @@ func (ec *executionContext) unmarshalInputQuarantineVariantInput(ctx context.Con
 					var zeroVal string
 					return zeroVal, err
 				}
-				access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "QUARANTINE")
+				access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT_AND_QUARANTINE")
 				if err != nil {
 					var zeroVal string
 					return zeroVal, err
@@ -92023,7 +92023,7 @@ func (ec *executionContext) unmarshalInputUnquarantineTaskInput(ctx context.Cont
 					var zeroVal string
 					return zeroVal, err
 				}
-				access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "QUARANTINE")
+				access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT_AND_QUARANTINE")
 				if err != nil {
 					var zeroVal string
 					return zeroVal, err
@@ -92075,7 +92075,7 @@ func (ec *executionContext) unmarshalInputUnquarantineTestInput(ctx context.Cont
 					var zeroVal string
 					return zeroVal, err
 				}
-				access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "QUARANTINE")
+				access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT_AND_QUARANTINE")
 				if err != nil {
 					var zeroVal string
 					return zeroVal, err
@@ -92134,7 +92134,7 @@ func (ec *executionContext) unmarshalInputUnquarantineVariantInput(ctx context.C
 					var zeroVal string
 					return zeroVal, err
 				}
-				access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "QUARANTINE")
+				access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT_AND_QUARANTINE")
 				if err != nil {
 					var zeroVal string
 					return zeroVal, err

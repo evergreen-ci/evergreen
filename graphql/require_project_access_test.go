@@ -289,17 +289,17 @@ func TestRequireProjectAccessForTasks(t *testing.T) {
 	const quarantineErr = "input: user 'test_user' does not have permission to 'edit tasks and quarantine tests' for the project 'project_id'"
 	for _, roleID := range []string{"edit_task", "view_task"} {
 		require.NoError(t, usr.AddRole(t.Context(), roleID))
-		_, err = RequireProjectAccess(ctx, obj, next, ProjectPermissionTasks, AccessLevelQuarantine)
+		_, err = RequireProjectAccess(ctx, obj, next, ProjectPermissionTasks, AccessLevelEditAndQuarantine)
 		require.EqualError(t, err, quarantineErr, roleID)
 		require.NoError(t, usr.RemoveRole(t.Context(), roleID))
 	}
-	_, err = RequireProjectAccess(ctx, obj, next, ProjectPermissionTasks, AccessLevelQuarantine)
+	_, err = RequireProjectAccess(ctx, obj, next, ProjectPermissionTasks, AccessLevelEditAndQuarantine)
 	require.EqualError(t, err, quarantineErr)
 	require.Equal(t, 9, callCount)
 
 	// admin access is successful for quarantine
 	require.NoError(t, usr.AddRole(t.Context(), "admin_task"))
-	res, err = RequireProjectAccess(ctx, obj, next, ProjectPermissionTasks, AccessLevelQuarantine)
+	res, err = RequireProjectAccess(ctx, obj, next, ProjectPermissionTasks, AccessLevelEditAndQuarantine)
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 10, callCount)
@@ -311,7 +311,7 @@ func TestRequireProjectAccessForTasks(t *testing.T) {
 	require.EqualError(t, err, "input: user 'test_user' does not have permission to 'edit tasks and override dependencies' for the project 'project_id'")
 	require.Equal(t, 10, callCount)
 
-	for _, access := range []AccessLevel{AccessLevelQuarantine, AccessLevelEdit, AccessLevelView} {
+	for _, access := range []AccessLevel{AccessLevelEditAndQuarantine, AccessLevelEdit, AccessLevelView} {
 		res, err = RequireProjectAccess(ctx, obj, next, ProjectPermissionTasks, access)
 		require.NoError(t, err, access)
 		require.Nil(t, res)

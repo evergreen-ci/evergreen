@@ -900,10 +900,6 @@ The task-level setting only has an effect when project-level test selection is e
 triggered versions, and other non-patch versions do not run the
 [test selection command](Project-Commands#test_selectionget).
 
-Quarantining or unquarantining tests, tasks, or build variants (from the UI or the REST API) requires the "Edit tasks and
-quarantine tests" tasks permission for the project. Permission to edit tasks is not enough on its own. Project admins
-have this permission already; other users can request it through [MANA](#permissions-requested-with-mana).
-
 ## GitHub App Settings
 
 Project and repo settings include a GitHub App Settings tab where you can save a GitHub App ID and private key. These
