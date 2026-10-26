@@ -99,7 +99,7 @@ func (b *Build) IsFinished() bool {
 // and later deactivated is not dormant, since it may have already reported a
 // status that should be updated rather than skipped.
 func (b *Build) IsDormant() bool {
-	return b.Status == evergreen.BuildCreated && !b.Activated && b.ActivatedTime.IsZero()
+	return b.Status == evergreen.BuildCreated && !b.Activated && utility.IsZeroTime(b.ActivatedTime)
 }
 
 // FindBuildOnBaseCommit returns the build that a patch build is based on.
