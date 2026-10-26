@@ -215,6 +215,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/projects/{project_id}/backstage_variables").Version(2).Post().Wrap(requireUser, requireBackstage, rateLimit).RouteHandler(makeBackstageVariablesPost())
 	app.AddRoute("/projects/{project_id}/events").Version(2).Get().Wrap(requireUser, addProject, requireProjectAdmin, viewProjectSettings, rateLimit).RouteHandler(makeFetchProjectEvents())
 	app.AddRoute("/projects/{project_id}/patches").Version(2).Get().Wrap(requireUser, viewTasks, rateLimit).RouteHandler(makePatchesByProjectRoute())
+	app.AddRoute("/projects/{project_id}/patches").Version(2).Post().Wrap(requireUser, submitPatches, rateLimit).RouteHandler(makeCreatePatchHandler(env))
 	app.AddRoute("/projects/{project_id}/recent_versions").Version(2).Get().Wrap(requireUser, viewTasks, rateLimit).RouteHandler(makeFetchProjectVersionsLegacy())
 	app.AddRoute("/projects/{project_id}/revisions/{commit_hash}/tasks").Version(2).Get().Wrap(requireUser, viewTasks, rateLimit).RouteHandler(makeTasksByProjectAndCommitHandler(parsleyURL))
 	app.AddRoute("/projects/{project_id}/task_reliability").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeGetProjectTaskReliability())
