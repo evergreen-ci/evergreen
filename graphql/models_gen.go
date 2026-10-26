@@ -1173,11 +1173,12 @@ func (e MetStatus) MarshalJSON() ([]byte, error) {
 type ProjectPermission string
 
 const (
-	ProjectPermissionSettings    ProjectPermission = "SETTINGS"
-	ProjectPermissionTasks       ProjectPermission = "TASKS"
-	ProjectPermissionAnnotations ProjectPermission = "ANNOTATIONS"
-	ProjectPermissionPatches     ProjectPermission = "PATCHES"
-	ProjectPermissionLogs        ProjectPermission = "LOGS"
+	ProjectPermissionSettings       ProjectPermission = "SETTINGS"
+	ProjectPermissionTasks          ProjectPermission = "TASKS"
+	ProjectPermissionAnnotations    ProjectPermission = "ANNOTATIONS"
+	ProjectPermissionPatches        ProjectPermission = "PATCHES"
+	ProjectPermissionLogs           ProjectPermission = "LOGS"
+	ProjectPermissionTestQuarantine ProjectPermission = "TEST_QUARANTINE"
 )
 
 var AllProjectPermission = []ProjectPermission{
@@ -1186,11 +1187,12 @@ var AllProjectPermission = []ProjectPermission{
 	ProjectPermissionAnnotations,
 	ProjectPermissionPatches,
 	ProjectPermissionLogs,
+	ProjectPermissionTestQuarantine,
 }
 
 func (e ProjectPermission) IsValid() bool {
 	switch e {
-	case ProjectPermissionSettings, ProjectPermissionTasks, ProjectPermissionAnnotations, ProjectPermissionPatches, ProjectPermissionLogs:
+	case ProjectPermissionSettings, ProjectPermissionTasks, ProjectPermissionAnnotations, ProjectPermissionPatches, ProjectPermissionLogs, ProjectPermissionTestQuarantine:
 		return true
 	}
 	return false

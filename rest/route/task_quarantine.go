@@ -70,7 +70,7 @@ func makeTaskQuarantineHandler(env evergreen.Environment) gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Quarantine a task
-//	@Description	Marks all known tests of the given task as manually quarantined in the test selection service.
+//	@Description	Marks all known tests of the given task as manually quarantined in the test selection service. Requires the "Quarantine and unquarantine tests" project permission.
 //	@Tags			tasks
 //	@Router			/tasks/{task_id}/quarantine [post]
 //	@Security		Api-User || Api-Key
@@ -105,7 +105,7 @@ func makeTaskUnquarantineHandler(env evergreen.Environment) gimlet.RouteHandler 
 // Factory creates an instance of the handler.
 //
 //	@Summary		Unquarantine a task
-//	@Description	Marks all known tests of the given task as no longer manually quarantined in the test selection service.
+//	@Description	Marks all known tests of the given task as no longer manually quarantined in the test selection service. Requires the "Quarantine and unquarantine tests" project permission.
 //	@Tags			tasks
 //	@Router			/tasks/{task_id}/unquarantine [post]
 //	@Security		Api-User || Api-Key
