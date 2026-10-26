@@ -278,6 +278,7 @@ to be defined in the "Patch Trigger Aliases" section.
 For security reasons, commits by users outside of your organization will
 not automatically be run. A patch will still be created and must be
 manually authorized to run by a logged-in user.
+Any user with the project's "Submit and edit patches" permission can authorize another user's pending GitHub PR patch, allowing work to continue when the original author cannot authorize it.
 
 #### Label-Based PR Testing
 

@@ -1667,6 +1667,10 @@ func TestUpdateBuildAndVersionStatusForTaskAbort(t *testing.T) {
 
 	// restart aborted task
 	assert.NoError(t, testTask.Archive(ctx))
+	restartedTask, err := task.FindOneId(ctx, testTask.Id)
+	require.NoError(t, err)
+	require.NotZero(t, restartedTask)
+	testTask = *restartedTask
 	assert.NoError(t, testTask.MarkUnscheduled(ctx))
 	assert.NoError(t, UpdateBuildAndVersionStatusForTask(ctx, &testTask))
 	dbBuild1, err = build.FindOneId(t.Context(), b1.Id)
@@ -2840,7 +2844,7 @@ func TestTryResetTaskWithTaskGroup(t *testing.T) {
 			runningTask := &task.Task{
 				Id:                "say-hi-123",
 				DisplayName:       "say-hi",
-				Status:            evergreen.TaskStarted,
+				Status:            evergreen.TaskDispatched,
 				Activated:         true,
 				ActivatedTime:     time.Now(),
 				BuildId:           "b",
@@ -2977,7 +2981,7 @@ func TestMarkStart(t *testing.T) {
 			Activated:   true,
 			BuildId:     b.Id,
 			Project:     "sample",
-			Status:      evergreen.TaskUndispatched,
+			Status:      evergreen.TaskDispatched,
 			Version:     b.Version,
 		}
 		So(b.Insert(t.Context()), ShouldBeNil)
@@ -3030,7 +3034,7 @@ func TestMarkStart(t *testing.T) {
 			Activated: true,
 			BuildId:   b.Id,
 			Version:   v.Id,
-			Status:    evergreen.TaskUndispatched,
+			Status:    evergreen.TaskDispatched,
 		}
 		So(t1.Insert(t.Context()), ShouldBeNil)
 
@@ -3042,6 +3046,29 @@ func TestMarkStart(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(dtFromDb.Status, ShouldEqual, evergreen.TaskStarted)
 	})
+
+	t.Run("LateStartForFinishedExecutionShouldNotRestartIt", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
+		finishedTask := task.Task{
+			Id:        "finishedTask",
+			Activated: true,
+			BuildId:   "build",
+			Version:   "version",
+			Status:    evergreen.TaskFailed,
+		}
+		require.NoError(t, finishedTask.Insert(t.Context()))
+
+		staleTask := finishedTask
+		staleTask.Status = evergreen.TaskDispatched
+		err := MarkStart(t.Context(), &staleTask, &StatusChanges{})
+		assert.ErrorIs(t, err, ErrTaskStateChanged)
+
+		dbTask, err := task.FindOneId(t.Context(), finishedTask.Id)
+		require.NoError(t, err)
+		require.NotZero(t, dbTask)
+		assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
+	})
+
 }
 
 func TestMarkDispatched(t *testing.T) {
@@ -5180,10 +5207,11 @@ func TestDisplayTaskUpdatesAreConcurrencySafe(t *testing.T) {
 			return
 		}
 
-		if err := et1.MarkStart(ctx, time.Now()); err != nil {
+		if err := task.UpdateOne(ctx, bson.M{task.IdKey: et1.Id}, bson.M{"$set": bson.M{task.StatusKey: evergreen.TaskStarted}}); err != nil {
 			errs <- err
 			return
 		}
+		et1.Status = evergreen.TaskStarted
 
 		if err := et1.MarkEnd(ctx, time.Now(), &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}); err != nil {
 			errs <- err

@@ -1,0 +1,12 @@
+query {
+  version(versionId: "spruce_d1c6c0e33ac4d3f5e7b8a5f2e6d1c4b3a2f1e0d9_dsi_trigger") {
+    id
+    triggerModule {
+      branch
+      name
+      owner
+      repo
+      revision
+    }
+  }
+}

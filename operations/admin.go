@@ -9,14 +9,12 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	amboyCLI "github.com/mongodb/amboy/cli"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	"gopkg.in/yaml.v3"
 )
 
 func Admin() cli.Command {
@@ -26,9 +24,7 @@ func Admin() cli.Command {
 		Subcommands: []cli.Command{
 			adminSetBanner(),
 			viewSettings(),
-			updateSettings(),
 			listEvents(),
-			revert(),
 			fetchAllProjectConfigs(),
 			adminFeatureTracker(),
 			amboyCmd(),
@@ -155,59 +151,6 @@ func doViewSettings() cli.ActionFunc {
 	}
 }
 
-func updateSettings() cli.Command {
-	const updateFlagName = "update"
-
-	return cli.Command{
-		Name:   "update-settings",
-		Before: mergeBeforeFuncs(setPlainLogger, requireStringFlag(updateFlagName)),
-		Usage:  "update the Evergreen configuration settings",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:  joinFlagNames(updateFlagName, "u"),
-				Usage: "update to make (JSON or YAML)",
-			},
-		},
-		Action: func(c *cli.Context) error {
-			confPath := c.Parent().Parent().String(ConfFlagName)
-			updateString := c.String(updateFlagName)
-
-			updateSettings := &model.APIAdminSettings{}
-			err := yaml.Unmarshal([]byte(updateString), updateSettings)
-			if err != nil {
-				return errors.Wrap(err, "parsing update string as a settings document")
-			}
-
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
-			conf, err := NewClientSettings(confPath)
-			if err != nil {
-				return errors.Wrap(err, "loading configuration")
-			}
-			client, err := conf.setupRestCommunicator(ctx, false)
-			if err != nil {
-				return errors.Wrap(err, "setting up REST communicator")
-			}
-			defer client.Close()
-
-			settings, err := client.UpdateSettings(ctx, updateSettings)
-			if err != nil {
-				return errors.Wrap(err, "updating Evergreen settings")
-			}
-
-			settingsYaml, err := json.MarshalIndent(settings, " ", " ")
-			if err != nil {
-				return errors.Wrap(err, "marshalling Evergreen settings")
-			}
-
-			grip.Info(ctx, settingsYaml)
-
-			return nil
-		},
-	}
-}
-
 func listEvents() cli.Command {
 	return cli.Command{
 		Name:   "list-events",
@@ -251,41 +194,6 @@ func listEvents() cli.Command {
 				return errors.Wrap(err, "marshalling events")
 			}
 			grip.Info(ctx, eventsPretty)
-
-			return nil
-		},
-	}
-}
-
-func revert() cli.Command {
-	return cli.Command{
-		Name:   "revert-event",
-		Before: mergeBeforeFuncs(setPlainLogger),
-		Usage:  "revert a specific change to the admin settings",
-		Action: func(c *cli.Context) error {
-			confPath := c.Parent().Parent().String(ConfFlagName)
-			guid := c.Args().Get(0)
-			if guid == "" {
-				return errors.New("must specify a GUID to revert")
-			}
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
-			conf, err := NewClientSettings(confPath)
-			if err != nil {
-				return errors.Wrap(err, "loading configuration")
-			}
-			client, err := conf.setupRestCommunicator(ctx, false)
-			if err != nil {
-				return errors.Wrap(err, "setting up REST communicator")
-			}
-			defer client.Close()
-
-			err = client.RevertSettings(ctx, guid)
-			if err != nil {
-				return err
-			}
-			grip.Infof(ctx, "Successfully reverted GUID '%s'", guid)
 
 			return nil
 		},

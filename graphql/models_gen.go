@@ -304,13 +304,15 @@ type MainlineCommitsOptions struct {
 }
 
 type Manifest struct {
-	ID              string            `json:"id"`
-	Branch          string            `json:"branch"`
-	IsBase          bool              `json:"isBase"`
-	ModuleOverrides map[string]string `json:"moduleOverrides,omitempty"`
-	Modules         map[string]any    `json:"modules,omitempty"`
-	Project         string            `json:"project"`
-	Revision        string            `json:"revision"`
+	ID                string            `json:"id"`
+	Branch            string            `json:"branch"`
+	ChangedModules    []string          `json:"changedModules,omitempty"`
+	IsBase            bool              `json:"isBase"`
+	ModuleOverrides   map[string]string `json:"moduleOverrides,omitempty"`
+	Modules           map[string]any    `json:"modules,omitempty"`
+	PreviousVersionID *string           `json:"previousVersionId,omitempty"`
+	Project           string            `json:"project"`
+	Revision          string            `json:"revision"`
 }
 
 // MoveProjectInput is the input to the attachProjectToNewRepo mutation.
@@ -676,6 +678,14 @@ type TestFilterOptions struct {
 type TestSortOptions struct {
 	SortBy    TestSortCategory `json:"sortBy"`
 	Direction SortDirection    `json:"direction"`
+}
+
+type TriggerModule struct {
+	Branch   string `json:"branch"`
+	Name     string `json:"name"`
+	Owner    string `json:"owner"`
+	Repo     string `json:"repo"`
+	Revision string `json:"revision"`
 }
 
 // UnquarantineTaskInput is the input to the unquarantineTask mutation.

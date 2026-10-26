@@ -57,6 +57,20 @@ func TestInitSettings(t *testing.T) {
 	assert.NotNil(settings)
 }
 
+func TestHostFacingExpansions(t *testing.T) {
+	settings := &Settings{
+		Expansions: map[string]string{
+			GithubAppPrivateKey: "private-key",
+			"other_expansion":   "other-value",
+		},
+	}
+
+	expansions := settings.HostFacingExpansions()
+	assert.NotContains(t, expansions, GithubAppPrivateKey)
+	assert.Equal(t, "other-value", expansions["other_expansion"])
+	assert.Equal(t, "private-key", settings.Expansions[GithubAppPrivateKey], "original settings should not be mutated")
+}
+
 // Checks that trying to parse a non existent file returns non-nil err
 func TestBadInit(t *testing.T) {
 	assert := assert.New(t)

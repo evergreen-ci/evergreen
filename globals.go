@@ -387,6 +387,10 @@ const (
 	// HighExecTimeoutThreshold is the exec timeout duration above which a task
 	// has an unusually long timeout and warrants alerting.
 	HighExecTimeoutThreshold = 72 * time.Hour
+
+	// MaxVirtualTaskBatchSize is the maximum number of virtual tasks that can be
+	// prepared or push-completed in a single request.
+	MaxVirtualTaskBatchSize = 100
 )
 
 var TestFailureStatuses = []string{
@@ -1598,8 +1602,12 @@ var validKeyTypes = []string{
 
 var sensitiveCollections = []string{"events"}
 
-// ValidateSSHKey errors if the given key does not start with one of the allowed prefixes.
+// ValidateSSHKey errors if the given key does not start with one of the allowed
+// prefixes or if it contains expansion syntax.
 func ValidateSSHKey(key string) error {
+	if strings.Contains(key, "${") {
+		return errors.New("public key must not contain expansion syntax (e.g. ${example})")
+	}
 	for _, prefix := range validKeyTypes {
 		if strings.HasPrefix(key, prefix) {
 			return nil

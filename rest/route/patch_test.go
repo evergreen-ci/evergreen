@@ -1499,7 +1499,7 @@ tasks:
 	require.NoError(t, db.EnsureIndex(task.Collection, mongo.IndexModel{
 		Keys: task.TaskHistoricalDataIndex,
 	}))
-	settings := testutil.TestConfig()
+	settings := env.Settings()
 	testutil.ConfigureIntegrationTest(t, settings)
 	require.NoError(t, settings.Set(ctx))
 	projectRef := &serviceModel.ProjectRef{
@@ -1547,13 +1547,13 @@ tasks:
 	tasks, err := task.Find(ctx, task.ByVersion(*respVersion.Id))
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 1)
-	// manually set the task as running and its generated JSON for simplicity
+	// manually set the task as running and store its generated JSON for simplicity
 	err = task.UpdateOne(ctx, task.ById(tasks[0].Id), bson.M{
 		"$set": bson.M{
-			task.StatusKey:                evergreen.TaskStarted,
-			task.GeneratedJSONAsStringKey: generatedProject,
+			task.StatusKey: evergreen.TaskStarted,
 		}})
 	assert.NoError(t, err)
+	require.NoError(t, task.GeneratedJSONInsert(ctx, env.Settings(), &tasks[0], generatedProject))
 	j := units.NewGenerateTasksJob(env, tasks[0].Version, tasks[0].Id, "1")
 	j.Run(context.Background())
 	assert.NoError(t, j.Error())

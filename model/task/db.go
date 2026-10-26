@@ -121,7 +121,6 @@ var (
 	IsGithubCheckKey              = bsonutil.MustHaveTag(Task{}, "IsGithubCheck")
 	HostCreateDetailsKey          = bsonutil.MustHaveTag(Task{}, "HostCreateDetails")
 
-	GeneratedJSONAsStringKey      = bsonutil.MustHaveTag(Task{}, "GeneratedJSONAsString")
 	GeneratedJSONStorageMethodKey = bsonutil.MustHaveTag(Task{}, "GeneratedJSONStorageMethod")
 	GenerateTasksErrorKey         = bsonutil.MustHaveTag(Task{}, "GenerateTasksError")
 	GeneratedTasksToActivateKey   = bsonutil.MustHaveTag(Task{}, "GeneratedTasksToActivate")
@@ -130,6 +129,7 @@ var (
 	NumActivatedGeneratedTasksKey = bsonutil.MustHaveTag(Task{}, "NumActivatedGeneratedTasks")
 	ResetWhenFinishedKey          = bsonutil.MustHaveTag(Task{}, "ResetWhenFinished")
 	ResetFailedWhenFinishedKey    = bsonutil.MustHaveTag(Task{}, "ResetFailedWhenFinished")
+	ExecutionTasksToRestartKey    = bsonutil.MustHaveTag(Task{}, "ExecutionTasksToRestart")
 	NumAutomaticRestartsKey       = bsonutil.MustHaveTag(Task{}, "NumAutomaticRestarts")
 	IsAutomaticRestartKey         = bsonutil.MustHaveTag(Task{}, "IsAutomaticRestart")
 	DisplayStatusKey              = bsonutil.MustHaveTag(Task{}, "DisplayStatus")
@@ -1264,13 +1264,10 @@ func FindOne(ctx context.Context, query db.Q) (*Task, error) {
 	return task, err
 }
 
-// FindOneId returns a single task with the given ID, excluding the
-// GeneratedJSONAsString field which can be very large. Use
-// FindOneIdWithGeneratedJSON if the generated JSON is needed.
+// FindOneId returns a single task with the given ID.
 func FindOneId(ctx context.Context, id string) (*Task, error) {
 	task := &Task{}
-	query := db.Query(bson.M{IdKey: id}).Project(bson.M{GeneratedJSONAsStringKey: 0})
-	err := db.FindOneQ(ctx, Collection, query, task)
+	err := db.FindOneQ(ctx, Collection, db.Query(bson.M{IdKey: id}), task)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -1278,16 +1275,6 @@ func FindOneId(ctx context.Context, id string) (*Task, error) {
 		return nil, errors.Wrap(err, "finding task by ID")
 	}
 	return task, nil
-}
-
-// FindOneIdWithGeneratedJSON returns a single task with the given ID,
-// including the GeneratedJSONAsString field.
-//
-// TODO (DEVPROD-41456): delete this function. Once no task stores its generated
-// JSON in the DB, FindOneId is equivalent.
-func FindOneIdWithGeneratedJSON(ctx context.Context, id string) (*Task, error) {
-	task, err := FindOne(ctx, db.Query(bson.M{IdKey: id}))
-	return task, errors.Wrap(err, "finding task by ID with generated JSON")
 }
 
 // FindByIdExecution returns a single task with the given ID and execution. If
@@ -1412,6 +1399,63 @@ func FindStuckDispatching(ctx context.Context) ([]Task, error) {
 	return tasks, nil
 }
 
+// FindStrandedVirtualTasks returns virtual tasks that are awaiting
+// push-completion by a runner task but cannot be push-completed because the
+// runner is already finished.
+//
+// This has some known limitations in edge cases around detecting restarted
+// runner tasks. Virtual tasks don't record the runner's execution that intended
+// to push-complete it, which can create ambiguity in whether the runner is
+// really finished with that virtual task execution or not.
+// For example, if a runner is aborted (leaving the virtual task stranded) and
+// then restarted, this will not return the virtual task because the runner's
+// latest execution might still push-complete the virtual task.
+func FindStrandedVirtualTasks(ctx context.Context) ([]Task, error) {
+	awaitingPushCompletion, err := FindAll(ctx, db.Query(bson.M{
+		IsVirtualKey:   true,
+		CompletedByKey: bson.M{"$exists": true},
+		StatusKey:      evergreen.TaskUndispatched,
+	}))
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "finding virtual tasks awaiting push-completion")
+	}
+	if len(awaitingPushCompletion) == 0 {
+		return nil, nil
+	}
+
+	runnerTaskIDs := make([]string, 0, len(awaitingPushCompletion))
+	for _, t := range awaitingPushCompletion {
+		runnerTaskIDs = append(runnerTaskIDs, t.CompletedBy)
+	}
+	runners, err := FindAll(ctx, db.Query(bson.M{IdKey: bson.M{"$in": runnerTaskIDs}}).WithFields(IdKey, StatusKey))
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "finding runner tasks that are push-completing virtual tasks")
+	}
+	finishedRunners := map[string]bool{}
+	for _, r := range runners {
+		if r.IsFinished() {
+			finishedRunners[r.Id] = true
+		}
+	}
+
+	// Virtual tasks that are awaiting push-completion but their runner task is
+	// already finished are stranded because the runner is not going to
+	// push-complete them.
+	var stranded []Task
+	for _, t := range awaitingPushCompletion {
+		if finishedRunners[t.CompletedBy] {
+			stranded = append(stranded, t)
+		}
+	}
+	return stranded, nil
+}
+
 // FindAllTaskIDsFromVersion returns a list of task IDs associated with a version.
 func FindAllTaskIDsFromVersion(ctx context.Context, versionId string) ([]string, error) {
 	q := db.Query(ByVersion(versionId)).WithFields(IdKey)
@@ -1517,7 +1561,7 @@ func Find(ctx context.Context, filter bson.M) ([]Task, error) {
 	if !exists {
 		filter[DisplayOnlyKey] = bson.M{"$ne": true}
 	}
-	query := db.Query(filter).Project(bson.M{GeneratedJSONAsStringKey: 0})
+	query := db.Query(filter)
 	err := db.FindAllQ(ctx, Collection, query, &tasks)
 
 	return tasks, err
@@ -2277,11 +2321,6 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		match[VersionKey] = versionID
 	}
 
-	// GeneratedJSON can often be large, so we filter it out by default
-	projectOut := bson.M{
-		GeneratedJSONAsStringKey: 0,
-	}
-
 	// Filter on task name if it exists
 	nonEmptyTaskNames := utility.FilterSlice(opts.TaskNames, func(s string) bool { return s != "" })
 	hasTaskNameFilter := len(nonEmptyTaskNames) > 0
@@ -2293,11 +2332,8 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	if !opts.IncludeNeverActivatedTasks {
 		match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
 	}
-	// $match must precede $project so the version index can drive the query;
-	// a leading $project can force a collection scan.
 	pipeline := []bson.M{
 		{"$match": match},
-		{"$project": projectOut},
 	}
 
 	if !opts.IncludeExecutionTasks {
@@ -2623,6 +2659,7 @@ func activateTasks(ctx context.Context, taskIDs []string, caller string, activat
 		}
 
 		if len(writes) > 0 {
+			db.StampBulkUpdatedAt(Collection, writes)
 			_, err := coll.BulkWrite(ctx, writes)
 			if err != nil {
 				return errors.Wrap(err, "bulk updating tasks with new predictions")
@@ -2889,7 +2926,7 @@ func abortAndMarkResetTasks(ctx context.Context, filter bson.M, taskIDs []string
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(
 		ctx,
 		filter,
-		[]bson.M{
+		db.StampUpdatedAt(Collection, []bson.M{
 			{
 				"$set": bson.M{
 					AbortedKey:           true,
@@ -2900,10 +2937,11 @@ func abortAndMarkResetTasks(ctx context.Context, filter bson.M, taskIDs []string
 			{
 				"$unset": []string{
 					ResetFailedWhenFinishedKey,
+					ExecutionTasksToRestartKey,
 				},
 			},
 			addDisplayStatusCache,
-		},
+		}),
 	)
 
 	return err

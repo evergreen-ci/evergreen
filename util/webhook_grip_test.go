@@ -196,6 +196,7 @@ func TestValidateWebhookURL(t *testing.T) {
 		"PublicHTTPSURL":       {url: "https://example.com", wantErr: false},
 		"PublicHTTPSIP":        {url: "https://8.8.8.8", wantErr: false},
 		"PublicHTTPURL":        {url: "http://example.com", wantErr: false},
+		"InClusterServiceURL":  {url: "http://100.71.152.124/api/bfgs", wantErr: false},
 		"HostlessURL":          {url: "https:///webhook", wantErr: true},
 		"UserInfoURL":          {url: "https://user:password@example.com", wantErr: true},
 		"LoopbackURL":          {url: "https://127.0.0.1", wantErr: true},

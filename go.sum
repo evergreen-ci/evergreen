@@ -21,8 +21,8 @@ github.com/alecthomas/assert/v2 v2.10.0 h1:jjRCHsj6hBJhkmhznrCzoNpbA3zqy0fYiUcYZ
 github.com/alecthomas/assert/v2 v2.10.0/go.mod h1:Bze95FyfUr7x34QZrjL+XP+0qgp/zg8yS+TtBj1WA3k=
 github.com/alecthomas/repr v0.4.0 h1:GhI2A8MACjfegCPVq9f1FLvIBS+DrQ2KQBFZP1iFzXc=
 github.com/alecthomas/repr v0.4.0/go.mod h1:Fr0507jx4eOXV7AlPV6AVZLYrLIuIeSOWtW57eE/O/4=
-github.com/alicebob/miniredis/v2 v2.39.0 h1:M7WbmV5BmV56L8KTG0rw6vEQ+woTOghpDgin2xv4A0g=
-github.com/alicebob/miniredis/v2 v2.39.0/go.mod h1:TcL7YfarKPGDAthEtl5NBeHZfeUQj6OXMm/+iu5cLMM=
+github.com/alicebob/miniredis/v2 v2.40.0 h1:6IgTQbvm2JiMYZ8yur/acNJzVjtSOWCelxXbk/LUBXc=
+github.com/alicebob/miniredis/v2 v2.40.0/go.mod h1:TcL7YfarKPGDAthEtl5NBeHZfeUQj6OXMm/+iu5cLMM=
 github.com/andreyvit/diff v0.0.0-20170406064948-c7f18ee00883 h1:bvNMNQO63//z+xNgfBlViaCIJKLlCJ6/fmUseuG0wVQ=
 github.com/andreyvit/diff v0.0.0-20170406064948-c7f18ee00883/go.mod h1:rCTlJbsFo29Kk6CurOXKm700vrz8f0KW0JNfpkRJY/8=
 github.com/andybalholm/brotli v1.0.1/go.mod h1:loMXtMfwqflxFJPmdbJO0a3KNoPuLBgiu3qAvBg8x/Y=
@@ -90,8 +90,8 @@ github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.21 h1:+1Kl1zx6bWi4X7cKi3VYh29
 github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.21/go.mod h1:4vIRDq+CJB2xFAXZ+YgGUTiEft7oAQlhIs71xcSeuVg=
 github.com/aws/aws-sdk-go-v2/service/sts v1.42.1 h1:F/M5Y9I3nwr2IEpshZgh1GeHpOItExNM9L1euNuh/fk=
 github.com/aws/aws-sdk-go-v2/service/sts v1.42.1/go.mod h1:mTNxImtovCOEEuD65mKW7DCsL+2gjEH+RPEAexAzAio=
-github.com/aws/smithy-go v1.28.2 h1:myhcykQcatTul2B/zITjDk203G7t0awUAs1hVry5Bvg=
-github.com/aws/smithy-go v1.28.2/go.mod h1:YE2RhdIuDbA5E5bTdciG9KrW3+TiEONeUWCqxX9i1Fc=
+github.com/aws/smithy-go v1.28.5 h1:OqbqKtzY9NUnr2yAe9+hiTdFb20tNaK/lI0PMOGXX9k=
+github.com/aws/smithy-go v1.28.5/go.mod h1:YE2RhdIuDbA5E5bTdciG9KrW3+TiEONeUWCqxX9i1Fc=
 github.com/aybabtme/iocontrol v0.0.0-20150809002002-ad15bcfc95a0 h1:0NmehRCgyk5rljDQLKUO+cRJCnduDyn11+zGZIc9Z48=
 github.com/aybabtme/iocontrol v0.0.0-20150809002002-ad15bcfc95a0/go.mod h1:6L7zgvqo0idzI7IO8de6ZC051AfXb5ipkIJ7bIA2tGA=
 github.com/benbjohnson/clock v1.1.0 h1:Q92kusRqC1XV2MjkWETPvjJVqKetz1OzxZB7mHJLju8=
@@ -144,8 +144,8 @@ github.com/distribution/reference v0.6.0 h1:0IXCQ5g4/QMHHkarYzh5l+u8T3t73zM5Qvfr
 github.com/distribution/reference v0.6.0/go.mod h1:BbU0aIcezP1/5jX/8MP0YiH4SdvB5Y4f/wlDRiLyi3E=
 github.com/docker/docker v28.5.2+incompatible h1:DBX0Y0zAjZbSrm1uzOkdr1onVghKaftjlSWt4AFexzM=
 github.com/docker/docker v28.5.2+incompatible/go.mod h1:eEKB0N0r5NX/I1kEveEz05bcu8tLC/8azJZsviup8Sk=
-github.com/docker/go-connections v0.8.1 h1:JibmG5hULs5qXSr/cp/w3Pw5fZuStt4MOHMUExb29/M=
-github.com/docker/go-connections v0.8.1/go.mod h1:no1qkHdjq7kLMGUXYAduOhYPSJxxvgWBh7ogVvptn3Q=
+github.com/docker/go-connections v0.8.2 h1:9d9DEokx5W7qlr0shkFXIxEA7+TTD+llwzcykSlxMNc=
+github.com/docker/go-connections v0.8.2/go.mod h1:no1qkHdjq7kLMGUXYAduOhYPSJxxvgWBh7ogVvptn3Q=
 github.com/docker/go-units v0.5.0 h1:69rxXcBk27SvSaaxTtLh/8llcHD8vYHT7WSdRZ/jvr4=
 github.com/docker/go-units v0.5.0/go.mod h1:fgPhTUdO+D/Jk86RDLlptpiXQzgHJF7gydDDbaIK4Dk=
 github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5/go.mod h1:qssHWj60/X5sZFNxpG4HBPDHVqxNm4DfnCKgrbZOT+s=
@@ -167,8 +167,8 @@ github.com/evergreen-ci/certdepot v0.0.0-20260326190252-5ab5e35f6cb7 h1:Sg7vxkrw
 github.com/evergreen-ci/certdepot v0.0.0-20260326190252-5ab5e35f6cb7/go.mod h1:+j7L0jgzpxAZbGcZPjyFporVe3L+GMtcIozz+fEETVw=
 github.com/evergreen-ci/evg-lint v0.0.0-20251215145242-23eaa365e48f h1:UCLTMndEQDi/BfiYa/MIv6okh7CLmz250oA03FLLA+w=
 github.com/evergreen-ci/evg-lint v0.0.0-20251215145242-23eaa365e48f/go.mod h1:FnyqGuSg33gR9wNbt2qo9wPaNUfP85+a8+UTVyx/gdg=
-github.com/evergreen-ci/gimlet v0.0.0-20260820213739-ce014252e539 h1:0DNSuCjg38l7VqQkxqMcO40Cc4wj5e+EB0NiQ/DKRHc=
-github.com/evergreen-ci/gimlet v0.0.0-20260820213739-ce014252e539/go.mod h1:RdfVAdxbLBKOCq9t4bgL3GnJH5TbRwG8n8jgb39NFuU=
+github.com/evergreen-ci/gimlet v0.0.0-20261021143728-b6aef89a6e39 h1:qYvNHmlErvhNF5+G0df2HRCeiGE3qqUK69343ceA1Po=
+github.com/evergreen-ci/gimlet v0.0.0-20261021143728-b6aef89a6e39/go.mod h1:RdfVAdxbLBKOCq9t4bgL3GnJH5TbRwG8n8jgb39NFuU=
 github.com/evergreen-ci/lru v0.0.0-20260326190734-0d627bf39810 h1:Q+MNMS3rHQw6bGJ0oZ6y1mCFBkG05ITreLfvjtdXo58=
 github.com/evergreen-ci/lru v0.0.0-20260326190734-0d627bf39810/go.mod h1:A+sGkHeCogvvRBXUrF/Ghu5Gec6lyLtb1MKZN/xfWmI=
 github.com/evergreen-ci/negroni v1.0.1-0.20211028183800-67b6d7c2c035 h1:oVU/ni/sRq+GAogUMLa7LBGtvVHMVLbisuytxBC5KaY=
@@ -179,8 +179,8 @@ github.com/evergreen-ci/poplar v0.0.0-20260330180450-c8cf511d1bd6 h1:leuRlgINHoR
 github.com/evergreen-ci/poplar v0.0.0-20260330180450-c8cf511d1bd6/go.mod h1:y7hhmPo+0k+kI8PTEyX9EziG2Um5727LFTu3Pln5gAQ=
 github.com/evergreen-ci/shrub v0.0.0-20251017154811-4d3ed1599154 h1:YO1VY9Qj68KjjRfd6TF8sHEss2kIfnpkUqZyxWAoEI8=
 github.com/evergreen-ci/shrub v0.0.0-20251017154811-4d3ed1599154/go.mod h1:nDQB46oIkI/BmvuNKkHdJekvXuGm8lvfUBcbbjekMZM=
-github.com/evergreen-ci/test-selection-client v0.0.0-20260812193714-c140c9414f6f h1:TeFLYJ4fbgDthiF3fESdnwhWPqqEfjKG9PsmkXvJArI=
-github.com/evergreen-ci/test-selection-client v0.0.0-20260812193714-c140c9414f6f/go.mod h1:0iD20pmczefJcyBCIuYuwfq9J3cqWOM5v61znyqcAwY=
+github.com/evergreen-ci/test-selection-client v0.0.0-20261012175355-ceae32d48406 h1:Jy3hPqBPoo6OJ/vcahzRFP63KdNSieP3+97I1GnLOkk=
+github.com/evergreen-ci/test-selection-client v0.0.0-20261012175355-ceae32d48406/go.mod h1:0iD20pmczefJcyBCIuYuwfq9J3cqWOM5v61znyqcAwY=
 github.com/evergreen-ci/utility v0.0.0-20260727185913-06cd8a26cd5e h1:9Ad/RzvKJLRjI4epzBTCx3+nEZS1dyNwDAmMQ01mtyU=
 github.com/evergreen-ci/utility v0.0.0-20260727185913-06cd8a26cd5e/go.mod h1:A03U7o6F4PDMNz+lD9mktDgy53wWJHgfR6Bk1fndBJc=
 github.com/fatih/structs v1.1.0 h1:Q7juDM0QtcnhCpeyLGQKyg4TOIghuNXrkL32pHAUMxo=

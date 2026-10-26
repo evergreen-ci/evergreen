@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"maps"
 	"sync"
 	"time"
 
@@ -393,6 +392,42 @@ func (m *ec2FleetManager) GetInstanceState(ctx context.Context, h *host.Host) (C
 	return info, nil
 }
 
+// GetRunningInstanceID returns the instance ID of the running EC2 instance
+// backing the host.
+func (m *ec2FleetManager) GetRunningInstanceID(ctx context.Context, h *host.Host) (string, error) {
+	if !host.IsIntentHostId(h.Id) {
+		return h.Id, nil
+	}
+	if err := m.setupClient(ctx); err != nil {
+		return "", errors.Wrap(err, "creating client")
+	}
+
+	// Prior launch attempts for the same intent host may have left behind
+	// terminated instances with the same tags.
+	out, err := m.client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
+		Filters: []types.Filter{
+			{Name: aws.String("tag:" + evergreen.TagName), Values: []string{h.Id}},
+			{Name: aws.String("tag:" + evergreen.TagDistro), Values: []string{h.Distro.Id}},
+			{Name: aws.String("instance-state-name"), Values: []string{string(types.InstanceStateNameRunning)}},
+		},
+	})
+	if err != nil {
+		return "", errors.Wrap(err, "describing instances")
+	}
+
+	var instanceIDs []string
+	for _, reservation := range out.Reservations {
+		for _, instance := range reservation.Instances {
+			instanceIDs = append(instanceIDs, utility.FromStringPtr(instance.InstanceId))
+		}
+	}
+	if len(instanceIDs) != 1 {
+		return "", errors.Errorf("expected exactly one running instance for host '%s' but found %d", h.Id, len(instanceIDs))
+	}
+
+	return instanceIDs[0], nil
+}
+
 func (m *ec2FleetManager) CheckInstanceType(ctx context.Context, instanceType string) error {
 	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
@@ -773,10 +808,7 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 	if ec2Settings.UserData != "" {
 		var expanded string
 		// TODO DEVPROD-42014: Remove expansions.
-		// Manually delete GitHub Key from expansions.
-		expansions := maps.Clone(m.settings.Expansions)
-		delete(expansions, evergreen.GithubAppPrivateKey)
-		expanded, err = expandUserData(ec2Settings.UserData, expansions)
+		expanded, err = expandUserData(ec2Settings.UserData, m.settings.HostFacingExpansions())
 		if err != nil {
 			return errors.Wrap(err, "expanding user data")
 		}

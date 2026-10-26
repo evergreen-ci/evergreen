@@ -12,6 +12,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -480,17 +481,32 @@ func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, ver
 }
 
 func CreateTasksCache(tasks []task.Task) ([]build.TaskCache, error) {
-	tasks, err := sortTasks(tasks)
+	sortedTasks, err := sortTasks(tasks)
 	if err != nil {
 		return nil, errors.Wrap(err, "sorting tasks for cache")
 	}
-	cache := make([]build.TaskCache, 0, len(tasks))
-	for _, task := range tasks {
+	cache := make([]build.TaskCache, 0, len(sortedTasks))
+	for _, task := range sortedTasks {
 		if task.DisplayTask == nil {
 			cache = append(cache, build.TaskCache{Id: task.Id})
 		}
 	}
 	return cache, nil
+}
+
+// taskCacheInput contains the fields needed to order tasks in a build's cache.
+type taskCacheInput struct {
+	ID             string            `bson:"_id"`
+	BuildID        string            `bson:"build_id"`
+	DisplayName    string            `bson:"display_name"`
+	DependsOn      []task.Dependency `bson:"depends_on"`
+	DisplayOnly    bool              `bson:"display_only"`
+	ExecutionTasks []string          `bson:"execution_tasks"`
+}
+
+func (t *taskCacheInput) UnmarshalBSON(data []byte) error {
+	// Use the task model's decoder to preserve legacy string dependencies.
+	return mgobson.Unmarshal(data, t)
 }
 
 // RefreshTasksCache updates the given builds' documents so that their task
@@ -499,49 +515,78 @@ func RefreshTasksCache(ctx context.Context, buildIDs []string) error {
 	if len(buildIDs) == 0 {
 		return nil
 	}
-	tasks, err := task.FindAll(ctx, db.Query(task.ByBuildIds(buildIDs)).WithFields(
+	// Projected fields still occupy a full Task struct unless we decode into a smaller type.
+	var tasks []taskCacheInput
+	err := db.FindAllQ(ctx, task.Collection, db.Query(task.ByBuildIds(buildIDs)).WithFields(
 		task.IdKey,
 		task.BuildIdKey,
 		task.DisplayNameKey,
 		task.DependsOnKey,
 		task.DisplayOnlyKey,
 		task.ExecutionTasksKey,
-	))
+	), &tasks)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	tasks, err = task.AddParentDisplayTasks(ctx, tasks)
-	if err != nil {
-		return errors.WithStack(err)
+	taskIDs := make([]string, 0, len(tasks))
+	for _, t := range tasks {
+		taskIDs = append(taskIDs, t.ID)
+	}
+	var parents []struct {
+		ExecutionTasks []string `bson:"execution_tasks"`
+	}
+	if len(taskIDs) > 0 {
+		if err := db.FindAllQ(ctx, task.Collection, db.Query(task.ByExecutionTasks(taskIDs)).WithFields(task.ExecutionTasksKey), &parents); err != nil {
+			return errors.Wrap(err, "finding parent display tasks")
+		}
+	}
+	hasDisplayParent := map[string]bool{}
+	for _, parent := range parents {
+		for _, id := range parent.ExecutionTasks {
+			hasDisplayParent[id] = true
+		}
 	}
 
-	tasksByBuild := map[string][]task.Task{}
-	for _, t := range tasks {
-		tasksByBuild[t.BuildId] = append(tasksByBuild[t.BuildId], t)
+	tasksByBuild := map[string][]*taskCacheInput{}
+	for i := range tasks {
+		t := &tasks[i]
+		tasksByBuild[t.BuildID] = append(tasksByBuild[t.BuildID], t)
 	}
 
 	cachesByBuild := make(map[string][]build.TaskCache, len(buildIDs))
 	for _, buildID := range buildIDs {
-		buildTasks := tasksByBuild[buildID]
-		// trim out tasks that are part of a display task
+		buildInputs := tasksByBuild[buildID]
 		execTaskMap := map[string]bool{}
-		for _, t := range buildTasks {
+		for _, t := range buildInputs {
 			if t.DisplayOnly {
 				for _, et := range t.ExecutionTasks {
 					execTaskMap[et] = true
 				}
 			}
 		}
-		for i, buildTask := range slices.Backward(buildTasks) {
-			if _, exists := execTaskMap[buildTask.Id]; exists {
-				buildTasks = append(buildTasks[:i], buildTasks[i+1:]...)
+		// Materialize full Task structs for only the build being sorted.
+		buildTasks := make([]task.Task, 0, len(buildInputs))
+		for _, input := range buildInputs {
+			if execTaskMap[input.ID] {
+				continue
 			}
+			buildTasks = append(buildTasks, task.Task{
+				Id:             input.ID,
+				DisplayName:    input.DisplayName,
+				DependsOn:      input.DependsOn,
+				DisplayOnly:    input.DisplayOnly,
+				ExecutionTasks: input.ExecutionTasks,
+			})
 		}
 
 		cachesByBuild[buildID], err = CreateTasksCache(buildTasks)
 		if err != nil {
 			return errors.Wrapf(err, "creating task cache for build '%s'", buildID)
 		}
+		// Parent display tasks can belong to builds outside this refresh.
+		cachesByBuild[buildID] = slices.DeleteFunc(cachesByBuild[buildID], func(t build.TaskCache) bool {
+			return hasDisplayParent[t.Id]
+		})
 	}
 	return errors.Wrap(build.SetTasksCaches(ctx, cachesByBuild), "updating task caches for builds")
 }
@@ -872,8 +917,8 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo, opt
 	dependencyTaskMap := opts.dependencyTasks
 	if dependencyTaskMap == nil {
 		dependencyTaskMap = make(map[string]*task.Task, len(taskMap)+len(creationInfo.TasksInBuild))
-		for i := range creationInfo.TasksInBuild {
-			dependencyTaskMap[creationInfo.TasksInBuild[i].Id] = &creationInfo.TasksInBuild[i]
+		for _, t := range creationInfo.TasksInBuild {
+			dependencyTaskMap[t.Id] = t
 		}
 	}
 	maps.Copy(dependencyTaskMap, taskMap)
@@ -1392,17 +1437,20 @@ func createDisplayTask(id string, creationInfo TaskCreationInfo, displayName str
 // sortTasks topologically sorts the tasks by dependency, grouping tasks with common dependencies,
 // and alphabetically sorting within groups.
 // All tasks with cross-variant dependencies are at the far right.
-func sortTasks(tasks []task.Task) ([]task.Task, error) {
+// The sorted tasks reference the input slice without modifying its order.
+func sortTasks(tasks []task.Task) ([]*task.Task, error) {
 	// Separate out tasks with cross-variant dependencies
 	taskPresent := make(map[string]bool)
-	for _, task := range tasks {
+	for i := range tasks {
+		task := &tasks[i]
 		taskPresent[task.Id] = true
 	}
 	// depMap is a map from a task ID to the tasks that depend on it
-	depMap := make(map[string][]task.Task)
+	depMap := make(map[string][]*task.Task)
 	// crossVariantTasks will contain all tasks with cross-variant dependencies
-	crossVariantTasks := make(map[string]task.Task)
-	for _, task := range tasks {
+	crossVariantTasks := make(map[string]*task.Task)
+	for i := range tasks {
+		task := &tasks[i]
 		for _, dep := range task.DependsOn {
 			if taskPresent[dep.TaskId] {
 				depMap[dep.TaskId] = append(depMap[dep.TaskId], task)
@@ -1417,8 +1465,9 @@ func sortTasks(tasks []task.Task) ([]task.Task, error) {
 		}
 	}
 	// normalTasks will contain all tasks with no cross-variant dependencies
-	normalTasks := make(map[string]task.Task)
-	for _, t := range tasks {
+	normalTasks := make(map[string]*task.Task)
+	for i := range tasks {
+		t := &tasks[i]
 		if _, ok := crossVariantTasks[t.Id]; !ok {
 			normalTasks[t.Id] = t
 		}
@@ -1444,7 +1493,7 @@ func sortTasks(tasks []task.Task) ([]task.Task, error) {
 
 // addDepChildren recursively adds task and all tasks depending on it to tasks
 // depMap is a map from a task ID to the tasks that depend on it
-func addDepChildren(task task.Task, tasks map[string]task.Task, depMap map[string][]task.Task) {
+func addDepChildren(task *task.Task, tasks map[string]*task.Task, depMap map[string][]*task.Task) {
 	if _, ok := tasks[task.Id]; !ok {
 		tasks[task.Id] = task
 		for _, dep := range depMap[task.Id] {
@@ -1455,12 +1504,12 @@ func addDepChildren(task task.Task, tasks map[string]task.Task, depMap map[strin
 
 // sortTasksHelper sorts the tasks, assuming they all have cross-variant dependencies, or none have
 // cross-variant dependencies
-func sortTasksHelper(tasks map[string]task.Task, idToDisplayName map[string]string) ([]task.Task, error) {
+func sortTasksHelper(tasks map[string]*task.Task, idToDisplayName map[string]string) ([]*task.Task, error) {
 	layers, err := layerTasks(tasks)
 	if err != nil {
 		return nil, err
 	}
-	sortedTasks := make([]task.Task, 0, len(tasks))
+	sortedTasks := make([]*task.Task, 0, len(tasks))
 	for _, layer := range layers {
 		sortedTasks = append(sortedTasks, sortLayer(layer, idToDisplayName)...)
 	}
@@ -1470,11 +1519,11 @@ func sortTasksHelper(tasks map[string]task.Task, idToDisplayName map[string]stri
 // layerTasks sorts the tasks into layers
 // Layer n contains all tasks whose dependencies are contained in layers 0 through n-1, or are not
 // included in tasks (for tasks with cross-variant dependencies)
-func layerTasks(tasks map[string]task.Task) ([][]task.Task, error) {
-	layers := make([][]task.Task, 0)
+func layerTasks(tasks map[string]*task.Task) ([][]*task.Task, error) {
+	layers := make([][]*task.Task, 0)
 	for len(tasks) > 0 {
 		// Create a new layer
-		layer := make([]task.Task, 0)
+		layer := make([]*task.Task, 0)
 		for _, task := range tasks {
 			// Check if all dependencies are included in previous layers (or were not in tasks)
 			if allDepsProcessed(task, tasks) {
@@ -1495,7 +1544,7 @@ func layerTasks(tasks map[string]task.Task) ([][]task.Task, error) {
 }
 
 // allDepsProcessed checks whether any dependencies of task are in unprocessedTasks
-func allDepsProcessed(task task.Task, unprocessedTasks map[string]task.Task) bool {
+func allDepsProcessed(task *task.Task, unprocessedTasks map[string]*task.Task) bool {
 	for _, dep := range task.DependsOn {
 		if _, unprocessed := unprocessedTasks[dep.TaskId]; unprocessed {
 			return false
@@ -1505,9 +1554,9 @@ func allDepsProcessed(task task.Task, unprocessedTasks map[string]task.Task) boo
 }
 
 // sortLayer groups tasks by common dependencies, sorting alphabetically within each group
-func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task {
+func sortLayer(layer []*task.Task, idToDisplayName map[string]string) []*task.Task {
 	sortKeys := make([]string, 0, len(layer))
-	sortKeyToTask := make(map[string]task.Task)
+	sortKeyToTask := make(map[string]*task.Task)
 	for _, t := range layer {
 		// Construct a key to sort by, consisting of all dependency names, sorted alphabetically,
 		// followed by the task name
@@ -1527,7 +1576,7 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 		sortKeyToTask[sortKey] = t
 	}
 	sort.Strings(sortKeys)
-	sortedLayer := make([]task.Task, 0, len(layer))
+	sortedLayer := make([]*task.Task, 0, len(layer))
 	for _, sortKey := range sortKeys {
 		sortedLayer = append(sortedLayer, sortKeyToTask[sortKey])
 	}
@@ -1819,12 +1868,12 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "finding existing tasks for builds")
 	}
-	existingTasksByBuild := map[string][]task.Task{}
+	existingTasksByBuild := map[string]task.Tasks{}
 	dependencyTasks := make(map[string]*task.Task, len(allExistingTasks))
 	for i := range allExistingTasks {
-		t := allExistingTasks[i]
+		t := &allExistingTasks[i]
 		existingTasksByBuild[t.BuildId] = append(existingTasksByBuild[t.BuildId], t)
-		dependencyTasks[t.Id] = &allExistingTasks[i]
+		dependencyTasks[t.Id] = t
 	}
 
 	activatedTaskIds := []string{}

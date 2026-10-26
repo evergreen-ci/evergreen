@@ -13,6 +13,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
@@ -61,7 +62,8 @@ func NewTaskExecutionMonitorJob(taskID string, ts string) amboy.Job {
 	j := makeTaskExecutionTimeoutMonitorJob()
 	j.Task = taskID
 	j.SetID(fmt.Sprintf("%s.%s.%s", taskExecutionTimeoutJobName, taskID, ts))
-	j.SetEnqueueScopes(fmt.Sprintf("%s.%s", taskExecutionTimeoutJobName, taskID))
+	j.SetScopes([]string{fmt.Sprintf("%s.%s", taskExecutionTimeoutJobName, taskID)})
+	j.SetEnqueueAllScopes(true)
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
 		MaxAttempts: utility.ToIntPtr(maxTaskExecutionTimeoutAttempts),
@@ -155,10 +157,14 @@ func (j *taskExecutionTimeoutJob) cleanUpTimedOutTask(ctx context.Context) error
 			"operation": "cleanup timed out task",
 			"job":       j.ID(),
 		})
-		return errors.WithStack(j.task.MarkUnscheduled(ctx))
+		err := j.task.MarkUnscheduled(ctx)
+		if adb.ResultsNotFound(err) {
+			return nil
+		}
+		return errors.WithStack(err)
 	}
 
-	if host.RunningTask == j.task.Id {
+	if host.RunningTask == j.task.Id && host.RunningTaskExecution == j.task.Execution {
 		// Check if the host was externally terminated before clearing the
 		// host's running task. When the running task is cleared on the host, an
 		// agent or agent monitor deploy might run, which updates the LCT and

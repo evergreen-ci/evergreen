@@ -24,10 +24,13 @@ updates:
       - dependency-name: "github.com/parquet-go/parquet-go"
       - dependency-name: "github.com/vektah/gqlparser/v2"
       - dependency-name: "golang.org/x/crypto"
+      - dependency-name: "golang.org/x/oauth2"
       - dependency-name: "golang.org/x/sync"
       - dependency-name: "golang.org/x/text"
       - dependency-name: "golang.org/x/tools"
       - dependency-name: "google.golang.org/grpc"
+      - dependency-name: "github.com/klauspost/pgzip"
+      - dependency-name: "github.com/redis/go-redis/v9"
     groups:
       otel-dependencies:
         applies-to: version-updates

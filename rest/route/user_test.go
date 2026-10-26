@@ -1291,7 +1291,7 @@ func TestOffboardUserHandlerHosts(t *testing.T) {
 }
 
 func TestOffboardUserHandlerAdmins(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, model.ProjectRefCollection))
+	assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, model.ProjectRefCollection, user.Collection))
 	projectRef0 := &model.ProjectRef{
 		Owner:     "mongodb",
 		Repo:      "test_repo0",
@@ -1314,7 +1314,8 @@ func TestOffboardUserHandlerAdmins(t *testing.T) {
 	assert.NoError(t, projectRef0.Insert(t.Context()))
 	assert.NoError(t, projectRef1.Insert(t.Context()))
 
-	offboardedUser := "user0"
+	offboardedUser := user.DBUser{Id: "user0"}
+	require.NoError(t, offboardedUser.Insert(t.Context()))
 	ctx := t.Context()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
@@ -1323,11 +1324,11 @@ func TestOffboardUserHandlerAdmins(t *testing.T) {
 	handler := offboardUserHandler{
 		dryRun: true,
 		env:    env,
-		user:   offboardedUser,
+		user:   offboardedUser.Id,
 	}
 	resp := handler.Run(gimlet.AttachUser(ctx, &user.DBUser{Id: "root"}))
 	require.Equal(t, http.StatusOK, resp.Status())
-	assert.Contains(t, projectRef0.Admins, offboardedUser)
+	assert.Contains(t, projectRef0.Admins, offboardedUser.Id)
 
 	handler.dryRun = false
 	handler.env.SetUserManager(serviceutil.MockUserManager{})
@@ -1339,7 +1340,7 @@ func TestOffboardUserHandlerAdmins(t *testing.T) {
 	assert.NoError(t, err)
 	require.Len(t, projectRefs, 2)
 	for _, projRef := range projectRefs {
-		assert.NotContains(t, projRef.Admins, offboardedUser)
+		assert.NotContains(t, projRef.Admins, offboardedUser.Id)
 	}
 }
 

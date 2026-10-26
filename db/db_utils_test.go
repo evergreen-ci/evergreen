@@ -4,12 +4,14 @@ import (
 	"io"
 	"strings"
 	"testing"
+	"time"
 
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	_ "github.com/evergreen-ci/evergreen/testutil"
 	adb "github.com/mongodb/anser/db"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -473,4 +475,74 @@ func TestClearGridFSCollections(t *testing.T) {
 	reader, err = GetGridFile(t.Context(), "testfiles", "test.txt")
 	assert.Error(err)
 	assert.Nil(reader)
+}
+
+func TestWithLastUpdatedAt(t *testing.T) {
+	type doc struct {
+		ID            string    `bson:"_id"`
+		Field         string    `bson:"field"`
+		LastUpdatedAt time.Time `bson:"_last_updated_at,omitempty"`
+	}
+
+	t.Run("UntrackedCollectionShouldBeUnchanged", func(t *testing.T) {
+		in := &doc{ID: "id", Field: "value"}
+		assert.Same(t, in, withLastUpdatedAt("untracked", in))
+	})
+	t.Run("TrackedCollectionShouldAddField", func(t *testing.T) {
+		before := time.Now().Add(-time.Second)
+		out, ok := withLastUpdatedAt("tasks", &doc{ID: "id", Field: "value"}).(bson.Raw)
+		require.True(t, ok)
+		assert.Equal(t, "id", out.Lookup("_id").StringValue())
+		assert.Equal(t, "value", out.Lookup("field").StringValue())
+		assert.True(t, out.Lookup(lastUpdatedAtField).Time().After(before))
+	})
+	t.Run("ExistingFieldShouldBeKept", func(t *testing.T) {
+		in := &doc{ID: "id", LastUpdatedAt: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)}
+		assert.Same(t, in, withLastUpdatedAt("tasks", in))
+	})
+}
+
+func TestWithLastUpdatedAtUpdate(t *testing.T) {
+	currentDate := bson.M{lastUpdatedAtField: true}
+
+	t.Run("UntrackedCollectionShouldBeUnchanged", func(t *testing.T) {
+		update := bson.M{"$set": bson.M{"a": 1}}
+		assert.Equal(t, update, withLastUpdatedAtUpdate("untracked", update))
+	})
+	t.Run("OperatorBSONMShouldAddCurrentDate", func(t *testing.T) {
+		out := withLastUpdatedAtUpdate("tasks", bson.M{"$set": bson.M{"a": 1}})
+		assert.Equal(t, bson.M{"$set": bson.M{"a": 1}, "$currentDate": currentDate}, out)
+	})
+	t.Run("OperatorBSONDShouldAddCurrentDate", func(t *testing.T) {
+		out := withLastUpdatedAtUpdate("tasks", bson.D{{Key: "$set", Value: bson.M{"a": 1}}})
+		assert.Equal(t, bson.D{{Key: "$set", Value: bson.M{"a": 1}}, {Key: "$currentDate", Value: currentDate}}, out)
+	})
+	t.Run("ExistingCurrentDateShouldBeUnchanged", func(t *testing.T) {
+		update := bson.M{"$currentDate": bson.M{"other": true}}
+		assert.Equal(t, update, withLastUpdatedAtUpdate("tasks", update))
+	})
+	t.Run("PipelineShouldAppendSetStage", func(t *testing.T) {
+		out, ok := withLastUpdatedAtUpdate("tasks", []bson.M{{"$set": bson.M{"a": 1}}}).([]bson.M)
+		require.True(t, ok)
+		require.Len(t, out, 2)
+		assert.Equal(t, bson.M{"$set": bson.M{lastUpdatedAtField: "$$NOW"}}, out[1])
+	})
+	t.Run("EmptyUpdateShouldBeUnchanged", func(t *testing.T) {
+		for name, update := range map[string]any{
+			"EmptyBSONM":       bson.M{},
+			"EmptyBSOND":       bson.D{},
+			"EmptySetBSONM":    bson.M{"$set": bson.M{}},
+			"EmptySetBSOND":    bson.D{{Key: "$set", Value: bson.D{}}},
+			"EmptySetAndUnset": bson.M{"$set": bson.M{}, "$unset": bson.M{}},
+			"EmptyPipeline":    []bson.M{},
+		} {
+			t.Run(name, func(t *testing.T) {
+				assert.Equal(t, update, withLastUpdatedAtUpdate("tasks", update))
+			})
+		}
+	})
+	t.Run("PartiallyEmptyUpdateShouldAddCurrentDate", func(t *testing.T) {
+		out := withLastUpdatedAtUpdate("tasks", bson.M{"$set": bson.M{}, "$unset": bson.M{"a": 1}})
+		assert.Equal(t, bson.M{"$set": bson.M{}, "$unset": bson.M{"a": 1}, "$currentDate": currentDate}, out)
+	})
 }

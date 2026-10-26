@@ -10,14 +10,14 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.16
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.302.0
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.41.7
-	github.com/aws/smithy-go v1.28.2
+	github.com/aws/smithy-go v1.28.5
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/docker/docker v28.5.2+incompatible
-	github.com/docker/go-connections v0.8.1
+	github.com/docker/go-connections v0.8.2
 	github.com/dustin/go-humanize v1.1.0
 	github.com/evergreen-ci/birch v0.0.0-20250224221624-64f481f4b888
 	github.com/evergreen-ci/certdepot v0.0.0-20260326190252-5ab5e35f6cb7
-	github.com/evergreen-ci/gimlet v0.0.0-20260820213739-ce014252e539
+	github.com/evergreen-ci/gimlet v0.0.0-20261021143728-b6aef89a6e39
 	github.com/evergreen-ci/pail v0.0.0-20260902154906-60ffdb29341d
 	github.com/evergreen-ci/poplar v0.0.0-20260330180450-c8cf511d1bd6
 	github.com/evergreen-ci/shrub v0.0.0-20251017154811-4d3ed1599154
@@ -161,14 +161,14 @@ require (
 )
 
 require (
-	github.com/alicebob/miniredis/v2 v2.39.0
+	github.com/alicebob/miniredis/v2 v2.40.0
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.57.3
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.62.7
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.101.0
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.68.6
 	github.com/bradleyfalzon/ghinstallation/v2 v2.17.0
 	github.com/evergreen-ci/evg-lint v0.0.0-20251215145242-23eaa365e48f
-	github.com/evergreen-ci/test-selection-client v0.0.0-20260812193714-c140c9414f6f
+	github.com/evergreen-ci/test-selection-client v0.0.0-20261012175355-ceae32d48406
 	github.com/getkin/kin-openapi v0.132.0
 	github.com/go-redis/redis_rate/v10 v10.0.1
 	github.com/google/go-github/v70 v70.0.0

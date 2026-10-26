@@ -402,7 +402,7 @@ func buildScpCommand(src, dst string, h *host.Host, opts ...string) []string {
 // Build the setup script that will need to be run on the specified host.
 func expandScript(s string, settings *evergreen.Settings) (string, error) {
 	// replace expansions in the script
-	exp := util.NewExpansions(settings.Expansions)
+	exp := util.NewExpansions(settings.HostFacingExpansions())
 	script, err := exp.ExpandString(s)
 	if err != nil {
 		return "", err

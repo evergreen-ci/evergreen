@@ -60,6 +60,9 @@ type Agent struct {
 	jasper        jasper.Manager
 	opts          Options
 	defaultLogger send.Sender
+
+	// Agent status server fields
+
 	// setEndTaskResp sets the explicit task status, which can be set by the
 	// user to override the final task status that would otherwise be used.
 	setEndTaskResp      func(*triggerEndTaskResp)
@@ -69,9 +72,22 @@ type Agent struct {
 	// completion.
 	addMetadataTagResp  func(*triggerAddMetadataTagResp)
 	addMetadataTagMutex sync.RWMutex
-	tracer              trace.Tracer
-	otelGrpcConn        *grpc.ClientConn
-	closers             []closerOp
+	// uploadVirtualTaskTestResults uploads test results for a virtual task on
+	// behalf of the currently running task.
+	uploadVirtualTaskTestResults      func(context.Context, virtualTaskTestResultsRequest) (*virtualTaskTestResultsResponse, error)
+	uploadVirtualTaskTestResultsMutex sync.RWMutex
+	// virtualTaskTestResultsRequestSem bounds the number of virtual task test result
+	// uploads that can run concurrently.
+	virtualTaskTestResultsRequestSem chan struct{}
+
+	// OTel-related fields
+
+	tracer       trace.Tracer
+	otelGrpcConn *grpc.ClientConn
+	closers      []closerOp
+
+	// Container fields
+
 	// currentContainer holds the active task-group isolation container, if any.
 	// Set/cleared by ensureContainer/destroyContainer.
 	currentContainer ContainerHandle
@@ -177,12 +193,14 @@ func newWithCommunicator(ctx context.Context, opts Options, comm client.Communic
 		opts.TraceCollectorEndpoint = setupData.TraceCollectorEndpoint
 	}
 
+	maxConcurrentVirtualTaskTestResultRequests := runtime.GOMAXPROCS(0)
 	a := &Agent{
-		opts:               opts,
-		comm:               comm,
-		jasper:             jpm,
-		setEndTaskResp:     func(*triggerEndTaskResp) {},
-		addMetadataTagResp: func(*triggerAddMetadataTagResp) {},
+		opts:                             opts,
+		comm:                             comm,
+		jasper:                           jpm,
+		setEndTaskResp:                   func(*triggerEndTaskResp) {},
+		addMetadataTagResp:               func(*triggerAddMetadataTagResp) {},
+		virtualTaskTestResultsRequestSem: make(chan struct{}, maxConcurrentVirtualTaskTestResultRequests),
 	}
 
 	a.closers = append(a.closers, closerOp{
@@ -298,6 +316,9 @@ func (a *Agent) loop(ctx context.Context) error {
 			if ntr.tc != nil {
 				tc = ntr.tc
 			}
+			a.uploadVirtualTaskTestResultsMutex.Lock()
+			a.uploadVirtualTaskTestResults = nil
+			a.uploadVirtualTaskTestResultsMutex.Unlock()
 			// Single task distros should exit after running a single task.
 			// However, if the task group needs tearing down, we should continue
 			// the loop so the teardown group can run in the next iteration.
@@ -522,6 +543,12 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	// Buffered to bound accumulation between drain cycles after each foreground command.
 	tc.backgroundFailures = make(chan internal.BackgroundFailure, 10)
 	tc.taskConfig.BackgroundFailures = tc.backgroundFailures
+
+	a.uploadVirtualTaskTestResultsMutex.Lock()
+	a.uploadVirtualTaskTestResults = func(ctx context.Context, req virtualTaskTestResultsRequest) (*virtualTaskTestResultsResponse, error) {
+		return tc.uploadVirtualTaskTestResults(ctx, a.comm, req)
+	}
+	a.uploadVirtualTaskTestResultsMutex.Unlock()
 
 	if err := a.startLogging(agentCtx, tc); err != nil {
 		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)

@@ -95,6 +95,7 @@ type Version {
   tasks(options: TaskFilterOptions!): VersionTasks!
   taskStatuses: [String!]!
   taskStatusStats: TaskStats
+  triggerModule: TriggerModule
   upstreamProject: UpstreamProject
   user: User!
   versionTiming: VersionTiming
@@ -137,9 +138,11 @@ type VersionTiming {
 type Manifest {
   id: String!
   branch: String!
+  changedModules: [String!]
   isBase: Boolean!
   moduleOverrides: StringMap
   modules: Map
+  previousVersionId: String
   project: String!
   revision: String!
 }
@@ -154,6 +157,14 @@ type UpstreamProject {
   triggerID: String! # ID of the trigger that created the upstream version (corresponds to a task ID or build ID)
   triggerType: String!
   version: Version
+}
+
+type TriggerModule {
+  branch: String!
+  name: String!
+  owner: String!
+  repo: String!
+  revision: String!
 }
 
 type ExternalLinkForMetadata {

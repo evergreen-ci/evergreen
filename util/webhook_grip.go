@@ -274,7 +274,8 @@ func validateWebhookRedirect(req *http.Request, _ []*http.Request) error {
 	return ValidateWebhookURL(req.URL.String())
 }
 
-// isBlockedWebhookIP keeps validation and dialing on the same internal-address policy.
+// isBlockedWebhookIP is looser than IsBlockedInternalIP because webhooks to in-cluster services (e.g. Build
+// Baron) are an expected use case, and those resolve to carrier-grade NAT addresses.
 func isBlockedWebhookIP(ip netip.Addr) bool {
 	ip = ip.Unmap()
 	return !ip.IsValid() || ip.IsUnspecified() || ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsPrivate() || ip.IsMulticast()

@@ -85,6 +85,14 @@ func getTestLogs(ctx context.Context, task Task, getOpts TestLogGetOptions) (log
 		return log.EmptyIterator(), nil
 	}
 
+	if output.TestLogs.BucketConfig.Type == "" {
+		// This handles an edge case where a virtual task was stranded by a
+		// runner that did not upload test results. If it has no bucket config,
+		// it has no test results anyways, so this is simply to avoid hitting an
+		// error below.
+		return log.EmptyIterator(), nil
+	}
+
 	// Get the appropriate bucket config for this project
 	bucketConfig := getBucketConfigForProject(task.Project, output.TestLogs.BucketConfig)
 

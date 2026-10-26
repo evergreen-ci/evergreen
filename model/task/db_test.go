@@ -414,55 +414,33 @@ func TestFindOneIdOldOrNew(t *testing.T) {
 func TestFindOneId(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 
-	taskWithGeneratedJSON := Task{
-		Id:                    "task_with_generated_json",
-		Status:                evergreen.TaskSucceeded,
-		GeneratedJSONAsString: GeneratedJSONFiles{"large_json_1", "large_json_2", "large_json_3"},
+	taskToFind := Task{
+		Id:     "task_to_find",
+		Status: evergreen.TaskSucceeded,
 	}
-	require.NoError(t, taskWithGeneratedJSON.Insert(t.Context()))
+	require.NoError(t, taskToFind.Insert(t.Context()))
 
-	dbTask, err := FindOneId(t.Context(), taskWithGeneratedJSON.Id)
+	dbTask, err := FindOneId(t.Context(), taskToFind.Id)
 	require.NoError(t, err)
 	require.NotNil(t, dbTask)
-	assert.Equal(t, taskWithGeneratedJSON.Id, dbTask.Id)
-	assert.Equal(t, taskWithGeneratedJSON.Status, dbTask.Status)
-	assert.Nil(t, dbTask.GeneratedJSONAsString)
-}
-
-func TestFindOneIdWithGeneratedJSON(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection))
-
-	taskWithGeneratedJSON := Task{
-		Id:                    "task_with_generated_json",
-		Status:                evergreen.TaskSucceeded,
-		GeneratedJSONAsString: GeneratedJSONFiles{"large_json_1", "large_json_2", "large_json_3"},
-	}
-	require.NoError(t, taskWithGeneratedJSON.Insert(t.Context()))
-
-	dbTask, err := FindOneIdWithGeneratedJSON(t.Context(), taskWithGeneratedJSON.Id)
-	require.NoError(t, err)
-	require.NotNil(t, dbTask)
-	assert.Equal(t, taskWithGeneratedJSON.Id, dbTask.Id)
-	assert.Equal(t, taskWithGeneratedJSON.Status, dbTask.Status)
-	assert.Equal(t, taskWithGeneratedJSON.GeneratedJSONAsString, dbTask.GeneratedJSONAsString)
+	assert.Equal(t, taskToFind.Id, dbTask.Id)
+	assert.Equal(t, taskToFind.Status, dbTask.Status)
 }
 
 func TestFind(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 
-	taskWithGeneratedJSON := Task{
-		Id:                    "task_with_generated_json",
-		Status:                evergreen.TaskSucceeded,
-		GeneratedJSONAsString: GeneratedJSONFiles{"large_json_1", "large_json_2", "large_json_3"},
+	taskToFind := Task{
+		Id:     "task_to_find",
+		Status: evergreen.TaskSucceeded,
 	}
-	require.NoError(t, taskWithGeneratedJSON.Insert(t.Context()))
+	require.NoError(t, taskToFind.Insert(t.Context()))
 
-	tasks, err := Find(t.Context(), bson.M{IdKey: taskWithGeneratedJSON.Id})
+	tasks, err := Find(t.Context(), bson.M{IdKey: taskToFind.Id})
 	require.NoError(t, err)
 	require.Len(t, tasks, 1)
-	assert.Equal(t, taskWithGeneratedJSON.Id, tasks[0].Id)
-	assert.Equal(t, taskWithGeneratedJSON.Status, tasks[0].Status)
-	assert.Nil(t, tasks[0].GeneratedJSONAsString)
+	assert.Equal(t, taskToFind.Id, tasks[0].Id)
+	assert.Equal(t, taskToFind.Status, tasks[0].Status)
 }
 
 func TestAddHostCreateDetails(t *testing.T) {
@@ -822,6 +800,135 @@ func TestFindByStaleRunningTask(t *testing.T) {
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(Collection))
+			tCase(t)
+		})
+	}
+}
+
+func TestFindStrandedVirtualTasks(t *testing.T) {
+	for tName, tCase := range map[string]func(t *testing.T){
+		"ReturnsVirtualTaskLockedByFinishedRunner": func(t *testing.T) {
+			runner := Task{
+				Id:     "runner",
+				Status: evergreen.TaskFailed,
+			}
+			vt := Task{
+				Id:          "virtual",
+				IsVirtual:   true,
+				CompletedBy: runner.Id,
+				Status:      evergreen.TaskUndispatched,
+			}
+			require.NoError(t, db.InsertMany(t.Context(), Collection, runner, vt))
+
+			stranded, err := FindStrandedVirtualTasks(t.Context())
+			require.NoError(t, err)
+			require.Len(t, stranded, 1)
+			assert.Equal(t, vt.Id, stranded[0].Id)
+		},
+		"IgnoresVirtualTaskLockedByUnfinishedRunner": func(t *testing.T) {
+			runner := Task{
+				Id:     "runner",
+				Status: evergreen.TaskStarted,
+			}
+			vt := Task{
+				Id:          "virtual",
+				IsVirtual:   true,
+				CompletedBy: runner.Id,
+				Status:      evergreen.TaskUndispatched,
+			}
+			require.NoError(t, db.InsertMany(t.Context(), Collection, runner, vt))
+
+			stranded, err := FindStrandedVirtualTasks(t.Context())
+			require.NoError(t, err)
+			assert.Empty(t, stranded)
+		},
+		"IgnoresFinishedVirtualTask": func(t *testing.T) {
+			runner := Task{
+				Id:     "runner",
+				Status: evergreen.TaskFailed,
+			}
+			vt := Task{
+				Id:          "virtual",
+				IsVirtual:   true,
+				CompletedBy: runner.Id,
+				Status:      evergreen.TaskSucceeded,
+			}
+			require.NoError(t, db.InsertMany(t.Context(), Collection, runner, vt))
+
+			stranded, err := FindStrandedVirtualTasks(t.Context())
+			require.NoError(t, err)
+			assert.Empty(t, stranded)
+		},
+		"IgnoresNonVirtualTask": func(t *testing.T) {
+			runner := Task{
+				Id:     "runner",
+				Status: evergreen.TaskFailed,
+			}
+			tsk := Task{
+				Id:          "task",
+				CompletedBy: runner.Id,
+				Status:      evergreen.TaskUndispatched,
+			}
+			require.NoError(t, db.InsertMany(t.Context(), Collection, runner, tsk))
+
+			stranded, err := FindStrandedVirtualTasks(t.Context())
+			require.NoError(t, err)
+			assert.Empty(t, stranded)
+		},
+		"IgnoresVirtualTaskWithoutCompletedByLock": func(t *testing.T) {
+			vt := Task{
+				Id:        "virtual",
+				IsVirtual: true,
+				Status:    evergreen.TaskUndispatched,
+			}
+			require.NoError(t, vt.Insert(t.Context()))
+
+			stranded, err := FindStrandedVirtualTasks(t.Context())
+			require.NoError(t, err)
+			assert.Empty(t, stranded)
+		},
+		"IgnoresVirtualTaskWithMissingRunner": func(t *testing.T) {
+			vt := Task{
+				Id:          "virtual",
+				IsVirtual:   true,
+				CompletedBy: "nonexistent",
+				Status:      evergreen.TaskUndispatched,
+			}
+			require.NoError(t, vt.Insert(t.Context()))
+
+			stranded, err := FindStrandedVirtualTasks(t.Context())
+			require.NoError(t, err)
+			assert.Empty(t, stranded)
+		},
+		"ReturnsMultipleStrandedVirtualTasks": func(t *testing.T) {
+			runner := Task{Id: "runner", Status: evergreen.TaskFailed}
+			vt0 := Task{
+				Id:          "virtual0",
+				IsVirtual:   true,
+				CompletedBy: runner.Id,
+				Status:      evergreen.TaskUndispatched,
+			}
+			vt1 := Task{
+				Id:          "virtual1",
+				IsVirtual:   true,
+				CompletedBy: runner.Id,
+				Status:      evergreen.TaskUndispatched,
+			}
+			require.NoError(t, db.InsertMany(t.Context(), Collection, runner, vt0, vt1))
+
+			stranded, err := FindStrandedVirtualTasks(t.Context())
+			require.NoError(t, err)
+			require.Len(t, stranded, 2)
+			for _, vt := range stranded {
+				assert.True(t, utility.StringSliceContains([]string{vt0.Id, vt1.Id}, vt.Id))
+			}
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection))
+			t.Cleanup(func() {
+				assert.NoError(t, db.ClearCollections(Collection))
+			})
 			tCase(t)
 		})
 	}

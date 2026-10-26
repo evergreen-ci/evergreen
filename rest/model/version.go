@@ -57,6 +57,8 @@ type APIVersion struct {
 	TriggeredGitTag *APIGitTag `json:"triggered_by_git_tag" extensions:"x-nullable"`
 	// Git tags that were pushed to this version.
 	GitTags []APIGitTag `json:"git_tags" extensions:"x-nullable"`
+	// The module commit that triggered this version. Only set for push level project triggers.
+	TriggerModule *APITriggerModule `json:"trigger_module" extensions:"x-nullable"`
 	// Indicates if the version was ignored due to only making changes to ignored files.
 	Ignored *bool `json:"ignored" extensions:"!x-nullable"`
 	// Aggregated actual cost of all tasks in the version
@@ -83,6 +85,14 @@ type APIVersionS3LogUsage struct {
 type APIGitTag struct {
 	Tag    *string `json:"tag" extensions:"!x-nullable"`
 	Pusher *string `json:"pusher" extensions:"!x-nullable"`
+}
+
+type APITriggerModule struct {
+	Name     *string `json:"name" extensions:"!x-nullable"`
+	Owner    *string `json:"owner" extensions:"!x-nullable"`
+	Repo     *string `json:"repo" extensions:"!x-nullable"`
+	Branch   *string `json:"branch" extensions:"!x-nullable"`
+	Revision *string `json:"revision" extensions:"!x-nullable"`
 }
 
 type buildDetail struct {
@@ -140,6 +150,16 @@ func (apiVersion *APIVersion) BuildFromService(ctx context.Context, v model.Vers
 		apiVersion.TriggeredGitTag = &APIGitTag{
 			Tag:    utility.ToStringPtr(v.TriggeredByGitTag.Tag),
 			Pusher: utility.ToStringPtr(v.TriggeredByGitTag.Pusher),
+		}
+	}
+
+	if v.TriggerModule != "" {
+		apiVersion.TriggerModule = &APITriggerModule{
+			Name:     utility.ToStringPtr(v.TriggerModule),
+			Owner:    utility.ToStringPtr(v.TriggerOwner),
+			Repo:     utility.ToStringPtr(v.TriggerRepo),
+			Branch:   utility.ToStringPtr(v.TriggerBranch),
+			Revision: utility.ToStringPtr(v.TriggerSHA),
 		}
 	}
 

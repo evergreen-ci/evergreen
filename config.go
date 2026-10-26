@@ -35,11 +35,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2026-10-06"
+	ClientVersion = "2026-10-23"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2026-10-22"
+	AgentVersion = "2026-10-23a"
 )
 
 const (
@@ -170,6 +170,22 @@ func (c *Settings) Set(ctx context.Context) error {
 		},
 	}), "updating config section '%s'", c.SectionId(),
 	)
+}
+
+// expansionsNotAllowedForHosts are global expansion names that must not be expanded into
+// host-facing scripts (user data and setup scripts).
+var expansionsNotAllowedForHosts = []string{
+	GithubAppPrivateKey,
+}
+
+// HostFacingExpansions returns a copy of the global expansions without
+// sensitive entries.
+func (c *Settings) HostFacingExpansions() map[string]string {
+	expansions := util.NewExpansions(c.Expansions)
+	for _, name := range expansionsNotAllowedForHosts {
+		expansions.Remove(name)
+	}
+	return expansions.Map()
 }
 
 func (c *Settings) ValidateAndDefault() error {

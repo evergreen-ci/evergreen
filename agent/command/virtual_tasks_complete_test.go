@@ -145,8 +145,8 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 					TaskID:    "task1",
 					Execution: 0,
 					Status:    evergreen.TaskSucceeded,
-					TestResults: &virtualTaskTestResultsFile{
-						Files: []virtualTaskTestResultFileGroup{
+					TestResults: &VirtualTaskTestResultsInput{
+						Files: []VirtualTaskTestResultFileGroup{
 							{
 								Type:  virtualTestResultTypeNative,
 								Files: []string{"native.json"},
@@ -174,8 +174,8 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 					TaskID:    "task1",
 					Execution: 0,
 					Status:    evergreen.TaskSucceeded,
-					TestResults: &virtualTaskTestResultsFile{
-						Files: []virtualTaskTestResultFileGroup{
+					TestResults: &VirtualTaskTestResultsInput{
+						Files: []VirtualTaskTestResultFileGroup{
 							{
 								Type:  virtualTestResultTypeNative,
 								Files: []string{"native.json"},
@@ -201,8 +201,8 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 					TaskID:    "task1",
 					Execution: 0,
 					Status:    evergreen.TaskSucceeded,
-					TestResults: &virtualTaskTestResultsFile{
-						Files: []virtualTaskTestResultFileGroup{
+					TestResults: &VirtualTaskTestResultsInput{
+						Files: []VirtualTaskTestResultFileGroup{
 							{
 								Type:  virtualTestResultTypeNative,
 								Files: []string{"native.json"},
@@ -227,8 +227,8 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 					TaskID:    "task1",
 					Execution: 0,
 					Status:    evergreen.TaskSucceeded,
-					TestResults: &virtualTaskTestResultsFile{
-						Files: []virtualTaskTestResultFileGroup{
+					TestResults: &VirtualTaskTestResultsInput{
+						Files: []VirtualTaskTestResultFileGroup{
 							{
 								Type:  virtualTestResultTypeNative,
 								Files: []string{"native.json"},
@@ -240,8 +240,8 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 					TaskID:    "task1",
 					Execution: 0,
 					Status:    evergreen.TaskSucceeded,
-					TestResults: &virtualTaskTestResultsFile{
-						Files: []virtualTaskTestResultFileGroup{
+					TestResults: &VirtualTaskTestResultsInput{
+						Files: []VirtualTaskTestResultFileGroup{
 							{
 								Type:  virtualTestResultTypeNative,
 								Files: []string{"native.json"},
@@ -266,7 +266,7 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 					TaskID:    "task1",
 					Execution: 0,
 					Status:    evergreen.TaskSucceeded,
-					TestResults: &virtualTaskTestResultsFile{Files: []virtualTaskTestResultFileGroup{
+					TestResults: &VirtualTaskTestResultsInput{Files: []VirtualTaskTestResultFileGroup{
 						{Type: virtualTestResultTypeNative, Files: []string{"native.json"}},
 					}},
 				},
@@ -287,7 +287,7 @@ func TestCompleteVirtualTasksExecute(t *testing.T) {
 					TaskID:      "task1",
 					Execution:   0,
 					Status:      evergreen.TaskSucceeded,
-					TestResults: &virtualTaskTestResultsFile{Files: []virtualTaskTestResultFileGroup{{Type: "bogus", Files: []string{"native.json"}}}},
+					TestResults: &VirtualTaskTestResultsInput{Files: []VirtualTaskTestResultFileGroup{{Type: "bogus", Files: []string{"native.json"}}}},
 				},
 			}))
 

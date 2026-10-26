@@ -215,6 +215,10 @@ func (r *versionResolver) Manifest(ctx context.Context, obj *model.Version) (*Ma
 		Branch:          m.Branch,
 		IsBase:          m.IsBase,
 		ModuleOverrides: m.ModuleOverrides,
+		ChangedModules:  m.ChangedModules,
+	}
+	if m.PreviousVersionID != "" {
+		versionManifest.PreviousVersionID = utility.ToStringPtr(m.PreviousVersionID)
 	}
 	modules := map[string]any{}
 	for key, module := range m.Modules {
@@ -532,6 +536,20 @@ func (r *versionResolver) TaskStatuses(ctx context.Context, obj *model.Version) 
 func (r *versionResolver) TaskStatusStats(ctx context.Context, obj *model.Version) (*task.TaskStats, error) {
 	includeNeverActivated := !evergreen.IsPatchRequester(obj.Requester)
 	return task.GetTaskStatsByVersion(ctx, obj.Id, includeNeverActivated)
+}
+
+// TriggerModule is the resolver for the triggerModule field.
+func (r *versionResolver) TriggerModule(ctx context.Context, obj *model.Version) (*TriggerModule, error) {
+	if obj.Requester != evergreen.TriggerRequester || obj.TriggerModule == "" {
+		return nil, nil
+	}
+	return &TriggerModule{
+		Branch:   obj.TriggerBranch,
+		Name:     obj.TriggerModule,
+		Owner:    obj.TriggerOwner,
+		Repo:     obj.TriggerRepo,
+		Revision: obj.TriggerSHA,
+	}, nil
 }
 
 // UpstreamProject is the resolver for the upstreamProject field.

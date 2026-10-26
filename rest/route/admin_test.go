@@ -21,15 +21,12 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/level"
 	"github.com/stretchr/testify/suite"
 )
 
 type AdminRouteSuite struct {
-	getHandler  gimlet.RouteHandler
-	postHandler gimlet.RouteHandler
-	env         evergreen.Environment
+	env evergreen.Environment
 
 	suite.Suite
 }
@@ -93,10 +90,6 @@ func (s *AdminRouteSuite) SetupSuite() {
 	s.NoError(testTask2.Insert(s.T().Context()))
 	s.NoError(testTask3.Insert(s.T().Context()))
 	s.NoError(p.Insert(s.T().Context()))
-	s.getHandler = makeFetchAdminSettings()
-	s.postHandler = makeSetAdminSettings()
-	s.IsType(&adminGetHandler{}, s.getHandler)
-	s.IsType(&adminPostHandler{}, s.postHandler)
 }
 
 func (s *AdminRouteSuite) TestAdminRoute() {
@@ -115,21 +108,13 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.NoError(d2.Insert(ctx))
 
 	testSettings := testutil.MockConfig()
-	jsonBody, err := json.Marshal(testSettings)
+	_, err := data.SetEvergreenSettings(ctx, &restModel.APIAdminSettings{}, testSettings, &user.DBUser{Id: "user"}, true)
 	s.NoError(err)
-	buffer := bytes.NewBuffer(jsonBody)
-	request, err := http.NewRequest(http.MethodPost, "/admin/settings", buffer)
-	s.NoError(err)
-	s.NoError(s.postHandler.Parse(ctx, request))
-
-	// test executing the POST request
-	resp := s.postHandler.Run(ctx)
-	s.NotNil(resp)
-	s.Equal(http.StatusOK, resp.Status())
 
 	// test getting the settings
-	s.NoError(s.getHandler.Parse(ctx, nil))
-	resp = s.getHandler.Run(ctx)
+	handler := makeFetchAdminSettings()
+	s.NoError(handler.Parse(ctx, nil))
+	resp := handler.Run(ctx)
 	s.NotNil(resp)
 	respm, ok := resp.Data().(restModel.Model)
 	s.True(ok, "%+v", resp.Data())
@@ -230,95 +215,6 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.TestSelection.URL, settings.TestSelection.URL)
 	s.EqualValues(testSettings.Ui.HttpListenAddr, settings.Ui.HttpListenAddr)
 	s.EqualValues(testSettings.Ui.StagingEnvironment, settings.Ui.StagingEnvironment)
-
-	// test that invalid input errors
-	badSettingsOne := testutil.MockConfig()
-	badSettingsOne.ConfigDir = ""
-	badSettingsOne.Ui.CsrfKey = "12345"
-	jsonBody, err = json.Marshal(badSettingsOne)
-	s.NoError(err)
-	buffer = bytes.NewBuffer(jsonBody)
-	request, err = http.NewRequest(http.MethodPost, "/admin", buffer)
-	s.NoError(err)
-	s.NoError(s.postHandler.Parse(ctx, request))
-	resp = s.postHandler.Run(ctx)
-	s.NotNil(resp)
-	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "config directory must not be empty")
-	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "CSRF key must be 32 characters long")
-
-	// test that invalid container pools errors
-	badSettingsTwo := testutil.MockConfig()
-	badSettingsTwo.ContainerPools.Pools = []evergreen.ContainerPool{
-		{
-			Distro:        "valid-distro",
-			Id:            "test-pool-1",
-			MaxContainers: 100,
-		},
-		{
-			Distro:        "invalid-distro",
-			Id:            "test-pool-2",
-			MaxContainers: 100,
-		},
-		{
-			Distro:        "missing-distro",
-			Id:            "test-pool-3",
-			MaxContainers: 100,
-		},
-	}
-	jsonBody, err = json.Marshal(badSettingsTwo)
-	s.NoError(err)
-	buffer = bytes.NewBuffer(jsonBody)
-	request, err = http.NewRequest(http.MethodPost, "/admin", buffer)
-	s.NoError(err)
-	s.NoError(s.postHandler.Parse(ctx, request))
-	resp = s.postHandler.Run(ctx)
-	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "container pool 'test-pool-2' has invalid distro 'invalid-distro'")
-	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "distro not found for container pool 'test-pool-3'")
-	s.NotNil(resp)
-}
-
-func (s *AdminRouteSuite) TestRevertRoute() {
-	routeManager := makeRevertRouteManager()
-	user := &user.DBUser{Id: "userName"}
-	ctx := gimlet.AttachUser(context.Background(), user)
-	s.NotNil(routeManager)
-	changes := restModel.APIAdminSettings{
-		Banner: utility.ToStringPtr("foo"),
-	}
-	before := testutil.NewEnvironment(ctx, s.T()).Settings()
-	_, err := data.SetEvergreenSettings(ctx, &changes, before, user, true)
-	s.NoError(err)
-	dbEvents, err := event.FindAdmin(s.T().Context(), event.RecentAdminEvents(1))
-	s.NoError(err)
-	s.GreaterOrEqual(len(dbEvents), 1)
-	eventData := dbEvents[0].Data.(*event.AdminEventData)
-	guid := eventData.GUID
-	s.NotEmpty(guid)
-
-	body := struct {
-		GUID string `json:"guid"`
-	}{guid}
-	jsonBody, err := json.Marshal(&body)
-	s.NoError(err)
-	buffer := bytes.NewBuffer(jsonBody)
-	request, err := http.NewRequest(http.MethodPost, "/admin/revert", buffer)
-	s.NoError(err)
-	err = routeManager.Parse(ctx, request)
-	s.NoError(err)
-	resp := routeManager.Run(ctx)
-	s.NotNil(resp)
-	s.Equal(http.StatusOK, resp.Status())
-	body = struct {
-		GUID string `json:"guid"`
-	}{""}
-	jsonBody, err = json.Marshal(&body)
-	s.NoError(err)
-	buffer = bytes.NewBuffer(jsonBody)
-	request, err = http.NewRequest(http.MethodPost, "/admin/revert", buffer)
-	s.NoError(err)
-	err = routeManager.Parse(ctx, request)
-	s.Error(err)
-	s.NotNil(ctx)
 }
 
 func (s *AdminRouteSuite) TestRestartTasksRoute() {
@@ -377,34 +273,30 @@ func (s *AdminRouteSuite) TestAdminEventRoute() {
 	}
 	s.NoError(d1.Insert(ctx))
 
-	// log some changes in the event log with the /admin/settings route
+	// log some changes in the event log by applying the mock settings
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
-	routeManager := makeSetAdminSettings()
 
+	oldSettings, err := evergreen.GetConfigWithoutSecrets(ctx)
+	s.NoError(err)
 	testSettings := testutil.MockConfig()
-	jsonBody, err := json.Marshal(testSettings)
-	s.NoError(err)
-	buffer := bytes.NewBuffer(jsonBody)
-	request, err := http.NewRequest(http.MethodPost, "/admin/settings", buffer)
-	s.NoError(err)
-	s.NoError(routeManager.Parse(ctx, request))
+	changes := restModel.NewConfigModel()
+	s.NoError(changes.BuildFromService(testSettings))
 	now := time.Now()
-	resp := routeManager.Run(ctx)
-	s.NotNil(resp)
-	s.Equal(http.StatusOK, resp.Status())
+	_, err = data.SetEvergreenSettings(ctx, changes, oldSettings, &user.DBUser{Id: "user"}, true)
+	s.NoError(err)
 
 	// get the changes with the /admin/events route
 	ctx = context.Background()
 	route := makeFetchAdminEvents()
-	request, err = http.NewRequest(http.MethodGet, "/admin/events?limit=10&ts=3026-01-02T15%3A04%3A05Z", nil)
+	request, err := http.NewRequest(http.MethodGet, "/admin/events?limit=10&ts=3026-01-02T15%3A04%3A05Z", nil)
 	s.NoError(err)
 	s.NoError(route.Parse(ctx, request))
 	response := route.Run(ctx)
-	s.NotNil(resp)
+	s.NotNil(response)
 	count := 0
 
-	data := response.Data().([]any)
-	for _, model := range data {
+	events := response.Data().([]any)
+	for _, model := range events {
 		evt, ok := model.(*restModel.APIAdminEvent)
 		s.True(ok)
 		count++

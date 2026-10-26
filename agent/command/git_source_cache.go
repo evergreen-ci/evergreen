@@ -36,6 +36,9 @@ const (
 	// sourceCacheSaveCap bounds the save when the task's exec deadline cannot
 	// be derived, so an upload still cannot run unbounded.
 	sourceCacheSaveCap = 5 * time.Minute
+	// sourceCacheTagRefreshTimeout bounds the post-restore tag refresh, whose
+	// scoped fetch of a few tags runs in seconds on any repo.
+	sourceCacheTagRefreshTimeout = 2 * time.Minute
 )
 
 // errSourceCacheSaveTimeout means the cache save was aborted by its time cap.
@@ -67,6 +70,10 @@ var (
 
 	// sourceCacheClaimDeniedReason distinguishes a denied claim from losing the S3 create-only race at upload time.
 	sourceCacheClaimDeniedReason = "claim_denied_save_in_progress"
+
+	sourceCacheTagFetchDurationAttribute   = sourceCacheAttribute("tag_fetch_duration_ms")
+	sourceCacheTagRefreshFailedAttribute   = sourceCacheAttribute("tag_refresh_failed")
+	sourceCacheTagRefreshTimedOutAttribute = sourceCacheAttribute("tag_refresh_timed_out")
 )
 
 func sourceCacheAttribute(name string) string {
