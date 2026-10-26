@@ -482,10 +482,11 @@ which git revisions are being used. If no modules have been defined, the
 "Version Manifest" will not appear at all in the Spruce UI.
 
 For mainline commits and [trigger versions](Project-and-Distro-Settings#project-triggers), a new
-manifest will be created that starts from the previous version's manifest and moves each module to the latest
-revision available, unless that revision is older than the one the previous version used. A version created by a
-push level trigger from a module only moves that module to the triggering commit and keeps every other module at the
-previous version's revision. This means module revisions only move forward from one version to the next.
+manifest will be created that starts from the most recent earlier mainline or trigger version's manifest. Each module
+moves to the latest revision available, and Evergreen avoids moving a module to an older revision than that version
+used. A version created by a push level trigger from a module moves that module to the triggering commit and keeps
+the other modules at that version's revisions. Modules that were pinned with a `ref` or that now track a different
+repo or branch are resolved from scratch instead.
 
 For manual patches, GitHub PRs, and periodic builds, by default, the git revisions in the
 version manifest will be inherited from its base version (i.e. the mainline commit version of the patch's base git revision).
@@ -505,8 +506,9 @@ Each module in the manifest records a `selection_rule` explaining how its revisi
 - `github_fallback`: the newest commit on the module branch according to GitHub. This is used when Evergreen hasn't
   received a push for the module branch before the version was created, and for patches that use `auto_update`.
 - `base_version`: inherited from the base version's manifest.
-- `previous_version`: kept from the previous mainline or trigger version's manifest, either because a different module
-  triggered the version or because the latest revision Evergreen knew about was older.
+- `carried_forward`: kept from the most recent earlier mainline or trigger version's manifest, either because a
+  different module triggered the version or because the latest revision Evergreen knew about was older. This version
+  can differ from `previous_version_id` below, since periodic builds and git tag versions are skipped.
 
 The manifest also records `changed_modules`, the modules that were added, removed, or moved to a different commit
 compared to the version in `previous_version_id`. For patches, that's the base version. Otherwise, it's the previous

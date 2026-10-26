@@ -1012,9 +1012,12 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 	var previousManifest *manifest.Manifest
 	if v.Requester == evergreen.RepotrackerVersionRequester || v.Requester == evergreen.TriggerRequester {
 		previousManifest, err = findPreviousManifest(ctx, v)
-		if err != nil {
-			return nil, errors.Wrap(err, "getting previous version's manifest")
-		}
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message":    "finding previous version's manifest",
+			"source":     "manifest-creation",
+			"version_id": v.Id,
+			"project_id": v.Identifier,
+		}))
 	}
 
 	modules := map[string]*manifest.Module{}
@@ -1053,7 +1056,7 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 			return nil, errors.Wrapf(err, "module '%s'", module.Name)
 		}
 		if previous != nil && module.Ref == "" {
-			mfstModule = newerModuleCommit(ctx, previous, mfstModule)
+			mfstModule = newerModuleCommit(ctx, v, module.Name, previous, mfstModule)
 		}
 		// Push triggers set the triggering module's ref to the pushed commit.
 		if v.TriggerSHA != "" && module.Ref == v.TriggerSHA {
@@ -1112,51 +1115,82 @@ func findPreviousManifest(ctx context.Context, v *Version) (*manifest.Manifest, 
 	return nil, nil
 }
 
-// previousModule returns a copy of the module's entry in the previous
-// manifest if it tracked the same repo and branch.
 func previousModule(previousManifest *manifest.Manifest, name, owner, repo, branch string) *manifest.Module {
 	if previousManifest == nil {
 		return nil
 	}
 	mod, ok := previousManifest.Modules[name]
-	if !ok || mod == nil || mod.Revision == "" {
+	if !ok || mod == nil || mod.Revision == "" || mod.SelectionRule == manifest.ModuleSelectionPinnedRef {
 		return nil
 	}
 	if mod.Owner != owner || mod.Repo != repo || mod.Branch != branch {
 		return nil
 	}
 	prev := *mod
-	prev.SelectionRule = manifest.ModuleSelectionPreviousVersion
+	prev.SelectionRule = manifest.ModuleSelectionCarriedForward
 	return &prev
 }
 
-// newerModuleCommit returns whichever of the two commits of the same module is
-// newer in git history. If the order can't be determined, it returns latest.
-func newerModuleCommit(ctx context.Context, previous, latest *manifest.Module) *manifest.Module {
+// newerModuleCommit returns whichever of the two commits of the module is
+// newer. If the order can't be determined, it returns latest.
+func newerModuleCommit(ctx context.Context, v *Version, moduleName string, previous, latest *manifest.Module) *manifest.Module {
 	if previous.Revision == latest.Revision {
 		return latest
 	}
-
-	ghCtx, cancel := context.WithTimeout(ctx, time.Minute)
-	defer cancel()
-	status, err := thirdparty.GetCommitComparisonStatus(ghCtx, latest.Owner, latest.Repo, previous.Revision, latest.Revision)
-	if err != nil {
-		grip.Warning(ctx, message.WrapError(err, message.Fields{
-			"message":           "could not determine module commit order, using latest commit",
+	logFields := func(msg string) message.Fields {
+		return message.Fields{
+			"message":           msg,
+			"source":            "manifest-creation",
+			"version_id":        v.Id,
+			"project_id":        v.Identifier,
+			"module":            moduleName,
 			"owner":             latest.Owner,
 			"repo":              latest.Repo,
 			"branch":            latest.Branch,
 			"previous_revision": previous.Revision,
 			"latest_revision":   latest.Revision,
-		}))
+		}
+	}
+
+	ingestedInOrder, err := isIngestedInOrder(ctx, previous, latest)
+	grip.Warning(ctx, message.WrapError(err, logFields("checking module commit ingest order")))
+	if ingestedInOrder {
 		return latest
 	}
-	// The latest commit Evergreen knows about can be behind the previous
-	// version's commit if, for example, a webhook was dropped or delayed.
+	// Only fallback to GitHub when the ingest order doesn't already show that latest is newer.
+	ghCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	status, err := thirdparty.GetCommitComparisonStatus(ghCtx, latest.Owner, latest.Repo, previous.Revision, latest.Revision)
+	if err != nil {
+		grip.Warning(ctx, message.WrapError(err, logFields("could not determine module commit order, using latest commit")))
+		return latest
+	}
 	if status == "behind" {
 		return previous
 	}
 	return latest
+}
+
+// isIngestedInOrder returns whether Evergreen ingested the latest module
+// commit at or after the previous one.
+func isIngestedInOrder(ctx context.Context, previous, latest *manifest.Module) (bool, error) {
+	var revisions []RepositoryRevision
+	err := db.FindAllQ(ctx, RepositoryRevisionsHistoryCollection, db.Query(bson.M{
+		RepositoryRevisionOwnerKey:    latest.Owner,
+		RepositoryRevisionRepoKey:     latest.Repo,
+		RepositoryRevisionBranchKey:   latest.Branch,
+		RepositoryRevisionRevisionKey: bson.M{"$in": []string{previous.Revision, latest.Revision}},
+	}), &revisions)
+	if err != nil {
+		return false, errors.Wrap(err, "finding module commit ingest times")
+	}
+	ingestTimes := make(map[string]time.Time, len(revisions))
+	for _, r := range revisions {
+		ingestTimes[r.Revision] = r.IngestTime
+	}
+	previousTime, hasPrevious := ingestTimes[previous.Revision]
+	latestTime, hasLatest := ingestTimes[latest.Revision]
+	return hasPrevious && hasLatest && !latestTime.Before(previousTime), nil
 }
 
 // setChangedModules records which modules changed compared to the version's

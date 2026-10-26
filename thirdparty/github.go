@@ -795,7 +795,7 @@ func GetGithubMergeBaseRevision(ctx context.Context, owner, repo, baseRevision, 
 		attribute.String(githubRepoAttribute, repo),
 	))
 	defer span.End()
-	compare, err := getCommitComparison(ctx, owner, repo, baseRevision, currentCommitHash, caller)
+	compare, err := getCommitComparison(ctx, owner, repo, baseRevision, currentCommitHash, caller, nil)
 	if err != nil {
 		return "", errors.Wrapf(err, "retrieving comparison between commit hashes '%s' and '%s'", baseRevision, currentCommitHash)
 	}
@@ -813,7 +813,10 @@ func GetCommitComparisonStatus(ctx context.Context, owner, repo, baseRevision, h
 		attribute.String(githubRepoAttribute, repo),
 	))
 	defer span.End()
-	compare, err := getCommitComparison(ctx, owner, repo, baseRevision, headRevision, caller)
+	// The status is on every page but the changed files are only on the
+	// first, so request the second page to avoid fetching the full diff.
+	opts := &github.ListOptions{Page: 2, PerPage: 1}
+	compare, err := getCommitComparison(ctx, owner, repo, baseRevision, headRevision, caller, opts)
 	if err != nil {
 		return "", errors.Wrapf(err, "comparing commits '%s' and '%s'", baseRevision, headRevision)
 	}
@@ -830,7 +833,7 @@ func IsMergeBaseAllowed(ctx context.Context, owner, repo, oldestAllowedMergeBase
 		attribute.String(githubRepoAttribute, repo),
 	))
 	defer span.End()
-	compare, err := getCommitComparison(ctx, owner, repo, mergeBase, oldestAllowedMergeBase, caller)
+	compare, err := getCommitComparison(ctx, owner, repo, mergeBase, oldestAllowedMergeBase, caller, nil)
 	if err != nil {
 		return false, errors.Wrapf(err, "retrieving comparison between commit hashes '%s' and '%s'", oldestAllowedMergeBase, mergeBase)
 	}
@@ -842,7 +845,7 @@ func IsMergeBaseAllowed(ctx context.Context, owner, repo, oldestAllowedMergeBase
 	return status == "behind" || status == "identical", nil
 }
 
-func getCommitComparison(ctx context.Context, owner, repo, baseRevision, currentCommitHash, caller string) (*github.CommitsComparison, error) {
+func getCommitComparison(ctx context.Context, owner, repo, baseRevision, currentCommitHash, caller string, opts *github.ListOptions) (*github.CommitsComparison, error) {
 	span := trace.SpanFromContext(ctx)
 
 	token, err := getInstallationToken(ctx, owner, repo, nil)
@@ -854,7 +857,7 @@ func getCommitComparison(ctx context.Context, owner, repo, baseRevision, current
 	defer githubClient.Close()
 
 	compare, resp, err := githubClient.Repositories.CompareCommits(ctx,
-		owner, repo, baseRevision, currentCommitHash, nil)
+		owner, repo, baseRevision, currentCommitHash, opts)
 	if resp != nil {
 		defer resp.Body.Close()
 		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
@@ -1772,7 +1775,7 @@ func GetChangedFilesBetweenCommits(ctx context.Context, owner, repo, base, head 
 		attribute.String(githubRepoAttribute, repo),
 	))
 	defer span.End()
-	commits, err := getCommitComparison(ctx, owner, repo, base, head, caller)
+	commits, err := getCommitComparison(ctx, owner, repo, base, head, caller, nil)
 	if err != nil {
 		return nil, errors.Wrapf(err, "retrieving comparison between commit hashes '%s' and '%s'", base, head)
 	}
