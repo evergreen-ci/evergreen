@@ -24,7 +24,6 @@ enum ProjectPermission {
 enum AccessLevel {
   ADMIN
   EDIT
-  "EDIT_AND_QUARANTINE is only valid for TASKS. It sits between EDIT and ADMIN."
   EDIT_AND_QUARANTINE
   VIEW
 }

@@ -815,9 +815,8 @@ type WaterfallPagination struct {
 type AccessLevel string
 
 const (
-	AccessLevelAdmin AccessLevel = "ADMIN"
-	AccessLevelEdit  AccessLevel = "EDIT"
-	// EDIT_AND_QUARANTINE is only valid for TASKS. It sits between EDIT and ADMIN.
+	AccessLevelAdmin             AccessLevel = "ADMIN"
+	AccessLevelEdit              AccessLevel = "EDIT"
 	AccessLevelEditAndQuarantine AccessLevel = "EDIT_AND_QUARANTINE"
 	AccessLevelView              AccessLevel = "VIEW"
 )
