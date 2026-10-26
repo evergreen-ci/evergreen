@@ -3,6 +3,7 @@ package artifact
 import (
 	"context"
 	"fmt"
+	"mime"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -120,6 +121,35 @@ func (f *File) validate() error {
 	catcher.ErrorfWhen(f.FileKey == "", "file key is required")
 
 	return catcher.Resolve()
+}
+
+// CanonicalizeStreamingContentType returns the canonical header value to serve
+// if the task-supplied content type exactly matches an allowlist entry,
+// including its parameters, and false otherwise. Parsing (not prefix-matching)
+// rejects ambiguous values like "text/plain,text/html". Callers must serve the
+// returned value, not the stored string.
+func CanonicalizeStreamingContentType(contentType string, allowlist []string) (string, bool) {
+	parsedType, params, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return "", false
+	}
+	for _, allowed := range allowlist {
+		allowedType, allowedParams, err := mime.ParseMediaType(allowed)
+		if err != nil || !strings.EqualFold(parsedType, allowedType) {
+			continue
+		}
+		matched := true
+		for key, value := range allowedParams {
+			if !strings.EqualFold(params[key], value) {
+				matched = false
+				break
+			}
+		}
+		if matched {
+			return mime.FormatMediaType(parsedType, params), true
+		}
+	}
+	return "", false
 }
 
 // StripHiddenFiles is a helper for only showing users the files they are

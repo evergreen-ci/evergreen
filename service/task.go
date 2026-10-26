@@ -9,7 +9,6 @@ import (
 	"net/netip"
 	"net/url"
 	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
@@ -208,15 +207,9 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hasContentType := false
-	for _, contentType := range uis.Settings.Ui.FileStreamingContentTypes {
-		if strings.HasPrefix(tFile.ContentType, contentType) {
-			hasContentType = true
-			break
-		}
-	}
-	if !hasContentType {
-		uis.LoggedError(w, r, http.StatusBadRequest, errors.New(fmt.Sprintf("unsupported file content type '%s'", tFile.ContentType)))
+	contentType, ok := artifact.CanonicalizeStreamingContentType(tFile.ContentType, uis.Settings.Ui.FileStreamingContentTypes)
+	if !ok {
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("unsupported file content type '%s'", tFile.ContentType))
 		return
 	}
 
@@ -245,7 +238,9 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 	const bufferSize = 1024 * 1024 // 1MB
 	buffer := make([]byte, bufferSize)
 
-	w.Header().Set("Content-Type", tFile.ContentType)
+	// Serve the canonicalized match; the stored value is task-controlled.
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	_, err = io.CopyBuffer(w, response.Body, buffer)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "writing to response"))
