@@ -640,7 +640,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	var mfst *manifest.Manifest
 	if metadata.ModuleResolver != nil {
 		mfst, err = metadata.ModuleResolver.Manifest(ctx, v, projectInfo.Project.Modules)
-		// Don't fail version creation, since callers like the repotracker
+		// Don't fail version creation on error, since callers like the repotracker
 		// skip a revision whose version fails to be created. The agent
 		// will build the manifest later if it's missing.
 		grip.Error(ctx, message.WrapError(err, message.Fields{
