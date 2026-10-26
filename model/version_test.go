@@ -13,6 +13,8 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/cost"
+	"github.com/evergreen-ci/evergreen/model/manifest"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
@@ -982,4 +984,138 @@ func TestGetManifestModuleWiki(t *testing.T) {
 	assert.Empty(t, m.Revision)
 	assert.Equal(t, "master", m.Branch)
 	assert.Empty(t, m.URL)
+}
+
+func TestConstructManifestRecordsSelectionRulesAndChangedModules(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(VersionCollection, ProjectRefCollection, ProjectVarsCollection, RepositoryRevisionsHistoryCollection, manifest.Collection, patch.Collection))
+
+	pRef := &ProjectRef{Id: "proj", Identifier: "proj", Owner: "evergreen-ci", Repo: "evergreen", Branch: "main"}
+	require.NoError(t, pRef.Insert(ctx))
+	modules := ModuleList{
+		{Name: "mod_a", Owner: "evergreen-ci", Repo: "mod_a", Branch: "main"},
+		{Name: "mod_b", Owner: "evergreen-ci", Repo: "mod_b", Branch: "main"},
+	}
+
+	firstIngest := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+	secondIngest := firstIngest.Add(time.Hour)
+	require.NoError(t, UpsertRepositoryRevision(ctx, "evergreen-ci", "mod_a", "main", "a1", firstIngest))
+	require.NoError(t, UpsertRepositoryRevision(ctx, "evergreen-ci", "mod_b", "main", "b1", firstIngest))
+	require.NoError(t, UpsertRepositoryRevision(ctx, "evergreen-ci", "mod_b", "main", "b2", secondIngest))
+
+	v1 := &Version{
+		Id:                  mgobson.NewObjectId().Hex(),
+		Identifier:          pRef.Id,
+		Revision:            "r1",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 1,
+		IngestTime:          firstIngest,
+	}
+	require.NoError(t, v1.Insert(ctx))
+	m1, err := CreateManifest(ctx, v1, modules, pRef)
+	require.NoError(t, err)
+	require.NotNil(t, m1)
+	t.Run("FirstVersionShouldHaveNoPreviousVersion", func(t *testing.T) {
+		assert.Empty(t, m1.PreviousVersionID)
+		assert.Empty(t, m1.ChangedModules)
+	})
+
+	v2 := &Version{
+		Id:                  mgobson.NewObjectId().Hex(),
+		Identifier:          pRef.Id,
+		Revision:            "r2",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 2,
+		IngestTime:          secondIngest,
+	}
+	require.NoError(t, v2.Insert(ctx))
+	m2, err := CreateManifest(ctx, v2, modules, pRef)
+	require.NoError(t, err)
+	require.NotNil(t, m2)
+	t.Run("MainlineVersionShouldUseLatestIngestedAndDiffAgainstPreviousVersion", func(t *testing.T) {
+		require.Contains(t, m2.Modules, "mod_a")
+		require.Contains(t, m2.Modules, "mod_b")
+		assert.Equal(t, "a1", m2.Modules["mod_a"].Revision)
+		assert.Equal(t, manifest.ModuleSelectionLatestIngested, m2.Modules["mod_a"].SelectionRule)
+		assert.Equal(t, "b2", m2.Modules["mod_b"].Revision)
+		assert.Equal(t, manifest.ModuleSelectionLatestIngested, m2.Modules["mod_b"].SelectionRule)
+		assert.Equal(t, v1.Id, m2.PreviousVersionID)
+		assert.Equal(t, []string{"mod_b"}, m2.ChangedModules)
+
+		dbManifest, err := manifest.FindOne(ctx, manifest.ById(v2.Id))
+		require.NoError(t, err)
+		require.NotNil(t, dbManifest)
+		require.Contains(t, dbManifest.Modules, "mod_b")
+		assert.Equal(t, manifest.ModuleSelectionLatestIngested, dbManifest.Modules["mod_b"].SelectionRule)
+		assert.Equal(t, v1.Id, dbManifest.PreviousVersionID)
+		assert.Equal(t, []string{"mod_b"}, dbManifest.ChangedModules)
+	})
+
+	t.Run("PreviousVersionWithoutManifestShouldFallBackToBaseManifest", func(t *testing.T) {
+		gitTagVersion := &Version{
+			Id:                  mgobson.NewObjectId().Hex(),
+			Identifier:          pRef.Id,
+			Revision:            v2.Revision,
+			Requester:           evergreen.GitTagRequester,
+			RevisionOrderNumber: 3,
+		}
+		require.NoError(t, gitTagVersion.Insert(ctx))
+		v4 := &Version{
+			Id:                  mgobson.NewObjectId().Hex(),
+			Identifier:          pRef.Id,
+			Revision:            "r4",
+			Requester:           evergreen.RepotrackerVersionRequester,
+			RevisionOrderNumber: 4,
+			IngestTime:          secondIngest,
+		}
+		m, err := constructManifest(ctx, v4, pRef, modules)
+		require.NoError(t, err)
+		require.NotNil(t, m)
+		assert.Equal(t, gitTagVersion.Id, m.PreviousVersionID)
+		assert.Empty(t, m.ChangedModules)
+	})
+
+	t.Run("PreviousVersionWithoutAnyManifestShouldSkipComparison", func(t *testing.T) {
+		v5 := &Version{
+			Id:                  mgobson.NewObjectId().Hex(),
+			Identifier:          pRef.Id,
+			Revision:            "r5",
+			Requester:           evergreen.RepotrackerVersionRequester,
+			RevisionOrderNumber: 5,
+			IngestTime:          secondIngest,
+		}
+		require.NoError(t, v5.Insert(ctx))
+		v6 := &Version{
+			Id:                  mgobson.NewObjectId().Hex(),
+			Identifier:          pRef.Id,
+			Revision:            "r6",
+			Requester:           evergreen.RepotrackerVersionRequester,
+			RevisionOrderNumber: 6,
+			IngestTime:          secondIngest,
+		}
+		m, err := constructManifest(ctx, v6, pRef, modules)
+		require.NoError(t, err)
+		require.NotNil(t, m)
+		assert.Empty(t, m.PreviousVersionID)
+		assert.Empty(t, m.ChangedModules)
+	})
+
+	t.Run("PatchShouldInheritFromBaseVersionWithoutChanges", func(t *testing.T) {
+		p := &patch.Patch{Id: mgobson.NewObjectId(), Project: pRef.Id, Githash: v2.Revision}
+		require.NoError(t, p.Insert(ctx))
+		patchVersion := &Version{
+			Id:         p.Id.Hex(),
+			Identifier: pRef.Id,
+			Revision:   v2.Revision,
+			Requester:  evergreen.PatchVersionRequester,
+		}
+		m, err := constructManifest(ctx, patchVersion, pRef, modules)
+		require.NoError(t, err)
+		require.NotNil(t, m)
+		require.Contains(t, m.Modules, "mod_b")
+		assert.Equal(t, "b2", m.Modules["mod_b"].Revision)
+		assert.Equal(t, manifest.ModuleSelectionBaseVersion, m.Modules["mod_b"].SelectionRule)
+		assert.Equal(t, v2.Id, m.PreviousVersionID)
+		assert.Empty(t, m.ChangedModules)
+	})
 }

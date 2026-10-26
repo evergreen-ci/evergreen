@@ -215,6 +215,10 @@ func (r *versionResolver) Manifest(ctx context.Context, obj *model.Version) (*Ma
 		Branch:          m.Branch,
 		IsBase:          m.IsBase,
 		ModuleOverrides: m.ModuleOverrides,
+		ChangedModules:  m.ChangedModules,
+	}
+	if m.PreviousVersionID != "" {
+		versionManifest.PreviousVersionID = utility.ToStringPtr(m.PreviousVersionID)
 	}
 	modules := map[string]any{}
 	for key, module := range m.Modules {
