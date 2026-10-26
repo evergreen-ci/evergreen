@@ -78,7 +78,6 @@ mutation SaveAdminSettingsOther {
         traceUrlTemplate: "https://tracing.example.com/trace?trace_id=%s"
       }
       projectCreation: {
-        totalProjectLimit: 100
         repoProjectLimit: 50
         repoExceptions: [{ owner: "test-owner", repo: "test-repo" }]
       }
@@ -174,7 +173,6 @@ mutation SaveAdminSettingsOther {
       traceUrlTemplate
     }
     projectCreation {
-      totalProjectLimit
       repoProjectLimit
       repoExceptions {
         owner

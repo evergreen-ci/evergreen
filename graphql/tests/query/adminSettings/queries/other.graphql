@@ -77,7 +77,6 @@ query Other {
       traceUrlTemplate
     }
     projectCreation {
-      totalProjectLimit
       repoProjectLimit
       repoExceptions {
         owner
