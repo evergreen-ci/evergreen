@@ -454,7 +454,9 @@ func agentDeployJobs(ctx context.Context, env evergreen.Environment, ts time.Tim
 	// flag to true. This ensures a consistent state in the agent-deploy job. That job
 	// uses setting the NeedsNewAgent field to false to prevent other jobs from running
 	// concurrently.
-	err = host.UpdateAll(ctx, host.NeedsAgentDeploy(time.Now()), bson.M{"$set": bson.M{
+	needsAgentDeploy := host.NeedsAgentDeploy(time.Now())
+	needsAgentDeploy[host.NeedsNewAgentKey] = bson.M{"$ne": true}
+	err = host.UpdateAll(ctx, needsAgentDeploy, bson.M{"$set": bson.M{
 		host.NeedsNewAgentKey: true,
 	}})
 	if err != nil && !adb.ResultsNotFound(err) {
@@ -508,7 +510,9 @@ func agentMonitorDeployJobs(ctx context.Context, env evergreen.Environment, ts t
 	// The agent monitor deploy job will atomically clear the
 	// NeedsNewAgentMonitor field to prevent other jobs from running
 	// concurrently.
-	if err = host.UpdateAll(ctx, host.NeedsAgentMonitorDeploy(time.Now()), bson.M{"$set": bson.M{
+	needsAgentMonitorDeploy := host.NeedsAgentMonitorDeploy(time.Now())
+	needsAgentMonitorDeploy[host.NeedsNewAgentMonitorKey] = bson.M{"$ne": true}
+	if err = host.UpdateAll(ctx, needsAgentMonitorDeploy, bson.M{"$set": bson.M{
 		host.NeedsNewAgentMonitorKey: true,
 	}}); err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{

@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -307,14 +306,6 @@ func RecentAdminEvents(n int) db.Q {
 	filter[ResourceIdKey] = ""
 
 	return db.Query(filter).Sort([]string{"-" + TimestampKey}).Limit(n)
-}
-
-// ByAdminGuid returns a query for the admin events with the given guid.
-func ByAdminGuid(guid string) db.Q {
-	filter := ResourceTypeKeyIs(ResourceTypeAdmin)
-	filter[ResourceIdKey] = ""
-	filter[bsonutil.GetDottedKeyName(DataKey, "guid")] = guid
-	return db.Query(filter)
 }
 
 func AdminEventsBefore(before time.Time, n int) db.Q {

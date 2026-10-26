@@ -143,3 +143,23 @@ func TestFindByIds(t *testing.T) {
 	assert.True(t, foundIDs["m3"])
 	assert.False(t, foundIDs["m2"])
 }
+
+func TestGetChangedModulesShouldOnlyReportMembershipAndCommitChanges(t *testing.T) {
+	prev := &Manifest{
+		Modules: map[string]*Module{
+			"unchanged":  {Owner: "o", Repo: "r1", Branch: "main", Revision: "a"},
+			"moved":      {Owner: "o", Repo: "r2", Branch: "main", Revision: "a"},
+			"rebranched": {Owner: "o", Repo: "r3", Branch: "main", Revision: "a"},
+			"removed":    {Owner: "o", Repo: "r4", Branch: "main", Revision: "a"},
+		},
+	}
+	curr := &Manifest{
+		Modules: map[string]*Module{
+			"unchanged":  {Owner: "o", Repo: "r1", Branch: "main", Revision: "a", URL: "url", SelectionRule: ModuleSelectionLatestIngested},
+			"moved":      {Owner: "o", Repo: "r2", Branch: "main", Revision: "b"},
+			"rebranched": {Owner: "o", Repo: "r3", Branch: "dev", Revision: "a"},
+			"added":      {Owner: "o", Repo: "r5", Branch: "main", Revision: "a"},
+		},
+	}
+	assert.Equal(t, []string{"added", "moved", "rebranched", "removed"}, curr.GetChangedModules(prev))
+}

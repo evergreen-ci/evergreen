@@ -1688,7 +1688,7 @@ func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRe
 			var preamble []byte
 			preamble, decodeErr = buildAnchorPreamble(anchorRegistry)
 			if decodeErr == nil {
-				combined = append(preamble, parseBytes...)
+				combined = append(preamble, normalizeForPreamble(parseBytes)...)
 			}
 		}
 		if decodeErr == nil {

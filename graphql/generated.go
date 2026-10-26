@@ -104,6 +104,7 @@ type DirectiveRoot struct {
 	RequireDistroAccess          func(ctx context.Context, obj any, next graphql.Resolver, access DistroSettingsAccess) (res any, err error)
 	RequireHostAccess            func(ctx context.Context, obj any, next graphql.Resolver, access HostAccessLevel) (res any, err error)
 	RequirePatchOwner            func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
+	RequirePatchSubmitAccess     func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireProjectAccess         func(ctx context.Context, obj any, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (res any, err error)
 	RequireProjectCreate         func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireProjectSettingsAccess func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
@@ -981,13 +982,15 @@ type ComplexityRoot struct {
 	}
 
 	Manifest struct {
-		Branch          func(childComplexity int) int
-		ID              func(childComplexity int) int
-		IsBase          func(childComplexity int) int
-		ModuleOverrides func(childComplexity int) int
-		Modules         func(childComplexity int) int
-		Project         func(childComplexity int) int
-		Revision        func(childComplexity int) int
+		Branch            func(childComplexity int) int
+		ChangedModules    func(childComplexity int) int
+		ID                func(childComplexity int) int
+		IsBase            func(childComplexity int) int
+		ModuleOverrides   func(childComplexity int) int
+		Modules           func(childComplexity int) int
+		PreviousVersionID func(childComplexity int) int
+		Project           func(childComplexity int) int
+		Revision          func(childComplexity int) int
 	}
 
 	MetadataLink struct {
@@ -1048,7 +1051,7 @@ type ComplexityRoot struct {
 		ReprovisionToNew              func(childComplexity int, hostIds []string) int
 		RestartAdminTasks             func(childComplexity int, opts model1.RestartOptions) int
 		RestartJasper                 func(childComplexity int, hostIds []string) int
-		RestartTask                   func(childComplexity int, taskID string, failedOnly bool) int
+		RestartTask                   func(childComplexity int, taskID string, failedOnly bool, executionTaskIds []string) int
 		RestartVersions               func(childComplexity int, versionID string, abort bool, versionsToRestart []*model1.VersionToRestart) int
 		SaveAdminSettings             func(childComplexity int, adminSettings model.APIAdminSettings) int
 		SaveDistro                    func(childComplexity int, opts SaveDistroInput) int
@@ -1366,9 +1369,8 @@ type ComplexityRoot struct {
 	}
 
 	ProjectCreationConfig struct {
-		RepoExceptions    func(childComplexity int) int
-		RepoProjectLimit  func(childComplexity int) int
-		TotalProjectLimit func(childComplexity int) int
+		RepoExceptions   func(childComplexity int) int
+		RepoProjectLimit func(childComplexity int) int
 	}
 
 	ProjectEventLogEntry struct {
@@ -2592,7 +2594,7 @@ type MutationResolver interface {
 	UpdateVolume(ctx context.Context, updateVolumeInput UpdateVolumeInput) (bool, error)
 	AbortTask(ctx context.Context, taskID string) (*model.APITask, error)
 	OverrideTaskDependencies(ctx context.Context, taskID string) (*model.APITask, error)
-	RestartTask(ctx context.Context, taskID string, failedOnly bool) (*model.APITask, error)
+	RestartTask(ctx context.Context, taskID string, failedOnly bool, executionTaskIds []string) (*model.APITask, error)
 	ScheduleTasks(ctx context.Context, versionID string, taskIds []string) ([]*model.APITask, error)
 	SetTaskPriority(ctx context.Context, taskID string, priority int) (*model.APITask, error)
 	SetTaskPriorities(ctx context.Context, taskPriorities []*TaskPriority) ([]*model.APITask, error)
@@ -6313,6 +6315,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Manifest.Branch(childComplexity), true
+	case "Manifest.changedModules":
+		if e.complexity.Manifest.ChangedModules == nil {
+			break
+		}
+
+		return e.complexity.Manifest.ChangedModules(childComplexity), true
 	case "Manifest.id":
 		if e.complexity.Manifest.ID == nil {
 			break
@@ -6337,6 +6345,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Manifest.Modules(childComplexity), true
+	case "Manifest.previousVersionId":
+		if e.complexity.Manifest.PreviousVersionID == nil {
+			break
+		}
+
+		return e.complexity.Manifest.PreviousVersionID(childComplexity), true
 	case "Manifest.project":
 		if e.complexity.Manifest.Project == nil {
 			break
@@ -6841,7 +6855,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.RestartTask(childComplexity, args["taskId"].(string), args["failedOnly"].(bool)), true
+		return e.complexity.Mutation.RestartTask(childComplexity, args["taskId"].(string), args["failedOnly"].(bool), args["executionTaskIds"].([]string)), true
 	case "Mutation.restartVersions":
 		if e.complexity.Mutation.RestartVersions == nil {
 			break
@@ -8394,12 +8408,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ProjectCreationConfig.RepoProjectLimit(childComplexity), true
-	case "ProjectCreationConfig.totalProjectLimit":
-		if e.complexity.ProjectCreationConfig.TotalProjectLimit == nil {
-			break
-		}
-
-		return e.complexity.ProjectCreationConfig.TotalProjectLimit(childComplexity), true
 
 	case "ProjectEventLogEntry.after":
 		if e.complexity.ProjectEventLogEntry.After == nil {
@@ -14974,6 +14982,11 @@ func (ec *executionContext) field_Mutation_restartTask_args(ctx context.Context,
 		return nil, err
 	}
 	args["failedOnly"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "executionTaskIds", ec.unmarshalOString2ᚕstringᚄ)
+	if err != nil {
+		return nil, err
+	}
+	args["executionTaskIds"] = arg2
 	return args, nil
 }
 
@@ -15201,31 +15214,14 @@ func (ec *executionContext) field_Mutation_schedulePatch_argsPatchID(
 	}
 
 	directive1 := func(ctx context.Context) (any, error) {
-		if ec.directives.RequirePatchOwner == nil {
+		if ec.directives.RequirePatchSubmitAccess == nil {
 			var zeroVal string
-			return zeroVal, errors.New("directive requirePatchOwner is not implemented")
+			return zeroVal, errors.New("directive requirePatchSubmitAccess is not implemented")
 		}
-		return ec.directives.RequirePatchOwner(ctx, rawArgs, directive0)
-	}
-	directive2 := func(ctx context.Context) (any, error) {
-		permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "PATCHES")
-		if err != nil {
-			var zeroVal string
-			return zeroVal, err
-		}
-		access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
-		if err != nil {
-			var zeroVal string
-			return zeroVal, err
-		}
-		if ec.directives.RequireProjectAccess == nil {
-			var zeroVal string
-			return zeroVal, errors.New("directive requireProjectAccess is not implemented")
-		}
-		return ec.directives.RequireProjectAccess(ctx, rawArgs, directive1, permission, access)
+		return ec.directives.RequirePatchSubmitAccess(ctx, rawArgs, directive0)
 	}
 
-	tmp, err := directive2(ctx)
+	tmp, err := directive1(ctx)
 	if err != nil {
 		var zeroVal string
 		return zeroVal, graphql.ErrorOnPath(ctx, err)
@@ -19757,8 +19753,6 @@ func (ec *executionContext) fieldContext_AdminSettings_projectCreation(_ context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "totalProjectLimit":
-				return ec.fieldContext_ProjectCreationConfig_totalProjectLimit(ctx, field)
 			case "repoProjectLimit":
 				return ec.fieldContext_ProjectCreationConfig_repoProjectLimit(ctx, field)
 			case "repoExceptions":
@@ -36026,6 +36020,35 @@ func (ec *executionContext) fieldContext_Manifest_branch(_ context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _Manifest_changedModules(ctx context.Context, field graphql.CollectedField, obj *Manifest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Manifest_changedModules,
+		func(ctx context.Context) (any, error) {
+			return obj.ChangedModules, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Manifest_changedModules(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Manifest",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Manifest_isBase(ctx context.Context, field graphql.CollectedField, obj *Manifest) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -36108,6 +36131,35 @@ func (ec *executionContext) fieldContext_Manifest_modules(_ context.Context, fie
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Map does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Manifest_previousVersionId(ctx context.Context, field graphql.CollectedField, obj *Manifest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Manifest_previousVersionId,
+		func(ctx context.Context) (any, error) {
+			return obj.PreviousVersionID, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Manifest_previousVersionId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Manifest",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -39690,7 +39742,7 @@ func (ec *executionContext) _Mutation_restartTask(ctx context.Context, field gra
 		ec.fieldContext_Mutation_restartTask,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().RestartTask(ctx, fc.Args["taskId"].(string), fc.Args["failedOnly"].(bool))
+			return ec.resolvers.Mutation().RestartTask(ctx, fc.Args["taskId"].(string), fc.Args["failedOnly"].(bool), fc.Args["executionTaskIds"].([]string))
 		},
 		nil,
 		ec.marshalNTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask,
@@ -49174,35 +49226,6 @@ func (ec *executionContext) fieldContext_ProjectBuildVariant_tasks(_ context.Con
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProjectCreationConfig_totalProjectLimit(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectCreationConfig) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ProjectCreationConfig_totalProjectLimit,
-		func(ctx context.Context) (any, error) {
-			return obj.TotalProjectLimit, nil
-		},
-		nil,
-		ec.marshalOInt2int,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ProjectCreationConfig_totalProjectLimit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProjectCreationConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -76504,12 +76527,16 @@ func (ec *executionContext) fieldContext_Version_manifest(_ context.Context, fie
 				return ec.fieldContext_Manifest_id(ctx, field)
 			case "branch":
 				return ec.fieldContext_Manifest_branch(ctx, field)
+			case "changedModules":
+				return ec.fieldContext_Manifest_changedModules(ctx, field)
 			case "isBase":
 				return ec.fieldContext_Manifest_isBase(ctx, field)
 			case "moduleOverrides":
 				return ec.fieldContext_Manifest_moduleOverrides(ctx, field)
 			case "modules":
 				return ec.fieldContext_Manifest_modules(ctx, field)
+			case "previousVersionId":
+				return ec.fieldContext_Manifest_previousVersionId(ctx, field)
 			case "project":
 				return ec.fieldContext_Manifest_project(ctx, field)
 			case "revision":
@@ -87291,20 +87318,13 @@ func (ec *executionContext) unmarshalInputProjectCreationConfigInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"totalProjectLimit", "repoProjectLimit", "repoExceptions"}
+	fieldsInOrder := [...]string{"repoProjectLimit", "repoExceptions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "totalProjectLimit":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalProjectLimit"))
-			data, err := ec.unmarshalOInt2int(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TotalProjectLimit = data
 		case "repoProjectLimit":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("repoProjectLimit"))
 			data, err := ec.unmarshalOInt2int(ctx, v)
@@ -99448,6 +99468,8 @@ func (ec *executionContext) _Manifest(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "changedModules":
+			out.Values[i] = ec._Manifest_changedModules(ctx, field, obj)
 		case "isBase":
 			out.Values[i] = ec._Manifest_isBase(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -99457,6 +99479,8 @@ func (ec *executionContext) _Manifest(ctx context.Context, sel ast.SelectionSet,
 			out.Values[i] = ec._Manifest_moduleOverrides(ctx, field, obj)
 		case "modules":
 			out.Values[i] = ec._Manifest_modules(ctx, field, obj)
+		case "previousVersionId":
+			out.Values[i] = ec._Manifest_previousVersionId(ctx, field, obj)
 		case "project":
 			out.Values[i] = ec._Manifest_project(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -102636,8 +102660,6 @@ func (ec *executionContext) _ProjectCreationConfig(ctx context.Context, sel ast.
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("ProjectCreationConfig")
-		case "totalProjectLimit":
-			out.Values[i] = ec._ProjectCreationConfig_totalProjectLimit(ctx, field, obj)
 		case "repoProjectLimit":
 			out.Values[i] = ec._ProjectCreationConfig_repoProjectLimit(ctx, field, obj)
 		case "repoExceptions":

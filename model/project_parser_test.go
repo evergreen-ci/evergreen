@@ -4421,6 +4421,69 @@ tasks:
 	}
 }
 
+func TestIncludeFileStartingWithDocumentSeparatorIsNotDropped(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes(`
+tasks:
+- name: main-task
+  commands:
+  - &shared-step
+    command: shell.exec
+`, "include.yml")
+
+	includeYAML := `---
+tasks:
+- name: include-task
+  commands:
+  - *shared-step
+`
+	proj := &Project{}
+	pp, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
+	require.NoError(t, err)
+
+	taskNames := map[string]bool{}
+	for _, task := range pp.Tasks {
+		taskNames[task.Name] = true
+	}
+	assert.True(t, taskNames["main-task"])
+	assert.True(t, taskNames["include-task"], "include file contents must survive the anchor preamble")
+}
+
+func TestAnchorPreambleNormalization(t *testing.T) {
+	registry := &anchorRegistry{}
+	var anchorNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("anchors:\n- &dummy\n  x: 1\n"), &anchorNode))
+	require.NoError(t, registry.mergeAnchorsFrom(&anchorNode))
+
+	for _, tc := range []struct {
+		name string
+		yml  string
+		// expectedFunctions is the number of functions the file must yield,
+		// or -1 if the file must error (loudly, identically to flag-off).
+		expectedFunctions int
+	}{
+		{name: "MappingStillGetsPreamble", yml: "functions:\n  f:\n    command: shell.exec\n", expectedFunctions: 1},
+		{name: "LeadingSeparatorStripped", yml: "---\nfunctions:\n  f:\n    command: shell.exec\n", expectedFunctions: 1},
+		{name: "CommentsBeforeMapping", yml: "# comment\n\nfunctions:\n  f:\n    command: shell.exec\n", expectedFunctions: 1},
+		{name: "CommentThenSeparator", yml: "# license header\n---\nfunctions:\n  f:\n    command: shell.exec\n", expectedFunctions: 1},
+		{name: "BlankLineThenSeparator", yml: "\n\n---\nfunctions:\n  f:\n    command: shell.exec\n", expectedFunctions: 1},
+		{name: "SequenceNotAbsorbed", yml: "- a\n- b\n", expectedFunctions: -1},
+		{name: "DirectiveStrippedAndStillGetsPreamble", yml: "%YAML 1.2\n---\nfunctions:\n  f:\n    command: shell.exec\n", expectedFunctions: 1},
+		{name: "SeparatorWithContentSameAsFlagOff", yml: "--- {a: b}\n", expectedFunctions: 0},
+		{name: "BOMBeforeMapping", yml: "\uFEFFfunctions:\n  f:\n    command: shell.exec\n", expectedFunctions: 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			pp, _, err := createIntermediateProject([]byte(tc.yml), false, registry)
+			if tc.expectedFunctions < 0 {
+				require.Error(t, err, "file must error loudly rather than lose contents silently")
+				return
+			}
+			require.NoError(t, err)
+			require.Len(t, pp.Functions, tc.expectedFunctions)
+		})
+	}
+}
+
 // TestAnchorPreambleFailureFallsBack verifies that if the anchor preamble itself is
 // invalid (alias-before-definition ordering), createIntermediateProject falls back to
 // parsing without the preamble rather than propagating the error. This guards against

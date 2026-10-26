@@ -1350,3 +1350,49 @@ func validatePaginatedResponse(t *testing.T, h gimlet.RouteHandler, expected []a
 		assert.Equal(t, expected[idx], data[idx])
 	}
 }
+
+func TestTaskRestartExecutionTaskIDs(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(task.Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(task.Collection))
+	})
+
+	dt := task.Task{
+		Id:             "display_task",
+		DisplayOnly:    true,
+		ExecutionTasks: []string{"exec_task"},
+		Status:         evergreen.TaskFailed,
+	}
+	require.NoError(t, dt.Insert(ctx))
+	et := task.Task{
+		Id:            "exec_task",
+		DisplayTaskId: utility.ToStringPtr(dt.Id),
+		Status:        evergreen.TaskFailed,
+	}
+	require.NoError(t, et.Insert(ctx))
+
+	t.Run("FailedOnlyAndExecutionTaskIDsShouldError", func(t *testing.T) {
+		err := resetTask(ctx, testutil.TestConfig(), dt.Id, "user", true, []string{et.Id})
+		require.Error(t, err)
+		var errResp gimlet.ErrorResponse
+		require.ErrorAs(t, err, &errResp)
+		assert.Equal(t, http.StatusBadRequest, errResp.StatusCode)
+	})
+
+	t.Run("ExecutionTaskNotInDisplayTaskShouldError", func(t *testing.T) {
+		err := resetTask(ctx, testutil.TestConfig(), dt.Id, "user", false, []string{"missing"})
+		require.Error(t, err)
+		var errResp gimlet.ErrorResponse
+		require.ErrorAs(t, err, &errResp)
+		assert.Equal(t, http.StatusBadRequest, errResp.StatusCode)
+	})
+
+	t.Run("InvalidDisplayTaskShouldError", func(t *testing.T) {
+		err := resetTask(ctx, testutil.TestConfig(), et.Id, "user", false, []string{et.Id})
+		require.Error(t, err)
+		var errResp gimlet.ErrorResponse
+		require.ErrorAs(t, err, &errResp)
+		assert.Equal(t, http.StatusBadRequest, errResp.StatusCode)
+	})
+}

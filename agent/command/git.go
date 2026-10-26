@@ -386,9 +386,13 @@ func prCheckoutCommands(conf *internal.TaskConfig) []string {
 			localBranchName, commitToTest,
 		)
 	case prFetchModeSHA:
-		// Fetch the full head SHA directly: the refs/pull/N/head ref can hang
-		// for minutes under load.
-		return fetchCheckoutResetCommands(commitToTest, commitToTest, commitToTest)
+		// Fetch the head SHA directly (the refs/pull/N/head ref can hang for
+		// minutes under load) into a branch so HEAD stays attached.
+		localBranchName := fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
+		return fetchCheckoutResetCommands(
+			fmt.Sprintf("%s:refs/heads/%s", commitToTest, localBranchName),
+			localBranchName, commitToTest,
+		)
 	default: // prFetchModePullRef
 		// Github creates a ref called refs/pull/[pr number]/head
 		// that provides the entire tree of changes, including merges
@@ -469,13 +473,12 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 		checkout := conf.GitHubParentPRCheckout
 		// Fetch the head SHA directly when available to avoid the virtual
 		// pull/N/head ref resolution on GitHub (see prCheckoutCommands).
-		fetchRef, checkoutRef := checkout.HeadHash, checkout.HeadHash
-		if !isFullGitSHA(checkout.HeadHash) {
-			branchName := fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
-			fetchRef = fmt.Sprintf("pull/%d/head:%s", checkout.PRNumber, branchName)
-			checkoutRef = branchName
+		branchName := fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
+		fetchRef := fmt.Sprintf("pull/%d/head:%s", checkout.PRNumber, branchName)
+		if isFullGitSHA(checkout.HeadHash) {
+			fetchRef = fmt.Sprintf("%s:refs/heads/%s", checkout.HeadHash, branchName)
 		}
-		gitCommands = append(gitCommands, fetchCheckoutResetCommands(fetchRef, checkoutRef, checkout.HeadHash)...)
+		gitCommands = append(gitCommands, fetchCheckoutResetCommands(fetchRef, branchName, checkout.HeadHash)...)
 	} else {
 		gitCommands = append(gitCommands, fmt.Sprintf("git checkout '%s'", ref))
 	}
@@ -567,7 +570,7 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 		return err
 	}
 
-	// A cache hit on the merge SHA never contacts GitHub, so nothing else would notice a deleted ref.
+	// A cache hit on the merge SHA never fetches its own ref, so nothing else would notice a deleted ref.
 	deleted, err := mergeQueueRefDeleted(ctx, comm, conf, c.Token, opts)
 	if err != nil {
 		// The clone's own check is still a backstop for an inconclusive answer.
@@ -601,6 +604,7 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 			fallbackReason = errors.Wrap(err, "preparing restored source tree").Error()
 			break
 		}
+		c.refreshTagsOnRestoredSource(ctx, logger, conf, restoreKey.Revision)
 		logger.Task().Infof(ctx, "Restored source from the cache for revision '%s'.", restoreKey.Revision)
 		trace.SpanFromContext(ctx).SetAttributes(attribute.String(sourceCacheRestoredRevisionAttribute, restoreKey.Revision))
 		sc.setSpanOutcome(ctx, sourceCacheHit, "")
@@ -628,6 +632,10 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 		return nil
 	}
 	produced, err := c.saveSourceCache(ctx, comm, logger, conf, sc, opts)
+	if errors.Is(err, errSourceCacheClaimDenied) {
+		sc.setSpanOutcome(ctx, sourceCacheMissLostRace, sourceCacheClaimDeniedReason)
+		return nil
+	}
 	if errors.Is(err, errSourceCacheSaveTimeout) {
 		outcome = sourceCacheSaveTimedOut
 	} else if err != nil {
@@ -676,6 +684,18 @@ func sourceCacheSaveBudget(conf *internal.TaskConfig) (time.Duration, bool) {
 // saveSourceCache scrubs the cloned tree of anything task-specific, uploads it,
 // and puts the task's own authenticated origin URL back for the rest of the run.
 func (c *gitFetchProject) saveSourceCache(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, sc *sourceCache, opts cloneOpts) (bool, error) {
+	// When the app server cannot answer the claim, save anyway; the create-only upload still prevents two producers from writing.
+	claimStart := time.Now()
+	claim, claimErr := comm.ClaimSourceCacheSave(ctx, conf.TaskData(), sc.claimRequest)
+	setSourceCacheSpanDuration(ctx, sourceCacheClaimDurationAttribute, time.Since(claimStart))
+	if claimErr != nil {
+		trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(sourceCacheClaimErrorAttribute, true))
+		logger.Task().Warningf(ctx, "Claiming the source cache save: %s; saving anyway.", claimErr)
+	} else if !claim.Claimed {
+		logger.Task().Infof(ctx, "Another task is already saving the source cache artifact; skipping the save.")
+		return false, errSourceCacheClaimDenied
+	}
+
 	if err := c.runCommands(ctx, logger, conf, c.buildPreSaveCommand(opts)); err != nil {
 		return false, errors.Wrap(err, "scrubbing source tree before saving")
 	}
@@ -714,6 +734,45 @@ func (c *gitFetchProject) buildPostRestoreCommand(conf *internal.TaskConfig, opt
 		cmds = append(cmds, prCheckoutCommands(conf)...)
 	}
 	return append(cmds, "git log --oneline -n 10")
+}
+
+// refreshTagsOnRestoredSource fetches tags pushed after the producer archived
+// that point at the restored revision. Bounded and non-fatal: the restore
+// already succeeded, and falling back to a clone would discard it.
+func (c *gitFetchProject) refreshTagsOnRestoredSource(ctx context.Context, logger client.LoggerProducer, conf *internal.TaskConfig, revision string) {
+	ctx, cancel := context.WithTimeout(ctx, sourceCacheTagRefreshTimeout)
+	defer cancel()
+	start := time.Now()
+	err := c.runCommands(ctx, logger, conf, c.buildRefreshTagsCommand(revision))
+	// Timed on failure too, since those are the runs most worth comparing.
+	setSourceCacheSpanDuration(ctx, sourceCacheTagFetchDurationAttribute, time.Since(start))
+	if err != nil {
+		trace.SpanFromContext(ctx).SetAttributes(
+			attribute.Bool(sourceCacheTagRefreshFailedAttribute, true),
+			// Task cancellation surfaces as context.Canceled, so only the local deadline lands here.
+			attribute.Bool(sourceCacheTagRefreshTimedOutAttribute, errors.Is(ctx.Err(), context.DeadlineExceeded)),
+			attribute.String(sourceCacheReasonAttribute, err.Error()),
+		)
+		logger.Task().Warningf(ctx, "Refreshing tags on the restored source tree: %s", err)
+	}
+}
+
+// buildRefreshTagsCommand refreshes tags pushed after the producer archived, so
+// git describe --tags sees the tag that triggered the build. ls-remote lists
+// refs without downloading objects, so the fetch stays scoped to tags that peel
+// to the revision rather than unshallowing every tag's history on a shallow
+// clone.
+func (c *gitFetchProject) buildRefreshTagsCommand(revision string) []string {
+	// Annotated tags list both the tag object and a "^{}" line holding the
+	// peeled commit, so match on either and report the plain tag name.
+	// Refspecs are printed as tag:tag so the fetch overwrites stale local tags.
+	listTags := fmt.Sprintf(`git ls-remote origin 'refs/tags/*' | awk -v rev='%s' '$1 == rev { tag = $2; if (substr(tag, length(tag) - 2) == "^{}") tag = substr(tag, 1, length(tag) - 3); print tag ":" tag }' | sort -u`, revision)
+	return c.scriptInProjectDir(
+		`set -o pipefail`,
+		fmt.Sprintf(`matching=$(%s) || exit 1`, listTags),
+		`[ -n "$matching" ] || exit 0`,
+		`git fetch origin --force --no-recurse-submodules $matching`,
+	)
 }
 
 // buildPreSaveCommand returns the script run before archiving the cloned tree.

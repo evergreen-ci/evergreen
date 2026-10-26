@@ -469,3 +469,25 @@ func TestGetRequester(t *testing.T) {
 	require.Equal(t, evergreen.GithubMergeRequester, p2.GetRequester())
 	require.Equal(t, evergreen.PatchVersionRequester, p3.GetRequester())
 }
+
+func TestIsPendingGithubPRAuthorization(t *testing.T) {
+	for testName, testCase := range map[string]struct {
+		patch    Patch
+		expected bool
+	}{
+		"UnfinalizedPRPatchShouldBePending": {
+			patch:    Patch{GithubPatchData: thirdparty.GithubPatch{HeadOwner: "owner"}},
+			expected: true,
+		},
+		"FinalizedPRPatchShouldNotBePending": {
+			patch: Patch{GithubPatchData: thirdparty.GithubPatch{HeadOwner: "owner"}, Version: "version"},
+		},
+		"UnfinalizedNonPRPatchShouldNotBePending": {
+			patch: Patch{},
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			assert.Equal(t, testCase.expected, testCase.patch.IsPendingGithubPRAuthorization())
+		})
+	}
+}

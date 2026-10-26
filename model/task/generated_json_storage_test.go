@@ -97,9 +97,7 @@ func TestGeneratedJSONS3Storage(t *testing.T) {
 	}
 }
 
-// TestGeneratedJSONFind covers retrieval for every storage method. generate.tasks
-// only writes to S3 now, but tasks that ran before that switch still store their
-// generated JSON in the task document.
+// TestGeneratedJSONFind covers retrieval of a task's generated JSON from S3.
 func TestGeneratedJSONFind(t *testing.T) {
 	ctx := t.Context()
 
@@ -121,36 +119,20 @@ func TestGeneratedJSONFind(t *testing.T) {
 		assert.NoError(t, bucket.RemovePrefix(ctx, ppConf.GeneratedJSONPrefix))
 	}()
 
-	files := GeneratedJSONFiles{`{"key0": "value0"}`, `{"key1": "value1"}`}
+	require.NoError(t, db.ClearCollections(Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	})
 
-	for testName, storeFiles := range map[string]func(t *testing.T, tsk *Task){
-		"UnsetStorageMethodReadsFromTheTaskDocument": func(t *testing.T, tsk *Task) {
-			tsk.GeneratedJSONAsString = files
-		},
-		"DBStorageMethodReadsFromTheTaskDocument": func(t *testing.T, tsk *Task) {
-			tsk.GeneratedJSONAsString = files
-			tsk.GeneratedJSONStorageMethod = evergreen.ProjectStorageMethodDB
-		},
-		"S3StorageMethodReadsFromS3": func(t *testing.T, tsk *Task) {
-			require.NoError(t, GeneratedJSONInsert(ctx, env.Settings(), tsk, files))
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(Collection))
-			t.Cleanup(func() {
-				assert.NoError(t, db.ClearCollections(Collection))
-			})
-
-			tsk := &Task{
-				Id: fmt.Sprintf("%s-%s", path.Base(t.Name()), utility.RandomString()),
-			}
-			require.NoError(t, tsk.Insert(ctx))
-
-			storeFiles(t, tsk)
-
-			storedFiles, err := GeneratedJSONFind(ctx, env.Settings(), tsk)
-			require.NoError(t, err)
-			assert.Equal(t, files, storedFiles)
-		})
+	tsk := &Task{
+		Id: fmt.Sprintf("%s-%s", path.Base(t.Name()), utility.RandomString()),
 	}
+	require.NoError(t, tsk.Insert(ctx))
+
+	files := GeneratedJSONFiles{`{"key0": "value0"}`, `{"key1": "value1"}`}
+	require.NoError(t, GeneratedJSONInsert(ctx, env.Settings(), tsk, files))
+
+	storedFiles, err := GeneratedJSONFind(ctx, env.Settings(), tsk)
+	require.NoError(t, err)
+	assert.Equal(t, files, storedFiles)
 }

@@ -79,7 +79,7 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			data, ok := resp.Data().(apimodels.ExpansionsAndVars)
 			require.True(t, ok)
 			assert.Equal(t, map[string]string{"a": "1", "b": "3"}, data.Vars)
-			assert.Equal(t, map[string]string{"a": "4"}, data.Parameters)
+			assert.Equal(t, map[string]string{"a": "4", "test_selection_bypass_quarantine": `["jstests/core/example.js"]`}, data.Parameters)
 			assert.Equal(t, map[string]bool{"b": true}, data.PrivateVars)
 			assert.Equal(t, []string{"pass", "secret"}, data.RedactKeys)
 		},
@@ -147,7 +147,7 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			assert.Equal(t, "distro_expansion_value", data.Expansions.Get("distro_expansion_key"))
 			assert.Equal(t, "password", data.InternalRedactions[hostServicePasswordPlaceholder])
 			assert.Equal(t, map[string]string{"a": "1", "b": "3"}, data.Vars)
-			assert.Equal(t, map[string]string{"a": "4"}, data.Parameters)
+			assert.Equal(t, map[string]string{"a": "4", "test_selection_bypass_quarantine": `["jstests/core/example.js"]`}, data.Parameters)
 			assert.Equal(t, map[string]bool{"b": true}, data.PrivateVars)
 			assert.Equal(t, []string{"pass", "secret"}, data.RedactKeys)
 		},
@@ -194,6 +194,10 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 					{
 						Key:   "a",
 						Value: "4",
+					},
+					{
+						Key:   "test_selection_bypass_quarantine",
+						Value: `["jstests/core/example.js"]`,
 					},
 				},
 			}
@@ -1339,15 +1343,17 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 
 			assert.ErrorContains(t, handler.Parse(ctx, request), "missing owner")
 		},
-		"ParseErrorsOnEmptyRepo": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
-			url := fmt.Sprintf(route, taskID, owner, "")
-			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(json))
+		"ParseSucceedsWithoutRepo": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
+			url := fmt.Sprintf("/task/%s/github_dynamic_access_token/%s", taskID, owner)
+			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(json))
 			require.NoError(t, err)
 
-			options := map[string]string{"owner": owner, "repo": "", "task_id": taskID}
+			options := map[string]string{"owner": owner, "task_id": taskID}
 			request = gimlet.SetURLVars(request, options)
 
-			assert.ErrorContains(t, handler.Parse(ctx, request), "missing repo")
+			require.NoError(t, handler.Parse(ctx, request))
+			assert.Equal(t, owner, handler.owner)
+			assert.Empty(t, handler.repo)
 		},
 		"ParseErrorsOnEmptyTaskID": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
 			url := fmt.Sprintf(route, "", owner, repo)

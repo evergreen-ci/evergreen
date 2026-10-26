@@ -88,14 +88,16 @@ func (r *ModuleResolver) Manifest(ctx context.Context, v *Version, modules Modul
 		}
 		resolved[module.Name] = mod
 	}
-	return &manifest.Manifest{
+	newManifest := &manifest.Manifest{
 		Id:          v.Id,
 		Revision:    v.Revision,
 		ProjectName: v.Identifier,
 		Branch:      r.projectRef.Branch,
 		IsBase:      v.Requester == evergreen.RepotrackerVersionRequester,
 		Modules:     resolved,
-	}, nil
+	}
+	setChangedModules(ctx, v, newManifest, r.baseManifest)
+	return newManifest, nil
 }
 
 // TriggeringModuleName returns the name of the module pinned by
@@ -199,7 +201,8 @@ func (r *ModuleResolver) resolve(ctx context.Context, module Module) (*manifest.
 		return nil, errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
 	}
 
-	if r.isTriggeringModule(owner, repo, module.Branch) {
+	isTriggeringModule := r.isTriggeringModule(owner, repo, module.Branch)
+	if isTriggeringModule {
 		module.Ref = r.opts.TriggeringModuleCommit.Revision
 	}
 
@@ -209,10 +212,19 @@ func (r *ModuleResolver) resolve(ctx context.Context, module Module) (*manifest.
 		if baseModule, ok := r.baseManifest.Modules[module.Name]; ok {
 			// Use base module revision unless the YAML explicitly specifies a different ref.
 			if module.Ref == "" || module.Ref == baseModule.Revision {
-				return baseModule, nil
+				inherited := *baseModule
+				inherited.SelectionRule = manifest.ModuleSelectionBaseVersion
+				return &inherited, nil
 			}
 		}
 	}
 
-	return getManifestModule(ctx, r.projectRef, module, r.opts.Requester, r.opts.IngestTime)
+	mod, err := getManifestModule(ctx, r.projectRef, module, r.opts.Requester, r.opts.IngestTime)
+	if err != nil {
+		return nil, err
+	}
+	if isTriggeringModule {
+		mod.SelectionRule = manifest.ModuleSelectionTriggerCommit
+	}
+	return mod, nil
 }

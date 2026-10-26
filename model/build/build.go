@@ -132,6 +132,14 @@ func UpdateActivation(ctx context.Context, buildIds []string, active bool, calle
 	if !active && evergreen.IsSystemActivator(caller) {
 		query[ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
 	}
+	// Skip builds that are already in the requested state and were activated
+	// by the same caller so that repeated calls do not rewrite them. Builds
+	// with a different activator are still updated so that the caller takes
+	// ownership of the activation.
+	query["$or"] = []bson.M{
+		{ActivatedKey: bson.M{"$ne": active}},
+		{ActivatedByKey: bson.M{"$ne": caller}},
+	}
 
 	err := UpdateAllBuilds(
 		ctx,

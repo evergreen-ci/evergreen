@@ -1,7 +1,6 @@
 package event
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -122,81 +121,6 @@ func (s *AdminEventSuite) TestNoChanges() {
 	dbEvents, err := FindAdmin(s.T().Context(), RecentAdminEvents(1))
 	s.NoError(err)
 	s.Empty(dbEvents)
-}
-
-func (s *AdminEventSuite) TestReverting() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	before := evergreen.SchedulerConfig{
-		TaskFinder: "legacy",
-	}
-	after := evergreen.SchedulerConfig{
-		TaskFinder: "alternate",
-	}
-	s.NoError(after.Set(ctx))
-	s.NoError(LogAdminEvent(s.T().Context(), before.SectionId(), &before, &after, s.username))
-
-	dbEvents, err := FindAdmin(s.T().Context(), RecentAdminEvents(1))
-	s.NoError(err)
-	s.Require().Len(dbEvents, 1)
-	eventData := dbEvents[0].Data.(*AdminEventData)
-	beforeVal := eventData.Changes.Before.(*evergreen.SchedulerConfig)
-	afterVal := eventData.Changes.After.(*evergreen.SchedulerConfig)
-	s.Equal(before, *beforeVal)
-	s.Equal(after, *afterVal)
-	guid := eventData.GUID
-	s.NotEmpty(guid)
-
-	settings, err := evergreen.GetConfig(ctx)
-	s.NoError(err)
-	s.Equal(after, settings.Scheduler)
-	s.NoError(RevertConfig(ctx, guid, "me"))
-	settings, err = evergreen.GetConfig(ctx)
-	s.NoError(err)
-	s.Equal(before, settings.Scheduler)
-
-	// check that reverting a nonexistent guid errors
-	s.Error(RevertConfig(ctx, "abcd", "me"))
-}
-
-func (s *AdminEventSuite) TestRevertingRoot() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// this verifies that reverting the root document does not revert other sections
-	before := evergreen.Settings{
-		Banner: "before_banner",
-		Ui: evergreen.UIConfig{
-			Url: "before_url",
-		},
-	}
-	after := evergreen.Settings{
-		Banner: "after_banner",
-		Ui: evergreen.UIConfig{
-			Url:            "after_url",
-			CacheTemplates: true,
-		},
-	}
-	s.NoError(evergreen.UpdateConfig(ctx, &after))
-	s.NoError(LogAdminEvent(s.T().Context(), before.SectionId(), &before, &after, s.username))
-
-	dbEvents, err := FindAdmin(s.T().Context(), RecentAdminEvents(1))
-	s.NoError(err)
-	s.Require().Len(dbEvents, 1)
-	eventData := dbEvents[0].Data.(*AdminEventData)
-	guid := eventData.GUID
-	s.NotEmpty(guid)
-
-	settings, err := evergreen.GetConfig(ctx)
-	s.NoError(err)
-	s.Equal(after.Banner, settings.Banner)
-	s.Equal(after.Ui, settings.Ui)
-	s.NoError(RevertConfig(ctx, guid, "me"))
-	settings, err = evergreen.GetConfig(ctx)
-	s.NoError(err)
-	s.Equal(before.Banner, settings.Banner)
-	s.Equal(after.Ui, settings.Ui)
 }
 
 func TestAdminEventsBeforeQuery(t *testing.T) {

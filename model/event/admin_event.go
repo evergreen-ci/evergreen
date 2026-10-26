@@ -163,30 +163,3 @@ func convertRaw(in rawAdminEventData) (*AdminEventData, error) {
 
 	return &out, nil
 }
-
-// RevertConfig reverts one config section to the before state of the specified GUID in the event log
-func RevertConfig(ctx context.Context, guid string, user string) error {
-	events, err := FindAdmin(ctx, ByAdminGuid(guid))
-	if err != nil {
-		return errors.Wrap(err, "finding events")
-	}
-	if len(events) == 0 {
-		return errors.Errorf("finding event with GUID '%s'", guid)
-	}
-	evt := events[0]
-	data := evt.Data.(*AdminEventData)
-	current := evergreen.NewConfigSections().Sections[data.Section]
-	if current == nil {
-		return errors.Errorf("finding section '%s'", data.Section)
-	}
-	err = current.Get(ctx)
-	if err != nil {
-		return errors.Wrapf(err, "reading section '%s'", current.SectionId())
-	}
-	err = data.Changes.Before.Set(ctx)
-	if err != nil {
-		return errors.Wrap(err, "reverting to before settings")
-	}
-
-	return LogAdminEvent(ctx, data.Section, current, data.Changes.Before, user)
-}

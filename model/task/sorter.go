@@ -62,8 +62,13 @@ func (t Tasks) insertUnorderedBatches(ctx context.Context, collection taskInsert
 	var combinedErrors mongo.BulkWriteException
 	for start := 0; start < len(t); start += taskInsertBatchSize {
 		end := min(start+taskInsertBatchSize, len(t))
+		payload := getPayload(t[start:end])
+		stamped := make([]any, len(payload))
+		for i, item := range payload {
+			stamped[i] = db.StampInsertedAt(Collection, item)
+		}
 		// Insert smaller batches to reduce memory spikes when preparing MongoDB writes and Honeycomb traces.
-		_, err := collection.InsertMany(ctx, getPayload(t[start:end]), options.InsertMany().SetOrdered(false))
+		_, err := collection.InsertMany(ctx, stamped, options.InsertMany().SetOrdered(false))
 		if err == nil {
 			continue
 		}

@@ -36,12 +36,18 @@ const (
 	// sourceCacheSaveCap bounds the save when the task's exec deadline cannot
 	// be derived, so an upload still cannot run unbounded.
 	sourceCacheSaveCap = 5 * time.Minute
+	// sourceCacheTagRefreshTimeout bounds the post-restore tag refresh, whose
+	// scoped fetch of a few tags runs in seconds on any repo.
+	sourceCacheTagRefreshTimeout = 2 * time.Minute
 )
 
 // errSourceCacheSaveTimeout means the cache save was aborted by its time cap.
 // The task keeps its own clone, so this is a skipped seed rather than a task
 // failure and is recorded as a distinct span outcome.
 var errSourceCacheSaveTimeout = errors.New("source cache save timed out")
+
+// errSourceCacheClaimDenied means another producer holds the save claim; the task keeps its own clone, so this is a skipped save, and the span outcome is set where the denial is detected.
+var errSourceCacheClaimDenied = errors.New("another task is already saving the source cache artifact")
 
 var (
 	sourceCacheOutcomeAttribute           = sourceCacheAttribute("outcome")
@@ -59,6 +65,15 @@ var (
 	sourceCacheExtractDurationAttribute  = sourceCacheAttribute("extract_duration_ms")
 	sourceCacheArchiveDurationAttribute  = sourceCacheAttribute("archive_duration_ms")
 	sourceCacheUploadDurationAttribute   = sourceCacheAttribute("upload_duration_ms")
+	sourceCacheClaimDurationAttribute    = sourceCacheAttribute("claim_duration_ms")
+	sourceCacheClaimErrorAttribute       = sourceCacheAttribute("claim_error")
+
+	// sourceCacheClaimDeniedReason distinguishes a denied claim from losing the S3 create-only race at upload time.
+	sourceCacheClaimDeniedReason = "claim_denied_save_in_progress"
+
+	sourceCacheTagFetchDurationAttribute   = sourceCacheAttribute("tag_fetch_duration_ms")
+	sourceCacheTagRefreshFailedAttribute   = sourceCacheAttribute("tag_refresh_failed")
+	sourceCacheTagRefreshTimedOutAttribute = sourceCacheAttribute("tag_refresh_timed_out")
 )
 
 func sourceCacheAttribute(name string) string {
@@ -98,6 +113,9 @@ type sourceCache struct {
 
 	// saveKey is the artifact this task uploads its own tree to.
 	saveKey apimodels.SourceCacheRestoreKey
+
+	// claimRequest is the clone shape the credentials were granted for.
+	claimRequest apimodels.SourceCacheCredentialsRequest
 
 	// corruptRemoteKey is set when restore extracts a corrupt artifact; save heals it.
 	corruptRemoteKey string
@@ -154,6 +172,7 @@ func newSourceCache(ctx context.Context, comm client.Communicator, conf *interna
 	}
 	sc.restoreKeys = creds.RestoreKeys
 	sc.saveKey = creds.SaveKey
+	sc.claimRequest = request
 
 	provider, err := newCachedSourceCacheCredentials(comm, sc.taskData, request, creds)
 	if err != nil {
