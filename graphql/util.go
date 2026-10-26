@@ -1294,6 +1294,8 @@ func getProjectPermissionLevel(projectPermission ProjectPermission, access Acces
 		permission = evergreen.PermissionTasks
 		if access == AccessLevelAdmin {
 			permissionLevel = evergreen.TasksAdmin
+		} else if access == AccessLevelQuarantine {
+			permissionLevel = evergreen.TasksQuarantine
 		} else if access == AccessLevelEdit {
 			permissionLevel = evergreen.TasksBasic
 		} else if access == AccessLevelView {

@@ -171,6 +171,13 @@ func setupPermissions(t *testing.T) {
 	}
 	require.NoError(t, roleManager.UpdateRole(t.Context(), taskAdminRole))
 
+	taskQuarantineRole := gimlet.Role{
+		ID:          "quarantine_task",
+		Scope:       projectScope.ID,
+		Permissions: map[string]int{evergreen.PermissionTasks: evergreen.TasksQuarantine.Value},
+	}
+	require.NoError(t, roleManager.UpdateRole(t.Context(), taskQuarantineRole))
+
 	taskEditRole := gimlet.Role{
 		ID:          "edit_task",
 		Scope:       projectScope.ID,

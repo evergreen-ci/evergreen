@@ -26,9 +26,9 @@ repository information, access settings, alerts, and keys.
 
 Service users cannot be managed through MANA. Instead, they have a special
 role called `api_user_access`. This role grants them permission to submit
-patches and to edit tasks (restart, set priority, abort) in unrestricted
-projects. If a service user needs permission to submit patches on behalf
-of another user, the Evergreen team must grant this explicitly.
+patches, to edit tasks (restart, set priority, abort), and to quarantine
+tests in unrestricted projects. If a service user needs permission to submit
+patches on behalf of another user, the Evergreen team must grant this explicitly.
 
 ### Permissions Requested with MANA
 
@@ -899,6 +899,10 @@ The "Task-Level Test Selection" setting controls which tasks run test selection 
 The task-level setting only has an effect when project-level test selection is enabled. Git tags, periodic builds,
 triggered versions, and other non-patch versions do not run the
 [test selection command](Project-Commands#test_selectionget).
+
+Quarantining or unquarantining tests, tasks, or build variants (from the UI or the REST API) requires the "Edit tasks and
+quarantine tests" tasks permission for the project. Permission to edit tasks is not enough on its own. Project admins
+have this permission already; other users can request it through [MANA](#permissions-requested-with-mana).
 
 ## GitHub App Settings
 

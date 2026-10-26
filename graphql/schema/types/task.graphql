@@ -86,6 +86,7 @@ type Task {
   canDisable: Boolean!
   canModifyAnnotation: Boolean!
   canOverrideDependencies: Boolean!
+  canQuarantine: Boolean!
   canRestart: Boolean!
   canSchedule: Boolean!
   canSetPriority: Boolean!
@@ -402,12 +403,12 @@ type Cost {
 }
 
 input QuarantineTestInput {
-  taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)
+  taskId: String! @requireProjectAccess(permission: TASKS, access: QUARANTINE)
   testName: String!
 }
 
 input UnquarantineTestInput {
-  taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)
+  taskId: String! @requireProjectAccess(permission: TASKS, access: QUARANTINE)
   testName: String!
 }
 

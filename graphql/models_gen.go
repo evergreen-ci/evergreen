@@ -817,18 +817,21 @@ type AccessLevel string
 const (
 	AccessLevelAdmin AccessLevel = "ADMIN"
 	AccessLevelEdit  AccessLevel = "EDIT"
-	AccessLevelView  AccessLevel = "VIEW"
+	// QUARANTINE is only valid for TASKS. It sits between EDIT and ADMIN.
+	AccessLevelQuarantine AccessLevel = "QUARANTINE"
+	AccessLevelView       AccessLevel = "VIEW"
 )
 
 var AllAccessLevel = []AccessLevel{
 	AccessLevelAdmin,
 	AccessLevelEdit,
+	AccessLevelQuarantine,
 	AccessLevelView,
 }
 
 func (e AccessLevel) IsValid() bool {
 	switch e {
-	case AccessLevelAdmin, AccessLevelEdit, AccessLevelView:
+	case AccessLevelAdmin, AccessLevelEdit, AccessLevelQuarantine, AccessLevelView:
 		return true
 	}
 	return false

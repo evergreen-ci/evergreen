@@ -1380,6 +1380,10 @@ var (
 		Description: "Edit tasks and override dependencies",
 		Value:       30,
 	}
+	TasksQuarantine = PermissionLevel{
+		Description: "Edit tasks and quarantine tests",
+		Value:       25,
+	}
 	TasksBasic = PermissionLevel{
 		Description: "Edit tasks",
 		Value:       20,
@@ -1478,6 +1482,7 @@ func GetPermissionLevelsForPermissionKey(permissionKey string) []PermissionLevel
 	case PermissionTasks:
 		return []PermissionLevel{
 			TasksAdmin,
+			TasksQuarantine,
 			TasksBasic,
 			TasksView,
 			TasksNone,

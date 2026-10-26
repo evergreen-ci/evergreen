@@ -284,6 +284,40 @@ func TestRequireProjectAccessForTasks(t *testing.T) {
 	_, err = RequireProjectAccess(ctx, obj, next, ProjectPermissionTasks, AccessLevelView)
 	require.Equal(t, 9, callCount)
 	require.EqualError(t, err, "input: user 'test_user' does not have permission to 'view tasks' for the project 'project_id'")
+
+	// quarantine access fails for edit, view, and no access
+	const quarantineErr = "input: user 'test_user' does not have permission to 'edit tasks and quarantine tests' for the project 'project_id'"
+	for _, roleID := range []string{"edit_task", "view_task"} {
+		require.NoError(t, usr.AddRole(t.Context(), roleID))
+		_, err = RequireProjectAccess(ctx, obj, next, ProjectPermissionTasks, AccessLevelQuarantine)
+		require.EqualError(t, err, quarantineErr, roleID)
+		require.NoError(t, usr.RemoveRole(t.Context(), roleID))
+	}
+	_, err = RequireProjectAccess(ctx, obj, next, ProjectPermissionTasks, AccessLevelQuarantine)
+	require.EqualError(t, err, quarantineErr)
+	require.Equal(t, 9, callCount)
+
+	// admin access is successful for quarantine
+	require.NoError(t, usr.AddRole(t.Context(), "admin_task"))
+	res, err = RequireProjectAccess(ctx, obj, next, ProjectPermissionTasks, AccessLevelQuarantine)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 10, callCount)
+	require.NoError(t, usr.RemoveRole(t.Context(), "admin_task"))
+
+	// quarantine access fails for admin, is successful for quarantine, edit & view
+	require.NoError(t, usr.AddRole(t.Context(), "quarantine_task"))
+	_, err = RequireProjectAccess(ctx, obj, next, ProjectPermissionTasks, AccessLevelAdmin)
+	require.EqualError(t, err, "input: user 'test_user' does not have permission to 'edit tasks and override dependencies' for the project 'project_id'")
+	require.Equal(t, 10, callCount)
+
+	for _, access := range []AccessLevel{AccessLevelQuarantine, AccessLevelEdit, AccessLevelView} {
+		res, err = RequireProjectAccess(ctx, obj, next, ProjectPermissionTasks, access)
+		require.NoError(t, err, access)
+		require.Nil(t, res)
+	}
+	require.Equal(t, 13, callCount)
+	require.NoError(t, usr.RemoveRole(t.Context(), "quarantine_task"))
 }
 
 func TestRequireProjectAccessForAnnotations(t *testing.T) {
