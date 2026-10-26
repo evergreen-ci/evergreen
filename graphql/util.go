@@ -1596,8 +1596,10 @@ func setTestQuarantineState(ctx context.Context, change testQuarantineChange) (*
 	if t.DisplayOnly {
 		return nil, InputValidationError.Send(ctx, "cannot modify test quarantine state on display tasks, select an execution task instead")
 	}
-	if err = validateQuarantineJiraTickets(ctx, t.Project, change.existingJiraTicketsToLink); err != nil {
-		return nil, err
+	if isManuallyQuarantined {
+		if err = validateQuarantineJiraTickets(ctx, t.Project, change.existingJiraTicketsToLink); err != nil {
+			return nil, err
+		}
 	}
 	displayTaskName, err := t.GetDisplayTaskName(ctx)
 	if err != nil {

@@ -25,6 +25,17 @@
           }
         }
       }
+    },
+    {
+      "query_file": "unquarantine_without_jira_tickets.graphql",
+      "result": {
+        "data": {
+          "unquarantineTest": {
+            "id": "TestFoo",
+            "isManuallyQuarantined": false
+          }
+        }
+      }
     }
   ]
 }
