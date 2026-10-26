@@ -1172,8 +1172,6 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, knownHo
 	expansions.Put("project_id", projectRef.Id)
 	expansions.Put("github_org", projectRef.Owner)
 	expansions.Put("github_repo", projectRef.Repo)
-	// for projects using repo-level settings, the merged project ref's remote
-	// path reflects the repo ref's config file path.
 	expansions.Put("config_file_path", projectRef.RemotePath)
 	if h != nil {
 		expansions.Put("distro_id", h.Distro.Id)
