@@ -767,26 +767,6 @@ func (c *communicatorImpl) GetSettings(ctx context.Context) (*evergreen.Settings
 	return settings, nil
 }
 
-func (c *communicatorImpl) UpdateSettings(ctx context.Context, update *model.APIAdminSettings) (*model.APIAdminSettings, error) {
-	info := requestInfo{
-		method: http.MethodPost,
-		path:   "admin/settings",
-	}
-	resp, err := c.request(ctx, info, &update)
-	if err != nil {
-		return nil, errors.Wrap(err, "sending request to update admin settings")
-	}
-	defer resp.Body.Close()
-
-	newSettings := &model.APIAdminSettings{}
-	err = utility.ReadJSON(resp.Body, newSettings)
-	if err != nil {
-		return nil, errors.Wrap(err, "reading JSON response body")
-	}
-
-	return newSettings, nil
-}
-
 func (c *communicatorImpl) GetEvents(ctx context.Context, ts time.Time, limit int) ([]any, error) {
 	info := requestInfo{
 		method: http.MethodGet,
@@ -805,30 +785,6 @@ func (c *communicatorImpl) GetEvents(ctx context.Context, ts time.Time, limit in
 	}
 
 	return events, nil
-}
-
-func (c *communicatorImpl) RevertSettings(ctx context.Context, guid string) error {
-	info := requestInfo{
-		method: http.MethodPost,
-		path:   "admin/revert",
-	}
-	body := struct {
-		GUID string `json:"guid"`
-	}{guid}
-	resp, err := c.request(ctx, info, &body)
-	if err != nil {
-		return errors.Wrapf(err, "sending request to revert admin settings for event '%s'", guid)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusForbidden {
-		return util.RespError(resp, VPNError)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return errors.Errorf("reverting event '%s'", guid)
-	}
-
-	return nil
 }
 
 func (c *communicatorImpl) GetServiceUsers(ctx context.Context) ([]model.APIDBUser, error) {

@@ -12,6 +12,17 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+func TestGetParametersFromInputPreservesTestSelectionBypass(t *testing.T) {
+	value := `["jstests/core/example.js","name=with,spaces and quotes\".js"]`
+	parameters, err := getParametersFromInput([]string{
+		"test_selection_bypass_quarantine=" + value,
+	})
+	require.NoError(t, err)
+	require.Len(t, parameters, 1)
+	assert.Equal(t, "test_selection_bypass_quarantine", parameters[0].Key)
+	assert.Equal(t, value, parameters[0].Value)
+}
+
 func TestResolveDiffSource(t *testing.T) {
 	patchID := primitive.NewObjectID().Hex()
 	const mainlineVersionID = "sys_perf_54af8bc8daef529a87f01dba8dcc3a484ca910a3"

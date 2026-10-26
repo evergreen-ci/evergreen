@@ -1,6 +1,27 @@
 package manifest
 
+import "sort"
+
 const Collection = "manifest"
+
+// ModuleSelectionRule describes how a manifest module's revision was chosen.
+type ModuleSelectionRule string
+
+const (
+	// ModuleSelectionPinnedRef is the module's ref from the YAML.
+	ModuleSelectionPinnedRef ModuleSelectionRule = "pinned_ref"
+	// ModuleSelectionTriggerCommit is the module commit that fired the push
+	// trigger that created the version.
+	ModuleSelectionTriggerCommit ModuleSelectionRule = "trigger_commit"
+	// ModuleSelectionLatestIngested is the newest module commit Evergreen
+	// ingested as of the version's ingest time.
+	ModuleSelectionLatestIngested ModuleSelectionRule = "latest_ingested"
+	// ModuleSelectionGitHubFallback is the newest commit on the module branch
+	// according to GitHub, used when Evergreen hasn't ingested any.
+	ModuleSelectionGitHubFallback ModuleSelectionRule = "github_fallback"
+	// ModuleSelectionBaseVersion is inherited from the base version's manifest.
+	ModuleSelectionBaseVersion ModuleSelectionRule = "base_version"
+)
 
 // Manifest is a representation of the modules associated with a version.
 // Id is the version id,
@@ -20,7 +41,15 @@ type Manifest struct {
 	// Map from the GitHub repository name to the module's information.
 	Modules map[string]*Module `json:"modules" bson:"modules" extensions:"x-nullable"`
 	// True if the version is a mainline build.
-	IsBase          bool              `json:"is_base" bson:"is_base"`
+	IsBase bool `json:"is_base" bson:"is_base"`
+	// PreviousVersionID is the version ChangedModules is relative to. It's the
+	// base version for patches, and the version before this one on the
+	// waterfall otherwise. Empty if that version had no manifest to compare
+	// against, in which case ChangedModules is also empty.
+	PreviousVersionID string `json:"previous_version_id,omitempty" bson:"previous_version_id,omitempty"`
+	// ChangedModules are the modules added, removed, or moved to a different
+	// commit since PreviousVersionID.
+	ChangedModules  []string          `json:"changed_modules,omitempty" bson:"changed_modules,omitempty"`
 	ModuleOverrides map[string]string `json:"module_overrides,omitempty" bson:"-"`
 }
 
@@ -41,4 +70,32 @@ type Module struct {
 	Owner string `json:"owner" bson:"owner"`
 	// The url to the GitHub API call to that specific commit.
 	URL string `json:"url" bson:"url"`
+	// The rule that chose the revision. Empty for wiki modules and older manifests.
+	SelectionRule ModuleSelectionRule `json:"selection_rule,omitempty" bson:"selection_rule,omitempty"`
+}
+
+// GetChangedModules returns the sorted names of the modules that were added,
+// removed, or point to a different commit compared to prev.
+func (m *Manifest) GetChangedModules(prev *Manifest) []string {
+	var changed []string
+	for name, mod := range m.Modules {
+		prevMod, ok := prev.Modules[name]
+		if !ok || !mod.sameCommit(prevMod) {
+			changed = append(changed, name)
+		}
+	}
+	for name := range prev.Modules {
+		if _, ok := m.Modules[name]; !ok {
+			changed = append(changed, name)
+		}
+	}
+	sort.Strings(changed)
+	return changed
+}
+
+func (m *Module) sameCommit(other *Module) bool {
+	if m == nil || other == nil {
+		return m == other
+	}
+	return m.Owner == other.Owner && m.Repo == other.Repo && m.Branch == other.Branch && m.Revision == other.Revision
 }

@@ -422,3 +422,51 @@ func TestIsDormant(t *testing.T) {
 		assert.False(t, b.IsDormant())
 	})
 }
+
+func TestUpdateActivation(t *testing.T) {
+	activatedTime := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	for testName, testCase := range map[string]func(t *testing.T, b *Build){
+		"SameStateAndCallerShouldNotUpdate": func(t *testing.T, b *Build) {
+			require.NoError(t, UpdateActivation(t.Context(), []string{b.Id}, true, evergreen.StepbackTaskActivator))
+
+			dbBuild, err := FindOneId(t.Context(), b.Id)
+			require.NoError(t, err)
+			require.NotNil(t, dbBuild)
+			assert.True(t, dbBuild.Activated)
+			assert.Equal(t, evergreen.StepbackTaskActivator, dbBuild.ActivatedBy)
+			assert.True(t, activatedTime.Equal(dbBuild.ActivatedTime))
+		},
+		"SameStateAndDifferentCallerShouldUpdateActivator": func(t *testing.T, b *Build) {
+			require.NoError(t, UpdateActivation(t.Context(), []string{b.Id}, true, "user"))
+
+			dbBuild, err := FindOneId(t.Context(), b.Id)
+			require.NoError(t, err)
+			require.NotNil(t, dbBuild)
+			assert.True(t, dbBuild.Activated)
+			assert.Equal(t, "user", dbBuild.ActivatedBy)
+			assert.WithinDuration(t, time.Now(), dbBuild.ActivatedTime, time.Minute)
+		},
+		"DifferentStateShouldUpdate": func(t *testing.T, b *Build) {
+			require.NoError(t, UpdateActivation(t.Context(), []string{b.Id}, false, evergreen.StepbackTaskActivator))
+
+			dbBuild, err := FindOneId(t.Context(), b.Id)
+			require.NoError(t, err)
+			require.NotNil(t, dbBuild)
+			assert.False(t, dbBuild.Activated)
+			assert.WithinDuration(t, time.Now(), dbBuild.ActivatedTime, time.Minute)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection))
+			b := &Build{
+				Id:            "b1",
+				Activated:     true,
+				ActivatedBy:   evergreen.StepbackTaskActivator,
+				ActivatedTime: activatedTime,
+			}
+			require.NoError(t, b.Insert(t.Context()))
+			testCase(t, b)
+		})
+	}
+}

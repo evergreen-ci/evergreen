@@ -1025,7 +1025,9 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 			if baseModule, ok := baseManifest.Modules[module.Name]; ok {
 				// Use base module revision unless the YAML explicitly specifies a different ref.
 				if module.Ref == "" || module.Ref == baseModule.Revision {
-					modules[module.Name] = baseModule
+					inherited := *baseModule
+					inherited.SelectionRule = manifest.ModuleSelectionBaseVersion
+					modules[module.Name] = &inherited
 					continue
 				}
 			}
@@ -1035,11 +1037,75 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 		if err != nil {
 			return nil, errors.Wrapf(err, "module '%s'", module.Name)
 		}
+		// Push triggers set the triggering module's ref to the pushed commit.
+		if v.TriggerSHA != "" && module.Ref == v.TriggerSHA {
+			mfstModule.SelectionRule = manifest.ModuleSelectionTriggerCommit
+		}
 
 		modules[module.Name] = mfstModule
 	}
 	newManifest.Modules = modules
+
+	setChangedModules(ctx, v, newManifest, baseManifest)
+
 	return newManifest, nil
+}
+
+// setChangedModules records which modules changed compared to the version's
+// base version for patches.
+func setChangedModules(ctx context.Context, v *Version, newManifest, baseManifest *manifest.Manifest) {
+	prevVersionID := ""
+	prevManifest := baseManifest
+	if baseManifest != nil {
+		prevVersionID = baseManifest.Id
+	}
+	// Periodic builds inherit from their base version but are on the
+	// waterfall, so they're compared to the version before them.
+	if !evergreen.IsPatchRequester(v.Requester) {
+		prev, prevMfst, err := findPreviousSystemVersionManifest(ctx, v)
+		if err != nil {
+			grip.Error(ctx, message.WrapError(err, message.Fields{
+				"message":    "finding previous version's manifest to determine changed modules",
+				"source":     "manifest-creation",
+				"version_id": v.Id,
+				"project_id": v.Identifier,
+			}))
+			return
+		}
+		prevManifest = prevMfst
+		if prev != nil {
+			prevVersionID = prev.Id
+		}
+	}
+	// FindFromVersion returns the version's own manifest if it's being recreated.
+	if prevManifest == nil || prevManifest.Id == v.Id {
+		return
+	}
+	newManifest.PreviousVersionID = prevVersionID
+	newManifest.ChangedModules = newManifest.GetChangedModules(prevManifest)
+}
+
+// findPreviousSystemVersionManifest returns the prior version on the
+// waterfall and its manifest. If that version doesn't have its own manifest
+// (e.g. git tag versions), this falls back to the manifest of the mainline
+// version at the same revision.
+func findPreviousSystemVersionManifest(ctx context.Context, v *Version) (*Version, *manifest.Manifest, error) {
+	if v.RevisionOrderNumber <= 0 {
+		return nil, nil, nil
+	}
+	prev, err := VersionFindOne(ctx, VersionBySystemRequesterOrdered(v.Identifier, v.RevisionOrderNumber).
+		WithFields(VersionIdKey, VersionIdentifierKey, VersionRevisionKey, VersionRequesterKey))
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "finding previous version")
+	}
+	if prev == nil {
+		return nil, nil, nil
+	}
+	prevManifest, err := manifest.FindFromVersion(ctx, prev.Id, prev.Identifier, prev.Revision, prev.Requester)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "finding manifest for previous version '%s'", prev.Id)
+	}
+	return prev, prevManifest, nil
 }
 
 func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Module, requester string, ingestTime time.Time) (*manifest.Module, error) {
@@ -1065,6 +1131,7 @@ func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Modul
 		defer cancel()
 
 		var revision, url string
+		var rule manifest.ModuleSelectionRule
 		useHistory := !evergreen.IsPatchRequester(requester) && requester != evergreen.AdHocRequester
 
 		// For versions aligned by ingest time, use the latest module revision Evergreen had ingested.
@@ -1076,6 +1143,7 @@ func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Modul
 			}
 			if repoRevision != nil {
 				revision = repoRevision.Revision
+				rule = manifest.ModuleSelectionLatestIngested
 				githubCommit, err := thirdparty.GetCommitEvent(ghCtx, owner, repo, revision)
 				if err == nil {
 					url = githubCommit.GetURL()
@@ -1102,14 +1170,16 @@ func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Modul
 			}
 			revision = githubCommits[0].GetSHA()
 			url = githubCommits[0].GetURL()
+			rule = manifest.ModuleSelectionGitHubFallback
 		}
 
 		return &manifest.Module{
-			Branch:   module.Branch,
-			Revision: revision,
-			Repo:     repo,
-			Owner:    owner,
-			URL:      url,
+			Branch:        module.Branch,
+			Revision:      revision,
+			Repo:          repo,
+			Owner:         owner,
+			URL:           url,
+			SelectionRule: rule,
 		}, nil
 	}
 
@@ -1124,11 +1194,12 @@ func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Modul
 	url := gitCommit.GetURL()
 
 	return &manifest.Module{
-		Branch:   module.Branch,
-		Revision: sha,
-		Repo:     repo,
-		Owner:    owner,
-		URL:      url,
+		Branch:        module.Branch,
+		Revision:      sha,
+		Repo:          repo,
+		Owner:         owner,
+		URL:           url,
+		SelectionRule: manifest.ModuleSelectionPinnedRef,
 	}, nil
 }
 

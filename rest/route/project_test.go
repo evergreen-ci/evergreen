@@ -79,8 +79,7 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 	settings := env.Settings()
 	settings.GithubOrgs = []string{getTestProjectRef().Owner}
 	projectSetting := evergreen.ProjectCreationConfig{
-		TotalProjectLimit: 1,
-		RepoProjectLimit:  1,
+		RepoProjectLimit: 1,
 	}
 	s.NoError(projectSetting.Set(ctx))
 	s.rm = makePatchProjectByID(settings).(*projectIDPatchHandler)

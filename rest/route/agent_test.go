@@ -79,7 +79,7 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			data, ok := resp.Data().(apimodels.ExpansionsAndVars)
 			require.True(t, ok)
 			assert.Equal(t, map[string]string{"a": "1", "b": "3"}, data.Vars)
-			assert.Equal(t, map[string]string{"a": "4"}, data.Parameters)
+			assert.Equal(t, map[string]string{"a": "4", "test_selection_bypass_quarantine": `["jstests/core/example.js"]`}, data.Parameters)
 			assert.Equal(t, map[string]bool{"b": true}, data.PrivateVars)
 			assert.Equal(t, []string{"pass", "secret"}, data.RedactKeys)
 		},
@@ -147,7 +147,7 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			assert.Equal(t, "distro_expansion_value", data.Expansions.Get("distro_expansion_key"))
 			assert.Equal(t, "password", data.InternalRedactions[hostServicePasswordPlaceholder])
 			assert.Equal(t, map[string]string{"a": "1", "b": "3"}, data.Vars)
-			assert.Equal(t, map[string]string{"a": "4"}, data.Parameters)
+			assert.Equal(t, map[string]string{"a": "4", "test_selection_bypass_quarantine": `["jstests/core/example.js"]`}, data.Parameters)
 			assert.Equal(t, map[string]bool{"b": true}, data.PrivateVars)
 			assert.Equal(t, []string{"pass", "secret"}, data.RedactKeys)
 		},
@@ -194,6 +194,10 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 					{
 						Key:   "a",
 						Value: "4",
+					},
+					{
+						Key:   "test_selection_bypass_quarantine",
+						Value: `["jstests/core/example.js"]`,
 					},
 				},
 			}

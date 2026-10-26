@@ -370,3 +370,10 @@ func (s *spawnHostTriggersSuite) TestSpawnHostCreationErrorCreatesNotification()
 	s.NoError(err)
 	s.NotZero(n, "should create email notification for spawn host creation error and user subscribed to spawn host outcomes")
 }
+
+func (s *spawnHostTriggersSuite) TestSetupScriptEmailEscapesScriptPath() {
+	payload := s.tSetupScript.emailPayload(`<script>alert('hi')</script>`, "succeeded", "hostID", "url", "hostURL")
+	s.Require().NotNil(payload)
+	s.NotContains(payload.Body, "<script>", "script path should be HTML-escaped in the email body")
+	s.Contains(payload.Body, "&lt;script&gt;alert(&#39;hi&#39;)&lt;/script&gt;")
+}

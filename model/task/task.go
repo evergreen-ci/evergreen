@@ -327,17 +327,7 @@ type Task struct {
 	GeneratedTasks bool `bson:"generated_tasks,omitempty" json:"generated_tasks,omitempty"`
 	// GeneratedBy, if present, is the ID of the task that generated this task.
 	GeneratedBy string `bson:"generated_by,omitempty" json:"generated_by,omitempty"`
-	// GeneratedJSONAsString is the configuration information to update the
-	// project YAML for generate.tasks. This is only used to store the
-	// configuration if GeneratedJSONStorageMethod is unset or is explicitly set
-	// to "db".
-	//
-	// TODO (DEVPROD-41456): delete this field. Only tasks written before the
-	// switch to S3 still store their generated JSON here.
-	GeneratedJSONAsString GeneratedJSONFiles `bson:"generated_json,omitempty" json:"generated_json,omitempty"`
-	// GeneratedJSONStorageMethod describes how the generated JSON for
-	// generate.tasks is stored for this task before it's merged with the
-	// existing project YAML.
+	// GeneratedJSONStorageMethod now indicates if the generated JSON has been stored in S3 or not.
 	GeneratedJSONStorageMethod evergreen.ParserProjectStorageMethod `bson:"generated_json_storage_method,omitempty" json:"generated_json_storage_method,omitempty"`
 	// GenerateTasksError any encountered while generating tasks.
 	GenerateTasksError string `bson:"generate_error,omitempty" json:"generate_error,omitempty"`
@@ -959,7 +949,7 @@ func (t *Task) MarkAsHostDispatched(ctx context.Context, hostID, distroID, agent
 // push-completed.
 func (t *Task) MarkAsHostDispatchedWithEnv(ctx context.Context, env evergreen.Environment, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
 	doUpdate := func(update []bson.M) error {
-		res, err := env.DB().Collection(Collection).UpdateOne(ctx, hostDispatchQuery(t.Id), update)
+		res, err := env.DB().Collection(Collection).UpdateOne(ctx, hostDispatchQuery(t.Id), db.StampUpdatedAt(Collection, update))
 		if err != nil {
 			return err
 		}
@@ -1988,6 +1978,7 @@ func activateDeactivatedDependencies(ctx context.Context, tasksToActivate map[st
 		}
 
 		if len(writes) > 0 {
+			db.StampBulkUpdatedAt(Collection, writes)
 			_, err := coll.BulkWrite(ctx, writes)
 			if err != nil {
 				return errors.Wrap(err, "bulk updating dependent tasks with new predictions")
@@ -2481,6 +2472,7 @@ func ResetTasks(ctx context.Context, tasks []Task, caller string) error {
 	}
 
 	if len(writes) > 0 {
+		db.StampBulkUpdatedAt(Collection, writes)
 		_, err := coll.BulkWrite(ctx, writes)
 		if err != nil {
 			return errors.Wrap(err, "bulk resetting tasks")
@@ -3177,8 +3169,7 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 	txFunc := func(ctx mongo.SessionContext) (any, error) {
 		var err error
 		if len(archivedTasks) > 0 {
-			oldTaskColl := evergreen.GetEnvironment().DB().Collection(OldCollection)
-			_, err = oldTaskColl.InsertMany(ctx, archivedTasks)
+			err = db.InsertMany(ctx, OldCollection, archivedTasks...)
 			if err != nil {
 				return nil, errors.Wrap(err, "archiving tasks")
 			}
@@ -3197,11 +3188,11 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 						},
 					},
 				},
-				[]bson.M{
+				db.StampUpdatedAt(Collection, []bson.M{
 					updateDisplayTasksAndTasksSet,
 					updateDisplayTasksAndTasksUnset,
 					addDisplayStatusCache,
-				},
+				}),
 			)
 			if err != nil {
 				return nil, errors.Wrap(err, "archiving tasks")
@@ -3210,14 +3201,14 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 		if len(execTaskIds) > 0 {
 			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx,
 				bson.M{IdKey: bson.M{"$in": execTaskIds}}, // Query all execution tasks
-				bson.A{ // Pipeline
+				db.StampUpdatedAt(Collection, bson.A{ // Pipeline
 					bson.M{"$set": bson.M{ // Sets LatestParentExecution (LPE) = LPE + 1
 						LatestParentExecutionKey: bson.M{"$add": bson.A{
 							"$" + LatestParentExecutionKey, 1,
 						}},
 					}},
 					addDisplayStatusCache,
-				})
+				}))
 
 			if err != nil {
 				return nil, errors.Wrap(err, "updating latest parent executions")
@@ -3226,7 +3217,7 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 			// Call to update all tasks that are actually restarting
 			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx,
 				bson.M{IdKey: bson.M{"$in": toRestartExecTaskIds}}, // Query all archiving/restarting execution tasks
-				bson.A{ // Pipeline
+				db.StampUpdatedAt(Collection, bson.A{ // Pipeline
 					bson.M{"$set": bson.M{ // Execution = LPE
 						ExecutionKey: "$" + LatestParentExecutionKey,
 						CanResetKey:  true,
@@ -3237,7 +3228,7 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 						OverrideDependenciesKey,
 					}},
 					addDisplayStatusCache,
-				})
+				}))
 
 			return nil, errors.Wrap(err, "updating restarting exec tasks")
 		}

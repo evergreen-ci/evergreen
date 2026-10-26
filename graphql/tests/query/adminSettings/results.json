@@ -454,7 +454,6 @@
               "traceUrlTemplate": "<trace_url_template>"
             },
             "projectCreation": {
-              "totalProjectLimit": 10,
               "repoProjectLimit": 2,
               "repoExceptions": [
                 {
