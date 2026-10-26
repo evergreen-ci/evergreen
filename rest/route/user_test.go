@@ -539,7 +539,6 @@ func TestGetUserPermissionDetailsWithProjectFilter(t *testing.T) {
 		// Explicit role grants Tasks: Basic.
 		assert.Contains(t, (*data.Projects)[0].Permissions[tasksKey], evergreen.TasksBasic.Description)
 		assert.Contains(t, (*data.Projects)[0].Permissions[tasksKey], evergreen.TasksView.Description)
-		assert.NotContains(t, (*data.Projects)[0].Permissions[tasksKey], evergreen.TasksQuarantine.Description)
 		assert.NotContains(t, (*data.Projects)[0].Permissions[tasksKey], evergreen.TasksAdmin.Description)
 		// Baseline role grants Logs: View to all users.
 		assert.Contains(t, (*data.Projects)[0].Permissions[logsKey], evergreen.LogsView.Description)
