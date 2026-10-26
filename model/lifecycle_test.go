@@ -2243,6 +2243,91 @@ func TestSetNumDependents(t *testing.T) {
 	})
 }
 
+func TestTaskCacheInputShouldPreserveStoredDependencyFormats(t *testing.T) {
+	for name, dependencies := range map[string]any{
+		"LegacyTaskIDs": []string{"setup"},
+		"DependencyDocuments": []task.Dependency{{
+			TaskId: "setup", Status: evergreen.TaskSucceeded, OmitGeneratedTasks: true,
+		}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			data, err := bson.Marshal(bson.M{task.IdKey: "test", task.DependsOnKey: dependencies})
+			require.NoError(t, err)
+			var original task.Task
+			require.NoError(t, bson.Unmarshal(data, &original))
+			var input taskCacheInput
+			require.NoError(t, bson.Unmarshal(data, &input))
+			assert.Equal(t, original.DependsOn, input.DependsOn)
+		})
+	}
+}
+
+func TestRefreshTasksCacheShouldPreserveDisplayTasksAndDependencyOrder(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(build.Collection, task.Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(build.Collection, task.Collection))
+	})
+
+	tasks := task.Tasks{
+		{Id: "a_setup", BuildId: "a", DisplayName: "setup"},
+		{Id: "a_test", BuildId: "a", DisplayName: "test", DependsOn: []task.Dependency{{TaskId: "a_setup"}}},
+		{Id: "a_exec", BuildId: "a", DisplayName: "exec", DependsOn: []task.Dependency{{TaskId: "a_setup"}}},
+		{Id: "a_display", BuildId: "a", DisplayName: "display", DisplayOnly: true, ExecutionTasks: []string{"a_exec"}},
+		{Id: "a_external_child", BuildId: "a", DisplayName: "externalChild"},
+		{Id: "external_display", BuildId: "outside", DisplayName: "external", DisplayOnly: true, ExecutionTasks: []string{"a_external_child"}},
+		{Id: "b_setup", BuildId: "b", DisplayName: "setup"},
+		{Id: "b_test", BuildId: "b", DisplayName: "test", DependsOn: []task.Dependency{{TaskId: "b_setup"}}},
+		{Id: "b_cross", BuildId: "b", DisplayName: "cross", DependsOn: []task.Dependency{{TaskId: "a_setup"}}},
+		{Id: "b_cross_child", BuildId: "b", DisplayName: "crossChild", DependsOn: []task.Dependency{{TaskId: "b_cross"}}},
+	}
+	require.NoError(t, tasks.InsertUnordered(ctx))
+	for _, id := range []string{"a", "b", "empty", "outside"} {
+		require.NoError(t, (&build.Build{Id: id, Tasks: []build.TaskCache{{Id: "stale"}}}).Insert(ctx))
+	}
+	before, err := task.FindAll(ctx, db.Query(bson.M{}).Sort([]string{task.IdKey}))
+	require.NoError(t, err)
+
+	require.NoError(t, RefreshTasksCache(ctx, []string{"a", "b", "empty"}))
+	for id, expected := range map[string][]build.TaskCache{
+		"a":     {{Id: "a_display"}, {Id: "a_setup"}, {Id: "a_test"}},
+		"b":     {{Id: "b_setup"}, {Id: "b_test"}, {Id: "b_cross"}, {Id: "b_cross_child"}},
+		"empty": {},
+	} {
+		stored, err := build.FindOneId(ctx, id)
+		require.NoError(t, err)
+		require.NotNil(t, stored)
+		assert.Equal(t, expected, stored.Tasks)
+	}
+	outside, err := build.FindOneId(ctx, "outside")
+	require.NoError(t, err)
+	require.NotNil(t, outside)
+	assert.Equal(t, []build.TaskCache{{Id: "stale"}}, outside.Tasks)
+	after, err := task.FindAll(ctx, db.Query(bson.M{}).Sort([]string{task.IdKey}))
+	require.NoError(t, err)
+	assert.Equal(t, before, after)
+}
+
+func TestRefreshTasksCacheCycleShouldLeaveCachesUnchanged(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(build.Collection, task.Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(build.Collection, task.Collection))
+	})
+	initial := []build.TaskCache{{Id: "stale"}}
+	require.NoError(t, (&build.Build{Id: "a", Tasks: initial}).Insert(ctx))
+	require.NoError(t, (task.Tasks{
+		{Id: "one", BuildId: "a", DependsOn: []task.Dependency{{TaskId: "two"}}},
+		{Id: "two", BuildId: "a", DependsOn: []task.Dependency{{TaskId: "one"}}},
+	}).InsertUnordered(ctx))
+
+	require.ErrorContains(t, RefreshTasksCache(ctx, []string{"a"}), "cyclic dependencies")
+	stored, err := build.FindOneId(ctx, "a")
+	require.NoError(t, err)
+	require.NotNil(t, stored)
+	assert.Equal(t, initial, stored.Tasks)
+}
+
 func TestSortTasks(t *testing.T) {
 	Convey("sortTasks topologically sorts tasks by dependency", t, func() {
 		Convey("for tasks with single dependencies", func() {
