@@ -157,6 +157,7 @@ input TestSelectionSettingsInput {
   allowed: Boolean
   defaultEnabled: Boolean
   mainlineDefaultEnabled: Boolean
+  quarantineJiraTicketsRequired: Boolean
 }
 
 input TaskOwnershipSettingsInput {
@@ -360,6 +361,7 @@ type TestSelectionSettings {
   allowed: Boolean
   defaultEnabled: Boolean
   mainlineDefaultEnabled: Boolean
+  quarantineJiraTicketsRequired: Boolean
 }
 
 type TaskOwnershipSettings {

@@ -1623,9 +1623,10 @@ type ComplexityRoot struct {
 	}
 
 	RepoTestSelectionSettings struct {
-		Allowed                func(childComplexity int) int
-		DefaultEnabled         func(childComplexity int) int
-		MainlineDefaultEnabled func(childComplexity int) int
+		Allowed                       func(childComplexity int) int
+		DefaultEnabled                func(childComplexity int) int
+		MainlineDefaultEnabled        func(childComplexity int) int
+		QuarantineJiraTicketsRequired func(childComplexity int) int
 	}
 
 	RepoWorkstationConfig struct {
@@ -2213,9 +2214,10 @@ type ComplexityRoot struct {
 	}
 
 	TestSelectionSettings struct {
-		Allowed                func(childComplexity int) int
-		DefaultEnabled         func(childComplexity int) int
-		MainlineDefaultEnabled func(childComplexity int) int
+		Allowed                       func(childComplexity int) int
+		DefaultEnabled                func(childComplexity int) int
+		MainlineDefaultEnabled        func(childComplexity int) int
+		QuarantineJiraTicketsRequired func(childComplexity int) int
 	}
 
 	TicketFields struct {
@@ -9747,6 +9749,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RepoTestSelectionSettings.MainlineDefaultEnabled(childComplexity), true
+	case "RepoTestSelectionSettings.quarantineJiraTicketsRequired":
+		if e.complexity.RepoTestSelectionSettings.QuarantineJiraTicketsRequired == nil {
+			break
+		}
+
+		return e.complexity.RepoTestSelectionSettings.QuarantineJiraTicketsRequired(childComplexity), true
 
 	case "RepoWorkstationConfig.gitClone":
 		if e.complexity.RepoWorkstationConfig.GitClone == nil {
@@ -12163,6 +12171,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TestSelectionSettings.MainlineDefaultEnabled(childComplexity), true
+	case "TestSelectionSettings.quarantineJiraTicketsRequired":
+		if e.complexity.TestSelectionSettings.QuarantineJiraTicketsRequired == nil {
+			break
+		}
+
+		return e.complexity.TestSelectionSettings.QuarantineJiraTicketsRequired(childComplexity), true
 
 	case "TicketFields.assignedTeam":
 		if e.complexity.TicketFields.AssignedTeam == nil {
@@ -48560,6 +48574,8 @@ func (ec *executionContext) fieldContext_Project_testSelection(_ context.Context
 				return ec.fieldContext_TestSelectionSettings_defaultEnabled(ctx, field)
 			case "mainlineDefaultEnabled":
 				return ec.fieldContext_TestSelectionSettings_mainlineDefaultEnabled(ctx, field)
+			case "quarantineJiraTicketsRequired":
+				return ec.fieldContext_TestSelectionSettings_quarantineJiraTicketsRequired(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TestSelectionSettings", field.Name)
 		},
@@ -56834,6 +56850,8 @@ func (ec *executionContext) fieldContext_RepoRef_testSelection(_ context.Context
 				return ec.fieldContext_RepoTestSelectionSettings_defaultEnabled(ctx, field)
 			case "mainlineDefaultEnabled":
 				return ec.fieldContext_RepoTestSelectionSettings_mainlineDefaultEnabled(ctx, field)
+			case "quarantineJiraTicketsRequired":
+				return ec.fieldContext_RepoTestSelectionSettings_quarantineJiraTicketsRequired(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RepoTestSelectionSettings", field.Name)
 		},
@@ -57494,6 +57512,35 @@ func (ec *executionContext) _RepoTestSelectionSettings_mainlineDefaultEnabled(ct
 }
 
 func (ec *executionContext) fieldContext_RepoTestSelectionSettings_mainlineDefaultEnabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoTestSelectionSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RepoTestSelectionSettings_quarantineJiraTicketsRequired(ctx context.Context, field graphql.CollectedField, obj *model.APITestSelectionSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RepoTestSelectionSettings_quarantineJiraTicketsRequired,
+		func(ctx context.Context) (any, error) {
+			return obj.QuarantineJiraTicketsRequired, nil
+		},
+		nil,
+		ec.marshalNBoolean2ᚖbool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RepoTestSelectionSettings_quarantineJiraTicketsRequired(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RepoTestSelectionSettings",
 		Field:      field,
@@ -72545,6 +72592,35 @@ func (ec *executionContext) _TestSelectionSettings_mainlineDefaultEnabled(ctx co
 }
 
 func (ec *executionContext) fieldContext_TestSelectionSettings_mainlineDefaultEnabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestSelectionSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TestSelectionSettings_quarantineJiraTicketsRequired(ctx context.Context, field graphql.CollectedField, obj *model.APITestSelectionSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TestSelectionSettings_quarantineJiraTicketsRequired,
+		func(ctx context.Context) (any, error) {
+			return obj.QuarantineJiraTicketsRequired, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TestSelectionSettings_quarantineJiraTicketsRequired(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TestSelectionSettings",
 		Field:      field,
@@ -91432,7 +91508,7 @@ func (ec *executionContext) unmarshalInputTestSelectionSettingsInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"allowed", "defaultEnabled", "mainlineDefaultEnabled"}
+	fieldsInOrder := [...]string{"allowed", "defaultEnabled", "mainlineDefaultEnabled", "quarantineJiraTicketsRequired"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -91460,6 +91536,13 @@ func (ec *executionContext) unmarshalInputTestSelectionSettingsInput(ctx context
 				return it, err
 			}
 			it.MainlineDefaultEnabled = data
+		case "quarantineJiraTicketsRequired":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("quarantineJiraTicketsRequired"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.QuarantineJiraTicketsRequired = data
 		}
 	}
 
@@ -105252,6 +105335,11 @@ func (ec *executionContext) _RepoTestSelectionSettings(ctx context.Context, sel 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "quarantineJiraTicketsRequired":
+			out.Values[i] = ec._RepoTestSelectionSettings_quarantineJiraTicketsRequired(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -110712,6 +110800,8 @@ func (ec *executionContext) _TestSelectionSettings(ctx context.Context, sel ast.
 			out.Values[i] = ec._TestSelectionSettings_defaultEnabled(ctx, field, obj)
 		case "mainlineDefaultEnabled":
 			out.Values[i] = ec._TestSelectionSettings_mainlineDefaultEnabled(ctx, field, obj)
+		case "quarantineJiraTicketsRequired":
+			out.Values[i] = ec._TestSelectionSettings_quarantineJiraTicketsRequired(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
