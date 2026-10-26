@@ -802,6 +802,24 @@ func GetGithubMergeBaseRevision(ctx context.Context, owner, repo, baseRevision, 
 	return *compare.MergeBaseCommit.SHA, nil
 }
 
+// GetCommitComparisonStatus returns how headRevision compares to baseRevision
+// in a GitHub repo, which is one of "ahead", "behind", "identical", or
+// "diverged".
+func GetCommitComparisonStatus(ctx context.Context, owner, repo, baseRevision, headRevision string) (string, error) {
+	caller := "GetCommitComparisonStatus"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+	))
+	defer span.End()
+	compare, err := getCommitComparison(ctx, owner, repo, baseRevision, headRevision, caller)
+	if err != nil {
+		return "", errors.Wrapf(err, "comparing commits '%s' and '%s'", baseRevision, headRevision)
+	}
+	return compare.GetStatus(), nil
+}
+
 // IsMergeBaseAllowed will return true if the input merge base is newer than the oldest allowed merge base
 // configured in the project settings.
 func IsMergeBaseAllowed(ctx context.Context, owner, repo, oldestAllowedMergeBase, mergeBase string) (bool, error) {

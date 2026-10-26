@@ -1009,13 +1009,21 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 		}
 	}
 
+	var previousManifest *manifest.Manifest
+	if v.Requester == evergreen.RepotrackerVersionRequester || v.Requester == evergreen.TriggerRequester {
+		previousManifest, err = findPreviousManifest(ctx, v)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting previous version's manifest")
+		}
+	}
+
 	modules := map[string]*manifest.Module{}
 	ingestTime := v.IngestTime
 	if utility.IsZeroTime(ingestTime) {
 		ingestTime = v.CreateTime
 	}
 	for _, module := range moduleList {
-		_, modRepo, err := module.GetOwnerAndRepo()
+		modOwner, modRepo, err := module.GetOwnerAndRepo()
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
 		}
@@ -1033,9 +1041,19 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 			}
 		}
 
+		previous := previousModule(previousManifest, module.Name, modOwner, modRepo, module.Branch)
+		// A version triggered by a module commit only moves that module.
+		if previous != nil && module.Ref == "" && v.TriggerModule != "" && module.Name != v.TriggerModule {
+			modules[module.Name] = previous
+			continue
+		}
+
 		mfstModule, err := getManifestModule(ctx, projectRef, module, v.Requester, ingestTime)
 		if err != nil {
 			return nil, errors.Wrapf(err, "module '%s'", module.Name)
+		}
+		if previous != nil && module.Ref == "" {
+			mfstModule = newerModuleCommit(ctx, previous, mfstModule)
 		}
 		// Push triggers set the triggering module's ref to the pushed commit.
 		if v.TriggerSHA != "" && module.Ref == v.TriggerSHA {
@@ -1049,6 +1067,96 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 	setChangedModules(ctx, v, newManifest, baseManifest)
 
 	return newManifest, nil
+}
+
+// findPreviousManifest returns the manifest of the most recent mainline or
+// trigger version before v that has one.
+func findPreviousManifest(ctx context.Context, v *Version) (*manifest.Manifest, error) {
+	if v.RevisionOrderNumber <= 0 {
+		return nil, nil
+	}
+	// Look back a few versions, since versions whose config failed to load
+	// don't have a manifest.
+	const lookback = 10
+	versions, err := VersionFind(ctx, db.Query(bson.M{
+		VersionIdentifierKey: v.Identifier,
+		VersionRequesterKey: bson.M{
+			"$in": []string{evergreen.RepotrackerVersionRequester, evergreen.TriggerRequester},
+		},
+		VersionRevisionOrderNumberKey: bson.M{"$lt": v.RevisionOrderNumber},
+	}).WithFields(VersionIdKey).Sort([]string{"-" + VersionRevisionOrderNumberKey}).Limit(lookback))
+	if err != nil {
+		return nil, errors.Wrap(err, "finding previous versions")
+	}
+	if len(versions) == 0 {
+		return nil, nil
+	}
+
+	ids := make([]string, 0, len(versions))
+	for _, prev := range versions {
+		ids = append(ids, prev.Id)
+	}
+	manifests, err := manifest.Find(ctx, manifest.ByIds(ids))
+	if err != nil {
+		return nil, errors.Wrap(err, "finding previous versions' manifests")
+	}
+	manifestsByID := make(map[string]manifest.Manifest, len(manifests))
+	for _, m := range manifests {
+		manifestsByID[m.Id] = m
+	}
+	for _, prev := range versions {
+		if m, ok := manifestsByID[prev.Id]; ok {
+			return &m, nil
+		}
+	}
+	return nil, nil
+}
+
+// previousModule returns a copy of the module's entry in the previous
+// manifest if it tracked the same repo and branch.
+func previousModule(previousManifest *manifest.Manifest, name, owner, repo, branch string) *manifest.Module {
+	if previousManifest == nil {
+		return nil
+	}
+	mod, ok := previousManifest.Modules[name]
+	if !ok || mod == nil || mod.Revision == "" {
+		return nil
+	}
+	if mod.Owner != owner || mod.Repo != repo || mod.Branch != branch {
+		return nil
+	}
+	prev := *mod
+	prev.SelectionRule = manifest.ModuleSelectionPreviousVersion
+	return &prev
+}
+
+// newerModuleCommit returns whichever of the two commits of the same module is
+// newer in git history. If the order can't be determined, it returns latest.
+func newerModuleCommit(ctx context.Context, previous, latest *manifest.Module) *manifest.Module {
+	if previous.Revision == latest.Revision {
+		return latest
+	}
+
+	ghCtx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+	status, err := thirdparty.GetCommitComparisonStatus(ghCtx, latest.Owner, latest.Repo, previous.Revision, latest.Revision)
+	if err != nil {
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message":           "could not determine module commit order, using latest commit",
+			"owner":             latest.Owner,
+			"repo":              latest.Repo,
+			"branch":            latest.Branch,
+			"previous_revision": previous.Revision,
+			"latest_revision":   latest.Revision,
+		}))
+		return latest
+	}
+	// The latest commit Evergreen knows about can be behind the previous
+	// version's commit if, for example, a webhook was dropped or delayed.
+	if status == "behind" {
+		return previous
+	}
+	return latest
 }
 
 // setChangedModules records which modules changed compared to the version's
