@@ -108,7 +108,7 @@ func TestMakeDownstreamProjectFromFile(t *testing.T) {
 		Repo:   "evergreen",
 		Branch: "main",
 	}
-	projectInfo, err := makeDownstreamProjectFromFile(t.Context(), ref, "trigger/testdata/downstream_config.yml", nil)
+	projectInfo, err := makeDownstreamProjectFromFile(t.Context(), ref, "trigger/testdata/downstream_config.yml", ref.Branch, nil)
 	require.NoError(t, err)
 	require.NotNil(t, projectInfo.Project)
 	require.NotNil(t, projectInfo.IntermediateProject)
@@ -117,6 +117,15 @@ func TestMakeDownstreamProjectFromFile(t *testing.T) {
 	assert.Equal(t, "task1", projectInfo.Project.Tasks[0].Name)
 	assert.Len(t, projectInfo.Project.BuildVariants, 1)
 	assert.Equal(t, "something", projectInfo.Project.BuildVariants[0].DisplayName)
+	assert.NotEmpty(t, projectInfo.Project.Modules)
+
+	t.Run("ConfigShouldBeReadAtGivenRevisionInsteadOfBranchHead", func(t *testing.T) {
+		const revisionWithoutModules = "fb4c145cc82aa1af379ac1bcdfca93258d4a3a9a"
+		projectInfo, err := makeDownstreamProjectFromFile(t.Context(), ref, "trigger/testdata/downstream_config.yml", revisionWithoutModules, nil)
+		require.NoError(t, err)
+		require.NotNil(t, projectInfo.Project)
+		assert.Empty(t, projectInfo.Project.Modules)
+	})
 }
 
 func TestTriggerDownstreamProjectsForPush(t *testing.T) {

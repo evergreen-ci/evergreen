@@ -73,7 +73,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 	resolver := model.NewModuleResolver(&args.DownstreamProject, resolverOpts)
 	metadata.ModuleResolver = resolver
 
-	projectInfo, err := makeDownstreamProjectFromFile(ctx, args.DownstreamProject, args.ConfigFile, resolver)
+	projectInfo, err := makeDownstreamProjectFromFile(ctx, args.DownstreamProject, args.ConfigFile, metadata.Revision.Revision, resolver)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -193,11 +193,11 @@ func getMetadataFromArgs(ctx context.Context, args ProcessorArgs) (model.Version
 	return metadata, nil
 }
 
-func makeDownstreamProjectFromFile(ctx context.Context, ref model.ProjectRef, file string, resolver *model.ModuleResolver) (model.ProjectInfo, error) {
+func makeDownstreamProjectFromFile(ctx context.Context, ref model.ProjectRef, file, revision string, resolver *model.ModuleResolver) (model.ProjectInfo, error) {
 	opts := model.GetProjectOpts{
 		Ref:            &ref,
 		RemotePath:     file,
-		Revision:       ref.Branch,
+		Revision:       revision,
 		ReadFileFrom:   model.ReadFromGithub,
 		ModuleResolver: resolver,
 	}
