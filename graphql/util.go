@@ -1569,9 +1569,23 @@ func getWaterfallFilterOptionsFromContext(ctx context.Context) model.WaterfallOp
 	return model.WaterfallOptions{}
 }
 
-// setTestQuarantineState updates the quarantine state for testName on the
+// jiraTicketKeyRegex matches Jira ticket keys such as BF-123, ignoring case.
+var jiraTicketKeyRegex = regexp.MustCompile(`(?i)^[A-Z][A-Z0-9_]*-[0-9]+$`)
+
+// testQuarantineChange describes a requested change to a test's manual
+// quarantine state. existingJiraTicketsToLink and justification are optional.
+type testQuarantineChange struct {
+	taskID                    string
+	testName                  string
+	isManuallyQuarantined     bool
+	existingJiraTicketsToLink []string
+	justification             string
+}
+
+// setTestQuarantineState updates the quarantine state for the test on the
 // given task.
-func setTestQuarantineState(ctx context.Context, taskID, testName string, isManuallyQuarantined bool) (*restModel.APITest, error) {
+func setTestQuarantineState(ctx context.Context, change testQuarantineChange) (*restModel.APITest, error) {
+	taskID, testName, isManuallyQuarantined := change.taskID, change.testName, change.isManuallyQuarantined
 	t, err := task.FindOneId(ctx, taskID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
@@ -1582,14 +1596,52 @@ func setTestQuarantineState(ctx context.Context, taskID, testName string, isManu
 	if t.DisplayOnly {
 		return nil, InputValidationError.Send(ctx, "cannot modify test quarantine state on display tasks, select an execution task instead")
 	}
+	if err = validateQuarantineJiraTickets(ctx, t.Project, change.existingJiraTicketsToLink); err != nil {
+		return nil, err
+	}
 	displayTaskName, err := t.GetDisplayTaskName(ctx)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching display task name for task '%s': %s", taskID, err.Error()))
 	}
-	if err = data.SetTestQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, displayTaskName, testName, isManuallyQuarantined); err != nil {
+	metadata := newTaskQuarantineMetadata(ctx, t)
+	metadata.ExistingJiraTicketsToLink = change.existingJiraTicketsToLink
+	metadata.Justification = strings.TrimSpace(change.justification)
+	if err = data.SetTestQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, displayTaskName, testName, isManuallyQuarantined, metadata); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting quarantine state to '%t' for test '%s' on task '%s' on build variant '%s' on project '%s': %s", isManuallyQuarantined, testName, taskID, t.BuildVariant, t.Project, err.Error()))
 	}
 	return buildQuarantineMutationResponse(ctx, t, testName, isManuallyQuarantined)
+}
+
+// validateQuarantineJiraTickets checks that each ticket is a well-formed Jira
+// key and that at least one ticket is given if the project requires it. This
+// only validates the form, not that it actually exists in Jira.
+func validateQuarantineJiraTickets(ctx context.Context, projectID string, existingJiraTicketsToLink []string) error {
+	for _, ticket := range existingJiraTicketsToLink {
+		if !jiraTicketKeyRegex.MatchString(ticket) {
+			return InputValidationError.Send(ctx, fmt.Sprintf("'%s' is not a valid Jira ticket key, expected a key like 'BF-123'", ticket))
+		}
+	}
+	if len(existingJiraTicketsToLink) > 0 {
+		return nil
+	}
+	pRef, err := model.FindMergedProjectRef(ctx, projectID, "", false)
+	if err != nil {
+		return InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectID, err.Error()))
+	}
+	if pRef == nil {
+		return ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", projectID))
+	}
+	if pRef.IsTestSelectionQuarantineJiraTicketsRequired() {
+		return InputValidationError.Send(ctx, fmt.Sprintf("project '%s' requires at least one Jira ticket to quarantine a test", projectID))
+	}
+	return nil
+}
+
+// newTaskQuarantineMetadata returns the quarantine metadata for a change the
+// current user initiated from task t.
+func newTaskQuarantineMetadata(ctx context.Context, t *task.Task) data.QuarantineMetadata {
+	uiBaseURL := evergreen.GetEnvironment().Settings().Ui.UIv2Url
+	return data.NewTaskQuarantineMetadata(t, mustHaveUser(ctx).Username(), uiBaseURL)
 }
 
 // setTaskQuarantineState quarantines (or unquarantines) every known test of
@@ -1609,7 +1661,7 @@ func setTaskQuarantineState(ctx context.Context, taskID string, isManuallyQuaran
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching display task name for task '%s': %s", taskID, err.Error()))
 	}
-	if err = data.SetTaskQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, displayTaskName, isManuallyQuarantined); err != nil {
+	if err = data.SetTaskQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, displayTaskName, isManuallyQuarantined, newTaskQuarantineMetadata(ctx, t)); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting quarantine state to '%t' for task '%s' on build variant '%s' on project '%s': %s", isManuallyQuarantined, taskID, t.BuildVariant, t.Project, err.Error()))
 	}
 	usr := mustHaveUser(ctx)
@@ -1635,10 +1687,11 @@ func setVariantQuarantineState(ctx context.Context, projectIdentifier, buildVari
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectIdentifier, err.Error()))
 	}
-	if err = data.SetVariantQuarantined(ctx, projectID, buildVariant, isManuallyQuarantined); err != nil {
+	usr := mustHaveUser(ctx)
+	metadata := data.QuarantineMetadata{InitiatedBy: usr.Username()}
+	if err = data.SetVariantQuarantined(ctx, projectID, buildVariant, isManuallyQuarantined, metadata); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting quarantine state to '%t' for build variant '%s' on project '%s': %s", isManuallyQuarantined, buildVariant, projectIdentifier, err.Error()))
 	}
-	usr := mustHaveUser(ctx)
 	grip.Info(ctx, message.Fields{
 		"message":                 "build variant quarantine state changed",
 		"user":                    usr.Username(),

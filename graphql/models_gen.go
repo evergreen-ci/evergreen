@@ -425,8 +425,10 @@ type QuarantineTaskInput struct {
 }
 
 type QuarantineTestInput struct {
-	TaskID   string `json:"taskId"`
-	TestName string `json:"testName"`
+	TaskID                    string   `json:"taskId"`
+	TestName                  string   `json:"testName"`
+	ExistingJiraTicketsToLink []string `json:"existingJiraTicketsToLink,omitempty"`
+	Justification             *string  `json:"justification,omitempty"`
 }
 
 // QuarantineVariantInput is the input to the quarantineVariant mutation. It marks every known test of every known task in the build variant as manually quarantined in the test selection service.
