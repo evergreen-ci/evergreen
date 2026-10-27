@@ -118,6 +118,22 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			require.True(t, ok)
 			assert.Equal(t, "source-cache", data.SourceCacheBucket.Name)
 		},
+		"RunReturnsNoSourceCacheBucketForOptedOutProject": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
+			rh.settings.Buckets.SourceCacheBucket = evergreen.BucketConfig{Name: "source-cache"}
+			rh.settings.Buckets.SourceCacheOptOutProjects = []string{"p1"}
+			flags := evergreen.ServiceFlags{SourceCacheAllProjectsEnabled: true}
+			require.NoError(t, flags.Set(ctx))
+			// t.Context is canceled before cleanups run, so reset the flag with a fresh context.
+			t.Cleanup(func() {
+				require.NoError(t, (&evergreen.ServiceFlags{}).Set(context.Background()))
+			})
+			rh.taskID = "t1"
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			data, ok := resp.Data().(apimodels.ExpansionsAndVars)
+			require.True(t, ok)
+			assert.Zero(t, data.SourceCacheBucket)
+		},
 		"RunReturnsSourceCacheBucketForPatchWhenFlagOverridesProjectSetting": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
 			rh.settings.Buckets.SourceCacheBucket = evergreen.BucketConfig{Name: "source-cache"}
 			require.NoError(t, db.Update(ctx, model.ProjectRefCollection, mgobson.M{model.ProjectRefIdKey: "p1"}, mgobson.M{"$set": mgobson.M{model.ProjectRefSourceCacheModeKey: model.SourceCacheModeDisabled}}))

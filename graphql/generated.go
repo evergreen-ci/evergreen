@@ -348,6 +348,7 @@ type ComplexityRoot struct {
 		RetryFailedLogMoveLookbackMonths func(childComplexity int) int
 		RetryFailedLogMoveMaxJobsPerRun  func(childComplexity int) int
 		SourceCacheBucket                func(childComplexity int) int
+		SourceCacheOptOutProjects        func(childComplexity int) int
 		TestResultsBucket                func(childComplexity int) int
 	}
 
@@ -4005,6 +4006,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.BucketsConfig.SourceCacheBucket(childComplexity), true
+	case "BucketsConfig.sourceCacheOptOutProjects":
+		if e.complexity.BucketsConfig.SourceCacheOptOutProjects == nil {
+			break
+		}
+
+		return e.complexity.BucketsConfig.SourceCacheOptOutProjects(childComplexity), true
 	case "BucketsConfig.testResultsBucket":
 		if e.complexity.BucketsConfig.TestResultsBucket == nil {
 			break
@@ -18816,6 +18823,8 @@ func (ec *executionContext) fieldContext_AdminSettings_buckets(_ context.Context
 				return ec.fieldContext_BucketsConfig_testResultsBucket(ctx, field)
 			case "sourceCacheBucket":
 				return ec.fieldContext_BucketsConfig_sourceCacheBucket(ctx, field)
+			case "sourceCacheOptOutProjects":
+				return ec.fieldContext_BucketsConfig_sourceCacheOptOutProjects(ctx, field)
 			case "internalBuckets":
 				return ec.fieldContext_BucketsConfig_internalBuckets(ctx, field)
 			case "credentials":
@@ -23545,6 +23554,35 @@ func (ec *executionContext) fieldContext_BucketsConfig_sourceCacheBucket(_ conte
 				return ec.fieldContext_BucketConfig_lifecycleSyncError(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type BucketConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BucketsConfig_sourceCacheOptOutProjects(ctx context.Context, field graphql.CollectedField, obj *model.APIBucketsConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BucketsConfig_sourceCacheOptOutProjects,
+		func(ctx context.Context) (any, error) {
+			return obj.SourceCacheOptOutProjects, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BucketsConfig_sourceCacheOptOutProjects(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BucketsConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -82597,7 +82635,7 @@ func (ec *executionContext) unmarshalInputBucketsConfigInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"logBucket", "logBucketLongRetention", "logBucketFailedTasks", "longRetentionProjects", "retryFailedLogMoveLookbackDays", "retryFailedLogMoveLookbackMonths", "retryFailedLogMoveMaxJobsPerRun", "testResultsBucket", "sourceCacheBucket", "internalBuckets", "credentials"}
+	fieldsInOrder := [...]string{"logBucket", "logBucketLongRetention", "logBucketFailedTasks", "longRetentionProjects", "retryFailedLogMoveLookbackDays", "retryFailedLogMoveLookbackMonths", "retryFailedLogMoveMaxJobsPerRun", "testResultsBucket", "sourceCacheBucket", "sourceCacheOptOutProjects", "internalBuckets", "credentials"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -82667,6 +82705,13 @@ func (ec *executionContext) unmarshalInputBucketsConfigInput(ctx context.Context
 				return it, err
 			}
 			it.SourceCacheBucket = data
+		case "sourceCacheOptOutProjects":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sourceCacheOptOutProjects"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SourceCacheOptOutProjects = data
 		case "internalBuckets":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("internalBuckets"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
@@ -94164,6 +94209,8 @@ func (ec *executionContext) _BucketsConfig(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._BucketsConfig_testResultsBucket(ctx, field, obj)
 		case "sourceCacheBucket":
 			out.Values[i] = ec._BucketsConfig_sourceCacheBucket(ctx, field, obj)
+		case "sourceCacheOptOutProjects":
+			out.Values[i] = ec._BucketsConfig_sourceCacheOptOutProjects(ctx, field, obj)
 		case "internalBuckets":
 			out.Values[i] = ec._BucketsConfig_internalBuckets(ctx, field, obj)
 		case "credentials":

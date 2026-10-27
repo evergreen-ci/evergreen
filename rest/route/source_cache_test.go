@@ -107,6 +107,21 @@ func TestSourceCacheCredentialsRun(t *testing.T) {
 			expectedStatus:  http.StatusOK,
 			wantRestoreKeys: [][2]string{{"base", "abc123"}},
 		},
+		"OptedOutProjectIsRefusedEvenWithFlag": {
+			insertTask: true, revision: "abc123", owner: "some-org", repo: "some-repo",
+			mutateSettings: func(s *evergreen.Settings) {
+				s.Buckets.SourceCacheOptOutProjects = []string{sourceCacheProjectID}
+			},
+			setFlag:        true,
+			expectedStatus: http.StatusConflict,
+		},
+		"OptedOutProjectIsRefusedWithAllMode": {
+			insertTask: true, revision: "abc123", owner: "some-org", repo: "some-repo",
+			mutateSettings: func(s *evergreen.Settings) {
+				s.Buckets.SourceCacheOptOutProjects = []string{sourceCacheProjectID}
+			},
+			expectedStatus: http.StatusConflict,
+		},
 		"BucketWithNoRoleIsRefused": {
 			mutateSettings: func(s *evergreen.Settings) { s.Buckets.SourceCacheBucket.RoleARN = "" },
 			insertTask:     true, owner: "some-org", repo: "some-repo",

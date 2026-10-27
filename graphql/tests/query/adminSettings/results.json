@@ -405,6 +405,7 @@
                 "roleARN": ""
               },
               "longRetentionProjects": ["project1", "project2"],
+              "sourceCacheOptOutProjects": null,
               "logBucketLongRetention": {
                 "name": "mutation-long-retention-bucket",
                 "testResultsPrefix": "",
