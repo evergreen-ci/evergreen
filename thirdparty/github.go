@@ -820,6 +820,9 @@ func GetCommitComparisonStatus(ctx context.Context, owner, repo, baseRevision, h
 	if err != nil {
 		return "", errors.Wrapf(err, "comparing commits '%s' and '%s'", baseRevision, headRevision)
 	}
+	if compare.GetStatus() == "" {
+		return "", errors.Errorf("GitHub compare response for commits '%s' and '%s' is missing status", baseRevision, headRevision)
+	}
 	return compare.GetStatus(), nil
 }
 

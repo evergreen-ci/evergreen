@@ -289,7 +289,7 @@ func TestModuleResolverCarriesModulesForward(t *testing.T) {
 			insertVersionWithManifest(t, projectRef.Id, "with-manifest", 1, evergreen.TriggerRequester, nil)
 			require.NoError(t, (&Version{Id: "without-manifest", Identifier: projectRef.Id, RevisionOrderNumber: 2, Requester: evergreen.RepotrackerVersionRequester}).Insert(t.Context()))
 
-			mfst, err := findPreviousManifest(t.Context(), projectRef.Id, 0)
+			mfst, err := findPreviousWaterfallManifest(t.Context(), projectRef.Id, 0)
 			require.NoError(t, err)
 			require.NotNil(t, mfst)
 			assert.Equal(t, "with-manifest", mfst.Id)
@@ -300,29 +300,46 @@ func TestModuleResolverCarriesModulesForward(t *testing.T) {
 			insertVersionWithManifest(t, projectRef.Id, "later", 4, evergreen.RepotrackerVersionRequester, nil)
 			insertVersionWithManifest(t, "other-project", "other-project-version", 2, evergreen.RepotrackerVersionRequester, nil)
 
-			mfst, err := findPreviousManifest(t.Context(), projectRef.Id, 3)
+			mfst, err := findPreviousWaterfallManifest(t.Context(), projectRef.Id, 3)
 			require.NoError(t, err)
 			require.NotNil(t, mfst)
 			assert.Equal(t, "previous", mfst.Id)
 		},
-		"IsIngestedInOrderShouldCompareModuleCommitIngestTimes": func(t *testing.T) {
+		"GetIngestOrderShouldCompareModuleCommitIngestTimes": func(t *testing.T) {
 			require.NoError(t, UpsertRepositoryRevision(t.Context(), module.Owner, module.Repo, module.Branch, olderModuleRevision, ingestTime))
 			require.NoError(t, UpsertRepositoryRevision(t.Context(), module.Owner, module.Repo, module.Branch, newerModuleRevision, ingestTime.Add(time.Minute)))
 			older := &manifest.Module{Owner: module.Owner, Repo: module.Repo, Branch: module.Branch, Revision: olderModuleRevision}
 			newer := &manifest.Module{Owner: module.Owner, Repo: module.Repo, Branch: module.Branch, Revision: newerModuleRevision}
-			unknown := &manifest.Module{Owner: module.Owner, Repo: module.Repo, Branch: module.Branch, Revision: "unknownRevision"}
+			notIngested := &manifest.Module{Owner: module.Owner, Repo: module.Repo, Branch: module.Branch, Revision: "notIngestedRevision"}
+			otherNotIngested := &manifest.Module{Owner: module.Owner, Repo: module.Repo, Branch: module.Branch, Revision: "otherNotIngestedRevision"}
 
-			inOrder, err := isIngestedInOrder(t.Context(), older, newer)
-			require.NoError(t, err)
-			assert.True(t, inOrder)
+			for _, tc := range []struct {
+				previous, latest *manifest.Module
+				expected         ingestOrder
+			}{
+				{previous: older, latest: newer, expected: ingestOrderLatestNewer},
+				{previous: newer, latest: older, expected: ingestOrderPreviousNewer},
+				{previous: notIngested, latest: newer, expected: ingestOrderPartial},
+				{previous: notIngested, latest: otherNotIngested, expected: ingestOrderUnknown},
+			} {
+				order, err := getIngestOrder(t.Context(), tc.previous, tc.latest)
+				require.NoError(t, err)
+				assert.Equal(t, tc.expected, order, "previous '%s', latest '%s'", tc.previous.Revision, tc.latest.Revision)
+			}
+		},
+		"MainlineVersionShouldKeepPreviousCommitWhenLatestWasIngestedBeforeIt": func(t *testing.T) {
+			insertVersionWithManifest(t, projectRef.Id, "previous", 1, evergreen.RepotrackerVersionRequester, map[string]*manifest.Module{
+				module.Name: {Owner: module.Owner, Repo: module.Repo, Branch: module.Branch, Revision: newerModuleRevision},
+			})
+			require.NoError(t, UpsertRepositoryRevision(t.Context(), module.Owner, module.Repo, module.Branch, olderModuleRevision, ingestTime.Add(-time.Minute)))
+			require.NoError(t, UpsertRepositoryRevision(t.Context(), module.Owner, module.Repo, module.Branch, newerModuleRevision, ingestTime.Add(time.Minute)))
+			resolver := NewModuleResolver(projectRef, ModuleResolverOpts{Requester: evergreen.RepotrackerVersionRequester, IngestTime: ingestTime})
 
-			inOrder, err = isIngestedInOrder(t.Context(), newer, older)
+			mod, err := resolver.Resolve(t.Context(), module)
 			require.NoError(t, err)
-			assert.False(t, inOrder)
-
-			inOrder, err = isIngestedInOrder(t.Context(), unknown, newer)
-			require.NoError(t, err)
-			assert.False(t, inOrder, "commits without an ingest record should not be treated as in order")
+			require.NotNil(t, mod)
+			assert.Equal(t, newerModuleRevision, mod.Revision)
+			assert.Equal(t, manifest.ModuleSelectionCarriedForward, mod.SelectionRule)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -360,12 +377,18 @@ func TestModuleResolverCarryForwardWithGitHub(t *testing.T) {
 	resolver := NewModuleResolver(projectRef, ModuleResolverOpts{})
 
 	t.Run("LatestBehindPreviousShouldKeepPrevious", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(RepositoryRevisionsHistoryCollection))
+		require.NoError(t, UpsertRepositoryRevision(t.Context(), olderCommit.Owner, olderCommit.Repo, olderCommit.Branch, olderCommit.Revision, time.Now()))
 		assert.Equal(t, newerCommit, resolver.newerModuleCommit(t.Context(), sample.Name, newerCommit, olderCommit))
 	})
 	t.Run("LatestAheadOfPreviousShouldUseLatest", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(RepositoryRevisionsHistoryCollection))
+		require.NoError(t, UpsertRepositoryRevision(t.Context(), newerCommit.Owner, newerCommit.Repo, newerCommit.Branch, newerCommit.Revision, time.Now()))
 		assert.Equal(t, newerCommit, resolver.newerModuleCommit(t.Context(), sample.Name, olderCommit, newerCommit))
 	})
 	t.Run("UnknownCommitShouldUseLatest", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(RepositoryRevisionsHistoryCollection))
+		require.NoError(t, UpsertRepositoryRevision(t.Context(), olderCommit.Owner, olderCommit.Repo, olderCommit.Branch, olderCommit.Revision, time.Now()))
 		unknownCommit := &manifest.Module{Owner: "evergreen-ci", Repo: "sample", Branch: "main", Revision: "0000000000000000000000000000000000000001"}
 		assert.Equal(t, olderCommit, resolver.newerModuleCommit(t.Context(), sample.Name, unknownCommit, olderCommit))
 	})

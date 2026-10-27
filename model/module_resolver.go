@@ -31,11 +31,14 @@ type ModuleResolver struct {
 	projectRef *ProjectRef
 	opts       ModuleResolverOpts
 
-	initMu           sync.Mutex
-	initialized      bool
-	expansions       *util.Expansions
-	baseManifest     *manifest.Manifest
+	initMu       sync.Mutex
+	initialized  bool
+	expansions   *util.Expansions
+	baseManifest *manifest.Manifest
+	// previousManifest is the manifest module commits are carried forward from.
 	previousManifest *manifest.Manifest
+	// beforeOrder is the order number previous versions must be below.
+	beforeOrder int
 
 	mu       sync.Mutex
 	resolved map[string]*manifest.Module
@@ -61,9 +64,10 @@ type ModuleResolverOpts struct {
 // NewModuleResolver returns a resolver for the module commits of a version.
 func NewModuleResolver(projectRef *ProjectRef, opts ModuleResolverOpts) *ModuleResolver {
 	return &ModuleResolver{
-		projectRef: projectRef,
-		opts:       opts,
-		resolved:   map[string]*manifest.Module{},
+		projectRef:  projectRef,
+		opts:        opts,
+		beforeOrder: opts.RevisionOrderNumber,
+		resolved:    map[string]*manifest.Module{},
 	}
 }
 
@@ -91,11 +95,9 @@ func (r *ModuleResolver) Manifest(ctx context.Context, v *Version, modules Modul
 	if len(modules) == 0 {
 		return nil, nil
 	}
-	// The order number is only known once the version is created, after its
-	// config may already have been loaded.
 	r.initMu.Lock()
-	if !r.initialized && r.opts.RevisionOrderNumber == 0 {
-		r.opts.RevisionOrderNumber = v.RevisionOrderNumber
+	if !r.initialized && r.beforeOrder == 0 {
+		r.beforeOrder = v.RevisionOrderNumber
 	}
 	r.initMu.Unlock()
 
@@ -197,7 +199,7 @@ func (r *ModuleResolver) init(ctx context.Context) error {
 		}
 	}
 	if r.shouldCarryForward() {
-		r.previousManifest, err = findPreviousManifest(ctx, r.projectRef.Id, r.opts.RevisionOrderNumber)
+		r.previousManifest, err = findPreviousWaterfallManifest(ctx, r.projectRef.Id, r.beforeOrder)
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":    "finding previous version's manifest, resolving modules without it",
 			"source":     "manifest-creation",
@@ -322,10 +324,17 @@ func (r *ModuleResolver) newerModuleCommit(ctx context.Context, moduleName strin
 		}
 	}
 
-	ingestedInOrder, err := isIngestedInOrder(ctx, previous, latest)
-	grip.Warning(ctx, message.WrapError(err, logFields("checking module commit ingest order, comparing with GitHub instead")))
-	if ingestedInOrder {
+	order, err := getIngestOrder(ctx, previous, latest)
+	if err != nil {
+		grip.Warning(ctx, message.WrapError(err, logFields("checking module commit ingest order, using latest commit")))
 		return latest
+	}
+	switch order {
+	case ingestOrderLatestNewer, ingestOrderUnknown:
+		return latest
+	case ingestOrderPreviousNewer:
+		grip.Info(ctx, logFields("keeping previous module commit because latest commit was ingested before it"))
+		return previous
 	}
 
 	grip.Info(ctx, logFields("comparing module commits with GitHub"))
@@ -337,14 +346,23 @@ func (r *ModuleResolver) newerModuleCommit(ctx context.Context, moduleName strin
 		return latest
 	}
 	if status == "behind" {
+		grip.Info(ctx, logFields("keeping previous module commit because latest commit is behind it"))
 		return previous
 	}
 	return latest
 }
 
-// isIngestedInOrder returns whether Evergreen ingested the latest module
-// commit at or after the previous one.
-func isIngestedInOrder(ctx context.Context, previous, latest *manifest.Module) (bool, error) {
+type ingestOrder int
+
+const (
+	ingestOrderUnknown ingestOrder = iota
+	ingestOrderLatestNewer
+	ingestOrderPreviousNewer
+	ingestOrderPartial
+)
+
+// getIngestOrder returns which of the two module commits Evergreen ingested later.
+func getIngestOrder(ctx context.Context, previous, latest *manifest.Module) (ingestOrder, error) {
 	var revisions []RepositoryRevision
 	err := db.FindAllQ(ctx, RepositoryRevisionsHistoryCollection, db.Query(bson.M{
 		RepositoryRevisionOwnerKey:    latest.Owner,
@@ -353,7 +371,7 @@ func isIngestedInOrder(ctx context.Context, previous, latest *manifest.Module) (
 		RepositoryRevisionRevisionKey: bson.M{"$in": []string{previous.Revision, latest.Revision}},
 	}), &revisions)
 	if err != nil {
-		return false, errors.Wrap(err, "finding module commit ingest times")
+		return ingestOrderUnknown, errors.Wrap(err, "finding module commit ingest times")
 	}
 	ingestTimes := make(map[string]time.Time, len(revisions))
 	for _, rev := range revisions {
@@ -361,13 +379,22 @@ func isIngestedInOrder(ctx context.Context, previous, latest *manifest.Module) (
 	}
 	previousTime, hasPrevious := ingestTimes[previous.Revision]
 	latestTime, hasLatest := ingestTimes[latest.Revision]
-	return hasPrevious && hasLatest && !latestTime.Before(previousTime), nil
+	switch {
+	case hasPrevious && hasLatest && latestTime.Before(previousTime):
+		return ingestOrderPreviousNewer, nil
+	case hasPrevious && hasLatest:
+		return ingestOrderLatestNewer, nil
+	case hasPrevious || hasLatest:
+		return ingestOrderPartial, nil
+	default:
+		return ingestOrderUnknown, nil
+	}
 }
 
-// findPreviousManifest returns the manifest of the most recent mainline or
+// findPreviousWaterfallManifest returns the manifest of the most recent mainline or
 // trigger version in the project that has one. If beforeOrder is set, only
 // versions before it are considered.
-func findPreviousManifest(ctx context.Context, projectID string, beforeOrder int) (*manifest.Manifest, error) {
+func findPreviousWaterfallManifest(ctx context.Context, projectID string, beforeOrder int) (*manifest.Manifest, error) {
 	q := bson.M{
 		VersionIdentifierKey: projectID,
 		VersionRequesterKey: bson.M{

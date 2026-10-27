@@ -482,8 +482,9 @@ which git revisions are being used. If no modules have been defined, the
 "Version Manifest" will not appear at all in the Spruce UI.
 
 For mainline commits and [trigger versions](Project-and-Distro-Settings#project-triggers), each module moves to
-the newest revision Evergreen knows about. A version created by a push level trigger from a module only moves that
-module to the commit that triggered it, and keeps every other module at the revision the previous version used.
+the newest revision Evergreen knows about, unless that's older than what the previous version used, in which case the
+previous revision is kept. A version created by a push level trigger from a module only moves that module to the
+commit that triggered it, and keeps every other module at the revision the previous version used.
 
 For manual patches, GitHub PRs, and periodic builds, by default, the git revisions in the
 version manifest will be inherited from its base version (i.e. the mainline commit version of the patch's base git revision).
