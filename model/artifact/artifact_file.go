@@ -301,7 +301,7 @@ func GetAllArtifacts(ctx context.Context, tasks []TaskIDAndExecution) ([]File, e
 }
 
 // ValidateFiles checks that artifact links are absolute HTTP(S) URLs. Associated
-// links may also use T2, which opens FTDC data in the T2 application.
+// links may also use T2 URLs.
 // DoNotEncodeLink affects escaping but does not bypass validation.
 func ValidateFiles(files []File) error {
 	for _, file := range files {

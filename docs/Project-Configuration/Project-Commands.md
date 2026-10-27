@@ -277,7 +277,7 @@ Fields:
   file will not be downloaded when spawning a host from the spawn link on a test page.
 - `associated_links`: optional array of related links to be displayed alongside the main artifact in the UI. Each link object contains:
   - `name`: the display name for the associated link.
-  - `link`: the absolute HTTP or HTTPS URL for the associated link. T2 URLs (`t2://...`) are also supported for opening FTDC data.
+  - `link`: the absolute HTTP or HTTPS URL for the associated link. T2 URLs (`t2://...`) are also supported.
   - `do_not_encode_link`: optional boolean, defaults to false. Set to true to prevent URL-encoding the link.
 
 ## attach.results

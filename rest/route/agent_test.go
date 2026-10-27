@@ -70,7 +70,7 @@ func TestAttachFiles(t *testing.T) {
 				{Name: "SignedReport", Link: "https://example.com/report?X-Amz-Signature=signature&X-Amz-Expires=3600", DoNotEncodeLink: true,
 					AssociatedLinks: []artifact.AssociatedLink{
 						{Name: "Coverage", Link: "https://example.com/coverage#report.html", DoNotEncodeLink: true},
-						{Name: "FTDC", Link: "t2://internal.example.com/report.ftdc", DoNotEncodeLink: true},
+						{Name: "T2", Link: "t2://internal.example.com/report", DoNotEncodeLink: true},
 					}},
 			}
 			if tc.mutate != nil {
