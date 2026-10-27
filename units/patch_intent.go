@@ -1070,6 +1070,32 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 		return false, errors.New("GitHub PR testing is not configured correctly because it requires a GitHub org to authenticate against")
 	}
 
+	// The PR diff is fetched from GitHub's rolling PR diff endpoint, which
+	// always returns the diff for the PR's current head. If a newer intent
+	// exists, the head has moved since this intent was created, and the fetched
+	// diff would include the newer changes while the patch is labeled with this
+	// intent's head hash. Skip creating a patch for the superseded commit;
+	// the newer push creates its own intent that builds the correct patch.
+	isSuperseded, err := patch.HasNewerGithubIntent(ctx,
+		fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
+		patchDoc.GithubPatchData.PRNumber, patchDoc.CreateTime)
+	if err != nil {
+		// Fall back to building the patch as before rather than failing PR
+		// testing because the staleness check could not run.
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message":     "could not check if the PR head has moved, building patch anyway",
+			"job":         j.ID(),
+			"patch_id":    j.PatchID,
+			"pr_number":   patchDoc.GithubPatchData.PRNumber,
+			"intent_type": j.IntentType,
+			"intent_id":   j.IntentID,
+			"source":      "patch intents",
+		}))
+	} else if isSuperseded {
+		j.gitHubError = SupersededByNewerPush
+		return false, errors.Errorf("not creating a patch for head '%s' because the pull request has newer commits", patchDoc.GithubPatchData.HeadHash)
+	}
+
 	projectRef, err := model.FindOneProjectRefByRepoAndBranchWithPRTesting(ctx, patchDoc.GithubPatchData.BaseOwner,
 		patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.BaseBranch, j.intent.GetCalledBy())
 	if err != nil {
