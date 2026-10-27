@@ -82,6 +82,9 @@ func NotificationsFromEvent(ctx context.Context, e *event.EventLogEntry) ([]noti
 		if n == nil {
 			continue
 		}
+		if subscriptions[i].OwnerType == event.OwnerTypeProject && subscriptions[i].Owner != "" {
+			n.Project = subscriptions[i].Owner
+		}
 		grip.Info(ctx, msg)
 
 		notifications = append(notifications, *n)

@@ -194,6 +194,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/keys/{key_name}").Version(2).Delete().Wrap(requireUser, rateLimit).RouteHandler(makeDeleteKeys())
 	app.AddRoute("/notifications/slack").Version(2).Post().Wrap(requireUser, sendNotifications, rateLimit).RouteHandler(makeSlackNotification(env))
 	app.AddRoute("/notifications/email").Version(2).Post().Wrap(requireUser, sendNotifications, rateLimit).RouteHandler(makeEmailNotification(env))
+	app.AddRoute("/failed_webhook_notifications").Version(2).Get().Wrap(requireUser, rateLimit).RouteHandler(makeFailedWebhookNotificationsRoute())
 	app.AddRoute("/panic").Version(2).Post().Wrap(requireUser, rateLimit).RouteHandler(makePanicReport())
 	app.AddRoute("/patches/{patch_id}").Version(2).Get().Wrap(requireUser, viewTasks, rateLimit).RouteHandler(makeFetchPatchByID())
 	app.AddRoute("/patches/{patch_id}").Version(2).Patch().Wrap(requireUser, submitPatches, rateLimit).RouteHandler(makeChangePatchStatus(env))

@@ -94,6 +94,7 @@ func (j *eventSendJob) Run(ctx context.Context) {
 
 	if err = j.checkDegradedMode(ctx, n); err != nil {
 		j.AddError(errors.Wrapf(n.MarkError(ctx, errors.Wrap(err, "checking degraded mode")), "setting error for notification '%s'", n.ID))
+		j.recordFailedWebhook(ctx, n, err)
 		return
 	}
 
@@ -128,6 +129,16 @@ func (j *eventSendJob) Run(ctx context.Context) {
 	grip.Error(ctx, message.WrapError(err, logFields))
 	j.AddError(err)
 	j.AddError(errors.Wrapf(n.MarkError(ctx, err), "setting error for notification '%s'", n.ID))
+	j.recordFailedWebhook(ctx, n, err)
+}
+
+// Recording is best-effort: the delivery failure is already the job's error,
+// so a failure to record is only logged.
+func (j *eventSendJob) recordFailedWebhook(ctx context.Context, n *notification.Notification, sendErr error) {
+	grip.Error(ctx, message.WrapError(notification.InsertFailedWebhook(ctx, n, sendErr), message.Fields{
+		"message":         "recording failed webhook delivery",
+		"notification_id": n.ID,
+	}))
 }
 
 func (j *eventSendJob) send(ctx context.Context, n *notification.Notification) error {

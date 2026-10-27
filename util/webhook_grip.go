@@ -137,6 +137,16 @@ func (w *evergreenWebhookLogger) Send(ctx context.Context, m message.Composer) {
 	}
 }
 
+// SendWithError returns the delivery error so notification send jobs can mark
+// the notification as failed instead of silently treating it as sent.
+func (w *evergreenWebhookLogger) SendWithError(ctx context.Context, m message.Composer) error {
+	if !w.Level().ShouldLog(m) {
+		return nil
+	}
+
+	return w.send(ctx, m)
+}
+
 func (w *evergreenWebhookLogger) send(ctx context.Context, m message.Composer) error {
 	raw, ok := m.Raw().(*EvergreenWebhook)
 	if !ok {
