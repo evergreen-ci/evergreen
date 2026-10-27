@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -42,7 +43,7 @@ func TestTaskQuarantineExecutionTaskSucceeds(t *testing.T) {
 	tsk := &task.Task{Id: "execution_task", Project: "p1", BuildVariant: "ubuntu", DisplayName: "my_task"}
 	ctx := ctxWithTask(tsk)
 
-	h := makeTaskQuarantineHandler(evergreen.GetEnvironment())
+	h := makeTaskQuarantineHandler(testutil.NewEnvironment(t.Context(), t))
 	require.NoError(t, h.Parse(ctx, nil))
 	res := h.Run(ctx)
 
@@ -58,7 +59,7 @@ func TestTaskQuarantineDisplayTaskIsRejected(t *testing.T) {
 	tsk := &task.Task{Id: "display_task", Project: "p1", BuildVariant: "ubuntu", DisplayName: "display", DisplayOnly: true}
 	ctx := ctxWithTask(tsk)
 
-	h := makeTaskQuarantineHandler(evergreen.GetEnvironment())
+	h := makeTaskQuarantineHandler(testutil.NewEnvironment(t.Context(), t))
 	err := h.Parse(ctx, nil)
 	require.Error(t, err)
 	resp, ok := err.(gimlet.ErrorResponse)
@@ -70,7 +71,7 @@ func TestTaskQuarantineDisplayTaskIsRejected(t *testing.T) {
 func TestTaskQuarantineParseRequiresTaskInContext(t *testing.T) {
 	ctx := context.WithValue(context.Background(), RequestContext, &serviceModel.Context{Task: nil})
 
-	h := makeTaskQuarantineHandler(evergreen.GetEnvironment())
+	h := makeTaskQuarantineHandler(testutil.NewEnvironment(t.Context(), t))
 	err := h.Parse(ctx, nil)
 	require.Error(t, err)
 	resp, ok := err.(gimlet.ErrorResponse)
@@ -92,7 +93,7 @@ func TestTaskQuarantineTSSFailurePropagates(t *testing.T) {
 	tsk := &task.Task{Id: "execution_task", Project: "p1", BuildVariant: "ubuntu", DisplayName: "my_task"}
 	ctx := ctxWithTask(tsk)
 
-	h := makeTaskQuarantineHandler(evergreen.GetEnvironment())
+	h := makeTaskQuarantineHandler(testutil.NewEnvironment(t.Context(), t))
 	require.NoError(t, h.Parse(ctx, nil))
 	res := h.Run(ctx)
 
