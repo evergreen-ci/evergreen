@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -18,6 +19,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -41,6 +43,70 @@ import (
 var (
 	taskSecret = "tasksecret"
 )
+
+func TestAttachFiles(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		mutate func([]artifact.File)
+	}{
+		{name: "ValidLinksShouldBeStoredWithEncodingFlagsRespected"},
+		{name: "JavaScriptShouldRejectEntireBatch", mutate: func(files []artifact.File) {
+			files[1].Link = "javascript:alert(document.domain)//%2F"
+			files[1].DoNotEncodeLink = false
+		}},
+		{name: "UnencodedJavaScriptShouldRejectEntireBatch", mutate: func(files []artifact.File) {
+			files[1].Link = "javascript:alert(document.domain)"
+		}},
+		{name: "AssociatedJavaScriptShouldRejectEntireBatchWithParentEncodingDisabled", mutate: func(files []artifact.File) {
+			files[1].AssociatedLinks[0].Link = "javascript:alert(document.domain)//%2F"
+			files[1].AssociatedLinks[0].DoNotEncodeLink = false
+		}},
+		{name: "UnencodedAssociatedJavaScriptShouldRejectEntireBatch", mutate: func(files []artifact.File) {
+			files[1].AssociatedLinks[0].Link = "javascript:alert(document.domain)"
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.WithValue(t.Context(), model.ApiTaskKey, &task.Task{Id: "ArtifactTask", DisplayName: "ArtifactTask"})
+			require.NoError(t, db.Clear(artifact.Collection))
+			t.Cleanup(func() { assert.NoError(t, db.Clear(artifact.Collection)) })
+			existing := artifact.Entry{TaskId: "ArtifactTask", TaskDisplayName: "ArtifactTask", Files: []artifact.File{
+				{Name: "Existing", Link: "https://example.com/existing.txt"},
+			}}
+			require.NoError(t, existing.Upsert(ctx))
+			files := []artifact.File{
+				{Name: "Report", Link: "http://fileserver/report#1%.txt"},
+				{Name: "SignedReport", Link: "https://example.com/report?X-Amz-Signature=signature&X-Amz-Expires=3600", DoNotEncodeLink: true,
+					AssociatedLinks: []artifact.AssociatedLink{
+						{Name: "Coverage", Link: "https://example.com/coverage#report.html", DoNotEncodeLink: true},
+						{Name: "FTDC", Link: "t2://internal.example.com/report.ftdc", DoNotEncodeLink: true},
+					}},
+			}
+			if tc.mutate != nil {
+				tc.mutate(files)
+			}
+			body, err := json.Marshal(files)
+			require.NoError(t, err)
+			req := httptest.NewRequest(http.MethodPost, "/rest/v2/task/ArtifactTask/files", bytes.NewReader(body))
+			req = gimlet.SetURLVars(req, map[string]string{"task_id": "ArtifactTask"})
+			h := &attachFilesHandler{}
+			require.NoError(t, h.Parse(ctx, req))
+			resp := h.Run(ctx)
+			require.NotNil(t, resp)
+			entry, err := artifact.FindOne(ctx, artifact.ByTaskIdAndExecution("ArtifactTask", 0))
+			require.NoError(t, err)
+			require.NotNil(t, entry)
+			if tc.mutate != nil {
+				assert.Equal(t, http.StatusBadRequest, resp.Status())
+				assert.Equal(t, existing.Files, entry.Files)
+			} else {
+				assert.Equal(t, http.StatusOK, resp.Status())
+				require.Len(t, entry.Files, 3)
+				assert.Equal(t, "http://fileserver/report%231%25.txt", entry.Files[1].Link)
+				assert.Equal(t, files[1], entry.Files[2])
+			}
+		})
+	}
+}
 
 func TestAgentGetExpansionsAndVars(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler){

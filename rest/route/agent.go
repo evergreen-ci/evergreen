@@ -759,6 +759,13 @@ func (h *attachFilesHandler) Parse(ctx context.Context, r *http.Request) error {
 func (h *attachFilesHandler) Run(ctx context.Context) gimlet.Responder {
 	t := MustHaveTask(ctx)
 
+	if err := artifact.ValidateFiles(h.files); err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    err.Error(),
+		})
+	}
+
 	discoverAndCacheBucketLifecycleRules(ctx, t, h.files)
 
 	entry := &artifact.Entry{

@@ -300,6 +300,50 @@ func GetAllArtifacts(ctx context.Context, tasks []TaskIDAndExecution) ([]File, e
 	return files, nil
 }
 
+// ValidateFiles checks that artifact links are absolute HTTP(S) URLs. Associated
+// links may also use T2, which opens FTDC data in the T2 application.
+// DoNotEncodeLink affects escaping but does not bypass validation.
+func ValidateFiles(files []File) error {
+	for _, file := range files {
+		if err := validateLink(file.Link, false); err != nil {
+			return errors.Wrapf(err, "validating link for artifact '%s'", file.Name)
+		}
+		for _, link := range file.AssociatedLinks {
+			if err := validateLink(link.Link, true); err != nil {
+				return errors.Wrapf(err, "validating associated link '%s' for artifact '%s'", link.Name, file.Name)
+			}
+		}
+	}
+	return nil
+}
+
+func validateLink(link string, allowT2 bool) error {
+	if strings.TrimSpace(link) != link {
+		return errors.New("URL must not have leading or trailing whitespace")
+	}
+	// S3 paths can contain unescaped object keys that are escaped when signing.
+	// Validate the scheme and authority without parsing the path.
+	if i := strings.Index(link, "://"); i >= 0 {
+		if end := strings.IndexAny(link[i+3:], "/?#"); end >= 0 {
+			link = link[:i+3+end]
+		}
+	}
+	u, err := url.Parse(link)
+	if err != nil {
+		return errors.Wrap(err, "parsing URL")
+	}
+	if u.Scheme != "http" && u.Scheme != "https" && !(allowT2 && u.Scheme == "t2") {
+		if allowT2 {
+			return errors.Errorf("URL scheme '%s' must be 'http', 'https', or 't2'", u.Scheme)
+		}
+		return errors.Errorf("URL scheme '%s' must be 'http' or 'https'", u.Scheme)
+	}
+	if u.Hostname() == "" {
+		return errors.New("URL must have a host name")
+	}
+	return nil
+}
+
 // EscapeFiles escapes the base of the file link to avoid issues opening links
 // with special characters in the UI. Note that it will not escape path segments
 // other than the base (i.e. the last one).
