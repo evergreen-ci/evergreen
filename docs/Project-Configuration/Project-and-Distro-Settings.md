@@ -151,6 +151,29 @@ created and activated for commits that were not originally part of the tracked b
 this, use squash merges or other strategies that do not rewrite the commit history
 of the tracked branch.
 
+### Task Ownership Settings
+
+Project admins can require that tasks added by
+[`generate.tasks`](Project-Commands#generatetasks) carry a tag
+identifying the owning team (e.g. `assigned_to_jira_team_<TEAM>`) so task
+failures can be routed to the right team.
+
+In the task ownership settings, admins can configure:
+
+- **Generated task validation prefix**: the tag prefix that generated tasks
+  must have, e.g. `assigned_to_jira_team_`.
+- **Track generated task tag validation**: Evergreen tracks generated tasks
+  that fail tag validation. Failing tasks are reported to Honeycomb under the
+  [`generate_tasks.tag_validation_failures` span](Task-Traces#tag-validation-tracking);
+  generation is not affected.
+- **Block task generation on tag validation**: Evergreen fails `generate.tasks`
+  if any task it generates fails tag validation.
+
+A task passes tag validation if any of the task's own tags has the required
+prefix. Tags on the task's build variant do not count. Only tasks being added
+by `generate.tasks` are checked; statically-defined tasks that are not part of
+a generation are not validated.
+
 ### Access and Admin Settings
 
 To set a Project Administrator edit the

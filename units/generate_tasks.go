@@ -32,6 +32,13 @@ const (
 	generateTasksOutcomeAttribute                = "evergreen.generate_tasks.outcome"
 	generateTasksIsSaveErrorAttribute            = "evergreen.generate_tasks.is_save_error"
 	generateTasksNumActivatedForVersionAttribute = "evergreen.generate_tasks.num_activated_for_version"
+
+	generateTasksTagValidationSpanName                     = "generate_tasks.tag_validation_failures"
+	generateTasksTagValidationFailureSpanName              = "generate_tasks.tag_validation_failure"
+	generateTasksTagValidationPrefixAttribute              = "evergreen.generate_tasks.tag_validation_prefix"
+	generateTasksTagValidationNumFailingAttribute          = "evergreen.generate_tasks.tag_validation_num_failing"
+	generateTasksTagValidationFailingTaskAttribute         = "evergreen.generate_tasks.tag_validation_failing_task"
+	generateTasksTagValidationFailingTaskVariantsAttribute = "evergreen.generate_tasks.tag_validation_failing_task_variants"
 )
 
 // generateTasksOutcome classifies why a generate.tasks job execution ended the way it did,
@@ -196,6 +203,15 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) (generate
 		return j.handleError(ctx, errors.WithStack(err))
 	}
 
+	// Placed after config validation so runs that fail validation anyway don't emit tracking spans.
+	if tagValidationTrackingEnabled(pref) {
+		prefix := pref.TaskOwnership.GeneratedTaskValidationPrefix
+		failures := validator.CheckGeneratedTaskTagValidation(project, p, prefix)
+		if len(failures) > 0 {
+			emitTagValidationFailuresSpans(ctx, pref, failures, prefix)
+		}
+	}
+
 	if err := g.CheckForCycles(ctx, v, p, pref); err != nil {
 		return outcomeError, model.GenerateTasksCounts{}, errors.Wrap(err, "checking new dependency graph for cycles")
 	}
@@ -217,6 +233,37 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) (generate
 	// Save returns the counts it computed so we can record them on telemetry
 	// without re-fetching the task.
 	return outcomeGenerated, counts, nil
+}
+
+// tagValidationTrackingEnabled reports whether the project is configured to
+// track generated tasks that fail tag validation.
+func tagValidationTrackingEnabled(pref *model.ProjectRef) bool {
+	return pref.TaskOwnership.GeneratedTaskValidationPrefix != "" && utility.FromBoolPtr(pref.TaskOwnership.TrackGeneratedTaskTagValidation)
+}
+
+// emitTagValidationFailuresSpans emits a new root span with one child span per
+// failing task, so the tracking data is always exported instead of being
+// subject to the sampling that applies to the job's own span.
+func emitTagValidationFailuresSpans(ctx context.Context, pref *model.ProjectRef, failures []validator.TagValidationFailure, prefix string) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{
+		attribute.String(evergreen.ProjectIdentifierOtelAttribute, pref.Identifier),
+	})
+	ctx, span := tracer.Start(ctx, generateTasksTagValidationSpanName,
+		trace.WithNewRoot(),
+		trace.WithAttributes(
+			attribute.String(generateTasksTagValidationPrefixAttribute, prefix),
+			attribute.Int(generateTasksTagValidationNumFailingAttribute, len(failures)),
+		))
+	defer span.End()
+
+	for _, failure := range failures {
+		_, failureSpan := tracer.Start(ctx, generateTasksTagValidationFailureSpanName,
+			trace.WithAttributes(
+				attribute.String(generateTasksTagValidationFailingTaskAttribute, failure.TaskName),
+				attribute.StringSlice(generateTasksTagValidationFailingTaskVariantsAttribute, failure.Variants),
+			))
+		failureSpan.End()
+	}
 }
 
 // handleError return mongo.ErrNoDocuments if generate.tasks has already run.
