@@ -1175,17 +1175,18 @@ func TestConstructManifestCarriesModulesForward(t *testing.T) {
 			assert.Equal(t, moduleNewRevision, m.Modules[module.Name].Revision)
 			assert.Equal(t, manifest.ModuleSelectionLatestIngested, m.Modules[module.Name].SelectionRule)
 		},
-		"MainlineVersionShouldIgnorePreviousCommitFromDifferentBranch": func(t *testing.T) {
+		"ModuleTriggeredVersionShouldNotCarryForwardFromDifferentBranch": func(t *testing.T) {
 			insertVersionWithManifest(t, pRef.Id, "previous", 1, evergreen.RepotrackerVersionRequester, map[string]*manifest.Module{
 				module.Name: {Owner: module.Owner, Repo: module.Repo, Branch: "other-branch", Revision: moduleNewRevision},
 			})
 			require.NoError(t, UpsertRepositoryRevision(t.Context(), module.Owner, module.Repo, module.Branch, moduleOldRevision, ingestTime))
 			v := &Version{
-				Id:                  "mainline",
+				Id:                  "triggered",
 				Identifier:          pRef.Id,
-				Requester:           evergreen.RepotrackerVersionRequester,
+				Requester:           evergreen.TriggerRequester,
 				RevisionOrderNumber: 2,
 				IngestTime:          ingestTime,
+				TriggerModule:       triggeringModule.Name,
 			}
 
 			m, err := constructManifest(t.Context(), v, pRef, ModuleList{module})
