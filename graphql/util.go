@@ -1585,33 +1585,32 @@ type testQuarantineChange struct {
 // setTestQuarantineState updates the quarantine state for the test on the
 // given task.
 func setTestQuarantineState(ctx context.Context, change testQuarantineChange) (*restModel.APITest, error) {
-	taskID, testName, isManuallyQuarantined := change.taskID, change.testName, change.isManuallyQuarantined
-	t, err := task.FindOneId(ctx, taskID)
+	t, err := task.FindOneId(ctx, change.taskID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", change.taskID, err.Error()))
 	}
 	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", change.taskID))
 	}
 	if t.DisplayOnly {
 		return nil, InputValidationError.Send(ctx, "cannot modify test quarantine state on display tasks, select an execution task instead")
 	}
-	if isManuallyQuarantined {
+	if change.isManuallyQuarantined {
 		if err = validateQuarantineJiraTickets(ctx, t.Project, change.existingJiraTicketsToLink); err != nil {
 			return nil, err
 		}
 	}
 	displayTaskName, err := t.GetDisplayTaskName(ctx)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching display task name for task '%s': %s", taskID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching display task name for task '%s': %s", change.taskID, err.Error()))
 	}
 	metadata := newTaskQuarantineMetadata(ctx, t)
 	metadata.ExistingJiraTicketsToLink = change.existingJiraTicketsToLink
 	metadata.Justification = strings.TrimSpace(change.justification)
-	if err = data.SetTestQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, displayTaskName, testName, isManuallyQuarantined, metadata); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting quarantine state to '%t' for test '%s' on task '%s' on build variant '%s' on project '%s': %s", isManuallyQuarantined, testName, taskID, t.BuildVariant, t.Project, err.Error()))
+	if err = data.SetTestQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, displayTaskName, change.testName, change.isManuallyQuarantined, metadata); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting quarantine state to '%t' for test '%s' on task '%s' on build variant '%s' on project '%s': %s", change.isManuallyQuarantined, change.testName, change.taskID, t.BuildVariant, t.Project, err.Error()))
 	}
-	return buildQuarantineMutationResponse(ctx, t, testName, isManuallyQuarantined)
+	return buildQuarantineMutationResponse(ctx, t, change.testName, change.isManuallyQuarantined)
 }
 
 // validateQuarantineJiraTickets checks that each ticket is a well-formed Jira
