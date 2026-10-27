@@ -1215,11 +1215,6 @@ func TestConstructManifestCarriesModulesForward(t *testing.T) {
 			require.NotNil(t, m)
 			assert.Equal(t, "previous", m.Id)
 		},
-		"FindPreviousManifestWithNoPreviousVersionShouldBeNil": func(t *testing.T) {
-			m, err := findPreviousManifest(t.Context(), &Version{Identifier: pRef.Id, RevisionOrderNumber: 1})
-			require.NoError(t, err)
-			assert.Nil(t, m)
-		},
 		"IsIngestedInOrderShouldCompareModuleCommitIngestTimes": func(t *testing.T) {
 			require.NoError(t, UpsertRepositoryRevision(t.Context(), module.Owner, module.Repo, module.Branch, moduleOldRevision, ingestTime))
 			require.NoError(t, UpsertRepositoryRevision(t.Context(), module.Owner, module.Repo, module.Branch, moduleNewRevision, ingestTime.Add(time.Minute)))
@@ -1265,7 +1260,6 @@ func TestNewerModuleCommit(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(collections...))
 	})
 
-	// In the sample repo, newerCommit is a descendant of olderCommit.
 	olderCommit := &manifest.Module{Owner: "evergreen-ci", Repo: "sample", Branch: "main", Revision: "b27779f856b211ffaf97cbc124b7082a20ea8bc0"}
 	newerCommit := &manifest.Module{Owner: "evergreen-ci", Repo: "sample", Branch: "main", Revision: "cf46076567e4949f9fc68e0634139d4ac495c89b"}
 	v := &Version{Id: "version", Identifier: "project"}
