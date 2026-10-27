@@ -2077,7 +2077,11 @@ example:
       "created_at": "2026-08-12T12:00:00Z"
     },
     "artifacts": [
-      { "name": "test.log", "url": "https://bucket.s3.amazonaws.com/path", "visibility": "public" }
+      {
+        "name": "test.log",
+        "url": "https://bucket.s3.amazonaws.com/path",
+        "visibility": "signed"
+      }
     ],
     "external_metadata": {
       "engflow_invocation_id": "inv-xyz",
