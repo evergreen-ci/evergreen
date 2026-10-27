@@ -1569,9 +1569,6 @@ func getWaterfallFilterOptionsFromContext(ctx context.Context) model.WaterfallOp
 	return model.WaterfallOptions{}
 }
 
-// jiraTicketKeyRegex matches Jira ticket keys such as BF-123, ignoring case.
-var jiraTicketKeyRegex = regexp.MustCompile(`(?i)^[A-Z][A-Z0-9_]*-[0-9]+$`)
-
 // testQuarantineChange describes a requested change to a test's manual
 // quarantine state. existingJiraTicketsToLink and justification are optional.
 type testQuarantineChange struct {
@@ -1605,7 +1602,7 @@ func setTestQuarantineState(ctx context.Context, change testQuarantineChange) (*
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching display task name for task '%s': %s", change.taskID, err.Error()))
 	}
 	metadata := newTaskQuarantineMetadata(ctx, t)
-	metadata.ExistingJiraTicketsToLink = change.existingJiraTicketsToLink
+	metadata.ExistingJiraTicketsToLink = thirdparty.NormalizeJiraTicketKeys(change.existingJiraTicketsToLink)
 	metadata.Justification = strings.TrimSpace(change.justification)
 	if err = data.SetTestQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, displayTaskName, change.testName, change.isManuallyQuarantined, metadata); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting quarantine state to '%t' for test '%s' on task '%s' on build variant '%s' on project '%s': %s", change.isManuallyQuarantined, change.testName, change.taskID, t.BuildVariant, t.Project, err.Error()))
@@ -1618,7 +1615,7 @@ func setTestQuarantineState(ctx context.Context, change testQuarantineChange) (*
 // only validates the form, not that it actually exists in Jira.
 func validateQuarantineJiraTickets(ctx context.Context, projectID string, existingJiraTicketsToLink []string) error {
 	for _, ticket := range existingJiraTicketsToLink {
-		if !jiraTicketKeyRegex.MatchString(ticket) {
+		if !thirdparty.IsValidJiraTicketKey(thirdparty.NormalizeJiraTicketKey(ticket)) {
 			return InputValidationError.Send(ctx, fmt.Sprintf("'%s' is not a valid Jira ticket key, expected a key like 'BF-123'", ticket))
 		}
 	}
