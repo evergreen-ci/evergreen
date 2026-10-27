@@ -21,11 +21,9 @@ const (
 	ModuleSelectionGitHubFallback ModuleSelectionRule = "github_fallback"
 	// ModuleSelectionBaseVersion is inherited from the base version's manifest.
 	ModuleSelectionBaseVersion ModuleSelectionRule = "base_version"
-	// ModuleSelectionCarriedForward is kept from the most recent earlier
-	// mainline or trigger version's manifest. This happens when a different
-	// module triggered the version, or when the newest commit Evergreen
-	// found for the module is actually older than the earlier version's commit, in
-	// which case we can't use it because it'd move the module backwards.
+	// ModuleSelectionCarriedForward is kept from the previous mainline or
+	// trigger version's manifest, either because a different module triggered
+	// the version or because the newest commit Evergreen found is older.
 	ModuleSelectionCarriedForward ModuleSelectionRule = "carried_forward"
 )
 

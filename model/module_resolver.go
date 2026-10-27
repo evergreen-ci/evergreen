@@ -26,8 +26,7 @@ const previousManifestLookback = 10
 
 // ModuleResolver resolves each module's commit for a single version at most
 // once, so a config and manifest built from the same resolver always agree on
-// module commits. Mainline and trigger versions carry module commits forward
-// from the previous mainline or trigger version's manifest.
+// module commits.
 type ModuleResolver struct {
 	projectRef *ProjectRef
 	opts       ModuleResolverOpts
@@ -50,11 +49,8 @@ type ModuleResolverOpts struct {
 	VersionID string
 	// Revision is the project revision, used to find the base manifest for
 	// patches and periodic builds.
-	Revision  string
-	Requester string
-	// RevisionOrderNumber, if known, limits the previous version to versions
-	// before it. Versions that resolve modules while loading their config
-	// don't have one yet, so they use the newest version in the project.
+	Revision            string
+	Requester           string
 	RevisionOrderNumber int
 	IngestTime          time.Time
 	// TriggeringModuleCommit pins the module with the same owner, repo and
@@ -95,9 +91,8 @@ func (r *ModuleResolver) Manifest(ctx context.Context, v *Version, modules Modul
 	if len(modules) == 0 {
 		return nil, nil
 	}
-	// The version's order number is assigned after its config is loaded. If
-	// the previous manifest hasn't been looked up yet, use it so versions
-	// created after this one aren't treated as the previous version.
+	// The order number is only known once the version is created, after its
+	// config may already have been loaded.
 	r.initMu.Lock()
 	if !r.initialized && r.opts.RevisionOrderNumber == 0 {
 		r.opts.RevisionOrderNumber = v.RevisionOrderNumber
@@ -204,7 +199,7 @@ func (r *ModuleResolver) init(ctx context.Context) error {
 	if r.shouldCarryForward() {
 		r.previousManifest, err = findPreviousManifest(ctx, r.projectRef.Id, r.opts.RevisionOrderNumber)
 		grip.Error(ctx, message.WrapError(err, message.Fields{
-			"message":    "finding previous version's manifest to carry module commits forward",
+			"message":    "finding previous version's manifest, resolving modules without it",
 			"source":     "manifest-creation",
 			"version_id": r.opts.VersionID,
 			"project_id": r.projectRef.Id,
@@ -257,7 +252,6 @@ func (r *ModuleResolver) resolve(ctx context.Context, module Module) (*manifest.
 	}
 
 	previous := r.previousModule(module.Name, owner, repo, module.Branch)
-	// A version triggered by a module commit only moves that module.
 	if previous != nil && module.Ref == "" && r.isTriggeredByModule() {
 		return previous, nil
 	}
@@ -289,9 +283,8 @@ func (r *ModuleResolver) isTriggeredByModule() bool {
 	return false
 }
 
-// previousModule returns a copy of the module's entry in the previous
-// manifest if it can be carried forward, which requires that it tracked the
-// same repo and branch and wasn't pinned to a ref.
+// previousModule returns the module's entry in the previous manifest if it
+// tracked the same repo and branch and wasn't pinned to a ref.
 func (r *ModuleResolver) previousModule(name, owner, repo, branch string) *manifest.Module {
 	if r.previousManifest == nil {
 		return nil
@@ -330,19 +323,17 @@ func (r *ModuleResolver) newerModuleCommit(ctx context.Context, moduleName strin
 	}
 
 	ingestedInOrder, err := isIngestedInOrder(ctx, previous, latest)
-	grip.Warning(ctx, message.WrapError(err, logFields("checking module commit ingest order")))
+	grip.Warning(ctx, message.WrapError(err, logFields("checking module commit ingest order, comparing with GitHub instead")))
 	if ingestedInOrder {
 		return latest
 	}
 
-	// Commits are normally ingested in the order they're pushed, so only ask
-	// GitHub when the ingest order doesn't already show that latest is newer.
 	grip.Info(ctx, logFields("comparing module commits with GitHub"))
 	ghCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 	status, err := thirdparty.GetCommitComparisonStatus(ghCtx, latest.Owner, latest.Repo, previous.Revision, latest.Revision)
 	if err != nil {
-		grip.Warning(ctx, message.WrapError(err, logFields("could not determine module commit order, using latest commit")))
+		grip.Warning(ctx, message.WrapError(err, logFields("comparing module commits with GitHub, using latest commit")))
 		return latest
 	}
 	if status == "behind" {
