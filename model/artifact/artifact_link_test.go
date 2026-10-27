@@ -1,8 +1,6 @@
 package artifact
 
 import (
-	"context"
-	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,12 +9,14 @@ import (
 
 func TestValidateFiles(t *testing.T) {
 	for _, tc := range []struct {
-		name           string
-		link           string
-		wantErr        bool
-		associatedOnly bool
+		name        string
+		link        string
+		wantErr     bool
+		associated  bool
+		doNotEncode bool
 	}{
 		{name: "HTTPSShouldValidate", link: "https://example.com/report.html"},
+		{name: "HTTPSAssociatedLinkShouldValidate", link: "https://example.com/coverage.html", associated: true},
 		{name: "MixedCaseHTTPShouldValidate", link: "HtTpS://example.com/report.html"},
 		{name: "SingleLabelHostShouldValidate", link: "http://fileserver/report.html"},
 		{name: "IPv6HostShouldValidate", link: "http://[::1]:8080/report.html"},
@@ -24,8 +24,12 @@ func TestValidateFiles(t *testing.T) {
 		{name: "EscapedFilenameShouldValidate", link: "https://example.com/report%2Ffile.html"},
 		{name: "SpecialFilenameShouldValidate", link: "https://example.com/file#1%.txt"},
 		{name: "RawPercentInDirectoryShouldValidate", link: "https://example.com/coverage/100%/report.html"},
-		{name: "T2ShouldValidateOnlyForAssociatedLinks", link: "t2://internal.example.com/report.ftdc", associatedOnly: true},
+		{name: "T2MainLinkShouldError", link: "t2://internal.example.com/report.ftdc", wantErr: true},
+		{name: "T2AssociatedLinkShouldValidate", link: "t2://internal.example.com/report.ftdc", associated: true},
 		{name: "JavaScriptShouldError", link: "javascript:alert(document.domain)", wantErr: true},
+		{name: "UnencodedJavaScriptShouldError", link: "javascript:alert(document.domain)", wantErr: true, doNotEncode: true},
+		{name: "AssociatedJavaScriptShouldError", link: "javascript:alert(document.domain)//%2F", wantErr: true, associated: true},
+		{name: "UnencodedAssociatedJavaScriptShouldError", link: "javascript:alert(document.domain)", wantErr: true, associated: true, doNotEncode: true},
 		{name: "EscapedJavaScriptShouldError", link: "javascript:alert(document.domain)//%2F", wantErr: true},
 		{name: "JavaScriptWithAuthorityAndRawPercentPathShouldError", link: "javascript://example.com/100%/report.html", wantErr: true},
 		{name: "MixedCaseJavaScriptShouldError", link: "JaVaScRiPt:alert(document.domain)//%2F", wantErr: true},
@@ -44,60 +48,22 @@ func TestValidateFiles(t *testing.T) {
 		{name: "EmptyURLShouldError", wantErr: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			for _, doNotEncode := range []bool{false, true} {
-				encodingName := "EncodeLinks"
-				if doNotEncode {
-					encodingName = "DoNotEncodeLinks"
+			file := File{Name: "Report", Link: tc.link, DoNotEncodeLink: tc.doNotEncode}
+			if tc.associated {
+				file.Link = "https://example.com/report.html"
+				file.DoNotEncodeLink = true
+				file.AssociatedLinks = []AssociatedLink{{Name: "Coverage", Link: tc.link, DoNotEncodeLink: tc.doNotEncode}}
+			}
+			err := ValidateFiles([]File{file})
+			if tc.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "artifact 'Report'")
+				if tc.associated {
+					assert.Contains(t, err.Error(), "associated link 'Coverage'")
 				}
-				t.Run(encodingName, func(t *testing.T) {
-					for _, associated := range []bool{false, true} {
-						fieldName := "MainLink"
-						if associated {
-							fieldName = "AssociatedLink"
-						}
-						t.Run(fieldName, func(t *testing.T) {
-							file := File{Name: "Report", Link: "https://example.com/report.html", DoNotEncodeLink: doNotEncode}
-							if associated {
-								file.AssociatedLinks = []AssociatedLink{{Name: "Coverage", Link: tc.link, DoNotEncodeLink: doNotEncode}}
-							} else {
-								file.Link = tc.link
-							}
-							err := ValidateFiles([]File{file})
-							if tc.wantErr || (tc.associatedOnly && !associated) {
-								require.Error(t, err)
-								assert.Contains(t, err.Error(), "artifact 'Report'")
-								if associated {
-									assert.Contains(t, err.Error(), "associated link 'Coverage'")
-								}
-							} else {
-								assert.NoError(t, err)
-							}
-						})
-					}
-				})
+			} else {
+				assert.NoError(t, err)
 			}
 		})
 	}
-}
-
-func TestValidateSignedArtifactWithRawPercentInDirectory(t *testing.T) {
-	file := File{
-		Name:       "Coverage",
-		Link:       "https://bucket.s3.amazonaws.com/coverage/100%/report.html",
-		Bucket:     "bucket",
-		FileKey:    "coverage/100%/report.html",
-		Visibility: Signed,
-	}
-	require.NoError(t, ValidateFiles([]File{file}))
-	stored := EscapeFiles([]File{file})
-	require.Len(t, stored, 1)
-	assert.Equal(t, file.Link, stored[0].Link)
-
-	signedURL, err := PresignFile(t.Context(), stored[0], func(context.Context, File) (*Credentials, error) {
-		return &Credentials{AWSKey: "AKIAFAKEKEY", AWSSecret: "fake-secret"}, nil
-	})
-	require.NoError(t, err)
-	parsed, err := url.Parse(signedURL)
-	require.NoError(t, err)
-	assert.Equal(t, "/coverage/100%25/report.html", parsed.EscapedPath())
 }

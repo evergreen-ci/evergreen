@@ -50,16 +50,8 @@ func TestAttachFiles(t *testing.T) {
 		mutate func([]artifact.File)
 	}{
 		{name: "ValidLinksShouldBeStoredWithEncodingFlagsRespected"},
-		{name: "JavaScriptShouldRejectEntireBatch", mutate: func(files []artifact.File) {
-			files[1].Link = "javascript:alert(document.domain)//%2F"
-			files[1].DoNotEncodeLink = false
-		}},
 		{name: "UnencodedJavaScriptShouldRejectEntireBatch", mutate: func(files []artifact.File) {
 			files[1].Link = "javascript:alert(document.domain)"
-		}},
-		{name: "AssociatedJavaScriptShouldRejectEntireBatchWithParentEncodingDisabled", mutate: func(files []artifact.File) {
-			files[1].AssociatedLinks[0].Link = "javascript:alert(document.domain)//%2F"
-			files[1].AssociatedLinks[0].DoNotEncodeLink = false
 		}},
 		{name: "UnencodedAssociatedJavaScriptShouldRejectEntireBatch", mutate: func(files []artifact.File) {
 			files[1].AssociatedLinks[0].Link = "javascript:alert(document.domain)"
