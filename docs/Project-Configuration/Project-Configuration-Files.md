@@ -1075,6 +1075,9 @@ Every task has some expansions available by default:
   project
 - `${build_variant}` is the name of the build variant the task belongs
   to
+- `${config_file_path}` is the path to the project's Evergreen
+  configuration file in its repository. For projects using repo-level
+  settings, this is the repo's configuration file path.
 - `${created_at}` is the time the version was created
 - `${display_task_name}` is the name of the display task that contains the
   running execution task. It is undefined if the task is not part of a display

@@ -489,13 +489,17 @@ type APITestSelectionSettings struct {
 	// Whether or not test selection is enabled by default for mainline commit
 	// tasks.
 	MainlineDefaultEnabled *bool `json:"mainline_default_enabled,omitzero" extensions:"x-nullable"`
+	// Whether or not users must link at least one Jira ticket when manually
+	// quarantining a test.
+	QuarantineJiraTicketsRequired *bool `json:"quarantine_jira_tickets_required,omitzero" extensions:"x-nullable"`
 }
 
 func (ts *APITestSelectionSettings) ToService() model.TestSelectionSettings {
 	return model.TestSelectionSettings{
-		Allowed:                utility.BoolPtrCopy(ts.Allowed),
-		DefaultEnabled:         utility.BoolPtrCopy(ts.DefaultEnabled),
-		MainlineDefaultEnabled: utility.BoolPtrCopy(ts.MainlineDefaultEnabled),
+		Allowed:                       utility.BoolPtrCopy(ts.Allowed),
+		DefaultEnabled:                utility.BoolPtrCopy(ts.DefaultEnabled),
+		MainlineDefaultEnabled:        utility.BoolPtrCopy(ts.MainlineDefaultEnabled),
+		QuarantineJiraTicketsRequired: utility.BoolPtrCopy(ts.QuarantineJiraTicketsRequired),
 	}
 }
 
@@ -503,6 +507,7 @@ func (ts *APITestSelectionSettings) BuildFromService(settings model.TestSelectio
 	ts.Allowed = utility.BoolPtrCopy(settings.Allowed)
 	ts.DefaultEnabled = utility.BoolPtrCopy(settings.DefaultEnabled)
 	ts.MainlineDefaultEnabled = utility.BoolPtrCopy(settings.MainlineDefaultEnabled)
+	ts.QuarantineJiraTicketsRequired = utility.BoolPtrCopy(settings.QuarantineJiraTicketsRequired)
 }
 
 type APITaskOwnershipSettings struct {

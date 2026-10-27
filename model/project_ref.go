@@ -515,6 +515,9 @@ type TestSelectionSettings struct {
 	// MainlineDefaultEnabled indicates whether test selection is enabled for
 	// mainline commit tasks that are otherwise eligible for test selection.
 	MainlineDefaultEnabled *bool `bson:"mainline_default_enabled,omitempty" json:"mainline_default_enabled,omitzero" yaml:"mainline_default_enabled,omitempty"`
+	// QuarantineJiraTicketsRequired indicates whether users must link at least
+	// one Jira ticket when manually quarantining a test in this project.
+	QuarantineJiraTicketsRequired *bool `bson:"quarantine_jira_tickets_required,omitempty" json:"quarantine_jira_tickets_required,omitzero" yaml:"quarantine_jira_tickets_required,omitempty"`
 }
 
 // TaskOwnershipSettings contains default team ownership settings for tasks in
@@ -728,6 +731,10 @@ func (p *ProjectRef) IsTestSelectionDefaultEnabled() bool {
 
 func (p *ProjectRef) IsTestSelectionMainlineDefaultEnabled() bool {
 	return utility.FromBoolPtr(p.TestSelection.MainlineDefaultEnabled)
+}
+
+func (p *ProjectRef) IsTestSelectionQuarantineJiraTicketsRequired() bool {
+	return utility.FromBoolPtr(p.TestSelection.QuarantineJiraTicketsRequired)
 }
 
 // IsTestSelectionFilteringEnabled returns whether test selection may filter

@@ -901,6 +901,8 @@ The task-level setting only has an effect when project-level test selection is e
 triggered versions, and other non-patch versions do not run the
 [test selection command](Project-Commands#test_selectionget).
 
+The "Require Jira Tickets When Quarantining Tests" setting (off by default) requires users to link at least one existing Jira ticket when manually quarantining a test from the task page.
+
 ## GitHub App Settings
 
 Project and repo settings include a GitHub App Settings tab where you can save a GitHub App ID and private key. These
