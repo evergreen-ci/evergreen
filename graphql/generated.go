@@ -1620,11 +1620,11 @@ type ComplexityRoot struct {
 	}
 
 	RepoTaskOwnershipSettings struct {
-		BlockOnTagValidation               func(childComplexity int) int
+		BlockTaskGenerationOnTagValidation func(childComplexity int) int
 		DefaultMothraTeam                  func(childComplexity int) int
 		DefaultMothraTeamForBreakingCommit func(childComplexity int) int
-		TagValidationPrefix                func(childComplexity int) int
-		TrackTagValidation                 func(childComplexity int) int
+		GeneratedTaskValidationPrefix      func(childComplexity int) int
+		TrackGeneratedTaskTagValidation    func(childComplexity int) int
 	}
 
 	RepoTestSelectionSettings struct {
@@ -2113,11 +2113,11 @@ type ComplexityRoot struct {
 	}
 
 	TaskOwnershipSettings struct {
-		BlockOnTagValidation               func(childComplexity int) int
+		BlockTaskGenerationOnTagValidation func(childComplexity int) int
 		DefaultMothraTeam                  func(childComplexity int) int
 		DefaultMothraTeamForBreakingCommit func(childComplexity int) int
-		TagValidationPrefix                func(childComplexity int) int
-		TrackTagValidation                 func(childComplexity int) int
+		GeneratedTaskValidationPrefix      func(childComplexity int) int
+		TrackGeneratedTaskTagValidation    func(childComplexity int) int
 	}
 
 	TaskQuarantineEntry struct {
@@ -9730,12 +9730,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.RepoSettings.Vars(childComplexity), true
 
-	case "RepoTaskOwnershipSettings.blockOnTagValidation":
-		if e.complexity.RepoTaskOwnershipSettings.BlockOnTagValidation == nil {
+	case "RepoTaskOwnershipSettings.blockTaskGenerationOnTagValidation":
+		if e.complexity.RepoTaskOwnershipSettings.BlockTaskGenerationOnTagValidation == nil {
 			break
 		}
 
-		return e.complexity.RepoTaskOwnershipSettings.BlockOnTagValidation(childComplexity), true
+		return e.complexity.RepoTaskOwnershipSettings.BlockTaskGenerationOnTagValidation(childComplexity), true
 	case "RepoTaskOwnershipSettings.defaultMothraTeam":
 		if e.complexity.RepoTaskOwnershipSettings.DefaultMothraTeam == nil {
 			break
@@ -9748,18 +9748,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RepoTaskOwnershipSettings.DefaultMothraTeamForBreakingCommit(childComplexity), true
-	case "RepoTaskOwnershipSettings.tagValidationPrefix":
-		if e.complexity.RepoTaskOwnershipSettings.TagValidationPrefix == nil {
+	case "RepoTaskOwnershipSettings.generatedTaskValidationPrefix":
+		if e.complexity.RepoTaskOwnershipSettings.GeneratedTaskValidationPrefix == nil {
 			break
 		}
 
-		return e.complexity.RepoTaskOwnershipSettings.TagValidationPrefix(childComplexity), true
-	case "RepoTaskOwnershipSettings.trackTagValidation":
-		if e.complexity.RepoTaskOwnershipSettings.TrackTagValidation == nil {
+		return e.complexity.RepoTaskOwnershipSettings.GeneratedTaskValidationPrefix(childComplexity), true
+	case "RepoTaskOwnershipSettings.trackGeneratedTaskTagValidation":
+		if e.complexity.RepoTaskOwnershipSettings.TrackGeneratedTaskTagValidation == nil {
 			break
 		}
 
-		return e.complexity.RepoTaskOwnershipSettings.TrackTagValidation(childComplexity), true
+		return e.complexity.RepoTaskOwnershipSettings.TrackGeneratedTaskTagValidation(childComplexity), true
 
 	case "RepoTestSelectionSettings.allowed":
 		if e.complexity.RepoTestSelectionSettings.Allowed == nil {
@@ -11785,12 +11785,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.TaskOwnerTeam.TeamName(childComplexity), true
 
-	case "TaskOwnershipSettings.blockOnTagValidation":
-		if e.complexity.TaskOwnershipSettings.BlockOnTagValidation == nil {
+	case "TaskOwnershipSettings.blockTaskGenerationOnTagValidation":
+		if e.complexity.TaskOwnershipSettings.BlockTaskGenerationOnTagValidation == nil {
 			break
 		}
 
-		return e.complexity.TaskOwnershipSettings.BlockOnTagValidation(childComplexity), true
+		return e.complexity.TaskOwnershipSettings.BlockTaskGenerationOnTagValidation(childComplexity), true
 	case "TaskOwnershipSettings.defaultMothraTeam":
 		if e.complexity.TaskOwnershipSettings.DefaultMothraTeam == nil {
 			break
@@ -11803,18 +11803,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TaskOwnershipSettings.DefaultMothraTeamForBreakingCommit(childComplexity), true
-	case "TaskOwnershipSettings.tagValidationPrefix":
-		if e.complexity.TaskOwnershipSettings.TagValidationPrefix == nil {
+	case "TaskOwnershipSettings.generatedTaskValidationPrefix":
+		if e.complexity.TaskOwnershipSettings.GeneratedTaskValidationPrefix == nil {
 			break
 		}
 
-		return e.complexity.TaskOwnershipSettings.TagValidationPrefix(childComplexity), true
-	case "TaskOwnershipSettings.trackTagValidation":
-		if e.complexity.TaskOwnershipSettings.TrackTagValidation == nil {
+		return e.complexity.TaskOwnershipSettings.GeneratedTaskValidationPrefix(childComplexity), true
+	case "TaskOwnershipSettings.trackGeneratedTaskTagValidation":
+		if e.complexity.TaskOwnershipSettings.TrackGeneratedTaskTagValidation == nil {
 			break
 		}
 
-		return e.complexity.TaskOwnershipSettings.TrackTagValidation(childComplexity), true
+		return e.complexity.TaskOwnershipSettings.TrackGeneratedTaskTagValidation(childComplexity), true
 
 	case "TaskQuarantineEntry.taskName":
 		if e.complexity.TaskQuarantineEntry.TaskName == nil {
@@ -48617,12 +48617,12 @@ func (ec *executionContext) fieldContext_Project_taskOwnership(_ context.Context
 				return ec.fieldContext_TaskOwnershipSettings_defaultMothraTeam(ctx, field)
 			case "defaultMothraTeamForBreakingCommit":
 				return ec.fieldContext_TaskOwnershipSettings_defaultMothraTeamForBreakingCommit(ctx, field)
-			case "tagValidationPrefix":
-				return ec.fieldContext_TaskOwnershipSettings_tagValidationPrefix(ctx, field)
-			case "trackTagValidation":
-				return ec.fieldContext_TaskOwnershipSettings_trackTagValidation(ctx, field)
-			case "blockOnTagValidation":
-				return ec.fieldContext_TaskOwnershipSettings_blockOnTagValidation(ctx, field)
+			case "generatedTaskValidationPrefix":
+				return ec.fieldContext_TaskOwnershipSettings_generatedTaskValidationPrefix(ctx, field)
+			case "trackGeneratedTaskTagValidation":
+				return ec.fieldContext_TaskOwnershipSettings_trackGeneratedTaskTagValidation(ctx, field)
+			case "blockTaskGenerationOnTagValidation":
+				return ec.fieldContext_TaskOwnershipSettings_blockTaskGenerationOnTagValidation(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TaskOwnershipSettings", field.Name)
 		},
@@ -56868,12 +56868,12 @@ func (ec *executionContext) fieldContext_RepoRef_taskOwnership(_ context.Context
 				return ec.fieldContext_RepoTaskOwnershipSettings_defaultMothraTeam(ctx, field)
 			case "defaultMothraTeamForBreakingCommit":
 				return ec.fieldContext_RepoTaskOwnershipSettings_defaultMothraTeamForBreakingCommit(ctx, field)
-			case "tagValidationPrefix":
-				return ec.fieldContext_RepoTaskOwnershipSettings_tagValidationPrefix(ctx, field)
-			case "trackTagValidation":
-				return ec.fieldContext_RepoTaskOwnershipSettings_trackTagValidation(ctx, field)
-			case "blockOnTagValidation":
-				return ec.fieldContext_RepoTaskOwnershipSettings_blockOnTagValidation(ctx, field)
+			case "generatedTaskValidationPrefix":
+				return ec.fieldContext_RepoTaskOwnershipSettings_generatedTaskValidationPrefix(ctx, field)
+			case "trackGeneratedTaskTagValidation":
+				return ec.fieldContext_RepoTaskOwnershipSettings_trackGeneratedTaskTagValidation(ctx, field)
+			case "blockTaskGenerationOnTagValidation":
+				return ec.fieldContext_RepoTaskOwnershipSettings_blockTaskGenerationOnTagValidation(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RepoTaskOwnershipSettings", field.Name)
 		},
@@ -57496,14 +57496,14 @@ func (ec *executionContext) fieldContext_RepoTaskOwnershipSettings_defaultMothra
 	return fc, nil
 }
 
-func (ec *executionContext) _RepoTaskOwnershipSettings_tagValidationPrefix(ctx context.Context, field graphql.CollectedField, obj *model.APITaskOwnershipSettings) (ret graphql.Marshaler) {
+func (ec *executionContext) _RepoTaskOwnershipSettings_generatedTaskValidationPrefix(ctx context.Context, field graphql.CollectedField, obj *model.APITaskOwnershipSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_RepoTaskOwnershipSettings_tagValidationPrefix,
+		ec.fieldContext_RepoTaskOwnershipSettings_generatedTaskValidationPrefix,
 		func(ctx context.Context) (any, error) {
-			return obj.TagValidationPrefix, nil
+			return obj.GeneratedTaskValidationPrefix, nil
 		},
 		nil,
 		ec.marshalNString2ᚖstring,
@@ -57512,7 +57512,7 @@ func (ec *executionContext) _RepoTaskOwnershipSettings_tagValidationPrefix(ctx c
 	)
 }
 
-func (ec *executionContext) fieldContext_RepoTaskOwnershipSettings_tagValidationPrefix(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_RepoTaskOwnershipSettings_generatedTaskValidationPrefix(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RepoTaskOwnershipSettings",
 		Field:      field,
@@ -57525,14 +57525,14 @@ func (ec *executionContext) fieldContext_RepoTaskOwnershipSettings_tagValidation
 	return fc, nil
 }
 
-func (ec *executionContext) _RepoTaskOwnershipSettings_trackTagValidation(ctx context.Context, field graphql.CollectedField, obj *model.APITaskOwnershipSettings) (ret graphql.Marshaler) {
+func (ec *executionContext) _RepoTaskOwnershipSettings_trackGeneratedTaskTagValidation(ctx context.Context, field graphql.CollectedField, obj *model.APITaskOwnershipSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_RepoTaskOwnershipSettings_trackTagValidation,
+		ec.fieldContext_RepoTaskOwnershipSettings_trackGeneratedTaskTagValidation,
 		func(ctx context.Context) (any, error) {
-			return obj.TrackTagValidation, nil
+			return obj.TrackGeneratedTaskTagValidation, nil
 		},
 		nil,
 		ec.marshalNBoolean2ᚖbool,
@@ -57541,7 +57541,7 @@ func (ec *executionContext) _RepoTaskOwnershipSettings_trackTagValidation(ctx co
 	)
 }
 
-func (ec *executionContext) fieldContext_RepoTaskOwnershipSettings_trackTagValidation(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_RepoTaskOwnershipSettings_trackGeneratedTaskTagValidation(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RepoTaskOwnershipSettings",
 		Field:      field,
@@ -57554,14 +57554,14 @@ func (ec *executionContext) fieldContext_RepoTaskOwnershipSettings_trackTagValid
 	return fc, nil
 }
 
-func (ec *executionContext) _RepoTaskOwnershipSettings_blockOnTagValidation(ctx context.Context, field graphql.CollectedField, obj *model.APITaskOwnershipSettings) (ret graphql.Marshaler) {
+func (ec *executionContext) _RepoTaskOwnershipSettings_blockTaskGenerationOnTagValidation(ctx context.Context, field graphql.CollectedField, obj *model.APITaskOwnershipSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_RepoTaskOwnershipSettings_blockOnTagValidation,
+		ec.fieldContext_RepoTaskOwnershipSettings_blockTaskGenerationOnTagValidation,
 		func(ctx context.Context) (any, error) {
-			return obj.BlockOnTagValidation, nil
+			return obj.BlockTaskGenerationOnTagValidation, nil
 		},
 		nil,
 		ec.marshalNBoolean2ᚖbool,
@@ -57570,7 +57570,7 @@ func (ec *executionContext) _RepoTaskOwnershipSettings_blockOnTagValidation(ctx 
 	)
 }
 
-func (ec *executionContext) fieldContext_RepoTaskOwnershipSettings_blockOnTagValidation(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_RepoTaskOwnershipSettings_blockTaskGenerationOnTagValidation(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RepoTaskOwnershipSettings",
 		Field:      field,
@@ -70801,14 +70801,14 @@ func (ec *executionContext) fieldContext_TaskOwnershipSettings_defaultMothraTeam
 	return fc, nil
 }
 
-func (ec *executionContext) _TaskOwnershipSettings_tagValidationPrefix(ctx context.Context, field graphql.CollectedField, obj *model.APITaskOwnershipSettings) (ret graphql.Marshaler) {
+func (ec *executionContext) _TaskOwnershipSettings_generatedTaskValidationPrefix(ctx context.Context, field graphql.CollectedField, obj *model.APITaskOwnershipSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_TaskOwnershipSettings_tagValidationPrefix,
+		ec.fieldContext_TaskOwnershipSettings_generatedTaskValidationPrefix,
 		func(ctx context.Context) (any, error) {
-			return obj.TagValidationPrefix, nil
+			return obj.GeneratedTaskValidationPrefix, nil
 		},
 		nil,
 		ec.marshalOString2ᚖstring,
@@ -70817,7 +70817,7 @@ func (ec *executionContext) _TaskOwnershipSettings_tagValidationPrefix(ctx conte
 	)
 }
 
-func (ec *executionContext) fieldContext_TaskOwnershipSettings_tagValidationPrefix(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_TaskOwnershipSettings_generatedTaskValidationPrefix(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TaskOwnershipSettings",
 		Field:      field,
@@ -70830,14 +70830,14 @@ func (ec *executionContext) fieldContext_TaskOwnershipSettings_tagValidationPref
 	return fc, nil
 }
 
-func (ec *executionContext) _TaskOwnershipSettings_trackTagValidation(ctx context.Context, field graphql.CollectedField, obj *model.APITaskOwnershipSettings) (ret graphql.Marshaler) {
+func (ec *executionContext) _TaskOwnershipSettings_trackGeneratedTaskTagValidation(ctx context.Context, field graphql.CollectedField, obj *model.APITaskOwnershipSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_TaskOwnershipSettings_trackTagValidation,
+		ec.fieldContext_TaskOwnershipSettings_trackGeneratedTaskTagValidation,
 		func(ctx context.Context) (any, error) {
-			return obj.TrackTagValidation, nil
+			return obj.TrackGeneratedTaskTagValidation, nil
 		},
 		nil,
 		ec.marshalOBoolean2ᚖbool,
@@ -70846,7 +70846,7 @@ func (ec *executionContext) _TaskOwnershipSettings_trackTagValidation(ctx contex
 	)
 }
 
-func (ec *executionContext) fieldContext_TaskOwnershipSettings_trackTagValidation(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_TaskOwnershipSettings_trackGeneratedTaskTagValidation(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TaskOwnershipSettings",
 		Field:      field,
@@ -70859,14 +70859,14 @@ func (ec *executionContext) fieldContext_TaskOwnershipSettings_trackTagValidatio
 	return fc, nil
 }
 
-func (ec *executionContext) _TaskOwnershipSettings_blockOnTagValidation(ctx context.Context, field graphql.CollectedField, obj *model.APITaskOwnershipSettings) (ret graphql.Marshaler) {
+func (ec *executionContext) _TaskOwnershipSettings_blockTaskGenerationOnTagValidation(ctx context.Context, field graphql.CollectedField, obj *model.APITaskOwnershipSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_TaskOwnershipSettings_blockOnTagValidation,
+		ec.fieldContext_TaskOwnershipSettings_blockTaskGenerationOnTagValidation,
 		func(ctx context.Context) (any, error) {
-			return obj.BlockOnTagValidation, nil
+			return obj.BlockTaskGenerationOnTagValidation, nil
 		},
 		nil,
 		ec.marshalOBoolean2ᚖbool,
@@ -70875,7 +70875,7 @@ func (ec *executionContext) _TaskOwnershipSettings_blockOnTagValidation(ctx cont
 	)
 }
 
-func (ec *executionContext) fieldContext_TaskOwnershipSettings_blockOnTagValidation(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_TaskOwnershipSettings_blockTaskGenerationOnTagValidation(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TaskOwnershipSettings",
 		Field:      field,
@@ -91416,7 +91416,7 @@ func (ec *executionContext) unmarshalInputTaskOwnershipSettingsInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"defaultMothraTeam", "defaultMothraTeamForBreakingCommit", "tagValidationPrefix", "trackTagValidation", "blockOnTagValidation"}
+	fieldsInOrder := [...]string{"defaultMothraTeam", "defaultMothraTeamForBreakingCommit", "generatedTaskValidationPrefix", "trackGeneratedTaskTagValidation", "blockTaskGenerationOnTagValidation"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -91437,27 +91437,27 @@ func (ec *executionContext) unmarshalInputTaskOwnershipSettingsInput(ctx context
 				return it, err
 			}
 			it.DefaultMothraTeamForBreakingCommit = data
-		case "tagValidationPrefix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tagValidationPrefix"))
+		case "generatedTaskValidationPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("generatedTaskValidationPrefix"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TagValidationPrefix = data
-		case "trackTagValidation":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("trackTagValidation"))
+			it.GeneratedTaskValidationPrefix = data
+		case "trackGeneratedTaskTagValidation":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("trackGeneratedTaskTagValidation"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TrackTagValidation = data
-		case "blockOnTagValidation":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("blockOnTagValidation"))
+			it.TrackGeneratedTaskTagValidation = data
+		case "blockTaskGenerationOnTagValidation":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("blockTaskGenerationOnTagValidation"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.BlockOnTagValidation = data
+			it.BlockTaskGenerationOnTagValidation = data
 		}
 	}
 
@@ -105474,18 +105474,18 @@ func (ec *executionContext) _RepoTaskOwnershipSettings(ctx context.Context, sel 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "tagValidationPrefix":
-			out.Values[i] = ec._RepoTaskOwnershipSettings_tagValidationPrefix(ctx, field, obj)
+		case "generatedTaskValidationPrefix":
+			out.Values[i] = ec._RepoTaskOwnershipSettings_generatedTaskValidationPrefix(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "trackTagValidation":
-			out.Values[i] = ec._RepoTaskOwnershipSettings_trackTagValidation(ctx, field, obj)
+		case "trackGeneratedTaskTagValidation":
+			out.Values[i] = ec._RepoTaskOwnershipSettings_trackGeneratedTaskTagValidation(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "blockOnTagValidation":
-			out.Values[i] = ec._RepoTaskOwnershipSettings_blockOnTagValidation(ctx, field, obj)
+		case "blockTaskGenerationOnTagValidation":
+			out.Values[i] = ec._RepoTaskOwnershipSettings_blockTaskGenerationOnTagValidation(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -110280,12 +110280,12 @@ func (ec *executionContext) _TaskOwnershipSettings(ctx context.Context, sel ast.
 			out.Values[i] = ec._TaskOwnershipSettings_defaultMothraTeam(ctx, field, obj)
 		case "defaultMothraTeamForBreakingCommit":
 			out.Values[i] = ec._TaskOwnershipSettings_defaultMothraTeamForBreakingCommit(ctx, field, obj)
-		case "tagValidationPrefix":
-			out.Values[i] = ec._TaskOwnershipSettings_tagValidationPrefix(ctx, field, obj)
-		case "trackTagValidation":
-			out.Values[i] = ec._TaskOwnershipSettings_trackTagValidation(ctx, field, obj)
-		case "blockOnTagValidation":
-			out.Values[i] = ec._TaskOwnershipSettings_blockOnTagValidation(ctx, field, obj)
+		case "generatedTaskValidationPrefix":
+			out.Values[i] = ec._TaskOwnershipSettings_generatedTaskValidationPrefix(ctx, field, obj)
+		case "trackGeneratedTaskTagValidation":
+			out.Values[i] = ec._TaskOwnershipSettings_trackGeneratedTaskTagValidation(ctx, field, obj)
+		case "blockTaskGenerationOnTagValidation":
+			out.Values[i] = ec._TaskOwnershipSettings_blockTaskGenerationOnTagValidation(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

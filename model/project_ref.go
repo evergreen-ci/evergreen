@@ -525,14 +525,15 @@ type TaskOwnershipSettings struct {
 	// DefaultMothraTeamForBreakingCommit is the default Mothra team for
 	// breaking commit tasks in this project.
 	DefaultMothraTeamForBreakingCommit string `bson:"default_mothra_team_for_breaking_commit,omitempty" json:"default_mothra_team_for_breaking_commit,omitempty" yaml:"default_mothra_team_for_breaking_commit,omitempty"`
-	// TagValidationPrefix is the required prefix for generated task tags.
-	TagValidationPrefix string `bson:"tag_validation_prefix,omitempty" json:"tag_validation_prefix,omitempty" yaml:"tag_validation_prefix,omitempty"`
-	// TrackTagValidation enables tracking generated tasks that don't have the
-	// TagValidationPrefix.
-	TrackTagValidation *bool `bson:"track_tag_validation,omitempty" json:"track_tag_validation,omitempty" yaml:"track_tag_validation,omitempty"`
-	// BlockOnTagValidation enables failing generate.tasks if any task it
-	// generates doesn't have TagValidationPrefix.
-	BlockOnTagValidation *bool `bson:"block_on_tag_validation,omitempty" json:"block_on_tag_validation,omitempty" yaml:"block_on_tag_validation,omitempty"`
+	// GeneratedTaskValidationPrefix is the required prefix for generated task
+	// tags. Only one of the task's tags needs to have this prefix.
+	GeneratedTaskValidationPrefix string `bson:"generated_task_validation_prefix,omitempty" json:"generated_task_validation_prefix,omitempty" yaml:"generated_task_validation_prefix,omitempty"`
+	// TrackGeneratedTaskTagValidation enables tracking generated tasks that
+	// don't have the GeneratedTaskValidationPrefix.
+	TrackGeneratedTaskTagValidation *bool `bson:"track_generated_task_tag_validation,omitempty" json:"track_generated_task_tag_validation,omitempty" yaml:"track_generated_task_tag_validation,omitempty"`
+	// BlockTaskGenerationOnTagValidation enables failing generate.tasks if any
+	// task it generates doesn't have GeneratedTaskValidationPrefix.
+	BlockTaskGenerationOnTagValidation *bool `bson:"block_task_generation_on_tag_validation,omitempty" json:"block_task_generation_on_tag_validation,omitempty" yaml:"block_task_generation_on_tag_validation,omitempty"`
 }
 
 var (
