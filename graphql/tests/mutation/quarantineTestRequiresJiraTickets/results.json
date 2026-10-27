@@ -6,7 +6,7 @@
         "data": null,
         "errors": [
           {
-            "message": "project 'sandbox_project_id' requires at least one Jira ticket to quarantine a test",
+            "message": "project 'sandbox' requires at least one Jira ticket to quarantine a test",
             "path": ["quarantineTest"],
             "extensions": {
               "code": "INPUT_VALIDATION_ERROR"

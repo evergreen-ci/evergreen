@@ -1634,7 +1634,7 @@ func validateQuarantineJiraTickets(ctx context.Context, projectID string, existi
 		return ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", projectID))
 	}
 	if pRef.IsTestSelectionQuarantineJiraTicketsRequired() {
-		return InputValidationError.Send(ctx, fmt.Sprintf("project '%s' requires at least one Jira ticket to quarantine a test", projectID))
+		return InputValidationError.Send(ctx, fmt.Sprintf("project '%s' requires at least one Jira ticket to quarantine a test", pRef.Identifier))
 	}
 	return nil
 }
