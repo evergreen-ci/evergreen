@@ -512,7 +512,7 @@ type APITaskOwnershipSettings struct {
 	DefaultMothraTeamForBreakingCommit *string `json:"default_mothra_team_for_breaking_commit,omitempty"`
 	// TagValidationPrefix is the required prefix for generated task tags.
 	TagValidationPrefix *string `json:"tag_validation_prefix,omitempty"`
-	// TrackTagValidation enables tracking tasks that don't have the
+	// TrackTagValidation enables tracking generated tasks that don't have the
 	// TagValidationPrefix.
 	TrackTagValidation *bool `json:"track_tag_validation,omitzero" extensions:"x-nullable"`
 	// BlockOnTagValidation enables failing generate.tasks if any task it
