@@ -436,7 +436,6 @@
     },
     {
       "_id": "project_creation",
-      "total_project_limit": 10,
       "repo_project_limit": 2
     },
     {
