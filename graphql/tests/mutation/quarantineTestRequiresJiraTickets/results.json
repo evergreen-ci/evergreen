@@ -1,0 +1,41 @@
+{
+  "tests": [
+    {
+      "query_file": "missing_jira_tickets.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "project 'sandbox' requires at least one Jira ticket to quarantine a test",
+            "path": ["quarantineTest"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "with_jira_tickets.graphql",
+      "result": {
+        "data": {
+          "quarantineTest": {
+            "id": "TestFoo",
+            "isManuallyQuarantined": true
+          }
+        }
+      }
+    },
+    {
+      "query_file": "unquarantine_without_jira_tickets.graphql",
+      "result": {
+        "data": {
+          "unquarantineTest": {
+            "id": "TestFoo",
+            "isManuallyQuarantined": false
+          }
+        }
+      }
+    }
+  ]
+}
