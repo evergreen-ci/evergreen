@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -19,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/cache"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/evergreen-ci/utility/ttlcache"
 	"github.com/gonzojive/httpcache"
@@ -1949,10 +1949,6 @@ func getCheckRunConclusion(status string) string {
 	}
 }
 
-func makeTaskLink(uiBase string, taskID string, execution int) string {
-	return fmt.Sprintf("%s/task/%s/%d", uiBase, url.PathEscape(taskID), execution)
-}
-
 func makeCheckRunName(task *task.Task) string {
 	return fmt.Sprintf("%s/%s", task.BuildVariantDisplayName, task.DisplayName)
 }
@@ -1979,7 +1975,7 @@ func CreateCheckRun(ctx context.Context, owner, repo, headSHA, uiBase string, ta
 		CompletedAt: &github.Timestamp{Time: task.FinishTime},
 		Status:      utility.ToStringPtr(githubCheckRunCompleted),
 		Conclusion:  utility.ToStringPtr(getCheckRunConclusion(task.Status)),
-		DetailsURL:  utility.ToStringPtr(makeTaskLink(uiBase, task.Id, task.Execution)),
+		DetailsURL:  utility.ToStringPtr(util.TaskURL(uiBase, task.Id, task.Execution)),
 	}
 
 	var checkRun *github.CheckRun
@@ -2028,7 +2024,7 @@ func UpdateCheckRun(ctx context.Context, owner, repo, uiBase string, checkRunID 
 		Name:       makeCheckRunName(task),
 		Status:     utility.ToStringPtr(githubCheckRunCompleted),
 		Conclusion: utility.ToStringPtr(getCheckRunConclusion(task.Status)),
-		DetailsURL: utility.ToStringPtr(makeTaskLink(uiBase, task.Id, task.Execution)),
+		DetailsURL: utility.ToStringPtr(util.TaskURL(uiBase, task.Id, task.Execution)),
 		Output:     output,
 	}
 

@@ -1,6 +1,7 @@
 package util
 
 import (
+	"fmt"
 	"net/url"
 	"strings"
 
@@ -31,4 +32,9 @@ func CheckURL(str string) error {
 // HttpsUrl appends "https://" to the given URL string.
 func HttpsUrl(url string) string {
 	return "https://" + url
+}
+
+// TaskURL returns the UI link to the given execution of a task.
+func TaskURL(uiBaseURL, taskID string, execution int) string {
+	return fmt.Sprintf("%s/task/%s/%d", uiBaseURL, url.PathEscape(taskID), execution)
 }

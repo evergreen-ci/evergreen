@@ -1,11 +1,10 @@
 package data
 
 import (
-	"fmt"
-	"net/url"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	testselection "github.com/evergreen-ci/test-selection-client"
 )
 
@@ -30,7 +29,7 @@ type QuarantineMetadata struct {
 func NewTaskQuarantineMetadata(t *task.Task, username, uiBaseURL string) QuarantineMetadata {
 	return QuarantineMetadata{
 		InitiatedBy:       username,
-		TaskInitiatedFrom: fmt.Sprintf("%s/task/%s/%d", uiBaseURL, url.PathEscape(t.Id), t.Execution),
+		TaskInitiatedFrom: util.TaskURL(uiBaseURL, t.Id, t.Execution),
 		JiraAssignTo:      findJiraAssignmentTag(t.Tags),
 	}
 }

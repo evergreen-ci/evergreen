@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -64,7 +65,7 @@ func (t *spawnHostProvisioningTriggers) slack() *notification.SlackPayload {
 		attachment.Fields = append(attachment.Fields,
 			&message.SlackAttachmentField{
 				Title: "With data from task",
-				Value: fmt.Sprintf("<%s|%s>", taskLink(t.uiConfig.Url, t.host.ProvisionOptions.TaskId, -1), t.host.ProvisionOptions.TaskId),
+				Value: fmt.Sprintf("<%s|%s>", util.TaskURL(t.uiConfig.Url, t.host.ProvisionOptions.TaskId, -1), t.host.ProvisionOptions.TaskId),
 				Short: true,
 			})
 	}
@@ -355,7 +356,7 @@ func (t *spawnHostSetupScriptTriggers) slackPayload(spawnHostScriptPath, result,
 		attachment.Fields = append(attachment.Fields,
 			&message.SlackAttachmentField{
 				Title: "With data from task",
-				Value: fmt.Sprintf("<%s|%s>", taskLink(t.uiConfig.Url, t.host.ProvisionOptions.TaskId, -1), t.host.ProvisionOptions.TaskId),
+				Value: fmt.Sprintf("<%s|%s>", util.TaskURL(t.uiConfig.Url, t.host.ProvisionOptions.TaskId, -1), t.host.ProvisionOptions.TaskId),
 				Short: true,
 			})
 		attachment.Fields = append(attachment.Fields,
