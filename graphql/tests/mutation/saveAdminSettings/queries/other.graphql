@@ -33,6 +33,7 @@ mutation SaveAdminSettingsOther {
           roleARN: "test arn"
         }
         longRetentionProjects: ["project1", "project2"]
+        sourceCacheOptOutProjects: ["project3"]
         logBucketLongRetention: {
           name: "mutation-long-retention-bucket"
           testResultsPrefix: "mutation-long-results"
@@ -126,6 +127,7 @@ mutation SaveAdminSettingsOther {
         roleARN
       }
       longRetentionProjects
+      sourceCacheOptOutProjects
       logBucketLongRetention {
         name
         testResultsPrefix

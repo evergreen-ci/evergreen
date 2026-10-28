@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"slices"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -26,9 +27,12 @@ import (
 const sourceCacheNamespaceAttribute = "evergreen.command.git_get_project.source_cache.namespace"
 
 // sourceCacheEnabledForTask reports whether the task may use the source cache:
-// all projects when SourceCacheAllProjectsEnabled is set, else the project's
-// own source_cache_mode.
-func sourceCacheEnabledForTask(ctx context.Context, pRef *model.ProjectRef, t *task.Task) (bool, *evergreen.ServiceFlags) {
+// the admin opt-out list always wins, then all projects when
+// SourceCacheAllProjectsEnabled is set, else the project's own source_cache_mode.
+func sourceCacheEnabledForTask(ctx context.Context, settings *evergreen.Settings, pRef *model.ProjectRef, t *task.Task) (bool, *evergreen.ServiceFlags) {
+	if slices.Contains(settings.Buckets.SourceCacheOptOutProjects, t.Project) {
+		return false, nil
+	}
 	projectEnabled := model.SourceCacheEnabled(pRef.GetSourceCacheMode(), t.IsPatchRequest())
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
@@ -42,7 +46,8 @@ func sourceCacheEnabledForTask(ctx context.Context, pRef *model.ProjectRef, t *t
 const sourceCacheClaimedAttribute = "evergreen.command.git_get_project.source_cache.claimed"
 
 // resolveSourceCacheScope returns the task and project ref behind a source cache route once the bucket, owner, and repo are fit to key artifacts on, or a non-nil responder carrying the error response.
-func resolveSourceCacheScope(ctx context.Context, taskID string, bucket evergreen.BucketConfig) (*task.Task, *model.ProjectRef, gimlet.Responder) {
+func resolveSourceCacheScope(ctx context.Context, taskID string, settings *evergreen.Settings) (*task.Task, *model.ProjectRef, gimlet.Responder) {
+	bucket := settings.Buckets.SourceCacheBucket
 	t, err := task.FindOneId(ctx, taskID)
 	if err != nil {
 		return nil, nil, gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", taskID))
@@ -64,7 +69,7 @@ func resolveSourceCacheScope(ctx context.Context, taskID string, bucket evergree
 			Message:    fmt.Sprintf("project '%s' not found for task '%s'", t.Project, taskID),
 		})
 	}
-	if enabled, _ := sourceCacheEnabledForTask(ctx, pRef, t); !enabled {
+	if enabled, _ := sourceCacheEnabledForTask(ctx, settings, pRef, t); !enabled {
 		return nil, nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusConflict,
 			Message:    fmt.Sprintf("source cache is disabled for project '%s'", t.Project),
@@ -129,7 +134,7 @@ func (h *sourceCacheCredentials) Run(ctx context.Context) gimlet.Responder {
 	defer span.End()
 
 	bucket := h.settings.Buckets.SourceCacheBucket
-	t, pRef, errResp := resolveSourceCacheScope(ctx, h.taskID, bucket)
+	t, pRef, errResp := resolveSourceCacheScope(ctx, h.taskID, h.settings)
 	if errResp != nil {
 		return errResp
 	}
@@ -206,7 +211,7 @@ func (h *sourceCacheClaim) Run(ctx context.Context) gimlet.Responder {
 	defer span.End()
 
 	bucket := h.settings.Buckets.SourceCacheBucket
-	t, pRef, errResp := resolveSourceCacheScope(ctx, h.taskID, bucket)
+	t, pRef, errResp := resolveSourceCacheScope(ctx, h.taskID, h.settings)
 	if errResp != nil {
 		return errResp
 	}
