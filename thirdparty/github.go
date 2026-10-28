@@ -813,8 +813,9 @@ func GetCommitComparisonStatus(ctx context.Context, owner, repo, baseRevision, h
 		attribute.String(githubRepoAttribute, repo),
 	))
 	defer span.End()
-	// The status is on every page but the changed files are only on the
-	// first, so request the second page to avoid fetching the full diff.
+	// Only the status is needed. Every page includes it, even pages past the
+	// last commit, but only the first page includes the changed files, so
+	// request a later page to skip them.
 	opts := &github.ListOptions{Page: 2, PerPage: 1}
 	compare, err := getCommitComparison(ctx, owner, repo, baseRevision, headRevision, caller, opts)
 	if err != nil {

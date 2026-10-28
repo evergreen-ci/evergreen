@@ -314,17 +314,17 @@ func TestModuleResolverCarriesModulesForward(t *testing.T) {
 			otherNotIngested := &manifest.Module{Owner: module.Owner, Repo: module.Repo, Branch: module.Branch, Revision: "otherNotIngestedRevision"}
 
 			for _, tc := range []struct {
-				previous, latest *manifest.Module
-				expected         ingestOrder
+				previous, candidate *manifest.Module
+				expected            ingestOrder
 			}{
-				{previous: older, latest: newer, expected: ingestOrderLatestNewer},
-				{previous: newer, latest: older, expected: ingestOrderPreviousNewer},
-				{previous: notIngested, latest: newer, expected: ingestOrderPartial},
-				{previous: notIngested, latest: otherNotIngested, expected: ingestOrderUnknown},
+				{previous: older, candidate: newer, expected: ingestOrderCandidateNewer},
+				{previous: newer, candidate: older, expected: ingestOrderPreviousNewer},
+				{previous: notIngested, candidate: newer, expected: ingestOrderPartial},
+				{previous: notIngested, candidate: otherNotIngested, expected: ingestOrderUnknown},
 			} {
-				order, err := getIngestOrder(t.Context(), tc.previous, tc.latest)
+				order, err := getIngestOrder(t.Context(), tc.previous, tc.candidate)
 				require.NoError(t, err)
-				assert.Equal(t, tc.expected, order, "previous '%s', latest '%s'", tc.previous.Revision, tc.latest.Revision)
+				assert.Equal(t, tc.expected, order, "previous '%s', candidate '%s'", tc.previous.Revision, tc.candidate.Revision)
 			}
 		},
 		"MainlineVersionShouldKeepPreviousCommitWhenLatestWasIngestedBeforeIt": func(t *testing.T) {

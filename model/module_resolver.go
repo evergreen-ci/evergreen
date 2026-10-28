@@ -303,72 +303,73 @@ func (r *ModuleResolver) previousModule(name, owner, repo, branch string) *manif
 	return &prev
 }
 
-// newerModuleCommit returns whichever of the two commits of the module is
-// newer. If the order can't be determined, it returns latest.
-func (r *ModuleResolver) newerModuleCommit(ctx context.Context, moduleName string, previous, latest *manifest.Module) *manifest.Module {
-	if previous.Revision == latest.Revision {
-		return latest
+// newerModuleCommit returns whichever is newer of the previous version's
+// commit and candidate, the commit looked up for this version. If the order
+// can't be determined, it returns candidate.
+func (r *ModuleResolver) newerModuleCommit(ctx context.Context, moduleName string, previous, candidate *manifest.Module) *manifest.Module {
+	if previous.Revision == candidate.Revision {
+		return candidate
 	}
 	logFields := func(msg string) message.Fields {
 		return message.Fields{
-			"message":           msg,
-			"source":            "manifest-creation",
-			"version_id":        r.opts.VersionID,
-			"project_id":        r.projectRef.Id,
-			"module":            moduleName,
-			"owner":             latest.Owner,
-			"repo":              latest.Repo,
-			"branch":            latest.Branch,
-			"previous_revision": previous.Revision,
-			"latest_revision":   latest.Revision,
+			"message":            msg,
+			"source":             "manifest-creation",
+			"version_id":         r.opts.VersionID,
+			"project_id":         r.projectRef.Id,
+			"module":             moduleName,
+			"owner":              candidate.Owner,
+			"repo":               candidate.Repo,
+			"branch":             candidate.Branch,
+			"previous_revision":  previous.Revision,
+			"candidate_revision": candidate.Revision,
 		}
 	}
 
-	order, err := getIngestOrder(ctx, previous, latest)
+	order, err := getIngestOrder(ctx, previous, candidate)
 	if err != nil {
-		grip.Warning(ctx, message.WrapError(err, logFields("checking module commit ingest order, using latest commit")))
-		return latest
+		grip.Warning(ctx, message.WrapError(err, logFields("checking module commit ingest order, using candidate commit")))
+		return candidate
 	}
 	switch order {
-	case ingestOrderLatestNewer, ingestOrderUnknown:
-		return latest
+	case ingestOrderCandidateNewer, ingestOrderUnknown:
+		return candidate
 	case ingestOrderPreviousNewer:
-		grip.Info(ctx, logFields("keeping previous module commit because latest commit was ingested before it"))
+		grip.Info(ctx, logFields("keeping previous module commit because candidate commit was ingested before it"))
 		return previous
 	}
 
 	grip.Info(ctx, logFields("comparing module commits with GitHub"))
 	ghCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
-	status, err := thirdparty.GetCommitComparisonStatus(ghCtx, latest.Owner, latest.Repo, previous.Revision, latest.Revision)
+	status, err := thirdparty.GetCommitComparisonStatus(ghCtx, candidate.Owner, candidate.Repo, previous.Revision, candidate.Revision)
 	if err != nil {
-		grip.Warning(ctx, message.WrapError(err, logFields("comparing module commits with GitHub, using latest commit")))
-		return latest
+		grip.Warning(ctx, message.WrapError(err, logFields("comparing module commits with GitHub, using candidate commit")))
+		return candidate
 	}
 	if status == "behind" {
-		grip.Info(ctx, logFields("keeping previous module commit because latest commit is behind it"))
+		grip.Info(ctx, logFields("keeping previous module commit because candidate commit is behind it"))
 		return previous
 	}
-	return latest
+	return candidate
 }
 
 type ingestOrder int
 
 const (
 	ingestOrderUnknown ingestOrder = iota
-	ingestOrderLatestNewer
+	ingestOrderCandidateNewer
 	ingestOrderPreviousNewer
 	ingestOrderPartial
 )
 
 // getIngestOrder returns which of the two module commits Evergreen ingested later.
-func getIngestOrder(ctx context.Context, previous, latest *manifest.Module) (ingestOrder, error) {
+func getIngestOrder(ctx context.Context, previous, candidate *manifest.Module) (ingestOrder, error) {
 	var revisions []RepositoryRevision
 	err := db.FindAllQ(ctx, RepositoryRevisionsHistoryCollection, db.Query(bson.M{
-		RepositoryRevisionOwnerKey:    latest.Owner,
-		RepositoryRevisionRepoKey:     latest.Repo,
-		RepositoryRevisionBranchKey:   latest.Branch,
-		RepositoryRevisionRevisionKey: bson.M{"$in": []string{previous.Revision, latest.Revision}},
+		RepositoryRevisionOwnerKey:    candidate.Owner,
+		RepositoryRevisionRepoKey:     candidate.Repo,
+		RepositoryRevisionBranchKey:   candidate.Branch,
+		RepositoryRevisionRevisionKey: bson.M{"$in": []string{previous.Revision, candidate.Revision}},
 	}), &revisions)
 	if err != nil {
 		return ingestOrderUnknown, errors.Wrap(err, "finding module commit ingest times")
@@ -378,13 +379,13 @@ func getIngestOrder(ctx context.Context, previous, latest *manifest.Module) (ing
 		ingestTimes[rev.Revision] = rev.IngestTime
 	}
 	previousTime, hasPrevious := ingestTimes[previous.Revision]
-	latestTime, hasLatest := ingestTimes[latest.Revision]
+	candidateTime, hasCandidate := ingestTimes[candidate.Revision]
 	switch {
-	case hasPrevious && hasLatest && latestTime.Before(previousTime):
+	case hasPrevious && hasCandidate && candidateTime.Before(previousTime):
 		return ingestOrderPreviousNewer, nil
-	case hasPrevious && hasLatest:
-		return ingestOrderLatestNewer, nil
-	case hasPrevious || hasLatest:
+	case hasPrevious && hasCandidate:
+		return ingestOrderCandidateNewer, nil
+	case hasPrevious || hasCandidate:
 		return ingestOrderPartial, nil
 	default:
 		return ingestOrderUnknown, nil
