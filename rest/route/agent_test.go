@@ -81,17 +81,22 @@ func TestAttachFiles(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/rest/v2/task/ArtifactTask/files", bytes.NewReader(body))
 			req = gimlet.SetURLVars(req, map[string]string{"task_id": "ArtifactTask"})
 			h := &attachFilesHandler{}
-			require.NoError(t, h.Parse(ctx, req))
-			resp := h.Run(ctx)
-			require.NotNil(t, resp)
+			err = h.Parse(ctx, req)
+			if tc.mutate != nil {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "artifact 'SignedReport'")
+			} else {
+				require.NoError(t, err)
+				resp := h.Run(ctx)
+				require.NotNil(t, resp)
+				assert.Equal(t, http.StatusOK, resp.Status())
+			}
 			entry, err := artifact.FindOne(ctx, artifact.ByTaskIdAndExecution("ArtifactTask", 0))
 			require.NoError(t, err)
 			require.NotNil(t, entry)
 			if tc.mutate != nil {
-				assert.Equal(t, http.StatusBadRequest, resp.Status())
 				assert.Equal(t, existing.Files, entry.Files)
 			} else {
-				assert.Equal(t, http.StatusOK, resp.Status())
 				require.Len(t, entry.Files, 3)
 				assert.Equal(t, "http://fileserver/report%231%25.txt", entry.Files[1].Link)
 				assert.Equal(t, files[1], entry.Files[2])

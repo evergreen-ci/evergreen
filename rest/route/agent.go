@@ -752,19 +752,12 @@ func (h *attachFilesHandler) Parse(ctx context.Context, r *http.Request) error {
 		grip.Error(ctx, message)
 		return errors.Wrap(err, message)
 	}
-	return nil
+	return artifact.ValidateFiles(h.files)
 }
 
 // Run updates file mappings for a task or build
 func (h *attachFilesHandler) Run(ctx context.Context) gimlet.Responder {
 	t := MustHaveTask(ctx)
-
-	if err := artifact.ValidateFiles(h.files); err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    err.Error(),
-		})
-	}
 
 	discoverAndCacheBucketLifecycleRules(ctx, t, h.files)
 
