@@ -267,7 +267,7 @@ Each file should be JSON and contain an array of artifact objects:
 Fields:
 
 - `name`: the display name for the artifact in the Evergreen UI.
-- `link`: the absolute HTTP or HTTPS URL to the artifact.
+- `link`: the absolute HTTP, HTTPS, or T2 URL to the artifact.
 - `visibility`: the visibility level for the artifact. Can be "public" or "private".
 - `do_not_encode_link`: optional boolean, defaults to false. Set to true to
   prevent Evergreen from URL-encoding the link. This is useful when your URL

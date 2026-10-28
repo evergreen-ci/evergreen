@@ -300,16 +300,15 @@ func GetAllArtifacts(ctx context.Context, tasks []TaskIDAndExecution) ([]File, e
 	return files, nil
 }
 
-// ValidateFiles checks that artifact links are absolute HTTP(S) URLs. Associated
-// links may also use T2 URLs.
+// ValidateFiles checks that artifact and associated links are absolute HTTP(S) or T2 URLs.
 // DoNotEncodeLink affects escaping but does not bypass validation.
 func ValidateFiles(files []File) error {
 	for _, file := range files {
-		if err := validateLink(file.Link, false); err != nil {
+		if err := validateLink(file.Link); err != nil {
 			return errors.Wrapf(err, "validating link for artifact '%s'", file.Name)
 		}
 		for _, link := range file.AssociatedLinks {
-			if err := validateLink(link.Link, true); err != nil {
+			if err := validateLink(link.Link); err != nil {
 				return errors.Wrapf(err, "validating associated link '%s' for artifact '%s'", link.Name, file.Name)
 			}
 		}
@@ -317,7 +316,7 @@ func ValidateFiles(files []File) error {
 	return nil
 }
 
-func validateLink(link string, allowT2 bool) error {
+func validateLink(link string) error {
 	if strings.TrimSpace(link) != link {
 		return errors.New("URL must not have leading or trailing whitespace")
 	}
@@ -332,11 +331,8 @@ func validateLink(link string, allowT2 bool) error {
 	if err != nil {
 		return errors.Wrap(err, "parsing URL")
 	}
-	if u.Scheme != "http" && u.Scheme != "https" && !(allowT2 && u.Scheme == "t2") {
-		if allowT2 {
-			return errors.Errorf("URL scheme '%s' must be 'http', 'https', or 't2'", u.Scheme)
-		}
-		return errors.Errorf("URL scheme '%s' must be 'http' or 'https'", u.Scheme)
+	if u.Scheme != "http" && u.Scheme != "https" && u.Scheme != "t2" {
+		return errors.Errorf("URL scheme '%s' must be 'http', 'https', or 't2'", u.Scheme)
 	}
 	if u.Hostname() == "" {
 		return errors.New("URL must have a host name")

@@ -81,6 +81,7 @@ func TestAttachFiles(t *testing.T) {
 						{Name: "Coverage", Link: "https://example.com/coverage#report.html", DoNotEncodeLink: true},
 						{Name: "T2", Link: "t2://internal.example.com/report", DoNotEncodeLink: true},
 					}},
+				{Name: "T2Report", Link: "t2://internal.example.com/report", DoNotEncodeLink: true},
 			}
 			if tc.setBadFileLink != nil {
 				tc.setBadFileLink(files)
@@ -106,9 +107,9 @@ func TestAttachFiles(t *testing.T) {
 			if tc.shouldErr {
 				assert.Equal(t, existing.Files, entry.Files)
 			} else {
-				require.Len(t, entry.Files, 3)
+				require.Len(t, entry.Files, len(files)+1)
 				assert.Equal(t, "http://fileserver/report%231%25.txt", entry.Files[1].Link)
-				assert.Equal(t, files[1], entry.Files[2])
+				assert.Equal(t, files[1:], entry.Files[2:])
 			}
 		})
 	}

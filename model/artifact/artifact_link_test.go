@@ -28,7 +28,7 @@ func TestValidateFiles(t *testing.T) {
 		{name: "S3EscapedObjectKeyShouldValidate", link: "https://bucket.s3.amazonaws.com/report%2Ffile.html"},
 		{name: "S3RawObjectKeyShouldValidate", link: "https://bucket.s3.amazonaws.com/file #1%+?.txt"},
 		{name: "S3PathStyleDottedBucketAndRawPercentDirectoryShouldValidate", link: "https://s3.amazonaws.com/bucket.with.dots/coverage/100%/report.html"},
-		{name: "T2MainLinkShouldError", link: "t2://internal.example.com/report", wantErr: true},
+		{name: "T2MainLinkShouldValidate", link: "t2://internal.example.com/report"},
 		{name: "T2AssociatedLinkShouldValidate", link: "t2://internal.example.com/report", associated: true},
 		{name: "JavaScriptShouldError", link: "javascript:alert(document.domain)", wantErr: true},
 		{name: "UnencodedJavaScriptShouldError", link: "javascript:alert(document.domain)", wantErr: true, doNotEncode: true},
