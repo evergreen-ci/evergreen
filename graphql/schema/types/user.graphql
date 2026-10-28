@@ -77,11 +77,11 @@ input SubscriberInput {
 }
 
 input AddFavoriteProjectInput {
-  projectIdentifier: String!
+  projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW)
 }
 
 input RemoveFavoriteProjectInput {
-  projectIdentifier: String!
+  projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW)
 }
 
 ###### TYPES ######
