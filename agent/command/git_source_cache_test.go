@@ -308,7 +308,7 @@ func TestPostRestoreCommandFetchesTagsSavedAfterTheArchive(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, c.runCommands(ctx, taskLogger, conf, c.buildPostRestoreCommand(conf, cloneOpts{owner: "some-org", repo: "some-repo"}, revision, false)))
-	require.NoError(t, c.runCommands(ctx, taskLogger, conf, c.buildRefreshTagsCommand()))
+	require.NoError(t, c.runCommands(ctx, taskLogger, conf, c.buildRefreshTagsCommand(revision)))
 
 	describe, err := exec.CommandContext(ctx, "git", "-C", consumerDir, "describe", "--tags").Output()
 	require.NoError(t, err)
@@ -317,8 +317,10 @@ func TestPostRestoreCommandFetchesTagsSavedAfterTheArchive(t *testing.T) {
 
 func TestBuildRefreshTagsCommand(t *testing.T) {
 	c := &gitFetchProject{Directory: "src"}
-	joined := strings.Join(c.buildRefreshTagsCommand(), "\n")
-	assert.Contains(t, joined, `git fetch origin --force --no-recurse-submodules "refs/tags/*:refs/tags/*"`)
+	joined := strings.Join(c.buildRefreshTagsCommand("abc123"), "\n")
+	assert.Contains(t, joined, `git ls-remote origin 'refs/tags/*'`)
+	assert.Contains(t, joined, `-v rev='abc123'`)
+	assert.Contains(t, joined, `git fetch origin --force --no-recurse-submodules $matching`)
 }
 
 func TestSourceCacheSpanDurationsAreNumericMilliseconds(t *testing.T) {
@@ -623,6 +625,77 @@ func TestSourceCacheHealsOnlyTheKeyItWrites(t *testing.T) {
 
 		sc.corruptRemoteKey = baseKey
 		assert.False(t, sc.healsCorruptArtifact())
+	})
+}
+
+// newGitWorkDir returns a work directory with the bare repo and origin remote a clone leaves behind, so the pre-save script has a .git tree to scrub.
+func newGitWorkDir(t *testing.T) string {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is not installed")
+	}
+	workDir := t.TempDir()
+	repoDir := filepath.Join(workDir, "src")
+	for _, args := range [][]string{
+		{"init", "--initial-branch=main", repoDir},
+		{"-C", repoDir, "commit", "--allow-empty", "-m", "initial", "--author=t <t@t>"},
+		{"-C", repoDir, "remote", "add", "origin", "https://github.com/some-org/some-repo.git"},
+	} {
+		cmd := exec.CommandContext(t.Context(), "git", args...)
+		cmd.Env = append(cmd.Environ(), "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")
+		require.NoError(t, cmd.Run())
+	}
+	return workDir
+}
+
+func TestSaveSourceCacheClaimsTheSaveBeforeArchiving(t *testing.T) {
+	ctx := t.Context()
+	opts := sourceCacheTestOpts()
+
+	// newSaveCache isolates each subtest's comm, config, cache, and logger so no subtest depends on another's claim state.
+	newSaveCache := func(t *testing.T) (*client.Mock, *internal.TaskConfig, *gitFetchProject, *sourceCache, client.LoggerProducer) {
+		comm := sourceCacheTestComm()
+		conf := sourceCacheTestConfig()
+		conf.WorkDir = newGitWorkDir(t)
+
+		jpm, err := jasper.NewSynchronizedManager(false)
+		require.NoError(t, err)
+		c := &gitFetchProject{Directory: "src"}
+		c.SetJasperManager(jpm)
+
+		sc, reason := newSourceCache(ctx, comm, conf, c, opts, "linux")
+		require.NotNil(t, sc, reason)
+		logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+		require.NoError(t, err)
+		return comm, conf, c, sc, logger
+	}
+
+	t.Run("ClaimDeniedSkipsTheSave", func(t *testing.T) {
+		comm, conf, c, sc, logger := newSaveCache(t)
+		comm.SourceCacheClaimResponse = &apimodels.SourceCacheClaimResponse{Claimed: false}
+
+		produced, err := c.saveSourceCache(ctx, comm, logger, conf, sc, opts)
+		require.ErrorIs(t, err, errSourceCacheClaimDenied)
+		assert.False(t, produced)
+		assert.Equal(t, 1, comm.SourceCacheClaimCount)
+		assert.Equal(t, apimodels.SourceCacheCredentialsRequest{
+			Branch:            opts.branch,
+			CloneDepth:        opts.cloneDepth,
+			RecurseSubmodules: opts.recurseSubmodules,
+		}, comm.SourceCacheClaimRequest, "the claim must reuse the clone shape that keys the object")
+
+		_, statErr := os.Stat(filepath.Join(sc.projectDir(), ".git", "hooks"))
+		assert.NoError(t, statErr, "denied claim must not scrub the cloned tree")
+	})
+
+	t.Run("ClaimFailureStillSaves", func(t *testing.T) {
+		comm, conf, c, sc, logger := newSaveCache(t)
+		comm.SourceCacheClaimErr = errors.New("claim service unavailable")
+
+		produced, err := c.saveSourceCache(ctx, comm, logger, conf, sc, opts)
+		// The save fails without real AWS, but the claim error must not have become a skip or surfaced itself.
+		require.Error(t, err)
+		assert.False(t, produced)
+		assert.NotContains(t, err.Error(), "claim service unavailable")
 	})
 }
 

@@ -354,6 +354,13 @@ func TestSetTestQuarantined(t *testing.T) {
 		DisplayTaskName       string   `json:"display_task_name"`
 		TestNames             []string `json:"test_names"`
 		IsManuallyQuarantined bool     `json:"is_manually_quarantined"`
+		Metadata              struct {
+			InitiatedBy         string   `json:"initiated_by"`
+			TaskInitiatedFrom   string   `json:"task_initiated_from"`
+			JiraAssignTo        string   `json:"jira_assign_to"`
+			JiraTicketsToLinkTo []string `json:"jira_tickets_to_link_to"`
+			Justification       string   `json:"justification"`
+		} `json:"metadata"`
 	}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		capturedPath = r.URL.Path
@@ -364,7 +371,14 @@ func TestSetTestQuarantined(t *testing.T) {
 	t.Cleanup(srv.Close)
 	setTSSURLForTest(t, srv.URL)
 
-	require.NoError(t, SetTestQuarantined(t.Context(), "my/project", "ubuntu/2204", "my/task", "my/display/task", "test/name", true))
+	metadata := QuarantineMetadata{
+		InitiatedBy:               "me",
+		TaskInitiatedFrom:         "https://spruce/task/t1/0",
+		JiraAssignTo:              "assigned_to_jira_team_devprod",
+		ExistingJiraTicketsToLink: []string{"BF-123"},
+		Justification:             "flaky",
+	}
+	require.NoError(t, SetTestQuarantined(t.Context(), "my/project", "ubuntu/2204", "my/task", "my/display/task", "test/name", true, metadata))
 	assert.Equal(t, "/api/test_selection/transition_tests/", capturedPath)
 	assert.Equal(t, "my/project", capturedBody.ProjectID)
 	assert.Equal(t, "ubuntu/2204", capturedBody.BuildVariantName)
@@ -372,6 +386,11 @@ func TestSetTestQuarantined(t *testing.T) {
 	assert.Equal(t, "my/display/task", capturedBody.DisplayTaskName)
 	assert.Equal(t, []string{"test/name"}, capturedBody.TestNames)
 	assert.True(t, capturedBody.IsManuallyQuarantined)
+	assert.Equal(t, "me", capturedBody.Metadata.InitiatedBy)
+	assert.Equal(t, "https://spruce/task/t1/0", capturedBody.Metadata.TaskInitiatedFrom)
+	assert.Equal(t, "assigned_to_jira_team_devprod", capturedBody.Metadata.JiraAssignTo)
+	assert.Equal(t, []string{"BF-123"}, capturedBody.Metadata.JiraTicketsToLinkTo)
+	assert.Equal(t, "flaky", capturedBody.Metadata.Justification)
 }
 
 func TestSetTaskQuarantined(t *testing.T) {
@@ -399,7 +418,7 @@ func TestSetTaskQuarantined(t *testing.T) {
 		t.Cleanup(srv.Close)
 		setTSSURLForTest(t, srv.URL)
 
-		require.NoError(t, SetTaskQuarantined(t.Context(), "my/project", "ubuntu/2204", "my/task", "my/display/task", true))
+		require.NoError(t, SetTaskQuarantined(t.Context(), "my/project", "ubuntu/2204", "my/task", "my/display/task", true, QuarantineMetadata{}))
 		assert.Equal(t, "/api/test_selection/transition_task/", capturedPath)
 		assert.Equal(t, "my/project", capturedBody.ProjectID)
 		assert.Equal(t, "ubuntu/2204", capturedBody.BuildVariantName)
@@ -415,7 +434,7 @@ func TestSetTaskQuarantined(t *testing.T) {
 		t.Cleanup(srv.Close)
 		setTSSURLForTest(t, srv.URL)
 
-		err := SetTaskQuarantined(t.Context(), projectID, bvName, taskName, "", true)
+		err := SetTaskQuarantined(t.Context(), projectID, bvName, taskName, "", true, QuarantineMetadata{})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "forwarding request to test selection service")
 		assert.Contains(t, err.Error(), "boom")
@@ -439,7 +458,7 @@ func TestSetVariantQuarantined(t *testing.T) {
 		t.Cleanup(srv.Close)
 		setTSSURLForTest(t, srv.URL)
 
-		require.NoError(t, SetVariantQuarantined(t.Context(), "my/project", "ubuntu/2204", false))
+		require.NoError(t, SetVariantQuarantined(t.Context(), "my/project", "ubuntu/2204", false, QuarantineMetadata{}))
 		assert.Equal(t, "/api/test_selection/transition_variant/", capturedPath)
 		assert.Equal(t, "my/project", capturedBody.ProjectID)
 		assert.Equal(t, "ubuntu/2204", capturedBody.BuildVariantName)

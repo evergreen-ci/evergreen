@@ -670,6 +670,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	assert.Len(mani.Modules, 1)
 	require.NotNil(mani.Modules["sample"])
 	assert.Equal(sampleOlderSHA, mani.Modules["sample"].Revision)
+	assert.Equal(manifest.ModuleSelectionTriggerCommit, mani.Modules["sample"].SelectionRule)
 	assert.Equal("main", mani.Modules["sample"].Branch)
 	assert.Equal("sample", mani.Modules["sample"].Repo)
 	assert.Equal("evergreen-ci", mani.Modules["sample"].Owner)

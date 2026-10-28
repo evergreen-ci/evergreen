@@ -2033,11 +2033,13 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(fmt.Sprintf("Successfully created check run for  '%v'", t.Id))
 }
 
-// GET /rest/v2/task/{task_id}/github_dynamic_access_token/{owner}/{repo}
+// POST /rest/v2/task/{task_id}/github_dynamic_access_token/{owner}/{repo}
+// POST /rest/v2/task/{task_id}/github_dynamic_access_token/{owner}
 // This route is used to create user-used GitHub access token for a task.
 // It returns an installation token using the task's project's GitHub app and
 // gets the intersecting permissions from the requester's permission group and the
-// permissions requested.
+// permissions requested. The repo is only sent by older agents and can be
+// removed along with the {owner}/{repo} route once they're no longer running.
 // See createInstallationToken for tokens created with our own GitHub app,
 // for example to use for cloning sources and modules.
 type createGitHubDynamicAccessToken struct {
@@ -2063,9 +2065,7 @@ func (h *createGitHubDynamicAccessToken) Parse(ctx context.Context, r *http.Requ
 	if h.owner = gimlet.GetVars(r)["owner"]; h.owner == "" {
 		return errors.New("missing owner")
 	}
-	if h.repo = gimlet.GetVars(r)["repo"]; h.repo == "" {
-		return errors.New("missing repo")
-	}
+	h.repo = gimlet.GetVars(r)["repo"]
 	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
 		return errors.New("missing task_id")
 	}

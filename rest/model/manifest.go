@@ -6,12 +6,14 @@ import (
 )
 
 type APIManifest struct {
-	Id          *string             `json:"id" extensions:"!x-nullable"`
-	Revision    *string             `json:"revision" extensions:"!x-nullable"`
-	ProjectName *string             `json:"project" extensions:"!x-nullable"`
-	Branch      *string             `json:"branch" extensions:"!x-nullable"`
-	IsBase      bool                `json:"is_base"`
-	Modules     []APIManifestModule `json:"modules" extensions:"x-nullable"`
+	Id                *string             `json:"id" extensions:"!x-nullable"`
+	Revision          *string             `json:"revision" extensions:"!x-nullable"`
+	ProjectName       *string             `json:"project" extensions:"!x-nullable"`
+	Branch            *string             `json:"branch" extensions:"!x-nullable"`
+	IsBase            bool                `json:"is_base"`
+	Modules           []APIManifestModule `json:"modules" extensions:"x-nullable"`
+	PreviousVersionID *string             `json:"previous_version_id,omitempty"`
+	ChangedModules    []string            `json:"changed_modules,omitempty"`
 }
 
 func (m *APIManifest) BuildFromService(mfst *manifest.Manifest) {
@@ -20,6 +22,10 @@ func (m *APIManifest) BuildFromService(mfst *manifest.Manifest) {
 	m.ProjectName = utility.ToStringPtr(mfst.ProjectName)
 	m.Branch = utility.ToStringPtr(mfst.Branch)
 	m.IsBase = mfst.IsBase
+	if mfst.PreviousVersionID != "" {
+		m.PreviousVersionID = utility.ToStringPtr(mfst.PreviousVersionID)
+	}
+	m.ChangedModules = mfst.ChangedModules
 	for modName, mod := range mfst.Modules {
 		apiMod := APIManifestModule{}
 		apiMod.BuildFromService(modName, mod)
@@ -28,12 +34,13 @@ func (m *APIManifest) BuildFromService(mfst *manifest.Manifest) {
 }
 
 type APIManifestModule struct {
-	Name     *string `json:"name" extensions:"!x-nullable"`
-	Owner    *string `json:"owner" extensions:"!x-nullable"`
-	Repo     *string `json:"repo" extensions:"!x-nullable"`
-	Branch   *string `json:"branch" extensions:"!x-nullable"`
-	Revision *string `json:"revision" extensions:"!x-nullable"`
-	URL      *string `json:"url" extensions:"!x-nullable"`
+	Name          *string `json:"name" extensions:"!x-nullable"`
+	Owner         *string `json:"owner" extensions:"!x-nullable"`
+	Repo          *string `json:"repo" extensions:"!x-nullable"`
+	Branch        *string `json:"branch" extensions:"!x-nullable"`
+	Revision      *string `json:"revision" extensions:"!x-nullable"`
+	URL           *string `json:"url" extensions:"!x-nullable"`
+	SelectionRule *string `json:"selection_rule,omitempty"`
 }
 
 func (m *APIManifestModule) BuildFromService(modName string, mod *manifest.Module) {
@@ -43,4 +50,7 @@ func (m *APIManifestModule) BuildFromService(modName string, mod *manifest.Modul
 	m.Revision = utility.ToStringPtr(mod.Revision)
 	m.Owner = utility.ToStringPtr(mod.Owner)
 	m.URL = utility.ToStringPtr(mod.URL)
+	if mod.SelectionRule != "" {
+		m.SelectionRule = utility.ToStringPtr(string(mod.SelectionRule))
+	}
 }

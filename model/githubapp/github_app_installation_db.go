@@ -30,20 +30,20 @@ func byAppOwnerRepo(appId int64, owner, repo string) bson.M {
 	return q
 }
 
-func validateOwnerRepo(appId int64, owner, repo string) error {
-	if appId == 0 {
+func validateOwner(appID int64, owner string) error {
+	if appID == 0 {
 		return errors.New("App ID must not be 0")
 	}
 
-	if len(owner) == 0 || len(repo) == 0 {
-		return errors.New("Owner and repository must not be empty strings")
+	if len(owner) == 0 {
+		return errors.New("Owner must not be an empty string")
 	}
 	return nil
 }
 
 // getInstallationID returns the cached installation ID for GitHub app from the database.
 func getInstallationIDFromCache(ctx context.Context, app int64, owner, repo string) (int64, error) {
-	if err := validateOwnerRepo(app, owner, repo); err != nil {
+	if err := validateOwner(app, owner); err != nil {
 		return 0, err
 	}
 

@@ -304,13 +304,15 @@ type MainlineCommitsOptions struct {
 }
 
 type Manifest struct {
-	ID              string            `json:"id"`
-	Branch          string            `json:"branch"`
-	IsBase          bool              `json:"isBase"`
-	ModuleOverrides map[string]string `json:"moduleOverrides,omitempty"`
-	Modules         map[string]any    `json:"modules,omitempty"`
-	Project         string            `json:"project"`
-	Revision        string            `json:"revision"`
+	ID                string            `json:"id"`
+	Branch            string            `json:"branch"`
+	ChangedModules    []string          `json:"changedModules,omitempty"`
+	IsBase            bool              `json:"isBase"`
+	ModuleOverrides   map[string]string `json:"moduleOverrides,omitempty"`
+	Modules           map[string]any    `json:"modules,omitempty"`
+	PreviousVersionID *string           `json:"previousVersionId,omitempty"`
+	Project           string            `json:"project"`
+	Revision          string            `json:"revision"`
 }
 
 // MoveProjectInput is the input to the attachProjectToNewRepo mutation.
@@ -425,8 +427,10 @@ type QuarantineTaskInput struct {
 }
 
 type QuarantineTestInput struct {
-	TaskID   string `json:"taskId"`
-	TestName string `json:"testName"`
+	TaskID                    string   `json:"taskId"`
+	TestName                  string   `json:"testName"`
+	ExistingJiraTicketsToLink []string `json:"existingJiraTicketsToLink,omitempty"`
+	Justification             *string  `json:"justification,omitempty"`
 }
 
 // QuarantineVariantInput is the input to the quarantineVariant mutation. It marks every known test of every known task in the build variant as manually quarantined in the test selection service.

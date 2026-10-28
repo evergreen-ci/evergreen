@@ -1,6 +1,9 @@
 package model
 
 import (
+	"bytes"
+	"strings"
+
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
@@ -166,6 +169,27 @@ func buildAnchorPreamble(registry *anchorRegistry) ([]byte, error) {
 		return nil, errors.Errorf("anchor preamble size %d exceeds the maximum of %d bytes", len(out), maxAnchorPreambleBytes)
 	}
 	return out, nil
+}
+
+// normalizeForPreamble strips the leading UTF-8 byte-order mark (which some editors prefix to config files), `%`-directive lines,
+// comments, blank lines, and `---` document separator markers from the file's bytes, up to the first line of real content.
+// This keeps the preamble and the file in a single YAML document (a second document would get silently dropped).
+func normalizeForPreamble(data []byte) []byte {
+	const utf8BOM = "\xef\xbb\xbf"
+	data = bytes.TrimPrefix(data, []byte(utf8BOM))
+	// Strip everything that isn't content until the first real content line
+	for i := 0; i < len(data); {
+		line, _, _ := bytes.Cut(data[i:], []byte("\n"))
+		trimmed := strings.TrimSpace(string(line))
+		isDirective := strings.HasPrefix(trimmed, "%")
+		isSeparator := strings.Trim(trimmed, "-") == ""
+		isComment := strings.HasPrefix(trimmed, "#")
+		if !isDirective && !isSeparator && !isComment {
+			return data[i:]
+		}
+		i += len(line) + 1 // skip the line and its newline
+	}
+	return nil
 }
 
 // stripEvgAnchorsKey removes the _evg_anchors key and its value from the

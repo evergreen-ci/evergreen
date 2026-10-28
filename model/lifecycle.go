@@ -12,6 +12,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -493,55 +494,99 @@ func CreateTasksCache(tasks []task.Task) ([]build.TaskCache, error) {
 	return cache, nil
 }
 
+// taskCacheInput contains the fields needed to order tasks in a build's cache.
+type taskCacheInput struct {
+	ID             string            `bson:"_id"`
+	BuildID        string            `bson:"build_id"`
+	DisplayName    string            `bson:"display_name"`
+	DependsOn      []task.Dependency `bson:"depends_on"`
+	DisplayOnly    bool              `bson:"display_only"`
+	ExecutionTasks []string          `bson:"execution_tasks"`
+}
+
+func (t *taskCacheInput) UnmarshalBSON(data []byte) error {
+	// Use the task model's decoder to preserve legacy string dependencies.
+	return mgobson.Unmarshal(data, t)
+}
+
 // RefreshTasksCache updates the given builds' documents so that their task
 // caches reflect the correct current state of the tasks they represent.
 func RefreshTasksCache(ctx context.Context, buildIDs []string) error {
 	if len(buildIDs) == 0 {
 		return nil
 	}
-	tasks, err := task.FindAll(ctx, db.Query(task.ByBuildIds(buildIDs)).WithFields(
+	// Projected fields still occupy a full Task struct unless we decode into a smaller type.
+	var tasks []taskCacheInput
+	err := db.FindAllQ(ctx, task.Collection, db.Query(task.ByBuildIds(buildIDs)).WithFields(
 		task.IdKey,
 		task.BuildIdKey,
 		task.DisplayNameKey,
 		task.DependsOnKey,
 		task.DisplayOnlyKey,
 		task.ExecutionTasksKey,
-	))
+	), &tasks)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	tasks, err = task.AddParentDisplayTasks(ctx, tasks)
-	if err != nil {
-		return errors.WithStack(err)
+	taskIDs := make([]string, 0, len(tasks))
+	for _, t := range tasks {
+		taskIDs = append(taskIDs, t.ID)
+	}
+	var parents []struct {
+		ExecutionTasks []string `bson:"execution_tasks"`
+	}
+	if len(taskIDs) > 0 {
+		if err := db.FindAllQ(ctx, task.Collection, db.Query(task.ByExecutionTasks(taskIDs)).WithFields(task.ExecutionTasksKey), &parents); err != nil {
+			return errors.Wrap(err, "finding parent display tasks")
+		}
+	}
+	hasDisplayParent := map[string]bool{}
+	for _, parent := range parents {
+		for _, id := range parent.ExecutionTasks {
+			hasDisplayParent[id] = true
+		}
 	}
 
-	tasksByBuild := map[string][]task.Task{}
-	for _, t := range tasks {
-		tasksByBuild[t.BuildId] = append(tasksByBuild[t.BuildId], t)
+	tasksByBuild := map[string][]*taskCacheInput{}
+	for i := range tasks {
+		t := &tasks[i]
+		tasksByBuild[t.BuildID] = append(tasksByBuild[t.BuildID], t)
 	}
 
 	cachesByBuild := make(map[string][]build.TaskCache, len(buildIDs))
 	for _, buildID := range buildIDs {
-		buildTasks := tasksByBuild[buildID]
-		// trim out tasks that are part of a display task
+		buildInputs := tasksByBuild[buildID]
 		execTaskMap := map[string]bool{}
-		for _, t := range buildTasks {
+		for _, t := range buildInputs {
 			if t.DisplayOnly {
 				for _, et := range t.ExecutionTasks {
 					execTaskMap[et] = true
 				}
 			}
 		}
-		for i, buildTask := range slices.Backward(buildTasks) {
-			if _, exists := execTaskMap[buildTask.Id]; exists {
-				buildTasks = append(buildTasks[:i], buildTasks[i+1:]...)
+		// Materialize full Task structs for only the build being sorted.
+		buildTasks := make([]task.Task, 0, len(buildInputs))
+		for _, input := range buildInputs {
+			if execTaskMap[input.ID] {
+				continue
 			}
+			buildTasks = append(buildTasks, task.Task{
+				Id:             input.ID,
+				DisplayName:    input.DisplayName,
+				DependsOn:      input.DependsOn,
+				DisplayOnly:    input.DisplayOnly,
+				ExecutionTasks: input.ExecutionTasks,
+			})
 		}
 
 		cachesByBuild[buildID], err = CreateTasksCache(buildTasks)
 		if err != nil {
 			return errors.Wrapf(err, "creating task cache for build '%s'", buildID)
 		}
+		// Parent display tasks can belong to builds outside this refresh.
+		cachesByBuild[buildID] = slices.DeleteFunc(cachesByBuild[buildID], func(t build.TaskCache) bool {
+			return hasDisplayParent[t.Id]
+		})
 	}
 	return errors.Wrap(build.SetTasksCaches(ctx, cachesByBuild), "updating task caches for builds")
 }
@@ -872,8 +917,8 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo, opt
 	dependencyTaskMap := opts.dependencyTasks
 	if dependencyTaskMap == nil {
 		dependencyTaskMap = make(map[string]*task.Task, len(taskMap)+len(creationInfo.TasksInBuild))
-		for i := range creationInfo.TasksInBuild {
-			dependencyTaskMap[creationInfo.TasksInBuild[i].Id] = &creationInfo.TasksInBuild[i]
+		for _, t := range creationInfo.TasksInBuild {
+			dependencyTaskMap[t.Id] = t
 		}
 	}
 	maps.Copy(dependencyTaskMap, taskMap)
@@ -1823,12 +1868,12 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "finding existing tasks for builds")
 	}
-	existingTasksByBuild := map[string][]task.Task{}
+	existingTasksByBuild := map[string]task.Tasks{}
 	dependencyTasks := make(map[string]*task.Task, len(allExistingTasks))
 	for i := range allExistingTasks {
-		t := allExistingTasks[i]
+		t := &allExistingTasks[i]
 		existingTasksByBuild[t.BuildId] = append(existingTasksByBuild[t.BuildId], t)
-		dependencyTasks[t.Id] = &allExistingTasks[i]
+		dependencyTasks[t.Id] = t
 	}
 
 	activatedTaskIds := []string{}

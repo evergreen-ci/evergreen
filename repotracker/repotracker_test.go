@@ -1138,7 +1138,7 @@ tasks:
 		Requester:           evergreen.RepotrackerVersionRequester,
 	}
 
-	s.Require().NoError(createVersionItems(s.ctx, v, model.VersionMetadata{Revision: *s.rev}, projectInfo, nil))
+	s.Require().NoError(createVersionItems(s.ctx, v, model.VersionMetadata{Revision: *s.rev}, projectInfo, nil, nil))
 	dbTasks, err := task.Find(s.ctx, task.ByVersion(v.Id))
 	s.Require().NoError(err)
 	s.Require().Len(dbTasks, 1)
@@ -1521,7 +1521,7 @@ tasks:
 				Branch:              "main",
 				Requester:           requester,
 			}
-			s.NoError(createVersionItems(s.ctx, v, metadata, projectInfo, nil))
+			s.NoError(createVersionItems(s.ctx, v, metadata, projectInfo, nil, nil))
 			tasks, err := task.FindAllTaskIDsFromVersion(s.ctx, v.Id)
 			s.NoError(err)
 			s.Len(tasks, 4)
@@ -1880,6 +1880,7 @@ func TestCreateManifest(t *testing.T) {
 	assert.Equal("sample", module.Repo)
 	assert.Equal("main", module.Branch)
 	assert.Equal(moduleRevisionAtIngestTime, module.Revision)
+	assert.Equal(mfst.ModuleSelectionLatestIngested, module.SelectionRule)
 
 	require.NoError(t, db.ClearCollections(model.RepositoryRevisionsHistoryCollection))
 	fallbackVersion := v
@@ -1889,6 +1890,7 @@ func TestCreateManifest(t *testing.T) {
 	require.NotNil(t, fallbackManifest)
 	require.Contains(t, fallbackManifest.Modules, "module1")
 	assert.Equal(moduleRevisionAtIngestTime, fallbackManifest.Modules["module1"].Revision)
+	assert.Equal(mfst.ModuleSelectionGitHubFallback, fallbackManifest.Modules["module1"].SelectionRule)
 
 	proj.Modules[0].AutoUpdate = true
 	manifest, err = model.CreateManifest(t.Context(), &patchVersion, proj.Modules, projRef)
@@ -1929,6 +1931,7 @@ func TestCreateManifest(t *testing.T) {
 	assert.Equal("main", module.Branch)
 	assert.Equal(hash, module.Revision)
 	assert.NotEmpty(module.URL)
+	assert.Equal(mfst.ModuleSelectionPinnedRef, module.SelectionRule)
 
 	// invalid revision
 	hash = "1234"
@@ -2375,7 +2378,7 @@ tasks:
 				Requester:           evergreen.RepotrackerVersionRequester,
 			}
 
-			err = createVersionItems(ctx, v, tc.metadata, projectInfo, nil)
+			err = createVersionItems(ctx, v, tc.metadata, projectInfo, nil, nil)
 			require.NoError(t, err)
 
 			ignoredVariants := []string{}

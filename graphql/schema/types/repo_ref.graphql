@@ -130,4 +130,5 @@ type RepoTestSelectionSettings {
   allowed: Boolean!
   defaultEnabled: Boolean!
   mainlineDefaultEnabled: Boolean!
+  quarantineJiraTicketsRequired: Boolean!
 }

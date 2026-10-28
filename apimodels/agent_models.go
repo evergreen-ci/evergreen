@@ -354,6 +354,12 @@ type SourceCacheCredentialsRequest struct {
 	RecurseSubmodules bool   `json:"recurse_submodules"`
 }
 
+// SourceCacheClaimResponse reports whether this task may save the source cache artifact.
+type SourceCacheClaimResponse struct {
+	// Claimed is true when this task may archive and upload the artifact.
+	Claimed bool `json:"claimed"`
+}
+
 // SourceCacheRestoreKey is one source cache object a task may restore.
 type SourceCacheRestoreKey struct {
 	// Revision is the commit the object's tree is expected to be at.

@@ -8,6 +8,7 @@ mutation {
           allowed: true
           defaultEnabled: true
           mainlineDefaultEnabled: true
+          quarantineJiraTicketsRequired: true
         }
       }
     }
@@ -19,6 +20,7 @@ mutation {
         allowed
         defaultEnabled
         mainlineDefaultEnabled
+        quarantineJiraTicketsRequired
       }
     }
   }
