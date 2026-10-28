@@ -518,3 +518,66 @@ func TestPresignFileRoleDurationErrors(t *testing.T) {
 	}, nil)
 	require.Error(t, err)
 }
+
+func TestCanonicalizeStreamingContentType(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		contentType string
+		allowlist   []string
+		expected    string
+		allowed     bool
+	}{
+		"ExactMatchIsAllowed": {
+			contentType: "text/plain",
+			allowlist:   []string{"application/json", "text/plain", "text/csv"},
+			expected:    "text/plain",
+			allowed:     true,
+		},
+		"MatchIsCaseInsensitive": {
+			contentType: "TEXT/PLAIN",
+			allowlist:   []string{"application/json", "text/plain", "text/csv"},
+			expected:    "text/plain",
+			allowed:     true,
+		},
+		"ParametersArePreserved": {
+			contentType: "text/plain; charset=utf-8",
+			allowlist:   []string{"application/json", "text/plain", "text/csv"},
+			expected:    "text/plain; charset=utf-8",
+			allowed:     true,
+		},
+		"MultiValuedContentTypeIsRejected": {
+			contentType: "text/plain,text/html",
+			allowlist:   []string{"application/json", "text/plain", "text/csv"},
+		},
+		"TypeOutsideAllowlistIsRejected": {
+			contentType: "text/html",
+			allowlist:   []string{"application/json", "text/plain", "text/csv"},
+		},
+		"UnparseableContentTypeIsRejected": {
+			contentType: "text/",
+			allowlist:   []string{"application/json", "text/plain", "text/csv"},
+		},
+		"EmptyContentTypeIsRejected": {
+			allowlist: []string{"application/json", "text/plain", "text/csv"},
+		},
+		"EntryParamsSatisfiedIsAllowed": {
+			contentType: "text/plain; charset=utf-8",
+			allowlist:   []string{"text/plain; charset=utf-8"},
+			expected:    "text/plain; charset=utf-8",
+			allowed:     true,
+		},
+		"EntryParamsUnsatisfiedIsRejected": {
+			contentType: "text/plain; charset=utf-16",
+			allowlist:   []string{"text/plain; charset=utf-8"},
+		},
+		"EntryParamsMissingIsRejected": {
+			contentType: "text/plain",
+			allowlist:   []string{"text/plain; charset=utf-8"},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			canonical, ok := CanonicalizeStreamingContentType(testCase.contentType, testCase.allowlist)
+			require.Equal(t, testCase.allowed, ok)
+			require.Equal(t, testCase.expected, canonical)
+		})
+	}
+}
