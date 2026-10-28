@@ -46,16 +46,25 @@ var (
 
 func TestAttachFiles(t *testing.T) {
 	for _, tc := range []struct {
-		name   string
-		mutate func([]artifact.File)
+		name           string
+		setBadFileLink func([]artifact.File)
+		shouldErr      bool
 	}{
 		{name: "ValidLinksShouldBeStoredWithEncodingFlagsRespected"},
-		{name: "UnencodedJavaScriptShouldRejectEntireBatch", mutate: func(files []artifact.File) {
-			files[1].Link = "javascript:alert(document.domain)"
-		}},
-		{name: "UnencodedAssociatedJavaScriptShouldRejectEntireBatch", mutate: func(files []artifact.File) {
-			files[1].AssociatedLinks[0].Link = "javascript:alert(document.domain)"
-		}},
+		{
+			name: "UnencodedJavaScriptShouldRejectEntireBatch",
+			setBadFileLink: func(files []artifact.File) {
+				files[1].Link = "javascript:alert(document.domain)"
+			},
+			shouldErr: true,
+		},
+		{
+			name: "UnencodedAssociatedJavaScriptShouldRejectEntireBatch",
+			setBadFileLink: func(files []artifact.File) {
+				files[1].AssociatedLinks[0].Link = "javascript:alert(document.domain)"
+			},
+			shouldErr: true,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.WithValue(t.Context(), model.ApiTaskKey, &task.Task{Id: "ArtifactTask", DisplayName: "ArtifactTask"})
@@ -73,8 +82,8 @@ func TestAttachFiles(t *testing.T) {
 						{Name: "T2", Link: "t2://internal.example.com/report", DoNotEncodeLink: true},
 					}},
 			}
-			if tc.mutate != nil {
-				tc.mutate(files)
+			if tc.setBadFileLink != nil {
+				tc.setBadFileLink(files)
 			}
 			body, err := json.Marshal(files)
 			require.NoError(t, err)
@@ -82,7 +91,7 @@ func TestAttachFiles(t *testing.T) {
 			req = gimlet.SetURLVars(req, map[string]string{"task_id": "ArtifactTask"})
 			h := &attachFilesHandler{}
 			err = h.Parse(ctx, req)
-			if tc.mutate != nil {
+			if tc.shouldErr {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), "artifact 'SignedReport'")
 			} else {
@@ -94,7 +103,7 @@ func TestAttachFiles(t *testing.T) {
 			entry, err := artifact.FindOne(ctx, artifact.ByTaskIdAndExecution("ArtifactTask", 0))
 			require.NoError(t, err)
 			require.NotNil(t, entry)
-			if tc.mutate != nil {
+			if tc.shouldErr {
 				assert.Equal(t, existing.Files, entry.Files)
 			} else {
 				require.Len(t, entry.Files, 3)
