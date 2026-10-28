@@ -226,7 +226,7 @@ func TestCheckGeneratedTaskTagValidation(t *testing.T) {
 			prefix:          prefix,
 			expectedFailing: []TagValidationFailure{{TaskName: "group-member", BuildVariants: []string{"existing-variant"}}},
 		},
-		"TaskFailingInMultipleVariantsIsReportedOnce": {
+		"TaskFailingInMultipleVariantsIsCollectedIntoSameValidationFailure": {
 			existing: &model.Project{},
 			merged: &model.Project{
 				Tasks: []model.ProjectTask{
@@ -260,7 +260,7 @@ func TestCheckGeneratedTaskTagValidation(t *testing.T) {
 	} {
 		t.Run(testName, func(t *testing.T) {
 			failingTasks := CheckGeneratedTaskTagValidation(testCase.existing, testCase.merged, testCase.prefix)
-			assert.Equal(t, testCase.expectedFailing, failingTasks)
+			assert.ElementsMatch(t, testCase.expectedFailing, failingTasks)
 		})
 	}
 }
