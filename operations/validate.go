@@ -152,7 +152,14 @@ func loadProjectYAML(conf *ClientSettings, path string, quiet, errorOnWarnings b
 	ctx := context.Background()
 	anchorsEnabled := cliAnchors
 	if !cliAnchors {
-		anchorsEnabled, _ = getCrossFileYAMLAnchorsEnabled(conf)
+		// The flag determines how the config parses, so a failed lookup must
+		// fail loudly rather than silently parsing a different config than
+		// the server would.
+		var err error
+		anchorsEnabled, err = getCrossFileYAMLAnchorsEnabled(conf)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting cross-file YAML anchors flag")
+		}
 	}
 	opts := &model.GetProjectOpts{
 		LocalModules:                localModuleMap,

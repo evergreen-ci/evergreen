@@ -203,8 +203,9 @@ func TestLoadProjectYAML(t *testing.T) {
 			fileContent: []byte("invalid: [yaml: bad"),
 			expectErr:   "invalid configuration",
 		},
-		"SucceedsWithWarningWhenGetServiceFlagsFails": {
+		"FailsWhenGetServiceFlagsFails": {
 			serviceFlagErr: errors.New("not authorized"),
+			expectErr:      "getting cross-file YAML anchors flag",
 		},
 		"CrossFileAnchorYAMLFailsWithoutFlag": {
 			fileContent: crossFileAnchorMainYAML,

@@ -71,11 +71,16 @@ func Evaluate() cli.Command {
 			cliAnchors := c.Bool(crossFileAnchorsFlagName)
 			anchorsEnabled := cliAnchors
 			if !cliAnchors {
-				// Best-effort: fetch the admin service flag. Avoid logging on failure
-				// to prevent polluting YAML output to stdout.
-				confPath := c.Parent().String(ConfFlagName)
-				if conf, err := NewClientSettings(confPath); err == nil {
-					anchorsEnabled, _ = getCrossFileYAMLAnchorsEnabled(conf)
+				// The flag determines how the config parses, so a failed lookup
+				// must fail loudly rather than silently parsing a different
+				// config than the server would.
+				conf, err := NewClientSettings(c.Parent().String(ConfFlagName))
+				if err != nil {
+					return errors.Wrap(err, "getting client settings")
+				}
+				anchorsEnabled, err = getCrossFileYAMLAnchorsEnabled(conf)
+				if err != nil {
+					return errors.Wrap(err, "getting cross-file YAML anchors flag")
 				}
 			}
 			opts := &model.GetProjectOpts{
