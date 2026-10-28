@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -285,5 +286,20 @@ func TestAPITaskBuildFromServiceHiddenCost(t *testing.T) {
 		require.NoError(t, at.BuildFromService(t.Context(), &st, nil))
 		require.NotNil(t, at.TaskCost)
 		require.NotNil(t, at.PredictedTaskCost)
+	})
+}
+
+func TestApiTaskEndDetailBuildFromService(t *testing.T) {
+	t.Run("EmptySystemFailureReasonShouldBeNil", func(t *testing.T) {
+		var ad ApiTaskEndDetail
+		require.NoError(t, ad.BuildFromService(apimodels.TaskEndDetail{Status: evergreen.TaskFailed}))
+		assert.Nil(t, ad.SystemFailureReason)
+		assert.Empty(t, ad.ToService().SystemFailureReason)
+	})
+	t.Run("SystemFailureReasonShouldRoundTrip", func(t *testing.T) {
+		var ad ApiTaskEndDetail
+		require.NoError(t, ad.BuildFromService(apimodels.TaskEndDetail{Status: evergreen.TaskFailed, SystemFailureReason: "host was terminated"}))
+		assert.Equal(t, "host was terminated", utility.FromStringPtr(ad.SystemFailureReason))
+		assert.Equal(t, "host was terminated", ad.ToService().SystemFailureReason)
 	})
 }

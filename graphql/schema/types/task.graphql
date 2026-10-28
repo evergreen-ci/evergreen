@@ -250,6 +250,7 @@ type TaskEndDetail {
   oomTracker: OomTrackerInfo!
   otherFailingCommands: [FailingCommand!]!
   status: String!
+  systemFailureReason: String
   timedOut: Boolean
   timeoutType: String
   traceID: String

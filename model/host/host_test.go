@@ -414,6 +414,8 @@ func TestDecommissionHost(t *testing.T) {
 	require.NotNil(t, hostFromDb)
 	assert.NotEqual(t, evergreen.HostDecommissioned, hostFromDb.Status)
 	assert.NotEqual(t, evergreen.HostDecommissioned, h.Status)
+	assert.Empty(t, hostFromDb.DecommissionReason)
+	assert.Empty(t, h.DecommissionReason)
 
 	assert.NoError(t, h.SetDecommissioned(ctx, "user", true, "counting to three"))
 
@@ -423,6 +425,8 @@ func TestDecommissionHost(t *testing.T) {
 	require.NotNil(t, hostFromDb)
 	assert.Equal(t, evergreen.HostDecommissioned, hostFromDb.Status)
 	assert.Equal(t, evergreen.HostDecommissioned, h.Status)
+	assert.Equal(t, "counting to three", hostFromDb.DecommissionReason)
+	assert.Equal(t, "counting to three", h.DecommissionReason)
 }
 
 func TestSetStopped(t *testing.T) {

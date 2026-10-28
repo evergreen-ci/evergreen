@@ -1417,20 +1417,20 @@ func (t *Task) EstimatedFinishTime(now time.Time) time.Time {
 	return t.LastHeartbeat
 }
 
-func (t *Task) MarkSystemFailed(ctx context.Context, description string) error {
-	return t.markSystemFailed(ctx, description, false)
+func (t *Task) MarkSystemFailed(ctx context.Context, description, reason string) error {
+	return t.markSystemFailed(ctx, description, reason, false)
 }
 
 // MarkSystemFailedIfUnchanged is the same as MarkSystemFailed, but only
 // updates the task if its status and host haven't changed since it was read.
-func (t *Task) MarkSystemFailedIfUnchanged(ctx context.Context, description string) error {
-	return t.markSystemFailed(ctx, description, true)
+func (t *Task) MarkSystemFailedIfUnchanged(ctx context.Context, description, reason string) error {
+	return t.markSystemFailed(ctx, description, reason, true)
 }
 
-func (t *Task) markSystemFailed(ctx context.Context, description string, requireUnchanged bool) error {
+func (t *Task) markSystemFailed(ctx context.Context, description, reason string, requireUnchanged bool) error {
 	prevStatus := t.Status
 	t.FinishTime = t.EstimatedFinishTime(time.Now())
-	t.Details = GetSystemFailureDetails(description)
+	t.Details = GetSystemFailureDetails(description, reason)
 
 	if err := t.markEnd(ctx, t.FinishTime, &t.Details, requireUnchanged); err != nil {
 		return err
@@ -1450,18 +1450,21 @@ func (t *Task) markSystemFailed(ctx context.Context, description string, require
 		"status":             prevStatus,
 		"host_id":            t.HostId,
 		"description":        description,
+		"reason":             reason,
 		"execution_platform": t.ExecutionPlatform,
 	})
 
 	return nil
 }
 
-// GetSystemFailureDetails returns a task's end details based on an input description.
-func GetSystemFailureDetails(description string) apimodels.TaskEndDetail {
+// GetSystemFailureDetails returns a task's end details based on an input
+// description and a human-readable reason for the system failure.
+func GetSystemFailureDetails(description, reason string) apimodels.TaskEndDetail {
 	details := apimodels.TaskEndDetail{
-		Status:      evergreen.TaskFailed,
-		Type:        evergreen.CommandTypeSystem,
-		Description: description,
+		Status:              evergreen.TaskFailed,
+		Type:                evergreen.CommandTypeSystem,
+		Description:         description,
+		SystemFailureReason: reason,
 	}
 	if description == evergreen.TaskDescriptionHeartbeat {
 		details.TimedOut = true

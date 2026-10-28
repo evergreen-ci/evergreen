@@ -211,7 +211,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				"task_execution": j.host.RunningTaskExecution,
 			})
 
-			j.AddError(model.ClearAndResetStrandedHostTask(ctx, j.env.Settings(), j.host))
+			j.AddError(model.ClearAndResetStrandedHostTask(ctx, j.env.Settings(), j.host, j.strandedTaskReason()))
 		} else {
 			return
 		}
@@ -290,7 +290,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				"task_execution": j.host.RunningTaskExecution,
 			})
 
-			j.AddError(errors.Wrapf(model.ClearAndResetStrandedHostTask(ctx, j.env.Settings(), j.host), "fixing stranded task '%s' execution '%d'", j.host.RunningTask, j.host.RunningTaskExecution))
+			j.AddError(errors.Wrapf(model.ClearAndResetStrandedHostTask(ctx, j.env.Settings(), j.host, j.strandedTaskReason()), "fixing stranded task '%s' execution '%d'", j.host.RunningTask, j.host.RunningTaskExecution))
 		} else {
 			return
 		}
@@ -338,6 +338,15 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"agent_start_time": j.host.AgentStartTime,
 		})
 	}
+}
+
+// strandedTaskReason returns the reason to record on a task that is stranded
+// because its host is being terminated.
+func (j *hostTerminationJob) strandedTaskReason() string {
+	if j.TerminationReason != "" {
+		return j.TerminationReason
+	}
+	return "host is being terminated"
 }
 
 func (j *hostTerminationJob) logTerminationStats(ctx context.Context, lastIdle time.Duration) {

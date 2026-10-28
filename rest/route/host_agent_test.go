@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -914,6 +915,15 @@ func TestHostEndTask(t *testing.T) {
 			require.NotZero(t, foundTask)
 			require.Equal(t, evergreen.TaskFailed, foundTask.Status)
 			require.Equal(t, evergreen.TaskFailed, foundTask.Details.Status)
+		},
+		"ParseClearsAgentProvidedSystemFailureReason": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
+			body := `{"status": "failed", "type": "system", "system_failure_reason": "agent-provided reason"}`
+			req, err := http.NewRequest(http.MethodPost, "https://example.com/rest/v2/hosts/{host_id}/task/{task_id}/end", strings.NewReader(body))
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"host_id": hostId, "task_id": taskId})
+			require.NoError(t, handler.Parse(ctx, req))
+			assert.Equal(t, evergreen.TaskFailed, handler.details.Status)
+			assert.Empty(t, handler.details.SystemFailureReason)
 		},
 		"AbortedContainerTaskPreservesExecutionPlatform": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
 			foundTask, err := task.FindOneId(ctx, taskId)

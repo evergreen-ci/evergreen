@@ -2009,6 +2009,7 @@ type ComplexityRoot struct {
 		OOMTracker           func(childComplexity int) int
 		OtherFailingCommands func(childComplexity int) int
 		Status               func(childComplexity int) int
+		SystemFailureReason  func(childComplexity int) int
 		TimedOut             func(childComplexity int) int
 		TimeoutType          func(childComplexity int) int
 		TraceID              func(childComplexity int) int
@@ -11380,6 +11381,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TaskEndDetail.Status(childComplexity), true
+	case "TaskEndDetail.systemFailureReason":
+		if e.complexity.TaskEndDetail.SystemFailureReason == nil {
+			break
+		}
+
+		return e.complexity.TaskEndDetail.SystemFailureReason(childComplexity), true
 	case "TaskEndDetail.timedOut":
 		if e.complexity.TaskEndDetail.TimedOut == nil {
 			break
@@ -63108,6 +63115,8 @@ func (ec *executionContext) fieldContext_Task_details(_ context.Context, field g
 				return ec.fieldContext_TaskEndDetail_otherFailingCommands(ctx, field)
 			case "status":
 				return ec.fieldContext_TaskEndDetail_status(ctx, field)
+			case "systemFailureReason":
+				return ec.fieldContext_TaskEndDetail_systemFailureReason(ctx, field)
 			case "timedOut":
 				return ec.fieldContext_TaskEndDetail_timedOut(ctx, field)
 			case "timeoutType":
@@ -68563,6 +68572,35 @@ func (ec *executionContext) _TaskEndDetail_status(ctx context.Context, field gra
 }
 
 func (ec *executionContext) fieldContext_TaskEndDetail_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskEndDetail",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskEndDetail_systemFailureReason(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TaskEndDetail_systemFailureReason,
+		func(ctx context.Context) (any, error) {
+			return obj.SystemFailureReason, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TaskEndDetail_systemFailureReason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TaskEndDetail",
 		Field:      field,
@@ -109601,6 +109639,8 @@ func (ec *executionContext) _TaskEndDetail(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "systemFailureReason":
+			out.Values[i] = ec._TaskEndDetail_systemFailureReason(ctx, field, obj)
 		case "timedOut":
 			out.Values[i] = ec._TaskEndDetail_timedOut(ctx, field, obj)
 		case "timeoutType":
