@@ -50,9 +50,7 @@ type Notification struct {
 	ID         string           `bson:"_id"`
 	Subscriber event.Subscriber `bson:"subscriber"`
 	Payload    any              `bson:"payload"`
-	// Project is the project that owns the subscription that created this
-	// notification, so failed webhook deliveries can be scoped by project.
-	Project string `bson:"project,omitempty"`
+	Project    string           `bson:"project,omitempty"`
 
 	SentAt   time.Time            `bson:"sent_at,omitempty"`
 	Error    string               `bson:"error,omitempty"`
