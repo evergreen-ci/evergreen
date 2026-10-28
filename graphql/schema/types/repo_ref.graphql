@@ -124,6 +124,9 @@ type WorkstationSetupCommand {
 type RepoTaskOwnershipSettings {
   defaultMothraTeam: String!
   defaultMothraTeamForBreakingCommit: String!
+  generatedTaskValidationPrefix: String!
+  trackGeneratedTaskTagValidation: Boolean!
+  blockTaskGenerationOnTagValidation: Boolean!
 }
 
 type RepoTestSelectionSettings {
