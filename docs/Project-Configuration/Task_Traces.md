@@ -51,16 +51,20 @@ In the `WHERE` section there's two attributes present. One says "show errors" an
 
 Projects can require that tasks added by `generate.tasks` carry a tag with a
 required prefix (see [task ownership settings](Project-and-Distro-Settings#task-ownership-settings)).
+
 When tracking is enabled for a project, each `generate.tasks` run that
-generates tasks failing tag validation emits a trace that is always exported
-and is not subject to trace sampling. The trace contains a parent span named
-`generate_tasks.tag_validation_failures` for the run, with one child span
-named `generate_tasks.tag_validation_failure` per failing task.
+generates tasks failing tag validation emits a trace containing a parent span named
+`generate_tasks_tag_validation_failures` for the run, with one child span named
+`generate_tasks_tag_validation_failure` per failing task.
 
 The parent span carries these attributes:
 
 | Attribute                                             | Description                                                |
 | ----------------------------------------------------- | ---------------------------------------------------------- |
+| `evergreen.version.id`                                | The version ID                                             |
+| `evergreen.project.identifier`                        | The project identifier                                     |
+| `evergreen.project.org`                               | The project org                                            |
+| `evergreen.project.repo`                              | The project repo                                           |
 | `evergreen.generate_tasks.tag_validation_prefix`      | The required tag prefix configured for the project         |
 | `evergreen.generate_tasks.tag_validation_num_failing` | The total number of generated tasks failing tag validation |
 
@@ -70,13 +74,6 @@ Each child span carries these attributes:
 | --------------------------------------------------------------- | ----------------------------------------------------- |
 | `evergreen.generate_tasks.tag_validation_failing_task`          | The name of the generated task failing tag validation |
 | `evergreen.generate_tasks.tag_validation_failing_task_variants` | The build variants the failing task is being added to |
-
-To see which tasks are failing tag validation for a project, query for the
-`generate_tasks.tag_validation_failure` span name and filter on
-`evergreen.project.identifier`. Grouping by
-`evergreen.generate_tasks.tag_validation_failing_task` shows the failing
-tasks, and a `COUNT` of the parent spans over time shows how the failure
-volume trends for the project.
 
 ## System Metrics
 

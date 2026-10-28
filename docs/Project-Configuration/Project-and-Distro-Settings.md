@@ -154,25 +154,20 @@ of the tracked branch.
 ### Task Ownership Settings
 
 Project admins can require that tasks added by
-[`generate.tasks`](Project-Commands#generatetasks) carry a tag
-identifying the owning team (e.g. `assigned_to_jira_team_<TEAM>`) so task
-failures can be routed to the right team.
+[`generate.tasks`](Project-Commands#generatetasks) carry at least one tag that
+has a matching prefix. The tag must be on the task itself; build variant tags do
+not count.
 
 In the task ownership settings, admins can configure:
 
-- **Generated task validation prefix**: the tag prefix that generated tasks
-  must have, e.g. `assigned_to_jira_team_`.
-- **Track generated task tag validation**: Evergreen tracks generated tasks
+- **Generated task validation prefix**: the prefix that generated tasks must
+  have on at least one of its tags.
+- **Track generated task tag validation**: Tracks generated tasks
   that fail tag validation. Failing tasks are reported to Honeycomb under the
-  [`generate_tasks.tag_validation_failures` span](Task-Traces#tag-validation-tracking);
-  generation is not affected.
-- **Block task generation on tag validation**: Evergreen fails `generate.tasks`
+  [`generate_tasks_tag_validation_failures` span](Task-Traces#tag-validation-tracking);
+  task generation is not affected.
+- **Block task generation on tag validation**: `generate.tasks` will fail
   if any task it generates fails tag validation.
-
-A task passes tag validation if any of the task's own tags has the required
-prefix. Tags on the task's build variant do not count. Only tasks being added
-by `generate.tasks` are checked; statically-defined tasks that are not part of
-a generation are not validated.
 
 ### Access and Admin Settings
 

@@ -66,7 +66,7 @@ func TestCheckGeneratedTaskTagValidation(t *testing.T) {
 				},
 			},
 			prefix:          prefix,
-			expectedFailing: []TagValidationFailure{{TaskName: "new-task", Variants: []string{"variant"}}},
+			expectedFailing: []TagValidationFailure{{TaskName: "new-task", BuildVariants: []string{"variant"}}},
 		},
 		"NewTaskWithNoTagsFails": {
 			existing: &model.Project{},
@@ -79,7 +79,7 @@ func TestCheckGeneratedTaskTagValidation(t *testing.T) {
 				},
 			},
 			prefix:          prefix,
-			expectedFailing: []TagValidationFailure{{TaskName: "new-task", Variants: []string{"variant"}}},
+			expectedFailing: []TagValidationFailure{{TaskName: "new-task", BuildVariants: []string{"variant"}}},
 		},
 		"NewTaskPassesIfAnyTagHasRequiredPrefix": {
 			existing: &model.Project{},
@@ -106,7 +106,7 @@ func TestCheckGeneratedTaskTagValidation(t *testing.T) {
 			// The merged variant has the required prefix as a variant tag, but variant tags
 			// do not satisfy validation, so the task still fails.
 			prefix:          prefix,
-			expectedFailing: []TagValidationFailure{{TaskName: "new-task", Variants: []string{"variant"}}},
+			expectedFailing: []TagValidationFailure{{TaskName: "new-task", BuildVariants: []string{"variant"}}},
 		},
 		"ExistingTaskAddedToVariantIsCheckedAgainstItsOwnTags": {
 			existing: &model.Project{
@@ -130,7 +130,7 @@ func TestCheckGeneratedTaskTagValidation(t *testing.T) {
 				},
 			},
 			prefix:          prefix,
-			expectedFailing: []TagValidationFailure{{TaskName: "static-task", Variants: []string{"existing-variant"}}},
+			expectedFailing: []TagValidationFailure{{TaskName: "static-task", BuildVariants: []string{"existing-variant"}}},
 		},
 		"ExistingTaskAlreadyInVariantIsIgnored": {
 			existing: &model.Project{
@@ -166,7 +166,7 @@ func TestCheckGeneratedTaskTagValidation(t *testing.T) {
 				},
 			},
 			prefix:          prefix,
-			expectedFailing: []TagValidationFailure{{TaskName: "static-task", Variants: []string{"new-variant"}}},
+			expectedFailing: []TagValidationFailure{{TaskName: "static-task", BuildVariants: []string{"new-variant"}}},
 		},
 		"GeneratedTaskGroupMemberWithoutRequiredTagPrefixFails": {
 			existing: &model.Project{},
@@ -190,7 +190,7 @@ func TestCheckGeneratedTaskTagValidation(t *testing.T) {
 				},
 			},
 			prefix:          prefix,
-			expectedFailing: []TagValidationFailure{{TaskName: "failing-member", Variants: []string{"variant"}}},
+			expectedFailing: []TagValidationFailure{{TaskName: "failing-member", BuildVariants: []string{"variant"}}},
 		},
 		"ExistingTaskGroupAddedToVariantIsChecked": {
 			existing: &model.Project{
@@ -224,7 +224,7 @@ func TestCheckGeneratedTaskTagValidation(t *testing.T) {
 				},
 			},
 			prefix:          prefix,
-			expectedFailing: []TagValidationFailure{{TaskName: "group-member", Variants: []string{"existing-variant"}}},
+			expectedFailing: []TagValidationFailure{{TaskName: "group-member", BuildVariants: []string{"existing-variant"}}},
 		},
 		"TaskFailingInMultipleVariantsIsReportedOnce": {
 			existing: &model.Project{},
@@ -238,7 +238,7 @@ func TestCheckGeneratedTaskTagValidation(t *testing.T) {
 				},
 			},
 			prefix:          prefix,
-			expectedFailing: []TagValidationFailure{{TaskName: "new-task", Variants: []string{"variant-1", "variant-2"}}},
+			expectedFailing: []TagValidationFailure{{TaskName: "new-task", BuildVariants: []string{"variant-1", "variant-2"}}},
 		},
 		"MergedSameAsExistingReturnsNoFailures": {
 			existing: unchangedProject,
