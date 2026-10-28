@@ -15,15 +15,19 @@ func TestValidateFiles(t *testing.T) {
 		associated  bool
 		doNotEncode bool
 	}{
-		{name: "HTTPSShouldValidate", link: "https://example.com/report.html"},
+		{name: "S3VirtualHostedURLShouldValidate", link: "https://bucket.s3.amazonaws.com/report.html"},
 		{name: "HTTPSAssociatedLinkShouldValidate", link: "https://example.com/coverage.html", associated: true},
 		{name: "MixedCaseHTTPShouldValidate", link: "HtTpS://example.com/report.html"},
 		{name: "SingleLabelHostShouldValidate", link: "http://fileserver/report.html"},
 		{name: "IPv6HostShouldValidate", link: "http://[::1]:8080/report.html"},
-		{name: "QueryAndFragmentShouldValidate", link: "https://example.com/report?task=123&build=456#details"},
-		{name: "EscapedFilenameShouldValidate", link: "https://example.com/report%2Ffile.html"},
-		{name: "SpecialFilenameShouldValidate", link: "https://example.com/file#1%.txt"},
-		{name: "RawPercentInDirectoryShouldValidate", link: "https://example.com/coverage/100%/report.html"},
+		{
+			name:        "S3PresignedQueryAndFragmentShouldValidate",
+			link:        "https://bucket.s3.amazonaws.com/report.html?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=key%2F20261028%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Security-Token=token%2Bvalue%3D&X-Amz-Signature=signature&X-Amz-Expires=3600#details",
+			doNotEncode: true,
+		},
+		{name: "S3EscapedObjectKeyShouldValidate", link: "https://bucket.s3.amazonaws.com/report%2Ffile.html"},
+		{name: "S3RawObjectKeyShouldValidate", link: "https://bucket.s3.amazonaws.com/file #1%+?.txt"},
+		{name: "S3PathStyleDottedBucketAndRawPercentDirectoryShouldValidate", link: "https://s3.amazonaws.com/bucket.with.dots/coverage/100%/report.html"},
 		{name: "T2MainLinkShouldError", link: "t2://internal.example.com/report", wantErr: true},
 		{name: "T2AssociatedLinkShouldValidate", link: "t2://internal.example.com/report", associated: true},
 		{name: "JavaScriptShouldError", link: "javascript:alert(document.domain)", wantErr: true},
