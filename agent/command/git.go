@@ -52,7 +52,8 @@ var (
 	cloneAttemptAttribute = fmt.Sprintf("%s.attempt", gitGetProjectAttribute)
 	cloneErrorAttribute   = fmt.Sprintf("%s.error", gitGetProjectAttribute)
 
-	clonePRFetchModeAttribute = fmt.Sprintf("%s.pr_fetch_mode", gitGetProjectAttribute)
+	clonePRFetchModeAttribute  = fmt.Sprintf("%s.pr_fetch_mode", gitGetProjectAttribute)
+	clonePRFetchDepthAttribute = fmt.Sprintf("%s.pr_fetch_depth", gitGetProjectAttribute)
 )
 
 // gitFetchProject is a command that fetches source code from git for the project
@@ -288,7 +289,7 @@ func (c *gitFetchProject) buildSourceCloneCommand(conf *internal.TaskConfig, opt
 
 	// If there's a PR checkout the ref containing the changes.
 	if usesGitHubParentPRCheckout(conf) {
-		gitCommands = append(gitCommands, prCheckoutCommands(conf)...)
+		gitCommands = append(gitCommands, prCheckoutCommands(conf, opts.cloneDepth)...)
 	} else {
 		if opts.cloneDepth > 0 {
 			// If this git log fails, then we know the clone is too shallow so we unshallow before reset.
@@ -329,12 +330,25 @@ func isFullGitSHA(hash string) bool {
 	return true
 }
 
-// PR fetch modes recorded on clone spans to distinguish direct-SHA from legacy pull-ref fetches.
+// PR fetch modes recorded on the command and clone spans to distinguish direct-SHA from legacy pull-ref fetches.
 const (
 	prFetchModeSHA         = "sha"
 	prFetchModePullRef     = "pull_ref"
 	prFetchModeMergeBranch = "merge_branch"
 )
+
+// prFetchMinDepth is the smallest clone depth whose PR fetch gets a depth flag;
+// shallower clones keep today's unbounded fetch so task scripts see no new history loss.
+const prFetchMinDepth = 100
+
+// boundedFetchDepth reports the effective PR fetch depth: cloneDepth when it is at
+// least prFetchMinDepth, else 0 for an unbounded fetch.
+func boundedFetchDepth(cloneDepth int) int {
+	if cloneDepth >= prFetchMinDepth {
+		return cloneDepth
+	}
+	return 0
+}
 
 func prFetchModeForHash(hash string) string {
 	if isFullGitSHA(hash) {
@@ -354,6 +368,18 @@ func prFetchMode(conf *internal.TaskConfig) string {
 	return prFetchModeForHash(commitToTest)
 }
 
+// setPRFetchModeSpanAttr records the PR fetch mode and effective fetch depth (0 means unbounded) on the git.get_project span, the one that reaches Honeycomb; clone_source spans carrying the same attributes are dropped downstream, and so is source_cache.clone_depth on cache-skipped tasks.
+func setPRFetchModeSpanAttr(ctx context.Context, conf *internal.TaskConfig, cloneDepth int) {
+	mode := prFetchMode(conf)
+	if mode == "" {
+		return
+	}
+	trace.SpanFromContext(ctx).SetAttributes(
+		attribute.String(clonePRFetchModeAttribute, mode),
+		attribute.Int(clonePRFetchDepthAttribute, boundedFetchDepth(cloneDepth)),
+	)
+}
+
 func prNumberForCheckout(conf *internal.TaskConfig) int {
 	if conf.GitHubParentPRCheckout != nil && conf.GitHubParentPRCheckout.ForSource {
 		return conf.GitHubParentPRCheckout.PRNumber
@@ -362,9 +388,14 @@ func prNumberForCheckout(conf *internal.TaskConfig) int {
 }
 
 // fetchCheckoutResetCommands builds the shared fetch/checkout/reset sequence; fetchRefSpec may carry a ":branch" suffix.
-func fetchCheckoutResetCommands(fetchRefSpec, checkoutRef, resetTarget string) []string {
+// A fetchDepth of at least prFetchMinDepth bounds the fetched history the way the clone is bounded; lower values fetch full history.
+func fetchCheckoutResetCommands(fetchRefSpec, checkoutRef, resetTarget string, fetchDepth int) []string {
+	depthFlag := ""
+	if depth := boundedFetchDepth(fetchDepth); depth > 0 {
+		depthFlag = fmt.Sprintf("--depth=%d ", depth)
+	}
 	return []string{
-		fmt.Sprintf(`git fetch origin "%s"`, fetchRefSpec),
+		fmt.Sprintf(`git fetch %sorigin "%s"`, depthFlag, fetchRefSpec),
 		fmt.Sprintf(`git checkout "%s"`, checkoutRef),
 		fmt.Sprintf("git reset --hard %s", resetTarget),
 	}
@@ -373,7 +404,7 @@ func fetchCheckoutResetCommands(fetchRefSpec, checkoutRef, resetTarget string) [
 // prCheckoutCommands returns the commands that check out the ref containing a
 // PR's or merge queue group's changes. They run after a clone, which leaves HEAD
 // at the base revision.
-func prCheckoutCommands(conf *internal.TaskConfig) []string {
+func prCheckoutCommands(conf *internal.TaskConfig, fetchDepth int) []string {
 	commitToTest := prCheckoutCommit(conf)
 	if commitToTest == "" {
 		return nil
@@ -385,7 +416,7 @@ func prCheckoutCommands(conf *internal.TaskConfig) []string {
 		// HeadRef looks like "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
 		return fetchCheckoutResetCommands(
 			fmt.Sprintf("%s:%s", conf.GithubMergeData.HeadBranch, localBranchName),
-			localBranchName, commitToTest,
+			localBranchName, commitToTest, 0,
 		)
 	case prFetchModeSHA:
 		// Fetch the head SHA directly (the refs/pull/N/head ref can hang for
@@ -393,7 +424,7 @@ func prCheckoutCommands(conf *internal.TaskConfig) []string {
 		localBranchName := fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
 		return fetchCheckoutResetCommands(
 			fmt.Sprintf("%s:refs/heads/%s", commitToTest, localBranchName),
-			localBranchName, commitToTest,
+			localBranchName, commitToTest, fetchDepth,
 		)
 	default: // prFetchModePullRef
 		// Github creates a ref called refs/pull/[pr number]/head
@@ -401,7 +432,7 @@ func prCheckoutCommands(conf *internal.TaskConfig) []string {
 		localBranchName := fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
 		return fetchCheckoutResetCommands(
 			fmt.Sprintf("pull/%d/head:%s", prNumberForCheckout(conf), localBranchName),
-			localBranchName, commitToTest,
+			localBranchName, commitToTest, 0,
 		)
 	}
 }
@@ -477,10 +508,12 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 		// pull/N/head ref resolution on GitHub (see prCheckoutCommands).
 		branchName := fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
 		fetchRef := fmt.Sprintf("pull/%d/head:%s", checkout.PRNumber, branchName)
+		fetchDepth := 0
 		if isFullGitSHA(checkout.HeadHash) {
 			fetchRef = fmt.Sprintf("%s:refs/heads/%s", checkout.HeadHash, branchName)
+			fetchDepth = opts.cloneDepth
 		}
-		gitCommands = append(gitCommands, fetchCheckoutResetCommands(fetchRef, branchName, checkout.HeadHash)...)
+		gitCommands = append(gitCommands, fetchCheckoutResetCommands(fetchRef, branchName, checkout.HeadHash, fetchDepth)...)
 	} else {
 		gitCommands = append(gitCommands, fmt.Sprintf("git checkout '%s'", ref))
 	}
@@ -564,12 +597,16 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 // failure falls back to the clone, so the cache can only save time, never change
 // what is tested.
 func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, opts cloneOpts) error {
+	setPRFetchModeSpanAttr(ctx, conf, opts.cloneDepth)
 	sc, skipReason := newSourceCache(ctx, comm, conf, c, opts, runtime.GOOS)
 	if sc == nil {
 		logger.Task().Infof(ctx, "Not using the source cache: %s.", skipReason)
 		setSourceCacheSpanSkipped(ctx, skipReason)
-		_, err := c.cloneSource(ctx, comm, logger, conf, opts)
-		return err
+		if _, err := c.cloneSource(ctx, comm, logger, conf, opts); err != nil {
+			return err
+		}
+		c.recordPRFetchIsland(ctx, logger, conf, conf.Task.Revision)
+		return nil
 	}
 
 	// A cache hit on the merge SHA never fetches its own ref, so nothing else would notice a deleted ref.
@@ -606,6 +643,8 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 			fallbackReason = errors.Wrap(err, "preparing restored source tree").Error()
 			break
 		}
+		// Probe before the tag refresh so the fetch's own topology is what is measured.
+		c.recordPRFetchIsland(ctx, logger, conf, restoreKey.Revision)
 		// A tag-triggered build cannot describe itself without the tag, so only it falls back to a clone.
 		if err := c.refreshTagsOnRestoredSource(ctx, logger, conf, restoreKey); err != nil {
 			fallbackReason = err.Error()
@@ -624,6 +663,7 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 	if err != nil {
 		return err
 	}
+	c.recordPRFetchIsland(ctx, logger, conf, conf.Task.Revision)
 	// The clone may have refreshed the token, and the post-save script puts this
 	// URL back into .git for the rest of the task to use.
 	opts.token = token
@@ -737,7 +777,7 @@ func (c *gitFetchProject) buildPostRestoreCommand(conf *internal.TaskConfig, opt
 	// tree needs this task's own put into the submodule remotes.
 	cmds = append(cmds, restoreGitConfigCredentialsCommands(opts.token)...)
 	if runPRCheckout {
-		cmds = append(cmds, prCheckoutCommands(conf)...)
+		cmds = append(cmds, prCheckoutCommands(conf, opts.cloneDepth)...)
 	}
 	return append(cmds, "git log --oneline -n 10")
 }
@@ -785,6 +825,30 @@ func (c *gitFetchProject) refreshTagsOnRestoredSource(ctx context.Context, logge
 		return nil
 	}
 	return errors.Wrap(err, "refreshing tags on a tag-triggered build")
+}
+
+// recordPRFetchIsland records, telemetry-only, whether the PR head fetch left
+// the tested commit's history disconnected from the base's. A shallow island
+// strands history-spanning task commands even though the checkout is exact, so
+// the island rate decides whether fetch bounding needs a connectivity gate.
+// Unbounded SHA fetches are probed as the control group.
+func (c *gitFetchProject) recordPRFetchIsland(ctx context.Context, logger client.LoggerProducer, conf *internal.TaskConfig, baseRevision string) {
+	commitToTest := prCheckoutCommit(conf)
+	if prFetchMode(conf) != prFetchModeSHA || commitToTest == "" {
+		return
+	}
+	// Both revisions exist by this point, so a probe failure means the histories share no common ancestor within the shallow windows.
+	island := c.runCommands(ctx, logger, conf,
+		c.scriptInProjectDir(fmt.Sprintf(`git merge-base "%s" "%s"`, baseRevision, commitToTest)),
+	) != nil
+	if ctx.Err() != nil {
+		// A probe cut short by cancellation fails without measuring anything, so its failure is not evidence of an island.
+		return
+	}
+	trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(sourceCacheIslandDisconnectedAttribute, island))
+	if island {
+		logger.Task().Infof(ctx, "The PR head's history is disconnected from the base revision's; history-spanning git commands in this task may fail.")
+	}
 }
 
 // buildRefreshTagsCommand refreshes tags pushed after the producer archived, so
