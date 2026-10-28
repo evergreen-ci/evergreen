@@ -10,6 +10,8 @@ import (
 	"github.com/evergreen-ci/gimlet"
 )
 
+// RequireRepoAccess requires admin or view access on the repo that the project given by the projectId argument belongs to.
+// If a repo does not exist yet, project admin access is required instead.
 func RequireRepoAccess(ctx context.Context, obj any, next graphql.Resolver, access AccessLevel) (any, error) {
 	usr := mustHaveUser(ctx)
 
