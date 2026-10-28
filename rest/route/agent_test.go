@@ -107,7 +107,6 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			rh.settings.Buckets.SourceCacheBucket = evergreen.BucketConfig{Name: "source-cache"}
 			flags := evergreen.ServiceFlags{SourceCacheAllProjectsEnabled: true}
 			require.NoError(t, flags.Set(ctx))
-			// t.Context is canceled before cleanups run, so reset the flag with a fresh context.
 			t.Cleanup(func() {
 				require.NoError(t, (&evergreen.ServiceFlags{}).Set(context.Background()))
 			})
@@ -118,13 +117,27 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			require.True(t, ok)
 			assert.Equal(t, "source-cache", data.SourceCacheBucket.Name)
 		},
+		"RunReturnsNoSourceCacheBucketForOptedOutProject": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
+			rh.settings.Buckets.SourceCacheBucket = evergreen.BucketConfig{Name: "source-cache"}
+			rh.settings.Buckets.SourceCacheOptOutProjects = []string{"p1"}
+			flags := evergreen.ServiceFlags{SourceCacheAllProjectsEnabled: true}
+			require.NoError(t, flags.Set(ctx))
+			t.Cleanup(func() {
+				require.NoError(t, (&evergreen.ServiceFlags{}).Set(context.Background()))
+			})
+			rh.taskID = "t1"
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			data, ok := resp.Data().(apimodels.ExpansionsAndVars)
+			require.True(t, ok)
+			assert.Zero(t, data.SourceCacheBucket)
+		},
 		"RunReturnsSourceCacheBucketForPatchWhenFlagOverridesProjectSetting": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
 			rh.settings.Buckets.SourceCacheBucket = evergreen.BucketConfig{Name: "source-cache"}
 			require.NoError(t, db.Update(ctx, model.ProjectRefCollection, mgobson.M{model.ProjectRefIdKey: "p1"}, mgobson.M{"$set": mgobson.M{model.ProjectRefSourceCacheModeKey: model.SourceCacheModeDisabled}}))
 			require.NoError(t, db.Update(ctx, task.Collection, mgobson.M{task.IdKey: "t1"}, mgobson.M{"$set": mgobson.M{task.RequesterKey: evergreen.PatchVersionRequester}}))
 			flags := evergreen.ServiceFlags{SourceCacheAllProjectsEnabled: true}
 			require.NoError(t, flags.Set(ctx))
-			// t.Context is canceled before cleanups run, so reset the flag with a fresh context.
 			t.Cleanup(func() {
 				require.NoError(t, (&evergreen.ServiceFlags{}).Set(context.Background()))
 			})
@@ -1343,15 +1356,17 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 
 			assert.ErrorContains(t, handler.Parse(ctx, request), "missing owner")
 		},
-		"ParseErrorsOnEmptyRepo": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
-			url := fmt.Sprintf(route, taskID, owner, "")
-			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(json))
+		"ParseSucceedsWithoutRepo": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
+			url := fmt.Sprintf("/task/%s/github_dynamic_access_token/%s", taskID, owner)
+			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(json))
 			require.NoError(t, err)
 
-			options := map[string]string{"owner": owner, "repo": "", "task_id": taskID}
+			options := map[string]string{"owner": owner, "task_id": taskID}
 			request = gimlet.SetURLVars(request, options)
 
-			assert.ErrorContains(t, handler.Parse(ctx, request), "missing repo")
+			require.NoError(t, handler.Parse(ctx, request))
+			assert.Equal(t, owner, handler.owner)
+			assert.Empty(t, handler.repo)
 		},
 		"ParseErrorsOnEmptyTaskID": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
 			url := fmt.Sprintf(route, "", owner, repo)

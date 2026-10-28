@@ -36,3 +36,7 @@ func TestCheckURL(t *testing.T) {
 	require.NotNil(t, err)
 	assert.Contains(t, err.Error(), "scheme 'vscode' for URL 'vscode://issuelink.com' should either be 'http' or 'https'")
 }
+
+func TestTaskURL(t *testing.T) {
+	assert.Equal(t, "https://spruce.example.com/task/task%2F1/2", TaskURL("https://spruce.example.com", "task/1", 2))
+}

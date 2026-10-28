@@ -405,6 +405,7 @@
                 "roleARN": ""
               },
               "longRetentionProjects": ["project1", "project2"],
+              "sourceCacheOptOutProjects": null,
               "logBucketLongRetention": {
                 "name": "mutation-long-retention-bucket",
                 "testResultsPrefix": "",
@@ -454,7 +455,6 @@
               "traceUrlTemplate": "<trace_url_template>"
             },
             "projectCreation": {
-              "totalProjectLimit": 10,
               "repoProjectLimit": 2,
               "repoExceptions": [
                 {

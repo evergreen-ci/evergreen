@@ -980,19 +980,19 @@ func (c *baseCommunicator) CreateInstallationTokenForClone(ctx context.Context, 
 	return token.Token, nil
 }
 
-func (c *baseCommunicator) CreateGitHubDynamicAccessToken(ctx context.Context, td TaskData, owner, repo string, permissions *github.InstallationPermissions) (string, *github.InstallationPermissions, error) {
+func (c *baseCommunicator) CreateGitHubDynamicAccessToken(ctx context.Context, td TaskData, owner string, permissions *github.InstallationPermissions) (string, *github.InstallationPermissions, error) {
 	info := requestInfo{
 		method:   http.MethodPost,
-		path:     fmt.Sprintf("task/%s/github_dynamic_access_token/%s/%s", td.ID, owner, repo),
+		path:     fmt.Sprintf("task/%s/github_dynamic_access_token/%s", td.ID, owner),
 		taskData: &td,
 	}
 	resp, err := c.retryRequest(ctx, info, permissions)
 	if err != nil {
-		return "", nil, errors.Wrapf(err, "creating github dynamic access token for '%s/%s'", owner, repo)
+		return "", nil, errors.Wrapf(err, "creating github dynamic access token for '%s'", owner)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", nil, util.RespErrorf(resp, "creating github dynamic access token for '%s/%s'", owner, repo)
+		return "", nil, util.RespErrorf(resp, "creating github dynamic access token for '%s'", owner)
 	}
 	r := apimodels.Token{}
 	if err := utility.ReadJSON(resp.Body, &r); err != nil {
@@ -1110,6 +1110,33 @@ func (c *baseCommunicator) SourceCacheCredentials(ctx context.Context, td TaskDa
 		return nil, errors.Wrap(err, "reading source cache credentials response")
 	}
 	return &creds, nil
+}
+
+// ClaimSourceCacheSave claims the save right. It retries only briefly because the claim gates the save, so a slow server must fail the save fast instead of stalling the task.
+func (c *baseCommunicator) ClaimSourceCacheSave(ctx context.Context, td TaskData, request apimodels.SourceCacheCredentialsRequest) (*apimodels.SourceCacheClaimResponse, error) {
+	var claim apimodels.SourceCacheClaimResponse
+	info := requestInfo{
+		method:   http.MethodPost,
+		taskData: &td,
+		retry: &utility.RetryOptions{
+			MaxAttempts: 3,
+			MinDelay:    time.Second,
+			MaxDelay:    5 * time.Second,
+		},
+	}
+	info.setTaskPathSuffix("source_cache/claim")
+	resp, err := c.retryRequest(ctx, info, &request)
+	if err != nil {
+		return nil, util.RespError(resp, errors.Wrap(err, "claiming source cache save").Error())
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, util.RespError(resp, "claiming source cache save")
+	}
+	if err := utility.ReadJSON(resp.Body, &claim); err != nil {
+		return nil, errors.Wrap(err, "reading source cache claim response")
+	}
+	return &claim, nil
 }
 
 func (c *baseCommunicator) S3Credentials(ctx context.Context, td TaskData, bucket string) (*apimodels.AWSCredentials, error) {

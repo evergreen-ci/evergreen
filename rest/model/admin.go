@@ -796,6 +796,7 @@ type APIBucketsConfig struct {
 	RetryFailedLogMoveMaxJobsPerRun  *int             `json:"retry_failed_log_move_max_jobs_per_run,omitempty"`
 	TestResultsBucket                APIBucketConfig  `json:"test_results_bucket"`
 	SourceCacheBucket                APIBucketConfig  `json:"source_cache_bucket"`
+	SourceCacheOptOutProjects        []string         `json:"source_cache_opt_out_projects"`
 	InternalBuckets                  []string         `json:"internal_buckets"`
 	Credentials                      APIS3Credentials `json:"credentials"`
 }
@@ -875,6 +876,7 @@ func (a *APIBucketsConfig) BuildFromService(h any) error {
 		a.SourceCacheBucket.buildFromService(v.SourceCacheBucket)
 
 		a.LongRetentionProjects = v.LongRetentionProjects
+		a.SourceCacheOptOutProjects = v.SourceCacheOptOutProjects
 		a.RetryFailedLogMoveLookbackDays = utility.ToIntPtr(v.RetryFailedLogMoveLookbackDays)
 		a.RetryFailedLogMoveLookbackMonths = utility.ToIntPtr(v.RetryFailedLogMoveLookbackDays)
 		a.RetryFailedLogMoveMaxJobsPerRun = utility.ToIntPtr(v.RetryFailedLogMoveMaxJobsPerRun)
@@ -911,6 +913,7 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 		LogBucketLongRetention:          a.LogBucketLongRetention.ToService(),
 		LogBucketFailedTasks:            a.LogBucketFailedTasks.ToService(),
 		LongRetentionProjects:           a.LongRetentionProjects,
+		SourceCacheOptOutProjects:       a.SourceCacheOptOutProjects,
 		RetryFailedLogMoveLookbackDays:  utility.FromIntPtr(lookbackDays),
 		RetryFailedLogMoveMaxJobsPerRun: utility.FromIntPtr(a.RetryFailedLogMoveMaxJobsPerRun),
 		TestResultsBucket:               a.TestResultsBucket.ToService(),
@@ -1497,10 +1500,8 @@ func (a *APIOwnerRepo) ToService() (any, error) {
 }
 
 type APIProjectCreationConfig struct {
-	// TotalProjectLimit is deprecated and no longer enforced.
-	TotalProjectLimit int            `json:"total_project_limit"`
-	RepoProjectLimit  int            `json:"repo_project_limit"`
-	RepoExceptions    []APIOwnerRepo `json:"repo_exceptions"`
+	RepoProjectLimit int            `json:"repo_project_limit"`
+	RepoExceptions   []APIOwnerRepo `json:"repo_exceptions"`
 }
 
 func (a *APIProjectCreationConfig) BuildFromService(h any) error {
@@ -1513,7 +1514,6 @@ func (a *APIProjectCreationConfig) BuildFromService(h any) error {
 			}
 			a.RepoExceptions = append(a.RepoExceptions, apiOwnerRepo)
 		}
-		a.TotalProjectLimit = v.TotalProjectLimit
 		a.RepoProjectLimit = v.RepoProjectLimit
 	default:
 		return errors.Errorf("programmatic error: expected Project Creation config but got type %T", h)
@@ -1528,8 +1528,7 @@ func (a *APIProjectCreationConfig) ToService() (any, error) {
 	}
 
 	config := evergreen.ProjectCreationConfig{
-		TotalProjectLimit: a.TotalProjectLimit,
-		RepoProjectLimit:  a.RepoProjectLimit,
+		RepoProjectLimit: a.RepoProjectLimit,
 	}
 
 	for _, r := range a.RepoExceptions {

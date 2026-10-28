@@ -25,7 +25,7 @@ require (
 	github.com/gonzojive/httpcache v0.0.0-20220509000156-e80a5e6a69fe
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/gorilla/mux v1.8.1
-	github.com/gorilla/sessions v1.3.0
+	github.com/gorilla/sessions v1.4.0
 	github.com/jpillora/backoff v1.0.0
 	github.com/jpillora/longestcommon v0.0.0-20161227235612-adb9d91ee629
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
@@ -168,7 +168,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.68.6
 	github.com/bradleyfalzon/ghinstallation/v2 v2.17.0
 	github.com/evergreen-ci/evg-lint v0.0.0-20251215145242-23eaa365e48f
-	github.com/evergreen-ci/test-selection-client v0.0.0-20261012175355-ceae32d48406
+	github.com/evergreen-ci/test-selection-client v0.0.0-20261021205317-148ea973cc62
 	github.com/getkin/kin-openapi v0.132.0
 	github.com/go-redis/redis_rate/v10 v10.0.1
 	github.com/google/go-github/v70 v70.0.0

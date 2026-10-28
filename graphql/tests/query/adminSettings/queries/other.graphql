@@ -30,6 +30,7 @@ query Other {
         roleARN
       }
       longRetentionProjects
+      sourceCacheOptOutProjects
       logBucketLongRetention {
         name
         testResultsPrefix
@@ -77,7 +78,6 @@ query Other {
       traceUrlTemplate
     }
     projectCreation {
-      totalProjectLimit
       repoProjectLimit
       repoExceptions {
         owner

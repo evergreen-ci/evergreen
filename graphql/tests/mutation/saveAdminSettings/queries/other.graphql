@@ -33,6 +33,7 @@ mutation SaveAdminSettingsOther {
           roleARN: "test arn"
         }
         longRetentionProjects: ["project1", "project2"]
+        sourceCacheOptOutProjects: ["project3"]
         logBucketLongRetention: {
           name: "mutation-long-retention-bucket"
           testResultsPrefix: "mutation-long-results"
@@ -78,7 +79,6 @@ mutation SaveAdminSettingsOther {
         traceUrlTemplate: "https://tracing.example.com/trace?trace_id=%s"
       }
       projectCreation: {
-        totalProjectLimit: 100
         repoProjectLimit: 50
         repoExceptions: [{ owner: "test-owner", repo: "test-repo" }]
       }
@@ -127,6 +127,7 @@ mutation SaveAdminSettingsOther {
         roleARN
       }
       longRetentionProjects
+      sourceCacheOptOutProjects
       logBucketLongRetention {
         name
         testResultsPrefix
@@ -174,7 +175,6 @@ mutation SaveAdminSettingsOther {
       traceUrlTemplate
     }
     projectCreation {
-      totalProjectLimit
       repoProjectLimit
       repoExceptions {
         owner

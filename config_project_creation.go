@@ -14,10 +14,6 @@ type OwnerRepo struct {
 }
 
 type ProjectCreationConfig struct {
-	// TotalProjectLimit is deprecated and no longer enforced. It is only kept so that existing clients that still
-	// send or request it continue to work.
-	TotalProjectLimit int `bson:"total_project_limit" json:"total_project_limit" yaml:"total_project_limit"`
-
 	// RepoProjectLimit is the number of projects that Evergreen will allow each repo to have
 	RepoProjectLimit int `bson:"repo_project_limit" json:"repo_project_limit" yaml:"repo_project_limit"`
 
@@ -26,9 +22,8 @@ type ProjectCreationConfig struct {
 }
 
 var (
-	ProjectCreationConfigTotalProjectLimitKey = bsonutil.MustHaveTag(ProjectCreationConfig{}, "TotalProjectLimit")
-	ProjectCreationConfigRepoProjectLimitKey  = bsonutil.MustHaveTag(ProjectCreationConfig{}, "RepoProjectLimit")
-	ProjectCreationConfigRepoExceptionsKey    = bsonutil.MustHaveTag(ProjectCreationConfig{}, "RepoExceptions")
+	ProjectCreationConfigRepoProjectLimitKey = bsonutil.MustHaveTag(ProjectCreationConfig{}, "RepoProjectLimit")
+	ProjectCreationConfigRepoExceptionsKey   = bsonutil.MustHaveTag(ProjectCreationConfig{}, "RepoExceptions")
 )
 
 func (*ProjectCreationConfig) SectionId() string { return "project_creation" }

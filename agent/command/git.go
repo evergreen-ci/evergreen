@@ -632,6 +632,10 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 		return nil
 	}
 	produced, err := c.saveSourceCache(ctx, comm, logger, conf, sc, opts)
+	if errors.Is(err, errSourceCacheClaimDenied) {
+		sc.setSpanOutcome(ctx, sourceCacheMissLostRace, sourceCacheClaimDeniedReason)
+		return nil
+	}
 	if errors.Is(err, errSourceCacheSaveTimeout) {
 		outcome = sourceCacheSaveTimedOut
 	} else if err != nil {
@@ -680,6 +684,18 @@ func sourceCacheSaveBudget(conf *internal.TaskConfig) (time.Duration, bool) {
 // saveSourceCache scrubs the cloned tree of anything task-specific, uploads it,
 // and puts the task's own authenticated origin URL back for the rest of the run.
 func (c *gitFetchProject) saveSourceCache(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, sc *sourceCache, opts cloneOpts) (bool, error) {
+	// When the app server cannot answer the claim, save anyway; the create-only upload still prevents two producers from writing.
+	claimStart := time.Now()
+	claim, claimErr := comm.ClaimSourceCacheSave(ctx, conf.TaskData(), sc.claimRequest)
+	setSourceCacheSpanDuration(ctx, sourceCacheClaimDurationAttribute, time.Since(claimStart))
+	if claimErr != nil {
+		trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(sourceCacheClaimErrorAttribute, true))
+		logger.Task().Warningf(ctx, "Claiming the source cache save: %s; saving anyway.", claimErr)
+	} else if !claim.Claimed {
+		logger.Task().Infof(ctx, "Another task is already saving the source cache artifact; skipping the save.")
+		return false, errSourceCacheClaimDenied
+	}
+
 	if err := c.runCommands(ctx, logger, conf, c.buildPreSaveCommand(opts)); err != nil {
 		return false, errors.Wrap(err, "scrubbing source tree before saving")
 	}

@@ -6,9 +6,18 @@ import (
 	"encoding/hex"
 	"path"
 	"strconv"
+	"time"
 )
 
 const (
+	// SourceCacheClaimsCollection holds the claims that let only one producer per key save a source cache artifact.
+	SourceCacheClaimsCollection = "source_cache_claims"
+
+	// SourceCacheClaimTTL only bounds a producer that vanished mid-save: successful saves take
+	// about 25 seconds at p99, so this covers them several times over; a slower save only costs
+	// overlap because uploads are create-only.
+	SourceCacheClaimTTL = 2 * time.Minute
+
 	// SourceCachePrefix is the top-level S3 key prefix for source cache artifacts.
 	SourceCachePrefix = "source_cache/v1"
 
@@ -46,6 +55,11 @@ func SourceCacheNamespacePrefix(owner, repo, namespace string) string {
 func SourceCacheObjectKey(owner, repo, namespace, branch, revision string, cloneDepth int, recurseSubmodules bool) string {
 	key := SourceCacheKeyHash(owner, repo, namespace, branch, revision, cloneDepth, recurseSubmodules)
 	return path.Join(SourceCacheNamespacePrefix(owner, repo, namespace), revision, key+SourceCacheArchiveSuffix)
+}
+
+// SourceCacheClaimID returns the save claim id for the key in the given bucket; separate buckets need separate claims even for the same repo and revision.
+func SourceCacheClaimID(bucketName, key string) string {
+	return path.Join(bucketName, key)
 }
 
 // SourceCacheKeyHash returns the content hash folded into a revision's object key.

@@ -138,9 +138,11 @@ type VersionTiming {
 type Manifest {
   id: String!
   branch: String!
+  changedModules: [String!]
   isBase: Boolean!
   moduleOverrides: StringMap
   modules: Map
+  previousVersionId: String
   project: String!
   revision: String!
 }

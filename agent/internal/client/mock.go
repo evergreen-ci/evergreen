@@ -79,6 +79,10 @@ type Mock struct {
 	SourceCacheCredentialsCount          int
 	SourceCacheCredentialsErr            error
 	SourceCacheCredentialsRequest        apimodels.SourceCacheCredentialsRequest
+	SourceCacheClaimResponse             *apimodels.SourceCacheClaimResponse
+	SourceCacheClaimCount                int
+	SourceCacheClaimErr                  error
+	SourceCacheClaimRequest              apimodels.SourceCacheCredentialsRequest
 	S3Response                           *apimodels.AWSCredentials
 	SendTaskDetailsShouldFail            bool
 
@@ -660,7 +664,7 @@ func (c *Mock) GetCreateInstallationTokenRefresh() []bool {
 	return slices.Clone(c.CreateInstallationTokenRefresh)
 }
 
-func (c *Mock) CreateGitHubDynamicAccessToken(ctx context.Context, td TaskData, owner, repo string, permissions *github.InstallationPermissions) (string, *github.InstallationPermissions, error) {
+func (c *Mock) CreateGitHubDynamicAccessToken(ctx context.Context, td TaskData, owner string, permissions *github.InstallationPermissions) (string, *github.InstallationPermissions, error) {
 	if c.CreateGitHubDynamicAccessTokenFail {
 		return "", nil, errors.New("failed to create token")
 	}
@@ -741,6 +745,19 @@ func (c *Mock) SourceCacheCredentials(ctx context.Context, td TaskData, request 
 		return nil, c.SourceCacheCredentialsErr
 	}
 	return c.SourceCacheCredentialsResponse, nil
+}
+
+func (c *Mock) ClaimSourceCacheSave(ctx context.Context, td TaskData, request apimodels.SourceCacheCredentialsRequest) (*apimodels.SourceCacheClaimResponse, error) {
+	c.SourceCacheClaimCount++
+	c.SourceCacheClaimRequest = request
+	if c.SourceCacheClaimErr != nil {
+		return nil, c.SourceCacheClaimErr
+	}
+	// An unset response claims successfully, which is the common case under test.
+	if c.SourceCacheClaimResponse == nil {
+		return &apimodels.SourceCacheClaimResponse{Claimed: true}, nil
+	}
+	return c.SourceCacheClaimResponse, nil
 }
 
 func (c *Mock) S3Credentials(ctx context.Context, td TaskData, bucket string) (*apimodels.AWSCredentials, error) {

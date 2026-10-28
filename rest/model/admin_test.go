@@ -169,7 +169,6 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Overrides.Overrides[0].Field, utility.FromStringPtr(apiSettings.Overrides.Overrides[0].Field))
 	assert.EqualValues(testSettings.Overrides.Overrides[0].Value, apiSettings.Overrides.Overrides[0].Value)
 	assert.EqualValues(testSettings.ParameterStore.Prefix, utility.FromStringPtr(apiSettings.ParameterStore.Prefix))
-	assert.EqualValues(testSettings.ProjectCreation.TotalProjectLimit, apiSettings.ProjectCreation.TotalProjectLimit)
 	assert.EqualValues(testSettings.ProjectCreation.RepoProjectLimit, apiSettings.ProjectCreation.RepoProjectLimit)
 	assert.EqualValues(testSettings.ProjectCreation.RepoExceptions[0].Owner, utility.FromStringPtr(apiSettings.ProjectCreation.RepoExceptions[0].Owner))
 	assert.EqualValues(testSettings.ProjectCreation.RepoExceptions[0].Repo, utility.FromStringPtr(apiSettings.ProjectCreation.RepoExceptions[0].Repo))
@@ -287,7 +286,6 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Overrides.Overrides[0].SectionID, dbSettings.Overrides.Overrides[0].SectionID)
 	assert.EqualValues(testSettings.Overrides.Overrides[0].Field, dbSettings.Overrides.Overrides[0].Field)
 	assert.EqualValues(testSettings.Overrides.Overrides[0].Value, dbSettings.Overrides.Overrides[0].Value)
-	assert.EqualValues(testSettings.ProjectCreation.TotalProjectLimit, dbSettings.ProjectCreation.TotalProjectLimit)
 	assert.EqualValues(testSettings.ProjectCreation.RepoProjectLimit, dbSettings.ProjectCreation.RepoProjectLimit)
 	assert.EqualValues(testSettings.ProjectCreation.RepoExceptions[0].Owner, dbSettings.ProjectCreation.RepoExceptions[0].Owner)
 	assert.EqualValues(testSettings.ProjectCreation.RepoExceptions[0].Repo, dbSettings.ProjectCreation.RepoExceptions[0].Repo)
@@ -417,6 +415,7 @@ func TestAPIBucketsConfigServiceRoundTrip(t *testing.T) {
 		LogBucketFailedTasks:            bucket("failed"),
 		TestResultsBucket:               bucket("tr"),
 		LongRetentionProjects:           []string{"p1", "p2"},
+		SourceCacheOptOutProjects:       []string{"p1", "p2"},
 		RetryFailedLogMoveLookbackDays:  14,
 		RetryFailedLogMoveMaxJobsPerRun: 25,
 		Credentials:                     evergreen.S3Credentials{Key: "k", Secret: "s", Bucket: "cb"},

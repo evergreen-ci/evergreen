@@ -106,6 +106,7 @@ type DirectiveRoot struct {
 	RequirePatchOwner            func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequirePatchSubmitAccess     func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireProjectAccess         func(ctx context.Context, obj any, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (res any, err error)
+	RequireProjectAccessForTasks func(ctx context.Context, obj any, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (res any, err error)
 	RequireProjectCreate         func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireProjectSettingsAccess func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireRepoAccess            func(ctx context.Context, obj any, next graphql.Resolver, access AccessLevel) (res any, err error)
@@ -348,6 +349,7 @@ type ComplexityRoot struct {
 		RetryFailedLogMoveLookbackMonths func(childComplexity int) int
 		RetryFailedLogMoveMaxJobsPerRun  func(childComplexity int) int
 		SourceCacheBucket                func(childComplexity int) int
+		SourceCacheOptOutProjects        func(childComplexity int) int
 		TestResultsBucket                func(childComplexity int) int
 	}
 
@@ -982,13 +984,15 @@ type ComplexityRoot struct {
 	}
 
 	Manifest struct {
-		Branch          func(childComplexity int) int
-		ID              func(childComplexity int) int
-		IsBase          func(childComplexity int) int
-		ModuleOverrides func(childComplexity int) int
-		Modules         func(childComplexity int) int
-		Project         func(childComplexity int) int
-		Revision        func(childComplexity int) int
+		Branch            func(childComplexity int) int
+		ChangedModules    func(childComplexity int) int
+		ID                func(childComplexity int) int
+		IsBase            func(childComplexity int) int
+		ModuleOverrides   func(childComplexity int) int
+		Modules           func(childComplexity int) int
+		PreviousVersionID func(childComplexity int) int
+		Project           func(childComplexity int) int
+		Revision          func(childComplexity int) int
 	}
 
 	MetadataLink struct {
@@ -1367,9 +1371,8 @@ type ComplexityRoot struct {
 	}
 
 	ProjectCreationConfig struct {
-		RepoExceptions    func(childComplexity int) int
-		RepoProjectLimit  func(childComplexity int) int
-		TotalProjectLimit func(childComplexity int) int
+		RepoExceptions   func(childComplexity int) int
+		RepoProjectLimit func(childComplexity int) int
 	}
 
 	ProjectEventLogEntry struct {
@@ -1619,14 +1622,18 @@ type ComplexityRoot struct {
 	}
 
 	RepoTaskOwnershipSettings struct {
+		BlockTaskGenerationOnTagValidation func(childComplexity int) int
 		DefaultMothraTeam                  func(childComplexity int) int
 		DefaultMothraTeamForBreakingCommit func(childComplexity int) int
+		GeneratedTaskValidationPrefix      func(childComplexity int) int
+		TrackGeneratedTaskTagValidation    func(childComplexity int) int
 	}
 
 	RepoTestSelectionSettings struct {
-		Allowed                func(childComplexity int) int
-		DefaultEnabled         func(childComplexity int) int
-		MainlineDefaultEnabled func(childComplexity int) int
+		Allowed                       func(childComplexity int) int
+		DefaultEnabled                func(childComplexity int) int
+		MainlineDefaultEnabled        func(childComplexity int) int
+		QuarantineJiraTicketsRequired func(childComplexity int) int
 	}
 
 	RepoWorkstationConfig struct {
@@ -2109,8 +2116,11 @@ type ComplexityRoot struct {
 	}
 
 	TaskOwnershipSettings struct {
+		BlockTaskGenerationOnTagValidation func(childComplexity int) int
 		DefaultMothraTeam                  func(childComplexity int) int
 		DefaultMothraTeamForBreakingCommit func(childComplexity int) int
+		GeneratedTaskValidationPrefix      func(childComplexity int) int
+		TrackGeneratedTaskTagValidation    func(childComplexity int) int
 	}
 
 	TaskQuarantineEntry struct {
@@ -2214,9 +2224,10 @@ type ComplexityRoot struct {
 	}
 
 	TestSelectionSettings struct {
-		Allowed                func(childComplexity int) int
-		DefaultEnabled         func(childComplexity int) int
-		MainlineDefaultEnabled func(childComplexity int) int
+		Allowed                       func(childComplexity int) int
+		DefaultEnabled                func(childComplexity int) int
+		MainlineDefaultEnabled        func(childComplexity int) int
+		QuarantineJiraTicketsRequired func(childComplexity int) int
 	}
 
 	TicketFields struct {
@@ -4004,6 +4015,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.BucketsConfig.SourceCacheBucket(childComplexity), true
+	case "BucketsConfig.sourceCacheOptOutProjects":
+		if e.complexity.BucketsConfig.SourceCacheOptOutProjects == nil {
+			break
+		}
+
+		return e.complexity.BucketsConfig.SourceCacheOptOutProjects(childComplexity), true
 	case "BucketsConfig.testResultsBucket":
 		if e.complexity.BucketsConfig.TestResultsBucket == nil {
 			break
@@ -6314,6 +6331,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Manifest.Branch(childComplexity), true
+	case "Manifest.changedModules":
+		if e.complexity.Manifest.ChangedModules == nil {
+			break
+		}
+
+		return e.complexity.Manifest.ChangedModules(childComplexity), true
 	case "Manifest.id":
 		if e.complexity.Manifest.ID == nil {
 			break
@@ -6338,6 +6361,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Manifest.Modules(childComplexity), true
+	case "Manifest.previousVersionId":
+		if e.complexity.Manifest.PreviousVersionID == nil {
+			break
+		}
+
+		return e.complexity.Manifest.PreviousVersionID(childComplexity), true
 	case "Manifest.project":
 		if e.complexity.Manifest.Project == nil {
 			break
@@ -8395,12 +8424,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ProjectCreationConfig.RepoProjectLimit(childComplexity), true
-	case "ProjectCreationConfig.totalProjectLimit":
-		if e.complexity.ProjectCreationConfig.TotalProjectLimit == nil {
-			break
-		}
-
-		return e.complexity.ProjectCreationConfig.TotalProjectLimit(childComplexity), true
 
 	case "ProjectEventLogEntry.after":
 		if e.complexity.ProjectEventLogEntry.After == nil {
@@ -9717,6 +9740,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.RepoSettings.Vars(childComplexity), true
 
+	case "RepoTaskOwnershipSettings.blockTaskGenerationOnTagValidation":
+		if e.complexity.RepoTaskOwnershipSettings.BlockTaskGenerationOnTagValidation == nil {
+			break
+		}
+
+		return e.complexity.RepoTaskOwnershipSettings.BlockTaskGenerationOnTagValidation(childComplexity), true
 	case "RepoTaskOwnershipSettings.defaultMothraTeam":
 		if e.complexity.RepoTaskOwnershipSettings.DefaultMothraTeam == nil {
 			break
@@ -9729,6 +9758,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RepoTaskOwnershipSettings.DefaultMothraTeamForBreakingCommit(childComplexity), true
+	case "RepoTaskOwnershipSettings.generatedTaskValidationPrefix":
+		if e.complexity.RepoTaskOwnershipSettings.GeneratedTaskValidationPrefix == nil {
+			break
+		}
+
+		return e.complexity.RepoTaskOwnershipSettings.GeneratedTaskValidationPrefix(childComplexity), true
+	case "RepoTaskOwnershipSettings.trackGeneratedTaskTagValidation":
+		if e.complexity.RepoTaskOwnershipSettings.TrackGeneratedTaskTagValidation == nil {
+			break
+		}
+
+		return e.complexity.RepoTaskOwnershipSettings.TrackGeneratedTaskTagValidation(childComplexity), true
 
 	case "RepoTestSelectionSettings.allowed":
 		if e.complexity.RepoTestSelectionSettings.Allowed == nil {
@@ -9748,6 +9789,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RepoTestSelectionSettings.MainlineDefaultEnabled(childComplexity), true
+	case "RepoTestSelectionSettings.quarantineJiraTicketsRequired":
+		if e.complexity.RepoTestSelectionSettings.QuarantineJiraTicketsRequired == nil {
+			break
+		}
+
+		return e.complexity.RepoTestSelectionSettings.QuarantineJiraTicketsRequired(childComplexity), true
 
 	case "RepoWorkstationConfig.gitClone":
 		if e.complexity.RepoWorkstationConfig.GitClone == nil {
@@ -11754,6 +11801,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.TaskOwnerTeam.TeamName(childComplexity), true
 
+	case "TaskOwnershipSettings.blockTaskGenerationOnTagValidation":
+		if e.complexity.TaskOwnershipSettings.BlockTaskGenerationOnTagValidation == nil {
+			break
+		}
+
+		return e.complexity.TaskOwnershipSettings.BlockTaskGenerationOnTagValidation(childComplexity), true
 	case "TaskOwnershipSettings.defaultMothraTeam":
 		if e.complexity.TaskOwnershipSettings.DefaultMothraTeam == nil {
 			break
@@ -11766,6 +11819,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TaskOwnershipSettings.DefaultMothraTeamForBreakingCommit(childComplexity), true
+	case "TaskOwnershipSettings.generatedTaskValidationPrefix":
+		if e.complexity.TaskOwnershipSettings.GeneratedTaskValidationPrefix == nil {
+			break
+		}
+
+		return e.complexity.TaskOwnershipSettings.GeneratedTaskValidationPrefix(childComplexity), true
+	case "TaskOwnershipSettings.trackGeneratedTaskTagValidation":
+		if e.complexity.TaskOwnershipSettings.TrackGeneratedTaskTagValidation == nil {
+			break
+		}
+
+		return e.complexity.TaskOwnershipSettings.TrackGeneratedTaskTagValidation(childComplexity), true
 
 	case "TaskQuarantineEntry.taskName":
 		if e.complexity.TaskQuarantineEntry.TaskName == nil {
@@ -12164,6 +12229,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TestSelectionSettings.MainlineDefaultEnabled(childComplexity), true
+	case "TestSelectionSettings.quarantineJiraTicketsRequired":
+		if e.complexity.TestSelectionSettings.QuarantineJiraTicketsRequired == nil {
+			break
+		}
+
+		return e.complexity.TestSelectionSettings.QuarantineJiraTicketsRequired(childComplexity), true
 
 	case "TicketFields.assignedTeam":
 		if e.complexity.TicketFields.AssignedTeam == nil {
@@ -13700,6 +13771,22 @@ func (ec *executionContext) dir_requireHostAccess_args(ctx context.Context, rawA
 		return nil, err
 	}
 	args["access"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) dir_requireProjectAccessForTasks_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "permission", ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission)
+	if err != nil {
+		return nil, err
+	}
+	args["permission"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "access", ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel)
+	if err != nil {
+		return nil, err
+	}
+	args["access"] = arg1
 	return args, nil
 }
 
@@ -18809,6 +18896,8 @@ func (ec *executionContext) fieldContext_AdminSettings_buckets(_ context.Context
 				return ec.fieldContext_BucketsConfig_testResultsBucket(ctx, field)
 			case "sourceCacheBucket":
 				return ec.fieldContext_BucketsConfig_sourceCacheBucket(ctx, field)
+			case "sourceCacheOptOutProjects":
+				return ec.fieldContext_BucketsConfig_sourceCacheOptOutProjects(ctx, field)
 			case "internalBuckets":
 				return ec.fieldContext_BucketsConfig_internalBuckets(ctx, field)
 			case "credentials":
@@ -19746,8 +19835,6 @@ func (ec *executionContext) fieldContext_AdminSettings_projectCreation(_ context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "totalProjectLimit":
-				return ec.fieldContext_ProjectCreationConfig_totalProjectLimit(ctx, field)
 			case "repoProjectLimit":
 				return ec.fieldContext_ProjectCreationConfig_repoProjectLimit(ctx, field)
 			case "repoExceptions":
@@ -23540,6 +23627,35 @@ func (ec *executionContext) fieldContext_BucketsConfig_sourceCacheBucket(_ conte
 				return ec.fieldContext_BucketConfig_lifecycleSyncError(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type BucketConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BucketsConfig_sourceCacheOptOutProjects(ctx context.Context, field graphql.CollectedField, obj *model.APIBucketsConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BucketsConfig_sourceCacheOptOutProjects,
+		func(ctx context.Context) (any, error) {
+			return obj.SourceCacheOptOutProjects, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BucketsConfig_sourceCacheOptOutProjects(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BucketsConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -36015,6 +36131,35 @@ func (ec *executionContext) fieldContext_Manifest_branch(_ context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _Manifest_changedModules(ctx context.Context, field graphql.CollectedField, obj *Manifest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Manifest_changedModules,
+		func(ctx context.Context) (any, error) {
+			return obj.ChangedModules, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Manifest_changedModules(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Manifest",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Manifest_isBase(ctx context.Context, field graphql.CollectedField, obj *Manifest) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -36097,6 +36242,35 @@ func (ec *executionContext) fieldContext_Manifest_modules(_ context.Context, fie
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Map does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Manifest_previousVersionId(ctx context.Context, field graphql.CollectedField, obj *Manifest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Manifest_previousVersionId,
+		func(ctx context.Context) (any, error) {
+			return obj.PreviousVersionID, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Manifest_previousVersionId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Manifest",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -48512,6 +48686,12 @@ func (ec *executionContext) fieldContext_Project_taskOwnership(_ context.Context
 				return ec.fieldContext_TaskOwnershipSettings_defaultMothraTeam(ctx, field)
 			case "defaultMothraTeamForBreakingCommit":
 				return ec.fieldContext_TaskOwnershipSettings_defaultMothraTeamForBreakingCommit(ctx, field)
+			case "generatedTaskValidationPrefix":
+				return ec.fieldContext_TaskOwnershipSettings_generatedTaskValidationPrefix(ctx, field)
+			case "trackGeneratedTaskTagValidation":
+				return ec.fieldContext_TaskOwnershipSettings_trackGeneratedTaskTagValidation(ctx, field)
+			case "blockTaskGenerationOnTagValidation":
+				return ec.fieldContext_TaskOwnershipSettings_blockTaskGenerationOnTagValidation(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TaskOwnershipSettings", field.Name)
 		},
@@ -48549,6 +48729,8 @@ func (ec *executionContext) fieldContext_Project_testSelection(_ context.Context
 				return ec.fieldContext_TestSelectionSettings_defaultEnabled(ctx, field)
 			case "mainlineDefaultEnabled":
 				return ec.fieldContext_TestSelectionSettings_mainlineDefaultEnabled(ctx, field)
+			case "quarantineJiraTicketsRequired":
+				return ec.fieldContext_TestSelectionSettings_quarantineJiraTicketsRequired(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TestSelectionSettings", field.Name)
 		},
@@ -49163,35 +49345,6 @@ func (ec *executionContext) fieldContext_ProjectBuildVariant_tasks(_ context.Con
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProjectCreationConfig_totalProjectLimit(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectCreationConfig) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ProjectCreationConfig_totalProjectLimit,
-		func(ctx context.Context) (any, error) {
-			return obj.TotalProjectLimit, nil
-		},
-		nil,
-		ec.marshalOInt2int,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ProjectCreationConfig_totalProjectLimit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProjectCreationConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -56786,6 +56939,12 @@ func (ec *executionContext) fieldContext_RepoRef_taskOwnership(_ context.Context
 				return ec.fieldContext_RepoTaskOwnershipSettings_defaultMothraTeam(ctx, field)
 			case "defaultMothraTeamForBreakingCommit":
 				return ec.fieldContext_RepoTaskOwnershipSettings_defaultMothraTeamForBreakingCommit(ctx, field)
+			case "generatedTaskValidationPrefix":
+				return ec.fieldContext_RepoTaskOwnershipSettings_generatedTaskValidationPrefix(ctx, field)
+			case "trackGeneratedTaskTagValidation":
+				return ec.fieldContext_RepoTaskOwnershipSettings_trackGeneratedTaskTagValidation(ctx, field)
+			case "blockTaskGenerationOnTagValidation":
+				return ec.fieldContext_RepoTaskOwnershipSettings_blockTaskGenerationOnTagValidation(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RepoTaskOwnershipSettings", field.Name)
 		},
@@ -56823,6 +56982,8 @@ func (ec *executionContext) fieldContext_RepoRef_testSelection(_ context.Context
 				return ec.fieldContext_RepoTestSelectionSettings_defaultEnabled(ctx, field)
 			case "mainlineDefaultEnabled":
 				return ec.fieldContext_RepoTestSelectionSettings_mainlineDefaultEnabled(ctx, field)
+			case "quarantineJiraTicketsRequired":
+				return ec.fieldContext_RepoTestSelectionSettings_quarantineJiraTicketsRequired(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RepoTestSelectionSettings", field.Name)
 		},
@@ -57408,6 +57569,93 @@ func (ec *executionContext) fieldContext_RepoTaskOwnershipSettings_defaultMothra
 	return fc, nil
 }
 
+func (ec *executionContext) _RepoTaskOwnershipSettings_generatedTaskValidationPrefix(ctx context.Context, field graphql.CollectedField, obj *model.APITaskOwnershipSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RepoTaskOwnershipSettings_generatedTaskValidationPrefix,
+		func(ctx context.Context) (any, error) {
+			return obj.GeneratedTaskValidationPrefix, nil
+		},
+		nil,
+		ec.marshalNString2ᚖstring,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RepoTaskOwnershipSettings_generatedTaskValidationPrefix(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoTaskOwnershipSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RepoTaskOwnershipSettings_trackGeneratedTaskTagValidation(ctx context.Context, field graphql.CollectedField, obj *model.APITaskOwnershipSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RepoTaskOwnershipSettings_trackGeneratedTaskTagValidation,
+		func(ctx context.Context) (any, error) {
+			return obj.TrackGeneratedTaskTagValidation, nil
+		},
+		nil,
+		ec.marshalNBoolean2ᚖbool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RepoTaskOwnershipSettings_trackGeneratedTaskTagValidation(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoTaskOwnershipSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RepoTaskOwnershipSettings_blockTaskGenerationOnTagValidation(ctx context.Context, field graphql.CollectedField, obj *model.APITaskOwnershipSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RepoTaskOwnershipSettings_blockTaskGenerationOnTagValidation,
+		func(ctx context.Context) (any, error) {
+			return obj.BlockTaskGenerationOnTagValidation, nil
+		},
+		nil,
+		ec.marshalNBoolean2ᚖbool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RepoTaskOwnershipSettings_blockTaskGenerationOnTagValidation(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoTaskOwnershipSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RepoTestSelectionSettings_allowed(ctx context.Context, field graphql.CollectedField, obj *model.APITestSelectionSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -57483,6 +57731,35 @@ func (ec *executionContext) _RepoTestSelectionSettings_mainlineDefaultEnabled(ct
 }
 
 func (ec *executionContext) fieldContext_RepoTestSelectionSettings_mainlineDefaultEnabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoTestSelectionSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RepoTestSelectionSettings_quarantineJiraTicketsRequired(ctx context.Context, field graphql.CollectedField, obj *model.APITestSelectionSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RepoTestSelectionSettings_quarantineJiraTicketsRequired,
+		func(ctx context.Context) (any, error) {
+			return obj.QuarantineJiraTicketsRequired, nil
+		},
+		nil,
+		ec.marshalNBoolean2ᚖbool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RepoTestSelectionSettings_quarantineJiraTicketsRequired(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RepoTestSelectionSettings",
 		Field:      field,
@@ -70626,6 +70903,93 @@ func (ec *executionContext) fieldContext_TaskOwnershipSettings_defaultMothraTeam
 	return fc, nil
 }
 
+func (ec *executionContext) _TaskOwnershipSettings_generatedTaskValidationPrefix(ctx context.Context, field graphql.CollectedField, obj *model.APITaskOwnershipSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TaskOwnershipSettings_generatedTaskValidationPrefix,
+		func(ctx context.Context) (any, error) {
+			return obj.GeneratedTaskValidationPrefix, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TaskOwnershipSettings_generatedTaskValidationPrefix(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskOwnershipSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskOwnershipSettings_trackGeneratedTaskTagValidation(ctx context.Context, field graphql.CollectedField, obj *model.APITaskOwnershipSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TaskOwnershipSettings_trackGeneratedTaskTagValidation,
+		func(ctx context.Context) (any, error) {
+			return obj.TrackGeneratedTaskTagValidation, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TaskOwnershipSettings_trackGeneratedTaskTagValidation(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskOwnershipSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskOwnershipSettings_blockTaskGenerationOnTagValidation(ctx context.Context, field graphql.CollectedField, obj *model.APITaskOwnershipSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TaskOwnershipSettings_blockTaskGenerationOnTagValidation,
+		func(ctx context.Context) (any, error) {
+			return obj.BlockTaskGenerationOnTagValidation, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TaskOwnershipSettings_blockTaskGenerationOnTagValidation(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskOwnershipSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TaskQuarantineEntry_taskName(ctx context.Context, field graphql.CollectedField, obj *model.APITaskQuarantineEntry) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -72534,6 +72898,35 @@ func (ec *executionContext) _TestSelectionSettings_mainlineDefaultEnabled(ctx co
 }
 
 func (ec *executionContext) fieldContext_TestSelectionSettings_mainlineDefaultEnabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestSelectionSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TestSelectionSettings_quarantineJiraTicketsRequired(ctx context.Context, field graphql.CollectedField, obj *model.APITestSelectionSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TestSelectionSettings_quarantineJiraTicketsRequired,
+		func(ctx context.Context) (any, error) {
+			return obj.QuarantineJiraTicketsRequired, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TestSelectionSettings_quarantineJiraTicketsRequired(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TestSelectionSettings",
 		Field:      field,
@@ -76493,12 +76886,16 @@ func (ec *executionContext) fieldContext_Version_manifest(_ context.Context, fie
 				return ec.fieldContext_Manifest_id(ctx, field)
 			case "branch":
 				return ec.fieldContext_Manifest_branch(ctx, field)
+			case "changedModules":
+				return ec.fieldContext_Manifest_changedModules(ctx, field)
 			case "isBase":
 				return ec.fieldContext_Manifest_isBase(ctx, field)
 			case "moduleOverrides":
 				return ec.fieldContext_Manifest_moduleOverrides(ctx, field)
 			case "modules":
 				return ec.fieldContext_Manifest_modules(ctx, field)
+			case "previousVersionId":
+				return ec.fieldContext_Manifest_previousVersionId(ctx, field)
 			case "project":
 				return ec.fieldContext_Manifest_project(ctx, field)
 			case "revision":
@@ -82559,7 +82956,7 @@ func (ec *executionContext) unmarshalInputBucketsConfigInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"logBucket", "logBucketLongRetention", "logBucketFailedTasks", "longRetentionProjects", "retryFailedLogMoveLookbackDays", "retryFailedLogMoveLookbackMonths", "retryFailedLogMoveMaxJobsPerRun", "testResultsBucket", "sourceCacheBucket", "internalBuckets", "credentials"}
+	fieldsInOrder := [...]string{"logBucket", "logBucketLongRetention", "logBucketFailedTasks", "longRetentionProjects", "retryFailedLogMoveLookbackDays", "retryFailedLogMoveLookbackMonths", "retryFailedLogMoveMaxJobsPerRun", "testResultsBucket", "sourceCacheBucket", "sourceCacheOptOutProjects", "internalBuckets", "credentials"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -82629,6 +83026,13 @@ func (ec *executionContext) unmarshalInputBucketsConfigInput(ctx context.Context
 				return it, err
 			}
 			it.SourceCacheBucket = data
+		case "sourceCacheOptOutProjects":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sourceCacheOptOutProjects"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SourceCacheOptOutProjects = data
 		case "internalBuckets":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("internalBuckets"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
@@ -87280,20 +87684,13 @@ func (ec *executionContext) unmarshalInputProjectCreationConfigInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"totalProjectLimit", "repoProjectLimit", "repoExceptions"}
+	fieldsInOrder := [...]string{"repoProjectLimit", "repoExceptions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "totalProjectLimit":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalProjectLimit"))
-			data, err := ec.unmarshalOInt2int(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TotalProjectLimit = data
 		case "repoProjectLimit":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("repoProjectLimit"))
 			data, err := ec.unmarshalOInt2int(ctx, v)
@@ -88096,7 +88493,7 @@ func (ec *executionContext) unmarshalInputQuarantineTestInput(ctx context.Contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"taskId", "testName"}
+	fieldsInOrder := [...]string{"taskId", "testName", "existingJiraTicketsToLink", "justification"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -88142,6 +88539,20 @@ func (ec *executionContext) unmarshalInputQuarantineTestInput(ctx context.Contex
 				return it, err
 			}
 			it.TestName = data
+		case "existingJiraTicketsToLink":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("existingJiraTicketsToLink"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExistingJiraTicketsToLink = data
+		case "justification":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("justification"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Justification = data
 		}
 	}
 
@@ -91157,7 +91568,7 @@ func (ec *executionContext) unmarshalInputTaskOwnershipSettingsInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"defaultMothraTeam", "defaultMothraTeamForBreakingCommit"}
+	fieldsInOrder := [...]string{"defaultMothraTeam", "defaultMothraTeamForBreakingCommit", "generatedTaskValidationPrefix", "trackGeneratedTaskTagValidation", "blockTaskGenerationOnTagValidation"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -91178,6 +91589,27 @@ func (ec *executionContext) unmarshalInputTaskOwnershipSettingsInput(ctx context
 				return it, err
 			}
 			it.DefaultMothraTeamForBreakingCommit = data
+		case "generatedTaskValidationPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("generatedTaskValidationPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GeneratedTaskValidationPrefix = data
+		case "trackGeneratedTaskTagValidation":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("trackGeneratedTaskTagValidation"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TrackGeneratedTaskTagValidation = data
+		case "blockTaskGenerationOnTagValidation":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("blockTaskGenerationOnTagValidation"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BlockTaskGenerationOnTagValidation = data
 		}
 	}
 
@@ -91421,7 +91853,7 @@ func (ec *executionContext) unmarshalInputTestSelectionSettingsInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"allowed", "defaultEnabled", "mainlineDefaultEnabled"}
+	fieldsInOrder := [...]string{"allowed", "defaultEnabled", "mainlineDefaultEnabled", "quarantineJiraTicketsRequired"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -91449,6 +91881,13 @@ func (ec *executionContext) unmarshalInputTestSelectionSettingsInput(ctx context
 				return it, err
 			}
 			it.MainlineDefaultEnabled = data
+		case "quarantineJiraTicketsRequired":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("quarantineJiraTicketsRequired"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.QuarantineJiraTicketsRequired = data
 		}
 	}
 
@@ -94133,6 +94572,8 @@ func (ec *executionContext) _BucketsConfig(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._BucketsConfig_testResultsBucket(ctx, field, obj)
 		case "sourceCacheBucket":
 			out.Values[i] = ec._BucketsConfig_sourceCacheBucket(ctx, field, obj)
+		case "sourceCacheOptOutProjects":
+			out.Values[i] = ec._BucketsConfig_sourceCacheOptOutProjects(ctx, field, obj)
 		case "internalBuckets":
 			out.Values[i] = ec._BucketsConfig_internalBuckets(ctx, field, obj)
 		case "credentials":
@@ -99437,6 +99878,8 @@ func (ec *executionContext) _Manifest(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "changedModules":
+			out.Values[i] = ec._Manifest_changedModules(ctx, field, obj)
 		case "isBase":
 			out.Values[i] = ec._Manifest_isBase(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -99446,6 +99889,8 @@ func (ec *executionContext) _Manifest(ctx context.Context, sel ast.SelectionSet,
 			out.Values[i] = ec._Manifest_moduleOverrides(ctx, field, obj)
 		case "modules":
 			out.Values[i] = ec._Manifest_modules(ctx, field, obj)
+		case "previousVersionId":
+			out.Values[i] = ec._Manifest_previousVersionId(ctx, field, obj)
 		case "project":
 			out.Values[i] = ec._Manifest_project(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -102625,8 +103070,6 @@ func (ec *executionContext) _ProjectCreationConfig(ctx context.Context, sel ast.
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("ProjectCreationConfig")
-		case "totalProjectLimit":
-			out.Values[i] = ec._ProjectCreationConfig_totalProjectLimit(ctx, field, obj)
 		case "repoProjectLimit":
 			out.Values[i] = ec._ProjectCreationConfig_repoProjectLimit(ctx, field, obj)
 		case "repoExceptions":
@@ -105192,6 +105635,21 @@ func (ec *executionContext) _RepoTaskOwnershipSettings(ctx context.Context, sel 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "generatedTaskValidationPrefix":
+			out.Values[i] = ec._RepoTaskOwnershipSettings_generatedTaskValidationPrefix(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "trackGeneratedTaskTagValidation":
+			out.Values[i] = ec._RepoTaskOwnershipSettings_trackGeneratedTaskTagValidation(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "blockTaskGenerationOnTagValidation":
+			out.Values[i] = ec._RepoTaskOwnershipSettings_blockTaskGenerationOnTagValidation(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -105238,6 +105696,11 @@ func (ec *executionContext) _RepoTestSelectionSettings(ctx context.Context, sel 
 			}
 		case "mainlineDefaultEnabled":
 			out.Values[i] = ec._RepoTestSelectionSettings_mainlineDefaultEnabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "quarantineJiraTicketsRequired":
+			out.Values[i] = ec._RepoTestSelectionSettings_quarantineJiraTicketsRequired(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -109983,6 +110446,12 @@ func (ec *executionContext) _TaskOwnershipSettings(ctx context.Context, sel ast.
 			out.Values[i] = ec._TaskOwnershipSettings_defaultMothraTeam(ctx, field, obj)
 		case "defaultMothraTeamForBreakingCommit":
 			out.Values[i] = ec._TaskOwnershipSettings_defaultMothraTeamForBreakingCommit(ctx, field, obj)
+		case "generatedTaskValidationPrefix":
+			out.Values[i] = ec._TaskOwnershipSettings_generatedTaskValidationPrefix(ctx, field, obj)
+		case "trackGeneratedTaskTagValidation":
+			out.Values[i] = ec._TaskOwnershipSettings_trackGeneratedTaskTagValidation(ctx, field, obj)
+		case "blockTaskGenerationOnTagValidation":
+			out.Values[i] = ec._TaskOwnershipSettings_blockTaskGenerationOnTagValidation(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -110701,6 +111170,8 @@ func (ec *executionContext) _TestSelectionSettings(ctx context.Context, sel ast.
 			out.Values[i] = ec._TestSelectionSettings_defaultEnabled(ctx, field, obj)
 		case "mainlineDefaultEnabled":
 			out.Values[i] = ec._TestSelectionSettings_mainlineDefaultEnabled(ctx, field, obj)
+		case "quarantineJiraTicketsRequired":
+			out.Values[i] = ec._TestSelectionSettings_quarantineJiraTicketsRequired(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

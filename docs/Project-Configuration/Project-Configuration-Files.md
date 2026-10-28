@@ -493,6 +493,22 @@ latest revision available for a module. The full hierarchy of how
 module revisions are determined is available in the [git.get_project](Project-Commands/#module-hash-hierarchy)
 docs.
 
+Each module in the manifest records a `selection_rule` explaining how its revision was chosen:
+
+- `pinned_ref`: the module's `ref` set in the YAML.
+- `trigger_commit`: the module commit that fired the push-level [project trigger](Project-and-Distro-Settings#project-triggers)
+  that created the version.
+- `latest_ingested`: the latest module commit Evergreen had received at the time the version was created.
+- `github_fallback`: the newest commit on the module branch according to GitHub. This is used when Evergreen hasn't
+  received a push for the module branch before the version was created, and for patches that use `auto_update`.
+- `base_version`: inherited from the base version's manifest.
+
+The manifest also records `changed_modules`, the modules that were added, removed, or moved to a different commit
+compared to the version in `previous_version_id`. For patches, that's the base version. Otherwise, it's the previous
+version on the waterfall (including trigger, git tag, and periodic build versions), the same one Spruce links to as
+the previous version. If that version doesn't have a manifest yet when this one is created, the comparison is skipped
+and neither field is set, so an empty `changed_modules` only means nothing changed when `previous_version_id` is set.
+
 Module fields support the expansion of variables defined in the [Variables](Project-and-Distro-Settings#variables)
 tab of the Spruce project settings. These fields are expanded at the time of version creation, at which point
 the "Version Manifest" shown in the Spruce UI should show module configurations including the expanded variables.
@@ -1055,6 +1071,9 @@ Every task has some expansions available by default:
   project
 - `${build_variant}` is the name of the build variant the task belongs
   to
+- `${config_file_path}` is the path to the project's Evergreen
+  configuration file in its repository. For projects using repo-level
+  settings, this is the repo's configuration file path.
 - `${created_at}` is the time the version was created
 - `${display_task_name}` is the name of the display task that contains the
   running execution task. It is undefined if the task is not part of a display

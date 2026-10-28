@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -576,4 +577,40 @@ func TestGetRawPatches(t *testing.T) {
 	assert.Equal(t, "myModule", raw.LocalModuleIncludes[0].Module)
 	assert.Equal(t, "config.yml", raw.LocalModuleIncludes[0].FileName)
 	assert.Equal(t, []byte("some yaml content"), raw.LocalModuleIncludes[0].FileContent)
+}
+
+func TestUpdatePatchModule(t *testing.T) {
+	require.NoError(t, db.ClearCollections(patch.Collection))
+	require.NoError(t, db.ClearGridCollections(patch.GridFSPrefix))
+
+	p := patch.Patch{
+		Id:      patch.NewId("aabbccddeeff001122334499"),
+		Project: "project",
+		Githash: "abc123",
+	}
+	require.NoError(t, p.Insert(t.Context()))
+
+	validDiff := "diff --git a/foo.txt b/foo.txt\n" +
+		"index 0000000..1111111 100644\n" +
+		"--- a/foo.txt\n" +
+		"+++ b/foo.txt\n" +
+		"@@ -1 +1 @@\n" +
+		"-hello\n" +
+		"+world\n"
+	require.NoError(t, UpdatePatchModule(t.Context(), p.Id.Hex(), "myModule", "def456", validDiff))
+
+	found, err := patch.FindOneId(t.Context(), p.Id.Hex())
+	require.NoError(t, err)
+	require.NotNil(t, found)
+	require.Len(t, found.Patches, 1)
+	assert.Equal(t, "myModule", found.Patches[0].ModuleName)
+	assert.Equal(t, "def456", found.Patches[0].Githash)
+	assert.NotEmpty(t, found.Patches[0].PatchSet.PatchFileId)
+
+	gridFile, err := db.GetGridFile(t.Context(), patch.GridFSPrefix, found.Patches[0].PatchSet.PatchFileId)
+	require.NoError(t, err)
+	defer gridFile.Close()
+	content, err := io.ReadAll(gridFile)
+	require.NoError(t, err)
+	assert.Equal(t, validDiff, string(content))
 }

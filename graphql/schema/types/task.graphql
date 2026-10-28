@@ -404,6 +404,8 @@ type Cost {
 input QuarantineTestInput {
   taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)
   testName: String!
+  existingJiraTicketsToLink: [String!]
+  justification: String
 }
 
 input UnquarantineTestInput {
