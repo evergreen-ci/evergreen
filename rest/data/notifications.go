@@ -36,8 +36,7 @@ func GetNotificationsStats(ctx context.Context) (*restModel.APIEventStats, error
 	return &stats, nil
 }
 
-// FindFailedWebhooks returns failed webhook deliveries for the given projects,
-// optionally filtered by URL, newest first.
+// FindFailedWebhooks returns failed webhook deliveries for the given projects.
 func FindFailedWebhooks(ctx context.Context, projects []string, url string, limit int) ([]restModel.APIFailedWebhook, error) {
 	failedWebhooks, err := notification.FindFailedWebhooks(ctx, projects, url, limit)
 	if err != nil {
