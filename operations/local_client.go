@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -24,10 +25,11 @@ import (
 )
 
 const (
-	daemonDir      = ".evergreen-local"
-	daemonPortFile = "daemon.port"
-	daemonPIDFile  = "daemon.pid"
-	daemonLogFile  = "daemon.log"
+	daemonDir       = ".evergreen-local"
+	daemonPortFile  = "daemon.port"
+	daemonPIDFile   = "daemon.pid"
+	daemonTokenFile = "daemon.token"
+	daemonLogFile   = "daemon.log"
 
 	daemonEnvVar = "_EVERGREEN_DAEMON_CHILD"
 
@@ -56,6 +58,21 @@ func getDaemonDir() (string, error) {
 	return filepath.Join(homeDir, daemonDir), nil
 }
 
+// daemonTokenPrefix returns the running daemon's per-instance token as a URL path
+// prefix. Every daemon route lives under it (SECBUG-5727); older daemons that do not
+// write a token file get no prefix.
+func daemonTokenPrefix() string {
+	dir, err := getDaemonDir()
+	if err != nil {
+		return ""
+	}
+	data, err := os.ReadFile(filepath.Join(dir, daemonTokenFile))
+	if err != nil {
+		return ""
+	}
+	return "/" + strings.TrimSpace(string(data))
+}
+
 // getDaemonURL retrieves the URL of a running daemon process.
 // It expects a daemon to be running and reads the port from ~/.evergreen-local/daemon.port.
 // The daemon writes this file when it starts to allow clients to discover its port.
@@ -80,7 +97,7 @@ func getDaemonURL() (string, error) {
 		return "", errors.Wrap(err, "invalid port in daemon.port file")
 	}
 
-	url := fmt.Sprintf("http://localhost:%d", port)
+	url := fmt.Sprintf("http://localhost:%d%s", port, daemonTokenPrefix())
 	resp, err := http.Get(url + "/health")
 	if err != nil {
 		return "", errors.New("daemon not responding (may have crashed)")
@@ -384,7 +401,7 @@ func forkDaemon(c *cli.Context, port int) error {
 // waitForDaemon polls the daemon's /health endpoint until it responds
 // successfully or the timeout is reached.
 func waitForDaemon(port int) error {
-	healthURL := fmt.Sprintf("http://localhost:%d/health", port)
+	healthURL := fmt.Sprintf("http://localhost:%d%s/health", port, daemonTokenPrefix())
 	client := &http.Client{Timeout: time.Second}
 
 	const maxAttempts = 30

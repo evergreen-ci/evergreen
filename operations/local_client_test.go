@@ -9,12 +9,12 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/agent/taskexec"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/gorilla/mux"
 	"github.com/mitchellh/go-homedir"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -90,7 +90,7 @@ func TestGetDaemonURL(t *testing.T) {
 
 	t.Run("daemon running", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == "/health" {
+			if r.URL.Path == "/testtoken/health" {
 				w.WriteHeader(http.StatusOK)
 			}
 		}))
@@ -104,9 +104,13 @@ func TestGetDaemonURL(t *testing.T) {
 		err = os.WriteFile(portFile, []byte(fmt.Sprintf("%d", port)), 0644)
 		require.NoError(t, err)
 
+		tokenFile := filepath.Join(daemonDir, daemonTokenFile)
+		err = os.WriteFile(tokenFile, []byte("testtoken"), 0644)
+		require.NoError(t, err)
+
 		url, err := getDaemonURL()
 		assert.NoError(t, err)
-		assert.Equal(t, fmt.Sprintf("http://localhost:%d", port), url)
+		assert.Equal(t, fmt.Sprintf("http://localhost:%d/testtoken", port), url)
 	})
 }
 
@@ -253,26 +257,147 @@ func TestWriteDaemonInfo(t *testing.T) {
 	portContent, err := os.ReadFile(portFile)
 	require.NoError(t, err)
 	assert.Equal(t, "9090", string(portContent))
+
+	tokenFile := filepath.Join(daemonDir, daemonTokenFile)
+	tokenContent, err := os.ReadFile(tokenFile)
+	require.NoError(t, err)
+	assert.Equal(t, daemon.token, string(tokenContent))
 }
 
 func TestRouterSetup(t *testing.T) {
 	d := newLocalDaemonREST(9090, &ClientSettings{})
-	router := mux.NewRouter()
-	router.HandleFunc("/health", d.handleHealth).Methods("GET")
-	router.HandleFunc("/config/load", d.handleLoadConfig).Methods("POST")
-	router.HandleFunc("/task/select", d.handleSelectTask).Methods("POST")
-	router.HandleFunc("/step/next", d.handleStepNext).Methods("POST")
-	router.HandleFunc("/step/run-all", d.handleRunAll).Methods("POST")
-	router.HandleFunc("/step/run-until/{index}", d.handleRunUntil).Methods("POST")
-	router.HandleFunc("/step/jump/{index}", d.handleJumpTo).Methods("POST")
 
-	req, err := http.NewRequest("GET", "/health", nil)
+	req, err := http.NewRequest("GET", "/"+d.token+"/health", nil)
 	require.NoError(t, err)
+	req.Host = "localhost:9090"
 
 	recorder := httptest.NewRecorder()
-	router.ServeHTTP(recorder, req)
+	d.newRouter().ServeHTTP(recorder, req)
 
 	assert.Equal(t, http.StatusOK, recorder.Code)
+}
+
+func TestValidateLocalRequestRejectsCrossSiteBrowserRequests(t *testing.T) {
+	d := newLocalDaemonREST(9090, &ClientSettings{})
+	router := d.newRouter()
+
+	// A request shaped like the CLI's own traffic should pass the guard and reach the
+	// handler, which responds with its own error because no executor is loaded.
+	localJSONPost := func() *http.Request {
+		req, err := http.NewRequest("POST", "/"+d.token+"/variable/set", strings.NewReader(`{"key":"task_name","value":"safe"}`))
+		require.NoError(t, err)
+		req.Host = "localhost:9090"
+		req.Header.Set("Content-Type", "application/json")
+		return req
+	}
+
+	t.Run("LocalJSONPostShouldReachHandler", func(t *testing.T) {
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, localJSONPost())
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+		assert.Contains(t, recorder.Body.String(), "no configuration loaded")
+	})
+
+	t.Run("MissingTokenShouldNotMatchRoute", func(t *testing.T) {
+		req, err := http.NewRequest("POST", "/variable/set", strings.NewReader(`{"key":"task_name","value":"victim"}`))
+		require.NoError(t, err)
+		req.Host = "localhost:9090"
+		req.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		assert.Equal(t, http.StatusNotFound, recorder.Code)
+	})
+
+	t.Run("WrongTokenShouldNotMatchRoute", func(t *testing.T) {
+		req, err := http.NewRequest("GET", "/wrongtoken/health", nil)
+		require.NoError(t, err)
+		req.Host = "localhost:9090"
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		assert.Equal(t, http.StatusNotFound, recorder.Code)
+	})
+
+	t.Run("CrossSiteOriginShouldBeRejected", func(t *testing.T) {
+		req := localJSONPost()
+		req.Header.Set("Origin", "http://198.51.100.2:8080")
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		assert.Equal(t, http.StatusForbidden, recorder.Code)
+	})
+
+	t.Run("SecFetchSiteCrossSiteShouldBeRejected", func(t *testing.T) {
+		req := localJSONPost()
+		req.Header.Set("Sec-Fetch-Site", "cross-site")
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		assert.Equal(t, http.StatusForbidden, recorder.Code)
+	})
+
+	// The SECBUG-5727 PoC: a top-level text/plain form submission with a JSON payload
+	// followed by form-encoded trailing bytes. It carries no token, so it matches no
+	// route; the same body with the token is still refused by the guard.
+	t.Run("BrowserFormPostShouldBeRejected", func(t *testing.T) {
+		req, err := http.NewRequest("POST", "/variable/set", strings.NewReader(`{"key":"task_name","value":"victim"}=`+"\r\n"))
+		require.NoError(t, err)
+		req.Host = "127.0.0.1:9090"
+		req.Header.Set("Content-Type", "text/plain")
+		req.Header.Set("Origin", "http://198.51.100.2:8080")
+		req.Header.Set("Sec-Fetch-Site", "cross-site")
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		assert.Equal(t, http.StatusNotFound, recorder.Code)
+	})
+
+	t.Run("NonLocalHostHeaderShouldBeRejected", func(t *testing.T) {
+		req, err := http.NewRequest("GET", "/"+d.token+"/status", nil)
+		require.NoError(t, err)
+		req.Host = "evil.example.com"
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		assert.Equal(t, http.StatusForbidden, recorder.Code)
+	})
+
+	t.Run("TrailingFormDataAfterJSONShouldBeRejected", func(t *testing.T) {
+		req, err := http.NewRequest("POST", "/"+d.token+"/variable/set", strings.NewReader(`{"key":"task_name","value":"victim"}=`+"\r\n"))
+		require.NoError(t, err)
+		req.Host = "localhost:9090"
+		req.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+		assert.Contains(t, recorder.Body.String(), "decoding request body")
+	})
+}
+
+func TestDecodeJSONBodyRejectsOversizedBodies(t *testing.T) {
+	d := newLocalDaemonREST(9090, &ClientSettings{})
+	router := d.newRouter()
+
+	newPost := func(body string) *http.Request {
+		req, err := http.NewRequest("POST", "/"+d.token+"/variable/set", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Host = "localhost:9090"
+		req.Header.Set("Content-Type", "application/json")
+		return req
+	}
+
+	t.Run("OversizedJSONPayloadShouldReturnRequestEntityTooLarge", func(t *testing.T) {
+		body := `{"key":"task_name","value":"` + strings.Repeat("a", daemonMaxBodySize) + `"}` + "=\r\n"
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, newPost(body))
+		assert.Equal(t, http.StatusRequestEntityTooLarge, recorder.Code)
+	})
+
+	// Regression: with a bare LimitReader, a valid JSON document followed by enough
+	// padding to cross the size limit was accepted, because the truncation hid the
+	// trailing bytes from the EOF check.
+	t.Run("ValidJSONPlusPaddingPastSizeLimitShouldBeRejected", func(t *testing.T) {
+		body := `{"key":"task_name","value":"victim"}` + strings.Repeat(" ", daemonMaxBodySize) + "=\r\n"
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, newPost(body))
+		assert.Equal(t, http.StatusRequestEntityTooLarge, recorder.Code)
+		assert.NotContains(t, recorder.Body.String(), "no configuration loaded")
+	})
 }
 
 func TestJumpToCmd(t *testing.T) {
