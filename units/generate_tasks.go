@@ -206,9 +206,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) (generate
 	if tagValidationTrackingEnabled(pref) {
 		prefix := pref.TaskOwnership.GeneratedTaskValidationPrefix
 		failures := validator.CheckGeneratedTaskTagValidation(project, p, prefix)
-		if len(failures) > 0 {
-			emitTagValidationFailuresSpans(ctx, pref, v.Id, failures, prefix)
-		}
+		emitTagValidationFailuresSpans(ctx, pref, v.Id, failures, prefix)
 	}
 
 	if err := g.CheckForCycles(ctx, v, p, pref); err != nil {
@@ -240,10 +238,12 @@ func tagValidationTrackingEnabled(pref *model.ProjectRef) bool {
 	return pref.TaskOwnership.GeneratedTaskValidationPrefix != "" && utility.FromBoolPtr(pref.TaskOwnership.TrackGeneratedTaskTagValidation)
 }
 
-// emitTagValidationFailuresSpans emits a new root span with one child span per
-// failing task, so the tracking data is always exported instead of being
-// subject to the sampling that applies to the job's own span.
+// emitTagValidationFailuresSpans emits spans when tasks fail tag validation.
 func emitTagValidationFailuresSpans(ctx context.Context, pref *model.ProjectRef, versionID string, failures []validator.TagValidationFailure, prefix string) {
+	if len(failures) == 0 {
+		return
+	}
+
 	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{
 		attribute.String(evergreen.ProjectIdentifierOtelAttribute, pref.Identifier),
 		attribute.String(evergreen.ProjectOrgOtelAttribute, pref.Owner),
