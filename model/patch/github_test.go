@@ -190,11 +190,11 @@ func (s *GithubSuite) TestHasNewerGithubIntent() {
 	s.NoError(db.Insert(s.T().Context(), IntentCollection, olderIntent))
 
 	// The only intent for this PR is older than the given time.
-	hasNewer, err := HasNewerGithubIntent(s.T().Context(), s.baseRepo, s.pr, time.Now())
+	hasNewer, err := HasNewerGithubIntent(s.T().Context(), s.baseRepo, s.pr, s.hash, time.Now())
 	s.NoError(err)
 	s.False(hasNewer)
 
-	// A newer intent for the same PR means the head has moved.
+	// A newer intent for the same PR with a different head means the head has moved.
 	newerIntent := &githubIntent{
 		DocumentID:   utility.RandomString(),
 		BaseRepoName: s.baseRepo,
@@ -205,15 +205,21 @@ func (s *GithubSuite) TestHasNewerGithubIntent() {
 	}
 	s.NoError(db.Insert(s.T().Context(), IntentCollection, newerIntent))
 
-	hasNewer, err = HasNewerGithubIntent(s.T().Context(), s.baseRepo, s.pr, olderIntent.CreatedAt)
+	hasNewer, err = HasNewerGithubIntent(s.T().Context(), s.baseRepo, s.pr, s.hash, olderIntent.CreatedAt)
 	s.NoError(err)
 	s.True(hasNewer)
 
-	// Intents for other PRs and repos do not count.
-	hasNewer, err = HasNewerGithubIntent(s.T().Context(), s.baseRepo, s.pr+1, time.Time{})
+	// A newer intent with the same head is not a new push, e.g. from
+	// `evergreen retry`.
+	hasNewer, err = HasNewerGithubIntent(s.T().Context(), s.baseRepo, s.pr, "newerhash", olderIntent.CreatedAt)
 	s.NoError(err)
 	s.False(hasNewer)
-	hasNewer, err = HasNewerGithubIntent(s.T().Context(), "mongodb/mongo", s.pr, time.Time{})
+
+	// Intents for other PRs and repos do not count.
+	hasNewer, err = HasNewerGithubIntent(s.T().Context(), s.baseRepo, s.pr+1, "", time.Time{})
+	s.NoError(err)
+	s.False(hasNewer)
+	hasNewer, err = HasNewerGithubIntent(s.T().Context(), "mongodb/mongo", s.pr, "", time.Time{})
 	s.NoError(err)
 	s.False(hasNewer)
 }

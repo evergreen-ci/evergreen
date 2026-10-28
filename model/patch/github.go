@@ -328,15 +328,14 @@ func (g *githubIntent) GetAlias() string {
 }
 
 // HasNewerGithubIntent returns whether another GitHub PR patch intent for the
-// same PR was created after the given time. GitHub sends a new webhook event
-// for every push to a PR, so a newer intent means the PR's head has moved.
-// This is useful because the raw PR diff endpoint always returns the diff for
-// the PR's current head, so a diff fetched after the head moved no longer
-// corresponds to the head recorded in this intent.
-func HasNewerGithubIntent(ctx context.Context, baseRepoName string, prNumber int, createdAfter time.Time) (bool, error) {
+// same PR with a different head hash was created after the given time. GitHub
+// sends a new webhook event for every push to a PR, so a newer intent with a
+// different head means the PR's head has moved.
+func HasNewerGithubIntent(ctx context.Context, baseRepoName string, prNumber int, headHash string, createdAfter time.Time) (bool, error) {
 	count, err := db.Count(ctx, IntentCollection, bson.M{
 		baseRepoNameKey: baseRepoName,
 		prNumberKey:     prNumber,
+		headHashKey:     bson.M{"$ne": headHash},
 		createdAtKey:    bson.M{"$gt": createdAfter},
 	})
 	if err != nil {
