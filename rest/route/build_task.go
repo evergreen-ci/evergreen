@@ -58,6 +58,9 @@ func makeFetchTasksByBuild(parsleyURL string) gimlet.RouteHandler {
 //	@Param			fetch_parent_ids		query	boolean	false	"Fetches the parent display task ID for each returned execution task"
 //	@Param			presign					query	string	false	"Set to 'lazy' to return signed artifact links as Evergreen redirect URLs that are presigned when requested, instead of presigning them up front. Defaults to presigning up front."
 //	@Success		200						{array}	model.APITask
+//	@Header			200						{string}	Link	"Pagination link to the next page (rel=next) when more results exist. Follow it verbatim rather than constructing URLs."
+//	@x-pagination-type	"task-id-cursor"
+//	@x-pagination-type	"task-id-cursor"
 func (tbh *tasksByBuildHandler) Factory() gimlet.RouteHandler {
 	return &tasksByBuildHandler{
 		limit:      tbh.limit,

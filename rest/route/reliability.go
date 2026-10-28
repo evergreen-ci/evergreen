@@ -39,6 +39,27 @@ type taskReliabilityHandler struct {
 	url    string
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary			Get task reliability scores
+//	@Description		Returns a paginated list of reliability scores for the project's tasks, grouped by the group_by parameter. Scores cover the 26 weeks ending at before_date.
+//	@Tags				projects
+//	@Router				/projects/{project_id}/task_reliability [get]
+//	@Security			Api-User || Api-Key
+//	@Param				project_id		path	string	true	"the project ID or identifier"
+//	@Param				start_at		query	string	false	"Compound cursor for pagination, as returned by the Link response header. Pages list results at or before this cursor. Omit for the first page."
+//	@Param				limit			query	int		false	"The number of results to be returned per page of pagination. Defaults to 1000 and cannot exceed 1000."
+//	@Param				group_by		query	string	false	"How to group results: 'task_variant_distro' (default), 'task_variant', or 'task'."
+//	@Param				tasks			query	string	false	"Only return results for these task names. Can be a comma-separated list or repeated."
+//	@Param				variants		query	string	false	"Only return results for these build variants. Can be a comma-separated list or repeated."
+//	@Param				distros			query	string	false	"Only return results for these distros. Can be a comma-separated list or repeated."
+//	@Param				before_date		query	string	false	"Only return results from before this date, in YYYY-MM-DD format. Defaults to today."
+//	@Param				after_date		query	string	false	"Only return results from after this date, in YYYY-MM-DD format. Defaults to before_date."
+//	@Param				sort			query	string	false	"Sort order of results: 'earliest' or 'latest'. Defaults to 'latest'."
+//	@Param				significance	query	number	false	"Minimum test significance, from 0 to 1. Defaults to 0."
+//	@Success			200				{array}	model.APITaskReliability
+//	@Header				200				{string}	Link	"Pagination links (rel="next") returned when more results exist. Follow this header verbatim instead of constructing pagination URLs."
+//	@x-pagination-type	"stats-cursor"
 func makeGetProjectTaskReliability() gimlet.RouteHandler {
 	return &taskReliabilityHandler{}
 }

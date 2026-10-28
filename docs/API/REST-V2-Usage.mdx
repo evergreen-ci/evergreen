@@ -37,6 +37,24 @@ form:
 <http://<EVERGREEN_HOST>/rest/v2/path/to/resource?start_at=<pagination_key>&limit=<objects_per_page>; rel="prev"
 ```
 
+To fetch all results, follow the `rel="next"` link verbatim until no Link
+header is returned, rather than constructing pagination URLs yourself.
+Every paginated endpoint documents its pagination style in the OpenAPI
+spec via an `x-pagination-type` operation extension:
+
+| Pagination type         | Meaning of the pagination key                                                   | Endpoints                                                                                                      |
+| ----------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `time-cursor`           | `start_at` is a timestamp (RFC3339); pages list results at or before that time  | `/admin/events`, `/projects/{project_id}/events`, `/projects/{project_id}/patches`, `/users/{user_id}/patches` |
+| `task-id-cursor`        | `start_at` is the identifier of the last task on the previous page              | `/builds/{build_id}/tasks`, `/projects/{project_id}/revisions/{commit_hash}/tasks`                             |
+| `host-id-cursor`        | `start_at` is the identifier of the last host on the previous page              | `/hosts`, `/users/{user_id}/hosts`                                                                             |
+| `project-id-cursor`     | `start_at` is the identifier of the last project on the previous page           | `/projects`                                                                                                    |
+| `revision-order-cursor` | `start` is a version revision order number; pages list older versions           | `/projects/{project_id}/versions`                                                                              |
+| `page-number`           | `start_at` is a zero-based page number; each page holds up to `limit` results   | `/tasks/{task_id}/tests`                                                                                       |
+| `stats-cursor`          | `start_at` is a compound cursor over statistics, as returned by the Link header | `/projects/{project_id}/task_stats`, `/projects/{project_id}/task_reliability`                                 |
+| `log-time-cursor`       | `start` is a timestamp (RFC3339); links appear only when `paginate=true`        | `/tasks/{task_id}/build/TaskLogs`, `/tasks/{task_id}/build/TestLogs/{path}`                                    |
+
+Unless stated otherwise, the default page size is 100.
+
 ### Dates
 
 Date fields are returned and accepted in ISO-8601 UTC extended format.

@@ -188,8 +188,10 @@ func makeGetTaskLogs() *getTaskLogsHandler {
 //	@Param			tail_limit		query		int		false	"If set greater than 0, returns the last N log lines."
 //	@Param			print_time		query		bool	false	"If set to true, returns log lines prefixed with their timestamp."
 //	@Param			print_priority	query		bool	false	"If set to true, returns log lines prefixed with their priority."
-//	@Param			paginate		query		bool	false	"If set to true, paginates the response."
+//	@Param			paginate		query		bool	false	"If set to true, paginates the response and returns Link response headers (rel=next and rel=prev) whose cursors are RFC3339 timestamps; follow them verbatim instead of constructing pagination URLs. Defaults to false."
 //	@Success		200				{string}	string
+//	@Header			200				{string}	Link	"Pagination links (rel=next and rel=prev) returned when 'paginate' is true and more log lines exist in the requested direction. Follow this header verbatim instead of constructing pagination URLs."
+//	@x-pagination-type	"log-time-cursor"
 func (h *getTaskLogsHandler) Factory() gimlet.RouteHandler {
 	return &getTaskLogsHandler{}
 }
@@ -251,8 +253,10 @@ func makeGetTestLogs() *getTestLogsHandler {
 //	@Param			tail_limit		query		int		false	"If set greater than 0, returns the last N log lines."
 //	@Param			print_time		query		bool	false	"If set to true, returns log lines prefixed with their timestamp."
 //	@Param			print_priority	query		bool	false	"If set to true, returns log lines prefixed with their priority."
-//	@Param			paginate		query		bool	false	"If set to true, paginates the response."
+//	@Param			paginate		query		bool	false	"If set to true, paginates the response and returns Link response headers (rel=next and rel=prev) whose cursors are RFC3339 timestamps; follow them verbatim instead of constructing pagination URLs. Defaults to false."
 //	@Success		200				{string}	string
+//	@Header			200				{string}	Link	"Pagination links (rel=next and rel=prev) returned when 'paginate' is true and more log lines exist in the requested direction. Follow this header verbatim instead of constructing pagination URLs."
+//	@x-pagination-type	"log-time-cursor"
 func (h *getTestLogsHandler) Factory() gimlet.RouteHandler {
 	return &getTestLogsHandler{}
 }

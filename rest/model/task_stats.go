@@ -9,10 +9,10 @@ import (
 
 // APITaskStats is the model to be returned by the API when querying task execution statistics
 type APITaskStats struct {
-	TaskName     *string `json:"task_name"`
+	TaskName     *string `json:"task_name" extensions:"!x-nullable"`
 	BuildVariant *string `json:"variant,omitempty"`
 	Distro       *string `json:"distro,omitempty"`
-	Date         *string `json:"date"`
+	Date         *string `json:"date" extensions:"!x-nullable"`
 
 	NumSuccess         int     `json:"num_success"`
 	NumFailed          int     `json:"num_failed"`

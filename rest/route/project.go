@@ -50,12 +50,14 @@ func makeFetchProjectsRoute() gimlet.RouteHandler {
 //	@Tags			projects
 //	@Router			/projects [get]
 //	@Security		Api-User || Api-Key
-//	@Param			start_at	query	string	false	"The project identifier to start at in the pagination"
+//	@Param			start_at	query	string	false	"The project identifier of the last project on the previous page, as returned by the Link response header. Pages list projects ordered by identifier. Defaults to the first project."
 //	@Param			limit		query	int		false	"The number of projects to be returned per page of pagination. Defaults to 100"
 //	@Param			owner_name	query	string	false	"Filter projects by owner name (GitHub organization)"
 //	@Param			repo_name	query	string	false	"Filter projects by repository name"
 //	@Param			active		query	bool	false	"If true, only return projects that are currently enabled"
 //	@Success		200			{array}	model.APIProjectRef
+//	@Header			200			{string}	Link	"Pagination links (rel="next") returned when more results exist. Follow this header verbatim instead of constructing pagination URLs."
+//	@x-pagination-type	"project-id-cursor"
 func (p *projectGetHandler) Factory() gimlet.RouteHandler {
 	return &projectGetHandler{}
 }
@@ -809,6 +811,8 @@ func makeGetProjectVersionsHandler() gimlet.RouteHandler {
 //	@Param			created_after		query	string		false	"Timestamp to look for applicable versions after or equal to create_time."
 //	@Param			created_before		query	string		false	"Timestamp to look for applicable versions before or equal to create_time."
 //	@Success		200					{array}	model.APIVersion
+//	@Header			200					{string}	Link	"Pagination link (rel=next) returned when the page contains exactly 'limit' versions. Follow this header verbatim instead of constructing pagination URLs."
+//	@x-pagination-type	"revision-order-cursor"
 func (h *getProjectVersionsHandler) Factory() gimlet.RouteHandler {
 	return &getProjectVersionsHandler{}
 }
