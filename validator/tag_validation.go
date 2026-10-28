@@ -30,10 +30,9 @@ func CheckGeneratedTaskTagValidation(existing, merged *model.Project, prefix str
 	taskToFailingBVs := map[string][]string{}
 
 	// checkValidTagsAndRecord checks if the task with the given name passes tag
-	// validation and if not, records the task and build variant in
-	// failingVariants.
-	checkValidTagsAndRecord := func(project *model.Project, taskName, variantName string) {
-		task := project.FindProjectTask(taskName)
+	// validation and if not, records the task and build variant.
+	checkValidTagsAndRecord := func(taskName, variantName string) {
+		task := merged.FindProjectTask(taskName)
 		if task == nil {
 			return
 		}
@@ -67,12 +66,12 @@ func CheckGeneratedTaskTagValidation(existing, merged *model.Project, prefix str
 					continue
 				}
 				for _, memberName := range taskGroup.Tasks {
-					checkValidTagsAndRecord(merged, memberName, bv.Name)
+					checkValidTagsAndRecord(memberName, bv.Name)
 				}
 				continue
 			}
 
-			checkValidTagsAndRecord(merged, taskUnit.Name, bv.Name)
+			checkValidTagsAndRecord(taskUnit.Name, bv.Name)
 		}
 	}
 	if len(taskToFailingBVs) == 0 {
@@ -92,8 +91,3 @@ func CheckGeneratedTaskTagValidation(existing, merged *model.Project, prefix str
 	})
 	return failures
 }
-
-// recordTagValidationFailure records the variant the named task is being added
-// to if the task's definition exists and none of its own tags have the given
-// prefix. Tasks with no definition are skipped; unmatched selectors are
-// dropped during project translation, so such tasks should not appear here.
