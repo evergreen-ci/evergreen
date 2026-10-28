@@ -107,7 +107,6 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			rh.settings.Buckets.SourceCacheBucket = evergreen.BucketConfig{Name: "source-cache"}
 			flags := evergreen.ServiceFlags{SourceCacheAllProjectsEnabled: true}
 			require.NoError(t, flags.Set(ctx))
-			// t.Context is canceled before cleanups run, so reset the flag with a fresh context.
 			t.Cleanup(func() {
 				require.NoError(t, (&evergreen.ServiceFlags{}).Set(context.Background()))
 			})
@@ -123,7 +122,6 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			rh.settings.Buckets.SourceCacheOptOutProjects = []string{"p1"}
 			flags := evergreen.ServiceFlags{SourceCacheAllProjectsEnabled: true}
 			require.NoError(t, flags.Set(ctx))
-			// t.Context is canceled before cleanups run, so reset the flag with a fresh context.
 			t.Cleanup(func() {
 				require.NoError(t, (&evergreen.ServiceFlags{}).Set(context.Background()))
 			})
@@ -140,7 +138,6 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			require.NoError(t, db.Update(ctx, task.Collection, mgobson.M{task.IdKey: "t1"}, mgobson.M{"$set": mgobson.M{task.RequesterKey: evergreen.PatchVersionRequester}}))
 			flags := evergreen.ServiceFlags{SourceCacheAllProjectsEnabled: true}
 			require.NoError(t, flags.Set(ctx))
-			// t.Context is canceled before cleanups run, so reset the flag with a fresh context.
 			t.Cleanup(func() {
 				require.NoError(t, (&evergreen.ServiceFlags{}).Set(context.Background()))
 			})
