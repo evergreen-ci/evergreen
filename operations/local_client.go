@@ -58,9 +58,7 @@ func getDaemonDir() (string, error) {
 	return filepath.Join(homeDir, daemonDir), nil
 }
 
-// daemonTokenPrefix returns the running daemon's per-instance token as a URL path
-// prefix. Every daemon route lives under it (SECBUG-5727); older daemons that do not
-// write a token file get no prefix.
+// daemonTokenPrefix returns the running daemon's per-instance token.
 func daemonTokenPrefix() string {
 	dir, err := getDaemonDir()
 	if err != nil {

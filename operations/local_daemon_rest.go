@@ -22,8 +22,6 @@ import (
 )
 
 const ndjsonContentType = "application/x-ndjson"
-
-// daemonMaxBodySize caps the size of JSON request bodies the daemon accepts.
 const daemonMaxBodySize = 1 << 20 // 1 MiB
 
 // localDaemonREST implements an API for the local debugger daemon
@@ -58,10 +56,7 @@ func (d *localDaemonREST) Start(ctx context.Context) error {
 	return http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", d.port), router)
 }
 
-// newRouter builds the daemon's route table. Every route lives under the daemon's
-// per-instance token as a URL path prefix, so a request that does not carry the token
-// (including a cross-site browser form post, SECBUG-5727) matches no route, and every
-// request that does is still checked by the local-request guard.
+// newRouter builds the daemon's route table with the token.
 func (d *localDaemonREST) newRouter() *mux.Router {
 	router := mux.NewRouter()
 	daemonRoutes := router.PathPrefix("/" + d.token).Subrouter()
@@ -93,12 +88,7 @@ func newDaemonToken() string {
 	return hex.EncodeToString(b)
 }
 
-// validateLocalRequest rejects cross-site browser requests before they reach any daemon
-// route. The loopback bind alone does not stop a malicious web page from submitting
-// top-level forms to the daemon (SECBUG-5727): browsers cannot set a JSON content type
-// on a form submission, forge a loopback Origin, or clear Sec-Fetch-Site, so requiring
-// those closes the CSRF-to-command-execution vector. Non-browser clients (the CLI,
-// curl) send none of these browser-managed headers and are unaffected.
+// validateLocalRequest rejects cross-site browser requests.
 func validateLocalRequest(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !isLoopbackHostname(stripPort(r.Host)) {
@@ -124,7 +114,6 @@ func validateLocalRequest(next http.Handler) http.Handler {
 	})
 }
 
-// isLoopbackHostname reports whether the host is a loopback name or address.
 func isLoopbackHostname(host string) bool {
 	return host == "localhost" || host == "127.0.0.1" || host == "::1"
 }
@@ -139,11 +128,7 @@ func stripPort(hostPort string) string {
 }
 
 // decodeJSONBody reads the single JSON document in the request body, rejecting
-// trailing bytes such as the suffix a submitted browser form appends after the JSON
-// payload (SECBUG-5727), and bodies over daemonMaxBodySize. Unlike a bare LimitReader,
-// a body that exceeds the size limit is refused outright, so trailing bytes cannot
-// hide past the cap. It writes the HTTP error response itself and reports whether the
-// caller should proceed.
+// invalid requests.
 func decodeJSONBody(w http.ResponseWriter, r *http.Request, v any) bool {
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, daemonMaxBodySize))
 	if err != nil {

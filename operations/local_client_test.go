@@ -281,8 +281,6 @@ func TestValidateLocalRequestRejectsCrossSiteBrowserRequests(t *testing.T) {
 	d := newLocalDaemonREST(9090, &ClientSettings{})
 	router := d.newRouter()
 
-	// A request shaped like the CLI's own traffic should pass the guard and reach the
-	// handler, which responds with its own error because no executor is loaded.
 	localJSONPost := func() *http.Request {
 		req, err := http.NewRequest("POST", "/"+d.token+"/variable/set", strings.NewReader(`{"key":"task_name","value":"safe"}`))
 		require.NoError(t, err)
@@ -333,9 +331,6 @@ func TestValidateLocalRequestRejectsCrossSiteBrowserRequests(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, recorder.Code)
 	})
 
-	// The SECBUG-5727 PoC: a top-level text/plain form submission with a JSON payload
-	// followed by form-encoded trailing bytes. It carries no token, so it matches no
-	// route; the same body with the token is still refused by the guard.
 	t.Run("BrowserFormPostShouldBeRejected", func(t *testing.T) {
 		req, err := http.NewRequest("POST", "/variable/set", strings.NewReader(`{"key":"task_name","value":"victim"}=`+"\r\n"))
 		require.NoError(t, err)
@@ -388,9 +383,6 @@ func TestDecodeJSONBodyRejectsOversizedBodies(t *testing.T) {
 		assert.Equal(t, http.StatusRequestEntityTooLarge, recorder.Code)
 	})
 
-	// Regression: with a bare LimitReader, a valid JSON document followed by enough
-	// padding to cross the size limit was accepted, because the truncation hid the
-	// trailing bytes from the EOF check.
 	t.Run("ValidJSONPlusPaddingPastSizeLimitShouldBeRejected", func(t *testing.T) {
 		body := `{"key":"task_name","value":"victim"}` + strings.Repeat(" ", daemonMaxBodySize) + "=\r\n"
 		recorder := httptest.NewRecorder()
