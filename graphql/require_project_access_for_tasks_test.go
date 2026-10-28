@@ -30,16 +30,19 @@ func TestRequireProjectAccessForTasksList(t *testing.T) {
 		return nil, nil
 	}
 
-	for _, project := range []model.ProjectRef{
-		{Id: "project_id", Identifier: "project1", Owner: "evergreen-ci", Repo: "evergreen"},
-		{Id: "project_id_2", Identifier: "project2", Owner: "evergreen-ci", Repo: "evergreen"},
-	} {
-		require.NoError(t, project.Insert(ctx))
-	}
-	require.NoError(t, (&task.Task{Id: "task1", Project: "project_id"}).Insert(ctx))
-	require.NoError(t, (&task.Task{Id: "task2", Project: "project_id_2"}).Insert(ctx))
+	p1 := model.ProjectRef{Id: "project_id", Identifier: "project1", Owner: "evergreen-ci", Repo: "evergreen"}
+	require.NoError(t, p1.Insert(ctx))
 
-	grantAccess := func(t *testing.T) {
+	p2 := model.ProjectRef{Id: "project_id_2", Identifier: "project2", Owner: "evergreen-ci", Repo: "evergreen"}
+	require.NoError(t, p2.Insert(ctx))
+
+	t1 := &task.Task{Id: "task1", Project: p1.Id}
+	require.NoError(t, t1.Insert(ctx))
+
+	t2 := &task.Task{Id: "task2", Project: p2.Id}
+	require.NoError(t, t2.Insert(ctx))
+
+	grantSuperUserAccess := func(t *testing.T) {
 		require.NoError(t, usr.AddRole(ctx, evergreen.SuperUserProjectAccessRole))
 		t.Cleanup(func() {
 			require.NoError(t, usr.RemoveRole(ctx, evergreen.SuperUserProjectAccessRole))
@@ -54,29 +57,29 @@ func TestRequireProjectAccessForTasksList(t *testing.T) {
 		assert.EqualError(t, err, "input: tasks not found: 'nonexistent'")
 	})
 	t.Run("NonexistentTaskAmongExistingTasksShouldReturnNotFound", func(t *testing.T) {
-		grantAccess(t)
-		obj := map[string]any{"taskIds": []any{"nonexistent", "task1"}}
+		grantSuperUserAccess(t)
+		obj := map[string]any{"taskIds": []any{"nonexistent", t1.Id}}
 		_, err := RequireProjectAccessForTasks(ctx, obj, next, ProjectPermissionTasks, AccessLevelEdit)
 		require.Error(t, err)
 		assertGqlErrorCode(t, err, ResourceNotFound)
 		assert.EqualError(t, err, "input: tasks not found: 'nonexistent'")
 	})
 	t.Run("MissingPermissionOnAnyTaskProjectShouldBeForbidden", func(t *testing.T) {
-		obj := map[string]any{"taskIds": []any{"task1", "task2"}}
+		obj := map[string]any{"taskIds": []any{t1.Id, t2.Id}}
 		_, err := RequireProjectAccessForTasks(ctx, obj, next, ProjectPermissionTasks, AccessLevelEdit)
 		require.Error(t, err)
 		assertGqlErrorCode(t, err, Forbidden)
 		assert.EqualError(t, err, "input: user 'test_user' does not have permission to 'edit tasks' for the project 'project_id'")
 	})
 	t.Run("PermissionOnAllTaskProjectsShouldSucceed", func(t *testing.T) {
-		grantAccess(t)
-		obj := map[string]any{"taskIds": []any{"task1", "task2"}}
+		grantSuperUserAccess(t)
+		obj := map[string]any{"taskIds": []any{t1.Id, t2.Id}}
 		_, err := RequireProjectAccessForTasks(ctx, obj, next, ProjectPermissionTasks, AccessLevelEdit)
 		assert.NoError(t, err)
 	})
 	t.Run("OtherArgsShouldBeIgnored", func(t *testing.T) {
-		grantAccess(t)
-		obj := map[string]any{"versionId": "nonexistent", "taskIds": []any{"task1"}}
+		grantSuperUserAccess(t)
+		obj := map[string]any{"versionId": "nonexistent", "taskIds": []any{t1.Id}}
 		_, err := RequireProjectAccessForTasks(ctx, obj, next, ProjectPermissionTasks, AccessLevelEdit)
 		assert.NoError(t, err)
 	})
