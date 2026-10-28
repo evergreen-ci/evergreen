@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -117,4 +118,28 @@ func TestPatchCloneRun(t *testing.T) {
 		res := handler.Run(gimlet.AttachUser(ctx, usr))
 		assert.Equal(t, http.StatusForbidden, res.Status())
 	})
+}
+
+func TestCloneIntentParams(t *testing.T) {
+	source := patch.Patch{
+		Id:          mgobson.NewObjectId(),
+		Githash:     "abc123",
+		Path:        "custom/evergreen.yml",
+		Description: "original description",
+		Triggers:    patch.TriggerInfo{Aliases: []string{"downstream_alias"}},
+	}
+	raw := &restModel.APIRawPatch{Patch: restModel.APIRawModule{Diff: "base diff"}}
+
+	params := cloneIntentParams(&source, raw, "cloned description")
+
+	assert.Equal(t, "abc123", params.BaseGitHash)
+	assert.Equal(t, "base diff", params.PatchContent)
+	assert.Equal(t, "custom/evergreen.yml", params.Path)
+	assert.Equal(t, "cloned description", params.Description)
+	// Trigger aliases must carry over so the clone reproduces the source's child patches.
+	assert.Equal(t, []string{"downstream_alias"}, params.TriggerAliases)
+
+	// A source with no trigger aliases produces a childless clone.
+	source.Triggers = patch.TriggerInfo{}
+	assert.Empty(t, cloneIntentParams(&source, raw, "desc").TriggerAliases)
 }

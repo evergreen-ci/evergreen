@@ -7,8 +7,10 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	restData "github.com/evergreen-ci/evergreen/rest/data"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -31,7 +33,7 @@ func makeClonePatchHandler(env evergreen.Environment) gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Clone a patch
-//	@Description	Creates a new patch copying the diffs, base commit, description, and task/variant definition from the given patch. The request body is optional and can override the description and finalize the clone. The clone is created unactivated unless 'finalize' is true. The caller must have 'Patches: Submit and Edit' permission in the source patch's project; the clone belongs to the caller in the same project.
+//	@Description	Creates a new patch copying the diffs, base commit, description, and task/variant definition from the given patch. The request body is optional and can override the description and finalize the clone. The clone is created unactivated unless 'finalize' is true. Cloning a patch with trigger aliases reproduces its child patches in their projects, which requires 'Patches: Submit and Edit' permission on each child project. The caller must have 'Patches: Submit and Edit' permission in the source patch's project; the clone belongs to the caller in the same project.
 //	@Tags			patches
 //	@Router			/patches/{patch_id}/clone [post]
 //	@Security		Api-User || Api-Key
@@ -95,6 +97,17 @@ func (h *patchCloneHandler) Run(ctx context.Context) gimlet.Responder {
 		description = h.body.Description
 	}
 
+	pref, err := dbModel.FindMergedProjectRef(ctx, source.Project, "", true)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s'", source.Project))
+	}
+	if pref == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("project '%s' not found", source.Project),
+		})
+	}
+
 	// The base diff is the patch entry with no module name; module diffs keep
 	// their own githashes.
 	raw, err := restData.GetRawPatches(ctx, h.patchID)
@@ -111,28 +124,36 @@ func (h *patchCloneHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return createPatchFromIntent(ctx, h.env, usr, createPatchArgs{
-		projectID: source.Project,
-		author:    h.body.Author,
-		intentParams: patch.CLIIntentParams{
-			BaseGitHash:                        source.Githash,
-			PatchContent:                       raw.Patch.Diff,
-			Path:                               source.Path,
-			Description:                        description,
-			Parameters:                         source.Parameters,
-			Variants:                           source.BuildVariants,
-			Tasks:                              source.Tasks,
-			RegexVariants:                      source.RegexBuildVariants,
-			RegexTasks:                         source.RegexTasks,
-			RegexTestSelectionVariants:         source.RegexTestSelectionBuildVariants,
-			RegexTestSelectionExcludedVariants: source.RegexTestSelectionExcludedBuildVariants,
-			RegexTestSelectionTasks:            source.RegexTestSelectionTasks,
-			RegexTestSelectionExcludedTasks:    source.RegexTestSelectionExcludedTasks,
-			Alias:                              source.Alias,
-			Aliases:                            source.Aliases,
-			LocalModuleIncludes:                source.LocalModuleIncludes,
-			CrossFileYAMLAnchorsEnabled:        source.CrossFileYAMLAnchorsEnabled,
-		},
-		modules:  modules,
-		finalize: h.body.Finalize,
+		pref:         pref,
+		author:       h.body.Author,
+		intentParams: cloneIntentParams(source, raw, description),
+		modules:      modules,
+		finalize:     h.body.Finalize,
 	})
+}
+
+// cloneIntentParams builds the intent for a cloned patch, copying the source patch's diffs and definition. Trigger
+// aliases are copied too, so cloning a patch with child patches reproduces them; each child project's patch
+// submission permission is checked when the processor spawns the child patches.
+func cloneIntentParams(source *patch.Patch, raw *restModel.APIRawPatch, description string) patch.CLIIntentParams {
+	return patch.CLIIntentParams{
+		BaseGitHash:                        source.Githash,
+		PatchContent:                       raw.Patch.Diff,
+		Path:                               source.Path,
+		Description:                        description,
+		Parameters:                         source.Parameters,
+		Variants:                           source.BuildVariants,
+		Tasks:                              source.Tasks,
+		RegexVariants:                      source.RegexBuildVariants,
+		RegexTasks:                         source.RegexTasks,
+		RegexTestSelectionVariants:         source.RegexTestSelectionBuildVariants,
+		RegexTestSelectionExcludedVariants: source.RegexTestSelectionExcludedBuildVariants,
+		RegexTestSelectionTasks:            source.RegexTestSelectionTasks,
+		RegexTestSelectionExcludedTasks:    source.RegexTestSelectionExcludedTasks,
+		Alias:                              source.Alias,
+		Aliases:                            source.Aliases,
+		TriggerAliases:                     source.Triggers.Aliases,
+		LocalModuleIncludes:                source.LocalModuleIncludes,
+		CrossFileYAMLAnchorsEnabled:        source.CrossFileYAMLAnchorsEnabled,
+	}
 }
