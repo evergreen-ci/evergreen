@@ -339,7 +339,7 @@ func (r *ModuleResolver) newerModuleCommit(ctx context.Context, moduleName strin
 	}
 
 	grip.Info(ctx, logFields("comparing module commits with GitHub"))
-	ghCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	ghCtx, cancel := context.WithTimeout(ctx, time.Minute)
 	defer cancel()
 	status, err := thirdparty.GetCommitComparisonStatus(ghCtx, candidate.Owner, candidate.Repo, previous.Revision, candidate.Revision)
 	if err != nil {
