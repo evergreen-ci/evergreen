@@ -1662,6 +1662,34 @@ func getVersionActivationAndStatus(builds []build.Build) (bool, string) {
 	return true, evergreen.VersionSucceeded
 }
 
+// verifyVersionSucceeded returns the status of a version whose builds indicate
+// that it succeeded, after checking that none of its tasks are still running
+// or have failed. The build statuses alone are not sufficient because
+// deactivated builds are ignored, even though they can still have running or
+// failed tasks (e.g. a GitHub merge queue version is deactivated on its first
+// task failure while its other tasks are still being aborted).
+func verifyVersionSucceeded(ctx context.Context, versionID string) (string, error) {
+	statuses := make([]string, 0, len(evergreen.TaskInProgressStatuses)+len(evergreen.TaskFailureStatuses))
+	statuses = append(statuses, evergreen.TaskInProgressStatuses...)
+	statuses = append(statuses, evergreen.TaskFailed)
+	tasks, err := task.FindWithFields(ctx, bson.M{
+		task.VersionKey: versionID,
+		task.StatusKey:  bson.M{"$in": statuses},
+	}, task.StatusKey)
+	if err != nil {
+		return "", errors.Wrap(err, "finding in progress and failed tasks")
+	}
+	if len(tasks) == 0 {
+		return evergreen.VersionSucceeded, nil
+	}
+	for _, t := range tasks {
+		if t.IsInProgress() {
+			return evergreen.VersionStarted, nil
+		}
+	}
+	return evergreen.VersionFailed, nil
+}
+
 // updateVersionStatus updates the status of the version based on the status of
 // its constituent builds. It assumes that the build statuses have already
 // been updated prior to this.
@@ -1702,6 +1730,12 @@ func updateVersionStatus(ctx context.Context, v *Version) (versionStatus string,
 	}
 
 	versionActivated, versionStatus := getVersionActivationAndStatus(builds)
+	if versionStatus == evergreen.VersionSucceeded {
+		versionStatus, err = verifyVersionSucceeded(ctx, v.Id)
+		if err != nil {
+			return "", false, errors.Wrapf(err, "verifying success for version '%s'", v.Id)
+		}
+	}
 	// If all the builds are unscheduled and nothing has run, set active to false
 	if versionStatus == evergreen.VersionCreated && !versionActivated {
 		if err = v.SetActivated(ctx, false); err != nil {
