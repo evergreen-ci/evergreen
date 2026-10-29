@@ -1124,12 +1124,6 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 	patchDoc.Project = projectRef.Id
 	j.ProjectID = projectRef.Id
 
-	// The PR diff is fetched from GitHub's rolling PR diff endpoint, which
-	// always returns the diff for the PR's current head. If a newer intent
-	// exists, the head has moved since this intent was created, and the fetched
-	// diff would include the newer changes while the patch is labeled with this
-	// intent's head hash.
-	//
 	// Skip creating a patch for the superseded commit to avoid testing with the
 	// wrong diff; the newer push creates its own intent that builds the correct
 	// patch.
