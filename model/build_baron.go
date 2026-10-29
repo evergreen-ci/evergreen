@@ -73,8 +73,9 @@ func ValidateBbProject(ctx context.Context, projName string, proj evergreen.Buil
 	}
 	webhookConfigured := webhook.Endpoint != ""
 
-	// the secret is only ever sent to the endpoint, so a secret without an endpoint can never be used
 	if !webhookConfigured && len(webhook.Secret) > 0 {
+		// A secret is going to always be tied to the specific endpoint it's meant
+		// to hit, so any secret must come with an intended endpoint.
 		catcher.New("must provide webhook endpoint if webhook secret is provided")
 	}
 
