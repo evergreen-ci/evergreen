@@ -793,11 +793,10 @@ var adminPermissions = gimlet.Permissions{
 	evergreen.PermissionTestQuarantine:  evergreen.TestQuarantineEdit.Value,
 }
 
-// adminRoleLookupPermissions identifies an existing project admin role. The
-// role manager matches roles on every key given, so this must only contain
-// permissions that every admin role has had since creation. Permissions added
-// to adminPermissions later (e.g. test quarantine) must not be added here,
-// otherwise admin roles that predate them can no longer be found.
+// adminRoleLookupPermissions are used to find a project's existing admin role.
+// The role manager only matches roles that have every one of these
+// permissions, so permissions added to adminPermissions after admin roles
+// already exist (e.g. test quarantine) must not be added here.
 var adminRoleLookupPermissions = gimlet.Permissions{
 	evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
 	evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
