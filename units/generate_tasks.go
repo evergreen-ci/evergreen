@@ -203,14 +203,14 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) (generate
 		return j.handleError(ctx, errors.WithStack(err))
 	}
 
+	if err := g.CheckForCycles(ctx, v, p, pref); err != nil {
+		return outcomeError, model.GenerateTasksCounts{}, errors.Wrap(err, "checking new dependency graph for cycles")
+	}
+
 	if tagValidationTrackingEnabled(pref) {
 		prefix := pref.TaskOwnership.GeneratedTaskValidationPrefix
 		failures := validator.CheckGeneratedTaskTagValidation(project, p, prefix)
 		emitTagValidationFailuresSpans(ctx, pref, v.Id, failures, prefix)
-	}
-
-	if err := g.CheckForCycles(ctx, v, p, pref); err != nil {
-		return outcomeError, model.GenerateTasksCounts{}, errors.Wrap(err, "checking new dependency graph for cycles")
 	}
 
 	// Ignore the cancel signal from the job's context, because it's better
@@ -244,7 +244,7 @@ func emitTagValidationFailuresSpans(ctx context.Context, pref *model.ProjectRef,
 		return
 	}
 
-	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{
+	ctx = utility.ContextWithAppendedAttributes(ctx, []attribute.KeyValue{
 		attribute.String(evergreen.ProjectIdentifierOtelAttribute, pref.Identifier),
 		attribute.String(evergreen.ProjectOrgOtelAttribute, pref.Owner),
 		attribute.String(evergreen.ProjectRepoOtelAttribute, pref.Repo),

@@ -164,10 +164,8 @@ In the task ownership settings, admins can configure:
   have on at least one of its tags.
 - **Track generated task tag validation**: Tracks generated tasks
   that fail tag validation. Failing tasks are reported to Honeycomb under the
-  [`generate_tasks_tag_validation_failures` span](Task-Traces#tag-validation-tracking);
+  [`generate_tasks_tag_validation_failures` span](Task_Traces#tag-validation-tracking);
   task generation is not affected.
-- **Block task generation on tag validation**: `generate.tasks` will fail
-  if any task it generates fails tag validation.
 
 ### Access and Admin Settings
 

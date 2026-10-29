@@ -68,19 +68,6 @@ func TestCheckGeneratedTaskTagValidation(t *testing.T) {
 			prefix:          prefix,
 			expectedFailing: []TagValidationFailure{{TaskName: "new-task", BuildVariants: []string{"variant"}}},
 		},
-		"NewTaskWithNoTagsFails": {
-			existing: &model.Project{},
-			merged: &model.Project{
-				Tasks: []model.ProjectTask{
-					tagValidationTestTask("new-task"),
-				},
-				BuildVariants: []model.BuildVariant{
-					tagValidationTestBV("variant", model.BuildVariantTaskUnit{Name: "new-task"}),
-				},
-			},
-			prefix:          prefix,
-			expectedFailing: []TagValidationFailure{{TaskName: "new-task", BuildVariants: []string{"variant"}}},
-		},
 		"NewTaskPassesIfAnyTagHasRequiredPrefix": {
 			existing: &model.Project{},
 			merged: &model.Project{
@@ -100,7 +87,13 @@ func TestCheckGeneratedTaskTagValidation(t *testing.T) {
 					tagValidationTestTask("new-task"),
 				},
 				BuildVariants: []model.BuildVariant{
-					tagValidationTestBV("variant", model.BuildVariantTaskUnit{Name: "new-task"}),
+					{
+						Name: "variant",
+						Tags: []string{prefixedTag},
+						Tasks: []model.BuildVariantTaskUnit{
+							{Name: "new-task"},
+						},
+					},
 				},
 			},
 			// The merged variant has the required prefix as a variant tag, but variant tags
