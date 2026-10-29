@@ -1146,23 +1146,23 @@ func TestGetProjectVersions(t *testing.T) {
 	assert.Contains(string(respJson), `"version_id":"v1"`)
 }
 
-func TestGetProjectVersionsWithBuildsEmptyPageHasNextLink(t *testing.T) {
+func TestGetProjectVersionsScanLimitExceededReturnsBadRequest(t *testing.T) {
 	require.NoError(t, db.ClearCollections(serviceModel.VersionCollection, serviceModel.ProjectRefCollection, build.Collection, task.Collection))
 	project := serviceModel.ProjectRef{
 		Id:         "proj",
 		Identifier: "proj_ident",
 	}
 	require.NoError(t, project.Insert(t.Context()))
-
-	for i := 1; i <= 250; i++ {
-		v := serviceModel.Version{
+	versions := []any{}
+	for i := 1; i <= 1001; i++ {
+		versions = append(versions, serviceModel.Version{
 			Id:                  fmt.Sprintf("v%d", i),
 			Identifier:          "proj",
 			Requester:           evergreen.RepotrackerVersionRequester,
 			RevisionOrderNumber: i,
-		}
-		require.NoError(t, v.Insert(t.Context()))
+		})
 	}
+	require.NoError(t, db.InsertMany(t.Context(), serviceModel.VersionCollection, versions...))
 
 	h := &getProjectVersionsHandler{}
 	body := []byte(`{"include_builds": true, "include_tasks": true, "by_task": "nonexistent"}`)
@@ -1172,14 +1172,10 @@ func TestGetProjectVersionsWithBuildsEmptyPageHasNextLink(t *testing.T) {
 	require.NoError(t, h.Parse(t.Context(), req))
 
 	resp := h.Run(t.Context())
-	require.Equal(t, http.StatusOK, resp.Status())
-	respJSON, err := json.Marshal(resp.Data())
-	require.NoError(t, err)
-	assert.JSONEq(t, `[]`, string(respJSON))
-	pages := resp.Pages()
-	require.NotNil(t, pages)
-	require.NotNil(t, pages.Next)
-	assert.Equal(t, "51", pages.Next.Key)
+	assert.Equal(t, http.StatusBadRequest, resp.Status())
+	errResp, ok := resp.Data().(gimlet.ErrorResponse)
+	require.True(t, ok)
+	assert.Contains(t, errResp.Message, "narrow the search with start or revision_end")
 }
 
 func TestGetProjectVersionsParseRequesters(t *testing.T) {

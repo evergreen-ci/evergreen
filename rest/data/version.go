@@ -18,12 +18,11 @@ import (
 // from the Connector through interactions with the backing database.
 type DBVersionConnector struct{}
 
-// GetProjectVersionsWithOptions returns the versions that fit the given constraint, along with the order
-// number to start the next page at (0 if there are no more versions).
-func GetProjectVersionsWithOptions(ctx context.Context, projectName string, opts model.GetVersionsOptions) ([]restModel.APIVersion, int, error) {
-	versions, nextStart, err := model.GetVersionsWithOptions(ctx, projectName, opts)
+// GetProjectVersionsWithOptions returns the versions that fit the given constraint.
+func GetProjectVersionsWithOptions(ctx context.Context, projectName string, opts model.GetVersionsOptions) ([]restModel.APIVersion, error) {
+	versions, err := model.GetVersionsWithOptions(ctx, projectName, opts)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	res := []restModel.APIVersion{}
 	for _, v := range versions {
@@ -31,7 +30,7 @@ func GetProjectVersionsWithOptions(ctx context.Context, projectName string, opts
 		apiVersion.BuildFromService(ctx, v)
 		res = append(res, apiVersion)
 	}
-	return res, nextStart, nil
+	return res, nil
 }
 
 // GetVersionsAndVariants Fetch versions until 'numVersionElements' elements are created, including

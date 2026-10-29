@@ -810,14 +810,19 @@ type GetVersionsOptions struct {
 
 // maxVersionsScannedWithBuilds bounds how many versions one GetVersionsWithOptions call joins against
 // builds and tasks, so a filter that matches nothing can't walk the project's entire history.
-const maxVersionsScannedWithBuilds = 200
+const maxVersionsScannedWithBuilds = 1000
+
+// ErrVersionScanLimitExceeded is returned when a request including builds searches the maximum number of
+// versions without filling the page and older versions remain.
+var ErrVersionScanLimitExceeded = errors.Errorf("searched %d versions without finding enough matches", maxVersionsScannedWithBuilds)
 
 // GetVersionsWithOptions returns versions for a project, that satisfy a set of query parameters defined by
-// the input GetVersionsOptions, along with the start order for the next page (0 if there are no more).
-func GetVersionsWithOptions(ctx context.Context, projectName string, opts GetVersionsOptions) ([]Version, int, error) {
+// the input GetVersionsOptions. When builds are included, it returns ErrVersionScanLimitExceeded rather than
+// a partial page if the matches are too sparse to fill the page within maxVersionsScannedWithBuilds versions.
+func GetVersionsWithOptions(ctx context.Context, projectName string, opts GetVersionsOptions) ([]Version, error) {
 	projectId, err := GetIdForProject(ctx, projectName)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	if opts.Limit <= 0 {
 		opts.Limit = defaultVersionLimit
@@ -852,26 +857,11 @@ func GetVersionsWithOptions(ctx context.Context, projectName string, opts GetVer
 		match[VersionCreateTimeKey] = bson.M{"$lte": opts.CreatedBefore}
 	}
 
-	// Fetch one extra version to tell whether there's anything past the window.
-	var window []Version
-	if opts.IncludeBuilds {
-		q := db.Query(match).
-			Sort([]string{"-" + VersionRevisionOrderNumberKey}).
-			Skip(opts.Skip).
-			Limit(maxVersionsScannedWithBuilds+1).
-			WithFields(VersionIdKey, VersionRevisionOrderNumberKey)
-		if err = db.FindAllQSecondary(ctx, VersionCollection, q, &window); err != nil {
-			return nil, 0, errors.Wrap(err, "finding versions to search")
-		}
-		windowIDs := []string{}
-		for _, v := range window[:min(len(window), maxVersionsScannedWithBuilds)] {
-			windowIDs = append(windowIDs, v.Id)
-		}
-		match = bson.M{VersionIdKey: bson.M{"$in": windowIDs}}
-	}
-
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
+	if opts.IncludeBuilds {
+		pipeline = append(pipeline, bson.M{"$limit": maxVersionsScannedWithBuilds})
+	}
 
 	// initial projection of version items
 	project := bson.M{
@@ -949,23 +939,36 @@ func GetVersionsWithOptions(ctx context.Context, projectName string, opts GetVer
 			"build_variants": bson.M{"$exists": true, "$ne": []any{}},
 		}
 		pipeline = append(pipeline, bson.M{"$match": matchBuildsExist})
-	} else if opts.Skip != 0 {
+	}
+
+	if opts.Skip != 0 {
 		pipeline = append(pipeline, bson.M{"$skip": opts.Skip})
 	}
 	pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
 
 	res := []Version{}
-	if err = db.AggregateSecondary(ctx, VersionCollection, pipeline, &res); err != nil {
-		return nil, 0, errors.Wrap(err, "aggregating versions and builds")
+
+	if err := db.AggregateSecondary(ctx, VersionCollection, pipeline, &res); err != nil {
+		return nil, errors.Wrap(err, "aggregating versions and builds")
+	}
+	if !opts.IncludeBuilds || len(res) >= opts.Limit {
+		return res, nil
 	}
 
-	if len(res) >= opts.Limit {
-		return res, res[len(res)-1].RevisionOrderNumber, nil
+	// A short page is only complete if the search reached the end of history.
+	pastLimit := []Version{}
+	q := db.Query(match).
+		Sort([]string{"-" + VersionRevisionOrderNumberKey}).
+		Skip(maxVersionsScannedWithBuilds).
+		Limit(1).
+		WithFields(VersionIdKey)
+	if err := db.FindAllQSecondary(ctx, VersionCollection, q, &pastLimit); err != nil {
+		return nil, errors.Wrap(err, "checking for versions past the scan limit")
 	}
-	if len(window) > maxVersionsScannedWithBuilds {
-		return res, window[maxVersionsScannedWithBuilds-1].RevisionOrderNumber, nil
+	if len(pastLimit) > 0 {
+		return nil, ErrVersionScanLimitExceeded
 	}
-	return res, 0, nil
+	return res, nil
 }
 
 // ModifyVersionsOptions is a struct containing options necessary to modify versions.

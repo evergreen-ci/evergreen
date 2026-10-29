@@ -795,12 +795,12 @@ func makeGetProjectVersionsHandler() gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Get versions for a project
-//	@Description	Returns a paginated list of recent versions for a project. Parameters should be passed into the JSON body (the route still accepts limit and start as query parameters to support legacy behavior). When include_builds is set, each request searches a bounded window of versions, so a page may contain fewer than limit versions (or none) even when more matching versions exist; follow the next page to see all results.
+//	@Description	Returns a paginated list of recent versions for a project. Parameters should be passed into the JSON body (the route still accepts limit and start as query parameters to support legacy behavior). When include_builds is set, a request searches at most 1000 versions. If that is not enough to fill the page, the request fails, and the search can be narrowed with start or revision_end.
 //	@Tags			versions
 //	@Router			/projects/{project_id}/versions [get]
 //	@Security		Api-User || Api-Key
 //	@Param			project_id			path	string		true	"the project ID"
-//	@Param			skip				query	int			false	"Number of versions to skip. With include_builds, this skips versions before the build and task filters are applied."
+//	@Param			skip				query	int			false	"Number of versions to skip."
 //	@Param			limit				query	int			false	"The number of versions to be returned per page of pagination. Defaults to 5, and cannot exceed 100."
 //	@Param			start				query	int			false	"The version order number to start at, for pagination. Will return the versions that are less than (and therefore older) the revision number specified."
 //	@Param			revision_end		query	int			false	"Will return the versions that are greater than (and therefore more recent) or equal to revision number specified."
@@ -914,7 +914,13 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 }
 
 func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
-	versions, nextStart, err := data.GetProjectVersionsWithOptions(ctx, h.projectName, h.opts)
+	versions, err := data.GetProjectVersionsWithOptions(ctx, h.projectName, h.opts)
+	if errors.Is(err, dbModel.ErrVersionScanLimitExceeded) {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("%s, narrow the search with start or revision_end", err.Error()),
+		})
+	}
 	if mongo.IsTimeout(err) {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusServiceUnavailable,
@@ -930,14 +936,14 @@ func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "constructing response"))
 	}
 
-	if nextStart > 0 {
+	if len(versions) >= h.opts.Limit {
 		err = resp.SetPages(&gimlet.ResponsePages{
 			Next: &gimlet.Page{
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start",
 				BaseURL:         h.url,
-				Key:             strconv.Itoa(nextStart),
+				Key:             strconv.Itoa(versions[len(versions)-1].Order),
 				Limit:           h.opts.Limit,
 			},
 		})
