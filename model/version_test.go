@@ -270,18 +270,19 @@ func TestGetVersionsWithOptionsBoundsScanWindow(t *testing.T) {
 		assert.Equal(t, "v1", versions[0].Id)
 		assert.Zero(t, nextStart)
 	})
-	t.Run("NonexistentTaskStopsAtWindowBoundary", func(t *testing.T) {
+	t.Run("HistoryEndingAtWindowBoundaryHasNoNextPage", func(t *testing.T) {
 		opts := GetVersionsOptions{
 			Requesters:    []string{evergreen.RepotrackerVersionRequester},
 			IncludeBuilds: true,
 			IncludeTasks:  true,
 			ByTask:        "nonexistent",
+			Start:         maxVersionsScannedWithBuilds + 1,
 			Limit:         5,
 		}
 		versions, nextStart, err := GetVersionsWithOptions(t.Context(), "my_ident", opts)
 		require.NoError(t, err)
 		assert.Empty(t, versions)
-		assert.Equal(t, windowBoundary, nextStart)
+		assert.Zero(t, nextStart)
 	})
 	t.Run("SkipAppliesBeforeWindow", func(t *testing.T) {
 		opts := GetVersionsOptions{

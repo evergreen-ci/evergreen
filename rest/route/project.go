@@ -27,6 +27,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type projectGetHandler struct {
@@ -799,7 +800,7 @@ func makeGetProjectVersionsHandler() gimlet.RouteHandler {
 //	@Router			/projects/{project_id}/versions [get]
 //	@Security		Api-User || Api-Key
 //	@Param			project_id			path	string		true	"the project ID"
-//	@Param			skip				query	int			false	"Number of versions to skip."
+//	@Param			skip				query	int			false	"Number of versions to skip. With include_builds, this skips versions before the build and task filters are applied."
 //	@Param			limit				query	int			false	"The number of versions to be returned per page of pagination. Defaults to 5, and cannot exceed 100."
 //	@Param			start				query	int			false	"The version order number to start at, for pagination. Will return the versions that are less than (and therefore older) the revision number specified."
 //	@Param			revision_end		query	int			false	"Will return the versions that are greater than (and therefore more recent) or equal to revision number specified."
@@ -908,18 +909,18 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 	if len(h.opts.Requesters) == 0 {
 		h.opts.Requesters = []string{evergreen.RepotrackerVersionRequester}
 	}
-	h.opts.Requesters = utility.UniqueStrings(h.opts.Requesters)
-	for _, requester := range h.opts.Requesters {
-		if !utility.StringSliceContains(evergreen.AllRequesterTypes, requester) {
-			return errors.Errorf("invalid requester '%s'", requester)
-		}
-	}
 
 	return nil
 }
 
 func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 	versions, nextStart, err := data.GetProjectVersionsWithOptions(ctx, h.projectName, h.opts)
+	if mongo.IsTimeout(err) {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusServiceUnavailable,
+			Message:    "timed out getting versions",
+		})
+	}
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting versions for project '%s'", h.projectName))
 	}

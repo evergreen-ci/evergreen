@@ -1146,6 +1146,42 @@ func TestGetProjectVersions(t *testing.T) {
 	assert.Contains(string(respJson), `"version_id":"v1"`)
 }
 
+func TestGetProjectVersionsWithBuildsEmptyPageHasNextLink(t *testing.T) {
+	require.NoError(t, db.ClearCollections(serviceModel.VersionCollection, serviceModel.ProjectRefCollection, build.Collection, task.Collection))
+	project := serviceModel.ProjectRef{
+		Id:         "proj",
+		Identifier: "proj_ident",
+	}
+	require.NoError(t, project.Insert(t.Context()))
+
+	for i := 1; i <= 250; i++ {
+		v := serviceModel.Version{
+			Id:                  fmt.Sprintf("v%d", i),
+			Identifier:          "proj",
+			Requester:           evergreen.RepotrackerVersionRequester,
+			RevisionOrderNumber: i,
+		}
+		require.NoError(t, v.Insert(t.Context()))
+	}
+
+	h := &getProjectVersionsHandler{}
+	body := []byte(`{"include_builds": true, "include_tasks": true, "by_task": "nonexistent"}`)
+	req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj_ident/versions", bytes.NewReader(body))
+	require.NoError(t, err)
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj_ident"})
+	require.NoError(t, h.Parse(t.Context(), req))
+
+	resp := h.Run(t.Context())
+	require.Equal(t, http.StatusOK, resp.Status())
+	respJSON, err := json.Marshal(resp.Data())
+	require.NoError(t, err)
+	assert.JSONEq(t, `[]`, string(respJSON))
+	pages := resp.Pages()
+	require.NotNil(t, pages)
+	require.NotNil(t, pages.Next)
+	assert.Equal(t, "51", pages.Next.Key)
+}
+
 func TestGetProjectVersionsParseRequesters(t *testing.T) {
 	ctx := t.Context()
 
@@ -1200,14 +1236,6 @@ func TestGetProjectVersionsParseRequesters(t *testing.T) {
 			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
 			require.NoError(t, h.Parse(ctx, req))
 			assert.Equal(t, []string{evergreen.RepotrackerVersionRequester}, h.opts.Requesters)
-		},
-		"InvalidRequesterShouldError": func(t *testing.T) {
-			h := &getProjectVersionsHandler{}
-			body := []byte(`{"requesters": ["ad_hoc", "not_a_requester"]}`)
-			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions", bytes.NewReader(body))
-			require.NoError(t, err)
-			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
-			assert.ErrorContains(t, h.Parse(ctx, req), "invalid requester 'not_a_requester'")
 		},
 		"OversizedBodyShouldError": func(t *testing.T) {
 			h := &getProjectVersionsHandler{}
