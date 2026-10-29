@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"io"
+	"time"
 
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
@@ -27,14 +28,17 @@ type chunkIterator struct {
 	closed         bool
 }
 
+const chunkDownloadTimeout = 60 * time.Second
+
 type chunkIteratorOptions struct {
-	bucket    pail.Bucket
-	chunks    []chunkInfo
-	parser    LineParser
-	start     *int64
-	end       *int64
-	lineLimit int
-	tailN     int
+	bucket          pail.Bucket
+	chunks          []chunkInfo
+	parser          LineParser
+	start           *int64
+	end             *int64
+	lineLimit       int
+	tailN           int
+	downloadTimeout time.Duration
 }
 
 // newChunkIterator returns a LogIterator that iterates over lines of a log
@@ -49,6 +53,9 @@ func newChunkIterator(ctx context.Context, opts chunkIteratorOptions) *chunkIter
 	}
 	if opts.lineLimit > 0 {
 		opts.chunks = filterChunksByLimit(opts.chunks, opts.lineLimit)
+	}
+	if opts.downloadTimeout == 0 {
+		opts.downloadTimeout = chunkDownloadTimeout
 	}
 
 	// The worker's context is cancelable so that closing the iterator can
@@ -146,8 +153,10 @@ func (it *chunkIterator) worker(ctx context.Context) {
 	}()
 
 	for _, chunk := range it.opts.chunks {
-		r, err := it.opts.bucket.Get(ctx, chunk.key)
+		getCtx, cancel := context.WithTimeout(ctx, it.opts.downloadTimeout)
+		r, err := it.opts.bucket.Get(getCtx, chunk.key)
 		if err != nil {
+			cancel()
 			if it.isClosed() {
 				// Closing the iterator cancels the context, so a download
 				// aborted by Close is a clean shutdown rather than an error.
@@ -157,18 +166,20 @@ func (it *chunkIterator) worker(ctx context.Context) {
 			return
 		}
 
+		cr := newChunkReader(r, chunk.numLines, cancel)
+
 		select {
-		case it.next <- newChunkReader(r, chunk.numLines):
+		case it.next <- cr:
 		case <-it.done:
-			it.closeUnreadChunk(r)
+			it.closeUnreadChunk(cr)
 			return
 		case <-ctx.Done():
 			if it.isClosed() {
-				it.closeUnreadChunk(r)
+				it.closeUnreadChunk(cr)
 				return
 			}
 			it.catcher.Add(ctx.Err())
-			it.closeUnreadChunk(r)
+			it.closeUnreadChunk(cr)
 			return
 		}
 	}
@@ -207,7 +218,7 @@ func (it *chunkIterator) isClosed() bool {
 
 // closeUnreadChunk releases a fetched chunk that the consumer will never
 // read, along with any chunk the worker already buffered ahead of it.
-func (it *chunkIterator) closeUnreadChunk(r io.ReadCloser) {
+func (it *chunkIterator) closeUnreadChunk(r *chunkReader) {
 	_ = r.Close()
 
 	select {
@@ -251,15 +262,23 @@ func filterChunksByLimit(chunks []chunkInfo, limit int) []chunkInfo {
 
 type chunkReader struct {
 	numLines int
+	cancel   context.CancelFunc
 
 	*bufio.Reader
 	io.ReadCloser
 }
 
-func newChunkReader(r io.ReadCloser, numLines int) *chunkReader {
+func newChunkReader(r io.ReadCloser, numLines int, cancel context.CancelFunc) *chunkReader {
 	return &chunkReader{
 		numLines:   numLines,
+		cancel:     cancel,
 		Reader:     bufio.NewReader(r),
 		ReadCloser: r,
 	}
+}
+
+func (r *chunkReader) Close() error {
+	err := r.ReadCloser.Close()
+	r.cancel()
+	return err
 }

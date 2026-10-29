@@ -555,6 +555,44 @@ func TestMergingIteratorCloseClosesUnstartedIterators(t *testing.T) {
 	}
 }
 
+// hangingBucket's Get blocks until its context is canceled, simulating a
+// stalled S3 chunk download.
+type hangingBucket struct {
+	pail.Bucket
+}
+
+func (b *hangingBucket) Get(ctx context.Context, _ string) (io.ReadCloser, error) {
+	<-ctx.Done()
+	return nil, ctx.Err()
+}
+
+func TestChunkIteratorDownloadTimeoutErrorsInsteadOfHanging(t *testing.T) {
+	ctx := t.Context()
+
+	it := newChunkIterator(ctx, chunkIteratorOptions{
+		bucket: &hangingBucket{},
+		chunks: []chunkInfo{
+			{
+				key:      "stalled_chunk",
+				numLines: 1,
+				start:    time.Now().UTC().UnixNano() - int64(time.Hour),
+				end:      time.Now().UTC().UnixNano(),
+			},
+		},
+		parser:          func(_ string) (LogLine, error) { return LogLine{}, nil },
+		downloadTimeout: 50 * time.Millisecond,
+	})
+	t.Cleanup(func() { _ = it.Close() })
+
+	// A stalled download should surface as an iterator error promptly
+	// rather than hanging the request indefinitely.
+	start := time.Now()
+	assert.False(t, it.Next())
+	assert.Less(t, time.Since(start), 10*time.Second, "stalled download should error out quickly")
+	assert.False(t, it.Exhausted())
+	assert.Error(t, it.Err())
+}
+
 // generateTestLog is a convenience function to generate random logs with 100
 // character long lines of the given size and chunk size in the given bucket.
 func generateTestLog(ctx context.Context, bucket pail.Bucket, size, chunkSize int) ([]chunkInfo, []LogLine, LineParser, error) {
