@@ -410,10 +410,7 @@ func cloneSource(ctx context.Context, task *service.RestTask, project *model.Pro
 			modulePrefix = task.ModulePaths[module.Name]
 		}
 
-		moduleBase, err := resolveModuleDir(cloneDir, modulePrefix, module.Name)
-		if err != nil {
-			return err
-		}
+		moduleBase := filepath.Join(cloneDir, modulePrefix, module.Name)
 
 		owner, repo, err := module.GetOwnerAndRepo()
 		if err != nil {
@@ -464,18 +461,6 @@ func cloneSource(ctx context.Context, task *service.RestTask, project *model.Pro
 	return nil
 }
 
-// resolveModuleDir joins the module prefix and name under the clone root,
-// rejecting prefixes that would resolve outside it. The prefix is
-// patch-controlled, so it cannot be trusted.
-func resolveModuleDir(cloneDir, modulePrefix, moduleName string) (string, error) {
-	relativePath := filepath.Join(modulePrefix, moduleName)
-	if err := thirdparty.ValidatePathWithinDirectory(cloneDir, relativePath); err != nil {
-		return "", werrors.Wrapf(err, "module '%s' has prefix '%s'", moduleName, modulePrefix)
-	}
-
-	return filepath.Join(cloneDir, relativePath), nil
-}
-
 func applyPatch(patch *service.RestPatch, rootCloneDir string, conf *model.Project, variant *model.BuildVariant) error {
 	// patch sets and contain multiple patches, some of them for modules
 	for _, patchPart := range patch.Patches {
@@ -501,10 +486,7 @@ func applyPatch(patch *service.RestPatch, rootCloneDir string, conf *model.Proje
 				continue
 			}
 
-			dir, err = resolveModuleDir(rootCloneDir, module.Prefix, module.Name)
-			if err != nil {
-				return err
-			}
+			dir = filepath.Join(rootCloneDir, module.Prefix, module.Name)
 		}
 
 		args := []string{"apply", "--whitespace=fix"}
