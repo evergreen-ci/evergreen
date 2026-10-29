@@ -982,13 +982,22 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 	if utility.IsZeroTime(ingestTime) {
 		ingestTime = v.CreateTime
 	}
-	resolver := NewModuleResolver(projectRef, ModuleResolverOpts{
-		VersionID:  v.Id,
-		Revision:   v.Revision,
-		Requester:  v.Requester,
-		IngestTime: ingestTime,
-	})
-	return resolver.Manifest(ctx, v, moduleList)
+	opts := ModuleResolverOpts{
+		VersionID:           v.Id,
+		Revision:            v.Revision,
+		Requester:           v.Requester,
+		RevisionOrderNumber: v.RevisionOrderNumber,
+		IngestTime:          ingestTime,
+	}
+	if v.TriggerModule != "" {
+		opts.TriggeringModuleCommit = &manifest.Module{
+			Owner:    v.TriggerOwner,
+			Repo:     v.TriggerRepo,
+			Branch:   v.TriggerBranch,
+			Revision: v.TriggerSHA,
+		}
+	}
+	return NewModuleResolver(projectRef, opts).Manifest(ctx, v, moduleList)
 }
 
 // setChangedModules records which modules changed compared to the version's

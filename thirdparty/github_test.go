@@ -457,6 +457,25 @@ func (s *githubSuite) TestGetBranchProtectionRules() {
 	s.NoError(err)
 }
 
+func (s *githubSuite) TestGetCommitComparisonStatus() {
+	// In the sample repo, newerCommit is a descendant of olderCommit.
+	const (
+		olderCommit = "b27779f856b211ffaf97cbc124b7082a20ea8bc0"
+		newerCommit = "cf46076567e4949f9fc68e0634139d4ac495c89b"
+	)
+	for _, tc := range []struct {
+		base, head, expected string
+	}{
+		{base: olderCommit, head: newerCommit, expected: "ahead"},
+		{base: newerCommit, head: olderCommit, expected: "behind"},
+		{base: olderCommit, head: olderCommit, expected: "identical"},
+	} {
+		status, err := GetCommitComparisonStatus(s.ctx, "evergreen-ci", "sample", tc.base, tc.head)
+		s.Require().NoError(err)
+		s.Equal(tc.expected, status, "comparing '%s' to '%s'", tc.base, tc.head)
+	}
+}
+
 func TestVerifyGithubAPILimitHeader(t *testing.T) {
 	assert := assert.New(t)
 	header := http.Header{}
