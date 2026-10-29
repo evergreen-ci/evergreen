@@ -2,6 +2,7 @@ package log
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"io"
 	"time"
@@ -149,7 +150,6 @@ func (it *chunkIterator) worker(ctx context.Context) {
 	defer func() {
 		it.catcher.Add(recovery.HandlePanicWithError(recover(), nil, "log chunk iterator worker"))
 		close(it.next)
-		it.cancelWorker()
 	}()
 
 	for _, chunk := range it.opts.chunks {
@@ -166,7 +166,26 @@ func (it *chunkIterator) worker(ctx context.Context) {
 			return
 		}
 
-		cr := newChunkReader(r, chunk.numLines, cancel)
+		// Read the chunk's data before closing.
+		data, err := io.ReadAll(r)
+		closeErr := r.Close()
+		cancel()
+		if err != nil {
+			if it.isClosed() {
+				return
+			}
+			it.catcher.Wrap(err, "reading downloaded chunk from bucket")
+			return
+		}
+		if closeErr != nil {
+			if it.isClosed() {
+				return
+			}
+			it.catcher.Wrap(closeErr, "closing downloaded chunk from bucket")
+			return
+		}
+
+		cr := newChunkReader(io.NopCloser(bytes.NewReader(data)), chunk.numLines)
 
 		select {
 		case it.next <- cr:
@@ -262,23 +281,15 @@ func filterChunksByLimit(chunks []chunkInfo, limit int) []chunkInfo {
 
 type chunkReader struct {
 	numLines int
-	cancel   context.CancelFunc
 
 	*bufio.Reader
 	io.ReadCloser
 }
 
-func newChunkReader(r io.ReadCloser, numLines int, cancel context.CancelFunc) *chunkReader {
+func newChunkReader(r io.ReadCloser, numLines int) *chunkReader {
 	return &chunkReader{
 		numLines:   numLines,
-		cancel:     cancel,
 		Reader:     bufio.NewReader(r),
 		ReadCloser: r,
 	}
-}
-
-func (r *chunkReader) Close() error {
-	err := r.ReadCloser.Close()
-	r.cancel()
-	return err
 }
