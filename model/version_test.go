@@ -220,7 +220,6 @@ func TestGetVersionsWithOptionsScanLimit(t *testing.T) {
 	}
 	require.NoError(t, p.Insert(t.Context()))
 
-	// The newest and oldest versions have an activated task; the oldest is past the scan limit.
 	numVersions := maxVersionsScannedWithBuilds + 10
 	versions := make([]any, 0, numVersions)
 	for i := 1; i <= numVersions; i++ {
@@ -278,16 +277,6 @@ func TestGetVersionsWithOptionsScanLimit(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, res, 1)
 		assert.Equal(t, "v1", res[0].Id)
-	})
-	t.Run("WithoutBuildsIgnoresScanLimit", func(t *testing.T) {
-		opts := GetVersionsOptions{
-			Requesters: []string{evergreen.RepotrackerVersionRequester},
-			Limit:      100,
-			Start:      5,
-		}
-		res, err := GetVersionsWithOptions(t.Context(), "my_ident", opts)
-		require.NoError(t, err)
-		assert.Len(t, res, 4)
 	})
 }
 

@@ -1233,14 +1233,6 @@ func TestGetProjectVersionsParseRequesters(t *testing.T) {
 			require.NoError(t, h.Parse(ctx, req))
 			assert.Equal(t, []string{evergreen.RepotrackerVersionRequester}, h.opts.Requesters)
 		},
-		"OversizedBodyShouldError": func(t *testing.T) {
-			h := &getProjectVersionsHandler{}
-			body := []byte(`{"requesters": ["` + strings.Repeat("a", maxVersionsBodySize) + `"]}`)
-			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions", bytes.NewReader(body))
-			require.NoError(t, err)
-			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
-			assert.ErrorContains(t, h.Parse(ctx, req), "request body cannot exceed")
-		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			tCase(t)

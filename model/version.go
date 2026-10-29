@@ -809,16 +809,15 @@ type GetVersionsOptions struct {
 }
 
 // maxVersionsScannedWithBuilds bounds how many versions one GetVersionsWithOptions call joins against
-// builds and tasks, so a filter that matches nothing can't walk the project's entire history.
+// builds and tasks.
 const maxVersionsScannedWithBuilds = 1000
 
 // ErrVersionScanLimitExceeded is returned when a request including builds searches the maximum number of
-// versions without filling the page and older versions remain.
+// versions without filling the page and older versions still remain.
 var ErrVersionScanLimitExceeded = errors.Errorf("searched %d versions without finding enough matches", maxVersionsScannedWithBuilds)
 
 // GetVersionsWithOptions returns versions for a project, that satisfy a set of query parameters defined by
-// the input GetVersionsOptions. When builds are included, it returns ErrVersionScanLimitExceeded rather than
-// a partial page if the matches are too sparse to fill the page within maxVersionsScannedWithBuilds versions.
+// the input GetVersionsOptions.
 func GetVersionsWithOptions(ctx context.Context, projectName string, opts GetVersionsOptions) ([]Version, error) {
 	projectId, err := GetIdForProject(ctx, projectName)
 	if err != nil {
