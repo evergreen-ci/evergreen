@@ -800,12 +800,16 @@ func buildDistroPermissionSummaries(resourcePermissions rolemanager.PermissionsF
 func buildGrantedPermissions(userPerms gimlet.Permissions, permissionKeys []string, includeEmpty bool) map[string][]string {
 	permissions := map[string][]string{}
 	for _, key := range permissionKeys {
+		effectiveLevel := userPerms[key]
+		if key == evergreen.PermissionTestQuarantine && userPerms[evergreen.PermissionProjectSettings] >= evergreen.ProjectSettingsEdit.Value {
+			effectiveLevel = max(effectiveLevel, evergreen.TestQuarantineEdit.Value)
+		}
 		var granted []string
 		for _, level := range evergreen.GetPermissionLevelsForPermissionKey(key) {
 			if level.Value == 0 {
 				continue
 			}
-			if userPerms[key] >= level.Value {
+			if effectiveLevel >= level.Value {
 				granted = append(granted, level.Description)
 			}
 		}
