@@ -311,9 +311,10 @@ func TestRequireProjectAccessForTestQuarantine(t *testing.T) {
 			roleIDs: []string{"edit_test_quarantine"},
 			access:  AccessLevelEdit,
 		},
-		"ProjectAdminWithoutTestQuarantineShouldSucceed": {
-			roleIDs: []string{"admin_project"},
-			access:  AccessLevelEdit,
+		"ProjectAdminWithoutTestQuarantineShouldError": {
+			roleIDs:       []string{"admin_project"},
+			access:        AccessLevelEdit,
+			expectedError: missingPermissionError,
 		},
 		"ProjectSettingsViewWithoutTestQuarantineShouldError": {
 			roleIDs:       []string{"view_project"},

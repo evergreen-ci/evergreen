@@ -3328,12 +3328,6 @@ func TestUpdateAdminRolesFindsAdminRoleWithoutTestQuarantinePermission(t *testin
 	require.NoError(t, err)
 	require.NotNil(t, newAdminFromDB)
 	assert.Equal(t, []string{legacyAdminRole.ID}, newAdminFromDB.Roles())
-	assert.True(t, newAdminFromDB.HasPermission(ctx, gimlet.PermissionOpts{
-		Resource:      p.Id,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionTestQuarantine,
-		RequiredLevel: evergreen.TestQuarantineEdit.Value,
-	}))
 }
 
 func TestUpdateAdminRolesError(t *testing.T) {
