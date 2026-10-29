@@ -311,6 +311,19 @@ func TestRequireProjectAccessForTestQuarantine(t *testing.T) {
 			roleIDs: []string{"edit_test_quarantine"},
 			access:  AccessLevelEdit,
 		},
+		"ProjectAdminWithoutTestQuarantineShouldSucceed": {
+			roleIDs: []string{"admin_project"},
+			access:  AccessLevelEdit,
+		},
+		"SuperuserWithoutTestQuarantineShouldSucceed": {
+			roleIDs: []string{evergreen.SuperUserRole},
+			access:  AccessLevelEdit,
+		},
+		"ProjectSettingsViewWithoutTestQuarantineShouldError": {
+			roleIDs:       []string{"view_project"},
+			access:        AccessLevelEdit,
+			expectedError: missingPermissionError,
+		},
 		"TasksAdminWithoutTestQuarantineShouldError": {
 			roleIDs:       []string{"admin_task"},
 			access:        AccessLevelEdit,

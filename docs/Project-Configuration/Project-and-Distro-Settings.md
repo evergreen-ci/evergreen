@@ -64,8 +64,10 @@ Quarantining a test makes test selection skip it, so a mistaken
 quarantine can hide real failures. Because of this, quarantining and
 unquarantining tests, tasks, and build variants requires the separate
 `Test quarantine` permission. Task permissions don't include it, even
-admin task permissions. Project admins and Evergreen superusers have it
-by default; everyone else must request it through MANA.
+admin task permissions. Users who can edit the project's settings and
+Evergreen superusers can quarantine without a separate grant, including
+on projects created before this permission existed. Everyone else must
+request it through MANA.
 
 ## Project Settings
 

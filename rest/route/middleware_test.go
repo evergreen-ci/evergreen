@@ -734,6 +734,56 @@ func TestUpdateHostAccessTime(t *testing.T) {
 	}
 }
 
+func TestProjectQuarantinePermission(t *testing.T) {
+	ctx := t.Context()
+	collections := []string{evergreen.RoleCollection, evergreen.ScopeCollection, model.ProjectRefCollection}
+	require.NoError(t, db.ClearCollections(collections...))
+	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
+	t.Cleanup(func() { assert.NoError(t, db.ClearCollections(collections...)) })
+	rm := testutil.NewEnvironment(ctx, t).RoleManager()
+	project := model.ProjectRef{Id: "project"}
+	require.NoError(t, project.Insert(ctx))
+	require.NoError(t, rm.AddScope(ctx, gimlet.Scope{
+		ID: "project_scope", Type: evergreen.ProjectResourceType, Resources: []string{project.Id},
+	}))
+	require.NoError(t, rm.AddScope(ctx, gimlet.Scope{
+		ID: "superuser_scope", Type: evergreen.SuperUserResourceType, Resources: []string{evergreen.SuperUserPermissionsID},
+	}))
+	for _, role := range []gimlet.Role{
+		{ID: "project_admin", Scope: "project_scope", Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value}},
+		{ID: "task_admin", Scope: "project_scope", Permissions: gimlet.Permissions{evergreen.PermissionTasks: evergreen.TasksAdmin.Value}},
+		{ID: evergreen.SuperUserRole, Scope: "superuser_scope", Permissions: gimlet.Permissions{evergreen.PermissionAdminSettings: evergreen.AdminSettingsEdit.Value}},
+	} {
+		require.NoError(t, rm.UpdateRole(ctx, role))
+	}
+	middleware := RequiresProjectPermission(evergreen.PermissionTestQuarantine, evergreen.TestQuarantineEdit)
+	authHandler := gimlet.NewAuthenticationHandler(gimlet.NewBasicAuthenticator(nil, nil), nil)
+	for name, tc := range map[string]struct {
+		roleID     string
+		statusCode int
+	}{
+		"LegacyProjectAdminShouldSucceed": {"project_admin", http.StatusOK},
+		"LegacySuperuserShouldSucceed":    {evergreen.SuperUserRole, http.StatusOK},
+		"TaskAdminShouldBeUnauthorized":   {"task_admin", http.StatusUnauthorized},
+	} {
+		t.Run(name, func(t *testing.T) {
+			usr := &user.DBUser{Id: "test_user", SystemRoles: []string{tc.roleID}}
+			req := httptest.NewRequest(http.MethodPost, "/", nil).WithContext(gimlet.AttachUser(t.Context(), usr))
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": project.Id})
+			rw := httptest.NewRecorder()
+			called := false
+			authHandler.ServeHTTP(rw, req, func(rw http.ResponseWriter, r *http.Request) {
+				middleware.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+					called = true
+					rw.WriteHeader(http.StatusOK)
+				})
+			})
+			assert.Equal(t, tc.statusCode, rw.Code, rw.Body.String())
+			assert.Equal(t, tc.statusCode == http.StatusOK, called)
+		})
+	}
+}
+
 func TestProjectViewPermission(t *testing.T) {
 	assert := assert.New(t)
 	ctx := t.Context()

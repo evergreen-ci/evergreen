@@ -594,6 +594,7 @@ var _ gimlet.PermissionChecker = &DBUser{}
 
 // HasPermissionErr is HasPermission, but it returns any error that prevented the
 // check from completing so callers can tell a denial apart from a failed lookup.
+// Project admins and superusers can quarantine tests without an explicit grant.
 func (u *DBUser) HasPermissionErr(ctx context.Context, opts gimlet.PermissionOpts) (bool, error) {
 	if evergreen.PermissionsDisabledForTests() {
 		return true, nil
@@ -606,18 +607,42 @@ func (u *DBUser) HasPermissionErr(ctx context.Context, opts gimlet.PermissionOpt
 		}))
 		return false, errors.Wrap(err, "getting roles")
 	}
-	roles, err = roleManager.FilterForResource(ctx, roles, opts.Resource, opts.ResourceType)
+	resourceRoles, err := roleManager.FilterForResource(ctx, roles, opts.Resource, opts.ResourceType)
 	if err != nil {
 		grip.ErrorWhen(ctx, !errors.Is(err, context.Canceled), message.WrapError(err, message.Fields{
 			"message": "error filtering resources",
 		}))
 		return false, errors.Wrap(err, "filtering roles for resource")
 	}
-	for _, role := range roles {
+	allowAdminQuarantine := opts.ResourceType == evergreen.ProjectResourceType &&
+		opts.Permission == evergreen.PermissionTestQuarantine && opts.RequiredLevel <= evergreen.TestQuarantineEdit.Value
+	for _, role := range resourceRoles {
 		level, hasPermission := role.Permissions[opts.Permission]
 		if hasPermission && level >= opts.RequiredLevel {
 			return true, nil
 		}
+		if allowAdminQuarantine && role.Permissions[evergreen.PermissionProjectSettings] >= evergreen.ProjectSettingsEdit.Value {
+			return true, nil
+		}
+	}
+	if allowAdminQuarantine {
+		var superuserRoles []gimlet.Role
+		for _, role := range roles {
+			if role.Permissions[evergreen.PermissionAdminSettings] >= evergreen.AdminSettingsEdit.Value {
+				superuserRoles = append(superuserRoles, role)
+			}
+		}
+		if len(superuserRoles) == 0 {
+			return false, nil
+		}
+		superuserRoles, err = roleManager.FilterForResource(ctx, superuserRoles, evergreen.SuperUserPermissionsID, evergreen.SuperUserResourceType)
+		if err != nil {
+			grip.ErrorWhen(ctx, !errors.Is(err, context.Canceled), message.WrapError(err, message.Fields{
+				"message": "error filtering superuser roles",
+			}))
+			return false, errors.Wrap(err, "filtering superuser roles")
+		}
+		return len(superuserRoles) > 0, nil
 	}
 	return false, nil
 }
