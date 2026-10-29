@@ -58,17 +58,6 @@ who match certain characteristics.
 
 To verify what permissions have been granted to a specific user, use the [permission-details API endpoint](../API/REST-V2-Usage#tag/users/paths/~1users~1{user_id}~1permission-details/get).
 
-### Test Quarantine Permission
-
-Quarantining a test makes test selection skip it, so a mistaken
-quarantine can hide real failures. Because of this, quarantining and
-unquarantining tests, tasks, and build variants requires the separate
-`Test quarantine` permission. Task permissions don't include it, even
-admin task permissions. Users who can edit the project's settings and
-Evergreen superusers can quarantine without a separate grant, including
-on projects created before this permission existed. Everyone else must
-request it through MANA.
-
 ## Project Settings
 
 The Project Settings file displays information about the Project itself,

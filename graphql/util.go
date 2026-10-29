@@ -1360,17 +1360,6 @@ func hasLogViewPermission(ctx context.Context, obj *restModel.APITask) bool {
 	return authUser.HasPermission(ctx, permissions)
 }
 
-func hasTestQuarantinePermission(ctx context.Context, obj *restModel.APITask) bool {
-	authUser := gimlet.GetUser(ctx)
-	permissions := gimlet.PermissionOpts{
-		Resource:      utility.FromStringPtr(obj.ProjectId),
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionTestQuarantine,
-		RequiredLevel: evergreen.TestQuarantineEdit.Value,
-	}
-	return authUser.HasPermission(ctx, permissions)
-}
-
 func hasAnnotationPermission(ctx context.Context, obj *restModel.APITask, requiredLevel int) (bool, error) {
 	authUser := gimlet.GetUser(ctx)
 	permissions := gimlet.PermissionOpts{

@@ -3306,9 +3306,14 @@ func TestUpdateAdminRolesFindsAdminRoleWithoutTestQuarantinePermission(t *testin
 	// Admin roles created before the test quarantine permission existed only
 	// have the original admin permissions.
 	legacyAdminRole := gimlet.Role{
-		ID:          GetProjectAdminRole("proj"),
-		Scope:       "project_proj",
-		Permissions: adminRoleLookupPermissions,
+		ID:    GetProjectAdminRole("proj"),
+		Scope: "project_proj",
+		Permissions: gimlet.Permissions{
+			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+			evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
+			evergreen.PermissionPatches:         evergreen.PatchSubmit.Value,
+			evergreen.PermissionLogs:            evergreen.LogsView.Value,
+		},
 	}
 	require.NoError(t, rm.UpdateRole(ctx, legacyAdminRole))
 	newAdmin := user.DBUser{Id: "newAdmin"}
