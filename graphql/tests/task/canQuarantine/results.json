@@ -20,16 +20,6 @@
           }
         }
       }
-    },
-    {
-      "query_file": "display_task.graphql",
-      "result": {
-        "data": {
-          "task": {
-            "canQuarantine": false
-          }
-        }
-      }
     }
   ]
 }

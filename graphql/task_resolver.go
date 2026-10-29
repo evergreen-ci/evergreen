@@ -244,9 +244,6 @@ func (r *taskResolver) CanOverrideDependencies(ctx context.Context, obj *restMod
 
 // CanQuarantine is the resolver for the canQuarantine field.
 func (r *taskResolver) CanQuarantine(ctx context.Context, obj *restModel.APITask) (bool, error) {
-	if obj.DisplayOnly {
-		return false, nil
-	}
 	currentUser := mustHaveUser(ctx)
 	return currentUser.HasPermission(ctx, gimlet.PermissionOpts{
 		ResourceType:  evergreen.ProjectResourceType,
