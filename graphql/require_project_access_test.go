@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
@@ -284,46 +285,63 @@ func TestRequireProjectAccessForTasks(t *testing.T) {
 	_, err = RequireProjectAccess(ctx, obj, next, ProjectPermissionTasks, AccessLevelView)
 	require.Equal(t, 9, callCount)
 	require.EqualError(t, err, "input: user 'test_user' does not have permission to 'view tasks' for the project 'project_id'")
+}
 
+func TestRequireProjectAccessForTestQuarantine(t *testing.T) {
+	setupPermissions(t)
+	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, task.Collection))
+
+	project := &model.ProjectRef{Id: "project_id"}
+	require.NoError(t, project.Insert(t.Context()))
+	tsk := &task.Task{Id: "task_id", Project: project.Id}
+	require.NoError(t, tsk.Insert(t.Context()))
+	obj := any(map[string]any{"taskId": tsk.Id})
+
+	const missingPermissionError = "input: user 'test_user' does not have permission to 'quarantine and unquarantine tests' for the project 'project_id'"
 	testCases := map[string]struct {
-		roleID        string
+		roleIDs       []string
 		access        AccessLevel
 		expectedError string
 	}{
-		"EditUserCannotQuarantine": {
-			roleID:        "edit_task",
-			access:        AccessLevelEditAndQuarantine,
-			expectedError: "input: user 'test_user' does not have permission to 'edit tasks and quarantine tests' for the project 'project_id'",
+		"SuperuserShouldSucceed": {
+			roleIDs: []string{evergreen.SuperUserProjectAccessRole},
+			access:  AccessLevelEdit,
 		},
-		"AdminUserCanQuarantine": {
-			roleID: "admin_task",
-			access: AccessLevelEditAndQuarantine,
+		"TestQuarantineRoleShouldSucceed": {
+			roleIDs: []string{"edit_test_quarantine"},
+			access:  AccessLevelEdit,
 		},
-		"QuarantineUserCannotAccessAdmin": {
-			roleID:        "quarantine_task",
+		"TasksAdminWithoutTestQuarantineShouldError": {
+			roleIDs:       []string{"admin_task"},
+			access:        AccessLevelEdit,
+			expectedError: missingPermissionError,
+		},
+		"TasksEditWithoutTestQuarantineShouldError": {
+			roleIDs:       []string{"edit_task"},
+			access:        AccessLevelEdit,
+			expectedError: missingPermissionError,
+		},
+		"NoRolesShouldError": {
+			access:        AccessLevelEdit,
+			expectedError: missingPermissionError,
+		},
+		"UnsupportedAccessLevelShouldError": {
+			roleIDs:       []string{"edit_test_quarantine"},
 			access:        AccessLevelAdmin,
-			expectedError: "input: user 'test_user' does not have permission to 'edit tasks and override dependencies' for the project 'project_id'",
-		},
-		"QuarantineUserCanQuarantine": {
-			roleID: "quarantine_task",
-			access: AccessLevelEditAndQuarantine,
-		},
-		"QuarantineUserCanEdit": {
-			roleID: "quarantine_task",
-			access: AccessLevelEdit,
+			expectedError: "input: invalid permission and access level configuration: invalid access level for project_test_quarantine",
 		},
 	}
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			subtestUser := &user.DBUser{Id: usr.Id, SystemRoles: []string{tc.roleID}}
-			ctx := gimlet.AttachUser(t.Context(), subtestUser)
+			usr := &user.DBUser{Id: testUser, SystemRoles: tc.roleIDs}
+			ctx := gimlet.AttachUser(t.Context(), usr)
 			callCount := 0
 			next := func(context.Context) (any, error) {
 				callCount++
 				return nil, nil
 			}
 
-			res, err := RequireProjectAccess(ctx, obj, next, ProjectPermissionTasks, tc.access)
+			res, err := RequireProjectAccess(ctx, obj, next, ProjectPermissionTestQuarantine, tc.access)
 			require.Nil(t, res)
 			if tc.expectedError != "" {
 				require.EqualError(t, err, tc.expectedError)

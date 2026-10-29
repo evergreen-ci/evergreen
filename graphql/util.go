@@ -1294,8 +1294,6 @@ func getProjectPermissionLevel(projectPermission ProjectPermission, access Acces
 		permission = evergreen.PermissionTasks
 		if access == AccessLevelAdmin {
 			permissionLevel = evergreen.TasksAdmin
-		} else if access == AccessLevelEditAndQuarantine {
-			permissionLevel = evergreen.TasksQuarantine
 		} else if access == AccessLevelEdit {
 			permissionLevel = evergreen.TasksBasic
 		} else if access == AccessLevelView {
@@ -1318,6 +1316,13 @@ func getProjectPermissionLevel(projectPermission ProjectPermission, access Acces
 			permissionLevel = evergreen.LogsView
 		} else {
 			return "", permissionLevel, errors.Errorf("invalid access level for %s", evergreen.PermissionLogs)
+		}
+	case ProjectPermissionTestQuarantine:
+		permission = evergreen.PermissionTestQuarantine
+		if access == AccessLevelEdit {
+			permissionLevel = evergreen.TestQuarantineEdit
+		} else {
+			return "", permissionLevel, errors.Errorf("invalid access level for %s", evergreen.PermissionTestQuarantine)
 		}
 	default:
 		return "", permissionLevel, errors.New("invalid project permission")
@@ -1351,6 +1356,17 @@ func hasLogViewPermission(ctx context.Context, obj *restModel.APITask) bool {
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionLogs,
 		RequiredLevel: evergreen.LogsView.Value,
+	}
+	return authUser.HasPermission(ctx, permissions)
+}
+
+func hasTestQuarantinePermission(ctx context.Context, obj *restModel.APITask) bool {
+	authUser := gimlet.GetUser(ctx)
+	permissions := gimlet.PermissionOpts{
+		Resource:      utility.FromStringPtr(obj.ProjectId),
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionTestQuarantine,
+		RequiredLevel: evergreen.TestQuarantineEdit.Value,
 	}
 	return authUser.HasPermission(ctx, permissions)
 }

@@ -3,21 +3,21 @@
 QuarantineTaskInput is the input to the quarantineTask mutation. It marks every known test of the given task as manually quarantined in the test selection service.
 """
 input QuarantineTaskInput {
-  taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT_AND_QUARANTINE)
+  taskId: String! @requireProjectAccess(permission: TEST_QUARANTINE, access: EDIT)
 }
 
 """
 UnquarantineTaskInput is the input to the unquarantineTask mutation.
 """
 input UnquarantineTaskInput {
-  taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT_AND_QUARANTINE)
+  taskId: String! @requireProjectAccess(permission: TEST_QUARANTINE, access: EDIT)
 }
 
 """
 QuarantineVariantInput is the input to the quarantineVariant mutation. It marks every known test of every known task in the build variant as manually quarantined in the test selection service.
 """
 input QuarantineVariantInput {
-  projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: EDIT_AND_QUARANTINE)
+  projectIdentifier: String! @requireProjectAccess(permission: TEST_QUARANTINE, access: EDIT)
   buildVariant: String!
 }
 
@@ -25,7 +25,7 @@ input QuarantineVariantInput {
 UnquarantineVariantInput is the input to the unquarantineVariant mutation.
 """
 input UnquarantineVariantInput {
-  projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: EDIT_AND_QUARANTINE)
+  projectIdentifier: String! @requireProjectAccess(permission: TEST_QUARANTINE, access: EDIT)
   buildVariant: String!
 }
 

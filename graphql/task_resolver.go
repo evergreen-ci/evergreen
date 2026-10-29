@@ -244,13 +244,7 @@ func (r *taskResolver) CanOverrideDependencies(ctx context.Context, obj *restMod
 
 // CanQuarantine is the resolver for the canQuarantine field.
 func (r *taskResolver) CanQuarantine(ctx context.Context, obj *restModel.APITask) (bool, error) {
-	currentUser := mustHaveUser(ctx)
-	return currentUser.HasPermission(ctx, gimlet.PermissionOpts{
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionTasks,
-		RequiredLevel: evergreen.TasksQuarantine.Value,
-		Resource:      utility.FromStringPtr(obj.ProjectId),
-	}), nil
+	return hasTestQuarantinePermission(ctx, obj), nil
 }
 
 // CanRestart is the resolver for the canRestart field.

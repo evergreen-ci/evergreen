@@ -29,7 +29,7 @@
         "data": null,
         "errors": [
           {
-            "message": "user 'regular_user' does not have permission to 'edit tasks and quarantine tests' for the project 'sandbox_project_id'",
+            "message": "user 'regular_user' does not have permission to 'quarantine and unquarantine tests' for the project 'sandbox_project_id'",
             "path": ["unquarantineVariant", "opts", "projectIdentifier"],
             "extensions": {
               "code": "FORBIDDEN"

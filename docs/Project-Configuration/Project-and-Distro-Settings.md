@@ -26,9 +26,10 @@ repository information, access settings, alerts, and keys.
 
 Service users cannot be managed through MANA. Instead, they have a special
 role called `api_user_access`. This role grants them permission to submit
-patches, to edit tasks (restart, set priority, abort), and to quarantine
-tests in unrestricted projects. If a service user needs permission to submit
-patches on behalf of another user, the Evergreen team must grant this explicitly.
+patches and to edit tasks (restart, set priority, abort) in unrestricted
+projects. If a service user needs permission to submit patches on behalf
+of another user or to quarantine tests, the Evergreen team must grant this
+explicitly.
 
 ### Permissions Requested with MANA
 
@@ -54,6 +55,15 @@ If you'd like to use Entitlements for entire teams, then the team
 should be part of a Guild, as this is refreshed every day and better
 supports employees moving teams. Guilds can also dynamically add users
 who match certain characteristics.
+
+#### Test Quarantine
+
+Quarantining a test makes test selection skip it, so a mistaken
+quarantine can hide real failures. Because of this, quarantining and
+unquarantining tests, tasks, and build variants requires the separate
+`Test quarantine` permission. Task permissions don't include it, even
+admin task permissions. Project admins and Evergreen superusers have it
+by default; everyone else must request it through MANA.
 
 To verify what permissions have been granted to a specific user, use the [permission-details API endpoint](../API/REST-V2-Usage#tag/users/paths/~1users~1{user_id}~1permission-details/get).
 

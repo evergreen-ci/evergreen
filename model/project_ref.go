@@ -783,7 +783,22 @@ const (
 	tasksByProjectQueryMaxTime = 90 * time.Second
 )
 
+// adminPermissions are the permissions granted to newly-created project and
+// repo admin roles.
 var adminPermissions = gimlet.Permissions{
+	evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+	evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
+	evergreen.PermissionPatches:         evergreen.PatchSubmit.Value,
+	evergreen.PermissionLogs:            evergreen.LogsView.Value,
+	evergreen.PermissionTestQuarantine:  evergreen.TestQuarantineEdit.Value,
+}
+
+// adminRoleLookupPermissions identifies an existing project admin role. The
+// role manager matches roles on every key given, so this must only contain
+// permissions that every admin role has had since creation. Permissions added
+// to adminPermissions later (e.g. test quarantine) must not be added here,
+// otherwise admin roles that predate them can no longer be found.
+var adminRoleLookupPermissions = gimlet.Permissions{
 	evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
 	evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
 	evergreen.PermissionPatches:         evergreen.PatchSubmit.Value,
@@ -3181,7 +3196,7 @@ func (p *ProjectRef) UpdateAdminRoles(ctx context.Context, toAdd, toRemove []str
 		return false, nil
 	}
 	rm := evergreen.GetEnvironment().RoleManager()
-	role, err := rm.FindRoleWithPermissions(ctx, evergreen.ProjectResourceType, []string{p.Id}, adminPermissions)
+	role, err := rm.FindRoleWithPermissions(ctx, evergreen.ProjectResourceType, []string{p.Id}, adminRoleLookupPermissions)
 	if err != nil {
 		return false, errors.Wrap(err, "finding role with admin permissions")
 	}

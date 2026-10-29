@@ -70,7 +70,7 @@ func makeVariantQuarantineHandler() gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Quarantine a build variant
-//	@Description	Marks every known test of every known task in the given build variant as manually quarantined in the test selection service. Requires the "Edit tasks and quarantine tests" project tasks permission.
+//	@Description	Marks every known test of every known task in the given build variant as manually quarantined in the test selection service. Requires the "Quarantine and unquarantine tests" project permission.
 //	@Tags			projects
 //	@Router			/projects/{project_id}/variants/{variant_name}/quarantine [post]
 //	@Security		Api-User || Api-Key
@@ -105,7 +105,7 @@ func makeVariantUnquarantineHandler() gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Unquarantine a build variant
-//	@Description	Marks every known test of every known task in the given build variant as no longer manually quarantined in the test selection service. Requires the "Edit tasks and quarantine tests" project tasks permission.
+//	@Description	Marks every known test of every known task in the given build variant as no longer manually quarantined in the test selection service. Requires the "Quarantine and unquarantine tests" project permission.
 //	@Tags			projects
 //	@Router			/projects/{project_id}/variants/{variant_name}/unquarantine [post]
 //	@Security		Api-User || Api-Key

@@ -3292,6 +3292,39 @@ func TestUpdateAdminRoles(t *testing.T) {
 	assert.Len(t, newAdminFromDB.Roles(), 1)
 }
 
+func TestUpdateAdminRolesFindsAdminRoleWithoutTestQuarantinePermission(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, user.Collection))
+	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
+	env := testutil.NewEnvironment(ctx, t)
+	rm := env.RoleManager()
+	require.NoError(t, rm.AddScope(ctx, gimlet.Scope{
+		ID:        "project_proj",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"proj"},
+	}))
+	// Admin roles created before the test quarantine permission existed only
+	// have the original admin permissions.
+	legacyAdminRole := gimlet.Role{
+		ID:          GetProjectAdminRole("proj"),
+		Scope:       "project_proj",
+		Permissions: adminRoleLookupPermissions,
+	}
+	require.NoError(t, rm.UpdateRole(ctx, legacyAdminRole))
+	newAdmin := user.DBUser{Id: "newAdmin"}
+	require.NoError(t, newAdmin.Insert(ctx))
+	p := ProjectRef{Id: "proj"}
+	require.NoError(t, p.Insert(ctx))
+
+	modified, err := p.UpdateAdminRoles(ctx, []string{newAdmin.Id}, nil)
+	require.NoError(t, err)
+	assert.True(t, modified)
+	newAdminFromDB, err := user.FindOneById(ctx, newAdmin.Id)
+	require.NoError(t, err)
+	require.NotNil(t, newAdminFromDB)
+	assert.Equal(t, []string{legacyAdminRole.ID}, newAdminFromDB.Roles())
+}
+
 func TestUpdateAdminRolesError(t *testing.T) {
 	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, user.Collection))

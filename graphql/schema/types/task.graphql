@@ -403,12 +403,12 @@ type Cost {
 }
 
 input QuarantineTestInput {
-  taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT_AND_QUARANTINE)
+  taskId: String! @requireProjectAccess(permission: TEST_QUARANTINE, access: EDIT)
   testName: String!
 }
 
 input UnquarantineTestInput {
-  taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT_AND_QUARANTINE)
+  taskId: String! @requireProjectAccess(permission: TEST_QUARANTINE, access: EDIT)
   testName: String!
 }
 

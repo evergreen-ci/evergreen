@@ -815,22 +815,20 @@ type WaterfallPagination struct {
 type AccessLevel string
 
 const (
-	AccessLevelAdmin             AccessLevel = "ADMIN"
-	AccessLevelEdit              AccessLevel = "EDIT"
-	AccessLevelEditAndQuarantine AccessLevel = "EDIT_AND_QUARANTINE"
-	AccessLevelView              AccessLevel = "VIEW"
+	AccessLevelAdmin AccessLevel = "ADMIN"
+	AccessLevelEdit  AccessLevel = "EDIT"
+	AccessLevelView  AccessLevel = "VIEW"
 )
 
 var AllAccessLevel = []AccessLevel{
 	AccessLevelAdmin,
 	AccessLevelEdit,
-	AccessLevelEditAndQuarantine,
 	AccessLevelView,
 }
 
 func (e AccessLevel) IsValid() bool {
 	switch e {
-	case AccessLevelAdmin, AccessLevelEdit, AccessLevelEditAndQuarantine, AccessLevelView:
+	case AccessLevelAdmin, AccessLevelEdit, AccessLevelView:
 		return true
 	}
 	return false
@@ -1173,11 +1171,12 @@ func (e MetStatus) MarshalJSON() ([]byte, error) {
 type ProjectPermission string
 
 const (
-	ProjectPermissionSettings    ProjectPermission = "SETTINGS"
-	ProjectPermissionTasks       ProjectPermission = "TASKS"
-	ProjectPermissionAnnotations ProjectPermission = "ANNOTATIONS"
-	ProjectPermissionPatches     ProjectPermission = "PATCHES"
-	ProjectPermissionLogs        ProjectPermission = "LOGS"
+	ProjectPermissionSettings       ProjectPermission = "SETTINGS"
+	ProjectPermissionTasks          ProjectPermission = "TASKS"
+	ProjectPermissionAnnotations    ProjectPermission = "ANNOTATIONS"
+	ProjectPermissionPatches        ProjectPermission = "PATCHES"
+	ProjectPermissionLogs           ProjectPermission = "LOGS"
+	ProjectPermissionTestQuarantine ProjectPermission = "TEST_QUARANTINE"
 )
 
 var AllProjectPermission = []ProjectPermission{
@@ -1186,11 +1185,12 @@ var AllProjectPermission = []ProjectPermission{
 	ProjectPermissionAnnotations,
 	ProjectPermissionPatches,
 	ProjectPermissionLogs,
+	ProjectPermissionTestQuarantine,
 }
 
 func (e ProjectPermission) IsValid() bool {
 	switch e {
-	case ProjectPermissionSettings, ProjectPermissionTasks, ProjectPermissionAnnotations, ProjectPermissionPatches, ProjectPermissionLogs:
+	case ProjectPermissionSettings, ProjectPermissionTasks, ProjectPermissionAnnotations, ProjectPermissionPatches, ProjectPermissionLogs, ProjectPermissionTestQuarantine:
 		return true
 	}
 	return false

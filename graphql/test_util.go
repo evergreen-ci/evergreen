@@ -55,6 +55,7 @@ func setupPermissions(t *testing.T) {
 			evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
 			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
 			evergreen.PermissionAnnotations:     evergreen.AnnotationsModify.Value,
+			evergreen.PermissionTestQuarantine:  evergreen.TestQuarantineEdit.Value,
 		},
 	}
 	require.NoError(t, roleManager.UpdateRole(t.Context(), superUserProjectRole))
@@ -171,13 +172,6 @@ func setupPermissions(t *testing.T) {
 	}
 	require.NoError(t, roleManager.UpdateRole(t.Context(), taskAdminRole))
 
-	taskQuarantineRole := gimlet.Role{
-		ID:          "quarantine_task",
-		Scope:       projectScope.ID,
-		Permissions: map[string]int{evergreen.PermissionTasks: evergreen.TasksQuarantine.Value},
-	}
-	require.NoError(t, roleManager.UpdateRole(t.Context(), taskQuarantineRole))
-
 	taskEditRole := gimlet.Role{
 		ID:          "edit_task",
 		Scope:       projectScope.ID,
@@ -226,6 +220,13 @@ func setupPermissions(t *testing.T) {
 		Permissions: map[string]int{evergreen.PermissionLogs: evergreen.LogsView.Value},
 	}
 	require.NoError(t, roleManager.UpdateRole(t.Context(), logViewRole))
+
+	testQuarantineEditRole := gimlet.Role{
+		ID:          "edit_test_quarantine",
+		Scope:       projectScope.ID,
+		Permissions: map[string]int{evergreen.PermissionTestQuarantine: evergreen.TestQuarantineEdit.Value},
+	}
+	require.NoError(t, roleManager.UpdateRole(t.Context(), testQuarantineEditRole))
 }
 
 func setupUser(t *testing.T) (*user.DBUser, error) {

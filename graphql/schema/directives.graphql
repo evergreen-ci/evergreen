@@ -19,12 +19,12 @@ enum ProjectPermission {
   ANNOTATIONS
   PATCHES
   LOGS
+  TEST_QUARANTINE
 }
 
 enum AccessLevel {
   ADMIN
   EDIT
-  EDIT_AND_QUARANTINE
   VIEW
 }
 
