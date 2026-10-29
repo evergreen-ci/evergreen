@@ -665,22 +665,23 @@ func directorySpecificTestSetup(t *testing.T, state AtomicGraphQLState) {
 	type setupFn func(*testing.T)
 	// Map the directory name to the test setup function
 	m := map[string][]setupFn{
-		"mutation/attachVolumeToHost":   {spawnTestHostAndVolume},
-		"mutation/detachVolumeFromHost": {spawnTestHostAndVolume},
-		"mutation/removeVolume":         {spawnTestHostAndVolume},
-		"mutation/spawnVolume":          {spawnTestHostAndVolume, addSubnets},
-		"mutation/updateVolume":         {spawnTestHostAndVolume},
-		"mutation/schedulePatch":        {persistTestSettings},
-		"mutation/quarantineTest":       {setupQuarantineTestMutation},
-		"mutation/unquarantineTest":     {setupQuarantineTestMutation},
-		"mutation/quarantineTask":       {setupQuarantineTaskMutation},
-		"mutation/unquarantineTask":     {setupQuarantineTaskMutation},
-		"mutation/quarantineVariant":    {setupQuarantineVariantMutation},
-		"mutation/unquarantineVariant":  {setupQuarantineVariantMutation},
-		"query/variantQuarantineStatus": {setupVariantQuarantineStatusQuery},
-		"version/cost":                  {setupHiddenCostProjects},
-		"distro/availableRegions":       {setupEnvironmentSettings},
-		"patch/generatedTaskCounts":     {setupGeneratedTaskCounts},
+		"mutation/attachVolumeToHost":                {spawnTestHostAndVolume},
+		"mutation/detachVolumeFromHost":              {spawnTestHostAndVolume},
+		"mutation/removeVolume":                      {spawnTestHostAndVolume},
+		"mutation/spawnVolume":                       {spawnTestHostAndVolume, addSubnets},
+		"mutation/updateVolume":                      {spawnTestHostAndVolume},
+		"mutation/schedulePatch":                     {persistTestSettings},
+		"mutation/quarantineTest":                    {setupQuarantineTestMutation},
+		"mutation/quarantineTestRequiresJiraTickets": {setupQuarantineTestMutation},
+		"mutation/unquarantineTest":                  {setupQuarantineTestMutation},
+		"mutation/quarantineTask":                    {setupQuarantineTaskMutation},
+		"mutation/unquarantineTask":                  {setupQuarantineTaskMutation},
+		"mutation/quarantineVariant":                 {setupQuarantineVariantMutation},
+		"mutation/unquarantineVariant":               {setupQuarantineVariantMutation},
+		"query/variantQuarantineStatus":              {setupVariantQuarantineStatusQuery},
+		"version/cost":                               {setupHiddenCostProjects},
+		"distro/availableRegions":                    {setupEnvironmentSettings},
+		"patch/generatedTaskCounts":                  {setupGeneratedTaskCounts},
 	}
 	if m[state.Directory] != nil {
 		for _, exec := range m[state.Directory] {
@@ -704,14 +705,15 @@ func directorySpecificTestCleanup(t *testing.T, directory string) {
 	type cleanupFn func(*testing.T)
 	// Map the directory name to the test cleanup function
 	m := map[string][]cleanupFn{
-		"mutation/spawnVolume":          {clearSubnets},
-		"mutation/quarantineTest":       {teardownQuarantineTestMutation},
-		"mutation/unquarantineTest":     {teardownQuarantineTestMutation},
-		"mutation/quarantineTask":       {teardownQuarantineTestMutation},
-		"mutation/unquarantineTask":     {teardownQuarantineTestMutation},
-		"mutation/quarantineVariant":    {teardownQuarantineTestMutation},
-		"mutation/unquarantineVariant":  {teardownQuarantineTestMutation},
-		"query/variantQuarantineStatus": {teardownQuarantineTestMutation},
+		"mutation/spawnVolume":                       {clearSubnets},
+		"mutation/quarantineTest":                    {teardownQuarantineTestMutation},
+		"mutation/quarantineTestRequiresJiraTickets": {teardownQuarantineTestMutation},
+		"mutation/unquarantineTest":                  {teardownQuarantineTestMutation},
+		"mutation/quarantineTask":                    {teardownQuarantineTestMutation},
+		"mutation/unquarantineTask":                  {teardownQuarantineTestMutation},
+		"mutation/quarantineVariant":                 {teardownQuarantineTestMutation},
+		"mutation/unquarantineVariant":               {teardownQuarantineTestMutation},
+		"query/variantQuarantineStatus":              {teardownQuarantineTestMutation},
 	}
 	if m[directory] != nil {
 		for _, exec := range m[directory] {

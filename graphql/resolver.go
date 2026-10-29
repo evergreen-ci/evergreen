@@ -23,6 +23,7 @@ func NewConfig() Config {
 	c.Directives.RequireProjectCreate = RequireProjectCreate
 	c.Directives.RequireRepoAccess = RequireRepoAccess
 	c.Directives.RequireProjectAccess = RequireProjectAccess
+	c.Directives.RequireProjectAccessForTasks = RequireProjectAccessForTasks
 	c.Directives.RequireProjectSettingsAccess = RequireProjectSettingsAccess
 	c.Directives.RedactSecrets = func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error) {
 		return next(ctx)

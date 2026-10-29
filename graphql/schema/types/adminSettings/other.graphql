@@ -28,6 +28,7 @@ input BucketsConfigInput {
   retryFailedLogMoveMaxJobsPerRun: Int
   testResultsBucket: BucketConfigInput
   sourceCacheBucket: BucketConfigInput
+  sourceCacheOptOutProjects: [String!]
   internalBuckets: [String!]
   credentials: S3CredentialsInput @redactSecrets
 }
@@ -43,6 +44,7 @@ type BucketsConfig {
   retryFailedLogMoveMaxJobsPerRun: Int
   testResultsBucket: BucketConfig
   sourceCacheBucket: BucketConfig
+  sourceCacheOptOutProjects: [String!]
   internalBuckets: [String!]
   credentials: S3Credentials @requireAdmin
 }

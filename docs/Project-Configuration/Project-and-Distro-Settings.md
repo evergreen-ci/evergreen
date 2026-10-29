@@ -451,7 +451,8 @@ Options:
   - Push level triggers do not require any upstream build or task to run, but instead trigger a downstream version once
     a commit is pushed to the upstream project. This is helpful if the upstream project doesn't regularly run or create commit tasks.
   - For push level triggers, if the upstream project is a module of the downstream project's YAML,
-    the manifest of the downstream version will use the commit hash of the upstream project's commit.
+    the manifest of the downstream version will use the commit hash of the upstream project's commit. All other modules
+    keep the revisions from the previous version's manifest.
 - **Status**: Specify which status of the upstream build or task should trigger a downstream version.
   (Only applicable to build and task level triggers.)
 - **Date cutoff**: Do not trigger a downstream build if a user manually
@@ -900,6 +901,8 @@ The "Task-Level Test Selection" setting controls which tasks run test selection 
 The task-level setting only has an effect when project-level test selection is enabled. Git tags, periodic builds,
 triggered versions, and other non-patch versions do not run the
 [test selection command](Project-Commands#test_selectionget).
+
+The "Require Jira Tickets When Quarantining Tests" setting (off by default) requires users to link at least one existing Jira ticket when manually quarantining a test from the task page.
 
 ## GitHub App Settings
 

@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 )
 
+// RequireDistroAccess restricts admin, create, edit, or view access to the distro given by the distroId (or name) argument.
 func RequireDistroAccess(ctx context.Context, obj any, next graphql.Resolver, access DistroSettingsAccess) (any, error) {
 	user := mustHaveUser(ctx)
 
