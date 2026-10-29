@@ -22,6 +22,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -808,12 +809,23 @@ type GetVersionsOptions struct {
 	CreatedBefore  time.Time `json:"created_before"`
 }
 
+const (
+	// maxVersionsScannedWithBuilds bounds how many versions a single GetVersionsWithOptions call may join
+	// against builds and tasks. Without it, a build/task filter that matches nothing forces the lookups to
+	// walk the project's entire version history.
+	maxVersionsScannedWithBuilds = 200
+	versionsQueryMaxTime         = 30 * time.Second
+)
+
 // GetVersionsWithOptions returns versions for a project, that satisfy a set of query parameters defined by
-// the input GetVersionsOptions.
-func GetVersionsWithOptions(ctx context.Context, projectName string, opts GetVersionsOptions) ([]Version, error) {
+// the input GetVersionsOptions. It also returns the order number to use as the start of the next page, or 0
+// if there are no more versions. When builds are included, at most maxVersionsScannedWithBuilds versions are
+// searched per call, so a page may contain fewer than the limit (or zero) versions even if more matching
+// versions exist further back; callers should keep paging until the returned order number is 0.
+func GetVersionsWithOptions(ctx context.Context, projectName string, opts GetVersionsOptions) ([]Version, int, error) {
 	projectId, err := GetIdForProject(ctx, projectName)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	if opts.Limit <= 0 {
 		opts.Limit = defaultVersionLimit
@@ -850,6 +862,14 @@ func GetVersionsWithOptions(ctx context.Context, projectName string, opts GetVer
 
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
+	if opts.IncludeBuilds {
+		// Window the versions before the lookups so the builds/tasks joins touch a bounded number of
+		// versions regardless of how selective the build/task filters are.
+		if opts.Skip != 0 {
+			pipeline = append(pipeline, bson.M{"$skip": opts.Skip})
+		}
+		pipeline = append(pipeline, bson.M{"$limit": maxVersionsScannedWithBuilds})
+	}
 
 	// initial projection of version items
 	project := bson.M{
@@ -927,19 +947,47 @@ func GetVersionsWithOptions(ctx context.Context, projectName string, opts GetVer
 			"build_variants": bson.M{"$exists": true, "$ne": []any{}},
 		}
 		pipeline = append(pipeline, bson.M{"$match": matchBuildsExist})
-	}
-
-	if opts.Skip != 0 {
+	} else if opts.Skip != 0 {
 		pipeline = append(pipeline, bson.M{"$skip": opts.Skip})
 	}
 	pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
 
-	res := []Version{}
-
-	if err := db.AggregateSecondary(ctx, VersionCollection, pipeline, &res); err != nil {
-		return nil, errors.Wrap(err, "aggregating versions and builds")
+	// The context deadline is required for the driver to send maxTimeMS, since the client has a
+	// client-level timeout configured.
+	ctx, cancel := context.WithTimeout(ctx, versionsQueryMaxTime)
+	defer cancel()
+	env := evergreen.GetEnvironment()
+	cursor, err := env.SecondaryReadClient().Database(env.DB().Name()).Collection(VersionCollection).Aggregate(ctx, pipeline, options.Aggregate().SetMaxTime(versionsQueryMaxTime))
+	if err != nil {
+		return nil, 0, errors.Wrap(err, "aggregating versions and builds")
 	}
-	return res, nil
+	res := []Version{}
+	if err = cursor.All(ctx, &res); err != nil {
+		return nil, 0, errors.Wrap(err, "decoding versions and builds")
+	}
+
+	if len(res) >= opts.Limit {
+		return res, res[len(res)-1].RevisionOrderNumber, nil
+	}
+	if !opts.IncludeBuilds {
+		return res, 0, nil
+	}
+
+	// The page is short, which either means history is exhausted or the scan window ran out before
+	// finding enough matches. If the window was full, continue the next page from its last version.
+	windowEnd := []Version{}
+	q := db.Query(match).
+		Sort([]string{"-" + VersionRevisionOrderNumberKey}).
+		Skip(opts.Skip + maxVersionsScannedWithBuilds - 1).
+		Limit(1).
+		WithFields(VersionRevisionOrderNumberKey)
+	if err = db.FindAllQSecondary(ctx, VersionCollection, q, &windowEnd); err != nil {
+		return nil, 0, errors.Wrap(err, "finding end of version scan window")
+	}
+	if len(windowEnd) == 0 {
+		return res, 0, nil
+	}
+	return res, windowEnd[0].RevisionOrderNumber, nil
 }
 
 // ModifyVersionsOptions is a struct containing options necessary to modify versions.

@@ -778,6 +778,9 @@ const defaultVersionLimit = 5
 // unbounded limit lets one request materialize gigabytes server-side and can OOM the process.
 const maxVersionLimit = 100
 
+// maxVersionsBodySize bounds the optional JSON body for listing project versions.
+const maxVersionsBodySize = 64 * 1024
+
 type getProjectVersionsHandler struct {
 	projectName string
 	opts        dbModel.GetVersionsOptions
@@ -791,7 +794,7 @@ func makeGetProjectVersionsHandler() gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Get versions for a project
-//	@Description	Returns a paginated list of recent versions for a project. Parameters should be passed into the JSON body (the route still accepts limit and start as query parameters to support legacy behavior).
+//	@Description	Returns a paginated list of recent versions for a project. Parameters should be passed into the JSON body (the route still accepts limit and start as query parameters to support legacy behavior). When include_builds is set, each request searches a bounded window of versions, so a page may contain fewer than limit versions (or none) even when more matching versions exist; follow the next page to see all results.
 //	@Tags			versions
 //	@Router			/projects/{project_id}/versions [get]
 //	@Security		Api-User || Api-Key
@@ -819,7 +822,15 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 	h.url = util.HttpsUrl(r.Host)
 
 	// body is optional
-	b, _ := io.ReadAll(r.Body)
+	body := utility.NewRequestReaderWithSize(r, maxVersionsBodySize+1)
+	defer body.Close()
+	b, err := io.ReadAll(body)
+	if err != nil {
+		return errors.Wrap(err, "reading request body")
+	}
+	if len(b) > maxVersionsBodySize {
+		return errors.Errorf("request body cannot exceed %d bytes", maxVersionsBodySize)
+	}
 	if len(b) > 0 {
 		if err := json.Unmarshal(b, &h.opts); err != nil {
 			return errors.Wrap(err, "unmarshalling JSON request body into version options")
@@ -897,12 +908,18 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 	if len(h.opts.Requesters) == 0 {
 		h.opts.Requesters = []string{evergreen.RepotrackerVersionRequester}
 	}
+	h.opts.Requesters = utility.UniqueStrings(h.opts.Requesters)
+	for _, requester := range h.opts.Requesters {
+		if !utility.StringSliceContains(evergreen.AllRequesterTypes, requester) {
+			return errors.Errorf("invalid requester '%s'", requester)
+		}
+	}
 
 	return nil
 }
 
 func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
-	versions, err := data.GetProjectVersionsWithOptions(ctx, h.projectName, h.opts)
+	versions, nextStart, err := data.GetProjectVersionsWithOptions(ctx, h.projectName, h.opts)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting versions for project '%s'", h.projectName))
 	}
@@ -912,14 +929,14 @@ func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "constructing response"))
 	}
 
-	if len(versions) >= h.opts.Limit {
+	if nextStart > 0 {
 		err = resp.SetPages(&gimlet.ResponsePages{
 			Next: &gimlet.Page{
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start",
 				BaseURL:         h.url,
-				Key:             strconv.Itoa(versions[len(versions)-1].Order),
+				Key:             strconv.Itoa(nextStart),
 				Limit:           h.opts.Limit,
 			},
 		})

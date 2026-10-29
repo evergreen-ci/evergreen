@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -1199,6 +1200,22 @@ func TestGetProjectVersionsParseRequesters(t *testing.T) {
 			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
 			require.NoError(t, h.Parse(ctx, req))
 			assert.Equal(t, []string{evergreen.RepotrackerVersionRequester}, h.opts.Requesters)
+		},
+		"InvalidRequesterShouldError": func(t *testing.T) {
+			h := &getProjectVersionsHandler{}
+			body := []byte(`{"requesters": ["ad_hoc", "not_a_requester"]}`)
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions", bytes.NewReader(body))
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
+			assert.ErrorContains(t, h.Parse(ctx, req), "invalid requester 'not_a_requester'")
+		},
+		"OversizedBodyShouldError": func(t *testing.T) {
+			h := &getProjectVersionsHandler{}
+			body := []byte(`{"requesters": ["` + strings.Repeat("a", maxVersionsBodySize) + `"]}`)
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions", bytes.NewReader(body))
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
+			assert.ErrorContains(t, h.Parse(ctx, req), "request body cannot exceed")
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
