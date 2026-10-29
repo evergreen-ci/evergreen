@@ -3,6 +3,11 @@
     {
       "_id": "task1",
       "branch": "spruce"
+    },
+    {
+      "_id": "display_task",
+      "branch": "spruce",
+      "display_only": true
     }
   ],
   "project_ref": [

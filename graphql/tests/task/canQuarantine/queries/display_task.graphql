@@ -1,0 +1,5 @@
+{
+  task(taskId: "display_task") {
+    canQuarantine
+  }
+}
