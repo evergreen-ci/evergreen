@@ -2,9 +2,11 @@ package log
 
 import (
 	"context"
+	"io"
 	"math/rand"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -479,6 +481,77 @@ func TestNewTailIterator(t *testing.T) {
 
 			assert.Equal(t, test.expectedLines, actualLines)
 		})
+	}
+}
+
+// countingBucket wraps a bucket and counts how many chunks have been
+// fetched from it.
+type countingBucket struct {
+	pail.Bucket
+	gets atomic.Int64
+}
+
+func (b *countingBucket) Get(ctx context.Context, key string) (io.ReadCloser, error) {
+	b.gets.Add(1)
+	return b.Bucket.Get(ctx, key)
+}
+
+func TestChunkIteratorCloseStopsWorkerFromFetchingRemainingChunks(t *testing.T) {
+	ctx := t.Context()
+
+	bucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: t.TempDir()})
+	require.NoError(t, err)
+
+	const numChunks = 20
+	chunks, _, parser, err := generateTestLog(ctx, bucket, numChunks*10, 10)
+	require.NoError(t, err)
+	require.Len(t, chunks, numChunks)
+
+	cb := &countingBucket{Bucket: bucket}
+	it := newChunkIterator(ctx, chunkIteratorOptions{
+		bucket: cb,
+		chunks: chunks,
+		parser: parser,
+	})
+
+	for range chunks[0].numLines {
+		require.True(t, it.Next())
+	}
+	require.NoError(t, it.Close())
+
+	require.Eventually(t, func() bool {
+		select {
+		case _, ok := <-it.next:
+			return !ok
+		default:
+			return false
+		}
+	}, 10*time.Second, 10*time.Millisecond)
+	assert.Less(t, cb.gets.Load(), int64(numChunks), "worker should not fetch all chunks after Close")
+	assert.False(t, it.Next())
+	assert.NoError(t, it.Close())
+}
+
+func TestMergingIteratorCloseClosesUnstartedIterators(t *testing.T) {
+	ctx := t.Context()
+
+	bucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: t.TempDir()})
+	require.NoError(t, err)
+
+	chunks, _, parser, err := generateTestLog(ctx, bucket, 100, 10)
+	require.NoError(t, err)
+
+	its := []LogIterator{
+		newChunkIterator(ctx, chunkIteratorOptions{bucket: bucket, chunks: chunks, parser: parser}),
+		newChunkIterator(ctx, chunkIteratorOptions{bucket: bucket, chunks: chunks, parser: parser}),
+	}
+	it := newMergingIterator(0, its...)
+	require.NoError(t, it.Close())
+
+	for _, child := range its {
+		chunkIt, ok := child.(*chunkIterator)
+		require.True(t, ok)
+		assert.True(t, chunkIt.closed, "unstarted child iterator should be closed by the merging iterator's Close")
 	}
 }
 
