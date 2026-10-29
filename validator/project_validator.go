@@ -652,16 +652,12 @@ func aliasMatchesTaskGroupTask(p *model.Project, alias model.ProjectAlias, tgNam
 
 func validateProjectConfigPlugins(ctx context.Context, pc *model.ProjectConfig) ValidationErrors {
 	errs := ValidationErrors{}
-	annotationSettings := pc.TaskAnnotationSettings
-	var webhook *evergreen.WebHook
-	if annotationSettings != nil {
-		webhook = &annotationSettings.FileTicketWebhook
-	}
+	// The webhook is not configurable via YAML, so it is resolved from the project settings inside ValidateBbProject.
 	// skip validation if no build baron configuration exists
 	if pc.BuildBaronSettings == nil {
 		return ValidationErrors{}
 	}
-	err := model.ValidateBbProject(ctx, pc.Project, *pc.BuildBaronSettings, webhook)
+	err := model.ValidateBbProject(ctx, pc.Project, *pc.BuildBaronSettings, nil)
 	if err != nil {
 		errs = append(errs,
 			ValidationError{

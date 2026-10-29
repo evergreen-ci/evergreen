@@ -741,7 +741,7 @@ Once toggled, the settings specified [below](#available-fields) may be defined i
 
 Version-controlled configuration may be defined in the main YAML file or in [included files](Project-Configuration-Files#include).
 Alias lists defined across multiple files are combined in include order, with the main config file's entries first. Settings
-structs (`task_annotation_settings`, `build_baron_settings`, `workstation_config`) may only be defined in one file; defining
+structs (`build_baron_settings`, `workstation_config`) may only be defined in one file; defining
 them in multiple files is a validation error.
 
 ### Hierarchical Inheritance
@@ -864,18 +864,6 @@ build_baron_settings: # This name is a holdover from legacy naming.
   ticket_search_projects:
     - SERVER
     - EVG
-```
-
-### Task Annotation Settings
-
-[View setting
-definition](#task-annotation-settings)
-
-```yaml
-task_annotation_settings:
-  web_hook:
-    endpoint: "/api/route"
-    secret: ""
 ```
 
 ## Test Selection Settings

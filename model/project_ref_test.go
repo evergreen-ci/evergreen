@@ -60,10 +60,8 @@ func TestFindMergedProjectRef(t *testing.T) {
 	projectConfig := &ProjectConfig{
 		Id: "ident",
 		ProjectConfigFields: ProjectConfigFields{
-			TaskAnnotationSettings: &evergreen.AnnotationsSettings{
-				FileTicketWebhook: evergreen.WebHook{
-					Endpoint: "random2",
-				},
+			BuildBaronSettings: &evergreen.BuildBaronSettings{
+				TicketCreateProject: "random2",
 			},
 		},
 	}
@@ -156,7 +154,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 
 	assert.True(t, mergedProject.WorkstationConfig.ShouldGitClone())
 	assert.Len(t, mergedProject.WorkstationConfig.SetupCommands, 1)
-	assert.Equal(t, "random2", mergedProject.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
+	assert.Equal(t, "random2", mergedProject.BuildBaronSettings.TicketCreateProject)
 	assert.Len(t, mergedProject.ParsleyFilters, 2)
 	assert.True(t, mergedProject.IsTestSelectionMainlineDefaultEnabled())
 
@@ -188,10 +186,8 @@ func TestFindMergedEnabledProjectRefsByIds(t *testing.T) {
 	projectConfig := &ProjectConfig{
 		Id: "ident",
 		ProjectConfigFields: ProjectConfigFields{
-			TaskAnnotationSettings: &evergreen.AnnotationsSettings{
-				FileTicketWebhook: evergreen.WebHook{
-					Endpoint: "random2",
-				},
+			BuildBaronSettings: &evergreen.BuildBaronSettings{
+				TicketCreateProject: "random2",
 			},
 		},
 	}
@@ -200,10 +196,8 @@ func TestFindMergedEnabledProjectRefsByIds(t *testing.T) {
 	projectConfig = &ProjectConfig{
 		Id: "ident2",
 		ProjectConfigFields: ProjectConfigFields{
-			TaskAnnotationSettings: &evergreen.AnnotationsSettings{
-				FileTicketWebhook: evergreen.WebHook{
-					Endpoint: "random2",
-				},
+			BuildBaronSettings: &evergreen.BuildBaronSettings{
+				TicketCreateProject: "random2",
 			},
 		},
 	}
@@ -3767,11 +3761,6 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	projectConfig := &ProjectConfig{
 		Id: "version1",
 		ProjectConfigFields: ProjectConfigFields{
-			TaskAnnotationSettings: &evergreen.AnnotationsSettings{
-				FileTicketWebhook: evergreen.WebHook{
-					Endpoint: "random2",
-				},
-			},
 			WorkstationConfig: &WorkstationConfig{
 				GitClone: utility.FalsePtr(),
 				SetupCommands: []WorkstationSetupCommand{
