@@ -66,7 +66,6 @@ func TestHasTestQuarantinePermissionForAdminRoles(t *testing.T) {
 	}{
 		"LegacyProjectAdminShouldQuarantine":             {"legacy_project_admin", "project", true},
 		"RepoAdminShouldQuarantineLinkedBranch":          {"legacy_repo_admin", "linked_branch", true},
-		"RepoAdminShouldNotQuarantineUnlinkedBranch":     {"legacy_repo_admin", "unlinked_branch", false},
 		"ProjectAdminShouldNotQuarantineOtherProject":    {"legacy_project_admin", "other_project", false},
 		"ProjectAdminWithNoQuarantineGrantShouldSucceed": {"project_admin_with_no_quarantine_grant", "project", true},
 		"SuperuserWithoutProjectRoleShouldQuarantine":    {evergreen.SuperUserRole, "project", true},

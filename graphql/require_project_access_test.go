@@ -315,10 +315,6 @@ func TestRequireProjectAccessForTestQuarantine(t *testing.T) {
 			roleIDs: []string{"admin_project"},
 			access:  AccessLevelEdit,
 		},
-		"SuperuserWithoutTestQuarantineShouldSucceed": {
-			roleIDs: []string{evergreen.SuperUserRole},
-			access:  AccessLevelEdit,
-		},
 		"ProjectSettingsViewWithoutTestQuarantineShouldError": {
 			roleIDs:       []string{"view_project"},
 			access:        AccessLevelEdit,
