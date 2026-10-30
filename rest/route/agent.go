@@ -1782,24 +1782,36 @@ func (g *createInstallationTokenForClone) Run(ctx context.Context) gimlet.Respon
 		}
 	}
 
-	allowed, err := model.IsRepoAllowedForTask(ctx, g.env.Settings(), t, g.owner, g.repo)
+	// A user calling this may not be the PR author.
+	access, err := model.NewTaskRepoAccess(ctx, g.env.Settings(), t, gimlet.GetUser(ctx) != nil)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "checking repo authorization"))
+	}
+	allowed, err := access.IsAllowed(ctx, g.owner, g.repo)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "checking repo authorization"))
 	}
 	if !allowed {
-		grip.Error(ctx, message.Fields{
-			"message":   "installation token requested for repo not in project or modules",
-			"task_id":   g.taskID,
-			"project":   t.Project,
-			"owner":     g.owner,
-			"repo":      g.repo,
-			"version":   t.Version,
-			"requester": t.Requester,
+		flags, err := evergreen.GetServiceFlags(ctx)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting service flags"))
+		}
+		grip.Warning(ctx, message.Fields{
+			"message":         "installation token requested for repo task isn't allowed to use",
+			"task_id":         g.taskID,
+			"project":         t.Project,
+			"owner":           g.owner,
+			"repo":            g.repo,
+			"version":         t.Version,
+			"requester":       t.Requester,
+			"checks_disabled": flags.ModuleRepoChecksDisabled,
 		})
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusForbidden,
-			Message:    fmt.Sprintf("repo '%s/%s' is not the project's repo or a module the task is allowed to use", g.owner, g.repo),
-		})
+		if !flags.ModuleRepoChecksDisabled {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusForbidden,
+				Message:    fmt.Sprintf("task isn't allowed to use repo '%s/%s'", g.owner, g.repo),
+			})
+		}
 	}
 
 	const lifetime = 50 * time.Minute

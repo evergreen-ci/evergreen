@@ -964,14 +964,32 @@ func TestCreateInstallationTokenRejectsUndeclaredRepo(t *testing.T) {
 	require.NoError(t, pp.Insert(t.Context()))
 	require.NoError(t, tsk.Insert(t.Context()))
 
-	r, ok := makeCreateInstallationToken(env).(*createInstallationTokenForClone)
-	require.True(t, ok)
-	r.taskID = tsk.Id
-	r.owner = "secretorg"
-	r.repo = "secret-repo"
+	run := func(t *testing.T) gimlet.Responder {
+		r, ok := makeCreateInstallationToken(env).(*createInstallationTokenForClone)
+		require.True(t, ok)
+		r.taskID = tsk.Id
+		r.owner = "secretorg"
+		r.repo = "secret-repo"
+		return r.Run(t.Context())
+	}
 
-	resp := r.Run(t.Context())
-	assert.Equal(t, http.StatusForbidden, resp.Status())
+	t.Run("ChecksEnabledReturnsForbidden", func(t *testing.T) {
+		assert.Equal(t, http.StatusForbidden, run(t).Status())
+	})
+	t.Run("ChecksDisabledDoesNotReturnForbidden", func(t *testing.T) {
+		flags, err := evergreen.GetServiceFlags(t.Context())
+		require.NoError(t, err)
+		flags.ModuleRepoChecksDisabled = true
+		require.NoError(t, flags.Set(t.Context()))
+		t.Cleanup(func() {
+			// The test's context is canceled before cleanup runs.
+			flags.ModuleRepoChecksDisabled = false
+			assert.NoError(t, flags.Set(context.Background()))
+		})
+
+		// Minting the token fails because the test has no GitHub App.
+		assert.NotEqual(t, http.StatusForbidden, run(t).Status())
+	})
 }
 
 func TestUpsertCheckRunParse(t *testing.T) {

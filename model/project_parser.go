@@ -1408,8 +1408,7 @@ type GetProjectOpts struct {
 	// cacheEnabled routes the translate step through the content-hash translation cache. It is only
 	// set internally by GetProjectFromFile from the ServiceFlag, so external callers stay uncached.
 	cacheEnabled bool
-	// moduleRepoChecker, if set, rejects module includes from repos the patch
-	// isn't allowed to use.
+
 	moduleRepoChecker *patchModuleRepoChecker
 }
 

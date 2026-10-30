@@ -2189,6 +2189,7 @@ type APIServiceFlags struct {
 
 	TaskQueueAutoUnscheduleDisabled bool `json:"task_queue_auto_unschedule_disabled"`
 	VirtualTasksDisabled            bool `json:"virtual_tasks_disabled"`
+	ModuleRepoChecksDisabled        bool `json:"module_repo_checks_disabled"`
 }
 
 // APIServiceFlagsResponse contains service flags used by Evergreen clients.
@@ -2658,6 +2659,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.GraphQLComplexityRateLimiterDisabled = v.GraphQLComplexityRateLimiterDisabled
 		as.TaskQueueAutoUnscheduleDisabled = v.TaskQueueAutoUnscheduleDisabled
 		as.VirtualTasksDisabled = v.VirtualTasksDisabled
+		as.ModuleRepoChecksDisabled = v.ModuleRepoChecksDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2716,6 +2718,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		GraphQLComplexityRateLimiterDisabled: as.GraphQLComplexityRateLimiterDisabled,
 		TaskQueueAutoUnscheduleDisabled:      as.TaskQueueAutoUnscheduleDisabled,
 		VirtualTasksDisabled:                 as.VirtualTasksDisabled,
+		ModuleRepoChecksDisabled:             as.ModuleRepoChecksDisabled,
 	}, nil
 }
 

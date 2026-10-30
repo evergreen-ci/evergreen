@@ -876,9 +876,9 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, transl
 		AuthorEmail:          authorEmail,
 	}
 
-	// Patches created before module repos were checked can still be
-	// finalized, so check them before resolving module commits.
-	if err := ValidatePatchModuleRepos(ctx, p, projectRef, project.Modules); err != nil {
+	// Patches created before module repos were checked can still be finalized.
+	repoChecker := newPatchModuleRepoChecker(projectRef, p)
+	if err := repoChecker.validateModules(ctx, project.Modules); err != nil {
 		return nil, err
 	}
 
@@ -887,6 +887,9 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, transl
 	manifestSpan.End()
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
+	}
+	if err := repoChecker.recordTrust(ctx, mfst); err != nil {
+		return nil, errors.Wrap(err, "recording module repo trust in manifest")
 	}
 
 	tasks := TaskVariantPairs{}
@@ -1264,8 +1267,7 @@ func prefetchAutoUpdateModuleRevisions(ctx context.Context, p *patch.Patch, proj
 				continue
 			}
 			if err := opts.moduleRepoChecker.check(ctx, owner, repo); err != nil {
-				// Loading the patched project rejects the module if it's
-				// included, and patch creation rejects it otherwise.
+				// Patch creation reports the error.
 				continue
 			}
 			mfstModule, err := getManifestModule(ctx, projectRef, module, evergreen.PatchVersionRequester, p.IngestTime)

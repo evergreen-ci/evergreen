@@ -1627,7 +1627,7 @@ func IsGitHubRepoPublic(ctx context.Context, owner, repo string) (bool, error) {
 	))
 	defer span.End()
 
-	token, err := getInstallationToken(ctx, owner, repo, nil)
+	token, err := getInstallationTokenWithDefaultOwnerRepo(ctx, nil)
 	if err != nil {
 		return false, errors.Wrap(err, "getting installation token")
 	}
@@ -1639,6 +1639,9 @@ func IsGitHubRepoPublic(ctx context.Context, owner, repo string) (bool, error) {
 	if resp != nil {
 		defer resp.Body.Close()
 		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+		if resp.StatusCode == http.StatusNotFound {
+			return false, nil
+		}
 		if err != nil {
 			return false, parseGithubErrorResponse(resp)
 		}

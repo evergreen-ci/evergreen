@@ -70,7 +70,8 @@
             { "name": "api_rate_limiter_disabled", "enabled": false },
             { "name": "graphql_complexity_limiter_disabled", "enabled": false },
             { "name": "graphql_complexity_rate_limiter_disabled", "enabled": false },
-            { "name": "virtual_tasks_disabled", "enabled": false }
+            { "name": "virtual_tasks_disabled", "enabled": false },
+            { "name": "module_repo_checks_disabled", "enabled": false }
           ]
         }
       }

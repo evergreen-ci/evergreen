@@ -855,9 +855,7 @@ func parseLsblkOutput(lsblkOutput string) ([]blockDevice, error) {
 }
 
 // GetGithubTokensForTask returns a read-only token for owner/repo associated with the task
-// and a read-only token for each module associated with the task. Each token can
-// only read its own repo, and module tokens are only created for repos the task
-// is allowed to clone.
+// and a read-only token for each module repo the task is allowed to use.
 func GetGithubTokensForTask(ctx context.Context, taskId string) (string, []string, error) {
 	catcher := grip.NewBasicCatcher()
 
@@ -901,22 +899,28 @@ func GetGithubTokensForTask(ctx context.Context, taskId string) (string, []strin
 
 	}
 
+	var access *model.TaskRepoAccess
+	if len(modules) > 0 && settings != nil {
+		// The spawn host's owner may not be the PR author.
+		access, err = model.NewTaskRepoAccess(ctx, settings, t, true)
+		catcher.Wrap(err, "checking module repo access")
+	}
 	for moduleName, module := range modules {
 		repo := module.Repo
 		if repo == "" {
 			_, repo, err = thirdparty.ParseGitUrl(module.URL)
 			catcher.Add(err)
 		}
-		if module.Owner == "" || repo == "" || settings == nil {
+		if module.Owner == "" || repo == "" || access == nil {
 			continue
 		}
-		allowed, err := model.IsRepoAllowedForTask(ctx, settings, t, module.Owner, repo)
+		allowed, err := access.IsAllowed(ctx, module.Owner, repo)
 		if err != nil {
-			catcher.Wrapf(err, "checking if task can use repo for module '%s'", moduleName)
+			catcher.Wrapf(err, "checking repo access for module '%s'", moduleName)
 			continue
 		}
 		if !allowed {
-			catcher.Errorf("task is not allowed to use repo '%s/%s' for module '%s'", module.Owner, repo, moduleName)
+			catcher.Errorf("task isn't allowed to use repo '%s/%s' for module '%s'", module.Owner, repo, moduleName)
 			continue
 		}
 		token, err := createToken(module.Owner, repo)
