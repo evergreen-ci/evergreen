@@ -421,6 +421,11 @@ db.patch_intents.ensureIndex({
     "unique": true,
     "sparse": true
 })
+db.patch_intents.ensureIndex({
+    "base_repo_name": 1,
+    "pr_number": 1,
+    "created_at": 1
+})
 
 //======github_hooks======//
 db.github_hooks.ensureIndex({

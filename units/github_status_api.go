@@ -51,6 +51,7 @@ const (
 	ContextCancelledError             = "Transient Evergreen error; please comment `evergreen retry`"
 	OtherErrors                       = "Evergreen error"
 	MergeBaseTooOld                   = "merge base is too old"
+	SupersededByNewerPush             = "superseded by a newer push; Evergreen will test the newer commit"
 )
 
 func init() {
