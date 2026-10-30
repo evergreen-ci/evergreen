@@ -177,6 +177,13 @@ func SetLoginToken(token, domain string, w http.ResponseWriter) {
 }
 
 func getOrCreateUser(ctx context.Context, u gimlet.User) (gimlet.User, error) {
+	if oktaID := u.OktaID(); oktaID != "" {
+		dbUser, err := user.GetOrCreateUserWithOktaID(ctx, oktaID, u.Username(), u.DisplayName(), u.Email(), u.Roles())
+		if err != nil {
+			return nil, err
+		}
+		return dbUser, nil
+	}
 	return user.GetOrCreateUser(ctx, u.Username(), u.DisplayName(), u.Email(), u.GetAccessToken(), u.GetRefreshToken(), u.Roles())
 }
 

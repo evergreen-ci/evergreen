@@ -15,6 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/oauth2"
 )
 
@@ -999,6 +1001,113 @@ func TestGetOrCreateUser(t *testing.T) {
 			defer func() {
 				assert.NoError(t, db.Clear(Collection))
 			}()
+			testCase(t)
+		})
+	}
+}
+
+func TestGetOrCreateUserWithOktaID(t *testing.T) {
+	const (
+		oktaID = "00u1abcd"
+		userID = "first.last"
+		name   = "First Last"
+	)
+
+	for testName, testCase := range map[string]func(t *testing.T){
+		"NewUserIsCreatedAndLinked": func(t *testing.T) {
+			roles := []string{"role"}
+			u, err := GetOrCreateUserWithOktaID(t.Context(), oktaID, userID, name, "", roles)
+			require.NoError(t, err)
+			require.NotNil(t, u)
+			assert.Equal(t, userID, u.Id)
+			assert.Equal(t, oktaID, u.OktaUserID)
+			assert.Equal(t, name, u.DispName)
+			assert.NotEmpty(t, u.APIKey)
+			assert.Equal(t, roles, u.SystemRoles)
+			assert.True(t, u.Settings.UseSpruceOptions.SpruceV1)
+
+			dbUser, err := FindOneById(t.Context(), userID)
+			require.NoError(t, err)
+			require.NotNil(t, dbUser)
+			assert.Equal(t, oktaID, dbUser.OktaUserID)
+		},
+		"ExistingUnlinkedUserIsLinked": func(t *testing.T) {
+			existing := DBUser{
+				Id:          userID,
+				DispName:    "Old Name",
+				APIKey:      "existing_key",
+				SystemRoles: []string{"existing_role"},
+			}
+			require.NoError(t, existing.Insert(t.Context()))
+
+			u, err := GetOrCreateUserWithOktaID(t.Context(), oktaID, userID, name, "", []string{"new_role"})
+			require.NoError(t, err)
+			require.NotNil(t, u)
+			assert.Equal(t, userID, u.Id)
+			assert.Equal(t, oktaID, u.OktaUserID)
+			assert.Equal(t, name, u.DispName)
+			assert.Equal(t, "existing_key", u.APIKey)
+			assert.Equal(t, []string{"existing_role"}, u.SystemRoles)
+		},
+		"LinkedUserIsFoundByOktaIDAfterNameChange": func(t *testing.T) {
+			original, err := GetOrCreateUserWithOktaID(t.Context(), oktaID, userID, name, "", nil)
+			require.NoError(t, err)
+			require.NotNil(t, original)
+
+			u, err := GetOrCreateUserWithOktaID(t.Context(), oktaID, "new.name", "New Name", "", nil)
+			require.NoError(t, err)
+			require.NotNil(t, u)
+			assert.Equal(t, userID, u.Id)
+			assert.Equal(t, oktaID, u.OktaUserID)
+			assert.Equal(t, "New Name", u.DispName)
+			assert.Equal(t, original.APIKey, u.APIKey)
+
+			renamed, err := FindOneById(t.Context(), "new.name")
+			require.NoError(t, err)
+			assert.Nil(t, renamed)
+		},
+		"UserLinkedToDifferentOktaIDShouldError": func(t *testing.T) {
+			existing := DBUser{
+				Id:         userID,
+				OktaUserID: "00uother",
+			}
+			require.NoError(t, existing.Insert(t.Context()))
+
+			u, err := GetOrCreateUserWithOktaID(t.Context(), oktaID, userID, name, "", nil)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "already linked to a different Okta ID")
+			assert.Nil(t, u)
+
+			dbUser, err := FindOneById(t.Context(), userID)
+			require.NoError(t, err)
+			require.NotNil(t, dbUser)
+			assert.Equal(t, "00uother", dbUser.OktaUserID)
+		},
+		"EmptyOktaIDShouldError": func(t *testing.T) {
+			u, err := GetOrCreateUserWithOktaID(t.Context(), "", userID, name, "", nil)
+			assert.Error(t, err)
+			assert.Nil(t, u)
+
+			dbUser, err := FindOneById(t.Context(), userID)
+			require.NoError(t, err)
+			assert.Nil(t, dbUser)
+		},
+		"UnlinkedOktaIDWithoutUserIDShouldError": func(t *testing.T) {
+			u, err := GetOrCreateUserWithOktaID(t.Context(), oktaID, "", name, "", nil)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "no user is linked to Okta ID")
+			assert.Nil(t, u)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.DropCollections(Collection))
+			require.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{
+				Keys:    bson.D{{Key: OktaIDKey, Value: 1}},
+				Options: options.Index().SetUnique(true).SetSparse(true),
+			}))
+			t.Cleanup(func() {
+				assert.NoError(t, db.DropCollections(Collection))
+			})
 			testCase(t)
 		})
 	}
