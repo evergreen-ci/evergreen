@@ -929,7 +929,7 @@ func TestPRCheckoutCommandsTruncatedHeadHashFallsBackToLegacyRefspec(t *testing.
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			cmds := prCheckoutCommands(conf)
+			cmds := prCheckoutCommands(conf, 0)
 			require.Len(t, cmds, 3)
 			joined := strings.Join(cmds, "\n")
 			assert.Contains(t, joined, `git fetch origin "pull/9001/head:evg-pr-test-`)
