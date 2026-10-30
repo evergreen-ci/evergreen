@@ -608,7 +608,7 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context) error {
 		"message": "problem fetching task data",
 		"task_id": j.host.ProvisionOptions.TaskId,
 		"host_id": j.host.Id,
-		"cmd":     cmd,
+		"cmd":     strings.Join(j.host.SpawnHostGetTaskDataCommand(ctx, "", nil), " "),
 		"job":     j.ID(),
 		"logs":    output,
 	}))
@@ -855,7 +855,9 @@ func parseLsblkOutput(lsblkOutput string) ([]blockDevice, error) {
 }
 
 // GetGithubTokensForTask returns a read-only token for owner/repo associated with the task
-// and a read-only token for each module associated with the task.
+// and a read-only token for each module associated with the task. Each token can
+// only read its own repo, and module tokens are only created for repos the task
+// is allowed to clone.
 func GetGithubTokensForTask(ctx context.Context, taskId string) (string, []string, error) {
 	catcher := grip.NewBasicCatcher()
 
@@ -880,16 +882,21 @@ func GetGithubTokensForTask(ctx context.Context, taskId string) (string, []strin
 	var moduleTokens []string
 	settings, err := evergreen.GetConfig(ctx)
 	catcher.Add(err)
-	opts := &github.InstallationTokenOptions{
-		Permissions: &github.InstallationPermissions{
-			Contents: utility.ToStringPtr(thirdparty.GithubPermissionRead),
-		},
+	createToken := func(owner, repo string) (string, error) {
+		tokenRepo := model.GitHubAppTokenRepo(repo)
+		token, _, err := githubapp.CreateGitHubAppAuth(settings).CreateInstallationToken(ctx, owner, tokenRepo, &github.InstallationTokenOptions{
+			Repositories: []string{tokenRepo},
+			Permissions: &github.InstallationPermissions{
+				Contents: utility.ToStringPtr(thirdparty.GithubPermissionRead),
+			},
+		})
+		return token, err
 	}
 
 	if projectOwner != "" && projectRepo != "" && err == nil && settings != nil {
 		// Ignore any errors because if the repo is not private, cloning the repo will still work.
 		// Either way, we should still spin up the host even if we can't fetch the data.
-		githubAppToken, _, err = githubapp.CreateGitHubAppAuth(settings).CreateInstallationToken(ctx, projectOwner, projectRepo, opts)
+		githubAppToken, err = createToken(projectOwner, projectRepo)
 		catcher.Add(err)
 
 	}
@@ -900,11 +907,21 @@ func GetGithubTokensForTask(ctx context.Context, taskId string) (string, []strin
 			_, repo, err = thirdparty.ParseGitUrl(module.URL)
 			catcher.Add(err)
 		}
-		if module.Owner != "" && repo != "" && settings != nil {
-			token, _, err := githubapp.CreateGitHubAppAuth(settings).CreateInstallationToken(ctx, module.Owner, repo, opts)
-			catcher.Add(err)
-			moduleTokens = append(moduleTokens, fmt.Sprintf("%s:%s", moduleName, token))
+		if module.Owner == "" || repo == "" || settings == nil {
+			continue
 		}
+		allowed, err := model.IsRepoAllowedForTask(ctx, settings, t, module.Owner, repo)
+		if err != nil {
+			catcher.Wrapf(err, "checking if task can use repo for module '%s'", moduleName)
+			continue
+		}
+		if !allowed {
+			catcher.Errorf("task is not allowed to use repo '%s/%s' for module '%s'", module.Owner, repo, moduleName)
+			continue
+		}
+		token, err := createToken(module.Owner, repo)
+		catcher.Add(err)
+		moduleTokens = append(moduleTokens, fmt.Sprintf("%s:%s", moduleName, token))
 	}
 
 	return githubAppToken, moduleTokens, catcher.Resolve()

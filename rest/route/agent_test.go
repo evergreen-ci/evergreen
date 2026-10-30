@@ -939,87 +939,39 @@ func TestCreateInstallationToken(t *testing.T) {
 	}
 }
 
-func TestIsRepoAllowedForTask(t *testing.T) {
+func TestCreateInstallationTokenRejectsUndeclaredRepo(t *testing.T) {
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(t.Context()))
-	testutil.ConfigureIntegrationTest(t, env.Settings())
 	require.NoError(t, db.ClearCollections(
 		task.Collection, model.ProjectRefCollection,
 		model.VersionCollection, model.ParserProjectCollection,
 		manifest.Collection,
 	))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(
+			task.Collection, model.ProjectRefCollection,
+			model.VersionCollection, model.ParserProjectCollection,
+			manifest.Collection,
+		))
+	})
 
-	pRef := model.ProjectRef{
-		Id:    "p1",
-		Owner: "myorg",
-		Repo:  "myrepo",
-	}
-	v := model.Version{
-		Id:         "v1",
-		Identifier: "p1",
-		Revision:   "abc123",
-		Requester:  evergreen.RepotrackerVersionRequester,
-	}
-	pp := model.ParserProject{
-		Id: "v1",
-		Modules: []model.Module{
-			{Name: "mod1", Owner: "myorg", Repo: "mod-repo"},
-			{Name: "mod2", Owner: "otherorg", Repo: "other-repo"},
-		},
-	}
-	tsk := task.Task{
-		Id:        "t1",
-		Project:   "p1",
-		Version:   "v1",
-		Requester: evergreen.RepotrackerVersionRequester,
-	}
+	pRef := model.ProjectRef{Id: "p1", Owner: "myorg", Repo: "myrepo"}
+	v := model.Version{Id: "v1", Identifier: "p1", Requester: evergreen.RepotrackerVersionRequester}
+	pp := model.ParserProject{Id: "v1"}
+	tsk := task.Task{Id: "t1", Project: "p1", Version: "v1", Requester: evergreen.RepotrackerVersionRequester}
 	require.NoError(t, pRef.Insert(t.Context()))
 	require.NoError(t, v.Insert(t.Context()))
 	require.NoError(t, pp.Insert(t.Context()))
 	require.NoError(t, tsk.Insert(t.Context()))
 
-	for name, tc := range map[string]struct {
-		owner   string
-		repo    string
-		allowed bool
-	}{
-		"ProjectRepoIsAllowed": {
-			owner:   "myorg",
-			repo:    "myrepo",
-			allowed: true,
-		},
-		"ProjectRepoIsCaseInsensitive": {
-			owner:   "MyOrg",
-			repo:    "MyRepo",
-			allowed: true,
-		},
-		"DeclaredModuleIsAllowed": {
-			owner:   "myorg",
-			repo:    "mod-repo",
-			allowed: true,
-		},
-		"DeclaredModuleDifferentOrgIsAllowed": {
-			owner:   "otherorg",
-			repo:    "other-repo",
-			allowed: true,
-		},
-		"UndeclaredRepoIsRejected": {
-			owner:   "myorg",
-			repo:    "secret-repo",
-			allowed: false,
-		},
-		"UndeclaredOwnerIsRejected": {
-			owner:   "attacker",
-			repo:    "myrepo",
-			allowed: false,
-		},
-	} {
-		t.Run(name, func(t *testing.T) {
-			allowed, err := isRepoAllowedForTask(t.Context(), env, &tsk, tc.owner, tc.repo)
-			require.NoError(t, err)
-			assert.Equal(t, tc.allowed, allowed)
-		})
-	}
+	r, ok := makeCreateInstallationToken(env).(*createInstallationTokenForClone)
+	require.True(t, ok)
+	r.taskID = tsk.Id
+	r.owner = "secretorg"
+	r.repo = "secret-repo"
+
+	resp := r.Run(t.Context())
+	assert.Equal(t, http.StatusForbidden, resp.Status())
 }
 
 func TestUpsertCheckRunParse(t *testing.T) {

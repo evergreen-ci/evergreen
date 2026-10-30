@@ -888,6 +888,7 @@ func processIntermediateProjectIncludes(ctx context.Context, intermediateProject
 		ModuleResolver:            projectOpts.ModuleResolver,
 		IsIncludedFile:            true,
 		LocalIncludeDir:           projectOpts.LocalIncludeDir,
+		moduleRepoChecker:         projectOpts.moduleRepoChecker,
 	}
 	if projectOpts.Ref != nil {
 		localOpts.Worktree = dirs.getWorktreeForOwnerRepoWorker(projectOpts.Ref.Owner, projectOpts.Ref.Repo, workerIdx)
@@ -1266,6 +1267,10 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 		if err != nil {
 			return dirs, errors.Wrapf(err, "getting owner and repo for module '%s'", mod.Name)
 		}
+		if err := opts.moduleRepoChecker.check(ctx, repoOwner, repoName); err != nil {
+			// Reading the include returns the error, so just skip the clone.
+			continue
+		}
 		revision, err := getRevisionForRemoteModule(ctx, *mod, modName, *opts)
 		if err != nil {
 			return dirs, errors.Wrapf(err, "getting revision for module '%s'", mod.Name)
@@ -1403,6 +1408,9 @@ type GetProjectOpts struct {
 	// cacheEnabled routes the translate step through the content-hash translation cache. It is only
 	// set internally by GetProjectFromFile from the ServiceFlag, so external callers stay uncached.
 	cacheEnabled bool
+	// moduleRepoChecker, if set, rejects module includes from repos the patch
+	// isn't allowed to use.
+	moduleRepoChecker *patchModuleRepoChecker
 }
 
 type PatchOpts struct {
@@ -1538,6 +1546,9 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 	repoOwner, repoName, err := module.GetOwnerAndRepo()
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting module owner and repo '%s'", module.Name)
+	}
+	if err := opts.moduleRepoChecker.check(ctx, repoOwner, repoName); err != nil {
+		return nil, errors.Wrapf(err, "module '%s'", module.Name)
 	}
 	pRef := *opts.Ref
 	pRef.Owner = repoOwner

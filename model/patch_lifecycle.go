@@ -876,6 +876,12 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, transl
 		AuthorEmail:          authorEmail,
 	}
 
+	// Patches created before module repos were checked can still be
+	// finalized, so check them before resolving module commits.
+	if err := ValidatePatchModuleRepos(ctx, p, projectRef, project.Modules); err != nil {
+		return nil, err
+	}
+
 	manifestCtx, manifestSpan := tracer.Start(ctx, "construct-manifest")
 	mfst, err := constructManifest(manifestCtx, patchVersion, projectRef, project.Modules)
 	manifestSpan.End()
@@ -1215,6 +1221,7 @@ func getLoadProjectOptsForPatch(ctx context.Context, p *patch.Patch) (*ProjectRe
 		PatchOpts: &PatchOpts{
 			patch: p,
 		},
+		moduleRepoChecker: newPatchModuleRepoChecker(projectRef, p),
 	}
 
 	autoUpdateRevisions, err := prefetchAutoUpdateModuleRevisions(ctx, p, projectRef, &opts)
@@ -1252,6 +1259,15 @@ func prefetchAutoUpdateModuleRevisions(ctx context.Context, p *patch.Patch, proj
 	autoUpdateRevisions := make(map[string]string)
 	for _, module := range projectModulesOnly.Modules {
 		if module.AutoUpdate {
+			owner, repo, err := module.GetOwnerAndRepo()
+			if err != nil {
+				continue
+			}
+			if err := opts.moduleRepoChecker.check(ctx, owner, repo); err != nil {
+				// Loading the patched project rejects the module if it's
+				// included, and patch creation rejects it otherwise.
+				continue
+			}
 			mfstModule, err := getManifestModule(ctx, projectRef, module, evergreen.PatchVersionRequester, p.IngestTime)
 			if err != nil {
 				grip.Warning(ctx, message.WrapError(err, message.Fields{

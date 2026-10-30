@@ -1782,14 +1782,12 @@ func (g *createInstallationTokenForClone) Run(ctx context.Context) gimlet.Respon
 		}
 	}
 
-	allowed, err := isRepoAllowedForTask(ctx, g.env, t, g.owner, g.repo)
+	allowed, err := model.IsRepoAllowedForTask(ctx, g.env.Settings(), t, g.owner, g.repo)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "checking repo authorization"))
 	}
 	if !allowed {
-		// TODO: DEVPROD-36655 enforce this as a 403 once we've confirmed no
-		// projects rely on cross-repo tokens outside their declared modules.
-		grip.Warning(ctx, message.Fields{
+		grip.Error(ctx, message.Fields{
 			"message":   "installation token requested for repo not in project or modules",
 			"task_id":   g.taskID,
 			"project":   t.Project,
@@ -1797,7 +1795,10 @@ func (g *createInstallationTokenForClone) Run(ctx context.Context) gimlet.Respon
 			"repo":      g.repo,
 			"version":   t.Version,
 			"requester": t.Requester,
-			"ticket":    "DEVPROD-36655",
+		})
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusForbidden,
+			Message:    fmt.Sprintf("repo '%s/%s' is not the project's repo or a module the task is allowed to use", g.owner, g.repo),
 		})
 	}
 
@@ -1825,80 +1826,6 @@ func (g *createInstallationTokenForClone) Run(ctx context.Context) gimlet.Respon
 	return gimlet.NewJSONResponse(&apimodels.Token{
 		Token: token,
 	})
-}
-
-// isRepoAllowedForTask checks whether the given owner/repo is the task's project
-// repo or one of its declared modules.
-func isRepoAllowedForTask(ctx context.Context, env evergreen.Environment, t *task.Task, owner, repo string) (bool, error) {
-	projectRef, err := model.FindMergedProjectRef(ctx, t.Project, t.Version, true)
-	if err != nil {
-		return false, errors.Wrapf(err, "finding project '%s'", t.Project)
-	}
-	if projectRef == nil {
-		return false, errors.Errorf("project ref '%s' doesn't exist", t.Project)
-	}
-
-	if strings.EqualFold(projectRef.Owner, owner) && strings.EqualFold(projectRef.Repo, repo) {
-		return true, nil
-	}
-
-	mfest, err := manifest.FindFromVersion(ctx, t.Version, t.Project, "", t.Requester)
-	if err != nil {
-		return false, errors.Wrap(err, "finding manifest for task")
-	}
-	if mfest != nil {
-		for _, m := range mfest.Modules {
-			if matchesModule(m.Owner, m.Repo, owner, repo) {
-				return true, nil
-			}
-		}
-		return false, nil
-	}
-
-	v, err := model.VersionFindOne(ctx, model.VersionById(t.Version))
-	if err != nil {
-		return false, errors.Wrap(err, "finding version for task")
-	}
-	if v == nil {
-		return false, errors.Errorf("version '%s' not found", t.Version)
-	}
-
-	project, _, err := model.FindAndTranslateProjectForVersion(ctx, env.Settings(), v, false)
-	if err != nil {
-		return false, errors.Wrap(err, "loading project for version")
-	}
-	if project == nil {
-		return false, errors.Errorf("project for version '%s' not found", t.Version)
-	}
-
-	for _, m := range project.Modules {
-		moduleOwner, moduleRepo, err := m.GetOwnerAndRepo()
-		if err != nil {
-			continue
-		}
-		if matchesModule(moduleOwner, moduleRepo, owner, repo) {
-			return true, nil
-		}
-	}
-
-	return false, nil
-}
-
-// matchesModule checks whether the requested owner/repo matches a module's
-// owner/repo.
-func matchesModule(moduleOwner, moduleRepo, owner, repo string) bool {
-	if strings.EqualFold(moduleOwner, owner) && strings.EqualFold(moduleRepo, repo) {
-		return true
-	}
-	if model.IsWikiRepo(moduleRepo) {
-		// The agent strips ".wiki" from repo names before requesting
-		// tokens, so this also matches the parent repo name for wiki modules.
-		parentRepo := strings.TrimSuffix(strings.TrimSuffix(strings.TrimSpace(moduleRepo), ".git"), ".wiki")
-		if strings.EqualFold(moduleOwner, owner) && strings.EqualFold(parentRepo, repo) {
-			return true
-		}
-	}
-	return false
 }
 
 // POST /task/{task_id}/check_run

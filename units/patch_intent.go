@@ -345,6 +345,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	if errs := validator.CheckPatchedProjectConfigErrors(ctx, patchedProjectConfig).AtLevel(validator.Error); len(errs) != 0 {
 		validationCatcher.Errorf("invalid patched project config syntax: %s", validator.ValidationErrorsToString(errs))
 	}
+	validationCatcher.Wrap(model.ValidatePatchModuleRepos(ctx, patchDoc, pref, patchedProject.Modules), "invalid patched config modules")
 	if validationCatcher.HasErrors() {
 		j.gitHubError = ProjectFailsValidation
 		return errors.Wrapf(validationCatcher.Resolve(), "invalid patched project config")
