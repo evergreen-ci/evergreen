@@ -885,9 +885,6 @@ func (p *ProjectRef) MergeWithProjectConfig(ctx context.Context, version string)
 		if projectConfig.BuildBaronSettings != nil {
 			pRefToMerge.BuildBaronSettings = *projectConfig.BuildBaronSettings
 		}
-		if projectConfig.TaskAnnotationSettings != nil {
-			pRefToMerge.TaskAnnotationSettings = *projectConfig.TaskAnnotationSettings
-		}
 		reflectedRef := reflect.ValueOf(p).Elem()
 		reflectedConfig := reflect.ValueOf(pRefToMerge)
 		util.RecursivelySetUndefinedFields(ctx, reflectedRef, reflectedConfig)

@@ -3047,9 +3047,6 @@ build_baron_settings:
 		includedYaml := `
 workstation_config:
   git_clone: false
-task_annotation_settings:
-  file_ticket_webhook:
-    endpoint: "https://example.com"
 `
 		p1, _, err := createIntermediateProject([]byte(mainYaml), false, nil)
 		require.NoError(t, err)
@@ -3062,7 +3059,6 @@ task_annotation_settings:
 		require.NotNil(t, p1.projectConfigFields.WorkstationConfig)
 		assert.True(t, utility.FromBoolPtr(p1.projectConfigFields.WorkstationConfig.GitClone))
 		assert.NotNil(t, p1.projectConfigFields.BuildBaronSettings)
-		assert.NotNil(t, p1.projectConfigFields.TaskAnnotationSettings)
 		assert.Equal(t, []string{"workstation_config"}, p1.redefinedProjectConfigSettings)
 	})
 }

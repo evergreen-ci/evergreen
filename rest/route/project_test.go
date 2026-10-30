@@ -248,10 +248,19 @@ func (s *ProjectPatchByIDSuite) TestRunWithCommitQueueEnabled() {
 	s.Equal("cannot enable commit queue without a commit queue patch definition", errResp.Message)
 }
 
+func (s *ProjectPatchByIDSuite) clearFileTicketWebhook(ctx context.Context) {
+	pRef, err := serviceModel.FindBranchProjectRef(ctx, "dimoxinil")
+	s.Require().NoError(err)
+	s.Require().NotNil(pRef)
+	pRef.TaskAnnotationSettings = evergreen.AnnotationsSettings{}
+	s.Require().NoError(pRef.Replace(ctx))
+}
+
 func (s *ProjectPatchByIDSuite) TestRunWithValidBbConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
+	s.clearFileTicketWebhook(ctx)
 	jsonBody := []byte(`{"enabled": true, "build_baron_settings": {"ticket_create_project": "EVG", "ticket_search_projects": ["EVG"]}}`)
 	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
@@ -269,9 +278,8 @@ func (s *ProjectPatchByIDSuite) TestRunWithValidBbConfig() {
 }
 
 func (s *ProjectPatchByIDSuite) TestRunWithInvalidBbConfig() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
+	ctx := gimlet.AttachUser(s.T().Context(), &user.DBUser{Id: "Test1"})
+	s.clearFileTicketWebhook(ctx)
 	jsonBody := []byte(`{"enabled": true, "build_baron_settings": {"ticket_create_project": "EVG"}}`)
 	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
@@ -288,9 +296,7 @@ func (s *ProjectPatchByIDSuite) TestRunWithInvalidBbConfig() {
 }
 
 func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
+	ctx := gimlet.AttachUser(s.T().Context(), &user.DBUser{Id: "Test1"})
 	jsonBody := []byte(`{"enabled": true, "git_tag_versions_enabled": true, "aliases": [{"alias": "__git_tag", "git_tag": "my_git_tag", "variant": ".*", "task": ".*", "tag": ".*"}]}`)
 	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
