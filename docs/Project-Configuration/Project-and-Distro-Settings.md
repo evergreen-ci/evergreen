@@ -151,6 +151,22 @@ created and activated for commits that were not originally part of the tracked b
 this, use squash merges or other strategies that do not rewrite the commit history
 of the tracked branch.
 
+### Task Ownership Settings
+
+Project admins can require that tasks added by
+[`generate.tasks`](Project-Commands#generatetasks) carry at least one tag that
+has a matching prefix. The tag must be on the task itself; build variant tags do
+not count.
+
+In the task ownership settings, admins can configure:
+
+- **Generated task validation prefix**: the prefix that generated tasks must
+  have on at least one of its tags.
+- **Track generated task tag validation**: Tracks generated tasks
+  that fail tag validation. Failing tasks are reported to Honeycomb under the
+  [`generate_tasks_tag_validation_failures` span](Task_Traces#tag-validation-tracking);
+  task generation is not affected.
+
 ### Access and Admin Settings
 
 To set a Project Administrator edit the

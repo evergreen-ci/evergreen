@@ -47,6 +47,70 @@ You can use the `error exists` attribute to search for errors. Here's an example
 
 In the `WHERE` section there's two attributes present. One says "show errors" and the other identifies a project. In the graph under the query you can see the timespan when the errors happened, and if you click on "Traces" you can get links to a trace for each one.
 
+## Tag Validation Tracking
+
+Projects can require that tasks added by `generate.tasks` carry a tag with a
+required prefix (see [task ownership settings](Project-and-Distro-Settings#task-ownership-settings)).
+
+When tracking is enabled for a project, each `generate.tasks` run that
+generates at least one task that fails tag validation emits a trace containing a
+parent span named `generate_tasks_tag_validation_failures` for the generator
+run. That parent span has one or more child spans named
+`generate_tasks_tag_validation_failure` that contain the failing task names.
+
+The parent span carries these attributes:
+
+| Attribute                                             | Description                                                |
+| ----------------------------------------------------- | ---------------------------------------------------------- |
+| `evergreen.project.id`                                | The project ID                                             |
+| `evergreen.project.identifier`                        | The project identifier                                     |
+| `evergreen.project.org`                               | The project org                                            |
+| `evergreen.project.repo`                              | The project repo                                           |
+| `evergreen.version.id`                                | The version ID                                             |
+| `evergreen.version.requester`                         | The version requester                                      |
+| `evergreen.build.id`                                  | The generator task build ID                                |
+| `evergreen.task.id`                                   | The generator task ID                                      |
+| `evergreen.generate_tasks.tag_validation_prefix`      | The required tag prefix configured for the project         |
+| `evergreen.generate_tasks.tag_validation_num_failing` | The total number of generated tasks failing tag validation |
+
+Each child span carries these attributes:
+
+| Attribute                                               | Description                                                                       |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `evergreen.generate_tasks.tag_validation_failing_tasks` | The names of the generated tasks failing tag validation (up to 50 per child span) |
+| `evergreen.generate_tasks.tag_validation_batch_index`   | The position of this batch, so the full list can be reassembled in order          |
+
+### Querying for Tag Validation Failures
+
+The failing task names are sorted alphabetically. If there's many task names
+failing validation in a single generator task, they're split across multiple
+child spans in order. The full list for a single version is the concatenation
+of each child span's `evergreen.generate_tasks.tag_validation_failing_tasks`
+attribute, ordered by `evergreen.generate_tasks.tag_validation_batch_index`.
+
+For example, to get all the generated task names from a version that fail tag
+validation, run:
+
+```text
+WHERE name = generate_tasks_tag_validation_failure
+WHERE evergreen.project.identifier = <project identifier>
+WHERE evergreen.version.id = <version ID>
+```
+
+If there are many failing task names, consumers are recommended to collect lists
+of tasks failing tag validation programmatically. Otherwise, the raw trace data
+can be manually exported from an executed query in the UI by going to "Explore
+Data" `->` Download button (to the right of "Events") `->` "Export displayed
+fields only" off `->` "Export data" `->` "Download CSV/JSON"
+
+### Limitations
+
+Since `generate.tasks` can generate an extremely large number of tasks, it's
+possible in an edge case that the number of tasks failing tag validation could
+exceed Honeycomb's processing limits. In such an edge case,
+`evergreen.generate_tasks.tag_validation_num_failing` will still report an
+accurate count of the total generated tasks that are failing tag validation.
+
 ## System Metrics
 
 Evergreen collects system-level metrics as a test runs and reports them to Honeycomb.
