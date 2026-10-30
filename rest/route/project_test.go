@@ -1145,6 +1145,38 @@ func TestGetProjectVersions(t *testing.T) {
 	assert.Contains(string(respJson), `"version_id":"v1"`)
 }
 
+func TestGetProjectVersionsScanLimitExceededReturnsBadRequest(t *testing.T) {
+	require.NoError(t, db.ClearCollections(serviceModel.VersionCollection, serviceModel.ProjectRefCollection, build.Collection, task.Collection))
+	project := serviceModel.ProjectRef{
+		Id:         "proj",
+		Identifier: "proj_ident",
+	}
+	require.NoError(t, project.Insert(t.Context()))
+	versions := []any{}
+	for i := 1; i <= 1001; i++ {
+		versions = append(versions, serviceModel.Version{
+			Id:                  fmt.Sprintf("v%d", i),
+			Identifier:          "proj",
+			Requester:           evergreen.RepotrackerVersionRequester,
+			RevisionOrderNumber: i,
+		})
+	}
+	require.NoError(t, db.InsertMany(t.Context(), serviceModel.VersionCollection, versions...))
+
+	h := &getProjectVersionsHandler{}
+	body := []byte(`{"include_builds": true, "include_tasks": true, "by_task": "nonexistent"}`)
+	req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj_ident/versions", bytes.NewReader(body))
+	require.NoError(t, err)
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj_ident"})
+	require.NoError(t, h.Parse(t.Context(), req))
+
+	resp := h.Run(t.Context())
+	assert.Equal(t, http.StatusBadRequest, resp.Status())
+	errResp, ok := resp.Data().(gimlet.ErrorResponse)
+	require.True(t, ok)
+	assert.Contains(t, errResp.Message, "narrow the search with start or revision_end")
+}
+
 func TestGetProjectVersionsParseRequesters(t *testing.T) {
 	ctx := t.Context()
 
