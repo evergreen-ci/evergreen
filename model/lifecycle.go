@@ -223,8 +223,11 @@ func AbortBuild(ctx context.Context, buildId string, caller string) error {
 	if err := build.UpdateActivation(ctx, []string{buildId}, false, caller); err != nil {
 		return errors.Wrapf(err, "deactivating build '%s'", buildId)
 	}
+	if err := task.AbortBuildTasks(ctx, buildId, task.AbortInfo{User: caller}); err != nil {
+		return errors.Wrapf(err, "aborting tasks for build '%s'", buildId)
+	}
 
-	return errors.Wrapf(task.AbortBuildTasks(ctx, buildId, task.AbortInfo{User: caller}), "aborting tasks for build '%s'", buildId)
+	return errors.Wrapf(UpdateVersionAndPatchStatusForBuilds(ctx, []string{buildId}), "updating status for build '%s'", buildId)
 }
 
 func TryMarkVersionStarted(ctx context.Context, versionId string, startTime time.Time) error {

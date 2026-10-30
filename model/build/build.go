@@ -82,6 +82,9 @@ type Build struct {
 	// one unfinished essential task. The build cannot be in a finished state
 	// until all of its essential tasks have finished.
 	HasUnfinishedEssentialTask bool `bson:"has_unfinished_essential_task"`
+	// HasInProgressTask tracks whether this build had at least one dispatched
+	// or started task as of its last status update.
+	HasInProgressTask bool `bson:"has_in_progress_task"`
 }
 
 func (b *Build) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(b) }
@@ -242,6 +245,25 @@ func (b *Build) SetHasUnfinishedEssentialTask(ctx context.Context, hasUnfinished
 	}
 
 	b.HasUnfinishedEssentialTask = hasUnfinishedEssentialTask
+
+	return nil
+}
+
+// SetHasInProgressTask sets whether or not the build has at least one
+// dispatched or started task.
+func (b *Build) SetHasInProgressTask(ctx context.Context, hasInProgressTask bool) error {
+	if b.HasInProgressTask == hasInProgressTask {
+		return nil
+	}
+	if err := UpdateOne(
+		ctx,
+		bson.M{IdKey: b.Id},
+		bson.M{"$set": bson.M{HasInProgressTaskKey: hasInProgressTask}},
+	); err != nil {
+		return err
+	}
+
+	b.HasInProgressTask = hasInProgressTask
 
 	return nil
 }
