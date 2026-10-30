@@ -46,27 +46,27 @@ var (
 
 func TestAttachFiles(t *testing.T) {
 	for _, tc := range []struct {
-		name           string
-		setBadFileLink func([]artifact.File)
-		expectedFiles  func([]artifact.File) []artifact.File
+		name             string
+		setBadFileLink   func([]artifact.File)
+		getExpectedFiles func([]artifact.File) []artifact.File
 	}{
 		{
-			name:          "ValidLinksShouldBeStoredWithEncodingFlagsRespected",
-			expectedFiles: func(files []artifact.File) []artifact.File { return files },
+			name:             "ValidLinksShouldBeStoredWithEncodingFlagsRespected",
+			getExpectedFiles: func(files []artifact.File) []artifact.File { return files },
 		},
 		{
 			name: "UnencodedJavaScriptShouldDropOnlyThatArtifact",
 			setBadFileLink: func(files []artifact.File) {
 				files[1].Link = "javascript:alert(document.domain)"
 			},
-			expectedFiles: func(files []artifact.File) []artifact.File { return []artifact.File{files[0], files[2]} },
+			getExpectedFiles: func(files []artifact.File) []artifact.File { return []artifact.File{files[0], files[2]} },
 		},
 		{
 			name: "UnencodedAssociatedJavaScriptShouldDropOnlyThatAssociatedLink",
 			setBadFileLink: func(files []artifact.File) {
 				files[1].AssociatedLinks[0].Link = "javascript:alert(document.domain)"
 			},
-			expectedFiles: func(files []artifact.File) []artifact.File {
+			getExpectedFiles: func(files []artifact.File) []artifact.File {
 				files[1].AssociatedLinks = files[1].AssociatedLinks[1:]
 				return files
 			},
@@ -78,7 +78,7 @@ func TestAttachFiles(t *testing.T) {
 					files[i] = artifact.File{}
 				}
 			},
-			expectedFiles: func([]artifact.File) []artifact.File { return nil },
+			getExpectedFiles: func([]artifact.File) []artifact.File { return nil },
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -116,7 +116,7 @@ func TestAttachFiles(t *testing.T) {
 			entry, err := artifact.FindOne(ctx, artifact.ByTaskIdAndExecution("ArtifactTask", 0))
 			require.NoError(t, err)
 			require.NotNil(t, entry)
-			assert.Equal(t, append(existing.Files, tc.expectedFiles(files)...), entry.Files)
+			assert.Equal(t, append(existing.Files, tc.getExpectedFiles(files)...), entry.Files)
 		})
 	}
 }
