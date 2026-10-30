@@ -652,7 +652,6 @@ func aliasMatchesTaskGroupTask(p *model.Project, alias model.ProjectAlias, tgNam
 
 func validateProjectConfigPlugins(ctx context.Context, pc *model.ProjectConfig) ValidationErrors {
 	errs := ValidationErrors{}
-	// The webhook is not configurable via YAML, so it is resolved from the project settings inside ValidateBbProject.
 	// skip validation if no build baron configuration exists
 	if pc.BuildBaronSettings == nil {
 		return ValidationErrors{}

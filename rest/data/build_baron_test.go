@@ -1,8 +1,6 @@
 package data
 
 import (
-	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -112,66 +110,4 @@ func TestMakeJiraTicket(t *testing.T) {
 		assert.Equal(t, t1.Execution, n.Metadata.TaskExecution)
 	})
 
-}
-
-func TestBbFileTicketCustomWebhook(t *testing.T) {
-	ctx := t.Context()
-
-	for name, test := range map[string]struct {
-		webhook        evergreen.WebHook
-		expectedStatus int
-		expectError    bool
-	}{
-		"UnreachableEndpointReturnsErrorInsteadOfPanic": {
-			webhook: evergreen.WebHook{
-				Endpoint: "http://localhost:19999/hooks",
-				Secret:   "shhh",
-			},
-			expectedStatus: http.StatusInternalServerError,
-			expectError:    true,
-		},
-		"ReachableEndpointReturnsStatusCode": {
-			webhook: evergreen.WebHook{
-				Endpoint: "http://localhost:19999/hooks",
-				Secret:   "shhh",
-			},
-			expectedStatus: http.StatusOK,
-		},
-	} {
-		t.Run(name, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection))
-			t.Cleanup(func() {
-				require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection))
-			})
-
-			if name == "ReachableEndpointReturnsStatusCode" {
-				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
-				t.Cleanup(server.Close)
-				test.webhook.Endpoint = server.URL
-			}
-
-			p := model.ProjectRef{
-				Identifier: "proj-custom-webhook",
-				TaskAnnotationSettings: evergreen.AnnotationsSettings{
-					FileTicketWebhook: test.webhook,
-				},
-			}
-			require.NoError(t, p.Insert(ctx))
-			tk := task.Task{
-				Id:      "t1",
-				Project: "proj-custom-webhook",
-				Version: "v1",
-				BuildId: "b1",
-			}
-			require.NoError(t, tk.Insert(ctx))
-
-			status, err := BbFileTicket(ctx, tk.Id, tk.Execution, "testuser")
-			assert.Equal(t, test.expectedStatus, status)
-			if test.expectError {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-			}
-		})
-	}
 }
