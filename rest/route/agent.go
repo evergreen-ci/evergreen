@@ -1797,26 +1797,19 @@ func (g *createInstallationTokenForClone) Run(ctx context.Context) gimlet.Respon
 		}
 	}
 	if !allowed {
-		flags, err := evergreen.GetServiceFlags(ctx)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting service flags"))
-		}
 		grip.Warning(ctx, message.Fields{
-			"message":         "installation token requested for repo not in project or modules",
-			"task_id":         g.taskID,
-			"project":         t.Project,
-			"owner":           g.owner,
-			"repo":            g.repo,
-			"version":         t.Version,
-			"requester":       t.Requester,
-			"checks_disabled": flags.ModuleRepoChecksDisabled,
+			"message":   "installation token requested for repo not in project or modules",
+			"task_id":   g.taskID,
+			"project":   t.Project,
+			"owner":     g.owner,
+			"repo":      g.repo,
+			"version":   t.Version,
+			"requester": t.Requester,
 		})
-		if !flags.ModuleRepoChecksDisabled {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusForbidden,
-				Message:    fmt.Sprintf("task isn't allowed to use repo '%s/%s'", g.owner, g.repo),
-			})
-		}
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusForbidden,
+			Message:    fmt.Sprintf("task isn't allowed to use repo '%s/%s'", g.owner, g.repo),
+		})
 	}
 
 	const lifetime = 50 * time.Minute

@@ -107,7 +107,6 @@ var (
 	sourceCacheAllProjectsEnabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "SourceCacheAllProjectsEnabled")
 	taskQueueAutoUnscheduleDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "TaskQueueAutoUnscheduleDisabled")
 	virtualTasksDisabledKey                 = bsonutil.MustHaveTag(ServiceFlags{}, "VirtualTasksDisabled")
-	moduleRepoChecksDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "ModuleRepoChecksDisabled")
 
 	// DiagnosticsConfig keys
 	diagnosticsS3BucketNameKey = bsonutil.MustHaveTag(DiagnosticsConfig{}, "S3BucketName")

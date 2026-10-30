@@ -114,16 +114,4 @@ func TestValidatePatchModuleRepos(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "secretorg/secret-repo")
 	})
-	t.Run("UntrustedRepoIsAllowedWhenChecksAreDisabled", func(t *testing.T) {
-		flags, err := evergreen.GetServiceFlags(t.Context())
-		require.NoError(t, err)
-		flags.ModuleRepoChecksDisabled = true
-		require.NoError(t, flags.Set(t.Context()))
-		t.Cleanup(func() {
-			// The test's context is canceled before cleanup runs.
-			flags.ModuleRepoChecksDisabled = false
-			assert.NoError(t, flags.Set(context.Background()))
-		})
-		assert.NoError(t, ValidatePatchModuleRepos(t.Context(), cliPatch, projectRef, ModuleList{secret}))
-	})
 }

@@ -111,11 +111,9 @@ type PatchModuleRepoChecker struct {
 	allowPRAuthor bool
 
 	// The mutex is needed because includes are read concurrently.
-	mu             sync.Mutex
-	loaded         bool
-	checksDisabled bool
-	committed      map[string]bool
-	results        map[string]bool
+	mu        sync.Mutex
+	committed map[string]bool
+	results   map[string]bool
 }
 
 // newPatchModuleRepoChecker returns nil if the patch's author can't change its
@@ -133,8 +131,7 @@ func newPatchModuleRepoChecker(projectRef *ProjectRef, p *patch.Patch) *PatchMod
 	}
 }
 
-// Allows returns whether the patch can use owner/repo. It allows every repo
-// while module repo checks are disabled.
+// Allows returns whether the patch can use owner/repo.
 func (c *PatchModuleRepoChecker) Allows(ctx context.Context, owner, repo string) (bool, error) {
 	if c == nil {
 		return true, nil
@@ -158,19 +155,7 @@ func (c *PatchModuleRepoChecker) Allows(ctx context.Context, owner, repo string)
 		}
 		c.results[key] = trusted
 	}
-	if trusted {
-		return true, nil
-	}
-
-	grip.Warning(ctx, message.Fields{
-		"message":         "patch module repo is not trusted",
-		"patch_id":        c.patch.Id.Hex(),
-		"project":         c.projectRef.Id,
-		"owner":           owner,
-		"repo":            repo,
-		"checks_disabled": c.checksDisabled,
-	})
-	return c.checksDisabled, nil
+	return trusted, nil
 }
 
 func (c *PatchModuleRepoChecker) check(ctx context.Context, owner, repo string) error {
@@ -215,12 +200,8 @@ func (c *PatchModuleRepoChecker) isTrustedOnGitHub(ctx context.Context, owner, r
 // versions are needed as well as the base version, since a patch's base commit
 // may have no version or predate a module.
 func (c *PatchModuleRepoChecker) load(ctx context.Context) error {
-	if c.loaded {
+	if c.committed != nil {
 		return nil
-	}
-	flags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		return errors.Wrap(err, "getting service flags")
 	}
 
 	var manifests []manifest.Manifest
@@ -258,8 +239,6 @@ func (c *PatchModuleRepoChecker) load(ctx context.Context) error {
 			}
 		}
 	}
-	c.checksDisabled = flags.ModuleRepoChecksDisabled
-	c.loaded = true
 	return nil
 }
 

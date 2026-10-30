@@ -74,9 +74,6 @@ type ServiceFlags struct {
 	GraphQLComplexityLimiterDisabled     bool `bson:"graphql_complexity_limiter_disabled" json:"graphql_complexity_limiter_disabled"`
 	GraphQLComplexityRateLimiterDisabled bool `bson:"graphql_complexity_rate_limiter_disabled" json:"graphql_complexity_rate_limiter_disabled"`
 	VirtualTasksDisabled                 bool `bson:"virtual_tasks_disabled" json:"virtual_tasks_disabled"`
-	// ModuleRepoChecksDisabled logs instead of rejecting patch module repos
-	// that patches aren't allowed to use.
-	ModuleRepoChecksDisabled bool `bson:"module_repo_checks_disabled" json:"module_repo_checks_disabled"`
 }
 
 func (c *ServiceFlags) SectionId() string { return "service_flags" }
@@ -137,7 +134,6 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			liveArtifactCredentialsDisabledKey:      c.LiveArtifactCredentialsDisabled,
 			taskQueueAutoUnscheduleDisabledKey:      c.TaskQueueAutoUnscheduleDisabled,
 			virtualTasksDisabledKey:                 c.VirtualTasksDisabled,
-			moduleRepoChecksDisabledKey:             c.ModuleRepoChecksDisabled,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }
