@@ -1238,6 +1238,16 @@ func TestUpdateVersionStatus(t *testing.T) {
 	}
 
 	for name, test := range map[string]testCase{
+		"VersionStartedForSucceededBuildAndDeactivatedBuildWithInProgressTask": {
+			builds: []build.Build{
+				{Status: evergreen.BuildSucceeded, Activated: true},
+				{Status: evergreen.BuildStarted, Activated: false, HasInProgressTask: true},
+			},
+			expectedVersionStatus:        evergreen.VersionStarted,
+			expectedVersionStatusChanged: true,
+			expectedVersionAborted:       false,
+			expectedVersionActivation:    true,
+		},
 		"VersionCreatedForAllUnactivatedBuilds": {
 			builds: []build.Build{
 				{Status: evergreen.BuildCreated},
@@ -1705,6 +1715,16 @@ func TestGetBuildStatus(t *testing.T) {
 	buildStatus = getBuildStatus(buildTasks)
 	assert.Equal(t, evergreen.BuildStarted, buildStatus.status)
 	assert.False(t, buildStatus.allTasksBlocked)
+	assert.True(t, buildStatus.hasInProgressTask)
+
+	// Activated tasks that haven't been dispatched yet shouldn't count as in progress.
+	buildTasks = []task.Task{
+		{Status: evergreen.TaskUndispatched, Activated: true},
+		{Status: evergreen.TaskSucceeded},
+	}
+	buildStatus = getBuildStatus(buildTasks)
+	assert.Equal(t, evergreen.BuildStarted, buildStatus.status)
+	assert.False(t, buildStatus.hasInProgressTask)
 
 	// Unactivated tasks shouldn't prevent the build from completing.
 	buildTasks = []task.Task{
@@ -1816,6 +1836,26 @@ func TestGetVersionStatus(t *testing.T) {
 		assert.True(t, activated)
 	})
 
+	t.Run("VersionStartedForDeactivatedBuildWithInProgressTask", func(t *testing.T) {
+		versionBuilds := []build.Build{
+			{Status: evergreen.BuildSucceeded, Activated: true},
+			{Status: evergreen.BuildStarted, Activated: false, HasInProgressTask: true},
+		}
+		activated, status := getVersionActivationAndStatus(versionBuilds)
+		assert.Equal(t, evergreen.VersionStarted, status)
+		assert.True(t, activated)
+	})
+
+	t.Run("VersionSucceededForDeactivatedStaleBuildWithNoInProgressTask", func(t *testing.T) {
+		versionBuilds := []build.Build{
+			{Status: evergreen.BuildSucceeded, Activated: true},
+			{Status: evergreen.BuildStarted, Activated: false},
+		}
+		activated, status := getVersionActivationAndStatus(versionBuilds)
+		assert.Equal(t, evergreen.VersionSucceeded, status)
+		assert.True(t, activated)
+	})
+
 	t.Run("VersionFailedForMixOfFailedBuildAndBuildsWithUnfinishedEssentialTasks", func(t *testing.T) {
 		versionBuilds := []build.Build{
 			{Status: evergreen.BuildCreated, HasUnfinishedEssentialTask: true},
@@ -1853,6 +1893,20 @@ func TestUpdateVersionGithubStatus(t *testing.T) {
 	e, err := event.FindUnprocessedEvents(t.Context(), -1)
 	assert.NoError(t, err)
 	require.Len(t, e, 1)
+
+	t.Run("DoesNotFinishWhileDeactivatedCheckBuildHasInProgressTask", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(event.EventCollection))
+		builds := []build.Build{
+			{IsGithubCheck: true, Status: evergreen.BuildSucceeded, GithubCheckStatus: evergreen.BuildSucceeded, Activated: true},
+			{IsGithubCheck: true, Status: evergreen.BuildStarted, GithubCheckStatus: evergreen.BuildStarted, Activated: false, HasInProgressTask: true},
+		}
+
+		require.NoError(t, updateVersionGithubStatus(t.Context(), v, builds))
+
+		e, err := event.FindUnprocessedEvents(t.Context(), -1)
+		require.NoError(t, err)
+		assert.Empty(t, e)
+	})
 }
 
 func TestUpdateBuildGithubStatus(t *testing.T) {
@@ -6737,6 +6791,97 @@ func TestHandleEndTaskForGithubMergeQueueTask(t *testing.T) {
 			assert.True(t, task.Aborted, task.Id)
 		}
 	}
+
+	t.Run("VersionDoesNotSucceedWhileAbortedTasksAreRunning", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, patch.Collection, event.EventCollection, host.Collection))
+		t.Cleanup(func() {
+			assert.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, patch.Collection, event.EventCollection, host.Collection))
+		})
+
+		// The failure deactivates failed_build while it still has a running task.
+		ctx := t.Context()
+		versionID := patch.NewId("aaaaaaaaaaff001122334455").Hex()
+		v := &Version{
+			Id:        versionID,
+			Requester: evergreen.GithubMergeRequester,
+			Status:    evergreen.VersionStarted,
+			Activated: utility.TruePtr(),
+		}
+		require.NoError(t, v.Insert(ctx))
+		p := &patch.Patch{
+			Id:      patch.NewId(versionID),
+			Version: versionID,
+			Status:  evergreen.VersionStarted,
+		}
+		require.NoError(t, p.Insert(ctx))
+
+		builds := []build.Build{
+			{Id: "failed_build", Version: versionID, Status: evergreen.BuildStarted, Activated: true},
+			{Id: "succeeded_build", Version: versionID, Status: evergreen.BuildStarted, Activated: true},
+		}
+		for _, b := range builds {
+			require.NoError(t, b.Insert(ctx))
+		}
+		failedTask := &task.Task{
+			Id:           "failed_task",
+			BuildId:      "failed_build",
+			Version:      versionID,
+			Requester:    evergreen.GithubMergeRequester,
+			Status:       evergreen.TaskFailed,
+			Activated:    true,
+			ActivatedBy:  evergreen.GithubMergeRequester,
+			DisplayName:  "validate_commit_message",
+			BuildVariant: "commit-queue-monorepo",
+		}
+		tasks := []task.Task{
+			*failedTask,
+			{Id: "running_task", BuildId: "failed_build", Version: versionID, Requester: evergreen.GithubMergeRequester, Status: evergreen.TaskStarted, Activated: true, ActivatedBy: evergreen.GithubMergeRequester, HostId: "h1"},
+			{Id: "pending_task", BuildId: "failed_build", Version: versionID, Requester: evergreen.GithubMergeRequester, Status: evergreen.TaskUndispatched, Activated: true, ActivatedBy: evergreen.GithubMergeRequester},
+			{Id: "succeeded_task", BuildId: "succeeded_build", Version: versionID, Requester: evergreen.GithubMergeRequester, Status: evergreen.TaskSucceeded, Activated: true, ActivatedBy: evergreen.GithubMergeRequester},
+			{Id: "undispatched_task", BuildId: "succeeded_build", Version: versionID, Requester: evergreen.GithubMergeRequester, Status: evergreen.TaskUndispatched, Activated: true, ActivatedBy: evergreen.GithubMergeRequester},
+		}
+		for _, tsk := range tasks {
+			require.NoError(t, tsk.Insert(ctx))
+		}
+		h := &host.Host{Id: "h1", RunningTask: "running_task"}
+		require.NoError(t, h.Insert(ctx))
+
+		require.NoError(t, HandleEndTaskForGithubMergeQueueTask(ctx, failedTask, evergreen.TaskFailed))
+
+		succeededBuild, err := build.FindOneId(ctx, "succeeded_build")
+		require.NoError(t, err)
+		require.NotNil(t, succeededBuild)
+		assert.Equal(t, evergreen.BuildSucceeded, succeededBuild.Status)
+
+		dbVersion, err := VersionFindOneId(ctx, versionID)
+		require.NoError(t, err)
+		require.NotNil(t, dbVersion)
+		assert.Equal(t, evergreen.VersionStarted, dbVersion.Status)
+		dbPatch, err := patch.FindOneId(ctx, versionID)
+		require.NoError(t, err)
+		require.NotNil(t, dbPatch)
+		assert.Equal(t, evergreen.VersionStarted, dbPatch.Status)
+
+		runningTask, err := task.FindOneId(ctx, "running_task")
+		require.NoError(t, err)
+		require.NotNil(t, runningTask)
+		require.NoError(t, MarkEnd(ctx, testutil.TestConfig(), runningTask, evergreen.APIServerTaskActivator, time.Now(), &apimodels.TaskEndDetail{Status: evergreen.TaskFailed}))
+
+		failedBuild, err := build.FindOneId(ctx, "failed_build")
+		require.NoError(t, err)
+		require.NotNil(t, failedBuild)
+		assert.Equal(t, evergreen.BuildFailed, failedBuild.Status)
+		assert.False(t, failedBuild.HasInProgressTask)
+
+		dbVersion, err = VersionFindOneId(ctx, versionID)
+		require.NoError(t, err)
+		require.NotNil(t, dbVersion)
+		assert.Equal(t, evergreen.VersionFailed, dbVersion.Status)
+		dbPatch, err = patch.FindOneId(ctx, versionID)
+		require.NoError(t, err)
+		require.NotNil(t, dbPatch)
+		assert.Equal(t, evergreen.VersionFailed, dbPatch.Status)
+	})
 }
 
 func findAttr(attrs []attribute.KeyValue, key string) (attribute.Value, bool) {
