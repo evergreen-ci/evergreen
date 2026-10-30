@@ -855,7 +855,7 @@ func parseLsblkOutput(lsblkOutput string) ([]blockDevice, error) {
 }
 
 // GetGithubTokensForTask returns a read-only token for owner/repo associated with the task
-// and a read-only token for each module repo the task is allowed to use.
+// and a read-only token for each module repo the task's user can use.
 func GetGithubTokensForTask(ctx context.Context, taskId string) (string, []string, error) {
 	catcher := grip.NewBasicCatcher()
 
@@ -881,9 +881,8 @@ func GetGithubTokensForTask(ctx context.Context, taskId string) (string, []strin
 	settings, err := evergreen.GetConfig(ctx)
 	catcher.Add(err)
 	createToken := func(owner, repo string) (string, error) {
-		tokenRepo := model.GitHubAppTokenRepo(repo)
-		token, _, err := githubapp.CreateGitHubAppAuth(settings).CreateInstallationToken(ctx, owner, tokenRepo, &github.InstallationTokenOptions{
-			Repositories: []string{tokenRepo},
+		token, _, err := githubapp.CreateGitHubAppAuth(settings).CreateInstallationToken(ctx, owner, repo, &github.InstallationTokenOptions{
+			Repositories: []string{repo},
 			Permissions: &github.InstallationPermissions{
 				Contents: utility.ToStringPtr(thirdparty.GithubPermissionRead),
 			},
@@ -899,11 +898,14 @@ func GetGithubTokensForTask(ctx context.Context, taskId string) (string, []strin
 
 	}
 
-	var access *model.TaskRepoAccess
-	if len(modules) > 0 && settings != nil {
+	var repoChecker *model.PatchModuleRepoChecker
+	if len(modules) > 0 {
 		// The spawn host's owner may not be the PR author.
-		access, err = model.NewTaskRepoAccess(ctx, settings, t, true)
-		catcher.Wrap(err, "checking module repo access")
+		repoChecker, err = model.ModuleRepoCheckerForUser(ctx, t)
+		if err != nil {
+			catcher.Wrap(err, "getting module repo checker")
+			modules = nil
+		}
 	}
 	for moduleName, module := range modules {
 		repo := module.Repo
@@ -911,21 +913,16 @@ func GetGithubTokensForTask(ctx context.Context, taskId string) (string, []strin
 			_, repo, err = thirdparty.ParseGitUrl(module.URL)
 			catcher.Add(err)
 		}
-		if module.Owner == "" || repo == "" || access == nil {
-			continue
+		if module.Owner != "" && repo != "" && settings != nil {
+			allowed, err := repoChecker.Allows(ctx, module.Owner, repo)
+			catcher.Wrapf(err, "checking repo for module '%s'", moduleName)
+			if !allowed {
+				continue
+			}
+			token, err := createToken(module.Owner, strings.TrimSuffix(strings.TrimSuffix(repo, ".git"), ".wiki"))
+			catcher.Add(err)
+			moduleTokens = append(moduleTokens, fmt.Sprintf("%s:%s", moduleName, token))
 		}
-		allowed, err := access.IsAllowed(ctx, module.Owner, repo)
-		if err != nil {
-			catcher.Wrapf(err, "checking repo access for module '%s'", moduleName)
-			continue
-		}
-		if !allowed {
-			catcher.Errorf("task isn't allowed to use repo '%s/%s' for module '%s'", module.Owner, repo, moduleName)
-			continue
-		}
-		token, err := createToken(module.Owner, repo)
-		catcher.Add(err)
-		moduleTokens = append(moduleTokens, fmt.Sprintf("%s:%s", moduleName, token))
 	}
 
 	return githubAppToken, moduleTokens, catcher.Resolve()

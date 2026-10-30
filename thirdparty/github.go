@@ -1567,24 +1567,16 @@ func githubAppSlugForUser(appUser *github.User, userID int, botSuffix string) (s
 // GitHubUserHasWritePermission returns true if the given user has write permission for the repo.
 // Returns an error if the user isn't found or the token isn't authed for this repo.
 func GitHubUserHasWritePermission(ctx context.Context, owner, repo, username string) (bool, error) {
-	permission, err := getGitHubUserPermission(ctx, "userHasWritePermission", owner, repo, username)
-	if err != nil {
-		return false, err
-	}
-	return utility.StringSliceContains(githubWritePermissions, permission), nil
+	return gitHubUserHasPermission(ctx, "userHasWritePermission", owner, repo, username, githubWritePermissions)
 }
 
 // GitHubUserHasReadPermission returns true if the given user can read the repo.
 // Returns an error if the user isn't found or the token isn't authed for this repo.
 func GitHubUserHasReadPermission(ctx context.Context, owner, repo, username string) (bool, error) {
-	permission, err := getGitHubUserPermission(ctx, "userHasReadPermission", owner, repo, username)
-	if err != nil {
-		return false, err
-	}
-	return utility.StringSliceContains(allGitHubPermissions, permission), nil
+	return gitHubUserHasPermission(ctx, "userHasReadPermission", owner, repo, username, allGitHubPermissions)
 }
 
-func getGitHubUserPermission(ctx context.Context, caller, owner, repo, username string) (string, error) {
+func gitHubUserHasPermission(ctx context.Context, caller, owner, repo, username string, permissions []string) (bool, error) {
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, owner),
@@ -1594,7 +1586,7 @@ func getGitHubUserPermission(ctx context.Context, caller, owner, repo, username 
 
 	token, err := getInstallationToken(ctx, owner, repo, nil)
 	if err != nil {
-		return "", errors.Wrap(err, "getting installation token")
+		return false, errors.Wrap(err, "getting installation token")
 	}
 
 	githubClient := getGithubClient(ctx, token, caller, retryConfig{retry404: true})
@@ -1606,14 +1598,14 @@ func getGitHubUserPermission(ctx context.Context, caller, owner, repo, username 
 		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
 	}
 	if err != nil {
-		return "", errors.Wrap(err, "can't get permissions from GitHub")
+		return false, errors.Wrap(err, "can't get permissions from GitHub")
 	}
 
 	if permissionLevel == nil || permissionLevel.Permission == nil {
-		return "", errors.Errorf("GitHub returned an invalid response to request for user permissions for '%s'", username)
+		return false, errors.Errorf("GitHub returned an invalid response to request for user permissions for '%s'", username)
 	}
 
-	return permissionLevel.GetPermission(), nil
+	return utility.StringSliceContains(permissions, permissionLevel.GetPermission()), nil
 }
 
 // IsGitHubRepoPublic returns true if the repo is visible to anyone on GitHub.

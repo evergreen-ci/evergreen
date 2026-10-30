@@ -27,24 +27,6 @@ const (
 	ModuleSelectionCarriedForward ModuleSelectionRule = "carried_forward"
 )
 
-// ModuleRepoTrust describes why a patch is allowed to use a module's repo.
-type ModuleRepoTrust string
-
-const (
-	// ModuleRepoTrustCommitted is the project's repo or a module in committed
-	// config.
-	ModuleRepoTrustCommitted ModuleRepoTrust = "committed"
-	ModuleRepoTrustPublic    ModuleRepoTrust = "public"
-	// ModuleRepoTrustPRAuthor is a repo the GitHub PR's author can read.
-	ModuleRepoTrustPRAuthor ModuleRepoTrust = "pr_author"
-	// ModuleRepoTrustReviewedConfig is any repo in a config its author can't
-	// change without review, such as a merge queue patch's.
-	ModuleRepoTrustReviewedConfig ModuleRepoTrust = "reviewed_config"
-	// ModuleRepoTrustUntrusted is only recorded while module repo checks are
-	// disabled.
-	ModuleRepoTrustUntrusted ModuleRepoTrust = "untrusted"
-)
-
 // Manifest is a representation of the modules associated with a version.
 // Id is the version id,
 // Revision is the revision of the version on the project
@@ -94,9 +76,6 @@ type Module struct {
 	URL string `json:"url" bson:"url"`
 	// The rule that chose the revision. Empty for wiki modules and older manifests.
 	SelectionRule ModuleSelectionRule `json:"selection_rule,omitempty" bson:"selection_rule,omitempty"`
-	// RepoTrust is why a patch can use the repo. Empty for non-patch versions
-	// and older manifests.
-	RepoTrust ModuleRepoTrust `json:"repo_trust,omitempty" bson:"repo_trust,omitempty"`
 }
 
 // GetChangedModules returns the sorted names of the modules that were added,

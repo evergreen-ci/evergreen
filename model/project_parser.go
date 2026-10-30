@@ -1267,10 +1267,6 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 		if err != nil {
 			return dirs, errors.Wrapf(err, "getting owner and repo for module '%s'", mod.Name)
 		}
-		if err := opts.moduleRepoChecker.check(ctx, repoOwner, repoName); err != nil {
-			// Reading the include returns the error, so just skip the clone.
-			continue
-		}
 		revision, err := getRevisionForRemoteModule(ctx, *mod, modName, *opts)
 		if err != nil {
 			return dirs, errors.Wrapf(err, "getting revision for module '%s'", mod.Name)
@@ -1409,7 +1405,7 @@ type GetProjectOpts struct {
 	// set internally by GetProjectFromFile from the ServiceFlag, so external callers stay uncached.
 	cacheEnabled bool
 
-	moduleRepoChecker *patchModuleRepoChecker
+	moduleRepoChecker *PatchModuleRepoChecker
 }
 
 type PatchOpts struct {
