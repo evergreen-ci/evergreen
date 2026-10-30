@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -15,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -796,49 +798,212 @@ func TestParseProjects(t *testing.T) {
 	assert.Equal("lint-rest-route", parsed[0].Tasks[1].Name)
 }
 
-func TestTagValidationTrackingEnabled(t *testing.T) {
+func TestMakeTagValidationError(t *testing.T) {
 	const prefix = "owning_team_"
 	for testName, testCase := range map[string]struct {
-		taskOwnership model.TaskOwnershipSettings
-		expected      bool
+		numFailures   int
+		expectedInMsg []string
+		expectedNotIn []string
 	}{
-		"NoSettingsConfigured": {
-			taskOwnership: model.TaskOwnershipSettings{},
-			expected:      false,
+		"BelowTaskCap": {
+			numFailures:   3,
+			expectedInMsg: []string{"3 generated tasks are missing a tag with prefix 'owning_team_':\ntask0\ntask1\ntask2"},
 		},
-		"TrackingDisabled": {
-			taskOwnership: model.TaskOwnershipSettings{
-				GeneratedTaskValidationPrefix:   prefix,
-				TrackGeneratedTaskTagValidation: utility.FalsePtr(),
+		"AboveTaskCap": {
+			numFailures: 80,
+			expectedInMsg: []string{
+				"80 generated tasks are missing a tag with prefix 'owning_team_'",
+				"task49",
+				"and 30 more (truncated)",
 			},
-			expected: false,
-		},
-		"TrackingEnabledWithoutPrefix": {
-			taskOwnership: model.TaskOwnershipSettings{
-				TrackGeneratedTaskTagValidation: utility.TruePtr(),
-			},
-			expected: false,
-		},
-		"TrackingEnabledWithPrefix": {
-			taskOwnership: model.TaskOwnershipSettings{
-				GeneratedTaskValidationPrefix:   prefix,
-				TrackGeneratedTaskTagValidation: utility.TruePtr(),
-			},
-			expected: true,
-		},
-		"BlockingEnabledWithoutTracking": {
-			taskOwnership: model.TaskOwnershipSettings{
-				GeneratedTaskValidationPrefix:      prefix,
-				BlockTaskGenerationOnTagValidation: utility.TruePtr(),
-			},
-			expected: false,
+			expectedNotIn: []string{"task50"},
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			pref := &model.ProjectRef{
-				TaskOwnership: testCase.taskOwnership,
+			failures := make([]validator.TagValidationFailure, testCase.numFailures)
+			for i := range failures {
+				failures[i] = validator.TagValidationFailure{
+					TaskName:      fmt.Sprintf("task%d", i),
+					BuildVariants: []string{"bv"},
+				}
 			}
-			assert.Equal(t, testCase.expected, tagValidationTrackingEnabled(pref))
+
+			err := makeTagValidationError(prefix, failures)
+			require.Error(t, err)
+			for _, expected := range testCase.expectedInMsg {
+				assert.Contains(t, err.Error(), expected)
+			}
+			for _, unexpected := range testCase.expectedNotIn {
+				assert.NotContains(t, err.Error(), unexpected)
+			}
+		})
+	}
+}
+
+func TestGenerateTasksBlockingTagValidation(t *testing.T) {
+	ctx := t.Context()
+	ctx = testutil.TestSpan(ctx, t)
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	testutil.ConfigureIntegrationTest(t, env.Settings())
+
+	const prefix = "owning_team_"
+
+	sampleBaseProject := `
+tasks:
+  - name: generator
+    commands:
+      - command: generate.tasks
+        params:
+          files:
+            - example/path/to/generate.json
+
+buildvariants:
+  - name: generator
+    display_name: generator
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - name: "generator"
+  - name: ubuntu1604
+    display_name: Ubuntu 16.04
+    run_on:
+      - ubuntu1604-test
+`
+	for testName, testCase := range map[string]struct {
+		generatedJSON string
+		expectError   bool
+	}{
+		"UntaggedGeneratedTaskFails": {
+			generatedJSON: `
+{
+  "tasks": [
+    {
+      "name": "new_task",
+      "commands": [
+        {
+          "command": "shell.exec",
+          "params": {
+            "shell": "bash",
+            "script": "echo hi"
+          }
+        }
+      ]
+    }
+  ],
+  "buildvariants": [
+    {
+      "name": "ubuntu1604",
+      "tasks": [
+        {
+          "name": "new_task"
+        }
+      ]
+    }
+  ]
+}`,
+			expectError: true,
+		},
+		"TaggedGeneratedTaskSucceeds": {
+			generatedJSON: `
+{
+  "tasks": [
+    {
+      "name": "new_task",
+      "tags": ["owning_team_mothra"],
+      "commands": [
+        {
+          "command": "shell.exec",
+          "params": {
+            "shell": "bash",
+            "script": "echo hi"
+          }
+        }
+      ]
+    }
+  ],
+  "buildvariants": [
+    {
+      "name": "ubuntu1604",
+      "tasks": [
+        {
+          "name": "new_task"
+        }
+      ]
+    }
+  ]
+}`,
+			expectError: false,
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.VersionCollection,
+				build.Collection, task.Collection, distro.Collection, model.ParserProjectCollection))
+
+			sampleVersion := model.Version{
+				Id:         "sample_version",
+				Identifier: "mci",
+				Requester:  evergreen.RepotrackerVersionRequester,
+				BuildIds:   []string{"sample_build_id"},
+			}
+			require.NoError(t, sampleVersion.Insert(t.Context()))
+			sampleBuild := build.Build{
+				Id:           "sample_build_id",
+				BuildVariant: "generator",
+				Version:      sampleVersion.Id,
+				Requester:    evergreen.RepotrackerVersionRequester,
+			}
+			require.NoError(t, sampleBuild.Insert(t.Context()))
+			sampleTask := task.Task{
+				Id:          "generator",
+				Version:     sampleVersion.Id,
+				BuildId:     "sample_build_id",
+				Project:     "mci",
+				DisplayName: "generator",
+				Status:      evergreen.TaskStarted,
+				Requester:   evergreen.RepotrackerVersionRequester,
+			}
+			require.NoError(t, sampleTask.Insert(t.Context()))
+			sampleDistros := []distro.Distro{
+				{
+					Id: "ubuntu1604-test",
+				},
+			}
+			for _, d := range sampleDistros {
+				require.NoError(t, d.Insert(ctx))
+			}
+			sampleParserProject := model.ParserProject{}
+			require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(sampleBaseProject), &sampleParserProject))
+			sampleParserProject.Id = sampleVersion.Id
+			require.NoError(t, sampleParserProject.Insert(t.Context()))
+			require.NoError(t, task.GeneratedJSONInsert(ctx, env.Settings(), &sampleTask, []string{testCase.generatedJSON}))
+			projectRef := model.ProjectRef{
+				Id:         "mci",
+				Identifier: "mci_identifier",
+				TaskOwnership: model.TaskOwnershipSettings{
+					GeneratedTaskValidationPrefix:      prefix,
+					BlockTaskGenerationOnTagValidation: utility.TruePtr(),
+				},
+			}
+			require.NoError(t, projectRef.Insert(t.Context()))
+
+			j := NewGenerateTasksJob(env, sampleTask.Version, sampleTask.Id, "1")
+			j.Run(ctx)
+
+			tasks, err := task.Find(ctx, task.ByVersion(sampleVersion.Id))
+			require.NoError(t, err)
+			if testCase.expectError {
+				require.Error(t, j.Error())
+				assert.Contains(t, j.Error().Error(), prefix)
+				assert.Contains(t, j.Error().Error(), "new_task")
+				assert.Len(t, tasks, 1, "no tasks should be generated when tag validation blocks task generation")
+				assert.Equal(t, "generator", tasks[0].DisplayName)
+			} else {
+				assert.NoError(t, j.Error())
+				assert.Len(t, tasks, 2)
+			}
 		})
 	}
 }

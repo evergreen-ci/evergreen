@@ -823,6 +823,10 @@ Notes:
   to specify a variant multiple times in order to append additional tasks to the variant.
 - Generated task's [tags](Project-Configuration-Files#task-and-variant-tags) will not be
   re-evaluated when added or retroactively activated in accordance with the variant's tags.
+- If the project enables blocking generated tasks that fail
+  [tag validation](Project-and-Distro-Settings#task-ownership-settings), generate.tasks
+  fails and no tasks are generated if any task it would generate is missing a tag with
+  the required prefix.
 - The calls to generate.tasks may not in aggregate in a single version
   generate more than 100 variants or more than 1000 tasks.
 - Because generate.tasks retries on errors that aren't known to us,

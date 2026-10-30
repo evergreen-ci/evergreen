@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -215,10 +216,15 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) (generate
 		return outcomeError, model.GenerateTasksCounts{}, errors.Wrap(err, "checking new dependency graph for cycles")
 	}
 
-	if tagValidationTrackingEnabled(pref) {
+	if tagValidationEnabled(pref) {
 		prefix := pref.TaskOwnership.GeneratedTaskValidationPrefix
-		failures := validator.CheckGeneratedTaskTagValidation(project, p, prefix)
-		emitTagValidationFailuresSpans(ctx, pref, failures, prefix)
+		tagValidationFailures := validator.CheckGeneratedTaskTagValidation(project, p, prefix)
+		if tagValidationTrackingEnabled(pref) {
+			emitTagValidationFailuresSpans(ctx, pref, tagValidationFailures, prefix)
+		}
+		if tagValidationBlockingEnabled(pref) && len(tagValidationFailures) > 0 {
+			return j.handleError(ctx, makeTagValidationError(prefix, tagValidationFailures))
+		}
 	}
 
 	// Ignore the cancel signal from the job's context, because it's better
@@ -240,10 +246,47 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) (generate
 	return outcomeGenerated, counts, nil
 }
 
+// tagValidationEnabled reports whether the project is configured to validate
+// the tags of tasks added by generate.tasks.
+func tagValidationEnabled(pref *model.ProjectRef) bool {
+	return tagValidationTrackingEnabled(pref) || tagValidationBlockingEnabled(pref)
+}
+
 // tagValidationTrackingEnabled reports whether the project is configured to
 // track generated tasks that fail tag validation.
 func tagValidationTrackingEnabled(pref *model.ProjectRef) bool {
 	return pref.TaskOwnership.GeneratedTaskValidationPrefix != "" && utility.FromBoolPtr(pref.TaskOwnership.TrackGeneratedTaskTagValidation)
+}
+
+// tagValidationBlockingEnabled reports whether the project is configured to
+// fail generate.tasks when a generated task fails tag validation.
+func tagValidationBlockingEnabled(pref *model.ProjectRef) bool {
+	return pref.TaskOwnership.GeneratedTaskValidationPrefix != "" &&
+		utility.FromBoolPtr(pref.TaskOwnership.BlockTaskGenerationOnTagValidation)
+}
+
+// makeTagValidationError builds the error for blocking generate.tasks on tag
+// validation failures.
+func makeTagValidationError(prefix string, failures []validator.TagValidationFailure) error {
+	// maxTagValidationTasksPerError limits how many failing task names the
+	// generate.tasks error message can list.
+	const maxTagValidationTasksPerError = 50
+
+	shown := failures
+	if len(shown) > maxTagValidationTasksPerError {
+		shown = shown[:maxTagValidationTasksPerError]
+	}
+	names := make([]string, 0, len(shown))
+	for _, failure := range shown {
+		names = append(names, failure.TaskName)
+	}
+	msg := fmt.Sprintf("%d generated tasks are missing a tag with prefix '%s':\n%s",
+		len(failures), prefix, strings.Join(names, "\n"))
+	if len(shown) < len(failures) {
+		unshown := len(failures) - len(shown)
+		msg += fmt.Sprintf("\nand %d more (truncated)", unshown)
+	}
+	return errors.New(msg)
 }
 
 // emitTagValidationFailuresSpans emits spans when tasks fail tag validation.
