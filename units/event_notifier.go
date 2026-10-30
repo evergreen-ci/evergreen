@@ -231,7 +231,14 @@ func notificationJobs(ctx context.Context, notifications []notification.Notifica
 		if notificationIsEnabled(ctx, flags, &notifications[i]) {
 			jobs = append(jobs, NewEventSendJob(notifications[i].ID, ts.Format(TSFormat)))
 		} else {
-			catcher.Wrapf(notifications[i].MarkError(ctx, errors.New("notification is disabled")), "setting error for notification '%s'", notifications[i].ID)
+			err := errors.New("notification is disabled")
+			catcher.Wrapf(notifications[i].MarkError(ctx, err), "setting error for notification '%s'", notifications[i].ID)
+			// A disabled sender is a non-delivery, so record the failed
+			// webhook delivery for consumers to recover.
+			grip.Error(ctx, message.WrapError(notification.InsertFailedWebhook(ctx, &notifications[i], err), message.Fields{
+				"message":         "recording failed webhook delivery",
+				"notification_id": notifications[i].ID,
+			}))
 		}
 	}
 	return jobs, catcher.Resolve()

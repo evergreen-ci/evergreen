@@ -50,6 +50,7 @@ type Notification struct {
 	ID         string           `bson:"_id"`
 	Subscriber event.Subscriber `bson:"subscriber"`
 	Payload    any              `bson:"payload"`
+	Project    string           `bson:"project,omitempty"`
 
 	SentAt   time.Time            `bson:"sent_at,omitempty"`
 	Error    string               `bson:"error,omitempty"`
