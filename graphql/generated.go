@@ -81737,11 +81737,36 @@ func (ec *executionContext) unmarshalInputAddFavoriteProjectInput(ctx context.Co
 		switch k {
 		case "projectIdentifier":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2string(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "TASKS")
+				if err != nil {
+					var zeroVal string
+					return zeroVal, err
+				}
+				access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "VIEW")
+				if err != nil {
+					var zeroVal string
+					return zeroVal, err
+				}
+				if ec.directives.RequireProjectAccess == nil {
+					var zeroVal string
+					return zeroVal, errors.New("directive requireProjectAccess is not implemented")
+				}
+				return ec.directives.RequireProjectAccess(ctx, obj, directive0, permission, access)
 			}
-			it.ProjectIdentifier = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(string); ok {
+				it.ProjectIdentifier = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		}
 	}
 
@@ -88845,11 +88870,36 @@ func (ec *executionContext) unmarshalInputRemoveFavoriteProjectInput(ctx context
 		switch k {
 		case "projectIdentifier":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2string(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "TASKS")
+				if err != nil {
+					var zeroVal string
+					return zeroVal, err
+				}
+				access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "VIEW")
+				if err != nil {
+					var zeroVal string
+					return zeroVal, err
+				}
+				if ec.directives.RequireProjectAccess == nil {
+					var zeroVal string
+					return zeroVal, errors.New("directive requireProjectAccess is not implemented")
+				}
+				return ec.directives.RequireProjectAccess(ctx, obj, directive0, permission, access)
 			}
-			it.ProjectIdentifier = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(string); ok {
+				it.ProjectIdentifier = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		}
 	}
 
