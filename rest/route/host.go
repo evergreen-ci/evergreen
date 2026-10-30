@@ -200,10 +200,12 @@ type hostGetHandler struct {
 //	@Tags			hosts
 //	@Router			/hosts [get]
 //	@Security		Api-User || Api-Key
-//	@Param			start_at	query		string	false	"The identifier of the host to start at in the pagination"
+//	@Param			start_at	query		string	false	"The identifier of the last host on the previous page, as returned by the Link response header. Defaults to the most recent host."
 //	@Param			limit		query		int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"
 //	@Param			status		query		string	false	"A status of host to limit the results to"
-//	@Success		200			{object}	model.APIHost
+//	@Success		200			{array}	model.APIHost
+//	@Header			200			{string}	Link	"Pagination links (rel="next", and rel="prev" where supported) returned when more results exist. Follow this header verbatim instead of constructing pagination URLs."
+//	@x-pagination-type	"host-id-cursor"
 func (hgh *hostGetHandler) Factory() gimlet.RouteHandler {
 	return &hostGetHandler{}
 }
@@ -216,7 +218,9 @@ func (hgh *hostGetHandler) Factory() gimlet.RouteHandler {
 //	@Router			/users/{user_id}/hosts [get]
 //	@Security		Api-User || Api-Key
 //	@Param			user_id		path		string	true	"the user ID"
-//	@Param			start_at	query		string	false	"The identifier of the host to start at in the pagination"
+//	@Router			/users/{user_id}/hosts [get]
+//	@Security		Api-User || Api-Key
+//	@Param			start_at	query		string	false	"The identifier of the last host on the previous page, as returned by the Link response header. Defaults to the most recent host."
 //	@Param			limit		query		int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"
 //	@Param			status		query		string	false	"A status of host to limit the results to"
 //	@Success		200			{object}	model.APIHost

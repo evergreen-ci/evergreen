@@ -15,36 +15,36 @@ import (
 )
 
 type APIProjectEvent struct {
-	Timestamp *time.Time              `json:"ts"`
-	User      *string                 `json:"user"`
+	Timestamp *time.Time              `json:"ts" extensions:"!x-nullable"`
+	User      *string                 `json:"user" extensions:"!x-nullable"`
 	Before    APIProjectEventSettings `json:"before"`
 	After     APIProjectEventSettings `json:"after"`
 }
 
 // take this from the original place instead of redefinning it here
 type APIProjectEventSettings struct {
-	Id                    *string           `json:"id"`
+	Id                    *string           `json:"id" extensions:"x-nullable"`
 	ProjectRef            APIProjectRef     `json:"proj_ref"`
 	GithubAppAuth         APIGithubAppAuth  `json:"github_app_auth"`
 	GithubWebhooksEnabled bool              `json:"github_webhooks_enabled"`
 	Vars                  APIProjectVars    `json:"vars"`
-	Aliases               []APIProjectAlias `json:"aliases"`
-	Subscriptions         []APISubscription `json:"subscriptions"`
+	Aliases               []APIProjectAlias `json:"aliases" extensions:"!x-nullable"`
+	Subscriptions         []APISubscription `json:"subscriptions" extensions:"!x-nullable"`
 }
 
 type APIProjectSettings struct {
-	Id                    *string           `json:"id"`
+	Id                    *string           `json:"id" extensions:"x-nullable"`
 	ProjectRef            APIProjectRef     `json:"proj_ref"`
 	GithubAppAuth         APIGithubAppAuth  `json:"github_app_auth"`
 	GithubWebhooksEnabled bool              `json:"github_webhooks_enabled"`
 	Vars                  APIProjectVars    `json:"vars"`
-	Aliases               []APIProjectAlias `json:"aliases"`
-	Subscriptions         []APISubscription `json:"subscriptions"`
+	Aliases               []APIProjectAlias `json:"aliases" extensions:"!x-nullable"`
+	Subscriptions         []APISubscription `json:"subscriptions" extensions:"!x-nullable"`
 }
 
 type APIGithubAppAuth struct {
 	AppID      int     `json:"app_id"`
-	PrivateKey *string `json:"private_key"`
+	PrivateKey *string `json:"private_key" extensions:"!x-nullable"`
 }
 
 type APIProjectVars struct {

@@ -277,6 +277,28 @@ type taskStatsHandler struct {
 	url string
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary			Get task statistics
+//	@Description		Returns a paginated list of daily aggregate test statistics for the project's tasks, grouped by the group_by parameter. Statistics cover the 26 weeks ending at before_date.
+//	@Tags				projects
+//	@Router				/projects/{project_id}/task_stats [get]
+//	@Security			Api-User || Api-Key
+//	@Param				project_id		path	string	true	"the project ID or identifier"
+//	@Param				start_at		query	string	false	"Compound cursor for pagination, as returned by the Link response header: four pipe-separated fields (date in YYYY-MM-DD, build variant, task name, distro). Pages list statistics at or before this cursor. Omit for the first page."
+//	@Param				limit			query	int		false	"The number of results to be returned per page of pagination. Defaults to 1000 and cannot exceed 1000."
+//	@Param				group_num_days	query	int		false	"The number of days of statistics to group together per result. Defaults to 1 and cannot exceed 182 (26 weeks)."
+//	@Param				group_by		query	string	false	"How to group statistics: 'task_variant_distro' (default), 'task_variant', or 'task'."
+//	@Param				tasks			query	string	false	"Only return statistics for these task names. Can be a comma-separated list or repeated."
+//	@Param				variants		query	string	false	"Only return statistics for these build variants. Can be a comma-separated list or repeated."
+//	@Param				distros			query	string	false	"Only return statistics for these distros. Can be a comma-separated list or repeated."
+//	@Param				requesters		query	string	false	"Only return statistics for versions with these requesters. Can be a comma-separated list or repeated. Defaults to 'gitter_request' (mainline commits)."
+//	@Param				before_date		query	string	false	"Only return statistics from before this date, in YYYY-MM-DD format. Defaults to today."
+//	@Param				after_date		query	string	false	"Only return statistics from after this date, in YYYY-MM-DD format. Defaults to before_date."
+//	@Param				sort			query	string	false	"Sort order of statistics: 'earliest' or 'latest'. Defaults to 'latest'."
+//	@Success			200				{array}	model.APITaskStats
+//	@Header				200				{string}	Link	"Pagination links (rel="next") returned when more results exist. Follow this header verbatim instead of constructing pagination URLs."
+//	@x-pagination-type	"stats-cursor"
 func (tsh *taskStatsHandler) Factory() gimlet.RouteHandler {
 	return &taskStatsHandler{}
 }

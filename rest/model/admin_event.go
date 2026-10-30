@@ -8,7 +8,7 @@ import (
 )
 
 type APIAdminEvent struct {
-	Timestamp *time.Time `json:"ts"`
+	Timestamp *time.Time `json:"ts" extensions:"!x-nullable"`
 	User      string     `json:"user"`
 	Section   string     `json:"section"`
 	Before    Model      `json:"before"`

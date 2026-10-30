@@ -51,13 +51,15 @@ func makeFetchTestsForTask(env evergreen.Environment, sc data.Connector) gimlet.
 //	@Router			/tasks/{task_id}/tests [get]
 //	@Security		Api-User || Api-Key
 //	@Param			task_id		path	string	true	"task ID"
-//	@Param			start_at	query	int		false	"The page number to start at in the pagination"
+//	@Param			start_at	query	int		false	"Zero-based page number to start at in the pagination. Each page contains up to 'limit' tests. Defaults to 0. Rather than computing page numbers yourself, follow the Link response header."
 //	@Param			limit		query	int		false	"The number of tests to be returned per page of pagination. Defaults to 100"
 //	@Param			status		query	string	false	"A status of test to limit the results to."
 //	@Param			execution	query	int		false	"The 0-based number corresponding to the execution of the task. Defaults to 0, meaning the first time the task was run."
 //	@Param			test_name	query	string	false	"Only return the test matching the name."
 //	@Param			latest		query	bool	false	"Return tests from the latest execution. Cannot be used with execution."
 //	@Success		200			{array}	model.APITest
+//	@Header			200			{string}	Link	"Pagination links (rel="next", and rel="prev" where supported) returned when more results exist. Follow this header verbatim instead of constructing pagination URLs."
+//	@x-pagination-type	"page-number"
 func (hgh *testGetHandler) Factory() gimlet.RouteHandler {
 	return &testGetHandler{
 		env: hgh.env,

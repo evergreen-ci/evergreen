@@ -12,6 +12,18 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Factory creates an instance of the handler.
+//
+//	@Summary			Fetch the Evergreen admin event log
+//	@Description		Returns a paginated list of admin events, most recent first.
+//	@Tags				admin
+//	@Router				/admin/events [get]
+//	@Security			Api-User || Api-Key
+//	@Param				ts		query	string	false	"The timestamp (RFC3339) of the event to start at in the pagination; pages list events that happened at or before this time. Defaults to now. Rather than constructing this yourself, follow the Link response header."
+//	@Param				limit	query	int		false	"The number of events to be returned per page of pagination. Defaults to 100"
+//	@Success			200		{array}	model.APIAdminEvent
+//	@Header				200		{string}	Link	"Pagination links (rel="next") returned when more results exist. Follow this header verbatim instead of constructing pagination URLs."
+//	@x-pagination-type	"time-cursor"
 func makeFetchAdminEvents() gimlet.RouteHandler {
 	return &adminEventsGet{}
 }
