@@ -799,11 +799,14 @@ const (
 	tasksByProjectQueryMaxTime = 90 * time.Second
 )
 
+// adminPermissions are the permissions granted to newly-created project and
+// repo admin roles.
 var adminPermissions = gimlet.Permissions{
 	evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
 	evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
 	evergreen.PermissionPatches:         evergreen.PatchSubmit.Value,
 	evergreen.PermissionLogs:            evergreen.LogsView.Value,
+	evergreen.PermissionTestQuarantine:  evergreen.TestQuarantineEdit.Value,
 }
 
 func (projectRef *ProjectRef) Insert(ctx context.Context) error {
@@ -3197,13 +3200,14 @@ func (p *ProjectRef) UpdateAdminRoles(ctx context.Context, toAdd, toRemove []str
 		return false, nil
 	}
 	rm := evergreen.GetEnvironment().RoleManager()
-	role, err := rm.FindRoleWithPermissions(ctx, evergreen.ProjectResourceType, []string{p.Id}, adminPermissions)
+	roles, err := rm.GetRoles(ctx, []string{GetProjectAdminRole(p.Id)})
 	if err != nil {
-		return false, errors.Wrap(err, "finding role with admin permissions")
+		return false, errors.Wrap(err, "getting project admin role")
 	}
-	if role == nil {
+	if len(roles) == 0 {
 		return false, errors.Errorf("no admin role for project '%s' found", p.Id)
 	}
+	role := roles[0]
 
 	catcher := grip.NewBasicCatcher()
 	for _, addedUser := range toAdd {

@@ -1317,6 +1317,13 @@ func getProjectPermissionLevel(projectPermission ProjectPermission, access Acces
 		} else {
 			return "", permissionLevel, errors.Errorf("invalid access level for %s", evergreen.PermissionLogs)
 		}
+	case ProjectPermissionTestQuarantine:
+		permission = evergreen.PermissionTestQuarantine
+		if access == AccessLevelEdit {
+			permissionLevel = evergreen.TestQuarantineEdit
+		} else {
+			return "", permissionLevel, errors.Errorf("invalid access level for %s", evergreen.PermissionTestQuarantine)
+		}
 	default:
 		return "", permissionLevel, errors.New("invalid project permission")
 	}

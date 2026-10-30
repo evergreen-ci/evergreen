@@ -22,6 +22,7 @@ enum ProjectPermission {
   ANNOTATIONS
   PATCHES
   LOGS
+  TEST_QUARANTINE
 }
 
 enum AccessLevel {
