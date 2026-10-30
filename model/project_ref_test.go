@@ -3262,14 +3262,14 @@ func TestUpdateAdminRoles(t *testing.T) {
 	}
 	require.NoError(t, rm.AddScope(t.Context(), adminScope))
 	adminRole := gimlet.Role{
-		ID:          "admin",
+		ID:          GetProjectAdminRole("proj"),
 		Scope:       evergreen.AllProjectsScope,
 		Permissions: adminPermissions,
 	}
 	require.NoError(t, rm.UpdateRole(t.Context(), adminRole))
 	oldAdmin := user.DBUser{
 		Id:          "oldAdmin",
-		SystemRoles: []string{"admin"},
+		SystemRoles: []string{GetProjectAdminRole("proj")},
 	}
 	require.NoError(t, oldAdmin.Insert(t.Context()))
 	newAdmin := user.DBUser{
@@ -3292,7 +3292,7 @@ func TestUpdateAdminRoles(t *testing.T) {
 	assert.Len(t, newAdminFromDB.Roles(), 1)
 }
 
-func TestUpdateAdminRolesFindsAdminRoleWithoutTestQuarantinePermission(t *testing.T) {
+func TestUpdateAdminRolesUsesProjectAdminRole(t *testing.T) {
 	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, user.Collection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
@@ -3303,31 +3303,47 @@ func TestUpdateAdminRolesFindsAdminRoleWithoutTestQuarantinePermission(t *testin
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"proj"},
 	}))
-	// Admin roles created before the test quarantine permission existed only
-	// have the original admin permissions.
-	legacyAdminRole := gimlet.Role{
-		ID:    GetProjectAdminRole("proj"),
+	// A role granted through MANA in the same scope has every admin permission
+	// except test quarantine, so a lookup by permissions could pick it instead
+	// of the project's admin role.
+	manaRole := gimlet.Role{
+		ID:    "mana_role",
 		Scope: "project_proj",
 		Permissions: gimlet.Permissions{
 			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
 			evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
+			evergreen.PermissionAnnotations:     evergreen.AnnotationsModify.Value,
 			evergreen.PermissionPatches:         evergreen.PatchSubmit.Value,
+			evergreen.PermissionGitTagVersions:  evergreen.GitTagVersionsCreate.Value,
 			evergreen.PermissionLogs:            evergreen.LogsView.Value,
+			evergreen.PermissionTestQuarantine:  evergreen.TestQuarantineNone.Value,
 		},
 	}
-	require.NoError(t, rm.UpdateRole(ctx, legacyAdminRole))
+	require.NoError(t, rm.UpdateRole(ctx, manaRole))
+	adminRole := gimlet.Role{
+		ID:          GetProjectAdminRole("proj"),
+		Scope:       "project_proj",
+		Permissions: adminPermissions,
+	}
+	require.NoError(t, rm.UpdateRole(ctx, adminRole))
+	oldAdmin := user.DBUser{Id: "oldAdmin", SystemRoles: []string{adminRole.ID, manaRole.ID}}
+	require.NoError(t, oldAdmin.Insert(ctx))
 	newAdmin := user.DBUser{Id: "newAdmin"}
 	require.NoError(t, newAdmin.Insert(ctx))
 	p := ProjectRef{Id: "proj"}
 	require.NoError(t, p.Insert(ctx))
 
-	modified, err := p.UpdateAdminRoles(ctx, []string{newAdmin.Id}, nil)
+	modified, err := p.UpdateAdminRoles(ctx, []string{newAdmin.Id}, []string{oldAdmin.Id})
 	require.NoError(t, err)
 	assert.True(t, modified)
 	newAdminFromDB, err := user.FindOneById(ctx, newAdmin.Id)
 	require.NoError(t, err)
 	require.NotNil(t, newAdminFromDB)
-	assert.Equal(t, []string{legacyAdminRole.ID}, newAdminFromDB.Roles())
+	assert.Equal(t, []string{adminRole.ID}, newAdminFromDB.Roles())
+	oldAdminFromDB, err := user.FindOneById(ctx, oldAdmin.Id)
+	require.NoError(t, err)
+	require.NotNil(t, oldAdminFromDB)
+	assert.Equal(t, []string{manaRole.ID}, oldAdminFromDB.Roles())
 }
 
 func TestUpdateAdminRolesError(t *testing.T) {
@@ -3337,7 +3353,7 @@ func TestUpdateAdminRolesError(t *testing.T) {
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	oldAdmin := user.DBUser{
 		Id:          "oldAdmin",
-		SystemRoles: []string{"admin"},
+		SystemRoles: []string{GetProjectAdminRole("proj")},
 	}
 	require.NoError(t, oldAdmin.Insert(t.Context()))
 	newAdmin := user.DBUser{
@@ -3364,7 +3380,7 @@ func TestUpdateAdminRolesError(t *testing.T) {
 	}
 	require.NoError(t, rm.AddScope(t.Context(), adminScope))
 	adminRole := gimlet.Role{
-		ID:          "admin",
+		ID:          GetProjectAdminRole("proj"),
 		Scope:       evergreen.AllProjectsScope,
 		Permissions: adminPermissions,
 	}

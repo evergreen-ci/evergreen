@@ -683,7 +683,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			newAdminFromDB, err := user.FindOneById(t.Context(), "newAdmin")
 			assert.NoError(t, err)
 			assert.NotNil(t, newAdminFromDB)
-			assert.Contains(t, newAdminFromDB.Roles(), "admin")
+			assert.Contains(t, newAdminFromDB.Roles(), model.GetProjectAdminRole(ref.Id))
 		},
 		"Removes and adds admin with error": func(t *testing.T, ref model.ProjectRef) {
 			newAdmin := user.DBUser{
@@ -709,7 +709,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			newAdminFromDB, err := user.FindOneById(t.Context(), "newAdmin")
 			assert.NoError(t, err)
 			assert.NotNil(t, newAdminFromDB)
-			assert.Contains(t, newAdminFromDB.Roles(), "admin")
+			assert.Contains(t, newAdminFromDB.Roles(), model.GetProjectAdminRole(ref.Id))
 
 			oldAdminFromDB, err := user.FindOneById(t.Context(), "oldAdmin")
 			assert.NoError(t, err)
@@ -1333,7 +1333,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 		assert.NoError(t, rm.AddScope(t.Context(), adminScope))
 
 		adminRole := gimlet.Role{
-			ID:    "admin",
+			ID:    model.GetProjectAdminRole(pRef.Id),
 			Scope: adminScope.ID,
 			Permissions: gimlet.Permissions{
 				evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
@@ -1345,7 +1345,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 		require.NoError(t, rm.UpdateRole(t.Context(), adminRole))
 		oldAdmin := user.DBUser{
 			Id:          "oldAdmin",
-			SystemRoles: []string{"admin"},
+			SystemRoles: []string{adminRole.ID},
 		}
 		require.NoError(t, oldAdmin.Insert(t.Context()))
 

@@ -809,17 +809,6 @@ var adminPermissions = gimlet.Permissions{
 	evergreen.PermissionTestQuarantine:  evergreen.TestQuarantineEdit.Value,
 }
 
-// adminRoleLookupPermissions are used to find a project's existing admin role.
-// The role manager only matches roles that have every one of these
-// permissions, so permissions added to adminPermissions after admin roles
-// already exist (e.g. test quarantine) must not be added here.
-var adminRoleLookupPermissions = gimlet.Permissions{
-	evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
-	evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
-	evergreen.PermissionPatches:         evergreen.PatchSubmit.Value,
-	evergreen.PermissionLogs:            evergreen.LogsView.Value,
-}
-
 func (projectRef *ProjectRef) Insert(ctx context.Context) error {
 	return db.Insert(ctx, ProjectRefCollection, projectRef)
 }
@@ -3211,13 +3200,14 @@ func (p *ProjectRef) UpdateAdminRoles(ctx context.Context, toAdd, toRemove []str
 		return false, nil
 	}
 	rm := evergreen.GetEnvironment().RoleManager()
-	role, err := rm.FindRoleWithPermissions(ctx, evergreen.ProjectResourceType, []string{p.Id}, adminRoleLookupPermissions)
+	roles, err := rm.GetRoles(ctx, []string{GetProjectAdminRole(p.Id)})
 	if err != nil {
-		return false, errors.Wrap(err, "finding role with admin permissions")
+		return false, errors.Wrap(err, "getting project admin role")
 	}
-	if role == nil {
+	if len(roles) == 0 {
 		return false, errors.Errorf("no admin role for project '%s' found", p.Id)
 	}
+	role := roles[0]
 
 	catcher := grip.NewBasicCatcher()
 	for _, addedUser := range toAdd {
