@@ -1567,7 +1567,16 @@ func githubAppSlugForUser(appUser *github.User, userID int, botSuffix string) (s
 // GitHubUserHasWritePermission returns true if the given user has write permission for the repo.
 // Returns an error if the user isn't found or the token isn't authed for this repo.
 func GitHubUserHasWritePermission(ctx context.Context, owner, repo, username string) (bool, error) {
-	caller := "userHasWritePermission"
+	return gitHubUserHasPermission(ctx, "userHasWritePermission", owner, repo, username, githubWritePermissions)
+}
+
+// GitHubUserHasReadPermission returns true if the given user can read the repo.
+// Returns an error if the user isn't found or the token isn't authed for this repo.
+func GitHubUserHasReadPermission(ctx context.Context, owner, repo, username string) (bool, error) {
+	return gitHubUserHasPermission(ctx, "userHasReadPermission", owner, repo, username, allGitHubPermissions)
+}
+
+func gitHubUserHasPermission(ctx context.Context, caller, owner, repo, username string, permissions []string) (bool, error) {
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, owner),
@@ -1596,7 +1605,45 @@ func GitHubUserHasWritePermission(ctx context.Context, owner, repo, username str
 		return false, errors.Errorf("GitHub returned an invalid response to request for user permissions for '%s'", username)
 	}
 
-	return utility.StringSliceContains(githubWritePermissions, permissionLevel.GetPermission()), nil
+	return utility.StringSliceContains(permissions, permissionLevel.GetPermission()), nil
+}
+
+// IsGitHubRepoPublic returns true if the repo is visible to anyone on GitHub.
+// Internal repos are not public.
+func IsGitHubRepoPublic(ctx context.Context, owner, repo string) (bool, error) {
+	caller := "IsGitHubRepoPublic"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+	))
+	defer span.End()
+
+	token, err := getInstallationTokenWithDefaultOwnerRepo(ctx, nil)
+	if err != nil {
+		return false, errors.Wrap(err, "getting installation token")
+	}
+
+	githubClient := getGithubClient(ctx, token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
+
+	ghRepo, resp, err := githubClient.Repositories.Get(ctx, owner, repo)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+		if resp.StatusCode == http.StatusNotFound {
+			return false, nil
+		}
+		if err != nil {
+			return false, parseGithubErrorResponse(resp)
+		}
+	}
+	if err != nil {
+		return false, errors.Wrapf(err, "getting repo '%s/%s'", owner, repo)
+	}
+
+	visibility := ghRepo.GetVisibility()
+	return !ghRepo.GetPrivate() && (visibility == "" || visibility == "public"), nil
 }
 
 // ValidateGitHubPermission checks if the given permission is a valid GitHub permission.

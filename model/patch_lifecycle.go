@@ -876,6 +876,11 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, transl
 		AuthorEmail:          authorEmail,
 	}
 
+	// Patches created before module repos were checked can still be finalized.
+	if err := ValidatePatchModuleRepos(ctx, p, projectRef, project.Modules); err != nil {
+		return nil, err
+	}
+
 	manifestCtx, manifestSpan := tracer.Start(ctx, "construct-manifest")
 	mfst, err := constructManifest(manifestCtx, patchVersion, projectRef, project.Modules)
 	manifestSpan.End()
@@ -1215,6 +1220,7 @@ func getLoadProjectOptsForPatch(ctx context.Context, p *patch.Patch) (*ProjectRe
 		PatchOpts: &PatchOpts{
 			patch: p,
 		},
+		moduleRepoChecker: newPatchModuleRepoChecker(projectRef, p),
 	}
 
 	autoUpdateRevisions, err := prefetchAutoUpdateModuleRevisions(ctx, p, projectRef, &opts)

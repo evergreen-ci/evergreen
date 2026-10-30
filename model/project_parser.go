@@ -888,6 +888,7 @@ func processIntermediateProjectIncludes(ctx context.Context, intermediateProject
 		ModuleResolver:            projectOpts.ModuleResolver,
 		IsIncludedFile:            true,
 		LocalIncludeDir:           projectOpts.LocalIncludeDir,
+		moduleRepoChecker:         projectOpts.moduleRepoChecker,
 	}
 	if projectOpts.Ref != nil {
 		localOpts.Worktree = dirs.getWorktreeForOwnerRepoWorker(projectOpts.Ref.Owner, projectOpts.Ref.Repo, workerIdx)
@@ -1403,6 +1404,8 @@ type GetProjectOpts struct {
 	// cacheEnabled routes the translate step through the content-hash translation cache. It is only
 	// set internally by GetProjectFromFile from the ServiceFlag, so external callers stay uncached.
 	cacheEnabled bool
+
+	moduleRepoChecker *PatchModuleRepoChecker
 }
 
 type PatchOpts struct {
@@ -1538,6 +1541,9 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 	repoOwner, repoName, err := module.GetOwnerAndRepo()
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting module owner and repo '%s'", module.Name)
+	}
+	if err := opts.moduleRepoChecker.check(ctx, repoOwner, repoName); err != nil {
+		return nil, errors.Wrapf(err, "module '%s'", module.Name)
 	}
 	pRef := *opts.Ref
 	pRef.Owner = repoOwner

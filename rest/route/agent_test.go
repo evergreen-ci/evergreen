@@ -1022,6 +1022,23 @@ func TestIsRepoAllowedForTask(t *testing.T) {
 	}
 }
 
+func TestCreateInstallationTokenRejectsUndeclaredRepo(t *testing.T) {
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(t.Context()))
+	require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, model.VersionCollection, model.ParserProjectCollection, manifest.Collection))
+
+	require.NoError(t, (&model.ProjectRef{Id: "p1", Owner: "myorg", Repo: "myrepo"}).Insert(t.Context()))
+	require.NoError(t, (&model.Version{Id: "v1", Identifier: "p1", Requester: evergreen.RepotrackerVersionRequester}).Insert(t.Context()))
+	require.NoError(t, (&model.ParserProject{Id: "v1"}).Insert(t.Context()))
+	tsk := task.Task{Id: "t1", Project: "p1", Version: "v1", Requester: evergreen.RepotrackerVersionRequester}
+	require.NoError(t, tsk.Insert(t.Context()))
+
+	r, ok := makeCreateInstallationToken(env).(*createInstallationTokenForClone)
+	require.True(t, ok)
+	r.taskID, r.owner, r.repo = tsk.Id, "myorg", "secret-repo"
+	assert.Equal(t, http.StatusForbidden, r.Run(t.Context()).Status())
+}
+
 func TestUpsertCheckRunParse(t *testing.T) {
 	ctx := t.Context()
 

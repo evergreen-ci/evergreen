@@ -608,7 +608,7 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context) error {
 		"message": "problem fetching task data",
 		"task_id": j.host.ProvisionOptions.TaskId,
 		"host_id": j.host.Id,
-		"cmd":     cmd,
+		"cmd":     strings.Join(j.host.SpawnHostGetTaskDataCommand(ctx, "", nil), " "),
 		"job":     j.ID(),
 		"logs":    output,
 	}))
@@ -855,7 +855,7 @@ func parseLsblkOutput(lsblkOutput string) ([]blockDevice, error) {
 }
 
 // GetGithubTokensForTask returns a read-only token for owner/repo associated with the task
-// and a read-only token for each module associated with the task.
+// and a read-only token for each module repo the task's user can use.
 func GetGithubTokensForTask(ctx context.Context, taskId string) (string, []string, error) {
 	catcher := grip.NewBasicCatcher()
 
@@ -880,20 +880,33 @@ func GetGithubTokensForTask(ctx context.Context, taskId string) (string, []strin
 	var moduleTokens []string
 	settings, err := evergreen.GetConfig(ctx)
 	catcher.Add(err)
-	opts := &github.InstallationTokenOptions{
-		Permissions: &github.InstallationPermissions{
-			Contents: utility.ToStringPtr(thirdparty.GithubPermissionRead),
-		},
+	createToken := func(owner, repo string) (string, error) {
+		token, _, err := githubapp.CreateGitHubAppAuth(settings).CreateInstallationToken(ctx, owner, repo, &github.InstallationTokenOptions{
+			Repositories: []string{repo},
+			Permissions: &github.InstallationPermissions{
+				Contents: utility.ToStringPtr(thirdparty.GithubPermissionRead),
+			},
+		})
+		return token, err
 	}
 
 	if projectOwner != "" && projectRepo != "" && err == nil && settings != nil {
 		// Ignore any errors because if the repo is not private, cloning the repo will still work.
 		// Either way, we should still spin up the host even if we can't fetch the data.
-		githubAppToken, _, err = githubapp.CreateGitHubAppAuth(settings).CreateInstallationToken(ctx, projectOwner, projectRepo, opts)
+		githubAppToken, err = createToken(projectOwner, projectRepo)
 		catcher.Add(err)
 
 	}
 
+	var repoChecker *model.PatchModuleRepoChecker
+	if len(modules) > 0 {
+		// The spawn host's owner may not be the PR author.
+		repoChecker, err = model.ModuleRepoCheckerForUser(ctx, t)
+		if err != nil {
+			catcher.Wrap(err, "getting module repo checker")
+			modules = nil
+		}
+	}
 	for moduleName, module := range modules {
 		repo := module.Repo
 		if repo == "" {
@@ -901,7 +914,12 @@ func GetGithubTokensForTask(ctx context.Context, taskId string) (string, []strin
 			catcher.Add(err)
 		}
 		if module.Owner != "" && repo != "" && settings != nil {
-			token, _, err := githubapp.CreateGitHubAppAuth(settings).CreateInstallationToken(ctx, module.Owner, repo, opts)
+			allowed, err := repoChecker.Allows(ctx, module.Owner, repo)
+			catcher.Wrapf(err, "checking repo for module '%s'", moduleName)
+			if !allowed {
+				continue
+			}
+			token, err := createToken(module.Owner, strings.TrimSuffix(strings.TrimSuffix(repo, ".git"), ".wiki"))
 			catcher.Add(err)
 			moduleTokens = append(moduleTokens, fmt.Sprintf("%s:%s", moduleName, token))
 		}
