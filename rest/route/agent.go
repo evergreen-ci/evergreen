@@ -752,12 +752,25 @@ func (h *attachFilesHandler) Parse(ctx context.Context, r *http.Request) error {
 		grip.Error(ctx, message)
 		return errors.Wrap(err, message)
 	}
+	// Drop invalid links rather than rejecting the request so that a bad link
+	// doesn't fail the task or prevent its valid artifacts from being attached.
+	files, err := artifact.RemoveInvalidLinks(h.files)
+	grip.Warning(ctx, message.WrapError(err, message.Fields{
+		"message":           "dropping invalid artifact links",
+		"task_id":           h.taskID,
+		"num_files":         len(h.files),
+		"num_files_dropped": len(h.files) - len(files),
+	}))
+	h.files = files
 	return nil
 }
 
 // Run updates file mappings for a task or build
 func (h *attachFilesHandler) Run(ctx context.Context) gimlet.Responder {
 	t := MustHaveTask(ctx)
+	if len(h.files) == 0 {
+		return gimlet.NewJSONResponse(fmt.Sprintf("No valid artifact files to attach for task %s", t.Id))
+	}
 
 	discoverAndCacheBucketLifecycleRules(ctx, t, h.files)
 
