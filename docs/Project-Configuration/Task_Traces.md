@@ -76,7 +76,7 @@ The parent span carries these attributes:
 Each child span carries these attributes:
 
 | Attribute                                               | Description                                                                       |
-| ------------------------------------------------------- | --------------------------------------------------------------------------------  |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | `evergreen.generate_tasks.tag_validation_failing_tasks` | The names of the generated tasks failing tag validation (up to 50 per child span) |
 | `evergreen.generate_tasks.tag_validation_batch_index`   | The position of this batch, so the full list can be reassembled in order          |
 
