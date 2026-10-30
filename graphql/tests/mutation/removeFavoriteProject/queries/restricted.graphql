@@ -1,10 +1,5 @@
 mutation {
   removeFavoriteProject(opts: { projectIdentifier: "restricted-secret-project" }) {
     identifier
-    restricted
-    owner
-    repo
-    taskAnnotationSettings { fileTicketWebhook { endpoint secret } }
-    workstationConfig { gitClone setupCommands { command directory } }
   }
 }
