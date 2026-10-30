@@ -53,22 +53,23 @@ Projects can require that tasks added by `generate.tasks` carry a tag with a
 required prefix (see [task ownership settings](Project-and-Distro-Settings#task-ownership-settings)).
 
 When tracking is enabled for a project, each `generate.tasks` run that
-generates tasks failing tag validation emits a trace containing a parent span named
-`generate_tasks_tag_validation_failures` for the run, with child spans named
-`generate_tasks_tag_validation_failure` that contains the failing task names.
+generates at least one task that fails tag validation emits a trace containing a
+parent span named `generate_tasks_tag_validation_failures` for the generator
+run. That parent span has one or more child spans named
+`generate_tasks_tag_validation_failure` that contain the failing task names.
 
 The parent span carries these attributes:
 
 | Attribute                                             | Description                                                |
 | ----------------------------------------------------- | ---------------------------------------------------------- |
-| `evergreen.version.id`                                | The version ID                                             |
+| `evergreen.project.id`                                | The project ID                                             |
 | `evergreen.project.identifier`                        | The project identifier                                     |
 | `evergreen.project.org`                               | The project org                                            |
 | `evergreen.project.repo`                              | The project repo                                           |
+| `evergreen.version.id`                                | The version ID                                             |
+| `evergreen.version.requester`                         | The version requester                                      |
 | `evergreen.build.id`                                  | The generator task build ID                                |
-| `evergreen.build.name`                                | The generator task build name                              |
 | `evergreen.task.id`                                   | The generator task ID                                      |
-| `evergreen.task.name`                                 | The generator task name                                    |
 | `evergreen.generate_tasks.tag_validation_prefix`      | The required tag prefix configured for the project         |
 | `evergreen.generate_tasks.tag_validation_num_failing` | The total number of generated tasks failing tag validation |
 
@@ -87,7 +88,8 @@ child spans in order. The full list for a single version is the concatenation
 of each child span's `evergreen.generate_tasks.tag_validation_failing_tasks`
 attribute, ordered by `evergreen.generate_tasks.tag_validation_batch_index`.
 
-For example, to get the failing task names from a version, run:
+For example, to get all the generated task names from a version that fail tag
+validation, run:
 
 ```text
 WHERE name = generate_tasks_tag_validation_failure
