@@ -33,12 +33,20 @@ const (
 	generateTasksIsSaveErrorAttribute            = "evergreen.generate_tasks.is_save_error"
 	generateTasksNumActivatedForVersionAttribute = "evergreen.generate_tasks.num_activated_for_version"
 
-	generateTasksTagValidationSpanName                     = "generate_tasks_tag_validation_failures"
-	generateTasksTagValidationFailureSpanName              = "generate_tasks_tag_validation_failure"
-	generateTasksTagValidationPrefixAttribute              = "evergreen.generate_tasks.tag_validation_prefix"
-	generateTasksTagValidationNumFailingAttribute          = "evergreen.generate_tasks.tag_validation_num_failing"
-	generateTasksTagValidationFailingTaskAttribute         = "evergreen.generate_tasks.tag_validation_failing_task"
-	generateTasksTagValidationFailingTaskVariantsAttribute = "evergreen.generate_tasks.tag_validation_failing_task_variants"
+	generateTasksTagValidationSpanName              = "generate_tasks_tag_validation_failures"
+	generateTasksTagValidationFailureSpanName       = "generate_tasks_tag_validation_failure"
+	generateTasksTagValidationPrefixAttribute       = "evergreen.generate_tasks.tag_validation_prefix"
+	generateTasksTagValidationNumFailingAttribute   = "evergreen.generate_tasks.tag_validation_num_failing"
+	generateTasksTagValidationFailingTasksAttribute = "evergreen.generate_tasks.tag_validation_failing_tasks"
+	generateTasksTagValidationBatchIndexAttribute   = "evergreen.generate_tasks.tag_validation_batch_index"
+
+	// maxTagValidationTasksPerSpan bounds how many failing task names can be
+	// attached to a single batch span
+	maxTagValidationTasksPerSpan = 50
+	// maxTagValidationFailureBatchSpans bounds how many spans a single
+	// generate.tasks run emits for tag validation failures, so the burst of
+	// spans cannot overflow the tracer provider's batch span processing limit.
+	maxTagValidationFailureBatchSpans = 500
 )
 
 // generateTasksOutcome classifies why a generate.tasks job execution ended the way it did,
@@ -210,7 +218,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) (generate
 	if tagValidationTrackingEnabled(pref) {
 		prefix := pref.TaskOwnership.GeneratedTaskValidationPrefix
 		failures := validator.CheckGeneratedTaskTagValidation(project, p, prefix)
-		emitTagValidationFailuresSpans(ctx, pref, v.Id, failures, prefix)
+		emitTagValidationFailuresSpans(ctx, pref, failures, prefix)
 	}
 
 	// Ignore the cancel signal from the job's context, because it's better
@@ -239,7 +247,7 @@ func tagValidationTrackingEnabled(pref *model.ProjectRef) bool {
 }
 
 // emitTagValidationFailuresSpans emits spans when tasks fail tag validation.
-func emitTagValidationFailuresSpans(ctx context.Context, pref *model.ProjectRef, versionID string, failures []validator.TagValidationFailure, prefix string) {
+func emitTagValidationFailuresSpans(ctx context.Context, pref *model.ProjectRef, failures []validator.TagValidationFailure, prefix string) {
 	if len(failures) == 0 {
 		return
 	}
@@ -248,7 +256,6 @@ func emitTagValidationFailuresSpans(ctx context.Context, pref *model.ProjectRef,
 		attribute.String(evergreen.ProjectIdentifierOtelAttribute, pref.Identifier),
 		attribute.String(evergreen.ProjectOrgOtelAttribute, pref.Owner),
 		attribute.String(evergreen.ProjectRepoOtelAttribute, pref.Repo),
-		attribute.String(evergreen.VersionIDOtelAttribute, versionID),
 	})
 	ctx, span := tracer.Start(ctx, generateTasksTagValidationSpanName,
 		trace.WithNewRoot(),
@@ -258,16 +265,21 @@ func emitTagValidationFailuresSpans(ctx context.Context, pref *model.ProjectRef,
 		))
 	defer span.End()
 
-	for _, failure := range failures {
-		// Make one child span per failing task.
-		// This can't be set as a single string slice on one span because
-		// Evergreen has an attribute value length limit.
-		_, failureSpan := tracer.Start(ctx, generateTasksTagValidationFailureSpanName,
+	numBatches := (len(failures) + maxTagValidationTasksPerSpan - 1) / maxTagValidationTasksPerSpan
+	numBatches = min(numBatches, maxTagValidationFailureBatchSpans)
+	for i := 0; i < numBatches; i++ {
+		start := i * maxTagValidationTasksPerSpan
+		end := min(start+maxTagValidationTasksPerSpan, len(failures))
+		failingTaskNames := make([]string, 0, end-start)
+		for _, failure := range failures[start:end] {
+			failingTaskNames = append(failingTaskNames, failure.TaskName)
+		}
+		_, batchSpan := tracer.Start(ctx, generateTasksTagValidationFailureSpanName,
 			trace.WithAttributes(
-				attribute.String(generateTasksTagValidationFailingTaskAttribute, failure.TaskName),
-				attribute.StringSlice(generateTasksTagValidationFailingTaskVariantsAttribute, failure.BuildVariants),
+				attribute.Int(generateTasksTagValidationBatchIndexAttribute, i),
+				attribute.StringSlice(generateTasksTagValidationFailingTasksAttribute, failingTaskNames),
 			))
-		failureSpan.End()
+		batchSpan.End()
 	}
 }
 
