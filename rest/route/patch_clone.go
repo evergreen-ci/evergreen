@@ -2,7 +2,9 @@ package route
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
@@ -12,14 +14,11 @@ import (
 	restData "github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
 // POST /patches/{patch_id}/clone
-//
-// Creates a new patch copying the diffs, base commit, and task/variant definition from an existing patch, replacing
-// the CLI's `patch-file --diff-patchId` flow, which faked cloning by replaying a source patch's raw diffs.
+
 type patchCloneHandler struct {
 	env     evergreen.Environment
 	patchID string
@@ -33,14 +32,14 @@ func makeClonePatchHandler(env evergreen.Environment) gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Clone a patch
-//	@Description	Creates a new patch copying the diffs, base commit, description, and task/variant definition from the given patch. The request body is optional and can override the description and finalize the clone. The clone is created unactivated unless 'finalize' is true. Cloning a patch with trigger aliases reproduces its child patches in their projects, which requires 'Patches: Submit and Edit' permission on each child project. The caller must have 'Patches: Submit and Edit' permission in the source patch's project; the clone belongs to the caller in the same project.
+//	@Description	Creates a new patch copying the diffs, base commit, description, and task/variant definition from the given patch. The clone is created unactivated unless 'finalize' is true. Cloning a patch with trigger aliases reproduces its child patches in their projects, which requires 'Patches: Submit and Edit' permission on each child project. Merge queue patches cannot be cloned, since their base branch is temporary. The caller must have 'Patches: Submit and Edit' permission in the source patch's project; the clone belongs to the caller in the same project.
 //	@Tags			patches
 //	@Router			/patches/{patch_id}/clone [post]
 //	@Security		Api-User || Api-Key
 //	@Param			patch_id	path		string						true	"the patch ID to clone"
 //	@Param			{object}	body		apimodels.ClonePatchRequest	false	"optional overrides"
 //	@Success		201			{object}	model.APIPatch
-//	@Failure		400			{object}	gimlet.ErrorResponse	"the source patch has no tasks or variants to finalize"
+//	@Failure		400			{object}	gimlet.ErrorResponse	"the patch cannot be cloned or has nothing to finalize"
 func (h *patchCloneHandler) Factory() gimlet.RouteHandler {
 	return &patchCloneHandler{env: h.env}
 }
@@ -55,13 +54,14 @@ func (h *patchCloneHandler) Parse(ctx context.Context, r *http.Request) error {
 	}
 
 	// The body is optional.
-	if r.Body == nil || r.ContentLength == 0 {
-		return nil
+	b, err := io.ReadAll(r.Body)
+	if err != nil {
+		return errors.Wrap(err, "reading clone options from request body")
 	}
-	body := utility.NewRequestReader(r)
-	defer body.Close()
-	if err := utility.ReadJSON(body, &h.body); err != nil {
-		return errors.Wrap(err, "reading clone options from JSON request body")
+	if len(b) > 0 {
+		if err = json.Unmarshal(b, &h.body); err != nil {
+			return errors.Wrap(err, "reading clone options from JSON request body")
+		}
 	}
 	return nil
 }
@@ -79,22 +79,12 @@ func (h *patchCloneHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("patch '%s' not found", h.patchID),
 		})
 	}
-	if err = source.FetchPatchFiles(ctx); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "fetching diff files for patch '%s'", h.patchID))
-	}
-
-	if h.body.Finalize && len(source.VariantsTasks) == 0 &&
-		len(source.BuildVariants)+len(source.RegexBuildVariants)+len(source.Tasks)+len(source.RegexTasks) == 0 &&
-		source.Alias == "" && len(source.Aliases) == 0 {
+	// A merge queue patch's base branch is temporary, so the clone could never run.
+	if source.IsMergeQueuePatch() {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    "cannot finalize a clone of a patch with no tasks or variants",
+			Message:    "merge queue patches cannot be cloned",
 		})
-	}
-
-	description := source.Description
-	if h.body.Description != "" {
-		description = h.body.Description
 	}
 
 	pref, err := dbModel.FindMergedProjectRef(ctx, source.Project, "", true)
@@ -108,11 +98,10 @@ func (h *patchCloneHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	// The base diff is the patch entry with no module name; module diffs keep
-	// their own githashes.
+	// The base diff is the patch entry with no module name; module diffs keep their own githashes.
 	raw, err := restData.GetRawPatches(ctx, h.patchID)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting diffs for patch '%s'", h.patchID))
+		return gimlet.MakeJSONErrorResponder(err)
 	}
 	var modules []apimodels.CreatePatchModule
 	for _, m := range raw.RawModules {
@@ -123,12 +112,25 @@ func (h *patchCloneHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
+	description := source.Description
+	if h.body.Description != "" {
+		description = h.body.Description
+	}
+
+	// Unfinalized sources have no activated tasks for the repeat logic to read, so their resolved definition is
+	// copied onto the clone directly after processing.
+	var definition []patch.VariantTasks
+	if source.Version == "" {
+		definition = source.VariantsTasks
+	}
+
 	return createPatchFromIntent(ctx, h.env, usr, createPatchArgs{
-		pref:         pref,
-		author:       h.body.Author,
-		intentParams: cloneIntentParams(source, raw, description),
-		modules:      modules,
-		finalize:     h.body.Finalize,
+		pref:          pref,
+		author:        h.body.Author,
+		intentParams:  cloneIntentParams(source, raw, description),
+		variantsTasks: definition,
+		modules:       modules,
+		finalize:      h.body.Finalize,
 	})
 }
 
@@ -136,24 +138,21 @@ func (h *patchCloneHandler) Run(ctx context.Context) gimlet.Responder {
 // aliases are copied too, so cloning a patch with child patches reproduces them; each child project's patch
 // submission permission is checked when the processor spawns the child patches.
 func cloneIntentParams(source *patch.Patch, raw *restModel.APIRawPatch, description string) patch.CLIIntentParams {
-	return patch.CLIIntentParams{
-		BaseGitHash:                        source.Githash,
-		PatchContent:                       raw.Patch.Diff,
-		Path:                               source.Path,
-		Description:                        description,
-		Parameters:                         source.Parameters,
-		Variants:                           source.BuildVariants,
-		Tasks:                              source.Tasks,
-		RegexVariants:                      source.RegexBuildVariants,
-		RegexTasks:                         source.RegexTasks,
-		RegexTestSelectionVariants:         source.RegexTestSelectionBuildVariants,
-		RegexTestSelectionExcludedVariants: source.RegexTestSelectionExcludedBuildVariants,
-		RegexTestSelectionTasks:            source.RegexTestSelectionTasks,
-		RegexTestSelectionExcludedTasks:    source.RegexTestSelectionExcludedTasks,
-		Alias:                              source.Alias,
-		Aliases:                            source.Aliases,
-		TriggerAliases:                     source.Triggers.Aliases,
-		LocalModuleIncludes:                source.LocalModuleIncludes,
-		CrossFileYAMLAnchorsEnabled:        source.CrossFileYAMLAnchorsEnabled,
+	params := patch.CLIIntentParams{
+		BaseGitHash:                 source.Githash,
+		PatchContent:                raw.Patch.Diff,
+		Path:                        source.Path,
+		Description:                 description,
+		Parameters:                  source.Parameters,
+		TriggerAliases:              source.Triggers.Aliases,
+		LocalModuleIncludes:         source.LocalModuleIncludes,
+		CrossFileYAMLAnchorsEnabled: source.CrossFileYAMLAnchorsEnabled,
 	}
+	if source.Version != "" {
+		// Reuse the source patch's exact build variant/task selection through the repeat logic rather than copying
+		// its variants and tasks separately, which would lose the per-variant task mapping.
+		params.RepeatDefinition = true
+		params.RepeatPatchId = source.Id.Hex()
+	}
+	return params
 }

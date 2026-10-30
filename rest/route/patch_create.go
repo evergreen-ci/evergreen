@@ -121,7 +121,10 @@ type createPatchArgs struct {
 	author       string
 	intentParams patch.CLIIntentParams
 	modules      []apimodels.CreatePatchModule
-	finalize     bool
+	// variantsTasks, when set, is copied onto the processed patch; used by the clone route for sources with no
+	// activated tasks for the repeat logic to read.
+	variantsTasks []patch.VariantTasks
+	finalize      bool
 }
 
 // createPatchFromIntent is the shared creation flow behind the create and
@@ -189,13 +192,19 @@ func createPatchFromIntent(ctx context.Context, env evergreen.Environment, usr *
 
 	// The processed patch doc is needed to validate modules and to check that finalization is meaningful. Module diffs
 	// must be in place before finalization so the version picks them up.
-	if len(args.modules) > 0 || args.finalize {
+	if len(args.modules) > 0 || args.finalize || len(args.variantsTasks) > 0 {
 		patchDoc, err := patch.FindOneId(ctx, patchID.Hex())
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patch '%s'", patchID.Hex()))
 		}
 		if patchDoc == nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("patch '%s' not found after processing", patchID.Hex()))
+		}
+
+		if len(args.variantsTasks) > 0 {
+			if err = patchDoc.SetVariantsTasks(ctx, args.variantsTasks); err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting patch definition"))
+			}
 		}
 
 		if errResp := validateModulesExist(ctx, env, patchDoc, args.modules); errResp != nil {

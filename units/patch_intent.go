@@ -431,7 +431,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			return errors.Wrapf(err, "inserting patch '%s'", patchDoc.Id.Hex())
 		}
 	}
-	if err = processTriggerAliases(ctx, patchDoc, pref, j.env, patchDoc.Triggers.Aliases); err != nil {
+	if err = processTriggerAliases(ctx, patchDoc, pref, j.env, patchDoc.Triggers.Aliases, j.intent.GetSubmittedBy()); err != nil {
 		if strings.Contains(err.Error(), noChildPatchTasksOrVariants) {
 			j.gitHubError = noChildPatchTasksOrVariants
 		} else if strings.Contains(err.Error(), "not authorized to submit patches on child project") {
@@ -855,7 +855,7 @@ func setToPreviousMainlineVersionDefinition(ctx context.Context, patchDoc *patch
 	return nil
 }
 
-func processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *model.ProjectRef, env evergreen.Environment, aliasNames []string) error {
+func processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *model.ProjectRef, env evergreen.Environment, aliasNames []string, submittedBy string) error {
 	if len(aliasNames) == 0 {
 		return nil
 	}
@@ -873,8 +873,17 @@ func processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 		downstreamRevision string
 	}
 
+	// The authenticated submitter is checked first; when a patch is created on someone else's behalf, the submitter
+	// and the author can differ, and either having access is sufficient.
+	var submitter *user.DBUser
 	var u *user.DBUser
 	var err error
+	if submittedBy != "" {
+		submitter, err = user.FindOneById(ctx, submittedBy)
+		if err != nil {
+			return errors.Wrap(err, "getting submitting user")
+		}
+	}
 	if p.Author != "" {
 		u, err = user.FindOneById(ctx, p.Author)
 		if err != nil {
@@ -894,6 +903,9 @@ func processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 			ResourceType:  evergreen.ProjectResourceType,
 			Permission:    evergreen.PermissionPatches,
 			RequiredLevel: evergreen.PatchSubmit.Value,
+		}
+		if submitter != nil && submitter.HasPermission(ctx, opts) {
+			continue
 		}
 		if u != nil && !u.HasPermission(ctx, opts) {
 			return errors.Errorf("user '%s' is not authorized to submit patches on child project '%s'", u.Id, alias.ChildProject)

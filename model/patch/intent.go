@@ -52,6 +52,11 @@ type Intent interface {
 	// GetCalledBy indicates whether the intent was created automatically
 	// by Evergreen or manually by the user.
 	GetCalledBy() string
+
+	// GetSubmittedBy returns the authenticated user who submitted the intent,
+	// which can differ from the patch's author when the patch was created on
+	// someone else's behalf. Empty when the submitter is unknown.
+	GetSubmittedBy() string
 }
 
 // FindIntent returns an intent of the specified type from the database

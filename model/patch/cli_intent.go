@@ -29,6 +29,10 @@ type cliIntent struct {
 	// Description is the optional description of the patch.
 	Description string `bson:"description,omitempty"`
 
+	// SubmittedBy is the authenticated user who submitted the patch, which can differ from the patch's author when
+	// the patch was created on someone else's behalf.
+	SubmittedBy string `bson:"submitted_by,omitempty"`
+
 	// BuildVariants is a list of build variants associated with the patch.
 	BuildVariants []string `bson:"variants,omitempty"`
 
@@ -174,6 +178,10 @@ func (c *cliIntent) ShouldFinalizePatch() bool {
 	return c.Finalize
 }
 
+func (c *cliIntent) GetSubmittedBy() string {
+	return c.SubmittedBy
+}
+
 func (c *cliIntent) RepeatPreviousPatchDefinition() (string, bool) {
 	return c.RepeatPatchId, c.RepeatDefinition
 }
@@ -257,6 +265,9 @@ type CLIIntentParams struct {
 	RepeatPatchId                      string
 	LocalModuleIncludes                []LocalModuleInclude
 	CrossFileYAMLAnchorsEnabled        bool
+	// SubmittedBy is the authenticated user who submitted the patch, which can differ from User when the patch is
+	// created on someone else's behalf.
+	SubmittedBy string
 }
 
 func NewCliIntent(params CLIIntentParams) (Intent, error) {
@@ -305,6 +316,7 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 		Aliases:                                 params.Aliases,
 		TriggerAliases:                          params.TriggerAliases,
 		GitInfo:                                 params.GitInfo,
+		SubmittedBy:                             params.SubmittedBy,
 		RepeatDefinition:                        params.RepeatDefinition,
 		RepeatFailed:                            params.RepeatFailed,
 		RepeatPatchId:                           params.RepeatPatchId,

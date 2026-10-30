@@ -1,7 +1,6 @@
 package route
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -15,19 +14,18 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func makeClonePatchRequest(t *testing.T, patchID, body string) *http.Request {
+func makeClonePatchRequest(patchID, body string) *http.Request {
 	req := httptest.NewRequest(http.MethodPost, "/rest/v2/patches/p/clone", strings.NewReader(body))
 	return gimlet.SetURLVars(req, map[string]string{"patch_id": patchID})
 }
 
 func TestPatchCloneParseValidation(t *testing.T) {
-	h := &patchCloneHandler{}
-
 	for testName, testCase := range map[string]struct {
 		patchID     string
 		body        string
@@ -53,8 +51,8 @@ func TestPatchCloneParseValidation(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			h.body = apimodels.ClonePatchRequest{}
-			err := h.Parse(context.Background(), makeClonePatchRequest(t, testCase.patchID, testCase.body))
+			h := &patchCloneHandler{}
+			err := h.Parse(t.Context(), makeClonePatchRequest(testCase.patchID, testCase.body))
 			if testCase.expectedErr == "" {
 				assert.NoError(t, err)
 			} else {
@@ -81,26 +79,27 @@ func TestPatchCloneRun(t *testing.T) {
 	}).Insert(ctx))
 
 	usr := &user.DBUser{Id: "testuser"}
-	handler := makeClonePatchHandler(env).(*patchCloneHandler)
 
 	t.Run("PatchNotFound", func(t *testing.T) {
+		handler := makeClonePatchHandler(env).(*patchCloneHandler)
 		handler.patchID = mgobson.NewObjectId().Hex()
 		handler.body = apimodels.ClonePatchRequest{}
 		res := handler.Run(gimlet.AttachUser(ctx, usr))
 		assert.Equal(t, http.StatusNotFound, res.Status())
 	})
 
-	t.Run("FinalizeWithoutTasksOrVariants", func(t *testing.T) {
+	t.Run("MergeQueuePatch", func(t *testing.T) {
 		source := patch.Patch{
-			Id:          mgobson.NewObjectId(),
-			Description: "no definition",
-			Project:     "project",
-			Githash:     "abc123",
+			Id:              mgobson.NewObjectId(),
+			Project:         "project",
+			Githash:         "abc123",
+			GithubMergeData: thirdparty.GithubMergeGroup{HeadSHA: "abcd1234"},
 		}
 		require.NoError(t, source.Insert(ctx))
 
+		handler := makeClonePatchHandler(env).(*patchCloneHandler)
 		handler.patchID = source.Id.Hex()
-		handler.body = apimodels.ClonePatchRequest{Finalize: true}
+		handler.body = apimodels.ClonePatchRequest{}
 		res := handler.Run(gimlet.AttachUser(ctx, usr))
 		assert.Equal(t, http.StatusBadRequest, res.Status())
 	})
@@ -113,6 +112,7 @@ func TestPatchCloneRun(t *testing.T) {
 		}
 		require.NoError(t, source.Insert(ctx))
 
+		handler := makeClonePatchHandler(env).(*patchCloneHandler)
 		handler.patchID = source.Id.Hex()
 		handler.body = apimodels.ClonePatchRequest{Author: "someone_else"}
 		res := handler.Run(gimlet.AttachUser(ctx, usr))
@@ -121,25 +121,38 @@ func TestPatchCloneRun(t *testing.T) {
 }
 
 func TestCloneIntentParams(t *testing.T) {
-	source := patch.Patch{
-		Id:          mgobson.NewObjectId(),
-		Githash:     "abc123",
-		Path:        "custom/evergreen.yml",
-		Description: "original description",
-		Triggers:    patch.TriggerInfo{Aliases: []string{"downstream_alias"}},
-	}
 	raw := &restModel.APIRawPatch{Patch: restModel.APIRawModule{Diff: "base diff"}}
 
-	params := cloneIntentParams(&source, raw, "cloned description")
+	t.Run("FinalizedSourceReusesDefinitionViaRepeat", func(t *testing.T) {
+		source := patch.Patch{
+			Id:          mgobson.NewObjectId(),
+			Githash:     "abc123",
+			Path:        "custom/evergreen.yml",
+			Description: "original description",
+			Version:     "some_version",
+			Triggers:    patch.TriggerInfo{Aliases: []string{"downstream_alias"}},
+		}
 
-	assert.Equal(t, "abc123", params.BaseGitHash)
-	assert.Equal(t, "base diff", params.PatchContent)
-	assert.Equal(t, "custom/evergreen.yml", params.Path)
-	assert.Equal(t, "cloned description", params.Description)
-	// Trigger aliases must carry over so the clone reproduces the source's child patches.
-	assert.Equal(t, []string{"downstream_alias"}, params.TriggerAliases)
+		params := cloneIntentParams(&source, raw, "cloned description")
 
-	// A source with no trigger aliases produces a childless clone.
-	source.Triggers = patch.TriggerInfo{}
-	assert.Empty(t, cloneIntentParams(&source, raw, "desc").TriggerAliases)
+		assert.Equal(t, "abc123", params.BaseGitHash)
+		assert.Equal(t, "base diff", params.PatchContent)
+		assert.Equal(t, "custom/evergreen.yml", params.Path)
+		assert.Equal(t, "cloned description", params.Description)
+		// The repeat logic reproduces the source's exact per-variant task mapping.
+		assert.True(t, params.RepeatDefinition)
+		assert.Equal(t, source.Id.Hex(), params.RepeatPatchId)
+		// Trigger aliases must carry over so the clone reproduces the source's child patches.
+		assert.Equal(t, []string{"downstream_alias"}, params.TriggerAliases)
+	})
+
+	t.Run("UnfinalizedSourceHasNoRepeat", func(t *testing.T) {
+		source := patch.Patch{Id: mgobson.NewObjectId(), Githash: "abc123"}
+
+		params := cloneIntentParams(&source, raw, "desc")
+
+		assert.False(t, params.RepeatDefinition)
+		assert.Empty(t, params.RepeatPatchId)
+		assert.Empty(t, params.TriggerAliases)
+	})
 }
