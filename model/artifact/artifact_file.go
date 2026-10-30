@@ -303,17 +303,36 @@ func GetAllArtifacts(ctx context.Context, tasks []TaskIDAndExecution) ([]File, e
 // ValidateFiles checks that artifact and associated links are absolute HTTP(S) or T2 URLs.
 // DoNotEncodeLink affects escaping but does not bypass validation.
 func ValidateFiles(files []File) error {
+	_, err := RemoveInvalidLinks(files)
+	return err
+}
+
+// RemoveInvalidLinks returns the files with any links that fail ValidateFiles removed.
+// An artifact with an invalid link is removed entirely, whereas an invalid associated
+// link only removes that associated link from its artifact. The returned error
+// describes everything that was removed and is nil if all links are valid.
+func RemoveInvalidLinks(files []File) ([]File, error) {
+	catcher := grip.NewBasicCatcher()
+	valid := make([]File, 0, len(files))
 	for _, file := range files {
 		if err := validateLink(file.Link); err != nil {
-			return errors.Wrapf(err, "validating link for artifact '%s'", file.Name)
+			catcher.Wrapf(err, "validating link for artifact '%s'", file.Name)
+			continue
 		}
-		for _, link := range file.AssociatedLinks {
-			if err := validateLink(link.Link); err != nil {
-				return errors.Wrapf(err, "validating associated link '%s' for artifact '%s'", link.Name, file.Name)
+		if len(file.AssociatedLinks) > 0 {
+			validLinks := make([]AssociatedLink, 0, len(file.AssociatedLinks))
+			for _, link := range file.AssociatedLinks {
+				if err := validateLink(link.Link); err != nil {
+					catcher.Wrapf(err, "validating associated link '%s' for artifact '%s'", link.Name, file.Name)
+					continue
+				}
+				validLinks = append(validLinks, link)
 			}
+			file.AssociatedLinks = validLinks
 		}
+		valid = append(valid, file)
 	}
-	return nil
+	return valid, catcher.Resolve()
 }
 
 func validateLink(link string) error {

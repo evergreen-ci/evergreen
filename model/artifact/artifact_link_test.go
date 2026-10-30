@@ -71,3 +71,57 @@ func TestValidateFiles(t *testing.T) {
 		})
 	}
 }
+
+func TestRemoveInvalidLinks(t *testing.T) {
+	t.Run("AllValidLinksShouldBeKept", func(t *testing.T) {
+		files := []File{
+			{Name: "Report", Link: "https://example.com/report.html", AssociatedLinks: []AssociatedLink{
+				{Name: "Coverage", Link: "t2://internal.example.com/coverage"},
+			}},
+			{Name: "Log", Link: "http://fileserver/log.txt"},
+		}
+		valid, err := RemoveInvalidLinks(files)
+		assert.NoError(t, err)
+		assert.Equal(t, files, valid)
+	})
+	t.Run("InvalidLinkShouldRemoveOnlyThatArtifact", func(t *testing.T) {
+		valid, err := RemoveInvalidLinks([]File{
+			{Name: "Report", Link: "https://example.com/report.html"},
+			{Name: "Unsafe", Link: "javascript:alert(document.domain)", AssociatedLinks: []AssociatedLink{
+				{Name: "Coverage", Link: "https://example.com/coverage.html"},
+			}},
+			{Name: "Log", Link: "https://example.com/log.txt"},
+		})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "validating link for artifact 'Unsafe'")
+		assert.Equal(t, []File{
+			{Name: "Report", Link: "https://example.com/report.html"},
+			{Name: "Log", Link: "https://example.com/log.txt"},
+		}, valid)
+	})
+	t.Run("InvalidAssociatedLinkShouldRemoveOnlyThatAssociatedLink", func(t *testing.T) {
+		valid, err := RemoveInvalidLinks([]File{
+			{Name: "Report", Link: "https://example.com/report.html", AssociatedLinks: []AssociatedLink{
+				{Name: "Unsafe", Link: "javascript:alert(document.domain)"},
+				{Name: "Coverage", Link: "https://example.com/coverage.html"},
+			}},
+		})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "validating associated link 'Unsafe' for artifact 'Report'")
+		assert.Equal(t, []File{
+			{Name: "Report", Link: "https://example.com/report.html", AssociatedLinks: []AssociatedLink{
+				{Name: "Coverage", Link: "https://example.com/coverage.html"},
+			}},
+		}, valid)
+	})
+	t.Run("MultipleInvalidLinksShouldAllBeReported", func(t *testing.T) {
+		valid, err := RemoveInvalidLinks([]File{
+			{Name: "First", Link: "s3://bucket/first.txt"},
+			{Name: "Second"},
+		})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "artifact 'First'")
+		assert.Contains(t, err.Error(), "artifact 'Second'")
+		assert.Empty(t, valid)
+	})
+}

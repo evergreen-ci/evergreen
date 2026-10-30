@@ -48,22 +48,37 @@ func TestAttachFiles(t *testing.T) {
 	for _, tc := range []struct {
 		name           string
 		setBadFileLink func([]artifact.File)
-		shouldErr      bool
+		expectedFiles  func([]artifact.File) []artifact.File
 	}{
-		{name: "ValidLinksShouldBeStoredWithEncodingFlagsRespected"},
 		{
-			name: "UnencodedJavaScriptShouldRejectEntireBatch",
+			name:          "ValidLinksShouldBeStoredWithEncodingFlagsRespected",
+			expectedFiles: func(files []artifact.File) []artifact.File { return files },
+		},
+		{
+			name: "UnencodedJavaScriptShouldDropOnlyThatArtifact",
 			setBadFileLink: func(files []artifact.File) {
 				files[1].Link = "javascript:alert(document.domain)"
 			},
-			shouldErr: true,
+			expectedFiles: func(files []artifact.File) []artifact.File { return []artifact.File{files[0], files[2]} },
 		},
 		{
-			name: "UnencodedAssociatedJavaScriptShouldRejectEntireBatch",
+			name: "UnencodedAssociatedJavaScriptShouldDropOnlyThatAssociatedLink",
 			setBadFileLink: func(files []artifact.File) {
 				files[1].AssociatedLinks[0].Link = "javascript:alert(document.domain)"
 			},
-			shouldErr: true,
+			expectedFiles: func(files []artifact.File) []artifact.File {
+				files[1].AssociatedLinks = files[1].AssociatedLinks[1:]
+				return files
+			},
+		},
+		{
+			name: "AllEmptyArtifactsShouldBeDroppedWithoutError",
+			setBadFileLink: func(files []artifact.File) {
+				for i := range files {
+					files[i] = artifact.File{}
+				}
+			},
+			expectedFiles: func([]artifact.File) []artifact.File { return nil },
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -91,26 +106,17 @@ func TestAttachFiles(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/rest/v2/task/ArtifactTask/files", bytes.NewReader(body))
 			req = gimlet.SetURLVars(req, map[string]string{"task_id": "ArtifactTask"})
 			h := &attachFilesHandler{}
-			err = h.Parse(ctx, req)
-			if tc.shouldErr {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), "artifact 'SignedReport'")
-			} else {
-				require.NoError(t, err)
-				resp := h.Run(ctx)
-				require.NotNil(t, resp)
-				assert.Equal(t, http.StatusOK, resp.Status())
-			}
+			require.NoError(t, h.Parse(ctx, req))
+			resp := h.Run(ctx)
+			require.NotNil(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			// The report link is not marked DoNotEncodeLink, so it should be stored escaped.
+			files[0].Link = "http://fileserver/report%231%25.txt"
 			entry, err := artifact.FindOne(ctx, artifact.ByTaskIdAndExecution("ArtifactTask", 0))
 			require.NoError(t, err)
 			require.NotNil(t, entry)
-			if tc.shouldErr {
-				assert.Equal(t, existing.Files, entry.Files)
-			} else {
-				require.Len(t, entry.Files, len(files)+1)
-				assert.Equal(t, "http://fileserver/report%231%25.txt", entry.Files[1].Link)
-				assert.Equal(t, files[1:], entry.Files[2:])
-			}
+			assert.Equal(t, append(existing.Files, tc.expectedFiles(files)...), entry.Files)
 		})
 	}
 }

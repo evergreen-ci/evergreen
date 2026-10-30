@@ -267,7 +267,8 @@ Each file should be JSON and contain an array of artifact objects:
 Fields:
 
 - `name`: the display name for the artifact in the Evergreen UI.
-- `link`: the absolute HTTP, HTTPS, or T2 URL to the artifact.
+- `link`: the absolute HTTP, HTTPS, or T2 URL to the artifact. Artifacts with
+  invalid links are not attached.
 - `visibility`: the visibility level for the artifact. Can be "public" or "private".
 - `do_not_encode_link`: optional boolean, defaults to false. Set to true to
   prevent Evergreen from URL-encoding the link. This is useful when your URL
@@ -277,7 +278,7 @@ Fields:
   file will not be downloaded when spawning a host from the spawn link on a test page.
 - `associated_links`: optional array of related links to be displayed alongside the main artifact in the UI. Each link object contains:
   - `name`: the display name for the associated link.
-  - `link`: the absolute HTTP or HTTPS URL for the associated link. T2 URLs (`t2://...`) are also supported.
+  - `link`: the absolute HTTP or HTTPS URL for the associated link. T2 URLs (`t2://...`) are also supported. Invalid associated links are not attached, but the main artifact still is.
   - `do_not_encode_link`: optional boolean, defaults to false. Set to true to prevent URL-encoding the link.
 
 ## attach.results
