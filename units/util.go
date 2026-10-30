@@ -64,7 +64,7 @@ func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment
 		}
 	}
 
-	if err := model.ClearAndResetStrandedHostTask(ctx, env.Settings(), h); err != nil {
+	if err := model.ClearAndResetStrandedHostTask(ctx, env.Settings(), h, reason); err != nil {
 		return errors.Wrap(err, "clearing stranded task from host")
 	}
 

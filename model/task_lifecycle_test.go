@@ -4316,6 +4316,7 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 			ActivatedTime: time.Now(),
 			BuildId:       "b3",
 			Version:       "version3",
+			HostId:        "h1",
 			Execution:     settings.TaskLimits.MaxTaskExecution,
 		},
 	}
@@ -4349,7 +4350,7 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	}
 	assert.NoError(v2.Insert(t.Context()))
 
-	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, h))
+	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, h, "host was terminated"))
 
 	dbHost, err := host.FindOneId(ctx, h.Id)
 	require.NoError(t, err)
@@ -4364,6 +4365,8 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	require.NoError(t, err)
 	require.NotZero(t, archivedTask)
 	assert.WithinDuration(strandedTaskLastHeartbeat, archivedTask.FinishTime, 0)
+	assert.Equal(evergreen.TaskDescriptionStranded, archivedTask.Details.Description)
+	assert.Equal("host was terminated", archivedTask.Details.SystemFailureReason)
 
 	foundBuild, err := build.FindOneId(t.Context(), "b")
 	require.NoError(t, err)
@@ -4376,11 +4379,12 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	h.RunningTask = "unschedulableTask"
 	h.RunningTaskExecution = 0
 	assert.NoError(db.Update(ctx, host.Collection, bson.M{host.IdKey: h.Id}, bson.M{"$set": bson.M{host.RunningTaskKey: "unschedulableTask", host.RunningTaskExecutionKey: 0}}))
-	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, h))
+	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, h, "host was terminated"))
 
 	unschedulableTask, err := task.FindOne(ctx, db.Query(task.ById("unschedulableTask")))
 	require.NoError(t, err)
 	assert.Equal(evergreen.TaskFailed, unschedulableTask.Status)
+	assert.Equal("host was terminated", unschedulableTask.Details.SystemFailureReason)
 
 	dependencyTask, err := task.FindOneId(ctx, "dependencyTask")
 	require.NotNil(t, dependencyTask)
@@ -4390,7 +4394,7 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	dt, err := task.FindOne(ctx, db.Query(task.ById("displayTask")))
 	require.NoError(t, err)
 	assert.Equal(evergreen.TaskFailed, dt.Status)
-	assert.Equal(dt.Details, task.GetSystemFailureDetails(evergreen.TaskDescriptionStranded))
+	assert.Equal(dt.Details, task.GetSystemFailureDetails(evergreen.TaskDescriptionStranded, "host was terminated"))
 
 	foundBuild, err = build.FindOneId(t.Context(), "b2")
 	require.NoError(t, err)
@@ -4404,11 +4408,31 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	h.RunningTaskExecution = 0
 	assert.NoError(resetTask(ctx, "t2", ""))
 	assert.NoError(db.Update(ctx, host.Collection, bson.M{host.IdKey: h.Id}, bson.M{"$set": bson.M{host.RunningTaskKey: "t2", host.RunningTaskExecutionKey: 0}}))
-	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, h))
+	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, h, ""))
 	foundTask, err := task.FindOne(ctx, db.Query(task.ById("t2")))
 	require.NoError(t, err)
 	// The task should not have been reset twice.
 	assert.Equal(1, foundTask.Execution)
+
+	b3 := build.Build{
+		Id:      "b3",
+		Version: "version3",
+	}
+	assert.NoError(b3.Insert(t.Context()))
+	v3 := Version{
+		Id: b3.Version,
+	}
+	assert.NoError(v3.Insert(t.Context()))
+	h.RunningTask = "t3"
+	h.RunningTaskExecution = settings.TaskLimits.MaxTaskExecution
+	assert.NoError(db.Update(ctx, host.Collection, bson.M{host.IdKey: h.Id}, bson.M{"$set": bson.M{host.RunningTaskKey: "t3", host.RunningTaskExecutionKey: settings.TaskLimits.MaxTaskExecution}}))
+	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, h, "host was terminated while running the final allowed execution"))
+	nonRestartedTask, err := task.FindOneId(ctx, "t3")
+	require.NoError(t, err)
+	require.NotZero(t, nonRestartedTask)
+	assert.Equal(evergreen.TaskFailed, nonRestartedTask.Status)
+	assert.Equal(settings.TaskLimits.MaxTaskExecution, nonRestartedTask.Execution)
+	assert.Equal("host was terminated while running the final allowed execution", nonRestartedTask.Details.SystemFailureReason)
 }
 
 func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
@@ -4457,7 +4481,7 @@ func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
 	assert.NoError(runningTask.Insert(t.Context()))
 
 	settings := testutil.TestConfig()
-	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, host))
+	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, host, ""))
 	runningTask, err := task.FindOne(ctx, db.Query(task.ById("t")))
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskFailed, runningTask.Status)
@@ -4518,7 +4542,7 @@ func TestClearAndResetStrandedHostTaskFailedOnly(t *testing.T) {
 	}
 	assert.NoError(t, v.Insert(t.Context()))
 	settings := testutil.TestConfig()
-	assert.NoError(t, ClearAndResetStrandedHostTask(ctx, settings, h))
+	assert.NoError(t, ClearAndResetStrandedHostTask(ctx, settings, h, "host was terminated"))
 
 	checkTaskRestartEvent := func(t *testing.T, taskID string) {
 		events, err := event.FindAllByResourceID(t.Context(), taskID)
@@ -4567,6 +4591,7 @@ func TestClearAndResetStrandedHostTaskFailedOnly(t *testing.T) {
 	assert.NotNil(t, oldRestartedExecutionTask)
 	assert.Equal(t, evergreen.TaskFailed, oldRestartedExecutionTask.Status)
 	assert.Equal(t, 0, oldRestartedExecutionTask.Execution)
+	assert.Equal(t, "host was terminated", oldRestartedExecutionTask.Details.SystemFailureReason)
 }
 
 func TestClearAndResetExecTask(t *testing.T) {
@@ -4614,7 +4639,7 @@ func TestClearAndResetExecTask(t *testing.T) {
 	assert.NoError(t, v.Insert(t.Context()))
 
 	settings := testutil.TestConfig()
-	assert.NoError(t, ClearAndResetStrandedHostTask(ctx, settings, h))
+	assert.NoError(t, ClearAndResetStrandedHostTask(ctx, settings, h, ""))
 	restartedDisplayTask, err := task.FindOne(ctx, db.Query(task.ById("dt")))
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.TaskUndispatched, restartedDisplayTask.Status)
@@ -4644,6 +4669,7 @@ func TestResetStaleTask(t *testing.T) {
 			assert.Equal(t, evergreen.CommandTypeSystem, dbArchivedTask.Details.Type)
 			assert.Equal(t, evergreen.TaskDescriptionHeartbeat, dbArchivedTask.Details.Description)
 			assert.True(t, dbArchivedTask.Details.TimedOut)
+			assert.Equal(t, fmt.Sprintf("task has not sent a heartbeat since %s", tsk.LastHeartbeat.UTC().Format(time.RFC3339)), dbArchivedTask.Details.SystemFailureReason)
 			assert.False(t, utility.IsZeroTime(dbArchivedTask.FinishTime))
 
 			dbTask, err := task.FindOneId(ctx, tsk.Id)
@@ -4681,6 +4707,7 @@ func TestResetStaleTask(t *testing.T) {
 			assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
 			assert.Equal(t, evergreen.CommandTypeSystem, dbTask.Details.Type)
 			assert.Equal(t, evergreen.TaskDescriptionAborted, dbTask.Details.Description)
+			assert.Equal(t, fmt.Sprintf("task has not sent a heartbeat since %s", tsk.LastHeartbeat.UTC().Format(time.RFC3339)), dbTask.Details.SystemFailureReason)
 			assert.False(t, utility.IsZeroTime(dbTask.FinishTime))
 
 			dependencyTask, err := task.FindOneId(ctx, "dependencyTask")
@@ -7159,4 +7186,14 @@ func TestCheckResetDisplayTaskConcurrentReset(t *testing.T) {
 			tCase.test(t, dbDisplayTask, dbSucceededExecTask)
 		})
 	}
+}
+
+func TestStaleTaskReason(t *testing.T) {
+	t.Run("ZeroLastHeartbeatShouldReportNeverSentHeartbeat", func(t *testing.T) {
+		assert.Equal(t, "task never sent a heartbeat", staleTaskReason(&task.Task{}))
+	})
+	t.Run("LastHeartbeatShouldBeIncluded", func(t *testing.T) {
+		tsk := &task.Task{LastHeartbeat: time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC)}
+		assert.Equal(t, "task has not sent a heartbeat since 2026-10-28T12:00:00Z", staleTaskReason(tsk))
+	})
 }

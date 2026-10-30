@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -318,6 +319,70 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 		},
+		"StoppedInstanceWithStateReasonRecordsReasonInEventsAndTask": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
+			require.NoError(t, db.ClearCollections(event.EventCollection, build.Collection, model.VersionCollection))
+			t.Cleanup(func() {
+				assert.NoError(t, db.ClearCollections(event.EventCollection, build.Collection, model.VersionCollection))
+			})
+			b := build.Build{Id: "b1", Version: "v1"}
+			require.NoError(t, b.Insert(ctx))
+			v := model.Version{Id: "v1"}
+			require.NoError(t, v.Insert(ctx))
+			tsk := &task.Task{
+				Id:            "t1",
+				BuildId:       b.Id,
+				Version:       v.Id,
+				HostId:        h.Id,
+				Status:        evergreen.TaskStarted,
+				Activated:     true,
+				ActivatedTime: time.Now(),
+				Execution:     1,
+			}
+			require.NoError(t, tsk.Insert(ctx))
+			h.RunningTask = tsk.Id
+			h.RunningTaskExecution = tsk.Execution
+			require.NoError(t, h.Insert(ctx))
+
+			const stateReason = "Client.UserInitiatedShutdown: User initiated shutdown"
+			cloud.GetMockProvider().Set(h.Id, cloud.MockInstance{
+				Status:      cloud.StatusStopped,
+				StateReason: stateReason,
+			})
+
+			terminated, err := handleExternallyTerminatedHost(ctx, t.Name(), env, h)
+			require.NoError(t, err)
+			assert.True(t, terminated)
+
+			queue, err := env.RemoteQueueGroup().Get(ctx, terminateHostQueueGroup)
+			require.NoError(t, err)
+			require.True(t, amboy.WaitInterval(ctx, queue, 100*time.Millisecond),
+				"failed while waiting for host termination job to complete")
+
+			expectedTerminationReason := "host was found in state 'stopped' (reason: " + stateReason + ")"
+			events, err := event.FindAllByResourceID(ctx, h.Id)
+			require.NoError(t, err)
+			var foundExternalTerminationEvent, foundTerminationEvent bool
+			for _, e := range events {
+				data, ok := e.Data.(*event.HostEventData)
+				require.True(t, ok)
+				switch data.NewStatus {
+				case event.EventHostTerminatedExternally:
+					foundExternalTerminationEvent = true
+					assert.Equal(t, expectedTerminationReason, data.Logs)
+				case evergreen.HostTerminated:
+					foundTerminationEvent = true
+					assert.Equal(t, expectedTerminationReason, data.Logs)
+				}
+			}
+			assert.True(t, foundExternalTerminationEvent)
+			assert.True(t, foundTerminationEvent)
+
+			dbTask, err := task.FindOneId(ctx, tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
+			assert.Equal(t, expectedTerminationReason, dbTask.Details.SystemFailureReason)
+		},
 		"RunningInstanceNoops": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			require.NoError(t, h.Insert(ctx))
 
@@ -518,4 +583,16 @@ func TestHandleTerminatedHostSpawnedByTask(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestExternalTerminationReason(t *testing.T) {
+	t.Run("WithoutStateReasonShouldOmitReason", func(t *testing.T) {
+		assert.Equal(t, "host was found in state 'terminated'", externalTerminationReason(cloud.CloudInstanceState{Status: cloud.StatusTerminated}))
+	})
+	t.Run("WithStateReasonShouldIncludeReason", func(t *testing.T) {
+		assert.Equal(t, "host was found in state 'stopped' (reason: Client.UserInitiatedShutdown: User initiated shutdown)", externalTerminationReason(cloud.CloudInstanceState{
+			Status:      cloud.StatusStopped,
+			StateReason: "Client.UserInitiatedShutdown: User initiated shutdown",
+		}))
+	})
 }

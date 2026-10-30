@@ -39,6 +39,8 @@ type MockInstance struct {
 	// InstanceID is the instance ID returned by GetRunningInstanceID. It
 	// defaults to the host ID.
 	InstanceID string
+	// StateReason is the state reason returned by GetInstanceState.
+	StateReason string
 }
 
 type MockVolume struct {
@@ -248,6 +250,9 @@ func (m *mockManager) ModifyHost(ctx context.Context, host *host.Host, changes h
 func (m *mockManager) GetInstanceState(ctx context.Context, h *host.Host) (CloudInstanceState, error) {
 	info := CloudInstanceState{}
 	info.Status = m.getOrDefaultInstanceStatus(ctx, h.Id)
+	m.mutex.RLock()
+	info.StateReason = m.Instances[h.Id].StateReason
+	m.mutex.RUnlock()
 	return info, nil
 }
 

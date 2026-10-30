@@ -80,6 +80,7 @@ func TestTaskStrandedCleanupJob(t *testing.T) {
 				if tCase.expectStranded {
 					assert.Equal(t, evergreen.TaskFailed, dbVT.Status)
 					assert.Equal(t, evergreen.TaskDescriptionStranded, dbVT.Details.Description)
+					assert.Equal(t, "runner task finished without setting a status for this virtual task", dbVT.Details.SystemFailureReason)
 					assert.True(t, dbVT.IsFinished())
 				} else {
 					assert.Equal(t, evergreen.TaskUndispatched, dbVT.Status)
