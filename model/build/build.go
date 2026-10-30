@@ -82,8 +82,9 @@ type Build struct {
 	// one unfinished essential task. The build cannot be in a finished state
 	// until all of its essential tasks have finished.
 	HasUnfinishedEssentialTask bool `bson:"has_unfinished_essential_task"`
-	// HasInProgressTask tracks whether this build had at least one dispatched
-	// or started task as of its last status update.
+	// HasInProgressTask tracks whether this build has at least one dispatched
+	// or started task. It's set when a task starts and recomputed on build
+	// status updates.
 	HasInProgressTask bool `bson:"has_in_progress_task"`
 }
 
@@ -280,9 +281,16 @@ func (b *Build) UpdateMakespans(ctx context.Context, predictedMakespan, actualMa
 	)
 }
 
-// TryMarkStarted attempts to mark a build as started if it
-// isn't already marked as such
+// TryMarkStarted marks a build as having an in-progress task, and marks it as
+// started if it isn't already marked as such.
 func TryMarkStarted(ctx context.Context, buildId string, startTime time.Time) error {
+	if err := UpdateOne(ctx,
+		bson.M{IdKey: buildId, HasInProgressTaskKey: bson.M{"$ne": true}},
+		bson.M{"$set": bson.M{HasInProgressTaskKey: true}},
+	); err != nil && !adb.ResultsNotFound(err) {
+		return errors.Wrap(err, "marking build as having an in-progress task")
+	}
+
 	selector := bson.M{
 		IdKey:     buildId,
 		StatusKey: bson.M{"$ne": evergreen.BuildStarted},

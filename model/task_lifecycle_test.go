@@ -6793,9 +6793,9 @@ func TestHandleEndTaskForGithubMergeQueueTask(t *testing.T) {
 	}
 
 	t.Run("VersionDoesNotSucceedWhileAbortedTasksAreRunning", func(t *testing.T) {
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, patch.Collection, event.EventCollection))
+		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, patch.Collection, event.EventCollection, host.Collection))
 		t.Cleanup(func() {
-			assert.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, patch.Collection, event.EventCollection))
+			assert.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, patch.Collection, event.EventCollection, host.Collection))
 		})
 
 		// The failure deactivates failed_build while it still has a running task.
@@ -6835,14 +6835,16 @@ func TestHandleEndTaskForGithubMergeQueueTask(t *testing.T) {
 		}
 		tasks := []task.Task{
 			*failedTask,
-			{Id: "running_task", BuildId: "failed_build", Version: versionID, Requester: evergreen.GithubMergeRequester, Status: evergreen.TaskStarted, Activated: true, ActivatedBy: evergreen.GithubMergeRequester},
+			{Id: "running_task", BuildId: "failed_build", Version: versionID, Requester: evergreen.GithubMergeRequester, Status: evergreen.TaskStarted, Activated: true, ActivatedBy: evergreen.GithubMergeRequester, HostId: "h1"},
 			{Id: "pending_task", BuildId: "failed_build", Version: versionID, Requester: evergreen.GithubMergeRequester, Status: evergreen.TaskUndispatched, Activated: true, ActivatedBy: evergreen.GithubMergeRequester},
 			{Id: "succeeded_task", BuildId: "succeeded_build", Version: versionID, Requester: evergreen.GithubMergeRequester, Status: evergreen.TaskSucceeded, Activated: true, ActivatedBy: evergreen.GithubMergeRequester},
-			{Id: "deactivated_task", BuildId: "succeeded_build", Version: versionID, Requester: evergreen.GithubMergeRequester, Status: evergreen.TaskUndispatched, Activated: true, ActivatedBy: evergreen.GithubMergeRequester},
+			{Id: "undispatched_task", BuildId: "succeeded_build", Version: versionID, Requester: evergreen.GithubMergeRequester, Status: evergreen.TaskUndispatched, Activated: true, ActivatedBy: evergreen.GithubMergeRequester},
 		}
 		for _, tsk := range tasks {
 			require.NoError(t, tsk.Insert(ctx))
 		}
+		h := &host.Host{Id: "h1", RunningTask: "running_task"}
+		require.NoError(t, h.Insert(ctx))
 
 		require.NoError(t, HandleEndTaskForGithubMergeQueueTask(ctx, failedTask, evergreen.TaskFailed))
 
@@ -6859,6 +6861,26 @@ func TestHandleEndTaskForGithubMergeQueueTask(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, dbPatch)
 		assert.Equal(t, evergreen.VersionStarted, dbPatch.Status)
+
+		runningTask, err := task.FindOneId(ctx, "running_task")
+		require.NoError(t, err)
+		require.NotNil(t, runningTask)
+		require.NoError(t, MarkEnd(ctx, testutil.TestConfig(), runningTask, evergreen.APIServerTaskActivator, time.Now(), &apimodels.TaskEndDetail{Status: evergreen.TaskFailed}))
+
+		failedBuild, err := build.FindOneId(ctx, "failed_build")
+		require.NoError(t, err)
+		require.NotNil(t, failedBuild)
+		assert.Equal(t, evergreen.BuildFailed, failedBuild.Status)
+		assert.False(t, failedBuild.HasInProgressTask)
+
+		dbVersion, err = VersionFindOneId(ctx, versionID)
+		require.NoError(t, err)
+		require.NotNil(t, dbVersion)
+		assert.Equal(t, evergreen.VersionFailed, dbVersion.Status)
+		dbPatch, err = patch.FindOneId(ctx, versionID)
+		require.NoError(t, err)
+		require.NotNil(t, dbPatch)
+		assert.Equal(t, evergreen.VersionFailed, dbPatch.Status)
 	})
 }
 
