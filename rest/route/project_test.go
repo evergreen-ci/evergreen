@@ -248,10 +248,22 @@ func (s *ProjectPatchByIDSuite) TestRunWithCommitQueueEnabled() {
 	s.Equal("cannot enable commit queue without a commit queue patch definition", errResp.Message)
 }
 
+// The build baron config and the custom file ticket webhook are mutually exclusive, so the
+// webhook must be cleared before patching build baron settings onto this project.
+func (s *ProjectPatchByIDSuite) clearFileTicketWebhook(ctx context.Context) {
+	jsonBody := []byte(`{"task_annotation_settings": {"web_hook": {"endpoint": "", "secret": ""}}}`)
+	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	s.Require().NoError(s.rm.Parse(ctx, req))
+	resp := s.rm.Run(ctx)
+	s.Require().Equal(http.StatusOK, resp.Status(), resp.Data())
+}
+
 func (s *ProjectPatchByIDSuite) TestRunWithValidBbConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
+	s.clearFileTicketWebhook(ctx)
 	jsonBody := []byte(`{"enabled": true, "build_baron_settings": {"ticket_create_project": "EVG", "ticket_search_projects": ["EVG"]}}`)
 	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
@@ -272,6 +284,7 @@ func (s *ProjectPatchByIDSuite) TestRunWithInvalidBbConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
+	s.clearFileTicketWebhook(ctx)
 	jsonBody := []byte(`{"enabled": true, "build_baron_settings": {"ticket_create_project": "EVG"}}`)
 	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
