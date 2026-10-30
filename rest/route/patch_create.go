@@ -79,6 +79,57 @@ func (h *patchCreateHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("project '%s' not found", h.projectID),
 		})
 	}
+
+	parameters := make([]patch.Parameter, 0, len(h.body.Parameters))
+	for _, p := range h.body.Parameters {
+		parameters = append(parameters, patch.Parameter{Key: p.Key, Value: p.Value})
+	}
+
+	return createPatchFromIntent(ctx, h.env, usr, createPatchArgs{
+		pref:   pref,
+		author: h.body.Author,
+		intentParams: patch.CLIIntentParams{
+			BaseGitHash:                        h.body.BaseGithash,
+			PatchContent:                       h.body.Patch,
+			Description:                        h.body.Description,
+			Parameters:                         parameters,
+			Variants:                           h.body.Variants,
+			Tasks:                              h.body.Tasks,
+			RegexVariants:                      h.body.RegexVariants,
+			RegexTasks:                         h.body.RegexTasks,
+			RegexTestSelectionVariants:         h.body.RegexTestSelectionVariants,
+			RegexTestSelectionExcludedVariants: h.body.RegexTestSelectionExcludedVariants,
+			RegexTestSelectionTasks:            h.body.RegexTestSelectionTasks,
+			RegexTestSelectionExcludedTasks:    h.body.RegexTestSelectionExcludedTasks,
+			Alias:                              h.body.Alias,
+			Aliases:                            h.body.Aliases,
+			TriggerAliases:                     h.body.TriggerAliases,
+			RepeatDefinition:                   h.body.RepeatLastPatch,
+			RepeatFailed:                       h.body.RepeatFailed,
+			RepeatPatchId:                      h.body.RepeatPatchId,
+		},
+		modules:  h.body.Modules,
+		finalize: h.body.Finalize,
+	})
+}
+
+// createPatchArgs holds everything the shared patch creation flow needs. The
+// author, project, and finalize state on the intent params are set by
+// createPatchFromIntent.
+type createPatchArgs struct {
+	pref         *dbModel.ProjectRef
+	author       string
+	intentParams patch.CLIIntentParams
+	modules      []apimodels.CreatePatchModule
+	finalize     bool
+}
+
+// createPatchFromIntent is the shared creation flow behind the create and
+// clone routes: validate the project, insert and process a CLI intent, apply
+// module diffs, and optionally finalize. It returns a responder with the
+// created APIPatch (201), or an error responder.
+func createPatchFromIntent(ctx context.Context, env evergreen.Environment, usr *user.DBUser, args createPatchArgs) gimlet.Responder {
+	pref := args.pref
 	if pref.IsPatchingDisabled() || !pref.Enabled {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -86,40 +137,17 @@ func (h *patchCreateHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	author, errResp := resolvePatchAuthor(ctx, usr, pref, h.body.Author)
+	author, errResp := resolvePatchAuthor(ctx, usr, pref, args.author)
 	if errResp != nil {
 		return errResp
 	}
 
-	parameters := make([]patch.Parameter, 0, len(h.body.Parameters))
-	for _, p := range h.body.Parameters {
-		parameters = append(parameters, patch.Parameter{Key: p.Key, Value: p.Value})
-	}
+	args.intentParams.User = author
+	args.intentParams.Project = pref.Id
+	args.intentParams.Finalize = false
 
 	patchID := mgobson.NewObjectId()
-	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
-		User:                               author,
-		Project:                            pref.Id,
-		BaseGitHash:                        h.body.BaseGithash,
-		PatchContent:                       h.body.Patch,
-		Description:                        h.body.Description,
-		Finalize:                           false,
-		Parameters:                         parameters,
-		Variants:                           h.body.Variants,
-		Tasks:                              h.body.Tasks,
-		RegexVariants:                      h.body.RegexVariants,
-		RegexTasks:                         h.body.RegexTasks,
-		RegexTestSelectionVariants:         h.body.RegexTestSelectionVariants,
-		RegexTestSelectionExcludedVariants: h.body.RegexTestSelectionExcludedVariants,
-		RegexTestSelectionTasks:            h.body.RegexTestSelectionTasks,
-		RegexTestSelectionExcludedTasks:    h.body.RegexTestSelectionExcludedTasks,
-		Alias:                              h.body.Alias,
-		Aliases:                            h.body.Aliases,
-		TriggerAliases:                     h.body.TriggerAliases,
-		RepeatDefinition:                   h.body.RepeatLastPatch,
-		RepeatFailed:                       h.body.RepeatFailed,
-		RepeatPatchId:                      h.body.RepeatPatchId,
-	})
+	intent, err := patch.NewCliIntent(args.intentParams)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -141,12 +169,12 @@ func (h *patchCreateHandler) Run(ctx context.Context) gimlet.Responder {
 		"message":    "creating patch",
 		"from":       "rest v2",
 		"patch_id":   patchID,
-		"finalizing": h.body.Finalize,
-		"variants":   h.body.Variants,
-		"tasks":      h.body.Tasks,
-		"alias":      h.body.Alias,
+		"finalizing": args.finalize,
+		"variants":   args.intentParams.Variants,
+		"tasks":      args.intentParams.Tasks,
+		"alias":      args.intentParams.Alias,
 	})
-	job := units.NewPatchIntentProcessor(h.env, patchID, intent)
+	job := units.NewPatchIntentProcessor(env, patchID, intent)
 	job.Run(ctx)
 	if err = job.Error(); err != nil {
 		// Return a 400 error if the error is due to the user's input.
@@ -159,7 +187,9 @@ func (h *patchCreateHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "processing patch"))
 	}
 
-	if len(h.body.Modules) > 0 || h.body.Finalize {
+	// The processed patch doc is needed to validate modules and to check that finalization is meaningful. Module diffs
+	// must be in place before finalization so the version picks them up.
+	if len(args.modules) > 0 || args.finalize {
 		patchDoc, err := patch.FindOneId(ctx, patchID.Hex())
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patch '%s'", patchID.Hex()))
@@ -168,26 +198,26 @@ func (h *patchCreateHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("patch '%s' not found after processing", patchID.Hex()))
 		}
 
+		if errResp := validateModulesExist(ctx, env, patchDoc, args.modules); errResp != nil {
+			return errResp
+		}
+
 		// Activating a patch whose definition resolved to no tasks or variants would create a version with nothing to run.
-		if h.body.Finalize && len(patchDoc.VariantsTasks) == 0 {
+		if args.finalize && len(patchDoc.VariantsTasks) == 0 {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    "patch has no build variants or tasks",
 			})
 		}
-
-		if errResp := validateModulesExist(ctx, h.env, patchDoc, h.body.Modules); errResp != nil {
-			return errResp
-		}
 	}
 
-	for _, m := range h.body.Modules {
+	for _, m := range args.modules {
 		if err = restData.UpdatePatchModule(ctx, patchID.Hex(), m.ModuleName, m.Githash, m.Patch); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding diff for module '%s'", m.ModuleName))
 		}
 	}
 
-	if h.body.Finalize {
+	if args.finalize {
 		if err = restData.SetPatchActivated(ctx, patchID.Hex(), usr.Id, true); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finalizing patch"))
 		}
