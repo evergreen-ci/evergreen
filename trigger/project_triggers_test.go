@@ -9,8 +9,10 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -129,9 +131,9 @@ func TestMakeDownstreamProjectFromFile(t *testing.T) {
 }
 
 func TestTriggerDownstreamProjectForPush(t *testing.T) {
-	require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
+	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.VersionCollection))
 	t.Cleanup(func() {
-		require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
+		require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.VersionCollection))
 	})
 
 	const (
@@ -139,8 +141,9 @@ func TestTriggerDownstreamProjectForPush(t *testing.T) {
 		downstreamProjectID = "push-trigger-downstream"
 	)
 	downstream := model.ProjectRef{
-		Id:      downstreamProjectID,
-		Enabled: true,
+		Id:         downstreamProjectID,
+		Identifier: downstreamProjectID,
+		Enabled:    true,
 		Triggers: []model.TriggerDefinition{
 			{
 				Project:      upstreamProjectID,
@@ -166,7 +169,13 @@ func TestTriggerDownstreamProjectForPush(t *testing.T) {
 	ingestTime := time.Date(2026, time.July, 14, 12, 0, 0, 0, time.UTC)
 	pushCommitTime := ingestTime.Add(-time.Minute)
 	pushEvent := &github.PushEvent{
+		Sender: &github.User{Login: github.String("pusher")},
 		Commits: []*github.HeadCommit{
+			{
+				ID:        github.String("already-triggered-sha"),
+				Timestamp: &github.Timestamp{Time: pushCommitTime.Add(-time.Minute)},
+				Author:    &github.CommitAuthor{},
+			},
 			{
 				ID:        github.String("upstream-push-sha"),
 				Timestamp: &github.Timestamp{Time: pushCommitTime},
@@ -174,14 +183,18 @@ func TestTriggerDownstreamProjectForPush(t *testing.T) {
 			},
 		},
 	}
+	push := NewUpstreamPush(upstreamProjectID, pushEvent, ingestTime)
+	assert.Equal(t, "pusher", push.Sender)
+	existing := model.Version{Id: repotracker.TriggerVersionID(downstreamProjectID, "already-triggered-sha", "push-trigger-definition"), Identifier: downstreamProjectID}
+	require.NoError(t, existing.Insert(t.Context()))
 	var processorArgs []ProcessorArgs
 	processor := func(_ context.Context, args ProcessorArgs) (*model.Version, error) {
 		processorArgs = append(processorArgs, args)
 		return &model.Version{Id: args.PushRevision.Revision}, nil
 	}
 
-	require.NoError(t, TriggerDownstreamProjectForPush(t.Context(), upstreamProjectID, pushTriggered[0], RevisionsFromPushEvent(pushEvent), ingestTime, processor))
-	require.Len(t, processorArgs, 1)
+	require.NoError(t, TriggerDownstreamProjectForPush(t.Context(), push, pushTriggered[0], processor))
+	require.Len(t, processorArgs, 1, "commit that already has a version should be skipped")
 	assert.Equal(t, ingestTime, processorArgs[0].PushIngestTime)
 	assert.Equal(t, "upstream-push-sha", processorArgs[0].PushRevision.Revision)
 	assert.Equal(t, pushCommitTime, processorArgs[0].PushRevision.CreateTime)
@@ -190,7 +203,7 @@ func TestTriggerDownstreamProjectForPush(t *testing.T) {
 	assert.Equal(t, upstreamProjectID, processorArgs[0].TriggerID)
 	assert.Equal(t, "push-trigger-definition", processorArgs[0].DefinitionID)
 
-	require.NoError(t, TriggerDownstreamProjectForPush(t.Context(), upstreamProjectID, taskTriggered, RevisionsFromPushEvent(pushEvent), ingestTime, processor))
+	require.NoError(t, TriggerDownstreamProjectForPush(t.Context(), push, taskTriggered, processor))
 	assert.Len(t, processorArgs, 1, "project without a push trigger should not get a version")
 }
 
@@ -210,13 +223,20 @@ func TestGetMetadataFromArgsForPushShouldUseLatestMainlineRevision(t *testing.T)
 		require.NoError(t, v.Insert(t.Context()))
 	}
 
-	meta, err := getMetadataFromArgs(t.Context(), ProcessorArgs{
+	args := ProcessorArgs{
 		TriggerType:       model.ProjectTriggerLevelPush,
 		DownstreamProject: downstream,
 		PushRevision:      model.Revision{Revision: "upstream"},
 		PushIngestTime:    ingestTime,
-	})
+	}
+
+	meta, err := getMetadataFromArgs(t.Context(), args)
 	require.NoError(t, err)
 	assert.Equal(t, "latest-mainline-revision", meta.Revision.Revision)
 	assert.Equal(t, "upstream", meta.SourceCommit)
+
+	args.DownstreamProject.RepotrackerDisabled = utility.TruePtr()
+	meta, err = getMetadataFromArgs(t.Context(), args)
+	require.NoError(t, err)
+	assert.Equal(t, "newest-ingested-revision", meta.Revision.Revision, "project without a running repotracker should use the newest ingested revision")
 }

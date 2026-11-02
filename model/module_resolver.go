@@ -147,8 +147,9 @@ func (r *ModuleResolver) TriggeringModuleName(ctx context.Context, modules Modul
 }
 
 // IsTriggeringCommitStale returns whether the previous version already has the
-// triggering module commit or a newer commit of that module, in which case a
-// version for it would repeat that version or move the module backwards.
+// triggering module commit or a commit after it, in which case a version for it
+// would repeat that version or move the module backwards. It checks commit
+// order with GitHub, since webhooks can arrive out of order.
 func (r *ModuleResolver) IsTriggeringCommitStale(ctx context.Context) (bool, error) {
 	pin := r.opts.TriggeringModuleCommit
 	if pin == nil {
@@ -160,11 +161,20 @@ func (r *ModuleResolver) IsTriggeringCommitStale(ctx context.Context) (bool, err
 	if r.previousManifest == nil {
 		return false, nil
 	}
-	for name, mod := range r.previousManifest.Modules {
+	for _, mod := range r.previousManifest.Modules {
 		if mod == nil || mod.Revision == "" || mod.SelectionRule == manifest.ModuleSelectionPinnedRef || !r.isTriggeringModule(mod.Owner, mod.Repo, mod.Branch) {
 			continue
 		}
-		return mod.Revision == pin.Revision || r.newerModuleCommit(ctx, name, mod, pin) == mod, nil
+		if mod.Revision == pin.Revision {
+			return true, nil
+		}
+		ghCtx, cancel := context.WithTimeout(ctx, time.Minute)
+		defer cancel()
+		status, err := thirdparty.GetCommitComparisonStatus(ghCtx, pin.Owner, pin.Repo, mod.Revision, pin.Revision)
+		if err != nil {
+			return false, errors.Wrapf(err, "comparing triggering commit '%s' to previous commit '%s'", pin.Revision, mod.Revision)
+		}
+		return status == "behind", nil
 	}
 	return false, nil
 }

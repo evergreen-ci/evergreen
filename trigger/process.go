@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
@@ -324,12 +325,21 @@ func findPushTrigger(downstream model.ProjectRef, upstreamProjectID string) *mod
 	return nil
 }
 
-// RevisionsFromPushEvent returns the commits in a GitHub push event, from
-// oldest to newest.
-func RevisionsFromPushEvent(event *github.PushEvent) []model.Revision {
-	revisions := make([]model.Revision, 0, len(event.Commits))
+// UpstreamPush describes commits pushed to a project that can trigger versions
+// in downstream projects.
+type UpstreamPush struct {
+	ProjectID  string           `bson:"project_id" json:"project_id" yaml:"project_id"`
+	Commits    []model.Revision `bson:"commits" json:"commits" yaml:"commits"`
+	IngestTime time.Time        `bson:"ingest_time" json:"ingest_time" yaml:"ingest_time"`
+	Sender     string           `bson:"sender" json:"sender" yaml:"sender"`
+}
+
+// NewUpstreamPush returns the commits in a GitHub push event to the project,
+// from oldest to newest.
+func NewUpstreamPush(projectID string, event *github.PushEvent, ingestTime time.Time) UpstreamPush {
+	commits := make([]model.Revision, 0, len(event.Commits))
 	for _, commit := range event.Commits {
-		revisions = append(revisions, model.Revision{
+		commits = append(commits, model.Revision{
 			Revision:        commit.GetID(),
 			CreateTime:      commit.GetTimestamp().Time,
 			Author:          commit.GetAuthor().GetName(),
@@ -337,21 +347,34 @@ func RevisionsFromPushEvent(event *github.PushEvent) []model.Revision {
 			RevisionMessage: commit.GetMessage(),
 		})
 	}
-	return revisions
+	return UpstreamPush{
+		ProjectID:  projectID,
+		Commits:    commits,
+		IngestTime: ingestTime,
+		Sender:     event.GetSender().GetLogin(),
+	}
 }
 
 // TriggerDownstreamProjectForPush creates a version in the downstream project
-// for each commit pushed to the upstream project, if the downstream project
-// has a push level trigger on it.
-func TriggerDownstreamProjectForPush(ctx context.Context, upstreamProjectID string, downstream model.ProjectRef, commits []model.Revision, ingestTime time.Time, processor projectProcessor) error {
-	trigger := findPushTrigger(downstream, upstreamProjectID)
+// for each pushed commit that doesn't have one yet, if the downstream project
+// has a push level trigger on the pushed project.
+func TriggerDownstreamProjectForPush(ctx context.Context, push UpstreamPush, downstream model.ProjectRef, processor projectProcessor) error {
+	trigger := findPushTrigger(downstream, push.ProjectID)
 	if trigger == nil {
 		return nil
 	}
 
 	catcher := grip.NewBasicCatcher()
 	var versionIDs []string
-	for _, commit := range commits {
+	for _, commit := range push.Commits {
+		existing, err := model.VersionFindOneId(ctx, repotracker.TriggerVersionID(downstream.Identifier, commit.Revision, trigger.DefinitionID))
+		if err != nil {
+			catcher.Wrapf(err, "checking for existing version for upstream commit '%s'", commit.Revision)
+			continue
+		}
+		if existing != nil {
+			continue
+		}
 		args := ProcessorArgs{
 			DownstreamProject:            downstream,
 			ConfigFile:                   trigger.ConfigFile,
@@ -361,7 +384,7 @@ func TriggerDownstreamProjectForPush(ctx context.Context, upstreamProjectID stri
 			Alias:                        trigger.Alias,
 			UnscheduleDownstreamVersions: trigger.UnscheduleDownstreamVersions,
 			PushRevision:                 commit,
-			PushIngestTime:               ingestTime,
+			PushIngestTime:               push.IngestTime,
 		}
 		v, err := processor(ctx, args)
 		if err != nil {
@@ -374,15 +397,16 @@ func TriggerDownstreamProjectForPush(ctx context.Context, upstreamProjectID stri
 	}
 
 	if len(versionIDs) > 0 {
-		upstreamCommits := make([]string, 0, len(commits))
-		for _, commit := range commits {
+		upstreamCommits := make([]string, 0, len(push.Commits))
+		for _, commit := range push.Commits {
 			upstreamCommits = append(upstreamCommits, commit.Revision)
 		}
 		grip.Info(ctx, message.Fields{
-			"source":                 "GitHub hook",
+			"source":                 "project-triggers",
 			"message":                "triggered downstream versions for project push event",
+			"sender":                 push.Sender,
 			"upstream_commits":       upstreamCommits,
-			"upstream_project_id":    upstreamProjectID,
+			"upstream_project_id":    push.ProjectID,
 			"downstream_project_id":  downstream.Id,
 			"downstream_version_ids": versionIDs,
 		})

@@ -178,10 +178,10 @@ func enqueuePushTriggerVersions(ctx context.Context, q amboy.Queue, msgID, proje
 	if err != nil {
 		return err
 	}
-	commits := trigger.RevisionsFromPushEvent(event)
+	push := trigger.NewUpstreamPush(projectID, event, ingestTime)
 	catcher := grip.NewBasicCatcher()
 	for _, downstream := range downstreamProjects {
-		j := units.NewPushTriggerVersionsJob(msgID, projectID, downstream.Id, commits, ingestTime)
+		j := units.NewPushTriggerVersionsJob(msgID, push, downstream.Id)
 		catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, q, j), "enqueueing push trigger versions job for downstream project '%s'", downstream.Id)
 	}
 	return catcher.Resolve()

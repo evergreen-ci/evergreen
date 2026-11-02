@@ -765,7 +765,7 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 			revision = metadata.SourceVersion.Revision
 			createTime = metadata.SourceVersion.CreateTime
 		}
-		v.Id = util.CleanName(fmt.Sprintf("%s_%s_%s", ref.Identifier, revision, metadata.TriggerDefinitionID))
+		v.Id = TriggerVersionID(ref.Identifier, revision, metadata.TriggerDefinitionID)
 		v.Requester = evergreen.TriggerRequester
 		v.CreateTime = createTime
 	} else if metadata.IsAdHoc {
@@ -800,6 +800,12 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		v.AuthorEmail = metadata.User.Email()
 	}
 	return v, nil
+}
+
+// TriggerVersionID returns the ID of the version a trigger creates in the
+// project for the source revision.
+func TriggerVersionID(projectIdentifier, sourceRevision, triggerDefinitionID string) string {
+	return util.CleanName(fmt.Sprintf("%s_%s_%s", projectIdentifier, sourceRevision, triggerDefinitionID))
 }
 
 func resolveUserFromMetadata(ctx context.Context, versionId string, metadata model.VersionMetadata) *user.DBUser {

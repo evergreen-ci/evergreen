@@ -469,9 +469,11 @@ Options:
     the manifest of the downstream version will use the commit hash of the upstream project's commit. All other modules
     keep the revisions from the previous version's manifest.
   - A push level trigger version uses the downstream project's latest mainline revision, so it only differs from the
-    versions before it by the upstream commit. If the previous version already uses the upstream commit or a newer one,
-    no version is created. Push level trigger versions are created shortly after the push, one at a time with the
-    downstream project's mainline versions.
+    versions before it by the upstream commit. If the downstream project's repotracker is disabled, it uses the latest
+    downstream commit Evergreen has received instead. If the previous version already uses the upstream commit or a
+    newer one, no version is created.
+  - Push level trigger versions are created in the background after the push, one at a time with the downstream
+    project's mainline versions, so they can wait behind a repotracker run for the downstream project.
 - **Status**: Specify which status of the upstream build or task should trigger a downstream version.
   (Only applicable to build and task level triggers.)
 - **Date cutoff**: Do not trigger a downstream build if a user manually

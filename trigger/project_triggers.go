@@ -177,9 +177,10 @@ func getMetadataFromArgs(ctx context.Context, args ProcessorArgs) (model.Version
 	}
 	metadata.IngestTime = ingestTime
 
-	if args.TriggerType == model.ProjectTriggerLevelPush {
-		// Use the latest mainline version's revision so the version only
-		// differs from the versions before it by the pushed commit.
+	// Use the latest mainline version's revision so the version only differs
+	// from the versions before it by the pushed commit. Skip this when the
+	// repotracker is disabled, since that version could be arbitrarily old.
+	if args.TriggerType == model.ProjectTriggerLevelPush && !args.DownstreamProject.IsRepotrackerDisabled() {
 		revision, err := model.FindLatestMainlineRevision(ctx, args.DownstreamProject.Id)
 		if err != nil {
 			return metadata, err

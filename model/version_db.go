@@ -108,10 +108,9 @@ func byLatestProjectVersion(projectId string) bson.M {
 
 // FindLatestRevisionAndAuthorForProject returns the latest revision and author ID for the project, and returns an error if it's not found.
 func FindLatestRevisionAndAuthorForProject(ctx context.Context, projectId string) (string, string, error) {
-	v, err := VersionFindOne(ctx, db.Query(byLatestProjectVersion(projectId)).
-		Sort([]string{"-" + VersionRevisionOrderNumberKey}).WithFields(VersionRevisionKey, VersionAuthorIDKey))
+	v, err := findLatestMainlineVersion(ctx, projectId, VersionRevisionKey, VersionAuthorIDKey)
 	if err != nil {
-		return "", "", errors.Wrapf(err, "finding most recent version for project '%s'", projectId)
+		return "", "", err
 	}
 	if v == nil {
 		return "", "", errors.Errorf("no recent version found for project '%s'", projectId)
@@ -125,15 +124,17 @@ func FindLatestRevisionAndAuthorForProject(ctx context.Context, projectId string
 // FindLatestMainlineRevision returns the revision of the project's most recent
 // mainline version, or an empty string if it has none.
 func FindLatestMainlineRevision(ctx context.Context, projectID string) (string, error) {
-	v, err := VersionFindOne(ctx, db.Query(byLatestProjectVersion(projectID)).
-		Sort([]string{"-" + VersionRevisionOrderNumberKey}).WithFields(VersionRevisionKey))
-	if err != nil {
-		return "", errors.Wrapf(err, "finding most recent mainline version for project '%s'", projectID)
-	}
-	if v == nil {
-		return "", nil
+	v, err := findLatestMainlineVersion(ctx, projectID, VersionRevisionKey)
+	if err != nil || v == nil {
+		return "", err
 	}
 	return v.Revision, nil
+}
+
+func findLatestMainlineVersion(ctx context.Context, projectID string, fields ...string) (*Version, error) {
+	v, err := VersionFindOne(ctx, db.Query(byLatestProjectVersion(projectID)).
+		Sort([]string{"-" + VersionRevisionOrderNumberKey}).WithFields(fields...))
+	return v, errors.Wrapf(err, "finding most recent mainline version for project '%s'", projectID)
 }
 
 // BaseVersionByProjectIdAndRevision finds a base version for the given project and revision.
