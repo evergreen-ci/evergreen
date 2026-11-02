@@ -174,23 +174,23 @@ func makeGetTaskLogs() *getTaskLogsHandler {
 
 // Factory creates an instance of the handler.
 //
-//	@Summary		Get task logs for a task.
-//	@Description	Fetch task logs by task ID.
-//	@Tags			tasks
-//	@Router			/tasks/{task_id}/build/TaskLogs [get]
-//	@Security		Api-User || Api-Key
-//	@Param			task_id			path		string	true	"Task ID."
-//	@Param			execution		query		int		false	"The 0-based number corresponding to the execution of the task ID. Defaults to the latest execution."
-//	@Param			type			query		string	false	"Task log type. Must be one of: `agent_log`, `system_log`, `task_log`, `all_logs`. Defaults to `all_logs`."
-//	@Param			start			query		string	false	"Start of targeted time interval (inclusive) in RFC3339 format. Defaults to the first timestamp of the requested logs."
-//	@Param			end				query		string	false	"End of targeted time interval (inclusive) in RFC3339 format. Defaults to the last timestamp of the requested logs."
-//	@Param			line_limit		query		int		false	"If set greater than 0, limits the number of log lines returned."
-//	@Param			tail_limit		query		int		false	"If set greater than 0, returns the last N log lines."
-//	@Param			print_time		query		bool	false	"If set to true, returns log lines prefixed with their timestamp."
-//	@Param			print_priority	query		bool	false	"If set to true, returns log lines prefixed with their priority."
-//	@Param			paginate		query		bool	false	"If set to true, paginates the response and returns Link response headers (rel=next and rel=prev) whose cursors are RFC3339 timestamps; follow them verbatim instead of constructing pagination URLs. Defaults to false."
-//	@Success		200				{string}	string
-//	@Header			200				{string}	Link	"Pagination links (rel=next and rel=prev) returned when 'paginate' is true and more log lines exist in the requested direction. Follow this header verbatim instead of constructing pagination URLs."
+//	@Summary			Get task logs for a task.
+//	@Description		Fetch task logs by task ID.
+//	@Tags				tasks
+//	@Router				/tasks/{task_id}/build/TaskLogs [get]
+//	@Security			Api-User || Api-Key
+//	@Param				task_id			path		string	true	"Task ID."
+//	@Param				execution		query		int		false	"The 0-based number corresponding to the execution of the task ID. Defaults to the latest execution."
+//	@Param				type			query		string	false	"Task log type. Must be one of: `agent_log`, `system_log`, `task_log`, `all_logs`. Defaults to `all_logs`."
+//	@Param				start			query		string	false	"Start of targeted time interval (inclusive) in RFC3339 format. Defaults to the first timestamp of the requested logs."
+//	@Param				end				query		string	false	"End of targeted time interval (inclusive) in RFC3339 format. Defaults to the last timestamp of the requested logs."
+//	@Param				line_limit		query		int		false	"If set greater than 0, limits the number of log lines returned."
+//	@Param				tail_limit		query		int		false	"If set greater than 0, returns the last N log lines."
+//	@Param				print_time		query		bool	false	"If set to true, returns log lines prefixed with their timestamp."
+//	@Param				print_priority	query		bool	false	"If set to true, returns log lines prefixed with their priority."
+//	@Param				paginate		query		bool	false	"If set to true, paginates the response and returns Link response headers (rel=next and rel=prev) whose cursors are RFC3339 timestamps; follow them verbatim instead of constructing pagination URLs. Defaults to false."
+//	@Success			200				{string}	string
+//	@Header				200				{string}	Link	"Pagination links (rel=next and rel=prev) returned when 'paginate' is true and more log lines exist in the requested direction. Follow this header verbatim instead of constructing pagination URLs."
 //	@x-pagination-type	"log-time-cursor"
 func (h *getTaskLogsHandler) Factory() gimlet.RouteHandler {
 	return &getTaskLogsHandler{}
@@ -238,24 +238,24 @@ func makeGetTestLogs() *getTestLogsHandler {
 
 // Factory creates an instance of the handler.
 //
-//	@Summary		Get test logs for a task.
-//	@Description	Fetch test logs by task ID.
-//	@Tags			tasks
-//	@Router			/tasks/{task_id}/build/TestLogs/{path} [get]
-//	@Security		Api-User || Api-Key
-//	@Param			task_id			path		string	true	"Task ID."
-//	@Param			path			path		string	true	"Test log path relative to the task's test logs directory."
-//	@Param			execution		query		int		false	"The 0-based number corresponding to the execution of the task ID. Defaults to the latest execution."
-//	@Param			logs_to_merge	query		string	false	"Test log path, relative to the task's test log directory, to merge with test log specified in the URL path. Can be a prefix. Merging is stable and timestamp-based. Repeat the parameter key if more than one value."
-//	@Param			start			query		string	false	"Start of targeted time interval (inclusive) in RFC3339 format. Defaults to the first timestamp of the test log specified in the URL path."
-//	@Param			end				query		string	false	"End of targeted time interval (inclusive) in RFC3339 format. Defaults to the last timestamp of the test log specified in the URL path."
-//	@Param			line_limit		query		int		false	"If set greater than 0, limits the number of log lines returned."
-//	@Param			tail_limit		query		int		false	"If set greater than 0, returns the last N log lines."
-//	@Param			print_time		query		bool	false	"If set to true, returns log lines prefixed with their timestamp."
-//	@Param			print_priority	query		bool	false	"If set to true, returns log lines prefixed with their priority."
-//	@Param			paginate		query		bool	false	"If set to true, paginates the response and returns Link response headers (rel=next and rel=prev) whose cursors are RFC3339 timestamps; follow them verbatim instead of constructing pagination URLs. Defaults to false."
-//	@Success		200				{string}	string
-//	@Header			200				{string}	Link	"Pagination links (rel=next and rel=prev) returned when 'paginate' is true and more log lines exist in the requested direction. Follow this header verbatim instead of constructing pagination URLs."
+//	@Summary			Get test logs for a task.
+//	@Description		Fetch test logs by task ID.
+//	@Tags				tasks
+//	@Router				/tasks/{task_id}/build/TestLogs/{path} [get]
+//	@Security			Api-User || Api-Key
+//	@Param				task_id			path		string	true	"Task ID."
+//	@Param				path			path		string	true	"Test log path relative to the task's test logs directory."
+//	@Param				execution		query		int		false	"The 0-based number corresponding to the execution of the task ID. Defaults to the latest execution."
+//	@Param				logs_to_merge	query		string	false	"Test log path, relative to the task's test log directory, to merge with test log specified in the URL path. Can be a prefix. Merging is stable and timestamp-based. Repeat the parameter key if more than one value."
+//	@Param				start			query		string	false	"Start of targeted time interval (inclusive) in RFC3339 format. Defaults to the first timestamp of the test log specified in the URL path."
+//	@Param				end				query		string	false	"End of targeted time interval (inclusive) in RFC3339 format. Defaults to the last timestamp of the test log specified in the URL path."
+//	@Param				line_limit		query		int		false	"If set greater than 0, limits the number of log lines returned."
+//	@Param				tail_limit		query		int		false	"If set greater than 0, returns the last N log lines."
+//	@Param				print_time		query		bool	false	"If set to true, returns log lines prefixed with their timestamp."
+//	@Param				print_priority	query		bool	false	"If set to true, returns log lines prefixed with their priority."
+//	@Param				paginate		query		bool	false	"If set to true, paginates the response and returns Link response headers (rel=next and rel=prev) whose cursors are RFC3339 timestamps; follow them verbatim instead of constructing pagination URLs. Defaults to false."
+//	@Success			200				{string}	string
+//	@Header				200				{string}	Link	"Pagination links (rel=next and rel=prev) returned when 'paginate' is true and more log lines exist in the requested direction. Follow this header verbatim instead of constructing pagination URLs."
 //	@x-pagination-type	"log-time-cursor"
 func (h *getTestLogsHandler) Factory() gimlet.RouteHandler {
 	return &getTestLogsHandler{}
