@@ -1787,7 +1787,6 @@ func (g *createInstallationTokenForClone) Run(ctx context.Context) gimlet.Respon
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "checking repo authorization"))
 	}
 	if allowed && gimlet.GetUser(ctx) != nil {
-		// A user debugging the task may not be the PR author.
 		repoChecker, err := model.ModuleRepoCheckerForUser(ctx, t)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting user's module repo checker"))

@@ -876,7 +876,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, transl
 		AuthorEmail:          authorEmail,
 	}
 
-	// Patches created before module repos were checked can still be finalized.
 	if err := ValidatePatchModuleRepos(ctx, p, projectRef, project.Modules); err != nil {
 		return nil, err
 	}

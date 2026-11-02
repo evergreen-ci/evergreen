@@ -900,7 +900,6 @@ func GetGithubTokensForTask(ctx context.Context, taskId string) (string, []strin
 
 	var repoChecker *model.PatchModuleRepoChecker
 	if len(modules) > 0 {
-		// The spawn host's owner may not be the PR author.
 		repoChecker, err = model.ModuleRepoCheckerForUser(ctx, t)
 		if err != nil {
 			catcher.Wrap(err, "getting user's module repo checker")

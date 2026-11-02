@@ -1609,7 +1609,6 @@ func gitHubUserHasPermission(ctx context.Context, caller, owner, repo, username 
 }
 
 // IsGitHubRepoPublic returns true if the repo is visible to anyone on GitHub.
-// Internal repos are not public.
 func IsGitHubRepoPublic(ctx context.Context, owner, repo string) (bool, error) {
 	caller := "IsGitHubRepoPublic"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(

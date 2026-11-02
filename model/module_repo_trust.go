@@ -19,8 +19,7 @@ import (
 )
 
 // committedConfigRequesters are the requesters whose versions' config is
-// committed to the tracked branch. Git tag versions are excluded because a tag
-// can point at a commit that was never merged.
+// committed to the tracked branch.
 var committedConfigRequesters = []string{
 	evergreen.RepotrackerVersionRequester,
 	evergreen.TriggerRequester,
@@ -29,15 +28,13 @@ var committedConfigRequesters = []string{
 
 const committedManifestLookback = 10
 
-// These are variables so tests can stub GitHub.
 var (
 	isGitHubRepoPublic          = thirdparty.IsGitHubRepoPublic
 	gitHubUserHasReadPermission = thirdparty.GitHubUserHasReadPermission
 )
 
 // ValidatePatchModuleRepos returns an error if the patch's modules use repos
-// the patch isn't allowed to use. Otherwise, a patch author could read any repo
-// Evergreen's GitHub App can by declaring it as a module.
+// the patch isn't allowed to use.
 func ValidatePatchModuleRepos(ctx context.Context, p *patch.Patch, projectRef *ProjectRef, modules ModuleList) error {
 	c := newPatchModuleRepoChecker(projectRef, p)
 	if c == nil || len(modules) == 0 {
@@ -74,8 +71,7 @@ func ValidatePatchModuleRepos(ctx context.Context, p *patch.Patch, projectRef *P
 }
 
 // ModuleRepoCheckerForUser returns a checker for a user acting on the task, who
-// may not be the PR author. It returns nil, which allows every repo, if the
-// task's config isn't controlled by its author.
+// may not be the PR author.
 func ModuleRepoCheckerForUser(ctx context.Context, t *task.Task) (*PatchModuleRepoChecker, error) {
 	if !evergreen.IsPatchRequester(t.Requester) {
 		return nil, nil
@@ -101,23 +97,17 @@ func ModuleRepoCheckerForUser(ctx context.Context, t *task.Task) (*PatchModuleRe
 	return c, nil
 }
 
-// PatchModuleRepoChecker checks whether a patch can use module repos. A nil
-// checker allows every repo.
+// PatchModuleRepoChecker checks whether a patch can use module repos.
 type PatchModuleRepoChecker struct {
 	projectRef    *ProjectRef
 	patch         *patch.Patch
 	allowPRAuthor bool
-
-	// The mutex is needed because includes are read concurrently.
-	mu        sync.Mutex
-	committed map[string]bool
-	results   map[string]bool
+	mu            sync.Mutex
+	committed     map[string]bool
+	results       map[string]bool
 }
 
-// newPatchModuleRepoChecker returns nil if the patch's author can't change its
-// config without review.
 func newPatchModuleRepoChecker(projectRef *ProjectRef, p *patch.Patch) *PatchModuleRepoChecker {
-	// Not IsMergeQueuePatch, since CLI patches can use the merge queue alias.
 	if projectRef == nil || p == nil || p.GithubMergeData.HeadSHA != "" || p.IsChild() {
 		return nil
 	}
@@ -168,8 +158,7 @@ func (c *PatchModuleRepoChecker) check(ctx context.Context, owner, repo string) 
 }
 
 // isTrustedOnGitHub checks whether the repo is public or readable by the PR
-// author. CLI patches can't use the author's access because Evergreen users'
-// GitHub usernames aren't verified.
+// author.
 func (c *PatchModuleRepoChecker) isTrustedOnGitHub(ctx context.Context, owner, repo string) (bool, error) {
 	public, err := isGitHubRepoPublic(ctx, owner, repo)
 	if err != nil {
@@ -181,7 +170,6 @@ func (c *PatchModuleRepoChecker) isTrustedOnGitHub(ctx context.Context, owner, r
 	}
 	canRead, err := gitHubUserHasReadPermission(ctx, owner, repo, prAuthor)
 	if err != nil {
-		// GitHub returns an error for users who aren't collaborators.
 		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message":   "checking if PR author can read patch module repo",
 			"patch_id":  c.patch.Id.Hex(),
@@ -194,9 +182,6 @@ func (c *PatchModuleRepoChecker) isTrustedOnGitHub(ctx context.Context, owner, r
 	return canRead, nil
 }
 
-// load loads the repos declared in committed config. Recent mainline
-// versions are needed as well as the base version, since a patch's base commit
-// may have no version or predate a module.
 func (c *PatchModuleRepoChecker) load(ctx context.Context) error {
 	if c.committed != nil {
 		return nil
@@ -244,8 +229,6 @@ func trimGitSuffix(repo string) string {
 	return strings.TrimSuffix(strings.TrimSpace(repo), ".git")
 }
 
-// moduleRepoKey treats a wiki as its parent repo, since its clone token is for
-// the parent repo.
 func moduleRepoKey(owner, repo string) string {
 	return strings.ToLower(strings.TrimSpace(owner) + "/" + strings.TrimSuffix(trimGitSuffix(repo), ".wiki"))
 }
