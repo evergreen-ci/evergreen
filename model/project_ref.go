@@ -636,10 +636,7 @@ func (p *ProjectRef) IsStepbackBisect() bool {
 	return utility.FromBoolPtr(p.StepbackBisect)
 }
 
-// IsStepbackPushTriggers returns whether stepback on mainline and
-// push-triggered versions considers both kinds of versions, instead of only
-// versions with the same requester.
-func (p *ProjectRef) IsStepbackPushTriggers() bool {
+func (p *ProjectRef) isStepbackPushTriggers() bool {
 	return utility.FromBoolPtr(p.StepbackPushTriggers)
 }
 

@@ -902,7 +902,7 @@ func (t *Task) PreviousCompletedTask(ctx context.Context, project string, status
 // a mainline or push-triggered version, it only matches tasks in mainline and
 // push-triggered versions.
 func (t *Task) PreviousCompletedStepbackTask(ctx context.Context, statuses []string, includePushTriggers bool) (*Task, error) {
-	if !includePushTriggers || !t.IsMainlineOrPushTriggered() {
+	if !includePushTriggers || !t.isMainlineOrPushTriggered() {
 		return t.PreviousCompletedTask(ctx, t.Project, statuses)
 	}
 	if len(statuses) == 0 {
@@ -913,13 +913,9 @@ func (t *Task) PreviousCompletedStepbackTask(ctx context.Context, statuses []str
 	return FindOne(ctx, db.Query(q).Sort([]string{"-" + RevisionOrderNumberKey}))
 }
 
-// pushTriggerType is the trigger type of push-triggered versions, the same as
-// model.ProjectTriggerLevelPush.
 const pushTriggerType = "push"
 
-// IsMainlineOrPushTriggered returns whether the task is in a mainline or
-// push-triggered version.
-func (t *Task) IsMainlineOrPushTriggered() bool {
+func (t *Task) isMainlineOrPushTriggered() bool {
 	return t.Requester == evergreen.RepotrackerVersionRequester ||
 		(t.Requester == evergreen.TriggerRequester && t.TriggerType == pushTriggerType)
 }
@@ -1285,7 +1281,7 @@ func setDependenciesMetTimeForTasks(ctx context.Context, uniqueIDsToSetDependenc
 //
 // It verifies that the tasks are from the same project, requester,
 // build variant, and display name. If includePushTriggers is set, tasks in
-// mainline and push-triggered versions count as having the same requester.
+// mainline and push-triggered versions are both considered.
 func ByBeforeMidwayTaskFromIds(ctx context.Context, t1Id, t2Id string, includePushTriggers bool) (*Task, error) {
 	t1, err := FindOneId(ctx, t1Id)
 	if err != nil {
@@ -1307,7 +1303,7 @@ func ByBeforeMidwayTaskFromIds(ctx context.Context, t1Id, t2Id string, includePu
 	catcher.ErrorfWhen(t1.BuildVariant != t2.BuildVariant, "given tasks have differing build variants '%s' and '%s'", t1.BuildVariant, t2.BuildVariant)
 	catcher.ErrorfWhen(t1.DisplayName != t2.DisplayName, "given tasks have differing display name '%s' and '%s'", t1.DisplayName, t2.DisplayName)
 	catcher.ErrorfWhen(t1.Project != t2.Project, "given tasks have differing project '%s' and '%s'", t1.Project, t2.Project)
-	bothMainlineOrPushTriggered := includePushTriggers && t1.IsMainlineOrPushTriggered() && t2.IsMainlineOrPushTriggered()
+	bothMainlineOrPushTriggered := includePushTriggers && t1.isMainlineOrPushTriggered() && t2.isMainlineOrPushTriggered()
 	catcher.ErrorfWhen(!bothMainlineOrPushTriggered && t1.Requester != t2.Requester, "given tasks have differing requester '%s' and '%s'", t1.Requester, t2.Requester)
 	if catcher.HasErrors() {
 		return nil, catcher.Resolve()

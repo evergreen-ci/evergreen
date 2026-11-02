@@ -575,18 +575,16 @@ func ByBeforeRevision(revisionOrder int, buildVariant, displayName, project, req
 }
 
 // ByBeforeRevisionForStepback is the same as ByBeforeRevision for t, except
-// that if includePushTriggers is set and t is in a mainline or push-triggered
+// that if includePushTriggers is set and the task is in a mainline or push-triggered
 // version, it matches tasks in both mainline and push-triggered versions.
 func ByBeforeRevisionForStepback(revisionOrder int, t *Task, includePushTriggers bool) (bson.M, []string) {
 	q, sort := ByBeforeRevision(revisionOrder, t.BuildVariant, t.DisplayName, t.Project, t.Requester)
-	if includePushTriggers && t.IsMainlineOrPushTriggered() {
+	if includePushTriggers && t.isMainlineOrPushTriggered() {
 		maps.Copy(q, mainlineAndPushTriggeredQuery())
 	}
 	return q, sort
 }
 
-// mainlineAndPushTriggeredQuery matches tasks in mainline and push-triggered
-// versions. Mainline tasks don't have a trigger type.
 func mainlineAndPushTriggeredQuery() bson.M {
 	return bson.M{
 		RequesterKey:   bson.M{"$in": []string{evergreen.RepotrackerVersionRequester, evergreen.TriggerRequester}},
