@@ -149,6 +149,7 @@ type Task struct {
 	DistroId                string       `bson:"distro" json:"distro"`
 	BuildVariant            string       `bson:"build_variant" json:"build_variant"`
 	BuildVariantDisplayName string       `bson:"build_variant_display_name" json:"-"`
+	BuildVariantTags        []string     `bson:"build_variant_tags,omitempty" json:"-"`
 	DependsOn               []Dependency `bson:"depends_on" json:"depends_on"`
 	// UnattainableDependency caches the contents of DependsOn for more
 	// efficient querying. It is true if any of its dependencies is unattainable

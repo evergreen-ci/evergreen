@@ -457,23 +457,44 @@ func GitRestoreFile(ctx context.Context, owner, repo, revision, gitDir string, f
 	return contents, nil
 }
 
-// validateFileIsWithinDirectory ensures that the given file path is
-// contained within the specified directory.
-func validateFileIsWithinDirectory(dir, file string) error {
+// ValidatePathWithinDirectory ensures that the given relative path resolves
+// to a location contained within the specified directory.
+func ValidatePathWithinDirectory(dir, path string) error {
 	// Normalize the path (e.g. removes redundant separators, resolves ".").
-	cleanPath := filepath.Clean(file)
+	cleanPath := filepath.Clean(path)
 
+	if filepath.IsAbs(cleanPath) {
+		return errors.Errorf("path '%s' must be a relative path, not absolute", path)
+	}
+
+	fullPath := filepath.Join(dir, cleanPath)
+
+	// Use filepath.Rel to verify fullPath is within dir to rule out any other
+	// complex path manipulations.
+	relPath, err := filepath.Rel(dir, fullPath)
+	if err != nil {
+		return errors.Wrap(err, "verifying that the path is relative to the directory")
+	}
+
+	// If the relative path points to a parent directory, it may escape the
+	// directory.
+	if relPath == ".." || strings.HasPrefix(relPath, ".."+string(filepath.Separator)) {
+		return errors.Errorf("path '%s' escapes directory using '..'", path)
+	}
+
+	return nil
+}
+
+// validateFileIsWithinDirectory ensures that the given file path is contained
+// within the specified directory and is safe to pass to git as a pathspec.
+func validateFileIsWithinDirectory(dir, file string) error {
 	// Reject values that git could interpret as an option or a magic pathspec
 	// rather than a literal filename.
-	if strings.HasPrefix(cleanPath, "-") {
+	if strings.HasPrefix(filepath.Clean(file), "-") {
 		return errors.Errorf("file '%s' cannot begin with '-'", file)
 	}
 	if strings.HasPrefix(file, ":") {
 		return errors.Errorf("file '%s' cannot begin with ':'", file)
-	}
-
-	if filepath.IsAbs(cleanPath) {
-		return errors.Errorf("file '%s' must be a relative path, not absolute", file)
 	}
 
 	// Reject parent-directory components to prevent attempts to escape the directory.
@@ -483,22 +504,7 @@ func validateFileIsWithinDirectory(dir, file string) error {
 		return errors.Errorf("file '%s' cannot traverse directories using '..'", file)
 	}
 
-	fullFilePath := filepath.Join(dir, cleanPath)
-
-	// Use filepath.Rel to verify fullFilePath is a filepath within dir to rule
-	// out any other complex path manipulations.
-	relPath, err := filepath.Rel(dir, fullFilePath)
-	if err != nil {
-		return errors.Wrap(err, "verifying that the file is relative to the directory")
-	}
-
-	// If the relative path points to a parent directory, it may escape the
-	// directory.
-	if relPath == ".." || strings.HasPrefix(relPath, ".."+string(filepath.Separator)) {
-		return errors.Errorf("file '%s' escapes directory using '..'", file)
-	}
-
-	return nil
+	return ValidatePathWithinDirectory(dir, file)
 }
 
 // validateFileIsNotSymlink checks that the specified file is not a symlink.

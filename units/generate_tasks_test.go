@@ -796,6 +796,53 @@ func TestParseProjects(t *testing.T) {
 	assert.Equal("lint-rest-route", parsed[0].Tasks[1].Name)
 }
 
+func TestTagValidationTrackingEnabled(t *testing.T) {
+	const prefix = "owning_team_"
+	for testName, testCase := range map[string]struct {
+		taskOwnership model.TaskOwnershipSettings
+		expected      bool
+	}{
+		"NoSettingsConfigured": {
+			taskOwnership: model.TaskOwnershipSettings{},
+			expected:      false,
+		},
+		"TrackingDisabled": {
+			taskOwnership: model.TaskOwnershipSettings{
+				GeneratedTaskValidationPrefix:   prefix,
+				TrackGeneratedTaskTagValidation: utility.FalsePtr(),
+			},
+			expected: false,
+		},
+		"TrackingEnabledWithoutPrefix": {
+			taskOwnership: model.TaskOwnershipSettings{
+				TrackGeneratedTaskTagValidation: utility.TruePtr(),
+			},
+			expected: false,
+		},
+		"TrackingEnabledWithPrefix": {
+			taskOwnership: model.TaskOwnershipSettings{
+				GeneratedTaskValidationPrefix:   prefix,
+				TrackGeneratedTaskTagValidation: utility.TruePtr(),
+			},
+			expected: true,
+		},
+		"BlockingEnabledWithoutTracking": {
+			taskOwnership: model.TaskOwnershipSettings{
+				GeneratedTaskValidationPrefix:      prefix,
+				BlockTaskGenerationOnTagValidation: utility.TruePtr(),
+			},
+			expected: false,
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			pref := &model.ProjectRef{
+				TaskOwnership: testCase.taskOwnership,
+			}
+			assert.Equal(t, testCase.expected, tagValidationTrackingEnabled(pref))
+		})
+	}
+}
+
 func TestGenerateSkipsInvalidDependency(t *testing.T) {
 	ctx := t.Context()
 	ctx = testutil.TestSpan(ctx, t)

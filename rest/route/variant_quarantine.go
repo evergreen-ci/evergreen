@@ -45,7 +45,8 @@ func buildVariantQuarantineResponse(ctx context.Context, projectID, projectIdent
 
 func quarantineVariant(ctx context.Context, projectID, projectIdentifier, variantName string, isManuallyQuarantined bool) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	if err := data.SetVariantQuarantined(ctx, projectID, variantName, isManuallyQuarantined); err != nil {
+	metadata := data.QuarantineMetadata{InitiatedBy: u.Username()}
+	if err := data.SetVariantQuarantined(ctx, projectID, variantName, isManuallyQuarantined, metadata); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting quarantine state to '%t' for build variant '%s' on project '%s'", isManuallyQuarantined, variantName, projectIdentifier))
 	}
 	grip.Info(ctx, message.Fields{

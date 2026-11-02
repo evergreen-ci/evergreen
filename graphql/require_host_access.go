@@ -10,6 +10,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 )
 
+// RequireHostAccess restricts view or edit access to the host(s) given by the hostId or hostIds argument.
+// The check is skipped when neither argument is provided.
 func RequireHostAccess(ctx context.Context, obj any, next graphql.Resolver, access HostAccessLevel) (any, error) {
 	args, isStringMap := obj.(map[string]any)
 	if !isStringMap {

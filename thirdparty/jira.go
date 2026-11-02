@@ -3,6 +3,8 @@ package thirdparty
 import (
 	"context"
 	"encoding/json"
+	"regexp"
+	"strings"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/evergreen-ci/utility"
@@ -140,4 +142,25 @@ func jiraIssueToJiraTicket(issue *jira.Issue) (*JiraTicket, error) {
 		return nil, errors.Wrap(err, "unmarshaling Jira ticket")
 	}
 	return &ticket, nil
+}
+
+var jiraTicketKeyRegex = regexp.MustCompile(`^[A-Z][A-Z0-9_]*-[0-9]+$`)
+
+// NormalizeJiraTicketKey trims surrounding whitespace and uppercases the key.
+func NormalizeJiraTicketKey(key string) string {
+	return strings.ToUpper(strings.TrimSpace(key))
+}
+
+// NormalizeJiraTicketKeys returns a copy of the keys with each one normalized.
+func NormalizeJiraTicketKeys(keys []string) []string {
+	normalized := make([]string, 0, len(keys))
+	for _, key := range keys {
+		normalized = append(normalized, NormalizeJiraTicketKey(key))
+	}
+	return normalized
+}
+
+// IsValidJiraTicketKey returns whether the key is a normalized Jira ticket key.
+func IsValidJiraTicketKey(key string) bool {
+	return jiraTicketKeyRegex.MatchString(key)
 }

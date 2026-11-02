@@ -289,8 +289,8 @@ func findQuarantinedSkippedTests(ctx context.Context, req model.SelectTestsReque
 
 // SetTestQuarantined marks the test as quarantined or unquarantined in the test
 // selection service. displayTaskName is the name of the display task that
-// contains the task, if any.
-func SetTestQuarantined(ctx context.Context, projectID, bvName, taskName, displayTaskName, testName string, isManuallyQuarantined bool) error {
+// contains the task, if any. metadata records who made the change and why.
+func SetTestQuarantined(ctx context.Context, projectID, bvName, taskName, displayTaskName, testName string, isManuallyQuarantined bool, metadata QuarantineMetadata) error {
 	ctx, cancel := context.WithTimeout(ctx, testSelectionWriteTimeout)
 	defer cancel()
 	c := newTestSelectionClient(testSelectionHTTPClient)
@@ -306,6 +306,7 @@ func SetTestQuarantined(ctx context.Context, projectID, bvName, taskName, displa
 	if displayTaskName != "" {
 		reqBody.SetDisplayTaskName(displayTaskName)
 	}
+	reqBody.SetMetadata(metadata.toClient())
 	_, resp, err := c.StateTransitionAPI.MarkTestsAsManuallyQuarantinedDataInBodyApiTestSelectionTransitionTestsPost(ctx).
 		BodyMarkTestsAsManuallyQuarantinedDataInBodyApiTestSelectionTransitionTestsPost(*reqBody).
 		Execute()
@@ -394,8 +395,9 @@ func GetTestsQuarantineStatus(ctx context.Context, projectID, bvName, taskName, 
 
 // SetTaskQuarantined marks all known tests of a task as manually quarantined
 // (or unquarantines them) in the test selection service. displayTaskName is the
-// name of the display task that contains the task, if any.
-func SetTaskQuarantined(ctx context.Context, projectID, bvName, taskName, displayTaskName string, isManuallyQuarantined bool) error {
+// name of the display task that contains the task, if any. metadata records
+// who made the change and why.
+func SetTaskQuarantined(ctx context.Context, projectID, bvName, taskName, displayTaskName string, isManuallyQuarantined bool, metadata QuarantineMetadata) error {
 	ctx, cancel := context.WithTimeout(ctx, testSelectionWriteTimeout)
 	defer cancel()
 	c := newTestSelectionClient(testSelectionHTTPClient)
@@ -410,6 +412,7 @@ func SetTaskQuarantined(ctx context.Context, projectID, bvName, taskName, displa
 	if displayTaskName != "" {
 		reqBody.SetDisplayTaskName(displayTaskName)
 	}
+	reqBody.SetMetadata(metadata.toClient())
 	_, resp, err := c.StateTransitionAPI.MarkTaskAsManuallyQuarantinedDataInBodyApiTestSelectionTransitionTaskPost(ctx).
 		BodyMarkTaskAsManuallyQuarantinedDataInBodyApiTestSelectionTransitionTaskPost(*reqBody).
 		Execute()
@@ -430,8 +433,9 @@ func SetTaskQuarantined(ctx context.Context, projectID, bvName, taskName, displa
 }
 
 // SetVariantQuarantined marks all known tests of a build variant as manually
-// quarantined (or unquarantines them) in the test selection service.
-func SetVariantQuarantined(ctx context.Context, projectID, bvName string, isManuallyQuarantined bool) error {
+// quarantined (or unquarantines them) in the test selection service. metadata
+// records who made the change and why.
+func SetVariantQuarantined(ctx context.Context, projectID, bvName string, isManuallyQuarantined bool, metadata QuarantineMetadata) error {
 	ctx, cancel := context.WithTimeout(ctx, testSelectionWriteTimeout)
 	defer cancel()
 	c := newTestSelectionClient(testSelectionHTTPClient)
@@ -442,6 +446,7 @@ func SetVariantQuarantined(ctx context.Context, projectID, bvName string, isManu
 		bvName,
 		isManuallyQuarantined,
 	)
+	reqBody.SetMetadata(metadata.toClient())
 	_, resp, err := c.StateTransitionAPI.MarkVariantAsManuallyQuarantinedDataInBodyApiTestSelectionTransitionVariantPost(ctx).
 		BodyMarkVariantAsManuallyQuarantinedDataInBodyApiTestSelectionTransitionVariantPost(*reqBody).
 		Execute()

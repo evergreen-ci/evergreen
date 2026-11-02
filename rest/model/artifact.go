@@ -3,7 +3,6 @@ package model
 import (
 	"fmt"
 	"net/url"
-	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/artifact"
@@ -63,14 +62,7 @@ func (f *APIFile) GetLogURL(env evergreen.Environment, taskID string, execution 
 	if contentType == "" {
 		return
 	}
-	hasContentType := false
-	for _, fileStreamingContentType := range settings.Ui.FileStreamingContentTypes {
-		if strings.HasPrefix(contentType, fileStreamingContentType) {
-			hasContentType = true
-			break
-		}
-	}
-	if hasContentType {
+	if _, ok := artifact.CanonicalizeStreamingContentType(contentType, settings.Ui.FileStreamingContentTypes); ok {
 		fileName := utility.FromStringPtr(f.Name)
 		if fileName == "" {
 			return
