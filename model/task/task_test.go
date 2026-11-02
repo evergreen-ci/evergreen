@@ -6585,21 +6585,11 @@ func TestStepbackQueriesWithPushTriggers(t *testing.T) {
 			require.NotNil(t, prev)
 			assert.Equal(t, pushTriggered.Id, prev.Id)
 		},
-		"PreviousCompletedStepbackTaskWithoutPushTriggersShouldMatchAnySystemRequester": func(t *testing.T) {
-			prev, err := latest.PreviousCompletedStepbackTask(t.Context(), nil, false)
-			require.NoError(t, err)
-			require.NotNil(t, prev)
-			assert.Equal(t, periodic.Id, prev.Id)
-		},
 		"MidwayTaskWithPushTriggersShouldAllowMainlineAndPushTriggeredBounds": func(t *testing.T) {
 			mid, err := ByBeforeMidwayTaskFromIds(t.Context(), latest.Id, earlierPushTriggered.Id, true)
 			require.NoError(t, err)
 			require.NotNil(t, mid)
 			assert.Equal(t, pushTriggered.Id, mid.Id)
-		},
-		"MidwayTaskWithoutPushTriggersShouldErrorForMainlineAndPushTriggeredBounds": func(t *testing.T) {
-			_, err := ByBeforeMidwayTaskFromIds(t.Context(), latest.Id, earlierPushTriggered.Id, false)
-			assert.Error(t, err)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

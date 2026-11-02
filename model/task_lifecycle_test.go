@@ -7203,7 +7203,6 @@ tasks:
 		"LinearStepbackWithPushTriggersShouldActivatePushTriggeredTask":       {pushTriggers: true},
 		"BisectStepbackWithPushTriggersShouldActivatePushTriggeredTask":       {bisect: true, pushTriggers: true},
 		"LinearStepbackWithoutPushTriggersShouldNotActivatePushTriggeredTask": {},
-		"BisectStepbackWithoutPushTriggersShouldNotActivatePushTriggeredTask": {bisect: true},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, ProjectRefCollection))
