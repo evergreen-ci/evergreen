@@ -2382,12 +2382,14 @@ tasks:
 
 			err = createVersionItems(ctx, v, tc.metadata, projectInfo, nil, nil)
 			require.NoError(t, err)
-			storedVersion, err := model.VersionFindOneId(ctx, v.Id)
+			storedVersion, err := model.VersionFindOneIdWithBuildVariants(ctx, v.Id)
 			require.NoError(t, err)
 			require.NotNil(t, storedVersion)
 
+			foundFrontend := false
 			for _, bv := range storedVersion.BuildVariants {
 				if bv.BuildVariant == "frontend" {
+					foundFrontend = true
 					assert.Equal(t, []string{"frontend-tag"}, bv.Tags)
 					tasks, err := task.Find(ctx, mongobson.M{task.BuildIdKey: bv.BuildId})
 					require.NoError(t, err)
@@ -2397,6 +2399,7 @@ tasks:
 					}
 				}
 			}
+			require.True(t, foundFrontend)
 
 			ignoredVariants := []string{}
 			for _, bv := range v.BuildVariants {

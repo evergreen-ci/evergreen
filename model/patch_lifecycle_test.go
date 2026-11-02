@@ -332,9 +332,15 @@ func TestFinalizePatch(t *testing.T) {
 			translatedProject, _, err := FindAndTranslateProjectForPatch(ctx, patchTestConfig, p)
 			require.NoError(t, err)
 			require.NotNil(t, translatedProject)
-			variant := translatedProject.FindBuildVariant("linux-64-duroff")
-			require.NotNil(t, variant)
-			variant.Tags = []string{"variant-tag"}
+			foundVariant := false
+			for i := range translatedProject.BuildVariants {
+				if translatedProject.BuildVariants[i].Name == "linux-64-duroff" {
+					translatedProject.BuildVariants[i].Tags = []string{"variant-tag"}
+					foundVariant = true
+					break
+				}
+			}
+			require.True(t, foundVariant)
 
 			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester, translatedProject)
 			require.NoError(t, err)
@@ -343,7 +349,7 @@ func TestFinalizePatch(t *testing.T) {
 			assert.Equal(t, ppStorageMethod, version.ProjectStorageMethod)
 			require.Len(t, version.BuildVariants, 1)
 			assert.Equal(t, []string{"variant-tag"}, version.BuildVariants[0].Tags)
-			dbVersion, err := VersionFindOneId(ctx, version.Id)
+			dbVersion, err := VersionFindOneIdWithBuildVariants(ctx, version.Id)
 			require.NoError(t, err)
 			require.NotNil(t, dbVersion)
 			require.Len(t, dbVersion.BuildVariants, 1)
