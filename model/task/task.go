@@ -913,11 +913,9 @@ func (t *Task) PreviousCompletedStepbackTask(ctx context.Context, statuses []str
 	return FindOne(ctx, db.Query(q).Sort([]string{"-" + RevisionOrderNumberKey}))
 }
 
-const pushTriggerType = "push"
-
 func (t *Task) isMainlineOrPushTriggered() bool {
 	return t.Requester == evergreen.RepotrackerVersionRequester ||
-		(t.Requester == evergreen.TriggerRequester && t.TriggerType == pushTriggerType)
+		(t.Requester == evergreen.TriggerRequester && t.TriggerType == evergreen.ProjectTriggerLevelPush)
 }
 
 // NextCompletedTask finds the next completed task for the same project +
@@ -1280,8 +1278,10 @@ func setDependenciesMetTimeForTasks(ctx context.Context, uniqueIDsToSetDependenc
 // gets is out of bounds, it returns the given lower order revision task.
 //
 // It verifies that the tasks are from the same project, requester,
-// build variant, and display name. If includePushTriggers is set, tasks in
-// mainline and push-triggered versions are both considered.
+// build variant, and display name, where tasks in mainline and push-triggered
+// versions count as having the same requester. If includePushTriggers is set
+// or the tasks are in both kinds of versions, the midway task can be in either
+// kind of version.
 func ByBeforeMidwayTaskFromIds(ctx context.Context, t1Id, t2Id string, includePushTriggers bool) (*Task, error) {
 	t1, err := FindOneId(ctx, t1Id)
 	if err != nil {
@@ -1303,10 +1303,16 @@ func ByBeforeMidwayTaskFromIds(ctx context.Context, t1Id, t2Id string, includePu
 	catcher.ErrorfWhen(t1.BuildVariant != t2.BuildVariant, "given tasks have differing build variants '%s' and '%s'", t1.BuildVariant, t2.BuildVariant)
 	catcher.ErrorfWhen(t1.DisplayName != t2.DisplayName, "given tasks have differing display name '%s' and '%s'", t1.DisplayName, t2.DisplayName)
 	catcher.ErrorfWhen(t1.Project != t2.Project, "given tasks have differing project '%s' and '%s'", t1.Project, t2.Project)
-	bothMainlineOrPushTriggered := includePushTriggers && t1.isMainlineOrPushTriggered() && t2.isMainlineOrPushTriggered()
+	bothMainlineOrPushTriggered := t1.isMainlineOrPushTriggered() && t2.isMainlineOrPushTriggered()
 	catcher.ErrorfWhen(!bothMainlineOrPushTriggered && t1.Requester != t2.Requester, "given tasks have differing requester '%s' and '%s'", t1.Requester, t2.Requester)
 	if catcher.HasErrors() {
 		return nil, catcher.Resolve()
+	}
+	// If one bound is mainline and the other is push-triggered, this bisect has
+	// been stepping back through both kinds of versions. Keep doing that, even
+	// if the setting was turned off since it started.
+	if t1.Requester != t2.Requester {
+		includePushTriggers = true
 	}
 
 	middleOrderNumber := (t1.RevisionOrderNumber + t2.RevisionOrderNumber) / 2

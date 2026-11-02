@@ -636,10 +636,6 @@ func (p *ProjectRef) IsStepbackBisect() bool {
 	return utility.FromBoolPtr(p.StepbackBisect)
 }
 
-func (p *ProjectRef) isStepbackPushTriggers() bool {
-	return utility.FromBoolPtr(p.StepbackPushTriggers)
-}
-
 func (p *ProjectRef) IsAutoPRTestingEnabled() bool {
 	return utility.FromBoolPtr(p.PRTestingEnabled)
 }
@@ -772,7 +768,7 @@ const (
 	ProjectRefCollection     = "project_ref"
 	ProjectTriggerLevelTask  = "task"
 	ProjectTriggerLevelBuild = "build"
-	ProjectTriggerLevelPush  = "push"
+	ProjectTriggerLevelPush  = evergreen.ProjectTriggerLevelPush
 	intervalPrefix           = "@every"
 	maxBatchTime             = 153722867 // math.MaxInt64 / 60 / 1_000_000_000
 )

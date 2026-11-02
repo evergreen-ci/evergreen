@@ -528,7 +528,7 @@ func getStepback(ctx context.Context, taskId string, projectRef *ProjectRef, pro
 
 	s := stepbackInstructions{
 		bisect:              utility.FromBoolPtr(projectRef.StepbackBisect),
-		includePushTriggers: projectRef.isStepbackPushTriggers(),
+		includePushTriggers: utility.FromBoolPtr(projectRef.StepbackPushTriggers),
 	}
 
 	// Check if the bvtask overrides the stepback policy specified by the project

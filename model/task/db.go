@@ -588,7 +588,7 @@ func ByBeforeRevisionForStepback(revisionOrder int, t *Task, includePushTriggers
 func mainlineAndPushTriggeredQuery() bson.M {
 	return bson.M{
 		RequesterKey:   bson.M{"$in": []string{evergreen.RepotrackerVersionRequester, evergreen.TriggerRequester}},
-		TriggerTypeKey: bson.M{"$in": []any{nil, pushTriggerType}},
+		TriggerTypeKey: bson.M{"$in": []any{nil, evergreen.ProjectTriggerLevelPush}},
 	}
 }
 

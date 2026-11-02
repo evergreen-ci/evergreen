@@ -7177,7 +7177,11 @@ tasks:
 	project, err := TranslateProject(t.Context(), pp)
 	require.NoError(t, err)
 
-	newTask := func(id string, order int, requester, triggerType, status string) task.Task {
+	newTask := func(id string, order int, triggerType, status string) task.Task {
+		requester := evergreen.RepotrackerVersionRequester
+		if triggerType != "" {
+			requester = evergreen.TriggerRequester
+		}
 		return task.Task{
 			Id:                  id,
 			BuildId:             "b-" + id,
@@ -7192,17 +7196,25 @@ tasks:
 			Activated:           status != evergreen.TaskUndispatched,
 		}
 	}
-	passing := newTask("mainline-passing", 1, evergreen.RepotrackerVersionRequester, "", evergreen.TaskSucceeded)
-	pushTriggered := newTask("push-triggered", 2, evergreen.TriggerRequester, ProjectTriggerLevelPush, evergreen.TaskUndispatched)
-	taskTriggered := newTask("task-triggered", 3, evergreen.TriggerRequester, ProjectTriggerLevelTask, evergreen.TaskUndispatched)
-	failing := newTask("mainline-failing", 4, evergreen.RepotrackerVersionRequester, "", evergreen.TaskFailed)
 
 	for tName, tCase := range map[string]struct {
-		bisect, pushTriggers bool
+		bisect, pushTriggers  bool
+		middleTriggerType     string
+		failingTriggerType    string
+		expectMiddleActivated bool
 	}{
-		"LinearStepbackWithPushTriggersShouldActivatePushTriggeredTask":       {pushTriggers: true},
-		"BisectStepbackWithPushTriggersShouldActivatePushTriggeredTask":       {bisect: true, pushTriggers: true},
-		"LinearStepbackWithoutPushTriggersShouldNotActivatePushTriggeredTask": {},
+		"LinearStepbackWithPushTriggersShouldActivatePushTriggeredTask": {
+			pushTriggers: true, middleTriggerType: ProjectTriggerLevelPush, expectMiddleActivated: true,
+		},
+		"BisectStepbackWithPushTriggersShouldActivatePushTriggeredTask": {
+			bisect: true, pushTriggers: true, middleTriggerType: ProjectTriggerLevelPush, expectMiddleActivated: true,
+		},
+		"LinearStepbackFromPushTriggeredTaskWithPushTriggersShouldActivateMainlineTask": {
+			pushTriggers: true, failingTriggerType: ProjectTriggerLevelPush, expectMiddleActivated: true,
+		},
+		"LinearStepbackWithoutPushTriggersShouldNotActivatePushTriggeredTask": {
+			middleTriggerType: ProjectTriggerLevelPush,
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, ProjectRefCollection))
@@ -7212,21 +7224,73 @@ tasks:
 			pRef := &ProjectRef{Id: "proj", StepbackBisect: utility.ToBoolPtr(tCase.bisect), StepbackPushTriggers: utility.ToBoolPtr(tCase.pushTriggers)}
 			require.NoError(t, pRef.Insert(t.Context()))
 			require.NoError(t, (&Version{Id: "v", Requester: evergreen.RepotrackerVersionRequester}).Insert(t.Context()))
-			for _, tsk := range []task.Task{passing, pushTriggered, taskTriggered, failing} {
+			middle := newTask("middle", 2, tCase.middleTriggerType, evergreen.TaskUndispatched)
+			taskTriggered := newTask("task-triggered", 3, ProjectTriggerLevelTask, evergreen.TaskUndispatched)
+			failing := newTask("failing", 4, tCase.failingTriggerType, evergreen.TaskFailed)
+			for _, tsk := range []task.Task{newTask("passing", 1, "", evergreen.TaskSucceeded), middle, taskTriggered, failing} {
 				require.NoError(t, tsk.Insert(t.Context()))
 				require.NoError(t, (&build.Build{Id: tsk.BuildId, BuildVariant: "bv", Version: "v"}).Insert(t.Context()))
 			}
 
 			require.NoError(t, evalStepback(t.Context(), &failing, evergreen.TaskFailed, pRef, project))
 
-			pushTriggeredFromDB, err := task.FindOneId(t.Context(), pushTriggered.Id)
+			middleFromDB, err := task.FindOneId(t.Context(), middle.Id)
 			require.NoError(t, err)
-			require.NotNil(t, pushTriggeredFromDB)
-			assert.Equal(t, tCase.pushTriggers, pushTriggeredFromDB.Activated)
+			require.NotNil(t, middleFromDB)
+			assert.Equal(t, tCase.expectMiddleActivated, middleFromDB.Activated)
 			taskTriggeredFromDB, err := task.FindOneId(t.Context(), taskTriggered.Id)
 			require.NoError(t, err)
 			require.NotNil(t, taskTriggeredFromDB)
 			assert.False(t, taskTriggeredFromDB.Activated)
 		})
 	}
+}
+
+func TestLinearStepbackForGeneratedTaskWithPushTriggers(t *testing.T) {
+	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
+	})
+	require.NoError(t, (&Version{Id: "v", Requester: evergreen.RepotrackerVersionRequester}).Insert(t.Context()))
+	newTask := func(id, displayName string, order int, triggerType, status, generatedBy string) task.Task {
+		requester := evergreen.RepotrackerVersionRequester
+		if triggerType != "" {
+			requester = evergreen.TriggerRequester
+		}
+		return task.Task{
+			Id:                  id,
+			BuildId:             "b-" + id,
+			Version:             "v",
+			Project:             "proj",
+			BuildVariant:        "bv",
+			DisplayName:         displayName,
+			RevisionOrderNumber: order,
+			Requester:           requester,
+			TriggerType:         triggerType,
+			Status:              status,
+			Activated:           status != evergreen.TaskUndispatched,
+			GenerateTask:        generatedBy == "",
+			GeneratedBy:         generatedBy,
+		}
+	}
+	// The push-triggered version's generator hasn't run, so its generated task
+	// doesn't exist yet.
+	pushTriggeredGenerator := newTask("push-triggered-generator", "generator", 2, ProjectTriggerLevelPush, evergreen.TaskUndispatched, "")
+	failingGenerated := newTask("failing-generated", "generated", 3, "", evergreen.TaskFailed, "failing-generator")
+	for _, tsk := range []task.Task{
+		newTask("passing-generator", "generator", 1, "", evergreen.TaskSucceeded, ""),
+		newTask("passing-generated", "generated", 1, "", evergreen.TaskSucceeded, "passing-generator"),
+		pushTriggeredGenerator,
+		newTask("failing-generator", "generator", 3, "", evergreen.TaskSucceeded, ""),
+		failingGenerated,
+	} {
+		require.NoError(t, tsk.Insert(t.Context()))
+		require.NoError(t, (&build.Build{Id: tsk.BuildId, BuildVariant: "bv", Version: "v"}).Insert(t.Context()))
+	}
+
+	require.NoError(t, doLinearStepback(t.Context(), &failingGenerated, true))
+
+	generator := requireTaskFromDB(t.Context(), t, pushTriggeredGenerator.Id)
+	assert.True(t, generator.Activated)
+	assert.Equal(t, []string{"generated"}, generator.GeneratedTasksToActivate["bv"])
 }
