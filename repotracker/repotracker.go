@@ -3,7 +3,6 @@ package repotracker
 import (
 	"context"
 	"fmt"
-	"slices"
 	"strings"
 	"time"
 
@@ -213,6 +212,10 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 	return nil
 }
 
+// maxWaterfallHeadMovedRetries bounds how many times a version is created again
+// after another version replaced the waterfall head first.
+const maxWaterfallHeadMovedRetries = 3
+
 // StoreRevisions constructs all versions stored from recent repository revisions. The revisions should be given in
 // order of most recent to least recent commit.
 // The additional complexity is due to support for project modifications on patch builds.
@@ -232,7 +235,12 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 
 	// Since the revisions are ordered most to least recent, iterate backwards so that they're processed in order of
 	// least to most recent.
-	for _, rev := range slices.Backward(revisions) {
+	retryIndex, headMovedAttempts := -1, 0
+	for i := len(revisions) - 1; i >= 0; i-- {
+		if i != retryIndex {
+			headMovedAttempts = 0
+		}
+		rev := revisions[i]
 		revision := rev.Revision
 		grip.Infof(ctx, "Processing revision %s in project %s", revision, ref.Id)
 
@@ -354,6 +362,22 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			Config:              pInfo.Config,
 		}
 		v, err := CreateVersionFromConfig(ctx, projectInfo, metadata, ignore, versionErrs)
+		if errors.Is(err, model.ErrWaterfallHeadMoved) && headMovedAttempts < maxWaterfallHeadMovedRetries {
+			retryIndex = i
+			headMovedAttempts++
+			grip.Info(ctx, message.WrapError(err, message.Fields{
+				"message":            "creating version again from the new waterfall head",
+				"runner":             RunnerName,
+				"project":            ref.Id,
+				"project_identifier": ref.Identifier,
+				"revision":           revision,
+				"attempt":            headMovedAttempts,
+			}))
+			// Process the same revision again, since its config has to be
+			// reloaded with the new head's module commits.
+			i++
+			continue
+		}
 		if err != nil {
 			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":            "error creating version",
@@ -615,20 +639,26 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 		return nil, errors.New("project ref and parser project cannot be nil")
 	}
 
-	// create a version document
-	v, err := ShellVersionFromRevision(ctx, projectInfo.Ref, metadata)
+	v, err := newShellVersion(ctx, projectInfo.Ref, metadata)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating shell version")
 	}
-	if err = verifyOrderNum(ctx, v.RevisionOrderNumber, projectInfo.Ref.Id); err != nil {
-		return nil, errors.Wrap(err, "inconsistent version order")
-	}
-
 	if projectInfo.Project == nil {
 		projectInfo.Project, err = model.TranslateProject(ctx, projectInfo.IntermediateProject)
 		if err != nil {
 			return nil, errors.Wrap(err, "translating intermediate project")
 		}
+	}
+	if metadata.ModuleResolver != nil {
+		v.RevisionOrderNumber, err = metadata.ModuleResolver.ClaimRevisionOrderNumber(ctx, v, projectInfo.Project.Modules)
+	} else {
+		v.RevisionOrderNumber, err = model.GetNewRevisionOrderNumber(ctx, projectInfo.Ref.Id)
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "getting revision order number")
+	}
+	if err = verifyOrderNum(ctx, v.RevisionOrderNumber, projectInfo.Ref.Id); err != nil {
+		return nil, errors.Wrap(err, "inconsistent version order")
 	}
 	projectInfo.IntermediateProject.Init(v.Id, v.CreateTime)
 	if projectInfo.Config != nil {
@@ -719,12 +749,20 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 // ShellVersionFromRevision populates a new Version with metadata from a model.Revision.
 // Does not populate its config or store anything in the database.
 func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metadata model.VersionMetadata) (*model.Version, error) {
-	var err error
-
-	number, err := model.GetNewRevisionOrderNumber(ctx, ref.Id)
+	v, err := newShellVersion(ctx, ref, metadata)
 	if err != nil {
 		return nil, err
 	}
+	v.RevisionOrderNumber, err = model.GetNewRevisionOrderNumber(ctx, ref.Id)
+	if err != nil {
+		return nil, err
+	}
+	return v, nil
+}
+
+// newShellVersion is the same as ShellVersionFromRevision, but doesn't assign a
+// revision order number.
+func newShellVersion(ctx context.Context, ref *model.ProjectRef, metadata model.VersionMetadata) (*model.Version, error) {
 	v := &model.Version{
 		Author:               metadata.Revision.Author,
 		AuthorID:             metadata.Revision.AuthorID,
@@ -740,7 +778,6 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		Revision:             metadata.Revision.Revision,
 		IngestTime:           metadata.IngestTime,
 		Status:               evergreen.VersionCreated,
-		RevisionOrderNumber:  number,
 		TriggerID:            metadata.TriggerID,
 		TriggerType:          metadata.TriggerType,
 		TriggerEvent:         metadata.EventID,

@@ -278,8 +278,14 @@ func TestModuleResolverCarriesModulesForward(t *testing.T) {
 			}
 			insertVersionWithManifest(t, projectRef.Id, "later", 3, evergreen.RepotrackerVersionRequester, laterModules)
 			v := &Version{Id: "current", Identifier: projectRef.Id, Requester: evergreen.TriggerRequester, RevisionOrderNumber: 2}
+			resolver := NewModuleResolver(projectRef, ModuleResolverOpts{
+				Requester:              evergreen.TriggerRequester,
+				RevisionOrderNumber:    v.RevisionOrderNumber,
+				IngestTime:             ingestTime,
+				TriggeringModuleCommit: triggeringCommit,
+			})
 
-			mfst, err := newTriggeredResolver().Manifest(t.Context(), v, ModuleList{module})
+			mfst, err := resolver.Manifest(t.Context(), v, ModuleList{module})
 			require.NoError(t, err)
 			require.NotNil(t, mfst)
 			require.Contains(t, mfst.Modules, module.Name)
@@ -444,4 +450,183 @@ func TestModuleResolverCarryForwardWithGitHub(t *testing.T) {
 		assert.Equal(t, "previous", mfst.PreviousVersionID)
 		assert.Equal(t, []string{sample.Name}, mfst.ChangedModules)
 	})
+}
+
+func TestModuleResolverClaimsWaterfallHead(t *testing.T) {
+	const (
+		olderModuleRevision = "olderModuleRevision"
+		newerModuleRevision = "newerModuleRevision"
+	)
+	projectRef := &ProjectRef{Id: "claim-head-project", Identifier: "claim-head-project", Owner: "evergreen-ci", Repo: "evergreen", Branch: "main"}
+	module := Module{Name: "mod", Owner: "evergreen-ci", Repo: "mod", Branch: "main"}
+	ingestTime := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+	newMainlineResolver := func(ingestTime time.Time) *ModuleResolver {
+		return NewModuleResolver(projectRef, ModuleResolverOpts{Requester: evergreen.RepotrackerVersionRequester, IngestTime: ingestTime})
+	}
+	newPushResolver := func(triggering Module, revision string) *ModuleResolver {
+		return NewModuleResolver(projectRef, ModuleResolverOpts{
+			Requester:              evergreen.TriggerRequester,
+			IngestTime:             ingestTime,
+			TriggeringModuleCommit: &manifest.Module{Owner: triggering.Owner, Repo: triggering.Repo, Branch: triggering.Branch, Revision: revision},
+		})
+	}
+	mainline := func(id string) *Version {
+		return &Version{Id: id, Identifier: projectRef.Id, Revision: id + "-revision", Requester: evergreen.RepotrackerVersionRequester}
+	}
+
+	for tName, tCase := range map[string]func(t *testing.T){
+		"ClaimShouldMakeVersionTheWaterfallHead": func(t *testing.T) {
+			require.NoError(t, UpsertRepositoryRevision(t.Context(), module.Owner, module.Repo, module.Branch, olderModuleRevision, ingestTime))
+			v := mainline("first")
+
+			order, err := newMainlineResolver(ingestTime).ClaimRevisionOrderNumber(t.Context(), v, ModuleList{module})
+			require.NoError(t, err)
+			assert.Equal(t, 1, order)
+
+			head, err := FindWaterfallHead(t.Context(), projectRef.Id)
+			require.NoError(t, err)
+			assert.NotEmpty(t, head.ID)
+			assert.Equal(t, v.Id, head.VersionID)
+			assert.Equal(t, v.Revision, head.Revision)
+			require.Contains(t, head.Modules, module.Name)
+			assert.Equal(t, olderModuleRevision, head.Modules[module.Name].Revision)
+		},
+		"VersionShouldCarryForwardFromHeadBeforePreviousVersionIsInserted": func(t *testing.T) {
+			require.NoError(t, UpsertRepositoryRevision(t.Context(), module.Owner, module.Repo, module.Branch, olderModuleRevision, ingestTime))
+			require.NoError(t, UpsertRepositoryRevision(t.Context(), module.Owner, module.Repo, module.Branch, newerModuleRevision, ingestTime.Add(time.Minute)))
+			_, err := newMainlineResolver(ingestTime.Add(time.Minute)).ClaimRevisionOrderNumber(t.Context(), mainline("first"), ModuleList{module})
+			require.NoError(t, err)
+
+			v := mainline("second")
+			order, err := newMainlineResolver(ingestTime).ClaimRevisionOrderNumber(t.Context(), v, ModuleList{module})
+			require.NoError(t, err)
+			assert.Equal(t, 2, order)
+			head, err := FindWaterfallHead(t.Context(), projectRef.Id)
+			require.NoError(t, err)
+			assert.Equal(t, v.Id, head.VersionID)
+			assert.Equal(t, newerModuleRevision, head.Modules[module.Name].Revision)
+			assert.Equal(t, manifest.ModuleSelectionCarriedForward, head.Modules[module.Name].SelectionRule)
+		},
+		"HeadReplacedDuringCreationShouldCarryForwardFromNewHead": func(t *testing.T) {
+			require.NoError(t, UpsertRepositoryRevision(t.Context(), module.Owner, module.Repo, module.Branch, olderModuleRevision, ingestTime))
+			require.NoError(t, UpsertRepositoryRevision(t.Context(), module.Owner, module.Repo, module.Branch, newerModuleRevision, ingestTime.Add(time.Minute)))
+			slow := newMainlineResolver(ingestTime)
+			require.NoError(t, slow.init(t.Context()))
+			_, err := newMainlineResolver(ingestTime.Add(time.Minute)).ClaimRevisionOrderNumber(t.Context(), mainline("fast"), ModuleList{module})
+			require.NoError(t, err)
+
+			order, err := slow.ClaimRevisionOrderNumber(t.Context(), mainline("slow"), ModuleList{module})
+			require.NoError(t, err)
+			assert.Equal(t, 2, order)
+			head, err := FindWaterfallHead(t.Context(), projectRef.Id)
+			require.NoError(t, err)
+			assert.Equal(t, "slow", head.VersionID)
+			assert.Equal(t, newerModuleRevision, head.Modules[module.Name].Revision)
+		},
+		"HeadReplacedWithNewCommitForConfigModuleShouldReturnErrWaterfallHeadMoved": func(t *testing.T) {
+			require.NoError(t, UpsertRepositoryRevision(t.Context(), module.Owner, module.Repo, module.Branch, olderModuleRevision, ingestTime))
+			require.NoError(t, UpsertRepositoryRevision(t.Context(), module.Owner, module.Repo, module.Branch, newerModuleRevision, ingestTime.Add(time.Minute)))
+			slow := newMainlineResolver(ingestTime)
+			_, err := slow.Resolve(t.Context(), module)
+			require.NoError(t, err)
+			_, err = newMainlineResolver(ingestTime.Add(time.Minute)).ClaimRevisionOrderNumber(t.Context(), mainline("fast"), ModuleList{module})
+			require.NoError(t, err)
+
+			_, err = slow.ClaimRevisionOrderNumber(t.Context(), mainline("slow"), ModuleList{module})
+			assert.ErrorIs(t, err, ErrWaterfallHeadMoved)
+		},
+		"HeadReplacedWithNewRevisionShouldReturnErrWaterfallHeadMovedForPushTrigger": func(t *testing.T) {
+			_, err := newMainlineResolver(ingestTime).ClaimRevisionOrderNumber(t.Context(), mainline("first"), nil)
+			require.NoError(t, err)
+			slow := newPushResolver(module, newerModuleRevision)
+			require.NoError(t, slow.init(t.Context()))
+
+			_, err = newMainlineResolver(ingestTime).ClaimRevisionOrderNumber(t.Context(), mainline("second"), nil)
+			require.NoError(t, err)
+
+			v := &Version{Id: "triggered", Identifier: projectRef.Id, Revision: "first-revision", Requester: evergreen.TriggerRequester}
+			_, err = slow.ClaimRevisionOrderNumber(t.Context(), v, nil)
+			assert.ErrorIs(t, err, ErrWaterfallHeadMoved)
+		},
+		"TaskTriggeredVersionShouldNotReplaceHead": func(t *testing.T) {
+			_, err := newMainlineResolver(ingestTime).ClaimRevisionOrderNumber(t.Context(), mainline("first"), nil)
+			require.NoError(t, err)
+			resolver := NewModuleResolver(projectRef, ModuleResolverOpts{Requester: evergreen.TriggerRequester, IngestTime: ingestTime})
+
+			order, err := resolver.ClaimRevisionOrderNumber(t.Context(), &Version{Id: "task-triggered", Identifier: projectRef.Id}, nil)
+			require.NoError(t, err)
+			assert.Equal(t, 2, order)
+			head, err := FindWaterfallHead(t.Context(), projectRef.Id)
+			require.NoError(t, err)
+			assert.Equal(t, "first", head.VersionID)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(RepositoriesCollection, VersionCollection, ProjectRefCollection, ProjectVarsCollection, RepositoryRevisionsHistoryCollection, manifest.Collection))
+			t.Cleanup(func() {
+				assert.NoError(t, db.ClearCollections(RepositoriesCollection, VersionCollection, ProjectRefCollection, ProjectVarsCollection, RepositoryRevisionsHistoryCollection, manifest.Collection))
+			})
+			require.NoError(t, projectRef.Insert(t.Context()))
+			tCase(t)
+		})
+	}
+}
+
+func TestIsTriggeringCommitStale(t *testing.T) {
+	const (
+		olderModuleRevision = "olderModuleRevision"
+		newerModuleRevision = "newerModuleRevision"
+	)
+	projectRef := &ProjectRef{Id: "stale-trigger-project", Identifier: "stale-trigger-project", Owner: "evergreen-ci", Repo: "evergreen", Branch: "main"}
+	module := &manifest.Module{Owner: "evergreen-ci", Repo: "mod", Branch: "main"}
+	ingestTime := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+	isStale := func(t *testing.T, headRevision, triggeringRevision string) bool {
+		headModule := *module
+		headModule.Revision = headRevision
+		triggering := *module
+		triggering.Revision = triggeringRevision
+		resolver := NewModuleResolver(projectRef, ModuleResolverOpts{
+			Requester:              evergreen.TriggerRequester,
+			TriggeringModuleCommit: &triggering,
+			WaterfallHead:          &WaterfallHead{Modules: map[string]*manifest.Module{"mod": &headModule}},
+		})
+		stale, err := resolver.IsTriggeringCommitStale(t.Context())
+		require.NoError(t, err)
+		return stale
+	}
+
+	for tName, tCase := range map[string]func(t *testing.T){
+		"SameCommitAsHeadShouldBeStale": func(t *testing.T) {
+			assert.True(t, isStale(t, newerModuleRevision, newerModuleRevision))
+		},
+		"CommitIngestedBeforeHeadCommitShouldBeStale": func(t *testing.T) {
+			require.NoError(t, UpsertRepositoryRevision(t.Context(), module.Owner, module.Repo, module.Branch, olderModuleRevision, ingestTime))
+			require.NoError(t, UpsertRepositoryRevision(t.Context(), module.Owner, module.Repo, module.Branch, newerModuleRevision, ingestTime.Add(time.Minute)))
+			assert.True(t, isStale(t, newerModuleRevision, olderModuleRevision))
+		},
+		"CommitIngestedAfterHeadCommitShouldNotBeStale": func(t *testing.T) {
+			require.NoError(t, UpsertRepositoryRevision(t.Context(), module.Owner, module.Repo, module.Branch, olderModuleRevision, ingestTime))
+			require.NoError(t, UpsertRepositoryRevision(t.Context(), module.Owner, module.Repo, module.Branch, newerModuleRevision, ingestTime.Add(time.Minute)))
+			assert.False(t, isStale(t, olderModuleRevision, newerModuleRevision))
+		},
+		"CommitToRepoThatIsNotInHeadShouldNotBeStale": func(t *testing.T) {
+			resolver := NewModuleResolver(projectRef, ModuleResolverOpts{
+				Requester:              evergreen.TriggerRequester,
+				TriggeringModuleCommit: &manifest.Module{Owner: "evergreen-ci", Repo: "not-a-module", Branch: "main", Revision: newerModuleRevision},
+				WaterfallHead:          &WaterfallHead{Modules: map[string]*manifest.Module{"mod": {Owner: module.Owner, Repo: module.Repo, Branch: module.Branch, Revision: newerModuleRevision}}},
+			})
+			stale, err := resolver.IsTriggeringCommitStale(t.Context())
+			require.NoError(t, err)
+			assert.False(t, stale)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectVarsCollection, RepositoryRevisionsHistoryCollection))
+			t.Cleanup(func() {
+				assert.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectVarsCollection, RepositoryRevisionsHistoryCollection))
+			})
+			require.NoError(t, projectRef.Insert(t.Context()))
+			tCase(t)
+		})
+	}
 }

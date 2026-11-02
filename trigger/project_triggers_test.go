@@ -39,7 +39,7 @@ func TestGetMetadataFromArgs(t *testing.T) {
 			SourceVersion:     &source,
 			DownstreamProject: downstream,
 			TriggerType:       model.ProjectTriggerLevelTask,
-		})
+		}, "")
 		require.NoError(t, err)
 		assert.Equal(t, wantSHA, meta.Revision.Revision)
 		assert.Equal(t, ingestTime, meta.IngestTime)
@@ -64,10 +64,31 @@ func TestGetMetadataFromArgs(t *testing.T) {
 			DownstreamProject: downstream,
 			PushRevision:      push,
 			PushIngestTime:    ingestTime,
-		})
+		}, "")
 		require.NoError(t, err)
 		assert.Equal(t, wantSHA, meta.Revision.Revision)
 		assert.Equal(t, ingestTime, meta.IngestTime)
+		assert.Equal(t, push.Revision, meta.SourceCommit)
+	})
+
+	t.Run("WithRevisionShouldUseItInsteadOfLatestRevision", func(t *testing.T) {
+		ctx := t.Context()
+		require.NoError(t, db.ClearCollections(model.RepositoryRevisionsHistoryCollection))
+		t.Cleanup(func() {
+			require.NoError(t, db.ClearCollections(model.RepositoryRevisionsHistoryCollection))
+		})
+		ingestTime := time.Date(2026, time.July, 14, 12, 0, 0, 0, time.UTC)
+		downstream := model.ProjectRef{Id: "project-triggers-md-carried", Owner: "evergreen-ci", Repo: "sample", Branch: "main"}
+		require.NoError(t, model.UpsertRepositoryRevision(ctx, downstream.Owner, downstream.Repo, downstream.Branch, "downstream-at-push-ingest-time", ingestTime))
+		push := model.Revision{Revision: "upstream", CreateTime: time.Date(2015, time.January, 1, 0, 0, 0, 0, time.UTC), Author: "p"}
+		meta, err := getMetadataFromArgs(ctx, ProcessorArgs{
+			TriggerType:       model.ProjectTriggerLevelPush,
+			DownstreamProject: downstream,
+			PushRevision:      push,
+			PushIngestTime:    ingestTime,
+		}, "previous-version-revision")
+		require.NoError(t, err)
+		assert.Equal(t, "previous-version-revision", meta.Revision.Revision)
 		assert.Equal(t, push.Revision, meta.SourceCommit)
 	})
 
@@ -89,7 +110,7 @@ func TestGetMetadataFromArgs(t *testing.T) {
 			SourceVersion:     &model.Version{IngestTime: ingestTime},
 			DownstreamProject: downstream,
 			TriggerType:       model.ProjectTriggerLevelTask,
-		})
+		}, "")
 		require.NoError(t, err)
 		assert.Equal(t, commits[0].GetSHA(), meta.Revision.Revision)
 	})
