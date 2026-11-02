@@ -1405,7 +1405,7 @@ type GetProjectOpts struct {
 	// set internally by GetProjectFromFile from the ServiceFlag, so external callers stay uncached.
 	cacheEnabled bool
 
-	moduleRepoChecker *PatchModuleRepoChecker
+	moduleRepoChecker *patchModuleRepoChecker
 }
 
 type PatchOpts struct {

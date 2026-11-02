@@ -522,8 +522,7 @@ is configured to use the module via the module field.
 
 CLI and GitHub PR patches can only use private module repos that a recent mainline version declares as modules. To
 add one, commit it to the tracked branch and wait for Evergreen to create the mainline version. GitHub PR patches can
-also use repos the PR author can read, though spawn hosts and debug sessions started by other users can't. Merge
-queue and child patches can use any repo.
+also use repos the PR author can read. Merge queue and child patches can use any repo.
 
 ```yaml
 modules:

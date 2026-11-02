@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
@@ -56,7 +55,7 @@ func ValidatePatchModuleRepos(ctx context.Context, p *patch.Patch, projectRef *P
 		if err != nil {
 			return errors.Wrapf(err, "getting owner and repo for module '%s'", module.Name)
 		}
-		allowed, err := c.Allows(ctx, owner, repo)
+		allowed, err := c.allows(ctx, owner, repo)
 		if err != nil {
 			return errors.Wrapf(err, "checking repo for module '%s'", module.Name)
 		}
@@ -70,57 +69,28 @@ func ValidatePatchModuleRepos(ctx context.Context, p *patch.Patch, projectRef *P
 	return nil
 }
 
-// ModuleRepoCheckerForUser returns a checker for a user acting on the task, who
-// may not be the PR author.
-func ModuleRepoCheckerForUser(ctx context.Context, t *task.Task) (*PatchModuleRepoChecker, error) {
-	if !evergreen.IsPatchRequester(t.Requester) {
-		return nil, nil
-	}
-	p, err := patch.FindOneId(ctx, t.Version)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding patch '%s'", t.Version)
-	}
-	if p == nil {
-		return nil, errors.Errorf("patch '%s' not found", t.Version)
-	}
-	projectRef, err := FindMergedProjectRef(ctx, t.Project, t.Version, true)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding project '%s'", t.Project)
-	}
-	if projectRef == nil {
-		return nil, errors.Errorf("project ref '%s' doesn't exist", t.Project)
-	}
-	c := newPatchModuleRepoChecker(projectRef, p)
-	if c != nil {
-		c.allowPRAuthor = false
-	}
-	return c, nil
+// patchModuleRepoChecker checks whether a patch can use module repos.
+type patchModuleRepoChecker struct {
+	projectRef *ProjectRef
+	patch      *patch.Patch
+	mu         sync.Mutex
+	committed  map[string]bool
+	results    map[string]bool
 }
 
-// PatchModuleRepoChecker checks whether a patch can use module repos.
-type PatchModuleRepoChecker struct {
-	projectRef    *ProjectRef
-	patch         *patch.Patch
-	allowPRAuthor bool
-	mu            sync.Mutex
-	committed     map[string]bool
-	results       map[string]bool
-}
-
-func newPatchModuleRepoChecker(projectRef *ProjectRef, p *patch.Patch) *PatchModuleRepoChecker {
+func newPatchModuleRepoChecker(projectRef *ProjectRef, p *patch.Patch) *patchModuleRepoChecker {
 	if projectRef == nil || p == nil || p.GithubMergeData.HeadSHA != "" || p.IsChild() {
 		return nil
 	}
-	return &PatchModuleRepoChecker{
-		projectRef:    projectRef,
-		patch:         p,
-		allowPRAuthor: true,
-		results:       map[string]bool{},
+	return &patchModuleRepoChecker{
+		projectRef: projectRef,
+		patch:      p,
+		results:    map[string]bool{},
 	}
 }
 
-// Allows returns whether the patch can use owner/repo.
-func (c *PatchModuleRepoChecker) Allows(ctx context.Context, owner, repo string) (bool, error) {
+// allows returns whether the patch can use owner/repo.
+func (c *patchModuleRepoChecker) allows(ctx context.Context, owner, repo string) (bool, error) {
 	if c == nil {
 		return true, nil
 	}
@@ -146,8 +116,8 @@ func (c *PatchModuleRepoChecker) Allows(ctx context.Context, owner, repo string)
 	return trusted, nil
 }
 
-func (c *PatchModuleRepoChecker) check(ctx context.Context, owner, repo string) error {
-	allowed, err := c.Allows(ctx, owner, repo)
+func (c *patchModuleRepoChecker) check(ctx context.Context, owner, repo string) error {
+	allowed, err := c.allows(ctx, owner, repo)
 	if err != nil {
 		return err
 	}
@@ -159,13 +129,13 @@ func (c *PatchModuleRepoChecker) check(ctx context.Context, owner, repo string) 
 
 // isTrustedOnGitHub checks whether the repo is public or readable by the PR
 // author.
-func (c *PatchModuleRepoChecker) isTrustedOnGitHub(ctx context.Context, owner, repo string) (bool, error) {
+func (c *patchModuleRepoChecker) isTrustedOnGitHub(ctx context.Context, owner, repo string) (bool, error) {
 	public, err := isGitHubRepoPublic(ctx, owner, repo)
 	if err != nil {
 		return false, errors.Wrap(err, "checking if repo is public")
 	}
 	prAuthor := c.patch.GithubPatchData.Author
-	if public || !c.allowPRAuthor || !c.patch.IsGithubPRPatch() || prAuthor == "" {
+	if public || !c.patch.IsGithubPRPatch() || prAuthor == "" {
 		return public, nil
 	}
 	canRead, err := gitHubUserHasReadPermission(ctx, owner, repo, prAuthor)
@@ -182,7 +152,7 @@ func (c *PatchModuleRepoChecker) isTrustedOnGitHub(ctx context.Context, owner, r
 	return canRead, nil
 }
 
-func (c *PatchModuleRepoChecker) load(ctx context.Context) error {
+func (c *patchModuleRepoChecker) load(ctx context.Context) error {
 	if c.committed != nil {
 		return nil
 	}

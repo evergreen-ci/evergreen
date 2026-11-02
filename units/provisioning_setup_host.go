@@ -855,7 +855,7 @@ func parseLsblkOutput(lsblkOutput string) ([]blockDevice, error) {
 }
 
 // GetGithubTokensForTask returns a read-only token for owner/repo associated with the task
-// and a read-only token for each module repo a spawn host user is allowed to use.
+// and a read-only token for each module associated with the task.
 func GetGithubTokensForTask(ctx context.Context, taskId string) (string, []string, error) {
 	catcher := grip.NewBasicCatcher()
 
@@ -898,14 +898,6 @@ func GetGithubTokensForTask(ctx context.Context, taskId string) (string, []strin
 
 	}
 
-	var repoChecker *model.PatchModuleRepoChecker
-	if len(modules) > 0 {
-		repoChecker, err = model.ModuleRepoCheckerForUser(ctx, t)
-		if err != nil {
-			catcher.Wrap(err, "getting user's module repo checker")
-			modules = nil
-		}
-	}
 	for moduleName, module := range modules {
 		repo := module.Repo
 		if repo == "" {
@@ -913,11 +905,6 @@ func GetGithubTokensForTask(ctx context.Context, taskId string) (string, []strin
 			catcher.Add(err)
 		}
 		if module.Owner != "" && repo != "" && settings != nil {
-			allowed, err := repoChecker.Allows(ctx, module.Owner, repo)
-			catcher.Wrapf(err, "checking repo for module '%s'", moduleName)
-			if !allowed {
-				continue
-			}
 			token, err := createToken(module.Owner, strings.TrimSuffix(strings.TrimSuffix(repo, ".git"), ".wiki"))
 			catcher.Add(err)
 			moduleTokens = append(moduleTokens, fmt.Sprintf("%s:%s", moduleName, token))

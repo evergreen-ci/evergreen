@@ -95,13 +95,6 @@ func TestValidatePatchModuleRepos(t *testing.T) {
 	t.Run("PRAuthorAccessIsAllowedForPRPatch", func(t *testing.T) {
 		assert.NoError(t, ValidatePatchModuleRepos(t.Context(), prPatch, projectRef, ModuleList{prReadable}))
 	})
-	t.Run("PRAuthorAccessIsRejectedForUser", func(t *testing.T) {
-		c := newPatchModuleRepoChecker(projectRef, prPatch)
-		c.allowPRAuthor = false
-		allowed, err := c.Allows(t.Context(), prReadable.Owner, prReadable.Repo)
-		require.NoError(t, err)
-		assert.False(t, allowed)
-	})
 	t.Run("ReviewedConfigIsNotChecked", func(t *testing.T) {
 		mergeQueuePatch := &patch.Patch{Id: mgobson.NewObjectId(), GithubMergeData: thirdparty.GithubMergeGroup{HeadSHA: "sha"}}
 		childPatch := &patch.Patch{Id: mgobson.NewObjectId(), Triggers: patch.TriggerInfo{ParentPatch: "parent"}}

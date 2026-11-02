@@ -1786,18 +1786,9 @@ func (g *createInstallationTokenForClone) Run(ctx context.Context) gimlet.Respon
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "checking repo authorization"))
 	}
-	if allowed && gimlet.GetUser(ctx) != nil {
-		repoChecker, err := model.ModuleRepoCheckerForUser(ctx, t)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting user's module repo checker"))
-		}
-		if allowed, err = repoChecker.Allows(ctx, g.owner, g.repo); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "checking repo authorization"))
-		}
-	}
 	if !allowed {
 		grip.Warning(ctx, message.Fields{
-			"message":   "installation token requested for repo the task isn't allowed to use",
+			"message":   "installation token requested for repo not in project or modules",
 			"task_id":   g.taskID,
 			"project":   t.Project,
 			"owner":     g.owner,
