@@ -3,21 +3,16 @@ package units
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/trigger"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/pkg/errors"
 )
 
-const (
-	pushTriggerVersionsJobName        = "push-trigger-versions"
-	pushTriggerVersionsJobMaxAttempts = 3
-)
+const pushTriggerVersionsJobName = "push-trigger-versions"
 
 func init() {
 	registry.AddJobType(pushTriggerVersionsJobName, func() amboy.Job { return makePushTriggerVersionsJob() })
@@ -51,11 +46,6 @@ func NewPushTriggerVersionsJob(msgID string, push trigger.UpstreamPush, downstre
 	j.DownstreamProjectID = downstreamProjectID
 	j.SetID(fmt.Sprintf("%s:%s:%s:%s", pushTriggerVersionsJobName, msgID, push.ProjectID, downstreamProjectID))
 	j.SetScopes([]string{versionCreationScope(downstreamProjectID)})
-	j.UpdateRetryInfo(amboy.JobRetryOptions{
-		Retryable:   utility.TruePtr(),
-		MaxAttempts: utility.ToIntPtr(pushTriggerVersionsJobMaxAttempts),
-		WaitUntil:   utility.ToTimeDurationPtr(time.Minute),
-	})
 	return j
 }
 
@@ -68,15 +58,12 @@ func (j *pushTriggerVersionsJob) Run(ctx context.Context) {
 
 	downstream, err := model.FindMergedProjectRef(ctx, j.DownstreamProjectID, "", true)
 	if err != nil {
-		j.AddRetryableError(errors.Wrapf(err, "finding downstream project '%s'", j.DownstreamProjectID))
+		j.AddError(errors.Wrapf(err, "finding downstream project '%s'", j.DownstreamProjectID))
 		return
 	}
 	if downstream == nil || !downstream.Enabled {
 		return
 	}
-	// Commits that already have a version are skipped, so retrying after a
-	// partial failure only creates the missing versions.
-	if err = trigger.TriggerDownstreamProjectForPush(ctx, j.Push, *downstream, j.processor); err != nil {
-		j.AddRetryableError(errors.Wrapf(err, "triggering downstream project '%s' for push to project '%s'", j.DownstreamProjectID, j.Push.ProjectID))
-	}
+	j.AddError(errors.Wrapf(trigger.TriggerDownstreamProjectForPush(ctx, j.Push, *downstream, j.processor),
+		"triggering downstream project '%s' for push to project '%s'", j.DownstreamProjectID, j.Push.ProjectID))
 }

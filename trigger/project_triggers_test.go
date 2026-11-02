@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
@@ -131,9 +130,9 @@ func TestMakeDownstreamProjectFromFile(t *testing.T) {
 }
 
 func TestTriggerDownstreamProjectForPush(t *testing.T) {
-	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.VersionCollection))
+	require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
 	t.Cleanup(func() {
-		require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.VersionCollection))
+		require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
 	})
 
 	const (
@@ -141,9 +140,8 @@ func TestTriggerDownstreamProjectForPush(t *testing.T) {
 		downstreamProjectID = "push-trigger-downstream"
 	)
 	downstream := model.ProjectRef{
-		Id:         downstreamProjectID,
-		Identifier: downstreamProjectID,
-		Enabled:    true,
+		Id:      downstreamProjectID,
+		Enabled: true,
 		Triggers: []model.TriggerDefinition{
 			{
 				Project:      upstreamProjectID,
@@ -172,11 +170,6 @@ func TestTriggerDownstreamProjectForPush(t *testing.T) {
 		Sender: &github.User{Login: github.String("pusher")},
 		Commits: []*github.HeadCommit{
 			{
-				ID:        github.String("already-triggered-sha"),
-				Timestamp: &github.Timestamp{Time: pushCommitTime.Add(-time.Minute)},
-				Author:    &github.CommitAuthor{},
-			},
-			{
 				ID:        github.String("upstream-push-sha"),
 				Timestamp: &github.Timestamp{Time: pushCommitTime},
 				Author:    &github.CommitAuthor{},
@@ -185,8 +178,6 @@ func TestTriggerDownstreamProjectForPush(t *testing.T) {
 	}
 	push := NewUpstreamPush(upstreamProjectID, pushEvent, ingestTime)
 	assert.Equal(t, "pusher", push.Sender)
-	existing := model.Version{Id: repotracker.TriggerVersionID(downstreamProjectID, "already-triggered-sha", "push-trigger-definition"), Identifier: downstreamProjectID}
-	require.NoError(t, existing.Insert(t.Context()))
 	var processorArgs []ProcessorArgs
 	processor := func(_ context.Context, args ProcessorArgs) (*model.Version, error) {
 		processorArgs = append(processorArgs, args)
@@ -194,7 +185,7 @@ func TestTriggerDownstreamProjectForPush(t *testing.T) {
 	}
 
 	require.NoError(t, TriggerDownstreamProjectForPush(t.Context(), push, pushTriggered[0], processor))
-	require.Len(t, processorArgs, 1, "commit that already has a version should be skipped")
+	require.Len(t, processorArgs, 1)
 	assert.Equal(t, ingestTime, processorArgs[0].PushIngestTime)
 	assert.Equal(t, "upstream-push-sha", processorArgs[0].PushRevision.Revision)
 	assert.Equal(t, pushCommitTime, processorArgs[0].PushRevision.CreateTime)

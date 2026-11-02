@@ -19,9 +19,7 @@ import (
 
 // TriggerDownstreamVersion assumes that you definitely want to create a downstream version
 // and will go through the process of version creation given a triggering version.
-// If the trigger is a push event, the triggering version will be nonexistent,
-// and no version is created if the downstream project already has the pushed
-// commit or a newer one.
+// If the trigger is a push event, the triggering version will be nonexistent.
 func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.Version, error) {
 	if args.SourceVersion == nil && args.TriggerType != model.ProjectTriggerLevelPush {
 		return nil, errors.Errorf("unable to find source version in downstream project '%s'", args.DownstreamProject.Id)
@@ -74,21 +72,6 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 	}
 	resolver := model.NewModuleResolver(&args.DownstreamProject, resolverOpts)
 	metadata.ModuleResolver = resolver
-
-	stale, err := resolver.IsTriggeringCommitStale(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "checking if triggering commit is stale")
-	}
-	if stale {
-		grip.Info(ctx, message.Fields{
-			"message":               "skipping push-triggered version for stale module commit",
-			"source":                "project-triggers",
-			"downstream_project_id": args.DownstreamProject.Id,
-			"upstream_project_id":   upstreamProject.Id,
-			"upstream_commit":       metadata.SourceCommit,
-		})
-		return nil, nil
-	}
 
 	projectInfo, err := makeDownstreamProjectFromFile(ctx, args.DownstreamProject, args.ConfigFile, metadata.Revision.Revision, resolver)
 	if err != nil {

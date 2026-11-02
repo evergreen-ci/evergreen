@@ -307,24 +307,6 @@ func TestModuleResolverCarriesModulesForward(t *testing.T) {
 			require.NotNil(t, mfst)
 			assert.Equal(t, "previous", mfst.Id)
 		},
-		"TriggeringCommitInPreviousVersionShouldBeStale": func(t *testing.T) {
-			insertVersionWithManifest(t, projectRef.Id, "previous", 1, evergreen.RepotrackerVersionRequester, map[string]*manifest.Module{
-				"triggering": {Owner: triggeringCommit.Owner, Repo: triggeringCommit.Repo, Branch: triggeringCommit.Branch, Revision: triggeringCommit.Revision},
-			})
-
-			stale, err := newTriggeredResolver().IsTriggeringCommitStale(t.Context())
-			require.NoError(t, err)
-			assert.True(t, stale)
-		},
-		"TriggeringCommitFromRepoThatIsNotAModuleShouldNotBeStale": func(t *testing.T) {
-			insertVersionWithManifest(t, projectRef.Id, "previous", 1, evergreen.RepotrackerVersionRequester, map[string]*manifest.Module{
-				module.Name: {Owner: module.Owner, Repo: module.Repo, Branch: module.Branch, Revision: olderModuleRevision},
-			})
-
-			stale, err := newTriggeredResolver().IsTriggeringCommitStale(t.Context())
-			require.NoError(t, err)
-			assert.False(t, stale)
-		},
 		"GetIngestOrderShouldCompareModuleCommitIngestTimes": func(t *testing.T) {
 			require.NoError(t, UpsertRepositoryRevision(t.Context(), module.Owner, module.Repo, module.Branch, olderModuleRevision, ingestTime))
 			require.NoError(t, UpsertRepositoryRevision(t.Context(), module.Owner, module.Repo, module.Branch, newerModuleRevision, ingestTime.Add(time.Minute)))
@@ -432,23 +414,6 @@ func TestModuleResolverCarryForwardWithGitHub(t *testing.T) {
 		assert.Equal(t, newerCommit.Revision, mfst.Modules[sample.Name].Revision)
 		assert.Equal(t, manifest.ModuleSelectionCarriedForward, mfst.Modules[sample.Name].SelectionRule)
 	})
-	for tName, tCase := range map[string]struct {
-		previous, triggering *manifest.Module
-		expectStale          bool
-	}{
-		"TriggeringCommitBehindPreviousCommitShouldBeStale":     {previous: newerCommit, triggering: olderCommit, expectStale: true},
-		"TriggeringCommitAheadOfPreviousCommitShouldNotBeStale": {previous: olderCommit, triggering: newerCommit, expectStale: false},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(VersionCollection, manifest.Collection))
-			insertVersionWithManifest(t, projectRef.Id, "previous", 1, evergreen.RepotrackerVersionRequester, map[string]*manifest.Module{sample.Name: tCase.previous})
-			resolver := NewModuleResolver(projectRef, ModuleResolverOpts{Requester: evergreen.TriggerRequester, TriggeringModuleCommit: tCase.triggering})
-
-			stale, err := resolver.IsTriggeringCommitStale(t.Context())
-			require.NoError(t, err)
-			assert.Equal(t, tCase.expectStale, stale)
-		})
-	}
 	t.Run("RebuiltModuleTriggeredManifestShouldOnlyMoveTriggeringModule", func(t *testing.T) {
 		require.NoError(t, db.ClearCollections(VersionCollection, RepositoryRevisionsHistoryCollection, manifest.Collection))
 		insertVersionWithManifest(t, projectRef.Id, "previous", 1, evergreen.RepotrackerVersionRequester, map[string]*manifest.Module{

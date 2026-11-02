@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
@@ -356,8 +355,8 @@ func NewUpstreamPush(projectID string, event *github.PushEvent, ingestTime time.
 }
 
 // TriggerDownstreamProjectForPush creates a version in the downstream project
-// for each pushed commit that doesn't have one yet, if the downstream project
-// has a push level trigger on the pushed project.
+// for each pushed commit, if the downstream project has a push level trigger on
+// the pushed project.
 func TriggerDownstreamProjectForPush(ctx context.Context, push UpstreamPush, downstream model.ProjectRef, processor projectProcessor) error {
 	trigger := findPushTrigger(downstream, push.ProjectID)
 	if trigger == nil {
@@ -367,14 +366,6 @@ func TriggerDownstreamProjectForPush(ctx context.Context, push UpstreamPush, dow
 	catcher := grip.NewBasicCatcher()
 	var versionIDs []string
 	for _, commit := range push.Commits {
-		existing, err := model.VersionFindOneId(ctx, repotracker.TriggerVersionID(downstream.Identifier, commit.Revision, trigger.DefinitionID))
-		if err != nil {
-			catcher.Wrapf(err, "checking for existing version for upstream commit '%s'", commit.Revision)
-			continue
-		}
-		if existing != nil {
-			continue
-		}
 		args := ProcessorArgs{
 			DownstreamProject:            downstream,
 			ConfigFile:                   trigger.ConfigFile,
