@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -294,7 +295,7 @@ func (t *buildTriggers) buildAttachments(ctx context.Context, data *commonTempla
 		}
 		attachments = append(attachments, message.SlackAttachment{
 			Title:     fmt.Sprintf("Task: %s", t.tasks[i].DisplayName),
-			TitleLink: taskLink(t.uiConfig.Url, t.tasks[i].Id, -1),
+			TitleLink: util.TaskURL(t.uiConfig.Url, t.tasks[i].Id, -1),
 			Color:     evergreenFailColor,
 			Text:      taskFormatFromCache(t.tasks[i]),
 			Fields: []*message.SlackAttachmentField{

@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -81,7 +82,7 @@ func getTaskURL(data *jiraTemplateData) (string, error) {
 		id = data.Task.OldTaskId
 	}
 
-	return taskLink(data.UIRoot, id, execution), nil
+	return util.TaskURL(data.UIRoot, id, execution), nil
 }
 
 type taskInfo struct {

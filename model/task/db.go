@@ -1724,6 +1724,33 @@ func FindProjectForTask(ctx context.Context, taskID string) (string, error) {
 	return t.Project, nil
 }
 
+// FindProjectsForTasks returns the distinct project IDs of the given tasks using a single query. It also returns the
+// IDs of any tasks that could not be found.
+func FindProjectsForTasks(ctx context.Context, taskIDs []string) ([]string, []string, error) {
+	if len(taskIDs) == 0 {
+		return nil, nil, nil
+	}
+	tasks, err := FindAll(ctx, db.Query(ByIds(taskIDs)).WithFields(ProjectKey))
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "finding tasks")
+	}
+
+	foundTaskIDs := make(map[string]bool, len(tasks))
+	projectIDs := make([]string, 0, len(tasks))
+	for _, t := range tasks {
+		foundTaskIDs[t.Id] = true
+		projectIDs = append(projectIDs, t.Project)
+	}
+
+	notFoundTaskIDs := []string{}
+	for _, id := range taskIDs {
+		if !foundTaskIDs[id] {
+			notFoundTaskIDs = append(notFoundTaskIDs, id)
+		}
+	}
+	return utility.UniqueStrings(projectIDs), notFoundTaskIDs, nil
+}
+
 func FindActivatedByVersionWithoutDisplay(ctx context.Context, versionId string) ([]Task, error) {
 	query := db.Query(bson.M{
 		VersionKey:     versionId,

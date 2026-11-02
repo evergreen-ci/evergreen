@@ -280,8 +280,8 @@ func versionReadKey(versionID string, preGeneration bool, storageMethod evergree
 
 // fileTranslationKey is the cheap singleflight-only key for the file path when the cache is
 // disabled. It must NOT be used as an LRU key; see getOrComputeTranslation.
-func fileTranslationKey(projectID, revision string) string {
-	return fmt.Sprintf("f:%s:%s", projectID, revision)
+func fileTranslationKey(projectID, revision, modulesKey string) string {
+	return fmt.Sprintf("f:%s:%s:%s", projectID, revision, modulesKey)
 }
 
 // contentTranslationKey keys a translation by a hash of the parser-project bytes plus identifier, so

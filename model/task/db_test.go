@@ -2492,3 +2492,34 @@ func TestGetLargeParserProjectTaskStats(t *testing.T) {
 		assert.Equal(t, 1, byProject["proj-b"])
 	})
 }
+
+func TestFindProjectsForTasks(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.Clear(Collection))
+	})
+	require.NoError(t, db.InsertMany(t.Context(), Collection,
+		Task{Id: "t1", Project: "proj-a"},
+		Task{Id: "t2", Project: "proj-a"},
+		Task{Id: "t3", Project: "proj-b"},
+	))
+
+	t.Run("TasksInMultipleProjectsShouldReturnDistinctProjects", func(t *testing.T) {
+		projectIDs, missing, err := FindProjectsForTasks(t.Context(), []string{"t1", "t2", "t3"})
+		require.NoError(t, err)
+		assert.Empty(t, missing)
+		assert.ElementsMatch(t, []string{"proj-a", "proj-b"}, projectIDs)
+	})
+	t.Run("NonexistentTasksShouldBeReportedAsMissing", func(t *testing.T) {
+		projectIDs, missing, err := FindProjectsForTasks(t.Context(), []string{"t1", "nonexistent"})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"proj-a"}, projectIDs)
+		assert.Equal(t, []string{"nonexistent"}, missing)
+	})
+	t.Run("NoTaskIDsShouldReturnNothing", func(t *testing.T) {
+		projectIDs, missing, err := FindProjectsForTasks(t.Context(), nil)
+		require.NoError(t, err)
+		assert.Empty(t, projectIDs)
+		assert.Empty(t, missing)
+	})
+}

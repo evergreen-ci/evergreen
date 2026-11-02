@@ -1246,12 +1246,22 @@ func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*
 
 // QuarantineTest is the resolver for the quarantineTest field.
 func (r *mutationResolver) QuarantineTest(ctx context.Context, opts QuarantineTestInput) (*restModel.APITest, error) {
-	return setTestQuarantineState(ctx, opts.TaskID, opts.TestName, true)
+	return setTestQuarantineState(ctx, testQuarantineChange{
+		taskID:                    opts.TaskID,
+		testName:                  opts.TestName,
+		isManuallyQuarantined:     true,
+		existingJiraTicketsToLink: opts.ExistingJiraTicketsToLink,
+		justification:             utility.FromStringPtr(opts.Justification),
+	})
 }
 
 // UnquarantineTest is the resolver for the unquarantineTest field.
 func (r *mutationResolver) UnquarantineTest(ctx context.Context, opts UnquarantineTestInput) (*restModel.APITest, error) {
-	return setTestQuarantineState(ctx, opts.TaskID, opts.TestName, false)
+	return setTestQuarantineState(ctx, testQuarantineChange{
+		taskID:                opts.TaskID,
+		testName:              opts.TestName,
+		isManuallyQuarantined: false,
+	})
 }
 
 // QuarantineTask is the resolver for the quarantineTask field.

@@ -448,7 +448,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 	}
 
 	res.SourceCacheBucket = h.settings.Buckets.SourceCacheBucket
-	sourceCacheEnabled, sourceCacheFlags := sourceCacheEnabledForTask(ctx, pRef, t)
+	sourceCacheEnabled, sourceCacheFlags := sourceCacheEnabledForTask(ctx, h.settings, pRef, t)
 	if !sourceCacheEnabled {
 		res.SourceCacheBucket = evergreen.BucketConfig{}
 	}

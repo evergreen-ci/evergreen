@@ -43,7 +43,7 @@ func (d *mockRepoPoller) GetChangedFiles(_ context.Context, commitRevision strin
 	return nil, nil
 }
 
-func (d *mockRepoPoller) GetRemoteConfig(ctx context.Context, revision string) (model.ProjectInfo, error) {
+func (d *mockRepoPoller) GetRemoteConfig(ctx context.Context, revision string, _ *model.ModuleResolver) (model.ProjectInfo, error) {
 	d.ConfigGets++
 	if d.nextError != nil {
 		return model.ProjectInfo{}, d.clearError()

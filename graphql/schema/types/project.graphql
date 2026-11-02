@@ -157,11 +157,15 @@ input TestSelectionSettingsInput {
   allowed: Boolean
   defaultEnabled: Boolean
   mainlineDefaultEnabled: Boolean
+  quarantineJiraTicketsRequired: Boolean
 }
 
 input TaskOwnershipSettingsInput {
   defaultMothraTeam: String
   defaultMothraTeamForBreakingCommit: String
+  generatedTaskValidationPrefix: String
+  trackGeneratedTaskTagValidation: Boolean
+  blockTaskGenerationOnTagValidation: Boolean
 }
 
 input WorkstationSetupCommandInput {
@@ -360,11 +364,15 @@ type TestSelectionSettings {
   allowed: Boolean
   defaultEnabled: Boolean
   mainlineDefaultEnabled: Boolean
+  quarantineJiraTicketsRequired: Boolean
 }
 
 type TaskOwnershipSettings {
   defaultMothraTeam: String
   defaultMothraTeamForBreakingCommit: String
+  generatedTaskValidationPrefix: String
+  trackGeneratedTaskTagValidation: Boolean
+  blockTaskGenerationOnTagValidation: Boolean
 }
 
 """

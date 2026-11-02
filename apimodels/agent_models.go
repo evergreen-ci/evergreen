@@ -369,6 +369,9 @@ type SourceCacheRestoreKey struct {
 	// PRCheckout is true when the artifact's tree is not at the revision the task
 	// will test, so the agent must check out the PR over the restored tree.
 	PRCheckout bool `json:"pr_checkout"`
+	// TagTriggered is true when a git tag push triggered the build, so the
+	// restored tree must see the tag or the agent falls back to a clone.
+	TagTriggered bool `json:"tag_triggered"`
 }
 
 // SourceCacheCredentialsResponse carries source cache credentials and the exact

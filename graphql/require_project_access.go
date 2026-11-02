@@ -10,6 +10,8 @@ import (
 	"github.com/evergreen-ci/utility"
 )
 
+// RequireProjectAccess requires the given permission at the given access level on the project
+// and is retrieved via the object provided in the arguments (e.g. a projectId, versionId, patchId, or taskId).
 func RequireProjectAccess(ctx context.Context, obj any, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (any, error) {
 	requiredPermission, permissionInfo, err := getProjectPermissionLevel(permission, access)
 	if err != nil {

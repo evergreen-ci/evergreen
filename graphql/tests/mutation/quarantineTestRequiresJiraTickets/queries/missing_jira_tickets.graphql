@@ -1,0 +1,12 @@
+mutation {
+  quarantineTest(
+    opts: {
+      taskId: "quarantine_target"
+      testName: "TestFoo"
+      justification: "Fails intermittently on ubuntu."
+    }
+  ) {
+    id
+    isManuallyQuarantined
+  }
+}
