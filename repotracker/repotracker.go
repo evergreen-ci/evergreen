@@ -1067,6 +1067,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			BuildVariant:   buildvariant.Name,
 			BuildId:        b.Id,
 			DisplayName:    b.DisplayName,
+			Tags:           b.Tags,
 			BatchTimeTasks: taskStatuses,
 			ActivationStatus: model.ActivationStatus{
 				ActivateAt: activateVariantAt,

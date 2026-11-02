@@ -990,6 +990,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, transl
 				BuildVariant:     vt.Variant,
 				BuildId:          build.Id,
 				DisplayName:      build.DisplayName,
+				Tags:             build.Tags,
 				ActivationStatus: ActivationStatus{Activated: true},
 			},
 		)

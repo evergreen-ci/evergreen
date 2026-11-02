@@ -618,6 +618,7 @@ func (v *Version) GetHighestTaskExecution(ctx context.Context) (int, error) {
 type VersionBuildStatus struct {
 	BuildVariant     string                `bson:"build_variant" json:"id"`
 	DisplayName      string                `bson:"display_name,omitempty" json:"display_name,omitempty"`
+	Tags             []string              `bson:"tags,omitempty" json:"-"`
 	BuildId          string                `bson:"build_id,omitempty" json:"build_id,omitempty"`
 	BatchTimeTasks   []BatchTimeTaskStatus `bson:"batchtime_tasks,omitempty" json:"batchtime_tasks,omitempty"`
 	ActivationStatus `bson:",inline"`
