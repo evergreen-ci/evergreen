@@ -81,7 +81,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 	}
 	if stale {
 		grip.Info(ctx, message.Fields{
-			"message":               "skipping push-triggered version because the downstream project already has the pushed commit or a newer one",
+			"message":               "skipping push-triggered version for stale module commit",
 			"source":                "project-triggers",
 			"downstream_project_id": args.DownstreamProject.Id,
 			"upstream_project_id":   upstreamProject.Id,

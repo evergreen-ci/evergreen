@@ -207,7 +207,7 @@ func TestTriggerDownstreamProjectForPush(t *testing.T) {
 	assert.Len(t, processorArgs, 1, "project without a push trigger should not get a version")
 }
 
-func TestGetMetadataFromArgsForPushShouldUseLatestMainlineRevision(t *testing.T) {
+func TestGetMetadataFromArgsForPush(t *testing.T) {
 	require.NoError(t, db.ClearCollections(model.VersionCollection, model.RepositoryRevisionsHistoryCollection))
 	t.Cleanup(func() {
 		require.NoError(t, db.ClearCollections(model.VersionCollection, model.RepositoryRevisionsHistoryCollection))
@@ -230,13 +230,17 @@ func TestGetMetadataFromArgsForPushShouldUseLatestMainlineRevision(t *testing.T)
 		PushIngestTime:    ingestTime,
 	}
 
-	meta, err := getMetadataFromArgs(t.Context(), args)
-	require.NoError(t, err)
-	assert.Equal(t, "latest-mainline-revision", meta.Revision.Revision)
-	assert.Equal(t, "upstream", meta.SourceCommit)
-
-	args.DownstreamProject.RepotrackerDisabled = utility.TruePtr()
-	meta, err = getMetadataFromArgs(t.Context(), args)
-	require.NoError(t, err)
-	assert.Equal(t, "newest-ingested-revision", meta.Revision.Revision, "project without a running repotracker should use the newest ingested revision")
+	t.Run("LatestMainlineRevisionShouldBeUsed", func(t *testing.T) {
+		meta, err := getMetadataFromArgs(t.Context(), args)
+		require.NoError(t, err)
+		assert.Equal(t, "latest-mainline-revision", meta.Revision.Revision)
+		assert.Equal(t, "upstream", meta.SourceCommit)
+	})
+	t.Run("RepotrackerDisabledShouldUseNewestIngestedRevision", func(t *testing.T) {
+		disabled := args
+		disabled.DownstreamProject.RepotrackerDisabled = utility.TruePtr()
+		meta, err := getMetadataFromArgs(t.Context(), disabled)
+		require.NoError(t, err)
+		assert.Equal(t, "newest-ingested-revision", meta.Revision.Revision)
+	})
 }

@@ -148,8 +148,7 @@ func (r *ModuleResolver) TriggeringModuleName(ctx context.Context, modules Modul
 
 // IsTriggeringCommitStale returns whether the previous version already has the
 // triggering module commit or a commit after it, in which case a version for it
-// would repeat that version or move the module backwards. It checks commit
-// order with GitHub, since webhooks can arrive out of order.
+// would repeat that version or move the module backwards.
 func (r *ModuleResolver) IsTriggeringCommitStale(ctx context.Context) (bool, error) {
 	pin := r.opts.TriggeringModuleCommit
 	if pin == nil {
@@ -158,25 +157,31 @@ func (r *ModuleResolver) IsTriggeringCommitStale(ctx context.Context) (bool, err
 	if err := r.init(ctx); err != nil {
 		return false, err
 	}
-	if r.previousManifest == nil {
+	var previous *manifest.Module
+	if r.previousManifest != nil {
+		for _, mod := range r.previousManifest.Modules {
+			if mod != nil && mod.Revision != "" && mod.SelectionRule != manifest.ModuleSelectionPinnedRef && r.isTriggeringModule(mod.Owner, mod.Repo, mod.Branch) {
+				previous = mod
+				break
+			}
+		}
+	}
+	if previous == nil {
 		return false, nil
 	}
-	for _, mod := range r.previousManifest.Modules {
-		if mod == nil || mod.Revision == "" || mod.SelectionRule == manifest.ModuleSelectionPinnedRef || !r.isTriggeringModule(mod.Owner, mod.Repo, mod.Branch) {
-			continue
-		}
-		if mod.Revision == pin.Revision {
-			return true, nil
-		}
-		ghCtx, cancel := context.WithTimeout(ctx, time.Minute)
-		defer cancel()
-		status, err := thirdparty.GetCommitComparisonStatus(ghCtx, pin.Owner, pin.Repo, mod.Revision, pin.Revision)
-		if err != nil {
-			return false, errors.Wrapf(err, "comparing triggering commit '%s' to previous commit '%s'", pin.Revision, mod.Revision)
-		}
-		return status == "behind", nil
+	if previous.Revision == pin.Revision {
+		return true, nil
 	}
-	return false, nil
+
+	// Ingest times can't be used here, since they're out of order when
+	// webhooks are delivered out of order.
+	ghCtx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+	status, err := thirdparty.GetCommitComparisonStatus(ghCtx, pin.Owner, pin.Repo, previous.Revision, pin.Revision)
+	if err != nil {
+		return false, errors.Wrapf(err, "comparing triggering commit '%s' to previous commit '%s'", pin.Revision, previous.Revision)
+	}
+	return status == "behind", nil
 }
 
 // resolvedModulesKey returns the module commits resolved so far as a stable

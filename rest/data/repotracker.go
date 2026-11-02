@@ -171,8 +171,7 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 }
 
 // enqueuePushTriggerVersions enqueues a job for each project with a push level
-// trigger on the pushed project. The jobs run one at a time with each
-// downstream project's repotracker jobs, so versions are created in order.
+// trigger on the pushed project.
 func enqueuePushTriggerVersions(ctx context.Context, q amboy.Queue, msgID, projectID string, event *github.PushEvent, ingestTime time.Time) error {
 	downstreamProjects, err := trigger.FindPushTriggeredProjects(ctx, projectID)
 	if err != nil {
