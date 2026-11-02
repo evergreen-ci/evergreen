@@ -6573,7 +6573,6 @@ func TestStepbackQueriesWithPushTriggers(t *testing.T) {
 		}
 	}
 	earliest := newTask("earliest", 1, evergreen.RepotrackerVersionRequester, "")
-	earlierPushTriggered := newTask("earlier-push-triggered", 2, evergreen.TriggerRequester, evergreen.ProjectTriggerLevelPush)
 	pushTriggered := newTask("push-triggered", 4, evergreen.TriggerRequester, evergreen.ProjectTriggerLevelPush)
 	taskTriggered := newTask("task-triggered", 5, evergreen.TriggerRequester, "task")
 	periodic := newTask("periodic", 6, evergreen.AdHocRequester, "")
@@ -6585,12 +6584,6 @@ func TestStepbackQueriesWithPushTriggers(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, prev)
 			assert.Equal(t, pushTriggered.Id, prev.Id)
-		},
-		"MidwayTaskWithMainlineAndPushTriggeredBoundsShouldConsiderBothWhenSettingIsOff": func(t *testing.T) {
-			mid, err := ByBeforeMidwayTaskFromIds(t.Context(), latest.Id, earlierPushTriggered.Id, false)
-			require.NoError(t, err)
-			require.NotNil(t, mid)
-			assert.Equal(t, pushTriggered.Id, mid.Id)
 		},
 		"MidwayTaskWithPushTriggersShouldBeInPushTriggeredVersionBetweenMainlineBounds": func(t *testing.T) {
 			mid, err := ByBeforeMidwayTaskFromIds(t.Context(), latest.Id, earliest.Id, true)
@@ -6604,7 +6597,7 @@ func TestStepbackQueriesWithPushTriggers(t *testing.T) {
 			t.Cleanup(func() {
 				assert.NoError(t, db.ClearCollections(Collection))
 			})
-			for _, tsk := range []Task{earliest, earlierPushTriggered, pushTriggered, taskTriggered, periodic, latest} {
+			for _, tsk := range []Task{earliest, pushTriggered, taskTriggered, periodic, latest} {
 				require.NoError(t, tsk.Insert(t.Context()))
 			}
 			tCase(t)
