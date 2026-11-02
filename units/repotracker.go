@@ -49,7 +49,15 @@ func NewRepotrackerJob(msgID, projectID string) amboy.Job {
 	job := makeRepotrackerJob()
 	job.ProjectID = projectID
 	job.SetID(fmt.Sprintf("%s:%s:%s", repotrackerJobName, msgID, projectID))
+	job.SetScopes([]string{versionCreationScope(projectID)})
 	return job
+}
+
+// versionCreationScope makes jobs that create a project's mainline and
+// push-triggered versions run one at a time, so each version is created after
+// the version before it is stored.
+func versionCreationScope(projectID string) string {
+	return fmt.Sprintf("version-creation.%s", projectID)
 }
 
 func (j *repotrackerJob) Run(ctx context.Context) {

@@ -504,8 +504,8 @@ Each module in the manifest records a `selection_rule` explaining how its revisi
 - `github_fallback`: the newest commit on the module branch according to GitHub. This is used when Evergreen hasn't
   received a push for the module branch before the version was created, and for patches that use `auto_update`.
 - `base_version`: inherited from the base version's manifest.
-- `carried_forward`: kept from the previous mainline or trigger version's manifest, for example because a different
-  module triggered the version.
+- `carried_forward`: kept from the previous mainline or push level trigger version's manifest, for example because a
+  different module triggered the version.
 
 The manifest also records `changed_modules`, the modules that were added, removed, or moved to a different commit
 compared to the version in `previous_version_id`. For patches, that's the base version. Otherwise, it's the previous

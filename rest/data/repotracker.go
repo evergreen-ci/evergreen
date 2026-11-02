@@ -117,8 +117,7 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 			continue
 		}
 
-		err = trigger.TriggerDownstreamProjectsForPush(ctx, refs[i].Id, event, ingestTime, trigger.TriggerDownstreamVersion)
-		catcher.Wrapf(err, "triggering downstream projects for push event for project '%s'", refs[i].Id)
+		catcher.Wrapf(enqueuePushTriggerVersions(ctx, q, msgID, refs[i].Id, event, ingestTime), "enqueueing push triggered versions for project '%s'", refs[i].Id)
 
 		j := units.NewRepotrackerJob(fmt.Sprintf("github-push-%s", msgID), refs[i].Id)
 
@@ -169,6 +168,23 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 	}
 
 	return nil
+}
+
+// enqueuePushTriggerVersions enqueues a job for each project with a push level
+// trigger on the pushed project. The jobs run one at a time with each
+// downstream project's repotracker jobs, so versions are created in order.
+func enqueuePushTriggerVersions(ctx context.Context, q amboy.Queue, msgID, projectID string, event *github.PushEvent, ingestTime time.Time) error {
+	downstreamProjects, err := trigger.FindPushTriggeredProjects(ctx, projectID)
+	if err != nil {
+		return err
+	}
+	commits := trigger.RevisionsFromPushEvent(event)
+	catcher := grip.NewBasicCatcher()
+	for _, downstream := range downstreamProjects {
+		j := units.NewPushTriggerVersionsJob(msgID, projectID, downstream.Id, commits, ingestTime)
+		catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, q, j), "enqueueing push trigger versions job for downstream project '%s'", downstream.Id)
+	}
+	return catcher.Resolve()
 }
 
 // upsertRepositoryRevisionsFromPushEvent allows Evergreen to track when commits

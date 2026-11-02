@@ -608,7 +608,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 			},
 		},
 	}
-	err = TriggerDownstreamProjectsForPush(ctx, "upstream", pushEvent, ingestTime, TriggerDownstreamVersion)
+	err = TriggerDownstreamProjectForPush(ctx, "upstream", downstreamProjectRef, RevisionsFromPushEvent(pushEvent), ingestTime, TriggerDownstreamVersion)
 	assert.NoError(err)
 	dbVersions, err := model.VersionFind(t.Context(), model.VersionByProjectIdAndCreateTime(downstreamProjectRef.Id, time.Now()))
 	assert.NoError(err)
@@ -676,7 +676,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	assert.Equal("evergreen-ci", mani.Modules["sample"].Owner)
 
 	// verify that triggering this version again does nothing
-	assert.NoError(TriggerDownstreamProjectsForPush(ctx, uptreamProjectRef.Id, pushEvent, ingestTime, TriggerDownstreamVersion))
+	assert.NoError(TriggerDownstreamProjectForPush(ctx, uptreamProjectRef.Id, downstreamProjectRef, RevisionsFromPushEvent(pushEvent), ingestTime, TriggerDownstreamVersion))
 }
 
 func TestCreateManifest(t *testing.T) {

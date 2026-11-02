@@ -122,6 +122,20 @@ func FindLatestRevisionAndAuthorForProject(ctx context.Context, projectId string
 	return v.Revision, v.AuthorID, nil
 }
 
+// FindLatestMainlineRevision returns the revision of the project's most recent
+// mainline version, or an empty string if it has none.
+func FindLatestMainlineRevision(ctx context.Context, projectID string) (string, error) {
+	v, err := VersionFindOne(ctx, db.Query(byLatestProjectVersion(projectID)).
+		Sort([]string{"-" + VersionRevisionOrderNumberKey}).WithFields(VersionRevisionKey))
+	if err != nil {
+		return "", errors.Wrapf(err, "finding most recent mainline version for project '%s'", projectID)
+	}
+	if v == nil {
+		return "", nil
+	}
+	return v.Revision, nil
+}
+
 // BaseVersionByProjectIdAndRevision finds a base version for the given project and revision.
 func BaseVersionByProjectIdAndRevision(projectId, revision string) db.Q {
 	return db.Query(

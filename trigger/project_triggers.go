@@ -17,51 +17,18 @@ import (
 	"github.com/pkg/errors"
 )
 
-// maxWaterfallHeadMovedRetries bounds how many times a downstream version is
-// created again after another version replaced the waterfall head first.
-const maxWaterfallHeadMovedRetries = 3
-
 // TriggerDownstreamVersion assumes that you definitely want to create a downstream version
 // and will go through the process of version creation given a triggering version.
-// If the trigger is a push event, the triggering version will be nonexistent.
-// It returns a nil version if the push event's commit is already on the
-// downstream waterfall.
+// If the trigger is a push event, the triggering version will be nonexistent,
+// and no version is created if the downstream project already has the pushed
+// commit or a newer one.
 func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.Version, error) {
-	for attempt := 1; ; attempt++ {
-		v, err := triggerDownstreamVersion(ctx, args)
-		if !errors.Is(err, model.ErrWaterfallHeadMoved) || attempt > maxWaterfallHeadMovedRetries {
-			return v, err
-		}
-		grip.Info(ctx, message.WrapError(err, message.Fields{
-			"message":               "creating downstream version again from the new waterfall head",
-			"source":                "project-triggers",
-			"downstream_project_id": args.DownstreamProject.Id,
-			"trigger_type":          args.TriggerType,
-			"attempt":               attempt,
-		}))
-	}
-}
-
-func triggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.Version, error) {
 	if args.SourceVersion == nil && args.TriggerType != model.ProjectTriggerLevelPush {
 		return nil, errors.Errorf("unable to find source version in downstream project '%s'", args.DownstreamProject.Id)
 	}
 
-	// A push-triggered version keeps the revision of the version before it, so
-	// it only differs from it by the triggering commit.
-	var head *model.WaterfallHead
-	var revision string
-	var err error
-	if args.TriggerType == model.ProjectTriggerLevelPush {
-		head, err = model.FindWaterfallHead(ctx, args.DownstreamProject.Id)
-		if err != nil {
-			return nil, errors.Wrapf(err, "finding waterfall head for downstream project '%s'", args.DownstreamProject.Id)
-		}
-		revision = head.Revision
-	}
-
 	// propagate version metadata to the downstream version
-	metadata, err := getMetadataFromArgs(ctx, args, revision)
+	metadata, err := getMetadataFromArgs(ctx, args)
 	if err != nil {
 		return nil, err
 	}
@@ -93,10 +60,9 @@ func triggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 		metadata.IngestTime = time.Now()
 	}
 	resolverOpts := model.ModuleResolverOpts{
-		Revision:      metadata.Revision.Revision,
-		Requester:     evergreen.TriggerRequester,
-		IngestTime:    metadata.IngestTime,
-		WaterfallHead: head,
+		Revision:   metadata.Revision.Revision,
+		Requester:  evergreen.TriggerRequester,
+		IngestTime: metadata.IngestTime,
 	}
 	if args.TriggerType == model.ProjectTriggerLevelPush {
 		resolverOpts.TriggeringModuleCommit = &manifest.Module{
@@ -111,16 +77,15 @@ func triggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 
 	stale, err := resolver.IsTriggeringCommitStale(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "checking if triggering commit is already on the waterfall")
+		return nil, errors.Wrap(err, "checking if triggering commit is stale")
 	}
 	if stale {
 		grip.Info(ctx, message.Fields{
-			"message":               "skipping push-triggered version because the downstream waterfall already has the triggering commit or a newer one",
+			"message":               "skipping push-triggered version because the downstream project already has the pushed commit or a newer one",
 			"source":                "project-triggers",
 			"downstream_project_id": args.DownstreamProject.Id,
 			"upstream_project_id":   upstreamProject.Id,
 			"upstream_commit":       metadata.SourceCommit,
-			"waterfall_head":        head.VersionID,
 		})
 		return nil, nil
 	}
@@ -178,10 +143,7 @@ func triggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 	return v, nil
 }
 
-// getMetadataFromArgs returns the downstream version's metadata. If revision
-// is empty, the downstream revision is the latest one as of when the trigger
-// fired.
-func getMetadataFromArgs(ctx context.Context, args ProcessorArgs, revision string) (model.VersionMetadata, error) {
+func getMetadataFromArgs(ctx context.Context, args ProcessorArgs) (model.VersionMetadata, error) {
 	metadata := model.VersionMetadata{
 		SourceVersion:       args.SourceVersion,
 		Activate:            !args.UnscheduleDownstreamVersions,
@@ -214,9 +176,18 @@ func getMetadataFromArgs(ctx context.Context, args ProcessorArgs, revision strin
 		ingestTime = args.PushIngestTime
 	}
 	metadata.IngestTime = ingestTime
-	if revision != "" {
-		metadata.Revision.Revision = revision
-		return metadata, nil
+
+	if args.TriggerType == model.ProjectTriggerLevelPush {
+		// Use the latest mainline version's revision so the version only
+		// differs from the versions before it by the pushed commit.
+		revision, err := model.FindLatestMainlineRevision(ctx, args.DownstreamProject.Id)
+		if err != nil {
+			return metadata, err
+		}
+		if revision != "" {
+			metadata.Revision.Revision = revision
+			return metadata, nil
+		}
 	}
 
 	selectionTime := ingestTime

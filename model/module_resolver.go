@@ -3,7 +3,6 @@ package model
 import (
 	"context"
 	"fmt"
-	"maps"
 	"slices"
 	"strings"
 	"sync"
@@ -21,14 +20,9 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-const (
-	// previousManifestLookback bounds how many earlier versions are checked for a
-	// manifest, since versions whose config failed to load don't have one.
-	previousManifestLookback = 10
-	// maxWaterfallHeadClaims bounds how many times a version tries to replace
-	// the waterfall head when other versions keep replacing it first.
-	maxWaterfallHeadClaims = 5
-)
+// previousManifestLookback bounds how many earlier versions are checked for a
+// manifest, since versions whose config failed to load don't have one.
+const previousManifestLookback = 10
 
 // ModuleResolver resolves each module's commit for a single version at most
 // once, so a config and manifest built from the same resolver always agree on
@@ -43,9 +37,8 @@ type ModuleResolver struct {
 	baseManifest *manifest.Manifest
 	// previousManifest is the manifest module commits are carried forward from.
 	previousManifest *manifest.Manifest
-	// head is the waterfall head a new version carries module commits forward
-	// from.
-	head *WaterfallHead
+	// beforeOrder is the order number previous versions must be below.
+	beforeOrder int
 
 	mu       sync.Mutex
 	resolved map[string]*manifest.Module
@@ -59,26 +52,22 @@ type ModuleResolverOpts struct {
 	VersionID string
 	// Revision is the project revision, used to find the base manifest for
 	// patches and periodic builds.
-	Revision  string
-	Requester string
-	// RevisionOrderNumber is only set when rebuilding the manifest of an
-	// existing version, which carries module commits forward from the
-	// version before it instead of from the waterfall head.
+	Revision            string
+	Requester           string
 	RevisionOrderNumber int
 	IngestTime          time.Time
 	// TriggeringModuleCommit pins the module with the same owner, repo and
 	// branch to the commit that triggered the version.
 	TriggeringModuleCommit *manifest.Module
-	// WaterfallHead, if set, is used instead of looking up the waterfall head.
-	WaterfallHead *WaterfallHead
 }
 
 // NewModuleResolver returns a resolver for the module commits of a version.
 func NewModuleResolver(projectRef *ProjectRef, opts ModuleResolverOpts) *ModuleResolver {
 	return &ModuleResolver{
-		projectRef: projectRef,
-		opts:       opts,
-		resolved:   map[string]*manifest.Module{},
+		projectRef:  projectRef,
+		opts:        opts,
+		beforeOrder: opts.RevisionOrderNumber,
+		resolved:    map[string]*manifest.Module{},
 	}
 }
 
@@ -106,9 +95,19 @@ func (r *ModuleResolver) Manifest(ctx context.Context, v *Version, modules Modul
 	if len(modules) == 0 {
 		return nil, nil
 	}
-	resolved, err := r.resolveAll(ctx, modules)
-	if err != nil {
-		return nil, err
+	r.initMu.Lock()
+	if !r.initialized && r.beforeOrder == 0 {
+		r.beforeOrder = v.RevisionOrderNumber
+	}
+	r.initMu.Unlock()
+
+	resolved := make(map[string]*manifest.Module, len(modules))
+	for _, module := range modules {
+		mod, err := r.Resolve(ctx, module)
+		if err != nil {
+			return nil, errors.Wrapf(err, "module '%s'", module.Name)
+		}
+		resolved[module.Name] = mod
 	}
 	newManifest := &manifest.Manifest{
 		Id:          v.Id,
@@ -120,113 +119,6 @@ func (r *ModuleResolver) Manifest(ctx context.Context, v *Version, modules Modul
 	}
 	setChangedModules(ctx, v, newManifest, r.baseManifest)
 	return newManifest, nil
-}
-
-// ClaimRevisionOrderNumber returns the revision order number for the new
-// version v. A mainline or push-triggered version also becomes the project's
-// waterfall head. If another version replaced the head and that changes the
-// revision or module commits v's config was read from, it returns
-// ErrWaterfallHeadMoved, and v has to be created again with a new resolver.
-func (r *ModuleResolver) ClaimRevisionOrderNumber(ctx context.Context, v *Version, modules ModuleList) (int, error) {
-	if !r.claimsWaterfallHead() {
-		return GetNewRevisionOrderNumber(ctx, r.projectRef.Id)
-	}
-	if err := r.init(ctx); err != nil {
-		return 0, err
-	}
-	configModules := r.resolvedModuleNames()
-	for range maxWaterfallHeadClaims {
-		resolved, err := r.resolveAll(ctx, modules)
-		if err != nil {
-			grip.Error(ctx, message.WrapError(err, message.Fields{
-				"message":    "resolving module commits, creating version without replacing the waterfall head",
-				"source":     "manifest-creation",
-				"version_id": v.Id,
-				"project_id": r.projectRef.Id,
-			}))
-			return GetNewRevisionOrderNumber(ctx, r.projectRef.Id)
-		}
-		order, err := claimWaterfallHead(ctx, r.projectRef.Id, r.head.ID, WaterfallHead{
-			ID:        utility.RandomString(),
-			VersionID: v.Id,
-			Revision:  v.Revision,
-			Modules:   resolved,
-		})
-		if !errors.Is(err, ErrWaterfallHeadMoved) {
-			return order, err
-		}
-		if err = r.rebase(ctx, v, modules, configModules); err != nil {
-			return 0, err
-		}
-	}
-	return 0, ErrWaterfallHeadMoved
-}
-
-// rebase moves the resolver to the current waterfall head. It returns
-// ErrWaterfallHeadMoved if the new head has a different revision or commit for
-// a module v's config was read from, or if it makes the triggering commit
-// stale.
-func (r *ModuleResolver) rebase(ctx context.Context, v *Version, modules ModuleList, configModules []string) error {
-	opts := r.opts
-	opts.WaterfallHead = nil
-	rebased := NewModuleResolver(r.projectRef, opts)
-	if err := rebased.init(ctx); err != nil {
-		return err
-	}
-	if r.opts.TriggeringModuleCommit != nil {
-		if rebased.head.Revision != "" && rebased.head.Revision != v.Revision {
-			return ErrWaterfallHeadMoved
-		}
-		stale, err := rebased.IsTriggeringCommitStale(ctx)
-		if err != nil {
-			return err
-		}
-		if stale {
-			return ErrWaterfallHeadMoved
-		}
-	}
-
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	for _, module := range modules {
-		if !slices.Contains(configModules, module.Name) {
-			continue
-		}
-		mod, err := rebased.Resolve(ctx, module)
-		if err != nil {
-			return errors.Wrapf(err, "module '%s'", module.Name)
-		}
-		if mod.Revision != r.resolved[module.Name].Revision {
-			return ErrWaterfallHeadMoved
-		}
-	}
-	r.resolved = rebased.resolved
-	r.head = rebased.head
-	r.previousManifest = rebased.previousManifest
-	return nil
-}
-
-// IsTriggeringCommitStale returns whether the waterfall head already has the
-// triggering module commit or a newer commit of that module, in which case a
-// version for it would repeat the head or move the module backwards.
-func (r *ModuleResolver) IsTriggeringCommitStale(ctx context.Context) (bool, error) {
-	pin := r.opts.TriggeringModuleCommit
-	if pin == nil {
-		return false, nil
-	}
-	if err := r.init(ctx); err != nil {
-		return false, err
-	}
-	if r.previousManifest == nil {
-		return false, nil
-	}
-	for name, mod := range r.previousManifest.Modules {
-		if mod == nil || mod.Revision == "" || mod.SelectionRule == manifest.ModuleSelectionPinnedRef || !r.isTriggeringModule(mod.Owner, mod.Repo, mod.Branch) {
-			continue
-		}
-		return mod.Revision == pin.Revision || r.isBehind(ctx, name, mod, pin), nil
-	}
-	return false, nil
 }
 
 // TriggeringModuleName returns the name of the module pinned by
@@ -254,22 +146,27 @@ func (r *ModuleResolver) TriggeringModuleName(ctx context.Context, modules Modul
 	return "", nil
 }
 
-func (r *ModuleResolver) resolveAll(ctx context.Context, modules ModuleList) (map[string]*manifest.Module, error) {
-	resolved := make(map[string]*manifest.Module, len(modules))
-	for _, module := range modules {
-		mod, err := r.Resolve(ctx, module)
-		if err != nil {
-			return nil, errors.Wrapf(err, "module '%s'", module.Name)
-		}
-		resolved[module.Name] = mod
+// IsTriggeringCommitStale returns whether the previous version already has the
+// triggering module commit or a newer commit of that module, in which case a
+// version for it would repeat that version or move the module backwards.
+func (r *ModuleResolver) IsTriggeringCommitStale(ctx context.Context) (bool, error) {
+	pin := r.opts.TriggeringModuleCommit
+	if pin == nil {
+		return false, nil
 	}
-	return resolved, nil
-}
-
-func (r *ModuleResolver) resolvedModuleNames() []string {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return slices.Collect(maps.Keys(r.resolved))
+	if err := r.init(ctx); err != nil {
+		return false, err
+	}
+	if r.previousManifest == nil {
+		return false, nil
+	}
+	for name, mod := range r.previousManifest.Modules {
+		if mod == nil || mod.Revision == "" || mod.SelectionRule == manifest.ModuleSelectionPinnedRef || !r.isTriggeringModule(mod.Owner, mod.Repo, mod.Branch) {
+			continue
+		}
+		return mod.Revision == pin.Revision || r.newerModuleCommit(ctx, name, mod, pin) == mod, nil
+	}
+	return false, nil
 }
 
 // resolvedModulesKey returns the module commits resolved so far as a stable
@@ -298,16 +195,6 @@ func (r *ModuleResolver) shouldCarryForward() bool {
 	return r.opts.Requester == evergreen.RepotrackerVersionRequester || r.opts.Requester == evergreen.TriggerRequester
 }
 
-// claimsWaterfallHead returns whether the resolver is for a new mainline or
-// push-triggered version.
-func (r *ModuleResolver) claimsWaterfallHead() bool {
-	if r.opts.RevisionOrderNumber != 0 {
-		return false
-	}
-	return r.opts.Requester == evergreen.RepotrackerVersionRequester ||
-		(r.opts.Requester == evergreen.TriggerRequester && r.opts.TriggeringModuleCommit != nil)
-}
-
 func (r *ModuleResolver) isTriggeringModule(owner, repo, branch string) bool {
 	pin := r.opts.TriggeringModuleCommit
 	return pin != nil && owner == pin.Owner && repo == pin.Repo && branch == pin.Branch
@@ -334,23 +221,14 @@ func (r *ModuleResolver) init(ctx context.Context) error {
 			return errors.Wrap(err, "getting base manifest")
 		}
 	}
-	if r.shouldCarryForward() && r.opts.RevisionOrderNumber != 0 {
-		r.previousManifest, err = findPreviousWaterfallManifest(ctx, r.projectRef.Id, r.opts.RevisionOrderNumber)
+	if r.shouldCarryForward() {
+		r.previousManifest, err = findPreviousWaterfallManifest(ctx, r.projectRef.Id, r.beforeOrder)
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":    "finding previous version's manifest, resolving modules without it",
 			"source":     "manifest-creation",
 			"version_id": r.opts.VersionID,
 			"project_id": r.projectRef.Id,
 		}))
-	} else if r.shouldCarryForward() {
-		r.head = r.opts.WaterfallHead
-		if r.head == nil {
-			r.head, err = FindWaterfallHead(ctx, r.projectRef.Id)
-			if err != nil {
-				return errors.Wrap(err, "finding waterfall head")
-			}
-		}
-		r.previousManifest = &manifest.Manifest{Id: r.head.VersionID, Modules: r.head.Modules}
 	}
 
 	r.initialized = true
@@ -452,24 +330,9 @@ func (r *ModuleResolver) previousModule(name, owner, repo, branch string) *manif
 // commit and candidate, the commit looked up for this version. If the order
 // can't be determined, it returns candidate.
 func (r *ModuleResolver) newerModuleCommit(ctx context.Context, moduleName string, previous, candidate *manifest.Module) *manifest.Module {
-	if previous.Revision != candidate.Revision && r.isBehind(ctx, moduleName, previous, candidate) {
-		grip.Info(ctx, message.Fields{
-			"message":            "keeping previous module commit because candidate commit is older",
-			"source":             "manifest-creation",
-			"version_id":         r.opts.VersionID,
-			"project_id":         r.projectRef.Id,
-			"module":             moduleName,
-			"previous_revision":  previous.Revision,
-			"candidate_revision": candidate.Revision,
-		})
-		return previous
+	if previous.Revision == candidate.Revision {
+		return candidate
 	}
-	return candidate
-}
-
-// isBehind returns whether candidate is an older commit than previous. If the
-// order can't be determined, it returns false.
-func (r *ModuleResolver) isBehind(ctx context.Context, moduleName string, previous, candidate *manifest.Module) bool {
 	logFields := func(msg string) message.Fields {
 		return message.Fields{
 			"message":            msg,
@@ -487,14 +350,15 @@ func (r *ModuleResolver) isBehind(ctx context.Context, moduleName string, previo
 
 	order, err := getIngestOrder(ctx, previous, candidate)
 	if err != nil {
-		grip.Warning(ctx, message.WrapError(err, logFields("checking module commit ingest order, assuming candidate commit is newer")))
-		return false
+		grip.Warning(ctx, message.WrapError(err, logFields("checking module commit ingest order, using candidate commit")))
+		return candidate
 	}
 	switch order {
-	case ingestOrderCandidateNewer:
-		return false
+	case ingestOrderCandidateNewer, ingestOrderUnknown:
+		return candidate
 	case ingestOrderPreviousNewer:
-		return true
+		grip.Info(ctx, logFields("keeping previous module commit because candidate commit was ingested before it"))
+		return previous
 	}
 
 	grip.Info(ctx, logFields("comparing module commits with GitHub"))
@@ -502,10 +366,14 @@ func (r *ModuleResolver) isBehind(ctx context.Context, moduleName string, previo
 	defer cancel()
 	status, err := thirdparty.GetCommitComparisonStatus(ghCtx, candidate.Owner, candidate.Repo, previous.Revision, candidate.Revision)
 	if err != nil {
-		grip.Warning(ctx, message.WrapError(err, logFields("comparing module commits with GitHub, assuming candidate commit is newer")))
-		return false
+		grip.Warning(ctx, message.WrapError(err, logFields("comparing module commits with GitHub, using candidate commit")))
+		return candidate
 	}
-	return status == "behind"
+	if status == "behind" {
+		grip.Info(ctx, logFields("keeping previous module commit because candidate commit is behind it"))
+		return previous
+	}
+	return candidate
 }
 
 type ingestOrder int
@@ -548,13 +416,18 @@ func getIngestOrder(ctx context.Context, previous, candidate *manifest.Module) (
 }
 
 // findPreviousWaterfallManifest returns the manifest of the most recent mainline or
-// trigger version in the project that has one. If beforeOrder is set, only
-// versions before it are considered.
+// push-triggered version in the project that has one. If beforeOrder is set,
+// only versions before it are considered.
 func findPreviousWaterfallManifest(ctx context.Context, projectID string, beforeOrder int) (*manifest.Manifest, error) {
 	q := bson.M{
 		VersionIdentifierKey: projectID,
 		VersionRequesterKey: bson.M{
 			"$in": []string{evergreen.RepotrackerVersionRequester, evergreen.TriggerRequester},
+		},
+		// Task and build level trigger versions aren't created in order with
+		// the others, so they aren't used as a base.
+		VersionTriggerTypeKey: bson.M{
+			"$nin": []string{ProjectTriggerLevelTask, ProjectTriggerLevelBuild},
 		},
 	}
 	if beforeOrder > 0 {

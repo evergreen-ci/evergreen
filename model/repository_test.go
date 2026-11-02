@@ -5,9 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/manifest"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -116,83 +114,4 @@ func TestFindLatestRepositoryRevisionByIngestTime(t *testing.T) {
 		require.NoError(t, err)
 		assert.Nil(t, revision)
 	})
-}
-
-func TestClaimWaterfallHead(t *testing.T) {
-	const projectID = "waterfall-head-project"
-	next := func(id string) WaterfallHead {
-		return WaterfallHead{ID: id, VersionID: id + "-version", Revision: id + "-revision"}
-	}
-	for tName, tCase := range map[string]func(t *testing.T){
-		"ProjectWithoutRepositoryShouldGetFirstOrderNumber": func(t *testing.T) {
-			order, err := claimWaterfallHead(t.Context(), projectID, "", next("first"))
-			require.NoError(t, err)
-			assert.Equal(t, 1, order)
-
-			head, err := FindWaterfallHead(t.Context(), projectID)
-			require.NoError(t, err)
-			assert.Equal(t, next("first"), *head)
-		},
-		"ProjectWithoutHeadShouldContinueOrderNumbers": func(t *testing.T) {
-			_, err := GetNewRevisionOrderNumber(t.Context(), projectID)
-			require.NoError(t, err)
-
-			order, err := claimWaterfallHead(t.Context(), projectID, "", next("first"))
-			require.NoError(t, err)
-			assert.Equal(t, 2, order)
-		},
-		"CurrentHeadShouldBeReplaced": func(t *testing.T) {
-			_, err := claimWaterfallHead(t.Context(), projectID, "", next("first"))
-			require.NoError(t, err)
-
-			order, err := claimWaterfallHead(t.Context(), projectID, "first", next("second"))
-			require.NoError(t, err)
-			assert.Equal(t, 2, order)
-			head, err := FindWaterfallHead(t.Context(), projectID)
-			require.NoError(t, err)
-			assert.Equal(t, "second", head.ID)
-		},
-		"ReplacedHeadShouldReturnErrWaterfallHeadMoved": func(t *testing.T) {
-			_, err := claimWaterfallHead(t.Context(), projectID, "", next("first"))
-			require.NoError(t, err)
-			_, err = claimWaterfallHead(t.Context(), projectID, "first", next("second"))
-			require.NoError(t, err)
-
-			_, err = claimWaterfallHead(t.Context(), projectID, "first", next("third"))
-			assert.ErrorIs(t, err, ErrWaterfallHeadMoved)
-			_, err = claimWaterfallHead(t.Context(), projectID, "", next("third"))
-			assert.ErrorIs(t, err, ErrWaterfallHeadMoved)
-
-			repo, err := FindRepository(t.Context(), projectID)
-			require.NoError(t, err)
-			require.NotNil(t, repo)
-			assert.Equal(t, 2, repo.RevisionOrderNumber)
-			require.NotNil(t, repo.WaterfallHead)
-			assert.Equal(t, "second", repo.WaterfallHead.ID)
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(RepositoriesCollection))
-			t.Cleanup(func() {
-				assert.NoError(t, db.ClearCollections(RepositoriesCollection))
-			})
-			tCase(t)
-		})
-	}
-}
-
-func TestFindWaterfallHeadWithoutClaimedHead(t *testing.T) {
-	const projectID = "unclaimed-head-project"
-	require.NoError(t, db.ClearCollections(RepositoriesCollection, VersionCollection, manifest.Collection))
-	t.Cleanup(func() {
-		assert.NoError(t, db.ClearCollections(RepositoriesCollection, VersionCollection, manifest.Collection))
-	})
-	modules := map[string]*manifest.Module{"mod": {Owner: "owner", Repo: "mod", Branch: "main", Revision: "module-revision"}}
-	require.NoError(t, (&Version{Id: "mainline", Identifier: projectID, Revision: "mainline-revision", RevisionOrderNumber: 1, Requester: evergreen.RepotrackerVersionRequester}).Insert(t.Context()))
-	require.NoError(t, (&Version{Id: "triggered", Identifier: projectID, Revision: "older-revision", RevisionOrderNumber: 2, Requester: evergreen.TriggerRequester}).Insert(t.Context()))
-	require.NoError(t, (&manifest.Manifest{Id: "triggered", ProjectName: projectID, Modules: modules}).Insert(t.Context()))
-
-	head, err := FindWaterfallHead(t.Context(), projectID)
-	require.NoError(t, err)
-	assert.Equal(t, WaterfallHead{VersionID: "triggered", Revision: "mainline-revision", Modules: modules}, *head)
 }

@@ -468,9 +468,10 @@ Options:
   - For push level triggers, if the upstream project is a module of the downstream project's YAML,
     the manifest of the downstream version will use the commit hash of the upstream project's commit. All other modules
     keep the revisions from the previous version's manifest.
-  - A push level trigger version uses the same downstream revision as the previous mainline or push level trigger
-    version, so it only differs from that version by the upstream commit. If the previous version already uses the
-    upstream commit or a newer one, no version is created.
+  - A push level trigger version uses the downstream project's latest mainline revision, so it only differs from the
+    versions before it by the upstream commit. If the previous version already uses the upstream commit or a newer one,
+    no version is created. Push level trigger versions are created shortly after the push, one at a time with the
+    downstream project's mainline versions.
 - **Status**: Specify which status of the upstream build or task should trigger a downstream version.
   (Only applicable to build and task level triggers.)
 - **Date cutoff**: Do not trigger a downstream build if a user manually

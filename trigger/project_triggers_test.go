@@ -39,7 +39,7 @@ func TestGetMetadataFromArgs(t *testing.T) {
 			SourceVersion:     &source,
 			DownstreamProject: downstream,
 			TriggerType:       model.ProjectTriggerLevelTask,
-		}, "")
+		})
 		require.NoError(t, err)
 		assert.Equal(t, wantSHA, meta.Revision.Revision)
 		assert.Equal(t, ingestTime, meta.IngestTime)
@@ -64,31 +64,10 @@ func TestGetMetadataFromArgs(t *testing.T) {
 			DownstreamProject: downstream,
 			PushRevision:      push,
 			PushIngestTime:    ingestTime,
-		}, "")
+		})
 		require.NoError(t, err)
 		assert.Equal(t, wantSHA, meta.Revision.Revision)
 		assert.Equal(t, ingestTime, meta.IngestTime)
-		assert.Equal(t, push.Revision, meta.SourceCommit)
-	})
-
-	t.Run("WithRevisionShouldUseItInsteadOfLatestRevision", func(t *testing.T) {
-		ctx := t.Context()
-		require.NoError(t, db.ClearCollections(model.RepositoryRevisionsHistoryCollection))
-		t.Cleanup(func() {
-			require.NoError(t, db.ClearCollections(model.RepositoryRevisionsHistoryCollection))
-		})
-		ingestTime := time.Date(2026, time.July, 14, 12, 0, 0, 0, time.UTC)
-		downstream := model.ProjectRef{Id: "project-triggers-md-carried", Owner: "evergreen-ci", Repo: "sample", Branch: "main"}
-		require.NoError(t, model.UpsertRepositoryRevision(ctx, downstream.Owner, downstream.Repo, downstream.Branch, "downstream-at-push-ingest-time", ingestTime))
-		push := model.Revision{Revision: "upstream", CreateTime: time.Date(2015, time.January, 1, 0, 0, 0, 0, time.UTC), Author: "p"}
-		meta, err := getMetadataFromArgs(ctx, ProcessorArgs{
-			TriggerType:       model.ProjectTriggerLevelPush,
-			DownstreamProject: downstream,
-			PushRevision:      push,
-			PushIngestTime:    ingestTime,
-		}, "previous-version-revision")
-		require.NoError(t, err)
-		assert.Equal(t, "previous-version-revision", meta.Revision.Revision)
 		assert.Equal(t, push.Revision, meta.SourceCommit)
 	})
 
@@ -110,7 +89,7 @@ func TestGetMetadataFromArgs(t *testing.T) {
 			SourceVersion:     &model.Version{IngestTime: ingestTime},
 			DownstreamProject: downstream,
 			TriggerType:       model.ProjectTriggerLevelTask,
-		}, "")
+		})
 		require.NoError(t, err)
 		assert.Equal(t, commits[0].GetSHA(), meta.Revision.Revision)
 	})
@@ -149,10 +128,7 @@ func TestMakeDownstreamProjectFromFile(t *testing.T) {
 	})
 }
 
-func TestTriggerDownstreamProjectsForPush(t *testing.T) {
-	testConfig := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, testConfig)
-	require.NoError(t, testConfig.Set(t.Context()))
+func TestTriggerDownstreamProjectForPush(t *testing.T) {
 	require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
 	t.Cleanup(func() {
 		require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
@@ -175,6 +151,17 @@ func TestTriggerDownstreamProjectsForPush(t *testing.T) {
 		},
 	}
 	require.NoError(t, downstream.Insert(t.Context()))
+	taskTriggered := model.ProjectRef{
+		Id:       "task-trigger-downstream",
+		Enabled:  true,
+		Triggers: []model.TriggerDefinition{{Project: upstreamProjectID, Level: model.ProjectTriggerLevelTask, DefinitionID: "task-trigger-definition"}},
+	}
+	require.NoError(t, taskTriggered.Insert(t.Context()))
+
+	pushTriggered, err := FindPushTriggeredProjects(t.Context(), upstreamProjectID)
+	require.NoError(t, err)
+	require.Len(t, pushTriggered, 1)
+	assert.Equal(t, downstreamProjectID, pushTriggered[0].Id)
 
 	ingestTime := time.Date(2026, time.July, 14, 12, 0, 0, 0, time.UTC)
 	pushCommitTime := ingestTime.Add(-time.Minute)
@@ -193,7 +180,7 @@ func TestTriggerDownstreamProjectsForPush(t *testing.T) {
 		return &model.Version{Id: args.PushRevision.Revision}, nil
 	}
 
-	require.NoError(t, TriggerDownstreamProjectsForPush(t.Context(), upstreamProjectID, pushEvent, ingestTime, processor))
+	require.NoError(t, TriggerDownstreamProjectForPush(t.Context(), upstreamProjectID, pushTriggered[0], RevisionsFromPushEvent(pushEvent), ingestTime, processor))
 	require.Len(t, processorArgs, 1)
 	assert.Equal(t, ingestTime, processorArgs[0].PushIngestTime)
 	assert.Equal(t, "upstream-push-sha", processorArgs[0].PushRevision.Revision)
@@ -202,4 +189,34 @@ func TestTriggerDownstreamProjectsForPush(t *testing.T) {
 	assert.Equal(t, model.ProjectTriggerLevelPush, processorArgs[0].TriggerType)
 	assert.Equal(t, upstreamProjectID, processorArgs[0].TriggerID)
 	assert.Equal(t, "push-trigger-definition", processorArgs[0].DefinitionID)
+
+	require.NoError(t, TriggerDownstreamProjectForPush(t.Context(), upstreamProjectID, taskTriggered, RevisionsFromPushEvent(pushEvent), ingestTime, processor))
+	assert.Len(t, processorArgs, 1, "project without a push trigger should not get a version")
+}
+
+func TestGetMetadataFromArgsForPushShouldUseLatestMainlineRevision(t *testing.T) {
+	require.NoError(t, db.ClearCollections(model.VersionCollection, model.RepositoryRevisionsHistoryCollection))
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(model.VersionCollection, model.RepositoryRevisionsHistoryCollection))
+	})
+	ingestTime := time.Date(2026, time.July, 14, 12, 0, 0, 0, time.UTC)
+	downstream := model.ProjectRef{Id: "project-triggers-md-mainline", Owner: "evergreen-ci", Repo: "sample", Branch: "main"}
+	require.NoError(t, model.UpsertRepositoryRevision(t.Context(), downstream.Owner, downstream.Repo, downstream.Branch, "newest-ingested-revision", ingestTime))
+	for _, v := range []model.Version{
+		{Id: "older-mainline", Identifier: downstream.Id, Revision: "older-mainline-revision", RevisionOrderNumber: 1, Requester: evergreen.RepotrackerVersionRequester},
+		{Id: "latest-mainline", Identifier: downstream.Id, Revision: "latest-mainline-revision", RevisionOrderNumber: 2, Requester: evergreen.RepotrackerVersionRequester},
+		{Id: "task-triggered", Identifier: downstream.Id, Revision: "task-triggered-revision", RevisionOrderNumber: 3, Requester: evergreen.TriggerRequester},
+	} {
+		require.NoError(t, v.Insert(t.Context()))
+	}
+
+	meta, err := getMetadataFromArgs(t.Context(), ProcessorArgs{
+		TriggerType:       model.ProjectTriggerLevelPush,
+		DownstreamProject: downstream,
+		PushRevision:      model.Revision{Revision: "upstream"},
+		PushIngestTime:    ingestTime,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "latest-mainline-revision", meta.Revision.Revision)
+	assert.Equal(t, "upstream", meta.SourceCommit)
 }
