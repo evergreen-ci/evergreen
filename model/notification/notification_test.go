@@ -116,6 +116,40 @@ func (s *notificationSuite) TestMarkErrorWithNilErrorHasNoSideEffect() {
 	s.Zero(n.SentAt)
 }
 
+func (s *notificationSuite) TestMarkErrorRecordsFailedWebhook() {
+	s.Require().NoError(db.Clear(FailedWebhookCollection))
+	s.T().Cleanup(func() { s.NoError(db.Clear(FailedWebhookCollection)) })
+	n := makeFailedWebhookNotification("webhook")
+	s.Require().NoError(InsertMany(s.T().Context(), *n))
+
+	s.NoError(n.MarkError(s.T().Context(), errors.New("webhook response was 404 (Not Found)")))
+
+	failedWebhooks, err := FindFailedWebhooks(s.T().Context(), []string{"evergreen"}, "", 10)
+	s.Require().NoError(err)
+	s.Require().Len(failedWebhooks, 1)
+	s.Equal("webhook", failedWebhooks[0].NotificationID)
+	s.Equal("webhook response was 404 (Not Found)", failedWebhooks[0].Error)
+}
+
+func (s *notificationSuite) TestMarkErrorForNonWebhookRecordsNoFailedWebhook() {
+	s.Require().NoError(db.Clear(FailedWebhookCollection))
+	s.T().Cleanup(func() { s.NoError(db.Clear(FailedWebhookCollection)) })
+	// Same payload shape as a webhook so only the subscriber type decides.
+	n := makeFailedWebhookNotification("email")
+	n.Subscriber.Type = event.EmailSubscriberType
+	s.Require().NoError(InsertMany(s.T().Context(), *n))
+
+	s.NoError(n.MarkError(s.T().Context(), errors.New("smtp refused")))
+
+	found, err := Find(s.T().Context(), n.ID)
+	s.Require().NoError(err)
+	s.Require().NotNil(found)
+	s.Equal("smtp refused", found.Error)
+	failedWebhooks, err := FindFailedWebhooks(s.T().Context(), []string{"evergreen"}, "", 10)
+	s.Require().NoError(err)
+	s.Empty(failedWebhooks)
+}
+
 func (s *notificationSuite) TestInsertMany() {
 	s.n.ID = "1-outcome-12345-32434"
 
