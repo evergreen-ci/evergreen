@@ -855,7 +855,7 @@ func parseLsblkOutput(lsblkOutput string) ([]blockDevice, error) {
 }
 
 // GetGithubTokensForTask returns a read-only token for owner/repo associated with the task
-// and a read-only token for each module repo the task's user can use.
+// and a read-only token for each module repo a spawn host user is allowed to use.
 func GetGithubTokensForTask(ctx context.Context, taskId string) (string, []string, error) {
 	catcher := grip.NewBasicCatcher()
 
@@ -903,7 +903,7 @@ func GetGithubTokensForTask(ctx context.Context, taskId string) (string, []strin
 		// The spawn host's owner may not be the PR author.
 		repoChecker, err = model.ModuleRepoCheckerForUser(ctx, t)
 		if err != nil {
-			catcher.Wrap(err, "getting module repo checker")
+			catcher.Wrap(err, "getting user's module repo checker")
 			modules = nil
 		}
 	}

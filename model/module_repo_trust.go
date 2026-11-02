@@ -29,8 +29,7 @@ var committedConfigRequesters = []string{
 
 const committedManifestLookback = 10
 
-// These are variables so tests can check module repo trust without reaching
-// GitHub.
+// These are variables so tests can stub GitHub.
 var (
 	isGitHubRepoPublic          = thirdparty.IsGitHubRepoPublic
 	gitHubUserHasReadPermission = thirdparty.GitHubUserHasReadPermission
@@ -69,15 +68,14 @@ func ValidatePatchModuleRepos(ctx context.Context, p *patch.Patch, projectRef *P
 		}
 	}
 	if len(untrusted) > 0 {
-		return errors.Errorf("patches can't use modules '%s' because their repos are private and aren't modules in a recent mainline version", strings.Join(untrusted, "', '"))
+		return errors.Errorf("modules '%s' use private repos that patches can't use until a mainline version declares them", strings.Join(untrusted, "', '"))
 	}
 	return nil
 }
 
-// ModuleRepoCheckerForUser returns a checker for the module repos a user acting
-// on the task can use. The user may not be the PR author, so it doesn't allow
-// repos just because the PR author can read them. It returns nil, which allows
-// every repo, if the task's config can't be changed by its author.
+// ModuleRepoCheckerForUser returns a checker for a user acting on the task, who
+// may not be the PR author. It returns nil, which allows every repo, if the
+// task's config isn't controlled by its author.
 func ModuleRepoCheckerForUser(ctx context.Context, t *task.Task) (*PatchModuleRepoChecker, error) {
 	if !evergreen.IsPatchRequester(t.Requester) {
 		return nil, nil
@@ -161,10 +159,10 @@ func (c *PatchModuleRepoChecker) Allows(ctx context.Context, owner, repo string)
 func (c *PatchModuleRepoChecker) check(ctx context.Context, owner, repo string) error {
 	allowed, err := c.Allows(ctx, owner, repo)
 	if err != nil {
-		return errors.Wrapf(err, "checking module repo '%s/%s'", owner, repo)
+		return err
 	}
 	if !allowed {
-		return errors.Errorf("patches can't use repo '%s/%s' because it's private and isn't a module in a recent mainline version", owner, repo)
+		return errors.Errorf("repo '%s/%s' is private, so patches can't use it until a mainline version declares it", owner, repo)
 	}
 	return nil
 }
@@ -183,7 +181,7 @@ func (c *PatchModuleRepoChecker) isTrustedOnGitHub(ctx context.Context, owner, r
 	}
 	canRead, err := gitHubUserHasReadPermission(ctx, owner, repo, prAuthor)
 	if err != nil {
-		// GitHub errors for users who aren't collaborators.
+		// GitHub returns an error for users who aren't collaborators.
 		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message":   "checking if PR author can read patch module repo",
 			"patch_id":  c.patch.Id.Hex(),
