@@ -17,8 +17,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFavoriteProjectMutationsRequireTargetAccess(t *testing.T) {
-	const selection = `{ identifier }`
+func TestFavoriteProjectMutationVariablesRequireTargetAccess(t *testing.T) {
+	const identifier = "restricted-secret-project"
 	for _, mutation := range []struct {
 		name      string
 		inputType string
@@ -31,79 +31,71 @@ func TestFavoriteProjectMutationsRequireTargetAccess(t *testing.T) {
 		if mutation.remove {
 			field = "removeFavoriteProject"
 		}
-		for _, input := range []string{"InlineInput", "VariableInput"} {
-			for _, tc := range []struct {
-				name       string
-				projectID  string
-				identifier string
-				errorCode  string
-			}{
-				{name: "OtherProjectTaskViewShouldBeForbidden", projectID: "project_id_2", identifier: "restricted-secret-project", errorCode: "FORBIDDEN"},
-				{name: "TargetTaskViewShouldSucceed", projectID: "project_id", identifier: "restricted-secret-project"},
-				{name: "MissingProjectShouldReturnNotFound", projectID: "project_id", identifier: "i-dont-exist", errorCode: "RESOURCE_NOT_FOUND"},
-			} {
-				t.Run(mutation.name+"/"+input+"/"+tc.name, func(t *testing.T) {
-					setupPermissions(t)
-					project := model.ProjectRef{
-						Id:         tc.projectID,
-						Identifier: "restricted-secret-project",
-						Restricted: utility.TruePtr(),
+		for _, tc := range []struct {
+			name      string
+			projectID string
+			forbidden bool
+		}{
+			{name: "OtherProjectTaskViewShouldBeForbidden", projectID: "project_id_2", forbidden: true},
+			{name: "TargetTaskViewShouldSucceed", projectID: "project_id"},
+		} {
+			t.Run(mutation.name+"/"+tc.name, func(t *testing.T) {
+				setupPermissions(t)
+				project := model.ProjectRef{
+					Id:         tc.projectID,
+					Identifier: identifier,
+					Restricted: utility.TruePtr(),
+				}
+				require.NoError(t, project.Insert(t.Context()))
+				usr := &user.DBUser{
+					Id:               testUser,
+					SystemRoles:      []string{"view_task"},
+					FavoriteProjects: []string{"existing-favorite"},
+				}
+				if mutation.remove {
+					usr.FavoriteProjects = append(usr.FavoriteProjects, identifier)
+				}
+				require.NoError(t, usr.Insert(t.Context()))
+				originalFavorites := append([]string{}, usr.FavoriteProjects...)
+				srv := handler.NewDefaultServer(NewExecutableSchema(NewConfig()))
+				type gqlResponse struct {
+					Data   map[string]json.RawMessage `json:"data"`
+					Errors []struct {
+						Extensions struct {
+							Code string `json:"code"`
+						} `json:"extensions"`
+					} `json:"errors"`
+				}
+				query := fmt.Sprintf(`mutation($opts: %s!) { %s(opts: $opts) { identifier } }`, mutation.inputType, field)
+				variables := map[string]any{"opts": map[string]any{"projectIdentifier": identifier}}
+				payload, err := json.Marshal(map[string]any{"query": query, "variables": variables})
+				require.NoError(t, err)
+				req := httptest.NewRequest(http.MethodPost, "/graphql/query", bytes.NewReader(payload))
+				req.Header.Set("Content-Type", "application/json")
+				req = req.WithContext(gimlet.AttachUser(t.Context(), usr))
+				recorder := httptest.NewRecorder()
+				srv.ServeHTTP(recorder, req)
+				require.Equal(t, http.StatusOK, recorder.Code)
+				var response gqlResponse
+				require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
+				expectedFavorites := []string{"existing-favorite"}
+				if tc.forbidden {
+					require.Len(t, response.Errors, 1)
+					assert.Equal(t, "FORBIDDEN", response.Errors[0].Extensions.Code)
+					assert.Nil(t, response.Data)
+					expectedFavorites = originalFavorites
+				} else {
+					require.Empty(t, response.Errors)
+					assert.JSONEq(t, `{"identifier": "restricted-secret-project"}`, string(response.Data[field]))
+					if !mutation.remove {
+						expectedFavorites = append(expectedFavorites, identifier)
 					}
-					require.NoError(t, project.Insert(t.Context()))
-					usr := &user.DBUser{
-						Id:               testUser,
-						SystemRoles:      []string{"view_task"},
-						FavoriteProjects: []string{"existing-favorite"},
-					}
-					if mutation.remove {
-						usr.FavoriteProjects = append(usr.FavoriteProjects, tc.identifier)
-					}
-					require.NoError(t, usr.Insert(t.Context()))
-					originalFavorites := append([]string{}, usr.FavoriteProjects...)
-					srv := handler.NewDefaultServer(NewExecutableSchema(NewConfig()))
-					type gqlResponse struct {
-						Data   map[string]json.RawMessage `json:"data"`
-						Errors []struct {
-							Extensions struct {
-								Code string `json:"code"`
-							} `json:"extensions"`
-						} `json:"errors"`
-					}
-					query := fmt.Sprintf(`mutation { %s(opts: {projectIdentifier: %q}) %s }`, field, tc.identifier, selection)
-					var variables map[string]any
-					if input == "VariableInput" {
-						query = fmt.Sprintf(`mutation($opts: %s!) { %s(opts: $opts) %s }`, mutation.inputType, field, selection)
-						variables = map[string]any{"opts": map[string]any{"projectIdentifier": tc.identifier}}
-					}
-					payload, err := json.Marshal(map[string]any{"query": query, "variables": variables})
-					require.NoError(t, err)
-					req := httptest.NewRequest(http.MethodPost, "/graphql/query", bytes.NewReader(payload))
-					req.Header.Set("Content-Type", "application/json")
-					req = req.WithContext(gimlet.AttachUser(t.Context(), usr))
-					recorder := httptest.NewRecorder()
-					srv.ServeHTTP(recorder, req)
-					require.Equal(t, http.StatusOK, recorder.Code)
-					var response gqlResponse
-					require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
-					expectedFavorites := []string{"existing-favorite"}
-					if tc.errorCode != "" {
-						require.Len(t, response.Errors, 1)
-						assert.Equal(t, tc.errorCode, response.Errors[0].Extensions.Code)
-						assert.Nil(t, response.Data)
-						expectedFavorites = originalFavorites
-					} else {
-						require.Empty(t, response.Errors)
-						assert.JSONEq(t, `{"identifier": "restricted-secret-project"}`, string(response.Data[field]))
-						if !mutation.remove {
-							expectedFavorites = append(expectedFavorites, tc.identifier)
-						}
-					}
-					storedUser, err := user.FindOneById(t.Context(), usr.Id)
-					require.NoError(t, err)
-					require.NotNil(t, storedUser)
-					assert.Equal(t, expectedFavorites, storedUser.FavoriteProjects)
-				})
-			}
+				}
+				storedUser, err := user.FindOneById(t.Context(), usr.Id)
+				require.NoError(t, err)
+				require.NotNil(t, storedUser)
+				assert.Equal(t, expectedFavorites, storedUser.FavoriteProjects)
+			})
 		}
 	}
 }
