@@ -125,7 +125,7 @@ mainline version skips versions created by [push level triggers](#project-trigge
 commits.
 
 Admins can optionally enable Stepback Push Triggers so that stepback on mainline and push level trigger versions steps back
-through both kinds of versions, which lets it find failures caused by a module commit. Versions created by task and 
+through both kinds of versions, which lets it find failures caused by a module commit. Versions created by task and
 build level triggers are always skipped.
 
 #### Virtual Tasks
