@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"fmt"
+	"maps"
 	"strings"
 	"sync"
 	"time"
@@ -88,6 +89,7 @@ var (
 	CheckRunIdKey                 = bsonutil.MustHaveTag(Task{}, "CheckRunId")
 	RevisionOrderNumberKey        = bsonutil.MustHaveTag(Task{}, "RevisionOrderNumber")
 	RequesterKey                  = bsonutil.MustHaveTag(Task{}, "Requester")
+	TriggerTypeKey                = bsonutil.MustHaveTag(Task{}, "TriggerType")
 	StatusKey                     = bsonutil.MustHaveTag(Task{}, "Status")
 	DetailsKey                    = bsonutil.MustHaveTag(Task{}, "Details")
 	AbortedKey                    = bsonutil.MustHaveTag(Task{}, "Aborted")
@@ -570,6 +572,26 @@ func ByBeforeRevision(revisionOrder int, buildVariant, displayName, project, req
 		},
 		ProjectKey: project,
 	}, []string{"-" + RevisionOrderNumberKey}
+}
+
+// ByBeforeRevisionForStepback is the same as ByBeforeRevision for t, except
+// that if includePushTriggers is set and t is in a mainline or push-triggered
+// version, it matches tasks in both mainline and push-triggered versions.
+func ByBeforeRevisionForStepback(revisionOrder int, t *Task, includePushTriggers bool) (bson.M, []string) {
+	q, sort := ByBeforeRevision(revisionOrder, t.BuildVariant, t.DisplayName, t.Project, t.Requester)
+	if includePushTriggers && t.IsMainlineOrPushTriggered() {
+		maps.Copy(q, mainlineAndPushTriggeredQuery())
+	}
+	return q, sort
+}
+
+// mainlineAndPushTriggeredQuery matches tasks in mainline and push-triggered
+// versions. Mainline tasks don't have a trigger type.
+func mainlineAndPushTriggeredQuery() bson.M {
+	return bson.M{
+		RequesterKey:   bson.M{"$in": []string{evergreen.RepotrackerVersionRequester, evergreen.TriggerRequester}},
+		TriggerTypeKey: bson.M{"$in": []any{nil, pushTriggerType}},
+	}
 }
 
 func ByActivatedBeforeRevisionWithStatuses(revisionOrder int, statuses []string, buildVariant string, displayName string, project string) (bson.M, []string) {

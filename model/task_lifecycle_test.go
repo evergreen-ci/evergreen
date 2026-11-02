@@ -573,7 +573,7 @@ func TestActivatePreviousTask(t *testing.T) {
 		So(previousTask.Insert(t.Context()), ShouldBeNil)
 		So(currentTask.Insert(t.Context()), ShouldBeNil)
 		Convey("activating a previous task should set the previous task's active field to true", func() {
-			So(activatePreviousTask(ctx, currentTask.Id, "", nil), ShouldBeNil)
+			So(activatePreviousTask(ctx, currentTask.Id, "", nil, false), ShouldBeNil)
 			t, err := task.FindOne(ctx, db.Query(task.ById(previousTask.Id)))
 			So(err, ShouldBeNil)
 			So(t.Activated, ShouldBeTrue)
@@ -3692,13 +3692,13 @@ func TestStepback(t *testing.T) {
 	assert.NoError(v2.Insert(t.Context()))
 	assert.NoError(v3.Insert(t.Context()))
 	// test stepping back a regular task
-	assert.NoError(doLinearStepback(ctx, t3))
+	assert.NoError(doLinearStepback(ctx, t3, false))
 	dbTask, err := task.FindOne(ctx, db.Query(task.ById(t2.Id)))
 	assert.NoError(err)
 	assert.True(dbTask.Activated)
 
 	// test stepping back a display task
-	assert.NoError(doLinearStepback(ctx, dt3))
+	assert.NoError(doLinearStepback(ctx, dt3, false))
 	dbTask, err = task.FindOne(ctx, db.Query(task.ById(dt2.Id)))
 	assert.NoError(err)
 	assert.True(dbTask.Activated)
@@ -3717,14 +3717,14 @@ func TestLinearStepbackWithGenerators(t *testing.T) {
 
 			// Doing stepback on "t-generated-0-1-0" should activate the existing undispatched generator task "t-generator-0-0"
 			// and set the generated task to activate on it.
-			require.NoError(t, doLinearStepback(ctx, data["t-generated-2-0-0"])) // 2nd version, 0th generator, 0th generated task
-			generator = requireTaskFromDB(ctx, t, "t-generator-1-0")             // 1st version, 0th generator
+			require.NoError(t, doLinearStepback(ctx, data["t-generated-2-0-0"], false)) // 2nd version, 0th generator, 0th generated task
+			generator = requireTaskFromDB(ctx, t, "t-generator-1-0")                    // 1st version, 0th generator
 			assert.True(t, generator.Activated)
 			assert.Equal(t, []string{"generated-task-0-0"}, generator.GeneratedTasksToActivate["bv"]) // 0th generator, 0th generated task
 
 			// Doing stepback on the 1st generated task should add it to the generator's list of generated tasks to activate.
-			require.NoError(t, doLinearStepback(ctx, data["t-generated-2-0-1"])) // 2nd version, 0th generator, 1st generated task
-			generator = requireTaskFromDB(ctx, t, "t-generator-1-0")             // 1st version, 0th generator
+			require.NoError(t, doLinearStepback(ctx, data["t-generated-2-0-1"], false)) // 2nd version, 0th generator, 1st generated task
+			generator = requireTaskFromDB(ctx, t, "t-generator-1-0")                    // 1st version, 0th generator
 			assert.True(t, generator.Activated)
 			assert.Equal(t, []string{"generated-task-0-0", "generated-task-0-1"}, generator.GeneratedTasksToActivate["bv"]) // 0th generator, 0th generated task and 0th generator, 1st generated task
 		},
@@ -3733,7 +3733,7 @@ func TestLinearStepbackWithGenerators(t *testing.T) {
 			assert.False(t, generated.Activated)
 
 			// Doing stepback on "t-generated-2-1-0" should activate the existing undispatched generated task "t-generated-1-1-0".
-			require.NoError(t, doLinearStepback(ctx, data["t-generated-2-1-0"])) // 2nd version, 1st generator, 0th generated task
+			require.NoError(t, doLinearStepback(ctx, data["t-generated-2-1-0"], false)) // 2nd version, 1st generator, 0th generated task
 
 			generated = requireTaskFromDB(ctx, t, "t-generated-1-1-0") // 1st version, 1st generator, 0th generated task
 			assert.True(t, generated.Activated)
@@ -5544,7 +5544,7 @@ func TestEvalBisectStepback(t *testing.T) {
 			require.NoError(task.UpdateOne(ctx, bson.M{"_id": "t1"},
 				bson.M{"$set": bson.M{"status": evergreen.TaskFailed}}))
 			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed, pRef, project))
-			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1")
+			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1", false)
 			require.NoError(err)
 			assert.False(midTask.Activated)
 		},
@@ -5552,7 +5552,7 @@ func TestEvalBisectStepback(t *testing.T) {
 			// If t5 is missing, t4 should be used.
 			require.NoError(task.Remove(ctx, "t5"))
 			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed, pRef, project))
-			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1")
+			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1", false)
 			require.NoError(err)
 			assert.True(midTask.Activated)
 			assert.Equal("t4", midTask.Id)
@@ -5563,7 +5563,7 @@ func TestEvalBisectStepback(t *testing.T) {
 			require.NoError(task.Remove(ctx, "t4"))
 			require.NoError(task.Remove(ctx, "t3"))
 			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed, pRef, project))
-			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1")
+			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1", false)
 			require.NoError(err)
 			assert.True(midTask.Activated)
 			assert.Equal("t2", midTask.Id)
@@ -5577,14 +5577,14 @@ func TestEvalBisectStepback(t *testing.T) {
 			require.NoError(task.Remove(ctx, "t3"))
 			require.NoError(task.Remove(ctx, "t2"))
 			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed, pRef, project))
-			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1")
+			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1", false)
 			require.NoError(err)
 			assert.False(midTask.Activated)
 			assert.Equal("t1", midTask.Id)
 		},
 		"FailedTaskInStepback": func(t *testing.T, t10 task.Task, pRef *ProjectRef, project *Project) {
 			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed, pRef, project))
-			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1")
+			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1", false)
 			prevTask := *midTask
 			require.NoError(err)
 			assert.True(midTask.Activated)
@@ -5614,7 +5614,7 @@ func TestEvalBisectStepback(t *testing.T) {
 				bson.M{"$set": bson.M{"status": evergreen.TaskFailed}}))
 			// Activate next stepback
 			require.NoError(evalStepback(ctx, &prevTask, evergreen.TaskFailed, pRef, project))
-			midTask, err = task.ByBeforeMidwayTaskFromIds(ctx, prevTask.Id, "t1")
+			midTask, err = task.ByBeforeMidwayTaskFromIds(ctx, prevTask.Id, "t1", false)
 			require.NoError(err)
 			assert.True(midTask.Activated)
 			// Check mid task stepback info.
@@ -5638,7 +5638,7 @@ func TestEvalBisectStepback(t *testing.T) {
 		},
 		"PassedTaskInStepback": func(t *testing.T, t10 task.Task, pRef *ProjectRef, project *Project) {
 			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed, pRef, project))
-			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1")
+			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1", false)
 			require.NoError(err)
 			assert.True(midTask.Activated)
 			// Check mid task stepback info.
@@ -5668,7 +5668,7 @@ func TestEvalBisectStepback(t *testing.T) {
 				bson.M{"$set": bson.M{"status": evergreen.TaskSucceeded}}))
 			// Activate next stepback
 			require.NoError(evalStepback(ctx, midTask, evergreen.TaskSucceeded, pRef, project))
-			midTask, err = task.ByBeforeMidwayTaskFromIds(ctx, "t10", prevTask.Id)
+			midTask, err = task.ByBeforeMidwayTaskFromIds(ctx, "t10", prevTask.Id, false)
 			require.NoError(err)
 			assert.True(midTask.Activated)
 			// Check mid task stepback info.
@@ -5750,7 +5750,7 @@ func TestEvalBisectStepback(t *testing.T) {
 				bson.M{"$set": bson.M{"status": generated2Tasks[9].Status}}))
 			require.NoError(evalStepback(ctx, &generated1Tasks[9], evergreen.TaskFailed, pRef, project))
 			require.NoError(evalStepback(ctx, &generated2Tasks[9], evergreen.TaskFailed, pRef, project))
-			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1")
+			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1", false)
 			require.NoError(err)
 			assert.True(midTask.Activated)
 			require.NotNil(midTask.StepbackInfo)
@@ -5819,7 +5819,7 @@ func TestEvalBisectStepback(t *testing.T) {
 			require.NoError(evalStepback(ctx, midTaskG2, evergreen.TaskFailed, pRef, project))
 
 			// Check mid task stepback info relating to generated task 1.
-			midTask, err = task.ByBeforeMidwayTaskFromIds(ctx, "t10", prevTask.Id)
+			midTask, err = task.ByBeforeMidwayTaskFromIds(ctx, "t10", prevTask.Id, false)
 			require.NoError(err)
 			assert.True(midTask.Activated)
 			require.NotNil(midTask.StepbackInfo)
@@ -5841,7 +5841,7 @@ func TestEvalBisectStepback(t *testing.T) {
 			require.Nil(g2Info)
 
 			// Check mid task stepback info relating to generated task 2.
-			midTask, err = task.ByBeforeMidwayTaskFromIds(ctx, prevTask.Id, "t1")
+			midTask, err = task.ByBeforeMidwayTaskFromIds(ctx, prevTask.Id, "t1", false)
 			require.NoError(err)
 			assert.True(midTask.Activated)
 			require.NotNil(midTask.StepbackInfo)
@@ -7157,6 +7157,77 @@ func TestCheckResetDisplayTaskConcurrentReset(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbSucceededExecTask)
 			tCase.test(t, dbDisplayTask, dbSucceededExecTask)
+		})
+	}
+}
+
+func TestEvalStepbackWithPushTriggers(t *testing.T) {
+	yml := `
+stepback: true
+buildvariants:
+- name: bv
+  run_on: distro
+  tasks:
+  - name: task
+tasks:
+- name: task
+`
+	pp := &ParserProject{}
+	require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(yml), &pp))
+	project, err := TranslateProject(t.Context(), pp)
+	require.NoError(t, err)
+
+	newTask := func(id string, order int, requester, triggerType, status string) task.Task {
+		return task.Task{
+			Id:                  id,
+			BuildId:             "b-" + id,
+			Version:             "v",
+			Project:             "proj",
+			BuildVariant:        "bv",
+			DisplayName:         "task",
+			RevisionOrderNumber: order,
+			Requester:           requester,
+			TriggerType:         triggerType,
+			Status:              status,
+			Activated:           status != evergreen.TaskUndispatched,
+		}
+	}
+	passing := newTask("mainline-passing", 1, evergreen.RepotrackerVersionRequester, "", evergreen.TaskSucceeded)
+	pushTriggered := newTask("push-triggered", 2, evergreen.TriggerRequester, ProjectTriggerLevelPush, evergreen.TaskUndispatched)
+	taskTriggered := newTask("task-triggered", 3, evergreen.TriggerRequester, ProjectTriggerLevelTask, evergreen.TaskUndispatched)
+	failing := newTask("mainline-failing", 4, evergreen.RepotrackerVersionRequester, "", evergreen.TaskFailed)
+
+	for tName, tCase := range map[string]struct {
+		bisect, pushTriggers bool
+	}{
+		"LinearStepbackWithPushTriggersShouldActivatePushTriggeredTask":       {pushTriggers: true},
+		"BisectStepbackWithPushTriggersShouldActivatePushTriggeredTask":       {bisect: true, pushTriggers: true},
+		"LinearStepbackWithoutPushTriggersShouldNotActivatePushTriggeredTask": {},
+		"BisectStepbackWithoutPushTriggersShouldNotActivatePushTriggeredTask": {bisect: true},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, ProjectRefCollection))
+			t.Cleanup(func() {
+				assert.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, ProjectRefCollection))
+			})
+			pRef := &ProjectRef{Id: "proj", StepbackBisect: utility.ToBoolPtr(tCase.bisect), StepbackPushTriggers: utility.ToBoolPtr(tCase.pushTriggers)}
+			require.NoError(t, pRef.Insert(t.Context()))
+			require.NoError(t, (&Version{Id: "v", Requester: evergreen.RepotrackerVersionRequester}).Insert(t.Context()))
+			for _, tsk := range []task.Task{passing, pushTriggered, taskTriggered, failing} {
+				require.NoError(t, tsk.Insert(t.Context()))
+				require.NoError(t, (&build.Build{Id: tsk.BuildId, BuildVariant: "bv", Version: "v"}).Insert(t.Context()))
+			}
+
+			require.NoError(t, evalStepback(t.Context(), &failing, evergreen.TaskFailed, pRef, project))
+
+			pushTriggeredFromDB, err := task.FindOneId(t.Context(), pushTriggered.Id)
+			require.NoError(t, err)
+			require.NotNil(t, pushTriggeredFromDB)
+			assert.Equal(t, tCase.pushTriggers, pushTriggeredFromDB.Activated)
+			taskTriggeredFromDB, err := task.FindOneId(t.Context(), taskTriggered.Id)
+			require.NoError(t, err)
+			require.NotNil(t, taskTriggeredFromDB)
+			assert.False(t, taskTriggeredFromDB.Activated)
 		})
 	}
 }

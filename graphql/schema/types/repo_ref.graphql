@@ -40,6 +40,7 @@ input RepoRefInput {
   debugSpawnHostsDisabled: Boolean
   stepbackDisabled: Boolean
   stepbackBisect: Boolean
+  stepbackPushTriggers: Boolean
   taskAnnotationSettings: TaskAnnotationSettingsInput
   taskOwnership: TaskOwnershipSettingsInput
   testSelection: TestSelectionSettingsInput
@@ -95,6 +96,7 @@ type RepoRef {
   debugSpawnHostsDisabled: Boolean!
   stepbackDisabled: Boolean!
   stepbackBisect: Boolean
+  stepbackPushTriggers: Boolean
   taskAnnotationSettings: TaskAnnotationSettings!
   taskOwnership: RepoTaskOwnershipSettings
   testSelection: RepoTestSelectionSettings

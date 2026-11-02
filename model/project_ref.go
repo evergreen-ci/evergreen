@@ -61,6 +61,7 @@ type ProjectRef struct {
 	WaterfallDisabled      *bool               `bson:"waterfall_disabled,omitempty" json:"waterfall_disabled,omitempty" yaml:"waterfall_disabled"`
 	StepbackDisabled       *bool               `bson:"stepback_disabled,omitempty" json:"stepback_disabled,omitempty" yaml:"stepback_disabled"`
 	StepbackBisect         *bool               `bson:"stepback_bisect,omitempty" json:"stepback_bisect,omitempty" yaml:"stepback_bisect"`
+	StepbackPushTriggers   *bool               `bson:"stepback_push_triggers,omitempty" json:"stepback_push_triggers,omitempty" yaml:"stepback_push_triggers"`
 	VersionControlEnabled  *bool               `bson:"version_control_enabled,omitempty" json:"version_control_enabled,omitempty" yaml:"version_control_enabled"`
 	PRTestingEnabled       *bool               `bson:"pr_testing_enabled,omitempty" json:"pr_testing_enabled,omitempty" yaml:"pr_testing_enabled"`
 	ManualPRTestingEnabled *bool               `bson:"manual_pr_testing_enabled,omitempty" json:"manual_pr_testing_enabled,omitempty" yaml:"manual_pr_testing_enabled"`
@@ -571,6 +572,7 @@ var (
 	projectRefWaterfallDisabledKey                  = bsonutil.MustHaveTag(ProjectRef{}, "WaterfallDisabled")
 	projectRefStepbackDisabledKey                   = bsonutil.MustHaveTag(ProjectRef{}, "StepbackDisabled")
 	projectRefStepbackBisectKey                     = bsonutil.MustHaveTag(ProjectRef{}, "StepbackBisect")
+	projectRefStepbackPushTriggersKey               = bsonutil.MustHaveTag(ProjectRef{}, "StepbackPushTriggers")
 	projectRefVersionControlEnabledKey              = bsonutil.MustHaveTag(ProjectRef{}, "VersionControlEnabled")
 	projectRefNotifyOnFailureKey                    = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 	projectRefSpawnHostScriptPathKey                = bsonutil.MustHaveTag(ProjectRef{}, "SpawnHostScriptPath")
@@ -632,6 +634,13 @@ func (p *ProjectRef) IsStepbackDisabled() bool {
 
 func (p *ProjectRef) IsStepbackBisect() bool {
 	return utility.FromBoolPtr(p.StepbackBisect)
+}
+
+// IsStepbackPushTriggers returns whether stepback on mainline and
+// push-triggered versions considers both kinds of versions, instead of only
+// versions with the same requester.
+func (p *ProjectRef) IsStepbackPushTriggers() bool {
+	return utility.FromBoolPtr(p.StepbackPushTriggers)
 }
 
 func (p *ProjectRef) IsAutoPRTestingEnabled() bool {
@@ -2502,6 +2511,7 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 			projectRefWaterfallDisabledKey:       p.WaterfallDisabled,
 			projectRefStepbackDisabledKey:        p.StepbackDisabled,
 			projectRefStepbackBisectKey:          p.StepbackBisect,
+			projectRefStepbackPushTriggersKey:    p.StepbackPushTriggers,
 			projectRefVersionControlEnabledKey:   p.VersionControlEnabled,
 			ProjectRefDeactivatePreviousKey:      p.DeactivatePrevious,
 			projectRefRepotrackerDisabledKey:     p.RepotrackerDisabled,

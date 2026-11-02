@@ -1564,37 +1564,37 @@ func TestByBeforeMidwayTaskFromIds(t *testing.T) {
 		assert.NoError(task.Insert(t.Context()))
 		tasks = append(tasks, task)
 	}
-	t10, err := ByBeforeMidwayTaskFromIds(ctx, tasks[0].Id, tasks[19].Id)
+	t10, err := ByBeforeMidwayTaskFromIds(ctx, tasks[0].Id, tasks[19].Id, false)
 	assert.NoError(err)
 	require.NotNil(t, t10)
 	assert.Equal(10, t10.RevisionOrderNumber)
 
-	t5, err := ByBeforeMidwayTaskFromIds(ctx, tasks[0].Id, tasks[9].Id)
+	t5, err := ByBeforeMidwayTaskFromIds(ctx, tasks[0].Id, tasks[9].Id, false)
 	assert.NoError(err)
 	require.NotNil(t, t5)
 	assert.Equal(5, t5.RevisionOrderNumber, 5)
 
-	t15, err := ByBeforeMidwayTaskFromIds(ctx, tasks[10].Id, tasks[19].Id)
+	t15, err := ByBeforeMidwayTaskFromIds(ctx, tasks[10].Id, tasks[19].Id, false)
 	assert.NoError(err)
 	require.NotNil(t, t15)
 	assert.Equal(15, t15.RevisionOrderNumber)
 
-	t19, err := ByBeforeMidwayTaskFromIds(ctx, tasks[17].Id, tasks[19].Id)
+	t19, err := ByBeforeMidwayTaskFromIds(ctx, tasks[17].Id, tasks[19].Id, false)
 	assert.NoError(err)
 	require.NotNil(t, t19)
 	assert.Equal(19, t19.RevisionOrderNumber)
 
-	t4, err := ByBeforeMidwayTaskFromIds(ctx, tasks[6].Id, tasks[0].Id)
+	t4, err := ByBeforeMidwayTaskFromIds(ctx, tasks[6].Id, tasks[0].Id, false)
 	assert.NoError(err)
 	require.NotNil(t, t4)
 	assert.Equal(4, t4.RevisionOrderNumber)
 
-	t12, err := ByBeforeMidwayTaskFromIds(ctx, tasks[11].Id, tasks[11].Id)
+	t12, err := ByBeforeMidwayTaskFromIds(ctx, tasks[11].Id, tasks[11].Id, false)
 	assert.NoError(err)
 	require.NotNil(t, t12)
 	assert.Equal(12, t12.RevisionOrderNumber)
 
-	t16, err := ByBeforeMidwayTaskFromIds(ctx, tasks[15].Id, tasks[16].Id)
+	t16, err := ByBeforeMidwayTaskFromIds(ctx, tasks[15].Id, tasks[16].Id, false)
 	assert.NoError(err)
 	require.NotNil(t, t16)
 	assert.Equal(16, t16.RevisionOrderNumber)
@@ -1608,7 +1608,7 @@ func TestByBeforeMidwayTaskFromIds(t *testing.T) {
 			Project:      project,
 		}
 		assert.NoError(otherDisplayName.Insert(t.Context()))
-		task, err := ByBeforeMidwayTaskFromIds(ctx, tasks[0].Id, otherDisplayName.Id)
+		task, err := ByBeforeMidwayTaskFromIds(ctx, tasks[0].Id, otherDisplayName.Id, false)
 		assert.Error(err)
 		assert.Nil(task)
 
@@ -1620,7 +1620,7 @@ func TestByBeforeMidwayTaskFromIds(t *testing.T) {
 			Project:      project,
 		}
 		assert.NoError(otherBuildVariant.Insert(t.Context()))
-		task, err = ByBeforeMidwayTaskFromIds(ctx, tasks[0].Id, otherBuildVariant.Id)
+		task, err = ByBeforeMidwayTaskFromIds(ctx, tasks[0].Id, otherBuildVariant.Id, false)
 		assert.Error(err)
 		assert.Nil(task)
 
@@ -1632,7 +1632,7 @@ func TestByBeforeMidwayTaskFromIds(t *testing.T) {
 			Project:      project,
 		}
 		assert.NoError(otherRequester.Insert(t.Context()))
-		task, err = ByBeforeMidwayTaskFromIds(ctx, tasks[0].Id, otherRequester.Id)
+		task, err = ByBeforeMidwayTaskFromIds(ctx, tasks[0].Id, otherRequester.Id, false)
 		assert.Error(err)
 		assert.Nil(task)
 
@@ -1644,7 +1644,7 @@ func TestByBeforeMidwayTaskFromIds(t *testing.T) {
 			Project:      "Other project",
 		}
 		assert.NoError(otherProject.Insert(t.Context()))
-		task, err = ByBeforeMidwayTaskFromIds(ctx, tasks[0].Id, otherProject.Id)
+		task, err = ByBeforeMidwayTaskFromIds(ctx, tasks[0].Id, otherProject.Id, false)
 		assert.Error(err)
 		assert.Nil(task)
 	})
@@ -1672,28 +1672,28 @@ func TestByBeforeMidwayTaskFromIds(t *testing.T) {
 
 		// The midway task would be t10, but since tasks 7-13 are missing
 		// it gets the next task earliest task that is not missing, which is t6.
-		t6, err := ByBeforeMidwayTaskFromIds(ctx, "t1", "t20")
+		t6, err := ByBeforeMidwayTaskFromIds(ctx, "t1", "t20", false)
 		assert.NoError(err)
 		require.NotNil(t, t6)
 		assert.Equal(6, t6.RevisionOrderNumber)
 
-		t6, err = ByBeforeMidwayTaskFromIds(ctx, "t5", "t20")
+		t6, err = ByBeforeMidwayTaskFromIds(ctx, "t5", "t20", false)
 		assert.NoError(err)
 		require.NotNil(t, t6)
 		assert.Equal(6, t6.RevisionOrderNumber)
 
-		t6, err = ByBeforeMidwayTaskFromIds(ctx, "t5", "t16")
+		t6, err = ByBeforeMidwayTaskFromIds(ctx, "t5", "t16", false)
 		assert.NoError(err)
 		require.NotNil(t, t6)
 		assert.Equal(6, t6.RevisionOrderNumber)
 
-		t6, err = ByBeforeMidwayTaskFromIds(ctx, "t6", "t14")
+		t6, err = ByBeforeMidwayTaskFromIds(ctx, "t6", "t14", false)
 		assert.NoError(err)
 		require.NotNil(t, t6)
 		assert.Equal(6, t6.RevisionOrderNumber)
 
 		// Using a task that doesn't exist should return an error.
-		_, err = ByBeforeMidwayTaskFromIds(ctx, "t7", "t20")
+		_, err = ByBeforeMidwayTaskFromIds(ctx, "t7", "t20", false)
 		assert.Error(err)
 	})
 }
@@ -6555,6 +6555,62 @@ func TestUpdateSchedulingLimit(t *testing.T) {
 				perProjectCounts[usage.ProjectOrRepoID] = usage.NumScheduledPatchTasks
 			}
 			assert.Equal(t, tCase.expectedPerProjectCounts, perProjectCounts)
+		})
+	}
+}
+
+func TestStepbackQueriesWithPushTriggers(t *testing.T) {
+	newTask := func(id string, order int, requester, triggerType string) Task {
+		return Task{
+			Id:                  id,
+			Project:             "proj",
+			BuildVariant:        "bv",
+			DisplayName:         "task",
+			RevisionOrderNumber: order,
+			Requester:           requester,
+			TriggerType:         triggerType,
+			Status:              evergreen.TaskSucceeded,
+		}
+	}
+	earlierPushTriggered := newTask("earlier-push-triggered", 2, evergreen.TriggerRequester, pushTriggerType)
+	pushTriggered := newTask("push-triggered", 4, evergreen.TriggerRequester, pushTriggerType)
+	taskTriggered := newTask("task-triggered", 5, evergreen.TriggerRequester, "task")
+	periodic := newTask("periodic", 6, evergreen.AdHocRequester, "")
+	latest := newTask("latest", 8, evergreen.RepotrackerVersionRequester, "")
+
+	for tName, tCase := range map[string]func(t *testing.T){
+		"PreviousCompletedStepbackTaskWithPushTriggersShouldOnlyMatchMainlineAndPushTriggeredTasks": func(t *testing.T) {
+			prev, err := latest.PreviousCompletedStepbackTask(t.Context(), nil, true)
+			require.NoError(t, err)
+			require.NotNil(t, prev)
+			assert.Equal(t, pushTriggered.Id, prev.Id)
+		},
+		"PreviousCompletedStepbackTaskWithoutPushTriggersShouldMatchAnySystemRequester": func(t *testing.T) {
+			prev, err := latest.PreviousCompletedStepbackTask(t.Context(), nil, false)
+			require.NoError(t, err)
+			require.NotNil(t, prev)
+			assert.Equal(t, periodic.Id, prev.Id)
+		},
+		"MidwayTaskWithPushTriggersShouldAllowMainlineAndPushTriggeredBounds": func(t *testing.T) {
+			mid, err := ByBeforeMidwayTaskFromIds(t.Context(), latest.Id, earlierPushTriggered.Id, true)
+			require.NoError(t, err)
+			require.NotNil(t, mid)
+			assert.Equal(t, pushTriggered.Id, mid.Id)
+		},
+		"MidwayTaskWithoutPushTriggersShouldErrorForMainlineAndPushTriggeredBounds": func(t *testing.T) {
+			_, err := ByBeforeMidwayTaskFromIds(t.Context(), latest.Id, earlierPushTriggered.Id, false)
+			assert.Error(t, err)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection))
+			t.Cleanup(func() {
+				assert.NoError(t, db.ClearCollections(Collection))
+			})
+			for _, tsk := range []Task{earlierPushTriggered, pushTriggered, taskTriggered, periodic, latest} {
+				require.NoError(t, tsk.Insert(t.Context()))
+			}
+			tCase(t)
 		})
 	}
 }

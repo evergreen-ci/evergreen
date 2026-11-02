@@ -245,7 +245,7 @@ func SetActiveStateById(ctx context.Context, id, user string, active bool) error
 // revision order number less than the current task's revision order number.
 // originalStepbackTask is only specified while we're stepping back the generator
 // for a generated task.
-func activatePreviousTask(ctx context.Context, taskId, caller string, originalStepbackTask *task.Task) error {
+func activatePreviousTask(ctx context.Context, taskId, caller string, originalStepbackTask *task.Task, includePushTriggers bool) error {
 	// find the task first
 	t, err := task.FindOneId(ctx, taskId)
 	if err != nil {
@@ -256,7 +256,7 @@ func activatePreviousTask(ctx context.Context, taskId, caller string, originalSt
 	}
 
 	// find previous task limiting to just the last one
-	filter, sort := task.ByBeforeRevision(t.RevisionOrderNumber, t.BuildVariant, t.DisplayName, t.Project, t.Requester)
+	filter, sort := task.ByBeforeRevisionForStepback(t.RevisionOrderNumber, t, includePushTriggers)
 	query := db.Query(filter).Sort(sort)
 	prevTask, err := task.FindOne(ctx, query)
 	if err != nil {
@@ -268,7 +268,7 @@ func activatePreviousTask(ctx context.Context, taskId, caller string, originalSt
 
 	// for generated tasks, try to activate the generator instead if the previous task we found isn't the actual last task
 	if t.GeneratedBy != "" && prevTask.RevisionOrderNumber+1 != t.RevisionOrderNumber {
-		return activatePreviousTask(ctx, t.GeneratedBy, caller, t)
+		return activatePreviousTask(ctx, t.GeneratedBy, caller, t, includePushTriggers)
 	}
 
 	// If this is a valid, unfinished, non-disabled, and unactive task- we should activate it.
@@ -504,6 +504,8 @@ type stepbackInstructions struct {
 	shouldStepback bool
 	// If true, bisect should be used, if false, linear should be used.
 	bisect bool
+	// If true, mainline and push-triggered versions are stepped back together.
+	includePushTriggers bool
 }
 
 // getStepback returns what type of stepback and if a task should stepback.
@@ -525,7 +527,8 @@ func getStepback(ctx context.Context, taskId string, projectRef *ProjectRef, pro
 	}
 
 	s := stepbackInstructions{
-		bisect: utility.FromBoolPtr(projectRef.StepbackBisect),
+		bisect:              utility.FromBoolPtr(projectRef.StepbackBisect),
+		includePushTriggers: projectRef.IsStepbackPushTriggers(),
 	}
 
 	// Check if the bvtask overrides the stepback policy specified by the project
@@ -558,7 +561,7 @@ func getStepback(ctx context.Context, taskId string, projectRef *ProjectRef, pro
 
 // doLinearStepback performs a stepback on the task linearly (the previous
 // tasks one by one). If there is a previous task and if not it returns nothing.
-func doLinearStepback(ctx context.Context, t *task.Task) error {
+func doLinearStepback(ctx context.Context, t *task.Task, includePushTriggers bool) error {
 	if t.DisplayOnly {
 		execTasks, err := task.Find(ctx, task.ByIds(t.ExecutionTasks))
 		if err != nil {
@@ -566,7 +569,7 @@ func doLinearStepback(ctx context.Context, t *task.Task) error {
 		}
 		catcher := grip.NewSimpleCatcher()
 		for _, et := range execTasks {
-			catcher.Add(doLinearStepback(ctx, &et))
+			catcher.Add(doLinearStepback(ctx, &et, includePushTriggers))
 		}
 		if catcher.HasErrors() {
 			return catcher.Resolve()
@@ -576,7 +579,7 @@ func doLinearStepback(ctx context.Context, t *task.Task) error {
 	//See if there is a prior success for this particular task.
 	//If there isn't, we should not activate the previous task because
 	//it could trigger stepping backwards ad infinitum.
-	prevTask, err := t.PreviousCompletedTask(ctx, t.Project, []string{evergreen.TaskSucceeded})
+	prevTask, err := t.PreviousCompletedStepbackTask(ctx, []string{evergreen.TaskSucceeded}, includePushTriggers)
 	if err != nil {
 		return errors.Wrap(err, "locating previous successful task")
 	}
@@ -585,12 +588,12 @@ func doLinearStepback(ctx context.Context, t *task.Task) error {
 	}
 
 	// activate the previous task to pinpoint regression
-	return errors.WithStack(activatePreviousTask(ctx, t.Id, evergreen.StepbackTaskActivator, nil))
+	return errors.WithStack(activatePreviousTask(ctx, t.Id, evergreen.StepbackTaskActivator, nil, includePushTriggers))
 }
 
 // doBisectStepback performs a bisect stepback on the task.
 // If there are no tasks to bisect, it no-ops.
-func doBisectStepback(ctx context.Context, t *task.Task) error {
+func doBisectStepback(ctx context.Context, t *task.Task, includePushTriggers bool) error {
 	// Do stepback for all execution tasks.
 	if t.DisplayOnly {
 		execTasks, err := task.Find(ctx, task.ByIds(t.ExecutionTasks))
@@ -599,7 +602,7 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 		}
 		catcher := grip.NewSimpleCatcher()
 		for _, et := range execTasks {
-			catcher.Add(doBisectStepback(ctx, &et))
+			catcher.Add(doBisectStepback(ctx, &et, includePushTriggers))
 		}
 		if catcher.HasErrors() {
 			return errors.Wrapf(catcher.Resolve(), "performing bisect stepback on display task '%s' execution tasks", t.Id)
@@ -612,7 +615,7 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 		s = *t.StepbackInfo
 	} else {
 		// If this is the first iteration of stepback, we must get the initial condition (last successful passing task).
-		lastPassing, err := t.PreviousCompletedTask(ctx, t.Project, []string{evergreen.TaskSucceeded})
+		lastPassing, err := t.PreviousCompletedStepbackTask(ctx, []string{evergreen.TaskSucceeded}, includePushTriggers)
 		if err != nil {
 			return errors.Wrap(err, "locating previous successful task")
 		}
@@ -645,7 +648,7 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 	}
 
 	// The midway task is our next stepback target.
-	nextTask, err := task.ByBeforeMidwayTaskFromIds(ctx, s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
+	nextTask, err := task.ByBeforeMidwayTaskFromIds(ctx, s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId, includePushTriggers)
 	if err != nil {
 		return errors.Wrap(err, "finding previous task")
 	}
@@ -697,13 +700,13 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 	return nil
 }
 
-func doBisectStepbackForGeneratedTask(ctx context.Context, generator *task.Task, generated *task.Task) error {
+func doBisectStepbackForGeneratedTask(ctx context.Context, generator *task.Task, generated *task.Task, includePushTriggers bool) error {
 	var s task.StepbackInfo
 	if lastStepbackInfo := generator.StepbackInfo.GetStepbackInfoForGeneratedTask(generated.DisplayName, generated.BuildVariant); lastStepbackInfo != nil {
 		// Carry over from the last task.
 		s = *lastStepbackInfo
 	} else {
-		lastPassingGenerated, err := generated.PreviousCompletedTask(ctx, generated.Project, []string{evergreen.TaskSucceeded})
+		lastPassingGenerated, err := generated.PreviousCompletedStepbackTask(ctx, []string{evergreen.TaskSucceeded}, includePushTriggers)
 		if err != nil {
 			return errors.Wrap(err, "locating previous successful task")
 		}
@@ -746,7 +749,7 @@ func doBisectStepbackForGeneratedTask(ctx context.Context, generator *task.Task,
 	}
 
 	// The midway task is our next stepback target.
-	nextTask, err := task.ByBeforeMidwayTaskFromIds(ctx, s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
+	nextTask, err := task.ByBeforeMidwayTaskFromIds(ctx, s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId, includePushTriggers)
 	if err != nil {
 		return errors.Wrapf(err, "finding midway task between tasks '%s' and '%s'", s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
 	}
@@ -1303,14 +1306,14 @@ func evalStepback(ctx context.Context, t *task.Task, status string,
 	// and it is not aborted.
 	newStepback := status == evergreen.TaskFailed && !t.Aborted
 	if s.bisect {
-		return evalBisectStepback(ctx, t, newStepback)
+		return evalBisectStepback(ctx, t, newStepback, s.includePushTriggers)
 	}
-	return evalLinearStepback(ctx, t, newStepback)
+	return evalLinearStepback(ctx, t, newStepback, s.includePushTriggers)
 }
 
 // evalLinearStepback performs linear stepback on the task or cleans up after previous iterations of lienar
 // stepback.
-func evalLinearStepback(ctx context.Context, t *task.Task, newStepback bool) error {
+func evalLinearStepback(ctx context.Context, t *task.Task, newStepback, includePushTriggers bool) error {
 	existingStepback := t.Status == evergreen.TaskFailed && t.ActivatedBy == evergreen.StepbackTaskActivator
 	if newStepback || existingStepback {
 		if t.IsPartOfSingleHostTaskGroup() {
@@ -1324,7 +1327,7 @@ func evalLinearStepback(ctx context.Context, t *task.Task, newStepback bool) err
 				return errors.Errorf("no tasks in task group '%s' for task '%s'", t.TaskGroup, t.Id)
 			}
 			for _, tgTask := range tasks {
-				catcher.Wrapf(doLinearStepback(ctx, &tgTask), "stepping back task group task '%s'", tgTask.DisplayName)
+				catcher.Wrapf(doLinearStepback(ctx, &tgTask, includePushTriggers), "stepping back task group task '%s'", tgTask.DisplayName)
 				if tgTask.Id == t.Id {
 					break // don't need to stepback later tasks in the group
 				}
@@ -1332,13 +1335,13 @@ func evalLinearStepback(ctx context.Context, t *task.Task, newStepback bool) err
 
 			return catcher.Resolve()
 		}
-		return errors.Wrap(doLinearStepback(ctx, t), "performing linear stepback")
+		return errors.Wrap(doLinearStepback(ctx, t, includePushTriggers), "performing linear stepback")
 	}
 	return nil
 }
 
 // evalBisectStepback performs bisect stepback on the task.
-func evalBisectStepback(ctx context.Context, t *task.Task, newStepback bool) error {
+func evalBisectStepback(ctx context.Context, t *task.Task, newStepback, includePushTriggers bool) error {
 	// If the task is aborted then no-op.
 	if t.Aborted {
 		return nil
@@ -1346,7 +1349,7 @@ func evalBisectStepback(ctx context.Context, t *task.Task, newStepback bool) err
 
 	existingStepback := !t.StepbackInfo.IsZero() && t.ActivatedBy == evergreen.StepbackTaskActivator
 	if (newStepback || existingStepback) && t.GeneratedBy == "" {
-		return errors.Wrap(doBisectStepback(ctx, t), "performing bisect stepback")
+		return errors.Wrap(doBisectStepback(ctx, t, includePushTriggers), "performing bisect stepback")
 	}
 
 	if t.GeneratedBy == "" {
@@ -1365,7 +1368,7 @@ func evalBisectStepback(ctx context.Context, t *task.Task, newStepback bool) err
 		return nil
 	}
 
-	return errors.Wrapf(doBisectStepbackForGeneratedTask(ctx, generator, t), "bisect stepback on generator '%s' for generated '%s'", t.GeneratedBy, t.Id)
+	return errors.Wrapf(doBisectStepbackForGeneratedTask(ctx, generator, t, includePushTriggers), "bisect stepback on generator '%s' for generated '%s'", t.GeneratedBy, t.Id)
 }
 
 // updateMakespans updates the predicted and actual makespans for the tasks in
