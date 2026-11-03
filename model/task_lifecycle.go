@@ -1382,6 +1382,7 @@ type buildStatus struct {
 	// hasUnfinishedEssentialTask indicates if the build has at least one
 	// essential tasks which is not finished. If so, the build is not finished.
 	hasUnfinishedEssentialTask bool
+	hasInProgressTask          bool
 }
 
 // getBuildStatus returns a string denoting the status of the build based on the
@@ -1425,16 +1426,21 @@ func getBuildStatus(buildTasks []task.Task) buildStatus {
 		}
 	}
 
-	var hasUnfinishedTask bool
+	var hasUnfinishedTask, hasInProgressTask bool
 	for _, t := range buildTasks {
-		if t.WillRun() || t.IsInProgress() {
+		if t.WillRun() {
 			hasUnfinishedTask = true
+		}
+		if t.IsInProgress() {
+			hasUnfinishedTask = true
+			hasInProgressTask = true
 		}
 	}
 	if hasUnfinishedTask {
 		return buildStatus{
 			status:                     evergreen.BuildStarted,
 			hasUnfinishedEssentialTask: hasUnfinishedEssentialTask,
+			hasInProgressTask:          hasInProgressTask,
 		}
 	}
 
@@ -1555,6 +1561,9 @@ func updateBuildStatus(ctx context.Context, b *build.Build) (bool, error) {
 	if err := b.SetHasUnfinishedEssentialTask(ctx, buildStatus.hasUnfinishedEssentialTask); err != nil {
 		return false, errors.Wrapf(err, "setting unfinished essential task state to %t for build '%s'", buildStatus.hasUnfinishedEssentialTask, b.Id)
 	}
+	if err := b.SetHasInProgressTask(ctx, buildStatus.hasInProgressTask); err != nil {
+		return false, errors.Wrapf(err, "setting in-progress task state to %t for build '%s'", buildStatus.hasInProgressTask, b.Id)
+	}
 
 	blockedChanged := buildStatus.allTasksBlocked != b.AllTasksBlocked
 
@@ -1637,7 +1646,8 @@ func getVersionActivationAndStatus(builds []build.Build) (bool, string) {
 	var hasUnfinishedEssentialTask bool
 	// Check if builds are started but not finished.
 	for _, b := range builds {
-		if b.Activated && !evergreen.IsFinishedBuildStatus(b.Status) && !b.AllTasksBlocked {
+		// A deactivated build isn't finished while it still has tasks running.
+		if (b.Activated || b.HasInProgressTask) && !evergreen.IsFinishedBuildStatus(b.Status) && !b.AllTasksBlocked {
 			return true, evergreen.VersionStarted
 		}
 		if b.HasUnfinishedEssentialTask {
