@@ -21,6 +21,16 @@ const maxAnchorExpansionNodes = 100000
 // preamble is re-parsed for every include file, so this bounds the cumulative added parsing.
 const maxAnchorPreambleBytes = 1024 * 1024
 
+// ErrAnchorExpansionLimit is returned when expanding a file's yaml anchors copies more than
+// maxAnchorExpansionNodes nodes. This means the config misuses cross-file anchors and the
+// whole project load fails so the user must fix their configuration.
+var ErrAnchorExpansionLimit = errors.Errorf("yaml anchor expansion exceeded the maximum of %d nodes per file; simplify chained anchor aliases in the project configuration", maxAnchorExpansionNodes)
+
+// ErrAnchorPreambleSize is returned when serializing the accumulated yaml anchors produces a preamble larger
+// than maxAnchorPreambleBytes. This means the config misuses cross-file anchors and the whole project load
+// fails so the user must fix their configuration.
+var ErrAnchorPreambleSize = errors.Errorf("yaml anchor definitions exceeded the maximum preamble size of %d bytes; move anchor definitions into fewer include files or make them smaller", maxAnchorPreambleBytes)
+
 // anchorEntry holds a single YAML anchor definition: its name (the &name tag)
 // and the Node that carries it.
 type anchorEntry struct {
@@ -120,7 +130,7 @@ func expandAliases(node *yaml.Node, nodeLimit *int) (*yaml.Node, error) {
 	}
 	*nodeLimit--
 	if *nodeLimit < 0 {
-		return nil, errors.Errorf("expansion exceeded the maximum of %d nodes per file", maxAnchorExpansionNodes)
+		return nil, ErrAnchorExpansionLimit
 	}
 	copied := *node
 	copied.Anchor = ""
@@ -166,7 +176,7 @@ func buildAnchorPreamble(registry *anchorRegistry) ([]byte, error) {
 		return nil, errors.Wrap(err, "building anchor preamble")
 	}
 	if len(out) > maxAnchorPreambleBytes {
-		return nil, errors.Errorf("anchor preamble size %d exceeds the maximum of %d bytes", len(out), maxAnchorPreambleBytes)
+		return nil, ErrAnchorPreambleSize
 	}
 	return out, nil
 }

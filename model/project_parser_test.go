@@ -3820,12 +3820,44 @@ func TestCollectAnchorsExpansionBombErrors(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "exceeded the maximum")
 
-	// The file must still parse via fallback, with the reason in decodeErr.
+	// Breaching the expansion limit is a fatal error, not a silent fallback.
+	pp, decodeErr, err := createIntermediateProject([]byte(yml), false, &anchorRegistry{})
+	require.ErrorIs(t, err, ErrAnchorExpansionLimit)
+	assert.Nil(t, pp)
+	assert.NoError(t, decodeErr)
+}
+
+// TestCreateIntermediateProjectPreambleLimitErrors verifies that a preamble
+// larger than maxAnchorPreambleBytes fails the whole load with
+// ErrAnchorPreambleSize instead of falling back to an unanchored parse.
+func TestCreateIntermediateProjectPreambleLimitErrors(t *testing.T) {
+	// A registry entry large enough that marshalling it exceeds the preamble cap.
+	big := strings.Repeat("x", maxAnchorPreambleBytes+1)
+	var node yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(fmt.Sprintf("a: &a %q", big)), &node))
+
+	registry := &anchorRegistry{}
+	require.NoError(t, registry.mergeAnchorsFrom(&node))
+	require.Greater(t, registry.Length(), 0)
+
+	pp, decodeErr, err := createIntermediateProject([]byte("b: *a\n"), false, registry)
+	require.ErrorIs(t, err, ErrAnchorPreambleSize)
+	assert.Nil(t, pp)
+	assert.NoError(t, decodeErr)
+}
+
+// TestCreateIntermediateProjectNonLimitFailureFallsBack verifies that an
+// anchor-path failure that is not a limit breach still falls back to standard
+// unmarshalling, with the reason in decodeErr. Duplicate mapping keys fail the
+// yaml v3 anchor path but parse via the legacy yaml v2 fallback.
+func TestCreateIntermediateProjectNonLimitFailureFallsBack(t *testing.T) {
+	yml := "tasks:\n  - name: t1\ntasks:\n  - name: t2\n"
 	pp, decodeErr, err := createIntermediateProject([]byte(yml), false, &anchorRegistry{})
 	require.NoError(t, err)
 	require.NotNil(t, pp)
 	require.Error(t, decodeErr)
-	assert.Contains(t, decodeErr.Error(), "exceeded the maximum")
+	assert.NotErrorIs(t, decodeErr, ErrAnchorExpansionLimit)
+	assert.NotErrorIs(t, decodeErr, ErrAnchorPreambleSize)
 }
 
 func TestExpandAliases(t *testing.T) {
@@ -4017,8 +4049,8 @@ tasks:
 }
 
 // TestBuildAnchorPreambleOversizedErrors verifies the preamble size cap: a
-// registry whose serialized form exceeds maxAnchorPreambleBytes must error so
-// the caller falls back to parsing without the preamble.
+// registry whose serialized form exceeds maxAnchorPreambleBytes must fail with
+// ErrAnchorPreambleSize.
 func TestBuildAnchorPreambleOversizedErrors(t *testing.T) {
 	registry := &anchorRegistry{
 		entries: []anchorEntry{
@@ -4031,8 +4063,7 @@ func TestBuildAnchorPreambleOversizedErrors(t *testing.T) {
 	}
 
 	_, err := buildAnchorPreamble(registry)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "exceeds the maximum")
+	require.ErrorIs(t, err, ErrAnchorPreambleSize)
 }
 
 // TestBasicCrossFileAnchor verifies that an anchor defined in the main project
