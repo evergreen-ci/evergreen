@@ -280,7 +280,7 @@ func makeTagValidationError(prefix string, failures []validator.TagValidationFai
 	for _, failure := range shown {
 		names = append(names, failure.TaskName)
 	}
-	msg := fmt.Sprintf("%d generated tasks are missing a tag with prefix '%s':\n%s",
+	msg := fmt.Sprintf("%d generated task(s) are missing a tag with prefix '%s':\n%s",
 		len(failures), prefix, strings.Join(names, "\n"))
 	if len(shown) < len(failures) {
 		unshown := len(failures) - len(shown)

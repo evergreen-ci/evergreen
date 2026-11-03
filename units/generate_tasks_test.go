@@ -851,7 +851,7 @@ func TestGenerateTasksBlockingTagValidation(t *testing.T) {
 
 	const prefix = "owning_team_"
 
-	sampleBaseProject := `
+	baseProject := `
 tasks:
   - name: generator
     commands:
@@ -975,7 +975,7 @@ buildvariants:
 				require.NoError(t, d.Insert(ctx))
 			}
 			sampleParserProject := model.ParserProject{}
-			require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(sampleBaseProject), &sampleParserProject))
+			require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(baseProject), &sampleParserProject))
 			sampleParserProject.Id = sampleVersion.Id
 			require.NoError(t, sampleParserProject.Insert(t.Context()))
 			require.NoError(t, task.GeneratedJSONInsert(ctx, env.Settings(), &sampleTask, []string{testCase.generatedJSON}))
