@@ -26,8 +26,8 @@ import (
 )
 
 // BaseVersion is the resolver for the baseVersion field.
-func (r *versionResolver) BaseVersion(ctx context.Context, obj *model.Version) (*model.Version, error) {
-	baseVersion, err := model.FindBaseVersionForVersion(ctx, obj.Id)
+func (r *versionResolver) BaseVersion(ctx context.Context, obj *model.Version, repotrackerOnly *bool) (*model.Version, error) {
+	baseVersion, err := model.FindBaseVersionForVersion(ctx, obj.Id, utility.FromBoolPtr(repotrackerOnly))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base version for version '%s': %s", obj.Id, err.Error()))
 	}
@@ -483,7 +483,7 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *model.Version, options
 		}
 	}
 	baseVersionID := ""
-	baseVersion, err := model.FindBaseVersionForVersion(ctx, versionID)
+	baseVersion, err := model.FindBaseVersionForVersion(ctx, versionID, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base version for version '%s': %s", versionID, err.Error()))
 	}
@@ -536,24 +536,6 @@ func (r *versionResolver) TaskStatuses(ctx context.Context, obj *model.Version) 
 func (r *versionResolver) TaskStatusStats(ctx context.Context, obj *model.Version) (*task.TaskStats, error) {
 	includeNeverActivated := !evergreen.IsPatchRequester(obj.Requester)
 	return task.GetTaskStatsByVersion(ctx, obj.Id, includeNeverActivated)
-}
-
-// TriggerMainlineVersion is the resolver for the triggerMainlineVersion field.
-func (r *versionResolver) TriggerMainlineVersion(ctx context.Context, obj *model.Version) (*model.Version, error) {
-	if obj.Requester != evergreen.TriggerRequester {
-		return nil, nil
-	}
-	mainlineVersion, err := model.VersionFindOne(ctx, model.BaseVersionByProjectIdAndRevision(obj.Identifier, obj.Revision))
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching gitter version with revision '%s' on project '%s': %s", obj.Revision, obj.Identifier, err.Error()))
-	}
-	if mainlineVersion == nil {
-		return nil, nil
-	}
-	if err := checkProjectAccess(ctx, mainlineVersion.Identifier, ProjectPermissionTasks, AccessLevelView); err != nil {
-		return nil, err
-	}
-	return mainlineVersion, nil
 }
 
 // TriggerModule is the resolver for the triggerModule field.

@@ -291,33 +291,103 @@ func TestFindBaseVersionForVersion(t *testing.T) {
 		Revision:            "def",
 		RevisionOrderNumber: 2,
 	}
+	triggerVersion := Version{
+		Id:                  "project1_v3_trigger",
+		Identifier:          "project1",
+		Requester:           evergreen.TriggerRequester,
+		Revision:            "abc",
+		RevisionOrderNumber: 3,
+	}
+	periodicBuild := Version{
+		Id:                  "project1_v4_periodic",
+		Identifier:          "project1",
+		Requester:           evergreen.AdHocRequester,
+		Revision:            "def",
+		RevisionOrderNumber: 4,
+	}
+	triggerVersionWithoutRepotrackerVersion := Version{
+		Id:                  "project1_v5_trigger",
+		Identifier:          "project1",
+		Requester:           evergreen.TriggerRequester,
+		Revision:            "jkl",
+		RevisionOrderNumber: 5,
+	}
 
-	assert.NoError(t, patch0.Insert(t.Context()))
-	assert.NoError(t, patch1.Insert(t.Context()))
-	assert.NoError(t, mainlineCommit1.Insert(t.Context()))
-	assert.NoError(t, mainlineCommit2.Insert(t.Context()))
-	// Test that it returns the base version mainline commit for a patch.
-	version, err := FindBaseVersionForVersion(t.Context(), "v1")
-	assert.NoError(t, err)
-	assert.NotNil(t, version)
-	assert.Equal(t, "project1_v1", version.Id)
+	for _, v := range []Version{patch0, patch1, mainlineCommit1, mainlineCommit2, triggerVersion, periodicBuild, triggerVersionWithoutRepotrackerVersion} {
+		require.NoError(t, v.Insert(t.Context()))
+	}
 
-	// test that it returns the previous mainline commit for a mainline commit
-	version, err = FindBaseVersionForVersion(t.Context(), "project1_v2")
-	assert.NoError(t, err)
-	assert.NotNil(t, version)
-	assert.Equal(t, "project1_v1", version.Id)
-
-	// Test that it returns an empty string if the previous version doesn't exist for a mainline commit
-	version, err = FindBaseVersionForVersion(t.Context(), "project1_v1")
-	assert.NoError(t, err)
-	assert.Nil(t, version)
-
-	// Test that it returns an empty string if the base version doesn't exist for a patch
-	version, err = FindBaseVersionForVersion(t.Context(), "v0")
-	assert.NoError(t, err)
-	assert.Nil(t, version)
-
+	type testCase struct {
+		versionID  string
+		expectedID string
+	}
+	for groupName, group := range map[string]struct {
+		repotrackerOnly bool
+		testCases       map[string]testCase
+	}{
+		"RepotrackerOnlyFalse": {
+			repotrackerOnly: false,
+			testCases: map[string]testCase{
+				"PatchReturnsMainlineCommitAtBaseRevision": {
+					versionID:  "v1",
+					expectedID: "project1_v1",
+				},
+				"PatchWithoutMainlineCommitAtBaseRevisionReturnsNil": {
+					versionID: "v0",
+				},
+				"MainlineCommitReturnsPreviousMainlineCommit": {
+					versionID:  "project1_v2",
+					expectedID: "project1_v1",
+				},
+				"FirstMainlineCommitReturnsNil": {
+					versionID: "project1_v1",
+				},
+				"TriggerVersionReturnsPreviousVersionByOrder": {
+					versionID:  "project1_v3_trigger",
+					expectedID: "project1_v2",
+				},
+			},
+		},
+		"RepotrackerOnlyTrue": {
+			repotrackerOnly: true,
+			testCases: map[string]testCase{
+				"PatchReturnsMainlineCommitAtBaseRevision": {
+					versionID:  "v1",
+					expectedID: "project1_v1",
+				},
+				"MainlineCommitReturnsItself": {
+					versionID:  "project1_v2",
+					expectedID: "project1_v2",
+				},
+				"TriggerVersionReturnsMainlineCommitAtSameRevision": {
+					versionID:  "project1_v3_trigger",
+					expectedID: "project1_v1",
+				},
+				"PeriodicBuildReturnsMainlineCommitAtSameRevision": {
+					versionID:  "project1_v4_periodic",
+					expectedID: "project1_v2",
+				},
+				"TriggerVersionWithNoMainlineCommitAtSameRevisionReturnsNil": {
+					versionID: "project1_v5_trigger",
+				},
+			},
+		},
+	} {
+		t.Run(groupName, func(t *testing.T) {
+			for testName, tc := range group.testCases {
+				t.Run(testName, func(t *testing.T) {
+					version, err := FindBaseVersionForVersion(t.Context(), tc.versionID, group.repotrackerOnly)
+					require.NoError(t, err)
+					if tc.expectedID == "" {
+						assert.Nil(t, version)
+						return
+					}
+					require.NotNil(t, version)
+					assert.Equal(t, tc.expectedID, version.Id)
+				})
+			}
+		})
+	}
 }
 
 func TestVersionByProjectIdAndRevisionPrefix(t *testing.T) {

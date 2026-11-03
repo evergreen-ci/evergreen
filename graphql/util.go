@@ -280,7 +280,7 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 		buildVariantOpts.IncludeBaseTasks = utility.ToBoolPtr(true)
 	}
 	if utility.FromBoolPtr(buildVariantOpts.IncludeBaseTasks) {
-		baseVersion, err := model.FindBaseVersionForVersion(ctx, versionId)
+		baseVersion, err := model.FindBaseVersionForVersion(ctx, versionId, false)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding base version for version '%s'", versionId)
 		}

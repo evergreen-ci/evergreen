@@ -54,7 +54,7 @@ type Version {
   activated: Boolean
   author: String!
   authorEmail: String!
-  baseVersion: Version
+  baseVersion(repotrackerOnly: Boolean = false): Version
   branch: String!
   buildVariants(options: BuildVariantOptions!): [GroupedBuildVariant!]
   buildVariantStats(options: BuildVariantOptions!): [GroupedTaskStatusCount!]
@@ -95,10 +95,6 @@ type Version {
   tasks(options: TaskFilterOptions!): VersionTasks!
   taskStatuses: [String!]!
   taskStatusStats: TaskStats
-  """
-  The mainline (repotracker) version for the same commit as this trigger version. Only set for trigger versions.
-  """
-  triggerMainlineVersion: Version
   triggerModule: TriggerModule
   upstreamProject: UpstreamProject
   user: User!

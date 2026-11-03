@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
@@ -522,9 +521,10 @@ func FindProjectForVersion(ctx context.Context, versionID string) (string, error
 	return v.Identifier, nil
 }
 
-// FindBaseVersionForVersion finds the base version  for a given version ID. If the version is a patch, it will
-// return the base version. If the version is a mainline commit, it will return the previously run mainline commit.
-func FindBaseVersionForVersion(ctx context.Context, versionID string) (*Version, error) {
+// FindBaseVersionForVersion finds the base version for a given version ID.
+// Set repotackerOnly to true if you only want to get repotracker versions. Otherwise, if the version is a patch,
+// it will return the base version. If the version is a mainline commit, it will return the previously run mainline commit.
+func FindBaseVersionForVersion(ctx context.Context, versionID string, repotrackerOnly bool) (*Version, error) {
 	v, err := VersionFindOne(ctx, VersionById(versionID))
 	if err != nil {
 		return nil, err
@@ -532,14 +532,14 @@ func FindBaseVersionForVersion(ctx context.Context, versionID string) (*Version,
 	if v == nil {
 		return nil, errors.New("version not found")
 	}
-	if evergreen.IsPatchRequester(v.Requester) {
+	if repotrackerOnly || evergreen.IsPatchRequester(v.Requester) {
 		baseVersion, err := VersionFindOne(ctx, BaseVersionByProjectIdAndRevision(v.Identifier, v.Revision))
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding base version with id: '%s'", v.Id)
 		}
 		return baseVersion, nil
 	} else {
-		previousVersion, err := VersionFindOne(ctx, VersionByProjectIdAndOrder(utility.FromStringPtr(&v.Identifier), v.RevisionOrderNumber-1))
+		previousVersion, err := VersionFindOne(ctx, VersionByProjectIdAndOrder(v.Identifier, v.RevisionOrderNumber-1))
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding base version with id: '%s'", v.Id)
 		}
