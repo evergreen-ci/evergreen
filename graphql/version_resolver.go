@@ -44,10 +44,10 @@ func (r *versionResolver) BasedOnVersion(ctx context.Context, obj *model.Version
 	}
 	basedOnVersion, err := model.VersionFindOne(ctx, model.BaseVersionByProjectIdAndRevision(obj.Identifier, obj.Revision))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version for revision '%s' of project '%s': %s", obj.Revision, obj.Identifier, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching gitter version with revision '%s' on project '%s': %s", obj.Revision, obj.Identifier, err.Error()))
 	}
 	if basedOnVersion == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version for revision '%s' of project '%s' not found", obj.Revision, obj.Identifier))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("gitter version with revision '%s' on project '%s' not found", obj.Revision, obj.Identifier))
 	}
 	if basedOnVersion != nil {
 		if err := checkProjectAccess(ctx, basedOnVersion.Identifier, ProjectPermissionTasks, AccessLevelView); err != nil {
