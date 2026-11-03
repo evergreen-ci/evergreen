@@ -2374,6 +2374,7 @@ type ComplexityRoot struct {
 		Author                       func(childComplexity int) int
 		AuthorEmail                  func(childComplexity int) int
 		BaseVersion                  func(childComplexity int) int
+		BasedOnVersion               func(childComplexity int) int
 		Branch                       func(childComplexity int) int
 		BuildVariantStats            func(childComplexity int, options BuildVariantOptions) int
 		BuildVariants                func(childComplexity int, options BuildVariantOptions) int
@@ -2861,6 +2862,7 @@ type UserResolver interface {
 }
 type VersionResolver interface {
 	BaseVersion(ctx context.Context, obj *model1.Version) (*model1.Version, error)
+	BasedOnVersion(ctx context.Context, obj *model1.Version) (*model1.Version, error)
 
 	BuildVariants(ctx context.Context, obj *model1.Version, options BuildVariantOptions) ([]*GroupedBuildVariant, error)
 	BuildVariantStats(ctx context.Context, obj *model1.Version, options BuildVariantOptions) ([]*task.GroupedTaskStatusCount, error)
@@ -12827,6 +12829,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Version.BaseVersion(childComplexity), true
+	case "Version.basedOnVersion":
+		if e.complexity.Version.BasedOnVersion == nil {
+			break
+		}
+
+		return e.complexity.Version.BasedOnVersion(childComplexity), true
 	case "Version.branch":
 		if e.complexity.Version.Branch == nil {
 			break
@@ -35772,6 +35780,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_rolledUpVersions(
 				return ec.fieldContext_Version_authorEmail(ctx, field)
 			case "baseVersion":
 				return ec.fieldContext_Version_baseVersion(ctx, field)
+			case "basedOnVersion":
+				return ec.fieldContext_Version_basedOnVersion(ctx, field)
 			case "branch":
 				return ec.fieldContext_Version_branch(ctx, field)
 			case "buildVariants":
@@ -35893,6 +35903,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_version(_ context
 				return ec.fieldContext_Version_authorEmail(ctx, field)
 			case "baseVersion":
 				return ec.fieldContext_Version_baseVersion(ctx, field)
+			case "basedOnVersion":
+				return ec.fieldContext_Version_basedOnVersion(ctx, field)
 			case "branch":
 				return ec.fieldContext_Version_branch(ctx, field)
 			case "buildVariants":
@@ -42454,6 +42466,8 @@ func (ec *executionContext) fieldContext_Mutation_restartVersions(ctx context.Co
 				return ec.fieldContext_Version_authorEmail(ctx, field)
 			case "baseVersion":
 				return ec.fieldContext_Version_baseVersion(ctx, field)
+			case "basedOnVersion":
+				return ec.fieldContext_Version_basedOnVersion(ctx, field)
 			case "branch":
 				return ec.fieldContext_Version_branch(ctx, field)
 			case "buildVariants":
@@ -45624,6 +45638,8 @@ func (ec *executionContext) fieldContext_Patch_version(_ context.Context, field 
 				return ec.fieldContext_Version_authorEmail(ctx, field)
 			case "baseVersion":
 				return ec.fieldContext_Version_baseVersion(ctx, field)
+			case "basedOnVersion":
+				return ec.fieldContext_Version_basedOnVersion(ctx, field)
 			case "branch":
 				return ec.fieldContext_Version_branch(ctx, field)
 			case "buildVariants":
@@ -54687,6 +54703,8 @@ func (ec *executionContext) fieldContext_Query_version(ctx context.Context, fiel
 				return ec.fieldContext_Version_authorEmail(ctx, field)
 			case "baseVersion":
 				return ec.fieldContext_Version_baseVersion(ctx, field)
+			case "basedOnVersion":
+				return ec.fieldContext_Version_basedOnVersion(ctx, field)
 			case "branch":
 				return ec.fieldContext_Version_branch(ctx, field)
 			case "buildVariants":
@@ -67496,6 +67514,8 @@ func (ec *executionContext) fieldContext_Task_version(_ context.Context, field g
 				return ec.fieldContext_Version_authorEmail(ctx, field)
 			case "baseVersion":
 				return ec.fieldContext_Version_baseVersion(ctx, field)
+			case "basedOnVersion":
+				return ec.fieldContext_Version_basedOnVersion(ctx, field)
 			case "branch":
 				return ec.fieldContext_Version_branch(ctx, field)
 			case "buildVariants":
@@ -67617,6 +67637,8 @@ func (ec *executionContext) fieldContext_Task_versionMetadata(_ context.Context,
 				return ec.fieldContext_Version_authorEmail(ctx, field)
 			case "baseVersion":
 				return ec.fieldContext_Version_baseVersion(ctx, field)
+			case "basedOnVersion":
+				return ec.fieldContext_Version_basedOnVersion(ctx, field)
 			case "branch":
 				return ec.fieldContext_Version_branch(ctx, field)
 			case "buildVariants":
@@ -74815,6 +74837,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_version(_ context.Conte
 				return ec.fieldContext_Version_authorEmail(ctx, field)
 			case "baseVersion":
 				return ec.fieldContext_Version_baseVersion(ctx, field)
+			case "basedOnVersion":
+				return ec.fieldContext_Version_basedOnVersion(ctx, field)
 			case "branch":
 				return ec.fieldContext_Version_branch(ctx, field)
 			case "buildVariants":
@@ -76191,6 +76215,131 @@ func (ec *executionContext) fieldContext_Version_baseVersion(_ context.Context, 
 				return ec.fieldContext_Version_authorEmail(ctx, field)
 			case "baseVersion":
 				return ec.fieldContext_Version_baseVersion(ctx, field)
+			case "basedOnVersion":
+				return ec.fieldContext_Version_basedOnVersion(ctx, field)
+			case "branch":
+				return ec.fieldContext_Version_branch(ctx, field)
+			case "buildVariants":
+				return ec.fieldContext_Version_buildVariants(ctx, field)
+			case "buildVariantStats":
+				return ec.fieldContext_Version_buildVariantStats(ctx, field)
+			case "childVersions":
+				return ec.fieldContext_Version_childVersions(ctx, field)
+			case "cost":
+				return ec.fieldContext_Version_cost(ctx, field)
+			case "createTime":
+				return ec.fieldContext_Version_createTime(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Version_ingestTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_Version_errors(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
+			case "gitTags":
+				return ec.fieldContext_Version_gitTags(ctx, field)
+			case "ignored":
+				return ec.fieldContext_Version_ignored(ctx, field)
+			case "isPatch":
+				return ec.fieldContext_Version_isPatch(ctx, field)
+			case "manifest":
+				return ec.fieldContext_Version_manifest(ctx, field)
+			case "message":
+				return ec.fieldContext_Version_message(ctx, field)
+			case "order":
+				return ec.fieldContext_Version_order(ctx, field)
+			case "parameters":
+				return ec.fieldContext_Version_parameters(ctx, field)
+			case "patch":
+				return ec.fieldContext_Version_patch(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
+			case "previousVersion":
+				return ec.fieldContext_Version_previousVersion(ctx, field)
+			case "project":
+				return ec.fieldContext_Version_project(ctx, field)
+			case "projectMetadata":
+				return ec.fieldContext_Version_projectMetadata(ctx, field)
+			case "quarantinedTestsSkippedCount":
+				return ec.fieldContext_Version_quarantinedTestsSkippedCount(ctx, field)
+			case "repo":
+				return ec.fieldContext_Version_repo(ctx, field)
+			case "requester":
+				return ec.fieldContext_Version_requester(ctx, field)
+			case "revision":
+				return ec.fieldContext_Version_revision(ctx, field)
+			case "startTime":
+				return ec.fieldContext_Version_startTime(ctx, field)
+			case "status":
+				return ec.fieldContext_Version_status(ctx, field)
+			case "taskCount":
+				return ec.fieldContext_Version_taskCount(ctx, field)
+			case "taskQuarantinedTestsSample":
+				return ec.fieldContext_Version_taskQuarantinedTestsSample(ctx, field)
+			case "tasks":
+				return ec.fieldContext_Version_tasks(ctx, field)
+			case "taskStatuses":
+				return ec.fieldContext_Version_taskStatuses(ctx, field)
+			case "taskStatusStats":
+				return ec.fieldContext_Version_taskStatusStats(ctx, field)
+			case "triggerModule":
+				return ec.fieldContext_Version_triggerModule(ctx, field)
+			case "upstreamProject":
+				return ec.fieldContext_Version_upstreamProject(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
+			case "versionTiming":
+				return ec.fieldContext_Version_versionTiming(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Version_warnings(ctx, field)
+			case "waterfallBuilds":
+				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Version_basedOnVersion(ctx context.Context, field graphql.CollectedField, obj *model1.Version) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Version_basedOnVersion,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Version().BasedOnVersion(ctx, obj)
+		},
+		nil,
+		ec.marshalOVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐVersion,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Version_basedOnVersion(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Version_id(ctx, field)
+			case "activated":
+				return ec.fieldContext_Version_activated(ctx, field)
+			case "author":
+				return ec.fieldContext_Version_author(ctx, field)
+			case "authorEmail":
+				return ec.fieldContext_Version_authorEmail(ctx, field)
+			case "baseVersion":
+				return ec.fieldContext_Version_baseVersion(ctx, field)
+			case "basedOnVersion":
+				return ec.fieldContext_Version_basedOnVersion(ctx, field)
 			case "branch":
 				return ec.fieldContext_Version_branch(ctx, field)
 			case "buildVariants":
@@ -76439,6 +76588,8 @@ func (ec *executionContext) fieldContext_Version_childVersions(_ context.Context
 				return ec.fieldContext_Version_authorEmail(ctx, field)
 			case "baseVersion":
 				return ec.fieldContext_Version_baseVersion(ctx, field)
+			case "basedOnVersion":
+				return ec.fieldContext_Version_basedOnVersion(ctx, field)
 			case "branch":
 				return ec.fieldContext_Version_branch(ctx, field)
 			case "buildVariants":
@@ -77168,6 +77319,8 @@ func (ec *executionContext) fieldContext_Version_previousVersion(_ context.Conte
 				return ec.fieldContext_Version_authorEmail(ctx, field)
 			case "baseVersion":
 				return ec.fieldContext_Version_baseVersion(ctx, field)
+			case "basedOnVersion":
+				return ec.fieldContext_Version_basedOnVersion(ctx, field)
 			case "branch":
 				return ec.fieldContext_Version_branch(ctx, field)
 			case "buildVariants":
@@ -78956,6 +79109,8 @@ func (ec *executionContext) fieldContext_Waterfall_versions(_ context.Context, f
 				return ec.fieldContext_Version_authorEmail(ctx, field)
 			case "baseVersion":
 				return ec.fieldContext_Version_baseVersion(ctx, field)
+			case "basedOnVersion":
+				return ec.fieldContext_Version_basedOnVersion(ctx, field)
 			case "branch":
 				return ec.fieldContext_Version_branch(ctx, field)
 			case "buildVariants":
@@ -112407,6 +112562,39 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 					}
 				}()
 				res = ec._Version_baseVersion(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "basedOnVersion":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Version_basedOnVersion(ctx, field, obj)
 				return res
 			}
 

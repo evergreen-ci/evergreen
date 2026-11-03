@@ -55,6 +55,10 @@ type Version {
   author: String!
   authorEmail: String!
   baseVersion: Version
+  """
+  The repotracker version for the commit this version is based on (matched by project and revision). Only set for trigger versions.
+  """
+  basedOnVersion: Version
   branch: String!
   buildVariants(options: BuildVariantOptions!): [GroupedBuildVariant!]
   buildVariantStats(options: BuildVariantOptions!): [GroupedTaskStatusCount!]

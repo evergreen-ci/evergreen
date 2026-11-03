@@ -1,0 +1,76 @@
+{
+  "versions": [
+    {
+      "_id": "spruce_a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+      "create_time": {
+        "$date": "2020-12-22T22:01:40Z"
+      },
+      "gitspec": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+      "author": "John Smith",
+      "author_email": "john.smith@mongodb.com",
+      "message": "EVG-13229: Project Patches Page (#555)",
+      "status": "success",
+      "order": 656,
+      "identifier": "spruce",
+      "r": "gitter_request",
+      "author_id": "john.smith"
+    },
+    {
+      "_id": "spruce_a1b2c3d4e5f60718293a4b5c6d7e8f9012345678_task_trigger",
+      "create_time": {
+        "$date": "2020-12-22T22:05:00Z"
+      },
+      "gitspec": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+      "author": "John Smith",
+      "author_email": "john.smith@mongodb.com",
+      "message": "EVG-13229: Project Patches Page (#555)",
+      "status": "success",
+      "order": 656,
+      "identifier": "spruce",
+      "r": "trigger_request",
+      "author_id": "john.smith",
+      "trigger_id": "1",
+      "trigger_type": "task"
+    },
+    {
+      "_id": "spruce_b2c3d4e5f60718293a4b5c6d7e8f9012345678a1_push_trigger",
+      "create_time": {
+        "$date": "2020-12-23T22:05:00Z"
+      },
+      "gitspec": "b2c3d4e5f60718293a4b5c6d7e8f9012345678a1",
+      "author": "John Smith",
+      "author_email": "john.smith@mongodb.com",
+      "message": "Commit that was never ingested as a version",
+      "status": "success",
+      "order": 657,
+      "identifier": "spruce",
+      "r": "trigger_request",
+      "author_id": "john.smith",
+      "trigger_id": "spruce",
+      "trigger_type": "push"
+    },
+    {
+      "_id": "spruce_c3d4e5f60718293a4b5c6d7e8f9012345678a1b2_build_trigger",
+      "create_time": {
+        "$date": "2020-12-24T22:05:00Z"
+      },
+      "gitspec": "c3d4e5f60718293a4b5c6d7e8f9012345678a1b2",
+      "author": "John Smith",
+      "author_email": "john.smith@mongodb.com",
+      "message": "Commit with no matching version",
+      "status": "success",
+      "order": 658,
+      "identifier": "spruce",
+      "r": "trigger_request",
+      "author_id": "john.smith",
+      "trigger_id": "1",
+      "trigger_type": "build"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    }
+  ]
+}

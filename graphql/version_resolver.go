@@ -37,6 +37,27 @@ func (r *versionResolver) BaseVersion(ctx context.Context, obj *model.Version) (
 	return baseVersion, nil
 }
 
+// BasedOnVersion is the resolver for the basedOnVersion field.
+func (r *versionResolver) BasedOnVersion(ctx context.Context, obj *model.Version) (*model.Version, error) {
+	if obj.Requester != evergreen.TriggerRequester {
+		return nil, nil
+	}
+	basedOnVersion, err := model.VersionFindOne(ctx, model.BaseVersionByProjectIdAndRevision(obj.Identifier, obj.Revision))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version for revision '%s' of project '%s': %s", obj.Revision, obj.Identifier, err.Error()))
+	}
+	// The version must be defined only for task or build triggers. It's possible for push triggers to not have a corresponding version.
+	if basedOnVersion == nil && (obj.TriggerType == model.ProjectTriggerLevelTask || obj.TriggerType == model.ProjectTriggerLevelBuild) {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version for revision '%s' of project '%s' not found", obj.Revision, obj.Identifier))
+	}
+	if basedOnVersion != nil {
+		if err := checkProjectAccess(ctx, basedOnVersion.Identifier, ProjectPermissionTasks, AccessLevelView); err != nil {
+			return nil, err
+		}
+	}
+	return basedOnVersion, nil
+}
+
 // BuildVariants is the resolver for the buildVariants field.
 func (r *versionResolver) BuildVariants(ctx context.Context, obj *model.Version, options BuildVariantOptions) ([]*GroupedBuildVariant, error) {
 	if evergreen.IsPatchRequester(obj.Requester) && !utility.FromBoolPtr(obj.Activated) {
