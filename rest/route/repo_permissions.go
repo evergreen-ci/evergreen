@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -22,6 +23,12 @@ const manaRepoRolePrefix = "mana_repo_"
 func isRepoPermissionRole(role gimlet.Role) bool {
 	return model.IsRepoPermissionScope(role.Scope) &&
 		strings.HasPrefix(role.ID, manaRepoRolePrefix)
+}
+
+// isNativeRepoAdminRole identifies the admin role maintained by a repo's admin
+// list, which shares its ID with the repo admin scope.
+func isNativeRepoAdminRole(role gimlet.Role) bool {
+	return role.ID == role.Scope && role.ID == model.GetRepoAdminRole(strings.TrimPrefix(role.ID, "admin_repo_"))
 }
 
 func validateRepoPermissions(scope model.RepoPermissionScope, permissions gimlet.Permissions) error {
@@ -90,4 +97,88 @@ func makeRepoPermissionRole(ctx context.Context, rm gimlet.RoleManager, request 
 		return nil, errors.Wrap(err, "creating repo permission role")
 	}
 	return role, nil
+}
+
+// RepoUserPermissions reports grants by scope instead of flattening branch and
+// repo permissions into a single effective permission map.
+type RepoUserPermissions map[string]map[model.RepoPermissionScope]gimlet.Permissions
+
+//lint:ignore U1000 Swagger-only type, included because this API route returns an external type
+type swaggerRepoUserPermissions map[string]swaggerPermissions
+
+//lint:ignore U1000 Swagger-only type, included because this API route returns an external type
+type swaggerRepoUsersPermissionsResult map[string]swaggerRepoUserPermissions
+
+////////////////////////////////////////////////////////////////////////
+//
+// GET /rest/v2/repos/{repo_id}/permissions/users
+
+type repoUsersPermissionsGetHandler struct {
+	rm     gimlet.RoleManager
+	repoID string
+}
+
+func makeGetRepoUsersPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
+	return &repoUsersPermissionsGetHandler{rm: rm}
+}
+
+// Factory creates an instance of the handler.
+//
+//	@Summary		Get all user permissions for repo
+//	@Description	Retrieves all users with repo grants or native repo admin access, and returns their highest permissions for each repo capability (repo_only, unrestricted_branches, repo_and_projects). Native repo admins are reported under repo_and_projects.
+//	@Tags			repos
+//	@Router			/repos/{repo_id}/permissions/users [get]
+//	@Security		Api-User || Api-Key
+//	@Param			repo_id	path		string	true	"the repo ID"
+//	@Success		200		{object}	swaggerRepoUsersPermissionsResult
+func (h *repoUsersPermissionsGetHandler) Factory() gimlet.RouteHandler {
+	return &repoUsersPermissionsGetHandler{rm: h.rm}
+}
+
+func (h *repoUsersPermissionsGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.repoID = gimlet.GetVars(r)["repo_id"]
+	return nil
+}
+
+func (h *repoUsersPermissionsGetHandler) Run(ctx context.Context) gimlet.Responder {
+	repo, err := model.FindOneRepoRef(ctx, h.repoID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding repo '%s'", h.repoID))
+	}
+	if repo == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{StatusCode: http.StatusNotFound, Message: fmt.Sprintf("repo '%s' not found", h.repoID)})
+	}
+	roles, err := h.rm.GetAllRoles(ctx)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting repo roles"))
+	}
+	scopeKinds := map[string]model.RepoPermissionScope{}
+	for kind, id := range model.RepoPermissionScopes(repo.Id) {
+		scopeKinds[id] = kind
+	}
+	roleIDs := []string{}
+	selected := map[string]gimlet.Role{}
+	for _, role := range roles {
+		// Native repo admins are listed like project admins are for projects, even
+		// though they can only be removed through the repo's admin list.
+		if _, ok := scopeKinds[role.Scope]; ok && (isRepoPermissionRole(role) || isNativeRepoAdminRole(role)) {
+			roleIDs = append(roleIDs, role.ID)
+			selected[role.ID] = role
+		}
+	}
+	users, err := user.FindHumanUsersByRoles(ctx, roleIDs)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding repo users"))
+	}
+	result := RepoUserPermissions{}
+	for _, u := range users {
+		result[u.Id] = map[model.RepoPermissionScope]gimlet.Permissions{}
+		for _, roleID := range u.SystemRoles {
+			if role, ok := selected[roleID]; ok {
+				kind := scopeKinds[role.Scope]
+				result[u.Id][kind] = getMaxPermissions(result[u.Id][kind], role.Permissions)
+			}
+		}
+	}
+	return gimlet.NewJSONResponse(result)
 }
