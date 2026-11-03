@@ -116,6 +116,8 @@ func SetVersionActivation(ctx context.Context, versionId string, active bool, ca
 	for buildId := range buildIdsMap {
 		buildIds = append(buildIds, buildId)
 	}
+	// Build activation isn't kept in sync with task activation here. A build
+	// that's deactivated can still have running tasks that stay activated.
 	if err := build.UpdateActivation(ctx, buildIds, active, caller); err != nil {
 		return errors.Wrapf(err, "setting build activations to %t", active)
 	}
@@ -220,6 +222,8 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 // AbortBuild marks the build as deactivated and sets the abort flag on all tasks associated
 // with the build which are in an abortable state.
 func AbortBuild(ctx context.Context, buildId string, caller string) error {
+	// The build is deactivated while its aborted tasks are still running and
+	// activated, so build and task activation can differ until they finish.
 	if err := build.UpdateActivation(ctx, []string{buildId}, false, caller); err != nil {
 		return errors.Wrapf(err, "deactivating build '%s'", buildId)
 	}
