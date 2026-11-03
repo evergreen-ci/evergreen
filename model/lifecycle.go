@@ -1242,6 +1242,7 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 		BuildId:                    creationInfo.Build.Id,
 		BuildVariant:               creationInfo.BuildVariant.Name,
 		BuildVariantDisplayName:    creationInfo.BuildVariant.DisplayName,
+		BuildVariantTags:           creationInfo.Build.Tags,
 		CreateTime:                 creationInfo.TaskCreateTime,
 		IngestTime:                 time.Now(),
 		ScheduledTime:              utility.ZeroTime,
@@ -1405,6 +1406,7 @@ func createDisplayTask(id string, creationInfo TaskCreationInfo, displayName str
 		DisplayName:             displayName,
 		BuildVariant:            creationInfo.BuildVariant.Name,
 		BuildVariantDisplayName: creationInfo.BuildVariant.DisplayName,
+		BuildVariantTags:        creationInfo.Build.Tags,
 		BuildId:                 creationInfo.Build.Id,
 		CreateTime:              createTime,
 		RevisionOrderNumber:     creationInfo.Version.RevisionOrderNumber,
@@ -1754,6 +1756,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			VersionBuildStatus{
 				BuildVariant:   pair.Variant,
 				DisplayName:    build.DisplayName,
+				Tags:           build.Tags,
 				BuildId:        build.Id,
 				BatchTimeTasks: batchTimeTaskStatuses,
 				ActivationStatus: ActivationStatus{
