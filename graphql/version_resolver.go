@@ -46,8 +46,7 @@ func (r *versionResolver) BasedOnVersion(ctx context.Context, obj *model.Version
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version for revision '%s' of project '%s': %s", obj.Revision, obj.Identifier, err.Error()))
 	}
-	// The version must be defined only for task or build triggers. It's possible for push triggers to not have a corresponding version.
-	if basedOnVersion == nil && (obj.TriggerType == model.ProjectTriggerLevelTask || obj.TriggerType == model.ProjectTriggerLevelBuild) {
+	if basedOnVersion == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version for revision '%s' of project '%s' not found", obj.Revision, obj.Identifier))
 	}
 	if basedOnVersion != nil {
