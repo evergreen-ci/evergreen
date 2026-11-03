@@ -45,6 +45,14 @@ After making changes, run `make lint-<package>` for each affected package and ve
 
 Adding a `ServiceFlags` field requires running `make test-service-graphql`.
 
+CI also runs three "linter"-tagged checks that `make lint-<package>` does not cover. Run them before pushing:
+
+```bash
+make modernize                        # check-modernize-*: gopls modernizers, e.g. strings.Split in a range → strings.SplitSeq
+make swaggo-install swaggo-format     # verify-swaggo-fmt: realigns swagger comment tabs (or check only: bash scripts/verify-swaggo-fmt.sh)
+make test-rest-openapi                # response fields in rest/model that are pointers/slices/maps without omitempty need extensions:"x-nullable" or "!x-nullable"
+```
+
 ### CLI Changes
 
 Whenever modifying the `operations/` package (CLI commands), increment `ClientVersion` in `config.go`.
