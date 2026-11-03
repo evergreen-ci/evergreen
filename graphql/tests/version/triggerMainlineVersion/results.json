@@ -6,7 +6,7 @@
         "data": {
           "version": {
             "id": "spruce_a1b2c3d4e5f60718293a4b5c6d7e8f9012345678_task_trigger",
-            "basedOnVersion": {
+            "triggerMainlineVersion": {
               "id": "spruce_a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
               "author": "John Smith",
               "message": "EVG-13229: Project Patches Page (#555)"
@@ -21,18 +21,9 @@
         "data": {
           "version": {
             "id": "spruce_c3d4e5f60718293a4b5c6d7e8f9012345678a1b2_build_trigger",
-            "basedOnVersion": null
+            "triggerMainlineVersion": null
           }
-        },
-        "errors": [
-          {
-            "message": "gitter version with revision 'c3d4e5f60718293a4b5c6d7e8f9012345678a1b2' on project 'spruce' not found",
-            "path": ["version", "basedOnVersion"],
-            "extensions": {
-              "code": "RESOURCE_NOT_FOUND"
-            }
-          }
-        ]
+        }
       }
     },
     {
@@ -41,7 +32,7 @@
         "data": {
           "version": {
             "id": "spruce_a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
-            "basedOnVersion": null
+            "triggerMainlineVersion": null
           }
         }
       }

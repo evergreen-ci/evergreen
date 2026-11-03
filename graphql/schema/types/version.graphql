@@ -55,10 +55,6 @@ type Version {
   author: String!
   authorEmail: String!
   baseVersion: Version
-  """
-  The repotracker version for the commit this version is based on (matched by project and revision). Only set for trigger versions.
-  """
-  basedOnVersion: Version
   branch: String!
   buildVariants(options: BuildVariantOptions!): [GroupedBuildVariant!]
   buildVariantStats(options: BuildVariantOptions!): [GroupedTaskStatusCount!]
@@ -99,6 +95,10 @@ type Version {
   tasks(options: TaskFilterOptions!): VersionTasks!
   taskStatuses: [String!]!
   taskStatusStats: TaskStats
+  """
+  The mainline (repotracker) version for the same commit as this trigger version. Only set for trigger versions.
+  """
+  triggerMainlineVersion: Version
   triggerModule: TriggerModule
   upstreamProject: UpstreamProject
   user: User!

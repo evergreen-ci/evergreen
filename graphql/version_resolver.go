@@ -37,26 +37,6 @@ func (r *versionResolver) BaseVersion(ctx context.Context, obj *model.Version) (
 	return baseVersion, nil
 }
 
-// BasedOnVersion is the resolver for the basedOnVersion field.
-func (r *versionResolver) BasedOnVersion(ctx context.Context, obj *model.Version) (*model.Version, error) {
-	if obj.Requester != evergreen.TriggerRequester {
-		return nil, nil
-	}
-	basedOnVersion, err := model.VersionFindOne(ctx, model.BaseVersionByProjectIdAndRevision(obj.Identifier, obj.Revision))
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching gitter version with revision '%s' on project '%s': %s", obj.Revision, obj.Identifier, err.Error()))
-	}
-	if basedOnVersion == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("gitter version with revision '%s' on project '%s' not found", obj.Revision, obj.Identifier))
-	}
-	if basedOnVersion != nil {
-		if err := checkProjectAccess(ctx, basedOnVersion.Identifier, ProjectPermissionTasks, AccessLevelView); err != nil {
-			return nil, err
-		}
-	}
-	return basedOnVersion, nil
-}
-
 // BuildVariants is the resolver for the buildVariants field.
 func (r *versionResolver) BuildVariants(ctx context.Context, obj *model.Version, options BuildVariantOptions) ([]*GroupedBuildVariant, error) {
 	if evergreen.IsPatchRequester(obj.Requester) && !utility.FromBoolPtr(obj.Activated) {
@@ -556,6 +536,24 @@ func (r *versionResolver) TaskStatuses(ctx context.Context, obj *model.Version) 
 func (r *versionResolver) TaskStatusStats(ctx context.Context, obj *model.Version) (*task.TaskStats, error) {
 	includeNeverActivated := !evergreen.IsPatchRequester(obj.Requester)
 	return task.GetTaskStatsByVersion(ctx, obj.Id, includeNeverActivated)
+}
+
+// TriggerMainlineVersion is the resolver for the triggerMainlineVersion field.
+func (r *versionResolver) TriggerMainlineVersion(ctx context.Context, obj *model.Version) (*model.Version, error) {
+	if obj.Requester != evergreen.TriggerRequester {
+		return nil, nil
+	}
+	mainlineVersion, err := model.VersionFindOne(ctx, model.BaseVersionByProjectIdAndRevision(obj.Identifier, obj.Revision))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching gitter version with revision '%s' on project '%s': %s", obj.Revision, obj.Identifier, err.Error()))
+	}
+	if mainlineVersion == nil {
+		return nil, nil
+	}
+	if err := checkProjectAccess(ctx, mainlineVersion.Identifier, ProjectPermissionTasks, AccessLevelView); err != nil {
+		return nil, err
+	}
+	return mainlineVersion, nil
 }
 
 // TriggerModule is the resolver for the triggerModule field.

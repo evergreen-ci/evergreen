@@ -1,7 +1,7 @@
 query {
   version(versionId: "spruce_c3d4e5f60718293a4b5c6d7e8f9012345678a1b2_build_trigger") {
     id
-    basedOnVersion {
+    triggerMainlineVersion {
       id
     }
   }
