@@ -92983,7 +92983,7 @@ func (ec *executionContext) unmarshalInputWaterfallOptions(ctx context.Context, 
 		asMap["limit"] = 5
 	}
 
-	fieldsInOrder := [...]string{"date", "includeAllBuildsAndTasks", "limit", "minOrder", "maxOrder", "omitInactiveBuilds", "projectIdentifier", "requesters", "revision", "statuses", "tasks", "taskCaseSensitive", "variants", "variantCaseSensitive"}
+	fieldsInOrder := [...]string{"date", "includeAllBuildsAndTasks", "limit", "minOrder", "maxOrder", "omitInactiveBuilds", "projectIdentifier", "requesters", "revision", "statuses", "tasks", "taskTags", "taskCaseSensitive", "variants", "variantTags", "variantCaseSensitive"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -93092,6 +93092,13 @@ func (ec *executionContext) unmarshalInputWaterfallOptions(ctx context.Context, 
 				return it, err
 			}
 			it.Tasks = data
+		case "taskTags":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskTags"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TaskTags = data
 		case "taskCaseSensitive":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskCaseSensitive"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -93106,6 +93113,13 @@ func (ec *executionContext) unmarshalInputWaterfallOptions(ctx context.Context, 
 				return it, err
 			}
 			it.Variants = data
+		case "variantTags":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("variantTags"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.VariantTags = data
 		case "variantCaseSensitive":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("variantCaseSensitive"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
