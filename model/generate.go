@@ -341,7 +341,8 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 		return GenerateTasksCounts{}, errors.Wrap(err, "creating task ID table for new variant-tasks to create")
 	}
 	tasksToBeGenerated := allTasksToBeCreatedIncludingDeps.Length()
-	if err = validateGeneratedProjectMaxTasks(ctx, v, g.Task.Id, tasksToBeGenerated); err != nil {
+	numTasksTowardVersionLimit := tasksToBeGenerated - countInactiveVirtualTasks(p, allTasksToBeCreatedIncludingDeps, activationInfo)
+	if err = validateGeneratedProjectMaxTasks(ctx, v, g.Task.Id, numTasksTowardVersionLimit); err != nil {
 		return GenerateTasksCounts{}, errors.Wrapf(err, "validating the number of tasks to be added by '%s'", g.Task.Id)
 	}
 	span.SetAttributes(attribute.Int(NumGeneratedTasksOtelAttribute, tasksToBeGenerated))
@@ -445,10 +446,29 @@ func getBuildVariantsFromPairs(pairs TaskVariantPairs) []string {
 	return uniqueBVs
 }
 
+// countInactiveVirtualTasks returns the number of virtual tasks to be created
+// that won't be activated to run on a host.
+func countInactiveVirtualTasks(p *Project, taskIDs TaskIdConfig, activationInfo *specificActivationInfo) int {
+	numInactive := 0
+	for pair := range taskIDs.ExecutionTasks {
+		pt := p.FindProjectTask(pair.TaskName)
+		if pt != nil && pt.Virtual && !activationInfo.getStepbackTask(pair.Variant, pair.TaskName).shouldActivate() {
+			numInactive++
+		}
+	}
+	return numInactive
+}
+
+// validateGeneratedProjectMaxTasks checks that the version will not exceed the
+// maximum number of tasks per version after generating tasks.
 func validateGeneratedProjectMaxTasks(ctx context.Context, v *Version, taskID string, tasksToBeCreated int) error {
 	numExistingTasks, err := task.Count(ctx, db.Query(bson.M{
 		task.VersionKey:     v.Id,
 		task.GeneratedByKey: bson.M{"$ne": taskID},
+		"$or": []bson.M{
+			{task.IsVirtualKey: bson.M{"$ne": true}},
+			{task.ActivatedKey: true, task.CompletedByKey: bson.M{"$exists": false}},
+		},
 	}))
 	if err != nil {
 		return errors.Wrapf(err, "counting tasks for version '%s'", v.Id)

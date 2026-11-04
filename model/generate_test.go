@@ -3018,3 +3018,55 @@ func TestTaskGroupActivation(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateGeneratedProjectMaxTasksIgnoresVirtualTasks(t *testing.T) {
+	require.NoError(t, db.ClearCollections(task.Collection))
+	originalConfig, err := evergreen.GetConfig(t.Context())
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		assert.NoError(t, evergreen.UpdateConfig(context.Background(), originalConfig))
+	})
+	require.NoError(t, evergreen.UpdateConfig(t.Context(), &evergreen.Settings{
+		TaskLimits: evergreen.TaskLimitsConfig{MaxTasksPerVersion: 3},
+	}))
+
+	v := &Version{Id: "v1"}
+	existingTasks := []task.Task{
+		{Id: "regular", Version: v.Id},
+		{Id: "inactive_virtual", Version: v.Id, IsVirtual: true},
+		{Id: "push_completed_virtual", Version: v.Id, IsVirtual: true, Activated: true, CompletedBy: "runner", Status: evergreen.TaskSucceeded},
+		{Id: "activated_virtual", Version: v.Id, IsVirtual: true, Activated: true},
+		{Id: "previously_generated", Version: v.Id, GeneratedBy: "generator"},
+	}
+	for _, tsk := range existingTasks {
+		require.NoError(t, tsk.Insert(t.Context()))
+	}
+
+	assert.NoError(t, validateGeneratedProjectMaxTasks(t.Context(), v, "generator", 1), "only the regular and activated virtual tasks should count toward the limit")
+	assert.Error(t, validateGeneratedProjectMaxTasks(t.Context(), v, "generator", 2))
+}
+
+func TestCountInactiveVirtualTasks(t *testing.T) {
+	p := &Project{
+		Tasks: []ProjectTask{
+			{Name: "regular"},
+			{Name: "virtual", Virtual: true},
+			{Name: "virtual_stepback", Virtual: true},
+		},
+	}
+	taskIDs := TaskIdConfig{
+		ExecutionTasks: TaskIdTable{
+			{Variant: "bv1", TaskName: "regular"}:          "regular_bv1",
+			{Variant: "bv1", TaskName: "virtual"}:          "virtual_bv1",
+			{Variant: "bv2", TaskName: "virtual"}:          "virtual_bv2",
+			{Variant: "bv1", TaskName: "virtual_stepback"}: "virtual_stepback_bv1",
+		},
+		DisplayTasks: TaskIdTable{
+			{Variant: "bv1", TaskName: "display"}: "display_bv1",
+		},
+	}
+	activationInfo := newSpecificActivationInfo()
+	activationInfo.stepbackTasks["bv1"] = []specificStepbackInfo{{task: "virtual_stepback", activate: true}}
+
+	assert.Equal(t, 2, countInactiveVirtualTasks(p, taskIDs, &activationInfo), "virtual tasks activated by stepback should count toward the limit")
+}
