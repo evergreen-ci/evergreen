@@ -798,9 +798,11 @@ type WaterfallOptions struct {
 	Revision           *string  `json:"revision,omitempty"`
 	Statuses           []string `json:"statuses,omitempty"`
 	Tasks              []string `json:"tasks,omitempty"`
+	TaskTags           []string `json:"taskTags,omitempty"`
 	// Toggle case sensitivity when matching on task names. Note that if false, performance will be slower.
 	TaskCaseSensitive *bool    `json:"taskCaseSensitive,omitempty"`
 	Variants          []string `json:"variants,omitempty"`
+	VariantTags       []string `json:"variantTags,omitempty"`
 	// Toggle case sensitivity when matching on variant names. Note that if false, performance will be slower.
 	VariantCaseSensitive *bool `json:"variantCaseSensitive,omitempty"`
 }
