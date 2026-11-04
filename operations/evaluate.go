@@ -84,9 +84,13 @@ func Evaluate() cli.Command {
 				LocalIncludeDir:             cwd,
 				CrossFileYAMLAnchorsEnabled: anchorsEnabled,
 			}
-			_, err = model.LoadProjectInto(ctx, configBytes, opts, "", p)
+			_, warnings, err := model.LoadProjectIntoWithWarnings(ctx, configBytes, opts, "", p)
 			if err != nil {
 				return errors.Wrap(err, "loading project")
+			}
+			// Warnings go to stderr because stdout is machine-read YAML output.
+			for _, warning := range warnings {
+				fmt.Fprintf(os.Stderr, "warning: %s\n", warning)
 			}
 			if diffable {
 				sortTasksByName := model.ProjectTasksByName(p.Tasks)

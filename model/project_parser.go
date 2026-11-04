@@ -927,6 +927,15 @@ type yamlTuple struct {
 // If reading from a version config, LoadProjectInfoForVersion should be used to persist the resulting parser project.
 // opts is used to look up files on github if the main parser project has an Include.
 func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, projectID string, project *Project) (*ParserProject, error) {
+	pp, _, err := LoadProjectIntoWithWarnings(ctx, data, opts, projectID, project)
+	return pp, err
+}
+
+// LoadProjectIntoWithWarnings is like LoadProjectInto but also returns
+// user-facing warnings encountered while parsing, such as the reason
+// cross-file YAML anchor parsing failed and the file fell back to being parsed
+// without anchors.
+func LoadProjectIntoWithWarnings(ctx context.Context, data []byte, opts *GetProjectOpts, projectID string, project *Project) (*ParserProject, []string, error) {
 	attrs := []attribute.KeyValue{
 		attribute.String(evergreen.ProjectIDOtelAttribute, projectID),
 	}
@@ -950,18 +959,23 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	}
 	intermediateProject, decodeErr, err := createIntermediateProject(data, unmarshalStrict, registry)
 	if err != nil {
-		return nil, errors.Wrapf(err, LoadProjectError)
+		return nil, nil, errors.Wrapf(err, LoadProjectError)
 	}
-	logDecodeErrorWithOpts(ctx, projectID, "", "LoadProjectInto", decodeErr, opts)
+	var warnings []string
+	if warning := logDecodeErrorWithOpts(ctx, projectID, "", "LoadProjectInto", decodeErr, opts); warning != "" {
+		warnings = append(warnings, warning)
+	}
 
 	if !slices.Contains(priorityBypassProjects, projectID) {
 		capParserPriorities(intermediateProject)
 	}
 
 	if len(intermediateProject.Include) > 0 {
-		if err := mergeIncludes(ctx, projectID, intermediateProject, registry, opts); err != nil {
-			return nil, errors.Wrap(err, "merging included files")
+		includeWarnings, err := mergeIncludes(ctx, projectID, intermediateProject, registry, opts)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "merging included files")
 		}
+		warnings = append(warnings, includeWarnings...)
 	}
 
 	// Return project even with errors.
@@ -982,15 +996,26 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	// they have been processed.
 	intermediateProject.Include = nil
 
-	return intermediateProject, errors.Wrapf(err, LoadProjectError)
+	return intermediateProject, warnings, errors.Wrapf(err, LoadProjectError)
 }
 
-func logDecodeErrorWithOpts(ctx context.Context, projectID, filename, caller string, decodeErr error, opts *GetProjectOpts) {
+// crossFileAnchorFallbackWarning returns the user-facing warning emitted when
+// parsing a file with cross-file YAML anchors fails and the file is parsed
+// without anchors instead.
+func crossFileAnchorFallbackWarning(decodeErr error) string {
+	return fmt.Sprintf("parsing with cross-file YAML anchors failed, so YAML aliases defined in other files will not resolve in this file: %v", decodeErr)
+}
+
+// logDecodeErrorWithOpts logs the failure of the anchor-based parse (which fell
+// back to parsing the file without anchors) at warning level so users can see
+// why cross-file aliases were not applied. It returns that user-facing warning
+// message, or "" when the anchor-based parse did not fail.
+func logDecodeErrorWithOpts(ctx context.Context, projectID, filename, caller string, decodeErr error, opts *GetProjectOpts) string {
 	if decodeErr == nil {
-		return
+		return ""
 	}
 	logFields := message.Fields{
-		"message":        "anchor preamble parsing failed",
+		"message":        "cross-file YAML anchor parsing failed, falling back to parsing without anchors",
 		"ticket":         "DEVPROD-19220",
 		"project_id":     projectID,
 		"read_file_from": ReadFromGithub, // this is the default if unspecified
@@ -1006,7 +1031,8 @@ func logDecodeErrorWithOpts(ctx context.Context, projectID, filename, caller str
 	if filename != "" {
 		logFields["filename"] = filename
 	}
-	grip.Debug(ctx, message.WrapError(decodeErr, logFields))
+	grip.Warning(ctx, message.WrapError(decodeErr, logFields))
+	return crossFileAnchorFallbackWarning(decodeErr)
 }
 
 // loadTranslateProject translates the post-merge intermediate project, optionally serving the
@@ -1015,14 +1041,15 @@ func loadTranslateProject(ctx context.Context, span trace.Span, intermediateProj
 	return translateAndCache(ctx, span, intermediateProject, projectID, fileTranslationKey(projectID, revision, modulesKey), cacheEnabled)
 }
 
-// mergeIncludes merges all included files into intermediateProject.
-func mergeIncludes(ctx context.Context, projectID string, intermediateProject *ParserProject, anchorRegistry *anchorRegistry, opts *GetProjectOpts) error {
+// mergeIncludes merges all included files into intermediateProject. It also
+// returns user-facing warnings encountered while parsing the included files.
+func mergeIncludes(ctx context.Context, projectID string, intermediateProject *ParserProject, anchorRegistry *anchorRegistry, opts *GetProjectOpts) ([]string, error) {
 	ctx, span := tracer.Start(ctx, "mergeIncludes")
 	defer span.End()
 
 	if opts == nil {
 		err := errors.New("trying to open include files with empty options")
-		return errors.Wrapf(err, LoadProjectError)
+		return nil, errors.Wrapf(err, LoadProjectError)
 	}
 
 	// Be polite. Don't make more than 10 concurrent requests to GitHub.
@@ -1094,7 +1121,7 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 	for elem := range outputYAMLs {
 		catcher.Add(elem.err)
 		if thirdparty.IsFileNotFound(errors.Cause(elem.err)) {
-			return errors.Wrap(elem.err, "getting includes")
+			return nil, errors.Wrap(elem.err, "getting includes")
 		}
 		if elem.yaml != nil {
 			yamlMap[elem.name] = elem.yaml
@@ -1102,31 +1129,34 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 	}
 
 	if catcher.HasErrors() {
-		return errors.Wrap(catcher.Resolve(), "getting includes")
+		return nil, errors.Wrap(catcher.Resolve(), "getting includes")
 	}
 
+	var warnings []string
 	// We promise to iterate over includes in the order they are defined.
 	for _, path := range intermediateProject.Include {
 		if _, ok := yamlMap[path.FileName]; !ok {
-			return errors.WithStack(errors.Errorf("yaml was nil in map for %s, but it never should be", path.FileName))
+			return nil, errors.WithStack(errors.Errorf("yaml was nil in map for %s, but it never should be", path.FileName))
 		}
 
 		add, decodeErr, err := createIntermediateProject(yamlMap[path.FileName], opts.UnmarshalStrict, anchorRegistry)
 		if err != nil {
 			// Return intermediateProject even if we run into issues to show merge progress.
-			return errors.Wrapf(err, "%s: loading file '%s'", LoadProjectError, path.FileName)
+			return nil, errors.Wrapf(err, "%s: loading file '%s'", LoadProjectError, path.FileName)
 		}
-		logDecodeErrorWithOpts(ctx, projectID, path.FileName, "mergeIncludes", decodeErr, opts)
+		if warning := logDecodeErrorWithOpts(ctx, projectID, path.FileName, "mergeIncludes", decodeErr, opts); warning != "" {
+			warnings = append(warnings, warning)
+		}
 
 		if err = intermediateProject.mergeMultipleParserProjects(add); err != nil {
 			// Return intermediateProject even if we run into issues to show merge progress.
-			return errors.Wrapf(err, "%s: merging file '%s'", LoadProjectError, path.FileName)
+			return nil, errors.Wrapf(err, "%s: merging file '%s'", LoadProjectError, path.FileName)
 		}
 
 		intermediateProject.mergeProjectConfigFields(add)
 	}
 
-	return nil
+	return warnings, nil
 }
 
 // gitIncludeDirs contains information about git clone and worktree directories
@@ -1785,7 +1815,15 @@ func decodeWithAnchors(parseBytes []byte, unmarshalStrict bool, anchorRegistry *
 		return &ParserProject{}, nil
 	}
 
-	stripEvgAnchorsKey(&node)
+	// A top-level _evg_anchors key in a file parsed without a prepended
+	// preamble can only be user content, since Evergreen did not put it there.
+	// It is still removed, but warn that the user-defined key is being ignored.
+	if stripEvgAnchorsKey(&node) && anchorRegistry.Length() == 0 {
+		grip.Warning(context.Background(), message.Fields{
+			"message": fmt.Sprintf("ignoring reserved top-level YAML key '%s'; this key is reserved for Evergreen's internal use when applying cross-file YAML anchors", evgAnchorsKey),
+			"ticket":  "DEVPROD-19220",
+		})
+	}
 
 	var p ParserProject
 	if unmarshalStrict {

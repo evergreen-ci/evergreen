@@ -3,6 +3,7 @@ package operations
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -163,7 +164,7 @@ func loadProjectYAML(conf *ClientSettings, path string, quiet, errorOnWarnings b
 	if !quiet {
 		opts.UnmarshalStrict = true
 	}
-	pp, pc, validationErrs := loadProjectIntoWithValidation(ctx, confFile, opts, errorOnWarnings, project, projectID)
+	pp, pc, validationErrs := loadProjectIntoWithValidation(ctx, confFile, opts, quiet, errorOnWarnings, project, projectID)
 	grip.Info(ctx, validationErrs)
 	if validationErrs.Has(validator.Error) {
 		return nil, errors.Errorf("%s is an invalid configuration", path)
@@ -212,17 +213,30 @@ func validateProjectRemotely(conf *ClientSettings, projectYaml []byte, path stri
 	return nil
 }
 
+// printParseWarnings writes config parsing warnings to stderr, unless quiet is
+// set. Warnings must not go to stdout, which callers may read as machine output.
+func printParseWarnings(quiet bool, warnings []string) {
+	if quiet {
+		return
+	}
+	for _, warning := range warnings {
+		fmt.Fprintf(os.Stderr, "warning: %s\n", warning)
+	}
+}
+
 // loadProjectIntoWithValidation returns a warning (instead of an error) if there's an error with unmarshalling strictly
-func loadProjectIntoWithValidation(ctx context.Context, data []byte, opts *model.GetProjectOpts, errorOnWarnings bool,
+func loadProjectIntoWithValidation(ctx context.Context, data []byte, opts *model.GetProjectOpts, quiet, errorOnWarnings bool,
 	project *model.Project, projectID string) (*model.ParserProject, *model.ProjectConfig, validator.ValidationErrors) {
 	errs := validator.ValidationErrors{}
-	pp, err := model.LoadProjectInto(ctx, data, opts, projectID, project)
+	pp, warnings, err := model.LoadProjectIntoWithWarnings(ctx, data, opts, projectID, project)
+	printParseWarnings(quiet, warnings)
 	if err != nil {
 		// If the error came from unmarshalling strict, try it again without strict to verify if
 		// it's a legitimate unmarshal error or just an error from strict (which should be a warning)
 		if !errorOnWarnings && strings.Contains(err.Error(), util.UnmarshalStrictError) {
 			opts.UnmarshalStrict = false
-			pp, err2 := model.LoadProjectInto(ctx, data, opts, projectID, project)
+			pp, warnings, err2 := model.LoadProjectIntoWithWarnings(ctx, data, opts, projectID, project)
+			printParseWarnings(quiet, warnings)
 			if err2 == nil {
 				errs = append(errs, validator.ValidationError{
 					Level:   validator.Warning,
