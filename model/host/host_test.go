@@ -429,6 +429,35 @@ func TestDecommissionHost(t *testing.T) {
 	assert.Equal(t, "counting to three", h.DecommissionReason)
 }
 
+func TestDecommissionParentHostRecordsReasonOnContainers(t *testing.T) {
+	ctx := t.Context()
+
+	require.NoError(t, db.ClearCollections(Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	})
+	parent := Host{
+		Id:            "parent",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	require.NoError(t, parent.Insert(ctx))
+	container := Host{
+		Id:       "container",
+		Status:   evergreen.HostRunning,
+		ParentID: parent.Id,
+	}
+	require.NoError(t, container.Insert(ctx))
+
+	require.NoError(t, parent.SetDecommissioned(ctx, "user", true, "host decommissioned due to overallocation"))
+
+	dbContainer, err := FindOneId(ctx, container.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbContainer)
+	assert.Equal(t, evergreen.HostDecommissioned, dbContainer.Status)
+	assert.Equal(t, "parent is being decommissioned (host decommissioned due to overallocation)", dbContainer.DecommissionReason)
+}
+
 func TestSetStopped(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.Clear(Collection))
@@ -1258,7 +1287,7 @@ func TestDecommissionHostsWithDistroId(t *testing.T) {
 		}
 
 		Convey("When decommissioning hosts of type distro_a", func() {
-			err := DecommissionHostsWithDistroId(ctx, distroA)
+			err := DecommissionHostsWithDistroId(ctx, distroA, "decommissioned from the distro page")
 			So(err, ShouldBeNil)
 
 			Convey("Distro should be marked as decommissioned accordingly", func() {
@@ -1270,10 +1299,12 @@ func TestDecommissionHostsWithDistroId(t *testing.T) {
 				for _, host := range hostsTypeA {
 
 					So(host.Status, ShouldEqual, evergreen.HostDecommissioned)
+					So(host.DecommissionReason, ShouldEqual, "decommissioned from the distro page")
 				}
 
 				for _, host := range hostsTypeB {
 					So(host.Status, ShouldEqual, evergreen.HostRunning)
+					So(host.DecommissionReason, ShouldBeEmpty)
 
 				}
 			})

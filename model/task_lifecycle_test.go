@@ -4660,7 +4660,7 @@ func TestResetStaleTask(t *testing.T) {
 		"SuccessfullyRestartsStaleTask": func(t *testing.T, tsk task.Task) {
 			require.NoError(t, tsk.Insert(t.Context()))
 
-			require.NoError(t, FixStaleTask(ctx, settings, &tsk))
+			require.NoError(t, FixStaleTask(ctx, settings, &tsk, nil))
 
 			dbArchivedTask, err := task.FindOneOldByIdAndExecution(ctx, tsk.Id, 0)
 			require.NoError(t, err)
@@ -4696,7 +4696,7 @@ func TestResetStaleTask(t *testing.T) {
 		"SuccessfullySystemFailsAbortedTask": func(t *testing.T, tsk task.Task) {
 			tsk.Aborted = true
 			require.NoError(t, tsk.Insert(t.Context()))
-			require.NoError(t, FixStaleTask(ctx, settings, &tsk))
+			require.NoError(t, FixStaleTask(ctx, settings, &tsk, nil))
 
 			dbArchivedTask, err := task.FindOneOldByIdAndExecution(ctx, tsk.Id, 0)
 			require.NoError(t, err)
@@ -4734,7 +4734,7 @@ func TestResetStaleTask(t *testing.T) {
 			tsk.DisplayTaskId = utility.ToStringPtr(dt.Id)
 			require.NoError(t, tsk.Insert(t.Context()))
 
-			require.NoError(t, FixStaleTask(ctx, settings, &tsk))
+			require.NoError(t, FixStaleTask(ctx, settings, &tsk, nil))
 
 			dbDisplayTask, err := task.FindOneId(ctx, dt.Id)
 			require.NoError(t, err)
@@ -4764,7 +4764,7 @@ func TestResetStaleTask(t *testing.T) {
 			tsk.ActivatedTime = time.Now().Add(-10 * task.UnschedulableThreshold)
 			require.NoError(t, tsk.Insert(t.Context()))
 
-			require.NoError(t, FixStaleTask(ctx, settings, &tsk))
+			require.NoError(t, FixStaleTask(ctx, settings, &tsk, nil))
 
 			dbTask, err := task.FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
@@ -4780,7 +4780,7 @@ func TestResetStaleTask(t *testing.T) {
 			tsk.Execution = execNum
 			require.NoError(t, tsk.Insert(t.Context()))
 
-			require.NoError(t, FixStaleTask(ctx, settings, &tsk))
+			require.NoError(t, FixStaleTask(ctx, settings, &tsk, nil))
 
 			dbTask, err := task.FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
@@ -7189,11 +7189,26 @@ func TestCheckResetDisplayTaskConcurrentReset(t *testing.T) {
 }
 
 func TestStaleTaskReason(t *testing.T) {
+	lastHeartbeat := time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC)
 	t.Run("ZeroLastHeartbeatShouldReportNeverSentHeartbeat", func(t *testing.T) {
-		assert.Equal(t, "task never sent a heartbeat", staleTaskReason(&task.Task{}))
+		assert.Equal(t, "task never sent a heartbeat", staleTaskReason(&task.Task{}, nil))
 	})
 	t.Run("LastHeartbeatShouldBeIncluded", func(t *testing.T) {
-		tsk := &task.Task{LastHeartbeat: time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC)}
-		assert.Equal(t, "task has not sent a heartbeat since 2026-10-28T12:00:00Z", staleTaskReason(tsk))
+		tsk := &task.Task{LastHeartbeat: lastHeartbeat}
+		assert.Equal(t, "task has not sent a heartbeat since 2026-10-28T12:00:00Z", staleTaskReason(tsk, nil))
+	})
+	t.Run("HostThatNeverCommunicatedShouldBeReported", func(t *testing.T) {
+		tsk := &task.Task{LastHeartbeat: lastHeartbeat}
+		assert.Equal(t, "task has not sent a heartbeat since 2026-10-28T12:00:00Z and the host has never communicated with Evergreen", staleTaskReason(tsk, &host.Host{}))
+	})
+	t.Run("HostCommunicatingAfterHeartbeatShouldReportAgentStopped", func(t *testing.T) {
+		tsk := &task.Task{LastHeartbeat: lastHeartbeat}
+		h := &host.Host{LastCommunicationTime: lastHeartbeat.Add(10 * time.Minute)}
+		assert.Equal(t, "task has not sent a heartbeat since 2026-10-28T12:00:00Z, but the host last communicated with Evergreen at 2026-10-28T12:10:00Z, so the host is up and the agent likely stopped running the task", staleTaskReason(tsk, h))
+	})
+	t.Run("HostSilentSinceHeartbeatShouldReportHostUnreachable", func(t *testing.T) {
+		tsk := &task.Task{LastHeartbeat: lastHeartbeat}
+		h := &host.Host{LastCommunicationTime: lastHeartbeat.Add(30 * time.Second)}
+		assert.Equal(t, "task has not sent a heartbeat since 2026-10-28T12:00:00Z and the host has not communicated with Evergreen since 2026-10-28T12:00:30Z, so the host likely became unreachable", staleTaskReason(tsk, h))
 	})
 }

@@ -977,7 +977,8 @@ func handleDistroOnSaveOperation(ctx context.Context, distroID string, onSave Di
 
 	switch onSave {
 	case DistroOnSaveOperationDecommission:
-		if err = host.DecommissionHostsWithDistroId(ctx, distroID); err != nil {
+		decommissionReason := fmt.Sprintf("user '%s' decommissioned all hosts in the distro from the distro page", userID)
+		if err = host.DecommissionHostsWithDistroId(ctx, distroID, decommissionReason); err != nil {
 			return noHostsUpdated, errors.Wrap(err, fmt.Sprintf("decommissioning hosts for distro '%s'", distroID))
 		}
 		for _, h := range hosts {

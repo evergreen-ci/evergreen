@@ -211,7 +211,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				"task_execution": j.host.RunningTaskExecution,
 			})
 
-			j.AddError(model.ClearAndResetStrandedHostTask(ctx, j.env.Settings(), j.host, j.strandedTaskReason()))
+			j.AddError(model.ClearAndResetStrandedHostTask(ctx, j.env.Settings(), j.host, j.terminationReason()))
 		} else {
 			return
 		}
@@ -256,7 +256,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	// set host as decommissioned in DB so no new task will be assigned
 	prevStatus := j.host.Status
 	if prevStatus != evergreen.HostTerminated {
-		if err = j.host.SetDecommissioned(ctx, evergreen.User, j.TerminateIfBusy, "host will be terminated shortly, preventing task dispatch"); err != nil {
+		if err = j.host.SetDecommissioned(ctx, evergreen.User, j.TerminateIfBusy, j.terminationReason()); err != nil {
 			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"host_id":  j.host.Id,
 				"provider": j.host.Distro.Provider,
@@ -290,7 +290,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				"task_execution": j.host.RunningTaskExecution,
 			})
 
-			j.AddError(errors.Wrapf(model.ClearAndResetStrandedHostTask(ctx, j.env.Settings(), j.host, j.strandedTaskReason()), "fixing stranded task '%s' execution '%d'", j.host.RunningTask, j.host.RunningTaskExecution))
+			j.AddError(errors.Wrapf(model.ClearAndResetStrandedHostTask(ctx, j.env.Settings(), j.host, j.terminationReason()), "fixing stranded task '%s' execution '%d'", j.host.RunningTask, j.host.RunningTaskExecution))
 		} else {
 			return
 		}
@@ -340,9 +340,9 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	}
 }
 
-// strandedTaskReason returns the reason to record on a task that is stranded
-// because its host is being terminated.
-func (j *hostTerminationJob) strandedTaskReason() string {
+// terminationReason returns why the host is being terminated, falling back to
+// a generic reason if none was given.
+func (j *hostTerminationJob) terminationReason() string {
 	if j.TerminationReason != "" {
 		return j.TerminationReason
 	}

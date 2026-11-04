@@ -62,6 +62,7 @@ var (
 	ExpirationTimeKey                      = bsonutil.MustHaveTag(Host{}, "ExpirationTime")
 	NoExpirationKey                        = bsonutil.MustHaveTag(Host{}, "NoExpiration")
 	TerminationTimeKey                     = bsonutil.MustHaveTag(Host{}, "TerminationTime")
+	TerminationReasonKey                   = bsonutil.MustHaveTag(Host{}, "TerminationReason")
 	DecommissionReasonKey                  = bsonutil.MustHaveTag(Host{}, "DecommissionReason")
 	LTCTimeKey                             = bsonutil.MustHaveTag(Host{}, "LastTaskCompletedTime")
 	LTCTaskKey                             = bsonutil.MustHaveTag(Host{}, "LastTask")

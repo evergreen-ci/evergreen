@@ -72,6 +72,8 @@ func TestHostTerminationJob(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
+			assert.Equal(t, reason, dbHost.DecommissionReason)
+			assert.Equal(t, reason, dbHost.TerminationReason)
 
 			checkTerminationEvent(t, h.Id, reason)
 
@@ -709,15 +711,4 @@ func TestConcurrentTerminationJobsDoNotRollbackStatus(t *testing.T) {
 				"should not log rollback from terminated to decommissioned")
 		}
 	}
-}
-
-func TestStrandedTaskReason(t *testing.T) {
-	t.Run("EmptyTerminationReasonShouldUseDefault", func(t *testing.T) {
-		j := &hostTerminationJob{}
-		assert.Equal(t, "host is being terminated", j.strandedTaskReason())
-	})
-	t.Run("TerminationReasonShouldBeUsed", func(t *testing.T) {
-		j := &hostTerminationJob{HostTerminationOptions: HostTerminationOptions{TerminationReason: "host was found in state 'stopped'"}}
-		assert.Equal(t, "host was found in state 'stopped'", j.strandedTaskReason())
-	})
 }

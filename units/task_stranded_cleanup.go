@@ -83,7 +83,11 @@ func (j *taskStrandedCleanupJob) fixTasksStrandedOnTerminatedHosts(ctx context.C
 		taskIDs = append(taskIDs, h.RunningTask)
 		hostIDs = append(hostIDs, h.Id)
 
-		catcher.Wrapf(model.ClearAndResetStrandedHostTask(ctx, j.env.Settings(), &h, "host was terminated while running the task"), "fixing stranded host task '%s' execution '%d' on host '%s'", h.RunningTask, h.RunningTaskExecution, h.Id)
+		reason := "host was terminated while running the task"
+		if h.TerminationReason != "" {
+			reason = fmt.Sprintf("%s (%s)", reason, h.TerminationReason)
+		}
+		catcher.Wrapf(model.ClearAndResetStrandedHostTask(ctx, j.env.Settings(), &h, reason), "fixing stranded host task '%s' execution '%d' on host '%s'", h.RunningTask, h.RunningTaskExecution, h.Id)
 	}
 
 	grip.Info(ctx, message.Fields{

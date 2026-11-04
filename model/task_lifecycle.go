@@ -2592,11 +2592,14 @@ func ClearAndResetStrandedHostTask(ctx context.Context, settings *evergreen.Sett
 // The current task execution is marked as finished and, if the task was not
 // aborted, the task is reset. If the task was aborted, we do not reset the task
 // and it is just marked as failed alongside other necessary updates to finish the task.
-func FixStaleTask(ctx context.Context, settings *evergreen.Settings, t *task.Task) error {
+// The host is the one the task was running on, if any, and is used to explain
+// why the task stopped heartbeating.
+func FixStaleTask(ctx context.Context, settings *evergreen.Settings, t *task.Task, h *host.Host) error {
 	failureDesc := evergreen.TaskDescriptionHeartbeat
+	reason := staleTaskReason(t, h)
 	if t.Aborted {
 		failureDesc = evergreen.TaskDescriptionAborted
-		if err := finishStaleAbortedTask(ctx, settings, t); err != nil {
+		if err := finishStaleAbortedTask(ctx, settings, t, reason); err != nil {
 			if errors.Is(err, ErrTaskStateChanged) {
 				logTaskAlreadyHandled(ctx, t)
 				return nil
@@ -2605,7 +2608,7 @@ func FixStaleTask(ctx context.Context, settings *evergreen.Settings, t *task.Tas
 		}
 		saveAndTrackCrashPathS3Cost(ctx, t)
 	} else {
-		if err := endAndResetSystemFailedTask(ctx, settings, t, failureDesc, staleTaskReason(t)); err != nil {
+		if err := endAndResetSystemFailedTask(ctx, settings, t, failureDesc, reason); err != nil {
 			if errors.Is(err, ErrTaskStateChanged) {
 				logTaskAlreadyHandled(ctx, t)
 				return nil
@@ -2635,11 +2638,27 @@ func FixStaleTask(ctx context.Context, settings *evergreen.Settings, t *task.Tas
 	return nil
 }
 
-func staleTaskReason(t *task.Task) string {
-	if utility.IsZeroTime(t.LastHeartbeat) {
-		return "task never sent a heartbeat"
+// hostCommunicationSlack is how far behind the task's last heartbeat the
+// host's last communication time can lag while the host is still up, since the
+// app server only records host communication about once a minute.
+const hostCommunicationSlack = time.Minute
+
+func staleTaskReason(t *task.Task, h *host.Host) string {
+	reason := "task never sent a heartbeat"
+	if !utility.IsZeroTime(t.LastHeartbeat) {
+		reason = fmt.Sprintf("task has not sent a heartbeat since %s", t.LastHeartbeat.UTC().Format(time.RFC3339))
 	}
-	return fmt.Sprintf("task has not sent a heartbeat since %s", t.LastHeartbeat.UTC().Format(time.RFC3339))
+	if h == nil {
+		return reason
+	}
+	if utility.IsZeroTime(h.LastCommunicationTime) {
+		return reason + " and the host has never communicated with Evergreen"
+	}
+	lastCommunication := h.LastCommunicationTime.UTC().Format(time.RFC3339)
+	if h.LastCommunicationTime.After(t.LastHeartbeat.Add(hostCommunicationSlack)) {
+		return fmt.Sprintf("%s, but the host last communicated with Evergreen at %s, so the host is up and the agent likely stopped running the task", reason, lastCommunication)
+	}
+	return fmt.Sprintf("%s and the host has not communicated with Evergreen since %s, so the host likely became unreachable", reason, lastCommunication)
 }
 
 func logTaskAlreadyHandled(ctx context.Context, t *task.Task) {
@@ -2708,12 +2727,12 @@ func saveAndTrackCrashPathS3Cost(ctx context.Context, t *task.Task) {
 		"tracking version S3 cost for crash-path task '%s'", t.Id))
 }
 
-func finishStaleAbortedTask(ctx context.Context, settings *evergreen.Settings, t *task.Task) error {
+func finishStaleAbortedTask(ctx context.Context, settings *evergreen.Settings, t *task.Task, reason string) error {
 	failureDetails := &apimodels.TaskEndDetail{
 		Status:              evergreen.TaskFailed,
 		Type:                evergreen.CommandTypeSystem,
 		Description:         evergreen.TaskDescriptionAborted,
-		SystemFailureReason: staleTaskReason(t),
+		SystemFailureReason: reason,
 	}
 	if err := markEndIfUnchanged(ctx, settings, t, evergreen.APIServerTaskActivator, t.EstimatedFinishTime(time.Now()), failureDetails); err != nil {
 		return errors.Wrapf(err, "calling mark finish on task '%s'", t.Id)

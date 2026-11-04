@@ -117,6 +117,8 @@ type Host struct {
 	// server.
 	AgentStartTime  time.Time `bson:"agent_start_time" json:"agent_start_time"`
 	TerminationTime time.Time `bson:"termination_time" json:"termination_time"`
+	// TerminationReason is why the host was terminated.
+	TerminationReason string `bson:"termination_reason,omitempty" json:"termination_reason,omitempty"`
 	// DecommissionReason is why the host was most recently decommissioned.
 	DecommissionReason string `bson:"decommission_reason,omitempty" json:"decommission_reason,omitempty"`
 	TaskCount          int    `bson:"task_count" json:"task_count"`
@@ -1009,8 +1011,12 @@ func (h *Host) SetDecommissioned(ctx context.Context, user string, decommissionI
 		}))
 		catcher := grip.NewBasicCatcher()
 		failedContainerIds := []string{}
+		containerReason := "parent is being decommissioned"
+		if logs != "" {
+			containerReason = fmt.Sprintf("%s (%s)", containerReason, logs)
+		}
 		for _, c := range containers {
-			err = c.setStatusAndFields(ctx, evergreen.HostDecommissioned, query, nil, nil, user, "parent is being decommissioned")
+			err = c.setStatusAndFields(ctx, evergreen.HostDecommissioned, query, bson.M{DecommissionReasonKey: containerReason}, nil, user, containerReason)
 			if err != nil && err.Error() != ErrorHostAlreadyTerminated {
 				catcher.Add(err)
 				failedContainerIds = append(failedContainerIds, c.Id)
@@ -1418,18 +1424,25 @@ func (h *Host) ResetLastCommunicated(ctx context.Context) error {
 	return nil
 }
 
-// Terminate marks a host as terminated, sets the termination time, and unsets
-// the host volumes.
+// Terminate marks a host as terminated, sets the termination time and reason,
+// and unsets the host volumes.
 func (h *Host) Terminate(ctx context.Context, user, reason string) error {
 	terminatedAt := time.Now()
-	if err := h.setStatusAndFields(ctx, evergreen.HostTerminated, nil, bson.M{
+	setFields := bson.M{
 		TerminationTimeKey: terminatedAt,
 		VolumesKey:         nil,
-	}, nil, user, reason); err != nil {
+	}
+	if reason != "" {
+		setFields[TerminationReasonKey] = reason
+	}
+	if err := h.setStatusAndFields(ctx, evergreen.HostTerminated, nil, setFields, nil, user, reason); err != nil {
 		return err
 	}
 
 	h.TerminationTime = terminatedAt
+	if reason != "" {
+		h.TerminationReason = reason
+	}
 	h.Volumes = nil
 
 	return nil
@@ -2343,14 +2356,15 @@ func (h *Host) TeardownTimeExceededMax() bool {
 }
 
 // DecommissionHostsWithDistroId marks all up hosts intended for running tasks
-// that have a matching distro ID as decommissioned.
-func DecommissionHostsWithDistroId(ctx context.Context, distroId string) error {
+// that have a matching distro ID as decommissioned for the given reason.
+func DecommissionHostsWithDistroId(ctx context.Context, distroId, reason string) error {
 	err := UpdateAll(
 		ctx,
 		ByDistroIDs(distroId),
 		bson.M{
 			"$set": bson.M{
-				StatusKey: evergreen.HostDecommissioned,
+				StatusKey:             evergreen.HostDecommissioned,
+				DecommissionReasonKey: reason,
 			},
 		},
 	)
