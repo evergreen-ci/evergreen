@@ -49487,9 +49487,9 @@ func (ec *executionContext) _ProjectCommits_pagination(ctx context.Context, fiel
 			return obj.Pagination, nil
 		},
 		nil,
-		ec.marshalOProjectCommitsPagination2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectCommitsPagination,
+		ec.marshalNProjectCommitsPagination2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectCommitsPagination,
 		true,
-		false,
+		true,
 	)
 }
 
@@ -103547,6 +103547,9 @@ func (ec *executionContext) _ProjectCommits(ctx context.Context, sel ast.Selecti
 			out.Values[i] = graphql.MarshalString("ProjectCommits")
 		case "pagination":
 			out.Values[i] = ec._ProjectCommits_pagination(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "versions":
 			out.Values[i] = ec._ProjectCommits_versions(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -118839,6 +118842,16 @@ func (ec *executionContext) unmarshalNProjectCommitsOptions2githubᚗcomᚋeverg
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNProjectCommitsPagination2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectCommitsPagination(ctx context.Context, sel ast.SelectionSet, v *ProjectCommitsPagination) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ProjectCommitsPagination(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNProjectEventLogEntry2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectEventᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIProjectEvent) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -123885,13 +123898,6 @@ func (ec *executionContext) marshalOProjectBanner2githubᚗcomᚋevergreenᚑci�
 func (ec *executionContext) unmarshalOProjectBannerInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectBanner(ctx context.Context, v any) (model.APIProjectBanner, error) {
 	res, err := ec.unmarshalInputProjectBannerInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOProjectCommitsPagination2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectCommitsPagination(ctx context.Context, sel ast.SelectionSet, v *ProjectCommitsPagination) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._ProjectCommitsPagination(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOProjectCreationConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectCreationConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIProjectCreationConfig) graphql.Marshaler {

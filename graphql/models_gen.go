@@ -391,7 +391,7 @@ type ProjectBuildVariant struct {
 }
 
 type ProjectCommits struct {
-	Pagination *ProjectCommitsPagination `json:"pagination,omitempty"`
+	Pagination *ProjectCommitsPagination `json:"pagination"`
 	Versions   []*model1.Version         `json:"versions"`
 }
 
