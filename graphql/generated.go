@@ -56993,9 +56993,9 @@ func (ec *executionContext) _RepoRef_stepbackPushTriggers(ctx context.Context, f
 			return obj.StepbackPushTriggers, nil
 		},
 		nil,
-		ec.marshalOBoolean2ᚖbool,
+		ec.marshalNBoolean2ᚖbool,
 		true,
-		false,
+		true,
 	)
 }
 
@@ -105521,6 +105521,9 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._RepoRef_stepbackBisect(ctx, field, obj)
 		case "stepbackPushTriggers":
 			out.Values[i] = ec._RepoRef_stepbackPushTriggers(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "taskAnnotationSettings":
 			out.Values[i] = ec._RepoRef_taskAnnotationSettings(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

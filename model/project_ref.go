@@ -768,7 +768,6 @@ const (
 	ProjectRefCollection     = "project_ref"
 	ProjectTriggerLevelTask  = "task"
 	ProjectTriggerLevelBuild = "build"
-	ProjectTriggerLevelPush  = evergreen.ProjectTriggerLevelPush
 	intervalPrefix           = "@every"
 	maxBatchTime             = 153722867 // math.MaxInt64 / 60 / 1_000_000_000
 )
@@ -3524,7 +3523,7 @@ func (t *TriggerDefinition) Validate(ctx context.Context, downstreamProject stri
 
 	// should be saved using its ID, in case the user used the project's identifier
 	t.Project = upstreamProject.Id
-	if t.Level != ProjectTriggerLevelBuild && t.Level != ProjectTriggerLevelTask && t.Level != ProjectTriggerLevelPush {
+	if t.Level != ProjectTriggerLevelBuild && t.Level != ProjectTriggerLevelTask && t.Level != evergreen.ProjectTriggerLevelPush {
 		return errors.Errorf("invalid level: %s", t.Level)
 	}
 	if t.Status != "" && t.Status != evergreen.TaskFailed && t.Status != evergreen.TaskSucceeded {

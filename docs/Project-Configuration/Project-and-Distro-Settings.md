@@ -124,9 +124,9 @@ By default, stepback only activates tasks in versions with the same requester as
 mainline version skips versions created by [push level triggers](#project-triggers), such as versions for module
 commits.
 
-Admins can optionally enable Stepback Push Triggers so that stepback on mainline and push level trigger versions steps back
-through both kinds of versions, which lets it find failures caused by a module commit. Versions created by task and
-build level triggers are always skipped.
+Admins can optionally enable Stepback Push Triggers so that stepback on mainline and push level trigger versions
+steps back through both kinds of versions, which lets it find failures caused by a module commit. When it's on,
+versions created by task and build level triggers are still skipped.
 
 #### Virtual Tasks
 

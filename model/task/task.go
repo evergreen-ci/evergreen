@@ -909,6 +909,7 @@ func (t *Task) PreviousCompletedStepbackTask(ctx context.Context, statuses []str
 		statuses = evergreen.TaskCompletedStatuses
 	}
 	q := ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses, t.BuildVariant, t.DisplayName, t.Project, nil)
+	delete(q, RequesterKey)
 	maps.Copy(q, mainlineAndPushTriggeredQuery())
 	return FindOne(ctx, db.Query(q).Sort([]string{"-" + RevisionOrderNumberKey}))
 }

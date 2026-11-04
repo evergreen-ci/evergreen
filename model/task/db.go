@@ -562,34 +562,33 @@ func ByPreviousCommit(buildVariant, displayName, project string, order int) bson
 	}
 }
 
-func ByBeforeRevision(revisionOrder int, buildVariant, displayName, project, requester string) (bson.M, []string) {
-	return bson.M{
-		BuildVariantKey: buildVariant,
-		DisplayNameKey:  displayName,
-		RequesterKey:    requester,
+// ByBeforeRevisionForStepback finds tasks for the same build variant, display
+// name, and project as t before the given revision order, sorted from latest
+// to earliest. It matches tasks with t's requester, unless includePushTriggers
+// is set and t is in a mainline or push-triggered version, in which case it
+// matches tasks in both mainline and push-triggered versions.
+func ByBeforeRevisionForStepback(revisionOrder int, t *Task, includePushTriggers bool) (bson.M, []string) {
+	q := bson.M{
+		BuildVariantKey: t.BuildVariant,
+		DisplayNameKey:  t.DisplayName,
 		RevisionOrderNumberKey: bson.M{
 			"$lt": revisionOrder,
 		},
-		ProjectKey: project,
-	}, []string{"-" + RevisionOrderNumberKey}
-}
-
-// ByBeforeRevisionForStepback is the same as ByBeforeRevision for t, except
-// that if includePushTriggers is set and the task is in a mainline or push-triggered
-// version, it matches tasks in both mainline and push-triggered versions.
-func ByBeforeRevisionForStepback(revisionOrder int, t *Task, includePushTriggers bool) (bson.M, []string) {
-	q, sort := ByBeforeRevision(revisionOrder, t.BuildVariant, t.DisplayName, t.Project, t.Requester)
+		ProjectKey: t.Project,
+	}
 	if includePushTriggers && t.isMainlineOrPushTriggered() {
 		maps.Copy(q, mainlineAndPushTriggeredQuery())
+	} else {
+		q[RequesterKey] = t.Requester
 	}
-	return q, sort
+	return q, []string{"-" + RevisionOrderNumberKey}
 }
 
 func mainlineAndPushTriggeredQuery() bson.M {
-	return bson.M{
-		RequesterKey:   bson.M{"$in": []string{evergreen.RepotrackerVersionRequester, evergreen.TriggerRequester}},
-		TriggerTypeKey: bson.M{"$in": []any{nil, evergreen.ProjectTriggerLevelPush}},
-	}
+	return bson.M{"$or": []bson.M{
+		{RequesterKey: evergreen.RepotrackerVersionRequester},
+		{RequesterKey: evergreen.TriggerRequester, TriggerTypeKey: evergreen.ProjectTriggerLevelPush},
+	}}
 }
 
 func ByActivatedBeforeRevisionWithStatuses(revisionOrder int, statuses []string, buildVariant string, displayName string, project string) (bson.M, []string) {

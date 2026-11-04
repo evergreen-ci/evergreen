@@ -96,7 +96,7 @@ type RepoRef {
   debugSpawnHostsDisabled: Boolean!
   stepbackDisabled: Boolean!
   stepbackBisect: Boolean
-  stepbackPushTriggers: Boolean
+  stepbackPushTriggers: Boolean!
   taskAnnotationSettings: TaskAnnotationSettings!
   taskOwnership: RepoTaskOwnershipSettings
   testSelection: RepoTestSelectionSettings

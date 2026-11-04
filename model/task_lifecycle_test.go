@@ -7204,16 +7204,16 @@ tasks:
 		expectMiddleActivated bool
 	}{
 		"LinearStepbackWithPushTriggersShouldActivatePushTriggeredTask": {
-			pushTriggers: true, middleTriggerType: ProjectTriggerLevelPush, expectMiddleActivated: true,
+			pushTriggers: true, middleTriggerType: evergreen.ProjectTriggerLevelPush, expectMiddleActivated: true,
 		},
 		"BisectStepbackWithPushTriggersShouldActivatePushTriggeredTask": {
-			bisect: true, pushTriggers: true, middleTriggerType: ProjectTriggerLevelPush, expectMiddleActivated: true,
+			bisect: true, pushTriggers: true, middleTriggerType: evergreen.ProjectTriggerLevelPush, expectMiddleActivated: true,
 		},
 		"LinearStepbackFromPushTriggeredTaskWithPushTriggersShouldActivateMainlineTask": {
-			pushTriggers: true, failingTriggerType: ProjectTriggerLevelPush, expectMiddleActivated: true,
+			pushTriggers: true, failingTriggerType: evergreen.ProjectTriggerLevelPush, expectMiddleActivated: true,
 		},
 		"LinearStepbackWithoutPushTriggersShouldNotActivatePushTriggeredTask": {
-			middleTriggerType: ProjectTriggerLevelPush,
+			middleTriggerType: evergreen.ProjectTriggerLevelPush,
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
