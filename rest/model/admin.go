@@ -2189,7 +2189,7 @@ type APIServiceFlags struct {
 
 // APIServiceFlagsResponse contains service flags used by Evergreen clients.
 type APIServiceFlagsResponse struct {
-	DebugSpawnHostDisabled      bool `json:"debug_spawn_host_disabled"`
+	DebugSpawnHostDisabled bool `json:"debug_spawn_host_disabled"`
 }
 
 type APIProjectTasksPair struct {
