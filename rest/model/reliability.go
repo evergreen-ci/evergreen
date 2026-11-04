@@ -7,10 +7,10 @@ import (
 
 // APITaskReliability is the model to be returned by the API when querying task execution statistics
 type APITaskReliability struct {
-	TaskName     *string `json:"task_name" extensions:"!x-nullable"`
+	TaskName     *string `json:"task_name"`
 	BuildVariant *string `json:"variant,omitempty"`
 	Distro       *string `json:"distro,omitempty"`
-	Date         *string `json:"date" extensions:"!x-nullable"`
+	Date         *string `json:"date"`
 
 	NumSuccess         int     `json:"num_success"`
 	NumFailed          int     `json:"num_failed"`

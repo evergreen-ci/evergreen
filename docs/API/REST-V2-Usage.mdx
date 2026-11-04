@@ -50,7 +50,7 @@ spec via an `x-pagination-type` operation extension:
 | `project-id-cursor`     | `start_at` is the identifier of the first project on the next page              | `/projects`                                                                                                    |
 | `revision-order-cursor` | `start` is a version revision order number; pages list older versions           | `/projects/{project_id}/versions`                                                                              |
 | `page-number`           | `start_at` is a zero-based page number; each page holds up to `limit` results   | `/tasks/{task_id}/tests`                                                                                       |
-| `stats-cursor`          | `start_at` is a compound cursor over statistics, as returned by the Link header | `/projects/{project_id}/task_stats`, `/projects/{project_id}/task_reliability`                                 |
+| `stats-cursor`          | `start_at` is a compound cursor over statistics, as returned by the Link header | `/projects/{project_id}/task_stats`                                                                            |
 | `log-time-cursor`       | `start` is a timestamp (RFC3339); links appear only when `paginate=true`        | `/tasks/{task_id}/build/TaskLogs`, `/tasks/{task_id}/build/TestLogs/{path}`                                    |
 
 Unless stated otherwise, the default page size is 100.
