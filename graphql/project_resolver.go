@@ -11,28 +11,13 @@ import (
 	"github.com/evergreen-ci/utility"
 )
 
-// IsFavorite is the resolver for the isFavorite field.
-func (r *projectResolver) IsFavorite(ctx context.Context, obj *restModel.APIProjectRef) (bool, error) {
-	usr := mustHaveUser(ctx)
-	if utility.StringSliceContains(usr.FavoriteProjects, utility.FromStringPtr(obj.Identifier)) {
-		return true, nil
-	}
-	return false, nil
-}
-
-// ParsleyFilters is the resolver for the parsleyFilters field.
-func (r *projectResolver) ParsleyFilters(ctx context.Context, obj *restModel.APIProjectRef) ([]*parsley.Filter, error) {
-	return apiParsleyFiltersToService(obj.ParsleyFilters), nil
-}
-
-// Patches is the resolver for the patches field.
-func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProjectRef, patchesInput PatchesInput) (*Patches, error) {
-	// Return empty Patches - field resolvers will access patchesInput via Parent.Args
-	return &Patches{}, nil
-}
-
 // Commits is the resolver for the commits field.
-func (r *projectLiteResolver) Commits(ctx context.Context, obj *model.ProjectRef, options ProjectCommitsOptions) (*ProjectCommits, error) {
+func (r *projectResolver) Commits(ctx context.Context, obj *restModel.APIProjectRef, options ProjectCommitsOptions) (*ProjectCommits, error) {
+	projectID := utility.FromStringPtr(obj.Identifier)
+	if err := checkProjectAccess(ctx, projectID, ProjectPermissionTasks, AccessLevelView); err != nil {
+		return nil, err
+	}
+
 	limit := utility.FromIntPtr(options.Limit)
 	if limit > model.MaxWaterfallVersionLimit {
 		return nil, InputValidationError.Send(ctx, fmt.Sprintf("limit exceeds max limit of %d", model.MaxWaterfallVersionLimit))
@@ -46,7 +31,7 @@ func (r *projectLiteResolver) Commits(ctx context.Context, obj *model.ProjectRef
 		Requesters: []string{evergreen.RepotrackerVersionRequester},
 	}
 
-	activeVersions, err := model.GetActiveWaterfallVersions(ctx, obj.Id, opts)
+	activeVersions, err := model.GetActiveWaterfallVersions(ctx, projectID, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting active waterfall versions: %s", err.Error()))
 	}
@@ -73,6 +58,26 @@ func (r *projectLiteResolver) Commits(ctx context.Context, obj *model.ProjectRef
 			HasNextPage:   nextPageOrder > 1,
 		},
 	}, nil
+}
+
+// IsFavorite is the resolver for the isFavorite field.
+func (r *projectResolver) IsFavorite(ctx context.Context, obj *restModel.APIProjectRef) (bool, error) {
+	usr := mustHaveUser(ctx)
+	if utility.StringSliceContains(usr.FavoriteProjects, utility.FromStringPtr(obj.Identifier)) {
+		return true, nil
+	}
+	return false, nil
+}
+
+// ParsleyFilters is the resolver for the parsleyFilters field.
+func (r *projectResolver) ParsleyFilters(ctx context.Context, obj *restModel.APIProjectRef) ([]*parsley.Filter, error) {
+	return apiParsleyFiltersToService(obj.ParsleyFilters), nil
+}
+
+// Patches is the resolver for the patches field.
+func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProjectRef, patchesInput PatchesInput) (*Patches, error) {
+	// Return empty Patches - field resolvers will access patchesInput via Parent.Args
+	return &Patches{}, nil
 }
 
 // IsFavorite is the resolver for the isFavorite field.

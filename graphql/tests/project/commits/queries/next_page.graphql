@@ -1,15 +1,13 @@
 {
-  version(versionId: "repo-version-4") {
-    project {
-      commits(options: { limit: 2, maxOrder: 4 }) {
-        versions {
-          id
-          order
-        }
-        pagination {
-          hasNextPage
-          nextPageOrder
-        }
+  project(projectIdentifier: "project-commits-test") {
+    commits(options: { limit: 2, maxOrder: 4 }) {
+      versions {
+        id
+        order
+      }
+      pagination {
+        hasNextPage
+        nextPageOrder
       }
     }
   }

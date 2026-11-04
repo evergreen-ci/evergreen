@@ -1,14 +1,12 @@
 {
-  version(versionId: "empty-project-version") {
-    project {
-      commits(options: { limit: 20 }) {
-        versions {
-          id
-        }
-        pagination {
-          hasNextPage
-          nextPageOrder
-        }
+  project(projectIdentifier: "empty-project") {
+    commits(options: { limit: 20 }) {
+      versions {
+        id
+      }
+      pagination {
+        hasNextPage
+        nextPageOrder
       }
     }
   }

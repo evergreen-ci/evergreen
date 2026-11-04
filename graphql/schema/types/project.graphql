@@ -264,6 +264,7 @@ type Project {
   branch: String!
   buildBaronSettings: BuildBaronSettings!
   commitQueue: CommitQueueParams!
+  commits(options: ProjectCommitsOptions!): ProjectCommits!
   deactivatePrevious: Boolean
   debugSpawnHostsDisabled: Boolean
   disabledStatsCache: Boolean
@@ -383,7 +384,6 @@ type ProjectLite {
   admins: [String!]
   batchTime: Int!
   branch: String!
-  commits(options: ProjectCommitsOptions!): ProjectCommits!
   deactivatePrevious: Boolean
   debugSpawnHostsDisabled: Boolean
   disabledStatsCache: Boolean

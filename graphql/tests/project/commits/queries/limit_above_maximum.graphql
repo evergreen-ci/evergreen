@@ -1,10 +1,8 @@
 {
-  version(versionId: "repo-version-4") {
-    project {
-      commits(options: { limit: 301 }) {
-        versions {
-          id
-        }
+  project(projectIdentifier: "project-commits-test") {
+    commits(options: { limit: 301 }) {
+      versions {
+        id
       }
     }
   }

@@ -1293,6 +1293,7 @@ type ComplexityRoot struct {
 		Branch                             func(childComplexity int) int
 		BuildBaronSettings                 func(childComplexity int) int
 		CommitQueue                        func(childComplexity int) int
+		Commits                            func(childComplexity int, options ProjectCommitsOptions) int
 		DeactivatePrevious                 func(childComplexity int) int
 		DebugSpawnHostsDisabled            func(childComplexity int) int
 		DisabledStatsCache                 func(childComplexity int) int
@@ -1410,7 +1411,6 @@ type ComplexityRoot struct {
 		Admins                  func(childComplexity int) int
 		BatchTime               func(childComplexity int) int
 		Branch                  func(childComplexity int) int
-		Commits                 func(childComplexity int, options ProjectCommitsOptions) int
 		DeactivatePrevious      func(childComplexity int) int
 		DebugSpawnHostsDisabled func(childComplexity int) int
 		DisabledStatsCache      func(childComplexity int) int
@@ -2675,14 +2675,14 @@ type PermissionsResolver interface {
 	RepoPermissions(ctx context.Context, obj *Permissions, options RepoPermissionsOptions) (*RepoPermissions, error)
 }
 type ProjectResolver interface {
+	Commits(ctx context.Context, obj *model.APIProjectRef, options ProjectCommitsOptions) (*ProjectCommits, error)
+
 	IsFavorite(ctx context.Context, obj *model.APIProjectRef) (bool, error)
 
 	ParsleyFilters(ctx context.Context, obj *model.APIProjectRef) ([]*parsley.Filter, error)
 	Patches(ctx context.Context, obj *model.APIProjectRef, patchesInput PatchesInput) (*Patches, error)
 }
 type ProjectLiteResolver interface {
-	Commits(ctx context.Context, obj *model1.ProjectRef, options ProjectCommitsOptions) (*ProjectCommits, error)
-
 	IsFavorite(ctx context.Context, obj *model1.ProjectRef) (bool, error)
 }
 type ProjectSettingsResolver interface {
@@ -8020,6 +8020,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Project.CommitQueue(childComplexity), true
+	case "Project.commits":
+		if e.complexity.Project.Commits == nil {
+			break
+		}
+
+		args, err := ec.field_Project_commits_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Project.Commits(childComplexity, args["options"].(ProjectCommitsOptions)), true
 	case "Project.deactivatePrevious":
 		if e.complexity.Project.DeactivatePrevious == nil {
 			break
@@ -8557,17 +8568,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ProjectLite.Branch(childComplexity), true
-	case "ProjectLite.commits":
-		if e.complexity.ProjectLite.Commits == nil {
-			break
-		}
-
-		args, err := ec.field_ProjectLite_commits_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.ProjectLite.Commits(childComplexity, args["options"].(ProjectCommitsOptions)), true
 	case "ProjectLite.deactivatePrevious":
 		if e.complexity.ProjectLite.DeactivatePrevious == nil {
 			break
@@ -16089,7 +16089,7 @@ func (ec *executionContext) field_Permissions_repoPermissions_args(ctx context.C
 	return args, nil
 }
 
-func (ec *executionContext) field_ProjectLite_commits_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+func (ec *executionContext) field_Project_commits_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "options", ec.unmarshalNProjectCommitsOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectCommitsOptions)
@@ -30003,6 +30003,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(_ context.Cont
 				return ec.fieldContext_Project_buildBaronSettings(ctx, field)
 			case "commitQueue":
 				return ec.fieldContext_Project_commitQueue(ctx, field)
+			case "commits":
+				return ec.fieldContext_Project_commits(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
 			case "debugSpawnHostsDisabled":
@@ -37747,6 +37749,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_buildBaronSettings(ctx, field)
 			case "commitQueue":
 				return ec.fieldContext_Project_commitQueue(ctx, field)
+			case "commits":
+				return ec.fieldContext_Project_commits(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
 			case "debugSpawnHostsDisabled":
@@ -37902,6 +37906,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_buildBaronSettings(ctx, field)
 			case "commitQueue":
 				return ec.fieldContext_Project_commitQueue(ctx, field)
+			case "commits":
+				return ec.fieldContext_Project_commits(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
 			case "debugSpawnHostsDisabled":
@@ -38057,6 +38063,8 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_buildBaronSettings(ctx, field)
 			case "commitQueue":
 				return ec.fieldContext_Project_commitQueue(ctx, field)
+			case "commits":
+				return ec.fieldContext_Project_commits(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
 			case "debugSpawnHostsDisabled":
@@ -38212,6 +38220,8 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_buildBaronSettings(ctx, field)
 			case "commitQueue":
 				return ec.fieldContext_Project_commitQueue(ctx, field)
+			case "commits":
+				return ec.fieldContext_Project_commits(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
 			case "debugSpawnHostsDisabled":
@@ -38535,6 +38545,8 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_buildBaronSettings(ctx, field)
 			case "commitQueue":
 				return ec.fieldContext_Project_commitQueue(ctx, field)
+			case "commits":
+				return ec.fieldContext_Project_commits(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
 			case "debugSpawnHostsDisabled":
@@ -41827,6 +41839,8 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_buildBaronSettings(ctx, field)
 			case "commitQueue":
 				return ec.fieldContext_Project_commitQueue(ctx, field)
+			case "commits":
+				return ec.fieldContext_Project_commits(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
 			case "debugSpawnHostsDisabled":
@@ -42099,6 +42113,8 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_buildBaronSettings(ctx, field)
 			case "commitQueue":
 				return ec.fieldContext_Project_commitQueue(ctx, field)
+			case "commits":
+				return ec.fieldContext_Project_commits(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
 			case "debugSpawnHostsDisabled":
@@ -45401,6 +45417,8 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(_ context.Context
 				return ec.fieldContext_Project_buildBaronSettings(ctx, field)
 			case "commitQueue":
 				return ec.fieldContext_Project_commitQueue(ctx, field)
+			case "commits":
+				return ec.fieldContext_Project_commits(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
 			case "debugSpawnHostsDisabled":
@@ -47381,6 +47399,53 @@ func (ec *executionContext) fieldContext_Project_commitQueue(_ context.Context, 
 			}
 			return nil, fmt.Errorf("no field named %q was found under type CommitQueueParams", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Project_commits(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Project_commits,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Project().Commits(ctx, obj, fc.Args["options"].(ProjectCommitsOptions))
+		},
+		nil,
+		ec.marshalNProjectCommits2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectCommits,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Project_commits(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "pagination":
+				return ec.fieldContext_ProjectCommits_pagination(ctx, field)
+			case "versions":
+				return ec.fieldContext_ProjectCommits_versions(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ProjectCommits", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Project_commits_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -49989,6 +50054,8 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(_ conte
 				return ec.fieldContext_Project_buildBaronSettings(ctx, field)
 			case "commitQueue":
 				return ec.fieldContext_Project_commitQueue(ctx, field)
+			case "commits":
+				return ec.fieldContext_Project_commits(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
 			case "debugSpawnHostsDisabled":
@@ -50360,53 +50427,6 @@ func (ec *executionContext) fieldContext_ProjectLite_branch(_ context.Context, f
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
 		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProjectLite_commits(ctx context.Context, field graphql.CollectedField, obj *model1.ProjectRef) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ProjectLite_commits,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.ProjectLite().Commits(ctx, obj, fc.Args["options"].(ProjectCommitsOptions))
-		},
-		nil,
-		ec.marshalNProjectCommits2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectCommits,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_ProjectLite_commits(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProjectLite",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "pagination":
-				return ec.fieldContext_ProjectCommits_pagination(ctx, field)
-			case "versions":
-				return ec.fieldContext_ProjectCommits_versions(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ProjectCommits", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_ProjectLite_commits_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
 	}
 	return fc, nil
 }
@@ -51652,6 +51672,8 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(_ context.Co
 				return ec.fieldContext_Project_buildBaronSettings(ctx, field)
 			case "commitQueue":
 				return ec.fieldContext_Project_commitQueue(ctx, field)
+			case "commits":
+				return ec.fieldContext_Project_commits(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
 			case "debugSpawnHostsDisabled":
@@ -53405,6 +53427,8 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_buildBaronSettings(ctx, field)
 			case "commitQueue":
 				return ec.fieldContext_Project_commitQueue(ctx, field)
+			case "commits":
+				return ec.fieldContext_Project_commits(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
 			case "debugSpawnHostsDisabled":
@@ -67004,6 +67028,8 @@ func (ec *executionContext) fieldContext_Task_project(_ context.Context, field g
 				return ec.fieldContext_Project_buildBaronSettings(ctx, field)
 			case "commitQueue":
 				return ec.fieldContext_Project_commitQueue(ctx, field)
+			case "commits":
+				return ec.fieldContext_Project_commits(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
 			case "debugSpawnHostsDisabled":
@@ -77610,8 +77636,6 @@ func (ec *executionContext) fieldContext_Version_project(_ context.Context, fiel
 				return ec.fieldContext_ProjectLite_batchTime(ctx, field)
 			case "branch":
 				return ec.fieldContext_ProjectLite_branch(ctx, field)
-			case "commits":
-				return ec.fieldContext_ProjectLite_commits(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_ProjectLite_deactivatePrevious(ctx, field)
 			case "debugSpawnHostsDisabled":
@@ -77725,6 +77749,8 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(_ context.Conte
 				return ec.fieldContext_Project_buildBaronSettings(ctx, field)
 			case "commitQueue":
 				return ec.fieldContext_Project_commitQueue(ctx, field)
+			case "commits":
+				return ec.fieldContext_Project_commits(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
 			case "debugSpawnHostsDisabled":
@@ -103037,6 +103063,42 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "commits":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Project_commits(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "deactivatePrevious":
 			out.Values[i] = ec._Project_deactivatePrevious(ctx, field, obj)
 		case "debugSpawnHostsDisabled":
@@ -103767,42 +103829,6 @@ func (ec *executionContext) _ProjectLite(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "commits":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._ProjectLite_commits(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "deactivatePrevious":
 			out.Values[i] = ec._ProjectLite_deactivatePrevious(ctx, field, obj)
 		case "debugSpawnHostsDisabled":
