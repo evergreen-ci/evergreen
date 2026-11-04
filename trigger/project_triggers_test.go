@@ -60,7 +60,7 @@ func TestGetMetadataFromArgs(t *testing.T) {
 		require.NoError(t, model.UpsertRepositoryRevision(ctx, downstream.Owner, downstream.Repo, downstream.Branch, "downstream-after-push-ingest-time", ingestTime.Add(time.Minute)))
 		push := model.Revision{Revision: "upstream", CreateTime: time.Date(2015, time.January, 1, 0, 0, 0, 0, time.UTC), Author: "p"}
 		meta, err := getMetadataFromArgs(ctx, ProcessorArgs{
-			TriggerType:       model.ProjectTriggerLevelPush,
+			TriggerType:       evergreen.ProjectTriggerLevelPush,
 			DownstreamProject: downstream,
 			PushRevision:      push,
 			PushIngestTime:    ingestTime,
@@ -147,7 +147,7 @@ func TestTriggerDownstreamProjectsForPush(t *testing.T) {
 		Triggers: []model.TriggerDefinition{
 			{
 				Project:      upstreamProjectID,
-				Level:        model.ProjectTriggerLevelPush,
+				Level:        evergreen.ProjectTriggerLevelPush,
 				DefinitionID: "push-trigger-definition",
 				ConfigFile:   "trigger/testdata/downstream_config.yml",
 			},
@@ -178,7 +178,7 @@ func TestTriggerDownstreamProjectsForPush(t *testing.T) {
 	assert.Equal(t, "upstream-push-sha", processorArgs[0].PushRevision.Revision)
 	assert.Equal(t, pushCommitTime, processorArgs[0].PushRevision.CreateTime)
 	assert.Equal(t, downstreamProjectID, processorArgs[0].DownstreamProject.Id)
-	assert.Equal(t, model.ProjectTriggerLevelPush, processorArgs[0].TriggerType)
+	assert.Equal(t, evergreen.ProjectTriggerLevelPush, processorArgs[0].TriggerType)
 	assert.Equal(t, upstreamProjectID, processorArgs[0].TriggerID)
 	assert.Equal(t, "push-trigger-definition", processorArgs[0].DefinitionID)
 }

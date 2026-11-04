@@ -61,6 +61,7 @@ type ProjectRef struct {
 	WaterfallDisabled      *bool               `bson:"waterfall_disabled,omitempty" json:"waterfall_disabled,omitempty" yaml:"waterfall_disabled"`
 	StepbackDisabled       *bool               `bson:"stepback_disabled,omitempty" json:"stepback_disabled,omitempty" yaml:"stepback_disabled"`
 	StepbackBisect         *bool               `bson:"stepback_bisect,omitempty" json:"stepback_bisect,omitempty" yaml:"stepback_bisect"`
+	StepbackPushTriggers   *bool               `bson:"stepback_push_triggers,omitempty" json:"stepback_push_triggers,omitempty" yaml:"stepback_push_triggers"`
 	VersionControlEnabled  *bool               `bson:"version_control_enabled,omitempty" json:"version_control_enabled,omitempty" yaml:"version_control_enabled"`
 	PRTestingEnabled       *bool               `bson:"pr_testing_enabled,omitempty" json:"pr_testing_enabled,omitempty" yaml:"pr_testing_enabled"`
 	ManualPRTestingEnabled *bool               `bson:"manual_pr_testing_enabled,omitempty" json:"manual_pr_testing_enabled,omitempty" yaml:"manual_pr_testing_enabled"`
@@ -571,6 +572,7 @@ var (
 	projectRefWaterfallDisabledKey                  = bsonutil.MustHaveTag(ProjectRef{}, "WaterfallDisabled")
 	projectRefStepbackDisabledKey                   = bsonutil.MustHaveTag(ProjectRef{}, "StepbackDisabled")
 	projectRefStepbackBisectKey                     = bsonutil.MustHaveTag(ProjectRef{}, "StepbackBisect")
+	projectRefStepbackPushTriggersKey               = bsonutil.MustHaveTag(ProjectRef{}, "StepbackPushTriggers")
 	projectRefVersionControlEnabledKey              = bsonutil.MustHaveTag(ProjectRef{}, "VersionControlEnabled")
 	projectRefNotifyOnFailureKey                    = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 	projectRefSpawnHostScriptPathKey                = bsonutil.MustHaveTag(ProjectRef{}, "SpawnHostScriptPath")
@@ -766,7 +768,6 @@ const (
 	ProjectRefCollection     = "project_ref"
 	ProjectTriggerLevelTask  = "task"
 	ProjectTriggerLevelBuild = "build"
-	ProjectTriggerLevelPush  = "push"
 	intervalPrefix           = "@every"
 	maxBatchTime             = 153722867 // math.MaxInt64 / 60 / 1_000_000_000
 )
@@ -2499,6 +2500,7 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 			projectRefWaterfallDisabledKey:       p.WaterfallDisabled,
 			projectRefStepbackDisabledKey:        p.StepbackDisabled,
 			projectRefStepbackBisectKey:          p.StepbackBisect,
+			projectRefStepbackPushTriggersKey:    p.StepbackPushTriggers,
 			projectRefVersionControlEnabledKey:   p.VersionControlEnabled,
 			ProjectRefDeactivatePreviousKey:      p.DeactivatePrevious,
 			projectRefRepotrackerDisabledKey:     p.RepotrackerDisabled,
@@ -3518,7 +3520,7 @@ func (t *TriggerDefinition) Validate(ctx context.Context, downstreamProject stri
 
 	// should be saved using its ID, in case the user used the project's identifier
 	t.Project = upstreamProject.Id
-	if t.Level != ProjectTriggerLevelBuild && t.Level != ProjectTriggerLevelTask && t.Level != ProjectTriggerLevelPush {
+	if t.Level != ProjectTriggerLevelBuild && t.Level != ProjectTriggerLevelTask && t.Level != evergreen.ProjectTriggerLevelPush {
 		return errors.Errorf("invalid level: %s", t.Level)
 	}
 	if t.Status != "" && t.Status != evergreen.TaskFailed && t.Status != evergreen.TaskSucceeded {

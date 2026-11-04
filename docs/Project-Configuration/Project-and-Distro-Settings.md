@@ -118,6 +118,16 @@ task failed by activating previous commits as needed.
 Admins can enable Stepback Bisection which recursively divides the commits
 in half to reduce the tasks taken from O(n) to O(logn).
 
+#### Stepback Push Triggers
+
+By default, stepback only activates tasks in versions with the same requester as the failing task, so stepback on a
+mainline version skips versions created by [push level triggers](#project-triggers), such as versions for module
+commits.
+
+Admins can optionally enable Stepback Push Triggers so that stepback on mainline and push level trigger versions
+steps back through both kinds of versions, which lets it find failures caused by a module commit. When it's on,
+versions created by task and build level triggers are still skipped.
+
 #### Virtual Tasks
 
 Project admins can enable virtual tasks to allow tasks in the project to be defined as
