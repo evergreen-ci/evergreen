@@ -19,6 +19,7 @@ type GithubLoginUser struct {
 func (u *GithubLoginUser) DisplayName() string     { return u.Name }
 func (u *GithubLoginUser) Email() string           { return u.EmailAddress }
 func (u *GithubLoginUser) Username() string        { return u.Login }
+func (u *GithubLoginUser) OktaID() string          { return "" }
 func (u *GithubLoginUser) IsNil() bool             { return u == nil }
 func (u *GithubLoginUser) GetAPIKey() string       { return "" }
 func (u *GithubLoginUser) GetAccessToken() string  { return "" }
