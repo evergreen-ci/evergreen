@@ -47,7 +47,7 @@ type taskReliabilityHandler struct {
 //	@Router				/projects/{project_id}/task_reliability [get]
 //	@Security			Api-User || Api-Key
 //	@Param				project_id		path		string	true	"the project ID or identifier"
-//	@Param				start_at		query		string	false	"Compound cursor for pagination, as returned by the Link response header. Pages list results at or before this cursor. Omit for the first page."
+//	@Param				start_at		query		string	false	"Compound cursor from the Link header; pages list results at or before it. Omit for the first page."
 //	@Param				limit			query		int		false	"The number of results to be returned per page of pagination. Defaults to 1000 and cannot exceed 1000."
 //	@Param				group_by		query		string	false	"How to group results: 'task_variant_distro' (default), 'task_variant', or 'task'."
 //	@Param				tasks			query		string	false	"Only return results for these task names. Can be a comma-separated list or repeated."
@@ -58,7 +58,7 @@ type taskReliabilityHandler struct {
 //	@Param				sort			query		string	false	"Sort order of results: 'earliest' or 'latest'. Defaults to 'latest'."
 //	@Param				significance	query		number	false	"Minimum test significance, from 0 to 1. Defaults to 0."
 //	@Success			200				{array}		model.APITaskReliability
-//	@Header				200				{string}	Link	"Pagination links (rel="next") returned when more results exist. Follow this header verbatim instead of constructing pagination URLs."
+//	@Header				200				{string}	Link	"Pagination link to the next page (rel=next) when more results exist. Follow it verbatim rather than constructing URLs."
 //	@x-pagination-type	"stats-cursor"
 func makeGetProjectTaskReliability() gimlet.RouteHandler {
 	return &taskReliabilityHandler{}

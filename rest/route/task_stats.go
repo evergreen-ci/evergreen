@@ -285,7 +285,7 @@ type taskStatsHandler struct {
 //	@Router				/projects/{project_id}/task_stats [get]
 //	@Security			Api-User || Api-Key
 //	@Param				project_id		path		string	true	"the project ID or identifier"
-//	@Param				start_at		query		string	false	"Compound cursor for pagination, as returned by the Link response header: four pipe-separated fields (date in YYYY-MM-DD, build variant, task name, distro). Pages list statistics at or before this cursor. Omit for the first page."
+//	@Param				start_at		query		string	false	"Compound cursor from the Link header (date YYYY-MM-DD | variant | task | distro). Omit for the first page."
 //	@Param				limit			query		int		false	"The number of results to be returned per page of pagination. Defaults to 1000 and cannot exceed 1000."
 //	@Param				group_num_days	query		int		false	"The number of days of statistics to group together per result. Defaults to 1 and cannot exceed 182 (26 weeks)."
 //	@Param				group_by		query		string	false	"How to group statistics: 'task_variant_distro' (default), 'task_variant', or 'task'."
@@ -297,7 +297,7 @@ type taskStatsHandler struct {
 //	@Param				after_date		query		string	false	"Only return statistics from after this date, in YYYY-MM-DD format. Defaults to before_date."
 //	@Param				sort			query		string	false	"Sort order of statistics: 'earliest' or 'latest'. Defaults to 'latest'."
 //	@Success			200				{array}		model.APITaskStats
-//	@Header				200				{string}	Link	"Pagination links (rel="next") returned when more results exist. Follow this header verbatim instead of constructing pagination URLs."
+//	@Header				200				{string}	Link	"Pagination link to the next page (rel=next) when more results exist. Follow it verbatim rather than constructing URLs."
 //	@x-pagination-type	"stats-cursor"
 func (tsh *taskStatsHandler) Factory() gimlet.RouteHandler {
 	return &taskStatsHandler{}

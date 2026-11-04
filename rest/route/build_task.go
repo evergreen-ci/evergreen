@@ -60,7 +60,6 @@ func makeFetchTasksByBuild(parsleyURL string) gimlet.RouteHandler {
 //	@Success			200						{array}		model.APITask
 //	@Header				200						{string}	Link	"Pagination link to the next page (rel=next) when more results exist. Follow it verbatim rather than constructing URLs."
 //	@x-pagination-type	"task-id-cursor"
-//	@x-pagination-type	"task-id-cursor"
 func (tbh *tasksByBuildHandler) Factory() gimlet.RouteHandler {
 	return &tasksByBuildHandler{
 		limit:      tbh.limit,
