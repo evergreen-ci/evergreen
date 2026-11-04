@@ -29,8 +29,8 @@ Test results uploaded via [attach.results](../Project-ConfigurationProject-Comma
 ## Task Limits
 
 Evergreen limits tasks per version to 50,000. This includes both selected and
-unselected tasks. [Virtual tasks](../Project-Configuration/Virtual-Tasks) only
-count toward this limit if they're activated to run on a host.
+unselected tasks. Inactive and push-completed [virtual
+tasks](../Project-Configuration/Virtual-Tasks) don't count toward this limit.
 
 ## Task Scheduling Limits
 

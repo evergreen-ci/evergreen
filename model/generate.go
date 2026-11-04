@@ -452,7 +452,7 @@ func countInactiveVirtualTasks(p *Project, taskIDs TaskIdConfig, activationInfo 
 	numInactive := 0
 	for pair := range taskIDs.ExecutionTasks {
 		pt := p.FindProjectTask(pair.TaskName)
-		if pt != nil && pt.Virtual && !activationInfo.getStepbackTask(pair.Variant, pair.TaskName).shouldActivate() {
+		if pt != nil && pt.Virtual && !activationInfo.isVirtualTaskActivatedOnCreation(pair.Variant, pair.TaskName) {
 			numInactive++
 		}
 	}
@@ -465,6 +465,8 @@ func validateGeneratedProjectMaxTasks(ctx context.Context, v *Version, taskID st
 	numExistingTasks, err := task.Count(ctx, db.Query(bson.M{
 		task.VersionKey:     v.Id,
 		task.GeneratedByKey: bson.M{"$ne": taskID},
+		// Virtual tasks only count if they're activated and not push-completed,
+		// meaning they'll run on a host.
 		"$or": []bson.M{
 			{task.IsVirtualKey: bson.M{"$ne": true}},
 			{task.ActivatedKey: true, task.CompletedByKey: bson.M{"$exists": false}},
@@ -479,7 +481,7 @@ func validateGeneratedProjectMaxTasks(ctx context.Context, v *Version, taskID st
 	}
 	totalTasks := numExistingTasks + tasksToBeCreated
 	if settings.TaskLimits.MaxTasksPerVersion > 0 && totalTasks > settings.TaskLimits.MaxTasksPerVersion {
-		return errors.Errorf("version's total number of tasks after generation (%d) exceeds maximum limit (%d)", totalTasks, settings.TaskLimits.MaxTasksPerVersion)
+		return errors.Errorf("version's number of tasks after generation (%d, excluding inactive and push-completed virtual tasks) exceeds maximum limit (%d)", totalTasks, settings.TaskLimits.MaxTasksPerVersion)
 	}
 	return nil
 }
@@ -706,6 +708,13 @@ func (b *specificActivationInfo) getActivationTasks(variant string) []string {
 
 func (b *specificActivationInfo) hasActivationTasks() bool {
 	return len(b.activationTasks) > 0
+}
+
+// isVirtualTaskActivatedOnCreation returns whether a virtual task should
+// be activated to run on a host. Virtual tasks start inactive unless stepback
+// activates them.
+func (b *specificActivationInfo) isVirtualTaskActivatedOnCreation(variant, task string) bool {
+	return b.getStepbackTask(variant, task).shouldActivate()
 }
 
 func (b *specificActivationInfo) getStepbackTask(variant, task string) *specificStepbackInfo {

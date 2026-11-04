@@ -1121,7 +1121,7 @@ func validateIncludeLimits(_ context.Context, settings *evergreen.Settings, proj
 }
 
 func validateProjectLimits(_ context.Context, settings *evergreen.Settings, project *model.Project, _ *model.ProjectRef, _ bool) ValidationErrors {
-	// Push completed virtual tasks don't count toward the limit.
+	// Virtual tasks start inactive, so they don't count toward the limit.
 	virtualTasks := map[string]bool{}
 	for _, t := range project.Tasks {
 		if t.Virtual {
@@ -1137,7 +1137,7 @@ func validateProjectLimits(_ context.Context, settings *evergreen.Settings, proj
 	errs := ValidationErrors{}
 	if settings.TaskLimits.MaxTasksPerVersion > 0 && numTasks > settings.TaskLimits.MaxTasksPerVersion {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("project's total number of tasks (%d) exceeds maximum limit (%d)", numTasks, settings.TaskLimits.MaxTasksPerVersion),
+			Message: fmt.Sprintf("project's total number of non-virtual tasks (%d) exceeds maximum limit (%d)", numTasks, settings.TaskLimits.MaxTasksPerVersion),
 			Level:   Error,
 		})
 	}

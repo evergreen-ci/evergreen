@@ -1206,8 +1206,7 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 			return nil, nil
 		}
 
-		// Virtual tasks start out inactive by default.
-		activateTask = false
+		activateTask = creationInfo.ActivationInfo.isVirtualTaskActivatedOnCreation(creationInfo.Build.BuildVariant, buildVarTask.Name)
 	}
 
 	// If stepback is enabled, check if the task should be activated via stepback.
