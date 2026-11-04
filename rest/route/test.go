@@ -58,7 +58,7 @@ func makeFetchTestsForTask(env evergreen.Environment, sc data.Connector) gimlet.
 //	@Param				test_name	query		string	false	"Only return the test matching the name."
 //	@Param				latest		query		bool	false	"Return tests from the latest execution. Cannot be used with execution."
 //	@Success			200			{array}		model.APITest
-//	@Header				200			{string}	Link	"Pagination links (rel=next, rel=prev) when more results exist. Follow them verbatim rather than constructing URLs."
+//	@Header				200			{string}	Link	"Pagination link to the next page (rel=next) when more results exist. Follow it verbatim rather than constructing URLs."
 //	@x-pagination-type	"page-number"
 func (hgh *testGetHandler) Factory() gimlet.RouteHandler {
 	return &testGetHandler{

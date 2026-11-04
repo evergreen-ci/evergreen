@@ -41,7 +41,7 @@ func makeTasksByProjectAndCommitHandler(parsleyURL string) gimlet.RouteHandler {
 //	@Security			Api-User || Api-Key
 //	@Param				project_name	path		string	true	"project name"
 //	@Param				commit_hash		path		string	true	"commit hash"
-//	@Param				start_at		query		string	false	"ID of the last task on the previous page. Defaults to the first task."
+//	@Param				start_at		query		string	false	"ID of the first task on the next page. Defaults to the first task."
 //	@Param				limit			query		int		false	"The number of tasks to be returned per page of pagination. Defaults to 100"
 //	@Param				variant			query		string	false	"Only return tasks within this variant"
 //	@Param				variant_regex	query		string	false	"Only return tasks within variants that match this regex"

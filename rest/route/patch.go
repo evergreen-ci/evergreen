@@ -266,7 +266,7 @@ func makeUserPatchHandler() gimlet.RouteHandler {
 //	@Router				/users/{user_id}/patches [get]
 //	@Security			Api-User || Api-Key
 //	@Param				user_id		path		string	true	"the user's ID"
-//	@Param				start_at	query		string	false	"create_time (RFC3339) to start at; pages list patches created at or before this time. Defaults to now."
+//	@Param				start_at	query		string	false	"create_time cursor in the API date format (see Dates); pages list patches created at or before this time. Defaults to now."
 //	@Param				limit		query		int		false	"The number of patches to be returned per page of pagination. Defaults to 100"
 //	@Success			200			{array}		model.APIPatch
 //	@Header				200			{string}	Link	"Pagination link to the next page (rel=next) when more results exist. Follow it verbatim rather than constructing URLs."
@@ -400,7 +400,7 @@ func makePatchesByProjectRoute() gimlet.RouteHandler {
 //	@Router				/projects/{project_id}/patches [get]
 //	@Security			Api-User || Api-Key
 //	@Param				project_id	path		string	true	"the project ID"
-//	@Param				start_at	query		string	false	"create_time (RFC3339) to start at; pages list patches created at or before this time. Defaults to now."
+//	@Param				start_at	query		string	false	"create_time cursor in the API date format (see Dates); pages list patches created at or before this time. Defaults to now."
 //	@Param				limit		query		int		false	"The number of patches to be returned per page of pagination. Defaults to 100"
 //	@Success			200			{array}		model.APIPatch
 //	@Header				200			{string}	Link	"Pagination link to the next page (rel=next) when more results exist. Follow it verbatim rather than constructing URLs."

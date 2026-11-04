@@ -50,7 +50,7 @@ func makeFetchProjectsRoute() gimlet.RouteHandler {
 //	@Tags				projects
 //	@Router				/projects [get]
 //	@Security			Api-User || Api-Key
-//	@Param				start_at	query		string	false	"ID of the last project on the previous page. Defaults to the first project."
+//	@Param				start_at	query		string	false	"ID of the first project on the next page. Defaults to the first project."
 //	@Param				limit		query		int		false	"The number of projects to be returned per page of pagination. Defaults to 100"
 //	@Param				owner_name	query		string	false	"Filter projects by owner name (GitHub organization)"
 //	@Param				repo_name	query		string	false	"Filter projects by repository name"

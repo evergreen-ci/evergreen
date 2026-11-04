@@ -20,7 +20,7 @@ import (
 //	@Router				/projects/{project_id}/events [get]
 //	@Security			Api-User || Api-Key
 //	@Param				project_id	path		string	true	"the project ID or identifier"
-//	@Param				ts			query		string	false	"Timestamp (RFC3339) to start at; pages list events at or before this time. Defaults to now."
+//	@Param				ts			query		string	false	"Timestamp (RFC3339) to start at; pages list events that happened before this time. Defaults to now."
 //	@Param				limit		query		int		false	"The number of events to be returned per page of pagination. Defaults to 100"
 //	@Success			200			{array}		model.APIProjectEvent
 //	@Header				200			{string}	Link	"Pagination link to the next page (rel=next) when more results exist. Follow it verbatim rather than constructing URLs."
