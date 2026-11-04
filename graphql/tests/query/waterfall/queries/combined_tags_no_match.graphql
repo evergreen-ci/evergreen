@@ -1,0 +1,5 @@
+{
+  waterfall(options: { projectIdentifier: "spruce-identifier", taskTags: ["owner-a"], variantTags: ["missing"] }) {
+    pagination { activeVersionIds }
+  }
+}

@@ -27,7 +27,10 @@ import (
 )
 
 type DBUser struct {
-	Id               string           `bson:"_id"`
+	Id string `bson:"_id"`
+	// OktaUserID is the user's immutable Okta user ID, which uniquely
+	// identifies the user even if their username changes.
+	OktaUserID       string           `bson:"okta_id,omitempty" json:"okta_id,omitempty"`
 	FirstName        string           `bson:"first_name"`
 	LastName         string           `bson:"last_name"`
 	DispName         string           `bson:"display_name"`
@@ -139,6 +142,7 @@ const (
 func (u *DBUser) Username() string        { return u.Id }
 func (u *DBUser) PublicKeys() []PubKey    { return u.PubKeys }
 func (u *DBUser) Email() string           { return u.EmailAddress }
+func (u *DBUser) OktaID() string          { return u.OktaUserID }
 func (u *DBUser) GetAPIKey() string       { return u.APIKey }
 func (u *DBUser) GetAccessToken() string  { return u.LoginCache.AccessToken }
 func (u *DBUser) GetRefreshToken() string { return u.LoginCache.RefreshToken }

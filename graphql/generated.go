@@ -1335,6 +1335,7 @@ type ComplexityRoot struct {
 		SpawnHostScriptPath                func(childComplexity int) int
 		StepbackBisect                     func(childComplexity int) int
 		StepbackDisabled                   func(childComplexity int) int
+		StepbackPushTriggers               func(childComplexity int) int
 		TaskAnnotationSettings             func(childComplexity int) int
 		TaskOwnership                      func(childComplexity int) int
 		TestSelection                      func(childComplexity int) int
@@ -1433,6 +1434,7 @@ type ComplexityRoot struct {
 		SpawnHostScriptPath     func(childComplexity int) int
 		StepbackBisect          func(childComplexity int) int
 		StepbackDisabled        func(childComplexity int) int
+		StepbackPushTriggers    func(childComplexity int) int
 		VersionControlEnabled   func(childComplexity int) int
 		WaterfallDisabled       func(childComplexity int) int
 	}
@@ -1602,6 +1604,7 @@ type ComplexityRoot struct {
 		SpawnHostScriptPath                func(childComplexity int) int
 		StepbackBisect                     func(childComplexity int) int
 		StepbackDisabled                   func(childComplexity int) int
+		StepbackPushTriggers               func(childComplexity int) int
 		TaskAnnotationSettings             func(childComplexity int) int
 		TaskOwnership                      func(childComplexity int) int
 		TestSelection                      func(childComplexity int) int
@@ -8265,6 +8268,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Project.StepbackDisabled(childComplexity), true
+	case "Project.stepbackPushTriggers":
+		if e.complexity.Project.StepbackPushTriggers == nil {
+			break
+		}
+
+		return e.complexity.Project.StepbackPushTriggers(childComplexity), true
 	case "Project.taskAnnotationSettings":
 		if e.complexity.Project.TaskAnnotationSettings == nil {
 			break
@@ -8717,6 +8726,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ProjectLite.StepbackDisabled(childComplexity), true
+	case "ProjectLite.stepbackPushTriggers":
+		if e.complexity.ProjectLite.StepbackPushTriggers == nil {
+			break
+		}
+
+		return e.complexity.ProjectLite.StepbackPushTriggers(childComplexity), true
 	case "ProjectLite.versionControlEnabled":
 		if e.complexity.ProjectLite.VersionControlEnabled == nil {
 			break
@@ -9655,6 +9670,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RepoRef.StepbackDisabled(childComplexity), true
+	case "RepoRef.stepbackPushTriggers":
+		if e.complexity.RepoRef.StepbackPushTriggers == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.StepbackPushTriggers(childComplexity), true
 	case "RepoRef.taskAnnotationSettings":
 		if e.complexity.RepoRef.TaskAnnotationSettings == nil {
 			break
@@ -30032,6 +30053,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(_ context.Cont
 				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
 			case "stepbackBisect":
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
+			case "stepbackPushTriggers":
+				return ec.fieldContext_Project_stepbackPushTriggers(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "taskOwnership":
@@ -30155,6 +30178,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_repo(_ context.Context,
 				return ec.fieldContext_RepoRef_stepbackDisabled(ctx, field)
 			case "stepbackBisect":
 				return ec.fieldContext_RepoRef_stepbackBisect(ctx, field)
+			case "stepbackPushTriggers":
+				return ec.fieldContext_RepoRef_stepbackPushTriggers(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_RepoRef_taskAnnotationSettings(ctx, field)
 			case "taskOwnership":
@@ -37776,6 +37801,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
 			case "stepbackBisect":
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
+			case "stepbackPushTriggers":
+				return ec.fieldContext_Project_stepbackPushTriggers(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "taskOwnership":
@@ -37931,6 +37958,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
 			case "stepbackBisect":
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
+			case "stepbackPushTriggers":
+				return ec.fieldContext_Project_stepbackPushTriggers(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "taskOwnership":
@@ -38086,6 +38115,8 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
 			case "stepbackBisect":
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
+			case "stepbackPushTriggers":
+				return ec.fieldContext_Project_stepbackPushTriggers(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "taskOwnership":
@@ -38241,6 +38272,8 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
 			case "stepbackBisect":
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
+			case "stepbackPushTriggers":
+				return ec.fieldContext_Project_stepbackPushTriggers(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "taskOwnership":
@@ -38564,6 +38597,8 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
 			case "stepbackBisect":
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
+			case "stepbackPushTriggers":
+				return ec.fieldContext_Project_stepbackPushTriggers(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "taskOwnership":
@@ -41856,6 +41891,8 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
 			case "stepbackBisect":
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
+			case "stepbackPushTriggers":
+				return ec.fieldContext_Project_stepbackPushTriggers(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "taskOwnership":
@@ -42128,6 +42165,8 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
 			case "stepbackBisect":
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
+			case "stepbackPushTriggers":
+				return ec.fieldContext_Project_stepbackPushTriggers(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "taskOwnership":
@@ -45430,6 +45469,8 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(_ context.Context
 				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
 			case "stepbackBisect":
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
+			case "stepbackPushTriggers":
+				return ec.fieldContext_Project_stepbackPushTriggers(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "taskOwnership":
@@ -48632,6 +48673,35 @@ func (ec *executionContext) fieldContext_Project_stepbackBisect(_ context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_stepbackPushTriggers(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Project_stepbackPushTriggers,
+		func(ctx context.Context) (any, error) {
+			return obj.StepbackPushTriggers, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Project_stepbackPushTriggers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Project_taskAnnotationSettings(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -49804,6 +49874,8 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(_ conte
 				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
 			case "stepbackBisect":
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
+			case "stepbackPushTriggers":
+				return ec.fieldContext_Project_stepbackPushTriggers(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "taskOwnership":
@@ -51052,6 +51124,35 @@ func (ec *executionContext) fieldContext_ProjectLite_stepbackBisect(_ context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _ProjectLite_stepbackPushTriggers(ctx context.Context, field graphql.CollectedField, obj *model1.ProjectRef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProjectLite_stepbackPushTriggers,
+		func(ctx context.Context) (any, error) {
+			return obj.StepbackPushTriggers, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProjectLite_stepbackPushTriggers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectLite",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ProjectLite_versionControlEnabled(ctx context.Context, field graphql.CollectedField, obj *model1.ProjectRef) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -51420,6 +51521,8 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(_ context.Co
 				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
 			case "stepbackBisect":
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
+			case "stepbackPushTriggers":
+				return ec.fieldContext_Project_stepbackPushTriggers(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "taskOwnership":
@@ -53173,6 +53276,8 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
 			case "stepbackBisect":
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
+			case "stepbackPushTriggers":
+				return ec.fieldContext_Project_stepbackPushTriggers(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "taskOwnership":
@@ -56885,6 +56990,35 @@ func (ec *executionContext) fieldContext_RepoRef_stepbackBisect(_ context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _RepoRef_stepbackPushTriggers(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RepoRef_stepbackPushTriggers,
+		func(ctx context.Context) (any, error) {
+			return obj.StepbackPushTriggers, nil
+		},
+		nil,
+		ec.marshalNBoolean2ᚖbool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RepoRef_stepbackPushTriggers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RepoRef_taskAnnotationSettings(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -57409,6 +57543,8 @@ func (ec *executionContext) fieldContext_RepoSettings_projectRef(_ context.Conte
 				return ec.fieldContext_RepoRef_stepbackDisabled(ctx, field)
 			case "stepbackBisect":
 				return ec.fieldContext_RepoRef_stepbackBisect(ctx, field)
+			case "stepbackPushTriggers":
+				return ec.fieldContext_RepoRef_stepbackPushTriggers(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_RepoRef_taskAnnotationSettings(ctx, field)
 			case "taskOwnership":
@@ -66774,6 +66910,8 @@ func (ec *executionContext) fieldContext_Task_project(_ context.Context, field g
 				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
 			case "stepbackBisect":
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
+			case "stepbackPushTriggers":
+				return ec.fieldContext_Project_stepbackPushTriggers(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "taskOwnership":
@@ -77391,6 +77529,8 @@ func (ec *executionContext) fieldContext_Version_project(_ context.Context, fiel
 				return ec.fieldContext_ProjectLite_stepbackDisabled(ctx, field)
 			case "stepbackBisect":
 				return ec.fieldContext_ProjectLite_stepbackBisect(ctx, field)
+			case "stepbackPushTriggers":
+				return ec.fieldContext_ProjectLite_stepbackPushTriggers(ctx, field)
 			case "versionControlEnabled":
 				return ec.fieldContext_ProjectLite_versionControlEnabled(ctx, field)
 			}
@@ -77522,6 +77662,8 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(_ context.Conte
 				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
 			case "stepbackBisect":
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
+			case "stepbackPushTriggers":
+				return ec.fieldContext_Project_stepbackPushTriggers(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "taskOwnership":
@@ -81775,11 +81917,36 @@ func (ec *executionContext) unmarshalInputAddFavoriteProjectInput(ctx context.Co
 		switch k {
 		case "projectIdentifier":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2string(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "TASKS")
+				if err != nil {
+					var zeroVal string
+					return zeroVal, err
+				}
+				access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "VIEW")
+				if err != nil {
+					var zeroVal string
+					return zeroVal, err
+				}
+				if ec.directives.RequireProjectAccess == nil {
+					var zeroVal string
+					return zeroVal, errors.New("directive requireProjectAccess is not implemented")
+				}
+				return ec.directives.RequireProjectAccess(ctx, obj, directive0, permission, access)
 			}
-			it.ProjectIdentifier = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(string); ok {
+				it.ProjectIdentifier = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		}
 	}
 
@@ -87756,7 +87923,7 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "debugSpawnHostsDisabled", "disabledStatsCache", "sourceCacheMode", "dispatchingDisabled", "waterfallDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "runEveryMainlineCommit", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "taskOwnership", "testSelection", "virtualTasksEnabled", "triggers", "versionControlEnabled", "workstationConfig"}
+	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "debugSpawnHostsDisabled", "disabledStatsCache", "sourceCacheMode", "dispatchingDisabled", "waterfallDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "runEveryMainlineCommit", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "stepbackPushTriggers", "taskAnnotationSettings", "taskOwnership", "testSelection", "virtualTasksEnabled", "triggers", "versionControlEnabled", "workstationConfig"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -88071,6 +88238,13 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.StepbackBisect = data
+		case "stepbackPushTriggers":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("stepbackPushTriggers"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StepbackPushTriggers = data
 		case "taskAnnotationSettings":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskAnnotationSettings"))
 			data, err := ec.unmarshalOTaskAnnotationSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskAnnotationSettings(ctx, v)
@@ -88883,11 +89057,36 @@ func (ec *executionContext) unmarshalInputRemoveFavoriteProjectInput(ctx context
 		switch k {
 		case "projectIdentifier":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2string(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "TASKS")
+				if err != nil {
+					var zeroVal string
+					return zeroVal, err
+				}
+				access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "VIEW")
+				if err != nil {
+					var zeroVal string
+					return zeroVal, err
+				}
+				if ec.directives.RequireProjectAccess == nil {
+					var zeroVal string
+					return zeroVal, errors.New("directive requireProjectAccess is not implemented")
+				}
+				return ec.directives.RequireProjectAccess(ctx, obj, directive0, permission, access)
 			}
-			it.ProjectIdentifier = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(string); ok {
+				it.ProjectIdentifier = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		}
 	}
 
@@ -88928,7 +89127,7 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "sourceCacheMode", "dispatchingDisabled", "waterfallDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "runEveryMainlineCommit", "spawnHostScriptPath", "debugSpawnHostsDisabled", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "taskOwnership", "testSelection", "virtualTasksEnabled", "triggers", "versionControlEnabled", "workstationConfig"}
+	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "sourceCacheMode", "dispatchingDisabled", "waterfallDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "runEveryMainlineCommit", "spawnHostScriptPath", "debugSpawnHostsDisabled", "stepbackDisabled", "stepbackBisect", "stepbackPushTriggers", "taskAnnotationSettings", "taskOwnership", "testSelection", "virtualTasksEnabled", "triggers", "versionControlEnabled", "workstationConfig"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -89215,6 +89414,13 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.StepbackBisect = data
+		case "stepbackPushTriggers":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("stepbackPushTriggers"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StepbackPushTriggers = data
 		case "taskAnnotationSettings":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskAnnotationSettings"))
 			data, err := ec.unmarshalOTaskAnnotationSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskAnnotationSettings(ctx, v)
@@ -92971,7 +93177,7 @@ func (ec *executionContext) unmarshalInputWaterfallOptions(ctx context.Context, 
 		asMap["limit"] = 5
 	}
 
-	fieldsInOrder := [...]string{"date", "includeAllBuildsAndTasks", "limit", "minOrder", "maxOrder", "omitInactiveBuilds", "projectIdentifier", "requesters", "revision", "statuses", "tasks", "taskCaseSensitive", "variants", "variantCaseSensitive"}
+	fieldsInOrder := [...]string{"date", "includeAllBuildsAndTasks", "limit", "minOrder", "maxOrder", "omitInactiveBuilds", "projectIdentifier", "requesters", "revision", "statuses", "tasks", "taskTags", "taskCaseSensitive", "variants", "variantTags", "variantCaseSensitive"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -93080,6 +93286,13 @@ func (ec *executionContext) unmarshalInputWaterfallOptions(ctx context.Context, 
 				return it, err
 			}
 			it.Tasks = data
+		case "taskTags":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskTags"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TaskTags = data
 		case "taskCaseSensitive":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskCaseSensitive"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -93094,6 +93307,13 @@ func (ec *executionContext) unmarshalInputWaterfallOptions(ctx context.Context, 
 				return it, err
 			}
 			it.Variants = data
+		case "variantTags":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("variantTags"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.VariantTags = data
 		case "variantCaseSensitive":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("variantCaseSensitive"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -102875,6 +103095,8 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Project_stepbackDisabled(ctx, field, obj)
 		case "stepbackBisect":
 			out.Values[i] = ec._Project_stepbackBisect(ctx, field, obj)
+		case "stepbackPushTriggers":
+			out.Values[i] = ec._Project_stepbackPushTriggers(ctx, field, obj)
 		case "taskAnnotationSettings":
 			out.Values[i] = ec._Project_taskAnnotationSettings(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -103434,6 +103656,8 @@ func (ec *executionContext) _ProjectLite(ctx context.Context, sel ast.SelectionS
 			out.Values[i] = ec._ProjectLite_stepbackDisabled(ctx, field, obj)
 		case "stepbackBisect":
 			out.Values[i] = ec._ProjectLite_stepbackBisect(ctx, field, obj)
+		case "stepbackPushTriggers":
+			out.Values[i] = ec._ProjectLite_stepbackPushTriggers(ctx, field, obj)
 		case "versionControlEnabled":
 			out.Values[i] = ec._ProjectLite_versionControlEnabled(ctx, field, obj)
 		default:
@@ -105397,6 +105621,11 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "stepbackBisect":
 			out.Values[i] = ec._RepoRef_stepbackBisect(ctx, field, obj)
+		case "stepbackPushTriggers":
+			out.Values[i] = ec._RepoRef_stepbackPushTriggers(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "taskAnnotationSettings":
 			out.Values[i] = ec._RepoRef_taskAnnotationSettings(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

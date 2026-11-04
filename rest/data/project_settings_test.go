@@ -413,7 +413,10 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				repoRef, err := model.FindOneRepoRef(t.Context(), ref.RepoRefId)
 				require.NoError(t, err)
 				require.NotNil(t, repoRef)
-				repoRef.TaskAnnotationSettings.FileTicketWebhook.Secret = "repo-secret"
+				repoRef.TaskAnnotationSettings.FileTicketWebhook = evergreen.WebHook{
+					Endpoint: "https://example.com/inherited-webhook",
+					Secret:   "repo-secret",
+				}
 				require.NoError(t, repoRef.Replace(t.Context()))
 
 				apiChanges := &restModel.APIProjectSettings{

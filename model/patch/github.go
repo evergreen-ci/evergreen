@@ -107,11 +107,14 @@ type githubIntent struct {
 
 // BSON fields for the patches
 var (
-	documentIDKey  = bsonutil.MustHaveTag(githubIntent{}, "DocumentID")
-	headHashKey    = bsonutil.MustHaveTag(githubIntent{}, "HeadHash")
-	processedKey   = bsonutil.MustHaveTag(githubIntent{}, "Processed")
-	processedAtKey = bsonutil.MustHaveTag(githubIntent{}, "ProcessedAt")
-	intentTypeKey  = bsonutil.MustHaveTag(githubIntent{}, "IntentType")
+	documentIDKey   = bsonutil.MustHaveTag(githubIntent{}, "DocumentID")
+	baseRepoNameKey = bsonutil.MustHaveTag(githubIntent{}, "BaseRepoName")
+	prNumberKey     = bsonutil.MustHaveTag(githubIntent{}, "PRNumber")
+	headHashKey     = bsonutil.MustHaveTag(githubIntent{}, "HeadHash")
+	processedKey    = bsonutil.MustHaveTag(githubIntent{}, "Processed")
+	processedAtKey  = bsonutil.MustHaveTag(githubIntent{}, "ProcessedAt")
+	createdAtKey    = bsonutil.MustHaveTag(githubIntent{}, "CreatedAt")
+	intentTypeKey   = bsonutil.MustHaveTag(githubIntent{}, "IntentType")
 )
 
 // NewGithubIntent creates an Intent from a google/go-github PullRequestEvent,
@@ -322,6 +325,23 @@ func (g *githubIntent) NewPatch() *Patch {
 
 func (g *githubIntent) GetAlias() string {
 	return g.Alias
+}
+
+// HasNewerGithubIntent returns whether another GitHub PR patch intent for the
+// same PR with a different head hash was created after the given time. GitHub
+// sends a new webhook event for every push to a PR, so a newer intent with a
+// different head means the PR's head has moved.
+func HasNewerGithubIntent(ctx context.Context, baseRepoName string, prNumber int, headHash string, createdAfter time.Time) (bool, error) {
+	count, err := db.Count(ctx, IntentCollection, bson.M{
+		baseRepoNameKey: baseRepoName,
+		prNumberKey:     prNumber,
+		headHashKey:     bson.M{"$ne": headHash},
+		createdAtKey:    bson.M{"$gt": createdAfter},
+	})
+	if err != nil {
+		return false, errors.Wrapf(err, "counting newer patch intents for PR '%s#%d'", baseRepoName, prNumber)
+	}
+	return count > 0, nil
 }
 
 // FindUnprocessedGithubMergeIntentHeadSHAs returns the head SHAs of GitHub merge

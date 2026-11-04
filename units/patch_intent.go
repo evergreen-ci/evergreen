@@ -1124,6 +1124,29 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 	patchDoc.Project = projectRef.Id
 	j.ProjectID = projectRef.Id
 
+	// Skip creating a patch for the superseded commit to avoid testing with the
+	// wrong diff; the newer push creates its own intent that builds the correct
+	// patch.
+	isSuperseded, err := patch.HasNewerGithubIntent(ctx,
+		fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
+		patchDoc.GithubPatchData.PRNumber, patchDoc.GithubPatchData.HeadHash, patchDoc.CreateTime)
+	if err != nil {
+		// Fall back to building the patch as before rather than failing PR
+		// testing because the staleness check could not run.
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message":     "could not check if the PR head has moved, building patch anyway",
+			"job":         j.ID(),
+			"patch_id":    j.PatchID,
+			"pr_number":   patchDoc.GithubPatchData.PRNumber,
+			"intent_type": j.IntentType,
+			"intent_id":   j.IntentID,
+			"source":      "patch intents",
+		}))
+	} else if isSuperseded {
+		j.gitHubError = SupersededByNewerPush
+		return isMember, errors.New("not creating a patch because the pull request has newer commits")
+	}
+
 	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, patchDoc.GithubPatchData)
 	if err != nil {
 		// Expected error when the PR diff is more than 3000 lines or 300 files.
