@@ -1,0 +1,81 @@
+{
+  "tests": [
+    {
+      "query_file": "first_page.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "project": {
+              "commits": {
+                "versions": [
+                  { "id": "repo-version-4", "order": 4 },
+                  { "id": "repo-version-2", "order": 2 }
+                ],
+                "pagination": {
+                  "hasNextPage": true,
+                  "nextPageOrder": 2
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "next_page.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "project": {
+              "commits": {
+                "versions": [
+                  { "id": "repo-version-2", "order": 2 },
+                  { "id": "repo-version-1", "order": 1 }
+                ],
+                "pagination": {
+                  "hasNextPage": false,
+                  "nextPageOrder": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "empty_results.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "project": {
+              "commits": {
+                "versions": [],
+                "pagination": {
+                  "hasNextPage": false,
+                  "nextPageOrder": 0
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "limit_above_maximum.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "limit exceeds max limit of 300",
+            "path": ["version", "project", "commits"],
+            "extensions": { "code": "INPUT_VALIDATION_ERROR" }
+          }
+        ],
+        "data": {
+          "version": {
+            "project": null
+          }
+        }
+      }
+    }
+  ]
+}

@@ -50,3 +50,18 @@ type Waterfall {
   pagination: WaterfallPagination!
   versions: [Version!]!
 }
+
+input ProjectCommitsOptions {
+  limit: Int = 20
+  maxOrder: Int
+}
+
+type ProjectCommitsPagination {
+  hasNextPage: Boolean!
+  nextPageOrder: Int!
+}
+
+type ProjectCommits {
+  pagination: ProjectCommitsPagination
+  versions: [Version!]!
+}

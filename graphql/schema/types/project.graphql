@@ -383,6 +383,7 @@ type ProjectLite {
   admins: [String!]
   batchTime: Int!
   branch: String!
+  commits(options: ProjectCommitsOptions!): ProjectCommits!
   deactivatePrevious: Boolean
   debugSpawnHostsDisabled: Boolean
   disabledStatsCache: Boolean

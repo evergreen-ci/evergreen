@@ -390,6 +390,21 @@ type ProjectBuildVariant struct {
 	Tasks       []string `json:"tasks"`
 }
 
+type ProjectCommits struct {
+	Pagination *ProjectCommitsPagination `json:"pagination,omitempty"`
+	Versions   []*model1.Version         `json:"versions"`
+}
+
+type ProjectCommitsOptions struct {
+	Limit    *int `json:"limit,omitempty"`
+	MaxOrder *int `json:"maxOrder,omitempty"`
+}
+
+type ProjectCommitsPagination struct {
+	HasNextPage   bool `json:"hasNextPage"`
+	NextPageOrder int  `json:"nextPageOrder"`
+}
+
 // ProjectEvents contains project event log entries that concern the history of changes related to project
 // settings.
 // Although RepoSettings uses RepoRef in practice to have stronger types, this can't be enforced
