@@ -554,7 +554,7 @@ func GetPatchedProjectConfig(ctx context.Context, p *patch.Patch) (string, error
 	}
 	logDecodeErrorWithOpts(ctx, projectRef.Id, "", "GetPatchedProjectConfig", decodeErr, opts)
 	if len(intermediateProject.Include) > 0 {
-		if err := mergeIncludes(ctx, p.Project, intermediateProject, nil, opts); err != nil {
+		if _, err := mergeIncludes(ctx, p.Project, intermediateProject, nil, opts); err != nil {
 			return "", errors.Wrap(err, "merging included files")
 		}
 	}

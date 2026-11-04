@@ -24,6 +24,8 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/send"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -5190,4 +5192,110 @@ tasks:
 	require.Len(t, pp.Modules, 2)
 	assert.Equal(t, 1, pp.Modules[0].CloneDepth)
 	assert.Zero(t, pp.Modules[1].CloneDepth)
+}
+
+// TestLoadProjectIntoWarnsWhenCrossFileAnchorParsingFallsBack verifies that
+// when the anchor-based parse fails and the file falls back to being parsed
+// without anchors, the reason is surfaced as a user-facing warning, and that no
+// warning is emitted when cross-file anchors are disabled or parse cleanly.
+func TestLoadProjectIntoWarnsWhenCrossFileAnchorParsingFallsBack(t *testing.T) {
+	// yaml v3 rejects duplicate mapping keys, but the fallback parse accepts
+	// them via the yaml v2 fallback, so this file forces the fallback path.
+	yml := `
+functions:
+  f:
+    command: shell.exec
+functions:
+  g:
+    command: shell.exec
+`
+	t.Run("FallbackEmitsWarning", func(t *testing.T) {
+		opts := &GetProjectOpts{CrossFileYAMLAnchorsEnabled: true}
+		pp, warnings, err := LoadProjectIntoWithWarnings(t.Context(), []byte(yml), opts, "proj", &Project{})
+		require.NoError(t, err)
+		require.NotNil(t, pp)
+		require.Len(t, warnings, 1)
+		assert.Contains(t, warnings[0], "cross-file YAML anchors")
+		assert.Contains(t, warnings[0], "mapping key")
+	})
+
+	t.Run("AnchorsDisabledEmitsNoWarning", func(t *testing.T) {
+		opts := &GetProjectOpts{}
+		pp, warnings, err := LoadProjectIntoWithWarnings(t.Context(), []byte(yml), opts, "proj", &Project{})
+		require.NoError(t, err)
+		require.NotNil(t, pp)
+		assert.Empty(t, warnings)
+	})
+
+	t.Run("SuccessfulAnchorParseEmitsNoWarning", func(t *testing.T) {
+		opts := &GetProjectOpts{CrossFileYAMLAnchorsEnabled: true}
+		pp, warnings, err := LoadProjectIntoWithWarnings(t.Context(), []byte("functions:\n  f:\n    command: shell.exec\n"), opts, "proj", &Project{})
+		require.NoError(t, err)
+		require.NotNil(t, pp)
+		assert.Empty(t, warnings)
+	})
+}
+
+// TestDecodeWithAnchorsReservedEvgAnchorsKey verifies that a user-defined
+// top-level _evg_anchors key in a file parsed without a prepended preamble (so
+// it can only be user content) is still removed, but logs a warning, and that
+// the same key in a parse with a prepended preamble (i.e. the injected
+// preamble) is removed silently.
+func TestDecodeWithAnchorsReservedEvgAnchorsKey(t *testing.T) {
+	yml := `
+_evg_anchors:
+  - &unused
+    x: 1
+functions:
+  f:
+    command: shell.exec
+`
+	setupSender := func(t *testing.T) *send.InternalSender {
+		sender := send.MakeInternalLogger()
+		require.NoError(t, grip.SetSender(sender))
+		t.Cleanup(func() {
+			require.NoError(t, grip.SetSender(send.MakeNative()))
+		})
+		return sender
+	}
+
+	t.Run("NoPreambleWarnsAndStrips", func(t *testing.T) {
+		sender := setupSender(t)
+		pp, decodeErr, err := createIntermediateProject([]byte(yml), false, &anchorRegistry{})
+		require.NoError(t, err)
+		require.NoError(t, decodeErr)
+		// The reserved key must still be stripped from the parsed project.
+		require.Len(t, pp.Functions, 1)
+
+		require.True(t, sender.HasMessage())
+		msg, ok := sender.GetMessageSafe()
+		require.True(t, ok)
+		assert.Contains(t, msg.Rendered, "reserved top-level YAML key '_evg_anchors'")
+	})
+
+	t.Run("WithPreambleDoesNotWarn", func(t *testing.T) {
+		// A registry with entries means a preamble was prepended, so the
+		// _evg_anchors key belongs to Evergreen and must be removed silently.
+		registry := &anchorRegistry{}
+		var anchorNode yaml.Node
+		require.NoError(t, yaml.Unmarshal([]byte("anchors:\n- &dummy\n  x: 1\n"), &anchorNode))
+		require.NoError(t, registry.mergeAnchorsFrom(&anchorNode))
+
+		sender := setupSender(t)
+		pp, decodeErr, err := createIntermediateProject([]byte(yml), false, registry)
+		require.NoError(t, err)
+		require.NoError(t, decodeErr)
+		require.Len(t, pp.Functions, 1)
+
+		// The internal sender captures messages at every level, so filter for
+		// the reserved-key warning specifically rather than asserting an empty log.
+		for {
+			msg, ok := sender.GetMessageSafe()
+			require.True(t, ok)
+			assert.NotContains(t, msg.Rendered, "reserved top-level YAML key '_evg_anchors'")
+			if !sender.HasMessage() {
+				break
+			}
+		}
+	})
 }
