@@ -1680,9 +1680,7 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts, settings *ever
 // If unmarshalStrict is true, use the strict version of unmarshalling.
 // When anchorRegistry is non-nil, always uses decodeWithAnchors to collect anchors from each file
 // into the registry. If the registry already has entries, a preamble is prepended so aliases from
-// prior files resolve. Falls back to standard unmarshalling if decoding with anchors fails, unless
-// an anchor limit was breached (ErrAnchorExpansionLimit or ErrAnchorPreambleSize); those indicate the
-// config misuses cross-file anchors and are returned as fatal errors rather than falling back.
+// prior files resolve. Falls back to standard unmarshalling if decoding with anchors fails.
 func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRegistry *anchorRegistry) (pp *ParserProject, decodeErr error, err error) {
 	if anchorRegistry != nil {
 		var combined []byte
