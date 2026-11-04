@@ -29,7 +29,7 @@ var ErrAnchorExpansionLimit = errors.Errorf("yaml anchor expansion exceeded the 
 // ErrAnchorPreambleSize is returned when serializing the accumulated yaml anchors produces a preamble larger
 // than maxAnchorPreambleBytes. This means the config misuses cross-file anchors and the whole project load
 // fails so the user must fix their configuration.
-var ErrAnchorPreambleSize = errors.Errorf("yaml anchor definitions exceeded the maximum preamble size of %d bytes; move anchor definitions into fewer include files or make them smaller", maxAnchorPreambleBytes)
+var ErrAnchorPreambleSize = errors.Errorf("yaml anchor definitions exceeded the maximum preamble size of %d bytes; reduce the number and size of anchor definitions in your configuration", maxAnchorPreambleBytes)
 
 // anchorEntry holds a single YAML anchor definition: its name (the &name tag)
 // and the Node that carries it.
